@@ -2258,7 +2258,8 @@ def _matches_explicit_empty_response(data: object, config: object) -> bool:
             raise ValueError("empty_response paths must contain 1-256 characters")
         if isinstance(expected, dict) or (isinstance(expected, list) and expected != []):
             raise ValueError("empty_response expected values must be JSON scalars or the [] marker")
-        if resolve_path(data, path) != expected:
+        actual = resolve_path(data, path)
+        if type(actual) is not type(expected) or actual != expected:
             return False
     return True
 
@@ -2514,7 +2515,12 @@ async def _discover_http(
     if isinstance(content, list):
         from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult, PaginationInfo
 
-        items = [item for item in content if isinstance(item, dict)]
+        require_object_items = bool(item_filter[3])
+        items = extract_items(
+            content,
+            "$",
+            require_object_items=require_object_items,
+        )
         if not items and empty_response is not None:
             if not isinstance(data, dict) or not _matches_explicit_empty_response(
                 data, empty_response
@@ -2601,6 +2607,7 @@ async def _discover_http(
                     job_result,
                     page_cap,
                     item_projector=item_projector,
+                    require_object_items=require_object_items,
                 )
                 total = job_result.total_count
         elif item_projector:
@@ -2985,13 +2992,22 @@ async def _discover_replay(
         # Some APIs (e.g. TalentClue) return {"jobs": {"<id>": {...}}} rather
         # than {"jobs": [{...}]}; coerce before extract_items.
         items: list[dict] | None = None
+        require_object_items = bool(item_filter[3])
         if config.get("json_path_values") and json_path:
             resolved = resolve_path(data, json_path)
             if isinstance(resolved, dict):
-                items = [v for v in resolved.values() if isinstance(v, dict)]
+                items = extract_items(
+                    list(resolved.values()),
+                    "$",
+                    require_object_items=require_object_items,
+                )
 
         if items is None:
-            items = extract_items(data, json_path)
+            items = extract_items(
+                data,
+                json_path,
+                require_object_items=require_object_items,
+            )
         if pagination_convergence:
             if json_path == "$":
                 configured_items = data
@@ -3101,6 +3117,7 @@ async def _discover_replay(
                     job_result,
                     max_pg,
                     item_projector=item_projector,
+                    require_object_items=require_object_items,
                 )
                 total_count = job_result.total_count
         elif item_projector:

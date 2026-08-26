@@ -448,6 +448,8 @@ class TestProcessOneBoard:
         "payload",
         [
             pytest.param({"total": 0}, id="missing-jobs-even-with-zero-total"),
+            pytest.param({"jobs": [], "total": False}, id="boolean-false-total"),
+            pytest.param({"jobs": [], "total": 0.0}, id="floating-zero-total"),
             pytest.param(
                 {"jobs": [{"title": "Missing identity"}], "total": 1},
                 id="missing-viewkey",
@@ -458,6 +460,31 @@ class TestProcessOneBoard:
                     "total": 1,
                 },
                 id="invalid-viewkey",
+            ),
+            pytest.param(
+                {
+                    "jobs": [
+                        {
+                            "viewkey": "6F811874-A6D0-48F5-9D6B-57C369861D2A",
+                            "title": "Uppercase UUID alias",
+                        }
+                    ],
+                    "total": 1,
+                },
+                id="noncanonical-uppercase-viewkey",
+            ),
+            pytest.param(
+                {
+                    "jobs": [
+                        {
+                            "viewkey": "6f811874-a6d0-48f5-9d6b-57c369861d2a",
+                            "title": "Valid row",
+                        },
+                        None,
+                    ],
+                    "total": 2,
+                },
+                id="mixed-non-object-row",
             ),
         ],
     )
