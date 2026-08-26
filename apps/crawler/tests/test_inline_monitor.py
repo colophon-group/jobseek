@@ -178,6 +178,43 @@ def test_generate_url_collision():
     assert "-2" in url2
 
 
+def test_generate_url_uses_stable_identity_instead_of_title():
+    first = _generate_url(
+        "https://example.com/careers",
+        "Old title",
+        {},
+        stable_identity="department-42",
+    )
+    second = _generate_url(
+        "https://example.com/careers",
+        "New translated title",
+        {},
+        stable_identity="department-42",
+    )
+
+    assert first == second
+    assert "old-title" not in first
+    assert "new-translated-title" not in second
+
+
+def test_generate_url_rejects_duplicate_stable_identity():
+    seen: dict[str, int] = {}
+    _generate_url(
+        "https://example.com/careers",
+        "First role",
+        seen,
+        stable_identity="department-42",
+    )
+
+    with pytest.raises(ValueError, match="synthetic identities must be unique"):
+        _generate_url(
+            "https://example.com/careers",
+            "Second role",
+            seen,
+            stable_identity="department-42",
+        )
+
+
 def test_generate_url_with_existing_params():
     seen: dict[str, int] = {}
     url = _generate_url("https://example.com/jobs?lang=en", "Engineer", seen)
@@ -641,6 +678,48 @@ async def test_discover_static():
     assert jobs[1].title == "Product Manager"
     assert "_jid=" in jobs[0].url
     assert jobs[0].url != jobs[1].url
+
+
+@pytest.mark.asyncio
+async def test_discover_static_identity_is_title_and_order_independent():
+    rows = (
+        "<tr><td>Old German title</td><td>Department A</td></tr>"
+        "<tr><td>Other title</td><td>Department B</td></tr>"
+    )
+    reversed_rows = (
+        "<tr><td>Other translated title</td><td>Department B</td></tr>"
+        "<tr><td>New English title</td><td>Department A</td></tr>"
+    )
+    board = {
+        "board_url": "https://example.com/apprenticeships",
+        "metadata": {
+            "synthetic_identity_field": "provider_identity",
+            "steps": [
+                {"tag": "td", "field": "title"},
+                {"tag": "td", "field": "provider_identity"},
+            ],
+        },
+    }
+
+    first = await discover(board, _FakeClient(rows))
+    second = await discover(board, _FakeClient(reversed_rows))
+
+    assert {job.url for job in first} == {job.url for job in second}
+    assert len({job.url for job in first}) == 2
+
+
+@pytest.mark.asyncio
+async def test_discover_static_identity_requires_scalar_text():
+    board = {
+        "board_url": "https://example.com/apprenticeships",
+        "metadata": {
+            "synthetic_identity_field": "provider_identity",
+            "steps": [{"tag": "td", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="synthetic identity field was missing"):
+        await discover(board, _FakeClient("<tr><td>Role</td></tr>"))
 
 
 @pytest.mark.asyncio

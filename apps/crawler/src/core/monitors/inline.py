@@ -57,6 +57,7 @@ _MAX_DETAIL_IDENTITY_LENGTH = 512
 _MAX_ITEM_BOUNDARY_TAG_LENGTH = 32
 _MAX_SECTION_REGEX_LENGTH = 2_048
 _MAX_POSITIONS_PER_LISTING = 20
+_MAX_SYNTHETIC_IDENTITY_FIELD_LENGTH = 128
 _DETAIL_BOUNDARY_TAG = "jobseek-inline-detail"
 _DETAIL_RESERVED_ATTRIBUTE_PREFIX = "data-inline-detail-"
 _HTML_TAG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
@@ -397,6 +398,20 @@ def _validated_item_boundary_tag(value: object) -> str | None:
     return value.casefold()
 
 
+def _validated_synthetic_identity_field(value: object) -> str | None:
+    """Validate an extracted field used as the durable synthetic identity."""
+    if value is None:
+        return None
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > _MAX_SYNTHETIC_IDENTITY_FIELD_LENGTH
+        or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", value) is None
+    ):
+        raise ValueError("inline synthetic_identity_field must be a valid bounded field name")
+    return value
+
+
 def _validated_section_boundary(value: object, *, name: str) -> dict | None:
     """Validate one fail-closed boundary for a section of an inline page."""
     if value is None:
@@ -524,19 +539,29 @@ def _walk_bounded_item(
     return result, item_end
 
 
-def _generate_url(board_url: str, title: str, seen: dict[str, int]) -> str:
+def _generate_url(
+    board_url: str,
+    title: str,
+    seen: dict[str, int],
+    *,
+    stable_identity: str | None = None,
+) -> str:
     """Generate a stable synthetic URL for an inline job.
 
     Format: ``{board_url}?_jid={slug}-{hash[:6]}``
-    Appends a counter suffix on collision (identical titles).
+    Appends a counter suffix on legacy title collisions. Configured stable
+    identities fail closed on collision instead of becoming order-dependent.
     """
-    slug = slugify(title)[:50]
-    title_hash = hashlib.sha256(title.strip().lower().encode()).hexdigest()[:6]
-    jid = f"{slug}-{title_hash}" if slug else title_hash
+    identity = stable_identity if stable_identity is not None else title
+    slug = slugify(identity)[:50]
+    identity_hash = hashlib.sha256(identity.strip().casefold().encode()).hexdigest()[:6]
+    jid = f"{slug}-{identity_hash}" if slug else identity_hash
 
     # Handle collisions (identical titles on same page)
     count = seen.get(jid, 0)
     seen[jid] = count + 1
+    if stable_identity is not None and count > 0:
+        raise ValueError("inline synthetic identities must be unique")
     if count > 0:
         jid = f"{jid}-{count + 1}"
 
@@ -893,6 +918,8 @@ async def discover(
         require_zero_proof — fail when extraction returns no jobs without an explicit
                              empty_selector/empty_text match (default: false)
         item_boundary_tag — optional tag that starts and bounds each posting
+        synthetic_identity_field — extracted provider-stable field used instead of title
+                                   for synthetic URL identity; duplicates fail closed
         section_start — first page-section boundary (exclusive; requires section_end)
         section_end — last page-section boundary (exclusive; requires section_start)
         preserve_single_location — keep an extracted location string intact (default: false)
@@ -940,7 +967,14 @@ async def discover(
         metadata.get("exclude_description_regex")
     )
     item_boundary_tag = _validated_item_boundary_tag(metadata.get("item_boundary_tag"))
+    synthetic_identity_field = _validated_synthetic_identity_field(
+        metadata.get("synthetic_identity_field")
+    )
     uses_detail_expansion = metadata.get("detail_click_selector") is not None
+    if uses_detail_expansion and synthetic_identity_field is not None:
+        raise ValueError(
+            "inline synthetic_identity_field cannot be combined with detail-card identity"
+        )
     if uses_detail_expansion:
         if item_boundary_tag is not None:
             raise ValueError("inline detail-card expansion sets its item boundary automatically")
@@ -968,6 +1002,10 @@ async def discover(
         raise ValueError(
             "inline positions_per_listing must be an integer from 1 to "
             f"{_MAX_POSITIONS_PER_LISTING}"
+        )
+    if synthetic_identity_field is not None and positions_per_listing != 1:
+        raise ValueError(
+            "inline synthetic_identity_field cannot be combined with positions_per_listing"
         )
     valid_through_patterns, valid_through_format, exclude_expired = _validated_valid_through_config(
         metadata
@@ -1096,7 +1134,20 @@ async def discover(
         if provider_identity is not None:
             url = _generate_identity_url(board_url, provider_identity)
         else:
-            url = _generate_url(board_url, title, seen_jids)
+            stable_identity = None
+            if synthetic_identity_field is not None:
+                raw_identity = result.get(synthetic_identity_field)
+                if not isinstance(raw_identity, str) or not raw_identity.strip():
+                    raise ValueError(
+                        "inline synthetic identity field was missing or not scalar text"
+                    )
+                stable_identity = raw_identity.strip()
+            url = _generate_url(
+                board_url,
+                title,
+                seen_jids,
+                stable_identity=stable_identity,
+            )
 
         job_defaults = {**defaults, **(defaults_by_title.get(title) or {})}
 

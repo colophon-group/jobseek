@@ -986,7 +986,10 @@ _MONITOR_CONFIG_HINTS = {
     "workday": "Requires: company, wd_instance, site (auto-filled from probe)",
     "personio": "Requires: slug. Optional: language, backfill_languages",
     "practicematch": "Optional: max_pages. Proxy-routed employer form pagination.",
-    "prospective": "Optional: medium_id and filters allowlist for CareerCenter form fields.",
+    "prospective": (
+        "Requires: application_identity URL allowlists/link texts/locale priority. "
+        "Optional: medium_id and filters allowlist."
+    ),
     "rss": "Optional: preset/variant/feed_url; legacy SuccessFactors host/company auto-fill",
     "umantis": "Requires: customer_id. Optional: region, listing_path",
     "earcu": "Requires: feed_url (auto-filled from an eArcu careers URL)",

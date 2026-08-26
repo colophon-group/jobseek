@@ -228,7 +228,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `personio`        | Conditional* | --     | Personio XML feed; HTML fallback needs scraper |
 | 10   | `pinpoint`        | Rich     | skip        | Pinpoint API                            |
 | 10   | `practicematch`   | URL-only | json-ld     | Proxy-routed employer form pagination  |
-| 10   | `prospective`     | URL-only | json-ld     | Prospective CareerCenter HTML form POST pagination |
+| 10   | `prospective`     | Rich     | skip        | CareerCenter POST pagination with durable application identity |
 | 10   | `recruitee`       | Rich     | skip        | Recruitee Careers API                   |
 | 10   | `recruiterbox`    | URL-only | json-ld     | Recruiterbox / Trakstar Hire static listings |
 | 10   | `taleo`           | URL-only | json-ld     | Taleo Business Edition total/cursor listings |

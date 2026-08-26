@@ -133,7 +133,7 @@ Monitor Types (cheapest first):
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
   practicematch     10      Job URLs          Auto-configured
-  prospective       10      Job URLs          Auto-configured JSON-LD
+  prospective       10      Full job data     No (skipped)
   notion            15      Job URLs          Auto-configured
   recruiter_co_kr   15      Full job data     No (skipped)
   umantis           15      Full/partial      Description enrichment
@@ -1048,26 +1048,41 @@ njoyn — Njoyn XWeb browser monitor
 MONITOR_PROSPECTIVE = """\
 prospective — Prospective CareerCenter HTML form monitor
 
-  Returns:  Complete job-detail URL set (needs scraper)
+  Returns:  Full localized job data with durable application identity
   Cost:     10; server-rendered GET + POST pagination, no browser
 
   Prospective CareerCenter pages submit offset pagination through a standard
   HTML form. This monitor is the fallback for tenants whose public JSON medium
   endpoint is unavailable. It validates the provider medium, form contract,
   pagination progress, same-origin detail links, and configured filter values.
+  It enriches each detail's JSON-LD and resolves its application URL. Locale
+  variants sharing that durable application identity become one posting with
+  localizations instead of duplicate title-bearing detail URLs.
 
   Config:
-    {"medium_id": "1000613"}
     {"medium_id": "1000613",
-     "filters": {"filter_10": ["1082961", "1082964"]}}
+     "filters": {"filter_10": ["1082961", "1082964"]},
+     "application_identity": {
+       "link_texts": ["Apply", "Bewerben"],
+       "source_url_allowlist": "^https://apply\\.example/jobs/[1-9]\\d*$",
+       "canonical_url_allowlist": "^https://apply\\.example/jobs/[1-9]\\d*$",
+       "locale_priority": ["en", "de", "fr", "it"],
+       "concurrency": 8}}
 
     medium_id   Optional numeric provider identity; fails if the page changes.
     filters     Optional exact allowlist of repeated CareerCenter form values.
                 Every configured value must still exist in the live select;
                 missing values fail the cycle rather than broadening scope.
+    application_identity
+                Required fail-closed detail identity contract. link_texts must
+                select exactly one application link per detail. The raw link
+                and final resolving URL must fully match their separate
+                allowlists. locale_priority chooses top-level content while
+                retaining every locale under localizations. Detail fetch
+                concurrency is bounded to 1-16.
 
   Detection:  form#careercenter-form plus /careercenter/<id>/assets/ marker
-  Pair with:  json-ld (auto-configured)"""
+  Pair with:  no scraper (rich monitor)"""
 
 MONITOR_CANDIDATUS = """\
 candidatus — Candidatus / WinDev browser monitor
@@ -1456,6 +1471,12 @@ inline — Single-Page Extraction (rich)
                  Optional HTML tag that starts each posting (for example h2).
                  Each repeated step run is restricted to one such block, so an
                  optional field cannot consume content from the next posting.
+    synthetic_identity_field
+                 Optional extracted field containing a provider-stable identity
+                 for ordinary static inline rows. The identity, rather than the
+                 mutable title or row order, becomes the synthetic _jid. Missing,
+                 non-scalar, or duplicate values fail the cycle closed. Cannot
+                 be combined with click-card identity or positions_per_listing.
     section_start
                  Optional fail-closed start marker for pages that retain
                  multiple application rounds or opportunity categories.

@@ -97,6 +97,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "paycom",
         "paylocity",
         "pinpoint",
+        "prospective",
         "recruitee",
         "recruiter_co_kr",
         "rss",
@@ -169,7 +170,6 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "personio",
     "recruiterbox",
     "practicematch",
-    "prospective",
     "taleo",
     "rippling",
     "smartrecruiters",
@@ -707,8 +707,6 @@ def auto_scraper_type(
             "johdi",
             {key: (config or {}).get(key) for key in ("company_key", "flow", "locale")},
         )
-    if monitor_type == "prospective":
-        return ("json-ld", None)
     if monitor_type == "bamboohr":
         return (
             "api_sniffer",

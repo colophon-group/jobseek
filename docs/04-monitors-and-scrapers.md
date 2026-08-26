@@ -93,7 +93,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `personio` | Conditional* | — | Personio XML feed; HTML fallback needs scraper |
 | `pinpoint` | Rich | skip | Pinpoint ATS |
 | `practicematch` | URL-only | json-ld | Proxy-routed PracticeMatch employer listings and form pagination |
-| `prospective` | URL-only | json-ld | Prospective CareerCenter HTML form listings with fail-closed filters and POST pagination |
+| `prospective` | Rich | skip | Prospective CareerCenter form pagination with fail-closed application identity and locale collapse |
 | `recruitee` | Rich | skip | Recruitee ATS |
 | `recruiterbox` | URL-only | json-ld | Recruiterbox / Trakstar Hire server-rendered listings |
 | `taleo` | URL-only | json-ld | Taleo Business Edition total/cursor static listings |
