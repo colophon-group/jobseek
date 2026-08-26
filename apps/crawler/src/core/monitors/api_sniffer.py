@@ -2404,7 +2404,15 @@ async def _discover_http(
         if arrays:
             best_path, best_items = pick_best_array(arrays, api_url)
             json_path = best_path
-            content = best_items
+            # ``find_arrays`` intentionally filters out non-dict members for
+            # candidate scoring.  Identity-gated boards must validate the raw
+            # provider list instead, or malformed members disappear before
+            # ``extract_items`` can fail closed.
+            content = (
+                (data if best_path == "$" else resolve_path(data, best_path))
+                if item_filter[3]
+                else best_items
+            )
             log.info("api_sniffer.auto_json_path", path=json_path, items=len(best_items))
         else:
             html_hits = find_html_strings(data)

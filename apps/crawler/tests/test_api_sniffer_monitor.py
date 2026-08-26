@@ -227,6 +227,61 @@ async def test_fenaco_paginated_non_object_identity_fails_closed():
             )
 
 
+def _auto_detected_mixed_payload() -> dict[str, list[dict[str, str] | None]]:
+    return {
+        "jobs": [
+            {"id": "101", "title": "One"},
+            {"id": "102", "title": "Two"},
+            {"id": "103", "title": "Three"},
+            None,
+        ]
+    }
+
+
+async def _monitor_auto_detected_mixed_payload(*, strict: bool):
+    config = {
+        "api_url": "https://api.example.com/jobs",
+        "url_template": "https://jobs.example.com/jobs/{id}",
+        "fields": {"title": "title"},
+    }
+    if strict:
+        config["item_filter"] = {"require_regex": {"id": r"[0-9]+"}}
+
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            json=_auto_detected_mixed_payload(),
+            request=request,
+        )
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        return await monitor_one(
+            "https://jobs.example.com/",
+            "api_sniffer",
+            config,
+            client,
+        )
+
+
+@pytest.mark.asyncio
+async def test_auto_detected_initial_array_rejects_non_object_with_required_identity():
+    with pytest.raises(ValueError, match="non-object.*index 3"):
+        await _monitor_auto_detected_mixed_payload(strict=True)
+
+
+@pytest.mark.asyncio
+async def test_auto_detected_initial_array_preserves_non_strict_compatibility():
+    result = await _monitor_auto_detected_mixed_payload(strict=False)
+
+    assert result.urls == {
+        "https://jobs.example.com/jobs/101",
+        "https://jobs.example.com/jobs/102",
+        "https://jobs.example.com/jobs/103",
+    }
+    assert result.jobs_by_url is not None
+    assert len(result.jobs_by_url) == 3
+
+
 def _lumesse_items():
     return [
         {
