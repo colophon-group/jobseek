@@ -165,8 +165,11 @@ class _UrlTransformCollisionConfig:
     """Validated deterministic policy for intentional many-to-one URL transforms."""
 
     preferred_source_patterns: tuple[re.Pattern[str], ...]
+    preferred_metadata_key: str | None
+    preferred_metadata_patterns: tuple[re.Pattern[str], ...]
     canonical_identity_pattern: re.Pattern[str]
-    identity_metadata_key: str
+    identity_metadata_key: str | None
+    source_identity_pattern: re.Pattern[str] | None
     stream_buffer_limit: int
 
 
@@ -202,6 +205,43 @@ def _url_transform_collision_config(
     except re.error as exc:
         raise ValueError(f"url_transform collision source pattern is invalid: {exc}") from exc
 
+    preferred_metadata_key = transform.get("collision_preferred_metadata_key")
+    raw_metadata_patterns = transform.get("collision_preferred_metadata_patterns")
+    if (preferred_metadata_key is None) != (raw_metadata_patterns is None):
+        raise ValueError(
+            "url_transform collision metadata preference requires both a key and patterns"
+        )
+    if preferred_metadata_key is not None and (
+        not isinstance(preferred_metadata_key, str)
+        or not preferred_metadata_key
+        or len(preferred_metadata_key) > 128
+    ):
+        raise ValueError(
+            "url_transform.collision_preferred_metadata_key must be non-empty bounded text"
+        )
+    if raw_metadata_patterns is None:
+        preferred_metadata_patterns: tuple[re.Pattern[str], ...] = ()
+    else:
+        if (
+            not isinstance(raw_metadata_patterns, list)
+            or not raw_metadata_patterns
+            or len(raw_metadata_patterns) > 32
+            or any(
+                not isinstance(pattern, str) or not pattern or len(pattern) > 2_048
+                for pattern in raw_metadata_patterns
+            )
+        ):
+            raise ValueError(
+                "url_transform.collision_preferred_metadata_patterns must be a "
+                "non-empty bounded regex list"
+            )
+        try:
+            preferred_metadata_patterns = tuple(
+                re.compile(pattern) for pattern in raw_metadata_patterns
+            )
+        except re.error as exc:
+            raise ValueError(f"url_transform collision metadata pattern is invalid: {exc}") from exc
+
     raw_identity_pattern = transform.get("collision_canonical_identity_regex")
     if (
         not isinstance(raw_identity_pattern, str)
@@ -224,7 +264,12 @@ def _url_transform_collision_config(
         )
 
     identity_metadata_key = transform.get("collision_identity_metadata_key")
-    if (
+    raw_source_identity_pattern = transform.get("collision_source_identity_regex")
+    if (identity_metadata_key is None) == (raw_source_identity_pattern is None):
+        raise ValueError(
+            "url_transform collision identity requires exactly one metadata key or source regex"
+        )
+    if identity_metadata_key is not None and (
         not isinstance(identity_metadata_key, str)
         or not identity_metadata_key
         or len(identity_metadata_key) > 128
@@ -232,6 +277,27 @@ def _url_transform_collision_config(
         raise ValueError(
             "url_transform.collision_identity_metadata_key must be non-empty bounded text"
         )
+    source_identity_pattern: re.Pattern[str] | None = None
+    if raw_source_identity_pattern is not None:
+        if (
+            not isinstance(raw_source_identity_pattern, str)
+            or not raw_source_identity_pattern
+            or len(raw_source_identity_pattern) > 2_048
+        ):
+            raise ValueError(
+                "url_transform.collision_source_identity_regex must be a non-empty bounded regex"
+            )
+        try:
+            source_identity_pattern = re.compile(raw_source_identity_pattern)
+        except re.error as exc:
+            raise ValueError(
+                f"url_transform collision source identity regex is invalid: {exc}"
+            ) from exc
+        if source_identity_pattern.groups != 1:
+            raise ValueError(
+                "url_transform.collision_source_identity_regex must contain "
+                "exactly one capture group"
+            )
     stream_buffer_limit = transform.get("collision_stream_buffer_limit")
     if (
         not isinstance(stream_buffer_limit, int)
@@ -243,18 +309,35 @@ def _url_transform_collision_config(
         )
     return _UrlTransformCollisionConfig(
         preferred_source_patterns=preferred_patterns,
+        preferred_metadata_key=preferred_metadata_key,
+        preferred_metadata_patterns=preferred_metadata_patterns,
         canonical_identity_pattern=identity_pattern,
         identity_metadata_key=identity_metadata_key,
+        source_identity_pattern=source_identity_pattern,
         stream_buffer_limit=stream_buffer_limit,
     )
 
 
 def _collision_source_rank(
+    job: DiscoveredJob,
     source_url: str,
     collision: _UrlTransformCollisionConfig,
-) -> tuple[int, str]:
-    """Rank aliases by configured source preference, then by the full source URL."""
-    preference = next(
+) -> tuple[int, int, str]:
+    """Rank aliases by locale metadata, source preference, then source URL."""
+    metadata_value = (
+        job.metadata.get(collision.preferred_metadata_key)
+        if isinstance(job.metadata, dict) and collision.preferred_metadata_key is not None
+        else None
+    )
+    metadata_preference = next(
+        (
+            index
+            for index, pattern in enumerate(collision.preferred_metadata_patterns)
+            if isinstance(metadata_value, str) and pattern.search(metadata_value)
+        ),
+        len(collision.preferred_metadata_patterns),
+    )
+    source_preference = next(
         (
             index
             for index, pattern in enumerate(collision.preferred_source_patterns)
@@ -262,25 +345,30 @@ def _collision_source_rank(
         ),
         len(collision.preferred_source_patterns),
     )
-    return preference, source_url
+    return metadata_preference, source_preference, source_url
 
 
 def _validate_collision_identity(
     job: DiscoveredJob,
+    source_url: str,
     canonical_url: str,
     collision: _UrlTransformCollisionConfig,
 ) -> None:
-    """Require rich provider metadata to authenticate the transformed identity."""
+    """Require a rich provider identity to authenticate the transformed URL."""
     match = collision.canonical_identity_pattern.fullmatch(canonical_url)
-    metadata_identity = (
-        job.metadata.get(collision.identity_metadata_key)
-        if isinstance(job.metadata, dict)
-        else None
-    )
+    if collision.source_identity_pattern is not None:
+        source_match = collision.source_identity_pattern.fullmatch(source_url)
+        provider_identity = source_match.group(1) if source_match is not None else None
+    else:
+        provider_identity = (
+            job.metadata.get(collision.identity_metadata_key)
+            if isinstance(job.metadata, dict) and collision.identity_metadata_key is not None
+            else None
+        )
     if (
         match is None
-        or not isinstance(metadata_identity, str)
-        or metadata_identity != match.group(1)
+        or not isinstance(provider_identity, str)
+        or provider_identity != match.group(1)
     ):
         raise ValueError("url_transform collision provider identity does not match canonical URL")
 
@@ -604,13 +692,13 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
         else:
             selected: dict[
                 str,
-                tuple[tuple[int, str], DiscoveredJob],
+                tuple[tuple[int, int, str], DiscoveredJob],
             ] = {}
             for old_url in sorted(result.jobs_by_url):
                 job = result.jobs_by_url[old_url]
                 new_url = url_map.get(old_url, old_url)
-                _validate_collision_identity(job, new_url, collision)
-                rank = _collision_source_rank(old_url, collision)
+                _validate_collision_identity(job, old_url, new_url, collision)
+                rank = _collision_source_rank(job, old_url, collision)
                 existing = selected.get(new_url)
                 if existing is None or rank < existing[0]:
                     selected[new_url] = (rank, job)
