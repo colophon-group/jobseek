@@ -38,6 +38,10 @@ _MATCHED_JOBS_PATH = "/Search/Ajax/MatchedJobs"
 _NEXT_PAGE_PATH = "/Search/Ajax/ProcessSortAndShowMoreJobs"
 _SEARCH_SELECTOR = "#clearResumeJobsBtn"
 _NEXT_SELECTOR = 'button[title="Next Page"]:not(.disabled-link)'
+_SORT_BUTTON_SELECTOR = "#sortBy-button"
+_SORT_OPTIONS_SELECTOR = "#sortBy option"
+_SORT_MENU_SELECTOR = "#sortBy-menu li"
+_ALPHABETICAL_SORT_VALUE = "1"
 _SNAPSHOT_ATTEMPTS = 2
 _SNAPSHOT_RETRY_DELAY = 1.0
 
@@ -198,6 +202,27 @@ async def _click_for_json(page, selector: str, response_path: str) -> object:
         raise ValueError("BrassRing search returned invalid JSON") from exc
 
 
+async def _sort_alphabetically(page) -> object:
+    """Start a fresh first page using the provider's stable title ordering."""
+
+    option_values = await page.locator(_SORT_OPTIONS_SELECTOR).evaluate_all(
+        "options => options.map(option => option.value)"
+    )
+    if not isinstance(option_values, list) or _ALPHABETICAL_SORT_VALUE not in option_values:
+        raise _SnapshotChanged("BrassRing search omitted its alphabetical sort option")
+    option_number = option_values.index(_ALPHABETICAL_SORT_VALUE) + 1
+
+    sort_button = page.locator(_SORT_BUTTON_SELECTOR).first
+    if await sort_button.count() == 0:
+        raise _SnapshotChanged("BrassRing search omitted its sort control")
+    await sort_button.click()
+    return await _click_for_json(
+        page,
+        f"{_SORT_MENU_SELECTOR}:nth-child({option_number})",
+        _NEXT_PAGE_PATH,
+    )
+
+
 async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_id: str, pw):
     browser_config = {
         "wait": "domcontentloaded",
@@ -227,6 +252,38 @@ async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_i
                 arg=1,
                 timeout=60_000,
             )
+
+            # LastUpdated ordering moves every time a listing changes and can
+            # shift the same requisition across adjacent pages mid-run. The
+            # provider's alphabetical ordering is stable across those updates.
+            # Treat its page-one response as the start of a new authoritative
+            # snapshot; the initial response only proves pagination is needed.
+            sorted_payload = await _sort_alphabetically(page)
+            sorted_total, sorted_rows = _parse_page(sorted_payload)
+            if total > 0 and sorted_total == 0:
+                raise _SnapshotChanged(
+                    "BrassRing total changed from non-zero to zero while selecting stable sort"
+                )
+            total, rows = sorted_total, sorted_rows
+            expected_total = min(total, MAX_JOBS)
+            if expected_total and not rows:
+                raise _SnapshotChanged(
+                    f"BrassRing returned no sorted first-page rows for {total} jobs"
+                )
+            page_size = len(rows) or PAGE_SIZE
+            expected_pages = math.ceil(expected_total / page_size) if expected_total else 0
+
+            if expected_pages > 1:
+                await page.wait_for_function(
+                    """expected => {
+                        const current = document.querySelector(
+                            '.pagewise-pagination[aria-current="page"]'
+                        );
+                        return current && current.textContent.trim() === String(expected);
+                    }""",
+                    arg=1,
+                    timeout=60_000,
+                )
 
         for page_number in range(2, expected_pages + 1):
             next_button = page.locator(_NEXT_SELECTOR).first
