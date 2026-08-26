@@ -70,6 +70,10 @@ class GitHubApiError(GitError):
         super().__init__(f"gh command failed (exit {returncode}): {' '.join(cmd)}\n{stderr}")
 
 
+class PrIssueLinkError(WorkspaceError):
+    """A PR's closing-issue linkage does not match the resolver issue."""
+
+
 # ── Other workspace errors ────────────────────────────────────────────
 
 
