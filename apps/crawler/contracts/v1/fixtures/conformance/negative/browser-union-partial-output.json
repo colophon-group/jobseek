@@ -1,0 +1,17 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "success": {
+      "finalUrl": "https://careers.example.invalid/jobs",
+      "html": "<html>partial</html>"
+    },
+    "unsupported": {
+      "capabilities": [
+        "BROWSER_CAPABILITY_FRAMES"
+      ]
+    }
+  },
+  "expectedError": "parse",
+  "name": "browser-union-partial-output"
+}

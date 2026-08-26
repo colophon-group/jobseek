@@ -1,0 +1,15 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "error": {
+      "error": {
+        "code": "ERROR_CODE_SESSION_LOST",
+        "disposition": "ERROR_DISPOSITION_RETRY_POLICY",
+        "message": "session disappeared"
+      }
+    }
+  },
+  "expectedValid": true,
+  "name": "browser-session-lost"
+}

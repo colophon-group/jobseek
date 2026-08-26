@@ -1,0 +1,57 @@
+name: Crawler runtime contracts
+
+on:
+  pull_request:
+    paths:
+      - "apps/crawler/contracts/**"
+      - "apps/crawler/pyproject.toml"
+      - "apps/crawler/uv.lock"
+      - ".github/workflows/crawler-runtime-contracts.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/crawler/contracts/**"
+      - "apps/crawler/pyproject.toml"
+      - "apps/crawler/uv.lock"
+      - ".github/workflows/crawler-runtime-contracts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/crawler/contracts/v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.17"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache-dependency-path: apps/crawler/contracts/v1/go.sum
+      - name: Install pinned generators
+        run: |
+          uv sync --project ../..
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
+      - name: Verify generated bindings and fixtures
+        run: |
+          ./generate.sh --check
+          PYTHONPATH=. uv run --project ../.. python tools/build_fixtures.py
+          git diff --exit-code -- gen fixtures
+      - name: Python conformance
+        run: |
+          PYTHONPATH=. uv run --project ../.. pytest -q conformance/python/test_contract.py
+          PYTHONPATH=. uv run --project ../.. python tools/check_contract.py
+          uv run --project ../.. ruff check conformance/python tools
+          uv run --project ../.. ruff format --check conformance/python tools
+      - name: Go conformance
+        run: |
+          go test -race ./...
+          go vet ./...

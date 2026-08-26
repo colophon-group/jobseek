@@ -1,0 +1,339 @@
+{
+  "expectedError": "transfer_limit",
+  "name": "browser-capture-planned-byte-limit",
+  "transcript": {
+    "contractVersion": "crawler.runtime/v1",
+    "events": [
+      {
+        "client": {
+          "hello": {
+            "implementation": "IMPLEMENTATION_PYTHON",
+            "requestedLimits": {
+              "maxActiveDurationMs": "900000",
+              "maxArtifactChunkBytes": "8388608",
+              "maxArtifactCount": 64,
+              "maxArtifactTotalBytes": "67108864",
+              "maxBrowserActions": 256,
+              "maxBrowserCaptures": 64,
+              "maxBrowserEvaluations": 64,
+              "maxBrowserTransferBytes": "67108864",
+              "maxExecutionFrames": 4096,
+              "maxFrameBytes": "1048576",
+              "maxHttpTransferBytes": "16777216",
+              "maxInFlightFrames": 64,
+              "maxInlineBodyBytes": "8388608",
+              "maxMonitorBatches": 4096,
+              "maxOutputItems": "100000",
+              "maxRetryAfterMs": "604800000"
+            },
+            "supportedContractVersions": [
+              "crawler.runtime/v1"
+            ]
+          }
+        },
+        "direction": "EVENT_DIRECTION_CLIENT"
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "hello": {
+            "acceptedLimits": {
+              "maxActiveDurationMs": "900000",
+              "maxArtifactChunkBytes": "8388608",
+              "maxArtifactCount": 64,
+              "maxArtifactTotalBytes": "67108864",
+              "maxBrowserActions": 256,
+              "maxBrowserCaptures": 64,
+              "maxBrowserEvaluations": 64,
+              "maxBrowserTransferBytes": "67108864",
+              "maxExecutionFrames": 4096,
+              "maxFrameBytes": "1048576",
+              "maxHttpTransferBytes": "16777216",
+              "maxInFlightFrames": 4,
+              "maxInlineBodyBytes": "8388608",
+              "maxMonitorBatches": 4096,
+              "maxOutputItems": "100000",
+              "maxRetryAfterMs": "604800000"
+            },
+            "implementation": "IMPLEMENTATION_GO",
+            "initialWindowFrames": 4,
+            "resumeByOriginRequestId": true,
+            "selectedContractVersion": "crawler.runtime/v1"
+          }
+        }
+      },
+      {
+        "client": {
+          "start": {
+            "attemptId": "attempt-1",
+            "boardManifest": {
+              "boardId": "board-1",
+              "boardUrl": "https://careers.example.invalid/jobs",
+              "checkIntervalMs": "3600000",
+              "companyId": "company-1",
+              "configExtensions": [
+                {
+                  "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+                  "payload": "eyJwYWdlcyI6Mn0=",
+                  "payloadSha256": "fe2f26a77f4fb758041cc3979477135825c7ce01729079a5bf38c230073aac50",
+                  "schemaId": "jobseek.runtime.v1/representative-json/monitor-config",
+                  "schemaVersion": 1
+                },
+                {
+                  "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+                  "payload": "eyJmaWVsZHMiOlsidGl0bGUiLCJkZXNjcmlwdGlvbiJdfQ==",
+                  "payloadSha256": "af7543cdfb2cf64c543674e6bfe386b88865a47935a12615974e73db3df2810a",
+                  "schemaId": "jobseek.runtime.v1/representative-json/scraper-config",
+                  "schemaVersion": 1
+                }
+              ],
+              "configFingerprint": "5aac91feaeeb22ee2e7453ceccf4f7609a26ef3928a8c7f039754b30dbf95b68",
+              "configRevision": "revision-7",
+              "contractVersion": "crawler.runtime/v1",
+              "manifestId": "board-1:revision-7",
+              "monitorType": "fixture-json",
+              "providerFamily": "representative-json",
+              "scrapeIntervalMs": "86400000",
+              "throttleKey": "example.invalid"
+            },
+            "browser": {
+              "plan": {
+                "actions": [
+                  {
+                    "actionId": "load-details",
+                    "click": {
+                      "selector": {
+                        "kind": "SELECTOR_KIND_CSS",
+                        "value": "button.load-details"
+                      },
+                      "timeoutMs": "10000"
+                    },
+                    "networkEffect": "BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT",
+                    "originRequestId": "monitor:board-1:revision-7:due-42/op/001"
+                  },
+                  {
+                    "actionId": "settle-layout",
+                    "networkEffect": "BROWSER_NETWORK_EFFECT_NONE",
+                    "wait": {
+                      "durationMs": "50",
+                      "timeoutMs": "1000"
+                    }
+                  }
+                ],
+                "captures": [
+                  {
+                    "captureId": "jobs-json",
+                    "kind": "CAPTURE_KIND_RESPONSE_BODY",
+                    "maxBytes": "1",
+                    "urlPattern": "*/api/jobs*"
+                  }
+                ],
+                "contractVersion": "crawler.runtime/v1",
+                "evaluations": [
+                  {
+                    "evaluationId": "job-count",
+                    "expression": "document.querySelectorAll('[data-job]').length",
+                    "maxResultBytes": "1024",
+                    "networkEffect": "BROWSER_NETWORK_EFFECT_NONE"
+                  }
+                ],
+                "navigation": {
+                  "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                  "timeoutMs": "30000",
+                  "waitUntil": "WAIT_CONDITION_LOAD"
+                },
+                "originOperations": [
+                  {
+                    "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                    "role": "browser-navigation"
+                  },
+                  {
+                    "operationSequence": 1,
+                    "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+                    "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                    "role": "browser-action-click"
+                  }
+                ],
+                "requiredCapabilities": [
+                  "BROWSER_CAPABILITY_RENDER",
+                  "BROWSER_CAPABILITY_ACTIONS",
+                  "BROWSER_CAPABILITY_RESPONSE_CAPTURE",
+                  "BROWSER_CAPABILITY_EVALUATE"
+                ],
+                "targetUrl": "https://careers.example.invalid/jobs"
+              }
+            },
+            "contractVersion": "crawler.runtime/v1",
+            "deadlineRfc3339": "2026-08-26T12:00:00Z",
+            "fencingContext": {
+              "claimToken": "claim:board-1:due-42",
+              "configRevision": "revision-7",
+              "engineOwner": "ENGINE_OWNER_PYTHON",
+              "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+              "leaseId": "lease:board-1:attempt-1",
+              "routingEpoch": "7",
+              "shardId": "crawler-http-00"
+            },
+            "kind": "EXECUTION_KIND_BROWSER",
+            "originOperations": [
+              {
+                "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "role": "browser-navigation"
+              },
+              {
+                "operationSequence": 1,
+                "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "role": "browser-action-click"
+              }
+            ],
+            "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+            "requestId": "request-browser-1"
+          }
+        },
+        "direction": "EVENT_DIRECTION_CLIENT"
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "frame": {
+            "attemptId": "attempt-1",
+            "contractVersion": "crawler.runtime/v1",
+            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+            "originContact": {
+              "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
+              "operation": {
+                "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "role": "browser-navigation"
+              },
+              "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
+            },
+            "requestId": "request-browser-1"
+          }
+        }
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "frame": {
+            "attemptId": "attempt-1",
+            "contractVersion": "crawler.runtime/v1",
+            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+            "originContact": {
+              "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
+              "operation": {
+                "operationSequence": 1,
+                "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "role": "browser-action-click"
+              },
+              "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0"
+            },
+            "requestId": "request-browser-1",
+            "sequence": "1"
+          }
+        }
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "frame": {
+            "attemptId": "attempt-1",
+            "browserResult": {
+              "backend": "BROWSER_BACKEND_LIGHTPANDA",
+              "contractVersion": "crawler.runtime/v1",
+              "success": {
+                "actionOutcomes": [
+                  {
+                    "actionId": "load-details",
+                    "completed": true,
+                    "durationMs": "5"
+                  },
+                  {
+                    "actionId": "settle-layout",
+                    "completed": true,
+                    "durationMs": "5"
+                  }
+                ],
+                "captures": [
+                  {
+                    "body": {
+                      "chunks": [
+                        {
+                          "inlineBody": "eyJqb2JzIjpbXX0=",
+                          "sha256": "0a5796e93f9b57ddf7c45f860485cbb7353fc0eda3dca753a444d0fd2a1573fe",
+                          "sizeBytes": "11"
+                        }
+                      ],
+                      "complete": true,
+                      "totalSha256": "0a5796e93f9b57ddf7c45f860485cbb7353fc0eda3dca753a444d0fd2a1573fe",
+                      "totalSizeBytes": "11"
+                    },
+                    "captureId": "jobs-json"
+                  }
+                ],
+                "evaluations": [
+                  {
+                    "evaluationId": "job-count",
+                    "value": {
+                      "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+                      "payload": "eyJ2YWx1ZSI6MH0=",
+                      "payloadSha256": "23d7b286bd429460b92a2a1c21b6afc34110446c5034c17363fda363aa0a7c5d",
+                      "schemaId": "jobseek.runtime.v1/browser/evaluation-json",
+                      "schemaVersion": 1
+                    }
+                  }
+                ],
+                "finalUrl": "https://careers.example.invalid/jobs",
+                "html": {
+                  "chunks": [
+                    {
+                      "inlineBody": "PGh0bWw+",
+                      "sha256": "b7d082ee12e91b756ea22e8513b8594eebcf5d39fab813da3cb55794dc888ad7",
+                      "sizeBytes": "6"
+                    },
+                    {
+                      "inlineBody": "PC9odG1sPg==",
+                      "sequence": 1,
+                      "sha256": "fdfe0993e6e9e9917554bb95b1137af5870146fd38da5f13bea1b530ac05b296",
+                      "sizeBytes": "7"
+                    }
+                  ],
+                  "complete": true,
+                  "totalSha256": "b633a587c652d02386c4f16f8c6f6aab7352d97f16367c3c40576214372dd628",
+                  "totalSizeBytes": "13"
+                },
+                "status": 200
+              }
+            },
+            "contractVersion": "crawler.runtime/v1",
+            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+            "requestId": "request-browser-1",
+            "sequence": "2"
+          }
+        }
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "frame": {
+            "attemptId": "attempt-1",
+            "contractVersion": "crawler.runtime/v1",
+            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+            "requestId": "request-browser-1",
+            "sequence": "3",
+            "terminal": {
+              "activeDurationMs": "25",
+              "eligibleForCommit": true,
+              "frameCount": "3",
+              "originOperationCount": 2,
+              "outputItems": "1",
+              "status": "TERMINAL_STATUS_SUCCESS"
+            }
+          }
+        }
+      }
+    ],
+    "name": "browser-capture-planned-byte-limit"
+  }
+}

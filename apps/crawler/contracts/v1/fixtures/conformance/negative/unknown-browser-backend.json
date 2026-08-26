@@ -1,0 +1,11 @@
+{
+  "browserResult": {
+    "backend": 999,
+    "contractVersion": "crawler.runtime/v1",
+    "success": {
+      "finalUrl": "https://careers.example.invalid/jobs"
+    }
+  },
+  "expectedError": "enum",
+  "name": "unknown-browser-backend"
+}

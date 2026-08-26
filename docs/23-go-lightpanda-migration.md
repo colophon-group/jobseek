@@ -60,9 +60,10 @@ implementation:
 - `BrowserBackend` separates browser lifecycle/page allocation from callers;
   the language-neutral browser plan/result contract is tracked separately so
   Go does not inherit a raw Playwright API as its public surface.
-- `apps/crawler/contracts/v1` records provisional normalized input/output and
-  queue invariants. #7937 must promote a generated, fully specified IDL before
-  any Go consumer treats it as wire-authoritative.
+- `apps/crawler/contracts/v1/runtime.proto` is the wire-authoritative execution
+  IDL. Its generated Python/Go bindings, shared stateful conformance fixtures,
+  and bounded offline replay corpus freeze the core boundary. Provider-family
+  and Lightpanda capability corpora are expanded in #7953–#7963.
 - `crawler_runtime_*` and `crawler_browser_backend_lifecycle_total` establish
   bounded implementation/backend metrics before the first cutover.
 
@@ -105,8 +106,8 @@ agent crawl gateway.
 The current lease member is reusable and does not fence a stale claimant. A
 queue protocol revision must add `shard_id`, `routing_epoch`, `engine_owner`,
 `config_revision`, and a unique `claim_token`. Heartbeat, complete,
-reschedule, reaping, and authoritative database mutations compare the token
-and epoch. A stale result is rejected and counted.
+reschedule, reaping, and every database mutation compare the token and epoch.
+A stale result is rejected and counted.
 
 ### Replay, not duplicate crawling
 
@@ -165,7 +166,7 @@ Prometheus labels.
 | Efficiency | CPU-seconds, peak/steady RSS, network/proxy bytes, and browser-seconds per successful board/posting and per GiB-hour |
 | Downstream | Postgres commit-to-R2/export/index freshness, cursor lag, hash/reconciliation drift, malformed acknowledgements |
 
-Immediate freeze and reversal triggers include any stale-epoch authoritative
+Immediate freeze and reversal triggers include any stale-epoch persistence
 write, unexplained gone/delist burst, TDM violation, queue loss/duplication,
 origin-policy violation, more than 1.05x request amplification without an
 approved reason, material anti-bot regression, or freshness error-budget burn.

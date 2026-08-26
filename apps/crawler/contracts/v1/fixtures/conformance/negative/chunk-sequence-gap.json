@@ -1,0 +1,113 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "success": {
+      "finalUrl": "https://careers.example.invalid/jobs",
+      "html": {
+        "chunks": [
+          {
+            "artifact": {
+              "handle": "artifact:browser:00",
+              "mediaType": "application/octet-stream",
+              "redacted": true,
+              "sha256": "9c1e65d8e80dd1c9459414c2b92408a2a5a3472fb2bc7825ba818ea6310ec5fa",
+              "sizeBytes": "8388608"
+            },
+            "sha256": "9c1e65d8e80dd1c9459414c2b92408a2a5a3472fb2bc7825ba818ea6310ec5fa",
+            "sizeBytes": "8388608"
+          },
+          {
+            "artifact": {
+              "handle": "artifact:browser:01",
+              "mediaType": "application/octet-stream",
+              "redacted": true,
+              "sha256": "9f230a9404f590862dbdd34b127fd811aaccf0179e4793b6d83cee8dc267e70b",
+              "sizeBytes": "8388608"
+            },
+            "sequence": 3,
+            "sha256": "9f230a9404f590862dbdd34b127fd811aaccf0179e4793b6d83cee8dc267e70b",
+            "sizeBytes": "8388608"
+          },
+          {
+            "artifact": {
+              "handle": "artifact:browser:02",
+              "mediaType": "application/octet-stream",
+              "redacted": true,
+              "sha256": "bc241e833084308747b71d83cd8f9739449dc88731b739cc11eba6d013f9eafa",
+              "sizeBytes": "8388608"
+            },
+            "sequence": 2,
+            "sha256": "bc241e833084308747b71d83cd8f9739449dc88731b739cc11eba6d013f9eafa",
+            "sizeBytes": "8388608"
+          },
+          {
+            "artifact": {
+              "handle": "artifact:browser:03",
+              "mediaType": "application/octet-stream",
+              "redacted": true,
+              "sha256": "a87c6a46efac9fe8ecc5b980f4d9465ce7ee30895ffb5db43dc5a5cd2bc2af7a",
+              "sizeBytes": "8388608"
+            },
+            "sequence": 3,
+            "sha256": "a87c6a46efac9fe8ecc5b980f4d9465ce7ee30895ffb5db43dc5a5cd2bc2af7a",
+            "sizeBytes": "8388608"
+          },
+          {
+            "artifact": {
+              "handle": "artifact:browser:04",
+              "mediaType": "application/octet-stream",
+              "redacted": true,
+              "sha256": "dd9ad8ebc5a0c292a37993ab5830c7150c4044f0ae19a746db5236d18dc36f76",
+              "sizeBytes": "8388608"
+            },
+            "sequence": 4,
+            "sha256": "dd9ad8ebc5a0c292a37993ab5830c7150c4044f0ae19a746db5236d18dc36f76",
+            "sizeBytes": "8388608"
+          },
+          {
+            "artifact": {
+              "handle": "artifact:browser:05",
+              "mediaType": "application/octet-stream",
+              "redacted": true,
+              "sha256": "04dee27e9e3620a907702f922cd0fc1071d06781c0fe4022e0fe87cf3ce97482",
+              "sizeBytes": "8388608"
+            },
+            "sequence": 5,
+            "sha256": "04dee27e9e3620a907702f922cd0fc1071d06781c0fe4022e0fe87cf3ce97482",
+            "sizeBytes": "8388608"
+          },
+          {
+            "artifact": {
+              "handle": "artifact:browser:06",
+              "mediaType": "application/octet-stream",
+              "redacted": true,
+              "sha256": "c5c1ff7cc080000da95d7ccd17cd8b35320081ff54e140c4dbb0b3fd5a12d2cb",
+              "sizeBytes": "8388608"
+            },
+            "sequence": 6,
+            "sha256": "c5c1ff7cc080000da95d7ccd17cd8b35320081ff54e140c4dbb0b3fd5a12d2cb",
+            "sizeBytes": "8388608"
+          },
+          {
+            "artifact": {
+              "handle": "artifact:browser:07",
+              "mediaType": "application/octet-stream",
+              "redacted": true,
+              "sha256": "e0ca4d4c6faefb1960bd77cb1ee2dd3c51f4dfa13fa9eb051cf888384f17cf25",
+              "sizeBytes": "8388608"
+            },
+            "sequence": 7,
+            "sha256": "e0ca4d4c6faefb1960bd77cb1ee2dd3c51f4dfa13fa9eb051cf888384f17cf25",
+            "sizeBytes": "8388608"
+          }
+        ],
+        "complete": true,
+        "totalSha256": "f30fb81c99b79e942ce7934daa13f23e205ab939328b02187067ea799577dead",
+        "totalSizeBytes": "67108864"
+      }
+    }
+  },
+  "expectedError": "chunk_sequence",
+  "name": "chunk-sequence-gap"
+}
