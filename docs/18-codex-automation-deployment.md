@@ -161,7 +161,7 @@ Expected filesystem layout:
 
 ```text
 /srv/jobseek-codex/
-  repo/                 # normal checked-out clone tracking origin/main
+  repo/                 # exact detached deployment checkout; fetches origin/main
   worktrees/            # one throwaway worktree per issue/run
   traces/               # CODEX_EXEC_JSONL output, not committed
   state/ledger.sqlite   # governor decisions, usage, claims, run outcomes
@@ -358,9 +358,14 @@ touch runner code, prompts, skills, docs, or systemd units trigger
 The workflow copies
 [`deploy-codex-runner-host.sh`](../scripts/deploy-codex-runner-host.sh) to
 Hetzner, runs it as root, acquires
-`/srv/jobseek-codex/state/codex-runner.lock`, updates the normal checked-out
-clone at `/srv/jobseek-codex/repo`, installs and verifies units, and enables
-timers for boot persistence. It intentionally sets
+`/srv/jobseek-codex/state/codex-runner.lock`, updates the detached deployment
+checkout at `/srv/jobseek-codex/repo` to the exact triggering SHA, installs and
+verifies units, and enables timers for boot persistence. The clone remains
+detached because its Git common directory also creates resolver worktrees;
+moving a local `main` ref must not manufacture tracked changes in the
+deployment checkout. Resolver worktrees start from freshly fetched
+`origin/main`. A genuine tracked edit still blocks deployment fail-closed.
+The workflow intentionally sets
 `JOBSEEK_CODEX_START_TIMERS=0`, so it does not start a company resolver,
 annotation run, or error review from GitHub Actions.
 

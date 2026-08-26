@@ -204,8 +204,15 @@ update_repo() {
     checkout_ref="${EXPECTED_SHA}"
   fi
 
-  as_runner git -C "${REPO_DIR}" checkout -B "${BRANCH}" "${checkout_ref}"
-  as_runner git -C "${REPO_DIR}" branch --set-upstream-to="origin/${BRANCH}" "${BRANCH}" >/dev/null
+  # This clone is also the Git common directory for resolver worktrees. Keep
+  # its deployment checkout detached so an unrelated local branch-ref update
+  # cannot make an unchanged index/worktree appear dirty on the next deploy.
+  # Resolver worktrees continue to start from the freshly fetched
+  # ``origin/${BRANCH}`` ref.
+  as_runner git -C "${REPO_DIR}" checkout --detach "${checkout_ref}"
+  if as_runner git -C "${REPO_DIR}" symbolic-ref -q HEAD >/dev/null; then
+    fail "${REPO_DIR} deployment checkout must have detached HEAD"
+  fi
   local actual_sha
   actual_sha="$(as_runner git -C "${REPO_DIR}" rev-parse HEAD)"
   log "repo ${REPO_DIR} at ${actual_sha}"
