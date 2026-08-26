@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from unittest.mock import AsyncMock
 
 import httpx
@@ -7,8 +8,10 @@ import pytest
 
 from src.core.monitors.umantis import (
     _base_url,
+    _extract_navigation,
     _extract_table_nr,
     _get_page_with_retry,
+    _pagination_url,
     _parse_discovered_jobs_from_html,
     _parse_host,
     _parse_jobs_from_html,
@@ -89,6 +92,58 @@ _LISTING_HTML_V2 = """\
 """
 
 
+def _navigation(
+    *,
+    total: int,
+    first: int,
+    last: int,
+    page: int,
+    next_url: str | None = None,
+    table_nr: str = "999",
+) -> str:
+    payload: dict = {
+        "TableNr": table_nr,
+        "TableTotalLines": str(total),
+        "TableFrom": first,
+        "TableTo": str(last),
+        "TableCurrentPage": page,
+    }
+    if next_url is not None:
+        payload["NextLink"] = {
+            "EnhancedUrl": next_url,
+            "FieldIsActive": 1,
+        }
+    return f"<table-navigation initial-data-string='{json.dumps(payload)}'></table-navigation>"
+
+
+def _owned_row(vacancy_id: int, language_id: int, title: str) -> str:
+    return f"""
+<tr><td>
+<a href="/Vacancies/{vacancy_id}/Description/{language_id}"
+   class="HSTableLinkSubTitle">{title}</a>
+<span class="column-value" id="column_value_1184173">Université de Neuchâtel</span>
+</td></tr>
+"""
+
+
+def _strict_board() -> dict:
+    return {
+        "board_url": (
+            "https://recruitingapp-3040.umantis.com/Jobs/3"
+            "?lang=fre&CompanyID=32&Reset=G&DesignID=10012"
+        ),
+        "metadata": {
+            "customer_id": "3040",
+            "listing_path": "/Jobs/3?lang=fre&CompanyID=32&Reset=G&DesignID=10012",
+            "strict_listing_contract": True,
+            "canonical_language_id": "3",
+            "expected_employer": "Université de Neuchâtel",
+            "employer_field_id": "column_value_1184173",
+            "empty_state_text": "Aucune entrée n’a été trouvée.",
+        },
+    }
+
+
 class TestParseJobsFromHtml:
     def test_extracts_jobs(self):
         jobs = _parse_jobs_from_html(_LISTING_HTML, "https://recruitingapp-2698.umantis.com")
@@ -98,7 +153,7 @@ class TestParseJobsFromHtml:
             "Software Engineer (m/f/d)",
         )
         assert jobs[1] == (
-            "https://recruitingapp-2698.umantis.com/Vacancies/200/Description/2",
+            "https://recruitingapp-2698.umantis.com/Vacancies/200/Description/1",
             "Product Manager",
         )
 
@@ -115,6 +170,28 @@ class TestParseJobsFromHtml:
         html = '<a href="/other" class="HSTableLinkSubTitle">Not a job</a>'
         jobs = _parse_jobs_from_html(html, "https://x.com")
         assert jobs == []
+
+    def test_rejects_cross_origin_vacancy_link(self):
+        html = (
+            '<a href="https://evil.example/Vacancies/6500/Description/3" '
+            'class="HSTableLinkSubTitle">Injected role</a>'
+        )
+        with pytest.raises(ValueError, match="crossed the configured origin"):
+            _parse_discovered_jobs_from_html(
+                html,
+                "https://recruitingapp-3040.umantis.com",
+            )
+
+    def test_rejects_non_numeric_vacancy_identity(self):
+        html = (
+            '<a href="/Vacancies/not-an-id/Description/3" '
+            'class="HSTableLinkSubTitle">Injected role</a>'
+        )
+        with pytest.raises(ValueError, match="numeric canonical path"):
+            _parse_discovered_jobs_from_html(
+                html,
+                "https://recruitingapp-3040.umantis.com",
+            )
 
     def test_strips_query_params(self):
         html = '<a href="/Vacancies/1/Description/1?lang=ger" class="HSTableLinkSubTitle">Test</a>'
@@ -159,6 +236,29 @@ class TestExtractTableNr:
     def test_none(self):
         assert _extract_table_nr("<html>no pagination</html>") is None
 
+    def test_html_escaped_full_navigation(self):
+        html = (
+            '<table-navigation initial-data-string="{&quot;TableTotalLines&quot;:&quot;2&quot;,'
+            "&quot;TableTo&quot;:&quot;2&quot;,&quot;TableNr&quot;:&quot;66856&quot;,"
+            '&quot;TableCurrentPage&quot;:1,&quot;TableFrom&quot;:1}"></table-navigation>'
+        )
+        navigation = _extract_navigation(html)
+        assert navigation is not None
+        assert navigation.table_nr == "66856"
+        assert navigation.total == 2
+
+
+class TestPaginationUrl:
+    def test_preserves_listing_filters_for_legacy_boards(self):
+        url = _pagination_url(
+            "https://recruitingapp-3040.umantis.com/Jobs/3?lang=fre&CompanyID=32&Reset=G",
+            "66856",
+            2,
+        )
+        assert url == (
+            "https://recruitingapp-3040.umantis.com/Jobs/3?lang=fre&CompanyID=32&tc66856=p2"
+        )
+
 
 # ── Discover ─────────────────────────────────────────────────────────────
 
@@ -194,8 +294,62 @@ class TestDiscover:
             assert isinstance(urls, set)
             assert urls == {
                 "https://recruitingapp-2698.umantis.com/Vacancies/100/Description/1",
-                "https://recruitingapp-2698.umantis.com/Vacancies/200/Description/2",
+                "https://recruitingapp-2698.umantis.com/Vacancies/200/Description/1",
             }
+
+    @pytest.mark.parametrize("languages", [(3, 1), (1, 3)])
+    async def test_locale_aliases_dedupe_stably_by_numeric_vacancy_id(self, languages):
+        listing = "".join(
+            f'<a href="/Vacancies/6500/Description/{language}" '
+            f'class="HSTableLinkSubTitle">Role {language}</a>'
+            for language in languages
+        )
+
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            result = await discover(
+                {
+                    "board_url": "https://recruitingapp-3040.umantis.com/Jobs/All",
+                    "metadata": {"customer_id": "3040"},
+                },
+                client,
+            )
+
+        assert result == {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description/1"}
+
+    async def test_single_locale_variant_does_not_churn_identity_across_cycles(self):
+        results = []
+        for language in (1, 3):
+            listing = (
+                f'<a href="/Vacancies/6500/Description/{language}" '
+                f'class="HSTableLinkSubTitle">Role {language}</a>'
+            )
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(
+                    lambda request, listing=listing: httpx.Response(
+                        200,
+                        text=listing,
+                        request=request,
+                    )
+                )
+            ) as client:
+                results.append(
+                    await discover(
+                        {
+                            "board_url": "https://recruitingapp-3040.umantis.com/Jobs/All",
+                            "metadata": {"customer_id": "3040"},
+                        },
+                        client,
+                    )
+                )
+
+        assert results == [
+            {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description/1"},
+            {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description/1"},
+        ]
 
     async def test_empty_listing(self):
         def handler(request):
@@ -304,6 +458,312 @@ class TestDiscover:
             assert len(urls) == 1  # No infinite loop
 
 
+class TestStrictDiscover:
+    @staticmethod
+    def _detail_response(request):
+        return httpx.Response(
+            200,
+            text=(
+                '<head><meta name="description" '
+                'content="Université de Neuchâtel - Suisse."></head>'
+                "<main><p>Université de Neuchâtel</p></main>"
+            ),
+            request=request,
+        )
+
+    async def test_locale_aliases_collapse_to_numeric_id_and_fixed_locale(self):
+        listing = (
+            _owned_row(6500, 1, "Administrative employee")
+            + _owned_row(6500, 3, "Collaborateur-trice administratif-ive")
+            + _navigation(total=1, first=1, last=1, page=1)
+        )
+
+        def handler(request):
+            if "/Vacancies/" in request.url.path:
+                return self._detail_response(request)
+            return httpx.Response(200, text=listing, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(_strict_board(), client)
+
+        assert result == {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description/3"}
+
+    async def test_rejects_conflicting_rows_for_same_vacancy_locale(self):
+        listing = (
+            _owned_row(6500, 3, "First title")
+            + _owned_row(6500, 3, "Conflicting title")
+            + _navigation(total=1, first=1, last=1, page=1)
+        )
+
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            with pytest.raises(ValueError, match="conflicting rows for one vacancy locale"):
+                await discover(_strict_board(), client)
+
+    async def test_rejects_wrong_employer_listing_row(self):
+        listing = (
+            '<tr><td><a href="/Vacancies/6500/Description/3" '
+            'class="HSTableLinkSubTitle">Role at Université de Neuchâtel</a>'
+            '<span class="column-value" id="column_value_1184173">Different employer</span>'
+            '<span class="column-value">Université de Neuchâtel</span></td></tr>'
+            + _navigation(total=1, first=1, last=1, page=1)
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            with pytest.raises(ValueError, match="exact configured employer field"):
+                await discover(_strict_board(), client)
+
+    async def test_rejects_employer_field_that_only_contains_expected_name(self):
+        listing = (
+            '<tr><td><a href="/Vacancies/6500/Description/3" '
+            'class="HSTableLinkSubTitle">Role</a>'
+            '<span class="column-value" id="column_value_1184173">'
+            "Université de Neuchâtel Research Partner</span></td></tr>"
+            + _navigation(total=1, first=1, last=1, page=1)
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            with pytest.raises(ValueError, match="exact configured employer field"):
+                await discover(_strict_board(), client)
+
+    async def test_rejects_wrong_employer_detail(self):
+        listing = _owned_row(6500, 3, "Role") + _navigation(
+            total=1,
+            first=1,
+            last=1,
+            page=1,
+        )
+
+        def handler(request):
+            if "/Vacancies/" in request.url.path:
+                return httpx.Response(
+                    200,
+                    text=(
+                        '<meta name="description" content="Different employer - Suisse.">'
+                        "<h1>Université de Neuchâtel research role</h1>"
+                        "<main>Work with Université de Neuchâtel.</main>"
+                    ),
+                    request=request,
+                )
+            return httpx.Response(200, text=listing, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="detail metadata did not identify"):
+                await discover(_strict_board(), client)
+
+    async def test_rejects_cross_origin_detail_redirect(self):
+        listing = _owned_row(6500, 3, "Role") + _navigation(
+            total=1,
+            first=1,
+            last=1,
+            page=1,
+        )
+
+        def handler(request):
+            if "/Vacancies/" in request.url.path:
+                return httpx.Response(
+                    302,
+                    headers={"location": "https://evil.example/detail"},
+                    request=request,
+                )
+            return httpx.Response(200, text=listing, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await discover(_strict_board(), client)
+
+    async def test_rejects_advertised_total_mismatch(self):
+        listing = _owned_row(6500, 3, "Role") + _navigation(
+            total=2,
+            first=1,
+            last=2,
+            page=1,
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            with pytest.raises(ValueError, match="advertised navigation range"):
+                await discover(_strict_board(), client)
+
+    async def test_accepts_only_explicit_visible_zero(self):
+        listing = "<main><p>Aucune entrée n’a été trouvée.</p></main>" + _navigation(
+            total=0, first=0, last=0, page=1
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            assert await discover(_strict_board(), client) == set()
+
+    @pytest.mark.parametrize(
+        "hidden_marker",
+        [
+            '<script>const copy = "Aucune entrée n’a été trouvée.";</script>',
+            "<p hidden>Aucune entrée n’a été trouvée.</p>",
+            '<p aria-hidden="true">Aucune entrée n’a été trouvée.</p>',
+            '<p style="display: none">Aucune entrée n’a été trouvée.</p>',
+            '<p class="visually-hidden">Aucune entrée n’a été trouvée.</p>',
+        ],
+    )
+    async def test_rejects_zero_without_visible_marker(self, hidden_marker):
+        listing = hidden_marker + _navigation(total=0, first=0, last=0, page=1)
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            with pytest.raises(ValueError, match="explicit visible empty state"):
+                await discover(_strict_board(), client)
+
+    async def test_follows_exact_tokenized_pagination_and_proves_ranges(self):
+        requested: list[str] = []
+        page1 = _owned_row(6481, 3, "First") + _navigation(
+            total=2,
+            first=1,
+            last=1,
+            page=1,
+            next_url="?tc999=p2&amp;_search_token999=12345#connectortable_999",
+        )
+        page2 = _owned_row(6500, 3, "Second") + _navigation(
+            total=2,
+            first=2,
+            last=2,
+            page=2,
+        )
+
+        def handler(request):
+            requested.append(str(request.url))
+            if "/Vacancies/" in request.url.path:
+                return self._detail_response(request)
+            if request.url.params.get("tc999") == "p2":
+                return httpx.Response(200, text=page2, request=request)
+            return httpx.Response(200, text=page1, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(_strict_board(), client)
+
+        assert len(result) == 2
+        assert any("tc999=p2&_search_token999=12345" in url for url in requested)
+
+    @pytest.mark.parametrize(
+        "next_url,error",
+        [
+            ("?tc999=p2", "search token"),
+            (
+                "https://evil.example/Jobs/3?tc999=p2&_search_token999=12345",
+                "crossed its configured listing origin",
+            ),
+        ],
+    )
+    async def test_rejects_unsafe_next_link(self, next_url, error):
+        listing = _owned_row(6481, 3, "First") + _navigation(
+            total=2,
+            first=1,
+            last=1,
+            page=1,
+            next_url=next_url,
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            with pytest.raises(ValueError, match=error):
+                await discover(_strict_board(), client)
+
+    async def test_rejects_cross_origin_pagination_redirect(self):
+        listing = _owned_row(6481, 3, "First") + _navigation(
+            total=2,
+            first=1,
+            last=1,
+            page=1,
+            next_url="?tc999=p2&amp;_search_token999=12345",
+        )
+
+        def handler(request):
+            if request.url.params.get("tc999") == "p2":
+                return httpx.Response(
+                    302,
+                    headers={"location": "https://evil.example/Jobs/3"},
+                    request=request,
+                )
+            return httpx.Response(200, text=listing, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await discover(_strict_board(), client)
+
+    async def test_rejects_repeated_provider_id_on_next_range(self):
+        page1 = _owned_row(6481, 3, "First") + _navigation(
+            total=2,
+            first=1,
+            last=1,
+            page=1,
+            next_url="?tc999=p2&amp;_search_token999=12345",
+        )
+        page2 = _owned_row(6481, 3, "First") + _navigation(
+            total=2,
+            first=2,
+            last=2,
+            page=2,
+        )
+
+        def handler(request):
+            if request.url.params.get("tc999") == "p2":
+                return httpx.Response(200, text=page2, request=request)
+            return httpx.Response(200, text=page1, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="repeated provider vacancy IDs"):
+                await discover(_strict_board(), client)
+
+    async def test_uses_isolated_cookie_jar_and_keeps_scoped_cookie(self):
+        listing_cookies: list[str | None] = []
+        detail_cookies: list[str | None] = []
+        listing = _owned_row(6500, 3, "Role") + _navigation(
+            total=1,
+            first=1,
+            last=1,
+            page=1,
+        )
+
+        def handler(request):
+            if "/Vacancies/" in request.url.path:
+                detail_cookies.append(request.headers.get("cookie"))
+                return self._detail_response(request)
+            listing_cookies.append(request.headers.get("cookie"))
+            return httpx.Response(
+                200,
+                text=listing,
+                headers={"set-cookie": "scope=unine; Path=/"},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            client.cookies.set(
+                "scope",
+                "another-employer",
+                domain="recruitingapp-3040.umantis.com",
+                path="/",
+            )
+            await discover(_strict_board(), client)
+
+        assert listing_cookies == [None]
+        assert detail_cookies == ["scope=unine"]
+
+
 # ── Can handle ───────────────────────────────────────────────────────────
 
 
@@ -322,6 +782,28 @@ class TestCanHandle:
             assert result is not None
             assert result["customer_id"] == "2698"
             assert result["jobs"] == 2
+
+    async def test_filtered_url_probe_preserves_listing_path(self):
+        requested_urls: list[str] = []
+
+        def handler(request):
+            requested_urls.append(str(request.url))
+            return httpx.Response(200, text=_LISTING_HTML_V2, request=request)
+
+        url = (
+            "https://recruitingapp-3040.umantis.com/Jobs/3"
+            "?lang=fre&CompanyID=32&Reset=G&DesignID=10012"
+        )
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle(url, client)
+
+        assert result == {
+            "customer_id": "3040",
+            "region": "",
+            "listing_path": "/Jobs/3?lang=fre&CompanyID=32&Reset=G&DesignID=10012",
+            "jobs": 1,
+        }
+        assert requested_urls == [url]
 
     async def test_de_region(self):
         result = await can_handle("https://recruitingapp-5181.de.umantis.com/Jobs/All")
@@ -350,6 +832,29 @@ class TestCanHandle:
             result = await can_handle("https://example.com/careers", client)
             assert result is not None
             assert result["customer_id"] == "2698"
+
+    async def test_html_marker_preserves_embedded_filtered_listing(self):
+        listing_url = (
+            "https://recruitingapp-3040.umantis.com/Jobs/3"
+            "?lang=fre&amp;CompanyID=32&amp;Reset=G&amp;DesignID=10012"
+        )
+        page_html = f'<iframe src="{listing_url}"></iframe>'
+        requested_urls: list[str] = []
+
+        def handler(request):
+            requested_urls.append(str(request.url))
+            if "recruitingapp-3040" in str(request.url):
+                return httpx.Response(200, text=_LISTING_HTML_V2, request=request)
+            return httpx.Response(200, text=page_html, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://example.com/careers", client)
+
+        assert result is not None
+        assert result["customer_id"] == "3040"
+        assert result["jobs"] == 1
+        assert result["listing_path"] == ("/Jobs/3?lang=fre&CompanyID=32&Reset=G&DesignID=10012")
+        assert "CompanyID=32" in requested_urls[-1]
 
     async def test_cname_with_recruitingapp_ref(self):
         """CNAME that references recruitingapp-{ID} in page source."""
