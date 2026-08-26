@@ -21,6 +21,7 @@ def test_durable_sql_matches_identity_but_updates_outbound_url() -> None:
     assert "INSERT INTO job_posting_source_alias" in compact
     assert "locked.source_url <> d.source_url" in compact
     assert "RETURNING job_posting.source_identity" in compact
+    assert "$4::uuid AS discovering_company_id" in compact
 
 
 def test_collision_preflight_is_owner_and_alias_aware() -> None:

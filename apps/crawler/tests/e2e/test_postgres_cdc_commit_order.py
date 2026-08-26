@@ -276,6 +276,17 @@ async def test_bidirectional_supabase_drift_is_repaired_from_locked_local_truth(
         # projection intentionally receives mutable source_url through
         # PostingSchema without storing the private identity key.
         await control.execute(f'ALTER TABLE "{schema}".job_posting DROP COLUMN source_identity')
+        remote_columns = await control.fetchval(
+            """
+            SELECT string_agg(quote_ident(attname), ', ' ORDER BY attnum)
+            FROM pg_attribute
+            WHERE attrelid = 'public.job_posting'::regclass
+              AND attnum > 0
+              AND NOT attisdropped
+              AND attname <> 'source_identity'
+            """
+        )
+        assert isinstance(remote_columns, str)
         remote_pool = await asyncpg.create_pool(
             dsn,
             min_size=1,
@@ -304,8 +315,8 @@ async def test_bidirectional_supabase_drift_is_repaired_from_locked_local_truth(
             mismatch,
         )
         await control.execute(
-            f'INSERT INTO "{schema}".job_posting '
-            "SELECT * FROM public.job_posting WHERE id = ANY($1::uuid[])",
+            f'INSERT INTO "{schema}".job_posting ({remote_columns}) '
+            f"SELECT {remote_columns} FROM public.job_posting WHERE id = ANY($1::uuid[])",
             [shared, mismatch, remote_active, remote_inactive],
         )
         await control.execute(

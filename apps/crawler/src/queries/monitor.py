@@ -719,7 +719,7 @@ LIMIT 1
 
 _DIFF_BATCH_DURABLE = """
 WITH discovered AS MATERIALIZED (
-  SELECT *
+  SELECT input.*, $4::uuid AS discovering_company_id
   FROM unnest($1::text[], $2::text[], $3::boolean[])
        AS input(source_identity, source_url, explicit_identity)
 ),
