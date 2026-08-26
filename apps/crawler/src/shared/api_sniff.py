@@ -983,8 +983,7 @@ def auto_map_fields(items: list[dict]) -> dict[str, str]:
         (
             item.get("requisitionLocations")
             for item in sample
-            if isinstance(item.get("requisitionLocations"), list)
-            and item["requisitionLocations"]
+            if isinstance(item.get("requisitionLocations"), list) and item["requisitionLocations"]
         ),
         None,
     )
