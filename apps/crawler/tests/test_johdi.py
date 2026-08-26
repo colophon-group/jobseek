@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 
 from src.core.enum_normalize import normalize_employment_type
 from src.core.monitors import _REGISTRY as MONITOR_REGISTRY
@@ -10,7 +11,7 @@ from src.core.scrapers.johdi import _offer_id, _parse_detail, scrape
 from src.workspace._compat import auto_scraper_type
 
 BOARD_URL = "https://www.example.ch/jobs"
-JOB_URL = f"{BOARD_URL}#/offer/4381/ouvrierere-qualifiee-a-100"
+JOB_URL = f"{BOARD_URL}#/offer/4381/job"
 COMPANY_KEY = "opaque-company-key-1234567890"
 FLOW = "web"
 LOCALE = "fr"
@@ -19,11 +20,11 @@ LIST_PATH = f"/api/company/{COMPANY_KEY}/publicationFlows/{FLOW}/offers/{LOCALE}
 DETAIL_PATH = f"/api/company/{COMPANY_KEY}/publicationFlows/{FLOW}/offer/4381/{LOCALE}"
 
 
-def _page() -> str:
+def _page(*, locale: str = LOCALE) -> str:
     return f"""
     <html><body>
       <div id="ats-offers"
-           data-locale="{LOCALE}"
+           data-locale="{locale}"
            data-company-hash-key="{COMPANY_KEY}"
            data-flow="{FLOW}"></div>
     </body></html>
@@ -77,10 +78,15 @@ def test_widget_config_requires_complete_safe_johdi_mount() -> None:
     assert _widget_config(_page()) == CONFIG
     assert _widget_config('<div id="ats-offers" data-flow="web"></div>') is None
     assert _widget_config('<div id="something-else"></div>') is None
+    assert _widget_config(_page() + _page()) is None
     assert (
         validated_config({"company_key": "../../other-host", "flow": FLOW, "locale": LOCALE})
         is None
     )
+    assert (
+        validated_config({"company_key": COMPANY_KEY, "flow": "x" * 65, "locale": LOCALE}) is None
+    )
+    assert validated_config({"company_key": COMPANY_KEY, "flow": FLOW, "locale": "french"}) is None
 
 
 async def test_can_handle_verifies_feed_and_accepts_empty_board() -> None:
@@ -95,6 +101,51 @@ async def test_discover_returns_canonical_offer_urls_without_detail_fetches() ->
     assert urls == {JOB_URL}
 
 
+async def test_discover_identity_does_not_churn_with_provider_slug() -> None:
+    first = {**_summary(), "slug": "titre-francais"}
+    second = {**_summary(), "slug": "changed-or-translated-title"}
+
+    async with httpx.AsyncClient(transport=_transport(offers=[first])) as client:
+        first_urls = await discover({"board_url": BOARD_URL, "metadata": CONFIG}, client)
+    async with httpx.AsyncClient(transport=_transport(offers=[second])) as client:
+        second_urls = await discover({"board_url": BOARD_URL, "metadata": CONFIG}, client)
+
+    assert first_urls == second_urls == {JOB_URL}
+
+
+async def test_discover_rejects_duplicate_provider_ids() -> None:
+    offers = [_summary(), {**_summary(), "slug": "translated-title"}]
+
+    async with httpx.AsyncClient(transport=_transport(offers=offers)) as client:
+        with pytest.raises(ValueError, match="invalid or duplicate"):
+            await discover({"board_url": BOARD_URL, "metadata": CONFIG}, client)
+
+
+async def test_discover_requires_configured_identity_to_match_official_page() -> None:
+    requests: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(str(request.url))
+        return httpx.Response(200, text=_page(locale="de"))
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="does not match"):
+            await discover({"board_url": BOARD_URL, "metadata": CONFIG}, client)
+
+    assert requests == [BOARD_URL]
+
+
+async def test_discover_rejects_non_json_list_response() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url == BOARD_URL:
+            return httpx.Response(200, text=_page())
+        return httpx.Response(200, text="[]", headers={"content-type": "text/html"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="not JSON content"):
+            await discover({"board_url": BOARD_URL, "metadata": CONFIG}, client)
+
+
 def test_parse_detail_maps_complete_content() -> None:
     content = _parse_detail(_detail(), LOCALE)
     assert content.title == "OUVRIER·ÈRE QUALIFIÉ·E À 100 %"
@@ -104,7 +155,7 @@ def test_parse_detail_maps_complete_content() -> None:
     assert content.date_posted == "2026-08-11"
     assert content.language == "fr"
     assert content.metadata == {
-        "id": 4381,
+        "id": "4381",
         "reference": "OUV-4381",
         "sector": "Public administration",
         "activity_from": 100,
@@ -123,8 +174,18 @@ async def test_scrape_fetches_detail_api() -> None:
     assert "Entretenir le domaine public" in (content.description or "")
 
 
+async def test_scrape_rejects_mismatched_detail_identity() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={**_detail(), "id": 4382})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="does not match"):
+            await scrape(JOB_URL, CONFIG, client)
+
+
 def test_offer_id_rejects_non_johdi_fragment_routes() -> None:
     assert _offer_id(JOB_URL) == "4381"
+    assert _offer_id(f"{BOARD_URL}#/offer/0004381/job") is None
     assert _offer_id(f"{BOARD_URL}#/vacancy/4381/example") is None
     assert _offer_id(f"{BOARD_URL}#/offer/not-an-id/example") is None
 

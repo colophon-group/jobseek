@@ -6,19 +6,21 @@ import re
 from urllib.parse import urlparse
 
 import httpx
-import structlog
 
-from src.core.monitors.johdi import detail_url, validated_config
+from src.core.monitors.johdi import (
+    detail_url,
+    fetch_json,
+    normalized_offer_id,
+    validated_config,
+)
 from src.core.scrapers import JobContent, register
-
-log = structlog.get_logger()
 
 _OFFER_FRAGMENT_RE = re.compile(r"^/offer/(?P<id>\d+)/[A-Za-z0-9_-]+/?$")
 
 
 def _offer_id(url: str) -> str | None:
     match = _OFFER_FRAGMENT_RE.fullmatch(urlparse(url).fragment)
-    return match.group("id") if match else None
+    return normalized_offer_id(match.group("id")) if match else None
 
 
 def _location(raw: dict) -> list[str] | None:
@@ -36,31 +38,39 @@ def _location(raw: dict) -> list[str] | None:
 
 
 def _parse_detail(raw: dict, locale: str) -> JobContent:
+    title = raw.get("title")
+    if not isinstance(title, str) or not title.strip():
+        raise ValueError("Johdi Suite detail omitted its title")
     description_parts = [
         value.strip()
         for key in ("introduction", "description")
         if isinstance((value := raw.get(key)), str) and value.strip()
     ]
+    if not description_parts:
+        raise ValueError("Johdi Suite detail omitted its description")
+    apply_url = raw.get("apply_link") or raw.get("postulation_url")
     metadata = {
         key: value
         for key, value in {
-            "id": raw.get("id"),
+            "id": normalized_offer_id(raw.get("id")),
             "reference": raw.get("ref"),
             "subtitle": raw.get("subtitle"),
             "sector": raw.get("sector"),
             "activity_from": raw.get("activity_from"),
             "activity_to": raw.get("activity_to"),
             "expiration_date": raw.get("expiration_date"),
-            "apply_url": raw.get("apply_link") or raw.get("postulation_url"),
+            "apply_url": apply_url if isinstance(apply_url, str) else None,
         }.items()
         if value not in (None, "")
     }
+    contract_type = raw.get("contract_type")
+    publication_date = raw.get("publication_date")
     return JobContent(
-        title=raw.get("title") or None,
-        description="\n".join(description_parts) or None,
+        title=title.strip(),
+        description="\n".join(description_parts),
         locations=_location(raw),
-        employment_type=raw.get("contract_type") or None,
-        date_posted=raw.get("publication_date") or None,
+        employment_type=contract_type.strip() if isinstance(contract_type, str) else None,
+        date_posted=publication_date.strip() if isinstance(publication_date, str) else None,
         language=locale.split("-", 1)[0].lower(),
         metadata=metadata or None,
     )
@@ -72,8 +82,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     offer_id = _offer_id(url)
     validated = validated_config(config)
     if offer_id is None or validated is None:
-        log.warning("johdi_scraper.invalid_config_or_url", url=url)
-        return JobContent()
+        raise ValueError("Johdi Suite scraper requires a valid stable offer URL and config")
 
     api_url = detail_url(
         validated["company_key"],
@@ -81,19 +90,11 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         offer_id,
         validated["locale"],
     )
-    response = await http.get(
-        api_url,
-        headers={"Accept": "application/json"},
-        follow_redirects=True,
-        timeout=30,
-    )
-    if response.status_code != 200:
-        log.warning("johdi_scraper.detail_failed", url=url, status=response.status_code)
-        return JobContent()
-    payload = response.json()
+    payload = await fetch_json(http, api_url)
     if not isinstance(payload, dict):
-        log.warning("johdi_scraper.invalid_detail", url=url)
-        return JobContent()
+        raise ValueError("Johdi Suite detail response is not an object")
+    if normalized_offer_id(payload.get("id")) != offer_id:
+        raise ValueError("Johdi Suite detail identity does not match the stable offer URL")
     return _parse_detail(payload, validated["locale"])
 
 
