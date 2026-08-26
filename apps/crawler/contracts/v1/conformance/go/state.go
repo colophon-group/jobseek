@@ -99,6 +99,7 @@ var controlErrorCodes = map[string]bool{
 	"terminal_duplicate":                  true,
 	"terminal_missing":                    true,
 	"trace_binding_changed":               true,
+	"transport_invalidated":               true,
 	"unknown_checkpoint":                  true,
 	"unknown_origin_contact":              true,
 	"wrong_frame_kind":                    true,
@@ -410,6 +411,7 @@ type validatorState struct {
 	highestAcknowledged     int64
 	terminal                *terminalResult
 	cancelled               bool
+	transportInvalidated    bool
 	resumed                 bool
 	lastPayloadType         string
 	lastResultSequence      *uint64
@@ -890,6 +892,7 @@ func (state *validatorState) handleResume(resume resumeShape) error {
 	state.replayTo = uint64(state.lastSequence)
 	state.credit = *state.pendingWindow
 	state.resumed = true
+	state.transportInvalidated = false
 	state.highestAcknowledged = after
 	state.requestedLimits = nil
 	state.pendingLimits = nil
@@ -943,6 +946,9 @@ func (state *validatorState) handleClient(event controlEvent) error {
 	if present != 1 || event.Frame != nil || event.Fault != nil || event.ServerHello != nil || event.Measurements != nil {
 		return fail("invalid_corpus")
 	}
+	if state.transportInvalidated && event.ClientHello == nil && event.Resume == nil {
+		return fail("transport_invalidated")
+	}
 	if event.ClientHello != nil {
 		return state.handleClientHello(*event.ClientHello)
 	}
@@ -973,6 +979,9 @@ func (state *validatorState) faultOperation(fault faultShape) (*ledgerEntry, err
 }
 
 func (state *validatorState) handleFault(event controlEvent) error {
+	if state.transportInvalidated {
+		return fail("transport_invalidated")
+	}
 	if event.Fault == nil || event.Frame != nil || event.Resume != nil || event.WindowUpdate != nil || event.Cancel != nil || event.ClientHello != nil || event.ServerHello != nil || event.Start != nil || event.Measurements != nil {
 		return fail("invalid_corpus")
 	}
@@ -1010,6 +1019,7 @@ func (state *validatorState) handleFault(event controlEvent) error {
 	if entry != nil {
 		entry.State = "ambiguous"
 	}
+	state.transportInvalidated = true
 	return nil
 }
 
@@ -1283,6 +1293,9 @@ func (state *validatorState) handleServer(event controlEvent) error {
 			return fail("invalid_corpus")
 		}
 		return state.handleServerHello(*event.ServerHello)
+	}
+	if state.transportInvalidated {
+		return fail("transport_invalidated")
 	}
 	if !state.hasRequest || event.Frame == nil || event.Measurements == nil || event.Fault != nil || event.Resume != nil || event.WindowUpdate != nil || event.Cancel != nil || event.ClientHello != nil || event.Start != nil {
 		return fail("invalid_corpus")

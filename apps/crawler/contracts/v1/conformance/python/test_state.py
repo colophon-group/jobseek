@@ -200,6 +200,7 @@ def test_checkpoint_cancel_and_fixture_history_invariants_are_exercised() -> Non
     results = _results()
     assert results["reject_resume_checkpoint_rewind"].code == "sequence_rewind"
     assert results["reject_resume_without_reconnect_handshake"].code == ("resume_handshake_missing")
+    assert results["reject_old_attempt_terminal_after_fault"].code == ("transport_invalidated")
     assert results["accept_cancelled_terminal_after_cancel"].accepted
     assert results["reject_cancelled_terminal_without_cancel"].code == ("terminal_count_mismatch")
     assert results["reject_fixture_cut_mismatch"].code == "fixture_cut_mismatch"

@@ -7722,16 +7722,6 @@
           }
         },
         {
-          "direction": "fault",
-          "fault": {
-            "origin_request_id": "",
-            "origin_was_dispatched": false,
-            "point": "before_frame",
-            "request_fingerprint": "",
-            "sequence": 0
-          }
-        },
-        {
           "direction": "client",
           "start": {
             "attempt_id": "attempt-002",
@@ -7779,7 +7769,7 @@
       "id": "reject_deadline_regression",
       "metadata": {
         "durable_cut_event_index": 2,
-        "injection_phase": "before_frame",
+        "injection_phase": "none",
         "logical_time_rfc3339": "2026-08-27T00:00:21Z"
       }
     },
@@ -10870,16 +10860,6 @@
           }
         },
         {
-          "direction": "fault",
-          "fault": {
-            "origin_request_id": "",
-            "origin_was_dispatched": false,
-            "point": "before_frame",
-            "request_fingerprint": "",
-            "sequence": 0
-          }
-        },
-        {
           "direction": "client",
           "start": {
             "attempt_id": "attempt-002",
@@ -10927,7 +10907,7 @@
       "id": "reject_manifest_revision_changed",
       "metadata": {
         "durable_cut_event_index": 2,
-        "injection_phase": "before_frame",
+        "injection_phase": "none",
         "logical_time_rfc3339": "2026-08-27T00:00:21Z"
       }
     },
@@ -11038,6 +11018,166 @@
         "durable_cut_event_index": 2,
         "injection_phase": "none",
         "logical_time_rfc3339": "2026-08-27T00:00:00Z"
+      }
+    },
+    {
+      "events": [
+        {
+          "client_hello": {
+            "implementation": "python",
+            "requested_limits": {
+              "max_active_duration_ms": 300000,
+              "max_artifact_chunk_bytes": 2048,
+              "max_artifact_count": 4,
+              "max_artifact_total_bytes": 4096,
+              "max_browser_actions": 16,
+              "max_browser_captures": 8,
+              "max_browser_evaluations": 8,
+              "max_browser_transfer_bytes": 1048576,
+              "max_execution_frames": 32,
+              "max_frame_bytes": 1024,
+              "max_http_transfer_bytes": 1048576,
+              "max_in_flight_frames": 8,
+              "max_inline_body_bytes": 512,
+              "max_monitor_batches": 8,
+              "max_output_items": 64,
+              "max_retry_after_ms": 60000
+            },
+            "supported_contract_versions": [
+              "crawler.runtime/v1"
+            ]
+          },
+          "direction": "client"
+        },
+        {
+          "direction": "server",
+          "server_hello": {
+            "accepted_at_rfc3339": "2026-08-27T00:00:00Z",
+            "accepted_limits": {
+              "max_active_duration_ms": 300000,
+              "max_artifact_chunk_bytes": 2048,
+              "max_artifact_count": 4,
+              "max_artifact_total_bytes": 4096,
+              "max_browser_actions": 16,
+              "max_browser_captures": 8,
+              "max_browser_evaluations": 8,
+              "max_browser_transfer_bytes": 1048576,
+              "max_execution_frames": 32,
+              "max_frame_bytes": 1024,
+              "max_http_transfer_bytes": 1048576,
+              "max_in_flight_frames": 8,
+              "max_inline_body_bytes": 512,
+              "max_monitor_batches": 8,
+              "max_output_items": 64,
+              "max_retry_after_ms": 60000
+            },
+            "implementation": "go",
+            "initial_window_frames": 8,
+            "resume_by_origin_request_id": true,
+            "selected_contract_version": "crawler.runtime/v1"
+          }
+        },
+        {
+          "direction": "client",
+          "start": {
+            "attempt_id": "attempt-001",
+            "board_manifest": {
+              "config_fingerprint": "config-fingerprint-r1",
+              "config_revision": "config-r1",
+              "manifest_id": "manifest-r1"
+            },
+            "contract_version": "crawler.runtime/v1",
+            "deadline_rfc3339": "2026-08-27T00:05:00Z",
+            "fencing_context": {
+              "claim_token": "claim-001",
+              "config_revision": "config-r1",
+              "engine_owner": "go",
+              "fence_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "lease_id": "lease-001",
+              "routing_epoch": 42,
+              "shard_id": "shard-01"
+            },
+            "input": {
+              "monitor": {
+                "monitor_type": "sitemap"
+              }
+            },
+            "kind": "monitor",
+            "origin_operations": [
+              {
+                "operation_sequence": 1,
+                "origin_request_id": "request-001/origin/0001",
+                "request_fingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+                "role": "monitor-page"
+              }
+            ],
+            "origin_request_id": "request-001/origin/0001",
+            "request_id": "request-001",
+            "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+            "tracestate": "jobseek=runtime-v1"
+          }
+        },
+        {
+          "direction": "server",
+          "frame": {
+            "attempt_id": "attempt-001",
+            "contract_version": "crawler.runtime/v1",
+            "fence_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "payload": {
+              "type": "monitor_batch"
+            },
+            "request_id": "request-001",
+            "sequence": 0
+          },
+          "measurements": {
+            "output_items": 1,
+            "wire_size_bytes": 128
+          }
+        },
+        {
+          "direction": "fault",
+          "fault": {
+            "origin_request_id": "",
+            "origin_was_dispatched": false,
+            "point": "after_frame",
+            "request_fingerprint": "",
+            "sequence": 0
+          }
+        },
+        {
+          "direction": "server",
+          "frame": {
+            "attempt_id": "attempt-001",
+            "contract_version": "crawler.runtime/v1",
+            "fence_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "payload": {
+              "active_duration_ms": 1000,
+              "artifact_count": 0,
+              "eligible_for_commit": true,
+              "frame_count": 1,
+              "monitor_batches": 1,
+              "origin_operation_count": 1,
+              "output_items": 1,
+              "status": "success",
+              "type": "terminal"
+            },
+            "request_id": "request-001",
+            "sequence": 1
+          },
+          "measurements": {
+            "wire_size_bytes": 128
+          }
+        }
+      ],
+      "expected": {
+        "accepted": false,
+        "code": "transport_invalidated"
+      },
+      "id": "reject_old_attempt_terminal_after_fault",
+      "metadata": {
+        "durable_cut_event_index": 3,
+        "injection_phase": "after_frame",
+        "logical_time_rfc3339": "2026-08-27T00:00:02Z"
       }
     },
     {
@@ -12292,16 +12432,6 @@
           }
         },
         {
-          "direction": "fault",
-          "fault": {
-            "origin_request_id": "",
-            "origin_was_dispatched": false,
-            "point": "before_frame",
-            "request_fingerprint": "",
-            "sequence": 0
-          }
-        },
-        {
           "direction": "client",
           "start": {
             "attempt_id": "attempt-002",
@@ -12349,7 +12479,7 @@
       "id": "reject_request_binding_changed",
       "metadata": {
         "durable_cut_event_index": 2,
-        "injection_phase": "before_frame",
+        "injection_phase": "none",
         "logical_time_rfc3339": "2026-08-27T00:00:21Z"
       }
     },
@@ -15250,16 +15380,6 @@
           }
         },
         {
-          "direction": "fault",
-          "fault": {
-            "origin_request_id": "",
-            "origin_was_dispatched": false,
-            "point": "before_frame",
-            "request_fingerprint": "",
-            "sequence": 0
-          }
-        },
-        {
           "direction": "client",
           "start": {
             "attempt_id": "attempt-002",
@@ -15307,7 +15427,7 @@
       "id": "reject_trace_binding_changed",
       "metadata": {
         "durable_cut_event_index": 2,
-        "injection_phase": "before_frame",
+        "injection_phase": "none",
         "logical_time_rfc3339": "2026-08-27T00:00:21Z"
       }
     },
