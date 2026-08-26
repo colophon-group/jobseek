@@ -53,6 +53,7 @@ from src.shared.api_sniff import (
     JOB_KEYWORDS,
     TITLE_FIELDS,
     ApiSnifferDomUnavailableError,
+    _fetch_page_with_retry,
     auto_map_fields,
     capture_exchanges,
     clean_headers,
@@ -1271,6 +1272,216 @@ def _validated_item_filter(
     return normalized_include, normalized, normalized_regex, dedupe_paths
 
 
+def _validated_pagination_convergence(
+    config: dict,
+    dedupe_paths: tuple[str, ...],
+) -> tuple[int, int] | None:
+    """Validate an opt-in bounded proof for unstable offset pagination."""
+    value = config.get("pagination_convergence")
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) - {
+        "max_passes",
+        "required_no_growth_passes",
+    }:
+        raise ValueError(
+            "api_sniffer pagination_convergence must be a mapping containing only "
+            "max_passes and required_no_growth_passes"
+        )
+
+    pagination = config.get("pagination")
+    if not isinstance(pagination, dict) or pagination.get("style") != "offset":
+        raise ValueError("api_sniffer pagination_convergence requires offset pagination")
+    if not dedupe_paths:
+        raise ValueError("api_sniffer pagination_convergence requires item_filter.dedupe_by")
+
+    max_passes = value.get("max_passes")
+    required_no_growth = value.get("required_no_growth_passes")
+    if isinstance(max_passes, bool) or not isinstance(max_passes, int) or not 3 <= max_passes <= 8:
+        raise ValueError(
+            "api_sniffer pagination_convergence.max_passes must be an integer from 3 to 8"
+        )
+    if (
+        isinstance(required_no_growth, bool)
+        or not isinstance(required_no_growth, int)
+        or not 2 <= required_no_growth < max_passes
+    ):
+        raise ValueError(
+            "api_sniffer pagination_convergence.required_no_growth_passes must be "
+            "an integer from 2 to max_passes - 1"
+        )
+    return max_passes, required_no_growth
+
+
+def _advertised_total(payload: object, total_path: str | None, json_path: str) -> int | None:
+    if total_path:
+        if not isinstance(payload, dict):
+            return None
+        raw_total = resolve_path(payload, total_path)
+    else:
+        raw_total = find_total_count(payload, json_path)
+    if isinstance(raw_total, bool) or not isinstance(raw_total, (int, float)):
+        return None
+    total = int(raw_total)
+    return total if total >= 0 else None
+
+
+async def _paginate_until_converged(
+    *,
+    fetch_fn,
+    method: str,
+    api_url: str,
+    request_headers: dict,
+    post_data: str | None,
+    initial_data: object,
+    initial_items: list[dict],
+    json_path: str,
+    total_path: str | None,
+    total_count: int | None,
+    pagination_config: dict,
+    max_pages: int,
+    identity_paths: tuple[str, ...],
+    max_passes: int,
+    required_no_growth_passes: int,
+    item_projector,
+) -> tuple[list[dict], bool]:
+    """Union bounded full passes and prove convergence before allowing delists.
+
+    Some APIs expose an advertised row count but reshuffle non-uniquely sorted
+    offset pages between requests. A single pass can therefore contain the
+    advertised number of rows while omitting live identities and repeating
+    others. This opt-in path accumulates stable identities across complete
+    passes. It is healthy only after two or more consecutive full passes add
+    no identities and every observed advertised total remains unchanged.
+    """
+    from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult, PaginationInfo
+
+    expected_total = total_count
+    accumulated: dict[tuple[str, ...], dict] = {}
+    no_growth_passes = 0
+
+    def payload_total(payload: object) -> int | None:
+        return _advertised_total(payload, total_path, json_path)
+
+    def identity_map(items: list[dict]) -> tuple[dict[tuple[str, ...], dict], bool]:
+        mapped: dict[tuple[str, ...], dict] = {}
+        valid = True
+        for item in items:
+            parts = [extract_field(item, path) for path in identity_paths]
+            if not all(isinstance(part, str) and part for part in parts):
+                valid = False
+                continue
+            identity = tuple(cast(str, part) for part in parts)
+            previous = mapped.get(identity)
+            if previous is not None and previous != item:
+                # A supposedly stable identity cannot safely collapse two
+                # conflicting source records in a delist-capable cycle.
+                valid = False
+            mapped[identity] = item
+        return mapped, valid
+
+    pass_data = initial_data
+    pass_items = initial_items
+    for pass_number in range(1, max_passes + 1):
+        totals_valid = payload_total(pass_data) == expected_total and expected_total is not None
+
+        async def validating_fetch(
+            fetch_method: str,
+            fetch_url: str,
+            fetch_headers: dict,
+            fetch_body: str | None,
+        ) -> object:
+            nonlocal totals_valid
+            payload = await fetch_fn(fetch_method, fetch_url, fetch_headers, fetch_body)
+            if payload_total(payload) != expected_total:
+                totals_valid = False
+            return payload
+
+        pagination = PaginationInfo(
+            param_name=pagination_config["param_name"],
+            style="offset",
+            start_value=pagination_config.get("start_value", 0),
+            increment=pagination_config.get("increment", 1),
+            location=pagination_config.get("location", "query"),
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(
+                exchange=Exchange(
+                    method=method,
+                    url=api_url,
+                    request_headers=request_headers,
+                    post_data=post_data,
+                    status=200,
+                    body=pass_data,
+                    content_type="application/json",
+                    phase="load",
+                ),
+                json_path=json_path,
+                items=pass_items,
+            ),
+            url_field=None,
+            total_count=expected_total,
+            pagination=pagination,
+        )
+        rows = await paginate_all(
+            validating_fetch,
+            result,
+            max_pages,
+            item_projector=item_projector,
+        )
+        pass_identities, identities_valid = identity_map(rows)
+        new_identities = set(pass_identities) - set(accumulated)
+        accumulated.update(pass_identities)
+        complete_pass = (
+            totals_valid
+            and identities_valid
+            and expected_total is not None
+            and len(rows) == expected_total
+            and len(accumulated) <= expected_total
+        )
+        log.info(
+            "api_sniffer.pagination_convergence_pass",
+            pass_number=pass_number,
+            rows=len(rows),
+            identities=len(pass_identities),
+            accumulated=len(accumulated),
+            new_identities=len(new_identities),
+            advertised_total=expected_total,
+            complete=complete_pass,
+        )
+        if not complete_pass:
+            log.warning(
+                "api_sniffer.pagination_convergence_incomplete",
+                pass_number=pass_number,
+                advertised_total=expected_total,
+            )
+            return list(accumulated.values()), False
+
+        if pass_number > 1:
+            no_growth_passes = no_growth_passes + 1 if not new_identities else 0
+            if no_growth_passes >= required_no_growth_passes:
+                return list(accumulated.values()), True
+
+        if pass_number == max_passes:
+            break
+        pass_data = await _fetch_page_with_retry(
+            fetch_fn,
+            method,
+            api_url,
+            clean_headers(request_headers),
+            post_data,
+        )
+        pass_items = extract_items(pass_data, json_path)
+
+    log.warning(
+        "api_sniffer.pagination_convergence_exhausted",
+        max_passes=max_passes,
+        accumulated=len(accumulated),
+        advertised_total=expected_total,
+    )
+    return list(accumulated.values()), False
+
+
 def _apply_item_filter(
     items: list[dict],
     item_filter: tuple[
@@ -1723,6 +1934,7 @@ async def _discover_http(
     request_headers = config.get("request_headers") or config.get("headers") or {}
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
+    pagination_convergence = _validated_pagination_convergence(config, item_filter[3])
 
     post_data = await _refresh_post_data(
         client,
@@ -1929,6 +2141,7 @@ async def _discover_http(
             item_filter_paths,
         )
 
+        pagination_proven = True
         if pagination_config and items:
             pag = PaginationInfo(
                 param_name=pagination_config["param_name"],
@@ -1955,18 +2168,43 @@ async def _discover_http(
                 pagination=pag,
             )
             page_cap = pagination_config.get("max_pages", _HTTP_MAX_PAGES)
-            items = await paginate_all(
-                make_http_fetcher(client),
-                job_result,
-                page_cap,
-                item_projector=item_projector,
-            )
-            total = job_result.total_count
+            fetch_fn = make_http_fetcher(client)
+            if pagination_convergence:
+                max_passes, required_no_growth = pagination_convergence
+                items, pagination_proven = await _paginate_until_converged(
+                    fetch_fn=fetch_fn,
+                    method=method,
+                    api_url=api_url,
+                    request_headers=request_headers,
+                    post_data=post_data,
+                    initial_data=data,
+                    initial_items=items,
+                    json_path=json_path or "$",
+                    total_path=total_path,
+                    total_count=total,
+                    pagination_config=pagination_config,
+                    max_pages=page_cap,
+                    identity_paths=item_filter[3],
+                    max_passes=max_passes,
+                    required_no_growth_passes=required_no_growth,
+                    item_projector=item_projector,
+                )
+            else:
+                items = await paginate_all(
+                    fetch_fn,
+                    job_result,
+                    page_cap,
+                    item_projector=item_projector,
+                )
+                total = job_result.total_count
         elif item_projector:
             items = [item_projector(item) for item in items]
 
         source_item_count = len(items)
-        items, total = _apply_item_filter(items, item_filter, total)
+        filter_total = None if pagination_convergence else total
+        items, total = _apply_item_filter(items, item_filter, filter_total)
+        if pagination_convergence:
+            total = len(items) if pagination_proven else None
 
         # MAX_ITEMS cap (#3216 / #3267). Don't slice silently: keep every
         # item so the URLs the monitor *did* collect are still inserted,
@@ -2001,7 +2239,7 @@ async def _discover_http(
                 url_template_fields=url_template_fields,
                 slug_fields=slug_fields,
             )
-            truncated = _item_result_is_truncated(
+            truncated = not pagination_proven or _item_result_is_truncated(
                 item_count=source_item_count,
                 discovered_count=len({job.url for job in jobs}),
                 total=total,
@@ -2016,7 +2254,7 @@ async def _discover_http(
                 url_template_fields=url_template_fields,
                 slug_fields=slug_fields,
             )
-            truncated = _item_result_is_truncated(
+            truncated = not pagination_proven or _item_result_is_truncated(
                 item_count=source_item_count,
                 discovered_count=len(urls_from_tpl),
                 total=total,
@@ -2030,7 +2268,7 @@ async def _discover_http(
                 raw = extract_field(item, url_field)
                 if isinstance(raw, str) and raw:
                     urls.add(urljoin(board_url, raw))
-            truncated = _item_result_is_truncated(
+            truncated = not pagination_proven or _item_result_is_truncated(
                 item_count=source_item_count,
                 discovered_count=len(urls),
                 total=total,
@@ -2038,7 +2276,7 @@ async def _discover_http(
             )
             return truncated_url_result(urls) if truncated else urls
         urls = set(extract_urls(items, url_field, board_url))
-        truncated = _item_result_is_truncated(
+        truncated = not pagination_proven or _item_result_is_truncated(
             item_count=source_item_count,
             discovered_count=len(urls),
             total=total,
@@ -2192,6 +2430,7 @@ async def _discover_replay(
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
+    pagination_convergence = _validated_pagination_convergence(config, item_filter[3])
     total_path = config.get("total_path")
     api_url_match = config.get("api_url_match")
     route_params = config.get("route_params")
@@ -2353,6 +2592,7 @@ async def _discover_replay(
         )
 
         # Paginate if configured
+        pagination_proven = True
         if pagination_config and len(items) > 0:
             pag = PaginationInfo(
                 param_name=pagination_config["param_name"],
@@ -2386,18 +2626,42 @@ async def _discover_replay(
                 needed = (total_count + len(items) - 1) // len(items)
                 if needed > max_pg:
                     max_pg = min(needed, _HTTP_MAX_PAGES)
-            items = await paginate_all(
-                fetch_fn,
-                job_result,
-                max_pg,
-                item_projector=item_projector,
-            )
-            total_count = job_result.total_count
+            if pagination_convergence:
+                max_passes, required_no_growth = pagination_convergence
+                items, pagination_proven = await _paginate_until_converged(
+                    fetch_fn=fetch_fn,
+                    method=method,
+                    api_url=api_url,
+                    request_headers=request_headers,
+                    post_data=post_data,
+                    initial_data=data,
+                    initial_items=items,
+                    json_path=json_path,
+                    total_path=total_path,
+                    total_count=total_count,
+                    pagination_config=pagination_config,
+                    max_pages=max_pg,
+                    identity_paths=item_filter[3],
+                    max_passes=max_passes,
+                    required_no_growth_passes=required_no_growth,
+                    item_projector=item_projector,
+                )
+            else:
+                items = await paginate_all(
+                    fetch_fn,
+                    job_result,
+                    max_pg,
+                    item_projector=item_projector,
+                )
+                total_count = job_result.total_count
         elif item_projector:
             items = [item_projector(item) for item in items]
 
         source_item_count = len(items)
-        items, total_count = _apply_item_filter(items, item_filter, total_count)
+        filter_total = None if pagination_convergence else total_count
+        items, total_count = _apply_item_filter(items, item_filter, filter_total)
+        if pagination_convergence:
+            total_count = len(items) if pagination_proven else None
 
         # MAX_ITEMS cap (#3216 / #3267). Don't slice silently: keep every
         # item so the URLs the monitor *did* collect are still inserted,
@@ -2437,7 +2701,7 @@ async def _discover_replay(
                 url_template_fields=url_template_fields,
                 slug_fields=slug_fields,
             )
-            truncated = _item_result_is_truncated(
+            truncated = not pagination_proven or _item_result_is_truncated(
                 item_count=source_item_count,
                 discovered_count=len({job.url for job in jobs}),
                 total=total_count,
@@ -2454,7 +2718,7 @@ async def _discover_replay(
                 url_template_fields=url_template_fields,
                 slug_fields=slug_fields,
             )
-            truncated = _item_result_is_truncated(
+            truncated = not pagination_proven or _item_result_is_truncated(
                 item_count=source_item_count,
                 discovered_count=len(urls_from_tpl),
                 total=total_count,
@@ -2464,7 +2728,7 @@ async def _discover_replay(
         urls = extract_urls(items, url_field, board_url)
         if not urls and url_map:
             urls_from_map = set(url_map.values())
-            truncated = _item_result_is_truncated(
+            truncated = not pagination_proven or _item_result_is_truncated(
                 item_count=source_item_count,
                 discovered_count=len(urls_from_map),
                 total=total_count,
@@ -2477,7 +2741,7 @@ async def _discover_replay(
             except Exception:
                 log.debug("api_sniffer.dom_crossref_degraded", exc_info=True)
         urls_set = set(urls)
-        truncated = _item_result_is_truncated(
+        truncated = not pagination_proven or _item_result_is_truncated(
             item_count=source_item_count,
             discovered_count=len(urls_set),
             total=total_count,
