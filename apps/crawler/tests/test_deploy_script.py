@@ -213,6 +213,7 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
 
     quiesce = script.index("docker compose stop --timeout 60")
     migrate = script.index("alembic -c src/migrations/alembic.ini upgrade head")
+    migration_cutover = script.index("MIGRATION_CUTOVER_REACHED=1", migrate)
     typesense_schema = script.index("uv run --no-sync crawler setup-typesense")
     sync = script.index("uv run --no-sync crawler sync", typesense_schema)
     nw_cutover = script.index("uv run --no-sync crawler repair-nw-provider-cutover")
@@ -222,7 +223,16 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     )
     restart = script.index("docker compose up -d --remove-orphans", umantis_cutover)
 
-    assert quiesce < migrate < typesense_schema < sync < nw_cutover < umantis_cutover < restart
+    assert (
+        quiesce
+        < migrate
+        < migration_cutover
+        < typesense_schema
+        < sync
+        < nw_cutover
+        < umantis_cutover
+        < restart
+    )
 
 
 def test_operational_sync_entrypoints_are_local_and_typesense_only() -> None:
@@ -2618,7 +2628,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
         assert log.read_text(encoding="utf-8").splitlines() == expected_events
 
 
-def test_rollback_restores_previous_csv_config_before_restarting_workers(
+def test_setup_typesense_failure_repairs_migrated_identity_before_old_restart(
     tmp_path: Path,
 ) -> None:
     script = DEPLOY_SH.read_text()
@@ -2641,7 +2651,8 @@ def test_rollback_restores_previous_csv_config_before_restarting_workers(
             "ENV_FILE_WAS_PRESENT=1",
             "ROLLBACK_ARMED=1",
             "ROLLBACK_RUNNING=0",
-            "FORWARD_SYNC_STARTED=1",
+            "MIGRATION_CUTOVER_REACHED=1",
+            "FORWARD_SYNC_STARTED=0",
             'COMPOSE_PROJECT_NAME="deploy"',
             'STAGED_BRIDGE_VERIFIER=""',
             "docker() {",
@@ -2675,6 +2686,8 @@ def test_rollback_restores_previous_csv_config_before_restarting_workers(
             "  printf 'config-sync\\n' >>\"$TEST_LOG\"",
             '  return "$SYNC_STATUS"',
             "}",
+            "setup_typesense() { return 42; }",
+            "if setup_typesense; then exit 99; fi",
             "rollback_deploy 23",
         )
     )
