@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import zipfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -412,6 +413,144 @@ class TestDomScraper:
         assert result.title == "Gestionnaire foncier (60-100%)"
         assert result.locations == ["Givisiez"]
         assert "Gérer les procédures foncières" in result.description
+
+    def test_probe_handles_short_french_location_label(self):
+        """Oleeo/Hireserve pages label their location with bare ``Lieu``."""
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Infirmier-ère - CHUV</title></head><body>
+          <div class="job_description">
+            <h1>Infirmier-ère</h1>
+            <div class="job_classifications">
+              <div class="classification">
+                <div class="class_type">Lieu</div>
+                <div class="class_value">Lausanne</div>
+              </div>
+            </div>
+            <h2>Mission</h2>
+            <p>Assurer des soins spécialisés aux patientes et patients.</p>
+          </div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Infirmier-ère"
+        assert result.locations == ["Lausanne"]
+        assert result.description is not None
+        assert "soins spécialisés" in result.description
+
+    @pytest.mark.parametrize("separator", [":", "："])
+    def test_probe_handles_inline_short_french_location_label(self, separator: str):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = f"""
+        <html><head><title>Infirmier-ère - CHUV</title></head><body>
+          <h1>Infirmier-ère</h1>
+          <p>Lieu{separator} Lausanne</p>
+          <h2>Mission</h2>
+          <p>Assurer des soins spécialisés aux patientes et patients.</p>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Infirmier-ère"
+        assert result.locations == ["Lausanne"]
+
+    def test_probe_does_not_treat_lieutenant_as_french_location_label(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Lieutenant de sécurité - Example</title></head><body>
+          <h1>Lieutenant de sécurité</h1>
+          <p>Protéger le site et coordonner les équipes de sécurité.</p>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert not any(step.get("field") == "location" for step in config["steps"])
+
+        result = parse_html(html, config)
+        assert result.title == "Lieutenant de sécurité"
+        assert result.locations is None
+
+    @pytest.mark.parametrize(
+        "label",
+        [
+            "job location",
+            "location",
+            "workplace",
+            "lieu de travail",
+            "lieu",
+            "arbeitsort",
+            "arbeitsplatz",
+            "luogo di lavoro",
+        ],
+    )
+    @pytest.mark.parametrize(
+        ("label_html_template", "matched_label_template"),
+        [
+            ("<p>{label}</p><p>Lausanne</p>", "{label}"),
+            ("<p>{label}: Lausanne</p>", "{label}: Lausanne"),
+            ("<p>{label}： Lausanne</p>", "{label}： Lausanne"),
+            ("<p>{label}:</p><p>Lausanne</p>", "{label}:"),
+            ("<p>{label}：</p><p>Lausanne</p>", "{label}："),
+        ],
+        ids=[
+            "standalone",
+            "inline-ascii-colon",
+            "inline-fullwidth-colon",
+            "separate-ascii-colon",
+            "separate-fullwidth-colon",
+        ],
+    )
+    def test_probe_location_step_preserves_labels_and_skips_earlier_prefix_text(
+        self,
+        label: str,
+        label_html_template: str,
+        matched_label_template: str,
+    ):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        earlier_text = {
+            "job location": "Job locations evolve",
+            "location": "Locationless role",
+            "workplace": "Workplace culture matters",
+            "lieu de travail": "Lieu de travailleur social",
+            "lieu": "Lieutenant de sécurité",
+            "arbeitsort": "Arbeitsordnung beachten",
+            "arbeitsplatz": "Arbeitsplatzgestaltung",
+            "luogo di lavoro": "Luogo di lavorazione",
+        }[label]
+        label_html = label_html_template.format(label=label)
+        matched_label = matched_label_template.format(label=label)
+        html = f"""
+        <html><head><title>Security Officer - Example</title></head><body>
+          <h1>Security Officer</h1>
+          <p>{earlier_text}</p>
+          {label_html}
+          <h2>Mission</h2>
+          <p>Assurer la sécurité des patientes et patients.</p>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        location_step = next(step for step in config["steps"] if step.get("field") == "location")
+        match_regex = location_step["match_regex"]
+        assert re.fullmatch(match_regex, earlier_text) is None
+        assert re.fullmatch(match_regex, matched_label) is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Security Officer"
+        assert result.locations == ["Lausanne"]
 
     def test_talentsoft_probe_builds_locale_independent_config(self):
         from src.core.scrapers.dom import can_handle, parse_html

@@ -208,6 +208,7 @@ _LOCATION_LABELS = (
     "location",
     "workplace",
     "lieu de travail",
+    "lieu",
     "arbeitsort",
     "arbeitsplatz",
     "luogo di lavoro",
@@ -697,24 +698,28 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
     if not workload_location:
         for el in elements:
             text = el["text"]
-            text_lower = text.casefold()
+            text_lower = text.strip().casefold()
             label = next(
-                (candidate for candidate in _LOCATION_LABELS if text_lower.startswith(candidate)),
+                (
+                    candidate
+                    for candidate in _LOCATION_LABELS
+                    if text_lower == candidate
+                    or re.match(rf"^{re.escape(candidate)}\s*[:：]", text_lower)
+                ),
                 None,
             )
             if label is None or len(text) >= 120:
                 continue
 
-            inline_value = re.match(
-                rf"(?i)^\s*{re.escape(label)}\s*[:：]\s*(\S.*)\s*$",
-                text,
-            )
+            inline_pattern = rf"(?i)^\s*{re.escape(label)}\s*[:：]\s*(\S.*)\s*$"
+            inline_value = re.match(inline_pattern, text)
             if inline_value:
                 steps.append(
                     {
                         "text": label,
+                        "match_regex": inline_pattern,
                         "field": "location",
-                        "regex": rf"(?i)^\s*{re.escape(label)}\s*[:：]\s*(\S.*)\s*$",
+                        "regex": inline_pattern,
                         "optional": True,
                         "from": 0,
                     }
@@ -723,6 +728,7 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
                 steps.append(
                     {
                         "text": label,
+                        "match_regex": rf"(?i)^\s*{re.escape(label)}\s*(?:[:：]\s*)?$",
                         "offset": 1,
                         "field": "location",
                         "optional": True,
