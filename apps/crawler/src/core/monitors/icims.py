@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import html as html_module
 import re
+from collections import Counter
 from pathlib import Path
 from urllib.parse import parse_qsl, urlparse
 
@@ -376,10 +377,13 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             title, region, job_type = identity
             return aliases.get(title, title), region, job_type
 
-        peer_keys = {canonical(identity) for identity in peer_identities.values()}
-        duplicates = {
-            url for url, identity in identities.items() if canonical(identity) in peer_keys
-        }
+        unmatched_peer_keys = Counter(canonical(identity) for identity in peer_identities.values())
+        duplicates: set[str] = set()
+        for url, identity in sorted(identities.items()):
+            key = canonical(identity)
+            if unmatched_peer_keys[key] > 0:
+                duplicates.add(url)
+                unmatched_peer_keys[key] -= 1
         urls.difference_update(duplicates)
         log.info(
             "icims.cross_locale_deduped",
