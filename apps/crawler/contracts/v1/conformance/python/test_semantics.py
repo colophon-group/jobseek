@@ -34,16 +34,21 @@ REQUIRED_CASE_IDS = frozenset(
         "invalid_html_unclosed_suppressed",
         "invalid_projection_alignment",
         "invalid_projection_malformed_url",
+        "invalid_precondition_type",
         "invalid_shape_missing",
         "invalid_shape_unknown",
         "invalid_url",
         "invalid_url_above_root",
         "invalid_url_fragment_escape",
         "invalid_url_legacy_ip",
+        "invalid_url_legacy_mixed_components",
         "invalid_url_non_ascii_host",
         "invalid_url_port_zero",
         "invalid_visible_content",
         "invalid_localized_description",
+        "invalid_localized_description_null",
+        "invalid_metadata_null",
+        "invalid_unicode_surrogate",
         "language_alias",
         "language_rejection",
         "locale_alias",
@@ -63,9 +68,11 @@ REQUIRED_CASE_IDS = frozenset(
         "safe_url_default_repeated_slash",
         "safe_url_query_distinctions",
         "safe_url_leading_zero_default_port",
+        "safe_url_numeric_overrange_dns",
         "set_permutation_dedupe",
         "suppressed_precondition",
         "unknown_subject_rejected",
+        "visible_unterminated_space_entities",
     }
 )
 
@@ -84,7 +91,7 @@ def test_required_ids_are_independently_hard_coded_and_complete() -> None:
     assert frozenset(semantics.CASE_IDS) == REQUIRED_CASE_IDS
     assert manifest["required_case_ids"] == list(semantics.CASE_IDS)
     assert ids == list(semantics.CASE_IDS)
-    assert len(ids) == len(set(ids)) == 43
+    assert len(ids) == len(set(ids)) == 50
     assert all(
         set(case) == {"expected", "id", "input", "subject_kind"} for case in manifest["cases"]
     )
@@ -128,6 +135,12 @@ def test_projected_digests_and_target_lists_are_exactly_aligned() -> None:
         ("<p>Synthetic role</p>", True),
         ("&copy;", True),
         ("&nbsp;&#160;&#xA0;\u200b", False),
+        ("&nbsp;", False),
+        ("&#160;", False),
+        ("&#xA0;", False),
+        ("&nbsp", True),
+        ("&#160", True),
+        ("&#xA0", True),
         ("<script>visible-looking</script>", False),
         ("<style>visible-looking</style>", False),
         ("<template>visible-looking</template>", False),
@@ -183,6 +196,8 @@ def test_url_profile_canonicalizes_the_seed_rules() -> None:
     assert semantics.canonical_url("HTTP://jobs.example.invalid:080/role") == (
         "http://jobs.example.invalid/role"
     )
+    assert semantics.canonical_url("https://4294967296/role") == ("https://4294967296/role")
+    assert semantics.canonical_url("https://256.0.0.1/role") == ("https://256.0.0.1/role")
 
 
 def test_consistency_repair_cases_have_closed_outcomes() -> None:
@@ -208,6 +223,9 @@ def test_consistency_repair_cases_have_closed_outcomes() -> None:
         "https://jobs.example.invalid:65536/role",
         "http://127.0.0.1/role",
         "http://0177.0.0.1/role",
+        "http://0x7f.0.0.1/role",
+        "http://127.0x0.0.1/role",
+        "http://2130706433/role",
         "https://jobs.example.invalid/../../role",
         "https://jöbs.example.invalid/role",
         "https://jobs.example.invalid./role",
@@ -291,12 +309,54 @@ def test_protocol_and_privacy_are_consumed_as_preconditions() -> None:
         "reason": "ineligible_history",
         "status": "suppressed",
     }
+    fixture = copy.deepcopy(_case("safe_scrape_projected"))
     fixture["input"]["preconditions"]["privacy_status"] = "rejected"
     assert semantics.project_case(fixture) == {
         "case_id": "safe_scrape_projected",
         "reason": "privacy_rejected",
         "status": "suppressed",
     }
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("protocol_accepted", "true"),
+        ("terminal_status", True),
+        ("eligible_for_commit", 1),
+        ("batches_complete", 1),
+        ("privacy_status", False),
+    ],
+)
+def test_every_precondition_type_is_checked_before_suppression(field: str, value: object) -> None:
+    fixture = copy.deepcopy(_case("safe_scrape_projected"))
+    fixture["input"]["preconditions"]["privacy_status"] = "rejected"
+    fixture["input"]["preconditions"][field] = value
+    assert semantics.project_case(fixture) == {
+        "case_id": "safe_scrape_projected",
+        "reason": "invalid_projection",
+        "status": "rejected",
+    }
+
+
+def test_malformed_unicode_and_present_null_reject_without_throwing() -> None:
+    fixture = copy.deepcopy(_case("safe_scrape_projected"))
+    fixture["input"]["result"]["content"]["description_html"] = b"\xff"
+    assert semantics.project_case(fixture) == {
+        "case_id": "safe_scrape_projected",
+        "reason": "invalid_projection",
+        "status": "rejected",
+    }
+    for case_id in (
+        "invalid_unicode_surrogate",
+        "invalid_metadata_null",
+        "invalid_localized_description_null",
+    ):
+        assert _case(case_id)["expected"] == {
+            "case_id": case_id,
+            "reason": "invalid_projection",
+            "status": "rejected",
+        }
 
 
 def test_canonical_json_is_safe_literal_utf8_and_rejects_floats_and_surrogates() -> None:
@@ -361,4 +421,4 @@ def test_generator_is_deterministic_and_cli_check_is_clean() -> None:
         text=True,
     )
     assert completed.returncode == 0, completed.stderr
-    assert completed.stdout.strip().endswith("(43 cases)")
+    assert completed.stdout.strip().endswith("(50 cases)")

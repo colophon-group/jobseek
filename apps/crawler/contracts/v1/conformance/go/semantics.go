@@ -225,6 +225,74 @@ func semanticsHexNibble(value byte) (byte, bool) {
 	}
 }
 
+func semanticsUnicodeEscape(value []byte, offset int) (uint16, bool) {
+	if offset+4 > len(value) {
+		return 0, false
+	}
+	var scalar uint16
+	for _, character := range value[offset : offset+4] {
+		nibble, ok := semanticsHexNibble(character)
+		if !ok {
+			return 0, false
+		}
+		scalar = scalar<<4 | uint16(nibble)
+	}
+	return scalar, true
+}
+
+func semanticsRawJSONUnicodeValid(value []byte) bool {
+	if !utf8.Valid(value) {
+		return false
+	}
+	inString := false
+	for offset := 0; offset < len(value); {
+		character := value[offset]
+		if !inString {
+			if character == '"' {
+				inString = true
+			}
+			offset++
+			continue
+		}
+		switch character {
+		case '"':
+			inString = false
+			offset++
+		case '\\':
+			if offset+1 >= len(value) {
+				return false
+			}
+			if value[offset+1] != 'u' {
+				offset += 2
+				continue
+			}
+			scalar, ok := semanticsUnicodeEscape(value, offset+2)
+			if !ok {
+				return false
+			}
+			if scalar >= 0xd800 && scalar <= 0xdbff {
+				if offset+12 > len(value) || value[offset+6] != '\\' || value[offset+7] != 'u' {
+					return false
+				}
+				low, lowOK := semanticsUnicodeEscape(value, offset+8)
+				if !lowOK || low < 0xdc00 || low > 0xdfff {
+					return false
+				}
+				offset += 12
+				continue
+			}
+			if scalar >= 0xdc00 && scalar <= 0xdfff {
+				return false
+			}
+			offset += 6
+		default:
+			_, size := utf8.DecodeRune(value[offset:])
+			offset += size
+		}
+	}
+	return !inString
+}
+
 func semanticsUnreserved(value byte) bool {
 	return value >= 'a' && value <= 'z' || value >= 'A' && value <= 'Z' ||
 		value >= '0' && value <= '9' || strings.ContainsRune("-._~", rune(value))
@@ -306,25 +374,52 @@ func semanticsRemoveDotSegments(path string) (string, *semanticFailure) {
 	return canonical, nil
 }
 
+func semanticsIPv4Component(value string) (uint64, bool) {
+	base, digits := 10, value
+	if strings.HasPrefix(value, "0x") {
+		base, digits = 16, value[2:]
+	} else if len(value) > 1 && value[0] == '0' {
+		base = 8
+	}
+	if digits == "" {
+		return 0, false
+	}
+	for _, character := range []byte(digits) {
+		if !(character >= '0' && character <= '9' ||
+			base == 16 && character >= 'a' && character <= 'f') ||
+			base == 8 && character > '7' {
+			return 0, false
+		}
+	}
+	parsed, err := strconv.ParseUint(digits, base, 64)
+	return parsed, err == nil
+}
+
 func semanticsIPv4Literal(host string) bool {
 	parts := strings.Split(host, ".")
-	allDecimal := true
-	for _, part := range parts {
-		if part == "" {
+	if len(parts) < 1 || len(parts) > 4 {
+		return false
+	}
+	values := make([]uint64, len(parts))
+	for index, part := range parts {
+		value, ok := semanticsIPv4Component(part)
+		if !ok {
 			return false
 		}
-		for _, character := range []byte(part) {
-			if character < '0' || character > '9' {
-				allDecimal = false
-				break
-			}
+		values[index] = value
+	}
+	limits := [][]uint64{
+		{0xffffffff},
+		{0xff, 0xffffff},
+		{0xff, 0xff, 0xffff},
+		{0xff, 0xff, 0xff, 0xff},
+	}[len(values)-1]
+	for index, value := range values {
+		if value > limits[index] {
+			return false
 		}
 	}
-	if allDecimal {
-		return true
-	}
-	return len(parts) == 1 && strings.HasPrefix(host, "0x") &&
-		strings.Trim(host[2:], "0123456789abcdef") == ""
+	return true
 }
 
 type semanticsQueryField struct {
@@ -629,6 +724,9 @@ func semanticsAttributeHidden(source string) (bool, *semanticFailure) {
 func semanticsHasVisibleContent(value any) (bool, *semanticFailure) {
 	html, ok := value.(string)
 	if !ok {
+		return false, semanticsRejected("invalid_projection")
+	}
+	if !utf8.ValidString(html) {
 		return false, semanticsRejected("invalid_projection")
 	}
 	if len([]byte(html)) > semanticsMaxHTMLBytes || semanticsHTMLControlInvalid(html) {
@@ -1334,6 +1432,9 @@ func ProjectSemantics(caseValue map[string]any) ProjectedResult {
 	if !ok || caseID == "" {
 		return semanticsStopped("invalid-case", semanticsRejected("invalid_projection"))
 	}
+	if err := semanticsValidateJSON(caseValue); err != nil {
+		return semanticsStopped(caseID, semanticsRejected("invalid_projection"))
+	}
 	if len(caseValue) != 3 && len(caseValue) != 4 {
 		return semanticsStopped(caseID, semanticsRejected("invalid_projection"))
 	}
@@ -1365,15 +1466,21 @@ func ProjectSemantics(caseValue map[string]any) ProjectedResult {
 	if failure != nil {
 		return semanticsStopped(caseID, failure)
 	}
+	protocolAccepted, protocolOK := preconditions["protocol_accepted"].(bool)
+	terminalStatus, terminalOK := preconditions["terminal_status"].(string)
+	eligibleForCommit, eligibleOK := preconditions["eligible_for_commit"].(bool)
+	batchesComplete, batchesOK := preconditions["batches_complete"].(bool)
 	privacyStatus, privacyOK := preconditions["privacy_status"].(string)
+	if !protocolOK || !terminalOK || !eligibleOK || !batchesOK || !privacyOK {
+		return semanticsStopped(caseID, semanticsRejected("invalid_projection"))
+	}
 	if privacyStatus == "rejected" {
 		return semanticsStopped(caseID, semanticsFailure("privacy_rejected"))
 	}
-	if !privacyOK || privacyStatus != "unchanged" && privacyStatus != "transformed" {
+	if privacyStatus != "unchanged" && privacyStatus != "transformed" {
 		return semanticsStopped(caseID, semanticsRejected("invalid_projection"))
 	}
-	if preconditions["protocol_accepted"] != true || preconditions["terminal_status"] != "success" ||
-		preconditions["eligible_for_commit"] != true || preconditions["batches_complete"] != true {
+	if !protocolAccepted || terminalStatus != "success" || !eligibleForCommit || !batchesComplete {
 		return semanticsStopped(caseID, semanticsFailure("ineligible_history"))
 	}
 	if existing, present := input["existing_projected_effects"]; present {

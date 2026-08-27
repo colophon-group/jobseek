@@ -58,6 +58,13 @@ var semanticsRequiredCaseIDs = []string{
 	"safe_url_leading_zero_default_port",
 	"invalid_projection_malformed_url",
 	"invalid_localized_description",
+	"visible_unterminated_space_entities",
+	"invalid_unicode_surrogate",
+	"invalid_metadata_null",
+	"invalid_localized_description_null",
+	"invalid_url_legacy_mixed_components",
+	"safe_url_numeric_overrange_dns",
+	"invalid_precondition_type",
 }
 
 type semanticsManifest struct {
@@ -68,12 +75,44 @@ type semanticsManifest struct {
 
 func loadSemanticsManifest(t *testing.T) semanticsManifest {
 	t.Helper()
-	var manifest semanticsManifest
-	readJSONUseNumber(
-		t,
+	content, err := os.ReadFile(
 		filepath.Join(contractRoot(t), "fixtures", "semantics", "manifest.json"),
-		&manifest,
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw struct {
+		Cases           []json.RawMessage `json:"cases"`
+		Format          string            `json:"format"`
+		RequiredCaseIDs []string          `json:"required_case_ids"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(content))
+	decoder.UseNumber()
+	if err := decoder.Decode(&raw); err != nil {
+		t.Fatal(err)
+	}
+	manifest := semanticsManifest{
+		Cases:           make([]map[string]any, 0, len(raw.Cases)),
+		Format:          raw.Format,
+		RequiredCaseIDs: raw.RequiredCaseIDs,
+	}
+	for _, rawCase := range raw.Cases {
+		unicodeValid := semanticsRawJSONUnicodeValid(rawCase)
+		var item map[string]any
+		decoder := json.NewDecoder(bytes.NewReader(rawCase))
+		decoder.UseNumber()
+		if err := decoder.Decode(&item); err != nil {
+			t.Fatal(err)
+		}
+		if !unicodeValid {
+			input, ok := item["input"].(map[string]any)
+			if !ok {
+				t.Fatal("invalid-Unicode case has no input object")
+			}
+			input["__invalid_unicode_json"] = string([]byte{0xff})
+		}
+		manifest.Cases = append(manifest.Cases, item)
+	}
 	return manifest
 }
 
@@ -105,8 +144,8 @@ func TestSemanticsRequiredIDsAreHardCodedAndComplete(t *testing.T) {
 	if !reflect.DeepEqual(manifest.RequiredCaseIDs, semanticsRequiredCaseIDs) {
 		t.Fatalf("manifest required IDs differ\n got: %v\nwant: %v", manifest.RequiredCaseIDs, semanticsRequiredCaseIDs)
 	}
-	if len(manifest.Cases) != 43 {
-		t.Fatalf("semantics case count = %d, want 43", len(manifest.Cases))
+	if len(manifest.Cases) != 50 {
+		t.Fatalf("semantics case count = %d, want 50", len(manifest.Cases))
 	}
 	seen := map[string]bool{}
 	for index, item := range manifest.Cases {
@@ -159,8 +198,8 @@ func TestSemanticsManifestMatchesEveryExactGoResultAndDigest(t *testing.T) {
 			}
 		})
 	}
-	if projected != 15 {
-		t.Fatalf("projected result count = %d, want 15", projected)
+	if projected != 17 {
+		t.Fatalf("projected result count = %d, want 17", projected)
 	}
 }
 
@@ -198,14 +237,20 @@ func TestSemanticsProjectedTargetsRemainAtomicallyAligned(t *testing.T) {
 
 func TestSemanticsVisibilityURLAndLocaleProfiles(t *testing.T) {
 	visibility := map[string]bool{
-		"<p>Synthetic role</p>":                         true,
-		"&copy;":                                        true,
-		"&nbsp;&#160;&#xA0;\u200b":                      false,
-		"<script>visible-looking</script>":              false,
-		"<style>visible-looking</style>":                false,
-		"<template>visible-looking</template>":          false,
-		"<noscript>visible-looking</noscript>":          false,
-		"<p hidden>visible-looking</p>":                 false,
+		"<p>Synthetic role</p>":                true,
+		"&copy;":                               true,
+		"&nbsp;&#160;&#xA0;\u200b":             false,
+		"&nbsp;":                               false,
+		"&#160;":                               false,
+		"&#xA0;":                               false,
+		"&nbsp":                                true,
+		"&#160":                                true,
+		"&#xA0":                                true,
+		"<script>visible-looking</script>":     false,
+		"<style>visible-looking</style>":       false,
+		"<template>visible-looking</template>": false,
+		"<noscript>visible-looking</noscript>": false,
+		"<p hidden>visible-looking</p>":        false,
 		"<p aria-hidden=TRUE>visible-looking</p>":       false,
 		"<p style='DISPLAY: none'>hidden text</p>":      false,
 		"<p style='visibility: hidden'>hidden text</p>": false,
@@ -259,6 +304,9 @@ func TestSemanticsURLProfileRejectsTheClosedInvalidSet(t *testing.T) {
 		"https://jobs.example.invalid:65536/role",
 		"http://127.0.0.1/role",
 		"http://0177.0.0.1/role",
+		"http://0x7f.0.0.1/role",
+		"http://127.0x0.0.1/role",
+		"http://2130706433/role",
 		"https://jobs.example.invalid/../../role",
 		"https://jöbs.example.invalid/role",
 		"https://jobs.example.invalid./role",
@@ -280,6 +328,8 @@ func TestSemanticsURLProfileRejectsTheClosedInvalidSet(t *testing.T) {
 		"HTTP://JOBS.EXAMPLE.INVALID:080/role":   "http://jobs.example.invalid/role",
 		"HTTPS://JOBS.EXAMPLE.INVALID:0443/role": "https://jobs.example.invalid/role",
 		"https://jobs.example.invalid/%7erole":   "https://jobs.example.invalid/~role",
+		"https://4294967296/role":                "https://4294967296/role",
+		"https://256.0.0.1/role":                 "https://256.0.0.1/role",
 	}
 	for source, expected := range valid {
 		actual, failure := semanticsCanonicalURL(source)
@@ -298,10 +348,56 @@ func TestSemanticsConsistencyRepairCasesHaveClosedOutcomes(t *testing.T) {
 	}{
 		{"invalid_projection_malformed_url", "invalid_projection", "rejected"},
 		{"invalid_localized_description", "invalid_visible_content", "suppressed"},
+		{"invalid_unicode_surrogate", "invalid_projection", "rejected"},
+		{"invalid_metadata_null", "invalid_projection", "rejected"},
+		{"invalid_localized_description_null", "invalid_projection", "rejected"},
 	} {
 		result := ProjectSemantics(semanticsCaseByID(t, manifest, expectation.caseID))
 		if len(result) != 3 || result["reason"] != expectation.reason || result["status"] != expectation.status {
 			t.Fatalf("case %q result = %v", expectation.caseID, result)
+		}
+	}
+}
+
+func TestSemanticsMalformedUnicodeRejectsBeforeHTML(t *testing.T) {
+	if semanticsRawJSONUnicodeValid([]byte(`{"value":"\ud800"}`)) {
+		t.Fatal("raw lone-surrogate escape passed preflight")
+	}
+	if !semanticsRawJSONUnicodeValid([]byte(`{"value":"\ud83d\ude00"}`)) {
+		t.Fatal("valid surrogate pair failed preflight")
+	}
+	manifest := loadSemanticsManifest(t)
+	item := semanticsCaseByID(t, manifest, "safe_scrape_projected")
+	input := item["input"].(map[string]any)
+	content := input["result"].(map[string]any)["content"].(map[string]any)
+	content["description_html"] = string([]byte{0xff})
+	result := ProjectSemantics(item)
+	if len(result) != 3 || result["reason"] != "invalid_projection" || result["status"] != "rejected" {
+		t.Fatalf("invalid UTF-8 result = %v", result)
+	}
+	if _, failure := semanticsHasVisibleContent(string([]byte{0xff})); failure == nil ||
+		failure.reason != "invalid_projection" || !failure.rejected {
+		t.Fatalf("invalid UTF-8 HTML failure = %v", failure)
+	}
+}
+
+func TestSemanticsEveryPreconditionTypePrecedesSuppression(t *testing.T) {
+	invalid := map[string]any{
+		"protocol_accepted":   "true",
+		"terminal_status":     true,
+		"eligible_for_commit": json.Number("1"),
+		"batches_complete":    json.Number("1"),
+		"privacy_status":      false,
+	}
+	for field, value := range invalid {
+		manifest := loadSemanticsManifest(t)
+		item := semanticsCaseByID(t, manifest, "safe_scrape_projected")
+		preconditions := item["input"].(map[string]any)["preconditions"].(map[string]any)
+		preconditions["privacy_status"] = "rejected"
+		preconditions[field] = value
+		result := ProjectSemantics(item)
+		if len(result) != 3 || result["reason"] != "invalid_projection" || result["status"] != "rejected" {
+			t.Fatalf("precondition %q result = %v", field, result)
 		}
 	}
 }

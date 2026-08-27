@@ -16,7 +16,7 @@ The shared manifest is exactly:
 ```
 
 `format` is `jobseek.runtime.semantics-corpus/v1`. `required_case_ids` and
-`cases` contain the same 43 independently hard-coded IDs in the same order.
+`cases` contain the same 50 independently hard-coded IDs in the same order.
 Each case is exactly `{id, subject_kind, input, expected}`; `id` is a nonempty
 string and `subject_kind` is `scrape`, `monitor`, `browser`, or an unknown
 string used to prove rejection. All corpus values are synthetic.
@@ -43,7 +43,9 @@ forms are closed in `projection.md`.
 Projection requires `protocol_accepted=true`, `terminal_status="success"`,
 `eligible_for_commit=true`, `batches_complete=true`, and privacy status
 `unchanged` or `transformed`. `privacy_status="rejected"` suppresses before
-subject data is inspected. Any other failed protocol/history precondition
+subject data is inspected, but only after all five fields pass their declared
+type checks. Any malformed precondition type rejects as `invalid_projection`.
+Any other failed protocol/history precondition
 suppresses as `ineligible_history`; an unknown privacy status rejects as
 `invalid_projection`. Protocol acceptance and privacy transformation are
 preconditions, not operations reimplemented by this lane.
@@ -95,9 +97,10 @@ A complete element subtree is also ignored when it has a `hidden` attribute,
 and ASCII case-folding to `display:none`, `visibility:hidden`, or
 `visibility:collapse`.
 
-After all other tags are removed, only `&nbsp;`, a decimal reference to
-U+00A0, and a hexadecimal reference to U+00A0 are decoded as non-breaking
-space. Other entity text remains literal and is therefore visible when it
+After all other tags are removed, only semicolon-terminated `&nbsp;`, a
+semicolon-terminated decimal reference to U+00A0, and a semicolon-terminated
+hexadecimal reference to U+00A0 are decoded as non-breaking space. Other
+entity text, including semicolon-less forms, remains literal and is visible when it
 contains a visible scalar. The non-visible set is exactly U+0009–U+000D,
 U+0020, U+0085, U+00A0, U+1680, U+2000–U+200B, U+2028, U+2029, U+202F,
 U+205F, U+3000, and U+FEFF. Any other valid scalar is visible.
@@ -114,7 +117,12 @@ A canonical URL is an absolute `http` or `https` URL. Reject `invalid_url` for
 an empty value; any Unicode whitespace or control scalar; backslash; missing
 host; userinfo; malformed percent escape; port zero or a port above 65535;
 non-ASCII, percent-encoded, trailing-dot, or invalid DNS hosts; and IPv4,
-IPv6, or legacy numeric IP spellings. `localhost` is allowed. Other hosts are
+IPv6, or legacy numeric IP spellings. Legacy numeric parsing follows the
+closed inet_aton 1–4 component form: each component is decimal, leading-zero
+octal, or `0x` hexadecimal, with 8/24, 8/8/16, or 8/8/8/8 bit allocation for
+2, 3, or 4 components and a 32-bit limit for one component. A numeric-looking
+spelling that does not parse within those rules may remain an ASCII DNS name.
+`localhost` is allowed. Other hosts are
 ASCII DNS names of at most 253 bytes whose nonempty labels are at most 63 bytes,
 contain only ASCII letters, digits, or hyphen, and do not start or end with
 hyphen.
@@ -162,6 +170,8 @@ A job object may contain only `title`, `description_html`, `locations`,
 `employment_type`, `job_location_type`, `date_posted`, `base_salary`,
 `language`, `localizations`, `skills`, and `extensions`. A localization may
 contain only required `locale` and optional `title` and `description_html`.
+When localized `description_html` is present it must be a string; JSON null is
+not absence and rejects as `invalid_projection`.
 `locations`, when present, is exactly `{values: [string, ...]}`. Values not
 normalized above remain the already protocol-valid, lane-4-safe JSON values
 supplied by the candidate input.
@@ -207,7 +217,7 @@ substituted for these hashes.
 ## Conformance boundary
 
 The manifest, checker, and Python/Go assertions are pure, deterministic,
-standard-library, and zero-network. Both languages hard-code all 43 required
+standard-library, and zero-network. Both languages hard-code all 50 required
 IDs and compare complete result objects, ordered arrays, aligned effects, and
 all digest bytes. This candidate surface does not integrate with `ws`, Murmur,
 MCP, a crawler runtime, an artifact resolver, a database, Redis, a queue, or a

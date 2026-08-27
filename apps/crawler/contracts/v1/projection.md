@@ -41,6 +41,9 @@ A monitor request has the same identity rule and exactly `target_url`,
 }
 ```
 
+When `metadata_updates` is present it must be an object. JSON null is not
+absence and rejects as `invalid_projection`.
+
 Each discovered job is exactly `{url, content}`. Each batch is exactly
 `{checked_count: uint64, complete: boolean, result}`. Every batch must have
 `complete=true`. The checked counts are summed only to enforce uint64 safety;

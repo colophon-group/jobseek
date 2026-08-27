@@ -68,6 +68,13 @@ CASE_IDS = (
     "safe_url_leading_zero_default_port",
     "invalid_projection_malformed_url",
     "invalid_localized_description",
+    "visible_unterminated_space_entities",
+    "invalid_unicode_surrogate",
+    "invalid_metadata_null",
+    "invalid_localized_description_null",
+    "invalid_url_legacy_mixed_components",
+    "safe_url_numeric_overrange_dns",
+    "invalid_precondition_type",
 )
 REASONS = frozenset(
     {
@@ -278,15 +285,42 @@ def _remove_dot_segments(path: str) -> str:
     return canonical or "/"
 
 
+def _legacy_ip_component(value: str) -> int | None:
+    if value.startswith("0x"):
+        digits = value[2:]
+        base = 16
+        allowed = "0123456789abcdef"
+    elif len(value) > 1 and value.startswith("0"):
+        digits = value
+        base = 8
+        allowed = "01234567"
+    else:
+        digits = value
+        base = 10
+        allowed = "0123456789"
+    if not digits or any(character not in allowed for character in digits):
+        return None
+    try:
+        return int(digits, base)
+    except ValueError:
+        return None
+
+
 def _legacy_ip_literal(host: str) -> bool:
-    labels = host.split(".")
-    if all(label.isascii() and label.isdigit() for label in labels):
-        return True
-    return (
-        len(labels) == 1
-        and host.startswith("0x")
-        and all(character in "0123456789abcdef" for character in host[2:])
-    )
+    components = host.split(".")
+    if not 1 <= len(components) <= 4:
+        return False
+    parsed = [_legacy_ip_component(component) for component in components]
+    if any(component is None for component in parsed):
+        return False
+    values = [int(component) for component in parsed if component is not None]
+    limits = {
+        1: (0xFFFFFFFF,),
+        2: (0xFF, 0xFFFFFF),
+        3: (0xFF, 0xFF, 0xFFFF),
+        4: (0xFF, 0xFF, 0xFF, 0xFF),
+    }[len(values)]
+    return all(value <= limit for value, limit in zip(values, limits, strict=True))
 
 
 def canonical_url(value: object) -> str:
@@ -458,6 +492,30 @@ class _VisibilityTokenizer(HTMLParser):
             self.visible = True
 
 
+def _preserve_unterminated_space_references(value: str) -> str:
+    output: list[str] = []
+    index = 0
+    references = ("&nbsp", "&#160", "&#xa0")
+    while index < len(value):
+        matched = next(
+            (
+                reference
+                for reference in references
+                if _ascii_lower(value[index : index + len(reference)]) == reference
+                and value[index + len(reference) : index + len(reference) + 1] != ";"
+            ),
+            None,
+        )
+        if matched is None:
+            output.append(value[index])
+            index += 1
+            continue
+        output.append("&amp;")
+        output.append(value[index + 1 : index + len(matched)])
+        index += len(matched)
+    return "".join(output)
+
+
 def _preflight_html(value: str) -> None:
     if len(value.encode("utf-8")) > MAX_HTML_BYTES:
         _fail("invalid_visible_content")
@@ -492,6 +550,7 @@ def _preflight_html(value: str) -> None:
 def has_visible_content(value: object) -> bool:
     if not isinstance(value, str):
         _fail("invalid_projection", rejected=True)
+    _validate_json(value)
     _preflight_html(value)
     for character in value:
         scalar = ord(character)
@@ -503,7 +562,7 @@ def has_visible_content(value: object) -> bool:
             _fail("invalid_visible_content")
     tokenizer = _VisibilityTokenizer()
     try:
-        tokenizer.feed(value)
+        tokenizer.feed(_preserve_unterminated_space_references(value))
         tokenizer.close()
     except Exception:
         _fail("invalid_visible_content")
@@ -554,8 +613,8 @@ def canonical_job(value: object) -> dict[str, Any]:
         locale = canonical_locale(source_locale)
         canonical = copy.deepcopy(localization)
         canonical["locale"] = locale
-        description = canonical.get("description_html")
-        if description is not None:
+        if "description_html" in canonical:
+            description = canonical["description_html"]
             if not isinstance(description, str):
                 _fail("invalid_projection", rejected=True)
             descriptions.append(description)
@@ -792,11 +851,13 @@ def _project_monitor(input_value: dict[str, Any]) -> dict[str, Any]:
         truncated = truncated or result["truncated"]
         if "new_sitemap_url" in result:
             sitemaps.append(canonical_url(result["new_sitemap_url"]))
-        metadata = result.get("metadata_updates")
-        if metadata is not None and not isinstance(metadata, dict):
-            _fail("invalid_projection", rejected=True)
-        if isinstance(metadata, dict):
+        if "metadata_updates" in result:
+            metadata = result["metadata_updates"]
+            if not isinstance(metadata, dict):
+                _fail("invalid_projection", rejected=True)
             canonical_json(metadata)
+        else:
+            metadata = None
         metadata_sequence.append(metadata)
     if len(set(sitemaps)) > 1:
         _fail("canonical_collision")
@@ -846,6 +907,7 @@ def project_case(case_value: object) -> dict[str, Any]:
             case_id = raw_id
         else:
             _fail("invalid_projection", rejected=True)
+        _validate_json(case_value)
         subject_kind = case_value.get("subject_kind")
         input_value = case_value.get("input")
         if not isinstance(input_value, dict):
@@ -873,7 +935,15 @@ def project_case(case_value: object) -> dict[str, Any]:
                 }
             ),
         )
-        privacy_status = precondition.get("privacy_status")
+        privacy_status = precondition["privacy_status"]
+        if (
+            not isinstance(precondition["protocol_accepted"], bool)
+            or not isinstance(precondition["terminal_status"], str)
+            or not isinstance(precondition["eligible_for_commit"], bool)
+            or not isinstance(precondition["batches_complete"], bool)
+            or not isinstance(privacy_status, str)
+        ):
+            _fail("invalid_projection", rejected=True)
         if privacy_status == "rejected":
             _fail("privacy_rejected")
         if privacy_status not in {"unchanged", "transformed"}:
@@ -1717,6 +1787,92 @@ def make_cases() -> list[dict[str, Any]]:
                 },
             },
         ),
+        _case(
+            "visible_unterminated_space_entities",
+            "scrape",
+            {
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-unterminated-entities",
+                    "request_id": "req-unterminated-entities",
+                    "source_url": "https://jobs.example.invalid/openings/unterminated-entities",
+                },
+                "result": {
+                    "content": _job(
+                        "Synthetic Unterminated Entities",
+                        "&nbsp &#160 &#xA0",
+                    )
+                },
+            },
+        ),
+        _case(
+            "invalid_unicode_surrogate",
+            "scrape",
+            {
+                "preconditions": _preconditions(),
+                "request": {"source_url": "https://jobs.example.invalid/openings/surrogate"},
+                "result": {"content": _job("Synthetic Invalid Unicode", "\ud800")},
+            },
+        ),
+        _case(
+            "invalid_metadata_null",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {"target_url": monitor_url},
+                "result": {**_monitor_result(), "metadata_updates": None},
+            },
+        ),
+        _case(
+            "invalid_localized_description_null",
+            "scrape",
+            {
+                "preconditions": _preconditions(),
+                "request": {"source_url": "https://jobs.example.invalid/openings/null-localized"},
+                "result": {
+                    "content": {
+                        "description_html": "<p>Visible base description.</p>",
+                        "extensions": [],
+                        "localizations": [{"description_html": None, "locale": "en"}],
+                        "skills": [],
+                        "title": "Synthetic Null Localization",
+                    }
+                },
+            },
+        ),
+        _case(
+            "invalid_url_legacy_mixed_components",
+            "scrape",
+            {
+                "preconditions": _preconditions(),
+                "request": {"source_url": "http://0x7f.0.0.1/openings/mixed-ip"},
+                "result": {"content": scrape_job},
+            },
+        ),
+        _case(
+            "safe_url_numeric_overrange_dns",
+            "scrape",
+            {
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-numeric-dns",
+                    "request_id": "req-numeric-dns",
+                    "source_url": "https://4294967296/openings/numeric-dns",
+                },
+                "result": {"content": scrape_job},
+            },
+        ),
+        _case(
+            "invalid_precondition_type",
+            "scrape",
+            {
+                "preconditions": {
+                    **_preconditions(),
+                    "privacy_status": "rejected",
+                    "protocol_accepted": "true",
+                },
+            },
+        ),
     ]
     actual_ids = tuple(item["id"] for item in cases)
     if actual_ids != CASE_IDS:
@@ -1730,7 +1886,15 @@ def manifest_bytes() -> bytes:
         "format": "jobseek.runtime.semantics-corpus/v1",
         "required_case_ids": list(CASE_IDS),
     }
-    return canonical_json(manifest) + b"\n"
+    return (
+        json.dumps(
+            manifest,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("ascii")
+        + b"\n"
+    )
 
 
 def validate_manifest(manifest: object) -> list[dict[str, Any]]:
