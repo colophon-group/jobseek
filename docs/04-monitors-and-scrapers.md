@@ -67,6 +67,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `comeet` | Rich | skip | Comeet hosted data and Careers API |
 | `computrabajo` | URL-only | json-ld | Computrabajo country employer profiles with explicit totals and bounded pagination |
 | `curately` | Rich | skip | Curately tenant-scoped public search API with complete contractor job data |
+| `cvwarehouse` | Rich | skip | CVWarehouse hosted boards with localized embedded job details |
 | `deel` | Rich | skip | Deel ATS |
 | `dvinci` | Rich | skip | d.vinci ATS |
 | `earcu` | Rich | skip | eArcu live-vacancy XML feeds on branded career sites |
