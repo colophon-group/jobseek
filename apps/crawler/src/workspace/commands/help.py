@@ -1444,6 +1444,11 @@ inline — Single-Page Extraction (rich)
                  Bounded regex matching extracted titles to omit. Use this for
                  mixed opportunity pages that publish non-employment entries
                  such as calls for tender alongside jobs.
+    exclude_description_regex
+                 Bounded regex matching the normalized visible description
+                 text to omit. Use this for unpublished placeholder content so
+                 a role becomes discoverable as soon as its description is
+                 replaced with substantive text.
     valid_through_regex
                  Optional regex with a capture group used to read a deadline
                  from the extracted description. A description deadline takes

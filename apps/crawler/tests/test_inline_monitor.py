@@ -1096,6 +1096,45 @@ async def test_discover_excludes_non_job_cards_by_regex_and_continues():
 
 
 @pytest.mark.asyncio
+async def test_discover_excludes_placeholder_description_without_suppressing_title():
+    metadata = {
+        "item_boundary_tag": "h5",
+        "steps": [
+            {"tag": "h5", "field": "title"},
+            {"tag": "p", "field": "description", "html": True, "to_end": True},
+        ],
+        "exclude_description_regex": r"^More details to come[.]",
+    }
+    placeholder = """
+    <h5>Program Manager</h5>
+    <p>More details to come.</p>
+    <h2>Apply Now</h2><p>Upload Resume</p>
+    """
+    substantive = """
+    <h5>Program Manager</h5>
+    <p>Lead cross-functional product delivery and customer programs.</p>
+    """
+
+    assert (
+        await discover(
+            {"board_url": "https://example.com/careers", "metadata": metadata},
+            _FakeClient(placeholder),
+        )
+        == []
+    )
+
+    jobs = await discover(
+        {"board_url": "https://example.com/careers", "metadata": metadata},
+        _FakeClient(substantive),
+    )
+
+    assert [job.title for job in jobs] == ["Program Manager"]
+    assert jobs[0].description == (
+        "<p>Lead cross-functional product delivery and customer programs.</p>"
+    )
+
+
+@pytest.mark.asyncio
 async def test_discover_fetch_contains_fails_closed_when_item_marker_drifts():
     board = {
         "board_url": "https://example.com/opportunities",
@@ -1460,6 +1499,21 @@ async def test_discover_rejects_invalid_exclude_title_regex(value):
     }
 
     with pytest.raises(ValueError, match="exclude_title_regex"):
+        await discover(board, _FakeClient("<h3>Engineer</h3>"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["", "(", 123, "x" * 2_049])
+async def test_discover_rejects_invalid_exclude_description_regex(value):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "steps": [{"tag": "h3", "field": "title"}],
+            "exclude_description_regex": value,
+        },
+    }
+
+    with pytest.raises(ValueError, match="exclude_description_regex"):
         await discover(board, _FakeClient("<h3>Engineer</h3>"))
 
 
