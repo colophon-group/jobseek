@@ -304,11 +304,13 @@ _JOB_LOCATION_TYPE_MAP: dict[str, str] = {
     "à distance": "remote",
     "travail à distance": "remote",
     "hybride": "hybrid",
+    "travail à distance possible": "hybrid",
+    "télétravail partiel": "hybrid",
+    # Dutch
     "gedeeltelijk afstandswerk": "hybrid",
     "afstandswerk mogelijk": "hybrid",
     "volledig afstandswerk": "remote",
     "geen afstandswerk": "onsite",
-    "télétravail partiel": "hybrid",
     # Italian
     "in sede": "onsite",
     "in ufficio": "onsite",

@@ -531,6 +531,7 @@ class TestNormalizeJobLocationType:
             ("teilweise remote", "hybrid"),
             ("flexibel", "hybrid"),
             ("Hybride", "hybrid"),
+            ("Travail à distance possible", "hybrid"),
             ("Ibrido", "hybrid"),
             ("Gedeeltelijk afstandswerk", "hybrid"),
             ("Afstandswerk mogelijk", "hybrid"),

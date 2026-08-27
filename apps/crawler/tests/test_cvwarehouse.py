@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import httpx
 import pytest
 
 from src.core.monitors import DiscoveredJob
-from src.core.monitors.cvwarehouse import _section_from_page, can_handle, discover
+from src.core.monitors.cvwarehouse import (
+    _parse_locale_page,
+    _section_from_page,
+    can_handle,
+    discover,
+)
 
 BOARD_URL = "https://acme.cvw.io/?lang=nl-BE"
 SECTION = "a4c5d125-8de6-c54b-64df-1502274510e7"
@@ -90,12 +98,36 @@ async def test_discovers_all_locales_and_deduplicates_job_ids() -> None:
     assert first.employment_type == "Voltijds"
     assert first.job_location_type == "Gedeeltelijk afstandswerk"
     assert first.language == "nl"
+    assert first.url == "https://acme.cvw.io/?job=101"
     assert first.metadata == {
         "job_id": "101",
         "work_type": "Bediende",
         "work_schedule": ["Voltijds"],
         "brand": ["Acme"],
     }
+
+
+def test_source_url_is_stable_across_locale_and_title_query_variants() -> None:
+    nl_job = _parse_locale_page(
+        _locale_page("nl-BE", [("102", "Project Engineer", "Gent")]),
+        f"https://acme.cvw.io/?lang=nl-BE&section={SECTION}",
+    )[0]
+    fr_job = _parse_locale_page(
+        _locale_page("fr-FR", [("102", "Ingénieur de projet", "Gand")]),
+        f"https://acme.cvw.io/?lang=fr-FR&section={SECTION}",
+    )[0]
+
+    assert nl_job.url == fr_job.url == "https://acme.cvw.io/?job=102"
+
+
+def test_company_pr_monitor_allowlist_is_sorted_and_contains_cvwarehouse() -> None:
+    script = (Path(__file__).parents[3] / ".github" / "scripts" / "label-pr.sh").read_text()
+    match = re.search(r"^VALID_MONITOR_TYPES='([^']+)'$", script, re.MULTILINE)
+
+    assert match is not None
+    monitor_types = match.group(1).split("|")
+    assert monitor_types == sorted(monitor_types)
+    assert "cvwarehouse" in monitor_types
 
 
 async def test_advertised_count_mismatch_fails_closed() -> None:
