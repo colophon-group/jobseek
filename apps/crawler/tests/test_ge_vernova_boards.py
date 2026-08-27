@@ -31,7 +31,7 @@ def test_ge_vernova_uses_one_ordered_multi_site_board() -> None:
     }
 
 
-def test_ge_vernova_metadata_has_provenance_and_staged_assets() -> None:
+def test_ge_vernova_metadata_has_provenance_and_finalized_assets() -> None:
     with (DATA_DIR / "companies.csv").open(newline="") as handle:
         company = next(row for row in csv.DictReader(handle) if row["slug"] == "ge-vernova")
 
@@ -42,5 +42,12 @@ def test_ge_vernova_metadata_has_provenance_and_staged_assets() -> None:
         "https://www.linkedin.com/company/gevernova",
         "https://twitter.com/gevernova",
     ]
-    assert (DATA_DIR / "images/ge-vernova/logo.png").is_file()
-    assert (DATA_DIR / "images/ge-vernova/icon.png").is_file()
+    assert company["logo_url"] == (
+        "https://jobseek-assets.colophon-group.org/companies/ge-vernova/"
+        "logo-72353845345fab1ba3030abc7bb96ec66314481b083824cda33825009c1baefa.png"
+    )
+    assert company["icon_url"] == (
+        "https://jobseek-assets.colophon-group.org/companies/ge-vernova/"
+        "icon-33211cd3376b315b255129aa6b18a436c928bec7ffeae1b31a049a7e37361ca1.webp"
+    )
+    assert not (DATA_DIR / "images/ge-vernova").exists()
