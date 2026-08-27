@@ -28,6 +28,10 @@ class ApiSnifferDomUnavailableError(RuntimeError):
     """The page cannot safely run API-sniffer fallback interactions."""
 
 
+class ApiSnifferItemValidationError(ValueError):
+    """A strict API item list contained a non-object member."""
+
+
 # ---------------------------------------------------------------------------
 # Transport abstraction
 # ---------------------------------------------------------------------------
@@ -908,7 +912,12 @@ def detect_size_param(url: str, post_data: str | None) -> tuple[str, str, int] |
     return None
 
 
-def extract_items(data: object, target_path: str) -> list[dict]:
+def extract_items(
+    data: object,
+    target_path: str,
+    *,
+    require_object_items: bool = False,
+) -> list[dict]:
     """Extract the job array from a parsed JSON response."""
     # Resolve the configured expression first.  ``find_arrays`` can only
     # describe literal list nodes, so JMESPath projections such as
@@ -921,6 +930,16 @@ def extract_items(data: object, target_path: str) -> list[dict]:
 
         resolved = data if target_path == "$" else resolve_path(data, target_path)
         if isinstance(resolved, list):
+            if require_object_items:
+                invalid_index = next(
+                    (index for index, item in enumerate(resolved) if not isinstance(item, dict)),
+                    None,
+                )
+                if invalid_index is not None:
+                    raise ApiSnifferItemValidationError(
+                        "api_sniffer required identity list contains a non-object item "
+                        f"at index {invalid_index}"
+                    )
             return [item for item in resolved if isinstance(item, dict)]
         # A configured path is authoritative. Missing/null/non-list data is
         # an empty page, not permission to ingest an unrelated response array.
@@ -1408,12 +1427,15 @@ async def paginate_all(
     max_pages: int,
     *,
     item_projector: ItemProjector | None = None,
+    require_object_items: bool = False,
 ) -> list[dict]:
     """Fetch all pages of a paginated API using the given transport function.
 
     ``item_projector`` is applied as each page arrives.  This lets callers
     discard unused fields before thousands of response objects accumulate in
     memory while preserving pagination decisions based on the original page.
+    When ``require_object_items`` is enabled, every raw list member must be an
+    object before projection or filtering on every fetched page.
     """
     pag = result.pagination
     ex = result.candidate.exchange
@@ -1456,7 +1478,11 @@ async def paginate_all(
             headers,
             fetch_body,
         )
-        items = extract_items(data, result.candidate.json_path)
+        items = extract_items(
+            data,
+            result.candidate.json_path,
+            require_object_items=require_object_items,
+        )
         if len(items) < target:
             log.warning(
                 "api_sniff.cumulative_limit_gap",
@@ -1483,7 +1509,11 @@ async def paginate_all(
 
         try:
             data = await fetch_fn(ex.method, probe_url, headers, probe_body)
-            probe_items = extract_items(data, result.candidate.json_path)
+            probe_items = extract_items(
+                data,
+                result.candidate.json_path,
+                require_object_items=require_object_items,
+            )
             if len(probe_items) > page_size:
                 log.debug(
                     "api_sniff.page_size_increased",
@@ -1507,6 +1537,8 @@ async def paginate_all(
                     result.total_count = new_total
                 if pag.style == "offset":
                     pag.increment = page_size
+        except ApiSnifferItemValidationError:
+            raise
         except Exception:
             log.debug("api_sniff.page_size_probe_failed", exc_info=True)
 
@@ -1550,7 +1582,11 @@ async def paginate_all(
         # is still detected via the empty-page / partial-page branches
         # below.
         data = await _fetch_page_with_retry(fetch_fn, ex.method, fetch_url, headers, fetch_body)
-        items = extract_items(data, result.candidate.json_path)
+        items = extract_items(
+            data,
+            result.candidate.json_path,
+            require_object_items=require_object_items,
+        )
 
         if not items:
             empty_count += 1

@@ -2863,6 +2863,7 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
         "include": {"provider.owner": ["Internal"]},
         "exclude": {"attributes.country": ["USA"]},
         "exclude_regex": {"provider.name": ["^External(?: Agency)?$"]},
+        "require_regex": {"provider.apply_id": "^[0-9a-f-]{36}$"},
         "dedupe_by": ["provider.tenant_id", "provider.apply_id"]
       },
       "pagination": {
@@ -2904,6 +2905,10 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      matching scalar or list values are omitted.
                      ``exclude_regex`` maps item paths to bounded regular-
                      expression lists and omits matching scalar or list values.
+                     ``require_regex`` maps item paths to bounded regular
+                     expressions. Every item remaining in scope must carry a
+                     non-empty string that fully matches, otherwise the monitor
+                     fails before deduplication or empty-result handling.
                      ``dedupe_by`` is a list of stable identifier
                      paths and retains the first item for each complete,
                      non-empty compound identity. Items missing any identity
@@ -2931,7 +2936,8 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      client's cookies. Example:
                        {"fields": {"nonce": "data-nonce=\\\"([^\\\"]+)\\\""}}
     empty_response   Optional mapping of response paths to exact scalar values
-                     that authoritatively identify a successful empty result.
+                     or an exact ``[]`` empty-list marker that authoritatively
+                     identify a successful empty result.
                      When configured, a missing job list fails unless all
                      markers match. Example:
                        {"status": 201, "label": "No offer available"}

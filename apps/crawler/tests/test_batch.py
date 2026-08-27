@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import csv
 import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import asyncpg
+import httpx
 import pytest
 from playwright.async_api import Error as PlaywrightError
 
@@ -51,7 +54,7 @@ from src.batch import (
     process_scrape_batch,
 )
 from src.core.location_resolve import LocationResolver, ResolvedLocation
-from src.core.monitor import MonitorResult, _apply_url_allowlist
+from src.core.monitor import MonitorResult, _apply_url_allowlist, monitor_one
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
 from src.processing.board import BoardMonitorResult, _fetch_diff_batch
@@ -439,6 +442,116 @@ class TestProcessOneBoard:
             - before
             == 1
         )
+        mock_get_redis.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            pytest.param({"total": 0}, id="missing-jobs-even-with-zero-total"),
+            pytest.param({"jobs": [], "total": False}, id="boolean-false-total"),
+            pytest.param({"jobs": [], "total": 0.0}, id="floating-zero-total"),
+            pytest.param(
+                {"jobs": [{"title": "Missing identity"}], "total": 1},
+                id="missing-viewkey",
+            ),
+            pytest.param(
+                {
+                    "jobs": [{"viewkey": "not-a-provider-uuid", "title": "Bad identity"}],
+                    "total": 1,
+                },
+                id="invalid-viewkey",
+            ),
+            pytest.param(
+                {
+                    "jobs": [
+                        {
+                            "viewkey": "6F811874-A6D0-48F5-9D6B-57C369861D2A",
+                            "title": "Uppercase UUID alias",
+                        }
+                    ],
+                    "total": 1,
+                },
+                id="noncanonical-uppercase-viewkey",
+            ),
+            pytest.param(
+                {
+                    "jobs": [
+                        {
+                            "viewkey": "6f811874-a6d0-48f5-9d6b-57c369861d2a",
+                            "title": "Valid row",
+                        },
+                        None,
+                    ],
+                    "total": 2,
+                },
+                id="mixed-non-object-row",
+            ),
+        ],
+    )
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_fenaco_schema_loss_records_failure_without_empty_or_delist(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        payload,
+        mock_pool,
+        mock_http,
+    ):
+        """Provider schema or identity loss must fail before empty-run bookkeeping."""
+        boards_path = Path(__file__).resolve().parents[1] / "data" / "boards.csv"
+        with boards_path.open(newline="", encoding="utf-8") as handle:
+            row = next(row for row in csv.DictReader(handle) if row["board_slug"] == "fenaco-main")
+        config = json.loads(row["monitor_config"])
+
+        async def schema_loss_stream(*_args, **_kwargs):
+            transport = httpx.MockTransport(
+                lambda request: httpx.Response(200, json=payload, request=request)
+            )
+            async with httpx.AsyncClient(transport=transport) as client:
+                result = await monitor_one(
+                    "https://jobs.fenaco.com/",
+                    "api_sniffer",
+                    config,
+                    client,
+                )
+            yield result
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = schema_loss_stream
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
+        board = _mock_board(
+            board_slug="fenaco-main",
+            board_url="https://jobs.fenaco.com/",
+            crawler_type="api_sniffer",
+            metadata=config,
+        )
+
+        with (
+            patch(
+                "src.processing.board._retire_canonicalized_provider_identities",
+                new_callable=AsyncMock,
+            ) as migration,
+            patch(
+                "src.processing.board._mark_gone_with_guards",
+                new_callable=AsyncMock,
+            ) as gone_guards,
+        ):
+            outcome = await _process_one_board(board, pool, mock_http)
+
+        assert outcome.status == "failed"
+        failure_calls = [
+            call for call in conn.fetchrow.await_args_list if call.args[0] == _RECORD_FAILURE
+        ]
+        assert len(failure_calls) == 1
+        fetch_sqls = [call.args[0] for call in conn.fetch.await_args_list]
+        assert _RECORD_EMPTY_CHECK not in fetch_sqls
+        assert _DELIST_BOARD_POSTINGS not in fetch_sqls
+        migration.assert_not_awaited()
+        gone_guards.assert_not_awaited()
         mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")

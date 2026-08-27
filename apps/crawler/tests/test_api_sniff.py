@@ -10,6 +10,7 @@ import pytest
 
 from src.shared.api_sniff import (
     ApiSnifferDomUnavailableError,
+    ApiSnifferItemValidationError,
     ArrayCandidate,
     Exchange,
     JobListResult,
@@ -869,6 +870,13 @@ class TestExtractItems:
     def test_no_arrays(self):
         assert extract_items({"key": "value"}, "key") == []
 
+    def test_required_object_items_rejects_mixed_raw_list(self):
+        data = {"jobs": [{"id": 1}, None]}
+
+        assert extract_items(data, "jobs") == [{"id": 1}]
+        with pytest.raises(ApiSnifferItemValidationError, match="non-object.*index 1"):
+            extract_items(data, "jobs", require_object_items=True)
+
 
 class TestFetchFactories:
     @pytest.mark.asyncio
@@ -964,6 +972,39 @@ class TestFetchFactories:
 
 
 class TestPaginateAllWithFetchFn:
+    @pytest.mark.asyncio
+    async def test_required_object_items_rejects_paginated_non_object(self):
+        page1_items = [{"id": 1}]
+
+        async def mock_fetch(method, url, headers, body):
+            return {"jobs": [{"id": 2}, None], "total": 3}
+
+        ex = _make_exchange(
+            url="https://example.com/api/jobs?page=1",
+            body={"jobs": page1_items, "total": 3},
+        )
+        pag = PaginationInfo(
+            param_name="page",
+            style="page",
+            start_value=1,
+            increment=1,
+            location="query",
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items),
+            url_field=None,
+            total_count=3,
+            pagination=pag,
+        )
+
+        with pytest.raises(ApiSnifferItemValidationError, match="non-object.*index 1"):
+            await paginate_all(
+                mock_fetch,
+                result,
+                max_pages=5,
+                require_object_items=True,
+            )
+
     @pytest.mark.asyncio
     async def test_advertised_total_complete_on_first_page_makes_no_extra_request(self):
         page1_items = [{"id": i} for i in range(68)]

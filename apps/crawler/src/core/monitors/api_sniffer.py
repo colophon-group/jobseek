@@ -212,6 +212,8 @@ _HTML_LANG_RE = re.compile(r"<html[^>]+\blang=[\"'](?P<lang>[a-z]{2})(?:[-_][A-Z
 _PROSPECTIVE_HOST = "ohws.prospective.ch"
 _PROSPECTIVE_CAREERCENTER_PATH = re.compile(r"^/public/v[12]/careercenter/(?P<medium_id>\d+)/?$")
 _PROSPECTIVE_PAGE_SIZE = 100
+_PROSPECTIVE_DETECTION_RETRIES = 5
+_PROSPECTIVE_DETECTION_BASE_DELAY = 0.5
 _LUMESSE_API_PATH = "/fo/rest/jobs"
 _LUMESSE_BOARD_PATH_RE = re.compile(r"/lumesse_jobsearch\.html/?$", re.I)
 
@@ -327,8 +329,13 @@ async def _detect_prospective_config(
         html = await fetch_text_page_with_retry(
             client,
             url,
-            retries=3,
-            base_delay=0.25,
+            # Branded CareerCenter hosts can emit short 403/503 bursts while
+            # their public medium API remains healthy. Detection is a bounded
+            # setup-time request, so give those bursts enough time to recover
+            # before falling through to the browser-based generic sniffer.
+            retries=_PROSPECTIVE_DETECTION_RETRIES,
+            base_delay=_PROSPECTIVE_DETECTION_BASE_DELAY,
+            retryable_statuses={403},
             require_nonempty=True,
             max_chars=250_000,
             log_event="api_sniffer.prospective_page_backoff",
@@ -1179,19 +1186,21 @@ def _validated_item_filter(
     dict[str, frozenset[str]],
     dict[str, frozenset[str]],
     dict[str, tuple[re.Pattern[str], ...]],
+    dict[str, re.Pattern[str]],
     tuple[str, ...],
     _DedupePreference | None,
 ]:
     """Validate an optional post-pagination item scope and stable dedupe key."""
     value = config.get("item_filter")
     if value is None:
-        return {}, {}, {}, (), None
+        return {}, {}, {}, {}, (), None
     if not isinstance(value, dict) or not value:
         raise ValueError("api_sniffer item_filter must be a non-empty mapping")
     if set(value) - {
         "include",
         "exclude",
         "exclude_regex",
+        "require_regex",
         "dedupe_by",
         "dedupe_preference",
     }:
@@ -1283,6 +1292,28 @@ def _validated_item_filter(
                 "api_sniffer item_filter exclude_regex paths and patterns must be valid"
             ) from exc
 
+    require_regex = value.get("require_regex") or {}
+    if not isinstance(require_regex, dict) or len(require_regex) > _MAX_ITEM_FILTER_FIELDS:
+        raise ValueError("api_sniffer item_filter.require_regex must be a bounded mapping")
+    normalized_required_regex: dict[str, re.Pattern[str]] = {}
+    for path, pattern in require_regex.items():
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError(
+                "api_sniffer item_filter require_regex paths must be non-empty strings"
+            )
+        if not isinstance(pattern, str) or not pattern or len(pattern) > _MAX_REFRESH_PATTERN_CHARS:
+            raise ValueError(
+                "api_sniffer item_filter require_regex patterns must be bounded non-empty strings"
+            )
+        normalized_path = path.strip()
+        try:
+            extract_field({}, normalized_path)
+            normalized_required_regex[normalized_path] = re.compile(pattern)
+        except Exception as exc:
+            raise ValueError(
+                "api_sniffer item_filter require_regex paths and patterns must be valid"
+            ) from exc
+
     dedupe_by = value.get("dedupe_by")
     if dedupe_by is None:
         dedupe_paths: tuple[str, ...] = ()
@@ -1300,7 +1331,6 @@ def _validated_item_filter(
             extract_field({}, dedupe_path)
         except Exception as exc:
             raise ValueError("api_sniffer item_filter.dedupe_by path must be valid") from exc
-
     preference_value = value.get("dedupe_preference")
     preference: _DedupePreference | None = None
     if preference_value is not None:
@@ -1361,9 +1391,24 @@ def _validated_item_filter(
             tuple(preferred_values),
             normalized_fallback,
         )
-    if not normalized_include and not normalized and not normalized_regex and not dedupe_paths:
-        raise ValueError("api_sniffer item_filter must include, exclude, or deduplicate items")
-    return normalized_include, normalized, normalized_regex, dedupe_paths, preference
+    if (
+        not normalized_include
+        and not normalized
+        and not normalized_regex
+        and not normalized_required_regex
+        and not dedupe_paths
+    ):
+        raise ValueError(
+            "api_sniffer item_filter must include, exclude, validate, or deduplicate items"
+        )
+    return (
+        normalized_include,
+        normalized,
+        normalized_regex,
+        normalized_required_regex,
+        dedupe_paths,
+        preference,
+    )
 
 
 def _validated_pagination_convergence(
@@ -1776,14 +1821,15 @@ def _apply_item_filter(
         dict[str, frozenset[str]],
         dict[str, frozenset[str]],
         dict[str, tuple[re.Pattern[str], ...]],
+        dict[str, re.Pattern[str]],
         tuple[str, ...],
         _DedupePreference | None,
     ],
     advertised_total: int | None,
 ) -> tuple[list[dict], int | None]:
     """Apply an intentional source partition without masking upstream truncation."""
-    include, exclude, exclude_regex, dedupe_by, dedupe_preference = item_filter
-    if not include and not exclude and not exclude_regex and not dedupe_by:
+    include, exclude, exclude_regex, require_regex, dedupe_by, dedupe_preference = item_filter
+    if not include and not exclude and not exclude_regex and not require_regex and not dedupe_by:
         return items, advertised_total
 
     original_count = len(items)
@@ -1818,6 +1864,15 @@ def _apply_item_filter(
                     break
             else:
                 scoped.append(item)
+
+    for item in scoped:
+        for path, pattern in require_regex.items():
+            value = extract_field(item, path)
+            if not isinstance(value, str) or not value or pattern.fullmatch(value) is None:
+                raise ValueError(
+                    "api_sniffer item_filter.require_regex rejected missing or invalid "
+                    f"{path!r} identity"
+                )
 
     if dedupe_by:
         grouped: dict[tuple[str, ...], list[dict]] = {}
@@ -2201,9 +2256,10 @@ def _matches_explicit_empty_response(data: object, config: object) -> bool:
     for path, expected in config.items():
         if not isinstance(path, str) or not path or len(path) > 256:
             raise ValueError("empty_response paths must contain 1-256 characters")
-        if isinstance(expected, (dict, list)):
-            raise ValueError("empty_response expected values must be JSON scalars")
-        if resolve_path(data, path) != expected:
+        if isinstance(expected, dict) or (isinstance(expected, list) and expected != []):
+            raise ValueError("empty_response expected values must be JSON scalars or the [] marker")
+        actual = resolve_path(data, path)
+        if type(actual) is not type(expected) or actual != expected:
             return False
     return True
 
@@ -2243,16 +2299,17 @@ async def _discover_http(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
-    pagination_convergence = _validated_pagination_convergence(config, item_filter[3])
+    pagination_convergence = _validated_pagination_convergence(config, item_filter[4])
     url_field_match = _validated_url_field_match(config, pagination_convergence)
     item_filter_paths = [
         *item_filter[0],
         *item_filter[1],
         *item_filter[2],
         *item_filter[3],
+        *item_filter[4],
     ]
-    if item_filter[4] is not None:
-        item_filter_paths.extend(item_filter[4].fallback_by)
+    if item_filter[5] is not None:
+        item_filter_paths.extend(item_filter[5].fallback_by)
     if pagination_convergence is not None:
         item_filter_paths.extend(pagination_convergence.identity_paths)
         item_filter_paths.extend(pagination_convergence.stable_fields)
@@ -2347,7 +2404,15 @@ async def _discover_http(
         if arrays:
             best_path, best_items = pick_best_array(arrays, api_url)
             json_path = best_path
-            content = best_items
+            # ``find_arrays`` intentionally filters out non-dict members for
+            # candidate scoring.  Identity-gated boards must validate the raw
+            # provider list instead, or malformed members disappear before
+            # ``extract_items`` can fail closed.
+            content = (
+                (data if best_path == "$" else resolve_path(data, best_path))
+                if item_filter[3]
+                else best_items
+            )
             log.info("api_sniffer.auto_json_path", path=json_path, items=len(best_items))
         else:
             html_hits = find_html_strings(data)
@@ -2458,7 +2523,12 @@ async def _discover_http(
     if isinstance(content, list):
         from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult, PaginationInfo
 
-        items = [item for item in content if isinstance(item, dict)]
+        require_object_items = bool(item_filter[3])
+        items = extract_items(
+            content,
+            "$",
+            require_object_items=require_object_items,
+        )
         if not items and empty_response is not None:
             if not isinstance(data, dict) or not _matches_explicit_empty_response(
                 data, empty_response
@@ -2545,6 +2615,7 @@ async def _discover_http(
                     job_result,
                     page_cap,
                     item_projector=item_projector,
+                    require_object_items=require_object_items,
                 )
                 total = job_result.total_count
         elif item_projector:
@@ -2777,16 +2848,17 @@ async def _discover_replay(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
-    pagination_convergence = _validated_pagination_convergence(config, item_filter[3])
+    pagination_convergence = _validated_pagination_convergence(config, item_filter[4])
     url_field_match = _validated_url_field_match(config, pagination_convergence)
     item_filter_paths = [
         *item_filter[0],
         *item_filter[1],
         *item_filter[2],
         *item_filter[3],
+        *item_filter[4],
     ]
-    if item_filter[4] is not None:
-        item_filter_paths.extend(item_filter[4].fallback_by)
+    if item_filter[5] is not None:
+        item_filter_paths.extend(item_filter[5].fallback_by)
     if pagination_convergence is not None:
         item_filter_paths.extend(pagination_convergence.identity_paths)
         item_filter_paths.extend(pagination_convergence.stable_fields)
@@ -2928,13 +3000,22 @@ async def _discover_replay(
         # Some APIs (e.g. TalentClue) return {"jobs": {"<id>": {...}}} rather
         # than {"jobs": [{...}]}; coerce before extract_items.
         items: list[dict] | None = None
+        require_object_items = bool(item_filter[3])
         if config.get("json_path_values") and json_path:
             resolved = resolve_path(data, json_path)
             if isinstance(resolved, dict):
-                items = [v for v in resolved.values() if isinstance(v, dict)]
+                items = extract_items(
+                    list(resolved.values()),
+                    "$",
+                    require_object_items=require_object_items,
+                )
 
         if items is None:
-            items = extract_items(data, json_path)
+            items = extract_items(
+                data,
+                json_path,
+                require_object_items=require_object_items,
+            )
         if pagination_convergence:
             if json_path == "$":
                 configured_items = data
@@ -3044,6 +3125,7 @@ async def _discover_replay(
                     job_result,
                     max_pg,
                     item_projector=item_projector,
+                    require_object_items=require_object_items,
                 )
                 total_count = job_result.total_count
         elif item_projector:

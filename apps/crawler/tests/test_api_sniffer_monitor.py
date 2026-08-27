@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from inspect import isawaitable
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import pytest
 
+from src.core.monitor import monitor_one
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.api_sniffer import (
     ApiSnifferFallbackError,
@@ -24,6 +26,7 @@ from src.core.monitors.api_sniffer import (
     _extract_rich,
     _extract_urls_from_template,
     _lumesse_config_overrides,
+    _matches_explicit_empty_response,
     _matches_url_field_contract,
     _materially_below_advertised_total,
     _paginate_until_converged,
@@ -43,6 +46,240 @@ def _board_row(board_slug: str) -> dict[str, str]:
     boards_path = Path(__file__).resolve().parents[1] / "data" / "boards.csv"
     with boards_path.open(newline="", encoding="utf-8") as handle:
         return next(row for row in csv.DictReader(handle) if row["board_slug"] == board_slug)
+
+
+async def _monitor_fenaco_payload(payload: object):
+    config = json.loads(_board_row("fenaco-main")["monitor_config"])
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, json=payload, request=request)
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        return await monitor_one(
+            "https://jobs.fenaco.com/",
+            "api_sniffer",
+            config,
+            client,
+        )
+
+
+@pytest.mark.asyncio
+async def test_fenaco_uses_stable_viewkey_identity_across_locales_and_titles():
+    config = json.loads(_board_row("fenaco-main")["monitor_config"])
+    viewkey = "6f811874-a6d0-48f5-9d6b-57c369861d2a"
+    result = await _monitor_fenaco_payload(
+        {
+            "jobs": [
+                {
+                    "viewkey": viewkey,
+                    "title": "Leiterin Verkauf",
+                    "language": "de",
+                    "links": {
+                        "directlink": (
+                            f"https://jobs.fenaco.com/offene-stellen/leiterin-verkauf/{viewkey}"
+                        )
+                    },
+                },
+                {
+                    "viewkey": viewkey,
+                    "title": "Responsable des ventes",
+                    "language": "fr",
+                    "links": {
+                        "directlink": (
+                            "https://jobs.fenaco.com/postes-vacants/responsable-des-ventes/"
+                            f"{viewkey}"
+                        )
+                    },
+                },
+            ],
+            "total": 2,
+        }
+    )
+
+    canonical_url = f"https://jobs.fenaco.com/offene-stellen/_/{viewkey}"
+    assert result.urls == {canonical_url}
+    assert result.jobs_by_url is not None
+    assert set(result.jobs_by_url) == {canonical_url}
+    assert result.security_filtered_count == 0
+    assert not result.truncated
+    assert re.fullmatch(config["url_allowlist"], canonical_url)
+    assert not re.fullmatch(
+        config["url_allowlist"],
+        "https://jobs.fenaco.com/offene-stellen/_/not-a-provider-uuid",
+    )
+
+
+@pytest.mark.asyncio
+async def test_fenaco_accepts_only_authoritative_empty_jobs_envelope():
+    result = await _monitor_fenaco_payload({"jobs": [], "total": 0})
+
+    assert result.urls == set()
+    assert result.jobs_by_url == {}
+    assert result.security_filtered_count == 0
+    assert not result.truncated
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({"total": 0}, id="missing-jobs-even-with-zero-total"),
+        pytest.param({"jobs": [], "total": False}, id="boolean-false-total"),
+        pytest.param({"jobs": [], "total": 0.0}, id="floating-zero-total"),
+        pytest.param(
+            {
+                "jobs": [
+                    {
+                        "title": "Title-bearing URL must not become identity",
+                        "links": {
+                            "directlink": (
+                                "https://jobs.fenaco.com/offene-stellen/title-bearing-url/"
+                                "6f811874-a6d0-48f5-9d6b-57c369861d2a"
+                            )
+                        },
+                    }
+                ],
+                "total": 1,
+            },
+            id="missing-viewkey",
+        ),
+        pytest.param(
+            {
+                "jobs": [
+                    {
+                        "viewkey": "not-a-provider-uuid",
+                        "title": "Invalid identity",
+                    }
+                ],
+                "total": 1,
+            },
+            id="invalid-viewkey",
+        ),
+        pytest.param(
+            {
+                "jobs": [
+                    {
+                        "viewkey": "6F811874-A6D0-48F5-9D6B-57C369861D2A",
+                        "title": "Uppercase UUID alias",
+                    }
+                ],
+                "total": 1,
+            },
+            id="noncanonical-uppercase-viewkey",
+        ),
+        pytest.param(
+            {
+                "jobs": [
+                    {
+                        "viewkey": "6f811874-a6d0-48f5-9d6b-57c369861d2a",
+                        "title": "Valid row",
+                    },
+                    None,
+                ],
+                "total": 2,
+            },
+            id="mixed-non-object-row",
+        ),
+    ],
+)
+async def test_fenaco_schema_or_identity_loss_fails_before_normalization(payload):
+    with pytest.raises(ValueError):
+        await _monitor_fenaco_payload(payload)
+
+
+def test_fenaco_config_requires_identity_and_provider_boundary():
+    config = json.loads(_board_row("fenaco-main")["monitor_config"])
+
+    assert "url_filter" not in config
+    assert "url_allowlist" in config
+    assert config["empty_response"] == {"jobs": [], "total": 0}
+    assert config["item_filter"]["dedupe_by"] == ["viewkey"]
+    assert re.fullmatch(
+        config["item_filter"]["require_regex"]["viewkey"],
+        "6f811874-a6d0-48f5-9d6b-57c369861d2a",
+    )
+    assert not re.fullmatch(
+        config["item_filter"]["require_regex"]["viewkey"],
+        "6F811874-A6D0-48F5-9D6B-57C369861D2A",
+    )
+    assert not re.fullmatch(
+        config["url_allowlist"],
+        "https://jobs.fenaco.com/offene-stellen/_/6F811874-A6D0-48F5-9D6B-57C369861D2A",
+    )
+
+
+@pytest.mark.asyncio
+async def test_fenaco_paginated_non_object_identity_fails_closed():
+    config = json.loads(_board_row("fenaco-main")["monitor_config"])
+    viewkey = "6f811874-a6d0-48f5-9d6b-57c369861d2a"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        offset = int(request.url.params.get("offset", "0"))
+        jobs = [{"viewkey": viewkey, "title": "Valid row"}] if offset == 0 else [None]
+        return httpx.Response(200, json={"jobs": jobs, "total": 2}, request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="non-object.*index 0"):
+            await monitor_one(
+                "https://jobs.fenaco.com/",
+                "api_sniffer",
+                config,
+                client,
+            )
+
+
+def _auto_detected_mixed_payload() -> dict[str, list[dict[str, str] | None]]:
+    return {
+        "jobs": [
+            {"id": "101", "title": "One"},
+            {"id": "102", "title": "Two"},
+            {"id": "103", "title": "Three"},
+            None,
+        ]
+    }
+
+
+async def _monitor_auto_detected_mixed_payload(*, strict: bool):
+    config = {
+        "api_url": "https://api.example.com/jobs",
+        "url_template": "https://jobs.example.com/jobs/{id}",
+        "fields": {"title": "title"},
+    }
+    if strict:
+        config["item_filter"] = {"require_regex": {"id": r"[0-9]+"}}
+
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            json=_auto_detected_mixed_payload(),
+            request=request,
+        )
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        return await monitor_one(
+            "https://jobs.example.com/",
+            "api_sniffer",
+            config,
+            client,
+        )
+
+
+@pytest.mark.asyncio
+async def test_auto_detected_initial_array_rejects_non_object_with_required_identity():
+    with pytest.raises(ValueError, match="non-object.*index 3"):
+        await _monitor_auto_detected_mixed_payload(strict=True)
+
+
+@pytest.mark.asyncio
+async def test_auto_detected_initial_array_preserves_non_strict_compatibility():
+    result = await _monitor_auto_detected_mixed_payload(strict=False)
+
+    assert result.urls == {
+        "https://jobs.example.com/jobs/101",
+        "https://jobs.example.com/jobs/102",
+        "https://jobs.example.com/jobs/103",
+    }
+    assert result.jobs_by_url is not None
+    assert len(result.jobs_by_url) == 3
 
 
 def _lumesse_items():
@@ -441,6 +678,24 @@ class TestListExplicitEmptyResponse:
         with pytest.raises(ValueError, match="empty job list"):
             await self._discover(payload)
 
+    def test_exact_empty_list_marker_distinguishes_missing_path(self):
+        markers = {"jobs": [], "total": 0}
+
+        assert _matches_explicit_empty_response({"jobs": [], "total": 0}, markers)
+        assert not _matches_explicit_empty_response({"total": 0}, markers)
+
+    @pytest.mark.parametrize("total", [False, 0.0])
+    def test_empty_scalar_markers_require_exact_json_type(self, total):
+        assert not _matches_explicit_empty_response(
+            {"jobs": [], "total": total},
+            {"jobs": [], "total": 0},
+        )
+
+    @pytest.mark.parametrize("expected", [["unexpected"], {}, {"nested": True}])
+    def test_rejects_structured_nonempty_marker_values(self, expected):
+        with pytest.raises(ValueError, match=r"JSON scalars or the \[\] marker"):
+            _matches_explicit_empty_response({"jobs": expected}, {"jobs": expected})
+
 
 class TestPdfDocumentGate:
     @staticmethod
@@ -694,12 +949,13 @@ class TestProspectiveDetection:
                 }
             ],
         }
+        client = AsyncMock()
 
         with (
             patch(
                 "src.core.monitors.api_sniffer.fetch_text_page_with_retry",
                 AsyncMock(return_value=html),
-            ),
+            ) as fetch_page,
             patch(
                 "src.core.monitors.api_sniffer.http_fetch_with_retry",
                 AsyncMock(return_value=payload),
@@ -707,7 +963,7 @@ class TestProspectiveDetection:
         ):
             config = await _detect_prospective_config(
                 "https://jobs.example.com/",
-                AsyncMock(),
+                client,
             )
 
         assert config is not None
@@ -725,6 +981,16 @@ class TestProspectiveDetection:
         ]
         assert config["items"] == 1
         assert config["total"] == 38
+        fetch_page.assert_awaited_once_with(
+            client,
+            "https://jobs.example.com/",
+            retries=5,
+            base_delay=0.5,
+            retryable_statuses={403},
+            require_nonempty=True,
+            max_chars=250_000,
+            log_event="api_sniffer.prospective_page_backoff",
+        )
         api_url = fetch_api.await_args.args[2]
         assert api_url.startswith("https://ohws.prospective.ch/public/v1/medium/1002787/jobs?")
         assert "lang=fr" in api_url
@@ -1024,6 +1290,39 @@ class TestItemFilter:
         ]
         assert total == 2
 
+    def test_required_regex_validates_in_scope_items_before_deduplication(self):
+        item_filter = _validated_item_filter(
+            {
+                "item_filter": {
+                    "exclude": {"market": ["local"]},
+                    "require_regex": {"viewkey": r"[0-9a-f]{8}"},
+                    "dedupe_by": ["viewkey"],
+                }
+            }
+        )
+
+        scoped, total = _apply_item_filter(
+            [
+                {"market": "local", "viewkey": "invalid"},
+                {"market": "global", "viewkey": "12ab34cd", "locale": "de"},
+                {"market": "global", "viewkey": "12ab34cd", "locale": "fr"},
+            ],
+            item_filter,
+            advertised_total=3,
+        )
+
+        assert scoped == [{"market": "global", "viewkey": "12ab34cd", "locale": "de"}]
+        assert total == 1
+
+    @pytest.mark.parametrize("item", [{}, {"viewkey": ""}, {"viewkey": "invalid"}])
+    def test_required_regex_rejects_missing_or_invalid_in_scope_identity(self, item):
+        item_filter = _validated_item_filter(
+            {"item_filter": {"require_regex": {"viewkey": r"[0-9a-f]{8}"}}}
+        )
+
+        with pytest.raises(ValueError, match="missing or invalid.*viewkey"):
+            _apply_item_filter([item], item_filter, advertised_total=1)
+
     def test_incomplete_upstream_total_remains_truncated_after_filtering(self):
         item_filter = _validated_item_filter({"item_filter": {"exclude": {"market": ["local"]}}})
 
@@ -1111,6 +1410,60 @@ class TestItemFilter:
         ]
         assert total == 2
 
+    def test_required_identity_and_dedupe_preference_compose(self):
+        item_filter = _validated_item_filter(
+            {
+                "item_filter": {
+                    "require_regex": {"req_id": r"[0-9]{4}"},
+                    "dedupe_by": ["req_id"],
+                    "dedupe_preference": {
+                        "path": "language",
+                        "preferred_values": ["en-us"],
+                        "fallback_by": ["language", "canonical_url"],
+                    },
+                }
+            }
+        )
+
+        scoped, total = _apply_item_filter(
+            [
+                {
+                    "req_id": "1234",
+                    "language": "de-de",
+                    "canonical_url": "https://example.com/1234?lang=de-de",
+                },
+                {
+                    "req_id": "1234",
+                    "language": "en-us",
+                    "canonical_url": "https://example.com/1234?lang=en-us",
+                },
+            ],
+            item_filter,
+            advertised_total=2,
+        )
+
+        assert scoped == [
+            {
+                "req_id": "1234",
+                "language": "en-us",
+                "canonical_url": "https://example.com/1234?lang=en-us",
+            }
+        ]
+        assert total == 1
+
+        with pytest.raises(ValueError, match="missing or invalid.*req_id"):
+            _apply_item_filter(
+                [
+                    {
+                        "req_id": "not-numeric",
+                        "language": "en-us",
+                        "canonical_url": "https://example.com/invalid",
+                    }
+                ],
+                item_filter,
+                advertised_total=1,
+            )
+
     @pytest.mark.parametrize(
         "preference",
         [
@@ -1163,6 +1516,10 @@ class TestItemFilter:
             {"exclude_regex": {"market": []}},
             {"exclude_regex": {"market": ["("]}},
             {"exclude_regex": {"": ["local"]}},
+            {"require_regex": []},
+            {"require_regex": {"viewkey": ""}},
+            {"require_regex": {"viewkey": "("}},
+            {"require_regex": {"": "valid"}},
             {"dedupe_by": ""},
             {"dedupe_by": "stable"},
             {"dedupe_by": []},
