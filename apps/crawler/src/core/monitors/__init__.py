@@ -259,6 +259,10 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
             monitor_type == "smartrecruiters"
             and bool((config or {}).get("canonical_job_id_url_template"))
         )
+        or (
+            monitor_type == "smartrecruiters"
+            and (config or {}).get("canonical_identity") == "job-location-v1"
+        )
         or (monitor_type == "dom" and bool((config or {}).get("rich_rows")))
     )
 

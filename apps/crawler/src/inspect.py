@@ -283,7 +283,16 @@ def validate_csvs() -> list[ValidationError]:
         # with a URL-only monitor leaves descriptions empty silently — see
         # issue #2637 ("Broken descriptions from lazy scraper configurers").
         if scraper_type == "skip" and not configured_rich_rows:
-            is_skip_ok = configured_rich or monitor_type == "personio"
+            mc_obj_skip: dict | None = None
+            if monitor_config:
+                try:
+                    parsed = json.loads(monitor_config)
+                    if isinstance(parsed, dict):
+                        mc_obj_skip = parsed
+                except (json.JSONDecodeError, TypeError):
+                    # Malformed config is validated below; skip eligibility treats it as absent.
+                    pass
+            is_skip_ok = monitor_type == "personio" or is_rich_monitor(monitor_type, mc_obj_skip)
             if not is_skip_ok:
                 errors.append(
                     ValidationError(

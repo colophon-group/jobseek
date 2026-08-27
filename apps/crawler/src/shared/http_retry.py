@@ -16,6 +16,7 @@ which records the run as a failure rather than a partial success.
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 from collections.abc import Awaitable, Callable, Collection, Mapping
 from typing import TYPE_CHECKING, Any, Literal, overload
@@ -288,6 +289,7 @@ async def fetch_json_page_with_retry(
     headers: dict[str, str] | None = None,
     timeout: float | None = None,
     follow_redirects: bool = False,
+    max_bytes: int | None = None,
     retryable_statuses: Collection[int] = (),
     retries: int = 3,
     base_delay: float = 0.5,
@@ -309,6 +311,7 @@ async def fetch_json_page_with_retry(
     headers: dict[str, str] | None = None,
     timeout: float | None = None,
     follow_redirects: bool = False,
+    max_bytes: int | None = None,
     retryable_statuses: Collection[int] = (),
     retries: int = 3,
     base_delay: float = 0.5,
@@ -329,6 +332,7 @@ async def fetch_json_page_with_retry(
     headers: dict[str, str] | None = None,
     timeout: float | None = None,
     follow_redirects: bool = False,
+    max_bytes: int | None = None,
     retryable_statuses: Collection[int] = (),
     retries: int = 3,
     base_delay: float = 0.5,
@@ -345,7 +349,9 @@ async def fetch_json_page_with_retry(
       instead of returning ``None``; callers may add provider-specific
       transient statuses through ``retryable_statuses``;
     - successful JSON responses must decode to *expect_shape* or the page is
-      treated as transient and retried before surfacing.
+      treated as transient and retried before surfacing;
+    - callers may supply ``max_bytes`` to stream the body and abort before
+      buffering more than that many decoded bytes.
     """
     from src.metrics import http_retry_attempts_total, http_retry_host
     from src.shared.tdm import TDMReservedError
@@ -353,6 +359,8 @@ async def fetch_json_page_with_retry(
 
     if method not in ("GET", "POST"):
         raise ValueError(f"unsupported retry method: {method!r}")
+    if max_bytes is not None and max_bytes < 1:
+        raise ValueError("max_bytes must be positive")
 
     host = http_retry_host(url)
     last_exc: BaseException | None = None
@@ -361,7 +369,32 @@ async def fetch_json_page_with_retry(
 
     for attempt in range(retries):
         try:
-            if method == "GET":
+            if max_bytes is not None:
+                request_kwargs: dict[str, Any] = {
+                    "params": params,
+                    "headers": headers,
+                    "timeout": timeout,
+                    "follow_redirects": follow_redirects,
+                }
+                if method == "POST":
+                    request_kwargs["json"] = json_body
+                async with client.stream(method, url, **request_kwargs) as resp:
+                    last_status = resp.status_code
+                    if resp.status_code == 200:
+                        _tdm_check(resp)
+                        body = bytearray()
+                        async for chunk in resp.aiter_bytes():
+                            remaining = (max_bytes + 1) - len(body)
+                            if remaining > 0:
+                                body.extend(chunk[:remaining])
+                            if len(body) > max_bytes:
+                                raise ResponseBodyTooLargeError(url, max_bytes)
+                        excerpt = bytes(body).decode(resp.encoding or "utf-8", errors="replace")
+                        _tdm_check(resp, body_excerpt=excerpt)
+                        data = json.loads(body)
+                    else:
+                        data = None
+            elif method == "GET":
                 resp = await client.get(
                     url,
                     params=params,
@@ -380,8 +413,9 @@ async def fetch_json_page_with_retry(
                 )
             last_status = resp.status_code
             if resp.status_code == 200:
-                _tdm_check(resp)
-                data = resp.json()
+                if max_bytes is None:
+                    _tdm_check(resp)
+                    data = resp.json()
                 if not isinstance(data, expect_shape):
                     raise ValueError(
                         f"JSON page from {url} returned {type(data).__name__}, "
@@ -401,7 +435,7 @@ async def fetch_json_page_with_retry(
                     last_status=resp.status_code,
                     last_location=resp.headers.get("location"),
                 )
-        except (PaginationFetchError, TDMReservedError):
+        except (PaginationFetchError, ResponseBodyTooLargeError, TDMReservedError):
             raise
         except Exception as exc:  # noqa: BLE001 - timeout, network, JSON parse, shape
             last_exc = exc

@@ -677,6 +677,11 @@ def auto_scraper_type(
                 ],
             },
         )
+    if (
+        monitor_type == "smartrecruiters"
+        and (config or {}).get("canonical_identity") == "job-location-v1"
+    ):
+        return ("skip", None)
 
     # oracle_hcm is a rich monitor (returns DiscoveredJob with title/location/date)
     # but needs a scraper for descriptions. The ``enrich`` key in scraper_config
@@ -1070,4 +1075,8 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
             and bool((config or {}).get("canonical_job_id_url_template"))
         )
         or (monitor_type == "dom" and bool((config or {}).get("rich_rows")))
+        or (
+            monitor_type == "smartrecruiters"
+            and (config or {}).get("canonical_identity") == "job-location-v1"
+        )
     )
