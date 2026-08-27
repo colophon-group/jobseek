@@ -729,6 +729,23 @@ async def test_discover_static_identity_requires_scalar_text():
 
 
 @pytest.mark.asyncio
+async def test_discover_static_identity_rejects_overlapping_identity_modes():
+    board = {
+        "board_url": "https://example.com/apprenticeships",
+        "metadata": {
+            "synthetic_identity_field": "provider_identity",
+            "source_identity_selector": "[data-job-id]",
+            "source_identity_attribute": "data-job-id",
+            "source_identity_regex": r"^(\d+)$",
+            "steps": [{"tag": "td", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="cannot be combined with source identity"):
+        await discover(board, _FakeClient("<tr data-job-id='123'><td>Role</td></tr>"))
+
+
+@pytest.mark.asyncio
 async def test_discover_scopes_jobs_between_authoritative_section_markers():
     html = """
     <button>Deadline, 30 April</button>

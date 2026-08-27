@@ -988,6 +988,10 @@ async def discover(
             uses_detail_expansion=uses_detail_expansion,
         )
     )
+    if synthetic_identity_field is not None and source_identity_selector is not None:
+        raise ValueError(
+            "inline synthetic_identity_field cannot be combined with source identity configuration"
+        )
     section_start = _validated_section_boundary(metadata.get("section_start"), name="section_start")
     section_end = _validated_section_boundary(metadata.get("section_end"), name="section_end")
     preserve_single_location = metadata.get("preserve_single_location", False)
