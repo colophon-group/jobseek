@@ -427,6 +427,11 @@ def _build_comment(name: str, metadata: dict) -> str:
         jobs = metadata.get("jobs")
         label = f"Computrabajo employer profile \u2014 company: {company_id}"
         return f"{label}, {jobs} jobs" if jobs is not None else label
+    if name == "cvwarehouse":
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"CVWarehouse hosted board \u2014 {jobs} jobs"
+        return "CVWarehouse hosted board"
     if name == "jobstreet":
         company_id = metadata.get("company_id", "?")
         jobs = metadata.get("jobs")
@@ -909,6 +914,7 @@ from src.core.monitors import (  # noqa: E402
     computrabajo,  # noqa: F401
     cornerstone,  # noqa: F401
     curately,  # noqa: F401
+    cvwarehouse,  # noqa: F401
     darwinbox,  # noqa: F401
     dayforce,  # noqa: F401
     deel,  # noqa: F401

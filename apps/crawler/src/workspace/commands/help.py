@@ -402,6 +402,24 @@ comeet — Comeet hosted data and Careers API monitor
               or "Comeet — API company: X, N jobs"
   Zero jobs?  An empty embedded list or API array is a valid active board."""
 
+MONITOR_CVWAREHOUSE = """\
+cvwarehouse — CVWarehouse hosted careers monitor
+
+  Source:    Hosted tenant pages such as https://acme.cvw.io/
+  Returns:   Full job data from the provider's unfiltered section and embedded
+             detail documents: title, HTML description, location, schedule,
+             remote policy, language, and provider job ID metadata.
+  Scraper:   Not needed. All localized details are embedded in the listing pages.
+  Cap:       10,000 jobs across at most 20 advertised locales.
+
+  Config:    None required. The monitor detects the largest category tile as
+             the unfiltered all-vacancies section and follows every locale.
+             An auto-detected {"section": "..."} may be persisted explicitly.
+
+  Detection: ws probe shows "CVWarehouse hosted board — N jobs".
+  Safety:    Advertised and localized unique-job counts must match; mismatches
+             fail the monitor cycle instead of delisting unseen jobs."""
+
 MONITOR_HIBOB = """\
 hibob — HiBob public career-site monitor
 
@@ -3783,6 +3801,7 @@ MONITOR_CARDS: dict[str, str] = {
     "cnstaff": MONITOR_CNSTAFF,
     "comeet": MONITOR_COMEET,
     "curately": MONITOR_CURATELY,
+    "cvwarehouse": MONITOR_CVWAREHOUSE,
     "deel": MONITOR_DEEL,
     "dvinci": MONITOR_DVINCI,
     "eightfold": MONITOR_EIGHTFOLD,

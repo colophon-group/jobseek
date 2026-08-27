@@ -238,6 +238,20 @@ class TestNormalizeEmploymentTypeGerman:
         assert normalize_employment_type(raw) == "full_or_part"
 
 
+class TestNormalizeEmploymentTypeDutch:
+    @pytest.mark.parametrize("raw", ["Voltijds"])
+    def test_full_time(self, raw):
+        assert normalize_employment_type(raw) == "full_time"
+
+    @pytest.mark.parametrize("raw", ["Deeltijds"])
+    def test_part_time(self, raw):
+        assert normalize_employment_type(raw) == "part_time"
+
+    @pytest.mark.parametrize("raw", ["Stagiair"])
+    def test_internship(self, raw):
+        assert normalize_employment_type(raw) == "internship"
+
+
 class TestNormalizeEmploymentTypeSpanish:
     @pytest.mark.parametrize(
         "raw",
@@ -518,6 +532,10 @@ class TestNormalizeJobLocationType:
             ("flexibel", "hybrid"),
             ("Hybride", "hybrid"),
             ("Ibrido", "hybrid"),
+            ("Gedeeltelijk afstandswerk", "hybrid"),
+            ("Afstandswerk mogelijk", "hybrid"),
+            ("Volledig afstandswerk", "remote"),
+            ("Geen afstandswerk", "onsite"),
             # Welcome to the Jungle remote-policy codes
             ("no", "onsite"),
             ("fulltime", "remote"),

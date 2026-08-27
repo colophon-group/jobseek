@@ -151,6 +151,10 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "voll- oder teilzeit": "full_or_part",
     "voll-/teilzeit": "full_or_part",
     "voll- und teilzeit": "full_or_part",
+    # ── Dutch ───────────────────────────────────────────────────────
+    "voltijds": "full_time",
+    "deeltijds": "part_time",
+    "stagiair": "internship",
     # ── French ───────────────────────────────────────────────────────
     "cdi": "full_time",
     "emploi fixe": "full_time",
@@ -300,6 +304,10 @@ _JOB_LOCATION_TYPE_MAP: dict[str, str] = {
     "à distance": "remote",
     "travail à distance": "remote",
     "hybride": "hybrid",
+    "gedeeltelijk afstandswerk": "hybrid",
+    "afstandswerk mogelijk": "hybrid",
+    "volledig afstandswerk": "remote",
+    "geen afstandswerk": "onsite",
     "télétravail partiel": "hybrid",
     # Italian
     "in sede": "onsite",
