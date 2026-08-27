@@ -185,6 +185,30 @@ def _source_identity(
     return validate_explicit_source_identity(f"{provider}:{tenant}:{str(raw_identity).strip()}")
 
 
+def _validated_url_allowlist(value: object) -> re.Pattern[str] | None:
+    if value is None:
+        return None
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > _MAX_URL_ALLOWLIST_LENGTH
+        or "\x00" in value
+    ):
+        raise ValueError("nextdata url_allowlist must be a bounded regular expression")
+    try:
+        return re.compile(value)
+    except re.error as exc:
+        raise ValueError("nextdata url_allowlist is invalid") from exc
+
+
+def _assert_urls_allowed(
+    jobs: list[DiscoveredJob],
+    url_allowlist: re.Pattern[str],
+) -> None:
+    if any(url_allowlist.fullmatch(job.url) is None for job in jobs):
+        raise ValueError("nextdata discovered a job URL outside its configured allowlist")
+
+
 def _validated_hiring_organization_config(
     metadata: dict,
 ) -> tuple[re.Pattern[str], re.Pattern[str]] | None:
@@ -198,18 +222,9 @@ def _validated_hiring_organization_config(
         or "\x00" in expected
     ):
         raise ValueError("nextdata expected_hiring_organization must be bounded non-empty text")
-    raw_allowlist = metadata.get("url_allowlist")
-    if (
-        not isinstance(raw_allowlist, str)
-        or not raw_allowlist
-        or len(raw_allowlist) > _MAX_URL_ALLOWLIST_LENGTH
-        or "\x00" in raw_allowlist
-    ):
+    url_allowlist = _validated_url_allowlist(metadata.get("url_allowlist"))
+    if url_allowlist is None:
         raise ValueError("nextdata expected_hiring_organization requires a bounded url_allowlist")
-    try:
-        url_allowlist = re.compile(raw_allowlist)
-    except re.error as exc:
-        raise ValueError("nextdata url_allowlist is invalid") from exc
     return re.compile(re.escape(expected.strip())), url_allowlist
 
 
@@ -612,6 +627,9 @@ async def discover(
     source_identity_config = _validated_source_identity_config(metadata.get("source_identity"))
     if source_identity_config is not None and not fields_map:
         raise ValueError("nextdata source_identity requires rich fields")
+    url_allowlist = _validated_url_allowlist(metadata.get("url_allowlist"))
+    if source_identity_config is not None and url_allowlist is None:
+        raise ValueError("nextdata source_identity requires a url_allowlist")
     hiring_organization_config = _validated_hiring_organization_config(metadata)
     render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
@@ -703,6 +721,8 @@ async def discover(
         )
 
     # Cap items
+    if len(items) > MAX_URLS and strict_path:
+        raise ValueError("nextdata strict_path exceeded the safe inventory limit")
     if len(items) > MAX_URLS:
         log.warning("nextdata.truncated", total=len(items), cap=MAX_URLS)
         items = items[:MAX_URLS]
@@ -716,6 +736,8 @@ async def discover(
             base_salary_cfg,
             source_identity_config,
         )
+        if url_allowlist is not None:
+            _assert_urls_allowed(result, url_allowlist)
         if hiring_organization_config is not None:
             result = await _filter_hiring_organization(
                 result,
@@ -765,6 +787,9 @@ async def discover_stream(
     source_identity_config = _validated_source_identity_config(metadata.get("source_identity"))
     if source_identity_config is not None and not fields_map:
         raise ValueError("nextdata source_identity requires rich fields")
+    url_allowlist = _validated_url_allowlist(metadata.get("url_allowlist"))
+    if source_identity_config is not None and url_allowlist is None:
+        raise ValueError("nextdata source_identity requires a url_allowlist")
     hiring_organization_config = _validated_hiring_organization_config(metadata)
     render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
@@ -846,6 +871,8 @@ async def discover_stream(
 
     async def _verified_batch(batch_items: list):
         result = _extract_batch(batch_items)
+        if fields_map and url_allowlist is not None:
+            _assert_urls_allowed(result, url_allowlist)
         if fields_map and hiring_organization_config is not None:
             result = await _filter_hiring_organization(
                 result,

@@ -122,6 +122,21 @@ async def test_hrc_refuses_untrusted_outbound_before_detail_fetch():
 
 
 @pytest.mark.asyncio
+async def test_hrc_identity_contract_requires_an_outbound_allowlist():
+    board = _board()
+    board["metadata"].pop("url_allowlist")
+    transport, requested = _transport(
+        [_offer(600)],
+        {600: "Hôpital Riviera-Chablais"},
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(ValueError, match="source_identity requires a url_allowlist"):
+            await discover(board, client)
+
+    assert requested == []
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("offer_id", [True, None, "", "offer 600"])
 async def test_hrc_rejects_missing_or_unsafe_provider_identity(offer_id):
     offer = _offer(600)
