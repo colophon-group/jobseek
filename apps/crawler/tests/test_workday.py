@@ -12,7 +12,9 @@ from src.core.monitors.workday import (
     _api_base,
     _api_list_stream,
     _api_list_url,
+    _configured_facet_union,
     _configured_sites,
+    _configured_split_facet,
     _cross_site_path_key,
     _discover_sites,
     _fetch_job_count,
@@ -813,10 +815,213 @@ class TestGroupSplitFacetValues:
         ]
 
 
+class TestConfiguredFacetUnion:
+    def test_accepts_bounded_ordered_facets_with_independent_coverage(self):
+        metadata = {
+            "facet_union": {
+                "facets": ["primaryLocation", "jobFamilyGroup"],
+                "coverage_facet": "workerSubType",
+            }
+        }
+
+        assert _configured_facet_union(metadata) == (
+            ("primaryLocation", "jobFamilyGroup"),
+            "workerSubType",
+        )
+
+    @pytest.mark.parametrize(
+        "metadata",
+        [
+            {"facet_union": []},
+            {"facet_union": {"facets": ["one"], "coverage_facet": "coverage"}},
+            {
+                "facet_union": {
+                    "facets": ["one", "one"],
+                    "coverage_facet": "coverage",
+                }
+            },
+            {
+                "facet_union": {
+                    "facets": ["bad facet", "two"],
+                    "coverage_facet": "coverage",
+                }
+            },
+            {
+                "facet_union": {
+                    "facets": ["one", "two"],
+                    "coverage_facet": "one",
+                }
+            },
+            {
+                "facet_union": {
+                    "facets": ["one", "two"],
+                    "coverage_facet": "coverage",
+                    "unexpected": True,
+                }
+            },
+            {
+                "split_facet": "country",
+                "facet_union": {
+                    "facets": ["one", "two"],
+                    "coverage_facet": "coverage",
+                },
+            },
+        ],
+    )
+    def test_invalid_or_ambiguous_config_fails_closed(self, metadata):
+        with pytest.raises(ValueError, match="Workday facet_union"):
+            _configured_facet_union(metadata)
+
+    def test_absent_union_preserves_existing_single_facet_contract(self):
+        metadata = {"split_facet": "country"}
+
+        assert _configured_facet_union(metadata) is None
+        assert _configured_split_facet(metadata) == "country"
+
+
 class TestInventoryCompleteness:
     def test_allows_only_small_live_inventory_drift(self):
         assert not _materially_below_advertised_total(990, 1000)
         assert _materially_below_advertised_total(989, 1000)
+
+    async def test_facet_union_recovers_both_null_gaps_with_stable_url_winner(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 4)
+        facets = [
+            {
+                "facetParameter": "primaryLocation",
+                "values": [{"id": "location", "count": 3}],
+            },
+            {
+                "facetParameter": "jobFamilyGroup",
+                "values": [{"id": "family", "count": 3}],
+            },
+            {
+                "facetParameter": "workerSubType",
+                "values": [{"id": "all", "count": 4}],
+            },
+        ]
+
+        async def fake_paginate(list_url, body, client, *, cap_abort=0):
+            applied = body.get("appliedFacets")
+            if applied is None:
+                return ["/first"], 4, facets
+            if "primaryLocation" in applied:
+                # Complete later than the second facet to prove request timing
+                # cannot change which configured path wins.
+                await asyncio.sleep(0.01)
+                return (
+                    [
+                        "/job/A/Location-only_JR-1",
+                        "/job/A/Preferred-title_JR-2",
+                        "/job/A/Preferred-title_JR-3",
+                    ],
+                    3,
+                    [],
+                )
+            return (
+                [
+                    "/job/B/Translated-title_JR-2",
+                    "/job/B/Translated-title_JR-3",
+                    "/job/B/Family-only_JR-4",
+                ],
+                3,
+                [],
+            )
+
+        monkeypatch.setattr(wd_module, "_paginate_query", fake_paginate)
+
+        async with httpx.AsyncClient() as client:
+            batches = [
+                batch
+                async for batch in _api_list_stream(
+                    "co",
+                    "wd1",
+                    "Site",
+                    client,
+                    facet_union=(("primaryLocation", "jobFamilyGroup"), "workerSubType"),
+                )
+            ]
+
+        assert batches == [
+            [
+                "/job/A/Location-only_JR-1",
+                "/job/A/Preferred-title_JR-2",
+                "/job/A/Preferred-title_JR-3",
+                "/job/B/Family-only_JR-4",
+            ]
+        ]
+
+        monkeypatch.setattr(wd_module, "MAX_JOBS", 3)
+        async with httpx.AsyncClient() as client:
+            truncated_batches = [
+                batch
+                async for batch in _api_list_stream(
+                    "co",
+                    "wd1",
+                    "Site",
+                    client,
+                    facet_union=(("primaryLocation", "jobFamilyGroup"), "workerSubType"),
+                )
+            ]
+
+        assert truncated_batches == [
+            [
+                "/job/A/Location-only_JR-1",
+                "/job/A/Preferred-title_JR-2",
+                "/job/A/Preferred-title_JR-3",
+            ],
+            ["__workday_truncated__"],
+        ]
+
+    async def test_facet_union_fails_when_a_posting_lacks_both_query_facets(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 4)
+        facets = [
+            {
+                "facetParameter": "primaryLocation",
+                "values": [{"id": "location", "count": 3}],
+            },
+            {
+                "facetParameter": "jobFamilyGroup",
+                "values": [{"id": "family", "count": 3}],
+            },
+            {
+                "facetParameter": "workerSubType",
+                "values": [{"id": "all", "count": 5}],
+            },
+        ]
+
+        async def fake_paginate(list_url, body, client, *, cap_abort=0):
+            applied = body.get("appliedFacets")
+            if applied is None:
+                return ["/first"], 4, facets
+            if "primaryLocation" in applied:
+                return [f"/job/A/Role_JR-{index}" for index in (1, 2, 3)], 3, []
+            return [f"/job/B/Role_JR-{index}" for index in (2, 3, 4)], 3, []
+
+        monkeypatch.setattr(wd_module, "_paginate_query", fake_paginate)
+
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(
+                RuntimeError,
+                match="facet_union returned 4 of 5 coverage-proven canonical jobs",
+            ):
+                _ = [
+                    batch
+                    async for batch in _api_list_stream(
+                        "co",
+                        "wd1",
+                        "Site",
+                        client,
+                        facet_union=(
+                            ("primaryLocation", "jobFamilyGroup"),
+                            "workerSubType",
+                        ),
+                    )
+                ]
 
     async def test_preferred_facet_rejects_idless_partition_before_false_complete(
         self, monkeypatch

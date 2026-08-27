@@ -79,7 +79,9 @@ _TRUNCATED_SENTINEL = ("__workday_truncated__", _TRUNCATED_PATH)
 
 _SITEMAP_RE = re.compile(r"myworkdayjobs\.com/([^/]+)/siteMap")
 _MAX_EXPLICIT_SITES = 20
+_MAX_FACET_UNION_DIMENSIONS = 4
 _SITE_TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}")
+_FACET_PARAMETER_RE = re.compile(r"[A-Za-z0-9_.-]{1,128}")
 # Workday appends ``-1``, ``-2``, etc. after an already numeric requisition
 # token when one posting is published through multiple tenant sites (for
 # example ``Engineer_123456-2`` or ``Engineer_R-123456-2``). Requiring a digit
@@ -190,12 +192,57 @@ def _configured_split_facet(metadata: dict) -> str | None:
     split_facet = metadata.get("split_facet")
     if split_facet is None:
         return None
-    if (
-        not isinstance(split_facet, str)
-        or re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", split_facet) is None
-    ):
+    if not isinstance(split_facet, str) or _FACET_PARAMETER_RE.fullmatch(split_facet) is None:
         raise ValueError("Workday split_facet must be a provider facet name up to 128 characters")
     return split_facet
+
+
+def _configured_facet_union(metadata: dict) -> tuple[tuple[str, ...], str] | None:
+    """Return a validated multi-facet inventory strategy.
+
+    A Workday facet can omit postings whose value is null. ``facets`` is an
+    ordered set of complementary query dimensions; the first URL observed for
+    a requisition wins. ``coverage_facet`` is an operator-proven exhaustive,
+    mutually exclusive dimension used only for its advertised counts. Keeping
+    that proof separate from the query dimensions makes a posting missing all
+    queried facets fail closed instead of silently disappearing.
+    """
+    raw_union = metadata.get("facet_union")
+    if raw_union is None:
+        return None
+    if metadata.get("split_facet") is not None:
+        raise ValueError("Workday facet_union cannot be combined with split_facet")
+    if not isinstance(raw_union, dict) or set(raw_union) != {"facets", "coverage_facet"}:
+        raise ValueError("Workday facet_union must contain exactly facets and coverage_facet")
+
+    raw_facets = raw_union.get("facets")
+    if not isinstance(raw_facets, list) or not 2 <= len(raw_facets) <= _MAX_FACET_UNION_DIMENSIONS:
+        raise ValueError(
+            "Workday facet_union facets must contain 2 to "
+            f"{_MAX_FACET_UNION_DIMENSIONS} provider facet names"
+        )
+
+    facets: list[str] = []
+    seen: set[str] = set()
+    for facet in raw_facets:
+        if not isinstance(facet, str) or _FACET_PARAMETER_RE.fullmatch(facet) is None:
+            raise ValueError(
+                "Workday facet_union facets must be provider facet names up to 128 characters"
+            )
+        if facet in seen:
+            raise ValueError(f"Workday facet_union contains duplicate facet {facet!r}")
+        seen.add(facet)
+        facets.append(facet)
+
+    coverage_facet = raw_union.get("coverage_facet")
+    if not isinstance(coverage_facet, str) or _FACET_PARAMETER_RE.fullmatch(coverage_facet) is None:
+        raise ValueError(
+            "Workday facet_union coverage_facet must be a provider facet name up to 128 characters"
+        )
+    if coverage_facet in seen:
+        raise ValueError("Workday facet_union coverage_facet must be independent of facets")
+
+    return tuple(facets), coverage_facet
 
 
 # ── List pagination ──────────────────────────────────────────────────
@@ -308,6 +355,57 @@ def _iter_facets(facets: list[dict]):
             if isinstance(value, dict) and value.get("facetParameter")
         ]
         yield from _iter_facets(nested)
+
+
+def _required_facet_values(
+    facets: list[dict],
+    facet_param: str,
+    *,
+    purpose: str,
+    require_query_safe: bool,
+) -> list[tuple[str, int]]:
+    """Return validated IDs/counts for a configured facet or fail closed."""
+    facet = next(
+        (
+            candidate
+            for candidate in _iter_facets(facets)
+            if candidate.get("facetParameter") == facet_param
+        ),
+        None,
+    )
+    if facet is None:
+        raise ValueError(f"Workday {purpose} {facet_param!r} was not advertised")
+    values = facet.get("values", [])
+    if not isinstance(values, list) or not values:
+        raise ValueError(f"Workday {purpose} {facet_param!r} advertised no values")
+
+    validated: list[tuple[str, int]] = []
+    seen_ids: set[str] = set()
+    for value in values:
+        if not isinstance(value, dict):
+            raise ValueError(f"Workday {purpose} {facet_param!r} contains a malformed value")
+        facet_id = value.get("id")
+        if (
+            not isinstance(facet_id, str)
+            or not facet_id
+            or len(facet_id) > _MAX_FACET_ID_LENGTH
+            or facet_id.strip() != facet_id
+            or "\x00" in facet_id
+        ):
+            raise ValueError(f"Workday {purpose} {facet_param!r} contains an invalid value id")
+        count = value.get("count")
+        if (
+            not isinstance(count, int)
+            or isinstance(count, bool)
+            or count < 0
+            or (require_query_safe and count >= _API_RESULT_CAP)
+        ):
+            raise ValueError(f"Workday {purpose} {facet_param!r} contains an unsafe value count")
+        if facet_id in seen_ids:
+            raise ValueError(f"Workday {purpose} {facet_param!r} contains a duplicate value id")
+        seen_ids.add(facet_id)
+        validated.append((facet_id, count))
+    return validated
 
 
 def _pick_split_facet(
@@ -502,6 +600,154 @@ async def _direct_pagination_stream(
         yield [_TRUNCATED_PATH]
 
 
+async def _paginate_facet_union(
+    list_url: str,
+    base_body: dict,
+    advertised_total: int,
+    initial_facets: list[dict],
+    company: str,
+    site: str,
+    client: httpx.AsyncClient,
+    query_sem: asyncio.Semaphore,
+    facet_union: tuple[tuple[str, ...], str],
+) -> tuple[list[str], bool]:
+    """Collect a deterministic, coverage-proven union of configured facets.
+
+    Query dimensions may each omit null-valued postings. The independent
+    coverage facet supplies an exact, dynamic inventory count; if the union's
+    canonical requisitions do not equal a fresh coverage count, raise before
+    yielding anything so the monitor cycle cannot run gone detection.
+    """
+    query_facets, coverage_facet = facet_union
+
+    def _coverage_total(facets: list[dict], api_total: int) -> int:
+        values = _required_facet_values(
+            facets,
+            coverage_facet,
+            purpose="facet_union coverage_facet",
+            require_query_safe=False,
+        )
+        total = sum(count for _, count in values)
+        if total <= 0 or total < api_total:
+            raise ValueError(
+                "Workday facet_union coverage_facet "
+                f"{coverage_facet!r} advertised an incomplete total of {total}"
+            )
+        return total
+
+    initial_coverage_total = _coverage_total(initial_facets, advertised_total)
+    query_specs: list[tuple[str, list[str]]] = []
+    for facet_param in query_facets:
+        values = _required_facet_values(
+            initial_facets,
+            facet_param,
+            purpose="facet_union facet",
+            require_query_safe=True,
+        )
+        facet_ids = [facet_id for facet_id, _ in values]
+        groups = _group_split_facet_values(initial_facets, facet_param, facet_ids)
+        query_specs.extend((facet_param, group) for group in groups)
+
+    log.info(
+        "workday.facet_union_start",
+        company=company,
+        site=site,
+        facets=query_facets,
+        coverage_facet=coverage_facet,
+        coverage_total=initial_coverage_total,
+        queries=len(query_specs),
+    )
+
+    async def _paginate_group(
+        facet_param: str,
+        facet_group: list[str],
+    ) -> tuple[str, list[str], int]:
+        body = {
+            **base_body,
+            "appliedFacets": {facet_param: facet_group},
+        }
+        async with query_sem:
+            paths, total, _ = await _paginate_query(list_url, body, client)
+        if total >= _API_RESULT_CAP:
+            raise RuntimeError(
+                "Workday facet_union group remained capped at "
+                f"{total} jobs for {company}/{site} ({facet_param})"
+            )
+        canonical_count = len({_cross_site_path_key(path) for path in paths})
+        if canonical_count != total:
+            raise RuntimeError(
+                "Workday facet_union group returned "
+                f"{canonical_count} of {total} advertised canonical jobs "
+                f"for {company}/{site} ({facet_param})"
+            )
+        return facet_param, paths, total
+
+    tasks = [
+        asyncio.create_task(_paginate_group(facet_param, group))
+        for facet_param, group in query_specs
+    ]
+    try:
+        # asyncio.gather retains query_specs order even when requests complete
+        # out of order. That makes the first configured facet/path the stable
+        # winner for duplicate requisitions.
+        results = await asyncio.gather(*tasks)
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    paths_by_key: dict[str, str] = {}
+    facet_keys: dict[str, set[str]] = {facet: set() for facet in query_facets}
+    for facet_param, paths, total in results:
+        for path in paths:
+            key = _cross_site_path_key(path)
+            facet_keys[facet_param].add(key)
+            paths_by_key.setdefault(key, path)
+        log.info(
+            "workday.facet_union_group",
+            company=company,
+            site=site,
+            facet=facet_param,
+            advertised=total,
+            canonical=len({_cross_site_path_key(path) for path in paths}),
+        )
+
+    # Re-read the independent count after all partition queries. Exact
+    # equality is deliberately stricter than ordinary pagination tolerance:
+    # without it, a job null in every query facet could be silently delisted.
+    async with query_sem:
+        _, final_api_total, final_facets = await _paginate_query(
+            list_url,
+            base_body,
+            client,
+            cap_abort=_API_RESULT_CAP,
+        )
+    final_coverage_total = _coverage_total(final_facets, final_api_total)
+    discovered = len(paths_by_key)
+    if discovered != final_coverage_total:
+        raise RuntimeError(
+            "Workday facet_union returned "
+            f"{discovered} of {final_coverage_total} coverage-proven canonical jobs "
+            f"for {company}/{site}"
+        )
+
+    ordered_paths = [paths_by_key[key] for key in sorted(paths_by_key)]
+    truncated = len(ordered_paths) > MAX_JOBS
+    log.info(
+        "workday.facet_union_complete",
+        company=company,
+        site=site,
+        facets=query_facets,
+        per_facet={facet: len(keys) for facet, keys in facet_keys.items()},
+        initial_coverage=initial_coverage_total,
+        final_coverage=final_coverage_total,
+        jobs=discovered,
+        truncated=truncated,
+    )
+    return ordered_paths[:MAX_JOBS], truncated
+
+
 async def _api_list(
     company: str,
     wd_instance: str,
@@ -511,6 +757,7 @@ async def _api_list(
     query_sem: asyncio.Semaphore | None = None,
     search_text: str | None = None,
     split_facet: str | None = None,
+    facet_union: tuple[tuple[str, ...], str] | None = None,
 ) -> tuple[list[str], bool]:
     """Collect all externalPaths, splitting by facet if the 2000 cap is hit.
 
@@ -530,6 +777,7 @@ async def _api_list(
         query_sem=query_sem,
         search_text=search_text,
         split_facet=split_facet,
+        facet_union=facet_union,
     ):
         for p in batch:
             if p == _TRUNCATED_PATH:
@@ -548,6 +796,7 @@ async def _api_list_stream(
     query_sem: asyncio.Semaphore | None = None,
     search_text: str | None = None,
     split_facet: str | None = None,
+    facet_union: tuple[tuple[str, ...], str] | None = None,
 ):
     """Yield batches of externalPaths, splitting by facet if the 2000 cap is hit."""
     list_url = _api_list_url(company, wd_instance, site)
@@ -609,7 +858,27 @@ async def _api_list_stream(
             yield [_TRUNCATED_PATH]
         return
 
-    # Hit the cap — split by facet to get all jobs
+    # Hit the cap. A configured multi-facet strategy proves completeness
+    # against an independent count before yielding its deterministic union.
+    if facet_union is not None:
+        union_paths, union_truncated = await _paginate_facet_union(
+            list_url,
+            base_body,
+            total,
+            facets,
+            company,
+            site,
+            client,
+            query_sem,
+            facet_union,
+        )
+        if union_paths:
+            yield union_paths
+        if union_truncated:
+            yield [_TRUNCATED_PATH]
+        return
+
+    # Hit the cap — split by one facet to get all jobs
     split = _pick_split_facet(facets, preferred=split_facet)
     if not split:
         # The 2,000-result cap is tenant-specific. Some tenants expose no
@@ -788,6 +1057,7 @@ async def _list_all_sites(
     client: httpx.AsyncClient,
     *,
     split_facet: str | None = None,
+    facet_union: tuple[tuple[str, ...], str] | None = None,
 ) -> tuple[list[tuple[str, str]], bool]:
     """List jobs from all sites concurrently. Returns ``(site_paths, truncated)``.
 
@@ -800,7 +1070,16 @@ async def _list_all_sites(
 
     async def _list_one(site: str) -> tuple[list[tuple[str, str]], bool]:
         async with sem:
-            if split_facet is None:
+            if facet_union is not None:
+                paths, was_truncated = await _api_list(
+                    company,
+                    wd_instance,
+                    site,
+                    client,
+                    query_sem=query_sem,
+                    facet_union=facet_union,
+                )
+            elif split_facet is None:
                 paths, was_truncated = await _api_list(
                     company,
                     wd_instance,
@@ -850,6 +1129,7 @@ async def _list_all_sites_stream(
     client: httpx.AsyncClient,
     *,
     split_facet: str | None = None,
+    facet_union: tuple[tuple[str, ...], str] | None = None,
 ):
     """Yield (site, path) batches per site for heartbeat-aware streaming.
 
@@ -864,7 +1144,16 @@ async def _list_all_sites_stream(
     seen_paths: set[str] = set()
 
     for site in sites:
-        if split_facet is None:
+        if facet_union is not None:
+            batches = _api_list_stream(
+                company,
+                wd_instance,
+                site,
+                client,
+                query_sem=query_sem,
+                facet_union=facet_union,
+            )
+        elif split_facet is None:
             batches = _api_list_stream(
                 company,
                 wd_instance,
@@ -935,6 +1224,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         all_sites=bool(explicit_sites) or all_sites,
     )
     split_facet = _configured_split_facet(metadata)
+    facet_union = _configured_facet_union(metadata)
     truncated = False
 
     if explicit_sites is not None or all_sites:
@@ -949,6 +1239,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             sites,
             client,
             split_facet=split_facet,
+            facet_union=facet_union,
         )
         log.info(
             "workday.listed_all",
@@ -965,6 +1256,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             client,
             search_text=search_text,
             split_facet=split_facet,
+            facet_union=facet_union,
         )
         site_paths = [(site, p) for p in paths]
         log.info("workday.listed", company=company, site=site, postings=len(site_paths))
@@ -1010,6 +1302,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         all_sites=bool(explicit_sites) or all_sites,
     )
     split_facet = _configured_split_facet(metadata)
+    facet_union = _configured_facet_union(metadata)
     truncated = False
 
     if explicit_sites is not None or all_sites:
@@ -1025,6 +1318,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             sites,
             client,
             split_facet=split_facet,
+            facet_union=facet_union,
         ):
             clean: list[tuple[str, str]] = []
             for s, p in batch:
@@ -1048,6 +1342,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             client,
             search_text=search_text,
             split_facet=split_facet,
+            facet_union=facet_union,
         ):
             clean_paths = [p for p in batch if p != _TRUNCATED_PATH]
             if any(p == _TRUNCATED_PATH for p in batch):
