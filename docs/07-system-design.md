@@ -202,6 +202,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `bite`            | URL-only | bite        | b-ite.com ATS API                       |
 | 10   | `breezy`          | URL-only | json-ld     | Breezy HR listing endpoint              |
 | 10   | `comeet`          | Rich     | skip        | Comeet hosted data and Careers API      |
+| 10   | `computrabajo`    | URL-only | json-ld     | Computrabajo employer pages with explicit totals and bounded pagination |
 | 10   | `deel`            | Rich     | skip        | Deel ATS API                            |
 | 10   | `dvinci`          | Rich     | skip        | d.vinci ATS API                         |
 | 10   | `earcu`           | Rich     | skip        | eArcu live-vacancy XML feed             |

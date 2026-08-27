@@ -65,6 +65,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `bite` | URL-only | bite | b-ite.com ATS |
 | `breezy` | URL-only | json-ld (+dom fallback) | Breezy HR |
 | `comeet` | Rich | skip | Comeet hosted data and Careers API |
+| `computrabajo` | URL-only | json-ld | Computrabajo country employer profiles with explicit totals and bounded pagination |
 | `curately` | Rich | skip | Curately tenant-scoped public search API with complete contractor job data |
 | `deel` | Rich | skip | Deel ATS |
 | `dvinci` | Rich | skip | d.vinci ATS |

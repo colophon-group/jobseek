@@ -422,6 +422,11 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"104 Job Bank company listing \u2014 token: {token}, {jobs} jobs"
         return f"104 Job Bank company listing \u2014 token: {token}"
+    if name == "computrabajo":
+        company_id = metadata.get("company_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"Computrabajo employer profile \u2014 company: {company_id}"
+        return f"{label}, {jobs} jobs" if jobs is not None else label
     if name == "jobstreet":
         company_id = metadata.get("company_id", "?")
         jobs = metadata.get("jobs")
@@ -901,6 +906,7 @@ from src.core.monitors import (  # noqa: E402
     candidatus,  # noqa: F401
     cnstaff,  # noqa: F401
     comeet,  # noqa: F401
+    computrabajo,  # noqa: F401
     cornerstone,  # noqa: F401
     curately,  # noqa: F401
     darwinbox,  # noqa: F401
