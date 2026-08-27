@@ -116,7 +116,12 @@ _FACILITY_SEGMENT_RE = re.compile(
 )
 
 
-def _facility_city(head: str, *, tenant: str | None) -> str | None:
+def _facility_city(
+    head: str,
+    *,
+    tenant: str | None,
+    tenant_aliases: tuple[str, ...] = (),
+) -> str | None:
     """Extract a city only across an explicit, reliable facility boundary."""
     prefix = _FACILITY_PREFIX_RE.match(head)
     if not prefix:
@@ -126,9 +131,13 @@ def _facility_city(head: str, *, tenant: str | None) -> str | None:
     if not parts or any(not part for part in parts):
         return None
 
+    separators = {alias.casefold() for alias in tenant_aliases}
     if tenant:
+        separators.add(tenant.casefold())
+
+    if separators:
         tenant_indexes = [
-            index for index, part in enumerate(parts) if part.casefold() == tenant.casefold()
+            index for index, part in enumerate(parts) if part.casefold() in separators
         ]
         if tenant_indexes:
             boundary = tenant_indexes[-1]
@@ -145,7 +154,13 @@ def _facility_city(head: str, *, tenant: str | None) -> str | None:
     boundary = facility_indexes[-1]
     if boundary == len(parts) - 1:
         return None
-    city = "-".join(parts[boundary + 1 :]).strip()
+    # Without an explicit tenant separator, multiple remaining segments are
+    # ambiguous: they could be a hyphenated city or an unconfigured tenant
+    # alias followed by the city. Fail closed instead of guessing.
+    remaining = parts[boundary + 1 :]
+    if len(remaining) != 1:
+        return None
+    city = remaining[0].strip()
     return city or None
 
 
@@ -154,6 +169,7 @@ def _normalize_workday_location(
     *,
     country: str | None = None,
     tenant: str | None = None,
+    tenant_aliases: tuple[str, ...] = (),
 ) -> str:
     """Normalize a Workday location string for the resolver.
 
@@ -183,7 +199,11 @@ def _normalize_workday_location(
     # resolver from seeing the otherwise reliable city/region/country tuple.
     m = _CITY_REGION_POSTAL_RE.match(cleaned)
     if m:
-        city = _facility_city(m.group("head"), tenant=tenant)
+        city = _facility_city(
+            m.group("head"),
+            tenant=tenant,
+            tenant_aliases=tenant_aliases,
+        )
         if city:
             parts = [city, m.group("region").upper()]
             if country:
@@ -221,7 +241,12 @@ def _parse_location_type(value: str | None) -> str | None:
     return normalize_job_location_type(value, default=None)
 
 
-def _parse_detail(data: dict, *, tenant: str | None = None) -> JobContent:
+def _parse_detail(
+    data: dict,
+    *,
+    tenant: str | None = None,
+    tenant_aliases: tuple[str, ...] = (),
+) -> JobContent:
     """Parse the Workday detail API response into JobContent."""
     info = data.get("jobPostingInfo", {})
 
@@ -242,6 +267,7 @@ def _parse_detail(data: dict, *, tenant: str | None = None) -> JobContent:
                     loc,
                     country=country,
                     tenant=tenant,
+                    tenant_aliases=tenant_aliases,
                 )
                 if normalized not in seen:
                     seen.add(normalized)
@@ -280,6 +306,16 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     company, wd_instance, site, path = parsed
     api_url = _detail_url(company, wd_instance, site, path)
     sleep = kwargs.get("sleep", asyncio.sleep)
+    configured_aliases = config.get("facility_tenant_aliases")
+    tenant_aliases = (
+        tuple(
+            alias.strip()
+            for alias in configured_aliases
+            if isinstance(alias, str) and alias.strip()
+        )
+        if isinstance(configured_aliases, list)
+        else ()
+    )
 
     from src.metrics import http_retry_attempts_total, http_retry_host
 
@@ -323,7 +359,11 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         if reason is None:
             if retried:
                 http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
-            return _parse_detail(data, tenant=company)
+            return _parse_detail(
+                data,
+                tenant=company,
+                tenant_aliases=tenant_aliases,
+            )
 
         body = resp.content
         last_payload = {
