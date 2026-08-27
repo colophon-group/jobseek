@@ -192,6 +192,20 @@ _POSTFINANCE_LEGACY_URL_PATTERN = (
 )
 _POSTFINANCE_CANONICAL_URL_PATTERN = r"^https://jobs[.]postfinance[.]ch/job/_/[0-9]+/$"
 _IDENTITY_MIGRATION_MAX_ROWS = 2_000
+_ORACLE_IDENTITY_MIGRATION = "oracle-hcm-stable-id-v1"
+_ORACLE_IDENTITY_MIGRATION_VERSION = 1
+_ORACLE_IDENTITY_MIGRATION_BOARD_SLUG = "oracle-careers"
+_ORACLE_IDENTITY_MIGRATION_CONTRACT = (
+    "https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_45001",
+    "oracle_hcm",
+    "d4cdbce54c7e94b8a119441ba927fe33e3ecb058d7861cd3a5f98c2b12bf9a20",
+)
+_ORACLE_LEGACY_URL_PATTERN = r"^https://careers[.]oracle[.]com/en/job/[0-9]+$"
+_ORACLE_CANONICAL_URL_PATTERN = (
+    r"^https://eeho[.]fa[.]us2[.]oraclecloud[.]com/"
+    r"hcmUI/CandidateExperience/en/sites/CX_45001/job/[0-9]+$"
+)
+_ORACLE_IDENTITY_MIGRATION_MAX_ROWS = 2_500
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,6 +219,7 @@ class _IdentityMigrationSpec:
     legacy_url_pattern: str
     canonical_url_pattern: str
     company_wide: bool = False
+    max_rows: int = _IDENTITY_MIGRATION_MAX_ROWS
 
 
 def _identity_migration_spec(
@@ -242,6 +257,22 @@ def _identity_migration_spec(
             legacy_url_pattern=_POSTFINANCE_LEGACY_URL_PATTERN,
             canonical_url_pattern=_POSTFINANCE_CANONICAL_URL_PATTERN,
             company_wide=True,
+        )
+    if (
+        migration_id == _ORACLE_IDENTITY_MIGRATION
+        and board_slug == _ORACLE_IDENTITY_MIGRATION_BOARD_SLUG
+    ):
+        board_url, crawler_type, fingerprint = _ORACLE_IDENTITY_MIGRATION_CONTRACT
+        return _IdentityMigrationSpec(
+            migration_id=_ORACLE_IDENTITY_MIGRATION,
+            version=_ORACLE_IDENTITY_MIGRATION_VERSION,
+            company_slug="oracle",
+            board_url=board_url,
+            crawler_type=crawler_type,
+            config_fingerprint=fingerprint,
+            legacy_url_pattern=_ORACLE_LEGACY_URL_PATTERN,
+            canonical_url_pattern=_ORACLE_CANONICAL_URL_PATTERN,
+            max_rows=_ORACLE_IDENTITY_MIGRATION_MAX_ROWS,
         )
     return None
 
@@ -625,7 +656,7 @@ async def _retire_canonicalized_provider_identities(
             and bool(receipt.get("completed_at"))
             and isinstance(retired_count, int)
             and not isinstance(retired_count, bool)
-            and 0 <= retired_count <= _IDENTITY_MIGRATION_MAX_ROWS
+            and 0 <= retired_count <= spec.max_rows
         )
 
     configured_receipt = md.get(_IDENTITY_MIGRATION_RECEIPT_KEY)
@@ -656,7 +687,7 @@ async def _retire_canonicalized_provider_identities(
         precondition_reason = "empty_canonical_set"
     elif discovered != len(exact_canonical_urls):
         precondition_reason = "nonunique_canonical_output"
-    elif len(exact_canonical_urls) > _IDENTITY_MIGRATION_MAX_ROWS:
+    elif len(exact_canonical_urls) > spec.max_rows:
         precondition_reason = "canonical_set_over_cap"
     elif len(history) < _DROP_GUARD_MIN_HISTORY:
         precondition_reason = "insufficient_history"
@@ -689,7 +720,7 @@ async def _retire_canonicalized_provider_identities(
         board_id,
         company_id,
         monitor_start_ts,
-        _IDENTITY_MIGRATION_MAX_ROWS,
+        spec.max_rows,
         exact_canonical_urls,
         spec.legacy_url_pattern,
         spec.canonical_url_pattern,
@@ -730,7 +761,7 @@ async def _retire_canonicalized_provider_identities(
             unknown=unknown,
             discovered=discovered_count,
             validated=validated_count,
-            cap=_IDENTITY_MIGRATION_MAX_ROWS,
+            cap=spec.max_rows,
         )
         return 0
     if (
