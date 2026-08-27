@@ -8,6 +8,7 @@ import copy
 import hashlib
 import ipaddress
 import json
+import re
 import unicodedata
 from html.parser import HTMLParser
 from pathlib import Path
@@ -23,12 +24,30 @@ SEMANTIC_DOMAIN = b"jobseek.runtime.v1.semantic-sha256\0"
 UINT64_MAX = (1 << 64) - 1
 MAX_HTML_BYTES = 1_048_576
 MAX_HTML_NESTING = 128
+SOURCE_IDENTITY_PATTERN = re.compile(
+    r"[a-z][a-z0-9_-]{1,31}:[a-z0-9][a-z0-9._-]{0,63}:"
+    r"[A-Za-z0-9][A-Za-z0-9._~:/-]{0,383}\Z"
+)
 
 CASE_IDS = (
     "safe_scrape_projected",
     "invalid_visible_content",
     "safe_monitor_url_only",
     "rich_monitor",
+    "identity_absent_legacy",
+    "explicit_identity_projected",
+    "explicit_null_identity_legacy",
+    "identity_url_union_lockstep",
+    "identity_url_churn_winner",
+    "identity_url_churn_permutation",
+    "same_url_same_identity_dedupe",
+    "same_url_conflicting_identities",
+    "mixed_identity_distinct_urls",
+    "mixed_identity_same_url_collision",
+    "same_identity_divergent_content",
+    "malformed_source_identity",
+    "existing_effect_identity_alignment",
+    "invalid_existing_effect_identity",
     "suppressed_precondition",
     "invalid_url",
     "locale_alias",
@@ -676,11 +695,27 @@ def _base_effects(request: dict[str, Any], execution_kind: str, target_url: str)
     }
 
 
-def _add_target(effects: dict[str, Any], url: str, digest: str | None) -> None:
+def _source_identity(value: object, *, null_is_absent: bool) -> str | None:
+    if value is None and null_is_absent:
+        return None
+    if not isinstance(value, str) or SOURCE_IDENTITY_PATTERN.fullmatch(value) is None:
+        _fail("invalid_projection", rejected=True)
+    return value
+
+
+def _add_target(
+    effects: dict[str, Any],
+    url: str,
+    digest: str | None,
+    source_identity: str | None = None,
+) -> None:
     sentinel = digest or ""
     effects["urls_to_upsert"].append(url)
     effects["content_hashes"].append(sentinel)
-    effects["job_effects"].append({"content_sha256": sentinel, "source_url": url})
+    job_effect = {"content_sha256": sentinel, "source_url": url}
+    if source_identity is not None:
+        job_effect["source_identity"] = source_identity
+    effects["job_effects"].append(job_effect)
     target = {"action": "PROJECTED_ACTION_UPSERT", "url": url}
     if digest is not None:
         target["content_sha256"] = digest
@@ -725,9 +760,15 @@ def _validate_existing_effects(value: object) -> None:
         job_effect = jobs[index]
         target = targets[index]
         digest = hashes[index]
+        if not isinstance(job_effect, dict) or set(job_effect) not in (
+            {"content_sha256", "source_url"},
+            {"content_sha256", "source_identity", "source_url"},
+        ):
+            _fail("invalid_projection", rejected=True)
+        if "source_identity" in job_effect:
+            _source_identity(job_effect["source_identity"], null_is_absent=False)
         if (
             not isinstance(digest, str)
-            or not isinstance(job_effect, dict)
             or not isinstance(target, dict)
             or job_effect.get("source_url") != canonical
             or job_effect.get("content_sha256") != digest
@@ -807,7 +848,15 @@ def _project_monitor(input_value: dict[str, Any]) -> dict[str, Any]:
     )
     target_url = canonical_url(request.get("target_url"))
     results = _monitor_results(input_value)
-    tuples: dict[str, tuple[str, dict[str, Any] | None]] = {}
+    # Explicit provider identities and legacy URL identities occupy distinct
+    # logical-key domains. A record retains one deterministic outbound URL.
+    tuples: dict[
+        tuple[int, str],
+        tuple[str, dict[str, Any] | None, str | None],
+    ] = {}
+    url_owners: dict[str, tuple[int, str]] = {}
+    source_spellings: dict[str, str] = {}
+    url_observations: set[str] = set()
     filtered_count = 0
     security_filtered_count = 0
     hybrid = False
@@ -821,26 +870,43 @@ def _project_monitor(input_value: dict[str, Any]) -> dict[str, Any]:
             _fail("invalid_projection", rejected=True)
         for source in urls:
             canonical = canonical_url(source)
-            previous = tuples.get(canonical)
-            if previous is not None and previous[0] != source:
+            previous_source = source_spellings.get(canonical)
+            if previous_source is not None and previous_source != source:
                 _fail("canonical_collision")
-            tuples.setdefault(canonical, (source, None))
+            source_spellings.setdefault(canonical, source)
+            url_observations.add(canonical)
         for discovered in jobs:
-            if not isinstance(discovered, dict) or set(discovered) != {"content", "url"}:
-                _fail("invalid_projection", rejected=True)
+            discovered = _require_shape(
+                discovered,
+                frozenset({"content", "url"}),
+                frozenset({"source_identity"}),
+            )
             source = discovered["url"]
             canonical = canonical_url(source)
             content = canonical_job(discovered["content"])
-            previous = tuples.get(canonical)
+            previous_source = source_spellings.get(canonical)
+            if previous_source is not None and previous_source != source:
+                _fail("canonical_collision")
+            source_spellings.setdefault(canonical, source)
+            identity = (
+                _source_identity(discovered["source_identity"], null_is_absent=True)
+                if "source_identity" in discovered
+                else None
+            )
+            logical_key = (0, identity) if identity is not None else (1, canonical)
+            previous_owner = url_owners.get(canonical)
+            if previous_owner is not None and previous_owner != logical_key:
+                _fail("canonical_collision")
+            url_owners[canonical] = logical_key
+            previous = tuples.get(logical_key)
             if previous is not None:
-                previous_source, previous_content = previous
-                if previous_source != source:
+                previous_url, previous_content, _ = previous
+                assert previous_content is not None
+                if canonical_json(previous_content) != canonical_json(content):
                     _fail("canonical_collision")
-                if previous_content is not None and canonical_json(
-                    previous_content
-                ) != canonical_json(content):
-                    _fail("canonical_collision")
-            tuples[canonical] = (source, content)
+                if canonical.encode("utf-8") >= previous_url.encode("utf-8"):
+                    continue
+            tuples[logical_key] = (canonical, content, identity)
         filtered_count = _checked_add(filtered_count, _uint64(result["filtered_count"]))
         security_filtered_count = _checked_add(
             security_filtered_count, _uint64(result["security_filtered_count"])
@@ -859,6 +925,11 @@ def _project_monitor(input_value: dict[str, Any]) -> dict[str, Any]:
         else:
             metadata = None
         metadata_sequence.append(metadata)
+    for canonical in url_observations:
+        if canonical in url_owners:
+            continue
+        logical_key = (1, canonical)
+        tuples[logical_key] = (canonical, None, None)
     if len(set(sitemaps)) > 1:
         _fail("canonical_collision")
     effects = _base_effects(request, "EXECUTION_KIND_MONITOR", target_url)
@@ -882,12 +953,13 @@ def _project_monitor(input_value: dict[str, Any]) -> dict[str, Any]:
         )
         assert isinstance(metadata_value, dict)
         effects["metadata_updates_sha256"] = metadata_sha256(target_url, metadata_value)
-    for canonical in sorted(tuples, key=lambda item: item.encode("utf-8")):
-        content = tuples[canonical][1]
+    for logical_key in sorted(tuples, key=lambda item: (item[0], item[1].encode("utf-8"))):
+        canonical, content, identity = tuples[logical_key]
         _add_target(
             effects,
             canonical,
             content_sha256(canonical, content) if content is not None else None,
+            identity,
         )
     return effects
 
@@ -1090,6 +1162,9 @@ def make_cases() -> list[dict[str, Any]]:
     baseline_job = _job("Synthetic Digest A", "<p>Visible.</p>")
     changed_job = _job("Synthetic Digest B", "<p>Visible.</p>")
     digest_url = "https://jobs.example.invalid/openings/digest"
+    source_identity = "smartrecruiters:synthetic:42"
+    identity_url_a = "https://jobs.example.invalid/openings/identity-a"
+    identity_url_z = "https://jobs.example.invalid/openings/identity-z"
 
     cases = [
         _case(
@@ -1163,6 +1238,321 @@ def make_cases() -> list[dict[str, Any]]:
                     "truncated": False,
                     "urls": [rich_url],
                 },
+            },
+        ),
+        _case(
+            "identity_absent_legacy",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-identity-absent",
+                    "request_id": "req-identity-absent",
+                    "target_url": monitor_url,
+                },
+                "result": _monitor_result(
+                    jobs=[
+                        {
+                            "content": rich_job,
+                            "url": "HTTPS://jobs.example.invalid:443/openings/identity-legacy#old",
+                        }
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "explicit_identity_projected",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-identity-present",
+                    "request_id": "req-identity-present",
+                    "target_url": monitor_url,
+                },
+                "result": _monitor_result(
+                    jobs=[
+                        {
+                            "content": rich_job,
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        }
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "explicit_null_identity_legacy",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-identity-null",
+                    "request_id": "req-identity-null",
+                    "target_url": monitor_url,
+                },
+                "result": _monitor_result(
+                    jobs=[
+                        {
+                            "content": rich_job,
+                            "source_identity": None,
+                            "url": identity_url_z,
+                        }
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "identity_url_union_lockstep",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-identity-union",
+                    "request_id": "req-identity-union",
+                    "target_url": monitor_url,
+                },
+                "result": _monitor_result(
+                    urls=[identity_url_z],
+                    jobs=[
+                        {
+                            "content": rich_job,
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        }
+                    ],
+                ),
+            },
+        ),
+        _case(
+            "identity_url_churn_winner",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-identity-churn",
+                    "request_id": "req-identity-churn",
+                    "target_url": monitor_url,
+                },
+                "result": _monitor_result(
+                    jobs=[
+                        {
+                            "content": rich_job,
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        },
+                        {
+                            "content": copy.deepcopy(rich_job),
+                            "source_identity": source_identity,
+                            "url": identity_url_a,
+                        },
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "identity_url_churn_permutation",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-identity-churn",
+                    "request_id": "req-identity-churn",
+                    "target_url": monitor_url,
+                },
+                "result": _monitor_result(
+                    jobs=[
+                        {
+                            "content": copy.deepcopy(rich_job),
+                            "source_identity": source_identity,
+                            "url": identity_url_a,
+                        },
+                        {
+                            "content": rich_job,
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        },
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "same_url_same_identity_dedupe",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-identity-dedupe",
+                    "request_id": "req-identity-dedupe",
+                    "target_url": monitor_url,
+                },
+                "result": _monitor_result(
+                    jobs=[
+                        {
+                            "content": rich_job,
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        },
+                        {
+                            "content": copy.deepcopy(rich_job),
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        },
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "same_url_conflicting_identities",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {"target_url": monitor_url},
+                "result": _monitor_result(
+                    jobs=[
+                        {
+                            "content": rich_job,
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        },
+                        {
+                            "content": copy.deepcopy(rich_job),
+                            "source_identity": "smartrecruiters:synthetic:99",
+                            "url": identity_url_z,
+                        },
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "mixed_identity_distinct_urls",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-identity-mixed",
+                    "request_id": "req-identity-mixed",
+                    "target_url": monitor_url,
+                },
+                "result": _monitor_result(
+                    jobs=[
+                        {"content": rich_job, "url": identity_url_a},
+                        {
+                            "content": copy.deepcopy(rich_job),
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        },
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "mixed_identity_same_url_collision",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {"target_url": monitor_url},
+                "result": _monitor_result(
+                    jobs=[
+                        {"content": rich_job, "url": identity_url_z},
+                        {
+                            "content": copy.deepcopy(rich_job),
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        },
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "same_identity_divergent_content",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {"target_url": monitor_url},
+                "result": _monitor_result(
+                    jobs=[
+                        {
+                            "content": rich_job,
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        },
+                        {
+                            "content": {**rich_job, "title": "Synthetic Divergence"},
+                            "source_identity": source_identity,
+                            "url": identity_url_a,
+                        },
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "malformed_source_identity",
+            "monitor",
+            {
+                "preconditions": _preconditions(),
+                "request": {"target_url": monitor_url},
+                "result": _monitor_result(
+                    jobs=[
+                        {
+                            "content": rich_job,
+                            "source_identity": "not-namespaced",
+                            "url": identity_url_z,
+                        }
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "existing_effect_identity_alignment",
+            "monitor",
+            {
+                "existing_projected_effects": {
+                    "content_hashes": [""],
+                    "job_effects": [
+                        {
+                            "content_sha256": "",
+                            "source_identity": source_identity,
+                            "source_url": identity_url_z,
+                        }
+                    ],
+                    "targets": [{"action": "PROJECTED_ACTION_UPSERT", "url": identity_url_z}],
+                    "urls_to_upsert": [identity_url_z],
+                },
+                "preconditions": _preconditions(),
+                "request": {
+                    "origin_request_id": "origin-existing-identity",
+                    "request_id": "req-existing-identity",
+                    "target_url": monitor_url,
+                },
+                "result": _monitor_result(
+                    jobs=[
+                        {
+                            "content": rich_job,
+                            "source_identity": source_identity,
+                            "url": identity_url_z,
+                        }
+                    ]
+                ),
+            },
+        ),
+        _case(
+            "invalid_existing_effect_identity",
+            "monitor",
+            {
+                "existing_projected_effects": {
+                    "content_hashes": [""],
+                    "job_effects": [
+                        {
+                            "content_sha256": "",
+                            "source_identity": "not-namespaced",
+                            "source_url": identity_url_z,
+                        }
+                    ],
+                    "targets": [{"url": identity_url_z}],
+                    "urls_to_upsert": [identity_url_z],
+                },
+                "preconditions": _preconditions(),
             },
         ),
         _case(

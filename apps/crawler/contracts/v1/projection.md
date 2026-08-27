@@ -2,8 +2,9 @@
 
 This document defines the target-bound offline projection used by
 `semantics.md`. `ProjectedEffects` is the existing candidate message in
-`runtime.proto`; this lane adds no wire field, record identity, eligibility
-flag, browser action, or gone mutation.
+`runtime.proto`. It consumes the dormant optional source-identity fields
+landed by the reviewed IDL amendment; this lane adds no wire field, persistence
+policy, eligibility flag, browser action, or gone mutation.
 
 ## Subject input shapes
 
@@ -31,7 +32,7 @@ A monitor request has the same identity rule and exactly `target_url`,
 ```text
 {
   urls: [string, ...],
-  jobs: [{url, content}, ...],
+  jobs: [{url, content, source_identity?}, ...],
   filtered_count: uint64,
   security_filtered_count: uint64,
   hybrid: boolean,
@@ -44,7 +45,12 @@ A monitor request has the same identity rule and exactly `target_url`,
 When `metadata_updates` is present it must be an object. JSON null is not
 absence and rejects as `invalid_projection`.
 
-Each discovered job is exactly `{url, content}`. Each batch is exactly
+Each discovered job is exactly `{url, content}` plus optional
+`source_identity`. Omission or JSON null retains legacy URL identity. A
+non-null identity must match
+`[a-z][a-z0-9_-]{1,31}:[a-z0-9][a-z0-9._-]{0,63}:[A-Za-z0-9][A-Za-z0-9._~:/-]{0,383}`
+as a whole string; malformed values reject as `invalid_projection`. This is
+the same closed JSON surface as the reviewed IDL amendment. Each batch is exactly
 `{checked_count: uint64, complete: boolean, result}`. Every batch must have
 `complete=true`. The checked counts are summed only to enforce uint64 safety;
 they do not create a `ProjectedEffects` field. A false batch completeness flag
@@ -63,7 +69,9 @@ must have equal length. At every index, the canonical URL must equal
 `job_effects[i].source_url` and `targets[i].url`; the string hash must equal
 `job_effects[i].content_sha256` and `targets[i].content_sha256`, with an absent
 target hash interpreted as the empty sentinel. Any inconsistency is
-`invalid_projection`.
+`invalid_projection`. Each probed job effect is exactly
+`{source_url, content_sha256}` plus an optional, non-null, valid
+`source_identity`; the probe does not infer an identity from another field.
 
 ## Atomic scrape projection
 
@@ -90,6 +98,9 @@ description, URL, locale, JSON value, or target binding suppresses or rejects
 the entire scrape according to the closed reason mapping; no partial scrape
 projection exists.
 
+Scrape input has no stable provider-identity field. Its job effect therefore
+omits `source_identity` and preserves the legacy canonical-URL logical key.
+
 ## Atomic monitor projection
 
 Process result batches in source order. Across all batches:
@@ -97,7 +108,7 @@ Process result batches in source order. Across all batches:
 - sum `filtered_count` and `security_filtered_count` with uint64 overflow
   checks;
 - OR `hybrid` and `truncated`;
-- union URL-only entries and discovered jobs by canonical URL;
+- collect URL-only observations and rich discovered jobs;
 - retain metadata update presence and order; and
 - canonicalize every present sitemap URL and require all present canonical
   sitemap values to agree.
@@ -110,14 +121,34 @@ JSON null when absent. Batch order, metadata members, extension/payload order,
 and absence positions are lossless. If no result supplies metadata, omit
 `metadata_updates_sha256`. Omit `new_sitemap_url` when every result omits it.
 
-Build a complete `(canonical URL, canonical content or URL-only)` tuple before
-sorting. A URL-only entry and rich job with the same source URL produce one
-rich tuple. Byte-identical rich duplicates deduplicate. Different source
-spellings that canonicalize to one target, or divergent rich content for one
-source URL, suppress the whole monitor as `canonical_collision`.
+Build complete logical records before sorting. A rich job with a non-null
+`source_identity` is keyed in the explicit-identity domain. An omitted or null
+identity is keyed in the separate legacy canonical-URL domain. A URL-only
+observation does not declare a logical identity: when it has the same canonical
+URL and source spelling as a rich job it is absorbed into that rich record;
+otherwise it becomes a legacy URL-only record.
 
-Sort complete tuples by canonical URL UTF-8 bytes, then derive `targets`,
-`job_effects`, `urls_to_upsert`, and `content_hashes` from that one order.
+Byte-identical rich duplicates with the same logical key deduplicate. When one
+explicit identity appears at multiple canonical URLs with byte-identical
+canonical content, retain exactly one record and choose the lexicographically
+smallest canonical URL by UTF-8 bytes as its deterministic outbound URL. This
+winner rule is independent of input and batch order. Divergent content for one
+explicit identity suppresses as `canonical_collision`; without provider alias
+knowledge this lane does not guess which content belongs to the durable key.
+
+Every canonical URL claimed by a rich job must have exactly one logical key.
+Two explicit identities, or explicit and legacy rich identities, claiming one
+canonical URL suppress as `canonical_collision`. A different source spelling
+that canonicalizes to an already observed URL also suppresses, even if the
+logical key agrees. Explicit and legacy rich records at distinct canonical URLs
+remain distinct; no alias relationship is invented between them.
+
+Sort complete records first by logical-key domain (explicit before legacy),
+then by the explicit identity or canonical legacy URL in UTF-8 byte order. From
+that one order derive `targets`, `job_effects`, `urls_to_upsert`, and
+`content_hashes`. `source_url` and `urls_to_upsert` always carry the selected
+outbound publication URL. A rich explicit job effect additionally carries the
+unchanged `source_identity`, which is its durable logical key.
 Rich tuples carry their target-bound content hash everywhere. A URL-only tuple
 uses the empty string only in `content_hashes` and
 `job_effects.content_sha256`; its `ProjectedTarget.content_sha256` is absent.
@@ -167,8 +198,9 @@ Every projected object contains exactly these required members:
 ```
 
 `new_sitemap_url` and `metadata_updates_sha256` are the only optional members.
-Each `job_effect` is exactly `{source_url, content_sha256}`. Each target is
-exactly `{url, action}` plus `content_sha256` for rich content. The four target
+Each `job_effect` is exactly `{source_url, content_sha256}` plus optional
+`source_identity` for an explicit rich logical key. Each target is exactly
+`{url, action}` plus `content_sha256` for rich content. The four target
 arrays have equal length and remain index-aligned. Counts are uint64; hashes
 are lowercase 64-character hex except for the documented URL-only legacy
 sentinel.

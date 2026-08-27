@@ -16,7 +16,7 @@ The shared manifest is exactly:
 ```
 
 `format` is `jobseek.runtime.semantics-corpus/v1`. `required_case_ids` and
-`cases` contain the same 50 independently hard-coded IDs in the same order.
+`cases` contain the same 64 independently hard-coded IDs in the same order.
 Each case is exactly `{id, subject_kind, input, expected}`; `id` is a nonempty
 string and `subject_kind` is `scrape`, `monitor`, `browser`, or an unknown
 string used to prove rejection. All corpus values are synthetic.
@@ -70,7 +70,7 @@ The reason registry is exactly:
 | `invalid_visible_content` | A supplied description violates the closed visibility profile or no supplied description is visible. |
 | `invalid_url` | A URL violates the closed URL profile. |
 | `invalid_locale` | A language or localization key is outside the locale profile. |
-| `canonical_collision` | Distinct source identities or divergent values collapse to one canonical identity. |
+| `canonical_collision` | Competing logical identities claim one canonical URL, one durable identity has divergent content, or distinct source spellings collapse unsafely. |
 | `counter_overflow` | A count, aggregate count, or length exceeds unsigned 64-bit range. |
 | `invalid_projection` | A candidate shape, JSON value, or aligned effect is malformed or internally inconsistent. |
 | `ineligible_history` | Protocol, terminal, eligibility, batch-history, or completeness prerequisites fail. |
@@ -158,15 +158,16 @@ byte-identical; aliases or divergent objects collapsing to one locale are a
 `canonical_collision`.
 
 `skills` and `locations.values` are string sets: sort by UTF-8 bytes and remove
-only byte-identical duplicates. Monitor URLs and jobs keyed by canonical URL
-are set-like as specified in `projection.md`. Localizations are always emitted
+only byte-identical duplicates. Monitor URL observations and jobs are set-like
+under the explicit-identity and legacy-URL rules in `projection.md`.
+Localizations are always emitted
 as a canonical array, with absence represented as an empty array. Other
 optional members preserve absent versus present-empty, including absent
 `locations` versus present `{"values":[]}`. Extensions, metadata, and every
 array not declared set-like preserve input order. Do not trim strings or apply
 Unicode normalization.
 
-A job object may contain only `title`, `description_html`, `locations`,
+A canonical job-content object may contain only `title`, `description_html`, `locations`,
 `employment_type`, `job_location_type`, `date_posted`, `base_salary`,
 `language`, `localizations`, `skills`, and `extensions`. A localization may
 contain only required `locale` and optional `title` and `description_html`.
@@ -175,6 +176,13 @@ not absence and rejects as `invalid_projection`.
 `locations`, when present, is exactly `{values: [string, ...]}`. Values not
 normalized above remain the already protocol-valid, lane-4-safe JSON values
 supplied by the candidate input.
+
+The surrounding discovered-job projection wrapper separately contains
+required `url` and `content` plus optional `source_identity`. Omission or JSON
+null means the legacy canonical-URL identity. A non-null identity is validated
+against the closed source-identity grammar from the reviewed IDL amendment and
+is never trimmed, case-folded, or normalized. Its logical-key and collision
+rules are defined in `projection.md`; it is not part of canonical job content.
 
 ## Canonical bytes and hashes
 
@@ -217,7 +225,7 @@ substituted for these hashes.
 ## Conformance boundary
 
 The manifest, checker, and Python/Go assertions are pure, deterministic,
-standard-library, and zero-network. Both languages hard-code all 50 required
+standard-library, and zero-network. Both languages hard-code all 64 required
 IDs and compare complete result objects, ordered arrays, aligned effects, and
 all digest bytes. This candidate surface does not integrate with `ws`, Murmur,
 MCP, a crawler runtime, an artifact resolver, a database, Redis, a queue, or a

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -65,14 +66,24 @@ var semanticsLocalizationFields = map[string]bool{
 	"description_html": true, "locale": true, "title": true,
 }
 
+var semanticsSourceIdentityPattern = regexp.MustCompile(
+	`^[a-z][a-z0-9_-]{1,31}:[a-z0-9][a-z0-9._-]{0,63}:[A-Za-z0-9][A-Za-z0-9._~:/-]{0,383}$`,
+)
+
 type semanticFailure struct {
 	reason   string
 	rejected bool
 }
 
 type semanticTargetTuple struct {
-	source  string
-	content map[string]any
+	url            string
+	content        map[string]any
+	sourceIdentity *string
+}
+
+type semanticLogicalKey struct {
+	explicit bool
+	value    string
 }
 
 type semanticHTMLFrame struct {
@@ -1055,9 +1066,20 @@ func semanticsValidateExistingEffects(value any) *semanticFailure {
 		digest, digestOK := hashes[index].(string)
 		job, jobOK := jobs[index].(map[string]any)
 		target, targetOK := targets[index].(map[string]any)
-		if !digestOK || !jobOK || !targetOK || job["source_url"] != canonical ||
+		if !digestOK || !jobOK || !targetOK || (len(job) != 2 && len(job) != 3) ||
+			job["source_url"] != canonical ||
 			job["content_sha256"] != digest || target["url"] != canonical {
 			return semanticsRejected("invalid_projection")
+		}
+		for key := range job {
+			if key != "source_url" && key != "content_sha256" && key != "source_identity" {
+				return semanticsRejected("invalid_projection")
+			}
+		}
+		if identityValue, present := job["source_identity"]; present {
+			if _, identityFailure := semanticsSourceIdentity(identityValue, false); identityFailure != nil {
+				return identityFailure
+			}
 		}
 		targetDigest, present := target["content_sha256"]
 		if !present {
@@ -1068,6 +1090,17 @@ func semanticsValidateExistingEffects(value any) *semanticFailure {
 		}
 	}
 	return nil
+}
+
+func semanticsSourceIdentity(value any, nullIsAbsent bool) (*string, *semanticFailure) {
+	if value == nil && nullIsAbsent {
+		return nil, nil
+	}
+	identity, ok := value.(string)
+	if !ok || !semanticsSourceIdentityPattern.MatchString(identity) {
+		return nil, semanticsRejected("invalid_projection")
+	}
+	return &identity, nil
 }
 
 func semanticsString(object map[string]any, key string) (string, *semanticFailure) {
@@ -1121,17 +1154,21 @@ func semanticsBaseEffects(request map[string]any, executionKind, targetURL strin
 	}, nil
 }
 
-func semanticsAddTarget(effects map[string]any, targetURL string, digest *string) {
+func semanticsAddTarget(effects map[string]any, targetURL string, digest, sourceIdentity *string) {
 	sentinel := ""
 	if digest != nil {
 		sentinel = *digest
 	}
 	effects["urls_to_upsert"] = append(effects["urls_to_upsert"].([]any), targetURL)
 	effects["content_hashes"] = append(effects["content_hashes"].([]any), sentinel)
-	effects["job_effects"] = append(effects["job_effects"].([]any), map[string]any{
+	jobEffect := map[string]any{
 		"content_sha256": sentinel,
 		"source_url":     targetURL,
-	})
+	}
+	if sourceIdentity != nil {
+		jobEffect["source_identity"] = *sourceIdentity
+	}
+	effects["job_effects"] = append(effects["job_effects"].([]any), jobEffect)
 	target := map[string]any{"action": "PROJECTED_ACTION_UPSERT", "url": targetURL}
 	if digest != nil {
 		target["content_sha256"] = *digest
@@ -1172,7 +1209,7 @@ func semanticsProjectScrape(input map[string]any) (map[string]any, *semanticFail
 	if failure != nil {
 		return nil, failure
 	}
-	semanticsAddTarget(effects, sourceURL, &digest)
+	semanticsAddTarget(effects, sourceURL, &digest, nil)
 	return effects, nil
 }
 
@@ -1263,7 +1300,10 @@ func semanticsProjectMonitor(input map[string]any) (map[string]any, *semanticFai
 	if failure != nil {
 		return nil, failure
 	}
-	tuples := map[string]semanticTargetTuple{}
+	tuples := map[semanticLogicalKey]semanticTargetTuple{}
+	urlOwners := map[string]semanticLogicalKey{}
+	sourceSpellings := map[string]string{}
+	urlObservations := map[string]bool{}
 	var filteredCount, securityFilteredCount uint64
 	hybrid, truncated := false, false
 	sitemaps := make([]string, 0)
@@ -1283,17 +1323,20 @@ func semanticsProjectMonitor(input map[string]any) (map[string]any, *semanticFai
 			if canonicalFailure != nil {
 				return nil, canonicalFailure
 			}
-			if previous, duplicate := tuples[canonical]; duplicate && previous.source != source {
+			if previous, duplicate := sourceSpellings[canonical]; duplicate && previous != source {
 				return nil, semanticsFailure("canonical_collision")
 			}
-			if _, present := tuples[canonical]; !present {
-				tuples[canonical] = semanticTargetTuple{source: source}
-			}
+			sourceSpellings[canonical] = source
+			urlObservations[canonical] = true
 		}
 		for _, discoveredValue := range jobs {
-			discovered, ok := discoveredValue.(map[string]any)
-			if !ok || len(discovered) != 2 {
-				return nil, semanticsRejected("invalid_projection")
+			discovered, shapeFailure := semanticsShape(
+				discoveredValue,
+				map[string]bool{"content": true, "url": true},
+				map[string]bool{"source_identity": true},
+			)
+			if shapeFailure != nil {
+				return nil, shapeFailure
 			}
 			source, ok := discovered["url"].(string)
 			if !ok {
@@ -1307,19 +1350,38 @@ func semanticsProjectMonitor(input map[string]any) (map[string]any, *semanticFai
 			if contentFailure != nil {
 				return nil, contentFailure
 			}
-			if previous, duplicate := tuples[canonical]; duplicate {
-				if previous.source != source {
-					return nil, semanticsFailure("canonical_collision")
-				}
-				if previous.content != nil {
-					previousJSON, _ := semanticsCanonicalJSON(previous.content)
-					contentJSON, _ := semanticsCanonicalJSON(content)
-					if string(previousJSON) != string(contentJSON) {
-						return nil, semanticsFailure("canonical_collision")
-					}
+			if previous, duplicate := sourceSpellings[canonical]; duplicate && previous != source {
+				return nil, semanticsFailure("canonical_collision")
+			}
+			sourceSpellings[canonical] = source
+			var sourceIdentity *string
+			if identityValue, present := discovered["source_identity"]; present {
+				sourceIdentity, shapeFailure = semanticsSourceIdentity(identityValue, true)
+				if shapeFailure != nil {
+					return nil, shapeFailure
 				}
 			}
-			tuples[canonical] = semanticTargetTuple{source: source, content: content}
+			logicalKey := semanticLogicalKey{value: canonical}
+			if sourceIdentity != nil {
+				logicalKey = semanticLogicalKey{explicit: true, value: *sourceIdentity}
+			}
+			if previousOwner, duplicate := urlOwners[canonical]; duplicate && previousOwner != logicalKey {
+				return nil, semanticsFailure("canonical_collision")
+			}
+			urlOwners[canonical] = logicalKey
+			if previous, duplicate := tuples[logicalKey]; duplicate {
+				previousJSON, _ := semanticsCanonicalJSON(previous.content)
+				contentJSON, _ := semanticsCanonicalJSON(content)
+				if string(previousJSON) != string(contentJSON) {
+					return nil, semanticsFailure("canonical_collision")
+				}
+				if canonical >= previous.url {
+					continue
+				}
+			}
+			tuples[logicalKey] = semanticTargetTuple{
+				url: canonical, content: content, sourceIdentity: sourceIdentity,
+			}
 		}
 		filtered, countFailure := semanticsUint64(result["filtered_count"])
 		if countFailure != nil {
@@ -1364,6 +1426,13 @@ func semanticsProjectMonitor(input map[string]any) (map[string]any, *semanticFai
 			metadataSequence = append(metadataSequence, nil)
 		}
 	}
+	for canonical := range urlObservations {
+		if _, rich := urlOwners[canonical]; rich {
+			continue
+		}
+		logicalKey := semanticLogicalKey{value: canonical}
+		tuples[logicalKey] = semanticTargetTuple{url: canonical}
+	}
 	if len(sitemaps) > 1 {
 		for _, sitemap := range sitemaps[1:] {
 			if sitemap != sitemaps[0] {
@@ -1398,22 +1467,27 @@ func semanticsProjectMonitor(input map[string]any) (map[string]any, *semanticFai
 		}
 		effects["metadata_updates_sha256"] = digest
 	}
-	canonicalURLs := make([]string, 0, len(tuples))
-	for canonical := range tuples {
-		canonicalURLs = append(canonicalURLs, canonical)
+	logicalKeys := make([]semanticLogicalKey, 0, len(tuples))
+	for logicalKey := range tuples {
+		logicalKeys = append(logicalKeys, logicalKey)
 	}
-	sort.Strings(canonicalURLs)
-	for _, canonical := range canonicalURLs {
-		tuple := tuples[canonical]
+	sort.Slice(logicalKeys, func(left, right int) bool {
+		if logicalKeys[left].explicit != logicalKeys[right].explicit {
+			return logicalKeys[left].explicit
+		}
+		return logicalKeys[left].value < logicalKeys[right].value
+	})
+	for _, logicalKey := range logicalKeys {
+		tuple := tuples[logicalKey]
 		if tuple.content == nil {
-			semanticsAddTarget(effects, canonical, nil)
+			semanticsAddTarget(effects, tuple.url, nil, nil)
 			continue
 		}
-		digest, err := semanticsContentSHA256(canonical, tuple.content)
+		digest, err := semanticsContentSHA256(tuple.url, tuple.content)
 		if err != nil {
 			return nil, semanticsRejected("invalid_projection")
 		}
-		semanticsAddTarget(effects, canonical, &digest)
+		semanticsAddTarget(effects, tuple.url, &digest, tuple.sourceIdentity)
 	}
 	return effects, nil
 }

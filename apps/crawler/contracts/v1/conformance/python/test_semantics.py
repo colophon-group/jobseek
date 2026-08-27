@@ -28,6 +28,14 @@ REQUIRED_CASE_IDS = frozenset(
         "digest_sensitivity",
         "divergent_rich_collision",
         "browser_suppressed",
+        "existing_effect_identity_alignment",
+        "explicit_identity_projected",
+        "explicit_null_identity_legacy",
+        "identity_absent_legacy",
+        "identity_url_churn_permutation",
+        "identity_url_churn_winner",
+        "identity_url_union_lockstep",
+        "invalid_existing_effect_identity",
         "invalid_html_nesting_limit",
         "invalid_html_unclosed_comment",
         "invalid_html_unclosed_quote",
@@ -48,6 +56,9 @@ REQUIRED_CASE_IDS = frozenset(
         "invalid_localized_description",
         "invalid_localized_description_null",
         "invalid_metadata_null",
+        "malformed_source_identity",
+        "mixed_identity_distinct_urls",
+        "mixed_identity_same_url_collision",
         "invalid_unicode_surrogate",
         "language_alias",
         "language_rejection",
@@ -69,6 +80,9 @@ REQUIRED_CASE_IDS = frozenset(
         "safe_url_query_distinctions",
         "safe_url_leading_zero_default_port",
         "safe_url_numeric_overrange_dns",
+        "same_identity_divergent_content",
+        "same_url_conflicting_identities",
+        "same_url_same_identity_dedupe",
         "set_permutation_dedupe",
         "suppressed_precondition",
         "unknown_subject_rejected",
@@ -91,7 +105,7 @@ def test_required_ids_are_independently_hard_coded_and_complete() -> None:
     assert frozenset(semantics.CASE_IDS) == REQUIRED_CASE_IDS
     assert manifest["required_case_ids"] == list(semantics.CASE_IDS)
     assert ids == list(semantics.CASE_IDS)
-    assert len(ids) == len(set(ids)) == 50
+    assert len(ids) == len(set(ids)) == 64
     assert all(
         set(case) == {"expected", "id", "input", "subject_kind"} for case in manifest["cases"]
     )
@@ -124,9 +138,62 @@ def test_projected_digests_and_target_lists_are_exactly_aligned() -> None:
         for index, target in enumerate(effects["targets"]):
             assert effects["urls_to_upsert"][index] == target["url"]
             assert effects["job_effects"][index]["source_url"] == target["url"]
+            assert set(effects["job_effects"][index]) in (
+                {"content_sha256", "source_url"},
+                {"content_sha256", "source_identity", "source_url"},
+            )
+            if "source_identity" in effects["job_effects"][index]:
+                assert semantics.SOURCE_IDENTITY_PATTERN.fullmatch(
+                    effects["job_effects"][index]["source_identity"]
+                )
             digest = target.get("content_sha256", "")
             assert effects["content_hashes"][index] == digest
             assert effects["job_effects"][index]["content_sha256"] == digest
+
+
+def test_source_identity_projection_is_durable_and_url_churn_is_deterministic() -> None:
+    identity = "smartrecruiters:synthetic:42"
+    explicit = _case("explicit_identity_projected")["expected"]["projected_effects"]
+    assert explicit["job_effects"] == [
+        {
+            "content_sha256": explicit["content_hashes"][0],
+            "source_identity": identity,
+            "source_url": "https://jobs.example.invalid/openings/identity-z",
+        }
+    ]
+
+    winner = _case("identity_url_churn_winner")["expected"]["projected_effects"]
+    permutation = _case("identity_url_churn_permutation")["expected"]["projected_effects"]
+    assert winner == permutation
+    assert winner["urls_to_upsert"] == ["https://jobs.example.invalid/openings/identity-a"]
+    assert winner["job_effects"][0]["source_identity"] == identity
+
+
+def test_absent_null_and_mixed_source_identity_modes_remain_closed() -> None:
+    for case_id in ("identity_absent_legacy", "explicit_null_identity_legacy"):
+        job_effect = _case(case_id)["expected"]["projected_effects"]["job_effects"][0]
+        assert "source_identity" not in job_effect
+
+    mixed = _case("mixed_identity_distinct_urls")["expected"]["projected_effects"]
+    assert mixed["urls_to_upsert"] == [
+        "https://jobs.example.invalid/openings/identity-z",
+        "https://jobs.example.invalid/openings/identity-a",
+    ]
+    assert mixed["job_effects"][0]["source_identity"] == "smartrecruiters:synthetic:42"
+    assert "source_identity" not in mixed["job_effects"][1]
+
+    for case_id, status, reason in (
+        ("same_url_conflicting_identities", "suppressed", "canonical_collision"),
+        ("mixed_identity_same_url_collision", "suppressed", "canonical_collision"),
+        ("same_identity_divergent_content", "suppressed", "canonical_collision"),
+        ("malformed_source_identity", "rejected", "invalid_projection"),
+        ("invalid_existing_effect_identity", "rejected", "invalid_projection"),
+    ):
+        assert _case(case_id)["expected"] == {
+            "case_id": case_id,
+            "reason": reason,
+            "status": status,
+        }
 
 
 @pytest.mark.parametrize(
@@ -421,4 +488,4 @@ def test_generator_is_deterministic_and_cli_check_is_clean() -> None:
         text=True,
     )
     assert completed.returncode == 0, completed.stderr
-    assert completed.stdout.strip().endswith("(50 cases)")
+    assert completed.stdout.strip().endswith("(64 cases)")

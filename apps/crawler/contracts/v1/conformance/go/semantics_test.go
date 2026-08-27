@@ -19,6 +19,20 @@ var semanticsRequiredCaseIDs = []string{
 	"invalid_visible_content",
 	"safe_monitor_url_only",
 	"rich_monitor",
+	"identity_absent_legacy",
+	"explicit_identity_projected",
+	"explicit_null_identity_legacy",
+	"identity_url_union_lockstep",
+	"identity_url_churn_winner",
+	"identity_url_churn_permutation",
+	"same_url_same_identity_dedupe",
+	"same_url_conflicting_identities",
+	"mixed_identity_distinct_urls",
+	"mixed_identity_same_url_collision",
+	"same_identity_divergent_content",
+	"malformed_source_identity",
+	"existing_effect_identity_alignment",
+	"invalid_existing_effect_identity",
 	"suppressed_precondition",
 	"invalid_url",
 	"locale_alias",
@@ -144,8 +158,8 @@ func TestSemanticsRequiredIDsAreHardCodedAndComplete(t *testing.T) {
 	if !reflect.DeepEqual(manifest.RequiredCaseIDs, semanticsRequiredCaseIDs) {
 		t.Fatalf("manifest required IDs differ\n got: %v\nwant: %v", manifest.RequiredCaseIDs, semanticsRequiredCaseIDs)
 	}
-	if len(manifest.Cases) != 50 {
-		t.Fatalf("semantics case count = %d, want 50", len(manifest.Cases))
+	if len(manifest.Cases) != 64 {
+		t.Fatalf("semantics case count = %d, want 64", len(manifest.Cases))
 	}
 	seen := map[string]bool{}
 	for index, item := range manifest.Cases {
@@ -198,8 +212,8 @@ func TestSemanticsManifestMatchesEveryExactGoResultAndDigest(t *testing.T) {
 			}
 		})
 	}
-	if projected != 17 {
-		t.Fatalf("projected result count = %d, want 17", projected)
+	if projected != 26 {
+		t.Fatalf("projected result count = %d, want 26", projected)
 	}
 }
 
@@ -221,6 +235,14 @@ func TestSemanticsProjectedTargetsRemainAtomicallyAligned(t *testing.T) {
 		for index := range urls {
 			job := jobs[index].(map[string]any)
 			target := targets[index].(map[string]any)
+			if len(job) != 2 && len(job) != 3 {
+				t.Fatalf("case %v target %d has open job effect", item["id"], index)
+			}
+			if identityValue, present := job["source_identity"]; present {
+				if _, failure := semanticsSourceIdentity(identityValue, false); failure != nil {
+					t.Fatalf("case %v target %d has invalid source identity", item["id"], index)
+				}
+			}
 			if urls[index] != job["source_url"] || urls[index] != target["url"] {
 				t.Fatalf("case %v target %d detached URL", item["id"], index)
 			}
@@ -231,6 +253,65 @@ func TestSemanticsProjectedTargetsRemainAtomicallyAligned(t *testing.T) {
 			if hashes[index] != job["content_sha256"] || hashes[index] != targetHash {
 				t.Fatalf("case %v target %d detached hash", item["id"], index)
 			}
+		}
+	}
+}
+
+func TestSemanticsSourceIdentityProjectionAndMixedModeRules(t *testing.T) {
+	manifest := loadSemanticsManifest(t)
+	effects := func(caseID string) map[string]any {
+		result := ProjectSemantics(semanticsCaseByID(t, manifest, caseID))
+		if result["status"] != "projected" {
+			t.Fatalf("case %q stopped: %v", caseID, result)
+		}
+		return result["projected_effects"].(map[string]any)
+	}
+
+	explicit := effects("explicit_identity_projected")
+	explicitJob := explicit["job_effects"].([]any)[0].(map[string]any)
+	if explicitJob["source_identity"] != "smartrecruiters:synthetic:42" ||
+		explicitJob["source_url"] != "https://jobs.example.invalid/openings/identity-z" {
+		t.Fatalf("explicit identity detached from outbound URL: %v", explicitJob)
+	}
+
+	winner := effects("identity_url_churn_winner")
+	permutation := effects("identity_url_churn_permutation")
+	if !bytes.Equal(semanticsJSONForTest(t, winner), semanticsJSONForTest(t, permutation)) {
+		t.Fatalf("URL churn result depends on input order\nfirst: %v\nsecond: %v", winner, permutation)
+	}
+	winnerURLs := winner["urls_to_upsert"].([]any)
+	if !reflect.DeepEqual(winnerURLs, []any{"https://jobs.example.invalid/openings/identity-a"}) {
+		t.Fatalf("URL churn winner = %v", winnerURLs)
+	}
+
+	for _, caseID := range []string{"identity_absent_legacy", "explicit_null_identity_legacy"} {
+		job := effects(caseID)["job_effects"].([]any)[0].(map[string]any)
+		if _, present := job["source_identity"]; present {
+			t.Fatalf("legacy case %q gained identity: %v", caseID, job)
+		}
+	}
+
+	mixed := effects("mixed_identity_distinct_urls")
+	mixedURLs := mixed["urls_to_upsert"].([]any)
+	wantMixedURLs := []any{
+		"https://jobs.example.invalid/openings/identity-z",
+		"https://jobs.example.invalid/openings/identity-a",
+	}
+	if !reflect.DeepEqual(mixedURLs, wantMixedURLs) {
+		t.Fatalf("mixed logical-key order = %v, want %v", mixedURLs, wantMixedURLs)
+	}
+
+	stopped := map[string]map[string]any{
+		"same_url_conflicting_identities":   {"reason": "canonical_collision", "status": "suppressed"},
+		"mixed_identity_same_url_collision": {"reason": "canonical_collision", "status": "suppressed"},
+		"same_identity_divergent_content":   {"reason": "canonical_collision", "status": "suppressed"},
+		"malformed_source_identity":         {"reason": "invalid_projection", "status": "rejected"},
+		"invalid_existing_effect_identity":  {"reason": "invalid_projection", "status": "rejected"},
+	}
+	for caseID, expected := range stopped {
+		result := ProjectSemantics(semanticsCaseByID(t, manifest, caseID))
+		if result["status"] != expected["status"] || result["reason"] != expected["reason"] {
+			t.Fatalf("case %q result = %v", caseID, result)
 		}
 	}
 }
