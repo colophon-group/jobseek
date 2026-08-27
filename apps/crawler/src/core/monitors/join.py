@@ -46,6 +46,7 @@ def _build_metadata(slug: str) -> dict:
     return {
         "path": "props.pageProps.initialState.jobs.items",
         "url_template": f"https://join.com/companies/{slug}/{{idParam}}",
+        "board_gone_statuses": [404, 410],
         "pagination": {
             "path": "props.pageProps.initialState.jobs.pagination",
             "page_count": "pageCount",

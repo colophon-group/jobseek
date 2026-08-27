@@ -19,6 +19,7 @@ Requires playwright when ``render`` is true:
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -32,6 +33,7 @@ from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 from src.core.monitors import DiscoveredJob, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.extract import flatten, walk_steps
+from src.shared.nextdata import resolve_path
 from src.shared.slug import slugify
 from src.shared.truncation import truncated_rich_result
 
@@ -765,6 +767,13 @@ async def _fetch_html(
                 raise ValueError(f"inline fetch_urls[{index}].url must be a non-empty string")
             fetch_candidates.append((fetch_url, fetch_headers))
     required_text = metadata.get("fetch_contains")
+    fetch_json_path = metadata.get("fetch_json_path")
+    if fetch_json_path is not None and (
+        not isinstance(fetch_json_path, str) or not fetch_json_path or len(fetch_json_path) > 256
+    ):
+        raise ValueError("inline fetch_json_path must be a non-empty path up to 256 characters")
+    if fetch_json_path is not None and metadata.get("render"):
+        raise ValueError("inline fetch_json_path supports static fetches only")
     detail_click_selector = _validated_detail_selector(
         metadata.get("detail_click_selector"), name="detail_click_selector"
     )
@@ -885,7 +894,16 @@ async def _fetch_html(
                     headers=fetch_headers,
                 )
                 resp.raise_for_status()
-                return _FetchedInlineHtml(html=validate(resp.text, fetch_url))
+                html = resp.text
+                if fetch_json_path is not None:
+                    payload = json.loads(html)
+                    resolved = resolve_path(payload, fetch_json_path)
+                    if not isinstance(resolved, str) or not resolved:
+                        raise ValueError(
+                            f"inline fetch_json_path did not resolve to HTML from {fetch_url}"
+                        )
+                    html = resolved
+                return _FetchedInlineHtml(html=validate(html, fetch_url))
             except Exception as exc:
                 last_error = exc
                 log.warning("inline.fetch_fallback", url=fetch_url, error=str(exc))
@@ -914,10 +932,12 @@ async def discover(
         source_identity_attribute — attribute containing the raw ordinary-listing identity
         source_identity_regex — full-match regex capturing the stable ordinary-listing ID
         fetch_urls — ordered alternate read URLs; canonical URLs use board_url
+        fetch_json_path — extract HTML from a static JSON response using JMESPath
         include_hidden — include HTML hidden by tab/accordion state (default: false)
         empty_selector — CSS selector that scopes a visibly active empty-state element
         empty_text — authoritative text required inside empty_selector
         nonempty_selector — optional selector whose presence overrides the empty marker
+        empty_requires_no_jobs — accept the marker only after all extracted rows are filtered
         require_zero_proof — fail when extraction returns no jobs without an explicit
                              empty_selector/empty_text match (default: false)
         item_boundary_tag — optional tag that starts and bounds each posting
@@ -949,6 +969,11 @@ async def discover(
         raise ValueError("inline explicit empty state requires empty_selector and empty_text")
     if nonempty_selector is not None and empty_text is None:
         raise ValueError("inline nonempty_selector requires empty_selector and empty_text")
+    empty_requires_no_jobs = metadata.get("empty_requires_no_jobs", False)
+    if not isinstance(empty_requires_no_jobs, bool):
+        raise ValueError("inline empty_requires_no_jobs must be a boolean")
+    if empty_requires_no_jobs and empty_text is None:
+        raise ValueError("inline empty_requires_no_jobs requires an explicit empty state")
     require_zero_proof = metadata.get("require_zero_proof", False)
     if not isinstance(require_zero_proof, bool):
         raise ValueError("inline require_zero_proof must be a boolean")
@@ -1044,13 +1069,15 @@ async def discover(
     elements = flatten(html, include_hidden=include_hidden)
 
     elements = _scope_to_section(elements, section_start, section_end)
+    authoritative_empty = False
     if empty_text is not None:
         assert empty_selector is not None
         if _matches_explicit_empty(html, empty_selector, empty_text):
             has_nonempty_items = nonempty_selector is not None and bool(
                 LexborHTMLParser(html).css_first(nonempty_selector)
             )
-            if not has_nonempty_items:
+            authoritative_empty = not has_nonempty_items
+            if authoritative_empty and not empty_requires_no_jobs:
                 log.info("inline.explicit_empty", url=board_url)
                 return []
     if not elements:
@@ -1220,6 +1247,9 @@ async def discover(
             f"({len(source_identities)} identities for {source_identity_index} jobs)"
         )
 
+    if authoritative_empty and not jobs:
+        log.info("inline.explicit_empty_after_filtering", url=board_url)
+        return []
     if empty_text is not None and not jobs:
         raise ValueError(
             "inline monitor found no accepted jobs and did not match the configured explicit "

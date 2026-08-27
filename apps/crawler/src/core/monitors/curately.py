@@ -10,6 +10,7 @@ browser replay and per-job detail requests.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from pathlib import Path
@@ -29,6 +30,8 @@ API_BASE = "https://api.curately.ai/QADemoCurately"
 SEARCH_URL = f"{API_BASE}/sovrenjobsearch"
 MAX_JOBS = 50_000
 DEFAULT_DAYS_BACK = 180
+_SNAPSHOT_ATTEMPTS = 2
+_SNAPSHOT_RETRY_DELAY = 1.0
 
 _SHORT_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _BOARD_PATH_RE = re.compile(
@@ -46,6 +49,10 @@ _JOB_HOURS_MAP = {1: "full_time", 2: "part_time"}
 _WORK_TYPE_MAP = {1: "remote", 2: "hybrid", 3: "onsite"}
 _ACTIVE_STATUSES = {None, 1, "1"}
 _INACTIVE_STATUSES = {0, "0", 2, "2", 3, "3", 4, "4", 5, "5"}
+
+
+class _SnapshotChanged(ValueError):
+    """The Curately inventory changed while its pages were being collected."""
 
 
 def _short_name_from_url(board_url: str) -> str | None:
@@ -300,14 +307,16 @@ def _board_config(board: dict) -> tuple[str, int | None, int, str | None, str | 
     return short_name, client_id, days_back, currency, salary_unit, language
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None):
-    _ = pw
-    short_name, client_id, days_back, currency, salary_unit, language = _board_config(board)
-    if client_id is None:
-        client_data = await _fetch_client(short_name, client)
-        client_id = _positive_int(client_data.get("clientId"))
-        assert client_id is not None
-
+async def _discover_snapshot(
+    client: httpx.AsyncClient,
+    *,
+    short_name: str,
+    client_id: int,
+    days_back: int,
+    currency: str | None,
+    salary_unit: str | None,
+    language: str | None,
+):
     jobs: list[DiscoveredJob] = []
     seen_ids: set[int] = set()
     offset = 0
@@ -325,13 +334,13 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         if expected_total is None:
             expected_total = total
         elif total != expected_total:
-            raise ValueError(
+            raise _SnapshotChanged(
                 f"Curately TotalSize changed during pagination: {expected_total} -> {total}"
             )
 
         if not items:
             if offset < min(total, MAX_JOBS):
-                raise ValueError(
+                raise _SnapshotChanged(
                     f"Curately pagination ended at offset {offset} before advertised total {total}"
                 )
             break
@@ -347,7 +356,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
                     f"Curately job {job_id} does not belong to configured client_id {client_id}"
                 )
             if job_id in seen_ids:
-                raise ValueError(f"Curately pagination repeated jobId {job_id}")
+                raise _SnapshotChanged(f"Curately pagination repeated jobId {job_id}")
             seen_ids.add(job_id)
             job = _parse_job(
                 raw,
@@ -366,7 +375,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     if expected_total is None:
         raise ValueError("Curately search returned no pagination metadata")
     if expected_total <= MAX_JOBS and offset != expected_total:
-        raise ValueError(
+        raise _SnapshotChanged(
             f"Curately pagination returned {offset} rows for advertised total {expected_total}"
         )
     if expected_total > MAX_JOBS:
@@ -378,6 +387,38 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         )
         return truncated_rich_result(jobs[:MAX_JOBS])
     return jobs
+
+
+async def discover(board: dict, client: httpx.AsyncClient, pw=None):
+    _ = pw
+    short_name, client_id, days_back, currency, salary_unit, language = _board_config(board)
+    if client_id is None:
+        client_data = await _fetch_client(short_name, client)
+        client_id = _positive_int(client_data.get("clientId"))
+        assert client_id is not None
+
+    for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
+        try:
+            return await _discover_snapshot(
+                client,
+                short_name=short_name,
+                client_id=client_id,
+                days_back=days_back,
+                currency=currency,
+                salary_unit=salary_unit,
+                language=language,
+            )
+        except _SnapshotChanged as exc:
+            if attempt == _SNAPSHOT_ATTEMPTS:
+                raise
+            log.warning(
+                "curately.snapshot_changed",
+                short_name=short_name,
+                attempt=attempt,
+                error=str(exc),
+            )
+            await asyncio.sleep(_SNAPSHOT_RETRY_DELAY)
+    raise AssertionError("unreachable")
 
 
 async def can_handle(
