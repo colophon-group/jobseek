@@ -1410,6 +1410,60 @@ class TestItemFilter:
         ]
         assert total == 2
 
+    def test_required_identity_and_dedupe_preference_compose(self):
+        item_filter = _validated_item_filter(
+            {
+                "item_filter": {
+                    "require_regex": {"req_id": r"[0-9]{4}"},
+                    "dedupe_by": ["req_id"],
+                    "dedupe_preference": {
+                        "path": "language",
+                        "preferred_values": ["en-us"],
+                        "fallback_by": ["language", "canonical_url"],
+                    },
+                }
+            }
+        )
+
+        scoped, total = _apply_item_filter(
+            [
+                {
+                    "req_id": "1234",
+                    "language": "de-de",
+                    "canonical_url": "https://example.com/1234?lang=de-de",
+                },
+                {
+                    "req_id": "1234",
+                    "language": "en-us",
+                    "canonical_url": "https://example.com/1234?lang=en-us",
+                },
+            ],
+            item_filter,
+            advertised_total=2,
+        )
+
+        assert scoped == [
+            {
+                "req_id": "1234",
+                "language": "en-us",
+                "canonical_url": "https://example.com/1234?lang=en-us",
+            }
+        ]
+        assert total == 1
+
+        with pytest.raises(ValueError, match="missing or invalid.*req_id"):
+            _apply_item_filter(
+                [
+                    {
+                        "req_id": "not-numeric",
+                        "language": "en-us",
+                        "canonical_url": "https://example.com/invalid",
+                    }
+                ],
+                item_filter,
+                advertised_total=1,
+            )
+
     @pytest.mark.parametrize(
         "preference",
         [
