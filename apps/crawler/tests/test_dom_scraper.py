@@ -137,6 +137,43 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    async def test_fetch_url_transform_reads_gateway_without_changing_extraction(self):
+        from src.core.scrapers.dom import scrape
+
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            return httpx.Response(200, text="<html><body><h1>Gateway role</h1></body></html>")
+
+        canonical = "https://blocked.example/jobs/42"
+        config = {
+            "fetch_url_transform": {
+                "find": r"^https://blocked\.example(/.*)$",
+                "replace": r"https://blocked-example.translate.test\1",
+            },
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(canonical, config, client)
+
+        assert result.title == "Gateway role"
+        assert requested == ["https://blocked-example.translate.test/jobs/42"]
+
+    async def test_fetch_url_transform_requires_exactly_one_match(self):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "fetch_url_transform": {
+                "find": r"^https://other\.example/",
+                "replace": "https://gateway.example/",
+            },
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="exactly once"):
+                await scrape("https://blocked.example/jobs/42", config, client)
+
     def test_prospective_detail_preset_extracts_complete_scoped_description(self):
         from src.core.scrapers.dom import parse_html
         from src.workspace._compat import auto_scraper_type
