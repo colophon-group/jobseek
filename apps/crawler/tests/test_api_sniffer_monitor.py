@@ -24,6 +24,7 @@ from src.core.monitors.api_sniffer import (
     _extract_rich,
     _extract_urls_from_template,
     _lumesse_config_overrides,
+    _matches_url_field_contract,
     _materially_below_advertised_total,
     _paginate_until_converged,
     _refresh_post_data,
@@ -32,6 +33,7 @@ from src.core.monitors.api_sniffer import (
     _validated_pagination_convergence,
     _validated_required_pdf_pattern,
     _validated_slug_fields,
+    _validated_url_field_match,
     can_handle,
     discover,
 )
@@ -1061,6 +1063,87 @@ class TestItemFilter:
         assert total == scoped_total
         assert not _materially_below_advertised_total(len(scoped), total)
 
+    def test_dedupe_preference_uses_preferred_locale_then_lexical_fallback(self):
+        item_filter = _validated_item_filter(
+            {
+                "item_filter": {
+                    "dedupe_by": ["req_id"],
+                    "dedupe_preference": {
+                        "path": "language",
+                        "preferred_values": ["en-us"],
+                        "fallback_by": ["language", "canonical_url", "raw_uuid"],
+                    },
+                }
+            }
+        )
+        items = [
+            {
+                "req_id": "a",
+                "language": "fr-fr",
+                "canonical_url": "https://example.com/a?lang=fr-fr",
+                "raw_uuid": "raw-a-fr",
+            },
+            {
+                "req_id": "b",
+                "language": "it-it",
+                "canonical_url": "https://example.com/b?lang=it-it",
+                "raw_uuid": "raw-b-it",
+            },
+            {
+                "req_id": "a",
+                "language": "en-us",
+                "canonical_url": "https://example.com/a?lang=en-us",
+                "raw_uuid": "raw-a-en",
+            },
+            {
+                "req_id": "b",
+                "language": "de-de",
+                "canonical_url": "https://example.com/b?lang=de-de",
+                "raw_uuid": "raw-b-de",
+            },
+        ]
+
+        scoped, total = _apply_item_filter(items, item_filter, advertised_total=4)
+
+        assert [(item["req_id"], item["language"]) for item in scoped] == [
+            ("a", "en-us"),
+            ("b", "de-de"),
+        ]
+        assert total == 2
+
+    @pytest.mark.parametrize(
+        "preference",
+        [
+            {},
+            {"path": "language", "preferred_values": ["en-us"]},
+            {
+                "path": "language",
+                "preferred_values": [],
+                "fallback_by": ["language"],
+            },
+            {
+                "path": "language",
+                "preferred_values": ["en-us", "en-us"],
+                "fallback_by": ["language"],
+            },
+            {
+                "path": "language",
+                "preferred_values": ["en-us"],
+                "fallback_by": ["canonical_url", "language"],
+            },
+        ],
+    )
+    def test_rejects_malformed_dedupe_preference(self, preference):
+        with pytest.raises(ValueError, match="dedupe_preference"):
+            _validated_item_filter(
+                {
+                    "item_filter": {
+                        "dedupe_by": ["req_id"],
+                        "dedupe_preference": preference,
+                    }
+                }
+            )
+
     @pytest.mark.parametrize(
         "value",
         [
@@ -1198,7 +1281,7 @@ class TestItemFilter:
 
 class TestPaginationConvergence:
     def test_requires_bounded_offset_config_and_stable_identity(self):
-        with pytest.raises(ValueError, match="requires item_filter.dedupe_by"):
+        with pytest.raises(ValueError, match="requires identity_by or item_filter.dedupe_by"):
             _validated_pagination_convergence(
                 {
                     "pagination": {"style": "offset"},
@@ -1211,7 +1294,7 @@ class TestPaginationConvergence:
             )
 
     def test_accepts_numbered_page_pagination(self):
-        assert _validated_pagination_convergence(
+        convergence = _validated_pagination_convergence(
             {
                 "pagination": {"style": "page"},
                 "pagination_convergence": {
@@ -1220,7 +1303,121 @@ class TestPaginationConvergence:
                 },
             },
             ("id",),
-        ) == (3, 2)
+        )
+        assert convergence is not None
+        assert convergence.max_passes == 3
+        assert convergence.required_no_growth_passes == 2
+        assert convergence.identity_paths == ("id",)
+        assert convergence.stable_fields == ()
+        assert convergence.reject_duplicate_identities is False
+
+    def test_explicit_raw_identity_is_separate_from_logical_dedupe(self):
+        convergence = _validated_pagination_convergence(
+            {
+                "pagination": {"style": "page"},
+                "pagination_convergence": {
+                    "max_passes": 3,
+                    "required_no_growth_passes": 2,
+                    "identity_by": ["data.raw_uuid"],
+                    "stable_fields": [
+                        "data.req_id",
+                        "data.language",
+                        "data.canonical_url",
+                    ],
+                },
+            },
+            ("data.req_id",),
+        )
+
+        assert convergence is not None
+        assert convergence.identity_paths == ("data.raw_uuid",)
+        assert convergence.stable_fields == (
+            "data.req_id",
+            "data.language",
+            "data.canonical_url",
+        )
+        assert convergence.reject_duplicate_identities is True
+
+    def test_url_field_match_requires_exact_named_groups_and_cross_fields(self):
+        config = {
+            "url_field": "data.canonical_url",
+            "pagination": {"style": "page"},
+            "pagination_convergence": {
+                "max_passes": 3,
+                "required_no_growth_passes": 2,
+                "identity_by": ["data.raw_uuid"],
+            },
+            "url_field_match": {
+                "pattern": (
+                    r"^https://example\.com/jobs/(?P<req_id>[0-9]+)"
+                    r"\?lang=(?P<language>[a-z-]+)$"
+                ),
+                "fields": {
+                    "req_id": "data.req_id",
+                    "language": "data.language",
+                },
+            },
+        }
+        convergence = _validated_pagination_convergence(config, ("data.req_id",))
+        contract = _validated_url_field_match(config, convergence)
+        assert contract is not None
+        valid = {
+            "data": {
+                "req_id": "123",
+                "language": "en-us",
+                "canonical_url": "https://example.com/jobs/123?lang=en-us",
+            }
+        }
+        assert _matches_url_field_contract(valid, "data.canonical_url", contract)
+
+        wrong_req = {
+            "data": {
+                **valid["data"],
+                "canonical_url": "https://example.com/jobs/456?lang=en-us",
+            }
+        }
+        wrong_language = {
+            "data": {
+                **valid["data"],
+                "canonical_url": "https://example.com/jobs/123?lang=fr-fr",
+            }
+        }
+        assert not _matches_url_field_contract(wrong_req, "data.canonical_url", contract)
+        assert not _matches_url_field_contract(wrong_language, "data.canonical_url", contract)
+
+    def test_url_field_match_rejects_ambiguous_config(self):
+        convergence_config = {
+            "pagination": {"style": "page"},
+            "pagination_convergence": {
+                "max_passes": 3,
+                "required_no_growth_passes": 2,
+                "identity_by": ["raw_uuid"],
+            },
+        }
+        convergence = _validated_pagination_convergence(convergence_config, ())
+        with pytest.raises(ValueError, match="requires url_field"):
+            _validated_url_field_match(
+                {
+                    **convergence_config,
+                    "url_field_match": {
+                        "pattern": r"(?P<id>[0-9]+)",
+                        "fields": {"id": "id"},
+                    },
+                },
+                convergence,
+            )
+        with pytest.raises(ValueError, match="named groups must exactly match"):
+            _validated_url_field_match(
+                {
+                    **convergence_config,
+                    "url_field": "url",
+                    "url_field_match": {
+                        "pattern": r"(?P<id>[0-9]+)",
+                        "fields": {"req_id": "id"},
+                    },
+                },
+                convergence,
+            )
 
     @staticmethod
     def _pages_fetcher(passes):
@@ -1408,6 +1605,124 @@ class TestPaginationConvergence:
             "a": "version one",
             "b": "stable",
         }
+
+    @pytest.mark.asyncio
+    async def test_explicit_raw_identity_tolerates_only_unprojected_record_drift(self):
+        payloads = [
+            {"count": 1, "jobs": [{"uuid": "raw-a", "req": "a", "body": "one"}]},
+            {"count": 1, "jobs": [{"uuid": "raw-a", "req": "a", "body": "two"}]},
+        ]
+        calls = 0
+
+        async def fetch(_method, _url, _headers, _body):
+            nonlocal calls
+            payload = payloads[min(calls, len(payloads) - 1)]
+            calls += 1
+            return payload
+
+        items, converged = await _paginate_until_converged(
+            fetch_fn=fetch,
+            method="GET",
+            api_url="https://example.com/jobs?page=1",
+            request_headers={},
+            post_data=None,
+            initial_data={
+                "count": 1,
+                "jobs": [{"uuid": "raw-a", "req": "a", "body": "initial"}],
+            },
+            initial_items=[{"uuid": "raw-a", "req": "a", "body": "initial"}],
+            json_path="jobs",
+            total_path="count",
+            total_count=1,
+            pagination_config={
+                "param_name": "page",
+                "style": "page",
+                "start_value": 1,
+                "increment": 1,
+                "location": "query",
+            },
+            max_pages=1,
+            identity_paths=("uuid",),
+            stable_fields=("req",),
+            reject_duplicate_identities=True,
+            max_passes=3,
+            required_no_growth_passes=2,
+            item_projector=None,
+        )
+
+        assert converged is True
+        assert items == [{"uuid": "raw-a", "req": "a", "body": "initial"}]
+        assert calls == 2
+
+    @pytest.mark.asyncio
+    async def test_explicit_raw_identity_rejects_projected_drift(self):
+        async def fetch(_method, _url, _headers, _body):
+            return {"count": 1, "jobs": [{"uuid": "raw-a", "req": "changed"}]}
+
+        initial = {"uuid": "raw-a", "req": "a"}
+        items, converged = await _paginate_until_converged(
+            fetch_fn=fetch,
+            method="GET",
+            api_url="https://example.com/jobs?page=1",
+            request_headers={},
+            post_data=None,
+            initial_data={"count": 1, "jobs": [initial]},
+            initial_items=[initial],
+            json_path="jobs",
+            total_path="count",
+            total_count=1,
+            pagination_config={
+                "param_name": "page",
+                "style": "page",
+                "start_value": 1,
+                "increment": 1,
+                "location": "query",
+            },
+            max_pages=1,
+            identity_paths=("uuid",),
+            stable_fields=("req",),
+            reject_duplicate_identities=True,
+            max_passes=3,
+            required_no_growth_passes=2,
+            item_projector=None,
+        )
+
+        assert converged is False
+        assert items == [initial]
+
+    @pytest.mark.asyncio
+    async def test_explicit_raw_identity_rejects_duplicate_uuid(self):
+        row = {"uuid": "raw-a", "req": "a"}
+
+        items, converged = await _paginate_until_converged(
+            fetch_fn=AsyncMock(),
+            method="GET",
+            api_url="https://example.com/jobs?page=1",
+            request_headers={},
+            post_data=None,
+            initial_data={"count": 2, "jobs": [row, row]},
+            initial_items=[row, row],
+            json_path="jobs",
+            total_path="count",
+            total_count=2,
+            pagination_config={
+                "param_name": "page",
+                "style": "page",
+                "start_value": 1,
+                "increment": 1,
+                "location": "query",
+            },
+            max_pages=1,
+            identity_paths=("uuid",),
+            stable_fields=("req",),
+            reject_duplicate_identities=True,
+            max_passes=3,
+            required_no_growth_passes=2,
+            item_projector=None,
+        )
+
+        assert converged is False
+        assert items == [row]
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -1658,20 +1973,51 @@ class TestPaginationConvergence:
         }
 
     @pytest.mark.asyncio
-    async def test_numbered_pages_with_locale_variants_fail_closed_to_stable_urls(self):
-        """Raw row totals cannot prove a complete deduplicated inventory."""
-        from src.core.monitor import MonitorResult
-
+    async def test_raw_uuid_proof_emits_one_preferred_locale_url_per_requisition(self):
         pages = {
             1: [
-                {"data": {"req_id": "a", "language": "en-us"}},
-                {"data": {"req_id": "b", "language": "en-us"}},
+                {
+                    "data": {
+                        "req_id": "a",
+                        "language": "fr-fr",
+                        "meta_data": {
+                            "canonical_url": "https://example.com/jobs/a?lang=fr-fr",
+                            "icims": {"uuid": "raw-a-fr"},
+                        },
+                    }
+                },
+                {
+                    "data": {
+                        "req_id": "b",
+                        "language": "de-de",
+                        "meta_data": {
+                            "canonical_url": "https://example.com/jobs/b?lang=de-de",
+                            "icims": {"uuid": "raw-b-de"},
+                        },
+                    }
+                },
             ],
-            # A page-boundary shift repeats requisition a in another locale,
-            # so four advertised rows hide the missing live requisition d.
             2: [
-                {"data": {"req_id": "a", "language": "fr-fr"}},
-                {"data": {"req_id": "c", "language": "en-us"}},
+                {
+                    "data": {
+                        "req_id": "a",
+                        "language": "en-us",
+                        "meta_data": {
+                            "canonical_url": "https://example.com/jobs/a?lang=en-us",
+                            "icims": {"uuid": "raw-a-en"},
+                        },
+                    }
+                },
+                {
+                    "data": {
+                        "req_id": "c",
+                        "language": "en-us",
+                        "meta_data": {
+                            "canonical_url": "https://example.com/jobs/c?lang=en-us",
+                            "icims": {"uuid": "raw-c-en"},
+                        },
+                    }
+                },
             ],
         }
 
@@ -1689,8 +2035,7 @@ class TestPaginationConvergence:
                 "api_url": "https://example.com/api/jobs?limit=2&page=1",
                 "json_path": "jobs",
                 "total_path": "totalCount",
-                "url_template": "https://example.com/jobs/{req_id}",
-                "url_template_fields": {"req_id": "data.req_id"},
+                "url_field": "data.meta_data.canonical_url",
                 "pagination": {
                     "param_name": "page",
                     "style": "page",
@@ -1702,20 +2047,120 @@ class TestPaginationConvergence:
                 "pagination_convergence": {
                     "max_passes": 3,
                     "required_no_growth_passes": 2,
+                    "identity_by": ["data.meta_data.icims.uuid"],
+                    "stable_fields": [
+                        "data.req_id",
+                        "data.language",
+                        "data.meta_data.canonical_url",
+                    ],
                 },
-                "item_filter": {"dedupe_by": ["data.req_id"]},
+                "item_filter": {
+                    "dedupe_by": ["data.req_id"],
+                    "dedupe_preference": {
+                        "path": "data.language",
+                        "preferred_values": ["en-us"],
+                        "fallback_by": [
+                            "data.language",
+                            "data.meta_data.canonical_url",
+                            "data.meta_data.icims.uuid",
+                        ],
+                    },
+                },
+                "url_field_match": {
+                    "pattern": (
+                        r"^https://example\.com/jobs/(?P<req_id>[a-z]+)"
+                        r"\?lang=(?P<language>[a-z]{2}-[a-z]{2})$"
+                    ),
+                    "fields": {
+                        "req_id": "data.req_id",
+                        "language": "data.language",
+                    },
+                },
             },
         }
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover(board, client)
 
+        assert result == {
+            "https://example.com/jobs/a?lang=en-us",
+            "https://example.com/jobs/b?lang=de-de",
+            "https://example.com/jobs/c?lang=en-us",
+        }
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "canonical_url",
+        [
+            "https://example.com/jobs/other?lang=en-us",
+            "https://example.com/jobs/a",
+        ],
+        ids=["cross-field-mismatch", "missing-required-language"],
+    )
+    async def test_raw_uuid_proof_fails_closed_on_invalid_provider_url(self, canonical_url):
+        from src.core.monitor import MonitorResult
+
+        payload = {
+            "totalCount": 1,
+            "jobs": [
+                {
+                    "data": {
+                        "req_id": "a",
+                        "language": "en-us",
+                        "meta_data": {
+                            "canonical_url": canonical_url,
+                            "icims": {"uuid": "raw-a"},
+                        },
+                    }
+                }
+            ],
+        }
+        config = {
+            "api_url": "https://example.com/api/jobs?page=1",
+            "json_path": "jobs",
+            "total_path": "totalCount",
+            "url_field": "data.meta_data.canonical_url",
+            "pagination": {
+                "param_name": "page",
+                "style": "page",
+                "start_value": 1,
+                "increment": 1,
+                "location": "query",
+                "max_pages": 1,
+            },
+            "pagination_convergence": {
+                "max_passes": 3,
+                "required_no_growth_passes": 2,
+                "identity_by": ["data.meta_data.icims.uuid"],
+                "stable_fields": [
+                    "data.req_id",
+                    "data.language",
+                    "data.meta_data.canonical_url",
+                ],
+            },
+            "item_filter": {"dedupe_by": ["data.req_id"]},
+            "url_field_match": {
+                "pattern": (
+                    r"^https://example\.com/jobs/(?P<req_id>[a-z]+)"
+                    r"\?lang=(?P<language>[a-z]{2}-[a-z]{2})$"
+                ),
+                "fields": {
+                    "req_id": "data.req_id",
+                    "language": "data.language",
+                },
+            },
+        }
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(
+                {"board_url": "https://example.com/jobs", "metadata": config},
+                client,
+            )
+
         assert isinstance(result, MonitorResult)
         assert result.truncated is True
-        assert result.urls == {
-            "https://example.com/jobs/a",
-            "https://example.com/jobs/b",
-            "https://example.com/jobs/c",
-        }
+        assert result.urls == set()
 
 
 def _http_status_error_resp(status: int) -> MagicMock:

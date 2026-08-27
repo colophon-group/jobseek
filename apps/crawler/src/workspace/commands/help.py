@@ -2910,6 +2910,11 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      part remain distinct. A short upstream response remains
                      truncated after filtering. Auto-discovery configs reject
                      this option instead of silently ignoring it.
+                     ``dedupe_preference`` makes that representative selection
+                     deterministic. It requires ``path``, ordered
+                     ``preferred_values``, and ``fallback_by`` paths beginning
+                     with ``path``. Preferred values win in declared order;
+                     remaining ties use the fallback strings lexically.
     params           Query parameters merged into api_url at request time.
                      Auto-filled from the captured URL (empty and pagination
                      params stripped). Edit result_limit / per_page here to
@@ -2947,13 +2952,25 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      total instead of accumulating duplicate pages.
     pagination_convergence
                      Optional bounded full-pass proof for an unstable "offset"
-                     or "page" inventory. Requires item_filter.dedupe_by plus
-                     max_passes (3-8) and required_no_growth_passes (2 through
-                     max_passes - 1). A cycle is authoritative only when the
-                     stable-identity inventory exactly equals the unchanged
-                     advertised total and the required consecutive passes add
-                     no identity. Duplicate/conflicting records for one identity
-                     fail closed as a truncated result.
+                     or "page" inventory. Requires max_passes (3-8),
+                     required_no_growth_passes (2 through max_passes - 1), and
+                     either item_filter.dedupe_by or ``identity_by``. The latter
+                     can name a raw
+                     provider-row identity independently of logical output
+                     dedupe; these identities must be complete and occur once
+                     per pass. ``stable_fields`` (valid only with identity_by)
+                     limits cross-pass comparison to relevant item paths, so
+                     unprojected content drift does not invalidate the proof.
+                     A cycle is authoritative only when the raw identity count
+                     exactly equals the unchanged advertised total and the
+                     required consecutive passes add no identity. Missing,
+                     duplicate, conflicting, or excess identities fail closed.
+    url_field_match  Optional exact cross-field validation for url_field during
+                     pagination convergence. ``pattern`` must use named capture
+                     groups and ``fields`` must map exactly those names to item
+                     paths. Every URL must fully match and every captured value
+                     must equal its item field; malformed or mismatched rows
+                     make the cycle truncated and are not emitted.
     fields           Field mapping (same spec as nextdata: key, nested.key, array[].field)
                      When present → rich mode (scraper skipped)
                      When absent → URL-only (scraper needed)

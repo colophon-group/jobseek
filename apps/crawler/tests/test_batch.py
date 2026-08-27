@@ -1337,6 +1337,42 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
+    async def test_publicis_truncated_proof_skips_every_gone_path(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """A failed raw-UUID proof may upsert URLs but cannot mark any missing."""
+        pool, conn = mock_pool
+        urls = {
+            f"https://careers.publicisgroupe.com/jobs/{job_id}?lang=en-us"
+            for job_id in range(100_000, 103_034)
+        }
+        assert len(urls) == 3_034
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls=urls, truncated=True))
+        conn.fetch.return_value = []
+        board = _mock_board(
+            board_slug="publicis-main",
+            board_url="https://careers.publicisgroupe.com/jobs",
+            crawler_type="api_sniffer",
+            metadata={"delist_threshold": 2},
+        )
+
+        with patch(
+            "src.processing.board._mark_gone_with_guards",
+            new_callable=AsyncMock,
+        ) as gone_guards:
+            outcome = await _process_one_board(board, pool, mock_http)
+
+        assert outcome.status == "succeeded"
+        gone_guards.assert_not_awaited()
+        assert not any(
+            call.args and call.args[0] == _DELIST_BOARD_POSTINGS
+            for call in conn.fetch.await_args_list
+        )
+        conn.fetchval.assert_awaited_with(_RECORD_SUCCESS_NONEMPTY, "board-1")
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
     async def test_five_strike_enters_quarantine_without_delisting(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -5015,6 +5051,54 @@ class TestMarkGoneGuards:
             board_log=MagicMock(),
         )
         assert reason == "blast_radius"
+
+    async def test_publicis_locale_cleanup_retires_only_after_second_proven_cycle(self):
+        """The measured 5.7471% transition stays below guards and uses two misses."""
+        from src.batch import _MARK_GONE_BY_TIMESTAMP
+        from src.processing.board import _mark_gone_with_guards
+
+        legacy_active = 3_215
+        common = 3_030
+        new = 4
+        missing = legacy_active - common
+        union = common + new + missing
+        assert missing == 185
+        assert union == 3_219
+        assert round(100 * missing / union, 4) == 5.7471
+
+        conn = self._conn(active=legacy_active, missing=missing)
+        conn.fetch.side_effect = [[], [{"id": f"gone-{index}"} for index in range(missing)]]
+        metadata = {
+            "recent_discovered_counts": [legacy_active] * 3,
+            "delist_threshold": 2,
+        }
+
+        first_gone, first_reason = await _mark_gone_with_guards(
+            conn,
+            board_id="publicis-board",
+            discovered=common + new,
+            monitor_start_ts="2026-08-27T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=2,
+            board_log=MagicMock(),
+        )
+        second_gone, second_reason = await _mark_gone_with_guards(
+            conn,
+            board_id="publicis-board",
+            discovered=common + new,
+            monitor_start_ts="2026-08-28T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=2,
+            board_log=MagicMock(),
+        )
+
+        assert (first_gone, first_reason) == (0, None)
+        assert (second_gone, second_reason) == (missing, None)
+        mark_calls = [
+            call for call in conn.fetch.await_args_list if call.args[0] == _MARK_GONE_BY_TIMESTAMP
+        ]
+        assert len(mark_calls) == 2
+        assert [call.args[3] for call in mark_calls] == [2, 2]
 
 
 # ── TestMarkGoneGuardsIntegration ──────────────────────────────────
