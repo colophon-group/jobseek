@@ -36,7 +36,11 @@ PAGE_SIZE = 100
 # This opt-in contract therefore uses ``jobId`` plus provider-owned location
 # identity, never refNumber/title/address text. The durable internal identity
 # is kept separate from the real, fetchable outbound publication URL.
+CANONICAL_IDENTITY_JOB_V1 = "job-v1"
 CANONICAL_IDENTITY_JOB_LOCATION_V1 = "job-location-v1"
+_CANONICAL_IDENTITY_MODES = frozenset(
+    {CANONICAL_IDENTITY_JOB_V1, CANONICAL_IDENTITY_JOB_LOCATION_V1}
+)
 MAX_CANONICAL_POSTINGS = 500
 _DETAIL_CONCURRENCY = 12
 _LIST_RESPONSE_MAX_BYTES = 2 * 1024 * 1024
@@ -115,15 +119,16 @@ def _posting_url(token: str, posting_id: str) -> str:
     return f"https://jobs.smartrecruiters.com/{token}/{posting_id}"
 
 
-def _canonical_identity_enabled(metadata: dict) -> bool:
+def _canonical_identity_mode(metadata: dict) -> str | None:
     value = metadata.get("canonical_identity")
     if value is None:
-        return False
-    if value != CANONICAL_IDENTITY_JOB_LOCATION_V1:
+        return None
+    if not isinstance(value, str) or value not in _CANONICAL_IDENTITY_MODES:
         raise ValueError(
-            f"SmartRecruiters canonical_identity must be {CANONICAL_IDENTITY_JOB_LOCATION_V1!r}"
+            "SmartRecruiters canonical_identity must be one of "
+            f"{sorted(_CANONICAL_IDENTITY_MODES)!r}"
         )
-    return True
+    return value
 
 
 def _normalize_coordinate(value: object, *, latitude: bool) -> str:
@@ -544,7 +549,8 @@ def _job_id_localization(detail: dict) -> dict:
 def _collapse_details(
     details: list[dict],
     *,
-    template: str,
+    token: str,
+    template: str | None,
     language_preference: tuple[str, ...],
 ) -> list[DiscoveredJob]:
     """Collapse locale publications by exact provider ``jobId``."""
@@ -578,9 +584,15 @@ def _collapse_details(
                 "smartrecruiters_ref_number": primary.get("refNumber"),
             }
         )
+        if template is None:
+            url = _posting_url(token, str(primary["id"]))
+            source_identity = f"smartrecruiters:{token.casefold()}:{job_id}"
+        else:
+            url = template.replace("{job_id}", job_id)
+            source_identity = None
         jobs.append(
             DiscoveredJob(
-                url=template.replace("{job_id}", job_id),
+                url=url,
                 title=parsed.title,
                 description=parsed.description,
                 locations=parsed.locations,
@@ -592,6 +604,7 @@ def _collapse_details(
                 localizations=per_language or None,
                 extras=parsed.extras,
                 metadata=metadata,
+                source_identity=source_identity,
             )
         )
     return jobs
@@ -900,7 +913,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     if not isinstance(token, str) or _TOKEN_RE.fullmatch(token) is None:
         raise ValueError("SmartRecruiters token is not a bounded provider identifier")
 
-    canonical_identity = _canonical_identity_enabled(metadata)
+    canonical_identity = _canonical_identity_mode(metadata)
     template = _canonical_template(metadata)
     if canonical_identity and template is not None:
         raise ValueError(
@@ -908,7 +921,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             "cannot be combined"
         )
 
-    if canonical_identity:
+    if canonical_identity == CANONICAL_IDENTITY_JOB_LOCATION_V1:
         from src.core.monitor import MonitorResult
 
         items = await _list_posting_items(client, token)
@@ -924,16 +937,18 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         return MonitorResult(urls=set(jobs_by_url), jobs_by_url=jobs_by_url)
 
     publications, truncated, total_found = await _fetch_publications(token, client)
-    if template is not None:
+    if template is not None or canonical_identity == CANONICAL_IDENTITY_JOB_V1:
         details = await _fetch_details(token, publications, client)
         jobs = _collapse_details(
             details,
+            token=token,
             template=template,
             language_preference=_language_preference(metadata),
         )
         log.info(
             "smartrecruiters.localized_listed",
             token=token,
+            identity_mode=canonical_identity,
             publications=len(publications),
             postings=len(jobs),
             collapsed=len(publications) - len(jobs),
