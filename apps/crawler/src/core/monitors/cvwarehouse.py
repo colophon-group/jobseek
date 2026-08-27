@@ -145,7 +145,9 @@ def _parse_locale_page(page: str, page_url: str) -> list[DiscoveredJob]:
             if location_node is not None
             else ""
         )
-        description = description_node.inner_html.strip() if description_node is not None else ""
+        description = (
+            (description_node.inner_html or "").strip() if description_node is not None else ""
+        )
         if not title or not location or not description:
             raise ValueError(f"CVWarehouse job {job_id} is missing required rich fields")
 

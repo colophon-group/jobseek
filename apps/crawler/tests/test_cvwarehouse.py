@@ -5,8 +5,10 @@ from pathlib import Path
 
 import httpx
 import pytest
+from selectolax.lexbor import LexborHTMLParser
 
 from src.core.monitors import DiscoveredJob
+from src.core.monitors import cvwarehouse as cvwarehouse_module
 from src.core.monitors.cvwarehouse import (
     _parse_locale_page,
     _section_from_page,
@@ -164,3 +166,33 @@ async def test_missing_required_detail_field_fails() -> None:
                 {"board_url": BOARD_URL, "metadata": {"section": SECTION, "jobs": 1}},
                 client,
             )
+
+
+def test_none_description_inner_html_fails_required_field_validation(monkeypatch) -> None:
+    page = _locale_page("nl-BE", [("101", "Projectleider", "Brussel")])
+    tree = LexborHTMLParser(page)
+    detail = tree.css_first("[data-jobdetail-job-id]")
+    assert detail is not None
+
+    class DetailWithNoneDescription:
+        attributes = detail.attributes
+
+        def css_first(self, selector):
+            if selector == ".jobDescriptionText":
+                return type("DescriptionWithNoneHtml", (), {"inner_html": None})()
+            return detail.css_first(selector)
+
+    class TreeWithNoneDescription:
+        def css(self, selector):
+            if selector == "[data-jobdetail-job-id]":
+                return [DetailWithNoneDescription()]
+            return tree.css(selector)
+
+    monkeypatch.setattr(
+        cvwarehouse_module,
+        "LexborHTMLParser",
+        lambda _: TreeWithNoneDescription(),
+    )
+
+    with pytest.raises(ValueError, match="missing required rich fields"):
+        _parse_locale_page(page, f"{BOARD_URL}&section={SECTION}")
