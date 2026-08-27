@@ -181,6 +181,57 @@ async def test_inline_description_and_structured_fields():
 
 
 @pytest.mark.asyncio
+async def test_title_location_fallback_is_explicit_and_only_used_when_structured_empty():
+    detail = _detail(description="<p>Maintain customer power systems.</p>")
+    detail["requisitionTitle"] = "Senior Field Service Engineer - Northern Virginia"
+    detail["requisitionLocations"] = [
+        {"nameCode": {"shortName": ""}, "address": {"cityName": ""}}
+    ]
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=detail))
+    ) as client:
+        without_fallback = await scrape(JOB_URL, {}, client)
+        with_fallback = await scrape(
+            JOB_URL,
+            {"title_location_pattern": r"\s+-\s+(?P<location>.+)$"},
+            client,
+        )
+
+    assert without_fallback.locations is None
+    assert with_fallback.locations == ["Northern Virginia"]
+
+
+@pytest.mark.asyncio
+async def test_structured_adp_location_wins_over_title_fallback():
+    detail = _detail(description="<p>Lead product launches.</p>")
+    detail["requisitionTitle"] = "Product Marketing Manager - Remote"
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=detail))
+    ) as client:
+        content = await scrape(
+            JOB_URL,
+            {"title_location_pattern": r"\s+-\s+(?P<location>.+)$"},
+            client,
+        )
+
+    assert content.locations == ["Naperville, IL, US"]
+
+
+@pytest.mark.asyncio
+async def test_title_location_fallback_requires_named_group():
+    detail = _detail(description="<p>Lead product launches.</p>")
+    detail["requisitionLocations"] = []
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=detail))
+    ) as client:
+        with pytest.raises(ValueError, match="named 'location' group"):
+            await scrape(JOB_URL, {"title_location_pattern": r" - (.+)$"}, client)
+
+
+@pytest.mark.asyncio
 async def test_attached_docx_replaces_placeholder_description():
     requests: list[httpx.Request] = []
     links = _attachment_links()

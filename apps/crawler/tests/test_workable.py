@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import httpx
 import pytest
 
@@ -17,6 +19,7 @@ from src.core.scrapers.workable import (
     _parse_job_url,
     scrape,
 )
+from src.shared.http_retry import PaginationFetchError
 
 # ── Monitor tests ───────────────────────────────────────────────────────
 
@@ -141,7 +144,7 @@ class TestDiscover:
             assert call_count == 2
 
     async def test_retries_on_429(self, monkeypatch):
-        monkeypatch.setattr("src.core.monitors.workable._RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0))
+        monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
 
         call_count = 0
 
@@ -167,8 +170,8 @@ class TestDiscover:
             assert len(urls) == 1
             assert call_count == 3
 
-    async def test_exhausted_retries_returns_empty(self, monkeypatch):
-        monkeypatch.setattr("src.core.monitors.workable._RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0))
+    async def test_exhausted_retries_fail_closed(self, monkeypatch):
+        monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
 
         def handler(request):
             return httpx.Response(429)
@@ -178,8 +181,35 @@ class TestDiscover:
                 "board_url": "https://apply.workable.com/testco",
                 "metadata": {"token": "testco"},
             }
-            urls = await discover(board, client)
-            assert len(urls) == 0
+            with pytest.raises(PaginationFetchError) as exc:
+                await discover(board, client)
+
+        assert exc.value.last_status == 429
+
+    async def test_mid_pagination_429_fails_closed(self, monkeypatch):
+        monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
+        calls = 0
+
+        def handler(request):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return httpx.Response(
+                    200,
+                    json={"results": [{"shortcode": "SC1"}], "nextPage": "next"},
+                )
+            return httpx.Response(429)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://apply.workable.com/testco",
+                "metadata": {"token": "testco"},
+            }
+            with pytest.raises(PaginationFetchError) as exc:
+                await discover(board, client)
+
+        assert exc.value.last_status == 429
+        assert calls == 5
 
 
 class TestCanHandle:

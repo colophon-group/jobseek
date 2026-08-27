@@ -42,6 +42,12 @@ abcellera,abcellera-greenhouse,https://job-boards.greenhouse.io/abcellera,greenh
 abercrombie,abercrombie-careers,https://abercrombie.wd108.myworkdayjobs.com/anf,workday,"{""split_facet"": ""timeType""}",workday,
 abilitypath,abilitypath-greenhouse,https://job-boards.greenhouse.io/abilitypath,greenhouse,"{""token"": ""abilitypath""}",skip,
 ably-uk,ably-uk-greenhouse,https://job-boards.greenhouse.io/ably30,greenhouse,"{""token"": ""ably30""}",skip,
+abm,abm-able,https://jobs.lever.co/ableserve,lever,"{""token"": ""ableserve""}",skip,
+abm,abm-careers,https://eiqg.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+abm,abm-quality-uptime,https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?ccId=19000101_000001&cid=01ab0a1f-f230-4968-bc60-122d853cb61d&lang=en_US&type=MP,adp,"{""cid"": ""01ab0a1f-f230-4968-bc60-122d853cb61d"", ""cc_id"": ""19000101_000001"", ""locale"": ""en_US""}",adp,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""date_posted"", ""base_salary""], ""title_location_pattern"": ""\\s+-\\s+(?P<location>.+)$""}"
+abm,abm-ravenvolt,https://ravenvolt.applytojob.com/apply/,jazzhr,"{""tenant"": ""ravenvolt""}",jazzhr,
+abm,abm-uk,https://apply.workable.com/abm-careers/,workable,"{""token"": ""abm-careers"", ""proxy"": true}",workable,"{""token"": ""abm-careers"", ""proxy"": true}"
+abm,abm-wgnstar,https://wgnstar.applytojob.com/apply/,jazzhr,"{""tenant"": ""wgnstar""}",jazzhr,
 abnormal,abnormal-greenhouse,https://job-boards.greenhouse.io/abnormalsecurity,greenhouse,"{""token"": ""abnormalsecurity""}",skip,
 abound,abound-ashby,https://jobs.ashbyhq.com/abound,ashby,"{""token"": ""abound""}",skip,
 abridge,abridge-careers,https://jobs.ashbyhq.com/Abridge,ashby,,skip,

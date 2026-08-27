@@ -22,13 +22,14 @@ from src.core.monitors import (
     slug_guess_allowed,
 )
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
+from src.shared.http_retry import fetch_json_page_with_retry
 from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
 
 MAX_JOBS = 50_000
 _RETRY_ATTEMPTS = 4
-_RETRY_BACKOFF = (5.0, 15.0, 30.0, 60.0)
+_RETRY_BASE_DELAY = 5.0
 
 _PAGE_PATTERNS = [
     re.compile(r"apply\.workable\.com/([\w-]+)"),
@@ -68,21 +69,17 @@ async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], boo
     body: dict = {"query": "", "location": [], "department": [], "worktype": []}
 
     while True:
-        data = None
-        for attempt in range(_RETRY_ATTEMPTS):
-            resp = await client.post(_api_list_url(slug), json=body)
-            if resp.status_code == 429:
-                backoff = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
-                log.warning("workable.rate_limited", slug=slug, backoff_s=backoff)
-                await asyncio.sleep(backoff)
-                continue
-            resp.raise_for_status()
-            data = resp.json()
-            break
-
-        if data is None:
-            log.warning("workable.retries_exhausted", slug=slug, collected=len(urls))
-            break
+        data = await fetch_json_page_with_retry(
+            client,
+            _api_list_url(slug),
+            method="POST",
+            json_body=body,
+            expect_shape=dict,
+            retries=_RETRY_ATTEMPTS,
+            base_delay=_RETRY_BASE_DELAY,
+            log_event="workable.list_backoff",
+            sleep=asyncio.sleep,
+        )
 
         results = data.get("results", [])
         for item in results:
