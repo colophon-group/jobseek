@@ -98,14 +98,55 @@ _CODE_RE = re.compile(
 )
 
 # Some Workday tenants expose a facility label instead of a plain locality,
-# followed by a reliable city/region/postal suffix.  Keep this deliberately
+# followed by a reliable city/region/postal suffix. Keep this deliberately
 # narrow so ordinary hyphenated city names continue through unchanged.
-_FACILITY_PREFIX_RE = re.compile(r"^(?:Store\s+\d+|Corporate Office)-", re.IGNORECASE)
-_CITY_REGION_POSTAL_RE = re.compile(
-    r"^(?P<head>.+),\s*(?P<region>[A-Z]{2,3})\s+"
-    r"(?P<postal>(?:\d{5}(?:-\d{4})?|[A-Z]\d[A-Z][ -]?\d[A-Z]\d))$",
+_FACILITY_PREFIX_RE = re.compile(
+    r"^(?:(?:Store\s+)?M?\d+|Corporate Office)\s*[-–]\s*(?P<body>.+)$",
     re.IGNORECASE,
 )
+_CITY_REGION_POSTAL_RE = re.compile(
+    r"^(?P<head>.+?)(?:,\s*|\s+)(?P<region>[A-Z]{2})\s+"
+    r"(?P<postal>(?:\d{5}(?:-\d{4})?|[A-Z]\d[A-Z][ -]?\d[A-Z]\d))\s*$",
+    re.IGNORECASE,
+)
+_FACILITY_SEGMENT_RE = re.compile(
+    r"\b(?:mall|plaza|plz|center|centre|ctr|place|uptown|marketplace|"
+    r"shopping|shops?|commons?|comns|crossings?)\b",
+    re.IGNORECASE,
+)
+
+
+def _facility_city(head: str, *, tenant: str | None) -> str | None:
+    """Extract a city only across an explicit, reliable facility boundary."""
+    prefix = _FACILITY_PREFIX_RE.match(head)
+    if not prefix:
+        return None
+
+    parts = [part.strip() for part in re.split(r"\s*[-–]\s*", prefix.group("body"))]
+    if not parts or any(not part for part in parts):
+        return None
+
+    if tenant:
+        tenant_indexes = [
+            index for index, part in enumerate(parts) if part.casefold() == tenant.casefold()
+        ]
+        if tenant_indexes:
+            boundary = tenant_indexes[-1]
+            if boundary == len(parts) - 1:
+                return None
+            city = "-".join(parts[boundary + 1 :]).strip()
+            return city or None
+
+    facility_indexes = [
+        index for index, part in enumerate(parts) if _FACILITY_SEGMENT_RE.search(part)
+    ]
+    if not facility_indexes:
+        return None
+    boundary = facility_indexes[-1]
+    if boundary == len(parts) - 1:
+        return None
+    city = "-".join(parts[boundary + 1 :]).strip()
+    return city or None
 
 
 def _normalize_workday_location(
@@ -136,31 +177,25 @@ def _normalize_workday_location(
             return f"{city.title()}, {state}, {country}"
         return f"{state}, {country}"
 
-    # Display format: Workday uses double spaces as segment separators
-    # "Sg  Singapore", "Heredia  Costa Rica", "New York  New York  United States"
-    if "  " in cleaned:
-        return ", ".join(part.strip() for part in cleaned.split("  ") if part.strip())
-
     # Facility display format used by tenants such as maurices:
     # "Store 1272-South Franklin-maurices-Colby, KS 67701".
     # The facility portion is not geographical and prevents the location
     # resolver from seeing the otherwise reliable city/region/country tuple.
     m = _CITY_REGION_POSTAL_RE.match(cleaned)
-    if m and _FACILITY_PREFIX_RE.match(m.group("head")):
-        head = m.group("head")
-        tenant_separator = (
-            re.search(rf"-{re.escape(tenant)}-(?P<city>.+)$", head, re.IGNORECASE)
-            if tenant
-            else None
-        )
-        city = (
-            tenant_separator.group("city") if tenant_separator else head.rsplit("-", 1)[-1]
-        ).strip()
+    if m:
+        city = _facility_city(m.group("head"), tenant=tenant)
         if city:
             parts = [city, m.group("region").upper()]
             if country:
                 parts.append(country)
             return ", ".join(parts)
+
+    # Display format: Workday uses double spaces as segment separators.
+    # Facility parsing must run first because some providers insert two spaces
+    # before a postal code.
+    # "Sg  Singapore", "Heredia  Costa Rica", "New York  New York  United States"
+    if "  " in cleaned:
+        return ", ".join(part.strip() for part in cleaned.split("  ") if part.strip())
 
     return cleaned
 
