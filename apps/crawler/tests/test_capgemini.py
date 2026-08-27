@@ -204,6 +204,45 @@ def test_frog_rich_alias_selection_is_order_independent(reverse: bool) -> None:
     assert selected.locations == ["London"]
 
 
+def test_rich_collision_preserves_an_explicit_durable_source_identity() -> None:
+    canonical_url = "https://www.frog.co/careers/jobs/699c95a6939f64fc32ab74e7"
+    decorated_url = f"{canonical_url}-london-brand-strategy"
+    result = _canonicalize_rich(
+        "capgemini-frog",
+        {
+            canonical_url: DiscoveredJob(url=canonical_url, title="Preferred content"),
+            decorated_url: DiscoveredJob(
+                url=decorated_url,
+                title="Alias content",
+                source_identity="frog:global:699c95a6939f64fc32ab74e7",
+            ),
+        },
+    )
+
+    assert result.jobs_by_url is not None
+    selected = result.jobs_by_url[canonical_url]
+    assert selected.title == "Preferred content"
+    assert selected.source_identity == "frog:global:699c95a6939f64fc32ab74e7"
+
+
+def test_rich_collision_rejects_conflicting_durable_source_identities() -> None:
+    canonical_url = "https://www.frog.co/careers/jobs/699c95a6939f64fc32ab74e7"
+    decorated_url = f"{canonical_url}-london-brand-strategy"
+    jobs = {
+        canonical_url: DiscoveredJob(
+            url=canonical_url,
+            source_identity="frog:global:699c95a6939f64fc32ab74e7",
+        ),
+        decorated_url: DiscoveredJob(
+            url=decorated_url,
+            source_identity="frog:global:different-provider-identity",
+        ),
+    }
+
+    with pytest.raises(ValueError, match="conflicting source identities"):
+        _canonicalize_rich("capgemini-frog", jobs)
+
+
 @pytest.mark.parametrize(
     ("slug", "source_url", "forged_canonical"),
     [

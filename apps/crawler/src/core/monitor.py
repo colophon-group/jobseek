@@ -692,7 +692,7 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
         else:
             selected: dict[
                 str,
-                tuple[tuple[int, int, str], DiscoveredJob],
+                tuple[tuple[int, int, str], DiscoveredJob, str | None],
             ] = {}
             for old_url in sorted(result.jobs_by_url):
                 job = result.jobs_by_url[old_url]
@@ -700,11 +700,30 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
                 _validate_collision_identity(job, old_url, new_url, collision)
                 rank = _collision_source_rank(job, old_url, collision)
                 existing = selected.get(new_url)
-                if existing is None or rank < existing[0]:
-                    selected[new_url] = (rank, job)
+                if existing is None:
+                    selected[new_url] = (rank, job, job.source_identity)
+                    continue
+                existing_identity = existing[2]
+                if (
+                    existing_identity is not None
+                    and job.source_identity is not None
+                    and existing_identity != job.source_identity
+                ):
+                    raise ValueError(
+                        "url_transform collision aliases have conflicting source identities"
+                    )
+                source_identity = existing_identity or job.source_identity
+                if rank < existing[0]:
+                    selected[new_url] = (rank, job, source_identity)
+                elif source_identity != existing_identity:
+                    selected[new_url] = (existing[0], existing[1], source_identity)
             new_jobs = {
-                new_url: dataclass_replace(selected_job, url=new_url)
-                for new_url, (_rank, selected_job) in selected.items()
+                new_url: dataclass_replace(
+                    selected_job,
+                    url=new_url,
+                    source_identity=source_identity,
+                )
+                for new_url, (_rank, selected_job, source_identity) in selected.items()
             }
 
     return MonitorResult(
