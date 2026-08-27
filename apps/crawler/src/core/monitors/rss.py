@@ -31,7 +31,11 @@ from selectolax.lexbor import LexborHTMLParser
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.core.monitors.dom import BotChallengeError, _raise_if_bot_challenge
 from src.core.monitors.raw import save_text_response
-from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
+from src.shared.http_retry import (
+    PaginationFetchError,
+    fetch_text_page_with_retry,
+    is_retryable_status,
+)
 from src.shared.successfactors import (
     SuccessFactorsLegacyBoard,
     normalize_successfactors_company,
@@ -55,6 +59,11 @@ _DETECTION_MAX_CHARS = 2_000_000
 _SF_DETAIL_MAX_REDIRECTS = 3
 _SF_DETAIL_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 _SF_DETAIL_RETRYABLE_STATUSES = frozenset({401, 403, 429})
+_SF_JOB_IDENTITY_MAX_JOBS = 2_000
+_SF_JOB_IDENTITY_RE = re.compile(
+    r"/job/[^/?#]+/(?P<job_id>[1-9]\d{0,11})-"
+    r"(?P<locale>[a-z]{2}_[A-Z]{2})/"
+)
 _SF_JOB_SELECTOR = '[data-careersite-propertyid="title"]'
 _SF_DETAIL_FIELD_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 _SF_METADATA_KEY_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -93,6 +102,10 @@ class SuccessFactorsDetailPageError(RuntimeError):
             "SuccessFactors company enrichment got invalid page "
             f"(classification={classification}, attempts={attempts}): {url}"
         )
+
+
+class SuccessFactorsJobIdentityError(RuntimeError):
+    """A configured SuccessFactors feed could not prove stable job identity."""
 
 
 def _parse_feed(text: str, feed_url: str) -> ET.Element:
@@ -585,6 +598,116 @@ async def _enrich_sf_detail_fields(
     await asyncio.gather(*(_one(job) for job in candidates))
 
 
+async def _resolve_sf_job_invite_identities(
+    jobs: list[DiscoveredJob],
+    client: httpx.AsyncClient,
+    *,
+    feed_url: str,
+) -> None:
+    """Replace feed aliases with authenticated SuccessFactors detail URLs.
+
+    A SuccessFactors Google feed commonly exposes a title-derived URL and a
+    feed-specific numeric ID.  A no-follow request redirects that alias to a
+    detail URL containing the tenant's stable requisition ID and locale.  The
+    dispatcher can then collapse title and locale variants to ``job-invite``
+    URLs while retaining a deterministic preferred locale's rich feed data.
+
+    This is an explicit, bounded opt-in because it adds one provider request
+    per discovered job.  Any malformed, cross-origin, or non-redirecting
+    response fails the board run rather than silently changing identities.
+    """
+
+    semaphore = asyncio.Semaphore(_SF_DETAIL_CONCURRENCY)
+
+    async def _one(job: DiscoveredJob) -> None:
+        if not _same_https_origin(job.url, feed_url):
+            raise SuccessFactorsJobIdentityError(
+                f"SuccessFactors job identity rejected source URL: {job.url}"
+            )
+
+        response: httpx.Response | None = None
+        async with semaphore:
+            for attempt in range(_SF_DETAIL_ATTEMPTS):
+                try:
+                    response = await client.head(job.url, follow_redirects=False)
+                except httpx.HTTPError as exc:
+                    if attempt >= _SF_DETAIL_ATTEMPTS - 1:
+                        raise SuccessFactorsJobIdentityError(
+                            f"SuccessFactors job identity request failed: {job.url}"
+                        ) from exc
+                else:
+                    if response.status_code in _SF_DETAIL_REDIRECT_STATUSES:
+                        break
+                    if (
+                        response.status_code not in _SF_DETAIL_RETRYABLE_STATUSES
+                        and not is_retryable_status(response.status_code)
+                    ):
+                        raise SuccessFactorsJobIdentityError(
+                            "SuccessFactors job identity expected a redirect "
+                            f"but got HTTP {response.status_code}: {job.url}"
+                        )
+                    if attempt >= _SF_DETAIL_ATTEMPTS - 1:
+                        raise SuccessFactorsJobIdentityError(
+                            "SuccessFactors job identity exhausted retries "
+                            f"after HTTP {response.status_code}: {job.url}"
+                        )
+                delay = 0.5 * (2**attempt) * (0.5 + random.random())
+                await _sleep(delay)
+
+        if response is None:
+            raise SuccessFactorsJobIdentityError(
+                f"SuccessFactors job identity returned no response: {job.url}"
+            )
+        location = response.headers.get("location")
+        if not location:
+            raise SuccessFactorsJobIdentityError(
+                f"SuccessFactors job identity redirect omitted Location: {job.url}"
+            )
+        redirected = urljoin(job.url, location)
+        if not _same_https_origin(redirected, feed_url):
+            raise SuccessFactorsJobIdentityError(
+                f"SuccessFactors job identity rejected redirect: {redirected}"
+            )
+        try:
+            parsed = urlparse(redirected)
+            port = parsed.port
+        except ValueError as exc:
+            raise SuccessFactorsJobIdentityError(
+                f"SuccessFactors job identity redirect was invalid: {redirected}"
+            ) from exc
+        match = _SF_JOB_IDENTITY_RE.fullmatch(parsed.path)
+        if (
+            match is None
+            or parsed.query
+            or parsed.fragment
+            or parsed.username is not None
+            or parsed.password is not None
+            or port not in {None, 443}
+        ):
+            raise SuccessFactorsJobIdentityError(
+                f"SuccessFactors job identity redirect had unexpected shape: {redirected}"
+            )
+
+        metadata = dict(job.metadata or {})
+        feed_id = metadata.get("id")
+        if feed_id is not None:
+            metadata["feed_id"] = feed_id
+        metadata["job_invite_id"] = match.group("job_id")
+        metadata["job_locale"] = match.group("locale")
+        job.metadata = metadata
+        job.url = urlunparse(parsed._replace(query="", fragment=""))
+
+    tasks = [asyncio.create_task(_one(job)) for job in jobs]
+    try:
+        await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+
+
 # ── Feed URL helpers ────────────────────────────────────────────────────
 
 
@@ -875,6 +998,11 @@ async def discover_stream(
         _sf_detail_fields(metadata) if preset_name == "successfactors" else ({}, frozenset())
     )
     parser = _PARSERS.get(preset_name, _parse_generic_item)
+    resolve_job_invite_identity = metadata.get("resolve_job_invite_identity", False)
+    if not isinstance(resolve_job_invite_identity, bool):
+        raise ValueError("RSS resolve_job_invite_identity must be a boolean")
+    if resolve_job_invite_identity and preset_name != "successfactors":
+        raise ValueError("RSS resolve_job_invite_identity requires the successfactors preset")
     jobs: list[DiscoveredJob] = []
     total_jobs = 0
     offset = 0
@@ -892,6 +1020,12 @@ async def discover_stream(
             jobs.append(parsed)
             total_jobs += 1
 
+            if resolve_job_invite_identity and total_jobs > _SF_JOB_IDENTITY_MAX_JOBS:
+                raise SuccessFactorsJobIdentityError(
+                    "SuccessFactors job identity exceeded bounded feed cap "
+                    f"({_SF_JOB_IDENTITY_MAX_JOBS})"
+                )
+
             if total_jobs >= MAX_JOBS:
                 log.warning("rss.truncated", feed=feed_url, total=total_jobs, cap=MAX_JOBS)
                 if detail_fields:
@@ -902,6 +1036,12 @@ async def discover_stream(
                         fields=detail_fields,
                         required_fields=required_detail_fields,
                         url_filter=metadata.get("url_filter"),
+                    )
+                if resolve_job_invite_identity:
+                    await _resolve_sf_job_invite_identities(
+                        jobs,
+                        client,
+                        feed_url=feed_url,
                     )
                 yield truncated_rich_result(jobs)
                 return
@@ -914,6 +1054,12 @@ async def discover_stream(
                         fields=detail_fields,
                         required_fields=required_detail_fields,
                         url_filter=metadata.get("url_filter"),
+                    )
+                if resolve_job_invite_identity:
+                    await _resolve_sf_job_invite_identities(
+                        jobs,
+                        client,
+                        feed_url=feed_url,
                     )
                 yield jobs
                 jobs = []
@@ -931,6 +1077,12 @@ async def discover_stream(
                 fields=detail_fields,
                 required_fields=required_detail_fields,
                 url_filter=metadata.get("url_filter"),
+            )
+        if resolve_job_invite_identity:
+            await _resolve_sf_job_invite_identities(
+                jobs,
+                client,
+                feed_url=feed_url,
             )
         yield jobs
 

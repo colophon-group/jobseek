@@ -134,6 +134,13 @@ _PAGINATION_PARTITION_CONCURRENCY = 4
 _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
 
+_YOUSTY_HOST = "www.yousty.ch"
+_YOUSTY_ORGANIZATION_RE = re.compile(r"(?P<id>[1-9]\d{0,11})-(?P<slug>[a-z0-9]+(?:-[a-z0-9]+)*)")
+_YOUSTY_COMPANY_PATH_RE = re.compile(
+    r"/de-CH/lehrstellen/firmen/(?P<identity>[1-9]\d{0,11}-[a-z0-9]+(?:-[a-z0-9]+)*)/?"
+)
+_YOUSTY_LINK_SELECTOR = "a[href*='/de-CH/lehrstellen/profile/']"
+
 
 async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> set[str]:
     """Retain URLs whose current detail page contains JobPosting JSON-LD.
@@ -882,6 +889,99 @@ def _dualoo_probe_config(html: str, url: str) -> dict | None:
         "url_filter": url_filter,
         "require_jsonld_jobposting": True,
     }
+
+
+def _yousty_probe_config(html: str, url: str) -> dict | None:
+    """Return an employer-scoped static preset for Yousty apprenticeships.
+
+    Yousty listing links use ``/lehrstellen/profile/`` rather than a generic
+    job keyword, so the regular DOM heuristic does not recognize them.  Both
+    supported board routes carry a stable employer slug: company pages put it
+    in the path, while filtered search pages put it in the single
+    ``organization_ids[]`` value.  Binding the detail suffix to that slug
+    prevents a mixed or drifted listing from importing another employer.
+    """
+
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").casefold() != _YOUSTY_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.fragment
+    ):
+        return None
+
+    identity: str | None = None
+    filtered_search = False
+    company_match = _YOUSTY_COMPANY_PATH_RE.fullmatch(parsed.path)
+    if company_match is not None and not parsed.query:
+        identity = company_match.group("identity")
+    elif parsed.path == "/de-CH/lehrstellen/apprenticeships":
+        organization_ids = [
+            value
+            for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+            if key == "organization_ids[]"
+        ]
+        if len(organization_ids) == 1:
+            identity = organization_ids[0]
+            filtered_search = True
+
+    if identity is None:
+        return None
+    organization = _YOUSTY_ORGANIZATION_RE.fullmatch(identity)
+    if organization is None:
+        return None
+
+    employer_slug = organization.group("slug")
+    origin = f"https://{parsed.netloc}"
+    url_filter = (
+        rf"^{re.escape(origin)}/de-CH/lehrstellen/profile/"
+        rf"[1-9]\d{{0,11}}-[^/?#]+-{re.escape(employer_slug)}/?(?:[?#].*)?$"
+    )
+    url_transform = {
+        "find": (
+            rf"^{re.escape(origin)}/de-CH/lehrstellen/profile/"
+            rf"([1-9]\d{{0,11}})-[^/?#]+-{re.escape(employer_slug)}/?"
+            r"(?:[?#].*)?$"
+        ),
+        "replace": rf"{origin}/de-CH/lehrstellen/profile/\1",
+    }
+    urls = _extract_links_static(
+        html,
+        url,
+        url_matcher=re.compile(url_filter, re.IGNORECASE),
+        link_selector=_YOUSTY_LINK_SELECTOR,
+    )
+    if not urls:
+        return None
+    config = {
+        "yousty_organization": identity,
+        "urls": len(urls),
+        "link_selector": _YOUSTY_LINK_SELECTOR,
+        "url_filter": url_filter,
+        "url_allowlist": url_filter,
+        "url_transform": url_transform,
+        "require_jsonld_jobposting": True,
+    }
+    if filtered_search:
+        query = urlencode(
+            [
+                ("locale", "de-CH"),
+                ("organization_ids[]", identity),
+            ]
+        )
+        config["pagination"] = {
+            "url_template": f"{origin}/de-CH/lehrstellen/?{query}&page={{page}}",
+            "start": 1,
+            "max_pages": 100,
+        }
+    return config
 
 
 def _lucca_probe_config(html: str, url: str) -> dict | None:
@@ -3085,6 +3185,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     if dualoo is not None:
         return dualoo
 
+    yousty = _yousty_probe_config(html, url)
+    if yousty is not None:
+        return yousty
+
     lucca = _lucca_probe_config(html, url)
     if lucca is not None:
         return lucca
@@ -3162,6 +3266,13 @@ async def dom_discover(
         metadata.get("fetch_url_transform"),
         owner="DOM monitor",
     )
+
+    yousty_organization = metadata.get("yousty_organization")
+    if yousty_organization is not None and (
+        not isinstance(yousty_organization, str)
+        or _YOUSTY_ORGANIZATION_RE.fullmatch(yousty_organization) is None
+    ):
+        raise ValueError("DOM monitor yousty_organization must be a valid provider identity")
 
     prospective_board = metadata.get("prospective_board")
     if prospective_board is not None and (
