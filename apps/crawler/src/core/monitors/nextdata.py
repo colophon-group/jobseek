@@ -46,6 +46,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from html import unescape
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
@@ -82,6 +83,11 @@ _PAGE_FETCH_BASE_DELAY = 0.5
 _MAX_IDENTITY_FIELD_LENGTH = 256
 _MAX_HIRING_ORGANIZATION_LENGTH = 256
 _MAX_URL_ALLOWLIST_LENGTH = 2_048
+_MAX_PAGE_TITLE_LENGTH = 256
+_MAX_ITEM_REQUIREMENTS = 16
+_MAX_REQUIRED_VALUE_LENGTH = 256
+
+_TITLE_RE = re.compile(r"<title(?:\s[^>]*)?>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 
 # Common paths where Next.js apps store job listings.
 _COMMON_PATHS = [
@@ -207,6 +213,74 @@ def _assert_urls_allowed(
 ) -> None:
     if any(url_allowlist.fullmatch(job.url) is None for job in jobs):
         raise ValueError("nextdata discovered a job URL outside its configured allowlist")
+
+
+def _validated_page_title(value: object) -> str | None:
+    """Validate an optional exact page-title contract."""
+    if value is None:
+        return None
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or len(value) > _MAX_PAGE_TITLE_LENGTH
+        or "\x00" in value
+    ):
+        raise ValueError("nextdata expected_page_title must be bounded non-empty text")
+    return value.strip()
+
+
+def _assert_page_title(html: str, expected: str) -> None:
+    match = _TITLE_RE.search(html)
+    actual = " ".join(unescape(match.group(1)).split()) if match is not None else None
+    if actual != expected:
+        raise ValueError("nextdata page title did not match its configured tenant")
+
+
+def _validated_item_requirements(
+    value: object,
+) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Validate exact per-item values used to prove listing ownership."""
+    if value is None:
+        return ()
+    if not isinstance(value, dict) or not value or len(value) > _MAX_ITEM_REQUIREMENTS:
+        raise ValueError("nextdata require_item_values must be a bounded non-empty object")
+
+    requirements: list[tuple[str, tuple[str, ...]]] = []
+    for field, expected in value.items():
+        if (
+            not isinstance(field, str)
+            or not field
+            or len(field) > _MAX_IDENTITY_FIELD_LENGTH
+            or "\x00" in field
+        ):
+            raise ValueError("nextdata require_item_values contains an invalid field path")
+        if (
+            not isinstance(expected, list)
+            or not expected
+            or not all(
+                isinstance(item, str)
+                and item
+                and len(item) <= _MAX_REQUIRED_VALUE_LENGTH
+                and "\x00" not in item
+                for item in expected
+            )
+        ):
+            raise ValueError("nextdata require_item_values expects non-empty string lists")
+        requirements.append((field, tuple(expected)))
+    return tuple(requirements)
+
+
+def _assert_item_requirements(
+    items: list,
+    requirements: tuple[tuple[str, tuple[str, ...]], ...],
+) -> None:
+    """Fail closed unless every advertised item proves the configured tenant."""
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("nextdata tenant-scoped inventory contained a non-object item")
+        for field, expected in requirements:
+            if resolve_path(item, field) != list(expected):
+                raise ValueError("nextdata item did not match its configured tenant values")
 
 
 def _validated_hiring_organization_config(
@@ -631,10 +705,17 @@ async def discover(
     if source_identity_config is not None and url_allowlist is None:
         raise ValueError("nextdata source_identity requires a url_allowlist")
     hiring_organization_config = _validated_hiring_organization_config(metadata)
+    expected_page_title = _validated_page_title(metadata.get("expected_page_title"))
+    item_requirements = _validated_item_requirements(metadata.get("require_item_values"))
     render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
     base_salary_cfg: dict | None = metadata.get("base_salary")
+
+    if expected_page_title is not None and source == "browser":
+        raise ValueError("nextdata expected_page_title does not support browser source")
+    if expected_page_title is not None and pagination_cfg:
+        raise ValueError("nextdata expected_page_title does not support pagination")
 
     if not render and actions:
         log.warning(
@@ -686,6 +767,8 @@ async def discover(
                 if strict_path:
                     raise RuntimeError("nextdata strict_path fetched no HTML")
                 return list() if fields_map else set()
+            if expected_page_title is not None:
+                _assert_page_title(html, expected_page_title)
             data = extract_embedded_json(html, source)
             if not data:
                 log.warning("nextdata.no_data", board_url=board_url, source=source)
@@ -719,6 +802,9 @@ async def discover(
             pw=pw,
             browser_config=browser_config,
         )
+
+    if item_requirements:
+        _assert_item_requirements(items, item_requirements)
 
     # Cap items
     if len(items) > MAX_URLS and strict_path:
@@ -791,10 +877,17 @@ async def discover_stream(
     if source_identity_config is not None and url_allowlist is None:
         raise ValueError("nextdata source_identity requires a url_allowlist")
     hiring_organization_config = _validated_hiring_organization_config(metadata)
+    expected_page_title = _validated_page_title(metadata.get("expected_page_title"))
+    item_requirements = _validated_item_requirements(metadata.get("require_item_values"))
     render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
     base_salary_cfg: dict | None = metadata.get("base_salary")
+
+    if expected_page_title is not None and source == "browser":
+        raise ValueError("nextdata expected_page_title does not support browser source")
+    if expected_page_title is not None and pagination_cfg:
+        raise ValueError("nextdata expected_page_title does not support pagination")
 
     if not render and actions:
         render = True
@@ -846,6 +939,8 @@ async def discover_stream(
                 if strict_path:
                     raise RuntimeError("nextdata strict_path fetched no HTML")
                 return
+            if expected_page_title is not None:
+                _assert_page_title(html, expected_page_title)
             data = extract_embedded_json(html, source)
             if not data:
                 if strict_path:
@@ -856,6 +951,9 @@ async def discover_stream(
                 if strict_path:
                     raise ValueError("nextdata strict_path did not resolve to a list")
                 return
+
+    if item_requirements:
+        _assert_item_requirements(items, item_requirements)
 
     def _extract_batch(batch_items: list):
         if fields_map:
