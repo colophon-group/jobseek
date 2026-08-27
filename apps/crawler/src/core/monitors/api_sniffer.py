@@ -1290,8 +1290,8 @@ def _validated_pagination_convergence(
         )
 
     pagination = config.get("pagination")
-    if not isinstance(pagination, dict) or pagination.get("style") != "offset":
-        raise ValueError("api_sniffer pagination_convergence requires offset pagination")
+    if not isinstance(pagination, dict) or pagination.get("style") not in {"offset", "page"}:
+        raise ValueError("api_sniffer pagination_convergence requires page or offset pagination")
     if not dedupe_paths:
         raise ValueError("api_sniffer pagination_convergence requires item_filter.dedupe_by")
 
@@ -1353,7 +1353,7 @@ async def _paginate_until_converged(
     """Union bounded full passes and prove convergence before allowing delists.
 
     Some APIs expose an advertised row count but reshuffle non-uniquely sorted
-    offset pages between requests. A single pass can therefore contain the
+    offset or numbered pages between requests. A single pass can therefore contain the
     advertised number of rows while omitting live identities and repeating
     others. This opt-in path accumulates stable identities across complete
     passes. It is healthy only after two or more consecutive full passes add
@@ -1428,7 +1428,7 @@ async def _paginate_until_converged(
 
         pagination = PaginationInfo(
             param_name=pagination_config["param_name"],
-            style="offset",
+            style=pagination_config["style"],
             start_value=pagination_config.get("start_value", 0),
             increment=pagination_config.get("increment", 1),
             location=pagination_config.get("location", "query"),
