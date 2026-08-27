@@ -24,7 +24,7 @@ from collections.abc import Callable
 from math import ceil
 from pathlib import Path
 from string import Formatter
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, NamedTuple, cast
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
@@ -96,6 +96,25 @@ _MAX_REFRESH_PAGE_BYTES = 2_000_000
 _MAX_ITEM_FILTER_FIELDS = 16
 _MAX_ITEM_FILTER_VALUES = 100
 _MAX_REQUIRED_PDF_PATTERN_CHARS = 1_024
+
+
+class _DedupePreference(NamedTuple):
+    path: str
+    preferred_values: tuple[str, ...]
+    fallback_by: tuple[str, ...]
+
+
+class _PaginationConvergence(NamedTuple):
+    max_passes: int
+    required_no_growth_passes: int
+    identity_paths: tuple[str, ...]
+    stable_fields: tuple[str, ...]
+    reject_duplicate_identities: bool
+
+
+class _UrlFieldMatch(NamedTuple):
+    pattern: re.Pattern[str]
+    fields: tuple[tuple[str, str], ...]
 
 
 MAX_ITEMS = 10_000
@@ -981,6 +1000,13 @@ async def discover(
     if not api_url and metadata.get("item_filter") is not None:
         raise ValueError("api_sniffer item_filter requires a configured api_url")
     if not api_url and (
+        metadata.get("pagination_convergence") is not None
+        or metadata.get("url_field_match") is not None
+    ):
+        raise ValueError(
+            "api_sniffer pagination convergence and URL matching require a configured api_url"
+        )
+    if not api_url and (
         metadata.get("require_pdf_pattern") is not None
         or metadata.get("require_unexpired_pdf") is not None
     ):
@@ -1154,14 +1180,21 @@ def _validated_item_filter(
     dict[str, frozenset[str]],
     dict[str, tuple[re.Pattern[str], ...]],
     tuple[str, ...],
+    _DedupePreference | None,
 ]:
     """Validate an optional post-pagination item scope and stable dedupe key."""
     value = config.get("item_filter")
     if value is None:
-        return {}, {}, {}, ()
+        return {}, {}, {}, (), None
     if not isinstance(value, dict) or not value:
         raise ValueError("api_sniffer item_filter must be a non-empty mapping")
-    if set(value) - {"include", "exclude", "exclude_regex", "dedupe_by"}:
+    if set(value) - {
+        "include",
+        "exclude",
+        "exclude_regex",
+        "dedupe_by",
+        "dedupe_preference",
+    }:
         raise ValueError("api_sniffer item_filter contains unsupported keys")
 
     include = value.get("include") if "include" in value else None
@@ -1267,33 +1300,137 @@ def _validated_item_filter(
             extract_field({}, dedupe_path)
         except Exception as exc:
             raise ValueError("api_sniffer item_filter.dedupe_by path must be valid") from exc
+
+    preference_value = value.get("dedupe_preference")
+    preference: _DedupePreference | None = None
+    if preference_value is not None:
+        if not dedupe_paths:
+            raise ValueError("api_sniffer item_filter.dedupe_preference requires dedupe_by")
+        if not isinstance(preference_value, dict) or set(preference_value) != {
+            "path",
+            "preferred_values",
+            "fallback_by",
+        }:
+            raise ValueError(
+                "api_sniffer item_filter.dedupe_preference must contain exactly "
+                "path, preferred_values, and fallback_by"
+            )
+        preference_path = preference_value.get("path")
+        preferred_values = preference_value.get("preferred_values")
+        fallback_by = preference_value.get("fallback_by")
+        if not isinstance(preference_path, str) or not preference_path.strip():
+            raise ValueError(
+                "api_sniffer item_filter.dedupe_preference.path must be a non-empty path"
+            )
+        if (
+            not isinstance(preferred_values, list)
+            or not preferred_values
+            or len(preferred_values) > _MAX_ITEM_FILTER_VALUES
+            or not all(isinstance(item, str) and item for item in preferred_values)
+            or len(set(preferred_values)) != len(preferred_values)
+        ):
+            raise ValueError(
+                "api_sniffer item_filter.dedupe_preference.preferred_values must be a "
+                "bounded unique non-empty string list"
+            )
+        if (
+            not isinstance(fallback_by, list)
+            or not fallback_by
+            or len(fallback_by) > _MAX_ITEM_FILTER_FIELDS
+            or not all(isinstance(path, str) and path.strip() for path in fallback_by)
+        ):
+            raise ValueError(
+                "api_sniffer item_filter.dedupe_preference.fallback_by must be a "
+                "bounded non-empty path list"
+            )
+        normalized_preference_path = preference_path.strip()
+        normalized_fallback = tuple(path.strip() for path in fallback_by)
+        if normalized_fallback[0] != normalized_preference_path:
+            raise ValueError(
+                "api_sniffer item_filter.dedupe_preference.fallback_by must start with path"
+            )
+        for path in (normalized_preference_path, *normalized_fallback):
+            try:
+                extract_field({}, path)
+            except Exception as exc:
+                raise ValueError(
+                    "api_sniffer item_filter.dedupe_preference paths must be valid"
+                ) from exc
+        preference = _DedupePreference(
+            normalized_preference_path,
+            tuple(preferred_values),
+            normalized_fallback,
+        )
     if not normalized_include and not normalized and not normalized_regex and not dedupe_paths:
         raise ValueError("api_sniffer item_filter must include, exclude, or deduplicate items")
-    return normalized_include, normalized, normalized_regex, dedupe_paths
+    return normalized_include, normalized, normalized_regex, dedupe_paths, preference
 
 
 def _validated_pagination_convergence(
     config: dict,
     dedupe_paths: tuple[str, ...],
-) -> tuple[int, int] | None:
-    """Validate an opt-in bounded proof for unstable offset pagination."""
+) -> _PaginationConvergence | None:
+    """Validate an opt-in bounded proof for unstable paginated inventories."""
     value = config.get("pagination_convergence")
     if value is None:
         return None
     if not isinstance(value, dict) or set(value) - {
         "max_passes",
         "required_no_growth_passes",
+        "identity_by",
+        "stable_fields",
     }:
         raise ValueError(
             "api_sniffer pagination_convergence must be a mapping containing only "
-            "max_passes and required_no_growth_passes"
+            "max_passes, required_no_growth_passes, identity_by, and stable_fields"
         )
 
     pagination = config.get("pagination")
     if not isinstance(pagination, dict) or pagination.get("style") not in {"offset", "page"}:
         raise ValueError("api_sniffer pagination_convergence requires page or offset pagination")
-    if not dedupe_paths:
-        raise ValueError("api_sniffer pagination_convergence requires item_filter.dedupe_by")
+    explicit_identity = value.get("identity_by")
+    if explicit_identity is None:
+        identity_paths = dedupe_paths
+        if not identity_paths:
+            raise ValueError(
+                "api_sniffer pagination_convergence requires identity_by or item_filter.dedupe_by"
+            )
+    elif (
+        not isinstance(explicit_identity, list)
+        or not explicit_identity
+        or len(explicit_identity) > _MAX_ITEM_FILTER_FIELDS
+        or not all(isinstance(path, str) and path.strip() for path in explicit_identity)
+    ):
+        raise ValueError(
+            "api_sniffer pagination_convergence.identity_by must be a bounded non-empty path list"
+        )
+    else:
+        identity_paths = tuple(path.strip() for path in explicit_identity)
+
+    stable_value = value.get("stable_fields")
+    if stable_value is None:
+        stable_fields: tuple[str, ...] = ()
+    elif (
+        explicit_identity is None
+        or not isinstance(stable_value, list)
+        or not stable_value
+        or len(stable_value) > _MAX_ITEM_FILTER_FIELDS
+        or not all(isinstance(path, str) and path.strip() for path in stable_value)
+    ):
+        raise ValueError(
+            "api_sniffer pagination_convergence.stable_fields requires explicit "
+            "identity_by and a bounded non-empty path list"
+        )
+    else:
+        stable_fields = tuple(path.strip() for path in stable_value)
+
+    for path in (*identity_paths, *stable_fields):
+        try:
+            extract_field({}, path)
+        except Exception as exc:
+            raise ValueError(
+                "api_sniffer pagination_convergence identity/projection paths must be valid"
+            ) from exc
 
     max_passes = value.get("max_passes")
     required_no_growth = value.get("required_no_growth_passes")
@@ -1310,7 +1447,82 @@ def _validated_pagination_convergence(
             "api_sniffer pagination_convergence.required_no_growth_passes must be "
             "an integer from 2 to max_passes - 1"
         )
-    return max_passes, required_no_growth
+    return _PaginationConvergence(
+        max_passes,
+        required_no_growth,
+        identity_paths,
+        stable_fields,
+        explicit_identity is not None,
+    )
+
+
+def _validated_url_field_match(
+    config: dict,
+    pagination_convergence: _PaginationConvergence | None,
+) -> _UrlFieldMatch | None:
+    """Validate an exact URL-to-item cross-field contract."""
+    value = config.get("url_field_match")
+    if value is None:
+        return None
+    if pagination_convergence is None:
+        raise ValueError("api_sniffer url_field_match requires pagination_convergence")
+    if not isinstance(config.get("url_field"), str) or not config["url_field"].strip():
+        raise ValueError("api_sniffer url_field_match requires url_field")
+    if not isinstance(value, dict) or set(value) != {"pattern", "fields"}:
+        raise ValueError("api_sniffer url_field_match must contain exactly pattern and fields")
+    pattern_value = value.get("pattern")
+    fields_value = value.get("fields")
+    if (
+        not isinstance(pattern_value, str)
+        or not pattern_value
+        or len(pattern_value) > _MAX_REFRESH_PATTERN_CHARS
+    ):
+        raise ValueError("api_sniffer url_field_match.pattern must be a bounded string")
+    if (
+        not isinstance(fields_value, dict)
+        or not fields_value
+        or len(fields_value) > _MAX_ITEM_FILTER_FIELDS
+        or not all(
+            isinstance(group, str) and group and isinstance(path, str) and path.strip()
+            for group, path in fields_value.items()
+        )
+    ):
+        raise ValueError(
+            "api_sniffer url_field_match.fields must be a bounded non-empty group-to-path mapping"
+        )
+    try:
+        pattern = re.compile(pattern_value)
+    except re.error as exc:
+        raise ValueError("api_sniffer url_field_match.pattern must be valid") from exc
+    if set(pattern.groupindex) != set(fields_value):
+        raise ValueError("api_sniffer url_field_match named groups must exactly match fields")
+    normalized_fields = tuple(sorted((group, path.strip()) for group, path in fields_value.items()))
+    for _group, path in normalized_fields:
+        try:
+            extract_field({}, path)
+        except Exception as exc:
+            raise ValueError("api_sniffer url_field_match field paths must be valid") from exc
+    return _UrlFieldMatch(pattern, normalized_fields)
+
+
+def _matches_url_field_contract(
+    item: dict,
+    url_field: str,
+    url_field_match: _UrlFieldMatch | None,
+) -> bool:
+    if url_field_match is None:
+        return True
+    raw_url = extract_field(item, url_field)
+    if not isinstance(raw_url, str) or not raw_url:
+        return False
+    match = url_field_match.pattern.fullmatch(raw_url)
+    if match is None:
+        return False
+    for group, path in url_field_match.fields:
+        expected = extract_field(item, path)
+        if not isinstance(expected, str) or not expected or match.group(group) != expected:
+            return False
+    return True
 
 
 def _advertised_total(payload: object, total_path: str | None, json_path: str) -> int | None:
@@ -1346,9 +1558,12 @@ async def _paginate_until_converged(
     pagination_config: dict,
     max_pages: int,
     identity_paths: tuple[str, ...],
+    stable_fields: tuple[str, ...] = (),
+    reject_duplicate_identities: bool = False,
     max_passes: int,
     required_no_growth_passes: int,
     item_projector,
+    item_validator: Callable[[dict], bool] | None = None,
 ) -> tuple[list[dict], bool]:
     """Union bounded full passes and prove convergence before allowing delists.
 
@@ -1363,6 +1578,7 @@ async def _paginate_until_converged(
 
     expected_total = total_count
     accumulated: dict[tuple[str, ...], dict] = {}
+    accumulated_projections: dict[tuple[str, ...], object] = {}
     no_growth_passes = 0
 
     def payload_total(payload: object) -> int | None:
@@ -1380,25 +1596,55 @@ async def _paginate_until_converged(
             isinstance(item, dict) for item in configured_items
         )
 
-    def identity_map(items: list[dict]) -> tuple[dict[tuple[str, ...], dict], bool]:
+    def stable_projection(item: dict) -> tuple[object, bool]:
+        if not stable_fields:
+            return item, True
+        projection: list[str] = []
+        for path in stable_fields:
+            value = extract_field(item, path)
+            if value is None or value == "":
+                return (), False
+            try:
+                projection.append(
+                    json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+                )
+            except (TypeError, ValueError):
+                return (), False
+        return tuple(projection), True
+
+    def identity_map(
+        items: list[dict],
+    ) -> tuple[dict[tuple[str, ...], dict], dict[tuple[str, ...], object], bool]:
         mapped: dict[tuple[str, ...], dict] = {}
+        projections: dict[tuple[str, ...], object] = {}
         valid = True
         for item in items:
+            if item_validator is not None and not item_validator(item):
+                valid = False
+                continue
             parts = [extract_field(item, path) for path in identity_paths]
             if not all(isinstance(part, str) and part for part in parts):
                 valid = False
                 continue
             identity = tuple(cast(str, part) for part in parts)
+            projection, projection_valid = stable_projection(item)
+            if not projection_valid:
+                valid = False
+                continue
             previous = mapped.get(identity)
-            if previous is not None and previous != item:
-                # A supposedly stable identity cannot safely collapse two
-                # conflicting source records in a delist-capable cycle.
+            if previous is not None and (
+                reject_duplicate_identities or projections[identity] != projection
+            ):
+                # Explicit raw identities must occur exactly once per pass.
+                # Legacy convergence configs retain their prior allowance for
+                # byte-equivalent duplicate rows while still rejecting drift.
                 valid = False
             # Preserve the first observation. Even though a conflict makes
             # the cycle partial below, returning the last duplicate would
             # still expose a nondeterministic mixed snapshot to callers.
             mapped.setdefault(identity, item)
-        return mapped, valid
+            projections.setdefault(identity, projection)
+        return mapped, projections, valid
 
     pass_data = initial_data
     pass_items = initial_items
@@ -1458,17 +1704,19 @@ async def _paginate_until_converged(
             max_pages,
             item_projector=item_projector,
         )
-        pass_identities, identities_valid = identity_map(rows)
+        pass_identities, pass_projections, identities_valid = identity_map(rows)
         new_identities = set(pass_identities) - set(accumulated)
         cross_pass_conflict = any(
-            identity in accumulated and accumulated[identity] != item
-            for identity, item in pass_identities.items()
+            identity in accumulated_projections
+            and accumulated_projections[identity] != pass_projections[identity]
+            for identity in pass_identities
         )
         identities_valid = identities_valid and not cross_pass_conflict
         # Retain the first stable record for each identity. A later differing
         # record invalidates the proof instead of winning by request order.
         for identity, item in pass_identities.items():
             accumulated.setdefault(identity, item)
+            accumulated_projections.setdefault(identity, pass_projections[identity])
         complete_pass = (
             totals_valid
             and list_shapes_valid
@@ -1529,11 +1777,12 @@ def _apply_item_filter(
         dict[str, frozenset[str]],
         dict[str, tuple[re.Pattern[str], ...]],
         tuple[str, ...],
+        _DedupePreference | None,
     ],
     advertised_total: int | None,
 ) -> tuple[list[dict], int | None]:
     """Apply an intentional source partition without masking upstream truncation."""
-    include, exclude, exclude_regex, dedupe_by = item_filter
+    include, exclude, exclude_regex, dedupe_by, dedupe_preference = item_filter
     if not include and not exclude and not exclude_regex and not dedupe_by:
         return items, advertised_total
 
@@ -1571,7 +1820,41 @@ def _apply_item_filter(
                 scoped.append(item)
 
     if dedupe_by:
-        seen: set[tuple[str, ...]] = set()
+        grouped: dict[tuple[str, ...], list[dict]] = {}
+        for item in scoped:
+            identity_parts = [extract_field(item, path) for path in dedupe_by]
+            if all(isinstance(part, str) and part for part in identity_parts):
+                identity = tuple(cast(str, part) for part in identity_parts)
+                grouped.setdefault(identity, []).append(item)
+
+        if dedupe_preference is None:
+            winners = {identity: group[0] for identity, group in grouped.items()}
+        else:
+            preferred_rank = {
+                value: index for index, value in enumerate(dedupe_preference.preferred_values)
+            }
+
+            def preference_key(item: dict) -> tuple[int | str, ...]:
+                preference = extract_field(item, dedupe_preference.path)
+                fallback = [extract_field(item, path) for path in dedupe_preference.fallback_by]
+                if (
+                    not isinstance(preference, str)
+                    or not preference
+                    or not all(isinstance(value, str) and value for value in fallback)
+                ):
+                    raise ValueError(
+                        "api_sniffer item_filter.dedupe_preference paths must resolve "
+                        "to non-empty strings"
+                    )
+                return (
+                    preferred_rank.get(preference, len(preferred_rank)),
+                    *(cast(str, value) for value in fallback),
+                )
+
+            winners = {
+                identity: min(group, key=preference_key) for identity, group in grouped.items()
+            }
+
         deduped: list[dict] = []
         for item in scoped:
             identity_parts = [extract_field(item, path) for path in dedupe_by]
@@ -1579,10 +1862,8 @@ def _apply_item_filter(
                 deduped.append(item)
                 continue
             identity = tuple(cast(str, part) for part in identity_parts)
-            if identity in seen:
-                continue
-            seen.add(identity)
-            deduped.append(item)
+            if winners[identity] is item:
+                deduped.append(item)
         scoped = deduped
 
     # Remove the intentionally excluded/deduplicated rows from the upstream
@@ -1962,19 +2243,27 @@ async def _discover_http(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
+    pagination_convergence = _validated_pagination_convergence(config, item_filter[3])
+    url_field_match = _validated_url_field_match(config, pagination_convergence)
     item_filter_paths = [
         *item_filter[0],
         *item_filter[1],
         *item_filter[2],
         *item_filter[3],
     ]
+    if item_filter[4] is not None:
+        item_filter_paths.extend(item_filter[4].fallback_by)
+    if pagination_convergence is not None:
+        item_filter_paths.extend(pagination_convergence.identity_paths)
+        item_filter_paths.extend(pagination_convergence.stable_fields)
+    if url_field_match is not None:
+        item_filter_paths.extend(path for _group, path in url_field_match.fields)
     url_regex = config.get("url_regex")
     total_path = config.get("total_path")
     post_data = _configured_post_data(config)
     request_headers = config.get("request_headers") or config.get("headers") or {}
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
-    pagination_convergence = _validated_pagination_convergence(config, item_filter[3])
 
     post_data = await _refresh_post_data(
         client,
@@ -2217,7 +2506,6 @@ async def _discover_http(
             page_cap = pagination_config.get("max_pages", _HTTP_MAX_PAGES)
             fetch_fn = make_http_fetcher(client)
             if pagination_convergence:
-                max_passes, required_no_growth = pagination_convergence
                 items, pagination_proven = await _paginate_until_converged(
                     fetch_fn=fetch_fn,
                     method=method,
@@ -2231,10 +2519,25 @@ async def _discover_http(
                     total_count=total,
                     pagination_config=pagination_config,
                     max_pages=page_cap,
-                    identity_paths=item_filter[3],
-                    max_passes=max_passes,
-                    required_no_growth_passes=required_no_growth,
+                    identity_paths=pagination_convergence.identity_paths,
+                    stable_fields=pagination_convergence.stable_fields,
+                    reject_duplicate_identities=(
+                        pagination_convergence.reject_duplicate_identities
+                    ),
+                    max_passes=pagination_convergence.max_passes,
+                    required_no_growth_passes=(pagination_convergence.required_no_growth_passes),
                     item_projector=item_projector,
+                    item_validator=(
+                        (
+                            lambda item: _matches_url_field_contract(
+                                item,
+                                cast(str, url_field),
+                                url_field_match,
+                            )
+                        )
+                        if url_field_match is not None
+                        else None
+                    ),
                 )
             else:
                 items = await paginate_all(
@@ -2474,17 +2777,25 @@ async def _discover_replay(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
+    pagination_convergence = _validated_pagination_convergence(config, item_filter[3])
+    url_field_match = _validated_url_field_match(config, pagination_convergence)
     item_filter_paths = [
         *item_filter[0],
         *item_filter[1],
         *item_filter[2],
         *item_filter[3],
     ]
+    if item_filter[4] is not None:
+        item_filter_paths.extend(item_filter[4].fallback_by)
+    if pagination_convergence is not None:
+        item_filter_paths.extend(pagination_convergence.identity_paths)
+        item_filter_paths.extend(pagination_convergence.stable_fields)
+    if url_field_match is not None:
+        item_filter_paths.extend(path for _group, path in url_field_match.fields)
     post_data = _configured_post_data(config)
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
-    pagination_convergence = _validated_pagination_convergence(config, item_filter[3])
     total_path = config.get("total_path")
     api_url_match = config.get("api_url_match")
     route_params = config.get("route_params")
@@ -2694,7 +3005,6 @@ async def _discover_replay(
                 if needed > max_pg:
                     max_pg = min(needed, _HTTP_MAX_PAGES)
             if pagination_convergence:
-                max_passes, required_no_growth = pagination_convergence
                 items, pagination_proven = await _paginate_until_converged(
                     fetch_fn=fetch_fn,
                     method=method,
@@ -2708,10 +3018,25 @@ async def _discover_replay(
                     total_count=total_count,
                     pagination_config=pagination_config,
                     max_pages=max_pg,
-                    identity_paths=item_filter[3],
-                    max_passes=max_passes,
-                    required_no_growth_passes=required_no_growth,
+                    identity_paths=pagination_convergence.identity_paths,
+                    stable_fields=pagination_convergence.stable_fields,
+                    reject_duplicate_identities=(
+                        pagination_convergence.reject_duplicate_identities
+                    ),
+                    max_passes=pagination_convergence.max_passes,
+                    required_no_growth_passes=(pagination_convergence.required_no_growth_passes),
                     item_projector=item_projector,
+                    item_validator=(
+                        (
+                            lambda item: _matches_url_field_contract(
+                                item,
+                                cast(str, url_field),
+                                url_field_match,
+                            )
+                        )
+                        if url_field_match is not None
+                        else None
+                    ),
                 )
             else:
                 items = await paginate_all(
