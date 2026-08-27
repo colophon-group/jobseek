@@ -12,6 +12,7 @@ from src.core.monitors.workday import (
     _api_base,
     _api_list_stream,
     _api_list_url,
+    _configured_sites,
     _cross_site_path_key,
     _discover_sites,
     _fetch_job_count,
@@ -26,6 +27,7 @@ from src.core.monitors.workday import (
     _post_page_with_retry,
     can_handle,
     discover,
+    discover_stream,
 )
 from src.core.scrapers.workday import (
     WorkdayDetailPayloadError,
@@ -94,17 +96,170 @@ class TestCrossSitePathKey:
         ],
     )
     def test_strips_workday_distribution_copy_suffix(self, path, expected):
-        assert _cross_site_path_key(path) == expected
+        assert _cross_site_path_key(path) == f"requisition:{expected.rsplit('_', 1)[-1]}"
+
+    def test_uses_stable_requisition_token_without_copy_suffix(self):
+        path = "/job/US-Gaithersburg/Capital-Projects-Director_R-258265"
+        assert _cross_site_path_key(path) == "requisition:R-258265"
+
+    def test_preserves_path_without_recognizable_requisition_token(self):
+        path = "/job/USA-WI-Marinette/JR-2"
+        assert _cross_site_path_key(path) == path
 
     @pytest.mark.parametrize(
-        "path",
+        ("requisition_id", "external_path", "confidential_path"),
         [
-            "/job/USA-WI-Marinette/JR-2",
-            "/job/US-Gaithersburg/Capital-Projects-Director_R-258265",
+            (
+                "R5008533",
+                "/job/Belfort/Ingnieur-lectrotechnique--Automatisme-et-Systmes-lectriques_R5008533-1",
+                "/job/Belfort/Ingnieur-lectrotechnique-et-Automatisme_R5008533",
+            ),
+            (
+                "R5009091",
+                "/job/Swansea-GB-1/Electrical-Engineer---Wind-Drives-Upgrade_R5009091-1",
+                "/job/Swansea-GB-1/Lead-Electrical-Engineer---Wind-Drives-Upgrades_R5009091",
+            ),
+            (
+                "R5027814",
+                "/job/Aix-les-Bains/Technicien-de-Maintenance--H-F----CDI_R5027814",
+                "/job/Aix-les-Bains/CDI---Technicien-de-Maintenance---H-F_R5027814-2",
+            ),
+            (
+                "R5036122",
+                "/job/Aix-les-Bains/Senior-Manager---Ingnierie-Qualit-Globale-et-Amlioration-Continue-F-H----Portefeuille-de-produits-Postes-Blinds-au-Gaz--GIS-_R5036122",
+                "/job/Aix-les-Bains/Senior-Manager--Global-Quality-Engineering-and-Continuous-Improvement---Gas-Insulated-Sub-stations--GIS-_R5036122-1",
+            ),
+            (
+                "R5039701",
+                "/job/Rugby/Project-Delivery-Engineer_R5039701",
+                "/job/Rugby/Quality-Engineer---Project-Delivery_R5039701-1",
+            ),
+            (
+                "R5039880",
+                "/job/Rugby/Lead-Supplier-Quality-Engineer_R5039880-1",
+                "/job/Rugby/Supplier-Quality-Engineer-1_R5039880",
+            ),
+            (
+                "R5040997",
+                "/job/Montpellier/Responsable-Produit---Digital-Substation-Product-Manager-H-F_R5040997",
+                "/job/Montpellier/Digital-Substation-Product-Manager_R5040997-1",
+            ),
+            (
+                "R5043425",
+                "/job/Noventa-di-Piave/Senior-Automation---Robotics-Engineer_R5043425-1",
+                "/job/Noventa-di-Piave/Automation---Robotics-Engineer_R5043425",
+            ),
+            (
+                "R5044769",
+                "/job/Montpellier/DevOps-Engineering-Leader---Responsable-Ingnierie-DevOps-H-F_R5044769",
+                "/job/Montpellier/DevOps-Engineering-Leader---Responsable-Ingnierie-DevOps_R5044769-2",
+            ),
+            (
+                "R5044792",
+                "/job/Atlanta/EPC-Partnering-Manager--Americas-_R5044792",
+                "/job/Atlanta/EPC-Partnering-Manager_R5044792-2",
+            ),
+            (
+                "R5047109",
+                "/job/Budapest/HR-Ops-Specialist---Spanish-Speaker_R5047109",
+                "/job/Budapest/HR-Ops-Specialist_R5047109-1",
+            ),
+            (
+                "R5047632",
+                "/job/Aix-les-Bains/Gestionnaire-de-Production-F-H_R5047632",
+                "/job/Aix-les-Bains/GESTIONNAIRE-DE-PRODUCTION_R5047632-1",
+            ),
+            (
+                "R5048419",
+                "/job/Greenville/Material-Resource-Planner_R5048419",
+                "/job/Greenville/Operations-Leader_R5048419-2",
+            ),
+            (
+                "R5048631",
+                "/job/Aix-les-Bains/Responsable-de-ple-Approvisionnement-H-F_R5048631",
+                "/job/Aix-les-Bains/Lead-Sourcing-Specialist-1---Buying-Procurement_R5048631",
+            ),
+            (
+                "R5048929",
+                "/job/Bloomfield-CT-USA/Senior-Engineer---Outsourced-HRSG-Project-Engineering_R5048929",
+                "/job/Bloomfield-CT-USA/Senior-Outsourced-HRSG-Project-Engineer---Americas_R5048929-1",
+            ),
+            (
+                "R5049573",
+                "/job/Greenville/Mechanical-Engineer---Wind-Turbine-Machine-Head-Driveline_R5049573",
+                "/job/Greenville/Mechanical-Engineer---Driveline_R5049573-1",
+            ),
+            (
+                "R5049711",
+                "/job/Schenectady/Senior-Engineer_R5049711-1",
+                "/job/Schenectady/Senior-Engineer---Energy-Consulting-Services_R5049711",
+            ),
+            (
+                "R5050013",
+                "/job/Greenville/Lead-Engineer---Artificial-Intelligence-for-Gas-Turbine-Design-w-relocation-assistance_R5050013",
+                "/job/Greenville/Lead-Engineer---Artificial-Intelligence-for-Gas-Turbine-Design_R5050013-1",
+            ),
+            (
+                "R5050107",
+                "/job/Niskayuna/Automation-Operations-Leader_R5050107-1",
+                "/job/Niskayuna/Automation-Operations-Leader--f-m-d-_R5050107",
+            ),
         ],
     )
-    def test_preserves_paths_without_copy_suffix(self, path):
-        assert _cross_site_path_key(path) == path
+    def test_ge_vernova_title_variants_share_requisition_identity(
+        self,
+        requisition_id,
+        external_path,
+        confidential_path,
+    ):
+        expected = f"requisition:{requisition_id}"
+        assert _cross_site_path_key(external_path) == expected
+        assert _cross_site_path_key(confidential_path) == expected
+
+
+class TestConfiguredSites:
+    def test_accepts_ordered_sites_with_primary_first(self):
+        metadata = {"sites": ["External", "Confidential"]}
+        assert _configured_sites(metadata, configured_site="External") == [
+            "External",
+            "Confidential",
+        ]
+
+    @pytest.mark.parametrize(
+        "sites",
+        [None, [], "External", ["../External"], ["External", 42], ["x" * 129]],
+    )
+    def test_rejects_invalid_site_config(self, sites):
+        with pytest.raises(ValueError, match="Workday sites"):
+            _configured_sites({"sites": sites}, configured_site="External")
+
+    def test_rejects_too_many_sites(self):
+        with pytest.raises(ValueError, match="at most 20"):
+            _configured_sites(
+                {"sites": [f"Site{index}" for index in range(21)]},
+                configured_site="Site0",
+            )
+
+    def test_rejects_duplicate_sites(self):
+        with pytest.raises(ValueError, match="duplicate entry"):
+            _configured_sites(
+                {"sites": ["External", "External"]},
+                configured_site="External",
+            )
+
+    def test_requires_configured_site_first(self):
+        with pytest.raises(ValueError, match="first entry"):
+            _configured_sites(
+                {"sites": ["Confidential", "External"]},
+                configured_site="External",
+            )
+
+    def test_rejects_single_site_mode(self):
+        with pytest.raises(ValueError, match="all_sites=false"):
+            _configured_sites(
+                {"sites": ["External", "Confidential"], "all_sites": False},
+                configured_site="External",
+            )
 
 
 class TestDetailUrl:
@@ -929,9 +1084,13 @@ class TestInventoryCompleteness:
         from src.core.monitors import workday as wd_module
 
         async def fake_api_list(company, wd_instance, site, client, *, query_sem=None):
-            copy_suffix = "-1" if site == "SiteA" else ""
+            shared_path = (
+                "/job/shared/English-Engineer_123456-1"
+                if site == "SiteA"
+                else "/job/shared/Ingnieur-franais_123456"
+            )
             paths = [
-                f"/job/shared/Engineer_123456{copy_suffix}",
+                shared_path,
                 f"/job/{site}/JR002",
             ]
             return paths, False
@@ -942,7 +1101,7 @@ class TestInventoryCompleteness:
             site_paths, truncated = await _list_all_sites("co", "wd1", ["SiteA", "SiteB"], client)
 
         assert site_paths == [
-            ("SiteA", "/job/shared/Engineer_123456-1"),
+            ("SiteA", "/job/shared/English-Engineer_123456-1"),
             ("SiteA", "/job/SiteA/JR002"),
             ("SiteB", "/job/SiteB/JR002"),
         ]
@@ -952,9 +1111,13 @@ class TestInventoryCompleteness:
         from src.core.monitors import workday as wd_module
 
         async def fake_api_list_stream(company, wd_instance, site, client, *, query_sem=None):
-            copy_suffix = "-1" if site == "SiteA" else ""
+            shared_path = (
+                "/job/shared/English-Engineer_123456-1"
+                if site == "SiteA"
+                else "/job/shared/Ingnieur-franais_123456"
+            )
             yield [
-                f"/job/shared/Engineer_123456{copy_suffix}",
+                shared_path,
                 f"/job/{site}/JR002",
             ]
 
@@ -968,7 +1131,7 @@ class TestInventoryCompleteness:
 
         assert batches == [
             [
-                ("SiteA", "/job/shared/Engineer_123456-1"),
+                ("SiteA", "/job/shared/English-Engineer_123456-1"),
                 ("SiteA", "/job/SiteA/JR002"),
             ],
             [("SiteB", "/job/SiteB/JR002")],
@@ -1334,6 +1497,91 @@ class TestDiscoverSites:
 
 
 class TestMultiSiteDiscover:
+    async def test_explicit_sites_override_robots_and_retain_primary_path(self):
+        requested_urls: list[str] = []
+
+        def handler(request):
+            url = str(request.url)
+            requested_urls.append(url)
+            if request.method == "POST" and "External/jobs" in url:
+                return httpx.Response(
+                    200,
+                    json={
+                        "total": 1,
+                        "jobPostings": [{"externalPath": "/job/Belfort/French-title_R5008533-1"}],
+                        "facets": [],
+                    },
+                )
+            if request.method == "POST" and "Confidential/jobs" in url:
+                return httpx.Response(
+                    200,
+                    json={
+                        "total": 2,
+                        "jobPostings": [
+                            {"externalPath": "/job/Belfort/English-title_R5008533"},
+                            {"externalPath": "/job/Remote/Executive_R5009999-2"},
+                        ],
+                        "facets": [],
+                    },
+                )
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://co.wd1.myworkdayjobs.com/External",
+                "metadata": {
+                    "company": "co",
+                    "wd_instance": "wd1",
+                    "site": "External",
+                    "sites": ["External", "Confidential"],
+                },
+            }
+            urls = await discover(board, client)
+
+        assert urls == {
+            "https://co.wd1.myworkdayjobs.com/External/job/Belfort/French-title_R5008533-1",
+            "https://co.wd1.myworkdayjobs.com/Confidential/job/Remote/Executive_R5009999-2",
+        }
+        assert not any("robots.txt" in url for url in requested_urls)
+
+    async def test_explicit_sites_stream_uses_same_ordered_identity_contract(self):
+        requested_urls: list[str] = []
+
+        def handler(request):
+            url = str(request.url)
+            requested_urls.append(url)
+            if request.method == "POST" and "External/jobs" in url:
+                postings = [{"externalPath": "/job/Belfort/French-title_R5008533-1"}]
+            elif request.method == "POST" and "Confidential/jobs" in url:
+                postings = [
+                    {"externalPath": "/job/Belfort/English-title_R5008533"},
+                    {"externalPath": "/job/Remote/Executive_R5009999-2"},
+                ]
+            else:
+                return httpx.Response(404)
+            return httpx.Response(
+                200,
+                json={"total": len(postings), "jobPostings": postings, "facets": []},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://co.wd1.myworkdayjobs.com/External",
+                "metadata": {
+                    "company": "co",
+                    "wd_instance": "wd1",
+                    "site": "External",
+                    "sites": ["External", "Confidential"],
+                },
+            }
+            batches = [batch async for batch in discover_stream(board, client)]
+
+        assert batches == [
+            {"https://co.wd1.myworkdayjobs.com/External/job/Belfort/French-title_R5008533-1"},
+            {"https://co.wd1.myworkdayjobs.com/Confidential/job/Remote/Executive_R5009999-2"},
+        ]
+        assert not any("robots.txt" in url for url in requested_urls)
+
     async def test_aggregates_urls_from_all_sites(self):
         robots = (
             "Sitemap: https://co.wd1.myworkdayjobs.com/SiteA/siteMap.xml\n"
