@@ -176,7 +176,12 @@ class TestMonitor:
                 assert request.url.host == peer_host
                 text = _card_listing(
                     peer_host,
-                    (200, "Management Trainee", "CA-QC-Laval", "Regular Full-Time"),
+                    (
+                        200,
+                        "Management Trainee - Bilingual",
+                        "CA-QC-Laval",
+                        "Regular Full-Time",
+                    ),
                     (201, "Bilingual Representative", "CA-Remote", "Regular Full-Time"),
                 )
             return httpx.Response(200, text=text, request=request)
@@ -185,8 +190,37 @@ class TestMonitor:
             "host": HOST,
             "cross_locale_dedupe": {
                 "peer_host": peer_host,
-                "title_aliases": {"Gestionnaire en formation": "Management Trainee"},
+                "title_aliases": {
+                    "Gestionnaire en formation": "Management Trainee",
+                    "Management Trainee - Bilingual": "Management Trainee",
+                },
             },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": BOARD_URL, "metadata": metadata}, client)
+
+        assert result == {_job_url(101)}
+
+    async def test_cross_locale_dedupe_consumes_peer_identity_counts(self):
+        peer_host = "peer-acme.icims.com"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == HOST:
+                text = _card_listing(
+                    HOST,
+                    (100, "Same role", "CA-QC-Laval", "Regular Full-Time"),
+                    (101, "Same role", "CA-QC-Laval", "Regular Full-Time"),
+                )
+            else:
+                text = _card_listing(
+                    peer_host,
+                    (200, "Same role", "CA-QC-Laval", "Regular Full-Time"),
+                )
+            return httpx.Response(200, text=text, request=request)
+
+        metadata = {
+            "host": HOST,
+            "cross_locale_dedupe": {"peer_host": peer_host, "title_aliases": {}},
         }
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": BOARD_URL, "metadata": metadata}, client)
