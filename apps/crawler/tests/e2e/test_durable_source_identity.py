@@ -200,7 +200,7 @@ async def test_identity_preserves_uuid_through_locale_url_lifecycle_and_cdc() ->
         # Receipt-backed downgrade refuses to discard exercised identity/alias
         # evidence. The savepoint rolls the expected exception back cleanly.
         migration = importlib.import_module(
-            "src.migrations.versions.0022_add_durable_source_identity"
+            "src.migrations.versions.0023_add_durable_source_identity"
         )
         async with pool.acquire() as connection:
             transaction = connection.transaction()

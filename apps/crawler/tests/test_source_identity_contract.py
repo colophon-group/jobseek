@@ -50,10 +50,12 @@ def test_outbound_url_is_mutable_in_downstream_cdc() -> None:
 
 
 def test_migration_is_bounded_receipt_backed_and_rollback_guarded() -> None:
-    migration = importlib.import_module("src.migrations.versions.0022_add_durable_source_identity")
+    migration = importlib.import_module("src.migrations.versions.0023_add_durable_source_identity")
     upgrade = migration._CREATE_IDENTITY_CONTRACT
     downgrade = migration._DOWNGRADE_GUARD
 
+    assert migration.revision == "0023"
+    assert migration.down_revision == "0022"
     assert migration._MAX_BACKFILL_ROWS == 5_000_000
     assert migration._BACKFILL_BATCH_ROWS == 50_000
     assert "posting_identity_migration_receipt" in upgrade
@@ -69,7 +71,7 @@ def test_migration_is_bounded_receipt_backed_and_rollback_guarded() -> None:
 
 
 def test_mutable_outbound_url_participates_in_commit_safe_cdc_trigger() -> None:
-    migration = importlib.import_module("src.migrations.versions.0022_add_durable_source_identity")
+    migration = importlib.import_module("src.migrations.versions.0023_add_durable_source_identity")
     cdc = " ".join(migration._INSTALL_MUTABLE_URL_CDC.split())
     assert "NEW.source_url" in cdc
     assert "OLD.source_url" in cdc

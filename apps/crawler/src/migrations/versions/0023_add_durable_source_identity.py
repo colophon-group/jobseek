@@ -11,8 +11,8 @@ all identities still equal their original URL and no URL aliases have been
 recorded; once the new runtime has exercised the contract, rollback fails
 closed instead of destroying durable identity evidence.
 
-Revision ID: 0022
-Revises: 0021
+Revision ID: 0023
+Revises: 0022
 Create Date: 2026-08-26
 """
 
@@ -20,8 +20,8 @@ from __future__ import annotations
 
 from alembic import op
 
-revision = "0022"
-down_revision = "0021"
+revision = "0023"
+down_revision = "0022"
 branch_labels = None
 depends_on = None
 
@@ -100,7 +100,7 @@ BEGIN
         source_url_max
     )
     SELECT
-        '0022',
+        '0023',
         count(*),
         total_count,
         min(source_url),
@@ -214,7 +214,7 @@ BEGIN
     SELECT count(*), min(backfilled_rows)
     INTO receipt_count, receipt_rows
     FROM posting_identity_migration_receipt
-    WHERE revision = '0022';
+    WHERE revision = '0023';
 
     IF receipt_count <> 1 OR receipt_rows IS NULL THEN
         RAISE EXCEPTION 'durable identity rollback receipt is missing or ambiguous';
