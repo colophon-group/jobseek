@@ -199,6 +199,54 @@ class TestNormalizeWorkdayLocation:
             == "New York, NY, United States"
         )
 
+    def test_maurices_us_facility_uses_upstream_country(self):
+        assert (
+            _normalize_workday_location(
+                "Store 1272-South Franklin-maurices-Colby, KS 67701",
+                country="United States of America",
+                tenant="maurices",
+            )
+            == "Colby, KS, United States of America"
+        )
+
+    def test_maurices_canada_facility_strips_postal_code(self):
+        assert (
+            _normalize_workday_location(
+                "Store 4148-Uptown Centre-Fredericton, NB E3B 3C1",
+                country="Canada",
+                tenant="maurices",
+            )
+            == "Fredericton, NB, Canada"
+        )
+
+    def test_maurices_corporate_facility(self):
+        assert (
+            _normalize_workday_location(
+                "Corporate Office-maurices-Duluth, MN 55802",
+                country="United States of America",
+                tenant="maurices",
+            )
+            == "Duluth, MN, United States of America"
+        )
+
+    def test_tenant_separator_preserves_hyphenated_city(self):
+        assert (
+            _normalize_workday_location(
+                "Store 9999-Test Mall-maurices-Winston-Salem, NC 27101",
+                country="United States of America",
+                tenant="maurices",
+            )
+            == "Winston-Salem, NC, United States of America"
+        )
+
+    def test_does_not_rewrite_ordinary_hyphenated_location(self):
+        assert (
+            _normalize_workday_location(
+                "Winston-Salem, NC 27101", country="United States of America"
+            )
+            == "Winston-Salem, NC 27101"
+        )
+
     # Plain city name (unchanged)
     def test_plain_city(self):
         assert _normalize_workday_location("Singapore") == "Singapore"
@@ -249,6 +297,16 @@ class TestParseDetail:
         detail = {"jobPostingInfo": {}}
         result = _parse_detail(detail)
         assert result.locations is None
+
+    def test_facility_location_uses_country_descriptor(self):
+        detail = {
+            "jobPostingInfo": {
+                "location": "Store 4133-Leamington Pwr Ctr-maurices-Leamington, ON N8H 3C5",
+                "country": {"descriptor": "Canada", "id": "country-id"},
+            }
+        }
+        result = _parse_detail(detail, tenant="maurices")
+        assert result.locations == ["Leamington, ON, Canada"]
 
     def test_no_metadata(self):
         detail = {"jobPostingInfo": {}}

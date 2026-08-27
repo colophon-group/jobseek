@@ -97,13 +97,29 @@ _CODE_RE = re.compile(
     r"-([A-Z][A-Z ]+)"  # city (all-caps, may contain spaces)
 )
 
+# Some Workday tenants expose a facility label instead of a plain locality,
+# followed by a reliable city/region/postal suffix.  Keep this deliberately
+# narrow so ordinary hyphenated city names continue through unchanged.
+_FACILITY_PREFIX_RE = re.compile(r"^(?:Store\s+\d+|Corporate Office)-", re.IGNORECASE)
+_CITY_REGION_POSTAL_RE = re.compile(
+    r"^(?P<head>.+),\s*(?P<region>[A-Z]{2,3})\s+"
+    r"(?P<postal>(?:\d{5}(?:-\d{4})?|[A-Z]\d[A-Z][ -]?\d[A-Z]\d))$",
+    re.IGNORECASE,
+)
 
-def _normalize_workday_location(raw: str) -> str:
+
+def _normalize_workday_location(
+    raw: str,
+    *,
+    country: str | None = None,
+    tenant: str | None = None,
+) -> str:
     """Normalize a Workday location string for the resolver.
 
-    Handles two Workday formats:
+    Handles three Workday formats:
     - Code: "US-AR-SPRINGDALE-BLDG 1 ~ 275 E Robinson Ave" -> "Springdale, AR, US"
     - Display: "New York New York United States" -> "New York, New York, United States"
+    - Facility: "Store 1272-...-Colby, KS 67701" -> "Colby, KS, United States"
     """
     # Strip building/address after ~
     cleaned = _TILDE_RE.sub("", raw).strip()
@@ -125,7 +141,38 @@ def _normalize_workday_location(raw: str) -> str:
     if "  " in cleaned:
         return ", ".join(part.strip() for part in cleaned.split("  ") if part.strip())
 
+    # Facility display format used by tenants such as maurices:
+    # "Store 1272-South Franklin-maurices-Colby, KS 67701".
+    # The facility portion is not geographical and prevents the location
+    # resolver from seeing the otherwise reliable city/region/country tuple.
+    m = _CITY_REGION_POSTAL_RE.match(cleaned)
+    if m and _FACILITY_PREFIX_RE.match(m.group("head")):
+        head = m.group("head")
+        tenant_separator = (
+            re.search(rf"-{re.escape(tenant)}-(?P<city>.+)$", head, re.IGNORECASE)
+            if tenant
+            else None
+        )
+        city = (
+            tenant_separator.group("city") if tenant_separator else head.rsplit("-", 1)[-1]
+        ).strip()
+        if city:
+            parts = [city, m.group("region").upper()]
+            if country:
+                parts.append(country)
+            return ", ".join(parts)
+
     return cleaned
+
+
+def _country_descriptor(value: object) -> str | None:
+    """Extract Workday's human-readable country context when present."""
+    if isinstance(value, dict):
+        value = value.get("descriptor")
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value or None
 
 
 def _parse_location_type(value: str | None) -> str | None:
@@ -139,7 +186,7 @@ def _parse_location_type(value: str | None) -> str | None:
     return normalize_job_location_type(value, default=None)
 
 
-def _parse_detail(data: dict) -> JobContent:
+def _parse_detail(data: dict, *, tenant: str | None = None) -> JobContent:
     """Parse the Workday detail API response into JobContent."""
     info = data.get("jobPostingInfo", {})
 
@@ -150,12 +197,17 @@ def _parse_detail(data: dict) -> JobContent:
     locations: list[str] | None = None
     primary = info.get("location")
     additional = info.get("additionalLocations") or []
+    country = _country_descriptor(info.get("country"))
     if primary or additional:
         seen: set[str] = set()
         locs: list[str] = []
         for loc in [primary, *additional]:
             if loc:
-                normalized = _normalize_workday_location(loc)
+                normalized = _normalize_workday_location(
+                    loc,
+                    country=country,
+                    tenant=tenant,
+                )
                 if normalized not in seen:
                     seen.add(normalized)
                     locs.append(normalized)
@@ -236,7 +288,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         if reason is None:
             if retried:
                 http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
-            return _parse_detail(data)
+            return _parse_detail(data, tenant=company)
 
         body = resp.content
         last_payload = {
