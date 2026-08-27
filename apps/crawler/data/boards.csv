@@ -2032,7 +2032,7 @@ entalpic,entalpic-careers,https://entalpic.notion.site/Join-Entalpic-9f29b9a69fb
 entera,entera-greenhouse,https://job-boards.greenhouse.io/entera,greenhouse,"{""token"": ""entera""}",skip,
 enterpret,enterpret-greenhouse,https://job-boards.greenhouse.io/enterpret,greenhouse,"{""token"": ""enterpret""}",skip,
 enterprise-mobility,enterprise-mobility-canada-enterprise,https://cae-erac.icims.com/,icims,"{""host"": ""cae-erac.icims.com""}",json-ld,
-enterprise-mobility,enterprise-mobility-canada-enterprise-french,https://caf-erac.icims.com/,icims,"{""host"": ""caf-erac.icims.com""}",json-ld,
+enterprise-mobility,enterprise-mobility-canada-enterprise-french,https://caf-erac.icims.com/,icims,"{""host"": ""caf-erac.icims.com"", ""cross_locale_dedupe"": {""peer_host"": ""cae-erac.icims.com"", ""title_aliases"": {""Gestionnaire en formation"": ""Management Trainee""}}}",json-ld,
 enterprise-mobility,enterprise-mobility-canada-national-alamo,https://nationalalamoca-erac.icims.com/,icims,"{""host"": ""nationalalamoca-erac.icims.com""}",json-ld,
 enterprise-mobility,enterprise-mobility-careers,https://us-erac.icims.com/,icims,,json-ld,
 enterprise-mobility,enterprise-mobility-france,https://france-erac.icims.com/,icims,"{""host"": ""france-erac.icims.com""}",json-ld,

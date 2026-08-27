@@ -39,6 +39,34 @@ def _listing(
     )
 
 
+def _card_listing(
+    host: str,
+    *jobs: tuple[int, str, str, str],
+    page: int = 1,
+    total: int = 1,
+) -> str:
+    cards = "".join(
+        (
+            '<li class="iCIMS_JobCardItem"><div class="row">'
+            '<div class="col-xs-6 header left"><span class="sr-only">Region</span>'
+            f'<span>{region}</span></div><div class="col-xs-12 title">'
+            f'<a class="iCIMS_Anchor" href="https://{host}/jobs/{job_id}/role/job?in_iframe=1">'
+            f'<h3>{title}</h3></a></div><div class="iCIMS_JobHeaderTag">'
+            f"<dt>Job Type</dt><dd>{job_type}</dd></div></div></li>"
+        )
+        for job_id, title, region, job_type in jobs
+    )
+    pagination = "".join(
+        f'<a href="/jobs/search?pr={index}&amp;in_iframe=1">{index + 1}</a>'
+        for index in range(total)
+    )
+    return (
+        '<html><body class="iCIMS_ListingsPage">'
+        f'<span>Page {page} of {total}</span><ul class="iCIMS_JobsTable">{cards}</ul>'
+        f"{pagination}</body></html>"
+    )
+
+
 def _job_url(job_id: int) -> str:
     return f"https://{HOST}/jobs/{job_id}/job?in_iframe=1"
 
@@ -132,6 +160,85 @@ class TestMonitor:
 
         assert result == set()
         assert seen == [LISTING_URL]
+
+    async def test_cross_locale_dedupe_uses_stable_listing_identity_and_title_aliases(self):
+        peer_host = "peer-acme.icims.com"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == HOST:
+                text = _card_listing(
+                    HOST,
+                    (100, "Gestionnaire en formation", "CA-QC-Laval", "Regular Full-Time"),
+                    (101, "Unique French role", "CA-QC-Laval", "Regular Full-Time"),
+                    (102, "Bilingual Representative", "CA-Remote", "Regular Full-Time"),
+                )
+            else:
+                assert request.url.host == peer_host
+                text = _card_listing(
+                    peer_host,
+                    (200, "Management Trainee", "CA-QC-Laval", "Regular Full-Time"),
+                    (201, "Bilingual Representative", "CA-Remote", "Regular Full-Time"),
+                )
+            return httpx.Response(200, text=text, request=request)
+
+        metadata = {
+            "host": HOST,
+            "cross_locale_dedupe": {
+                "peer_host": peer_host,
+                "title_aliases": {"Gestionnaire en formation": "Management Trainee"},
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": BOARD_URL, "metadata": metadata}, client)
+
+        assert result == {_job_url(101)}
+
+    async def test_cross_locale_dedupe_preserves_distinct_job_type(self):
+        peer_host = "peer-acme.icims.com"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            host = request.url.host
+            job_type = "Regular Part-Time" if host == HOST else "Regular Full-Time"
+            return httpx.Response(
+                200,
+                text=_card_listing(host, (100, "Same title", "CA-QC-Laval", job_type)),
+                request=request,
+            )
+
+        metadata = {
+            "host": HOST,
+            "cross_locale_dedupe": {"peer_host": peer_host, "title_aliases": {}},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": BOARD_URL, "metadata": metadata}, client)
+
+        assert result == {_job_url(100)}
+
+    async def test_cross_locale_dedupe_fails_closed_when_peer_is_truncated(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        peer_host = "peer-acme.icims.com"
+        monkeypatch.setattr(icims, "MAX_PAGES", 1)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            total = 1 if request.url.host == HOST else 2
+            return httpx.Response(
+                200,
+                text=_card_listing(
+                    request.url.host,
+                    (100, "Role", "CA-QC", "Full-Time"),
+                    total=total,
+                ),
+                request=request,
+            )
+
+        metadata = {
+            "host": HOST,
+            "cross_locale_dedupe": {"peer_host": peer_host, "title_aliases": {}},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="peer .* was truncated"):
+                await discover({"board_url": BOARD_URL, "metadata": metadata}, client)
 
     async def test_empty_single_listing_is_authoritative(self):
         transport = httpx.MockTransport(
