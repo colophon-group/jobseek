@@ -85,6 +85,7 @@ Monitor Types (cheapest first):
   breezy            10      Job URLs          Auto-configured
   cnstaff           10      Full job data     No (skipped)
   comeet            10      Full job data     No (skipped)
+  computrabajo      10      Job URLs          Auto-configured JSON-LD
   cornerstone       10      Full job data     No (skipped)
   darwinbox         10      Full job data     No (skipped)
   dayforce          10      Full job data     No (skipped)
@@ -2603,6 +2604,20 @@ jobbank104 — 104 Job Bank company listing
   Detection:  ws probe shows "104 Job Bank company listing — token: X, N jobs"
   Zero jobs?  A valid page explicitly advertises 工作機會(0)."""
 
+MONITOR_COMPUTRABAJO = """\
+computrabajo — Computrabajo employer profile
+
+  Listing:  GET https://{country}.computrabajo.com/empresas/ofertas-de-trabajo-de-{slug}-{company_id}
+  Returns:  Canonical Computrabajo job-detail URLs from all ?p=N pages
+  Scraper:  Auto-configured JSON-LD scraper
+  Note:     Use the exact unfiltered employer URL. The server-rendered listing
+            exposes 20 jobs per page and an explicit authoritative total.
+
+  Config:   No monitor config required.
+
+  Detection:  ws probe shows "Computrabajo employer profile — company: ID, N jobs"
+  Zero jobs?  A valid employer page must explicitly report 0 Ofertas de trabajo."""
+
 MONITOR_JOBSTREET = """\
 jobstreet — JobStreet employer profile
 
@@ -3775,6 +3790,7 @@ MONITOR_CARDS: dict[str, str] = {
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
     "jobbank104": MONITOR_JOBBANK104,
+    "computrabajo": MONITOR_COMPUTRABAJO,
     "jobstreet": MONITOR_JOBSTREET,
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,

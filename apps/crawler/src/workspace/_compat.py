@@ -150,6 +150,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "bite",
     "breezy",
     "candidatus",
+    "computrabajo",
     "eightfold",
     "gupy",
     "herp",
@@ -264,6 +265,21 @@ def detect_ats_from_url(url: str) -> str | None:
         return "linkedin"
     if host == "jobs.ashbyhq.com":
         return "ashby"
+    if (
+        parsed.scheme == "https"
+        and re.fullmatch(r"[a-z]{2}\.computrabajo\.com", host)
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.query
+        and not parsed.fragment
+        and re.fullmatch(
+            r"/empresas/ofertas-de-trabajo-de-[a-z0-9][a-z0-9-]*-[0-9a-f]{16}/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+    ):
+        return "computrabajo"
     if host == "jobs.gem.com":
         return "gem"
     if (
@@ -919,6 +935,8 @@ def auto_scraper_type(
     if monitor_type == "jazzhr":
         return ("jazzhr", None)
     if monitor_type == "jobbank104":
+        return ("json-ld", None)
+    if monitor_type == "computrabajo":
         return ("json-ld", None)
     if monitor_type == "jobvite":
         return ("json-ld", None)

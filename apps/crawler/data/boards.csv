@@ -331,6 +331,7 @@ alpian,alpian-ats,https://alpian.intranet.digital/external/en/jobs,api_sniffer,"
 alpine-investors,alpine-investors-careers,https://job-boards.greenhouse.io/alpineinvestors,greenhouse,"{""token"": ""alpineinvestors""}",skip,
 alpine-investors,alpine-investors-internships,https://job-boards.greenhouse.io/alpineinternships,greenhouse,"{""token"": ""alpineinternships""}",skip,
 alpiq,alpiq-hungary-linkedin,https://www.linkedin.com/company/alpiq/jobs/,linkedin,"{""company_id"": ""352594"", ""company_slug"": ""alpiq""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
+alstom,alstom-careers,https://jobsearch.alstom.com/,rss,"{""preset"": ""successfactors""}",skip,
 alt,alt-greenhouse,https://job-boards.greenhouse.io/alt,greenhouse,"{""token"": ""alt""}",skip,
 alta-ares,alta-ares-ashby,https://jobs.ashbyhq.com/alta-ares,ashby,"{""token"": ""alta-ares""}",skip,
 altana,altana-greenhouse,https://job-boards.greenhouse.io/altanaai,greenhouse,"{""token"": ""altanaai""}",skip,
@@ -1275,6 +1276,8 @@ chs-inc,chs-inc-global,https://jobs.chsinc.com/search-jobs,talentbrew,,json-ld,
 chubb,chubb-careers,https://fa-ewgu-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001/jobs,oracle_hcm,"{""host"": ""fa-ewgu-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_2001"", ""jobs_count"": 627}",oracle_hcm,"{""enrich"": [""description""]}"
 ci-azumano,ci-azumano-greenhouse,https://job-boards.greenhouse.io/ciazumano,greenhouse,"{""token"": ""ciazumano""}",skip,
 cic-energigune,cic-energigune-talentclue,https://cicenergigune.talentclue.com/en/cic-energigune,api_sniffer,"{""api_url"": ""https://api.talentclue.com/jswidget-ajax/jswidget/jobs/365b7a158049a7653ee8cc95a321bdef/e30%3D"", ""method"": ""POST"", ""headers"": {""Accept"": ""application/json"", ""Content-Type"": ""application/json"", ""X-Requested-With"": ""XMLHttpRequest"", ""Referer"": ""https://cicenergigune.talentclue.com/en/cic-energigune""}, ""json_path"": ""jobs"", ""json_path_values"": true, ""url_field"": ""url"", ""fields"": {""title"": ""title"", ""locations"": ""city"", ""metadata.work_modality"": ""work_modality"", ""metadata.shift"": ""shift_label"", ""metadata.contract"": ""contract_label"", ""metadata.province"": ""province_label"", ""metadata.country"": ""country_label"", ""metadata.department"": ""department"", ""metadata.discipline"": ""discipline_label""}}",dom,"{""steps"": [{""tag"": ""h1"", ""attr"": ""class~=job-page__header-title"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class~=job-page__content"", ""field"": ""description"", ""html"": true}]}"
+cintas,cintas-careers,https://careers.cintas.com/,rss,"{""preset"": ""successfactors""}",skip,
+cintas,cintas-honduras-computrabajo,https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-cintas-de-honduras-B44E90FE4D8AE312,computrabajo,,json-ld,
 cinven,cinven-pinpoint,https://cinven.pinpointhq.com,pinpoint,"{""slug"": ""cinven""}",skip,
 circle,circle-global,https://careers.circle.com/us/en/search-results,sitemap,"{""sitemap_url"": ""https://careers.circle.com/us/en/search-results/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 circle-k,circle-k-careers,https://workwithus.circlek.com/,phenom,"{""url_exclude"": ""(?i)/(?:CIKCGLOBAL-test-prod-job|TEST-DO-NOT-APPLY)$""}",json-ld,
@@ -3760,6 +3763,7 @@ matrix,matrix-pinpoint,https://matrix.pinpointhq.com,pinpoint,"{""slug"": ""matr
 matte-projects,matte-projects-greenhouse,https://job-boards.greenhouse.io/matteprojects,greenhouse,"{""token"": ""matteprojects""}",skip,
 mattermost,mattermost-greenhouse,https://job-boards.greenhouse.io/mattermost,greenhouse,"{""token"": ""mattermost""}",skip,
 matternet,matternet-workable,https://apply.workable.com/matternet/,workable,"{""token"": ""matternet""}",workable,
+maurices,maurices-careers,https://maurices.wd5.myworkdayjobs.com/us_retail_jobs,workday,,workday,"{""facility_tenant_aliases"": [""maurice""]}"
 maven,maven-greenhouse,https://job-boards.greenhouse.io/mavensecuritiesholdingltd,greenhouse,"{""token"": ""mavensecuritiesholdingltd""}",skip,
 maven-clinic,maven-clinic-greenhouse,https://job-boards.greenhouse.io/mavenclinic,greenhouse,"{""token"": ""mavenclinic""}",skip,
 maven-emerging-talent,maven-emerging-talent-greenhouse,https://job-boards.greenhouse.io/emergingtalent,greenhouse,"{""token"": ""emergingtalent""}",skip,

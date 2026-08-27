@@ -199,6 +199,159 @@ class TestNormalizeWorkdayLocation:
             == "New York, NY, United States"
         )
 
+    def test_maurices_us_facility_uses_upstream_country(self):
+        assert (
+            _normalize_workday_location(
+                "Store 1272-South Franklin-maurices-Colby, KS 67701",
+                country="United States of America",
+                tenant="maurices",
+            )
+            == "Colby, KS, United States of America"
+        )
+
+    def test_maurices_canada_facility_strips_postal_code(self):
+        assert (
+            _normalize_workday_location(
+                "Store 4148-Uptown Centre-Fredericton, NB E3B 3C1",
+                country="Canada",
+                tenant="maurices",
+            )
+            == "Fredericton, NB, Canada"
+        )
+
+    def test_maurices_corporate_facility(self):
+        assert (
+            _normalize_workday_location(
+                "Corporate Office-maurices-Duluth, MN 55802",
+                country="United States of America",
+                tenant="maurices",
+            )
+            == "Duluth, MN, United States of America"
+        )
+
+    def test_tenant_separator_preserves_hyphenated_city(self):
+        assert (
+            _normalize_workday_location(
+                "Store 9999-Test Mall-maurices-Winston-Salem, NC 27101",
+                country="United States of America",
+                tenant="maurices",
+            )
+            == "Winston-Salem, NC, United States of America"
+        )
+
+    def test_configured_tenant_alias_handles_live_maurices_typo(self):
+        raw = "Store 1738-Stone Hill Town Ctr-maurice-Pflugerville, TX 78660"
+        assert (
+            _normalize_workday_location(
+                raw,
+                country="United States of America",
+                tenant="maurices",
+                tenant_aliases=("maurice",),
+            )
+            == "Pflugerville, TX, United States of America"
+        )
+
+    def test_unconfigured_tenant_alias_fails_closed(self):
+        raw = "Store 1738-Stone Hill Town Ctr-maurice-Pflugerville, TX 78660"
+        assert (
+            _normalize_workday_location(
+                raw,
+                country="United States of America",
+                tenant="maurices",
+            )
+            == raw
+        )
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            (
+                "M2327-Omache Shopping Center-Omak, WA 98841",
+                "Omak, WA, United States of America",
+            ),
+            (
+                "M2340-Largo Plaza-maurices-Largo, FL 33771",
+                "Largo, FL, United States of America",
+            ),
+            (
+                "Store 2319 - Forum Plaza Shopping Center - Rolla, MO 65401",
+                "Rolla, MO, United States of America",
+            ),
+            (
+                "Store M2320-Park West Place-Stockton, CA 95219",
+                "Stockton, CA, United States of America",
+            ),
+            (
+                "Store M2323-The Uptown-Jonesboro, AR 72401",
+                "Jonesboro, AR, United States of America",
+            ),
+            (
+                "Store M2324-Creekside Town Center-Roseville, CA 95678",
+                "Roseville, CA, United States of America",
+            ),
+            (
+                "Store 2321-Dimond Center-Anchorage AK 99515",
+                "Anchorage, AK, United States of America",
+            ),
+            (
+                "Store 2333-Chesterfield Comns E-Chesterfield, MO  63005",
+                "Chesterfield, MO, United States of America",
+            ),
+            (
+                "Store 2326-Stone Creek Crossing-San Marcos, TX 78666",
+                "San Marcos, TX, United States of America",
+            ),
+        ],
+    )
+    def test_live_maurices_facility_variants(self, raw, expected):
+        assert (
+            _normalize_workday_location(
+                raw,
+                country="United States of America",
+                tenant="maurices",
+            )
+            == expected
+        )
+
+    def test_ambiguous_facility_boundary_fails_closed(self):
+        raw = "Store 9999-Unknown-Winston-Salem, NC 27101"
+        assert (
+            _normalize_workday_location(
+                raw,
+                country="United States of America",
+                tenant="maurices",
+            )
+            == raw
+        )
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "Field Mgmt-District 426-maurices",
+            "Store 2325-Village at Allen-maurices",
+            "Store 2328-Lebanon Marketplace-maurices",
+            "M4145 – Westgate Home Centre –maurices",
+            "Store 4146-Emerald Hills Centre-maurices",
+        ],
+    )
+    def test_facility_without_city_evidence_fails_closed(self, raw):
+        assert (
+            _normalize_workday_location(
+                raw,
+                country="United States of America",
+                tenant="maurices",
+            )
+            == raw
+        )
+
+    def test_does_not_rewrite_ordinary_hyphenated_location(self):
+        assert (
+            _normalize_workday_location(
+                "Winston-Salem, NC 27101", country="United States of America"
+            )
+            == "Winston-Salem, NC 27101"
+        )
+
     # Plain city name (unchanged)
     def test_plain_city(self):
         assert _normalize_workday_location("Singapore") == "Singapore"
@@ -249,6 +402,30 @@ class TestParseDetail:
         detail = {"jobPostingInfo": {}}
         result = _parse_detail(detail)
         assert result.locations is None
+
+    def test_facility_location_uses_country_descriptor(self):
+        detail = {
+            "jobPostingInfo": {
+                "location": "Store 4133-Leamington Pwr Ctr-maurices-Leamington, ON N8H 3C5",
+                "country": {"descriptor": "Canada", "id": "country-id"},
+            }
+        }
+        result = _parse_detail(detail, tenant="maurices")
+        assert result.locations == ["Leamington, ON, Canada"]
+
+    def test_facility_location_uses_configured_tenant_alias(self):
+        detail = {
+            "jobPostingInfo": {
+                "location": ("Store 1738-Stone Hill Town Ctr-maurice-Pflugerville, TX 78660"),
+                "country": {"descriptor": "United States of America"},
+            }
+        }
+        result = _parse_detail(
+            detail,
+            tenant="maurices",
+            tenant_aliases=("maurice",),
+        )
+        assert result.locations == ["Pflugerville, TX, United States of America"]
 
     def test_no_metadata(self):
         detail = {"jobPostingInfo": {}}
@@ -1245,6 +1422,30 @@ class TestParseJobUrl:
 
 
 class TestScrape:
+    async def test_passes_configured_tenant_aliases_to_detail_parser(self):
+        def handler(request):
+            return httpx.Response(
+                200,
+                json={
+                    "jobPostingInfo": {
+                        "title": "Assistant Manager",
+                        "location": (
+                            "Store 1738-Stone Hill Town Ctr-maurice-Pflugerville, TX 78660"
+                        ),
+                        "country": {"descriptor": "United States of America"},
+                    }
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://maurices.wd5.myworkdayjobs.com/us_retail_jobs/job/Test/JR001",
+                {"facility_tenant_aliases": ["maurice"]},
+                client,
+            )
+
+        assert result.locations == ["Pflugerville, TX, United States of America"]
+
     async def test_fetches_detail(self):
         def handler(request):
             return httpx.Response(

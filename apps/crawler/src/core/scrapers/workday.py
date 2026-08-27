@@ -97,13 +97,86 @@ _CODE_RE = re.compile(
     r"-([A-Z][A-Z ]+)"  # city (all-caps, may contain spaces)
 )
 
+# Some Workday tenants expose a facility label instead of a plain locality,
+# followed by a reliable city/region/postal suffix. Keep this deliberately
+# narrow so ordinary hyphenated city names continue through unchanged.
+_FACILITY_PREFIX_RE = re.compile(
+    r"^(?:(?:Store\s+)?M?\d+|Corporate Office)\s*[-–]\s*(?P<body>.+)$",
+    re.IGNORECASE,
+)
+_CITY_REGION_POSTAL_RE = re.compile(
+    r"^(?P<head>.+?)(?:,\s*|\s+)(?P<region>[A-Z]{2})\s+"
+    r"(?P<postal>(?:\d{5}(?:-\d{4})?|[A-Z]\d[A-Z][ -]?\d[A-Z]\d))\s*$",
+    re.IGNORECASE,
+)
+_FACILITY_SEGMENT_RE = re.compile(
+    r"\b(?:mall|plaza|plz|center|centre|ctr|place|uptown|marketplace|"
+    r"shopping|shops?|commons?|comns|crossings?)\b",
+    re.IGNORECASE,
+)
 
-def _normalize_workday_location(raw: str) -> str:
+
+def _facility_city(
+    head: str,
+    *,
+    tenant: str | None,
+    tenant_aliases: tuple[str, ...] = (),
+) -> str | None:
+    """Extract a city only across an explicit, reliable facility boundary."""
+    prefix = _FACILITY_PREFIX_RE.match(head)
+    if not prefix:
+        return None
+
+    parts = [part.strip() for part in re.split(r"\s*[-–]\s*", prefix.group("body"))]
+    if not parts or any(not part for part in parts):
+        return None
+
+    separators = {alias.casefold() for alias in tenant_aliases}
+    if tenant:
+        separators.add(tenant.casefold())
+
+    if separators:
+        tenant_indexes = [
+            index for index, part in enumerate(parts) if part.casefold() in separators
+        ]
+        if tenant_indexes:
+            boundary = tenant_indexes[-1]
+            if boundary == len(parts) - 1:
+                return None
+            city = "-".join(parts[boundary + 1 :]).strip()
+            return city or None
+
+    facility_indexes = [
+        index for index, part in enumerate(parts) if _FACILITY_SEGMENT_RE.search(part)
+    ]
+    if not facility_indexes:
+        return None
+    boundary = facility_indexes[-1]
+    if boundary == len(parts) - 1:
+        return None
+    # Without an explicit tenant separator, multiple remaining segments are
+    # ambiguous: they could be a hyphenated city or an unconfigured tenant
+    # alias followed by the city. Fail closed instead of guessing.
+    remaining = parts[boundary + 1 :]
+    if len(remaining) != 1:
+        return None
+    city = remaining[0].strip()
+    return city or None
+
+
+def _normalize_workday_location(
+    raw: str,
+    *,
+    country: str | None = None,
+    tenant: str | None = None,
+    tenant_aliases: tuple[str, ...] = (),
+) -> str:
     """Normalize a Workday location string for the resolver.
 
-    Handles two Workday formats:
+    Handles three Workday formats:
     - Code: "US-AR-SPRINGDALE-BLDG 1 ~ 275 E Robinson Ave" -> "Springdale, AR, US"
     - Display: "New York New York United States" -> "New York, New York, United States"
+    - Facility: "Store 1272-...-Colby, KS 67701" -> "Colby, KS, United States"
     """
     # Strip building/address after ~
     cleaned = _TILDE_RE.sub("", raw).strip()
@@ -120,12 +193,41 @@ def _normalize_workday_location(raw: str) -> str:
             return f"{city.title()}, {state}, {country}"
         return f"{state}, {country}"
 
-    # Display format: Workday uses double spaces as segment separators
+    # Facility display format used by tenants such as maurices:
+    # "Store 1272-South Franklin-maurices-Colby, KS 67701".
+    # The facility portion is not geographical and prevents the location
+    # resolver from seeing the otherwise reliable city/region/country tuple.
+    m = _CITY_REGION_POSTAL_RE.match(cleaned)
+    if m:
+        city = _facility_city(
+            m.group("head"),
+            tenant=tenant,
+            tenant_aliases=tenant_aliases,
+        )
+        if city:
+            parts = [city, m.group("region").upper()]
+            if country:
+                parts.append(country)
+            return ", ".join(parts)
+
+    # Display format: Workday uses double spaces as segment separators.
+    # Facility parsing must run first because some providers insert two spaces
+    # before a postal code.
     # "Sg  Singapore", "Heredia  Costa Rica", "New York  New York  United States"
     if "  " in cleaned:
         return ", ".join(part.strip() for part in cleaned.split("  ") if part.strip())
 
     return cleaned
+
+
+def _country_descriptor(value: object) -> str | None:
+    """Extract Workday's human-readable country context when present."""
+    if isinstance(value, dict):
+        value = value.get("descriptor")
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value or None
 
 
 def _parse_location_type(value: str | None) -> str | None:
@@ -139,7 +241,12 @@ def _parse_location_type(value: str | None) -> str | None:
     return normalize_job_location_type(value, default=None)
 
 
-def _parse_detail(data: dict) -> JobContent:
+def _parse_detail(
+    data: dict,
+    *,
+    tenant: str | None = None,
+    tenant_aliases: tuple[str, ...] = (),
+) -> JobContent:
     """Parse the Workday detail API response into JobContent."""
     info = data.get("jobPostingInfo", {})
 
@@ -150,12 +257,18 @@ def _parse_detail(data: dict) -> JobContent:
     locations: list[str] | None = None
     primary = info.get("location")
     additional = info.get("additionalLocations") or []
+    country = _country_descriptor(info.get("country"))
     if primary or additional:
         seen: set[str] = set()
         locs: list[str] = []
         for loc in [primary, *additional]:
             if loc:
-                normalized = _normalize_workday_location(loc)
+                normalized = _normalize_workday_location(
+                    loc,
+                    country=country,
+                    tenant=tenant,
+                    tenant_aliases=tenant_aliases,
+                )
                 if normalized not in seen:
                     seen.add(normalized)
                     locs.append(normalized)
@@ -193,6 +306,16 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     company, wd_instance, site, path = parsed
     api_url = _detail_url(company, wd_instance, site, path)
     sleep = kwargs.get("sleep", asyncio.sleep)
+    configured_aliases = config.get("facility_tenant_aliases")
+    tenant_aliases = (
+        tuple(
+            alias.strip()
+            for alias in configured_aliases
+            if isinstance(alias, str) and alias.strip()
+        )
+        if isinstance(configured_aliases, list)
+        else ()
+    )
 
     from src.metrics import http_retry_attempts_total, http_retry_host
 
@@ -236,7 +359,11 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         if reason is None:
             if retried:
                 http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
-            return _parse_detail(data)
+            return _parse_detail(
+                data,
+                tenant=company,
+                tenant_aliases=tenant_aliases,
+            )
 
         body = resp.content
         last_payload = {
