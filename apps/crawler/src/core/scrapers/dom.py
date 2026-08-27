@@ -43,6 +43,7 @@ from src.core.monitors.dom import BotChallengeError, _raise_if_bot_challenge
 from src.core.scrapers import JobContent, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.extract import flatten, walk_steps
+from src.shared.fetch_url import transformed_fetch_url
 from src.shared.http import is_avature_job_detail_url
 from src.shared.http_retry import fetch_response_with_status_retries
 
@@ -1044,6 +1045,8 @@ async def scrape(
 
     When ``render`` is false (default), fetches via static HTTP.
     When ``render`` is true, renders the page with Playwright.
+    ``fetch_url_transform`` may rewrite only the URL used for that read; the
+    caller's canonical posting URL remains the source identity.
     """
     steps = config.get("steps")
     if not steps:
@@ -1051,6 +1054,11 @@ async def scrape(
         return JobContent()
 
     render = config.get("render", False)
+    fetch_url = transformed_fetch_url(
+        url,
+        config.get("fetch_url_transform"),
+        owner="DOM scraper",
+    )
     same_origin_redirects = config.get("same_origin_redirects", False)
     if not isinstance(same_origin_redirects, bool):
         raise ValueError("DOM scraper same_origin_redirects must be a boolean")
@@ -1078,7 +1086,7 @@ async def scrape(
 
         async def _render_page(p):
             async with open_page(p, browser_config, use_proxy=use_proxy) as page:
-                await navigate(page, url, browser_config)
+                await navigate(page, fetch_url, browser_config)
                 # Read final URL BEFORE running actions/extraction so a
                 # redirect-to-gone page doesn't burn the (potentially
                 # paid-proxy) action pipeline against a known dead page.
@@ -1088,7 +1096,7 @@ async def scrape(
                 _check_gone_redirect(final_url, gone_pattern, url)
                 await run_actions(page, browser_config.get("actions", []))
                 html = await safe_content(page)
-                _raise_if_bot_challenge(final_url or url, html)
+                _raise_if_bot_challenge(final_url or fetch_url, html)
                 return html
 
         async def _render_with_challenge_retry(p):
@@ -1122,7 +1130,7 @@ async def scrape(
         retry_limits = _status_retry_limits(config, url)
         resp = await fetch_response_with_status_retries(
             http,
-            url,
+            fetch_url,
             retry_limits=retry_limits,
             same_origin_redirects=same_origin_redirects,
             log_event="dom.fetch.retry_status",

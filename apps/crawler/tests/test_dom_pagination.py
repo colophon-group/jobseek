@@ -130,6 +130,52 @@ class TestExtractLinksStatic:
             "https://example.com/emploi/lyon/pm/456",
         }
 
+
+class TestFetchUrlTransform:
+    async def test_static_listing_reads_gateway_and_extracts_gateway_links(self):
+        canonical = "https://blocked.example/careers/"
+        gateway = "https://blocked-example.translate.test/careers/"
+        html = _html_with_links(
+            "https://blocked-example.translate.test/jobs/engineer/",
+            "https://blocked-example.translate.test/about/",
+        )
+        fetch = AsyncMock(return_value=html)
+
+        with patch(_FETCH_PATCH, fetch):
+            result = await dom_discover(
+                {
+                    "board_url": canonical,
+                    "metadata": {
+                        "fetch_url_transform": {
+                            "find": r"^https://blocked\.example(/.*)$",
+                            "replace": r"https://blocked-example.translate.test\1",
+                        },
+                        "url_filter": r"/jobs/",
+                    },
+                },
+                AsyncMock(),
+            )
+
+        fetch.assert_awaited_once()
+        assert fetch.await_args.args[1] == gateway
+        assert result == {"https://blocked-example.translate.test/jobs/engineer/"}
+
+    async def test_transform_is_limited_to_static_single_page_discovery(self):
+        with pytest.raises(ValueError, match="static single-page"):
+            await dom_discover(
+                {
+                    "board_url": "https://blocked.example/careers/",
+                    "metadata": {
+                        "render": True,
+                        "fetch_url_transform": {
+                            "find": r"^https://blocked\.example(/.*)$",
+                            "replace": r"https://gateway.example\1",
+                        },
+                    },
+                },
+                AsyncMock(),
+            )
+
     def test_url_matcher_none_uses_keywords(self):
         """Without url_matcher, default keyword filter applies."""
         html = _html_with_links(

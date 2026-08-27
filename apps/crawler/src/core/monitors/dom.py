@@ -31,6 +31,7 @@ from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 from src.core.monitors import DiscoveredJob, register
 from src.core.monitors.raw import save_text_response
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
+from src.shared.fetch_url import transformed_fetch_url
 from src.shared.public_request_headers import (
     same_origin,
     validated_public_request_headers,
@@ -3121,11 +3122,22 @@ async def dom_discover(
     is itself a job-detail document (for example, a directly linked PDF).
     The normal fetch still runs first, so a removed document produces an
     empty result and follows the regular gone-detection path.
+
+    ``fetch_url_transform`` rewrites only the static single-page listing read
+    URL. Extracted URLs retain their fetched representation until the normal
+    dispatcher ``url_transform`` canonicalizes them. This keeps the official
+    board URL as configuration identity when a read-only rendering gateway is
+    required to reach the public page.
     """
     if client is None:
         raise ValueError("DOM monitor requires an HTTP client")
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
+    fetch_board_url = transformed_fetch_url(
+        board_url,
+        metadata.get("fetch_url_transform"),
+        owner="DOM monitor",
+    )
 
     prospective_board = metadata.get("prospective_board")
     if prospective_board is not None and (
@@ -3220,6 +3232,22 @@ async def dom_discover(
             detail="actions require render=true; overriding render to true",
         )
         render = True
+
+    if fetch_board_url != board_url and (
+        render
+        or pagination
+        or rich_rows is not None
+        or advertised_total is not None
+        or prospective_board is not None
+        or require_jsonld_jobposting
+        or require_unexpired_pdf is not None
+        or require_pdf_text is not None
+        or exclude_detail_selector is not None
+        or fingerprint_response is not None
+    ):
+        raise ValueError(
+            "DOM monitor fetch_url_transform supports static single-page discovery only"
+        )
 
     if rich_rows is not None and (
         render
@@ -3320,7 +3348,7 @@ async def dom_discover(
             # it is handed to the HTML parser.
             html = await fetch_text_page_with_retry(
                 client,
-                board_url,
+                fetch_board_url,
                 headers=request_headers or None,
                 public_headers=bool(request_headers),
                 retryable_statuses={202, 401, 403},
@@ -3332,7 +3360,7 @@ async def dom_discover(
 
             html = await fetch_with_retry(
                 client,
-                board_url,
+                fetch_board_url,
                 headers=request_headers or None,
                 public_headers=bool(request_headers),
                 transient_403=True,
@@ -3352,7 +3380,7 @@ async def dom_discover(
                 )
             return set()
         contract_html = html
-        _raise_if_bot_challenge(board_url, html)
+        _raise_if_bot_challenge(fetch_board_url, html)
         if prospective_board is not None:
             detected_medium = _prospective_provider_medium(html, board_url)
             if detected_medium is None:
@@ -3410,7 +3438,7 @@ async def dom_discover(
                 log.warning("dom.truncated", total=len(jobs), cap=MAX_URLS)
                 return truncated_rich_result(jobs)
             return jobs
-        urls = _extract_links_static(html, board_url, url_matcher, link_selector)
+        urls = _extract_links_static(html, fetch_board_url, url_matcher, link_selector)
         if configured_empty_states:
             _validate_explicit_empty_states(html, configured_empty_states, urls, board_url)
         expected_total = None
@@ -3461,6 +3489,8 @@ async def dom_discover(
     # page, not a job. Direct document boards opt in after the successful
     # fetch above so the source URL is emitted as their one job URL.
     urls = _without_board_self_urls(urls, board_url)
+    if fetch_board_url != board_url:
+        urls = _without_board_self_urls(urls, fetch_board_url)
     if metadata.get("include_board_url"):
         urls.add(board_url)
 

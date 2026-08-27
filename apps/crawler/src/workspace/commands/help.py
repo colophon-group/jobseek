@@ -1532,6 +1532,14 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    Applied to the listing, pagination, and linked-PDF checks.
                    Secret, cookie, and transport headers are rejected, and
                    redirects must remain same-origin. Requires render=false.
+    fetch_url_transform
+                   Optional {find, replace} regex rewrite for the listing URL
+                   used by static HTTP. The official board URL remains the
+                   configured identity; combine with url_transform to turn
+                   links from a read-only rendering gateway back into their
+                   canonical URLs. The rewrite must match exactly once and
+                   produce an absolute HTTP(S) URL. Static single-page
+                   discovery only; incompatible with render and pagination.
     retry_statuses Static HTTP status-to-retry-count map, for provider-specific
                    transient responses only (HTTP 400-599, maximum 5 retries).
     persistent_context
@@ -3167,6 +3175,11 @@ dom — Step-based Extraction Engine
     headless       Run headless (default: true)
     proxy          Route traffic through the configured proxy provider. Use for
                    origins that block the crawler's datacenter IP.
+    fetch_url_transform
+                   Optional {find, replace} regex rewrite for the URL used to
+                   read the detail page. The canonical posting URL remains
+                   unchanged. The rewrite must match exactly once and produce
+                   an absolute HTTP(S) URL.
     encoding       Optional Python codec name for legacy static HTML whose
                    declared charset is unsupported or incorrect (for example,
                    "euc_jp"). Ignored when render=true.
