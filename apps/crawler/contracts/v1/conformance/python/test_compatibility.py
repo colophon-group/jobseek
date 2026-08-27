@@ -267,6 +267,31 @@ def test_final_v1_surface_contains_required_identity_and_rule_fields() -> None:
     assert len(messages[prefix + "Limits"].fields) == 16
 
 
+def test_source_identity_is_an_optional_addition_to_discovery_and_projection() -> None:
+    baseline = _baseline_shape()
+    current = compatibility.parse_descriptor_set(
+        compatibility.compile_descriptor(V1 / "runtime.proto")
+    )
+    prefix = "jobseek.crawler.runtime.v1."
+    baseline_messages = compatibility._flatten_messages(baseline)
+    current_messages = compatibility._flatten_messages(current)
+
+    for message_name in ("DiscoveredJob", "JobEffect"):
+        qualified = prefix + message_name
+        assert "source_identity" not in {
+            field.name for field in baseline_messages[qualified].fields
+        }
+        fields = {field.name: field for field in current_messages[qualified].fields}
+        identity = fields["source_identity"]
+        assert identity.number == 3
+        assert identity.label == 1  # FieldDescriptorProto.LABEL_OPTIONAL
+        assert identity.type == 9  # FieldDescriptorProto.TYPE_STRING
+        assert identity.proto3_optional is True
+        assert identity.json_name == "sourceIdentity"
+
+    compatibility.compare_descriptors(baseline, current)
+
+
 _MATRIX = {
     "breaking": [
         {"id": "field_name", "expected": "field name changed"},

@@ -22,6 +22,8 @@ Files:
   cancellable Python/Go extraction protocol.
 - `browser-plan.schema.json` / `browser-result.schema.json` — typed browser
   capability boundary that does not expose raw CDP or Playwright objects.
+- `fixtures/source_identity/` — frozen Python/Go wire and JSON compatibility
+  vectors for the optional durable source-identity amendment.
 - `queue.md` — Redis/Lua scheduling, lease, and politeness invariants.
 - `metrics.md` — cross-runtime metrics required for cutover and reversal.
 

@@ -9,3 +9,8 @@ into temporary directories. After introduction, the checker reads the baseline
 and `runtime.proto` from authenticated prior main before comparing the current
 descriptor, so rewriting these committed files together cannot conceal a
 breaking change.
+
+Compatible amendments do not rewrite this introduction snapshot. The
+compatibility gate generates the amended descriptor transiently and compares
+its structure with this snapshot and with authenticated prior main; shared
+amendment vectors live outside `baseline/`.

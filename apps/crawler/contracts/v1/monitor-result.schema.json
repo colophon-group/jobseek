@@ -30,6 +30,15 @@
   },
   "$defs": {
     "nullableString": {"type": ["string", "null"]},
+    "sourceIdentity": {
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{1,31}:[a-z0-9][a-z0-9._-]{0,63}:[A-Za-z0-9][A-Za-z0-9._~:/-]{0,383}$"
+        }
+      ]
+    },
     "job": {
       "type": "object",
       "additionalProperties": false,
@@ -55,7 +64,8 @@
         "language": {"$ref": "#/$defs/nullableString"},
         "localizations": {"type": ["object", "null"]},
         "extras": {"type": ["object", "null"]},
-        "metadata": {"type": ["object", "null"]}
+        "metadata": {"type": ["object", "null"]},
+        "source_identity": {"$ref": "#/$defs/sourceIdentity"}
       }
     }
   }

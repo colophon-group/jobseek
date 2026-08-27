@@ -32,6 +32,12 @@ metadata differently. The baseline bytes and digest remain immutable, while
 compatibility is decided by parsed structural shape. Two compilations by the
 active compiler must still be byte-identical.
 
+Compatible post-freeze amendments therefore update `runtime.proto`, not the
+introduction descriptor. The checker generates the current descriptor in a
+temporary directory, compares it with both the frozen introduction and the
+authenticated prior-main source, and rejects any attempt to rewrite the
+baseline files alongside an amendment.
+
 ## Structural rules
 
 Optional additive fields, enum values, messages, and oneof declarations are
@@ -57,6 +63,21 @@ values before origin dispatch or a commit-eligible state change.
 `CanonicalizationRule` and `HashRule` are closed wire identifiers. Lanes 3-5
 will implement the frozen identity, replay, privacy, projection, and hashing
 semantics without changing this IDL.
+
+## Durable source identity amendment
+
+`DiscoveredJob.source_identity` and `JobEffect.source_identity` are optional
+strings at tag 3. They carry the same stable provider identity from discovery
+into the typed per-job projection effect while `url` / `source_url` remains the
+user-resolving publication URL. Absence preserves the original v1 behavior:
+the URL is the identity. In the JSON monitor-result surface, omission or an
+explicit `null` has that same legacy meaning; `source_identity` is deliberately
+not a required property.
+
+This is a dormant wire foundation. It does not activate a runtime consumer,
+database migration, alias policy, provider configuration, or backfill. An
+authoritative consumer must validate a present identity before it can drive an
+origin dispatch or commit-eligible state change.
 
 ## Cross-lane frozen surface
 
