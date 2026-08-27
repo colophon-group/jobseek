@@ -137,7 +137,7 @@ For each new board:
 
    **Fast path (single test, no subagents):** If the probe's top result is a
    **known stable ATS** — greenhouse, ashby, comeet, lever, gem, inploi, manatal,
-   seamlesshiring, recruitee, personio,
+   seamlesshiring, recruitee, personio, prospective,
    welcometothejungle,
    workday, adp, avature, bamboohr, beisen, brassring, paycom, jazzhr, jobvite, pageup, icims, intervieweb, gupy, cornerstone, darwinbox, dayforce, herp, hrmos, recruiterbox, keka, taleo, typify, ukg, hirehive, hireology, turbohire, paylocity, pinpoint, dvinci, traffit, rss — AND it matched with
    high confidence (detected via `can_handle`), test it directly yourself.

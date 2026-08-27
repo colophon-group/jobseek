@@ -97,6 +97,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "paycom",
         "paylocity",
         "pinpoint",
+        "prospective",
         "recruitee",
         "recruiter_co_kr",
         "rss",

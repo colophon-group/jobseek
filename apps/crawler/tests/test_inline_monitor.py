@@ -178,6 +178,49 @@ def test_generate_url_collision():
     assert "-2" in url2
 
 
+def test_generate_url_preserves_legacy_unicode_title_hash():
+    url = _generate_url("https://example.com/careers", "Straße Engineer", {})
+
+    assert url == "https://example.com/careers?_jid=strae-engineer-a92a13"
+
+
+def test_generate_url_uses_stable_identity_instead_of_title():
+    first = _generate_url(
+        "https://example.com/careers",
+        "Old title",
+        {},
+        stable_identity="department-42",
+    )
+    second = _generate_url(
+        "https://example.com/careers",
+        "New translated title",
+        {},
+        stable_identity="department-42",
+    )
+
+    assert first == second
+    assert "old-title" not in first
+    assert "new-translated-title" not in second
+
+
+def test_generate_url_rejects_duplicate_stable_identity():
+    seen: dict[str, int] = {}
+    _generate_url(
+        "https://example.com/careers",
+        "First role",
+        seen,
+        stable_identity="department-42",
+    )
+
+    with pytest.raises(ValueError, match="synthetic identities must be unique"):
+        _generate_url(
+            "https://example.com/careers",
+            "Second role",
+            seen,
+            stable_identity="department-42",
+        )
+
+
 def test_generate_url_with_existing_params():
     seen: dict[str, int] = {}
     url = _generate_url("https://example.com/jobs?lang=en", "Engineer", seen)
@@ -641,6 +684,65 @@ async def test_discover_static():
     assert jobs[1].title == "Product Manager"
     assert "_jid=" in jobs[0].url
     assert jobs[0].url != jobs[1].url
+
+
+@pytest.mark.asyncio
+async def test_discover_static_identity_is_title_and_order_independent():
+    rows = (
+        "<tr><td>Old German title</td><td>Department A</td></tr>"
+        "<tr><td>Other title</td><td>Department B</td></tr>"
+    )
+    reversed_rows = (
+        "<tr><td>Other translated title</td><td>Department B</td></tr>"
+        "<tr><td>New English title</td><td>Department A</td></tr>"
+    )
+    board = {
+        "board_url": "https://example.com/apprenticeships",
+        "metadata": {
+            "synthetic_identity_field": "provider_identity",
+            "steps": [
+                {"tag": "td", "field": "title"},
+                {"tag": "td", "field": "provider_identity"},
+            ],
+        },
+    }
+
+    first = await discover(board, _FakeClient(rows))
+    second = await discover(board, _FakeClient(reversed_rows))
+
+    assert {job.url for job in first} == {job.url for job in second}
+    assert len({job.url for job in first}) == 2
+
+
+@pytest.mark.asyncio
+async def test_discover_static_identity_requires_scalar_text():
+    board = {
+        "board_url": "https://example.com/apprenticeships",
+        "metadata": {
+            "synthetic_identity_field": "provider_identity",
+            "steps": [{"tag": "td", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="synthetic identity field was missing"):
+        await discover(board, _FakeClient("<tr><td>Role</td></tr>"))
+
+
+@pytest.mark.asyncio
+async def test_discover_static_identity_rejects_overlapping_identity_modes():
+    board = {
+        "board_url": "https://example.com/apprenticeships",
+        "metadata": {
+            "synthetic_identity_field": "provider_identity",
+            "source_identity_selector": "[data-job-id]",
+            "source_identity_attribute": "data-job-id",
+            "source_identity_regex": r"^(\d+)$",
+            "steps": [{"tag": "td", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="cannot be combined with source identity"):
+        await discover(board, _FakeClient("<tr data-job-id='123'><td>Role</td></tr>"))
 
 
 @pytest.mark.asyncio
@@ -1209,6 +1311,55 @@ async def test_discover_explicit_empty_fails_closed_when_marker_and_items_are_ab
 
     with pytest.raises(ValueError, match="did not match the configured explicit empty state"):
         await discover(board, _FakeClient("<main></main>"))
+
+
+@pytest.mark.asyncio
+async def test_discover_nonempty_selector_overrides_shared_heading_empty_marker():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_selector": ".listing-heading",
+            "empty_text": "Currently open positions",
+            "nonempty_selector": ".application h4",
+            "item_boundary_tag": "h4",
+            "steps": [
+                {"tag": "h4", "field": "title"},
+                {"tag": "div", "attr": "class=description", "field": "description"},
+            ],
+            "defaults": {"locations": ["Basel, Switzerland"]},
+        },
+    }
+    html = """
+    <h2 class="listing-heading">Currently open positions</h2>
+    <div class="application">
+      <h4>Researcher</h4>
+      <div class="description">Study molecular systems.</div>
+    </div>
+    """
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.title for job in jobs] == ["Researcher"]
+
+
+@pytest.mark.asyncio
+async def test_discover_nonempty_selector_accepts_shared_heading_when_items_absent():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_selector": ".listing-heading",
+            "empty_text": "Currently open positions",
+            "nonempty_selector": ".application h4",
+            "steps": [{"tag": "h4", "field": "title"}],
+        },
+    }
+
+    jobs = await discover(
+        board,
+        _FakeClient('<h2 class="listing-heading">Currently open positions</h2>'),
+    )
+
+    assert jobs == []
 
 
 @pytest.mark.asyncio

@@ -986,6 +986,10 @@ _MONITOR_CONFIG_HINTS = {
     "workday": "Requires: company, wd_instance, site (auto-filled from probe)",
     "personio": "Requires: slug. Optional: language, backfill_languages",
     "practicematch": "Optional: max_pages. Proxy-routed employer form pagination.",
+    "prospective": (
+        "Requires: application_identity URL allowlists/link texts/locale priority. "
+        "Optional: medium_id and filters allowlist."
+    ),
     "rss": "Optional: preset/variant/feed_url; legacy SuccessFactors host/company auto-fill",
     "umantis": "Requires: customer_id. Optional: region, listing_path",
     "earcu": "Requires: feed_url (auto-filled from an eArcu careers URL)",
@@ -1078,6 +1082,13 @@ def select_monitor(
         if type_ in probe_data:
             config = {k: v for k, v in probe_data[type_].items()}
             out.info("monitor", f"Auto-filled config from probe: {json.dumps(config)}")
+
+    if type_ == "prospective" and "application_identity" not in config:
+        out.die(
+            "Prospective selection requires an explicit application_identity contract; "
+            "probe results cannot safely infer application URL allowlists. Pass the complete "
+            "monitor config with --config. See: ws help monitor prospective"
+        )
 
     # Validate pagination config schema if present
     if "pagination" in config:
