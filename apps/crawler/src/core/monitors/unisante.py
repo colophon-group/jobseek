@@ -77,19 +77,6 @@ class _ListingJob:
         return f"{_ORIGIN}{_DETAIL_PREFIX}{self.slug}"
 
 
-def _canonical_reference_url(reference: str) -> str:
-    """Return a stable, live first-party identity for a displayed reference.
-
-    Reference-only detail routes return 404 and title slugs are mutable. The
-    official listing safely accepts ignored query parameters, so keying that
-    live page by reference provides stable ``source_url`` identity without
-    publishing a dead synthetic detail URL.
-    """
-    if re.fullmatch(r"[1-9]\d{0,8}", reference) is None:
-        raise ValueError(f"invalid Unisanté provider reference {reference!r}")
-    return f"{_LISTING_URLS[0]}?reference={reference}"
-
-
 class _JsonLdParser(HTMLParser):
     """Collect standards-compliant JSON-LD blocks without trusting content."""
 
@@ -407,7 +394,7 @@ def _parse_detail(html: str, listing_job: _ListingJob) -> DiscoveredJob | None:
     if deadline is not None and deadline < _today():
         return None
     return DiscoveredJob(
-        url=_canonical_reference_url(reference),
+        url=listing_job.detail_url,
         title=listing_job.title,
         description=description,
         locations=locations,
@@ -420,6 +407,7 @@ def _parse_detail(html: str, listing_job: _ListingJob) -> DiscoveredJob | None:
             "detail_url": listing_job.detail_url,
             **({"application_deadline": deadline.isoformat()} if deadline else {}),
         },
+        source_identity=f"unisante:emploi:{reference}",
     )
 
 

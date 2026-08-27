@@ -134,10 +134,7 @@ _IDENTITY_MIGRATION_RECEIPT_KEY = "_identity_migration_receipt"
 _UNISANTE_IDENTITY_MIGRATION = "unisante-provider-reference-v1"
 _UNISANTE_IDENTITY_MIGRATION_VERSION = 1
 _UNISANTE_IDENTITY_MIGRATION_MAX_ROWS = 50
-_UNISANTE_CANONICAL_URL_PATTERN = (
-    r"^https://emploi[.]unisante[.]ch/index[.]php/offres[?]"
-    r"reference=([1-9][0-9]{0,8})$"
-)
+_UNISANTE_SOURCE_IDENTITY_PATTERN = r"^unisante:emploi:([1-9][0-9]{0,8})$"
 _UNISANTE_DETAIL_URL_PATTERN = (
     r"^https://emploi[.]unisante[.]ch/index[.]php/offre/"
     r"[a-z0-9]+(?:-[a-z0-9]+)*/?$"
@@ -613,13 +610,12 @@ async def _migrate_unisante_provider_identities(
     security_filtered: int,
     board_log: structlog.stdlib.BoundLogger,
 ) -> int:
-    """Migrate mutable Unisanté detail aliases before ordinary diff writes.
+    """Adopt durable Unisanté identities before ordinary diff writes.
 
-    When no stable reference URL exists yet, SQL rewrites the oldest matching
-    alias in place, preserving its posting ID. If a canonical row already
-    exists, it remains authoritative and aliases are retired without risking a
-    global ``source_url`` unique conflict. The current rich batch subsequently
-    refreshes whichever row owns the canonical identity.
+    The monitor keeps each real detail page as the user-facing URL and carries
+    the displayed provider reference separately. SQL assigns that identity to
+    one matching legacy URL row in place, preserving its posting ID, and
+    retires duplicate or expired legacy aliases under a receipt-backed gate.
     """
     md = metadata or {}
     if md.get("identity_migration") != _UNISANTE_IDENTITY_MIGRATION:
@@ -641,22 +637,27 @@ async def _migrate_unisante_provider_identities(
     if not jobs_by_url or len(jobs_by_url) > _UNISANTE_IDENTITY_MIGRATION_MAX_ROWS:
         raise RuntimeError("Unisanté identity migration requires a bounded nonempty rich batch")
 
-    canonical_urls: list[str] = []
+    source_identities: list[str] = []
     detail_urls: list[str] = []
-    for canonical_url in sorted(jobs_by_url):
-        canonical = re.fullmatch(_UNISANTE_CANONICAL_URL_PATTERN, canonical_url)
-        job = jobs_by_url[canonical_url]
+    for detail_url in sorted(jobs_by_url):
+        job = jobs_by_url[detail_url]
         job_metadata = job.metadata if isinstance(job.metadata, dict) else {}
         reference = job_metadata.get("provider_reference")
-        detail_url = job_metadata.get("detail_url")
-        if canonical is None or reference != canonical.group(1):
-            raise RuntimeError("Unisanté rich job has an invalid canonical reference identity")
+        source_identity = job.source_identity
+        identity = (
+            re.fullmatch(_UNISANTE_SOURCE_IDENTITY_PATTERN, source_identity)
+            if isinstance(source_identity, str)
+            else None
+        )
+        if identity is None or reference != identity.group(1):
+            raise RuntimeError("Unisanté rich job has an invalid provider reference identity")
         if (
-            not isinstance(detail_url, str)
+            job.url != detail_url
+            or job_metadata.get("detail_url") != detail_url
             or re.fullmatch(_UNISANTE_DETAIL_URL_PATTERN, detail_url) is None
         ):
-            raise RuntimeError("Unisanté rich job has an invalid official detail alias")
-        canonical_urls.append(canonical_url)
+            raise RuntimeError("Unisanté rich job has an invalid official detail URL")
+        source_identities.append(source_identity)
         detail_urls.append(detail_url)
     if len(set(detail_urls)) != len(detail_urls):
         raise RuntimeError("Unisanté rich jobs repeat an official detail alias")
@@ -669,7 +670,7 @@ async def _migrate_unisante_provider_identities(
         _MIGRATE_UNISANTE_PROVIDER_IDENTITIES,
         board_id,
         company_id,
-        canonical_urls,
+        source_identities,
         detail_urls,
         _UNISANTE_IDENTITY_MIGRATION_MAX_ROWS,
         json.dumps(base_receipt),
@@ -695,7 +696,7 @@ async def _migrate_unisante_provider_identities(
     if (
         not bool(row["may_migrate"])
         or not bool(row["receipt_written"])
-        or discovered != len(canonical_urls)
+        or discovered != len(source_identities)
         or valid != discovered
         or conflicts
         or unknown

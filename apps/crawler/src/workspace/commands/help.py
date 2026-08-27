@@ -3885,9 +3885,11 @@ unisante — Unisanté first-party careers monitor
   This company-specific monitor validates both official listing aliases and
   requires their complete slug/title inventories to agree. It rejects
   pagination and unknown job links, reads each displayed provider reference as
-  a stable `/index.php/offres?reference=<id>` identity, migrates pre-monitor
-  detail aliases in place where possible (or retires them on conflict),
-  includes evergreen title-only slugs, and excludes jobs whose
+  a stable `unisante:emploi:<id>` identity while retaining the real
+  title-bearing detail URL for users. A bounded receipt-backed transition
+  assigns those identities to matching pre-monitor rows and retires duplicate
+  or expired aliases; existing or foreign durable identities block the change.
+  The monitor includes evergreen title-only slugs and excludes jobs whose
   visible application deadline has expired. JSON-LD descriptions are ignored
   because the provider emits mojibake/incomplete content; only validated safe
   structured fields are used. Zero is accepted only after both aliases prove

@@ -4792,20 +4792,19 @@ class TestResolveDelistThreshold:
     async def test_unisante_identity_migration_runs_before_diff_and_gone_guards(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """Mutable aliases must move before canonical diff/insert classification."""
+        """Legacy URL identities must be adopted before durable diff classification."""
         pool, _conn = mock_pool
-        canonical_url = "https://emploi.unisante.ch/index.php/offres?reference=1405"
+        detail_url = "https://emploi.unisante.ch/index.php/offre/1405-assistante-de-direction"
         job = _discovered_job(
-            canonical_url,
+            detail_url,
+            source_identity="unisante:emploi:1405",
             metadata={
                 "provider_reference": "1405",
-                "detail_url": (
-                    "https://emploi.unisante.ch/index.php/offre/1405-assistante-de-direction"
-                ),
+                "detail_url": detail_url,
             },
         )
         mock_monitor.side_effect = _mock_stream(
-            MonitorResult(urls={canonical_url}, jobs_by_url={canonical_url: job})
+            MonitorResult(urls={detail_url}, jobs_by_url={detail_url: job})
         )
         board = _mock_board(
             board_slug="unisante-emploi",
@@ -4817,12 +4816,12 @@ class TestResolveDelistThreshold:
 
         async def migrate(*_args, **kwargs):
             events.append("migration")
-            assert kwargs["jobs_by_url"] == {canonical_url: job}
+            assert kwargs["jobs_by_url"] == {detail_url: job}
             return 2
 
         async def diff(*_args, **_kwargs):
             events.append("diff")
-            return [_diff_row("touched", row_id="jp-canonical", url=canonical_url)]
+            return [_diff_row("touched", row_id="jp-canonical", url=detail_url)]
 
         async def guard(*_args, **_kwargs):
             events.append("ordinary_guard")
@@ -4833,7 +4832,7 @@ class TestResolveDelistThreshold:
                 "src.processing.board._migrate_unisante_provider_identities",
                 side_effect=migrate,
             ),
-            patch("src.processing.board._fetch_diff_batch", side_effect=diff),
+            patch("src.processing.board._fetch_durable_diff_batch", side_effect=diff),
             patch(
                 "src.processing.board._retire_canonicalized_provider_identities",
                 new_callable=AsyncMock,

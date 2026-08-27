@@ -24,8 +24,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _canonical(reference: str) -> str:
-    return f"https://emploi.unisante.ch/index.php/offres?reference={reference}"
+def _identity(reference: str) -> str:
+    return f"unisante:emploi:{reference}"
 
 
 def _detail(slug: str) -> str:
@@ -44,7 +44,7 @@ async def _run(
         _MIGRATE_UNISANTE_PROVIDER_IDENTITIES,
         board_id,
         company_id,
-        [_canonical(reference) for reference in references],
+        [_identity(reference) for reference in references],
         details,
         _UNISANTE_IDENTITY_MIGRATION_MAX_ROWS,
         json.dumps(
@@ -58,7 +58,7 @@ async def _run(
     return result
 
 
-async def test_unisante_migration_preserves_ids_and_handles_existing_canonical() -> None:
+async def test_unisante_migration_adopts_provider_identities_and_preserves_ids() -> None:
     connection = await asyncpg.connect(os.environ["LOCAL_DATABASE_URL"])
     outer = connection.transaction()
     await outer.start()
@@ -67,9 +67,7 @@ async def test_unisante_migration_preserves_ids_and_handles_existing_canonical()
     now = datetime.now(UTC)
     primary_1405_id = uuid.uuid4()
     duplicate_1405_id = uuid.uuid4()
-    evergreen_8_id = uuid.uuid4()
     legacy_1393_id = uuid.uuid4()
-    canonical_1393_id = uuid.uuid4()
     expired_1215_id = uuid.uuid4()
     details = [
         _detail("1405-assistante-de-direction"),
@@ -105,22 +103,10 @@ async def test_unisante_migration_preserves_ids_and_handles_existing_canonical()
                 ["Duplicate alias"],
             ),
             (
-                evergreen_8_id,
-                details[1].replace("/index.php/offre/", "/offre/"),
-                now - timedelta(days=3),
-                ["Legacy evergreen content"],
-            ),
-            (
                 legacy_1393_id,
                 details[2],
                 now - timedelta(days=3),
                 ["Legacy 1393 content"],
-            ),
-            (
-                canonical_1393_id,
-                _canonical("1393"),
-                now - timedelta(days=1),
-                ["Canonical 1393 content"],
             ),
             (
                 expired_1215_id,
@@ -148,49 +134,52 @@ async def test_unisante_migration_preserves_ids_and_handles_existing_canonical()
         )
         assert dict(result) == {
             "existing_receipt": None,
-            "active": 6,
-            "legacy": 5,
-            "canonical": 1,
+            "active": 4,
+            "legacy": 4,
+            "canonical": 0,
             "unknown": 0,
             "discovered": 3,
             "valid": 3,
             "conflicts": 0,
-            "candidates": 4,
-            "existing_canonicals": 1,
+            "candidates": 3,
+            "existing_canonicals": 0,
             "updated": 2,
-            "retired": 3,
+            "retired": 2,
             "may_migrate": True,
             "receipt_written": True,
         }
 
         migrated_1405 = await connection.fetchrow(
-            "SELECT id, titles, is_active FROM job_posting WHERE source_url = $1",
-            _canonical("1405"),
+            "SELECT id, source_identity, source_url, titles, is_active "
+            "FROM job_posting WHERE source_identity = $1",
+            _identity("1405"),
         )
         assert migrated_1405 is not None
         assert migrated_1405["id"] == primary_1405_id
+        assert migrated_1405["source_identity"] == _identity("1405")
         assert migrated_1405["titles"] == ["Legacy 1405 content"]
         assert migrated_1405["is_active"] is True
+        assert migrated_1405["source_url"] == details[0]
         assert (
             await connection.fetchval(
-                "SELECT id FROM job_posting WHERE source_url = $1",
-                _canonical("8"),
+                "SELECT id FROM job_posting WHERE source_identity = $1",
+                _identity("8"),
             )
-            == evergreen_8_id
+            is None
         )
         assert (
             await connection.fetchval(
-                "SELECT id FROM job_posting WHERE source_url = $1",
-                _canonical("1393"),
+                "SELECT id FROM job_posting WHERE source_identity = $1",
+                _identity("1393"),
             )
-            == canonical_1393_id
+            == legacy_1393_id
         )
         assert (
             await connection.fetchval(
                 "SELECT COUNT(*) FROM job_posting WHERE id = ANY($1::uuid[]) AND is_active = false",
-                [duplicate_1405_id, legacy_1393_id, expired_1215_id],
+                [duplicate_1405_id, expired_1215_id],
             )
-            == 3
+            == 2
         )
 
         receipt = await connection.fetchval(
@@ -201,7 +190,7 @@ async def test_unisante_migration_preserves_ids_and_handles_existing_canonical()
             receipt = json.loads(receipt)
         assert receipt["id"] == _UNISANTE_IDENTITY_MIGRATION
         assert receipt["updated_count"] == 2
-        assert receipt["retired_count"] == 3
+        assert receipt["retired_count"] == 2
         assert receipt["completed_at"]
 
         replay = await _run(

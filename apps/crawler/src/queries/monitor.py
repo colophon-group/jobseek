@@ -121,14 +121,12 @@ WHERE board_id = $1
   AND is_active = true
 """
 
-# Bounded, receipt-backed migration for Unisanté's former mutable detail
-# URLs. The new rich monitor emits live official listing URLs keyed by the
-# displayed provider reference. Before ordinary diff/insert processing, this
-# statement rewrites one matching legacy row in place when the canonical URL
-# does not exist (preserving its posting ID), or retires matching aliases when
-# the canonical row already exists. Both /offre and /index.php/offre aliases
-# are recognized. Unknown active sources and foreign canonical conflicts block
-# every write, and the durable receipt makes replay a no-op.
+# Bounded, receipt-backed adoption of Unisanté provider-reference identities.
+# The monitor keeps real detail URLs as outbound destinations and supplies the
+# displayed reference separately as ``unisante:emploi:<id>``. Before ordinary
+# diff processing, one matching legacy URL-as-identity row adopts that durable
+# identity in place. Duplicate and expired aliases are retired. Unknown active
+# sources and foreign identity/URL conflicts block every write.
 _MIGRATE_UNISANTE_PROVIDER_IDENTITIES = """
 WITH board_state AS MATERIALIZED (
   SELECT metadata -> '_identity_migration_receipt' AS existing_receipt
@@ -142,21 +140,20 @@ WITH board_state AS MATERIALIZED (
   WHERE id = $2
     AND slug = 'unisante'
 ), discovered_input AS MATERIALIZED (
-  SELECT canonical_url,
+  SELECT source_identity,
          detail_url,
          regexp_replace(
-           canonical_url,
-           '^https://emploi[.]unisante[.]ch/index[.]php/offres[?]reference=',
+           source_identity,
+           '^unisante:emploi:',
            ''
          ) AS provider_reference
-  FROM unnest($3::text[], $4::text[]) AS input(canonical_url, detail_url)
+  FROM unnest($3::text[], $4::text[]) AS input(source_identity, detail_url)
 ), discovered_state AS MATERIALIZED (
   SELECT COUNT(*) AS input_count,
-         COUNT(DISTINCT canonical_url) AS canonical_count,
+         COUNT(DISTINCT source_identity) AS canonical_count,
          COUNT(DISTINCT detail_url) AS detail_count,
          COUNT(*) FILTER (
-           WHERE canonical_url ~
-             '^https://emploi[.]unisante[.]ch/index[.]php/offres[?]reference=[1-9][0-9]{0,8}$'
+           WHERE source_identity ~ '^unisante:emploi:[1-9][0-9]{0,8}$'
              AND detail_url ~
              '^https://emploi[.]unisante[.]ch/index[.]php/offre/[a-z0-9]+(-[a-z0-9]+)*/?$'
          ) AS valid_count
@@ -165,21 +162,25 @@ WITH board_state AS MATERIALIZED (
   SELECT posting.id,
          posting.company_id,
          posting.board_id,
+         posting.source_identity,
          posting.source_url,
          posting.is_active,
          posting.first_seen_at,
          CASE
-           WHEN posting.source_url ~
-             '^https://emploi[.]unisante[.]ch/index[.]php/offres[?]reference=[1-9][0-9]{0,8}$'
+           WHEN posting.source_identity IN (
+             SELECT source_identity FROM discovered_input
+           )
            THEN 'canonical'
-           WHEN posting.source_url ~
+           WHEN posting.source_identity = posting.source_url
+            AND posting.source_url ~
              '^https://emploi[.]unisante[.]ch/(index[.]php/)?offre/[a-z0-9]+(-[a-z0-9]+)*/?$'
            THEN 'legacy'
            ELSE 'unknown'
          END AS source_kind
   FROM job_posting AS posting
   WHERE (posting.board_id = $1 AND posting.company_id = $2)
-     OR posting.source_url IN (SELECT canonical_url FROM discovered_input)
+     OR posting.source_identity IN (SELECT source_identity FROM discovered_input)
+     OR posting.source_url IN (SELECT detail_url FROM discovered_input)
   ORDER BY posting.id
   FOR UPDATE OF posting
 ), active_state AS MATERIALIZED (
@@ -194,25 +195,33 @@ WITH board_state AS MATERIALIZED (
 ), canonical_conflicts AS MATERIALIZED (
   SELECT COUNT(*) AS conflict_count
   FROM locked_rows
-  WHERE source_url IN (SELECT canonical_url FROM discovered_input)
+  WHERE (
+        source_identity IN (SELECT source_identity FROM discovered_input)
+        OR source_url IN (SELECT detail_url FROM discovered_input)
+      )
     AND (board_id <> $1 OR company_id <> $2)
 ), canonical_existing AS MATERIALIZED (
   SELECT input.provider_reference,
          row.id,
+         row.source_identity,
          row.source_url,
          row.is_active
   FROM discovered_input AS input
-  JOIN locked_rows AS row ON row.source_url = input.canonical_url
+  JOIN locked_rows AS row ON row.source_identity = input.source_identity
   WHERE row.board_id = $1
     AND row.company_id = $2
 ), legacy_candidates AS MATERIALIZED (
   SELECT input.provider_reference,
-         input.canonical_url,
+         input.source_identity,
+         input.detail_url,
          row.id,
          row.source_url,
          ROW_NUMBER() OVER (
            PARTITION BY input.provider_reference
-           ORDER BY row.first_seen_at, row.id
+           ORDER BY
+             (rtrim(row.source_url, '/') = rtrim(input.detail_url, '/')) DESC,
+             row.first_seen_at,
+             row.id
          ) AS candidate_rank
   FROM discovered_input AS input
   JOIN locked_rows AS row
@@ -248,12 +257,13 @@ WITH board_state AS MATERIALIZED (
            AND discovered_state.detail_count = discovered_state.input_count
            AND discovered_state.valid_count = discovered_state.input_count
            AND active_state.active_count <= $5
+           AND active_state.canonical_count = 0
            AND active_state.unknown_count = 0
            AND canonical_conflicts.conflict_count = 0 AS may_migrate
   FROM active_state, discovered_state, canonical_conflicts
 ), updated_in_place AS (
   UPDATE job_posting AS posting
-  SET source_url = candidate.canonical_url,
+  SET source_identity = candidate.source_identity,
       updated_at = now()
   FROM legacy_candidates AS candidate, migration_state
   WHERE posting.id = candidate.id

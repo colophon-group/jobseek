@@ -30,12 +30,12 @@ official listing cannot establish stable provider identity or active lifecycle
 without detail pages and treating detail failure as a failed discovery cycle is
 safer than accepting a partial inventory. Unisanté is such an exception: its
 listing omits provider references and deadlines, while its detail JSON-LD is
-not a usable description source. Its mutable detail aliases are retained only
-as read targets; stored identities use the live official listing URL keyed by
-the displayed reference (`/index.php/offres?reference=<id>`). A bounded,
-receipt-backed pre-diff migration rewrites legacy aliases in place when no
-canonical row exists, retires aliases when one does, and retires legacy rows
-whose detail deadline is no longer in the active official inventory.
+not a usable description source. Each posting keeps its real, title-bearing
+detail URL for users while its source identity is the separately namespaced
+provider reference (`unisante:emploi:<id>`). A bounded, receipt-backed pre-diff
+migration assigns those identities to matching legacy rows in place, rejects
+pre-existing or foreign identity conflicts, and retires duplicate or expired
+legacy aliases.
 The dual-alias zero contract additionally requires the provider to render its
 exact empty-state marker visibly on both pages. The same marker is permanently
 present but hidden on ordinary non-empty pages, so its text alone is never

@@ -11,11 +11,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.processing.board import (
-    _UNISANTE_CANONICAL_URL_PATTERN,
     _UNISANTE_DETAIL_URL_PATTERN,
     _UNISANTE_IDENTITY_MIGRATION,
     _UNISANTE_IDENTITY_MIGRATION_MAX_ROWS,
     _UNISANTE_IDENTITY_MIGRATION_VERSION,
+    _UNISANTE_SOURCE_IDENTITY_PATTERN,
     _migrate_unisante_provider_identities,
 )
 from src.queries.monitor import _MIGRATE_UNISANTE_PROVIDER_IDENTITIES
@@ -24,10 +24,11 @@ _DATA = Path(__file__).parents[1] / "data"
 
 
 def _job(reference: str) -> tuple[str, SimpleNamespace]:
-    canonical = f"https://emploi.unisante.ch/index.php/offres?reference={reference}"
     detail = f"https://emploi.unisante.ch/index.php/offre/{reference}-role"
-    return canonical, SimpleNamespace(
-        metadata={"provider_reference": reference, "detail_url": detail}
+    return detail, SimpleNamespace(
+        url=detail,
+        source_identity=f"unisante:emploi:{reference}",
+        metadata={"provider_reference": reference, "detail_url": detail},
     )
 
 
@@ -100,22 +101,21 @@ def test_committed_board_enables_only_reviewed_migration_contract() -> None:
     assert row["scraper_type"] == "skip"
 
 
-def test_identity_url_contracts_are_exact_and_reference_keyed() -> None:
+def test_identity_and_url_contracts_are_exact_and_reference_keyed() -> None:
     import re
 
-    canonical = "https://emploi.unisante.ch/index.php/offres?reference=1405"
-    assert re.fullmatch(_UNISANTE_CANONICAL_URL_PATTERN, canonical).group(1) == "1405"
+    identity = "unisante:emploi:1405"
+    assert re.fullmatch(_UNISANTE_SOURCE_IDENTITY_PATTERN, identity).group(1) == "1405"
     assert re.fullmatch(
         _UNISANTE_DETAIL_URL_PATTERN,
         "https://emploi.unisante.ch/index.php/offre/1405-assistante-de-direction",
     )
     for invalid in (
-        "https://evil.example/index.php/offres?reference=1405",
-        "https://emploi.unisante.ch/index.php/offres?reference=0",
-        "https://emploi.unisante.ch/index.php/offres?reference=1405&extra=1",
-        "https://emploi.unisante.ch/offres?reference=1405",
+        "unisante:emploi:0",
+        "unisante:other:1405",
+        "https://emploi.unisante.ch/index.php/offres?reference=1405",
     ):
-        assert re.fullmatch(_UNISANTE_CANONICAL_URL_PATTERN, invalid) is None
+        assert re.fullmatch(_UNISANTE_SOURCE_IDENTITY_PATTERN, invalid) is None
 
 
 def test_atomic_sql_preserves_one_alias_in_place_and_retires_conflicts() -> None:
@@ -125,7 +125,9 @@ def test_atomic_sql_preserves_one_alias_in_place_and_retires_conflicts() -> None
     assert "from unnest($3::text[], $4::text[])" in sql
     assert "for update of posting" in sql
     assert "row_number() over" in sql
-    assert "set source_url = candidate.canonical_url" in sql
+    assert "set source_identity = candidate.source_identity" in sql
+    assert "posting.source_identity = posting.source_url" in sql
+    assert "rtrim(row.source_url, '/') = rtrim(input.detail_url, '/')" in sql
     assert "not exists ( select 1 from canonical_existing" in sql
     assert "set is_active = false" in sql
     assert "updated_in_place" in sql
@@ -138,7 +140,7 @@ def test_atomic_sql_preserves_one_alias_in_place_and_retires_conflicts() -> None
     assert "transition_state.legacy_count" in sql
 
 
-async def test_absent_canonical_rewrites_legacy_rows_in_place() -> None:
+async def test_absent_provider_identity_updates_legacy_rows_in_place() -> None:
     conn = AsyncMock()
     conn.fetchrow.return_value = _row()
 
@@ -161,18 +163,19 @@ async def test_absent_canonical_rewrites_legacy_rows_in_place() -> None:
     )
 
 
-async def test_existing_canonical_keeps_canonical_and_retires_aliases() -> None:
+async def test_existing_provider_identity_blocks_one_time_adoption() -> None:
     conn = AsyncMock()
     conn.fetchrow.return_value = _row(
         canonical=7,
         existing_canonicals=7,
         updated=0,
-        retired=8,
+        retired=0,
+        may_migrate=False,
+        receipt_written=False,
     )
 
-    retired, _ = await _run(conn)
-
-    assert retired == 8
+    with pytest.raises(RuntimeError, match="safety gate blocked"):
+        await _run(conn)
 
 
 async def test_valid_receipt_makes_replay_a_noop_before_sql() -> None:
@@ -211,10 +214,22 @@ async def test_wrong_contract_or_partial_batch_fails_before_sql(overrides: dict)
     conn.fetchrow.assert_not_awaited()
 
 
+async def test_job_payload_url_must_match_inventory_key() -> None:
+    conn = AsyncMock()
+    jobs = _jobs("1405")
+    jobs[next(iter(jobs))].url = "https://emploi.unisante.ch/index.php/offre/1405-other"
+
+    with pytest.raises(RuntimeError, match="official detail URL"):
+        await _run(conn, jobs_by_url=jobs)
+
+    conn.fetchrow.assert_not_awaited()
+
+
 @pytest.mark.parametrize(
     "row",
     [
         _row(unknown=1, may_migrate=False, receipt_written=False),
+        _row(canonical=1, may_migrate=False, receipt_written=False),
         _row(conflicts=1, may_migrate=False, receipt_written=False),
         _row(valid=9, may_migrate=False, receipt_written=False),
         _row(updated=6, retired=1, receipt_written=False),

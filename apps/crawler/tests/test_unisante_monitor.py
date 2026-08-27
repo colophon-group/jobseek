@@ -158,7 +158,8 @@ async def test_discovers_evergreen_and_excludes_expired_listing() -> None:
 
     assert [job.metadata["provider_reference"] for job in discovered] == ["8", "1405"]
     evergreen, numeric = discovered
-    assert evergreen.url == "https://emploi.unisante.ch/index.php/offres?reference=8"
+    assert evergreen.url == "https://emploi.unisante.ch/index.php/offre/medecin-assistant-cmg"
+    assert evergreen.source_identity == "unisante:emploi:8"
     assert evergreen.metadata["detail_url"].endswith("/index.php/offre/medecin-assistant-cmg")
     assert numeric.title == "Assistant·e de direction"
     assert numeric.locations == ["Lausanne, Suisse"]
@@ -278,7 +279,8 @@ async def test_deduplicates_mutable_slugs_by_displayed_reference() -> None:
         )
 
     assert len(discovered) == 1
-    assert discovered[0].url == "https://emploi.unisante.ch/index.php/offres?reference=8"
+    assert discovered[0].url == "https://emploi.unisante.ch/index.php/offre/8-evergreen-role"
+    assert discovered[0].source_identity == "unisante:emploi:8"
     assert discovered[0].metadata["detail_url"].endswith("/index.php/offre/8-evergreen-role")
     assert discovered[0].metadata["provider_reference"] == "8"
 
