@@ -3495,6 +3495,7 @@ leap,leap-ashby,https://jobs.ashbyhq.com/leap,ashby,"{""token"": ""leap""}",skip
 leapsome,leapsome-ashby,https://jobs.ashbyhq.com/leapsome,ashby,"{""token"": ""leapsome""}",skip,
 leapwork,leapwork-greenhouse,https://job-boards.greenhouse.io/leapwork,greenhouse,"{""token"": ""leapwork""}",skip,
 learneo,learneo-greenhouse,https://job-boards.greenhouse.io/learneo,greenhouse,"{""token"": ""learneo""}",skip,
+learning-care-group,learning-care-group-careers,https://ejql.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX,oracle_hcm,"{""host"": ""ejql.fa.us6.oraclecloud.com"", ""site"": ""CX"", ""offset_overlap"": 5, ""total_count_tolerance"": 1}",oracle_hcm,"{""enrich"": [""description""]}"
 learning-commons,learning-commons-greenhouse,https://job-boards.greenhouse.io/education,greenhouse,"{""token"": ""education""}",skip,
 learnlux,learnlux-greenhouse,https://job-boards.greenhouse.io/learnlux,greenhouse,"{""token"": ""learnlux""}",skip,
 learnupon,learnupon-greenhouse,https://job-boards.greenhouse.io/learnupon,greenhouse,"{""token"": ""learnupon""}",skip,
