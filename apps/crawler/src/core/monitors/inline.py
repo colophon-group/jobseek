@@ -22,6 +22,7 @@ import hashlib
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from html import unescape
 from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
@@ -43,6 +44,7 @@ log = structlog.get_logger()
 
 _MAX_JOBS = 500  # safety cap
 _MAX_EXCLUDE_TITLE_REGEX_LENGTH = 2_048
+_MAX_EXCLUDE_DESCRIPTION_REGEX_LENGTH = 2_048
 _MAX_VALID_THROUGH_REGEX_LENGTH = 2_048
 _MAX_VALID_THROUGH_FORMAT_LENGTH = 128
 _MAX_VALID_THROUGH_PATTERNS = 8
@@ -87,6 +89,29 @@ def _compile_exclude_title_regex(value: object) -> re.Pattern[str] | None:
         return re.compile(value)
     except re.error as exc:
         raise ValueError(f"inline exclude_title_regex is invalid: {exc}") from exc
+
+
+def _compile_exclude_description_regex(value: object) -> re.Pattern[str] | None:
+    """Validate and compile the optional plain-text description exclusion."""
+    if value is None:
+        return None
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > _MAX_EXCLUDE_DESCRIPTION_REGEX_LENGTH
+    ):
+        raise ValueError("inline exclude_description_regex must be a non-empty bounded string")
+    try:
+        return re.compile(value)
+    except re.error as exc:
+        raise ValueError(f"inline exclude_description_regex is invalid: {exc}") from exc
+
+
+def _plain_description(value: str) -> str:
+    """Return normalized visible text for a plain-text exclusion contract."""
+    body = LexborHTMLParser(value).body
+    text = body.text(separator=" ", strip=True) if body is not None else value
+    return " ".join(unescape(text).split())
 
 
 def _validated_empty_text(value: object) -> str | None:
@@ -876,6 +901,7 @@ async def discover(
         defaults_by_title — per-title defaults applied to missing fields
         exclude_titles — exact titles to skip after extraction
         exclude_title_regex — regex matching titles to skip after extraction
+        exclude_description_regex — regex matching normalized description text to skip
         valid_through_regex — capture one deadline format from the description
         valid_through_patterns — ordered regex/format pairs for multiple deadline formats
         valid_through_format — strptime format for non-ISO deadlines
@@ -906,6 +932,9 @@ async def discover(
     defaults_by_title = metadata.get("defaults_by_title") or {}
     exclude_titles = set(metadata.get("exclude_titles") or [])
     exclude_title_regex = _compile_exclude_title_regex(metadata.get("exclude_title_regex"))
+    exclude_description_regex = _compile_exclude_description_regex(
+        metadata.get("exclude_description_regex")
+    )
     item_boundary_tag = _validated_item_boundary_tag(metadata.get("item_boundary_tag"))
     uses_detail_expansion = metadata.get("detail_click_selector") is not None
     if uses_detail_expansion:
@@ -1046,6 +1075,16 @@ async def discover(
         ):
             continue
 
+        description = cast(str | None, result.get("description")) or (
+            title if description_from_title else None
+        )
+        if (
+            description is not None
+            and exclude_description_regex is not None
+            and exclude_description_regex.search(_plain_description(description))
+        ):
+            continue
+
         if provider_identity is not None:
             url = _generate_identity_url(board_url, provider_identity)
         else:
@@ -1054,9 +1093,6 @@ async def discover(
         job_defaults = {**defaults, **(defaults_by_title.get(title) or {})}
 
         # Build DiscoveredJob with extracted + default fields
-        description = cast(str | None, result.get("description")) or (
-            title if description_from_title else None
-        )
         valid_through = _resolve_valid_through(
             result,
             job_defaults,

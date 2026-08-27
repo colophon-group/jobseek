@@ -32,12 +32,7 @@ def transformed_fetch_url(url: str, value: object, *, owner: str) -> str:
 
     find = value.get("find")
     replace = value.get("replace")
-    if (
-        not isinstance(find, str)
-        or not find
-        or len(find) > _MAX_PATTERN_LENGTH
-        or "\x00" in find
-    ):
+    if not isinstance(find, str) or not find or len(find) > _MAX_PATTERN_LENGTH or "\x00" in find:
         raise ValueError(f"{owner} fetch_url_transform.find must be non-empty bounded text")
     if (
         not isinstance(replace, str)
