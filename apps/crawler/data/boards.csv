@@ -3760,7 +3760,7 @@ matrix,matrix-pinpoint,https://matrix.pinpointhq.com,pinpoint,"{""slug"": ""matr
 matte-projects,matte-projects-greenhouse,https://job-boards.greenhouse.io/matteprojects,greenhouse,"{""token"": ""matteprojects""}",skip,
 mattermost,mattermost-greenhouse,https://job-boards.greenhouse.io/mattermost,greenhouse,"{""token"": ""mattermost""}",skip,
 matternet,matternet-workable,https://apply.workable.com/matternet/,workable,"{""token"": ""matternet""}",workable,
-maurices,maurices-careers,https://maurices.wd5.myworkdayjobs.com/us_retail_jobs,workday,,workday,
+maurices,maurices-careers,https://maurices.wd5.myworkdayjobs.com/us_retail_jobs,workday,,workday,"{""facility_tenant_aliases"": [""maurice""]}"
 maven,maven-greenhouse,https://job-boards.greenhouse.io/mavensecuritiesholdingltd,greenhouse,"{""token"": ""mavensecuritiesholdingltd""}",skip,
 maven-clinic,maven-clinic-greenhouse,https://job-boards.greenhouse.io/mavenclinic,greenhouse,"{""token"": ""mavenclinic""}",skip,
 maven-emerging-talent,maven-emerging-talent-greenhouse,https://job-boards.greenhouse.io/emergingtalent,greenhouse,"{""token"": ""emergingtalent""}",skip,

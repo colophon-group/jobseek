@@ -239,6 +239,29 @@ class TestNormalizeWorkdayLocation:
             == "Winston-Salem, NC, United States of America"
         )
 
+    def test_configured_tenant_alias_handles_live_maurices_typo(self):
+        raw = "Store 1738-Stone Hill Town Ctr-maurice-Pflugerville, TX 78660"
+        assert (
+            _normalize_workday_location(
+                raw,
+                country="United States of America",
+                tenant="maurices",
+                tenant_aliases=("maurice",),
+            )
+            == "Pflugerville, TX, United States of America"
+        )
+
+    def test_unconfigured_tenant_alias_fails_closed(self):
+        raw = "Store 1738-Stone Hill Town Ctr-maurice-Pflugerville, TX 78660"
+        assert (
+            _normalize_workday_location(
+                raw,
+                country="United States of America",
+                tenant="maurices",
+            )
+            == raw
+        )
+
     @pytest.mark.parametrize(
         ("raw", "expected"),
         [
@@ -389,6 +412,20 @@ class TestParseDetail:
         }
         result = _parse_detail(detail, tenant="maurices")
         assert result.locations == ["Leamington, ON, Canada"]
+
+    def test_facility_location_uses_configured_tenant_alias(self):
+        detail = {
+            "jobPostingInfo": {
+                "location": ("Store 1738-Stone Hill Town Ctr-maurice-Pflugerville, TX 78660"),
+                "country": {"descriptor": "United States of America"},
+            }
+        }
+        result = _parse_detail(
+            detail,
+            tenant="maurices",
+            tenant_aliases=("maurice",),
+        )
+        assert result.locations == ["Pflugerville, TX, United States of America"]
 
     def test_no_metadata(self):
         detail = {"jobPostingInfo": {}}
@@ -1385,6 +1422,30 @@ class TestParseJobUrl:
 
 
 class TestScrape:
+    async def test_passes_configured_tenant_aliases_to_detail_parser(self):
+        def handler(request):
+            return httpx.Response(
+                200,
+                json={
+                    "jobPostingInfo": {
+                        "title": "Assistant Manager",
+                        "location": (
+                            "Store 1738-Stone Hill Town Ctr-maurice-Pflugerville, TX 78660"
+                        ),
+                        "country": {"descriptor": "United States of America"},
+                    }
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://maurices.wd5.myworkdayjobs.com/us_retail_jobs/job/Test/JR001",
+                {"facility_tenant_aliases": ["maurice"]},
+                client,
+            )
+
+        assert result.locations == ["Pflugerville, TX, United States of America"]
+
     async def test_fetches_detail(self):
         def handler(request):
             return httpx.Response(
