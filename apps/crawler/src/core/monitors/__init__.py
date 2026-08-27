@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import contextvars
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,6 +31,31 @@ else:
     SaveRawClient = Any
 
 log = structlog.get_logger()
+
+
+# Explicit identities are deliberately not arbitrary text.  A provider lane
+# must namespace the tenant and the provider-owned identifier, for example
+# ``smartrecruiters:nagarro:7439990002``.  URL-only monitors never need to
+# manufacture this value: the board processor derives their identity from the
+# canonical outbound URL exactly as it did before #8034.
+SOURCE_IDENTITY_RE = re.compile(
+    r"^[a-z][a-z0-9_-]{1,31}:[a-z0-9][a-z0-9._-]{0,63}:"
+    r"[A-Za-z0-9][A-Za-z0-9._~:/-]{0,383}$"
+)
+
+
+def validate_explicit_source_identity(value: str) -> str:
+    """Validate one bounded, namespaced provider identity.
+
+    Keeping query strings, fragments, whitespace, and Unicode out of this
+    internal key makes log/SQL boundaries unambiguous.  The outbound ``url``
+    remains the place for a complete user-resolving provider URL.
+    """
+    if not isinstance(value, str) or SOURCE_IDENTITY_RE.fullmatch(value) is None:
+        raise ValueError(
+            "source_identity must be provider:tenant:id using bounded ASCII identity tokens"
+        )
+    return value
 
 
 @dataclass(slots=True)
@@ -60,8 +86,14 @@ class DiscoveredJob:
     #: Optional structured data (skills, responsibilities, qualifications, etc.)
     extras: dict | None = None
     metadata: dict | None = None
+    #: Stable provider identity, separate from the user-facing outbound URL.
+    #: Kept last to preserve legacy positional construction of DiscoveredJob.
+    #: When omitted, the canonical URL remains the identity for compatibility.
+    source_identity: str | None = None
 
     def __post_init__(self):
+        if self.source_identity is not None:
+            validate_explicit_source_identity(self.source_identity)
         if isinstance(self.base_salary, str):
             from src.core.salary_extract import parse_salary_text
 
@@ -138,11 +170,20 @@ def _make_chunked_stream(discover_fn: DiscoverFunc):
         result = await discover_fn(board, client, pw=pw)
         # Local import to avoid the circular dep with src.core.monitor.
         from src.core.monitor import MonitorResult as _MR
+        from src.core.monitor import _collapse_source_identity_publications
 
         if isinstance(result, _MR):
             yield result
             return
         if isinstance(result, list):
+            # Provider-localized publications must be considered as one
+            # complete result before the generic heartbeat chunks are cut.
+            # Otherwise matching publications at positions 200/201 become
+            # separate jobs and make identity handling depend on API order.
+            # URL-only and legacy rich results keep their existing streaming
+            # path unchanged.
+            if any(job.source_identity is not None for job in result):
+                result = _collapse_source_identity_publications(result)
             for i in range(0, len(result), _STREAM_BATCH):
                 yield result[i : i + _STREAM_BATCH]
         else:

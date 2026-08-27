@@ -187,6 +187,8 @@ export async function getMyJobs(params: {
       interviewCount: interviewCounts.get(r.id) ?? 0,
       posting: {
         ...snapshot.posting,
+        sourceUrl:
+          postingStates.get(r.postingId)?.sourceUrl ?? snapshot.posting.sourceUrl,
         firstSeenAt: snapshot.posting.firstSeenAt.toISOString(),
         isActive:
           postingStates.get(r.postingId)?.isActive ?? snapshot.posting.isActive,
@@ -276,6 +278,8 @@ export async function getMyJobDetail(
     interviewCount: interviews.length,
     posting: {
       ...snapshot.posting,
+      sourceUrl:
+        postingStates.get(row.postingId)?.sourceUrl ?? snapshot.posting.sourceUrl,
       firstSeenAt: snapshot.posting.firstSeenAt.toISOString(),
       isActive:
         postingStates.get(row.postingId)?.isActive ?? snapshot.posting.isActive,

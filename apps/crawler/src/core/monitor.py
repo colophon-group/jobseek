@@ -16,7 +16,13 @@ from urllib.parse import quote
 
 import structlog
 
-from src.core.monitors import DiscoveredJob, get_discoverer, get_save_raw, get_stream_fn
+from src.core.monitors import (
+    DiscoveredJob,
+    get_discoverer,
+    get_save_raw,
+    get_stream_fn,
+    validate_explicit_source_identity,
+)
 
 if TYPE_CHECKING:
     import httpx
@@ -53,6 +59,105 @@ class MonitorResult:
     #: the cap is not falsely tombstoned. Any single truncated batch in a
     #: streamed monitor run is sufficient to flip this for the cycle.
     truncated: bool = False
+
+
+_SOURCE_LOCALE_PREFERENCE = ("en", "de", "fr", "it")
+_SOURCE_IDENTITY_FINGERPRINT_KEY = "source_identity_fingerprint"
+
+
+def _publication_rank(job: DiscoveredJob) -> tuple[int, str, str]:
+    """Choose one outbound publication independently of provider ordering."""
+    language = (job.language or "").lower()
+    try:
+        locale_rank = _SOURCE_LOCALE_PREFERENCE.index(language)
+    except ValueError:
+        locale_rank = len(_SOURCE_LOCALE_PREFERENCE)
+    return locale_rank, language, job.url
+
+
+def _identity_fingerprint(job: DiscoveredJob) -> str | None:
+    value = (
+        job.metadata.get(_SOURCE_IDENTITY_FINGERPRINT_KEY)
+        if isinstance(job.metadata, dict)
+        else None
+    )
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value or len(value) > 256:
+        raise ValueError("source_identity_fingerprint must be non-empty bounded text when provided")
+    return value
+
+
+def _merge_publication_localizations(jobs: list[DiscoveredJob]) -> dict | None:
+    """Retain all locale content while selecting one outbound publication."""
+    merged: dict = {}
+    for job in sorted(jobs, key=_publication_rank):
+        for locale, payload in (job.localizations or {}).items():
+            if locale in merged and merged[locale] != payload:
+                raise ValueError(
+                    "source_identity publications emitted conflicting localization payloads"
+                )
+            merged[locale] = payload
+        if job.language:
+            payload = {
+                key: value
+                for key, value in (
+                    ("title", job.title),
+                    ("description", job.description),
+                    ("locations", job.locations),
+                )
+                if value is not None
+            }
+            if payload:
+                existing = merged.get(job.language)
+                if existing is not None and existing != payload:
+                    raise ValueError(
+                        "source_identity publications emitted conflicting content for one locale"
+                    )
+                merged[job.language] = payload
+    return merged or None
+
+
+def _collapse_source_identity_publications(
+    discovered: list[DiscoveredJob],
+) -> list[DiscoveredJob]:
+    """Collapse locale publications only with exact provider evidence.
+
+    A single explicit-identity row needs no extra proof.  Multiple rows with
+    the same identity must all carry the same provider-derived fingerprint;
+    otherwise a reused/colliding provider id fails the whole monitor cycle.
+    The fixed locale order and URL tie-break make selection independent of API
+    order and hash randomization.  Removing the preferred locale merely picks
+    the next publication while retaining the same durable identity.
+    """
+    implicit: list[DiscoveredJob] = []
+    grouped: dict[str, list[DiscoveredJob]] = {}
+    for job in discovered:
+        if job.source_identity is None:
+            implicit.append(job)
+            continue
+        identity = validate_explicit_source_identity(job.source_identity)
+        grouped.setdefault(identity, []).append(job)
+
+    collapsed = list(implicit)
+    for identity in sorted(grouped):
+        publications = grouped[identity]
+        if len(publications) > 1:
+            fingerprints = [_identity_fingerprint(job) for job in publications]
+            if any(value is None for value in fingerprints) or len(set(fingerprints)) != 1:
+                raise ValueError(
+                    "duplicate source_identity publications require one matching "
+                    "source_identity_fingerprint"
+                )
+        selected = min(publications, key=_publication_rank)
+        collapsed.append(
+            dataclass_replace(
+                selected,
+                source_identity=identity,
+                localizations=_merge_publication_localizations(publications),
+            )
+        )
+    return collapsed
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,7 +304,10 @@ def _normalize_discovered(
         return MonitorResult(urls=urls, new_sitemap_url=sitemap_url)
     if isinstance(discovered, set):
         return MonitorResult(urls=discovered)
-    # list[DiscoveredJob]
+    # list[DiscoveredJob]. Explicit provider identities may have several
+    # locale publications, but only after a provider fingerprint proves that
+    # the rows are the same exact job.
+    discovered = _collapse_source_identity_publications(discovered)
     jobs_by_url: dict[str, DiscoveredJob] = {}
     for job in discovered:
         existing = jobs_by_url.get(job.url)

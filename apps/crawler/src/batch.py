@@ -107,6 +107,7 @@ from src.queries.monitor import (  # noqa: F401
     _DELIST_THRESHOLD_AUTHORITATIVE,
     _DELIST_THRESHOLD_FRAGILE,
     _DIFF_BATCH,
+    _DIFF_BATCH_DURABLE,
     _DROP_GUARD_HISTORY_WINDOW,
     _DROP_GUARD_MIN_HISTORY,
     _DROP_GUARD_THRESHOLD_DEFAULT,
@@ -114,8 +115,11 @@ from src.queries.monitor import (  # noqa: F401
     _FETCH_BOARD_GONE_STATE,
     _FETCH_DUE_BOARDS,
     _INSERT_RICH_JOB,
+    _INSERT_RICH_JOB_DURABLE,
     _INSERT_RICH_JOB_ENRICH,
+    _INSERT_RICH_JOB_ENRICH_DURABLE,
     _INSERT_URL_ONLY_JOBS,
+    _INSERT_URL_ONLY_JOBS_DURABLE,
     _MARK_GONE,
     _MARK_GONE_BY_TIMESTAMP,
     _RECORD_BOARD_GONE,
@@ -127,6 +131,7 @@ from src.queries.monitor import (  # noqa: F401
     _RELEASE_POSTING_LEASES,
     _UPDATE_METADATA,
     _UPSERT_LOCATION_MISSES,
+    _VALIDATE_DURABLE_DISCOVERIES,
 )
 
 # ── Re-exports: queries/scrape.py ────────────────────────────────────

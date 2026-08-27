@@ -958,6 +958,23 @@ class TestDataIntegrity:
             assert isinstance(doc["source_url"], str)
             assert doc["source_url"].startswith("https://")
 
+    def test_job_posting_source_url_changes_without_replacing_document_id(
+        self, ts_client: typesense.Client, alias_map: dict
+    ):
+        """A locale publication change keeps the posting UUID and updates its link."""
+        col = _col(ts_client, alias_map, "job_posting")
+        posting = next(p for p in POSTINGS if "source_url" in p)
+        posting_id = posting["id"]
+        original_url = posting["source_url"]
+        replacement_url = f"{original_url}?publication=de"
+        try:
+            updated = col.documents[posting_id].update({"source_url": replacement_url})
+            assert updated["id"] == posting_id
+            assert updated["source_url"] == replacement_url
+            assert col.documents[posting_id].retrieve()["source_url"] == replacement_url
+        finally:
+            col.documents[posting_id].update({"source_url": original_url})
+
     def test_job_posting_salary_values(self, ts_client: typesense.Client, alias_map: dict):
         """salary_eur is either absent/None or > 0."""
         col = _col(ts_client, alias_map, "job_posting")

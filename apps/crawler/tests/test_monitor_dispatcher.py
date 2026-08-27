@@ -10,6 +10,7 @@ from src.core.monitor import (
     _apply_url_filter,
     _normalize_discovered,
     monitor_one,
+    monitor_one_stream,
 )
 from src.core.monitors import DiscoveredJob
 
@@ -46,6 +47,102 @@ class TestNormalizeDiscovered:
         assert result.jobs_by_url is not None
         assert result.jobs_by_url["https://example.com/job1"].title == "Job 1"
         assert result.jobs_by_url["https://example.com/job2"].title == "Job 2"
+
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_explicit_identity_collapses_locale_publications_deterministically(self, reverse):
+        identity = "smartrecruiters:nagarro:7439990002"
+        jobs = [
+            DiscoveredJob(
+                url=f"https://jobs.example/{locale}/7439990002/{title.lower()}",
+                source_identity=identity,
+                title=title,
+                description=f"<p>{locale} description</p>",
+                locations=["Zurich"],
+                language=locale,
+                metadata={"source_identity_fingerprint": "exact-job-7439990002"},
+            )
+            for locale, title in (
+                ("de", "Ingenieur"),
+                ("fr", "Ingénieur"),
+                ("it", "Ingegnere"),
+                ("en", "Engineer"),
+            )
+        ]
+        if reverse:
+            jobs.reverse()
+
+        result = _normalize_discovered(jobs)
+
+        assert result.urls == {"https://jobs.example/en/7439990002/engineer"}
+        assert result.jobs_by_url is not None
+        selected = next(iter(result.jobs_by_url.values()))
+        assert selected.source_identity == identity
+        assert selected.title == "Engineer"
+        assert set(selected.localizations or {}) == {"de", "fr", "it", "en"}
+
+    def test_preferred_locale_removal_keeps_identity_and_selects_next_publication(self):
+        identity = "smartrecruiters:nagarro:7439990002"
+        common = {"source_identity_fingerprint": "exact-job-7439990002"}
+        first = _normalize_discovered(
+            [
+                DiscoveredJob(
+                    url="https://jobs.example/en/7439990002/old-title",
+                    source_identity=identity,
+                    title="Old title",
+                    language="en",
+                    metadata=common,
+                ),
+                DiscoveredJob(
+                    url="https://jobs.example/de/7439990002/alter-titel",
+                    source_identity=identity,
+                    title="Alter Titel",
+                    language="de",
+                    metadata=common,
+                ),
+            ]
+        )
+        second = _normalize_discovered(
+            [
+                DiscoveredJob(
+                    url="https://jobs.example/de/7439990002/neuer-titel",
+                    source_identity=identity,
+                    title="Neuer Titel",
+                    language="de",
+                )
+            ]
+        )
+
+        first_job = next(iter((first.jobs_by_url or {}).values()))
+        second_job = next(iter((second.jobs_by_url or {}).values()))
+        assert first_job.source_identity == second_job.source_identity == identity
+        assert first_job.url.endswith("/en/7439990002/old-title")
+        assert second_job.url.endswith("/de/7439990002/neuer-titel")
+
+    def test_duplicate_identity_without_matching_exact_job_proof_fails_closed(self):
+        identity = "provider:tenant:collision"
+        with pytest.raises(ValueError, match="require one matching"):
+            _normalize_discovered(
+                [
+                    DiscoveredJob(
+                        url="https://jobs.example/en/one",
+                        source_identity=identity,
+                        metadata={"source_identity_fingerprint": "one"},
+                    ),
+                    DiscoveredJob(
+                        url="https://jobs.example/de/two",
+                        source_identity=identity,
+                        metadata={"source_identity_fingerprint": "two"},
+                    ),
+                ]
+            )
+
+    @pytest.mark.parametrize(
+        "identity",
+        ["", "opaque-only", "Provider:tenant:id", "provider:tenant:id?query", "p:t:é"],
+    )
+    def test_malformed_explicit_identity_fails_at_monitor_boundary(self, identity):
+        with pytest.raises(ValueError, match="source_identity"):
+            DiscoveredJob(url="https://jobs.example/one", source_identity=identity)
 
     def test_empty_list(self):
         result = _normalize_discovered([])
@@ -301,6 +398,70 @@ class TestApplyUrlAllowlist:
 
 
 class TestMonitorOne:
+    @pytest.mark.parametrize("reverse_publications", [False, True])
+    async def test_explicit_identity_collapses_before_generic_stream_boundary(
+        self, reverse_publications
+    ):
+        from src.core.monitors import _REGISTRY, MonitorType, _make_chunked_stream
+
+        identity = "provider:tenant:boundary-job"
+        publications = [
+            DiscoveredJob(
+                url=f"https://jobs.example/{locale}/boundary-job",
+                source_identity=identity,
+                title=title,
+                description=f"<p>{locale} description</p>",
+                language=locale,
+                metadata={"source_identity_fingerprint": "exact-boundary-job"},
+            )
+            for locale, title in (("de", "Ingenieur"), ("en", "Engineer"))
+        ]
+        if reverse_publications:
+            publications.reverse()
+        discovered = [
+            DiscoveredJob(url=f"https://jobs.example/filler-{index}") for index in range(199)
+        ]
+        discovered.extend(publications)
+        discovered.append(DiscoveredJob(url="https://jobs.example/filler-after"))
+
+        async def stub_discover(board, http, *, pw=None):
+            return discovered
+
+        probe = MonitorType(
+            name="__source_identity_stream_boundary_probe__",
+            cost=1,
+            discover=stub_discover,
+            rich=True,
+            stream=_make_chunked_stream(stub_discover),
+        )
+        _REGISTRY.append(probe)
+        try:
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(200))
+            ) as client:
+                batches = [
+                    batch
+                    async for batch in monitor_one_stream(
+                        "https://jobs.example",
+                        probe.name,
+                        {},
+                        client,
+                    )
+                ]
+        finally:
+            _REGISTRY.remove(probe)
+
+        assert [len(batch.urls) for batch in batches] == [200, 1]
+        jobs = [
+            job
+            for batch in batches
+            for job in (batch.jobs_by_url or {}).values()
+            if job.source_identity == identity
+        ]
+        assert len(jobs) == 1
+        assert jobs[0].url == "https://jobs.example/en/boundary-job"
+        assert set(jobs[0].localizations or {}) == {"de", "en"}
+
     async def test_greenhouse_integration(self):
         def handler(request):
             return httpx.Response(

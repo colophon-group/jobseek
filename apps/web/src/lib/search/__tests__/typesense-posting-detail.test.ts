@@ -219,11 +219,17 @@ describe("Typesense posting projection", () => {
       "bad:id",
     ]);
 
-    expect(states.get("posting-1")).toEqual({ isActive: false });
-    expect(states.get("posting-2")).toEqual({ isActive: true });
+    expect(states.get("posting-1")).toEqual({
+      isActive: false,
+      sourceUrl: "https://example.com/jobs/1",
+    });
+    expect(states.get("posting-2")).toEqual({
+      isActive: true,
+      sourceUrl: "https://example.com/jobs/1",
+    });
     expect(states.size).toBe(2);
     expect(mocks.searchRequests[0]).toMatchObject({
-      include_fields: "id,is_active",
+      include_fields: "id,is_active,source_url",
       per_page: 2,
     });
   });
