@@ -9,12 +9,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from src.core.monitors import is_rich_monitor
 from src.core.monitors.dom import _prospective_probe_config, dom_discover
-from src.processing.board import (
-    _SMN_SMARTRECRUITERS_CONFIG_FINGERPRINT,
-    _SMN_SMARTRECRUITERS_IDENTITY_MIGRATION,
-)
-from src.sync import _monitor_config_fingerprint
 
 _BOARDS_PATH = Path(__file__).parents[1] / "data" / "boards.csv"
 _ZOFINGEN_URL = "https://jobs.spitalzofingen.ch/"
@@ -77,12 +73,8 @@ def test_smartrecruiters_board_enables_exact_rich_identity_contract():
     assert config == {
         "token": "SwissMedicalNetwork1",
         "canonical_identity": "job-location-v1",
-        "identity_migration": _SMN_SMARTRECRUITERS_IDENTITY_MIGRATION,
     }
-    assert (
-        _monitor_config_fingerprint(row["board_url"], row["monitor_type"], config)
-        == _SMN_SMARTRECRUITERS_CONFIG_FINGERPRINT
-    )
+    assert is_rich_monitor(row["monitor_type"], config) is True
 
 
 def test_zofingen_board_uses_uuid_identity_exact_total_zero_and_expiry_suppression():

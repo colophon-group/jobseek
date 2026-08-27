@@ -14,7 +14,7 @@ from src.core.monitors.smartrecruiters import (
     _LIST_RESPONSE_MAX_BYTES,
     CANONICAL_IDENTITY_JOB_LOCATION_V1,
     _canonical_identity_components,
-    _canonical_source_url,
+    _canonical_source_identity,
     _canonicalize_details,
     _fetch_canonical_details,
     _normalize_coordinate,
@@ -120,20 +120,19 @@ def _stub_detail_parser(monkeypatch):
     monkeypatch.setattr("src.core.scrapers.smartrecruiters._parse_detail", parse)
 
 
-def test_de_only_and_fr_only_keep_the_same_canonical_url():
+def test_de_only_and_fr_only_keep_identity_while_outbound_url_tracks_publication():
     de = _detail("744000144497156", language="de")
     fr = _detail("744000144497769", language="fr", default=True)
 
-    de_url = _canonicalize_details(_TOKEN, [de])[0].url
-    fr_url = _canonicalize_details(_TOKEN, [fr])[0].url
+    de_job = _canonicalize_details(_TOKEN, [de])[0]
+    fr_job = _canonicalize_details(_TOKEN, [fr])[0]
     bilingual = _canonicalize_details(_TOKEN, [fr, de])
 
-    assert de_url == fr_url == bilingual[0].url
+    assert de_job.source_identity == fr_job.source_identity == bilingual[0].source_identity
+    assert de_job.url == "https://jobs.smartrecruiters.com/SwissMedicalNetwork1/744000144497156"
+    assert fr_job.url == "https://jobs.smartrecruiters.com/SwissMedicalNetwork1/744000144497769"
+    assert bilingual[0].url == fr_job.url
     assert bilingual[0].localizations.keys() == {"de", "fr"}
-    assert bilingual[0].source_aliases == [
-        "https://jobs.smartrecruiters.com/SwissMedicalNetwork1/744000144497156",
-        "https://jobs.smartrecruiters.com/SwissMedicalNetwork1/744000144497769",
-    ]
 
 
 def test_reordering_publications_does_not_change_identity_or_primary_locale():
@@ -226,14 +225,12 @@ def test_fallback_is_allowed_once_but_rejected_for_repeated_job_id():
 
 def test_hash_is_tenant_bound_and_uses_full_sha256():
     components = _canonical_identity_components(_detail("744000144497156"))
-    smn = _canonical_source_url(_TOKEN, components)
-    other = _canonical_source_url("OtherTenant", components)
+    smn = _canonical_source_identity(_TOKEN, components)
+    other = _canonical_source_identity("OtherTenant", components)
 
     assert smn != other
-    assert smn.startswith(
-        "https://careers.smartrecruiters.com/SwissMedicalNetwork1?_jobseek_sr_identity=v1."
-    )
-    assert len(smn.rsplit(".", 1)[1]) == 64
+    assert smn.startswith(f"smartrecruiters:swissmedicalnetwork1:{components[0]}/geo/")
+    assert len(smn.rsplit("/", 1)[1]) == 64
 
 
 async def test_canonical_discovery_requires_every_exact_detail(monkeypatch):

@@ -3,9 +3,9 @@
 Public API:
   List:   GET https://api.smartrecruiters.com/v1/companies/{id}/postings?limit=100&offset=0
 
-The list endpoint returns posting IDs and metadata.  The monitor constructs
-posting URLs from the token + ID and returns a URL set.  Detail fetching
-is handled by the scraper on the daily schedule.
+The list endpoint returns posting-publication IDs and metadata. By default,
+the monitor returns publication URLs for the scraper. Opt-in modes can fetch
+details and collapse localized publications by exact provider identities.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import hashlib
 import json
 import re
 from decimal import Decimal, InvalidOperation
-from urllib.parse import quote, urlencode, urljoin, urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import structlog
@@ -23,7 +23,7 @@ import structlog
 from src.core.monitors import DiscoveredJob, register, slugs_from_url
 from src.core.monitors._ats_template import ProbeResult, ats_can_handle
 from src.shared.http_retry import fetch_json_page_with_retry
-from src.shared.truncation import truncated_url_result
+from src.shared.truncation import truncated_rich_result, truncated_url_result
 
 log = structlog.get_logger()
 
@@ -34,12 +34,9 @@ PAGE_SIZE = 100
 # endpoint.  A single requisition can have multiple language publications,
 # while a reused requisition can also carry genuinely distinct locations.
 # This opt-in contract therefore uses ``jobId`` plus provider-owned location
-# identity, never refNumber/title/address text.  The hash is placed on the
-# real, fetchable official careers listing, following the repository's
-# existing private-query identity pattern (response fingerprints).
+# identity, never refNumber/title/address text. The durable internal identity
+# is kept separate from the real, fetchable outbound publication URL.
 CANONICAL_IDENTITY_JOB_LOCATION_V1 = "job-location-v1"
-CANONICAL_IDENTITY_QUERY_PARAM = "_jobseek_sr_identity"
-CANONICAL_IDENTITY_QUERY_PREFIX = "v1."
 MAX_CANONICAL_POSTINGS = 500
 _DETAIL_CONCURRENCY = 12
 _LIST_RESPONSE_MAX_BYTES = 2 * 1024 * 1024
@@ -48,9 +45,15 @@ _UUID_RE = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
     re.IGNORECASE,
 )
+_JOB_ID_RE = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+    re.IGNORECASE,
+)
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
 _COORD_RE = re.compile(r"-?(?:0|[1-9]\d{0,2})(?:\.\d{1,16})?")
 _LANGUAGE_RE = re.compile(r"[a-z]{2}")
+_JOB_ID_LANGUAGE_RE = re.compile(r"([a-z]{2})(?:[-_][a-z]{2})?", re.IGNORECASE)
+_DEFAULT_LANGUAGE_PREFERENCE = ("en", "de", "fr", "it")
 
 # These are tenant-defined IDs, not labels.  Their valueIds remain invariant
 # when SmartRecruiters renders a publication in another language.
@@ -216,10 +219,10 @@ def _canonical_identity_components(detail: dict) -> tuple[str, str, str]:
     return job_id.lower(), location_kind, location_value
 
 
-def _canonical_source_url(token: str, components: tuple[str, str, str]) -> str:
-    """Build a collision-resistant identity on a fetchable official URL."""
+def _canonical_source_identity(token: str, components: tuple[str, str, str]) -> str:
+    """Build a tenant-bound identity separate from the outbound publication URL."""
     if _TOKEN_RE.fullmatch(token) is None:
-        raise ValueError("SmartRecruiters token is unsafe for canonical identity URLs")
+        raise ValueError("SmartRecruiters token is unsafe for canonical identities")
     job_id, location_kind, location_value = components
     encoded = json.dumps(
         {
@@ -234,10 +237,7 @@ def _canonical_source_url(token: str, components: tuple[str, str, str]) -> str:
         separators=(",", ":"),
     ).encode()
     digest = hashlib.sha256(encoded).hexdigest()
-    query = urlencode(
-        {CANONICAL_IDENTITY_QUERY_PARAM: f"{CANONICAL_IDENTITY_QUERY_PREFIX}{digest}"}
-    )
-    return f"https://careers.smartrecruiters.com/{quote(token, safe='')}?{query}"
+    return f"smartrecruiters:{token.casefold()}:{job_id}/{location_kind}/{digest}"
 
 
 def _detail_url(token: str, posting_id: str) -> str:
@@ -344,6 +344,257 @@ async def _list_posting_items(
             f"SmartRecruiters returned {len(items)} publications but advertised {expected_total}"
         )
     return items
+
+
+def _validate_list_page(data: dict, expected_total: int | None) -> tuple[list[dict], int]:
+    """Validate the provider's pagination envelope before accepting a page."""
+    content = data.get("content")
+    total_found = data.get("totalFound")
+    if not isinstance(content, list):
+        raise ValueError("SmartRecruiters list response content must be a list")
+    if not isinstance(total_found, int) or isinstance(total_found, bool) or total_found < 0:
+        raise ValueError("SmartRecruiters list response totalFound must be a non-negative integer")
+    if expected_total is not None and total_found != expected_total:
+        raise ValueError(
+            "SmartRecruiters totalFound changed during pagination "
+            f"({expected_total} -> {total_found})"
+        )
+    if any(not isinstance(item, dict) for item in content):
+        raise ValueError("SmartRecruiters list response contains a non-object posting")
+    return content, total_found
+
+
+async def _fetch_publications(
+    token: str,
+    client: httpx.AsyncClient,
+) -> tuple[list[dict], bool, int]:
+    """Fetch a complete, duplicate-free publication inventory."""
+    publications: list[dict] = []
+    publication_ids: set[str] = set()
+    expected_total: int | None = None
+    list_url = _api_list_url(token)
+    offset = 0
+
+    while True:
+        data = await _get_page_with_retry(
+            client,
+            list_url,
+            {"limit": PAGE_SIZE, "offset": offset},
+            max_bytes=_LIST_RESPONSE_MAX_BYTES,
+        )
+        content, total_found = _validate_list_page(data, expected_total)
+        if expected_total is None:
+            expected_total = total_found
+
+        for item in content:
+            raw_id = item.get("id")
+            if not isinstance(raw_id, (str, int)) or isinstance(raw_id, bool):
+                raise ValueError("SmartRecruiters publication is missing a valid id")
+            publication_id = str(raw_id).strip()
+            if not publication_id:
+                raise ValueError("SmartRecruiters publication has an empty id")
+            if publication_id in publication_ids:
+                raise ValueError(
+                    f"SmartRecruiters repeated publication id {publication_id!r} across list pages"
+                )
+            publication_ids.add(publication_id)
+            publications.append(item)
+
+        if len(publications) >= total_found:
+            if len(publications) != total_found:
+                raise ValueError(
+                    "SmartRecruiters returned more publications than totalFound "
+                    f"({len(publications)} > {total_found})"
+                )
+            return publications, False, total_found
+
+        if len(publications) >= MAX_JOBS:
+            return publications, True, total_found
+
+        if not content or len(content) < PAGE_SIZE:
+            raise ValueError(
+                "SmartRecruiters pagination ended before totalFound "
+                f"({len(publications)} < {total_found})"
+            )
+        offset += PAGE_SIZE
+
+
+def _canonical_template(metadata: dict) -> str | None:
+    raw = metadata.get("canonical_job_id_url_template")
+    if raw is None:
+        return None
+    if not isinstance(raw, str) or raw.count("{job_id}") != 1:
+        raise ValueError(
+            "canonical_job_id_url_template must be a string containing exactly one {job_id}"
+        )
+    remainder = raw.replace("{job_id}", "")
+    if "{" in remainder or "}" in remainder:
+        raise ValueError("canonical_job_id_url_template contains an unsupported placeholder")
+    probe = raw.replace("{job_id}", "00000000-0000-4000-8000-000000000000")
+    parsed = urlparse(probe)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(
+            "canonical_job_id_url_template must produce an absolute HTTPS URL "
+            "without credentials, query, or fragment"
+        )
+    return raw
+
+
+def _language_code(detail: dict) -> str | None:
+    language = detail.get("language")
+    raw = language.get("code") if isinstance(language, dict) else language
+    if not isinstance(raw, str):
+        return None
+    match = _JOB_ID_LANGUAGE_RE.fullmatch(raw.strip())
+    return match.group(1).lower() if match else None
+
+
+def _language_preference(metadata: dict) -> tuple[str, ...]:
+    raw = metadata.get("language_preference", _DEFAULT_LANGUAGE_PREFERENCE)
+    if not isinstance(raw, list):
+        if raw == _DEFAULT_LANGUAGE_PREFERENCE:
+            return _DEFAULT_LANGUAGE_PREFERENCE
+        raise ValueError("language_preference must be a list of ISO 639-1 codes")
+    result: list[str] = []
+    for value in raw:
+        if not isinstance(value, str) or re.fullmatch(r"[a-zA-Z]{2}", value) is None:
+            raise ValueError("language_preference must contain only ISO 639-1 codes")
+        code = value.lower()
+        if code not in result:
+            result.append(code)
+    return tuple(result)
+
+
+def _validate_detail(detail: dict, *, token: str, publication_id: str) -> str:
+    detail_id = detail.get("id")
+    if str(detail_id) != publication_id:
+        raise ValueError(
+            f"SmartRecruiters detail id mismatch for {publication_id!r}: {detail_id!r}"
+        )
+    company = detail.get("company")
+    identifier = company.get("identifier") if isinstance(company, dict) else None
+    if identifier != token:
+        raise ValueError(
+            f"SmartRecruiters detail tenant mismatch for {publication_id!r}: {identifier!r}"
+        )
+    if detail.get("active") is not True:
+        raise ValueError(
+            f"SmartRecruiters detail is not affirmatively active for {publication_id!r}"
+        )
+    raw_job_id = detail.get("jobId")
+    if not isinstance(raw_job_id, str) or _JOB_ID_RE.fullmatch(raw_job_id) is None:
+        raise ValueError(
+            f"SmartRecruiters detail has invalid jobId for {publication_id!r}: {raw_job_id!r}"
+        )
+    return raw_job_id.lower()
+
+
+async def _fetch_details(
+    token: str,
+    publications: list[dict],
+    client: httpx.AsyncClient,
+) -> list[dict]:
+    """Fetch all publication details concurrently; any failure aborts the cycle."""
+    semaphore = asyncio.Semaphore(_DETAIL_CONCURRENCY)
+
+    async def fetch_one(publication: dict) -> dict:
+        publication_id = str(publication["id"]).strip()
+        async with semaphore:
+            detail = await _get_detail_with_retry(client, token, publication_id)
+        _validate_detail(detail, token=token, publication_id=publication_id)
+        return detail
+
+    return list(await asyncio.gather(*(fetch_one(item) for item in publications)))
+
+
+def _job_id_variant_key(detail: dict, language_preference: tuple[str, ...]) -> tuple:
+    language = _language_code(detail)
+    try:
+        language_rank = (
+            language_preference.index(language) if language else len(language_preference)
+        )
+    except ValueError:
+        language_rank = len(language_preference)
+    return (
+        language_rank,
+        language or "zz",
+        0 if detail.get("defaultJobAd") is True else 1,
+        str(detail["id"]),
+    )
+
+
+def _job_id_localization(detail: dict) -> dict:
+    from src.core.scrapers.smartrecruiters import _parse_detail
+
+    parsed = _parse_detail(detail)
+    return {
+        "title": parsed.title,
+        "description": parsed.description,
+        "locations": parsed.locations,
+    }
+
+
+def _collapse_details(
+    details: list[dict],
+    *,
+    template: str,
+    language_preference: tuple[str, ...],
+) -> list[DiscoveredJob]:
+    """Collapse locale publications by exact provider ``jobId``."""
+    from src.core.scrapers.smartrecruiters import _parse_detail
+
+    grouped: dict[str, list[dict]] = {}
+    for detail in details:
+        job_id = str(detail["jobId"]).lower()
+        grouped.setdefault(job_id, []).append(detail)
+
+    jobs: list[DiscoveredJob] = []
+    for job_id, variants in sorted(grouped.items()):
+        ordered = sorted(
+            variants,
+            key=lambda item: _job_id_variant_key(item, language_preference),
+        )
+        primary = ordered[0]
+        parsed = _parse_detail(primary)
+        per_language: dict[str, dict] = {}
+        for variant in ordered:
+            language = _language_code(variant)
+            if language and language not in per_language:
+                per_language[language] = _job_id_localization(variant)
+
+        metadata = dict(parsed.metadata or {})
+        metadata.update(
+            {
+                "smartrecruiters_job_id": job_id,
+                "smartrecruiters_publication_id": str(primary["id"]),
+                "smartrecruiters_publication_ids": sorted(str(item["id"]) for item in variants),
+                "smartrecruiters_ref_number": primary.get("refNumber"),
+            }
+        )
+        jobs.append(
+            DiscoveredJob(
+                url=template.replace("{job_id}", job_id),
+                title=parsed.title,
+                description=parsed.description,
+                locations=parsed.locations,
+                employment_type=parsed.employment_type,
+                job_location_type=parsed.job_location_type,
+                date_posted=parsed.date_posted,
+                base_salary=parsed.base_salary,
+                language=_language_code(primary),
+                localizations=per_language or None,
+                extras=parsed.extras,
+                metadata=metadata,
+            )
+        )
+    return jobs
 
 
 def _stable_mapping_id(
@@ -568,7 +819,6 @@ def _canonical_job(
             "locations": content.locations,
         }
 
-    aliases = sorted(_posting_url(token, str(detail["id"])) for detail in ordered)
     metadata = dict(primary.metadata or {})
     metadata.update(
         {
@@ -577,7 +827,7 @@ def _canonical_job(
         }
     )
     return DiscoveredJob(
-        url=_canonical_source_url(token, components),
+        url=_posting_url(token, str(primary_detail["id"])),
         title=primary.title,
         description=primary.description,
         locations=primary.locations,
@@ -589,7 +839,7 @@ def _canonical_job(
         localizations=localizations,
         extras=primary.extras,
         metadata=metadata,
-        source_aliases=aliases,
+        source_identity=_canonical_source_identity(token, components),
     )
 
 
@@ -650,7 +900,15 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     if not isinstance(token, str) or _TOKEN_RE.fullmatch(token) is None:
         raise ValueError("SmartRecruiters token is not a bounded provider identifier")
 
-    if _canonical_identity_enabled(metadata):
+    canonical_identity = _canonical_identity_enabled(metadata)
+    template = _canonical_template(metadata)
+    if canonical_identity and template is not None:
+        raise ValueError(
+            "SmartRecruiters canonical_identity and canonical_job_id_url_template "
+            "cannot be combined"
+        )
+
+    if canonical_identity:
         from src.core.monitor import MonitorResult
 
         items = await _list_posting_items(client, token)
@@ -665,38 +923,40 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         jobs_by_url = {job.url: job for job in jobs}
         return MonitorResult(urls=set(jobs_by_url), jobs_by_url=jobs_by_url)
 
-    urls: set[str] = set()
-    offset = 0
-    list_url = _api_list_url(token)
-    truncated = False
+    publications, truncated, total_found = await _fetch_publications(token, client)
+    if template is not None:
+        details = await _fetch_details(token, publications, client)
+        jobs = _collapse_details(
+            details,
+            template=template,
+            language_preference=_language_preference(metadata),
+        )
+        log.info(
+            "smartrecruiters.localized_listed",
+            token=token,
+            publications=len(publications),
+            postings=len(jobs),
+            collapsed=len(publications) - len(jobs),
+            total_found=total_found,
+        )
+        if truncated:
+            return truncated_rich_result(jobs)
+        return jobs
 
-    while True:
-        data = await _get_page_with_retry(client, list_url, {"limit": PAGE_SIZE, "offset": offset})
-
-        content = data.get("content", [])
-        for item in content:
-            pid = item.get("id")
-            if pid:
-                urls.add(_posting_url(token, str(pid)))
-
-        total_found = data.get("totalFound", 0)
-        offset += PAGE_SIZE
-
-        if offset >= total_found or len(content) < PAGE_SIZE:
-            break
-
-        if len(urls) >= MAX_JOBS:
-            log.warning(
-                "smartrecruiters.truncated",
-                token=token,
-                total=len(urls),
-                cap=MAX_JOBS,
-            )
-            truncated = True
-            break
-
-    log.info("smartrecruiters.listed", token=token, postings=len(urls))
+    urls = {_posting_url(token, str(item["id"]).strip()) for item in publications}
+    log.info(
+        "smartrecruiters.listed",
+        token=token,
+        postings=len(urls),
+        total_found=total_found,
+    )
     if truncated:
+        log.warning(
+            "smartrecruiters.truncated",
+            token=token,
+            total=len(urls),
+            cap=MAX_JOBS,
+        )
         return truncated_url_result(urls)
     return urls
 
