@@ -2451,7 +2451,10 @@ workday — Workday Job Board API
             facet (e.g. job category) for companies with >2000 listings.
             Multi-site: discovers all tenant job sites via robots.txt and
             aggregates jobs from every site. Set "all_sites": false to
-            monitor only the configured site.
+            monitor only the configured site. If robots.txt omits an official
+            site, use an explicit ordered "sites" list. Cross-site title,
+            locale, and copy-suffix variants collapse by requisition ID while
+            retaining the first site's valid URL for scraping.
 
   Config:
     {"company": "nvidia", "wd_instance": "wd5", "site": "NVIDIAExternalCareerSite"}
@@ -2463,6 +2466,9 @@ workday — Workday Job Board API
     site          Career site identifier. Auto-filled from URL path.
     all_sites     Discover all tenant sites via robots.txt (default: true).
                   Set false to monitor only the configured site.
+    sites         Optional ordered list of 1-20 exact official site tokens.
+                  The first entry must match site. Overrides robots.txt and
+                  cannot be combined with all_sites=false or search_text.
     split_facet   Optional provider facetParameter proven exhaustive for this
                   tenant (for example, "Location_Country"). Use only when the
                   automatic largest-value facet omits unclassified jobs. The

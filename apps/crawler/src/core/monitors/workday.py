@@ -20,9 +20,11 @@ Workday tenants expose all their job board sites in ``robots.txt`` as
 ``Sitemap:`` entries.  By default the monitor discovers **all** sites for
 the tenant and aggregates jobs from every site in a single run. Tenants can
 publish the same requisition on multiple sites. Workday may add a site-specific
-numeric suffix to an otherwise identical external path; those mirrors are
-collapsed before URLs are emitted. To monitor only the configured site, set
-``"all_sites": false`` in board metadata.
+numeric suffix or publish a different title path for the same requisition;
+those mirrors are collapsed by the stable requisition token before URLs are
+emitted. If ``robots.txt`` omits an official site, configure a bounded ordered
+``"sites"`` list. To monitor only the configured site, set ``"all_sites":
+false`` in board metadata.
 
 Some tenants combine jobs for distinct brands in one site. Set
 ``"search_text": "Brand Name"`` together with ``"all_sites": false`` to
@@ -76,12 +78,15 @@ _TRUNCATED_PATH = "__workday_truncated__"
 _TRUNCATED_SENTINEL = ("__workday_truncated__", _TRUNCATED_PATH)
 
 _SITEMAP_RE = re.compile(r"myworkdayjobs\.com/([^/]+)/siteMap")
+_MAX_EXPLICIT_SITES = 20
+_SITE_TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}")
 # Workday appends ``-1``, ``-2``, etc. after an already numeric requisition
 # token when one posting is published through multiple tenant sites (for
 # example ``Engineer_123456-2`` or ``Engineer_R-123456-2``). Requiring a digit
 # before the candidate suffix is important: many tenants use stable IDs such
 # as ``Engineer_R-123456``, whose numeric component is not a copy suffix.
 _SITE_COPY_SUFFIX_RE = re.compile(r"(?P<stable>_[^/]*\d)-\d+$")
+_REQUISITION_TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.-]*\d")
 
 # Matches Workday board URLs, optionally with locale prefix (e.g. /en-US/)
 _URL_RE = re.compile(
@@ -124,8 +129,48 @@ def _job_url(company: str, wd_instance: str, site: str, external_path: str) -> s
 
 
 def _cross_site_path_key(external_path: str) -> str:
-    """Return the stable identity for a Workday path mirrored across sites."""
-    return _SITE_COPY_SUFFIX_RE.sub(r"\g<stable>", external_path)
+    """Return the stable identity for a Workday path mirrored across sites.
+
+    Workday requisition tokens are tenant-wide identities. The title and
+    location segments before the final underscore are presentation data and
+    can differ between official sites or locales. Keep the normalized full
+    path as a conservative fallback for tenants whose paths do not expose a
+    recognizable requisition token.
+    """
+    normalized_path = _SITE_COPY_SUFFIX_RE.sub(r"\g<stable>", external_path)
+    final_segment = normalized_path.rsplit("/", 1)[-1]
+    _, separator, token = final_segment.rpartition("_")
+    if separator and _REQUISITION_TOKEN_RE.fullmatch(token):
+        return f"requisition:{token}"
+    return normalized_path
+
+
+def _configured_sites(metadata: dict, *, configured_site: str) -> list[str] | None:
+    """Return a validated ordered override for Workday multi-site discovery."""
+    if "sites" not in metadata:
+        return None
+
+    raw_sites = metadata.get("sites")
+    if not isinstance(raw_sites, list) or not raw_sites or len(raw_sites) > _MAX_EXPLICIT_SITES:
+        raise ValueError(
+            f"Workday sites must be a non-empty list of at most {_MAX_EXPLICIT_SITES} entries"
+        )
+
+    sites: list[str] = []
+    seen: set[str] = set()
+    for raw_site in raw_sites:
+        if not isinstance(raw_site, str) or _SITE_TOKEN_RE.fullmatch(raw_site) is None:
+            raise ValueError("Workday sites entries must be board tokens up to 128 characters")
+        if raw_site in seen:
+            raise ValueError(f"Workday sites contains duplicate entry {raw_site!r}")
+        seen.add(raw_site)
+        sites.append(raw_site)
+
+    if sites[0] != configured_site:
+        raise ValueError("Workday sites first entry must match the configured site")
+    if metadata.get("all_sites") is False:
+        raise ValueError("Workday sites cannot be combined with all_sites=false")
+    return sites
 
 
 def _configured_search_text(metadata: dict, *, all_sites: bool) -> str | None:
@@ -883,13 +928,17 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             )
         company, wd_instance, site = parsed
 
+    explicit_sites = _configured_sites(metadata, configured_site=site)
     all_sites = metadata.get("all_sites", True)
-    search_text = _configured_search_text(metadata, all_sites=all_sites)
+    search_text = _configured_search_text(
+        metadata,
+        all_sites=bool(explicit_sites) or all_sites,
+    )
     split_facet = _configured_split_facet(metadata)
     truncated = False
 
-    if all_sites:
-        sites = await _discover_sites(company, wd_instance, client)
+    if explicit_sites is not None or all_sites:
+        sites = explicit_sites or await _discover_sites(company, wd_instance, client)
         if not sites:
             log.warning("workday.no_sites_discovered", company=company, fallback=site)
             sites = [site]
@@ -954,13 +1003,17 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             )
         company, wd_instance, site = parsed
 
+    explicit_sites = _configured_sites(metadata, configured_site=site)
     all_sites = metadata.get("all_sites", True)
-    search_text = _configured_search_text(metadata, all_sites=all_sites)
+    search_text = _configured_search_text(
+        metadata,
+        all_sites=bool(explicit_sites) or all_sites,
+    )
     split_facet = _configured_split_facet(metadata)
     truncated = False
 
-    if all_sites:
-        sites = await _discover_sites(company, wd_instance, client)
+    if explicit_sites is not None or all_sites:
+        sites = explicit_sites or await _discover_sites(company, wd_instance, client)
         if not sites:
             log.warning("workday.no_sites_discovered", company=company, fallback=site)
             sites = [site]
