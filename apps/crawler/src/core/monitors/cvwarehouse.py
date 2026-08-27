@@ -149,12 +149,22 @@ def _parse_locale_page(page: str, page_url: str) -> list[DiscoveredJob]:
         if not title or not location or not description:
             raise ValueError(f"CVWarehouse job {job_id} is missing required rich fields")
 
-        job_url = urljoin(page_url, link.attributes.get("href") or "")
-        parsed_job_url = urlparse(job_url)
+        linked_job_url = urljoin(page_url, link.attributes.get("href") or "")
+        parsed_job_url = urlparse(linked_job_url)
         parsed_page_url = urlparse(page_url)
         linked_id = (parse_qs(parsed_job_url.query).get("job") or [None])[0]
         if parsed_job_url.hostname != parsed_page_url.hostname or linked_id != job_id:
             raise ValueError(f"CVWarehouse job {job_id} has an invalid detail URL")
+        # ``lang``, ``section``, and the title-derived ``q`` value select one
+        # publication of the same provider job and change across locales or
+        # title edits.  CVWarehouse resolves the job-id-only route directly,
+        # so persist that stable user-facing URL instead of churning postings.
+        job_url = urlunparse(
+            parsed_job_url._replace(
+                query=urlencode({"job": job_id}),
+                fragment="",
+            )
+        )
 
         schedule = _schedule(card)
         work_type = card.attributes.get("data-filter-worktype") or None
@@ -181,7 +191,7 @@ def _parse_locale_page(page: str, page_url: str) -> list[DiscoveredJob]:
                 locations=[location],
                 employment_type=employment_type,
                 job_location_type=_job_location_type(card),
-                language=_language(job_url),
+                language=_language(linked_job_url),
                 metadata=metadata,
             )
         )
