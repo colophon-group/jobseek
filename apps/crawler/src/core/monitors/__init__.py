@@ -261,7 +261,7 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
         )
         or (
             monitor_type == "smartrecruiters"
-            and (config or {}).get("canonical_identity") == "job-location-v1"
+            and (config or {}).get("canonical_identity") in {"job-v1", "job-location-v1"}
         )
         or (monitor_type == "dom" and bool((config or {}).get("rich_rows")))
     )

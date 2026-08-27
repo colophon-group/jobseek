@@ -677,10 +677,10 @@ def auto_scraper_type(
                 ],
             },
         )
-    if (
-        monitor_type == "smartrecruiters"
-        and (config or {}).get("canonical_identity") == "job-location-v1"
-    ):
+    if monitor_type == "smartrecruiters" and (config or {}).get("canonical_identity") in {
+        "job-v1",
+        "job-location-v1",
+    }:
         return ("skip", None)
 
     # oracle_hcm is a rich monitor (returns DiscoveredJob with title/location/date)
@@ -1077,6 +1077,6 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
         or (monitor_type == "dom" and bool((config or {}).get("rich_rows")))
         or (
             monitor_type == "smartrecruiters"
-            and (config or {}).get("canonical_identity") == "job-location-v1"
+            and (config or {}).get("canonical_identity") in {"job-v1", "job-location-v1"}
         )
     )
