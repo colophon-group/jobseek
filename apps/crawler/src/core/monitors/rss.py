@@ -638,7 +638,10 @@ async def _resolve_sf_job_invite_identities(
                 else:
                     if response.status_code in _SF_DETAIL_REDIRECT_STATUSES:
                         break
-                    if not is_retryable_status(response.status_code):
+                    if (
+                        response.status_code not in _SF_DETAIL_RETRYABLE_STATUSES
+                        and not is_retryable_status(response.status_code)
+                    ):
                         raise SuccessFactorsJobIdentityError(
                             "SuccessFactors job identity expected a redirect "
                             f"but got HTTP {response.status_code}: {job.url}"
@@ -694,7 +697,15 @@ async def _resolve_sf_job_invite_identities(
         job.metadata = metadata
         job.url = urlunparse(parsed._replace(query="", fragment=""))
 
-    await asyncio.gather(*(_one(job) for job in jobs))
+    tasks = [asyncio.create_task(_one(job)) for job in jobs]
+    try:
+        await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
 
 
 # ── Feed URL helpers ────────────────────────────────────────────────────

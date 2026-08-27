@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -578,6 +579,51 @@ class TestDiscover:
                     },
                     client,
                 )
+
+    @pytest.mark.parametrize("transient_status", [403, 429, 503])
+    async def test_successfactors_job_identity_retries_transient_statuses(
+        self,
+        transient_status,
+        monkeypatch,
+    ):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Pilot</title>
+                <link>https://jobs.example.com/job/pilot/1001/</link>
+            </item>
+        """)
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            attempts += 1
+            if attempts == 1:
+                return httpx.Response(transient_status)
+            return httpx.Response(
+                302,
+                headers={"location": "/job/Pilot/9580-en_US/"},
+            )
+
+        sleep = AsyncMock()
+        monkeypatch.setattr(rss_monitor, "_sleep", sleep)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://jobs.example.com/search/",
+                    "metadata": {
+                        "preset": "successfactors",
+                        "feed_url": "https://jobs.example.com/googlefeed.xml",
+                        "resolve_job_invite_identity": True,
+                    },
+                },
+                client,
+            )
+
+        assert attempts == 2
+        sleep.assert_awaited_once()
+        assert jobs[0].url == "https://jobs.example.com/job/Pilot/9580-en_US/"
 
     async def test_successfactors_job_identity_enforces_bounded_feed_cap(self, monkeypatch):
         feed_xml = _rss_xml("""
