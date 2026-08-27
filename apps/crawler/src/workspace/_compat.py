@@ -104,6 +104,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "traffit",
         "typify",
         "ukg",
+        "unifr",
         "welcometothejungle",
     }
 )

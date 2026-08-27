@@ -1,0 +1,28 @@
+{
+  "observed_at": "2026-08-26",
+  "central": {
+    "fr": ["1885", "1887", "1891", "1893", "1898", "1899", "1900", "1901", "1904", "1905", "1906", "1911"],
+    "de": ["1886", "1891", "1893", "1894", "1895", "1897", "1898", "1901", "1904", "1906", "1908", "1910", "1911"],
+    "union": ["1885", "1886", "1887", "1891", "1893", "1894", "1895", "1897", "1898", "1899", "1900", "1901", "1904", "1905", "1906", "1908", "1910", "1911"]
+  },
+  "accordion": {
+    "chemistry": ["styleguide-2-1", "styleguide-2-2"],
+    "ami": ["styleguide-3-1", "styleguide-3-2", "styleguide-3-3"],
+    "biology": ["styleguide-5-1", "styleguide-5-2D3", "styleguide-5-3", "styleguide-5-4", "styleguide-5-5"],
+    "geosciences": ["styleguide-2-1", "styleguide-2-2"],
+    "physics": ["styleguide-2-1", "styleguide-2-2"],
+    "ses": ["styleguide-2-1", "styleguide-2-2"]
+  },
+  "expired": {
+    "ami": ["styleguide-3-2", "styleguide-3-3"],
+    "geosciences": ["styleguide-2-1"]
+  },
+  "central_duplicates": {
+    "physics": {"styleguide-2-2": "1911"},
+    "ses": {"styleguide-2-2": "1898"}
+  },
+  "link_counts": {
+    "law": 4,
+    "regional-school-service": 2
+  }
+}

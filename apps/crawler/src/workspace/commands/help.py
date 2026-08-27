@@ -127,6 +127,7 @@ Monitor Types (cheapest first):
   softgarden        10      Job URLs          Auto-configured
   traffit           10      Full job data     No (skipped)
   ukg               10      Full/partial      Auto-enriched
+  unifr             10      Full or PDF URLs  skip/pdf (fixed source)
   workable          10      Job URLs          Auto-configured
   welcometothejungle 10      Full job data     No (skipped)
   workday           10      Job URLs          Auto-configured
@@ -3951,6 +3952,23 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
                      governed by offset_overlap.""",
     "dom": MONITOR_DOM,
     "inline": MONITOR_INLINE,
+    "unifr": """\
+unifr — University of Fribourg authoritative source monitor
+
+  Returns:  Full job data for the central FR/DE vacancy widget and bounded
+            first-party faculty inventories; PDF URLs for law and RSD.
+  Scraper:  skip for rich sources; pdf for law and RSD
+  Cost:     10
+  Browser:  No
+
+  Config:   {"source": "central"}
+
+  This is a fixed-origin monitor for the University of Fribourg configuration.
+  It unions the French and German central inventories by numeric provider ID,
+  validates every detail response against that ID and University authority,
+  and fails closed on pagination, source inventory drift, unsafe zero results,
+  expired departmental listings, or broken source-owned identities.
+""",
     "jobs_ch": """\
 jobs_ch — JobCloud Employer Profiles (jobs.ch / jobup.ch)
 
