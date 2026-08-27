@@ -3871,6 +3871,31 @@ ycombinator — YCombinator Jobs (last resort, HTML scraping)
               (last resort — prefer a dedicated ATS if available)"
   Zero jobs?  Company may have migrated off YC — check for a real ATS board."""
 
+MONITOR_UNISANTE = """\
+unisante — Unisanté first-party careers monitor
+
+  Listing:  GET https://emploi.unisante.ch/index.php/offres and /offres
+  Returns:  Rich jobs with visible, normalized descriptions
+  Scraper:  skip
+  Cost:     10
+  Browser:  No
+
+  Config:   {"identity_migration": "unisante-provider-reference-v1"}
+
+  This company-specific monitor validates both official listing aliases and
+  requires their complete slug/title inventories to agree. It rejects
+  pagination and unknown job links, reads each displayed provider reference as
+  a stable `unisante:emploi:<id>` identity while retaining the real
+  title-bearing detail URL for users. A bounded receipt-backed transition
+  assigns those identities to matching pre-monitor rows and retires duplicate
+  or expired aliases; existing or foreign durable identities block the change.
+  The monitor includes evergreen title-only slugs and excludes jobs whose
+  visible application deadline has expired. JSON-LD descriptions are ignored
+  because the provider emits mojibake/incomplete content; only validated safe
+  structured fields are used. Zero is accepted only after both aliases prove
+  the exact server-visible empty inventory contract; the `#no-ads` marker that
+  is normally hidden on non-empty pages is not zero evidence by itself."""
+
 MONITOR_CARDS: dict[str, str] = {
     "accenture": MONITOR_ACCENTURE,
     "almacareer": MONITOR_ALMACAREER,
@@ -3893,6 +3918,7 @@ MONITOR_CARDS: dict[str, str] = {
     "hirehive": MONITOR_HIREHIVE,
     "hireology": MONITOR_HIREOLOGY,
     "turbohire": MONITOR_TURBOHIRE,
+    "unisante": MONITOR_UNISANTE,
     "jarvi": MONITOR_JARVI,
     "jobylon": MONITOR_JOBYLON,
     "johdi": MONITOR_JOHDI,

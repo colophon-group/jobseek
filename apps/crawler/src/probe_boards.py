@@ -1609,6 +1609,56 @@ async def _probe_static_page(row: dict, client: httpx.AsyncClient) -> ProbeResul
     )
 
 
+async def _probe_unisante(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    """Run Unisanté's dual-alias, fail-closed production inventory reader."""
+    try:
+        decoded = json.loads(row["monitor_config"] or "{}")
+    except (json.JSONDecodeError, TypeError) as exc:
+        return ProbeResult(
+            row["board_slug"],
+            "unisante",
+            row["board_url"],
+            "fail",
+            f"invalid monitor_config JSON: {exc}",
+        )
+    if decoded != {"identity_migration": "unisante-provider-reference-v1"}:
+        return ProbeResult(
+            row["board_slug"],
+            "unisante",
+            row["board_url"],
+            "fail",
+            "Unisanté monitor_config must contain only the reviewed identity migration",
+        )
+
+    from src.core.monitor import monitor_one
+
+    try:
+        discovered = await monitor_one(row["board_url"], "unisante", decoded, client)
+    except httpx.HTTPError as exc:
+        return ProbeResult(
+            row["board_slug"],
+            "unisante",
+            row["board_url"],
+            "warn",
+            f"network error: {type(exc).__name__}: {exc}",
+        )
+    except Exception as exc:  # noqa: BLE001 - extraction drift must fail CI
+        return ProbeResult(
+            row["board_slug"],
+            "unisante",
+            row["board_url"],
+            "fail",
+            f"authoritative inventory failed: {exc}",
+        )
+    return ProbeResult(
+        row["board_slug"],
+        "unisante",
+        row["board_url"],
+        "ok",
+        f"authoritative inventory: {_discovery_count(discovered)} active jobs",
+    )
+
+
 def _classify(
     row: dict,
     monitor_type: str,
@@ -1670,6 +1720,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "rss": _probe_rss,
     "inline": _probe_static_page,
     "johdi": _probe_static_page,
+    "unisante": _probe_unisante,
 }
 
 

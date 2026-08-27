@@ -241,6 +241,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `typify`          | Rich     | json-ld     | Typify partitioned vacancy API + description enrichment |
 | 10   | `ukg`             | Rich     | embedded    | UKG Pro search API + detail enrichment  |
 | 10   | `unifr`           | Rich/URL-only | skip/pdf | University of Fribourg FR/DE and faculty inventories |
+| 10   | `unisante`        | Rich     | skip        | Bounded Unisanté official listing/detail validation |
 | 10   | `welcometothejungle` | Rich  | skip        | Welcome to the Jungle public jobs APIs  |
 | 10   | `workable`        | URL-only | workable    | Workable API                            |
 | 10   | `workday`         | URL-only | workday     | Workday Job Board API                   |
