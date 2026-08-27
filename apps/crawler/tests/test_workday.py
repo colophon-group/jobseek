@@ -239,6 +239,88 @@ class TestNormalizeWorkdayLocation:
             == "Winston-Salem, NC, United States of America"
         )
 
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            (
+                "M2327-Omache Shopping Center-Omak, WA 98841",
+                "Omak, WA, United States of America",
+            ),
+            (
+                "M2340-Largo Plaza-maurices-Largo, FL 33771",
+                "Largo, FL, United States of America",
+            ),
+            (
+                "Store 2319 - Forum Plaza Shopping Center - Rolla, MO 65401",
+                "Rolla, MO, United States of America",
+            ),
+            (
+                "Store M2320-Park West Place-Stockton, CA 95219",
+                "Stockton, CA, United States of America",
+            ),
+            (
+                "Store M2323-The Uptown-Jonesboro, AR 72401",
+                "Jonesboro, AR, United States of America",
+            ),
+            (
+                "Store M2324-Creekside Town Center-Roseville, CA 95678",
+                "Roseville, CA, United States of America",
+            ),
+            (
+                "Store 2321-Dimond Center-Anchorage AK 99515",
+                "Anchorage, AK, United States of America",
+            ),
+            (
+                "Store 2333-Chesterfield Comns E-Chesterfield, MO  63005",
+                "Chesterfield, MO, United States of America",
+            ),
+            (
+                "Store 2326-Stone Creek Crossing-San Marcos, TX 78666",
+                "San Marcos, TX, United States of America",
+            ),
+        ],
+    )
+    def test_live_maurices_facility_variants(self, raw, expected):
+        assert (
+            _normalize_workday_location(
+                raw,
+                country="United States of America",
+                tenant="maurices",
+            )
+            == expected
+        )
+
+    def test_ambiguous_facility_boundary_fails_closed(self):
+        raw = "Store 9999-Unknown-Winston-Salem, NC 27101"
+        assert (
+            _normalize_workday_location(
+                raw,
+                country="United States of America",
+                tenant="maurices",
+            )
+            == raw
+        )
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "Field Mgmt-District 426-maurices",
+            "Store 2325-Village at Allen-maurices",
+            "Store 2328-Lebanon Marketplace-maurices",
+            "M4145 – Westgate Home Centre –maurices",
+            "Store 4146-Emerald Hills Centre-maurices",
+        ],
+    )
+    def test_facility_without_city_evidence_fails_closed(self, raw):
+        assert (
+            _normalize_workday_location(
+                raw,
+                country="United States of America",
+                tenant="maurices",
+            )
+            == raw
+        )
+
     def test_does_not_rewrite_ordinary_hyphenated_location(self):
         assert (
             _normalize_workday_location(
