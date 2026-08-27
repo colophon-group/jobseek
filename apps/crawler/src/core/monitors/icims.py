@@ -15,6 +15,7 @@ from urllib.parse import parse_qsl, urlparse
 
 import httpx
 import structlog
+from selectolax.lexbor import LexborHTMLParser
 
 from src.core.monitors import BoardGoneError, register
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
@@ -68,6 +69,50 @@ _ALLOWED_QUERY_VALUES: dict[str, re.Pattern[str]] = {
     "searchRelation": re.compile(r"keyword_all"),
     "ss": re.compile(r"1"),
 }
+
+_CROSS_LOCALE_DEDUPE_KEYS = frozenset({"peer_host", "title_aliases"})
+
+
+def _normalized_listing_text(value: str) -> str:
+    return " ".join(value.split()).casefold()
+
+
+def _cross_locale_dedupe_config(
+    metadata: dict,
+    host: str,
+) -> tuple[str, dict[str, str]] | None:
+    raw = metadata.get("cross_locale_dedupe")
+    if raw is None:
+        return None
+    if not isinstance(raw, dict) or set(raw) - _CROSS_LOCALE_DEDUPE_KEYS:
+        raise ValueError("iCIMS cross_locale_dedupe must contain only peer_host and title_aliases")
+    peer_host = _normalize_host(raw.get("peer_host"))
+    if peer_host is None or peer_host == host:
+        raise ValueError("iCIMS cross_locale_dedupe peer_host must be a different valid host")
+    raw_aliases = raw.get("title_aliases", {})
+    if not isinstance(raw_aliases, dict) or len(raw_aliases) > 100:
+        raise ValueError(
+            "iCIMS cross_locale_dedupe title_aliases must be an object up to 100 entries"
+        )
+    aliases: dict[str, str] = {}
+    for source, canonical in raw_aliases.items():
+        if (
+            not isinstance(source, str)
+            or not isinstance(canonical, str)
+            or not source.strip()
+            or not canonical.strip()
+            or len(source) > 200
+            or len(canonical) > 200
+        ):
+            raise ValueError(
+                "iCIMS cross_locale_dedupe title aliases must be non-empty strings up to 200 chars"
+            )
+        normalized_source = _normalized_listing_text(source)
+        normalized_canonical = _normalized_listing_text(canonical)
+        previous = aliases.setdefault(normalized_source, normalized_canonical)
+        if previous != normalized_canonical:
+            raise ValueError("iCIMS cross_locale_dedupe title aliases conflict after normalization")
+    return peer_host, aliases
 
 
 def _normalize_host(value: object) -> str | None:
@@ -159,6 +204,48 @@ def _parse_listing(page: str, host: str) -> set[str]:
     }
 
 
+def _parse_listing_identities(page: str, host: str) -> dict[str, tuple[str, str, str]]:
+    """Return stable title/region/type identities from iCIMS listing cards."""
+    document = LexborHTMLParser(page)
+    records: dict[str, tuple[str, str, str]] = {}
+    for card in document.css(".iCIMS_JobCardItem"):
+        anchor = card.css_first("a.iCIMS_Anchor")
+        title = card.css_first("h3")
+        region_container = card.css_first("div.header.left")
+        if anchor is None or title is None or region_container is None:
+            raise ValueError(f"iCIMS host {host!r} returned an incomplete listing card")
+        url = _canonical_job_url(anchor.attributes.get("href") or "", host)
+        visible_region_spans = [
+            span
+            for span in region_container.css("span")
+            if "sr-only" not in (span.attributes.get("class") or "").split()
+        ]
+        job_type = None
+        for field in card.css(".iCIMS_JobHeaderTag"):
+            label = field.css_first("dt")
+            value = field.css_first("dd")
+            if (
+                label is not None
+                and value is not None
+                and _normalized_listing_text(label.text(strip=True)) == "job type"
+            ):
+                job_type = value.text(strip=True)
+                break
+        raw_title = title.text(strip=True)
+        raw_region = visible_region_spans[-1].text(strip=True) if visible_region_spans else ""
+        if url is None or not raw_title or not raw_region or not job_type:
+            raise ValueError(f"iCIMS host {host!r} returned an incomplete listing identity")
+        identity = (
+            _normalized_listing_text(raw_title),
+            _normalized_listing_text(raw_region),
+            _normalized_listing_text(job_type),
+        )
+        previous = records.setdefault(url, identity)
+        if previous != identity:
+            raise ValueError(f"iCIMS host {host!r} returned conflicting listing identities")
+    return records
+
+
 def _page_metadata(page: str) -> tuple[int | None, int]:
     """Return the one-based current page (when visible) and total pages."""
     marker = _PAGE_MARKER_RE.search(page)
@@ -198,13 +285,16 @@ async def _fetch_listing(host: str, page_index: int, client: httpx.AsyncClient) 
 async def _discover_pages(
     host: str,
     client: httpx.AsyncClient,
-) -> tuple[set[str], bool, int]:
+    *,
+    collect_identities: bool = False,
+) -> tuple[set[str], bool, int, dict[str, tuple[str, str, str]]]:
     first_page = await _fetch_listing(host, 0, client)
     first_current, advertised_pages = _page_metadata(first_page)
     if first_current not in {None, 1}:
         raise ValueError(f"iCIMS host {host!r} returned page {first_current} for page index 0")
 
     urls: set[str] = set()
+    identities: dict[str, tuple[str, str, str]] = {}
     truncated = advertised_pages > MAX_PAGES
 
     def merge_page(page_index: int, page: str) -> None:
@@ -224,6 +314,16 @@ async def _discover_pages(
         if urls.intersection(page_urls):
             truncated = True
         urls.update(page_urls)
+        if collect_identities:
+            page_identities = _parse_listing_identities(page, host)
+            if set(page_identities) != page_urls:
+                raise ValueError(
+                    f"iCIMS host {host!r} listing identities do not match discovered jobs"
+                )
+            for url, identity in page_identities.items():
+                previous = identities.setdefault(url, identity)
+                if previous != identity:
+                    raise ValueError(f"iCIMS host {host!r} returned conflicting listing identities")
         if len(page) >= MAX_HTML_CHARS:
             truncated = True
 
@@ -240,7 +340,7 @@ async def _discover_pages(
         page = await _fetch_listing(host, page_index, client)
         merge_page(page_index, page)
 
-    return urls, truncated, advertised_pages
+    return urls, truncated, advertised_pages, identities
 
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None):
@@ -254,7 +354,40 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             "and no valid host is present in metadata"
         )
 
-    urls, truncated, pages = await _discover_pages(host, client)
+    dedupe = _cross_locale_dedupe_config(metadata, host)
+    urls, truncated, pages, identities = await _discover_pages(
+        host,
+        client,
+        collect_identities=dedupe is not None,
+    )
+    if dedupe is not None:
+        peer_host, aliases = dedupe
+        _peer_urls, peer_truncated, _peer_pages, peer_identities = await _discover_pages(
+            peer_host,
+            client,
+            collect_identities=True,
+        )
+        if peer_truncated:
+            raise ValueError(
+                f"iCIMS cross-locale peer {peer_host!r} was truncated; refusing partial dedupe"
+            )
+
+        def canonical(identity: tuple[str, str, str]) -> tuple[str, str, str]:
+            title, region, job_type = identity
+            return aliases.get(title, title), region, job_type
+
+        peer_keys = {canonical(identity) for identity in peer_identities.values()}
+        duplicates = {
+            url for url, identity in identities.items() if canonical(identity) in peer_keys
+        }
+        urls.difference_update(duplicates)
+        log.info(
+            "icims.cross_locale_deduped",
+            host=host,
+            peer_host=peer_host,
+            removed=len(duplicates),
+            kept=len(urls),
+        )
     log_method = log.warning if truncated else log.info
     log_method("icims.discovered", host=host, jobs=len(urls), pages=pages, truncated=truncated)
     return truncated_url_result(urls) if truncated else urls
