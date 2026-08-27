@@ -310,6 +310,9 @@ message JobContent {
 message DiscoveredJob {
   string url = 1;
   JobContent content = 2;
+  // Stable provider identity for persistence and projection. When absent,
+  // consumers retain the v1 legacy behavior and use url as the identity.
+  optional string source_identity = 3;
 }
 
 message MonitorMetadataUpdates {
@@ -727,6 +730,9 @@ message CapturedExchange {
 message JobEffect {
   string source_url = 1;
   string content_sha256 = 2;
+  // Matches DiscoveredJob.source_identity for monitor effects. When absent,
+  // consumers retain the v1 legacy behavior and use source_url as identity.
+  optional string source_identity = 3;
 }
 
 enum ProjectedAction {

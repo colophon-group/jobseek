@@ -1,0 +1,195 @@
+{
+  "format": 1,
+  "json_jobs": [
+    {
+      "canonical_json_hex": "7b22626173655f73616c617279223a6e756c6c2c22646174655f706f73746564223a6e756c6c2c226465736372697074696f6e223a6e756c6c2c22656d706c6f796d656e745f74797065223a6e756c6c2c22657874726173223a6e756c6c2c226a6f625f6c6f636174696f6e5f74797065223a6e756c6c2c226c616e6775616765223a22656e222c226c6f63616c697a6174696f6e73223a6e756c6c2c226c6f636174696f6e73223a5b225a7572696368225d2c226d65746164617461223a6e756c6c2c227469746c65223a22456e67696e656572222c2275726c223a2268747470733a2f2f6a6f62732e6578616d706c652f34323f6c616e673d656e227d",
+      "id": "absent",
+      "job": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "localizations": null,
+        "locations": [
+          "Zurich"
+        ],
+        "metadata": null,
+        "title": "Engineer",
+        "url": "https://jobs.example/42?lang=en"
+      }
+    },
+    {
+      "canonical_json_hex": "7b22626173655f73616c617279223a6e756c6c2c22646174655f706f73746564223a6e756c6c2c226465736372697074696f6e223a6e756c6c2c22656d706c6f796d656e745f74797065223a6e756c6c2c22657874726173223a6e756c6c2c226a6f625f6c6f636174696f6e5f74797065223a6e756c6c2c226c616e6775616765223a22656e222c226c6f63616c697a6174696f6e73223a6e756c6c2c226c6f636174696f6e73223a5b225a7572696368225d2c226d65746164617461223a6e756c6c2c22736f757263655f6964656e74697479223a6e756c6c2c227469746c65223a22456e67696e656572222c2275726c223a2268747470733a2f2f6a6f62732e6578616d706c652f34323f6c616e673d656e227d",
+      "id": "explicit-null",
+      "job": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "localizations": null,
+        "locations": [
+          "Zurich"
+        ],
+        "metadata": null,
+        "source_identity": null,
+        "title": "Engineer",
+        "url": "https://jobs.example/42?lang=en"
+      }
+    },
+    {
+      "canonical_json_hex": "7b22626173655f73616c617279223a6e756c6c2c22646174655f706f73746564223a6e756c6c2c226465736372697074696f6e223a6e756c6c2c22656d706c6f796d656e745f74797065223a6e756c6c2c22657874726173223a6e756c6c2c226a6f625f6c6f636174696f6e5f74797065223a6e756c6c2c226c616e6775616765223a22656e222c226c6f63616c697a6174696f6e73223a6e756c6c2c226c6f636174696f6e73223a5b225a7572696368225d2c226d65746164617461223a6e756c6c2c22736f757263655f6964656e74697479223a22736d617274726563727569746572733a6578616d706c653a3432222c227469746c65223a22456e67696e656572222c2275726c223a2268747470733a2f2f6a6f62732e6578616d706c652f34323f6c616e673d656e227d",
+      "id": "present",
+      "job": {
+        "base_salary": null,
+        "date_posted": null,
+        "description": null,
+        "employment_type": null,
+        "extras": null,
+        "job_location_type": null,
+        "language": "en",
+        "localizations": null,
+        "locations": [
+          "Zurich"
+        ],
+        "metadata": null,
+        "source_identity": "smartrecruiters:example:42",
+        "title": "Engineer",
+        "url": "https://jobs.example/42?lang=en"
+      }
+    }
+  ],
+  "protobuf": [
+    {
+      "absent_wire_hex": "0a1f68747470733a2f2f6a6f62732e6578616d706c652f34323f6c616e673d656e120a0a08456e67696e656572",
+      "future_unknown_field": 99,
+      "future_unknown_wire_hex": "0a1f68747470733a2f2f6a6f62732e6578616d706c652f34323f6c616e673d656e120a0a08456e67696e6565721a1a736d617274726563727569746572733a6578616d706c653a343298068180808080808010",
+      "message": "DiscoveredJob",
+      "present_wire_hex": "0a1f68747470733a2f2f6a6f62732e6578616d706c652f34323f6c616e673d656e120a0a08456e67696e6565721a1a736d617274726563727569746572733a6578616d706c653a3432",
+      "source_identity": "smartrecruiters:example:42",
+      "url_field": "url"
+    },
+    {
+      "absent_wire_hex": "0a1f68747470733a2f2f6a6f62732e6578616d706c652f34323f6c616e673d656e124030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030",
+      "future_unknown_field": 99,
+      "future_unknown_wire_hex": "0a1f68747470733a2f2f6a6f62732e6578616d706c652f34323f6c616e673d656e1240303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030301a1a736d617274726563727569746572733a6578616d706c653a343298068180808080808010",
+      "message": "JobEffect",
+      "present_wire_hex": "0a1f68747470733a2f2f6a6f62732e6578616d706c652f34323f6c616e673d656e1240303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030301a1a736d617274726563727569746572733a6578616d706c653a3432",
+      "source_identity": "smartrecruiters:example:42",
+      "url_field": "source_url"
+    }
+  ],
+  "schemas": {
+    "current": {
+      "messages": {
+        "DiscoveredJob": {
+          "fields": [
+            {
+              "json_name": "url",
+              "name": "url",
+              "number": 1,
+              "proto3_optional": false,
+              "value_type": "string",
+              "wire_type": 2
+            },
+            {
+              "json_name": "content",
+              "name": "content",
+              "number": 2,
+              "proto3_optional": false,
+              "value_type": "message",
+              "wire_type": 2
+            },
+            {
+              "json_name": "sourceIdentity",
+              "name": "source_identity",
+              "number": 3,
+              "proto3_optional": true,
+              "value_type": "string",
+              "wire_type": 2
+            }
+          ]
+        },
+        "JobEffect": {
+          "fields": [
+            {
+              "json_name": "sourceUrl",
+              "name": "source_url",
+              "number": 1,
+              "proto3_optional": false,
+              "value_type": "string",
+              "wire_type": 2
+            },
+            {
+              "json_name": "contentSha256",
+              "name": "content_sha256",
+              "number": 2,
+              "proto3_optional": false,
+              "value_type": "string",
+              "wire_type": 2
+            },
+            {
+              "json_name": "sourceIdentity",
+              "name": "source_identity",
+              "number": 3,
+              "proto3_optional": true,
+              "value_type": "string",
+              "wire_type": 2
+            }
+          ]
+        }
+      },
+      "shape_sha256": "9bcb6bed5eb643e63a7be4d7f57e12342ca182a5ab06b226cecbdc07962032fb"
+    },
+    "frozen": {
+      "messages": {
+        "DiscoveredJob": {
+          "fields": [
+            {
+              "json_name": "url",
+              "name": "url",
+              "number": 1,
+              "proto3_optional": false,
+              "value_type": "string",
+              "wire_type": 2
+            },
+            {
+              "json_name": "content",
+              "name": "content",
+              "number": 2,
+              "proto3_optional": false,
+              "value_type": "message",
+              "wire_type": 2
+            }
+          ]
+        },
+        "JobEffect": {
+          "fields": [
+            {
+              "json_name": "sourceUrl",
+              "name": "source_url",
+              "number": 1,
+              "proto3_optional": false,
+              "value_type": "string",
+              "wire_type": 2
+            },
+            {
+              "json_name": "contentSha256",
+              "name": "content_sha256",
+              "number": 2,
+              "proto3_optional": false,
+              "value_type": "string",
+              "wire_type": 2
+            }
+          ]
+        }
+      },
+      "shape_sha256": "aa547d8c0cbc482ecb77ec8726fe5ffa4d521abc091f26a3e26dd9f072174259"
+    }
+  }
+}
