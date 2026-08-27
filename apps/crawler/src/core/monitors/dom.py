@@ -142,8 +142,12 @@ _YOUSTY_COMPANY_PATH_RE = re.compile(
 _YOUSTY_LINK_SELECTOR = "a[href*='/de-CH/lehrstellen/profile/']"
 
 
-async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> set[str]:
-    """Retain URLs whose current detail page contains JobPosting JSON-LD.
+async def _filter_jsonld_job_urls(
+    urls: set[str],
+    client: httpx.AsyncClient,
+    hiring_organization_pattern: re.Pattern[str] | None = None,
+) -> set[str]:
+    """Retain URLs whose current detail page contains allowed JobPosting JSON-LD.
 
     Detail fetch failures propagate so a transient provider outage cannot turn
     a partial inventory into a successful monitor cycle and tombstone jobs.
@@ -151,7 +155,7 @@ async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> 
     """
     if len(urls) > _MAX_JSONLD_VERIFICATION_URLS:
         raise ValueError(
-            "DOM monitor require_jsonld_jobposting supports at most "
+            "JSON-LD detail verification supports at most "
             f"{_MAX_JSONLD_VERIFICATION_URLS} discovered URLs"
         )
 
@@ -174,7 +178,10 @@ async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> 
         if html is None:
             return url, False
         _raise_if_bot_challenge(url, html)
-        return url, contains_job_posting(html)
+        return url, contains_job_posting(
+            html,
+            hiring_organization_pattern=hiring_organization_pattern,
+        )
 
     tasks = [asyncio.create_task(verify(url)) for url in sorted(urls)]
     try:

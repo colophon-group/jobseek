@@ -2873,6 +2873,7 @@ hook,hook-ashby,https://jobs.ashbyhq.com/hook,ashby,"{""token"": ""hook""}",skip
 hook,hook-greenhouse,https://job-boards.greenhouse.io/hook,greenhouse,"{""token"": ""hook""}",skip,
 hookmusic,hookmusic-ashby,https://jobs.ashbyhq.com/hookmusic,ashby,"{""token"": ""hookmusic""}",skip,
 hootsuite,hootsuite-greenhouse,https://job-boards.greenhouse.io/hootsuite,greenhouse,"{""token"": ""hootsuite""}",skip,
+hopital-riviera-chablais,hopital-riviera-chablais-main,https://emploi.hopitalrivierachablais.ch/fr,nextdata,"{""path"": ""props.pageProps.offers"", ""url_template"": ""{uri}"", ""url_allowlist"": ""^https://emploi\\.hopitalrivierachablais\\.ch/fr/nos-offres/[a-z0-9]+(?:-[a-z0-9]+)*-[1-9]\\d*$"", ""strict_path"": true, ""source_identity"": {""provider"": ""adequasys"", ""tenant"": ""hrc"", ""field"": ""id""}, ""expected_hiring_organization"": ""Hôpital Riviera-Chablais"", ""fields"": {""title"": ""title"", ""locations"": ""information[?id == 'csi-cd'].value | [0]"", ""metadata.offer_id"": ""id"", ""metadata.reference"": ""information[?id == 'reference'].value | [0]"", ""metadata.workload"": ""information[?id == 'taux-occupation'].value | [0]""}}",json-ld,"{""enrich"": [""description""]}"
 hopper,hopper-ashby,https://jobs.ashbyhq.com/hopper,ashby,"{""token"": ""hopper""}",skip,
 hoppr,hoppr-greenhouse,https://job-boards.greenhouse.io/hoppr,greenhouse,"{""token"": ""hoppr""}",skip,
 hopskipdrive,hopskipdrive-greenhouse,https://job-boards.greenhouse.io/hopskipdrive,greenhouse,"{""token"": ""hopskipdrive""}",skip,

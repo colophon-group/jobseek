@@ -45,13 +45,19 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.core.monitors import (
+    DiscoveredJob,
+    fetch_page_text,
+    register,
+    validate_explicit_source_identity,
+)
 from src.shared.browser import BROWSER_KEYS, NAVIGATE_KEYS
 from src.shared.nextdata import (
     extract_embedded_json,
@@ -73,6 +79,9 @@ MAX_URLS = 50_000
 _MAX_CONCURRENT_PAGES = 5
 _PAGE_FETCH_ATTEMPTS = 3
 _PAGE_FETCH_BASE_DELAY = 0.5
+_MAX_IDENTITY_FIELD_LENGTH = 256
+_MAX_HIRING_ORGANIZATION_LENGTH = 256
+_MAX_URL_ALLOWLIST_LENGTH = 2_048
 
 # Common paths where Next.js apps store job listings.
 _COMMON_PATHS = [
@@ -139,6 +148,109 @@ def _build_url(
         return url_template.format_map(variables)
     except (KeyError, IndexError, ValueError):
         return None
+
+
+def _validated_source_identity_config(
+    value: object,
+) -> tuple[str, str, str] | None:
+    """Validate an opt-in provider identity extracted separately from the URL."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {"provider", "tenant", "field"}:
+        raise ValueError("nextdata source_identity must contain provider, tenant, and field")
+    provider = value.get("provider")
+    tenant = value.get("tenant")
+    field = value.get("field")
+    if not all(isinstance(part, str) and part for part in (provider, tenant, field)):
+        raise ValueError("nextdata source_identity values must be non-empty strings")
+    assert isinstance(provider, str) and isinstance(tenant, str) and isinstance(field, str)
+    if len(field) > _MAX_IDENTITY_FIELD_LENGTH or "\x00" in field:
+        raise ValueError("nextdata source_identity.field must be a bounded field path")
+    validate_explicit_source_identity(f"{provider}:{tenant}:1")
+    return provider, tenant, field
+
+
+def _source_identity(
+    item: dict,
+    config: tuple[str, str, str],
+) -> str:
+    provider, tenant, field = config
+    raw_identity = resolve_path(item, field)
+    if (
+        isinstance(raw_identity, bool)
+        or not isinstance(raw_identity, (str, int))
+        or not str(raw_identity).strip()
+    ):
+        raise ValueError("nextdata source identity field was missing or invalid")
+    return validate_explicit_source_identity(f"{provider}:{tenant}:{str(raw_identity).strip()}")
+
+
+def _validated_url_allowlist(value: object) -> re.Pattern[str] | None:
+    if value is None:
+        return None
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > _MAX_URL_ALLOWLIST_LENGTH
+        or "\x00" in value
+    ):
+        raise ValueError("nextdata url_allowlist must be a bounded regular expression")
+    try:
+        return re.compile(value)
+    except re.error as exc:
+        raise ValueError("nextdata url_allowlist is invalid") from exc
+
+
+def _assert_urls_allowed(
+    jobs: list[DiscoveredJob],
+    url_allowlist: re.Pattern[str],
+) -> None:
+    if any(url_allowlist.fullmatch(job.url) is None for job in jobs):
+        raise ValueError("nextdata discovered a job URL outside its configured allowlist")
+
+
+def _validated_hiring_organization_config(
+    metadata: dict,
+) -> tuple[re.Pattern[str], re.Pattern[str]] | None:
+    expected = metadata.get("expected_hiring_organization")
+    if expected is None:
+        return None
+    if (
+        not isinstance(expected, str)
+        or not expected.strip()
+        or len(expected) > _MAX_HIRING_ORGANIZATION_LENGTH
+        or "\x00" in expected
+    ):
+        raise ValueError("nextdata expected_hiring_organization must be bounded non-empty text")
+    url_allowlist = _validated_url_allowlist(metadata.get("url_allowlist"))
+    if url_allowlist is None:
+        raise ValueError("nextdata expected_hiring_organization requires a bounded url_allowlist")
+    return re.compile(re.escape(expected.strip())), url_allowlist
+
+
+async def _filter_hiring_organization(
+    jobs: list[DiscoveredJob],
+    client: httpx.AsyncClient,
+    config: tuple[re.Pattern[str], re.Pattern[str]],
+) -> list[DiscoveredJob]:
+    """Retain only jobs whose detail JSON-LD proves the configured employer."""
+    hiring_organization_pattern, url_allowlist = config
+    for job in jobs:
+        if url_allowlist.fullmatch(job.url) is None:
+            raise ValueError(
+                "nextdata refused to verify a job URL outside its configured allowlist"
+            )
+
+    # Reuse the bounded, retrying verifier used by the DOM monitor. Importing
+    # lazily avoids changing monitor registration order.
+    from src.core.monitors.dom import _filter_jsonld_job_urls
+
+    allowed_urls = await _filter_jsonld_job_urls(
+        {job.url for job in jobs},
+        client,
+        hiring_organization_pattern,
+    )
+    return [job for job in jobs if job.url in allowed_urls]
 
 
 def _detection_metadata(source: str, data: dict, path: str, count: int) -> dict:
@@ -490,14 +602,21 @@ async def discover(
     """Discover jobs from embedded JSON on a career page."""
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
+    strict_path = metadata.get("strict_path", False)
+    if not isinstance(strict_path, bool):
+        raise ValueError("nextdata strict_path must be a boolean")
 
     path = metadata.get("path")
     if not path:
+        if strict_path:
+            raise ValueError("nextdata strict_path requires path and url_template")
         log.error("nextdata.missing_path", board_url=board_url)
         return set()
 
     url_template = metadata.get("url_template")
     if not url_template:
+        if strict_path:
+            raise ValueError("nextdata strict_path requires path and url_template")
         log.error("nextdata.missing_url_template", board_url=board_url)
         return set()
 
@@ -505,6 +624,13 @@ async def discover(
     browser_expression = metadata.get("browser_expression")
     fields_map: dict[str, str | dict] = metadata.get("fields") or {}
     slug_fields: list[str] | None = metadata.get("slug_fields")
+    source_identity_config = _validated_source_identity_config(metadata.get("source_identity"))
+    if source_identity_config is not None and not fields_map:
+        raise ValueError("nextdata source_identity requires rich fields")
+    url_allowlist = _validated_url_allowlist(metadata.get("url_allowlist"))
+    if source_identity_config is not None and url_allowlist is None:
+        raise ValueError("nextdata source_identity requires a url_allowlist")
+    hiring_organization_config = _validated_hiring_organization_config(metadata)
     render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
@@ -557,14 +683,20 @@ async def discover(
             )
             if not html:
                 log.warning("nextdata.fetch_failed", board_url=board_url)
+                if strict_path:
+                    raise RuntimeError("nextdata strict_path fetched no HTML")
                 return list() if fields_map else set()
             data = extract_embedded_json(html, source)
             if not data:
                 log.warning("nextdata.no_data", board_url=board_url, source=source)
+                if strict_path:
+                    raise ValueError("nextdata strict_path found no embedded data")
                 return list() if fields_map else set()
             items = _resolve_items(data, path, source)
             if not isinstance(items, list):
                 log.warning("nextdata.path_not_list", board_url=board_url, path=path)
+                if strict_path:
+                    raise ValueError("nextdata strict_path did not resolve to a list")
                 return list() if fields_map else set()
 
     # Pagination: fetch remaining pages and merge
@@ -589,12 +721,29 @@ async def discover(
         )
 
     # Cap items
+    if len(items) > MAX_URLS and strict_path:
+        raise ValueError("nextdata strict_path exceeded the safe inventory limit")
     if len(items) > MAX_URLS:
         log.warning("nextdata.truncated", total=len(items), cap=MAX_URLS)
         items = items[:MAX_URLS]
 
     if fields_map:
-        result = _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
+        result = _extract_rich(
+            items,
+            url_template,
+            slug_fields,
+            fields_map,
+            base_salary_cfg,
+            source_identity_config,
+        )
+        if url_allowlist is not None:
+            _assert_urls_allowed(result, url_allowlist)
+        if hiring_organization_config is not None:
+            result = await _filter_hiring_organization(
+                result,
+                client,
+                hiring_organization_config,
+            )
         urls = {job.url for job in result}
     else:
         result = _extract_urls(items, url_template, slug_fields)
@@ -620,16 +769,28 @@ async def discover_stream(
     """
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
+    strict_path = metadata.get("strict_path", False)
+    if not isinstance(strict_path, bool):
+        raise ValueError("nextdata strict_path must be a boolean")
 
     path = metadata.get("path")
     url_template = metadata.get("url_template")
     if not path or not url_template:
+        if strict_path:
+            raise ValueError("nextdata strict_path requires path and url_template")
         return
 
     source: str = metadata.get("source", "nextdata")
     browser_expression = metadata.get("browser_expression")
     fields_map: dict[str, str | dict] = metadata.get("fields") or {}
     slug_fields: list[str] | None = metadata.get("slug_fields")
+    source_identity_config = _validated_source_identity_config(metadata.get("source_identity"))
+    if source_identity_config is not None and not fields_map:
+        raise ValueError("nextdata source_identity requires rich fields")
+    url_allowlist = _validated_url_allowlist(metadata.get("url_allowlist"))
+    if source_identity_config is not None and url_allowlist is None:
+        raise ValueError("nextdata source_identity requires a url_allowlist")
+    hiring_organization_config = _validated_hiring_organization_config(metadata)
     render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
@@ -682,12 +843,18 @@ async def discover_stream(
                 browser_config=browser_config,
             )
             if not html:
+                if strict_path:
+                    raise RuntimeError("nextdata strict_path fetched no HTML")
                 return
             data = extract_embedded_json(html, source)
             if not data:
+                if strict_path:
+                    raise ValueError("nextdata strict_path found no embedded data")
                 return
             items = _resolve_items(data, path, source)
             if not isinstance(items, list):
+                if strict_path:
+                    raise ValueError("nextdata strict_path did not resolve to a list")
                 return
 
     def _extract_batch(batch_items: list):
@@ -698,12 +865,25 @@ async def discover_stream(
                 slug_fields,
                 fields_map,
                 base_salary_cfg,
+                source_identity_config,
             )
         return _extract_urls(batch_items, url_template, slug_fields)
 
+    async def _verified_batch(batch_items: list):
+        result = _extract_batch(batch_items)
+        if fields_map and url_allowlist is not None:
+            _assert_urls_allowed(result, url_allowlist)
+        if fields_map and hiring_organization_config is not None:
+            result = await _filter_hiring_organization(
+                result,
+                client,
+                hiring_organization_config,
+            )
+        return result
+
     # No pagination — single yield
     if not pagination_cfg:
-        yield _extract_batch(items)
+        yield await _verified_batch(items)
         return
 
     # Determine page count
@@ -712,7 +892,7 @@ async def discover_stream(
     if page_count is None:
         raise ValueError("nextdata pagination metadata did not provide a valid page count")
 
-    first_result = _extract_batch(items)
+    first_result = await _verified_batch(items)
     seen_urls = {job.url for job in first_result} if fields_map else set(first_result)
     yield first_result
     if page_count <= 1:
@@ -743,7 +923,7 @@ async def discover_stream(
         for page_items in results:
             batch_items.extend(page_items)
         if batch_items:
-            result = _extract_batch(batch_items)
+            result = await _verified_batch(batch_items)
             if fields_map:
                 seen_urls.update(job.url for job in result)
             else:
@@ -1014,6 +1194,7 @@ def _extract_rich(
     slug_fields: list[str] | None,
     fields_map: dict[str, str | dict],
     base_salary_cfg: dict | None = None,
+    source_identity_config: tuple[str, str, str] | None = None,
 ) -> list[DiscoveredJob]:
     """Extract ``DiscoveredJob`` objects using the field mapping."""
     jobs: list[DiscoveredJob] = []
@@ -1025,6 +1206,8 @@ def _extract_rich(
             continue
 
         kwargs: dict[str, object] = {"url": url}
+        if source_identity_config is not None:
+            kwargs["source_identity"] = _source_identity(item, source_identity_config)
         metadata_fields: dict[str, object] = {}
 
         for target, spec in fields_map.items():

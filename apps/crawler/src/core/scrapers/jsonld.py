@@ -594,11 +594,32 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
     return JobContent()
 
 
-def contains_job_posting(html: str) -> bool:
-    """Return whether *html* contains schema.org ``JobPosting`` JSON-LD."""
+def contains_job_posting(
+    html: str,
+    *,
+    hiring_organization_pattern: re.Pattern[str] | None = None,
+) -> bool:
+    """Return whether *html* contains an allowed schema.org ``JobPosting``.
+
+    When *hiring_organization_pattern* is provided, the posting is retained
+    only when ``hiringOrganization.name`` fully matches it. Missing or
+    malformed organization data fails closed.
+    """
     extractor = _JsonLdExtractor()
     extractor.feed(html)
-    return any(_find_job_posting(block) for block in extractor.results)
+    for block in extractor.results:
+        posting = _find_job_posting(block)
+        if posting is None:
+            continue
+        if hiring_organization_pattern is None:
+            return True
+        organization = posting.get("hiringOrganization")
+        organization_name = (
+            _clean_text(organization.get("name")) if isinstance(organization, dict) else None
+        )
+        if organization_name and hiring_organization_pattern.fullmatch(organization_name):
+            return True
+    return False
 
 
 def can_handle(htmls: list[str]) -> dict | None:
