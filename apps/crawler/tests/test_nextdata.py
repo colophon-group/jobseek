@@ -10,6 +10,7 @@ from src.core.monitor import monitor_one, monitor_one_stream
 from src.core.monitors import DiscoveredJob, monitor_needs_browser
 from src.core.monitors.nextdata import (
     _add_query_param,
+    _board_gone_statuses,
     _build_url,
     _extract_salary,
     _find_jobs_path,
@@ -92,6 +93,16 @@ BOARD_URL_ONLY = {
         "slug_fields": ["text"],
     },
 }
+
+
+@pytest.mark.parametrize("statuses", [[200], [403], [404, 500], "404", [True]])
+def test_board_gone_statuses_are_limited_to_explicit_retirement_responses(statuses):
+    with pytest.raises(ValueError, match="only HTTP 404 and 410"):
+        _board_gone_statuses({"board_gone_statuses": statuses})
+
+
+def test_board_gone_statuses_accepts_join_retirement_responses():
+    assert _board_gone_statuses({"board_gone_statuses": [404, 410]}) == frozenset({404, 410})
 
 
 def _mock_transport(html: str, status: int = 200):

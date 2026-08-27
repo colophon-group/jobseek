@@ -213,6 +213,27 @@ _POSTFINANCE_LEGACY_URL_PATTERN = (
     r"|https://www[.]post[.]ch/en/pages/footer/privacy-policy-for-job-applicants)$"
 )
 _POSTFINANCE_CANONICAL_URL_PATTERN = r"^https://jobs[.]postfinance[.]ch/job/_/[0-9]+/$"
+_ECOM_IDENTITY_MIGRATION = "ecom-teamtailor-stable-id-v2"
+_ECOM_IDENTITY_MIGRATION_VERSION = 1
+_ECOM_IDENTITY_MIGRATION_BOARD_SLUG = "ecom-agroindustrial-global"
+_ECOM_IDENTITY_MIGRATION_CONTRACT = (
+    "https://ecomtradinggroup.teamtailor.com/jobs",
+    "rss",
+    "8574d9617fb7df0e51e68b672186df2c7a2bbd1e4995f0c9dfa73286fa390748",
+)
+_ECOM_TENANT_TOKEN = r"(?:latam|westafrica|asiapacific|brazil|mexico|europe)"
+_ECOM_LEGACY_URL_PATTERN = (
+    rf"^(?:https://careers{_ECOM_TENANT_TOKEN}[.]ecomtrading[.]com/"
+    rf"(?:(?:de|fr|it|en)/)?jobs/[1-9][0-9]{{0,11}}(?:-[^/?#]+)?"
+    rf"|https://ecom{_ECOM_TENANT_TOKEN}[.]teamtailor[.]com/"
+    rf"(?:de|fr|it|en)/jobs/[1-9][0-9]{{0,11}}(?:-[^/?#]+)?"
+    rf"|https://ecom{_ECOM_TENANT_TOKEN}[.]teamtailor[.]com/"
+    rf"jobs/[1-9][0-9]{{0,11}}-[^/?#]+)$"
+)
+_ECOM_CANONICAL_URL_PATTERN = (
+    rf"^https://ecom{_ECOM_TENANT_TOKEN}[.]teamtailor[.]com/"
+    r"jobs/[1-9][0-9]{0,11}$"
+)
 _IDENTITY_MIGRATION_MAX_ROWS = 2_000
 
 
@@ -264,6 +285,21 @@ def _identity_migration_spec(
             legacy_url_pattern=_POSTFINANCE_LEGACY_URL_PATTERN,
             canonical_url_pattern=_POSTFINANCE_CANONICAL_URL_PATTERN,
             company_wide=True,
+        )
+    if (
+        migration_id == _ECOM_IDENTITY_MIGRATION
+        and board_slug == _ECOM_IDENTITY_MIGRATION_BOARD_SLUG
+    ):
+        board_url, crawler_type, fingerprint = _ECOM_IDENTITY_MIGRATION_CONTRACT
+        return _IdentityMigrationSpec(
+            migration_id=_ECOM_IDENTITY_MIGRATION,
+            version=_ECOM_IDENTITY_MIGRATION_VERSION,
+            company_slug="ecom-agroindustrial",
+            board_url=board_url,
+            crawler_type=crawler_type,
+            config_fingerprint=fingerprint,
+            legacy_url_pattern=_ECOM_LEGACY_URL_PATTERN,
+            canonical_url_pattern=_ECOM_CANONICAL_URL_PATTERN,
         )
     return None
 

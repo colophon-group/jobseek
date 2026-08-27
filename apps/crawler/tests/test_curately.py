@@ -224,12 +224,35 @@ class TestDiscover:
             calls += 1
             return httpx.Response(
                 200,
-                json=_page([_raw_job(calls)], 3 if calls == 1 else 2),
+                json=_page([_raw_job(calls)], 3 if calls % 2 else 2),
             )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(ValueError, match="TotalSize changed"):
                 await discover(_board(), client)
+
+    async def test_changing_total_retries_complete_snapshot(self, monkeypatch):
+        calls = 0
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            responses = [
+                _page([_raw_job(1)], 2),
+                _page([_raw_job(2)], 1),
+                _page([_raw_job(1), _raw_job(2)], 2),
+            ]
+            return httpx.Response(200, json=responses[calls - 1])
+
+        async def no_sleep(_delay):
+            return None
+
+        monkeypatch.setattr("src.core.monitors.curately.asyncio.sleep", no_sleep)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(_board(), client)
+
+        assert calls == 3
+        assert [job.metadata["id"] for job in jobs] == [1, 2]
 
     async def test_duplicate_job_id_fails_closed(self):
         calls = 0

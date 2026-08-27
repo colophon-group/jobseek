@@ -1379,6 +1379,67 @@ async def test_discover_explicit_empty_fails_closed_when_all_items_are_excluded(
 
 
 @pytest.mark.asyncio
+async def test_discover_delayed_empty_marker_does_not_hide_accepted_jobs():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_selector": ".empty-state",
+            "empty_text": "No vacancies are currently available",
+            "empty_requires_no_jobs": True,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+    html = """
+    <div class="empty-state">No vacancies are currently available.</div>
+    <h2>Open Engineer</h2>
+    """
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.title for job in jobs] == ["Open Engineer"]
+
+
+@pytest.mark.asyncio
+async def test_discover_delayed_empty_marker_accepts_zero_after_exclusions():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_selector": ".empty-state",
+            "empty_text": "No vacancies are currently available",
+            "empty_requires_no_jobs": True,
+            "exclude_titles": ["Archived Engineer"],
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+    html = """
+    <div class="empty-state">No vacancies are currently available.</div>
+    <h2>Archived Engineer</h2>
+    """
+
+    assert await discover(board, _FakeClient(html)) == []
+
+
+@pytest.mark.asyncio
+async def test_discover_extracts_inline_html_from_static_json_response():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "fetch_url": "https://example.com/wp-json/wp/v2/pages?slug=jobs",
+            "fetch_json_path": "[0].content.rendered",
+            "fetch_contains": "Open Engineer",
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    jobs = await discover(
+        board,
+        _FakeClient('[{"content":{"rendered":"<h2>Open Engineer</h2>"}}]'),
+    )
+
+    assert [job.title for job in jobs] == ["Open Engineer"]
+
+
+@pytest.mark.asyncio
 async def test_discover_require_zero_proof_accepts_positive_extraction():
     board = {
         "board_url": "https://example.com/jobs",
@@ -1606,6 +1667,37 @@ async def test_discover_requires_complete_explicit_empty_contract(metadata):
 
     with pytest.raises(ValueError, match="requires empty_selector and empty_text"):
         await discover(board, _FakeClient("<h2>Engineer</h2>"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("metadata", "message"),
+    [
+        ({"empty_requires_no_jobs": "yes"}, "must be a boolean"),
+        ({"empty_requires_no_jobs": True}, "requires an explicit empty state"),
+    ],
+)
+async def test_discover_validates_delayed_empty_contract(metadata, message):
+    metadata["steps"] = [{"tag": "h2", "field": "title"}]
+    board = {"board_url": "https://example.com/jobs", "metadata": metadata}
+
+    with pytest.raises(ValueError, match=message):
+        await discover(board, _FakeClient("<h2>Engineer</h2>"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path", ["", 1, "x" * 257])
+async def test_discover_validates_fetch_json_path(path):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "fetch_json_path": path,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="fetch_json_path must be a non-empty path"):
+        await discover(board, _FakeClient("{}"))
 
 
 @pytest.mark.asyncio

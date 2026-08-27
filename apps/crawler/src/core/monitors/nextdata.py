@@ -383,6 +383,19 @@ def _pagination_mode(cfg: dict) -> str:
     return cfg.get("mode", "page")
 
 
+def _board_gone_statuses(metadata: dict) -> frozenset[int]:
+    """Validate explicit first-page retirement statuses for provider wrappers."""
+    raw = metadata.get("board_gone_statuses", [])
+    if (
+        not isinstance(raw, list)
+        or len(raw) > 8
+        or any(isinstance(status, bool) or not isinstance(status, int) for status in raw)
+        or not set(raw).issubset({404, 410})
+    ):
+        raise ValueError("nextdata board_gone_statuses may contain only HTTP 404 and 410")
+    return frozenset(raw)
+
+
 def _compute_page_urls(board_url: str, page_count: int, cfg: dict) -> list[str]:
     """Return URLs for pages 2..page_count under the current pagination config.
 
@@ -711,6 +724,7 @@ async def discover(
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
     base_salary_cfg: dict | None = metadata.get("base_salary")
+    board_gone_statuses = _board_gone_statuses(metadata)
 
     if expected_page_title is not None and source == "browser":
         raise ValueError("nextdata expected_page_title does not support browser source")
@@ -753,6 +767,7 @@ async def discover(
                 pw=pw,
                 browser_config=browser_config,
                 allow_empty=True,
+                board_gone_statuses=board_gone_statuses,
             )
         else:
             html = await _fetch_html(
@@ -761,6 +776,7 @@ async def discover(
                 client,
                 pw=pw,
                 browser_config=browser_config,
+                board_gone_statuses=board_gone_statuses,
             )
             if not html:
                 log.warning("nextdata.fetch_failed", board_url=board_url)
@@ -883,6 +899,7 @@ async def discover_stream(
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
     base_salary_cfg: dict | None = metadata.get("base_salary")
+    board_gone_statuses = _board_gone_statuses(metadata)
 
     if expected_page_title is not None and source == "browser":
         raise ValueError("nextdata expected_page_title does not support browser source")
@@ -926,6 +943,7 @@ async def discover_stream(
                 pw=pw,
                 browser_config=browser_config,
                 allow_empty=True,
+                board_gone_statuses=board_gone_statuses,
             )
         else:
             html = await _fetch_html(
@@ -934,6 +952,7 @@ async def discover_stream(
                 client,
                 pw=pw,
                 browser_config=browser_config,
+                board_gone_statuses=board_gone_statuses,
             )
             if not html:
                 if strict_path:
@@ -1106,6 +1125,7 @@ async def _fetch_html(
     client: httpx.AsyncClient,
     pw=None,
     browser_config: dict | None = None,
+    board_gone_statuses: frozenset[int] = frozenset(),
 ) -> str | None:
     """Fetch page HTML via httpx or Playwright.
 
@@ -1121,7 +1141,7 @@ async def _fetch_html(
         except Exception:
             log.warning("nextdata.render_failed", url=url, exc_info=True)
             return None
-    return await fetch_page_text(url, client)
+    return await fetch_page_text(url, client, board_gone_statuses=board_gone_statuses)
 
 
 async def _fetch_embedded_page_with_retry(
@@ -1134,6 +1154,7 @@ async def _fetch_embedded_page_with_retry(
     pw=None,
     browser_config: dict | None = None,
     allow_empty: bool = False,
+    board_gone_statuses: frozenset[int] = frozenset(),
 ) -> tuple[dict, list]:
     """Fetch and parse one required embedded-data page or fail the run.
 
@@ -1149,6 +1170,7 @@ async def _fetch_embedded_page_with_retry(
             client,
             pw=pw,
             browser_config=browser_config,
+            board_gone_statuses=board_gone_statuses,
         )
         if not html:
             failure = "empty or unavailable HTML"

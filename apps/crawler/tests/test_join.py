@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 
 import httpx
+import pytest
 
+from src.core.monitors import BoardGoneError
 from src.core.monitors.join import (
     _build_metadata,
     _slug_from_url,
@@ -113,6 +115,7 @@ class TestBuildMetadata:
         assert "acme" in meta["url_template"]
         assert "{idParam}" in meta["url_template"]
         assert "pagination" in meta
+        assert meta["board_gone_statuses"] == [404, 410]
         assert "fields" not in meta
         assert "base_salary" not in meta
 
@@ -199,6 +202,18 @@ class TestDiscover:
         assert len(result) == 3
         urls = {u.rsplit("/", 1)[-1] for u in result}
         assert urls == {"1-job-a", "2-job-b", "3-job-c"}
+
+    @pytest.mark.parametrize("status", [404, 410])
+    async def test_retired_board_raises_board_gone(self, status):
+        board = {
+            "board_url": "https://join.com/companies/acme",
+            "metadata": {"slug": "acme"},
+        }
+        async with httpx.AsyncClient(transport=_mock_transport("retired", status)) as client:
+            with pytest.raises(BoardGoneError) as exc_info:
+                await discover(board, client)
+
+        assert exc_info.value.status_code == status
 
 
 # ---------------------------------------------------------------------------
