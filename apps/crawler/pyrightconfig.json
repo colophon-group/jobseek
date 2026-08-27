@@ -1,6 +1,7 @@
 {
   "include": [
     "src/core/monitors/__init__.py",
+    "src/core/monitors/cvwarehouse.py",
     "src/core/monitors/recruitee.py",
     "src/core/monitors/smartrecruiters.py",
     "src/core/monitors/talentbrew.py",
