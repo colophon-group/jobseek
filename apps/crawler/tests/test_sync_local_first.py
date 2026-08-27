@@ -262,6 +262,12 @@ async def test_legacy_board_mirror_uses_remote_schema_disable_query() -> None:
         local_conn,
         mirror_conn,
         ["https://acme.test/jobs"],
+        (
+            (
+                "00000000-0000-0000-0000-000000000001",
+                "00000000-0000-0000-0000-000000000002",
+            ),
+        ),
     )
 
     statements = [call.args[0] for call in mirror_conn.execute.await_args_list]
@@ -270,6 +276,9 @@ async def test_legacy_board_mirror_uses_remote_schema_disable_query() -> None:
         sync._REALIGN_BOARD_POSTING_COMPANIES_SUPA,
         sync._DISABLE_REMOVED_BOARDS,
     ]
+    rehome_call = mirror_conn.execute.await_args_list[1]
+    assert rehome_call.args[1] == ["00000000-0000-0000-0000-000000000001"]
+    assert rehome_call.args[2] == ["00000000-0000-0000-0000-000000000002"]
     assert "quarantined_at" not in sync._DISABLE_REMOVED_BOARDS
     assert "quarantined_at" in sync._DISABLE_REMOVED_BOARDS_LOCAL
 

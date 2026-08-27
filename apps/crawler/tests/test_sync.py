@@ -11,6 +11,7 @@ import pytest
 
 from src.sync import (
     _DISABLE_REMOVED_BOARDS_LOCAL,
+    _FETCH_BOARD_COMPANY_REHOMES_LOCAL,
     _LOCATION_MACRO_ALIASES,
     _REALIGN_BOARD_POSTING_COMPANIES_LOCAL,
     _REALIGN_RENAMED_BOARD_URLS_LOCAL,
@@ -113,6 +114,18 @@ class TestBoardSourceChangeReset:
         assert "consecutive_failures = 0" in sql
         assert "next_check_at = now()" in sql
         assert "DELETE" not in sql
+
+    def test_posting_company_rehome_is_bounded_to_changed_board_ids(self):
+        detect_sql = " ".join(_FETCH_BOARD_COMPANY_REHOMES_LOCAL.split())
+        update_sql = " ".join(_REALIGN_BOARD_POSTING_COMPANIES_LOCAL.split())
+
+        assert "FROM unnest($1::text[], $2::text[], $3::text[])" in detect_sql
+        assert "JOIN job_board jb ON jb.board_url = incoming.board_url" in detect_sql
+        assert "jb.board_slug = incoming.board_slug" in detect_sql
+        assert "job_posting" not in detect_sql
+        assert "FROM unnest($1::uuid[], $2::uuid[])" in update_sql
+        assert "jp.board_id = rehome.board_id" in update_sql
+        assert "board_url = ANY" not in update_sql
 
     def test_material_source_change_resets_runtime_failure_state(self):
         """A replacement source must not inherit a retired source's disable."""
@@ -428,8 +441,13 @@ class TestSyncBoards:
         """Upserts boards only to the local authority and stages Redis work."""
         await sync_boards(mock_conn, sample_boards, dry_run=False)
 
-        assert mock_conn.fetch.await_args_list[0].args[0] == _UPSERT_BOARD_LOCAL
-        assert mock_conn.execute.call_count == 3
+        assert mock_conn.fetch.await_args_list[0].args[0] == _FETCH_BOARD_COMPANY_REHOMES_LOCAL
+        assert mock_conn.fetch.await_args_list[1].args[0] == _UPSERT_BOARD_LOCAL
+        assert mock_conn.execute.call_count == 2
+        assert all(
+            call.args[0] != _REALIGN_BOARD_POSTING_COMPANIES_LOCAL
+            for call in mock_conn.execute.await_args_list
+        )
 
     async def test_invalid_json_skips_row(self, mock_conn):
         """monitor_config has invalid JSON -> row skipped, valid rows still collected."""
@@ -448,7 +466,7 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        assert mock_conn.execute.call_count == 3
+        assert mock_conn.execute.call_count == 2
 
     async def test_all_invalid_json_skips_upsert(self, mock_conn):
         """All rows have invalid JSON -> no upsert, no disable."""
@@ -487,7 +505,7 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        assert mock_conn.execute.call_count == 3
+        assert mock_conn.execute.call_count == 2
 
     async def test_scraper_fields_embedded_in_metadata(self, mock_conn):
         """scraper_type + scraper_config are parsed into local metadata."""
@@ -506,7 +524,7 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        assert mock_conn.execute.call_count == 3
+        assert mock_conn.execute.call_count == 2
 
     async def test_invalid_scraper_json_skips_row(self, mock_conn):
         boards = pl.DataFrame(
@@ -558,7 +576,8 @@ class TestSyncBoards:
         assert calls[0].args[3] == ["https://job-boards.greenhouse.io/apartmentiq"]
         # No metadata/crawler_type passed to realign — just the 3-tuple.
         assert len(calls[0].args) == 4
-        assert mock_conn.fetch.await_args_list[0].args[0] == _UPSERT_BOARD_LOCAL
+        assert mock_conn.fetch.await_args_list[0].args[0] == _FETCH_BOARD_COMPANY_REHOMES_LOCAL
+        assert mock_conn.fetch.await_args_list[1].args[0] == _UPSERT_BOARD_LOCAL
         assert calls[-1].args[0] == _DISABLE_REMOVED_BOARDS_LOCAL
 
     async def test_rehomes_existing_postings_after_board_company_change(
@@ -569,11 +588,22 @@ class TestSyncBoards:
         """If a CSV row moves an existing board URL to another company,
         postings already tied to that board must move with it.
         """
+        board_id = str(uuid.uuid4())
+        company_id = str(uuid.uuid4())
+        default_fetch = mock_conn.fetch.side_effect
+
+        async def fetch(sql, *args):
+            if sql == _FETCH_BOARD_COMPANY_REHOMES_LOCAL:
+                return [{"board_id": board_id, "company_id": company_id}]
+            return await default_fetch(sql, *args)
+
+        mock_conn.fetch.side_effect = fetch
         await sync_boards(mock_conn, sample_boards, dry_run=False)
 
         calls = mock_conn.execute.call_args_list
         assert calls[1].args[0] == _REALIGN_BOARD_POSTING_COMPANIES_LOCAL
-        assert calls[1].args[1] == ["https://acme.com/careers"]
+        assert calls[1].args[1] == [board_id]
+        assert calls[1].args[2] == [company_id]
 
     async def test_disables_removed_boards(self, mock_conn):
         """Boards absent from CSV are disabled in local Postgres."""
@@ -592,7 +622,7 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        assert mock_conn.execute.call_count == 3
+        assert mock_conn.execute.call_count == 2
 
     @patch("src.sync.remove_monitors", new_callable=AsyncMock)
     @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
@@ -622,6 +652,7 @@ class TestSyncBoards:
         mock_local_conn.execute = AsyncMock()
         mock_local_conn.fetch = AsyncMock(
             side_effect=[
+                [],
                 [
                     {
                         "board_id": str(board_ids[i]),
@@ -637,8 +668,8 @@ class TestSyncBoards:
 
         effects = await sync_boards(mock_local_conn, boards, dry_run=False)
 
-        assert mock_local_conn.fetch.await_count == 2
-        batch_call = mock_local_conn.fetch.await_args_list[0]
+        assert mock_local_conn.fetch.await_count == 3
+        batch_call = mock_local_conn.fetch.await_args_list[1]
         assert batch_call.args[0] == _UPSERT_BOARD_LOCAL
         assert batch_call.args[1] == ["acme", "globex"]
         assert batch_call.args[3] == ["https://acme.test/jobs", "https://globex.test/jobs"]
@@ -681,6 +712,7 @@ class TestSyncBoards:
         due = datetime.fromtimestamp(2_000, tz=UTC)
         mock_conn.fetch = AsyncMock(
             side_effect=[
+                [],
                 [
                     {
                         "board_id": str(board_id),
@@ -744,6 +776,7 @@ class TestSyncBoards:
         ]
         mock_local_conn.fetch = AsyncMock(
             side_effect=[
+                [],
                 [
                     {
                         "board_id": str(board_id),
@@ -797,6 +830,7 @@ class TestSyncBoards:
         mock_local_conn.execute = AsyncMock()
         mock_local_conn.fetch = AsyncMock(
             side_effect=[
+                [],
                 [
                     {
                         "board_id": str(local_board_id),
@@ -856,6 +890,12 @@ class TestSyncBoards:
                     {
                         "board_id": str(board_id),
                         "company_id": str(company_id),
+                    }
+                ],
+                [
+                    {
+                        "board_id": str(board_id),
+                        "company_id": str(company_id),
                         "board_url": "https://acme.com/careers",
                         "metadata": {},
                     }
@@ -872,8 +912,10 @@ class TestSyncBoards:
             if call.args[0] == _REALIGN_BOARD_POSTING_COMPANIES_LOCAL
         ]
         assert len(rehome_calls) == 1
-        assert rehome_calls[0].args[1] == ["https://acme.com/careers"]
+        assert rehome_calls[0].args[1] == [str(board_id)]
+        assert rehome_calls[0].args[2] == [str(company_id)]
         assert "updated_at = now()" in rehome_calls[0].args[0]
+        assert "board_url" not in rehome_calls[0].args[0]
 
     @patch("src.sync.remove_monitors", new_callable=AsyncMock)
     @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
@@ -923,6 +965,7 @@ class TestSyncBoards:
         mock_local_conn.execute = AsyncMock()
         mock_local_conn.fetch = AsyncMock(
             side_effect=[
+                [],
                 [
                     {
                         "board_id": str(board_id),
