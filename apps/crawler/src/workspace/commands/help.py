@@ -2945,6 +2945,15 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      an increasing limit and repeats the earlier result prefix;
                      the monitor makes one bounded request using the advertised
                      total instead of accumulating duplicate pages.
+    pagination_convergence
+                     Optional bounded full-pass proof for an unstable "offset"
+                     or "page" inventory. Requires item_filter.dedupe_by plus
+                     max_passes (3-8) and required_no_growth_passes (2 through
+                     max_passes - 1). A cycle is authoritative only when the
+                     stable-identity inventory exactly equals the unchanged
+                     advertised total and the required consecutive passes add
+                     no identity. Duplicate/conflicting records for one identity
+                     fail closed as a truncated result.
     fields           Field mapping (same spec as nextdata: key, nested.key, array[].field)
                      When present → rich mode (scraper skipped)
                      When absent → URL-only (scraper needed)

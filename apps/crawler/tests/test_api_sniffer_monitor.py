@@ -1210,6 +1210,18 @@ class TestPaginationConvergence:
                 (),
             )
 
+    def test_accepts_numbered_page_pagination(self):
+        assert _validated_pagination_convergence(
+            {
+                "pagination": {"style": "page"},
+                "pagination_convergence": {
+                    "max_passes": 3,
+                    "required_no_growth_passes": 2,
+                },
+            },
+            ("id",),
+        ) == (3, 2)
+
     @staticmethod
     def _pages_fetcher(passes):
         current_pass = 0
@@ -1643,6 +1655,66 @@ class TestPaginationConvergence:
             "https://example.com/c",
             "https://example.com/d",
             "https://example.com/e",
+        }
+
+    @pytest.mark.asyncio
+    async def test_numbered_pages_with_locale_variants_fail_closed_to_stable_urls(self):
+        """Raw row totals cannot prove a complete deduplicated inventory."""
+        from src.core.monitor import MonitorResult
+
+        pages = {
+            1: [
+                {"data": {"req_id": "a", "language": "en-us"}},
+                {"data": {"req_id": "b", "language": "en-us"}},
+            ],
+            # A page-boundary shift repeats requisition a in another locale,
+            # so four advertised rows hide the missing live requisition d.
+            2: [
+                {"data": {"req_id": "a", "language": "fr-fr"}},
+                {"data": {"req_id": "c", "language": "en-us"}},
+            ],
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            page = int(parse_qs(request.url.query.decode()).get("page", ["1"])[0])
+            return httpx.Response(
+                200,
+                json={"totalCount": 4, "jobs": pages[page]},
+                request=request,
+            )
+
+        board = {
+            "board_url": "https://example.com/jobs",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs?limit=2&page=1",
+                "json_path": "jobs",
+                "total_path": "totalCount",
+                "url_template": "https://example.com/jobs/{req_id}",
+                "url_template_fields": {"req_id": "data.req_id"},
+                "pagination": {
+                    "param_name": "page",
+                    "style": "page",
+                    "start_value": 1,
+                    "increment": 1,
+                    "location": "query",
+                    "max_pages": 2,
+                },
+                "pagination_convergence": {
+                    "max_passes": 3,
+                    "required_no_growth_passes": 2,
+                },
+                "item_filter": {"dedupe_by": ["data.req_id"]},
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == {
+            "https://example.com/jobs/a",
+            "https://example.com/jobs/b",
+            "https://example.com/jobs/c",
         }
 
 
