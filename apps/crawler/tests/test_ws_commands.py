@@ -4032,6 +4032,37 @@ class TestFeedback:
         assert "required" in fb
         assert fb["required"]["coverage"] == "0/0"
 
+    def test_feedback_replaces_seeded_null_feedback(self, tmp_path, monkeypatch):
+        """Inventory-seeded configs persist feedback after starting at null."""
+        self._setup(tmp_path, monkeypatch)
+        board = load_board("test", "careers")
+        board.configs["gh-api"]["feedback"] = None
+        save_board("test", board)
+
+        result = CliRunner().invoke(
+            ws,
+            [
+                "feedback",
+                "gh-api",
+                "test",
+                "--title",
+                "clean",
+                "--description",
+                "clean",
+                "--locations",
+                "clean",
+                "--verdict",
+                "good",
+                "--verdict-notes",
+                "Validated inventory seed",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        feedback = load_board("test", "careers").configs["gh-api"]["feedback"]
+        assert feedback["verdict"] == "good"
+        assert "Required:" in result.output
+
     def test_feedback_default_to_active_config(self, tmp_path, monkeypatch):
         """When name is omitted, uses active config."""
         self._setup(tmp_path, monkeypatch)
