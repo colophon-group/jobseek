@@ -2355,7 +2355,12 @@ def feedback_cmd(
     # Restore the previous active pointer (feedback should not change it).
     board.active_config = prev_active
 
-    feedback_data = cfg.get("feedback", {})
+    # BoardBackedClaimKV writes the updated slot back as a new dict, so the
+    # pre-call ``cfg`` reference is stale here.  Refresh it before rendering
+    # and saving; inventory-seeded configs start with ``feedback: null`` and
+    # otherwise crash below before the successful write can be persisted.
+    cfg = board.configs[name]
+    feedback_data = cfg.get("feedback") or {}
     action_log.append_to_list(
         board.log,
         "feedback",
