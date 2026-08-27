@@ -458,64 +458,107 @@ export class TypesenseSearchProvider implements SearchProvider {
     limit: number,
   ): Promise<SearchResponse> {
     const client = getSearchClient();
+    const targetCount = offset + limit;
+    const rankedCompanies: SearchResultCompany[] = [];
+    const seenCompanyIds = new Set<string>();
+    let rawOffset = 0;
+    let totalCompanies = 0;
 
-    const postingResults: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
-      () =>
-        client
-          .collections<JobPostingDoc>("job_posting")
-          .documents()
-          .search({
-            q: "*",
-            filter_by: POSTING_BASE_FILTER,
-            group_by: "company_id",
-            group_limit: 10,
-            sort_by: "first_seen_at:desc",
-            per_page: limit,
-            page: Math.floor(offset / limit) + 1,
-            facet_by: "company_id",
-            facet_strategy: "exhaustive",
-            max_facet_values: 1,
-          }),
-      { label: "topCompaniesUnfiltered" },
-    );
+    // Company counts are refreshed independently from posting documents. A
+    // ranked company can therefore have no currently visible posting group.
+    // Scan from the start of the deterministic Typesense ranking on every
+    // request and count only hydrated companies before applying the public
+    // offset. This keeps arbitrary offsets exact across underfilled batches.
+    while (rankedCompanies.length < targetCount) {
+      const requestLimit = Math.min(
+        250,
+        Math.max(limit, targetCount - rankedCompanies.length),
+      );
+      const companyResults: TsSearchResponse<TypesenseCompanyDocument> =
+        await withTypesenseRetry(
+          () =>
+            client
+              .collections<TypesenseCompanyDocument>("company")
+              .documents()
+              .search({
+                q: "*",
+                filter_by: "active_posting_count:>0",
+                sort_by: "active_posting_count:desc,year_posting_count:desc",
+                offset: rawOffset,
+                limit: requestLimit,
+              }),
+          { label: "topCompaniesUnfilteredRank" },
+        );
 
-    const groupedHits = (postingResults.grouped_hits ?? []) as GroupedHit[];
-    const totalCompanies =
-      postingResults.facet_counts?.[0]?.stats?.total_values ?? groupedHits.length;
-    if (groupedHits.length === 0) {
-      return { companies: [], totalCompanies };
+      if (rawOffset === 0) totalCompanies = companyResults.found;
+      const companyHits = companyResults.hits ?? [];
+      if (companyHits.length === 0) break;
+      rawOffset += companyHits.length;
+
+      const uniqueHits = companyHits.filter((hit) => {
+        const companyId = hit.document.id;
+        if (seenCompanyIds.has(companyId)) return false;
+        seenCompanyIds.add(companyId);
+        return true;
+      });
+      const companyIds = uniqueHits.map((hit) => hit.document.id);
+      if (companyIds.length > 0) {
+        const postingResults: TsSearchResponse<JobPostingDoc> =
+          await withTypesenseRetry(
+            () =>
+              client
+                .collections<JobPostingDoc>("job_posting")
+                .documents()
+                .search({
+                  q: "*",
+                  filter_by: `company_id:[${companyIds.join(",")}] && ${POSTING_BASE_FILTER}`,
+                  group_by: "company_id",
+                  group_limit: 10,
+                  sort_by: "first_seen_at:desc",
+                  per_page: companyIds.length,
+                }),
+            { label: "topCompaniesUnfilteredPostings" },
+          );
+
+        const groupedHits = (postingResults.grouped_hits ?? []) as GroupedHit[];
+        const groupMap = new Map<string, GroupedHit>(
+          groupedHits.map((group) => [group.hits[0].document.company_id, group]),
+        );
+        const companyMap = new Map(
+          uniqueHits.map((hit) => [hit.document.id, hit.document]),
+        );
+
+        for (const companyId of companyIds) {
+          const group = groupMap.get(companyId);
+          if (!group) continue;
+          const firstHit = group.hits[0]?.document;
+          if (!firstHit) continue;
+          const compDoc = companyMap.get(companyId);
+          const company = resolveTypesenseCompany(
+            companyId,
+            group.hits.map((hit) => hit.document),
+            compDoc,
+          );
+          if (!company) continue;
+          const postings = mapHitsToPostingsByFreshness(group.hits);
+          if (postings.length === 0) continue;
+          rankedCompanies.push({
+            company,
+            activeMatches:
+              compDoc?.active_posting_count ?? group.found ?? group.hits.length,
+            yearMatches: compDoc?.year_posting_count ?? 0,
+            postings,
+          });
+        }
+      }
+
+      if (companyHits.length < requestLimit || rawOffset >= companyResults.found) break;
     }
 
-    const companyIds = groupedHits.map(
-      (g: GroupedHit) => g.hits[0].document.company_id,
-    );
-    const companyMap = await fetchCompaniesById(companyIds);
-
-    const companies: SearchResultCompany[] = groupedHits
-      .map((group: GroupedHit) => {
-        const firstHit = group.hits[0]?.document;
-        if (!firstHit) return null;
-        const companyId = firstHit.company_id;
-        const compDoc = companyMap.get(companyId);
-        const company = resolveTypesenseCompany(
-          companyId,
-          group.hits.map((hit) => hit.document),
-          compDoc,
-        );
-        if (!company) return null;
-        return {
-          company,
-          activeMatches: compDoc?.active_posting_count ?? group.found ?? group.hits.length,
-          yearMatches: compDoc?.year_posting_count ?? 0,
-          postings: mapHitsToPostingsByFreshness(group.hits),
-        };
-      })
-      .filter(
-        (company): company is SearchResultCompany =>
-          company !== null && company.postings.length > 0,
-      );
-
-    return { companies, totalCompanies };
+    return {
+      companies: rankedCompanies.slice(offset, targetCount),
+      totalCompanies,
+    };
   }
 
   async loadPostings(
