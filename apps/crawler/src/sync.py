@@ -600,23 +600,47 @@ WHERE board_url NOT IN (SELECT unnest($1::text[]))
   AND is_enabled = true
 """
 
+_FETCH_BOARD_COMPANY_REHOMES_LOCAL = """
+WITH incoming AS MATERIALIZED (
+    SELECT c.id AS company_id, b.board_slug, b.board_url
+    FROM unnest($1::text[], $2::text[], $3::text[])
+      AS b(company_slug, board_slug, board_url)
+    JOIN company c ON c.slug = b.company_slug
+), rehomes AS (
+    SELECT jb.id AS board_id, incoming.company_id
+    FROM incoming
+    JOIN job_board jb ON jb.board_url = incoming.board_url
+    WHERE jb.company_id IS DISTINCT FROM incoming.company_id
+
+    UNION
+
+    SELECT jb.id AS board_id, incoming.company_id
+    FROM incoming
+    JOIN job_board jb
+      ON incoming.board_slug IS NOT NULL
+     AND jb.board_slug = incoming.board_slug
+    WHERE jb.company_id IS DISTINCT FROM incoming.company_id
+)
+SELECT board_id::text AS board_id, company_id::text AS company_id
+FROM rehomes
+ORDER BY board_id
+"""
+
 _REALIGN_BOARD_POSTING_COMPANIES_SUPA = """
 UPDATE job_posting jp
-SET company_id = jb.company_id
-FROM job_board jb
-WHERE jp.board_id = jb.id
-  AND jb.board_url = ANY($1::text[])
-  AND jp.company_id IS DISTINCT FROM jb.company_id
+SET company_id = rehome.company_id
+FROM unnest($1::uuid[], $2::uuid[]) AS rehome(board_id, company_id)
+WHERE jp.board_id = rehome.board_id
+  AND jp.company_id IS DISTINCT FROM rehome.company_id
 """
 
 _REALIGN_BOARD_POSTING_COMPANIES_LOCAL = """
 UPDATE job_posting jp
-SET company_id = jb.company_id,
+SET company_id = rehome.company_id,
     updated_at = now()
-FROM job_board jb
-WHERE jp.board_id = jb.id
-  AND jb.board_url = ANY($1::text[])
-  AND jp.company_id IS DISTINCT FROM jb.company_id
+FROM unnest($1::uuid[], $2::uuid[]) AS rehome(board_id, company_id)
+WHERE jp.board_id = rehome.board_id
+  AND jp.company_id IS DISTINCT FROM rehome.company_id
 """
 
 # Every row that should NOT be in Redis. A board appearing here while its
@@ -636,6 +660,7 @@ class BoardSyncEffects:
 
     schedules: tuple[MonitorSchedule, ...] = ()
     orphan_monitors: tuple[tuple[str, str], ...] = ()
+    posting_company_rehomes: tuple[tuple[str, str], ...] = ()
 
 
 def _load_companies() -> pl.DataFrame:
@@ -1359,6 +1384,28 @@ async def sync_boards(
         log.info("sync.boards.all_skipped", skipped=skipped)
         return BoardSyncEffects()
 
+    # Capture ownership changes before either the slug-stable realignment or
+    # the board UPSERT overwrites the previous company id. The former query
+    # checked every posting for every configured board on every sync, even
+    # though a company rehome is rare; at production scale that repeatedly hit
+    # the 30-second statement timeout and made the rollback sync fail too.
+    rehome_rows = await local_conn.fetch(
+        _FETCH_BOARD_COMPANY_REHOMES_LOCAL,
+        company_slugs,
+        board_slugs,
+        board_urls,
+    )
+    rehomes_by_board: dict[str, str] = {}
+    for row in rehome_rows:
+        board_id = str(row["board_id"])
+        company_id = str(row["company_id"])
+        previous_company_id = rehomes_by_board.setdefault(board_id, company_id)
+        if previous_company_id != company_id:
+            raise RuntimeError(
+                f"board sync resolved one existing board to multiple companies: {board_id}"
+            )
+    posting_company_rehomes = tuple(rehomes_by_board.items())
+
     # Realign a slug-stable source change before the board_url UPSERT. This
     # preserves the local id while explicitly resetting retired runtime state.
     await local_conn.execute(
@@ -1425,7 +1472,12 @@ async def sync_boards(
             )
         )
 
-    await local_conn.execute(_REALIGN_BOARD_POSTING_COMPANIES_LOCAL, board_urls)
+    if posting_company_rehomes:
+        await local_conn.execute(
+            _REALIGN_BOARD_POSTING_COMPANIES_LOCAL,
+            [board_id for board_id, _company_id in posting_company_rehomes],
+            [company_id for _board_id, company_id in posting_company_rehomes],
+        )
 
     # Disable removed boards in local Postgres too
     await local_conn.execute(_DISABLE_REMOVED_BOARDS_LOCAL, board_urls)
@@ -1445,10 +1497,15 @@ async def sync_boards(
     log.info(
         "sync.boards.local_staged",
         local_upserted=len(local_rows),
+        posting_company_rehomes=len(posting_company_rehomes),
         redis_to_enqueue=len(schedules),
         redis_orphans_to_remove=len(orphan_monitors),
     )
-    return BoardSyncEffects(tuple(schedules), tuple(orphan_monitors))
+    return BoardSyncEffects(
+        schedules=tuple(schedules),
+        orphan_monitors=tuple(orphan_monitors),
+        posting_company_rehomes=posting_company_rehomes,
+    )
 
 
 async def apply_board_redis_effects(effects: BoardSyncEffects) -> None:
@@ -1631,6 +1688,7 @@ async def _mirror_boards_to_supabase(
     local_conn: asyncpg.Connection,
     supa_conn: asyncpg.Connection,
     board_urls: list[str],
+    posting_company_rehomes: tuple[tuple[str, str], ...] = (),
 ) -> None:
     rows = await local_conn.fetch(
         "SELECT id, company_id, board_slug, board_url, crawler_type, metadata "
@@ -1648,7 +1706,12 @@ async def _mirror_boards_to_supabase(
         [row["crawler_type"] for row in rows],
         [row["metadata"] for row in rows],
     )
-    await supa_conn.execute(_REALIGN_BOARD_POSTING_COMPANIES_SUPA, board_urls)
+    if posting_company_rehomes:
+        await supa_conn.execute(
+            _REALIGN_BOARD_POSTING_COMPANIES_SUPA,
+            [board_id for board_id, _company_id in posting_company_rehomes],
+            [company_id for _board_id, company_id in posting_company_rehomes],
+        )
     await supa_conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
 
 
@@ -1663,6 +1726,7 @@ async def sync_legacy_mirror(
     industries: pl.DataFrame,
     company_descs: pl.DataFrame,
     boards: pl.DataFrame,
+    posting_company_rehomes: tuple[tuple[str, str], ...] = (),
 ) -> None:
     """Mirror a committed local snapshot, aborting atomically on any drift."""
     async with supa_conn.transaction():
@@ -1683,6 +1747,7 @@ async def sync_legacy_mirror(
             local_conn,
             supa_conn,
             boards["board_url"].to_list(),
+            posting_company_rehomes,
         )
         await resolve_pending_misses(supa_conn)
     log.info("sync.legacy_mirror.complete")
@@ -3497,6 +3562,7 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
                     industries=industries,
                     company_descs=company_descs,
                     boards=boards,
+                    posting_company_rehomes=board_effects.posting_company_rehomes,
                 )
 
         web_pool = None
