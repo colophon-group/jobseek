@@ -43,7 +43,7 @@ _JOB_LINK_RE = re.compile(
 )
 _LISTING_LINK_RE = re.compile(
     r"^https://jobs\.jobvite\.com/(?:"
-    r"[a-z0-9](?:[a-z0-9-]{0,62})(?:/jobs/positions)?"
+    r"[a-z0-9](?:[a-z0-9-]{0,62})(?:/jobs(?:/positions)?)?"
     r"|careers/[a-z0-9](?:[a-z0-9-]{0,62})(?:/jobs)?"
     r")(?:[?#]|$)",
     re.IGNORECASE,

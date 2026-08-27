@@ -52,6 +52,10 @@ class TestIdentity:
                 JobviteBoard(TENANT, f"/careers/{TENANT}"),
             ),
             (
+                f"https://jobs.jobvite.com/{TENANT}/jobs",
+                JobviteBoard(TENANT, f"/{TENANT}/jobs"),
+            ),
+            (
                 f"https://jobs.jobvite.com/{TENANT}/jobs/positions?d=Engineering",
                 JobviteBoard(TENANT, f"/{TENANT}/jobs/positions"),
             ),
@@ -180,6 +184,26 @@ class TestMonitor:
         assert result == {JOB_URL}
         assert requested == [landing, positions]
 
+    async def test_branded_landing_resolves_tenant_jobs_link(self):
+        landing = f"https://jobs.jobvite.com/careers/{TENANT}"
+        jobs_listing = f"https://jobs.jobvite.com/{TENANT}/jobs"
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            if str(request.url) == landing:
+                return httpx.Response(
+                    200,
+                    text=_listing(extra=f'<a href="/{TENANT}/jobs">Jobs</a>'),
+                    request=request,
+                )
+            return httpx.Response(200, text=_listing("oaGwAfwG"), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": landing}, client)
+        assert result == {JOB_URL}
+        assert requested == [landing, jobs_listing]
+
     async def test_marketing_or_cross_tenant_page_fails_not_empty(self):
         transport = httpx.MockTransport(
             lambda request: httpx.Response(
@@ -269,6 +293,19 @@ class TestDetection:
         async with httpx.AsyncClient(transport=transport) as client:
             result = await can_handle(LISTING_URL, client)
         assert result == {"tenant": TENANT, "listing_url": LISTING_URL, "jobs": 2}
+
+    async def test_tenant_jobs_route_is_verified_and_counted(self):
+        listing_url = f"https://jobs.jobvite.com/{TENANT}/jobs"
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                text=_listing("oaGwAfwG", "o57bAfwH"),
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await can_handle(listing_url, client)
+        assert result == {"tenant": TENANT, "listing_url": listing_url, "jobs": 2}
 
     async def test_explicit_link_is_detected_without_slug_guessing(self):
         requested: list[str] = []
