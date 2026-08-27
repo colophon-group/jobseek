@@ -331,6 +331,7 @@ alpian,alpian-ats,https://alpian.intranet.digital/external/en/jobs,api_sniffer,"
 alpine-investors,alpine-investors-careers,https://job-boards.greenhouse.io/alpineinvestors,greenhouse,"{""token"": ""alpineinvestors""}",skip,
 alpine-investors,alpine-investors-internships,https://job-boards.greenhouse.io/alpineinternships,greenhouse,"{""token"": ""alpineinternships""}",skip,
 alpiq,alpiq-hungary-linkedin,https://www.linkedin.com/company/alpiq/jobs/,linkedin,"{""company_id"": ""352594"", ""company_slug"": ""alpiq""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
+alstom,alstom-careers,https://jobsearch.alstom.com/,rss,"{""preset"": ""successfactors""}",skip,
 alt,alt-greenhouse,https://job-boards.greenhouse.io/alt,greenhouse,"{""token"": ""alt""}",skip,
 alta-ares,alta-ares-ashby,https://jobs.ashbyhq.com/alta-ares,ashby,"{""token"": ""alta-ares""}",skip,
 altana,altana-greenhouse,https://job-boards.greenhouse.io/altanaai,greenhouse,"{""token"": ""altanaai""}",skip,
