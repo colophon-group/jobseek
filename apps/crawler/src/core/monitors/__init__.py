@@ -861,14 +861,15 @@ def _build_comment(name: str, metadata: dict) -> str:
         label = {
             "successfactors": "SuccessFactors RSS",
             "teamtailor": "Teamtailor RSS",
+            "wp_job_manager": "WP Job Manager RSS",
         }.get(preset, f"RSS ({preset})")
         count_str = f"{jobs}" if jobs is not None else ""
         # For paginated presets, first-page count may be approximate
-        if preset == "teamtailor" and jobs is not None:
+        if preset in {"teamtailor", "wp_job_manager"} and jobs is not None:
             from src.core.monitors.rss import _PRESETS
 
-            tt = _PRESETS.get("teamtailor")
-            if tt and jobs >= tt.page_size:
+            selected = _PRESETS.get(preset)
+            if selected and jobs >= selected.page_size:
                 count_str = f"{jobs}+"
         if count_str:
             return f"{label} \u2014 {feed_url}, {count_str} jobs"

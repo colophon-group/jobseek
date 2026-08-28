@@ -1175,6 +1175,43 @@ class TestDiscover:
             jobs = await discover(board, client)
             assert len(jobs) == 1
 
+    async def test_wp_job_manager_preset_uses_numbered_pages(self):
+        first_page = _rss_xml(
+            "".join(
+                f"<item><title>Job {job_id}</title>"
+                f"<link>https://example.com/job/{job_id}</link></item>"
+                for job_id in range(1, 11)
+            )
+        )
+        second_page = _rss_xml("""
+            <item>
+                <title>Job 11</title>
+                <link>https://example.com/job/11</link>
+            </item>
+            <item>
+                <title>Job 12</title>
+                <link>https://example.com/job/12</link>
+            </item>
+        """)
+        requested_pages = []
+
+        def handler(request):
+            requested_pages.append(request.url.params.get("paged"))
+            body = first_page if request.url.params["paged"] == "1" else second_page
+            return httpx.Response(200, text=body)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://example.com/open-positions/",
+                    "metadata": {"preset": "wp_job_manager"},
+                },
+                client,
+            )
+
+        assert len(jobs) == 12
+        assert requested_pages == ["1", "2"]
+
     async def test_teamtailor_transient_400_retries_same_page(self, monkeypatch):
         feed_xml = _rss_xml("""
             <item>
@@ -1427,6 +1464,38 @@ class TestCanHandle:
             result = await can_handle("https://example.com/careers", client)
             assert result is not None
             assert result["preset"] == "teamtailor"
+
+    async def test_wp_job_manager_jobs_feed_precedes_wordpress_post_feed(self):
+        rss_xml = _rss_xml("""
+            <item>
+                <title>Nurse</title>
+                <link>https://example.com/job/nurse/</link>
+            </item>
+        """)
+
+        def handler(request):
+            if request.url.params.get("feed") == "job_feed":
+                return httpx.Response(200, text=rss_xml)
+            if request.url.path == "/feed/":
+                pytest.fail("the site-wide WordPress feed must not be probed")
+            return httpx.Response(
+                200,
+                text=(
+                    '<html><head><link rel="alternate" type="application/rss+xml" '
+                    'href="/feed/"></head><body>'
+                    '<script src="/wp-content/plugins/wp-job-manager/assets/job-listings.js">'
+                    "</script></body></html>"
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://example.com/open-positions/", client)
+
+        assert result == {
+            "preset": "wp_job_manager",
+            "feed_url": "https://example.com/?feed=job_feed",
+            "jobs": 1,
+        }
 
     async def test_detects_advertised_generic_feed(self):
         rss_xml = _rss_xml(

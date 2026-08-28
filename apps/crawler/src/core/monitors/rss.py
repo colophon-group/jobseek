@@ -4,6 +4,7 @@ Supports multiple ATS platforms that expose job listings via RSS/XML-style trans
 - **successfactors**: SAP SuccessFactors CSB ``/googlefeed.xml`` (Google Base namespace)
   plus native static DWR pagination for legacy ``/career?company=...`` tenants
 - **teamtailor**: Teamtailor ``/jobs.rss`` (offset-paginated, ``tt:`` namespace)
+- **wp_job_manager**: WordPress WP Job Manager ``?feed=job_feed`` (page-paginated)
 - **generic**: Standard RSS 2.0 (manual config, not auto-detected)
 
 Config: ``{"preset": "<name>", "feed_url": "..."}``. Legacy SuccessFactors
@@ -134,6 +135,7 @@ class _Preset:
     feed_ns: dict[str, str]
     paginated: bool = False
     page_size: int = 100
+    page_query_param: str | None = None
     retryable_statuses: frozenset[int] = frozenset()
 
 
@@ -161,6 +163,17 @@ _PRESETS: dict[str, _Preset] = {
         # healthy feed. Keep this provider-specific: a generic HTTP 400 is a
         # permanent request error and must still fail fast.
         retryable_statuses=frozenset({400}),
+    ),
+    "wp_job_manager": _Preset(
+        feed_paths=["/?feed=job_feed"],
+        page_patterns=[
+            re.compile(r"/wp-content/plugins/wp-job-manager/", re.IGNORECASE),
+            re.compile(r"\bjob_manager_ajax_filters\b", re.IGNORECASE),
+        ],
+        feed_ns={},
+        paginated=True,
+        page_size=10,
+        page_query_param="paged",
     ),
 }
 
@@ -727,6 +740,15 @@ def _add_pagination(url: str, offset: int, per_page: int) -> str:
     return urlunparse(parsed._replace(query=new_query))
 
 
+def _add_page_number(url: str, page: int, query_param: str) -> str:
+    """Add a one-based page-number query parameter to a URL."""
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+    params[query_param] = [str(page)]
+    new_query = urlencode({key: values[0] for key, values in params.items()})
+    return urlunparse(parsed._replace(query=new_query))
+
+
 # ── Feed fetching ───────────────────────────────────────────────────────
 
 
@@ -1006,11 +1028,15 @@ async def discover_stream(
     jobs: list[DiscoveredJob] = []
     total_jobs = 0
     offset = 0
+    page_number = 1
 
     while True:
-        page_url = (
-            _add_pagination(feed_url, offset, preset.page_size) if preset.paginated else feed_url
-        )
+        if preset.paginated and preset.page_query_param:
+            page_url = _add_page_number(feed_url, page_number, preset.page_query_param)
+        elif preset.paginated:
+            page_url = _add_pagination(feed_url, offset, preset.page_size)
+        else:
+            page_url = feed_url
         page_items = 0
         async for item in _stream_feed_items(page_url, preset, client):
             page_items += 1
@@ -1067,6 +1093,7 @@ async def discover_stream(
         if not preset.paginated or page_items < preset.page_size:
             break
         offset += preset.page_size
+        page_number += 1
 
     if jobs:
         if detail_fields:
@@ -1291,6 +1318,25 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
             identities=len(embedded_boards),
         )
 
+    # WP Job Manager pages also advertise WordPress's site-wide post feed.
+    # Prefer the provider-specific jobs feed when its plugin markers are
+    # present, otherwise auto-detection would silently monitor blog posts.
+    wp_job_manager = _PRESETS["wp_job_manager"]
+    if html_text and any(pattern.search(html_text) for pattern in wp_job_manager.page_patterns):
+        feed = _build_feed_url(url, wp_job_manager.feed_paths[0])
+        found, count = await _probe_feed(feed, client, "wp_job_manager")
+        if found:
+            result: dict = {"preset": "wp_job_manager", "feed_url": feed}
+            if count is not None:
+                result["jobs"] = count
+            log.info(
+                "rss.detected_in_page",
+                url=url,
+                preset="wp_job_manager",
+                jobs=count,
+            )
+            return result
+
     advertised_feed = _advertised_rss_feed_url(url, html_text or "")
     if advertised_feed:
         found, count = await _probe_feed(advertised_feed, client, "generic")
@@ -1302,6 +1348,8 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
             return result
 
     for preset_name, preset in _PRESETS.items():
+        if preset_name == "wp_job_manager":
+            continue
         detected = False
         if html_text and preset.page_patterns:
             detected = any(p.search(html_text) for p in preset.page_patterns)
@@ -1327,6 +1375,8 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
 
     # 2. Blind feed probe as fallback — try all presets' feed paths
     for preset_name, preset in _PRESETS.items():
+        if preset_name == "wp_job_manager":
+            continue
         for path in preset.feed_paths:
             feed = _build_feed_url(url, path)
             found, count = await _probe_feed(feed, client, preset_name)
