@@ -946,6 +946,9 @@ booksy,booksy-careers,https://apply.workable.com/booksy-1/,workable,"{""token"":
 boom,boom-ashby,https://jobs.ashbyhq.com/boom,ashby,"{""token"": ""boom""}",skip,
 boom-entertainment,boom-entertainment-greenhouse,https://job-boards.greenhouse.io/boomentertainment,greenhouse,"{""token"": ""boomentertainment""}",skip,
 boomi,boomi-pinpoint,https://boomi.pinpointhq.com,pinpoint,"{""slug"": ""boomi""}",skip,
+booz-allen-hamilton,booz-allen-hamilton-careers,https://bah.wd1.myworkdayjobs.com/bah_jobs,workday,,workday,
+booz-allen-hamilton,booz-allen-hamilton-defy-security,https://jobs.ashbyhq.com/defy-security,ashby,"{""token"": ""defy-security""}",skip,
+booz-allen-hamilton,booz-allen-hamilton-everwatch,https://everwatch-everwatchsolutions.icims.com/jobs/intro,icims,"{""host"": ""everwatch-everwatchsolutions.icims.com""}",json-ld,
 bordier,bordier-main,https://www.bordier.com/fr/carrieres/,sitemap,"{""sitemap_url"": ""https://www.bordier.com/open_positions-sitemap1.xml"", ""url_filter"": ""/fr/open-positions/une-assistante-departement-recherche/?$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title"", ""regex"": ""^(.+?\\))Gen\u00e8ve, Suisse$""}, {""tag"": ""h1"", ""field"": ""locations"", ""from"": 0, ""regex"": ""\\)(Gen\u00e8ve, Suisse)$""}, {""text"": ""Travailler chez Bordier & Cie"", ""field"": ""description"", ""stop"": ""Vous pouvez envoyer votre candidature"", ""html"": true}]}"
 bosch,bosch-china-campus,https://app.mokahr.com/campus-recruitment/bosch/73873,mokahr,"{""org_id"": ""bosch"", ""site_id"": 73873, ""locale"": ""zh-CN""}",mokahr,"{""enrich"": [""description""]}"
 bosch,bosch-china-internships,https://app.mokahr.com/campus-recruitment/bosch/75909,mokahr,"{""org_id"": ""bosch"", ""site_id"": 75909, ""locale"": ""zh-CN""}",mokahr,"{""enrich"": [""description""]}"
