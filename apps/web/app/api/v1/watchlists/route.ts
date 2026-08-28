@@ -9,10 +9,11 @@ import {
   parseApiLocale,
   siteUrl,
 } from "../_shared";
+import { withPublicApiObservability } from "@/lib/public-api-observability";
 
 const MAX_RESULTS = 10;
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   const rl = await checkRateLimit(request);
   if (rl instanceof NextResponse) return rl;
 
@@ -42,3 +43,5 @@ export async function GET(request: NextRequest) {
 
   return apiResponse({ watchlists }, { rateLimit: rl });
 }
+
+export const GET = withPublicApiObservability("watchlists", handleGet);

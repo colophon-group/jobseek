@@ -47,6 +47,18 @@ the 12-hour measurement window.
 
 ## Measurement protocol
 
+A Vercel WAF publication resets an active measurement window, including a
+publication that only consolidates equivalent deny branches or adds a
+`log`-only rule. Firewall evaluation changes the production ingress boundary,
+so a window spanning that publication is not comparable. Record the publish
+timestamp and start a fresh 12-hour window after both the production deployment
+`Ready` timestamp and the last WAF publication in scope. An unpublished draft
+does not reset the window because it does not affect traffic.
+
+The #8120 WAF publication completed between `2026-08-28T09:37:58Z` and
+`2026-08-28T09:38:06Z`. Any measurement that was active then is invalid; its
+replacement window must start no earlier than `2026-08-28T09:38:06Z`.
+
 1. Record the production deployment SHA and its Vercel `Ready` timestamp.
 2. Let at least 12 hours of production traffic accumulate after that timestamp.
    Never include traffic from the previous deployment.

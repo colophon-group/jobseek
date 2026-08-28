@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 // Public REST routes use the plain service tier — see issue #3231.
 import { listTopCompanies, searchJobs } from "@/lib/services/search";
 import { parseSearchFilters } from "@/lib/services/search-input";
+import { withPublicApiObservability } from "@/lib/public-api-observability";
 import {
   checkRateLimit,
   apiResponse,
@@ -13,7 +14,7 @@ import {
   validateResolvedPublicFilters,
 } from "../../_shared";
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   const rl = await checkRateLimit(request);
   if (rl instanceof NextResponse) return rl;
 
@@ -146,3 +147,5 @@ export async function GET(request: NextRequest) {
     { rateLimit: rl },
   );
 }
+
+export const GET = withPublicApiObservability("watchlist_create", handleGet);

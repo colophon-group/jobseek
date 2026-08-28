@@ -1,5 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createServer } from "./server.js";
+import type { JobseekClientOptions } from "./client.js";
 
 /**
  * Stateless MCP request handler for serverless environments.
@@ -8,6 +9,7 @@ import { createServer } from "./server.js";
 export async function handleMcpRequest(
   req: Request,
   baseUrl = "https://jseek.co",
+  options: JobseekClientOptions = {},
 ): Promise<Response> {
   if (req.method === "DELETE") {
     return new Response(null, { status: 200 });
@@ -16,7 +18,7 @@ export async function handleMcpRequest(
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
   });
-  const server = createServer(baseUrl);
+  const server = createServer(baseUrl, options);
   await server.connect(transport);
   return transport.handleRequest(req);
 }
