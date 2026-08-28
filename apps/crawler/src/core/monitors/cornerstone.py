@@ -1,7 +1,7 @@
 """Cornerstone public career-site monitor.
 
-Each ``*.csod.com`` listing embeds a short-lived public token and a trusted
-regional ``*.api.csod.com`` origin. The monitor refreshes that bootstrap when
+Each ``*.csod.com`` or ``*.csodfed.com`` listing embeds a short-lived public
+token and a trusted regional API origin. The monitor refreshes that bootstrap when
 authorization expires and streams complete job records from Cornerstone's
 public paginated search endpoint without per-job detail requests.
 """
@@ -53,7 +53,7 @@ _BOOTSTRAP_CONTEXT_RETRY_DELAY = 0.5
 
 _PAGE_PATTERNS = [
     re.compile(
-        r"(https?://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.csod\.com/"
+        r"(https?://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.csod(?:fed)?\.com/"
         r"ux/ats/careersite/[1-9]\d{0,9}/home"
         r"(?:/requisition/[1-9]\d{0,19})?\?c=[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?)"
         r"(?=[#\"'<\s]|$)",
@@ -426,6 +426,8 @@ def _build_result(listing_url: str, count: ProbeCount | None, context: None) -> 
         "site_id": board.site_id,
         "corp": board.corp,
     }
+    if board.domain != "csod.com":
+        result["domain"] = board.domain
     if count is not None:
         result["jobs"] = count
     return result

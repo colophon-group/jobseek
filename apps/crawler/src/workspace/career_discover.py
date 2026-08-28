@@ -96,7 +96,7 @@ _ATS_URL_RE = re.compile(
     r"(?:\?jobBoardSource=gupy_public_page)?(?=[#\"'<\s]|$)"
     r"|workforcenow\.adp\.com/mascsr/default/mdf/recruitment/"
     r"recruitment\.html\?[^\"'<\s]+"
-    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.csod\.com/"
+    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.csod(?:fed)?\.com/"
     r"ux/ats/careersite/[1-9]\d{0,9}/home"
     r"(?:/requisition/[1-9]\d{0,19})?"
     r"\?c=[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?(?=[#\"'<\s]|$)"

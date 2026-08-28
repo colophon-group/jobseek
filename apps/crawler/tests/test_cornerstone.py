@@ -33,6 +33,8 @@ SITE_ID = 16
 CORP = "aswatsoneurope"
 BOARD = CornerstoneBoard(TENANT, SITE_ID, CORP)
 BOARD_URL = BOARD.listing_url()
+FED_BOARD = CornerstoneBoard("leidosbiomed", 4, "leidosbiomed", "csodfed.com")
+FED_SEARCH_URL = "https://us-il2-hs.api.csodfed.com/rec-job-search/external/jobs"
 SEARCH_URL = "https://eu-fra.api.csod.com/rec-job-search/external/jobs"
 TOKEN_ONE = f"{'a' * 24}.{'b' * 24}.{'c' * 24}"
 TOKEN_TWO = f"{'d' * 24}.{'e' * 24}.{'f' * 24}"
@@ -132,6 +134,20 @@ class TestBoardIdentity:
             == BOARD
         )
 
+    def test_accepts_the_explicit_federal_cornerstone_domain(self):
+        assert cornerstone_board_from_url(FED_BOARD.listing_url()) == FED_BOARD
+        assert (
+            cornerstone_board_from_metadata(
+                {
+                    "tenant": "leidosbiomed",
+                    "site_id": 4,
+                    "corp": "leidosbiomed",
+                    "domain": "csodfed.com",
+                }
+            )
+            == FED_BOARD
+        )
+
     @pytest.mark.parametrize(
         "metadata",
         [
@@ -139,6 +155,7 @@ class TestBoardIdentity:
             {"tenant": TENANT, "site_id": 0, "corp": CORP},
             {"tenant": TENANT, "site_id": True, "corp": CORP},
             {"tenant": TENANT, "site_id": SITE_ID, "corp": "bad/corp"},
+            {"tenant": TENANT, "site_id": SITE_ID, "corp": CORP, "domain": "evil.test"},
         ],
     )
     def test_invalid_metadata_is_rejected(self, metadata: dict):
@@ -155,6 +172,17 @@ class TestBootstrapContext:
         assert context.headers["Authorization"] == f"Bearer {TOKEN_ONE}"
         assert TOKEN_ONE not in repr(context)
 
+    def test_accepts_the_federal_cornerstone_api_for_a_federal_board(self):
+        context = extract_cornerstone_context(
+            _context_page(
+                corp="leidosbiomed",
+                cloud="https://us-il2-hs.api.csodfed.com/",
+            ),
+            FED_BOARD,
+        )
+
+        assert context.search_url == FED_SEARCH_URL
+
     @pytest.mark.parametrize(
         ("page", "message"),
         [
@@ -163,6 +191,7 @@ class TestBootstrapContext:
             (_context_page(corp="other"), "does not match"),
             (_context_page(token="short.token.value"), "malformed session token"),
             (_context_page(cloud="https://api.csod.com.evil.test/"), "untrusted API origin"),
+            (_context_page(cloud="https://api.csodfed.com/"), "untrusted API origin"),
             (_context_page(cloud="http://eu-fra.api.csod.com/"), "untrusted API origin"),
             (_context_page(culture_id=True), "invalid culture ID"),
             (_context_page(culture_name="bad/culture"), "invalid culture name"),
@@ -514,6 +543,15 @@ class TestDetectionAndIntegration:
         assert await can_handle(BOARD_URL) == expected
         assert await can_handle(BOARD.job_url(273622)) == expected
 
+    async def test_direct_federal_listing_preserves_its_domain(self):
+        assert await can_handle(FED_BOARD.listing_url()) == {
+            "tenant": "leidosbiomed",
+            "site_id": 4,
+            "corp": "leidosbiomed",
+            "domain": "csodfed.com",
+        }
+        assert detect_ats_from_url(FED_BOARD.listing_url()) == "cornerstone"
+
     async def test_direct_url_is_api_verified_when_client_is_available(self):
         def handler(request: httpx.Request) -> httpx.Response:
             if request.method == "GET":
@@ -616,4 +654,6 @@ class TestDetectionAndIntegration:
         assert delay_for_domain(throttle_key) == settings.throttle_delay_ats
         assert delay_for_domain(f"{TENANT}.csod.com") == settings.throttle_delay_ats
         assert delay_for_domain("eu-fra.api.csod.com") == settings.throttle_delay_ats
+        assert delay_for_domain("leidosbiomed.csodfed.com") == settings.throttle_delay_ats
+        assert delay_for_domain("us-il2-hs.api.csodfed.com") == settings.throttle_delay_ats
         assert delay_for_domain("csod.com.evil.test") == settings.throttle_delay_default
