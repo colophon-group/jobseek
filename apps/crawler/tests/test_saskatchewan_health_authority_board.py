@@ -55,8 +55,20 @@ def test_sha_physician_board_uses_the_employer_filtered_public_api() -> None:
     }
 
 
-def test_sha_stages_the_verified_brand_assets() -> None:
-    image_dir = DATA_DIR / "images" / "saskatchewan-health-authority"
+def test_sha_keeps_finalized_content_addressed_assets() -> None:
+    with (DATA_DIR / "companies.csv").open(newline="", encoding="utf-8") as handle:
+        company = next(
+            row for row in csv.DictReader(handle) if row["slug"] == "saskatchewan-health-authority"
+        )
 
-    assert (image_dir / "logo.svg").is_file()
-    assert (image_dir / "icon.png").is_file()
+    assert company["logo_url"] == (
+        "https://jobseek-assets.colophon-group.org/companies/"
+        "saskatchewan-health-authority/"
+        "logo-d2cd06f84f042aea5455fd118a509659c6657de72b1ed86362e9edc306b38f4c.svg"
+    )
+    assert company["icon_url"] == (
+        "https://jobseek-assets.colophon-group.org/companies/"
+        "saskatchewan-health-authority/"
+        "icon-167a7b7b80bb2dd7c40c892ae0ee7e45ee5bcb21d630511220ff13e7b6343364.webp"
+    )
+    assert not (DATA_DIR / "images/saskatchewan-health-authority").exists()
