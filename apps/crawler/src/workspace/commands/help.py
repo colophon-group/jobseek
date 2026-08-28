@@ -4021,6 +4021,11 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
   Handles pagination automatically via finder param offset suffix.
 
   Optional monitor_config:
+    organization_id Oracle organization facet ID. Use this for shared career
+                    sites so the monitor returns only the target company. A
+                    selectedOrganizationsFacet in the board URL is inferred
+                    automatically. The monitor fails closed if Oracle does
+                    not apply the configured facet.
     offset_overlap   Number of rows (0-199) to overlap between 200-row pages.
                      Use for very large, high-churn boards where Oracle's
                      offset result set changes during a cycle. The overlap
