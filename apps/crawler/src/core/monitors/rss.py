@@ -1029,6 +1029,7 @@ async def discover_stream(
     total_jobs = 0
     offset = 0
     page_number = 1
+    seen_page_urls: set[str] = set()
 
     while True:
         if preset.paginated and preset.page_query_param:
@@ -1038,11 +1039,13 @@ async def discover_stream(
         else:
             page_url = feed_url
         page_items = 0
+        page_urls: set[str] = set()
         async for item in _stream_feed_items(page_url, preset, client):
             page_items += 1
             parsed = parser(item)
             if parsed is None:
                 continue
+            page_urls.add(parsed.url)
             jobs.append(parsed)
             total_jobs += 1
 
@@ -1089,6 +1092,15 @@ async def discover_stream(
                     )
                 yield jobs
                 jobs = []
+
+        if preset.paginated and preset.page_query_param:
+            if page_items >= preset.page_size and not (page_urls - seen_page_urls):
+                raise PaginationFetchError(
+                    page_url,
+                    attempts=1,
+                    last_error="RepeatedPaginatedFeedPage",
+                )
+            seen_page_urls.update(page_urls)
 
         if not preset.paginated or page_items < preset.page_size:
             break

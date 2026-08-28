@@ -1212,6 +1212,28 @@ class TestDiscover:
         assert len(jobs) == 12
         assert requested_pages == ["1", "2"]
 
+    async def test_wp_job_manager_repeated_full_page_fails_closed(self):
+        full_page = _rss_xml(
+            "".join(
+                f"<item><title>Job {job_id}</title>"
+                f"<link>https://example.com/job/{job_id}</link></item>"
+                for job_id in range(1, 11)
+            )
+        )
+
+        def handler(_request):
+            return httpx.Response(200, text=full_page)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError, match="RepeatedPaginatedFeedPage"):
+                await discover(
+                    {
+                        "board_url": "https://example.com/open-positions/",
+                        "metadata": {"preset": "wp_job_manager"},
+                    },
+                    client,
+                )
+
     async def test_teamtailor_transient_400_retries_same_page(self, monkeypatch):
         feed_xml = _rss_xml("""
             <item>
