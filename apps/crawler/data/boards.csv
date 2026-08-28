@@ -309,6 +309,8 @@ allied-universal,allied-universal-careers,https://securitycareers-aus.icims.com/
 allied-universal,allied-universal-corporate,https://corporatecareers-aus.icims.com/jobs/intro,icims,"{""host"": ""corporatecareers-aus.icims.com""}",json-ld,
 allied-universal,allied-universal-janitorial,https://aujscareers-aus.icims.com/jobs/intro,icims,"{""host"": ""aujscareers-aus.icims.com""}",json-ld,
 allium,allium-ashby,https://jobs.ashbyhq.com/allium,ashby,"{""token"": ""allium""}",skip,
+alloheim,alloheim-careers,https://alloheim.career.softgarden.de/,sitemap,"{""sitemap_url"": ""https://alloheim.career.softgarden.de/sitemap.xml"", ""url_filter"": ""career\\.softgarden\\.de/.+""}",json-ld,
+alloheim,alloheim-katharinenhof,https://jobs.katharinenhof.net/karriere,softgarden,"{""slug"": ""katharinenhofbetriebsgmbh""}",json-ld,
 alloy,alloy-greenhouse,https://job-boards.greenhouse.io/alloy,greenhouse,"{""token"": ""alloy""}",skip,
 alloy-ai,alloy-ai-lever,https://jobs.lever.co/alloy,lever,"{""token"": ""alloy""}",skip,
 alloyenterprises,alloyenterprises-ashby,https://jobs.ashbyhq.com/alloyenterprises,ashby,"{""token"": ""alloyenterprises""}",skip,
