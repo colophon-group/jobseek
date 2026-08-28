@@ -68,7 +68,7 @@ def test_ge_vernova_uses_verified_distinct_boards() -> None:
     assert json.loads(prolec["scraper_config"]) == {"enrich": ["description"]}
 
 
-def test_ge_vernova_metadata_has_provenance_and_assets() -> None:
+def test_ge_vernova_metadata_has_provenance_and_finalized_assets() -> None:
     with (DATA_DIR / "companies.csv").open(newline="") as handle:
         company = next(row for row in csv.DictReader(handle) if row["slug"] == "ge-vernova")
 
@@ -79,10 +79,12 @@ def test_ge_vernova_metadata_has_provenance_and_assets() -> None:
         "https://www.linkedin.com/company/gevernova",
         "https://twitter.com/gevernova",
     ]
-    asset_prefix = "https://jobseek-assets.colophon-group.org/companies/ge-vernova/"
-    assert company["logo_url"].startswith(asset_prefix)
-    assert company["icon_url"].startswith(asset_prefix)
-
-    staged_images = DATA_DIR / "images/ge-vernova"
-    if staged_images.exists():
-        assert {path.name for path in staged_images.iterdir()} == {"logo.svg", "icon.ico"}
+    assert company["logo_url"] == (
+        "https://jobseek-assets.colophon-group.org/companies/ge-vernova/"
+        "logo-41fe550b0696969edb8529b078bb7cf142aceaa31a7495765206fbb66f714f89.svg"
+    )
+    assert company["icon_url"] == (
+        "https://jobseek-assets.colophon-group.org/companies/ge-vernova/"
+        "icon-33211cd3376b315b255129aa6b18a436c928bec7ffeae1b31a049a7e37361ca1.webp"
+    )
+    assert not (DATA_DIR / "images/ge-vernova").exists()
