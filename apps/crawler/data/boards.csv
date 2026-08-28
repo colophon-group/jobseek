@@ -1365,6 +1365,8 @@ cleo-us,cleo-us-greenhouse,https://job-boards.greenhouse.io/cleo,greenhouse,"{""
 cleric,cleric-ashby,https://jobs.ashbyhq.com/cleric,ashby,"{""token"": ""cleric""}",skip,
 clerk,clerk-ashby,https://jobs.ashbyhq.com/clerk,ashby,"{""token"": ""clerk""}",skip,
 clerk-chat,clerk-chat-greenhouse,https://job-boards.greenhouse.io/clerk-ai,greenhouse,"{""token"": ""clerk-ai""}",skip,
+cleveland-clinic,cleveland-clinic-abu-dhabi,https://www.linkedin.com/company/cleveland-clinic-abu-dhabi/jobs/,linkedin,"{""company_id"": ""1201599"", ""company_slug"": ""cleveland-clinic-abu-dhabi""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
+cleveland-clinic,cleveland-clinic-careers,https://ccf.wd1.myworkdayjobs.com/clevelandcliniccareers,workday,,workday,
 cleveland-preparatory-academy,cleveland-preparatory-academy-greenhouse,https://job-boards.greenhouse.io/clevelandpreparatoryacademy,greenhouse,"{""token"": ""clevelandpreparatoryacademy""}",skip,
 clickhouse,clickhouse-greenhouse,https://job-boards.greenhouse.io/clickhouse,greenhouse,"{""token"": ""clickhouse""}",skip,
 clickup,clickup-ashby,https://jobs.ashbyhq.com/clickup,ashby,"{""token"": ""clickup""}",skip,
