@@ -4853,6 +4853,9 @@ prothesen-orthesenmanufaktur,prothesen-orthesenmanufaktur-join,https://join.com/
 protolabs,protolabs-lever,https://jobs.lever.co/protolabs,lever,"{""token"": ""protolabs""}",skip,
 proton,proton-careers,https://proton.me/careers,greenhouse,"{""token"": ""proton""}",skip,
 prove,prove-greenhouse,https://job-boards.greenhouse.io/prove,greenhouse,"{""token"": ""prove""}",skip,
+providence,providence-careers,https://evac.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+providence,providence-high-school-careers,https://www.providencehigh.org/about/employment,adp,"{""cid"": ""ae35d627-5989-4889-beb3-2622e60a5256"", ""cc_id"": ""19000101_000003"", ""locale"": ""en_US""}",adp,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""date_posted"", ""base_salary""]}"
+providence,providence-university-careers,https://www.uprovidence.edu/employment/open-positions/,adp,"{""cid"": ""7b7a7621-2d08-46ed-a694-79735466f015"", ""cc_id"": ""19000101_000001"", ""locale"": ""en_US""}",adp,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""date_posted"", ""base_salary""]}"
 proxima-fusion,proxima-fusion-ashby,https://jobs.ashbyhq.com/proxima-fusion,ashby,"{""token"": ""proxima-fusion""}",skip,
 pryzm,pryzm-careers,https://jobs.ashbyhq.com/pryzm,ashby,"{""token"": ""pryzm""}",skip,
 psi,psi-ashby,https://jobs.ashbyhq.com/psi,ashby,"{""token"": ""psi""}",skip,
