@@ -950,7 +950,10 @@ _MONITOR_CONFIG_HINTS = {
     "gupy": "Requires: tenant (auto-filled from a *.gupy.io URL)",
     "cornerstone": "Requires: tenant, site_id, corp (auto-filled from a *.csod.com URL)",
     "darwinbox": "Requires: host, company_id (auto-filled from a Darwinbox public portal URL)",
-    "dayforce": "Requires: tenant, portal (auto-filled from a Dayforce public board URL)",
+    "dayforce": (
+        "Requires: tenant, portal (auto-filled from a Dayforce public board URL); "
+        "optional offset_overlap stabilizes equal-ranked page boundaries"
+    ),
     "herp": "Requires: slug (auto-filled from a herp.careers URL)",
     "hrmos": "Requires: tenant (auto-filled from an hrmos.co URL)",
     "bite": "Requires: key (auto-filled from probe)",

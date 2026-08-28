@@ -380,6 +380,55 @@ class TestMonitor:
                 await anext(iterator)
         assert offsets == [0, 25]
 
+    async def test_configured_offset_overlap_recovers_unstable_page_boundaries(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        offsets: list[int] = []
+
+        async def fetch(_method, _url, _headers, body):
+            offset = json.loads(body)["paginationStart"]
+            offsets.append(offset)
+            rows = (
+                [_raw_job(i) for i in range(1, 26)]
+                if offset == 0
+                else [
+                    _raw_job(25),
+                    _raw_job(26),
+                ]
+            )
+            return _search_payload(rows, total=26, offset=offset)
+
+        pw = _install_browser(monkeypatch, fetch)
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"offset_overlap": 1},
+        }
+        async with _bootstrap_client() as client:
+            jobs = await discover(board, client, pw=pw)
+
+        assert not isinstance(jobs, MonitorResult)
+        assert len(jobs) == 26
+        assert offsets == [0, 24]
+
+    @pytest.mark.parametrize("offset_overlap", [-1, True, 25, "1"])
+    async def test_invalid_offset_overlap_fails_closed(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        offset_overlap: object,
+    ):
+        async def fetch(_method, _url, _headers, _body):
+            raise AssertionError("search should not run")
+
+        pw = _install_browser(monkeypatch, fetch)
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"offset_overlap": offset_overlap},
+        }
+        async with _bootstrap_client() as client:
+            with pytest.raises(ValueError, match="offset_overlap"):
+                await discover(board, client, pw=pw)
+
     @pytest.mark.parametrize("status", [429, 503])
     async def test_retries_transient_search_status(
         self,
