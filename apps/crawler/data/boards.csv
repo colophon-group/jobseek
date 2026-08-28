@@ -810,6 +810,9 @@ besi,besi-main,https://www.besi.com/careers/jobs/,dom,"{""url_filter"": ""filead
 beside,beside-ashby,https://jobs.ashbyhq.com/beside,ashby,"{""token"": ""beside""}",skip,
 bestow,bestow-ashby,https://jobs.ashbyhq.com/bestow,ashby,"{""token"": ""bestow""}",skip,
 beta-technologies,beta-technologies-lever,https://jobs.lever.co/beta,lever,"{""token"": ""beta""}",skip,
+beth-israel-lahey-health,beth-israel-lahey-health-careers,https://bilh.wd1.myworkdayjobs.com/External,workday,"{""company"": ""bilh"", ""wd_instance"": ""wd1"", ""site"": ""External""}",json-ld,
+beth-israel-lahey-health,beth-israel-lahey-health-exeter,https://exetercareers.com/open-positions/,rss,"{""preset"": ""wp_job_manager"", ""feed_url"": ""https://exetercareers.com/?feed=job_feed"", ""proxy"": true}",json-ld,"{""enrich"": [""description"", ""locations"", ""employment_type"", ""job_location_type""], ""proxy"": true}"
+beth-israel-lahey-health,beth-israel-lahey-health-joslin,https://jobs-joslin.icims.com/jobs/search,icims,"{""host"": ""jobs-joslin.icims.com""}",json-ld,
 betsson-group,betsson-group-greenhouse,https://job-boards.greenhouse.io/betsson,greenhouse,"{""token"": ""betsson""}",skip,
 better,better-global,https://jobs.ashbyhq.com/better-mortgage,ashby,"{""token"": ""better-mortgage""}",skip,
 betterhelp,betterhelp-greenhouse,https://job-boards.greenhouse.io/betterhelp,greenhouse,"{""token"": ""betterhelp""}",skip,
