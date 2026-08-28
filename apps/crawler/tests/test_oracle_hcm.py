@@ -178,6 +178,42 @@ async def test_can_handle_oraclecloud_eu_tenant():
 
 
 @pytest.mark.asyncio
+async def test_can_handle_preserves_selected_organization_facet():
+    client = AsyncMock(spec=httpx.AsyncClient)
+    client.get = AsyncMock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "TotalJobsCount": 42,
+                        "SelectedOrganizationsFacet": "org-42",
+                        "organizationsFacet": [
+                            {"Id": "org-42", "Name": "Example", "TotalCount": 42}
+                        ],
+                    }
+                ]
+            },
+            request=httpx.Request("GET", "https://example.com/"),
+        )
+    )
+
+    config = await can_handle(
+        "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/"
+        "jobs?selectedOrganizationsFacet=org-42",
+        client,
+    )
+
+    assert config == {
+        "host": "example.fa.us2.oraclecloud.com",
+        "site": "CX_1",
+        "jobs_count": 42,
+        "organization_id": "org-42",
+    }
+    assert "selectedOrganizationsFacet=org-42" in client.get.await_args.args[0]
+
+
+@pytest.mark.asyncio
 async def test_scraper_can_handle_oraclecloud_eu_job_url():
     config = await scraper_can_handle(
         "https://evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001/job/2334",
@@ -343,6 +379,85 @@ async def test_discover_uses_native_finder_suffix_pagination():
         "Job 200",
         "Job 201",
     ]
+
+
+@pytest.mark.asyncio
+async def test_discover_infers_and_applies_board_url_organization_facet():
+    requested_urls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested_urls.append(str(request.url))
+        wrapper = {
+            "TotalJobsCount": 2,
+            "SelectedOrganizationsFacet": "org-42",
+            "organizationsFacet": [{"Id": "org-42", "TotalCount": 2}],
+            "requisitionList": [
+                {"Id": "1", "Title": "Job 1", "PrimaryLocation": "Regina, SK, Canada"},
+                {"Id": "2", "Title": "Job 2", "PrimaryLocation": "Saskatoon, SK, Canada"},
+            ],
+        }
+        return httpx.Response(200, json={"items": [wrapper]})
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/"
+            "jobs?selectedOrganizationsFacet=org-42"
+        ),
+        "metadata": {"host": "example.fa.us2.oraclecloud.com", "site": "CX_1"},
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(board, client)
+
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert "selectedOrganizationsFacet=org-42" in requested_urls[0]
+
+
+@pytest.mark.asyncio
+async def test_discover_fails_closed_when_oracle_ignores_organization_filter():
+    def handler(request: httpx.Request) -> httpx.Response:
+        wrapper = {
+            "TotalJobsCount": 2,
+            "SelectedOrganizationsFacet": None,
+            "organizationsFacet": [
+                {"Id": "org-42", "TotalCount": 1},
+                {"Id": "other", "TotalCount": 1},
+            ],
+            "requisitionList": [
+                {"Id": "1", "Title": "Job 1", "PrimaryLocation": "Regina, SK, Canada"},
+                {"Id": "2", "Title": "Other", "PrimaryLocation": "Regina, SK, Canada"},
+            ],
+        }
+        return httpx.Response(200, json={"items": [wrapper]})
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/"
+            "jobs?selectedOrganizationsFacet=org-42"
+        ),
+        "metadata": {"host": "example.fa.us2.oraclecloud.com", "site": "CX_1"},
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="did not apply"):
+            await discover(board, client)
+
+
+@pytest.mark.asyncio
+async def test_discover_rejects_conflicting_organization_filter_sources():
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/"
+            "jobs?selectedOrganizationsFacet=org-url"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_1",
+            "organization_id": "org-config",
+        },
+    }
+
+    with pytest.raises(ValueError, match="conflicts"):
+        await discover(board, AsyncMock(spec=httpx.AsyncClient))
 
 
 @pytest.mark.asyncio
