@@ -5821,6 +5821,7 @@ system,system-greenhouse,https://job-boards.greenhouse.io/system,greenhouse,"{""
 systemiq,systemiq-greenhouse,https://job-boards.greenhouse.io/systemiq,greenhouse,"{""token"": ""systemiq""}",skip,
 syz-group,syz-group-syz-capital-join,https://join.com/companies/syzgroup,join,"{""slug"": ""syzgroup""}",nextdata,
 syz-group,syz-group-syz-group,https://www.syzgroup.com/en/careers,dom,"{""url_filter"": ""/en/careers/(?!apply(?:[/?#]|$))[^/?#]+/?$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""attr"": ""data-name=job-office"", ""field"": ""location"", ""regex"": ""Office\\s*:\\s*(.+)""}, {""tag"": ""p"", ""attr"": ""class=text-align-justify"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply for this position""}]}"
+t-mobile,t-mobile-careers,https://tmobile.wd1.myworkdayjobs.com/external,workday,,workday,
 t-mobile-cz,t-mobile-cz-almacareer,https://t-mobile.jobs.cz/,almacareer,{},skip,
 t-rowe-price,t-rowe-price-international,https://troweprice.wd5.myworkdayjobs.com/TRowePriceInternational/jobs,workday,"{""company"": ""troweprice"", ""wd_instance"": ""wd5"", ""site"": ""TRowePriceInternational"", ""all_sites"": false}",workday,
 t-rowe-price,t-rowe-price-us,https://troweprice.wd5.myworkdayjobs.com/TRowePrice/jobs,workday,"{""company"": ""troweprice"", ""wd_instance"": ""wd5"", ""site"": ""TRowePrice"", ""all_sites"": false}",workday,
