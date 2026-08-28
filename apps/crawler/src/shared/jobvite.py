@@ -81,6 +81,10 @@ def jobvite_board_from_url(url: str) -> JobviteBoard | None:
         tenant = _tenant(segments[1])
         if tenant is not None and not parsed.query:
             listing_path = f"/careers/{tenant}"
+    elif len(segments) == 2 and lowered[1] == "jobs":
+        tenant = _tenant(segments[0])
+        if tenant is not None:
+            listing_path = f"/{tenant}/jobs"
     elif len(segments) == 3 and lowered[1:] == ["jobs", "positions"]:
         tenant = _tenant(segments[0])
         if tenant is not None:

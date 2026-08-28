@@ -2048,7 +2048,7 @@ MONITOR_JOBVITE = """\
 jobvite — Jobvite public static listing monitor
 
   Listing:  https://jobs.jobvite.com/{tenant}
-  Branded:  /careers/{tenant}, /{tenant}/jobs/positions
+  Branded:  /careers/{tenant}, /{tenant}/jobs, /{tenant}/jobs/positions
   Returns:  Canonical /{tenant}/job/{id} detail URLs
   Scraper:  Auto-configured shared json-ld scraper
   Cost:     10 (HTTP only; no browser)
