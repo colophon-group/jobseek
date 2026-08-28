@@ -2067,6 +2067,7 @@ engflow,engflow-careers,https://api.ashbyhq.com/posting-api/job-board/engflow,as
 engie,engie-careers,https://jobs.engie.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.engie.com/googlefeed.xml""}",skip,
 engine,engine-greenhouse,https://job-boards.greenhouse.io/engine,greenhouse,"{""token"": ""engine""}",skip,
 engineers-gate,engineers-gate-greenhouse,https://job-boards.greenhouse.io/engineersgate,greenhouse,"{""token"": ""engineersgate""}",skip,
+enhabit,enhabit-careers,https://careers-ehhi.icims.com/,icims,,json-ld,
 enhesa,enhesa-greenhouse,https://job-boards.greenhouse.io/enhesa,greenhouse,"{""token"": ""enhesa""}",skip,
 enigma,enigma-greenhouse,https://job-boards.greenhouse.io/enigmaio,greenhouse,"{""token"": ""enigmaio""}",skip,
 ennoble-care,ennoble-care-greenhouse,https://job-boards.greenhouse.io/ennoblecare,greenhouse,"{""token"": ""ennoblecare""}",skip,
