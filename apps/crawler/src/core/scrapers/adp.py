@@ -45,6 +45,7 @@ _MAX_DETAIL_BYTES = 2 * 1024 * 1024
 _MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
 _MAX_DOCUMENT_XML_BYTES = 5 * 1024 * 1024
 _MAX_ARCHIVE_MEMBERS = 1024
+_MAX_TITLE_LOCATION_PATTERN_LENGTH = 512
 _WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _W = f"{{{_WORD_NS}}}"
 
@@ -304,6 +305,38 @@ def _parse_locations(detail: dict) -> list[str] | None:
     return values or None
 
 
+def _parse_title_location(title: object, config: dict) -> list[str] | None:
+    """Extract a location suffix only when a board explicitly opts in.
+
+    A small number of ADP tenants leave every structured location leaf empty
+    while publishing a stable location suffix in ``requisitionTitle``.  Keep
+    the fallback configuration-scoped so normal tenants continue to trust
+    ADP's structured ``requisitionLocations`` data.
+    """
+    pattern = config.get("title_location_pattern")
+    if pattern is None:
+        return None
+    if (
+        not isinstance(pattern, str)
+        or not pattern
+        or len(pattern) > _MAX_TITLE_LOCATION_PATTERN_LENGTH
+    ):
+        raise ValueError("ADP title_location_pattern must be non-empty bounded text")
+    try:
+        compiled = re.compile(pattern)
+    except re.error as exc:
+        raise ValueError(f"ADP title_location_pattern is invalid: {exc}") from exc
+    if "location" not in compiled.groupindex:
+        raise ValueError("ADP title_location_pattern must define a named 'location' group")
+    if not isinstance(title, str):
+        return None
+    match = compiled.search(title)
+    if match is None:
+        return None
+    value = " ".join(match.group("location").split()).strip(" ,-\u2013\u2014")
+    return [value] if value else None
+
+
 def _parse_salary(detail: dict) -> dict | None:
     pay_range = detail.get("payGradeRange")
     if not isinstance(pay_range, dict):
@@ -465,11 +498,14 @@ async def scrape(
     )
 
     title = detail.get("requisitionTitle")
+    locations = _parse_locations(detail)
+    if locations is None:
+        locations = _parse_title_location(title, config)
     date_posted = detail.get("postDate")
     return JobContent(
         title=title if isinstance(title, str) and title else None,
         description=description,
-        locations=_parse_locations(detail),
+        locations=locations,
         employment_type=employment_type,
         date_posted=date_posted if isinstance(date_posted, str) and date_posted else None,
         base_salary=_parse_salary(detail),

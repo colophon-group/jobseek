@@ -2492,6 +2492,8 @@ workable — Workable Posting API
 
   Config:
     {"token": "neowork"}
+    Optional {"proxy": true} routes rate-limited or WAF-gated boards through
+    the configured proxy provider. Mirror it into scraper config for details.
 
     token    Company slug. Auto-filled by ws probe from:
              1. Direct URL (apply.workable.com/{token})
@@ -4389,6 +4391,9 @@ adp — ADP Workforce Now Detail API scraper
   lang, and jobId query parameters.
 
   Config: {"enrich": ["description"]}
+          Optional title_location_pattern with a named ``location`` capture
+          group fills locations from requisition titles only when ADP's
+          structured location data is empty.
 
   Available fields: title, description, locations, employment_type,
   date_posted, base_salary, requisition metadata.""",
