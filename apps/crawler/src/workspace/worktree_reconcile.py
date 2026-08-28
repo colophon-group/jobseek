@@ -21,16 +21,18 @@ import tarfile
 import tempfile
 import time
 from collections.abc import Callable
-from contextlib import AbstractContextManager
-from dataclasses import asdict, dataclass, field
+from contextlib import AbstractContextManager, suppress
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import quote
 
 from src.workspace.safe_cleanup import (
+    claim_child_at,
     directory_open_flags,
     open_absolute_directory_no_follow,
     recover_pending_rmtree_claims,
+    restore_claimed_child_at,
     unlink_child_at,
     validate_child_name,
 )
@@ -51,6 +53,9 @@ RESOLVED_OUTCOMES = {"submitted", "rejected", "escalated"}
 DEBUG_OUTCOMES = {"retryable", "interrupted"}
 TRUSTED_GITHUB_REPOSITORY = "colophon-group/jobseek"
 ARCHIVE_METADATA_RESERVE_BYTES = 1024 * 1024
+ARCHIVE_MANIFEST_MAX_BYTES = 1024 * 1024
+ARCHIVE_PRUNE_CLAIM_PREFIX = ".jobseek-archive-prune-v2-"
+MAX_PLATFORM_PID = (1 << 31) - 1
 
 
 def _git_proof_env() -> dict[str, str]:
@@ -66,6 +71,10 @@ class Ledger(Protocol):
     def worktree_runs(self) -> list[dict[str, Any]]: ...
 
     def record_worktree_reconciliation(self, **fields: Any) -> None: ...
+
+    def worktree_archive_events(self, *, worktree_path: Path) -> list[dict[str, Any]]: ...
+
+    def worktree_archive_recovery_events(self) -> list[dict[str, Any]]: ...
 
     def worktree_removal_lease(
         self,
@@ -130,6 +139,13 @@ class _WorktreeStateSnapshot:
     tracked_patch_sha256: str
     workspace_root_json: str
     candidates: tuple[_ArchiveCandidateFingerprint, ...]
+
+
+@dataclass(frozen=True)
+class _ArchiveCompactionResult:
+    removed: int
+    reclaimed_bytes: int
+    retained_unverified: int
 
 
 class _WorktreeBecameActive(RuntimeError):
@@ -777,6 +793,7 @@ def _pre_remove_transition_is_safe(
 
 def _guarded_retire_worktree(
     *,
+    ledger: Ledger,
     repo_dir: Path,
     worktrees_dir: Path,
     archive_dir: Path,
@@ -808,6 +825,12 @@ def _guarded_retire_worktree(
     archived = False
 
     if must_archive:
+        _compact_archives_before_archive(
+            ledger=ledger,
+            item=item,
+            archive_dir=archive_dir,
+            source_snapshot_sha256=_worktree_snapshot_sha256(expected),
+        )
 
         def verify_before_publish() -> None:
             current = _validated_worktree_snapshot(
@@ -942,6 +965,14 @@ def reconcile_worktrees(
     root_resolved = _prepare_worktree_root(worktrees_dir)
     if apply:
         recover_pending_rmtree_claims(worktrees_dir)
+        try:
+            archive_recovery_events = ledger.worktree_archive_recovery_events()
+        except Exception:
+            archive_recovery_events = []
+        _recover_archive_compaction_claims(
+            archive_dir,
+            recorded_events=archive_recovery_events,
+        )
     paths = _worktree_entries(worktrees_dir)
     selected = {_absolute_path(path) for path in only_paths} if only_paths else None
     if selected is not None:
@@ -1093,6 +1124,7 @@ def reconcile_worktrees(
                         )
 
                     was_archived = _guarded_retire_worktree(
+                        ledger=ledger,
                         repo_dir=repo_dir,
                         worktrees_dir=worktrees_dir,
                         archive_dir=archive_dir,
@@ -1128,6 +1160,11 @@ def reconcile_worktrees(
                         item,
                         action="removed",
                         observed_at=int(time.time()),
+                    )
+                    _compact_archives_after_removal(
+                        ledger=ledger,
+                        item=item,
+                        archive_dir=archive_dir,
                     )
                 except _WorktreeBecameActive as exc:
                     item.classification = "active"
@@ -1223,6 +1260,14 @@ def reconcile_managed_worktrees(
     root_resolved = _prepare_worktree_root(worktrees_dir)
     if apply:
         recover_pending_rmtree_claims(worktrees_dir)
+        try:
+            archive_recovery_events = ledger.worktree_archive_recovery_events()
+        except Exception:
+            archive_recovery_events = []
+        _recover_archive_compaction_claims(
+            archive_dir,
+            recorded_events=archive_recovery_events,
+        )
     paths = _worktree_entries(worktrees_dir)
     if not paths:
         return _empty_report(
@@ -1421,6 +1466,7 @@ def reconcile_managed_worktrees(
                         )
 
                     was_archived = _guarded_retire_worktree(
+                        ledger=ledger,
                         repo_dir=repo_dir,
                         worktrees_dir=worktrees_dir,
                         archive_dir=archive_dir,
@@ -1455,6 +1501,11 @@ def reconcile_managed_worktrees(
                         item,
                         action="removed",
                         observed_at=int(time.time()),
+                    )
+                    _compact_archives_after_removal(
+                        ledger=ledger,
+                        item=item,
+                        archive_dir=archive_dir,
                     )
                 except _WorktreeBecameActive as exc:
                     item.classification = "active"
@@ -1976,6 +2027,659 @@ def _regular_file_bytes_no_follow(path: Path) -> int:
         os.close(parent_fd)
 
 
+def _inspect_archive_generation_at(
+    parent_fd: int,
+    name: str,
+    *,
+    expected_sha256: str,
+) -> tuple[str, int, os.stat_result, str]:
+    """Verify one archive and read its full source snapshot through an anchored fd."""
+    validate_child_name(name)
+    file_fd: int | None = None
+    try:
+        expected = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if not stat.S_ISREG(expected.st_mode):
+            raise RuntimeError("worktree archive generation is not a regular file")
+        file_fd = os.open(
+            name,
+            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+            dir_fd=parent_fd,
+        )
+        opened = os.fstat(file_fd)
+        if not stat.S_ISREG(opened.st_mode) or not _same_inode(opened, expected):
+            raise RuntimeError("worktree archive generation changed while opening")
+        digest = hashlib.sha256()
+        size = 0
+        while True:
+            chunk = os.read(file_fd, 1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+            size += len(chunk)
+        digest_hex = digest.hexdigest()
+        if digest_hex != expected_sha256:
+            raise RuntimeError("worktree archive checksum no longer matches its ledger")
+        os.lseek(file_fd, 0, os.SEEK_SET)
+        archive_file = os.fdopen(os.dup(file_fd), "rb")
+        try:
+            with tarfile.open(fileobj=archive_file, mode="r:gz") as archive:
+                manifest_member = archive.getmember("manifest.json")
+                if (
+                    not manifest_member.isfile()
+                    or manifest_member.size < 1
+                    or manifest_member.size > ARCHIVE_MANIFEST_MAX_BYTES
+                ):
+                    raise RuntimeError("worktree archive manifest is invalid")
+                manifest_file = archive.extractfile(manifest_member)
+                if manifest_file is None:
+                    raise RuntimeError("worktree archive manifest is unreadable")
+                manifest_bytes = manifest_file.read(ARCHIVE_MANIFEST_MAX_BYTES + 1)
+        finally:
+            archive_file.close()
+        if len(manifest_bytes) != manifest_member.size:
+            raise RuntimeError("worktree archive manifest size changed while reading")
+        manifest = json.loads(manifest_bytes)
+        source_snapshot_sha256 = manifest.get("source_snapshot_sha256")
+        if (
+            not isinstance(source_snapshot_sha256, str)
+            or re.fullmatch(r"[0-9a-f]{64}", source_snapshot_sha256) is None
+        ):
+            raise RuntimeError("worktree archive source snapshot identity is invalid")
+        final = os.fstat(file_fd)
+        current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if (
+            not _same_inode(final, expected)
+            or not _same_inode(current, expected)
+            or final.st_size != expected.st_size
+            or final.st_mtime_ns != expected.st_mtime_ns
+            or size != expected.st_size
+        ):
+            raise RuntimeError("worktree archive generation changed while hashing")
+        return digest_hex, size, expected, source_snapshot_sha256
+    except RuntimeError:
+        raise
+    except OSError as exc:
+        raise RuntimeError(f"could not safely inspect worktree archive generation: {exc}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"worktree archive generation is invalid: {exc}") from exc
+    finally:
+        if file_fd is not None:
+            os.close(file_fd)
+
+
+def _archive_prune_claim_name(
+    original_name: str,
+    *,
+    pid: int | None = None,
+    token: str | None = None,
+) -> str:
+    validate_child_name(original_name)
+    owner_pid = os.getpid() if pid is None else pid
+    claim_token = secrets.token_hex(12) if token is None else token
+    if (
+        owner_pid <= 0
+        or owner_pid > MAX_PLATFORM_PID
+        or re.fullmatch(r"[0-9a-f]{24}", claim_token) is None
+    ):
+        raise RuntimeError("archive prune claim identity is invalid")
+    original_name_sha256 = hashlib.sha256(os.fsencode(original_name)).hexdigest()
+    claimed_name = (
+        f"{ARCHIVE_PRUNE_CLAIM_PREFIX}{owner_pid}-{claim_token}-{original_name_sha256}.claim"
+    )
+    if len(os.fsencode(claimed_name)) > 240:
+        raise RuntimeError("archive prune claim name is too long")
+    return claimed_name
+
+
+def _parse_archive_prune_claim_name(claimed_name: str) -> tuple[int, str] | None:
+    if len(os.fsencode(claimed_name)) > 240:
+        return None
+    match = re.fullmatch(
+        rf"{re.escape(ARCHIVE_PRUNE_CLAIM_PREFIX)}"
+        r"(?P<pid>[1-9][0-9]*)-(?P<token>[0-9a-f]{24})-"
+        r"(?P<original_name_sha256>[0-9a-f]{64})\.claim",
+        claimed_name,
+    )
+    if match is None:
+        return None
+    pid = int(match.group("pid"))
+    if pid > MAX_PLATFORM_PID:
+        return None
+    return pid, match.group("original_name_sha256")
+
+
+def _archive_recovery_evidence(
+    archive_dir: Path,
+    *,
+    recorded_events: list[dict[str, Any]],
+) -> dict[str, tuple[str, str]]:
+    """Map bounded claim identities to one unambiguous ledger-backed archive."""
+    archive_root = Path(os.path.abspath(archive_dir))
+    candidates: dict[str, dict[str, set[str]]] = {}
+    for event in recorded_events:
+        raw_path = event.get("archive_path")
+        raw_sha256 = event.get("archive_sha256")
+        if not isinstance(raw_path, str) or not isinstance(raw_sha256, str):
+            continue
+        event_path = Path(os.path.abspath(raw_path))
+        if event_path.parent != archive_root or re.fullmatch(r"[0-9a-f]{64}", raw_sha256) is None:
+            continue
+        try:
+            validate_child_name(event_path.name)
+        except RuntimeError:
+            continue
+        name_sha256 = hashlib.sha256(os.fsencode(event_path.name)).hexdigest()
+        candidates.setdefault(name_sha256, {}).setdefault(event_path.name, set()).add(raw_sha256)
+
+    evidence: dict[str, tuple[str, str]] = {}
+    for name_sha256, names in candidates.items():
+        if len(names) != 1:
+            continue
+        original_name, archive_hashes = next(iter(names.items()))
+        if len(archive_hashes) == 1:
+            evidence[name_sha256] = (original_name, next(iter(archive_hashes)))
+    return evidence
+
+
+def _verify_regular_child_sha256_at(
+    parent_fd: int,
+    name: str,
+    *,
+    expected_sha256: str,
+) -> os.stat_result:
+    """Verify a regular child's checksum and stable identity through an anchored fd."""
+    validate_child_name(name)
+    if re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None:
+        raise RuntimeError("archive recovery checksum is invalid")
+    file_fd: int | None = None
+    try:
+        expected = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if not stat.S_ISREG(expected.st_mode):
+            raise RuntimeError("archive recovery claim is not a regular file")
+        file_fd = os.open(
+            name,
+            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+            dir_fd=parent_fd,
+        )
+        opened = os.fstat(file_fd)
+        if not stat.S_ISREG(opened.st_mode) or not _same_inode(opened, expected):
+            raise RuntimeError("archive recovery claim changed while opening")
+        digest = hashlib.sha256()
+        size = 0
+        while True:
+            chunk = os.read(file_fd, 1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+            size += len(chunk)
+        final = os.fstat(file_fd)
+        current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if (
+            digest.hexdigest() != expected_sha256
+            or not _same_inode(final, expected)
+            or not _same_inode(current, expected)
+            or final.st_size != expected.st_size
+            or final.st_mtime_ns != expected.st_mtime_ns
+            or size != expected.st_size
+        ):
+            raise RuntimeError("archive recovery claim no longer matches its ledger")
+        return expected
+    except RuntimeError:
+        raise
+    except OSError as exc:
+        raise RuntimeError(f"could not safely verify archive recovery claim: {exc}") from exc
+    finally:
+        if file_fd is not None:
+            os.close(file_fd)
+
+
+def _recover_archive_compaction_claims(
+    archive_dir: Path,
+    *,
+    recorded_events: list[dict[str, Any]],
+) -> int:
+    """Restore dead, ledger-verified claims; retain collisions or ambiguity."""
+    recovery_evidence = _archive_recovery_evidence(
+        archive_dir,
+        recorded_events=recorded_events,
+    )
+    try:
+        parent_fd = open_absolute_directory_no_follow(archive_dir)
+    except RuntimeError as exc:
+        if isinstance(exc.__cause__, FileNotFoundError):
+            return 0
+        raise
+    restored = 0
+    try:
+        for claimed_name in sorted(os.listdir(parent_fd)):
+            parsed = _parse_archive_prune_claim_name(claimed_name)
+            if parsed is None:
+                continue
+            pid, original_name_sha256 = parsed
+            if _pid_is_alive(pid):
+                continue
+            evidence = recovery_evidence.get(original_name_sha256)
+            if evidence is None:
+                continue
+            original_name, expected_sha256 = evidence
+            try:
+                claimed = _verify_regular_child_sha256_at(
+                    parent_fd,
+                    claimed_name,
+                    expected_sha256=expected_sha256,
+                )
+            except RuntimeError:
+                continue
+            try:
+                os.stat(original_name, dir_fd=parent_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                continue
+            else:
+                continue
+            try:
+                restore_claimed_child_at(
+                    parent_fd,
+                    original_name,
+                    claimed_name,
+                    expected=claimed,
+                )
+                os.fsync(parent_fd)
+            except RuntimeError:
+                continue
+            restored += 1
+    finally:
+        os.close(parent_fd)
+    return restored
+
+
+def _claim_and_unlink_archive_generation(
+    parent_fd: int,
+    name: str,
+    *,
+    expected: os.stat_result,
+    pre_unlink_check: Callable[[str], None],
+) -> None:
+    """Claim one generation, verify through the claim, then unlink or restore it."""
+    claim_name = _archive_prune_claim_name(name)
+    claimed_name = claim_child_at(
+        parent_fd,
+        name,
+        expected=expected,
+        claimed_name=claim_name,
+    )
+    try:
+        pre_unlink_check(claimed_name)
+        current = os.stat(claimed_name, dir_fd=parent_fd, follow_symlinks=False)
+        if not _same_inode(current, expected) or not stat.S_ISREG(current.st_mode):
+            raise RuntimeError("claimed archive generation changed before final unlink")
+        os.unlink(claimed_name, dir_fd=parent_fd)
+    except BaseException as exc:
+        try:
+            os.stat(claimed_name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            pass
+        except OSError as inspect_exc:
+            raise RuntimeError(
+                "archive generation compaction failed and its claim is uninspectable: "
+                f"{inspect_exc}"
+            ) from exc
+        else:
+            try:
+                restore_claimed_child_at(
+                    parent_fd,
+                    name,
+                    claimed_name,
+                    expected=expected,
+                )
+            except RuntimeError as restore_exc:
+                raise RuntimeError(
+                    "archive generation compaction failed and its claim could not be "
+                    f"restored: {restore_exc}"
+                ) from exc
+        raise
+
+
+def _compact_archive_generations(
+    *,
+    archive_dir: Path,
+    current_archive: Path,
+    current_sha256: str,
+    recorded_events: list[dict[str, Any]],
+    before_unlink: Callable[[Path, str, int], None],
+    after_unlink: Callable[[Path, str, int], None],
+    required_source_snapshot_sha256: str | None = None,
+) -> _ArchiveCompactionResult:
+    """Remove only verified older generations of the exact preserved snapshot."""
+    archive_root = Path(os.path.abspath(archive_dir))
+    current_path = Path(os.path.abspath(current_archive))
+    if current_path.parent != archive_root:
+        raise RuntimeError("current worktree archive is outside its quarantine directory")
+    current_match = re.fullmatch(
+        r"(?P<generation>.+-[0-9a-f]{24})-[0-9a-f]{24}\.tar\.gz",
+        current_path.name,
+    )
+    if current_match is None or re.fullmatch(r"[0-9a-f]{64}", current_sha256) is None:
+        raise RuntimeError("current worktree archive identity is invalid")
+    generation = current_match.group("generation")
+    generation_pattern = re.compile(rf"{re.escape(generation)}-[0-9a-f]{{24}}\.tar\.gz")
+
+    expected_by_name: dict[str, set[str]] = {}
+    latest_action_by_name: dict[str, str] = {}
+    for event in recorded_events:
+        raw_path = event.get("archive_path")
+        raw_sha256 = event.get("archive_sha256")
+        if not isinstance(raw_path, str) or not isinstance(raw_sha256, str):
+            continue
+        event_path = Path(os.path.abspath(raw_path))
+        if (
+            event_path.parent != archive_root
+            or event_path.name == current_path.name
+            or generation_pattern.fullmatch(event_path.name) is None
+            or re.fullmatch(r"[0-9a-f]{64}", raw_sha256) is None
+        ):
+            continue
+        expected_by_name.setdefault(event_path.name, set()).add(raw_sha256)
+        if isinstance(event.get("action"), str):
+            latest_action_by_name[event_path.name] = str(event["action"])
+
+    expected_by_name = {
+        name: hashes
+        for name, hashes in expected_by_name.items()
+        if latest_action_by_name.get(name) != "archive_pruned"
+    }
+
+    parent_fd = open_absolute_directory_no_follow(archive_root)
+    removed = 0
+    reclaimed_bytes = 0
+    retained_unverified = 0
+    try:
+        _, _, _, source_snapshot_sha256 = _inspect_archive_generation_at(
+            parent_fd,
+            current_path.name,
+            expected_sha256=current_sha256,
+        )
+        if (
+            required_source_snapshot_sha256 is not None
+            and source_snapshot_sha256 != required_source_snapshot_sha256
+        ):
+            raise RuntimeError("current worktree archive preserves a different source snapshot")
+        os.fsync(parent_fd)
+        for name, expected_hashes in sorted(expected_by_name.items()):
+            if len(expected_hashes) != 1:
+                retained_unverified += 1
+                continue
+            try:
+                expected_sha256 = next(iter(expected_hashes))
+                digest, size, expected, candidate_snapshot_sha256 = _inspect_archive_generation_at(
+                    parent_fd,
+                    name,
+                    expected_sha256=expected_sha256,
+                )
+                if candidate_snapshot_sha256 != source_snapshot_sha256:
+                    retained_unverified += 1
+                    continue
+                candidate_path = archive_root / name
+                before_unlink(candidate_path, digest, size)
+
+                def validate_claimed_generation(
+                    claimed_name: str,
+                    expected_sha256: str = expected_sha256,
+                ) -> None:
+                    _, _, _, claimed_snapshot_sha256 = _inspect_archive_generation_at(
+                        parent_fd,
+                        claimed_name,
+                        expected_sha256=expected_sha256,
+                    )
+                    if claimed_snapshot_sha256 != source_snapshot_sha256:
+                        raise RuntimeError(
+                            "claimed archive generation preserves a different source snapshot"
+                        )
+                    _, _, _, survivor_snapshot_sha256 = _inspect_archive_generation_at(
+                        parent_fd,
+                        current_path.name,
+                        expected_sha256=current_sha256,
+                    )
+                    if survivor_snapshot_sha256 != source_snapshot_sha256:
+                        raise RuntimeError(
+                            "current worktree archive changed during generation compaction"
+                        )
+
+                _claim_and_unlink_archive_generation(
+                    parent_fd,
+                    name,
+                    expected=expected,
+                    pre_unlink_check=validate_claimed_generation,
+                )
+            except (FileNotFoundError, RuntimeError):
+                retained_unverified += 1
+                continue
+            removed += 1
+            reclaimed_bytes += size
+            after_unlink(candidate_path, digest, size)
+        if removed:
+            os.fsync(parent_fd)
+    finally:
+        os.close(parent_fd)
+    return _ArchiveCompactionResult(
+        removed=removed,
+        reclaimed_bytes=reclaimed_bytes,
+        retained_unverified=retained_unverified,
+    )
+
+
+def _select_archive_compaction_survivor(
+    *,
+    archive_dir: Path,
+    source_snapshot_sha256: str,
+    recorded_events: list[dict[str, Any]],
+) -> tuple[Path, str] | None:
+    """Find the newest of at least two verified generations for one snapshot."""
+    archive_root = Path(os.path.abspath(archive_dir))
+    if re.fullmatch(r"[0-9a-f]{64}", source_snapshot_sha256) is None:
+        raise RuntimeError("source snapshot identity is invalid")
+    generation_pattern = re.compile(
+        rf".+-{re.escape(source_snapshot_sha256[:24])}-[0-9a-f]{{24}}\.tar\.gz"
+    )
+    hashes_by_name: dict[str, set[str]] = {}
+    last_event_by_name: dict[str, int] = {}
+    for index, event in enumerate(recorded_events):
+        raw_path = event.get("archive_path")
+        raw_sha256 = event.get("archive_sha256")
+        if not isinstance(raw_path, str) or not isinstance(raw_sha256, str):
+            continue
+        event_path = Path(os.path.abspath(raw_path))
+        if (
+            event_path.parent != archive_root
+            or generation_pattern.fullmatch(event_path.name) is None
+            or re.fullmatch(r"[0-9a-f]{64}", raw_sha256) is None
+        ):
+            continue
+        hashes_by_name.setdefault(event_path.name, set()).add(raw_sha256)
+        last_event_by_name[event_path.name] = index
+
+    parent_fd = open_absolute_directory_no_follow(archive_root)
+    verified: list[tuple[int, Path, str]] = []
+    try:
+        for name, expected_hashes in hashes_by_name.items():
+            if len(expected_hashes) != 1:
+                continue
+            expected_sha256 = next(iter(expected_hashes))
+            try:
+                _, _, _, archived_snapshot_sha256 = _inspect_archive_generation_at(
+                    parent_fd,
+                    name,
+                    expected_sha256=expected_sha256,
+                )
+            except RuntimeError:
+                continue
+            if archived_snapshot_sha256 == source_snapshot_sha256:
+                verified.append((last_event_by_name[name], archive_root / name, expected_sha256))
+    finally:
+        os.close(parent_fd)
+    if len(verified) < 2:
+        return None
+    _, survivor_path, survivor_sha256 = max(verified, key=lambda candidate: candidate[0])
+    return survivor_path, survivor_sha256
+
+
+def _run_archive_compaction(
+    *,
+    ledger: Ledger,
+    item: WorktreeItem,
+    archive_dir: Path,
+    survivor_path: Path,
+    survivor_sha256: str,
+    recorded_events: list[dict[str, Any]],
+    source_snapshot_sha256: str | None = None,
+) -> None:
+    """Compact exact duplicate generations while keeping one verified survivor."""
+
+    def record_started(path: Path, sha256: str, size: int) -> None:
+        event = replace(
+            item,
+            reason="superseded archive generation verified for compaction",
+            archive_path=str(path),
+            archive_sha256=sha256,
+            reclaimed_bytes=0,
+            error=None,
+        )
+        _record_event(
+            ledger,
+            event,
+            action="archive_compaction_started",
+            observed_at=int(time.time()),
+        )
+
+    def record_pruned(path: Path, sha256: str, size: int) -> None:
+        event = replace(
+            item,
+            reason="superseded archive generation was compacted",
+            archive_path=str(path),
+            archive_sha256=sha256,
+            reclaimed_bytes=size,
+            error=None,
+        )
+        with suppress(Exception):
+            _record_event(
+                ledger,
+                event,
+                action="archive_pruned",
+                observed_at=int(time.time()),
+            )
+
+    try:
+        result = _compact_archive_generations(
+            archive_dir=archive_dir,
+            current_archive=survivor_path,
+            current_sha256=survivor_sha256,
+            recorded_events=recorded_events,
+            before_unlink=record_started,
+            after_unlink=record_pruned,
+            required_source_snapshot_sha256=source_snapshot_sha256,
+        )
+    except Exception as exc:  # noqa: BLE001 - compaction is best-effort evidence hygiene
+        event = replace(
+            item,
+            reason="archive generation compaction was skipped",
+            archive_path=str(survivor_path),
+            archive_sha256=survivor_sha256,
+            reclaimed_bytes=0,
+            error=str(exc),
+        )
+        with suppress(Exception):
+            _record_event(
+                ledger,
+                event,
+                action="archive_compaction_incomplete",
+                observed_at=int(time.time()),
+            )
+        return
+    if not result.removed and not result.retained_unverified:
+        return
+    event = replace(
+        item,
+        reason=(
+            f"removed {result.removed} superseded archive generations; "
+            f"retained {result.retained_unverified} unverified generations"
+        ),
+        archive_path=str(survivor_path),
+        archive_sha256=survivor_sha256,
+        reclaimed_bytes=result.reclaimed_bytes,
+        error=(
+            "one or more superseded archive generations could not be verified"
+            if result.retained_unverified
+            else None
+        ),
+    )
+    with suppress(Exception):
+        _record_event(
+            ledger,
+            event,
+            action=(
+                "archive_compaction_incomplete"
+                if result.retained_unverified
+                else "archives_compacted"
+            ),
+            observed_at=int(time.time()),
+        )
+
+
+def _compact_archives_before_archive(
+    *,
+    ledger: Ledger,
+    item: WorktreeItem,
+    archive_dir: Path,
+    source_snapshot_sha256: str,
+) -> None:
+    """Reclaim verified duplicate generations before reserving fresh capacity."""
+    try:
+        recorded_events = ledger.worktree_archive_events(worktree_path=Path(item.path))
+        survivor = _select_archive_compaction_survivor(
+            archive_dir=archive_dir,
+            source_snapshot_sha256=source_snapshot_sha256,
+            recorded_events=recorded_events,
+        )
+    except Exception:
+        return
+    if survivor is None:
+        return
+    survivor_path, survivor_sha256 = survivor
+    _run_archive_compaction(
+        ledger=ledger,
+        item=item,
+        archive_dir=archive_dir,
+        survivor_path=survivor_path,
+        survivor_sha256=survivor_sha256,
+        recorded_events=recorded_events,
+        source_snapshot_sha256=source_snapshot_sha256,
+    )
+
+
+def _compact_archives_after_removal(
+    *,
+    ledger: Ledger,
+    item: WorktreeItem,
+    archive_dir: Path,
+) -> None:
+    """Best-effort compaction after the fresh archive has authorized removal."""
+    if item.archive_path is None or item.archive_sha256 is None:
+        return
+    try:
+        recorded_events = ledger.worktree_archive_events(worktree_path=Path(item.path))
+    except Exception:
+        return
+    _run_archive_compaction(
+        ledger=ledger,
+        item=item,
+        archive_dir=archive_dir,
+        survivor_path=Path(item.archive_path),
+        survivor_sha256=item.archive_sha256,
+        recorded_events=recorded_events,
+    )
+
+
 def _archive_staging_pid(name: str) -> int | None:
     try:
         prefix, raw_pid, suffix = name.rsplit(".", 2)
@@ -1997,6 +2701,8 @@ def _archive_staging_pid(name: str) -> int | None:
 def _pid_is_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
+    except (OverflowError, ValueError):
+        return True
     except ProcessLookupError:
         return False
     except PermissionError:
@@ -2161,6 +2867,14 @@ def _publish_archive(
         if not _same_inode(temporary_stat, published_stat):
             raise RuntimeError("published worktree archive does not match its staging inode")
         final_guard()
+        archive_fd = open_absolute_directory_no_follow(destination.parent)
+        try:
+            current = os.stat(destination.name, dir_fd=archive_fd, follow_symlinks=False)
+            if not _same_inode(current, temporary_stat):
+                raise RuntimeError("published worktree archive changed before directory sync")
+            os.fsync(archive_fd)
+        finally:
+            os.close(archive_fd)
     except BaseException:
         archive_fd = open_absolute_directory_no_follow(destination.parent)
         try:

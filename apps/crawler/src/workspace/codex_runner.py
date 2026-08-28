@@ -758,6 +758,37 @@ class RunnerLedger:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def worktree_archive_events(self, *, worktree_path: Path) -> list[dict[str, Any]]:
+        """Return durable archive evidence for one exact worktree path."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM worktree_reconciliation_events
+                WHERE worktree_path = ?
+                  AND archive_path IS NOT NULL
+                  AND archive_sha256 IS NOT NULL
+                ORDER BY id
+                """,
+                (str(worktree_path),),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def worktree_archive_recovery_events(self) -> list[dict[str, Any]]:
+        """Return durable identities needed to restore interrupted archive claims."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT archive_path, archive_sha256
+                FROM worktree_reconciliation_events
+                WHERE archive_path IS NOT NULL
+                  AND archive_sha256 IS NOT NULL
+                  AND action = 'archive_compaction_started'
+                ORDER BY id
+                """
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def count_recent_runs(self, *, active_slot: str, since: int) -> int:
         with self._connect() as conn:
             row = conn.execute(
