@@ -543,7 +543,15 @@ For each accepted issue:
     Archive dirty
     diffs, untracked files, workspace metadata, and unique commit objects,
     record the decision and root in SQLite, then remove only the registered
-    worktree. Direct root entries must be real directories: symlinks and
+    worktree. Before reserving fresh archive capacity, a retry may compact
+    older, ledger-checksummed generations of the exact same full source
+    snapshot while keeping one verified, directory-synced survivor. A
+    successful removal keeps its fresh archive and compacts any remaining
+    duplicates. Every unlink is recorded before mutation; corrupt, replaced,
+    unrecorded, or different-snapshot archives remain untouched. Interrupted
+    compaction claims are restored only when their exact original name is
+    vacant; name collisions stay retained and capacity-charged. Direct root
+    entries must be real directories: symlinks and
     resolved paths outside the configured root are retained, and containment,
     registration, lock, and HEAD are revalidated immediately before removal.
     Retryable/interrupted state is archived before cleanup.

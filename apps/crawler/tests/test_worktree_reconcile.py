@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
 import sqlite3
+import stat
 import subprocess
 import tarfile
 import threading
@@ -262,6 +264,46 @@ def test_clean_terminal_worktree_has_exact_dry_run_then_durable_removal(
     assert [event["action"] for event in events] == ["removal_started", "removed"]
     assert events[-1]["reclaimed_bytes"] == applied.reclaimed_bytes
     assert events[-1]["remote_proof_json"]
+
+
+def test_archive_recovery_events_only_return_durable_pre_unlink_evidence(
+    tmp_path: Path,
+) -> None:
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    common = {
+        "observed_at": 1,
+        "worktree_path": "/runner/worktrees/run-1",
+        "source": "runner",
+        "run_id": "run-1",
+        "issue": 1,
+        "state": "retryable",
+        "classification": "debug-artifact",
+        "reason": "test evidence",
+        "bytes_before": 10,
+        "dirty_entries": 1,
+        "remote_proof_json": None,
+        "reclaimed_bytes": 0,
+        "error": None,
+    }
+    ledger.record_worktree_reconciliation(
+        **common,
+        action="archived",
+        archive_path="/quarantine/first.tar.gz",
+        archive_sha256="a" * 64,
+    )
+    ledger.record_worktree_reconciliation(
+        **common,
+        action="archive_compaction_started",
+        archive_path="/quarantine/second.tar.gz",
+        archive_sha256="b" * 64,
+    )
+
+    assert ledger.worktree_archive_recovery_events() == [
+        {
+            "archive_path": "/quarantine/second.tar.gz",
+            "archive_sha256": "b" * 64,
+        }
+    ]
 
 
 @pytest.mark.parametrize(
@@ -1384,6 +1426,585 @@ def test_repeated_removal_failure_publishes_fresh_archives_without_reuse(
             archived_evidence = archive.extractfile("untracked/unique-evidence.txt")
             assert archived_evidence is not None
             assert archived_evidence.read() == b"preserve this evidence\n"
+
+
+def test_successful_removal_compacts_verified_same_snapshot_generations(
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    evidence = worktree / "unique-evidence.txt"
+    evidence.write_text("preserve this evidence\n")
+
+    def fail_remove(path: Path, final_guard) -> None:
+        raise RuntimeError("simulated persistent removal failure")
+
+    first = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    second = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    prior_archives = {
+        Path(first.items[0].archive_path or ""),
+        Path(second.items[0].archive_path or ""),
+    }
+    assert len(prior_archives) == 2
+    assert all(path.is_file() for path in prior_archives)
+
+    completed = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    current_archive = Path(completed.items[0].archive_path or "")
+    assert completed.removed == 1
+    assert current_archive.is_file()
+    assert all(not path.exists() for path in prior_archives)
+    quarantine = tmp_path / "runner" / "state" / "worktree-quarantine"
+    assert list(quarantine.glob("*.tar.gz")) == [current_archive]
+    with tarfile.open(current_archive, "r:gz") as archive:
+        archived_evidence = archive.extractfile("untracked/unique-evidence.txt")
+        assert archived_evidence is not None
+        assert archived_evidence.read() == b"preserve this evidence\n"
+    events = ledger.worktree_reconciliation_events()
+    assert [event["action"] for event in events].count("archive_compaction_started") == 2
+    assert [event["action"] for event in events].count("archive_pruned") == 2
+    event = events[-1]
+    assert event["action"] == "archives_compacted"
+    assert event["reclaimed_bytes"] > 0
+    assert event["archive_path"] == str(current_archive)
+
+
+def test_survivor_directory_entry_is_synced_before_compaction_claim(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    (worktree / "evidence.txt").write_text("preserve this evidence\n")
+
+    def fail_remove(path: Path, final_guard) -> None:
+        raise RuntimeError("retain the first generation")
+
+    _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    operations: list[str] = []
+    real_fsync = reconcile_module.os.fsync
+    real_claim_child_at = reconcile_module.claim_child_at
+
+    def observe_fsync(fd: int) -> None:
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            operations.append("directory_fsync")
+        real_fsync(fd)
+
+    def observe_claim(parent_fd: int, name: str, *, expected, claimed_name=None) -> str:
+        operations.append("claim")
+        return real_claim_child_at(
+            parent_fd,
+            name,
+            expected=expected,
+            claimed_name=claimed_name,
+        )
+
+    monkeypatch.setattr(reconcile_module.os, "fsync", observe_fsync)
+    monkeypatch.setattr(reconcile_module, "claim_child_at", observe_claim)
+
+    completed = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert completed.removed == 1
+    assert "claim" in operations
+    assert operations.index("directory_fsync") < operations.index("claim")
+
+
+def test_archive_replacement_during_compaction_is_preserved(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    (worktree / "evidence.txt").write_text("preserve this evidence\n")
+
+    def fail_remove(path: Path, final_guard) -> None:
+        raise RuntimeError("retain the first generation")
+
+    first = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    prior_archive = Path(first.items[0].archive_path or "")
+    replacement = b"replacement must survive\n"
+    real_claim_child_at = reconcile_module.claim_child_at
+
+    def replace_before_claim(
+        parent_fd: int,
+        name: str,
+        *,
+        expected,
+        claimed_name: str | None = None,
+    ) -> str:
+        if name == prior_archive.name:
+            os.unlink(name, dir_fd=parent_fd)
+            replacement_fd = os.open(
+                name,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o600,
+                dir_fd=parent_fd,
+            )
+            try:
+                os.write(replacement_fd, replacement)
+            finally:
+                os.close(replacement_fd)
+        return real_claim_child_at(
+            parent_fd,
+            name,
+            expected=expected,
+            claimed_name=claimed_name,
+        )
+
+    monkeypatch.setattr(reconcile_module, "claim_child_at", replace_before_claim)
+
+    completed = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert completed.removed == 1
+    assert prior_archive.read_bytes() == replacement
+    current_archive = Path(completed.items[0].archive_path or "")
+    assert current_archive.is_file()
+    events = ledger.worktree_reconciliation_events()
+    assert [event["action"] for event in events].count("archive_compaction_started") == 1
+    assert "archive_pruned" not in [event["action"] for event in events]
+    event = events[-1]
+    assert event["action"] == "archive_compaction_incomplete"
+    assert event["reclaimed_bytes"] == 0
+
+
+@pytest.mark.parametrize("survivor_change", ["remove", "replace"])
+def test_survivor_change_after_compaction_audit_restores_candidate(
+    survivor_change: str,
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    (worktree / "evidence.txt").write_text("preserve this evidence\n")
+
+    def fail_remove(path: Path, final_guard) -> None:
+        raise RuntimeError("retain the first generation")
+
+    first = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    prior_archive = Path(first.items[0].archive_path or "")
+    quarantine = prior_archive.parent
+    replacement = b"replacement survivor\n"
+    real_record = ledger.record_worktree_reconciliation
+    changed_survivor: Path | None = None
+
+    def change_survivor_after_audit(**fields) -> None:
+        nonlocal changed_survivor
+        real_record(**fields)
+        if fields.get("action") != "archive_compaction_started" or changed_survivor:
+            return
+        candidate = Path(str(fields["archive_path"]))
+        survivors = [path for path in quarantine.glob("*.tar.gz") if path != candidate]
+        assert len(survivors) == 1
+        changed_survivor = survivors[0]
+        if survivor_change == "remove":
+            changed_survivor.unlink()
+        else:
+            changed_survivor.write_bytes(replacement)
+
+    monkeypatch.setattr(
+        ledger,
+        "record_worktree_reconciliation",
+        change_survivor_after_audit,
+    )
+
+    completed = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert completed.removed == 1
+    assert prior_archive.is_file()
+    assert changed_survivor is not None
+    if survivor_change == "remove":
+        assert not changed_survivor.exists()
+    else:
+        assert changed_survivor.read_bytes() == replacement
+    events = ledger.worktree_reconciliation_events()
+    assert "archive_pruned" not in [event["action"] for event in events]
+    assert events[-1]["action"] == "archive_compaction_incomplete"
+
+
+def test_in_place_candidate_mutation_after_claim_is_restored(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    (worktree / "evidence.txt").write_text("preserve this evidence\n")
+
+    def fail_remove(path: Path, final_guard) -> None:
+        raise RuntimeError("retain the first generation")
+
+    first = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    prior_archive = Path(first.items[0].archive_path or "")
+    replacement = b"in-place candidate mutation\n"
+    real_claim_child_at = reconcile_module.claim_child_at
+
+    def mutate_claimed_candidate(
+        parent_fd: int,
+        name: str,
+        *,
+        expected,
+        claimed_name: str | None = None,
+    ) -> str:
+        claimed = real_claim_child_at(
+            parent_fd,
+            name,
+            expected=expected,
+            claimed_name=claimed_name,
+        )
+        if name == prior_archive.name:
+            claimed_fd = os.open(claimed, os.O_WRONLY | os.O_TRUNC, dir_fd=parent_fd)
+            try:
+                os.write(claimed_fd, replacement)
+            finally:
+                os.close(claimed_fd)
+        return claimed
+
+    monkeypatch.setattr(reconcile_module, "claim_child_at", mutate_claimed_candidate)
+
+    completed = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert completed.removed == 1
+    assert prior_archive.read_bytes() == replacement
+    current_archive = Path(completed.items[0].archive_path or "")
+    assert current_archive.is_file()
+    events = ledger.worktree_reconciliation_events()
+    assert "archive_pruned" not in [event["action"] for event in events]
+    assert events[-1]["action"] == "archive_compaction_incomplete"
+
+
+def test_restore_collision_claim_is_never_pruned_as_staging_and_recovers(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    archive_dir = tmp_path / "worktree-quarantine"
+    archive_dir.mkdir()
+    candidate = archive_dir / f"run-{'a' * 24}-{'b' * 24}.tar.gz"
+    original_evidence = b"verified archive evidence\n"
+    replacement = b"replacement at original name\n"
+    candidate.write_bytes(original_evidence)
+    recorded_events = [
+        {
+            "archive_path": str(candidate),
+            "archive_sha256": hashlib.sha256(original_evidence).hexdigest(),
+        }
+    ]
+    parent_fd = reconcile_module.open_absolute_directory_no_follow(archive_dir)
+    expected = os.stat(candidate.name, dir_fd=parent_fd, follow_symlinks=False)
+
+    def collide_with_restore(claimed_name: str) -> None:
+        replacement_fd = os.open(
+            candidate.name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+            dir_fd=parent_fd,
+        )
+        try:
+            os.write(replacement_fd, replacement)
+        finally:
+            os.close(replacement_fd)
+        raise RuntimeError("simulated survivor validation failure")
+
+    try:
+        with pytest.raises(RuntimeError, match="claim could not be restored"):
+            reconcile_module._claim_and_unlink_archive_generation(
+                parent_fd,
+                candidate.name,
+                expected=expected,
+                pre_unlink_check=collide_with_restore,
+            )
+    finally:
+        os.close(parent_fd)
+
+    claims = list(archive_dir.glob(f"{reconcile_module.ARCHIVE_PRUNE_CLAIM_PREFIX}*"))
+    assert len(claims) == 1
+    claim = claims[0]
+    assert claim.read_bytes() == original_evidence
+    assert candidate.read_bytes() == replacement
+
+    monkeypatch.setattr(reconcile_module, "_pid_is_alive", lambda pid: False)
+    reconcile_module._prune_stale_archive_staging(archive_dir)
+    assert claim.read_bytes() == original_evidence
+    assert (
+        reconcile_module._recover_archive_compaction_claims(
+            archive_dir,
+            recorded_events=recorded_events,
+        )
+        == 0
+    )
+    assert claim.read_bytes() == original_evidence
+
+    candidate.unlink()
+    assert (
+        reconcile_module._recover_archive_compaction_claims(
+            archive_dir,
+            recorded_events=recorded_events,
+        )
+        == 1
+    )
+    assert not claim.exists()
+    assert candidate.read_bytes() == original_evidence
+
+
+@pytest.mark.parametrize(
+    ("original_name", "expected_name_bytes"),
+    [
+        (
+            f"company-request-7410-codex-governor-20260827T185355-{'a' * 24}-{'b' * 24}.tar.gz",
+            108,
+        ),
+        (f"{'r' * 198}-{'a' * 24}-{'b' * 24}.tar.gz", 255),
+    ],
+)
+def test_archive_prune_claim_is_bounded_for_managed_archive_names(
+    original_name: str,
+    expected_name_bytes: int,
+) -> None:
+    assert len(os.fsencode(original_name)) == expected_name_bytes
+    claim_name = reconcile_module._archive_prune_claim_name(
+        original_name,
+        pid=12345,
+        token="c" * 24,
+    )
+
+    assert len(os.fsencode(claim_name)) <= 240
+    assert reconcile_module._parse_archive_prune_claim_name(claim_name) == (
+        12345,
+        hashlib.sha256(os.fsencode(original_name)).hexdigest(),
+    )
+
+
+def test_oversized_pid_archive_claim_is_retained_without_aborting_reconciliation(
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree)
+    archive_dir = tmp_path / "runner" / "state" / "worktree-quarantine"
+    archive_dir.mkdir(parents=True)
+    original_name = f"run-{'a' * 24}-{'b' * 24}.tar.gz"
+    original_name_sha256 = hashlib.sha256(os.fsencode(original_name)).hexdigest()
+    oversized_claim_name = (
+        f"{reconcile_module.ARCHIVE_PRUNE_CLAIM_PREFIX}"
+        f"{reconcile_module.MAX_PLATFORM_PID + 1}-{'c' * 24}-"
+        f"{original_name_sha256}.claim"
+    )
+    claim = archive_dir / oversized_claim_name
+    claim_evidence = b"verified archive evidence\n"
+    claim.write_bytes(claim_evidence)
+    ledger.record_worktree_reconciliation(
+        observed_at=1,
+        worktree_path=str(worktree.resolve()),
+        source="runner",
+        run_id="run-1",
+        issue=1,
+        state="submitted",
+        classification="debug-artifact",
+        reason="test evidence",
+        action="archive_compaction_started",
+        bytes_before=len(claim_evidence),
+        dirty_entries=1,
+        remote_proof_json=None,
+        archive_path=str(archive_dir / original_name),
+        archive_sha256=hashlib.sha256(claim_evidence).hexdigest(),
+        reclaimed_bytes=0,
+        error=None,
+    )
+
+    assert reconcile_module._parse_archive_prune_claim_name(oversized_claim_name) is None
+    completed = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert completed.removed == 1
+    assert claim.read_bytes() == claim_evidence
+    assert not (archive_dir / original_name).exists()
+
+
+def test_archive_prune_recovery_retains_claim_that_no_longer_matches_ledger(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    archive_dir = tmp_path / "worktree-quarantine"
+    archive_dir.mkdir()
+    original_name = f"run-{'a' * 24}-{'b' * 24}.tar.gz"
+    claim_name = reconcile_module._archive_prune_claim_name(
+        original_name,
+        pid=12345,
+        token="c" * 24,
+    )
+    claim = archive_dir / claim_name
+    claim.write_bytes(b"changed evidence\n")
+    recorded_events = [
+        {
+            "archive_path": str(archive_dir / original_name),
+            "archive_sha256": hashlib.sha256(b"original evidence\n").hexdigest(),
+        }
+    ]
+    monkeypatch.setattr(reconcile_module, "_pid_is_alive", lambda pid: False)
+
+    assert (
+        reconcile_module._recover_archive_compaction_claims(
+            archive_dir,
+            recorded_events=recorded_events,
+        )
+        == 0
+    )
+    assert claim.read_bytes() == b"changed evidence\n"
+    assert not (archive_dir / original_name).exists()
+
+
+def test_duplicate_generations_are_compacted_before_fresh_capacity_reservation(
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    (worktree / "evidence.txt").write_text("preserve this evidence\n")
+
+    def fail_remove(path: Path, final_guard) -> None:
+        raise RuntimeError("retain duplicate generations")
+
+    first = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    second = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    prior_archives = [
+        Path(first.items[0].archive_path or ""),
+        Path(second.items[0].archive_path or ""),
+    ]
+    prior_sizes = [path.stat().st_size for path in prior_archives]
+    quarantine_bytes = reconcile_module._directory_bytes(prior_archives[0].parent)
+    quarantine_overhead = quarantine_bytes - sum(prior_sizes)
+    projected_fresh_bytes = reconcile_module._directory_bytes(worktree) + 1024 * 1024
+    max_bytes = projected_fresh_bytes + quarantine_overhead + max(prior_sizes) + 1
+    assert quarantine_bytes + projected_fresh_bytes > max_bytes
+
+    completed = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        max_bytes=max_bytes,
+    )
+
+    assert completed.removed == 1, completed.items[0].error
+    current_archive = Path(completed.items[0].archive_path or "")
+    assert current_archive.is_file()
+    assert list(current_archive.parent.glob("*.tar.gz")) == [current_archive]
+    assert all(not path.exists() for path in prior_archives)
+
+
+def test_archive_checksum_is_validated_before_manifest_decompression(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    archive_dir = tmp_path / "worktree-quarantine"
+    archive_dir.mkdir()
+    candidate = archive_dir / f"run-{'a' * 24}-{'b' * 24}.tar.gz"
+    candidate.write_bytes(b"not a trusted archive")
+    parent_fd = reconcile_module.open_absolute_directory_no_follow(archive_dir)
+
+    def fail_if_decompressed(*args, **kwargs):
+        raise AssertionError("checksum-mismatched archive was decompressed")
+
+    monkeypatch.setattr(reconcile_module.tarfile, "open", fail_if_decompressed)
+    try:
+        with pytest.raises(RuntimeError, match="checksum no longer matches"):
+            reconcile_module._inspect_archive_generation_at(
+                parent_fd,
+                candidate.name,
+                expected_sha256="c" * 64,
+            )
+    finally:
+        os.close(parent_fd)
+
+
+def test_archive_compaction_requires_a_durable_pre_unlink_event(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    (worktree / "evidence.txt").write_text("preserve this evidence\n")
+
+    def fail_remove(path: Path, final_guard) -> None:
+        raise RuntimeError("retain the first generation")
+
+    first = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    prior_archive = Path(first.items[0].archive_path or "")
+    real_record = ledger.record_worktree_reconciliation
+
+    def fail_compaction_audit(**fields) -> None:
+        if fields.get("action") == "archive_compaction_started":
+            raise RuntimeError("simulated audit failure")
+        real_record(**fields)
+
+    monkeypatch.setattr(ledger, "record_worktree_reconciliation", fail_compaction_audit)
+
+    completed = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert completed.removed == 1
+    assert prior_archive.is_file()
+    current_archive = Path(completed.items[0].archive_path or "")
+    assert current_archive.is_file()
+    event = ledger.worktree_reconciliation_events()[-1]
+    assert event["action"] == "archive_compaction_incomplete"
+    assert event["error"] == "one or more superseded archive generations could not be verified"
 
 
 @pytest.mark.parametrize("old_archive_damage", ["invalid", "missing", "replaced"])
