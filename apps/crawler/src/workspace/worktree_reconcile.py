@@ -50,6 +50,7 @@ TERMINAL_STATES = {
 RESOLVED_OUTCOMES = {"submitted", "rejected", "escalated"}
 DEBUG_OUTCOMES = {"retryable", "interrupted"}
 TRUSTED_GITHUB_REPOSITORY = "colophon-group/jobseek"
+ARCHIVE_METADATA_RESERVE_BYTES = 1024 * 1024
 
 
 def _git_proof_env() -> dict[str, str]:
@@ -2234,7 +2235,14 @@ def _archive_worktree(
         archive_dir / f"{safe_run_id}-{source_snapshot_sha256[:24]}-{archive_token}.tar.gz"
     )
     _prune_stale_archive_staging(archive_dir)
-    base_projected_bytes = max(1, item.bytes + 1024 * 1024)
+    # Clean tracked checkout content is never written to the evidence archive.
+    # Budget only the fingerprinted candidates plus bounded metadata; the
+    # streaming writer and final actual-size check still enforce the hard cap.
+    candidate_bytes = sum(candidate.bytes or 0 for candidate in expected_snapshot.candidates)
+    base_projected_bytes = max(
+        1,
+        candidate_bytes + ARCHIVE_METADATA_RESERVE_BYTES,
+    )
     if include_unique_commits:
         if unique_commit_base_oid is None:
             raise RuntimeError("unique commit archive has no verified base OID")
