@@ -989,6 +989,7 @@ brightai-corporation,brightai-corporation-greenhouse,https://job-boards.greenhou
 brightcore-energy,brightcore-energy-greenhouse,https://job-boards.greenhouse.io/brightcoreenergy,greenhouse,"{""token"": ""brightcoreenergy""}",skip,
 brightflag,brightflag-greenhouse,https://job-boards.greenhouse.io/brightflag,greenhouse,"{""token"": ""brightflag""}",skip,
 brightnetwork,brightnetwork-pinpoint,https://brightnetwork.pinpointhq.com,pinpoint,"{""slug"": ""brightnetwork""}",skip,
+brightspring-health-services,brightspring-health-services-careers,https://careers-brightspring.icims.com/,icims,,json-ld,
 brigit,brigit-ashby,https://jobs.ashbyhq.com/brigit,ashby,"{""token"": ""brigit""}",skip,
 brilliant,brilliant-lever,https://jobs.lever.co/brilliant,lever,"{""token"": ""brilliant""}",skip,
 bring-labs-ag,bring-labs-ag-join,https://join.com/companies/bring,join,"{""slug"": ""bring""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
