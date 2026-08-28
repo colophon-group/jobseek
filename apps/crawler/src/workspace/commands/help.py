@@ -2834,10 +2834,15 @@ dayforce — Dayforce public career-site API
 
   Config:
     {"tenant": "acme", "portal": "CANDIDATEPORTAL"}
+    {"tenant": "acme", "portal": "CANDIDATEPORTAL", "offset_overlap": 5}
 
     tenant  Dayforce client namespace.
     portal  Case-preserving career-site code. Auto-filled only from direct or
             explicitly linked jobs.dayforcehcm.com URLs; no blind guessing.
+    offset_overlap  Repeat this many rows at every 25-job page boundary. Use a
+            small value when equal-ranked Dayforce results reorder between
+            requests; completeness still fails closed unless the union contains
+            every advertised posting. Must be an integer from 0 to 24.
 
   Detection:  ws probe shows "Dayforce API — tenant: X, portal: Y"
   Zero jobs?  A valid search response reports maxCount=0 and jobPostings=[]."""

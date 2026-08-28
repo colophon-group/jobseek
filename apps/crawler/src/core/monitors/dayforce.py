@@ -45,7 +45,6 @@ log = structlog.get_logger()
 
 PAGE_SIZE = 25
 MAX_JOBS = 50_000
-MAX_PAGES = MAX_JOBS // PAGE_SIZE
 MAX_HTML_CHARS = 1_000_000
 SEARCH_READY_TIMEOUT_MS = 30_000
 
@@ -137,6 +136,14 @@ def _search_body(board: DayforceBoard, site: DayforceSite, offset: int) -> str:
         },
         separators=(",", ":"),
     )
+
+
+def _offset_overlap(config: dict) -> int:
+    """Return the configured offset overlap for unstable Dayforce ordering."""
+    value = config.get("offset_overlap", 0)
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < PAGE_SIZE:
+        raise ValueError(f"Dayforce offset_overlap must be an integer from 0 to {PAGE_SIZE - 1}")
+    return value
 
 
 async def _fetch_search_page(
@@ -367,9 +374,11 @@ async def stream(
 
     from src.shared.browser import BROWSER_KEYS, safe_content
 
+    config = board.get("metadata") or {}
+    offset_overlap = _offset_overlap(config)
+    offset_step = PAGE_SIZE - offset_overlap
     key = _board_key(board)
     _page, bootstrap_site = await _bootstrap(key, client)
-    config = board.get("metadata") or {}
     browser_config = {name: value for name, value in config.items() if name in BROWSER_KEYS}
 
     async with _open_dayforce_page(
@@ -387,20 +396,23 @@ async def stream(
         fetch = make_browser_fetcher(page)
         expected_total: int | None = None
         count_changed = False
+        offset = 0
         raw_seen = 0
         invalid = 0
         duplicates = 0
+        within_page_duplicates = 0
         seen_urls: set[str] = set()
 
-        for _page_number in range(MAX_PAGES):
+        max_pages = max(1, (MAX_JOBS + offset_step - 1) // offset_step)
+        for _page_number in range(max_pages):
             payload = await _fetch_search_page(
                 fetch,
                 key,
                 browser_site,
-                raw_seen,
+                offset,
                 request_headers,
             )
-            total, rows = _page_rows(payload, key, browser_site, raw_seen)
+            total, rows = _page_rows(payload, key, browser_site, offset)
             if expected_total is None:
                 expected_total = total
             elif total != expected_total:
@@ -414,15 +426,15 @@ async def stream(
                 expected_total = total
                 count_changed = True
 
-            if not rows and raw_seen < total:
+            if not rows and offset < total:
                 payload = await _fetch_search_page(
                     fetch,
                     key,
                     browser_site,
-                    raw_seen,
+                    offset,
                     request_headers,
                 )
-                retry_total, rows = _page_rows(payload, key, browser_site, raw_seen)
+                retry_total, rows = _page_rows(payload, key, browser_site, offset)
                 if retry_total != expected_total:
                     log.warning(
                         "dayforce.count_changed",
@@ -442,19 +454,26 @@ async def stream(
                     )
 
             page_jobs: list[DiscoveredJob] = []
+            page_urls: set[str] = set()
             for raw in rows:
                 raw_seen += 1
                 job = _parse_job(raw, key, browser_site)
                 if job is None:
                     invalid += 1
                     continue
+                if job.url in page_urls:
+                    duplicates += 1
+                    within_page_duplicates += 1
+                    continue
+                page_urls.add(job.url)
                 if job.url in seen_urls:
                     duplicates += 1
                     continue
                 seen_urls.add(job.url)
                 page_jobs.append(job)
 
-            if raw_seen < total and len(rows) < PAGE_SIZE:
+            coverage_end = offset + len(rows)
+            if coverage_end < total and len(rows) < PAGE_SIZE:
                 raise PaginationFetchError(
                     key.search_url(),
                     attempts=1,
@@ -462,12 +481,12 @@ async def stream(
                     last_error="PrematurePartialDayforcePage",
                 )
 
-            done = raw_seen >= total or raw_seen >= MAX_JOBS
+            done = coverage_end >= total or coverage_end >= MAX_JOBS
             truncated = done and (
                 count_changed
                 or invalid > 0
-                or duplicates > 0
-                or raw_seen != total
+                or within_page_duplicates > 0
+                or (total <= MAX_JOBS and len(seen_urls) != total)
                 or total > MAX_JOBS
             )
             if page_jobs or done:
@@ -485,10 +504,13 @@ async def stream(
                     expected_total=expected_total,
                     invalid=invalid,
                     duplicates=duplicates,
+                    within_page_duplicates=within_page_duplicates,
+                    offset_overlap=offset_overlap,
                     count_changed=count_changed,
                     truncated=truncated,
                 )
                 return
+            offset += offset_step
         else:
             yield _rich_result([], truncated=True)
 
