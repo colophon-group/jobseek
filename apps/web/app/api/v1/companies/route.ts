@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 // issues #3231 / #3331.
 import { suggestCompanies } from "@/lib/services/company";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
+import { withPublicApiObservability } from "@/lib/public-api-observability";
 import {
   checkRateLimit,
   apiResponse,
@@ -13,7 +14,7 @@ import {
 
 const MAX_RESULTS = 10;
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   const rl = await checkRateLimit(request);
   if (rl instanceof NextResponse) return rl;
 
@@ -43,3 +44,5 @@ export async function GET(request: NextRequest) {
   // for higher CDN reuse on common queries — see issue #2644.
   return apiResponse({ companies }, { maxAge: CACHE_TTL_LONG, rateLimit: rl });
 }
+
+export const GET = withPublicApiObservability("companies", handleGet);

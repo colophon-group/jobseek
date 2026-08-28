@@ -11,11 +11,12 @@ import {
 } from "@/lib/services/taxonomy";
 import { suggestIndustries } from "@/lib/services/company";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
+import { withPublicApiObservability } from "@/lib/public-api-observability";
 import { checkRateLimit, apiResponse, parseApiLocale } from "../_shared";
 
 const VALID_TYPES = ["seniority", "occupations", "technologies", "industries"] as const;
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   const rl = await checkRateLimit(request);
   if (rl instanceof NextResponse) return rl;
 
@@ -58,3 +59,5 @@ export async function GET(request: NextRequest) {
 
   return apiResponse({ type, items }, { maxAge: CACHE_TTL_LONG, rateLimit: rl });
 }
+
+export const GET = withPublicApiObservability("taxonomies", handleGet);

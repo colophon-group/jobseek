@@ -9,6 +9,7 @@ import { searchJobs, listTopCompanies } from "@/lib/services/search";
 import { parseSearchFilters } from "@/lib/services/search-input";
 import { parsePublicSearchLanguages } from "@/lib/search/language-param";
 import { logExternalError } from "@/lib/safe-external-error";
+import { withPublicApiObservability } from "@/lib/public-api-observability";
 import { PUBLIC_SEARCH_QUERY_PARAMETERS } from "@jseek/mcp-server/public-api-contract";
 import {
   checkRateLimit,
@@ -91,7 +92,7 @@ function parseIntegerRangeParam(
   return { ok: true, min, max };
 }
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   const rl = await checkRateLimit(request);
   if (rl instanceof NextResponse) return rl;
 
@@ -221,3 +222,5 @@ export async function GET(request: NextRequest) {
     { rateLimit: rl },
   );
 }
+
+export const GET = withPublicApiObservability("search", handleGet);

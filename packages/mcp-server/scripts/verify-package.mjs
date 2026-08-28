@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../dist/server.js";
+import { JobseekClient } from "../dist/client.js";
 import {
   API_LOCALES,
   DEFAULT_API_LOCALE,
@@ -278,9 +279,13 @@ try {
   }
 
   const originalFetch = globalThis.fetch;
-  const requestedUrls = [];
-  globalThis.fetch = async (input) => {
-    requestedUrls.push(String(input));
+  const requestedRequests = [];
+  globalThis.fetch = async (input, init) => {
+    requestedRequests.push({
+      url: String(input),
+      method: init?.method ?? "GET",
+      headers: new Headers(init?.headers),
+    });
     return new Response(JSON.stringify({ companies: [], totalCompanies: 0 }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -304,25 +309,54 @@ try {
       },
     });
     assert(!validSearch.isError, "MCP search_jobs must accept the shared contract");
-    assert(requestedUrls.length === 1, "MCP search_jobs must issue exactly one API request");
-    const forwarded = new URL(requestedUrls[0]);
+    assert(
+      requestedRequests.length === 1,
+      "MCP search_jobs must issue exactly one API request",
+    );
+    const forwarded = new URL(requestedRequests[0].url);
     for (const name of PUBLIC_SEARCH_QUERY_PARAMETERS) {
       assert(
         forwarded.searchParams.has(name),
         `MCP search_jobs must forward ${name} to the REST API`,
       );
     }
+    assert(
+      requestedRequests[0].headers.get("x-jobseek-internal-mcp-token") === null,
+      "The published/default MCP server must not send a hosted provenance token",
+    );
 
-    requestedUrls.length = 0;
+    requestedRequests.length = 0;
     const invalidSearch = await client.callTool({
       name: "search_jobs",
       arguments: { wm: "remote,bogus" },
     });
     assert(invalidSearch.isError, "MCP search_jobs must reject unsupported filter values");
     assert(
-      requestedUrls.length === 0,
+      requestedRequests.length === 0,
       "MCP search_jobs must reject invalid input before calling the REST API",
     );
+
+    const internalToken = "SECRET_HOSTED_MCP_PROVENANCE_CANARY";
+    const hostedClient = new JobseekClient("https://example.invalid", {
+      internalMcpToken: internalToken,
+    });
+    await hostedClient.get("/api/v1/job", { id: "job-1" });
+    await hostedClient.post("/api/v1/internal-test", { ok: true });
+
+    assert(
+      requestedRequests.length === 2,
+      "A configured client must issue the expected GET and POST requests",
+    );
+    for (const request of requestedRequests) {
+      assert(
+        request.headers.get("x-jobseek-internal-mcp-token") === internalToken,
+        `A configured ${request.method} must send the hosted provenance token header`,
+      );
+      assert(
+        !request.url.includes(internalToken),
+        "The hosted provenance token must never be added to a request URL",
+      );
+    }
   } finally {
     globalThis.fetch = originalFetch;
   }

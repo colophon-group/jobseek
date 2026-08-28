@@ -1,10 +1,25 @@
 const DEFAULT_BASE = "https://jseek.co";
+const INTERNAL_MCP_TOKEN_HEADER = "x-jobseek-internal-mcp-token";
+
+export interface JobseekClientOptions {
+  internalMcpToken?: string;
+}
 
 export class JobseekClient {
   private baseUrl: string;
+  private internalMcpToken: string | undefined;
 
-  constructor(baseUrl = DEFAULT_BASE) {
+  constructor(baseUrl = DEFAULT_BASE, options: JobseekClientOptions = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
+    this.internalMcpToken = options.internalMcpToken || undefined;
+  }
+
+  private headers(initial?: HeadersInit): Headers {
+    const headers = new Headers(initial);
+    if (this.internalMcpToken) {
+      headers.set(INTERNAL_MCP_TOKEN_HEADER, this.internalMcpToken);
+    }
+    return headers;
   }
 
   async get(
@@ -17,7 +32,9 @@ export class JobseekClient {
         url.searchParams.set(k, v);
       }
     }
-    const res = await fetch(url.toString());
+    const res = this.internalMcpToken
+      ? await fetch(url.toString(), { headers: this.headers() })
+      : await fetch(url.toString());
     if (!res.ok) {
       const body = await res.text();
       throw new Error(`API error ${res.status}: ${body}`);
@@ -28,7 +45,7 @@ export class JobseekClient {
   async post(path: string, body: Record<string, unknown>): Promise<unknown> {
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.headers({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     });
     if (!res.ok) {

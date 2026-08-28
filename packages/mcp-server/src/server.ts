@@ -1,5 +1,5 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { JobseekClient } from "./client.js";
+import { JobseekClient, type JobseekClientOptions } from "./client.js";
 import { register as registerSearch } from "./tools/search.js";
 import { register as registerJobDetail } from "./tools/job-detail.js";
 import { register as registerCompanies } from "./tools/companies.js";
@@ -8,7 +8,10 @@ import { register as registerResolve } from "./tools/resolve.js";
 import { register as registerWatchlists } from "./tools/watchlists.js";
 import { register as registerCreateWatchlist } from "./tools/create-watchlist.js";
 
-export function createServer(baseUrl: string) {
+export function createServer(
+  baseUrl: string,
+  options: JobseekClientOptions = {},
+) {
   const server = new McpServer(
     { name: "jobseek", version: "0.1.4" },
     {
@@ -33,7 +36,7 @@ Rate limit: 30 requests per minute.`,
     },
   );
 
-  const client = new JobseekClient(baseUrl);
+  const client = new JobseekClient(baseUrl, options);
 
   // Register tools
   registerSearch(server, client);

@@ -16,6 +16,7 @@ Current design of all major subsystems across the crawler and web apps.
 - [Web: Authentication](#web-authentication)
 - [Web: Session Caching](#web-session-caching)
 - [Web: Rate Limiting](#web-rate-limiting)
+- [Web: Public API Metrics](#web-public-api-metrics)
 - [Web: Cache System](#web-cache-system)
 - [Database Schema](#database-schema)
 - [Data Flow Diagrams](#data-flow-diagrams)
@@ -68,8 +69,10 @@ GOOGLE_CLIENT_ID / _SECRET       # OAuth
 LINKEDIN_CLIENT_ID / _SECRET     # OAuth
 GITHUB_APP_ID / _PRIVATE_KEY / _INSTALLATION_ID  # GitHub App
 RESEND_API_KEY                   # Email
-UPSTASH_REDIS_REST_URL           # Upstash Redis (web-only: sessions, rate limiting)
+UPSTASH_REDIS_REST_URL           # Upstash Redis (web-only: sessions, rate limiting, API metrics)
 UPSTASH_REDIS_REST_TOKEN         # Upstash Redis auth token
+API_METRICS_HMAC_SECRET          # HMAC key for daily, non-reversible API network-client estimates
+HOSTED_MCP_API_PROVENANCE_TOKEN  # Private marker authenticating hosted-MCP -> REST attribution
 ```
 
 ---
@@ -515,6 +518,142 @@ Uses `@upstash/ratelimit` with sliding window algorithm backed by Upstash Redis.
 | `authLimiter`        | 60 seconds   | 10    | POST `/api/auth/[...all]`      |
 | `passwordResetLimiter` | 300 seconds | 3     | Password reset requests        |
 | `companyRequestLimiter` | 3600 seconds | 5    | Company request submissions    |
+
+---
+
+## Web: Public API Metrics
+
+```
+src/lib/public-api-metrics-contract.ts  # Bounded dimensions and v1 Redis key contract
+src/lib/public-api-metrics.ts           # Fail-open aggregate writer
+script/report-api-traffic.ts            # Operator 7/30/90-day report
+```
+
+The public REST and MCP surfaces write privacy-bounded daily aggregates to
+the existing Upstash Redis database after the response has been produced.
+These counters measure **origin executions only**: Vercel CDN hits that never
+reach a Function and requests stopped by the WAF are absent. They complement,
+but do not replace, Vercel Firewall edge totals.
+
+Each request increments one canonical low-cardinality hash field containing
+only the enumerated interface, route, consumer class, status class, latency
+bucket, rate-limit flag, and whether an HLL write was issued. Query strings,
+bodies, tool arguments, raw errors, user agents, referrers, geography, and raw
+IP addresses are never persisted.
+
+External requests with a valid platform-authoritative IP also update a daily
+HyperLogLog. Its member is
+`HMAC-SHA256(API_METRICS_HMAC_SECRET, UTC-day + NUL + IP)`, so neither the raw
+IP nor a reusable plain hash reaches Redis. Hosted-MCP downstream REST calls
+and unknown/invalid IPs do not enter an HLL. HLL results estimate daily
+network clients—not people, accounts, organizations, or cross-day uniques.
+The report therefore sums them only as **network-client-days**.
+
+Writes are fail-open and pipelined. A successful counts-only write issues two
+logical Redis commands (`HINCRBY`, `EXPIREAT`); an eligible external request
+issues four by adding `PFADD` and a second `EXPIREAT`. Every key expires at the
+fixed UTC day start plus 90 days. Redis or configuration failures emit one
+sanitized `api_metrics.unavailable` runtime event and never change the API
+response. Because a failed Redis write cannot reliably record its own failure,
+the Redis report exposes `telemetry_write_failures: null`; runtime logs remain
+the only source for that event.
+
+The report's `logical_metric_write_commands` is calculated from retained count
+fields and their bounded `network_client` dimension. It is not provider
+billing or a measured Upstash command total. A failed pipeline can leave no
+count, and an Upstash pipeline is not atomic, so a partial pipeline can differ
+from the logical two/four-command path represented by the retained field.
+Provider plan limits, utilization, and storage remain `null` until separately
+measured and recorded by operations.
+
+### Production secret provisioning and rotation
+
+`API_METRICS_HMAC_SECRET` and `HOSTED_MCP_API_PROVENANCE_TOKEN` are separate
+secrets with independent purposes, owners, and rotation schedules. Never reuse
+one value for the other.
+
+| Secret | Purpose and owner | Conservative degradation | Rotation rule |
+|--------|-------------------|--------------------------|---------------|
+| `API_METRICS_HMAC_SECRET` | Telemetry/privacy owner; derives daily non-reversible HLL members | Counts continue, HLL writes are skipped, and `api_metrics.unavailable` is emitted; raw IPs are never stored | Rotate independently at a UTC day boundary so one day's HLL is not split across keys derived from two secrets |
+| `HOSTED_MCP_API_PROVENANCE_TOKEN` | Web/MCP operations owner; proves that a REST call came from the hosted MCP bridge | Missing, empty, or mismatched values classify the REST call as `external`; the marker grants no authorization or rate-limit bypass | Rotate independently but deploy the hosted MCP sender and REST verifier with the same new value |
+
+Provision both as protected Vercel **Production** environment secrets before
+deploying the instrumentation. Use distinct values per environment, keep them
+out of committed env files and logs, and verify only variable presence—not
+values—during release checks. The `turbo.json` environment allowlist merely
+permits named variables to reach tasks; it does not create, encrypt, rotate, or
+provision either secret.
+
+Deployment record: on 2026-08-28, both variables were provisioned for Vercel
+Production as **Sensitive** values. Their values were not copied into this
+repository, retained in investigation notes, or printed during verification.
+
+After deployment, run these bounded probes:
+
+1. Send one direct REST request and one hosted MCP tool call that reaches REST.
+2. Confirm runtime logs contain the expected bounded `public_api.request`
+   events, including `external` for the direct call and `hosted_mcp` for the
+   downstream MCP call, with no `api_metrics.unavailable` event.
+3. Run `traffic:api` with `--through` set to the current UTC date. Confirm the
+   day is marked partial, both consumer classes increment, and only external
+   traffic contributes to the REST network-client HLL estimate.
+4. Inspect the daily counts and HLL keys in the Upstash console: expiry must be
+   the UTC day start plus 90 days, and fields/members must not expose an IP,
+   query, argument, token, or secret.
+
+```bash
+pnpm --dir apps/web traffic:api --since 7d
+pnpm --dir apps/web traffic:api --since 30d --json
+pnpm --dir apps/web traffic:api --since 90d --through 2026-08-27 --env-file .env.local
+```
+
+The default `--through` is the last completed UTC day. Missing, corrupt, and
+explicitly included partial UTC days are reported rather than silently
+treated as zero.
+
+### Web Upstash key-family registry
+
+| Key Pattern | Type | Retention | Purpose |
+|-------------|------|-----------|---------|
+| `session:{token}` | String | 5 minutes | Cross-instance authenticated-session cache |
+| `rl:*` | Upstash Ratelimit keys | Limiter-defined | Auth, public API, and public-read rate limits |
+| `cache:*` | String | Call-site-defined | Web cache-aside values |
+| `metrics:public-api:v1:counts:YYYY-MM-DD` | Hash | Fixed UTC day start + 90 days | One bounded aggregate field per REST/MCP origin execution |
+| `metrics:public-api:v1:clients:YYYY-MM-DD:rest:external` | HyperLogLog | Fixed UTC day start + 90 days | Daily external REST network-client estimate |
+| `metrics:public-api:v1:clients:YYYY-MM-DD:mcp:external` | HyperLogLog | Fixed UTC day start + 90 days | Daily external MCP network-client estimate |
+
+### Upstash baseline and approved-ceiling record
+
+The 2026-08-28 operations probe established the Redis-side point-in-time
+baseline below. Redis's `total_commands_processed` is a lifetime counter since
+the server started; it is **not** month-to-date usage and provides no billing-
+period boundary. The signed-in provider dashboard was unavailable, so the
+plan, current billing-period commands/requests, monthly allowance, and
+configured read regions could not be verified.
+
+| Field | Operations-supplied value | Evidence/notes |
+|-------|---------------------------|----------------|
+| Measurement date | 2026-08-28 | Redis-side point-in-time operations probe; no billing-period window available |
+| Database key count (`DBSIZE`) | 19 | Redis-reported |
+| Used memory | 924 B | Redis-reported `used_memory` |
+| Configured maximum memory | 3 GB | Redis-reported `maxmemory` |
+| Lifetime commands processed | 1,591,460 | Redis-reported `total_commands_processed`; lifetime only, not MTD |
+| Replicas | None reported through available `INFO` | Does not establish configured provider read regions |
+| Provider plan | Unavailable | Signed-in provider dashboard unavailable |
+| Current billing-period commands/requests | Unavailable | Cannot be derived from the lifetime Redis counter |
+| Monthly command/request allowance | Unavailable | Signed-in provider dashboard unavailable |
+| Configured read regions | Unavailable | Signed-in provider dashboard unavailable; Redis `INFO` is insufficient |
+| Approved incremental metric ceiling | Provisionally 25,000 logical commands/month | 22,440 worst-case monthly logical commands at the measured traffic rate plus approximately 11% headroom |
+| Approval condition | Current MTD usage + 25,000 must remain below the provider limit | Must be verified from provider-owned billing-period data before treating the ceiling as available headroom |
+| 24-hour post-deploy command/storage measurement | Pending | Compare provider usage with the Redis logical report once dashboard access is available |
+| 7-day post-deploy command/storage measurement | Pending | Confirm command headroom or disable metric writes |
+
+At 19 keys and 924 B used, incremental aggregate storage is negligible against
+the Redis-reported 3 GB maximum; the provider command allowance is the binding
+unknown. Metric writes must remain fail-open regardless of the eventual plan
+or ceiling. If measured provider usage threatens the provisional ceiling,
+disable or reduce metric writes; never impair API/MCP responses or weaken the
+existing API rate limiter to preserve telemetry.
 
 ---
 
