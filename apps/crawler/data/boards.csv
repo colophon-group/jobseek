@@ -5825,6 +5825,9 @@ synthace,synthace-careers,https://www.synthace.com/about/careers,pinpoint,"{""sl
 synthesia,synthesia-ashby,https://jobs.ashbyhq.com/synthesia,ashby,"{""token"": ""synthesia""}",skip,
 synthesis-health,synthesis-health-greenhouse,https://job-boards.greenhouse.io/synthesishealth,greenhouse,"{""token"": ""synthesishealth""}",skip,
 synthflow,synthflow-ashby,https://jobs.ashbyhq.com/synthflow,ashby,"{""token"": ""synthflow""}",skip,
+sysco,sysco-careers,https://sysco.wd5.myworkdayjobs.com/syscocareers,workday,,workday,
+sysco,sysco-gb,https://brakescareers.uk/search,smartrecruiters,"{""token"": ""SyscoGB""}",smartrecruiters,
+sysco,sysco-menigo-sweden,https://menigo.weselect.com/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""actions"": [{""action"": ""wait_for"", ""selector"": ""a[href*=\""/p/\""]"", ""state"": ""attached""}], ""link_selector"": ""a[href*=\""/p/\""]"", ""url_filter"": ""^https://menigo\\.weselect\\.com/p/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""text"": ""Ans\u00f6k nu""}, {""field"": ""description"", ""html"": true, ""stop"": ""Dela Dela"", ""stop_count"": 200}, {""tag"": ""title"", ""field"": ""location"", ""regex"": "" - (.+)$"", ""from"": 0}]}"
 system,system-greenhouse,https://job-boards.greenhouse.io/system,greenhouse,"{""token"": ""system""}",skip,
 systemiq,systemiq-greenhouse,https://job-boards.greenhouse.io/systemiq,greenhouse,"{""token"": ""systemiq""}",skip,
 syz-group,syz-group-syz-capital-join,https://join.com/companies/syzgroup,join,"{""slug"": ""syzgroup""}",nextdata,
