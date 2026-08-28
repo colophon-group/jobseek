@@ -573,6 +573,7 @@ ataraxis-ai,ataraxis-ai-ashby,https://jobs.ashbyhq.com/ataraxis-ai,ashby,"{""tok
 atdp-company,atdp-company-join,https://join.com/companies/lesateliersdupreaufr,join,"{""slug"": ""lesateliersdupreaufr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 athletics-baseball-operations,athletics-baseball-operations-greenhouse,https://job-boards.greenhouse.io/athleticsbaseballops,greenhouse,"{""token"": ""athleticsbaseballops""}",skip,
 athletics-business-operations,athletics-business-operations-greenhouse,https://job-boards.greenhouse.io/athleticsbusinessops,greenhouse,"{""token"": ""athleticsbusinessops""}",skip,
+atkinsrealis,atkinsrealis-careers,https://slihrms.wd3.myworkdayjobs.com/careers,workday,,workday,
 atlan,atlan-ashby,https://jobs.ashbyhq.com/atlan,ashby,"{""token"": ""atlan""}",skip,
 atlas,atlas-ashby,https://jobs.ashbyhq.com/atlas,ashby,"{""token"": ""atlas""}",skip,
 atlas-agro,atlas-agro-careers,https://www.atlasagro.ag/career/,inline,"{""render"": false, ""steps"": [{""tag"": ""div"", ""attr"": ""class=nectar-list-item"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=nectar-list-item"", ""field"": ""location""}, {""tag"": ""div"", ""attr"": ""class=nectar-list-item"", ""field"": ""description"", ""html"": true}]}",skip,
