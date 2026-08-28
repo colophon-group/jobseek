@@ -3977,7 +3977,7 @@ mhi,mhi-primetals,https://careers.primetals.com/global/en/search-results,sitemap
 michael-bonsby-hvac-plumbing-electrical,michael-bonsby-hvac-plumbing-electrical-greenhouse,https://job-boards.greenhouse.io/bonsbyhvacplumbing,greenhouse,"{""token"": ""bonsbyhvacplumbing""}",skip,
 michaels,michaels-careers,https://careers.michaels.com/,phenom,,json-ld,
 micron,micron-careers,https://micron.wd1.myworkdayjobs.com/external,workday,,workday,
-microsoft,microsoft-careers2,https://apply.careers.microsoft.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+microsoft,microsoft-careers2,https://apply.careers.microsoft.com/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""pcsx_watermark"": {""auto_full_crawl"": false}}",eightfold,"{""enrich"": [""description""]}"
 microsure,microsure-homerun,https://microsure.homerun.co/,sitemap,"{""sitemap_url"": ""https://microsure.homerun.co/sitemap.xml"", ""url_filter"": ""^https://microsure\\.homerun\\.co/(?!$)(?!.*(?:/apply/?$)).+""}",json-ld,
 microtech-global,microtech-global-main,https://www.microtech-global.com/en/jobs.asp,dom,"{""render"": false, ""url_filter"": ""job_detail\\.asp"", ""pagination"": {""param_name"": ""nav"", ""max_pages"": 25}}",json-ld,
 midea-group,midea-group-careers-americas,https://midea.hire.trakstar.com/jobs,sitemap,"{""sitemap_url"": ""https://midea.hire.trakstar.com/jobs/sitemap.xml""}",json-ld,
