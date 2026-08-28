@@ -411,6 +411,29 @@ class TestMonitor:
         assert len(jobs) == 26
         assert offsets == [0, 24]
 
+    async def test_offset_overlap_stays_truncated_when_unique_union_is_incomplete(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        async def fetch(_method, _url, _headers, body):
+            offset = json.loads(body)["paginationStart"]
+            rows = (
+                [_raw_job(i) for i in range(1, 26)] if offset == 0 else [_raw_job(24), _raw_job(25)]
+            )
+            return _search_payload(rows, total=26, offset=offset)
+
+        pw = _install_browser(monkeypatch, fetch)
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"offset_overlap": 1},
+        }
+        async with _bootstrap_client() as client:
+            result = await discover(board, client, pw=pw)
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert len(result.urls) == 25
+
     @pytest.mark.parametrize("offset_overlap", [-1, True, 25, "1"])
     async def test_invalid_offset_overlap_fails_closed(
         self,
