@@ -219,10 +219,10 @@
       "employeeCountRange": 8,
       "foundedYear": 1975,
       "descriptions": {
-        "en": "Microsoft is a global technology company that develops software, hardware, and cloud services, known for products like Windows, Office, Azure, and Xbox.",
-        "de": "Microsoft ist ein globales Technologieunternehmen, das Software, Hardware und Cloud-Dienste entwickelt und für Produkte wie Windows, Office, Azure und Xbox bekannt ist.",
-        "fr": "Microsoft est une entreprise technologique mondiale qui développe des logiciels, du matériel et des services cloud, connue pour des produits tels que Windows, Office, Azure et Xbox.",
-        "it": "Microsoft è un'azienda tecnologica globale che sviluppa software, hardware e servizi cloud, nota per prodotti come Windows, Office, Azure e Xbox."
+        "en": "Microsoft is a global technology company that develops AI-powered platforms, software, cloud services, devices, and gaming products. Its portfolio includes Microsoft 365, Azure, Windows, Copilot, Surface, LinkedIn, and Xbox.",
+        "de": "Microsoft ist ein globales Technologieunternehmen, das KI-gestützte Plattformen, Software, Cloud-Dienste, Geräte und Gaming-Produkte entwickelt. Zum Portfolio gehören Microsoft 365, Azure, Windows, Copilot, Surface, LinkedIn und Xbox.",
+        "fr": "Microsoft est une entreprise technologique mondiale qui développe des plateformes alimentées par l’IA, des logiciels, des services cloud, des appareils et des produits de jeu vidéo. Son portefeuille comprend Microsoft 365, Azure, Windows, Copilot, Surface, LinkedIn et Xbox.",
+        "it": "Microsoft è un’azienda tecnologica globale che sviluppa piattaforme basate sull’intelligenza artificiale, software, servizi cloud, dispositivi e prodotti per il gaming. Il suo portafoglio comprende Microsoft 365, Azure, Windows, Copilot, Surface, LinkedIn e Xbox."
       }
     },
     {
