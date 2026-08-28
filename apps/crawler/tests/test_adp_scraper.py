@@ -184,9 +184,7 @@ async def test_inline_description_and_structured_fields():
 async def test_title_location_fallback_is_explicit_and_only_used_when_structured_empty():
     detail = _detail(description="<p>Maintain customer power systems.</p>")
     detail["requisitionTitle"] = "Senior Field Service Engineer - Northern Virginia"
-    detail["requisitionLocations"] = [
-        {"nameCode": {"shortName": ""}, "address": {"cityName": ""}}
-    ]
+    detail["requisitionLocations"] = [{"nameCode": {"shortName": ""}, "address": {"cityName": ""}}]
 
     async with httpx.AsyncClient(
         transport=httpx.MockTransport(lambda request: httpx.Response(200, json=detail))
