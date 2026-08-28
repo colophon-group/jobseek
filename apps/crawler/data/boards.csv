@@ -3548,7 +3548,6 @@ ledgy,ledgy-greenhouse,https://job-boards.greenhouse.io/ledgy,greenhouse,"{""tok
 legal-services-nyc,legal-services-nyc-greenhouse,https://job-boards.greenhouse.io/legalservicesnyc,greenhouse,"{""token"": ""legalservicesnyc""}",skip,
 legalzoom,legalzoom-pinpoint,https://legalzoom.pinpointhq.com,pinpoint,"{""slug"": ""legalzoom""}",skip,
 legend-biotech-us,legend-biotech-us-greenhouse,https://job-boards.greenhouse.io/legendcareers,greenhouse,"{""token"": ""legendcareers""}",skip,
-legends-global,legends-global-apac-middle-east,https://legendsglobal.hosting.staffcv.com,rss,"{""preset"": ""generic"", ""feed_url"": ""https://legendsglobal.hosting.staffcv.com/feed/""}",skip,
 legends-global,legends-global-careers,https://asmglobal.wd1.myworkdayjobs.com/careers,workday,,workday,
 legends-global,legends-global-europe,https://eujobs.legendsglobal.com,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://eujobs.legendsglobal.com/jobs.rss""}",skip,
 legion,legion-greenhouse,https://job-boards.greenhouse.io/legion,greenhouse,"{""token"": ""legion""}",skip,
