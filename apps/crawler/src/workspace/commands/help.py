@@ -2432,7 +2432,8 @@ personio — Personio XML Feed + HTML Fallback
   Zero jobs?  Verify slug — try the listing page in a browser"""
 
 MONITOR_RSS = """\
-rss — RSS 2.0 Feed Monitor + legacy SuccessFactors (presets: successfactors, teamtailor, generic)
+rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
+      (presets: successfactors, teamtailor, wp_job_manager, generic)
 
   Feed:     GET {feed_url}
   Returns:  Feeds: full job data. Legacy SuccessFactors: title, location,
@@ -2445,6 +2446,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors (presets: successfactors, t
             - successfactors: /googlefeed.xml (Google Base namespace)
               or native static DWR pagination for /career?company=... boards
             - teamtailor: /jobs.rss (offset-paginated)
+            - wp_job_manager: /?feed=job_feed (page-paginated)
             - generic: standard RSS 2.0 (manual feed URL)
 
   Config:
@@ -2454,6 +2456,8 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors (presets: successfactors, t
     {"preset": "successfactors", "variant": "legacy",
      "host": "career5.successfactors.eu", "company": "1657261P"}
     {"preset": "teamtailor", "feed_url": "https://company.teamtailor.com/jobs.rss"}
+    {"preset": "wp_job_manager",
+     "feed_url": "https://example.com/?feed=job_feed"}
     {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
 
     preset     Feed parser preset. Auto-detected when possible.
@@ -2834,10 +2838,15 @@ dayforce — Dayforce public career-site API
 
   Config:
     {"tenant": "acme", "portal": "CANDIDATEPORTAL"}
+    {"tenant": "acme", "portal": "CANDIDATEPORTAL", "offset_overlap": 5}
 
     tenant  Dayforce client namespace.
     portal  Case-preserving career-site code. Auto-filled only from direct or
             explicitly linked jobs.dayforcehcm.com URLs; no blind guessing.
+    offset_overlap  Repeat this many rows at every 25-job page boundary. Use a
+            small value when equal-ranked Dayforce results reorder between
+            requests; completeness still fails closed unless the union contains
+            every advertised posting. Must be an integer from 0 to 24.
 
   Detection:  ws probe shows "Dayforce API — tenant: X, portal: Y"
   Zero jobs?  A valid search response reports maxCount=0 and jobPostings=[]."""
@@ -4012,6 +4021,11 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
   Handles pagination automatically via finder param offset suffix.
 
   Optional monitor_config:
+    organization_id Oracle organization facet ID. Use this for shared career
+                    sites so the monitor returns only the target company. A
+                    selectedOrganizationsFacet in the board URL is inferred
+                    automatically. The monitor fails closed if Oracle does
+                    not apply the configured facet.
     offset_overlap   Number of rows (0-199) to overlap between 200-row pages.
                      Use for very large, high-churn boards where Oracle's
                      offset result set changes during a cycle. The overlap

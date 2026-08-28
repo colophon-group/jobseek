@@ -7,6 +7,8 @@ suffix.
 Board metadata:
     host        Oracle HCM tenant hostname (e.g. "jpmc.fa.oraclecloud.com")
     site        Career site identifier (e.g. "CX_1001", "CampusHiring")
+    organization_id
+                Optional Oracle organization facet ID for shared career sites
     fields      Optional field mapping override (defaults provided)
 
 The monitor returns rich data (title, location, date, employment_type).
@@ -19,7 +21,7 @@ import asyncio
 import random
 import re
 from typing import TYPE_CHECKING
-from urllib.parse import quote, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 import httpx
 import structlog
@@ -115,6 +117,7 @@ _ORACLE_HCM_HOST_RE = re.compile(
 )
 _ORACLE_SITE_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
 _ORACLE_JOB_ID_RE = re.compile(r"[A-Za-z0-9._-]{1,128}")
+_ORACLE_FACET_ID_RE = re.compile(r"[A-Za-z0-9._:-]{1,256}")
 
 
 def _normalize_oracle_host(value: object) -> str | None:
@@ -128,6 +131,51 @@ def _normalize_oracle_site(value: object) -> str | None:
     if not isinstance(value, str):
         return None
     return value if _ORACLE_SITE_RE.fullmatch(value) else None
+
+
+def _normalize_oracle_facet_id(value: object) -> str | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        value = str(value)
+    if not isinstance(value, str):
+        return None
+    return value if _ORACLE_FACET_ID_RE.fullmatch(value) else None
+
+
+def _organization_id_from_url(url: str) -> str | None:
+    """Return a validated organization facet from a public board URL."""
+    try:
+        values = parse_qs(urlparse(url).query, keep_blank_values=True).get(
+            "selectedOrganizationsFacet"
+        )
+    except ValueError as exc:
+        raise ValueError("Oracle HCM board URL has an invalid query string") from exc
+    if values is None:
+        return None
+    if len(values) != 1:
+        raise ValueError("Oracle HCM board URL must select exactly one organization facet")
+    organization_id = _normalize_oracle_facet_id(values[0])
+    if organization_id is None:
+        raise ValueError("Oracle HCM board URL has an invalid organization facet ID")
+    return organization_id
+
+
+def _configured_organization_id(metadata: dict, board_url: str) -> str | None:
+    """Resolve one company-scoping organization facet, failing on conflicts."""
+    raw_organization_id = metadata.get("organization_id")
+    organization_id = _normalize_oracle_facet_id(raw_organization_id)
+    if raw_organization_id is not None and organization_id is None:
+        raise ValueError("Oracle HCM organization_id metadata is invalid")
+
+    url_organization_id = _organization_id_from_url(board_url)
+    if (
+        organization_id is not None
+        and url_organization_id is not None
+        and organization_id != url_organization_id
+    ):
+        raise ValueError("Oracle HCM organization_id conflicts with the board URL facet")
+    return organization_id or url_organization_id
 
 
 def _parse_candidate_url(
@@ -178,8 +226,8 @@ def _parse_candidate_url(
     return host, site, job_id
 
 
-def _build_api_url(host: str, site: str) -> str:
-    return (
+def _build_api_url(host: str, site: str, organization_id: str | None = None) -> str:
+    url = (
         f"https://{host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions"
         f"?onlyData=true"
         f"&expand=requisitionList.workLocation,requisitionList.secondaryLocations"
@@ -188,6 +236,9 @@ def _build_api_url(host: str, site: str) -> str:
         f"%3BCATEGORIES%3BORGANIZATIONS%3BPOSTING_DATES%3BFLEX_FIELDS"
         f",limit=200,sortBy=POSTING_DATES_DESC"
     )
+    if organization_id is not None:
+        url += f",selectedOrganizationsFacet={quote(organization_id, safe='')}"
+    return url
 
 
 def _build_url_template(host: str, site: str) -> str:
@@ -238,6 +289,23 @@ def _complete_facet_partition(wrapper: dict, total: int) -> list[tuple[str, str,
     return None
 
 
+def _validate_organization_filter(wrapper: dict, organization_id: str, total: int) -> None:
+    """Prove that Oracle applied the requested company organization facet."""
+    selected = _normalize_oracle_facet_id(wrapper.get("SelectedOrganizationsFacet"))
+    facets = wrapper.get("organizationsFacet")
+    if selected != organization_id or not isinstance(facets, list):
+        raise ValueError("Oracle HCM did not apply the configured organization filter")
+
+    matching = [
+        facet
+        for facet in facets
+        if isinstance(facet, dict)
+        and _normalize_oracle_facet_id(facet.get("Id")) == organization_id
+    ]
+    if len(matching) != 1 or matching[0].get("TotalCount") != total:
+        raise ValueError("Oracle HCM organization facet does not match the filtered total")
+
+
 async def can_handle(
     url: str,
     client: httpx.AsyncClient,
@@ -248,21 +316,31 @@ async def can_handle(
     if candidate is None:
         return None
     host, site, _job_id = candidate
+    try:
+        organization_id = _organization_id_from_url(url)
+    except ValueError:
+        return None
 
     # Verify API is accessible
-    api_url = _build_api_url(host, site)
+    api_url = _build_api_url(host, site, organization_id)
     try:
         resp = await _get_with_retry(client, api_url, timeout=10)
         if resp.status_code != 200:
             return None
         data = resp.json()
-        total = data.get("items", [{}])[0].get("TotalJobsCount", 0)
+        wrapper = data.get("items", [{}])[0]
+        total = wrapper.get("TotalJobsCount", 0)
         if total == 0:
             return None
+        if organization_id is not None:
+            _validate_organization_filter(wrapper, organization_id, total)
     except Exception:
         return None
 
-    return {"host": host, "site": site, "jobs_count": total}
+    config = {"host": host, "site": site, "jobs_count": total}
+    if organization_id is not None:
+        config["organization_id"] = organization_id
+    return config
 
 
 async def discover(
@@ -309,6 +387,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         site = site or candidate[1]
 
     fields = metadata.get("fields") or _DEFAULT_FIELDS
+    organization_id = _configured_organization_id(metadata, board["board_url"])
     offset_overlap = metadata.get("offset_overlap", 0)
     if (
         isinstance(offset_overlap, bool)
@@ -339,7 +418,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         raise ValueError("duplicate_row_tolerance must be a non-negative integer")
     offset_step = _PAGE_SIZE - offset_overlap
     url_template = _build_url_template(host, site)
-    api_url = _build_api_url(host, site)
+    api_url = _build_api_url(host, site, organization_id)
 
     resp = await _get_with_retry(client, api_url, timeout=30)
     resp.raise_for_status()
@@ -347,6 +426,8 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
     total = initial_wrapper.get("TotalJobsCount") or 0
     if total == 0:
         return
+    if organization_id is not None:
+        _validate_organization_filter(initial_wrapper, organization_id, total)
 
     partitions = (
         _complete_facet_partition(initial_wrapper, total) if total > _RESULT_WINDOW_LIMIT else None
@@ -391,6 +472,8 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
                 wrapper = (resp.json().get("items") or [{}])[0]
 
             page_total = wrapper.get("TotalJobsCount")
+            if organization_id is not None:
+                _validate_organization_filter(wrapper, organization_id, page_total)
             if page_total is not None:
                 if (
                     isinstance(page_total, bool)
