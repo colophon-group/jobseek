@@ -1462,6 +1462,51 @@ def test_staging_recovery_preserves_files_owned_by_live_process(tmp_path: Path) 
     assert not stale_tokenized.exists()
 
 
+def test_clean_tracked_checkout_bytes_do_not_consume_archive_capacity(
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    (worktree / "large-tracked.bin").write_bytes(os.urandom(4 * 1024 * 1024))
+    _run("git", "add", "large-tracked.bin", cwd=worktree)
+    _run("git", "commit", "-m", "large tracked checkout", cwd=worktree)
+    head_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    _run("git", "update-ref", "refs/remotes/origin/main", head_oid, cwd=repo)
+    workspace = worktree / "apps" / "crawler" / ".workspace"
+    workspace.mkdir(parents=True)
+    evidence = b"terminal workspace evidence\n" * 512
+    (workspace / "state.log").write_bytes(evidence)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="submitted")
+    max_archive_bytes = 2 * 1024 * 1024
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        max_bytes=max_archive_bytes,
+    )
+
+    item = report.items[0]
+    assert item.bytes > max_archive_bytes
+    assert report.archived == 1
+    assert report.removed == 1
+    assert item.archive_path
+    assert not worktree.exists()
+    with tarfile.open(item.archive_path, "r:gz") as archive:
+        names = set(archive.getnames())
+        archived = archive.extractfile("workspace/state.log")
+        assert archived is not None
+        assert archived.read() == evidence
+    assert "untracked/large-tracked.bin" not in names
+
+
 def test_deleted_large_head_blob_is_streamed_and_cannot_overshoot_archive_capacity(
     tmp_path: Path,
     monkeypatch,
