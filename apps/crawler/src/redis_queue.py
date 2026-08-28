@@ -315,6 +315,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
 _KNOWN_ATS_DOMAIN_SUFFIXES = (
     ".avature.net",
     ".csod.com",
+    ".csodfed.com",
     ".darwinbox.in",
     ".darwinbox.com",
     ".gupy.io",

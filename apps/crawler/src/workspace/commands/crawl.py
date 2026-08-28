@@ -948,7 +948,10 @@ _MONITOR_CONFIG_HINTS = {
     "infoniqa": "Requires: employer_name (auto-filled from a live Infoniqa board probe)",
     "intervieweb": "No config required (POST endpoint and CSRF token are resolved per run)",
     "gupy": "Requires: tenant (auto-filled from a *.gupy.io URL)",
-    "cornerstone": "Requires: tenant, site_id, corp (auto-filled from a *.csod.com URL)",
+    "cornerstone": (
+        "Requires: tenant, site_id, corp; domain is optional for csodfed.com "
+        "(auto-filled from a supported Cornerstone URL)"
+    ),
     "darwinbox": "Requires: host, company_id (auto-filled from a Darwinbox public portal URL)",
     "dayforce": (
         "Requires: tenant, portal (auto-filled from a Dayforce public board URL); "

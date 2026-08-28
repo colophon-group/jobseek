@@ -13,6 +13,7 @@ _CORP_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$", re.IGNORECASE)
 _CULTURE_RE = re.compile(r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$")
 _CONTEXT_MARKER_RE = re.compile(r"\bcsod\.context\s*=\s*")
 _RESERVED_TENANTS = frozenset({"api", "app", "help", "login", "portal", "support", "www"})
+_TRUSTED_DOMAINS = frozenset({"csod.com", "csodfed.com"})
 
 
 class CornerstoneContextMissingError(ValueError):
@@ -35,6 +36,13 @@ def normalize_cornerstone_corp(value: object) -> str | None:
     return _normalize_token(value, _CORP_RE)
 
 
+def normalize_cornerstone_domain(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    domain = value.strip().lower().rstrip(".")
+    return domain if domain in _TRUSTED_DOMAINS else None
+
+
 def normalize_cornerstone_site_id(value: object) -> int | None:
     if isinstance(value, bool):
         return None
@@ -52,10 +60,11 @@ class CornerstoneBoard:
     tenant: str
     site_id: int
     corp: str
+    domain: str = "csod.com"
 
     @property
     def host(self) -> str:
-        return f"{self.tenant}.csod.com"
+        return f"{self.tenant}.{self.domain}"
 
     def listing_url(self) -> str:
         return (
@@ -74,9 +83,10 @@ def cornerstone_board_from_metadata(metadata: Mapping[str, object]) -> Cornersto
     tenant = normalize_cornerstone_tenant(metadata.get("tenant"))
     site_id = normalize_cornerstone_site_id(metadata.get("site_id"))
     corp = normalize_cornerstone_corp(metadata.get("corp"))
-    if tenant is None or site_id is None or corp is None:
+    domain = normalize_cornerstone_domain(metadata.get("domain", "csod.com"))
+    if tenant is None or site_id is None or corp is None or domain is None:
         return None
-    return CornerstoneBoard(tenant=tenant, site_id=site_id, corp=corp)
+    return CornerstoneBoard(tenant=tenant, site_id=site_id, corp=corp, domain=domain)
 
 
 def cornerstone_board_from_url(
@@ -91,9 +101,13 @@ def cornerstone_board_from_url(
     except ValueError:
         return None
     host = (parsed.hostname or "").lower().rstrip(".")
+    domain = next(
+        (candidate for candidate in _TRUSTED_DOMAINS if host.endswith(f".{candidate}")),
+        None,
+    )
     if (
         parsed.scheme != "https"
-        or not host.endswith(".csod.com")
+        or domain is None
         or parsed.username is not None
         or parsed.password is not None
         or port not in {None, 443}
@@ -101,7 +115,7 @@ def cornerstone_board_from_url(
     ):
         return None
 
-    tenant = normalize_cornerstone_tenant(host.removesuffix(".csod.com"))
+    tenant = normalize_cornerstone_tenant(host.removesuffix(f".{domain}"))
     segments = [segment for segment in parsed.path.split("/") if segment]
     if len(segments) not in {5, 7} or [part.lower() for part in segments[:3]] != [
         "ux",
@@ -130,10 +144,10 @@ def cornerstone_board_from_url(
         or (validate_query and pairs != [("c", corp_values[0])])
     ):
         return None
-    return CornerstoneBoard(tenant=tenant, site_id=site_id, corp=corp)
+    return CornerstoneBoard(tenant=tenant, site_id=site_id, corp=corp, domain=domain)
 
 
-def _trusted_api_base(value: object) -> str:
+def _trusted_api_base(value: object, *, domain: str) -> str:
     if not isinstance(value, str):
         raise ValueError("Cornerstone bootstrap omitted its API origin")
     try:
@@ -142,9 +156,10 @@ def _trusted_api_base(value: object) -> str:
     except ValueError as exc:
         raise ValueError("Cornerstone bootstrap returned an invalid API origin") from exc
     host = (parsed.hostname or "").lower().rstrip(".")
+    trusted_api_host = host == f"api.{domain}" or host.endswith(f".api.{domain}")
     if (
         parsed.scheme != "https"
-        or not (host == "api.csod.com" or host.endswith(".api.csod.com"))
+        or not trusted_api_host
         or parsed.username is not None
         or parsed.password is not None
         or port not in {None, 443}
@@ -205,7 +220,7 @@ def extract_cornerstone_context(page: str, board: CornerstoneBoard) -> Cornersto
         raise ValueError("Cornerstone listing omitted endpoint metadata")
 
     return CornerstoneContext(
-        api_base=_trusted_api_base(endpoints.get("cloud")),
+        api_base=_trusted_api_base(endpoints.get("cloud"), domain=board.domain),
         token=token,
         culture_id=culture_id,
         culture_name=culture_name,

@@ -2801,8 +2801,8 @@ gupy — Gupy NextData listing
 MONITOR_CORNERSTONE = """\
 cornerstone — Cornerstone public career-site API
 
-  Listing:  GET  https://{tenant}.csod.com/ux/ats/careersite/{site_id}/home?c={corp}
-  Search:   POST https://{region}.api.csod.com/rec-job-search/external/jobs
+  Listing:  GET  https://{tenant}.{domain}/ux/ats/careersite/{site_id}/home?c={corp}
+  Search:   POST https://{region}.api.{domain}/rec-job-search/external/jobs
   Returns:  Full job data streamed in 100-job pages; no detail fan-out
   Scraper:  None (rich monitor)
   Note:     Validates the short-lived public bootstrap token and regional API
@@ -2813,11 +2813,12 @@ cornerstone — Cornerstone public career-site API
   Config:
     {"tenant": "acme", "site_id": 1, "corp": "acme"}
 
-    tenant   Single-label *.csod.com tenant.
+    tenant   Single-label Cornerstone tenant.
     site_id  Positive career-site ID from the canonical URL.
     corp     Corporation query value from ?c=. Auto-filled only from direct
              or explicitly linked canonical Cornerstone URLs; no blind
              tenant guessing.
+    domain   Optional trusted domain: csod.com (default) or csodfed.com.
 
   Detection:  ws probe shows "Cornerstone API — tenant: X, site: N, M jobs"
   Zero jobs?  A valid API response reports totalCount=0 and requisitions=[]."""
