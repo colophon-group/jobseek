@@ -17,6 +17,9 @@ probe_case="setup"
 report_failure() {
   local status=$?
   echo "probe case failed: $probe_case" >&2
+  if [[ -f "$output_dir/$probe_case.json" ]]; then
+    jq '{request_count, response_bytes, ledger, result}' "$output_dir/$probe_case.json" >&2 || true
+  fi
   exit "$status"
 }
 
