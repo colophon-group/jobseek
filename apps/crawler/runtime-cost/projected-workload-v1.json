@@ -1,0 +1,126 @@
+{
+  "cost_boundary": {
+    "allowed_categories": [
+      "worker",
+      "browser",
+      "queue",
+      "scheduler",
+      "runtime-support",
+      "proxy",
+      "network"
+    ],
+    "excluded_categories": [
+      "postgres",
+      "typesense",
+      "r2",
+      "web",
+      "backup",
+      "telemetry",
+      "control-plane"
+    ]
+  },
+  "current_budget_reference": {
+    "known_insufficient": true,
+    "monthly_chf": 50,
+    "purpose": "funding-shortfall-reference-only"
+  },
+  "current_load_hour": {
+    "lanes": [
+      {
+        "execution_class": "http",
+        "stage": "monitor",
+        "successful_cycles_per_hour": 3732.606355
+      },
+      {
+        "execution_class": "browser",
+        "stage": "monitor",
+        "successful_cycles_per_hour": 318.722
+      },
+      {
+        "execution_class": "http",
+        "stage": "detail",
+        "successful_cycles_per_hour": 3033.48498
+      },
+      {
+        "execution_class": "browser",
+        "stage": "detail",
+        "successful_cycles_per_hour": 836.561903
+      }
+    ],
+    "lost_instances_per_scaling_role": 1,
+    "source_measurement_id": "python-production-20260829-86400s"
+  },
+  "effective_at": "2026-08-29T09:26:48Z",
+  "headroom": {
+    "memory_max_utilization": 0.65,
+    "recovery_max_utilization": 0.8,
+    "steady_max_utilization": 0.65
+  },
+  "population": {
+    "active_postings": 100000000,
+    "configured_boards": 10000000
+  },
+  "projected_peak_hour": {
+    "lanes": [
+      {
+        "execution_class": "http",
+        "stage": "monitor",
+        "successful_cycles_per_hour": 921329
+      },
+      {
+        "execution_class": "browser",
+        "stage": "monitor",
+        "successful_cycles_per_hour": 78671
+      },
+      {
+        "execution_class": "http",
+        "stage": "detail",
+        "successful_cycles_per_hour": 3919184
+      },
+      {
+        "execution_class": "browser",
+        "stage": "detail",
+        "successful_cycles_per_hour": 1080816
+      }
+    ],
+    "mix_source_measurement_id": "python-production-20260829-86400s"
+  },
+  "recovery": {
+    "arrival_multiplier": 2,
+    "lost_instances_per_scaling_role": 1
+  },
+  "required_evidence": [
+    {
+      "key": "execution-class-mix",
+      "source": "python-production-20260829-86400s",
+      "status": "frozen"
+    },
+    {
+      "key": "response-size-distribution",
+      "source": "missing-current-telemetry",
+      "status": "needs-capture"
+    },
+    {
+      "key": "origin-attempt-and-retry-rate",
+      "source": "retry-events-partial-origin-attempts-missing",
+      "status": "needs-capture"
+    },
+    {
+      "key": "provider-weighted-load-mix",
+      "source": "missing-bounded-provider-cohort-metric",
+      "status": "needs-capture"
+    },
+    {
+      "key": "publisher-policy-and-capability-coverage",
+      "source": "issues-7939-and-7959",
+      "status": "needs-freeze"
+    },
+    {
+      "key": "queue-redis-resource-units",
+      "source": "missing-attributable-resource-capture",
+      "status": "needs-capture"
+    }
+  ],
+  "revision": "projected-10m-100m-v1",
+  "schema_version": "jobseek.crawler-runtime-workload/v1"
+}

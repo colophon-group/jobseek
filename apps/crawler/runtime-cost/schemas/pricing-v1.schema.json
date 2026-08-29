@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jobseek.ch/schemas/crawler-runtime-pricing-v1.json",
+  "additionalProperties": false,
+  "properties": {
+    "billing_assumptions": {
+      "additionalProperties": false,
+      "properties": {
+        "current_crawler_sku_evidence": {
+          "additionalProperties": false,
+          "properties": {
+            "datacenter": {"minLength": 1, "type": "string"},
+            "sku": {"minLength": 1, "type": "string"},
+            "source": {"minLength": 1, "type": "string"},
+            "status": {"const": "evidenced"}
+          },
+          "required": ["status", "sku", "datacenter", "source"],
+          "type": "object"
+        },
+        "hourly_rounding": {"const": "whole-hour"},
+        "long_lived_instances_use_monthly_cap": {"const": true}
+      },
+      "required": ["long_lived_instances_use_monthly_cap", "hourly_rounding", "current_crawler_sku_evidence"],
+      "type": "object"
+    },
+    "fx": {
+      "additionalProperties": false,
+      "properties": {
+        "as_of": {"format": "date", "type": "string"},
+        "base": {"const": "EUR"},
+        "quote": {"const": "CHF"},
+        "quote_per_base": {"exclusiveMinimum": 0, "type": "number"},
+        "source_url": {"format": "uri", "type": "string"}
+      },
+      "required": ["base", "quote", "quote_per_base", "as_of", "source_url"],
+      "type": "object"
+    },
+    "network": {
+      "additionalProperties": false,
+      "properties": {
+        "overage_eur_per_tb": {"minimum": 0, "type": "number"},
+        "primary_ipv4_monthly_eur": {"minimum": 0, "type": "number"},
+        "primary_ipv4_per_server": {"enum": [0, 1]},
+        "source_urls": {
+          "items": {"format": "uri", "type": "string"},
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "traffic_cost_status": {"enum": ["priced", "blocked-until-attributable-bytes"]}
+      },
+      "required": ["primary_ipv4_per_server", "primary_ipv4_monthly_eur", "traffic_cost_status", "overage_eur_per_tb", "source_urls"],
+      "type": "object"
+    },
+    "price_effective_at": {"format": "date-time", "type": "string"},
+    "provider": {"const": "hetzner"},
+    "region_group": {"const": "eu-central-fsn-nbg-hel"},
+    "retrieved_at": {"format": "date", "type": "string"},
+    "revision": {"minLength": 1, "type": "string"},
+    "scenario_selection": {
+      "additionalProperties": false,
+      "properties": {
+        "current_load_sku": {"minLength": 1, "type": "string"},
+        "projected_load_sku": {"type": ["string", "null"]},
+        "reason": {"minLength": 1, "type": "string"}
+      },
+      "required": ["current_load_sku", "projected_load_sku", "reason"],
+      "type": "object"
+    },
+    "schema_version": {"const": "jobseek.crawler-runtime-pricing/v1"},
+    "server_skus": {
+      "items": {"$ref": "#/$defs/serverSku"},
+      "minItems": 1,
+      "type": "array"
+    },
+    "source_currency": {"const": "EUR"},
+    "sources": {
+      "items": {"$ref": "#/$defs/source"},
+      "minItems": 1,
+      "type": "array"
+    },
+    "vat_treatment": {"const": "excluded"}
+  },
+  "required": ["schema_version", "revision", "provider", "source_currency", "region_group", "price_effective_at", "retrieved_at", "vat_treatment", "billing_assumptions", "fx", "network", "scenario_selection", "server_skus", "sources"],
+  "type": "object",
+  "$defs": {
+    "serverSku": {
+      "additionalProperties": false,
+      "properties": {
+        "cpu_allocation": {"enum": ["shared", "dedicated"]},
+        "family": {"enum": ["cost-optimized", "regular-performance", "general-purpose"]},
+        "hourly_eur_excluding_ipv4_vat": {"exclusiveMinimum": 0, "type": "number"},
+        "included_traffic_tb_per_server": {"minimum": 0, "type": "number"},
+        "memory_bytes": {"exclusiveMinimum": 0, "type": "integer"},
+        "monthly_eur_excluding_ipv4_vat": {"exclusiveMinimum": 0, "type": "number"},
+        "price_regions": {
+          "items": {"enum": ["FSN", "NBG", "HEL"]},
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "sku": {"minLength": 1, "type": "string"},
+        "vcpus": {"minimum": 1, "type": "integer"}
+      },
+      "required": ["sku", "family", "cpu_allocation", "vcpus", "memory_bytes", "price_regions", "hourly_eur_excluding_ipv4_vat", "monthly_eur_excluding_ipv4_vat", "included_traffic_tb_per_server"],
+      "type": "object"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "accessed_on": {"format": "date", "type": "string"},
+        "kind": {"enum": ["price", "specification", "billing", "network", "fx"]},
+        "url": {"format": "uri", "type": "string"}
+      },
+      "required": ["kind", "url", "accessed_on"],
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "capture": {
+    "origin_requests_made": 0,
+    "read_only": true,
+    "source": "prometheus-read-api",
+    "targets_revision": "python-production-compose-2026-08-29"
+  },
+  "evidence_gaps": [
+    "browser-child-cpu-and-rss-not-in-process-metrics",
+    "origin-attempts-not-in-current-metrics",
+    "response-bytes-not-in-current-metrics",
+    "proxy-attribution-not-in-current-metrics",
+    "queue-and-redis-resource-use-requires-separate-capture"
+  ],
+  "implementation": "python-playwright",
+  "measurement_id": "python-production-20260829-86400s",
+  "roles": [
+    {
+      "execution_class": "browser",
+      "instance_count": 1,
+      "lanes": [
+        {
+          "attempted_cycles": 27114.70741448168,
+          "execution_class": "browser",
+          "max_concurrency_per_instance": 7.0,
+          "origin_attempts": null,
+          "response_bytes": null,
+          "stage": "detail",
+          "successful_cycles": 20077.485674596282,
+          "task_active_seconds": 208422.9874386022
+        },
+        {
+          "attempted_cycles": 7773.349539850668,
+          "execution_class": "browser",
+          "max_concurrency_per_instance": 4.0,
+          "origin_attempts": null,
+          "response_bytes": null,
+          "stage": "monitor",
+          "successful_cycles": 7649.32800833478,
+          "task_active_seconds": 243314.36986440906
+        }
+      ],
+      "memory_limit_bytes_per_instance": 6442450944,
+      "peak_rss_bytes_per_instance": 1589043200.0,
+      "process_cpu_seconds": 38136.430908143775,
+      "retry_events": 9.005697554621236,
+      "role": "browser-worker",
+      "target_ids": [
+        "browser-worker-1"
+      ],
+      "vcpu_limit_per_instance": 3.0
+    },
+    {
+      "execution_class": "http",
+      "instance_count": 3,
+      "lanes": [
+        {
+          "attempted_cycles": 156763.21582775802,
+          "execution_class": "http",
+          "max_concurrency_per_instance": 20.0,
+          "origin_attempts": null,
+          "response_bytes": null,
+          "stage": "detail",
+          "successful_cycles": 72803.63951337489,
+          "task_active_seconds": 289975.95492208475
+        },
+        {
+          "attempted_cycles": 90442.7234690024,
+          "execution_class": "http",
+          "max_concurrency_per_instance": 5.0,
+          "origin_attempts": null,
+          "response_bytes": null,
+          "stage": "monitor",
+          "successful_cycles": 89582.55252740654,
+          "task_active_seconds": 1209663.3465983334
+        }
+      ],
+      "memory_limit_bytes_per_instance": 1073741824,
+      "peak_rss_bytes_per_instance": 602607616.0,
+      "process_cpu_seconds": 221728.0744468105,
+      "retry_events": 881.1548488642525,
+      "role": "http-worker",
+      "target_ids": [
+        "http-worker-1",
+        "http-worker-2",
+        "http-worker-3"
+      ],
+      "vcpu_limit_per_instance": 1.0
+    },
+    {
+      "execution_class": "support",
+      "instance_count": 1,
+      "lanes": [],
+      "memory_limit_bytes_per_instance": 268435456,
+      "peak_rss_bytes_per_instance": 126492672.0,
+      "process_cpu_seconds": 1770.6274210873116,
+      "retry_events": 0.0,
+      "role": "python-drain",
+      "target_ids": [
+        "drain-1"
+      ],
+      "vcpu_limit_per_instance": null
+    },
+    {
+      "execution_class": "support",
+      "instance_count": 1,
+      "lanes": [],
+      "memory_limit_bytes_per_instance": 268435456,
+      "peak_rss_bytes_per_instance": 189489152.0,
+      "process_cpu_seconds": 1294.5847542976212,
+      "retry_events": 0.0,
+      "role": "python-exporter",
+      "target_ids": [
+        "exporter-1"
+      ],
+      "vcpu_limit_per_instance": null
+    }
+  ],
+  "schema_version": "jobseek.crawler-runtime-measurement/v1",
+  "source_releases": [
+    "0.13.583"
+  ],
+  "source_revision": "production-build-info-only",
+  "window": {
+    "end_at": "2026-08-29T09:26:48Z",
+    "seconds": 86400,
+    "start_at": "2026-08-28T09:26:48Z"
+  },
+  "workload_revision": "projected-10m-100m-v1"
+}

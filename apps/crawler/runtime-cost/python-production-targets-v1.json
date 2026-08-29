@@ -1,0 +1,72 @@
+{
+  "implementation": "python-playwright",
+  "revision": "python-production-compose-2026-08-29",
+  "schema_version": "jobseek.crawler-runtime-capture-targets/v1",
+  "targets": [
+    {
+      "execution_class": "http",
+      "id": "http-worker-1",
+      "instance": "worker-1",
+      "max_concurrency": {
+        "detail": 20,
+        "monitor": 5
+      },
+      "memory_limit_bytes": 1073741824,
+      "role": "http-worker",
+      "vcpu_limit": 1
+    },
+    {
+      "execution_class": "http",
+      "id": "http-worker-2",
+      "instance": "worker-2",
+      "max_concurrency": {
+        "detail": 20,
+        "monitor": 5
+      },
+      "memory_limit_bytes": 1073741824,
+      "role": "http-worker",
+      "vcpu_limit": 1
+    },
+    {
+      "execution_class": "http",
+      "id": "http-worker-3",
+      "instance": "worker-3",
+      "max_concurrency": {
+        "detail": 20,
+        "monitor": 5
+      },
+      "memory_limit_bytes": 1073741824,
+      "role": "http-worker",
+      "vcpu_limit": 1
+    },
+    {
+      "execution_class": "browser",
+      "id": "browser-worker-1",
+      "instance": "browser-1",
+      "max_concurrency": {
+        "detail": 7,
+        "monitor": 4
+      },
+      "memory_limit_bytes": 6442450944,
+      "role": "browser-worker",
+      "vcpu_limit": 3
+    },
+    {
+      "execution_class": "support",
+      "id": "exporter-1",
+      "instance": "exporter",
+      "memory_limit_bytes": 268435456,
+      "role": "python-exporter",
+      "vcpu_limit": null
+    },
+    {
+      "execution_class": "support",
+      "id": "drain-1",
+      "instance": "drain",
+      "memory_limit_bytes": 268435456,
+      "role": "python-drain",
+      "vcpu_limit": null
+    }
+  ],
+  "workload_revision": "projected-10m-100m-v1"
+}
