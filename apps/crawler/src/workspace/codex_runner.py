@@ -2597,14 +2597,15 @@ class CompanyResolverGovernor:
         run_scope_marker = _run_scope_marker_name(issue=issue, run_id=run_id)
         if run_id is not None and run_scope_marker is None:
             raise RuntimeError("invalid run identity for scoped workspace cleanup")
-        roots: list[tuple[Path, Path]] = []
+        roots: list[tuple[Path, Path, bool]] = []
         if workspace_root is not None:
-            roots.append((workspace_root, workspace_container or workspace_root.parent))
+            roots.append((workspace_root, workspace_container or workspace_root.parent, True))
         if self.config.repo_dir is not None:
             roots.append(
                 (
                     self.config.repo_dir / "apps" / "crawler" / ".workspace",
                     self.config.repo_dir,
+                    False,
                 )
             )
         if self.config.managed_repo_dir is not None:
@@ -2612,11 +2613,12 @@ class CompanyResolverGovernor:
                 (
                     self.config.managed_repo_dir / "apps" / "crawler" / ".workspace",
                     self.config.managed_repo_dir,
+                    False,
                 )
             )
 
         seen: set[Path] = set()
-        for root, container in roots:
+        for root, container, isolated_run_root in roots:
             safe_root = _validated_workspace_root(root, container=container)
             if safe_root is None or safe_root in seen:
                 continue
@@ -2628,6 +2630,8 @@ class CompanyResolverGovernor:
                     safe_root,
                     run_scope_marker=run_scope_marker,
                 )
+            if isolated_run_root:
+                _cleanup_terminal_lifecycle_receipts(safe_root, issue=issue)
 
     def _cleanup_workspace_dir(
         self,
@@ -2834,6 +2838,98 @@ def _read_yaml_mapping_at(parent_fd: int, name: str) -> dict[str, Any]:
     except Exception:
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def _cleanup_terminal_lifecycle_receipts(workspace_root: Path, *, issue: int) -> None:
+    """Remove completed terminal receipts from one ledger-bound run workspace."""
+    from src.workspace.commands.lifecycle import (
+        _validate_issue_terminal_journal,
+        _validate_terminal_journal,
+    )
+
+    workspace_root_fd = open_absolute_directory_no_follow(workspace_root)
+    terminal_fd: int | None = None
+    issues_fd: int | None = None
+    try:
+        try:
+            terminal_fd, _ = open_child_directory_no_follow(
+                workspace_root_fd,
+                ".terminal-lifecycle",
+            )
+        except RuntimeError as exc:
+            if isinstance(exc.__cause__, FileNotFoundError):
+                return
+            raise RuntimeError("terminal lifecycle receipt root is unsafe") from exc
+
+        completed: list[tuple[int, str, os.stat_result]] = []
+        for name in sorted(os.listdir(terminal_fd)):
+            if name == "issues":
+                issues_fd, _ = open_child_directory_no_follow(terminal_fd, name)
+                for issue_name in sorted(os.listdir(issues_fd)):
+                    if issue_name != f"{issue}.completed.yaml":
+                        raise RuntimeError(
+                            "terminal lifecycle issue receipt belongs to another run"
+                        )
+                    data, opened = _read_terminal_receipt_at(issues_fd, issue_name)
+                    _validate_issue_terminal_journal(data, issue)
+                    completed.append((issues_fd, issue_name, opened))
+                continue
+
+            data, opened = _read_terminal_receipt_at(terminal_fd, name)
+            if data.get("issue") != issue:
+                raise RuntimeError("terminal lifecycle receipt belongs to another run")
+            if name.endswith(".latest-receipt"):
+                slug = data.get("slug")
+                journal_id = data.get("journal_id")
+                if (
+                    set(data) != {"version", "slug", "journal_id", "issue"}
+                    or data.get("version") != 1
+                    or not isinstance(slug, str)
+                    or not slug
+                    or name != f"{slug}.latest-receipt"
+                    or not isinstance(journal_id, str)
+                    or len(journal_id) != 32
+                    or any(character not in "0123456789abcdef" for character in journal_id)
+                ):
+                    raise RuntimeError("terminal lifecycle locator is invalid")
+            elif name.endswith(".completed.yaml"):
+                journal = _validate_terminal_journal(data)
+                expected_name = f"{journal['slug']}.{journal['journal_id']}.completed.yaml"
+                if name != expected_name:
+                    raise RuntimeError("terminal lifecycle journal filename is invalid")
+            else:
+                raise RuntimeError("terminal lifecycle contains incomplete or unknown evidence")
+            completed.append((terminal_fd, name, opened))
+
+        for parent_fd, name, opened in completed:
+            unlink_child_at(parent_fd, name, expected=opened)
+    finally:
+        if issues_fd is not None:
+            os.close(issues_fd)
+        if terminal_fd is not None:
+            os.close(terminal_fd)
+        os.close(workspace_root_fd)
+
+
+def _read_terminal_receipt_at(
+    parent_fd: int,
+    name: str,
+) -> tuple[dict[str, Any], os.stat_result]:
+    try:
+        import yaml
+
+        raw, opened = _read_text_at_no_follow(parent_fd, name)
+        data = yaml.safe_load(raw)
+    except Exception as exc:
+        raise RuntimeError(f"terminal lifecycle receipt is unsafe: {name}") from exc
+    if (
+        opened.st_uid != os.geteuid()
+        or opened.st_nlink != 1
+        or opened.st_size > 64 * 1024
+        or not isinstance(data, dict)
+    ):
+        raise RuntimeError(f"terminal lifecycle receipt is unauthenticated: {name}")
+    return data, opened
 
 
 def _cleanup_active_markers_at(workspace_root_fd: int, slug: str) -> None:
