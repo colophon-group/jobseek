@@ -359,24 +359,13 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert 'done <<< "$changed_paths"' in workflow
     assert "could not classify the full push range" in workflow
     assert "full push range contains no changed paths" in workflow
-    assert "apps/crawler/contracts/v1/*) ;;" in workflow
-    assert "'!apps/crawler/contracts/v1/**'" in workflow
-    assert "inactive_v1_policy_count != 9" in workflow
-    assert "#8046" in workflow
-    for path in (
-        ".github/scripts/check-crawler-deploy-gate.sh",
-        ".github/workflows/deploy-ats-inventory.yml",
-        ".github/workflows/deploy-crawler-browser.yml",
-        "apps/crawler/tests/test_ats_inventory_deployment.py",
-        "scripts/check-crawler-version.mjs",
-        "scripts/ci-workflow.test.mjs",
-        "scripts/crawler-runtime-contract.test.mjs",
-        "scripts/crawler-version.test.mjs",
-        "scripts/derive-crawler-runtime-contract.mjs",
-    ):
-        assert path in workflow
-    # VERSION, another contract version, and crawler source still fall through
-    # to the ordinary apps/crawler/* active-runtime arm.
+    assert "'apps/crawler/contracts/v1/**'" in workflow
+    assert "'!apps/crawler/contracts/v1/**'" not in workflow
+    assert "apps/crawler/contracts/v1/*) ;;" not in workflow
+    assert "inactive_v1_policy" not in workflow
+    assert "#8046" not in workflow
+    # VERSION, runtime v1, another contract version, and crawler source all
+    # fall through to the ordinary apps/crawler/* active-runtime arm.
     assert "apps/crawler/VERSION) ;;" not in workflow
     assert "apps/crawler/contracts/v2/*) ;;" not in workflow
     # In shell case patterns, * spans slash; a ** arm is redundant and actionlint rejects it.

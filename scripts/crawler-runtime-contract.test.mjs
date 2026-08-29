@@ -33,6 +33,8 @@ test("runtime contract matches the crawler deploy boundary", () => {
     "apps/crawler/data/occupations.csv",
     "apps/crawler/data/seniority.csv",
     "apps/crawler/data/technologies.csv",
+    "apps/crawler/contracts/v1/runtime.proto",
+    "apps/crawler/contracts/v1/fixtures/replay.json",
     ".github/workflows/deploy-crawler-browser.yml",
     "scripts/derive-crawler-runtime-contract.mjs",
     "scripts/verify-crawler-release-bridge.py",
@@ -41,8 +43,6 @@ test("runtime contract matches the crawler deploy boundary", () => {
   }
 
   for (const path of [
-    "apps/crawler/contracts/v1/runtime.proto",
-    "apps/crawler/contracts/v1/fixtures/replay.json",
     "apps/crawler/data/images/example/logo.png",
     "apps/crawler/traces/example.json",
     "apps/crawler/ws-package/pyproject.toml",
@@ -104,7 +104,7 @@ test("data-only changes preserve the runtime contract", () => {
   );
 });
 
-test("inactive runtime v1 candidates do not alter the active runtime digest", () => {
+test("runtime v1 changes alter the active runtime digest", () => {
   const source = entry("apps/crawler/src/cli.py", "a".repeat(40));
   const workflow = entry(
     ".github/workflows/deploy-crawler-browser.yml",
@@ -112,7 +112,7 @@ test("inactive runtime v1 candidates do not alter the active runtime digest", ()
   );
   const baseline = deriveCrawlerRuntimeContract([source, workflow]);
 
-  assert.equal(
+  assert.notEqual(
     baseline,
     deriveCrawlerRuntimeContract([
       source,
@@ -120,7 +120,7 @@ test("inactive runtime v1 candidates do not alter the active runtime digest", ()
       entry("apps/crawler/contracts/v1/runtime.proto", "c".repeat(40)),
     ]),
   );
-  assert.equal(
+  assert.notEqual(
     deriveCrawlerRuntimeContract([
       source,
       workflow,
@@ -345,8 +345,8 @@ test("runtime attestation lists only the immutable first-parent runtime epoch", 
   }
 });
 
-test("inactive runtime v1 commits remain in the rollback-compatible epoch", () => {
-  const repo = mkdtempSync(join(tmpdir(), "crawler-candidate-attestation-"));
+test("runtime v1 commits start a new rollback-compatible epoch", () => {
+  const repo = mkdtempSync(join(tmpdir(), "crawler-runtime-v1-attestation-"));
   try {
     execFileSync("git", ["-C", repo, "init", "--quiet"]);
     execFileSync("git", ["-C", repo, "config", "user.email", "test@example.com"]);
@@ -365,13 +365,13 @@ test("inactive runtime v1 commits remain in the rollback-compatible epoch", () =
       "syntax = \"proto3\";\n",
     );
     execFileSync("git", ["-C", repo, "add", "."]);
-    execFileSync("git", ["-C", repo, "commit", "--quiet", "-m", "candidate"]);
+    execFileSync("git", ["-C", repo, "commit", "--quiet", "-m", "runtime v1"]);
     const candidate = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
       encoding: "utf8",
     }).trim();
     assert.deepEqual(
       deriveCrawlerRuntimeAttestation(repo, candidate).compatibleRevisions,
-      [candidate, initial],
+      [candidate],
     );
 
     writeFileSync(join(repo, "apps/crawler/src/cli.py"), "print('changed')\n");

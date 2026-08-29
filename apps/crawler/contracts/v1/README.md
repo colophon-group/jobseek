@@ -1,29 +1,33 @@
-# Candidate crawler runtime contract v1
+# Authoritative crawler runtime contract v1
 
-This directory captures the candidate language-neutral boundary between the
+This directory is the authoritative language-neutral boundary between the
 crawler control plane, scheduler, extraction runtimes, and persistence
-pipeline. It is provisional until #7937 chooses the transport, closes the
-opaque schema fields, generates Python/Go types, and promotes the IDL. No Go
-consumer may treat these files as wire-authoritative before that gate. CSV,
-Redis, Postgres, `ws`, and Murmur representations will be normalized before
-they reach the promoted runtime contract.
+pipeline as of crawler release `0.13.590`. `runtime.proto` is the wire
+authority. The checked-in Python and Go bindings are deterministic products of
+that file; `activation.md` records their exact compiler, runtime, corpus, and
+predecessor evidence.
 
 The contract is intentionally about semantics, not an RPC choice. The first Go
 segments may run in the same worker process/container topology or behind a
 short-lived migration adapter. The final worker may consume Redis and Postgres
 directly. Either way, it must produce the same normalized payloads and metrics.
+This activation packages the boundary but does not enable a production Go
+worker or change crawler routing.
 
 Files:
 
-- `board-runtime-config.schema.json` — normalized board configuration.
-- `monitor-result.schema.json` — one streaming discovery batch.
-- `scrape-result.schema.json` — one extracted posting payload.
-- `execution-request.schema.json` / `execution-frame.schema.json` — framed,
-  cancellable Python/Go extraction protocol.
-- `browser-plan.schema.json` / `browser-result.schema.json` — typed browser
-  capability boundary that does not expose raw CDP or Playwright objects.
-- `fixtures/source_identity/` — frozen Python/Go wire and JSON compatibility
-  vectors for the optional durable source-identity amendment.
+- `runtime.proto` — authoritative v1 IDL.
+- `gen/go/` and `python/jobseek_runtime_v1/` — generated bindings; regenerate
+  with `./generate.sh` and verify byte stability with `./generate.sh --check`.
+- `framing/` and `privacy_registry.json` — wheel-packaged framing and privacy
+  assets used by both installed-artifact smoke tests.
+- `fixtures/` and `conformance/` — shared framing, compatibility, control,
+  redaction, semantics, and source-identity corpora for Python and Go.
+- `baseline/` and the adjacent-version policy specimen — immutable descriptor
+  evidence and the required breaking-change converter policy.
+- The retained `*.schema.json` files document the pre-activation normalized
+  JSON boundary. They are not a second wire authority and are not retired by
+  this activation.
 - `queue.md` — Redis/Lua scheduling, lease, and politeness invariants.
 - `metrics.md` — cross-runtime metrics required for cutover and reversal.
 
