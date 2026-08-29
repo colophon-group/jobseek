@@ -65,10 +65,9 @@ jobs:
           cd apps/crawler
           uv sync --frozen --group dev
           go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
-          {
-            echo '#!/usr/bin/env bash'
-            echo 'exec python -m grpc_tools.protoc "$@"'
-          } > "$RUNNER_TEMP/protoc"
+          printf '#!/usr/bin/env bash\nexec "%s" -m grpc_tools.protoc "$@"\n' \
+            "$GITHUB_WORKSPACE/apps/crawler/.venv/bin/python" \
+            > "$RUNNER_TEMP/protoc"
           chmod 0755 "$RUNNER_TEMP/protoc"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
