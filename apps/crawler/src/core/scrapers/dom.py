@@ -318,6 +318,14 @@ _ELVIUM_MARKERS = (
     "job-posting-widget",
     "contact-info-widget",
 )
+
+_TRIBEPAD_SELECTORS = (
+    "#content.job_page",
+    "h1.job_title",
+    "#job_main",
+    "table.details",
+    '.powered_by a[href*="tribepad.com"]',
+)
 _STADT_ZUERICH_MARKERS = (
     "job-detailseite.",
     "career_job_req_id=",
@@ -630,6 +638,73 @@ def _clinch_config(htmls: list[str]) -> dict | None:
     }
 
 
+def _tribepad_config(htmls: list[str]) -> dict | None:
+    """Build stable extraction steps for Tribepad job-detail pages.
+
+    Tribepad publishes the role body in ``#job_main`` and authoritative job
+    metadata in ``table.details``.  The generic DOM heuristic starts from the
+    page title and can consequently absorb the map, sharing controls, related
+    jobs, and footer into the description.  Anchor the description at the
+    provider's ``Job Introduction`` section and stop before attachments or the
+    apply control, while resetting the cursor for each labeled metadata row.
+    """
+
+    matches = 0
+    for html in htmls:
+        tree = LexborHTMLParser(html)
+        if all(tree.css_first(selector) is not None for selector in _TRIBEPAD_SELECTORS):
+            matches += 1
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    label = {
+        "tag": "td",
+        "attr": "class=label",
+        "offset": 1,
+        "from": 0,
+        "optional": True,
+    }
+    return {
+        "steps": [
+            {"tag": "h1", "attr": "class=job_title", "field": "title"},
+            {"tag": "h3", "text": "Job Introduction"},
+            {
+                "field": "description",
+                "html": True,
+                "stop_regex": r"^(?:Attached documents|Apply)$",
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Location\s*$",
+                "field": "locations",
+                "optional": False,
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Contract Type\s*$",
+                "field": "employment_type",
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Posted on\s*$",
+                "field": "date_posted",
+                "date_input_format": "%d %B, %Y",
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Closing Date\s*$",
+                "field": "valid_through",
+                "date_input_format": "%d %B, %Y",
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Salary\s*$",
+                "field": "metadata.salary",
+            },
+        ]
+    }
+
+
 def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
     """Generate heuristic extraction steps from flattened elements."""
     if not elements:
@@ -799,6 +874,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     clinch = _clinch_config(htmls)
     if clinch is not None:
         return clinch
+
+    tribepad = _tribepad_config(htmls)
+    if tribepad is not None:
+        return tribepad
 
     # Try each page until we get usable steps
     best_steps = None

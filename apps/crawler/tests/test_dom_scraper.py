@@ -339,6 +339,61 @@ class TestDomScraper:
         assert "Strategy consulting experience" in result.description
         assert "Add to favorites" not in result.description
 
+    def test_tribepad_probe_scopes_description_and_labeled_metadata(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><body>
+          <div id="content" class="scroll job_page">
+            <h1 class="job_title">Multi Skilled Operative</h1>
+            <div class="main"><div class="box fr-view" id="job_main">
+              <div>
+                <h3>Job Introduction</h3>
+                <p>Operate and maintain the asphalt plant safely.</p>
+                <h3>What we are looking for</h3>
+                <ul><li>Experience in an industrial environment.</li></ul>
+              </div>
+              <div><p>Tarmac Trading Limited</p></div>
+              <div class="related" id="docs">
+                <h3>Attached documents</h3><a href="benefits.pdf">Benefits</a>
+              </div>
+              <a class="btn btn-apply">Apply</a>
+            </div></div>
+            <div class="sidebar">
+              <table class="details">
+                <tr><td class="label">Salary</td><td>Competitive</td></tr>
+                <tr><td class="label">Contract Type</td><td>Permanent</td></tr>
+                <tr><td class="label">Closing Date</td><td>25 September, 2026</td></tr>
+                <tr><td class="label">Location</td><td>Stoke-on-Trent, United Kingdom</td></tr>
+                <tr><td class="label">Posted on</td><td>27 August, 2026</td></tr>
+              </table>
+              <p>Directions to</p><p>Print this job</p>
+            </div>
+          </div>
+          <span class="powered_by">Powered by
+            <a href="https://www.tribepad.com/looking-for-a-job/">Tribepad</a>
+          </span>
+          <footer>Acquisition Software | Cookies Policy</footer>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Multi Skilled Operative"
+        assert result.locations == ["Stoke-on-Trent, United Kingdom"]
+        assert result.employment_type == "Permanent"
+        assert result.date_posted == "2026-08-27"
+        assert result.extras["valid_through"] == "2026-09-25"
+        assert result.metadata == {"salary": "Competitive"}
+        assert result.description is not None
+        assert "Operate and maintain" in result.description
+        assert "industrial environment" in result.description
+        assert "Attached documents" not in result.description
+        assert "Directions to" not in result.description
+        assert "Acquisition Software" not in result.description
+
     def test_tpf_board_config_covers_pagination_and_labeled_details(self):
         from src.core.scrapers.dom import parse_html
         from src.shared.constants import get_data_dir
