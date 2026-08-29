@@ -101,6 +101,7 @@ class WorktreeItem:
     issue: int | None
     state: str
     export_status: str | None
+    trace_verified: bool
     pr_number: int | None
     branch: str | None
     registered: bool
@@ -791,6 +792,46 @@ def _pre_remove_transition_is_safe(
     )
 
 
+def _workspace_evidence_is_disposable(snapshot: _WorktreeStateSnapshot) -> bool:
+    """Accept only a clean checkout with a normal workspace evidence root."""
+    try:
+        workspace_root = json.loads(snapshot.workspace_root_json)
+    except json.JSONDecodeError:
+        return False
+    return (
+        snapshot.dirty_entries == 0
+        and isinstance(workspace_root, dict)
+        and workspace_root.get("type") == "directory"
+        and all(
+            candidate.archive_name.startswith("workspace/") for candidate in snapshot.candidates
+        )
+    )
+
+
+def _workspace_evidence_was_cleared(
+    before: _WorktreeStateSnapshot,
+    after: _WorktreeStateSnapshot,
+) -> bool:
+    """Prove the pre-remove hook discarded only ignored workspace evidence."""
+    if not _workspace_evidence_is_disposable(before):
+        return False
+    if after.head_oid != before.head_oid or after.dirty_entries != 0:
+        return False
+    if after.status_sha256 != before.status_sha256:
+        return False
+    if after.tracked_patch_sha256 != before.tracked_patch_sha256:
+        return False
+    if after.candidates:
+        return False
+    try:
+        workspace_root = json.loads(after.workspace_root_json)
+    except json.JSONDecodeError:
+        return False
+    return workspace_root is None or (
+        isinstance(workspace_root, dict) and workspace_root.get("type") == "directory"
+    )
+
+
 def _guarded_retire_worktree(
     *,
     ledger: Ledger,
@@ -803,6 +844,7 @@ def _guarded_retire_worktree(
     activity_checker: Callable[[Path], None],
     archive_id: str,
     archive_required: bool,
+    discard_workspace_evidence: bool,
     max_archive_bytes: int,
     remover: _WorktreeRemover,
     removal_lease: Callable[[], AbstractContextManager[None]],
@@ -818,8 +860,13 @@ def _guarded_retire_worktree(
         activity_checker=activity_checker,
     )
     item.dirty_entries = expected.dirty_entries
+    may_discard_workspace = discard_workspace_evidence and _workspace_evidence_is_disposable(
+        expected
+    )
     must_archive = (
-        archive_required or expected.dirty_entries > 0 or expected.workspace_root_json != "null"
+        archive_required
+        or expected.dirty_entries > 0
+        or (expected.workspace_root_json != "null" and not may_discard_workspace)
     )
     item.planned_action = "archive_remove" if must_archive else "remove"
     archived = False
@@ -882,9 +929,16 @@ def _guarded_retire_worktree(
             activity_checker=activity_checker,
         )
         if current != expected:
-            if not archived or not _pre_remove_transition_is_safe(expected, current):
+            transition_is_safe = archived and _pre_remove_transition_is_safe(expected, current)
+            workspace_was_cleared = may_discard_workspace and _workspace_evidence_was_cleared(
+                expected,
+                current,
+            )
+            if not transition_is_safe and not workspace_was_cleared:
                 raise RuntimeError("worktree changed during pre-remove cleanup; retaining it")
             expected = current
+        elif may_discard_workspace and expected.candidates:
+            raise RuntimeError("workspace evidence was not cleared before removal")
 
     def validate_original_before_claim() -> None:
         current = _validated_worktree_snapshot(
@@ -1035,6 +1089,7 @@ def reconcile_worktrees(
                 if run and isinstance(run.get("export_status"), str)
                 else None
             ),
+            trace_verified=bool(run.get("trace_verified")) if run else False,
             pr_number=(
                 run.get("pr_number") if run and isinstance(run.get("pr_number"), int) else None
             ),
@@ -1079,7 +1134,10 @@ def reconcile_worktrees(
                         main_oid=main_oid,
                         main_proof=authoritative_main,
                     )
-            item.remote_proof = asdict(proof)
+            item.remote_proof = {
+                **asdict(proof),
+                "trace_export_verified": item.trace_verified,
+            }
             if not proof.ok:
                 item.classification = "remote_unverified"
                 item.reason = proof.error or "remote state could not be verified"
@@ -1089,11 +1147,17 @@ def reconcile_worktrees(
 
         if item.classification == "terminal_candidate":
             workspace_artifacts = Path(item.path) / "apps" / "crawler" / ".workspace"
+            discard_workspace_evidence = (
+                item.state in RESOLVED_OUTCOMES
+                and item.trace_verified
+                and item.dirty_entries == 0
+                and not item.unique_commits
+            )
             must_archive = (
                 item.dirty_entries > 0
                 or item.unique_commits
                 or item.state in DEBUG_OUTCOMES
-                or _path_exists_no_follow(workspace_artifacts)
+                or (_path_exists_no_follow(workspace_artifacts) and not discard_workspace_evidence)
             )
             item.planned_action = "archive_remove" if must_archive else "remove"
             if apply:
@@ -1134,6 +1198,7 @@ def reconcile_worktrees(
                         activity_checker=runner_activity_check,
                         archive_id=item.run_id or item.name,
                         archive_required=(item.unique_commits or item.state in DEBUG_OUTCOMES),
+                        discard_workspace_evidence=discard_workspace_evidence,
                         max_archive_bytes=max_terminal_bytes,
                         remover=remover,
                         removal_lease=lambda run_id=item.run_id, worktree_path=path: (
@@ -1345,6 +1410,7 @@ def reconcile_managed_worktrees(
                 if isinstance(context.get("export_status"), str)
                 else None
             ),
+            trace_verified=bool(context.get("trace_verified")),
             pr_number=(
                 context.get("pr_number") if isinstance(context.get("pr_number"), int) else None
             ),
@@ -1423,7 +1489,10 @@ def reconcile_managed_worktrees(
                     )
                 else:
                     proof = branch_proof
-            item.remote_proof = asdict(proof)
+            item.remote_proof = {
+                **asdict(proof),
+                "trace_export_verified": item.trace_verified,
+            }
             if not proof.ok:
                 item.classification = "remote_unverified"
                 item.reason = proof.error or "managed worktree history could not be verified"
@@ -1476,6 +1545,7 @@ def reconcile_managed_worktrees(
                         activity_checker=managed_activity_check,
                         archive_id=_managed_archive_id(item),
                         archive_required=item.unique_commits,
+                        discard_workspace_evidence=False,
                         max_archive_bytes=max_terminal_bytes,
                         remover=remover,
                         removal_lease=lambda run_id=item.run_id, worktree_path=path: (
