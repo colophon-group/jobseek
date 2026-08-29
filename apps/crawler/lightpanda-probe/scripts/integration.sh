@@ -24,7 +24,7 @@ inspect_json="$(docker buildx imagetools inspect "$browser_image" --format '{{js
 test "$(jq -r '.manifest.digest' <<<"$inspect_json")" = "$expected_index"
 test "$(jq -r '[.manifest.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64") | .digest][0]' <<<"$inspect_json")" = "$expected_amd64"
 
-version_output="$(docker run --rm --platform linux/amd64 --entrypoint /bin/lightpanda "$browser_image" --version)"
+version_output="$(docker run --rm --platform linux/amd64 --entrypoint /bin/lightpanda "$browser_image" version)"
 grep -F '0.3.6' <<<"$version_output" >/dev/null
 test "$(docker image inspect "$browser_image" --format '{{.Architecture}}')" = amd64
 
