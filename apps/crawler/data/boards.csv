@@ -362,6 +362,7 @@ alvean,alvean-gupy,https://alvean.gupy.io/,gupy,"{""tenant"": ""alvean""}",nextd
 alvotech,alvotech-workday,https://alvotech.wd103.myworkdayjobs.com/Alvotech_Careers,workday,"{""company"": ""alvotech"", ""wd_instance"": ""wd103"", ""site"": ""Alvotech_Careers""}",json-ld,
 alvys,alvys-greenhouse,https://job-boards.greenhouse.io/alvys,greenhouse,"{""token"": ""alvys""}",skip,
 alx-africa,alx-africa-greenhouse,https://job-boards.greenhouse.io/alxafrica,greenhouse,"{""token"": ""alxafrica""}",skip,
+amada-senior-care-north-shore,amada-senior-care-north-shore-careers,https://amadaseniorcarenorthshore.applytojob.com/,jazzhr,,jazzhr,
 amae-health,amae-health-greenhouse,https://job-boards.greenhouse.io/amaehealth,greenhouse,"{""token"": ""amaehealth""}",skip,
 amazon,amazon-careers,https://www.amazon.jobs/en/search,amazon,,skip,
 amber,amber-ashby,https://jobs.ashbyhq.com/amber,ashby,"{""token"": ""amber""}",skip,
