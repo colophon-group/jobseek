@@ -23,7 +23,7 @@ import time
 from collections.abc import Callable
 from contextlib import AbstractContextManager, suppress
 from dataclasses import asdict, dataclass, field, replace
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Protocol
 from urllib.parse import quote
 
@@ -55,6 +55,7 @@ TRUSTED_GITHUB_REPOSITORY = "colophon-group/jobseek"
 ARCHIVE_METADATA_RESERVE_BYTES = 1024 * 1024
 ARCHIVE_MANIFEST_MAX_BYTES = 1024 * 1024
 ARCHIVE_PRUNE_CLAIM_PREFIX = ".jobseek-archive-prune-v2-"
+ARCHIVE_RETENTION_PRUNE_LIMIT = 25
 MAX_PLATFORM_PID = (1 << 31) - 1
 
 
@@ -75,6 +76,12 @@ class Ledger(Protocol):
     def worktree_archive_events(self, *, worktree_path: Path) -> list[dict[str, Any]]: ...
 
     def worktree_archive_recovery_events(self) -> list[dict[str, Any]]: ...
+
+    def worktree_reconciliation_events(self) -> list[dict[str, Any]]: ...
+
+    def worktree_archive_retention_cursor(self) -> str | None: ...
+
+    def set_worktree_archive_retention_cursor(self, cursor_name: str) -> None: ...
 
     def worktree_removal_lease(
         self,
@@ -147,6 +154,26 @@ class _ArchiveCompactionResult:
     removed: int
     reclaimed_bytes: int
     retained_unverified: int
+
+
+@dataclass(frozen=True)
+class ArchiveRetentionReport:
+    inspected: int
+    eligible: int
+    pruned: int
+    reclaimed_bytes: int
+    retained_unverified: int
+    errors: int
+
+
+@dataclass(frozen=True)
+class _ArchiveInspection:
+    sha256: str
+    bytes: int
+    stat: os.stat_result
+    source_snapshot_sha256: str
+    manifest: dict[str, Any]
+    members: tuple[tuple[str, bytes, int], ...]
 
 
 class _WorktreeBecameActive(RuntimeError):
@@ -2097,13 +2124,13 @@ def _regular_file_bytes_no_follow(path: Path) -> int:
         os.close(parent_fd)
 
 
-def _inspect_archive_generation_at(
+def _inspect_worktree_archive_at(
     parent_fd: int,
     name: str,
     *,
     expected_sha256: str,
-) -> tuple[str, int, os.stat_result, str]:
-    """Verify one archive and read its full source snapshot through an anchored fd."""
+) -> _ArchiveInspection:
+    """Verify one archive, manifest, and member inventory through an anchored fd."""
     validate_child_name(name)
     file_fd: int | None = None
     try:
@@ -2133,22 +2160,38 @@ def _inspect_archive_generation_at(
         archive_file = os.fdopen(os.dup(file_fd), "rb")
         try:
             with tarfile.open(fileobj=archive_file, mode="r:gz") as archive:
-                manifest_member = archive.getmember("manifest.json")
-                if (
-                    not manifest_member.isfile()
-                    or manifest_member.size < 1
-                    or manifest_member.size > ARCHIVE_MANIFEST_MAX_BYTES
-                ):
-                    raise RuntimeError("worktree archive manifest is invalid")
-                manifest_file = archive.extractfile(manifest_member)
-                if manifest_file is None:
-                    raise RuntimeError("worktree archive manifest is unreadable")
-                manifest_bytes = manifest_file.read(ARCHIVE_MANIFEST_MAX_BYTES + 1)
+                member_inventory_list: list[tuple[str, bytes, int]] = []
+                manifest_size: int | None = None
+                manifest_bytes: bytes | None = None
+                for member in archive:
+                    if len(member_inventory_list) >= 100_000:
+                        raise RuntimeError("worktree archive member inventory is too large")
+                    member_inventory_list.append((member.name, member.type, int(member.size)))
+                    if member.name != "manifest.json":
+                        continue
+                    if manifest_bytes is not None:
+                        raise RuntimeError("worktree archive has duplicate manifests")
+                    if (
+                        not member.isfile()
+                        or member.size < 1
+                        or member.size > ARCHIVE_MANIFEST_MAX_BYTES
+                    ):
+                        raise RuntimeError("worktree archive manifest is invalid")
+                    manifest_file = archive.extractfile(member)
+                    if manifest_file is None:
+                        raise RuntimeError("worktree archive manifest is unreadable")
+                    manifest_size = int(member.size)
+                    manifest_bytes = manifest_file.read(ARCHIVE_MANIFEST_MAX_BYTES + 1)
+                member_inventory = tuple(member_inventory_list)
         finally:
             archive_file.close()
-        if len(manifest_bytes) != manifest_member.size:
+        if manifest_bytes is None or manifest_size is None:
+            raise RuntimeError("worktree archive manifest is missing")
+        if len(manifest_bytes) != manifest_size:
             raise RuntimeError("worktree archive manifest size changed while reading")
         manifest = json.loads(manifest_bytes)
+        if not isinstance(manifest, dict):
+            raise RuntimeError("worktree archive manifest is not an object")
         source_snapshot_sha256 = manifest.get("source_snapshot_sha256")
         if (
             not isinstance(source_snapshot_sha256, str)
@@ -2165,7 +2208,14 @@ def _inspect_archive_generation_at(
             or size != expected.st_size
         ):
             raise RuntimeError("worktree archive generation changed while hashing")
-        return digest_hex, size, expected, source_snapshot_sha256
+        return _ArchiveInspection(
+            sha256=digest_hex,
+            bytes=size,
+            stat=expected,
+            source_snapshot_sha256=source_snapshot_sha256,
+            manifest=manifest,
+            members=member_inventory,
+        )
     except RuntimeError:
         raise
     except OSError as exc:
@@ -2175,6 +2225,447 @@ def _inspect_archive_generation_at(
     finally:
         if file_fd is not None:
             os.close(file_fd)
+
+
+def _inspect_archive_generation_at(
+    parent_fd: int,
+    name: str,
+    *,
+    expected_sha256: str,
+) -> tuple[str, int, os.stat_result, str]:
+    """Verify one archive and read its full source snapshot through an anchored fd."""
+    inspected = _inspect_worktree_archive_at(
+        parent_fd,
+        name,
+        expected_sha256=expected_sha256,
+    )
+    return (
+        inspected.sha256,
+        inspected.bytes,
+        inspected.stat,
+        inspected.source_snapshot_sha256,
+    )
+
+
+def _workspace_only_retention_manifest(
+    inspected: _ArchiveInspection,
+    *,
+    run: dict[str, Any],
+    event: dict[str, Any],
+) -> tuple[bool, str | None]:
+    """Prove an archive contains only resolved, ignored workspace diagnostics."""
+    manifest = inspected.manifest
+    run_id = run.get("run_id")
+    worktree_path = run.get("worktree_path")
+    state = run.get("state")
+    if (
+        manifest.get("schema_version") != 1
+        or not isinstance(run_id, str)
+        or manifest.get("run_id") != run_id
+        or manifest.get("worktree_path") != worktree_path
+        or event.get("worktree_path") != worktree_path
+        or manifest.get("state") != state
+        or event.get("state") != state
+        or state not in RESOLVED_OUTCOMES
+        or manifest.get("source") != "runner"
+        or event.get("source") != "runner"
+    ):
+        return False, None
+    if (
+        manifest.get("dirty_entries") != 0
+        or manifest.get("tracked_patch_bytes") != 0
+        or manifest.get("unique_commits") is not False
+        or manifest.get("unique_commit_bundle") is not None
+    ):
+        return False, None
+    remote_proof = manifest.get("remote_proof")
+    if not isinstance(remote_proof, dict) or remote_proof.get("ok") is not True:
+        return False, None
+    workspace_root = manifest.get("workspace_root")
+    if not isinstance(workspace_root, dict) or workspace_root.get("type") != "directory":
+        return False, None
+    head_oid = manifest.get("head_oid")
+    if (
+        not isinstance(head_oid, str)
+        or re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", head_oid) is None
+    ):
+        return False, None
+
+    files = manifest.get("files")
+    if not isinstance(files, list):
+        return False, None
+    inventory: dict[str, dict[str, Any]] = {}
+    for entry in files:
+        if not isinstance(entry, dict):
+            return False, None
+        archive_name = entry.get("archive_name")
+        source = entry.get("source")
+        kind = entry.get("type")
+        if not isinstance(archive_name, str) or not isinstance(source, str):
+            return False, None
+        archive_parts = PurePosixPath(archive_name)
+        source_parts = PurePosixPath(source)
+        if (
+            archive_name in inventory
+            or archive_parts.is_absolute()
+            or source_parts.is_absolute()
+            or ".." in archive_parts.parts
+            or ".." in source_parts.parts
+            or not archive_name.startswith("workspace/")
+            or not source.startswith("apps/crawler/.workspace/")
+            or kind not in {"file", "symlink"}
+        ):
+            return False, None
+        inventory[archive_name] = entry
+
+    member_names = [name for name, _, _ in inspected.members]
+    if len(member_names) != len(set(member_names)):
+        return False, None
+    if set(member_names) != {*inventory, "manifest.json"}:
+        return False, None
+    for member_name, member_type, member_bytes in inspected.members:
+        if member_name == "manifest.json":
+            if member_type not in {tarfile.REGTYPE, tarfile.AREGTYPE}:
+                return False, None
+            continue
+        entry = inventory[member_name]
+        if entry["type"] == "file":
+            if member_type not in {tarfile.REGTYPE, tarfile.AREGTYPE}:
+                return False, None
+            if not isinstance(entry.get("bytes"), int) or entry["bytes"] != member_bytes:
+                return False, None
+        elif member_type != tarfile.SYMTYPE or member_bytes != 0:
+            return False, None
+    return True, head_oid
+
+
+def _archived_head_is_preserved(
+    *,
+    repo_dir: Path,
+    head_oid: str,
+    main_oid: str,
+    remote_proof: RemoteProof,
+) -> bool:
+    """Re-prove that an archived clean HEAD is still durable on GitHub."""
+    remote_oid = _remote_head_oid(remote_proof.detail)
+    if remote_oid == head_oid:
+        return True
+    ancestor = subprocess.run(
+        ["git", "--no-replace-objects", "merge-base", "--is-ancestor", head_oid, main_oid],
+        cwd=repo_dir,
+        env=_git_proof_env(),
+        capture_output=True,
+        check=False,
+    )
+    if ancestor.returncode == 0:
+        return True
+    if ancestor.returncode != 1:
+        return False
+    head_tree = subprocess.run(
+        ["git", "--no-replace-objects", "rev-parse", "--verify", f"{head_oid}^{{tree}}"],
+        cwd=repo_dir,
+        env=_git_proof_env(),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    main_tree = subprocess.run(
+        ["git", "--no-replace-objects", "rev-parse", "--verify", f"{main_oid}^{{tree}}"],
+        cwd=repo_dir,
+        env=_git_proof_env(),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return (
+        head_tree.returncode == 0
+        and main_tree.returncode == 0
+        and head_tree.stdout.strip() == main_tree.stdout.strip()
+    )
+
+
+def _archive_retention_item(
+    *,
+    run: dict[str, Any],
+    event: dict[str, Any],
+    inspection: _ArchiveInspection,
+    archive_path: Path,
+    remote_proof: RemoteProof,
+) -> WorktreeItem:
+    return WorktreeItem(
+        path=str(run["worktree_path"]),
+        name=Path(str(run["worktree_path"])).name,
+        bytes=inspection.bytes,
+        run_id=str(run["run_id"]),
+        issue=run.get("issue") if isinstance(run.get("issue"), int) else None,
+        state=str(run["state"]),
+        export_status=(
+            str(run.get("export_status")) if isinstance(run.get("export_status"), str) else None
+        ),
+        trace_verified=True,
+        pr_number=run.get("pr_number") if isinstance(run.get("pr_number"), int) else None,
+        branch=str(run.get("branch")) if isinstance(run.get("branch"), str) else None,
+        registered=False,
+        locked=False,
+        pid_live=False,
+        dirty_entries=0,
+        classification="archive_retention_candidate",
+        reason="resolved workspace-only archive is superseded by verified remote evidence",
+        planned_action="prune_archive",
+        remote_proof={
+            **asdict(remote_proof),
+            "trace_export_verified": True,
+            "original_removal_event_id": event.get("id"),
+        },
+        archive_path=str(archive_path),
+        archive_sha256=inspection.sha256,
+        source="runner",
+        head_oid=str(inspection.manifest["head_oid"]),
+    )
+
+
+def prune_redundant_workspace_archives(
+    *,
+    repo_dir: Path,
+    archive_dir: Path,
+    ledger: Ledger,
+    remote_verifier: Callable[[dict[str, Any]], RemoteProof],
+    authoritative_main_verifier: Callable[[], RemoteProof],
+    apply: bool,
+    limit: int = ARCHIVE_RETENTION_PRUNE_LIMIT,
+) -> ArchiveRetentionReport:
+    """Prune only workspace-only archives superseded by verified remote evidence."""
+    if limit <= 0:
+        return ArchiveRetentionReport(0, 0, 0, 0, 0, 0)
+    archive_root = Path(os.path.abspath(archive_dir))
+    try:
+        parent_fd = open_absolute_directory_no_follow(archive_root)
+    except RuntimeError as exc:
+        if isinstance(exc.__cause__, FileNotFoundError):
+            return ArchiveRetentionReport(0, 0, 0, 0, 0, 0)
+        raise
+
+    try:
+        events = ledger.worktree_reconciliation_events()
+        runs = {
+            str(run["run_id"]): run
+            for run in ledger.worktree_runs()
+            if isinstance(run.get("run_id"), str)
+        }
+        latest_action: dict[str, str] = {}
+        removed_events: dict[str, list[dict[str, Any]]] = {}
+        for event in events:
+            raw_path = event.get("archive_path")
+            if not isinstance(raw_path, str):
+                continue
+            event_path = Path(raw_path)
+            if (
+                not event_path.is_absolute()
+                or str(event_path) != raw_path
+                or event_path.parent != archive_root
+            ):
+                continue
+            if isinstance(event.get("action"), str):
+                latest_action[event_path.name] = str(event["action"])
+            if (
+                event.get("action") == "removed"
+                and event.get("classification") == "removed"
+                and event.get("state") in RESOLVED_OUTCOMES
+                and event.get("source") == "runner"
+                and event.get("dirty_entries") == 0
+            ):
+                try:
+                    recorded_proof = json.loads(str(event.get("remote_proof_json") or "null"))
+                except json.JSONDecodeError:
+                    recorded_proof = None
+                if (
+                    isinstance(recorded_proof, dict)
+                    and recorded_proof.get("ok") is True
+                    and recorded_proof.get("kind") != "local_unique_commits"
+                ):
+                    removed_events.setdefault(event_path.name, []).append(event)
+
+        candidates: list[tuple[int, str, dict[str, Any], dict[str, Any], str]] = []
+        for name, path_events in removed_events.items():
+            if latest_action.get(name) in {"archive_pruned", "archive_retention_pruned"}:
+                continue
+            hashes = {
+                event.get("archive_sha256")
+                for event in path_events
+                if isinstance(event.get("archive_sha256"), str)
+            }
+            if len(hashes) != 1:
+                continue
+            event = max(path_events, key=lambda value: int(value.get("id") or 0))
+            run_id = event.get("run_id")
+            run = runs.get(str(run_id)) if isinstance(run_id, str) else None
+            if run is None or not bool(run.get("trace_verified")):
+                continue
+            try:
+                os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+            except OSError:
+                continue
+            candidates.append(
+                (
+                    int(event.get("observed_at") or 0),
+                    name,
+                    event,
+                    run,
+                    str(next(iter(hashes))),
+                )
+            )
+        candidates.sort(key=lambda value: value[1])
+        cursor_errors = 0
+        try:
+            cursor_name = ledger.worktree_archive_retention_cursor()
+        except Exception:  # noqa: BLE001 - a broken cursor must not make scanning unbounded
+            cursor_name = None
+            cursor_errors = 1
+        if cursor_name is not None:
+            split = next(
+                (index for index, candidate in enumerate(candidates) if candidate[1] > cursor_name),
+                len(candidates),
+            )
+            candidates = [*candidates[split:], *candidates[:split]]
+
+        inspected_count = 0
+        eligible = 0
+        pruned = 0
+        reclaimed_bytes = 0
+        retained_unverified = 0
+        errors = cursor_errors
+        authoritative_main: RemoteProof | None = None
+        last_inspected_name: str | None = None
+        for _, name, event, run, expected_sha256 in candidates[:limit]:
+            inspected_count += 1
+            last_inspected_name = name
+            try:
+                inspection = _inspect_worktree_archive_at(
+                    parent_fd,
+                    name,
+                    expected_sha256=expected_sha256,
+                )
+                workspace_only, head_oid = _workspace_only_retention_manifest(
+                    inspection,
+                    run=run,
+                    event=event,
+                )
+                if not workspace_only or head_oid is None:
+                    retained_unverified += 1
+                    continue
+                if authoritative_main is None:
+                    authoritative_main = authoritative_main_verifier()
+                main_oid = (
+                    _remote_head_oid(authoritative_main.detail) if authoritative_main.ok else None
+                )
+                if main_oid is None:
+                    retained_unverified += 1
+                    continue
+                remote_proof = remote_verifier(run)
+                if not remote_proof.ok or not _archived_head_is_preserved(
+                    repo_dir=repo_dir,
+                    head_oid=head_oid,
+                    main_oid=main_oid,
+                    remote_proof=remote_proof,
+                ):
+                    retained_unverified += 1
+                    continue
+                eligible += 1
+                if not apply:
+                    continue
+                archive_path = archive_root / name
+                item = _archive_retention_item(
+                    run=run,
+                    event=event,
+                    inspection=inspection,
+                    archive_path=archive_path,
+                    remote_proof=remote_proof,
+                )
+                _record_event(
+                    ledger,
+                    item,
+                    action="archive_retention_prune_started",
+                    observed_at=int(time.time()),
+                )
+
+                def verify_claim(
+                    claimed_name: str,
+                    expected_archive_sha256: str = inspection.sha256,
+                    expected_snapshot_sha256: str = inspection.source_snapshot_sha256,
+                ) -> None:
+                    claimed = _inspect_worktree_archive_at(
+                        parent_fd,
+                        claimed_name,
+                        expected_sha256=expected_archive_sha256,
+                    )
+                    if claimed.source_snapshot_sha256 != expected_snapshot_sha256:
+                        raise RuntimeError("claimed archive source snapshot changed")
+
+                _claim_and_unlink_archive_generation(
+                    parent_fd,
+                    name,
+                    expected=inspection.stat,
+                    pre_unlink_check=verify_claim,
+                )
+                os.fsync(parent_fd)
+                item.classification = "archive_retention_pruned"
+                item.reason = "verified workspace-only archive was pruned"
+                item.reclaimed_bytes = inspection.bytes
+                _record_event(
+                    ledger,
+                    item,
+                    action="archive_retention_pruned",
+                    observed_at=int(time.time()),
+                )
+                pruned += 1
+                reclaimed_bytes += inspection.bytes
+            except Exception as exc:  # noqa: BLE001 - every unsafe archive remains local
+                errors += 1
+                failure = WorktreeItem(
+                    path=str(event.get("worktree_path") or ""),
+                    name=Path(str(event.get("worktree_path") or name)).name,
+                    bytes=0,
+                    run_id=str(event.get("run_id")) if event.get("run_id") else None,
+                    issue=event.get("issue") if isinstance(event.get("issue"), int) else None,
+                    state=str(event.get("state") or "unknown"),
+                    export_status=None,
+                    trace_verified=bool(run.get("trace_verified")),
+                    pr_number=None,
+                    branch=None,
+                    registered=False,
+                    locked=False,
+                    pid_live=False,
+                    dirty_entries=0,
+                    classification="archive_retention_incomplete",
+                    reason="archive retention proof or pruning failed",
+                    planned_action="retain",
+                    archive_path=str(archive_root / name),
+                    archive_sha256=expected_sha256,
+                    source="runner",
+                    error=str(exc),
+                )
+                with suppress(Exception):
+                    _record_event(
+                        ledger,
+                        failure,
+                        action="archive_retention_incomplete",
+                        observed_at=int(time.time()),
+                    )
+        if apply and last_inspected_name is not None:
+            try:
+                ledger.set_worktree_archive_retention_cursor(last_inspected_name)
+            except Exception:  # noqa: BLE001 - scanning remains bounded without persistence
+                errors += 1
+        return ArchiveRetentionReport(
+            inspected=inspected_count,
+            eligible=eligible,
+            pruned=pruned,
+            reclaimed_bytes=reclaimed_bytes,
+            retained_unverified=retained_unverified,
+            errors=errors,
+        )
+    finally:
+        os.close(parent_fd)
 
 
 def _archive_prune_claim_name(

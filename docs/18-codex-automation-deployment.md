@@ -562,6 +562,20 @@ For each accepted issue:
     registration, lock, and HEAD are revalidated immediately before removal.
     Retryable/interrupted state, dirty content, non-workspace candidates, and
     unique commits are always archived before cleanup.
+    Each reconciliation inspects at most 25 historical archives, advancing a
+    durable lexical-name cursor so corrupt or permanently ineligible entries
+    cannot make a wake unbounded or starve later candidates. It migrates only archives whose
+    ledger removal event, outer checksum, versioned tar manifest, member
+    inventory, resolved run, verified trace row, current GitHub outcome, and
+    archived HEAD preservation all agree. Only archives containing ordinary
+    `workspace/**` members and no patch or unique-commit bundle qualify. The
+    runner records a durable `archive_retention_prune_started` identity before
+    the same-directory claim and unlink, fsyncs the quarantine directory, and
+    records the reclaimed bytes afterward. A dead claim is restored only from
+    that exact ledger path/hash identity. Unrecorded, replaced, corrupt,
+    failed/retryable, dirty, unique-commit, non-workspace, or remotely
+    unverified archives remain local and continue to count against the hard
+    ceiling.
 15. Emit a structured disk warning at
     `JOBSEEK_CODEX_MIN_DISK_FREE_GIB + JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB`.
     Stop new admissions at the disk floor or when quarantined trace material
