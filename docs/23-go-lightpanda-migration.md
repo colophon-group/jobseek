@@ -4,8 +4,8 @@
 
 Replace the production crawler runtime with Go and self-hosted Lightpanda,
 then retire Python, Playwright, and Chromium from production crawling. The
-target is an economical global crawler for millions of boards, not an
-optimization around the present fleet.
+economic decision compares the complete crawler runtime at today's measured
+load and at the same projected load. It is not a total-platform cost model.
 
 There is one authoritative implementation for a task at a time. During
 migration, Python and Go may coexist only for mutually exclusive cohorts.
@@ -13,23 +13,120 @@ Offline replay may compare both implementations from one captured upstream
 response. We do not run permanent duplicate fleets, issue duplicate origin
 requests, or silently fall back per task.
 
-## Provisional capacity floor
+## Projected crawler workload
 
-The capacity-design issue must replace these floors with a measured model
-before global rollout. They prevent decisions that only fit today's volume:
+Issue #7936 prices both implementations against one versioned workload. These
+floors prevent decisions that only fit today's volume:
 
 - 10 million configured boards and 100 million active postings.
 - At least 1 million boards due in one hour (16,667 monitor requests/minute).
 - At least 5 million detail fetches due in one hour during catch-up (83,333
   scrape requests/minute), subject to origin policy.
-- A 2x synthetic overload and one-shard-loss catch-up test without queue loss,
-  origin-policy violation, or unbounded memory growth.
-- Horizontal partitions that remain below 70% steady-state memory and CPU so
-  a shard can absorb recovery traffic.
+- A 2x synthetic overload and one-runtime-instance-loss catch-up test without
+  queue loss, origin-policy violation, or unbounded memory growth.
+- Identical utilization, recovery, regional pricing, capability-mix, and
+  publisher-policy assumptions for Python and Go.
 
 Throughput is subordinate to publisher policy. Provider-, tenant-, and
 egress-scoped rate/concurrency limits, `Retry-After`, TDM reservations, and
 circuit breakers remain hard ceilings.
+
+CHF 50/month is the current allocated crawler budget and is already known to
+be insufficient. It is shown only to quantify the current funding shortfall;
+it is not the observed Python cost or a ceiling for the projected fleet.
+
+### Runtime-cost evidence and interface
+
+The source-controlled comparison contract lives in
+`apps/crawler/runtime-cost/`:
+
+- `projected-workload-v1.json` freezes the 10M-board/100M-posting workload,
+  the current 24-hour success mix, the 1M monitor/5M detail projected peak,
+  shared headroom, and unresolved evidence requirements;
+- `python-production-targets-v1.json` maps existing bounded Prometheus
+  instances to crawler runtime roles, the shared `DISCOVERY_CONCURRENCY`
+  pool, and its `MONITOR_CONCURRENCY` sub-cap;
+- `evidence/python-production-2026-08-29-24h.json` is the first sanitized,
+  read-only Python measurement; and
+- `pricing/hetzner-eu-2026-06-15.json` preserves official EU-Central Hetzner
+  prices in EUR, whole server shapes, IPv4 and traffic assumptions, VAT
+  treatment, and the dated official EUR-to-CHF input; and
+- `schemas/` defines the language-neutral workload, capture, measurement, and
+  pricing interfaces that a later Go + Lightpanda measurement must also use.
+
+Capture makes Prometheus read queries only; it does not crawl or replay any
+publisher origin. Credentials are read from environment variables and neither
+the read URL nor credentials are written to evidence:
+
+```bash
+cd apps/crawler
+python -m src.runtime_cost capture-prometheus \
+  --targets runtime-cost/python-production-targets-v1.json \
+  --prometheus-url "$PROMETHEUS_READ_URL" \
+  --source-revision <deployed-git-sha> \
+  --window-seconds 86400 \
+  --out <measurement.json>
+```
+
+The captured production release is also recorded from `crawler_build_info`.
+Use `GRAFANA_PROM_USERNAME` and `GRAFANA_PROM_PASSWORD` by default, or select
+different secret-bearing environment variable names with `--username-env`
+and `--password-env`.
+
+The checked-in pricing revision uses the official price change effective 15
+June 2026 for the FSN/NBG/HEL price group. The current crawler is evidenced as
+a CX43, but its exact datacenter within that price group is unknown. Long-lived
+instances use the monthly price cap, all prices exclude VAT, each server is
+charged one primary IPv4, and EUR is converted at 0.9376 CHF per EUR from the
+official 27 August 2026 reference rate. The source URLs and retrieval dates
+are part of the pricing document.
+
+The neutral model packs the measured resource requirement into whole Hetzner
+servers. It reports every listed CX, CPX, and CCX scenario as pricing
+sensitivity while keeping the observed CX43 selected for current load. It
+does not choose a projected production SKU before shared-versus-dedicated load
+tests exist:
+
+```bash
+python -m src.runtime_cost project \
+  --workload runtime-cost/projected-workload-v1.json \
+  --measurement <measurement.json> \
+  --pricing runtime-cost/pricing/hetzner-eu-2026-06-15.json \
+  --out <projection.json>
+```
+
+The cost boundary includes only worker/browser runtime, queue/scheduler,
+runtime support, proxy, and network resources attributable to crawling. It
+excludes Postgres, Typesense, R2, web, backups, and unrelated telemetry or
+control-plane resources. An excluded service may be reported separately only
+when the migration causes a measured attributable delta; its complete fleet
+is never charged to this comparison.
+
+Readiness is structural rather than an editable checklist. Worker sizing uses
+the maximum of shared discovery-pool saturation and the monitor sub-cap; it
+does not add monitor and detail as independent worker pools. The cost ledger
+must cover all seven in-scope categories. Queue, scheduler, runtime-support,
+and proxy require explicit current and projected monthly EUR values;
+runtime-support also names every observed support role it covers. Network
+pricing consumes measured response bytes, explicit monthly hours at the load
+point, per-SKU included traffic, overage pricing, and IPv4. Missing entries,
+uncovered support roles, null usage measurements, or an unselected SKU create
+model-generated blockers even if every descriptive evidence status is edited
+to `frozen`.
+
+The first Python capture intentionally leaves browser-child CPU/RSS, complete
+origin-attempt and response-byte counts, proxy attribution, and Redis resource
+allocation unknown. The monthly traffic duty cycle, provider-weighted load,
+response-size distribution, and capability/publisher-policy evidence are not
+yet frozen. Queue, scheduler, runtime-support, and proxy ledger entries are
+present but explicitly `unknown`. These are emitted as decision blockers
+rather than inferred as zero, so the current artifact does not yet claim a
+minimum CHF budget or any Go saving. Its selected current CX43 scenario
+reports only a compute-plus-IPv4 subtotal of EUR 32.98 / CHF 30.92 per month,
+excluding VAT. Because that subtotal omits blocked attributable costs,
+`minimum_sustainable_monthly_chf_excluding_vat` and the CHF 50 funding
+shortfall remain `null`; the subtotal must not be interpreted as evidence that
+CHF 50 is sufficient.
 
 ## Existing isolation points
 
@@ -172,8 +269,8 @@ approved reason, material anti-bot regression, or freshness error-budget burn.
 
 ## Migration order
 
-1. Freeze contracts, capacity envelope, replay corpus, SLOs, fencing, global
-   politeness, and cohort ownership.
+1. Freeze contracts, crawler-runtime workload/cost evidence, replay corpus,
+   SLOs, fencing, global politeness, and cohort ownership.
 2. Port independently replaceable processes first: R2 drain and downstream
    CDC/projection.
 3. Build and deploy the Lightpanda capability harness/service without board
@@ -191,7 +288,7 @@ approved reason, material anti-bot regression, or freshness error-budget burn.
 
 ### Foundations and safe ownership
 
-- [ ] #7936 - global capacity envelope and shard topology
+- [ ] #7936 - Python versus Go + Lightpanda crawler-runtime cost at projected load
 - [ ] #7937 - runtime IDL, typed errors, and golden offline replay
 - [ ] #7938 - queue protocol v2 fencing and conservation
 - [ ] #7939 - global politeness, TDM, circuits, and egress policy

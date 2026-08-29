@@ -1,0 +1,261 @@
+{
+  "attributable_monthly_costs": [
+    {
+      "category": "queue",
+      "covered_roles": [],
+      "current_sustainable_monthly_eur": null,
+      "projected_load_monthly_eur": null,
+      "status": "unknown"
+    },
+    {
+      "category": "scheduler",
+      "covered_roles": [],
+      "current_sustainable_monthly_eur": null,
+      "projected_load_monthly_eur": null,
+      "status": "unknown"
+    },
+    {
+      "category": "runtime-support",
+      "covered_roles": ["python-drain", "python-exporter"],
+      "current_sustainable_monthly_eur": null,
+      "projected_load_monthly_eur": null,
+      "status": "unknown"
+    },
+    {
+      "category": "proxy",
+      "covered_roles": [],
+      "current_sustainable_monthly_eur": null,
+      "projected_load_monthly_eur": null,
+      "status": "unknown"
+    }
+  ],
+  "billing_assumptions": {
+    "current_crawler_sku_evidence": {
+      "datacenter": "unknown-within-eu-central-price-region",
+      "sku": "CX43",
+      "source": "docs/audits/2026-07-22-hetzner-systems.md",
+      "status": "evidenced"
+    },
+    "hourly_rounding": "whole-hour",
+    "long_lived_instances_use_monthly_cap": true
+  },
+  "fx": {
+    "as_of": "2026-08-27",
+    "base": "EUR",
+    "quote": "CHF",
+    "quote_per_base": 0.9376,
+    "source_url": "https://eur-lex.europa.eu/legal-content/EN/ALL/?uri=CELEX:C/2026/04110"
+  },
+  "network": {
+    "bytes_per_tb": 1000000000000,
+    "measurement_basis": "crawler-response-bytes",
+    "overage_eur_per_tb": 1.0,
+    "primary_ipv4_monthly_eur": 0.5,
+    "primary_ipv4_per_server": 1,
+    "source_urls": [
+      "https://docs.hetzner.com/cloud/servers/overview/",
+      "https://docs.hetzner.com/robot/general/traffic/"
+    ],
+    "traffic_cost_status": "blocked-until-attributable-bytes"
+  },
+  "price_effective_at": "2026-06-15T08:00:00+02:00",
+  "provider": "hetzner",
+  "region_group": "eu-central-fsn-nbg-hel",
+  "retrieved_at": "2026-08-29",
+  "revision": "hetzner-eu-2026-06-15-fx-2026-08-27-ledger-v2",
+  "scenario_selection": {
+    "current_load_sku": "CX43",
+    "projected_load_sku": null,
+    "reason": "CX43 is evidenced for the current crawler; projected production class remains unselected until dedicated-versus-shared load tests and complete resource evidence exist."
+  },
+  "schema_version": "jobseek.crawler-runtime-pricing/v1",
+  "server_skus": [
+    {
+      "cpu_allocation": "shared",
+      "family": "cost-optimized",
+      "hourly_eur_excluding_ipv4_vat": 0.0136,
+      "included_traffic_tb_per_server": 20,
+      "memory_bytes": 8589934592,
+      "monthly_eur_excluding_ipv4_vat": 8.49,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CX33",
+      "vcpus": 4
+    },
+    {
+      "cpu_allocation": "shared",
+      "family": "cost-optimized",
+      "hourly_eur_excluding_ipv4_vat": 0.0256,
+      "included_traffic_tb_per_server": 20,
+      "memory_bytes": 17179869184,
+      "monthly_eur_excluding_ipv4_vat": 15.99,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CX43",
+      "vcpus": 8
+    },
+    {
+      "cpu_allocation": "shared",
+      "family": "cost-optimized",
+      "hourly_eur_excluding_ipv4_vat": 0.0473,
+      "included_traffic_tb_per_server": 20,
+      "memory_bytes": 34359738368,
+      "monthly_eur_excluding_ipv4_vat": 29.49,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CX53",
+      "vcpus": 16
+    },
+    {
+      "cpu_allocation": "shared",
+      "family": "regular-performance",
+      "hourly_eur_excluding_ipv4_vat": 0.0569,
+      "included_traffic_tb_per_server": 20,
+      "memory_bytes": 8589934592,
+      "monthly_eur_excluding_ipv4_vat": 35.49,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CPX32",
+      "vcpus": 4
+    },
+    {
+      "cpu_allocation": "shared",
+      "family": "regular-performance",
+      "hourly_eur_excluding_ipv4_vat": 0.1114,
+      "included_traffic_tb_per_server": 20,
+      "memory_bytes": 17179869184,
+      "monthly_eur_excluding_ipv4_vat": 69.49,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CPX42",
+      "vcpus": 8
+    },
+    {
+      "cpu_allocation": "shared",
+      "family": "regular-performance",
+      "hourly_eur_excluding_ipv4_vat": 0.161,
+      "included_traffic_tb_per_server": 20,
+      "memory_bytes": 25769803776,
+      "monthly_eur_excluding_ipv4_vat": 100.49,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CPX52",
+      "vcpus": 12
+    },
+    {
+      "cpu_allocation": "shared",
+      "family": "regular-performance",
+      "hourly_eur_excluding_ipv4_vat": 0.2083,
+      "included_traffic_tb_per_server": 20,
+      "memory_bytes": 34359738368,
+      "monthly_eur_excluding_ipv4_vat": 129.99,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CPX62",
+      "vcpus": 16
+    },
+    {
+      "cpu_allocation": "dedicated",
+      "family": "general-purpose",
+      "hourly_eur_excluding_ipv4_vat": 0.0689,
+      "included_traffic_tb_per_server": 20,
+      "memory_bytes": 8589934592,
+      "monthly_eur_excluding_ipv4_vat": 42.99,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CCX13",
+      "vcpus": 2
+    },
+    {
+      "cpu_allocation": "dedicated",
+      "family": "general-purpose",
+      "hourly_eur_excluding_ipv4_vat": 0.1378,
+      "included_traffic_tb_per_server": 20,
+      "memory_bytes": 17179869184,
+      "monthly_eur_excluding_ipv4_vat": 85.99,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CCX23",
+      "vcpus": 4
+    },
+    {
+      "cpu_allocation": "dedicated",
+      "family": "general-purpose",
+      "hourly_eur_excluding_ipv4_vat": 0.2219,
+      "included_traffic_tb_per_server": 30,
+      "memory_bytes": 34359738368,
+      "monthly_eur_excluding_ipv4_vat": 138.49,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CCX33",
+      "vcpus": 8
+    },
+    {
+      "cpu_allocation": "dedicated",
+      "family": "general-purpose",
+      "hourly_eur_excluding_ipv4_vat": 0.4423,
+      "included_traffic_tb_per_server": 40,
+      "memory_bytes": 68719476736,
+      "monthly_eur_excluding_ipv4_vat": 275.99,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CCX43",
+      "vcpus": 16
+    },
+    {
+      "cpu_allocation": "dedicated",
+      "family": "general-purpose",
+      "hourly_eur_excluding_ipv4_vat": 0.855,
+      "included_traffic_tb_per_server": 50,
+      "memory_bytes": 137438953472,
+      "monthly_eur_excluding_ipv4_vat": 533.49,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CCX53",
+      "vcpus": 32
+    },
+    {
+      "cpu_allocation": "dedicated",
+      "family": "general-purpose",
+      "hourly_eur_excluding_ipv4_vat": 1.3678,
+      "included_traffic_tb_per_server": 60,
+      "memory_bytes": 206158430208,
+      "monthly_eur_excluding_ipv4_vat": 853.49,
+      "price_regions": ["FSN", "NBG", "HEL"],
+      "sku": "CCX63",
+      "vcpus": 48
+    }
+  ],
+  "source_currency": "EUR",
+  "sources": [
+    {
+      "accessed_on": "2026-08-29",
+      "kind": "price",
+      "url": "https://docs.hetzner.com/general/infrastructure-and-availability/price-adjustment/"
+    },
+    {
+      "accessed_on": "2026-08-29",
+      "kind": "specification",
+      "url": "https://www.hetzner.com/cloud/cost-optimized/"
+    },
+    {
+      "accessed_on": "2026-08-29",
+      "kind": "specification",
+      "url": "https://www.hetzner.com/cloud/regular-performance/"
+    },
+    {
+      "accessed_on": "2026-08-29",
+      "kind": "specification",
+      "url": "https://www.hetzner.com/cloud/general-purpose/"
+    },
+    {
+      "accessed_on": "2026-08-29",
+      "kind": "billing",
+      "url": "https://docs.hetzner.com/cloud/billing/faq/"
+    },
+    {
+      "accessed_on": "2026-08-29",
+      "kind": "network",
+      "url": "https://docs.hetzner.com/cloud/servers/overview/"
+    },
+    {
+      "accessed_on": "2026-08-29",
+      "kind": "network",
+      "url": "https://docs.hetzner.com/robot/general/traffic/"
+    },
+    {
+      "accessed_on": "2026-08-29",
+      "kind": "fx",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/ALL/?uri=CELEX:C/2026/04110"
+    }
+  ],
+  "vat_treatment": "excluded"
+}

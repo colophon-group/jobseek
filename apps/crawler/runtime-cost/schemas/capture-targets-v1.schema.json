@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jobseek.ch/schemas/crawler-runtime-capture-targets-v1.json",
+  "additionalProperties": false,
+  "properties": {
+    "implementation": {"minLength": 1, "type": "string"},
+    "revision": {"minLength": 1, "type": "string"},
+    "schema_version": {"const": "jobseek.crawler-runtime-capture-targets/v1"},
+    "targets": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "cost_category": {"enum": ["worker", "browser", "runtime-support"]},
+          "discovery_concurrency": {"minimum": 1, "type": ["integer", "null"]},
+          "execution_class": {"enum": ["http", "browser", "support"]},
+          "id": {"minLength": 1, "type": "string"},
+          "instance": {"pattern": "^[A-Za-z0-9_.:-]+$", "type": "string"},
+          "memory_limit_bytes": {"type": ["integer", "null"]},
+          "monitor_concurrency": {"minimum": 1, "type": ["integer", "null"]},
+          "role": {"minLength": 1, "type": "string"},
+          "vcpu_limit": {"type": ["number", "null"]}
+        },
+        "required": ["id", "instance", "role", "execution_class", "cost_category", "discovery_concurrency", "monitor_concurrency", "vcpu_limit", "memory_limit_bytes"],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "workload_revision": {"minLength": 1, "type": "string"}
+  },
+  "required": ["schema_version", "revision", "workload_revision", "implementation", "targets"],
+  "type": "object"
+}
