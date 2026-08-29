@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -40,21 +39,8 @@ func main() {
 		write(w, http.StatusOK, "text/html; charset=utf-8", page("robots-blocked", `<main>robots policy</main><script src="/blocked/script.js"></script>`), nil)
 	})
 	mux.HandleFunc("/request-overflow", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Location", "/request-overflow/1")
-		write(w, http.StatusFound, "text/plain; charset=utf-8", "synthetic request chain\n", nil)
-	})
-	mux.HandleFunc("/request-overflow/", func(w http.ResponseWriter, r *http.Request) {
-		current, err := strconv.Atoi(strings.TrimPrefix(r.URL.EscapedPath(), "/request-overflow/"))
-		if err != nil || current < 1 || current > 12 {
-			write(w, http.StatusBadRequest, "text/plain; charset=utf-8", "invalid synthetic request chain\n", nil)
-			return
-		}
-		if current < 12 {
-			w.Header().Set("Location", fmt.Sprintf("/request-overflow/%d", current+1))
-			write(w, http.StatusFound, "text/plain; charset=utf-8", "synthetic request chain\n", nil)
-			return
-		}
-		write(w, http.StatusOK, "text/html; charset=utf-8", page("request-overflow", `<main>request guard failed</main>`), nil)
+		body := `<!doctype html><html><head><meta charset="utf-8"><title>request-overflow</title><script src="/static/limit-1.js"></script><script src="/static/limit-2.js"></script><script src="/static/limit-3.js"></script></head><body><main>request guard failed</main></body></html>`
+		write(w, http.StatusOK, "text/html; charset=utf-8", body, nil)
 	})
 	mux.HandleFunc("/byte-overflow", func(w http.ResponseWriter, r *http.Request) {
 		write(w, http.StatusOK, "text/html; charset=utf-8", page("byte-overflow", `<script src="/static/large.js"></script>`), nil)
@@ -73,6 +59,11 @@ func main() {
 	mux.HandleFunc("/static/tdm.js", func(w http.ResponseWriter, r *http.Request) {
 		write(w, http.StatusOK, "application/javascript; charset=utf-8", `document.documentElement.dataset.ready="blocked";`, map[string]string{"TDM-Reservation": "1"})
 	})
+	for _, path := range []string{"/static/limit-1.js", "/static/limit-2.js", "/static/limit-3.js"} {
+		mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+			write(w, http.StatusOK, "application/javascript; charset=utf-8", "void 0;", nil)
+		})
+	}
 	mux.HandleFunc("/static/large.js", func(w http.ResponseWriter, r *http.Request) {
 		write(w, http.StatusOK, "application/javascript; charset=utf-8", strings.Repeat(" ", 32768)+"void 0;", nil)
 	})
