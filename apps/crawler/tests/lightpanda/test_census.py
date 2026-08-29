@@ -201,6 +201,94 @@ def test_boolean_action_integer_fails_closed(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
+    "rich_rows",
+    [
+        "not-an-object",
+        {"row_selector": ".job", "unknown": "secret-value"},
+        {"link_selector": "a"},
+        {"row_selector": ".job", "allow_missing_locations": 1},
+        {"row_selector": ".job", "section_start": {"selector": "h2"}},
+        {
+            "row_selector": ".job",
+            "active_urls": ["https://secret.example/jobs/active"],
+        },
+        {"row_selector": ".job", "location_selectors": [".location"] * 5},
+        {
+            "row_selector": ".job",
+            "metadata_selectors": {f"field-{index}": ".value" for index in range(9)},
+        },
+        {"row_selector": "a["},
+        {
+            "row_selector": ".job",
+            "active_urls": ["https://secret.example/jobs/shared"],
+            "inactive_urls": ["https://secret.example/jobs/shared"],
+        },
+    ],
+    ids=[
+        "non-mapping",
+        "unknown-key",
+        "missing-row-selector",
+        "non-boolean-flag",
+        "unpaired-boundary",
+        "unpaired-lifecycle-urls",
+        "location-selector-bound",
+        "metadata-selector-bound",
+        "malformed-css",
+        "overlapping-lifecycle-urls",
+    ],
+)
+def test_dom_rich_rows_uses_authoritative_fail_closed_validation(
+    tmp_path: Path, rich_rows: object
+) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [_row("invalid-rich-rows", monitor_type="dom", monitor_config={"rich_rows": rich_rows})],
+    )
+
+    with pytest.raises(CensusError) as exc_info:
+        build_manifest(boards)
+
+    assert str(exc_info.value) == "monitor.dom.rich_rows is invalid"
+
+
+@pytest.mark.parametrize(
+    "rich_rows",
+    [
+        {"row_selector": ".job", "location_selectors": [], "metadata_selectors": {}},
+        {
+            "row_selector": ".job",
+            "location_selectors": [".city", ".region", ".country"],
+        },
+        {"row_selector": ".job", "metadata_selectors": {"department": ".department"}},
+        {
+            "row_selector": ".job",
+            "section_start": {"selector": "h2", "text": "Current roles"},
+            "section_end": {"selector": "h2#students"},
+        },
+    ],
+    ids=["empty-selectors", "three-location-selectors", "generic-metadata", "paired-boundary"],
+)
+def test_dom_rich_rows_accepts_authoritative_runtime_shapes(
+    tmp_path: Path, rich_rows: dict[str, object]
+) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "valid-rich-rows",
+                monitor_type="dom",
+                monitor_config={"render": True, "rich_rows": rich_rows},
+            )
+        ],
+    )
+
+    manifest = build_manifest(boards)
+
+    assert manifest["summary"]["browser_board_count"] == 1
+    assert manifest["summary"]["browser_required_step_count"] == 1
+
+
+@pytest.mark.parametrize(
     "fallback",
     [
         ["dom"],

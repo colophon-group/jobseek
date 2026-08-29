@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from src.core.monitors import all_monitor_types, monitor_needs_browser
+from src.core.monitors.dom import _validated_rich_rows
 from src.core.scrapers import (
     _RENDER_AWARE_SCRAPERS,
     all_scraper_types,
@@ -346,8 +347,6 @@ _SELECTOR_KEYS = frozenset(
         "total_selector",
     }
 )
-_SELECTOR_LIST_KEYS = frozenset({"location_selectors"})
-_SELECTOR_MAP_KEYS = {"metadata_selectors": frozenset({"opportunity_type", "valid_through"})}
 _ACTION_KEYS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "click": (frozenset({"action", "selector"}), frozenset({"required", "timeout"})),
     "dismiss_overlays": (frozenset({"action"}), frozenset({"required", "timeout"})),
@@ -502,17 +501,6 @@ def _validate_selector_fields(value: object, *, path: str = "config") -> None:
             child_path = f"{path}.{key}"
             if key in _SELECTOR_KEYS:
                 _validate_selector(item, path=child_path)
-            elif key in _SELECTOR_LIST_KEYS:
-                if not isinstance(item, list) or not 1 <= len(item) <= 2:
-                    raise CensusError(f"{child_path} must contain one or two selectors")
-                for index, selector in enumerate(item):
-                    _validate_selector(selector, path=f"{child_path}[{index}]")
-            elif key in _SELECTOR_MAP_KEYS:
-                allowed = _SELECTOR_MAP_KEYS[key]
-                if not isinstance(item, dict) or not item or not set(item) <= allowed:
-                    raise CensusError(f"{child_path} has unknown or missing selector keys")
-                for name, selector in item.items():
-                    _validate_selector(selector, path=f"{child_path}.{name}")
             elif "selector" in key or key in {"frame", "scope"}:
                 raise CensusError(f"unknown selector field {child_path}")
             _validate_selector_fields(item, path=child_path)
@@ -617,7 +605,14 @@ def _validate_and_abstract_config(
         raise CensusError(
             f"unknown {surface} config keys for {crawler_type}: {', '.join(sorted(unknown))}"
         )
-    _validate_selector_fields(config)
+    selector_config: Mapping[str, Any] = config
+    if surface == "monitor" and crawler_type == "dom" and "rich_rows" in config:
+        try:
+            _validated_rich_rows(config["rich_rows"])
+        except ValueError:
+            raise CensusError("monitor.dom.rich_rows is invalid") from None
+        selector_config = {key: value for key, value in config.items() if key != "rich_rows"}
+    _validate_selector_fields(selector_config)
     for key in _BOOL_BROWSER_KEYS & set(config):
         if not isinstance(config[key], bool):
             raise CensusError(f"{surface}.{crawler_type}.{key} must be boolean")
