@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
+import importlib.util
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
+from types import ModuleType
 
 import jsonschema
 import pytest
@@ -20,6 +23,16 @@ from src.runtime.extraction import (
 from src.shared.browser import BrowserBackend, open_page
 
 _CONTRACTS = Path(__file__).parents[1] / "contracts" / "v1"
+_GENERATED_PYTHON = _CONTRACTS / "python" / "jobseek_runtime_v1"
+
+
+def _load_generated_binding() -> ModuleType:
+    path = _GENERATED_PYTHON / "runtime_pb2.py"
+    spec = importlib.util.spec_from_file_location("jobseek_runtime_v1_test_binding", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _validate(schema_name: str, payload: dict) -> None:
@@ -34,6 +47,51 @@ def _validate(schema_name: str, payload: dict) -> None:
 def test_all_runtime_contract_schemas_are_valid_draft_2020_12() -> None:
     for path in _CONTRACTS.glob("*.schema.json"):
         jsonschema.Draft202012Validator.check_schema(json.loads(path.read_text()))
+
+
+def test_generated_runtime_binding_matches_the_source_descriptor() -> None:
+    runtime_pb2 = _load_generated_binding()
+    hello = runtime_pb2.ClientHello(
+        supported_contract_versions=["crawler.runtime/v1"],
+        implementation=runtime_pb2.IMPLEMENTATION_PYTHON,
+    )
+
+    restored = runtime_pb2.ClientHello.FromString(hello.SerializeToString())
+
+    assert restored == hello
+    assert runtime_pb2.DESCRIPTOR.package == "jobseek.crawler.runtime.v1"
+    assert runtime_pb2.DESCRIPTOR.GetOptions().go_package == (
+        "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go;runtimev1"
+    )
+
+
+def test_generated_runtime_manifest_covers_every_managed_output() -> None:
+    manifest = json.loads((_CONTRACTS / "gen" / "manifest.json").read_text())
+
+    assert manifest["format"] == "jobseek.crawler.runtime-bindings/v1"
+    assert manifest["source"] == "runtime.proto"
+    assert (
+        manifest["source_sha256"]
+        == hashlib.sha256((_CONTRACTS / "runtime.proto").read_bytes()).hexdigest()
+    )
+    assert manifest["generators"] == {
+        "grpcio_tools": "1.76.0",
+        "libprotoc": "31.1",
+        "protoc_gen_go": "1.36.10",
+    }
+    assert manifest["runtimes"] == {
+        "go_protobuf": "1.36.10",
+        "python": "3.13",
+        "python_protobuf": "6.33.6",
+    }
+
+    assert set(manifest["outputs"]) == {
+        "gen/go/runtime.pb.go",
+        "python/jobseek_runtime_v1/__init__.py",
+        "python/jobseek_runtime_v1/runtime_pb2.py",
+    }
+    for relative, expected in manifest["outputs"].items():
+        assert hashlib.sha256((_CONTRACTS / relative).read_bytes()).hexdigest() == expected
 
 
 def test_board_runtime_config_normalizes_storage_types_and_validates() -> None:
