@@ -128,6 +128,28 @@ excluding VAT. Because that subtotal omits blocked attributable costs,
 shortfall remain `null`; the subtotal must not be interpreted as evidence that
 CHF 50 is sufficient.
 
+Issue #8159 adds the prerequisite for a defensible browser resource capture.
+Every long-running crawler metrics process samples its Linux process tree at a
+bounded interval and exports label-free container-cgroup CPU, aggregate current
+RSS, descendant count, and sampler-health metrics. Cgroup-v2 CPU accounting
+survives exited Chromium processes and children that live entirely between
+`/proc` observations. Each capture target is one crawler role container; the
+evidence records `container-cgroup-v2` and
+`one-crawler-role-container-per-target` so host-wide accounting cannot be
+silently substituted. Capture derives peak RSS with `max_over_time` from the
+current aggregate gauge, so a spike before the selected window cannot leak
+into later evidence. The adapter promotes a role from `root-process` to
+`process-tree` only when every target covers both window boundaries, reports
+integer success/failure/reset/gap counts, has zero failures, resets, and missed
+intervals, and reaches at least 95% of the expected observations at a sampler
+interval no greater than one second. Partial or absent coverage keeps the
+original blocker and parent-only values. The model and schema independently
+enforce the same per-target counts plus tree CPU/RSS invariants. The checked-in
+2026-08-29 evidence predates these metrics and is therefore marked
+`root-process` explicitly. A new sanitized production window after deployment
+is still required to close the browser-child blocker; no child usage is
+inferred into the historical artifact.
+
 ## Existing isolation points
 
 | Segment | Existing boundary | Important semantics |

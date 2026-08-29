@@ -3,11 +3,15 @@ from __future__ import annotations
 import socketserver
 import sys
 import threading
-from typing import Any
+import time
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from prometheus_client import Counter, Gauge, Histogram, make_wsgi_app
+
+if TYPE_CHECKING:
+    from src.runtime_cost.process_tree import ProcessTreeSample
 
 # ── Worker metrics (per profile) ────────────────────────────────────
 
@@ -580,6 +584,53 @@ browser_target_closed_retries_total = Counter(
     ["outcome"],
 )
 
+# Direct process-tree resource evidence. The default prometheus_client process
+# collector exposes only the Python parent and therefore omits Playwright and
+# Chromium descendants. These aggregates are label-free and are emitted by
+# every long-running crawler role; the runtime-cost capture adapter consumes
+# them only after observing successful sampler coverage for every target in a
+# role.
+runtime_process_tree_cpu_seconds_total = Counter(
+    "crawler_runtime_process_tree_cpu_seconds_total",
+    "Cgroup CPU seconds consumed by the crawler role container",
+)
+
+runtime_process_tree_resident_memory_bytes = Gauge(
+    "crawler_runtime_process_tree_resident_memory_bytes",
+    "Current aggregate RSS of the crawler process and all descendants",
+)
+
+runtime_process_tree_descendants = Gauge(
+    "crawler_runtime_process_tree_descendants",
+    "Current number of descendant processes attributed to the crawler process",
+)
+
+runtime_process_tree_samples_total = Counter(
+    "crawler_runtime_process_tree_samples_total",
+    "Process-tree resource sampler observations by bounded outcome",
+    ["outcome"],
+)
+
+runtime_process_tree_sampling_gaps_total = Counter(
+    "crawler_runtime_process_tree_sampling_gaps_total",
+    "Scheduled process-tree observations missed because the sampler loop was delayed",
+)
+
+runtime_process_tree_sampler_starts_total = Counter(
+    "crawler_runtime_process_tree_sampler_starts_total",
+    "Process-tree sampler thread starts, used to reject restarted capture windows",
+)
+
+runtime_process_tree_sample_interval_seconds = Gauge(
+    "crawler_runtime_process_tree_sample_interval_seconds",
+    "Configured interval between process-tree resource observations",
+)
+
+runtime_process_tree_last_sample_unixtime_seconds = Gauge(
+    "crawler_runtime_process_tree_last_sample_unixtime_seconds",
+    "Unix timestamp of the latest successful or failed process-tree observation",
+)
+
 
 # Build info — emitted once at startup so Grafana can confirm which
 # ``apps/crawler/VERSION`` each container is running without SSH-ing in.
@@ -644,8 +695,70 @@ def _start_metrics_http_server(
     return server, thread
 
 
+_process_tree_sampler_lock = threading.Lock()
+_process_tree_sampler_thread: threading.Thread | None = None
+_process_tree_sampler_stop = threading.Event()
+
+
+def _observe_process_tree(sample: ProcessTreeSample) -> None:
+    runtime_process_tree_cpu_seconds_total.inc(sample.process_tree_cpu_delta_seconds)
+    runtime_process_tree_resident_memory_bytes.set(sample.process_tree_rss_bytes)
+    runtime_process_tree_descendants.set(sample.descendant_count)
+    runtime_process_tree_samples_total.labels(outcome="success").inc()
+    runtime_process_tree_last_sample_unixtime_seconds.set(time.time())
+
+
+def _record_process_tree_sample_failure() -> None:
+    runtime_process_tree_samples_total.labels(outcome="failure").inc()
+    runtime_process_tree_last_sample_unixtime_seconds.set(time.time())
+
+
+def _record_process_tree_sampling_gap(missed_intervals: int) -> None:
+    runtime_process_tree_sampling_gaps_total.inc(missed_intervals)
+
+
+def _seed_process_tree_sample_outcomes(samples_counter: Counter) -> None:
+    """Expose both bounded outcomes, including a healthy explicit zero."""
+
+    for outcome in ("success", "failure"):
+        samples_counter.labels(outcome=outcome).inc(0)
+
+
+def _start_process_tree_sampler(interval_seconds: float = 0.5) -> threading.Thread:
+    """Start the process-tree sampler once per crawler process."""
+
+    from src.runtime_cost.process_tree import ProcessTreeSampler, run_process_tree_sampler
+
+    global _process_tree_sampler_thread
+    with _process_tree_sampler_lock:
+        if _process_tree_sampler_thread is not None and _process_tree_sampler_thread.is_alive():
+            return _process_tree_sampler_thread
+        _process_tree_sampler_stop.clear()
+        _seed_process_tree_sample_outcomes(runtime_process_tree_samples_total)
+        runtime_process_tree_sampler_starts_total.inc()
+        runtime_process_tree_sample_interval_seconds.set(interval_seconds)
+        sampler = ProcessTreeSampler()
+        thread = threading.Thread(
+            target=run_process_tree_sampler,
+            kwargs={
+                "sampler": sampler,
+                "interval_seconds": interval_seconds,
+                "stop_event": _process_tree_sampler_stop,
+                "observe": _observe_process_tree,
+                "record_failure": _record_process_tree_sample_failure,
+                "record_gap": _record_process_tree_sampling_gap,
+            },
+            name="crawler-process-tree-metrics",
+            daemon=True,
+        )
+        thread.start()
+        _process_tree_sampler_thread = thread
+        return thread
+
+
 def start_metrics_server(port: int) -> None:
     build_info.labels(version=_read_version()).set(1)
+    _start_process_tree_sampler()
     _start_metrics_http_server(port)
 
 

@@ -23,6 +23,7 @@
         "properties": {
           "cost_category": {"enum": ["worker", "browser", "runtime-support"]},
           "discovery_concurrency_per_instance": {"exclusiveMinimum": 0, "type": ["number", "null"]},
+          "descendant_process_cpu_seconds": {"minimum": 0, "type": ["number", "null"]},
           "execution_class": {"enum": ["http", "browser", "support"]},
           "instance_count": {"minimum": 1, "type": "integer"},
           "lanes": {"items": {"$ref": "#/$defs/lane"}, "type": "array"},
@@ -30,12 +31,44 @@
           "monitor_concurrency_per_instance": {"exclusiveMinimum": 0, "type": ["number", "null"]},
           "peak_rss_bytes_per_instance": {"minimum": 0, "type": "number"},
           "process_cpu_seconds": {"minimum": 0, "type": "number"},
+          "process_tree_cpu_scope": {"enum": ["one-crawler-role-container-per-target", null]},
+          "process_tree_cpu_source": {"enum": ["container-cgroup-v2", null]},
+          "process_tree_coverage": {"items": {"$ref": "#/$defs/processTreeCoverage"}, "type": "array"},
+          "process_tree_peak_rss_bytes_per_instance": {"minimum": 0, "type": ["number", "null"]},
+          "process_tree_successful_samples": {"minimum": 1, "type": ["integer", "null"]},
+          "resource_scope": {"enum": ["root-process", "process-tree"]},
           "retry_events": {"minimum": 0, "type": "number"},
           "role": {"minLength": 1, "type": "string"},
+          "root_peak_rss_bytes_per_instance": {"minimum": 0, "type": "number"},
+          "root_process_cpu_seconds": {"minimum": 0, "type": "number"},
           "target_ids": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true},
           "vcpu_limit_per_instance": {"type": ["number", "null"]}
         },
-        "required": ["role", "execution_class", "cost_category", "instance_count", "target_ids", "discovery_concurrency_per_instance", "monitor_concurrency_per_instance", "vcpu_limit_per_instance", "memory_limit_bytes_per_instance", "process_cpu_seconds", "peak_rss_bytes_per_instance", "retry_events", "lanes"],
+        "required": ["role", "execution_class", "cost_category", "instance_count", "target_ids", "discovery_concurrency_per_instance", "monitor_concurrency_per_instance", "vcpu_limit_per_instance", "memory_limit_bytes_per_instance", "resource_scope", "process_tree_cpu_source", "process_tree_cpu_scope", "root_process_cpu_seconds", "descendant_process_cpu_seconds", "process_cpu_seconds", "root_peak_rss_bytes_per_instance", "process_tree_peak_rss_bytes_per_instance", "peak_rss_bytes_per_instance", "process_tree_successful_samples", "process_tree_coverage", "retry_events", "lanes"],
+        "allOf": [
+          {
+            "if": {"properties": {"resource_scope": {"const": "process-tree"}}, "required": ["resource_scope"]},
+            "then": {
+              "properties": {
+                "descendant_process_cpu_seconds": {"minimum": 0, "type": "number"},
+                "process_tree_cpu_scope": {"const": "one-crawler-role-container-per-target"},
+                "process_tree_cpu_source": {"const": "container-cgroup-v2"},
+                "process_tree_coverage": {"items": {"$ref": "#/$defs/completeProcessTreeCoverage"}, "minItems": 1, "type": "array"},
+                "process_tree_peak_rss_bytes_per_instance": {"minimum": 0, "type": "number"},
+                "process_tree_successful_samples": {"minimum": 1, "type": "integer"}
+              }
+            },
+            "else": {
+              "properties": {
+                "descendant_process_cpu_seconds": {"type": "null"},
+                "process_tree_cpu_scope": {"type": "null"},
+                "process_tree_cpu_source": {"type": "null"},
+                "process_tree_peak_rss_bytes_per_instance": {"type": "null"},
+                "process_tree_successful_samples": {"type": "null"}
+              }
+            }
+          }
+        ],
         "type": "object"
       },
       "minItems": 1,
@@ -59,6 +92,26 @@
   "required": ["schema_version", "measurement_id", "workload_revision", "implementation", "source_revision", "source_releases", "window", "capture", "roles", "evidence_gaps"],
   "type": "object",
   "$defs": {
+    "completeProcessTreeCoverage": {
+      "allOf": [
+        {"$ref": "#/$defs/processTreeCoverage"},
+        {
+          "properties": {
+            "counter_resets": {"const": 0},
+            "coverage_ratio": {"maximum": 1, "minimum": 0.95, "type": "number"},
+            "end_covered": {"const": true},
+            "expected_samples": {"minimum": 2, "type": "integer"},
+            "failed_samples": {"const": 0},
+            "gap_samples": {"const": 0},
+            "missing_samples": {"minimum": 0, "type": "integer"},
+            "sampler_restarts": {"const": 0},
+            "sample_interval_seconds": {"exclusiveMinimum": 0, "maximum": 1, "type": "number"},
+            "start_covered": {"const": true},
+            "successful_samples": {"minimum": 1, "type": "integer"}
+          }
+        }
+      ]
+    },
     "lane": {
       "additionalProperties": false,
       "properties": {
@@ -71,6 +124,27 @@
         "task_active_seconds": {"minimum": 0, "type": "number"}
       },
       "required": ["stage", "execution_class", "successful_cycles", "attempted_cycles", "task_active_seconds", "origin_attempts", "response_bytes"],
+      "type": "object"
+    },
+    "processTreeCoverage": {
+      "additionalProperties": false,
+      "properties": {
+        "boundary_tolerance_seconds": {"const": 60},
+        "counter_resets": {"minimum": 0, "type": ["integer", "null"]},
+        "coverage_ratio": {"maximum": 1, "minimum": 0, "type": ["number", "null"]},
+        "end_covered": {"type": "boolean"},
+        "expected_samples": {"minimum": 0, "type": ["integer", "null"]},
+        "failed_samples": {"minimum": 0, "type": ["integer", "null"]},
+        "gap_samples": {"minimum": 0, "type": ["integer", "null"]},
+        "missing_samples": {"minimum": 0, "type": ["integer", "null"]},
+        "required_coverage_ratio": {"const": 0.95},
+        "sampler_restarts": {"minimum": 0, "type": ["integer", "null"]},
+        "sample_interval_seconds": {"exclusiveMinimum": 0, "type": ["number", "null"]},
+        "start_covered": {"type": "boolean"},
+        "successful_samples": {"minimum": 0, "type": ["integer", "null"]},
+        "target_id": {"minLength": 1, "type": "string"}
+      },
+      "required": ["target_id", "sample_interval_seconds", "expected_samples", "successful_samples", "failed_samples", "missing_samples", "counter_resets", "sampler_restarts", "gap_samples", "coverage_ratio", "required_coverage_ratio", "boundary_tolerance_seconds", "start_covered", "end_covered"],
       "type": "object"
     }
   }

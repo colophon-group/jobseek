@@ -14,7 +14,13 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from src.runtime_cost.model import MEASUREMENT_SCHEMA, ModelError
+from src.runtime_cost.model import (
+    MEASUREMENT_SCHEMA,
+    PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS,
+    PROCESS_TREE_MAX_SAMPLE_INTERVAL_SECONDS,
+    PROCESS_TREE_MIN_COVERAGE_RATIO,
+    ModelError,
+)
 
 TARGET_SCHEMA = "jobseek.crawler-runtime-capture-targets/v1"
 Query = Callable[[str, datetime], list[dict[str, Any]]]
@@ -74,6 +80,233 @@ def _instant_sum(query: Query, expression: str, at: datetime, query_name: str) -
     return _sum_vector(query(expression, at), query_name)
 
 
+def _optional_instant_sum(
+    query: Query, expression: str, at: datetime, query_name: str
+) -> float | None:
+    rows = query(expression, at)
+    if not rows:
+        return None
+    return _sum_vector(rows, query_name)
+
+
+def _nonnegative_integer(value: float | None) -> int | None:
+    if value is None or value < 0 or not value.is_integer():
+        return None
+    return int(value)
+
+
+def _counter_delta(start: float | None, end: float | None) -> int | None:
+    start_count = _nonnegative_integer(start)
+    end_count = _nonnegative_integer(end)
+    if start_count is None or end_count is None or end_count < start_count:
+        return None
+    return end_count - start_count
+
+
+def _boundary_covered(last_sample: float | None, boundary: datetime) -> bool:
+    if last_sample is None:
+        return False
+    age_seconds = boundary.timestamp() - last_sample
+    return 0 <= age_seconds <= PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS
+
+
+def _capture_process_tree_target(
+    query: Query,
+    *,
+    selector: str,
+    target_id: str,
+    start_at: datetime,
+    end_at: datetime,
+    window_seconds: int,
+    range_selector: str,
+    root_cpu_seconds: float,
+    root_peak_rss_bytes: float,
+) -> tuple[dict[str, Any], bool, float | None, float | None]:
+    """Return explicit coverage plus complete tree CPU/RSS when promotable."""
+
+    def boundary_value(
+        metric: str,
+        at: datetime,
+        label: str,
+        extra_selector: str | None = None,
+    ) -> float | None:
+        labels = selector if extra_selector is None else f"{selector},{extra_selector}"
+        return _optional_instant_sum(
+            query,
+            f"sum({metric}{{{labels}}})",
+            at,
+            f"{target_id} {label}",
+        )
+
+    interval_start = boundary_value(
+        "crawler_runtime_process_tree_sample_interval_seconds",
+        start_at,
+        "process-tree start interval",
+    )
+    interval_end = boundary_value(
+        "crawler_runtime_process_tree_sample_interval_seconds",
+        end_at,
+        "process-tree end interval",
+    )
+    interval_seconds: float | None = None
+    if (
+        interval_start is not None
+        and interval_end is not None
+        and 0 < interval_start <= PROCESS_TREE_MAX_SAMPLE_INTERVAL_SECONDS
+        and math.isclose(interval_start, interval_end, rel_tol=0, abs_tol=1e-12)
+    ):
+        interval_seconds = interval_end
+    expected_samples = (
+        math.floor(window_seconds / interval_seconds) if interval_seconds is not None else None
+    )
+
+    success_start = boundary_value(
+        "crawler_runtime_process_tree_samples_total",
+        start_at,
+        "process-tree start successes",
+        'outcome="success"',
+    )
+    success_end = boundary_value(
+        "crawler_runtime_process_tree_samples_total",
+        end_at,
+        "process-tree end successes",
+        'outcome="success"',
+    )
+    failure_start = boundary_value(
+        "crawler_runtime_process_tree_samples_total",
+        start_at,
+        "process-tree start failures",
+        'outcome="failure"',
+    )
+    failure_end = boundary_value(
+        "crawler_runtime_process_tree_samples_total",
+        end_at,
+        "process-tree end failures",
+        'outcome="failure"',
+    )
+    gap_start = boundary_value(
+        "crawler_runtime_process_tree_sampling_gaps_total",
+        start_at,
+        "process-tree start gaps",
+    )
+    gap_end = boundary_value(
+        "crawler_runtime_process_tree_sampling_gaps_total",
+        end_at,
+        "process-tree end gaps",
+    )
+    successful_samples = _counter_delta(success_start, success_end)
+    failed_samples = _counter_delta(failure_start, failure_end)
+    gap_samples = _counter_delta(gap_start, gap_end)
+    sampler_starts_start = boundary_value(
+        "crawler_runtime_process_tree_sampler_starts_total",
+        start_at,
+        "process-tree start sampler starts",
+    )
+    sampler_starts_end = boundary_value(
+        "crawler_runtime_process_tree_sampler_starts_total",
+        end_at,
+        "process-tree end sampler starts",
+    )
+    sampler_restarts = _counter_delta(sampler_starts_start, sampler_starts_end)
+
+    counter_resets = _nonnegative_integer(
+        _optional_instant_sum(
+            query,
+            (
+                "sum(resets(crawler_runtime_process_tree_samples_total"
+                f'{{{selector},outcome="success"}}[{range_selector}]))'
+            ),
+            end_at,
+            f"{target_id} process-tree counter resets",
+        )
+    )
+    last_sample_start = boundary_value(
+        "crawler_runtime_process_tree_last_sample_unixtime_seconds",
+        start_at,
+        "process-tree start heartbeat",
+    )
+    last_sample_end = boundary_value(
+        "crawler_runtime_process_tree_last_sample_unixtime_seconds",
+        end_at,
+        "process-tree end heartbeat",
+    )
+    start_covered = _boundary_covered(last_sample_start, start_at)
+    end_covered = _boundary_covered(last_sample_end, end_at)
+
+    coverage_ratio: float | None = None
+    missing_samples: int | None = None
+    if expected_samples is not None and expected_samples > 0 and successful_samples is not None:
+        coverage_ratio = min(1.0, successful_samples / expected_samples)
+        missing_samples = max(
+            0,
+            expected_samples - successful_samples - (failed_samples or 0),
+        )
+
+    tree_cpu_start = boundary_value(
+        "crawler_runtime_process_tree_cpu_seconds_total",
+        start_at,
+        "process-tree start CPU",
+    )
+    tree_cpu_end = boundary_value(
+        "crawler_runtime_process_tree_cpu_seconds_total",
+        end_at,
+        "process-tree end CPU",
+    )
+    tree_cpu_seconds = (
+        tree_cpu_end - tree_cpu_start
+        if tree_cpu_start is not None
+        and tree_cpu_end is not None
+        and tree_cpu_end >= tree_cpu_start
+        else None
+    )
+    tree_peak_rss_bytes = _optional_instant_sum(
+        query,
+        (
+            "max(max_over_time(crawler_runtime_process_tree_resident_memory_bytes"
+            f"{{{selector}}}[{range_selector}]))"
+        ),
+        end_at,
+        f"{target_id} process-tree window peak RSS",
+    )
+
+    coverage = {
+        "target_id": target_id,
+        "sample_interval_seconds": interval_seconds,
+        "expected_samples": expected_samples,
+        "successful_samples": successful_samples,
+        "failed_samples": failed_samples,
+        "missing_samples": missing_samples,
+        "counter_resets": counter_resets,
+        "sampler_restarts": sampler_restarts,
+        "gap_samples": gap_samples,
+        "coverage_ratio": coverage_ratio,
+        "required_coverage_ratio": PROCESS_TREE_MIN_COVERAGE_RATIO,
+        "boundary_tolerance_seconds": PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS,
+        "start_covered": start_covered,
+        "end_covered": end_covered,
+    }
+    complete = (
+        interval_seconds is not None
+        and expected_samples is not None
+        and expected_samples > 1
+        and successful_samples is not None
+        and failed_samples == 0
+        and missing_samples is not None
+        and counter_resets == 0
+        and sampler_restarts == 0
+        and gap_samples == 0
+        and coverage_ratio is not None
+        and coverage_ratio >= PROCESS_TREE_MIN_COVERAGE_RATIO
+        and start_covered
+        and end_covered
+        and tree_cpu_seconds is not None
+        and tree_cpu_seconds >= root_cpu_seconds
+        and tree_peak_rss_bytes is not None
+        and tree_peak_rss_bytes >= root_peak_rss_bytes
+    )
+    return coverage, complete, tree_cpu_seconds, tree_peak_rss_bytes
+
+
 def capture_prometheus_measurement(
     targets: dict[str, Any],
     *,
@@ -116,6 +349,14 @@ def capture_prometheus_measurement(
         )
         role_cpu = 0.0
         role_peak_rss = 0.0
+        role_root_cpu = 0.0
+        role_root_peak_rss = 0.0
+        role_process_tree_cpu = 0.0
+        role_descendant_cpu = 0.0
+        role_process_tree_peak_rss = 0.0
+        role_process_tree_samples = 0
+        role_process_tree_coverage: list[dict[str, Any]] = []
+        role_process_tree_complete = True
         role_retries = 0.0
         role_target_ids: list[str] = []
         cost_categories: set[str] = set()
@@ -129,21 +370,46 @@ def capture_prometheus_measurement(
             role_target_ids.append(str(target.get("id", instance)))
             label = _prom_label(instance)
             selector = f'job="crawler",instance="{label}"'
-            role_cpu += _instant_sum(
+            root_cpu = _instant_sum(
                 query,
                 f"sum(increase(process_cpu_seconds_total{{{selector}}}[{range_selector}]))",
                 end_at,
                 f"{instance} process CPU",
             )
-            role_peak_rss = max(
-                role_peak_rss,
-                _instant_sum(
-                    query,
-                    f"max(max_over_time(process_resident_memory_bytes{{{selector}}}[{range_selector}]))",
-                    end_at,
-                    f"{instance} peak RSS",
-                ),
+            root_peak_rss = _instant_sum(
+                query,
+                f"max(max_over_time(process_resident_memory_bytes{{{selector}}}[{range_selector}]))",
+                end_at,
+                f"{instance} peak RSS",
             )
+            role_root_cpu += root_cpu
+            role_root_peak_rss = max(role_root_peak_rss, root_peak_rss)
+
+            target_id = str(target.get("id", instance))
+            coverage, target_tree_complete, process_tree_cpu, process_tree_peak_rss = (
+                _capture_process_tree_target(
+                    query,
+                    selector=selector,
+                    target_id=target_id,
+                    start_at=start_at,
+                    end_at=end_at,
+                    window_seconds=window_seconds,
+                    range_selector=range_selector,
+                    root_cpu_seconds=root_cpu,
+                    root_peak_rss_bytes=root_peak_rss,
+                )
+            )
+            role_process_tree_coverage.append(coverage)
+            if target_tree_complete:
+                assert process_tree_cpu is not None
+                assert process_tree_peak_rss is not None
+                role_process_tree_cpu += process_tree_cpu
+                role_descendant_cpu += process_tree_cpu - root_cpu
+                role_process_tree_peak_rss = max(role_process_tree_peak_rss, process_tree_peak_rss)
+                successful_samples = coverage["successful_samples"]
+                assert isinstance(successful_samples, int)
+                role_process_tree_samples += successful_samples
+            role_process_tree_complete = role_process_tree_complete and target_tree_complete
             role_retries += _instant_sum(
                 query,
                 f'sum(increase(crawler_http_retry_attempts_total{{{selector},outcome="retry"}}[{range_selector}]))',
@@ -241,6 +507,20 @@ def capture_prometheus_measurement(
             or len(memory_limits) != 1
         ):
             raise ModelError(f"targets in role {role} must use identical limits and category")
+        if role_process_tree_complete:
+            role_cpu = role_process_tree_cpu
+            role_peak_rss = role_process_tree_peak_rss
+            resource_scope = "process-tree"
+        else:
+            # Mixing parent-only and process-tree totals within one role would
+            # create an irreproducible average. Fail closed to the consistently
+            # available parent-process scope until every target has coverage.
+            role_cpu = role_root_cpu
+            role_peak_rss = role_root_peak_rss
+            role_descendant_cpu = 0.0
+            role_process_tree_peak_rss = 0.0
+            role_process_tree_samples = 0
+            resource_scope = "root-process"
         role_measurements.append(
             {
                 "role": role,
@@ -252,8 +532,27 @@ def capture_prometheus_measurement(
                 "monitor_concurrency_per_instance": next(iter(monitor_concurrencies)),
                 "vcpu_limit_per_instance": next(iter(vcpu_limits)),
                 "memory_limit_bytes_per_instance": next(iter(memory_limits)),
+                "resource_scope": resource_scope,
+                "process_tree_cpu_source": (
+                    "container-cgroup-v2" if role_process_tree_complete else None
+                ),
+                "process_tree_cpu_scope": (
+                    "one-crawler-role-container-per-target" if role_process_tree_complete else None
+                ),
+                "root_process_cpu_seconds": role_root_cpu,
+                "descendant_process_cpu_seconds": (
+                    role_descendant_cpu if role_process_tree_complete else None
+                ),
                 "process_cpu_seconds": role_cpu,
+                "root_peak_rss_bytes_per_instance": role_root_peak_rss,
+                "process_tree_peak_rss_bytes_per_instance": (
+                    role_process_tree_peak_rss if role_process_tree_complete else None
+                ),
                 "peak_rss_bytes_per_instance": role_peak_rss,
+                "process_tree_successful_samples": (
+                    role_process_tree_samples if role_process_tree_complete else None
+                ),
+                "process_tree_coverage": role_process_tree_coverage,
                 "retry_events": role_retries,
                 "lanes": [
                     {
@@ -270,6 +569,23 @@ def capture_prometheus_measurement(
                 ],
             }
         )
+
+    browser_tree_complete = any(
+        role["execution_class"] == "browser" and role["resource_scope"] == "process-tree"
+        for role in role_measurements
+    ) and all(
+        role["resource_scope"] == "process-tree"
+        for role in role_measurements
+        if role["execution_class"] == "browser"
+    )
+    evidence_gaps = [
+        "origin-attempts-not-in-current-metrics",
+        "response-bytes-not-in-current-metrics",
+        "proxy-attribution-not-in-current-metrics",
+        "queue-and-redis-resource-use-requires-separate-capture",
+    ]
+    if not browser_tree_complete:
+        evidence_gaps.insert(0, "browser-child-cpu-and-rss-not-in-process-metrics")
 
     measurement_id = f"python-production-{end_at:%Y%m%d}-{window_seconds}s"
     return {
@@ -291,11 +607,5 @@ def capture_prometheus_measurement(
             "targets_revision": targets.get("revision"),
         },
         "roles": role_measurements,
-        "evidence_gaps": [
-            "browser-child-cpu-and-rss-not-in-process-metrics",
-            "origin-attempts-not-in-current-metrics",
-            "response-bytes-not-in-current-metrics",
-            "proxy-attribution-not-in-current-metrics",
-            "queue-and-redis-resource-use-requires-separate-capture",
-        ],
+        "evidence_gaps": evidence_gaps,
     }

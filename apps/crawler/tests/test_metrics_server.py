@@ -5,13 +5,19 @@ import io
 import socket
 import socketserver
 import struct
+import subprocess
+import sys
 import time
 from unittest.mock import patch
 from urllib.request import urlopen
 
 import pytest
 
-from src.metrics import _QuietThreadingWSGIServer, _start_metrics_http_server
+from src.metrics import (
+    _QuietThreadingWSGIServer,
+    _start_metrics_http_server,
+    start_metrics_server,
+)
 
 
 def _reset_connection(port: int) -> None:
@@ -27,6 +33,40 @@ def test_metrics_listener_defaults_to_loopback() -> None:
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_metrics_server_starts_process_tree_sampler() -> None:
+    with (
+        patch("src.metrics._start_process_tree_sampler") as start_sampler,
+        patch("src.metrics._start_metrics_http_server") as start_http,
+    ):
+        start_metrics_server(9123)
+
+    start_sampler.assert_called_once_with()
+    start_http.assert_called_once_with(9123)
+
+
+def test_metrics_module_import_does_not_require_runtime_cost_package() -> None:
+    script = """
+import builtins
+
+real_import = builtins.__import__
+def guarded_import(name, *args, **kwargs):
+    if name.startswith("src.runtime_cost"):
+        raise ModuleNotFoundError(name)
+    return real_import(name, *args, **kwargs)
+
+builtins.__import__ = guarded_import
+import src.metrics
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
 
 
 def test_metrics_client_reset_does_not_emit_traceback():
