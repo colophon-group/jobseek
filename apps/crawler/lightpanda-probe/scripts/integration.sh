@@ -20,6 +20,7 @@ cleanup() {
 trap cleanup EXIT
 cleanup
 
+echo "probe phase: verify immutable browser image"
 inspect_json="$(docker buildx imagetools inspect "$browser_image" --format '{{json .}}')"
 test "$(jq -r '.manifest.digest' <<<"$inspect_json")" = "$expected_index"
 test "$(jq -r '[.manifest.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64") | .digest][0]' <<<"$inspect_json")" = "$expected_amd64"
@@ -29,6 +30,7 @@ grep -F '0.3.6' <<<"$version_output" >/dev/null
 test "$(docker image inspect "$browser_image" --format '{{.Architecture}}')" = amd64
 
 cd "$probe_root"
+echo "probe phase: build synthetic services"
 rm -rf bin out
 mkdir -p bin out
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/fixture ./cmd/fixture
@@ -56,6 +58,7 @@ run_probe() {
 }
 
 ready=false
+echo "probe phase: establish browser readiness"
 for attempt in $(seq 1 20); do
   run_probe navigation navigation-1
   if jq -e '.result.success != null' "$output_dir/navigation-1.json" >/dev/null; then
@@ -74,6 +77,7 @@ fi
 for run in 2 3 4 5; do
   run_probe navigation "navigation-$run"
 done
+echo "probe phase: verify repeated navigation"
 for run in 1 2 3 4 5; do
   result="$output_dir/navigation-$run.json"
   jq -e '.result.success != null' "$result" >/dev/null
@@ -81,9 +85,14 @@ for run in 1 2 3 4 5; do
   jq -e '[.ledger[].path] | index("/static/navigation.js") != null and index("/static/dynamic.js") != null' "$result" >/dev/null
 done
 for run in 2 3 4 5; do
-  cmp "$output_dir/navigation-1.json" "$output_dir/navigation-$run.json"
+  if ! (cd "$output_dir" && cmp navigation-1.json "navigation-$run.json"); then
+    echo "navigation output mismatch: run 1 versus run $run" >&2
+    (cd "$output_dir" && diff -u navigation-1.json "navigation-$run.json") || true
+    exit 1
+  fi
 done
 
+echo "probe phase: verify JavaScript and policy outcomes"
 run_probe javascript javascript
 jq -e '.result.success.evaluations[0].value.payload == "NDI="' "$output_dir/javascript.json" >/dev/null
 
@@ -115,6 +124,7 @@ run_probe hang timeout
 jq -e '.result.error.error.code == "ERROR_CODE_TIMEOUT" and .result.success == null' "$output_dir/timeout.json" >/dev/null
 
 hang_before="$(docker logs "$fixture_container" 2>&1 | grep -c 'GET /hang' || true)"
+echo "probe phase: verify renderer loss and recovery"
 docker run --detach \
   --name "$crash_container" \
   --network "$network_name" \
@@ -150,6 +160,7 @@ for attempt in $(seq 1 20); do
 done
 test "$ready" = true
 
+echo "probe phase: emit sanitized result digests"
 (
   cd "$output_dir"
   find . -maxdepth 1 -type f -name '*.json' -exec sha256sum {} + \
