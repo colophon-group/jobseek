@@ -138,6 +138,29 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    async def test_request_headers_select_public_gateway_representation(self):
+        from src.core.scrapers.dom import scrape
+
+        requested: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(request)
+            return httpx.Response(200, text="<html><body><h1>Gateway role</h1></body></html>")
+
+        config = {
+            "request_headers": {"X-Return-Format": "html"},
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            headers={"Authorization": "Bearer secret"},
+        ) as client:
+            result = await scrape("https://gateway.example/jobs/42", config, client)
+
+        assert result.title == "Gateway role"
+        assert requested[0].headers["x-return-format"] == "html"
+        assert "authorization" not in requested[0].headers
+
     async def test_fetch_url_transform_reads_gateway_without_changing_extraction(self):
         from src.core.scrapers.dom import scrape
 

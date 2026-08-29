@@ -7,6 +7,12 @@ from src.shared.public_request_headers import public_get, validated_public_reque
 from src.shared.response_fingerprint import same_origin_response
 
 
+def test_configured_public_headers_allow_representation_selection():
+    assert validated_public_request_headers(
+        {"X-Return-Format": "html"}, owner="test"
+    ) == {"X-Return-Format": "html"}
+
+
 @pytest.mark.parametrize(
     "header",
     [

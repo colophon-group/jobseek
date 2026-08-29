@@ -186,6 +186,58 @@ class TestDiscover:
 
         assert exc.value.last_status == 429
 
+    async def test_rate_limit_falls_back_to_verified_empty_markdown(self, monkeypatch):
+        monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
+
+        def handler(request):
+            if request.method == "POST":
+                return httpx.Response(429)
+            assert str(request.url).endswith("/testco/llms.txt")
+            return httpx.Response(
+                200,
+                text=(
+                    "## Open Positions\n"
+                    "- All open roles (GET `https://apply.workable.com/testco/jobs.md`): "
+                    "0 current openings\n"
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://apply.workable.com/testco",
+                "metadata": {"token": "testco"},
+            }
+            result = await discover(board, client)
+
+        assert result.urls == set()
+        assert result.verified_empty_reason == (
+            "Workable llms.txt advertises zero current openings"
+        )
+
+    async def test_rate_limit_rejects_positive_markdown_inventory(self, monkeypatch):
+        monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
+
+        def handler(request):
+            if request.method == "POST":
+                return httpx.Response(429)
+            assert str(request.url).endswith("/testco/llms.txt")
+            return httpx.Response(
+                200,
+                text=(
+                    "- All open roles "
+                    "(GET `https://apply.workable.com/testco/jobs.md`): "
+                    "2 current openings\n"
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://apply.workable.com/testco",
+                "metadata": {"token": "testco"},
+            }
+            with pytest.raises(ValueError, match="positive markdown inventories"):
+                await discover(board, client)
+
     async def test_mid_pagination_429_fails_closed(self, monkeypatch):
         monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
         calls = 0
@@ -209,7 +261,9 @@ class TestDiscover:
                 await discover(board, client)
 
         assert exc.value.last_status == 429
-        assert calls == 5
+        # One successful API page, four rate-limited API attempts, then the
+        # three-attempt fail-closed markdown fallback.
+        assert calls == 8
 
 
 class TestCanHandle:
