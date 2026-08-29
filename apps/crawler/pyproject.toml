@@ -21,7 +21,7 @@ dependencies = [
     "playwright>=1.62.0",
     "fast-langdetect>=1.0.1",
     "prometheus-client>=0.26.0",
-    "protobuf==6.33.0",
+    "protobuf==6.33.6",
     "redis>=8.1.0",
     "alembic>=1.19.1",
     "psycopg2-binary>=2.9.12",

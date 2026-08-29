@@ -9,6 +9,8 @@ on:
       - 'deploy/systemd/jobseek-ats-inventory-network.service'
       - 'apps/crawler/src/ats_inventory/**'
       - 'apps/crawler/src/cli.py'
+      - 'apps/crawler/contracts/go.mod'
+      - 'apps/crawler/contracts/go.sum'
       - 'apps/crawler/contracts/v1/**'
       - '.github/workflows/deploy-ats-inventory.yml'
   workflow_dispatch:

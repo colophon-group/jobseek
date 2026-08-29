@@ -360,6 +360,8 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "could not classify the full push range" in workflow
     assert "full push range contains no changed paths" in workflow
     assert "'apps/crawler/contracts/v1/**'" in workflow
+    assert "'apps/crawler/contracts/go.mod'" in workflow
+    assert "'apps/crawler/contracts/go.sum'" in workflow
     assert "'!apps/crawler/contracts/v1/**'" not in workflow
     assert "apps/crawler/contracts/v1/*) ;;" not in workflow
     assert "inactive_v1_policy" not in workflow

@@ -71,6 +71,10 @@ const deployCrawlerWorkflow = readFileSync(
   ".github/workflows/deploy-crawler-browser.yml",
   "utf8",
 );
+const crawlerRuntimeContractsWorkflow = readFileSync(
+  ".github/workflows/crawler-runtime-contracts.yml",
+  "utf8",
+);
 const crawlerDockerfile = readFileSync("apps/crawler/Dockerfile", "utf8");
 const crawlerPyproject = readFileSync("apps/crawler/pyproject.toml", "utf8");
 const crawlerDeployScript = readFileSync("apps/crawler/deploy.sh", "utf8");
@@ -541,15 +545,18 @@ test("manual PR classification exports the validated PR base context", () => {
   assert.match(result.outputs, /^base_ref=main$/m);
 });
 
-test("active runtime v1 retains full code and crawler CI", () => {
-  const result = runClassifyPrPaths({
-    files: ["apps/crawler/contracts/v1/runtime.proto"],
-    baseRef: "main",
-  });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.outputs, /^code=true$/m);
-  assert.match(result.outputs, /^crawler_code=true$/m);
-  assert.match(result.outputs, /^codeql=true$/m);
+test("runtime contract module and v1 retain full code and crawler CI", () => {
+  for (const file of [
+    "apps/crawler/contracts/go.mod",
+    "apps/crawler/contracts/go.sum",
+    "apps/crawler/contracts/v1/runtime.proto",
+  ]) {
+    const result = runClassifyPrPaths({ files: [file], baseRef: "main" });
+    assert.equal(result.status, 0, `${file}: ${result.stderr}`);
+    assert.match(result.outputs, /^code=true$/m, file);
+    assert.match(result.outputs, /^crawler_code=true$/m, file);
+    assert.match(result.outputs, /^codeql=true$/m, file);
+  }
   assert.match(
     workflow,
     /crawler_code:\n\s+- 'apps\/crawler\/\*\*'/,
@@ -665,6 +672,21 @@ test("crawler deployment includes active runtime v1", () => {
     /!apps\/crawler\/contracts\/v2\/\*\*/,
   );
   assert.doesNotMatch(deployCrawlerWorkflow, /#8046/);
+});
+
+test("runtime contract module manifests trigger all contract consumers", () => {
+  for (const file of ["go.mod", "go.sum"]) {
+    const escaped = file.replace(".", "\\.");
+    assert.match(
+      crawlerRuntimeContractsWorkflow,
+      new RegExp(`apps/crawler/contracts/${escaped}`),
+    );
+    assert.match(
+      deployCrawlerWorkflow,
+      /- 'apps\/crawler\/\*\*'/,
+      file,
+    );
+  }
 });
 
 test("runtime v1 is present in both crawler packaging boundaries", () => {
@@ -1713,6 +1735,8 @@ test("crawler deploy gate mirrors runtime deploy path exclusions", () => {
 
 test("crawler deploy gate classifies pure runtime-v1 diffs as active", () => {
   for (const files of [
+    ["apps/crawler/contracts/go.mod"],
+    ["apps/crawler/contracts/go.sum"],
     ["apps/crawler/contracts/v1/runtime.proto"],
     [
       "apps/crawler/contracts/v1/old-name.proto",

@@ -14,7 +14,7 @@
   "runtimes": {
     "go_protobuf": "1.36.10",
     "python": "3.13",
-    "python_protobuf": "6.33.0"
+    "python_protobuf": "6.33.6"
   },
   "source": "runtime.proto",
   "source_sha256": "9255752c976b970510fbc1d772321cb731d9f54bb2de6f0bf7193398a19c3191"

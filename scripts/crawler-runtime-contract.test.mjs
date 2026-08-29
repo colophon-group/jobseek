@@ -33,6 +33,8 @@ test("runtime contract matches the crawler deploy boundary", () => {
     "apps/crawler/data/occupations.csv",
     "apps/crawler/data/seniority.csv",
     "apps/crawler/data/technologies.csv",
+    "apps/crawler/contracts/go.mod",
+    "apps/crawler/contracts/go.sum",
     "apps/crawler/contracts/v1/runtime.proto",
     "apps/crawler/contracts/v1/fixtures/replay.json",
     ".github/workflows/deploy-crawler-browser.yml",

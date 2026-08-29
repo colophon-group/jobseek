@@ -24,7 +24,7 @@ The activation candidate is based on repository commit
 - Python: `3.13.15`
 - Go language and CI toolchain: `1.24.0`
 - `grpcio-tools`: `1.76.0` (`libprotoc 31.1`)
-- Python `protobuf`: `6.33.0`
+- Python `protobuf`: `6.33.6`
 - `protoc-gen-go`: `1.36.10`
 - Go `google.golang.org/protobuf`: `1.36.10`
 - Go module: `github.com/colophon-group/jobseek/apps/crawler/contracts`

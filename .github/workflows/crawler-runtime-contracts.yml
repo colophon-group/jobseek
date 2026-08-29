@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'apps/crawler/contracts/go.mod'
+      - 'apps/crawler/contracts/go.sum'
       - 'apps/crawler/contracts/v1/**'
       - 'apps/crawler/pyproject.toml'
       - 'apps/crawler/uv.lock'
@@ -13,6 +15,8 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'apps/crawler/contracts/go.mod'
+      - 'apps/crawler/contracts/go.sum'
       - 'apps/crawler/contracts/v1/**'
       - 'apps/crawler/pyproject.toml'
       - 'apps/crawler/uv.lock'

@@ -82,7 +82,7 @@ def test_generated_runtime_manifest_covers_every_managed_output() -> None:
     assert manifest["runtimes"] == {
         "go_protobuf": "1.36.10",
         "python": "3.13",
-        "python_protobuf": "6.33.0",
+        "python_protobuf": "6.33.6",
     }
 
     assert set(manifest["outputs"]) == {

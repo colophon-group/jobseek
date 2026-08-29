@@ -54,6 +54,8 @@ test("explicit crawler releases remain the default", () => {
 
 test("runtime v1 changes require an ordinary crawler release", () => {
   for (const files of [
+    ["apps/crawler/contracts/go.mod"],
+    ["apps/crawler/contracts/go.sum"],
     ["apps/crawler/contracts/v1/runtime.proto"],
     [
       "apps/crawler/contracts/v1/runtime.proto",
