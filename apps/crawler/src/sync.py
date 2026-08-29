@@ -75,6 +75,32 @@ class CompanyTypesenseSyncError(RuntimeError):
     """Fail-closed company index error that must abort crawler sync."""
 
 
+def _scraper_chain_needs_browser(
+    scraper_type: str | None, scraper_config: dict[str, Any] | None
+) -> bool:
+    """Return whether any scraper in the configured fallback chain needs a browser."""
+
+    current_type = scraper_type
+    current_config = scraper_config
+    while current_type:
+        if scraper_needs_browser(current_type, current_config):
+            return True
+
+        fallback = current_config.get("fallback") if current_config else None
+        if not isinstance(fallback, dict):
+            return False
+
+        fallback_type = fallback.get("type")
+        if not isinstance(fallback_type, str) or not fallback_type:
+            return False
+
+        fallback_config = fallback.get("config")
+        current_type = fallback_type
+        current_config = fallback_config if isinstance(fallback_config, dict) else None
+
+    return False
+
+
 def _monitor_config_fingerprint(
     board_url: str,
     monitor_type: str,
@@ -1357,15 +1383,7 @@ async def sync_boards(
         mon_browser = monitor_needs_browser(mon_type, metadata_obj)
         scr_type = metadata_obj.get("scraper_type")
         scr_cfg = metadata_obj.get("scraper_config")
-        scr_browser = scraper_needs_browser(scr_type, scr_cfg) if scr_type else False
-        # Also check fallback chain
-        if not scr_browser and scr_cfg and isinstance(scr_cfg, dict):
-            for fb in scr_cfg.get("fallback", []):
-                fb_type = fb if isinstance(fb, str) else fb.get("type", "")
-                fb_cfg = None if isinstance(fb, str) else fb.get("config")
-                if scraper_needs_browser(fb_type, fb_cfg):
-                    scr_browser = True
-                    break
+        scr_browser = _scraper_chain_needs_browser(scr_type, scr_cfg)
 
         company_slugs.append(row["company_slug"])
         board_slugs.append(_or_none(row.get("board_slug")))
