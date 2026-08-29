@@ -173,6 +173,15 @@ def test_visibility_tokenizer_observes_hidden_subtrees_and_closed_spaces(
         "<div>" * 129 + "visible" + "</div>" * 129,
         "x" * (1_048_576 + 1),
     ],
+    ids=[
+        "unclosed-hidden-subtree",
+        "unclosed-ignored-subtree",
+        "unclosed-comment",
+        "unclosed-attribute-quote",
+        "forbidden-control",
+        "nesting-limit",
+        "byte-limit",
+    ],
 )
 def test_visibility_tokenizer_rejects_unsafe_state(html: str) -> None:
     with pytest.raises(semantics.SemanticFailure) as caught:
