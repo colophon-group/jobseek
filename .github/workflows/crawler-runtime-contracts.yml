@@ -50,7 +50,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.24.0"
-          cache-dependency-path: apps/crawler/contracts/v1/go.sum
+          cache-dependency-path: apps/crawler/contracts/go.sum
 
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -89,22 +89,22 @@ jobs:
             tests/test_runtime_contracts.py
 
       - name: Test Go bindings and conformance
-        working-directory: apps/crawler/contracts/v1
+        working-directory: apps/crawler/contracts
         run: |
           set -euo pipefail
-          go test -race ./...
-          go vet ./...
+          go test -race ./v1/...
+          go vet ./v1/...
 
       - name: Test generated Go package from an external consumer
         env:
-          CONTRACT_MODULE: github.com/colophon-group/jobseek/apps/crawler/contracts/v1
+          CONTRACT_MODULE: github.com/colophon-group/jobseek/apps/crawler/contracts
         run: |
           set -euo pipefail
           consumer="$(mktemp -d "$RUNNER_TEMP/runtime-v1-go-consumer.XXXXXX")"
           cd "$consumer"
           go mod init example.com/runtime-v1-consumer
           go mod edit "-require=${CONTRACT_MODULE}@v0.0.0"
-          go mod edit "-replace=${CONTRACT_MODULE}=${GITHUB_WORKSPACE}/apps/crawler/contracts/v1"
+          go mod edit "-replace=${CONTRACT_MODULE}=${GITHUB_WORKSPACE}/apps/crawler/contracts"
           cat > runtime_test.go <<'EOF'
           package consumer
 
