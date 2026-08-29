@@ -4,6 +4,7 @@ import asyncio
 import json
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import polars as pl
@@ -30,6 +31,7 @@ from src.sync import (
     _load_companies,
     _monitor_config_fingerprint,
     _one_year_ago_epoch,
+    _require_installed_sync_data_mount,
     _ts_bulk_upsert,
     apply_board_redis_effects,
     refresh_typesense_counts,
@@ -169,6 +171,82 @@ class TestBoardSourceChangeReset:
         # Existing runtime state is on the right-hand side of jsonb `||`, so
         # it wins over any stale receipt accidentally supplied by CSV input.
         assert sql.index(source_changed) < sql.index("ELSE EXCLUDED.metadata ||")
+
+
+class TestInstalledSyncDataMount:
+    def test_checked_out_sync_does_not_require_mountinfo(self, tmp_path, monkeypatch):
+        data_dir = MagicMock()
+        monkeypatch.setattr("src.sync.is_source_checkout", lambda: True)
+        monkeypatch.setattr("src.sync.get_data_dir", data_dir)
+        monkeypatch.setattr("src.sync._MOUNTINFO_PATH", tmp_path / "missing-mountinfo")
+
+        _require_installed_sync_data_mount()
+
+        data_dir.assert_not_called()
+
+    def test_installed_sync_accepts_separate_read_only_mount(self, tmp_path, monkeypatch):
+        mountinfo = tmp_path / "mountinfo"
+        mountinfo.write_text(
+            "36 25 0:32 / /app/data ro,nosuid,nodev - ext4 /dev/root rw\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr("src.sync.is_source_checkout", lambda: False)
+        monkeypatch.setattr("src.sync.get_data_dir", lambda: Path("/app/data"))
+        monkeypatch.setattr("src.sync._MOUNTINFO_PATH", mountinfo)
+
+        _require_installed_sync_data_mount()
+
+    @pytest.mark.parametrize(
+        "mountinfo_content",
+        [
+            "35 25 0:31 / / rw,relatime - overlay overlay rw\n",
+            "36 25 0:32 / /app/data rw,nosuid,nodev - ext4 /dev/root rw\n",
+        ],
+    )
+    def test_installed_sync_rejects_absent_or_writable_mount(
+        self, tmp_path, monkeypatch, mountinfo_content
+    ):
+        mountinfo = tmp_path / "mountinfo"
+        mountinfo.write_text(mountinfo_content, encoding="utf-8")
+        monkeypatch.setattr("src.sync.is_source_checkout", lambda: False)
+        monkeypatch.setattr("src.sync.get_data_dir", lambda: Path("/app/data"))
+        monkeypatch.setattr("src.sync._MOUNTINFO_PATH", mountinfo)
+
+        with pytest.raises(
+            RuntimeError,
+            match=r"installed crawler sync requires /app/data to be a separate read-only mount",
+        ):
+            _require_installed_sync_data_mount()
+
+    @pytest.mark.asyncio
+    async def test_unmounted_installed_sync_fails_before_loaders_or_clients(
+        self, tmp_path, monkeypatch
+    ):
+        mountinfo = tmp_path / "mountinfo"
+        mountinfo.write_text(
+            "35 25 0:31 / / rw,relatime - overlay overlay rw\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr("src.sync.is_source_checkout", lambda: False)
+        monkeypatch.setattr("src.sync.get_data_dir", lambda: Path("/app/data"))
+        monkeypatch.setattr("src.sync._MOUNTINFO_PATH", mountinfo)
+        with (
+            patch("src.sync._load_companies") as load_companies,
+            patch("src.sync.get_typesense_client") as typesense_client,
+            patch("src.sync.create_local_pool") as create_local_pool,
+            pytest.raises(
+                RuntimeError,
+                match=(
+                    r"installed crawler sync requires /app/data "
+                    r"to be a separate read-only mount"
+                ),
+            ),
+        ):
+            await run_sync()
+
+        load_companies.assert_not_called()
+        typesense_client.assert_not_called()
+        create_local_pool.assert_not_called()
 
 
 class TestLoadCompanies:

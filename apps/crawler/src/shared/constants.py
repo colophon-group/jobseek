@@ -45,7 +45,7 @@ def get_repo_root() -> Path | None:
     return _repo_root
 
 
-def _is_source_checkout() -> bool:
+def is_source_checkout() -> bool:
     """Return whether this imported module is the checkout's source file."""
 
     source_file = _CHECKOUT_CRAWLER_ROOT / "src" / "shared" / "constants.py"
@@ -68,7 +68,7 @@ def get_data_dir() -> Path:
 
     if _repo_root:
         return _repo_root / "apps" / "crawler" / "data"
-    if _is_source_checkout():
+    if is_source_checkout():
         return DATA_DIR
     if _INSTALLED_DATA_DIR.is_dir():
         return _INSTALLED_DATA_DIR

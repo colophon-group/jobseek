@@ -24,6 +24,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
 
@@ -48,7 +49,7 @@ from src.redis_queue import (
     remove_monitors,
 )
 from src.shared.avature import avature_request_host
-from src.shared.constants import get_data_dir
+from src.shared.constants import get_data_dir, is_source_checkout
 from src.shared.logging import setup_logging
 from src.shared.taleo import taleo_request_host
 from src.typesense_client import get_typesense_client
@@ -58,6 +59,7 @@ _MONITOR_CONFIG_FINGERPRINT = "_monitor_config_fingerprint"
 _RECOVERY_SCHEDULE_STATUSES = frozenset({"quarantined", "gone_pending", "gone"})
 
 log = structlog.get_logger()
+_MOUNTINFO_PATH = Path("/proc/self/mountinfo")
 
 # The web app filters every list/search/facet surface by
 # `is_active:true && has_content:!=false` (POSTING_BASE_FILTER, see
@@ -71,6 +73,52 @@ _POSTING_FLOW_FILTER = "has_content:!=false"
 
 class CompanyTypesenseSyncError(RuntimeError):
     """Fail-closed company index error that must abort crawler sync."""
+
+
+def _decode_mountinfo_path(value: str) -> str:
+    """Decode the octal escapes used for paths in Linux mountinfo."""
+
+    for encoded, decoded in (
+        (r"\040", " "),
+        (r"\011", "\t"),
+        (r"\012", "\n"),
+        (r"\134", "\\"),
+    ):
+        value = value.replace(encoded, decoded)
+    return value
+
+
+def _require_installed_sync_data_mount() -> None:
+    """Require installed sync to consume a distinct read-only data mount.
+
+    Long-lived installed roles intentionally use the CSV tree baked into the
+    image, so this stronger provenance check belongs to ``crawler sync`` only.
+    Checked-out developer/CI execution retains the repository data contract.
+    """
+
+    if is_source_checkout():
+        return
+
+    data_dir = get_data_dir()
+    try:
+        mountinfo = _MOUNTINFO_PATH.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise RuntimeError(
+            "installed crawler sync requires /app/data to be a separate read-only mount"
+        ) from exc
+
+    for line in mountinfo.splitlines():
+        mount_fields = line.partition(" - ")[0].split()
+        if len(mount_fields) < 6:
+            continue
+        mount_point = _decode_mountinfo_path(mount_fields[4])
+        mount_options = frozenset(mount_fields[5].split(","))
+        if mount_point == str(data_dir):
+            if "ro" in mount_options:
+                return
+            break
+
+    raise RuntimeError("installed crawler sync requires /app/data to be a separate read-only mount")
 
 
 def _scraper_chain_needs_browser(
@@ -3516,6 +3564,7 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
     from the mere presence of ``DATABASE_URL`` and refuses to start when that
     credential is absent.
     """
+    _require_installed_sync_data_mount()
     setup_logging(settings.log_level)
 
     if legacy_mirror and not settings.database_url:

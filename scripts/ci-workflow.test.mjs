@@ -609,10 +609,23 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   assert.match(crawlerImageJob, /target=\/app\/data,readonly/);
   assert.match(crawlerImageJob, /--workdir \/tmp/);
   assert.match(crawlerImageJob, /sync\._load_companies/);
-  assert.match(crawlerImageJob, /mv \/app\/data \/app\/baked-data-hidden/);
+  assert.match(crawlerImageJob, /sync\._load_boards/);
+  assert.match(crawlerImageJob, /sync\._load_occupation_domains/);
+  assert.match(crawlerImageJob, /sync\._load_occupations/);
+  assert.match(crawlerImageJob, /sync\._load_seniority/);
+  assert.match(crawlerImageJob, /sync\._load_industries/);
+  assert.match(crawlerImageJob, /sync\._load_company_descriptions/);
+  assert.match(crawlerImageJob, /sync\._load_technologies/);
+  assert.match(crawlerImageJob, /occupation_resolve\.match_occupation/);
+  assert.match(crawlerImageJob, /seniority_resolve\._load_seniority_slugs/);
+  assert.match(crawlerImageJob, /technology_resolve\.match_technologies/);
+  assert.match(crawlerImageJob, /company\.match_industry/);
+  assert.match(crawlerImageJob, /taxonomy\._load_tech_name_map/);
+  assert.doesNotMatch(crawlerImageJob, /mv \/app\/data/);
+  assert.match(crawlerImageJob, /--entrypoint \/app\/\.venv\/bin\/crawler/);
   assert.match(
     crawlerImageJob,
-    /installed crawler runtime requires the \/app\/data directory/,
+    /installed crawler sync requires \/app\/data to be a separate read-only mount/,
   );
   assert.match(crawlerImageJob, /target: full/);
   assert.match(crawlerImageJob, /push: false/);
