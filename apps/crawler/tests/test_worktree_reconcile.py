@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import os
+import shutil
 import sqlite3
 import stat
 import subprocess
@@ -66,6 +67,25 @@ def _terminal_run(
         branch=branch,
     )
     ledger.finish(run_id, state, error="terminal test run")
+
+
+def _record_verified_trace(ledger: RunnerLedger, run_id: str) -> None:
+    from src.workspace.trace_backfill import record_verified_export
+
+    record_verified_export(
+        ledger_path=ledger.path,
+        run_id=run_id,
+        remote_dir=f"training-bundles/v2/gold/{run_id}",
+        manifest={
+            "schema_version": "jobseek-codex-training-bundle/v2",
+            "quality": {"tier": "gold"},
+            "bundle_content_sha256": f"verified-{run_id}",
+            "thread_count": 1,
+            "subagent_count": 0,
+            "files": [],
+        },
+        verified={},
+    )
 
 
 def _reconcile(
@@ -264,6 +284,86 @@ def test_clean_terminal_worktree_has_exact_dry_run_then_durable_removal(
     assert [event["action"] for event in events] == ["removal_started", "removed"]
     assert events[-1]["reclaimed_bytes"] == applied.reclaimed_bytes
     assert events[-1]["remote_proof_json"]
+
+
+def test_verified_resolved_workspace_evidence_is_discarded_without_archive(
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    (repo / ".git" / "info" / "exclude").write_text("apps/crawler/.workspace/\n")
+    workspace = worktree / "apps" / "crawler" / ".workspace" / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n")
+    (workspace / "evidence.json").write_text('{"resolved": true}\n')
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    run_id = "issue-101-1-aaaaaaaa"
+    _terminal_run(ledger, worktree, run_id=run_id, state="submitted")
+    _record_verified_trace(ledger, run_id)
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        pre_remove=lambda _item: shutil.rmtree(workspace.parent),
+    )
+
+    assert report.removed == 1
+    assert report.archived == 0
+    assert report.quarantine_bytes == 0
+    assert not worktree.exists()
+    proof = json.loads(ledger.worktree_reconciliation_events()[-1]["remote_proof_json"])
+    assert proof["trace_export_verified"] is True
+
+
+def test_trace_attempt_status_cannot_authorize_workspace_discard(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    (repo / ".git" / "info" / "exclude").write_text("apps/crawler/.workspace/\n")
+    workspace = worktree / "apps" / "crawler" / ".workspace" / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n")
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    run_id = "issue-101-1-aaaaaaaa"
+    _terminal_run(ledger, worktree, run_id=run_id, state="submitted")
+    ledger.record_trace_bundle_attempt(run_id, status="cleaned")
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        pre_remove=lambda _item: shutil.rmtree(workspace.parent),
+    )
+
+    assert report.removed == 1
+    assert report.archived == 1
+    assert report.quarantine_bytes > 0
+    proof = json.loads(ledger.worktree_reconciliation_events()[-1]["remote_proof_json"])
+    assert proof["trace_export_verified"] is False
+
+
+def test_verified_retryable_workspace_evidence_is_still_archived(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    (repo / ".git" / "info" / "exclude").write_text("apps/crawler/.workspace/\n")
+    workspace = worktree / "apps" / "crawler" / ".workspace" / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n")
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    run_id = "issue-101-1-aaaaaaaa"
+    _terminal_run(ledger, worktree, run_id=run_id, state="retryable")
+    _record_verified_trace(ledger, run_id)
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        pre_remove=lambda _item: shutil.rmtree(workspace.parent),
+    )
+
+    assert report.removed == 1
+    assert report.archived == 1
+    assert report.quarantine_bytes > 0
 
 
 def test_archive_recovery_events_only_return_durable_pre_unlink_evidence(
