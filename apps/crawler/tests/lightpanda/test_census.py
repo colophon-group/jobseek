@@ -118,6 +118,31 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
     assert len(first["manifest_sha256"]) == 64
 
 
+def test_nextdata_item_inclusions_are_sanitized_and_tracked(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "filtered-nextdata",
+                monitor_type="nextdata",
+                monitor_config={
+                    "include_item_values": {"company": ["secret-tenant"]},
+                    "render": True,
+                },
+            )
+        ],
+    )
+
+    manifest = build_manifest(boards)
+    rendered = manifest_bytes(manifest).decode("ascii")
+
+    assert any(
+        record["profile_kind"] == "configured" and record["crawler_type"] == "nextdata"
+        for record in manifest["records"]
+    )
+    assert "secret-tenant" not in rendered
+
+
 def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
     boards = _write_boards(tmp_path / "boards.csv", [_row("static")])
 
