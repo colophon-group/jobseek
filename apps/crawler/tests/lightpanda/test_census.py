@@ -152,6 +152,55 @@ def test_browser_monitor_config_fails_closed(
 
 
 @pytest.mark.parametrize(
+    "row",
+    [
+        _row("monitor-typo", monitor_type="dom", monitor_config={"rendr": True}),
+        _row("scraper-typo", scraper_type="dom", scraper_config={"rendr": True}),
+        _row(
+            "fallback-typo",
+            scraper_config={"fallback": {"type": "dom", "config": {"rendr": True}}},
+        ),
+    ],
+)
+def test_browser_capable_config_fails_closed_before_relevance_filter(
+    tmp_path: Path, row: dict[str, str]
+) -> None:
+    boards = _write_boards(tmp_path / "boards.csv", [row])
+
+    with pytest.raises(CensusError, match="unknown (monitor|scraper) config keys"):
+        build_manifest(boards)
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_nonstandard_json_constants_fail_closed(tmp_path: Path, constant: str) -> None:
+    row = _row("nonfinite", monitor_type="dom")
+    row["monitor_config"] = f'{{"render":true,"defaults":{constant}}}'
+    boards = _write_boards(tmp_path / "boards.csv", [row])
+
+    with pytest.raises(CensusError, match="non-standard JSON constant"):
+        build_manifest(boards)
+
+
+def test_boolean_action_integer_fails_closed(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "boolean-page-size",
+                monitor_type="dom",
+                monitor_config={
+                    "actions": [{"action": "paginate_collect", "page_size": True}],
+                    "render": True,
+                },
+            )
+        ],
+    )
+
+    with pytest.raises(CensusError, match="page_size must be a string or integer"):
+        build_manifest(boards)
+
+
+@pytest.mark.parametrize(
     "fallback",
     [
         ["dom"],

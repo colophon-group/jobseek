@@ -334,11 +334,20 @@ _SELECTOR_KEYS = frozenset(
         "next_selector",
         "nonempty_selector",
         "page_size_selector",
+        "partition_fallback_selector",
+        "partition_selector",
+        "required_link_selector",
+        "row_required_selector",
+        "row_selector",
         "scope",
         "selector",
         "source_identity_selector",
+        "title_selector",
+        "total_selector",
     }
 )
+_SELECTOR_LIST_KEYS = frozenset({"location_selectors"})
+_SELECTOR_MAP_KEYS = {"metadata_selectors": frozenset({"opportunity_type", "valid_through"})}
 _ACTION_KEYS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "click": (frozenset({"action", "selector"}), frozenset({"required", "timeout"})),
     "dismiss_overlays": (frozenset({"action"}), frozenset({"required", "timeout"})),
@@ -425,13 +434,31 @@ def _sha256(value: object) -> str:
 def _load_config(raw: str, *, row_number: int, field: str) -> dict[str, Any]:
     if not raw:
         return {}
+
+    def reject_constant(constant: str) -> object:
+        raise CensusError(
+            f"row {row_number} {field} contains non-standard JSON constant {constant}"
+        )
+
     try:
-        value = json.loads(raw)
+        value = json.loads(raw, parse_constant=reject_constant)
     except json.JSONDecodeError as exc:
         raise CensusError(f"row {row_number} has invalid {field} JSON") from exc
+    _validate_finite_json(value, path=f"row {row_number} {field}")
     if not isinstance(value, dict):
         raise CensusError(f"row {row_number} {field} must be an object")
     return value
+
+
+def _validate_finite_json(value: object, *, path: str) -> None:
+    if isinstance(value, float) and not math.isfinite(value):
+        raise CensusError(f"{path} contains a non-finite number")
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _validate_finite_json(item, path=f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            _validate_finite_json(item, path=f"{path}[{index}]")
 
 
 def _browser_capable_monitor_types() -> frozenset[str]:
@@ -473,10 +500,21 @@ def _validate_selector_fields(value: object, *, path: str = "config") -> None:
     if isinstance(value, dict):
         for key, item in value.items():
             child_path = f"{path}.{key}"
-            if "selector" in key or key in {"frame", "scope"}:
-                if key not in _SELECTOR_KEYS:
-                    raise CensusError(f"unknown selector field {child_path}")
+            if key in _SELECTOR_KEYS:
                 _validate_selector(item, path=child_path)
+            elif key in _SELECTOR_LIST_KEYS:
+                if not isinstance(item, list) or not 1 <= len(item) <= 2:
+                    raise CensusError(f"{child_path} must contain one or two selectors")
+                for index, selector in enumerate(item):
+                    _validate_selector(selector, path=f"{child_path}[{index}]")
+            elif key in _SELECTOR_MAP_KEYS:
+                allowed = _SELECTOR_MAP_KEYS[key]
+                if not isinstance(item, dict) or not item or not set(item) <= allowed:
+                    raise CensusError(f"{child_path} has unknown or missing selector keys")
+                for name, selector in item.items():
+                    _validate_selector(selector, path=f"{child_path}.{name}")
+            elif "selector" in key or key in {"frame", "scope"}:
+                raise CensusError(f"unknown selector field {child_path}")
             _validate_selector_fields(item, path=child_path)
     elif isinstance(value, list):
         for index, item in enumerate(value):
@@ -517,8 +555,10 @@ def _validate_actions(value: object, *, path: str) -> tuple[dict[str, Any], ...]
                 _validate_number(action[key], path=f"{action_path}.{key}")
         if "state" in action and action["state"] not in _WAIT_FOR_STATES:
             raise CensusError(f"{action_path}.state is unknown")
-        if "page_size" in action and not isinstance(action["page_size"], int | str):
-            raise CensusError(f"{action_path}.page_size must be a string or integer")
+        if "page_size" in action:
+            page_size = action["page_size"]
+            if isinstance(page_size, bool) or not isinstance(page_size, int | str):
+                raise CensusError(f"{action_path}.page_size must be a string or integer")
         if "script" in action:
             script = action["script"]
             if (
@@ -791,8 +831,20 @@ def build_manifest(boards_path: Path = DEFAULT_BOARDS_PATH) -> dict[str, Any]:
         scraper_config = _load_config(
             row["scraper_config"], row_number=row_index, field="scraper_config"
         )
-        monitor_browser = monitor_needs_browser(monitor_type, monitor_config)
+
+        validated_monitor: tuple[dict[str, Any], tuple[dict[str, Any], ...]] | None = None
+        if monitor_type in capable_monitors:
+            validated_monitor = _validate_and_abstract_config(
+                "monitor", monitor_type, monitor_config
+            )
+
         chain = _parse_scraper_chain(scraper_type, scraper_config) if scraper_type else []
+        validated_chain: dict[int, tuple[dict[str, Any], tuple[dict[str, Any], ...]]] = {}
+        for name, config, depth in chain:
+            if name in capable_scrapers:
+                validated_chain[depth] = _validate_and_abstract_config("scraper", name, config)
+
+        monitor_browser = monitor_needs_browser(monitor_type, monitor_config)
         chain_browser = any(scraper_needs_browser(name, config) for name, config, _ in chain)
         if monitor_browser or chain_browser:
             browser_board_indexes.add(row_index)
@@ -802,9 +854,8 @@ def build_manifest(boards_path: Path = DEFAULT_BOARDS_PATH) -> dict[str, Any]:
             registry_refs[("monitor", monitor_type)].append(ref)
             if monitor_browser:
                 registry_browser_counts[("monitor", monitor_type)] += 1
-                abstract, actions = _validate_and_abstract_config(
-                    "monitor", monitor_type, monitor_config
-                )
+                assert validated_monitor is not None
+                abstract, actions = validated_monitor
                 capabilities = _capabilities(
                     "monitor",
                     monitor_type,
@@ -837,7 +888,7 @@ def build_manifest(boards_path: Path = DEFAULT_BOARDS_PATH) -> dict[str, Any]:
                 if required:
                     registry_browser_counts[("scraper", name)] += 1
                     browser_step_count += 1
-                abstract, actions = _validate_and_abstract_config("scraper", name, config)
+                abstract, actions = validated_chain[depth]
                 capabilities = _capabilities(
                     "scraper", name, config, actions, browser_required=required
                 )
