@@ -12,11 +12,19 @@ browser_image="lightpanda/browser@sha256:bf2328538effa8392166d0cbdba9943a2c97fd1
 expected_index="sha256:bf2328538effa8392166d0cbdba9943a2c97fd19cd2e75b88c8c6f0cf03a1beb"
 expected_amd64="sha256:9ddc7ba5a147f713f883dace7eba3fe045c5e0537fe1d1160ed2fc4ec5359027"
 output_dir="$probe_root/out"
+probe_case="setup"
+
+report_failure() {
+  local status=$?
+  echo "probe case failed: $probe_case" >&2
+  exit "$status"
+}
 
 cleanup() {
   docker rm -f "$crash_container" "$browser_container" "$fixture_container" >/dev/null 2>&1 || true
   docker network rm "$network_name" >/dev/null 2>&1 || true
 }
+trap report_failure ERR
 trap cleanup EXIT
 cleanup
 
@@ -93,33 +101,42 @@ for run in 2 3 4 5; do
 done
 
 echo "probe phase: verify JavaScript and policy outcomes"
+probe_case="javascript"
 run_probe javascript javascript
 jq -e '.result.success.evaluations[0].value.payload == "NDI="' "$output_dir/javascript.json" >/dev/null
 
+probe_case="unsupported"
 run_probe unsupported unsupported
 jq -e '.request_count == 0 and .ledger == [] and .result.unsupported.capabilities == ["BROWSER_CAPABILITY_FRAMES"]' "$output_dir/unsupported.json" >/dev/null
 
+probe_case="tdm-header"
 run_probe tdm-header tdm-header
 jq -e '.result.error.error.code == "ERROR_CODE_TDM_RESERVED" and .result.success == null' "$output_dir/tdm-header.json" >/dev/null
 
+probe_case="tdm-meta"
 run_probe tdm-meta tdm-meta
 jq -e '.result.error.error.code == "ERROR_CODE_TDM_RESERVED" and .result.success == null' "$output_dir/tdm-meta.json" >/dev/null
 
+probe_case="subresource-tdm"
 run_probe subresource-tdm subresource-tdm
 jq -e '.result.error.error.code == "ERROR_CODE_TDM_RESERVED" and .result.success == null' "$output_dir/subresource-tdm.json" >/dev/null
 
+probe_case="robots-blocked"
 blocked_before="$(docker logs "$fixture_container" 2>&1 | grep -c 'GET /blocked/script.js' || true)"
 run_probe robots-blocked robots-blocked
 jq -e '.result.error.error.code == "ERROR_CODE_NAVIGATION" and any(.ledger[]; .path == "/blocked/script.js" and .decision == "blocked" and .reason == "robots_disallowed")' "$output_dir/robots-blocked.json" >/dev/null
 blocked_after="$(docker logs "$fixture_container" 2>&1 | grep -c 'GET /blocked/script.js' || true)"
 test "$blocked_before" = "$blocked_after"
 
+probe_case="request-overflow"
 run_probe request-overflow request-overflow -max-requests 4
 jq -e '.result.error.error.code == "ERROR_CODE_RESOURCE_LIMIT" and any(.ledger[]; .reason == "request_limit")' "$output_dir/request-overflow.json" >/dev/null
 
+probe_case="byte-overflow"
 run_probe byte-overflow byte-overflow -max-response-bytes 1024
 jq -e '.result.error.error.code == "ERROR_CODE_RESOURCE_LIMIT" and any(.ledger[]; .reason == "declared_response_byte_limit")' "$output_dir/byte-overflow.json" >/dev/null
 
+probe_case="timeout"
 run_probe hang timeout
 jq -e '.result.error.error.code == "ERROR_CODE_TIMEOUT" and .result.success == null' "$output_dir/timeout.json" >/dev/null
 
