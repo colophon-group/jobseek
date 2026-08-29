@@ -1,0 +1,188 @@
+from __future__ import annotations
+
+import csv
+import json
+from pathlib import Path
+
+import pytest
+
+from src.lightpanda.census import CensusError, build_manifest, check_manifest, manifest_bytes
+
+_COLUMNS: tuple[str, ...] = (
+    "company_slug",
+    "board_slug",
+    "board_url",
+    "monitor_type",
+    "monitor_config",
+    "scraper_type",
+    "scraper_config",
+)
+
+
+def _write_boards(path: Path, rows: list[dict[str, str]]) -> Path:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(_COLUMNS))
+        writer.writeheader()
+        writer.writerows(rows)
+    return path
+
+
+def _row(
+    slug: str,
+    *,
+    monitor_type: str = "greenhouse",
+    monitor_config: dict[str, object] | None = None,
+    scraper_type: str = "json-ld",
+    scraper_config: dict[str, object] | None = None,
+) -> dict[str, str]:
+    return {
+        "company_slug": "secret-company",
+        "board_slug": slug,
+        "board_url": f"https://secret.example/{slug}?token=do-not-commit",
+        "monitor_type": monitor_type,
+        "monitor_config": json.dumps(monitor_config or {}, separators=(",", ":")),
+        "scraper_type": scraper_type,
+        "scraper_config": json.dumps(scraper_config or {}, separators=(",", ":")),
+    }
+
+
+def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "browser-monitor",
+                monitor_type="dom",
+                monitor_config={
+                    "actions": [
+                        {"action": "click", "selector": "#secret-selector", "required": True},
+                        {"action": "evaluate", "script": "window.__secret = 'value'"},
+                    ],
+                    "render": True,
+                    "wait": "networkidle",
+                },
+            ),
+            _row(
+                "kpmg-like",
+                scraper_config={
+                    "fallback": {
+                        "config": {"render": True, "wait": "networkidle"},
+                        "type": "dom",
+                    }
+                },
+            ),
+            _row(
+                "nested-chain",
+                scraper_type="dom",
+                scraper_config={
+                    "fallback": {
+                        "config": {"fallback": {"config": {"render": True}, "type": "nextdata"}},
+                        "type": "json-ld",
+                    },
+                    "render": True,
+                },
+            ),
+        ],
+    )
+
+    first = build_manifest(boards)
+    second = build_manifest(boards)
+
+    assert manifest_bytes(first) == manifest_bytes(second)
+    assert first["summary"]["browser_board_count"] == 3
+    assert first["summary"]["configured_profile_occurrence_count"] == 6
+    assert first["summary"]["browser_required_step_count"] == 4
+    configured = [record for record in first["records"] if record["profile_kind"] == "configured"]
+    assert any(
+        record["crawler_type"] == "dom"
+        and record["chain_role"] == "fallback"
+        and record["browser_required"]
+        for record in configured
+    )
+    assert any(
+        record["crawler_type"] == "json-ld"
+        and record["chain_role"] == "primary"
+        and not record["browser_required"]
+        for record in configured
+    )
+    rendered = manifest_bytes(first).decode("ascii")
+    for secret in (
+        "secret-company",
+        "secret.example",
+        "do-not-commit",
+        "#secret-selector",
+        "window.__secret",
+    ):
+        assert secret not in rendered
+    assert all(len(record["digest_sha256"]) == 64 for record in first["records"])
+    assert len(first["manifest_sha256"]) == 64
+
+
+def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
+    boards = _write_boards(tmp_path / "boards.csv", [_row("static")])
+
+    manifest = build_manifest(boards)
+    records = {record["id"]: record for record in manifest["records"]}
+
+    assert records["registry.monitor.darwinbox"]["source_count"] == 0
+    assert records["registry.monitor.darwinbox"]["status"] == "zero_browser_config"
+    assert records["registry.scraper.embedded"]["status"] == "zero_browser_config"
+    assert records["registry.scraper.api_sniffer"]["browser_required"] is True
+
+
+@pytest.mark.parametrize(
+    "monitor_config",
+    [
+        {"render": True, "unknown_browser_key": True},
+        {"actions": [{"action": "teleport"}], "render": True},
+        {"actions": [{"action": "click", "selector": ["#invalid"]}], "render": True},
+        {"actions": [{"action": "click", "selector": "#ok", "unknown": True}], "render": True},
+    ],
+)
+def test_browser_monitor_config_fails_closed(
+    tmp_path: Path, monitor_config: dict[str, object]
+) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [_row("invalid-monitor", monitor_type="dom", monitor_config=monitor_config)],
+    )
+
+    with pytest.raises(CensusError):
+        build_manifest(boards)
+
+
+@pytest.mark.parametrize(
+    "fallback",
+    [
+        ["dom"],
+        {"type": "unknown"},
+        {"type": "dom", "unknown": True},
+        {"type": "dom", "config": []},
+        {"type": "dom", "fields": ["not_a_job_field"]},
+    ],
+)
+def test_fallback_shape_fails_closed(tmp_path: Path, fallback: object) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [_row("invalid-fallback", scraper_config={"fallback": fallback})],
+    )
+
+    with pytest.raises(CensusError):
+        build_manifest(boards)
+
+
+def test_committed_manifest_is_current_and_contains_kpmg_fallback() -> None:
+    manifest = check_manifest()
+
+    assert manifest["input"]["network_access"] is False
+    assert manifest["summary"]["browser_board_count"] == 452
+    assert manifest["summary"]["browser_required_step_count"] == 589
+    assert manifest["summary"]["configured_profile_occurrence_count"] == 591
+    assert any(
+        record["profile_kind"] == "configured"
+        and record["surface"] == "scraper"
+        and record["crawler_type"] == "dom"
+        and record["chain_role"] == "fallback"
+        and record["browser_required"] is True
+        for record in manifest["records"]
+    )
