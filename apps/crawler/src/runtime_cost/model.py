@@ -14,6 +14,9 @@ WORKLOAD_SCHEMA = "jobseek.crawler-runtime-workload/v1"
 MEASUREMENT_SCHEMA = "jobseek.crawler-runtime-measurement/v1"
 PRICING_SCHEMA = "jobseek.crawler-runtime-pricing/v1"
 PROJECTION_SCHEMA = "jobseek.crawler-runtime-projection/v1"
+PROCESS_TREE_MIN_COVERAGE_RATIO = 0.95
+PROCESS_TREE_MAX_SAMPLE_INTERVAL_SECONDS = 1.0
+PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS = 60
 
 ALLOWED_COST_CATEGORIES = frozenset(
     {
@@ -86,6 +89,110 @@ def _nonnegative_int(value: object, field: str) -> int:
         raise ModelError(f"{field} must be integer")
     _require(value >= 0, f"{field} must be >= 0")
     return value
+
+
+def _validate_process_tree_coverage(
+    observed: dict[str, Any],
+    *,
+    role: str,
+    window_seconds_value: object,
+) -> int:
+    window_seconds = _nonnegative_int(
+        window_seconds_value,
+        "measurement.window.seconds",
+    )
+    _require(window_seconds >= 300, "measurement.window.seconds must be >= 300")
+    target_ids_raw = observed.get("target_ids")
+    if not isinstance(target_ids_raw, list) or not all(
+        isinstance(item, str) and bool(item) for item in target_ids_raw
+    ):
+        raise ModelError(f"measurement role {role} target_ids is invalid")
+    target_ids = set(target_ids_raw)
+    coverage_raw = observed.get("process_tree_coverage")
+    if not isinstance(coverage_raw, list) or not coverage_raw:
+        raise ModelError(f"measurement role {role} process-tree coverage is missing")
+    coverage_ids: set[str] = set()
+    total_successful_samples = 0
+    for index, item in enumerate(coverage_raw):
+        _require(
+            isinstance(item, dict),
+            f"measurement role {role} process-tree coverage {index} must be an object",
+        )
+        target_id = item.get("target_id")
+        _require(
+            isinstance(target_id, str) and bool(target_id),
+            f"measurement role {role} process-tree coverage target_id is invalid",
+        )
+        _require(
+            target_id not in coverage_ids,
+            f"measurement role {role} process-tree coverage target is duplicated",
+        )
+        coverage_ids.add(target_id)
+        prefix = f"measurement role {role} process-tree coverage {target_id}"
+        interval_seconds = _positive_number(
+            item.get("sample_interval_seconds"),
+            f"{prefix}.sample_interval_seconds",
+        )
+        _require(
+            interval_seconds <= PROCESS_TREE_MAX_SAMPLE_INTERVAL_SECONDS,
+            f"{prefix}.sample_interval_seconds exceeds contract maximum",
+        )
+        expected_samples = _nonnegative_int(
+            item.get("expected_samples"), f"{prefix}.expected_samples"
+        )
+        _require(expected_samples > 1, f"{prefix}.expected_samples must be > 1")
+        _require(
+            expected_samples == math.floor(window_seconds / interval_seconds),
+            f"{prefix}.expected_samples is inconsistent with the measurement window",
+        )
+        successful_samples = _nonnegative_int(
+            item.get("successful_samples"), f"{prefix}.successful_samples"
+        )
+        failed_samples = _nonnegative_int(item.get("failed_samples"), f"{prefix}.failed_samples")
+        missing_samples = _nonnegative_int(item.get("missing_samples"), f"{prefix}.missing_samples")
+        counter_resets = _nonnegative_int(item.get("counter_resets"), f"{prefix}.counter_resets")
+        sampler_restarts = _nonnegative_int(
+            item.get("sampler_restarts"), f"{prefix}.sampler_restarts"
+        )
+        gap_samples = _nonnegative_int(item.get("gap_samples"), f"{prefix}.gap_samples")
+        _require(failed_samples == 0, f"{prefix} contains failed samples")
+        _require(counter_resets == 0, f"{prefix} contains counter resets")
+        _require(sampler_restarts == 0, f"{prefix} contains sampler restarts")
+        _require(gap_samples == 0, f"{prefix} contains sampling gaps")
+        _require(
+            missing_samples == max(0, expected_samples - successful_samples - failed_samples),
+            f"{prefix}.missing_samples is inconsistent",
+        )
+        coverage_ratio = _positive_number(
+            item.get("coverage_ratio"),
+            f"{prefix}.coverage_ratio",
+            allow_zero=True,
+        )
+        expected_ratio = min(1.0, successful_samples / expected_samples)
+        _require(
+            math.isclose(coverage_ratio, expected_ratio, rel_tol=0, abs_tol=1e-12),
+            f"{prefix}.coverage_ratio is inconsistent",
+        )
+        _require(
+            item.get("required_coverage_ratio") == PROCESS_TREE_MIN_COVERAGE_RATIO,
+            f"{prefix}.required_coverage_ratio differs from the contract",
+        )
+        _require(
+            coverage_ratio >= PROCESS_TREE_MIN_COVERAGE_RATIO,
+            f"{prefix}.coverage_ratio is below the contract minimum",
+        )
+        _require(
+            item.get("boundary_tolerance_seconds") == PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS,
+            f"{prefix}.boundary_tolerance_seconds differs from the contract",
+        )
+        _require(item.get("start_covered") is True, f"{prefix} does not cover window start")
+        _require(item.get("end_covered") is True, f"{prefix} does not cover window end")
+        total_successful_samples += successful_samples
+    _require(
+        coverage_ids == target_ids,
+        f"measurement role {role} process-tree coverage targets differ from target_ids",
+    )
+    return total_successful_samples
 
 
 def project_runtime_cost(
@@ -377,47 +484,77 @@ def project_runtime_cost(
             allow_zero=True,
         )
         resource_scope = observed.get("resource_scope")
-        if execution_class == "browser":
-            if resource_scope != "process-tree":
-                structural_blockers.append("browser-child-cpu-and-rss-not-in-process-metrics")
-            else:
-                root_cpu = _optional_nonnegative_number(
-                    observed.get("root_process_cpu_seconds"),
-                    f"measurement role {role}.root_process_cpu_seconds",
-                )
-                descendant_cpu = _optional_nonnegative_number(
-                    observed.get("descendant_process_cpu_seconds"),
-                    f"measurement role {role}.descendant_process_cpu_seconds",
-                )
-                tree_peak_rss = _optional_nonnegative_number(
-                    observed.get("process_tree_peak_rss_bytes_per_instance"),
-                    f"measurement role {role}.process_tree_peak_rss_bytes_per_instance",
-                )
-                tree_samples = _optional_nonnegative_number(
-                    observed.get("process_tree_successful_samples"),
-                    f"measurement role {role}.process_tree_successful_samples",
-                )
-                if (
-                    root_cpu is None
-                    or descendant_cpu is None
-                    or tree_peak_rss is None
-                    or tree_samples is None
-                    or tree_samples <= 0
-                ):
-                    raise ModelError(f"measurement role {role} process-tree evidence is incomplete")
-                _require(
-                    math.isclose(
-                        observed_cpu_seconds,
-                        root_cpu + descendant_cpu,
-                        rel_tol=1e-9,
-                        abs_tol=1e-9,
-                    ),
-                    f"measurement role {role} process-tree CPU total is inconsistent",
-                )
-                _require(
-                    math.isclose(peak_rss, tree_peak_rss, rel_tol=1e-9, abs_tol=1e-9),
-                    f"measurement role {role} process-tree RSS total is inconsistent",
-                )
+        if resource_scope == "process-tree":
+            _require(
+                observed.get("process_tree_cpu_source") == "container-cgroup-v2",
+                f"measurement role {role} process-tree CPU source is invalid",
+            )
+            _require(
+                observed.get("process_tree_cpu_scope") == "one-crawler-role-container-per-target",
+                f"measurement role {role} process-tree CPU scope is invalid",
+            )
+            root_cpu = _optional_nonnegative_number(
+                observed.get("root_process_cpu_seconds"),
+                f"measurement role {role}.root_process_cpu_seconds",
+            )
+            descendant_cpu = _optional_nonnegative_number(
+                observed.get("descendant_process_cpu_seconds"),
+                f"measurement role {role}.descendant_process_cpu_seconds",
+            )
+            root_peak_rss = _optional_nonnegative_number(
+                observed.get("root_peak_rss_bytes_per_instance"),
+                f"measurement role {role}.root_peak_rss_bytes_per_instance",
+            )
+            tree_peak_rss = _optional_nonnegative_number(
+                observed.get("process_tree_peak_rss_bytes_per_instance"),
+                f"measurement role {role}.process_tree_peak_rss_bytes_per_instance",
+            )
+            if (
+                root_cpu is None
+                or descendant_cpu is None
+                or root_peak_rss is None
+                or tree_peak_rss is None
+            ):
+                raise ModelError(f"measurement role {role} process-tree evidence is incomplete")
+            tree_samples = _nonnegative_int(
+                observed.get("process_tree_successful_samples"),
+                f"measurement role {role}.process_tree_successful_samples",
+            )
+            _require(tree_samples > 0, f"measurement role {role} process-tree samples are empty")
+            coverage_samples = _validate_process_tree_coverage(
+                observed,
+                role=role,
+                window_seconds_value=measurement.get("window", {}).get("seconds"),
+            )
+            _require(
+                tree_samples == coverage_samples,
+                f"measurement role {role} process-tree sample total is inconsistent",
+            )
+            _require(
+                math.isclose(
+                    observed_cpu_seconds,
+                    root_cpu + descendant_cpu,
+                    rel_tol=1e-9,
+                    abs_tol=1e-9,
+                ),
+                f"measurement role {role} process-tree CPU total is inconsistent",
+            )
+            _require(
+                observed_cpu_seconds >= root_cpu,
+                f"measurement role {role} process-tree CPU is below root CPU",
+            )
+            _require(
+                math.isclose(peak_rss, tree_peak_rss, rel_tol=1e-9, abs_tol=1e-9),
+                f"measurement role {role} process-tree RSS total is inconsistent",
+            )
+            _require(
+                tree_peak_rss >= root_peak_rss,
+                f"measurement role {role} process-tree RSS is below root RSS",
+            )
+        elif resource_scope not in {None, "root-process"}:
+            raise ModelError(f"measurement role {role} resource scope is invalid")
+        if execution_class == "browser" and resource_scope != "process-tree":
+            structural_blockers.append("browser-child-cpu-and-rss-not-in-process-metrics")
         memory_ratio = peak_rss / memory_bytes
         scaling_roles.append(
             {

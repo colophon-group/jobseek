@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from src.runtime_cost.process_tree import ProcessTreeSampler, parse_proc_stat
+from src.runtime_cost.process_tree import (
+    ProcessTreeSample,
+    ProcessTreeSampler,
+    parse_proc_stat,
+    run_process_tree_sampler,
+)
 
 
 def _stat(
@@ -43,6 +48,12 @@ def _snapshot(proc_root: Path, records: dict[int, str]) -> None:
         (process / "stat").write_text(raw)
 
 
+def _cgroup_cpu(tmp_path: Path, usage_usec: int) -> Path:
+    cpu_stat = tmp_path / "cpu.stat"
+    cpu_stat.write_text(f"usage_usec {usage_usec}\nuser_usec 0\nsystem_usec 0\n")
+    return cpu_stat
+
+
 def test_parse_proc_stat_accepts_spaces_and_parentheses_in_command() -> None:
     parsed = parse_proc_stat(
         _stat(
@@ -63,7 +74,7 @@ def test_parse_proc_stat_accepts_spaces_and_parentheses_in_command() -> None:
     assert parsed.rss_pages == 64
 
 
-def test_sampler_accumulates_nested_descendants_and_preserves_peak(tmp_path: Path) -> None:
+def test_sampler_uses_cgroup_cpu_and_current_nested_rss(tmp_path: Path) -> None:
     _snapshot(
         tmp_path,
         {
@@ -76,18 +87,18 @@ def test_sampler_accumulates_nested_descendants_and_preserves_peak(tmp_path: Pat
     sampler = ProcessTreeSampler(
         root_pid=10,
         proc_root=tmp_path,
+        cgroup_cpu_stat_path=_cgroup_cpu(tmp_path, 1_500_000),
         clock_ticks_per_second=100,
         page_size_bytes=4096,
     )
 
     first = sampler.sample()
     assert first.descendant_count == 2
-    assert first.descendant_cpu_delta_seconds == pytest.approx(1.5)
+    assert first.process_tree_cpu_delta_seconds == 0
     assert first.process_tree_rss_bytes == 60 * 4096
-    assert first.process_tree_peak_rss_bytes == 60 * 4096
 
-    # PID 12 exits and PID 13 appears. The CPU already observed for PID 12 is
-    # retained by the Prometheus counter; only new deltas are returned.
+    # PID 12 exits and PID 13 appears. Cgroup accounting retains all CPU used
+    # by the exited process instead of depending on a final /proc observation.
     _snapshot(
         tmp_path,
         {
@@ -96,36 +107,54 @@ def test_sampler_accumulates_nested_descendants_and_preserves_peak(tmp_path: Pat
             13: _stat(13, 11, user_ticks=10, start_time_ticks=13, rss_pages=5),
         },
     )
+    _cgroup_cpu(tmp_path, 1_850_000)
     second = sampler.sample()
-    assert second.descendant_cpu_delta_seconds == pytest.approx(0.35)
+    assert second.process_tree_cpu_delta_seconds == pytest.approx(0.35)
     assert second.process_tree_rss_bytes == 35 * 4096
-    assert second.process_tree_peak_rss_bytes == 60 * 4096
 
 
-def test_sampler_treats_reused_pid_as_new_start_time_identity(tmp_path: Path) -> None:
+def test_sampler_accounts_for_child_born_and_exited_between_polls(tmp_path: Path) -> None:
     _snapshot(
         tmp_path,
         {
             20: _stat(20, 1, rss_pages=1),
-            21: _stat(21, 20, user_ticks=80, start_time_ticks=100, rss_pages=1),
         },
     )
     sampler = ProcessTreeSampler(
         root_pid=20,
         proc_root=tmp_path,
+        cgroup_cpu_stat_path=_cgroup_cpu(tmp_path, 2_000_000),
         clock_ticks_per_second=100,
         page_size_bytes=4096,
     )
-    assert sampler.sample().descendant_cpu_delta_seconds == pytest.approx(0.8)
+    assert sampler.sample().process_tree_cpu_delta_seconds == 0
 
+    # No child is visible in either snapshot, but the container counter has
+    # retained CPU consumed by a short-lived child between them.
     _snapshot(
         tmp_path,
         {
             20: _stat(20, 1, rss_pages=1),
-            21: _stat(21, 20, user_ticks=10, start_time_ticks=200, rss_pages=1),
         },
     )
-    assert sampler.sample().descendant_cpu_delta_seconds == pytest.approx(0.1)
+    _cgroup_cpu(tmp_path, 3_000_000)
+    second = sampler.sample()
+    assert second.descendant_count == 0
+    assert second.process_tree_cpu_delta_seconds == pytest.approx(1.0)
+
+
+def test_sampler_fails_closed_when_cgroup_cpu_regresses(tmp_path: Path) -> None:
+    _snapshot(tmp_path, {20: _stat(20, 1, rss_pages=1)})
+    sampler = ProcessTreeSampler(
+        root_pid=20,
+        proc_root=tmp_path,
+        cgroup_cpu_stat_path=_cgroup_cpu(tmp_path, 2_000_000),
+    )
+    sampler.sample()
+    _cgroup_cpu(tmp_path, 1_000_000)
+
+    with pytest.raises(RuntimeError, match="counter regressed"):
+        sampler.sample()
 
 
 def test_sampler_fails_closed_when_root_is_missing(tmp_path: Path) -> None:
@@ -134,3 +163,34 @@ def test_sampler_fails_closed_when_root_is_missing(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="root process is absent"):
         sampler.sample()
+
+
+def test_sampling_loop_records_missed_intervals() -> None:
+    class FakeSampler:
+        def sample(self) -> ProcessTreeSample:
+            return ProcessTreeSample(0, 1, 0)
+
+    class ThreeIterations:
+        def __init__(self) -> None:
+            self.checks = 0
+
+        def is_set(self) -> bool:
+            self.checks += 1
+            return self.checks > 3
+
+        def wait(self, _seconds: float) -> None:
+            pass
+
+    gaps: list[int] = []
+    moments = iter((0.0, 0.5, 2.0))
+    run_process_tree_sampler(
+        FakeSampler(),  # type: ignore[arg-type]
+        interval_seconds=0.5,
+        stop_event=ThreeIterations(),  # type: ignore[arg-type]
+        observe=lambda _sample: None,
+        record_failure=lambda: None,
+        record_gap=gaps.append,
+        monotonic=lambda: next(moments),
+    )
+
+    assert gaps == [2]

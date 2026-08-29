@@ -5,6 +5,8 @@ import io
 import socket
 import socketserver
 import struct
+import subprocess
+import sys
 import time
 from unittest.mock import patch
 from urllib.request import urlopen
@@ -42,6 +44,29 @@ def test_metrics_server_starts_process_tree_sampler() -> None:
 
     start_sampler.assert_called_once_with()
     start_http.assert_called_once_with(9123)
+
+
+def test_metrics_module_import_does_not_require_runtime_cost_package() -> None:
+    script = """
+import builtins
+
+real_import = builtins.__import__
+def guarded_import(name, *args, **kwargs):
+    if name.startswith("src.runtime_cost"):
+        raise ModuleNotFoundError(name)
+    return real_import(name, *args, **kwargs)
+
+builtins.__import__ = guarded_import
+import src.metrics
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
 
 
 def test_metrics_client_reset_does_not_emit_traceback():
