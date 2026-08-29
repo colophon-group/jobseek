@@ -1216,6 +1216,7 @@ cartier,cartier-careers,https://careers.richemont.com/en/jobs/cartier/,dom,"{""r
 cartwheel,cartwheel-greenhouse,https://job-boards.greenhouse.io/cartwheelcare,greenhouse,"{""token"": ""cartwheelcare""}",skip,
 cartwheelcare,cartwheelcare-careers,https://boards.greenhouse.io/cartwheelcare,greenhouse,"{""token"": ""cartwheelcare""}",skip,
 carv,carv-careers,https://getcarv.com/careers,sitemap,"{""url_filter"": ""/lp/careers-""}",dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 45000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""text"": ""\ud83d\udccd"", ""field"": ""locations"", ""regex"": ""\ud83d\udccd\\s*(.+?)\\s*\\|"", ""optional"": true}, {""tag"": ""p"", ""text"": ""\ud83d\udccd"", ""field"": ""employment_type"", ""regex"": ""\\|\\s*(Full-time|Part-time|Contract|Internship)"", ""optional"": true, ""from"": 0}, {""text"": ""Location"", ""offset"": 1, ""field"": ""locations"", ""optional"": true, ""from"": 0}, {""tag"": ""h1"", ""field"": ""description"", ""offset"": 1, ""stop"": ""LIMITED OFFER"", ""html"": true, ""from"": 0}]}"
+carvana,carvana-careers,https://job-boards.greenhouse.io/carvana,greenhouse,,skip,
 casechek,casechek-greenhouse,https://job-boards.greenhouse.io/casechek,greenhouse,"{""token"": ""casechek""}",skip,
 caseguard,caseguard-greenhouse,https://job-boards.greenhouse.io/caseguard,greenhouse,"{""token"": ""caseguard""}",skip,
 casetify,casetify-greenhouse,https://job-boards.greenhouse.io/casetify,greenhouse,"{""token"": ""casetify""}",skip,
