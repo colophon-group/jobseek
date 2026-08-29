@@ -17,10 +17,11 @@ origin and the fixture's robots rules. Every response is checked for the W3C
 `TDM-Reservation` header, and the final main document is checked for the HTML
 meta equivalent when the header is absent.
 
-Response bytes are reserved from each fixture's mandatory `Content-Length`
-header as soon as response headers arrive, then reconciled to CDP's encoded
-byte count when loading completes. That keeps fail-closed cancellation results
-deterministic without understating a response whose body was interrupted.
+The serialized response-byte ledger uses each fixture's mandatory
+`Content-Length` as its canonical value. CDP's encoded byte counts are tracked
+separately and enforce the same aggregate limit when loading completes. This
+makes the declared budget fail closed before a large body completes without
+letting cancellation timing change the output.
 
 Immutable dependency and image pins live in `pins.json`. The candidate uses
 Lightpanda 0.3.6 by OCI index digest, its exact linux/amd64 manifest, Go 1.24.0,

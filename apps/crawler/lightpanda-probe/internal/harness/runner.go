@@ -41,6 +41,8 @@ type executionState struct {
 	requestIndex    map[network.RequestID]int
 	requestCount    uint64
 	responseBytes   uint64
+	actualBytes     uint64
+	completed       map[network.RequestID]struct{}
 	mainStatus      int64
 	mainTDMHeader   string
 	failure         *runtimev1.BrowserResult
@@ -72,6 +74,7 @@ func (r Runner) Execute(parent context.Context, plan *runtimev1.BrowserPlan) (*r
 		allowedOrigin: r.AllowedOrigin,
 		limits:        r.Limits,
 		requestIndex:  make(map[network.RequestID]int),
+		completed:     make(map[network.RequestID]struct{}),
 	}
 	if failure := state.loadRobots(parent); failure != nil {
 		ledger, requests, bytes := state.snapshot()
@@ -252,6 +255,7 @@ func (s *executionState) loadRobots(ctx context.Context) *runtimev1.BrowserResul
 	s.ledger = append(s.ledger, entry)
 	s.requestCount++
 	s.responseBytes += uint64(len(body))
+	s.actualBytes += uint64(len(body))
 	s.mu.Unlock()
 	if err != nil || response.StatusCode != http.StatusOK {
 		return Failure(runtimev1.ErrorCode_ERROR_CODE_NAVIGATION, runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY, "synthetic robots policy could not be read")
@@ -382,22 +386,24 @@ func (s *executionState) handleResponse(event *network.EventResponseReceived) {
 }
 
 func (s *executionState) handleLoadingFinished(event *network.EventLoadingFinished) {
-	if event.EncodedDataLength < 0 || event.EncodedDataLength > math.MaxUint64 {
+	if math.IsNaN(event.EncodedDataLength) || math.IsInf(event.EncodedDataLength, 0) || event.EncodedDataLength < 0 || event.EncodedDataLength > math.MaxUint64 {
 		s.setFailure(Failure(runtimev1.ErrorCode_ERROR_CODE_RESOURCE_LIMIT, runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY, "invalid response-byte count"))
 		return
 	}
-	responseBytes := uint64(math.Round(event.EncodedDataLength))
+	actualBytes := uint64(math.Ceil(event.EncodedDataLength))
 	s.mu.Lock()
-	index, ok := s.requestIndex[event.RequestID]
-	if !ok || index >= len(s.ledger) {
+	index, known := s.requestIndex[event.RequestID]
+	_, duplicate := s.completed[event.RequestID]
+	if !known || index >= len(s.ledger) || duplicate {
 		s.mu.Unlock()
 		s.setFailure(Failure(runtimev1.ErrorCode_ERROR_CODE_INTERNAL, runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY, "response bytes could not be matched to the request ledger"))
 		return
 	}
-	declaredBytes := s.ledger[index].ResponseBytes
-	s.ledger[index].ResponseBytes = responseBytes
-	s.responseBytes = s.responseBytes - declaredBytes + responseBytes
-	overLimit := s.responseBytes > s.limits.MaxResponseBytes
+	s.completed[event.RequestID] = struct{}{}
+	overLimit := s.actualBytes > s.limits.MaxResponseBytes || actualBytes > s.limits.MaxResponseBytes-s.actualBytes
+	if !overLimit {
+		s.actualBytes += actualBytes
+	}
 	s.mu.Unlock()
 	if overLimit {
 		s.setFailure(Failure(runtimev1.ErrorCode_ERROR_CODE_RESOURCE_LIMIT, runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY, "synthetic response-byte limit exceeded"))

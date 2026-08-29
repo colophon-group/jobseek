@@ -132,16 +132,40 @@ func TestDeclaredResponseBytesAreRejectedBeforeBodyCompletion(t *testing.T) {
 	}
 }
 
-func TestLoadingFinishedReconcilesInsteadOfDoubleCounting(t *testing.T) {
+func TestLoadingFinishedKeepsDeclaredLedgerAccounting(t *testing.T) {
 	t.Parallel()
 	state := &executionState{
 		limits:        Limits{MaxRequests: 8, MaxResponseBytes: 1024},
 		ledger:        []LedgerEntry{{Method: "GET", Path: "/static/app.js", Decision: "allowed", ResponseBytes: 100}},
 		requestIndex:  map[network.RequestID]int{"script": 0},
 		responseBytes: 150,
+		actualBytes:   50,
+		completed:     make(map[network.RequestID]struct{}),
 	}
 	state.handleLoadingFinished(&network.EventLoadingFinished{RequestID: "script", EncodedDataLength: 90})
-	if state.responseBytes != 140 || state.ledger[0].ResponseBytes != 90 {
-		t.Fatalf("encoded bytes were not reconciled: total=%d ledger=%d", state.responseBytes, state.ledger[0].ResponseBytes)
+	if state.responseBytes != 150 || state.ledger[0].ResponseBytes != 100 {
+		t.Fatalf("declared ledger bytes changed: total=%d ledger=%d", state.responseBytes, state.ledger[0].ResponseBytes)
+	}
+	if state.actualBytes != 140 {
+		t.Fatalf("actual bytes were not enforced independently: %d", state.actualBytes)
+	}
+}
+
+func TestLoadingFinishedEnforcesActualByteLimit(t *testing.T) {
+	t.Parallel()
+	state := &executionState{
+		limits:        Limits{MaxRequests: 8, MaxResponseBytes: 1024},
+		ledger:        []LedgerEntry{{Method: "GET", Path: "/static/app.js", Decision: "allowed", ResponseBytes: 10}},
+		requestIndex:  map[network.RequestID]int{"script": 0},
+		responseBytes: 50,
+		actualBytes:   1000,
+		completed:     make(map[network.RequestID]struct{}),
+	}
+	state.handleLoadingFinished(&network.EventLoadingFinished{RequestID: "script", EncodedDataLength: 25})
+	if failure := state.getFailure(); failure == nil || failure.GetError().GetError().GetCode() != runtimev1.ErrorCode_ERROR_CODE_RESOURCE_LIMIT {
+		t.Fatalf("expected typed actual byte-limit failure, got %v", failure)
+	}
+	if state.responseBytes != 50 || state.ledger[0].ResponseBytes != 10 {
+		t.Fatalf("actual byte failure changed declared ledger: total=%d ledger=%d", state.responseBytes, state.ledger[0].ResponseBytes)
 	}
 }
