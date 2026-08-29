@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+import json
+import re
 import socketserver
 import sys
 import threading
 import time
+from importlib.metadata import Distribution, PackageNotFoundError
+from importlib.metadata import distribution as get_distribution
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from prometheus_client import Counter, Gauge, Histogram, make_wsgi_app
+
+from src.shared.constants import is_source_checkout
 
 if TYPE_CHECKING:
     from src.runtime_cost.process_tree import ProcessTreeSample
@@ -642,16 +649,111 @@ build_info = Gauge(
 )
 
 
-def _read_version() -> str:
-    """Read ``apps/crawler/VERSION`` relative to this module, or "unknown"."""
-    import pathlib
+_CRAWLER_DISTRIBUTION = "jobseek-crawler"
+_CRAWLER_VERSION_PATTERN = re.compile(
+    r"[0-9]+\.[0-9]+\.[0-9]+(?:\+build\.[0-9]+\.g[0-9a-f]{7,12})?"
+)
 
-    # src/metrics.py → src/../VERSION
-    version_file = pathlib.Path(__file__).resolve().parent.parent / "VERSION"
+
+def _validated_version(value: str, *, authority: str) -> str:
+    version = value.strip()
+    if not _CRAWLER_VERSION_PATTERN.fullmatch(version):
+        raise RuntimeError(f"{authority} version is invalid")
+    return version
+
+
+def _source_checkout_root() -> Path:
+    # src/metrics.py → src/..
+    return Path(__file__).resolve().parent.parent
+
+
+def _read_source_version(checkout_root: Path) -> str:
+    version_file = checkout_root / "VERSION"
     try:
-        return version_file.read_text().strip() or "unknown"
-    except OSError:
-        return "unknown"
+        value = version_file.read_text()
+    except OSError as exc:
+        raise RuntimeError("source checkout crawler VERSION is missing") from exc
+    return _validated_version(value, authority="source checkout crawler")
+
+
+def _editable_distribution_matches_checkout(
+    installed_distribution: Distribution,
+    checkout_root: Path,
+) -> bool:
+    """Validate PEP 610 provenance and identify this exact editable checkout."""
+
+    try:
+        direct_url_text = installed_distribution.read_text("direct_url.json")
+    except (OSError, UnicodeError) as exc:
+        raise RuntimeError("installed crawler direct_url provenance is unreadable") from exc
+    if direct_url_text is None:
+        return False
+    try:
+        direct_url = json.loads(direct_url_text)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise RuntimeError("installed crawler direct_url provenance is invalid") from exc
+    if not isinstance(direct_url, dict) or not isinstance(direct_url.get("url"), str):
+        raise RuntimeError("installed crawler direct_url provenance is invalid")
+
+    directory_info = direct_url.get("dir_info")
+    if directory_info is None:
+        return False
+    if not isinstance(directory_info, dict):
+        raise RuntimeError("installed crawler direct_url provenance is invalid")
+    editable = directory_info.get("editable", False)
+    if not isinstance(editable, bool):
+        raise RuntimeError("installed crawler direct_url provenance is invalid")
+    if not editable:
+        return False
+
+    parsed_url = urlparse(direct_url["url"])
+    if (
+        parsed_url.scheme != "file"
+        or parsed_url.netloc not in ("", "localhost")
+        or parsed_url.query
+        or parsed_url.fragment
+    ):
+        raise RuntimeError("installed crawler editable provenance is invalid")
+    editable_path = Path(unquote(parsed_url.path))
+    if not editable_path.is_absolute():
+        raise RuntimeError("installed crawler editable provenance is invalid")
+    editable_root = editable_path.resolve()
+    if editable_root != checkout_root:
+        raise RuntimeError("installed crawler editable provenance does not match checkout")
+    return True
+
+
+def _read_version() -> str:
+    """Return the provenance-verified crawler release version.
+
+    Installed metadata is authoritative unless valid PEP 610 metadata proves
+    that the imported, structurally verified source tree is that distribution's
+    exact editable checkout. A checkout with no installed distribution may use
+    its source VERSION. Every ambiguous or invalid identity fails startup.
+    """
+
+    checkout_root = _source_checkout_root()
+    source_checkout = is_source_checkout()
+    try:
+        installed_distribution = get_distribution(_CRAWLER_DISTRIBUTION)
+    except PackageNotFoundError as exc:
+        if source_checkout:
+            return _read_source_version(checkout_root)
+        raise RuntimeError("installed crawler distribution metadata is missing") from exc
+
+    editable_matches = _editable_distribution_matches_checkout(
+        installed_distribution,
+        checkout_root,
+    )
+    if editable_matches:
+        if not source_checkout:
+            raise RuntimeError("installed crawler editable provenance is not a source checkout")
+        return _read_source_version(checkout_root)
+
+    return _validated_version(
+        installed_distribution.version,
+        authority="installed distribution",
+    )
 
 
 class _SilentMetricsHandler(WSGIRequestHandler):
