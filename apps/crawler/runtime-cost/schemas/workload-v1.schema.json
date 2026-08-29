@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jobseek.ch/schemas/crawler-runtime-workload-v1.json",
+  "additionalProperties": false,
+  "properties": {
+    "cost_boundary": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_categories": {
+          "items": {"enum": ["worker", "browser", "queue", "scheduler", "runtime-support", "proxy", "network"]},
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "excluded_categories": {
+          "items": {"enum": ["postgres", "typesense", "r2", "web", "backup", "telemetry", "control-plane"]},
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": ["allowed_categories", "excluded_categories"],
+      "type": "object"
+    },
+    "current_budget_reference": {
+      "additionalProperties": false,
+      "properties": {
+        "known_insufficient": {"const": true},
+        "monthly_chf": {"minimum": 0, "type": "number"},
+        "purpose": {"const": "funding-shortfall-reference-only"}
+      },
+      "required": ["known_insufficient", "monthly_chf", "purpose"],
+      "type": "object"
+    },
+    "current_load_hour": {"$ref": "#/$defs/currentPoint"},
+    "effective_at": {"format": "date-time", "type": "string"},
+    "headroom": {
+      "additionalProperties": false,
+      "properties": {
+        "memory_max_utilization": {"exclusiveMinimum": 0, "maximum": 1, "type": "number"},
+        "recovery_max_utilization": {"exclusiveMinimum": 0, "maximum": 1, "type": "number"},
+        "steady_max_utilization": {"exclusiveMinimum": 0, "maximum": 1, "type": "number"}
+      },
+      "required": ["memory_max_utilization", "recovery_max_utilization", "steady_max_utilization"],
+      "type": "object"
+    },
+    "population": {
+      "additionalProperties": false,
+      "properties": {
+        "active_postings": {"minimum": 1, "type": "integer"},
+        "configured_boards": {"minimum": 1, "type": "integer"}
+      },
+      "required": ["active_postings", "configured_boards"],
+      "type": "object"
+    },
+    "projected_peak_hour": {"$ref": "#/$defs/projectedPoint"},
+    "recovery": {
+      "additionalProperties": false,
+      "properties": {
+        "arrival_multiplier": {"minimum": 1, "type": "number"},
+        "lost_instances_per_scaling_role": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["arrival_multiplier", "lost_instances_per_scaling_role"],
+      "type": "object"
+    },
+    "required_evidence": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {"minLength": 1, "type": "string"},
+          "source": {"minLength": 1, "type": "string"},
+          "status": {"enum": ["frozen", "needs-capture", "needs-freeze"]}
+        },
+        "required": ["key", "source", "status"],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "revision": {"minLength": 1, "type": "string"},
+    "schema_version": {"const": "jobseek.crawler-runtime-workload/v1"}
+  },
+  "required": [
+    "schema_version",
+    "revision",
+    "effective_at",
+    "population",
+    "current_load_hour",
+    "projected_peak_hour",
+    "headroom",
+    "recovery",
+    "current_budget_reference",
+    "cost_boundary",
+    "required_evidence"
+  ],
+  "type": "object",
+  "$defs": {
+    "currentPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "lanes": {"$ref": "#/$defs/lanes"},
+        "lost_instances_per_scaling_role": {"minimum": 0, "type": "integer"},
+        "monthly_traffic_hours": {"exclusiveMinimum": 0, "type": ["number", "null"]},
+        "source_measurement_id": {"minLength": 1, "type": "string"}
+      },
+      "required": ["lanes", "lost_instances_per_scaling_role", "monthly_traffic_hours", "source_measurement_id"],
+      "type": "object"
+    },
+    "lane": {
+      "additionalProperties": false,
+      "properties": {
+        "execution_class": {"enum": ["http", "browser"]},
+        "stage": {"enum": ["monitor", "detail"]},
+        "successful_cycles_per_hour": {"minimum": 0, "type": "number"}
+      },
+      "required": ["execution_class", "stage", "successful_cycles_per_hour"],
+      "type": "object"
+    },
+    "lanes": {
+      "items": {"$ref": "#/$defs/lane"},
+      "minItems": 4,
+      "type": "array"
+    },
+    "projectedPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "lanes": {"$ref": "#/$defs/lanes"},
+        "mix_source_measurement_id": {"minLength": 1, "type": "string"},
+        "monthly_traffic_hours": {"exclusiveMinimum": 0, "type": ["number", "null"]}
+      },
+      "required": ["lanes", "monthly_traffic_hours", "mix_source_measurement_id"],
+      "type": "object"
+    }
+  }
+}

@@ -41,8 +41,8 @@ Status tags:
   - data-only upstream boundary, compatibility coverage, validated cache, and
   unsupported-family quarantine contract.
 - [23 - Go and Lightpanda Crawler Migration](23-go-lightpanda-migration.md)
-  `[reference]` - global-scale runtime replacement boundaries, capacity floor,
-  cutover safety, replay, metrics, Murmur coordination, and retirement plan.
+  `[reference]` - runtime replacement boundaries, projected crawler workload,
+  Python-versus-Go cost evidence, cutover safety, and retirement plan.
 
 ## Search, SEO, And Web Read Paths
 

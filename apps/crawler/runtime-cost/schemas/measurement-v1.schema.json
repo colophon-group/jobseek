@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jobseek.ch/schemas/crawler-runtime-measurement-v1.json",
+  "additionalProperties": false,
+  "properties": {
+    "capture": {
+      "additionalProperties": false,
+      "properties": {
+        "origin_requests_made": {"const": 0},
+        "read_only": {"const": true},
+        "source": {"const": "prometheus-read-api"},
+        "targets_revision": {"minLength": 1, "type": "string"}
+      },
+      "required": ["origin_requests_made", "read_only", "source", "targets_revision"],
+      "type": "object"
+    },
+    "evidence_gaps": {"items": {"minLength": 1, "type": "string"}, "type": "array", "uniqueItems": true},
+    "implementation": {"minLength": 1, "type": "string"},
+    "measurement_id": {"minLength": 1, "type": "string"},
+    "roles": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "cost_category": {"enum": ["worker", "browser", "runtime-support"]},
+          "discovery_concurrency_per_instance": {"exclusiveMinimum": 0, "type": ["number", "null"]},
+          "execution_class": {"enum": ["http", "browser", "support"]},
+          "instance_count": {"minimum": 1, "type": "integer"},
+          "lanes": {"items": {"$ref": "#/$defs/lane"}, "type": "array"},
+          "memory_limit_bytes_per_instance": {"type": ["integer", "null"]},
+          "monitor_concurrency_per_instance": {"exclusiveMinimum": 0, "type": ["number", "null"]},
+          "peak_rss_bytes_per_instance": {"minimum": 0, "type": "number"},
+          "process_cpu_seconds": {"minimum": 0, "type": "number"},
+          "retry_events": {"minimum": 0, "type": "number"},
+          "role": {"minLength": 1, "type": "string"},
+          "target_ids": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true},
+          "vcpu_limit_per_instance": {"type": ["number", "null"]}
+        },
+        "required": ["role", "execution_class", "cost_category", "instance_count", "target_ids", "discovery_concurrency_per_instance", "monitor_concurrency_per_instance", "vcpu_limit_per_instance", "memory_limit_bytes_per_instance", "process_cpu_seconds", "peak_rss_bytes_per_instance", "retry_events", "lanes"],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema_version": {"const": "jobseek.crawler-runtime-measurement/v1"},
+    "source_releases": {"items": {"minLength": 1, "type": "string"}, "type": "array", "uniqueItems": true},
+    "source_revision": {"minLength": 1, "type": "string"},
+    "window": {
+      "additionalProperties": false,
+      "properties": {
+        "end_at": {"format": "date-time", "type": "string"},
+        "seconds": {"minimum": 300, "type": "integer"},
+        "start_at": {"format": "date-time", "type": "string"}
+      },
+      "required": ["start_at", "end_at", "seconds"],
+      "type": "object"
+    },
+    "workload_revision": {"minLength": 1, "type": "string"}
+  },
+  "required": ["schema_version", "measurement_id", "workload_revision", "implementation", "source_revision", "source_releases", "window", "capture", "roles", "evidence_gaps"],
+  "type": "object",
+  "$defs": {
+    "lane": {
+      "additionalProperties": false,
+      "properties": {
+        "attempted_cycles": {"minimum": 0, "type": "number"},
+        "execution_class": {"enum": ["http", "browser"]},
+        "origin_attempts": {"type": ["number", "null"]},
+        "response_bytes": {"type": ["number", "null"]},
+        "stage": {"enum": ["monitor", "detail"]},
+        "successful_cycles": {"minimum": 0, "type": "number"},
+        "task_active_seconds": {"minimum": 0, "type": "number"}
+      },
+      "required": ["stage", "execution_class", "successful_cycles", "attempted_cycles", "task_active_seconds", "origin_attempts", "response_bytes"],
+      "type": "object"
+    }
+  }
+}
