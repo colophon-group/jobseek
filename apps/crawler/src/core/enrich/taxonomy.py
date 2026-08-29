@@ -7,7 +7,6 @@ to FK IDs, and collects unmatched taxonomy strings as misses.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -15,13 +14,12 @@ import structlog
 
 from src.core.occupation_resolve import load_occupation_ids, match_occupation
 from src.core.seniority_resolve import load_seniority_ids
+from src.shared.constants import get_data_dir
 
 if TYPE_CHECKING:
     import asyncpg
 
 log = structlog.get_logger()
-
-DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data"
 
 __all__ = [
     "TaxonomyMiss",
@@ -56,7 +54,7 @@ _warned_empty = False
 
 def _load_tech_name_map() -> dict[str, str]:
     """Build lowercase name -> slug map from technologies.csv."""
-    path = DATA_DIR / "technologies.csv"
+    path = get_data_dir() / "technologies.csv"
     if not path.exists():
         return {}
     df = pl.read_csv(path, infer_schema_length=0)

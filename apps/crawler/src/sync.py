@@ -49,6 +49,7 @@ from src.redis_queue import (
     remove_monitors,
 )
 from src.shared.avature import avature_request_host
+from src.shared.constants import get_data_dir, is_source_checkout
 from src.shared.logging import setup_logging
 from src.shared.taleo import taleo_request_host
 from src.typesense_client import get_typesense_client
@@ -58,8 +59,7 @@ _MONITOR_CONFIG_FINGERPRINT = "_monitor_config_fingerprint"
 _RECOVERY_SCHEDULE_STATUSES = frozenset({"quarantined", "gone_pending", "gone"})
 
 log = structlog.get_logger()
-
-DATA_DIR = Path(__file__).parent.parent / "data"
+_MOUNTINFO_PATH = Path("/proc/self/mountinfo")
 
 # The web app filters every list/search/facet surface by
 # `is_active:true && has_content:!=false` (POSTING_BASE_FILTER, see
@@ -73,6 +73,52 @@ _POSTING_FLOW_FILTER = "has_content:!=false"
 
 class CompanyTypesenseSyncError(RuntimeError):
     """Fail-closed company index error that must abort crawler sync."""
+
+
+def _decode_mountinfo_path(value: str) -> str:
+    """Decode the octal escapes used for paths in Linux mountinfo."""
+
+    for encoded, decoded in (
+        (r"\040", " "),
+        (r"\011", "\t"),
+        (r"\012", "\n"),
+        (r"\134", "\\"),
+    ):
+        value = value.replace(encoded, decoded)
+    return value
+
+
+def _require_installed_sync_data_mount() -> None:
+    """Require installed sync to consume a distinct read-only data mount.
+
+    Long-lived installed roles intentionally use the CSV tree baked into the
+    image, so this stronger provenance check belongs to ``crawler sync`` only.
+    Checked-out developer/CI execution retains the repository data contract.
+    """
+
+    if is_source_checkout():
+        return
+
+    data_dir = get_data_dir()
+    try:
+        mountinfo = _MOUNTINFO_PATH.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise RuntimeError(
+            "installed crawler sync requires /app/data to be a separate read-only mount"
+        ) from exc
+
+    for line in mountinfo.splitlines():
+        mount_fields = line.partition(" - ")[0].split()
+        if len(mount_fields) < 6:
+            continue
+        mount_point = _decode_mountinfo_path(mount_fields[4])
+        mount_options = frozenset(mount_fields[5].split(","))
+        if mount_point == str(data_dir):
+            if "ro" in mount_options:
+                return
+            break
+
+    raise RuntimeError("installed crawler sync requires /app/data to be a separate read-only mount")
 
 
 def _scraper_chain_needs_browser(
@@ -690,14 +736,14 @@ class BoardSyncEffects:
 
 
 def _load_companies() -> pl.DataFrame:
-    path = DATA_DIR / "companies.csv"
+    path = get_data_dir() / "companies.csv"
     df = pl.read_csv(path, infer_schema_length=0)
     log.info("sync.loaded_companies", count=len(df), path=str(path))
     return df
 
 
 def _load_boards() -> pl.DataFrame:
-    path = DATA_DIR / "boards.csv"
+    path = get_data_dir() / "boards.csv"
     df = pl.read_csv(path, infer_schema_length=0)
     log.info("sync.loaded_boards", count=len(df), path=str(path))
     return df
@@ -746,7 +792,7 @@ def _int_or_none(val: str | None) -> int | None:
 
 
 def _load_occupation_domains() -> pl.DataFrame:
-    path = DATA_DIR / "occupation_domains.csv"
+    path = get_data_dir() / "occupation_domains.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -755,7 +801,7 @@ def _load_occupation_domains() -> pl.DataFrame:
 
 
 def _load_occupations() -> pl.DataFrame:
-    path = DATA_DIR / "occupations.csv"
+    path = get_data_dir() / "occupations.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -764,7 +810,7 @@ def _load_occupations() -> pl.DataFrame:
 
 
 def _load_seniority() -> pl.DataFrame:
-    path = DATA_DIR / "seniority.csv"
+    path = get_data_dir() / "seniority.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -773,7 +819,7 @@ def _load_seniority() -> pl.DataFrame:
 
 
 def _load_industries() -> pl.DataFrame:
-    path = DATA_DIR / "industries.csv"
+    path = get_data_dir() / "industries.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -782,7 +828,7 @@ def _load_industries() -> pl.DataFrame:
 
 
 def _load_company_descriptions() -> pl.DataFrame:
-    path = DATA_DIR / "company_descriptions.csv"
+    path = get_data_dir() / "company_descriptions.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -791,7 +837,7 @@ def _load_company_descriptions() -> pl.DataFrame:
 
 
 def _load_technologies() -> pl.DataFrame:
-    path = DATA_DIR / "technologies.csv"
+    path = get_data_dir() / "technologies.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -3518,6 +3564,7 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
     from the mere presence of ``DATABASE_URL`` and refuses to start when that
     credential is absent.
     """
+    _require_installed_sync_data_mount()
     setup_logging(settings.log_level)
 
     if legacy_mirror and not settings.database_url:

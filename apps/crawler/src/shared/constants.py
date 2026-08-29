@@ -5,11 +5,15 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-# Module-level constants — correct when running from a checked-out repo
-# (i.e. dev mode or CI).  Workspace commands use the getter functions below
-# so they pick up the repo root discovered at startup.
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
-WORKSPACE_DIR = Path(__file__).parent.parent.parent / ".workspace"
+_MODULE_FILE = Path(__file__).resolve()
+_CHECKOUT_CRAWLER_ROOT = _MODULE_FILE.parent.parent.parent
+_INSTALLED_DATA_DIR = Path("/app/data")
+
+# Module-level constants are retained for checked-out developer/test callers.
+# Installed runtime consumers must use ``get_data_dir()`` so a wheel can never
+# accidentally treat a sibling ``site-packages/data`` directory as authority.
+DATA_DIR = _CHECKOUT_CRAWLER_ROOT / "data"
+WORKSPACE_DIR = _CHECKOUT_CRAWLER_ROOT / ".workspace"
 
 SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 URL_RE = re.compile(r"^https?://[^\s/]+")
@@ -41,11 +45,34 @@ def get_repo_root() -> Path | None:
     return _repo_root
 
 
+def is_source_checkout() -> bool:
+    """Return whether this imported module is the checkout's source file."""
+
+    source_file = _CHECKOUT_CRAWLER_ROOT / "src" / "shared" / "constants.py"
+    return (
+        (_CHECKOUT_CRAWLER_ROOT / "pyproject.toml").is_file()
+        and source_file.is_file()
+        and source_file.resolve() == _MODULE_FILE
+    )
+
+
 def get_data_dir() -> Path:
-    """Return the data directory, relative to repo root if set."""
+    """Return the sole authoritative CSV root for this execution mode.
+
+    Workspace commands may explicitly pivot to another checkout. Normal source
+    execution uses the structurally verified checkout containing this module.
+    An installed wheel uses only the read-only ``/app/data`` image contract and
+    fails closed when that directory is absent; it never probes wheel-relative
+    or copied source-tree fallbacks.
+    """
+
     if _repo_root:
         return _repo_root / "apps" / "crawler" / "data"
-    return DATA_DIR
+    if is_source_checkout():
+        return DATA_DIR
+    if _INSTALLED_DATA_DIR.is_dir():
+        return _INSTALLED_DATA_DIR
+    raise RuntimeError("installed crawler runtime requires the /app/data directory")
 
 
 def get_workspace_dir() -> Path:

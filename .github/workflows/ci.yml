@@ -211,6 +211,162 @@ jobs:
 
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
+      - name: Build slim crawler image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: apps/crawler
+          target: slim
+          platforms: linux/amd64
+          tags: jobseek-crawler-slim-ci:pr
+          load: true
+          push: false
+          cache-from: type=gha,scope=crawler-slim
+          cache-to: type=gha,mode=max,scope=crawler-slim,ignore-error=true
+
+      - name: Test installed sync data-root contract
+        run: |
+          set -euo pipefail
+          staged_data="$(mktemp -d)"
+          trap 'rm -rf "$staged_data"' EXIT
+          python3 - "$staged_data" <<'PY'
+          import csv
+          import sys
+          from pathlib import Path
+
+          root = Path(sys.argv[1])
+          csvs = {
+              "companies.csv": (
+                  [
+                      "slug", "name", "website", "logo_url", "icon_url",
+                      "logo_type", "industry", "employee_count_range",
+                      "founded_year", "extras",
+                  ],
+                  {
+                      "slug": "ci-staged", "name": "CI Staged",
+                      "website": "https://ci.invalid", "logo_type": "wordmark",
+                      "industry": "901", "employee_count_range": "1",
+                      "founded_year": "2026", "extras": "{}",
+                  },
+              ),
+              "boards.csv": (
+                  [
+                      "company_slug", "board_slug", "board_url", "monitor_type",
+                      "monitor_config", "scraper_type", "scraper_config",
+                  ],
+                  {
+                      "company_slug": "ci-staged", "board_slug": "ci-staged",
+                      "board_url": "https://ci.invalid/jobs",
+                      "monitor_type": "greenhouse", "monitor_config": "{}",
+                  },
+              ),
+              "occupation_domains.csv": (
+                  ["slug", "en", "de", "fr", "it"],
+                  {"slug": "sentinel-domain", "en": "Sentinel Domain"},
+              ),
+              "occupations.csv": (
+                  [
+                      "slug", "parent", "domain", "en", "de", "fr", "it",
+                      "pl", "es", "nl", "pt", "cs", "sv", "hu", "ro", "bg",
+                      "el", "da", "fi", "hr", "sk", "sl", "lt", "lv", "et",
+                      "aliases",
+                  ],
+                  {
+                      "slug": "sentinel-occupation", "domain": "sentinel-domain",
+                      "en": "Sentinel Engineer", "aliases": "Sentinel Builder",
+                  },
+              ),
+              "seniority.csv": (
+                  ["slug", "en", "de", "fr", "it", "aliases"],
+                  {"slug": "sentinel-seniority", "en": "Sentinel Seniority"},
+              ),
+              "industries.csv": (
+                  ["id", "name", "keywords"],
+                  {"id": "901", "name": "Sentinel Industry", "keywords": "sentinel"},
+              ),
+              "company_descriptions.csv": (
+                  ["slug", "en", "de", "fr", "it"],
+                  {"slug": "ci-staged", "en": "Sentinel description"},
+              ),
+              "technologies.csv": (
+                  ["slug", "name", "category", "patterns", "flags"],
+                  {
+                      "slug": "sentinel-technology", "name": "Sentinel Technology",
+                      "category": "other", "patterns": "SentinelTech",
+                  },
+              ),
+          }
+          for filename, (fieldnames, row) in csvs.items():
+              with (root / filename).open("w", newline="", encoding="utf-8") as handle:
+                  writer = csv.DictWriter(handle, fieldnames=fieldnames)
+                  writer.writeheader()
+                  writer.writerow(row)
+          PY
+
+          docker run --rm -i \
+            --platform linux/amd64 \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --mount "type=bind,source=$staged_data,target=/app/data,readonly" \
+            --workdir /tmp \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            --entrypoint /app/.venv/bin/python \
+            jobseek-crawler-slim-ci:pr - <<'PY'
+          import errno
+          import sys
+          from pathlib import Path
+
+          from src import sync
+          from src.core import occupation_resolve, seniority_resolve, technology_resolve
+          from src.core.enrich import company, taxonomy
+
+          module_path = Path(sync.__file__).resolve()
+          assert module_path.is_relative_to("/app/.venv")
+          assert "site-packages" in module_path.parts
+          assert "/app/src" not in sys.path
+          assert Path.cwd() == Path("/tmp")
+          assert sync.get_data_dir() == Path("/app/data")
+          sync._require_installed_sync_data_mount()
+          assert sync._load_companies()["slug"].to_list() == ["ci-staged"]
+          assert sync._load_boards()["board_slug"].to_list() == ["ci-staged"]
+          assert sync._load_occupation_domains()["slug"].to_list() == ["sentinel-domain"]
+          assert sync._load_occupations()["slug"].to_list() == ["sentinel-occupation"]
+          assert sync._load_seniority()["slug"].to_list() == ["sentinel-seniority"]
+          assert sync._load_industries()["id"].to_list() == ["901"]
+          assert sync._load_company_descriptions()["slug"].to_list() == ["ci-staged"]
+          assert sync._load_technologies()["slug"].to_list() == ["sentinel-technology"]
+          assert occupation_resolve.match_occupation("Sentinel Builder") == "sentinel-occupation"
+          assert seniority_resolve._load_seniority_slugs() == ["sentinel-seniority"]
+          assert technology_resolve.match_technologies("We use SentinelTech.") == [
+              "sentinel-technology"
+          ]
+          assert company.match_industry("Sentinel Industry") == 901
+          assert taxonomy._load_tech_name_map() == {
+              "sentinel technology": "sentinel-technology"
+          }
+          try:
+              (Path("/app/data") / "write-probe").touch()
+          except OSError as exc:
+              assert exc.errno in {errno.EROFS, errno.EACCES}
+          else:
+              raise AssertionError("/app/data must be mounted read-only")
+          PY
+
+          if missing_output="$(
+            docker run --rm \
+              --platform linux/amd64 \
+              --workdir /tmp \
+              -e PYTHONDONTWRITEBYTECODE=1 \
+              --entrypoint /app/.venv/bin/crawler \
+              jobseek-crawler-slim-ci:pr \
+              sync 2>&1
+          )"; then
+            echo 'ERROR: naturally unmounted installed crawler sync succeeded' >&2
+            exit 1
+          fi
+          grep -Fq \
+            'installed crawler sync requires /app/data to be a separate read-only mount' \
+            <<<"$missing_output"
+
       - name: Build full crawler image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
