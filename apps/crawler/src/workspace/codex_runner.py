@@ -475,6 +475,11 @@ class RunnerLedger:
                 );
                 CREATE INDEX IF NOT EXISTS worktree_reconciliation_path_time
                     ON worktree_reconciliation_events(worktree_path, observed_at);
+                CREATE TABLE IF NOT EXISTS worktree_archive_retention_state (
+                    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+                    cursor_name TEXT,
+                    updated_at INTEGER NOT NULL
+                );
                 """
             )
             self._ensure_columns(conn)
@@ -604,11 +609,20 @@ class RunnerLedger:
     def worktree_runs(self) -> list[dict[str, Any]]:
         """Return every ledger run with a worktree and its trace disposition."""
         with self._connect() as conn:
+            export_table = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'trace_bundle_exports'"
+            ).fetchone()
+            export_join = (
+                "LEFT JOIN trace_bundle_exports AS e ON e.run_id = r.run_id" if export_table else ""
+            )
+            verified_select = "e.run_id IS NOT NULL" if export_table else "0"
             rows = conn.execute(
-                """
-                SELECT r.*, a.status AS export_status
+                f"""
+                SELECT r.*, a.status AS export_status,
+                       {verified_select} AS trace_verified
                 FROM runs AS r
                 LEFT JOIN trace_bundle_export_attempts AS a ON a.run_id = r.run_id
+                {export_join}
                 WHERE r.worktree_path IS NOT NULL
                 ORDER BY r.updated_at, r.run_id
                 """
@@ -783,11 +797,36 @@ class RunnerLedger:
                 FROM worktree_reconciliation_events
                 WHERE archive_path IS NOT NULL
                   AND archive_sha256 IS NOT NULL
-                  AND action = 'archive_compaction_started'
+                  AND action IN (
+                      'archive_compaction_started',
+                      'archive_retention_prune_started'
+                  )
                 ORDER BY id
                 """
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def worktree_archive_retention_cursor(self) -> str | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT cursor_name FROM worktree_archive_retention_state WHERE singleton = 1"
+            ).fetchone()
+        value = row["cursor_name"] if row else None
+        return str(value) if isinstance(value, str) and value else None
+
+    def set_worktree_archive_retention_cursor(self, cursor_name: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO worktree_archive_retention_state (
+                    singleton, cursor_name, updated_at
+                ) VALUES (1, ?, ?)
+                ON CONFLICT(singleton) DO UPDATE SET
+                    cursor_name = excluded.cursor_name,
+                    updated_at = excluded.updated_at
+                """,
+                (cursor_name, int(time.time())),
+            )
 
     def count_recent_runs(self, *, active_slot: str, since: int) -> int:
         with self._connect() as conn:
@@ -1874,13 +1913,28 @@ class CompanyResolverGovernor:
                 state="interrupted",
                 error=str(exc),
             )
-        return self._export_terminal_trace(result)
+        result = self._export_terminal_trace(result)
+        self._cleanup_terminal_worktree(result)
+        return result
 
     def _retry_failed_trace_exports(self) -> None:
         retry_failed_trace_exports(config=self.config, ledger=self.ledger)
 
     def _export_terminal_trace(self, result: RunResult) -> RunResult:
         return export_terminal_trace(config=self.config, ledger=self.ledger, result=result)
+
+    def _cleanup_terminal_worktree(self, result: RunResult) -> None:
+        """Reconcile after export; only verified traces permit workspace discard."""
+        if not self.config.cleanup_success_worktree or not result.run_id:
+            return
+        worktree = result.worktree_path
+        if worktree is None:
+            run = self.ledger.get_run(result.run_id)
+            raw_worktree = run.get("worktree_path") if run else None
+            if isinstance(raw_worktree, str) and raw_worktree:
+                worktree = Path(raw_worktree)
+        if worktree is not None:
+            self.reconcile_worktrees(apply=True, only_paths={worktree})
 
     def should_start(self) -> SchedulerDecision:
         self.reconcile_stale_runs()
@@ -2166,6 +2220,7 @@ class CompanyResolverGovernor:
             TRUSTED_GITHUB_REPOSITORY,
             GitHubRemoteVerifier,
             combine_worktree_reports,
+            prune_redundant_workspace_archives,
             reconcile_managed_worktrees,
             reconcile_worktrees,
         )
@@ -2231,6 +2286,23 @@ class CompanyResolverGovernor:
             apply=apply,
             only_paths=only_paths,
             pre_remove=_pre_remove,
+        )
+        archive_retention = prune_redundant_workspace_archives(
+            repo_dir=cfg.repo_dir,  # type: ignore[arg-type]
+            archive_dir=cfg.state_dir / "worktree-quarantine",  # type: ignore[operator]
+            ledger=self.ledger,
+            remote_verifier=remote_verifier,
+            authoritative_main_verifier=remote_verifier.verify_main,
+            apply=apply,
+        )
+        print(
+            json.dumps(
+                {
+                    "event": "codex_worktree_archive_retention",
+                    **asdict(archive_retention),
+                },
+                sort_keys=True,
+            )
         )
         report = combine_worktree_reports(
             [runner_report, managed_report],
@@ -2363,8 +2435,6 @@ class CompanyResolverGovernor:
             self._release_claim_if_unresolved(admission, worktree=worktree)
             reason = "codex runtime exceeded"
             self._finish_outcome(admission, "interrupted", reason)
-            if cfg.cleanup_success_worktree:
-                self.reconcile_worktrees(apply=True, only_paths={worktree})
             return RunResult(
                 run_id=admission.run_id,
                 issue=admission.issue,
@@ -2392,8 +2462,6 @@ class CompanyResolverGovernor:
         if state in RETRY_OUTCOMES:
             self._release_claim_if_unresolved(admission, worktree=worktree)
         self._finish_outcome(admission, state, reason, error=error)
-        if cfg.cleanup_success_worktree:
-            self.reconcile_worktrees(apply=True, only_paths={worktree})
         return RunResult(
             run_id=admission.run_id,
             issue=admission.issue,

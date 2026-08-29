@@ -531,7 +531,8 @@ For each accepted issue:
     and unresolved exits as `retryable` or `interrupted` with exponential
     backoff (`JOBSEEK_CODEX_RETRY_BACKOFF_S`, default 900 seconds, capped by
     `JOBSEEK_CODEX_MAX_RETRY_BACKOFF_S`, default 21600 seconds).
-14. Reconcile both throwaway-worktree roots after a terminal outcome and on
+14. After the terminal trace export attempt, reconcile both throwaway-worktree
+    roots and repeat reconciliation on
     every governor/deploy startup: the outer runner root at
     `/srv/jobseek-codex/worktrees` and the `ws` managed-clone root at
     `/home/codex-runner/.jobseek/worktrees`. Never touch an active, live,
@@ -540,10 +541,15 @@ For each accepted issue:
     have a cleanly inspected Git state and prove that their head is in main,
     has a tree exactly equal to main, or is exactly preserved on its remote
     branch; every other local head is bundled and verified before removal.
-    Archive dirty
-    diffs, untracked files, workspace metadata, and unique commit objects,
-    record the decision and root in SQLite, then remove only the registered
-    worktree. Before reserving fresh archive capacity, a retry may compact
+    Archive dirty diffs, untracked files, debug/retry workspace metadata, and
+    unique commit objects, record the decision and root in SQLite, then remove
+    only the registered worktree. A clean `submitted`, `rejected`, or
+    `escalated` runner worktree may discard ignored `.workspace` diagnostics
+    without another local archive only when a real remotely verified trace
+    export row exists, GitHub and local HEAD proof both pass, and the guarded
+    pre-remove hook proves that no other candidate changed or remains. An
+    export-attempt status alone is never sufficient. Before reserving fresh
+    archive capacity, a retry may compact
     older, ledger-checksummed generations of the exact same full source
     snapshot while keeping one verified, directory-synced survivor. A
     successful removal keeps its fresh archive and compacts any remaining
@@ -554,7 +560,22 @@ For each accepted issue:
     entries must be real directories: symlinks and
     resolved paths outside the configured root are retained, and containment,
     registration, lock, and HEAD are revalidated immediately before removal.
-    Retryable/interrupted state is archived before cleanup.
+    Retryable/interrupted state, dirty content, non-workspace candidates, and
+    unique commits are always archived before cleanup.
+    Each reconciliation inspects at most 25 historical archives, advancing a
+    durable lexical-name cursor so corrupt or permanently ineligible entries
+    cannot make a wake unbounded or starve later candidates. It migrates only archives whose
+    ledger removal event, outer checksum, versioned tar manifest, member
+    inventory, resolved run, verified trace row, current GitHub outcome, and
+    archived HEAD preservation all agree. Only archives containing ordinary
+    `workspace/**` members and no patch or unique-commit bundle qualify. The
+    runner records a durable `archive_retention_prune_started` identity before
+    the same-directory claim and unlink, fsyncs the quarantine directory, and
+    records the reclaimed bytes afterward. A dead claim is restored only from
+    that exact ledger path/hash identity. Unrecorded, replaced, corrupt,
+    failed/retryable, dirty, unique-commit, non-workspace, or remotely
+    unverified archives remain local and continue to count against the hard
+    ceiling.
 15. Emit a structured disk warning at
     `JOBSEEK_CODEX_MIN_DISK_FREE_GIB + JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB`.
     Stop new admissions at the disk floor or when quarantined trace material
