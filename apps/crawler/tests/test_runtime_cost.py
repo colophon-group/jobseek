@@ -9,7 +9,10 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
+from prometheus_client import CollectorRegistry, Counter, generate_latest
+from prometheus_client.parser import text_string_to_metric_families
 
+from src.metrics import _seed_process_tree_sample_outcomes
 from src.runtime_cost.model import ModelError, project_runtime_cost
 from src.runtime_cost.prometheus import capture_prometheus_measurement
 
@@ -19,6 +22,14 @@ RUNTIME_COST = ROOT / "runtime-cost"
 
 def _json(path: Path) -> dict:
     return json.loads(path.read_text())
+
+
+def _exposed_counter_value(payload: bytes, metric: str, outcome: str) -> float:
+    for family in text_string_to_metric_families(payload.decode()):
+        for sample in family.samples:
+            if sample.name == metric and sample.labels == {"outcome": outcome}:
+                return float(sample.value)
+    raise AssertionError(f"missing {metric} outcome={outcome}")
 
 
 def test_runtime_cost_schemas_are_valid_draft_2020_12():
@@ -707,6 +718,26 @@ def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
     end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
     start_at = datetime(2026, 8, 29, 11, tzinfo=UTC)
     queries: list[str] = []
+    registry = CollectorRegistry()
+    exposed_samples = Counter(
+        "crawler_runtime_process_tree_samples_total",
+        "test process-tree sampler observations",
+        ["outcome"],
+        registry=registry,
+    )
+    _seed_process_tree_sample_outcomes(exposed_samples)
+    exposed_samples.labels(outcome="success").inc(100)
+    start_exposition = generate_latest(registry)
+    exposed_samples.labels(outcome="success").inc(7000)
+    end_exposition = generate_latest(registry)
+    assert (
+        _exposed_counter_value(
+            start_exposition,
+            "crawler_runtime_process_tree_samples_total",
+            "failure",
+        )
+        == 0
+    )
 
     def fake_query(expression: str, at: datetime) -> list[dict]:
         queries.append(expression)
@@ -720,12 +751,20 @@ def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
             "crawler_runtime_process_tree_samples_total" in expression
             and 'outcome="success"' in expression
         ):
-            value = 100 if at == start_at else 7100
+            value = _exposed_counter_value(
+                start_exposition if at == start_at else end_exposition,
+                "crawler_runtime_process_tree_samples_total",
+                "success",
+            )
         elif (
             "crawler_runtime_process_tree_samples_total" in expression
             and 'outcome="failure"' in expression
         ):
-            value = 4
+            value = _exposed_counter_value(
+                start_exposition if at == start_at else end_exposition,
+                "crawler_runtime_process_tree_samples_total",
+                "failure",
+            )
         elif "crawler_runtime_process_tree_sampling_gaps_total" in expression:
             value = 0
         elif "crawler_runtime_process_tree_sampler_starts_total" in expression:
@@ -881,6 +920,7 @@ def test_prometheus_capture_rejects_partial_process_tree_role_coverage() -> None
         "one-sample",
         "fractional-samples",
         "failed-sample",
+        "missing-failure-series",
         "counter-reset",
         "sampler-restart",
         "sampling-gap",
@@ -936,6 +976,8 @@ def test_prometheus_capture_fails_closed_for_incomplete_tree_window(fault: str) 
             "crawler_runtime_process_tree_samples_total" in expression
             and 'outcome="failure"' in expression
         ):
+            if fault == "missing-failure-series":
+                return []
             value = 1 if fault == "failed-sample" and at == end_at else 0
         elif "crawler_runtime_process_tree_sampling_gaps_total" in expression:
             value = 1 if fault == "sampling-gap" and at == end_at else 0

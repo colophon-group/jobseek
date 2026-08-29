@@ -717,6 +717,13 @@ def _record_process_tree_sampling_gap(missed_intervals: int) -> None:
     runtime_process_tree_sampling_gaps_total.inc(missed_intervals)
 
 
+def _seed_process_tree_sample_outcomes(samples_counter: Counter) -> None:
+    """Expose both bounded outcomes, including a healthy explicit zero."""
+
+    for outcome in ("success", "failure"):
+        samples_counter.labels(outcome=outcome).inc(0)
+
+
 def _start_process_tree_sampler(interval_seconds: float = 0.5) -> threading.Thread:
     """Start the process-tree sampler once per crawler process."""
 
@@ -727,6 +734,7 @@ def _start_process_tree_sampler(interval_seconds: float = 0.5) -> threading.Thre
         if _process_tree_sampler_thread is not None and _process_tree_sampler_thread.is_alive():
             return _process_tree_sampler_thread
         _process_tree_sampler_stop.clear()
+        _seed_process_tree_sample_outcomes(runtime_process_tree_samples_total)
         runtime_process_tree_sampler_starts_total.inc()
         runtime_process_tree_sample_interval_seconds.set(interval_seconds)
         sampler = ProcessTreeSampler()
