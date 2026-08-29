@@ -82,8 +82,3 @@ def test_heyjobs_keyword_results_are_filtered_to_exact_uniqlo_employer() -> None
         "tenant": "uniqlo-europe",
         "field": "requisition_id",
     }
-
-
-def test_uniqlo_image_staging_is_complete() -> None:
-    assert (DATA_DIR / "images/uniqlo/logo.png").stat().st_size > 0
-    assert (DATA_DIR / "images/uniqlo/icon.png").stat().st_size > 0

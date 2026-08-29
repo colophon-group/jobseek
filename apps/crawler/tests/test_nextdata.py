@@ -720,9 +720,7 @@ class TestCanHandle:
 
 class TestItemInclusions:
     def test_validates_and_filters_scalar_or_list_values(self):
-        inclusions = _validated_item_inclusions(
-            {"company": ["UNIQLO"], "countries": ["DE"]}
-        )
+        inclusions = _validated_item_inclusions({"company": ["UNIQLO"], "countries": ["DE"]})
 
         result = _filter_included_items(
             [
@@ -734,9 +732,7 @@ class TestItemInclusions:
             inclusions,
         )
 
-        assert result == [
-            {"id": "1", "company": "UNIQLO", "countries": ["DE", "AT"]}
-        ]
+        assert result == [{"id": "1", "company": "UNIQLO", "countries": ["DE", "AT"]}]
 
     @pytest.mark.parametrize(
         "value",
