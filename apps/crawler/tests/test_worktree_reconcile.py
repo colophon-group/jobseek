@@ -149,6 +149,79 @@ def _create_workspace_archive(
     return repo, archive_path, ledger, run_id
 
 
+def _rewrite_archive_as_legacy(
+    archive_path: Path,
+    ledger: RunnerLedger,
+    *,
+    mutate_manifest=None,
+    extra_member: str | None = None,
+    synchronize_remote_proof: bool = True,
+) -> None:
+    temporary = archive_path.with_name(f".{archive_path.name}.legacy")
+    entries: list[tuple[tarfile.TarInfo, bytes | None]] = []
+    with tarfile.open(archive_path, "r:gz") as source:
+        for member in source:
+            extracted = source.extractfile(member) if member.isfile() else None
+            data = extracted.read() if extracted is not None else None
+            if member.name == "manifest.json":
+                manifest = json.loads((data or b"").decode())
+                manifest["remote_proof"] = {
+                    "ok": True,
+                    "kind": "pull_request",
+                    "detail": {
+                        "number": 7,
+                        "state": "OPEN",
+                        "isDraft": False,
+                        "headRefName": "add-company/acme",
+                        "headRefOid": manifest["head_oid"],
+                        "mergedAt": None,
+                        "url": "https://github.com/colophon-group/jobseek/pull/7",
+                    },
+                    "error": None,
+                }
+                manifest = {
+                    key: manifest[key]
+                    for key in reconcile_module.LEGACY_WORKSPACE_ARCHIVE_MANIFEST_KEYS
+                }
+                if mutate_manifest is not None:
+                    mutate_manifest(manifest)
+                data = json.dumps(manifest, indent=2, sort_keys=True).encode() + b"\n"
+                member.size = len(data)
+            entries.append((member, data))
+    with tarfile.open(temporary, "w:gz") as destination:
+        for member, data in entries:
+            destination.addfile(member, io.BytesIO(data) if data is not None else None)
+        if extra_member is not None:
+            payload = b"unexpected retained evidence\n"
+            member = tarfile.TarInfo(extra_member)
+            member.size = len(payload)
+            destination.addfile(member, io.BytesIO(payload))
+    os.replace(temporary, archive_path)
+    archive_sha256 = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+    with ledger._connect() as connection:
+        connection.execute(
+            """
+            UPDATE worktree_reconciliation_events
+            SET archive_sha256 = ?
+            WHERE archive_path = ?
+            """,
+            (archive_sha256, str(archive_path)),
+        )
+        if synchronize_remote_proof:
+            with tarfile.open(archive_path, "r:gz") as archive:
+                manifest_file = archive.extractfile("manifest.json")
+                assert manifest_file is not None
+                manifest = json.loads(manifest_file.read())
+            connection.execute(
+                """
+                UPDATE worktree_reconciliation_events
+                SET remote_proof_json = ?
+                WHERE archive_path = ? AND action = 'removed'
+                """,
+                (json.dumps(manifest["remote_proof"], sort_keys=True), str(archive_path)),
+            )
+
+
 def _reconcile(
     tmp_path: Path,
     repo: Path,
@@ -450,6 +523,118 @@ def test_verified_workspace_only_archive_is_pruned_with_durable_events(
         "archive_retention_prune_started",
         "archive_retention_pruned",
     ]
+
+
+def test_verified_legacy_workspace_only_archive_is_pruned(tmp_path: Path) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+    _rewrite_archive_as_legacy(archive_path, ledger)
+    archive_bytes = archive_path.stat().st_size
+    _record_verified_trace(ledger, run_id)
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.inspected == 1
+    assert report.eligible == 1
+    assert report.pruned == 1
+    assert report.reclaimed_bytes == archive_bytes
+    assert not archive_path.exists()
+
+
+def test_legacy_archive_remote_proof_must_match_removal_event(tmp_path: Path) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+
+    def replace_head(manifest: dict[str, object]) -> None:
+        proof = manifest["remote_proof"]
+        assert isinstance(proof, dict)
+        detail = proof["detail"]
+        assert isinstance(detail, dict)
+        detail["headRefOid"] = "f" * 40
+
+    _rewrite_archive_as_legacy(
+        archive_path,
+        ledger,
+        mutate_manifest=replace_head,
+        synchronize_remote_proof=False,
+    )
+    _record_verified_trace(ledger, run_id)
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.inspected == 1
+    assert report.pruned == 0
+    assert report.retained_unverified == 1
+    assert archive_path.exists()
+
+
+@pytest.mark.parametrize("replacement", [None, "not-a-commit"])
+def test_legacy_archive_requires_valid_recorded_head(
+    tmp_path: Path,
+    replacement: str | None,
+) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+
+    def replace_head(manifest: dict[str, object]) -> None:
+        proof = manifest["remote_proof"]
+        assert isinstance(proof, dict)
+        detail = proof["detail"]
+        assert isinstance(detail, dict)
+        if replacement is None:
+            detail.pop("headRefOid", None)
+        else:
+            detail["headRefOid"] = replacement
+
+    _rewrite_archive_as_legacy(
+        archive_path,
+        ledger,
+        mutate_manifest=replace_head,
+        synchronize_remote_proof=True,
+    )
+    _record_verified_trace(ledger, run_id)
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.inspected == 1
+    assert report.pruned == 0
+    assert report.retained_unverified == 1
+    assert archive_path.exists()
+
+
+@pytest.mark.parametrize(
+    "extra_member",
+    ["tracked.patch", "unique-commits.bundle", "outside-workspace.txt"],
+)
+def test_legacy_archive_with_nonworkspace_evidence_is_retained(
+    tmp_path: Path,
+    extra_member: str,
+) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+    _rewrite_archive_as_legacy(archive_path, ledger, extra_member=extra_member)
+    _record_verified_trace(ledger, run_id)
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.inspected == 1
+    assert report.pruned == 0
+    assert report.retained_unverified == 1
+    assert archive_path.exists()
+
+
+def test_snapshotless_legacy_archive_is_rejected_by_compaction_inspection(
+    tmp_path: Path,
+) -> None:
+    _repo, archive_path, ledger, _run_id = _create_workspace_archive(tmp_path)
+    _rewrite_archive_as_legacy(archive_path, ledger)
+    expected_sha256 = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+    parent_fd = reconcile_module.open_absolute_directory_no_follow(archive_path.parent)
+    try:
+        with pytest.raises(RuntimeError, match="source snapshot identity is invalid"):
+            reconcile_module._inspect_archive_generation_at(
+                parent_fd,
+                archive_path.name,
+                expected_sha256=expected_sha256,
+            )
+    finally:
+        os.close(parent_fd)
 
 
 def test_trace_attempt_cannot_authorize_historical_archive_pruning(tmp_path: Path) -> None:

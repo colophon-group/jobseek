@@ -9,6 +9,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 from src.workspace import codex_runner as codex_runner_module
 from src.workspace.codex_runner import (
     ClaimComment,
@@ -1348,9 +1350,194 @@ def test_cleanup_uses_configured_managed_repo_root(tmp_path: Path) -> None:
     workspace = custom_managed_repo / "apps" / "crawler" / ".workspace" / "acme"
     workspace.mkdir(parents=True)
     (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    active = workspace.parent / "active.scope-test-run"
+    active.write_text("acme\n")
     governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
 
     governor._cleanup_ws_artifacts_for_issue(101)
+
+    assert not workspace.exists()
+    assert not active.exists()
+
+
+def test_cleanup_removes_only_exact_authenticated_run_scope_marker(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    workspace_root.mkdir(parents=True)
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    run_id = "issue-101-1787997096-d0e1bd7d"
+    pointer = json.dumps(
+        {"version": 1, "slug": "acme", "generation": "a" * 32},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    workspace = workspace_root / "acme"
+    workspace.mkdir()
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    exact = workspace_root / f"active.scope-{run_id}"
+    other = workspace_root / "active.scope-issue-102-1787997096-eeeeeeee"
+    exact.write_text(pointer)
+    other.write_text(pointer)
+
+    governor._cleanup_ws_artifacts_for_issue(101, run_id=run_id)
+
+    assert not exact.exists()
+    assert not workspace.exists()
+    assert other.read_text() == pointer
+
+    workspace.mkdir()
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    exact.write_text('{"version":1,"slug":"acme","generation":"invalid"}')
+    with pytest.raises(RuntimeError, match="marker is unauthenticated"):
+        governor._cleanup_ws_artifacts_for_issue(101, run_id=run_id)
+
+    assert exact.exists()
+    assert workspace.exists()
+
+
+def test_cleanup_retains_mismatched_run_scope_marker(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    workspace = workspace_root / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    run_id = "issue-101-1787997096-d0e1bd7d"
+    marker = workspace_root / f"active.scope-{run_id}"
+    marker.write_text(json.dumps({"version": 1, "slug": "other", "generation": "a" * 32}))
+
+    with pytest.raises(RuntimeError, match="marker is unauthenticated"):
+        governor._cleanup_ws_artifacts_for_issue(101, run_id=run_id)
+
+    assert marker.exists()
+    assert workspace.exists()
+
+
+def test_cleanup_retains_marker_when_workspace_slug_binding_is_invalid(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    workspace = workspace_root / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: other\ngit:\n  issue: 101\n  worktree: ''\n")
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    run_id = "issue-101-1787997096-d0e1bd7d"
+    marker = workspace_root / f"active.scope-{run_id}"
+    marker.write_text(json.dumps({"version": 1, "slug": "acme", "generation": "a" * 32}))
+
+    with pytest.raises(RuntimeError, match="metadata slug"):
+        governor._cleanup_ws_artifacts_for_issue(101, run_id=run_id)
+
+    assert marker.exists()
+    assert workspace.exists()
+
+
+def test_cleanup_does_not_follow_run_scope_marker_symlink(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    workspace_root.mkdir(parents=True)
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    run_id = "issue-101-1787997096-d0e1bd7d"
+    workspace = workspace_root / "acme"
+    workspace.mkdir()
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    external = tmp_path / "external-pointer"
+    external.write_text(json.dumps({"version": 1, "slug": "acme", "generation": "a" * 32}))
+    marker = workspace_root / f"active.scope-{run_id}"
+    marker.symlink_to(external)
+
+    with pytest.raises(RuntimeError, match="marker is unsafe"):
+        governor._cleanup_ws_artifacts_for_issue(101, run_id=run_id)
+
+    assert marker.is_symlink()
+    assert external.exists()
+    assert workspace.exists()
+
+
+def test_cleanup_retains_hardlinked_run_scope_marker_and_workspace(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    workspace = workspace_root / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    run_id = "issue-101-1787997096-d0e1bd7d"
+    external = tmp_path / "external-pointer"
+    external.write_text(json.dumps({"version": 1, "slug": "acme", "generation": "a" * 32}))
+    marker = workspace_root / f"active.scope-{run_id}"
+    os.link(external, marker)
+
+    with pytest.raises(RuntimeError, match="marker is unauthenticated"):
+        governor._cleanup_ws_artifacts_for_issue(101, run_id=run_id)
+
+    assert marker.exists()
+    assert external.exists()
+    assert workspace.exists()
+
+
+def test_cleanup_marker_precedes_workspace_removal_and_is_retryable(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    workspace = workspace_root / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    run_id = "issue-101-1787997096-d0e1bd7d"
+    marker = workspace_root / f"active.scope-{run_id}"
+    marker.write_text(json.dumps({"version": 1, "slug": "acme", "generation": "a" * 32}))
+    original_rmtree = codex_runner_module.rmtree_child_at
+
+    def interrupt_removal(*_args, **_kwargs):
+        raise RuntimeError("simulated interruption")
+
+    monkeypatch.setattr(codex_runner_module, "rmtree_child_at", interrupt_removal)
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        governor._cleanup_ws_artifacts_for_issue(101, run_id=run_id)
+
+    assert not marker.exists()
+    assert workspace.exists()
+    assert (workspace / "workspace.yaml").exists()
+
+    monkeypatch.setattr(codex_runner_module, "rmtree_child_at", original_rmtree)
+    governor._cleanup_ws_artifacts_for_issue(101, run_id=run_id)
 
     assert not workspace.exists()
 
@@ -1418,12 +1605,12 @@ def test_reconcile_pre_remove_does_not_follow_workspace_symlink(
     github = FakeGitHub(issue=101, issue_closed=True, issue_outcome="rejected")
     governor = CompanyResolverGovernor(config, github=github)
     assert governor.ledger.acquire(
-        run_id="terminal-run",
+        run_id="issue-101-1-aaaaaaaa",
         issue=101,
         active_slot=config.active_slot,
     )
-    governor.ledger.update("terminal-run", worktree_path=str(worktree))
-    governor.ledger.finish("terminal-run", "rejected")
+    governor.ledger.update("issue-101-1-aaaaaaaa", worktree_path=str(worktree))
+    governor.ledger.finish("issue-101-1-aaaaaaaa", "rejected")
 
     report = governor.reconcile_worktrees(apply=True)
 
@@ -1532,12 +1719,12 @@ def test_reconcile_cleanup_stays_anchored_when_workspace_root_is_swapped(
     github = FakeGitHub(issue=101, issue_closed=True, issue_outcome="rejected")
     governor = CompanyResolverGovernor(config, github=github)
     assert governor.ledger.acquire(
-        run_id="terminal-swap-run",
+        run_id="issue-101-1-aaaaaaaa",
         issue=101,
         active_slot=config.active_slot,
     )
-    governor.ledger.update("terminal-swap-run", worktree_path=str(worktree))
-    governor.ledger.finish("terminal-swap-run", "rejected")
+    governor.ledger.update("issue-101-1-aaaaaaaa", worktree_path=str(worktree))
+    governor.ledger.finish("issue-101-1-aaaaaaaa", "rejected")
 
     report = governor.reconcile_worktrees(apply=True)
 

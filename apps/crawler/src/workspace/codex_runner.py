@@ -2268,6 +2268,7 @@ class CompanyResolverGovernor:
             workspace_root = worktree / "apps" / "crawler" / ".workspace"
             self._cleanup_ws_artifacts_for_issue(
                 item.issue,
+                run_id=item.run_id,
                 workspace_root=workspace_root,
                 workspace_container=worktree,
             )
@@ -2589,9 +2590,13 @@ class CompanyResolverGovernor:
         self,
         issue: int,
         *,
+        run_id: str | None = None,
         workspace_root: Path | None = None,
         workspace_container: Path | None = None,
     ) -> None:
+        run_scope_marker = _run_scope_marker_name(issue=issue, run_id=run_id)
+        if run_id is not None and run_scope_marker is None:
+            raise RuntimeError("invalid run identity for scoped workspace cleanup")
         roots: list[tuple[Path, Path]] = []
         if workspace_root is not None:
             roots.append((workspace_root, workspace_container or workspace_root.parent))
@@ -2618,9 +2623,19 @@ class CompanyResolverGovernor:
             seen.add(safe_root)
             recover_pending_rmtree_claims(safe_root)
             for workspace_dir in _workspace_dirs_for_issue(safe_root, issue):
-                self._cleanup_workspace_dir(workspace_dir, safe_root)
+                self._cleanup_workspace_dir(
+                    workspace_dir,
+                    safe_root,
+                    run_scope_marker=run_scope_marker,
+                )
 
-    def _cleanup_workspace_dir(self, workspace_dir: Path, workspace_root: Path) -> None:
+    def _cleanup_workspace_dir(
+        self,
+        workspace_dir: Path,
+        workspace_root: Path,
+        *,
+        run_scope_marker: str | None = None,
+    ) -> None:
         safe_workspace_dir = _validated_workspace_child(workspace_dir, workspace_root)
         if safe_workspace_dir is None:
             return
@@ -2635,10 +2650,24 @@ class CompanyResolverGovernor:
             if not data:
                 return
             slug = safe_workspace_dir.name
+            if data.get("slug") != slug:
+                raise RuntimeError("workspace metadata slug does not match its directory")
             worktree = _workspace_worktree(data)
             if worktree and worktree.exists():
                 raise RuntimeError(
                     f"managed ws worktree {worktree} was retained; refusing workspace cleanup"
+                )
+            # Clear the authenticated active pointer while workspace.yaml still
+            # durably binds this slug to the terminal issue.  If directory
+            # removal is interrupted, the issue-bearing workspace remains and
+            # the next pass can repeat this proof.
+            if run_scope_marker is None:
+                _cleanup_active_markers_at(workspace_root_fd, slug)
+            else:
+                _cleanup_exact_active_marker_at(
+                    workspace_root_fd,
+                    name=run_scope_marker,
+                    slug=slug,
                 )
             rmtree_child_at(
                 workspace_root_fd,
@@ -2646,7 +2675,6 @@ class CompanyResolverGovernor:
                 child_fd=workspace_fd,
                 expected=workspace_stat,
             )
-            _cleanup_active_markers_at(workspace_root_fd, slug)
         finally:
             if workspace_fd is not None:
                 os.close(workspace_fd)
@@ -2819,6 +2847,65 @@ def _cleanup_active_markers_at(workspace_root_fd: int, slug: str) -> None:
             unlink_child_at(workspace_root_fd, name, expected=opened)
         except (OSError, RuntimeError):
             continue
+
+
+def _cleanup_exact_active_marker_at(workspace_root_fd: int, *, name: str, slug: str) -> None:
+    try:
+        value, opened = _read_text_at_no_follow(workspace_root_fd, name)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise RuntimeError(f"run-scoped workspace marker is unsafe: {name}") from exc
+    if (
+        opened.st_uid != os.geteuid()
+        or opened.st_nlink != 1
+        or _workspace_active_pointer_slug(value, require_v1=True) != slug
+    ):
+        raise RuntimeError(f"run-scoped workspace marker is unauthenticated: {name}")
+    unlink_child_at(workspace_root_fd, name, expected=opened)
+
+
+def _workspace_active_pointer_slug(raw: str, *, require_v1: bool = False) -> str | None:
+    """Read a workspace pointer without accepting malformed authenticated records."""
+    value = raw.strip()
+    if not value:
+        return None
+    if not value.startswith("{"):
+        return None if require_v1 else value
+    try:
+        record = json.loads(value)
+    except json.JSONDecodeError:
+        return None
+    generation = record.get("generation") if isinstance(record, dict) else None
+    if (
+        not isinstance(record, dict)
+        or set(record) != {"version", "slug", "generation"}
+        or record.get("version") != 1
+        or not isinstance(record.get("slug"), str)
+        or not record["slug"]
+        or not isinstance(generation, str)
+        or len(generation) != 32
+        or any(character not in "0123456789abcdef" for character in generation)
+    ):
+        return None
+    return str(record["slug"])
+
+
+def _run_scope_marker_name(*, issue: int, run_id: str | None) -> str | None:
+    """Derive the exact active-pointer child name for one ledger-bound run."""
+    if run_id is None:
+        return None
+    parts = run_id.split("-")
+    if (
+        len(parts) != 4
+        or parts[0] != "issue"
+        or parts[1] != str(issue)
+        or not parts[2].isdigit()
+        or len(parts[3]) != 8
+        or any(character not in "0123456789abcdef" for character in parts[3])
+    ):
+        return None
+    return f"active.scope-{run_id}"
 
 
 def _read_text_no_follow(path: Path) -> str:
