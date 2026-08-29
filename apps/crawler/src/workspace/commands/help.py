@@ -1203,6 +1203,13 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     pagination     Page metadata mapping. Example:
                    {"path":"jobsData.meta","page_count":"totalPages",
                     "page_param":"page"}
+    include_item_values
+                   Retain only items whose configured field exactly matches
+                   one of the allowed strings. Applied after all pagination
+                   pages are fetched, including in streaming mode. Example:
+                   {"company_display_name":["Acme GmbH"]}. Do not combine
+                   with pagination.total_records because the source total is
+                   unfiltered.
 
   Detection:  ws probe shows "__NEXT_DATA__ — N items at <path>"
               If "(render)" shown, page needs Playwright to load data.

@@ -77,6 +77,7 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 
 MAX_URLS = 50_000
+MAX_HTML_CHARS = 2_000_000
 _MAX_CONCURRENT_PAGES = 5
 _PAGE_FETCH_ATTEMPTS = 3
 _PAGE_FETCH_BASE_DELAY = 0.5
@@ -281,6 +282,73 @@ def _assert_item_requirements(
         for field, expected in requirements:
             if resolve_path(item, field) != list(expected):
                 raise ValueError("nextdata item did not match its configured tenant values")
+
+
+def _validated_item_inclusions(
+    value: object,
+) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Validate exact values used to retain tenant-owned listing items."""
+    if value is None:
+        return ()
+    if not isinstance(value, dict) or not value or len(value) > _MAX_ITEM_REQUIREMENTS:
+        raise ValueError("nextdata include_item_values must be a bounded non-empty object")
+
+    inclusions: list[tuple[str, tuple[str, ...]]] = []
+    for field, expected in value.items():
+        if (
+            not isinstance(field, str)
+            or not field
+            or len(field) > _MAX_IDENTITY_FIELD_LENGTH
+            or "\x00" in field
+        ):
+            raise ValueError("nextdata include_item_values contains an invalid field path")
+        if (
+            not isinstance(expected, list)
+            or not expected
+            or not all(
+                isinstance(item, str)
+                and item
+                and len(item) <= _MAX_REQUIRED_VALUE_LENGTH
+                and "\x00" not in item
+                for item in expected
+            )
+        ):
+            raise ValueError("nextdata include_item_values expects non-empty string lists")
+        inclusions.append((field, tuple(expected)))
+    return tuple(inclusions)
+
+
+def _filter_included_items(
+    items: list,
+    inclusions: tuple[tuple[str, tuple[str, ...]], ...],
+) -> list:
+    """Retain only items whose configured fields contain exact allowed values."""
+    if not inclusions:
+        return items
+
+    included: list = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        matches = True
+        for field, expected in inclusions:
+            actual = resolve_path(item, field)
+            if isinstance(actual, list):
+                matches = any(value in expected for value in actual if isinstance(value, str))
+            else:
+                matches = isinstance(actual, str) and actual in expected
+            if not matches:
+                break
+        if matches:
+            included.append(item)
+
+    log.info(
+        "nextdata.item_inclusions_applied",
+        input_items=len(items),
+        included_items=len(included),
+        fields=[field for field, _expected in inclusions],
+    )
+    return included
 
 
 def _validated_hiring_organization_config(
@@ -565,7 +633,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
 
     When *pw* is provided, the Playwright fallback reuses that instance.
     """
-    html = await fetch_page_text(url, client)
+    html = await fetch_page_text(url, client, max_chars=MAX_HTML_CHARS)
     if html:
         # Try __NEXT_DATA__ first
         data = extract_next_data(html)
@@ -720,6 +788,7 @@ async def discover(
     hiring_organization_config = _validated_hiring_organization_config(metadata)
     expected_page_title = _validated_page_title(metadata.get("expected_page_title"))
     item_requirements = _validated_item_requirements(metadata.get("require_item_values"))
+    item_inclusions = _validated_item_inclusions(metadata.get("include_item_values"))
     render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
@@ -730,6 +799,10 @@ async def discover(
         raise ValueError("nextdata expected_page_title does not support browser source")
     if expected_page_title is not None and pagination_cfg:
         raise ValueError("nextdata expected_page_title does not support pagination")
+    if item_inclusions and pagination_cfg and pagination_cfg.get("total_records"):
+        raise ValueError(
+            "nextdata include_item_values cannot validate an unfiltered pagination total"
+        )
 
     if not render and actions:
         log.warning(
@@ -819,6 +892,8 @@ async def discover(
             browser_config=browser_config,
         )
 
+    items = _filter_included_items(items, item_inclusions)
+
     if item_requirements:
         _assert_item_requirements(items, item_requirements)
 
@@ -895,6 +970,7 @@ async def discover_stream(
     hiring_organization_config = _validated_hiring_organization_config(metadata)
     expected_page_title = _validated_page_title(metadata.get("expected_page_title"))
     item_requirements = _validated_item_requirements(metadata.get("require_item_values"))
+    item_inclusions = _validated_item_inclusions(metadata.get("include_item_values"))
     render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
@@ -905,6 +981,10 @@ async def discover_stream(
         raise ValueError("nextdata expected_page_title does not support browser source")
     if expected_page_title is not None and pagination_cfg:
         raise ValueError("nextdata expected_page_title does not support pagination")
+    if item_inclusions and pagination_cfg and pagination_cfg.get("total_records"):
+        raise ValueError(
+            "nextdata include_item_values cannot validate an unfiltered pagination total"
+        )
 
     if not render and actions:
         render = True
@@ -971,9 +1051,6 @@ async def discover_stream(
                     raise ValueError("nextdata strict_path did not resolve to a list")
                 return
 
-    if item_requirements:
-        _assert_item_requirements(items, item_requirements)
-
     def _extract_batch(batch_items: list):
         if fields_map:
             return _extract_rich(
@@ -987,6 +1064,9 @@ async def discover_stream(
         return _extract_urls(batch_items, url_template, slug_fields)
 
     async def _verified_batch(batch_items: list):
+        batch_items = _filter_included_items(batch_items, item_inclusions)
+        if item_requirements:
+            _assert_item_requirements(batch_items, item_requirements)
         result = _extract_batch(batch_items)
         if fields_map and url_allowlist is not None:
             _assert_urls_allowed(result, url_allowlist)
@@ -1141,7 +1221,12 @@ async def _fetch_html(
         except Exception:
             log.warning("nextdata.render_failed", url=url, exc_info=True)
             return None
-    return await fetch_page_text(url, client, board_gone_statuses=board_gone_statuses)
+    return await fetch_page_text(
+        url,
+        client,
+        max_chars=MAX_HTML_CHARS,
+        board_gone_statuses=board_gone_statuses,
+    )
 
 
 async def _fetch_embedded_page_with_retry(
