@@ -10,23 +10,17 @@
       "items": {
         "additionalProperties": false,
         "properties": {
+          "cost_category": {"enum": ["worker", "browser", "runtime-support"]},
+          "discovery_concurrency": {"minimum": 1, "type": ["integer", "null"]},
           "execution_class": {"enum": ["http", "browser", "support"]},
           "id": {"minLength": 1, "type": "string"},
           "instance": {"pattern": "^[A-Za-z0-9_.:-]+$", "type": "string"},
-          "max_concurrency": {
-            "additionalProperties": false,
-            "properties": {
-              "detail": {"minimum": 1, "type": "integer"},
-              "monitor": {"minimum": 1, "type": "integer"}
-            },
-            "required": ["detail", "monitor"],
-            "type": "object"
-          },
           "memory_limit_bytes": {"type": ["integer", "null"]},
+          "monitor_concurrency": {"minimum": 1, "type": ["integer", "null"]},
           "role": {"minLength": 1, "type": "string"},
           "vcpu_limit": {"type": ["number", "null"]}
         },
-        "required": ["id", "instance", "role", "execution_class", "vcpu_limit", "memory_limit_bytes"],
+        "required": ["id", "instance", "role", "execution_class", "cost_category", "discovery_concurrency", "monitor_concurrency", "vcpu_limit", "memory_limit_bytes"],
         "type": "object"
       },
       "minItems": 1,

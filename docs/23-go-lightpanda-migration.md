@@ -44,7 +44,8 @@ The source-controlled comparison contract lives in
   the current 24-hour success mix, the 1M monitor/5M detail projected peak,
   shared headroom, and unresolved evidence requirements;
 - `python-production-targets-v1.json` maps existing bounded Prometheus
-  instances to crawler runtime roles and configured concurrency;
+  instances to crawler runtime roles, the shared `DISCOVERY_CONCURRENCY`
+  pool, and its `MONITOR_CONCURRENCY` sub-cap;
 - `evidence/python-production-2026-08-29-24h.json` is the first sanitized,
   read-only Python measurement; and
 - `pricing/hetzner-eu-2026-06-15.json` preserves official EU-Central Hetzner
@@ -101,15 +102,29 @@ control-plane resources. An excluded service may be reported separately only
 when the migration causes a measured attributable delta; its complete fleet
 is never charged to this comparison.
 
+Readiness is structural rather than an editable checklist. Worker sizing uses
+the maximum of shared discovery-pool saturation and the monitor sub-cap; it
+does not add monitor and detail as independent worker pools. The cost ledger
+must cover all seven in-scope categories. Queue, scheduler, runtime-support,
+and proxy require explicit current and projected monthly EUR values;
+runtime-support also names every observed support role it covers. Network
+pricing consumes measured response bytes, explicit monthly hours at the load
+point, per-SKU included traffic, overage pricing, and IPv4. Missing entries,
+uncovered support roles, null usage measurements, or an unselected SKU create
+model-generated blockers even if every descriptive evidence status is edited
+to `frozen`.
+
 The first Python capture intentionally leaves browser-child CPU/RSS, complete
 origin-attempt and response-byte counts, proxy attribution, and Redis resource
-allocation unknown. Provider-weighted load, response-size distribution, and
-capability/publisher-policy evidence are not yet frozen. These are emitted as
-decision blockers rather than inferred as zero, so the current artifact does
-not yet claim a minimum CHF budget or any Go saving. Its selected current CX43
-scenario reports only a compute-plus-IPv4 subtotal of EUR 32.98 / CHF 30.92
-per month, excluding VAT. Because that subtotal omits blocked attributable
-costs, `minimum_sustainable_monthly_chf_excluding_vat` and the CHF 50 funding
+allocation unknown. The monthly traffic duty cycle, provider-weighted load,
+response-size distribution, and capability/publisher-policy evidence are not
+yet frozen. Queue, scheduler, runtime-support, and proxy ledger entries are
+present but explicitly `unknown`. These are emitted as decision blockers
+rather than inferred as zero, so the current artifact does not yet claim a
+minimum CHF budget or any Go saving. Its selected current CX43 scenario
+reports only a compute-plus-IPv4 subtotal of EUR 32.98 / CHF 30.92 per month,
+excluding VAT. Because that subtotal omits blocked attributable costs,
+`minimum_sustainable_monthly_chf_excluding_vat` and the CHF 50 funding
 shortfall remain `null`; the subtotal must not be interpreted as evidence that
 CHF 50 is sufficient.
 

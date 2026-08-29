@@ -1,4 +1,34 @@
 {
+  "attributable_monthly_costs": [
+    {
+      "category": "queue",
+      "covered_roles": [],
+      "current_sustainable_monthly_eur": null,
+      "projected_load_monthly_eur": null,
+      "status": "unknown"
+    },
+    {
+      "category": "scheduler",
+      "covered_roles": [],
+      "current_sustainable_monthly_eur": null,
+      "projected_load_monthly_eur": null,
+      "status": "unknown"
+    },
+    {
+      "category": "runtime-support",
+      "covered_roles": ["python-drain", "python-exporter"],
+      "current_sustainable_monthly_eur": null,
+      "projected_load_monthly_eur": null,
+      "status": "unknown"
+    },
+    {
+      "category": "proxy",
+      "covered_roles": [],
+      "current_sustainable_monthly_eur": null,
+      "projected_load_monthly_eur": null,
+      "status": "unknown"
+    }
+  ],
   "billing_assumptions": {
     "current_crawler_sku_evidence": {
       "datacenter": "unknown-within-eu-central-price-region",
@@ -17,6 +47,8 @@
     "source_url": "https://eur-lex.europa.eu/legal-content/EN/ALL/?uri=CELEX:C/2026/04110"
   },
   "network": {
+    "bytes_per_tb": 1000000000000,
+    "measurement_basis": "crawler-response-bytes",
     "overage_eur_per_tb": 1.0,
     "primary_ipv4_monthly_eur": 0.5,
     "primary_ipv4_per_server": 1,
@@ -30,7 +62,7 @@
   "provider": "hetzner",
   "region_group": "eu-central-fsn-nbg-hel",
   "retrieved_at": "2026-08-29",
-  "revision": "hetzner-eu-2026-06-15-fx-2026-08-27",
+  "revision": "hetzner-eu-2026-06-15-fx-2026-08-27-ledger-v2",
   "scenario_selection": {
     "current_load_sku": "CX43",
     "projected_load_sku": null,

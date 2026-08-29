@@ -48,6 +48,7 @@
       }
     ],
     "lost_instances_per_scaling_role": 1,
+    "monthly_traffic_hours": null,
     "source_measurement_id": "python-production-20260829-86400s"
   },
   "effective_at": "2026-08-29T09:26:48Z",
@@ -83,7 +84,8 @@
         "successful_cycles_per_hour": 1080816
       }
     ],
-    "mix_source_measurement_id": "python-production-20260829-86400s"
+    "mix_source_measurement_id": "python-production-20260829-86400s",
+    "monthly_traffic_hours": null
   },
   "recovery": {
     "arrival_multiplier": 2,
@@ -99,6 +101,11 @@
       "key": "response-size-distribution",
       "source": "missing-current-telemetry",
       "status": "needs-capture"
+    },
+    {
+      "key": "monthly-traffic-hours",
+      "source": "projected-load-duty-cycle-not-yet-frozen",
+      "status": "needs-freeze"
     },
     {
       "key": "origin-attempt-and-retry-rate",

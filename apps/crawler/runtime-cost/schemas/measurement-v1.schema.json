@@ -21,10 +21,13 @@
       "items": {
         "additionalProperties": false,
         "properties": {
+          "cost_category": {"enum": ["worker", "browser", "runtime-support"]},
+          "discovery_concurrency_per_instance": {"exclusiveMinimum": 0, "type": ["number", "null"]},
           "execution_class": {"enum": ["http", "browser", "support"]},
           "instance_count": {"minimum": 1, "type": "integer"},
           "lanes": {"items": {"$ref": "#/$defs/lane"}, "type": "array"},
           "memory_limit_bytes_per_instance": {"type": ["integer", "null"]},
+          "monitor_concurrency_per_instance": {"exclusiveMinimum": 0, "type": ["number", "null"]},
           "peak_rss_bytes_per_instance": {"minimum": 0, "type": "number"},
           "process_cpu_seconds": {"minimum": 0, "type": "number"},
           "retry_events": {"minimum": 0, "type": "number"},
@@ -32,7 +35,7 @@
           "target_ids": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true},
           "vcpu_limit_per_instance": {"type": ["number", "null"]}
         },
-        "required": ["role", "execution_class", "instance_count", "target_ids", "vcpu_limit_per_instance", "memory_limit_bytes_per_instance", "process_cpu_seconds", "peak_rss_bytes_per_instance", "retry_events", "lanes"],
+        "required": ["role", "execution_class", "cost_category", "instance_count", "target_ids", "discovery_concurrency_per_instance", "monitor_concurrency_per_instance", "vcpu_limit_per_instance", "memory_limit_bytes_per_instance", "process_cpu_seconds", "peak_rss_bytes_per_instance", "retry_events", "lanes"],
         "type": "object"
       },
       "minItems": 1,
@@ -61,14 +64,13 @@
       "properties": {
         "attempted_cycles": {"minimum": 0, "type": "number"},
         "execution_class": {"enum": ["http", "browser"]},
-        "max_concurrency_per_instance": {"exclusiveMinimum": 0, "type": "number"},
         "origin_attempts": {"type": ["number", "null"]},
         "response_bytes": {"type": ["number", "null"]},
         "stage": {"enum": ["monitor", "detail"]},
         "successful_cycles": {"minimum": 0, "type": "number"},
         "task_active_seconds": {"minimum": 0, "type": "number"}
       },
-      "required": ["stage", "execution_class", "successful_cycles", "attempted_cycles", "task_active_seconds", "max_concurrency_per_instance", "origin_attempts", "response_bytes"],
+      "required": ["stage", "execution_class", "successful_cycles", "attempted_cycles", "task_active_seconds", "origin_attempts", "response_bytes"],
       "type": "object"
     }
   }

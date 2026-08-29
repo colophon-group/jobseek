@@ -73,6 +73,8 @@ def test_projected_workload_keeps_authoritative_load_and_cost_boundary():
         "arrival_multiplier": 2,
         "lost_instances_per_scaling_role": 1,
     }
+    assert workload["current_load_hour"]["monthly_traffic_hours"] is None
+    assert workload["projected_peak_hour"]["monthly_traffic_hours"] is None
     assert workload["current_budget_reference"] == {
         "known_insufficient": True,
         "monthly_chf": 50,
@@ -97,6 +99,17 @@ def test_live_python_evidence_keeps_unmeasured_values_unknown():
     assert "browser-child-cpu-and-rss-not-in-process-metrics" in measurement["evidence_gaps"]
     assert "queue-and-redis-resource-use-requires-separate-capture" in measurement["evidence_gaps"]
     for role in measurement["roles"]:
+        if role["execution_class"] == "support":
+            assert role["cost_category"] == "runtime-support"
+            assert role["discovery_concurrency_per_instance"] is None
+            assert role["monitor_concurrency_per_instance"] is None
+        else:
+            assert role["discovery_concurrency_per_instance"] > 0
+            assert (
+                0
+                < role["monitor_concurrency_per_instance"]
+                <= role["discovery_concurrency_per_instance"]
+            )
         for lane in role["lanes"]:
             assert lane["origin_attempts"] is None
             assert lane["response_bytes"] is None
@@ -117,6 +130,13 @@ def test_committed_pricing_preserves_source_currency_and_whole_skus():
     }
     assert pricing["scenario_selection"]["current_load_sku"] == "CX43"
     assert pricing["scenario_selection"]["projected_load_sku"] is None
+    assert {item["category"] for item in pricing["attributable_monthly_costs"]} == {
+        "queue",
+        "scheduler",
+        "runtime-support",
+        "proxy",
+    }
+    assert all(item["status"] == "unknown" for item in pricing["attributable_monthly_costs"])
     assert all(isinstance(sku["vcpus"], int) for sku in pricing["server_skus"])
     assert all(isinstance(sku["memory_bytes"], int) for sku in pricing["server_skus"])
 
@@ -136,8 +156,9 @@ def _workload() -> dict:
         "current_load_hour": {
             "lanes": lanes_current,
             "lost_instances_per_scaling_role": 1,
+            "monthly_traffic_hours": 1,
         },
-        "projected_peak_hour": {"lanes": lanes_projected},
+        "projected_peak_hour": {"lanes": lanes_projected, "monthly_traffic_hours": 1},
         "headroom": {
             "steady_max_utilization": 0.5,
             "recovery_max_utilization": 1,
@@ -179,6 +200,10 @@ def _measurement() -> dict:
         "roles": [
             {
                 "role": "http-worker",
+                "execution_class": "http",
+                "cost_category": "worker",
+                "discovery_concurrency_per_instance": 10,
+                "monitor_concurrency_per_instance": 5,
                 "vcpu_limit_per_instance": 1,
                 "memory_limit_bytes_per_instance": 1024,
                 "process_cpu_seconds": 360,
@@ -189,14 +214,16 @@ def _measurement() -> dict:
                         "execution_class": "http",
                         "successful_cycles": 100,
                         "task_active_seconds": 3600,
-                        "max_concurrency_per_instance": 10,
+                        "origin_attempts": 100,
+                        "response_bytes": 100,
                     },
                     {
                         "stage": "detail",
                         "execution_class": "http",
                         "successful_cycles": 100,
                         "task_active_seconds": 3600,
-                        "max_concurrency_per_instance": 10,
+                        "origin_attempts": 100,
+                        "response_bytes": 100,
                     },
                 ],
             }
@@ -232,12 +259,24 @@ def _pricing() -> dict:
             "source_url": "https://example.com/fx",
         },
         "network": {
+            "bytes_per_tb": 1_000_000_000_000,
+            "measurement_basis": "crawler-response-bytes",
             "primary_ipv4_per_server": 1,
             "primary_ipv4_monthly_eur": 0.5,
             "traffic_cost_status": "priced",
             "overage_eur_per_tb": 1,
             "source_urls": ["https://example.com/network"],
         },
+        "attributable_monthly_costs": [
+            {
+                "category": category,
+                "status": "priced",
+                "covered_roles": [],
+                "current_sustainable_monthly_eur": 1,
+                "projected_load_monthly_eur": 1,
+            }
+            for category in ("queue", "scheduler", "runtime-support", "proxy")
+        ],
         "scenario_selection": {
             "current_load_sku": "TEST4",
             "projected_load_sku": "TEST4",
@@ -272,16 +311,143 @@ def test_model_reports_current_sustainable_budget_separately_from_projected_load
     assert current["sku_scenarios"][0]["required_servers"] == 1
     assert current["selected_monthly_compute_ipv4_eur_excluding_vat"] == 10.5
     assert current["selected_monthly_compute_ipv4_chf_excluding_vat"] == pytest.approx(9.45)
-    assert current["minimum_sustainable_monthly_chf_excluding_vat"] == pytest.approx(9.45)
+    assert current["minimum_sustainable_monthly_chf_excluding_vat"] == pytest.approx(13.05)
     assert current["current_budget_shortfall_chf"] == 0
     assert projected["roles"][0]["required_instances"] == 5
     assert projected["sku_scenarios"][0]["required_servers"] == 2
     assert projected["selected_monthly_compute_ipv4_eur_excluding_vat"] == 21
     assert projected["selected_monthly_compute_ipv4_chf_excluding_vat"] == pytest.approx(18.9)
-    assert projected["minimum_sustainable_monthly_chf_excluding_vat"] == pytest.approx(18.9)
+    assert projected["minimum_sustainable_monthly_chf_excluding_vat"] == pytest.approx(22.5)
     assert "current_budget_reference_chf" not in projected
     assert "current_budget_shortfall_chf" not in projected
     assert result["decision_ready"] is True
+
+
+def test_shared_discovery_pool_does_not_double_count_monitor_and_detail_slots():
+    workload = _workload()
+    workload["headroom"]["steady_max_utilization"] = 1
+    workload["current_load_hour"]["lost_instances_per_scaling_role"] = 0
+    measurement = _measurement()
+    measurement["roles"][0]["process_cpu_seconds"] = 0
+    for lane in measurement["roles"][0]["lanes"]:
+        lane["task_active_seconds"] = 180_000
+
+    result = project_runtime_cost(workload, measurement, _pricing())
+
+    role = result["comparison_points"]["current_sustainable"]["roles"][0]
+    assert role["steady_shared_discovery_instances"] == 10
+    assert role["steady_monitor_subcap_instances"] == 10
+    assert role["steady_concurrency_instances"] == 10
+    assert role["required_instances"] == 10
+
+
+@pytest.mark.parametrize("category", ["queue", "scheduler", "runtime-support", "proxy"])
+def test_each_fixed_crawler_cost_category_changes_total_or_blocks(category: str):
+    baseline = project_runtime_cost(_workload(), _measurement(), _pricing())
+    baseline_cost = baseline["comparison_points"]["current_sustainable"][
+        "minimum_sustainable_monthly_eur_excluding_vat"
+    ]
+    changed_pricing = deepcopy(_pricing())
+    changed_entry = next(
+        item
+        for item in changed_pricing["attributable_monthly_costs"]
+        if item["category"] == category
+    )
+    changed_entry["current_sustainable_monthly_eur"] = 7
+    changed = project_runtime_cost(_workload(), _measurement(), changed_pricing)
+    changed_cost = changed["comparison_points"]["current_sustainable"][
+        "minimum_sustainable_monthly_eur_excluding_vat"
+    ]
+    assert changed_cost == pytest.approx(baseline_cost + 6)
+
+    blocked_pricing = deepcopy(_pricing())
+    blocked_entry = next(
+        item
+        for item in blocked_pricing["attributable_monthly_costs"]
+        if item["category"] == category
+    )
+    blocked_entry["status"] = "unknown"
+    blocked_entry["current_sustainable_monthly_eur"] = None
+    blocked = project_runtime_cost(_workload(), _measurement(), blocked_pricing)
+    assert f"current_sustainable-fixed-cost-unpriced:{category}" in blocked["blockers"]
+    assert (
+        blocked["comparison_points"]["current_sustainable"][
+            "minimum_sustainable_monthly_eur_excluding_vat"
+        ]
+        is None
+    )
+
+
+def test_missing_fixed_cost_category_is_a_structural_blocker():
+    pricing = _pricing()
+    pricing["attributable_monthly_costs"] = [
+        item for item in pricing["attributable_monthly_costs"] if item["category"] != "queue"
+    ]
+
+    result = project_runtime_cost(_workload(), _measurement(), pricing)
+
+    assert "current_sustainable-fixed-cost-category-missing:queue" in result["blockers"]
+    assert result["decision_ready"] is False
+
+
+def test_clearing_text_gaps_cannot_hide_missing_usage_quantities():
+    measurement = _measurement()
+    measurement["evidence_gaps"] = []
+    measurement["roles"][0]["lanes"][0]["origin_attempts"] = None
+    measurement["roles"][0]["lanes"][1]["response_bytes"] = None
+
+    result = project_runtime_cost(_workload(), measurement, _pricing())
+
+    assert "origin-attempts-unmeasured:monitor:http" in result["blockers"]
+    assert "response-bytes-unmeasured:detail:http" in result["blockers"]
+    assert result["decision_ready"] is False
+
+
+def test_huge_response_volume_changes_network_cost_and_complete_total():
+    baseline = project_runtime_cost(_workload(), _measurement(), _pricing())
+    baseline_cost = baseline["comparison_points"]["current_sustainable"][
+        "minimum_sustainable_monthly_eur_excluding_vat"
+    ]
+    measurement = _measurement()
+    for lane in measurement["roles"][0]["lanes"]:
+        lane["response_bytes"] = 10**18
+
+    result = project_runtime_cost(_workload(), measurement, _pricing())
+
+    current = result["comparison_points"]["current_sustainable"]
+    scenario = current["sku_scenarios"][0]
+    assert current["monthly_response_bytes"] == 2 * 10**18
+    assert scenario["monthly_network_traffic_eur_excluding_vat"] > 1900
+    assert current["minimum_sustainable_monthly_eur_excluding_vat"] > baseline_cost + 1900
+
+
+def test_observed_support_roles_must_be_covered_by_runtime_support_cost():
+    measurement = _measurement()
+    for role in ("python-drain", "python-exporter"):
+        measurement["roles"].append(
+            {
+                "role": role,
+                "execution_class": "support",
+                "cost_category": "runtime-support",
+                "lanes": [],
+            }
+        )
+
+    blocked = project_runtime_cost(_workload(), measurement, _pricing())
+
+    assert "runtime-support-role-uncovered:python-drain" in blocked["blockers"]
+    assert "runtime-support-role-uncovered:python-exporter" in blocked["blockers"]
+    assert blocked["decision_ready"] is False
+
+    pricing = _pricing()
+    support_entry = next(
+        item
+        for item in pricing["attributable_monthly_costs"]
+        if item["category"] == "runtime-support"
+    )
+    support_entry["covered_roles"] = ["python-drain", "python-exporter"]
+    complete = project_runtime_cost(_workload(), measurement, pricing)
+    assert complete["decision_ready"] is True
 
 
 def test_model_rejects_changed_crawler_cost_boundary():
@@ -318,8 +484,8 @@ def test_unpriced_traffic_and_unselected_projected_sku_remain_blockers():
     assert (
         result["comparison_points"]["current_sustainable"]["current_budget_shortfall_chf"] is None
     )
-    assert "network-traffic-cost-unpriced" in result["blockers"]
-    assert "projected-hetzner-sku-unselected" in result["blockers"]
+    assert "current_sustainable-network-traffic-cost-unpriced" in result["blockers"]
+    assert "projected_load-hetzner-sku-unselected" in result["blockers"]
     assert result["decision_ready"] is False
 
 
@@ -335,9 +501,11 @@ def test_prometheus_capture_is_read_only_and_sanitized():
                 "instance": "worker-1",
                 "role": "http-worker",
                 "execution_class": "http",
+                "cost_category": "worker",
+                "discovery_concurrency": 3,
+                "monitor_concurrency": 2,
                 "vcpu_limit": 1,
                 "memory_limit_bytes": 1024,
-                "max_concurrency": {"monitor": 2, "detail": 3},
             }
         ],
     }
@@ -380,5 +548,7 @@ def test_prometheus_capture_is_read_only_and_sanitized():
     assert result["source_releases"] == ["1.2.3"]
     assert result["roles"][0]["process_cpu_seconds"] == 12
     assert result["roles"][0]["peak_rss_bytes_per_instance"] == 128
+    assert result["roles"][0]["discovery_concurrency_per_instance"] == 3
+    assert result["roles"][0]["monitor_concurrency_per_instance"] == 2
     assert all("http" not in query.lower() or "crawler_http_retry" in query for query in queries)
     assert "browser-child-cpu-and-rss-not-in-process-metrics" in result["evidence_gaps"]

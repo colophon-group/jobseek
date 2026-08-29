@@ -3,6 +3,11 @@
   "$id": "https://jobseek.ch/schemas/crawler-runtime-pricing-v1.json",
   "additionalProperties": false,
   "properties": {
+    "attributable_monthly_costs": {
+      "items": {"$ref": "#/$defs/attributableCost"},
+      "maxItems": 4,
+      "type": "array"
+    },
     "billing_assumptions": {
       "additionalProperties": false,
       "properties": {
@@ -38,6 +43,8 @@
     "network": {
       "additionalProperties": false,
       "properties": {
+        "bytes_per_tb": {"exclusiveMinimum": 0, "type": "integer"},
+        "measurement_basis": {"const": "crawler-response-bytes"},
         "overage_eur_per_tb": {"minimum": 0, "type": "number"},
         "primary_ipv4_monthly_eur": {"minimum": 0, "type": "number"},
         "primary_ipv4_per_server": {"enum": [0, 1]},
@@ -49,7 +56,7 @@
         },
         "traffic_cost_status": {"enum": ["priced", "blocked-until-attributable-bytes"]}
       },
-      "required": ["primary_ipv4_per_server", "primary_ipv4_monthly_eur", "traffic_cost_status", "overage_eur_per_tb", "source_urls"],
+      "required": ["primary_ipv4_per_server", "primary_ipv4_monthly_eur", "traffic_cost_status", "measurement_basis", "bytes_per_tb", "overage_eur_per_tb", "source_urls"],
       "type": "object"
     },
     "price_effective_at": {"format": "date-time", "type": "string"},
@@ -81,9 +88,25 @@
     },
     "vat_treatment": {"const": "excluded"}
   },
-  "required": ["schema_version", "revision", "provider", "source_currency", "region_group", "price_effective_at", "retrieved_at", "vat_treatment", "billing_assumptions", "fx", "network", "scenario_selection", "server_skus", "sources"],
+  "required": ["schema_version", "revision", "provider", "source_currency", "region_group", "price_effective_at", "retrieved_at", "vat_treatment", "billing_assumptions", "fx", "network", "attributable_monthly_costs", "scenario_selection", "server_skus", "sources"],
   "type": "object",
   "$defs": {
+    "attributableCost": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {"enum": ["queue", "scheduler", "runtime-support", "proxy"]},
+        "covered_roles": {
+          "items": {"minLength": 1, "type": "string"},
+          "type": "array",
+          "uniqueItems": true
+        },
+        "current_sustainable_monthly_eur": {"minimum": 0, "type": ["number", "null"]},
+        "projected_load_monthly_eur": {"minimum": 0, "type": ["number", "null"]},
+        "status": {"enum": ["priced", "unknown"]}
+      },
+      "required": ["category", "status", "covered_roles", "current_sustainable_monthly_eur", "projected_load_monthly_eur"],
+      "type": "object"
+    },
     "serverSku": {
       "additionalProperties": false,
       "properties": {

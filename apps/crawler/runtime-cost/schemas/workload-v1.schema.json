@@ -99,9 +99,10 @@
       "properties": {
         "lanes": {"$ref": "#/$defs/lanes"},
         "lost_instances_per_scaling_role": {"minimum": 0, "type": "integer"},
+        "monthly_traffic_hours": {"exclusiveMinimum": 0, "type": ["number", "null"]},
         "source_measurement_id": {"minLength": 1, "type": "string"}
       },
-      "required": ["lanes", "lost_instances_per_scaling_role", "source_measurement_id"],
+      "required": ["lanes", "lost_instances_per_scaling_role", "monthly_traffic_hours", "source_measurement_id"],
       "type": "object"
     },
     "lane": {
@@ -123,9 +124,10 @@
       "additionalProperties": false,
       "properties": {
         "lanes": {"$ref": "#/$defs/lanes"},
-        "mix_source_measurement_id": {"minLength": 1, "type": "string"}
+        "mix_source_measurement_id": {"minLength": 1, "type": "string"},
+        "monthly_traffic_hours": {"exclusiveMinimum": 0, "type": ["number", "null"]}
       },
-      "required": ["lanes", "mix_source_measurement_id"],
+      "required": ["lanes", "monthly_traffic_hours", "mix_source_measurement_id"],
       "type": "object"
     }
   }

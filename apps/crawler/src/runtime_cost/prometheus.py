@@ -118,6 +118,9 @@ def capture_prometheus_measurement(
         role_peak_rss = 0.0
         role_retries = 0.0
         role_target_ids: list[str] = []
+        cost_categories: set[str] = set()
+        discovery_concurrencies: set[float | None] = set()
+        monitor_concurrencies: set[float | None] = set()
         vcpu_limits: set[float | None] = set()
         memory_limits: set[int | None] = set()
 
@@ -174,22 +177,35 @@ def capture_prometheus_measurement(
                 else None
             )
             execution_class = target.get("execution_class")
+            cost_category = target.get("cost_category")
+            if not isinstance(cost_category, str) or not cost_category:
+                raise ModelError(f"{instance} needs a cost category")
+            cost_categories.add(cost_category)
+            discovery = target.get("discovery_concurrency")
+            monitor = target.get("monitor_concurrency")
             if execution_class == "support":
+                if discovery is not None or monitor is not None:
+                    raise ModelError(f"{instance} support concurrency must be null")
+                discovery_concurrencies.add(None)
+                monitor_concurrencies.add(None)
                 continue
             if execution_class not in {"http", "browser"}:
                 raise ModelError(f"unsupported execution class {execution_class!r}")
+            if not isinstance(discovery, int) or discovery <= 0:
+                raise ModelError(f"{instance} needs positive discovery_concurrency")
+            if not isinstance(monitor, int) or monitor <= 0 or monitor > discovery:
+                raise ModelError(
+                    f"{instance} needs monitor_concurrency within discovery_concurrency"
+                )
+            discovery_concurrencies.add(float(discovery))
+            monitor_concurrencies.add(float(monitor))
 
-            concurrency = target.get("max_concurrency", {})
             for stage, metric_kind, duration_metric in (
                 ("monitor", "monitor", "crawler_monitor_duration_seconds_sum"),
                 ("detail", "scrape", "crawler_scrape_duration_seconds_sum"),
             ):
-                max_concurrency = concurrency.get(stage)
-                if not isinstance(max_concurrency, int) or max_concurrency <= 0:
-                    raise ModelError(f"{instance} needs positive max_concurrency.{stage}")
                 key = (stage, str(execution_class))
                 totals = lane_totals[key]
-                totals["max_concurrency_per_instance"] = float(max_concurrency)
                 totals["successful_cycles"] += _instant_sum(
                     query,
                     (
@@ -217,14 +233,23 @@ def capture_prometheus_measurement(
                     f"{instance} {stage} active seconds",
                 )
 
-        if len(vcpu_limits) != 1 or len(memory_limits) != 1:
-            raise ModelError(f"targets in role {role} must use identical resource limits")
+        if (
+            len(cost_categories) != 1
+            or len(discovery_concurrencies) != 1
+            or len(monitor_concurrencies) != 1
+            or len(vcpu_limits) != 1
+            or len(memory_limits) != 1
+        ):
+            raise ModelError(f"targets in role {role} must use identical limits and category")
         role_measurements.append(
             {
                 "role": role,
                 "execution_class": str(role_targets[0].get("execution_class")),
+                "cost_category": next(iter(cost_categories)),
                 "instance_count": len(role_targets),
                 "target_ids": sorted(role_target_ids),
+                "discovery_concurrency_per_instance": next(iter(discovery_concurrencies)),
+                "monitor_concurrency_per_instance": next(iter(monitor_concurrencies)),
                 "vcpu_limit_per_instance": next(iter(vcpu_limits)),
                 "memory_limit_bytes_per_instance": next(iter(memory_limits)),
                 "process_cpu_seconds": role_cpu,

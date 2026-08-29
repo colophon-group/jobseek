@@ -1,69 +1,71 @@
 {
   "implementation": "python-playwright",
-  "revision": "python-production-compose-2026-08-29",
+  "revision": "python-production-compose-2026-08-29-v2",
   "schema_version": "jobseek.crawler-runtime-capture-targets/v1",
   "targets": [
     {
+      "cost_category": "worker",
+      "discovery_concurrency": 20,
       "execution_class": "http",
       "id": "http-worker-1",
       "instance": "worker-1",
-      "max_concurrency": {
-        "detail": 20,
-        "monitor": 5
-      },
       "memory_limit_bytes": 1073741824,
+      "monitor_concurrency": 5,
       "role": "http-worker",
       "vcpu_limit": 1
     },
     {
+      "cost_category": "worker",
+      "discovery_concurrency": 20,
       "execution_class": "http",
       "id": "http-worker-2",
       "instance": "worker-2",
-      "max_concurrency": {
-        "detail": 20,
-        "monitor": 5
-      },
       "memory_limit_bytes": 1073741824,
+      "monitor_concurrency": 5,
       "role": "http-worker",
       "vcpu_limit": 1
     },
     {
+      "cost_category": "worker",
+      "discovery_concurrency": 20,
       "execution_class": "http",
       "id": "http-worker-3",
       "instance": "worker-3",
-      "max_concurrency": {
-        "detail": 20,
-        "monitor": 5
-      },
       "memory_limit_bytes": 1073741824,
+      "monitor_concurrency": 5,
       "role": "http-worker",
       "vcpu_limit": 1
     },
     {
+      "cost_category": "browser",
+      "discovery_concurrency": 7,
       "execution_class": "browser",
       "id": "browser-worker-1",
       "instance": "browser-1",
-      "max_concurrency": {
-        "detail": 7,
-        "monitor": 4
-      },
       "memory_limit_bytes": 6442450944,
+      "monitor_concurrency": 4,
       "role": "browser-worker",
       "vcpu_limit": 3
     },
     {
+      "cost_category": "runtime-support",
+      "discovery_concurrency": null,
       "execution_class": "support",
       "id": "exporter-1",
       "instance": "exporter",
       "memory_limit_bytes": 268435456,
+      "monitor_concurrency": null,
       "role": "python-exporter",
       "vcpu_limit": null
     },
     {
+      "cost_category": "runtime-support",
+      "discovery_concurrency": null,
       "execution_class": "support",
       "id": "drain-1",
       "instance": "drain",
       "memory_limit_bytes": 268435456,
+      "monitor_concurrency": null,
       "role": "python-drain",
       "vcpu_limit": null
     }
