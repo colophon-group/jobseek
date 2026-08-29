@@ -241,6 +241,26 @@ jobs:
             --expected-version "$expected_version" \
             --require-installed
 
+          misleading_version="$RUNNER_TEMP/misleading-crawler-VERSION"
+          printf '0.13.111\n' >"$misleading_version"
+          docker run --rm \
+            --platform linux/amd64 \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --workdir /tmp \
+            --mount \
+              "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/scripts/verify-build-info-release.py,target=/tmp/verify-build-info-release.py,readonly" \
+            --mount \
+              "type=bind,source=$misleading_version,target=/app/VERSION,readonly" \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -e PYTHONPATH=/app \
+            --entrypoint /app/.venv/bin/python \
+            jobseek-crawler-slim-ci:pr \
+            /tmp/verify-build-info-release.py \
+            --expected-version "$expected_version" \
+            --require-source-checkout \
+            --expected-source-root /app
+
       - name: Test installed sync data-root contract
         run: |
           set -euo pipefail

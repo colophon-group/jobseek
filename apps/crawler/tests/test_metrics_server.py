@@ -55,6 +55,9 @@ def test_invalid_installed_version_stops_roles_before_external_clients(command: 
     create_pool = AsyncMock()
     create_http = MagicMock()
     close_pools = AsyncMock()
+    installed_distribution = MagicMock()
+    installed_distribution.version = "unknown"
+    installed_distribution.read_text.return_value = None
     with (
         patch.object(cli, "parse_args", return_value=argparse.Namespace(command=command)),
         patch.object(cli, "setup_logging"),
@@ -63,7 +66,7 @@ def test_invalid_installed_version_stops_roles_before_external_clients(command: 
         patch.object(cli, "create_http_client", new=create_http),
         patch.object(cli, "close_all_pools", new=close_pools),
         patch("src.metrics.is_source_checkout", return_value=False),
-        patch("src.metrics.distribution_version", return_value="unknown"),
+        patch("src.metrics.get_distribution", return_value=installed_distribution),
         pytest.raises(RuntimeError, match="distribution version is invalid"),
     ):
         asyncio.run(cli.run())

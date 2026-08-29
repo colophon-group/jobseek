@@ -89,7 +89,10 @@ def _verify_role(role: str, command: str, port: int, expected_version: str) -> N
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--expected-version", required=True)
-    parser.add_argument("--require-installed", action="store_true")
+    provenance = parser.add_mutually_exclusive_group(required=True)
+    provenance.add_argument("--require-installed", action="store_true")
+    provenance.add_argument("--require-source-checkout", action="store_true")
+    parser.add_argument("--expected-source-root", type=Path)
     args = parser.parse_args()
 
     expected_version = args.expected_version.strip()
@@ -102,6 +105,14 @@ def main() -> None:
         module_path = Path(metrics.__file__).resolve()
         assert module_path.is_relative_to(site_packages), (module_path, site_packages)
         assert not metrics.is_source_checkout()
+    else:
+        assert args.expected_source_root is not None
+        module_root = Path(metrics.__file__).resolve().parent.parent
+        assert module_root == args.expected_source_root.resolve(), (
+            module_root,
+            args.expected_source_root,
+        )
+        assert metrics.is_source_checkout()
 
     for role, command, port in ROLES:
         _verify_role(role, command, port, expected_version)
