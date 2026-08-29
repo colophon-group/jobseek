@@ -21,6 +21,7 @@ dependencies = [
     "playwright>=1.62.0",
     "fast-langdetect>=1.0.1",
     "prometheus-client>=0.26.0",
+    "protobuf==6.33.6",
     "redis>=8.1.0",
     "alembic>=1.19.1",
     "psycopg2-binary>=2.9.12",
@@ -47,6 +48,7 @@ enrich = ["openai>=2.53.0", "anthropic>=0.122.0", "google-genai>=2.17.0"]
 
 [dependency-groups]
 dev = [
+    "grpcio-tools==1.76.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-timeout>=2.4.0",
@@ -57,7 +59,12 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["src", "contracts/v1/python/jobseek_runtime_v1"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"contracts/v1/framing/__init__.py" = "jobseek_runtime_v1/framing/__init__.py"
+"contracts/v1/framing/codec.py" = "jobseek_runtime_v1/framing/codec.py"
+"contracts/v1/privacy_registry.json" = "jobseek_runtime_v1/privacy_registry.json"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

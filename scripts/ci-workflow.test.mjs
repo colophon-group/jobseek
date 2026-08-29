@@ -71,6 +71,10 @@ const deployCrawlerWorkflow = readFileSync(
   ".github/workflows/deploy-crawler-browser.yml",
   "utf8",
 );
+const crawlerRuntimeContractsWorkflow = readFileSync(
+  ".github/workflows/crawler-runtime-contracts.yml",
+  "utf8",
+);
 const crawlerDockerfile = readFileSync("apps/crawler/Dockerfile", "utf8");
 const crawlerPyproject = readFileSync("apps/crawler/pyproject.toml", "utf8");
 const crawlerDeployScript = readFileSync("apps/crawler/deploy.sh", "utf8");
@@ -541,15 +545,18 @@ test("manual PR classification exports the validated PR base context", () => {
   assert.match(result.outputs, /^base_ref=main$/m);
 });
 
-test("inactive runtime v1 candidates retain full code and crawler CI", () => {
-  const result = runClassifyPrPaths({
-    files: ["apps/crawler/contracts/v1/runtime.proto"],
-    baseRef: "main",
-  });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.outputs, /^code=true$/m);
-  assert.match(result.outputs, /^crawler_code=true$/m);
-  assert.match(result.outputs, /^codeql=true$/m);
+test("runtime contract module and v1 retain full code and crawler CI", () => {
+  for (const file of [
+    "apps/crawler/contracts/go.mod",
+    "apps/crawler/contracts/go.sum",
+    "apps/crawler/contracts/v1/runtime.proto",
+  ]) {
+    const result = runClassifyPrPaths({ files: [file], baseRef: "main" });
+    assert.equal(result.status, 0, `${file}: ${result.stderr}`);
+    assert.match(result.outputs, /^code=true$/m, file);
+    assert.match(result.outputs, /^crawler_code=true$/m, file);
+    assert.match(result.outputs, /^codeql=true$/m, file);
+  }
   assert.match(
     workflow,
     /crawler_code:\n\s+- 'apps\/crawler\/\*\*'/,
@@ -651,27 +658,56 @@ test("crawler deploys derive immutable versions for unchanged releases", () => {
   );
 });
 
-test("crawler deployment excludes only inactive runtime v1 candidates", () => {
+test("crawler deployment includes active runtime v1", () => {
   assert.match(
     deployCrawlerWorkflow,
-    /- 'apps\/crawler\/\*\*'[\s\S]*?- '!apps\/crawler\/contracts\/v1\/\*\*'/,
+    /- 'apps\/crawler\/\*\*'/,
+  );
+  assert.doesNotMatch(
+    deployCrawlerWorkflow,
+    /!apps\/crawler\/contracts\/v1\/\*\*/,
   );
   assert.doesNotMatch(
     deployCrawlerWorkflow,
     /!apps\/crawler\/contracts\/v2\/\*\*/,
   );
-  assert.match(deployCrawlerWorkflow, /#8046/);
+  assert.doesNotMatch(deployCrawlerWorkflow, /#8046/);
 });
 
-test("inactive runtime v1 is absent from both crawler packaging boundaries", () => {
+test("runtime contract module manifests trigger all contract consumers", () => {
+  for (const file of ["go.mod", "go.sum"]) {
+    const escaped = file.replace(".", "\\.");
+    assert.match(
+      crawlerRuntimeContractsWorkflow,
+      new RegExp(`apps/crawler/contracts/${escaped}`),
+    );
+    assert.match(
+      deployCrawlerWorkflow,
+      /- 'apps\/crawler\/\*\*'/,
+      file,
+    );
+  }
+});
+
+test("runtime v1 is present in both crawler packaging boundaries", () => {
   assert.match(crawlerDockerfile, /^COPY src\/ src\/$/m);
   assert.match(crawlerDockerfile, /^COPY data\/ data\/$/m);
-  assert.doesNotMatch(crawlerDockerfile, /^COPY .*contracts/m);
+  assert.match(
+    crawlerDockerfile,
+    /^COPY contracts\/v1\/python\/ contracts\/v1\/python\/$/m,
+  );
+  assert.match(
+    crawlerDockerfile,
+    /^COPY contracts\/v1\/privacy_registry\.json contracts\/v1\/privacy_registry\.json$/m,
+  );
   assert.match(
     crawlerPyproject,
-    /\[tool\.hatch\.build\.targets\.wheel\]\npackages = \["src"\]/,
+    /\[tool\.hatch\.build\.targets\.wheel\]\npackages = \["src", "contracts\/v1\/python\/jobseek_runtime_v1"\]/,
   );
-  assert.doesNotMatch(crawlerPyproject, /packages\s*=\s*\[[^\]]*contracts/);
+  assert.match(
+    crawlerPyproject,
+    /"contracts\/v1\/privacy_registry\.json" = "jobseek_runtime_v1\/privacy_registry\.json"/,
+  );
 });
 
 test("web build jobs use one deterministic secretless environment", () => {
@@ -1697,8 +1733,10 @@ test("crawler deploy gate mirrors runtime deploy path exclusions", () => {
   assert.equal(taxonomy.status, 1);
 });
 
-test("crawler deploy gate skips pure inactive-v1 diffs without querying holds", () => {
+test("crawler deploy gate classifies pure runtime-v1 diffs as active", () => {
   for (const files of [
+    ["apps/crawler/contracts/go.mod"],
+    ["apps/crawler/contracts/go.sum"],
     ["apps/crawler/contracts/v1/runtime.proto"],
     [
       "apps/crawler/contracts/v1/old-name.proto",
@@ -1711,9 +1749,8 @@ test("crawler deploy gate skips pure inactive-v1 diffs without querying holds", 
         { number: 6632, title: "capacity", url: "https://example.test/6632" },
       ],
     });
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /does not trigger the crawler runtime deployment/);
-    assert.doesNotMatch(result.calls, /issue list/);
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.calls, /issue list.*deployment-hold:crawler/);
   }
 });
 
@@ -1724,7 +1761,7 @@ test("crawler deploy gate rejects an empty changed-path set", () => {
   assert.doesNotMatch(result.calls, /issue list/);
 });
 
-test("crawler deploy gate keeps candidate mixtures and renames strict", () => {
+test("crawler deploy gate keeps runtime mixtures and renames strict", () => {
   for (const files of [
     [
       "apps/crawler/contracts/v1/runtime.proto",
@@ -1759,7 +1796,7 @@ test("crawler deploy gate keeps candidate mixtures and renames strict", () => {
   }
 });
 
-test("crawler deploy gate narrowly exempts the exact #8071 policy bridge", () => {
+test("crawler deploy gate no longer exempts the former #8071 policy bridge", () => {
   const policyFiles = [
     ".github/scripts/check-crawler-deploy-gate.sh",
     ".github/workflows/deploy-ats-inventory.yml",
@@ -1784,9 +1821,8 @@ test("crawler deploy gate narrowly exempts the exact #8071 policy bridge", () =>
     ],
   });
 
-  assert.equal(exact.status, 0, exact.stderr);
-  assert.match(exact.stdout, /exact #8071 inactive-v1 policy bridge/);
-  assert.doesNotMatch(exact.calls, /issue list/);
+  assert.equal(exact.status, 1, exact.stderr);
+  assert.match(exact.calls, /issue list.*deployment-hold:crawler/);
   assert.equal(mixed.status, 1, mixed.stderr);
   assert.match(mixed.calls, /issue list.*deployment-hold:crawler/);
 });

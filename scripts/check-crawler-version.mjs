@@ -7,20 +7,6 @@ const DEPENDABOT_LOGIN = "dependabot[bot]";
 const CRAWLER_DEPLOY_WORKFLOW =
   ".github/workflows/deploy-crawler-browser.yml";
 const CRAWLER_VERSION_PATH = "apps/crawler/VERSION";
-const INACTIVE_V1_CANDIDATE_PREFIX = "apps/crawler/contracts/v1/";
-// Temporary, exact release-policy bridge for #8071. #8046 must remove this
-// exception when runtime v1 is packaged and activated.
-const INACTIVE_V1_POLICY_FILES = new Set([
-  ".github/scripts/check-crawler-deploy-gate.sh",
-  ".github/workflows/deploy-ats-inventory.yml",
-  ".github/workflows/deploy-crawler-browser.yml",
-  "apps/crawler/tests/test_ats_inventory_deployment.py",
-  "scripts/check-crawler-version.mjs",
-  "scripts/ci-workflow.test.mjs",
-  "scripts/crawler-runtime-contract.test.mjs",
-  "scripts/crawler-version.test.mjs",
-  "scripts/derive-crawler-runtime-contract.mjs",
-]);
 const DEPENDENCY_FILES = new Set([
   "apps/crawler/Dockerfile",
   "apps/crawler/docker-compose.yml",
@@ -53,35 +39,6 @@ export function isCrawlerDependencyOnly(files) {
   );
 }
 
-export function isInactiveV1CandidateOnly(files) {
-  const uniqueFiles = [...new Set(files)].sort();
-  return (
-    uniqueFiles.length > 0 &&
-    uniqueFiles.every((file) => file.startsWith(INACTIVE_V1_CANDIDATE_PREFIX))
-  );
-}
-
-export function isInactiveV1PolicyInfrastructureCommit(files) {
-  const uniqueFiles = [...new Set(files)].sort();
-  return (
-    uniqueFiles.length === INACTIVE_V1_POLICY_FILES.size &&
-    uniqueFiles.every((file) => INACTIVE_V1_POLICY_FILES.has(file))
-  );
-}
-
-function isInactiveV1CandidatePlusVersionOnly(files) {
-  const uniqueFiles = [...new Set(files)].sort();
-  return (
-    uniqueFiles.includes(CRAWLER_VERSION_PATH) &&
-    uniqueFiles.some((file) => file.startsWith(INACTIVE_V1_CANDIDATE_PREFIX)) &&
-    uniqueFiles.every(
-      (file) =>
-        file === CRAWLER_VERSION_PATH ||
-        file.startsWith(INACTIVE_V1_CANDIDATE_PREFIX),
-    )
-  );
-}
-
 export function isCrawlerDeployInfrastructureCommit(files) {
   const uniqueFiles = [...new Set(files)].sort();
   return (
@@ -96,8 +53,7 @@ export function isCrawlerDeployInfrastructureCommit(files) {
 export function isCrawlerDerivedBuildEligible(files) {
   return (
     isCrawlerDependencyOnly(files) ||
-    isCrawlerDeployInfrastructureCommit(files) ||
-    isInactiveV1PolicyInfrastructureCommit(files)
+    isCrawlerDeployInfrastructureCommit(files)
   );
 }
 
@@ -109,46 +65,9 @@ export function evaluateCrawlerVersion({
 }) {
   const uniqueFiles = [...new Set(files)].sort();
 
-  // Check the attempted candidate exemption before accepting any VERSION
-  // increase. A candidate plus VERSION diff is mixed by definition and must
-  // not turn an inactive artifact edit into a release.
-  if (isInactiveV1CandidatePlusVersionOnly(uniqueFiles)) {
-    throw new Error(
-      "inactive runtime v1 candidate changes must not include apps/crawler/VERSION",
-    );
-  }
-
   const base = parseVersion(baseVersion, "Base VERSION");
   const pr = parseVersion(prVersion, "PR VERSION");
   const comparison = compareVersions(pr, base);
-
-  if (isInactiveV1CandidateOnly(uniqueFiles)) {
-    if (comparison !== 0) {
-      throw new Error(
-        "inactive runtime v1 candidate-only changes must keep apps/crawler/VERSION unchanged",
-      );
-    }
-    return {
-      kind: "inactive-v1-candidate",
-      message:
-        `Inactive runtime v1 candidate keeps ${prVersion.trim()}; ` +
-        "#8046 must revoke this temporary #8071 exemption on activation",
-    };
-  }
-
-  if (isInactiveV1PolicyInfrastructureCommit(uniqueFiles)) {
-    if (comparison !== 0) {
-      throw new Error(
-        "the exact #8071 release-policy bridge must keep apps/crawler/VERSION unchanged",
-      );
-    }
-    return {
-      kind: "inactive-v1-policy",
-      message:
-        `Exact #8071 inactive-v1 policy bridge keeps ${prVersion.trim()}; ` +
-        "#8046 owns mandatory revocation",
-    };
-  }
 
   if (comparison > 0) {
     return {
@@ -202,8 +121,8 @@ function main() {
   const versionPath = CRAWLER_VERSION_PATH;
   const baseVersion = git("show", `${baseSha}:${versionPath}`);
   const prVersion = git("show", `${headSha}:${versionPath}`);
-  // Disable rename detection so both old and new paths participate in the
-  // candidate-only predicate.
+  // Disable rename detection so both old and new paths participate in release
+  // classification.
   const files = git(
     "diff",
     "--name-only",

@@ -5,14 +5,10 @@ import test from "node:test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  evaluateCrawlerVersion,
-  isInactiveV1CandidateOnly,
-  isInactiveV1PolicyInfrastructureCommit,
-} from "./check-crawler-version.mjs";
+import { evaluateCrawlerVersion } from "./check-crawler-version.mjs";
 import { deriveCrawlerBuildVersion } from "./derive-crawler-build-version.mjs";
 
-const inactiveV1PolicyFiles = [
+const formerV1BridgeFiles = [
   ".github/scripts/check-crawler-deploy-gate.sh",
   ".github/workflows/deploy-ats-inventory.yml",
   ".github/workflows/deploy-crawler-browser.yml",
@@ -56,8 +52,10 @@ test("explicit crawler releases remain the default", () => {
   assert.equal(result.kind, "release");
 });
 
-test("pure nonempty inactive runtime v1 candidate changes keep VERSION", () => {
+test("runtime v1 changes require an ordinary crawler release", () => {
   for (const files of [
+    ["apps/crawler/contracts/go.mod"],
+    ["apps/crawler/contracts/go.sum"],
     ["apps/crawler/contracts/v1/runtime.proto"],
     [
       "apps/crawler/contracts/v1/runtime.proto",
@@ -69,30 +67,25 @@ test("pure nonempty inactive runtime v1 candidate changes keep VERSION", () => {
       "apps/crawler/contracts/v1/new-name.proto",
     ],
   ]) {
-    const result = evaluateCrawlerVersion({
-      baseVersion: "0.13.525",
-      prVersion: "0.13.525",
-      author: "developer",
-      files,
-    });
-    assert.equal(result.kind, "inactive-v1-candidate");
-    assert.match(result.message, /#8046/);
-  }
-});
-
-test("inactive runtime v1 candidate predicate is exact and nonempty", () => {
-  assert.equal(isInactiveV1CandidateOnly([]), false);
-  assert.equal(
-    isInactiveV1CandidateOnly(["apps/crawler/contracts/v1/runtime.proto"]),
-    true,
-  );
-  for (const path of [
-    "apps/crawler/contracts/v1",
-    "apps/crawler/contracts/v10/runtime.proto",
-    "apps/crawler/contracts/v2/runtime.proto",
-    "apps/crawler/src/contracts/v1/runtime.proto",
-  ]) {
-    assert.equal(isInactiveV1CandidateOnly([path]), false, path);
+    assert.throws(
+      () =>
+        evaluateCrawlerVersion({
+          baseVersion: "0.13.525",
+          prVersion: "0.13.525",
+          author: "developer",
+          files,
+        }),
+      /must be bumped/,
+    );
+    assert.equal(
+      evaluateCrawlerVersion({
+        baseVersion: "0.13.525",
+        prVersion: "0.13.526",
+        author: "developer",
+        files: [...files, "apps/crawler/VERSION"],
+      }).kind,
+      "release",
+    );
   }
 });
 
@@ -119,18 +112,19 @@ test("the executable version gate classifies old and new rename paths", () => {
       "apps/crawler/contracts/v1/old.proto",
       "apps/crawler/contracts/v1/new.proto",
     );
-    git(repo, "commit", "--quiet", "-m", "candidate rename");
+    git(repo, "commit", "--quiet", "-m", "runtime contract rename");
     const renamed = git(repo, "rev-parse", "HEAD");
     const samePrefix = runVersionCheck(repo, initial, renamed);
-    assert.equal(samePrefix.status, 0, samePrefix.stderr);
-    assert.match(samePrefix.stdout, /Inactive runtime v1 candidate/);
+    assert.equal(samePrefix.status, 1, samePrefix.stderr);
+    assert.match(samePrefix.stderr, /must be bumped/);
 
     rmSync(join(repo, "apps/crawler/contracts/v1/new.proto"));
     git(repo, "add", ".");
-    git(repo, "commit", "--quiet", "-m", "candidate deletion");
+    git(repo, "commit", "--quiet", "-m", "runtime contract deletion");
     const deleted = git(repo, "rev-parse", "HEAD");
     const deletion = runVersionCheck(repo, renamed, deleted);
-    assert.equal(deletion.status, 0, deletion.stderr);
+    assert.equal(deletion.status, 1, deletion.stderr);
+    assert.match(deletion.stderr, /must be bumped/);
 
     writeFileSync(
       join(repo, "apps/crawler/contracts/v1/cross.py"),
@@ -159,25 +153,33 @@ test("the executable version gate classifies old and new rename paths", () => {
   }
 });
 
-test("candidate plus VERSION is rejected before a release can be accepted", () => {
-  for (const prVersion of ["0.13.525", "0.13.526"] ) {
-    assert.throws(
-      () =>
-        evaluateCrawlerVersion({
-          baseVersion: "0.13.525",
-          prVersion,
-          author: "developer",
-          files: [
-            "apps/crawler/contracts/v1/runtime.proto",
-            "apps/crawler/VERSION",
-          ],
-        }),
-      /must not include apps\/crawler\/VERSION/,
-    );
-  }
+test("runtime v1 plus VERSION is accepted only as a monotonic release", () => {
+  const files = [
+    "apps/crawler/contracts/v1/runtime.proto",
+    "apps/crawler/VERSION",
+  ];
+  assert.throws(
+    () =>
+      evaluateCrawlerVersion({
+        baseVersion: "0.13.525",
+        prVersion: "0.13.525",
+        author: "developer",
+        files,
+      }),
+    /must be bumped/,
+  );
+  assert.equal(
+    evaluateCrawlerVersion({
+      baseVersion: "0.13.525",
+      prVersion: "0.13.526",
+      author: "developer",
+      files,
+    }).kind,
+    "release",
+  );
 });
 
-test("mixed and cross-boundary candidate diffs retain normal version policy", () => {
+test("mixed and cross-boundary contract diffs retain normal version policy", () => {
   for (const files of [
     [
       "apps/crawler/contracts/v1/runtime.proto",
@@ -221,34 +223,25 @@ test("mixed and cross-boundary candidate diffs retain normal version policy", ()
   }
 });
 
-test("the exact #8071 policy bridge self-hosts without VERSION", () => {
-  assert.equal(
-    isInactiveV1PolicyInfrastructureCommit(inactiveV1PolicyFiles),
-    true,
-  );
-  assert.equal(
-    evaluateCrawlerVersion({
-      baseVersion: "0.13.525",
-      prVersion: "0.13.525",
-      author: "developer",
-      files: inactiveV1PolicyFiles,
-    }).kind,
-    "inactive-v1-policy",
-  );
-
-  assert.equal(
-    isInactiveV1PolicyInfrastructureCommit(inactiveV1PolicyFiles.slice(1)),
-    false,
-  );
+test("the former #8071 policy bridge requires an ordinary release", () => {
   assert.throws(
     () =>
       evaluateCrawlerVersion({
         baseVersion: "0.13.525",
         prVersion: "0.13.525",
         author: "developer",
-        files: [...inactiveV1PolicyFiles, "apps/crawler/src/cli.py"],
+        files: formerV1BridgeFiles,
       }),
     /must be bumped/,
+  );
+  assert.equal(
+    evaluateCrawlerVersion({
+      baseVersion: "0.13.525",
+      prVersion: "0.13.526",
+      author: "developer",
+      files: [...formerV1BridgeFiles, "apps/crawler/VERSION"],
+    }).kind,
+    "release",
   );
 });
 
@@ -425,25 +418,13 @@ test("deploy-infrastructure self-triggers get deterministic build versions", () 
   );
 });
 
-test("the exact #8071 policy bridge gets a deterministic derived build", () => {
-  const result = deriveCrawlerBuildVersion({
-    sourceVersion: "0.13.525",
-    parentVersion: "0.13.525",
-    commitCount: "7001",
-    sha: "abc123def4567890",
-    files: inactiveV1PolicyFiles,
-  });
-  assert.equal(result.packageVersion, "0.13.525+build.7001.gabc123def456");
-  assert.equal(result.imageTag, "v0.13.525-build.7001.gabc123def456");
-  assert.equal(result.derived, true);
-});
-
-test("derived builds reject candidate and #8071 policy mixtures", () => {
+test("derived builds reject active contracts and the former #8071 bridge", () => {
   for (const files of [
     ["apps/crawler/contracts/v1/runtime.proto"],
-    [...inactiveV1PolicyFiles, "apps/crawler/contracts/v1/runtime.proto"],
-    [...inactiveV1PolicyFiles, "apps/crawler/src/cli.py"],
-    [...inactiveV1PolicyFiles, "apps/crawler/VERSION"],
+    formerV1BridgeFiles,
+    [...formerV1BridgeFiles, "apps/crawler/contracts/v1/runtime.proto"],
+    [...formerV1BridgeFiles, "apps/crawler/src/cli.py"],
+    [...formerV1BridgeFiles, "apps/crawler/VERSION"],
   ]) {
     assert.throws(
       () =>
