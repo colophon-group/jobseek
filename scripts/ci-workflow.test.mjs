@@ -603,6 +603,17 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   assert.match(crawlerImageJob, /docker\/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e/);
   assert.match(crawlerImageJob, /docker\/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a/);
   assert.match(crawlerImageJob, /context: apps\/crawler/);
+  assert.match(crawlerImageJob, /name: Build slim crawler image[\s\S]*target: slim/);
+  assert.match(crawlerImageJob, /platforms: linux\/amd64/);
+  assert.match(crawlerImageJob, /name: Test installed sync data-root contract/);
+  assert.match(crawlerImageJob, /target=\/app\/data,readonly/);
+  assert.match(crawlerImageJob, /--workdir \/tmp/);
+  assert.match(crawlerImageJob, /sync\._load_companies/);
+  assert.match(crawlerImageJob, /mv \/app\/data \/app\/baked-data-hidden/);
+  assert.match(
+    crawlerImageJob,
+    /installed crawler runtime requires the \/app\/data directory/,
+  );
   assert.match(crawlerImageJob, /target: full/);
   assert.match(crawlerImageJob, /push: false/);
   assert.match(versionJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);

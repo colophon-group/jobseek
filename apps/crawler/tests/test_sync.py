@@ -172,11 +172,30 @@ class TestBoardSourceChangeReset:
 
 
 class TestLoadCompanies:
+    @pytest.mark.asyncio
+    async def test_missing_data_root_fails_before_external_clients(self, monkeypatch):
+        def _missing_data_root():
+            raise RuntimeError("installed crawler runtime requires the /app/data directory")
+
+        monkeypatch.setattr("src.sync.get_data_dir", _missing_data_root)
+        with (
+            patch("src.sync.get_typesense_client") as typesense_client,
+            patch("src.sync.create_local_pool") as create_local_pool,
+            pytest.raises(
+                RuntimeError,
+                match=r"installed crawler runtime requires the /app/data directory",
+            ),
+        ):
+            await run_sync()
+
+        typesense_client.assert_not_called()
+        create_local_pool.assert_not_called()
+
     def test_loads_csv(self, tmp_path, monkeypatch):
         csv_content = "slug,name,website,logo_url,icon_url,logo_type\nacme,Acme Corp,https://acme.com,https://acme.com/logo.png,https://acme.com/icon.png,wordmark\n"
         csv_file = tmp_path / "companies.csv"
         csv_file.write_text(csv_content)
-        monkeypatch.setattr("src.sync.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.sync.get_data_dir", lambda: tmp_path)
 
         df = _load_companies()
         assert isinstance(df, pl.DataFrame)
@@ -191,7 +210,7 @@ class TestLoadCompanies:
         )
         csv_file = tmp_path / "companies.csv"
         csv_file.write_text(csv_content)
-        monkeypatch.setattr("src.sync.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.sync.get_data_dir", lambda: tmp_path)
 
         df = _load_companies()
         expected_columns = {"slug", "name", "website", "logo_url", "icon_url", "logo_type"}
@@ -206,7 +225,7 @@ class TestLoadBoards:
         )
         csv_file = tmp_path / "boards.csv"
         csv_file.write_text(csv_content)
-        monkeypatch.setattr("src.sync.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.sync.get_data_dir", lambda: tmp_path)
 
         df = _load_boards()
         assert isinstance(df, pl.DataFrame)
@@ -222,7 +241,7 @@ class TestLoadBoards:
         )
         csv_file = tmp_path / "boards.csv"
         csv_file.write_text(csv_content)
-        monkeypatch.setattr("src.sync.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.sync.get_data_dir", lambda: tmp_path)
 
         df = _load_boards()
         expected_columns = set(_BOARD_COLS)

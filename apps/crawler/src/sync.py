@@ -24,7 +24,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
 
@@ -49,6 +48,7 @@ from src.redis_queue import (
     remove_monitors,
 )
 from src.shared.avature import avature_request_host
+from src.shared.constants import get_data_dir
 from src.shared.logging import setup_logging
 from src.shared.taleo import taleo_request_host
 from src.typesense_client import get_typesense_client
@@ -58,8 +58,6 @@ _MONITOR_CONFIG_FINGERPRINT = "_monitor_config_fingerprint"
 _RECOVERY_SCHEDULE_STATUSES = frozenset({"quarantined", "gone_pending", "gone"})
 
 log = structlog.get_logger()
-
-DATA_DIR = Path(__file__).parent.parent / "data"
 
 # The web app filters every list/search/facet surface by
 # `is_active:true && has_content:!=false` (POSTING_BASE_FILTER, see
@@ -690,14 +688,14 @@ class BoardSyncEffects:
 
 
 def _load_companies() -> pl.DataFrame:
-    path = DATA_DIR / "companies.csv"
+    path = get_data_dir() / "companies.csv"
     df = pl.read_csv(path, infer_schema_length=0)
     log.info("sync.loaded_companies", count=len(df), path=str(path))
     return df
 
 
 def _load_boards() -> pl.DataFrame:
-    path = DATA_DIR / "boards.csv"
+    path = get_data_dir() / "boards.csv"
     df = pl.read_csv(path, infer_schema_length=0)
     log.info("sync.loaded_boards", count=len(df), path=str(path))
     return df
@@ -746,7 +744,7 @@ def _int_or_none(val: str | None) -> int | None:
 
 
 def _load_occupation_domains() -> pl.DataFrame:
-    path = DATA_DIR / "occupation_domains.csv"
+    path = get_data_dir() / "occupation_domains.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -755,7 +753,7 @@ def _load_occupation_domains() -> pl.DataFrame:
 
 
 def _load_occupations() -> pl.DataFrame:
-    path = DATA_DIR / "occupations.csv"
+    path = get_data_dir() / "occupations.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -764,7 +762,7 @@ def _load_occupations() -> pl.DataFrame:
 
 
 def _load_seniority() -> pl.DataFrame:
-    path = DATA_DIR / "seniority.csv"
+    path = get_data_dir() / "seniority.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -773,7 +771,7 @@ def _load_seniority() -> pl.DataFrame:
 
 
 def _load_industries() -> pl.DataFrame:
-    path = DATA_DIR / "industries.csv"
+    path = get_data_dir() / "industries.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -782,7 +780,7 @@ def _load_industries() -> pl.DataFrame:
 
 
 def _load_company_descriptions() -> pl.DataFrame:
-    path = DATA_DIR / "company_descriptions.csv"
+    path = get_data_dir() / "company_descriptions.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)
@@ -791,7 +789,7 @@ def _load_company_descriptions() -> pl.DataFrame:
 
 
 def _load_technologies() -> pl.DataFrame:
-    path = DATA_DIR / "technologies.csv"
+    path = get_data_dir() / "technologies.csv"
     if not path.exists():
         return pl.DataFrame()
     df = pl.read_csv(path, infer_schema_length=0)

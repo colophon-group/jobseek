@@ -211,6 +211,72 @@ jobs:
 
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
+      - name: Build slim crawler image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: apps/crawler
+          target: slim
+          platforms: linux/amd64
+          tags: jobseek-crawler-slim-ci:pr
+          load: true
+          push: false
+          cache-from: type=gha,scope=crawler-slim
+          cache-to: type=gha,mode=max,scope=crawler-slim,ignore-error=true
+
+      - name: Test installed sync data-root contract
+        run: |
+          set -euo pipefail
+          staged_data="$(mktemp -d)"
+          trap 'rm -rf "$staged_data"' EXIT
+          printf '%s\n' \
+            'slug,name,website,logo_url,icon_url,logo_type' \
+            'ci-staged,CI Staged,https://ci.invalid,,,wordmark' \
+            >"$staged_data/companies.csv"
+
+          docker run --rm -i \
+            --platform linux/amd64 \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --mount "type=bind,source=$staged_data,target=/app/data,readonly" \
+            --workdir /tmp \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            --entrypoint /app/.venv/bin/python \
+            jobseek-crawler-slim-ci:pr - <<'PY'
+          import errno
+          import sys
+          from pathlib import Path
+
+          from src import sync
+
+          module_path = Path(sync.__file__).resolve()
+          assert module_path.is_relative_to("/app/.venv")
+          assert "site-packages" in module_path.parts
+          assert "/app/src" not in sys.path
+          assert Path.cwd() == Path("/tmp")
+          assert sync.get_data_dir() == Path("/app/data")
+          assert sync._load_companies()["slug"].to_list() == ["ci-staged"]
+          try:
+              (Path("/app/data") / "write-probe").touch()
+          except OSError as exc:
+              assert exc.errno in {errno.EROFS, errno.EACCES}
+          else:
+              raise AssertionError("/app/data must be mounted read-only")
+          PY
+
+          missing_output="$(
+            docker run --rm \
+              --platform linux/amd64 \
+              --workdir /tmp \
+              -e PYTHONDONTWRITEBYTECODE=1 \
+              --entrypoint /bin/sh \
+              jobseek-crawler-slim-ci:pr \
+              -c 'mv /app/data /app/baked-data-hidden && exec /app/.venv/bin/python -c "from src.sync import _load_companies; _load_companies()"' \
+              2>&1 || true
+          )"
+          grep -Fq \
+            'installed crawler runtime requires the /app/data directory' \
+            <<<"$missing_output"
+
       - name: Build full crawler image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:

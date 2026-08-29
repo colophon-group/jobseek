@@ -15,15 +15,14 @@ from __future__ import annotations
 import functools
 import re
 import unicodedata
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
 
+from src.shared.constants import get_data_dir
+
 if TYPE_CHECKING:
     import asyncpg
-
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 
 def _normalize(text: str) -> str:
@@ -167,7 +166,7 @@ def match_seniority(raw: str) -> str | None:
 @functools.cache
 def _load_seniority_slugs() -> list[str]:
     """Load seniority slugs from CSV."""
-    path = DATA_DIR / "seniority.csv"
+    path = get_data_dir() / "seniority.csv"
     df = pl.read_csv(path, infer_schema_length=0)
     return df["slug"].to_list()
 
