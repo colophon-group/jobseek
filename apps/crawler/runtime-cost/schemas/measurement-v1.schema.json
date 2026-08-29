@@ -23,6 +23,7 @@
         "properties": {
           "cost_category": {"enum": ["worker", "browser", "runtime-support"]},
           "discovery_concurrency_per_instance": {"exclusiveMinimum": 0, "type": ["number", "null"]},
+          "descendant_process_cpu_seconds": {"minimum": 0, "type": ["number", "null"]},
           "execution_class": {"enum": ["http", "browser", "support"]},
           "instance_count": {"minimum": 1, "type": "integer"},
           "lanes": {"items": {"$ref": "#/$defs/lane"}, "type": "array"},
@@ -30,8 +31,13 @@
           "monitor_concurrency_per_instance": {"exclusiveMinimum": 0, "type": ["number", "null"]},
           "peak_rss_bytes_per_instance": {"minimum": 0, "type": "number"},
           "process_cpu_seconds": {"minimum": 0, "type": "number"},
+          "process_tree_peak_rss_bytes_per_instance": {"minimum": 0, "type": ["number", "null"]},
+          "process_tree_successful_samples": {"exclusiveMinimum": 0, "type": ["number", "null"]},
+          "resource_scope": {"enum": ["root-process", "process-tree"]},
           "retry_events": {"minimum": 0, "type": "number"},
           "role": {"minLength": 1, "type": "string"},
+          "root_peak_rss_bytes_per_instance": {"minimum": 0, "type": "number"},
+          "root_process_cpu_seconds": {"minimum": 0, "type": "number"},
           "target_ids": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true},
           "vcpu_limit_per_instance": {"type": ["number", "null"]}
         },

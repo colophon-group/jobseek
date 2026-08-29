@@ -74,6 +74,15 @@ def _instant_sum(query: Query, expression: str, at: datetime, query_name: str) -
     return _sum_vector(query(expression, at), query_name)
 
 
+def _optional_instant_sum(
+    query: Query, expression: str, at: datetime, query_name: str
+) -> float | None:
+    rows = query(expression, at)
+    if not rows:
+        return None
+    return _sum_vector(rows, query_name)
+
+
 def capture_prometheus_measurement(
     targets: dict[str, Any],
     *,
@@ -116,6 +125,12 @@ def capture_prometheus_measurement(
         )
         role_cpu = 0.0
         role_peak_rss = 0.0
+        role_root_cpu = 0.0
+        role_root_peak_rss = 0.0
+        role_descendant_cpu = 0.0
+        role_process_tree_peak_rss = 0.0
+        role_process_tree_samples = 0.0
+        role_process_tree_complete = True
         role_retries = 0.0
         role_target_ids: list[str] = []
         cost_categories: set[str] = set()
@@ -129,21 +144,63 @@ def capture_prometheus_measurement(
             role_target_ids.append(str(target.get("id", instance)))
             label = _prom_label(instance)
             selector = f'job="crawler",instance="{label}"'
-            role_cpu += _instant_sum(
+            root_cpu = _instant_sum(
                 query,
                 f"sum(increase(process_cpu_seconds_total{{{selector}}}[{range_selector}]))",
                 end_at,
                 f"{instance} process CPU",
             )
-            role_peak_rss = max(
-                role_peak_rss,
-                _instant_sum(
-                    query,
-                    f"max(max_over_time(process_resident_memory_bytes{{{selector}}}[{range_selector}]))",
-                    end_at,
-                    f"{instance} peak RSS",
-                ),
+            root_peak_rss = _instant_sum(
+                query,
+                f"max(max_over_time(process_resident_memory_bytes{{{selector}}}[{range_selector}]))",
+                end_at,
+                f"{instance} peak RSS",
             )
+            role_root_cpu += root_cpu
+            role_root_peak_rss = max(role_root_peak_rss, root_peak_rss)
+
+            process_tree_samples = _optional_instant_sum(
+                query,
+                (
+                    "sum(increase(crawler_runtime_process_tree_samples_total"
+                    f'{{{selector},outcome="success"}}[{range_selector}]))'
+                ),
+                end_at,
+                f"{instance} process-tree samples",
+            )
+            descendant_cpu = _optional_instant_sum(
+                query,
+                (
+                    "sum(increase(crawler_runtime_descendant_cpu_seconds_total"
+                    f"{{{selector}}}[{range_selector}]))"
+                ),
+                end_at,
+                f"{instance} descendant CPU",
+            )
+            process_tree_peak_rss = _optional_instant_sum(
+                query,
+                (
+                    "max(max_over_time("
+                    "crawler_runtime_process_tree_peak_resident_memory_bytes"
+                    f"{{{selector}}}[{range_selector}]))"
+                ),
+                end_at,
+                f"{instance} process-tree peak RSS",
+            )
+            if (
+                process_tree_samples is None
+                or process_tree_samples <= 0
+                or descendant_cpu is None
+                or process_tree_peak_rss is None
+                or process_tree_peak_rss <= 0
+            ):
+                target_tree_complete = False
+            else:
+                target_tree_complete = True
+                role_descendant_cpu += descendant_cpu
+                role_process_tree_peak_rss = max(role_process_tree_peak_rss, process_tree_peak_rss)
+                role_process_tree_samples += process_tree_samples
+            role_process_tree_complete = role_process_tree_complete and target_tree_complete
             role_retries += _instant_sum(
                 query,
                 f'sum(increase(crawler_http_retry_attempts_total{{{selector},outcome="retry"}}[{range_selector}]))',
@@ -241,6 +298,20 @@ def capture_prometheus_measurement(
             or len(memory_limits) != 1
         ):
             raise ModelError(f"targets in role {role} must use identical limits and category")
+        if role_process_tree_complete:
+            role_cpu = role_root_cpu + role_descendant_cpu
+            role_peak_rss = role_process_tree_peak_rss
+            resource_scope = "process-tree"
+        else:
+            # Mixing parent-only and process-tree totals within one role would
+            # create an irreproducible average. Fail closed to the consistently
+            # available parent-process scope until every target has coverage.
+            role_cpu = role_root_cpu
+            role_peak_rss = role_root_peak_rss
+            role_descendant_cpu = 0.0
+            role_process_tree_peak_rss = 0.0
+            role_process_tree_samples = 0.0
+            resource_scope = "root-process"
         role_measurements.append(
             {
                 "role": role,
@@ -252,8 +323,20 @@ def capture_prometheus_measurement(
                 "monitor_concurrency_per_instance": next(iter(monitor_concurrencies)),
                 "vcpu_limit_per_instance": next(iter(vcpu_limits)),
                 "memory_limit_bytes_per_instance": next(iter(memory_limits)),
+                "resource_scope": resource_scope,
+                "root_process_cpu_seconds": role_root_cpu,
+                "descendant_process_cpu_seconds": (
+                    role_descendant_cpu if role_process_tree_complete else None
+                ),
                 "process_cpu_seconds": role_cpu,
+                "root_peak_rss_bytes_per_instance": role_root_peak_rss,
+                "process_tree_peak_rss_bytes_per_instance": (
+                    role_process_tree_peak_rss if role_process_tree_complete else None
+                ),
                 "peak_rss_bytes_per_instance": role_peak_rss,
+                "process_tree_successful_samples": (
+                    role_process_tree_samples if role_process_tree_complete else None
+                ),
                 "retry_events": role_retries,
                 "lanes": [
                     {
@@ -270,6 +353,23 @@ def capture_prometheus_measurement(
                 ],
             }
         )
+
+    browser_tree_complete = any(
+        role["execution_class"] == "browser" and role["resource_scope"] == "process-tree"
+        for role in role_measurements
+    ) and all(
+        role["resource_scope"] == "process-tree"
+        for role in role_measurements
+        if role["execution_class"] == "browser"
+    )
+    evidence_gaps = [
+        "origin-attempts-not-in-current-metrics",
+        "response-bytes-not-in-current-metrics",
+        "proxy-attribution-not-in-current-metrics",
+        "queue-and-redis-resource-use-requires-separate-capture",
+    ]
+    if not browser_tree_complete:
+        evidence_gaps.insert(0, "browser-child-cpu-and-rss-not-in-process-metrics")
 
     measurement_id = f"python-production-{end_at:%Y%m%d}-{window_seconds}s"
     return {
@@ -291,11 +391,5 @@ def capture_prometheus_measurement(
             "targets_revision": targets.get("revision"),
         },
         "roles": role_measurements,
-        "evidence_gaps": [
-            "browser-child-cpu-and-rss-not-in-process-metrics",
-            "origin-attempts-not-in-current-metrics",
-            "response-bytes-not-in-current-metrics",
-            "proxy-attribution-not-in-current-metrics",
-            "queue-and-redis-resource-use-requires-separate-capture",
-        ],
+        "evidence_gaps": evidence_gaps,
     }

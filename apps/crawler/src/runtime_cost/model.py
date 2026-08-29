@@ -376,6 +376,48 @@ def project_runtime_cost(
             f"measurement role {role}.peak_rss_bytes_per_instance",
             allow_zero=True,
         )
+        resource_scope = observed.get("resource_scope")
+        if execution_class == "browser":
+            if resource_scope != "process-tree":
+                structural_blockers.append("browser-child-cpu-and-rss-not-in-process-metrics")
+            else:
+                root_cpu = _optional_nonnegative_number(
+                    observed.get("root_process_cpu_seconds"),
+                    f"measurement role {role}.root_process_cpu_seconds",
+                )
+                descendant_cpu = _optional_nonnegative_number(
+                    observed.get("descendant_process_cpu_seconds"),
+                    f"measurement role {role}.descendant_process_cpu_seconds",
+                )
+                tree_peak_rss = _optional_nonnegative_number(
+                    observed.get("process_tree_peak_rss_bytes_per_instance"),
+                    f"measurement role {role}.process_tree_peak_rss_bytes_per_instance",
+                )
+                tree_samples = _optional_nonnegative_number(
+                    observed.get("process_tree_successful_samples"),
+                    f"measurement role {role}.process_tree_successful_samples",
+                )
+                if (
+                    root_cpu is None
+                    or descendant_cpu is None
+                    or tree_peak_rss is None
+                    or tree_samples is None
+                    or tree_samples <= 0
+                ):
+                    raise ModelError(f"measurement role {role} process-tree evidence is incomplete")
+                _require(
+                    math.isclose(
+                        observed_cpu_seconds,
+                        root_cpu + descendant_cpu,
+                        rel_tol=1e-9,
+                        abs_tol=1e-9,
+                    ),
+                    f"measurement role {role} process-tree CPU total is inconsistent",
+                )
+                _require(
+                    math.isclose(peak_rss, tree_peak_rss, rel_tol=1e-9, abs_tol=1e-9),
+                    f"measurement role {role} process-tree RSS total is inconsistent",
+                )
         memory_ratio = peak_rss / memory_bytes
         scaling_roles.append(
             {

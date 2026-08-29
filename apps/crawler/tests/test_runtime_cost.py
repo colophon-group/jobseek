@@ -99,6 +99,12 @@ def test_live_python_evidence_keeps_unmeasured_values_unknown():
     assert "browser-child-cpu-and-rss-not-in-process-metrics" in measurement["evidence_gaps"]
     assert "queue-and-redis-resource-use-requires-separate-capture" in measurement["evidence_gaps"]
     for role in measurement["roles"]:
+        assert role["resource_scope"] == "root-process"
+        assert role["root_process_cpu_seconds"] == role["process_cpu_seconds"]
+        assert role["root_peak_rss_bytes_per_instance"] == role["peak_rss_bytes_per_instance"]
+        assert role["descendant_process_cpu_seconds"] is None
+        assert role["process_tree_peak_rss_bytes_per_instance"] is None
+        assert role["process_tree_successful_samples"] is None
         if role["execution_class"] == "support":
             assert role["cost_category"] == "runtime-support"
             assert role["discovery_concurrency_per_instance"] is None
@@ -403,6 +409,20 @@ def test_clearing_text_gaps_cannot_hide_missing_usage_quantities():
     assert result["decision_ready"] is False
 
 
+def test_clearing_text_gaps_cannot_hide_root_only_browser_resources():
+    workload = _json(RUNTIME_COST / "projected-workload-v1.json")
+    measurement = _json(RUNTIME_COST / "evidence/python-production-2026-08-29-24h.json")
+    pricing = _json(RUNTIME_COST / "pricing/hetzner-eu-2026-06-15.json")
+    measurement["evidence_gaps"] = []
+    for item in workload["required_evidence"]:
+        item["status"] = "frozen"
+
+    result = project_runtime_cost(workload, measurement, pricing)
+
+    assert "browser-child-cpu-and-rss-not-in-process-metrics" in result["blockers"]
+    assert result["decision_ready"] is False
+
+
 def test_huge_response_volume_changes_network_cost_and_complete_total():
     baseline = project_runtime_cost(_workload(), _measurement(), _pricing())
     baseline_cost = baseline["comparison_points"]["current_sustainable"][
@@ -548,7 +568,131 @@ def test_prometheus_capture_is_read_only_and_sanitized():
     assert result["source_releases"] == ["1.2.3"]
     assert result["roles"][0]["process_cpu_seconds"] == 12
     assert result["roles"][0]["peak_rss_bytes_per_instance"] == 128
+    assert result["roles"][0]["resource_scope"] == "root-process"
+    assert result["roles"][0]["root_process_cpu_seconds"] == 12
+    assert result["roles"][0]["descendant_process_cpu_seconds"] is None
     assert result["roles"][0]["discovery_concurrency_per_instance"] == 3
     assert result["roles"][0]["monitor_concurrency_per_instance"] == 2
     assert all("http" not in query.lower() or "crawler_http_retry" in query for query in queries)
+    assert "browser-child-cpu-and-rss-not-in-process-metrics" in result["evidence_gaps"]
+
+
+def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
+    targets = {
+        "schema_version": "jobseek.crawler-runtime-capture-targets/v1",
+        "revision": "browser-tree-targets",
+        "workload_revision": "test-v1",
+        "implementation": "python-playwright",
+        "targets": [
+            {
+                "id": "browser-a",
+                "instance": "browser-1",
+                "role": "browser-worker",
+                "execution_class": "browser",
+                "cost_category": "browser",
+                "discovery_concurrency": 7,
+                "monitor_concurrency": 4,
+                "vcpu_limit": 3,
+                "memory_limit_bytes": 4096,
+            }
+        ],
+    }
+
+    def fake_query(expression: str, _at: datetime) -> list[dict]:
+        if "crawler_build_info" in expression:
+            return [{"metric": {"version": "2.0.0"}, "value": [0, "1"]}]
+        values = {
+            "crawler_runtime_process_tree_samples_total": 120,
+            "crawler_runtime_descendant_cpu_seconds_total": 30,
+            "crawler_runtime_process_tree_peak_resident_memory_bytes": 512,
+            "process_resident_memory_bytes": 128,
+            "process_cpu_seconds_total": 12,
+            'status="succeeded"': 10,
+            "crawler_tasks_total": 12,
+            "duration_seconds_sum": 25,
+        }
+        value = next((value for marker, value in values.items() if marker in expression), 0)
+        return [{"metric": {}, "value": [0, str(value)]}]
+
+    result = capture_prometheus_measurement(
+        targets,
+        query=fake_query,
+        end_at=datetime(2026, 8, 29, 12, tzinfo=UTC),
+        window_seconds=3600,
+        source_revision="tree123",
+    )
+
+    role = result["roles"][0]
+    assert role["resource_scope"] == "process-tree"
+    assert role["root_process_cpu_seconds"] == 12
+    assert role["descendant_process_cpu_seconds"] == 30
+    assert role["process_cpu_seconds"] == 42
+    assert role["root_peak_rss_bytes_per_instance"] == 128
+    assert role["process_tree_peak_rss_bytes_per_instance"] == 512
+    assert role["peak_rss_bytes_per_instance"] == 512
+    assert role["process_tree_successful_samples"] == 120
+    assert "browser-child-cpu-and-rss-not-in-process-metrics" not in result["evidence_gaps"]
+
+
+def test_prometheus_capture_rejects_partial_process_tree_role_coverage() -> None:
+    targets = {
+        "schema_version": "jobseek.crawler-runtime-capture-targets/v1",
+        "revision": "partial-browser-tree-targets",
+        "workload_revision": "test-v1",
+        "implementation": "python-playwright",
+        "targets": [
+            {
+                "id": f"browser-{index}",
+                "instance": f"browser-{index}",
+                "role": "browser-worker",
+                "execution_class": "browser",
+                "cost_category": "browser",
+                "discovery_concurrency": 7,
+                "monitor_concurrency": 4,
+                "vcpu_limit": 3,
+                "memory_limit_bytes": 4096,
+            }
+            for index in (1, 2)
+        ],
+    }
+
+    def fake_query(expression: str, _at: datetime) -> list[dict]:
+        if "crawler_build_info" in expression:
+            return [{"metric": {"version": "2.0.0"}, "value": [0, "1"]}]
+        is_tree_metric = "crawler_runtime_" in expression
+        if is_tree_metric and 'instance="browser-2"' in expression:
+            return []
+        if "crawler_runtime_process_tree_samples_total" in expression:
+            value = 120
+        elif "crawler_runtime_descendant_cpu_seconds_total" in expression:
+            value = 30
+        elif "crawler_runtime_process_tree_peak_resident_memory_bytes" in expression:
+            value = 512
+        elif "process_resident_memory_bytes" in expression:
+            value = 128
+        elif "process_cpu_seconds_total" in expression:
+            value = 12
+        elif 'status="succeeded"' in expression:
+            value = 10
+        elif "crawler_tasks_total" in expression:
+            value = 12
+        elif "duration_seconds_sum" in expression:
+            value = 25
+        else:
+            value = 0
+        return [{"metric": {}, "value": [0, str(value)]}]
+
+    result = capture_prometheus_measurement(
+        targets,
+        query=fake_query,
+        end_at=datetime(2026, 8, 29, 12, tzinfo=UTC),
+        window_seconds=3600,
+        source_revision="partial123",
+    )
+
+    role = result["roles"][0]
+    assert role["resource_scope"] == "root-process"
+    assert role["process_cpu_seconds"] == 24
+    assert role["peak_rss_bytes_per_instance"] == 128
+    assert role["descendant_process_cpu_seconds"] is None
     assert "browser-child-cpu-and-rss-not-in-process-metrics" in result["evidence_gaps"]

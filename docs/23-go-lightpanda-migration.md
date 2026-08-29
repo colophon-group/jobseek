@@ -128,6 +128,20 @@ excluding VAT. Because that subtotal omits blocked attributable costs,
 shortfall remain `null`; the subtotal must not be interpreted as evidence that
 CHF 50 is sufficient.
 
+Issue #8159 adds the prerequisite for a defensible browser resource capture.
+Every long-running crawler metrics process samples its Linux process tree at a
+bounded interval and exports label-free descendant CPU, aggregate current/peak
+RSS, descendant count, and sampler-health metrics. Descendant CPU is keyed by
+PID plus kernel start time before it enters a monotonic counter, so exited
+Chromium processes remain accounted for and PID reuse cannot create a negative
+or duplicated delta. The capture adapter promotes a role from `root-process`
+to `process-tree` scope only when every target reports successful sampler
+coverage; partial or absent coverage keeps the original blocker and the
+parent-only values. The checked-in 2026-08-29 evidence predates this metric and
+is therefore marked `root-process` explicitly. A new sanitized production
+window after deployment is still required to close the browser-child blocker;
+no child usage is inferred into the historical artifact.
+
 ## Existing isolation points
 
 | Segment | Existing boundary | Important semantics |

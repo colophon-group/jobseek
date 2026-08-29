@@ -11,7 +11,11 @@ from urllib.request import urlopen
 
 import pytest
 
-from src.metrics import _QuietThreadingWSGIServer, _start_metrics_http_server
+from src.metrics import (
+    _QuietThreadingWSGIServer,
+    _start_metrics_http_server,
+    start_metrics_server,
+)
 
 
 def _reset_connection(port: int) -> None:
@@ -27,6 +31,17 @@ def test_metrics_listener_defaults_to_loopback() -> None:
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_metrics_server_starts_process_tree_sampler() -> None:
+    with (
+        patch("src.metrics._start_process_tree_sampler") as start_sampler,
+        patch("src.metrics._start_metrics_http_server") as start_http,
+    ):
+        start_metrics_server(9123)
+
+    start_sampler.assert_called_once_with()
+    start_http.assert_called_once_with(9123)
 
 
 def test_metrics_client_reset_does_not_emit_traceback():
