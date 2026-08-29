@@ -23,6 +23,7 @@ from src.workspace.worktree_reconcile import (
     GitHubRemoteVerifier,
     RemoteProof,
     combine_worktree_reports,
+    prune_redundant_workspace_archives,
     reconcile_managed_worktrees,
     reconcile_worktrees,
 )
@@ -86,6 +87,66 @@ def _record_verified_trace(ledger: RunnerLedger, run_id: str) -> None:
         },
         verified={},
     )
+
+
+def _prune_archives(
+    tmp_path: Path,
+    repo: Path,
+    ledger: RunnerLedger,
+    *,
+    apply: bool,
+):
+    main_oid = subprocess.run(
+        ["git", "rev-parse", "origin/main"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    return prune_redundant_workspace_archives(
+        repo_dir=repo,
+        archive_dir=tmp_path / "runner" / "state" / "worktree-quarantine",
+        ledger=ledger,
+        remote_verifier=lambda _run: RemoteProof(
+            ok=True,
+            kind="test_remote",
+            detail={"headRefOid": main_oid},
+        ),
+        authoritative_main_verifier=lambda: RemoteProof(
+            ok=True,
+            kind="test_main",
+            detail={"headRefOid": main_oid},
+        ),
+        apply=apply,
+    )
+
+
+def _create_workspace_archive(
+    tmp_path: Path,
+    *,
+    state: str = "submitted",
+    dirty: bool = False,
+    unique_commit: bool = False,
+) -> tuple[Path, Path, RunnerLedger, str]:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    (repo / ".git" / "info" / "exclude").write_text("apps/crawler/.workspace/\n")
+    workspace = worktree / "apps" / "crawler" / ".workspace" / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n")
+    if dirty:
+        (worktree / "untracked-evidence.txt").write_text("preserve me\n")
+    if unique_commit:
+        (worktree / "tracked.txt").write_text("local-only commit\n")
+        _run("git", "add", "tracked.txt", cwd=worktree)
+        _run("git", "commit", "-m", "local only", cwd=worktree)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    run_id = "issue-101-1-aaaaaaaa"
+    _terminal_run(ledger, worktree, run_id=run_id, state=state)
+    reconciled = _reconcile(tmp_path, repo, ledger, apply=True)
+    assert reconciled.archived == 1
+    archive_path = Path(str(reconciled.items[0].archive_path))
+    assert archive_path.is_file()
+    return repo, archive_path, ledger, run_id
 
 
 def _reconcile(
@@ -366,6 +427,223 @@ def test_verified_retryable_workspace_evidence_is_still_archived(tmp_path: Path)
     assert report.quarantine_bytes > 0
 
 
+def test_verified_workspace_only_archive_is_pruned_with_durable_events(
+    tmp_path: Path,
+) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+    archive_bytes = archive_path.stat().st_size
+    _record_verified_trace(ledger, run_id)
+
+    plan = _prune_archives(tmp_path, repo, ledger, apply=False)
+
+    assert plan.eligible == 1
+    assert plan.pruned == 0
+    assert archive_path.exists()
+
+    applied = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert applied.eligible == 1
+    assert applied.pruned == 1
+    assert applied.reclaimed_bytes == archive_bytes
+    assert not archive_path.exists()
+    assert [event["action"] for event in ledger.worktree_reconciliation_events()][-2:] == [
+        "archive_retention_prune_started",
+        "archive_retention_pruned",
+    ]
+
+
+def test_trace_attempt_cannot_authorize_historical_archive_pruning(tmp_path: Path) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+    ledger.record_trace_bundle_attempt(run_id, status="cleaned")
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.inspected == 0
+    assert report.pruned == 0
+    assert archive_path.exists()
+
+
+@pytest.mark.parametrize(
+    ("state", "dirty", "unique_commit"),
+    [
+        ("retryable", False, False),
+        ("submitted", True, False),
+        ("submitted", False, True),
+    ],
+)
+def test_debug_dirty_and_unique_commit_archives_are_never_pruned(
+    tmp_path: Path,
+    state: str,
+    dirty: bool,
+    unique_commit: bool,
+) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(
+        tmp_path,
+        state=state,
+        dirty=dirty,
+        unique_commit=unique_commit,
+    )
+    _record_verified_trace(ledger, run_id)
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.pruned == 0
+    assert archive_path.exists()
+
+
+def test_replaced_archive_fails_closed_during_retention_pruning(tmp_path: Path) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+    _record_verified_trace(ledger, run_id)
+    archive_path.write_bytes(archive_path.read_bytes() + b"replacement")
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.pruned == 0
+    assert report.errors == 1
+    assert archive_path.exists()
+
+
+def test_archive_retention_requires_durable_pre_unlink_event(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+    _record_verified_trace(ledger, run_id)
+    real_record = ledger.record_worktree_reconciliation
+
+    def fail_started(**fields) -> None:
+        if fields.get("action") == "archive_retention_prune_started":
+            raise RuntimeError("ledger unavailable")
+        real_record(**fields)
+
+    monkeypatch.setattr(ledger, "record_worktree_reconciliation", fail_started)
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.pruned == 0
+    assert report.errors == 1
+    assert archive_path.exists()
+
+
+def test_archive_retention_rechecks_archived_head_remote_preservation(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    (repo / ".git" / "info" / "exclude").write_text("apps/crawler/.workspace/\n")
+    workspace = worktree / "apps" / "crawler" / ".workspace" / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n")
+    (worktree / "tracked.txt").write_text("remote branch commit\n")
+    _run("git", "add", "tracked.txt", cwd=worktree)
+    _run("git", "commit", "-m", "remote branch", cwd=worktree)
+    archived_head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    run_id = "issue-101-1-aaaaaaaa"
+    _terminal_run(ledger, worktree, run_id=run_id, state="submitted")
+    reconciled = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        verifier=lambda _run: RemoteProof(
+            ok=True,
+            kind="pull_request",
+            detail={"headRefOid": archived_head},
+        ),
+    )
+    archive_path = Path(str(reconciled.items[0].archive_path))
+    _record_verified_trace(ledger, run_id)
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.pruned == 0
+    assert report.retained_unverified == 1
+    assert archive_path.exists()
+
+
+def test_unrecorded_archive_is_never_considered_for_retention_pruning(
+    tmp_path: Path,
+) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+    _record_verified_trace(ledger, run_id)
+    unrecorded = archive_path.with_name("unrecorded.tar.gz")
+    unrecorded.write_bytes(archive_path.read_bytes())
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.pruned == 1
+    assert not archive_path.exists()
+    assert unrecorded.exists()
+
+
+def test_archive_retention_rejects_lexically_normalized_ledger_path(tmp_path: Path) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+    _record_verified_trace(ledger, run_id)
+    lexical_alias = str(archive_path.parent / "missing" / ".." / archive_path.name)
+    with ledger._connect() as connection:
+        connection.execute(
+            "UPDATE worktree_reconciliation_events SET archive_path = ? WHERE archive_path = ?",
+            (lexical_alias, str(archive_path)),
+        )
+
+    report = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert report.inspected == 0
+    assert report.pruned == 0
+    assert archive_path.exists()
+
+
+def test_archive_retention_scan_is_bounded_and_rotates_past_corrupt_entries(
+    tmp_path: Path,
+) -> None:
+    repo, archive_path, ledger, run_id = _create_workspace_archive(tmp_path)
+    _record_verified_trace(ledger, run_id)
+    removed = next(
+        event
+        for event in ledger.worktree_reconciliation_events()
+        if event["action"] == "removed" and event["archive_path"] == str(archive_path)
+    )
+    archive_bytes = archive_path.read_bytes()
+    columns = (
+        "observed_at",
+        "worktree_path",
+        "source",
+        "run_id",
+        "issue",
+        "state",
+        "classification",
+        "reason",
+        "action",
+        "bytes_before",
+        "dirty_entries",
+        "remote_proof_json",
+        "archive_sha256",
+        "reclaimed_bytes",
+        "error",
+    )
+    for index in range(30):
+        corrupt = archive_path.parent / f"000-corrupt-{index:02d}.tar.gz"
+        corrupt.write_bytes(archive_bytes + bytes([index]))
+        ledger.record_worktree_reconciliation(
+            **{column: removed[column] for column in columns},
+            archive_path=str(corrupt),
+        )
+
+    first = _prune_archives(tmp_path, repo, ledger, apply=True)
+    second = _prune_archives(tmp_path, repo, ledger, apply=True)
+
+    assert first.inspected == 25
+    assert first.errors == 25
+    assert first.pruned == 0
+    assert second.inspected == 25
+    assert second.pruned == 1
+    assert not archive_path.exists()
+
+
 def test_archive_recovery_events_only_return_durable_pre_unlink_evidence(
     tmp_path: Path,
 ) -> None:
@@ -397,12 +675,22 @@ def test_archive_recovery_events_only_return_durable_pre_unlink_evidence(
         archive_path="/quarantine/second.tar.gz",
         archive_sha256="b" * 64,
     )
+    ledger.record_worktree_reconciliation(
+        **common,
+        action="archive_retention_prune_started",
+        archive_path="/quarantine/third.tar.gz",
+        archive_sha256="c" * 64,
+    )
 
     assert ledger.worktree_archive_recovery_events() == [
         {
             "archive_path": "/quarantine/second.tar.gz",
             "archive_sha256": "b" * 64,
-        }
+        },
+        {
+            "archive_path": "/quarantine/third.tar.gz",
+            "archive_sha256": "c" * 64,
+        },
     ]
 
 

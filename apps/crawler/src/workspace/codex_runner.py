@@ -475,6 +475,11 @@ class RunnerLedger:
                 );
                 CREATE INDEX IF NOT EXISTS worktree_reconciliation_path_time
                     ON worktree_reconciliation_events(worktree_path, observed_at);
+                CREATE TABLE IF NOT EXISTS worktree_archive_retention_state (
+                    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+                    cursor_name TEXT,
+                    updated_at INTEGER NOT NULL
+                );
                 """
             )
             self._ensure_columns(conn)
@@ -792,11 +797,36 @@ class RunnerLedger:
                 FROM worktree_reconciliation_events
                 WHERE archive_path IS NOT NULL
                   AND archive_sha256 IS NOT NULL
-                  AND action = 'archive_compaction_started'
+                  AND action IN (
+                      'archive_compaction_started',
+                      'archive_retention_prune_started'
+                  )
                 ORDER BY id
                 """
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def worktree_archive_retention_cursor(self) -> str | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT cursor_name FROM worktree_archive_retention_state WHERE singleton = 1"
+            ).fetchone()
+        value = row["cursor_name"] if row else None
+        return str(value) if isinstance(value, str) and value else None
+
+    def set_worktree_archive_retention_cursor(self, cursor_name: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO worktree_archive_retention_state (
+                    singleton, cursor_name, updated_at
+                ) VALUES (1, ?, ?)
+                ON CONFLICT(singleton) DO UPDATE SET
+                    cursor_name = excluded.cursor_name,
+                    updated_at = excluded.updated_at
+                """,
+                (cursor_name, int(time.time())),
+            )
 
     def count_recent_runs(self, *, active_slot: str, since: int) -> int:
         with self._connect() as conn:
@@ -2190,6 +2220,7 @@ class CompanyResolverGovernor:
             TRUSTED_GITHUB_REPOSITORY,
             GitHubRemoteVerifier,
             combine_worktree_reports,
+            prune_redundant_workspace_archives,
             reconcile_managed_worktrees,
             reconcile_worktrees,
         )
@@ -2255,6 +2286,23 @@ class CompanyResolverGovernor:
             apply=apply,
             only_paths=only_paths,
             pre_remove=_pre_remove,
+        )
+        archive_retention = prune_redundant_workspace_archives(
+            repo_dir=cfg.repo_dir,  # type: ignore[arg-type]
+            archive_dir=cfg.state_dir / "worktree-quarantine",  # type: ignore[operator]
+            ledger=self.ledger,
+            remote_verifier=remote_verifier,
+            authoritative_main_verifier=remote_verifier.verify_main,
+            apply=apply,
+        )
+        print(
+            json.dumps(
+                {
+                    "event": "codex_worktree_archive_retention",
+                    **asdict(archive_retention),
+                },
+                sort_keys=True,
+            )
         )
         report = combine_worktree_reports(
             [runner_report, managed_report],
