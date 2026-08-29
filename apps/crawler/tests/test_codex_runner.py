@@ -1682,7 +1682,7 @@ def test_terminal_lifecycle_receipt_cleanup_is_retryable(
         codex_args=("python3", "-c", "print('{}')"),
     ).resolved()
     governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
-    original_unlink = codex_runner_module.unlink_child_at
+    original_unlink = codex_runner_module.unlink_claimed_child_at
     calls = 0
 
     def interrupt_second_unlink(*args, **kwargs):
@@ -1692,7 +1692,11 @@ def test_terminal_lifecycle_receipt_cleanup_is_retryable(
             raise RuntimeError("simulated receipt cleanup interruption")
         return original_unlink(*args, **kwargs)
 
-    monkeypatch.setattr(codex_runner_module, "unlink_child_at", interrupt_second_unlink)
+    monkeypatch.setattr(
+        codex_runner_module,
+        "unlink_claimed_child_at",
+        interrupt_second_unlink,
+    )
     with pytest.raises(RuntimeError, match="simulated receipt cleanup interruption"):
         governor._cleanup_ws_artifacts_for_issue(
             101,
@@ -1701,8 +1705,10 @@ def test_terminal_lifecycle_receipt_cleanup_is_retryable(
             workspace_container=repo,
         )
 
-    assert len(list(terminal.iterdir())) == 1
-    monkeypatch.setattr(codex_runner_module, "unlink_child_at", original_unlink)
+    remaining = list(terminal.iterdir())
+    assert len(remaining) == 1
+    assert remaining[0].name.startswith(".jobseek-terminal-receipt-v1-")
+    monkeypatch.setattr(codex_runner_module, "unlink_claimed_child_at", original_unlink)
     governor._cleanup_ws_artifacts_for_issue(
         101,
         run_id="issue-101-1787997096-d0e1bd7d",
@@ -1710,6 +1716,61 @@ def test_terminal_lifecycle_receipt_cleanup_is_retryable(
         workspace_container=repo,
     )
     assert list(terminal.iterdir()) == []
+
+
+def test_cleanup_rejects_oversized_terminal_receipt_before_yaml_parse(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    terminal = _write_terminal_lifecycle_receipts(workspace_root, issue=101)
+    locator = terminal / "acme.latest-receipt"
+    locator.write_bytes(b"x" * (64 * 1024 + 1))
+    safe_load_called = False
+
+    def fail_if_parsed(_raw):
+        nonlocal safe_load_called
+        safe_load_called = True
+        raise AssertionError("oversized receipt reached YAML parser")
+
+    monkeypatch.setattr("yaml.safe_load", fail_if_parsed)
+
+    terminal_fd = os.open(terminal, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with pytest.raises(RuntimeError, match="unauthenticated"):
+            codex_runner_module._read_terminal_receipt_at(
+                terminal_fd,
+                locator.name,
+            )
+    finally:
+        os.close(terminal_fd)
+
+    assert safe_load_called is False
+    assert locator.exists()
+
+
+def test_cleanup_rejects_noncanonical_terminal_locator_slug(tmp_path: Path) -> None:
+    workspace_root = tmp_path / "repo" / "apps" / "crawler" / ".workspace"
+    terminal = _write_terminal_lifecycle_receipts(
+        workspace_root,
+        issue=101,
+        slug="acme",
+    )
+    locator = terminal / "acme.latest-receipt"
+    data = json.loads(locator.read_text())
+    data["slug"] = "!!!"
+    malformed = terminal / "!!!.latest-receipt"
+    malformed.write_text(json.dumps(data))
+    locator.unlink()
+
+    with pytest.raises(RuntimeError, match="locator is invalid"):
+        codex_runner_module._cleanup_terminal_lifecycle_receipts(
+            workspace_root,
+            issue=101,
+        )
+
+    assert malformed.exists()
 
 
 def test_cleanup_clears_completed_issue_only_terminal_receipt(tmp_path: Path) -> None:
