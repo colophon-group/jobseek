@@ -1,0 +1,89 @@
+name: Candidate Lightpanda Probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/crawler/lightpanda-probe/**'
+      - 'apps/crawler/tests/lightpanda/test_probe_harness.py'
+      - 'apps/crawler/contracts/go.mod'
+      - 'apps/crawler/contracts/go.sum'
+      - 'apps/crawler/contracts/v1/**'
+      - '.github/workflows/lightpanda-probe.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/crawler/lightpanda-probe/**'
+      - 'apps/crawler/tests/lightpanda/test_probe_harness.py'
+      - 'apps/crawler/contracts/go.mod'
+      - 'apps/crawler/contracts/go.sum'
+      - 'apps/crawler/contracts/v1/**'
+      - '.github/workflows/lightpanda-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  GOTOOLCHAIN: local
+
+concurrency:
+  group: lightpanda-probe-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Static and unit gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24.0"
+          cache: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
+      - name: Verify fixed pins and Go package
+        working-directory: apps/crawler/lightpanda-probe
+        run: |
+          set -euo pipefail
+          test "$(go env GOVERSION)" = go1.24.0
+          test "$(go list -m -f '{{.Version}}' github.com/chromedp/chromedp)" = v0.14.2
+          go mod verify
+          go test -race ./...
+          go vet ./...
+          bash -n scripts/integration.sh
+      - name: Verify focused repository guards
+        working-directory: apps/crawler
+        run: uv run --frozen pytest tests/lightpanda/test_probe_harness.py -q
+
+  integration:
+    name: Pinned internal-network integration
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24.0"
+          cache: false
+      - name: Run the exact pinned candidate pairing
+        working-directory: apps/crawler/lightpanda-probe
+        run: bash scripts/integration.sh
+      - name: Print deterministic result digests
+        if: success()
+        working-directory: apps/crawler/lightpanda-probe
+        run: cat out/result-digests.txt

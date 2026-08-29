@@ -1,0 +1,11 @@
+{
+  "contractVersion": "crawler.runtime/v1",
+  "targetUrl": "http://fixture:8080/hang",
+  "requiredCapabilities": [
+    "BROWSER_CAPABILITY_RENDER"
+  ],
+  "navigation": {
+    "waitUntil": "WAIT_CONDITION_LOAD",
+    "timeoutMs": "15000"
+  }
+}

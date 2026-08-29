@@ -1,0 +1,15 @@
+{
+  "contract_version": "crawler.runtime/v1",
+  "go": "1.24.0",
+  "chromedp": "v0.14.2",
+  "lightpanda": {
+    "version": "0.3.6",
+    "image": "lightpanda/browser@sha256:bf2328538effa8392166d0cbdba9943a2c97fd19cd2e75b88c8c6f0cf03a1beb",
+    "oci_index_digest": "sha256:bf2328538effa8392166d0cbdba9943a2c97fd19cd2e75b88c8c6f0cf03a1beb",
+    "linux_amd64_manifest_digest": "sha256:9ddc7ba5a147f713f883dace7eba3fe045c5e0537fe1d1160ed2fc4ec5359027"
+  },
+  "supported_capabilities": [
+    "BROWSER_CAPABILITY_RENDER",
+    "BROWSER_CAPABILITY_EVALUATE"
+  ]
+}

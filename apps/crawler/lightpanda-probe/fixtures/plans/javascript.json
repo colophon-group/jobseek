@@ -1,0 +1,20 @@
+{
+  "contractVersion": "crawler.runtime/v1",
+  "targetUrl": "http://fixture:8080/javascript",
+  "requiredCapabilities": [
+    "BROWSER_CAPABILITY_RENDER",
+    "BROWSER_CAPABILITY_EVALUATE"
+  ],
+  "navigation": {
+    "waitUntil": "WAIT_CONDITION_LOAD",
+    "timeoutMs": "5000"
+  },
+  "evaluations": [
+    {
+      "evaluationId": "answer",
+      "expression": "window.syntheticAnswer",
+      "maxResultBytes": "128",
+      "networkEffect": "BROWSER_NETWORK_EFFECT_NONE"
+    }
+  ]
+}

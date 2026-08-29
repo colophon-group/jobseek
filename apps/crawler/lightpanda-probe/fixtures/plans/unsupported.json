@@ -1,0 +1,12 @@
+{
+  "contractVersion": "crawler.runtime/v1",
+  "targetUrl": "http://fixture:8080/navigation",
+  "requiredCapabilities": [
+    "BROWSER_CAPABILITY_RENDER",
+    "BROWSER_CAPABILITY_FRAMES"
+  ],
+  "navigation": {
+    "waitUntil": "WAIT_CONDITION_LOAD",
+    "timeoutMs": "5000"
+  }
+}
