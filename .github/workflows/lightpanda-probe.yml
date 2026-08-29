@@ -87,3 +87,21 @@ jobs:
         if: success()
         working-directory: apps/crawler/lightpanda-probe
         run: cat out/result-digests.txt
+      - name: Upload sanitized request-limit diagnostic
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lightpanda-request-limit-diagnostic
+          path: apps/crawler/lightpanda-probe/out/request-limit-diagnostics/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce request-limit determinism after artifact upload
+        if: always()
+        working-directory: apps/crawler/lightpanda-probe
+        run: |
+          set -euo pipefail
+          test -d out/request-limit-diagnostics
+          if [[ -f out/request-limit-diagnostics/mismatch ]]; then
+            cat out/request-limit-diagnostics/request-overflow.diff
+            exit 1
+          fi

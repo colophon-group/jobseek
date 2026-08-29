@@ -68,6 +68,33 @@ run_probe() {
     "$@"
 }
 
+sanitize_request_limit_result() {
+  local source="$1"
+  local destination="$2"
+  jq '{
+    request_count,
+    response_bytes,
+    ledger: [.ledger[] | {
+      sequence,
+      method,
+      resource_type,
+      decision,
+      status,
+      response_bytes,
+      reason
+    }],
+    result: {
+      code: .result.error.error.code,
+      disposition: .result.error.error.disposition
+    },
+    cleanup: {
+      session_closed: .cleanup.session_closed,
+      targets_before: .cleanup.targets_before,
+      targets_after: .cleanup.targets_after
+    }
+  }' "$source" > "$destination"
+}
+
 ready=false
 echo "probe phase: establish browser readiness"
 for attempt in $(seq 1 20); do
@@ -134,6 +161,28 @@ test "$blocked_before" = "$blocked_after"
 probe_case="request-overflow"
 run_probe request-overflow request-overflow -max-requests 4
 jq -e '.result.error.error.code == "ERROR_CODE_RESOURCE_LIMIT" and any(.ledger[]; .reason == "request_limit")' "$output_dir/request-overflow.json" >/dev/null
+mkdir -p "$output_dir/request-limit-diagnostics"
+sanitize_request_limit_result \
+  "$output_dir/request-overflow.json" \
+  "$output_dir/request-limit-diagnostics/request-overflow-a.json"
+
+probe_case="request-overflow-repeat"
+run_probe request-overflow request-overflow-repeat -max-requests 4
+jq -e '.result.error.error.code == "ERROR_CODE_RESOURCE_LIMIT" and any(.ledger[]; .reason == "request_limit")' "$output_dir/request-overflow-repeat.json" >/dev/null
+sanitize_request_limit_result \
+  "$output_dir/request-overflow-repeat.json" \
+  "$output_dir/request-limit-diagnostics/request-overflow-b.json"
+
+if ! (
+  cd "$output_dir/request-limit-diagnostics"
+  diff -u \
+    --label request-overflow-a.json \
+    --label request-overflow-b.json \
+    request-overflow-a.json \
+    request-overflow-b.json > request-overflow.diff
+); then
+  touch "$output_dir/request-limit-diagnostics/mismatch"
+fi
 
 probe_case="byte-overflow"
 run_probe byte-overflow byte-overflow -max-response-bytes 1024
