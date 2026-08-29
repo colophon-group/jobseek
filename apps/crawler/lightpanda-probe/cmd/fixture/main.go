@@ -40,11 +40,7 @@ func main() {
 		write(w, http.StatusOK, "text/html; charset=utf-8", page("robots-blocked", `<main>robots policy</main><script src="/blocked/script.js"></script>`), nil)
 	})
 	mux.HandleFunc("/request-overflow", func(w http.ResponseWriter, r *http.Request) {
-		var tags strings.Builder
-		for i := 0; i < 12; i++ {
-			fmt.Fprintf(&tags, `<script src="/static/empty.js?n=%d"></script>`, i)
-		}
-		write(w, http.StatusOK, "text/html; charset=utf-8", page("request-overflow", tags.String()), nil)
+		write(w, http.StatusOK, "text/html; charset=utf-8", page("request-overflow", `<script src="/static/chain.js?n=0"></script>`), nil)
 	})
 	mux.HandleFunc("/byte-overflow", func(w http.ResponseWriter, r *http.Request) {
 		write(w, http.StatusOK, "text/html; charset=utf-8", page("byte-overflow", `<script src="/static/large.js"></script>`), nil)
@@ -63,8 +59,17 @@ func main() {
 	mux.HandleFunc("/static/tdm.js", func(w http.ResponseWriter, r *http.Request) {
 		write(w, http.StatusOK, "application/javascript; charset=utf-8", `document.documentElement.dataset.ready="blocked";`, map[string]string{"TDM-Reservation": "1"})
 	})
-	mux.HandleFunc("/static/empty.js", func(w http.ResponseWriter, r *http.Request) {
-		write(w, http.StatusOK, "application/javascript; charset=utf-8", "void 0;", nil)
+	mux.HandleFunc("/static/chain.js", func(w http.ResponseWriter, r *http.Request) {
+		current, err := strconv.Atoi(r.URL.Query().Get("n"))
+		if err != nil || current < 0 || current > 12 {
+			write(w, http.StatusBadRequest, "application/javascript; charset=utf-8", "throw new Error('invalid synthetic chain');", nil)
+			return
+		}
+		body := `document.documentElement.dataset.ready="true";`
+		if current < 12 {
+			body = fmt.Sprintf(`const next=document.createElement("script");next.src="/static/chain.js?n=%d";document.head.appendChild(next);`, current+1)
+		}
+		write(w, http.StatusOK, "application/javascript; charset=utf-8", body, nil)
 	})
 	mux.HandleFunc("/static/large.js", func(w http.ResponseWriter, r *http.Request) {
 		write(w, http.StatusOK, "application/javascript; charset=utf-8", strings.Repeat(" ", 32768)+"void 0;", nil)

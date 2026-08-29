@@ -127,4 +127,21 @@ func TestDeclaredResponseBytesAreRejectedBeforeBodyCompletion(t *testing.T) {
 	if got := state.ledger[0].Reason; got != "declared_response_byte_limit" {
 		t.Fatalf("missing ledger reason: %q", got)
 	}
+	if state.responseBytes != 1100 || state.ledger[0].ResponseBytes != 1000 {
+		t.Fatalf("declared bytes were not reserved: total=%d ledger=%d", state.responseBytes, state.ledger[0].ResponseBytes)
+	}
+}
+
+func TestLoadingFinishedReconcilesInsteadOfDoubleCounting(t *testing.T) {
+	t.Parallel()
+	state := &executionState{
+		limits:        Limits{MaxRequests: 8, MaxResponseBytes: 1024},
+		ledger:        []LedgerEntry{{Method: "GET", Path: "/static/app.js", Decision: "allowed", ResponseBytes: 100}},
+		requestIndex:  map[network.RequestID]int{"script": 0},
+		responseBytes: 150,
+	}
+	state.handleLoadingFinished(&network.EventLoadingFinished{RequestID: "script", EncodedDataLength: 90})
+	if state.responseBytes != 140 || state.ledger[0].ResponseBytes != 90 {
+		t.Fatalf("encoded bytes were not reconciled: total=%d ledger=%d", state.responseBytes, state.ledger[0].ResponseBytes)
+	}
 }

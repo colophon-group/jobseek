@@ -357,9 +357,14 @@ func (s *executionState) handleResponse(event *network.EventResponseReceived) {
 		if contentLength == "" || lengthErr != nil {
 			s.ledger[index].Decision = "rejected"
 			s.ledger[index].Reason = "invalid_content_length"
-		} else if projectedOverLimit {
-			s.ledger[index].Decision = "rejected"
-			s.ledger[index].Reason = "declared_response_byte_limit"
+		} else {
+			previousBytes := s.ledger[index].ResponseBytes
+			s.ledger[index].ResponseBytes = declaredBytes
+			s.responseBytes = s.responseBytes - previousBytes + declaredBytes
+			if projectedOverLimit {
+				s.ledger[index].Decision = "rejected"
+				s.ledger[index].Reason = "declared_response_byte_limit"
+			}
 		}
 	}
 	s.mu.Unlock()
@@ -383,10 +388,15 @@ func (s *executionState) handleLoadingFinished(event *network.EventLoadingFinish
 	}
 	responseBytes := uint64(math.Round(event.EncodedDataLength))
 	s.mu.Lock()
-	if index, ok := s.requestIndex[event.RequestID]; ok && index < len(s.ledger) {
-		s.ledger[index].ResponseBytes = responseBytes
+	index, ok := s.requestIndex[event.RequestID]
+	if !ok || index >= len(s.ledger) {
+		s.mu.Unlock()
+		s.setFailure(Failure(runtimev1.ErrorCode_ERROR_CODE_INTERNAL, runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY, "response bytes could not be matched to the request ledger"))
+		return
 	}
-	s.responseBytes += responseBytes
+	declaredBytes := s.ledger[index].ResponseBytes
+	s.ledger[index].ResponseBytes = responseBytes
+	s.responseBytes = s.responseBytes - declaredBytes + responseBytes
 	overLimit := s.responseBytes > s.limits.MaxResponseBytes
 	s.mu.Unlock()
 	if overLimit {
