@@ -604,11 +604,20 @@ class RunnerLedger:
     def worktree_runs(self) -> list[dict[str, Any]]:
         """Return every ledger run with a worktree and its trace disposition."""
         with self._connect() as conn:
+            export_table = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'trace_bundle_exports'"
+            ).fetchone()
+            export_join = (
+                "LEFT JOIN trace_bundle_exports AS e ON e.run_id = r.run_id" if export_table else ""
+            )
+            verified_select = "e.run_id IS NOT NULL" if export_table else "0"
             rows = conn.execute(
-                """
-                SELECT r.*, a.status AS export_status
+                f"""
+                SELECT r.*, a.status AS export_status,
+                       {verified_select} AS trace_verified
                 FROM runs AS r
                 LEFT JOIN trace_bundle_export_attempts AS a ON a.run_id = r.run_id
+                {export_join}
                 WHERE r.worktree_path IS NOT NULL
                 ORDER BY r.updated_at, r.run_id
                 """
@@ -1874,13 +1883,28 @@ class CompanyResolverGovernor:
                 state="interrupted",
                 error=str(exc),
             )
-        return self._export_terminal_trace(result)
+        result = self._export_terminal_trace(result)
+        self._cleanup_terminal_worktree(result)
+        return result
 
     def _retry_failed_trace_exports(self) -> None:
         retry_failed_trace_exports(config=self.config, ledger=self.ledger)
 
     def _export_terminal_trace(self, result: RunResult) -> RunResult:
         return export_terminal_trace(config=self.config, ledger=self.ledger, result=result)
+
+    def _cleanup_terminal_worktree(self, result: RunResult) -> None:
+        """Reconcile after export; only verified traces permit workspace discard."""
+        if not self.config.cleanup_success_worktree or not result.run_id:
+            return
+        worktree = result.worktree_path
+        if worktree is None:
+            run = self.ledger.get_run(result.run_id)
+            raw_worktree = run.get("worktree_path") if run else None
+            if isinstance(raw_worktree, str) and raw_worktree:
+                worktree = Path(raw_worktree)
+        if worktree is not None:
+            self.reconcile_worktrees(apply=True, only_paths={worktree})
 
     def should_start(self) -> SchedulerDecision:
         self.reconcile_stale_runs()
@@ -2363,8 +2387,6 @@ class CompanyResolverGovernor:
             self._release_claim_if_unresolved(admission, worktree=worktree)
             reason = "codex runtime exceeded"
             self._finish_outcome(admission, "interrupted", reason)
-            if cfg.cleanup_success_worktree:
-                self.reconcile_worktrees(apply=True, only_paths={worktree})
             return RunResult(
                 run_id=admission.run_id,
                 issue=admission.issue,
@@ -2392,8 +2414,6 @@ class CompanyResolverGovernor:
         if state in RETRY_OUTCOMES:
             self._release_claim_if_unresolved(admission, worktree=worktree)
         self._finish_outcome(admission, state, reason, error=error)
-        if cfg.cleanup_success_worktree:
-            self.reconcile_worktrees(apply=True, only_paths={worktree})
         return RunResult(
             run_id=admission.run_id,
             issue=admission.issue,

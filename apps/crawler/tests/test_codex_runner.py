@@ -927,6 +927,49 @@ def test_dry_run_claims_then_releases_without_codex(tmp_path: Path) -> None:
     assert github.deleted == [10]
 
 
+def test_terminal_trace_export_precedes_worktree_cleanup(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path, dry_run=False)
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=101))
+    calls: list[str] = []
+    admission = SimpleNamespace(run_id="issue-101-1-aaaaaaaa", issue=101, claim_comment_id=10)
+    worktree = config.worktrees_dir / "run"
+
+    monkeypatch.setattr(governor, "_retry_failed_trace_exports", lambda: None)
+    monkeypatch.setattr(
+        governor,
+        "should_start",
+        lambda: SimpleNamespace(should_run=True),
+    )
+    monkeypatch.setattr(governor, "admit_one", lambda: admission)
+    monkeypatch.setattr(
+        governor,
+        "_execute_admission",
+        lambda _admission: RunResult(
+            run_id=admission.run_id,
+            issue=admission.issue,
+            state="submitted",
+            worktree_path=worktree,
+        ),
+    )
+
+    def export(result: RunResult) -> RunResult:
+        calls.append("export")
+        result.trace_export_status = "cleaned"
+        return result
+
+    def cleanup(result: RunResult) -> None:
+        assert result.trace_export_status == "cleaned"
+        calls.append("cleanup")
+
+    monkeypatch.setattr(governor, "_export_terminal_trace", export)
+    monkeypatch.setattr(governor, "_cleanup_terminal_worktree", cleanup)
+
+    result = governor.run_once()
+
+    assert result.state == "submitted"
+    assert calls == ["export", "cleanup"]
+
+
 def test_unknown_usage_uses_conservative_five_hour_budget(tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=True)
     ledger = RunnerLedger(config.ledger_path)
