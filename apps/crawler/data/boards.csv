@@ -331,6 +331,8 @@ allspice,allspice-ashby,https://jobs.ashbyhq.com/allspice,ashby,"{""token"": ""a
 alltrails,alltrails-lever,https://jobs.lever.co/alltrails,lever,"{""token"": ""alltrails""}",skip,
 alluxio,alluxio-careers,https://jobs.lever.co/alluxio,lever,"{""token"": ""alluxio""}",skip,
 alma,alma-greenhouse,https://job-boards.greenhouse.io/alma31,greenhouse,"{""token"": ""alma31""}",skip,
+alnylam,alnylam-careers,https://jobs.alnylam.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
+alnylam,alnylam-careers-sf,https://opportunities.alnylam.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://opportunities.alnylam.com/googlefeed.xml""}",skip,
 alo,alo-greenhouse,https://job-boards.greenhouse.io/aloyoga,greenhouse,"{""token"": ""aloyoga""}",skip,
 alpaca,alpaca-greenhouse,https://job-boards.greenhouse.io/alpaca,greenhouse,"{""token"": ""alpaca""}",skip,
 alpenlabs,alpenlabs-ashby,https://jobs.ashbyhq.com/alpenlabs,ashby,"{""token"": ""alpenlabs""}",skip,
