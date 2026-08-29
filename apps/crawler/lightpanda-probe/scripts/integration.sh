@@ -150,5 +150,10 @@ for attempt in $(seq 1 20); do
 done
 test "$ready" = true
 
-find "$output_dir" -type f -name '*.json' -exec sha256sum {} + | sort > "$output_dir/result-digests.txt"
+(
+  cd "$output_dir"
+  find . -maxdepth 1 -type f -name '*.json' -exec sha256sum {} + \
+    | sed 's#  \./#  #' \
+    | sort > result-digests.txt
+)
 test -s "$output_dir/result-digests.txt"

@@ -80,6 +80,8 @@ def test_workflow_has_no_production_or_egress_escape_hatches() -> None:
     assert "deploy" not in workflow.lower()
     assert "apps/crawler/VERSION" not in workflow
     assert not re.search(r"uses:\s+[^\s@]+@(?![0-9a-f]{40}\b)", workflow)
+    assert 'cd "$output_dir"' in integration
+    assert 'find "$output_dir"' not in integration
 
 
 def test_go_probe_has_only_fixed_synthetic_network_endpoints() -> None:
