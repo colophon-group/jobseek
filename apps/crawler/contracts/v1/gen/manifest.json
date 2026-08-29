@@ -1,0 +1,21 @@
+{
+  "format": "jobseek.crawler.runtime-bindings/v1",
+  "generators": {
+    "grpcio_tools": "1.76.0",
+    "libprotoc": "31.1",
+    "protoc_gen_go": "1.36.10"
+  },
+  "go_language_version": "1.24.0",
+  "outputs": {
+    "gen/go/runtime.pb.go": "e3e5912814b599392f0bcf97bc010d2618838b9d6ee2aa9a4d2151cb7e986e8c",
+    "python/jobseek_runtime_v1/__init__.py": "7861f55459f5e7d7df98624cee112da2d0dacaf9305a9f47c13cc02406a77e5a",
+    "python/jobseek_runtime_v1/runtime_pb2.py": "141b860bf3b3062e537afcb564bdcf8ca5a0946ebf4d3dbfa960fd31e41f93e8"
+  },
+  "runtimes": {
+    "go_protobuf": "1.36.10",
+    "python": "3.13",
+    "python_protobuf": "6.33.0"
+  },
+  "source": "runtime.proto",
+  "source_sha256": "9255752c976b970510fbc1d772321cb731d9f54bb2de6f0bf7193398a19c3191"
+}

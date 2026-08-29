@@ -15,12 +15,20 @@ RUN apt-get update \
 COPY pyproject.toml uv.lock VERSION ./
 RUN uv sync --frozen --no-dev --no-install-project
 
-# Copy source and data
+# Copy the application plus the runtime-v1 package inputs. The
+# contract package is installed from the built wheel below; the build inputs
+# are removed so image imports cannot fall back to repository-relative files.
 COPY src/ src/
 COPY data/ data/
+COPY contracts/v1/python/ contracts/v1/python/
+COPY contracts/v1/framing/__init__.py contracts/v1/framing/__init__.py
+COPY contracts/v1/framing/codec.py contracts/v1/framing/codec.py
+COPY contracts/v1/privacy_registry.json contracts/v1/privacy_registry.json
 
-# Install the project itself
-RUN uv sync --frozen --no-dev
+# Install the project itself as the exact wheel exercised by contract CI.
+RUN uv build --wheel --out-dir /tmp/jobseek-wheel \
+    && uv pip install --python .venv/bin/python --no-deps /tmp/jobseek-wheel/*.whl \
+    && rm -rf /tmp/jobseek-wheel contracts
 
 # ── Target: slim (worker, exporter, drain — no Playwright) ───────────
 FROM base AS slim

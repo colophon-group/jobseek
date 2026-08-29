@@ -1,0 +1,204 @@
+name: Crawler Runtime v1 Contracts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/crawler/contracts/v1/**'
+      - 'apps/crawler/pyproject.toml'
+      - 'apps/crawler/uv.lock'
+      - 'apps/crawler/Dockerfile'
+      - 'apps/crawler/VERSION'
+      - '.github/workflows/crawler-runtime-contracts.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/crawler/contracts/v1/**'
+      - 'apps/crawler/pyproject.toml'
+      - 'apps/crawler/uv.lock'
+      - 'apps/crawler/Dockerfile'
+      - 'apps/crawler/VERSION'
+      - '.github/workflows/crawler-runtime-contracts.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  bindings-and-conformance:
+    name: Bindings and conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.15"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24.0"
+          cache-dependency-path: apps/crawler/contracts/v1/go.sum
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.3"
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+
+      - name: Install pinned generators
+        run: |
+          set -euo pipefail
+          cd apps/crawler
+          uv sync --frozen --group dev
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
+          {
+            echo '#!/usr/bin/env bash'
+            echo 'exec python -m grpc_tools.protoc "$@"'
+          } > "$RUNNER_TEMP/protoc"
+          chmod 0755 "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Check deterministic generated bindings
+        working-directory: apps/crawler
+        run: ./contracts/v1/generate.sh --check
+
+      - name: Check frozen protocol and shared corpora
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run python contracts/v1/tools/check_protocol.py
+          uv run python contracts/v1/tools/check_compatibility.py \
+            --protoc "$RUNNER_TEMP/protoc"
+          uv run python contracts/v1/tools/generate_privacy.py --check
+          uv run python contracts/v1/tools/check_semantics.py --check
+          uv run pytest -q \
+            contracts/v1/conformance/python \
+            tests/test_runtime_contracts.py
+
+      - name: Test Go bindings and conformance
+        working-directory: apps/crawler/contracts/v1
+        run: |
+          set -euo pipefail
+          go test -race ./...
+          go vet ./...
+
+      - name: Test generated Go package from an external consumer
+        env:
+          CONTRACT_MODULE: github.com/colophon-group/jobseek/apps/crawler/contracts/v1
+        run: |
+          set -euo pipefail
+          consumer="$(mktemp -d "$RUNNER_TEMP/runtime-v1-go-consumer.XXXXXX")"
+          cd "$consumer"
+          go mod init example.com/runtime-v1-consumer
+          go mod edit "-require=${CONTRACT_MODULE}@v0.0.0"
+          go mod edit "-replace=${CONTRACT_MODULE}=${GITHUB_WORKSPACE}/apps/crawler/contracts/v1"
+          cat > runtime_test.go <<'EOF'
+          package consumer
+
+          import (
+            "testing"
+
+            runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
+            "google.golang.org/protobuf/proto"
+          )
+
+          func TestGeneratedBinding(t *testing.T) {
+            hello := &runtimev1.ClientHello{
+              SupportedContractVersions: []string{"crawler.runtime/v1"},
+              Implementation: runtimev1.Implementation_IMPLEMENTATION_GO,
+            }
+            encoded, err := proto.Marshal(hello)
+            if err != nil {
+              t.Fatal(err)
+            }
+            restored := new(runtimev1.ClientHello)
+            if err := proto.Unmarshal(encoded, restored); err != nil {
+              t.Fatal(err)
+            }
+            if !proto.Equal(hello, restored) {
+              t.Fatal("generated binding changed the message")
+            }
+          }
+          EOF
+          GOWORK=off go mod tidy
+          GOWORK=off go test -race ./...
+          GOWORK=off go vet ./...
+
+      - name: Build and import the isolated crawler wheel
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          wheel_dir="$(mktemp -d "$RUNNER_TEMP/runtime-v1-wheel.XXXXXX")"
+          venv_dir="$(mktemp -d "$RUNNER_TEMP/runtime-v1-venv.XXXXXX")"
+          uv build --wheel --out-dir "$wheel_dir"
+          wheel="$(find "$wheel_dir" -maxdepth 1 -name '*.whl' -print -quit)"
+          test -n "$wheel"
+          uv venv --python 3.13.15 "$venv_dir"
+          uv pip install --python "$venv_dir/bin/python" "$wheel"
+          cd "$RUNNER_TEMP"
+          PYTHONPATH='' "$venv_dir/bin/python" -I - <<'PY'
+          import importlib.resources
+          import json
+          import os
+          import sysconfig
+          from pathlib import Path
+
+          import jobseek_runtime_v1
+          from jobseek_runtime_v1 import CONTRACT_VERSION, runtime_pb2
+          from jobseek_runtime_v1 import framing
+
+          site_packages = Path(sysconfig.get_paths()["purelib"]).resolve()
+          for module in (jobseek_runtime_v1, runtime_pb2, framing):
+              origin = Path(module.__file__).resolve()
+              assert origin.is_relative_to(site_packages), (origin, site_packages)
+              assert not origin.is_relative_to(Path(os.environ["GITHUB_WORKSPACE"]))
+
+          hello = runtime_pb2.ClientHello(
+              supported_contract_versions=[CONTRACT_VERSION],
+              implementation=runtime_pb2.IMPLEMENTATION_PYTHON,
+          )
+          payload = hello.SerializeToString()
+          wire = framing.encode_record(payload, 4096)
+          assert framing.decode_record(wire, 4096) == payload
+          registry = json.loads(
+              importlib.resources.files("jobseek_runtime_v1")
+              .joinpath("privacy_registry.json")
+              .read_text(encoding="utf-8")
+          )
+          assert registry["format"] == "jobseek.runtime.privacy-registry/v1"
+          assert runtime_pb2.DESCRIPTOR.package == "jobseek.crawler.runtime.v1"
+          PY
+
+  image-parity:
+    name: Installed image parity
+    needs: bindings-and-conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build slim crawler image
+        run: docker build --target slim --tag jobseek-crawler:runtime-v1 apps/crawler
+
+      - name: Import the installed contract surface from the image
+        run: |
+          docker run --rm \
+            --entrypoint /app/.venv/bin/python \
+            jobseek-crawler:runtime-v1 \
+            -I -c 'import importlib.resources, json, pathlib, sysconfig; import jobseek_runtime_v1; from jobseek_runtime_v1 import CONTRACT_VERSION, framing, runtime_pb2; site=pathlib.Path(sysconfig.get_paths()["purelib"]).resolve(); modules=(jobseek_runtime_v1, framing, runtime_pb2); assert all(pathlib.Path(module.__file__).resolve().is_relative_to(site) for module in modules); assert not pathlib.Path("/app/contracts").exists(); hello=runtime_pb2.ClientHello(supported_contract_versions=[CONTRACT_VERSION], implementation=runtime_pb2.IMPLEMENTATION_PYTHON); payload=hello.SerializeToString(); wire=framing.encode_record(payload, 4096); assert framing.decode_record(wire, 4096) == payload; registry=json.loads(importlib.resources.files("jobseek_runtime_v1").joinpath("privacy_registry.json").read_text(encoding="utf-8")); assert registry["format"] == "jobseek.runtime.privacy-registry/v1"; assert runtime_pb2.DESCRIPTOR.package == "jobseek.crawler.runtime.v1"'
