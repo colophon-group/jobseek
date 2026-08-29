@@ -15,15 +15,14 @@ from __future__ import annotations
 import functools
 import re
 from html.parser import HTMLParser
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
 
+from src.shared.constants import get_data_dir
+
 if TYPE_CHECKING:
     import asyncpg
-
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 # Word character regex — used to decide boundary strategy
 _WORD_CHAR = re.compile(r"\w")
@@ -73,7 +72,7 @@ def _load_patterns() -> list[tuple[str, re.Pattern[str]]]:
 
     Returns list of (slug, compiled_pattern) tuples.
     """
-    path = DATA_DIR / "technologies.csv"
+    path = get_data_dir() / "technologies.csv"
     df = pl.read_csv(path, infer_schema_length=0)
 
     result: list[tuple[str, re.Pattern[str]]] = []
@@ -107,7 +106,7 @@ def _load_patterns_with_keywords() -> list[tuple[str, re.Pattern[str], tuple[str
     If *any* keyword is found via ``in`` on the lowercased text,
     only then is the full regex invoked.
     """
-    path = DATA_DIR / "technologies.csv"
+    path = get_data_dir() / "technologies.csv"
     df = pl.read_csv(path, infer_schema_length=0)
     slug_keywords: dict[str, tuple[str, ...]] = {}
     for row in df.iter_rows(named=True):

@@ -24,6 +24,8 @@ import json
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from src.metrics import _read_version, build_info, start_metrics_server, tasks_total
 from src.processing.board import (
     _enqueue_scrapes_for_new,
@@ -737,8 +739,24 @@ class TestClearScrapeForRichPredicate:
 # ── Build info metric ─────────────────────────────────────────────────
 
 
+class _DistributionStub:
+    def __init__(self, version: str, direct_url: str | None = None) -> None:
+        self.version = version
+        self.direct_url = direct_url
+
+    def read_text(self, filename: str) -> str | None:
+        assert filename == "direct_url.json"
+        return self.direct_url
+
+
+def _distribution_missing(_name: str):
+    from importlib.metadata import PackageNotFoundError
+
+    raise PackageNotFoundError
+
+
 class TestBuildInfoMetric:
-    def test_version_read_matches_file(self):
+    def test_version_read_matches_file(self, monkeypatch):
         """``_read_version()`` returns the contents of ``apps/crawler/VERSION``.
 
         Added so SREs can confirm which VERSION each container is running
@@ -749,17 +767,213 @@ class TestBuildInfoMetric:
 
         version_file = pathlib.Path(__file__).resolve().parent.parent / "VERSION"
         expected = version_file.read_text().strip()
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: True)
+        monkeypatch.setattr("src.metrics.get_distribution", _distribution_missing)
         assert _read_version() == expected
         assert expected  # non-empty
 
     def test_read_version_handles_missing_file(self, tmp_path, monkeypatch):
-        """``_read_version()`` must not raise when VERSION is missing."""
+        """A verified checkout without a valid VERSION fails closed."""
         # Point ``_read_version`` at a directory with no VERSION file.
         fake_module_path = tmp_path / "src" / "metrics.py"
         fake_module_path.parent.mkdir()
         fake_module_path.touch()
         monkeypatch.setattr("src.metrics.__file__", str(fake_module_path))
-        assert _read_version() == "unknown"
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: True)
+        monkeypatch.setattr("src.metrics.get_distribution", _distribution_missing)
+
+        with pytest.raises(RuntimeError, match="source checkout crawler VERSION is missing"):
+            _read_version()
+
+    def test_installed_version_uses_distribution_metadata(self, tmp_path, monkeypatch):
+        """Installed wheels must not probe checkout-relative VERSION files."""
+        fake_module_path = tmp_path / "site-packages" / "src" / "metrics.py"
+        fake_module_path.parent.mkdir(parents=True)
+        fake_module_path.touch()
+        (fake_module_path.parent.parent / "VERSION").write_text("wrong\n")
+        monkeypatch.setattr("src.metrics.__file__", str(fake_module_path))
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+        monkeypatch.setattr(
+            "src.metrics.get_distribution",
+            lambda _name: _DistributionStub("0.13.593"),
+        )
+
+        assert _read_version() == "0.13.593"
+
+    def test_installed_version_accepts_derived_release_metadata(self, monkeypatch):
+        """Deployment-only builds retain their bounded PEP 440 identity."""
+        derived = "0.13.593+build.6201.gabcdef123456"
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+        monkeypatch.setattr(
+            "src.metrics.get_distribution",
+            lambda _name: _DistributionStub(derived),
+        )
+
+        assert _read_version() == derived
+
+    def test_matching_editable_distribution_uses_source_version(self, tmp_path, monkeypatch):
+        """Exact PEP 610 editable provenance lets source override stale metadata."""
+        checkout_root = tmp_path / "crawler"
+        module_path = checkout_root / "src" / "metrics.py"
+        module_path.parent.mkdir(parents=True)
+        module_path.touch()
+        (checkout_root / "VERSION").write_text("0.13.593\n")
+        direct_url = json.dumps({"url": checkout_root.as_uri(), "dir_info": {"editable": True}})
+        monkeypatch.setattr("src.metrics.__file__", str(module_path))
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: True)
+        monkeypatch.setattr(
+            "src.metrics.get_distribution",
+            lambda _name: _DistributionStub("0.13.500", direct_url),
+        )
+
+        assert _read_version() == "0.13.593"
+
+    def test_matching_editable_distribution_requires_valid_source_version(
+        self, tmp_path, monkeypatch
+    ):
+        """Verified editable provenance does not weaken VERSION validation."""
+        checkout_root = tmp_path / "crawler"
+        module_path = checkout_root / "src" / "metrics.py"
+        module_path.parent.mkdir(parents=True)
+        module_path.touch()
+        (checkout_root / "VERSION").write_text("unknown\n")
+        direct_url = json.dumps({"url": checkout_root.as_uri(), "dir_info": {"editable": True}})
+        monkeypatch.setattr("src.metrics.__file__", str(module_path))
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: True)
+        monkeypatch.setattr(
+            "src.metrics.get_distribution",
+            lambda _name: _DistributionStub("0.13.500", direct_url),
+        )
+
+        with pytest.raises(RuntimeError, match="source checkout crawler version is invalid"):
+            _read_version()
+
+    def test_matching_editable_distribution_requires_verified_checkout(self, tmp_path, monkeypatch):
+        """PEP 610 alone cannot bless an imported tree that fails source checks."""
+        checkout_root = tmp_path / "crawler"
+        module_path = checkout_root / "src" / "metrics.py"
+        module_path.parent.mkdir(parents=True)
+        module_path.touch()
+        (checkout_root / "VERSION").write_text("0.13.593\n")
+        direct_url = json.dumps({"url": checkout_root.as_uri(), "dir_info": {"editable": True}})
+        monkeypatch.setattr("src.metrics.__file__", str(module_path))
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+        monkeypatch.setattr(
+            "src.metrics.get_distribution",
+            lambda _name: _DistributionStub("0.13.500", direct_url),
+        )
+
+        with pytest.raises(RuntimeError, match="is not a source checkout"):
+            _read_version()
+
+    @pytest.mark.parametrize(
+        "direct_url",
+        [
+            None,
+            json.dumps({"url": "file:///tmp/crawler.whl", "archive_info": {}}),
+            json.dumps({"url": "file:///tmp/copied", "dir_info": {"editable": False}}),
+        ],
+    )
+    def test_noneditable_distribution_beats_misleading_source_shape(
+        self, tmp_path, monkeypatch, direct_url
+    ):
+        """Copied /app-like source files cannot override installed metadata."""
+        copied_root = tmp_path / "app"
+        module_path = copied_root / "src" / "metrics.py"
+        module_path.parent.mkdir(parents=True)
+        module_path.touch()
+        (copied_root / "pyproject.toml").touch()
+        (copied_root / "VERSION").write_text("0.13.111\n")
+        monkeypatch.setattr("src.metrics.__file__", str(module_path))
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: True)
+        monkeypatch.setattr(
+            "src.metrics.get_distribution",
+            lambda _name: _DistributionStub("0.13.593", direct_url),
+        )
+
+        assert _read_version() == "0.13.593"
+
+    def test_mismatched_editable_distribution_fails_closed(self, tmp_path, monkeypatch):
+        """Editable provenance for another tree is never ambiguous authority."""
+        checkout_root = tmp_path / "crawler"
+        module_path = checkout_root / "src" / "metrics.py"
+        module_path.parent.mkdir(parents=True)
+        module_path.touch()
+        (checkout_root / "VERSION").write_text("0.13.593\n")
+        direct_url = json.dumps(
+            {"url": (tmp_path / "other").as_uri(), "dir_info": {"editable": True}}
+        )
+        monkeypatch.setattr("src.metrics.__file__", str(module_path))
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: True)
+        monkeypatch.setattr(
+            "src.metrics.get_distribution",
+            lambda _name: _DistributionStub("0.13.500", direct_url),
+        )
+
+        with pytest.raises(RuntimeError, match="does not match checkout"):
+            _read_version()
+
+    @pytest.mark.parametrize(
+        "direct_url",
+        [
+            "{",
+            "{}",
+            json.dumps({"url": 7, "dir_info": {"editable": True}}),
+            json.dumps({"url": "https://example.invalid/repo", "dir_info": {"editable": True}}),
+            json.dumps({"url": "file:relative/repo", "dir_info": {"editable": True}}),
+            json.dumps({"url": "file:///tmp/repo?revision=1", "dir_info": {"editable": True}}),
+            json.dumps({"url": "file:///tmp/repo", "dir_info": {"editable": "yes"}}),
+        ],
+    )
+    def test_malformed_direct_url_fails_closed(self, monkeypatch, direct_url):
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: True)
+        monkeypatch.setattr(
+            "src.metrics.get_distribution",
+            lambda _name: _DistributionStub("0.13.593", direct_url),
+        )
+
+        with pytest.raises(RuntimeError, match="provenance is invalid"):
+            _read_version()
+
+    def test_installed_version_missing_metadata_fails_closed(self, monkeypatch):
+        """A broken installed distribution fails instead of emitting unknown."""
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+        monkeypatch.setattr("src.metrics.get_distribution", _distribution_missing)
+        with pytest.raises(RuntimeError, match="distribution metadata is missing"):
+            _read_version()
+
+    @pytest.mark.parametrize(
+        "installed_version",
+        ["", "unknown", "0.13", "v0.13.593", "0.13.593+unbounded"],
+    )
+    def test_installed_version_rejects_invalid_metadata(self, installed_version, monkeypatch):
+        """Blank, fallback, and malformed installed identities fail closed."""
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+        monkeypatch.setattr(
+            "src.metrics.get_distribution",
+            lambda _name: _DistributionStub(installed_version),
+        )
+
+        with pytest.raises(RuntimeError, match="distribution version is invalid"):
+            _read_version()
+
+    def test_invalid_installed_version_stops_before_metrics_side_effects(self, monkeypatch):
+        """Release identity is validated before sampler or listener startup."""
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+        monkeypatch.setattr(
+            "src.metrics.get_distribution",
+            lambda _name: _DistributionStub("unknown"),
+        )
+
+        with (
+            patch("src.metrics._start_process_tree_sampler") as start_sampler,
+            patch("src.metrics._start_metrics_http_server") as start_listener,
+            pytest.raises(RuntimeError, match="distribution version is invalid"),
+        ):
+            start_metrics_server(0)
+
+        start_sampler.assert_not_called()
+        start_listener.assert_not_called()
 
     def test_start_metrics_server_labels_build_info(self):
         """``start_metrics_server`` must emit ``crawler_build_info`` at startup.

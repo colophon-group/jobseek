@@ -603,6 +603,30 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   assert.match(crawlerImageJob, /docker\/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e/);
   assert.match(crawlerImageJob, /docker\/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a/);
   assert.match(crawlerImageJob, /context: apps\/crawler/);
+  assert.match(crawlerImageJob, /name: Build slim crawler image[\s\S]*target: slim/);
+  assert.match(crawlerImageJob, /platforms: linux\/amd64/);
+  assert.match(crawlerImageJob, /name: Test installed sync data-root contract/);
+  assert.match(crawlerImageJob, /target=\/app\/data,readonly/);
+  assert.match(crawlerImageJob, /--workdir \/tmp/);
+  assert.match(crawlerImageJob, /sync\._load_companies/);
+  assert.match(crawlerImageJob, /sync\._load_boards/);
+  assert.match(crawlerImageJob, /sync\._load_occupation_domains/);
+  assert.match(crawlerImageJob, /sync\._load_occupations/);
+  assert.match(crawlerImageJob, /sync\._load_seniority/);
+  assert.match(crawlerImageJob, /sync\._load_industries/);
+  assert.match(crawlerImageJob, /sync\._load_company_descriptions/);
+  assert.match(crawlerImageJob, /sync\._load_technologies/);
+  assert.match(crawlerImageJob, /occupation_resolve\.match_occupation/);
+  assert.match(crawlerImageJob, /seniority_resolve\._load_seniority_slugs/);
+  assert.match(crawlerImageJob, /technology_resolve\.match_technologies/);
+  assert.match(crawlerImageJob, /company\.match_industry/);
+  assert.match(crawlerImageJob, /taxonomy\._load_tech_name_map/);
+  assert.doesNotMatch(crawlerImageJob, /mv \/app\/data/);
+  assert.match(crawlerImageJob, /--entrypoint \/app\/\.venv\/bin\/crawler/);
+  assert.match(
+    crawlerImageJob,
+    /installed crawler sync requires \/app\/data to be a separate read-only mount/,
+  );
   assert.match(crawlerImageJob, /target: full/);
   assert.match(crawlerImageJob, /push: false/);
   assert.match(versionJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);

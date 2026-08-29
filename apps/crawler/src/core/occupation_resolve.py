@@ -17,15 +17,15 @@ import functools
 import re
 import unicodedata
 from collections.abc import Sequence
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
 
+from src.shared.constants import get_data_dir
+
 if TYPE_CHECKING:
     import asyncpg
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 _OCCUPATION_METADATA_COLUMNS = frozenset({"slug", "parent", "domain", "aliases"})
 
 
@@ -51,7 +51,7 @@ def _normalize(text: str) -> str:
 @functools.cache
 def _load_aliases() -> dict[str, str]:
     """Read occupations.csv and build normalized_alias -> slug dict."""
-    path = DATA_DIR / "occupations.csv"
+    path = get_data_dir() / "occupations.csv"
     df = pl.read_csv(path, infer_schema_length=0)
 
     mapping: dict[str, str] = {}

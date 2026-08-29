@@ -11,6 +11,9 @@ on:
       - 'apps/crawler/uv.lock'
       - 'apps/crawler/Dockerfile'
       - 'apps/crawler/VERSION'
+      - 'apps/crawler/scripts/verify-build-info-release.py'
+      - 'apps/crawler/src/metrics.py'
+      - 'apps/crawler/src/shared/constants.py'
       - '.github/workflows/crawler-runtime-contracts.yml'
   pull_request:
     branches: [main]
@@ -22,6 +25,9 @@ on:
       - 'apps/crawler/uv.lock'
       - 'apps/crawler/Dockerfile'
       - 'apps/crawler/VERSION'
+      - 'apps/crawler/scripts/verify-build-info-release.py'
+      - 'apps/crawler/src/metrics.py'
+      - 'apps/crawler/src/shared/constants.py'
       - '.github/workflows/crawler-runtime-contracts.yml'
   workflow_dispatch:
 
@@ -185,6 +191,11 @@ jobs:
           assert registry["format"] == "jobseek.runtime.privacy-registry/v1"
           assert runtime_pb2.DESCRIPTOR.package == "jobseek.crawler.runtime.v1"
           PY
+          expected_version="$(tr -d '[:space:]' < "$GITHUB_WORKSPACE/apps/crawler/VERSION")"
+          PYTHONPATH='' "$venv_dir/bin/python" -I \
+            "$GITHUB_WORKSPACE/apps/crawler/scripts/verify-build-info-release.py" \
+            --expected-version "$expected_version" \
+            --require-installed
 
   image-parity:
     name: Installed image parity
@@ -205,3 +216,39 @@ jobs:
             --entrypoint /app/.venv/bin/python \
             jobseek-crawler:runtime-v1 \
             -I -c 'import importlib.resources, json, pathlib, sysconfig; import jobseek_runtime_v1; from jobseek_runtime_v1 import CONTRACT_VERSION, framing, runtime_pb2; site=pathlib.Path(sysconfig.get_paths()["purelib"]).resolve(); modules=(jobseek_runtime_v1, framing, runtime_pb2); assert all(pathlib.Path(module.__file__).resolve().is_relative_to(site) for module in modules); assert not pathlib.Path("/app/contracts").exists(); hello=runtime_pb2.ClientHello(supported_contract_versions=[CONTRACT_VERSION], implementation=runtime_pb2.IMPLEMENTATION_PYTHON); payload=hello.SerializeToString(); wire=framing.encode_record(payload, 4096); assert framing.decode_record(wire, 4096) == payload; registry=json.loads(importlib.resources.files("jobseek_runtime_v1").joinpath("privacy_registry.json").read_text(encoding="utf-8")); assert registry["format"] == "jobseek.runtime.privacy-registry/v1"; assert runtime_pb2.DESCRIPTOR.package == "jobseek.crawler.runtime.v1"'
+
+      - name: Verify installed build info for all long-lived roles
+        run: |
+          set -euo pipefail
+          expected_version="$(tr -d '[:space:]' < apps/crawler/VERSION)"
+          docker run --rm \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --workdir /tmp \
+            --mount \
+              "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/scripts/verify-build-info-release.py,target=/tmp/verify-build-info-release.py,readonly" \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            --entrypoint /app/.venv/bin/python \
+            jobseek-crawler:runtime-v1 \
+            -I /tmp/verify-build-info-release.py \
+            --expected-version "$expected_version" \
+            --require-installed
+
+          misleading_version="$RUNNER_TEMP/misleading-crawler-VERSION"
+          printf '0.13.111\n' >"$misleading_version"
+          docker run --rm \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --workdir /tmp \
+            --mount \
+              "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/scripts/verify-build-info-release.py,target=/tmp/verify-build-info-release.py,readonly" \
+            --mount \
+              "type=bind,source=$misleading_version,target=/app/VERSION,readonly" \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -e PYTHONPATH=/app \
+            --entrypoint /app/.venv/bin/python \
+            jobseek-crawler:runtime-v1 \
+            /tmp/verify-build-info-release.py \
+            --expected-version "$expected_version" \
+            --require-source-checkout \
+            --expected-source-root /app

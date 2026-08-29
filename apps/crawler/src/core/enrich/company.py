@@ -12,15 +12,14 @@ import json
 import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
-from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
 import structlog
 
-log = structlog.get_logger()
+from src.shared.constants import get_data_dir
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+log = structlog.get_logger()
 
 # ── JSON-LD extraction ────────────────────────────────────────────────
 
@@ -438,7 +437,7 @@ def _load_industries() -> list[dict]:
     if _INDUSTRIES is not None:
         return _INDUSTRIES
 
-    path = DATA_DIR / "industries.csv"
+    path = get_data_dir() / "industries.csv"
     if not path.exists():
         _INDUSTRIES = []
         return _INDUSTRIES
