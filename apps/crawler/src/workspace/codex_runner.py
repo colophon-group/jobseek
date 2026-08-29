@@ -2943,7 +2943,7 @@ def _read_terminal_receipt_at(
         import yaml
 
         validate_child_name(name)
-        flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+        flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
         descriptor = os.open(name, flags, dir_fd=parent_fd)
         opened = os.fstat(descriptor)
         if (

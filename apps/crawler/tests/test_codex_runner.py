@@ -1750,6 +1750,23 @@ def test_cleanup_rejects_oversized_terminal_receipt_before_yaml_parse(
     assert locator.exists()
 
 
+def test_cleanup_rejects_terminal_receipt_fifo_without_blocking(tmp_path: Path) -> None:
+    workspace_root = tmp_path / "repo" / "apps" / "crawler" / ".workspace"
+    terminal = workspace_root / ".terminal-lifecycle"
+    terminal.mkdir(parents=True)
+    fifo = terminal / "acme.latest-receipt"
+    os.mkfifo(fifo)
+
+    terminal_fd = os.open(terminal, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with pytest.raises(RuntimeError, match="unauthenticated"):
+            codex_runner_module._read_terminal_receipt_at(terminal_fd, fifo.name)
+    finally:
+        os.close(terminal_fd)
+
+    assert fifo.exists()
+
+
 def test_cleanup_rejects_noncanonical_terminal_locator_slug(tmp_path: Path) -> None:
     workspace_root = tmp_path / "repo" / "apps" / "crawler" / ".workspace"
     terminal = _write_terminal_lifecycle_receipts(
