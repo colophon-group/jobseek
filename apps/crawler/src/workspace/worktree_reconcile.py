@@ -56,6 +56,21 @@ ARCHIVE_METADATA_RESERVE_BYTES = 1024 * 1024
 ARCHIVE_MANIFEST_MAX_BYTES = 1024 * 1024
 ARCHIVE_PRUNE_CLAIM_PREFIX = ".jobseek-archive-prune-v2-"
 ARCHIVE_RETENTION_PRUNE_LIMIT = 25
+LEGACY_WORKSPACE_ARCHIVE_MANIFEST_KEYS = frozenset(
+    {
+        "created_at",
+        "dirty_entries",
+        "files",
+        "issue",
+        "remote_proof",
+        "run_id",
+        "schema_version",
+        "state",
+        "tracked_patch_bytes",
+        "worktree_bytes",
+        "worktree_path",
+    }
+)
 MAX_PLATFORM_PID = (1 << 31) - 1
 
 
@@ -171,7 +186,7 @@ class _ArchiveInspection:
     sha256: str
     bytes: int
     stat: os.stat_result
-    source_snapshot_sha256: str
+    source_snapshot_sha256: str | None
     manifest: dict[str, Any]
     members: tuple[tuple[str, bytes, int], ...]
 
@@ -2193,7 +2208,7 @@ def _inspect_worktree_archive_at(
         if not isinstance(manifest, dict):
             raise RuntimeError("worktree archive manifest is not an object")
         source_snapshot_sha256 = manifest.get("source_snapshot_sha256")
-        if (
+        if source_snapshot_sha256 is not None and (
             not isinstance(source_snapshot_sha256, str)
             or re.fullmatch(r"[0-9a-f]{64}", source_snapshot_sha256) is None
         ):
@@ -2239,6 +2254,8 @@ def _inspect_archive_generation_at(
         name,
         expected_sha256=expected_sha256,
     )
+    if inspected.source_snapshot_sha256 is None:
+        raise RuntimeError("worktree archive source snapshot identity is invalid")
     return (
         inspected.sha256,
         inspected.bytes,
@@ -2258,6 +2275,7 @@ def _workspace_only_retention_manifest(
     run_id = run.get("run_id")
     worktree_path = run.get("worktree_path")
     state = run.get("state")
+    issue = run.get("issue")
     if (
         manifest.get("schema_version") != 1
         or not isinstance(run_id, str)
@@ -2266,25 +2284,68 @@ def _workspace_only_retention_manifest(
         or event.get("worktree_path") != worktree_path
         or manifest.get("state") != state
         or event.get("state") != state
+        or manifest.get("issue") != issue
+        or event.get("issue") != issue
         or state not in RESOLVED_OUTCOMES
-        or manifest.get("source") != "runner"
         or event.get("source") != "runner"
+        or not isinstance(manifest.get("created_at"), int)
+        or int(manifest["created_at"]) <= 0
+        or not isinstance(manifest.get("worktree_bytes"), int)
+        or int(manifest["worktree_bytes"]) < 0
     ):
+        return False, None
+    if manifest.get("dirty_entries") != 0 or manifest.get("tracked_patch_bytes") != 0:
+        return False, None
+    try:
+        recorded_remote_proof = json.loads(str(event.get("remote_proof_json") or "null"))
+    except json.JSONDecodeError:
         return False, None
     if (
-        manifest.get("dirty_entries") != 0
-        or manifest.get("tracked_patch_bytes") != 0
-        or manifest.get("unique_commits") is not False
-        or manifest.get("unique_commit_bundle") is not None
+        not isinstance(recorded_remote_proof, dict)
+        or recorded_remote_proof.get("ok") is not True
+        or manifest.get("remote_proof") != recorded_remote_proof
     ):
         return False, None
-    remote_proof = manifest.get("remote_proof")
-    if not isinstance(remote_proof, dict) or remote_proof.get("ok") is not True:
-        return False, None
-    workspace_root = manifest.get("workspace_root")
-    if not isinstance(workspace_root, dict) or workspace_root.get("type") != "directory":
-        return False, None
-    head_oid = manifest.get("head_oid")
+
+    legacy_manifest = set(manifest) == LEGACY_WORKSPACE_ARCHIVE_MANIFEST_KEYS
+    if legacy_manifest:
+        if inspected.source_snapshot_sha256 is not None:
+            return False, None
+        recorded_detail = recorded_remote_proof.get("detail")
+        if (
+            state != "submitted"
+            or recorded_remote_proof.get("kind") != "pull_request"
+            or recorded_remote_proof.get("error") is not None
+            or set(recorded_remote_proof) != {"ok", "kind", "detail", "error"}
+            or not isinstance(recorded_detail, dict)
+            or set(recorded_detail)
+            != {
+                "number",
+                "state",
+                "isDraft",
+                "headRefName",
+                "headRefOid",
+                "mergedAt",
+                "url",
+            }
+            or recorded_detail.get("number") != run.get("pr_number")
+            or recorded_detail.get("state") != "OPEN"
+            or recorded_detail.get("headRefName") != run.get("branch")
+        ):
+            return False, None
+        head_oid = _remote_head_oid(recorded_detail)
+    else:
+        if (
+            inspected.source_snapshot_sha256 is None
+            or manifest.get("source") != "runner"
+            or manifest.get("unique_commits") is not False
+            or manifest.get("unique_commit_bundle") is not None
+        ):
+            return False, None
+        workspace_root = manifest.get("workspace_root")
+        if not isinstance(workspace_root, dict) or workspace_root.get("type") != "directory":
+            return False, None
+        head_oid = manifest.get("head_oid")
     if (
         not isinstance(head_oid, str)
         or re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", head_oid) is None
@@ -2389,6 +2450,7 @@ def _archive_retention_item(
     run: dict[str, Any],
     event: dict[str, Any],
     inspection: _ArchiveInspection,
+    head_oid: str,
     archive_path: Path,
     remote_proof: RemoteProof,
 ) -> WorktreeItem:
@@ -2420,7 +2482,7 @@ def _archive_retention_item(
         archive_path=str(archive_path),
         archive_sha256=inspection.sha256,
         source="runner",
-        head_oid=str(inspection.manifest["head_oid"]),
+        head_oid=head_oid,
     )
 
 
@@ -2578,6 +2640,7 @@ def prune_redundant_workspace_archives(
                     run=run,
                     event=event,
                     inspection=inspection,
+                    head_oid=head_oid,
                     archive_path=archive_path,
                     remote_proof=remote_proof,
                 )
@@ -2591,7 +2654,7 @@ def prune_redundant_workspace_archives(
                 def verify_claim(
                     claimed_name: str,
                     expected_archive_sha256: str = inspection.sha256,
-                    expected_snapshot_sha256: str = inspection.source_snapshot_sha256,
+                    expected_snapshot_sha256: str | None = inspection.source_snapshot_sha256,
                 ) -> None:
                     claimed = _inspect_worktree_archive_at(
                         parent_fd,
