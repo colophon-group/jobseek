@@ -3494,6 +3494,7 @@ kustomer,kustomer-ashby,https://jobs.ashbyhq.com/kustomer,ashby,"{""token"": ""k
 kyo,kyo-greenhouse,https://job-boards.greenhouse.io/kyocare,greenhouse,"{""token"": ""kyocare""}",skip,
 kyowa-kirin-north-america,kyowa-kirin-north-america-greenhouse,https://job-boards.greenhouse.io/kyowakirinusa90,greenhouse,"{""token"": ""kyowakirinusa90""}",skip,
 l-wen-apotheke,l-wen-apotheke-join,https://join.com/companies/drpirolode,join,"{""slug"": ""drpirolode""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+l3harris-technologies,l3harris-technologies-careers,https://jobs.l3harris.com/,rss,"{""preset"": ""successfactors""}",skip,
 la-senza,la-senza-greenhouse,https://job-boards.greenhouse.io/lasenza,greenhouse,"{""token"": ""lasenza""}",skip,
 la-senza,la-senza-lever,https://jobs.lever.co/lasenza,lever,"{""token"": ""lasenza""}",skip,
 la28,la28-greenhouse,https://job-boards.greenhouse.io/la2028,greenhouse,"{""token"": ""la2028""}",skip,
