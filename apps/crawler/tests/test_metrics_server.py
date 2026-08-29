@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import asyncio
 import contextlib
 import io
 import socket
@@ -8,7 +10,7 @@ import struct
 import subprocess
 import sys
 import time
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.request import urlopen
 
 import pytest
@@ -44,6 +46,31 @@ def test_metrics_server_starts_process_tree_sampler() -> None:
 
     start_sampler.assert_called_once_with()
     start_http.assert_called_once_with(9123)
+
+
+@pytest.mark.parametrize("command", ["run", "run-browser", "export", "drain"])
+def test_invalid_installed_version_stops_roles_before_external_clients(command: str) -> None:
+    from src import cli
+
+    create_pool = AsyncMock()
+    create_http = MagicMock()
+    close_pools = AsyncMock()
+    with (
+        patch.object(cli, "parse_args", return_value=argparse.Namespace(command=command)),
+        patch.object(cli, "setup_logging"),
+        patch.object(cli, "log"),
+        patch.object(cli, "create_local_pool", new=create_pool),
+        patch.object(cli, "create_http_client", new=create_http),
+        patch.object(cli, "close_all_pools", new=close_pools),
+        patch("src.metrics.is_source_checkout", return_value=False),
+        patch("src.metrics.distribution_version", return_value="unknown"),
+        pytest.raises(RuntimeError, match="distribution version is invalid"),
+    ):
+        asyncio.run(cli.run())
+
+    create_pool.assert_not_awaited()
+    create_http.assert_not_called()
+    close_pools.assert_awaited_once_with()
 
 
 def test_metrics_module_import_does_not_require_runtime_cost_package() -> None:

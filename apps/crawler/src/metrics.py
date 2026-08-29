@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import re
 import socketserver
 import sys
 import threading
 import time
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as distribution_version
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from prometheus_client import Counter, Gauge, Histogram, make_wsgi_app
+
+from src.shared.constants import is_source_checkout
 
 if TYPE_CHECKING:
     from src.runtime_cost.process_tree import ProcessTreeSample
@@ -643,11 +649,27 @@ build_info = Gauge(
 
 
 def _read_version() -> str:
-    """Read ``apps/crawler/VERSION`` relative to this module, or "unknown"."""
-    import pathlib
+    """Return the authoritative crawler release version.
+
+    Installed wheels use their distribution metadata. A structurally verified
+    source checkout keeps reading its mutable ``VERSION`` file so local release
+    checks and development builds see the checked-out value immediately. A
+    missing checkout file retains the development-only ``"unknown"`` fallback;
+    an invalid installed identity fails startup.
+    """
+
+    if not is_source_checkout():
+        try:
+            installed_version = distribution_version("jobseek-crawler").strip()
+        except PackageNotFoundError as exc:
+            raise RuntimeError("installed crawler distribution metadata is missing") from exc
+        version_pattern = r"[0-9]+\.[0-9]+\.[0-9]+(?:\+build\.[0-9]+\.g[0-9a-f]{7,12})?"
+        if not re.fullmatch(version_pattern, installed_version):
+            raise RuntimeError("installed crawler distribution version is invalid")
+        return installed_version
 
     # src/metrics.py → src/../VERSION
-    version_file = pathlib.Path(__file__).resolve().parent.parent / "VERSION"
+    version_file = Path(__file__).resolve().parent.parent / "VERSION"
     try:
         return version_file.read_text().strip() or "unknown"
     except OSError:

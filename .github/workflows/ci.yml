@@ -223,6 +223,24 @@ jobs:
           cache-from: type=gha,scope=crawler-slim
           cache-to: type=gha,mode=max,scope=crawler-slim,ignore-error=true
 
+      - name: Verify installed build info for all long-lived roles
+        run: |
+          set -euo pipefail
+          expected_version="$(tr -d '[:space:]' < apps/crawler/VERSION)"
+          docker run --rm \
+            --platform linux/amd64 \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --workdir /tmp \
+            --mount \
+              "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/scripts/verify-build-info-release.py,target=/tmp/verify-build-info-release.py,readonly" \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            --entrypoint /app/.venv/bin/python \
+            jobseek-crawler-slim-ci:pr \
+            -I /tmp/verify-build-info-release.py \
+            --expected-version "$expected_version" \
+            --require-installed
+
       - name: Test installed sync data-root contract
         run: |
           set -euo pipefail

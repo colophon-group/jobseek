@@ -24,6 +24,8 @@ import json
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from src.metrics import _read_version, build_info, start_metrics_server, tasks_total
 from src.processing.board import (
     _enqueue_scrapes_for_new,
@@ -738,7 +740,7 @@ class TestClearScrapeForRichPredicate:
 
 
 class TestBuildInfoMetric:
-    def test_version_read_matches_file(self):
+    def test_version_read_matches_file(self, monkeypatch):
         """``_read_version()`` returns the contents of ``apps/crawler/VERSION``.
 
         Added so SREs can confirm which VERSION each container is running
@@ -749,17 +751,84 @@ class TestBuildInfoMetric:
 
         version_file = pathlib.Path(__file__).resolve().parent.parent / "VERSION"
         expected = version_file.read_text().strip()
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: True)
+
+        def stale_metadata(_name: str) -> str:
+            raise AssertionError("verified checkout must not read installed metadata")
+
+        monkeypatch.setattr("src.metrics.distribution_version", stale_metadata)
         assert _read_version() == expected
         assert expected  # non-empty
 
     def test_read_version_handles_missing_file(self, tmp_path, monkeypatch):
-        """``_read_version()`` must not raise when VERSION is missing."""
+        """A verified checkout must not raise when VERSION is missing."""
         # Point ``_read_version`` at a directory with no VERSION file.
         fake_module_path = tmp_path / "src" / "metrics.py"
         fake_module_path.parent.mkdir()
         fake_module_path.touch()
         monkeypatch.setattr("src.metrics.__file__", str(fake_module_path))
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: True)
         assert _read_version() == "unknown"
+
+    def test_installed_version_uses_distribution_metadata(self, tmp_path, monkeypatch):
+        """Installed wheels must not probe checkout-relative VERSION files."""
+        fake_module_path = tmp_path / "site-packages" / "src" / "metrics.py"
+        fake_module_path.parent.mkdir(parents=True)
+        fake_module_path.touch()
+        (fake_module_path.parent.parent / "VERSION").write_text("wrong\n")
+        monkeypatch.setattr("src.metrics.__file__", str(fake_module_path))
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+        monkeypatch.setattr("src.metrics.distribution_version", lambda name: "0.13.593")
+
+        assert _read_version() == "0.13.593"
+
+    def test_installed_version_accepts_derived_release_metadata(self, monkeypatch):
+        """Deployment-only builds retain their bounded PEP 440 identity."""
+        derived = "0.13.593+build.6201.gabcdef123456"
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+        monkeypatch.setattr("src.metrics.distribution_version", lambda _name: derived)
+
+        assert _read_version() == derived
+
+    def test_installed_version_missing_metadata_fails_closed(self, monkeypatch):
+        """A broken installed distribution fails instead of emitting unknown."""
+        from importlib.metadata import PackageNotFoundError
+
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+
+        def missing(_name: str) -> str:
+            raise PackageNotFoundError
+
+        monkeypatch.setattr("src.metrics.distribution_version", missing)
+        with pytest.raises(RuntimeError, match="distribution metadata is missing"):
+            _read_version()
+
+    @pytest.mark.parametrize(
+        "installed_version",
+        ["", "unknown", "0.13", "v0.13.593", "0.13.593+unbounded"],
+    )
+    def test_installed_version_rejects_invalid_metadata(self, installed_version, monkeypatch):
+        """Blank, fallback, and malformed installed identities fail closed."""
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+        monkeypatch.setattr("src.metrics.distribution_version", lambda _name: installed_version)
+
+        with pytest.raises(RuntimeError, match="distribution version is invalid"):
+            _read_version()
+
+    def test_invalid_installed_version_stops_before_metrics_side_effects(self, monkeypatch):
+        """Release identity is validated before sampler or listener startup."""
+        monkeypatch.setattr("src.metrics.is_source_checkout", lambda: False)
+        monkeypatch.setattr("src.metrics.distribution_version", lambda _name: "unknown")
+
+        with (
+            patch("src.metrics._start_process_tree_sampler") as start_sampler,
+            patch("src.metrics._start_metrics_http_server") as start_listener,
+            pytest.raises(RuntimeError, match="distribution version is invalid"),
+        ):
+            start_metrics_server(0)
+
+        start_sampler.assert_not_called()
+        start_listener.assert_not_called()
 
     def test_start_metrics_server_labels_build_info(self):
         """``start_metrics_server`` must emit ``crawler_build_info`` at startup.
