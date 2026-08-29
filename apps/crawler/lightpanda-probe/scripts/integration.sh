@@ -37,8 +37,8 @@ docker build --target fixture --tag "$fixture_image" .
 docker build --target probe --tag "$probe_image" .
 
 docker network create --internal "$network_name" >/dev/null
-docker run --detach --name "$fixture_container" --network "$network_name" "$fixture_image" >/dev/null
-docker run --detach --name "$browser_container" --network "$network_name" "$browser_image" >/dev/null
+docker run --detach --name "$fixture_container" --network "$network_name" --network-alias fixture "$fixture_image" >/dev/null
+docker run --detach --name "$browser_container" --network "$network_name" --network-alias lightpanda "$browser_image" >/dev/null
 
 run_probe() {
   local plan="$1"
@@ -66,6 +66,7 @@ for attempt in $(seq 1 20); do
 done
 if [[ "$ready" != true ]]; then
   docker logs "$browser_container"
+  docker logs "$fixture_container"
   jq . "$output_dir/navigation-1.json"
   exit 1
 fi
@@ -137,7 +138,7 @@ jq -e '(.result.error.error.code == "ERROR_CODE_SESSION_LOST" or .result.error.e
 docker rm "$crash_container" >/dev/null
 docker rm "$browser_container" >/dev/null
 
-docker run --detach --name "$browser_container" --network "$network_name" "$browser_image" >/dev/null
+docker run --detach --name "$browser_container" --network "$network_name" --network-alias lightpanda "$browser_image" >/dev/null
 ready=false
 for attempt in $(seq 1 20); do
   run_probe navigation post-crash

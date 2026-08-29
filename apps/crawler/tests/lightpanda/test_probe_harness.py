@@ -71,6 +71,8 @@ def test_workflow_has_no_production_or_egress_escape_hatches() -> None:
     combined = workflow + integration
 
     assert "docker network create --internal" in integration
+    assert "--network-alias fixture" in integration
+    assert integration.count("--network-alias lightpanda") == 2
     assert "--network host" not in combined
     assert "--publish" not in combined
     assert "secrets." not in workflow
