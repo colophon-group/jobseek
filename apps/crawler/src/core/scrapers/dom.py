@@ -343,6 +343,8 @@ _CLINCH_CLASS_MARKERS = (
     "job-description",
     "job-component-location",
 )
+_ADVORTO_SCOPE = ".vacancy-information-fields"
+_ADVORTO_LIST_SELECTOR = f"{_ADVORTO_SCOPE} dl.advorto-definition-list"
 _SOLIQUE_HOST_MARKER = "solique.ch/"
 _SOLIQUE_CLASS_MARKERS = ("job-title", "tasks-profile-wrapper")
 _REXX_PORTAL7_MARKERS = ("rexx recruitment - portal7", "jobtplcontainer")
@@ -641,6 +643,69 @@ def _clinch_config(htmls: list[str]) -> dict | None:
     }
 
 
+def _advorto_config(htmls: list[str]) -> dict | None:
+    """Build stable extraction steps for Kallidus Recruit/Advorto details.
+
+    These pages render a short title/location header before their share
+    controls, then repeat the authoritative fields in an Advorto definition
+    list.  The generic heuristic stops at the earlier ``Share`` marker and
+    consequently mistakes the location header for the description.  Scope to
+    the labeled vacancy fields and inject the document title because some
+    postings do not repeat their title inside the description body.
+    """
+
+    matches = 0
+    for html in htmls:
+        tree = LexborHTMLParser(html)
+        field_list = tree.css_first(_ADVORTO_LIST_SELECTOR)
+        title = tree.css_first("title")
+        if field_list is None or title is None or not title.text(strip=True):
+            continue
+        labels = {node.text(strip=True).casefold() for node in field_list.css("dt")}
+        if {"location", "description"}.issubset(labels):
+            matches += 1
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    label = {
+        "tag": "dt",
+        "offset": 1,
+        "from": 0,
+    }
+    return {
+        "scope": _ADVORTO_SCOPE,
+        "include_document_title": True,
+        "steps": [
+            {"tag": "title", "field": "title"},
+            {
+                **label,
+                "match_regex": r"^\s*Description\s*$",
+                "field": "description",
+                "html": True,
+                "to_end": True,
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Location\s*$",
+                "field": "locations",
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Salary\s*$",
+                "field": "metadata.salary",
+                "optional": True,
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Closing date\s*$",
+                "field": "valid_through",
+                "date_input_format": "%d/%m/%Y",
+                "optional": True,
+            },
+        ],
+    }
+
+
 def _tribepad_config(htmls: list[str]) -> dict | None:
     """Build stable extraction steps for Tribepad job-detail pages.
 
@@ -846,6 +911,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     Uses the first page's structure to generate steps, then validates
     that the title step (h1) matches on other pages too.
     """
+    advorto = _advorto_config(htmls)
+    if advorto is not None:
+        return advorto
+
     lucca = _lucca_config(htmls)
     if lucca is not None:
         return lucca
