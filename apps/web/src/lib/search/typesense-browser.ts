@@ -1,6 +1,7 @@
 import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "./typesense-filters";
 import {
   getTypesenseBrowserConfig,
+  invalidateTypesenseBrowserConfigIfUnauthorized,
   type TypesenseBrowserConfig,
 } from "./typesense-browser-key";
 import type {
@@ -93,6 +94,7 @@ async function searchOne<T>(
     headers: { "x-typesense-api-key": cfg.apiKey },
   });
   if (!res.ok) {
+    invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
     throw new Error(`typesense ${collection} search ${res.status}`);
   }
   return res.json();

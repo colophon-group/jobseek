@@ -2221,6 +2221,10 @@ class TestInsertSqlContract:
         touched_section = sql_compact[touched_start:cte_body_end]
         assert "description_r2_hash IS NULL" in touched_section
         assert "next_scrape_at IS NULL" in touched_section
+        # A transient three-strike tombstone must stay terminal when its
+        # listing monitor sees the URL again. Otherwise every monitor cycle
+        # recreates the failed scrape and defeats the retry budget.
+        assert touched_section.count("job_posting.scrape_failures < 3") == 2
         assert "needs_scrape_enqueue" in touched_section
         assert "job_posting.next_scrape_at <= now()" in touched_section
         # And the same NULL checks must NOT bleed into the relisted CTE

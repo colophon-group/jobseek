@@ -1,4 +1,8 @@
-import { getTypesenseBrowserConfig, type TypesenseBrowserConfig } from "./typesense-browser-key";
+import {
+  getTypesenseBrowserConfig,
+  invalidateTypesenseBrowserConfigIfUnauthorized,
+  type TypesenseBrowserConfig,
+} from "./typesense-browser-key";
 import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
 import type { TypeaheadBoostFilters } from "./typeahead-boost";
 import type { LocationSuggestion } from "@/lib/actions/locations";
@@ -85,7 +89,10 @@ async function searchOne<T>(
     method: "GET",
     headers: { "x-typesense-api-key": cfg.apiKey },
   });
-  if (!res.ok) throw new Error(`typesense ${collection} ${res.status}`);
+  if (!res.ok) {
+    invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
+    throw new Error(`typesense ${collection} ${res.status}`);
+  }
   return res.json();
 }
 
@@ -103,7 +110,10 @@ async function searchMany(
     },
     body: JSON.stringify({ searches }),
   });
-  if (!res.ok) throw new Error(`typesense multi_search ${res.status}`);
+  if (!res.ok) {
+    invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
+    throw new Error(`typesense multi_search ${res.status}`);
+  }
   const body = (await res.json()) as {
     results?: RawSearchResponse<Record<string, unknown>>[];
   };

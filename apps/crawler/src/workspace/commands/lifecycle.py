@@ -619,6 +619,7 @@ def use(slug: str | None, board: str | None, company_opt: str | None, board_opt:
             "no-job-board",
             "no-open-positions",
             "duplicate",
+            "subsidiary",
         ]
     ),
 )
@@ -1749,6 +1750,7 @@ def _terminal_recovery_outcome(
             "no-job-board",
             "no-open-positions",
             "duplicate",
+            "subsidiary",
         }:
             return False, None
         if "--issue" in options:
@@ -1770,7 +1772,7 @@ def _terminal_recovery_outcome(
                 f"**This request could not be processed:** {message}\n\n"
                 "If this was closed in error, reopen the issue with additional context."
             ),
-            "labels": [reason] if reason == "duplicate" else [],
+            "labels": [reason] if reason in ("duplicate", "subsidiary") else [],
             "close_issue": True,
         }
 

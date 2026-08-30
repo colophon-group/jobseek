@@ -11,7 +11,6 @@ import {
   runGetWatchlistPostings,
   runGetWatchlistPostingYearCount,
 } from "@/lib/search/search-runner";
-import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useSavedJobs } from "@/components/providers/SavedJobsProvider";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
@@ -73,7 +72,6 @@ export function WatchlistJobList({
   const { isLoggedIn } = useSession();
   const isLoggedInRef = useRef(isLoggedIn);
   isLoggedInRef.current = isLoggedIn;
-  useClearTypesenseOnAuthChange(isLoggedIn);
   const searchParams = useSearchParams();
   const [showPostingId, setShowPostingId] = useState<string | null>(searchParams.get("show"));
   const filtersRef = useRef(filters);
