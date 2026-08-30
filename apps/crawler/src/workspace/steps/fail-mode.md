@@ -11,6 +11,11 @@ Before writing code, confirm configuration exploration is exhausted:
 - Attempts and failure reasons were recorded
 - Evidence trail is clear (observation, method, interpretation)
 
+If that evidence already shows that no safe code fix can be submitted, run
+`ws task escalate --issue <N> --reason "..." --follow-up "..."` **now, before
+`ws del`**. Terminal cleanup writes an immutable outcome receipt, so a plain
+`ws del` cannot later be changed into an escalation outcome.
+
 ## Steps
 
 1. **Save workspace state before deleting.** Record the logo/icon selection
@@ -43,9 +48,10 @@ Before writing code, confirm configuration exploration is exhausted:
      submitted outcome
 
 Opening that linked `fix-crawler/` PR is the terminal submitted outcome for
-this resolver run. If no safe code fix can be submitted, use
-`ws task escalate --issue <N> --reason "..." --follow-up "..."` so cleanup
-and the required follow-up are recorded explicitly.
+this resolver run. If later investigation shows that no safe fix can be
+submitted, stop before deleting any newly recreated resolver workspace and use
+`ws task escalate --issue <N> --reason "..." --follow-up "..."` so cleanup and
+the required follow-up are recorded atomically.
 
 ## Guidelines
 
