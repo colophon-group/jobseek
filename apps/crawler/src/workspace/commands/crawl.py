@@ -937,6 +937,7 @@ _MONITOR_CONFIG_HINTS = {
         "Requires: token (auto-filled from a www.104.com.tw/company URL); use proxy when challenged"
     ),
     "computrabajo": "No config required; uses an exact unfiltered country employer-profile URL",
+    "papa_johns": "Requires proxy: true; uses exact fail-closed page_jobs pagination.",
     "jobstreet": (
         "Requires: company_id (auto-filled from a canonical my.jobstreet.com/companies URL); "
         "organisation_id is auto-resolved"

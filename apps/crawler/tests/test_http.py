@@ -9,7 +9,9 @@ from src.shared.http import (
     DEFAULT_ACCEPT,
     DEFAULT_USER_AGENT,
     WORKDAY_LIST_303_INCIDENT,
+    ProxyAwareAsyncClient,
     RequestHostTrackingTransport,
+    RotatingProxyTransport,
     _client_kwargs,
     _make_ssl_context,
     client_for,
@@ -356,46 +358,391 @@ class TestProxyOptIn:
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(config.settings, "webshare_proxy_url", self.URL)
         kwargs = _client_kwargs(verify=True, use_proxy=False)
-        assert "proxy" not in kwargs
+        assert "transport" not in kwargs
 
-    def test_use_proxy_true_attaches_provider_url(self, monkeypatch):
+    def test_use_proxy_true_attaches_rotating_transport(self, monkeypatch):
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(config.settings, "webshare_proxy_url", self.URL)
         kwargs = _client_kwargs(verify=True, use_proxy=True)
-        assert kwargs["proxy"] == self.URL
+        assert isinstance(kwargs["transport"], RotatingProxyTransport)
 
     def test_use_proxy_true_noop_when_provider_none(self, monkeypatch):
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "none")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(config.settings, "webshare_proxy_url", self.URL)
         kwargs = _client_kwargs(verify=True, use_proxy=True)
-        assert "proxy" not in kwargs
+        assert "transport" not in kwargs
 
-    def test_use_proxy_true_noop_when_url_empty(self, monkeypatch):
-        """Active provider but empty URL — missing_url ERROR logged, direct egress."""
+    def test_use_proxy_true_fails_closed_when_url_empty(self, monkeypatch):
         from src import config
+        from src.shared.proxy import ProxyConfigurationError
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
-        kwargs = _client_kwargs(verify=True, use_proxy=True)
-        assert "proxy" not in kwargs
+        with pytest.raises(ProxyConfigurationError, match="no usable endpoint"):
+            _client_kwargs(verify=True, use_proxy=True)
 
     async def test_create_http_client_accepts_use_proxy_kwarg(self, monkeypatch):
         """Sanity: the factory builds a live AsyncClient with the proxy attached."""
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(config.settings, "webshare_proxy_url", self.URL)
         client = create_http_client(use_proxy=True)
         try:
             assert isinstance(client, httpx.AsyncClient)
         finally:
             await client.aclose()
+
+
+class TestRotatingProxyTransport:
+    URLS = (
+        "http://user:secret@p.webshare.io:10000",
+        "http://user:secret@p.webshare.io:10001",
+    )
+
+    async def test_rotates_each_top_level_request(self):
+        from src.shared.proxy import PoolProxyProvider
+
+        provider = PoolProxyProvider("webshare", self.URLS)
+        slots: list[int] = []
+
+        def factory(selection):
+            async def handler(request):
+                slots.append(selection.pool_slot)
+                return httpx.Response(200, request=request)
+
+            return httpx.MockTransport(handler)
+
+        transport = RotatingProxyTransport(
+            provider,
+            verify=True,
+            transport_factory=factory,
+        )
+        async with ProxyAwareAsyncClient(transport=transport) as client:
+            for _ in range(4):
+                assert (await client.get("https://target.example/jobs")).status_code == 200
+
+        assert slots == [0, 1, 0, 1]
+
+    async def test_target_block_quarantines_only_slot_origin_pair(self):
+        from src.shared.proxy import PoolProxyProvider
+
+        provider = PoolProxyProvider("webshare", self.URLS)
+        slots: list[tuple[int, str]] = []
+
+        def factory(selection):
+            async def handler(request):
+                slots.append((selection.pool_slot, request.url.host))
+                status = 403 if len(slots) == 1 else 200
+                return httpx.Response(status, request=request)
+
+            return httpx.MockTransport(handler)
+
+        transport = RotatingProxyTransport(
+            provider,
+            verify=True,
+            transport_factory=factory,
+        )
+        async with ProxyAwareAsyncClient(transport=transport) as client:
+            assert (await client.get("https://blocked.example/jobs")).status_code == 403
+            assert (await client.get("https://blocked.example/jobs")).status_code == 200
+            assert (await client.get("https://blocked.example/jobs")).status_code == 200
+            assert (await client.get("https://other.example/jobs")).status_code == 200
+
+        assert slots == [
+            (0, "blocked.example"),
+            (1, "blocked.example"),
+            (1, "blocked.example"),
+            (0, "other.example"),
+        ]
+
+    async def test_redirect_chain_keeps_one_exit_then_next_call_rotates(self):
+        from src.shared.proxy import PoolProxyProvider
+
+        provider = PoolProxyProvider("webshare", self.URLS)
+        slots: list[int] = []
+
+        def factory(selection):
+            async def handler(request):
+                slots.append(selection.pool_slot)
+                if request.url.path == "/start":
+                    return httpx.Response(
+                        302,
+                        headers={"location": "/end"},
+                        request=request,
+                    )
+                return httpx.Response(200, request=request)
+
+            return httpx.MockTransport(handler)
+
+        transport = RotatingProxyTransport(
+            provider,
+            verify=True,
+            transport_factory=factory,
+        )
+        async with ProxyAwareAsyncClient(transport=transport, follow_redirects=True) as client:
+            assert (await client.get("https://target.example/start")).status_code == 200
+            assert (await client.get("https://target.example/end")).status_code == 200
+
+        assert slots == [0, 0, 1]
+
+    async def test_half_open_redirect_keeps_probe_exclusive_until_final_response(self):
+        from src.shared.proxy import PoolProxyProvider, ProxyPoolExhaustedError
+
+        now = [0.0]
+        provider = PoolProxyProvider(
+            "webshare",
+            (self.URLS[0],),
+            clock=lambda: now[0],
+        )
+        failed = provider.select(origin="target.example", transport="httpx")
+        provider.report_failure(
+            failed,
+            origin="target.example",
+            reason="proxy_auth",
+        )
+        now[0] = 60 * 60
+
+        def factory(_selection):
+            async def handler(request):
+                if request.url.path == "/start":
+                    return httpx.Response(302, headers={"location": "/end"}, request=request)
+                with pytest.raises(ProxyPoolExhaustedError):
+                    provider.select(origin="target.example", transport="httpx")
+                return httpx.Response(200, request=request)
+
+            return httpx.MockTransport(handler)
+
+        transport = RotatingProxyTransport(provider, verify=True, transport_factory=factory)
+        async with ProxyAwareAsyncClient(transport=transport, follow_redirects=True) as client:
+            assert (await client.get("https://target.example/start")).status_code == 200
+            assert provider.select(origin="target.example", transport="httpx").half_open is False
+
+    async def test_half_open_redirect_final_block_increases_origin_cooldown(self):
+        from src.shared.proxy import PoolProxyProvider, ProxyPoolExhaustedError
+
+        now = [0.0]
+        provider = PoolProxyProvider(
+            "webshare",
+            (self.URLS[0],),
+            clock=lambda: now[0],
+        )
+        failed = provider.select(origin="target.example", transport="httpx")
+        provider.report_failure(failed, origin="target.example", reason="origin_block")
+        now[0] = 15 * 60
+
+        def factory(_selection):
+            async def handler(request):
+                if request.url.path == "/start":
+                    return httpx.Response(302, headers={"location": "/end"}, request=request)
+                return httpx.Response(403, request=request)
+
+            return httpx.MockTransport(handler)
+
+        transport = RotatingProxyTransport(provider, verify=True, transport_factory=factory)
+        async with ProxyAwareAsyncClient(transport=transport, follow_redirects=True) as client:
+            assert (await client.get("https://target.example/start")).status_code == 403
+
+        now[0] = 30 * 60
+        with pytest.raises(ProxyPoolExhaustedError):
+            provider.select(origin="target.example", transport="httpx")
+        now[0] = 45 * 60
+        assert provider.select(origin="target.example", transport="httpx").half_open is True
+
+    async def test_streamed_half_open_probe_recovers_only_after_body_eof(self):
+        from src.shared.proxy import PoolProxyProvider, ProxyPoolExhaustedError
+
+        now = [0.0]
+        provider = PoolProxyProvider(
+            "webshare",
+            (self.URLS[0],),
+            clock=lambda: now[0],
+        )
+        failed = provider.select(origin="target.example", transport="httpx")
+        provider.report_failure(failed, origin="target.example", reason="proxy_auth")
+        now[0] = 60 * 60
+
+        class Body(httpx.AsyncByteStream):
+            async def __aiter__(self):
+                yield b"ok"
+
+        def factory(_selection):
+            async def handler(request):
+                return httpx.Response(200, stream=Body(), request=request)
+
+            return httpx.MockTransport(handler)
+
+        transport = RotatingProxyTransport(provider, verify=True, transport_factory=factory)
+        async with ProxyAwareAsyncClient(transport=transport) as client:
+            request = client.build_request("GET", "https://target.example/jobs")
+            response = await client.send(request, stream=True)
+            with pytest.raises(ProxyPoolExhaustedError):
+                provider.select(origin="target.example", transport="httpx")
+            assert await response.aread() == b"ok"
+            assert provider.select(origin="target.example", transport="httpx").half_open is False
+
+    @staticmethod
+    def _cross_origin_half_open_provider():
+        from src.shared.proxy import PoolProxyProvider
+
+        now = [0.0]
+        provider = PoolProxyProvider(
+            "webshare",
+            (TestRotatingProxyTransport.URLS[0],),
+            clock=lambda: now[0],
+        )
+        failed = provider.select(origin="a.example", transport="httpx")
+        provider.report_failure(failed, origin="a.example", reason="origin_block")
+        now[0] = 15 * 60
+        return provider
+
+    async def test_cross_origin_redirect_success_recovers_selected_origin_probe(self):
+        provider = self._cross_origin_half_open_provider()
+
+        def factory(_selection):
+            async def handler(request):
+                if request.url.host == "a.example":
+                    return httpx.Response(
+                        302,
+                        headers={"location": "https://b.example/end"},
+                        request=request,
+                    )
+                return httpx.Response(200, request=request)
+
+            return httpx.MockTransport(handler)
+
+        transport = RotatingProxyTransport(provider, verify=True, transport_factory=factory)
+        async with ProxyAwareAsyncClient(transport=transport, follow_redirects=True) as client:
+            assert (await client.get("https://a.example/start")).status_code == 200
+
+        assert provider.select(origin="a.example", transport="httpx").half_open is False
+
+    async def test_cross_origin_redirect_block_recovers_selected_and_quarantines_final(self):
+        from src.shared.proxy import ProxyPoolExhaustedError
+
+        provider = self._cross_origin_half_open_provider()
+
+        def factory(_selection):
+            async def handler(request):
+                if request.url.host == "a.example":
+                    return httpx.Response(
+                        302,
+                        headers={"location": "https://b.example/end"},
+                        request=request,
+                    )
+                return httpx.Response(403, request=request)
+
+            return httpx.MockTransport(handler)
+
+        transport = RotatingProxyTransport(provider, verify=True, transport_factory=factory)
+        async with ProxyAwareAsyncClient(transport=transport, follow_redirects=True) as client:
+            assert (await client.get("https://a.example/start")).status_code == 403
+
+        assert provider.select(origin="a.example", transport="httpx").half_open is False
+        with pytest.raises(ProxyPoolExhaustedError):
+            provider.select(origin="b.example", transport="httpx")
+
+    async def test_cross_origin_stream_early_close_releases_selected_origin_probe(self):
+        provider = self._cross_origin_half_open_provider()
+
+        class Body(httpx.AsyncByteStream):
+            async def __aiter__(self):
+                yield b"unused"
+
+        def factory(_selection):
+            async def handler(request):
+                if request.url.host == "a.example":
+                    return httpx.Response(
+                        302,
+                        headers={"location": "https://b.example/end"},
+                        request=request,
+                    )
+                return httpx.Response(200, stream=Body(), request=request)
+
+            return httpx.MockTransport(handler)
+
+        transport = RotatingProxyTransport(provider, verify=True, transport_factory=factory)
+        async with ProxyAwareAsyncClient(transport=transport, follow_redirects=True) as client:
+            request = client.build_request("GET", "https://a.example/start")
+            response = await client.send(request, stream=True)
+            await response.aclose()
+
+        assert provider.select(origin="a.example", transport="httpx").half_open is True
+
+    async def test_cross_origin_stream_error_recovers_selected_and_quarantines_final(self):
+        from src.shared.proxy import ProxyPoolExhaustedError
+
+        provider = self._cross_origin_half_open_provider()
+
+        class BrokenBody(httpx.AsyncByteStream):
+            def __init__(self, request):
+                self._request = request
+
+            async def __aiter__(self):
+                raise httpx.ReadError("body failed", request=self._request)
+                yield b""  # pragma: no cover
+
+        def factory(_selection):
+            async def handler(request):
+                if request.url.host == "a.example":
+                    return httpx.Response(
+                        302,
+                        headers={"location": "https://b.example/end"},
+                        request=request,
+                    )
+                return httpx.Response(200, stream=BrokenBody(request), request=request)
+
+            return httpx.MockTransport(handler)
+
+        transport = RotatingProxyTransport(provider, verify=True, transport_factory=factory)
+        async with ProxyAwareAsyncClient(transport=transport, follow_redirects=True) as client:
+            request = client.build_request("GET", "https://a.example/start")
+            response = await client.send(request, stream=True)
+            with pytest.raises(httpx.ReadError):
+                await response.aread()
+
+        assert provider.select(origin="a.example", transport="httpx").half_open is False
+        with pytest.raises(ProxyPoolExhaustedError):
+            provider.select(origin="b.example", transport="httpx")
+
+    async def test_origin_transport_failure_does_not_close_shared_slot_transport(self):
+        from src.shared.proxy import PoolProxyProvider
+
+        provider = PoolProxyProvider("webshare", (self.URLS[0],))
+
+        class TrackedTransport(httpx.AsyncBaseTransport):
+            def __init__(self):
+                self.closed = 0
+
+            async def handle_async_request(self, request):
+                raise httpx.ConnectError("target refused", request=request)
+
+            async def aclose(self):
+                self.closed += 1
+
+        inner = TrackedTransport()
+        transport = RotatingProxyTransport(
+            provider,
+            verify=True,
+            transport_factory=lambda _selection: inner,
+        )
+        client = ProxyAwareAsyncClient(transport=transport)
+        with pytest.raises(httpx.ConnectError):
+            await client.get("https://target.example/jobs")
+        assert inner.closed == 0
+        await client.aclose()
+        assert inner.closed == 1
 
 
 class TestClientFor:

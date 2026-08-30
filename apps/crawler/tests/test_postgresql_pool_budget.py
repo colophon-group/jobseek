@@ -44,7 +44,6 @@ def _render_compose_config(*files: Path) -> dict:
         {
             "COMPOSE_PROJECT_NAME": "rollback-base-contract",
             "CRAWLER_IMAGE_TAG": "base-fixture",
-            "DECODO_PROXY_URL": "",
             "GRAFANA_LOKI_PASSWORD": "fixture",
             "GRAFANA_LOKI_URL": "https://fixture.invalid/loki",
             "GRAFANA_LOKI_USERNAME": "fixture",

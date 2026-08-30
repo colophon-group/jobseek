@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import contextvars
 import re
 import ssl
 import time
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from http.cookiejar import Cookie, CookieJar, DefaultCookiePolicy
@@ -20,7 +21,13 @@ from src.shared.egress import (
     record_origin_outcome,
     record_response_body_bytes,
 )
-from src.shared.proxy import httpx_proxy_for
+from src.shared.proxy import (
+    ProxyProvider,
+    ProxySelection,
+    report_proxy_failure,
+    report_proxy_success,
+    require_provider,
+)
 from src.shared.ssrf import SSRFGuardedTransport
 
 
@@ -365,13 +372,238 @@ class RequestHostTrackingTransport(httpx.AsyncBaseTransport):
         await self._inner.aclose()
 
 
+class RotatingProxyTransport(httpx.AsyncBaseTransport):
+    """Rotate Webshare endpoints per request with quarantine and recovery.
+
+    One underlying httpx transport is retained per pool slot so connection
+    pooling remains efficient. Endpoint selection happens before every
+    top-level request (including caller retry attempts). Redirect requests
+    inherit the original selection through httpx's request extensions, so an
+    authentication/cookie flow never changes IP mid-chain. The provider owns
+    bounded process-local health state and skips quarantined slots.
+    """
+
+    _SELECTION_EXTENSION = "jobseek.proxy_selection"
+    _TRANSPORT_EXTENSION = "jobseek.proxy_transport"
+    _OUTCOME_REPORTED_EXTENSION = "jobseek.proxy_outcome_reported"
+
+    def __init__(
+        self,
+        provider: ProxyProvider,
+        *,
+        verify: ssl.SSLContext | bool,
+        transport_factory: Callable[[ProxySelection], httpx.AsyncBaseTransport] | None = None,
+    ) -> None:
+        self._provider = provider
+        self._verify = verify
+        self._transport_factory = transport_factory
+        self._transports: dict[int, httpx.AsyncBaseTransport] = {}
+        self._transport_lock = asyncio.Lock()
+
+    async def _transport_for(self, selection: ProxySelection) -> httpx.AsyncBaseTransport:
+        existing = self._transports.get(selection.pool_slot)
+        if existing is not None:
+            return existing
+        async with self._transport_lock:
+            existing = self._transports.get(selection.pool_slot)
+            if existing is None:
+                existing = (
+                    self._transport_factory(selection)
+                    if self._transport_factory is not None
+                    else httpx.AsyncHTTPTransport(
+                        proxy=selection.url,
+                        verify=self._verify,
+                    )
+                )
+                self._transports[selection.pool_slot] = existing
+            return existing
+
+    async def _discard_transport(self, slot: int) -> None:
+        async with self._transport_lock:
+            transport = self._transports.pop(slot, None)
+        if transport is not None:
+            await transport.aclose()
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        origin = (request.url.host or "").lower() or None
+        inherited = request.extensions.get(self._SELECTION_EXTENSION)
+        selection = (
+            inherited
+            if isinstance(inherited, ProxySelection) and inherited._owner is self._provider
+            else self._provider.select(origin=origin, transport="httpx")
+        )
+        request.extensions[self._SELECTION_EXTENSION] = selection
+        request.extensions[self._TRANSPORT_EXTENSION] = self
+        transport = await self._transport_for(selection)
+        try:
+            response = await transport.handle_async_request(request)
+        except httpx.ProxyError as exc:
+            reason = "proxy_auth" if "407" in str(exc) else "proxy_transport"
+            request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
+            report_proxy_failure(selection, origin=origin, reason=reason)
+            await self._discard_transport(selection.pool_slot)
+            raise
+        except httpx.TransportError:
+            # Without a provider error/header this may be a target-specific
+            # TLS/connect failure, so do not evict the endpoint globally.
+            request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
+            report_proxy_failure(selection, origin=origin, reason="origin_transport")
+            raise
+        except BaseException:
+            # Cancellation or a non-network transport failure is
+            # inconclusive. Release only a probe owned by this lease.
+            request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
+            self.abandon_request(request)
+            raise
+
+        provider_error = response.headers.get("x-webshare-error-reason")
+        if response.status_code == 407:
+            request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
+            report_proxy_failure(selection, origin=origin, reason="proxy_auth")
+            await self._discard_transport(selection.pool_slot)
+        elif provider_error:
+            request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
+            report_proxy_failure(selection, origin=origin, reason="proxy_transport")
+            await self._discard_transport(selection.pool_slot)
+        return response
+
+    def finalize_response(self, response: httpx.Response) -> None:
+        """Account for the final response after redirects/body consumption."""
+
+        request = response.request
+        if request.extensions.get(self._OUTCOME_REPORTED_EXTENSION):
+            return
+        selection = request.extensions.get(self._SELECTION_EXTENSION)
+        if not isinstance(selection, ProxySelection) or selection._owner is not self._provider:
+            return
+        request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
+        origin = (request.url.host or "").lower() or None
+        if response.status_code in {403, 429}:
+            # The proxy successfully reached this target, but this exit is
+            # currently blocked/rate-limited for the origin. Quarantine only
+            # the (slot, origin) pair; other origins may continue using it.
+            report_proxy_failure(selection, origin=origin, reason="origin_block")
+        else:
+            # Only the final response in a redirect chain recovers a probe.
+            report_proxy_success(selection, origin=origin)
+
+    def report_stream_failure(self, request: httpx.Request, exc: BaseException) -> None:
+        if request.extensions.get(self._OUTCOME_REPORTED_EXTENSION):
+            return
+        selection = request.extensions.get(self._SELECTION_EXTENSION)
+        if not isinstance(selection, ProxySelection) or selection._owner is not self._provider:
+            return
+        request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
+        origin = (request.url.host or "").lower() or None
+        if isinstance(exc, httpx.ProxyError):
+            reason = "proxy_auth" if "407" in str(exc) else "proxy_transport"
+            report_proxy_failure(selection, origin=origin, reason=reason)
+        elif isinstance(exc, httpx.TransportError):
+            report_proxy_failure(selection, origin=origin, reason="origin_transport")
+        else:
+            self.abandon_request(request)
+
+    def abandon_request(self, request: httpx.Request) -> None:
+        selection = request.extensions.get(self._SELECTION_EXTENSION)
+        if isinstance(selection, ProxySelection) and selection._owner is self._provider:
+            origin = (request.url.host or "").lower() or None
+            selection._owner.abandon(selection, origin=origin)
+
+    async def aclose(self) -> None:
+        async with self._transport_lock:
+            transports = list(self._transports.values())
+            self._transports.clear()
+        for transport in transports:
+            await transport.aclose()
+
+
+class _ProxyOutcomeStream(httpx.AsyncByteStream):
+    """Delay proxy recovery until a streamed final response reaches EOF."""
+
+    def __init__(
+        self,
+        inner: httpx.AsyncByteStream,
+        *,
+        response: httpx.Response,
+        transport: RotatingProxyTransport,
+    ) -> None:
+        self._inner = inner
+        self._response = response
+        self._transport = transport
+        self._finished = False
+
+    async def __aiter__(self):
+        try:
+            async for chunk in self._inner:
+                yield chunk
+        except BaseException as exc:
+            self._finished = True
+            self._transport.report_stream_failure(self._response.request, exc)
+            raise
+        else:
+            self._finished = True
+            self._transport.finalize_response(self._response)
+
+    async def aclose(self) -> None:
+        try:
+            await self._inner.aclose()
+        finally:
+            if not self._finished:
+                self._finished = True
+                self._transport.abandon_request(self._response.request)
+
+
+class ProxyAwareAsyncClient(httpx.AsyncClient):
+    """Finalize one proxy lease only after the top-level request completes."""
+
+    async def send(
+        self,
+        request: httpx.Request,
+        *,
+        stream: bool = False,
+        auth: Any = httpx.USE_CLIENT_DEFAULT,
+        follow_redirects: Any = httpx.USE_CLIENT_DEFAULT,
+    ) -> httpx.Response:
+        try:
+            response = await super().send(
+                request,
+                stream=stream,
+                auth=auth,
+                follow_redirects=follow_redirects,
+            )
+        except BaseException:
+            transport = request.extensions.get(RotatingProxyTransport._TRANSPORT_EXTENSION)
+            if isinstance(transport, RotatingProxyTransport):
+                transport.abandon_request(request)
+            raise
+
+        transport = response.request.extensions.get(RotatingProxyTransport._TRANSPORT_EXTENSION)
+        if not isinstance(transport, RotatingProxyTransport):
+            return response
+        if stream:
+            if not isinstance(response.stream, httpx.AsyncByteStream):
+                transport.abandon_request(response.request)
+                return response
+            response.stream = _ProxyOutcomeStream(
+                response.stream,
+                response=response,
+                transport=transport,
+            )
+        else:
+            transport.finalize_response(response)
+        return response
+
+
 def _client_kwargs(*, verify: bool, use_proxy: bool) -> dict[str, Any]:
     kwargs: dict[str, Any] = {**_CLIENT_DEFAULTS}
     if not verify:
         kwargs["verify"] = False
-    proxy = httpx_proxy_for(use_proxy=use_proxy)
-    if proxy:
-        kwargs["proxy"] = proxy
+    provider = require_provider(use_proxy=use_proxy)
+    if provider is not None:
+        kwargs["transport"] = RotatingProxyTransport(
+            provider,
+            verify=kwargs["verify"],
+        )
     return kwargs
 
 
@@ -386,31 +618,19 @@ def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClie
     :class:`~src.shared.ssrf.SSRFGuardedTransport` catches every fetch
     regardless of whether it was proxied.
 
-    We do the wrapping outside httpx by:
-
-      1. Reading the resolved ``proxy``, ``verify`` from ``kwargs``.
-      2. Building the underlying ``AsyncHTTPTransport`` ourselves with
-         the same options httpx would have used internally.
-      3. Wrapping it in ``SSRFGuardedTransport`` and passing it as the
-         single ``transport=`` argument. httpx will use this transport
-         for every request URL.
-
-    The original ``kwargs`` dict is NOT mutated — we shallow-copy and
-    pop the proxy/transport keys on the copy. This keeps callers
-    (including tests that introspect ``_client_kwargs`` output) seeing
-    the same shape they always have.
+    ``_client_kwargs`` resolves either a direct transport or the Webshare
+    rotating transport. This function wraps that resolved transport with
+    request-host accounting and the SSRF guard. The original kwargs dict is
+    not mutated.
     """
     kw = dict(kwargs)
     kw.update(extra)
     kw.setdefault("cookies", CookieJar(policy=_Rfc6265CookiePolicy()))
-    proxy = kw.pop("proxy", None)
     inner = kw.pop("transport", None)
+    proxy_aware = isinstance(inner, RotatingProxyTransport)
     if inner is None:
         verify = kw.pop("verify", True)
-        transport_kwargs: dict[str, Any] = {"verify": verify}
-        if proxy is not None:
-            transport_kwargs["proxy"] = proxy
-        inner = httpx.AsyncHTTPTransport(**transport_kwargs)
+        inner = httpx.AsyncHTTPTransport(verify=verify)
     else:
         # An explicit transport was supplied — drop the httpx-managed
         # verify/proxy kwargs so AsyncClient doesn't complain about
@@ -420,11 +640,12 @@ def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClie
     # failure accounting. The tracking layer sees each permitted redirect
     # hop and records the actual egress host instead of guessing from a
     # crawler type or board URL.
-    actual_egress = "proxy" if proxy is not None else "direct"
+    actual_egress = "proxy" if proxy_aware else "direct"
     kw["transport"] = SSRFGuardedTransport(
         RequestHostTrackingTransport(inner, egress=actual_egress)
     )
-    return httpx.AsyncClient(**kw)
+    client_type = ProxyAwareAsyncClient if proxy_aware else httpx.AsyncClient
+    return client_type(**kw)
 
 
 def create_http_client(*, verify: bool = True, use_proxy: bool = False) -> httpx.AsyncClient:

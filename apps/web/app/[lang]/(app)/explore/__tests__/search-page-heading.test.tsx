@@ -85,10 +85,6 @@ vi.mock("@/lib/search/search-runner", () => ({
   tryListTopCompaniesDirect: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock("@/lib/search/use-clear-typesense-on-auth-change", () => ({
-  useClearTypesenseOnAuthChange: () => {},
-}));
-
 vi.mock("@/lib/actions/explore-page-data", () => ({
   fetchExploreFilterPageData: vi.fn().mockResolvedValue({
     degraded: false,
