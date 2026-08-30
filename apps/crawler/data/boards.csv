@@ -315,6 +315,7 @@ allegro,allegro-careers,https://careers.allegro.eu/,rss,"{""preset"": ""successf
 allen-control-systems,allen-control-systems-greenhouse,https://job-boards.greenhouse.io/allencontrolsystems,greenhouse,"{""token"": ""allencontrolsystems""}",skip,
 alliance,alliance-pinpoint,https://alliance.pinpointhq.com,pinpoint,"{""slug"": ""alliance""}",skip,
 alliance-defending-freedom,alliance-defending-freedom-greenhouse,https://job-boards.greenhouse.io/alliancedefendingfreedom,greenhouse,"{""token"": ""alliancedefendingfreedom""}",skip,
+allianz,allianz-careers,https://careers.allianz.com/,phenom,,json-ld,
 allianz-suisse,allianz-suisse-careers,https://careers.allianz.com/ch/de/search-results,sitemap,"{""url_filter"": ""/ch/de/job/""}",json-ld,
 allica-bank,allica-bank-ashby,https://jobs.ashbyhq.com/allica-bank,ashby,"{""token"": ""allica-bank""}",skip,
 allied-universal,allied-universal-careers,https://securitycareers-aus.icims.com/,sitemap,"{""sitemap_url"": ""https://securitycareers-aus.icims.com/sitemap.xml"", ""url_filter"": ""^https://securitycareers-aus\\.icims\\.com/jobs/\\d+/"", ""url_transform"": {""find"": ""$"", ""replace"": ""?in_iframe=1""}}",json-ld,
