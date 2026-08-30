@@ -5674,6 +5674,8 @@ spycloud,spycloud-greenhouse,https://job-boards.greenhouse.io/spycloud,greenhous
 squarepoint-capital,squarepoint-capital-greenhouse,https://job-boards.greenhouse.io/squarepointcapital,greenhouse,"{""token"": ""squarepointcapital""}",skip,
 squarespace,squarespace-greenhouse,https://job-boards.greenhouse.io/squarespace,greenhouse,"{""token"": ""squarespace""}",skip,
 squint-ai,squint-ai-ashby,https://jobs.ashbyhq.com/squint.ai,ashby,"{""token"": ""squint.ai""}",skip,
+squircle-it-consulting-services,squircle-it-consulting-services-careers,https://careers.smartrecruiters.com/SQUIRCLEITCONSULTINGSERVICESPVTLTD,smartrecruiters,,smartrecruiters,
+squircle-it-consulting-services,squircle-it-consulting-services-training,https://careers.smartrecruiters.com/SquircleITConsultingServices1,smartrecruiters,"{""token"": ""SquircleITConsultingServices1""}",smartrecruiters,
 srg-ssr,srg-ssr-central,https://jobs.srgssr.ch/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/offene-stellen/""}",json-ld,"{""ignore_address_region"": true}"
 srs-acquiom,srs-acquiom-greenhouse,https://job-boards.greenhouse.io/srsacquiom,greenhouse,"{""token"": ""srsacquiom""}",skip,
 stability-ai,stability-ai-greenhouse,https://job-boards.greenhouse.io/stabilityai,greenhouse,"{""token"": ""stabilityai""}",skip,
