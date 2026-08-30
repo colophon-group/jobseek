@@ -84,12 +84,15 @@ Browsers may fetch this on first visit. If they do, they may also fetch:
 
 ## API Routes
 
-All API routes count as 1 edge request + 1 serverless function invocation per call.
+All API routes count as one edge request. Successful anonymous `/api/v1/*`
+GETs use the Vercel CDN; a cache hit skips the route Function and origin
+Upstash limiter but still passes through the pre-cache WAF rate-limit rule.
 
 | Route | Method | Typical caller |
 |-------|--------|----------------|
 | `/api/auth/[...all]` | * | Auth flows (sign-in, sign-up, OAuth, verify, etc.) |
 | `/api/v1/search` | GET | External API consumers, AI agents |
+| `/api/v1/job` | GET | External API consumers, AI agents |
 | `/api/v1/resolve` | GET | External API consumers |
 | `/api/v1/companies` | GET | External API consumers |
 | `/api/v1/taxonomies` | GET | External API consumers |
@@ -136,7 +139,8 @@ Auth sign-in/sign-up includes bcrypt password hashing (~50-100ms CPU), making
 it the most CPU-intensive per-request auth operation. Other listed functions
 typically complete under 500ms.
 
-API routes with `Cache-Control: s-maxage` headers (`/api/v1/search`, `/job`,
-`/companies`, `/taxonomies`) benefit from Vercel's edge cache — repeat
-identical requests within the TTL window hit CDN and skip the function
-entirely.
+Successful anonymous `/api/v1/*` GETs use
+`Cache-Control: public, max-age=0, must-revalidate` plus a Vercel-only CDN TTL.
+Repeat identical requests within that TTL hit the CDN and skip the Function.
+The Vercel header is stripped before the response reaches callers. Validation,
+provider, not-found, and rate-limit responses remain `no-store`.

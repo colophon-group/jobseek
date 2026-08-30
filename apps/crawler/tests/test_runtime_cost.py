@@ -19,6 +19,14 @@ from src.runtime_cost.prometheus import capture_prometheus_measurement
 ROOT = Path(__file__).parents[1]
 RUNTIME_COST = ROOT / "runtime-cost"
 
+_ATTRIBUTION_METRICS = (
+    "crawler_runtime_origin_attempts_total",
+    "crawler_runtime_origin_outcomes_total",
+    "crawler_runtime_response_body_bytes_total",
+    "crawler_runtime_capability_executions_total",
+    "crawler_runtime_executions_total",
+)
+
 
 def _json(path: Path) -> dict:
     return json.loads(path.read_text())
@@ -650,6 +658,8 @@ def test_prometheus_capture_is_read_only_and_sanitized():
 
     def fake_query(expression: str, _at: datetime) -> list[dict]:
         queries.append(expression)
+        if any(metric in expression for metric in _ATTRIBUTION_METRICS):
+            return []
         if "crawler_build_info" in expression:
             return [{"metric": {"version": "1.2.3"}, "value": [0, "1"]}]
         if "process_resident_memory_bytes" in expression:
@@ -690,8 +700,343 @@ def test_prometheus_capture_is_read_only_and_sanitized():
     assert result["roles"][0]["descendant_process_cpu_seconds"] is None
     assert result["roles"][0]["discovery_concurrency_per_instance"] == 3
     assert result["roles"][0]["monitor_concurrency_per_instance"] == 2
-    assert all("http" not in query.lower() or "crawler_http_retry" in query for query in queries)
+    assert all(
+        "http://" not in query.lower() and "https://" not in query.lower() for query in queries
+    )
     assert "browser-child-cpu-and-rss-not-in-process-metrics" in result["evidence_gaps"]
+
+
+def _attributed_http_query(end_at: datetime, fault: str | None = None):
+    start_at = datetime.fromtimestamp(end_at.timestamp() - 3600, tz=UTC)
+
+    def fake_query(expression: str, at: datetime) -> list[dict]:
+        is_start = at == start_at
+        if "crawler_runtime_capability_executions_total" in expression:
+            stage = "monitor" if 'stage="monitor"' in expression else "detail"
+            if "resets(" in expression:
+                capabilities = (
+                    [("greenhouse", "success"), ("sitemap", "error")]
+                    if stage == "monitor"
+                    else [("json-ld", "success")]
+                )
+                rows = [
+                    {
+                        "metric": {"capability": capability, "outcome": outcome},
+                        "value": [
+                            0,
+                            (
+                                "inf"
+                                if fault == "capability-nonfinite-reset" and index == 0
+                                else "0"
+                            ),
+                        ],
+                    }
+                    for index, (capability, outcome) in enumerate(capabilities)
+                ]
+                if fault == "capability-extra-label":
+                    rows[0]["metric"]["unexpected"] = "value"
+                return rows
+            values = (
+                [("greenhouse", "success", 3, 8), ("sitemap", "error", 1, 2)]
+                if stage == "monitor"
+                else [("json-ld", "success", 4, 11)]
+            )
+            rows = [
+                {
+                    "metric": {"capability": capability, "outcome": outcome},
+                    "value": [0, str(start if is_start else end)],
+                }
+                for capability, outcome, start, end in values
+            ]
+            if fault == "capability-negative-start" and is_start:
+                rows[0]["value"][1] = "-1"
+            if fault == "capability-fractional-end" and not is_start:
+                rows[0]["value"][1] = "8.5"
+            if fault == "capability-invalid-outcome":
+                rows[0]["metric"]["outcome"] = "not-a-runtime-outcome"
+            if fault == "capability-extra-label":
+                rows[0]["metric"]["unexpected"] = "value"
+            return rows
+        if "crawler_runtime_executions_total" in expression:
+            stage = "monitor" if 'stage="monitor"' in expression else "detail"
+            if "resets(" in expression:
+                outcomes = ("success", "error") if stage == "monitor" else ("success",)
+                rows = [{"metric": {"outcome": outcome}, "value": [0, "0"]} for outcome in outcomes]
+                if fault == "capability-invalid-outcome":
+                    rows[0]["metric"]["outcome"] = "not-a-runtime-outcome"
+                return rows
+            values = (
+                [("success", 10, 15), ("error", 2, 3)]
+                if stage == "monitor"
+                else [("success", 20, 27)]
+            )
+            if fault == "capability-mismatch" and stage == "monitor":
+                values[0] = ("success", 10, 16)
+            rows = [
+                {
+                    "metric": {"outcome": outcome},
+                    "value": [0, str(start if is_start else end)],
+                }
+                for outcome, start, end in values
+            ]
+            if fault == "capability-invalid-outcome":
+                rows[0]["metric"]["outcome"] = "not-a-runtime-outcome"
+            return rows
+        if any(
+            metric in expression
+            for metric in (
+                "crawler_runtime_origin_attempts_total",
+                "crawler_runtime_origin_outcomes_total",
+                "crawler_runtime_response_body_bytes_total",
+            )
+        ):
+            if fault == "missing-start" and is_start and "origin_attempts" in expression:
+                return []
+            if "resets(" in expression:
+                reset_value = {
+                    "negative-reset": "-1",
+                    "fractional-reset": "0.5",
+                    "nonfinite-reset": "inf",
+                    "counter-reset": "1",
+                }.get(fault or "", "0")
+                rows = [
+                    {
+                        "metric": {},
+                        "value": [0, reset_value],
+                    }
+                ]
+                if fault == "duplicate-reset":
+                    return [rows[0], deepcopy(rows[0])]
+                return rows
+            proxy = 'egress="proxy"' in expression
+            if "origin_attempts" in expression:
+                start, end = (5, 8) if proxy else (10, 17)
+                if fault == "negative-start" and is_start:
+                    start = -1
+                if fault == "negative-end" and not is_start:
+                    end = -1
+                if fault == "fractional-boundary" and not is_start:
+                    end = 17.5
+                if fault == "nonfinite-boundary" and not is_start:
+                    return [{"metric": {}, "value": [0, "nan"]}]
+                if fault == "malformed-boundary" and not is_start:
+                    return [{"metric": {}, "value": [0]}]
+            elif 'outcome="response"' in expression:
+                start, end = (5, 7) if proxy else (9, 15)
+                if fault == "conservation-mismatch" and not proxy:
+                    end += 1
+            elif 'outcome="transport_error"' in expression:
+                start, end = (0, 1) if proxy else (1, 2)
+            else:
+                start, end = (50, 350) if proxy else (100, 800)
+            row = {"metric": {}, "value": [0, str(start if is_start else end)]}
+            if fault == "duplicate-boundary" and not is_start and "origin_attempts" in expression:
+                return [row, deepcopy(row)]
+            if fault == "labeled-scalar" and not is_start and "origin_attempts" in expression:
+                row["metric"] = {"unexpected": "value"}
+            return [row]
+        if "crawler_build_info" in expression:
+            return [{"metric": {"version": "3.0.0"}, "value": [0, "1"]}]
+        if "process_resident_memory_bytes" in expression:
+            value = 128
+        elif "process_cpu_seconds_total" in expression:
+            value = 12
+        elif 'status="succeeded"' in expression:
+            value = 10
+        elif "crawler_tasks_total" in expression:
+            value = 12
+        elif "duration_seconds_sum" in expression:
+            value = 25
+        else:
+            value = 0
+        return [{"metric": {}, "value": [0, str(value)]}]
+
+    return fake_query
+
+
+def _one_http_target() -> dict:
+    return {
+        "schema_version": "jobseek.crawler-runtime-capture-targets/v1",
+        "revision": "attributed-http-targets",
+        "workload_revision": "test-v1",
+        "implementation": "python-playwright",
+        "targets": [
+            {
+                "id": "worker-a",
+                "instance": "worker-1",
+                "role": "http-worker",
+                "execution_class": "http",
+                "cost_category": "worker",
+                "discovery_concurrency": 3,
+                "monitor_concurrency": 2,
+                "vcpu_limit": 1,
+                "memory_limit_bytes": 1024,
+            }
+        ],
+    }
+
+
+def test_prometheus_capture_promotes_only_conserved_complete_http_egress() -> None:
+    end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
+    result = capture_prometheus_measurement(
+        _one_http_target(),
+        query=_attributed_http_query(end_at),
+        end_at=end_at,
+        window_seconds=3600,
+        source_revision="attributed123",
+    )
+
+    role = result["roles"][0]
+    assert role["egress_coverage"] == [
+        {
+            "stage": stage,
+            "execution_class": "http",
+            "egress": egress,
+            "scope": "shared-http-transport",
+            "expected_targets": 1,
+            "complete_targets": 1,
+            "complete": True,
+            "counter_resets": 0,
+            "origin_attempts": 7 if egress == "direct" else 3,
+            "responses": 6 if egress == "direct" else 2,
+            "transport_errors": 1,
+            "response_bytes": 700 if egress == "direct" else 300,
+        }
+        for stage in ("detail", "monitor")
+        for egress in ("direct", "proxy")
+    ]
+    for lane in role["lanes"]:
+        assert lane["origin_attempts"] == 10
+        assert lane["response_bytes"] == 1000
+    assert "origin-attempts-unmeasured:monitor:http" not in result["evidence_gaps"]
+    assert "response-bytes-unmeasured:detail:http" not in result["evidence_gaps"]
+    assert "origin-attempts-unmeasured:monitor:browser" in result["evidence_gaps"]
+    assert "browser-transport-unmeasured:lightpanda" in result["evidence_gaps"]
+    assert "browser-cgroup-cost-unmeasured:lightpanda" in result["evidence_gaps"]
+    assert "browser-transport-unmeasured:chromium" in result["evidence_gaps"]
+    assert "browser-cgroup-cost-unmeasured:chromium" in result["evidence_gaps"]
+    assert role["capability_mix"]["coverage"] == [
+        {"stage": "detail", "expected_targets": 1, "complete_targets": 1, "complete": True},
+        {"stage": "monitor", "expected_targets": 1, "complete_targets": 1, "complete": True},
+    ]
+    assert {tuple(item.values()) for item in role["capability_mix"]["executions"]} == {
+        ("detail", "json-ld", "success", 7),
+        ("monitor", "greenhouse", "success", 5),
+        ("monitor", "sitemap", "error", 1),
+    }
+    schema = _json(RUNTIME_COST / "schemas/measurement-v1.schema.json")
+    assert (
+        list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(result)) == []
+    )
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "missing-start",
+        "negative-start",
+        "negative-end",
+        "fractional-boundary",
+        "nonfinite-boundary",
+        "malformed-boundary",
+        "duplicate-boundary",
+        "labeled-scalar",
+        "negative-reset",
+        "fractional-reset",
+        "nonfinite-reset",
+        "duplicate-reset",
+        "counter-reset",
+        "conservation-mismatch",
+    ],
+)
+def test_prometheus_capture_fails_closed_for_incomplete_http_egress(fault: str) -> None:
+    end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
+    result = capture_prometheus_measurement(
+        _one_http_target(),
+        query=_attributed_http_query(end_at, fault),
+        end_at=end_at,
+        window_seconds=3600,
+        source_revision=f"attributed-{fault}",
+    )
+
+    assert all(lane["origin_attempts"] is None for lane in result["roles"][0]["lanes"])
+    assert all(lane["response_bytes"] is None for lane in result["roles"][0]["lanes"])
+    assert "origin-attempts-unmeasured:monitor:http" in result["evidence_gaps"]
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "capability-mismatch",
+        "capability-negative-start",
+        "capability-fractional-end",
+        "capability-nonfinite-reset",
+        "capability-malformed-row",
+        "capability-invalid-outcome",
+        "capability-extra-label",
+    ],
+)
+def test_prometheus_capture_discards_invalid_capability_mix(fault: str) -> None:
+    end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
+    query = _attributed_http_query(end_at, fault)
+
+    def malformed_capability_query(expression: str, at: datetime) -> list[dict]:
+        rows = query(expression, at)
+        if fault == "capability-malformed-row" and "capability_executions" in expression:
+            return [{"metric": {"outcome": "success"}, "value": [0, "1"]}]
+        return rows
+
+    result = capture_prometheus_measurement(
+        _one_http_target(),
+        query=malformed_capability_query,
+        end_at=end_at,
+        window_seconds=3600,
+        source_revision=fault,
+    )
+
+    mix = result["roles"][0]["capability_mix"]
+    monitor = next(item for item in mix["coverage"] if item["stage"] == "monitor")
+    assert monitor == {
+        "stage": "monitor",
+        "expected_targets": 1,
+        "complete_targets": 0,
+        "complete": False,
+    }
+    assert all(item["stage"] != "monitor" for item in mix["executions"])
+
+
+def test_prometheus_capture_rejects_mixed_execution_classes_in_one_role() -> None:
+    targets = _one_http_target()
+    browser_target = deepcopy(targets["targets"][0])
+    browser_target.update(id="browser-a", instance="browser-1", execution_class="browser")
+    targets["targets"].append(browser_target)
+    end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
+
+    with pytest.raises(ModelError, match="identical limits, category, and execution class"):
+        capture_prometheus_measurement(
+            targets,
+            query=_attributed_http_query(end_at),
+            end_at=end_at,
+            window_seconds=3600,
+            source_revision="mixed-execution-class",
+        )
+
+
+def test_prometheus_capture_rejects_duplicate_lanes_across_roles() -> None:
+    targets = _one_http_target()
+    duplicate_lane_target = deepcopy(targets["targets"][0])
+    duplicate_lane_target.update(id="worker-b", instance="worker-2", role="http-worker-b")
+    targets["targets"].append(duplicate_lane_target)
+    end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
+
+    with pytest.raises(ModelError, match="duplicate workload lane"):
+        capture_prometheus_measurement(
+            targets,
+            query=_attributed_http_query(end_at),
+            end_at=end_at,
+            window_seconds=3600,
+            source_revision="duplicate-lane",
+        )
 
 
 def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
@@ -741,6 +1086,8 @@ def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
 
     def fake_query(expression: str, at: datetime) -> list[dict]:
         queries.append(expression)
+        if any(metric in expression for metric in _ATTRIBUTION_METRICS):
+            return []
         if "crawler_build_info" in expression:
             return [{"metric": {"version": "2.0.0"}, "value": [0, "1"]}]
         if "crawler_runtime_process_tree_sample_interval_seconds" in expression:
@@ -857,6 +1204,8 @@ def test_prometheus_capture_rejects_partial_process_tree_role_coverage() -> None
     start_at = datetime(2026, 8, 29, 11, tzinfo=UTC)
 
     def fake_query(expression: str, at: datetime) -> list[dict]:
+        if any(metric in expression for metric in _ATTRIBUTION_METRICS):
+            return []
         if "crawler_build_info" in expression:
             return [{"metric": {"version": "2.0.0"}, "value": [0, "1"]}]
         is_tree_metric = "crawler_runtime_" in expression
@@ -954,6 +1303,8 @@ def test_prometheus_capture_fails_closed_for_incomplete_tree_window(fault: str) 
     start_at = datetime(2026, 8, 29, 11, tzinfo=UTC)
 
     def fake_query(expression: str, at: datetime) -> list[dict]:
+        if any(metric in expression for metric in _ATTRIBUTION_METRICS):
+            return []
         if "crawler_build_info" in expression:
             return [{"metric": {"version": "2.0.0"}, "value": [0, "1"]}]
         if "crawler_runtime_process_tree_sample_interval_seconds" in expression:

@@ -11,6 +11,7 @@ interface CompanyPostingListStateInput {
   postingCount: number;
   isTruncated: boolean;
   activeCount: number;
+  isUnavailable?: boolean;
 }
 
 export function getCompanyPostingListState({
@@ -19,8 +20,10 @@ export function getCompanyPostingListState({
   postingCount,
   isTruncated,
   activeCount,
+  isUnavailable = false,
 }: CompanyPostingListStateInput): CompanyPostingListState {
   if (isSearching) return "loading";
+  if (isUnavailable) return "unavailable";
   if (postingCount > 0) return "results";
   if (!hasFilters && (isTruncated || activeCount > 0)) return "unavailable";
   if (hasFilters) return "no-matches";
