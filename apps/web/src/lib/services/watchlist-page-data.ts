@@ -18,6 +18,7 @@ import { resolveJobLanguages } from "@/lib/job-languages";
 import { convertToEur } from "@/lib/salary";
 import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
 import { logExternalError } from "@/lib/safe-external-error";
+import type { WatchlistPostingsParams } from "@/lib/search/typesense-browser-watchlist";
 
 /**
  * Existing watchlist routes must return a usable degraded response before a
@@ -47,6 +48,8 @@ export interface WatchlistPageData {
   resolvedTechnologies: { id: number; slug: string; name: string }[];
   jobLanguages: string[];
   languages: string[];
+  /** Resolved query base used for a no-fallback anonymous browser refresh. */
+  browserPostingFilters?: Omit<WatchlistPostingsParams, "offset" | "limit"> | null;
 }
 
 export type BuildWatchlistPageDataParams = {
@@ -76,6 +79,7 @@ function degradedWatchlistPageData(
     resolvedTechnologies: [],
     jobLanguages: params.jobLanguages,
     languages: resolveJobLanguages(params.jobLanguages, params.locale),
+    browserPostingFilters: null,
   };
 }
 
@@ -142,7 +146,7 @@ async function buildWatchlistPageDataUnbounded(
   const salaryMinEur = convertToEur(filters.salaryMin, salaryCurrency, rates);
   const salaryMaxEur = convertToEur(filters.salaryMax, salaryCurrency, rates);
 
-  const sharedCountsParams = {
+  const browserPostingFilters = {
     companyIds: filters.anyCompany ? [] : detail.companies.map((company) => company.id),
     anyCompany: filters.anyCompany,
     keywords: filters.keywords,
@@ -157,6 +161,9 @@ async function buildWatchlistPageDataUnbounded(
     experienceMin: filters.experienceMin,
     experienceMax: filters.experienceMax,
     languages,
+  } satisfies Omit<WatchlistPostingsParams, "offset" | "limit">;
+  const sharedCountsParams = {
+    ...browserPostingFilters,
     abortSignal,
   };
   const [{ postings, total }, yearTotal] = await Promise.all([
@@ -182,6 +189,7 @@ async function buildWatchlistPageDataUnbounded(
     resolvedTechnologies,
     jobLanguages,
     languages,
+    browserPostingFilters,
   };
 }
 

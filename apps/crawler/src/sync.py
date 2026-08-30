@@ -2884,12 +2884,14 @@ async def sync_watchlists_typesense(
     """Sync public watchlists to the Typesense ``watchlist`` collection.
 
     Watchlists are web-owned, so metadata and ``watchlist_company`` pairs come
-    from ``web_conn``. The active-posting count per company is computed
-    against local Postgres (the job_posting source of truth) and aggregated
-    per watchlist in Python. Shared company UUIDs make the cross-database
-    aggregation exact. This avoids a costly web-database join against its
-    transitional posting mirror. A missing local connection fails closed so
-    no caller can silently restore that retired read path.
+    from ``web_conn``. Active-posting counts come from the same exhaustive
+    Typesense ``company_id`` facet and web-visible filter used for company
+    cards, then are aggregated per watchlist in Python. Shared company UUIDs
+    make that cross-system aggregation exact. This avoids both the retired web
+    posting mirror and a local Postgres bitmap-heap plan that exceeds the
+    scheduled statement timeout at production cardinality. A missing local
+    connection still fails closed because local taxonomy authority is required
+    to resolve watchlist filter ids.
 
     Trivial watchlists (no companies, no meaningful filters) are deleted
     from Typesense rather than upserted. Import acknowledgements are validated
@@ -2937,22 +2939,19 @@ async def sync_watchlists_typesense(
     for r in wc_pairs:
         company_counts[str(r["watchlist_id"])] += 1
 
-    distinct_company_ids = list({r["company_id"] for r in wc_pairs})
-    per_company: dict = {}
-    if distinct_company_ids:
-        active_rows = await local_conn.fetch(
-            """
-            SELECT company_id, COUNT(*) AS cnt
-            FROM job_posting
-            WHERE is_active AND company_id = ANY($1::uuid[])
-            GROUP BY 1
-            """,
-            distinct_company_ids,
+    loop = asyncio.get_event_loop()
+    per_company: dict[str, int] = {}
+    if wc_pairs:
+        per_company = await loop.run_in_executor(
+            None,
+            _fetch_facet_counts,
+            client,
+            "company_id",
+            _POSTING_BASE_FILTER,
         )
-        per_company = {r["company_id"]: r["cnt"] for r in active_rows}
     job_counts: dict[str, int] = defaultdict(int)
     for r in wc_pairs:
-        job_counts[str(r["watchlist_id"])] += per_company.get(r["company_id"], 0)
+        job_counts[str(r["watchlist_id"])] += per_company.get(str(r["company_id"]), 0)
 
     # Mirror counts
     mirror_count_rows = await web_conn.fetch(
@@ -3004,7 +3003,6 @@ async def sync_watchlists_typesense(
             doc["filters_json"] = filters_json
         docs.append(doc)
 
-    loop = asyncio.get_event_loop()
     await loop.run_in_executor(
         None,
         partial(

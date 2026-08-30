@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jobseek.ch/schemas/crawler-migration-promotion-policy-v1.json",
+  "additionalProperties": false,
+  "properties": {
+    "browser_operation_mode": {"const": "capability-routed-dual-engine"},
+    "browser_retirement_gate": {"const": "7966-zero-chromium-assignments-and-service-removal"},
+    "class_membership_authority": {"const": "reviewed-immutable-policy-revision"},
+    "eligible_candidate_implementations": {"const": ["go"]},
+    "histogram_buckets_seconds": {
+      "additionalProperties": false,
+      "properties": {
+        "browser_operation": {"items": {"exclusiveMinimum": 0, "type": "number"}, "minItems": 2, "type": "array", "uniqueItems": true},
+        "due_to_claim": {"items": {"exclusiveMinimum": 0, "type": "number"}, "minItems": 2, "type": "array", "uniqueItems": true},
+        "due_to_complete": {"items": {"exclusiveMinimum": 0, "type": "number"}, "minItems": 2, "type": "array", "uniqueItems": true}
+      },
+      "required": ["due_to_claim", "due_to_complete", "browser_operation"],
+      "type": "object"
+    },
+    "label_allowlists": {
+      "additionalProperties": false,
+      "properties": {
+        "browser_backend": {"const": ["none", "lightpanda", "chromium"]},
+        "browser_class": {"const": ["none", "service"]},
+        "capability_class": {"const": ["shared-http", "navigation-evaluation", "interaction-capture", "identity-transport"]},
+        "cohort": {"const": ["baseline", "candidate"]},
+        "implementation": {"const": ["python", "go"]},
+        "provider_family": {"const": ["direct", "static-proxy", "mixed"]},
+        "region": {"const": ["hetzner-eu-central"]},
+        "service_lane": {"const": ["none", "lightpanda", "chromium"]},
+        "work_class": {"const": ["monitor", "detail"]}
+      },
+      "required": ["implementation", "region", "cohort", "work_class", "capability_class", "browser_class", "browser_backend", "service_lane", "provider_family"],
+      "type": "object"
+    },
+    "metric_contract": {"$ref": "#/$defs/metricContract"},
+    "policy_id": {"maxLength": 64, "minLength": 1, "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$", "type": "string"},
+    "release_max_active_values": {"const": 2},
+    "release_pattern": {"const": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$"},
+    "required_class_mode": {"const": "full-eligible-cross-product"},
+    "required_classes": {
+      "items": {"$ref": "#/$defs/requiredClass"},
+      "minItems": 14,
+      "maxItems": 14,
+      "type": "array"
+    },
+    "routing_revision_pattern": {"const": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$"},
+    "schema_version": {"const": "jobseek.crawler-migration-promotion-policy/v1"},
+    "scope": {"const": "crawler-runtime-only"},
+    "status": {"const": "candidate"},
+    "thresholds": {
+      "additionalProperties": false,
+      "properties": {
+        "antibot_regression_ratio_max": {"minimum": 1, "type": "number"},
+        "due_to_claim_p95_max_seconds": {"exclusiveMinimum": 0, "type": "number"},
+        "due_to_claim_p99_max_seconds": {"exclusiveMinimum": 0, "type": "number"},
+        "due_to_complete_p95_max_seconds": {"exclusiveMinimum": 0, "type": "number"},
+        "due_to_complete_p99_max_seconds": {"exclusiveMinimum": 0, "type": "number"},
+        "freshness_error_budget_burn_max": {"exclusiveMinimum": 0, "type": "number"},
+        "max_avoidable_idle_seconds_with_eligible_backlog": {"const": 0},
+        "max_backend_utilization_ratio": {"exclusiveMinimum": 0, "maximum": 1, "type": "number"},
+        "min_backend_headroom_ratio": {"maximum": 1, "minimum": 0, "type": "number"},
+        "min_completed_schedule_cycles": {"minimum": 1, "type": "integer"},
+        "min_observation_seconds": {"minimum": 300, "type": "integer"},
+        "min_rare_class_samples": {"minimum": 1, "type": "integer"},
+        "min_standard_class_samples": {"minimum": 1, "type": "integer"},
+        "request_amplification_ratio_max": {"minimum": 1, "type": "number"},
+        "schedule_compliance_ratio_min": {"maximum": 1, "minimum": 0, "type": "number"}
+      },
+      "required": ["min_observation_seconds", "min_completed_schedule_cycles", "min_standard_class_samples", "min_rare_class_samples", "schedule_compliance_ratio_min", "freshness_error_budget_burn_max", "due_to_claim_p95_max_seconds", "due_to_claim_p99_max_seconds", "due_to_complete_p95_max_seconds", "due_to_complete_p99_max_seconds", "request_amplification_ratio_max", "antibot_regression_ratio_max", "max_avoidable_idle_seconds_with_eligible_backlog", "max_backend_utilization_ratio", "min_backend_headroom_ratio"],
+      "type": "object"
+    },
+    "zero_tolerance_signals": {
+      "const": ["bulk_gone_or_delist_events", "cross_backend_runtime_fallbacks", "origin_policy_violations", "queue_loss_or_duplication_events", "stale_authoritative_writes", "tdm_violations"]
+    }
+  },
+  "required": ["schema_version", "policy_id", "status", "scope", "browser_operation_mode", "browser_retirement_gate", "class_membership_authority", "required_class_mode", "eligible_candidate_implementations", "release_pattern", "routing_revision_pattern", "release_max_active_values", "label_allowlists", "metric_contract", "required_classes", "thresholds", "histogram_buckets_seconds", "zero_tolerance_signals"],
+  "type": "object",
+  "$defs": {
+    "metricContract": {
+      "additionalProperties": false,
+      "properties": {
+        "gate_histograms": {
+          "const": {
+            "browser_operation": "crawler_migration_browser_operation_seconds",
+            "due_to_claim": "crawler_migration_due_to_claim_seconds",
+            "due_to_complete": "crawler_migration_due_to_complete_seconds"
+          }
+        },
+        "gate_labels": {"const": ["implementation", "region", "cohort", "work_class", "capability_class", "browser_class", "browser_backend", "service_lane", "provider_family"]},
+        "release_identity": {"const": "crawler_build_info"},
+        "service_resource_authority": {"const": "isolated-service-cgroup-v2"},
+        "service_resource_labels": {"const": ["browser_backend", "service_lane"]},
+        "service_resources": {
+          "const": {
+            "browser_seconds_total": "crawler_browser_service_browser_seconds_total",
+            "concurrency_limit": "crawler_browser_service_concurrency_limit",
+            "cpu_seconds_total": "crawler_browser_service_cpu_seconds_total",
+            "crashes_total": "crawler_browser_service_crashes_total",
+            "recycles_total": "crawler_browser_service_recycles_total",
+            "resident_memory_bytes": "crawler_browser_service_resident_memory_bytes",
+            "resource_limit_outcomes_total": "crawler_browser_service_resource_limit_outcomes_total",
+            "sessions": "crawler_browser_service_sessions"
+          }
+        }
+      },
+      "required": ["gate_histograms", "gate_labels", "release_identity", "service_resource_authority", "service_resource_labels", "service_resources"],
+      "type": "object"
+    },
+    "requiredClass": {
+      "additionalProperties": false,
+      "properties": {
+        "browser_backend": {"enum": ["none", "lightpanda", "chromium"]},
+        "browser_class": {"enum": ["none", "service"]},
+        "capability_class": {"enum": ["shared-http", "navigation-evaluation", "interaction-capture", "identity-transport"]},
+        "class_id": {"pattern": "^[a-z0-9][a-z0-9_-]{0,63}$", "type": "string"},
+        "resource_authority": {"enum": ["worker-cgroup-v2", "lightpanda-service-cgroup-v2", "chromium-service-cgroup-v2"]},
+        "sample_policy": {"enum": ["standard", "rare"]},
+        "service_lane": {"enum": ["none", "lightpanda", "chromium"]},
+        "work_class": {"enum": ["monitor", "detail"]}
+      },
+      "required": ["class_id", "work_class", "capability_class", "browser_class", "browser_backend", "service_lane", "resource_authority", "sample_policy"],
+      "type": "object"
+    }
+  }
+}

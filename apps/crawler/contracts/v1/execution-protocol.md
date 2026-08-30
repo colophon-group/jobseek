@@ -35,6 +35,14 @@ transport attempt rather than semantic work. The conformance result exposes a
 SHA-256 of this fixture binding only; canonical wire/hash rules remain lane 5
 work.
 
+For browser execution, the input binding includes the complete `BrowserPlan`
+and `BrowserAssignment`. The assignment selects exactly one backend and its
+separate service/queue/capacity lane from a bounded capability class and routing
+revision. It is validated and persisted before any provider invocation or
+origin operation. Resume cannot change it. An unsupported or failed provider
+does not authorize another provider attempt; a result whose backend differs
+from the bound assignment is rejected.
+
 A second `ExecutionRequest` for already stored state is never a new execution.
 The validator classifies a changed manifest revision, regressed deadline,
 changed trace context, or stale fence before the generic `binding_changed`

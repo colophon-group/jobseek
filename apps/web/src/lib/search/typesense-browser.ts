@@ -21,6 +21,10 @@ import {
   resolveTypesenseCompany,
   type TypesenseCompanyDocument,
 } from "./typesense-company";
+import {
+  assertCompanyPostingPage,
+  parseTypesenseMultiSearchResults,
+} from "./typesense-multi-search";
 
 interface JobPostingDoc {
   id: string;
@@ -61,6 +65,27 @@ interface RawSearchResponse<T> {
   search_time_ms?: number;
 }
 
+export interface BrowserSimilarCompany {
+  id: string;
+  slug: string;
+  name: string;
+  icon: string | null;
+  activeJobCount: number;
+}
+
+export interface BrowserSimilarCompaniesPage {
+  companies: BrowserSimilarCompany[];
+  hasMore: boolean;
+}
+
+interface SimilarCompanyDocument {
+  id: string;
+  slug: string;
+  name: string;
+  icon?: string;
+  active_posting_count?: number;
+}
+
 function oneYearAgoUnix(): number {
   const d = new Date();
   d.setFullYear(d.getFullYear() - 1);
@@ -98,6 +123,29 @@ async function searchOne<T>(
     throw new Error(`typesense ${collection} search ${res.status}`);
   }
   return res.json();
+}
+
+async function searchMany<T>(
+  cfg: TypesenseBrowserConfig,
+  searches: Array<Record<string, unknown>>,
+): Promise<RawSearchResponse<T>[]> {
+  const url = `${cfg.protocol}://${cfg.host}:${cfg.port}/multi_search`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-typesense-api-key": cfg.apiKey,
+    },
+    body: JSON.stringify({ searches }),
+  });
+  if (!res.ok) {
+    invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
+    throw new Error(`typesense multi_search ${res.status}`);
+  }
+  const body: unknown = await res.json();
+  return parseTypesenseMultiSearchResults<T>(body, searches.length, {
+    expectHitsAt: [0],
+  }) as RawSearchResponse<T>[];
 }
 
 function buildLocations(
@@ -498,30 +546,37 @@ export class TypesenseBrowserProvider implements SearchProvider {
     const baseFilter = `company_id:=${companyId}${filterStr ? ` && ${filterStr}` : ""}`;
     const q = keywords.length ? keywords.join(" ") : "*";
 
-    const [postingsResult, activeResult, yearResult] = await Promise.all([
-      searchOne<JobPostingDoc>(cfg, "job_posting", {
-        q,
-        query_by: "title",
-        filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
-        sort_by: keywords.length
-          ? "_text_match:desc,first_seen_at:desc"
-          : "first_seen_at:desc",
-        per_page: limit,
-        page: Math.floor(offset / limit) + 1,
-      }),
-      searchOne<JobPostingDoc>(cfg, "job_posting", {
-        q,
-        query_by: "title",
-        filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
-        per_page: 0,
-      }),
-      searchOne<JobPostingDoc>(cfg, "job_posting", {
-        q,
-        query_by: "title",
-        filter_by: `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
-        per_page: 0,
-      }),
-    ]);
+    const [postingsResult, activeResult, yearResult] = await searchMany<JobPostingDoc>(
+      cfg,
+      [
+        {
+          collection: "job_posting",
+          q,
+          query_by: "title",
+          filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
+          sort_by: keywords.length
+            ? "_text_match:desc,first_seen_at:desc"
+            : "first_seen_at:desc",
+          per_page: limit,
+          page: Math.floor(offset / limit) + 1,
+        },
+        {
+          collection: "job_posting",
+          q,
+          query_by: "title",
+          filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
+          per_page: 0,
+        },
+        {
+          collection: "job_posting",
+          q,
+          query_by: "title",
+          filter_by: `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
+          per_page: 0,
+        },
+      ],
+    );
+    assertCompanyPostingPage(postingsResult, { offset, limit });
 
     const postings = (postingsResult.hits ?? []).map((h) =>
       mapHitToPosting(h, locationIds),
@@ -530,6 +585,41 @@ export class TypesenseBrowserProvider implements SearchProvider {
       postings,
       activeCount: activeResult.found ?? 0,
       yearCount: yearResult.found ?? 0,
+    };
+  }
+
+  /** Refresh the unfiltered company-page peer strip without a Server Action. */
+  async loadSimilarCompanies(
+    companyId: string,
+    industryId: number,
+    limit: number,
+  ): Promise<BrowserSimilarCompaniesPage> {
+    // Let transport errors escape so the direct-refresh runner can preserve
+    // the prerendered snapshot without falling back to Fluid CPU.
+    const cfg = await this.cfg();
+    const result = await searchOne<SimilarCompanyDocument>(cfg, "company", {
+      q: "*",
+      query_by: "name",
+      filter_by:
+        `industry_id:=${industryId} && active_posting_count:>0 && id:!=${companyId}`,
+      sort_by: "active_posting_count:desc",
+      per_page: limit,
+      page: 1,
+      include_fields: "id,slug,name,icon,active_posting_count",
+    });
+    const companies = (result.hits ?? []).map(({ document }) => ({
+      id: String(document.id),
+      slug: String(document.slug ?? ""),
+      name: String(document.name ?? ""),
+      icon: typeof document.icon === "string" ? document.icon : null,
+      activeJobCount:
+        typeof document.active_posting_count === "number"
+          ? document.active_posting_count
+          : 0,
+    }));
+    return {
+      companies,
+      hasMore: companies.length < (result.found ?? companies.length),
     };
   }
 

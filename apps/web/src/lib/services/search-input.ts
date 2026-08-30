@@ -17,6 +17,7 @@ import {
 } from "@/lib/services/taxonomy";
 import type { TaxonomySuggestion } from "@/lib/services/taxonomy";
 import { parseEmploymentTypeParam, parseWorkModeParam } from "@/lib/search/query-params";
+import { tokenizeSemanticSearchQuery } from "@/lib/search/semantic-query";
 import type { EmploymentType, SelectedLocation, WorkMode } from "@/lib/search/types";
 
 export interface ParsedSearchFilters {
@@ -79,17 +80,6 @@ function normalizeLocationText(value: string): string {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[^\p{L}\p{N}]+/gu, "");
-}
-
-function splitIntoSegments(input: string): string[] {
-  return input
-    .split(/[,\n\r\t/|]+|-+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
-function splitIntoWords(segment: string): string[] {
-  return segment.split(/\s+/).filter(Boolean);
 }
 
 function exactLocationMatch(
@@ -285,28 +275,9 @@ export async function parseSearchFilters(params: {
   const technologyIds = new Set(technologies.map((t) => t.id));
 
   // --- Word-level tokenization ---
-  const segments = params.q ? splitIntoSegments(params.q) : [];
-  const segmentWords = segments.map(splitIntoWords);
-
-  // Collect unique single words and all candidates (singles + pairs + triplets)
-  const singleSet = new Set<string>();
-  const allCandidateSet = new Set<string>();
-  for (const words of segmentWords) {
-    for (const w of words) {
-      singleSet.add(w);
-      allCandidateSet.add(w);
-    }
-    for (let i = 0; i < words.length - 1; i++) {
-      allCandidateSet.add(`${words[i]} ${words[i + 1]}`);
-    }
-    if (words.length <= 10) {
-      for (let i = 0; i < words.length - 2; i++) {
-        allCandidateSet.add(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
-      }
-    }
-  }
-  const singles = [...singleSet];
-  const allCandidates = [...allCandidateSet];
+  const { segmentWords, singles, allCandidates } = tokenizeSemanticSearchQuery(
+    params.q ?? "",
+  );
   if (singles.length === 0) {
     return {
       keywords: [],

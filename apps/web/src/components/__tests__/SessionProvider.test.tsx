@@ -3,11 +3,14 @@ import { render, screen } from "@testing-library/react";
 import { SessionProvider, useSession } from "../providers/SessionProvider";
 
 function SessionDisplay() {
-  const { user, isLoggedIn } = useSession();
+  const { user, preferences, isLoggedIn } = useSession();
   return (
     <div>
       <span data-testid="logged-in">{String(isLoggedIn)}</span>
       <span data-testid="user-name">{user?.name ?? "none"}</span>
+      <span data-testid="display-currency">
+        {preferences?.displayCurrency ?? "none"}
+      </span>
     </div>
   );
 }
@@ -31,12 +34,16 @@ describe("SessionProvider", () => {
       emailVerified: true,
     };
     render(
-      <SessionProvider user={user}>
+      <SessionProvider
+        user={user}
+        preferences={{ displayCurrency: "CHF" }}
+      >
         <SessionDisplay />
       </SessionProvider>,
     );
     expect(screen.getByTestId("logged-in").textContent).toBe("true");
     expect(screen.getByTestId("user-name").textContent).toBe("Test User");
+    expect(screen.getByTestId("display-currency").textContent).toBe("CHF");
   });
 });
 
