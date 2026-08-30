@@ -321,6 +321,63 @@ describe("ExploreContent browser initialization", () => {
     );
   });
 
+  it("invalidates a pending filtered load when browser navigation changes the URL", async () => {
+    setBrowserSearch("wm=remote");
+    type LoadResult = {
+      data: ExploreData;
+      unavailable: boolean;
+      directAttempted: boolean;
+    };
+    let resolveFirst!: (value: LoadResult) => void;
+    let resolveSecond!: (value: LoadResult) => void;
+    mocks.loadBrowserData
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve;
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveSecond = resolve;
+        }),
+      );
+
+    const view = render(
+      <ExploreContent locale="en" initialData={makeInitialData()} />,
+    );
+    await waitFor(() => expect(mocks.loadBrowserData).toHaveBeenCalledOnce());
+    expect(
+      (mocks.loadBrowserData.mock.calls[0][0] as { searchParams: URLSearchParams })
+        .searchParams.toString(),
+    ).toBe("wm=remote");
+
+    act(() => {
+      window.history.pushState(null, "", "/en/explore?loc=zurich");
+    });
+    await waitFor(() => expect(mocks.loadBrowserData).toHaveBeenCalledTimes(2));
+    expect(
+      (mocks.loadBrowserData.mock.calls[1][0] as { searchParams: URLSearchParams })
+        .searchParams.toString(),
+    ).toBe("loc=zurich");
+
+    resolveFirst({
+      data: makeInitialData({ result: { companies: [], totalCompanies: 1 } }),
+      unavailable: false,
+      directAttempted: true,
+    });
+    await flushEffects();
+    expect(view.queryByTestId("explore-skeleton")).not.toBeNull();
+
+    resolveSecond({
+      data: makeInitialData({ result: { companies: [], totalCompanies: 2 } }),
+      unavailable: false,
+      directAttempted: true,
+    });
+    await waitFor(() =>
+      expect(view.getByTestId("search-page").dataset.total).toBe("2"),
+    );
+  });
+
   it("keeps a rejected unexpected browser load on the skeleton", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     setBrowserSearch("q=python");

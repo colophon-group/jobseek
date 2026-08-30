@@ -12,6 +12,7 @@ import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
 import { loadExploreBrowserData } from "@/lib/search/explore-browser-data";
+import { useBrowserSearchParams } from "@/lib/use-browser-search-params";
 import { SearchPage } from "./search-page";
 
 type ExploreContentProps = {
@@ -32,6 +33,8 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   const loadKeyRef = useRef<string | null>(null);
   const { isLoggedIn, isPending, preferences } = useSession();
   const rates = useSalaryRates();
+  const browserSearchParams = useBrowserSearchParams();
+  const browserSearchKey = browserSearchParams.toString();
   const preferenceLanguagesKey = preferences?.jobLanguages?.join(",") ?? "";
   const preferenceCurrency = preferences?.displayCurrency ?? null;
   const [view, setView] = useState<{
@@ -136,6 +139,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
       });
   }, [
     initialData,
+    browserSearchKey,
     isLoggedIn,
     isPending,
     locale,
