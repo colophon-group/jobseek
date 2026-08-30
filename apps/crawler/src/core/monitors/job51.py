@@ -31,9 +31,7 @@ _DETAIL_CONCURRENCY = 5
 _API_ORIGIN = "https://coapi.51job.com"
 # Public signing material shipped by 51job in coapi.min.js. It authenticates
 # the browser protocol, not a Jobseek account or private tenant credential.
-_PUBLIC_SIGNING_KEY = (
-    "tuD&#mheJQBlgy&Sm300l8xK^X4NzFYBcrN8@YLCret$fv1AZbtujg*KN^$YnUkh"
-)
+_PUBLIC_SIGNING_KEY = "tuD&#mheJQBlgy&Sm300l8xK^X4NzFYBcrN8@YLCret$fv1AZbtujg*KN^$YnUkh"
 _SIGNING_KEY_INDEX = 1
 _BOARD_PATH_RE = re.compile(r"/[A-Za-z0-9_-]{1,64}job_list\.html")
 _CTMID_RE = re.compile(r"\bctmid\s*:\s*['\"]?(\d{1,12})")
@@ -100,15 +98,11 @@ def _ctmid_from_html(html: str) -> int:
 
 def _signed_url(endpoint: str, params: dict) -> str:
     serialized = json.dumps(params, ensure_ascii=False, separators=(",", ":"))
-    key_slice = _PUBLIC_SIGNING_KEY[
-        _SIGNING_KEY_INDEX : _SIGNING_KEY_INDEX + 15
-    ]
+    key_slice = _PUBLIC_SIGNING_KEY[_SIGNING_KEY_INDEX : _SIGNING_KEY_INDEX + 15]
     signature = hashlib.md5(  # noqa: S324 - provider protocol, not security
         f"coapi{serialized}{key_slice}".encode()
     ).hexdigest()
-    query = urlencode(
-        {"key": _SIGNING_KEY_INDEX, "sign": signature, "params": serialized}
-    )
+    query = urlencode({"key": _SIGNING_KEY_INDEX, "sign": signature, "params": serialized})
     return f"{_API_ORIGIN}/{endpoint}?{query}"
 
 
@@ -264,9 +258,7 @@ def _parse_job(raw: dict, *, ctmid: int, expected_job_id: str) -> DiscoveredJob:
         raise ValueError("51job returned a job without a description")
     responsibilities, qualifications = _description_parts(raw_description)
 
-    location = _clean_string(raw.get("jobareaname")) or _clean_string(
-        raw.get("workareaname")
-    )
+    location = _clean_string(raw.get("jobareaname")) or _clean_string(raw.get("workareaname"))
     skills_text = _clean_string(raw.get("jkeyword"))
     skills = list(dict.fromkeys(skills_text.split())) if skills_text else None
     extras = {

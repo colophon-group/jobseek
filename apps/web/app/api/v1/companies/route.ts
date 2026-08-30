@@ -8,6 +8,8 @@ import { withPublicApiObservability } from "@/lib/public-api-observability";
 import {
   checkRateLimit,
   apiResponse,
+  apiProviderUnavailableResponse,
+  sharedApiResponse,
   parseApiLocale,
   siteUrl,
 } from "../_shared";
@@ -26,11 +28,23 @@ async function handleGet(request: NextRequest) {
   if (!q) {
     return apiResponse(
       { error: "Missing required 'q' param (company name query)" },
-      { maxAge: 0, status: 400 },
+      { status: 400 },
     );
   }
 
-  const results = await suggestCompanies({ query: q });
+  let results: Awaited<ReturnType<typeof suggestCompanies>>;
+  try {
+    results = await suggestCompanies({
+      query: q,
+      failOnUnavailable: true,
+    });
+  } catch (error) {
+    return apiProviderUnavailableResponse(
+      "public_api_companies",
+      rl,
+      error,
+    );
+  }
 
   const companies = results.slice(0, MAX_RESULTS).map((c) => ({
     name: c.name,
@@ -42,7 +56,7 @@ async function handleGet(request: NextRequest) {
   // Autocomplete suggestions are very stable (a single new company per few
   // days, slug shape never changes). Bumped from the 300s default to 1h
   // for higher CDN reuse on common queries — see issue #2644.
-  return apiResponse({ companies }, { maxAge: CACHE_TTL_LONG, rateLimit: rl });
+  return sharedApiResponse({ companies }, { maxAge: CACHE_TTL_LONG });
 }
 
 export const GET = withPublicApiObservability("companies", handleGet);

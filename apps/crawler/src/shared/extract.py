@@ -210,6 +210,16 @@ class FlattenParser(HTMLParser):
         # If this is a block-level element, flush previous block and start new one
         if tag not in INLINE_TAGS and tag not in VOID_TAGS:
             self._flush_text()
+            # Responsive tables commonly label each cell with ``data-title``
+            # and place the visible value in nested ``p``/``li`` elements.
+            # Preserve that semantic column label on the contentful child so
+            # configuration-driven extractors can distinguish title, location,
+            # and description cells after structural table tags are flattened.
+            if "data-title" not in attr_dict:
+                for _ancestor_tag, ancestor_attrs, ancestor_skipped in reversed(self._stack[:-1]):
+                    if not ancestor_skipped and "data-title" in ancestor_attrs:
+                        attr_dict = {**attr_dict, "data-title": ancestor_attrs["data-title"]}
+                        break
             self._current_block_tag = tag
             self._current_block_attrs = attr_dict
             self._block_depth = len(self._stack)

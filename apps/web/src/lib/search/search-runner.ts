@@ -73,19 +73,38 @@ export async function runSearchJobs(
   params: SearchInput,
   isLoggedIn: boolean,
 ): Promise<SearchResponse> {
-  if (directEnabled) {
-    if (!isLoggedIn && params.offset >= ANON_MAX_COMPANIES) {
-      return { companies: [], totalCompanies: 0, truncated: true };
-    }
-    try {
-      const provider = await tryBrowserProvider();
-      const result = await provider.search(params);
-      if (!result.degraded) return applyAnonCap(result, params.offset, isLoggedIn);
-    } catch (err) {
-      logExternalError("error", { service: "typesense", operation: "browser_search_jobs" }, err);
-    }
-  }
+  const direct = await trySearchJobsDirect(params, isLoggedIn);
+  if (direct) return direct;
   return serverSearchJobs(params);
+}
+
+/**
+ * Search directly from a hydrated shell without falling through to a Server
+ * Action. A null result lets mount-time callers keep or replace their SSR
+ * snapshot explicitly, without accidentally consuming Fluid CPU.
+ */
+export async function trySearchJobsDirect(
+  params: SearchInput,
+  isLoggedIn: boolean,
+): Promise<SearchResponse | null> {
+  if (!directEnabled) return null;
+  if (!isLoggedIn && params.offset >= ANON_MAX_COMPANIES) {
+    return { companies: [], totalCompanies: 0, truncated: true };
+  }
+  try {
+    const provider = await tryBrowserProvider();
+    const result = await provider.search(params);
+    if (!result.degraded) {
+      return applyAnonCap(result, params.offset, isLoggedIn);
+    }
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "browser_search_jobs" },
+      err,
+    );
+  }
+  return null;
 }
 
 export async function runListTopCompanies(
@@ -144,6 +163,38 @@ type WatchlistPostingsInput = {
   experienceMax?: number;
   languages?: string[];
 };
+
+type WatchlistRefreshResult = {
+  postings: WatchlistPostingEntry[];
+  total: number;
+  yearTotal: number;
+};
+
+/**
+ * Refresh an anonymous public watchlist shell directly from Typesense.
+ * A failure returns null so callers preserve SSR data without consuming a
+ * mount-time Server Action invocation.
+ */
+export async function tryGetWatchlistSnapshotDirect(
+  params: Omit<WatchlistPostingsInput, "offset" | "limit">,
+): Promise<WatchlistRefreshResult | null> {
+  if (!directEnabled) return null;
+  try {
+    const browser = await import("./typesense-browser-watchlist");
+    const [{ postings, total }, yearTotal] = await Promise.all([
+      browser.getWatchlistPostingsBrowser({ ...params, offset: 0, limit: 20 }),
+      browser.getWatchlistPostingYearCountBrowser(params),
+    ]);
+    return { postings, total, yearTotal };
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "browser_watchlist_snapshot" },
+      err,
+    );
+    return null;
+  }
+}
 
 export async function runGetWatchlistPostings(
   params: WatchlistPostingsInput,

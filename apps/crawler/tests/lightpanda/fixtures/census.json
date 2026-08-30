@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 6866,
-    "boards_sha256": "70a89352e2b19bd9bc3f7ecdc4271815ae6854d884172fe9e8afdb55467cb27c",
+    "boards_row_count": 6868,
+    "boards_sha256": "f6a17a637243f72fe1ffd3d06e42100427bf429afc81f0f17a3ba1851a181e83",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "d6685e9a380d0216af9a6a80643547f7aec55e093a2ddbd0ee00530a6efd7618",
+  "manifest_sha256": "08f98bb5cb8b89b60e805f467e7d7960307c639074456384ebef7ac3430417d4",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -5640,12 +5640,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "1fd61a996f4e4788709986d6f957c1e6926401d568b1569c9084529cb45d7910",
       "crawler_type": "inline",
-      "digest_sha256": "1d668409bc20144727d88eef8cb256291f65a93cf63b366b8c069f2e3b266536",
+      "digest_sha256": "ce1e13a12e0ac328495ebe1f5f191681cd0a9bcb7d27879d79ca3c520d793871",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.monitor.inline",
       "profile_kind": "registry",
-      "source_count": 102,
-      "source_refs_sha256": "53b2289e14348a96f2ac1c8d81b9c9190eb8a670c6c12802b883eb296387ad52",
+      "source_count": 103,
+      "source_refs_sha256": "3fa67cd681052cce6a59a5237b8a6f17d9fe5d2fff89dd6b7e63fc410bbcd862",
       "status": "inventory",
       "surface": "monitor"
     },

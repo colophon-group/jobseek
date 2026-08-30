@@ -4,7 +4,7 @@
 
 ## Initial document contract
 
-`page.tsx` calls `fetchExplorePageDefaults({ locale })` inside a 10-minute Cache
+`page.tsx` calls `fetchExplorePageDefaults({ locale })` inside a one-day Cache
 Component and passes the serializable result to `ExploreContent`. Raw HTML for
 every supported locale must contain:
 
@@ -28,7 +28,10 @@ zero-result search.
 Filter-bearing document requests are normalized by `proxy.ts` to the same
 queryless cached shell. The address bar keeps the original query. After
 hydration, `ExploreContent` reads `window.location.search`, requests the
-personalized/filtered page data, and replaces the anonymous defaults.
+personalized/filtered result directly through the scoped browser Typesense key,
+and replaces the anonymous defaults. Explicit taxonomy slugs resolve in the
+same browser `multi_search`; semantic free text alone uses the narrow canonical
+parser action because it needs request geolocation.
 
 Do not add request-bound `searchParams`, `headers()`, or `cookies()` reads to
 the cached page. Do not put `useSearchParams()` back in the result-owning
@@ -52,17 +55,20 @@ The whole page therefore emits **zero Next Server Action POSTs** on an
 anonymous unfiltered mount. `script/smoke-built-app.ts` verifies this against
 the production build.
 
-Filtered URLs and signed-in/job-language-hinted viewers deliberately call
-`fetchExplorePageData()` once after hydration because their result set depends
-on request or viewer state. The anonymous result shell remains visible in raw
-HTML while JavaScript loads; the client shows the busy skeleton only while it
-is replacing stale defaults with filtered data.
+Filtered URLs and job-language-hinted viewers initialize through browser-direct
+Typesense after hydration. Signed-in preferences reuse `fetchAppBootstrap()`
+from the shared app layout; Explore does not issue a second page-data action.
+The anonymous result shell remains visible in raw HTML while JavaScript loads;
+the client shows the busy skeleton only while replacing stale defaults with
+filtered data. A failed scoped read keeps the URL-derived filters and an
+explicit unavailable state—it never restores the broader queryless snapshot.
 
 ## Interactive requests
 
 | Operation | Preferred path | Server Action fallback / mutation |
 |-----------|----------------|-----------------------------------|
 | Default inventory refresh | Browser-direct Typesense | None |
+| Filter-bearing initial mount | Browser-direct Typesense; narrow semantic parser for free text | None for result data |
 | Search/filter change | Browser-direct Typesense runner | Search Server Action when direct access is unavailable or request exceeds the public bound |
 | Load more companies/postings | Browser-direct where supported | Bounded read action |
 | Posting detail | Cached posting-detail read | `getPostingDetail()` |

@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { fetchWatchlistPageData, type WatchlistPageData } from "@/lib/actions/watchlist-page-data";
-import { hasAnonJobLanguagesHint, hasLoggedInHint } from "@/lib/client-cookies";
+import {
+  hasLoggedInHint,
+  readAnonJobLanguagesPreference,
+} from "@/lib/client-cookies";
+import { resolveJobLanguages } from "@/lib/job-languages";
+import { tryGetWatchlistSnapshotDirect } from "@/lib/search/search-runner";
 import { WatchlistSkeleton } from "@/components/search/watchlist-skeleton";
 import { WatchlistViewPage } from "./watchlist-view-page";
 import { WatchlistNotFoundState } from "./watchlist-not-found";
@@ -68,13 +73,35 @@ export function WatchlistContent({
       return;
     }
 
-    const needsPersonalizedFetch =
-      hasLoggedInHint() ||
-      hasAnonJobLanguagesHint() ||
-      initialData === undefined;
+    const needsPersonalizedFetch = hasLoggedInHint() || initialData === undefined;
     if (!needsPersonalizedFetch) {
       setData(initialData);
-      return;
+      if (!initialData?.browserPostingFilters) return;
+      const jobLanguages = readAnonJobLanguagesPreference() ?? [];
+      const languages = resolveJobLanguages(jobLanguages, lang);
+      let cancelled = false;
+      void tryGetWatchlistSnapshotDirect({
+        ...initialData.browserPostingFilters,
+        languages,
+      }).then(
+        (fresh) => {
+          if (!fresh || cancelled) return;
+          setData((current) => {
+            if (!current || current === "not-found") return current;
+            return {
+              ...current,
+              postings: fresh.postings,
+              total: fresh.total,
+              yearTotal: fresh.yearTotal,
+              jobLanguages,
+              languages,
+            };
+          });
+        },
+      );
+      return () => {
+        cancelled = true;
+      };
     }
 
     setData(null);

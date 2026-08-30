@@ -53,10 +53,7 @@ def _detail(job_id: int, **overrides) -> dict:
 
 class TestBoardOrigin:
     def test_accepts_exact_employer_board(self):
-        assert (
-            _board_origin("https://pvh.51job.com/C01job_list.html")
-            == "https://pvh.51job.com"
-        )
+        assert _board_origin("https://pvh.51job.com/C01job_list.html") == "https://pvh.51job.com"
 
     @pytest.mark.parametrize(
         "url",

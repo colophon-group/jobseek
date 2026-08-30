@@ -115,11 +115,16 @@ vi.mock("@/lib/search/query-params", async (importOriginal) => ({
 
 import { SearchPage, resolveInitialRepositoryFallbackCompanies } from "../search-page";
 import { fetchExploreFilterPageData } from "@/lib/actions/explore-page-data";
-import { runListTopCompanies, runSearchJobs } from "@/lib/search/search-runner";
+import {
+  runListTopCompanies,
+  runSearchJobs,
+  tryListTopCompaniesDirect,
+} from "@/lib/search/search-runner";
 
 const fetchExploreFilterPageDataMock = vi.mocked(fetchExploreFilterPageData);
 const runListTopCompaniesMock = vi.mocked(runListTopCompanies);
 const runSearchJobsMock = vi.mocked(runSearchJobs);
+const tryListTopCompaniesDirectMock = vi.mocked(tryListTopCompaniesDirect);
 
 beforeEach(() => {
   // jsdom/happy-dom may not set up window.history.replaceState identically
@@ -176,6 +181,34 @@ describe("SearchPage — heading landmark (#3196)", () => {
     // sr-only is the load-bearing class — without it, a visible h1
     // would shift the visual design unexpectedly.
     expect(h1.className).toMatch(/\bsr-only\b/);
+  });
+});
+
+describe("SearchPage — mount direct refresh ownership (#8259)", () => {
+  it("does not repeat a result read completed by ExploreContent", async () => {
+    render(
+      <SearchPage
+        initialCompanies={[]}
+        initialTotalCompanies={0}
+        initialKeywords={[]}
+        initialLocations={[]}
+        initialOccupations={[]}
+        initialSeniorities={[]}
+        initialTechnologies={[]}
+        initialEmploymentTypes={[]}
+        initialWorkMode={[]}
+        locale="en"
+        displayCurrency="EUR"
+        jobLanguages={[]}
+        languages={["en"]}
+        initialDirectRefreshAttempted
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(tryListTopCompaniesDirectMock).not.toHaveBeenCalled();
   });
 });
 
