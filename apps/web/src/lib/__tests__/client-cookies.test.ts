@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { hasCookieNamed, LOGGED_IN_COOKIE } from "../client-cookies";
+import {
+  hasCookieNamed,
+  LOGGED_IN_COOKIE,
+  readAnonJobLanguagesPreference,
+  readCookieValue,
+} from "../client-cookies";
 
 describe("hasCookieNamed", () => {
   const SESSION = "better-auth.session_token";
@@ -77,5 +82,41 @@ describe("hasCookieNamed", () => {
       true,
     );
     expect(hasCookieNamed("other=1", LOGGED_IN_COOKIE)).toBe(false);
+  });
+});
+
+describe("readCookieValue", () => {
+  it("decodes an exact cookie value without substring matching", () => {
+    expect(readCookieValue("x_pref=bad; pref=%5B%22en%22%5D", "pref")).toBe(
+      '["en"]',
+    );
+    expect(readCookieValue("x_pref=bad", "pref")).toBeNull();
+  });
+});
+
+describe("readAnonJobLanguagesPreference", () => {
+  it("accepts bounded known language codes and removes duplicates", () => {
+    expect(
+      readAnonJobLanguagesPreference(
+        "JSEEK_JOB_LANGUAGES=%5B%22de%22%2C%22en%22%2C%22de%22%5D",
+      ),
+    ).toEqual(["de", "en"]);
+    expect(
+      readAnonJobLanguagesPreference('JSEEK_JOB_LANGUAGES=["*"]'),
+    ).toEqual(["*"]);
+  });
+
+  it("rejects malformed, unknown, and oversized values", () => {
+    expect(
+      readAnonJobLanguagesPreference("JSEEK_JOB_LANGUAGES=not-json"),
+    ).toBeNull();
+    expect(
+      readAnonJobLanguagesPreference('JSEEK_JOB_LANGUAGES=["en","bogus"]'),
+    ).toBeNull();
+    expect(
+      readAnonJobLanguagesPreference(
+        `JSEEK_JOB_LANGUAGES=${encodeURIComponent(JSON.stringify(Array(33).fill("en")))}`,
+      ),
+    ).toBeNull();
   });
 });

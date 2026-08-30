@@ -1,0 +1,74 @@
+name: Candidate Queue v2 Conformance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/crawler/contracts/queue/v2/**'
+      - '.github/workflows/crawler-queue-v2-conformance.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/crawler/contracts/queue/v2/**'
+      - '.github/workflows/crawler-queue-v2-conformance.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  GOTOOLCHAIN: local
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  conformance:
+    name: Python and Go deterministic conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.15"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24.0"
+          cache-dependency-path: apps/crawler/contracts/go.sum
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.3"
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+
+      - name: Install locked Python test environment
+        working-directory: apps/crawler
+        run: uv sync --frozen --group dev
+
+      - name: Verify deterministic corpus and Python reference
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run python contracts/queue/v2/tools/generate_corpus.py --check
+          uv run pytest -q contracts/queue/v2/conformance/python
+
+      - name: Verify independent Go conformance
+        working-directory: apps/crawler/contracts
+        run: |
+          set -euo pipefail
+          test "$(go version)" = "go version go1.24.0 linux/amd64"
+          go test -race ./queue/v2/...
+          go vet ./queue/v2/...
+
+      - name: Confirm generation left the tree unchanged
+        run: git diff --exit-code -- apps/crawler/contracts/queue/v2

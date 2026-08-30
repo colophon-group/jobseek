@@ -28,11 +28,16 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+  logExternalError: vi.fn(),
   suggestIndustries: vi.fn(),
   suggestLocations: vi.fn(),
   suggestOccupations: vi.fn(),
   suggestSeniorities: vi.fn(),
   suggestTechnologies: vi.fn(),
+}));
+
+vi.mock("@/lib/safe-external-error", () => ({
+  logExternalError: mocks.logExternalError,
 }));
 
 vi.mock("@/lib/actions/company", () => ({
@@ -140,6 +145,7 @@ describe("GET /api/v1/resolve?type=industries (issue #3228)", () => {
     expect(mocks.suggestIndustries).toHaveBeenCalledWith({
       query: "tech",
       locale: "de",
+      failOnUnavailable: true,
     });
     expect(body.matches).toEqual([{ slug: "technologie", name: "Technologie" }]);
   });
@@ -188,6 +194,24 @@ describe("GET /api/v1/resolve?type=industries (issue #3228)", () => {
       expect(m.slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
     }
   });
+
+  it("returns a non-cacheable safe error when the resolver provider fails", async () => {
+    const providerError = new Error("provider-internal-canary-do-not-expose");
+    mocks.suggestIndustries.mockRejectedValue(providerError);
+
+    const { res, body } = await call("?type=industries&q=tech");
+
+    expect(res.status).toBe(500);
+    expect(body).toEqual({ error: "Search service unavailable" });
+    expect(JSON.stringify(body)).not.toContain("provider-internal-canary");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Vercel-CDN-Cache-Control")).toBeNull();
+    expect(mocks.logExternalError).toHaveBeenCalledWith(
+      "error",
+      { service: "typesense", operation: "public_api_resolve" },
+      providerError,
+    );
+  });
 });
 
 describe("GET /api/v1/resolve location service boundary (#3330)", () => {
@@ -212,6 +236,7 @@ describe("GET /api/v1/resolve location service boundary (#3330)", () => {
     expect(mocks.suggestLocations).toHaveBeenCalledWith({
       query: "zur",
       locale: "de",
+      failOnUnavailable: true,
     });
     expect(body.matches).toEqual([
       {
@@ -221,5 +246,30 @@ describe("GET /api/v1/resolve location service boundary (#3330)", () => {
         parentName: "Switzerland",
       },
     ]);
+  });
+});
+
+describe("GET /api/v1/resolve strict taxonomy reads (#8261)", () => {
+  beforeEach(() => {
+    mocks.suggestOccupations.mockReset();
+    mocks.suggestSeniorities.mockReset();
+    mocks.suggestTechnologies.mockReset();
+  });
+
+  it.each([
+    ["occupations", "suggestOccupations"],
+    ["seniority", "suggestSeniorities"],
+    ["technologies", "suggestTechnologies"],
+  ] as const)("opts %s into strict provider handling", async (type, mockName) => {
+    mocks[mockName].mockResolvedValue([{ slug: "example", name: "Example" }]);
+
+    const { res } = await call(`?type=${type}&q=example&locale=en`);
+
+    expect(res.status).toBe(200);
+    expect(mocks[mockName]).toHaveBeenCalledWith({
+      query: "example",
+      locale: "en",
+      failOnUnavailable: true,
+    });
   });
 });

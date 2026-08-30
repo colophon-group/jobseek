@@ -58,6 +58,8 @@ interface CompanyPageProps {
   languages: string[];
   userLat?: number;
   userLng?: number;
+  initialSearchUnavailable?: boolean;
+  initialDirectRefreshAttempted?: boolean;
 }
 
 export function CompanyPage({
@@ -85,6 +87,8 @@ export function CompanyPage({
   languages,
   userLat,
   userLng,
+  initialSearchUnavailable = false,
+  initialDirectRefreshAttempted = false,
 }: CompanyPageProps) {
   const { t } = useLingui();
   const params = useParams();
@@ -116,8 +120,16 @@ export function CompanyPage({
   const [isSearching, startSearch] = useTransition();
   const [exhausted, setExhausted] = useState(initialPostings.length < PAGE_SIZE);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
+  const [searchUnavailable, setSearchUnavailable] = useState(
+    initialSearchUnavailable,
+  );
   const searchGenerationRef = useRef(0);
-  const initialDirectRefreshKeyRef = useRef<string | null>(null);
+  const directRefreshLanguagesKey = languages.join(",");
+  const initialDirectRefreshKeyRef = useRef<string | null>(
+    initialDirectRefreshAttempted
+      ? [company.id, uiLocale, directRefreshLanguagesKey].join("|")
+      : null,
+  );
 
   // Currency rates for EUR conversion — shared via `SalaryDisplayProvider`
   // which fetches once at the (app) layout root. Previously this page
@@ -136,6 +148,7 @@ export function CompanyPage({
     postingCount: postings.length,
     isTruncated,
     activeCount,
+    isUnavailable: searchUnavailable,
   });
 
   /** Convert a salary amount from the user's display currency to EUR. */
@@ -239,6 +252,7 @@ export function CompanyPage({
       setYearCount(result.yearCount);
       setExhausted(result.postings.length < PAGE_SIZE);
       setIsTruncated(result.truncated ?? false);
+      setSearchUnavailable(false);
     });
   }
 
@@ -246,7 +260,6 @@ export function CompanyPage({
   // visible default postings directly from Typesense after hydration. This
   // path never falls back to a Server Action, so it preserves freshness
   // without converting page views back into Fluid CPU.
-  const directRefreshLanguagesKey = languages.join(",");
   useEffect(() => {
     if (hasFilters) return;
 
@@ -282,6 +295,7 @@ export function CompanyPage({
       setYearCount(result.yearCount);
       setExhausted(result.postings.length < PAGE_SIZE);
       setIsTruncated(result.truncated ?? false);
+      setSearchUnavailable(false);
     });
 
     return () => {

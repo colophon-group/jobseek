@@ -2,17 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Trans } from "@lingui/react/macro";
-import { fetchCompanyPageData, type CompanyPageData } from "@/lib/actions/company-page-data";
-import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
+import type { CompanyPageData } from "@/lib/actions/company-page-data";
+import {
+  hasLoggedInHint,
+  readAnonJobLanguagesPreference,
+} from "@/lib/client-cookies";
 import { logExternalError } from "@/lib/safe-external-error";
 import { CompanySkeleton } from "@/components/search/company-skeleton";
+import { useSession } from "@/components/providers/SessionProvider";
+import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
+import { loadCompanyBrowserData } from "@/lib/search/company-browser-data";
 import {
   hasSearchFilterParams,
   serializeSearchFilterParams,
 } from "@/lib/search/query-params";
 import { CompanyPage } from "./company-page";
-import { CompanyNotFoundState } from "./company-not-found";
 
 type CompanyContentProps = {
   locale: string;
@@ -21,18 +25,16 @@ type CompanyContentProps = {
    * Server-prerendered ``CompanyPageData`` for the unauthenticated,
    * no-filter visit case (#3203, mirrors `/explore` from #2640).
    * Anonymous visitors with no filter searchParams use this directly —
-   * no second server-action round-trip on mount. When ``initialData``
-   * is omitted (legacy call sites or null-from-server signalling a
-   * ghost slug), the component falls back to the client-mount fetch
-   * behaviour from before this PR.
+   * no second server-action round-trip on mount. The server route resolves
+   * unknown slugs before this client boundary is rendered.
    */
-  initialData?: CompanyPageData;
+  initialData: CompanyPageData;
 };
 
 /**
- * URL searchParams that ``fetchCompanyPageData`` consumes. If any of
- * these are present, the prerendered ``initialData`` doesn't reflect
- * the filters and we must re-fetch the personalized variant.
+ * Result-bearing URL searchParams. If any are present, the prerendered
+ * ``initialData`` does not reflect the browser state and we resolve the
+ * bounded filter vocabulary plus posting results directly through Typesense.
  *
  * The shared result-bearing parameter list deliberately excludes the
  * ``show`` deep-link param: it only selects a posting in ``CompanyPage``
@@ -40,63 +42,26 @@ type CompanyContentProps = {
  * as a data input would unmount and refetch the entire company results
  * view on every posting click (#5766).
  */
-function CompanyNotFound({ locale, slug }: { locale: string; slug: string }) {
-  return (
-    <CompanyNotFoundState
-      locale={locale}
-      slug={slug}
-      title={
-        <Trans
-          id="company.notFound.title"
-          comment="Heading shown when the company URL slug doesn't resolve to a known company"
-        >
-          Company not found
-        </Trans>
-      }
-      message={
-        <Trans
-          id="company.notFound.body"
-          comment="Body text for the company-not-found page; explains the company is either gone or never existed"
-        >
-          The company you are looking for does not exist or has been removed.
-        </Trans>
-      }
-      exploreLabel={
-        <Trans
-          id="company.notFound.explore"
-          comment="Primary recovery action on the company-not-found page"
-        >
-          Explore companies
-        </Trans>
-      }
-      requestLabel={
-        <Trans
-          id="company.notFound.request"
-          comment="Secondary action on the company-not-found page to request that company"
-        >
-          Request this company
-        </Trans>
-      }
-    />
-  );
-}
-
 export function CompanyContent({ locale, slug, initialData }: CompanyContentProps) {
   const searchParams = useSearchParams();
   const dataParamsKey = serializeSearchFilterParams(searchParams);
+  const { isLoggedIn, isPending, preferences } = useSession();
+  const rates = useSalaryRates();
+  const preferenceLanguagesKey = preferences?.jobLanguages?.join(",") ?? "";
+  const preferenceCurrency = preferences?.displayCurrency ?? null;
   const fetchIdRef = useRef(0);
-  const [data, setData] = useState<CompanyPageData | null | "not-found">(initialData ?? null);
+  const [view, setView] = useState<{
+    data: CompanyPageData;
+    unavailable: boolean;
+    directAttempted: boolean;
+  } | null>({ data: initialData, unavailable: false, directAttempted: false });
 
-  // Re-fetch on mount only when the prerendered ``initialData``
-  // doesn't reflect the user's actual view — i.e. they have filter
-  // searchParams, the ``logged_in`` hint cookie is present (their
-  // DB-backed preferences / job-language filter / display currency
-  // would change the result set), OR they have an anonymous
-  // job-language cookie set (#2850 — anon viewers persist
-  // `jobLanguages` via a cookie that the server side reads in
-  // `fetchCompanyPageData`). Anonymous, no-filter, no-job-lang-cookie
-  // visitors still get the prerendered data with zero server-action
-  // invocations — the bulk of organic traffic per #3203 + #2640.
+  // Re-initialize only when the prerendered anonymous snapshot does not
+  // reflect the browser URL or viewer preferences. Authenticated preferences
+  // come from the app bootstrap action the layout already paid for; anonymous
+  // job languages come from their client-readable, bounded cookie. Filter
+  // resolution and posting results go browser-direct to Typesense, so this
+  // boundary no longer emits a company-page Server Action on mount.
   //
   // After this effect, CompanyPage owns interactive filter changes and
   // searches — URL sync via replaceState is for bookmarkability only.
@@ -106,38 +71,70 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
   useEffect(() => {
     const fetchId = ++fetchIdRef.current;
     const params = new URLSearchParams(dataParamsKey);
-    const needsPersonalizedFetch =
-      hasLoggedInHint() ||
-      hasAnonJobLanguagesHint() ||
-      hasSearchFilterParams(params) ||
-      initialData === undefined;
-    if (!needsPersonalizedFetch) {
-      setData(initialData ?? null);
+    if (hasLoggedInHint() && isPending) return;
+
+    const anonymousJobLanguages = isLoggedIn
+      ? null
+      : readAnonJobLanguagesPreference();
+    const needsBrowserLoad =
+      isLoggedIn ||
+      anonymousJobLanguages !== null ||
+      hasSearchFilterParams(params);
+    if (!needsBrowserLoad) {
+      setView({
+        data: initialData,
+        unavailable: false,
+        directAttempted: false,
+      });
       return;
     }
 
-    // Clear stale prerendered data before the personalised fetch so
+    // Clear stale prerendered data before the browser-direct load so
     // CompanyPage unmounts. Its filters/postings are useState-initialised
     // from props, so keeping the unfiltered ISR instance mounted would
-    // ignore the filtered props when this fetch resolves.
-    setData(null);
+    // ignore resolved filtered props. This also prevents a filtered URL from
+    // flashing the broader unfiltered list while its scoped read is pending.
+    setView(null);
 
-    const sp: Record<string, string | undefined> = {};
-    params.forEach((value, key) => {
-      sp[key] = value;
-    });
-    fetchCompanyPageData({ slug, searchParams: sp, locale }).then((result) => {
-      if (fetchIdRef.current !== fetchId) return;
-      setData(result ?? "not-found");
-    }).catch((err) => {
-      if (fetchIdRef.current !== fetchId) return;
-      logExternalError("error", { service: "typesense", operation: "fetch_company_page" }, err);
-      if (initialData) setData(initialData);
-    });
-  }, [dataParamsKey, initialData, locale, slug]);
+    void loadCompanyBrowserData({
+      initialData,
+      searchParams: params,
+      locale,
+      displayCurrency: preferenceCurrency,
+      jobLanguages:
+        preferences?.jobLanguages ?? anonymousJobLanguages ?? [],
+      rates,
+      isLoggedIn,
+    })
+      .then((result) => {
+        if (fetchIdRef.current !== fetchId) return;
+        setView(result);
+      })
+      .catch((error) => {
+        if (fetchIdRef.current !== fetchId) return;
+        logExternalError(
+          "error",
+          { service: "typesense", operation: "load_company_browser_data" },
+          error,
+        );
+        // Stay on the skeleton rather than restoring unfiltered results under
+        // a filtered/personalized URL. Expected transport failures are already
+        // converted to an explicit unavailable result by the loader.
+      });
+  }, [
+    dataParamsKey,
+    initialData,
+    isLoggedIn,
+    isPending,
+    locale,
+    preferenceCurrency,
+    preferenceLanguagesKey,
+    rates,
+    slug,
+  ]);
 
-  if (data === null) return <CompanySkeleton />;
-  if (data === "not-found") return <CompanyNotFound locale={locale} slug={slug} />;
+  if (view === null) return <CompanySkeleton />;
+  const { data } = view;
 
   return (
     <CompanyPage
@@ -165,6 +162,8 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
       languages={data.languages}
       userLat={data.userLat}
       userLng={data.userLng}
+      initialSearchUnavailable={view.unavailable}
+      initialDirectRefreshAttempted={view.directAttempted}
     />
   );
 }
