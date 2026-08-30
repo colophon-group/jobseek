@@ -70,6 +70,49 @@ CONTEXT_TIMEOUT = 120_000  # hard cap: no single Playwright operation exceeds 2 
 BROWSER_CLOSE_TIMEOUT_SECONDS = 15.0
 NAVIGATION_NETWORK_RETRY_DELAY_SECONDS = 0.5
 VALID_WAIT_STRATEGIES = frozenset({"load", "domcontentloaded", "networkidle", "commit"})
+VALID_RESOURCE_POLICIES = frozenset({"auto", "none", "lean", "aggressive"})
+VALID_BLOCK_RESOURCE_TYPES = frozenset(
+    {
+        "document",
+        "stylesheet",
+        "image",
+        "media",
+        "font",
+        "script",
+        "texttrack",
+        "xhr",
+        "fetch",
+        "eventsource",
+        "websocket",
+        "manifest",
+        "other",
+    }
+)
+# These resource classes consume bandwidth but are not needed for ordinary
+# DOM/job-data extraction. They are blocked only when board recon explicitly
+# opts in after a board-specific canary.
+LEAN_BLOCK_RESOURCE_TYPES = frozenset({"font", "media"})
+AGGRESSIVE_BLOCK_RESOURCE_TYPES = LEAN_BLOCK_RESOURCE_TYPES | {"image"}
+# The explicit aggressive policy also aborts video and telemetry hosts that
+# repeatedly dominated provider activity.
+# Match by hostname suffix so regional/CDN subdomains are covered without
+# blocking broad providers such as google.com or jsdelivr.net, which can host
+# application code required to render a job page.
+AGGRESSIVE_BLOCK_HOSTS = frozenset(
+    {
+        "youtube.com",
+        "youtube-nocookie.com",
+        "ytimg.com",
+        "google-analytics.com",
+        "googletagmanager.com",
+        "doubleclick.net",
+        "googlesyndication.com",
+        "connect.facebook.net",
+        "newrelic.com",
+        "nr-data.net",
+        "bat.bing.com",
+    }
+)
 _RETRYABLE_NAVIGATION_NETWORK_ERRORS = {
     "ERR_CONNECTION_RESET": "connection_reset",
     "ERR_NETWORK_CHANGED": "network_changed",
@@ -105,6 +148,10 @@ BROWSER_KEYS = frozenset(
         "viewport",
         "locale",
         "skip_ssl",
+        "resource_policy",
+        "bot_protection",
+        "block_resource_types",
+        "block_hosts",
         # Scrapers project their config through BROWSER_KEYS before calling
         # render(). Without this entry a board-level proxy opt-in is silently
         # discarded and the browser launches from direct egress.
@@ -322,6 +369,148 @@ def _resolve_placeholders(cookies: list[dict]) -> list[dict]:
     return resolved
 
 
+def _resolve_resource_blocking(
+    config: dict,
+    *,
+    use_proxy: bool = False,
+) -> tuple[frozenset[str], frozenset[str]]:
+    """Return resource types and host suffixes to abort for this context.
+
+    ``none`` is the default, so an unconfigured board keeps native browser
+    networking. ``auto`` is an opt-in recon result: it uses ``lean`` only when
+    recon explicitly recorded ``bot_protection: false`` and the browser config
+    has no anti-bot-shaped transport/profile settings. Unknown or protected
+    boards remain ``none``. Boards can also select a fixed policy and extend
+    it with board-specific types/hosts after a same-egress canary.
+    """
+
+    raw_policy = config.get("resource_policy")
+    if raw_policy is None:
+        policy = "none"
+    elif not isinstance(raw_policy, str):
+        raise ValueError("resource_policy must be a string when provided")
+    else:
+        policy = raw_policy
+    if policy not in VALID_RESOURCE_POLICIES:
+        raise ValueError(
+            f"Invalid resource_policy {policy!r}, must be one of {sorted(VALID_RESOURCE_POLICIES)}"
+        )
+
+    if "bot_protection" in config and not isinstance(config["bot_protection"], bool):
+        raise ValueError("bot_protection must be a boolean when provided")
+
+    # Validate additive syntax even when the off switch ignores valid lists,
+    # so malformed agent output is still rejected by ``ws validate``.
+    raw_resource_types = config.get("block_resource_types", [])
+    if not isinstance(raw_resource_types, list) or not all(
+        isinstance(value, str) and value in VALID_BLOCK_RESOURCE_TYPES
+        for value in raw_resource_types
+    ):
+        raise ValueError(
+            "block_resource_types must be a list containing only "
+            f"{sorted(VALID_BLOCK_RESOURCE_TYPES)}"
+        )
+
+    raw_hosts = config.get("block_hosts", [])
+    if not isinstance(raw_hosts, list):
+        raise ValueError("block_hosts must be a list of hostname suffixes")
+    additive_hosts: set[str] = set()
+    for value in raw_hosts:
+        if not isinstance(value, str):
+            raise ValueError("block_hosts must be a list of hostname suffixes")
+        host = value.strip().lower()
+        if host.startswith("*."):
+            host = host[2:]
+        host = host.lstrip(".")
+        if not host or "://" in host or "/" in host or ":" in host:
+            raise ValueError(f"Invalid block_hosts hostname suffix: {value!r}")
+        additive_hosts.add(host)
+
+    # ``none`` is the absolute fail-safe and rollback switch. Ignore stale
+    # additive lists rather than leaving a route installed after an operator
+    # changes only the policy (or omits it to return to the default).
+    if policy == "none":
+        return frozenset(), frozenset()
+
+    if policy == "auto":
+        if raw_resource_types or raw_hosts:
+            raise ValueError("resource_policy 'auto' cannot be combined with additive block lists")
+        anti_bot_shaped = bool(
+            use_proxy
+            or config.get("proxy")
+            or config.get("persistent_context")
+            or config.get("stealth")
+            or config.get("headless") is False
+            or config.get("channel")
+            or config.get("warmup_url")
+            or config.get("cookies")
+            or config.get("user_agent")
+            or config.get("disable_http2")
+        )
+        recon_cleared = config.get("bot_protection") is False
+        policy = "lean" if recon_cleared and not anti_bot_shaped else "none"
+
+    if policy == "aggressive":
+        resource_types = set(AGGRESSIVE_BLOCK_RESOURCE_TYPES)
+        hosts = set(AGGRESSIVE_BLOCK_HOSTS)
+    elif policy == "lean":
+        resource_types = set(LEAN_BLOCK_RESOURCE_TYPES)
+        hosts = set()
+    else:
+        resource_types = set()
+        hosts = set()
+
+    resource_types.update(raw_resource_types)
+    hosts.update(additive_hosts)
+
+    return frozenset(resource_types), frozenset(hosts)
+
+
+def _host_matches_suffix(hostname: str | None, suffixes: frozenset[str]) -> bool:
+    """Return whether *hostname* is exactly or below a blocked suffix."""
+
+    if not hostname:
+        return False
+    hostname = hostname.lower().rstrip(".")
+    return any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes)
+
+
+async def _install_resource_blocking(
+    context,
+    resource_types: frozenset[str],
+    host_suffixes: frozenset[str],
+) -> None:
+    """Install one context-wide route before any warmup/navigation occurs."""
+
+    if not resource_types and not host_suffixes:
+        return
+
+    async def _route(route, request) -> None:
+        resource_type = request.resource_type
+        try:
+            hostname = urlsplit(request.url).hostname
+        except (TypeError, ValueError):
+            hostname = None
+
+        reason: str | None = None
+        if resource_type in resource_types:
+            reason = "resource_type"
+        elif _host_matches_suffix(hostname, host_suffixes):
+            reason = "host"
+
+        if reason is None:
+            await route.continue_()
+            return
+
+        metrics.browser_resource_blocked_total.labels(
+            reason=reason,
+            resource_type=resource_type,
+        ).inc()
+        await route.abort()
+
+    await context.route("**/*", _route)
+
+
 def _x_server_alive(display: str) -> bool:
     """Probe the X server by running ``xdpyinfo``.
 
@@ -484,6 +673,10 @@ async def _open_page_playwright(
     Playwright's bundled Chromium).
     """
     config = config or {}
+    blocked_resource_types, blocked_host_suffixes = _resolve_resource_blocking(
+        config,
+        use_proxy=use_proxy,
+    )
     requested_headless = bool(config.get("headless", True))
     # Boards that need Akamai/PerimeterX bypass set ``headless: false`` and
     # rely on the ``browser-1`` container's xvfb entrypoint to provide an
@@ -550,6 +743,8 @@ async def _open_page_playwright(
             cookies=cookies,
             warmup_url=warmup_url,
             skip_ssl=bool(config.get("skip_ssl")),
+            blocked_resource_types=blocked_resource_types,
+            blocked_host_suffixes=blocked_host_suffixes,
         ) as page:
             yield page
         return
@@ -572,6 +767,11 @@ async def _open_page_playwright(
             ctx_kwargs["ignore_https_errors"] = True
         context = await browser.new_context(**ctx_kwargs)
         context.set_default_timeout(CONTEXT_TIMEOUT)
+        await _install_resource_blocking(
+            context,
+            blocked_resource_types,
+            blocked_host_suffixes,
+        )
         if cookies:
             await context.add_cookies(_resolve_placeholders(cookies))
         page = await context.new_page()
@@ -606,6 +806,8 @@ async def _open_persistent_page(
     cookies: list[dict] | None,
     warmup_url: str | None,
     skip_ssl: bool = False,
+    blocked_resource_types: frozenset[str] = frozenset(),
+    blocked_host_suffixes: frozenset[str] = frozenset(),
 ) -> AsyncIterator:
     """``launch_persistent_context`` variant of :func:`open_page`.
 
@@ -634,10 +836,14 @@ async def _open_persistent_page(
         launch_kwargs["locale"] = locale
     if skip_ssl:
         launch_kwargs["ignore_https_errors"] = True
-
     context = await pw.chromium.launch_persistent_context(user_data_dir, **launch_kwargs)
     try:
         context.set_default_timeout(CONTEXT_TIMEOUT)
+        await _install_resource_blocking(
+            context,
+            blocked_resource_types,
+            blocked_host_suffixes,
+        )
         if cookies:
             await context.add_cookies(_resolve_placeholders(cookies))
         # launch_persistent_context always opens one blank page; reuse

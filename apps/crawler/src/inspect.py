@@ -13,6 +13,7 @@ from dataclasses import fields as dc_fields
 
 from src.core.scrapers import _REGISTRY as SCRAPER_REGISTRY
 from src.core.scrapers import JobContent
+from src.shared.browser import _resolve_resource_blocking
 from src.shared.constants import LOGO_TYPES, SLUG_RE, URL_RE, get_data_dir
 from src.shared.csv_io import read_csv
 from src.workspace._compat import (
@@ -47,6 +48,27 @@ class ValidationError:
         if self.row is not None:
             return f"{self.file}:{self.row}: {self.message}"
         return f"{self.file}: {self.message}"
+
+
+def _validate_browser_resource_config(
+    config: dict,
+    *,
+    config_name: str,
+    row: int,
+    errors: list[ValidationError],
+) -> None:
+    """Run the shared runtime validator while the board is still in CI."""
+
+    try:
+        _resolve_resource_blocking(config)
+    except ValueError as exc:
+        errors.append(
+            ValidationError(
+                "boards.csv",
+                row,
+                f"Invalid browser resource config in {config_name}: {exc}",
+            )
+        )
 
 
 def validate_csvs() -> list[ValidationError]:
@@ -379,6 +401,13 @@ def validate_csvs() -> list[ValidationError]:
                             f"'proxy' in monitor_config must be bool, got {mc_obj['proxy']!r}",
                         )
                     )
+                if isinstance(mc_obj, dict):
+                    _validate_browser_resource_config(
+                        mc_obj,
+                        config_name="monitor_config",
+                        row=i,
+                        errors=errors,
+                    )
 
         if scraper_config:
             try:
@@ -399,6 +428,12 @@ def validate_csvs() -> list[ValidationError]:
                                 f"'proxy' in scraper_config must be bool, got {sc_obj['proxy']!r}",
                             )
                         )
+                    _validate_browser_resource_config(
+                        sc_obj,
+                        config_name="scraper_config",
+                        row=i,
+                        errors=errors,
+                    )
 
                     # Validate enrich key
                     enrich = sc_obj.get("enrich")
@@ -482,6 +517,13 @@ def validate_csvs() -> list[ValidationError]:
                                 i,
                                 f"'proxy' in fallback config must be bool, got {fb_cfg['proxy']!r}",
                             )
+                        )
+                    if isinstance(fb_cfg, dict):
+                        _validate_browser_resource_config(
+                            fb_cfg,
+                            config_name="fallback config",
+                            row=i,
+                            errors=errors,
                         )
                     fb = fb_cfg.get("fallback") if isinstance(fb_cfg, dict) else None
                     depth += 1
