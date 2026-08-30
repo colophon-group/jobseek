@@ -229,7 +229,12 @@ async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_i
         "timeout": 60_000,
         **{key: value for key, value in metadata.items() if key in BROWSER_KEYS},
     }
-    async with open_page(pw, browser_config, use_proxy=bool(metadata.get("proxy"))) as page:
+    async with open_page(
+        pw,
+        browser_config,
+        use_proxy=bool(metadata.get("proxy")),
+        target_url=board_url,
+    ) as page:
         await navigate(page, board_url, browser_config)
         await page.locator(_SEARCH_SELECTOR).first.wait_for(state="visible", timeout=60_000)
 

@@ -230,6 +230,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
             playwright,
             browser_config,
             use_proxy=bool(metadata.get("proxy")),
+            target_url=board_url,
         ) as page:
             return await _discover_page(page, board_url, metadata | browser_config)
 
