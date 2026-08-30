@@ -160,7 +160,7 @@ def _install_browser(
     fake_page = object()
 
     @asynccontextmanager
-    async def fake_open_page(_pw, _config, use_proxy=False):
+    async def fake_open_page(_pw, _config, use_proxy=False, target_url=None):
         _ = use_proxy
         yield fake_page
 

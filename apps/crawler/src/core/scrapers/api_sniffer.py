@@ -595,7 +595,7 @@ async def probe_pw(
     async def _probe_one(url: str) -> tuple[JobContent | None, dict | None]:
         """Probe a single URL, return (content, job_obj) or (None, None)."""
         try:
-            async with open_page(pw, {}) as page:
+            async with open_page(pw, {}, target_url=url) as page:
                 page_host = urlparse(url).netloc
                 exchanges = await capture_exchanges(page, page_host)
                 await navigate(page, url, {"wait": wait, "timeout": timeout})
@@ -785,7 +785,12 @@ async def scrape(
         # pass {} and silently dropped keys like persistent_context.
         browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
-        async with open_page(p, browser_config, use_proxy=use_proxy) as page:
+        async with open_page(
+            p,
+            browser_config,
+            use_proxy=use_proxy,
+            target_url=url,
+        ) as page:
             page_host = urlparse(url).netloc
             exchanges = await capture_exchanges(page, page_host)
 

@@ -97,6 +97,40 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("sync", help="CSV -> local Postgres + Redis + Typesense")
 
+    proxy_audit_p = sub.add_parser(
+        "proxy-audit",
+        help="Read-only, credential-safe Webshare plan and source audit",
+    )
+    proxy_audit_p.add_argument(
+        "--since-hours",
+        type=int,
+        default=24,
+        help="Activity window in hours (1-2160; default: 24)",
+    )
+    proxy_audit_p.add_argument(
+        "--max-activity-records",
+        type=int,
+        default=10_000,
+        help="Maximum source records inspected (1-20000; default: 10000)",
+    )
+    proxy_audit_p.add_argument(
+        "--expected-client-ip",
+        action="append",
+        default=[],
+        help="Additional expected crawler egress IP; repeat as needed",
+    )
+
+    proxy_config_p = sub.add_parser(
+        "proxy-configure-webshare",
+        help="Back up an operator env file and populate the Webshare backbone pool",
+    )
+    proxy_config_p.add_argument(
+        "--env-file",
+        type=Path,
+        default=Path(".env.local"),
+        help="Existing local operator env file (default: .env.local)",
+    )
+
     sub.add_parser(
         "repair-nw-provider-cutover",
         help="Reapply the bounded NW Teamtailor-to-WTTJ identity repair",
@@ -718,6 +752,46 @@ async def run() -> None:
             from src.sync import run_sync
 
             await run_sync()
+
+        elif args.command == "proxy-audit":
+            from src.proxy_audit import ProxyAuditError, audit_webshare
+
+            try:
+                report = await audit_webshare(
+                    api_key=settings.webshare_api_key,
+                    configured_pool_urls=settings.webshare_proxy_urls,
+                    legacy_proxy_url=settings.webshare_proxy_url,
+                    expected_client_ips={
+                        *settings.webshare_expected_client_ips,
+                        *args.expected_client_ip,
+                    },
+                    since_hours=args.since_hours,
+                    max_activity_records=args.max_activity_records,
+                )
+            except ProxyAuditError as exc:
+                report = {"status": "error", "error": str(exc)}
+                sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
+                raise SystemExit(2) from exc
+            sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
+            if report["status"] == "alert":
+                raise SystemExit(2)
+            if report["status"] == "inconclusive":
+                raise SystemExit(3)
+
+        elif args.command == "proxy-configure-webshare":
+            from src.proxy_audit import ProxyAuditError
+            from src.proxy_config import configure_webshare_env
+
+            try:
+                report = await configure_webshare_env(
+                    api_key=settings.webshare_api_key,
+                    env_file=args.env_file,
+                )
+            except (OSError, ProxyAuditError) as exc:
+                report = {"status": "error", "error": str(exc)}
+                sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
+                raise SystemExit(2) from exc
+            sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
 
         elif args.command == "repair-nw-provider-cutover":
             local_pool = await create_local_pool()

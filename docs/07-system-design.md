@@ -50,9 +50,12 @@ R2_SECRET_ACCESS_KEY            # R2 API token secret
 R2_BUCKET                       # Bucket name (e.g. jobseek-assets)
 R2_DOMAIN_URL                   # Public CDN URL
 LOG_LEVEL                       # structlog level (default: INFO)
-PROXY_PROVIDER                  # Proxy provider: webshare | decodo | none (default: none)
-WEBSHARE_PROXY_URL              # Webshare static IP: http://user:pass@host:port (required when PROXY_PROVIDER=webshare)
-DECODO_PROXY_URL                # Decodo ISP: http://user:pass@host:port (required when PROXY_PROVIDER=decodo)
+PROXY_PROVIDER                  # webshare | none (default: none)
+WEBSHARE_PROXY_URLS             # JSON per-proxy p.webshare.io backbone URL pool
+WEBSHARE_PROXY_URL              # Migration-only direct/static fallback
+WEBSHARE_PROXY_CANARY_SLOT      # Local same-egress diagnostic pin; not deployed
+WEBSHARE_API_KEY                # Local operator audit/config only; never deployed
+WEBSHARE_EXPECTED_CLIENT_IPS    # JSON production-egress allowlist for local audit
 WORKER_ID_PREFIX                # Container identity prefix (e.g. hetzner)
 METRICS_PORT                    # Prometheus metrics port (9091-9094)
 
@@ -425,7 +428,8 @@ Optional proxy routing for boards whose origins block Hetzner datacenter
 IPs (AWS WAF captchas, Cloudflare challenges, etc.).
 
 ```
-src/shared/proxy.py    # ProxyProvider Protocol, StaticProxyProvider impl
+src/shared/proxy.py    # Webshare round-robin, quarantine, and recovery
+src/shared/http.py     # Per-request rotating httpx transport
 ```
 
 Implementation and config notes live in the canonical doc:
@@ -436,15 +440,26 @@ Quick summary:
 - Per-board opt-in via `"proxy": true` in `monitor_config` and/or
   `scraper_config` JSON in `data/boards.csv` (the two flags are
   independent; typically both are set for a WAF-blocked host).
-- Provider chosen by `PROXY_PROVIDER` env (`webshare` in production,
-  `decodo` supported, `none` = fail-safe direct egress).
-- **Billing is flat-monthly per leased IP — not per request.** Older
-  Lightpanda-era docs referring to "cost savers" and "bandwidth isn't
-  free" do not apply to the current Webshare/Decodo setup.
+- `webshare` is the sole provider; `PROXY_PROVIDER=none` is the explicit
+  direct-egress switch. A selected provider without endpoints fails closed.
+- Plain HTTP rotates per completed top-level request, keeping redirects on the
+  same slot. A browser launch is selected against its planned target origin
+  and keeps one slot for document and subresources to preserve anti-bot egress
+  affinity.
+- Global proxy faults and origin-specific blocks enter bounded exponential
+  quarantine, then generation-owned one-at-a-time half-open recovery; stale
+  concurrent responses cannot reopen a newer circuit.
+- The current plan is bandwidth-metered. `WEBSHARE_PROXY_URLS` uses per-proxy
+  backbone credentials that remain valid across the 30-day direct-IP refresh.
 - `rescrape_policy: "never"` in `monitor_config` disables the 24h
   refresh tail for WAF-blocked boards whose content rarely changes —
-  conserves shared-IP concurrency slots, not dollars. See AGENTS.md
-  for the full rationale.
+  conserving bandwidth, origin pressure, and connection slots.
+- `crawler proxy-configure-webshare` backs up and atomically updates a local
+  env file; `crawler proxy-audit` checks plan, pool, usage, and client-source
+  anomalies without emitting credentials or IPs. Historical source evidence
+  is explicitly inconclusive when Webshare's six-day activity retention or a
+  plan-upgrade boundary clips the requested window. The account API key is
+  never forwarded to runtime containers.
 
 ---
 

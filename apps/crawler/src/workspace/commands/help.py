@@ -841,7 +841,8 @@ headhunter — HeadHunter employer vacancies API
             non-destructive truncated result). Page/count/ID drift fails closed.
   Note:     HeadHunter's ddos-guard blocks some datacenter networks. Detected
             employer boards therefore set proxy=true automatically and use the
-            crawler's configured static proxy transport.
+            crawler's configured Webshare pool. HTTP rotates between top-level
+            requests while each browser launch keeps one affine exit.
 
   Config:
     {"employer_id": "4556149", "host": "hh.ru", "proxy": true}
@@ -1151,7 +1152,7 @@ practicematch — PracticeMatch Employer Landing Pages
   Config:
     {"proxy": true}       Auto-filled during detection. PracticeMatch drops
                            direct datacenter connections, so production uses
-                           the configured static proxy transport.
+                           the configured Webshare rotating transport.
     {"max_pages": 2000}  Optional safety cap per profession stream.
 
   Pair with:  json-ld (auto-configured with proxy=true)"""
@@ -3651,7 +3652,10 @@ Browser Resource Policy — bandwidth reduction without blind anti-bot regressio
        Record HTTP status/final URL, challenge text, discovered count, required
        fields, and the page/flat/debug artifacts.
     2. Repeat on the same egress with lean (or aggressive only for a reviewed,
-       text-only board). Do not compare runs from different IPs/providers.
+       text-only board). With the Webshare pool, set
+       WEBSHARE_PROXY_CANARY_SLOT=0 for both commands so separate browser
+       launches retain the same exit. This operator-only value is not deployed;
+       never persist it in board JSON. Do not compare different IPs/providers.
     3. Any new 401/403/429, captcha/challenge page, redirect, missing API call,
        count drop, or required-field drop is a regression: keep none and record
        the evidence in ws feedback notes.

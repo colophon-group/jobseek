@@ -512,6 +512,29 @@ browser_resource_blocked_total = Counter(
     ["reason", "resource_type"],
 )
 
+proxy_client_selections_total = Counter(
+    "crawler_proxy_client_selections_total",
+    "Proxy selections made for a top-level HTTP request or browser launch",
+    # Bounded in shared/proxy.py. Never label by URL, credentials, proxy IP,
+    # client IP, target host, pool slot, or board.
+    ["provider", "mode", "transport"],
+)
+
+proxy_configuration_failures_total = Counter(
+    "crawler_proxy_configuration_failures_total",
+    "Proxy-required client creation rejected because the selected provider is unusable",
+    ["provider", "reason"],
+)
+
+proxy_endpoint_health_events_total = Counter(
+    "crawler_proxy_endpoint_health_events_total",
+    "Proxy endpoint quarantine, half-open recovery, and exhaustion events",
+    # scope: global | origin | pool; event: quarantined | half_open |
+    # recovered | exhausted | evicted. Endpoint and origin identities stay out
+    # of labels.
+    ["provider", "scope", "event"],
+)
+
 # HTTP retry observability (#3210). The httpx retry path (and per-monitor
 # copies for workday / lever / hirehive / hireology / smartrecruiters / accenture /
 # PCSX / api_sniff) all retry transient failures and emit structured logs,

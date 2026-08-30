@@ -310,7 +310,7 @@ async def test_discover_render_runs_actions_before_reading_html(monkeypatch):
     page = object()
 
     @asynccontextmanager
-    async def fake_open_page(_pw, _config, *, use_proxy=False):
+    async def fake_open_page(_pw, _config, *, use_proxy=False, target_url=None):
         assert use_proxy is False
         events.append("open")
         yield page
@@ -466,7 +466,7 @@ def _install_click_page(monkeypatch, page):
     navigations: list[str] = []
 
     @asynccontextmanager
-    async def fake_open_page(_pw, _config, *, use_proxy=False):
+    async def fake_open_page(_pw, _config, *, use_proxy=False, target_url=None):
         assert use_proxy is False
         yield page
 
