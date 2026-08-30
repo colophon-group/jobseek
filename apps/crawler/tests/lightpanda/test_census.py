@@ -58,7 +58,9 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
                         {"action": "click", "selector": "#secret-selector", "required": True},
                         {"action": "evaluate", "script": "window.__secret = 'value'"},
                     ],
+                    "bot_protection": False,
                     "render": True,
+                    "resource_policy": "auto",
                     "wait": "networkidle",
                 },
             ),
@@ -162,6 +164,7 @@ def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
         {"actions": [{"action": "teleport"}], "render": True},
         {"actions": [{"action": "click", "selector": ["#invalid"]}], "render": True},
         {"actions": [{"action": "click", "selector": "#ok", "unknown": True}], "render": True},
+        {"render": True, "resource_policy": []},
     ],
 )
 def test_browser_monitor_config_fails_closed(
