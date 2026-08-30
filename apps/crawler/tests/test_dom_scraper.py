@@ -1403,13 +1403,17 @@ class TestDomScraper:
 
         def handler(request: httpx.Request) -> httpx.Response:
             assert request.headers["user-agent"] == "jobseek-crawler (+https://jseek.co/)"
+            assert "authorization" not in request.headers
             return httpx.Response(200, text="<html><body><h1>Public role</h1></body></html>")
 
         config = {
             "request_headers": {"User-Agent": "jobseek-crawler (+https://jseek.co/)"},
             "steps": [{"tag": "h1", "field": "title"}],
         }
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            headers={"Authorization": "Bearer private"},
+        ) as client:
             result = await scrape("https://example.com/job/1", config, client)
 
         assert result.title == "Public role"
