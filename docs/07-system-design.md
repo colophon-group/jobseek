@@ -194,6 +194,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 60   | `candidatus`      | URL-only | dom         | Candidatus WinDev browser-resolved detail postbacks |
 | 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
 | 10   | `jazzhr`          | URL-only | jazzhr      | ApplyToJob static listing + JSON-LD/DOM detail parsing |
+| 10   | `job51`           | Rich     | skip        | 51job employer microsite listing and detail CoAPI |
 | 10   | `jobbank104`      | URL-only | json-ld     | 104 Job Bank company-page links through optional proxy transport |
 | 10   | `jobstreet`       | Rich     | jobstreet   | JobStreet employer search summaries + GraphQL detail enrichment |
 | 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
