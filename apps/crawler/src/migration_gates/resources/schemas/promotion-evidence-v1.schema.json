@@ -6,7 +6,7 @@
     "candidate": {
       "additionalProperties": false,
       "properties": {
-        "cohort": {"enum": ["baseline", "candidate"]},
+        "cohort": {"const": "candidate"},
         "implementation": {"enum": ["python", "go"]},
         "region": {"enum": ["hetzner-eu-central"]},
         "release": {"pattern": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$", "type": "string"}
@@ -14,7 +14,7 @@
       "required": ["implementation", "release", "region", "cohort"],
       "type": "object"
     },
-    "evidence_id": {"minLength": 1, "type": "string"},
+    "evidence_id": {"maxLength": 64, "minLength": 1, "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$", "type": "string"},
     "freeze_signals": {
       "additionalProperties": false,
       "properties": {
@@ -33,7 +33,7 @@
       "minItems": 1,
       "type": "array"
     },
-    "policy_id": {"minLength": 1, "type": "string"},
+    "policy_id": {"maxLength": 64, "minLength": 1, "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$", "type": "string"},
     "schema_version": {"const": "jobseek.crawler-migration-promotion-evidence/v1"},
     "window": {
       "additionalProperties": false,

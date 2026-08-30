@@ -30,7 +30,7 @@
       "type": "object"
     },
     "eligible_candidate_implementations": {"const": ["go"]},
-    "policy_id": {"minLength": 1, "type": "string"},
+    "policy_id": {"maxLength": 64, "minLength": 1, "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$", "type": "string"},
     "release_max_active_values": {"const": 2},
     "release_pattern": {"const": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$"},
     "required_classes": {

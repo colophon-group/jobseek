@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
+import json
 import math
 import re
 from collections import defaultdict
 from datetime import datetime
+from importlib import resources
 from typing import Any
+
+from jsonschema import Draft202012Validator, FormatChecker
 
 POLICY_SCHEMA = "jobseek.crawler-migration-promotion-policy/v1"
 EVIDENCE_SCHEMA = "jobseek.crawler-migration-promotion-evidence/v1"
 DECISION_SCHEMA = "jobseek.crawler-migration-promotion-decision/v1"
 RELEASE_PATTERN = r"^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$"
 CLASS_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+IDENTIFIER_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 ZERO_TOLERANCE_REASONS = {
     "stale_authoritative_writes": "freeze:stale-authoritative-write",
@@ -26,6 +31,33 @@ ZERO_TOLERANCE_REASONS = {
 
 class GateModelError(ValueError):
     """Raised when policy or evidence is ambiguous or violates the gate contract."""
+
+
+def _resource_json(*parts: str) -> dict[str, Any]:
+    resource = resources.files(__package__).joinpath("resources", *parts)
+    try:
+        value = json.loads(resource.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise GateModelError(f"cannot load packaged resource {'/'.join(parts)}") from exc
+    if not isinstance(value, dict):
+        raise GateModelError(f"packaged resource {'/'.join(parts)} must contain one JSON object")
+    return value
+
+
+def load_candidate_policy() -> dict[str, Any]:
+    """Load the immutable candidate policy shipped with the crawler package."""
+
+    return _resource_json("promotion-policy-v1.json")
+
+
+def _validate_schema(value: dict[str, Any], schema_name: str, field: str) -> None:
+    schema = _resource_json("schemas", schema_name)
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    errors = sorted(validator.iter_errors(value), key=lambda error: list(error.absolute_path))
+    if errors:
+        first = errors[0]
+        location = ".".join(str(item) for item in first.absolute_path) or "<root>"
+        raise GateModelError(f"{field} violates {schema_name} at {location}: {first.message}")
 
 
 def _require(condition: bool, message: str) -> None:
@@ -49,6 +81,13 @@ def _string(value: object, field: str) -> str:
     if not isinstance(value, str) or not value:
         raise GateModelError(f"{field} must be a non-empty string")
     return value
+
+
+def _identifier(value: object, field: str) -> str:
+    result = _string(value, field)
+    if not IDENTIFIER_PATTERN.fullmatch(result):
+        raise GateModelError(f"{field} must be a safe identifier of at most 64 characters")
+    return result
 
 
 def _integer(value: object, field: str, *, minimum: int = 0) -> int:
@@ -109,7 +148,7 @@ def _policy_contract(policy: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
         policy.get("browser_retirement_gate") == "external-zero-assignment-and-removal-proof",
         "policy browser retirement gate is invalid",
     )
-    _string(policy.get("policy_id"), "policy.policy_id")
+    _identifier(policy.get("policy_id"), "policy.policy_id")
     _require(policy.get("release_pattern") == RELEASE_PATTERN, "policy release pattern is invalid")
     _require(
         _integer(
@@ -294,13 +333,15 @@ def _add_reason(reasons: dict[str, set[str]], code: str, class_id: str | None = 
 def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict[str, Any]:
     """Evaluate sanitized aggregate evidence without mutating runtime state."""
 
+    _validate_schema(_object(policy, "policy"), "promotion-policy-v1.schema.json", "policy")
+    _validate_schema(_object(evidence, "evidence"), "promotion-evidence-v1.schema.json", "evidence")
     policy_contract, thresholds = _policy_contract(_object(policy, "policy"))
     _require(
         evidence.get("schema_version") == EVIDENCE_SCHEMA,
         "evidence schema_version is invalid",
     )
-    evidence_id = _string(evidence.get("evidence_id"), "evidence.evidence_id")
-    policy_id = _string(policy.get("policy_id"), "policy.policy_id")
+    evidence_id = _identifier(evidence.get("evidence_id"), "evidence.evidence_id")
+    policy_id = _identifier(policy.get("policy_id"), "policy.policy_id")
     _require(evidence.get("policy_id") == policy_id, "evidence policy_id does not match policy")
 
     candidate = _object(evidence.get("candidate"), "evidence.candidate")
@@ -312,6 +353,7 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
             value in policy_contract["allowlists"][name],
             f"evidence candidate {name} is not allowed",
         )
+    _require(candidate["cohort"] == "candidate", "evidence candidate cohort must be candidate")
     _require(
         candidate["implementation"] in policy["eligible_candidate_implementations"],
         "evidence candidate implementation is not eligible for promotion",
@@ -572,7 +614,7 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
     else:
         decision = "promote"
 
-    return {
+    result = {
         "schema_version": DECISION_SCHEMA,
         "policy_id": policy_id,
         "policy_status": "candidate",
@@ -581,3 +623,5 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
         "decision": decision,
         "reasons": reason_items,
     }
+    _validate_schema(result, "promotion-decision-v1.schema.json", "decision")
+    return result

@@ -2,18 +2,21 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
 from src.migration_gates.__main__ import main
-from src.migration_gates.model import GateModelError, evaluate_promotion
+from src.migration_gates.model import GateModelError, evaluate_promotion, load_candidate_policy
 
 CRAWLER_ROOT = Path(__file__).resolve().parents[1]
-GATE_ROOT = CRAWLER_ROOT / "migration-gates"
-SCHEMA_ROOT = GATE_ROOT / "schemas"
+RESOURCE_ROOT = CRAWLER_ROOT / "src" / "migration_gates" / "resources"
+SCHEMA_ROOT = RESOURCE_ROOT / "schemas"
 
 
 def _json(path: Path) -> dict:
@@ -23,7 +26,7 @@ def _json(path: Path) -> dict:
 
 
 def _policy() -> dict:
-    return _json(GATE_ROOT / "promotion-policy-v1.json")
+    return load_candidate_policy()
 
 
 def _observation(
@@ -133,12 +136,67 @@ def _set_zero_demand(observation: dict, *, proven: bool) -> None:
 
 
 def test_checked_in_policy_and_schemas_are_valid() -> None:
-    schemas = [_json(path) for path in sorted(SCHEMA_ROOT.glob("*.schema.json"))]
-    for schema in schemas:
+    schemas = {path.name: _json(path) for path in sorted(SCHEMA_ROOT.glob("*.schema.json"))}
+    for schema in schemas.values():
         Draft202012Validator.check_schema(schema)
 
-    validator = Draft202012Validator(schemas[2], format_checker=FormatChecker())
+    validator = Draft202012Validator(
+        schemas["promotion-policy-v1.schema.json"], format_checker=FormatChecker()
+    )
     assert not list(validator.iter_errors(_policy()))
+
+
+def test_public_evaluator_rejects_baseline_before_scoring() -> None:
+    evidence = _evidence()
+    evidence["candidate"]["cohort"] = "baseline"
+    evidence["freeze_signals"]["tdm_violations"] = 1
+
+    with pytest.raises(GateModelError, match="candidate.*cohort.*candidate"):
+        evaluate_promotion(_policy(), evidence)
+
+
+@pytest.mark.parametrize(
+    ("document", "field", "value", "message"),
+    [
+        ("evidence", "raw_host", "crawler.internal", "raw_host"),
+        ("observation", "board_url", "https://secret.example/jobs", "board_url"),
+        ("policy", "activation", {"enabled": True}, "activation"),
+    ],
+)
+def test_public_evaluator_rejects_unknown_fields_recursively(
+    document: str, field: str, value: object, message: str
+) -> None:
+    policy = _policy()
+    evidence = _evidence()
+    target = {
+        "evidence": evidence,
+        "observation": evidence["observations"][0],
+        "policy": policy,
+    }[document]
+    target[field] = value
+
+    with pytest.raises(GateModelError, match=message):
+        evaluate_promotion(policy, evidence)
+
+
+@pytest.mark.parametrize("unsafe_id", ["https://secret.example/token", "a" * 65])
+def test_public_evaluator_rejects_unsafe_or_oversized_evidence_id(unsafe_id: str) -> None:
+    evidence = _evidence()
+    evidence["evidence_id"] = unsafe_id
+
+    with pytest.raises(GateModelError, match="evidence_id"):
+        evaluate_promotion(_policy(), evidence)
+
+
+@pytest.mark.parametrize("unsafe_id", ["token=secret", "p" * 65])
+def test_public_evaluator_rejects_unsafe_or_oversized_policy_id(unsafe_id: str) -> None:
+    policy = _policy()
+    evidence = _evidence()
+    policy["policy_id"] = unsafe_id
+    evidence["policy_id"] = unsafe_id
+
+    with pytest.raises(GateModelError, match="policy_id"):
+        evaluate_promotion(policy, evidence)
 
 
 def test_complete_boundary_evidence_promotes_advisory_candidate() -> None:
@@ -309,7 +367,7 @@ def test_browser_backends_are_separate_and_cannot_mask_each_other() -> None:
 def test_aggregate_backend_and_runtime_fallback_masking_are_forbidden() -> None:
     aggregate = _evidence()
     aggregate["observations"][1]["browser_backend"] = "mixed"
-    with pytest.raises(GateModelError, match="browser_backend is not allowed"):
+    with pytest.raises(GateModelError, match="browser_backend"):
         evaluate_promotion(_policy(), aggregate)
 
     fallback = _evidence()
@@ -405,7 +463,7 @@ def test_nonfinite_number_and_window_mismatch_are_rejected() -> None:
 def test_unknown_label_and_unsorted_histogram_are_rejected() -> None:
     unknown_label = _evidence()
     unknown_label["observations"][0]["provider_family"] = "board-host.example"
-    with pytest.raises(GateModelError, match="provider_family is not allowed"):
+    with pytest.raises(GateModelError, match="provider_family"):
         evaluate_promotion(_policy(), unknown_label)
 
     unsorted_policy = _policy()
@@ -440,3 +498,52 @@ def test_cli_validates_json_and_uses_decision_exit_codes(
     evidence_path.write_text(evidence_path.read_text().replace("1.05", "NaN", 1))
     assert main() == 2
     assert "cannot load" in capsys.readouterr().err
+
+
+def test_clean_wheel_cli_uses_packaged_policy_and_schemas(tmp_path: Path) -> None:
+    dist_dir = tmp_path / "dist"
+    subprocess.run(
+        ["uv", "build", "--wheel", "--out-dir", str(dist_dir)],
+        cwd=CRAWLER_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    wheel_path = next(dist_dir.glob("*.whl"))
+    site_packages = tmp_path / "site-packages"
+    with zipfile.ZipFile(wheel_path) as wheel:
+        wheel.extractall(site_packages)
+
+    evidence_path = tmp_path / "evidence.json"
+    evidence_path.write_text(json.dumps(_evidence()))
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(site_packages)
+    env["PYTHONNOUSERSITE"] = "1"
+
+    imported = subprocess.run(
+        [sys.executable, "-c", "import src.migration_gates as m; print(m.__file__)"],
+        cwd=tmp_path,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert str(site_packages) in imported.stdout
+
+    evaluated = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "src.migration_gates",
+            "evaluate",
+            "--evidence",
+            str(evidence_path),
+        ],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert evaluated.returncode == 0, evaluated.stderr
+    assert json.loads(evaluated.stdout)["decision"] == "promote"
