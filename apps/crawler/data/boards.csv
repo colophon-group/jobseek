@@ -4461,6 +4461,8 @@ onebrief,onebrief-ashby,https://jobs.ashbyhq.com/onebrief,ashby,"{""token"": ""o
 onecrew,onecrew-ashby,https://jobs.ashbyhq.com/onecrew,ashby,"{""token"": ""onecrew""}",skip,
 oneimaging,oneimaging-greenhouse,https://job-boards.greenhouse.io/oneimaging,greenhouse,"{""token"": ""oneimaging""}",skip,
 oneleet,oneleet-ashby,https://jobs.ashbyhq.com/oneleet,ashby,"{""token"": ""oneleet""}",skip,
+onemci,onemci-careers,https://careers-mci.icims.com/,icims,,json-ld,
+onemci,onemci-careers-mci2,https://careers-mci2.icims.com/,icims,,json-ld,
 onit-inc,onit-inc-lever,https://jobs.lever.co/onit,lever,"{""token"": ""onit""}",skip,
 onoshealth,onoshealth-ashby,https://jobs.ashbyhq.com/onoshealth,ashby,"{""token"": ""onoshealth""}",skip,
 onrobot,onrobot-careers,https://onrobot.com/en/careers,dom,"{""render"": false, ""url_filter"": ""/en/careers/.+""}",dom,"{""render"": false, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.*?)\\s*\\|\\s*OnRobot$""}, {""tag"": ""h2"", ""field"": ""description"", ""stop_tag"": ""h3"", ""html"": true, ""from"": 0}], ""defaults"": {""locations"": [""Odense, Denmark""]}}"
