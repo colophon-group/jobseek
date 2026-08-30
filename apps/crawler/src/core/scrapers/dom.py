@@ -1067,9 +1067,7 @@ def _apply_defaults(raw: dict, config: dict, *, url: str | None = None) -> dict:
     if defaults_by_url is not None:
         for posting_url, values in defaults_by_url.items():
             if not isinstance(posting_url, str) or not isinstance(values, dict):
-                raise ValueError(
-                    "DOM scraper defaults_by_url must map URL strings to objects"
-                )
+                raise ValueError("DOM scraper defaults_by_url must map URL strings to objects")
         if url is not None:
             posting_defaults = defaults_by_url.get(url) or {}
 

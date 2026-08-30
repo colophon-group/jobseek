@@ -201,9 +201,7 @@ class TestDomScraper:
             "steps": [{"tag": "h1", "field": "title"}],
             "defaults_by_url": defaults_by_url,
         }
-        transport = httpx.MockTransport(
-            lambda request: httpx.Response(200, text="<h1>Role</h1>")
-        )
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, text="<h1>Role</h1>"))
         async with httpx.AsyncClient(transport=transport) as client:
             with pytest.raises(ValueError, match="defaults_by_url"):
                 await scrape("https://company.example/jobs/42", config, client)
