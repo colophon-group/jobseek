@@ -21,7 +21,10 @@ import {
   resolveTypesenseCompany,
   type TypesenseCompanyDocument,
 } from "./typesense-company";
-import { parseTypesenseMultiSearchResults } from "./typesense-multi-search";
+import {
+  assertCompanyPostingPage,
+  parseTypesenseMultiSearchResults,
+} from "./typesense-multi-search";
 
 interface JobPostingDoc {
   id: string;
@@ -573,6 +576,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
         },
       ],
     );
+    assertCompanyPostingPage(postingsResult, { offset, limit });
 
     const postings = (postingsResult.hits ?? []).map((h) =>
       mapHitToPosting(h, locationIds),

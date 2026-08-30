@@ -16,6 +16,70 @@ function malformedBatch(): Error {
   return new Error("Typesense multi_search response was malformed");
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isFiniteNumberArray(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => typeof item === "number" && Number.isFinite(item))
+  );
+}
+
+/**
+ * Validate the page-level invariants and every document field consumed by the
+ * company posting mapper. This prevents a syntactically valid HTTP-200 body
+ * from replacing a good prerendered snapshot with a truncated, oversized, or
+ * structurally corrupt direct-browser result.
+ */
+export function assertCompanyPostingPage<T>(
+  result: TypesenseMultiSearchResult<T>,
+  params: { offset: number; limit: number },
+): void {
+  if (
+    !Number.isInteger(params.offset) ||
+    params.offset < 0 ||
+    !Number.isInteger(params.limit) ||
+    params.limit < 0
+  ) {
+    throw malformedBatch();
+  }
+
+  const hits = result.hits ?? [];
+  const pageStart =
+    params.limit === 0
+      ? params.offset
+      : Math.floor(params.offset / params.limit) * params.limit;
+  const expectedHits =
+    params.limit === 0
+      ? 0
+      : Math.min(params.limit, Math.max(0, result.found - pageStart));
+  if (hits.length !== expectedHits) {
+    throw malformedBatch();
+  }
+
+  for (const hit of hits) {
+    const doc = hit.document as unknown;
+    if (
+      !isRecord(doc) ||
+      typeof doc.id !== "string" ||
+      doc.id.length === 0 ||
+      typeof doc.title !== "string" ||
+      typeof doc.first_seen_at !== "number" ||
+      !Number.isFinite(doc.first_seen_at) ||
+      !Number.isFinite(new Date(doc.first_seen_at * 1000).getTime()) ||
+      typeof doc.is_active !== "boolean" ||
+      !isFiniteNumberArray(doc.location_ids) ||
+      !isStringArray(doc.location_names) ||
+      !isStringArray(doc.location_types) ||
+      !isStringArray(doc.location_geo_types)
+    ) {
+      throw malformedBatch();
+    }
+  }
+}
+
 /**
  * Validate the ordered result envelope returned by Typesense multi_search.
  * A missing slot or a successful HTTP response containing a per-search error
@@ -67,4 +131,3 @@ export function parseTypesenseMultiSearchResults<T>(
     return rawResult as unknown as TypesenseMultiSearchResult<T>;
   });
 }
-

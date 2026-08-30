@@ -665,6 +665,16 @@ describe("loadPostingsWithCounts multi_search batching", () => {
     };
   }
 
+  const malformedPostingSlots: Array<[string, unknown]> = [
+    ["a truncated page", { found: 2, hits: [] }],
+    ["a hit when found is zero", { found: 0, hits: [freshPosting] }],
+    [
+      "more hits than the requested page",
+      { found: 3, hits: [freshPosting, freshRole, olderRole] },
+    ],
+    ["a structurally invalid posting", { found: 1, hits: [{ document: {} }] }],
+  ];
+
   it("uses one ordered SDK batch for postings and both counts", async () => {
     mocks.multiSearch.mockResolvedValue(batchResponse());
 
@@ -727,6 +737,25 @@ describe("loadPostingsWithCounts multi_search batching", () => {
     error.mockRestore();
   });
 
+  it.each(malformedPostingSlots)(
+    "fails the entire SDK batch for %s",
+    async (_label, postingSlot) => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      try {
+        mocks.multiSearch.mockResolvedValue({
+          results: [postingSlot, { found: 7 }, { found: 11 }],
+        });
+
+        await expect(
+          new TypesenseSearchProvider().loadPostingsWithCounts(params),
+        ).resolves.toEqual({ postings: [], activeCount: 0, yearCount: 0 });
+        expect(mocks.multiSearch).toHaveBeenCalledOnce();
+      } finally {
+        error.mockRestore();
+      }
+    },
+  );
+
   it("uses one browser multi_search and preserves ordered result mapping", async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
@@ -786,6 +815,33 @@ describe("loadPostingsWithCounts multi_search batching", () => {
       new TypesenseBrowserProvider().loadPostingsWithCounts(params),
     ).rejects.toThrow("Typesense multi_search response was malformed");
   });
+
+  it.each(malformedPostingSlots)(
+    "rejects a browser batch with %s",
+    async (_label, postingSlot) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: string | URL | Request) => {
+          if (String(input) === "/api/typesense-key") {
+            return Response.json({
+              apiKey: "browser-key",
+              host: "typesense.example",
+              port: 443,
+              protocol: "https",
+              expiresAt: Date.now() + 60_000,
+            });
+          }
+          return Response.json({
+            results: [postingSlot, { found: 7 }, { found: 11 }],
+          });
+        }),
+      );
+
+      await expect(
+        new TypesenseBrowserProvider().loadPostingsWithCounts(params),
+      ).rejects.toThrow("Typesense multi_search response was malformed");
+    },
+  );
 });
 
 describe("resolveTypesenseCompany", () => {
