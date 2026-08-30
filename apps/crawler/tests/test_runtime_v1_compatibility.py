@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import runpy
 import selectors
 import shutil
@@ -16,9 +17,11 @@ from typing import Any
 import pytest
 
 _CONTRACT_ROOT = (Path(__file__).parents[1] / "contracts" / "v1").resolve()
+_CONTRACT_MODULE_ROOT = _CONTRACT_ROOT.parent
 _PYTHON_ROOT = _CONTRACT_ROOT / "conformance" / "python"
 _MAX_COMMAND_OUTPUT = 2 * 1024 * 1024
 _COMMAND_TIMEOUT_SECONDS = 60.0
+_GO_IMPORT_LINE = re.compile(r'^\s*(?:import\s+)?(?:[A-Za-z_][A-Za-z0-9_]*|[._])?\s*"([^"]+)"\s*$')
 
 
 def _discover_python_tests() -> tuple[dict[str, Any], set[str]]:
@@ -190,6 +193,64 @@ def _go_environment(tmp_path: Path) -> dict[str, str]:
     }
 
 
+def _go_imports(package: Path) -> set[str]:
+    imports: set[str] = set()
+    for source in sorted(package.glob("*.go")):
+        in_block = False
+        for line in source.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not in_block and stripped == "import (":
+                in_block = True
+                continue
+            if in_block and stripped == ")":
+                in_block = False
+                continue
+            if not in_block and not stripped.startswith("import "):
+                continue
+            candidate = stripped.removeprefix("import ").strip()
+            match = _GO_IMPORT_LINE.fullmatch(candidate)
+            if match is not None:
+                imports.add(match.group(1))
+    return imports
+
+
+def _requires_module_resolution(package: Path) -> bool:
+    # Standard-library-only conformance packages retain the original isolated
+    # GOPATH gate. A package with a dotted import root necessarily consumes a
+    # module dependency and must be compiled from the checked-in module root.
+    return any("." in import_path.partition("/")[0] for import_path in _go_imports(package))
+
+
+def _go_module_environment(tmp_path: Path) -> dict[str, str]:
+    return {
+        "CGO_ENABLED": "1",
+        "GOCACHE": str(tmp_path / "module-go-cache"),
+        "GOENV": "off",
+        "GOMODCACHE": str(tmp_path / "module-go-mod-cache"),
+        "GOPATH": str(tmp_path / "module-go-path"),
+        "GO111MODULE": "on",
+        "GOTOOLCHAIN": "local",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "PATH": os.environ.get("PATH", "/usr/local/go/bin:/usr/bin:/bin"),
+        "TERM": "dumb",
+        "TMPDIR": tempfile.gettempdir(),
+    }
+
+
+def test_runtime_v1_go_resolution_modes_remain_explicit() -> None:
+    packages = set(_go_packages())
+    chromium = _CONTRACT_ROOT / "chromiumservice"
+    legacy = {
+        _CONTRACT_ROOT / "conformance" / "go",
+        _CONTRACT_ROOT / "framing",
+    }
+    assert chromium in packages
+    assert _requires_module_resolution(chromium)
+    assert legacy <= packages
+    assert all(not _requires_module_resolution(package) for package in legacy)
+
+
 @pytest.mark.timeout(180)
 def test_runtime_v1_all_go_conformance_packages(tmp_path: Path) -> None:
     go = shutil.which("go")
@@ -199,14 +260,31 @@ def test_runtime_v1_all_go_conformance_packages(tmp_path: Path) -> None:
     if not executable.is_file():
         raise AssertionError(f"resolved Go executable is not a file: {executable}")
 
-    env = _go_environment(tmp_path)
-    version = _bounded_command([str(executable), "version"], cwd=_CONTRACT_ROOT, env=env)
+    legacy_env = _go_environment(tmp_path)
+    module_env = _go_module_environment(tmp_path)
+    version = _bounded_command([str(executable), "version"], cwd=_CONTRACT_ROOT, env=legacy_env)
     assert version.startswith(b"go version go"), version.decode(errors="replace")
 
-    for package in _go_packages():
+    packages = _go_packages()
+    if any(_requires_module_resolution(package) for package in packages):
+        _bounded_command(
+            [str(executable), "mod", "download"],
+            cwd=_CONTRACT_MODULE_ROOT,
+            env=module_env,
+        )
+
+    for package in packages:
+        if _requires_module_resolution(package):
+            cwd = _CONTRACT_MODULE_ROOT
+            package_argument = "./" + package.relative_to(_CONTRACT_MODULE_ROOT).as_posix()
+            env = module_env
+        else:
+            cwd = package
+            package_argument = "."
+            env = legacy_env
         output = _bounded_command(
-            [str(executable), "test", "-race", "-count=1", "-json", "."],
-            cwd=package,
+            [str(executable), "test", "-race", "-count=1", "-json", package_argument],
+            cwd=cwd,
             env=env,
         )
         passed: set[str] = set()
@@ -221,4 +299,4 @@ def test_runtime_v1_all_go_conformance_packages(tmp_path: Path) -> None:
                 passed.add(event["Test"])
         if not passed:
             raise AssertionError(f"Go conformance package executed zero named tests: {package}")
-        _bounded_command([str(executable), "vet", "."], cwd=package, env=env)
+        _bounded_command([str(executable), "vet", package_argument], cwd=cwd, env=env)
