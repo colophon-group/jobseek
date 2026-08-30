@@ -20,10 +20,11 @@ from defusedxml import ElementTree as SafeElementTree
 from defusedxml.common import DefusedXmlException
 
 from src.core.monitors import DiscoveredJob, register
-from src.shared.http_retry import fetch_with_retry
+from src.shared.http_retry import PaginationFetchError, fetch_with_retry
 
 MAX_JOBS = 50_000
 _MAX_FEED_CHARS = 50 * 1024 * 1024
+_PROXY_CHALLENGE_STATUSES = frozenset({401, 403})
 
 
 class EArcuParseError(Exception):
@@ -67,6 +68,17 @@ def _candidate_feed_urls(board_url: str) -> list[str]:
         if candidate not in urls:
             urls.append(candidate)
     return urls
+
+
+def _is_listing_url(board_url: str) -> bool:
+    """Return whether *board_url* has a provider-specific eArcu listing path."""
+    try:
+        path = urlparse(board_url).path.casefold().rstrip("/")
+    except ValueError:
+        return False
+    return path.endswith("/vacancy/find/results") or path.endswith(
+        "/vacancies/vacancy-search-results.aspx"
+    )
 
 
 def _text(element: ET.Element, tag: str) -> str | None:
@@ -215,6 +227,16 @@ async def can_handle(
                 continue
             jobs = _parse_feed(text, feed_url)
             return {"feed_url": feed_url, "jobs": len(jobs)}
+        except PaginationFetchError as exc:
+            # Some eArcu CNAMEs apply the same IP-based WAF rule to the
+            # live-only XML feed as to the browser search page.  The two
+            # listing paths below are provider-specific enough to retain the
+            # deterministic detection and opt the board into the existing
+            # proxy transport.  Runtime discovery still fetches and parses
+            # the XML fail-closed through that routed client.
+            if exc.last_status in _PROXY_CHALLENGE_STATUSES and _is_listing_url(url):
+                return {"feed_url": feed_url, "proxy": True}
+            raise
         except EArcuParseError:
             return None
     return None

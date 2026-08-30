@@ -489,7 +489,9 @@ def detect_ats_from_url(url: str) -> str | None:
         return "beehire"
     if host.endswith(".eightfold.ai"):
         return "eightfold"
-    if re.search(r"/vacancy/find/results(?:/|$)", parsed.path, re.IGNORECASE):
+    if re.search(r"/vacancy/find/results(?:/|$)", parsed.path, re.IGNORECASE) or re.search(
+        r"/vacancies/vacancy-search-results\.aspx/?$", parsed.path, re.IGNORECASE
+    ):
         return "earcu"
 
     # Suffix-based patterns
