@@ -21,6 +21,7 @@ import {
   resolveTypesenseCompany,
   type TypesenseCompanyDocument,
 } from "./typesense-company";
+import { parseTypesenseMultiSearchResults } from "./typesense-multi-search";
 
 interface JobPostingDoc {
   id: string;
@@ -119,6 +120,29 @@ async function searchOne<T>(
     throw new Error(`typesense ${collection} search ${res.status}`);
   }
   return res.json();
+}
+
+async function searchMany<T>(
+  cfg: TypesenseBrowserConfig,
+  searches: Array<Record<string, unknown>>,
+): Promise<RawSearchResponse<T>[]> {
+  const url = `${cfg.protocol}://${cfg.host}:${cfg.port}/multi_search`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-typesense-api-key": cfg.apiKey,
+    },
+    body: JSON.stringify({ searches }),
+  });
+  if (!res.ok) {
+    invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
+    throw new Error(`typesense multi_search ${res.status}`);
+  }
+  const body: unknown = await res.json();
+  return parseTypesenseMultiSearchResults<T>(body, searches.length, {
+    expectHitsAt: [0],
+  }) as RawSearchResponse<T>[];
 }
 
 function buildLocations(
@@ -519,30 +543,36 @@ export class TypesenseBrowserProvider implements SearchProvider {
     const baseFilter = `company_id:=${companyId}${filterStr ? ` && ${filterStr}` : ""}`;
     const q = keywords.length ? keywords.join(" ") : "*";
 
-    const [postingsResult, activeResult, yearResult] = await Promise.all([
-      searchOne<JobPostingDoc>(cfg, "job_posting", {
-        q,
-        query_by: "title",
-        filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
-        sort_by: keywords.length
-          ? "_text_match:desc,first_seen_at:desc"
-          : "first_seen_at:desc",
-        per_page: limit,
-        page: Math.floor(offset / limit) + 1,
-      }),
-      searchOne<JobPostingDoc>(cfg, "job_posting", {
-        q,
-        query_by: "title",
-        filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
-        per_page: 0,
-      }),
-      searchOne<JobPostingDoc>(cfg, "job_posting", {
-        q,
-        query_by: "title",
-        filter_by: `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
-        per_page: 0,
-      }),
-    ]);
+    const [postingsResult, activeResult, yearResult] = await searchMany<JobPostingDoc>(
+      cfg,
+      [
+        {
+          collection: "job_posting",
+          q,
+          query_by: "title",
+          filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
+          sort_by: keywords.length
+            ? "_text_match:desc,first_seen_at:desc"
+            : "first_seen_at:desc",
+          per_page: limit,
+          page: Math.floor(offset / limit) + 1,
+        },
+        {
+          collection: "job_posting",
+          q,
+          query_by: "title",
+          filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
+          per_page: 0,
+        },
+        {
+          collection: "job_posting",
+          q,
+          query_by: "title",
+          filter_by: `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
+          per_page: 0,
+        },
+      ],
+    );
 
     const postings = (postingsResult.hits ?? []).map((h) =>
       mapHitToPosting(h, locationIds),

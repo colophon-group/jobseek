@@ -9,10 +9,12 @@ const mocks = vi.hoisted(() => ({
   calls: [] as SearchCall[],
   browserCalls: [] as SearchCall[],
   search: vi.fn(),
+  multiSearch: vi.fn(),
 }));
 
 vi.mock("../typesense-client", () => ({
   getSearchClient: () => ({
+    multiSearch: { perform: mocks.multiSearch },
     collections: (collection: string) => ({
       documents: () => ({
         search: (params: Record<string, unknown>) => {
@@ -201,6 +203,7 @@ beforeEach(() => {
   mocks.calls.length = 0;
   mocks.browserCalls.length = 0;
   mocks.search.mockReset();
+  mocks.multiSearch.mockReset();
   clearTypesenseBrowserConfig();
 });
 
@@ -639,6 +642,149 @@ describe("TypesenseBrowserProvider.listTopCompanies", () => {
     expect(result.companies.every((entry) => entry.company.slug.length > 0)).toBe(
       true,
     );
+  });
+});
+
+describe("loadPostingsWithCounts multi_search batching", () => {
+  const params = {
+    languages: ["en"],
+    locale: "en",
+    companyId: "fresh-co",
+    keywords: ["engineer"],
+    offset: 0,
+    limit: 2,
+  };
+
+  function batchResponse() {
+    return {
+      results: [
+        { found: 2, hits: [freshPosting, freshRole] },
+        { found: 7 },
+        { found: 11 },
+      ],
+    };
+  }
+
+  it("uses one ordered SDK batch for postings and both counts", async () => {
+    mocks.multiSearch.mockResolvedValue(batchResponse());
+
+    const result = await new TypesenseSearchProvider().loadPostingsWithCounts(params);
+
+    expect(result).toMatchObject({ activeCount: 7, yearCount: 11 });
+    expect(result.postings.map((posting) => posting.id)).toEqual([
+      freshPosting.document.id,
+      freshRole.document.id,
+    ]);
+    expect(mocks.multiSearch).toHaveBeenCalledOnce();
+    const batch = mocks.multiSearch.mock.calls[0][0] as {
+      searches: Array<Record<string, unknown>>;
+    };
+    expect(batch.searches).toHaveLength(3);
+    expect(batch.searches.map((search) => search.collection)).toEqual([
+      "job_posting",
+      "job_posting",
+      "job_posting",
+    ]);
+    expect(batch.searches[0]).toMatchObject({
+      q: "engineer",
+      sort_by: "_text_match:desc,first_seen_at:desc",
+      per_page: 2,
+      page: 1,
+    });
+    expect(batch.searches[1]).toMatchObject({ q: "engineer", per_page: 0 });
+    expect(batch.searches[2]).toMatchObject({ q: "engineer", per_page: 0 });
+    expect(String(batch.searches[2].filter_by)).toContain("first_seen_at:>");
+  });
+
+  it("retries the whole SDK batch after a transient transport failure", async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      mocks.multiSearch
+        .mockRejectedValueOnce(Object.assign(new Error("reset"), { code: "ECONNRESET" }))
+        .mockResolvedValueOnce(batchResponse());
+
+      const pending = new TypesenseSearchProvider().loadPostingsWithCounts(params);
+      await vi.runAllTimersAsync();
+
+      await expect(pending).resolves.toMatchObject({ activeCount: 7, yearCount: 11 });
+      expect(mocks.multiSearch).toHaveBeenCalledTimes(2);
+      expect(warn).toHaveBeenCalledOnce();
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("fails the entire SDK batch when a result slot is missing", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.multiSearch.mockResolvedValue({ results: batchResponse().results.slice(0, 2) });
+
+    await expect(
+      new TypesenseSearchProvider().loadPostingsWithCounts(params),
+    ).resolves.toEqual({ postings: [], activeCount: 0, yearCount: 0 });
+    expect(mocks.multiSearch).toHaveBeenCalledOnce();
+    error.mockRestore();
+  });
+
+  it("uses one browser multi_search and preserves ordered result mapping", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/typesense-key") {
+        return Response.json({
+          apiKey: "browser-key",
+          host: "typesense.example",
+          port: 443,
+          protocol: "https",
+          expiresAt: Date.now() + 60_000,
+        });
+      }
+      expect(url).toBe("https://typesense.example:443/multi_search");
+      expect(init?.method).toBe("POST");
+      return Response.json(batchResponse());
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await new TypesenseBrowserProvider().loadPostingsWithCounts(params);
+
+    expect(result).toMatchObject({ activeCount: 7, yearCount: 11 });
+    expect(result.postings.map((posting) => posting.id)).toEqual([
+      freshPosting.document.id,
+      freshRole.document.id,
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const batchCall = fetchMock.mock.calls[1];
+    const body = JSON.parse(String(batchCall[1]?.body)) as {
+      searches: Array<Record<string, unknown>>;
+    };
+    expect(body.searches).toHaveLength(3);
+    expect(body.searches[0]).toMatchObject({ per_page: 2, page: 1 });
+    expect(body.searches[1]).toMatchObject({ per_page: 0 });
+    expect(body.searches[2]).toMatchObject({ per_page: 0 });
+  });
+
+  it("rejects a browser batch that contains a per-search error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        if (String(input) === "/api/typesense-key") {
+          return Response.json({
+            apiKey: "browser-key",
+            host: "typesense.example",
+            port: 443,
+            protocol: "https",
+            expiresAt: Date.now() + 60_000,
+          });
+        }
+        const response = batchResponse();
+        response.results[1] = { found: 0, error: "bad filter" } as never;
+        return Response.json(response);
+      }),
+    );
+
+    await expect(
+      new TypesenseBrowserProvider().loadPostingsWithCounts(params),
+    ).rejects.toThrow("Typesense multi_search response was malformed");
   });
 });
 

@@ -23,6 +23,7 @@ import {
   resolveTypesenseCompany,
   type TypesenseCompanyDocument,
 } from "./typesense-company";
+import { parseTypesenseMultiSearchResults } from "./typesense-multi-search";
 
 // ── Typesense document shapes ──────────────────────────────────────
 
@@ -622,14 +623,15 @@ export class TypesenseSearchProvider implements SearchProvider {
       const q = keywords.length ? keywords.join(" ") : "*";
       const client = getSearchClient();
 
-      // Three queries in parallel: postings + active count + year count
-      const [postingsResult, activeResult, yearResult] = await Promise.all([
-        withTypesenseRetry(
-          () =>
-            client
-              .collections<JobPostingDoc>("job_posting")
-              .documents()
-              .search({
+      // Result order is contractual: postings, active count, one-year flow
+      // count. One retry replays the whole HTTP batch so counts cannot come
+      // from a different attempt than the visible postings.
+      const batch = await withTypesenseRetry(
+        () =>
+          client.multiSearch.perform({
+            searches: [
+              {
+                collection: "job_posting",
                 q,
                 query_by: "title",
                 filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
@@ -638,39 +640,32 @@ export class TypesenseSearchProvider implements SearchProvider {
                   : "first_seen_at:desc",
                 per_page: limit,
                 page: Math.floor(offset / limit) + 1,
-              }),
-          { label: "loadPostingsWithCounts.postings" },
-        ),
-        withTypesenseRetry(
-          () =>
-            client
-              .collections<JobPostingDoc>("job_posting")
-              .documents()
-              .search({
+              },
+              {
+                collection: "job_posting",
                 q,
                 query_by: "title",
                 filter_by: `${POSTING_BASE_FILTER} && ${baseFilter}`,
                 per_page: 0,
-              }),
-          { label: "loadPostingsWithCounts.activeCount" },
-        ),
-        withTypesenseRetry(
-          () =>
-            client
-              .collections<JobPostingDoc>("job_posting")
-              .documents()
-              .search({
+              },
+              {
+                collection: "job_posting",
                 q,
                 query_by: "title",
                 filter_by: `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
                 per_page: 0,
-              }),
-          { label: "loadPostingsWithCounts.yearCount" },
-        ),
-      ]);
+              },
+            ],
+          }),
+        { label: "loadPostingsWithCounts.batch" },
+      );
+      const [postingsResult, activeResult, yearResult] =
+        parseTypesenseMultiSearchResults<JobPostingDoc>(batch, 3, {
+          expectHitsAt: [0],
+        });
 
       const postings = (postingsResult.hits ?? []).map(
-        (hit: JobPostingHit) => mapHitToPosting(hit, locationIds),
+        (hit) => mapHitToPosting(hit as JobPostingHit, locationIds),
       );
       const activeCount = activeResult.found;
       const yearCount = yearResult.found;
