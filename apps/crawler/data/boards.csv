@@ -5454,6 +5454,7 @@ securitas-ag,securitas-ag-careers,https://securijob.securitas.ch,dom,"{""render"
 securitas-ag,securitas-ag-careers-groupservices,https://jobs.groupservices.securitas.ch,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""-j\\d+\\.html""}",json-ld,
 securitas-ag,securitas-ag-careers-tech,https://jobs.securitas.ch,dom,"{""render"": false, ""url_filter"": ""-j\\d+\\.html""}",json-ld,
 securitize,securitize-greenhouse,https://job-boards.greenhouse.io/securitize,greenhouse,"{""token"": ""securitize""}",skip,
+security-bank,security-bank-careers,https://sbchero.darwinbox.com/ms/candidate/careers,darwinbox,,skip,
 securityscorecard,securityscorecard-greenhouse,https://job-boards.greenhouse.io/securityscorecard,greenhouse,"{""token"": ""securityscorecard""}",skip,
 seed,seed-greenhouse,https://job-boards.greenhouse.io/seed,greenhouse,"{""token"": ""seed""}",skip,
 seeing-systems,seeing-systems-yc,https://www.ycombinator.com/companies/seeing-systems/jobs,dom,"{""render"": false, ""url_filter"": ""/companies/seeing-systems/jobs/[^/?]+""}",json-ld,
