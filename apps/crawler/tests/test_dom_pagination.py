@@ -20,6 +20,7 @@ from src.core.monitors.dom import (
     _extract_rich_rows_static,
     _extract_script_json_links,
     _fetch_via_page,
+    _filter_inactive_detail_urls,
     _filter_jsonld_job_urls,
     _filter_pdf_text_urls,
     _filter_unexpired_pdf_urls,
@@ -30,6 +31,7 @@ from src.core.monitors.dom import (
     _paginate_urls,
     _prospective_probe_config,
     _vagas_probe_config,
+    _validated_inactive_detail_states,
     _validated_oracle_adf_job_ids,
     _validated_pdf_text_config,
     _validated_response_fingerprint_config,
@@ -4032,6 +4034,88 @@ class TestDomDiscoverInitialFetch:
             )
 
         assert result == set()
+
+    async def test_inactive_detail_state_returns_verified_empty_result(self):
+        board_url = "https://company.example/careers"
+        paused_url = "https://jobs.example/role/42"
+        paused_text = "This position is no longer accepting applications"
+        pages = {
+            board_url: f'<a class="vacancy" href="{paused_url}">Role</a>',
+            paused_url: f'<div class="job-status">{paused_text}</div>',
+        }
+
+        def handler(request):
+            return httpx.Response(200, text=pages[str(request.url)], request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {
+                        "link_selector": "a.vacancy",
+                        "inactive_detail_states": [
+                            {"selector": ".job-status", "exact_text": paused_text}
+                        ],
+                    },
+                },
+                client,
+            )
+
+        assert result.urls == set()
+        assert result.verified_empty_reason == (
+            "all discovered detail pages matched an explicit inactive state"
+        )
+
+    async def test_inactive_detail_state_keeps_active_role(self):
+        urls = {"https://jobs.example/role/42"}
+        states = _validated_inactive_detail_states(
+            [{"selector": ".job-status", "exact_text": "Applications closed"}]
+        )
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                text="<main><h1>Active role</h1></main>",
+                request=request,
+            )
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            active, inactive = await _filter_inactive_detail_urls(urls, states, client)
+
+        assert active == urls
+        assert inactive == set()
+
+    async def test_inactive_detail_state_fails_closed_on_marker_text_drift(self):
+        urls = {"https://jobs.example/role/42"}
+        states = _validated_inactive_detail_states(
+            [{"selector": ".job-status", "exact_text": "Applications closed"}]
+        )
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                text='<div class="job-status">Temporarily unavailable</div>',
+                request=request,
+            )
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="unexpected text"):
+                await _filter_inactive_detail_urls(urls, states, client)
+
+    @pytest.mark.parametrize(
+        "states",
+        [
+            [],
+            "closed",
+            [{}],
+            [{"selector": "a[", "exact_text": "Closed"}],
+            [{"selector": ".status", "exact_text": ""}],
+            [{"selector": ".status", "exact_text": "Closed", "extra": True}],
+        ],
+    )
+    def test_inactive_detail_state_validation_rejects_unsafe_shapes(self, states):
+        with pytest.raises(ValueError, match="inactive_detail_states"):
+            _validated_inactive_detail_states(states)
 
     async def test_detail_selector_fails_closed_on_detail_fetch_error(self, monkeypatch):
         board_url = "https://www.example.com/vacancies"

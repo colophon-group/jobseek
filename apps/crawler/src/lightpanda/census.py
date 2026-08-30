@@ -19,7 +19,10 @@ from pathlib import Path
 from typing import Any
 
 from src.core.monitors import all_monitor_types, monitor_needs_browser
-from src.core.monitors.dom import _validated_rich_rows
+from src.core.monitors.dom import (
+    _validated_inactive_detail_states,
+    _validated_rich_rows,
+)
 from src.core.scrapers import (
     _RENDER_AWARE_SCRAPERS,
     all_scraper_types,
@@ -130,6 +133,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "fingerprint_response",
             "headless",
             "include_board_url",
+            "inactive_detail_states",
             "job_filter",
             "job_link_pattern",
             "link_selector",
@@ -640,6 +644,11 @@ def _validate_and_abstract_config(
         except ValueError:
             raise CensusError("monitor.dom.rich_rows is invalid") from None
         selector_config = {key: value for key, value in config.items() if key != "rich_rows"}
+    if surface == "monitor" and crawler_type == "dom" and "inactive_detail_states" in config:
+        try:
+            _validated_inactive_detail_states(config["inactive_detail_states"])
+        except ValueError:
+            raise CensusError("monitor.dom.inactive_detail_states is invalid") from None
     _validate_selector_fields(selector_config)
     for key in _BOOL_BROWSER_KEYS & set(config):
         if not isinstance(config[key], bool):

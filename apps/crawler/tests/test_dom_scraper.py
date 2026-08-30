@@ -1026,6 +1026,34 @@ class TestDomScraper:
             "<ul><li>Advise customers.</li><li>Prepare quotations.</li></ul>"
         )
 
+    def test_liepin_probe_uses_document_metadata_for_paused_job_shell(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = (
+            "<html><head>"
+            "<title>【上海 Intern (Engineering Consulting) / 工程咨询实习生招聘】-"
+            "Drees &amp; Sommer Shanghai上海招聘信息-猎聘</title>"
+            '<meta name="description" content="Drees &amp; Sommer Shanghai上海招聘'
+            '工程咨询实习生岗位，薪资150-180元/天，岗位要求本科学历及实习相关经验。">'
+            '<script>var $CONFIG = {"jobId": 77394783, "jobKind": "6"};</script>'
+            "</head><body>"
+            '<div class="right-des">该职位已暂停招聘 '
+            "投递了该职位的人还查看了以下职位，快去看看吧</div>"
+            "</body></html>"
+        )
+
+        config = can_handle([html])
+        assert config is not None
+        assert config["scope"] == "body"
+        assert config["include_document_title"] is True
+        assert config["include_document_description"] is True
+
+        result = parse_html(html, config)
+        assert result.title == "Intern (Engineering Consulting) / 工程咨询实习生"
+        assert result.locations == ["上海"]
+        assert result.description is not None
+        assert "本科学历及实习相关经验" in result.description
+
     def test_rexx_portal7_keeps_full_body_when_location_metadata_is_absent(self):
         from src.core.scrapers.dom import can_handle, parse_html
 

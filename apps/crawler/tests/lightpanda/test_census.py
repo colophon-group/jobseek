@@ -280,6 +280,36 @@ def test_dom_rich_rows_uses_authoritative_fail_closed_validation(
 
 
 @pytest.mark.parametrize(
+    "states",
+    [
+        [],
+        [{"selector": ".status"}],
+        [{"selector": "a[", "exact_text": "Closed"}],
+        [{"selector": ".status", "exact_text": "", "unexpected": True}],
+    ],
+)
+def test_dom_inactive_detail_states_use_runtime_validation(tmp_path: Path, states: object) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "invalid-inactive-state",
+                monitor_type="dom",
+                monitor_config={
+                    "link_selector": "a.job",
+                    "inactive_detail_states": states,
+                },
+            )
+        ],
+    )
+
+    with pytest.raises(CensusError) as exc_info:
+        build_manifest(boards)
+
+    assert str(exc_info.value) == "monitor.dom.inactive_detail_states is invalid"
+
+
+@pytest.mark.parametrize(
     "rich_rows",
     [
         {"row_selector": ".job", "location_selectors": [], "metadata_selectors": {}},
@@ -340,9 +370,9 @@ def test_committed_manifest_is_current_and_contains_kpmg_fallback() -> None:
     manifest = check_manifest()
 
     assert manifest["input"]["network_access"] is False
-    assert manifest["summary"]["browser_board_count"] == 465
-    assert manifest["summary"]["browser_required_step_count"] == 604
-    assert manifest["summary"]["configured_profile_occurrence_count"] == 606
+    assert manifest["summary"]["browser_board_count"] == 466
+    assert manifest["summary"]["browser_required_step_count"] == 605
+    assert manifest["summary"]["configured_profile_occurrence_count"] == 607
     assert any(
         record["profile_kind"] == "configured"
         and record["surface"] == "scraper"
