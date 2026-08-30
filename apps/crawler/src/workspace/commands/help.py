@@ -1634,6 +1634,15 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    Matching links are trusted as jobs, so this is useful when
                    stable job-card markup exists but URLs lack job keywords.
                    Example: "li.job-card a.details-link"
+    script_json_links
+                   Extract detail URLs from one JSON array assigned to an
+                   inline JavaScript variable when the page creates links only
+                   in client code:
+                   {"variable": "jobAds", "url_field": "slug",
+                    "url_template": "https://example.com/jobs/{value}/"}
+                   The assignment and every item are validated fail-closed;
+                   generated URLs must be unique and same-origin. Static
+                   single-page discovery only.
     empty_selector Optional CSS selector for a stable, explicit empty-state
                    element. When configured, a zero-link page succeeds only
                    if this selector matches; otherwise the cycle fails closed.
@@ -3291,6 +3300,11 @@ dom — Step-based Extraction Engine
 
     steps          Extraction step list (see: ws help steps)
     render         false (default) = static HTTP, true = Playwright
+    request_headers
+                   Static-only allowlisted public request headers (Accept,
+                   Accept-Language, Cache-Control, Pragma, or User-Agent).
+                   Use for origins that require explicit content negotiation
+                   or crawler identification. Credentials are rejected.
     wait           Wait strategy (Playwright only): load | domcontentloaded
                    | networkidle (default) | commit
     wait_fallback  Fallback load state checked on the current document after

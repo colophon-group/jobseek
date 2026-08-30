@@ -10,6 +10,8 @@ Config uses ``steps`` (same format as ``walk_steps``), an optional ``scope``
 CSS selector that limits extraction to one content container, and optional
 ``include_document_title`` / ``include_document_description`` flags when a
 scoped layout keeps useful metadata in ``<head>``.
+Static requests may set allowlisted public ``request_headers`` for origins
+that require explicit content negotiation or crawler identification.
 Browser lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``,
 ``actions``) are only used when rendering.
 
@@ -46,6 +48,7 @@ from src.shared.extract import flatten, walk_steps
 from src.shared.fetch_url import transformed_fetch_url
 from src.shared.http import is_avature_job_detail_url
 from src.shared.http_retry import fetch_response_with_status_retries
+from src.shared.public_request_headers import validated_public_request_headers
 
 log = structlog.get_logger()
 
@@ -1139,6 +1142,9 @@ async def scrape(
         return JobContent()
 
     render = config.get("render", False)
+    request_headers = validated_public_request_headers(
+        config.get("request_headers"), owner="DOM scraper"
+    )
     fetch_url = transformed_fetch_url(
         url,
         config.get("fetch_url_transform"),
@@ -1159,6 +1165,9 @@ async def scrape(
             detail="actions require render=true; overriding render to true",
         )
         render = True
+
+    if render and request_headers:
+        raise ValueError("DOM scraper request_headers are supported only when render=false")
 
     if render and same_origin_redirects:
         raise ValueError("DOM scraper same_origin_redirects requires render=false")
@@ -1217,6 +1226,7 @@ async def scrape(
             http,
             fetch_url,
             retry_limits=retry_limits,
+            headers=request_headers or None,
             same_origin_redirects=same_origin_redirects,
             log_event="dom.fetch.retry_status",
         )
