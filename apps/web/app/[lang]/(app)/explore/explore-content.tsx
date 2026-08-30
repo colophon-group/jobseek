@@ -31,6 +31,8 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const fetchIdRef = useRef(0);
   const loadKeyRef = useRef<string | null>(null);
+  const viewerKeyRef = useRef<string | null>(null);
+  const initializationCompleteRef = useRef(false);
   const { isLoggedIn, isPending, preferences } = useSession();
   const rates = useSalaryRates();
   const browserSearchParams = useBrowserSearchParams();
@@ -71,6 +73,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
       // unresolved. The eventual authenticated/anonymous key will start a new
       // request once bootstrap settles.
       fetchIdRef.current += 1;
+      initializationCompleteRef.current = false;
       setView(null);
       return;
     }
@@ -78,16 +81,28 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     const anonymousJobLanguages = isLoggedIn
       ? null
       : readAnonJobLanguagesPreference();
-    const loadKey = [
+    const viewerKey = [
       locale,
-      searchParams.toString(),
       isLoggedIn ? "authenticated" : "anonymous",
       preferenceCurrency ?? "",
       preferences?.jobLanguages?.join(",") ??
         anonymousJobLanguages?.join(",") ??
         "",
     ].join("|");
+    const loadKey = `${viewerKey}|${searchParams.toString()}`;
     if (loadKeyRef.current === loadKey) return;
+    const viewerChanged =
+      viewerKeyRef.current !== null && viewerKeyRef.current !== viewerKey;
+
+    // Once SearchPage is mounted it exclusively owns URL changes and their
+    // result reads. The outer subscription exists only so navigation can
+    // replace an in-flight initialization safely; re-running it afterward
+    // would duplicate SearchPage's request and discard its local state.
+    if (initializationCompleteRef.current && !viewerChanged) {
+      loadKeyRef.current = loadKey;
+      return;
+    }
+    viewerKeyRef.current = viewerKey;
     loadKeyRef.current = loadKey;
     // Allocate the stale-result guard only after same-key dedupe. Anonymous
     // bootstrap changes isPending without changing this key; incrementing
@@ -100,6 +115,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
       hasSearchFilterParams(searchParams) ||
       searchParams.has("lang");
     if (!needsBrowserLoad) {
+      initializationCompleteRef.current = true;
       setView({
         data: initialData,
         unavailable: false,
@@ -111,6 +127,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     // Unmount SearchPage before the browser load: its state is initialized
     // from props, and a filtered URL must never flash or retain the broader
     // queryless shell while its scoped request is pending.
+    initializationCompleteRef.current = false;
     setView(null);
     void loadExploreBrowserData({
       initialData,
@@ -124,6 +141,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     })
       .then((result) => {
         if (fetchIdRef.current !== fetchId) return;
+        initializationCompleteRef.current = true;
         setView(result);
       })
       .catch((err) => {

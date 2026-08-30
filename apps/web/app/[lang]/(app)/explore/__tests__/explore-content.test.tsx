@@ -378,6 +378,25 @@ describe("ExploreContent browser initialization", () => {
     );
   });
 
+  it("leaves URL changes to SearchPage after browser initialization commits", async () => {
+    setBrowserSearch("wm=remote");
+    render(
+      <ExploreContent locale="en" initialData={makeInitialData()} />,
+    );
+    await waitFor(() => expect(mocks.loadBrowserData).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(document.querySelector('[data-testid="search-page"]')).not.toBeNull(),
+    );
+
+    act(() => {
+      window.history.replaceState(null, "", "/en/explore?loc=zurich");
+    });
+    await flushEffects();
+
+    expect(mocks.loadBrowserData).toHaveBeenCalledOnce();
+    expect(document.querySelector('[data-testid="search-page"]')).not.toBeNull();
+  });
+
   it("keeps a rejected unexpected browser load on the skeleton", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     setBrowserSearch("q=python");
