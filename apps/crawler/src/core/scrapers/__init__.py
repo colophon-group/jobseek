@@ -386,6 +386,7 @@ from src.core.scrapers import (  # noqa: E402
     eightfold,  # noqa: F401
     embedded,  # noqa: F401
     headhunter,  # noqa: F401
+    infor,  # noqa: F401
     jazzhr,  # noqa: F401
     jobstreet,  # noqa: F401
     johdi,  # noqa: F401

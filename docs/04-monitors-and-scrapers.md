@@ -73,6 +73,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
 | `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination |
 | `infoniqa` | URL-only | — | Infoniqa jobexchange CSRF/session POST pagination with employer and total validation |
+| `infor` | Rich + enrichment | infor | Infor CandidateSelfService session-bound Landmark listings and detail APIs |
 | `intervieweb` | URL-only | json-ld | Intervieweb/In-recruiting HTML plus CSRF-protected POST pagination |
 | `gupy` | URL-only | json-ld | Gupy single-page NextData inventory |
 | `cornerstone` | Rich | skip | Cornerstone bootstrap + regional paginated search API |
@@ -89,6 +90,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `deel` | Rich | skip | Deel ATS |
 | `dvinci` | Rich | skip | d.vinci ATS |
 | `earcu` | Rich | skip | eArcu live-vacancy XML feeds on branded career sites |
+| `papa_johns` | URL-only | json-ld | Papa Johns branded listings with count-checked pagination |
 | `gem` | Rich | skip | Gem ATS |
 | `inploi` | Rich + enrichment | json-ld | Inploi public candidate-experience search API plus JSON-LD description enrichment |
 | `greenhouse` | Rich | skip | Greenhouse ATS |
@@ -359,6 +361,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `nextdata` | Static or Playwright | Extracts from Next.js `__NEXT_DATA__` props |
 | `notion` | Static | Loads Notion blocks through Notion's internal API |
 | `onlyfy` | Static | Fetches Onlyfy/Prescreen server-rendered candidate pages |
+| `infor` | Static | Fetches session-bound Infor CandidateSelfService detail responses |
 | `oracle_hcm` | Static | Fetches Oracle HCM detail REST responses |
 | `paycom` | Static | Bootstraps a Paycom portal and fetches its regional detail API |
 | `paycor` | Static | Parses Paycor/Newton server-rendered detail fields |

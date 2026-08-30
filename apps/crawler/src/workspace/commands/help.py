@@ -18,6 +18,7 @@ Available topics:
   fields            Job data fields — types, formats, importance
   steps             DOM scraper step key reference
   actions           Browser action pipeline
+  browser-resources Browser bandwidth policy + anti-bot A/B runbook
   feedback          Feedback command — verdicts, per-field quality, examples
   artifacts         Debug artifacts saved by ws commands
   troubleshooting   Troubleshooting tips + case study reference
@@ -104,6 +105,7 @@ Monitor Types (cheapest first):
   herp              10      Job URLs          Auto-configured
   hrmos             10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
+  infor             10      Full/partial      Auto-enriched
   intervieweb       10      Job URLs          Auto-configured
   jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
@@ -138,6 +140,7 @@ Monitor Types (cheapest first):
   recruiter_co_kr   15      Full job data     No (skipped)
   umantis           15      Full/partial      Description enrichment
   nextdata          20      URLs or full      If URL-only
+  papa_johns        45      Job URLs          Auto-configured JSON-LD
   talemetry         45      URL set           Yes
   talentbrew        45      URL set           Yes
   sitemap           50      URL set           Yes
@@ -1407,6 +1410,20 @@ inline — Single-Page Extraction (rich)
       ]
     }
 
+    Semantic accordions can use each summary as the repeated title and stop
+    the description at the next summary. Do not use the structural details
+    wrapper as item_boundary_tag because flattened extraction keeps
+    contentful elements, not empty container markers:
+    {
+      "require_zero_proof": true,
+      "steps": [
+        {"tag": "summary", "field": "title"},
+        {"tag": "p", "field": "description", "html": true,
+         "stop_tag": "summary"}
+      ],
+      "defaults": {"locations": ["Japan"]}
+    }
+
     render       true = Playwright, false = static HTTP (default: false)
     detail_click_selector
                  Playwright selector for click-only job-card controls. The
@@ -1478,6 +1495,9 @@ inline — Single-Page Extraction (rich)
                  Optional HTML tag that starts each posting (for example h2).
                  Each repeated step run is restricted to one such block, so an
                  optional field cannot consume content from the next posting.
+                 Use a contentful repeated tag, not a structural wrapper such
+                 as details; details/summary accordions should instead stop
+                 each description at the next summary as shown above.
     synthetic_identity_field
                  Optional extracted field containing a provider-stable identity
                  for ordinary static inline rows. The identity, rather than the
@@ -1625,6 +1645,17 @@ dom — Link or Static Listing-Row Extraction (fallback)
     channel        Browser channel, typically "chrome" with persistent_context.
     stealth        Use Chromium's less-detectable new headless mode.
     warmup_url     Visit this URL in the same browser context before the board.
+    resource_policy
+                   Browser bandwidth policy: none (default), auto, lean, or
+                   aggressive. Auto requires a recon finding. See:
+                   ws help browser-resources
+    bot_protection Recon result used by resource_policy:auto. Set false only
+                   after a clean same-egress A/B; true/omitted stays native.
+    block_resource_types
+                   Additional Playwright resource types for lean/aggressive.
+                   Ignored by none; incompatible with auto.
+    block_hosts    Additional hostname suffixes for lean/aggressive. Ignored
+                   by none; incompatible with auto.
     actions        Browser action pipeline (see: ws help actions)
     include_board_url
                    Include the board URL itself as a discovered job after a
@@ -1634,6 +1665,26 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    Matching links are trusted as jobs, so this is useful when
                    stable job-card markup exists but URLs lack job keywords.
                    Example: "li.job-card a.details-link"
+    script_json_links
+                   Extract detail URLs from one JSON array assigned to an
+                   inline JavaScript variable when the page creates links only
+                   in client code:
+                   {"variable": "jobAds", "url_field": "slug",
+                    "url_template": "https://example.com/jobs/{value}/"}
+                   The assignment and every item are validated fail-closed;
+                   generated URLs must be unique and same-origin. Static
+                   single-page discovery only.
+    oracle_adf_job_ids
+                   Narrow preset for Oracle ADF recruitment lists whose rows
+                   expose form/PPR View actions instead of hrefs. The rendered
+                   list is fully expanded, its ordered title/location snapshot
+                   is matched to stable numeric ?jobId= detail pages, and any
+                   pagination, ordering, or detail drift fails closed. Config:
+                   {"max_items": 100, "max_scan": 1000}. Set the bounds to
+                   cover expected inventory with ample headroom.
+                   Requires render=true. Single-page only; incompatible with
+                   link_selector, rich_rows, empty-state configuration,
+                   pagination, and include_board_url.
     empty_selector Optional CSS selector for a stable, explicit empty-state
                    element. When configured, a zero-link page succeeds only
                    if this selector matches; otherwise the cycle fails closed.
@@ -2353,11 +2404,17 @@ earcu — eArcu live-vacancy XML feed
 
   Config:
     {"feed_url": "https://careers.example.com/jobs/allvacancies/"}
+    {"feed_url": "https://careers.example.com/vacancies/allvacancies/",
+     "proxy": true}
 
     feed_url  Public eArcu allvacancies XML URL. Auto-filled by ws probe
               from listing URLs such as /jobs/vacancy/find/results/.
+    proxy     Route the feed through the configured proxy provider when the
+              eArcu CNAME applies its browser WAF rule to /allvacancies/ too.
 
-  Detection:  ws probe shows "eArcu live-vacancy feed — N jobs at URL"
+  Detection:  ws probe shows "eArcu live-vacancy feed — N jobs at URL".
+              A provider-specific listing path whose feed returns 401/403 is
+              retained as a proxy-required eArcu detection.
   Zero jobs?  A valid empty <positions> feed means the board currently has
               no advertised vacancies."""
 
@@ -3302,6 +3359,11 @@ dom — Step-based Extraction Engine
                    Use for small stable boards whose detail pages expose a
                    generic heading or omit per-role locations. Extracted
                    values always win; unmatched URLs receive no URL defaults.
+    request_headers
+                   Static-only allowlisted public request headers (Accept,
+                   Accept-Language, Cache-Control, Pragma, or User-Agent).
+                   Use for origins that require explicit content negotiation
+                   or crawler identification. Credentials are rejected.
     wait           Wait strategy (Playwright only): load | domcontentloaded
                    | networkidle (default) | commit
     wait_fallback  Fallback load state checked on the current document after
@@ -3327,6 +3389,17 @@ dom — Step-based Extraction Engine
     channel        Browser channel, typically "chrome" with persistent_context.
     stealth        Use Chromium's less-detectable new headless mode.
     warmup_url     Visit this URL in the same browser context before the job.
+    resource_policy
+                   Browser bandwidth policy: none (default), auto, lean, or
+                   aggressive. Auto requires a recon finding. See:
+                   ws help browser-resources
+    bot_protection Recon result used by resource_policy:auto. Set false only
+                   after a clean same-egress A/B; true/omitted stays native.
+    block_resource_types
+                   Additional Playwright resource types for lean/aggressive.
+                   Ignored by none; incompatible with auto.
+    block_hosts    Additional hostname suffixes for lean/aggressive. Ignored
+                   by none; incompatible with auto.
     actions        Browser action pipeline (see: ws help actions)
     scope          Optional CSS selector that limits extraction to the job body
     include_document_title
@@ -3544,6 +3617,71 @@ Extraction Steps — DOM scraper step format
     {"tag": "p", "match_regex": "^\\d+\\.", "field": "title", "regex": "^\\d+\\.\\s*(.+)"}
     {"tag": "time", "field": "date_posted", "date_input_format": "%d-%m-%Y"}
     {"tag": "span", "attr": "class=salary", "field": "salary", "regex": "\\\\$(\\\\d[\\\\d,]+)"}"""
+
+BROWSER_RESOURCES = """\
+Browser Resource Policy — bandwidth reduction without blind anti-bot regressions
+
+  Applies to: every Playwright monitor and scraper (direct or proxied egress)
+
+  resource_policy values:
+    none        Default. Full-fidelity browser networking. Installs no request
+                route, blocks no resources, preserves HTTP cache, and leaves
+                service workers enabled. It remains an absolute off switch if
+                stale additive lists are present. Use for anti-bot boards and
+                as the A/B control.
+    auto        Recon-driven opt-in. Resolves to lean only when recon persisted
+                bot_protection:false and the config has no proxy, persistent
+                context, stealth/headful mode, browser channel, warmup, cookies,
+                custom user agent, or HTTP/2 override. Otherwise resolves to none.
+    lean        Blocks font and media resource types. Scripts, documents,
+                stylesheets, images, XHR/fetch, analytics, and service workers
+                remain available.
+    aggressive  Blocks fonts, media, images, YouTube/video embeds, and common
+                analytics/ad/telemetry hosts. Use only after a successful
+                same-egress A/B canary proves extraction and acceptance parity.
+
+  Optional additive lists for fixed lean/aggressive policies:
+    "block_resource_types": ["image", "font", "media"]
+    "block_hosts": ["video-cdn.example.com", "*.tracker.example"]
+
+  Anti-bot A/B runbook:
+    1. First prove rendering is required; prefer static HTTP/API extraction when
+       it provides complete data. Then run the same rendered monitor or scraper
+       sample with resource_policy:none.
+       Record HTTP status/final URL, challenge text, discovered count, required
+       fields, and the page/flat/debug artifacts.
+    2. Repeat on the same egress with lean (or aggressive only for a reviewed,
+       text-only board). Do not compare runs from different IPs/providers.
+    3. Any new 401/403/429, captcha/challenge page, redirect, missing API call,
+       count drop, or required-field drop is a regression: keep none and record
+       the evidence in ws feedback notes.
+    4. If both modes are already blocked, the test is inconclusive; do not claim
+       the resource policy is safe. Restore working egress and rerun.
+    5. Persist resource_policy:auto plus bot_protection:false only after the
+       control succeeds and the blocking arm has parity. If challenge evidence
+       is present, use bot_protection:true with none (or simply keep none).
+
+  Important behavior:
+    - Blocking is opt-in. An omitted resource_policy behaves exactly like none;
+      both ignore additive lists and install no route. Use lean/aggressive only
+      after the board-specific canary above.
+    - Auto cannot be combined with block_resource_types/block_hosts. Use a
+      fixed policy for reviewed custom blocking so auto cannot bypass its
+      anti-bot guard.
+    - Treat proxy, persistent-context, stealth, headful, Chrome-channel,
+      cookie-seeded, custom-user-agent, and warmed flows as anti-bot-sensitive.
+    - Request routing disables Playwright's HTTP cache. This can offset savings
+      on warmup flows that revisit the same origin.
+    - Service workers are never disabled by this policy; changing them can alter
+      application behavior and browser fingerprints.
+    - Prefer static HTTP/API extraction over any rendered policy when possible.
+
+  Examples:
+    {"render": true, "resource_policy": "none"}
+    {"render": true, "resource_policy": "auto", "bot_protection": false}
+    {"render": true, "resource_policy": "lean"}
+    {"render": true, "resource_policy": "aggressive"}
+"""
 
 ACTIONS = """\
 Browser Action Pipeline — pre-extraction actions for Playwright
@@ -3926,6 +4064,21 @@ unisante — Unisanté first-party careers monitor
   the exact server-visible empty inventory contract; the `#no-ads` marker that
   is normally hidden on non-empty pages is not zero evidence by itself."""
 
+MONITOR_PAPA_JOHNS = """\
+papa_johns — Papa Johns branded careers
+
+  Listing:  GET https://jobs.papajohns.com/jobs/
+  Returns:  Canonical job detail URLs
+  Scraper:  Auto-configured JSON-LD
+  Cost:     45
+  Proxy:    Required in production
+
+  The monitor validates the provider's explicit inventory count, follows
+  bounded page_jobs pagination, and fails closed if the count or page total
+  changes during collection. It accepts only the exact unfiltered listing URL.
+"""
+
+
 MONITOR_CARDS: dict[str, str] = {
     "accenture": MONITOR_ACCENTURE,
     "almacareer": MONITOR_ALMACAREER,
@@ -3972,6 +4125,7 @@ MONITOR_CARDS: dict[str, str] = {
     "jobstreet": MONITOR_JOBSTREET,
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,
+    "papa_johns": MONITOR_PAPA_JOHNS,
     "icims": MONITOR_ICIMS,
     "infoniqa": """\
 infoniqa — Infoniqa jobexchange form-pagination monitor
@@ -4058,6 +4212,23 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
                      Use only for a verified tenant whose TotalJobsCount counts
                      repeated database rows. Cross-page duplicates remain
                      governed by offset_overlap.""",
+    "infor": """\
+infor — Infor Global HR / Lawson CandidateSelfService monitor
+
+  Auto-detected for hosted Infor CandidateSelfService board URLs carrying
+  context.session.key.JobBoard and context.session.key.HROrganization.
+  Bootstraps an anonymous Landmark session, then reads the provider's native
+  JobPostingListWebServices operation; no browser is needed.
+
+  Rich monitor — returns title, location, and posting date.
+  Pair with the auto-configured infor scraper + enrich: ["description"] for
+  complete detail records.
+
+  Board metadata (auto-detected from URL):
+    origin           Validated *.cloud.infor.com origin
+    dataarea         Landmark data area (for example lmghr)
+    job_board        Infor external board identifier
+    hr_organization  Infor HR organization identifier""",
     "dom": MONITOR_DOM,
     "inline": MONITOR_INLINE,
     "unifr": """\
@@ -4446,6 +4617,17 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
 
   Best used with enrich: ["description"] — monitor provides title/location/date,
   scraper fills in description from the detail API.""",
+    "infor": """\
+infor — Infor Global HR / Lawson CandidateSelfService detail scraper
+
+  Bootstraps an anonymous CandidateSelfService session and fetches the native
+  Find_PostingDisplay_FormOperation response. No browser is needed.
+
+  Available fields: title, HTML description, location, posting date, and
+  provider requisition/category metadata.
+
+  Best used with enrich: ["description"] — the monitor provides summary fields
+  and stable JobReq/JobPost URLs; the scraper fills in the description.""",
     "skip": SCRAPER_SKIP,
     "linkedin": SCRAPER_LINKEDIN,
     "headhunter": SCRAPER_HEADHUNTER,
@@ -4565,6 +4747,7 @@ TOPIC_MAP: dict[str, str] = {
     "fields": FIELDS,
     "steps": STEPS,
     "actions": ACTIONS,
+    "browser-resources": BROWSER_RESOURCES,
     "artifacts": ARTIFACTS,
     "troubleshooting": TROUBLESHOOTING,
     "feedback": FEEDBACK,

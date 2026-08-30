@@ -263,6 +263,48 @@ class _FakeClient:
 
 
 @pytest.mark.asyncio
+async def test_discover_extracts_semantic_details_accordions():
+    html = """
+    <details class="accordion-job">
+      <summary>Tokyo: Shibuya Store</summary>
+      <p>Sell footwear and advise customers.</p>
+      <p>Retail experience is preferred.</p>
+    </details>
+    <details class="accordion-job">
+      <summary>Osaka: Shinsaibashi Store</summary>
+      <p>Support customers and maintain the sales floor.</p>
+      <p>Weekend availability is required.</p>
+    </details>
+    """
+    board = {
+        "board_url": "https://example.com/recruitment",
+        "metadata": {
+            "require_zero_proof": True,
+            "steps": [
+                {"tag": "summary", "field": "title"},
+                {
+                    "tag": "p",
+                    "field": "description",
+                    "html": True,
+                    "stop_tag": "summary",
+                },
+            ],
+            "defaults": {"locations": ["Japan"]},
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [(job.title, job.locations) for job in jobs] == [
+        ("Tokyo: Shibuya Store", ["Japan"]),
+        ("Osaka: Shinsaibashi Store", ["Japan"]),
+    ]
+    assert "Retail experience" in (jobs[0].description or "")
+    assert "Support customers" not in (jobs[0].description or "")
+    assert "Weekend availability" in (jobs[1].description or "")
+
+
+@pytest.mark.asyncio
 async def test_discover_render_runs_actions_before_reading_html(monkeypatch):
     events: list[str] = []
     page = object()

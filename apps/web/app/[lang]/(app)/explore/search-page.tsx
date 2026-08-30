@@ -18,7 +18,6 @@ import {
   runListTopCompanies,
   tryListTopCompaniesDirect,
 } from "@/lib/search/search-runner";
-import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/providers/SessionProvider";
 import { fetchExploreFilterPageData } from "@/lib/actions/explore-page-data";
 import type { ParsedSearchFilters } from "@/lib/actions/search-input";
@@ -237,8 +236,6 @@ export function SearchPage({
   // each consumer fired its own `getCurrencyRates()`, producing 3 server
   // actions per `/explore` view; see #3181.
   const currencyRates = useSalaryRates();
-
-  useClearTypesenseOnAuthChange(isLoggedIn);
 
   const [showPostingId, setShowPostingId, showPostingIdRef] = useLatestState<string | null>(
     shouldRestore ? cached.showPostingId : null,

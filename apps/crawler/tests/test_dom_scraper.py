@@ -206,6 +206,41 @@ class TestDomScraper:
             with pytest.raises(ValueError, match="defaults_by_url"):
                 await scrape("https://company.example/jobs/42", config, client)
 
+    async def test_request_headers_select_public_gateway_representation(self):
+        from src.core.scrapers.dom import scrape
+
+        requested: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(request)
+            return httpx.Response(200, text="<html><body><h1>Gateway role</h1></body></html>")
+
+        config = {
+            "request_headers": {"X-Return-Format": "html"},
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            headers={"Authorization": "Bearer secret"},
+        ) as client:
+            result = await scrape("https://gateway.example/jobs/42", config, client)
+
+        assert result.title == "Gateway role"
+        assert requested[0].headers["x-return-format"] == "html"
+        assert "authorization" not in requested[0].headers
+
+    async def test_request_headers_reject_actions_that_enable_rendering(self):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "actions": [{"action": "dismiss_overlays"}],
+            "request_headers": {"X-Return-Format": "html"},
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="only when render=false"):
+                await scrape("https://gateway.example/jobs/42", config, client)
+
     async def test_fetch_url_transform_reads_gateway_without_changing_extraction(self):
         from src.core.scrapers.dom import scrape
 
@@ -1465,6 +1500,42 @@ class TestDomScraper:
                 client,
             )
         assert result.title == "Static Title"
+
+    async def test_static_fetch_uses_allowlisted_public_request_headers(self):
+        from src.core.scrapers.dom import scrape
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.headers["user-agent"] == "jobseek-crawler (+https://jseek.co/)"
+            assert "authorization" not in request.headers
+            return httpx.Response(200, text="<html><body><h1>Public role</h1></body></html>")
+
+        config = {
+            "request_headers": {"User-Agent": "jobseek-crawler (+https://jseek.co/)"},
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            headers={"Authorization": "Bearer private"},
+        ) as client:
+            result = await scrape("https://example.com/job/1", config, client)
+
+        assert result.title == "Public role"
+
+    @pytest.mark.parametrize("render_config", [{"render": True}, {"actions": []}])
+    async def test_public_request_headers_are_static_only(self, render_config):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            **render_config,
+            "request_headers": {"User-Agent": "jobseek-crawler (+https://jseek.co/)"},
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        if "actions" in render_config:
+            config["actions"] = [{"action": "dismiss_overlays"}]
+
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="only when render=false"):
+                await scrape("https://example.com/job/1", config, client)
 
     async def test_static_avature_406_retries_and_recovers(self):
         """Avature uses bursty 406s as a throttle on otherwise-live pages."""
