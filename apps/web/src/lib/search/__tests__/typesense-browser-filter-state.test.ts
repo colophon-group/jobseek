@@ -102,7 +102,7 @@ describe("resolveCompanyFilterStateDirect", () => {
 
     const result = await resolveCompanyFilterStateDirect(
       new URLSearchParams(
-        "q=python,sql&loc=zurich&occ=software-engineer&sen=senior&tech=react&wm=remote&etype=full_time",
+        "loc=zurich&occ=software-engineer&sen=senior&tech=react&wm=remote&etype=full_time",
       ),
       "de",
     );
@@ -110,7 +110,7 @@ describe("resolveCompanyFilterStateDirect", () => {
     expect(result).toEqual({
       complete: true,
       parsed: {
-        keywords: ["python", "sql"],
+        keywords: [],
         locations: [
           {
             id: 10,
@@ -190,6 +190,19 @@ describe("resolveCompanyFilterStateDirect", () => {
     expect(result.complete).toBe(false);
     expect(result.parsed.keywords).toEqual([]);
     expect(result.parsed.unresolvedExplicitSlugs).toEqual({ loc: ["zurich"] });
+  });
+
+  it("refuses to reinterpret semantic free text as title keywords", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+
+    const result = await resolveCompanyFilterStateDirect(
+      new URLSearchParams("q=remote"),
+      "en",
+    );
+
+    expect(result.complete).toBe(false);
+    expect(mocks.getConfig).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("invalidates a rejected scoped key", async () => {

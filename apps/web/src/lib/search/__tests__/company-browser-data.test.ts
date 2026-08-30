@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   resolveFilters: vi.fn(),
   directPostings: vi.fn(),
   parseOffline: vi.fn(),
+  semanticFilters: vi.fn(),
 }));
 
 vi.mock("@/lib/search/typesense-browser-filter-state", () => ({
@@ -14,6 +15,9 @@ vi.mock("@/lib/search/typesense-browser-filter-state", () => ({
 }));
 vi.mock("@/lib/search/search-runner", () => ({
   tryGetCompanyPostingsDirect: mocks.directPostings,
+}));
+vi.mock("@/lib/actions/company-filter-state", () => ({
+  resolveCompanySemanticFilters: mocks.semanticFilters,
 }));
 
 import { loadCompanyBrowserData } from "../company-browser-data";
@@ -79,6 +83,12 @@ beforeEach(() => {
   });
   mocks.resolveFilters.mockReset();
   mocks.resolveFilters.mockResolvedValue({ parsed: emptyParsed, complete: true });
+  mocks.semanticFilters.mockReset();
+  mocks.semanticFilters.mockImplementation(({ q }: { q: string }) => ({
+    parsed: { ...emptyParsed, keywords: q.split(",") },
+    userLat: 47.37,
+    userLng: 8.54,
+  }));
   mocks.directPostings.mockReset();
   mocks.directPostings.mockResolvedValue({
     postings: [],
@@ -108,7 +118,11 @@ describe("loadCompanyBrowserData", () => {
       workMode: ["remote"],
       employmentTypes: ["full_time"],
     };
-    mocks.resolveFilters.mockResolvedValue({ parsed, complete: true });
+    mocks.semanticFilters.mockResolvedValue({
+      parsed,
+      userLat: 47.37,
+      userLng: 8.54,
+    });
     mocks.directPostings.mockResolvedValue({
       postings: [{ id: "filtered" }],
       activeCount: 1,
@@ -157,14 +171,17 @@ describe("loadCompanyBrowserData", () => {
         displayCurrency: "CHF",
         jobLanguages: ["de", "en"],
         salaryCurrencyParam: "CHF",
+        userLat: 47.37,
+        userLng: 8.54,
       },
     });
   });
 
   it("passes anonymous status to preserve posting caps", async () => {
-    mocks.resolveFilters.mockResolvedValue({
+    mocks.semanticFilters.mockResolvedValue({
       parsed: { ...emptyParsed, keywords: ["python"] },
-      complete: true,
+      userLat: undefined,
+      userLng: undefined,
     });
 
     await loadCompanyBrowserData({
@@ -180,10 +197,66 @@ describe("loadCompanyBrowserData", () => {
     expect(mocks.directPostings.mock.calls[0]?.[1]).toBe(false);
   });
 
+  it("uses canonical semantic and geo-aware q results instead of title keywords", async () => {
+    mocks.semanticFilters.mockResolvedValue({
+      parsed: {
+        ...emptyParsed,
+        keywords: ["python"],
+        locations: [
+          {
+            id: 10,
+            slug: "zurich",
+            name: "Zurich",
+            type: "city",
+            parentName: "Switzerland",
+          },
+        ],
+        occupations: [
+          { id: 20, slug: "backend-developer", name: "Backend Developer" },
+        ],
+        workMode: ["remote"],
+      },
+      userLat: 47.37,
+      userLng: 8.54,
+    });
+
+    const result = await loadCompanyBrowserData({
+      initialData: makeData(),
+      searchParams: new URLSearchParams(
+        "q=remote%20Zurich%20backend%20developer%20python",
+      ),
+      locale: "en",
+      displayCurrency: "EUR",
+      jobLanguages: [],
+      rates: [],
+      isLoggedIn: false,
+    });
+
+    expect(mocks.semanticFilters).toHaveBeenCalledWith({
+      q: "remote Zurich backend developer python",
+      loc: undefined,
+      occ: undefined,
+      sen: undefined,
+      tech: undefined,
+      wm: undefined,
+      etype: undefined,
+      locale: "en",
+    });
+    expect(mocks.resolveFilters).not.toHaveBeenCalled();
+    expect(mocks.directPostings.mock.calls[0]?.[0]).toMatchObject({
+      keywords: ["python"],
+      locationIds: [10],
+      occupationIds: [20],
+      workMode: ["remote"],
+    });
+    expect(result.data).toMatchObject({ userLat: 47.37, userLng: 8.54 });
+  });
+
   it("fails closed when direct posting search is degraded", async () => {
-    mocks.resolveFilters.mockResolvedValue({
+    mocks.semanticFilters.mockResolvedValue({
       parsed: { ...emptyParsed, keywords: ["python"] },
-      complete: true,
+      userLat: undefined,
+      userLng: undefined,
     });
     mocks.directPostings.mockResolvedValue(null);
 

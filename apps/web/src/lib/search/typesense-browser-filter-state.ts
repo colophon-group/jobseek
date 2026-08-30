@@ -221,7 +221,9 @@ export function parseCompanyFilterStateOffline(
   return {
     parsed: input.parsed,
     complete:
-      input.valid && input.parsed.unresolvedExplicitSlugs === undefined,
+      input.valid &&
+      input.keywords.values.length === 0 &&
+      input.parsed.unresolvedExplicitSlugs === undefined,
   };
 }
 
@@ -238,7 +240,10 @@ export async function resolveCompanyFilterStateDirect(
   const locale = safeLocale(localeInput);
   const input = parseFilterInput(searchParams);
   const { byDimension, parsed: base } = input;
-  if (!input.valid) {
+  // Free text needs the canonical semantic parser (work mode, taxonomy and
+  // geo-aware location inference). This direct helper resolves only explicit
+  // URL dimensions and refuses to reinterpret `q` as title keywords.
+  if (!input.valid || input.keywords.values.length > 0) {
     return { parsed: base, complete: false };
   }
 

@@ -1,4 +1,5 @@
 import type { CompanyPageData } from "@/lib/actions/company-page-data";
+import { resolveCompanySemanticFilters } from "@/lib/actions/company-filter-state";
 import type { CurrencyRate } from "@/lib/actions/search";
 import { resolveJobLanguages } from "@/lib/job-languages";
 import { convertToEur } from "@/lib/salary";
@@ -63,6 +64,8 @@ function buildUnavailableData(params: {
   salaryCurrencyParam: string;
   salary: RangeResult;
   experience: RangeResult;
+  userLat?: number;
+  userLng?: number;
 }): CompanyPageData {
   return {
     ...params.initialData,
@@ -79,6 +82,8 @@ function buildUnavailableData(params: {
     salaryMaxDisplay: params.salary.max,
     experienceMin: params.experience.min,
     experienceMax: params.experience.max,
+    userLat: params.userLat ?? params.initialData.userLat,
+    userLng: params.userLng ?? params.initialData.userLng,
   };
 }
 
@@ -104,7 +109,10 @@ export async function loadCompanyBrowserData(params: {
   const experience = parseRange(params.searchParams.get("exp"));
   const languages = resolveJobLanguages(params.jobLanguages, params.locale);
   const offline = parseCompanyFilterStateOffline(params.searchParams);
-  const unavailable = (parsed = offline.parsed) => ({
+  const unavailable = (
+    parsed = offline.parsed,
+    geo?: { userLat?: number; userLng?: number },
+  ) => ({
     data: buildUnavailableData({
       initialData: params.initialData,
       parsed,
@@ -114,6 +122,8 @@ export async function loadCompanyBrowserData(params: {
       salaryCurrencyParam,
       salary,
       experience,
+      userLat: geo?.userLat,
+      userLng: geo?.userLng,
     }),
     unavailable: true,
     directAttempted: true,
@@ -121,25 +131,57 @@ export async function loadCompanyBrowserData(params: {
 
   if (!salary.valid || !experience.valid) return unavailable();
 
-  let filterState;
-  try {
-    filterState = await resolveCompanyFilterStateDirect(
-      params.searchParams,
-      params.locale,
-    );
-  } catch (error) {
-    logExternalError(
-      "error",
-      { service: "typesense", operation: "browser_company_filter_state" },
-      error,
-    );
-    return unavailable();
+  let parsed: ParsedSearchFilters;
+  let userLat = params.initialData.userLat;
+  let userLng = params.initialData.userLng;
+  const rawQuery = params.searchParams.get("q")?.trim();
+  if (rawQuery) {
+    try {
+      const semantic = await resolveCompanySemanticFilters({
+        q: rawQuery,
+        loc: params.searchParams.get("loc") ?? undefined,
+        occ: params.searchParams.get("occ") ?? undefined,
+        sen: params.searchParams.get("sen") ?? undefined,
+        tech: params.searchParams.get("tech") ?? undefined,
+        wm: params.searchParams.get("wm") ?? undefined,
+        etype: params.searchParams.get("etype") ?? undefined,
+        locale: params.locale,
+      });
+      if (!semantic) return unavailable();
+      parsed = semantic.parsed;
+      userLat = semantic.userLat;
+      userLng = semantic.userLng;
+    } catch (error) {
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "company_semantic_filters" },
+        error,
+      );
+      return unavailable();
+    }
+  } else {
+    let filterState;
+    try {
+      filterState = await resolveCompanyFilterStateDirect(
+        params.searchParams,
+        params.locale,
+      );
+    } catch (error) {
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "browser_company_filter_state" },
+        error,
+      );
+      return unavailable();
+    }
+    if (!filterState.complete) {
+      return unavailable(filterState.parsed);
+    }
+    parsed = filterState.parsed;
   }
-  if (!filterState.complete) {
-    return unavailable(filterState.parsed);
+  if (parsed.unresolvedExplicitSlugs) {
+    return unavailable(parsed, { userLat, userLng });
   }
-
-  const parsed = filterState.parsed;
   const hasResultFilter =
     parsed.keywords.length > 0 ||
     parsed.locations.length > 0 ||
@@ -165,6 +207,8 @@ export async function loadCompanyBrowserData(params: {
     salaryMaxDisplay: salary.max,
     experienceMin: experience.min,
     experienceMax: experience.max,
+    userLat,
+    userLng,
   };
   if (!hasResultFilter) {
     return { data: baseData, unavailable: false, directAttempted: false };
@@ -214,7 +258,7 @@ export async function loadCompanyBrowserData(params: {
     },
     params.isLoggedIn,
   );
-  if (!result) return unavailable(parsed);
+  if (!result) return unavailable(parsed, { userLat, userLng });
 
   return {
     data: {
