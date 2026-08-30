@@ -998,6 +998,7 @@ from src.core.monitors import (  # noqa: E402
     hrmos,  # noqa: F401
     icims,  # noqa: F401
     infoniqa,  # noqa: F401
+    infor,  # noqa: F401
     inline,  # noqa: F401
     inploi,  # noqa: F401
     intervieweb,  # noqa: F401

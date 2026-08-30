@@ -157,6 +157,17 @@ When multiple monitors are detected, this order is a heuristic for interpreting 
 4. **Important fields** — locations and job_location_type when available.
 5. **Speed/cost** — among equivalent configs, prefer cheaper and `render: false`.
 
+For any `render: true` selection, read `ws help browser-resources`. The default
+`resource_policy:none` blocks nothing and preserves native networking. Enable
+`auto`, `lean`, or `aggressive` only after a same-egress A/B against
+`resource_policy:none`; record status/final URL, challenge evidence, count, and
+artifacts in feedback notes. For a clean rendered board, persist
+`resource_policy:auto` with `bot_protection:false`. Treat proxy,
+persistent-context, stealth, headful, Chrome-channel, cookie-seeded,
+custom-user-agent, and warmed flows as anti-bot-sensitive; auto keeps these on
+native networking. If both modes are blocked, the result is inconclusive and
+`bot_protection:false` is forbidden.
+
 Run `ws help monitor <type>` for config details on any specific monitor type.
 If signals conflict, explain why one signal is stronger (for example, direct site
 references and coverage parity vs blind slug detections).
