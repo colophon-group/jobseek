@@ -3520,6 +3520,9 @@ la-senza,la-senza-greenhouse,https://job-boards.greenhouse.io/lasenza,greenhouse
 la-senza,la-senza-lever,https://jobs.lever.co/lasenza,lever,"{""token"": ""lasenza""}",skip,
 la28,la28-greenhouse,https://job-boards.greenhouse.io/la2028,greenhouse,"{""token"": ""la2028""}",skip,
 la28-web,la28-web-greenhouse,https://job-boards.greenhouse.io/la28careers,greenhouse,"{""token"": ""la28careers""}",skip,
+labcorp,labcorp-cannamm,https://jobs.jobvite.com/cannamm,jobvite,"{""tenant"": ""cannamm"", ""listing_url"": ""https://jobs.jobvite.com/cannamm""}",json-ld,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000}"
+labcorp,labcorp-careers,https://labcorp.wd1.myworkdayjobs.com/external,workday,,workday,
+labcorp,labcorp-dynacare,https://jobs.jobvite.com/dynacare/jobs,jobvite,"{""tenant"": ""dynacare"", ""listing_url"": ""https://jobs.jobvite.com/dynacare/jobs""}",json-ld,
 labelbox,labelbox-greenhouse,https://job-boards.greenhouse.io/labelbox,greenhouse,"{""token"": ""labelbox""}",skip,
 lakera,lakera-careers,https://jobs.ashbyhq.com/lakera.ai,ashby,"{""token"": ""lakera.ai""}",skip,
 lam-research,lam-research-eightfold,https://lamresearch.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
