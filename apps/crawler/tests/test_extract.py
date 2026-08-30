@@ -41,6 +41,23 @@ class TestFlatten:
         assert els[0]["tag"] == "p"
         assert els[0]["text"] == "Hello bold and link text"
 
+    def test_responsive_table_label_is_inherited_by_contentful_children(self):
+        html = (
+            '<table><tr><td data-title="Position"><p>Risk Manager</p></td>'
+            '<td data-title="Vacancies"><ul><li>Mumbai</li><li>Chennai</li></ul></td>'
+            '<td data-title="Job Description"><p>Manage operational risk.</p></td>'
+            "</tr></table>"
+        )
+
+        els = flatten(html)
+
+        assert [(el["tag"], el["attrs"].get("data-title"), el["text"]) for el in els] == [
+            ("p", "Position", "Risk Manager"),
+            ("li", "Vacancies", "Mumbai"),
+            ("li", "Vacancies", "Chennai"),
+            ("p", "Job Description", "Manage operational risk."),
+        ]
+
     def test_adjacent_character_spans_do_not_gain_spaces(self):
         html = (
             "<h1><span><span>S</span><span>a</span><span>l</span>"
