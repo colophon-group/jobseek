@@ -103,7 +103,12 @@ describe("watchlist page Typesense degradation (#7487)", () => {
     const result = await buildWatchlistPageData(params);
 
     expect(result.detail).toBe(detail);
-    expect(result).toMatchObject({ postings: [], total: 0, yearTotal: 0 });
+    expect(result).toMatchObject({
+      postings: [],
+      total: 0,
+      yearTotal: 0,
+      browserPostingFilters: null,
+    });
     expect(mocks.logExternalError).toHaveBeenCalledWith(
       "error",
       { service: "typesense", operation: "watchlist_page_data" },
@@ -129,5 +134,39 @@ describe("watchlist page Typesense degradation (#7487)", () => {
     });
     expect(mocks.resolveLocationSlugs).toHaveBeenCalledWith(["zurich"], "en");
     expect(mocks.getPublicWatchlistPostings).not.toHaveBeenCalled();
+  });
+});
+
+describe("watchlist browser refresh input (#8258)", () => {
+  it("serializes the exact resolved server query without its abort signal", async () => {
+    mocks.resolveLocationSlugs.mockResolvedValueOnce(new Map([
+      ["zurich", {
+        id: 4,
+        slug: "zurich",
+        name: "Zurich",
+        type: "city",
+        parentName: "Switzerland",
+      }],
+    ]));
+
+    const result = await buildWatchlistPageData(params);
+
+    expect(result.browserPostingFilters).toEqual({
+      companyIds: ["company-1"],
+      anyCompany: undefined,
+      keywords: undefined,
+      locationIds: [4],
+      occupationIds: [],
+      seniorityIds: [],
+      technologyIds: [],
+      workMode: undefined,
+      employmentType: undefined,
+      salaryMin: undefined,
+      salaryMax: undefined,
+      experienceMin: undefined,
+      experienceMax: undefined,
+      languages: ["en"],
+    });
+    expect(result.browserPostingFilters).not.toHaveProperty("abortSignal");
   });
 });

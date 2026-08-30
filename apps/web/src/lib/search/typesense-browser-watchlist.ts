@@ -3,7 +3,11 @@ import {
   invalidateTypesenseBrowserConfigIfUnauthorized,
   type TypesenseBrowserConfig,
 } from "./typesense-browser-key";
-import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
+import {
+  buildFilterString,
+  POSTING_BASE_FILTER,
+  POSTING_FLOW_FILTER,
+} from "./typesense-filters";
 import { COMPANY_BATCH_SIZE } from "./constants";
 import { isTypesenseQueryStringSafe } from "./typesense-query-size";
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
@@ -19,6 +23,7 @@ interface JobPostingDoc {
   company_name?: string;
   company_slug?: string;
   company_icon?: string;
+  location_names?: string[];
 }
 
 interface SearchHit<T> {
@@ -56,6 +61,7 @@ function mapHit(doc: JobPostingDoc): WatchlistPostingEntry {
   return {
     id: doc.id,
     title: normalizePostingTitle(doc.title),
+    locationNames: (doc.location_names ?? []).filter(Boolean),
     sourceUrl: doc.source_url ?? "",
     firstSeenAt: new Date((doc.first_seen_at ?? 0) * 1000).toISOString(),
     isActive: doc.is_active ?? true,
@@ -93,9 +99,9 @@ export interface WatchlistPostingsParams {
  * Browser-side watchlist postings fetch. Mirrors the server-side single-query
  * path when the request fits Typesense's GET query-string limit.
  *
- * For larger requests, throws so the runner falls back to the server action
- * (which has a batched/merge implementation we don't need to duplicate
- * browser-side).
+ * For larger requests, throws. Interactive pagination may use its existing
+ * server fallback; anonymous shell refreshes instead keep their rendered SSR
+ * snapshot so a degraded mount never consumes Fluid CPU.
  */
 export async function getWatchlistPostingsBrowser(
   params: WatchlistPostingsParams,
@@ -150,4 +156,56 @@ export async function getWatchlistPostingsBrowser(
     postings: (result.hits ?? []).map((h) => mapHit(h.document)),
     total,
   };
+}
+
+/** Browser-side counterpart to the server's flow count (active state excluded). */
+export async function getWatchlistPostingYearCountBrowser(
+  params: Omit<WatchlistPostingsParams, "offset" | "limit">,
+): Promise<number> {
+  if (!params.anyCompany && params.companyIds.length === 0) return 0;
+  if (params.companyIds.length > COMPANY_BATCH_SIZE) {
+    throw new Error("watchlist exceeds COMPANY_BATCH_SIZE");
+  }
+
+  const filterStr = buildFilterString({
+    locationIds: params.locationIds,
+    occupationIds: params.occupationIds,
+    seniorityIds: params.seniorityIds,
+    technologyIds: params.technologyIds,
+    workMode: params.workMode?.length ? params.workMode : undefined,
+    employmentTypes: params.employmentType?.length
+      ? params.employmentType
+      : undefined,
+    salaryMinEur: params.salaryMin,
+    salaryMaxEur: params.salaryMax,
+    experienceMin: params.experienceMin,
+    experienceMax: params.experienceMax,
+    languages: params.languages,
+  });
+  const q = params.keywords?.length ? params.keywords.join(" ") : "*";
+  const oneYearAgo = Math.floor(
+    (Date.now() - 365 * 24 * 60 * 60 * 1000) / 1000,
+  );
+  const filterParts = [POSTING_FLOW_FILTER, `first_seen_at:>${oneYearAgo}`];
+  if (params.companyIds.length > 0) {
+    filterParts.push(`company_id:[${params.companyIds.join(",")}]`);
+  }
+  if (filterStr) filterParts.push(filterStr);
+  const searchParams = {
+    q,
+    query_by: "title",
+    filter_by: filterParts.join(" && "),
+    per_page: 0,
+  };
+  if (!isTypesenseQueryStringSafe(searchParams)) {
+    throw new Error("watchlist Typesense year-count query exceeds GET limit");
+  }
+
+  const cfg = await getTypesenseBrowserConfig();
+  const result = await searchOne<JobPostingDoc>(
+    cfg,
+    "job_posting",
+    searchParams,
+  );
+  return result.found ?? 0;
 }
