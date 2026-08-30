@@ -16,6 +16,7 @@ from src.core.monitors.dom import (
     _dualoo_probe_config,
     _extract_links_rendered,
     _extract_links_static,
+    _extract_oracle_adf_job_ids,
     _extract_rich_rows_static,
     _extract_script_json_links,
     _fetch_via_page,
@@ -25,9 +26,11 @@ from src.core.monitors.dom import (
     _fingerprint_response_urls,
     _lucca_probe_config,
     _nyc_council_jobs_probe_config,
+    _oracle_adf_probe_config,
     _paginate_urls,
     _prospective_probe_config,
     _vagas_probe_config,
+    _validated_oracle_adf_job_ids,
     _validated_pdf_text_config,
     _validated_response_fingerprint_config,
     _validated_rich_rows,
@@ -350,6 +353,166 @@ class TestFetchUrlTransform:
         )
 
         assert urls == {"https://example.com/emploi/active/1"}
+
+
+class TestOracleAdfJobIds:
+    def test_oracle_adf_probe_builds_bounded_rendered_config(self):
+        html = """
+        <html><body>
+          <div role="gridcell" data-afrRK="0">
+            <span id="jobs:0:ol1">Engineer</span>
+            <span id="jobs:0:of4">New York, NY</span>
+            <a id="jobs:0:l1_view" href="#">View</a>
+          </div>
+          <div role="gridcell" data-afrRK="1">
+            <span id="jobs:1:ol1">Architect</span>
+            <span id="jobs:1:of4">Phoenix, AZ</span>
+            <a id="jobs:1:l1_view" href="#">View</a>
+          </div>
+        </body><!--Created by Oracle ADF (Version information hidden)--></html>
+        """
+
+        config = _oracle_adf_probe_config(
+            html,
+            "https://career.example/jobs/faces/home",
+        )
+
+        assert config is not None
+        assert config["urls"] == 2
+        assert config["render"] is True
+        assert config["oracle_adf_job_ids"] == {"max_items": 100, "max_scan": 1000}
+        assert re.fullmatch(
+            config["url_filter"],
+            "https://career.example/jobs/faces/home?jobId=15233",
+        )
+
+    def test_validates_bounds(self):
+        config = _validated_oracle_adf_job_ids({"max_items": 55, "max_scan": 1000})
+
+        assert config is not None
+        assert config.max_items == 55
+        assert config.max_scan == 1000
+
+    @pytest.mark.parametrize(
+        "value, message",
+        [
+            ({"max_items": 0}, "max_items"),
+            ({"max_items": 100, "max_scan": 99}, "max_scan"),
+            ({"row_selector": "div.row"}, "only max_items and max_scan"),
+        ],
+    )
+    def test_rejects_invalid_config(self, value, message):
+        with pytest.raises(ValueError, match=message):
+            _validated_oracle_adf_job_ids(value)
+
+    async def test_resolves_complete_ordered_listing_with_stateless_detail_fetches(self):
+        page = _OracleAdfPage(
+            [("First role", "New York, NY"), ("Second role", "Phoenix, AZ")],
+            seed=100,
+        )
+        config = _validated_oracle_adf_job_ids({"max_items": 2, "max_scan": 3})
+        assert config is not None
+
+        details = {
+            100: _oracle_adf_detail_html(100, "First role", "New York, NY"),
+            99: "<html><body>retired</body></html>",
+            98: _oracle_adf_detail_html(98, "Second role", "Phoenix, AZ"),
+        }
+
+        async def fetch_detail(_client, url, **kwargs):
+            assert kwargs["headers"] == {"Cookie": ""}
+            return details[int(url.rsplit("=", 1)[1])]
+
+        with patch(
+            "src.shared.http_retry.fetch_text_page_with_retry",
+            side_effect=fetch_detail,
+        ):
+            urls = await _extract_oracle_adf_job_ids(
+                page,
+                MagicMock(),
+                "https://career.example/jobs/faces/home",
+                config,
+                re.compile(r"^https://career\.example/jobs/faces/home\?jobId=\d+$"),
+                timeout=30_000,
+            )
+
+        assert urls == {
+            "https://career.example/jobs/faces/home?jobId=100",
+            "https://career.example/jobs/faces/home?jobId=98",
+        }
+
+
+def _oracle_adf_detail_html(job_id: int, title: str, location: str) -> str:
+    return f"""
+    <span id="detail:ot3">{job_id}<script>var locale = 'en-US';</script></span>
+    <span id="detail:ot1"><label>{title}</label></span>
+    <span id="detail:ot5">{location}</span>
+    """
+
+
+class _OracleAdfLocator:
+    def __init__(self, page, kind: str, index: int | None = None) -> None:
+        self.page = page
+        self.kind = kind
+        self.index = index
+
+    @property
+    def first(self):
+        return self
+
+    async def count(self) -> int:
+        if self.kind == "rows":
+            return len(self.page.rows)
+        if self.kind == "load_more":
+            return 0
+        return 1
+
+    def nth(self, index: int):
+        assert self.kind == "rows"
+        return _OracleAdfLocator(self.page, "row", index)
+
+    def locator(self, selector: str):
+        assert self.kind in {"rows", "row"}
+        index = 0 if self.kind == "rows" else self.index
+        kinds = {
+            "[id$='ol1']": "title",
+            "[id$='of4']": "location",
+            "a[id$='l1_view']": "trigger",
+        }
+        return _OracleAdfLocator(self.page, kinds[selector], index)
+
+    async def inner_text(self) -> str:
+        assert self.index is not None
+        field = 0 if self.kind == "title" else 1
+        return self.page.rows[self.index][field]
+
+    async def click(self, *, timeout: int) -> None:
+        assert self.kind == "trigger"
+        assert timeout == 30_000
+
+    async def wait_for(self, *, state: str, timeout: int) -> None:
+        assert self.kind == "detail"
+        assert state == "attached"
+        assert timeout == 30_000
+
+    async def get_attribute(self, name: str) -> str:
+        assert self.kind == "detail"
+        assert name == "href"
+        return f"https://career.example/jobs/faces/home?jobId={self.page.seed}"
+
+
+class _OracleAdfPage:
+    def __init__(self, rows: list[tuple[str, str]], *, seed: int) -> None:
+        self.rows = rows
+        self.seed = seed
+
+    def locator(self, selector: str):
+        kinds = {
+            "[role='gridcell'][data-afrRK]": "rows",
+            "a[id*='::fchmrlnk']": "load_more",
+            "a[href*='?jobId=']": "detail",
+        }
+        return _OracleAdfLocator(self, kinds[selector])
 
 
 class TestExplicitEmptyState:

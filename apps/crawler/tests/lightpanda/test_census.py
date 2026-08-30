@@ -58,7 +58,9 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
                         {"action": "click", "selector": "#secret-selector", "required": True},
                         {"action": "evaluate", "script": "window.__secret = 'value'"},
                     ],
+                    "bot_protection": False,
                     "render": True,
+                    "resource_policy": "auto",
                     "wait": "networkidle",
                 },
             ),
@@ -162,6 +164,7 @@ def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
         {"actions": [{"action": "teleport"}], "render": True},
         {"actions": [{"action": "click", "selector": ["#invalid"]}], "render": True},
         {"actions": [{"action": "click", "selector": "#ok", "unknown": True}], "render": True},
+        {"render": True, "resource_policy": []},
     ],
 )
 def test_browser_monitor_config_fails_closed(
@@ -337,9 +340,9 @@ def test_committed_manifest_is_current_and_contains_kpmg_fallback() -> None:
     manifest = check_manifest()
 
     assert manifest["input"]["network_access"] is False
-    assert manifest["summary"]["browser_board_count"] == 456
-    assert manifest["summary"]["browser_required_step_count"] == 594
-    assert manifest["summary"]["configured_profile_occurrence_count"] == 596
+    assert manifest["summary"]["browser_board_count"] == 462
+    assert manifest["summary"]["browser_required_step_count"] == 601
+    assert manifest["summary"]["configured_profile_occurrence_count"] == 603
     assert any(
         record["profile_kind"] == "configured"
         and record["surface"] == "scraper"

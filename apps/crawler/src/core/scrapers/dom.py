@@ -1154,9 +1154,9 @@ async def scrape(
     if not isinstance(same_origin_redirects, bool):
         raise ValueError("DOM scraper same_origin_redirects must be a boolean")
     document_fallback = _document_fallback_config(config)
-
-    if render and document_fallback is not None:
-        raise ValueError("DOM scraper document_fallback requires render=false")
+    request_headers = validated_public_request_headers(
+        config.get("request_headers"), owner="DOM scraper"
+    )
 
     if not render and config.get("actions"):
         log.warning(
@@ -1166,6 +1166,8 @@ async def scrape(
         )
         render = True
 
+    if render and document_fallback is not None:
+        raise ValueError("DOM scraper document_fallback requires render=false")
     if render and request_headers:
         raise ValueError("DOM scraper request_headers are supported only when render=false")
 

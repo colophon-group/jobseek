@@ -70,6 +70,8 @@ _MAX_SCRIPT_JSON_VALUE_LENGTH = 512
 _NYC_COUNCIL_JOBS_USER_AGENT = "jobseek-crawler (+https://jseek.co/)"
 
 _SCRIPT_JSON_NAME_RE = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
+_MAX_ORACLE_ADF_JOB_IDS = 500
+_MAX_ORACLE_ADF_ID_SCAN = 5_000
 
 _DEADLINE_MONTH_ALIASES = {
     "januar": "January",
@@ -2119,6 +2121,42 @@ def _validate_css_selector(value: object, *, name: str) -> str | None:
     return selector
 
 
+@dataclass(frozen=True, slots=True)
+class _OracleAdfJobIdsConfig:
+    max_items: int
+    max_scan: int
+
+
+def _validated_oracle_adf_job_ids(value: object) -> _OracleAdfJobIdsConfig | None:
+    """Validate the narrow Oracle ADF list-to-detail identity bridge."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) - {"max_items", "max_scan"}:
+        raise ValueError("DOM monitor oracle_adf_job_ids must contain only max_items and max_scan")
+
+    max_items = value.get("max_items", 100)
+    if (
+        not isinstance(max_items, int)
+        or isinstance(max_items, bool)
+        or not 1 <= max_items <= _MAX_ORACLE_ADF_JOB_IDS
+    ):
+        raise ValueError(
+            "DOM monitor oracle_adf_job_ids.max_items must be an integer from "
+            f"1 to {_MAX_ORACLE_ADF_JOB_IDS}"
+        )
+    max_scan = value.get("max_scan", max_items * 10)
+    if (
+        not isinstance(max_scan, int)
+        or isinstance(max_scan, bool)
+        or not max_items <= max_scan <= _MAX_ORACLE_ADF_ID_SCAN
+    ):
+        raise ValueError(
+            "DOM monitor oracle_adf_job_ids.max_scan must be an integer between "
+            f"max_items and {_MAX_ORACLE_ADF_ID_SCAN}"
+        )
+    return _OracleAdfJobIdsConfig(max_items=max_items, max_scan=max_scan)
+
+
 _RichRowsConfig = tuple[
     str,
     str | None,
@@ -2579,10 +2617,172 @@ async def _paginate_rich_rows_static(
 # ---------------------------------------------------------------------------
 
 
+async def _extract_oracle_adf_job_ids(
+    page,
+    client: httpx.AsyncClient,
+    board_url: str,
+    config: _OracleAdfJobIdsConfig,
+    url_matcher: re.Pattern | None,
+    *,
+    timeout: int,
+) -> set[str]:
+    """Resolve Oracle ADF form rows to the board's stable numeric job IDs.
+
+    ADF list rows publish title/location but no href.  Their PPR View action is
+    reliable only for the active client window; the detail endpoint itself is
+    stable and numeric.  Expand the complete list, capture its ordered
+    title/location snapshot, obtain the newest ID from the first action, then
+    scan descending IDs until every row is matched exactly.  This turns the
+    provider's opaque form navigation into stable URLs while failing closed on
+    ordering, pagination, or detail-layout drift.
+    """
+    row_selector = "[role='gridcell'][data-afrRK]"
+    rows = page.locator(row_selector)
+    row_count = await rows.count()
+    if row_count == 0:
+        raise ValueError("DOM monitor oracle_adf_job_ids matched no listing rows")
+
+    for _ in range(config.max_items):
+        load_more = page.locator("a[id*='::fchmrlnk']")
+        if await load_more.count() == 0:
+            break
+        before = await rows.count()
+        await load_more.first.click(timeout=timeout)
+        deadline = asyncio.get_running_loop().time() + timeout / 1_000
+        while await rows.count() <= before:
+            if asyncio.get_running_loop().time() >= deadline:
+                raise ValueError("DOM monitor oracle_adf_job_ids load-more action made no progress")
+            await page.wait_for_timeout(100)
+        if await rows.count() > config.max_items:
+            raise ValueError(
+                "DOM monitor oracle_adf_job_ids row count exceeds max_items "
+                f"({await rows.count()} > {config.max_items})"
+            )
+    else:  # pragma: no cover - max_items also bounds the row count
+        raise ValueError("DOM monitor oracle_adf_job_ids exceeded its load-more action bound")
+
+    row_count = await rows.count()
+    if row_count > config.max_items:
+        raise ValueError(
+            "DOM monitor oracle_adf_job_ids row count exceeds max_items "
+            f"({row_count} > {config.max_items})"
+        )
+
+    def normalize(value: str) -> str:
+        return " ".join(value.split())
+
+    expected: list[tuple[str, str]] = []
+    for index in range(row_count):
+        row = rows.nth(index)
+        title_nodes = row.locator("[id$='ol1']")
+        location_nodes = row.locator("[id$='of4']")
+        if await title_nodes.count() != 1 or await location_nodes.count() != 1:
+            raise ValueError(
+                f"DOM monitor oracle_adf_job_ids row {index} omitted title or location"
+            )
+        title = normalize(await title_nodes.first.inner_text())
+        location = normalize(await location_nodes.first.inner_text())
+        if not title or not location:
+            raise ValueError(
+                f"DOM monitor oracle_adf_job_ids row {index} had empty title or location"
+            )
+        expected.append((title, location))
+
+    first_triggers = rows.first.locator("a[id$='l1_view']")
+    if await first_triggers.count() != 1:
+        raise ValueError("DOM monitor oracle_adf_job_ids first row omitted its View action")
+    await first_triggers.first.click(timeout=timeout)
+    detail_links = page.locator("a[href*='?jobId=']")
+    await detail_links.first.wait_for(state="attached", timeout=timeout)
+    if await detail_links.count() != 1:
+        raise ValueError("DOM monitor oracle_adf_job_ids first detail omitted its permalink")
+    href = await detail_links.first.get_attribute("href")
+    seed_match = re.search(r"[?&]jobId=([1-9]\d{0,15})$", href or "")
+    if seed_match is None:
+        raise ValueError("DOM monitor oracle_adf_job_ids first permalink omitted numeric jobId")
+    seed = int(seed_match.group(1))
+
+    parts = urlsplit(board_url)
+    canonical_board_url = urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+    from src.shared.http_retry import fetch_text_page_with_retry
+
+    semaphore = asyncio.Semaphore(8)
+
+    async def fetch_candidate(candidate_id: int) -> tuple[int, str, str | None]:
+        candidate_url = f"{canonical_board_url}?jobId={candidate_id}"
+        async with semaphore:
+            html = await fetch_text_page_with_retry(
+                client,
+                candidate_url,
+                # Oracle ADF binds the first ``jobId`` seen to its session.
+                # These canonical detail URLs must be fetched statelessly or
+                # later requests repeat the first job regardless of query.
+                headers={"Cookie": ""},
+                retryable_statuses={401, 403},
+                require_nonempty=True,
+                max_bytes=_BROWSER_FETCH_MAX_CHARS,
+            )
+        return candidate_id, candidate_url, html
+
+    urls: set[str] = set()
+    expected_index = 0
+    scan_floor = max(0, seed - config.max_scan)
+    for batch_start in range(seed, scan_floor, -32):
+        candidate_ids = range(batch_start, max(scan_floor, batch_start - 32), -1)
+        candidates = await asyncio.gather(
+            *(fetch_candidate(candidate_id) for candidate_id in candidate_ids)
+        )
+        for candidate_id, candidate_url, html in candidates:
+            if html is None:
+                continue
+            _raise_if_bot_challenge(candidate_url, html)
+            tree = LexborHTMLParser(html)
+            id_nodes = tree.css("[id$='ot3']")
+            if len(id_nodes) != 1:
+                continue
+            detail_id = normalize(id_nodes[0].text(separator=" ", strip=True)).split(" ", 1)[0]
+            if detail_id != str(candidate_id):
+                continue
+
+            title_nodes = tree.css("[id$='ot1'] label")
+            location_nodes = tree.css("[id$='ot5']")
+            if len(title_nodes) != 1 or len(location_nodes) != 1:
+                raise ValueError(
+                    f"DOM monitor oracle_adf_job_ids detail {candidate_id} "
+                    "omitted title or location"
+                )
+            fingerprint = (
+                normalize(title_nodes[0].text(separator=" ", strip=True)),
+                normalize(location_nodes[0].text(separator=" ", strip=True)),
+            )
+            if fingerprint != expected[expected_index]:
+                continue
+            if url_matcher is not None and url_matcher.search(candidate_url) is None:
+                raise ValueError(
+                    f"DOM monitor oracle_adf_job_ids permalink failed url_filter: {candidate_url}"
+                )
+            urls.add(candidate_url)
+            expected_index += 1
+            if expected_index == len(expected):
+                break
+        if expected_index == len(expected):
+            break
+
+    if expected_index != len(expected):
+        missing_title, missing_location = expected[expected_index]
+        raise ValueError(
+            "DOM monitor oracle_adf_job_ids could not match the complete listing within "
+            f"max_scan={config.max_scan}; first unmatched row: "
+            f"{missing_title!r} @ {missing_location!r}"
+        )
+    return urls
+
+
 async def _extract_links_rendered(
     page,
     metadata: dict,
     url_matcher: re.Pattern | None = None,
+    client: httpx.AsyncClient | None = None,
 ) -> set[str]:
     """Navigate, run actions, and extract job links from a Playwright page."""
     board_url = metadata["_board_url"]
@@ -2596,6 +2796,22 @@ async def _extract_links_rendered(
     # board and the monitor reports a successful empty cycle.
     html = await safe_content(page)
     _raise_if_bot_challenge(page.url, html)
+
+    oracle_adf_job_ids = _validated_oracle_adf_job_ids(metadata.get("oracle_adf_job_ids"))
+    if oracle_adf_job_ids is not None:
+        if client is None:
+            raise ValueError("DOM monitor oracle_adf_job_ids requires an HTTP client")
+        timeout = metadata.get("timeout", 30_000)
+        if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout <= 0:
+            raise ValueError("DOM monitor timeout must be a positive integer")
+        return await _extract_oracle_adf_job_ids(
+            page,
+            client,
+            board_url,
+            oracle_adf_job_ids,
+            url_matcher,
+            timeout=timeout,
+        )
 
     link_selector = metadata.get("link_selector")
     selector = link_selector or "a[href]"
@@ -3407,6 +3623,46 @@ def _nyc_council_jobs_probe_config(html: str, url: str) -> dict | None:
     }
 
 
+def _oracle_adf_probe_config(html: str, url: str) -> dict | None:
+    """Recognize Oracle ADF job lists whose rows expose only PPR actions."""
+    if "Created by Oracle ADF" not in html:
+        return None
+    tree = LexborHTMLParser(html)
+    rows = tree.css("[role='gridcell'][data-afrRK]")
+    if not rows or len(rows) > _MAX_ORACLE_ADF_JOB_IDS:
+        return None
+    for row in rows:
+        if (
+            row.css_first("a[id$='l1_view']") is None
+            or row.css_first("[id$='ol1']") is None
+            or row.css_first("[id$='of4']") is None
+        ):
+            return None
+
+    parts = urlsplit(url)
+    if parts.scheme not in {"http", "https"} or not parts.netloc or not parts.path:
+        return None
+    canonical_board_url = urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+    escaped = re.escape(canonical_board_url)
+    job_url_pattern = rf"^{escaped}(?:;[^?#]+)?\?jobId=[1-9]\d{{0,15}}$"
+    return {
+        "urls": len(rows),
+        "render": True,
+        "wait": "domcontentloaded",
+        "timeout": 30_000,
+        "oracle_adf_job_ids": {
+            "max_items": min(_MAX_ORACLE_ADF_JOB_IDS, max(100, len(rows) * 4)),
+            "max_scan": min(_MAX_ORACLE_ADF_ID_SCAN, max(1_000, len(rows) * 40)),
+        },
+        "url_filter": job_url_pattern,
+        "url_allowlist": job_url_pattern,
+        "url_transform": {
+            "find": rf"^{escaped}(?:;[^?#]+)?\?jobId=([1-9]\d{{0,15}})$",
+            "replace": f"{canonical_board_url}?jobId=\\1",
+        },
+    }
+
+
 async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | None:
     """Probe whether *url* has discoverable job links via static fetch.
 
@@ -3437,6 +3693,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     nyc_council_jobs = _nyc_council_jobs_probe_config(html, url)
     if nyc_council_jobs is not None:
         return nyc_council_jobs
+
+    oracle_adf = _oracle_adf_probe_config(html, url)
+    if oracle_adf is not None:
+        return oracle_adf
 
     dualoo = _dualoo_probe_config(html, url)
     if dualoo is not None:
@@ -3556,6 +3816,7 @@ async def dom_discover(
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
     url_transform = metadata.get("url_transform")
     link_selector = _validate_link_selector(metadata.get("link_selector"))
+    oracle_adf_job_ids = _validated_oracle_adf_job_ids(metadata.get("oracle_adf_job_ids"))
     empty_selector = _validate_css_selector(metadata.get("empty_selector"), name="empty_selector")
     empty_states = _validated_empty_state_list(metadata.get("empty_states"))
     empty_text = metadata.get("empty_text")
@@ -3591,6 +3852,22 @@ async def dom_discover(
         or metadata.get("fetch_url_transform")
     ):
         raise ValueError("DOM monitor script_json_links supports static single-page discovery only")
+
+    if oracle_adf_job_ids is not None:
+        if not render:
+            raise ValueError("DOM monitor oracle_adf_job_ids requires render=true")
+        if (
+            pagination
+            or link_selector is not None
+            or rich_rows is not None
+            or configured_empty_states
+            or metadata.get("include_board_url")
+        ):
+            raise ValueError(
+                "DOM monitor oracle_adf_job_ids supports rendered single-page "
+                "discovery only and cannot be combined with link_selector, rich_rows, "
+                "empty-state configuration, pagination, or include_board_url"
+            )
     if advertised_ranges is not None and (
         render
         or rich_rows is not None
@@ -3695,7 +3972,7 @@ async def dom_discover(
 
         if pw is not None:
             async with open_page(pw, combined, use_proxy=bool(metadata.get("proxy"))) as page:
-                urls = await _extract_links_rendered(page, combined, url_matcher)
+                urls = await _extract_links_rendered(page, combined, url_matcher, client)
                 if configured_empty_states:
                     _validate_explicit_empty_states(
                         await safe_content(page), configured_empty_states, urls, board_url
@@ -3726,7 +4003,7 @@ async def dom_discover(
                 async_playwright() as p,
                 open_page(p, combined, use_proxy=bool(metadata.get("proxy"))) as page,
             ):
-                urls = await _extract_links_rendered(page, combined, url_matcher)
+                urls = await _extract_links_rendered(page, combined, url_matcher, client)
                 if configured_empty_states:
                     _validate_explicit_empty_states(
                         await safe_content(page), configured_empty_states, urls, board_url

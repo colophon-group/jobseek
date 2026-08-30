@@ -20,6 +20,9 @@ _PUBLIC_REQUEST_HEADERS = frozenset(
         "cache-control",
         "pragma",
         "user-agent",
+        # Public representation selector used by Jina Reader. This does not
+        # carry credentials or alter HTTP transport semantics.
+        "x-return-format",
     }
 )
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
