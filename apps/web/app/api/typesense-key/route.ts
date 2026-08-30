@@ -3,8 +3,10 @@ import { generateScopedSearchKey } from "@/lib/search/scoped-key";
 
 const KEY_TTL_SECONDS = 600;
 // Leave 90 seconds between the Vercel CDN freshness boundary and the signed
-// key expiry. The browser refreshes 30 seconds early, so even a near-boundary
-// cache hit remains usable without immediately fetching another key.
+// key expiry. Use max-age rather than s-maxage here: Vercel serves an expired
+// s-maxage response once while revalidating it asynchronously, which is unsafe
+// for a bearer credential with a hard expiry. The browser refreshes 30 seconds
+// early, so even the oldest fresh cache hit remains usable.
 const VERCEL_CDN_TTL_SECONDS = 510;
 
 export async function GET() {
@@ -59,9 +61,9 @@ export async function GET() {
         // this header is forwarded unchanged to clients.
         "cache-control": "public, max-age=0, must-revalidate",
         // Vercel consumes this header and does not forward it to clients.
-        // A dedicated header makes the shared-cache contract explicit instead
-        // of relying on s-maxage stripping from Cache-Control.
-        "vercel-cdn-cache-control": `public, s-maxage=${VERCEL_CDN_TTL_SECONDS}`,
+        // A targeted max-age gives this expiring credential a hard freshness
+        // boundary without allowing Vercel's s-maxage stale response behavior.
+        "vercel-cdn-cache-control": `public, max-age=${VERCEL_CDN_TTL_SECONDS}, must-revalidate`,
       },
     },
   );

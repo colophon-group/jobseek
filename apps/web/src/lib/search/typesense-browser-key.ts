@@ -96,3 +96,12 @@ export function clearTypesenseBrowserConfig(): void {
     // Storage may be unavailable in private mode; memory is already clear.
   }
 }
+
+/**
+ * A rotated/revoked parent invalidates every child derived from it. Drop a
+ * persisted child after Typesense reports that it is unauthorized so the next
+ * browser operation obtains the replacement instead of reusing it until TTL.
+ */
+export function invalidateTypesenseBrowserConfigIfUnauthorized(status: number): void {
+  if (status === 401) clearTypesenseBrowserConfig();
+}

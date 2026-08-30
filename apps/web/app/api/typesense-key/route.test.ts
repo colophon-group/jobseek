@@ -54,9 +54,12 @@ describe("GET /api/typesense-key", () => {
     expect(response.headers.get("cache-control")).toBe(
       "public, max-age=0, must-revalidate",
     );
-    expect(response.headers.get("vercel-cdn-cache-control")).toBe(
-      "public, s-maxage=510",
-    );
+    const cdnCacheControl = response.headers.get("vercel-cdn-cache-control");
+    expect(cdnCacheControl).toBe("public, max-age=510, must-revalidate");
+    expect(cdnCacheControl).not.toContain("s-maxage");
+
+    const cdnMaxAge = Number(cdnCacheControl?.match(/max-age=(\d+)/)?.[1]);
+    expect(body.expiresAt / 1000 - NOW_SECONDS - cdnMaxAge).toBe(90);
   });
 
   it("does not mint a key when the browser parent is unavailable", async () => {
