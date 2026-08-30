@@ -738,6 +738,67 @@ async def _exclude_urls_matching_detail_selector(
     return {url for url, excluded in results if not excluded}
 
 
+async def _filter_inactive_detail_urls(
+    urls: set[str],
+    states: tuple[_InactiveDetailState, ...],
+    client: httpx.AsyncClient,
+) -> tuple[set[str], set[str]]:
+    """Classify linked detail pages using exact, selector-scoped inactive text.
+
+    Missing markers keep a role active. A configured selector whose text has
+    drifted fails the entire cycle so an upstream redesign cannot silently
+    publish an inactive/error page or delist a valid role.
+    """
+    if len(urls) > _MAX_JSONLD_VERIFICATION_URLS:
+        raise ValueError(
+            "DOM monitor inactive_detail_states supports at most "
+            f"{_MAX_JSONLD_VERIFICATION_URLS} discovered URLs"
+        )
+
+    from src.shared.http_retry import fetch_text_page_with_retry
+
+    semaphore = asyncio.Semaphore(_JSONLD_VERIFICATION_CONCURRENCY)
+
+    async def inspect(url: str) -> tuple[str, bool]:
+        async with semaphore:
+            html = await fetch_text_page_with_retry(
+                client,
+                url,
+                retryable_statuses={401, 403},
+                end_of_pagination_statuses={404, 410},
+                require_nonempty=True,
+                max_chars=None,
+            )
+        if html is None:
+            return url, True
+        _raise_if_bot_challenge(url, html)
+        tree = LexborHTMLParser(html)
+        observed: list[str] = []
+        for selector, exact_text in states:
+            nodes = tree.css(selector)
+            node_texts = [" ".join(node.text(separator=" ", strip=True).split()) for node in nodes]
+            if exact_text in node_texts:
+                return url, True
+            observed.extend(node_texts)
+        if observed:
+            raise ValueError(
+                f"DOM monitor inactive_detail_states selector matched unexpected text: {url}"
+            )
+        return url, False
+
+    tasks = [asyncio.create_task(inspect(url)) for url in sorted(urls)]
+    try:
+        results = await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+    inactive = {url for url, is_inactive in results if is_inactive}
+    return urls - inactive, inactive
+
+
 _VAGAS_HOST = "trabalheconosco.vagas.com.br"
 _VAGAS_TENANT_RE = re.compile(r"[a-z0-9][a-z0-9_-]*")
 
@@ -1848,6 +1909,8 @@ _ExplicitEmptyState = tuple[
     str | None,
 ]
 
+_InactiveDetailState = tuple[str, str]
+
 _AdvertisedTotalConfig = tuple[str, re.Pattern[str]]
 
 
@@ -1997,6 +2060,39 @@ def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...
                 forbidden_link_selector,
             )
         )
+    return tuple(states)
+
+
+def _validated_inactive_detail_states(value: object) -> tuple[_InactiveDetailState, ...]:
+    """Validate exact detail-page markers that prove a linked role is inactive."""
+    if value is None:
+        return ()
+    if not isinstance(value, list) or not 1 <= len(value) <= 4:
+        raise ValueError("DOM monitor inactive_detail_states must be a list of 1 to 4 mappings")
+
+    states: list[_InactiveDetailState] = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"selector", "exact_text"}:
+            raise ValueError(
+                "DOM monitor inactive_detail_states entries require selector and exact_text"
+            )
+        selector = _validate_css_selector(
+            item.get("selector"),
+            name="inactive_detail_states.selector",
+        )
+        exact_text = item.get("exact_text")
+        if (
+            selector is None
+            or not isinstance(exact_text, str)
+            or not exact_text.strip()
+            or len(exact_text) > 512
+            or "\x00" in exact_text
+        ):
+            raise ValueError(
+                "DOM monitor inactive_detail_states exact_text must be non-empty text "
+                "up to 512 chars"
+            )
+        states.append((selector, " ".join(exact_text.split())))
     return tuple(states)
 
 
@@ -3898,6 +3994,9 @@ async def dom_discover(
         metadata.get("exclude_detail_selector"),
         name="exclude_detail_selector",
     )
+    inactive_detail_states = _validated_inactive_detail_states(
+        metadata.get("inactive_detail_states")
+    )
     fingerprint_response = _validated_response_fingerprint_config(
         metadata.get("fingerprint_response")
     )
@@ -3925,6 +4024,7 @@ async def dom_discover(
         or require_unexpired_pdf is not None
         or require_pdf_text is not None
         or exclude_detail_selector is not None
+        or inactive_detail_states
         or fingerprint_response is not None
     ):
         raise ValueError(
@@ -3938,6 +4038,7 @@ async def dom_discover(
         or require_unexpired_pdf is not None
         or require_pdf_text is not None
         or exclude_detail_selector is not None
+        or inactive_detail_states
         or fingerprint_response is not None
     ):
         raise ValueError("DOM monitor rich_rows supports static listing extraction only")
@@ -3949,6 +4050,11 @@ async def dom_discover(
         or link_selector is None
     ):
         raise ValueError("DOM monitor advertised_total requires static link-selector discovery")
+
+    if inactive_detail_states and (render or pagination or link_selector is None):
+        raise ValueError(
+            "DOM monitor inactive_detail_states requires static single-page link-selector discovery"
+        )
 
     if configured_empty_states:
         if link_selector is None and rich_rows is None:
@@ -4244,18 +4350,33 @@ async def dom_discover(
             client,
         )
 
+    if inactive_detail_states:
+        currentness_candidates = set(urls)
+        urls, inactive_urls = await _filter_inactive_detail_urls(
+            urls,
+            inactive_detail_states,
+            client,
+        )
+        verified_inactive_empty = (
+            bool(currentness_candidates) and not urls and inactive_urls == currentness_candidates
+        )
+    else:
+        verified_inactive_empty = False
+
     if len(urls) > MAX_URLS:
         log.warning("dom.truncated", total=len(urls), cap=MAX_URLS)
         urls = set(sorted(urls)[:MAX_URLS])
 
     log.info("dom.complete", board_url=board_url, urls_found=len(urls), render=render)
-    if verified_currentness_empty:
+    if verified_currentness_empty or verified_inactive_empty:
         from src.core.monitor import MonitorResult
 
         return MonitorResult(
             urls=set(),
             verified_empty_reason=(
-                "all discovered PDF jobs are outside their verified active period"
+                "all discovered detail pages matched an explicit inactive state"
+                if verified_inactive_empty
+                else "all discovered PDF jobs are outside their verified active period"
             ),
         )
     return urls

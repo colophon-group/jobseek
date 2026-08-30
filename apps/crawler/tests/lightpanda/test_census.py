@@ -280,6 +280,36 @@ def test_dom_rich_rows_uses_authoritative_fail_closed_validation(
 
 
 @pytest.mark.parametrize(
+    "states",
+    [
+        [],
+        [{"selector": ".status"}],
+        [{"selector": "a[", "exact_text": "Closed"}],
+        [{"selector": ".status", "exact_text": "", "unexpected": True}],
+    ],
+)
+def test_dom_inactive_detail_states_use_runtime_validation(tmp_path: Path, states: object) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "invalid-inactive-state",
+                monitor_type="dom",
+                monitor_config={
+                    "link_selector": "a.job",
+                    "inactive_detail_states": states,
+                },
+            )
+        ],
+    )
+
+    with pytest.raises(CensusError) as exc_info:
+        build_manifest(boards)
+
+    assert str(exc_info.value) == "monitor.dom.inactive_detail_states is invalid"
+
+
+@pytest.mark.parametrize(
     "rich_rows",
     [
         {"row_selector": ".job", "location_selectors": [], "metadata_selectors": {}},

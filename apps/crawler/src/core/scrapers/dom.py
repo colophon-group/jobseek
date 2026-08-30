@@ -348,6 +348,10 @@ _ADVORTO_LIST_SELECTOR = f"{_ADVORTO_SCOPE} dl.advorto-definition-list"
 _SOLIQUE_HOST_MARKER = "solique.ch/"
 _SOLIQUE_CLASS_MARKERS = ("job-title", "tasks-profile-wrapper")
 _REXX_PORTAL7_MARKERS = ("rexx recruitment - portal7", "jobtplcontainer")
+_LIEPIN_JOB_CONFIG_RE = re.compile(
+    r"var\s+\$CONFIG\s*=\s*\{[^{}]*[\"']jobId[\"']\s*:\s*[1-9]\d{0,15}",
+    re.IGNORECASE,
+)
 
 
 def _has_html_class(html: str, class_name: str) -> bool:
@@ -459,6 +463,59 @@ def _rexx_portal7_config(htmls: list[str]) -> dict | None:
                 "field": "description",
                 "html": True,
                 "to_end": True,
+                "from": 0,
+            },
+        ],
+    }
+
+
+def _liepin_config(htmls: list[str]) -> dict | None:
+    """Extract Liepin role metadata when the visible body is an inactive shell.
+
+    Liepin preserves the canonical bilingual role title and a concise role
+    summary in document metadata even when its body switches to the explicit
+    paused-job view. The first-party employer listing remains responsible for
+    currentness; this preset only makes any future active links scrapeable.
+    """
+    matches = 0
+    for html in htmls:
+        tree = LexborHTMLParser(html)
+        title = tree.css_first("title")
+        description = tree.css_first('meta[name="description"]')
+        title_text = title.text(strip=True) if title is not None else ""
+        description_text = (
+            description.attributes.get("content", "") if description is not None else ""
+        )
+        if (
+            _LIEPIN_JOB_CONFIG_RE.search(html)
+            and title_text.startswith("【")
+            and "招聘】-" in title_text
+            and title_text.endswith("猎聘")
+            and description_text.strip()
+        ):
+            matches += 1
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    return {
+        "scope": "body",
+        "include_document_title": True,
+        "include_document_description": True,
+        "steps": [
+            {
+                "tag": "title",
+                "field": "title",
+                "regex": r"^【[^】\s]+\s+(.+?)招聘】-",
+            },
+            {
+                "tag": "title",
+                "field": "locations",
+                "regex": r"^【([^】\s]+)\s+",
+                "from": 0,
+            },
+            {
+                "attr": "data-document-description=true",
+                "field": "description",
                 "from": 0,
             },
         ],
@@ -926,6 +983,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     rexx_portal7 = _rexx_portal7_config(htmls)
     if rexx_portal7 is not None:
         return rexx_portal7
+
+    liepin = _liepin_config(htmls)
+    if liepin is not None:
+        return liepin
 
     solique = _solique_config(htmls)
     if solique is not None:

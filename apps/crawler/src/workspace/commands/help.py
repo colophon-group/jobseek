@@ -1746,6 +1746,17 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    "a[href*=\"apply.workable.com\"][href*=\"/j/\"]".
                    Detail fetch errors fail the cycle; 404/410 pages are omitted.
                    Limited to 500 discovered URLs and incompatible with rich_rows.
+    inactive_detail_states
+                   Fetch each discovered detail URL and classify it inactive only
+                   when a selector's normalized text exactly matches configured
+                   evidence. Example:
+                   [{"selector": ".job-status",
+                     "exact_text": "Applications are closed"}].
+                   A matching selector with different text fails the cycle closed;
+                   a missing selector keeps the role active. If every discovered
+                   role is classified inactive, the monitor returns runtime-verified
+                   empty evidence. Static, single-page link-selector discovery only;
+                   1-4 states and at most 500 discovered URLs.
     rich_rows      Optional static listing-row extraction. It supports the
                    ordinary sequential pagination config shown above:
                    {"row_selector": ".job", "link_selector": ".job-title a",
