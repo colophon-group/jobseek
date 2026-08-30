@@ -10,18 +10,47 @@ let cached: TypesenseBrowserConfig | null = null;
 let inflight: Promise<TypesenseBrowserConfig> | null = null;
 
 const REFRESH_LEAD_MS = 30_000;
-const BROADCAST_CHANNEL_NAME = "typesense-key-clear";
+const STORAGE_KEY = "typesense-browser-config-v1";
 
-let broadcastChannel: BroadcastChannel | null = null;
+function isUsableConfig(value: unknown): value is TypesenseBrowserConfig {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<TypesenseBrowserConfig>;
+  return (
+    typeof candidate.apiKey === "string" &&
+    candidate.apiKey.length > 0 &&
+    typeof candidate.host === "string" &&
+    candidate.host.length > 0 &&
+    typeof candidate.port === "number" &&
+    Number.isInteger(candidate.port) &&
+    candidate.port > 0 &&
+    typeof candidate.protocol === "string" &&
+    candidate.protocol.length > 0 &&
+    typeof candidate.expiresAt === "number" &&
+    candidate.expiresAt - Date.now() > REFRESH_LEAD_MS
+  );
+}
 
-function ensureBroadcastListener(): void {
-  if (typeof BroadcastChannel === "undefined") return;
-  if (broadcastChannel) return;
-  broadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
-  broadcastChannel.onmessage = () => {
-    cached = null;
-    inflight = null;
-  };
+function loadPersistedConfig(): TypesenseBrowserConfig | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const serialized = localStorage.getItem(STORAGE_KEY);
+    if (!serialized) return null;
+    const value: unknown = JSON.parse(serialized);
+    if (isUsableConfig(value)) return value;
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable in private mode or contain malformed data.
+  }
+  return null;
+}
+
+function persistConfig(config: TypesenseBrowserConfig): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch {
+    // In-memory caching still works when storage is unavailable or full.
+  }
 }
 
 async function fetchKey(): Promise<TypesenseBrowserConfig> {
@@ -31,12 +60,22 @@ async function fetchKey(): Promise<TypesenseBrowserConfig> {
 }
 
 export async function getTypesenseBrowserConfig(): Promise<TypesenseBrowserConfig> {
-  ensureBroadcastListener();
-  if (cached && cached.expiresAt - Date.now() > REFRESH_LEAD_MS) return cached;
+  if (isUsableConfig(cached)) return cached;
+
+  const persisted = loadPersistedConfig();
+  if (persisted) {
+    cached = persisted;
+    return persisted;
+  }
+
   if (!inflight) {
     inflight = fetchKey()
       .then((cfg) => {
+        if (!isUsableConfig(cfg)) {
+          throw new Error("typesense-key endpoint returned an expired config");
+        }
         cached = cfg;
+        persistConfig(cfg);
         return cfg;
       })
       .finally(() => {
@@ -46,21 +85,14 @@ export async function getTypesenseBrowserConfig(): Promise<TypesenseBrowserConfi
   return inflight;
 }
 
-/**
- * Clears the cached scoped key in this tab AND broadcasts to other tabs so
- * sign-in/out in tab A immediately invalidates the stale key in tab B.
- */
+/** Clears both memory and persisted state after an explicit config reset. */
 export function clearTypesenseBrowserConfig(): void {
   cached = null;
   inflight = null;
-  if (typeof BroadcastChannel === "undefined") return;
-  // Use a dedicated transient channel for the post — listeners on the
-  // long-lived channel pick it up. Closing immediately keeps GC tidy.
+  if (typeof localStorage === "undefined") return;
   try {
-    const ch = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
-    ch.postMessage({ type: "clear" });
-    ch.close();
+    localStorage.removeItem(STORAGE_KEY);
   } catch {
-    // BroadcastChannel can throw in private-mode browsers; safe to ignore.
+    // Storage may be unavailable in private mode; memory is already clear.
   }
 }

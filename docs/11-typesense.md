@@ -68,11 +68,17 @@ The six named collections are the complete direct-browser read set. In
 particular, the browser watchlist path searches `job_posting`; it does not read
 the `watchlist` collection. Do not grant the parent wildcard collection access.
 
-Browser scoped keys embed a server-enforced `expires_at` Unix timestamp: five
-minutes for anonymous sessions and ten minutes for authenticated sessions.
-`/api/typesense-key` returns that same boundary in milliseconds for the browser
-cache, which refreshes 30 seconds early. Its response cache max-age is half the
-credential lifetime, so a cached response cannot outlive the signed key.
+Browser scoped keys embed a server-enforced `expires_at` Unix timestamp ten
+minutes in the future. The search-only scope is identical for every visitor,
+so `/api/typesense-key` deliberately does not read session state; reintroducing
+an auth lookup would make a shared response vary per viewer and pull the auth,
+database, and Redis dependency graph into this hot Function. The endpoint
+returns the signed boundary in milliseconds. Vercel's CDN caches the shared
+response for 510 seconds, leaving 90 seconds before key expiry, while the
+browser refreshes 30 seconds early. A valid response is also kept in
+`localStorage` until that refresh boundary so reloads and new tabs do not mint
+another key. The scoped child is short-lived and the parent key never leaves
+the server.
 
 ### Browser parent-key rotation
 
@@ -437,7 +443,7 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 **Infrastructure:**
 
 - **Scoped key endpoint** (`GET /api/typesense-key`): mints a Typesense scoped search key (HMAC-SHA256 + base64) from `TYPESENSE_BROWSER_PARENT_KEY`. The embed is `{ use_cache: true, expires_at: <Unix seconds> }`. `limit_hits` is intentionally **not** embedded because Typesense counts raw hits (not grouped rows) and would block normal anon traffic on `group_by company_id` with `group_limit 10`.
-- **TTL**: 5 min for anon, 10 min for authed. Browser caches the key in memory and refreshes 30 s before expiry. The cache is cleared via `useClearTypesenseOnAuthChange(isLoggedIn)` (called from each client surface) so a sign-in/out doesn't keep the wrong key.
+- **TTL**: 10 min for every visitor because the search-only scope has no user-specific permissions. Browser memory plus `localStorage` reuse the key across reloads/tabs and refresh 30 s before expiry. The endpoint sets a Vercel-only 510 s CDN TTL, leaving a 90 s validity margin on the oldest cache hit.
 - **Browser provider**: `apps/web/src/lib/search/typesense-browser.ts` (postings/companies), `typesense-browser-typeahead.ts` (taxonomy suggest), `typesense-browser-watchlist.ts`. All thin -- no `typesense-js` runtime dependency in the browser bundle.
 - **Anon truncation**: enforced as a soft client-side cap (`ANON_MAX_COMPANIES`, `ANON_MAX_POSTINGS`, `ANON_MAX_WATCHLIST_POSTINGS`) matching the current server-action behaviour. Real abuse protection is the Cloudflare per-IP rate-limit on the tunnel hostname.
 - **Fallback**: every runner falls back to the corresponding server action when the browser path errors, returns degraded, or hits a code-explicit fallback case (e.g. watchlist >100 companies).
