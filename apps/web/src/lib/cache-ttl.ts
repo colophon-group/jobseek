@@ -24,7 +24,7 @@
  * | `CACHE_TTL_LONG`          |  3600   | Semi-static taxonomies, locations, similar   |
  * |                           |         | companies, sitemap, watchlist matching count |
  * | `CACHE_TTL_COMPANY_SHELL` | 86400   | Anonymous company prerender; browser         |
- * |                           |         | Typesense refreshes postings after hydration |
+ * |                           |         | Typesense refreshes postings + peers         |
  * | `CACHE_TTL_DAY`           | 86400   | Very static / rare-change (blog pages)       |
  *
  * Notes:
@@ -56,5 +56,5 @@ export const CACHE_TTL_LONG = 3600;
 /** 86400 seconds (1 day) — very static / rare-change (blog pages). */
 export const CACHE_TTL_DAY = 86400;
 
-/** 1 day — anonymous company shell; hydrated postings refresh from Typesense. */
+/** 1 day — anonymous company shell; hydrated posting data refreshes from Typesense. */
 export const CACHE_TTL_COMPANY_SHELL = CACHE_TTL_DAY;

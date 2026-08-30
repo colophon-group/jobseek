@@ -4,6 +4,7 @@ import { setTestEnv, withTestEnv } from "@/test-utils/env";
 const mocks = vi.hoisted(() => ({
   browserListTopCompanies: vi.fn(),
   browserLoadCompanyPostings: vi.fn(),
+  browserLoadSimilarCompanies: vi.fn(),
   serverListTopCompanies: vi.fn(),
   serverSearchJobs: vi.fn(),
   serverGetCompanyPostings: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock("../typesense-browser", () => ({
   getBrowserSearchProvider: () => ({
     listTopCompanies: mocks.browserListTopCompanies,
     loadPostingsWithCounts: mocks.browserLoadCompanyPostings,
+    loadSimilarCompanies: mocks.browserLoadSimilarCompanies,
   }),
 }));
 
@@ -104,6 +106,7 @@ describe("browser-direct shell refreshes", () => {
     vi.resetModules();
     const {
       tryGetCompanyPostingsDirect,
+      tryGetSimilarCompaniesDirect,
       tryListTopCompaniesDirect,
     } = await import("../search-runner");
 
@@ -126,7 +129,38 @@ describe("browser-direct shell refreshes", () => {
         false,
       ),
     ).resolves.toBeNull();
+    await expect(
+      tryGetSimilarCompaniesDirect({
+        companyId: "company-1",
+        industryId: 7,
+        limit: 10,
+      }),
+    ).resolves.toBeNull();
     expect(mocks.browserListTopCompanies).not.toHaveBeenCalled();
     expect(mocks.browserLoadCompanyPostings).not.toHaveBeenCalled();
+    expect(mocks.browserLoadSimilarCompanies).not.toHaveBeenCalled();
+  });
+
+  it("refreshes similar companies without invoking a Server Action", async () => {
+    const browserResult = {
+      companies: [],
+      hasMore: false,
+    };
+    mocks.browserLoadSimilarCompanies.mockResolvedValue(browserResult);
+    const { tryGetSimilarCompaniesDirect } = await import("../search-runner");
+
+    await expect(
+      tryGetSimilarCompaniesDirect({
+        companyId: "company-1",
+        industryId: 7,
+        limit: 10,
+      }),
+    ).resolves.toEqual(browserResult);
+    expect(mocks.browserLoadSimilarCompanies).toHaveBeenCalledWith(
+      "company-1",
+      7,
+      10,
+    );
+    expect(mocks.serverGetCompanyPostings).not.toHaveBeenCalled();
   });
 });

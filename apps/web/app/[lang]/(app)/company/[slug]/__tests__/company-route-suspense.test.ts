@@ -50,6 +50,7 @@ describe("company route partial prerendering", () => {
       "export const CACHE_TTL_COMPANY_SHELL = CACHE_TTL_DAY;",
     );
     expect(ttlSource).toContain("export const CACHE_TTL_DAY = 86400;");
+    expect(routeSource).not.toContain("company.activeJobCount");
   });
 
   it("routes a missing company to the localized recovery boundary", () => {

@@ -61,6 +61,27 @@ interface RawSearchResponse<T> {
   search_time_ms?: number;
 }
 
+export interface BrowserSimilarCompany {
+  id: string;
+  slug: string;
+  name: string;
+  icon: string | null;
+  activeJobCount: number;
+}
+
+export interface BrowserSimilarCompaniesPage {
+  companies: BrowserSimilarCompany[];
+  hasMore: boolean;
+}
+
+interface SimilarCompanyDocument {
+  id: string;
+  slug: string;
+  name: string;
+  icon?: string;
+  active_posting_count?: number;
+}
+
 function oneYearAgoUnix(): number {
   const d = new Date();
   d.setFullYear(d.getFullYear() - 1);
@@ -530,6 +551,41 @@ export class TypesenseBrowserProvider implements SearchProvider {
       postings,
       activeCount: activeResult.found ?? 0,
       yearCount: yearResult.found ?? 0,
+    };
+  }
+
+  /** Refresh the unfiltered company-page peer strip without a Server Action. */
+  async loadSimilarCompanies(
+    companyId: string,
+    industryId: number,
+    limit: number,
+  ): Promise<BrowserSimilarCompaniesPage> {
+    // Let transport errors escape so the direct-refresh runner can preserve
+    // the prerendered snapshot without falling back to Fluid CPU.
+    const cfg = await this.cfg();
+    const result = await searchOne<SimilarCompanyDocument>(cfg, "company", {
+      q: "*",
+      query_by: "name",
+      filter_by:
+        `industry_id:=${industryId} && active_posting_count:>0 && id:!=${companyId}`,
+      sort_by: "active_posting_count:desc",
+      per_page: limit,
+      page: 1,
+      include_fields: "id,slug,name,icon,active_posting_count",
+    });
+    const companies = (result.hits ?? []).map(({ document }) => ({
+      id: String(document.id),
+      slug: String(document.slug ?? ""),
+      name: String(document.name ?? ""),
+      icon: typeof document.icon === "string" ? document.icon : null,
+      activeJobCount:
+        typeof document.active_posting_count === "number"
+          ? document.active_posting_count
+          : 0,
+    }));
+    return {
+      companies,
+      hasMore: companies.length < (result.found ?? companies.length),
     };
   }
 
