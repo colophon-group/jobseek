@@ -88,7 +88,7 @@ class _NavigationPage:
 
 def _patch_browser(monkeypatch, pages: dict[int, dict]) -> list[int]:
     @asynccontextmanager
-    async def open_page(_pw, _config, *, use_proxy):
+    async def open_page(_pw, _config, *, use_proxy, target_url=None):
         assert use_proxy is False
         yield _Page()
 

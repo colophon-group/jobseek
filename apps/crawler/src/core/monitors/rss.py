@@ -356,6 +356,13 @@ def _parse_tt_item(item: ET.Element) -> DiscoveredJob | None:
         elif lower in ("none", "onsite", "on-site"):
             job_location_type = "onsite"
 
+    # Teamtailor permits fully remote postings without assigning a physical
+    # location. Preserve explicit structured locations when present, but use
+    # the provider's remote status as the location fallback so these jobs do
+    # not lose the required location field.
+    if not locations and job_location_type == "remote":
+        locations.append("Remote")
+
     date_posted = _text(item, "pubDate")
     department = _tt(item, "department")
     role = _tt(item, "role")

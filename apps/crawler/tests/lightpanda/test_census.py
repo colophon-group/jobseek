@@ -58,7 +58,9 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
                         {"action": "click", "selector": "#secret-selector", "required": True},
                         {"action": "evaluate", "script": "window.__secret = 'value'"},
                     ],
+                    "bot_protection": False,
                     "render": True,
+                    "resource_policy": "auto",
                     "wait": "networkidle",
                 },
             ),
@@ -118,6 +120,31 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
     assert len(first["manifest_sha256"]) == 64
 
 
+def test_nextdata_item_inclusions_are_sanitized_and_tracked(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "filtered-nextdata",
+                monitor_type="nextdata",
+                monitor_config={
+                    "include_item_values": {"company": ["secret-tenant"]},
+                    "render": True,
+                },
+            )
+        ],
+    )
+
+    manifest = build_manifest(boards)
+    rendered = manifest_bytes(manifest).decode("ascii")
+
+    assert any(
+        record["profile_kind"] == "configured" and record["crawler_type"] == "nextdata"
+        for record in manifest["records"]
+    )
+    assert "secret-tenant" not in rendered
+
+
 def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
     boards = _write_boards(tmp_path / "boards.csv", [_row("static")])
 
@@ -137,6 +164,7 @@ def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
         {"actions": [{"action": "teleport"}], "render": True},
         {"actions": [{"action": "click", "selector": ["#invalid"]}], "render": True},
         {"actions": [{"action": "click", "selector": "#ok", "unknown": True}], "render": True},
+        {"render": True, "resource_policy": []},
     ],
 )
 def test_browser_monitor_config_fails_closed(
@@ -312,9 +340,9 @@ def test_committed_manifest_is_current_and_contains_kpmg_fallback() -> None:
     manifest = check_manifest()
 
     assert manifest["input"]["network_access"] is False
-    assert manifest["summary"]["browser_board_count"] == 452
-    assert manifest["summary"]["browser_required_step_count"] == 589
-    assert manifest["summary"]["configured_profile_occurrence_count"] == 591
+    assert manifest["summary"]["browser_board_count"] == 464
+    assert manifest["summary"]["browser_required_step_count"] == 603
+    assert manifest["summary"]["configured_profile_occurrence_count"] == 605
     assert any(
         record["profile_kind"] == "configured"
         and record["surface"] == "scraper"

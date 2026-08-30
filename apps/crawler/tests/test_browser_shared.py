@@ -13,19 +13,25 @@ from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from src.shared.browser import (
     _REPEAT_TIMEOUT,
     ACTION_TIMEOUT,
+    AGGRESSIVE_BLOCK_HOSTS,
+    AGGRESSIVE_BLOCK_RESOURCE_TYPES,
     BROWSER_KEYS,
     DEFAULT_TIMEOUT,
     DEFAULT_USER_AGENT,
     DEFAULT_WAIT,
     DEFAULT_WAIT_FALLBACK,
     FALLBACK_WAIT_TIMEOUT,
+    LEAN_BLOCK_RESOURCE_TYPES,
     NAVIGATE_KEYS,
     NAVIGATION_NETWORK_RETRY_DELAY_SECONDS,
     OVERLAY_SELECTORS,
+    VALID_BLOCK_RESOURCE_TYPES,
+    VALID_RESOURCE_POLICIES,
     VALID_WAIT_STRATEGIES,
     BrowserNavigationHTTPStatusError,
     _resolve_headless,
     _resolve_placeholders,
+    _resolve_resource_blocking,
     _retryable_navigation_network_error,
     _x_server_alive,
     dismiss_overlays,
@@ -82,6 +88,7 @@ def _make_pw(page: MagicMock | None = None) -> MagicMock:
     page = page or _make_page()
     context = MagicMock()
     context.new_page = AsyncMock(return_value=page)
+    context.route = AsyncMock()
     context.close = AsyncMock()
 
     browser = MagicMock()
@@ -161,6 +168,10 @@ class TestConstants:
                 "viewport",
                 "locale",
                 "skip_ssl",
+                "resource_policy",
+                "bot_protection",
+                "block_resource_types",
+                "block_hosts",
                 "proxy",
             }
         )
@@ -173,6 +184,113 @@ class TestConstants:
         expected = frozenset({"wait", "wait_fallback", "timeout", "actions"})
         assert expected == NAVIGATE_KEYS
         assert NAVIGATE_KEYS < BROWSER_KEYS
+
+    def test_resource_policy_defaults_to_native_networking(self):
+        assert _resolve_resource_blocking({}) == (frozenset(), frozenset())
+
+    def test_auto_requires_explicit_clean_recon(self):
+        assert _resolve_resource_blocking({"resource_policy": "auto"}) == (
+            frozenset(),
+            frozenset(),
+        )
+        assert _resolve_resource_blocking({"resource_policy": "auto", "bot_protection": True}) == (
+            frozenset(),
+            frozenset(),
+        )
+
+        resource_types, hosts = _resolve_resource_blocking(
+            {"resource_policy": "auto", "bot_protection": False}
+        )
+        assert resource_types == LEAN_BLOCK_RESOURCE_TYPES
+        assert hosts == frozenset()
+
+        assert _resolve_resource_blocking(
+            {"resource_policy": "auto", "bot_protection": False},
+            use_proxy=True,
+        ) == (frozenset(), frozenset())
+
+    @pytest.mark.parametrize(
+        "anti_bot_config",
+        [
+            {"proxy": True},
+            {"persistent_context": True},
+            {"stealth": True},
+            {"headless": False},
+            {"channel": "chrome"},
+            {"warmup_url": "https://example.com/"},
+            {"cookies": [{"name": "session", "value": "x"}]},
+            {"user_agent": "custom"},
+            {"disable_http2": True},
+        ],
+    )
+    def test_auto_preserves_native_networking_for_anti_bot_shapes(self, anti_bot_config):
+        assert _resolve_resource_blocking(
+            {
+                **anti_bot_config,
+                "resource_policy": "auto",
+                "bot_protection": False,
+            }
+        ) == (frozenset(), frozenset())
+
+    def test_explicit_lean_and_aggressive_enable_blocking(self):
+        resource_types, hosts = _resolve_resource_blocking(
+            {"persistent_context": True, "resource_policy": "lean"}
+        )
+        assert resource_types == LEAN_BLOCK_RESOURCE_TYPES
+        assert hosts == frozenset()
+
+        resource_types, hosts = _resolve_resource_blocking(
+            {"persistent_context": True, "resource_policy": "aggressive"}
+        )
+        assert resource_types == AGGRESSIVE_BLOCK_RESOURCE_TYPES
+        assert hosts == AGGRESSIVE_BLOCK_HOSTS
+
+    def test_resource_policy_can_opt_out_or_extend(self):
+        for config in (
+            {"resource_policy": "none"},
+            {
+                "resource_policy": "none",
+                "block_resource_types": ["image"],
+                "block_hosts": ["assets.example.com"],
+            },
+            {
+                "block_resource_types": ["image"],
+                "block_hosts": ["assets.example.com"],
+            },
+        ):
+            assert _resolve_resource_blocking(config) == (frozenset(), frozenset())
+
+        resource_types, hosts = _resolve_resource_blocking(
+            {
+                "resource_policy": "lean",
+                "block_resource_types": ["image"],
+                "block_hosts": ["*.assets.example.com"],
+            }
+        )
+        assert resource_types == LEAN_BLOCK_RESOURCE_TYPES | {"image"}
+        assert hosts == {"assets.example.com"}
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            {"resource_policy": "maximum"},
+            {"resource_policy": []},
+            {"resource_policy": {}},
+            {"bot_protection": "unknown"},
+            {"resource_policy": "auto", "block_resource_types": ["image"]},
+            {"resource_policy": "auto", "block_hosts": ["media.example.com"]},
+            {"block_resource_types": "image"},
+            {"block_resource_types": ["invalid"]},
+            {"block_hosts": "youtube.com"},
+            {"block_hosts": ["https://youtube.com/"]},
+        ],
+    )
+    def test_invalid_resource_policy_rejected(self, config):
+        with pytest.raises(ValueError):
+            _resolve_resource_blocking(config)
+
+        assert {"auto", "none", "lean", "aggressive"} == VALID_RESOURCE_POLICIES
+        assert "image" in VALID_BLOCK_RESOURCE_TYPES
 
 
 # ---------------------------------------------------------------------------
@@ -742,8 +860,9 @@ class TestOpenPage:
             assert page is not None
         pw.chromium.launch.assert_awaited_once_with(headless=True)
         pw.chromium.launch.return_value.new_context.assert_awaited_once_with(
-            user_agent=DEFAULT_USER_AGENT
+            user_agent=DEFAULT_USER_AGENT,
         )
+        pw.chromium.launch.return_value.new_context.return_value.route.assert_not_awaited()
 
     async def test_custom_config(self, monkeypatch):
         # With DISPLAY set *and* xdpyinfo reporting the X server alive,
@@ -757,8 +876,9 @@ class TestOpenPage:
             pass
         pw.chromium.launch.assert_awaited_once_with(headless=False)
         pw.chromium.launch.return_value.new_context.assert_awaited_once_with(
-            user_agent="custom/1.0"
+            user_agent="custom/1.0",
         )
+        pw.chromium.launch.return_value.new_context.return_value.route.assert_not_awaited()
 
     async def test_closes_browser_on_exit(self):
         pw = _make_pw()
@@ -854,6 +974,7 @@ class TestOpenPage:
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(
             config.settings, "webshare_proxy_url", "http://user:pass@pxy.example:7000"
         )
@@ -866,6 +987,293 @@ class TestOpenPage:
             "username": "user",
             "password": "pass",
         }
+        context = pw.chromium.launch.return_value.new_context.return_value
+        ctx_kwargs = pw.chromium.launch.return_value.new_context.await_args.kwargs
+        assert "service_workers" not in ctx_kwargs
+        context.route.assert_not_awaited()
+
+    async def test_proxy_connection_failure_quarantines_browser_slot(self, monkeypatch):
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+
+        failed_pw = _make_pw()
+        failed_pw.chromium.launch.side_effect = PlaywrightError("net::ERR_PROXY_CONNECTION_FAILED")
+        with pytest.raises(PlaywrightError, match="ERR_PROXY_CONNECTION_FAILED"):
+            async with open_page(failed_pw, use_proxy=True):
+                pass
+
+        healthy_pw = _make_pw()
+        async with open_page(healthy_pw, use_proxy=True):
+            pass
+        assert failed_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
+    async def test_browser_target_block_rotates_same_warmup_origin(self, monkeypatch):
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+        browser_config = {"warmup_url": "https://blocked.example/"}
+
+        blocked_pw = _make_pw()
+        with pytest.raises(BrowserNavigationHTTPStatusError):
+            async with open_page(blocked_pw, browser_config, use_proxy=True):
+                raise BrowserNavigationHTTPStatusError(
+                    requested_url="https://blocked.example/jobs",
+                    response_url="https://blocked.example/challenge",
+                    status=403,
+                    phase="primary",
+                )
+
+        healthy_pw = _make_pw()
+        async with open_page(healthy_pw, browser_config, use_proxy=True):
+            pass
+        assert blocked_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
+    async def test_browser_target_block_rotates_without_warmup(self, monkeypatch):
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+
+        blocked_pw = _make_pw()
+        with pytest.raises(BrowserNavigationHTTPStatusError):
+            async with open_page(
+                blocked_pw,
+                use_proxy=True,
+                target_url="https://blocked.example/jobs",
+            ):
+                raise BrowserNavigationHTTPStatusError(
+                    requested_url="https://blocked.example/jobs",
+                    response_url="https://blocked.example/challenge",
+                    status=403,
+                    phase="primary",
+                )
+
+        healthy_pw = _make_pw()
+        async with open_page(
+            healthy_pw,
+            use_proxy=True,
+            target_url="https://blocked.example/jobs",
+        ):
+            pass
+        assert blocked_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
+    async def test_tunnel_connection_failure_quarantines_browser_slot(self, monkeypatch):
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+
+        failed_pw = _make_pw()
+        failed_pw.chromium.launch.side_effect = PlaywrightError("net::ERR_TUNNEL_CONNECTION_FAILED")
+        with pytest.raises(PlaywrightError, match="ERR_TUNNEL_CONNECTION_FAILED"):
+            async with open_page(
+                failed_pw,
+                use_proxy=True,
+                target_url="https://target.example/jobs",
+            ):
+                pass
+
+        healthy_pw = _make_pw()
+        async with open_page(
+            healthy_pw,
+            use_proxy=True,
+            target_url="https://target.example/jobs",
+        ):
+            pass
+        assert failed_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
+    async def test_target_network_failure_quarantines_browser_origin(self, monkeypatch):
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+
+        failed_pw = _make_pw()
+        with pytest.raises(PlaywrightError, match="ERR_CONNECTION_RESET"):
+            async with open_page(
+                failed_pw,
+                use_proxy=True,
+                target_url="https://target.example/jobs",
+            ):
+                raise PlaywrightError("page.goto: net::ERR_CONNECTION_RESET")
+
+        healthy_pw = _make_pw()
+        async with open_page(
+            healthy_pw,
+            use_proxy=True,
+            target_url="https://target.example/jobs",
+        ):
+            pass
+        assert failed_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
+    async def test_aggressive_route_blocks_types_and_host_suffixes(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
+        monkeypatch.setattr(
+            config.settings, "webshare_proxy_url", "http://user:pass@pxy.example:7000"
+        )
+        pw = _make_pw()
+        async with open_page(pw, {"resource_policy": "aggressive"}, use_proxy=True):
+            pass
+
+        context = pw.chromium.launch.return_value.new_context.return_value
+        handler = context.route.await_args.args[1]
+
+        media_route = MagicMock()
+        media_route.abort = AsyncMock()
+        media_route.continue_ = AsyncMock()
+        media_request = MagicMock(resource_type="media", url="https://example.com/hero.mp4")
+        await handler(media_route, media_request)
+        media_route.abort.assert_awaited_once()
+        media_route.continue_.assert_not_awaited()
+
+        youtube_route = MagicMock()
+        youtube_route.abort = AsyncMock()
+        youtube_route.continue_ = AsyncMock()
+        youtube_request = MagicMock(
+            resource_type="document",
+            url="https://www.youtube.com/embed/example",
+        )
+        await handler(youtube_route, youtube_request)
+        youtube_route.abort.assert_awaited_once()
+
+        script_route = MagicMock()
+        script_route.abort = AsyncMock()
+        script_route.continue_ = AsyncMock()
+        script_request = MagicMock(resource_type="script", url="https://example.com/app.js")
+        await handler(script_route, script_request)
+        script_route.continue_.assert_awaited_once()
+        script_route.abort.assert_not_awaited()
+
+    async def test_explicit_image_blocking_extends_fixed_proxy_policy(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
+        monkeypatch.setattr(
+            config.settings, "webshare_proxy_url", "http://user:pass@pxy.example:7000"
+        )
+        pw = _make_pw()
+        async with open_page(
+            pw,
+            {"resource_policy": "lean", "block_resource_types": ["image"]},
+            use_proxy=True,
+        ):
+            pass
+
+        context = pw.chromium.launch.return_value.new_context.return_value
+        handler = context.route.await_args.args[1]
+        route = MagicMock()
+        route.abort = AsyncMock()
+        route.continue_ = AsyncMock()
+        request = MagicMock(resource_type="image", url="https://example.com/logo.png")
+        await handler(route, request)
+        route.abort.assert_awaited_once()
+
+    async def test_default_context_does_not_install_resource_route(self):
+        pw = _make_pw()
+        async with open_page(pw):
+            pass
+
+        browser = pw.chromium.launch.return_value
+        assert "service_workers" not in browser.new_context.await_args.kwargs
+        browser.new_context.return_value.route.assert_not_awaited()
+
+    async def test_resource_policy_none_disables_route(self):
+        pw = _make_pw()
+        async with open_page(
+            pw,
+            {
+                "resource_policy": "none",
+                "block_resource_types": ["image"],
+                "block_hosts": ["assets.example.com"],
+            },
+        ):
+            pass
+
+        browser = pw.chromium.launch.return_value
+        assert "service_workers" not in browser.new_context.await_args.kwargs
+        browser.new_context.return_value.route.assert_not_awaited()
+
+    async def test_auto_proxy_runtime_flag_disables_route(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
+        monkeypatch.setattr(
+            config.settings, "webshare_proxy_url", "http://user:pass@pxy.example:7000"
+        )
+        pw = _make_pw()
+        async with open_page(
+            pw,
+            {"resource_policy": "auto", "bot_protection": False},
+            use_proxy=True,
+        ):
+            pass
+
+        assert "proxy" in pw.chromium.launch.await_args.kwargs
+        browser = pw.chromium.launch.return_value
+        browser.new_context.return_value.route.assert_not_awaited()
 
     async def test_use_proxy_true_but_provider_none_skips_proxy(self, monkeypatch):
         from src import config
@@ -1065,6 +1473,7 @@ class TestHeadlessCoercion:
         page = _make_page()
         context = MagicMock()
         context.new_page = AsyncMock(return_value=page)
+        context.route = AsyncMock()
         context.close = AsyncMock()
         context.add_cookies = AsyncMock()
         context.set_default_timeout = MagicMock()
@@ -1098,6 +1507,7 @@ class TestOpenPagePersistentContext:
         page = _make_page()
         context = MagicMock()
         context.new_page = AsyncMock(return_value=page)
+        context.route = AsyncMock()
         context.close = AsyncMock()
         context.add_cookies = AsyncMock()
         context.set_default_timeout = MagicMock()
@@ -1179,6 +1589,7 @@ class TestOpenPagePersistentContext:
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(config.settings, "webshare_proxy_url", "http://u:p@px.example:7000")
         pw = self._make_persist_pw()
         async with open_page(pw, {"persistent_context": True}, use_proxy=True):
@@ -1189,6 +1600,20 @@ class TestOpenPagePersistentContext:
             "username": "u",
             "password": "p",
         }
+        assert "service_workers" not in kwargs
+        pw.chromium.launch_persistent_context.return_value.route.assert_not_awaited()
+
+    async def test_persistent_context_can_explicitly_enable_lean_policy(self):
+        pw = self._make_persist_pw()
+        async with open_page(
+            pw,
+            {"persistent_context": True, "resource_policy": "lean"},
+        ):
+            pass
+
+        kwargs = pw.chromium.launch_persistent_context.await_args.kwargs
+        assert "service_workers" not in kwargs
+        pw.chromium.launch_persistent_context.return_value.route.assert_awaited_once()
 
     async def test_warmup_url_navigated_before_yield(self):
         pw = self._make_persist_pw()

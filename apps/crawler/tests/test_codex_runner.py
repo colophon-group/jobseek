@@ -1542,6 +1542,296 @@ def test_cleanup_marker_precedes_workspace_removal_and_is_retryable(
     assert not workspace.exists()
 
 
+def _write_terminal_lifecycle_receipts(
+    workspace_root: Path,
+    *,
+    issue: int,
+    slug: str = "acme",
+) -> Path:
+    terminal = workspace_root / ".terminal-lifecycle"
+    terminal.mkdir(parents=True)
+    journal_id = "a" * 32
+    locator = {
+        "version": 1,
+        "slug": slug,
+        "journal_id": journal_id,
+        "issue": issue,
+    }
+    journal = {
+        "version": 1,
+        "journal_id": journal_id,
+        "slug": slug,
+        "branch": f"add-company/{slug}",
+        "issue": issue,
+        "pr": None,
+        "pr_provenance": {},
+        "expected_remote_oid": None,
+        "worktree": None,
+        "worktree_head": None,
+        "worktree_dev": None,
+        "worktree_ino": None,
+        "local_branch_oid": None,
+        "data_cleanup_required": False,
+        "data_initially_present": False,
+        "workspace_was_present": True,
+        "active_entries": [],
+        "claim_initially_present": False,
+        "outcome": None,
+        "attempts": {
+            "remote_delete": False,
+            "pr_close": False,
+            "issue_comment": False,
+            "issue_labels": False,
+            "issue_close": False,
+            "worktree_remove": True,
+            "local_branch_remove": True,
+            "data_remove": False,
+            "active_clear": True,
+            "workspace_remove": True,
+        },
+    }
+    (terminal / f"{slug}.latest-receipt").write_text(json.dumps(locator))
+    (terminal / f"{slug}.{journal_id}.completed.yaml").write_text(json.dumps(journal))
+    return terminal
+
+
+def test_cleanup_clears_completed_terminal_lifecycle_receipts(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    terminal = _write_terminal_lifecycle_receipts(workspace_root, issue=101)
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    governor._cleanup_ws_artifacts_for_issue(
+        101,
+        run_id="issue-101-1787997096-d0e1bd7d",
+        workspace_root=workspace_root,
+        workspace_container=repo,
+    )
+
+    assert terminal.is_dir()
+    assert list(terminal.iterdir()) == []
+
+
+def test_cleanup_retains_foreign_terminal_lifecycle_receipts(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    terminal = _write_terminal_lifecycle_receipts(workspace_root, issue=102)
+    before = {path.name: path.read_text() for path in terminal.iterdir()}
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    with pytest.raises(RuntimeError, match="belongs to another run"):
+        governor._cleanup_ws_artifacts_for_issue(
+            101,
+            run_id="issue-101-1787997096-d0e1bd7d",
+            workspace_root=workspace_root,
+            workspace_container=repo,
+        )
+
+    assert {path.name: path.read_text() for path in terminal.iterdir()} == before
+
+
+def test_cleanup_retains_pending_terminal_lifecycle_evidence(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    terminal = _write_terminal_lifecycle_receipts(workspace_root, issue=101)
+    pending = terminal / "acme.pending.yaml"
+    pending.write_text(json.dumps({"issue": 101}))
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    with pytest.raises(RuntimeError, match="incomplete or unknown evidence"):
+        governor._cleanup_ws_artifacts_for_issue(
+            101,
+            run_id="issue-101-1787997096-d0e1bd7d",
+            workspace_root=workspace_root,
+            workspace_container=repo,
+        )
+
+    assert pending.exists()
+    assert len(list(terminal.iterdir())) == 3
+
+
+def test_terminal_lifecycle_receipt_cleanup_is_retryable(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    terminal = _write_terminal_lifecycle_receipts(workspace_root, issue=101)
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    original_unlink = codex_runner_module.unlink_claimed_child_at
+    calls = 0
+
+    def interrupt_second_unlink(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("simulated receipt cleanup interruption")
+        return original_unlink(*args, **kwargs)
+
+    monkeypatch.setattr(
+        codex_runner_module,
+        "unlink_claimed_child_at",
+        interrupt_second_unlink,
+    )
+    with pytest.raises(RuntimeError, match="simulated receipt cleanup interruption"):
+        governor._cleanup_ws_artifacts_for_issue(
+            101,
+            run_id="issue-101-1787997096-d0e1bd7d",
+            workspace_root=workspace_root,
+            workspace_container=repo,
+        )
+
+    remaining = list(terminal.iterdir())
+    assert len(remaining) == 1
+    assert remaining[0].name.startswith(".jobseek-terminal-receipt-v1-")
+    monkeypatch.setattr(codex_runner_module, "unlink_claimed_child_at", original_unlink)
+    governor._cleanup_ws_artifacts_for_issue(
+        101,
+        run_id="issue-101-1787997096-d0e1bd7d",
+        workspace_root=workspace_root,
+        workspace_container=repo,
+    )
+    assert list(terminal.iterdir()) == []
+
+
+def test_cleanup_rejects_oversized_terminal_receipt_before_yaml_parse(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    terminal = _write_terminal_lifecycle_receipts(workspace_root, issue=101)
+    locator = terminal / "acme.latest-receipt"
+    locator.write_bytes(b"x" * (64 * 1024 + 1))
+    safe_load_called = False
+
+    def fail_if_parsed(_raw):
+        nonlocal safe_load_called
+        safe_load_called = True
+        raise AssertionError("oversized receipt reached YAML parser")
+
+    monkeypatch.setattr("yaml.safe_load", fail_if_parsed)
+
+    terminal_fd = os.open(terminal, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with pytest.raises(RuntimeError, match="unauthenticated"):
+            codex_runner_module._read_terminal_receipt_at(
+                terminal_fd,
+                locator.name,
+            )
+    finally:
+        os.close(terminal_fd)
+
+    assert safe_load_called is False
+    assert locator.exists()
+
+
+def test_cleanup_rejects_terminal_receipt_fifo_without_blocking(tmp_path: Path) -> None:
+    workspace_root = tmp_path / "repo" / "apps" / "crawler" / ".workspace"
+    terminal = workspace_root / ".terminal-lifecycle"
+    terminal.mkdir(parents=True)
+    fifo = terminal / "acme.latest-receipt"
+    os.mkfifo(fifo)
+
+    terminal_fd = os.open(terminal, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with pytest.raises(RuntimeError, match="unauthenticated"):
+            codex_runner_module._read_terminal_receipt_at(terminal_fd, fifo.name)
+    finally:
+        os.close(terminal_fd)
+
+    assert fifo.exists()
+
+
+def test_cleanup_rejects_noncanonical_terminal_locator_slug(tmp_path: Path) -> None:
+    workspace_root = tmp_path / "repo" / "apps" / "crawler" / ".workspace"
+    terminal = _write_terminal_lifecycle_receipts(
+        workspace_root,
+        issue=101,
+        slug="acme",
+    )
+    locator = terminal / "acme.latest-receipt"
+    data = json.loads(locator.read_text())
+    data["slug"] = "!!!"
+    malformed = terminal / "!!!.latest-receipt"
+    malformed.write_text(json.dumps(data))
+    locator.unlink()
+
+    with pytest.raises(RuntimeError, match="locator is invalid"):
+        codex_runner_module._cleanup_terminal_lifecycle_receipts(
+            workspace_root,
+            issue=101,
+        )
+
+    assert malformed.exists()
+
+
+def test_cleanup_clears_completed_issue_only_terminal_receipt(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    issues = workspace_root / ".terminal-lifecycle" / "issues"
+    issues.mkdir(parents=True)
+    receipt = {
+        "version": 1,
+        "namespace": "issue",
+        "issue": 101,
+        "outcome": {
+            "marker": "<!-- terminal -->",
+            "body": "Rejected",
+            "labels": ["rejected"],
+            "close_issue": True,
+        },
+        "claim_initially_present": True,
+        "attempts": {
+            "issue_comment": True,
+            "issue_labels": True,
+            "issue_close": True,
+        },
+    }
+    (issues / "101.completed.yaml").write_text(json.dumps(receipt))
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    governor._cleanup_ws_artifacts_for_issue(
+        101,
+        run_id="issue-101-1787997096-d0e1bd7d",
+        workspace_root=workspace_root,
+        workspace_container=repo,
+    )
+
+    assert issues.is_dir()
+    assert list(issues.iterdir()) == []
+
+
 def test_reconcile_pre_remove_does_not_follow_workspace_symlink(
     monkeypatch,
     tmp_path: Path,

@@ -13,8 +13,10 @@ from src.core.monitors.nextdata import (
     _board_gone_statuses,
     _build_url,
     _extract_salary,
+    _filter_included_items,
     _find_jobs_path,
     _resolve_field,
+    _validated_item_inclusions,
     can_handle,
     discover,
     discover_stream,
@@ -429,6 +431,13 @@ class TestDiscoverRichMode:
         designer = next(j for j in result if j.title == "Designer")
         assert designer.locations == ["Remote"]
 
+    async def test_embedded_payload_after_generic_fetch_cap_is_not_truncated(self):
+        html = f"<html><body>{'x' * 550_000}{SAMPLE_HTML}</body></html>"
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            result = await discover(BOARD_RICH, client)
+
+        assert len(result) == 2
+
 
 # ---------------------------------------------------------------------------
 # URL-only mode tests
@@ -707,6 +716,138 @@ class TestCanHandle:
             "path": "children[4][3].items",
             "count": 6,
         }
+
+
+class TestItemInclusions:
+    def test_validates_and_filters_scalar_or_list_values(self):
+        inclusions = _validated_item_inclusions({"company": ["UNIQLO"], "countries": ["DE"]})
+
+        result = _filter_included_items(
+            [
+                {"id": "1", "company": "UNIQLO", "countries": ["DE", "AT"]},
+                {"id": "2", "company": "UNIQLO", "countries": ["FR"]},
+                {"id": "3", "company": "Unique GmbH", "countries": ["DE"]},
+                "not-an-object",
+            ],
+            inclusions,
+        )
+
+        assert result == [{"id": "1", "company": "UNIQLO", "countries": ["DE", "AT"]}]
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            {},
+            {"": ["UNIQLO"]},
+            {"company": []},
+            {"company": [1]},
+        ],
+    )
+    def test_rejects_invalid_config(self, value):
+        with pytest.raises(ValueError, match="include_item_values"):
+            _validated_item_inclusions(value)
+
+    async def test_discover_filters_after_paginating(self):
+        page_one = {
+            "props": {
+                "pageProps": {
+                    "search": {
+                        "jobs": [
+                            {"id": "1", "company": "UNIQLO", "title": "Sales"},
+                            {"id": "2", "company": "Unique GmbH", "title": "Driver"},
+                        ],
+                        "totalPages": 2,
+                    }
+                }
+            }
+        }
+        page_two = {
+            "props": {
+                "pageProps": {
+                    "search": {
+                        "jobs": [
+                            {"id": "3", "company": "UNIQLO", "title": "Manager"},
+                            {"id": "4", "company": "Other", "title": "Engineer"},
+                        ],
+                        "totalPages": 2,
+                    }
+                }
+            }
+        }
+        board = {
+            "board_url": "https://example.com/jobs?q=UNIQLO",
+            "metadata": {
+                "path": "props.pageProps.search.jobs",
+                "url_template": "https://example.com/jobs/{id}",
+                "fields": {"title": "title"},
+                "include_item_values": {"company": ["UNIQLO"]},
+                "pagination": {
+                    "path": "props.pageProps.search",
+                    "page_count": "totalPages",
+                    "page_param": "page",
+                },
+            },
+        }
+
+        def handler(request):
+            data = page_two if request.url.params.get("page") == "2" else page_one
+            return httpx.Response(200, text=_html_with_next_data(data))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert [(job.url, job.title) for job in result] == [
+            ("https://example.com/jobs/1", "Sales"),
+            ("https://example.com/jobs/3", "Manager"),
+        ]
+
+    async def test_stream_filters_each_page(self):
+        page_one = {
+            "props": {
+                "pageProps": {
+                    "search": {
+                        "jobs": [{"id": "1", "company": "UNIQLO", "title": "Sales"}],
+                        "totalPages": 2,
+                    }
+                }
+            }
+        }
+        page_two = {
+            "props": {
+                "pageProps": {
+                    "search": {
+                        "jobs": [
+                            {"id": "2", "company": "Unique GmbH", "title": "Driver"},
+                            {"id": "3", "company": "UNIQLO", "title": "Manager"},
+                        ],
+                        "totalPages": 2,
+                    }
+                }
+            }
+        }
+        board = {
+            "board_url": "https://example.com/jobs?q=UNIQLO",
+            "metadata": {
+                "path": "props.pageProps.search.jobs",
+                "url_template": "https://example.com/jobs/{id}",
+                "fields": {"title": "title"},
+                "include_item_values": {"company": ["UNIQLO"]},
+                "pagination": {
+                    "path": "props.pageProps.search",
+                    "page_count": "totalPages",
+                    "page_param": "page",
+                },
+            },
+        }
+
+        def handler(request):
+            data = page_two if request.url.params.get("page") == "2" else page_one
+            return httpx.Response(200, text=_html_with_next_data(data))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            batches = [batch async for batch in discover_stream(board, client)]
+
+        assert [[job.title for job in batch] for batch in batches] == [["Sales"], ["Manager"]]
 
 
 # ---------------------------------------------------------------------------

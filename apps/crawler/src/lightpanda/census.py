@@ -26,7 +26,7 @@ from src.core.scrapers import (
     get_scraper_type,
     scraper_needs_browser,
 )
-from src.shared.browser import VALID_WAIT_STRATEGIES
+from src.shared.browser import VALID_WAIT_STRATEGIES, _resolve_resource_blocking
 
 FORMAT = "jobseek.lightpanda.capability-census/v1"
 CRAWLER_ROOT = Path(__file__).resolve().parents[2]
@@ -115,6 +115,9 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
         {
             "actions",
             "advertised_total",
+            "block_hosts",
+            "block_resource_types",
+            "bot_protection",
             "channel",
             "defaults",
             "dualoo_portal",
@@ -131,6 +134,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "job_link_pattern",
             "link_selector",
             "lucca_board",
+            "oracle_adf_job_ids",
             "pagination",
             "persistent_context",
             "prospective_board",
@@ -141,9 +145,11 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "require_jsonld_jobposting",
             "require_pdf_text",
             "require_unexpired_pdf",
+            "resource_policy",
             "rescrape_policy",
             "retry_statuses",
             "rich_rows",
+            "script_json_links",
             "skip_ssl",
             "stealth",
             "timeout",
@@ -183,6 +189,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "nonempty_selector",
             "positions_per_listing",
             "preserve_single_location",
+            "proxy",
             "render",
             "require_zero_proof",
             "section_end",
@@ -207,6 +214,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "expected_hiring_organization",
             "expected_page_title",
             "fields",
+            "include_item_values",
             "pagination",
             "path",
             "render",
@@ -268,6 +276,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "actions",
             "channel",
             "defaults",
+            "defaults_by_url",
             "document_fallback",
             "encoding",
             "enrich",
@@ -281,6 +290,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "persistent_context",
             "proxy",
             "render",
+            "request_headers",
             "retry_statuses",
             "same_origin_redirects",
             "scope",
@@ -395,7 +405,18 @@ _BOOL_BROWSER_KEYS = frozenset(
 )
 _NUMBER_BROWSER_KEYS = frozenset({"settle", "timeout"})
 _STRING_BROWSER_KEYS = frozenset(
-    {"browser_expression", "channel", "locale", "source", "user_agent", "warmup_url"}
+    {
+        "browser_expression",
+        "channel",
+        "locale",
+        "resource_policy",
+        "source",
+        "user_agent",
+        "warmup_url",
+    }
+)
+_RESOURCE_POLICY_KEYS = frozenset(
+    {"block_hosts", "block_resource_types", "bot_protection", "resource_policy"}
 )
 _FALLBACK_FIELDS = frozenset(
     {
@@ -573,7 +594,7 @@ def _abstract_value(key: str, value: object) -> object:
     if isinstance(value, bool) or value is None:
         return value
     if isinstance(value, str):
-        if key in {"channel", "source", "wait", "wait_fallback"}:
+        if key in {"channel", "resource_policy", "source", "wait", "wait_fallback"}:
             return value
         return "string"
     if isinstance(value, int | float):
@@ -605,6 +626,13 @@ def _validate_and_abstract_config(
         raise CensusError(
             f"unknown {surface} config keys for {crawler_type}: {', '.join(sorted(unknown))}"
         )
+    if _RESOURCE_POLICY_KEYS & set(config):
+        try:
+            _resolve_resource_blocking(dict(config))
+        except ValueError as exc:
+            raise CensusError(
+                f"{surface}.{crawler_type} browser resource config is invalid: {exc}"
+            ) from None
     selector_config: Mapping[str, Any] = config
     if surface == "monitor" and crawler_type == "dom" and "rich_rows" in config:
         try:

@@ -102,7 +102,7 @@ src/
 │   ├── csv_io.py          # CSV read/write utilities
 │   ├── http.py            # httpx client factory
 │   ├── nextdata.py        # Shared field extraction (extract_field, map, list spec, each+wrap)
-│   ├── proxy.py           # Provider-agnostic proxy layer (see Proxy-routed transport)
+│   ├── proxy.py           # Webshare pool health/selection (see Proxy-routed transport)
 │   ├── logging.py         # structlog config
 │   └── slug.py            # slugify utility
 ├── inspect.py             # CSV validation + diagnostic library
@@ -167,6 +167,8 @@ uv run crawler run-browser             # Browser worker (claims from browser que
 uv run crawler export                  # Typesense CDC
 uv run crawler drain                   # R2 description uploader
 uv run crawler sync                    # CSV -> local Postgres, then Redis + Typesense
+uv run crawler proxy-audit             # Sanitized operator-only Webshare usage/source audit
+uv run crawler proxy-configure-webshare --env-file .env.local  # Backup + refresh pool
 uv run crawler reconcile               # Read-only Typesense reconciliation slice
 uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs (host timer uses this)
 uv run crawler reconcile --repair --full --target typesense  # Operator full remaining target cycle
@@ -202,9 +204,9 @@ uv run pytest tests/
 Some hosts (e.g. `apply.starbucks.com`, `citi.eightfold.ai`) block
 Hetzner datacenter IPs with AWS WAF captcha pages. The crawler routes
 httpx requests and Playwright launches for those boards through an
-external HTTP proxy. Implementation: `src/shared/proxy.py` — a
-`ProxyProvider` Protocol with a single `StaticProxyProvider` impl
-covering Webshare / Decodo / any `http://user:pass@host:port` service.
+external HTTP proxy. Webshare is the only supported provider. Selection,
+quarantine, and recovery live in `src/shared/proxy.py`; per-request httpx
+routing lives in `src/shared/http.py`.
 
 A board opts in by setting `"proxy": true` inside `monitor_config`
 and/or `scraper_config` JSON in `data/boards.csv` — same place as
@@ -218,59 +220,104 @@ starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"
 Active provider is chosen by env:
 
 ```bash
-PROXY_PROVIDER=webshare         # none | webshare | decodo
-WEBSHARE_PROXY_URL=http://user:pass@192.53.69.78:6716
-DECODO_PROXY_URL=http://user:pass@isp.decodo.com:10001
+PROXY_PROVIDER=webshare         # webshare | none
+# JSON array of per-proxy backbone URLs returned by Webshare mode=backbone.
+WEBSHARE_PROXY_URLS='["http://user-a:pass-a@p.webshare.io:10000"]'
+# Migration-only fallback; a direct IP becomes stale at monthly replacement.
+WEBSHARE_PROXY_URL=http://user:pass@direct-address:port
 ```
 
-`PROXY_PROVIDER=none` (and missing/empty URLs) are fail-safe — boards
-with `proxy: true` fall back to direct egress, which means captcha on
-WAF'd hosts but nothing crashes. The provider logs
-`proxy.provider.missing_url` at ERROR when a selected provider has an
-empty URL — first thing to check when a `proxy: true` board starts
-returning captcha.
+`PROXY_PROVIDER=none` is the explicit direct-egress switch. If `webshare` is
+selected but both URL settings are empty, proxy-required work fails closed;
+it never silently leaks that request through the crawler IP.
 
-### Billing model — per IP, flat monthly (NOT per request)
+Webshare recurring replacement changes the direct proxy list every 30 days.
+Per-proxy backbone credentials keep using `p.webshare.io` and survive that
+replacement, so they are the runtime source of truth. To create or refresh a
+local operator configuration, run:
 
-**Current providers (Webshare, Decodo) are billed per static IP, flat
-monthly. Per-request volume does not affect the bill.** One leased IP
-costs the same at 10 req/day and 10 000 req/day. Cost scales with IPs
-leased, not traffic volume.
+```bash
+uv run crawler proxy-configure-webshare --env-file .env.local
+```
 
-This is the opposite of the prior Lightpanda CDP transport (removed in
-PR #2181), which was billed by browser-hours of session clock time, so
-request volume directly mattered. Older mentions of "cost" and
-"bandwidth isn't free" in commit messages and docs are leftovers from
-that era — they **do not** apply to the Webshare/Decodo setup.
+The command requires the operator-only `WEBSHARE_API_KEY`, creates a
+timestamped mode-0600 backup before every mutation, writes atomically, and
+never prints proxy credentials. The API key is deliberately absent from
+Compose and the deployment workflow. `DECODO_PROXY_URL` is retired and the
+configurator removes it from the target env file after the backup.
 
-A single IP covers the current WAF-blocked set; add IPs (and a
-rotating/failover provider impl) only when an origin bans the IP or a
-provider hits concurrency caps.
+For a same-egress diagnostic (especially the resource-policy anti-bot A/B), set
+`WEBSHARE_PROXY_CANARY_SLOT=0` in the command environment for both arms. This
+pins one eligible slot and fails if that slot is quarantined. It is deliberately
+not forwarded by Compose or deployment and must never be persisted in a board.
 
-Adding a new provider or a new WAF-blocked host is covered in the
-commit that introduced this section (PR #2181) — the PR body has the
-step-by-step and rollback runbook.
+### Rotation, quarantine, and recovery
+
+- httpx selects a pool slot before every top-level caller request. Redirects
+  keep that slot for cookie/IP coherence; a caller retry selects again and
+  therefore moves to another eligible slot.
+- Playwright selects once per browser launch, keyed by the planned navigation
+  origin supplied by the monitor/scraper. The document, scripts, and assets
+  retain one exit IP for the whole launch; rotating subresources would create
+  an anti-bot fingerprint.
+- A local `WEBSHARE_PROXY_CANARY_SLOT` pin disables rotation for a diagnostic
+  only; production does not receive this setting.
+- HTTP 407 and explicit proxy transport failures quarantine a slot globally.
+  Target 403/429 and ambiguous target transport failures quarantine only the
+  `(slot, origin)` pair, leaving the slot usable elsewhere. Three distinct
+  origins with transport failures on one slot within five minutes promote it
+  to a global transport quarantine.
+- Cooldowns grow exponentially to a cap. After expiry, one request receives a
+  half-open probe while concurrent requests keep skipping the slot. Only that
+  generation's completed top-level request (after redirects and streamed body)
+  can restore it; stale concurrent responses are ignored. Failure starts
+  another bounded cooldown. State is process-local, so each worker learns
+  independently and recovers after restart.
+- When every eligible slot is cooling down, the request fails with a bounded
+  pool-exhausted error instead of bypassing the proxy.
+
+Metrics contain provider/mode/transport and health event/scope only. URLs,
+credentials, client/exit IPs, target origins, and board slugs are excluded from
+labels and logs.
+
+### Billing and credential-source audit
+
+The current Webshare shared-ISP plan has five proxies, a monthly 1,000 GB
+bandwidth allowance, and recurring 30-day replacements. Bandwidth therefore
+matters: request volume and large browser assets consume the plan even when the
+proxy count is unchanged.
+
+Run the read-only audit locally; never add the API key to a worker deployment:
+
+```bash
+# Example: inspect from the reported 2026-08-12 increase through 2026-08-30.
+uv run crawler proxy-audit --since-hours 432 --max-activity-records 20000
+```
+
+Configure `WEBSHARE_EXPECTED_CLIENT_IPS` as a JSON array containing production
+crawler egress IPs. Do not permanently allowlist an operator workstation;
+pass an intentional temporary source with `--expected-client-ip` for that run.
+The report emits only counts and assessments, never source/exit IPs, targets,
+URLs, or credentials. `unexpected_client_sources` is positive leak evidence;
+`inconclusive_no_allowlist`, truncation, or missing source data is not proof of
+a leak. Webshare's live activity API currently rejects data older than six
+days and a plan upgrade starts a new activity boundary; the report marks such
+historical source windows clipped/inconclusive while retaining aggregate byte
+and request totals. On an alert, rotate the Webshare proxy password and API key, inspect
+deployment and CI secret access, disable with `PROXY_PROVIDER=none`, and then
+update the pool through the backup-first configurator.
 
 ### Disabling re-scrapes on paid-proxy boards
-
-> This is **not** a per-request cost saver — see the billing note
-> above. The proxy provider does not bill per request.
 
 Set `monitor_config.rescrape_policy = "never"` in `data/boards.csv`
 for WAF-blocked boards whose content rarely changes. The reasons are:
 
-1. **Concurrency budget.** Webshare static IPs allow a limited number
-   of concurrent connections per IP. Each needless re-scrape holds a
-   connection slot that another board could use. A board with
-   thousands of postings (Starbucks ~21k, Uber ~1k) will saturate the
-   slot budget at the 24h refresh cadence without contributing new
-   information.
+1. **Bandwidth and concurrency.** Each needless re-scrape consumes bytes and
+   holds a connection slot. A board with thousands of postings can dominate
+   both budgets at the 24h refresh cadence without adding new information.
 2. **Origin good-neighborliness.** The proxy exit IP hitting the
-   origin at high volume for stale data is what gets the IP blocked
-   by the origin's WAF, forcing us to lease a new one.
-3. **Future-proofing.** If we ever swap to a bandwidth-metered
-   provider (e.g. Decodo's rotating/BW plans, which are NOT what we
-   run today), this flag is already in the right place.
+   origin at high volume for stale data is more likely to be blocked
+   by the origin's WAF.
 
 Mechanics: `_RECORD_SCRAPE_SUCCESS` sets `next_scrape_at = NULL` after
 each successful scrape when the flag is set. The first scrape still
@@ -285,6 +332,63 @@ starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"
 
 `inspect.validate_csvs()` rejects unknown values (only `"never"` is
 supported today).
+
+### Browser resource policy
+
+Every Playwright context defaults to `resource_policy: "none"` in
+`src/shared/browser.py`, so blocking is opt-in:
+
+- `none` installs no route, leaves HTTP cache and service workers alone, and
+  blocks no resources; it is an absolute off switch even if stale additive
+  lists remain in the config;
+- `auto` is a recon-driven opt-in: it resolves to `lean` only with an explicit
+  `bot_protection:false` finding and no anti-bot-shaped transport/profile
+  settings; missing/unknown evidence and protected boards resolve to `none`.
+  It cannot be combined with additive block lists;
+- `lean` aborts only fonts and media;
+- `aggressive` additionally blocks images and known video/analytics hosts.
+
+Service workers remain enabled under every policy. Request interception itself
+can alter network timing and disables Playwright's HTTP cache, so never force
+`lean` or `aggressive` on a board without an A/B canary against `none`. This is
+especially important for proxy, persistent-context, stealth, headful,
+Chrome-channel, cookie-seeded, custom-user-agent, or warmed flows. Compare
+status/final URL, challenge markers, discovered count, and required extracted
+fields using the same sample and egress. See
+`ws help browser-resources` for the configuring-agent runbook.
+
+For a board that has passed that canary, explicitly use `lean`; for a reviewed
+text-only board, use `aggressive` or extend one of those fixed policies in the
+relevant monitor or scraper config. Additive lists are ignored by `none` and
+the omitted-policy default:
+
+```json
+{
+  "resource_policy": "aggressive",
+  "block_resource_types": ["image"],
+  "block_hosts": ["video-cdn.example.com"]
+}
+```
+
+For routine rendered-board recon that found no bot protection and passed the
+same-egress canary, agents may persist the conservative automatic choice:
+
+```json
+{
+  "render": true,
+  "resource_policy": "auto",
+  "bot_protection": false
+}
+```
+
+Do not infer `bot_protection:false` merely because a challenge page returned
+HTTP 200. Record it only after checking final URL/title/body, 401/403/429
+responses, challenge markers, discovered count, and required fields. If the
+control is itself blocked or the evidence is ambiguous, omit the field and keep
+`none`.
+
+`inspect.validate_csvs()` validates the policy, bot-protection finding,
+resource types, and host suffix syntax before deployment.
 
 ## Eightfold hybrid monitor (sitemap + PCSX incremental)
 

@@ -4,9 +4,14 @@ import { setTestEnv, withTestEnv } from "@/test-utils/env";
 const mocks = vi.hoisted(() => ({
   browserListTopCompanies: vi.fn(),
   browserLoadCompanyPostings: vi.fn(),
+  browserLoadSimilarCompanies: vi.fn(),
+  browserWatchlistPostings: vi.fn(),
+  browserWatchlistYearCount: vi.fn(),
   serverListTopCompanies: vi.fn(),
   serverSearchJobs: vi.fn(),
   serverGetCompanyPostings: vi.fn(),
+  serverGetWatchlistPostings: vi.fn(),
+  serverGetWatchlistYearCount: vi.fn(),
 }));
 
 vi.mock("@/lib/actions/search", () => ({
@@ -19,14 +24,20 @@ vi.mock("@/lib/actions/company", () => ({
 }));
 
 vi.mock("@/lib/actions/watchlists", () => ({
-  getWatchlistPostings: vi.fn(),
-  getWatchlistPostingYearCount: vi.fn(),
+  getWatchlistPostings: mocks.serverGetWatchlistPostings,
+  getWatchlistPostingYearCount: mocks.serverGetWatchlistYearCount,
+}));
+
+vi.mock("../typesense-browser-watchlist", () => ({
+  getWatchlistPostingsBrowser: mocks.browserWatchlistPostings,
+  getWatchlistPostingYearCountBrowser: mocks.browserWatchlistYearCount,
 }));
 
 vi.mock("../typesense-browser", () => ({
   getBrowserSearchProvider: () => ({
     listTopCompanies: mocks.browserListTopCompanies,
     loadPostingsWithCounts: mocks.browserLoadCompanyPostings,
+    loadSimilarCompanies: mocks.browserLoadSimilarCompanies,
   }),
 }));
 
@@ -99,11 +110,53 @@ describe("browser-direct shell refreshes", () => {
     expect(mocks.serverGetCompanyPostings).not.toHaveBeenCalled();
   });
 
+  it("refreshes a public watchlist snapshot without invoking server fallbacks", async () => {
+    mocks.browserWatchlistPostings.mockResolvedValue({
+      postings: [],
+      total: 7,
+    });
+    mocks.browserWatchlistYearCount.mockResolvedValue(19);
+    const { tryGetWatchlistSnapshotDirect } = await import("../search-runner");
+
+    await expect(
+      tryGetWatchlistSnapshotDirect({
+        companyIds: ["company-1"],
+        locationIds: [4],
+        languages: ["en"],
+      }),
+    ).resolves.toEqual({ postings: [], total: 7, yearTotal: 19 });
+    expect(mocks.browserWatchlistPostings).toHaveBeenCalledWith({
+      companyIds: ["company-1"],
+      locationIds: [4],
+      languages: ["en"],
+      offset: 0,
+      limit: 20,
+    });
+    expect(mocks.serverGetWatchlistPostings).not.toHaveBeenCalled();
+    expect(mocks.serverGetWatchlistYearCount).not.toHaveBeenCalled();
+  });
+
+  it("keeps the watchlist shell when browser validation rejects a malformed success", async () => {
+    mocks.browserWatchlistPostings.mockRejectedValue(
+      new Error("Typesense response was malformed"),
+    );
+    mocks.browserWatchlistYearCount.mockResolvedValue(19);
+    const { tryGetWatchlistSnapshotDirect } = await import("../search-runner");
+
+    await expect(
+      tryGetWatchlistSnapshotDirect({ companyIds: ["company-1"] }),
+    ).resolves.toBeNull();
+    expect(mocks.serverGetWatchlistPostings).not.toHaveBeenCalled();
+    expect(mocks.serverGetWatchlistYearCount).not.toHaveBeenCalled();
+  });
+
   it("does nothing when browser-direct search is disabled", async () => {
     setTestEnv({ NEXT_PUBLIC_TYPESENSE_DIRECT: "0" });
     vi.resetModules();
     const {
       tryGetCompanyPostingsDirect,
+      tryGetSimilarCompaniesDirect,
+      tryGetWatchlistSnapshotDirect,
       tryListTopCompaniesDirect,
     } = await import("../search-runner");
 
@@ -126,7 +179,43 @@ describe("browser-direct shell refreshes", () => {
         false,
       ),
     ).resolves.toBeNull();
+    await expect(
+      tryGetSimilarCompaniesDirect({
+        companyId: "company-1",
+        industryId: 7,
+        limit: 10,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      tryGetWatchlistSnapshotDirect({ companyIds: ["company-1"] }),
+    ).resolves.toBeNull();
     expect(mocks.browserListTopCompanies).not.toHaveBeenCalled();
     expect(mocks.browserLoadCompanyPostings).not.toHaveBeenCalled();
+    expect(mocks.browserLoadSimilarCompanies).not.toHaveBeenCalled();
+    expect(mocks.browserWatchlistPostings).not.toHaveBeenCalled();
+    expect(mocks.browserWatchlistYearCount).not.toHaveBeenCalled();
+  });
+
+  it("refreshes similar companies without invoking a Server Action", async () => {
+    const browserResult = {
+      companies: [],
+      hasMore: false,
+    };
+    mocks.browserLoadSimilarCompanies.mockResolvedValue(browserResult);
+    const { tryGetSimilarCompaniesDirect } = await import("../search-runner");
+
+    await expect(
+      tryGetSimilarCompaniesDirect({
+        companyId: "company-1",
+        industryId: 7,
+        limit: 10,
+      }),
+    ).resolves.toEqual(browserResult);
+    expect(mocks.browserLoadSimilarCompanies).toHaveBeenCalledWith(
+      "company-1",
+      7,
+      10,
+    );
+    expect(mocks.serverGetCompanyPostings).not.toHaveBeenCalled();
   });
 });

@@ -138,6 +138,109 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    async def test_defaults_by_url_fill_only_matching_posting_fields(self):
+        from src.core.scrapers.dom import scrape
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                text="<html><body><h1>Source heading</h1><p>Rich role details.</p></body></html>",
+            )
+
+        canonical = "https://company.example/jobs/operator"
+        config = {
+            "steps": [
+                {"tag": "h1", "field": "metadata.source_title"},
+                {"tag": "p", "field": "description", "html": True},
+            ],
+            "defaults": {"employment_type": "full_time"},
+            "defaults_by_url": {
+                canonical: {
+                    "title": "HET Operator",
+                    "locations": ["United Kingdom"],
+                },
+                "https://company.example/jobs/maintainer": {
+                    "title": "HET Maintainer",
+                },
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(canonical, config, client)
+
+        assert result.title == "HET Operator"
+        assert result.locations == ["United Kingdom"]
+        assert result.employment_type == "full_time"
+        assert result.description is not None
+        assert "Rich role details" in result.description
+        assert result.metadata == {"source_title": "Source heading"}
+
+    async def test_defaults_by_url_never_replace_extracted_fields(self):
+        from src.core.scrapers.dom import scrape
+
+        canonical = "https://company.example/jobs/42"
+        config = {
+            "steps": [{"tag": "h1", "field": "title"}],
+            "defaults_by_url": {canonical: {"title": "Configured title"}},
+        }
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text="<h1>Extracted title</h1>")
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await scrape(canonical, config, client)
+
+        assert result.title == "Extracted title"
+
+    @pytest.mark.parametrize(
+        "defaults_by_url",
+        [[], {42: {"title": "Role"}}, {"https://company.example/jobs/42": "Role"}],
+    )
+    async def test_defaults_by_url_rejects_invalid_config(self, defaults_by_url):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "steps": [{"tag": "h1", "field": "title"}],
+            "defaults_by_url": defaults_by_url,
+        }
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, text="<h1>Role</h1>"))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="defaults_by_url"):
+                await scrape("https://company.example/jobs/42", config, client)
+
+    async def test_request_headers_select_public_gateway_representation(self):
+        from src.core.scrapers.dom import scrape
+
+        requested: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(request)
+            return httpx.Response(200, text="<html><body><h1>Gateway role</h1></body></html>")
+
+        config = {
+            "request_headers": {"X-Return-Format": "html"},
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            headers={"Authorization": "Bearer secret"},
+        ) as client:
+            result = await scrape("https://gateway.example/jobs/42", config, client)
+
+        assert result.title == "Gateway role"
+        assert requested[0].headers["x-return-format"] == "html"
+        assert "authorization" not in requested[0].headers
+
+    async def test_request_headers_reject_actions_that_enable_rendering(self):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "actions": [{"action": "dismiss_overlays"}],
+            "request_headers": {"X-Return-Format": "html"},
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="only when render=false"):
+                await scrape("https://gateway.example/jobs/42", config, client)
+
     async def test_fetch_url_transform_reads_gateway_without_changing_extraction(self):
         from src.core.scrapers.dom import scrape
 
@@ -338,6 +441,113 @@ class TestDomScraper:
         assert "long-term growth strategy" in result.description
         assert "Strategy consulting experience" in result.description
         assert "Add to favorites" not in result.description
+
+    def test_advorto_probe_uses_authoritative_labeled_vacancy_fields(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Nights Community Host</title></head><body>
+          <div id="page-title-holder">
+            <h1 class="page-header">Nights Community Host</h1>
+            <div class="page-header-third">No.26 - Croydon</div>
+          </div>
+          <div>Share this vacancy:</div>
+          <div class="promoted-vacancy-information-fields">
+            <dl class="AdvortoDefinitionList advorto-definition-list"></dl>
+          </div>
+          <div class="vacancy-information-fields">
+            <dl class="AdvortoDefinitionList advorto-definition-list">
+              <dt class="AdvortoDefinitionListTitle">Ref</dt>
+              <dd class="AdvortoDefinitionListElement">19092</dd>
+              <dt class="AdvortoDefinitionListTitle">Location</dt>
+              <dd class="AdvortoDefinitionListElement">No.26 - Croydon</dd>
+              <dt class="AdvortoDefinitionListTitle">Salary</dt>
+              <dd class="AdvortoDefinitionListElement">£30,000</dd>
+              <dt class="AdvortoDefinitionListTitle">Closing date</dt>
+              <dd class="AdvortoDefinitionListElement">30/09/2026</dd>
+              <dt class="AdvortoDefinitionListTitle">Description</dt>
+              <dd class="AdvortoDefinitionListElement">
+                <p><strong>Welcome to Native Communities.</strong></p>
+                <p>Support residents overnight and keep the building safe.</p>
+                <h2>What you will do</h2>
+                <ul><li>Respond to resident requests.</li><li>Complete safety checks.</li></ul>
+              </dd>
+            </dl>
+          </div>
+          <div class="AdvortoActionButtons"><button>Apply</button></div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert config["scope"] == ".vacancy-information-fields"
+        assert config["include_document_title"] is True
+
+        result = parse_html(html, config)
+        assert result.title == "Nights Community Host"
+        assert result.locations == ["No.26 - Croydon"]
+        assert result.metadata == {"salary": "£30,000"}
+        assert result.extras == {"valid_through": "2026-09-30"}
+        assert result.description is not None
+        assert "Welcome to Native Communities" in result.description
+        assert "Respond to resident requests" in result.description
+        assert "Share this vacancy" not in result.description
+        assert "Apply" not in result.description
+
+    def test_tribepad_probe_scopes_description_and_labeled_metadata(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><body>
+          <div id="content" class="scroll job_page">
+            <h1 class="job_title">Multi Skilled Operative</h1>
+            <div class="main"><div class="box fr-view" id="job_main">
+              <div>
+                <h3>Job Introduction</h3>
+                <p>Operate and maintain the asphalt plant safely.</p>
+                <h3>What we are looking for</h3>
+                <ul><li>Experience in an industrial environment.</li></ul>
+              </div>
+              <div><p>Tarmac Trading Limited</p></div>
+              <div class="related" id="docs">
+                <h3>Attached documents</h3><a href="benefits.pdf">Benefits</a>
+              </div>
+              <a class="btn btn-apply">Apply</a>
+            </div></div>
+            <div class="sidebar">
+              <table class="details">
+                <tr><td class="label">Salary</td><td>Competitive</td></tr>
+                <tr><td class="label">Contract Type</td><td>Permanent</td></tr>
+                <tr><td class="label">Closing Date</td><td>25 September, 2026</td></tr>
+                <tr><td class="label">Location</td><td>Stoke-on-Trent, United Kingdom</td></tr>
+                <tr><td class="label">Posted on</td><td>27 August, 2026</td></tr>
+              </table>
+              <p>Directions to</p><p>Print this job</p>
+            </div>
+          </div>
+          <span class="powered_by">Powered by
+            <a href="https://www.tribepad.com/looking-for-a-job/">Tribepad</a>
+          </span>
+          <footer>Acquisition Software | Cookies Policy</footer>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Multi Skilled Operative"
+        assert result.locations == ["Stoke-on-Trent, United Kingdom"]
+        assert result.employment_type == "Permanent"
+        assert result.date_posted == "2026-08-27"
+        assert result.extras["valid_through"] == "2026-09-25"
+        assert result.metadata == {"salary": "Competitive"}
+        assert result.description is not None
+        assert "Operate and maintain" in result.description
+        assert "industrial environment" in result.description
+        assert "Attached documents" not in result.description
+        assert "Directions to" not in result.description
+        assert "Acquisition Software" not in result.description
 
     def test_tpf_board_config_covers_pagination_and_labeled_details(self):
         from src.core.scrapers.dom import parse_html
@@ -1342,6 +1552,42 @@ class TestDomScraper:
                 client,
             )
         assert result.title == "Static Title"
+
+    async def test_static_fetch_uses_allowlisted_public_request_headers(self):
+        from src.core.scrapers.dom import scrape
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.headers["user-agent"] == "jobseek-crawler (+https://jseek.co/)"
+            assert "authorization" not in request.headers
+            return httpx.Response(200, text="<html><body><h1>Public role</h1></body></html>")
+
+        config = {
+            "request_headers": {"User-Agent": "jobseek-crawler (+https://jseek.co/)"},
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            headers={"Authorization": "Bearer private"},
+        ) as client:
+            result = await scrape("https://example.com/job/1", config, client)
+
+        assert result.title == "Public role"
+
+    @pytest.mark.parametrize("render_config", [{"render": True}, {"actions": []}])
+    async def test_public_request_headers_are_static_only(self, render_config):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            **render_config,
+            "request_headers": {"User-Agent": "jobseek-crawler (+https://jseek.co/)"},
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        if "actions" in render_config:
+            config["actions"] = [{"action": "dismiss_overlays"}]
+
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="only when render=false"):
+                await scrape("https://example.com/job/1", config, client)
 
     async def test_static_avature_406_retries_and_recovers(self):
         """Avature uses bursty 406s as a throttle on otherwise-live pages."""

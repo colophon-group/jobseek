@@ -300,6 +300,20 @@ class TestParseTtItem:
         result = _parse_tt_item(item)
         assert result.job_location_type == "hybrid"
 
+    def test_fully_remote_without_structured_location_uses_remote_fallback(self):
+        xml = """
+        <item>
+            <link>https://example.com/jobs/remote</link>
+            <remoteStatus>fully</remoteStatus>
+            <tt:locations xmlns:tt="https://teamtailor.com/locations" />
+        </item>
+        """
+        item = ET.fromstring(xml)
+        result = _parse_tt_item(item)
+        assert result is not None
+        assert result.locations == ["Remote"]
+        assert result.job_location_type == "remote"
+
     def test_remote_status_none_onsite(self):
         xml = """
         <item>

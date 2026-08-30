@@ -36,6 +36,16 @@ type CompanyPostingsResult = {
   yearCount: number;
   truncated?: boolean;
 };
+type SimilarCompaniesResult = {
+  companies: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    icon: string | null;
+    activeJobCount: number;
+  }>;
+  hasMore: boolean;
+};
 
 const directEnabled = process.env.NEXT_PUBLIC_TYPESENSE_DIRECT === "1";
 
@@ -135,6 +145,38 @@ type WatchlistPostingsInput = {
   languages?: string[];
 };
 
+type WatchlistRefreshResult = {
+  postings: WatchlistPostingEntry[];
+  total: number;
+  yearTotal: number;
+};
+
+/**
+ * Refresh an anonymous public watchlist shell directly from Typesense.
+ * A failure returns null so callers preserve SSR data without consuming a
+ * mount-time Server Action invocation.
+ */
+export async function tryGetWatchlistSnapshotDirect(
+  params: Omit<WatchlistPostingsInput, "offset" | "limit">,
+): Promise<WatchlistRefreshResult | null> {
+  if (!directEnabled) return null;
+  try {
+    const browser = await import("./typesense-browser-watchlist");
+    const [{ postings, total }, yearTotal] = await Promise.all([
+      browser.getWatchlistPostingsBrowser({ ...params, offset: 0, limit: 20 }),
+      browser.getWatchlistPostingYearCountBrowser(params),
+    ]);
+    return { postings, total, yearTotal };
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "browser_watchlist_snapshot" },
+      err,
+    );
+    return null;
+  }
+}
+
 export async function runGetWatchlistPostings(
   params: WatchlistPostingsInput,
   isLoggedIn: boolean,
@@ -211,6 +253,34 @@ export async function tryGetCompanyPostingsDirect(
     logExternalError(
       "error",
       { service: "typesense", operation: "browser_company_postings" },
+      err,
+    );
+    return null;
+  }
+}
+
+/**
+ * Revalidate the unfiltered peer strip embedded in a company shell directly
+ * against Typesense. A failed refresh keeps the rendered snapshot and never
+ * falls through to a mount-time Server Action.
+ */
+export async function tryGetSimilarCompaniesDirect(params: {
+  companyId: string;
+  industryId: number;
+  limit: number;
+}): Promise<SimilarCompaniesResult | null> {
+  if (!directEnabled) return null;
+  try {
+    const provider = await tryBrowserProvider();
+    return await provider.loadSimilarCompanies(
+      params.companyId,
+      params.industryId,
+      params.limit,
+    );
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "browser_similar_companies" },
       err,
     );
     return null;

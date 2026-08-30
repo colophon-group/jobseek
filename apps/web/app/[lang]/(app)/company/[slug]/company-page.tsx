@@ -13,7 +13,6 @@ import {
   runGetCompanyPostings,
   tryGetCompanyPostingsDirect,
 } from "@/lib/search/search-runner";
-import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
@@ -59,6 +58,8 @@ interface CompanyPageProps {
   languages: string[];
   userLat?: number;
   userLng?: number;
+  initialSearchUnavailable?: boolean;
+  initialDirectRefreshAttempted?: boolean;
 }
 
 export function CompanyPage({
@@ -86,6 +87,8 @@ export function CompanyPage({
   languages,
   userLat,
   userLng,
+  initialSearchUnavailable = false,
+  initialDirectRefreshAttempted = false,
 }: CompanyPageProps) {
   const { t } = useLingui();
   const params = useParams();
@@ -95,7 +98,6 @@ export function CompanyPage({
   const { setPageActions } = useSearchStateStore();
   const { isLoggedIn } = useSession();
   const isLoggedInRef = useLatest(isLoggedIn);
-  useClearTypesenseOnAuthChange(isLoggedIn);
 
   const [keywords, setKeywords, keywordsRef] = useLatestState<string[]>(initialKeywords);
   const [locations, setLocations, locationsRef] = useLatestState<SelectedLocation[]>(initialLocations);
@@ -118,8 +120,16 @@ export function CompanyPage({
   const [isSearching, startSearch] = useTransition();
   const [exhausted, setExhausted] = useState(initialPostings.length < PAGE_SIZE);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
+  const [searchUnavailable, setSearchUnavailable] = useState(
+    initialSearchUnavailable,
+  );
   const searchGenerationRef = useRef(0);
-  const initialDirectRefreshKeyRef = useRef<string | null>(null);
+  const directRefreshLanguagesKey = languages.join(",");
+  const initialDirectRefreshKeyRef = useRef<string | null>(
+    initialDirectRefreshAttempted
+      ? [company.id, uiLocale, directRefreshLanguagesKey].join("|")
+      : null,
+  );
 
   // Currency rates for EUR conversion — shared via `SalaryDisplayProvider`
   // which fetches once at the (app) layout root. Previously this page
@@ -138,6 +148,7 @@ export function CompanyPage({
     postingCount: postings.length,
     isTruncated,
     activeCount,
+    isUnavailable: searchUnavailable,
   });
 
   /** Convert a salary amount from the user's display currency to EUR. */
@@ -241,14 +252,14 @@ export function CompanyPage({
       setYearCount(result.yearCount);
       setExhausted(result.postings.length < PAGE_SIZE);
       setIsTruncated(result.truncated ?? false);
+      setSearchUnavailable(false);
     });
   }
 
-  // Keep the anonymous shell cacheable for an hour, then revalidate the
+  // Keep the anonymous shell cacheable for a day, then revalidate the
   // visible default postings directly from Typesense after hydration. This
   // path never falls back to a Server Action, so it preserves freshness
   // without converting page views back into Fluid CPU.
-  const directRefreshLanguagesKey = languages.join(",");
   useEffect(() => {
     if (hasFilters) return;
 
@@ -284,6 +295,7 @@ export function CompanyPage({
       setYearCount(result.yearCount);
       setExhausted(result.postings.length < PAGE_SIZE);
       setIsTruncated(result.truncated ?? false);
+      setSearchUnavailable(false);
     });
 
     return () => {
