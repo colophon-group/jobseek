@@ -126,8 +126,15 @@ jq -e '.result.error.error.code == "ERROR_CODE_TDM_RESERVED" and .result.success
 
 probe_case="robots-blocked"
 blocked_before="$(docker logs "$fixture_container" 2>&1 | grep -c 'GET /blocked/script.js' || true)"
-run_probe robots-blocked robots-blocked
-jq -e '.result.error.error.code == "ERROR_CODE_NAVIGATION" and any(.ledger[]; .path == "/blocked/script.js" and .decision == "blocked" and .reason == "robots_disallowed")' "$output_dir/robots-blocked.json" >/dev/null
+for run in $(seq 1 20); do
+  echo "identity diagnostic iteration: $run"
+  output="robots-blocked"
+  if (( run > 1 )); then
+    output="robots-diagnostic-$run"
+  fi
+  run_probe robots-blocked "$output" -identity-diagnostic
+  jq -e '.result.error.error.code == "ERROR_CODE_NAVIGATION" and any(.ledger[]; .path == "/blocked/script.js" and .decision == "blocked" and .reason == "robots_disallowed")' "$output_dir/$output.json" >/dev/null
+done
 blocked_after="$(docker logs "$fixture_container" 2>&1 | grep -c 'GET /blocked/script.js' || true)"
 test "$blocked_before" = "$blocked_after"
 

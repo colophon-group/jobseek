@@ -27,9 +27,15 @@ const (
 )
 
 type Runner struct {
-	WSURL         string
-	AllowedOrigin string
-	Limits        Limits
+	WSURL              string
+	AllowedOrigin      string
+	Limits             Limits
+	IdentityDiagnostic io.Writer
+}
+
+type pausedIdentity struct {
+	fetchID   fetch.RequestID
+	networkID network.RequestID
 }
 
 type executionState struct {
@@ -47,6 +53,8 @@ type executionState struct {
 	mainTDMHeader   string
 	failure         *runtimev1.BrowserResult
 	cancelExecution context.CancelFunc
+	identityOutput  io.Writer
+	blockedIdentity *pausedIdentity
 }
 
 type eventBarrier struct {
@@ -71,10 +79,11 @@ func (r Runner) Execute(parent context.Context, plan *runtimev1.BrowserPlan) (*r
 	}
 
 	state := &executionState{
-		allowedOrigin: r.AllowedOrigin,
-		limits:        r.Limits,
-		requestIndex:  make(map[network.RequestID]int),
-		completed:     make(map[network.RequestID]struct{}),
+		allowedOrigin:  r.AllowedOrigin,
+		limits:         r.Limits,
+		requestIndex:   make(map[network.RequestID]int),
+		completed:      make(map[network.RequestID]struct{}),
+		identityOutput: r.IdentityDiagnostic,
 	}
 	if failure := state.loadRobots(parent); failure != nil {
 		ledger, requests, bytes := state.snapshot()
@@ -290,7 +299,21 @@ func (s *executionState) handleRequestPaused(ctx context.Context, event *fetch.E
 		Decision:     "allowed",
 	}
 
+	var identityLine string
 	s.mu.Lock()
+	if reason == "robots_disallowed" && s.identityOutput != nil {
+		current := &pausedIdentity{fetchID: event.RequestID, networkID: event.NetworkID}
+		if s.blockedIdentity == nil {
+			s.blockedIdentity = current
+			identityLine = fmt.Sprintf("identity_relation duplicate=first fetch=present network=%s", identityPresence(current.networkID != ""))
+		} else {
+			identityLine = fmt.Sprintf(
+				"identity_relation duplicate=present fetch=%s network=%s",
+				identityRelation(s.blockedIdentity.fetchID, current.fetchID),
+				networkIdentityRelation(s.blockedIdentity.networkID, current.networkID),
+			)
+		}
+	}
 	s.requestCount++
 	if reason == "" && s.requestCount > s.limits.MaxRequests {
 		reason = "request_limit"
@@ -305,6 +328,9 @@ func (s *executionState) handleRequestPaused(ctx context.Context, event *fetch.E
 		s.requestIndex[event.NetworkID] = index
 	}
 	s.mu.Unlock()
+	if identityLine != "" {
+		fmt.Fprintln(s.identityOutput, identityLine)
+	}
 
 	if reason != "" {
 		_ = chromedp.Run(ctx, fetch.FailRequest(event.RequestID, network.ErrorReasonBlockedByClient))
@@ -318,6 +344,30 @@ func (s *executionState) handleRequestPaused(ctx context.Context, event *fetch.E
 	if err := chromedp.Run(ctx, fetch.ContinueRequest(event.RequestID)); err != nil && ctx.Err() == nil {
 		s.setFailure(Failure(runtimev1.ErrorCode_ERROR_CODE_SESSION_LOST, runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY, "browser session lost while authorizing request"))
 	}
+}
+
+func identityPresence(present bool) string {
+	if present {
+		return "present"
+	}
+	return "missing"
+}
+
+func identityRelation[T comparable](first, current T) string {
+	if first == current {
+		return "same"
+	}
+	return "different"
+}
+
+func networkIdentityRelation(first, current network.RequestID) string {
+	if first == "" || current == "" {
+		if first == current {
+			return "both_missing"
+		}
+		return "presence_different"
+	}
+	return identityRelation(first, current)
 }
 
 func (s *executionState) authorizeURL(raw string) (string, string) {

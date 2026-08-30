@@ -16,12 +16,14 @@ import (
 func main() {
 	var planPath, outputPath, wsURL, allowedOrigin string
 	var maxRequests, maxResponseBytes uint64
+	var identityDiagnostic bool
 	flag.StringVar(&planPath, "plan", "", "path to a committed synthetic BrowserPlan JSON fixture")
 	flag.StringVar(&outputPath, "output", "", "path for the deterministic result JSON")
 	flag.StringVar(&wsURL, "ws", harness.LightpandaWS, "fixed internal Lightpanda browser WebSocket")
 	flag.StringVar(&allowedOrigin, "allowed-origin", harness.FixtureOrigin, "fixed internal synthetic fixture origin")
 	flag.Uint64Var(&maxRequests, "max-requests", 32, "maximum robots plus browser requests")
 	flag.Uint64Var(&maxResponseBytes, "max-response-bytes", 1048576, "maximum aggregate response bytes")
+	flag.BoolVar(&identityDiagnostic, "identity-diagnostic", false, "emit only sanitized same/different blocked-request identity relations")
 	flag.Parse()
 
 	if planPath == "" || outputPath == "" {
@@ -43,6 +45,9 @@ func main() {
 			MaxRequests:      maxRequests,
 			MaxResponseBytes: maxResponseBytes,
 		},
+	}
+	if identityDiagnostic {
+		runner.IdentityDiagnostic = os.Stderr
 	}
 	result, ledger, requestCount, responseBytes, cleanup := runner.Execute(context.Background(), plan)
 	resultJSON, err := harness.MarshalResult(result)
