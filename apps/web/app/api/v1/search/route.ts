@@ -8,12 +8,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import { searchJobs, listTopCompanies } from "@/lib/services/search";
 import { parseSearchFilters } from "@/lib/services/search-input";
 import { parsePublicSearchLanguages } from "@/lib/search/language-param";
-import { logExternalError } from "@/lib/safe-external-error";
 import { withPublicApiObservability } from "@/lib/public-api-observability";
 import { PUBLIC_SEARCH_QUERY_PARAMETERS } from "@jseek/mcp-server/public-api-contract";
 import {
   checkRateLimit,
   apiResponse,
+  apiProviderUnavailableResponse,
+  sharedApiResponse,
   PUBLIC_EMPLOYMENT_TYPE_VALUES,
   PUBLIC_WORK_MODE_VALUES,
   parseApiLocale,
@@ -32,12 +33,7 @@ function searchErrorResponse(
   status: 400 | 500,
   rateLimit: RateLimitInfo | null,
 ) {
-  const response = apiResponse({ error }, { maxAge: 0, rateLimit, status });
-  // Search errors must never be stored by a browser or shared cache. This is
-  // stricter than merely setting max-age=0 and keeps a transient provider
-  // outage (or a malformed request) from becoming a cached API response.
-  response.headers.set("Cache-Control", "no-store");
-  return response;
+  return apiResponse({ error }, { rateLimit, status });
 }
 
 function parseIntegerRangeParam(
@@ -139,12 +135,11 @@ async function handleGet(request: NextRequest) {
   try {
     parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale });
   } catch (error) {
-    logExternalError(
-      "error",
-      { service: "typesense", operation: "public_api_search" },
+    return apiProviderUnavailableResponse(
+      "public_api_search_filters",
+      rl,
       error,
     );
-    return searchErrorResponse("Search service unavailable", 500, rl);
   }
   const unresolved = validateResolvedPublicFilters(parsed, rl);
   if (unresolved) return unresolved;
@@ -189,12 +184,18 @@ async function handleGet(request: NextRequest) {
         ? await searchJobs({ keywords: parsed.keywords, ...searchParams })
         : await listTopCompanies(searchParams);
   } catch (error) {
-    logExternalError(
-      "error",
-      { service: "typesense", operation: "public_api_search" },
+    return apiProviderUnavailableResponse(
+      "public_api_search",
+      rl,
       error,
     );
-    return searchErrorResponse("Search service unavailable", 500, rl);
+  }
+  if (result.degraded) {
+    return apiProviderUnavailableResponse(
+      "public_api_search_degraded",
+      rl,
+      new Error("Search provider returned a degraded result"),
+    );
   }
 
   const companies = result.companies.slice(0, MAX_COMPANIES).map((c) => ({
@@ -213,13 +214,12 @@ async function handleGet(request: NextRequest) {
     })),
   }));
 
-  return apiResponse(
+  return sharedApiResponse(
     {
       companies,
       totalCompanies: result.totalCompanies,
       moreAt: exploreUrl(sp, locale),
     },
-    { rateLimit: rl },
   );
 }
 

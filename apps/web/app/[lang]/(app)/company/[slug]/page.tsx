@@ -139,9 +139,9 @@ export default async function CompanyPageRoute({ params }: Props) {
   // shell with zero client-side server-action round-trips (#3203,
   // mirrors `/explore` from #2640). ``fetchCompanyPageDefaults``
   // deliberately avoids ``headers()``/``cookies()`` to stay
-  // ISR-eligible — the client component re-fetches the personalised
-  // variant via ``fetchCompanyPageData`` when filters or auth-related
-  // hint cookies are present.
+  // ISR-eligible — the client component reuses app-bootstrap preferences and
+  // resolves personalized/filter-bearing results browser-direct through the
+  // scoped Typesense key when required.
   const initialData = await getCompanyRouteSnapshot(slug, locale);
   if (!initialData) notFound();
   const { company } = initialData;

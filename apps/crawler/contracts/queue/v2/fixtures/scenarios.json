@@ -1,0 +1,2051 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "audit": {
+          "ok": true,
+          "violations": []
+        },
+        "final": {
+          "configs": {
+            "monitor-a": 4
+          },
+          "issued_tokens": [
+            "claim-a"
+          ],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 4,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "terminal",
+              "task_id": "monitor-a"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": [
+          {
+            "decision": "accepted",
+            "index": 0,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "09027202b230bb44b0c149607d527288b165fb37df8c0886d5f0f660a22f3ec9",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 1,
+            "kind": "heartbeat",
+            "reason": "lease_extended",
+            "snapshot_digest": "4d809b9d0eee2438c776bb13b3c635e1823e5986ddfc0d8d38c53404e8f051a7",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 2,
+            "kind": "authorize_write",
+            "reason": "write_authorized",
+            "snapshot_digest": "4d809b9d0eee2438c776bb13b3c635e1823e5986ddfc0d8d38c53404e8f051a7",
+            "write_authorized": true
+          },
+          {
+            "decision": "accepted",
+            "index": 3,
+            "kind": "complete",
+            "reason": "completed",
+            "snapshot_digest": "020008e4fc46def723af90cf9ca5a1b80e90289904e756c46008c924fdb2f1b8",
+            "write_authorized": false
+          }
+        ]
+      },
+      "id": "happy_complete_with_authoritative_write",
+      "initial": {
+        "configs": {
+          "monitor-a": 4
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 4,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "monitor-a"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [
+        {
+          "fence": {
+            "claim_token": "claim-a",
+            "config_revision": 4,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "monitor-a"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-a",
+            "config_revision": 4,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "heartbeat",
+          "lease_until": 30,
+          "task_id": "monitor-a"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-a",
+            "config_revision": 4,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "authorize_write",
+          "task_id": "monitor-a"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-a",
+            "config_revision": 4,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "complete",
+          "task_id": "monitor-a"
+        }
+      ],
+      "result_digest": "202bb04d014a9c3014d71176d263970ec87c86fc44c5acb46713ad21e881c0a9"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": true,
+          "violations": []
+        },
+        "final": {
+          "configs": {
+            "scrape-a": 9
+          },
+          "issued_tokens": [
+            "claim-new",
+            "claim-old"
+          ],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 9,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "terminal",
+              "task_id": "scrape-a"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": [
+          {
+            "decision": "accepted",
+            "index": 0,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "a9566f77c213ce6634b6fe3758040bc8f1b55a960aa9962df97e514e44712419",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 1,
+            "kind": "reschedule",
+            "reason": "rescheduled",
+            "snapshot_digest": "25f8375e3e987d723747e5af7b4eae56accc875dc33eba2e493e1a32684ee86c",
+            "write_authorized": false
+          },
+          {
+            "decision": "rejected",
+            "index": 2,
+            "kind": "claim",
+            "reason": "claim_token_reused",
+            "snapshot_digest": "25f8375e3e987d723747e5af7b4eae56accc875dc33eba2e493e1a32684ee86c",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 3,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "bfe63bdb49e6aea032590ed81957ecbcfd421f6ac50f7dace946b029a2a1db55",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 4,
+            "kind": "authorize_write",
+            "reason": "write_authorized",
+            "snapshot_digest": "bfe63bdb49e6aea032590ed81957ecbcfd421f6ac50f7dace946b029a2a1db55",
+            "write_authorized": true
+          },
+          {
+            "decision": "accepted",
+            "index": 5,
+            "kind": "complete",
+            "reason": "completed",
+            "snapshot_digest": "8491c778f7b453c1e6eb8cb2476e9ac3f20f44933031991270533014e36de2ee",
+            "write_authorized": false
+          }
+        ]
+      },
+      "id": "reschedule_rotates_claim_token",
+      "initial": {
+        "configs": {
+          "scrape-a": 9
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 9,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "scrape-a"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [
+        {
+          "fence": {
+            "claim_token": "claim-old",
+            "config_revision": 9,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "scrape-a"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-old",
+            "config_revision": 9,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "reschedule",
+          "task_id": "scrape-a"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-old",
+            "config_revision": 9,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 40,
+          "task_id": "scrape-a"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-new",
+            "config_revision": 9,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 40,
+          "task_id": "scrape-a"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-new",
+            "config_revision": 9,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "authorize_write",
+          "task_id": "scrape-a"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-new",
+            "config_revision": 9,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "complete",
+          "task_id": "scrape-a"
+        }
+      ],
+      "result_digest": "f8c75ee59dc20a471cc4964eb64e98eb5b4c10783b96ccf4b90679d41a6bd613"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": true,
+          "violations": []
+        },
+        "final": {
+          "configs": {
+            "monitor-b": 5
+          },
+          "issued_tokens": [
+            "claim-current",
+            "claim-expired"
+          ],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 5,
+              "engine_owner": "python",
+              "failures": 1,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "terminal",
+              "task_id": "monitor-b"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": [
+          {
+            "decision": "accepted",
+            "index": 0,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "b306eaba5cb1b571ca4ae7cdcb054615068a619f724a4d004d93b962368222eb",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 1,
+            "kind": "reap",
+            "reason": "requeued",
+            "snapshot_digest": "ddcf8d599a9436759954cf5866bbe2449a66e5f903a9146c629cea1c4af20657",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 2,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "51ba253c2fdc2bfeed82340c73eb1f698624ce48d1bc6207be76f7102786072c",
+            "write_authorized": false
+          },
+          {
+            "decision": "fenced",
+            "index": 3,
+            "kind": "heartbeat",
+            "reason": "claim_mismatch",
+            "snapshot_digest": "51ba253c2fdc2bfeed82340c73eb1f698624ce48d1bc6207be76f7102786072c",
+            "write_authorized": false
+          },
+          {
+            "decision": "fenced",
+            "index": 4,
+            "kind": "authorize_write",
+            "reason": "claim_mismatch",
+            "snapshot_digest": "51ba253c2fdc2bfeed82340c73eb1f698624ce48d1bc6207be76f7102786072c",
+            "write_authorized": false
+          },
+          {
+            "decision": "fenced",
+            "index": 5,
+            "kind": "complete",
+            "reason": "claim_mismatch",
+            "snapshot_digest": "51ba253c2fdc2bfeed82340c73eb1f698624ce48d1bc6207be76f7102786072c",
+            "write_authorized": false
+          },
+          {
+            "decision": "fenced",
+            "index": 6,
+            "kind": "reschedule",
+            "reason": "claim_mismatch",
+            "snapshot_digest": "51ba253c2fdc2bfeed82340c73eb1f698624ce48d1bc6207be76f7102786072c",
+            "write_authorized": false
+          },
+          {
+            "decision": "fenced",
+            "index": 7,
+            "kind": "fail",
+            "reason": "claim_mismatch",
+            "snapshot_digest": "51ba253c2fdc2bfeed82340c73eb1f698624ce48d1bc6207be76f7102786072c",
+            "write_authorized": false
+          },
+          {
+            "decision": "fenced",
+            "index": 8,
+            "kind": "reap",
+            "reason": "claim_mismatch",
+            "snapshot_digest": "51ba253c2fdc2bfeed82340c73eb1f698624ce48d1bc6207be76f7102786072c",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 9,
+            "kind": "authorize_write",
+            "reason": "write_authorized",
+            "snapshot_digest": "51ba253c2fdc2bfeed82340c73eb1f698624ce48d1bc6207be76f7102786072c",
+            "write_authorized": true
+          },
+          {
+            "decision": "accepted",
+            "index": 10,
+            "kind": "complete",
+            "reason": "completed",
+            "snapshot_digest": "697ee5923b0afff6043bc08eea11829d5342f2fb073615c978162146ff392edf",
+            "write_authorized": false
+          }
+        ]
+      },
+      "id": "reap_reclaim_fences_every_stale_transition",
+      "initial": {
+        "configs": {
+          "monitor-b": 5
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 5,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "monitor-b"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [
+        {
+          "fence": {
+            "claim_token": "claim-expired",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 10,
+          "task_id": "monitor-b"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-expired",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "reap",
+          "max_failures": 3,
+          "now": 10,
+          "task_id": "monitor-b"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-current",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 40,
+          "task_id": "monitor-b"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-expired",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "heartbeat",
+          "lease_until": 50,
+          "task_id": "monitor-b"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-expired",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "authorize_write",
+          "task_id": "monitor-b"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-expired",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "complete",
+          "task_id": "monitor-b"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-expired",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "reschedule",
+          "task_id": "monitor-b"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-expired",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "fail",
+          "max_failures": 2,
+          "task_id": "monitor-b"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-expired",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "reap",
+          "max_failures": 2,
+          "now": 50,
+          "task_id": "monitor-b"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-current",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "authorize_write",
+          "task_id": "monitor-b"
+        },
+        {
+          "fence": {
+            "claim_token": "claim-current",
+            "config_revision": 5,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "complete",
+          "task_id": "monitor-b"
+        }
+      ],
+      "result_digest": "78d76787390ecd220f04ac822d0e5ff73fed819106189a68edca0889a97dd88c"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": true,
+          "violations": []
+        },
+        "final": {
+          "configs": {
+            "monitor-c": 2
+          },
+          "issued_tokens": [
+            "current"
+          ],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 2,
+              "engine_owner": "go",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 11,
+              "shard_id": "shard-08",
+              "state": "terminal",
+              "task_id": "monitor-c"
+            }
+          ],
+          "route": {
+            "engine_owner": "go",
+            "routing_epoch": 11,
+            "shard_id": "shard-08"
+          }
+        },
+        "trace": [
+          {
+            "decision": "fenced",
+            "index": 0,
+            "kind": "claim",
+            "reason": "route_mismatch",
+            "snapshot_digest": "412ac03d381b79e716706adda08e8f3ff7b83af9ae8c11daec5282e2ffd28681",
+            "write_authorized": false
+          },
+          {
+            "decision": "fenced",
+            "index": 1,
+            "kind": "claim",
+            "reason": "route_mismatch",
+            "snapshot_digest": "412ac03d381b79e716706adda08e8f3ff7b83af9ae8c11daec5282e2ffd28681",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 2,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "8c706514b6a3943710dc4f736702fc6e9ec569919a131510bfc8d73bb8eb2dc4",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 3,
+            "kind": "complete",
+            "reason": "completed",
+            "snapshot_digest": "833c707a7fc394f10fd576eb52fd0fe5c5451dfec449b43cd331b650f26f4a93",
+            "write_authorized": false
+          }
+        ]
+      },
+      "id": "routing_epoch_and_owner_fence_claim",
+      "initial": {
+        "configs": {
+          "monitor-c": 2
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 2,
+            "engine_owner": "go",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 11,
+            "shard_id": "shard-08",
+            "state": "ready",
+            "task_id": "monitor-c"
+          }
+        ],
+        "route": {
+          "engine_owner": "go",
+          "routing_epoch": 11,
+          "shard_id": "shard-08"
+        }
+      },
+      "operations": [
+        {
+          "fence": {
+            "claim_token": "stale-epoch",
+            "config_revision": 2,
+            "engine_owner": "go",
+            "routing_epoch": 10,
+            "shard_id": "shard-08"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "monitor-c"
+        },
+        {
+          "fence": {
+            "claim_token": "wrong-owner",
+            "config_revision": 2,
+            "engine_owner": "python",
+            "routing_epoch": 11,
+            "shard_id": "shard-08"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "monitor-c"
+        },
+        {
+          "fence": {
+            "claim_token": "current",
+            "config_revision": 2,
+            "engine_owner": "go",
+            "routing_epoch": 11,
+            "shard_id": "shard-08"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "monitor-c"
+        },
+        {
+          "fence": {
+            "claim_token": "current",
+            "config_revision": 2,
+            "engine_owner": "go",
+            "routing_epoch": 11,
+            "shard_id": "shard-08"
+          },
+          "kind": "complete",
+          "task_id": "monitor-c"
+        }
+      ],
+      "result_digest": "ee03e36183aece0c08afb8b0a3ed555b35ccda06f25222075ec0840697b8903e"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": true,
+          "violations": []
+        },
+        "final": {
+          "configs": {
+            "scrape-b": 8
+          },
+          "issued_tokens": [
+            "current-config"
+          ],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 8,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "terminal",
+              "task_id": "scrape-b"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": [
+          {
+            "decision": "fenced",
+            "index": 0,
+            "kind": "claim",
+            "reason": "config_revision_mismatch",
+            "snapshot_digest": "b6a912d26a87cdf8f2d67e09f2ffdedf0b6a5935b17a222d7d9684b7602ec7b9",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 1,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "7e195ac1251e87fb8a777db219d00ff7a4609655d84154631d63ee8578feb56b",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 2,
+            "kind": "complete",
+            "reason": "completed",
+            "snapshot_digest": "ab162d204b7fdc2b500fc8869d0077521299c0fb221083bea4b1aeb4e199d02b",
+            "write_authorized": false
+          }
+        ]
+      },
+      "id": "config_revision_fences_claim",
+      "initial": {
+        "configs": {
+          "scrape-b": 8
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 8,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "scrape-b"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [
+        {
+          "fence": {
+            "claim_token": "old-config",
+            "config_revision": 7,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "scrape-b"
+        },
+        {
+          "fence": {
+            "claim_token": "current-config",
+            "config_revision": 8,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "scrape-b"
+        },
+        {
+          "fence": {
+            "claim_token": "current-config",
+            "config_revision": 8,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "complete",
+          "task_id": "scrape-b"
+        }
+      ],
+      "result_digest": "829a9f5ea8bada58d501a4d62a6f11d40318dba72ffb581c17be21bb37873c66"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": true,
+          "violations": []
+        },
+        "final": {
+          "configs": {
+            "scrape-c": 3
+          },
+          "issued_tokens": [
+            "failure-1",
+            "failure-2"
+          ],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 3,
+              "engine_owner": "python",
+              "failures": 2,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "dead_letter",
+              "task_id": "scrape-c"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": [
+          {
+            "decision": "accepted",
+            "index": 0,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "92215eb6648b3f5ab354a98490a8f22d155b3f503ebabd826bb562fd2dfda29c",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 1,
+            "kind": "fail",
+            "reason": "requeued",
+            "snapshot_digest": "bb1e3ec47ac4586f1191f62a2069ac2eedaa56c17cd49179909926418d23ce4e",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 2,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "355232dfe79db7c09f4f9be986953aacfc93226716c431348f70428958984c15",
+            "write_authorized": false
+          },
+          {
+            "decision": "fenced",
+            "index": 3,
+            "kind": "fail",
+            "reason": "claim_mismatch",
+            "snapshot_digest": "355232dfe79db7c09f4f9be986953aacfc93226716c431348f70428958984c15",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 4,
+            "kind": "fail",
+            "reason": "dead_lettered",
+            "snapshot_digest": "e158cb7333954e4a509669f376e027075711aa9c3a6fec2723ac9b08cc965701",
+            "write_authorized": false
+          }
+        ]
+      },
+      "id": "stale_failure_cannot_consume_budget",
+      "initial": {
+        "configs": {
+          "scrape-c": 3
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 3,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "scrape-c"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [
+        {
+          "fence": {
+            "claim_token": "failure-1",
+            "config_revision": 3,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "scrape-c"
+        },
+        {
+          "fence": {
+            "claim_token": "failure-1",
+            "config_revision": 3,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "fail",
+          "max_failures": 2,
+          "task_id": "scrape-c"
+        },
+        {
+          "fence": {
+            "claim_token": "failure-2",
+            "config_revision": 3,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 30,
+          "task_id": "scrape-c"
+        },
+        {
+          "fence": {
+            "claim_token": "failure-1",
+            "config_revision": 3,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "fail",
+          "max_failures": 2,
+          "task_id": "scrape-c"
+        },
+        {
+          "fence": {
+            "claim_token": "failure-2",
+            "config_revision": 3,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "fail",
+          "max_failures": 2,
+          "task_id": "scrape-c"
+        }
+      ],
+      "result_digest": "be7ad5d0a6505a8442c86573b8d18bef0c1a393f1ae9c0d0450086f24b93379c"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": true,
+          "violations": []
+        },
+        "final": {
+          "configs": {
+            "monitor-d": 6
+          },
+          "issued_tokens": [
+            "lease-a"
+          ],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 6,
+              "engine_owner": "python",
+              "failures": 1,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "ready",
+              "task_id": "monitor-d"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": [
+          {
+            "decision": "accepted",
+            "index": 0,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "67a5c8d2856101945358cc8bfce336bac5335dc682e9b3d6846b77747d0a6c0f",
+            "write_authorized": false
+          },
+          {
+            "decision": "rejected",
+            "index": 1,
+            "kind": "reap",
+            "reason": "lease_not_expired",
+            "snapshot_digest": "67a5c8d2856101945358cc8bfce336bac5335dc682e9b3d6846b77747d0a6c0f",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 2,
+            "kind": "heartbeat",
+            "reason": "lease_extended",
+            "snapshot_digest": "684db18eb12b8d1a3cdcb666efc1e0c2ffee6ff78682ea5716fb51b2a6b950b7",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 3,
+            "kind": "reap",
+            "reason": "requeued",
+            "snapshot_digest": "49bef22898d15dc424de9eb799841d2198af04d1087f234abe1cadb9e8f73a38",
+            "write_authorized": false
+          }
+        ]
+      },
+      "id": "reap_requires_expiry_and_current_fence",
+      "initial": {
+        "configs": {
+          "monitor-d": 6
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 6,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "monitor-d"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [
+        {
+          "fence": {
+            "claim_token": "lease-a",
+            "config_revision": 6,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 100,
+          "task_id": "monitor-d"
+        },
+        {
+          "fence": {
+            "claim_token": "lease-a",
+            "config_revision": 6,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "reap",
+          "max_failures": 3,
+          "now": 99,
+          "task_id": "monitor-d"
+        },
+        {
+          "fence": {
+            "claim_token": "lease-a",
+            "config_revision": 6,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "heartbeat",
+          "lease_until": 120,
+          "task_id": "monitor-d"
+        },
+        {
+          "fence": {
+            "claim_token": "lease-a",
+            "config_revision": 6,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "reap",
+          "max_failures": 3,
+          "now": 120,
+          "task_id": "monitor-d"
+        }
+      ],
+      "result_digest": "1dadb5d64d56c2db0ca98edb68726c31aede9ea219d3e1ebd38eaded83d8b5af"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": true,
+          "violations": []
+        },
+        "final": {
+          "configs": {
+            "monitor-e": 1,
+            "monitor-f": 1
+          },
+          "issued_tokens": [
+            "shared-token",
+            "unique-token"
+          ],
+          "records": [
+            {
+              "claim_token": "shared-token",
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": 20,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "inflight",
+              "task_id": "monitor-e"
+            },
+            {
+              "claim_token": "unique-token",
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": 20,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "inflight",
+              "task_id": "monitor-f"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": [
+          {
+            "decision": "accepted",
+            "index": 0,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "f642f7836b1f163ebbe54dce7afeec8779a8cc96309d9d4297668967a1b5b77c",
+            "write_authorized": false
+          },
+          {
+            "decision": "rejected",
+            "index": 1,
+            "kind": "claim",
+            "reason": "claim_token_reused",
+            "snapshot_digest": "f642f7836b1f163ebbe54dce7afeec8779a8cc96309d9d4297668967a1b5b77c",
+            "write_authorized": false
+          },
+          {
+            "decision": "accepted",
+            "index": 2,
+            "kind": "claim",
+            "reason": "claimed",
+            "snapshot_digest": "f412005d9f0b08d403087932422ee407f9950f6e329098c9417e5cef4b4c2e52",
+            "write_authorized": false
+          }
+        ]
+      },
+      "id": "claim_token_is_globally_unique_in_snapshot",
+      "initial": {
+        "configs": {
+          "monitor-e": 1,
+          "monitor-f": 1
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "monitor-e"
+          },
+          {
+            "claim_token": null,
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "monitor-f"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [
+        {
+          "fence": {
+            "claim_token": "shared-token",
+            "config_revision": 1,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "monitor-e"
+        },
+        {
+          "fence": {
+            "claim_token": "shared-token",
+            "config_revision": 1,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "monitor-f"
+        },
+        {
+          "fence": {
+            "claim_token": "unique-token",
+            "config_revision": 1,
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          },
+          "kind": "claim",
+          "lease_until": 20,
+          "task_id": "monitor-f"
+        }
+      ],
+      "result_digest": "7ca4c65d34e25e2e725902597d6853a000e6b3f8aebc10f0b73e138f99243bb1"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": false,
+          "violations": [
+            {
+              "code": "loss",
+              "detail": "configured task has no lifecycle record",
+              "task_id": "lost-task"
+            }
+          ]
+        },
+        "final": {
+          "configs": {
+            "lost-task": 1
+          },
+          "issued_tokens": [],
+          "records": [],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": []
+      },
+      "id": "conservation_detects_loss",
+      "initial": {
+        "configs": {
+          "lost-task": 1
+        },
+        "issued_tokens": [],
+        "records": [],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [],
+      "result_digest": "5db4b83b1d0e1c121dba2983beae7e662d1e1d71c1b8becb26859df38ca6ddd8"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": false,
+          "violations": [
+            {
+              "code": "duplication",
+              "detail": "task occupies multiple lifecycle records",
+              "task_id": "duplicate-task"
+            }
+          ]
+        },
+        "final": {
+          "configs": {
+            "duplicate-task": 1
+          },
+          "issued_tokens": [],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "ready",
+              "task_id": "duplicate-task"
+            },
+            {
+              "claim_token": null,
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "terminal",
+              "task_id": "duplicate-task"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": []
+      },
+      "id": "conservation_detects_duplication",
+      "initial": {
+        "configs": {
+          "duplicate-task": 1
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "duplicate-task"
+          },
+          {
+            "claim_token": null,
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "terminal",
+            "task_id": "duplicate-task"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [],
+      "result_digest": "e471ae31561770bba03a5002f045d36ba539202f5fec7159933870ec71752ee3"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": false,
+          "violations": [
+            {
+              "code": "orphan_config",
+              "detail": "lifecycle record has no configuration",
+              "task_id": "orphan-task"
+            }
+          ]
+        },
+        "final": {
+          "configs": {},
+          "issued_tokens": [],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "ready",
+              "task_id": "orphan-task"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": []
+      },
+      "id": "conservation_detects_orphan_config",
+      "initial": {
+        "configs": {},
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "orphan-task"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [],
+      "result_digest": "55ff5d7261d4fe74c9ff746cf0656caa0851b4ac4b9bea0fa9ddf9affacb197d"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": false,
+          "violations": [
+            {
+              "code": "engine_owner_mismatch",
+              "detail": "record owner differs from active route",
+              "task_id": "wrong-owner"
+            },
+            {
+              "code": "routing_epoch_mismatch",
+              "detail": "record epoch differs from active route",
+              "task_id": "wrong-epoch"
+            },
+            {
+              "code": "shard_mismatch",
+              "detail": "record shard differs from active route",
+              "task_id": "wrong-shard"
+            }
+          ]
+        },
+        "final": {
+          "configs": {
+            "wrong-epoch": 1,
+            "wrong-owner": 1,
+            "wrong-shard": 1
+          },
+          "issued_tokens": [],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 6,
+              "shard_id": "shard-03",
+              "state": "ready",
+              "task_id": "wrong-epoch"
+            },
+            {
+              "claim_token": null,
+              "config_revision": 1,
+              "engine_owner": "go",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "ready",
+              "task_id": "wrong-owner"
+            },
+            {
+              "claim_token": null,
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-99",
+              "state": "ready",
+              "task_id": "wrong-shard"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": []
+      },
+      "id": "conservation_detects_route_mismatches",
+      "initial": {
+        "configs": {
+          "wrong-epoch": 1,
+          "wrong-owner": 1,
+          "wrong-shard": 1
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-99",
+            "state": "ready",
+            "task_id": "wrong-shard"
+          },
+          {
+            "claim_token": null,
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 6,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "wrong-epoch"
+          },
+          {
+            "claim_token": null,
+            "config_revision": 1,
+            "engine_owner": "go",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "wrong-owner"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [],
+      "result_digest": "dfab854fd323e4b27887cd8e1efdf01740cf1f7b91c1d8816e9e7d0b0c9a60f6"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": false,
+          "violations": [
+            {
+              "code": "config_revision_mismatch",
+              "detail": "record revision differs from configured revision",
+              "task_id": "stale-config"
+            }
+          ]
+        },
+        "final": {
+          "configs": {
+            "stale-config": 4
+          },
+          "issued_tokens": [],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 3,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "ready",
+              "task_id": "stale-config"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": []
+      },
+      "id": "conservation_detects_config_revision_mismatch",
+      "initial": {
+        "configs": {
+          "stale-config": 4
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 3,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "stale-config"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [],
+      "result_digest": "3b500e06b238f8236eab06874e10777ddb0ddc2302b153d726fe5c4bb5fc8b81"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": false,
+          "violations": [
+            {
+              "code": "token_collision",
+              "detail": "claim token is reused by another task",
+              "task_id": "claim-a"
+            },
+            {
+              "code": "token_collision",
+              "detail": "claim token is reused by another task",
+              "task_id": "claim-b"
+            }
+          ]
+        },
+        "final": {
+          "configs": {
+            "claim-a": 1,
+            "claim-b": 1
+          },
+          "issued_tokens": [
+            "collision"
+          ],
+          "records": [
+            {
+              "claim_token": "collision",
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": 20,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "inflight",
+              "task_id": "claim-a"
+            },
+            {
+              "claim_token": "collision",
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": 30,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "inflight",
+              "task_id": "claim-b"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": []
+      },
+      "id": "conservation_detects_token_collision",
+      "initial": {
+        "configs": {
+          "claim-a": 1,
+          "claim-b": 1
+        },
+        "issued_tokens": [
+          "collision"
+        ],
+        "records": [
+          {
+            "claim_token": "collision",
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": 20,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "inflight",
+            "task_id": "claim-a"
+          },
+          {
+            "claim_token": "collision",
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": 30,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "inflight",
+            "task_id": "claim-b"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [],
+      "result_digest": "758ee259ef8e5af425a5dfcec5f2c86910be8189ef8a95421b5ce77b94ff1092"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": false,
+          "violations": [
+            {
+              "code": "invalid_inflight",
+              "detail": "inflight record lacks token or lease",
+              "task_id": "invalid-inflight"
+            },
+            {
+              "code": "invalid_non_inflight",
+              "detail": "non-inflight record retains token or lease",
+              "task_id": "invalid-ready"
+            }
+          ]
+        },
+        "final": {
+          "configs": {
+            "invalid-inflight": 1,
+            "invalid-ready": 1
+          },
+          "issued_tokens": [],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "inflight",
+              "task_id": "invalid-inflight"
+            },
+            {
+              "claim_token": "leftover",
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": 20,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "ready",
+              "task_id": "invalid-ready"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": []
+      },
+      "id": "conservation_detects_invalid_partition_shape",
+      "initial": {
+        "configs": {
+          "invalid-inflight": 1,
+          "invalid-ready": 1
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "inflight",
+            "task_id": "invalid-inflight"
+          },
+          {
+            "claim_token": "leftover",
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": 20,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "invalid-ready"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [],
+      "result_digest": "4d6d6d76d417f585f1a01bb2309e5cf93a4a9cd3bd50a2cd4b054fdf6cdffc33"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": false,
+          "violations": [
+            {
+              "code": "unregistered_claim_token",
+              "detail": "inflight token is absent from issued-token ledger",
+              "task_id": "unregistered-token"
+            }
+          ]
+        },
+        "final": {
+          "configs": {
+            "unregistered-token": 1
+          },
+          "issued_tokens": [],
+          "records": [
+            {
+              "claim_token": "missing-from-ledger",
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": 20,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "inflight",
+              "task_id": "unregistered-token"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": []
+      },
+      "id": "conservation_detects_unregistered_inflight_token",
+      "initial": {
+        "configs": {
+          "unregistered-token": 1
+        },
+        "issued_tokens": [],
+        "records": [
+          {
+            "claim_token": "missing-from-ledger",
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": 20,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "inflight",
+            "task_id": "unregistered-token"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [],
+      "result_digest": "0322773d46d48ebd749120ee362ce9aeafbf0bf282f6906d943801351877ae13"
+    },
+    {
+      "expected": {
+        "audit": {
+          "ok": false,
+          "violations": [
+            {
+              "code": "issued_token_duplication",
+              "detail": "issued-token ledger contains a duplicate",
+              "task_id": "issued-twice"
+            }
+          ]
+        },
+        "final": {
+          "configs": {
+            "ledger-task": 1
+          },
+          "issued_tokens": [
+            "issued-twice",
+            "issued-twice"
+          ],
+          "records": [
+            {
+              "claim_token": null,
+              "config_revision": 1,
+              "engine_owner": "python",
+              "failures": 0,
+              "lease_until": null,
+              "routing_epoch": 7,
+              "shard_id": "shard-03",
+              "state": "ready",
+              "task_id": "ledger-task"
+            }
+          ],
+          "route": {
+            "engine_owner": "python",
+            "routing_epoch": 7,
+            "shard_id": "shard-03"
+          }
+        },
+        "trace": []
+      },
+      "id": "conservation_detects_issued_token_ledger_duplication",
+      "initial": {
+        "configs": {
+          "ledger-task": 1
+        },
+        "issued_tokens": [
+          "issued-twice",
+          "issued-twice"
+        ],
+        "records": [
+          {
+            "claim_token": null,
+            "config_revision": 1,
+            "engine_owner": "python",
+            "failures": 0,
+            "lease_until": null,
+            "routing_epoch": 7,
+            "shard_id": "shard-03",
+            "state": "ready",
+            "task_id": "ledger-task"
+          }
+        ],
+        "route": {
+          "engine_owner": "python",
+          "routing_epoch": 7,
+          "shard_id": "shard-03"
+        }
+      },
+      "operations": [],
+      "result_digest": "0285d79907f631973ee3c127d530ea11e7c5ba294427f1d6157e0c4c86dbb01a"
+    }
+  ],
+  "format": "jobseek.queue.v2.conformance/v1"
+}
