@@ -18,6 +18,7 @@ Available topics:
   fields            Job data fields — types, formats, importance
   steps             DOM scraper step key reference
   actions           Browser action pipeline
+  browser-resources Browser bandwidth policy + anti-bot A/B runbook
   feedback          Feedback command — verdicts, per-field quality, examples
   artifacts         Debug artifacts saved by ws commands
   troubleshooting   Troubleshooting tips + case study reference
@@ -1625,6 +1626,17 @@ dom — Link or Static Listing-Row Extraction (fallback)
     channel        Browser channel, typically "chrome" with persistent_context.
     stealth        Use Chromium's less-detectable new headless mode.
     warmup_url     Visit this URL in the same browser context before the board.
+    resource_policy
+                   Browser bandwidth policy: none (default), auto, lean, or
+                   aggressive. Auto requires a recon finding. See:
+                   ws help browser-resources
+    bot_protection Recon result used by resource_policy:auto. Set false only
+                   after a clean same-egress A/B; true/omitted stays native.
+    block_resource_types
+                   Additional Playwright resource types for lean/aggressive.
+                   Ignored by none; incompatible with auto.
+    block_hosts    Additional hostname suffixes for lean/aggressive. Ignored
+                   by none; incompatible with auto.
     actions        Browser action pipeline (see: ws help actions)
     include_board_url
                    Include the board URL itself as a discovered job after a
@@ -3327,6 +3339,17 @@ dom — Step-based Extraction Engine
     channel        Browser channel, typically "chrome" with persistent_context.
     stealth        Use Chromium's less-detectable new headless mode.
     warmup_url     Visit this URL in the same browser context before the job.
+    resource_policy
+                   Browser bandwidth policy: none (default), auto, lean, or
+                   aggressive. Auto requires a recon finding. See:
+                   ws help browser-resources
+    bot_protection Recon result used by resource_policy:auto. Set false only
+                   after a clean same-egress A/B; true/omitted stays native.
+    block_resource_types
+                   Additional Playwright resource types for lean/aggressive.
+                   Ignored by none; incompatible with auto.
+    block_hosts    Additional hostname suffixes for lean/aggressive. Ignored
+                   by none; incompatible with auto.
     actions        Browser action pipeline (see: ws help actions)
     scope          Optional CSS selector that limits extraction to the job body
     include_document_title
@@ -3544,6 +3567,71 @@ Extraction Steps — DOM scraper step format
     {"tag": "p", "match_regex": "^\\d+\\.", "field": "title", "regex": "^\\d+\\.\\s*(.+)"}
     {"tag": "time", "field": "date_posted", "date_input_format": "%d-%m-%Y"}
     {"tag": "span", "attr": "class=salary", "field": "salary", "regex": "\\\\$(\\\\d[\\\\d,]+)"}"""
+
+BROWSER_RESOURCES = """\
+Browser Resource Policy — bandwidth reduction without blind anti-bot regressions
+
+  Applies to: every Playwright monitor and scraper (direct or proxied egress)
+
+  resource_policy values:
+    none        Default. Full-fidelity browser networking. Installs no request
+                route, blocks no resources, preserves HTTP cache, and leaves
+                service workers enabled. It remains an absolute off switch if
+                stale additive lists are present. Use for anti-bot boards and
+                as the A/B control.
+    auto        Recon-driven opt-in. Resolves to lean only when recon persisted
+                bot_protection:false and the config has no proxy, persistent
+                context, stealth/headful mode, browser channel, warmup, cookies,
+                custom user agent, or HTTP/2 override. Otherwise resolves to none.
+    lean        Blocks font and media resource types. Scripts, documents,
+                stylesheets, images, XHR/fetch, analytics, and service workers
+                remain available.
+    aggressive  Blocks fonts, media, images, YouTube/video embeds, and common
+                analytics/ad/telemetry hosts. Use only after a successful
+                same-egress A/B canary proves extraction and acceptance parity.
+
+  Optional additive lists for fixed lean/aggressive policies:
+    "block_resource_types": ["image", "font", "media"]
+    "block_hosts": ["video-cdn.example.com", "*.tracker.example"]
+
+  Anti-bot A/B runbook:
+    1. First prove rendering is required; prefer static HTTP/API extraction when
+       it provides complete data. Then run the same rendered monitor or scraper
+       sample with resource_policy:none.
+       Record HTTP status/final URL, challenge text, discovered count, required
+       fields, and the page/flat/debug artifacts.
+    2. Repeat on the same egress with lean (or aggressive only for a reviewed,
+       text-only board). Do not compare runs from different IPs/providers.
+    3. Any new 401/403/429, captcha/challenge page, redirect, missing API call,
+       count drop, or required-field drop is a regression: keep none and record
+       the evidence in ws feedback notes.
+    4. If both modes are already blocked, the test is inconclusive; do not claim
+       the resource policy is safe. Restore working egress and rerun.
+    5. Persist resource_policy:auto plus bot_protection:false only after the
+       control succeeds and the blocking arm has parity. If challenge evidence
+       is present, use bot_protection:true with none (or simply keep none).
+
+  Important behavior:
+    - Blocking is opt-in. An omitted resource_policy behaves exactly like none;
+      both ignore additive lists and install no route. Use lean/aggressive only
+      after the board-specific canary above.
+    - Auto cannot be combined with block_resource_types/block_hosts. Use a
+      fixed policy for reviewed custom blocking so auto cannot bypass its
+      anti-bot guard.
+    - Treat proxy, persistent-context, stealth, headful, Chrome-channel,
+      cookie-seeded, custom-user-agent, and warmed flows as anti-bot-sensitive.
+    - Request routing disables Playwright's HTTP cache. This can offset savings
+      on warmup flows that revisit the same origin.
+    - Service workers are never disabled by this policy; changing them can alter
+      application behavior and browser fingerprints.
+    - Prefer static HTTP/API extraction over any rendered policy when possible.
+
+  Examples:
+    {"render": true, "resource_policy": "none"}
+    {"render": true, "resource_policy": "auto", "bot_protection": false}
+    {"render": true, "resource_policy": "lean"}
+    {"render": true, "resource_policy": "aggressive"}
+"""
 
 ACTIONS = """\
 Browser Action Pipeline — pre-extraction actions for Playwright
@@ -4565,6 +4653,7 @@ TOPIC_MAP: dict[str, str] = {
     "fields": FIELDS,
     "steps": STEPS,
     "actions": ACTIONS,
+    "browser-resources": BROWSER_RESOURCES,
     "artifacts": ARTIFACTS,
     "troubleshooting": TROUBLESHOOTING,
     "feedback": FEEDBACK,
