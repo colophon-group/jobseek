@@ -12,7 +12,12 @@ import {
 import { suggestIndustries } from "@/lib/services/company";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { withPublicApiObservability } from "@/lib/public-api-observability";
-import { checkRateLimit, apiResponse, parseApiLocale } from "../_shared";
+import {
+  checkRateLimit,
+  apiResponse,
+  sharedApiResponse,
+  parseApiLocale,
+} from "../_shared";
 
 const VALID_TYPES = ["seniority", "occupations", "technologies", "industries"] as const;
 
@@ -28,7 +33,7 @@ async function handleGet(request: NextRequest) {
   if (!type || !VALID_TYPES.includes(type)) {
     return apiResponse(
       { error: `Missing or invalid 'type' param. Valid: ${VALID_TYPES.join(", ")}` },
-      { maxAge: 0, status: 400 },
+      { status: 400 },
     );
   }
 
@@ -57,7 +62,7 @@ async function handleGet(request: NextRequest) {
     }
   }
 
-  return apiResponse({ type, items }, { maxAge: CACHE_TTL_LONG, rateLimit: rl });
+  return sharedApiResponse({ type, items }, { maxAge: CACHE_TTL_LONG });
 }
 
 export const GET = withPublicApiObservability("taxonomies", handleGet);

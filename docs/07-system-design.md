@@ -536,6 +536,15 @@ Uses `@upstash/ratelimit` with sliding window algorithm backed by Upstash Redis.
 | `authLimiter`        | 60 seconds   | 10    | POST `/api/auth/[...all]`      |
 | `passwordResetLimiter` | 300 seconds | 3     | Password reset requests        |
 | `companyRequestLimiter` | 3600 seconds | 5    | Company request submissions    |
+| `apiLimiter`         | 60 seconds   | 30    | Origin executions of public `/api/v1/*` GETs |
+
+The public REST limiter is the defense-in-depth origin layer. Successful
+deterministic responses cache only on Vercel for 5 minutes or 1 hour, so CDN
+hits do not execute it. A production `jseek.co` WAF group matches
+`GET /api/v1/*` before CDN lookup and shares the project's existing fixed
+60/minute IP budget with public-read Server Actions. Hobby permits only one
+rate-limit rule per project. Errors and origin 429s are `no-store`; successful
+shared responses omit caller-specific `X-RateLimit-*` headers.
 
 ---
 
@@ -550,8 +559,10 @@ script/report-api-traffic.ts            # Operator 7/30/90-day report
 The public REST and MCP surfaces write privacy-bounded daily aggregates to
 the existing Upstash Redis database after the response has been produced.
 These counters measure **origin executions only**: Vercel CDN hits that never
-reach a Function and requests stopped by the WAF are absent. They complement,
-but do not replace, Vercel Firewall edge totals.
+reach a Function and requests stopped by the WAF are absent. Hosted MCP
+consumer attribution is likewise origin-only; a cached REST response is
+anonymous and records no consumer event. These counters complement, but do
+not replace, Vercel Firewall edge totals.
 
 Each request increments one canonical low-cardinality hash field containing
 only the enumerated interface, route, consumer class, status class, latency

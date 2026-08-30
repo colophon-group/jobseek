@@ -14,6 +14,7 @@ import { PUBLIC_SEARCH_QUERY_PARAMETERS } from "@jseek/mcp-server/public-api-con
 import {
   checkRateLimit,
   apiResponse,
+  sharedApiResponse,
   PUBLIC_EMPLOYMENT_TYPE_VALUES,
   PUBLIC_WORK_MODE_VALUES,
   parseApiLocale,
@@ -32,12 +33,7 @@ function searchErrorResponse(
   status: 400 | 500,
   rateLimit: RateLimitInfo | null,
 ) {
-  const response = apiResponse({ error }, { maxAge: 0, rateLimit, status });
-  // Search errors must never be stored by a browser or shared cache. This is
-  // stricter than merely setting max-age=0 and keeps a transient provider
-  // outage (or a malformed request) from becoming a cached API response.
-  response.headers.set("Cache-Control", "no-store");
-  return response;
+  return apiResponse({ error }, { rateLimit, status });
 }
 
 function parseIntegerRangeParam(
@@ -213,13 +209,12 @@ async function handleGet(request: NextRequest) {
     })),
   }));
 
-  return apiResponse(
+  return sharedApiResponse(
     {
       companies,
       totalCompanies: result.totalCompanies,
       moreAt: exploreUrl(sp, locale),
     },
-    { rateLimit: rl },
   );
 }
 

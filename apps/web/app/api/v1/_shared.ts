@@ -16,7 +16,7 @@ import {
   SEARCH_WORK_MODE_VALUES,
 } from "@jseek/mcp-server/public-api-contract";
 
-/** Rate-limit result to thread through to apiResponse(). */
+/** Rate-limit result to thread through to non-cacheable API responses. */
 export type RateLimitInfo = { limit: number; remaining: number; reset: number };
 
 /** Check rate limit and return 429 response if exceeded. */
@@ -57,23 +57,22 @@ export async function checkRateLimit(
   return null;
 }
 
-/** Build a JSON response with standard API headers.
+/** Build a private JSON response with standard API headers.
  *
- * Public `/api/v1/*` contract errors should pass an explicit non-2xx status
- * so standard `response.ok` callers do not treat malformed requests as
- * successful empty payloads.
+ * Use this for contract errors, provider failures, rate limits, and any other
+ * caller-specific response. Successful deterministic GET responses must use
+ * `sharedApiResponse()` so per-client rate-limit metadata can never enter a
+ * shared cache.
  */
 export function apiResponse(
   data: unknown,
   options?: {
-    maxAge?: number;
     rateLimit?: RateLimitInfo | null;
     status?: number;
   },
 ): NextResponse {
-  const maxAge = options?.maxAge ?? CACHE_TTL_MEDIUM;
   const headers: Record<string, string> = {
-    "Cache-Control": `public, max-age=${maxAge}, s-maxage=${maxAge}`,
+    "Cache-Control": "no-store",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET",
   };
@@ -83,6 +82,29 @@ export function apiResponse(
     headers["X-RateLimit-Reset"] = String(options.rateLimit.reset);
   }
   return NextResponse.json(data, { headers, status: options?.status });
+}
+
+/** Build a deterministic public JSON response cached only by Vercel's CDN.
+ *
+ * Browsers and downstream intermediaries must revalidate. Vercel consumes and
+ * strips `Vercel-CDN-Cache-Control`, so the public response never advertises a
+ * reusable shared TTL or contains caller-specific rate-limit metadata. A
+ * pre-cache Vercel Firewall rule enforces the public API request budget even
+ * when this response is served without invoking the origin function.
+ */
+export function sharedApiResponse(
+  data: unknown,
+  options?: { maxAge?: number },
+): NextResponse {
+  const maxAge = options?.maxAge ?? CACHE_TTL_MEDIUM;
+  return NextResponse.json(data, {
+    headers: {
+      "Cache-Control": "public, max-age=0, must-revalidate",
+      "Vercel-CDN-Cache-Control": `public, max-age=${maxAge}`,
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET",
+    },
+  });
 }
 
 /** Parse and validate the response locale shared by every public v1 route. */
@@ -95,9 +117,8 @@ export function parseApiLocale(
 
   const response = apiResponse(
     { error: `Invalid 'locale' param. Supported: ${locales.join(", ")}` },
-    { maxAge: 0, rateLimit, status: 400 },
+    { rateLimit, status: 400 },
   );
-  response.headers.set("Cache-Control", "no-store");
   return response;
 }
 
@@ -120,9 +141,8 @@ export function validatePublicEnumListParam(
     {
       error: `Invalid '${name}' value(s): ${detail}. Supported: ${supported.join(", ")}`,
     },
-    { maxAge: 0, rateLimit, status: 400 },
+    { rateLimit, status: 400 },
   );
-  response.headers.set("Cache-Control", "no-store");
   return response;
 }
 
@@ -141,9 +161,8 @@ export function validateResolvedPublicFilters(
       {
         error: `Invalid '${name}' slug(s): ${values.join(", ")}. Use /api/v1/resolve for exact slugs.`,
       },
-      { maxAge: 0, rateLimit, status: 400 },
+      { rateLimit, status: 400 },
     );
-    response.headers.set("Cache-Control", "no-store");
     return response;
   }
   return null;

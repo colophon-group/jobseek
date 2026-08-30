@@ -52,7 +52,8 @@ function consumerFor(request: NextRequest): PublicApiMetricInput["consumer"] {
 
 /**
  * Decorate a public REST GET handler with one post-response telemetry callback.
- * CDN cache hits do not execute this code and therefore are not represented.
+ * CDN cache hits and WAF-rejected requests do not execute this code and
+ * therefore are not represented.
  */
 export function withPublicApiObservability(
   route: PublicApiRestRoute,

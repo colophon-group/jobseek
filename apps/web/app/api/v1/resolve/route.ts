@@ -14,7 +14,12 @@ import { suggestIndustries } from "@/lib/services/company";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { slugifyTitle } from "@/lib/watchlist-slug";
 import { withPublicApiObservability } from "@/lib/public-api-observability";
-import { checkRateLimit, apiResponse, parseApiLocale } from "../_shared";
+import {
+  checkRateLimit,
+  apiResponse,
+  sharedApiResponse,
+  parseApiLocale,
+} from "../_shared";
 
 const VALID_TYPES = [
   "locations",
@@ -39,14 +44,14 @@ async function handleGet(request: NextRequest) {
       {
         error: `Missing or invalid 'type' param. Valid: ${VALID_TYPES.join(", ")}`,
       },
-      { maxAge: 0, status: 400 },
+      { status: 400 },
     );
   }
 
   if (!q || q.trim().length < 2) {
     return apiResponse(
       { error: "Missing or too short 'q' param (min 2 chars)" },
-      { maxAge: 0, status: 400 },
+      { status: 400 },
     );
   }
 
@@ -100,13 +105,13 @@ async function handleGet(request: NextRequest) {
   // taxonomy collections change on a daily-deploy cadence at most. Bumped
   // from the 300s default to 1h for higher CDN reuse on common queries.
   // See issue #2644 + alignment with /api/v1/taxonomies which is already 1h.
-  return apiResponse(
+  return sharedApiResponse(
     {
       type,
       query: q,
       matches: matches.slice(0, 10),
     },
-    { maxAge: CACHE_TTL_LONG, rateLimit: rl },
+    { maxAge: CACHE_TTL_LONG },
   );
 }
 

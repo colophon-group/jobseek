@@ -5,7 +5,7 @@ import {
 } from "@/lib/services/watchlists";
 import {
   checkRateLimit,
-  apiResponse,
+  sharedApiResponse,
   parseApiLocale,
   siteUrl,
 } from "../_shared";
@@ -41,7 +41,7 @@ async function handleGet(request: NextRequest) {
     ),
   }));
 
-  return apiResponse({ watchlists }, { rateLimit: rl });
+  return sharedApiResponse({ watchlists });
 }
 
 export const GET = withPublicApiObservability("watchlists", handleGet);

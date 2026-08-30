@@ -6,6 +6,7 @@ import { withPublicApiObservability } from "@/lib/public-api-observability";
 import {
   checkRateLimit,
   apiResponse,
+  sharedApiResponse,
   PUBLIC_EMPLOYMENT_TYPE_VALUES,
   PUBLIC_WORK_MODE_VALUES,
   parseApiLocale,
@@ -26,7 +27,7 @@ async function handleGet(request: NextRequest) {
   if (!title) {
     return apiResponse(
       { error: "Missing required 'title' param" },
-      { maxAge: 0, status: 400 },
+      { status: 400 },
     );
   }
 
@@ -132,7 +133,7 @@ async function handleGet(request: NextRequest) {
   if (exp) createParams.set("exp", exp);
   if (companies) createParams.set("companies", companies);
 
-  return apiResponse(
+  return sharedApiResponse(
     {
       url: siteUrl(
         `/${locale}/watchlists?${createParams.toString()}`,
@@ -144,7 +145,6 @@ async function handleGet(request: NextRequest) {
         matchingJobs: totalJobs,
       },
     },
-    { rateLimit: rl },
   );
 }
 

@@ -75,8 +75,24 @@ describe("GET /api/v1/search", () => {
   });
 
   it("defaults `languages` to `[]` (no filter) when `lang=` is absent", async () => {
+    mocks.apiLimit.mockResolvedValueOnce({
+      success: true,
+      limit: 30,
+      remaining: 29,
+      reset: Date.now() + 30_000,
+    });
     const { res } = await callRoute("?locale=en");
     expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe(
+      "public, max-age=0, must-revalidate",
+    );
+    expect(res.headers.get("Vercel-CDN-Cache-Control")).toBe(
+      "public, max-age=300",
+    );
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("X-RateLimit-Limit")).toBeNull();
+    expect(res.headers.get("X-RateLimit-Remaining")).toBeNull();
+    expect(res.headers.get("X-RateLimit-Reset")).toBeNull();
     // No keywords → listTopCompanies path
     expect(mocks.listTopCompanies).toHaveBeenCalledTimes(1);
     const call = mocks.listTopCompanies.mock.calls[0][0];
