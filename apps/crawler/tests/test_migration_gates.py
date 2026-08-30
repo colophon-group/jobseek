@@ -17,6 +17,13 @@ from src.migration_gates.model import GateModelError, evaluate_promotion, load_c
 CRAWLER_ROOT = Path(__file__).resolve().parents[1]
 RESOURCE_ROOT = CRAWLER_ROOT / "src" / "migration_gates" / "resources"
 SCHEMA_ROOT = RESOURCE_ROOT / "schemas"
+UNSAFE_IDENTIFIERS = (
+    "https://secret.example/token?credential=hunter2",
+    "token=secret",
+    ("oversized-secret-" + "x" * 4096)[:4096],
+)
+UNSAFE_MARKERS = ("secret.example", "hunter2", "token=secret", "oversized-secret")
+MAX_PUBLIC_ERROR_LENGTH = 256
 
 
 def _json(path: Path) -> dict:
@@ -151,20 +158,20 @@ def test_public_evaluator_rejects_baseline_before_scoring() -> None:
     evidence["candidate"]["cohort"] = "baseline"
     evidence["freeze_signals"]["tdm_violations"] = 1
 
-    with pytest.raises(GateModelError, match="candidate.*cohort.*candidate"):
+    with pytest.raises(GateModelError, match=r"candidate\.cohort.*validator=const"):
         evaluate_promotion(_policy(), evidence)
 
 
 @pytest.mark.parametrize(
-    ("document", "field", "value", "message"),
+    ("document", "field", "value", "safe_location"),
     [
-        ("evidence", "raw_host", "crawler.internal", "raw_host"),
-        ("observation", "board_url", "https://secret.example/jobs", "board_url"),
-        ("policy", "activation", {"enabled": True}, "activation"),
+        ("evidence", "raw_host", "crawler.internal", "<root>"),
+        ("observation", "board_url", "https://secret.example/jobs", "observations.[]"),
+        ("policy", "activation", {"enabled": True}, "<root>"),
     ],
 )
 def test_public_evaluator_rejects_unknown_fields_recursively(
-    document: str, field: str, value: object, message: str
+    document: str, field: str, value: object, safe_location: str
 ) -> None:
     policy = _policy()
     evidence = _evidence()
@@ -175,17 +182,28 @@ def test_public_evaluator_rejects_unknown_fields_recursively(
     }[document]
     target[field] = value
 
-    with pytest.raises(GateModelError, match=message):
+    with pytest.raises(GateModelError) as error:
         evaluate_promotion(policy, evidence)
+    message = str(error.value)
+    assert f"at {safe_location}" in message
+    assert "validator=additionalProperties" in message
+    assert field not in message
+    assert str(value) not in message
+    assert len(message) <= MAX_PUBLIC_ERROR_LENGTH
 
 
-@pytest.mark.parametrize("unsafe_id", ["https://secret.example/token", "a" * 65])
+@pytest.mark.parametrize("unsafe_id", UNSAFE_IDENTIFIERS)
 def test_public_evaluator_rejects_unsafe_or_oversized_evidence_id(unsafe_id: str) -> None:
     evidence = _evidence()
     evidence["evidence_id"] = unsafe_id
 
-    with pytest.raises(GateModelError, match="evidence_id"):
+    with pytest.raises(GateModelError, match="evidence_id") as error:
         evaluate_promotion(_policy(), evidence)
+    message = str(error.value)
+    assert unsafe_id not in message
+    assert all(marker not in message for marker in UNSAFE_MARKERS)
+    assert len(message) <= MAX_PUBLIC_ERROR_LENGTH
+    assert "validator=" in message
 
 
 @pytest.mark.parametrize("unsafe_id", ["token=secret", "p" * 65])
@@ -547,3 +565,30 @@ def test_clean_wheel_cli_uses_packaged_policy_and_schemas(tmp_path: Path) -> Non
     )
     assert evaluated.returncode == 0, evaluated.stderr
     assert json.loads(evaluated.stdout)["decision"] == "promote"
+
+    for index, unsafe_id in enumerate(UNSAFE_IDENTIFIERS):
+        evidence = _evidence()
+        evidence["evidence_id"] = unsafe_id
+        unsafe_path = tmp_path / f"unsafe-evidence-{index}.json"
+        unsafe_path.write_text(json.dumps(evidence))
+        rejected = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "src.migration_gates",
+                "evaluate",
+                "--evidence",
+                str(unsafe_path),
+            ],
+            cwd=tmp_path,
+            env=env,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        assert rejected.returncode == 2
+        assert rejected.stdout == ""
+        assert unsafe_id not in rejected.stderr
+        assert all(marker not in rejected.stderr for marker in UNSAFE_MARKERS)
+        assert len(rejected.stderr) <= MAX_PUBLIC_ERROR_LENGTH
+        assert "validator=" in rejected.stderr

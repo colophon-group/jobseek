@@ -18,6 +18,9 @@ DECISION_SCHEMA = "jobseek.crawler-migration-promotion-decision/v1"
 RELEASE_PATTERN = r"^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$"
 CLASS_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 IDENTIFIER_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
+SCHEMA_METADATA_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
+MAX_SCHEMA_LOCATION_LENGTH = 128
+MAX_SCHEMA_PATH_COMPONENTS = 8
 
 ZERO_TOLERANCE_REASONS = {
     "stale_authoritative_writes": "freeze:stale-authoritative-write",
@@ -56,8 +59,31 @@ def _validate_schema(value: dict[str, Any], schema_name: str, field: str) -> Non
     errors = sorted(validator.iter_errors(value), key=lambda error: list(error.absolute_path))
     if errors:
         first = errors[0]
-        location = ".".join(str(item) for item in first.absolute_path) or "<root>"
-        raise GateModelError(f"{field} violates {schema_name} at {location}: {first.message}")
+        path = list(first.absolute_path)
+        safe_parts = [
+            (
+                item
+                if isinstance(item, str) and SCHEMA_METADATA_PATTERN.fullmatch(item)
+                else "[]"
+                if isinstance(item, int)
+                else "<field>"
+            )
+            for item in path[:MAX_SCHEMA_PATH_COMPONENTS]
+        ]
+        if len(path) > MAX_SCHEMA_PATH_COMPONENTS:
+            safe_parts.append("...")
+        location = ".".join(safe_parts) or "<root>"
+        if len(location) > MAX_SCHEMA_LOCATION_LENGTH:
+            location = f"{location[: MAX_SCHEMA_LOCATION_LENGTH - 3]}..."
+        validator_name = (
+            first.validator
+            if isinstance(first.validator, str)
+            and SCHEMA_METADATA_PATTERN.fullmatch(first.validator)
+            else "schema"
+        )
+        raise GateModelError(
+            f"{field} violates {schema_name} at {location} (validator={validator_name})"
+        )
 
 
 def _require(condition: bool, message: str) -> None:
