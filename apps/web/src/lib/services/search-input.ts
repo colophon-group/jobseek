@@ -17,6 +17,7 @@ import {
 } from "@/lib/services/taxonomy";
 import type { TaxonomySuggestion } from "@/lib/services/taxonomy";
 import { parseEmploymentTypeParam, parseWorkModeParam } from "@/lib/search/query-params";
+import { tokenizeSemanticSearchQuery } from "@/lib/search/semantic-query";
 import type { EmploymentType, SelectedLocation, WorkMode } from "@/lib/search/types";
 
 export interface ParsedSearchFilters {
@@ -79,68 +80,6 @@ function normalizeLocationText(value: string): string {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[^\p{L}\p{N}]+/gu, "");
-}
-
-function splitIntoSegments(input: string): string[] {
-  return input
-    .split(/[,\n\r\t/|]+|-+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
-function splitIntoWords(segment: string): string[] {
-  return segment.split(/\s+/).filter(Boolean);
-}
-
-type TokenizedSearchQuery = {
-  segmentWords: string[][];
-  singles: string[];
-  allCandidates: string[];
-};
-
-function tokenizeSearchQuery(input: string): TokenizedSearchQuery {
-  const segments = input ? splitIntoSegments(input) : [];
-  const segmentWords = segments.map(splitIntoWords);
-  const singleSet = new Set<string>();
-  const allCandidateSet = new Set<string>();
-  for (const words of segmentWords) {
-    for (const word of words) {
-      singleSet.add(word);
-      allCandidateSet.add(word);
-    }
-    for (let index = 0; index < words.length - 1; index += 1) {
-      allCandidateSet.add(`${words[index]} ${words[index + 1]}`);
-    }
-    if (words.length <= 10) {
-      for (let index = 0; index < words.length - 2; index += 1) {
-        allCandidateSet.add(
-          `${words[index]} ${words[index + 1]} ${words[index + 2]}`,
-        );
-      }
-    }
-  }
-  return {
-    segmentWords,
-    singles: [...singleSet],
-    allCandidates: [...allCandidateSet],
-  };
-}
-
-/** Exact fan-out dimensions used by the canonical semantic parser. */
-export function getSemanticSearchQueryComplexity(input: string): {
-  uniqueTerms: number;
-  occupationCandidates: number;
-  maxTermLength: number;
-} {
-  const tokenized = tokenizeSearchQuery(input);
-  return {
-    uniqueTerms: tokenized.singles.length,
-    occupationCandidates: tokenized.allCandidates.length,
-    maxTermLength: tokenized.singles.reduce(
-      (maximum, term) => Math.max(maximum, term.length),
-      0,
-    ),
-  };
 }
 
 function exactLocationMatch(
@@ -336,7 +275,7 @@ export async function parseSearchFilters(params: {
   const technologyIds = new Set(technologies.map((t) => t.id));
 
   // --- Word-level tokenization ---
-  const { segmentWords, singles, allCandidates } = tokenizeSearchQuery(
+  const { segmentWords, singles, allCandidates } = tokenizeSemanticSearchQuery(
     params.q ?? "",
   );
   if (singles.length === 0) {

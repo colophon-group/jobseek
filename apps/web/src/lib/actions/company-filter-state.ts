@@ -1,11 +1,8 @@
 "use server";
 
 import { getGeoFromHeaders } from "@/lib/search/params";
-import {
-  getSemanticSearchQueryComplexity,
-  parseSearchFilters,
-  type ParsedSearchFilters,
-} from "@/lib/services/search-input";
+import { getSemanticSearchQueryComplexity } from "@/lib/search/semantic-query";
+import { parseSearchFilters, type ParsedSearchFilters } from "@/lib/services/search-input";
 
 const MAX_QUERY_LENGTH = 512;
 const MAX_QUERY_TERMS = 12;

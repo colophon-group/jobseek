@@ -39,7 +39,7 @@ vi.mock("@/lib/services/taxonomy", () => ({
 }));
 
 import { parseSearchFilters } from "../search-input";
-import { getSemanticSearchQueryComplexity } from "@/lib/services/search-input";
+import { getSemanticSearchQueryComplexity } from "@/lib/search/semantic-query";
 
 beforeEach(() => {
   vi.clearAllMocks();

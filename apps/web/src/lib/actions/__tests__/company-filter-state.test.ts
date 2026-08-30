@@ -11,6 +11,8 @@ vi.mock("@/lib/search/params", () => ({
 }));
 vi.mock("@/lib/services/search-input", () => ({
   parseSearchFilters: mocks.parse,
+}));
+vi.mock("@/lib/search/semantic-query", () => ({
   getSemanticSearchQueryComplexity: mocks.complexity,
 }));
 
