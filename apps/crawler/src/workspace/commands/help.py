@@ -1407,6 +1407,20 @@ inline — Single-Page Extraction (rich)
       ]
     }
 
+    Semantic accordions can use each summary as the repeated title and stop
+    the description at the next summary. Do not use the structural details
+    wrapper as item_boundary_tag because flattened extraction keeps
+    contentful elements, not empty container markers:
+    {
+      "require_zero_proof": true,
+      "steps": [
+        {"tag": "summary", "field": "title"},
+        {"tag": "p", "field": "description", "html": true,
+         "stop_tag": "summary"}
+      ],
+      "defaults": {"locations": ["Japan"]}
+    }
+
     render       true = Playwright, false = static HTTP (default: false)
     detail_click_selector
                  Playwright selector for click-only job-card controls. The
@@ -1478,6 +1492,9 @@ inline — Single-Page Extraction (rich)
                  Optional HTML tag that starts each posting (for example h2).
                  Each repeated step run is restricted to one such block, so an
                  optional field cannot consume content from the next posting.
+                 Use a contentful repeated tag, not a structural wrapper such
+                 as details; details/summary accordions should instead stop
+                 each description at the next summary as shown above.
     synthetic_identity_field
                  Optional extracted field containing a provider-stable identity
                  for ordinary static inline rows. The identity, rather than the
