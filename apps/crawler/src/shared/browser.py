@@ -235,6 +235,7 @@ class BrowserBackend:
         config: dict | None = None,
         *,
         use_proxy: bool = False,
+        target_url: str | None = None,
     ) -> AsyncIterator[Any]:
         raise NotImplementedError
         yield  # pragma: no cover - makes this an async context manager
@@ -282,6 +283,7 @@ class ChromiumBrowserBackend(BrowserBackend):
         config: dict | None = None,
         *,
         use_proxy: bool = False,
+        target_url: str | None = None,
     ) -> AsyncIterator[Any]:
         if self._playwright is None:
             raise RuntimeError("browser backend has not been started")
@@ -289,6 +291,7 @@ class ChromiumBrowserBackend(BrowserBackend):
             self._playwright,
             config,
             use_proxy=use_proxy,
+            target_url=target_url,
         ) as page:
             yield page
 
@@ -620,6 +623,7 @@ async def open_page(
     config: dict | None = None,
     *,
     use_proxy: bool = False,
+    target_url: str | None = None,
 ) -> AsyncIterator:
     """Allocate a page through the configured browser backend.
 
@@ -630,11 +634,20 @@ async def open_page(
     """
 
     if isinstance(pw, BrowserBackend):
-        async with pw.open_page(config, use_proxy=use_proxy) as page:
+        async with pw.open_page(
+            config,
+            use_proxy=use_proxy,
+            target_url=target_url,
+        ) as page:
             yield page
         return
 
-    async with _open_page_playwright(pw, config, use_proxy=use_proxy) as page:
+    async with _open_page_playwright(
+        pw,
+        config,
+        use_proxy=use_proxy,
+        target_url=target_url,
+    ) as page:
         yield page
 
 
@@ -644,6 +657,91 @@ async def _open_page_playwright(
     config: dict | None = None,
     *,
     use_proxy: bool = False,
+    target_url: str | None = None,
+) -> AsyncIterator:
+    """Select one affine Webshare endpoint and account for its outcome."""
+
+    from src.shared.proxy import (
+        abandon_proxy_selection,
+        playwright_proxy_selection_for,
+        report_proxy_failure,
+        report_proxy_success,
+    )
+
+    config = config or {}
+    selection_origin = None
+    selection_url = target_url or config.get("warmup_url")
+    if isinstance(selection_url, str):
+        with contextlib.suppress(ValueError):
+            selection_origin = (urlsplit(selection_url).hostname or "").lower() or None
+    pw_proxy, selection = playwright_proxy_selection_for(
+        use_proxy=use_proxy,
+        origin=selection_origin,
+    )
+
+    try:
+        async with _open_page_playwright_session(
+            pw,
+            config,
+            use_proxy=use_proxy,
+            pw_proxy=pw_proxy,
+        ) as page:
+            yield page
+    except BaseException as exc:
+        if selection is not None:
+            if isinstance(exc, BrowserNavigationHTTPStatusError):
+                failure_origin = selection_origin
+                with contextlib.suppress(ValueError):
+                    failure_origin = (
+                        urlsplit(exc.response_url).hostname
+                        or urlsplit(exc.requested_url).hostname
+                        or selection_origin
+                    )
+                failure_origin = failure_origin.lower() if failure_origin else None
+                if exc.status in {403, 429}:
+                    report_proxy_failure(
+                        selection,
+                        origin=failure_origin,
+                        reason="origin_block",
+                    )
+                else:
+                    # A concrete target response proves the proxy tunnel is
+                    # usable even though navigation correctly propagates the
+                    # target's HTTP error to the caller.
+                    report_proxy_success(selection, origin=selection_origin)
+            elif isinstance(exc, PlaywrightError):
+                message = str(exc).upper()
+                if "407" in message and ("PROXY" in message or "TUNNEL" in message):
+                    report_proxy_failure(selection, reason="proxy_auth")
+                elif (
+                    "ERR_PROXY_" in message
+                    or "ERR_TUNNEL_" in message
+                    or "ERR_NO_SUPPORTED_PROXIES" in message
+                ):
+                    report_proxy_failure(selection, reason="proxy_transport")
+                elif any(marker in message for marker in _RETRYABLE_NAVIGATION_NETWORK_ERRORS):
+                    report_proxy_failure(
+                        selection,
+                        origin=selection_origin,
+                        reason="origin_transport",
+                    )
+                else:
+                    abandon_proxy_selection(selection, origin=selection_origin)
+            else:
+                abandon_proxy_selection(selection, origin=selection_origin)
+        raise
+    else:
+        if selection is not None:
+            report_proxy_success(selection, origin=selection_origin)
+
+
+@asynccontextmanager
+async def _open_page_playwright_session(
+    pw,
+    config: dict | None = None,
+    *,
+    use_proxy: bool = False,
+    pw_proxy: dict[str, str] | None = None,
 ) -> AsyncIterator:
     """Create browser → context → page.  Yields a Playwright *Page*.
 
@@ -723,12 +821,6 @@ async def _open_page_playwright(
         # blink feature that Akamai's sensor bundle reads before the
         # stealth init-script has a chance to mask the JS property.
         extra_args.append("--disable-blink-features=AutomationControlled")
-
-    pw_proxy = None
-    if use_proxy:
-        from src.shared.proxy import playwright_proxy_for
-
-        pw_proxy = playwright_proxy_for(use_proxy=True)
 
     if persistent:
         async with _open_persistent_page(
@@ -1377,7 +1469,12 @@ async def render(url: str, config: dict | None = None, pw=None) -> str:
     config = config or {}
 
     if pw is not None:
-        async with open_page(pw, config, use_proxy=bool(config.get("proxy"))) as page:
+        async with open_page(
+            pw,
+            config,
+            use_proxy=bool(config.get("proxy")),
+            target_url=url,
+        ) as page:
             await navigate(page, url, config)
             await run_actions(page, config.get("actions", []))
             return await safe_content(page)
@@ -1386,7 +1483,12 @@ async def render(url: str, config: dict | None = None, pw=None) -> str:
 
     async with (
         async_playwright() as _pw,
-        open_page(_pw, config, use_proxy=bool(config.get("proxy"))) as page,
+        open_page(
+            _pw,
+            config,
+            use_proxy=bool(config.get("proxy")),
+            target_url=url,
+        ) as page,
     ):
         await navigate(page, url, config)
         await run_actions(page, config.get("actions", []))

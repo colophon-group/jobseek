@@ -11,7 +11,10 @@ import {
   type Locale,
 } from "@/lib/i18n";
 import { watchlistCacheTag } from "@/lib/cache-tags";
-import { CACHE_TTL_LONG, CACHE_TTL_SHORT } from "@/lib/cache-ttl";
+import {
+  CACHE_TTL_LONG,
+  CACHE_TTL_WATCHLIST_SHELL,
+} from "@/lib/cache-ttl";
 import {
   getPublicWatchlistByUserAndSlug,
   getWatchlistMatchingCompanyCount,
@@ -27,8 +30,10 @@ import { fetchPublicWatchlistPageData } from "@/lib/services/watchlist-page-data
 import { WatchlistContent } from "./watchlist-content";
 import { WatchlistRuntimeFallback } from "./watchlist-runtime-fallback";
 
-// Metadata is cached for an hour; the page body uses the short tier so
-// its posting list stays reasonably fresh. Each is its own `'use cache'`
+// Metadata and the public page shell are cached for an hour. The posting
+// list refreshes directly from Typesense after anonymous hydration, while
+// exact watchlist mutations invalidate both cache boundaries immediately.
+// Each is its own `'use cache'`
 // boundary — under cacheComponents they run in
 // separate clean AsyncLocalStorage snapshots, so React's `cache()`
 // wouldn't dedupe the watchlist lookup across them. Cross-boundary
@@ -182,7 +187,7 @@ async function getWatchlistRouteSnapshot(
   watchlistSlug: string,
 ) {
   "use cache";
-  cacheLife({ revalidate: CACHE_TTL_SHORT });
+  cacheLife({ revalidate: CACHE_TTL_WATCHLIST_SHELL });
   cacheTag(watchlistCacheTag(userSlug, watchlistSlug));
 
   // Re-fetch the watchlist detail. The Redis `cached()` layer inside
@@ -190,8 +195,9 @@ async function getWatchlistRouteSnapshot(
   // `generateMetadata` call above (single SQL per cold cache fill).
   // The body and its structured data must reach non-JS consumers (AI
   // retrievers and search-engine crawlers that don't execute JS), so
-  // render the anonymous snapshot here. Viewers with personalization
-  // hints replace it through WatchlistContent's server action.
+  // render the anonymous snapshot here. Anonymous language preferences
+  // refresh it directly from Typesense; authenticated viewers retain the
+  // authoritative WatchlistContent Server Action path.
   const detail = await getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug);
   if (!detail) return null;
 

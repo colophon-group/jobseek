@@ -16,7 +16,7 @@ const EXPLORE_DEFAULTS_CACHE_LIFE = {
 } as const;
 const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v4";
 
-// Cached for 10 minutes. The anonymous, no-filter explore payload is rendered
+// Cached for one day. The anonymous, no-filter explore payload is rendered
 // server-side via `fetchExplorePageDefaults` and embedded as `initialData`.
 // `SearchPage` refreshes the default result directly from Typesense after
 // hydration, so the longer CDN lifetime removes background regenerations

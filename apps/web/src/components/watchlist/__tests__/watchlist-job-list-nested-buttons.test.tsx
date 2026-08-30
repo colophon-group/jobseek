@@ -48,10 +48,6 @@ vi.mock("@/lib/search/search-runner", () => ({
   }),
 }));
 
-vi.mock("@/lib/search/use-clear-typesense-on-auth-change", () => ({
-  useClearTypesenseOnAuthChange: () => {},
-}));
-
 const toggleMock = vi.fn();
 vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({ isLoggedIn: true, isPending: false }),

@@ -343,6 +343,8 @@ _CLINCH_CLASS_MARKERS = (
     "job-description",
     "job-component-location",
 )
+_ADVORTO_SCOPE = ".vacancy-information-fields"
+_ADVORTO_LIST_SELECTOR = f"{_ADVORTO_SCOPE} dl.advorto-definition-list"
 _SOLIQUE_HOST_MARKER = "solique.ch/"
 _SOLIQUE_CLASS_MARKERS = ("job-title", "tasks-profile-wrapper")
 _REXX_PORTAL7_MARKERS = ("rexx recruitment - portal7", "jobtplcontainer")
@@ -641,6 +643,69 @@ def _clinch_config(htmls: list[str]) -> dict | None:
     }
 
 
+def _advorto_config(htmls: list[str]) -> dict | None:
+    """Build stable extraction steps for Kallidus Recruit/Advorto details.
+
+    These pages render a short title/location header before their share
+    controls, then repeat the authoritative fields in an Advorto definition
+    list.  The generic heuristic stops at the earlier ``Share`` marker and
+    consequently mistakes the location header for the description.  Scope to
+    the labeled vacancy fields and inject the document title because some
+    postings do not repeat their title inside the description body.
+    """
+
+    matches = 0
+    for html in htmls:
+        tree = LexborHTMLParser(html)
+        field_list = tree.css_first(_ADVORTO_LIST_SELECTOR)
+        title = tree.css_first("title")
+        if field_list is None or title is None or not title.text(strip=True):
+            continue
+        labels = {node.text(strip=True).casefold() for node in field_list.css("dt")}
+        if {"location", "description"}.issubset(labels):
+            matches += 1
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    label = {
+        "tag": "dt",
+        "offset": 1,
+        "from": 0,
+    }
+    return {
+        "scope": _ADVORTO_SCOPE,
+        "include_document_title": True,
+        "steps": [
+            {"tag": "title", "field": "title"},
+            {
+                **label,
+                "match_regex": r"^\s*Description\s*$",
+                "field": "description",
+                "html": True,
+                "to_end": True,
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Location\s*$",
+                "field": "locations",
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Salary\s*$",
+                "field": "metadata.salary",
+                "optional": True,
+            },
+            {
+                **label,
+                "match_regex": r"^\s*Closing date\s*$",
+                "field": "valid_through",
+                "date_input_format": "%d/%m/%Y",
+                "optional": True,
+            },
+        ],
+    }
+
+
 def _tribepad_config(htmls: list[str]) -> dict | None:
     """Build stable extraction steps for Tribepad job-detail pages.
 
@@ -846,6 +911,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     Uses the first page's structure to generate steps, then validates
     that the title step (h1) matches on other pages too.
     """
+    advorto = _advorto_config(htmls)
+    if advorto is not None:
+        return advorto
+
     lucca = _lucca_config(htmls)
     if lucca is not None:
         return lucca
@@ -948,7 +1017,7 @@ async def probe_pw(urls: list[str], pw) -> tuple[dict | None, str]:
     }
     for url in urls[:3]:
         try:
-            async with open_page(pw, browser_config) as page:
+            async with open_page(pw, browser_config, target_url=url) as page:
                 await navigate(page, url, browser_config)
                 # Turbo/Stimulus career sites may commit the document before
                 # their server-rendered job block is attached.  Keep this
@@ -1056,16 +1125,29 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
     return JobContent(**kwargs)
 
 
-def _apply_defaults(raw: dict, config: dict) -> dict:
-    """Fill fields that extraction did not produce from board-scoped defaults."""
+def _apply_defaults(raw: dict, config: dict, *, url: str | None = None) -> dict:
+    """Fill fields extraction missed from board- and posting-scoped defaults."""
     defaults = config.get("defaults")
-    if defaults is None:
-        return raw
-    if not isinstance(defaults, dict):
+    if defaults is not None and not isinstance(defaults, dict):
         raise ValueError("DOM scraper defaults must be an object")
 
+    defaults_by_url = config.get("defaults_by_url")
+    if defaults_by_url is not None and not isinstance(defaults_by_url, dict):
+        raise ValueError("DOM scraper defaults_by_url must be an object")
+
+    posting_defaults: dict = {}
+    if defaults_by_url is not None:
+        for posting_url, values in defaults_by_url.items():
+            if not isinstance(posting_url, str) or not isinstance(values, dict):
+                raise ValueError("DOM scraper defaults_by_url must map URL strings to objects")
+        if url is not None:
+            posting_defaults = defaults_by_url.get(url) or {}
+
+    if defaults is None and not posting_defaults:
+        return raw
+
     merged = dict(raw)
-    for field, value in defaults.items():
+    for field, value in {**(defaults or {}), **posting_defaults}.items():
         if merged.get(field) in (None, "", []):
             merged[field] = value
     return merged
@@ -1181,7 +1263,12 @@ async def scrape(
         use_proxy = bool(config.get("proxy"))
 
         async def _render_page(p):
-            async with open_page(p, browser_config, use_proxy=use_proxy) as page:
+            async with open_page(
+                p,
+                browser_config,
+                use_proxy=use_proxy,
+                target_url=fetch_url,
+            ) as page:
                 await navigate(page, fetch_url, browser_config)
                 # Read final URL BEFORE running actions/extraction so a
                 # redirect-to-gone page doesn't burn the (potentially
@@ -1269,7 +1356,7 @@ async def scrape(
 
     start = _fragment_start(url, elements)
     raw, _ = walk_steps(elements, steps, start=start)
-    raw = _apply_defaults(raw, config)
+    raw = _apply_defaults(raw, config, url=url)
     content = _map_to_job_content(raw)
 
     log.debug("dom.extracted", url=url, fields=[k for k, v in raw.items() if v is not None])

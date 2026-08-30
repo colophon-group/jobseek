@@ -186,6 +186,20 @@ class TestInternalHostAllowlist:
         )
         assert "10.0.0.7" in _gather_internal_hosts()
 
+    def test_proxy_pool_urls_seed_allowlist(self, monkeypatch) -> None:
+        from src import config
+
+        monkeypatch.setattr(config.settings, "internal_hosts_allow", "")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user-a:pass@10.0.0.8:10000",
+                "http://user-b:pass@10.0.0.9:10001",
+            ],
+        )
+        assert {"10.0.0.8", "10.0.0.9"} <= _gather_internal_hosts()
+
     def test_typesense_host_seeds_allowlist(self, monkeypatch) -> None:
         from src import config
 

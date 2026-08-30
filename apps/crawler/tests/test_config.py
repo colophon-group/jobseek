@@ -45,6 +45,61 @@ class TestSettings:
         assert s.database_url.endswith("/mirror")
         assert s.web_database_url.endswith("/web")
 
+    def test_webshare_backbone_pool_is_normalized(self):
+        settings = Settings(
+            _env_file=None,
+            proxy_provider=" WebShare ",
+            webshare_proxy_urls=[
+                "http://user-a:secret@p.webshare.io:10000/",
+                "http://user-b:secret@p.webshare.io:10001",
+            ],
+            webshare_expected_client_ips=["2001:0db8::1", "192.0.2.10"],
+            webshare_proxy_canary_slot=1,
+        )
+
+        assert settings.proxy_provider == "webshare"
+        assert settings.webshare_proxy_urls == [
+            "http://user-a:secret@p.webshare.io:10000",
+            "http://user-b:secret@p.webshare.io:10001",
+        ]
+        assert settings.webshare_expected_client_ips == ["192.0.2.10", "2001:db8::1"]
+
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"proxy_provider": "mystery"}, "PROXY_PROVIDER"),
+            (
+                {"webshare_proxy_urls": ["http://user:secret@192.0.2.10:7000"]},
+                "p.webshare.io",
+            ),
+            (
+                {"webshare_proxy_urls": ["http://p.webshare.io:10000"]},
+                "credentialed",
+            ),
+            (
+                {
+                    "webshare_proxy_urls": [
+                        "http://user:secret@p.webshare.io:10000",
+                        "http://user:secret@p.webshare.io:10000",
+                    ]
+                },
+                "duplicate",
+            ),
+            ({"webshare_expected_client_ips": ["not-an-ip"]}, "IPv4 or IPv6"),
+            (
+                {
+                    "webshare_proxy_canary_slot": 0,
+                    "webshare_proxy_urls": [],
+                    "webshare_proxy_url": "",
+                },
+                "CANARY_SLOT",
+            ),
+        ],
+    )
+    def test_invalid_proxy_settings_are_rejected(self, kwargs, message):
+        with pytest.raises(ValueError, match=message):
+            Settings(_env_file=None, **kwargs)
+
     @pytest.mark.parametrize(
         ("base", "maximum"),
         [(0, 900), (-1, 900), (10, 5)],

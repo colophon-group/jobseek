@@ -37,4 +37,17 @@ describe("getCompanyPostingListState", () => {
       }),
     ).toBe("no-matches");
   });
+
+  it("does not claim that a failed filtered search has no matches", () => {
+    expect(
+      getCompanyPostingListState({
+        isSearching: false,
+        hasFilters: true,
+        postingCount: 0,
+        isTruncated: false,
+        activeCount: 0,
+        isUnavailable: true,
+      }),
+    ).toBe("unavailable");
+  });
 });

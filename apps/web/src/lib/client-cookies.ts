@@ -1,3 +1,5 @@
+import { getLanguage } from "@/lib/job-languages";
+
 /**
  * Name of the non-httpOnly "hint" cookie that mirrors the presence of a
  * Better Auth session cookie. It carries no security meaning — the real
@@ -11,10 +13,10 @@ export const LOGGED_IN_COOKIE = "logged_in";
  * Name of the non-httpOnly cookie that persists anonymous-viewer
  * `jobLanguages` preferences. The same cookie is the canonical source
  * of truth on the server (read by `viewer.ts::getViewerLanguages` and
- * `explore-page-data.ts::fetchExplorePageData`); the client only needs to know
- * whether it's set so it can decide to re-fetch the personalised
- * `ExploreData` instead of using the anon-default static prerender
- * (#2850). MUST stay in sync with `lib/anon-preferences.ts`.
+ * `viewer.ts::getViewerLanguages`); Explore and company browser loaders parse
+ * the same bounded value directly so their personalized result refresh does
+ * not require a page-data Server Action (#2850, #8257, #8259). MUST stay in
+ * sync with `lib/anon-preferences.ts`.
  */
 export const JOB_LANGUAGES_COOKIE = "JSEEK_JOB_LANGUAGES";
 
@@ -50,17 +52,57 @@ export function hasLoggedInHint(): boolean {
   return hasCookieNamed(document.cookie, LOGGED_IN_COOKIE);
 }
 
+const MAX_JOB_LANGUAGES_COOKIE_LENGTH = 1024;
+const MAX_JOB_LANGUAGE_PREFERENCES = 32;
+
+/** Read one cookie value from a Cookie-header-style string. */
+export function readCookieValue(cookieHeader: string, name: string): string | null {
+  if (!cookieHeader) return null;
+  for (const raw of cookieHeader.split(";")) {
+    const part = raw.trim();
+    const separator = part.indexOf("=");
+    if (separator < 0 || part.slice(0, separator) !== name) continue;
+    const value = part.slice(separator + 1);
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 /**
- * Client-only: does the current browser have a stored anon
- * `jobLanguages` cookie? Used by ``ExploreContent`` (and its peers) to
- * decide whether to refetch the personalised ``ExploreData`` even when
- * the viewer is anonymous and the URL has no filter searchParams.
- * Without this, the static anon-default prerender would render with
- * `[locale]` filters regardless of the cookie state. See #2850.
+ * Parse the client-readable anonymous job-language preference without a
+ * Server Action. The cookie remains untrusted: bound its size/count and accept
+ * only the same known language codes as the server-side reader.
  */
-export function hasAnonJobLanguagesHint(): boolean {
-  if (typeof document === "undefined") return false;
-  return hasCookieNamed(document.cookie, JOB_LANGUAGES_COOKIE);
+export function readAnonJobLanguagesPreference(
+  cookieHeader = typeof document === "undefined" ? "" : document.cookie,
+): string[] | null {
+  const raw = readCookieValue(cookieHeader, JOB_LANGUAGES_COOKIE);
+  if (!raw || raw.length > MAX_JOB_LANGUAGES_COOKIE_LENGTH) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed) || parsed.length > MAX_JOB_LANGUAGE_PREFERENCES) {
+    return null;
+  }
+
+  const values: string[] = [];
+  const seen = new Set<string>();
+  for (const item of parsed) {
+    if (typeof item !== "string") return null;
+    if (item !== "*" && getLanguage(item) == null) return null;
+    if (seen.has(item)) continue;
+    seen.add(item);
+    values.push(item);
+  }
+  return values;
 }
 
 /**

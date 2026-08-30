@@ -59,19 +59,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     message: "Jobs at {name}",
     values: { name: company.name },
   });
-  const count = company.activeJobCount;
-  const countText = count > 0
-    ? i18n._({
-        id: "company.meta.positionCount",
-        comment: "SEO metadata count text for a company page; {count} is the active job count.",
-        message: "{count, plural, one {# open position} other {# open positions}}",
-        values: { count },
-      })
-    : i18n._({
-        id: "company.meta.openPositions",
-        comment: "Fallback SEO metadata count text for a company with no active jobs.",
-        message: "Open positions",
-      });
+  // Company shells are cached for a day, while posting counts move every few
+  // hours. Keep noindex/share metadata durable instead of publishing a count
+  // that can age beyond the browser-refreshed visible list.
+  const countText = i18n._({
+    id: "company.meta.openPositions",
+    comment: "Generic SEO metadata text for positions on a company page.",
+    message: "Open positions",
+  });
   const description = company.description
     ? i18n._({
         id: "company.meta.descriptionWithInfo",
@@ -144,14 +139,14 @@ export default async function CompanyPageRoute({ params }: Props) {
   // shell with zero client-side server-action round-trips (#3203,
   // mirrors `/explore` from #2640). ``fetchCompanyPageDefaults``
   // deliberately avoids ``headers()``/``cookies()`` to stay
-  // ISR-eligible — the client component re-fetches the personalised
-  // variant via ``fetchCompanyPageData`` when filters or auth-related
-  // hint cookies are present.
+  // ISR-eligible — the client component reuses app-bootstrap preferences and
+  // resolves personalized/filter-bearing results browser-direct through the
+  // scoped Typesense key when required.
   const initialData = await getCompanyRouteSnapshot(slug, locale);
   if (!initialData) notFound();
   const { company } = initialData;
 
-  // The page body is `'use cache'`-wrapped (1-hour revalidate) so the
+  // The page body is `'use cache'`-wrapped (1-day revalidate) so the
   // anonymous static shell ships from the per-region cache without
   // invoking a function on every request. Anything that reads
   // `CompanyPage` refreshes anonymous postings directly from Typesense after
