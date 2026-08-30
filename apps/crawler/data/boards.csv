@@ -6621,6 +6621,7 @@ watershed-informatics,watershed-informatics-greenhouse,https://job-boards.greenh
 wavenet,wavenet-smartrecruiters,https://careers.smartrecruiters.com/Wavenet,smartrecruiters,"{""token"": ""Wavenet""}",smartrecruiters,
 wavestone,wavestone-careers-de,https://wavestone.softgarden.io/en/vacancies,softgarden,"{""slug"": ""wavestone""}",json-ld,
 wavestone,wavestone-careers-global,https://careers.smartrecruiters.com/Wavestone1,smartrecruiters,"{""token"": ""Wavestone1""}",smartrecruiters,
+wawa,wawa-phenom,https://careers.wawa.com/us/en/search-results,nextdata,"{""source"": ""phenom_canvas"", ""path"": ""eagerLoadRefineSearch.data.jobs"", ""url_template"": ""https://careers.wawa.com/us/en/job/{jobId}"", ""pagination"": {""mode"": ""offset"", ""path"": ""eagerLoadRefineSearch"", ""total_records"": ""totalHits"", ""page_size"": 10, ""offset_param"": ""from""}, ""total"": 1521}",json-ld,
 wayflyer,wayflyer-ashby,https://jobs.ashbyhq.com/wayflyer,ashby,"{""token"": ""wayflyer""}",skip,
 waymark,waymark-greenhouse,https://job-boards.greenhouse.io/waymark,greenhouse,"{""token"": ""waymark""}",skip,
 waymo,waymo-greenhouse,https://job-boards.greenhouse.io/waymo,greenhouse,"{""token"": ""waymo""}",skip,
