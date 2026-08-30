@@ -1316,6 +1316,7 @@ class TestTaskOutcomes:
 
         assert result.exit_code == 0
         assert "# Coding Mode" in result.output
+        assert "now, before\n`ws del`" in result.output
         assert "Identify the root cause" in result.output
         assert "ws task escalate" in result.output
         workflow = _load_wf_from_disk("acme")
