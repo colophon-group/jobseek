@@ -3,7 +3,7 @@
  *
  * Centralises the magic numbers previously scattered across `'use cache'`
  * + `cacheLife({ revalidate: N })`, Redis `cached(..., { ttl: N })`, and
- * API-route `apiResponse({ maxAge: N })` call sites. Changing a tier here
+ * API-route `sharedApiResponse({ maxAge: N })` call sites. Changing a tier here
  * propagates to every consumer instead of hunting individual literals.
  *
  * Buckets reflect the values already in use across `apps/web/`:
@@ -17,7 +17,7 @@
  * |                     |         | churn than freshly-created public lists)     |
  * | `CACHE_TTL_MEDIUM`  |  300    | Moderate churn (posting detail, company      |
  * |                     |         | postings, filtered watchlist counts,         |
- * |                     |         | default API `maxAge`)                        |
+ * |                     |         | default Vercel API CDN `maxAge`)             |
  * | `CACHE_TTL_DETAIL`        |   600   | Company detail page                          |
  * | `CACHE_TTL_EXPLORE_SHELL` | 86400   | Anonymous explore prerender; browser         |
  * |                           |         | Typesense refreshes it after hydration       |

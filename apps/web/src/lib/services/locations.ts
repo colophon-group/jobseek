@@ -39,6 +39,7 @@ export async function suggestLocations(params: {
   userLat?: number;
   userLng?: number;
   filters?: TypeaheadBoostFilters;
+  failOnUnavailable?: boolean;
 }): Promise<LocationSuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
@@ -69,7 +70,8 @@ export async function suggestLocations(params: {
       bucketedLat,
       bucketedLng,
     );
-  } catch {
+  } catch (err) {
+    if (params.failOnUnavailable) throw err;
     suggestions = [];
   }
 
