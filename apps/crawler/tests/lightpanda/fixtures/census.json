@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 6766,
-    "boards_sha256": "75c9a9a054d60c357f18a24c76f62caea35b5f37d516d1fc1c21fb0ac0ba7710",
+    "boards_sha256": "cfcd1a794a967529601df790a095e13f63c33631b520d1e7c776d37717555329",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "fb73227f3e6e5e79c689872d5e0e55f4c9423431ff61e09b8029ff61fc88cdf2",
+  "manifest_sha256": "35016d9d22a406e6ca18e41305885a532a06a222610fdad3e365c303adfc3ec8",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -1302,12 +1302,12 @@
       "compatibility_class": "javascript_execution",
       "config_shape_sha256": "b0b81b5d52c8c77d1b93bfa84d26ca9f4f6a101d9e188f9adcc9d0349b72005c",
       "crawler_type": "dom",
-      "digest_sha256": "90239a47b27746c794a32f45516d81134acf3614f71ee0ed758c7937cd43c8f1",
+      "digest_sha256": "a2ae7a39ed00b2c9df77dc586da357601b5b45c76404b9cb2726c81a450be4e5",
       "fixture": "synthetic.javascript_execution.v1",
       "id": "profile.monitor.dom.04c6fc335a85b93c",
       "profile_kind": "configured",
-      "source_count": 2,
-      "source_refs_sha256": "860779184e3a4f6f5f58f411bb19237110982592c41d3bd91be10f5e5875582b",
+      "source_count": 1,
+      "source_refs_sha256": "16c8ee03fcc4860007339f5e2202a224732860f5a7657164ebb146f902c83c92",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -1395,12 +1395,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "cac2e71c4f6c60a731481dcf8fe15fdb21688ddfa9d5d70515e3df7d83d71ffc",
       "crawler_type": "dom",
-      "digest_sha256": "294b512fa99e61ad22047ab95541f8d6be4f3c46f331079cbcc67fbe17e8b687",
+      "digest_sha256": "75acde0c7df4619c2c5ca70bc61b3511b4c087560448f521ec3c0bf4bb0ce172",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "profile.monitor.dom.09e4e253bac3043e",
       "profile_kind": "configured",
-      "source_count": 27,
-      "source_refs_sha256": "93ca5d6e8ab83f70e86635edc394acd9a920e568817de142d699557c9139f907",
+      "source_count": 25,
+      "source_refs_sha256": "16c7a22b5ae56f0706e9c7d75cbff96114be7c211f312e2aa783e4ca38e4897b",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -1591,6 +1591,32 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "64983282e54e53a3563886f45fd110f72ce4929ba1e26484c0d9868a8df4e00c",
+      "status": "pending_replay",
+      "surface": "monitor"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "action.dismiss_overlays",
+        "action.evaluate",
+        "action.wait",
+        "cdp.navigation",
+        "dom.snapshot",
+        "javascript.evaluate",
+        "navigation.wait.networkidle"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "javascript_execution",
+      "config_shape_sha256": "3d18064b38df778f5f3a011086e961ef76f96f78bef310a1efb2ceba2155bf5f",
+      "crawler_type": "dom",
+      "digest_sha256": "b589525069c1604f0d011d79153ed67b8d69b93d25084ceb7669e69790a25d8e",
+      "fixture": "synthetic.javascript_execution.v1",
+      "id": "profile.monitor.dom.2d7aa5448157e2e6",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "ffeb8a9fc869fd3af82e6a1430d8695d42c3538c5ad202496fbb9a74bb5d61b5",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -2270,12 +2296,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "bcad292bdf3b5b0758628be170dd7f173fde18b0cae59010b704263afc9bbff9",
       "crawler_type": "dom",
-      "digest_sha256": "e3bdeff96b74d6c5334673ae2d222ff46dfb10d8356c6bd82d6baad3d047ca01",
+      "digest_sha256": "5f4e7b6d4d571e692865a3a2e618ad4bf5bd76e370b7f6b01dac1b47b20d8bcb",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "profile.monitor.dom.68b43a180f0b76ca",
       "profile_kind": "configured",
-      "source_count": 4,
-      "source_refs_sha256": "1b3a79fc486edb8faaf906a3af1cbf002795d1df3a5134f7ff0e78ecaf77fc54",
+      "source_count": 3,
+      "source_refs_sha256": "233b189efb36faafa31511d4c37bd23975aecaae3089c04a5f046460aa92421e",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -3071,6 +3097,27 @@
       "browser_capable": true,
       "browser_required": true,
       "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "navigation_dom",
+      "config_shape_sha256": "eb2da53bb02752c730220032576a8d772bcee9ecfbf305f0fec35d046ab6c01d",
+      "crawler_type": "dom",
+      "digest_sha256": "79de2c3ed7fd8d39ade253eefa1e8f59a0d28466730d8b27cd52a442c6959539",
+      "fixture": "synthetic.navigation_dom.v1",
+      "id": "profile.monitor.dom.cba4f87c68043b57",
+      "profile_kind": "configured",
+      "source_count": 2,
+      "source_refs_sha256": "4a662609c71405cf529eca3ced1dbbec7d312ddf7eb9aae4605729cb6781b9ed",
+      "status": "pending_replay",
+      "surface": "monitor"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
         "browser.stealth",
         "cdp.navigation",
         "dom.snapshot",
@@ -3246,6 +3293,28 @@
       "profile_kind": "configured",
       "source_count": 10,
       "source_refs_sha256": "3675a8a0a05b1936b92ec61e4c9d860fa4b812ed47767bc84b4b35c3fabe2beb",
+      "status": "pending_replay",
+      "surface": "monitor"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait.networkidle"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "navigation_dom",
+      "config_shape_sha256": "c54bc3cc452246109ccf120c0da5608c8d710e23b83a0a6d9e3c969899202ecd",
+      "crawler_type": "dom",
+      "digest_sha256": "a2cb101b46fe6a8ae1c596e50ceb7753b4e5ee54b38d0f6744f5d969e0538dbb",
+      "fixture": "synthetic.navigation_dom.v1",
+      "id": "profile.monitor.dom.fd139276a41cfa32",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "3684c7e6551b5de152c53c5f6055f3e69c73a1ca4d8040990e3e6490a442723e",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -5578,9 +5647,9 @@
     "browser_board_count": 455,
     "browser_required_step_count": 593,
     "configured_profile_occurrence_count": 595,
-    "configured_record_count": 225,
+    "configured_record_count": 228,
     "registry_record_count": 15,
-    "total_record_count": 240,
+    "total_record_count": 243,
     "zero_browser_config_registry_count": 2
   }
 }
