@@ -38,6 +38,7 @@ export async function suggestOccupations(params: {
   query: string;
   locale: string;
   filters?: TypeaheadBoostFilters;
+  failOnUnavailable?: boolean;
 }): Promise<TaxonomySuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
@@ -51,7 +52,8 @@ export async function suggestOccupations(params: {
       q.toLowerCase(),
       params.locale,
     );
-  } catch {
+  } catch (err) {
+    if (params.failOnUnavailable) throw err;
     suggestions = [];
   }
   if (!params.filters) return suggestions;
@@ -138,6 +140,7 @@ export async function suggestSeniorities(params: {
   query: string;
   locale: string;
   filters?: TypeaheadBoostFilters;
+  failOnUnavailable?: boolean;
 }): Promise<TaxonomySuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
@@ -151,7 +154,8 @@ export async function suggestSeniorities(params: {
       q.toLowerCase(),
       params.locale,
     );
-  } catch {
+  } catch (err) {
+    if (params.failOnUnavailable) throw err;
     suggestions = [];
   }
   if (!params.filters) return suggestions;
@@ -237,6 +241,7 @@ export async function suggestTechnologies(params: {
   query: string;
   locale: string;
   filters?: TypeaheadBoostFilters;
+  failOnUnavailable?: boolean;
 }): Promise<TaxonomySuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
@@ -251,7 +256,8 @@ export async function suggestTechnologies(params: {
   let suggestions: TaxonomySuggestion[];
   try {
     suggestions = await _fetchTechnologySuggestionsCached(q.toLowerCase());
-  } catch {
+  } catch (err) {
+    if (params.failOnUnavailable) throw err;
     suggestions = [];
   }
   if (!params.filters) return suggestions;
@@ -587,6 +593,7 @@ export interface OccupationGroup {
 export async function getAllOccupationsGrouped(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
+  options: { failOnUnavailable?: boolean } = {},
 ): Promise<OccupationGroup[]> {
   // Stable cache key across array permutations — see #3187 and the helper
   // doc for the full rationale.
@@ -602,7 +609,9 @@ export async function getAllOccupationsGrouped(
       ttl: CACHE_TTL_LONG,
     });
   } catch (err) {
-    if (!isTypesenseUnavailableError(err)) throw sanitizeTypesenseBoundaryError(err);
+    if (options.failOnUnavailable || !isTypesenseUnavailableError(err)) {
+      throw sanitizeTypesenseBoundaryError(err);
+    }
     logExternalError(
       "error",
       { service: "typesense", operation: "all_occupations_grouped" },
@@ -943,6 +952,7 @@ export interface SeniorityOption {
 export async function getAllSeniorities(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; technologyIds?: number[]; languages?: string[] },
+  options: { failOnUnavailable?: boolean } = {},
 ): Promise<SeniorityOption[]> {
   // Stable cache key across array permutations — see #3187.
   const fKey = filters ? JSON.stringify(canonicalizeFilters(filters)) : "";
@@ -952,7 +962,9 @@ export async function getAllSeniorities(
       ttl: CACHE_TTL_LONG,
     });
   } catch (err) {
-    if (!isTypesenseUnavailableError(err)) throw sanitizeTypesenseBoundaryError(err);
+    if (options.failOnUnavailable || !isTypesenseUnavailableError(err)) {
+      throw sanitizeTypesenseBoundaryError(err);
+    }
     logExternalError("error", { service: "typesense", operation: "all_seniorities" }, err);
     return [];
   }
@@ -1054,6 +1066,7 @@ export interface TechnologyGroup {
 
 export async function getAllTechnologiesGrouped(
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; languages?: string[] },
+  options: { failOnUnavailable?: boolean } = {},
 ): Promise<TechnologyGroup[]> {
   // Stable cache key across array permutations — see #3187.
   const fKey = filters ? JSON.stringify(canonicalizeFilters(filters)) : "";
@@ -1063,7 +1076,9 @@ export async function getAllTechnologiesGrouped(
       ttl: CACHE_TTL_LONG,
     });
   } catch (err) {
-    if (!isTypesenseUnavailableError(err)) throw sanitizeTypesenseBoundaryError(err);
+    if (options.failOnUnavailable || !isTypesenseUnavailableError(err)) {
+      throw sanitizeTypesenseBoundaryError(err);
+    }
     logExternalError(
       "error",
       { service: "typesense", operation: "all_technologies_grouped" },

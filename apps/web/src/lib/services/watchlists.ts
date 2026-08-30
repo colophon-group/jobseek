@@ -1599,6 +1599,7 @@ export async function searchPublicWatchlists(params: {
   offset: number;
   limit: number;
   locale: string;
+  failOnUnavailable?: boolean;
 }): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
   const q = params.query.trim();
   if (!q) return { watchlists: [], total: 0 };
@@ -1627,6 +1628,7 @@ export async function searchPublicWatchlists(params: {
     );
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
+    if (params.failOnUnavailable) throw err;
     logExternalError("error", { service: "typesense", operation: "search_public_watchlists" }, err);
     return { watchlists: [], total: 0 };
   }
@@ -1636,6 +1638,7 @@ export async function getPopularWatchlists(params: {
   offset: number;
   limit: number;
   locale: string;
+  failOnUnavailable?: boolean;
 }): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
   const languages = await getViewerLanguages(params.locale);
   const langKey = languagesCacheKey(languages);
@@ -1658,6 +1661,7 @@ export async function getPopularWatchlists(params: {
     );
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
+    if (params.failOnUnavailable) throw err;
     logExternalError("error", { service: "typesense", operation: "popular_watchlists" }, err);
     return { watchlists: [], total: 0 };
   }

@@ -304,8 +304,13 @@ uv run crawler refresh-typesense
   authorities; counts come from exhaustive Typesense facets. IDs absent from a
   valid facet are explicitly reset to zero/false.
 - Reconciles the `watchlist` collection against the web-owned database selected
-  by `WEB_DATABASE_URL` (upserts missing, deletes stale). Only explicit
-  sync/count-refresh jobs receive this credential; long-running crawler
+  by `WEB_DATABASE_URL` (upserts missing, deletes stale). Company membership
+  comes from `watchlist_company`; `active_job_count` comes from one exhaustive
+  `company_id` facet over the canonical web-visible posting filter
+  (`is_active:true && has_content:!=false`) and is summed per watchlist in
+  Python. A company absent from a valid facet contributes zero, while
+  `company_count` remains the number of membership rows. Only explicit
+  sync/count-refresh jobs receive the web credential; long-running crawler
   services receive no web-owned database URL.
 - Validates exact per-document Typesense import acknowledgements before
   continuing. A rejected, malformed, or truncated acknowledgement aborts the
@@ -448,6 +453,11 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 - **Scoped key endpoint** (`GET /api/typesense-key`): mints a Typesense scoped search key (HMAC-SHA256 + base64) from `TYPESENSE_BROWSER_PARENT_KEY`. The embed is `{ use_cache: true, expires_at: <Unix seconds> }`. `limit_hits` is intentionally **not** embedded because Typesense counts raw hits (not grouped rows) and would block normal anon traffic on `group_by company_id` with `group_limit 10`.
 - **TTL**: 10 min for every visitor because the search-only scope has no user-specific permissions. Browser memory plus `localStorage` reuse the key across reloads/tabs and refresh 30 s before expiry. The endpoint sets a Vercel-only 510 s `max-age` CDN TTL, leaving a 90 s validity margin on the oldest fresh cache hit. Do not use `s-maxage` here: Vercel may serve that response stale once while asynchronously revalidating, but the scoped key has a hard expiry.
 - **Browser provider**: `apps/web/src/lib/search/typesense-browser.ts` (postings/companies), `typesense-browser-typeahead.ts` (taxonomy suggest), `typesense-browser-watchlist.ts`. All thin -- no `typesense-js` runtime dependency in the browser bundle.
+- **Company posting batch**: one `multi_search` carries the ordered posting
+  page, active count, and one-year flow count. Both the browser provider and
+  server fallback reject missing or errored result slots as one failed batch;
+  a server transport retry replays the whole batch so visible postings and
+  counts always come from the same attempt.
 - **Anon truncation**: enforced as a soft client-side cap (`ANON_MAX_COMPANIES`, `ANON_MAX_POSTINGS`, `ANON_MAX_WATCHLIST_POSTINGS`) matching the current server-action behaviour. Real abuse protection is the Cloudflare per-IP rate-limit on the tunnel hostname.
 - **Fallback**: every runner falls back to the corresponding server action when the browser path errors, returns degraded, or hits a code-explicit fallback case (e.g. watchlist >100 companies).
 - **Search-bar application-data request budget**: direct mode batches candidate
@@ -470,18 +480,21 @@ Three data tiers, three read paths:
 
 | Tier | Role | Reads |
 |------|------|-------|
-| Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` retained document IDs, watchlist active-posting counts (via crawler) |
+| Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` retained document IDs and watchlist taxonomy-ID resolution |
 | Web-owned Postgres | **Only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, `saved_job`, ...) | Auth, watchlist mutations, saved-job snapshots, and watchlist company-pair lookups |
 | Typesense | In-memory search + denormalized read layer | Job search and posting detail, all typeaheads and taxonomy resolvers, browse-all modals, watchlist search/discovery/posting lists/counts, company autocomplete/detail/location/industry reads, public site stats, similar-company strip |
 
-Aggregation queries against `job_posting` are deliberately kept on local Postgres, not Supabase, to keep Supabase compute reserved for user-facing CRUD. Notable examples:
+Posting-count aggregations are read from exhaustive Typesense facets so the
+published values match the indexed jobs users can actually see and scheduled
+maintenance does not rescan the multi-million-row local table. Notable paths:
 
 - **Watchlist active-posting counts** (`refresh-typesense`): pulls
   `(watchlist_id, company_id)` pairs from the web-owned database configured by
-  `WEB_DATABASE_URL`, runs `COUNT(*) WHERE is_active GROUP BY company_id` on
-  local Postgres restricted to those companies, and sums per watchlist in
-  Python. Uses the partial index
-  `idx_jp_company_active ON job_posting(company_id) WHERE is_active`.
+  `WEB_DATABASE_URL`, reads one exhaustive Typesense `company_id` facet with
+  `is_active:true && has_content:!=false`, and sums the UUID-string-keyed counts
+  per watchlist in Python. Shared companies contribute independently to each
+  watchlist; a company absent from the facet contributes zero. The membership
+  count is computed separately and is unaffected by posting visibility.
 - **Public Discover `anyCompany` counts**: the `watchlist` Typesense doc carries a sanitized `filters_json` payload with public filters plus resolved taxonomy IDs. Discover cards use that payload to run an exact live `job_posting` count for `anyCompany` watchlists without hydrating `watchlist.filters` from Postgres. Company-scoped public cards keep using the denormalized `active_job_count` field.
 - **Per-company taxonomy counts** (`refresh_typesense_counts`): reads exhaustive
   `job_posting` facets from Typesense so counts match web-visible filters, then
