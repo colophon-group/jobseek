@@ -1,45 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { fetchExplorePageData, type ExploreData } from "@/lib/actions/explore-page-data";
-import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
+import type { ExploreData } from "@/lib/actions/explore-page-data";
+import {
+  hasLoggedInHint,
+  readAnonJobLanguagesPreference,
+} from "@/lib/client-cookies";
 import { logExternalError } from "@/lib/safe-external-error";
 import { hasSearchFilterParams } from "@/lib/search/query-params";
-import { buildUnavailableExploreData } from "@/lib/search/explore-degraded";
 import { ExploreSkeleton } from "@/components/search/explore-skeleton";
+import { useSession } from "@/components/providers/SessionProvider";
+import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
+import { loadExploreBrowserData } from "@/lib/search/explore-browser-data";
 import { SearchPage } from "./search-page";
-
-/**
- * Retry policy for the personalized `fetchExplorePageData` server action
- * on cold-start. When the Vercel function instance is cold and
- * Typesense's first-request TLS handshake takes a few hundred ms, the
- * client-side fetch can be aborted (`net::ERR_ABORTED`) by the browser
- * before the server response arrives — DevTools surfaces this as
- * "Fetch failed loading: POST". Without a client retry, the rejected
- * promise leaks out and `setData` is never called, leaving the user on
- * whatever the prerendered static cache had (potentially the empty/
- * degraded variant from issue #3008).
- *
- * Retry once with a short delay (the second call usually hits a warm
- * function instance + warm Typesense connection). If both fail, the caller
- * installs a URL-derived unavailable snapshot so explicit filters remain
- * visible and no stale or broadened initial result set is shown.
- */
-async function fetchExplorePageDataWithRetry(
-  args: Parameters<typeof fetchExplorePageData>[0],
-): Promise<ExploreData> {
-  try {
-    return await fetchExplorePageData(args);
-  } catch (err) {
-    logExternalError(
-      "warn",
-      { service: "typesense", operation: "fetch_explore_page_retry", retryCount: 1 },
-      err,
-    );
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    return fetchExplorePageData(args);
-  }
-}
 
 type ExploreContentProps = {
   locale: string;
@@ -47,26 +20,36 @@ type ExploreContentProps = {
    * Server-prerendered ``ExploreData`` for the unauthenticated, no-filter
    * homepage case (#2640). Anonymous visitors with no filter searchParams
    * use this directly — no Vercel function invocation. When ``initialData``
-   * is omitted (legacy call sites), the component falls back to the
-   * client-mount fetch behaviour from before this PR.
+   * The cached route always supplies this query-agnostic shell. Preference-
+   * and filter-bearing views replace it from browser-direct Typesense reads.
    */
-  initialData?: ExploreData;
+  initialData: ExploreData;
 };
 
 export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [data, setData] = useState<ExploreData | null>(initialData ?? null);
+  const fetchIdRef = useRef(0);
+  const loadKeyRef = useRef<string | null>(null);
+  const { isLoggedIn, isPending, preferences } = useSession();
+  const rates = useSalaryRates();
+  const preferenceLanguagesKey = preferences?.jobLanguages?.join(",") ?? "";
+  const preferenceCurrency = preferences?.displayCurrency ?? null;
+  const [view, setView] = useState<{
+    data: ExploreData;
+    unavailable: boolean;
+    directAttempted: boolean;
+  } | null>({
+    data: initialData,
+    unavailable: false,
+    directAttempted: false,
+  });
 
-  // Re-fetch on mount only when the prerendered ``initialData`` doesn't
-  // reflect the user's actual view — i.e. they have filter searchParams,
-  // the ``logged_in`` hint cookie is present (their DB-backed
-  // preferences / job-language filter / display currency would change
-  // the result set), OR they have an anonymous job-language cookie
-  // set (#2850 — anon viewers persist `jobLanguages` via a cookie
-  // that the server side reads in `fetchExplorePageData`). Anonymous, no-
-  // filter, no-job-lang-cookie visitors still get the prerendered data
-  // with zero function invocations — the bulk of organic traffic per
-  // #2640.
+  // Re-initialize only when the query-agnostic shell does not reflect the
+  // browser URL or viewer preferences. Authenticated preferences come from
+  // the shared app bootstrap action; anonymous language state is bounded and
+  // parsed from its client-readable cookie. Result data and explicit taxonomy
+  // resolution stay browser-direct, with only semantic free text retaining a
+  // narrow geo-aware parser action.
   useEffect(() => {
     // Keep the cached server snapshot visible until this interactive island
     // has hydrated successfully. At that point swap the two atomically: the
@@ -79,61 +62,82 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     }
     interactive?.removeAttribute("hidden");
 
-    // Read the URL from the browser inside the mount effect instead of using
-    // Next's `useSearchParams` render-time API. The cached route intentionally
-    // serves one query-agnostic HTML shell; `useSearchParams` made this entire
-    // result subtree bail out to `loading.tsx`, so crawlers received only
-    // "Loading results" even though `initialData` was serialized in the RSC
-    // payload (#2640).
+    const fetchId = ++fetchIdRef.current;
     const searchParams = new URLSearchParams(window.location.search);
-    const needsPersonalizedFetch =
-      hasLoggedInHint() ||
-      hasAnonJobLanguagesHint() ||
+    if (hasLoggedInHint() && isPending) {
+      setView(null);
+      return;
+    }
+
+    const anonymousJobLanguages = isLoggedIn
+      ? null
+      : readAnonJobLanguagesPreference();
+    const loadKey = [
+      locale,
+      searchParams.toString(),
+      isLoggedIn ? "authenticated" : "anonymous",
+      preferenceCurrency ?? "",
+      preferences?.jobLanguages?.join(",") ??
+        anonymousJobLanguages?.join(",") ??
+        "",
+    ].join("|");
+    if (loadKeyRef.current === loadKey) return;
+    loadKeyRef.current = loadKey;
+    const needsBrowserLoad =
+      isLoggedIn ||
+      anonymousJobLanguages !== null ||
       hasSearchFilterParams(searchParams) ||
-      searchParams.has("lang") ||
-      initialData === undefined;
-    if (!needsPersonalizedFetch) return;
+      searchParams.has("lang");
+    if (!needsBrowserLoad) {
+      setView({
+        data: initialData,
+        unavailable: false,
+        directAttempted: false,
+      });
+      return;
+    }
 
-    // Clear ``data`` BEFORE firing the personalised fetch so
-    // ``SearchPage`` doesn't mount with the stale prerendered
-    // ``initialData`` and lock its ``useState``-initialised filter /
-    // result state to the unfiltered defaults — the subsequent
-    // ``setData(filtered)`` would otherwise re-render ``ExploreContent``
-    // with new ``initialX`` props, but ``SearchPage``'s state
-    // initialisers only run on first mount, so the filtered companies
-    // would never appear in the UI. By unmounting ``SearchPage`` (via
-    // ``ExploreSkeleton``) while the filtered fetch is in flight, the
-    // remount on data arrival re-initialises every ``useState``
-    // initialiser with the filtered data. Issue #3350 (regression of
-    // the #2746 ISR-prerender path for filter-bearing URLs).
-    setData(null);
-
-    const sp: Record<string, string | undefined> = {};
-    searchParams.forEach((value, key) => {
-      sp[key] = value;
-    });
-    fetchExplorePageDataWithRetry({ searchParams: sp, locale })
-      .then(setData)
+    // Unmount SearchPage before the browser load: its state is initialized
+    // from props, and a filtered URL must never flash or retain the broader
+    // queryless shell while its scoped request is pending.
+    setView(null);
+    void loadExploreBrowserData({
+      initialData,
+      searchParams,
+      locale,
+      displayCurrency: preferenceCurrency,
+      jobLanguages:
+        preferences?.jobLanguages ?? anonymousJobLanguages ?? [],
+      rates,
+      isLoggedIn,
+    })
+      .then((result) => {
+        if (fetchIdRef.current !== fetchId) return;
+        setView(result);
+      })
       .catch((err) => {
-        // Both attempts failed. Build an explicit unavailable snapshot from
-        // the browser URL. Restoring queryless ``initialData`` here would put
-        // unfiltered companies beneath a filtered URL and erase its toolbar
-        // state—the exact fail-open broadening this boundary prevents.
+        if (fetchIdRef.current !== fetchId) return;
         logExternalError(
           "error",
-          { service: "typesense", operation: "fetch_explore_page", retryCount: 2 },
+          { service: "typesense", operation: "load_explore_browser_data" },
           err,
         );
-        setData(buildUnavailableExploreData({ initialData, locale, searchParams: sp }));
+        // Expected transport/degradation paths are converted into explicit
+        // unavailable data by the loader. An unexpected failure stays on the
+        // skeleton rather than restoring unfiltered shell results.
       });
-    // Empty deps: the conditional-fetch decision is made once on
-    // mount. ``initialData`` is stable across re-renders (page
-    // identity), and ``SearchPage`` owns subsequent filter changes
-    // via its own state — re-running this effect on ``searchParams``
-    // change would clobber the user's interactive filter selection.
-  }, []);
+  }, [
+    initialData,
+    isLoggedIn,
+    isPending,
+    locale,
+    preferenceCurrency,
+    preferenceLanguagesKey,
+    rates,
+  ]);
 
-  if (!data) return <ExploreSkeleton />;
+  if (!view) return <ExploreSkeleton />;
+  const { data } = view;
 
   const {
     result,
@@ -180,6 +184,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
         initialLanguageOverride={languageOverride}
         userLat={userLat}
         userLng={userLng}
+        initialDirectRefreshAttempted={view.directAttempted}
       />
     </div>
   );

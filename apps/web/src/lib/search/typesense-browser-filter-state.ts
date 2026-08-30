@@ -23,9 +23,8 @@ type SearchRequest = {
   [key: string]: unknown;
 };
 
-type SearchHit<T> = { document: T };
 type SearchResult<T> = {
-  hits?: SearchHit<T>[];
+  hits: Array<{ document: T }>;
   error?: string;
 };
 
@@ -33,7 +32,7 @@ type LocationDocument = {
   location_id: number;
   slug: string;
   type: string;
-  parent_name?: string;
+  parent_name?: string | null;
   name_en?: string;
   name_de?: string;
   name_fr?: string;
@@ -135,16 +134,78 @@ async function searchMany(
     invalidateTypesenseBrowserConfigIfUnauthorized(response.status);
     throw new Error(`typesense filter resolver ${response.status}`);
   }
-  const body = (await response.json()) as {
-    results?: SearchResult<Record<string, unknown>>[];
-  };
-  if (!body.results || body.results.length !== searches.length) {
+  const body: unknown = await response.json();
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body.results) ||
+    body.results.length !== searches.length
+  ) {
     throw new Error("typesense filter resolver returned an incomplete result set");
   }
-  for (const result of body.results) {
-    if (result.error) throw new Error("typesense filter resolver search failed");
+  const results: SearchResult<Record<string, unknown>>[] = [];
+  for (const rawResult of body.results) {
+    if (!isRecord(rawResult) || typeof rawResult.error === "string") {
+      throw new Error("typesense filter resolver search failed");
+    }
+    if (!Array.isArray(rawResult.hits)) {
+      throw new Error("typesense filter resolver returned malformed hits");
+    }
+    const hits = rawResult.hits.map((rawHit) => {
+      if (!isRecord(rawHit) || !isRecord(rawHit.document)) {
+        throw new Error("typesense filter resolver returned malformed documents");
+      }
+      return { document: rawHit.document };
+    });
+    results.push({ hits });
   }
-  return body.results;
+  return results;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isOptionalString(value: unknown): value is string | null | undefined {
+  return value === undefined || value === null || typeof value === "string";
+}
+
+function isLocationDocument(value: Record<string, unknown>): value is LocationDocument {
+  return (
+    Number.isInteger(value.location_id) &&
+    typeof value.slug === "string" &&
+    ["macro", "country", "region", "city"].includes(String(value.type)) &&
+    isOptionalString(value.parent_name) &&
+    isOptionalString(value.name_en) &&
+    isOptionalString(value.name_de) &&
+    isOptionalString(value.name_fr) &&
+    isOptionalString(value.name_it)
+  );
+}
+
+function taxonomyId(
+  document: Record<string, unknown>,
+  kind: Exclude<FilterDimension, "loc">,
+): number | null {
+  const key =
+    kind === "occ"
+      ? "occupation_id"
+      : kind === "sen"
+        ? "seniority_id"
+        : "technology_id";
+  const id = document[key];
+  return Number.isInteger(id) ? (id as number) : null;
+}
+
+function isTaxonomyDocument(
+  value: Record<string, unknown>,
+  kind: Exclude<FilterDimension, "loc">,
+): value is TaxonomyDocument {
+  return (
+    taxonomyId(value, kind) !== null &&
+    typeof value.slug === "string" &&
+    isOptionalString(value.name) &&
+    isOptionalString(value.locale)
+  );
 }
 
 function localizedLocationName(
@@ -308,12 +369,13 @@ export async function resolveCompanyFilterStateDirect(
   const resolved = new Set<string>();
   for (let index = 0; index < kinds.length; index += 1) {
     const kind = kinds[index];
-    const documents = (results[index].hits ?? []).map(
-      (hit) => hit.document,
-    );
+    const documents = results[index].hits.map((hit) => hit.document);
     if (kind === "loc") {
       base.locations = documents.map((raw) => {
-        const document = raw as unknown as LocationDocument;
+        if (!isLocationDocument(raw)) {
+          throw new Error("typesense filter resolver returned a malformed location");
+        }
+        const document = raw;
         resolved.add(`loc:${document.slug}`);
         return {
           id: document.location_id,
@@ -326,10 +388,14 @@ export async function resolveCompanyFilterStateDirect(
       continue;
     }
 
-    const preferred = preferLocale(
-      documents as unknown as TaxonomyDocument[],
-      locale,
-    );
+    const taxonomyKind = kind as Exclude<FilterDimension, "loc">;
+    const taxonomyDocuments = documents.map((document) => {
+      if (!isTaxonomyDocument(document, taxonomyKind)) {
+        throw new Error("typesense filter resolver returned malformed taxonomy");
+      }
+      return document;
+    });
+    const preferred = preferLocale(taxonomyDocuments, locale);
     const target =
       kind === "occ"
         ? base.occupations

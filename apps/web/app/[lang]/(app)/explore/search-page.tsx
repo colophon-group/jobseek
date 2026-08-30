@@ -110,6 +110,8 @@ interface SearchPageProps {
   initialLanguageOverride?: string[] | null;
   userLat?: number;
   userLng?: number;
+  /** Mount-time browser loader already attempted the visible result read. */
+  initialDirectRefreshAttempted?: boolean;
 }
 
 export function SearchPage({
@@ -138,6 +140,7 @@ export function SearchPage({
   initialLanguageOverride,
   userLat,
   userLng,
+  initialDirectRefreshAttempted = false,
 }: SearchPageProps) {
   // The cached route is always `/<locale>/explore`; query state is observed
   // separately after hydration. Reading `usePathname()` here would suspend
@@ -859,7 +862,7 @@ export function SearchPage({
   // current results and the refresh cannot add Fluid CPU.
   const directRefreshLanguagesKey = languages.join(",");
   useEffect(() => {
-    if (shouldRestore || hasFilters) return;
+    if (initialDirectRefreshAttempted || shouldRestore || hasFilters) return;
 
     const refreshKey = [
       locale,
@@ -905,6 +908,7 @@ export function SearchPage({
   }, [
     directRefreshLanguagesKey,
     hasFilters,
+    initialDirectRefreshAttempted,
     locale,
     shouldRestore,
     userLat,

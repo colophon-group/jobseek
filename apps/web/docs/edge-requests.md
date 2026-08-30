@@ -509,7 +509,7 @@ invoked.
 
 | Route | Shell behavior | Dynamic work | Pattern | Redis/cache | Est. duration |
 |-------|----------------|--------------|---------|-------------|---------------|
-| **Explore** | Cached anonymous defaults | Personalized `fetchExplorePageData()` / search actions when signed in or filtered | Mixed | Defaults 60s; search 5min | 30-250ms when invoked |
+| **Explore** | One-day cached anonymous defaults | Browser-direct filtered/preference refresh; shared bootstrap for signed-in prefs; narrow parser action only for semantic `q` | Browser-first | Shell 1d; search 5min | 0ms result compute on direct mounts |
 | **Company** | Cached anonymous defaults + metadata | Personalized `fetchCompanyPageData()` when signed in, filtered, or language cookie present | Mixed | Company/detail caches | 30-200ms when invoked |
 | **Shared watchlist** | Cached anonymous public snapshot + metadata | Personalized `fetchWatchlistPageData()` only when viewer/filters require it | Mixed | Watchlist lookup cached | 60-300ms when invoked |
 | **My Jobs** | Static shell | `getMyJobs()` after mount | Sequential | None | 20-100ms |
