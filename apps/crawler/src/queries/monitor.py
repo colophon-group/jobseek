@@ -738,6 +738,13 @@ locked_existing AS MATERIALIZED (
 -- scheduled) are untouched. is_rich_no_scrape=true boards (rich
 -- monitor without enrich) intentionally keep next_scrape_at = NULL —
 -- the board delivers everything.
+--
+-- scrape_failures >= 3 is the transient retry tombstone written by
+-- _RECORD_SCRAPE_TRANSIENT. A monitor touch is liveness evidence for the
+-- posting, not evidence that the detail scraper recovered, so it must not
+-- reset that terminal state. Recovery remains explicit through
+-- ``crawler retry-stalled-scrapes`` (or a true relist, which resets the
+-- failure budget below).
 touched AS (
   UPDATE job_posting
   SET last_seen_at = now(),
@@ -746,6 +753,7 @@ touched AS (
           WHEN NOT $3::boolean
                AND job_posting.description_r2_hash IS NULL
                AND job_posting.next_scrape_at IS NULL
+               AND job_posting.scrape_failures < 3
           THEN now()
           ELSE job_posting.next_scrape_at
       END
@@ -760,6 +768,7 @@ touched AS (
               NOT $3::boolean
               AND job_posting.description_r2_hash IS NULL
               AND job_posting.next_scrape_at <= now()
+              AND job_posting.scrape_failures < 3
             ) AS needs_scrape_enqueue
 ),
 relisted AS (
