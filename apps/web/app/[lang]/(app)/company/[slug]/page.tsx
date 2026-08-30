@@ -151,7 +151,7 @@ export default async function CompanyPageRoute({ params }: Props) {
   if (!initialData) notFound();
   const { company } = initialData;
 
-  // The page body is `'use cache'`-wrapped (1-hour revalidate) so the
+  // The page body is `'use cache'`-wrapped (1-day revalidate) so the
   // anonymous static shell ships from the per-region cache without
   // invoking a function on every request. Anything that reads
   // `CompanyPage` refreshes anonymous postings directly from Typesense after

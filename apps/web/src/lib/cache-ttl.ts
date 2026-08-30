@@ -23,7 +23,7 @@
  * |                           |         | Typesense refreshes it after hydration       |
  * | `CACHE_TTL_LONG`          |  3600   | Semi-static taxonomies, locations, similar   |
  * |                           |         | companies, sitemap, watchlist matching count |
- * | `CACHE_TTL_COMPANY_SHELL` |  3600   | Anonymous company prerender; browser         |
+ * | `CACHE_TTL_COMPANY_SHELL` | 86400   | Anonymous company prerender; browser         |
  * |                           |         | Typesense refreshes postings after hydration |
  * | `CACHE_TTL_DAY`           | 86400   | Very static / rare-change (blog pages)       |
  *
@@ -53,8 +53,8 @@ export const CACHE_TTL_EXPLORE_SHELL = 600;
 /** 3600 seconds (1 hour) — semi-static taxonomies, locations, sitemap, similar companies. */
 export const CACHE_TTL_LONG = 3600;
 
-/** 1 hour — anonymous company shell; hydrated postings refresh from Typesense. */
-export const CACHE_TTL_COMPANY_SHELL = 3600;
-
 /** 86400 seconds (1 day) — very static / rare-change (blog pages). */
 export const CACHE_TTL_DAY = 86400;
+
+/** 1 day — anonymous company shell; hydrated postings refresh from Typesense. */
+export const CACHE_TTL_COMPANY_SHELL = CACHE_TTL_DAY;
