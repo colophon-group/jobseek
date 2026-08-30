@@ -15,6 +15,7 @@ from src.core.monitors.infor import (
     parse_candidate_url,
 )
 from src.core.scrapers.infor import parse_detail, scrape
+from src.shared.http_retry import UnsafeRedirectError
 from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 
 BOARD_URL = (
@@ -150,6 +151,47 @@ async def test_bootstrap_reuses_existing_session_cookies() -> None:
     assert headers["SSO.CSRF"] == "existing-csrf"
 
 
+async def test_bootstrap_preserves_cookies_across_same_origin_redirects() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(
+                302,
+                headers=[
+                    ("location", "/lmghr/CandidateSelfService/controller.servlet"),
+                    ("set-cookie", "JSESSIONID=session; Path=/; Secure"),
+                    ("set-cookie", "SSO.CSRF=csrf-token; Path=/; Secure"),
+                ],
+            )
+        assert "JSESSIONID=session" in request.headers["Cookie"]
+        assert "SSO.CSRF=csrf-token" in request.headers["Cookie"]
+        return httpx.Response(200, text="<html><title>Careers</title></html>")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        headers = await bootstrap_session(BOARD_URL, client)
+
+    assert calls == 2
+    assert "JSESSIONID=session" in headers["Cookie"]
+    assert headers["SSO.CSRF"] == "csrf-token"
+
+
+async def test_bootstrap_rejects_cross_origin_redirects() -> None:
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(str(request.url))
+        return httpx.Response(302, headers={"location": "https://evil.example/session"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(UnsafeRedirectError, match="left original origin"):
+            await bootstrap_session(BOARD_URL, client)
+
+    assert requested == [BOARD_URL]
+
+
 async def test_can_handle_bootstraps_session_and_detects_job_count() -> None:
     client = AsyncMock(spec=httpx.AsyncClient)
     client.get = AsyncMock(side_effect=[_bootstrap_response(), _listing_response()])
@@ -164,7 +206,7 @@ async def test_can_handle_bootstraps_session_and_detects_job_count() -> None:
         "jobs_count": 2,
     }
     bootstrap_call, api_call = client.get.await_args_list
-    assert bootstrap_call.kwargs["headers"]["Cookie"] == ""
+    assert "Cookie" not in bootstrap_call.kwargs["headers"]
     assert api_call.kwargs["headers"]["SSO.CSRF"] == "csrf-token"
     assert "JSESSIONID=session" in api_call.kwargs["headers"]["Cookie"]
     assert api_call.kwargs["params"]["_limit"] == "-1"

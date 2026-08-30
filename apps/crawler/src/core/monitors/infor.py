@@ -23,6 +23,7 @@ import structlog
 
 from src.core.monitors import DiscoveredJob, register
 from src.shared.http import DEFAULT_ACCEPT, DEFAULT_USER_AGENT
+from src.shared.http_retry import fetch_response_with_status_retries
 
 log = structlog.get_logger()
 
@@ -181,17 +182,19 @@ def _client_cookie_snapshot(client: httpx.AsyncClient, url: str) -> dict[str, st
 async def bootstrap_session(url: str, client: httpx.AsyncClient) -> dict[str, str]:
     """Create an anonymous Infor data context for the following API request."""
     initial_cookies = _client_cookie_snapshot(client, url)
-    response = await client.get(
+    response = await fetch_response_with_status_retries(
+        client,
         url,
-        follow_redirects=True,
+        retry_limits={},
+        same_origin_redirects=True,
         headers={
             "Accept": DEFAULT_ACCEPT,
-            "Cookie": "; ".join(f"{name}={value}" for name, value in initial_cookies.items()),
             "User-Agent": DEFAULT_USER_AGENT,
         },
     )
     response.raise_for_status()
-    return _session_headers(response, initial_cookies)
+    current_cookies = _client_cookie_snapshot(client, url)
+    return _session_headers(response, {**initial_cookies, **current_cookies})
 
 
 def _listing_params(site: InforSite) -> dict[str, str]:
