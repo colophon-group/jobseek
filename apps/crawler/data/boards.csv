@@ -1481,6 +1481,7 @@ compunet-inc,compunet-inc-greenhouse,https://job-boards.greenhouse.io/compunetin
 comstock,comstock-greenhouse,https://job-boards.greenhouse.io/comstock,greenhouse,"{""token"": ""comstock""}",skip,
 comulate,comulate-ashby,https://jobs.ashbyhq.com/comulate,ashby,"{""token"": ""comulate""}",skip,
 concentric,concentric-greenhouse,https://job-boards.greenhouse.io/concentric,greenhouse,"{""token"": ""concentric""}",skip,
+concentrix,concentrix-careers,https://cnx.wd1.myworkdayjobs.com/external_global,workday,"{""company"": ""cnx"", ""wd_instance"": ""wd1"", ""site"": ""external_global"", ""all_sites"": false}",workday,
 conductor,conductor-careers,https://jobs.ashbyhq.com/conductor,ashby,"{""token"": ""conductor""}",skip,
 conductor-ai,conductor-ai-careers,https://jobs.ashbyhq.com/conductorai,ashby,"{""token"": ""conductorai""}",skip,
 conduit,conduit-ashby,https://jobs.ashbyhq.com/conduit,ashby,"{""token"": ""conduit""}",skip,
