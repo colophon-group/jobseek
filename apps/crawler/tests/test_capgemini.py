@@ -34,13 +34,17 @@ def _canonicalize_rich(slug: str, jobs: dict[str, DiscoveredJob]) -> MonitorResu
     return _apply_url_transform(result, config)
 
 
-def test_capgemini_uses_five_non_overlapping_provider_boards() -> None:
+def test_capgemini_uses_nine_non_overlapping_provider_boards() -> None:
     assert set(_rows()) == {
         "capgemini-cambridge-consultants",
+        "capgemini-careers-legacy",
         "capgemini-frog",
         "capgemini-global",
         "capgemini-government-solutions",
         "capgemini-purpose",
+        "capgemini-sogeti-us",
+        "capgemini-syniti",
+        "capgemini-wns",
     }
 
 
