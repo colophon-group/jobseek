@@ -10,6 +10,8 @@ Config uses ``steps`` (same format as ``walk_steps``), an optional ``scope``
 CSS selector that limits extraction to one content container, and optional
 ``include_document_title`` / ``include_document_description`` flags when a
 scoped layout keeps useful metadata in ``<head>``.
+Static requests may set allowlisted public ``request_headers`` for origins
+that require explicit content negotiation or crawler identification.
 Browser lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``,
 ``actions``) are only used when rendering.
 
@@ -46,6 +48,7 @@ from src.shared.extract import flatten, walk_steps
 from src.shared.fetch_url import transformed_fetch_url
 from src.shared.http import is_avature_job_detail_url
 from src.shared.http_retry import fetch_response_with_status_retries
+from src.shared.public_request_headers import public_get, validated_public_request_headers
 
 log = structlog.get_logger()
 
@@ -1139,6 +1142,9 @@ async def scrape(
         return JobContent()
 
     render = config.get("render", False)
+    request_headers = validated_public_request_headers(
+        config.get("request_headers"), owner="DOM scraper"
+    )
     fetch_url = transformed_fetch_url(
         url,
         config.get("fetch_url_transform"),
@@ -1148,9 +1154,9 @@ async def scrape(
     if not isinstance(same_origin_redirects, bool):
         raise ValueError("DOM scraper same_origin_redirects must be a boolean")
     document_fallback = _document_fallback_config(config)
-
-    if render and document_fallback is not None:
-        raise ValueError("DOM scraper document_fallback requires render=false")
+    request_headers = validated_public_request_headers(
+        config.get("request_headers"), owner="DOM scraper"
+    )
 
     if not render and config.get("actions"):
         log.warning(
@@ -1159,6 +1165,11 @@ async def scrape(
             detail="actions require render=true; overriding render to true",
         )
         render = True
+
+    if render and document_fallback is not None:
+        raise ValueError("DOM scraper document_fallback requires render=false")
+    if render and request_headers:
+        raise ValueError("DOM scraper request_headers are supported only when render=false")
 
     if render and same_origin_redirects:
         raise ValueError("DOM scraper same_origin_redirects requires render=false")
@@ -1213,13 +1224,16 @@ async def scrape(
                 html = await _render_with_challenge_retry(p)
     else:
         retry_limits = _status_retry_limits(config, url)
-        resp = await fetch_response_with_status_retries(
-            http,
-            fetch_url,
-            retry_limits=retry_limits,
-            same_origin_redirects=same_origin_redirects,
-            log_event="dom.fetch.retry_status",
-        )
+        if request_headers:
+            resp = await public_get(http, fetch_url, headers=request_headers)
+        else:
+            resp = await fetch_response_with_status_retries(
+                http,
+                fetch_url,
+                retry_limits=retry_limits,
+                same_origin_redirects=same_origin_redirects,
+                log_event="dom.fetch.retry_status",
+            )
         # Detect redirect-to-gone BEFORE raise_for_status so the error page's
         # 200 doesn't shadow the actual archived signal. The redirect chain
         # may end on a 200 (rendered "this posting was removed" page), so

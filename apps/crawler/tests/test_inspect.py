@@ -811,6 +811,65 @@ class TestValidateProxyFlag:
         # No errors *about proxy* — other errors (like missing companies cols) are fine
         assert not any("'proxy'" in str(e) for e in errors)
 
+    def test_invalid_browser_resource_config_rejected(self, tmp_path, monkeypatch):
+        monitor = (
+            '"{""proxy"": true, ""resource_policy"": ""aggressive"", '
+            '""block_resource_types"": [""video""]}"'
+        )
+        self._write_csvs(
+            tmp_path,
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,dom,{monitor},json-ld,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert any("Invalid browser resource config in monitor_config" in str(e) for e in errors)
+
+    def test_valid_browser_resource_config_accepted(self, tmp_path, monkeypatch):
+        scraper = '"{""resource_policy"": ""auto"", ""bot_protection"": false}"'
+        self._write_csvs(
+            tmp_path,
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,greenhouse,,json-ld,{scraper}\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert not any("browser resource config" in str(e) for e in errors)
+
+    def test_invalid_bot_protection_recon_value_rejected(self, tmp_path, monkeypatch):
+        monitor = '"{""resource_policy"": ""auto"", ""bot_protection"": ""unknown""}"'
+        self._write_csvs(
+            tmp_path,
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,dom,{monitor},json-ld,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert any("bot_protection must be a boolean" in str(e) for e in errors)
+
+    def test_non_string_resource_policy_is_reported_not_raised(self, tmp_path, monkeypatch):
+        monitor = '"{""resource_policy"": []}"'
+        self._write_csvs(
+            tmp_path,
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,dom,{monitor},json-ld,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert any("resource_policy must be a string" in str(e) for e in errors)
+
 
 class TestMigratedBoardsHaveProxy:
     """The 9 active boards migrated off Lightpanda CDP MUST keep ``proxy: true``.

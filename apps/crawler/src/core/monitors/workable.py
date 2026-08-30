@@ -1,7 +1,8 @@
 """Workable Posting API monitor.
 
-Public API:
-  List:   POST https://apply.workable.com/api/v3/accounts/{slug}/jobs
+Public APIs:
+  List:      POST https://apply.workable.com/api/v3/accounts/{slug}/jobs
+  Fallback:  GET  https://apply.workable.com/{slug}/llms.txt
 
 The list endpoint returns metadata (title, location, department) but not the
 full job description.  The monitor discovers job URLs only; a dedicated
@@ -22,7 +23,11 @@ from src.core.monitors import (
     slug_guess_allowed,
 )
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
-from src.shared.http_retry import fetch_json_page_with_retry
+from src.shared.http_retry import (
+    PaginationFetchError,
+    fetch_json_page_with_retry,
+    fetch_text_page_with_retry,
+)
 from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
@@ -30,6 +35,8 @@ log = structlog.get_logger()
 MAX_JOBS = 50_000
 _RETRY_ATTEMPTS = 4
 _RETRY_BASE_DELAY = 5.0
+_MARKDOWN_RETRY_ATTEMPTS = 3
+_MARKDOWN_RETRY_BASE_DELAY = 0.5
 
 _PAGE_PATTERNS = [
     re.compile(r"apply\.workable\.com/([\w-]+)"),
@@ -57,29 +64,75 @@ def _job_url(slug: str, shortcode: str) -> str:
     return f"https://apply.workable.com/{slug}/j/{shortcode}/"
 
 
-async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], bool]:
+def _llms_url(slug: str) -> str:
+    return f"https://apply.workable.com/{slug}/llms.txt"
+
+
+def _parse_markdown_count(markdown: str) -> int:
+    match = re.search(r"All open roles .*?:\s*([\d,]+) current openings\b", markdown)
+    if match is None:
+        raise ValueError("Workable llms.txt did not advertise a current-opening count")
+    return int(match.group(1).replace(",", ""))
+
+
+async def _markdown_empty(slug: str, client: httpx.AsyncClient) -> bool:
+    """Verify the one authoritative fallback state exposed by ``llms.txt``.
+
+    A positive Workable ``jobs.md`` request returns search facets rather than
+    an unfiltered inventory, so it cannot safely replace the list API. Only an
+    explicit advertised zero is accepted; positive counts fail closed.
+    """
+    llms = await fetch_text_page_with_retry(
+        client,
+        _llms_url(slug),
+        retries=_MARKDOWN_RETRY_ATTEMPTS,
+        base_delay=_MARKDOWN_RETRY_BASE_DELAY,
+        end_of_pagination_statuses=(),
+        require_nonempty=True,
+        log_event="workable.markdown_index_backoff",
+        sleep=asyncio.sleep,
+    )
+    assert llms is not None
+    advertised = _parse_markdown_count(llms)
+    if advertised == 0:
+        log.info("workable.markdown_empty", slug=slug)
+        return True
+    raise ValueError(
+        "Workable list API was rate limited and llms.txt advertises "
+        f"{advertised} current openings; positive markdown inventories are not authoritative"
+    )
+
+
+async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], bool, bool]:
     """Paginate the list endpoint to collect all job URLs.
 
-    Returns ``(urls, truncated)``. ``truncated`` is True iff the MAX_JOBS
-    cap was hit before pagination completed; the pipeline uses the flag
-    to suppress gone-detection on this cycle (#3216).
+    Returns ``(urls, truncated, verified_empty)``. ``truncated`` is True iff
+    the MAX_JOBS cap was hit before pagination completed; the pipeline uses
+    the flag to suppress gone-detection on this cycle (#3216).
     """
     urls: set[str] = set()
     truncated = False
     body: dict = {"query": "", "location": [], "department": [], "worktype": []}
 
     while True:
-        data = await fetch_json_page_with_retry(
-            client,
-            _api_list_url(slug),
-            method="POST",
-            json_body=body,
-            expect_shape=dict,
-            retries=_RETRY_ATTEMPTS,
-            base_delay=_RETRY_BASE_DELAY,
-            log_event="workable.list_backoff",
-            sleep=asyncio.sleep,
-        )
+        try:
+            data = await fetch_json_page_with_retry(
+                client,
+                _api_list_url(slug),
+                method="POST",
+                json_body=body,
+                expect_shape=dict,
+                retries=_RETRY_ATTEMPTS,
+                base_delay=_RETRY_BASE_DELAY,
+                log_event="workable.list_backoff",
+                sleep=asyncio.sleep,
+            )
+        except PaginationFetchError as exc:
+            if exc.last_status != 429 or urls:
+                raise
+            log.warning("workable.rate_limited_markdown_fallback", slug=slug)
+            verified_empty = await _markdown_empty(slug, client)
+            return set(), False, verified_empty
 
         results = data.get("results", [])
         for item in results:
@@ -98,7 +151,7 @@ async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], boo
             truncated = True
             break
 
-    return urls, truncated
+    return urls, truncated, False
 
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None):
@@ -116,9 +169,16 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             "and no token in metadata"
         )
 
-    urls, truncated = await _api_list(slug, client)
+    urls, truncated, verified_empty = await _api_list(slug, client)
     log.info("workable.listed", slug=slug, postings=len(urls))
 
+    if verified_empty:
+        from src.core.monitor import MonitorResult
+
+        return MonitorResult(
+            urls=set(),
+            verified_empty_reason="Workable llms.txt advertises zero current openings",
+        )
     if truncated:
         return truncated_url_result(urls)
     return urls
