@@ -36,25 +36,16 @@ def _policy() -> dict:
     return load_candidate_policy()
 
 
-def _observation(
-    class_id: str,
-    work_class: str,
-    capability_class: str,
-    *,
-    rare: bool,
-) -> dict:
-    if capability_class == "shared-http":
-        browser_class, browser_backend = "none", "none"
-    elif capability_class == "render-evaluate":
-        browser_class, browser_backend = "render-evaluate", "lightpanda"
-    else:
-        browser_class, browser_backend = "compatibility", "chromium"
+def _observation(required_class: dict) -> dict:
+    rare = required_class["sample_policy"] == "rare"
     return {
-        "class_id": class_id,
-        "work_class": work_class,
-        "capability_class": capability_class,
-        "browser_class": browser_class,
-        "browser_backend": browser_backend,
+        "class_id": required_class["class_id"],
+        "work_class": required_class["work_class"],
+        "capability_class": required_class["capability_class"],
+        "browser_class": required_class["browser_class"],
+        "browser_backend": required_class["browser_backend"],
+        "service_lane": required_class["service_lane"],
+        "resource_authority": required_class["resource_authority"],
         "provider_family": "mixed",
         "sample_size": 10 if rare else 1000,
         "population_size": 10 if rare else None,
@@ -76,6 +67,8 @@ def _observation(
         },
         "capacity": {
             "eligible_demand_present": True,
+            "routed_assignment_present": True,
+            "zero_demand_proven": False,
             "zero_assignment_proven": False,
             "avoidable_idle_seconds_with_eligible_backlog": 0,
             "utilization_p95_ratio": 0.8,
@@ -88,10 +81,12 @@ def _observation(
 
 
 def _evidence() -> dict:
+    policy = _policy()
     return {
         "schema_version": "jobseek.crawler-migration-promotion-evidence/v1",
         "evidence_id": "candidate-week-1",
-        "policy_id": "crawler-migration-candidate-2026-08-30",
+        "policy_id": policy["policy_id"],
+        "routing_revision": "route-2026-08-30",
         "candidate": {
             "implementation": "go",
             "release": "go-candidate-1",
@@ -111,14 +106,7 @@ def _evidence() -> dict:
             "origin_policy_violations": 0,
             "cross_backend_runtime_fallbacks": 0,
         },
-        "observations": [
-            _observation("monitor_http", "monitor", "shared-http", rare=False),
-            _observation("monitor_lightpanda", "monitor", "render-evaluate", rare=True),
-            _observation("monitor_chromium", "monitor", "chromium-required", rare=True),
-            _observation("detail_http", "detail", "shared-http", rare=False),
-            _observation("detail_lightpanda", "detail", "render-evaluate", rare=True),
-            _observation("detail_chromium", "detail", "chromium-required", rare=True),
-        ],
+        "observations": [_observation(item) for item in policy["required_classes"]],
     }
 
 
@@ -126,7 +114,13 @@ def _reason_codes(result: dict) -> set[str]:
     return {reason["code"] for reason in result["reasons"]}
 
 
-def _set_zero_demand(observation: dict, *, proven: bool) -> None:
+def _set_unassigned(
+    observation: dict,
+    *,
+    eligible_demand_present: bool,
+    zero_demand_proven: bool,
+    zero_assignment_proven: bool,
+) -> None:
     observation["sample_size"] = 0
     observation["population_size"] = 0
     observation["completed_schedule_cycles"] = 0
@@ -134,8 +128,10 @@ def _set_zero_demand(observation: dict, *, proven: bool) -> None:
     observation["request_amplification_ratio"] = None
     observation["antibot_regression_ratio"] = None
     observation["capacity"] = {
-        "eligible_demand_present": False,
-        "zero_assignment_proven": proven,
+        "eligible_demand_present": eligible_demand_present,
+        "routed_assignment_present": False,
+        "zero_demand_proven": zero_demand_proven,
+        "zero_assignment_proven": zero_assignment_proven,
         "avoidable_idle_seconds_with_eligible_backlog": 0,
         "utilization_p95_ratio": 0,
         "headroom_p05_ratio": 1,
@@ -151,6 +147,123 @@ def test_checked_in_policy_and_schemas_are_valid() -> None:
         schemas["promotion-policy-v1.schema.json"], format_checker=FormatChecker()
     )
     assert not list(validator.iter_errors(_policy()))
+
+
+def test_policy_is_full_backend_neutral_runtime_v1_cross_product() -> None:
+    policy = _policy()
+    browser_rows = [
+        item for item in policy["required_classes"] if item["browser_backend"] != "none"
+    ]
+    assert {
+        (item["work_class"], item["browser_backend"], item["capability_class"])
+        for item in browser_rows
+    } == {
+        (work_class, backend, capability)
+        for work_class in ("monitor", "detail")
+        for backend in ("lightpanda", "chromium")
+        for capability in (
+            "navigation-evaluation",
+            "interaction-capture",
+            "identity-transport",
+        )
+    }
+    assert len(browser_rows) == 12
+    assert all(item["browser_class"] == "service" for item in browser_rows)
+    assert all(item["service_lane"] == item["browser_backend"] for item in browser_rows)
+    assert all(
+        item["resource_authority"] == f"{item['browser_backend']}-service-cgroup-v2"
+        for item in browser_rows
+    )
+
+    http_rows = [item for item in policy["required_classes"] if item["browser_backend"] == "none"]
+    assert {item["work_class"] for item in http_rows} == {"monitor", "detail"}
+    assert all(
+        item["capability_class"] == "shared-http"
+        and item["browser_class"] == "none"
+        and item["service_lane"] == "none"
+        and item["resource_authority"] == "worker-cgroup-v2"
+        for item in http_rows
+    )
+
+
+def test_policy_vocabulary_maps_exactly_to_landed_runtime_v1_enums() -> None:
+    policy = _policy()
+    runtime_proto = (CRAWLER_ROOT / "contracts" / "v1" / "runtime.proto").read_text()
+    browser_capabilities = set(policy["label_allowlists"]["capability_class"]) - {"shared-http"}
+    assert browser_capabilities == {
+        "navigation-evaluation",
+        "interaction-capture",
+        "identity-transport",
+    }
+    for capability in browser_capabilities:
+        enum_name = f"BROWSER_CAPABILITY_CLASS_{capability.replace('-', '_').upper()}"
+        assert f"{enum_name} =" in runtime_proto
+    for backend in ("lightpanda", "chromium"):
+        assert f"BROWSER_BACKEND_{backend.upper()} =" in runtime_proto
+        assert f"BROWSER_SERVICE_LANE_{backend.upper()} =" in runtime_proto
+    assert "render-evaluate" not in json.dumps(policy)
+    assert "chromium-required" not in json.dumps(policy)
+
+
+def test_metric_contract_has_bounded_gate_labels_and_separate_service_cgroups() -> None:
+    metric_contract = _policy()["metric_contract"]
+    assert metric_contract["gate_labels"] == [
+        "implementation",
+        "region",
+        "cohort",
+        "work_class",
+        "capability_class",
+        "browser_class",
+        "browser_backend",
+        "service_lane",
+        "provider_family",
+    ]
+    assert metric_contract["service_resource_authority"] == "isolated-service-cgroup-v2"
+    assert metric_contract["service_resource_labels"] == ["browser_backend", "service_lane"]
+    assert set(metric_contract["service_resources"]) == {
+        "browser_seconds_total",
+        "concurrency_limit",
+        "cpu_seconds_total",
+        "crashes_total",
+        "recycles_total",
+        "resident_memory_bytes",
+        "resource_limit_outcomes_total",
+        "sessions",
+    }
+
+
+@pytest.mark.parametrize(
+    ("class_id", "field", "value"),
+    [
+        ("monitor_http", "browser_class", "service"),
+        ("monitor_http", "capability_class", "navigation-evaluation"),
+        ("monitor_http", "service_lane", "lightpanda"),
+        (
+            "monitor_lightpanda_navigation_evaluation",
+            "service_lane",
+            "chromium",
+        ),
+        (
+            "monitor_lightpanda_navigation_evaluation",
+            "resource_authority",
+            "chromium-service-cgroup-v2",
+        ),
+        (
+            "monitor_chromium_identity_transport",
+            "capability_class",
+            "shared-http",
+        ),
+    ],
+)
+def test_policy_rejects_forbidden_dimension_combinations(
+    class_id: str, field: str, value: str
+) -> None:
+    policy = _policy()
+    row = next(item for item in policy["required_classes"] if item["class_id"] == class_id)
+    row[field] = value
+
+    with pytest.raises(GateModelError):
+        evaluate_promotion(policy, _evidence())
 
 
 def test_public_evaluator_rejects_baseline_before_scoring() -> None:
@@ -217,14 +330,28 @@ def test_public_evaluator_rejects_unsafe_or_oversized_policy_id(unsafe_id: str) 
         evaluate_promotion(policy, evidence)
 
 
+@pytest.mark.parametrize("unsafe_revision", UNSAFE_IDENTIFIERS)
+def test_public_evaluator_rejects_unsafe_routing_revision(unsafe_revision: str) -> None:
+    evidence = _evidence()
+    evidence["routing_revision"] = unsafe_revision
+
+    with pytest.raises(GateModelError, match="routing_revision") as error:
+        evaluate_promotion(_policy(), evidence)
+    message = str(error.value)
+    assert unsafe_revision not in message
+    assert all(marker not in message for marker in UNSAFE_MARKERS)
+    assert len(message) <= MAX_PUBLIC_ERROR_LENGTH
+
+
 def test_complete_boundary_evidence_promotes_advisory_candidate() -> None:
     result = evaluate_promotion(_policy(), _evidence())
 
     assert result == {
         "schema_version": "jobseek.crawler-migration-promotion-decision/v1",
-        "policy_id": "crawler-migration-candidate-2026-08-30",
+        "policy_id": "crawler-migration-candidate-runtime-v1-2026-08-30",
         "policy_status": "candidate",
         "evidence_id": "candidate-week-1",
+        "routing_revision": "route-2026-08-30",
         "candidate": {
             "cohort": "candidate",
             "implementation": "go",
@@ -239,7 +366,10 @@ def test_complete_boundary_evidence_promotes_advisory_candidate() -> None:
 def test_missing_duplicate_and_unknown_classes_fail_closed() -> None:
     missing = _evidence()
     missing["observations"].pop()
-    with pytest.raises(GateModelError, match="missing required classes: detail_chromium"):
+    with pytest.raises(
+        GateModelError,
+        match="missing required classes: detail_chromium_identity_transport",
+    ):
         evaluate_promotion(_policy(), missing)
 
     duplicate = _evidence()
@@ -365,10 +495,14 @@ def test_freshness_error_budget_above_boundary_freezes() -> None:
 def test_browser_backends_are_separate_and_cannot_mask_each_other() -> None:
     evidence = _evidence()
     lightpanda = next(
-        item for item in evidence["observations"] if item["class_id"] == "monitor_lightpanda"
+        item
+        for item in evidence["observations"]
+        if item["class_id"] == "monitor_lightpanda_navigation_evaluation"
     )
     chromium = next(
-        item for item in evidence["observations"] if item["class_id"] == "monitor_chromium"
+        item
+        for item in evidence["observations"]
+        if item["class_id"] == "monitor_chromium_navigation_evaluation"
     )
     lightpanda["request_amplification_ratio"] = 1.06
     chromium["request_amplification_ratio"] = 1.0
@@ -379,7 +513,7 @@ def test_browser_backends_are_separate_and_cannot_mask_each_other() -> None:
     reason = next(
         item for item in result["reasons"] if item["code"] == "freeze:request-amplification"
     )
-    assert reason["affected_classes"] == ["monitor_lightpanda"]
+    assert reason["affected_classes"] == ["monitor_lightpanda_navigation_evaluation"]
 
 
 def test_aggregate_backend_and_runtime_fallback_masking_are_forbidden() -> None:
@@ -398,7 +532,9 @@ def test_aggregate_backend_and_runtime_fallback_masking_are_forbidden() -> None:
 def test_backend_resource_saturation_freezes_only_the_affected_service_class() -> None:
     evidence = _evidence()
     chromium = next(
-        item for item in evidence["observations"] if item["class_id"] == "detail_chromium"
+        item
+        for item in evidence["observations"]
+        if item["class_id"] == "detail_chromium_identity_transport"
     )
     chromium["resource_saturation_events"] = 1
 
@@ -408,15 +544,22 @@ def test_backend_resource_saturation_freezes_only_the_affected_service_class() -
     reason = next(
         item for item in result["reasons"] if item["code"] == "freeze:backend-resource-saturation"
     )
-    assert reason["affected_classes"] == ["detail_chromium"]
+    assert reason["affected_classes"] == ["detail_chromium_identity_transport"]
 
 
 def test_proven_zero_assignment_does_not_force_chromium_use_or_retirement() -> None:
     evidence = _evidence()
     chromium = next(
-        item for item in evidence["observations"] if item["class_id"] == "detail_chromium"
+        item
+        for item in evidence["observations"]
+        if item["class_id"] == "detail_chromium_identity_transport"
     )
-    _set_zero_demand(chromium, proven=True)
+    _set_unassigned(
+        chromium,
+        eligible_demand_present=False,
+        zero_demand_proven=True,
+        zero_assignment_proven=True,
+    )
 
     result = evaluate_promotion(_policy(), evidence)
 
@@ -427,9 +570,16 @@ def test_proven_zero_assignment_does_not_force_chromium_use_or_retirement() -> N
 def test_zero_assignment_must_be_proven_when_routed_demand_is_absent() -> None:
     evidence = _evidence()
     chromium = next(
-        item for item in evidence["observations"] if item["class_id"] == "detail_chromium"
+        item
+        for item in evidence["observations"]
+        if item["class_id"] == "detail_chromium_identity_transport"
     )
-    _set_zero_demand(chromium, proven=False)
+    _set_unassigned(
+        chromium,
+        eligible_demand_present=False,
+        zero_demand_proven=True,
+        zero_assignment_proven=False,
+    )
 
     result = evaluate_promotion(_policy(), evidence)
 
@@ -437,10 +587,83 @@ def test_zero_assignment_must_be_proven_when_routed_demand_is_absent() -> None:
     assert "hold:zero-assignment-unproven" in _reason_codes(result)
 
 
+def test_positive_demand_may_be_unrouted_without_implying_backend_or_retirement() -> None:
+    evidence = _evidence()
+    lightpanda = next(
+        item
+        for item in evidence["observations"]
+        if item["class_id"] == "monitor_lightpanda_identity_transport"
+    )
+    _set_unassigned(
+        lightpanda,
+        eligible_demand_present=True,
+        zero_demand_proven=False,
+        zero_assignment_proven=True,
+    )
+
+    result = evaluate_promotion(_policy(), evidence)
+
+    assert result["decision"] == "promote"
+    assert result["reasons"] == []
+    assert "retire" not in json.dumps(result)
+
+
+def test_zero_demand_and_zero_assignment_are_independent_fail_closed_proofs() -> None:
+    evidence = _evidence()
+    chromium = next(
+        item
+        for item in evidence["observations"]
+        if item["class_id"] == "monitor_chromium_interaction_capture"
+    )
+    _set_unassigned(
+        chromium,
+        eligible_demand_present=False,
+        zero_demand_proven=False,
+        zero_assignment_proven=True,
+    )
+
+    result = evaluate_promotion(_policy(), evidence)
+
+    assert result["decision"] == "hold"
+    assert _reason_codes(result) == {"hold:zero-demand-unproven"}
+
+
+@pytest.mark.parametrize(
+    ("eligible", "assigned", "zero_demand", "zero_assignment", "message"),
+    [
+        (False, True, False, False, "assignment without eligible demand"),
+        (True, True, True, False, "demand and zero-demand proof"),
+        (True, True, False, True, "assignment and zero-assignment proof"),
+    ],
+)
+def test_contradictory_demand_and_assignment_proofs_are_rejected(
+    eligible: bool,
+    assigned: bool,
+    zero_demand: bool,
+    zero_assignment: bool,
+    message: str,
+) -> None:
+    evidence = _evidence()
+    capacity = evidence["observations"][1]["capacity"]
+    capacity.update(
+        {
+            "eligible_demand_present": eligible,
+            "routed_assignment_present": assigned,
+            "zero_demand_proven": zero_demand,
+            "zero_assignment_proven": zero_assignment,
+        }
+    )
+
+    with pytest.raises(GateModelError, match=message):
+        evaluate_promotion(_policy(), evidence)
+
+
 def test_avoidable_idle_with_backlog_and_insufficient_headroom_hold() -> None:
     evidence = _evidence()
     lightpanda = next(
-        item for item in evidence["observations"] if item["class_id"] == "monitor_lightpanda"
+        item
+        for item in evidence["observations"]
+        if item["class_id"] == "monitor_lightpanda_navigation_evaluation"
     )
     lightpanda["capacity"]["avoidable_idle_seconds_with_eligible_backlog"] = 0.001
     lightpanda["capacity"]["utilization_p95_ratio"] = 0.851

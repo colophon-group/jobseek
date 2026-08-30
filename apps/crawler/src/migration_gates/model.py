@@ -31,6 +31,45 @@ ZERO_TOLERANCE_REASONS = {
     "cross_backend_runtime_fallbacks": "freeze:cross-backend-runtime-fallback",
 }
 
+WORK_CLASSES = ("monitor", "detail")
+BROWSER_BACKENDS = ("lightpanda", "chromium")
+BROWSER_CAPABILITY_CLASSES = (
+    "navigation-evaluation",
+    "interaction-capture",
+    "identity-transport",
+)
+EXPECTED_METRIC_CONTRACT = {
+    "gate_histograms": {
+        "browser_operation": "crawler_migration_browser_operation_seconds",
+        "due_to_claim": "crawler_migration_due_to_claim_seconds",
+        "due_to_complete": "crawler_migration_due_to_complete_seconds",
+    },
+    "gate_labels": [
+        "implementation",
+        "region",
+        "cohort",
+        "work_class",
+        "capability_class",
+        "browser_class",
+        "browser_backend",
+        "service_lane",
+        "provider_family",
+    ],
+    "release_identity": "crawler_build_info",
+    "service_resource_authority": "isolated-service-cgroup-v2",
+    "service_resource_labels": ["browser_backend", "service_lane"],
+    "service_resources": {
+        "browser_seconds_total": "crawler_browser_service_browser_seconds_total",
+        "concurrency_limit": "crawler_browser_service_concurrency_limit",
+        "cpu_seconds_total": "crawler_browser_service_cpu_seconds_total",
+        "crashes_total": "crawler_browser_service_crashes_total",
+        "recycles_total": "crawler_browser_service_recycles_total",
+        "resident_memory_bytes": "crawler_browser_service_resident_memory_bytes",
+        "resource_limit_outcomes_total": ("crawler_browser_service_resource_limit_outcomes_total"),
+        "sessions": "crawler_browser_service_sessions",
+    },
+}
+
 
 class GateModelError(ValueError):
     """Raised when policy or evidence is ambiguous or violates the gate contract."""
@@ -162,6 +201,33 @@ def _strictly_increasing_numbers(value: object, field: str) -> tuple[float, ...]
     return numbers
 
 
+def _expected_required_classes() -> dict[str, dict[str, str]]:
+    classes: dict[str, dict[str, str]] = {}
+    for work_class in WORK_CLASSES:
+        classes[f"{work_class}_http"] = {
+            "work_class": work_class,
+            "capability_class": "shared-http",
+            "browser_class": "none",
+            "browser_backend": "none",
+            "service_lane": "none",
+            "resource_authority": "worker-cgroup-v2",
+            "sample_policy": "standard",
+        }
+        for backend in BROWSER_BACKENDS:
+            for capability_class in BROWSER_CAPABILITY_CLASSES:
+                class_id = f"{work_class}_{backend}_{capability_class.replace('-', '_')}"
+                classes[class_id] = {
+                    "work_class": work_class,
+                    "capability_class": capability_class,
+                    "browser_class": "service",
+                    "browser_backend": backend,
+                    "service_lane": backend,
+                    "resource_authority": f"{backend}-service-cgroup-v2",
+                    "sample_policy": "rare",
+                }
+    return classes
+
+
 def _policy_contract(policy: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     _require(policy.get("schema_version") == POLICY_SCHEMA, "policy schema_version is invalid")
     _require(policy.get("status") == "candidate", "policy must remain candidate")
@@ -171,11 +237,24 @@ def _policy_contract(policy: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
         "policy browser operation mode is invalid",
     )
     _require(
-        policy.get("browser_retirement_gate") == "external-zero-assignment-and-removal-proof",
+        policy.get("browser_retirement_gate")
+        == "7966-zero-chromium-assignments-and-service-removal",
         "policy browser retirement gate is invalid",
+    )
+    _require(
+        policy.get("class_membership_authority") == "reviewed-immutable-policy-revision",
+        "policy class membership authority is invalid",
+    )
+    _require(
+        policy.get("required_class_mode") == "full-eligible-cross-product",
+        "policy required class mode is invalid",
     )
     _identifier(policy.get("policy_id"), "policy.policy_id")
     _require(policy.get("release_pattern") == RELEASE_PATTERN, "policy release pattern is invalid")
+    _require(
+        policy.get("routing_revision_pattern") == RELEASE_PATTERN,
+        "policy routing revision pattern is invalid",
+    )
     _require(
         _integer(
             policy.get("release_max_active_values"), "policy.release_max_active_values", minimum=1
@@ -190,8 +269,10 @@ def _policy_contract(policy: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
         "region",
         "cohort",
         "work_class",
+        "capability_class",
         "browser_class",
         "browser_backend",
+        "service_lane",
         "provider_family",
     }
     _require(set(allowlists) == expected_dimensions, "policy label dimensions are invalid")
@@ -199,6 +280,11 @@ def _policy_contract(policy: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
         name: _unique_strings(allowlists[name], f"policy.label_allowlists.{name}")
         for name in sorted(expected_dimensions)
     }
+    _require(
+        _object(policy.get("metric_contract"), "policy.metric_contract")
+        == EXPECTED_METRIC_CONTRACT,
+        "policy metric contract is invalid",
+    )
 
     raw_classes = _list(policy.get("required_classes"), "policy.required_classes")
     _require(bool(raw_classes), "policy.required_classes must not be empty")
@@ -218,14 +304,21 @@ def _policy_contract(policy: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
             f"policy.required_classes[{index}].capability_class",
         )
         _require(
-            bool(CLASS_PATTERN.fullmatch(capability_class)),
-            f"policy class {class_id} capability_class is invalid",
+            capability_class in normalized_allowlists["capability_class"],
+            f"policy class {class_id} capability_class is not allowed",
         )
         browser_class = _string(
             item.get("browser_class"), f"policy.required_classes[{index}].browser_class"
         )
         browser_backend = _string(
             item.get("browser_backend"), f"policy.required_classes[{index}].browser_backend"
+        )
+        service_lane = _string(
+            item.get("service_lane"), f"policy.required_classes[{index}].service_lane"
+        )
+        resource_authority = _string(
+            item.get("resource_authority"),
+            f"policy.required_classes[{index}].resource_authority",
         )
         _require(
             browser_class in normalized_allowlists["browser_class"],
@@ -235,14 +328,24 @@ def _policy_contract(policy: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
             browser_backend in normalized_allowlists["browser_backend"],
             f"policy class {class_id} browser_backend is not allowed",
         )
+        _require(
+            service_lane in normalized_allowlists["service_lane"],
+            f"policy class {class_id} service_lane is not allowed",
+        )
         if browser_backend == "none":
             _require(
-                browser_class == "none" and capability_class == "shared-http",
+                browser_class == "none"
+                and capability_class == "shared-http"
+                and service_lane == "none"
+                and resource_authority == "worker-cgroup-v2",
                 f"policy class {class_id} non-browser dimensions are inconsistent",
             )
         else:
             _require(
-                browser_class != "none" and capability_class != "shared-http",
+                browser_class == "service"
+                and capability_class in BROWSER_CAPABILITY_CLASSES
+                and service_lane == browser_backend
+                and resource_authority == f"{browser_backend}-service-cgroup-v2",
                 f"policy class {class_id} browser dimensions are inconsistent",
             )
         sample_policy = _string(
@@ -257,8 +360,15 @@ def _policy_contract(policy: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
             "capability_class": capability_class,
             "browser_class": browser_class,
             "browser_backend": browser_backend,
+            "service_lane": service_lane,
+            "resource_authority": resource_authority,
             "sample_policy": sample_policy,
         }
+
+    _require(
+        classes == _expected_required_classes(),
+        "policy required classes must equal the full eligible work/backend/capability matrix",
+    )
 
     thresholds = _object(policy.get("thresholds"), "policy.thresholds")
     integer_thresholds = {
@@ -369,6 +479,11 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
     evidence_id = _identifier(evidence.get("evidence_id"), "evidence.evidence_id")
     policy_id = _identifier(policy.get("policy_id"), "policy.policy_id")
     _require(evidence.get("policy_id") == policy_id, "evidence policy_id does not match policy")
+    routing_revision = _string(evidence.get("routing_revision"), "evidence.routing_revision")
+    _require(
+        bool(re.fullmatch(RELEASE_PATTERN, routing_revision)),
+        "evidence routing_revision is invalid",
+    )
 
     candidate = _object(evidence.get("candidate"), "evidence.candidate")
     expected_candidate_fields = {"implementation", "release", "region", "cohort"}
@@ -427,33 +542,44 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
 
     for class_id, required_class in sorted(required_classes.items()):
         observation = observations[class_id]
-        work_class = _string(observation.get("work_class"), f"evidence {class_id}.work_class")
-        capability_class = _string(
-            observation.get("capability_class"), f"evidence {class_id}.capability_class"
-        )
-        _require(
-            work_class == required_class["work_class"],
-            f"evidence {class_id} work_class does not match policy",
-        )
-        _require(
-            capability_class == required_class["capability_class"],
-            f"evidence {class_id} capability_class does not match policy",
-        )
-        for name in ("browser_class", "browser_backend", "provider_family"):
+        for name in (
+            "work_class",
+            "capability_class",
+            "browser_class",
+            "browser_backend",
+            "service_lane",
+            "provider_family",
+        ):
             value = _string(observation.get(name), f"evidence {class_id}.{name}")
             _require(
                 value in policy_contract["allowlists"][name],
                 f"evidence {class_id} {name} is not allowed",
             )
-        for name in ("browser_class", "browser_backend"):
+        for name in (
+            "work_class",
+            "capability_class",
+            "browser_class",
+            "browser_backend",
+            "service_lane",
+        ):
             _require(
                 observation[name] == required_class[name],
                 f"evidence {class_id} {name} does not match policy",
             )
+        resource_authority = _string(
+            observation.get("resource_authority"),
+            f"evidence {class_id}.resource_authority",
+        )
+        _require(
+            resource_authority == required_class["resource_authority"],
+            f"evidence {class_id} resource_authority does not match policy",
+        )
 
         capacity = _object(observation.get("capacity"), f"evidence {class_id}.capacity")
         expected_capacity = {
             "eligible_demand_present",
+            "routed_assignment_present",
+            "zero_demand_proven",
             "zero_assignment_proven",
             "avoidable_idle_seconds_with_eligible_backlog",
             "utilization_p95_ratio",
@@ -464,19 +590,35 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
             f"evidence {class_id} capacity vocabulary is invalid",
         )
         eligible_demand_present = capacity["eligible_demand_present"]
+        routed_assignment_present = capacity["routed_assignment_present"]
+        zero_demand_proven = capacity["zero_demand_proven"]
         zero_assignment_proven = capacity["zero_assignment_proven"]
+        for name, value in (
+            ("eligible_demand_present", eligible_demand_present),
+            ("routed_assignment_present", routed_assignment_present),
+            ("zero_demand_proven", zero_demand_proven),
+            ("zero_assignment_proven", zero_assignment_proven),
+        ):
+            _require(
+                isinstance(value, bool),
+                f"evidence {class_id}.capacity.{name} is invalid",
+            )
         _require(
-            isinstance(eligible_demand_present, bool),
-            f"evidence {class_id}.capacity.eligible_demand_present is invalid",
+            not (routed_assignment_present and not eligible_demand_present),
+            f"evidence {class_id} cannot have assignment without eligible demand",
         )
         _require(
-            isinstance(zero_assignment_proven, bool),
-            f"evidence {class_id}.capacity.zero_assignment_proven is invalid",
+            not (eligible_demand_present and zero_demand_proven),
+            f"evidence {class_id} cannot have demand and zero-demand proof",
         )
         _require(
-            not (eligible_demand_present and zero_assignment_proven),
-            f"evidence {class_id} cannot have demand and zero-assignment proof",
+            not (routed_assignment_present and zero_assignment_proven),
+            f"evidence {class_id} cannot have assignment and zero-assignment proof",
         )
+        if not eligible_demand_present and not zero_demand_proven:
+            _add_reason(reasons, "hold:zero-demand-unproven", class_id)
+        if not routed_assignment_present and not zero_assignment_proven:
+            _add_reason(reasons, "hold:zero-assignment-unproven", class_id)
         avoidable_idle = _number(
             capacity["avoidable_idle_seconds_with_eligible_backlog"],
             f"evidence {class_id}.capacity.avoidable_idle_seconds_with_eligible_backlog",
@@ -491,7 +633,7 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
         )
         _require(utilization <= 1, f"evidence {class_id} utilization exceeds 1")
         _require(headroom <= 1, f"evidence {class_id} headroom exceeds 1")
-        if eligible_demand_present:
+        if routed_assignment_present:
             if avoidable_idle > thresholds["max_avoidable_idle_seconds_with_eligible_backlog"]:
                 _add_reason(reasons, "hold:avoidable-idle-with-eligible-backlog", class_id)
             if (
@@ -499,8 +641,6 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
                 or headroom < thresholds["min_backend_headroom_ratio"]
             ):
                 _add_reason(reasons, "hold:backend-capacity-headroom", class_id)
-        elif not zero_assignment_proven:
-            _add_reason(reasons, "hold:zero-assignment-unproven", class_id)
         else:
             _require(
                 avoidable_idle == 0 and utilization == 0 and headroom == 1,
@@ -511,7 +651,7 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
             observation.get("completed_schedule_cycles"),
             f"evidence {class_id}.completed_schedule_cycles",
         )
-        if eligible_demand_present and cycles < thresholds["min_completed_schedule_cycles"]:
+        if routed_assignment_present and cycles < thresholds["min_completed_schedule_cycles"]:
             _add_reason(reasons, "hold:class-cycle-coverage", class_id)
 
         sample_size = _integer(observation.get("sample_size"), f"evidence {class_id}.sample_size")
@@ -522,16 +662,16 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
                 f"evidence {class_id} standard class population_size must be null",
             )
             _require(
-                eligible_demand_present or sample_size == 0,
-                f"evidence {class_id} zero-demand standard class must have zero samples",
+                routed_assignment_present or sample_size == 0,
+                f"evidence {class_id} unassigned standard class must have zero samples",
             )
-            if eligible_demand_present and sample_size < thresholds["min_standard_class_samples"]:
+            if routed_assignment_present and sample_size < thresholds["min_standard_class_samples"]:
                 _add_reason(reasons, "hold:class-sample-coverage", class_id)
         else:
-            if not eligible_demand_present:
+            if not routed_assignment_present:
                 _require(
                     sample_size == 0 and population_size == 0,
-                    f"evidence {class_id} zero-demand rare class must have zero population",
+                    f"evidence {class_id} unassigned rare class must have zero population",
                 )
             elif population_size is None:
                 _add_reason(reasons, "hold:rare-population-coverage", class_id)
@@ -544,7 +684,7 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
 
         replay_complete = observation.get("replay_complete")
         _require(isinstance(replay_complete, bool), f"evidence {class_id}.replay_complete invalid")
-        if eligible_demand_present and not replay_complete:
+        if routed_assignment_present and not replay_complete:
             _add_reason(reasons, "hold:replay-incomplete", class_id)
 
         mismatches = _object(observation.get("mismatches"), f"evidence {class_id}.mismatches")
@@ -553,11 +693,17 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
             set(mismatches) == expected_mismatches,
             f"evidence {class_id} mismatch vocabulary is invalid",
         )
-        if any(
+        mismatch_present = any(
             _integer(value, f"evidence {class_id}.mismatches.{name}") > 0
             for name, value in mismatches.items()
-        ):
+        )
+        if routed_assignment_present and mismatch_present:
             _add_reason(reasons, "hold:correctness-mismatch", class_id)
+        elif not routed_assignment_present:
+            _require(
+                not mismatch_present,
+                f"evidence {class_id} unassigned mismatch counts must be zero",
+            )
 
         freshness = _object(observation.get("freshness"), f"evidence {class_id}.freshness")
         expected_freshness = {
@@ -572,7 +718,7 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
             set(freshness) == expected_freshness,
             f"evidence {class_id} freshness vocabulary is invalid",
         )
-        if eligible_demand_present:
+        if routed_assignment_present:
             schedule_compliance = _number(
                 freshness["schedule_compliance_ratio"],
                 f"evidence {class_id}.freshness.schedule_compliance_ratio",
@@ -619,14 +765,19 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
                 all(value is None for value in freshness.values())
                 and observation.get("request_amplification_ratio") is None
                 and observation.get("antibot_regression_ratio") is None,
-                f"evidence {class_id} zero-assignment performance values must be null",
+                f"evidence {class_id} unassigned performance values must be null",
             )
 
         resource_saturation_events = _integer(
             observation.get("resource_saturation_events"),
             f"evidence {class_id}.resource_saturation_events",
         )
-        if resource_saturation_events > 0:
+        if not routed_assignment_present:
+            _require(
+                resource_saturation_events == 0,
+                f"evidence {class_id} unassigned resource saturation must be zero",
+            )
+        elif resource_saturation_events > 0:
             _add_reason(reasons, "freeze:backend-resource-saturation", class_id)
 
     reason_items = [
@@ -645,6 +796,7 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
         "policy_id": policy_id,
         "policy_status": "candidate",
         "evidence_id": evidence_id,
+        "routing_revision": routing_revision,
         "candidate": {name: candidate[name] for name in sorted(candidate)},
         "decision": decision,
         "reasons": reason_items,

@@ -22,9 +22,10 @@
       "items": {"$ref": "#/$defs/reason"},
       "type": "array"
     },
+    "routing_revision": {"pattern": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$", "type": "string"},
     "schema_version": {"const": "jobseek.crawler-migration-promotion-decision/v1"}
   },
-  "required": ["schema_version", "policy_id", "policy_status", "evidence_id", "candidate", "decision", "reasons"],
+  "required": ["schema_version", "policy_id", "policy_status", "evidence_id", "routing_revision", "candidate", "decision", "reasons"],
   "type": "object",
   "$defs": {
     "reason": {
@@ -57,7 +58,8 @@
             "hold:rare-population-coverage",
             "hold:replay-incomplete",
             "hold:window-duration",
-            "hold:zero-assignment-unproven"
+            "hold:zero-assignment-unproven",
+            "hold:zero-demand-unproven"
           ]
         }
       },

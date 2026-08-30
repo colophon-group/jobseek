@@ -34,6 +34,7 @@
       "type": "array"
     },
     "policy_id": {"maxLength": 64, "minLength": 1, "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$", "type": "string"},
+    "routing_revision": {"pattern": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$", "type": "string"},
     "schema_version": {"const": "jobseek.crawler-migration-promotion-evidence/v1"},
     "window": {
       "additionalProperties": false,
@@ -46,7 +47,7 @@
       "type": "object"
     }
   },
-  "required": ["schema_version", "evidence_id", "policy_id", "candidate", "window", "freeze_signals", "observations"],
+  "required": ["schema_version", "evidence_id", "policy_id", "routing_revision", "candidate", "window", "freeze_signals", "observations"],
   "type": "object",
   "$defs": {
     "classObservation": {
@@ -54,8 +55,8 @@
       "properties": {
         "antibot_regression_ratio": {"minimum": 0, "type": ["number", "null"]},
         "browser_backend": {"enum": ["none", "lightpanda", "chromium"]},
-        "browser_class": {"enum": ["none", "render-evaluate", "compatibility"]},
-        "capability_class": {"pattern": "^[a-z0-9][a-z0-9_-]{0,63}$", "type": "string"},
+        "browser_class": {"enum": ["none", "service"]},
+        "capability_class": {"enum": ["shared-http", "navigation-evaluation", "interaction-capture", "identity-transport"]},
         "class_id": {"pattern": "^[a-z0-9][a-z0-9_-]{0,63}$", "type": "string"},
         "completed_schedule_cycles": {"minimum": 0, "type": "integer"},
         "capacity": {"$ref": "#/$defs/capacity"},
@@ -63,13 +64,15 @@
         "mismatches": {"$ref": "#/$defs/mismatches"},
         "population_size": {"minimum": 0, "type": ["integer", "null"]},
         "provider_family": {"enum": ["direct", "static-proxy", "mixed"]},
+        "resource_authority": {"enum": ["worker-cgroup-v2", "lightpanda-service-cgroup-v2", "chromium-service-cgroup-v2"]},
         "resource_saturation_events": {"minimum": 0, "type": "integer"},
         "replay_complete": {"type": "boolean"},
         "request_amplification_ratio": {"minimum": 0, "type": ["number", "null"]},
         "sample_size": {"minimum": 0, "type": "integer"},
+        "service_lane": {"enum": ["none", "lightpanda", "chromium"]},
         "work_class": {"enum": ["monitor", "detail"]}
       },
-      "required": ["class_id", "work_class", "capability_class", "browser_class", "browser_backend", "provider_family", "sample_size", "population_size", "completed_schedule_cycles", "replay_complete", "mismatches", "freshness", "capacity", "request_amplification_ratio", "antibot_regression_ratio", "resource_saturation_events"],
+      "required": ["class_id", "work_class", "capability_class", "browser_class", "browser_backend", "service_lane", "resource_authority", "provider_family", "sample_size", "population_size", "completed_schedule_cycles", "replay_complete", "mismatches", "freshness", "capacity", "request_amplification_ratio", "antibot_regression_ratio", "resource_saturation_events"],
       "type": "object"
     },
     "capacity": {
@@ -78,10 +81,12 @@
         "avoidable_idle_seconds_with_eligible_backlog": {"minimum": 0, "type": "number"},
         "eligible_demand_present": {"type": "boolean"},
         "headroom_p05_ratio": {"maximum": 1, "minimum": 0, "type": "number"},
+        "routed_assignment_present": {"type": "boolean"},
         "utilization_p95_ratio": {"maximum": 1, "minimum": 0, "type": "number"},
-        "zero_assignment_proven": {"type": "boolean"}
+        "zero_assignment_proven": {"type": "boolean"},
+        "zero_demand_proven": {"type": "boolean"}
       },
-      "required": ["eligible_demand_present", "zero_assignment_proven", "avoidable_idle_seconds_with_eligible_backlog", "utilization_p95_ratio", "headroom_p05_ratio"],
+      "required": ["eligible_demand_present", "routed_assignment_present", "zero_demand_proven", "zero_assignment_proven", "avoidable_idle_seconds_with_eligible_backlog", "utilization_p95_ratio", "headroom_p05_ratio"],
       "type": "object"
     },
     "freshness": {

@@ -1,6 +1,8 @@
 {
   "browser_operation_mode": "capability-routed-dual-engine",
-  "browser_retirement_gate": "external-zero-assignment-and-removal-proof",
+  "browser_retirement_gate": "7966-zero-chromium-assignments-and-service-removal",
+  "class_membership_authority": "reviewed-immutable-policy-revision",
+  "eligible_candidate_implementations": ["go"],
   "histogram_buckets_seconds": {
     "browser_operation": [0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120],
     "due_to_claim": [1, 5, 15, 30, 60, 120, 300, 900, 3600],
@@ -8,67 +10,198 @@
   },
   "label_allowlists": {
     "browser_backend": ["none", "lightpanda", "chromium"],
-    "browser_class": ["none", "render-evaluate", "compatibility"],
+    "browser_class": ["none", "service"],
+    "capability_class": [
+      "shared-http",
+      "navigation-evaluation",
+      "interaction-capture",
+      "identity-transport"
+    ],
     "cohort": ["baseline", "candidate"],
     "implementation": ["python", "go"],
     "provider_family": ["direct", "static-proxy", "mixed"],
     "region": ["hetzner-eu-central"],
+    "service_lane": ["none", "lightpanda", "chromium"],
     "work_class": ["monitor", "detail"]
   },
-  "eligible_candidate_implementations": ["go"],
-  "policy_id": "crawler-migration-candidate-2026-08-30",
+  "metric_contract": {
+    "gate_histograms": {
+      "browser_operation": "crawler_migration_browser_operation_seconds",
+      "due_to_claim": "crawler_migration_due_to_claim_seconds",
+      "due_to_complete": "crawler_migration_due_to_complete_seconds"
+    },
+    "gate_labels": [
+      "implementation",
+      "region",
+      "cohort",
+      "work_class",
+      "capability_class",
+      "browser_class",
+      "browser_backend",
+      "service_lane",
+      "provider_family"
+    ],
+    "release_identity": "crawler_build_info",
+    "service_resource_authority": "isolated-service-cgroup-v2",
+    "service_resource_labels": ["browser_backend", "service_lane"],
+    "service_resources": {
+      "browser_seconds_total": "crawler_browser_service_browser_seconds_total",
+      "concurrency_limit": "crawler_browser_service_concurrency_limit",
+      "cpu_seconds_total": "crawler_browser_service_cpu_seconds_total",
+      "crashes_total": "crawler_browser_service_crashes_total",
+      "recycles_total": "crawler_browser_service_recycles_total",
+      "resident_memory_bytes": "crawler_browser_service_resident_memory_bytes",
+      "resource_limit_outcomes_total": "crawler_browser_service_resource_limit_outcomes_total",
+      "sessions": "crawler_browser_service_sessions"
+    }
+  },
+  "policy_id": "crawler-migration-candidate-runtime-v1-2026-08-30",
   "release_max_active_values": 2,
   "release_pattern": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$",
+  "required_class_mode": "full-eligible-cross-product",
   "required_classes": [
     {
-      "capability_class": "shared-http",
       "browser_backend": "none",
       "browser_class": "none",
+      "capability_class": "shared-http",
       "class_id": "monitor_http",
+      "resource_authority": "worker-cgroup-v2",
       "sample_policy": "standard",
+      "service_lane": "none",
       "work_class": "monitor"
     },
     {
-      "capability_class": "render-evaluate",
       "browser_backend": "lightpanda",
-      "browser_class": "render-evaluate",
-      "class_id": "monitor_lightpanda",
+      "browser_class": "service",
+      "capability_class": "navigation-evaluation",
+      "class_id": "monitor_lightpanda_navigation_evaluation",
+      "resource_authority": "lightpanda-service-cgroup-v2",
       "sample_policy": "rare",
+      "service_lane": "lightpanda",
       "work_class": "monitor"
     },
     {
-      "capability_class": "chromium-required",
+      "browser_backend": "lightpanda",
+      "browser_class": "service",
+      "capability_class": "interaction-capture",
+      "class_id": "monitor_lightpanda_interaction_capture",
+      "resource_authority": "lightpanda-service-cgroup-v2",
+      "sample_policy": "rare",
+      "service_lane": "lightpanda",
+      "work_class": "monitor"
+    },
+    {
+      "browser_backend": "lightpanda",
+      "browser_class": "service",
+      "capability_class": "identity-transport",
+      "class_id": "monitor_lightpanda_identity_transport",
+      "resource_authority": "lightpanda-service-cgroup-v2",
+      "sample_policy": "rare",
+      "service_lane": "lightpanda",
+      "work_class": "monitor"
+    },
+    {
       "browser_backend": "chromium",
-      "browser_class": "compatibility",
-      "class_id": "monitor_chromium",
+      "browser_class": "service",
+      "capability_class": "navigation-evaluation",
+      "class_id": "monitor_chromium_navigation_evaluation",
+      "resource_authority": "chromium-service-cgroup-v2",
       "sample_policy": "rare",
+      "service_lane": "chromium",
       "work_class": "monitor"
     },
     {
-      "capability_class": "shared-http",
+      "browser_backend": "chromium",
+      "browser_class": "service",
+      "capability_class": "interaction-capture",
+      "class_id": "monitor_chromium_interaction_capture",
+      "resource_authority": "chromium-service-cgroup-v2",
+      "sample_policy": "rare",
+      "service_lane": "chromium",
+      "work_class": "monitor"
+    },
+    {
+      "browser_backend": "chromium",
+      "browser_class": "service",
+      "capability_class": "identity-transport",
+      "class_id": "monitor_chromium_identity_transport",
+      "resource_authority": "chromium-service-cgroup-v2",
+      "sample_policy": "rare",
+      "service_lane": "chromium",
+      "work_class": "monitor"
+    },
+    {
       "browser_backend": "none",
       "browser_class": "none",
+      "capability_class": "shared-http",
       "class_id": "detail_http",
+      "resource_authority": "worker-cgroup-v2",
       "sample_policy": "standard",
+      "service_lane": "none",
       "work_class": "detail"
     },
     {
-      "capability_class": "render-evaluate",
       "browser_backend": "lightpanda",
-      "browser_class": "render-evaluate",
-      "class_id": "detail_lightpanda",
+      "browser_class": "service",
+      "capability_class": "navigation-evaluation",
+      "class_id": "detail_lightpanda_navigation_evaluation",
+      "resource_authority": "lightpanda-service-cgroup-v2",
       "sample_policy": "rare",
+      "service_lane": "lightpanda",
       "work_class": "detail"
     },
     {
-      "capability_class": "chromium-required",
-      "browser_backend": "chromium",
-      "browser_class": "compatibility",
-      "class_id": "detail_chromium",
+      "browser_backend": "lightpanda",
+      "browser_class": "service",
+      "capability_class": "interaction-capture",
+      "class_id": "detail_lightpanda_interaction_capture",
+      "resource_authority": "lightpanda-service-cgroup-v2",
       "sample_policy": "rare",
+      "service_lane": "lightpanda",
+      "work_class": "detail"
+    },
+    {
+      "browser_backend": "lightpanda",
+      "browser_class": "service",
+      "capability_class": "identity-transport",
+      "class_id": "detail_lightpanda_identity_transport",
+      "resource_authority": "lightpanda-service-cgroup-v2",
+      "sample_policy": "rare",
+      "service_lane": "lightpanda",
+      "work_class": "detail"
+    },
+    {
+      "browser_backend": "chromium",
+      "browser_class": "service",
+      "capability_class": "navigation-evaluation",
+      "class_id": "detail_chromium_navigation_evaluation",
+      "resource_authority": "chromium-service-cgroup-v2",
+      "sample_policy": "rare",
+      "service_lane": "chromium",
+      "work_class": "detail"
+    },
+    {
+      "browser_backend": "chromium",
+      "browser_class": "service",
+      "capability_class": "interaction-capture",
+      "class_id": "detail_chromium_interaction_capture",
+      "resource_authority": "chromium-service-cgroup-v2",
+      "sample_policy": "rare",
+      "service_lane": "chromium",
+      "work_class": "detail"
+    },
+    {
+      "browser_backend": "chromium",
+      "browser_class": "service",
+      "capability_class": "identity-transport",
+      "class_id": "detail_chromium_identity_transport",
+      "resource_authority": "chromium-service-cgroup-v2",
+      "sample_policy": "rare",
+      "service_lane": "chromium",
       "work_class": "detail"
     }
   ],
+  "routing_revision_pattern": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$",
   "schema_version": "jobseek.crawler-migration-promotion-policy/v1",
   "scope": "crawler-runtime-only",
   "status": "candidate",
@@ -81,8 +214,8 @@
     "freshness_error_budget_burn_max": 1.0,
     "max_avoidable_idle_seconds_with_eligible_backlog": 0,
     "max_backend_utilization_ratio": 0.85,
-    "min_completed_schedule_cycles": 7,
     "min_backend_headroom_ratio": 0.15,
+    "min_completed_schedule_cycles": 7,
     "min_observation_seconds": 604800,
     "min_rare_class_samples": 1,
     "min_standard_class_samples": 1000,
