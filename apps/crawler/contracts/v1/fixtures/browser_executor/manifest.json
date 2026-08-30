@@ -1,0 +1,731 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "code": "success",
+        "status": "accepted"
+      },
+      "id": "accept_chromium_navigation_success",
+      "input": {
+        "assignment": {
+          "backend": "chromium",
+          "service_lane": "chromium"
+        },
+        "provider_invocations": [
+          "chromium"
+        ],
+        "result": {
+          "backend": "chromium"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "success",
+        "status": "accepted"
+      },
+      "id": "accept_chromium_success",
+      "input": {
+        "assignment": {
+          "backend": "chromium",
+          "capability_class": "identity_transport",
+          "service_lane": "chromium"
+        },
+        "plan_capabilities": [
+          "render",
+          "frames",
+          "proxy"
+        ],
+        "provider_capabilities": [
+          "render",
+          "frames",
+          "proxy"
+        ],
+        "provider_invocations": [
+          "chromium"
+        ],
+        "result": {
+          "backend": "chromium"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "success",
+        "status": "accepted"
+      },
+      "id": "accept_lightpanda_interaction_success",
+      "input": {
+        "assignment": {
+          "capability_class": "interaction_capture"
+        },
+        "plan_capabilities": [
+          "render",
+          "actions",
+          "response_capture"
+        ],
+        "provider_capabilities": [
+          "render",
+          "actions",
+          "response_capture"
+        ]
+      }
+    },
+    {
+      "expected": {
+        "code": "success",
+        "status": "accepted"
+      },
+      "id": "accept_lightpanda_success",
+      "input": {}
+    },
+    {
+      "expected": {
+        "code": "provider_error",
+        "status": "accepted"
+      },
+      "id": "accept_typed_provider_error",
+      "input": {
+        "origin_operations": 0,
+        "result": {
+          "error_code": "timeout",
+          "outcome": "error"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "unsupported_capability",
+        "status": "unsupported"
+      },
+      "id": "accept_typed_unsupported_preflight",
+      "input": {
+        "assignment": {
+          "capability_class": "identity_transport"
+        },
+        "origin_operations": 0,
+        "plan_capabilities": [
+          "render",
+          "frames"
+        ],
+        "provider_capabilities": [
+          "render"
+        ],
+        "provider_invocations": [],
+        "result": {
+          "outcome": "unsupported",
+          "unsupported_capabilities": [
+            "frames"
+          ]
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "assignment_changed",
+        "status": "rejected"
+      },
+      "id": "reject_assignment_changed",
+      "input": {
+        "assignment_after_bind": {
+          "backend": "lightpanda",
+          "capability_class": "navigation_evaluation",
+          "routing_revision": "route-2026-08-31",
+          "service_lane": "lightpanda"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "capability_class_mismatch",
+        "status": "rejected"
+      },
+      "id": "reject_capability_class_mismatch",
+      "input": {
+        "assignment": {
+          "capability_class": "interaction_capture"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_capabilities",
+        "status": "rejected"
+      },
+      "id": "reject_duplicate_plan_capability",
+      "input": {
+        "plan_capabilities": [
+          "render",
+          "render"
+        ]
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_provider_capabilities",
+        "status": "rejected"
+      },
+      "id": "reject_duplicate_provider_capability",
+      "input": {
+        "provider_capabilities": [
+          "render",
+          "render"
+        ]
+      }
+    },
+    {
+      "expected": {
+        "code": "error_result_invalid",
+        "status": "rejected"
+      },
+      "id": "reject_error_partial_output",
+      "input": {
+        "result": {
+          "error_code": "timeout",
+          "outcome": "error",
+          "partial_output_present": true
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "fallback_forbidden",
+        "status": "rejected"
+      },
+      "id": "reject_fallback_chromium_to_lightpanda",
+      "input": {
+        "assignment": {
+          "backend": "chromium",
+          "service_lane": "chromium"
+        },
+        "provider_invocations": [
+          "chromium",
+          "lightpanda"
+        ],
+        "result": {
+          "backend": "chromium"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "fallback_forbidden",
+        "status": "rejected"
+      },
+      "id": "reject_fallback_lightpanda_to_chromium",
+      "input": {
+        "provider_invocations": [
+          "lightpanda",
+          "chromium"
+        ]
+      }
+    },
+    {
+      "expected": {
+        "code": "routing_revision_invalid",
+        "status": "rejected"
+      },
+      "id": "reject_invalid_routing_revision",
+      "input": {
+        "assignment": {
+          "routing_revision": "route/unsafe"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_assignment",
+        "status": "rejected"
+      },
+      "id": "reject_missing_assignment",
+      "input": {
+        "assignment": null
+      }
+    },
+    {
+      "expected": {
+        "code": "provider_invocation_missing",
+        "status": "rejected"
+      },
+      "id": "reject_missing_provider_invocation",
+      "input": {
+        "provider_invocations": []
+      }
+    },
+    {
+      "expected": {
+        "code": "origin_before_assignment",
+        "status": "rejected"
+      },
+      "id": "reject_origin_before_assignment",
+      "input": {
+        "origin_before_assignment": true
+      }
+    },
+    {
+      "expected": {
+        "code": "routing_revision_invalid",
+        "status": "rejected"
+      },
+      "id": "reject_oversized_routing_revision",
+      "input": {
+        "assignment": {
+          "routing_revision": "r1234567890123456789012345678901234567890123456789012345678901234"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "backend_mismatch",
+        "status": "rejected"
+      },
+      "id": "reject_provider_backend_mismatch",
+      "input": {
+        "provider_invocations": [
+          "chromium"
+        ]
+      }
+    },
+    {
+      "expected": {
+        "code": "backend_mismatch",
+        "status": "rejected"
+      },
+      "id": "reject_result_backend_mismatch",
+      "input": {
+        "result": {
+          "backend": "chromium"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "retry_forbidden",
+        "status": "rejected"
+      },
+      "id": "reject_retry_same_backend",
+      "input": {
+        "provider_invocations": [
+          "lightpanda",
+          "lightpanda"
+        ]
+      }
+    },
+    {
+      "expected": {
+        "code": "service_lane_mismatch",
+        "status": "rejected"
+      },
+      "id": "reject_service_lane_mismatch",
+      "input": {
+        "assignment": {
+          "service_lane": "chromium"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "origin_operation_missing",
+        "status": "rejected"
+      },
+      "id": "reject_success_missing_origin",
+      "input": {
+        "origin_operations": 0
+      }
+    },
+    {
+      "expected": {
+        "code": "success_result_invalid",
+        "status": "rejected"
+      },
+      "id": "reject_success_with_error",
+      "input": {
+        "result": {
+          "error_code": "timeout"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "success_result_invalid",
+        "status": "rejected"
+      },
+      "id": "reject_success_with_unsupported",
+      "input": {
+        "result": {
+          "unsupported_capabilities": [
+            "evaluate"
+          ]
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_assignment",
+        "status": "rejected"
+      },
+      "id": "reject_unknown_assignment_backend",
+      "input": {
+        "assignment": {
+          "backend": "mixed"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_assignment",
+        "status": "rejected"
+      },
+      "id": "reject_unknown_capability_class",
+      "input": {
+        "assignment": {
+          "capability_class": "future_class"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_input",
+        "status": "rejected"
+      },
+      "id": "reject_unknown_input_field",
+      "input": {
+        "raw_endpoint": "https://not-allowed.invalid"
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_capabilities",
+        "status": "rejected"
+      },
+      "id": "reject_unknown_plan_capability",
+      "input": {
+        "plan_capabilities": [
+          "render",
+          "future_capability"
+        ]
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_provider_capabilities",
+        "status": "rejected"
+      },
+      "id": "reject_unknown_provider_capability",
+      "input": {
+        "provider_capabilities": [
+          "render",
+          "future_capability"
+        ]
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_result",
+        "status": "rejected"
+      },
+      "id": "reject_unknown_result_outcome",
+      "input": {
+        "result": {
+          "outcome": "partial"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_assignment",
+        "status": "rejected"
+      },
+      "id": "reject_unknown_service_lane",
+      "input": {
+        "assignment": {
+          "service_lane": "shared"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_assignment",
+        "status": "rejected"
+      },
+      "id": "reject_unspecified_assignment_backend",
+      "input": {
+        "assignment": {
+          "backend": "unspecified"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_assignment",
+        "status": "rejected"
+      },
+      "id": "reject_unspecified_capability_class",
+      "input": {
+        "assignment": {
+          "capability_class": "unspecified"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_capabilities",
+        "status": "rejected"
+      },
+      "id": "reject_unspecified_plan_capability",
+      "input": {
+        "plan_capabilities": [
+          "render",
+          "unspecified"
+        ]
+      }
+    },
+    {
+      "expected": {
+        "code": "invalid_assignment",
+        "status": "rejected"
+      },
+      "id": "reject_unspecified_service_lane",
+      "input": {
+        "assignment": {
+          "service_lane": "unspecified"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "error_result_invalid",
+        "status": "rejected"
+      },
+      "id": "reject_untyped_error",
+      "input": {
+        "result": {
+          "outcome": "error"
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "unexpected_unsupported",
+        "status": "rejected"
+      },
+      "id": "reject_unexpected_unsupported",
+      "input": {
+        "result": {
+          "outcome": "unsupported",
+          "unsupported_capabilities": [
+            "render"
+          ]
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "unsupported_result_invalid",
+        "status": "rejected"
+      },
+      "id": "reject_unsupported_extra_capability",
+      "input": {
+        "assignment": {
+          "capability_class": "identity_transport"
+        },
+        "origin_operations": 0,
+        "plan_capabilities": [
+          "render",
+          "frames"
+        ],
+        "provider_capabilities": [
+          "render"
+        ],
+        "provider_invocations": [],
+        "result": {
+          "outcome": "unsupported",
+          "unsupported_capabilities": [
+            "frames",
+            "proxy"
+          ]
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "unsupported_result_invalid",
+        "status": "rejected"
+      },
+      "id": "reject_unsupported_missing_capability",
+      "input": {
+        "assignment": {
+          "capability_class": "identity_transport"
+        },
+        "origin_operations": 0,
+        "plan_capabilities": [
+          "render",
+          "frames"
+        ],
+        "provider_capabilities": [
+          "render"
+        ],
+        "provider_invocations": [],
+        "result": {
+          "outcome": "unsupported",
+          "unsupported_capabilities": []
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "unsupported_origin_forbidden",
+        "status": "rejected"
+      },
+      "id": "reject_unsupported_origin_operation",
+      "input": {
+        "assignment": {
+          "capability_class": "identity_transport"
+        },
+        "plan_capabilities": [
+          "render",
+          "frames"
+        ],
+        "provider_capabilities": [
+          "render"
+        ],
+        "provider_invocations": [],
+        "result": {
+          "outcome": "unsupported",
+          "unsupported_capabilities": [
+            "frames"
+          ]
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "unsupported_result_invalid",
+        "status": "rejected"
+      },
+      "id": "reject_unsupported_partial_output",
+      "input": {
+        "assignment": {
+          "capability_class": "identity_transport"
+        },
+        "origin_operations": 0,
+        "plan_capabilities": [
+          "render",
+          "frames"
+        ],
+        "provider_capabilities": [
+          "render"
+        ],
+        "provider_invocations": [],
+        "result": {
+          "outcome": "unsupported",
+          "partial_output_present": true,
+          "unsupported_capabilities": [
+            "frames"
+          ]
+        }
+      }
+    },
+    {
+      "expected": {
+        "code": "unsupported_execution_forbidden",
+        "status": "rejected"
+      },
+      "id": "reject_unsupported_provider_invocation",
+      "input": {
+        "assignment": {
+          "capability_class": "identity_transport"
+        },
+        "origin_operations": 0,
+        "plan_capabilities": [
+          "render",
+          "frames"
+        ],
+        "provider_capabilities": [
+          "render"
+        ],
+        "result": {
+          "outcome": "unsupported",
+          "unsupported_capabilities": [
+            "frames"
+          ]
+        }
+      }
+    }
+  ],
+  "defaults": {
+    "assignment": {
+      "backend": "lightpanda",
+      "capability_class": "navigation_evaluation",
+      "routing_revision": "route-2026-08-30",
+      "service_lane": "lightpanda"
+    },
+    "assignment_after_bind": null,
+    "origin_before_assignment": false,
+    "origin_operations": 1,
+    "plan_capabilities": [
+      "render",
+      "evaluate"
+    ],
+    "provider_capabilities": [
+      "render",
+      "evaluate"
+    ],
+    "provider_invocations": [
+      "lightpanda"
+    ],
+    "result": {
+      "backend": "lightpanda",
+      "error_code": null,
+      "outcome": "success",
+      "partial_output_present": false,
+      "unsupported_capabilities": []
+    }
+  },
+  "format": "jobseek.browser-executor-boundary/v1",
+  "required_case_ids": [
+    "accept_chromium_navigation_success",
+    "accept_chromium_success",
+    "accept_lightpanda_interaction_success",
+    "accept_lightpanda_success",
+    "accept_typed_provider_error",
+    "accept_typed_unsupported_preflight",
+    "reject_assignment_changed",
+    "reject_capability_class_mismatch",
+    "reject_duplicate_plan_capability",
+    "reject_duplicate_provider_capability",
+    "reject_error_partial_output",
+    "reject_fallback_chromium_to_lightpanda",
+    "reject_fallback_lightpanda_to_chromium",
+    "reject_invalid_routing_revision",
+    "reject_missing_assignment",
+    "reject_missing_provider_invocation",
+    "reject_origin_before_assignment",
+    "reject_oversized_routing_revision",
+    "reject_provider_backend_mismatch",
+    "reject_result_backend_mismatch",
+    "reject_retry_same_backend",
+    "reject_service_lane_mismatch",
+    "reject_success_missing_origin",
+    "reject_success_with_error",
+    "reject_success_with_unsupported",
+    "reject_unknown_assignment_backend",
+    "reject_unknown_capability_class",
+    "reject_unknown_input_field",
+    "reject_unknown_plan_capability",
+    "reject_unknown_provider_capability",
+    "reject_unknown_result_outcome",
+    "reject_unknown_service_lane",
+    "reject_unspecified_assignment_backend",
+    "reject_unspecified_capability_class",
+    "reject_unspecified_plan_capability",
+    "reject_unspecified_service_lane",
+    "reject_untyped_error",
+    "reject_unexpected_unsupported",
+    "reject_unsupported_extra_capability",
+    "reject_unsupported_missing_capability",
+    "reject_unsupported_origin_operation",
+    "reject_unsupported_partial_output",
+    "reject_unsupported_provider_invocation"
+  ]
+}
