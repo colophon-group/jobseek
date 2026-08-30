@@ -109,6 +109,7 @@ Monitor Types (cheapest first):
   intervieweb       10      Job URLs          Auto-configured
   jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
+  job51             10      Full job data     No (skipped)
   jobbank104        10      Job URLs          Auto-configured JSON-LD
   jobstreet         10      Full/partial      Auto-enriched
   johdi             10      Job URLs          Auto-configured
@@ -1315,6 +1316,29 @@ cnstaff — CNStaff public career boards
 
   Detection: ws probe verifies the first JSON page and reports its total.
   Zero jobs: a valid board returns total=0 and an empty list."""
+
+MONITOR_JOB51 = """\
+job51 — 51job employer microsites
+
+  Listing:  GET https://coapi.51job.com/job_list.php (signed public CoAPI)
+  Detail:   GET https://coapi.51job.com/job_detail.php
+  Returns:  Rich (title, HTML description, location, employment type,
+            publication date, skills, responsibilities, qualifications)
+  Scraper:  Not needed
+  Browser:  No — HTTP-only
+  Cost:     10
+  Cap:      50,000 jobs
+
+  Config:
+    {"ctmid": 258121}
+
+  ctmid    Optional positive public tenant ID. When omitted, the monitor reads
+           it from the unfiltered employer board before each cycle.
+
+  Board URLs must use the exact unfiltered employer listing form:
+    https://{tenant}.51job.com/C01job_list.html
+
+  Detection: ws probe verifies the public tenant ID and first listing page."""
 
 MONITOR_NOTION = """\
 notion — Notion Site Job Pages
@@ -4090,6 +4114,7 @@ MONITOR_CARDS: dict[str, str] = {
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
     "cnstaff": MONITOR_CNSTAFF,
+    "job51": MONITOR_JOB51,
     "comeet": MONITOR_COMEET,
     "curately": MONITOR_CURATELY,
     "cvwarehouse": MONITOR_CVWAREHOUSE,
