@@ -41,6 +41,7 @@ export interface CompanySuggestion {
 
 export async function suggestCompanies(params: {
   query: string;
+  failOnUnavailable?: boolean;
 }): Promise<CompanySuggestion[]> {
   const q = params.query.trim().toLowerCase();
   if (q.length < 2) return [];
@@ -52,6 +53,7 @@ export async function suggestCompanies(params: {
     return await _queryCompanySuggestionsCached(q);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
+    if (params.failOnUnavailable) throw err;
     return [];
   }
 }
@@ -405,11 +407,13 @@ export interface IndustrySuggestion {
 export async function suggestIndustries(params: {
   query?: string;
   locale: string;
+  failOnUnavailable?: boolean;
 }): Promise<IndustrySuggestion[]> {
   try {
     return await _suggestIndustries(params);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
+    if (params.failOnUnavailable) throw err;
     logExternalError("error", { service: "typesense", operation: "suggest_industries" }, err);
     return [];
   }

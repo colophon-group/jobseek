@@ -8,7 +8,7 @@ export const API_LOCALES = ["en", "de", "fr", "it"] as const;
 
 export const DEFAULT_API_LOCALE = API_LOCALES[0];
 
-export const PUBLIC_API_VERSION = "1.1.0";
+export const PUBLIC_API_VERSION = "1.2.0";
 
 export const PUBLIC_SEARCH_QUERY_PARAMETERS = [
   "q",

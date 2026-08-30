@@ -1715,6 +1715,226 @@ class TestSyncWatchlistsTypesense:
 
         web_conn.fetch.assert_not_awaited()
 
+    async def test_production_cardinality_uses_one_index_facet_without_postgres_aggregate(self):
+        watchlist_ids = [uuid.uuid4() for _ in range(3)]
+        company_ids = [
+            uuid.uuid5(uuid.NAMESPACE_URL, f"https://example.test/company/{index}")
+            for index in range(258)
+        ]
+        memberships = (
+            [(watchlist_ids[0], company_id) for company_id in company_ids]
+            + [(watchlist_ids[1], company_id) for company_id in company_ids]
+            + [(watchlist_ids[2], company_id) for company_id in company_ids[:225]]
+        )
+        assert len(memberships) == 741
+        now = datetime(2026, 8, 30, 12, tzinfo=UTC)
+
+        async def _web_fetch(query: str, *_args):
+            if "FROM watchlist w" in query:
+                return [
+                    _StubRecord(
+                        id=watchlist_id,
+                        slug=f"production-cardinality-{index}",
+                        title=f"Production cardinality {index}",
+                        description=None,
+                        is_public=True,
+                        created_at=now,
+                        filters={"locationSlugs": ["switzerland"]} if index == 0 else {},
+                        owner_name="Public User",
+                        owner_username="public-user",
+                    )
+                    for index, watchlist_id in enumerate(watchlist_ids)
+                ]
+            if "FROM watchlist_company" in query:
+                return [
+                    _StubRecord(watchlist_id=watchlist_id, company_id=company_id)
+                    for watchlist_id, company_id in memberships
+                ]
+            if "source_watchlist_id" in query:
+                return []
+            raise AssertionError(f"unexpected web query: {query}")
+
+        async def _local_fetch(query: str, *_args):
+            if "FROM location" in query:
+                return [_StubRecord(slug="switzerland", id=2658434)]
+            raise AssertionError(f"unexpected local query: {query}")
+
+        web_conn = AsyncMock()
+        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=_local_fetch)
+        client = MagicMock()
+        visible_company_ids = company_ids[:-1]
+        client.collections["job_posting"].documents.search.return_value = {
+            "facet_counts": [
+                {
+                    "field_name": "company_id",
+                    "counts": [
+                        {"value": str(company_id), "count": 1} for company_id in visible_company_ids
+                    ],
+                }
+            ]
+        }
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        with (
+            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
+            patch("src.sync._ts_bulk_delete_ids"),
+        ):
+            await sync_watchlists_typesense(web_conn, local_conn, client)
+
+        local_queries = [call.args[0] for call in local_conn.fetch.await_args_list]
+        assert local_queries
+        assert all("FROM job_posting" not in query for query in local_queries)
+        assert all("COUNT(*)" not in query for query in local_queries)
+        client.collections["job_posting"].documents.search.assert_called_once_with(
+            {
+                "q": "*",
+                "query_by": "title",
+                "filter_by": "is_active:true && has_content:!=false",
+                "facet_by": "company_id",
+                "max_facet_values": 100_000,
+                "facet_strategy": "exhaustive",
+                "per_page": 0,
+            }
+        )
+        docs_by_id = {doc["id"]: doc for doc in captured_docs}
+        assert len(docs_by_id) == 3
+        assert docs_by_id[str(watchlist_ids[0])]["company_count"] == 258
+        assert docs_by_id[str(watchlist_ids[0])]["active_job_count"] == 257
+        assert docs_by_id[str(watchlist_ids[1])]["company_count"] == 258
+        assert docs_by_id[str(watchlist_ids[1])]["active_job_count"] == 257
+        assert docs_by_id[str(watchlist_ids[2])]["company_count"] == 225
+        assert docs_by_id[str(watchlist_ids[2])]["active_job_count"] == 225
+
+    async def test_empty_company_membership_skips_posting_facet(self):
+        watchlist_id = uuid.uuid4()
+        now = datetime(2026, 8, 30, 12, tzinfo=UTC)
+
+        async def _web_fetch(query: str, *_args):
+            if "FROM watchlist w" in query:
+                return [
+                    _StubRecord(
+                        id=watchlist_id,
+                        slug="keywords-only",
+                        title="Keywords only",
+                        description=None,
+                        is_public=True,
+                        created_at=now,
+                        filters={"keywords": ["python"]},
+                        owner_name="Public User",
+                        owner_username="public-user",
+                    )
+                ]
+            if "FROM watchlist_company" in query or "source_watchlist_id" in query:
+                return []
+            raise AssertionError(f"unexpected web query: {query}")
+
+        web_conn = AsyncMock()
+        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
+        local_conn = AsyncMock()
+        client = MagicMock()
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        with (
+            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
+            patch("src.sync._ts_bulk_delete_ids"),
+        ):
+            await sync_watchlists_typesense(web_conn, local_conn, client)
+
+        client.collections["job_posting"].documents.search.assert_not_called()
+        assert captured_docs[0]["company_count"] == 0
+        assert captured_docs[0]["active_job_count"] == 0
+
+    async def test_company_facet_failure_prevents_watchlist_write_and_prune(self):
+        watchlist_id = uuid.uuid4()
+        company_id = uuid.uuid4()
+        now = datetime(2026, 8, 30, 12, tzinfo=UTC)
+
+        async def _web_fetch(query: str, *_args):
+            if "FROM watchlist w" in query:
+                return [
+                    _StubRecord(
+                        id=watchlist_id,
+                        slug="blocked-facet",
+                        title="Blocked facet",
+                        description=None,
+                        is_public=True,
+                        created_at=now,
+                        filters={},
+                        owner_name="Public User",
+                        owner_username="public-user",
+                    )
+                ]
+            if "FROM watchlist_company" in query:
+                return [_StubRecord(watchlist_id=watchlist_id, company_id=company_id)]
+            raise AssertionError(f"unexpected web query: {query}")
+
+        web_conn = AsyncMock()
+        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
+        local_conn = AsyncMock()
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.side_effect = TimeoutError(
+            "facet unavailable"
+        )
+
+        with (
+            patch("src.sync._ts_bulk_upsert") as upsert,
+            patch("src.sync._ts_bulk_delete_ids") as delete_ids,
+            pytest.raises(TimeoutError, match="facet unavailable"),
+        ):
+            await sync_watchlists_typesense(web_conn, local_conn, client)
+
+        local_conn.fetch.assert_not_awaited()
+        upsert.assert_not_called()
+        delete_ids.assert_not_called()
+
+    async def test_malformed_company_facet_prevents_watchlist_write_and_prune(self):
+        watchlist_id = uuid.uuid4()
+        company_id = uuid.uuid4()
+        now = datetime(2026, 8, 30, 12, tzinfo=UTC)
+
+        async def _web_fetch(query: str, *_args):
+            if "FROM watchlist w" in query:
+                return [
+                    _StubRecord(
+                        id=watchlist_id,
+                        slug="malformed-facet",
+                        title="Malformed facet",
+                        description=None,
+                        is_public=True,
+                        created_at=now,
+                        filters={},
+                        owner_name="Public User",
+                        owner_username="public-user",
+                    )
+                ]
+            if "FROM watchlist_company" in query:
+                return [_StubRecord(watchlist_id=watchlist_id, company_id=company_id)]
+            raise AssertionError(f"unexpected web query: {query}")
+
+        web_conn = AsyncMock()
+        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
+        local_conn = AsyncMock()
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {}
+
+        with (
+            patch("src.sync._ts_bulk_upsert") as upsert,
+            patch("src.sync._ts_bulk_delete_ids") as delete_ids,
+            pytest.raises(RuntimeError, match="missing facet_counts"),
+        ):
+            await sync_watchlists_typesense(web_conn, local_conn, client)
+
+        upsert.assert_not_called()
+        delete_ids.assert_not_called()
+
     @pytest.mark.parametrize(
         "acknowledgement",
         [

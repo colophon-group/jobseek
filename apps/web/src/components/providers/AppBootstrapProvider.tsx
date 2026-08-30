@@ -60,7 +60,12 @@ export function AppBootstrapProvider({
   const prefs = data?.prefs;
 
   return (
-    <SessionProvider user={user} isPending={isPending} refresh={refresh}>
+    <SessionProvider
+      user={user}
+      preferences={prefs ?? null}
+      isPending={isPending}
+      refresh={refresh}
+    >
       <SavedJobsProvider initialStatuses={data?.savedStatuses}>
         <StarredCompaniesProvider initialIds={data?.starredIds}>
           <SalaryDisplayProvider

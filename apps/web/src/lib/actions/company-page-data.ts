@@ -168,10 +168,9 @@ export async function fetchCompanyPageData(params: {
  * ISR eligibility (`revalidate = CACHE_TTL_DETAIL`). Returns the same
  * ``CompanyPageData`` shape with anonymous defaults: EUR currency, no
  * job-language filter, no geo proximity bias, no active filters,
- * ``showPostingId: null``. The client component conditionally re-fetches
- * the personalised variant via :func:`fetchCompanyPageData` when the
- * ``logged_in`` hint cookie, the anonymous-job-languages hint cookie,
- * or any filter searchParams are present.
+ * ``showPostingId: null``. The client component reuses app-bootstrap
+ * preferences and resolves personalized/filter-bearing results directly
+ * through the scoped browser Typesense key.
  *
  * Returns ``null`` when the slug is unknown — caller renders the
  * not-found shell. The cache layer in `getCompanyBySlug` ensures repeat

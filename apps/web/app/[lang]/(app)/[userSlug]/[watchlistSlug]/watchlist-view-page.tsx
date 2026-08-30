@@ -361,6 +361,13 @@ export function WatchlistViewPage({
     salaryMax != null ||
     experienceMin != null ||
     experienceMax != null;
+  const postingSnapshotKey = JSON.stringify([
+    initialTotal,
+    yearTotal,
+    initialPostings,
+    jobLanguages,
+    languages,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -605,6 +612,7 @@ export function WatchlistViewPage({
           inside the left flex column alongside the postings list,
           not stacked above the detail panel. */}
       <WatchlistJobList
+        key={postingSnapshotKey}
         filters={{
           companyIds: anyCompany ? [] : companies.map((c) => c.id),
           anyCompany,
