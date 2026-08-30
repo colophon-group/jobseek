@@ -13,7 +13,6 @@ import {
   runGetCompanyPostings,
   tryGetCompanyPostingsDirect,
 } from "@/lib/search/search-runner";
-import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
@@ -95,7 +94,6 @@ export function CompanyPage({
   const { setPageActions } = useSearchStateStore();
   const { isLoggedIn } = useSession();
   const isLoggedInRef = useLatest(isLoggedIn);
-  useClearTypesenseOnAuthChange(isLoggedIn);
 
   const [keywords, setKeywords, keywordsRef] = useLatestState<string[]>(initialKeywords);
   const [locations, setLocations, locationsRef] = useLatestState<SelectedLocation[]>(initialLocations);

@@ -837,6 +837,53 @@ class TestUseBoard:
 
 
 class TestReject:
+    def test_reject_subsidiary_labels_issue(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        runner = CliRunner()
+
+        with (
+            patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
+            _mock_terminal_issue() as issue_state,
+        ):
+            result = runner.invoke(
+                ws,
+                [
+                    "reject",
+                    "--issue",
+                    "42",
+                    "--reason",
+                    "subsidiary",
+                    "--message",
+                    "Jobs are listed on the parent company's portal",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert issue_state.state["labels"] == {"subsidiary"}
+        issue_state.comment.assert_called_once()
+        issue_state.close.assert_called_once_with(42)
+
+    def test_terminal_recovery_accepts_subsidiary_rejection(self):
+        from src.workspace.commands.lifecycle import _terminal_recovery_outcome
+
+        recoverable, outcome = _terminal_recovery_outcome(
+            Workspace(slug="test", issue=42),
+            [
+                "reject",
+                "test",
+                "--reason",
+                "subsidiary",
+                "--message",
+                "Jobs are listed on the parent company's portal",
+            ],
+        )
+
+        assert recoverable is True
+        assert outcome is not None
+        assert outcome["labels"] == ["subsidiary"]
+        assert outcome["marker"] == "<!-- validation-failed: subsidiary -->"
+
     def test_reject_with_issue(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         runner = CliRunner()

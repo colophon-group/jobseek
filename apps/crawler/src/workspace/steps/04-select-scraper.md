@@ -99,6 +99,15 @@ auto-generated field mapping fails.
 
 **Always prefer `render: false`** — only use `render: true` when static fetch is empty.
 
+Before accepting any rendered scraper, read `ws help browser-resources`. The
+default `resource_policy:none` blocks nothing. Enable `lean` or `aggressive`
+only after the same job URL succeeds with matching required fields on the same
+egress in an A/B against `none`; any new challenge, redirect, missing API
+response, or field drop is a regression. If both modes are blocked, the
+comparison is inconclusive. A clean rendered-board recon may instead persist
+`resource_policy:auto` with `bot_protection:false`; never record that finding
+from an already-blocked control.
+
 ```bash
 ws select scraper dom --config '{{"render": false, "steps": [...]}}'
 ws run scraper

@@ -286,6 +286,63 @@ starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"
 `inspect.validate_csvs()` rejects unknown values (only `"never"` is
 supported today).
 
+### Browser resource policy
+
+Every Playwright context defaults to `resource_policy: "none"` in
+`src/shared/browser.py`, so blocking is opt-in:
+
+- `none` installs no route, leaves HTTP cache and service workers alone, and
+  blocks no resources; it is an absolute off switch even if stale additive
+  lists remain in the config;
+- `auto` is a recon-driven opt-in: it resolves to `lean` only with an explicit
+  `bot_protection:false` finding and no anti-bot-shaped transport/profile
+  settings; missing/unknown evidence and protected boards resolve to `none`.
+  It cannot be combined with additive block lists;
+- `lean` aborts only fonts and media;
+- `aggressive` additionally blocks images and known video/analytics hosts.
+
+Service workers remain enabled under every policy. Request interception itself
+can alter network timing and disables Playwright's HTTP cache, so never force
+`lean` or `aggressive` on a board without an A/B canary against `none`. This is
+especially important for proxy, persistent-context, stealth, headful,
+Chrome-channel, cookie-seeded, custom-user-agent, or warmed flows. Compare
+status/final URL, challenge markers, discovered count, and required extracted
+fields using the same sample and egress. See
+`ws help browser-resources` for the configuring-agent runbook.
+
+For a board that has passed that canary, explicitly use `lean`; for a reviewed
+text-only board, use `aggressive` or extend one of those fixed policies in the
+relevant monitor or scraper config. Additive lists are ignored by `none` and
+the omitted-policy default:
+
+```json
+{
+  "resource_policy": "aggressive",
+  "block_resource_types": ["image"],
+  "block_hosts": ["video-cdn.example.com"]
+}
+```
+
+For routine rendered-board recon that found no bot protection and passed the
+same-egress canary, agents may persist the conservative automatic choice:
+
+```json
+{
+  "render": true,
+  "resource_policy": "auto",
+  "bot_protection": false
+}
+```
+
+Do not infer `bot_protection:false` merely because a challenge page returned
+HTTP 200. Record it only after checking final URL/title/body, 401/403/429
+responses, challenge markers, discovered count, and required fields. If the
+control is itself blocked or the evidence is ambiguous, omit the field and keep
+`none`.
+
+`inspect.validate_csvs()` validates the policy, bot-protection finding,
+resource types, and host suffix syntax before deployment.
+
 ## Eightfold hybrid monitor (sitemap + PCSX incremental)
 
 The `eightfold` monitor runs in a hybrid mode for PCSX-enabled tenants: it

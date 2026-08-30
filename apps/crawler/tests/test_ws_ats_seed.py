@@ -302,3 +302,6 @@ def test_parallel_prompts_probe_provider_specific_scrapers() -> None:
     assert "ws probe scraper acme --board <alias>" in rendered
     assert "use `onlyfy` for Onlyfy/Prescreen job URLs" in rendered
     assert "do not assume that a generic `dom` monitor" in rendered
+    assert "ws help browser-resources" in rendered
+    assert '"resource_policy": "auto", "bot_protection": false' in rendered
+    assert "If the control is already blocked, the result is inconclusive" in rendered

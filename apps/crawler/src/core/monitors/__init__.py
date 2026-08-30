@@ -485,6 +485,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         jobs = metadata.get("jobs")
         label = f"Computrabajo employer profile \u2014 company: {company_id}"
         return f"{label}, {jobs} jobs" if jobs is not None else label
+    if name == "papa_johns":
+        jobs = metadata.get("jobs")
+        pages = metadata.get("pages")
+        if jobs is not None and pages is not None:
+            return f"Papa Johns careers — {jobs} jobs across {pages} pages (proxy required)"
+        return "Papa Johns careers — proxy required"
     if name == "cvwarehouse":
         jobs = metadata.get("jobs")
         if jobs is not None:
@@ -992,6 +998,7 @@ from src.core.monitors import (  # noqa: E402
     hrmos,  # noqa: F401
     icims,  # noqa: F401
     infoniqa,  # noqa: F401
+    infor,  # noqa: F401
     inline,  # noqa: F401
     inploi,  # noqa: F401
     intervieweb,  # noqa: F401
@@ -1015,6 +1022,7 @@ from src.core.monitors import (  # noqa: E402
     notion,  # noqa: F401
     oracle_hcm,  # noqa: F401
     pageup,  # noqa: F401
+    papa_johns,  # noqa: F401
     paycom,  # noqa: F401
     paylocity,  # noqa: F401
     personio,  # noqa: F401

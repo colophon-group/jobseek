@@ -1,4 +1,8 @@
-import { getTypesenseBrowserConfig, type TypesenseBrowserConfig } from "./typesense-browser-key";
+import {
+  getTypesenseBrowserConfig,
+  invalidateTypesenseBrowserConfigIfUnauthorized,
+  type TypesenseBrowserConfig,
+} from "./typesense-browser-key";
 import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
 import { COMPANY_BATCH_SIZE } from "./constants";
 import { isTypesenseQueryStringSafe } from "./typesense-query-size";
@@ -41,7 +45,10 @@ async function searchOne<T>(
     method: "GET",
     headers: { "x-typesense-api-key": cfg.apiKey },
   });
-  if (!res.ok) throw new Error(`typesense ${collection} ${res.status}`);
+  if (!res.ok) {
+    invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
+    throw new Error(`typesense ${collection} ${res.status}`);
+  }
   return res.json();
 }
 
