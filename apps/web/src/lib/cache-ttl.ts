@@ -11,8 +11,8 @@
  * | Constant            | Seconds | Use cases                                    |
  * |---------------------|---------|----------------------------------------------|
  * | `CACHE_TTL_SHORT`   |   60    | Fast-moving lists (explore homepage,         |
- * |                     |         | search degraded responses, public watchlist  |
- * |                     |         | detail, new public watchlists search)        |
+ * |                     |         | search degraded responses, new public        |
+ * |                     |         | watchlists search)                           |
  * | `CACHE_TTL_POPULAR` |  120    | Popular watchlists list (curated, slower-    |
  * |                     |         | churn than freshly-created public lists)     |
  * | `CACHE_TTL_MEDIUM`  |  300    | Moderate churn (posting detail, company      |
@@ -25,6 +25,8 @@
  * |                           |         | companies, sitemap, watchlist matching count |
  * | `CACHE_TTL_COMPANY_SHELL` | 86400   | Anonymous company prerender; browser         |
  * |                           |         | Typesense refreshes postings + peers         |
+ * | `CACHE_TTL_WATCHLIST_SHELL` | 3600  | Public watchlist prerender; browser refreshes |
+ * |                             |       | postings + counts after hydration            |
  * | `CACHE_TTL_DAY`           | 86400   | Very static / rare-change (blog pages)       |
  *
  * Notes:
@@ -58,3 +60,6 @@ export const CACHE_TTL_DAY = 86400;
 
 /** 1 day — anonymous company shell; hydrated posting data refreshes from Typesense. */
 export const CACHE_TTL_COMPANY_SHELL = CACHE_TTL_DAY;
+
+/** 1 hour — public watchlist shell; exact mutations still invalidate its cache tag. */
+export const CACHE_TTL_WATCHLIST_SHELL = CACHE_TTL_LONG;
