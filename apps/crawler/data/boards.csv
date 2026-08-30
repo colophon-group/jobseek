@@ -5721,6 +5721,8 @@ squircle-it-consulting-services,squircle-it-consulting-services-careers,https://
 squircle-it-consulting-services,squircle-it-consulting-services-training,https://careers.smartrecruiters.com/SquircleITConsultingServices1,smartrecruiters,"{""token"": ""SquircleITConsultingServices1""}",smartrecruiters,
 srg-ssr,srg-ssr-central,https://jobs.srgssr.ch/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/offene-stellen/""}",json-ld,"{""ignore_address_region"": true}"
 srs-acquiom,srs-acquiom-greenhouse,https://job-boards.greenhouse.io/srsacquiom,greenhouse,"{""token"": ""srsacquiom""}",skip,
+ssm-health,ssm-health-jobs,https://jobs.ssmhealth.com/us/en/search-results,nextdata,"{""source"": ""phenom_canvas"", ""path"": ""eagerLoadRefineSearch.data.jobs"", ""url_template"": ""https://jobs.ssmhealth.com/us/en/job/{jobId}"", ""pagination"": {""mode"": ""offset"", ""path"": ""eagerLoadRefineSearch"", ""total_records"": ""totalHits"", ""page_size"": 10, ""offset_param"": ""from""}, ""total"": 1619}",json-ld,
+ssm-health,ssm-health-navitus,https://careers-navitus.icims.com/jobs/search,icims,"{""host"": ""careers-navitus.icims.com""}",json-ld,
 stability-ai,stability-ai-greenhouse,https://job-boards.greenhouse.io/stabilityai,greenhouse,"{""token"": ""stabilityai""}",skip,
 stable,stable-ashby,https://jobs.ashbyhq.com/stable,ashby,"{""token"": ""stable""}",skip,
 stack-av,stack-av-greenhouse,https://job-boards.greenhouse.io/stackav,greenhouse,"{""token"": ""stackav""}",skip,
