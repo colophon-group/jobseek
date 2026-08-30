@@ -85,6 +85,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "inploi",
         "infor",
         "jarvi",
+        "job51",
         "jobylon",
         "jobstreet",
         "keka",

@@ -453,6 +453,11 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 - **Scoped key endpoint** (`GET /api/typesense-key`): mints a Typesense scoped search key (HMAC-SHA256 + base64) from `TYPESENSE_BROWSER_PARENT_KEY`. The embed is `{ use_cache: true, expires_at: <Unix seconds> }`. `limit_hits` is intentionally **not** embedded because Typesense counts raw hits (not grouped rows) and would block normal anon traffic on `group_by company_id` with `group_limit 10`.
 - **TTL**: 10 min for every visitor because the search-only scope has no user-specific permissions. Browser memory plus `localStorage` reuse the key across reloads/tabs and refresh 30 s before expiry. The endpoint sets a Vercel-only 510 s `max-age` CDN TTL, leaving a 90 s validity margin on the oldest fresh cache hit. Do not use `s-maxage` here: Vercel may serve that response stale once while asynchronously revalidating, but the scoped key has a hard expiry.
 - **Browser provider**: `apps/web/src/lib/search/typesense-browser.ts` (postings/companies), `typesense-browser-typeahead.ts` (taxonomy suggest), `typesense-browser-watchlist.ts`. All thin -- no `typesense-js` runtime dependency in the browser bundle.
+- **Company posting batch**: one `multi_search` carries the ordered posting
+  page, active count, and one-year flow count. Both the browser provider and
+  server fallback reject missing or errored result slots as one failed batch;
+  a server transport retry replays the whole batch so visible postings and
+  counts always come from the same attempt.
 - **Anon truncation**: enforced as a soft client-side cap (`ANON_MAX_COMPANIES`, `ANON_MAX_POSTINGS`, `ANON_MAX_WATCHLIST_POSTINGS`) matching the current server-action behaviour. Real abuse protection is the Cloudflare per-IP rate-limit on the tunnel hostname.
 - **Fallback**: every runner falls back to the corresponding server action when the browser path errors, returns degraded, or hits a code-explicit fallback case (e.g. watchlist >100 companies).
 - **Search-bar application-data request budget**: direct mode batches candidate

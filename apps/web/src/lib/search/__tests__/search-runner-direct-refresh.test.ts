@@ -3,6 +3,7 @@ import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 const mocks = vi.hoisted(() => ({
   browserListTopCompanies: vi.fn(),
+  browserSearchJobs: vi.fn(),
   browserLoadCompanyPostings: vi.fn(),
   browserLoadSimilarCompanies: vi.fn(),
   browserWatchlistPostings: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock("../typesense-browser-watchlist", () => ({
 vi.mock("../typesense-browser", () => ({
   getBrowserSearchProvider: () => ({
     listTopCompanies: mocks.browserListTopCompanies,
+    search: mocks.browserSearchJobs,
     loadPostingsWithCounts: mocks.browserLoadCompanyPostings,
     loadSimilarCompanies: mocks.browserLoadSimilarCompanies,
   }),
@@ -66,6 +68,53 @@ describe("browser-direct shell refreshes", () => {
       ),
     ).resolves.toEqual(browserResult);
     expect(mocks.serverListTopCompanies).not.toHaveBeenCalled();
+  });
+
+  it("searches a filtered Explore shell without invoking the server fallback", async () => {
+    const browserResult = {
+      companies: [],
+      totalCompanies: 7,
+      truncated: false,
+    };
+    mocks.browserSearchJobs.mockResolvedValue(browserResult);
+    const { trySearchJobsDirect } = await import("../search-runner");
+
+    await expect(
+      trySearchJobsDirect(
+        {
+          keywords: ["python"],
+          languages: ["en"],
+          locale: "en",
+          offset: 0,
+          limit: 10,
+        },
+        false,
+      ),
+    ).resolves.toEqual(browserResult);
+    expect(mocks.serverSearchJobs).not.toHaveBeenCalled();
+  });
+
+  it("returns null for a degraded direct Explore search", async () => {
+    mocks.browserSearchJobs.mockResolvedValue({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+    const { trySearchJobsDirect } = await import("../search-runner");
+
+    await expect(
+      trySearchJobsDirect(
+        {
+          keywords: ["python"],
+          languages: ["en"],
+          locale: "en",
+          offset: 0,
+          limit: 10,
+        },
+        false,
+      ),
+    ).resolves.toBeNull();
+    expect(mocks.serverSearchJobs).not.toHaveBeenCalled();
   });
 
   it("returns null on a degraded browser result instead of consuming Fluid CPU", async () => {
@@ -190,6 +239,7 @@ describe("browser-direct shell refreshes", () => {
       tryGetWatchlistSnapshotDirect({ companyIds: ["company-1"] }),
     ).resolves.toBeNull();
     expect(mocks.browserListTopCompanies).not.toHaveBeenCalled();
+    expect(mocks.browserSearchJobs).not.toHaveBeenCalled();
     expect(mocks.browserLoadCompanyPostings).not.toHaveBeenCalled();
     expect(mocks.browserLoadSimilarCompanies).not.toHaveBeenCalled();
     expect(mocks.browserWatchlistPostings).not.toHaveBeenCalled();

@@ -169,6 +169,43 @@ describe("resolveCompanyFilterStateDirect", () => {
     });
   });
 
+  it("rejects malformed HTTP-200 documents instead of constructing invalid filters", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            results: [{ hits: [{ document: { slug: "zurich", type: "city" } }] }],
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    await expect(
+      resolveCompanyFilterStateDirect(
+        new URLSearchParams("loc=zurich"),
+        "en",
+      ),
+    ).rejects.toThrow("malformed location");
+  });
+
+  it("rejects malformed HTTP-200 result envelopes", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ results: [{}] }), { status: 200 }),
+      ),
+    );
+
+    await expect(
+      resolveCompanyFilterStateDirect(
+        new URLSearchParams("tech=react"),
+        "en",
+      ),
+    ).rejects.toThrow("malformed hits");
+  });
+
   it("rejects oversized or unsafe input before requesting a child key", async () => {
     vi.stubGlobal("fetch", vi.fn());
 

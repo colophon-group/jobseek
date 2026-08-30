@@ -73,19 +73,38 @@ export async function runSearchJobs(
   params: SearchInput,
   isLoggedIn: boolean,
 ): Promise<SearchResponse> {
-  if (directEnabled) {
-    if (!isLoggedIn && params.offset >= ANON_MAX_COMPANIES) {
-      return { companies: [], totalCompanies: 0, truncated: true };
-    }
-    try {
-      const provider = await tryBrowserProvider();
-      const result = await provider.search(params);
-      if (!result.degraded) return applyAnonCap(result, params.offset, isLoggedIn);
-    } catch (err) {
-      logExternalError("error", { service: "typesense", operation: "browser_search_jobs" }, err);
-    }
-  }
+  const direct = await trySearchJobsDirect(params, isLoggedIn);
+  if (direct) return direct;
   return serverSearchJobs(params);
+}
+
+/**
+ * Search directly from a hydrated shell without falling through to a Server
+ * Action. A null result lets mount-time callers keep or replace their SSR
+ * snapshot explicitly, without accidentally consuming Fluid CPU.
+ */
+export async function trySearchJobsDirect(
+  params: SearchInput,
+  isLoggedIn: boolean,
+): Promise<SearchResponse | null> {
+  if (!directEnabled) return null;
+  if (!isLoggedIn && params.offset >= ANON_MAX_COMPANIES) {
+    return { companies: [], totalCompanies: 0, truncated: true };
+  }
+  try {
+    const provider = await tryBrowserProvider();
+    const result = await provider.search(params);
+    if (!result.degraded) {
+      return applyAnonCap(result, params.offset, isLoggedIn);
+    }
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "browser_search_jobs" },
+      err,
+    );
+  }
+  return null;
 }
 
 export async function runListTopCompanies(
