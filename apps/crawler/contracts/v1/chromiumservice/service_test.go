@@ -581,6 +581,65 @@ func TestShutdownGraceCannotBeExtendedByLaterCall(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("active task did not finish after provider release")
 	}
+	for range 100 {
+		if err := service.Shutdown(context.Background()); err != nil {
+			t.Fatalf("idle shutdown after expired grace = %v", err)
+		}
+	}
+	service.mu.Lock()
+	finalDeadline := service.shutdownDeadline
+	service.mu.Unlock()
+	if !finalDeadline.Equal(firstDeadline) {
+		t.Fatalf("shutdown deadline changed after idle: %s -> %s", firstDeadline, finalDeadline)
+	}
+}
+
+func TestRepeatedIdleShutdownIsDeterministicAfterDeadline(t *testing.T) {
+	config := validConfig()
+	config.ShutdownGraceMS = 2
+	service, err := New(config, newFakeProvider())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Shutdown(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	service.mu.Lock()
+	deadline := service.shutdownDeadline
+	service.mu.Unlock()
+	if remaining := time.Until(deadline); remaining > 0 {
+		time.Sleep(remaining + time.Millisecond)
+	}
+
+	const repetitions = 256
+	errors := make(chan error, repetitions)
+	var callers sync.WaitGroup
+	callers.Add(repetitions)
+	for index := range repetitions {
+		go func() {
+			defer callers.Done()
+			ctx := context.Background()
+			if index%2 == 0 {
+				cancelled, cancel := context.WithCancel(ctx)
+				cancel()
+				ctx = cancelled
+			}
+			errors <- service.Shutdown(ctx)
+		}()
+	}
+	callers.Wait()
+	close(errors)
+	for err := range errors {
+		if err != nil {
+			t.Fatalf("repeated idle shutdown = %v", err)
+		}
+	}
+	service.mu.Lock()
+	finalDeadline := service.shutdownDeadline
+	service.mu.Unlock()
+	if !finalDeadline.Equal(deadline) {
+		t.Fatalf("shutdown deadline changed: %s -> %s", deadline, finalDeadline)
+	}
 }
 
 func TestPostCloseLeakDiscardsSuccessAndRecyclesImmediatelyOnce(t *testing.T) {

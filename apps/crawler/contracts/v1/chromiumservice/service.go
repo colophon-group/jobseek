@@ -336,6 +336,11 @@ func (service *Service) Shutdown(ctx context.Context) error {
 	for _, cancelTask := range cancels {
 		cancelTask()
 	}
+	select {
+	case <-idle:
+		return nil
+	default:
+	}
 
 	grace, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
@@ -343,7 +348,12 @@ func (service *Service) Shutdown(ctx context.Context) error {
 	case <-idle:
 		return nil
 	case <-grace.Done():
-		return ErrShutdownTimeout
+		select {
+		case <-idle:
+			return nil
+		default:
+			return ErrShutdownTimeout
+		}
 	}
 }
 
