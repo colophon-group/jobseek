@@ -1,0 +1,100 @@
+{
+  "browser_operation_mode": "capability-routed-dual-engine",
+  "browser_retirement_gate": "external-zero-assignment-and-removal-proof",
+  "histogram_buckets_seconds": {
+    "browser_operation": [0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120],
+    "due_to_claim": [1, 5, 15, 30, 60, 120, 300, 900, 3600],
+    "due_to_complete": [5, 15, 30, 60, 120, 300, 900, 1800, 3600, 14400]
+  },
+  "label_allowlists": {
+    "browser_backend": ["none", "lightpanda", "chromium"],
+    "browser_class": ["none", "render-evaluate", "compatibility"],
+    "cohort": ["baseline", "candidate"],
+    "implementation": ["python", "go"],
+    "provider_family": ["direct", "static-proxy", "mixed"],
+    "region": ["hetzner-eu-central"],
+    "work_class": ["monitor", "detail"]
+  },
+  "eligible_candidate_implementations": ["go"],
+  "policy_id": "crawler-migration-candidate-2026-08-30",
+  "release_max_active_values": 2,
+  "release_pattern": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$",
+  "required_classes": [
+    {
+      "capability_class": "shared-http",
+      "browser_backend": "none",
+      "browser_class": "none",
+      "class_id": "monitor_http",
+      "sample_policy": "standard",
+      "work_class": "monitor"
+    },
+    {
+      "capability_class": "render-evaluate",
+      "browser_backend": "lightpanda",
+      "browser_class": "render-evaluate",
+      "class_id": "monitor_lightpanda",
+      "sample_policy": "rare",
+      "work_class": "monitor"
+    },
+    {
+      "capability_class": "chromium-required",
+      "browser_backend": "chromium",
+      "browser_class": "compatibility",
+      "class_id": "monitor_chromium",
+      "sample_policy": "rare",
+      "work_class": "monitor"
+    },
+    {
+      "capability_class": "shared-http",
+      "browser_backend": "none",
+      "browser_class": "none",
+      "class_id": "detail_http",
+      "sample_policy": "standard",
+      "work_class": "detail"
+    },
+    {
+      "capability_class": "render-evaluate",
+      "browser_backend": "lightpanda",
+      "browser_class": "render-evaluate",
+      "class_id": "detail_lightpanda",
+      "sample_policy": "rare",
+      "work_class": "detail"
+    },
+    {
+      "capability_class": "chromium-required",
+      "browser_backend": "chromium",
+      "browser_class": "compatibility",
+      "class_id": "detail_chromium",
+      "sample_policy": "rare",
+      "work_class": "detail"
+    }
+  ],
+  "schema_version": "jobseek.crawler-migration-promotion-policy/v1",
+  "scope": "crawler-runtime-only",
+  "status": "candidate",
+  "thresholds": {
+    "antibot_regression_ratio_max": 1.05,
+    "due_to_claim_p95_max_seconds": 300,
+    "due_to_claim_p99_max_seconds": 900,
+    "due_to_complete_p95_max_seconds": 1800,
+    "due_to_complete_p99_max_seconds": 3600,
+    "freshness_error_budget_burn_max": 1.0,
+    "max_avoidable_idle_seconds_with_eligible_backlog": 0,
+    "max_backend_utilization_ratio": 0.85,
+    "min_completed_schedule_cycles": 7,
+    "min_backend_headroom_ratio": 0.15,
+    "min_observation_seconds": 604800,
+    "min_rare_class_samples": 1,
+    "min_standard_class_samples": 1000,
+    "request_amplification_ratio_max": 1.05,
+    "schedule_compliance_ratio_min": 0.99
+  },
+  "zero_tolerance_signals": [
+    "bulk_gone_or_delist_events",
+    "cross_backend_runtime_fallbacks",
+    "origin_policy_violations",
+    "queue_loss_or_duplication_events",
+    "stale_authoritative_writes",
+    "tdm_violations"
+  ]
+}

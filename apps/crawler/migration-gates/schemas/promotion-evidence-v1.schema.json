@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jobseek.ch/schemas/crawler-migration-promotion-evidence-v1.json",
+  "additionalProperties": false,
+  "properties": {
+    "candidate": {
+      "additionalProperties": false,
+      "properties": {
+        "cohort": {"enum": ["baseline", "candidate"]},
+        "implementation": {"enum": ["python", "go"]},
+        "region": {"enum": ["hetzner-eu-central"]},
+        "release": {"pattern": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$", "type": "string"}
+      },
+      "required": ["implementation", "release", "region", "cohort"],
+      "type": "object"
+    },
+    "evidence_id": {"minLength": 1, "type": "string"},
+    "freeze_signals": {
+      "additionalProperties": false,
+      "properties": {
+        "bulk_gone_or_delist_events": {"minimum": 0, "type": "integer"},
+        "cross_backend_runtime_fallbacks": {"minimum": 0, "type": "integer"},
+        "origin_policy_violations": {"minimum": 0, "type": "integer"},
+        "queue_loss_or_duplication_events": {"minimum": 0, "type": "integer"},
+        "stale_authoritative_writes": {"minimum": 0, "type": "integer"},
+        "tdm_violations": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["stale_authoritative_writes", "bulk_gone_or_delist_events", "tdm_violations", "queue_loss_or_duplication_events", "origin_policy_violations", "cross_backend_runtime_fallbacks"],
+      "type": "object"
+    },
+    "observations": {
+      "items": {"$ref": "#/$defs/classObservation"},
+      "minItems": 1,
+      "type": "array"
+    },
+    "policy_id": {"minLength": 1, "type": "string"},
+    "schema_version": {"const": "jobseek.crawler-migration-promotion-evidence/v1"},
+    "window": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_seconds": {"minimum": 0, "type": "integer"},
+        "end_at": {"format": "date-time", "type": "string"},
+        "start_at": {"format": "date-time", "type": "string"}
+      },
+      "required": ["start_at", "end_at", "duration_seconds"],
+      "type": "object"
+    }
+  },
+  "required": ["schema_version", "evidence_id", "policy_id", "candidate", "window", "freeze_signals", "observations"],
+  "type": "object",
+  "$defs": {
+    "classObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "antibot_regression_ratio": {"minimum": 0, "type": ["number", "null"]},
+        "browser_backend": {"enum": ["none", "lightpanda", "chromium"]},
+        "browser_class": {"enum": ["none", "render-evaluate", "compatibility"]},
+        "capability_class": {"pattern": "^[a-z0-9][a-z0-9_-]{0,63}$", "type": "string"},
+        "class_id": {"pattern": "^[a-z0-9][a-z0-9_-]{0,63}$", "type": "string"},
+        "completed_schedule_cycles": {"minimum": 0, "type": "integer"},
+        "capacity": {"$ref": "#/$defs/capacity"},
+        "freshness": {"$ref": "#/$defs/freshness"},
+        "mismatches": {"$ref": "#/$defs/mismatches"},
+        "population_size": {"minimum": 0, "type": ["integer", "null"]},
+        "provider_family": {"enum": ["direct", "static-proxy", "mixed"]},
+        "resource_saturation_events": {"minimum": 0, "type": "integer"},
+        "replay_complete": {"type": "boolean"},
+        "request_amplification_ratio": {"minimum": 0, "type": ["number", "null"]},
+        "sample_size": {"minimum": 0, "type": "integer"},
+        "work_class": {"enum": ["monitor", "detail"]}
+      },
+      "required": ["class_id", "work_class", "capability_class", "browser_class", "browser_backend", "provider_family", "sample_size", "population_size", "completed_schedule_cycles", "replay_complete", "mismatches", "freshness", "capacity", "request_amplification_ratio", "antibot_regression_ratio", "resource_saturation_events"],
+      "type": "object"
+    },
+    "capacity": {
+      "additionalProperties": false,
+      "properties": {
+        "avoidable_idle_seconds_with_eligible_backlog": {"minimum": 0, "type": "number"},
+        "eligible_demand_present": {"type": "boolean"},
+        "headroom_p05_ratio": {"maximum": 1, "minimum": 0, "type": "number"},
+        "utilization_p95_ratio": {"maximum": 1, "minimum": 0, "type": "number"},
+        "zero_assignment_proven": {"type": "boolean"}
+      },
+      "required": ["eligible_demand_present", "zero_assignment_proven", "avoidable_idle_seconds_with_eligible_backlog", "utilization_p95_ratio", "headroom_p05_ratio"],
+      "type": "object"
+    },
+    "freshness": {
+      "additionalProperties": false,
+      "properties": {
+        "due_to_claim_p95_seconds": {"minimum": 0, "type": ["number", "null"]},
+        "due_to_claim_p99_seconds": {"minimum": 0, "type": ["number", "null"]},
+        "due_to_complete_p95_seconds": {"minimum": 0, "type": ["number", "null"]},
+        "due_to_complete_p99_seconds": {"minimum": 0, "type": ["number", "null"]},
+        "error_budget_burn": {"minimum": 0, "type": ["number", "null"]},
+        "schedule_compliance_ratio": {"maximum": 1, "minimum": 0, "type": ["number", "null"]}
+      },
+      "required": ["schedule_compliance_ratio", "error_budget_burn", "due_to_claim_p95_seconds", "due_to_claim_p99_seconds", "due_to_complete_p95_seconds", "due_to_complete_p99_seconds"],
+      "type": "object"
+    },
+    "mismatches": {
+      "additionalProperties": false,
+      "properties": {
+        "field_hash": {"minimum": 0, "type": "integer"},
+        "projected_db_effect": {"minimum": 0, "type": "integer"},
+        "result_flag": {"minimum": 0, "type": "integer"},
+        "url_set": {"minimum": 0, "type": "integer"}
+      },
+      "required": ["url_set", "field_hash", "result_flag", "projected_db_effect"],
+      "type": "object"
+    }
+  }
+}
