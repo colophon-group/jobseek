@@ -974,6 +974,7 @@ class TestOpenPage:
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(
             config.settings, "webshare_proxy_url", "http://user:pass@pxy.example:7000"
         )
@@ -991,10 +992,183 @@ class TestOpenPage:
         assert "service_workers" not in ctx_kwargs
         context.route.assert_not_awaited()
 
+    async def test_proxy_connection_failure_quarantines_browser_slot(self, monkeypatch):
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+
+        failed_pw = _make_pw()
+        failed_pw.chromium.launch.side_effect = PlaywrightError("net::ERR_PROXY_CONNECTION_FAILED")
+        with pytest.raises(PlaywrightError, match="ERR_PROXY_CONNECTION_FAILED"):
+            async with open_page(failed_pw, use_proxy=True):
+                pass
+
+        healthy_pw = _make_pw()
+        async with open_page(healthy_pw, use_proxy=True):
+            pass
+        assert failed_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
+    async def test_browser_target_block_rotates_same_warmup_origin(self, monkeypatch):
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+        browser_config = {"warmup_url": "https://blocked.example/"}
+
+        blocked_pw = _make_pw()
+        with pytest.raises(BrowserNavigationHTTPStatusError):
+            async with open_page(blocked_pw, browser_config, use_proxy=True):
+                raise BrowserNavigationHTTPStatusError(
+                    requested_url="https://blocked.example/jobs",
+                    response_url="https://blocked.example/challenge",
+                    status=403,
+                    phase="primary",
+                )
+
+        healthy_pw = _make_pw()
+        async with open_page(healthy_pw, browser_config, use_proxy=True):
+            pass
+        assert blocked_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
+    async def test_browser_target_block_rotates_without_warmup(self, monkeypatch):
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+
+        blocked_pw = _make_pw()
+        with pytest.raises(BrowserNavigationHTTPStatusError):
+            async with open_page(
+                blocked_pw,
+                use_proxy=True,
+                target_url="https://blocked.example/jobs",
+            ):
+                raise BrowserNavigationHTTPStatusError(
+                    requested_url="https://blocked.example/jobs",
+                    response_url="https://blocked.example/challenge",
+                    status=403,
+                    phase="primary",
+                )
+
+        healthy_pw = _make_pw()
+        async with open_page(
+            healthy_pw,
+            use_proxy=True,
+            target_url="https://blocked.example/jobs",
+        ):
+            pass
+        assert blocked_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
+    async def test_tunnel_connection_failure_quarantines_browser_slot(self, monkeypatch):
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+
+        failed_pw = _make_pw()
+        failed_pw.chromium.launch.side_effect = PlaywrightError("net::ERR_TUNNEL_CONNECTION_FAILED")
+        with pytest.raises(PlaywrightError, match="ERR_TUNNEL_CONNECTION_FAILED"):
+            async with open_page(
+                failed_pw,
+                use_proxy=True,
+                target_url="https://target.example/jobs",
+            ):
+                pass
+
+        healthy_pw = _make_pw()
+        async with open_page(
+            healthy_pw,
+            use_proxy=True,
+            target_url="https://target.example/jobs",
+        ):
+            pass
+        assert failed_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
+    async def test_target_network_failure_quarantines_browser_origin(self, monkeypatch):
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+
+        failed_pw = _make_pw()
+        with pytest.raises(PlaywrightError, match="ERR_CONNECTION_RESET"):
+            async with open_page(
+                failed_pw,
+                use_proxy=True,
+                target_url="https://target.example/jobs",
+            ):
+                raise PlaywrightError("page.goto: net::ERR_CONNECTION_RESET")
+
+        healthy_pw = _make_pw()
+        async with open_page(
+            healthy_pw,
+            use_proxy=True,
+            target_url="https://target.example/jobs",
+        ):
+            pass
+        assert failed_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
     async def test_aggressive_route_blocks_types_and_host_suffixes(self, monkeypatch):
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(
             config.settings, "webshare_proxy_url", "http://user:pass@pxy.example:7000"
         )
@@ -1035,6 +1209,7 @@ class TestOpenPage:
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(
             config.settings, "webshare_proxy_url", "http://user:pass@pxy.example:7000"
         )
@@ -1084,6 +1259,7 @@ class TestOpenPage:
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(
             config.settings, "webshare_proxy_url", "http://user:pass@pxy.example:7000"
         )
@@ -1413,6 +1589,7 @@ class TestOpenPagePersistentContext:
         from src import config
 
         monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_urls", [])
         monkeypatch.setattr(config.settings, "webshare_proxy_url", "http://u:p@px.example:7000")
         pw = self._make_persist_pw()
         async with open_page(pw, {"persistent_context": True}, use_proxy=True):

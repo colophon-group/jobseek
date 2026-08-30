@@ -948,7 +948,7 @@ async def probe_pw(urls: list[str], pw) -> tuple[dict | None, str]:
     }
     for url in urls[:3]:
         try:
-            async with open_page(pw, browser_config) as page:
+            async with open_page(pw, browser_config, target_url=url) as page:
                 await navigate(page, url, browser_config)
                 # Turbo/Stimulus career sites may commit the document before
                 # their server-rendered job block is attached.  Keep this
@@ -1194,7 +1194,12 @@ async def scrape(
         use_proxy = bool(config.get("proxy"))
 
         async def _render_page(p):
-            async with open_page(p, browser_config, use_proxy=use_proxy) as page:
+            async with open_page(
+                p,
+                browser_config,
+                use_proxy=use_proxy,
+                target_url=fetch_url,
+            ) as page:
                 await navigate(page, fetch_url, browser_config)
                 # Read final URL BEFORE running actions/extraction so a
                 # redirect-to-gone page doesn't burn the (potentially

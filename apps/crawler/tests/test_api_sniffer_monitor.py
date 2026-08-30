@@ -4819,7 +4819,7 @@ class TestDiscoverAutoTruncation:
         from contextlib import asynccontextmanager
 
         @asynccontextmanager
-        async def _fake_open_page(_pw, _config, use_proxy=False):
+        async def _fake_open_page(_pw, _config, use_proxy=False, target_url=None):
             yield AsyncMock()
 
         async def _fake_navigate(_page, _url, _opts):

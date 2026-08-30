@@ -1332,7 +1332,12 @@ async def _evaluate_browser_data(
     from src.shared.browser import navigate, open_page
 
     config = browser_config or {}
-    async with open_page(pw, config, use_proxy=bool(config.get("proxy"))) as page:
+    async with open_page(
+        pw,
+        config,
+        use_proxy=bool(config.get("proxy")),
+        target_url=url,
+    ) as page:
         await navigate(page, url, config)
         return await page.evaluate(expression)
 
