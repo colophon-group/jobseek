@@ -5339,6 +5339,7 @@ scopely,scopely-greenhouse,https://job-boards.greenhouse.io/scopely,greenhouse,"
 scor,scor-global,https://fa-errt-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001/jobs?mode=location,oracle_hcm,"{""host"": ""fa-errt-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_2001"", ""total_count_tolerance"": 1, ""page_shortfall_tolerance"": 1}",oracle_hcm,"{""enrich"": [""description""]}"
 scorpion-enterprises-llc,scorpion-enterprises-llc-greenhouse,https://job-boards.greenhouse.io/scorpionenterprisesllc,greenhouse,"{""token"": ""scorpionenterprisesllc""}",skip,
 scotch,scotch-greenhouse,https://job-boards.greenhouse.io/scotch,greenhouse,"{""token"": ""scotch""}",skip,
+scotiabank,scotiabank-careers,https://jobs.scotiabank.com/,rss,"{""preset"": ""successfactors""}",skip,
 scout-ai,scout-ai-greenhouse,https://job-boards.greenhouse.io/scoutai,greenhouse,"{""token"": ""scoutai""}",skip,
 scout-motors,scout-motors-greenhouse,https://job-boards.greenhouse.io/scoutmotors,greenhouse,"{""token"": ""scoutmotors""}",skip,
 scout24,scout24-greenhouse,https://job-boards.greenhouse.io/scout24,greenhouse,"{""token"": ""scout24""}",skip,
