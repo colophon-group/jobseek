@@ -722,22 +722,34 @@ def _attributed_http_query(end_at: datetime, fault: str | None = None):
                 return [
                     {
                         "metric": {"capability": capability, "outcome": outcome},
-                        "value": [0, "0"],
+                        "value": [
+                            0,
+                            (
+                                "inf"
+                                if fault == "capability-nonfinite-reset" and index == 0
+                                else "0"
+                            ),
+                        ],
                     }
-                    for capability, outcome in capabilities
+                    for index, (capability, outcome) in enumerate(capabilities)
                 ]
             values = (
                 [("greenhouse", "success", 3, 8), ("sitemap", "error", 1, 2)]
                 if stage == "monitor"
                 else [("json-ld", "success", 4, 11)]
             )
-            return [
+            rows = [
                 {
                     "metric": {"capability": capability, "outcome": outcome},
                     "value": [0, str(start if is_start else end)],
                 }
                 for capability, outcome, start, end in values
             ]
+            if fault == "capability-negative-start" and is_start:
+                rows[0]["value"][1] = "-1"
+            if fault == "capability-fractional-end" and not is_start:
+                rows[0]["value"][1] = "8.5"
+            return rows
         if "crawler_runtime_executions_total" in expression:
             stage = "monitor" if 'stage="monitor"' in expression else "detail"
             if "resets(" in expression:
@@ -768,15 +780,31 @@ def _attributed_http_query(end_at: datetime, fault: str | None = None):
             if fault == "missing-start" and is_start and "origin_attempts" in expression:
                 return []
             if "resets(" in expression:
+                reset_value = {
+                    "negative-reset": "-1",
+                    "fractional-reset": "0.5",
+                    "nonfinite-reset": "inf",
+                    "counter-reset": "1",
+                }.get(fault, "0")
                 return [
                     {
                         "metric": {},
-                        "value": [0, "1" if fault == "counter-reset" else "0"],
+                        "value": [0, reset_value],
                     }
                 ]
             proxy = 'egress="proxy"' in expression
             if "origin_attempts" in expression:
                 start, end = (5, 8) if proxy else (10, 17)
+                if fault == "negative-start" and is_start:
+                    start = -1
+                if fault == "negative-end" and not is_start:
+                    end = -1
+                if fault == "fractional-boundary" and not is_start:
+                    end = 17.5
+                if fault == "nonfinite-boundary" and not is_start:
+                    return [{"metric": {}, "value": [0, "nan"]}]
+                if fault == "malformed-boundary" and not is_start:
+                    return [{"metric": {}, "value": [0]}]
             elif 'outcome="response"' in expression:
                 start, end = (5, 7) if proxy else (9, 15)
                 if fault == "conservation-mismatch" and not proxy:
@@ -877,7 +905,22 @@ def test_prometheus_capture_promotes_only_conserved_complete_http_egress() -> No
     )
 
 
-@pytest.mark.parametrize("fault", ["missing-start", "counter-reset", "conservation-mismatch"])
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "missing-start",
+        "negative-start",
+        "negative-end",
+        "fractional-boundary",
+        "nonfinite-boundary",
+        "malformed-boundary",
+        "negative-reset",
+        "fractional-reset",
+        "nonfinite-reset",
+        "counter-reset",
+        "conservation-mismatch",
+    ],
+)
 def test_prometheus_capture_fails_closed_for_incomplete_http_egress(fault: str) -> None:
     end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
     result = capture_prometheus_measurement(
@@ -893,14 +936,32 @@ def test_prometheus_capture_fails_closed_for_incomplete_http_egress(fault: str) 
     assert "origin-attempts-unmeasured:monitor:http" in result["evidence_gaps"]
 
 
-def test_prometheus_capture_discards_capability_mix_that_does_not_reconcile() -> None:
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "capability-mismatch",
+        "capability-negative-start",
+        "capability-fractional-end",
+        "capability-nonfinite-reset",
+        "capability-malformed-row",
+    ],
+)
+def test_prometheus_capture_discards_invalid_capability_mix(fault: str) -> None:
     end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
+    query = _attributed_http_query(end_at, fault)
+
+    def malformed_capability_query(expression: str, at: datetime) -> list[dict]:
+        rows = query(expression, at)
+        if fault == "capability-malformed-row" and "capability_executions" in expression:
+            return [{"metric": {"outcome": "success"}, "value": [0, "1"]}]
+        return rows
+
     result = capture_prometheus_measurement(
         _one_http_target(),
-        query=_attributed_http_query(end_at, "capability-mismatch"),
+        query=malformed_capability_query,
         end_at=end_at,
         window_seconds=3600,
-        source_revision="capability-mismatch",
+        source_revision=fault,
     )
 
     mix = result["roles"][0]["capability_mix"]
@@ -912,6 +973,23 @@ def test_prometheus_capture_discards_capability_mix_that_does_not_reconcile() ->
         "complete": False,
     }
     assert all(item["stage"] != "monitor" for item in mix["executions"])
+
+
+def test_prometheus_capture_rejects_mixed_execution_classes_in_one_role() -> None:
+    targets = _one_http_target()
+    browser_target = deepcopy(targets["targets"][0])
+    browser_target.update(id="browser-a", instance="browser-1", execution_class="browser")
+    targets["targets"].append(browser_target)
+    end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
+
+    with pytest.raises(ModelError, match="identical limits, category, and execution class"):
+        capture_prometheus_measurement(
+            targets,
+            query=_attributed_http_query(end_at),
+            end_at=end_at,
+            window_seconds=3600,
+            source_revision="mixed-execution-class",
+        )
 
 
 def test_prometheus_capture_includes_complete_browser_process_tree() -> None:

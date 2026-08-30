@@ -89,6 +89,25 @@ def _optional_instant_sum(
     return _sum_vector(rows, query_name)
 
 
+def _strict_counter_sum(query: Query, expression: str, at: datetime, query_name: str) -> int | None:
+    """Return a complete integer counter sum without normalizing bad evidence."""
+
+    rows = query(expression, at)
+    if not rows:
+        return None
+    total = 0
+    for row in rows:
+        try:
+            raw_value = float(row["value"][1])
+        except (KeyError, IndexError, TypeError, ValueError):
+            return None
+        value = _nonnegative_integer(raw_value)
+        if value is None:
+            return None
+        total += value
+    return total
+
+
 def _nonnegative_integer(value: float | None) -> int | None:
     if value is None or value < 0 or not value.is_integer():
         return None
@@ -129,7 +148,7 @@ def _capture_egress_target_stage(
             _labels: str = labels,
             _egress: str = egress,
         ) -> float | None:
-            return _optional_instant_sum(
+            return _strict_counter_sum(
                 query,
                 f"sum({metric}{{{_labels}{extra}}})",
                 at,
@@ -178,13 +197,11 @@ def _capture_egress_target_stage(
         )
 
         reset_counts = [
-            _nonnegative_integer(
-                _optional_instant_sum(
-                    query,
-                    f"sum(resets({metric}{{{labels}}}[{range_selector}]))",
-                    end_at,
-                    f"{target_id} {stage} {egress} {name} resets",
-                )
+            _strict_counter_sum(
+                query,
+                f"sum(resets({metric}{{{labels}}}[{range_selector}]))",
+                end_at,
+                f"{target_id} {stage} {egress} {name} resets",
             )
             for metric, name in (
                 ("crawler_runtime_origin_attempts_total", "origin-attempt"),
@@ -237,15 +254,18 @@ def _counter_vector(
     for row in rows:
         metric = row.get("metric")
         if not isinstance(metric, dict):
-            raise ModelError(f"Prometheus {query_name} response is malformed")
+            return None
         try:
-            key = tuple(str(metric[name]) for name in label_names)
+            label_values = tuple(metric[name] for name in label_names)
             raw_value = float(row["value"][1])
-        except (KeyError, IndexError, TypeError, ValueError) as exc:
-            raise ModelError(f"Prometheus {query_name} response is malformed") from exc
+        except (KeyError, IndexError, TypeError, ValueError):
+            return None
+        if any(not isinstance(value, str) or not value for value in label_values):
+            return None
+        key = tuple(label_values)
         value = _nonnegative_integer(raw_value)
         if value is None or key in values:
-            raise ModelError(f"Prometheus {query_name} response is malformed")
+            return None
         values[key] = value
     return values
 
@@ -653,6 +673,7 @@ def capture_prometheus_measurement(
         monitor_concurrencies: set[float | None] = set()
         vcpu_limits: set[float | None] = set()
         memory_limits: set[int | None] = set()
+        execution_classes: set[str] = set()
         role_egress_targets: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
         role_capability_targets: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
@@ -738,6 +759,9 @@ def capture_prometheus_measurement(
             if not isinstance(cost_category, str) or not cost_category:
                 raise ModelError(f"{instance} needs a cost category")
             cost_categories.add(cost_category)
+            if execution_class not in {"http", "browser", "support"}:
+                raise ModelError(f"unsupported execution class {execution_class!r}")
+            execution_classes.add(str(execution_class))
             discovery = target.get("discovery_concurrency")
             monitor = target.get("monitor_concurrency")
             if execution_class == "support":
@@ -746,8 +770,6 @@ def capture_prometheus_measurement(
                 discovery_concurrencies.add(None)
                 monitor_concurrencies.add(None)
                 continue
-            if execution_class not in {"http", "browser"}:
-                raise ModelError(f"unsupported execution class {execution_class!r}")
             if not isinstance(discovery, int) or discovery <= 0:
                 raise ModelError(f"{instance} needs positive discovery_concurrency")
             if not isinstance(monitor, int) or monitor <= 0 or monitor > discovery:
@@ -819,8 +841,11 @@ def capture_prometheus_measurement(
             or len(monitor_concurrencies) != 1
             or len(vcpu_limits) != 1
             or len(memory_limits) != 1
+            or len(execution_classes) != 1
         ):
-            raise ModelError(f"targets in role {role} must use identical limits and category")
+            raise ModelError(
+                f"targets in role {role} must use identical limits, category, and execution class"
+            )
         if role_process_tree_complete:
             role_cpu = role_process_tree_cpu
             role_peak_rss = role_process_tree_peak_rss
@@ -838,7 +863,7 @@ def capture_prometheus_measurement(
 
         egress_coverage: list[dict[str, Any]] = []
         lane_egress_totals: dict[tuple[str, str], tuple[int, int]] = {}
-        role_execution_class = str(role_targets[0].get("execution_class"))
+        role_execution_class = next(iter(execution_classes))
         if role_execution_class in {"http", "browser"}:
             for (stage, egress), entries in sorted(role_egress_targets.items()):
                 complete_targets = sum(1 for entry in entries if entry["complete"])
