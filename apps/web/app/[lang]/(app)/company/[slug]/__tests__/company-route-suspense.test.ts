@@ -37,6 +37,22 @@ describe("company route partial prerendering", () => {
     expect(source.match(/cacheTag\(companyCsvDataCacheTag\(\)\)/g)).toHaveLength(3);
   });
 
+  it("keeps the noindex company shell on the shared one-day cache tier", () => {
+    const routeSource = readFileSync(
+      "app/[lang]/(app)/company/[slug]/page.tsx",
+      "utf8",
+    );
+    const ttlSource = readFileSync("src/lib/cache-ttl.ts", "utf8");
+
+    expect(routeSource.match(/cacheLife\(\{ revalidate: CACHE_TTL_COMPANY_SHELL \}\)/g))
+      .toHaveLength(3);
+    expect(ttlSource).toContain(
+      "export const CACHE_TTL_COMPANY_SHELL = CACHE_TTL_DAY;",
+    );
+    expect(ttlSource).toContain("export const CACHE_TTL_DAY = 86400;");
+    expect(routeSource).not.toContain("company.activeJobCount");
+  });
+
   it("routes a missing company to the localized recovery boundary", () => {
     const source = readFileSync(
       "app/[lang]/(app)/company/[slug]/page.tsx",

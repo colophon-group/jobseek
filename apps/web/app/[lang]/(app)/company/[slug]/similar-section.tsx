@@ -13,10 +13,10 @@ type Props = {
 
 /**
  * Client wrapper for the filter-aware strip. Page zero arrives in the cached
- * company route snapshot, so a no-filter visit does not need a mount-time
- * Server Action. The client still owns URL filter changes and pagination,
- * keeping `searchParams` / `headers()` / `getSession()` out of the cached
- * route render path.
+ * company route snapshot, then refreshes browser-direct from Typesense so a
+ * no-filter visit does not need a mount-time Server Action. The client still
+ * owns URL filter changes and pagination, keeping `searchParams` / `headers()`
+ * / `getSession()` out of the cached route render path.
  */
 export function SimilarSection({
   companyId,
@@ -32,7 +32,6 @@ export function SimilarSection({
       initialCompanies={initialPage?.companies ?? []}
       initialHasMore={initialPage?.hasMore ?? false}
       initialTruncated={initialPage?.truncated ?? false}
-      initialPageLoaded={initialPage != null}
       locale={locale}
     />
   );

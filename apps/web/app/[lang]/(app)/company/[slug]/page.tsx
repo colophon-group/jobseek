@@ -59,19 +59,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     message: "Jobs at {name}",
     values: { name: company.name },
   });
-  const count = company.activeJobCount;
-  const countText = count > 0
-    ? i18n._({
-        id: "company.meta.positionCount",
-        comment: "SEO metadata count text for a company page; {count} is the active job count.",
-        message: "{count, plural, one {# open position} other {# open positions}}",
-        values: { count },
-      })
-    : i18n._({
-        id: "company.meta.openPositions",
-        comment: "Fallback SEO metadata count text for a company with no active jobs.",
-        message: "Open positions",
-      });
+  // Company shells are cached for a day, while posting counts move every few
+  // hours. Keep noindex/share metadata durable instead of publishing a count
+  // that can age beyond the browser-refreshed visible list.
+  const countText = i18n._({
+    id: "company.meta.openPositions",
+    comment: "Generic SEO metadata text for positions on a company page.",
+    message: "Open positions",
+  });
   const description = company.description
     ? i18n._({
         id: "company.meta.descriptionWithInfo",
@@ -151,7 +146,7 @@ export default async function CompanyPageRoute({ params }: Props) {
   if (!initialData) notFound();
   const { company } = initialData;
 
-  // The page body is `'use cache'`-wrapped (1-hour revalidate) so the
+  // The page body is `'use cache'`-wrapped (1-day revalidate) so the
   // anonymous static shell ships from the per-region cache without
   // invoking a function on every request. Anything that reads
   // `CompanyPage` refreshes anonymous postings directly from Typesense after
