@@ -66,9 +66,46 @@ func (service *Service) Health() Health {
 	if service == nil {
 		return Health{Reason: HealthInitializing, RecycleReason: RecycleNone}
 	}
+	for range 2 {
+		service.mu.Lock()
+		version := service.lifecycleVersion
+		service.mu.Unlock()
+
+		snapshot := service.provider.Snapshot()
+		service.mu.Lock()
+		if version != service.lifecycleVersion {
+			service.mu.Unlock()
+			continue
+		}
+		service.snapshot = snapshot
+		reason := service.snapshotRecycleReason(snapshot)
+		if service.recycleReason == RecycleNone && reason != RecycleNone {
+			service.recycleReason = reason
+		}
+		if reason == RecycleSessionLeak || reason == RecycleTargetLeak {
+			service.lastCleanupOK = false
+		}
+		request := service.active == 0 && service.recycleReason != RecycleNone &&
+			!service.recycleRequested
+		requestedReason := service.recycleReason
+		if request {
+			service.recycleRequested = true
+		}
+		service.lifecycleVersion++
+		health := service.healthLocked()
+		service.mu.Unlock()
+		if request {
+			service.provider.RequestRecycle(requestedReason)
+		}
+		return health
+	}
+
 	service.mu.Lock()
-	defer service.mu.Unlock()
-	return service.healthLocked()
+	health := service.healthLocked()
+	health.Ready = false
+	health.Reason = HealthInitializing
+	service.mu.Unlock()
+	return health
 }
 
 func (service *Service) healthLocked() Health {

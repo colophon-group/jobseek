@@ -98,6 +98,21 @@ REQUIRED_CASE_IDS = (
     "reject_config_null_digest",
     "reject_open_error_with_session",
     "recycle_post_task_rss_limit",
+    "error_active_shutdown_cancels_and_closes",
+    "error_active_shutdown_cleanup_failure",
+    "error_post_cleanup_session_leak",
+    "error_post_cleanup_target_leak",
+    "reject_idle_process_crash_health",
+    "reject_idle_pin_mismatch_health",
+    "reject_idle_resource_health",
+    "error_declared_artifact_transfer_limit",
+    "error_declared_manifest_transfer_limit",
+    "error_declared_transfer_overflow",
+    "error_no_same_backend_retry_after_timeout",
+    "unsupported_no_lightpanda_fallback",
+    "error_no_second_invocation_after_failure",
+    "reject_origin_before_assignment_validation",
+    "accept_cross_task_cookie_storage_target_context_assignment_isolation",
 )
 
 CAPABILITIES = {
@@ -192,6 +207,7 @@ def _decision(**overrides: Any) -> dict[str, Any]:
         "code": "success",
         "execute_calls": 1,
         "health_reason": "ready",
+        "state_leaks": 0,
         "open_calls": 1,
         "origin_calls": 1,
         "outcome": "success",
@@ -366,6 +382,10 @@ def evaluate(input_value: dict[str, Any]) -> dict[str, Any]:
 
     provider = input_value.get("provider")
     assert isinstance(provider, dict)
+    if mode == "idle_health":
+        snapshot = _snapshot_rejection(provider.get("snapshot_after"))
+        assert snapshot is not None
+        return {**snapshot, "code": "health_only", "outcome": "health"}
     snapshot = _snapshot_rejection(provider.get("snapshot_before"))
     if snapshot is not None:
         return snapshot
@@ -410,6 +430,20 @@ def evaluate(input_value: dict[str, Any]) -> dict[str, Any]:
             ready=False,
             recycle_calls=1,
             recycle_reason="protocol_failure",
+        )
+
+    if mode == "active_shutdown":
+        if provider.get("cleanup") != "ok":
+            return _decision(
+                code="internal",
+                health_reason="cleanup_failed",
+                outcome="error",
+                ready=False,
+                recycle_calls=1,
+                recycle_reason="cleanup_failure",
+            )
+        return _decision(
+            code="cancelled", health_reason="shutting_down", outcome="error", ready=False
         )
 
     if provider.get("cleanup") != "ok":
@@ -458,6 +492,16 @@ def evaluate(input_value: dict[str, Any]) -> dict[str, Any]:
             recycle_reason=recycle,
         )
 
+    if execute in {"artifact_limit", "manifest_limit", "transfer_overflow"}:
+        return _decision(
+            code="resource_limit",
+            health_reason="recycle_pending",
+            outcome="error",
+            ready=False,
+            recycle_calls=1,
+            recycle_reason="protocol_failure",
+        )
+
     if mode == "repeat":
         return _decision(close_calls=2, execute_calls=2, open_calls=2, origin_calls=2)
     if config["recycle_after_tasks"] == 1:
@@ -473,6 +517,16 @@ def evaluate(input_value: dict[str, Any]) -> dict[str, Any]:
             ready=False,
             recycle_calls=1,
             recycle_reason="rss_limit",
+        )
+    if provider.get("snapshot_after") in {"session_leak", "target_leak"}:
+        recycle = provider["snapshot_after"]
+        return _decision(
+            code="internal",
+            health_reason="resource_limit",
+            outcome="error",
+            ready=False,
+            recycle_calls=1,
+            recycle_reason=recycle,
         )
     return _decision(origin_calls=provider.get("origin_calls", 0))
 
@@ -490,7 +544,7 @@ def test_registry_digest_and_schema_are_independently_closed() -> None:
     assert tuple(manifest["required_case_ids"]) == REQUIRED_CASE_IDS
     ids = tuple(case["id"] for case in manifest["cases"])
     assert ids == REQUIRED_CASE_IDS
-    assert len(ids) == len(set(ids)) == 69
+    assert len(ids) == len(set(ids)) == 84
 
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     assert schema["additionalProperties"] is False

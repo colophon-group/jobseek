@@ -3,35 +3,44 @@ package chromiumservice
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
+	"google.golang.org/protobuf/proto"
 )
 
 type fakeProvider struct {
 	mu sync.Mutex
 
-	capabilities   []runtimev1.BrowserCapability
-	before         ProcessSnapshot
-	after          ProcessSnapshot
-	useAfter       bool
-	openOutcome    string
-	executeOutcome string
-	cleanupOK      bool
-	fingerprintOK  bool
-	originCalls    int
-	mutateOriginal *runtimev1.BrowserExecutionInput
-	entered        chan struct{}
-	release        chan struct{}
+	capabilities    []runtimev1.BrowserCapability
+	before          ProcessSnapshot
+	after           ProcessSnapshot
+	useAfter        bool
+	openOutcome     string
+	executeOutcome  string
+	cleanupOK       bool
+	fingerprintOK   bool
+	originCalls     int
+	mutateOriginal  *runtimev1.BrowserExecutionInput
+	entered         chan struct{}
+	release         chan struct{}
+	ignoreCancel    bool
+	snapshotEntered chan int
+	snapshotRelease chan struct{}
+	snapshotBlocks  int
 
-	openCalls    int
-	executeCalls int
-	closeCalls   int
-	origins      int
-	recycleCalls []RecycleReason
-	tasks        []BoundTask
+	openCalls         int
+	executeCalls      int
+	closeCalls        int
+	origins           int
+	sessionSequence   int
+	isolationFailures int
+	recycleCalls      []RecycleReason
+	tasks             []BoundTask
 }
 
 func newFakeProvider() *fakeProvider {
@@ -68,11 +77,23 @@ func (provider *fakeProvider) Capabilities() []runtimev1.BrowserCapability {
 
 func (provider *fakeProvider) Snapshot() ProcessSnapshot {
 	provider.mu.Lock()
-	defer provider.mu.Unlock()
+	snapshot := provider.before
 	if provider.useAfter {
-		return provider.after
+		snapshot = provider.after
 	}
-	return provider.before
+	entered := provider.snapshotEntered
+	release := provider.snapshotRelease
+	sequence := 0
+	if provider.snapshotBlocks > 0 {
+		sequence = provider.snapshotBlocks
+		provider.snapshotBlocks--
+	}
+	provider.mu.Unlock()
+	if sequence != 0 {
+		entered <- sequence
+		<-release
+	}
+	return snapshot
 }
 
 func (provider *fakeProvider) OpenSession(
@@ -82,7 +103,8 @@ func (provider *fakeProvider) OpenSession(
 	provider.mu.Lock()
 	defer provider.mu.Unlock()
 	provider.openCalls++
-	session := &fakeSession{provider: provider}
+	provider.sessionSequence++
+	session := &fakeSession{provider: provider, id: provider.sessionSequence}
 	switch provider.openOutcome {
 	case "ok":
 		return session, nil
@@ -111,6 +133,11 @@ func (provider *fakeProvider) RequestRecycle(reason RecycleReason) {
 
 type fakeSession struct {
 	provider *fakeProvider
+	id       int
+	cookie   bool
+	storage  bool
+	target   bool
+	context  bool
 }
 
 func (session *fakeSession) Execute(ctx context.Context, task BoundTask) ProviderOutcome {
@@ -125,6 +152,7 @@ func (session *fakeSession) Execute(ctx context.Context, task BoundTask) Provide
 	}
 	entered := provider.entered
 	release := provider.release
+	ignoreCancel := provider.ignoreCancel
 	outcomeName := provider.executeOutcome
 	fingerprintOK := provider.fingerprintOK
 	provider.mu.Unlock()
@@ -133,10 +161,14 @@ func (session *fakeSession) Execute(ctx context.Context, task BoundTask) Provide
 		close(entered)
 	}
 	if release != nil {
-		select {
-		case <-release:
-		case <-ctx.Done():
-			outcomeName = "cancelled"
+		if ignoreCancel {
+			<-release
+		} else {
+			select {
+			case <-release:
+			case <-ctx.Done():
+				outcomeName = "cancelled"
+			}
 		}
 	}
 
@@ -147,6 +179,65 @@ func (session *fakeSession) Execute(ctx context.Context, task BoundTask) Provide
 	outcome := ProviderOutcome{BindingFingerprint: fingerprint}
 	switch outcomeName {
 	case "success":
+		outcome.Success = &runtimev1.BrowserSuccess{FinalUrl: "https://example.test/final"}
+	case "artifact_limit":
+		outcome.Success = &runtimev1.BrowserSuccess{
+			FinalUrl: "https://example.test/final",
+			Artifacts: []*runtimev1.ArtifactHandle{{
+				Handle: "artifact-oversized", SizeBytes: 16*1024*1024 + 1,
+			}},
+		}
+	case "manifest_limit":
+		size := uint64(16*1024*1024 + 1)
+		outcome.Success = &runtimev1.BrowserSuccess{
+			FinalUrl: "https://example.test/final",
+			Html: &runtimev1.ChunkManifest{
+				Complete: true, TotalSizeBytes: size,
+				Chunks: []*runtimev1.DataChunk{{
+					SizeBytes: size,
+					Storage: &runtimev1.DataChunk_Artifact{Artifact: &runtimev1.ArtifactHandle{
+						Handle: "manifest-oversized", SizeBytes: size,
+					}},
+				}},
+			},
+		}
+	case "transfer_overflow":
+		outcome.Success = &runtimev1.BrowserSuccess{
+			FinalUrl: "https://example.test/final",
+			Html: &runtimev1.ChunkManifest{
+				Complete: true,
+				Chunks: []*runtimev1.DataChunk{
+					{
+						SizeBytes: ^uint64(0),
+						Storage: &runtimev1.DataChunk_Artifact{Artifact: &runtimev1.ArtifactHandle{
+							Handle: "overflow-a", SizeBytes: ^uint64(0),
+						}},
+					},
+					{
+						Sequence: 1, SizeBytes: 1,
+						Storage: &runtimev1.DataChunk_Artifact{Artifact: &runtimev1.ArtifactHandle{
+							Handle: "overflow-b", SizeBytes: 1,
+						}},
+					},
+				},
+			},
+		}
+	case "stateful_isolation":
+		assignment := task.Assignment()
+		provider.mu.Lock()
+		if session.id < 1 || session.cookie || session.storage || session.target ||
+			session.context || assignment == nil ||
+			assignment.Backend != runtimev1.BrowserBackend_BROWSER_BACKEND_CHROMIUM {
+			provider.isolationFailures++
+		}
+		session.cookie = true
+		session.storage = true
+		session.target = true
+		session.context = true
+		provider.mu.Unlock()
+		if assignment != nil {
+			assignment.Backend = runtimev1.BrowserBackend_BROWSER_BACKEND_LIGHTPANDA
+		}
 		outcome.Success = &runtimev1.BrowserSuccess{FinalUrl: "https://example.test/final"}
 	case "partial_timeout":
 		outcome.Success = &runtimev1.BrowserSuccess{FinalUrl: "https://sensitive.test/partial"}
@@ -415,6 +506,223 @@ func TestActiveSessionTTLAndOutputBytesAreEnforced(t *testing.T) {
 			t.Fatalf("health = %+v", health)
 		}
 	})
+}
+
+func TestShutdownCancelsActiveTaskAndClosesWithinOneGrace(t *testing.T) {
+	for _, cleanupOK := range []bool{true, false} {
+		cleanupOK := cleanupOK
+		t.Run(map[bool]string{true: "cleanup succeeds", false: "cleanup overrides cancellation"}[cleanupOK], func(t *testing.T) {
+			provider := newFakeProvider()
+			provider.cleanupOK = cleanupOK
+			provider.entered = make(chan struct{})
+			provider.release = make(chan struct{})
+			service, err := New(validConfig(), provider)
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := make(chan *runtimev1.BrowserResult, 1)
+			go func() { result <- service.Execute(context.Background(), validInput()) }()
+			<-provider.entered
+			if err := service.Shutdown(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			got := <-result
+			wantCode := "cancelled"
+			if !cleanupOK {
+				wantCode = "internal"
+			}
+			if resultCode(got) != wantCode {
+				t.Fatalf("result = %v, want %s", got, wantCode)
+			}
+			provider.mu.Lock()
+			defer provider.mu.Unlock()
+			if provider.openCalls != 1 || provider.executeCalls != 1 || provider.closeCalls != 1 {
+				t.Fatalf("open/execute/close = %d/%d/%d", provider.openCalls, provider.executeCalls, provider.closeCalls)
+			}
+		})
+	}
+}
+
+func TestShutdownGraceCannotBeExtendedByLaterCall(t *testing.T) {
+	provider := newFakeProvider()
+	provider.entered = make(chan struct{})
+	provider.release = make(chan struct{})
+	provider.ignoreCancel = true
+	config := validConfig()
+	config.ShutdownGraceMS = 20
+	service, err := New(config, provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := make(chan *runtimev1.BrowserResult, 1)
+	go func() { result <- service.Execute(context.Background(), validInput()) }()
+	<-provider.entered
+	if err := service.Shutdown(context.Background()); !errors.Is(err, ErrShutdownTimeout) {
+		t.Fatalf("first shutdown = %v", err)
+	}
+	service.mu.Lock()
+	firstDeadline := service.shutdownDeadline
+	service.mu.Unlock()
+	if err := service.Shutdown(context.Background()); !errors.Is(err, ErrShutdownTimeout) {
+		t.Fatalf("second shutdown = %v", err)
+	}
+	service.mu.Lock()
+	secondDeadline := service.shutdownDeadline
+	service.mu.Unlock()
+	if !secondDeadline.Equal(firstDeadline) {
+		t.Fatalf("shutdown deadline changed: %s -> %s", firstDeadline, secondDeadline)
+	}
+	close(provider.release)
+	select {
+	case got := <-result:
+		if resultCode(got) != "internal" {
+			t.Fatalf("late cleanup result = %v", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("active task did not finish after provider release")
+	}
+}
+
+func TestPostCloseLeakDiscardsSuccessAndRecyclesImmediatelyOnce(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		snapshot ProcessSnapshot
+		reason   RecycleReason
+	}{
+		{name: "session", snapshot: ProcessSnapshot{Live: true, Healthy: true, PinsExact: true, OpenSessions: 1}, reason: RecycleSessionLeak},
+		{name: "target", snapshot: ProcessSnapshot{Live: true, Healthy: true, PinsExact: true, OpenTargets: 1}, reason: RecycleTargetLeak},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newFakeProvider()
+			provider.after = test.snapshot
+			service, err := New(validConfig(), provider)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result := service.Execute(context.Background(), validInput()); resultCode(result) != "internal" || result.GetSuccess() != nil {
+				t.Fatalf("leaked success = %v", result)
+			}
+			_ = service.Health()
+			provider.mu.Lock()
+			defer provider.mu.Unlock()
+			if len(provider.recycleCalls) != 1 || provider.recycleCalls[0] != test.reason {
+				t.Fatalf("recycles = %v, want one %s", provider.recycleCalls, test.reason)
+			}
+		})
+	}
+}
+
+func TestIdleHealthRefreshesCurrentSnapshot(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		snapshot ProcessSnapshot
+		health   HealthReason
+		recycle  RecycleReason
+	}{
+		{name: "process crash", snapshot: ProcessSnapshot{PinsExact: true}, health: HealthProcessDown, recycle: RecycleProcessCrash},
+		{name: "pin mismatch", snapshot: ProcessSnapshot{Live: true, Healthy: true}, health: HealthPinsMismatch, recycle: RecycleNone},
+		{name: "resource limit", snapshot: ProcessSnapshot{Live: true, Healthy: true, PinsExact: true, PIDs: validConfig().MaxPIDs + 1}, health: HealthResourceLimit, recycle: RecycleFailedHealth},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newFakeProvider()
+			service, err := New(validConfig(), provider)
+			if err != nil {
+				t.Fatal(err)
+			}
+			provider.mu.Lock()
+			provider.after = test.snapshot
+			provider.useAfter = true
+			provider.mu.Unlock()
+			health := service.Health()
+			if health.Ready || health.Reason != test.health || health.RecycleReason != test.recycle {
+				t.Fatalf("health = %+v", health)
+			}
+			provider.mu.Lock()
+			defer provider.mu.Unlock()
+			wantCalls := 0
+			if test.recycle != RecycleNone {
+				wantCalls = 1
+			}
+			if len(provider.recycleCalls) != wantCalls {
+				t.Fatalf("recycle calls = %v, want %d", provider.recycleCalls, wantCalls)
+			}
+		})
+	}
+}
+
+func TestHealthFailsClosedWhenBothSnapshotCommitsRaceLifecycle(t *testing.T) {
+	provider := newFakeProvider()
+	service, err := New(validConfig(), provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider.mu.Lock()
+	provider.snapshotEntered = make(chan int, 2)
+	provider.snapshotRelease = make(chan struct{}, 2)
+	provider.snapshotBlocks = 2
+	provider.mu.Unlock()
+	done := make(chan Health, 1)
+	go func() { done <- service.Health() }()
+	for range 2 {
+		<-provider.snapshotEntered
+		service.mu.Lock()
+		service.lifecycleVersion++
+		service.mu.Unlock()
+		provider.snapshotRelease <- struct{}{}
+	}
+	select {
+	case health := <-done:
+		if health.Ready || health.Reason != HealthInitializing {
+			t.Fatalf("racing health = %+v", health)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("health did not complete after bounded retries")
+	}
+}
+
+func TestDeclaredSuccessTransferBudgetIsOverflowSafeAndDeduplicated(t *testing.T) {
+	handle := func(id string, size uint64) *runtimev1.ArtifactHandle {
+		return &runtimev1.ArtifactHandle{Handle: id, MediaType: "text/html", SizeBytes: size, Sha256: "digest"}
+	}
+	shared := handle("shared", 8)
+	if !declaredSuccessBytesWithinLimit(&runtimev1.BrowserSuccess{
+		Html: &runtimev1.ChunkManifest{
+			Complete: true, TotalSizeBytes: 8,
+			Chunks: []*runtimev1.DataChunk{{
+				SizeBytes: 8,
+				Storage:   &runtimev1.DataChunk_Artifact{Artifact: shared},
+			}},
+		},
+		Artifacts: []*runtimev1.ArtifactHandle{proto.Clone(shared).(*runtimev1.ArtifactHandle)},
+	}, 8) {
+		t.Fatal("identical artifact handle was not deduplicated at exact bound")
+	}
+	if declaredSuccessBytesWithinLimit(&runtimev1.BrowserSuccess{
+		Artifacts: []*runtimev1.ArtifactHandle{handle("a", 8), handle("b", 1)},
+	}, 8) {
+		t.Fatal("accepted declared artifact bytes above limit")
+	}
+	if declaredSuccessBytesWithinLimit(&runtimev1.BrowserSuccess{
+		Artifacts: []*runtimev1.ArtifactHandle{handle("shared", 8), handle("shared", 7)},
+	}, 8) {
+		t.Fatal("accepted inconsistent duplicate artifact identity")
+	}
+	if declaredSuccessBytesWithinLimit(&runtimev1.BrowserSuccess{
+		Html: &runtimev1.ChunkManifest{Complete: false},
+	}, 8) {
+		t.Fatal("accepted incomplete manifest")
+	}
+	if declaredSuccessBytesWithinLimit(&runtimev1.BrowserSuccess{
+		Html: &runtimev1.ChunkManifest{
+			Complete: true,
+			Chunks: []*runtimev1.DataChunk{
+				{SizeBytes: ^uint64(0), Storage: &runtimev1.DataChunk_Artifact{Artifact: handle("a", ^uint64(0))}},
+				{Sequence: 1, SizeBytes: 1, Storage: &runtimev1.DataChunk_Artifact{Artifact: handle("b", 1)}},
+			},
+		},
+	}, ^uint64(0)) {
+		t.Fatal("accepted overflowing manifest total")
+	}
 }
 
 func TestDecodeConfigStrictRoundTrip(t *testing.T) {

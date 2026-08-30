@@ -76,18 +76,39 @@ No provider message or value is copied to the result. Thus unsupported and
 error results contain no authoritative HTML, action, capture, evaluation, or
 success payload.
 
+Both the serialized success envelope and its logical transfer payload are
+bounded by `max_transfer_bytes`. Logical accounting validates complete ordered
+chunk manifests, overflow-safe chunk totals, inline sizes, and artifact-handle
+sizes. An artifact identity is charged once only when every repeated handle has
+identical media type, size, digest, and redaction metadata; inconsistent reuse
+fails closed. This prevents small protobuf metadata from concealing oversized
+out-of-band artifacts or wrapped manifest totals.
+
 ## Cleanup, process lifecycle, and health
 
 Cleanup uses a background context bounded by `shutdown_grace_ms`, including
-when the execution context is cancelled. Cleanup failure overrides and
-discards success, returns a typed fail-closed error, marks the last cleanup
-unsuccessful, and requests recycle. Recycle is requested only when the active
-session count reaches zero. Closed reasons cover process age, RSS, session or
-target leak, process crash, failed health, cleanup failure, protocol failure,
-and task count.
+when the execution context is cancelled. The first `Shutdown` call fixes one
+absolute, non-extendable grace deadline and cancels every active service-owned
+task context. Each task then closes its session against that same deadline;
+later shutdown or cleanup calls cannot restart the grace window. Cleanup
+failure overrides and discards success, returns a typed fail-closed error,
+marks the last cleanup unsuccessful, and requests recycle.
 
-`Health` is bounded local state, not an endpoint. It reports only Boolean and
-numeric capacity/lifecycle values plus closed reason enums. It never includes
+Completion removes the task from the active count before evaluating its
+post-close snapshot. A remaining session or target is therefore a leak,
+overrides any apparent success with a fail-closed error, and requests exactly
+one immediate recycle when the service becomes idle. Closed recycle reasons
+also cover process age, RSS, process crash, failed health, cleanup failure,
+protocol failure, and task count.
+
+`Health` is bounded local state, not an endpoint. Every read refreshes the
+provider's bounded, non-blocking supervisor snapshot outside the service lock,
+then commits it only if the lifecycle generation is unchanged. A racing
+lifecycle transition is retried once and otherwise reports fail-closed
+`initializing`, never stale-ready. Idle crashes, pin changes, resource breaches,
+and leaks therefore close readiness without waiting for another task. Health
+reports only Boolean and numeric capacity/lifecycle values plus closed reason
+enums. It never includes
 socket paths, image/browser pins, hosts, assignment identifiers, origin data,
 or provider error text. Readiness requires:
 
@@ -99,18 +120,21 @@ or provider error text. Readiness requires:
 - a configuration already accepted by `New`.
 
 `Shutdown` rejects new work and waits, without launching a goroutine or killing
-a shared process, for sessions already owned by the service. Task cancellation
-still performs bounded cleanup.
+a shared process, for cancellation and bounded closure of sessions already
+owned by the service.
 
 ## Conformance and ownership
 
 `fixtures/chromium_service/manifest.json` is canonical compact JSON with a
 checked SHA-256 sidecar. Independent Go and Python evaluators hard-code the same
-ordered 69-case registry. The network-free corpus covers all capability
+ordered 84-case registry. The network-free corpus covers all capability
 classes, strict assignment and configuration failures, exact unsupported
 preflight, one-call conservation, mutation/fingerprint faults, typed failures,
-partial-output rejection, cleanup, concurrency, cancellation/shutdown,
-cross-task fresh sessions, process limits, health, and between-task recycle.
+partial-output rejection, active cancellation/shutdown and cleanup override,
+post-close leaks, live idle-health transitions, declared-transfer overflow,
+explicit no-retry/fallback/second-call and origin-before-validation failures,
+cross-task cookie/storage/target/context/assignment isolation, process limits,
+health, and between-task recycle.
 
 This boundary remains subordinate to:
 

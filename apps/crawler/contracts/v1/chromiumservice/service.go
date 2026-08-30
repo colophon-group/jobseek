@@ -27,7 +27,8 @@ type SessionLimits struct {
 }
 
 // ChromiumProvider combines the future process supervisor and provider
-// boundary so one task cannot discover or select a second backend.
+// boundary so one task cannot discover or select a second backend. Snapshot
+// must be a bounded, non-blocking read of supervisor-owned local state.
 type ChromiumProvider interface {
 	Capabilities() []runtimev1.BrowserCapability
 	Snapshot() ProcessSnapshot
@@ -93,12 +94,21 @@ type Service struct {
 	mu               sync.Mutex
 	snapshot         ProcessSnapshot
 	active           uint32
+	activeTasks      map[uint64]context.CancelFunc
+	nextTaskID       uint64
+	lifecycleVersion uint64
 	completedTasks   uint64
 	lastCleanupOK    bool
 	recycleReason    RecycleReason
 	recycleRequested bool
 	shuttingDown     bool
+	shutdownDeadline time.Time
 	idle             chan struct{}
+}
+
+type taskLease struct {
+	id  uint64
+	ctx context.Context
 }
 
 func New(config Config, provider ChromiumProvider) (*Service, error) {
@@ -113,6 +123,7 @@ func New(config Config, provider ChromiumProvider) (*Service, error) {
 	service := &Service{
 		config:        config,
 		provider:      provider,
+		activeTasks:   make(map[uint64]context.CancelFunc),
 		lastCleanupOK: true,
 		recycleReason: RecycleNone,
 		idle:          idle,
@@ -148,7 +159,8 @@ func (service *Service) Execute(
 	}
 
 	snapshot := service.provider.Snapshot()
-	if failure, recycle, acquired := service.acquire(snapshot); !acquired {
+	lease, failure, recycle, acquired := service.acquire(ctx, snapshot)
+	if !acquired {
 		service.requestRecycleIfIdle(recycle)
 		return failureResult(failure.Code, failure.Disposition)
 	}
@@ -159,105 +171,123 @@ func (service *Service) Execute(
 			runtimev1.ErrorCode_ERROR_CODE_INTERNAL,
 			runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY,
 		)
-		service.finish(service.provider.Snapshot(), RecycleProtocolFailure, true)
-		return result
+		return service.finishResult(
+			lease.id, result, service.provider.Snapshot(), RecycleProtocolFailure, true,
+		)
 	}
 	missing := missingCapabilities(bound.plan.RequiredCapabilities, capabilities)
 	if len(missing) != 0 {
 		result := unsupportedResult(missing)
-		service.finish(service.provider.Snapshot(), RecycleNone, true)
-		return result
+		return service.finishResult(
+			lease.id, result, service.provider.Snapshot(), RecycleNone, true,
+		)
 	}
 
-	session, openFailure := service.provider.OpenSession(ctx, SessionLimits{
+	session, openFailure := service.provider.OpenSession(lease.ctx, SessionLimits{
 		ActiveSessionTTLMS:  service.config.ActiveSessionTTLMS,
 		MaxOriginOperations: service.config.MaxOriginOperations,
 		MaxRequests:         service.config.MaxRequests,
 		MaxTransferBytes:    service.config.MaxTransferBytes,
 	})
+	if contextFailure := contextProviderFailure(lease.ctx.Err()); contextFailure != nil {
+		cleanupOK := true
+		if session != nil {
+			cleanupContext, cancelCleanup := service.cleanupContext()
+			cleanupOK = session.Close(cleanupContext) == nil
+			cleanupOK = cleanupOK && cleanupContext.Err() == nil
+			cancelCleanup()
+		}
+		result := failureResult(contextFailure.Code, contextFailure.Disposition)
+		return service.finishResult(
+			lease.id, result, service.provider.Snapshot(), RecycleNone, cleanupOK,
+		)
+	}
 	if openFailure != nil || session == nil {
 		if session != nil {
-			cleanupContext, cancelCleanup := context.WithTimeout(
-				context.Background(),
-				time.Duration(service.config.ShutdownGraceMS)*time.Millisecond,
-			)
+			cleanupContext, cancelCleanup := service.cleanupContext()
 			_ = session.Close(cleanupContext)
 			cancelCleanup()
-			service.finish(service.provider.Snapshot(), RecycleProtocolFailure, false)
-			return failureResult(
+			result := failureResult(
 				runtimev1.ErrorCode_ERROR_CODE_INTERNAL,
 				runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY,
+			)
+			return service.finishResult(
+				lease.id, result, service.provider.Snapshot(), RecycleProtocolFailure, false,
 			)
 		}
 		validated, recycle := validatedFailure(openFailure)
 		result := failureResult(validated.Code, validated.Disposition)
-		service.finish(service.provider.Snapshot(), recycle, true)
-		return result
+		return service.finishResult(
+			lease.id, result, service.provider.Snapshot(), recycle, true,
+		)
 	}
 
-	executeContext, cancelExecute := context.WithTimeout(
-		ctx,
-		time.Duration(service.config.ActiveSessionTTLMS)*time.Millisecond,
-	)
-	outcome := session.Execute(executeContext, bound)
-	executeContextError := executeContext.Err()
-	cancelExecute()
-	cleanupContext, cancelCleanup := context.WithTimeout(
-		context.Background(),
-		time.Duration(service.config.ShutdownGraceMS)*time.Millisecond,
-	)
+	outcome := session.Execute(lease.ctx, bound)
+	executeContextError := lease.ctx.Err()
+	cleanupContext, cancelCleanup := service.cleanupContext()
 	cleanupFailure := session.Close(cleanupContext)
+	cleanupContextError := cleanupContext.Err()
 	cancelCleanup()
 	postSnapshot := service.provider.Snapshot()
 
-	if cleanupFailure != nil {
-		service.finish(postSnapshot, RecycleCleanupFailure, false)
-		return failureResult(
+	if cleanupFailure != nil || cleanupContextError != nil {
+		result := failureResult(
 			runtimev1.ErrorCode_ERROR_CODE_INTERNAL,
 			runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY,
 		)
+		return service.finishResult(
+			lease.id, result, postSnapshot, RecycleCleanupFailure, false,
+		)
 	}
 	if executeContextError != nil {
-		service.finish(postSnapshot, RecycleNone, true)
+		var result *runtimev1.BrowserResult
 		if errors.Is(executeContextError, context.DeadlineExceeded) {
-			return failureResult(
+			result = failureResult(
 				runtimev1.ErrorCode_ERROR_CODE_TIMEOUT,
 				runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY,
 			)
+		} else {
+			result = failureResult(
+				runtimev1.ErrorCode_ERROR_CODE_CANCELLED,
+				runtimev1.ErrorDisposition_ERROR_DISPOSITION_CANCELLED_POLICY,
+			)
 		}
-		return failureResult(
-			runtimev1.ErrorCode_ERROR_CODE_CANCELLED,
-			runtimev1.ErrorDisposition_ERROR_DISPOSITION_CANCELLED_POLICY,
+		return service.finishResult(
+			lease.id, result, postSnapshot, RecycleNone, true,
 		)
 	}
 	if outcome.BindingFingerprint != bound.fingerprint ||
 		(outcome.Success == nil) == (outcome.Failure == nil) {
-		service.finish(postSnapshot, RecycleProtocolFailure, true)
-		return failureResult(
+		result := failureResult(
 			runtimev1.ErrorCode_ERROR_CODE_INTERNAL,
 			runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY,
+		)
+		return service.finishResult(
+			lease.id, result, postSnapshot, RecycleProtocolFailure, true,
 		)
 	}
 	if outcome.Failure != nil {
 		validated, recycle := validatedFailure(outcome.Failure)
-		service.finish(postSnapshot, recycle, true)
-		return failureResult(validated.Code, validated.Disposition)
+		result := failureResult(validated.Code, validated.Disposition)
+		return service.finishResult(lease.id, result, postSnapshot, recycle, true)
 	}
 	if !service.successWithinLimits(bound.plan, outcome.Success) {
-		service.finish(postSnapshot, RecycleProtocolFailure, true)
-		return failureResult(
+		result := failureResult(
 			runtimev1.ErrorCode_ERROR_CODE_RESOURCE_LIMIT,
 			runtimev1.ErrorDisposition_ERROR_DISPOSITION_DEFER_POLICY,
+		)
+		return service.finishResult(
+			lease.id, result, postSnapshot, RecycleProtocolFailure, true,
 		)
 	}
 
 	success := proto.Clone(outcome.Success).(*runtimev1.BrowserSuccess)
-	service.finish(postSnapshot, RecycleNone, true)
-	return &runtimev1.BrowserResult{
+	result := &runtimev1.BrowserResult{
 		ContractVersion: runtimeContractVersionV1,
 		Backend:         runtimev1.BrowserBackend_BROWSER_BACKEND_CHROMIUM,
 		Outcome:         &runtimev1.BrowserResult_Success{Success: success},
 	}
+	return service.finishResult(lease.id, result, postSnapshot, RecycleNone, true)
 }
 
 func (service *Service) successWithinLimits(
@@ -272,7 +302,7 @@ func (service *Service) successWithinLimits(
 		len(success.Artifacts) > int(service.config.MaxRequests) {
 		return false
 	}
-	return true
+	return declaredSuccessBytesWithinLimit(success, service.config.MaxTransferBytes)
 }
 
 // Shutdown rejects new work and waits only for sessions already owned by this
@@ -284,15 +314,30 @@ func (service *Service) Shutdown(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	service.mu.Lock()
-	service.shuttingDown = true
-	idle := service.idle
-	service.mu.Unlock()
-
-	grace, cancel := context.WithTimeout(
-		ctx,
-		time.Duration(service.config.ShutdownGraceMS)*time.Millisecond,
+	candidate, cancelCandidate := context.WithTimeout(
+		ctx, time.Duration(service.config.ShutdownGraceMS)*time.Millisecond,
 	)
+	candidateDeadline, _ := candidate.Deadline()
+	cancelCandidate()
+
+	service.mu.Lock()
+	if !service.shuttingDown {
+		service.shuttingDown = true
+		service.shutdownDeadline = candidateDeadline
+		service.lifecycleVersion++
+	}
+	deadline := service.shutdownDeadline
+	idle := service.idle
+	cancels := make([]context.CancelFunc, 0, len(service.activeTasks))
+	for _, cancelTask := range service.activeTasks {
+		cancels = append(cancels, cancelTask)
+	}
+	service.mu.Unlock()
+	for _, cancelTask := range cancels {
+		cancelTask()
+	}
+
+	grace, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
 	select {
 	case <-idle:
@@ -300,6 +345,17 @@ func (service *Service) Shutdown(ctx context.Context) error {
 	case <-grace.Done():
 		return ErrShutdownTimeout
 	}
+}
+
+func (service *Service) cleanupContext() (context.Context, context.CancelFunc) {
+	deadline := time.Now().Add(time.Duration(service.config.ShutdownGraceMS) * time.Millisecond)
+	service.mu.Lock()
+	if service.shuttingDown && !service.shutdownDeadline.IsZero() &&
+		service.shutdownDeadline.Before(deadline) {
+		deadline = service.shutdownDeadline
+	}
+	service.mu.Unlock()
+	return context.WithDeadline(context.Background(), deadline)
 }
 
 func (service *Service) bind(input *runtimev1.BrowserExecutionInput) (BoundTask, *ProviderFailure) {
@@ -336,24 +392,35 @@ func (service *Service) bind(input *runtimev1.BrowserExecutionInput) (BoundTask,
 	}, nil
 }
 
-func (service *Service) acquire(snapshot ProcessSnapshot) (*ProviderFailure, RecycleReason, bool) {
+func (service *Service) acquire(
+	ctx context.Context,
+	snapshot ProcessSnapshot,
+) (taskLease, *ProviderFailure, RecycleReason, bool) {
+	taskContext, cancelTask := context.WithTimeout(
+		ctx, time.Duration(service.config.ActiveSessionTTLMS)*time.Millisecond,
+	)
 	service.mu.Lock()
-	defer service.mu.Unlock()
 	service.snapshot = snapshot
 	if service.shuttingDown {
-		return &ProviderFailure{
+		service.mu.Unlock()
+		cancelTask()
+		return taskLease{}, &ProviderFailure{
 			Code:        runtimev1.ErrorCode_ERROR_CODE_CANCELLED,
 			Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_CANCELLED_POLICY,
 		}, RecycleNone, false
 	}
 	if service.recycleReason != RecycleNone {
-		return &ProviderFailure{
+		service.mu.Unlock()
+		cancelTask()
+		return taskLease{}, &ProviderFailure{
 			Code:        runtimev1.ErrorCode_ERROR_CODE_RESOURCE_LIMIT,
 			Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_DEFER_POLICY,
 		}, service.recycleReason, false
 	}
 	if !snapshot.PinsExact {
-		return &ProviderFailure{
+		service.mu.Unlock()
+		cancelTask()
+		return taskLease{}, &ProviderFailure{
 			Code:        runtimev1.ErrorCode_ERROR_CODE_INVALID_CONFIG,
 			Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_INVALID_CONFIG_POLICY,
 		}, RecycleNone, false
@@ -367,10 +434,15 @@ func (service *Service) acquire(snapshot ProcessSnapshot) (*ProviderFailure, Rec
 			disposition = runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY
 		}
 		service.recycleReason = recycle
-		return &ProviderFailure{Code: code, Disposition: disposition}, recycle, false
+		service.lifecycleVersion++
+		service.mu.Unlock()
+		cancelTask()
+		return taskLease{}, &ProviderFailure{Code: code, Disposition: disposition}, recycle, false
 	}
 	if service.active >= service.config.MaxConcurrency {
-		return &ProviderFailure{
+		service.mu.Unlock()
+		cancelTask()
+		return taskLease{}, &ProviderFailure{
 			Code:        runtimev1.ErrorCode_ERROR_CODE_RESOURCE_LIMIT,
 			Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_DEFER_POLICY,
 		}, RecycleNone, false
@@ -378,17 +450,67 @@ func (service *Service) acquire(snapshot ProcessSnapshot) (*ProviderFailure, Rec
 	if service.active == 0 {
 		service.idle = make(chan struct{})
 	}
+	service.nextTaskID++
+	if service.nextTaskID == 0 {
+		service.nextTaskID++
+	}
+	taskID := service.nextTaskID
+	service.activeTasks[taskID] = cancelTask
 	service.active++
-	return nil, RecycleNone, true
+	service.lifecycleVersion++
+	service.mu.Unlock()
+	return taskLease{id: taskID, ctx: taskContext}, nil, RecycleNone, true
 }
 
-func (service *Service) finish(snapshot ProcessSnapshot, reason RecycleReason, cleanupOK bool) {
+func (service *Service) finishResult(
+	taskID uint64,
+	result *runtimev1.BrowserResult,
+	snapshot ProcessSnapshot,
+	reason RecycleReason,
+	cleanupOK bool,
+) *runtimev1.BrowserResult {
+	if lifecycleFailure := service.finish(taskID, snapshot, reason, cleanupOK); lifecycleFailure != nil {
+		return failureResult(lifecycleFailure.Code, lifecycleFailure.Disposition)
+	}
+	return result
+}
+
+func (service *Service) finish(
+	taskID uint64,
+	snapshot ProcessSnapshot,
+	reason RecycleReason,
+	cleanupOK bool,
+) *ProviderFailure {
 	service.mu.Lock()
 	service.snapshot = snapshot
+	cancelTask, exists := service.activeTasks[taskID]
+	if exists {
+		delete(service.activeTasks, taskID)
+		if service.active > 0 {
+			service.active--
+		}
+		service.completedTasks++
+	}
+	postReason := service.snapshotRecycleReason(snapshot)
+	var lifecycleFailure *ProviderFailure
+	if postReason == RecycleSessionLeak || postReason == RecycleTargetLeak {
+		cleanupOK = false
+		if reason == RecycleNone {
+			reason = postReason
+		}
+	}
+	if !cleanupOK {
+		lifecycleFailure = &ProviderFailure{
+			Code:        runtimev1.ErrorCode_ERROR_CODE_INTERNAL,
+			Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY,
+		}
+		if reason == RecycleNone {
+			reason = RecycleCleanupFailure
+		}
+	}
 	service.lastCleanupOK = cleanupOK
-	service.completedTasks++
 	if reason == RecycleNone {
-		reason = service.snapshotRecycleReason(snapshot)
+		reason = postReason
 	}
 	if reason == RecycleNone && service.completedTasks >= service.config.RecycleAfterTasks {
 		reason = RecycleTaskLimit
@@ -396,11 +518,8 @@ func (service *Service) finish(snapshot ProcessSnapshot, reason RecycleReason, c
 	if service.recycleReason == RecycleNone && reason != RecycleNone {
 		service.recycleReason = reason
 	}
-	if service.active > 0 {
-		service.active--
-	}
 	idle := service.active == 0
-	if idle {
+	if idle && exists {
 		close(service.idle)
 	}
 	request := idle && service.recycleReason != RecycleNone && !service.recycleRequested
@@ -408,10 +527,15 @@ func (service *Service) finish(snapshot ProcessSnapshot, reason RecycleReason, c
 	if request {
 		service.recycleRequested = true
 	}
+	service.lifecycleVersion++
 	service.mu.Unlock()
+	if cancelTask != nil {
+		cancelTask()
+	}
 	if request {
 		service.provider.RequestRecycle(requestedReason)
 	}
+	return lifecycleFailure
 }
 
 func (service *Service) requestRecycleIfIdle(reason RecycleReason) {
@@ -421,6 +545,7 @@ func (service *Service) requestRecycleIfIdle(reason RecycleReason) {
 	service.mu.Lock()
 	if service.recycleReason == RecycleNone {
 		service.recycleReason = reason
+		service.lifecycleVersion++
 	}
 	request := service.active == 0 && !service.recycleRequested
 	requestedReason := service.recycleReason
@@ -431,6 +556,110 @@ func (service *Service) requestRecycleIfIdle(reason RecycleReason) {
 	if request {
 		service.provider.RequestRecycle(requestedReason)
 	}
+}
+
+func contextProviderFailure(err error) *ProviderFailure {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return &ProviderFailure{
+			Code:        runtimev1.ErrorCode_ERROR_CODE_TIMEOUT,
+			Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY,
+		}
+	}
+	return &ProviderFailure{
+		Code:        runtimev1.ErrorCode_ERROR_CODE_CANCELLED,
+		Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_CANCELLED_POLICY,
+	}
+}
+
+func declaredSuccessBytesWithinLimit(success *runtimev1.BrowserSuccess, limit uint64) bool {
+	type artifactDeclaration struct {
+		mediaType string
+		sizeBytes uint64
+		sha256    string
+		redacted  bool
+	}
+	total := uint64(0)
+	artifacts := make(map[string]artifactDeclaration)
+	add := func(value uint64) bool {
+		if total > limit || value > limit-total {
+			return false
+		}
+		total += value
+		return true
+	}
+	artifact := func(value *runtimev1.ArtifactHandle) bool {
+		if value == nil || value.Handle == "" {
+			return false
+		}
+		if previous, exists := artifacts[value.Handle]; exists {
+			return previous.mediaType == value.MediaType &&
+				previous.sizeBytes == value.SizeBytes &&
+				previous.sha256 == value.Sha256 &&
+				previous.redacted == value.Redacted
+		}
+		artifacts[value.Handle] = artifactDeclaration{
+			mediaType: value.MediaType,
+			sizeBytes: value.SizeBytes,
+			sha256:    value.Sha256,
+			redacted:  value.Redacted,
+		}
+		return add(value.SizeBytes)
+	}
+	manifest := func(value *runtimev1.ChunkManifest) bool {
+		if value == nil || !value.Complete {
+			return false
+		}
+		chunkTotal := uint64(0)
+		for sequence, chunk := range value.Chunks {
+			if chunk == nil || chunk.Sequence != uint32(sequence) ||
+				chunkTotal > ^uint64(0)-chunk.SizeBytes {
+				return false
+			}
+			chunkTotal += chunk.SizeBytes
+		}
+		if chunkTotal != value.TotalSizeBytes {
+			return false
+		}
+		for _, chunk := range value.Chunks {
+			switch storage := chunk.Storage.(type) {
+			case *runtimev1.DataChunk_InlineBody:
+				if uint64(len(storage.InlineBody)) != chunk.SizeBytes || !add(chunk.SizeBytes) {
+					return false
+				}
+			case *runtimev1.DataChunk_Artifact:
+				if storage.Artifact == nil || storage.Artifact.SizeBytes != chunk.SizeBytes ||
+					!artifact(storage.Artifact) {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+		return true
+	}
+	if success.Html != nil && !manifest(success.Html) {
+		return false
+	}
+	for _, capture := range success.Captures {
+		if capture == nil || !manifest(capture.Body) {
+			return false
+		}
+	}
+	for _, evaluation := range success.Evaluations {
+		if evaluation == nil || evaluation.Value == nil ||
+			!add(uint64(len(evaluation.Value.Payload))) {
+			return false
+		}
+	}
+	for _, handle := range success.Artifacts {
+		if !artifact(handle) {
+			return false
+		}
+	}
+	return true
 }
 
 func normalizedCapabilities(

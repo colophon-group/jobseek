@@ -88,6 +88,21 @@ var chromiumServiceRequiredCaseIDs = []string{
 	"reject_config_null_digest",
 	"reject_open_error_with_session",
 	"recycle_post_task_rss_limit",
+	"error_active_shutdown_cancels_and_closes",
+	"error_active_shutdown_cleanup_failure",
+	"error_post_cleanup_session_leak",
+	"error_post_cleanup_target_leak",
+	"reject_idle_process_crash_health",
+	"reject_idle_pin_mismatch_health",
+	"reject_idle_resource_health",
+	"error_declared_artifact_transfer_limit",
+	"error_declared_manifest_transfer_limit",
+	"error_declared_transfer_overflow",
+	"error_no_same_backend_retry_after_timeout",
+	"unsupported_no_lightpanda_fallback",
+	"error_no_second_invocation_after_failure",
+	"reject_origin_before_assignment_validation",
+	"accept_cross_task_cookie_storage_target_context_assignment_isolation",
 }
 
 type corpusCase struct {
@@ -109,6 +124,7 @@ type corpusDecision struct {
 	Code          string        `json:"code"`
 	ExecuteCalls  int           `json:"execute_calls"`
 	HealthReason  HealthReason  `json:"health_reason"`
+	StateLeaks    int           `json:"state_leaks"`
 	OpenCalls     int           `json:"open_calls"`
 	OriginCalls   int           `json:"origin_calls"`
 	Outcome       string        `json:"outcome"`
@@ -249,6 +265,22 @@ func runCorpusCase(t *testing.T, input map[string]any) corpusDecision {
 		if resultCode(first) != "success" {
 			t.Fatalf("first saturated task = %v", first)
 		}
+	case "active_shutdown":
+		provider.entered = make(chan struct{})
+		provider.release = make(chan struct{})
+		done := make(chan *runtimev1.BrowserResult, 1)
+		go func() {
+			done <- service.Execute(context.Background(), runtimeInput)
+		}()
+		<-provider.entered
+		if err := service.Shutdown(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		result = <-done
+	case "idle_health":
+		provider.mu.Lock()
+		provider.useAfter = true
+		provider.mu.Unlock()
 	default:
 		ctx := context.Background()
 		if corpusBool(input, "context_cancelled") {
@@ -266,12 +298,17 @@ func runCorpusCase(t *testing.T, input map[string]any) corpusDecision {
 		Code:          resultCode(result),
 		ExecuteCalls:  provider.executeCalls,
 		HealthReason:  health.Reason,
+		StateLeaks:    provider.isolationFailures,
 		OpenCalls:     provider.openCalls,
 		OriginCalls:   provider.origins,
 		Outcome:       resultOutcome(result),
 		Ready:         health.Ready,
 		RecycleCalls:  len(provider.recycleCalls),
 		RecycleReason: health.RecycleReason,
+	}
+	if mode == "idle_health" {
+		decision.Code = "health_only"
+		decision.Outcome = "health"
 	}
 	provider.mu.Unlock()
 	if decision.ExecuteCalls > decision.OpenCalls || decision.OpenCalls > 2 {
