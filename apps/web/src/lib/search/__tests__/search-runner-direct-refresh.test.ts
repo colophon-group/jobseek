@@ -136,8 +136,10 @@ describe("browser-direct shell refreshes", () => {
     expect(mocks.serverGetWatchlistYearCount).not.toHaveBeenCalled();
   });
 
-  it("keeps the watchlist shell on browser failure without a server fallback", async () => {
-    mocks.browserWatchlistPostings.mockRejectedValue(new Error("unavailable"));
+  it("keeps the watchlist shell when browser validation rejects a malformed success", async () => {
+    mocks.browserWatchlistPostings.mockRejectedValue(
+      new Error("Typesense response was malformed"),
+    );
     mocks.browserWatchlistYearCount.mockResolvedValue(19);
     const { tryGetWatchlistSnapshotDirect } = await import("../search-runner");
 

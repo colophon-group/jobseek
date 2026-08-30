@@ -100,4 +100,60 @@ describe("getWatchlistPostingsBrowser (#3477)", () => {
       "Switzerland",
     ]);
   });
+
+  it.each([
+    ["a missing found count", { hits: [] }],
+    ["a fractional found count", { found: 1.5, hits: [] }],
+    ["missing hits for a non-empty page", { found: 1 }],
+    ["a non-object hit", { found: 1, hits: [null] }],
+  ])("rejects HTTP-200 search payloads with %s", async (_label, payload) => {
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => payload,
+    } as Response);
+
+    await expect(
+      getWatchlistPostingsBrowser({
+        companyIds: [makeUuid(1)],
+        offset: 0,
+        limit: 20,
+      }),
+    ).rejects.toThrow("Typesense response was malformed");
+  });
+
+  it.each([
+    ["id", { first_seen_at: 1_700_000_000 }],
+    ["first_seen_at", { id: "posting-1" }],
+    ["company field type", {
+      id: "posting-1",
+      first_seen_at: 1_700_000_000,
+      company_name: 42,
+    }],
+  ])("rejects HTTP-200 hits with an invalid %s", async (_label, document) => {
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => ({ found: 1, hits: [{ document }] }),
+    } as Response);
+
+    await expect(
+      getWatchlistPostingsBrowser({
+        companyIds: [makeUuid(1)],
+        offset: 0,
+        limit: 20,
+      }),
+    ).rejects.toThrow("Typesense response was malformed");
+  });
+
+  it("rejects an HTTP-200 year count without a valid found field", async () => {
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    } as Response);
+
+    await expect(
+      getWatchlistPostingYearCountBrowser({
+        companyIds: [makeUuid(1)],
+      }),
+    ).rejects.toThrow("Typesense response was malformed");
+  });
 });

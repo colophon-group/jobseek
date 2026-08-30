@@ -15,14 +15,14 @@ import { normalizePostingTitle } from "@/lib/posting-title";
 
 interface JobPostingDoc {
   id: string;
-  title?: string;
-  source_url?: string;
-  first_seen_at?: number;
-  is_active?: boolean;
-  company_id?: string;
-  company_name?: string;
-  company_slug?: string;
-  company_icon?: string;
+  title?: string | null;
+  source_url?: string | null;
+  first_seen_at: number;
+  is_active?: boolean | null;
+  company_id?: string | null;
+  company_name?: string | null;
+  company_slug?: string | null;
+  company_icon?: string | null;
   location_names?: string[];
 }
 
@@ -30,16 +30,16 @@ interface SearchHit<T> {
   document: T;
 }
 
-interface RawSearchResponse<T> {
-  found?: number;
-  hits?: SearchHit<T>[];
+interface RawSearchResponse {
+  found: number;
+  hits?: SearchHit<Record<string, unknown>>[];
 }
 
-async function searchOne<T>(
+async function searchOne(
   cfg: TypesenseBrowserConfig,
   collection: string,
   params: Record<string, unknown>,
-): Promise<RawSearchResponse<T>> {
+): Promise<unknown> {
   const url = `${cfg.protocol}://${cfg.host}:${cfg.port}/collections/${collection}/documents/search`;
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -57,7 +57,62 @@ async function searchOne<T>(
   return res.json();
 }
 
-function mapHit(doc: JobPostingDoc): WatchlistPostingEntry {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function assertSearchResponse(
+  value: unknown,
+  options: { expectHits?: boolean } = {},
+): asserts value is RawSearchResponse {
+  if (!isRecord(value)) throw new Error("Typesense response was malformed");
+  const found = value.found;
+  if (typeof found !== "number" || !Number.isInteger(found) || found < 0) {
+    throw new Error("Typesense response was malformed");
+  }
+  const hits = value.hits;
+  if (hits !== undefined && !Array.isArray(hits)) {
+    throw new Error("Typesense response was malformed");
+  }
+  if (options.expectHits && found > 0 && !Array.isArray(hits)) {
+    throw new Error("Typesense response was malformed");
+  }
+  if (
+    Array.isArray(hits) &&
+    hits.some((hit) => !isRecord(hit) || !isRecord(hit.document))
+  ) {
+    throw new Error("Typesense response was malformed");
+  }
+}
+
+function assertJobPostingDoc(
+  value: Record<string, unknown>,
+): asserts value is Record<string, unknown> & JobPostingDoc {
+  const optionalString = (candidate: unknown) =>
+    candidate == null || typeof candidate === "string";
+  if (
+    typeof value.id !== "string" ||
+    !optionalString(value.title) ||
+    !optionalString(value.source_url) ||
+    typeof value.first_seen_at !== "number" ||
+    !Number.isFinite(value.first_seen_at) ||
+    (value.is_active != null && typeof value.is_active !== "boolean") ||
+    !optionalString(value.company_id) ||
+    !optionalString(value.company_name) ||
+    !optionalString(value.company_slug) ||
+    !optionalString(value.company_icon)
+  ) {
+    throw new Error("Typesense response was malformed");
+  }
+
+  const firstSeenAt = new Date(value.first_seen_at * 1000);
+  if (!Number.isFinite(firstSeenAt.getTime())) {
+    throw new Error("Typesense response was malformed");
+  }
+}
+
+function mapHit(doc: Record<string, unknown>): WatchlistPostingEntry {
+  assertJobPostingDoc(doc);
   return {
     id: doc.id,
     title: normalizePostingTitle(doc.title),
@@ -148,12 +203,13 @@ export async function getWatchlistPostingsBrowser(
   }
 
   const cfg = await getTypesenseBrowserConfig();
-  const result = await searchOne<JobPostingDoc>(cfg, "job_posting", searchParams);
+  const result = await searchOne(cfg, "job_posting", searchParams);
+  assertSearchResponse(result, { expectHits: params.limit !== 0 });
 
-  const total = result.found ?? 0;
+  const total = result.found;
   if (total === 0 || params.limit === 0) return { postings: [], total };
   return {
-    postings: (result.hits ?? []).map((h) => mapHit(h.document)),
+    postings: (result.hits ?? []).map((hit) => mapHit(hit.document)),
     total,
   };
 }
@@ -202,10 +258,7 @@ export async function getWatchlistPostingYearCountBrowser(
   }
 
   const cfg = await getTypesenseBrowserConfig();
-  const result = await searchOne<JobPostingDoc>(
-    cfg,
-    "job_posting",
-    searchParams,
-  );
-  return result.found ?? 0;
+  const result = await searchOne(cfg, "job_posting", searchParams);
+  assertSearchResponse(result);
+  return result.found;
 }
