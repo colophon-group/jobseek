@@ -1,3 +1,5 @@
+import { getLanguage } from "@/lib/job-languages";
+
 /**
  * Name of the non-httpOnly "hint" cookie that mirrors the presence of a
  * Better Auth session cookie. It carries no security meaning — the real
@@ -61,6 +63,59 @@ export function hasLoggedInHint(): boolean {
 export function hasAnonJobLanguagesHint(): boolean {
   if (typeof document === "undefined") return false;
   return hasCookieNamed(document.cookie, JOB_LANGUAGES_COOKIE);
+}
+
+const MAX_JOB_LANGUAGES_COOKIE_LENGTH = 1024;
+const MAX_JOB_LANGUAGE_PREFERENCES = 32;
+
+/** Read one cookie value from a Cookie-header-style string. */
+export function readCookieValue(cookieHeader: string, name: string): string | null {
+  if (!cookieHeader) return null;
+  for (const raw of cookieHeader.split(";")) {
+    const part = raw.trim();
+    const separator = part.indexOf("=");
+    if (separator < 0 || part.slice(0, separator) !== name) continue;
+    const value = part.slice(separator + 1);
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Parse the client-readable anonymous job-language preference without a
+ * Server Action. The cookie remains untrusted: bound its size/count and accept
+ * only the same known language codes as the server-side reader.
+ */
+export function readAnonJobLanguagesPreference(
+  cookieHeader = typeof document === "undefined" ? "" : document.cookie,
+): string[] | null {
+  const raw = readCookieValue(cookieHeader, JOB_LANGUAGES_COOKIE);
+  if (!raw || raw.length > MAX_JOB_LANGUAGES_COOKIE_LENGTH) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed) || parsed.length > MAX_JOB_LANGUAGE_PREFERENCES) {
+    return null;
+  }
+
+  const values: string[] = [];
+  const seen = new Set<string>();
+  for (const item of parsed) {
+    if (typeof item !== "string") return null;
+    if (item !== "*" && getLanguage(item) == null) return null;
+    if (seen.has(item)) continue;
+    seen.add(item);
+    values.push(item);
+  }
+  return values;
 }
 
 /**
