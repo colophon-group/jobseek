@@ -216,9 +216,7 @@ class FlattenParser(HTMLParser):
             # configuration-driven extractors can distinguish title, location,
             # and description cells after structural table tags are flattened.
             if "data-title" not in attr_dict:
-                for _ancestor_tag, ancestor_attrs, ancestor_skipped in reversed(
-                    self._stack[:-1]
-                ):
+                for _ancestor_tag, ancestor_attrs, ancestor_skipped in reversed(self._stack[:-1]):
                     if not ancestor_skipped and "data-title" in ancestor_attrs:
                         attr_dict = {**attr_dict, "data-title": ancestor_attrs["data-title"]}
                         break

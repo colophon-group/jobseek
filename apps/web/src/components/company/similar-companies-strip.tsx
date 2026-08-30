@@ -10,6 +10,7 @@ import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { getSimilarCompanies, type SimilarCompany } from "@/lib/actions/company";
+import { tryGetSimilarCompaniesDirect } from "@/lib/search/search-runner";
 import type { Locale } from "@/lib/i18n";
 import {
   searchFilterParamsToObject,
@@ -24,8 +25,6 @@ type Props = {
   initialHasMore: boolean;
   /** True when anonymous-user pagination cap is already reached on page 0. */
   initialTruncated?: boolean;
-  /** True when the cached route snapshot already resolved unfiltered page 0. */
-  initialPageLoaded?: boolean;
   locale: Locale;
 };
 
@@ -37,7 +36,6 @@ export function SimilarCompaniesStrip({
   initialCompanies,
   initialHasMore,
   initialTruncated = false,
-  initialPageLoaded = false,
   locale,
 }: Props) {
   const { t } = useLingui();
@@ -50,11 +48,6 @@ export function SimilarCompaniesStrip({
     () => searchFilterParamsToObject(new URLSearchParams(paramsKey)),
     [paramsKey],
   );
-  // The server snapshot is unfiltered. Suppress the inaugural read when it
-  // matches the current URL, including a legitimate empty result. A filtered
-  // entry URL still fetches its filtered ranking after hydration.
-  const skipNextFetch = useRef(initialPageLoaded && paramsKey === "");
-
   const [companies, setCompanies] = useState<SimilarCompany[]>(initialCompanies);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [truncated, setTruncated] = useState(initialTruncated);
@@ -64,31 +57,30 @@ export function SimilarCompaniesStrip({
   // a filter on the search toolbar). Counts on each card stay in sync
   // with the same filter state that drives the postings list.
   useEffect(() => {
-    if (skipNextFetch.current) {
-      skipNextFetch.current = false;
-      return;
-    }
-    // When a user clears filters, restore the already-resolved unfiltered
-    // snapshot instead of creating another Server Action read.
-    if (initialPageLoaded && paramsKey === "") {
-      setCompanies(initialCompanies);
-      setHasMore(initialHasMore);
-      setTruncated(initialTruncated);
-      scrollRef.current?.scrollTo({ left: 0 });
-      return;
-    }
+    const currentIndustryId = industryId;
+    if (currentIndustryId == null) return;
     let cancelled = false;
     (async () => {
-      const next = await getSimilarCompanies(companyId, industryId, {
-        offset: 0,
-        limit: PAGE_SIZE,
-        searchParams: spObject,
-        locale,
-      });
-      if (cancelled) return;
+      // A one-day shell must not pin posting-derived rankings for a day. The
+      // unfiltered refresh talks to Typesense from the browser and deliberately
+      // returns null on failure, preserving the snapshot without consuming
+      // Fluid CPU. Filtered, user-driven changes retain the Server Action path.
+      const next = paramsKey === ""
+        ? await tryGetSimilarCompaniesDirect({
+            companyId,
+            industryId: currentIndustryId,
+            limit: PAGE_SIZE,
+          })
+        : await getSimilarCompanies(companyId, currentIndustryId, {
+            offset: 0,
+            limit: PAGE_SIZE,
+            searchParams: spObject,
+            locale,
+          });
+      if (!next || cancelled) return;
       setCompanies(next.companies);
       setHasMore(next.hasMore);
-      setTruncated(next.truncated ?? false);
+      setTruncated("truncated" in next && next.truncated === true);
       scrollRef.current?.scrollTo({ left: 0 });
     })();
     return () => {
@@ -98,10 +90,6 @@ export function SimilarCompaniesStrip({
     paramsKey,
     companyId,
     industryId,
-    initialCompanies,
-    initialHasMore,
-    initialPageLoaded,
-    initialTruncated,
     locale,
     spObject,
   ]);

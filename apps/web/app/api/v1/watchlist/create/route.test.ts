@@ -13,9 +13,14 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+  logExternalError: vi.fn(),
   parseSearchFilters: vi.fn(),
   searchJobs: vi.fn(),
   listTopCompanies: vi.fn(),
+}));
+
+vi.mock("@/lib/safe-external-error", () => ({
+  logExternalError: mocks.logExternalError,
 }));
 
 vi.mock("@/lib/services/search-input", () => ({
@@ -52,6 +57,7 @@ async function callRoute(qs: string) {
 
 describe("GET /api/v1/watchlist/create — filter params", () => {
   beforeEach(() => {
+    mocks.logExternalError.mockReset();
     mocks.parseSearchFilters.mockReset();
     mocks.parseSearchFilters.mockResolvedValue(emptyParsed);
     mocks.searchJobs.mockReset();
@@ -144,5 +150,49 @@ describe("GET /api/v1/watchlist/create — filter params", () => {
       matchingCompanies: 2,
       matchingJobs: 7,
     });
+  });
+
+  it("does not cache a degraded preview as a real empty result", async () => {
+    mocks.listTopCompanies.mockResolvedValue({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+
+    const { res, body } = await callRoute("?locale=en&title=Roles");
+
+    expect(res.status).toBe(500);
+    expect(body).toEqual({ error: "Search service unavailable" });
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Vercel-CDN-Cache-Control")).toBeNull();
+    expect(mocks.logExternalError).toHaveBeenCalledWith(
+      "error",
+      {
+        service: "typesense",
+        operation: "public_api_watchlist_create_degraded",
+      },
+      expect.any(Error),
+    );
+  });
+
+  it("returns a non-cacheable safe error when filter resolution fails", async () => {
+    const providerError = new Error("provider-internal-canary-do-not-expose");
+    mocks.parseSearchFilters.mockRejectedValue(providerError);
+
+    const { res, body } = await callRoute("?locale=en&title=Roles");
+
+    expect(res.status).toBe(500);
+    expect(body).toEqual({ error: "Search service unavailable" });
+    expect(JSON.stringify(body)).not.toContain("provider-internal-canary");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Vercel-CDN-Cache-Control")).toBeNull();
+    expect(mocks.logExternalError).toHaveBeenCalledWith(
+      "error",
+      {
+        service: "typesense",
+        operation: "public_api_watchlist_create_filters",
+      },
+      providerError,
+    );
   });
 });

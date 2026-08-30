@@ -119,11 +119,43 @@ describe("checkRateLimit — Redis bypass observability (#3175)", () => {
 });
 
 describe("apiResponse status contract (#3213)", () => {
-  it("uses 200 by default but honors explicit non-2xx status codes", async () => {
+  it("uses 200 by default, honors status codes, and is never cacheable", async () => {
     const { apiResponse } = await import("./_shared");
 
+    const response = apiResponse(
+      { error: "Bad request" },
+      {
+        rateLimit: { limit: 30, remaining: 29, reset: 12345 },
+        status: 400,
+      },
+    );
+
     expect(apiResponse({ ok: true }).status).toBe(200);
-    expect(apiResponse({ error: "Bad request" }, { status: 400 }).status).toBe(400);
+    expect(response.status).toBe(400);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("Vercel-CDN-Cache-Control")).toBeNull();
+    expect(response.headers.get("X-RateLimit-Remaining")).toBe("29");
+  });
+
+  it("caches deterministic successes only at Vercel and omits caller metadata", async () => {
+    const { sharedApiResponse } = await import("./_shared");
+
+    const response = sharedApiResponse(
+      { ok: true },
+      { maxAge: 3600 },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe(
+      "public, max-age=0, must-revalidate",
+    );
+    expect(response.headers.get("Vercel-CDN-Cache-Control")).toBe(
+      "public, max-age=3600",
+    );
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("X-RateLimit-Limit")).toBeNull();
+    expect(response.headers.get("X-RateLimit-Remaining")).toBeNull();
+    expect(response.headers.get("X-RateLimit-Reset")).toBeNull();
   });
 });
 
