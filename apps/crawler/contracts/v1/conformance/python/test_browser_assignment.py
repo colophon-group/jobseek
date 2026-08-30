@@ -40,8 +40,22 @@ REQUIRED_CASE_IDS = (
     "reject_fallback_chromium_to_lightpanda",
     "reject_fallback_lightpanda_to_chromium",
     "reject_invalid_routing_revision",
-    "reject_missing_assignment",
     "reject_missing_provider_invocation",
+    "reject_null_assignment",
+    "reject_null_assignment_backend",
+    "reject_null_assignment_capability_class",
+    "reject_null_assignment_routing_revision",
+    "reject_null_assignment_service_lane",
+    "reject_null_authoritative_partial_output",
+    "reject_null_origin_before_assignment",
+    "reject_null_origin_operations",
+    "reject_null_plan_capabilities",
+    "reject_null_provider_capabilities",
+    "reject_null_provider_invocations",
+    "reject_null_result",
+    "reject_null_result_backend",
+    "reject_null_result_outcome",
+    "reject_null_unsupported_capabilities",
     "reject_origin_before_assignment",
     "reject_oversized_routing_revision",
     "reject_provider_backend_mismatch",
@@ -205,6 +219,47 @@ def _parse_assignment(value: Any) -> Any | None:
     )
 
 
+def _required_assignment_shape(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == ASSIGNMENT_KEYS
+        and all(isinstance(value[name], str) for name in ASSIGNMENT_KEYS)
+    )
+
+
+def _required_string_list(value: Any) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def _required_input_types(value: dict[str, Any]) -> bool:
+    if not _required_assignment_shape(value["assignment"]):
+        return False
+    after = value["assignment_after_bind"]
+    if after is not None and not _required_assignment_shape(after):
+        return False
+    origin_operations = value["origin_operations"]
+    if (
+        not isinstance(value["origin_before_assignment"], bool)
+        or isinstance(origin_operations, bool)
+        or not isinstance(origin_operations, int)
+        or not _required_string_list(value["plan_capabilities"])
+        or not _required_string_list(value["provider_capabilities"])
+        or not _required_string_list(value["provider_invocations"])
+    ):
+        return False
+    result = value["result"]
+    if not isinstance(result, dict) or set(result) != RESULT_KEYS:
+        return False
+    error_code = result["error_code"]
+    return (
+        isinstance(result["backend"], str)
+        and (error_code is None or isinstance(error_code, str))
+        and isinstance(result["outcome"], str)
+        and isinstance(result["partial_output_present"], bool)
+        and _required_string_list(result["unsupported_capabilities"])
+    )
+
+
 def _derived_capability_class(capabilities: list[int]) -> int:
     identity_transport = {
         runtime_pb2.BROWSER_CAPABILITY_FRAMES,
@@ -259,9 +314,9 @@ def _build_result(raw: Any) -> Any | None:
 def evaluate_browser_boundary(input_value: dict[str, Any]) -> dict[str, str]:
     if set(input_value) != INPUT_KEYS:
         return _decision("rejected", "invalid_input")
-    result_raw = input_value["result"]
-    if not isinstance(result_raw, dict) or set(result_raw) != RESULT_KEYS:
+    if not _required_input_types(input_value):
         return _decision("rejected", "invalid_input")
+    result_raw = input_value["result"]
     origin_operations = input_value["origin_operations"]
     if isinstance(origin_operations, bool) or not isinstance(origin_operations, int):
         return _decision("rejected", "invalid_input")
@@ -365,7 +420,7 @@ def test_required_ids_are_independently_hard_coded_and_complete() -> None:
     assert tuple(manifest["required_case_ids"]) == REQUIRED_CASE_IDS
     ids = tuple(case["id"] for case in manifest["cases"])
     assert ids == REQUIRED_CASE_IDS
-    assert len(ids) == len(set(ids)) == 43
+    assert len(ids) == len(set(ids)) == 57
     assert all(set(case) == {"expected", "id", "input"} for case in manifest["cases"])
 
 

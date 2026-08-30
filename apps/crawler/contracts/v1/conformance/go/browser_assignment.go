@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"math"
 	"regexp"
 	"sort"
 )
@@ -211,6 +212,83 @@ func browserDecodeStrict(value map[string]any, output any) bool {
 	return decoder.Decode(&struct{}{}) == io.EOF
 }
 
+func browserRequiredString(object map[string]any, key string) bool {
+	_, ok := object[key].(string)
+	return ok
+}
+
+func browserRequiredStringList(value any) bool {
+	items, ok := value.([]any)
+	if !ok {
+		_, ok = value.([]string)
+		return ok
+	}
+	for _, item := range items {
+		if _, ok := item.(string); !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func browserRequiredInteger(value any) bool {
+	switch typed := value.(type) {
+	case float64:
+		return !math.IsInf(typed, 0) && !math.IsNaN(typed) && math.Trunc(typed) == typed
+	case int:
+		return true
+	default:
+		return false
+	}
+}
+
+func browserRequiredAssignmentShape(value any) bool {
+	object, ok := value.(map[string]any)
+	if !ok || !browserExactKeys(object, browserAssignmentKeys) {
+		return false
+	}
+	for _, key := range browserAssignmentKeys {
+		if !browserRequiredString(object, key) {
+			return false
+		}
+	}
+	return true
+}
+
+func browserRequiredInputTypes(value map[string]any) bool {
+	if !browserRequiredAssignmentShape(value["assignment"]) {
+		return false
+	}
+	if after := value["assignment_after_bind"]; after != nil && !browserRequiredAssignmentShape(after) {
+		return false
+	}
+	if _, ok := value["origin_before_assignment"].(bool); !ok {
+		return false
+	}
+	if !browserRequiredInteger(value["origin_operations"]) ||
+		!browserRequiredStringList(value["plan_capabilities"]) ||
+		!browserRequiredStringList(value["provider_capabilities"]) ||
+		!browserRequiredStringList(value["provider_invocations"]) {
+		return false
+	}
+	result, ok := value["result"].(map[string]any)
+	if !ok || !browserExactKeys(result, browserResultKeys) ||
+		!browserRequiredString(result, "backend") ||
+		!browserRequiredString(result, "outcome") ||
+		!browserRequiredStringList(result["unsupported_capabilities"]) {
+		return false
+	}
+	if _, ok := result["partial_output_present"].(bool); !ok {
+		return false
+	}
+	if errorCode := result["error_code"]; errorCode != nil {
+		if _, ok := errorCode.(string); !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func browserCloneJSON(value any) any {
 	switch typed := value.(type) {
 	case map[string]any:
@@ -387,7 +465,7 @@ func browserBuildResult(raw browserResultJSON) (*browserResult, bool) {
 
 func evaluateBrowserBoundary(inputValue map[string]any) browserBoundaryDecision {
 	if !browserExactKeys(inputValue, browserInputKeys) ||
-		!browserExactKeys(inputValue["result"], browserResultKeys) {
+		!browserRequiredInputTypes(inputValue) {
 		return browserDecision("rejected", "invalid_input")
 	}
 	var input browserBoundaryInputJSON
