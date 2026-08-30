@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Job Seek API",
-    "version": "1.1.0",
-    "description": "Public API for AI agents to search jobs, companies, watchlists, and taxonomies on jseek.co. Rate limited to 30 requests per minute per IP.\n\nIMPORTANT: Filter parameters (loc, occ, sen, tech) require exact slugs, NOT freetext. Use /api/v1/resolve to convert freetext to slugs first, or /api/v1/taxonomies to list all valid slugs. Passing freetext like loc=Zurich will NOT work — use loc=zurich (the slug)."
+    "version": "1.2.0",
+    "description": "Public API for AI agents to search jobs, companies, watchlists, and taxonomies on jseek.co. Anonymous GETs share a pre-cache edge budget of 60 requests per minute per IP with public-read Server Actions. Requests that execute an API origin additionally use a 30 requests per minute sliding limit. Successful deterministic responses may be served from Vercel's CDN; they omit caller-specific rate-limit headers. The edge may return HTTP 403 when its shared budget is exceeded, while the origin returns a non-cacheable HTTP 429 with reset metadata.\n\nIMPORTANT: Filter parameters (loc, occ, sen, tech) require exact slugs, NOT freetext. Use /api/v1/resolve to convert freetext to slugs first, or /api/v1/taxonomies to list all valid slugs. Passing freetext like loc=Zurich will NOT work — use loc=zurich (the slug)."
   },
   "servers": [{ "url": "https://jseek.co" }],
   "paths": {
@@ -95,6 +95,7 @@
               }
             }
           },
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" },
           "500": {
             "description": "Search provider failure. The message is user-safe and contains no provider detail.",
             "headers": {
@@ -248,6 +249,7 @@
             }
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" },
           "404": { "description": "Job posting not found" },
           "429": { "description": "Rate limit exceeded" }
         }
@@ -277,7 +279,8 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" }
         }
       }
     },
@@ -315,7 +318,8 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" }
         }
       }
     },
@@ -354,7 +358,8 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" }
         }
       }
     },
@@ -402,7 +407,8 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" }
         }
       }
     },
@@ -444,7 +450,8 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" }
         }
       }
     }
@@ -458,6 +465,9 @@
             "schema": { "$ref": "#/components/schemas/ErrorResponse" }
           }
         }
+      },
+      "EdgeRateLimited": {
+        "description": "The pre-cache Vercel WAF denied this request because the authoritative IP exceeded the shared 60 requests per 60 seconds public-read budget. This response is generated before the application route; its body, CORS headers, and origin rate-limit headers are not part of the JSON API contract. Retry after the fixed window."
       }
     },
     "schemas": {
