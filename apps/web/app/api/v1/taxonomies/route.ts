@@ -12,7 +12,13 @@ import {
 import { suggestIndustries } from "@/lib/services/company";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { withPublicApiObservability } from "@/lib/public-api-observability";
-import { checkRateLimit, apiResponse, parseApiLocale } from "../_shared";
+import {
+  checkRateLimit,
+  apiResponse,
+  apiProviderUnavailableResponse,
+  sharedApiResponse,
+  parseApiLocale,
+} from "../_shared";
 
 const VALID_TYPES = ["seniority", "occupations", "technologies", "industries"] as const;
 
@@ -28,36 +34,54 @@ async function handleGet(request: NextRequest) {
   if (!type || !VALID_TYPES.includes(type)) {
     return apiResponse(
       { error: `Missing or invalid 'type' param. Valid: ${VALID_TYPES.join(", ")}` },
-      { maxAge: 0, status: 400 },
+      { status: 400 },
     );
   }
 
   let items: unknown;
 
-  switch (type) {
-    case "seniority": {
-      const data = await getAllSeniorities(locale);
-      items = data.map((s) => ({ slug: s.slug, name: s.name }));
-      break;
+  try {
+    switch (type) {
+      case "seniority": {
+        const data = await getAllSeniorities(locale, undefined, {
+          failOnUnavailable: true,
+        });
+        items = data.map((s) => ({ slug: s.slug, name: s.name }));
+        break;
+      }
+      case "occupations": {
+        const data = await getAllOccupationsGrouped(locale, undefined, {
+          failOnUnavailable: true,
+        });
+        items = data;
+        break;
+      }
+      case "technologies": {
+        const data = await getAllTechnologiesGrouped(undefined, {
+          failOnUnavailable: true,
+        });
+        items = data;
+        break;
+      }
+      case "industries": {
+        const data = await suggestIndustries({
+          query: "",
+          locale,
+          failOnUnavailable: true,
+        });
+        items = data.map((i) => ({ id: i.id, name: i.name }));
+        break;
+      }
     }
-    case "occupations": {
-      const data = await getAllOccupationsGrouped(locale);
-      items = data;
-      break;
-    }
-    case "technologies": {
-      const data = await getAllTechnologiesGrouped();
-      items = data;
-      break;
-    }
-    case "industries": {
-      const data = await suggestIndustries({ query: "", locale });
-      items = data.map((i) => ({ id: i.id, name: i.name }));
-      break;
-    }
+  } catch (error) {
+    return apiProviderUnavailableResponse(
+      "public_api_taxonomies",
+      rl,
+      error,
+    );
   }
 
-  return apiResponse({ type, items }, { maxAge: CACHE_TTL_LONG, rateLimit: rl });
+  return sharedApiResponse({ type, items }, { maxAge: CACHE_TTL_LONG });
 }
 
 export const GET = withPublicApiObservability("taxonomies", handleGet);

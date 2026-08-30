@@ -14,6 +14,13 @@ from urllib.parse import urlparse
 
 import httpx
 
+from src.shared.egress import (
+    EgressAttribution,
+    current_egress_attribution,
+    record_origin_attempt,
+    record_origin_outcome,
+    record_response_body_bytes,
+)
 from src.shared.proxy import (
     ProxyProvider,
     ProxySelection,
@@ -306,25 +313,72 @@ def track_request_hosts() -> Iterator[RequestHostTracker]:
         _request_host_tracker.reset(token)
 
 
-class RequestHostTrackingTransport(httpx.AsyncBaseTransport):
-    """Record every post-SSRF-validation request host, including redirects."""
+class _EgressMeteredStream(httpx.AsyncByteStream):
+    """Count only response bytes actually yielded to the caller."""
 
-    def __init__(self, inner: httpx.AsyncBaseTransport) -> None:
+    def __init__(
+        self,
+        inner: httpx.AsyncByteStream,
+        attribution: EgressAttribution | None,
+        egress: str,
+    ) -> None:
         self._inner = inner
+        self._attribution = attribution
+        self._egress = egress
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        async for chunk in self._inner:
+            record_response_body_bytes(self._attribution, self._egress, len(chunk))
+            yield chunk
+
+    async def aclose(self) -> None:
+        await self._inner.aclose()
+
+
+class RequestHostTrackingTransport(httpx.AsyncBaseTransport):
+    """Record every post-SSRF-validation request host, including redirects.
+
+    Direct transports are metered here. Rotating proxy transports pass
+    ``egress=None`` and meter only after they acquire a usable lease and its
+    underlying transport, so pool exhaustion cannot look like origin traffic.
+    """
+
+    def __init__(
+        self,
+        inner: httpx.AsyncBaseTransport,
+        *,
+        egress: str | None = "direct",
+    ) -> None:
+        self._inner = inner
+        self._egress = egress
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         tracker = _request_host_tracker.get()
+        attribution = current_egress_attribution()
         host = request.url.host or ""
         if tracker is not None and host:
             tracker.note_request(host, str(request.url))
+        if self._egress is not None:
+            record_origin_attempt(attribution, self._egress)
         try:
             response = await self._inner.handle_async_request(request)
-        except httpx.TransportError as exc:
-            if tracker is not None and host:
+        except BaseException as exc:
+            # Every entered attempt must have exactly one terminal outcome.
+            # Cancellation and unexpected transport exits are included in the
+            # no-response bucket so conservation fails only on instrumentation
+            # defects, not on ordinary task cancellation.
+            if self._egress is not None:
+                record_origin_outcome(attribution, self._egress, "transport_error")
+            if tracker is not None and host and isinstance(exc, httpx.TransportError):
                 tracker.note_transport_error(host, exc)
             raise
         if tracker is not None and host:
             tracker.note_response(host, response.status_code)
+        if self._egress is not None:
+            record_origin_outcome(attribution, self._egress, "response")
+            if not isinstance(response.stream, httpx.AsyncByteStream):
+                raise TypeError("async transport returned a non-async response stream")
+            response.stream = _EgressMeteredStream(response.stream, attribution, self._egress)
         return response
 
     async def aclose(self) -> None:
@@ -394,27 +448,36 @@ class RotatingProxyTransport(httpx.AsyncBaseTransport):
         request.extensions[self._SELECTION_EXTENSION] = selection
         request.extensions[self._TRANSPORT_EXTENSION] = self
         transport = await self._transport_for(selection)
+        attribution = current_egress_attribution()
+        record_origin_attempt(attribution, "proxy")
         try:
             response = await transport.handle_async_request(request)
         except httpx.ProxyError as exc:
+            record_origin_outcome(attribution, "proxy", "transport_error")
             reason = "proxy_auth" if "407" in str(exc) else "proxy_transport"
             request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
             report_proxy_failure(selection, origin=origin, reason=reason)
             await self._discard_transport(selection.pool_slot)
             raise
         except httpx.TransportError:
+            record_origin_outcome(attribution, "proxy", "transport_error")
             # Without a provider error/header this may be a target-specific
             # TLS/connect failure, so do not evict the endpoint globally.
             request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
             report_proxy_failure(selection, origin=origin, reason="origin_transport")
             raise
         except BaseException:
+            record_origin_outcome(attribution, "proxy", "transport_error")
             # Cancellation or a non-network transport failure is
             # inconclusive. Release only a probe owned by this lease.
             request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
             self.abandon_request(request)
             raise
 
+        record_origin_outcome(attribution, "proxy", "response")
+        if not isinstance(response.stream, httpx.AsyncByteStream):
+            raise TypeError("async transport returned a non-async response stream")
+        response.stream = _EgressMeteredStream(response.stream, attribution, "proxy")
         provider_error = response.headers.get("x-webshare-error-reason")
         if response.status_code == 407:
             request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
@@ -599,7 +662,10 @@ def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClie
     # failure accounting. The tracking layer sees each permitted redirect
     # hop and records the actual egress host instead of guessing from a
     # crawler type or board URL.
-    kw["transport"] = SSRFGuardedTransport(RequestHostTrackingTransport(inner))
+    metered_egress = None if proxy_aware else "direct"
+    kw["transport"] = SSRFGuardedTransport(
+        RequestHostTrackingTransport(inner, egress=metered_egress)
+    )
     client_type = ProxyAwareAsyncClient if proxy_aware else httpx.AsyncClient
     return client_type(**kw)
 

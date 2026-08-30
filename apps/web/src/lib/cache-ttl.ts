@@ -3,7 +3,7 @@
  *
  * Centralises the magic numbers previously scattered across `'use cache'`
  * + `cacheLife({ revalidate: N })`, Redis `cached(..., { ttl: N })`, and
- * API-route `apiResponse({ maxAge: N })` call sites. Changing a tier here
+ * API-route `sharedApiResponse({ maxAge: N })` call sites. Changing a tier here
  * propagates to every consumer instead of hunting individual literals.
  *
  * Buckets reflect the values already in use across `apps/web/`:
@@ -17,9 +17,9 @@
  * |                     |         | churn than freshly-created public lists)     |
  * | `CACHE_TTL_MEDIUM`  |  300    | Moderate churn (posting detail, company      |
  * |                     |         | postings, filtered watchlist counts,         |
- * |                     |         | default API `maxAge`)                        |
+ * |                     |         | default Vercel API CDN `maxAge`)             |
  * | `CACHE_TTL_DETAIL`        |   600   | Company detail page                          |
- * | `CACHE_TTL_EXPLORE_SHELL` |   600   | Anonymous explore prerender; browser         |
+ * | `CACHE_TTL_EXPLORE_SHELL` | 86400   | Anonymous explore prerender; browser         |
  * |                           |         | Typesense refreshes it after hydration       |
  * | `CACHE_TTL_LONG`          |  3600   | Semi-static taxonomies, locations, similar   |
  * |                           |         | companies, sitemap, watchlist matching count |
@@ -49,14 +49,14 @@ export const CACHE_TTL_MEDIUM = 300;
 /** 600 seconds (10 min) — company detail page (cross-`'use cache'`-boundary dedup). */
 export const CACHE_TTL_DETAIL = 600;
 
-/** 10 minutes — anonymous explore shell; hydrated results refresh from Typesense. */
-export const CACHE_TTL_EXPLORE_SHELL = 600;
-
 /** 3600 seconds (1 hour) — semi-static taxonomies, locations, sitemap, similar companies. */
 export const CACHE_TTL_LONG = 3600;
 
 /** 86400 seconds (1 day) — very static / rare-change (blog pages). */
 export const CACHE_TTL_DAY = 86400;
+
+/** 1 day — anonymous explore shell; hydrated results refresh from Typesense. */
+export const CACHE_TTL_EXPLORE_SHELL = CACHE_TTL_DAY;
 
 /** 1 day — anonymous company shell; hydrated posting data refreshes from Typesense. */
 export const CACHE_TTL_COMPANY_SHELL = CACHE_TTL_DAY;

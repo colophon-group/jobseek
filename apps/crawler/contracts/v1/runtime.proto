@@ -87,6 +87,25 @@ enum BrowserCapability {
   BROWSER_CAPABILITY_TRANSPORT_OVERRIDES = 11;
 }
 
+// A bounded, backend-neutral capability tier derived from the complete set of
+// capabilities required by one BrowserPlan. The selected backend is a separate
+// decision: either service may own a tier when frozen capability evidence says
+// that it is supported.
+enum BrowserCapabilityClass {
+  BROWSER_CAPABILITY_CLASS_UNSPECIFIED = 0;
+  BROWSER_CAPABILITY_CLASS_NAVIGATION_EVALUATION = 1;
+  BROWSER_CAPABILITY_CLASS_INTERACTION_CAPTURE = 2;
+  BROWSER_CAPABILITY_CLASS_IDENTITY_TRANSPORT = 3;
+}
+
+// Closed service/queue/capacity identity. Lightpanda and Chromium never share
+// this lane even when they accept the same BrowserPlan shape.
+enum BrowserServiceLane {
+  BROWSER_SERVICE_LANE_UNSPECIFIED = 0;
+  BROWSER_SERVICE_LANE_LIGHTPANDA = 1;
+  BROWSER_SERVICE_LANE_CHROMIUM = 2;
+}
+
 enum WaitCondition {
   WAIT_CONDITION_UNSPECIFIED = 0;
   WAIT_CONDITION_COMMIT = 1;
@@ -624,11 +643,22 @@ message BrowserPlan {
   repeated OriginOperationRef origin_operations = 10;
 }
 
+// Immutable pre-origin routing decision. The authoritative owner validates and
+// binds this value before invoking a provider or dispatching any origin
+// operation. An unsupported or failed provider never changes this assignment.
+message BrowserAssignment {
+  BrowserBackend backend = 1;
+  BrowserCapabilityClass capability_class = 2;
+  BrowserServiceLane service_lane = 3;
+  string routing_revision = 4;
+}
+
 // Browser execution is correlated through its enclosing ExecutionRequest.
 // It therefore inherits request/attempt IDs, deadline, cancellation, limits,
 // resume semantics, and the length-delimited protocol transport.
 message BrowserExecutionInput {
   BrowserPlan plan = 1;
+  BrowserAssignment assignment = 2;
 }
 
 message ActionOutcome {
