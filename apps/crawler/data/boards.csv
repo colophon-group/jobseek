@@ -4704,6 +4704,7 @@ penn-interactive,penn-interactive-greenhouse,https://job-boards.greenhouse.io/pe
 penny-cz,penny-cz-almacareer,https://penny.jobs.cz/,almacareer,{},skip,
 pennylane,pennylane-ashby,https://jobs.ashbyhq.com/pennylane,ashby,"{""token"": ""pennylane""}",skip,
 pennylane,pennylane-lever,https://jobs.lever.co/pennylane,lever,"{""token"": ""pennylane""}",skip,
+penske,penske-careers,https://fa-euyk-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_3,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 penske-media-corp,penske-media-corp-greenhouse,https://job-boards.greenhouse.io/pmc,greenhouse,"{""token"": ""pmc""}",skip,
 pentera,pentera-pinpoint,https://pentera.pinpointhq.com,pinpoint,"{""slug"": ""pentera""}",skip,
 penumbrainc,penumbrainc-pinpoint,https://penumbrainc.pinpointhq.com,pinpoint,"{""slug"": ""penumbrainc""}",skip,
