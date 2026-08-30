@@ -798,7 +798,7 @@ def _attributed_http_query(end_at: datetime, fault: str | None = None):
                     "fractional-reset": "0.5",
                     "nonfinite-reset": "inf",
                     "counter-reset": "1",
-                }.get(fault, "0")
+                }.get(fault or "", "0")
                 rows = [
                     {
                         "metric": {},
