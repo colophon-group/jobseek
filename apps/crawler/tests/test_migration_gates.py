@@ -122,8 +122,9 @@ def _set_unassigned(
     zero_assignment_proven: bool,
 ) -> None:
     observation["sample_size"] = 0
-    observation["population_size"] = 0
+    observation["population_size"] = None if observation["capability_class"] == "shared-http" else 0
     observation["completed_schedule_cycles"] = 0
+    observation["replay_complete"] = False
     observation["freshness"] = {name: None for name in observation["freshness"]}
     observation["request_amplification_ratio"] = None
     observation["antibot_regression_ratio"] = None
@@ -689,6 +690,61 @@ def test_low_utilization_is_not_a_failure_without_avoidable_idle() -> None:
     assert result["decision"] == "promote"
 
 
+def test_candidate_window_without_any_routed_assignment_is_rejected() -> None:
+    evidence = _evidence()
+    for observation in evidence["observations"]:
+        _set_unassigned(
+            observation,
+            eligible_demand_present=False,
+            zero_demand_proven=True,
+            zero_assignment_proven=True,
+        )
+
+    with pytest.raises(GateModelError, match="at least one routed assignment"):
+        evaluate_promotion(_policy(), evidence)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("completed_schedule_cycles", 999, "completed cycles must be zero"),
+        ("replay_complete", True, "replay_complete must be false"),
+    ],
+)
+def test_unassigned_classes_reject_live_cycle_or_replay_evidence(
+    field: str, value: object, message: str
+) -> None:
+    evidence = _evidence()
+    observation = evidence["observations"][1]
+    _set_unassigned(
+        observation,
+        eligible_demand_present=False,
+        zero_demand_proven=True,
+        zero_assignment_proven=True,
+    )
+    observation[field] = value
+
+    with pytest.raises(GateModelError, match=message):
+        evaluate_promotion(_policy(), evidence)
+
+
+@pytest.mark.parametrize(
+    ("p95_field", "p99_field"),
+    [
+        ("due_to_claim_p95_seconds", "due_to_claim_p99_seconds"),
+        ("due_to_complete_p95_seconds", "due_to_complete_p99_seconds"),
+    ],
+)
+def test_inverted_observed_percentiles_are_rejected(p95_field: str, p99_field: str) -> None:
+    evidence = _evidence()
+    freshness = evidence["observations"][0]["freshness"]
+    freshness[p95_field] = 2
+    freshness[p99_field] = 1
+
+    with pytest.raises(GateModelError, match="percentiles are inverted"):
+        evaluate_promotion(_policy(), evidence)
+
+
 def test_nonfinite_number_and_window_mismatch_are_rejected() -> None:
     nonfinite = _evidence()
     nonfinite["observations"][0]["request_amplification_ratio"] = float("nan")
@@ -699,6 +755,38 @@ def test_nonfinite_number_and_window_mismatch_are_rejected() -> None:
     mismatch["window"]["duration_seconds"] -= 1
     with pytest.raises(GateModelError, match="does not match its boundaries"):
         evaluate_promotion(_policy(), mismatch)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["request_amplification_ratio", "completed_schedule_cycles"],
+)
+def test_huge_numeric_inputs_fail_with_typed_model_error(field: str) -> None:
+    evidence = _evidence()
+    evidence["observations"][0][field] = 10**1000
+
+    with pytest.raises(GateModelError, match="maximum safe numeric value") as error:
+        evaluate_promotion(_policy(), evidence)
+    assert len(str(error.value)) <= MAX_PUBLIC_ERROR_LENGTH
+
+
+def test_cli_rejects_huge_numeric_input_without_crashing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    evidence = _evidence()
+    evidence["observations"][0]["request_amplification_ratio"] = 10**1000
+    evidence_path = tmp_path / "huge-evidence.json"
+    evidence_path.write_text(json.dumps(evidence))
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["migration-gates", "evaluate", "--evidence", str(evidence_path)],
+    )
+
+    assert main() == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "maximum safe numeric value" in captured.err
 
 
 def test_unknown_label_and_unsorted_histogram_are_rejected() -> None:

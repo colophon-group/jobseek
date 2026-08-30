@@ -21,6 +21,7 @@ IDENTIFIER_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 SCHEMA_METADATA_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 MAX_SCHEMA_LOCATION_LENGTH = 128
 MAX_SCHEMA_PATH_COMPONENTS = 8
+MAX_SAFE_NUMERIC_VALUE = (1 << 53) - 1
 
 ZERO_TOLERANCE_REASONS = {
     "stale_authoritative_writes": "freeze:stale-authoritative-write",
@@ -158,15 +159,22 @@ def _identifier(value: object, field: str) -> str:
 def _integer(value: object, field: str, *, minimum: int = 0) -> int:
     if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
         raise GateModelError(f"{field} must be an integer >= {minimum}")
+    if value > MAX_SAFE_NUMERIC_VALUE:
+        raise GateModelError(f"{field} exceeds the maximum safe numeric value")
     return value
 
 
 def _number(value: object, field: str, *, minimum: float = 0.0) -> float:
     if not isinstance(value, int | float) or isinstance(value, bool):
         raise GateModelError(f"{field} must be numeric")
-    result = float(value)
+    try:
+        result = float(value)
+    except OverflowError as exc:
+        raise GateModelError(f"{field} exceeds the maximum safe numeric value") from exc
     if not math.isfinite(result) or result < minimum:
         raise GateModelError(f"{field} must be finite and >= {minimum}")
+    if result > MAX_SAFE_NUMERIC_VALUE:
+        raise GateModelError(f"{field} exceeds the maximum safe numeric value")
     return result
 
 
@@ -540,6 +548,7 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
     _require(not missing, f"evidence is missing required classes: {', '.join(missing)}")
     _require(not extra, f"evidence contains unknown classes: {', '.join(extra)}")
 
+    routed_assignment_count = 0
     for class_id, required_class in sorted(required_classes.items()):
         observation = observations[class_id]
         for name in (
@@ -615,6 +624,8 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
             not (routed_assignment_present and zero_assignment_proven),
             f"evidence {class_id} cannot have assignment and zero-assignment proof",
         )
+        if routed_assignment_present:
+            routed_assignment_count += 1
         if not eligible_demand_present and not zero_demand_proven:
             _add_reason(reasons, "hold:zero-demand-unproven", class_id)
         if not routed_assignment_present and not zero_assignment_proven:
@@ -653,6 +664,11 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
         )
         if routed_assignment_present and cycles < thresholds["min_completed_schedule_cycles"]:
             _add_reason(reasons, "hold:class-cycle-coverage", class_id)
+        elif not routed_assignment_present:
+            _require(
+                cycles == 0,
+                f"evidence {class_id} unassigned completed cycles must be zero",
+            )
 
         sample_size = _integer(observation.get("sample_size"), f"evidence {class_id}.sample_size")
         population_size = observation.get("population_size")
@@ -686,6 +702,11 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
         _require(isinstance(replay_complete, bool), f"evidence {class_id}.replay_complete invalid")
         if routed_assignment_present and not replay_complete:
             _add_reason(reasons, "hold:replay-incomplete", class_id)
+        elif not routed_assignment_present:
+            _require(
+                not replay_complete,
+                f"evidence {class_id} unassigned replay_complete must be false",
+            )
 
         mismatches = _object(observation.get("mismatches"), f"evidence {class_id}.mismatches")
         expected_mismatches = {"url_set", "field_hash", "result_flag", "projected_db_effect"}
@@ -740,9 +761,25 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
                 ("due_to_complete_p95_seconds", "due_to_complete_p95_max_seconds"),
                 ("due_to_complete_p99_seconds", "due_to_complete_p99_max_seconds"),
             )
+            latency_values = {
+                observed: _number(
+                    freshness[observed],
+                    f"evidence {class_id}.freshness.{observed}",
+                )
+                for observed, _maximum in latency_pairs
+            }
+            _require(
+                latency_values["due_to_claim_p95_seconds"]
+                <= latency_values["due_to_claim_p99_seconds"],
+                f"evidence {class_id} due-to-claim percentiles are inverted",
+            )
+            _require(
+                latency_values["due_to_complete_p95_seconds"]
+                <= latency_values["due_to_complete_p99_seconds"],
+                f"evidence {class_id} due-to-complete percentiles are inverted",
+            )
             if any(
-                _number(freshness[observed], f"evidence {class_id}.freshness.{observed}")
-                > thresholds[maximum]
+                latency_values[observed] > thresholds[maximum]
                 for observed, maximum in latency_pairs
             ):
                 _add_reason(reasons, "hold:freshness-latency", class_id)
@@ -779,6 +816,11 @@ def evaluate_promotion(policy: dict[str, Any], evidence: dict[str, Any]) -> dict
             )
         elif resource_saturation_events > 0:
             _add_reason(reasons, "freeze:backend-resource-saturation", class_id)
+
+    _require(
+        routed_assignment_count > 0,
+        "evidence candidate cohort must contain at least one routed assignment",
+    )
 
     reason_items = [
         {"code": code, "affected_classes": sorted(affected)}
