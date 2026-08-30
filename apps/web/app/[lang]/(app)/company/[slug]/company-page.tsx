@@ -242,7 +242,7 @@ export function CompanyPage({
     });
   }
 
-  // Keep the anonymous shell cacheable for an hour, then revalidate the
+  // Keep the anonymous shell cacheable for a day, then revalidate the
   // visible default postings directly from Typesense after hydration. This
   // path never falls back to a Server Action, so it preserves freshness
   // without converting page views back into Fluid CPU.

@@ -36,6 +36,16 @@ type CompanyPostingsResult = {
   yearCount: number;
   truncated?: boolean;
 };
+type SimilarCompaniesResult = {
+  companies: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    icon: string | null;
+    activeJobCount: number;
+  }>;
+  hasMore: boolean;
+};
 
 const directEnabled = process.env.NEXT_PUBLIC_TYPESENSE_DIRECT === "1";
 
@@ -211,6 +221,34 @@ export async function tryGetCompanyPostingsDirect(
     logExternalError(
       "error",
       { service: "typesense", operation: "browser_company_postings" },
+      err,
+    );
+    return null;
+  }
+}
+
+/**
+ * Revalidate the unfiltered peer strip embedded in a company shell directly
+ * against Typesense. A failed refresh keeps the rendered snapshot and never
+ * falls through to a mount-time Server Action.
+ */
+export async function tryGetSimilarCompaniesDirect(params: {
+  companyId: string;
+  industryId: number;
+  limit: number;
+}): Promise<SimilarCompaniesResult | null> {
+  if (!directEnabled) return null;
+  try {
+    const provider = await tryBrowserProvider();
+    return await provider.loadSimilarCompanies(
+      params.companyId,
+      params.industryId,
+      params.limit,
+    );
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "browser_similar_companies" },
       err,
     );
     return null;
