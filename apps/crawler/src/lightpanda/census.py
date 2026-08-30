@@ -183,6 +183,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "nonempty_selector",
             "positions_per_listing",
             "preserve_single_location",
+            "proxy",
             "render",
             "require_zero_proof",
             "section_end",
