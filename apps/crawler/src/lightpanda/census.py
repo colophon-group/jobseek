@@ -276,6 +276,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "actions",
             "channel",
             "defaults",
+            "defaults_by_url",
             "document_fallback",
             "encoding",
             "enrich",
