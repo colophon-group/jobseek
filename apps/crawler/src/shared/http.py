@@ -336,9 +336,19 @@ class _EgressMeteredStream(httpx.AsyncByteStream):
 
 
 class RequestHostTrackingTransport(httpx.AsyncBaseTransport):
-    """Record every post-SSRF-validation request host, including redirects."""
+    """Record every post-SSRF-validation request host, including redirects.
 
-    def __init__(self, inner: httpx.AsyncBaseTransport, *, egress: str = "direct") -> None:
+    Direct transports are metered here. Rotating proxy transports pass
+    ``egress=None`` and meter only after they acquire a usable lease and its
+    underlying transport, so pool exhaustion cannot look like origin traffic.
+    """
+
+    def __init__(
+        self,
+        inner: httpx.AsyncBaseTransport,
+        *,
+        egress: str | None = "direct",
+    ) -> None:
         self._inner = inner
         self._egress = egress
 
@@ -348,7 +358,8 @@ class RequestHostTrackingTransport(httpx.AsyncBaseTransport):
         host = request.url.host or ""
         if tracker is not None and host:
             tracker.note_request(host, str(request.url))
-        record_origin_attempt(attribution, self._egress)
+        if self._egress is not None:
+            record_origin_attempt(attribution, self._egress)
         try:
             response = await self._inner.handle_async_request(request)
         except BaseException as exc:
@@ -356,16 +367,18 @@ class RequestHostTrackingTransport(httpx.AsyncBaseTransport):
             # Cancellation and unexpected transport exits are included in the
             # no-response bucket so conservation fails only on instrumentation
             # defects, not on ordinary task cancellation.
-            record_origin_outcome(attribution, self._egress, "transport_error")
+            if self._egress is not None:
+                record_origin_outcome(attribution, self._egress, "transport_error")
             if tracker is not None and host and isinstance(exc, httpx.TransportError):
                 tracker.note_transport_error(host, exc)
             raise
-        record_origin_outcome(attribution, self._egress, "response")
         if tracker is not None and host:
             tracker.note_response(host, response.status_code)
-        if not isinstance(response.stream, httpx.AsyncByteStream):
-            raise TypeError("async transport returned a non-async response stream")
-        response.stream = _EgressMeteredStream(response.stream, attribution, self._egress)
+        if self._egress is not None:
+            record_origin_outcome(attribution, self._egress, "response")
+            if not isinstance(response.stream, httpx.AsyncByteStream):
+                raise TypeError("async transport returned a non-async response stream")
+            response.stream = _EgressMeteredStream(response.stream, attribution, self._egress)
         return response
 
     async def aclose(self) -> None:
@@ -435,27 +448,36 @@ class RotatingProxyTransport(httpx.AsyncBaseTransport):
         request.extensions[self._SELECTION_EXTENSION] = selection
         request.extensions[self._TRANSPORT_EXTENSION] = self
         transport = await self._transport_for(selection)
+        attribution = current_egress_attribution()
+        record_origin_attempt(attribution, "proxy")
         try:
             response = await transport.handle_async_request(request)
         except httpx.ProxyError as exc:
+            record_origin_outcome(attribution, "proxy", "transport_error")
             reason = "proxy_auth" if "407" in str(exc) else "proxy_transport"
             request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
             report_proxy_failure(selection, origin=origin, reason=reason)
             await self._discard_transport(selection.pool_slot)
             raise
         except httpx.TransportError:
+            record_origin_outcome(attribution, "proxy", "transport_error")
             # Without a provider error/header this may be a target-specific
             # TLS/connect failure, so do not evict the endpoint globally.
             request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
             report_proxy_failure(selection, origin=origin, reason="origin_transport")
             raise
         except BaseException:
+            record_origin_outcome(attribution, "proxy", "transport_error")
             # Cancellation or a non-network transport failure is
             # inconclusive. Release only a probe owned by this lease.
             request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
             self.abandon_request(request)
             raise
 
+        record_origin_outcome(attribution, "proxy", "response")
+        if not isinstance(response.stream, httpx.AsyncByteStream):
+            raise TypeError("async transport returned a non-async response stream")
+        response.stream = _EgressMeteredStream(response.stream, attribution, "proxy")
         provider_error = response.headers.get("x-webshare-error-reason")
         if response.status_code == 407:
             request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
@@ -640,9 +662,9 @@ def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClie
     # failure accounting. The tracking layer sees each permitted redirect
     # hop and records the actual egress host instead of guessing from a
     # crawler type or board URL.
-    actual_egress = "proxy" if proxy_aware else "direct"
+    metered_egress = None if proxy_aware else "direct"
     kw["transport"] = SSRFGuardedTransport(
-        RequestHostTrackingTransport(inner, egress=actual_egress)
+        RequestHostTrackingTransport(inner, egress=metered_egress)
     )
     client_type = ProxyAwareAsyncClient if proxy_aware else httpx.AsyncClient
     return client_type(**kw)

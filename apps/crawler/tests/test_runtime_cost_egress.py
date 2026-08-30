@@ -21,7 +21,12 @@ from src.shared.http import (
     _build_async_client,
     create_http_client,
 )
-from src.shared.proxy import PoolProxyProvider, ProxyConfigurationError
+from src.shared.proxy import (
+    PoolProxyProvider,
+    ProxyConfigurationError,
+    ProxyPoolExhaustedError,
+    report_proxy_failure,
+)
 
 
 def _value(counter, **labels: str) -> float:
@@ -298,6 +303,82 @@ def test_required_proxy_unavailable_records_zero_origin_attempts(monkeypatch) ->
         create_http_client(use_proxy=True)
 
     assert {egress: _snapshot(egress) for egress in ("direct", "proxy")} == before
+
+
+@pytest.mark.asyncio
+async def test_runtime_exhausted_required_proxy_records_zero_origin_traffic() -> None:
+    origin = "8.8.8.8"
+    provider = PoolProxyProvider(
+        "webshare",
+        ("http://user:secret@proxy.example:10000",),
+        clock=lambda: 0.0,
+    )
+    failed = provider.select(origin=origin, transport="httpx")
+    report_proxy_failure(failed, origin=origin, reason="proxy_auth")
+    constructed_slots: list[int] = []
+
+    def factory(selection):
+        constructed_slots.append(selection.pool_slot)
+        return httpx.MockTransport(lambda request: httpx.Response(200, request=request))
+
+    transport = RotatingProxyTransport(
+        provider,
+        verify=True,
+        transport_factory=factory,
+    )
+    before = {egress: _snapshot(egress) for egress in ("direct", "proxy")}
+
+    async with _build_async_client({"transport": transport}) as client:
+        with (
+            bind_runtime_egress("monitor", "http"),
+            pytest.raises(ProxyPoolExhaustedError),
+        ):
+            await client.get(f"https://{origin}/jobs")
+
+    assert constructed_slots == []
+    assert {egress: _snapshot(egress) for egress in ("direct", "proxy")} == before
+
+
+@pytest.mark.asyncio
+async def test_selected_proxy_auth_failure_conserves_one_transport_attempt() -> None:
+    origin = "8.8.8.8"
+    provider = PoolProxyProvider(
+        "webshare",
+        ("http://user:secret@proxy.example:10000",),
+        clock=lambda: 0.0,
+    )
+    constructed_slots: list[int] = []
+
+    def factory(selection):
+        constructed_slots.append(selection.pool_slot)
+
+        def reject(request: httpx.Request) -> httpx.Response:
+            raise httpx.ProxyError("407 proxy authentication required", request=request)
+
+        return httpx.MockTransport(reject)
+
+    transport = RotatingProxyTransport(
+        provider,
+        verify=True,
+        transport_factory=factory,
+    )
+    direct_before = _snapshot("direct")
+    proxy_before = _snapshot("proxy")
+
+    async with _build_async_client({"transport": transport}) as client:
+        with (
+            bind_runtime_egress("monitor", "http"),
+            pytest.raises(httpx.ProxyError, match="407"),
+        ):
+            await client.get(f"https://{origin}/jobs")
+
+    assert constructed_slots == [0]
+    assert _snapshot("direct") == direct_before
+    assert tuple(
+        after - prior for after, prior in zip(_snapshot("proxy"), proxy_before, strict=True)
+    ) == (1, 0, 1, 0)
+    with pytest.raises(ProxyPoolExhaustedError):
+        provider.select(origin=origin, transport="httpx")
 
 
 def test_runtime_capability_labels_are_registry_bounded() -> None:
