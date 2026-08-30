@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 6766,
-    "boards_sha256": "75c9a9a054d60c357f18a24c76f62caea35b5f37d516d1fc1c21fb0ac0ba7710",
+    "boards_row_count": 6770,
+    "boards_sha256": "c64be5ae8f4229692dee4af218e76610674b3bd6b9887679416bd2b9add19bce",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "fb73227f3e6e5e79c689872d5e0e55f4c9423431ff61e09b8029ff61fc88cdf2",
+  "manifest_sha256": "c5880bb618b5310372a829fc2b38aa3d31bcf0687da6119a064695d49b089bbd",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -1591,6 +1591,28 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "64983282e54e53a3563886f45fd110f72ce4929ba1e26484c0d9868a8df4e00c",
+      "status": "pending_replay",
+      "surface": "monitor"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait.domcontentloaded"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "navigation_dom",
+      "config_shape_sha256": "a9aa750c9c4f145e6e51828fe21a582312e4e5c720a2fa34dd6d8922b6f5efb7",
+      "crawler_type": "dom",
+      "digest_sha256": "bd81753d900483b1a9b0f9d57255e7365f7153a39d161d50b07cdd218c075742",
+      "fixture": "synthetic.navigation_dom.v1",
+      "id": "profile.monitor.dom.2920f8f1466807d8",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "5bb73d66c23de325ae5f5903906b0d1b2f13f30723d9cc714172c446ad1c07db",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -3920,6 +3942,28 @@
       "browser_capable": true,
       "browser_required": true,
       "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait.domcontentloaded"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "navigation_dom",
+      "config_shape_sha256": "cf5230b0b36c89abc5f9171dd512d8ccae5a37f1d661103d635ff1f08626d3a0",
+      "crawler_type": "dom",
+      "digest_sha256": "112a1477f93e437c19721591c34278f5d4365e9a0ca94f12e1add27bda85c6dc",
+      "fixture": "synthetic.navigation_dom.v1",
+      "id": "profile.scraper.dom.20ee9826877708d7",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "940b692c2e0e72aa858942bd695334836fe1920fa12d88a1b683774f6160518b",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
         "browser.stealth",
         "cdp.navigation",
         "dom.snapshot",
@@ -5393,12 +5437,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "76f6578053b67be7ee7cd41dee516f3bd30347f5622c81bd84292b4010de6831",
       "crawler_type": "dom",
-      "digest_sha256": "1c074f05283ec86cae279ec45300d01668c63ad94479df2eb56a82fbb8d44d93",
+      "digest_sha256": "991b1906a308253daee637f404703853e59925df609f84178cae9cb0d35499c2",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.monitor.dom",
       "profile_kind": "registry",
-      "source_count": 637,
-      "source_refs_sha256": "6fbd42a1d242205c45001ec9f49e131a55eaf0d788aae1629b66af51c4a477ba",
+      "source_count": 638,
+      "source_refs_sha256": "f8fcad239d4f9556faaf0d83f0d3d4817b0871279c42e130b87c8d5a38f70f26",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -5501,12 +5545,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "5a08da4785afa1c964a303d332bbded26bf22deb8d73751ad343279b74d02707",
       "crawler_type": "dom",
-      "digest_sha256": "3e54d64fbfc6e94f6c16fd645c567fb9e0b84540021efbe3757fdffeaf4b331b",
+      "digest_sha256": "cd0da468bb00b6d00e2a64f0462332ca629e413a63eddc185f9efde1f110b040",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.scraper.dom",
       "profile_kind": "registry",
-      "source_count": 553,
-      "source_refs_sha256": "2665e43cc394fd09390fd47756996f32f925c96b1ad71318f2b3eaa3df38acd0",
+      "source_count": 555,
+      "source_refs_sha256": "a855da6c395be7d259c075f3b03ab823af515bd8669872f6cb52f7c3542e8c18",
       "status": "inventory",
       "surface": "scraper"
     },
@@ -5575,12 +5619,12 @@
     }
   ],
   "summary": {
-    "browser_board_count": 455,
-    "browser_required_step_count": 593,
-    "configured_profile_occurrence_count": 595,
-    "configured_record_count": 225,
+    "browser_board_count": 456,
+    "browser_required_step_count": 595,
+    "configured_profile_occurrence_count": 597,
+    "configured_record_count": 227,
     "registry_record_count": 15,
-    "total_record_count": 240,
+    "total_record_count": 242,
     "zero_browser_config_registry_count": 2
   }
 }

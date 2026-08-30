@@ -2015,9 +2015,7 @@ def _validated_oracle_adf_job_ids(value: object) -> _OracleAdfJobIdsConfig | Non
     if value is None:
         return None
     if not isinstance(value, dict) or set(value) - {"max_items", "max_scan"}:
-        raise ValueError(
-            "DOM monitor oracle_adf_job_ids must contain only max_items and max_scan"
-        )
+        raise ValueError("DOM monitor oracle_adf_job_ids must contain only max_items and max_scan")
 
     max_items = value.get("max_items", 100)
     if (
@@ -2644,8 +2642,7 @@ async def _extract_oracle_adf_job_ids(
                 continue
             if url_matcher is not None and url_matcher.search(candidate_url) is None:
                 raise ValueError(
-                    "DOM monitor oracle_adf_job_ids permalink failed url_filter: "
-                    f"{candidate_url}"
+                    f"DOM monitor oracle_adf_job_ids permalink failed url_filter: {candidate_url}"
                 )
             urls.add(candidate_url)
             expected_index += 1
