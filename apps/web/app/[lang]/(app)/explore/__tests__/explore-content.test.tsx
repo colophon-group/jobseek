@@ -287,6 +287,16 @@ describe("ExploreContent browser initialization", () => {
   it("does not duplicate a filtered load when anonymous bootstrap settles", async () => {
     setBrowserSearch("wm=remote");
     mocks.session.isPending = true;
+    let resolveLoad!: (value: {
+      data: ExploreData;
+      unavailable: boolean;
+      directAttempted: boolean;
+    }) => void;
+    mocks.loadBrowserData.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveLoad = resolve;
+      }),
+    );
     const initialData = makeInitialData();
     const view = render(
       <ExploreContent locale="en" initialData={initialData} />,
@@ -297,6 +307,18 @@ describe("ExploreContent browser initialization", () => {
     view.rerender(<ExploreContent locale="en" initialData={initialData} />);
     await flushEffects();
     expect(mocks.loadBrowserData).toHaveBeenCalledOnce();
+    expect(view.queryByTestId("explore-skeleton")).not.toBeNull();
+
+    resolveLoad({
+      data: makeInitialData({
+        result: { companies: [], totalCompanies: 7 },
+      }),
+      unavailable: false,
+      directAttempted: true,
+    });
+    await waitFor(() =>
+      expect(view.getByTestId("search-page").dataset.total).toBe("7"),
+    );
   });
 
   it("keeps a rejected unexpected browser load on the skeleton", async () => {

@@ -62,9 +62,12 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     }
     interactive?.removeAttribute("hidden");
 
-    const fetchId = ++fetchIdRef.current;
     const searchParams = new URLSearchParams(window.location.search);
     if (hasLoggedInHint() && isPending) {
+      // Invalidate any prior viewer-state request while the hinted session is
+      // unresolved. The eventual authenticated/anonymous key will start a new
+      // request once bootstrap settles.
+      fetchIdRef.current += 1;
       setView(null);
       return;
     }
@@ -83,6 +86,11 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     ].join("|");
     if (loadKeyRef.current === loadKey) return;
     loadKeyRef.current = loadKey;
+    // Allocate the stale-result guard only after same-key dedupe. Anonymous
+    // bootstrap changes isPending without changing this key; incrementing
+    // before the return would discard the still-valid in-flight result and
+    // leave the filtered shell on its skeleton forever.
+    const fetchId = ++fetchIdRef.current;
     const needsBrowserLoad =
       isLoggedIn ||
       anonymousJobLanguages !== null ||
