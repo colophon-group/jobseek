@@ -92,6 +92,57 @@ function splitIntoWords(segment: string): string[] {
   return segment.split(/\s+/).filter(Boolean);
 }
 
+type TokenizedSearchQuery = {
+  segmentWords: string[][];
+  singles: string[];
+  allCandidates: string[];
+};
+
+function tokenizeSearchQuery(input: string): TokenizedSearchQuery {
+  const segments = input ? splitIntoSegments(input) : [];
+  const segmentWords = segments.map(splitIntoWords);
+  const singleSet = new Set<string>();
+  const allCandidateSet = new Set<string>();
+  for (const words of segmentWords) {
+    for (const word of words) {
+      singleSet.add(word);
+      allCandidateSet.add(word);
+    }
+    for (let index = 0; index < words.length - 1; index += 1) {
+      allCandidateSet.add(`${words[index]} ${words[index + 1]}`);
+    }
+    if (words.length <= 10) {
+      for (let index = 0; index < words.length - 2; index += 1) {
+        allCandidateSet.add(
+          `${words[index]} ${words[index + 1]} ${words[index + 2]}`,
+        );
+      }
+    }
+  }
+  return {
+    segmentWords,
+    singles: [...singleSet],
+    allCandidates: [...allCandidateSet],
+  };
+}
+
+/** Exact fan-out dimensions used by the canonical semantic parser. */
+export function getSemanticSearchQueryComplexity(input: string): {
+  uniqueTerms: number;
+  occupationCandidates: number;
+  maxTermLength: number;
+} {
+  const tokenized = tokenizeSearchQuery(input);
+  return {
+    uniqueTerms: tokenized.singles.length,
+    occupationCandidates: tokenized.allCandidates.length,
+    maxTermLength: tokenized.singles.reduce(
+      (maximum, term) => Math.max(maximum, term.length),
+      0,
+    ),
+  };
+}
+
 function exactLocationMatch(
   text: string,
   suggestions: LocationSuggestion[],
@@ -285,28 +336,9 @@ export async function parseSearchFilters(params: {
   const technologyIds = new Set(technologies.map((t) => t.id));
 
   // --- Word-level tokenization ---
-  const segments = params.q ? splitIntoSegments(params.q) : [];
-  const segmentWords = segments.map(splitIntoWords);
-
-  // Collect unique single words and all candidates (singles + pairs + triplets)
-  const singleSet = new Set<string>();
-  const allCandidateSet = new Set<string>();
-  for (const words of segmentWords) {
-    for (const w of words) {
-      singleSet.add(w);
-      allCandidateSet.add(w);
-    }
-    for (let i = 0; i < words.length - 1; i++) {
-      allCandidateSet.add(`${words[i]} ${words[i + 1]}`);
-    }
-    if (words.length <= 10) {
-      for (let i = 0; i < words.length - 2; i++) {
-        allCandidateSet.add(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
-      }
-    }
-  }
-  const singles = [...singleSet];
-  const allCandidates = [...allCandidateSet];
+  const { segmentWords, singles, allCandidates } = tokenizeSearchQuery(
+    params.q ?? "",
+  );
   if (singles.length === 0) {
     return {
       keywords: [],

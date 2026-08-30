@@ -39,6 +39,7 @@ vi.mock("@/lib/services/taxonomy", () => ({
 }));
 
 import { parseSearchFilters } from "../search-input";
+import { getSemanticSearchQueryComplexity } from "@/lib/services/search-input";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -52,6 +53,32 @@ beforeEach(() => {
   mocks.resolveOccupationSlugs.mockResolvedValue(new Map());
   mocks.resolveSenioritySlugs.mockResolvedValue(new Map());
   mocks.resolveTechnologySlugs.mockResolvedValue(new Map());
+});
+
+describe("getSemanticSearchQueryComplexity", () => {
+  it("uses the canonical slash, pipe, comma, newline, tab, and hyphen delimiters", () => {
+    expect(
+      getSemanticSearchQueryComplexity("a/b|c-d,e\nf\tg"),
+    ).toEqual({
+      uniqueTerms: 7,
+      occupationCandidates: 7,
+      maxTermLength: 1,
+    });
+  });
+
+  it("counts the exact pair and triplet occupation candidate fan-out", () => {
+    expect(getSemanticSearchQueryComplexity("one two three")).toEqual({
+      uniqueTerms: 3,
+      occupationCandidates: 6,
+      maxTermLength: 5,
+    });
+    expect(
+      getSemanticSearchQueryComplexity("a b c a c b a b c"),
+    ).toMatchObject({
+      uniqueTerms: 3,
+      occupationCandidates: 15,
+    });
+  });
 });
 
 // =====================================================================

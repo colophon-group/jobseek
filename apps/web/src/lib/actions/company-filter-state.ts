@@ -2,12 +2,14 @@
 
 import { getGeoFromHeaders } from "@/lib/search/params";
 import {
+  getSemanticSearchQueryComplexity,
   parseSearchFilters,
   type ParsedSearchFilters,
 } from "@/lib/services/search-input";
 
 const MAX_QUERY_LENGTH = 512;
-const MAX_QUERY_TERMS = 20;
+const MAX_QUERY_TERMS = 12;
+const MAX_OCCUPATION_CANDIDATES = 36;
 const MAX_QUERY_TERM_LENGTH = 120;
 const MAX_SLUGS_PER_DIMENSION = 20;
 const MAX_SLUG_LENGTH = 100;
@@ -37,10 +39,12 @@ function validQuery(raw: string): boolean {
   ) {
     return false;
   }
-  const terms = raw.split(/[\s,]+/u).filter(Boolean);
+  const complexity = getSemanticSearchQueryComplexity(raw);
   return (
-    terms.length <= MAX_QUERY_TERMS &&
-    terms.every((term) => term.length <= MAX_QUERY_TERM_LENGTH)
+    complexity.uniqueTerms > 0 &&
+    complexity.uniqueTerms <= MAX_QUERY_TERMS &&
+    complexity.occupationCandidates <= MAX_OCCUPATION_CANDIDATES &&
+    complexity.maxTermLength <= MAX_QUERY_TERM_LENGTH
   );
 }
 

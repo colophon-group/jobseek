@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getGeo: vi.fn(),
   parse: vi.fn(),
+  complexity: vi.fn(),
 }));
 
 vi.mock("@/lib/search/params", () => ({
@@ -10,6 +11,7 @@ vi.mock("@/lib/search/params", () => ({
 }));
 vi.mock("@/lib/services/search-input", () => ({
   parseSearchFilters: mocks.parse,
+  getSemanticSearchQueryComplexity: mocks.complexity,
 }));
 
 import { resolveCompanySemanticFilters } from "../company-filter-state";
@@ -29,6 +31,12 @@ beforeEach(() => {
   mocks.getGeo.mockResolvedValue({ userLat: 47.37, userLng: 8.54 });
   mocks.parse.mockReset();
   mocks.parse.mockResolvedValue(parsed);
+  mocks.complexity.mockReset();
+  mocks.complexity.mockReturnValue({
+    uniqueTerms: 3,
+    occupationCandidates: 6,
+    maxTermLength: 9,
+  });
 });
 
 describe("resolveCompanySemanticFilters", () => {
@@ -65,7 +73,13 @@ describe("resolveCompanySemanticFilters", () => {
   });
 
   it("rejects query fan-out and unsafe explicit slugs before server work", async () => {
-    const tooManyTerms = Array.from({ length: 21 }, (_, index) => `q${index}`).join(" ");
+    const tooManyTerms = Array.from({ length: 13 }, (_, index) => `q${index}`).join("/");
+
+    mocks.complexity.mockReturnValueOnce({
+      uniqueTerms: 13,
+      occupationCandidates: 13,
+      maxTermLength: 3,
+    });
 
     await expect(
       resolveCompanySemanticFilters({ q: tooManyTerms, locale: "en" }),
@@ -77,6 +91,26 @@ describe("resolveCompanySemanticFilters", () => {
         locale: "en",
       }),
     ).resolves.toBeNull();
+    expect(mocks.getGeo).not.toHaveBeenCalled();
+    expect(mocks.parse).not.toHaveBeenCalled();
+  });
+
+  it("caps canonical slash/pipe/hyphen candidate fan-out", async () => {
+    mocks.complexity.mockReturnValue({
+      uniqueTerms: 12,
+      occupationCandidates: 37,
+      maxTermLength: 3,
+    });
+
+    await expect(
+      resolveCompanySemanticFilters({
+        q: "a/b|c-d/e|f-g/h|i-j/k|l-m",
+        locale: "en",
+      }),
+    ).resolves.toBeNull();
+    expect(mocks.complexity).toHaveBeenCalledWith(
+      "a/b|c-d/e|f-g/h|i-j/k|l-m",
+    );
     expect(mocks.getGeo).not.toHaveBeenCalled();
     expect(mocks.parse).not.toHaveBeenCalled();
   });
