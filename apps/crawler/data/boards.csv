@@ -4360,6 +4360,7 @@ northbeam,northbeam-greenhouse,https://job-boards.greenhouse.io/northbeam,greenh
 northmarq,northmarq-greenhouse,https://job-boards.greenhouse.io/northmarq,greenhouse,"{""token"": ""northmarq""}",skip,
 northmill,northmill-careers,https://careers.northmill.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.northmill.com/jobs.rss""}",skip,
 northrop-grumman,northrop-grumman-eightfold,https://jobs.northropgrumman.com/careers,eightfold,"{""proxy"": true, ""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
+northside-hospital,northside-hospital-careers,https://careers-northside.icims.com/,icims,,json-ld,
 northwest-pipe-fittings,northwest-pipe-fittings-greenhouse,https://job-boards.greenhouse.io/northwestpipefittings,greenhouse,"{""token"": ""northwestpipefittings""}",skip,
 northwood-space,northwood-space-careers,https://jobs.ashbyhq.com/NorthwoodSpace,ashby,"{""org"": ""NorthwoodSpace""}",skip,
 norwegian-refugee-council,norwegian-refugee-council-careers,https://ekum.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2019,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
