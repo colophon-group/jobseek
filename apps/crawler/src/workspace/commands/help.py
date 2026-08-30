@@ -140,6 +140,7 @@ Monitor Types (cheapest first):
   recruiter_co_kr   15      Full job data     No (skipped)
   umantis           15      Full/partial      Description enrichment
   nextdata          20      URLs or full      If URL-only
+  papa_johns        45      Job URLs          Auto-configured JSON-LD
   talemetry         45      URL set           Yes
   talentbrew        45      URL set           Yes
   sitemap           50      URL set           Yes
@@ -4029,6 +4030,21 @@ unisante — Unisanté first-party careers monitor
   the exact server-visible empty inventory contract; the `#no-ads` marker that
   is normally hidden on non-empty pages is not zero evidence by itself."""
 
+MONITOR_PAPA_JOHNS = """\
+papa_johns — Papa Johns branded careers
+
+  Listing:  GET https://jobs.papajohns.com/jobs/
+  Returns:  Canonical job detail URLs
+  Scraper:  Auto-configured JSON-LD
+  Cost:     45
+  Proxy:    Required in production
+
+  The monitor validates the provider's explicit inventory count, follows
+  bounded page_jobs pagination, and fails closed if the count or page total
+  changes during collection. It accepts only the exact unfiltered listing URL.
+"""
+
+
 MONITOR_CARDS: dict[str, str] = {
     "accenture": MONITOR_ACCENTURE,
     "almacareer": MONITOR_ALMACAREER,
@@ -4075,6 +4091,7 @@ MONITOR_CARDS: dict[str, str] = {
     "jobstreet": MONITOR_JOBSTREET,
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,
+    "papa_johns": MONITOR_PAPA_JOHNS,
     "icims": MONITOR_ICIMS,
     "infoniqa": """\
 infoniqa — Infoniqa jobexchange form-pagination monitor

@@ -90,6 +90,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `deel` | Rich | skip | Deel ATS |
 | `dvinci` | Rich | skip | d.vinci ATS |
 | `earcu` | Rich | skip | eArcu live-vacancy XML feeds on branded career sites |
+| `papa_johns` | URL-only | json-ld | Papa Johns branded listings with count-checked pagination |
 | `gem` | Rich | skip | Gem ATS |
 | `inploi` | Rich + enrichment | json-ld | Inploi public candidate-experience search API plus JSON-LD description enrichment |
 | `greenhouse` | Rich | skip | Greenhouse ATS |
