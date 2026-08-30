@@ -37,7 +37,7 @@ Threat model:
   - Untrusted board URL points to a private IP directly        → blocked
   - Untrusted host resolves to a private IP (rebinding)        → blocked
   - Permitted host that 30x-redirects to ``http://127.0.0.1/`` → blocked
-  - Proxy URL on the private network (Webshare / Decodo / etc) → NOT blocked
+  - Webshare proxy URL on the private network → NOT blocked
     (the proxy URL is supplied via httpx's ``proxy=`` kwarg, not the
     request URL, so it never reaches :meth:`handle_async_request` as
     the URL to validate)
@@ -180,7 +180,8 @@ def _gather_internal_hosts() -> frozenset[str]:
       1. ``INTERNAL_HOSTS_ALLOW`` env — comma-separated ``host[:port]``.
          Operator-facing override; required for a board URL that
          genuinely points at an internal service.
-      2. The proxy URLs (``WEBSHARE_PROXY_URL`` / ``DECODO_PROXY_URL``).
+      2. The Webshare proxy URLs (``WEBSHARE_PROXY_URLS`` /
+         ``WEBSHARE_PROXY_URL``).
          Defence-in-depth only: the proxy URL is supplied via httpx's
          ``proxy=`` kwarg and isn't the request URL, so it can't
          actually trip the guard — but if a future caller ever passes
@@ -228,13 +229,14 @@ def _gather_internal_hosts() -> frozenset[str]:
     if _settings is None:
         return frozenset(out)
 
-    for url in (
+    deployment_urls = [
+        *getattr(_settings, "webshare_proxy_urls", []),
         getattr(_settings, "webshare_proxy_url", ""),
-        getattr(_settings, "decodo_proxy_url", ""),
         getattr(_settings, "local_database_url", ""),
         getattr(_settings, "database_url", ""),
         getattr(_settings, "redis_url", ""),
-    ):
+    ]
+    for url in deployment_urls:
         host = _extract_host(url)
         if host:
             out.add(host)

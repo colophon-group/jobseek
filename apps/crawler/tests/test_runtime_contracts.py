@@ -293,8 +293,8 @@ class _FakeBrowserBackend(BrowserBackend):
         return self
 
     @asynccontextmanager
-    async def open_page(self, config=None, *, use_proxy=False):
-        yield {"config": config, "use_proxy": use_proxy}
+    async def open_page(self, config=None, *, use_proxy=False, target_url=None):
+        yield {"config": config, "use_proxy": use_proxy, "target_url": target_url}
 
     async def stop(self) -> None:
         return None
@@ -302,7 +302,11 @@ class _FakeBrowserBackend(BrowserBackend):
 
 async def test_open_page_dispatches_through_browser_backend() -> None:
     async with open_page(_FakeBrowserBackend(), {"wait": "load"}, use_proxy=True) as page:
-        assert page == {"config": {"wait": "load"}, "use_proxy": True}
+        assert page == {
+            "config": {"wait": "load"},
+            "use_proxy": True,
+            "target_url": None,
+        }
 
 
 async def test_python_monitor_runtime_closes_nested_stream_when_abandoned() -> None:

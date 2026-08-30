@@ -48,6 +48,32 @@ Many career sites block non-browser requests. Common fixes:
 - Try a different monitor type — `dom` with `render: true` bypasses most blocks
 - Run `ws task troubleshoot 'http 403'` for site-specific workarounds
 
+### Rendered-board bandwidth and bot-protection recon
+
+If the selected monitor or scraper uses `"render": true`, run
+`ws help browser-resources` before accepting it. Start with
+`"resource_policy": "none"`; an omitted policy also blocks nothing. Both are
+absolute off switches even if stale additive block lists remain.
+
+Use the same sample and egress to compare `none` with `lean`. Record final
+URL/title/body, 401/403/429 responses, captcha/challenge evidence, discovered
+count, required fields, and page/flat/debug artifacts. A new challenge,
+redirect, missing API call, count drop, or required-field drop is a regression.
+If the control is already blocked, the result is inconclusive—not evidence that
+blocking is safe.
+
+Only after the control succeeds and the blocking arm has parity may the final
+rendered config use:
+
+```json
+{"resource_policy": "auto", "bot_protection": false}
+```
+
+`auto` stays native for proxy, persistent-context, stealth/headful,
+Chrome-channel, cookie-seeded, custom-user-agent, and warmed flows. Keep
+`resource_policy:none` for those or for any board with bot-protection evidence;
+an explicit blocking policy requires a successful same-egress canary.
+
 ### Verify job count
 
 Compare the crawled job count against the expected ~{{ expected_jobs }} jobs.
@@ -180,6 +206,8 @@ After testing, report your result to the main agent. Include:
 - **Required fields:** title (quality), description (quality), locations (quality)
 - **Optional fields:** which ones are present and their quality
 - **Cost:** measured time per cycle
+- **Browser resources:** policy selected, whether font/media requests were
+  actually blocked, and the control/variant anti-bot evidence (rendered configs)
 - **Verdict:** your feedback verdict and brief explanation
 - **Issues:** anything unexpected (URL redirects, missing pages, partial data)
 

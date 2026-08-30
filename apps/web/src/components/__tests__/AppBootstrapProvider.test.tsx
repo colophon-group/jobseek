@@ -14,6 +14,9 @@ const mockBootstrap = vi.fn();
 vi.mock("@/lib/actions/bootstrap", () => ({
   fetchAppBootstrap: (...args: unknown[]) => mockBootstrap(...args),
 }));
+vi.mock("../providers/PreferencesInitializer", () => ({
+  PreferencesInitializer: () => null,
+}));
 
 // BannerProvider reads window.localStorage during render. happy-dom's
 // localStorage implementation doesn't always expose getItem as a plain
@@ -51,12 +54,15 @@ const initialCurrencyRates = [
 ];
 
 function SessionProbe() {
-  const { user, isLoggedIn, isPending } = useSession();
+  const { user, preferences, isLoggedIn, isPending } = useSession();
   return (
     <>
       <span data-testid="pending">{String(isPending)}</span>
       <span data-testid="logged-in">{String(isLoggedIn)}</span>
       <span data-testid="user-name">{user?.name ?? "none"}</span>
+      <span data-testid="job-languages">
+        {preferences?.jobLanguages?.join(",") ?? "none"}
+      </span>
     </>
   );
 }
@@ -90,7 +96,7 @@ describe("AppBootstrapProvider", () => {
     setDocumentCookie("utm_source=google; NEXT_LOCALE=en");
     mockBootstrap.mockResolvedValue({
       user: { id: "ghost", email: "x@x", name: "Ghost", emailVerified: true },
-      prefs: null,
+      prefs: { jobLanguages: ["de", "en"] },
       savedStatuses: [],
       starredIds: [],
     });
@@ -122,7 +128,7 @@ describe("AppBootstrapProvider", () => {
         name: "Alice",
         emailVerified: true,
       },
-      prefs: null,
+      prefs: { jobLanguages: ["de", "en"] },
       savedStatuses: [],
       starredIds: [],
     });
@@ -138,6 +144,7 @@ describe("AppBootstrapProvider", () => {
     });
     expect(mockBootstrap).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("user-name").textContent).toBe("Alice");
+    expect(screen.getByTestId("job-languages").textContent).toBe("de,en");
   });
 
   it("is pending at first render when bootstrap is required", async () => {

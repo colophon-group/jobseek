@@ -349,11 +349,22 @@ def _rich_result(jobs: list[DiscoveredJob], *, truncated: bool = False) -> Monit
 
 
 @asynccontextmanager
-async def _open_dayforce_page(pw, browser_config: dict, *, use_proxy: bool):
+async def _open_dayforce_page(
+    pw,
+    browser_config: dict,
+    *,
+    use_proxy: bool,
+    target_url: str,
+):
     """Open a shared browser page and drain Dayforce network state on exit."""
     from src.shared.browser import open_page
 
-    async with open_page(pw, browser_config, use_proxy=use_proxy) as page:
+    async with open_page(
+        pw,
+        browser_config,
+        use_proxy=use_proxy,
+        target_url=target_url,
+    ) as page:
         try:
             yield page
         finally:
@@ -385,6 +396,7 @@ async def stream(
         pw,
         browser_config,
         use_proxy=bool(config.get("proxy")),
+        target_url=key.listing_url(),
     ) as page:
         request_headers = await _navigate_and_capture_headers(page, key)
         browser_site = extract_dayforce_site(await safe_content(page), key)

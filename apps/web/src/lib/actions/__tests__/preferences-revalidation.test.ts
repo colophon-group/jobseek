@@ -78,10 +78,10 @@ vi.mock("@/db", () => ({
 vi.mock("@/lib/auth", () => ({ auth: { api: { setPassword: vi.fn() } } }));
 
 const PATHS = [
-  "/[lang]/(app)/explore",
   "/[lang]/(app)/[userSlug]/[watchlistSlug]",
   "/[lang]/(app)/company/[slug]",
 ];
+const EXPLORE_PATH = "/[lang]/(app)/explore";
 
 describe("updatePreferences invalidates job-language-dependent pages (#2916)", () => {
   beforeEach(() => {
@@ -108,6 +108,7 @@ describe("updatePreferences invalidates job-language-dependent pages (#2916)", (
     for (const p of PATHS) {
       expect(mocks.revalidatePath).toHaveBeenCalledWith(p, "page");
     }
+    expect(mocks.revalidatePath).not.toHaveBeenCalledWith(EXPLORE_PATH, "page");
   });
 
   it("anon path: skips revalidation when jobLanguages is not in payload", async () => {
@@ -134,6 +135,7 @@ describe("updatePreferences invalidates job-language-dependent pages (#2916)", (
     for (const p of PATHS) {
       expect(mocks.revalidatePath).toHaveBeenCalledWith(p, "page");
     }
+    expect(mocks.revalidatePath).not.toHaveBeenCalledWith(EXPLORE_PATH, "page");
   });
 
   it("auth update path: does NOT revalidate when only theme changes", async () => {
@@ -162,6 +164,7 @@ describe("updatePreferences invalidates job-language-dependent pages (#2916)", (
     for (const p of PATHS) {
       expect(mocks.revalidatePath).toHaveBeenCalledWith(p, "page");
     }
+    expect(mocks.revalidatePath).not.toHaveBeenCalledWith(EXPLORE_PATH, "page");
   });
 
   it("revalidatePath failure is swallowed (preference write must not 500)", async () => {

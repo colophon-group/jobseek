@@ -238,10 +238,21 @@ def _rich_result(jobs: list[DiscoveredJob], *, truncated: bool = False):
 
 
 @asynccontextmanager
-async def _open_darwinbox_page(pw, browser_config: dict, *, use_proxy: bool):
+async def _open_darwinbox_page(
+    pw,
+    browser_config: dict,
+    *,
+    use_proxy: bool,
+    target_url: str,
+):
     from src.shared.browser import open_page
 
-    async with open_page(pw, browser_config, use_proxy=use_proxy) as page:
+    async with open_page(
+        pw,
+        browser_config,
+        use_proxy=use_proxy,
+        target_url=target_url,
+    ) as page:
         try:
             yield page
         finally:
@@ -301,6 +312,7 @@ async def stream(
         pw,
         browser_config,
         use_proxy=bool(config.get("proxy")),
+        target_url=key.listing_url(),
     ) as page:
         await _prepare_page(page, key, browser_config)
         fetch = make_browser_fetcher(page)

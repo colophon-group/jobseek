@@ -18,7 +18,6 @@ import {
   runListTopCompanies,
   tryListTopCompaniesDirect,
 } from "@/lib/search/search-runner";
-import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/providers/SessionProvider";
 import { fetchExploreFilterPageData } from "@/lib/actions/explore-page-data";
 import type { ParsedSearchFilters } from "@/lib/actions/search-input";
@@ -111,6 +110,8 @@ interface SearchPageProps {
   initialLanguageOverride?: string[] | null;
   userLat?: number;
   userLng?: number;
+  /** Mount-time browser loader already attempted the visible result read. */
+  initialDirectRefreshAttempted?: boolean;
 }
 
 export function SearchPage({
@@ -139,6 +140,7 @@ export function SearchPage({
   initialLanguageOverride,
   userLat,
   userLng,
+  initialDirectRefreshAttempted = false,
 }: SearchPageProps) {
   // The cached route is always `/<locale>/explore`; query state is observed
   // separately after hydration. Reading `usePathname()` here would suspend
@@ -237,8 +239,6 @@ export function SearchPage({
   // each consumer fired its own `getCurrencyRates()`, producing 3 server
   // actions per `/explore` view; see #3181.
   const currencyRates = useSalaryRates();
-
-  useClearTypesenseOnAuthChange(isLoggedIn);
 
   const [showPostingId, setShowPostingId, showPostingIdRef] = useLatestState<string | null>(
     shouldRestore ? cached.showPostingId : null,
@@ -862,7 +862,7 @@ export function SearchPage({
   // current results and the refresh cannot add Fluid CPU.
   const directRefreshLanguagesKey = languages.join(",");
   useEffect(() => {
-    if (shouldRestore || hasFilters) return;
+    if (initialDirectRefreshAttempted || shouldRestore || hasFilters) return;
 
     const refreshKey = [
       locale,
@@ -908,6 +908,7 @@ export function SearchPage({
   }, [
     directRefreshLanguagesKey,
     hasFilters,
+    initialDirectRefreshAttempted,
     locale,
     shouldRestore,
     userLat,
