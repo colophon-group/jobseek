@@ -8,6 +8,7 @@ import { withPublicApiObservability } from "@/lib/public-api-observability";
 import {
   checkRateLimit,
   apiResponse,
+  apiProviderUnavailableResponse,
   sharedApiResponse,
   parseApiLocale,
   siteUrl,
@@ -31,7 +32,19 @@ async function handleGet(request: NextRequest) {
     );
   }
 
-  const results = await suggestCompanies({ query: q });
+  let results: Awaited<ReturnType<typeof suggestCompanies>>;
+  try {
+    results = await suggestCompanies({
+      query: q,
+      failOnUnavailable: true,
+    });
+  } catch (error) {
+    return apiProviderUnavailableResponse(
+      "public_api_companies",
+      rl,
+      error,
+    );
+  }
 
   const companies = results.slice(0, MAX_RESULTS).map((c) => ({
     name: c.name,

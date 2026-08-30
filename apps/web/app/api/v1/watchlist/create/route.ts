@@ -6,6 +6,7 @@ import { withPublicApiObservability } from "@/lib/public-api-observability";
 import {
   checkRateLimit,
   apiResponse,
+  apiProviderUnavailableResponse,
   sharedApiResponse,
   PUBLIC_EMPLOYMENT_TYPE_VALUES,
   PUBLIC_WORK_MODE_VALUES,
@@ -52,8 +53,18 @@ async function handleGet(request: NextRequest) {
     if (invalid) return invalid;
   }
 
-  // Resolve slugs to get matching counts for the preview
-  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale });
+  // Resolve slugs to get matching counts for the preview. Public API
+  // responses must not turn a provider outage into a cacheable empty preview.
+  let parsed: Awaited<ReturnType<typeof parseSearchFilters>>;
+  try {
+    parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale });
+  } catch (error) {
+    return apiProviderUnavailableResponse(
+      "public_api_watchlist_create_filters",
+      rl,
+      error,
+    );
+  }
   const unresolved = validateResolvedPublicFilters(parsed, rl);
   if (unresolved) return unresolved;
 
@@ -107,10 +118,26 @@ async function handleGet(request: NextRequest) {
   };
 
   // Get matching counts
-  const result =
-    parsed.keywords.length > 0
-      ? await searchJobs({ keywords: parsed.keywords, ...searchParams })
-      : await listTopCompanies(searchParams);
+  let result: Awaited<ReturnType<typeof listTopCompanies>>;
+  try {
+    result =
+      parsed.keywords.length > 0
+        ? await searchJobs({ keywords: parsed.keywords, ...searchParams })
+        : await listTopCompanies(searchParams);
+  } catch (error) {
+    return apiProviderUnavailableResponse(
+      "public_api_watchlist_create",
+      rl,
+      error,
+    );
+  }
+  if (result.degraded) {
+    return apiProviderUnavailableResponse(
+      "public_api_watchlist_create_degraded",
+      rl,
+      new Error("Search provider returned a degraded result"),
+    );
+  }
 
   const totalJobs = result.companies.reduce(
     (sum, c) => sum + c.activeMatches,

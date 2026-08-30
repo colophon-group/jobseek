@@ -96,37 +96,7 @@
             }
           },
           "403": { "$ref": "#/components/responses/EdgeRateLimited" },
-          "500": {
-            "description": "Search provider failure. The message is user-safe and contains no provider detail.",
-            "headers": {
-              "Cache-Control": {
-                "description": "Always ``no-store`` for error responses.",
-                "schema": { "type": "string", "const": "no-store" }
-              },
-              "Access-Control-Allow-Origin": {
-                "description": "Cross-origin access is permitted for public API clients.",
-                "schema": { "type": "string", "const": "*" }
-              },
-              "X-RateLimit-Limit": {
-                "description": "Request limit when the rate-limit backend is available.",
-                "schema": { "type": "integer" }
-              },
-              "X-RateLimit-Remaining": {
-                "description": "Remaining requests when the rate-limit backend is available.",
-                "schema": { "type": "integer" }
-              },
-              "X-RateLimit-Reset": {
-                "description": "Rate-limit reset time in Unix milliseconds when the backend is available.",
-                "schema": { "type": "integer" }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-                "example": { "error": "Search service unavailable" }
-              }
-            }
-          },
+          "500": { "$ref": "#/components/responses/ProviderUnavailable" },
           "429": {
             "description": "Rate limit exceeded. The response is not cacheable.",
             "headers": {
@@ -280,7 +250,8 @@
             }
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
-          "403": { "$ref": "#/components/responses/EdgeRateLimited" }
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" },
+          "500": { "$ref": "#/components/responses/ProviderUnavailable" }
         }
       }
     },
@@ -319,7 +290,8 @@
             }
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
-          "403": { "$ref": "#/components/responses/EdgeRateLimited" }
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" },
+          "500": { "$ref": "#/components/responses/ProviderUnavailable" }
         }
       }
     },
@@ -359,7 +331,8 @@
             }
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
-          "403": { "$ref": "#/components/responses/EdgeRateLimited" }
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" },
+          "500": { "$ref": "#/components/responses/ProviderUnavailable" }
         }
       }
     },
@@ -408,7 +381,8 @@
             }
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
-          "403": { "$ref": "#/components/responses/EdgeRateLimited" }
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" },
+          "500": { "$ref": "#/components/responses/ProviderUnavailable" }
         }
       }
     },
@@ -451,7 +425,8 @@
             }
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
-          "403": { "$ref": "#/components/responses/EdgeRateLimited" }
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" },
+          "500": { "$ref": "#/components/responses/ProviderUnavailable" }
         }
       }
     }
@@ -468,6 +443,37 @@
       },
       "EdgeRateLimited": {
         "description": "The pre-cache Vercel WAF denied this request because the authoritative IP exceeded the shared 60 requests per 60 seconds public-read budget. This response is generated before the application route; its body, CORS headers, and origin rate-limit headers are not part of the JSON API contract. Retry after the fixed window."
+      },
+      "ProviderUnavailable": {
+        "description": "Search provider failure. The message is user-safe, contains no provider detail, and is never cacheable.",
+        "headers": {
+          "Cache-Control": {
+            "description": "Always ``no-store`` for provider failure responses.",
+            "schema": { "type": "string", "const": "no-store" }
+          },
+          "Access-Control-Allow-Origin": {
+            "description": "Cross-origin access is permitted for public API clients.",
+            "schema": { "type": "string", "const": "*" }
+          },
+          "X-RateLimit-Limit": {
+            "description": "Request limit when the rate-limit backend is available.",
+            "schema": { "type": "integer" }
+          },
+          "X-RateLimit-Remaining": {
+            "description": "Remaining requests when the rate-limit backend is available.",
+            "schema": { "type": "integer" }
+          },
+          "X-RateLimit-Reset": {
+            "description": "Rate-limit reset time in Unix milliseconds when the backend is available.",
+            "schema": { "type": "integer" }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": { "error": "Search service unavailable" }
+          }
+        }
       }
     },
     "schemas": {

@@ -84,12 +84,14 @@ observation rule itself must not deny, challenge, bypass, or rate-limit public
 API traffic. The preceding rate-limit rule is the enforcement boundary.
 
 Open the live [API/MCP Firewall Traffic filter](https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/firewall/traffic?filter=rule_log_public_api_and_mcp_traffic_w3Ii5m).
-Firewall Traffic observes requests at the Vercel edge, so its count includes
-CDN hits that never invoke an origin Function and requests denied by the WAF.
-Application events and Redis counters measure origin executions instead. Use
-the edge view for total ingress and enforcement; use origin metrics for
-handler status, latency, consumer attribution, and cost. Do not add the two
-counts together. A hosted MCP REST cache hit intentionally has no origin
+This trailing log rule counts matching requests that reach it, including CDN
+hits that never invoke an origin Function. Requests denied by the preceding
+rate-limit rule stop there and do not appear under this log-rule filter; inspect
+the combined rate-limit rule or the unfiltered Firewall Traffic view for those
+denials. Application events and Redis counters measure origin executions
+instead. Use the edge views for ingress and enforcement; use origin metrics for
+handler status, latency, consumer attribution, and cost. Do not add the counts
+together. A hosted MCP REST cache hit intentionally has no origin
 consumer-attribution event because the response is identical for every
 anonymous caller.
 
@@ -163,10 +165,12 @@ done
 ```
 
 Then select **Live** or **Past Hour** in the filtered Firewall Traffic view and
-confirm both controlled REST and MCP requests appear under
-`rule_log_public_api_and_mcp_traffic_w3Ii5m`. The log rule does not add a
-mitigation response header. After publication and verification,
-`vercel firewall diff --json` must report an empty `changes` array.
+confirm the allowed controlled REST and MCP requests appear under
+`rule_log_public_api_and_mcp_traffic_w3Ii5m`. Inspect any bounded-probe 403s
+under `rule_deny_public_read_server_action_bursts_SZRRK0` or in the unfiltered
+view. The log rule does not add a mitigation response header. After publication
+and verification, `vercel firewall diff --json` must report an empty `changes`
+array.
 
 ### Rollback constraints
 

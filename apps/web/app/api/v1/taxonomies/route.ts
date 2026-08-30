@@ -15,6 +15,7 @@ import { withPublicApiObservability } from "@/lib/public-api-observability";
 import {
   checkRateLimit,
   apiResponse,
+  apiProviderUnavailableResponse,
   sharedApiResponse,
   parseApiLocale,
 } from "../_shared";
@@ -39,27 +40,45 @@ async function handleGet(request: NextRequest) {
 
   let items: unknown;
 
-  switch (type) {
-    case "seniority": {
-      const data = await getAllSeniorities(locale);
-      items = data.map((s) => ({ slug: s.slug, name: s.name }));
-      break;
+  try {
+    switch (type) {
+      case "seniority": {
+        const data = await getAllSeniorities(locale, undefined, {
+          failOnUnavailable: true,
+        });
+        items = data.map((s) => ({ slug: s.slug, name: s.name }));
+        break;
+      }
+      case "occupations": {
+        const data = await getAllOccupationsGrouped(locale, undefined, {
+          failOnUnavailable: true,
+        });
+        items = data;
+        break;
+      }
+      case "technologies": {
+        const data = await getAllTechnologiesGrouped(undefined, {
+          failOnUnavailable: true,
+        });
+        items = data;
+        break;
+      }
+      case "industries": {
+        const data = await suggestIndustries({
+          query: "",
+          locale,
+          failOnUnavailable: true,
+        });
+        items = data.map((i) => ({ id: i.id, name: i.name }));
+        break;
+      }
     }
-    case "occupations": {
-      const data = await getAllOccupationsGrouped(locale);
-      items = data;
-      break;
-    }
-    case "technologies": {
-      const data = await getAllTechnologiesGrouped();
-      items = data;
-      break;
-    }
-    case "industries": {
-      const data = await suggestIndustries({ query: "", locale });
-      items = data.map((i) => ({ id: i.id, name: i.name }));
-      break;
-    }
+  } catch (error) {
+    return apiProviderUnavailableResponse(
+      "public_api_taxonomies",
+      rl,
+      error,
+    );
   }
 
   return sharedApiResponse({ type, items }, { maxAge: CACHE_TTL_LONG });

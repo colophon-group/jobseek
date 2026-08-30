@@ -84,6 +84,19 @@ export function apiResponse(
   return NextResponse.json(data, { headers, status: options?.status });
 }
 
+/** Convert an upstream search failure into the shared public API contract. */
+export function apiProviderUnavailableResponse(
+  operation: string,
+  rateLimit: RateLimitInfo | null,
+  error: unknown,
+): NextResponse {
+  logExternalError("error", { service: "typesense", operation }, error);
+  return apiResponse(
+    { error: "Search service unavailable" },
+    { rateLimit, status: 500 },
+  );
+}
+
 /** Build a deterministic public JSON response cached only by Vercel's CDN.
  *
  * Browsers and downstream intermediaries must revalidate. Vercel consumes and

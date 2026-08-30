@@ -5,6 +5,7 @@ import {
 } from "@/lib/services/watchlists";
 import {
   checkRateLimit,
+  apiProviderUnavailableResponse,
   sharedApiResponse,
   parseApiLocale,
   siteUrl,
@@ -22,14 +23,29 @@ async function handleGet(request: NextRequest) {
   const locale = parseApiLocale(sp, rl);
   if (locale instanceof NextResponse) return locale;
 
-  const result = q
-    ? await searchPublicWatchlists({
-        query: q,
-        offset: 0,
-        limit: MAX_RESULTS,
-        locale,
-      })
-    : await getPopularWatchlists({ offset: 0, limit: MAX_RESULTS, locale });
+  let result: Awaited<ReturnType<typeof searchPublicWatchlists>>;
+  try {
+    result = q
+      ? await searchPublicWatchlists({
+          query: q,
+          offset: 0,
+          limit: MAX_RESULTS,
+          locale,
+          failOnUnavailable: true,
+        })
+      : await getPopularWatchlists({
+          offset: 0,
+          limit: MAX_RESULTS,
+          locale,
+          failOnUnavailable: true,
+        });
+  } catch (error) {
+    return apiProviderUnavailableResponse(
+      "public_api_watchlists",
+      rl,
+      error,
+    );
+  }
 
   const watchlists = result.watchlists.map((w) => ({
     title: w.title,

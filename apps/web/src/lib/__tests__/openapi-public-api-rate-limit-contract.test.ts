@@ -29,6 +29,15 @@ const PUBLIC_GET_PATHS = [
   "/api/v1/resolve",
 ] as const;
 
+const PROVIDER_BACKED_GET_PATHS = [
+  "/api/v1/search",
+  "/api/v1/taxonomies",
+  "/api/v1/companies",
+  "/api/v1/watchlists",
+  "/api/v1/watchlist/create",
+  "/api/v1/resolve",
+] as const;
+
 describe("public API OpenAPI edge-rate-limit contract (#8261)", () => {
   it("documents the two rate-limit layers and cache-safe success headers", () => {
     expect(spec.info.version).toBe("1.2.0");
@@ -47,6 +56,17 @@ describe("public API OpenAPI edge-rate-limit contract (#8261)", () => {
     }
     expect(spec.components.responses.EdgeRateLimited?.description).toContain(
       "generated before the application route",
+    );
+  });
+
+  it("documents non-cacheable provider failures on provider-backed GETs", () => {
+    for (const path of PROVIDER_BACKED_GET_PATHS) {
+      expect(spec.paths[path]?.get?.responses?.["500"]).toEqual({
+        $ref: "#/components/responses/ProviderUnavailable",
+      });
+    }
+    expect(spec.components.responses.ProviderUnavailable?.description).toContain(
+      "never cacheable",
     );
   });
 });

@@ -17,6 +17,7 @@ import { withPublicApiObservability } from "@/lib/public-api-observability";
 import {
   checkRateLimit,
   apiResponse,
+  apiProviderUnavailableResponse,
   sharedApiResponse,
   parseApiLocale,
 } from "../_shared";
@@ -57,48 +58,72 @@ async function handleGet(request: NextRequest) {
 
   let matches: { slug: string; name: string; type?: string; parentName?: string | null }[];
 
-  switch (type) {
-    case "locations": {
-      const data = await suggestLocations({ query: q, locale });
-      matches = data.map((l) => ({
-        slug: l.slug,
-        name: l.name,
-        type: l.type,
-        parentName: l.parentName,
-      }));
-      break;
+  try {
+    switch (type) {
+      case "locations": {
+        const data = await suggestLocations({
+          query: q,
+          locale,
+          failOnUnavailable: true,
+        });
+        matches = data.map((l) => ({
+          slug: l.slug,
+          name: l.name,
+          type: l.type,
+          parentName: l.parentName,
+        }));
+        break;
+      }
+      case "occupations": {
+        const data = await suggestOccupations({
+          query: q,
+          locale,
+          failOnUnavailable: true,
+        });
+        matches = data.map((o) => ({ slug: o.slug, name: o.name }));
+        break;
+      }
+      case "seniority": {
+        const data = await suggestSeniorities({
+          query: q,
+          locale,
+          failOnUnavailable: true,
+        });
+        matches = data.map((s) => ({ slug: s.slug, name: s.name }));
+        break;
+      }
+      case "technologies": {
+        const data = await suggestTechnologies({
+          query: q,
+          locale,
+          failOnUnavailable: true,
+        });
+        matches = data.map((t) => ({ slug: t.slug, name: t.name }));
+        break;
+      }
+      case "industries": {
+        // The `industry` table has no `slug` column today, but the response
+        // contract is uniform across taxonomies: callers expect `slug` to
+        // be a URL-stable slug-shaped string. Derive one from the localized
+        // display name with the same canonical slugifier the rest of the
+        // app uses, falling back to the numeric id if the name slugifies
+        // to empty (e.g., all-symbol pathological input). See issue #3228.
+        // Note: `/api/v1/search` does not currently accept an industry
+        // filter, so this is a response-shape fix; no roundtrip breakage.
+        const data = await suggestIndustries({
+          query: q,
+          locale,
+          failOnUnavailable: true,
+        });
+        matches = data.map((i) => ({
+          slug: slugifyTitle(i.name) || String(i.id),
+          name: i.name,
+        }));
+        break;
+      }
     }
-    case "occupations": {
-      const data = await suggestOccupations({ query: q, locale });
-      matches = data.map((o) => ({ slug: o.slug, name: o.name }));
-      break;
-    }
-    case "seniority": {
-      const data = await suggestSeniorities({ query: q, locale });
-      matches = data.map((s) => ({ slug: s.slug, name: s.name }));
-      break;
-    }
-    case "technologies": {
-      const data = await suggestTechnologies({ query: q, locale });
-      matches = data.map((t) => ({ slug: t.slug, name: t.name }));
-      break;
-    }
-    case "industries": {
-      // The `industry` table has no `slug` column today, but the response
-      // contract is uniform across taxonomies: callers expect `slug` to
-      // be a URL-stable slug-shaped string. Derive one from the localized
-      // display name with the same canonical slugifier the rest of the
-      // app uses, falling back to the numeric id if the name slugifies
-      // to empty (e.g., all-symbol pathological input). See issue #3228.
-      // Note: `/api/v1/search` does not currently accept an industry
-      // filter, so this is a response-shape fix; no roundtrip breakage.
-      const data = await suggestIndustries({ query: q, locale });
-      matches = data.map((i) => ({
-        slug: slugifyTitle(i.name) || String(i.id),
-        name: i.name,
-      }));
-      break;
-    }
+  } catch (error) {
+    return apiProviderUnavailableResponse("public_api_resolve", rl, error);
   }
 
   // Resolve responses (taxonomy/location autocomplete) are stable — the

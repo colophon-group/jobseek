@@ -452,4 +452,24 @@ describe("GET /api/v1/search", () => {
       providerError,
     );
   });
+
+  it("does not cache a degraded search as a real empty result", async () => {
+    mocks.listTopCompanies.mockResolvedValueOnce({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+
+    const { res, body } = await callRoute("?locale=en");
+
+    expect(res.status).toBe(500);
+    expect(body).toEqual({ error: "Search service unavailable" });
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Vercel-CDN-Cache-Control")).toBeNull();
+    expect(mocks.logExternalError).toHaveBeenCalledWith(
+      "error",
+      { service: "typesense", operation: "public_api_search_degraded" },
+      expect.any(Error),
+    );
+  });
 });
