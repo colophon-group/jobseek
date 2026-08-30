@@ -93,19 +93,16 @@ def _strict_counter_sum(query: Query, expression: str, at: datetime, query_name:
     """Return a complete integer counter sum without normalizing bad evidence."""
 
     rows = query(expression, at)
-    if not rows:
+    if len(rows) != 1:
         return None
-    total = 0
-    for row in rows:
-        try:
-            raw_value = float(row["value"][1])
-        except (KeyError, IndexError, TypeError, ValueError):
-            return None
-        value = _nonnegative_integer(raw_value)
-        if value is None:
-            return None
-        total += value
-    return total
+    row = rows[0]
+    if row.get("metric") != {}:
+        return None
+    try:
+        raw_value = float(row["value"][1])
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+    return _nonnegative_integer(raw_value)
 
 
 def _nonnegative_integer(value: float | None) -> int | None:
@@ -255,6 +252,8 @@ def _counter_vector(
         metric = row.get("metric")
         if not isinstance(metric, dict):
             return None
+        if set(metric) != set(label_names):
+            return None
         try:
             label_values = tuple(metric[name] for name in label_names)
             raw_value = float(row["value"][1])
@@ -367,6 +366,15 @@ def _capture_capability_target_stage(
         or any(value != 0 for value in capability_resets.values())
         or any(value != 0 for value in runtime_resets.values())
         or any(_CAPABILITY_RE.fullmatch(key[0]) is None for key in capability_start)
+    ):
+        return {"stage": output_stage, "complete": False, "executions": []}
+
+    allowed_outcomes = {
+        "monitor": {"success", "cancelled", "error", "incomplete"},
+        "scrape": {"success", "cancelled", "error"},
+    }[metric_stage]
+    if any(key[1] not in allowed_outcomes for key in capability_start) or any(
+        key[0] not in allowed_outcomes for key in runtime_start
     ):
         return {"stage": output_stage, "complete": False, "executions": []}
 

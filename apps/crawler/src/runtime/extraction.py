@@ -20,7 +20,7 @@ from src.metrics import (
     runtime_executions_total,
     runtime_output_items_total,
 )
-from src.runtime_cost.egress import (
+from src.shared.egress import (
     record_runtime_capability,
     seed_runtime_capabilities,
 )

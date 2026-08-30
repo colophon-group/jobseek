@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from src.runtime_cost.egress import (
+from src.shared.egress import (
     EgressAttribution,
     current_egress_attribution,
     record_origin_attempt,

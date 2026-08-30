@@ -5,7 +5,7 @@ import asyncio
 import httpx
 import pytest
 
-from src.runtime_cost.egress import (
+from src.shared.egress import (
     bind_runtime_egress,
     capability_executions_total,
     current_egress_attribution,

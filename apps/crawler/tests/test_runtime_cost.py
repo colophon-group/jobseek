@@ -719,7 +719,7 @@ def _attributed_http_query(end_at: datetime, fault: str | None = None):
                     if stage == "monitor"
                     else [("json-ld", "success")]
                 )
-                return [
+                rows = [
                     {
                         "metric": {"capability": capability, "outcome": outcome},
                         "value": [
@@ -733,6 +733,9 @@ def _attributed_http_query(end_at: datetime, fault: str | None = None):
                     }
                     for index, (capability, outcome) in enumerate(capabilities)
                 ]
+                if fault == "capability-extra-label":
+                    rows[0]["metric"]["unexpected"] = "value"
+                return rows
             values = (
                 [("greenhouse", "success", 3, 8), ("sitemap", "error", 1, 2)]
                 if stage == "monitor"
@@ -749,12 +752,19 @@ def _attributed_http_query(end_at: datetime, fault: str | None = None):
                 rows[0]["value"][1] = "-1"
             if fault == "capability-fractional-end" and not is_start:
                 rows[0]["value"][1] = "8.5"
+            if fault == "capability-invalid-outcome":
+                rows[0]["metric"]["outcome"] = "not-a-runtime-outcome"
+            if fault == "capability-extra-label":
+                rows[0]["metric"]["unexpected"] = "value"
             return rows
         if "crawler_runtime_executions_total" in expression:
             stage = "monitor" if 'stage="monitor"' in expression else "detail"
             if "resets(" in expression:
                 outcomes = ("success", "error") if stage == "monitor" else ("success",)
-                return [{"metric": {"outcome": outcome}, "value": [0, "0"]} for outcome in outcomes]
+                rows = [{"metric": {"outcome": outcome}, "value": [0, "0"]} for outcome in outcomes]
+                if fault == "capability-invalid-outcome":
+                    rows[0]["metric"]["outcome"] = "not-a-runtime-outcome"
+                return rows
             values = (
                 [("success", 10, 15), ("error", 2, 3)]
                 if stage == "monitor"
@@ -762,13 +772,16 @@ def _attributed_http_query(end_at: datetime, fault: str | None = None):
             )
             if fault == "capability-mismatch" and stage == "monitor":
                 values[0] = ("success", 10, 16)
-            return [
+            rows = [
                 {
                     "metric": {"outcome": outcome},
                     "value": [0, str(start if is_start else end)],
                 }
                 for outcome, start, end in values
             ]
+            if fault == "capability-invalid-outcome":
+                rows[0]["metric"]["outcome"] = "not-a-runtime-outcome"
+            return rows
         if any(
             metric in expression
             for metric in (
@@ -786,12 +799,15 @@ def _attributed_http_query(end_at: datetime, fault: str | None = None):
                     "nonfinite-reset": "inf",
                     "counter-reset": "1",
                 }.get(fault, "0")
-                return [
+                rows = [
                     {
                         "metric": {},
                         "value": [0, reset_value],
                     }
                 ]
+                if fault == "duplicate-reset":
+                    return [rows[0], deepcopy(rows[0])]
+                return rows
             proxy = 'egress="proxy"' in expression
             if "origin_attempts" in expression:
                 start, end = (5, 8) if proxy else (10, 17)
@@ -813,7 +829,12 @@ def _attributed_http_query(end_at: datetime, fault: str | None = None):
                 start, end = (0, 1) if proxy else (1, 2)
             else:
                 start, end = (50, 350) if proxy else (100, 800)
-            return [{"metric": {}, "value": [0, str(start if is_start else end)]}]
+            row = {"metric": {}, "value": [0, str(start if is_start else end)]}
+            if fault == "duplicate-boundary" and not is_start and "origin_attempts" in expression:
+                return [row, deepcopy(row)]
+            if fault == "labeled-scalar" and not is_start and "origin_attempts" in expression:
+                row["metric"] = {"unexpected": "value"}
+            return [row]
         if "crawler_build_info" in expression:
             return [{"metric": {"version": "3.0.0"}, "value": [0, "1"]}]
         if "process_resident_memory_bytes" in expression:
@@ -914,9 +935,12 @@ def test_prometheus_capture_promotes_only_conserved_complete_http_egress() -> No
         "fractional-boundary",
         "nonfinite-boundary",
         "malformed-boundary",
+        "duplicate-boundary",
+        "labeled-scalar",
         "negative-reset",
         "fractional-reset",
         "nonfinite-reset",
+        "duplicate-reset",
         "counter-reset",
         "conservation-mismatch",
     ],
@@ -944,6 +968,8 @@ def test_prometheus_capture_fails_closed_for_incomplete_http_egress(fault: str) 
         "capability-fractional-end",
         "capability-nonfinite-reset",
         "capability-malformed-row",
+        "capability-invalid-outcome",
+        "capability-extra-label",
     ],
 )
 def test_prometheus_capture_discards_invalid_capability_mix(fault: str) -> None:

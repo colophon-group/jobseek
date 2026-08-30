@@ -70,7 +70,7 @@ from src.redis_queue import (
 )
 from src.runtime.config import BoardRuntimeConfig
 from src.runtime.extraction import seed_registered_runtime_capabilities
-from src.runtime_cost.egress import bind_runtime_egress
+from src.shared.egress import bind_runtime_egress
 from src.shared.http import WORKDAY_LIST_303_INCIDENT, RequestHostTracker, track_request_hosts
 from src.workers.monitor_memory import (
     cgroup_memory_bytes,
