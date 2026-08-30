@@ -442,6 +442,58 @@ class TestDomScraper:
         assert "Strategy consulting experience" in result.description
         assert "Add to favorites" not in result.description
 
+    def test_advorto_probe_uses_authoritative_labeled_vacancy_fields(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Nights Community Host</title></head><body>
+          <div id="page-title-holder">
+            <h1 class="page-header">Nights Community Host</h1>
+            <div class="page-header-third">No.26 - Croydon</div>
+          </div>
+          <div>Share this vacancy:</div>
+          <div class="promoted-vacancy-information-fields">
+            <dl class="AdvortoDefinitionList advorto-definition-list"></dl>
+          </div>
+          <div class="vacancy-information-fields">
+            <dl class="AdvortoDefinitionList advorto-definition-list">
+              <dt class="AdvortoDefinitionListTitle">Ref</dt>
+              <dd class="AdvortoDefinitionListElement">19092</dd>
+              <dt class="AdvortoDefinitionListTitle">Location</dt>
+              <dd class="AdvortoDefinitionListElement">No.26 - Croydon</dd>
+              <dt class="AdvortoDefinitionListTitle">Salary</dt>
+              <dd class="AdvortoDefinitionListElement">£30,000</dd>
+              <dt class="AdvortoDefinitionListTitle">Closing date</dt>
+              <dd class="AdvortoDefinitionListElement">30/09/2026</dd>
+              <dt class="AdvortoDefinitionListTitle">Description</dt>
+              <dd class="AdvortoDefinitionListElement">
+                <p><strong>Welcome to Native Communities.</strong></p>
+                <p>Support residents overnight and keep the building safe.</p>
+                <h2>What you will do</h2>
+                <ul><li>Respond to resident requests.</li><li>Complete safety checks.</li></ul>
+              </dd>
+            </dl>
+          </div>
+          <div class="AdvortoActionButtons"><button>Apply</button></div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert config["scope"] == ".vacancy-information-fields"
+        assert config["include_document_title"] is True
+
+        result = parse_html(html, config)
+        assert result.title == "Nights Community Host"
+        assert result.locations == ["No.26 - Croydon"]
+        assert result.metadata == {"salary": "£30,000"}
+        assert result.extras == {"valid_through": "2026-09-30"}
+        assert result.description is not None
+        assert "Welcome to Native Communities" in result.description
+        assert "Respond to resident requests" in result.description
+        assert "Share this vacancy" not in result.description
+        assert "Apply" not in result.description
+
     def test_tribepad_probe_scopes_description_and_labeled_metadata(self):
         from src.core.scrapers.dom import can_handle, parse_html
 
