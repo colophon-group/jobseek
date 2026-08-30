@@ -69,6 +69,8 @@ from src.redis_queue import (
     update_board_metadata_cache,
 )
 from src.runtime.config import BoardRuntimeConfig
+from src.runtime.extraction import seed_registered_runtime_capabilities
+from src.runtime_cost.egress import bind_runtime_egress
 from src.shared.http import WORKDAY_LIST_303_INCIDENT, RequestHostTracker, track_request_hosts
 from src.workers.monitor_memory import (
     cgroup_memory_bytes,
@@ -1246,9 +1248,17 @@ async def _process_monitor_work(
         )
         try:
             try:
-                with track_request_hosts() as host_tracker:
+                execution_class = "browser" if browser else "http"
+                with (
+                    bind_runtime_egress("monitor", execution_class),
+                    track_request_hosts() as host_tracker,
+                ):
                     raw_result: object = await _process_one_board_streaming(
-                        board_record, local_pool, http, extender, pw=pw
+                        cast(dict[str, object], board_record),
+                        local_pool,
+                        http,
+                        extender,
+                        pw=pw,
                     )
                     if isinstance(raw_result, BoardMonitorResult):
                         success = raw_result.success
@@ -1618,7 +1628,11 @@ async def _process_scrape_work(
         ):
             return
 
-        with track_request_hosts() as host_tracker:
+        execution_class = "browser" if browser else "http"
+        with (
+            bind_runtime_egress("detail", execution_class),
+            track_request_hosts() as host_tracker,
+        ):
             success, duration = await _process_one_scrape(
                 item,
                 local_pool,
@@ -1751,6 +1765,7 @@ async def run_pipeline(
     the container after 10s and any task mid-``_process_one_board_streaming``
     would be silently abandoned (claimed-then-lost).
     """
+    seed_registered_runtime_capabilities()
     concurrency = settings.discovery_concurrency
     monitor_cap = settings.monitor_concurrency
     monitor_sem = asyncio.Semaphore(monitor_cap) if monitor_cap > 0 else None

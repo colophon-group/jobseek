@@ -20,6 +20,10 @@ from src.metrics import (
     runtime_executions_total,
     runtime_output_items_total,
 )
+from src.runtime_cost.egress import (
+    record_runtime_capability,
+    seed_runtime_capabilities,
+)
 
 if TYPE_CHECKING:
     import httpx
@@ -119,6 +123,8 @@ class PythonMonitorRuntime:
             outcome = "error"
             raise
         finally:
+            from src.core.monitors import all_monitor_types
+
             runtime_execution_duration_seconds.labels(
                 stage="monitor",
                 implementation=self.implementation,
@@ -128,6 +134,13 @@ class PythonMonitorRuntime:
                 implementation=self.implementation,
                 outcome=outcome,
             ).inc()
+            record_runtime_capability(
+                stage="monitor",
+                implementation=self.implementation,
+                capability=monitor_type,
+                allowed_capabilities=all_monitor_types(),
+                outcome=outcome,
+            )
             if output_items:
                 runtime_output_items_total.labels(
                     stage="monitor",
@@ -179,6 +192,8 @@ class PythonScrapeRuntime:
             outcome = "cancelled"
             raise
         finally:
+            from src.core.scrapers import all_scraper_types
+
             runtime_execution_duration_seconds.labels(
                 stage="scrape",
                 implementation=self.implementation,
@@ -188,6 +203,31 @@ class PythonScrapeRuntime:
                 implementation=self.implementation,
                 outcome=outcome,
             ).inc()
+            record_runtime_capability(
+                stage="scrape",
+                implementation=self.implementation,
+                capability=scraper_type,
+                allowed_capabilities=all_scraper_types(),
+                outcome=outcome,
+            )
+
+
+def seed_registered_runtime_capabilities() -> None:
+    """Expose every registry-bounded Python capability at worker startup."""
+
+    from src.core.monitors import all_monitor_types
+    from src.core.scrapers import all_scraper_types
+
+    seed_runtime_capabilities(
+        stage="monitor",
+        implementation="python",
+        capabilities=all_monitor_types(),
+    )
+    seed_runtime_capabilities(
+        stage="scrape",
+        implementation="python",
+        capabilities=all_scraper_types(),
+    )
 
 
 PYTHON_MONITOR_RUNTIME: MonitorRuntime = PythonMonitorRuntime()

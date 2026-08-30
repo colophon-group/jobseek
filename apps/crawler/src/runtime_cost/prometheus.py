@@ -103,6 +103,295 @@ def _counter_delta(start: float | None, end: float | None) -> int | None:
     return end_count - start_count
 
 
+def _capture_egress_target_stage(
+    query: Query,
+    *,
+    selector: str,
+    target_id: str,
+    stage: str,
+    execution_class: str,
+    start_at: datetime,
+    end_at: datetime,
+    range_selector: str,
+) -> list[dict[str, Any]]:
+    """Capture route-specific shared-HTTP counters with exact conservation."""
+
+    entries: list[dict[str, Any]] = []
+    for egress in ("direct", "proxy"):
+        labels = f'{selector},stage="{stage}",execution_class="{execution_class}",egress="{egress}"'
+
+        def boundary(
+            metric: str,
+            at: datetime,
+            name: str,
+            extra: str = "",
+            *,
+            _labels: str = labels,
+            _egress: str = egress,
+        ) -> float | None:
+            return _optional_instant_sum(
+                query,
+                f"sum({metric}{{{_labels}{extra}}})",
+                at,
+                f"{target_id} {stage} {_egress} {name}",
+            )
+
+        attempts = _counter_delta(
+            boundary("crawler_runtime_origin_attempts_total", start_at, "start origin attempts"),
+            boundary("crawler_runtime_origin_attempts_total", end_at, "end origin attempts"),
+        )
+        responses = _counter_delta(
+            boundary(
+                "crawler_runtime_origin_outcomes_total",
+                start_at,
+                "start response outcomes",
+                ',outcome="response"',
+            ),
+            boundary(
+                "crawler_runtime_origin_outcomes_total",
+                end_at,
+                "end response outcomes",
+                ',outcome="response"',
+            ),
+        )
+        transport_errors = _counter_delta(
+            boundary(
+                "crawler_runtime_origin_outcomes_total",
+                start_at,
+                "start transport-error outcomes",
+                ',outcome="transport_error"',
+            ),
+            boundary(
+                "crawler_runtime_origin_outcomes_total",
+                end_at,
+                "end transport-error outcomes",
+                ',outcome="transport_error"',
+            ),
+        )
+        response_bytes = _counter_delta(
+            boundary(
+                "crawler_runtime_response_body_bytes_total",
+                start_at,
+                "start response bytes",
+            ),
+            boundary("crawler_runtime_response_body_bytes_total", end_at, "end response bytes"),
+        )
+
+        reset_counts = [
+            _nonnegative_integer(
+                _optional_instant_sum(
+                    query,
+                    f"sum(resets({metric}{{{labels}}}[{range_selector}]))",
+                    end_at,
+                    f"{target_id} {stage} {egress} {name} resets",
+                )
+            )
+            for metric, name in (
+                ("crawler_runtime_origin_attempts_total", "origin-attempt"),
+                ("crawler_runtime_origin_outcomes_total", "origin-outcome"),
+                ("crawler_runtime_response_body_bytes_total", "response-byte"),
+            )
+        ]
+        present_reset_counts = [value for value in reset_counts if value is not None]
+        counter_resets = (
+            sum(present_reset_counts) if len(present_reset_counts) == len(reset_counts) else None
+        )
+        complete = (
+            attempts is not None
+            and responses is not None
+            and transport_errors is not None
+            and response_bytes is not None
+            and counter_resets == 0
+            and attempts == responses + transport_errors
+        )
+        entries.append(
+            {
+                "stage": stage,
+                "execution_class": execution_class,
+                "egress": egress,
+                "complete": complete,
+                "counter_resets": counter_resets,
+                "origin_attempts": attempts if complete else None,
+                "responses": responses if complete else None,
+                "transport_errors": transport_errors if complete else None,
+                "response_bytes": response_bytes if complete else None,
+            }
+        )
+    return entries
+
+
+_CAPABILITY_RE = re.compile(r"(?:[a-z0-9][a-z0-9_-]{0,63}|_unknown)\Z")
+
+
+def _counter_vector(
+    query: Query,
+    expression: str,
+    at: datetime,
+    query_name: str,
+    label_names: tuple[str, ...],
+) -> dict[tuple[str, ...], int] | None:
+    rows = query(expression, at)
+    if not rows:
+        return None
+    values: dict[tuple[str, ...], int] = {}
+    for row in rows:
+        metric = row.get("metric")
+        if not isinstance(metric, dict):
+            raise ModelError(f"Prometheus {query_name} response is malformed")
+        try:
+            key = tuple(str(metric[name]) for name in label_names)
+            raw_value = float(row["value"][1])
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            raise ModelError(f"Prometheus {query_name} response is malformed") from exc
+        value = _nonnegative_integer(raw_value)
+        if value is None or key in values:
+            raise ModelError(f"Prometheus {query_name} response is malformed")
+        values[key] = value
+    return values
+
+
+def _capture_capability_target_stage(
+    query: Query,
+    *,
+    selector: str,
+    target_id: str,
+    metric_stage: str,
+    output_stage: str,
+    start_at: datetime,
+    end_at: datetime,
+    range_selector: str,
+) -> dict[str, Any]:
+    """Capture capability mix only when it reconciles to runtime executions."""
+
+    capability_labels = f'{selector},stage="{metric_stage}",implementation="python"'
+    capability_expression = (
+        "sum by (capability,outcome) "
+        f"(crawler_runtime_capability_executions_total{{{capability_labels}}})"
+    )
+    capability_resets_expression = (
+        "sum by (capability,outcome) "
+        f"(resets(crawler_runtime_capability_executions_total"
+        f"{{{capability_labels}}}[{range_selector}]))"
+    )
+    runtime_labels = f'{selector},stage="{metric_stage}",implementation="python"'
+    runtime_expression = f"sum by (outcome) (crawler_runtime_executions_total{{{runtime_labels}}})"
+    runtime_resets_expression = (
+        "sum by (outcome) "
+        f"(resets(crawler_runtime_executions_total{{{runtime_labels}}}[{range_selector}]))"
+    )
+
+    capability_start = _counter_vector(
+        query,
+        capability_expression,
+        start_at,
+        f"{target_id} {output_stage} capability start",
+        ("capability", "outcome"),
+    )
+    capability_end = _counter_vector(
+        query,
+        capability_expression,
+        end_at,
+        f"{target_id} {output_stage} capability end",
+        ("capability", "outcome"),
+    )
+    capability_resets = _counter_vector(
+        query,
+        capability_resets_expression,
+        end_at,
+        f"{target_id} {output_stage} capability resets",
+        ("capability", "outcome"),
+    )
+    runtime_start = _counter_vector(
+        query,
+        runtime_expression,
+        start_at,
+        f"{target_id} {output_stage} runtime start",
+        ("outcome",),
+    )
+    runtime_end = _counter_vector(
+        query,
+        runtime_expression,
+        end_at,
+        f"{target_id} {output_stage} runtime end",
+        ("outcome",),
+    )
+    runtime_resets = _counter_vector(
+        query,
+        runtime_resets_expression,
+        end_at,
+        f"{target_id} {output_stage} runtime resets",
+        ("outcome",),
+    )
+
+    mappings = (
+        capability_start,
+        capability_end,
+        capability_resets,
+        runtime_start,
+        runtime_end,
+        runtime_resets,
+    )
+    if any(mapping is None for mapping in mappings):
+        return {"stage": output_stage, "complete": False, "executions": []}
+    assert capability_start is not None
+    assert capability_end is not None
+    assert capability_resets is not None
+    assert runtime_start is not None
+    assert runtime_end is not None
+    assert runtime_resets is not None
+    if (
+        capability_start.keys() != capability_end.keys()
+        or capability_start.keys() != capability_resets.keys()
+        or runtime_start.keys() != runtime_end.keys()
+        or runtime_start.keys() != runtime_resets.keys()
+        or any(value != 0 for value in capability_resets.values())
+        or any(value != 0 for value in runtime_resets.values())
+        or any(_CAPABILITY_RE.fullmatch(key[0]) is None for key in capability_start)
+    ):
+        return {"stage": output_stage, "complete": False, "executions": []}
+
+    capability_deltas: dict[tuple[str, str], int] = {}
+    by_outcome: dict[str, int] = defaultdict(int)
+    for key, start_value in capability_start.items():
+        if len(key) != 2:
+            return {"stage": output_stage, "complete": False, "executions": []}
+        end_value = capability_end[key]
+        if end_value < start_value:
+            return {"stage": output_stage, "complete": False, "executions": []}
+        delta = end_value - start_value
+        capability_key = (key[0], key[1])
+        capability_deltas[capability_key] = delta
+        by_outcome[capability_key[1]] += delta
+
+    runtime_deltas: dict[str, int] = {}
+    for key, start_value in runtime_start.items():
+        if len(key) != 1:
+            return {"stage": output_stage, "complete": False, "executions": []}
+        end_value = runtime_end[key]
+        if end_value < start_value:
+            return {"stage": output_stage, "complete": False, "executions": []}
+        runtime_deltas[key[0]] = end_value - start_value
+    if {key: value for key, value in by_outcome.items() if value} != {
+        key: value for key, value in runtime_deltas.items() if value
+    }:
+        return {"stage": output_stage, "complete": False, "executions": []}
+
+    return {
+        "stage": output_stage,
+        "complete": True,
+        "executions": [
+            {
+                "stage": output_stage,
+                "capability": capability,
+                "outcome": outcome,
+                "executions": delta,
+            }
+            for (capability, outcome), delta in sorted(capability_deltas.items())
+            if delta
+        ],
+    }
+
+
 def _boundary_covered(last_sample: float | None, boundary: datetime) -> bool:
     if last_sample is None:
         return False
@@ -364,6 +653,8 @@ def capture_prometheus_measurement(
         monitor_concurrencies: set[float | None] = set()
         vcpu_limits: set[float | None] = set()
         memory_limits: set[int | None] = set()
+        role_egress_targets: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+        role_capability_targets: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
         for target in role_targets:
             instance = str(target["instance"])
@@ -498,6 +789,29 @@ def capture_prometheus_measurement(
                     end_at,
                     f"{instance} {stage} active seconds",
                 )
+                for egress_entry in _capture_egress_target_stage(
+                    query,
+                    selector=selector,
+                    target_id=target_id,
+                    stage=stage,
+                    execution_class=str(execution_class),
+                    start_at=start_at,
+                    end_at=end_at,
+                    range_selector=range_selector,
+                ):
+                    role_egress_targets[(stage, str(egress_entry["egress"]))].append(egress_entry)
+                role_capability_targets[stage].append(
+                    _capture_capability_target_stage(
+                        query,
+                        selector=selector,
+                        target_id=target_id,
+                        metric_stage=metric_kind,
+                        output_stage=stage,
+                        start_at=start_at,
+                        end_at=end_at,
+                        range_selector=range_selector,
+                    )
+                )
 
         if (
             len(cost_categories) != 1
@@ -521,10 +835,89 @@ def capture_prometheus_measurement(
             role_process_tree_peak_rss = 0.0
             role_process_tree_samples = 0
             resource_scope = "root-process"
+
+        egress_coverage: list[dict[str, Any]] = []
+        lane_egress_totals: dict[tuple[str, str], tuple[int, int]] = {}
+        role_execution_class = str(role_targets[0].get("execution_class"))
+        if role_execution_class in {"http", "browser"}:
+            for (stage, egress), entries in sorted(role_egress_targets.items()):
+                complete_targets = sum(1 for entry in entries if entry["complete"])
+                complete = len(entries) == len(role_targets) and complete_targets == len(
+                    role_targets
+                )
+                reset_values = [entry["counter_resets"] for entry in entries]
+                egress_coverage.append(
+                    {
+                        "stage": stage,
+                        "execution_class": role_execution_class,
+                        "egress": egress,
+                        "scope": "shared-http-transport",
+                        "expected_targets": len(role_targets),
+                        "complete_targets": complete_targets,
+                        "complete": complete,
+                        "counter_resets": (
+                            sum(reset_values)
+                            if all(value is not None for value in reset_values)
+                            else None
+                        ),
+                        "origin_attempts": (
+                            sum(entry["origin_attempts"] for entry in entries) if complete else None
+                        ),
+                        "responses": (
+                            sum(entry["responses"] for entry in entries) if complete else None
+                        ),
+                        "transport_errors": (
+                            sum(entry["transport_errors"] for entry in entries)
+                            if complete
+                            else None
+                        ),
+                        "response_bytes": (
+                            sum(entry["response_bytes"] for entry in entries) if complete else None
+                        ),
+                    }
+                )
+
+            # HTTP workers have no browser page/subresource transport. Promote
+            # a lane only when both actual routes cover every target exactly.
+            if role_execution_class == "http":
+                for stage in ("monitor", "detail"):
+                    route_entries = [item for item in egress_coverage if item["stage"] == stage]
+                    if len(route_entries) == 2 and all(item["complete"] for item in route_entries):
+                        lane_egress_totals[(stage, "http")] = (
+                            sum(int(item["origin_attempts"]) for item in route_entries),
+                            sum(int(item["response_bytes"]) for item in route_entries),
+                        )
+
+        capability_coverage: list[dict[str, Any]] = []
+        capability_totals: dict[tuple[str, str, str], int] = defaultdict(int)
+        if role_execution_class in {"http", "browser"}:
+            for stage, entries in sorted(role_capability_targets.items()):
+                complete_targets = sum(1 for entry in entries if entry["complete"])
+                complete = len(entries) == len(role_targets) and complete_targets == len(
+                    role_targets
+                )
+                capability_coverage.append(
+                    {
+                        "stage": stage,
+                        "expected_targets": len(role_targets),
+                        "complete_targets": complete_targets,
+                        "complete": complete,
+                    }
+                )
+                if complete:
+                    for entry in entries:
+                        for execution in entry["executions"]:
+                            key = (
+                                stage,
+                                str(execution["capability"]),
+                                str(execution["outcome"]),
+                            )
+                            capability_totals[key] += int(execution["executions"])
+
         role_measurements.append(
             {
                 "role": role,
-                "execution_class": str(role_targets[0].get("execution_class")),
+                "execution_class": role_execution_class,
                 "cost_category": next(iter(cost_categories)),
                 "instance_count": len(role_targets),
                 "target_ids": sorted(role_target_ids),
@@ -554,16 +947,31 @@ def capture_prometheus_measurement(
                 ),
                 "process_tree_coverage": role_process_tree_coverage,
                 "retry_events": role_retries,
+                "egress_coverage": egress_coverage,
+                "capability_mix": {
+                    "implementation": "python",
+                    "coverage": capability_coverage,
+                    "executions": [
+                        {
+                            "stage": key[0],
+                            "capability": key[1],
+                            "outcome": key[2],
+                            "executions": value,
+                        }
+                        for key, value in sorted(capability_totals.items())
+                    ],
+                },
                 "lanes": [
                     {
                         "stage": key[0],
                         "execution_class": key[1],
                         **totals,
-                        # Current metrics do not yet count all origin attempts
-                        # or response bytes. Null is deliberate and blocks a
-                        # final ROI claim rather than pretending zero traffic.
-                        "origin_attempts": None,
-                        "response_bytes": None,
+                        "origin_attempts": (
+                            lane_egress_totals[key][0] if key in lane_egress_totals else None
+                        ),
+                        "response_bytes": (
+                            lane_egress_totals[key][1] if key in lane_egress_totals else None
+                        ),
                     }
                     for key, totals in sorted(lane_totals.items())
                 ],
@@ -578,12 +986,20 @@ def capture_prometheus_measurement(
         for role in role_measurements
         if role["execution_class"] == "browser"
     )
-    evidence_gaps = [
-        "origin-attempts-not-in-current-metrics",
-        "response-bytes-not-in-current-metrics",
-        "proxy-attribution-not-in-current-metrics",
-        "queue-and-redis-resource-use-requires-separate-capture",
-    ]
+    lane_measurements = {
+        (lane["stage"], lane["execution_class"]): lane
+        for role in role_measurements
+        for lane in role["lanes"]
+    }
+    evidence_gaps = ["queue-and-redis-resource-use-requires-separate-capture"]
+    for stage in ("monitor", "detail"):
+        for execution_class in ("http", "browser"):
+            lane = lane_measurements.get((stage, execution_class))
+            if lane is None or lane["origin_attempts"] is None:
+                evidence_gaps.append(f"origin-attempts-unmeasured:{stage}:{execution_class}")
+            if lane is None or lane["response_bytes"] is None:
+                evidence_gaps.append(f"response-bytes-unmeasured:{stage}:{execution_class}")
+    evidence_gaps.append("proxy-attribution-unmeasured:browser-transport")
     if not browser_tree_complete:
         evidence_gaps.insert(0, "browser-child-cpu-and-rss-not-in-process-metrics")
 

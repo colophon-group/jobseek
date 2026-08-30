@@ -22,8 +22,10 @@
         "additionalProperties": false,
         "properties": {
           "cost_category": {"enum": ["worker", "browser", "runtime-support"]},
+          "capability_mix": {"$ref": "#/$defs/capabilityMix"},
           "discovery_concurrency_per_instance": {"exclusiveMinimum": 0, "type": ["number", "null"]},
           "descendant_process_cpu_seconds": {"minimum": 0, "type": ["number", "null"]},
+          "egress_coverage": {"items": {"$ref": "#/$defs/egressCoverage"}, "type": "array"},
           "execution_class": {"enum": ["http", "browser", "support"]},
           "instance_count": {"minimum": 1, "type": "integer"},
           "lanes": {"items": {"$ref": "#/$defs/lane"}, "type": "array"},
@@ -111,6 +113,57 @@
           }
         }
       ]
+    },
+    "capabilityCoverage": {
+      "additionalProperties": false,
+      "properties": {
+        "complete": {"type": "boolean"},
+        "complete_targets": {"minimum": 0, "type": "integer"},
+        "expected_targets": {"minimum": 1, "type": "integer"},
+        "stage": {"enum": ["monitor", "detail"]}
+      },
+      "required": ["stage", "expected_targets", "complete_targets", "complete"],
+      "type": "object"
+    },
+    "capabilityExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "capability": {"pattern": "^(?:[a-z0-9][a-z0-9_-]{0,63}|_unknown)$", "type": "string"},
+        "executions": {"minimum": 1, "type": "integer"},
+        "outcome": {"enum": ["success", "cancelled", "error", "incomplete"]},
+        "stage": {"enum": ["monitor", "detail"]}
+      },
+      "required": ["stage", "capability", "outcome", "executions"],
+      "type": "object"
+    },
+    "capabilityMix": {
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {"items": {"$ref": "#/$defs/capabilityCoverage"}, "type": "array"},
+        "executions": {"items": {"$ref": "#/$defs/capabilityExecution"}, "type": "array"},
+        "implementation": {"const": "python"}
+      },
+      "required": ["implementation", "coverage", "executions"],
+      "type": "object"
+    },
+    "egressCoverage": {
+      "additionalProperties": false,
+      "properties": {
+        "complete": {"type": "boolean"},
+        "complete_targets": {"minimum": 0, "type": "integer"},
+        "counter_resets": {"minimum": 0, "type": ["integer", "null"]},
+        "egress": {"enum": ["direct", "proxy"]},
+        "execution_class": {"enum": ["http", "browser"]},
+        "expected_targets": {"minimum": 1, "type": "integer"},
+        "origin_attempts": {"minimum": 0, "type": ["integer", "null"]},
+        "response_bytes": {"minimum": 0, "type": ["integer", "null"]},
+        "responses": {"minimum": 0, "type": ["integer", "null"]},
+        "scope": {"const": "shared-http-transport"},
+        "stage": {"enum": ["monitor", "detail"]},
+        "transport_errors": {"minimum": 0, "type": ["integer", "null"]}
+      },
+      "required": ["stage", "execution_class", "egress", "scope", "expected_targets", "complete_targets", "complete", "counter_resets", "origin_attempts", "responses", "transport_errors", "response_bytes"],
+      "type": "object"
     },
     "lane": {
       "additionalProperties": false,
