@@ -84,6 +84,16 @@ def test_workflow_has_no_production_or_egress_escape_hatches() -> None:
     assert 'find "$output_dir"' not in integration
 
 
+def test_candidate_has_no_backend_assignment_or_automatic_fallback() -> None:
+    readme = " ".join((PROBE_ROOT / "README.md").read_text().lower().split())
+    sources = "\n".join(path.read_text() for path in PROBE_ROOT.rglob("*.go"))
+
+    assert "no backend assignment" in readme
+    assert "implements no production routing" in readme
+    assert "cannot automatically fall back" in readme
+    assert "BROWSER_BACKEND_CHROMIUM" not in sources
+
+
 def test_go_probe_has_only_fixed_synthetic_network_endpoints() -> None:
     sources = "\n".join(
         path.read_text() for path in PROBE_ROOT.rglob("*.go") if not path.name.endswith("_test.go")

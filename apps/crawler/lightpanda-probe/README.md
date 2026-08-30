@@ -6,8 +6,10 @@ rendering and side-effect-free JavaScript evaluation against deterministic
 synthetic fixtures.
 
 It is not a crawler backend, cannot receive production origins, and supplies no
-Python/Go equivalence, compatibility, capacity, savings, or ROI claim. Results
-are discarded on every unsupported capability or policy/error outcome.
+Python/Go equivalence, compatibility, capacity, savings, or ROI claim. It makes
+no backend assignment, implements no production routing, and cannot
+automatically fall back between Lightpanda and Chromium. Results are discarded
+on every unsupported capability or policy/error outcome.
 
 The hosted integration creates an internal Docker network with no published
 ports. The fixture server, pinned Lightpanda image, and probe runner are the only
