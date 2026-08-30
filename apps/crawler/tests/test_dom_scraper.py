@@ -138,6 +138,76 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    async def test_defaults_by_url_fill_only_matching_posting_fields(self):
+        from src.core.scrapers.dom import scrape
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                text="<html><body><h1>Source heading</h1><p>Rich role details.</p></body></html>",
+            )
+
+        canonical = "https://company.example/jobs/operator"
+        config = {
+            "steps": [
+                {"tag": "h1", "field": "metadata.source_title"},
+                {"tag": "p", "field": "description", "html": True},
+            ],
+            "defaults": {"employment_type": "full_time"},
+            "defaults_by_url": {
+                canonical: {
+                    "title": "HET Operator",
+                    "locations": ["United Kingdom"],
+                },
+                "https://company.example/jobs/maintainer": {
+                    "title": "HET Maintainer",
+                },
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(canonical, config, client)
+
+        assert result.title == "HET Operator"
+        assert result.locations == ["United Kingdom"]
+        assert result.employment_type == "full_time"
+        assert result.description is not None
+        assert "Rich role details" in result.description
+        assert result.metadata == {"source_title": "Source heading"}
+
+    async def test_defaults_by_url_never_replace_extracted_fields(self):
+        from src.core.scrapers.dom import scrape
+
+        canonical = "https://company.example/jobs/42"
+        config = {
+            "steps": [{"tag": "h1", "field": "title"}],
+            "defaults_by_url": {canonical: {"title": "Configured title"}},
+        }
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text="<h1>Extracted title</h1>")
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await scrape(canonical, config, client)
+
+        assert result.title == "Extracted title"
+
+    @pytest.mark.parametrize(
+        "defaults_by_url",
+        [[], {42: {"title": "Role"}}, {"https://company.example/jobs/42": "Role"}],
+    )
+    async def test_defaults_by_url_rejects_invalid_config(self, defaults_by_url):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "steps": [{"tag": "h1", "field": "title"}],
+            "defaults_by_url": defaults_by_url,
+        }
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text="<h1>Role</h1>")
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="defaults_by_url"):
+                await scrape("https://company.example/jobs/42", config, client)
+
     async def test_fetch_url_transform_reads_gateway_without_changing_extraction(self):
         from src.core.scrapers.dom import scrape
 

@@ -3286,11 +3286,22 @@ dom — Step-based Extraction Engine
         {"text": "About", "field": "description", "stop": "Requirements", "html": true}
       ],
       "render": true,
+      "defaults_by_url": {
+        "https://company.example/jobs/42": {
+          "title": "Canonical role title",
+          "locations": ["London, United Kingdom"]
+        }
+      },
       "wait": "networkidle"
     }
 
     steps          Extraction step list (see: ws help steps)
     render         false (default) = static HTTP, true = Playwright
+    defaults_by_url
+                   Exact canonical posting URL -> missing-field defaults.
+                   Use for small stable boards whose detail pages expose a
+                   generic heading or omit per-role locations. Extracted
+                   values always win; unmatched URLs receive no URL defaults.
     wait           Wait strategy (Playwright only): load | domcontentloaded
                    | networkidle (default) | commit
     wait_fallback  Fallback load state checked on the current document after

@@ -1053,16 +1053,31 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
     return JobContent(**kwargs)
 
 
-def _apply_defaults(raw: dict, config: dict) -> dict:
-    """Fill fields that extraction did not produce from board-scoped defaults."""
+def _apply_defaults(raw: dict, config: dict, *, url: str | None = None) -> dict:
+    """Fill fields extraction missed from board- and posting-scoped defaults."""
     defaults = config.get("defaults")
-    if defaults is None:
-        return raw
-    if not isinstance(defaults, dict):
+    if defaults is not None and not isinstance(defaults, dict):
         raise ValueError("DOM scraper defaults must be an object")
 
+    defaults_by_url = config.get("defaults_by_url")
+    if defaults_by_url is not None and not isinstance(defaults_by_url, dict):
+        raise ValueError("DOM scraper defaults_by_url must be an object")
+
+    posting_defaults: dict = {}
+    if defaults_by_url is not None:
+        for posting_url, values in defaults_by_url.items():
+            if not isinstance(posting_url, str) or not isinstance(values, dict):
+                raise ValueError(
+                    "DOM scraper defaults_by_url must map URL strings to objects"
+                )
+        if url is not None:
+            posting_defaults = defaults_by_url.get(url) or {}
+
+    if defaults is None and not posting_defaults:
+        return raw
+
     merged = dict(raw)
-    for field, value in defaults.items():
+    for field, value in {**(defaults or {}), **posting_defaults}.items():
         if merged.get(field) in (None, "", []):
             merged[field] = value
     return merged
@@ -1255,7 +1270,7 @@ async def scrape(
 
     start = _fragment_start(url, elements)
     raw, _ = walk_steps(elements, steps, start=start)
-    raw = _apply_defaults(raw, config)
+    raw = _apply_defaults(raw, config, url=url)
     content = _map_to_job_content(raw)
 
     log.debug("dom.extracted", url=url, fields=[k for k, v in raw.items() if v is not None])
