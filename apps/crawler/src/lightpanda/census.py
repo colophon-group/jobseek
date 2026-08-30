@@ -149,6 +149,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "rescrape_policy",
             "retry_statuses",
             "rich_rows",
+            "script_json_links",
             "skip_ssl",
             "stealth",
             "timeout",

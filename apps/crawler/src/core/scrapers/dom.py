@@ -10,6 +10,8 @@ Config uses ``steps`` (same format as ``walk_steps``), an optional ``scope``
 CSS selector that limits extraction to one content container, and optional
 ``include_document_title`` / ``include_document_description`` flags when a
 scoped layout keeps useful metadata in ``<head>``.
+Static requests may set allowlisted public ``request_headers`` for origins
+that require explicit content negotiation or crawler identification.
 Browser lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``,
 ``actions``) are only used when rendering.
 
@@ -1140,6 +1142,9 @@ async def scrape(
         return JobContent()
 
     render = config.get("render", False)
+    request_headers = validated_public_request_headers(
+        config.get("request_headers"), owner="DOM scraper"
+    )
     fetch_url = transformed_fetch_url(
         url,
         config.get("fetch_url_transform"),
