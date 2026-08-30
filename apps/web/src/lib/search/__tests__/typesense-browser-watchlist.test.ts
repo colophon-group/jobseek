@@ -23,6 +23,16 @@ function makeUuid(index: number): string {
   return `00000000-0000-0000-0000-${String(index).padStart(12, "0")}`;
 }
 
+function validDocument(index = 1) {
+  return {
+    id: `posting-${index}`,
+    first_seen_at: 1_700_000_000 + index,
+    company_id: `company-${index}`,
+    company_name: "Acme",
+    company_slug: "acme",
+  };
+}
+
 describe("getWatchlistPostingsBrowser (#3477)", () => {
   const originalFetch = globalThis.fetch;
 
@@ -122,6 +132,33 @@ describe("getWatchlistPostingsBrowser (#3477)", () => {
   });
 
   it.each([
+    ["found>0 with an empty page", { found: 1, hits: [] }],
+    ["found=0 with a hit", {
+      found: 0,
+      hits: [{ document: validDocument() }],
+    }],
+    ["more hits than the requested anonymous page", {
+      found: 21,
+      hits: Array.from({ length: 21 }, (_, index) => ({
+        document: validDocument(index + 1),
+      })),
+    }],
+  ])("rejects HTTP-200 search payloads with %s", async (_label, payload) => {
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => payload,
+    } as Response);
+
+    await expect(
+      getWatchlistPostingsBrowser({
+        companyIds: [makeUuid(1)],
+        offset: 0,
+        limit: 20,
+      }),
+    ).rejects.toThrow("Typesense response was malformed");
+  });
+
+  it.each([
     ["id", { first_seen_at: 1_700_000_000 }],
     ["first_seen_at", { id: "posting-1" }],
     ["company field type", {
@@ -155,5 +192,50 @@ describe("getWatchlistPostingsBrowser (#3477)", () => {
         companyIds: [makeUuid(1)],
       }),
     ).rejects.toThrow("Typesense response was malformed");
+  });
+
+  it("normalizes mixed or non-array location fields like the server mapper", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          found: 1,
+          hits: [{
+            document: {
+              ...validDocument(),
+              location_names: [42, "", "Zurich", null],
+            },
+          }],
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          found: 1,
+          hits: [{
+            document: {
+              ...validDocument(2),
+              location_names: "Zurich",
+            },
+          }],
+        }),
+      } as Response);
+    globalThis.fetch = fetchMock;
+
+    await expect(
+      getWatchlistPostingsBrowser({
+        companyIds: [makeUuid(1)],
+        offset: 0,
+        limit: 20,
+      }),
+    ).resolves.toMatchObject({ postings: [{ locationNames: ["Zurich"] }] });
+    await expect(
+      getWatchlistPostingsBrowser({
+        companyIds: [makeUuid(1)],
+        offset: 0,
+        limit: 20,
+      }),
+    ).resolves.toMatchObject({ postings: [{ locationNames: [] }] });
   });
 });

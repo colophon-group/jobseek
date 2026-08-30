@@ -85,6 +85,20 @@ function assertSearchResponse(
   }
 }
 
+function assertSearchPageCardinality(
+  result: RawSearchResponse,
+  params: { offset: number; limit: number },
+): void {
+  const hits = result.hits ?? [];
+  const expectedHits =
+    params.limit === 0
+      ? 0
+      : Math.min(params.limit, Math.max(0, result.found - params.offset));
+  if (hits.length !== expectedHits) {
+    throw new Error("Typesense response was malformed");
+  }
+}
+
 function assertJobPostingDoc(
   value: Record<string, unknown>,
 ): asserts value is Record<string, unknown> & JobPostingDoc {
@@ -116,7 +130,12 @@ function mapHit(doc: Record<string, unknown>): WatchlistPostingEntry {
   return {
     id: doc.id,
     title: normalizePostingTitle(doc.title),
-    locationNames: (doc.location_names ?? []).filter(Boolean),
+    locationNames: Array.isArray(doc.location_names)
+      ? doc.location_names.filter(
+          (name): name is string =>
+            typeof name === "string" && name.length > 0,
+        )
+      : [],
     sourceUrl: doc.source_url ?? "",
     firstSeenAt: new Date((doc.first_seen_at ?? 0) * 1000).toISOString(),
     isActive: doc.is_active ?? true,
@@ -205,6 +224,7 @@ export async function getWatchlistPostingsBrowser(
   const cfg = await getTypesenseBrowserConfig();
   const result = await searchOne(cfg, "job_posting", searchParams);
   assertSearchResponse(result, { expectHits: params.limit !== 0 });
+  assertSearchPageCardinality(result, params);
 
   const total = result.found;
   if (total === 0 || params.limit === 0) return { postings: [], total };
