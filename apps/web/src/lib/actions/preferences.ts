@@ -47,15 +47,15 @@ function sanitizeJobLanguages(input: string[]): string[] {
 }
 
 /**
- * Routes whose `'use cache'` output depends on the viewer's job-language
- * filter (DB row for auth users, `JSEEK_JOB_LANGUAGES` cookie for anon).
+ * Routes whose server-rendered output still depends on the viewer's job-
+ * language filter (DB row for auth users, `JSEEK_JOB_LANGUAGES` cookie for
+ * anon).
  * After `updatePreferences` mutates `jobLanguages`, every cached layer
  * across these routes needs to be invalidated — otherwise the user
  * navigates back to a stale prerender that predates the cookie write
  * (#2916). Stays in sync with the read sites enumerated in PR #2914.
  */
 const JOB_LANGUAGE_DEPENDENT_PATHS = [
-  "/[lang]/(app)/explore",
   "/[lang]/(app)/[userSlug]/[watchlistSlug]",
   "/[lang]/(app)/company/[slug]",
 ] as const;
@@ -68,11 +68,11 @@ const JOB_LANGUAGE_DEPENDENT_PATHS = [
  * dependency comes via cookie/DB rather than a `cacheTag`: it evicts
  * the per-region cache entry for the route and forces a fresh server
  * render on the next request. The caller (a client component in
- * /settings) ALSO calls `router.refresh()` to flush the client-side
- * router cache that holds a snapshot of /explore in memory across
- * back-nav (#2916). Both layers must be cleared — the per-region
- * cache is the source for the RSC payload server-side, the router
- * cache is the source the browser uses on back-nav.
+ * /settings) ALSO calls `router.refresh()` to flush its client-side router
+ * cache across back-nav (#2916). Explore is intentionally absent here: its
+ * one-day shell is query-agnostic and the browser loader consumes bootstrap
+ * preferences / the anonymous cookie after hydration, so evicting that global
+ * shell would only add regeneration and ISR writes.
  *
  * Failures are swallowed because a successful preference write is the
  * load-bearing operation; a revalidation hiccup must not 500 the form
@@ -147,11 +147,9 @@ export async function updatePreferences(
     // server-resolved field. See issue #2850 + `anon-preferences.ts`.
     if (data.jobLanguages !== undefined) {
       await writeAnonJobLanguagesCookie(data.jobLanguages);
-      // Cookie write happened — flush every page whose `'use cache'`
-      // output depends on the cookie. Without this the back-nav from
-      // /settings to /explore renders the prerender that predates the
-      // toggle; the user only sees the new filter after a hard reload
-      // (#2916).
+      // Cookie write happened — flush the remaining server-rendered pages
+      // whose output depends on the cookie. Explore applies it browser-side
+      // and must retain its shared query-agnostic shell.
       invalidateJobLanguageDependentPages();
     }
     return null;
@@ -223,7 +221,7 @@ export async function updatePreferences(
     // mutation for other fields (theme/locale/currency) is observed
     // by the caller via `router.refresh()` and doesn't need a
     // server-side `revalidatePath` because none of those flow into
-    // the explore/watchlist `'use cache'` outputs.
+    // the remaining watchlist/company server-rendered outputs.
     if (data.jobLanguages !== undefined) {
       invalidateJobLanguageDependentPages();
     }
