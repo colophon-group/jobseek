@@ -1634,6 +1634,17 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    Matching links are trusted as jobs, so this is useful when
                    stable job-card markup exists but URLs lack job keywords.
                    Example: "li.job-card a.details-link"
+    oracle_adf_job_ids
+                   Narrow preset for Oracle ADF recruitment lists whose rows
+                   expose form/PPR View actions instead of hrefs. The rendered
+                   list is fully expanded, its ordered title/location snapshot
+                   is matched to stable numeric ?jobId= detail pages, and any
+                   pagination, ordering, or detail drift fails closed. Config:
+                   {"max_items": 100, "max_scan": 1000}. Set the bounds to
+                   cover expected inventory with ample headroom.
+                   Requires render=true. Single-page only; incompatible with
+                   link_selector, rich_rows, empty-state configuration,
+                   pagination, and include_board_url.
     empty_selector Optional CSS selector for a stable, explicit empty-state
                    element. When configured, a zero-link page succeeds only
                    if this selector matches; otherwise the cycle fails closed.
