@@ -40,6 +40,7 @@ abb,abb-foedisch,https://www.foedisch.de/karriere/,inline,"{""item_boundary_tag"
 abb,abb-premium-power,https://premium-power.com/careers/,sitemap,"{""sitemap_url"": ""https://premium-power.com/sitemap.xml"", ""url_filter"": ""^https?://(?:www\\.)?premium-power\\.com/job/[^/?#]+/?$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Full Time"", ""field"": ""employment_type""}, {""text"": ""Dublin"", ""field"": ""location""}, {""text"": ""Posted"", ""field"": ""description"", ""html"": true, ""stop"": ""Job Application""}]}"
 abb,abb-sensorfact,https://jobs.ashbyhq.com/sensorfact,ashby,"{""token"": ""sensorfact""}",skip,
 abb,abb-workday,https://abb.wd3.myworkdayjobs.com/External_Career_Page,workday,,workday,"{""proxy"": true}"
+abbott,abbott-careers,https://abbott.wd5.myworkdayjobs.com/abbottcareers,workday,,workday,
 abbott,abbott-global,https://www.jobs.abbott/us/en/search-results,nextdata,"{""source"": ""phenom_canvas"", ""path"": ""eagerLoadRefineSearch.data.jobs"", ""url_template"": ""https://www.jobs.abbott/us/en/job/{jobId}"", ""pagination"": {""mode"": ""offset"", ""path"": ""eagerLoadRefineSearch"", ""total_records"": ""totalHits"", ""page_size"": 10, ""offset_param"": ""from""}}",json-ld,
 abbvie,abbvie-careers,https://careers.abbvie.com/en/jobs,sitemap,"{""url"": ""https://careers.abbvie.com/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 abbvie,abbvie-smartrecruiters,https://careers.smartrecruiters.com/AbbVie,smartrecruiters,"{""token"": ""AbbVie""}",smartrecruiters,
