@@ -1299,6 +1299,8 @@ chalk,chalk-greenhouse,https://job-boards.greenhouse.io/chalkinc,greenhouse,"{""
 champions-group-holdings,champions-group-holdings-greenhouse,https://job-boards.greenhouse.io/championsgroupholdings,greenhouse,"{""token"": ""championsgroupholdings""}",skip,
 chan-zuckerberg-initiative,chan-zuckerberg-initiative-greenhouse,https://job-boards.greenhouse.io/chanzuckerberginitiative,greenhouse,"{""token"": ""chanzuckerberginitiative""}",skip,
 change,change-careers,https://jobs.ashbyhq.com/change,ashby,"{""token"": ""change""}",skip,
+changxin-memory,changxin-memory-careers,https://cxmt.zhiye.com/,beisen,,skip,
+changxin-memory,changxin-memory-careers-linkedin,https://www.linkedin.com/company/%E9%95%BF%E9%91%AB%E5%AD%98%E5%82%A8/jobs,linkedin,"{""company_id"": ""14480089"", ""source_ownership_excluded_country_codes"": [""CHN""]}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 chaos-industries,chaos-industries-greenhouse,https://job-boards.greenhouse.io/chaosindustries,greenhouse,"{""token"": ""chaosindustries""}",skip,
 character,character-ashby,https://jobs.ashbyhq.com/character,ashby,"{""token"": ""character""}",skip,
 charge-robotics,charge-robotics-ashby,https://jobs.ashbyhq.com/charge-robotics,ashby,"{""token"": ""charge-robotics""}",skip,
