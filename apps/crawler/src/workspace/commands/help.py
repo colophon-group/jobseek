@@ -104,6 +104,7 @@ Monitor Types (cheapest first):
   herp              10      Job URLs          Auto-configured
   hrmos             10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
+  infor             10      Full/partial      Auto-enriched
   intervieweb       10      Job URLs          Auto-configured
   jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
@@ -4047,6 +4048,23 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
                      Use only for a verified tenant whose TotalJobsCount counts
                      repeated database rows. Cross-page duplicates remain
                      governed by offset_overlap.""",
+    "infor": """\
+infor — Infor Global HR / Lawson CandidateSelfService monitor
+
+  Auto-detected for hosted Infor CandidateSelfService board URLs carrying
+  context.session.key.JobBoard and context.session.key.HROrganization.
+  Bootstraps an anonymous Landmark session, then reads the provider's native
+  JobPostingListWebServices operation; no browser is needed.
+
+  Rich monitor — returns title, location, and posting date.
+  Pair with the auto-configured infor scraper + enrich: ["description"] for
+  complete detail records.
+
+  Board metadata (auto-detected from URL):
+    origin           Validated *.cloud.infor.com origin
+    dataarea         Landmark data area (for example lmghr)
+    job_board        Infor external board identifier
+    hr_organization  Infor HR organization identifier""",
     "dom": MONITOR_DOM,
     "inline": MONITOR_INLINE,
     "unifr": """\
@@ -4435,6 +4453,17 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
 
   Best used with enrich: ["description"] — monitor provides title/location/date,
   scraper fills in description from the detail API.""",
+    "infor": """\
+infor — Infor Global HR / Lawson CandidateSelfService detail scraper
+
+  Bootstraps an anonymous CandidateSelfService session and fetches the native
+  Find_PostingDisplay_FormOperation response. No browser is needed.
+
+  Available fields: title, HTML description, location, posting date, and
+  provider requisition/category metadata.
+
+  Best used with enrich: ["description"] — the monitor provides summary fields
+  and stable JobReq/JobPost URLs; the scraper fills in the description.""",
     "skip": SCRAPER_SKIP,
     "linkedin": SCRAPER_LINKEDIN,
     "headhunter": SCRAPER_HEADHUNTER,

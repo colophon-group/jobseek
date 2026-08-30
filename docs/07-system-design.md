@@ -194,6 +194,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `jobstreet`       | Rich     | jobstreet   | JobStreet employer search summaries + GraphQL detail enrichment |
 | 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
 | 10   | `infoniqa`        | URL-only | --          | Infoniqa employer-bound session POST pagination |
+| 10   | `infor`           | Rich     | infor       | Infor CandidateSelfService Landmark APIs + detail enrichment |
 | 10   | `intervieweb`     | URL-only | json-ld     | Intervieweb HTML + CSRF-protected POST pagination |
 | 10   | `gupy`            | URL-only | json-ld     | Gupy single-page NextData inventory |
 | 10   | `cornerstone`     | Rich     | skip        | Cornerstone bootstrap + regional paginated search API |
@@ -299,6 +300,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `nextdata`     | Extract from `__NEXT_DATA__` JSON                  | `{path, fields}`       |
 | `notion`       | Convert Notion API blocks to structured content    | `property_map` optional |
 | `onlyfy`       | Fetch Onlyfy/Prescreen server-rendered candidate pages | `language` optional |
+| `infor`        | Fetch session-bound Infor CandidateSelfService detail responses | None |
 | `oracle_hcm`   | Fetch Oracle HCM detail REST responses             | `{host, site}`         |
 | `paycom`       | Bootstrap Paycom and fetch regional detail API      | None                   |
 | `paycor`       | Parse Paycor/Newton server-rendered detail fields   | None                   |
