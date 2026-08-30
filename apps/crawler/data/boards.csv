@@ -4933,6 +4933,8 @@ primeintellect,primeintellect-ashby,https://jobs.ashbyhq.com/primeintellect,ashb
 primer,primer-ashby,https://jobs.ashbyhq.com/primer,ashby,"{""token"": ""primer""}",skip,
 prior-labs,prior-labs-ashby,https://jobs.ashbyhq.com/prior-labs,ashby,"{""token"": ""prior-labs""}",skip,
 prisma,prisma-recruitee,https://prisma.recruitee.com,recruitee,"{""token"": ""prisma""}",skip,
+prisma-health,prisma-health-careers,https://prismahealth.wd5.myworkdayjobs.com/prismahealthcorporate,workday,,workday,
+prisma-health,prisma-health-providers,https://prismahealth.wd5.myworkdayjobs.com/PrismaHealthProviders,workday,,workday,
 private-equity-insights,private-equity-insights-greenhouse,https://job-boards.greenhouse.io/privateequityinsights,greenhouse,"{""token"": ""privateequityinsights""}",skip,
 private-job-board,private-job-board-greenhouse,https://job-boards.greenhouse.io/hellofreshprivate,greenhouse,"{""token"": ""hellofreshprivate""}",skip,
 procter-gamble,procter-gamble-careers,https://www.pgcareers.com/global/en/search-results,sitemap,"{""sitemap_url"": ""https://www.pgcareers.com/global/en/search-results/sitemap.xml"", ""url_filter"": ""/global/en/job/""}",json-ld,
