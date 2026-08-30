@@ -3971,7 +3971,12 @@ async def dom_discover(
         combined = {**metadata, "_board_url": board_url}
 
         if pw is not None:
-            async with open_page(pw, combined, use_proxy=bool(metadata.get("proxy"))) as page:
+            async with open_page(
+                pw,
+                combined,
+                use_proxy=bool(metadata.get("proxy")),
+                target_url=board_url,
+            ) as page:
                 urls = await _extract_links_rendered(page, combined, url_matcher, client)
                 if configured_empty_states:
                     _validate_explicit_empty_states(
@@ -4001,7 +4006,12 @@ async def dom_discover(
 
             async with (
                 async_playwright() as p,
-                open_page(p, combined, use_proxy=bool(metadata.get("proxy"))) as page,
+                open_page(
+                    p,
+                    combined,
+                    use_proxy=bool(metadata.get("proxy")),
+                    target_url=board_url,
+                ) as page,
             ):
                 urls = await _extract_links_rendered(page, combined, url_matcher, client)
                 if configured_empty_states:

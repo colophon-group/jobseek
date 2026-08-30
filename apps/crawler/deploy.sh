@@ -1994,9 +1994,10 @@ docker stop --time=60 "${legacy_containers[@]}" 2>/dev/null || true
 docker rm "${legacy_containers[@]}" 2>/dev/null || true
 
 # ── Write env file ──────────────────────────────────────────────────
-# Proxy vars are expanded with ``:-`` defaults so missing provider
-# secrets don't break the deploy — PROXY_PROVIDER=none disables the
-# proxy layer even when the URL envs are empty.
+# Proxy vars are expanded with ``:-`` defaults so an intentionally disabled
+# proxy doesn't break the deploy. PROXY_PROVIDER=none is the intentional
+# direct-egress switch; a selected provider with no URL fails closed when a
+# proxy-required client is created.
 
 cat > "$ENV_FILE" <<EOF
 OWNER=${OWNER}
@@ -2024,8 +2025,8 @@ TYPESENSE_PORT=${TYPESENSE_PORT}
 TYPESENSE_PROTOCOL=${TYPESENSE_PROTOCOL}
 TYPESENSE_OPERATIONS_KEY=${TYPESENSE_OPERATIONS_KEY}
 PROXY_PROVIDER=${PROXY_PROVIDER:-none}
+WEBSHARE_PROXY_URLS=${WEBSHARE_PROXY_URLS:-[]}
 WEBSHARE_PROXY_URL=${WEBSHARE_PROXY_URL:-}
-DECODO_PROXY_URL=${DECODO_PROXY_URL:-}
 MURMUR_TOKEN=${MURMUR_TOKEN}
 EOF
 
