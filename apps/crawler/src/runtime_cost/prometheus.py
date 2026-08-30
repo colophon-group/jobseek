@@ -1019,11 +1019,19 @@ def capture_prometheus_measurement(
         for role in role_measurements
         if role["execution_class"] == "browser"
     )
-    lane_measurements = {
-        (lane["stage"], lane["execution_class"]): lane
-        for role in role_measurements
-        for lane in role["lanes"]
-    }
+    lane_measurements: dict[tuple[str, str], dict[str, Any]] = {}
+    lane_owners: dict[tuple[str, str], str] = {}
+    for role in role_measurements:
+        for lane in role["lanes"]:
+            key = (str(lane["stage"]), str(lane["execution_class"]))
+            if key in lane_measurements:
+                raise ModelError(
+                    "duplicate workload lane "
+                    f"{key[0]!r}/{key[1]!r} across roles "
+                    f"{lane_owners[key]!r} and {role['role']!r}"
+                )
+            lane_measurements[key] = lane
+            lane_owners[key] = str(role["role"])
     evidence_gaps = ["queue-and-redis-resource-use-requires-separate-capture"]
     for stage in ("monitor", "detail"):
         for execution_class in ("http", "browser"):
@@ -1032,7 +1040,14 @@ def capture_prometheus_measurement(
                 evidence_gaps.append(f"origin-attempts-unmeasured:{stage}:{execution_class}")
             if lane is None or lane["response_bytes"] is None:
                 evidence_gaps.append(f"response-bytes-unmeasured:{stage}:{execution_class}")
-    evidence_gaps.append("proxy-attribution-unmeasured:browser-transport")
+    evidence_gaps.extend(
+        [
+            "browser-transport-unmeasured:lightpanda",
+            "browser-cgroup-cost-unmeasured:lightpanda",
+            "browser-transport-unmeasured:chromium",
+            "browser-cgroup-cost-unmeasured:chromium",
+        ]
+    )
     if not browser_tree_complete:
         evidence_gaps.insert(0, "browser-child-cpu-and-rss-not-in-process-metrics")
 

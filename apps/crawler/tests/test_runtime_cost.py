@@ -911,6 +911,10 @@ def test_prometheus_capture_promotes_only_conserved_complete_http_egress() -> No
     assert "origin-attempts-unmeasured:monitor:http" not in result["evidence_gaps"]
     assert "response-bytes-unmeasured:detail:http" not in result["evidence_gaps"]
     assert "origin-attempts-unmeasured:monitor:browser" in result["evidence_gaps"]
+    assert "browser-transport-unmeasured:lightpanda" in result["evidence_gaps"]
+    assert "browser-cgroup-cost-unmeasured:lightpanda" in result["evidence_gaps"]
+    assert "browser-transport-unmeasured:chromium" in result["evidence_gaps"]
+    assert "browser-cgroup-cost-unmeasured:chromium" in result["evidence_gaps"]
     assert role["capability_mix"]["coverage"] == [
         {"stage": "detail", "expected_targets": 1, "complete_targets": 1, "complete": True},
         {"stage": "monitor", "expected_targets": 1, "complete_targets": 1, "complete": True},
@@ -1015,6 +1019,23 @@ def test_prometheus_capture_rejects_mixed_execution_classes_in_one_role() -> Non
             end_at=end_at,
             window_seconds=3600,
             source_revision="mixed-execution-class",
+        )
+
+
+def test_prometheus_capture_rejects_duplicate_lanes_across_roles() -> None:
+    targets = _one_http_target()
+    duplicate_lane_target = deepcopy(targets["targets"][0])
+    duplicate_lane_target.update(id="worker-b", instance="worker-2", role="http-worker-b")
+    targets["targets"].append(duplicate_lane_target)
+    end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
+
+    with pytest.raises(ModelError, match="duplicate workload lane"):
+        capture_prometheus_measurement(
+            targets,
+            query=_attributed_http_query(end_at),
+            end_at=end_at,
+            window_seconds=3600,
+            source_revision="duplicate-lane",
         )
 
 

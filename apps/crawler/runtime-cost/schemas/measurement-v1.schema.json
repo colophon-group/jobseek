@@ -26,7 +26,10 @@
           "discovery_concurrency_per_instance": {"exclusiveMinimum": 0, "type": ["number", "null"]},
           "descendant_process_cpu_seconds": {"minimum": 0, "type": ["number", "null"]},
           "egress_coverage": {"items": {"$ref": "#/$defs/egressCoverage"}, "type": "array"},
-          "execution_class": {"enum": ["http", "browser", "support"]},
+          "execution_class": {
+            "description": "Worker execution context only. The browser value does not identify or meter a Lightpanda or Chromium backend.",
+            "enum": ["http", "browser", "support"]
+          },
           "instance_count": {"minimum": 1, "type": "integer"},
           "lanes": {"items": {"$ref": "#/$defs/lane"}, "type": "array"},
           "memory_limit_bytes_per_instance": {"type": ["integer", "null"]},
@@ -153,12 +156,18 @@
         "complete_targets": {"minimum": 0, "type": "integer"},
         "counter_resets": {"minimum": 0, "type": ["integer", "null"]},
         "egress": {"enum": ["direct", "proxy"]},
-        "execution_class": {"enum": ["http", "browser"]},
+        "execution_class": {
+          "description": "Worker execution context only; browser-labelled shared HTTP is auxiliary worker traffic, not browser-engine transport.",
+          "enum": ["http", "browser"]
+        },
         "expected_targets": {"minimum": 1, "type": "integer"},
         "origin_attempts": {"minimum": 0, "type": ["integer", "null"]},
         "response_bytes": {"minimum": 0, "type": ["integer", "null"]},
         "responses": {"minimum": 0, "type": ["integer", "null"]},
-        "scope": {"const": "shared-http-transport"},
+        "scope": {
+          "const": "shared-http-transport",
+          "description": "Counts only the crawler shared HTTP client. It excludes Lightpanda and Chromium page/subresource transport and cgroup cost."
+        },
         "stage": {"enum": ["monitor", "detail"]},
         "transport_errors": {"minimum": 0, "type": ["integer", "null"]}
       },
@@ -169,7 +178,10 @@
       "additionalProperties": false,
       "properties": {
         "attempted_cycles": {"minimum": 0, "type": "number"},
-        "execution_class": {"enum": ["http", "browser"]},
+        "execution_class": {
+          "description": "Worker execution context only. It is not a browser-backend dimension.",
+          "enum": ["http", "browser"]
+        },
         "origin_attempts": {"type": ["number", "null"]},
         "response_bytes": {"type": ["number", "null"]},
         "stage": {"enum": ["monitor", "detail"]},
