@@ -545,20 +545,27 @@ These are the most common:
 
 ### API route compute
 
-External API routes run the same query logic as server actions but add
-rate-limit checks (1 Redis call) and response serialization:
+External API routes run the same query logic as server actions. A successful
+cache miss adds one origin Upstash rate-limit check and response serialization;
+successful cache hits skip the Function and origin Redis entirely but remain
+inside the pre-cache Vercel WAF budget:
 
-| Route | DB queries | Redis cache | Cache-Control | Est. duration |
-|-------|-----------|-------------|---------------|---------------|
-| `GET /api/v1/search` | 3-5 | 5min | `s-maxage=300` | 40-180ms |
-| `GET /api/v1/job` | 3 | 5min | `s-maxage=300` | 30-120ms |
-| `GET /api/v1/companies` | 1 | 10min | `max-age=600` | 15-60ms |
-| `GET /api/v1/taxonomies` | 1 | 1h | `max-age=3600` | 15-50ms |
-| `GET /api/v1/watchlists` | 2 + 2N | None | `max-age=300` | 40-200ms+ |
+| Route | Origin work on CDN miss | Vercel CDN TTL | Caller Cache-Control | Est. duration |
+|-------|-------------------------|----------------|----------------------|---------------|
+| `GET /api/v1/search` | Upstash + Typesense | 5min | revalidate | 40-180ms |
+| `GET /api/v1/job` | Upstash + Supabase/Typesense | 5min | revalidate | 30-120ms |
+| `GET /api/v1/companies` | Upstash + Typesense | 1h | revalidate | 15-60ms |
+| `GET /api/v1/resolve` | Upstash + Typesense | 1h | revalidate | 15-60ms |
+| `GET /api/v1/taxonomies` | Upstash + Typesense | 1h | revalidate | 15-50ms |
+| `GET /api/v1/watchlists` | Upstash + Typesense | 5min | revalidate | 40-200ms+ |
+| `GET /api/v1/watchlist/create` | Upstash + Typesense | 5min | revalidate | 40-180ms |
 | `POST /api/auth/*` | 1-5 | Session: 5min | None | 20-150ms |
 | `POST /api/stripe/webhook` | 1-2 | None | None | 15-60ms |
 
-The listed routes typically complete in under 500ms.
+The listed routes typically complete in under 500ms. Successful public GETs
+do not expose `X-RateLimit-*`, because those values are caller-specific and
+would be unsafe in a shared cache. Non-cacheable origin errors and 429s retain
+them.
 
 ### OG image compute
 

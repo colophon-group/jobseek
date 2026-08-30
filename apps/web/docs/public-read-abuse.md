@@ -10,21 +10,32 @@ tokens and must never be treated as a security boundary.
 The controls are layered so a deployment or provider failure does not remove
 the whole boundary:
 
-1. **Vercel WAF** — production `POST` requests with a `Next-Action` header on
-   the four public read route shapes are rate-counted by authoritative IP.
-   Roll a new threshold out with the exceeded action set to `log`, review its
-   Firewall Traffic matches, then change the exceeded action to `rate_limit`
-   (HTTP 429). Match the header's existence, not a deployment-specific action
-   hash.
+1. **Vercel WAF** — one Hobby-plan rate-limit rule protects both production
+   `POST` requests with a `Next-Action` header on the four public read route
+   shapes and production `GET /api/v1/*` requests on `jseek.co`. The rule uses
+   one fixed 60 requests/minute budget keyed by authoritative IP and denies
+   excess requests before CDN lookup. The API group requires the exact host,
+   environment, method, and namespace; the Server Action groups match the
+   header's existence, not a deployment-specific action hash. The shared
+   budget is intentional because Hobby permits one rate-limit rule per
+   project. The pre-existing API/MCP log rule supplied the observation stage
+   before the API group was added.
 2. **Next.js Proxy** — the same route/header shapes use shared Upstash sliding
    windows of 30 requests/minute and 300 requests/hour per authoritative IP.
    A rejected request receives a non-cacheable 429 before the page action
    runs. Redis transport failures fail open and emit a sanitized
    `public_read.rate_limit_unavailable` event.
-3. **Action validation** — replayed pagination is limited to `limit <= 100`
+3. **Public REST origin** — every `/api/v1/*` cache miss still uses the
+   existing Upstash sliding window of 30 requests/minute per authoritative IP.
+   Cache hits do not invoke the route or Upstash, but they remain inside the
+   WAF's coarser 60/minute boundary. Contract errors, provider failures, and
+   origin 429s are `no-store` and may include caller-specific rate-limit
+   metadata. Successful deterministic GETs omit those headers and cache only
+   at Vercel via `Vercel-CDN-Cache-Control`.
+4. **Action validation** — replayed pagination is limited to `limit <= 100`
    and `offset <= 5000`; the application UI uses pages of 10-20. Server Action
    bodies are limited to 128 KB instead of Next's 1 MB default.
-4. **Anonymous result caps** — existing surface-specific result caps remain a
+5. **Anonymous result caps** — existing surface-specific result caps remain a
    product boundary, but they are not a substitute for request rate limits.
 
 The Proxy key comes from `x-real-ip`, falling back to the final
@@ -53,9 +64,13 @@ The final three-rule topology is:
    first OR group is the existing exploit-scanner path regex; the following
    groups preserve the selected company-bot match and the exact obsolete
    Explore `Next-Action` match from #7189.
-2. `rule_deny_public_read_server_action_bursts_SZRRK0` remains byte-for-byte
-   unchanged at position 2: 60 requests per 60 seconds, fixed window, keyed by
-   IP, with `deny` when exceeded.
+2. `rule_deny_public_read_server_action_bursts_SZRRK0`, displayed as
+   **Deny public read and API bursts**, remains at position 2. Its first two
+   OR groups preserve the public Server Action path/route conditions. Its
+   third group requires `environment = production`, `host = jseek.co`,
+   `method = GET`, and path regex `^/api/v1(?:/.*)?$`. All groups share the
+   existing 60 requests per 60 seconds fixed window keyed by IP, with `deny`
+   when exceeded.
 3. `rule_log_public_api_and_mcp_traffic_w3Ii5m` is last and remains an enabled
    `log` rule. Each OR group requires `environment = production` and
    `host = jseek.co`; the paths are either
@@ -64,15 +79,21 @@ The final three-rule topology is:
 The observation rule deliberately does not match preview deployments,
 deployment hostnames, other domains, `/mcp.json`, or the broader `/api/*`
 namespace. In particular, `/api/auth`, `/api/admin`, `/api/web`, and
-`/api/typesense-key` remain outside the rule. Keep the action `log`; this rule
-must not deny, challenge, bypass, or rate-limit public API traffic.
+`/api/typesense-key` remain outside the rule. Keep the action `log`; this
+observation rule itself must not deny, challenge, bypass, or rate-limit public
+API traffic. The preceding rate-limit rule is the enforcement boundary.
 
 Open the live [API/MCP Firewall Traffic filter](https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/firewall/traffic?filter=rule_log_public_api_and_mcp_traffic_w3Ii5m).
-Firewall Traffic observes requests at the Vercel edge, so its count includes
-CDN hits that never invoke an origin Function. Application events and Redis
-counters measure origin executions instead. Use the edge view for total
-ingress and the origin metrics for handler status, latency, source, and cost
-attribution; do not add the two counts together.
+This trailing log rule counts matching requests that reach it, including CDN
+hits that never invoke an origin Function. Requests denied by the preceding
+rate-limit rule stop there and do not appear under this log-rule filter; inspect
+the combined rate-limit rule or the unfiltered Firewall Traffic view for those
+denials. Application events and Redis counters measure origin executions
+instead. Use the edge views for ingress and enforcement; use origin metrics for
+handler status, latency, consumer attribution, and cost. Do not add the counts
+together. A hosted MCP REST cache hit intentionally has no origin
+consumer-attribution event because the response is identical for every
+anonymous caller.
 
 On Hobby, **Past Day is a rolling view, not durable history**. Record any
 needed result before it ages out, and do not infer a 7-day or 30-day trend from
@@ -82,7 +103,8 @@ produce matches.
 Immediately before any future publication, confirm that the machine-readable
 diff contains only the reviewed changes and that the two hostname-scoped IP
 blocks are unchanged. Publication is user/operator-only and must run from the
-linked repository root:
+linked repository root. Hobby permits three custom rules and one rate-limit
+rule, so extend the combined rule instead of attempting to add a fourth rule:
 
 ```bash
 vercel firewall diff --json
@@ -100,9 +122,9 @@ returned edge-denied 403s for the scanner, bot, and obsolete-action probes.
 Ordinary company, Explore, sign-in, REST, and MCP requests returned 200 after
 publication; excluded `/api/typesense-key` remained 200, while `/mcp.json` and
 `/api/v1foo` returned their normal unmitigated 404s. Reuse the bounded checks
-below after future WAF changes. Do not use the 61-request rate-limit probe for
-this topology; structural identity of the unchanged live rule is the approved
-verification.
+below after future WAF changes. Structural inspection remains sufficient when
+the combined rate-limit rule is unchanged. When its API group changes, wait
+for a clean fixed window and run the bounded repeated-cache probe once.
 
 ```bash
 # Existing deny branches: expect 403 and `x-vercel-mitigated: deny`.
@@ -127,19 +149,37 @@ curl -sS -X POST \
   --data-binary '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"waf-verification","version":"1.0"}}}' \
   -D - -o /dev/null https://jseek.co/mcp
 
-# The existing rate-limit rule must still be live and unchanged; inspect it.
+# The combined rate-limit rule must still be live and structurally exact.
 vercel firewall rules inspect \
   rule_deny_public_read_server_action_bursts_SZRRK0 --json
 vercel firewall diff --json
+
+# Only after changing the API group: warm one deterministic URL, wait for a
+# clean fixed window, then issue 61 identical GETs. At least one must be a WAF
+# denial and ordinary requests must recover after the next window. Do not run
+# this as routine monitoring.
+for _ in $(seq 1 61); do
+  curl -sS -o /dev/null -w '%{http_code}\n' \
+    'https://jseek.co/api/v1/search?q=python&wm=remote&locale=en&lang=en'
+done
 ```
 
 Then select **Live** or **Past Hour** in the filtered Firewall Traffic view and
-confirm both controlled REST and MCP requests appear under
-`rule_log_public_api_and_mcp_traffic_w3Ii5m`. The log rule does not add a
-mitigation response header. After publication and verification,
-`vercel firewall diff --json` must report an empty `changes` array.
+confirm the allowed controlled REST and MCP requests appear under
+`rule_log_public_api_and_mcp_traffic_w3Ii5m`. Inspect any bounded-probe 403s
+under `rule_deny_public_read_server_action_bursts_SZRRK0` or in the unfiltered
+view. The log rule does not add a mitigation response header. After publication
+and verification, `vercel firewall diff --json` must report an empty `changes`
+array.
 
 ### Rollback constraints
+
+To restore the pre-#8261 API enforcement while retaining the #8120 observation
+topology, remove only the third `/api/v1` OR group from
+`rule_deny_public_read_server_action_bursts_SZRRK0`, restore its prior name and
+description, and publish after reviewing the full diff. The two Server Action
+groups, rate-limit action, threshold, algorithm, key, and order must remain
+unchanged.
 
 To restore the pre-#8120 topology, first stage the reverse change: remove the
 API/MCP log rule, remove only the scanner OR group from the retained deny rule,
