@@ -10,6 +10,7 @@ from src.core.monitors.earcu import (
     can_handle,
     discover,
 )
+from src.shared.http_retry import PaginationFetchError
 
 FEED = """\
 <?xml version="1.0" encoding="UTF-8"?>
@@ -42,6 +43,15 @@ FEED = """\
 def test_candidate_feed_url_preserves_portal_prefix():
     assert _candidate_feed_urls("https://careers.example/jobs/vacancy/find/results/") == [
         "https://careers.example/jobs/allvacancies/",
+        "https://careers.example/allvacancies/",
+    ]
+
+
+def test_candidate_feed_url_supports_legacy_aspx_listing():
+    assert _candidate_feed_urls(
+        "https://careers.example/vacancies/vacancy-search-results.aspx"
+    ) == [
+        "https://careers.example/vacancies/allvacancies/",
         "https://careers.example/allvacancies/",
     ]
 
@@ -156,6 +166,31 @@ async def test_can_handle_bypasses_waf_listing_and_detects_feed():
         "jobs": 2,
     }
     assert "https://careers.example/jobs/vacancy/find/results/" not in requested
+
+
+async def test_can_handle_retains_legacy_listing_when_feed_requires_proxy():
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(403, text="challenge", request=request)
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        result = await can_handle(
+            "https://careers.example/vacancies/vacancy-search-results.aspx",
+            client,
+        )
+
+    assert result == {
+        "feed_url": "https://careers.example/vacancies/allvacancies/",
+        "proxy": True,
+    }
+
+
+async def test_can_handle_does_not_guess_generic_blocked_page():
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(403, text="challenge", request=request)
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(PaginationFetchError, match="status=403"):
+            await can_handle("https://careers.example/careers", client)
 
 
 async def test_discover_uses_configured_feed():
