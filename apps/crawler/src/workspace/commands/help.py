@@ -2387,11 +2387,17 @@ earcu — eArcu live-vacancy XML feed
 
   Config:
     {"feed_url": "https://careers.example.com/jobs/allvacancies/"}
+    {"feed_url": "https://careers.example.com/vacancies/allvacancies/",
+     "proxy": true}
 
     feed_url  Public eArcu allvacancies XML URL. Auto-filled by ws probe
               from listing URLs such as /jobs/vacancy/find/results/.
+    proxy     Route the feed through the configured proxy provider when the
+              eArcu CNAME applies its browser WAF rule to /allvacancies/ too.
 
-  Detection:  ws probe shows "eArcu live-vacancy feed — N jobs at URL"
+  Detection:  ws probe shows "eArcu live-vacancy feed — N jobs at URL".
+              A provider-specific listing path whose feed returns 401/403 is
+              retained as a proxy-required eArcu detection.
   Zero jobs?  A valid empty <positions> feed means the board currently has
               no advertised vacancies."""
 
