@@ -377,6 +377,7 @@ american-express,american-express-eightfold,https://aexp.eightfold.ai/careers,ei
 american-housing,american-housing-ashby,https://jobs.ashbyhq.com/american-housing,ashby,"{""token"": ""american-housing""}",skip,
 american-institute,american-institute-greenhouse,https://job-boards.greenhouse.io/americaninstitute,greenhouse,"{""token"": ""americaninstitute""}",skip,
 ametek,ametek-careers,https://jobs.ametek.com/,rss,"{""preset"": ""successfactors""}",skip,
+amgen,amgen-careers,https://amgen.wd1.myworkdayjobs.com/careers,workday,,workday,
 amgen,amgen-global,https://careers.amgen.com/en/search-jobs/,sitemap,"{""sitemap_url"": ""https://careers.amgen.com/en/sitemap.xml"", ""url_filter"": ""/en/job/""}",json-ld,
 ami,ami-ashby,https://jobs.ashbyhq.com/ami,ashby,"{""token"": ""ami""}",skip,
 amina-bank,amina-bank-careers-personio,https://amina.jobs.personio.com/,personio,"{""slug"": ""amina""}",dom,"{""steps"": [{""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Apply for this job"", ""html"": true}]}"
