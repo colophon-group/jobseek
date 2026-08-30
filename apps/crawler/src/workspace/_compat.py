@@ -186,6 +186,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "nextdata",
     "njoyn",
     "notion",
+    "papa_johns",
     "dom",
     "api_sniffer",
 }
@@ -269,6 +270,17 @@ def detect_ats_from_url(url: str) -> str | None:
         return "linkedin"
     if host == "jobs.ashbyhq.com":
         return "ashby"
+    if (
+        parsed.scheme == "https"
+        and host == "jobs.papajohns.com"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and parsed.path.rstrip("/").lower() == "/jobs"
+        and not parsed.query
+        and not parsed.fragment
+    ):
+        return "papa_johns"
     if (
         parsed.scheme == "https"
         and re.fullmatch(r"[a-z]{2}\.computrabajo\.com", host)
@@ -948,6 +960,8 @@ def auto_scraper_type(
     if monitor_type == "jobbank104":
         return ("json-ld", None)
     if monitor_type == "computrabajo":
+        return ("json-ld", None)
+    if monitor_type == "papa_johns":
         return ("json-ld", None)
     if monitor_type == "jobvite":
         return ("json-ld", None)

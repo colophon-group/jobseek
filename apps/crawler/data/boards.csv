@@ -4607,6 +4607,8 @@ pantheon-systems-inc,pantheon-systems-inc-greenhouse,https://job-boards.greenhou
 pantheon-ventures-careers,pantheon-ventures-careers-greenhouse,https://job-boards.greenhouse.io/pantheonpublic,greenhouse,"{""token"": ""pantheonpublic""}",skip,
 panther,panther-greenhouse,https://job-boards.greenhouse.io/pantherlabs,greenhouse,"{""token"": ""pantherlabs""}",skip,
 papa,papa-greenhouse,https://job-boards.greenhouse.io/papa,greenhouse,"{""token"": ""papa""}",skip,
+papa-johns,papa-johns-careers,https://papajohns.wd1.myworkdayjobs.com/papajohnscareers,workday,,workday,
+papa-johns,papa-johns-jobs,https://jobs.papajohns.com/jobs/,papa_johns,"{""proxy"": true}",json-ld,"{""proxy"": true}"
 paperless-parts,paperless-parts-greenhouse,https://job-boards.greenhouse.io/paperlessparts,greenhouse,"{""token"": ""paperlessparts""}",skip,
 paqato-gmbh,paqato-gmbh-join,https://join.com/companies/paqatocom,join,"{""slug"": ""paqatocom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 parabola-io,parabola-io-ashby,https://jobs.ashbyhq.com/parabola-io,ashby,"{""token"": ""parabola-io""}",skip,
