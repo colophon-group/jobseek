@@ -1,11 +1,19 @@
-import { NextResponse } from "next/server";
+import { connection } from "next/server";
 import { generateScopedSearchKey } from "@/lib/search/scoped-key";
-import { getSessionUserId } from "@/lib/sessionCache";
 
-const ANON_TTL_SECONDS = 300;
-const AUTHED_TTL_SECONDS = 600;
+const KEY_TTL_SECONDS = 600;
+// Leave 90 seconds between the Vercel CDN freshness boundary and the signed
+// key expiry. Use max-age rather than s-maxage here: Vercel serves an expired
+// s-maxage response once while revalidating it asynchronously, which is unsafe
+// for a bearer credential with a hard expiry. The browser refreshes 30 seconds
+// early, so even the oldest fresh cache hit remains usable.
+const VERCEL_CDN_TTL_SECONDS = 510;
 
 export async function GET() {
+  // cacheComponents may otherwise evaluate Date.now() while prerendering.
+  // The response is generated at request time, then shared by Vercel's CDN.
+  await connection();
+
   // Typesense scoped keys must be derived from a parent whose actions list is
   // exactly ["documents:search"]. The regular TYPESENSE_SEARCH_KEY also carries
   // documents:get, so the server rejects scoped keys minted from it.
@@ -16,12 +24,14 @@ export async function GET() {
   const port = process.env.TYPESENSE_PORT;
   const protocol = process.env.TYPESENSE_PROTOCOL;
   if (!parentKey || !host || !port || !protocol) {
-    return NextResponse.json({ error: "search not configured" }, { status: 503 });
+    return Response.json({ error: "search not configured" }, { status: 503 });
   }
 
-  const userId = await getSessionUserId();
-  const ttl = userId ? AUTHED_TTL_SECONDS : ANON_TTL_SECONDS;
-  const expiresAtSeconds = Math.floor(Date.now() / 1000) + ttl;
+  // The browser key grants the same search-only collection scope to every
+  // visitor. Keeping this route session-independent avoids pulling the auth,
+  // database, and Redis dependency graph into a hot Function and makes its
+  // successful response safe to share at the CDN.
+  const expiresAtSeconds = Math.floor(Date.now() / 1000) + KEY_TTL_SECONDS;
 
   // limit_hits is intentionally omitted: it counts raw hits (not grouped rows),
   // so it would block normal anon traffic that uses group_by company_id with
@@ -36,11 +46,8 @@ export async function GET() {
   // Keep browser metadata on the exact signed boundary. Typesense validates
   // expires_at as Unix seconds while the browser cache consumes milliseconds.
   const expiresAt = expiresAtSeconds * 1000;
-  const cacheControl = userId
-    ? `private, max-age=${Math.floor(ttl / 2)}`
-    : `public, s-maxage=${Math.floor(ttl / 2)}, max-age=0`;
 
-  return NextResponse.json(
+  return Response.json(
     {
       apiKey,
       expiresAt,
@@ -49,7 +56,15 @@ export async function GET() {
       protocol,
     },
     {
-      headers: { "cache-control": cacheControl },
+      headers: {
+        // Keep browsers in control of their short-lived local config cache;
+        // this header is forwarded unchanged to clients.
+        "cache-control": "public, max-age=0, must-revalidate",
+        // Vercel consumes this header and does not forward it to clients.
+        // A targeted max-age gives this expiring credential a hard freshness
+        // boundary without allowing Vercel's s-maxage stale response behavior.
+        "vercel-cdn-cache-control": `public, max-age=${VERCEL_CDN_TTL_SECONDS}, must-revalidate`,
+      },
     },
   );
 }

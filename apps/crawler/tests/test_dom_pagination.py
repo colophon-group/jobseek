@@ -18,12 +18,14 @@ from src.core.monitors.dom import (
     _extract_links_static,
     _extract_oracle_adf_job_ids,
     _extract_rich_rows_static,
+    _extract_script_json_links,
     _fetch_via_page,
     _filter_jsonld_job_urls,
     _filter_pdf_text_urls,
     _filter_unexpired_pdf_urls,
     _fingerprint_response_urls,
     _lucca_probe_config,
+    _nyc_council_jobs_probe_config,
     _oracle_adf_probe_config,
     _paginate_urls,
     _prospective_probe_config,
@@ -32,6 +34,7 @@ from src.core.monitors.dom import (
     _validated_pdf_text_config,
     _validated_response_fingerprint_config,
     _validated_rich_rows,
+    _validated_script_json_links,
     _validated_unexpired_pdf_config,
     _yousty_probe_config,
     can_handle,
@@ -87,6 +90,125 @@ def _make_fetch(pages: dict[str, str | None]):
         return pages.get(url)
 
     return fake_fetch
+
+
+class TestScriptJsonLinks:
+    CONFIG = {
+        "variable": "jobAdArray",
+        "url_field": "post_name",
+        "url_template": "https://council.nyc.gov/jobs/{value}/",
+    }
+
+    @staticmethod
+    def _html(*slugs: str) -> str:
+        items = ",".join(
+            f'{{"post_name":"{slug}","post_content":"<p>Job details</p>"}}' for slug in slugs
+        )
+        return f"<script>let jobAdArray = [{items}];</script>"
+
+    def test_extracts_every_same_origin_url_from_json_assignment(self):
+        config = _validated_script_json_links(self.CONFIG)
+        assert config is not None
+
+        urls = _extract_script_json_links(
+            self._html("associate-counsel", "data-analyst"),
+            "https://council.nyc.gov/jobs/",
+            config,
+            re.compile(r"^https://council\.nyc\.gov/jobs/[^/]+/$"),
+        )
+
+        assert urls == {
+            "https://council.nyc.gov/jobs/associate-counsel/",
+            "https://council.nyc.gov/jobs/data-analyst/",
+        }
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            {"variable": "bad-name", "url_field": "slug", "url_template": "https://x/{value}"},
+            {"variable": "jobs", "url_field": "slug", "url_template": "https://x/no-slot"},
+            {"variable": "jobs", "url_field": "slug", "url_template": "/jobs/{value}"},
+        ],
+    )
+    def test_rejects_unsafe_config(self, config):
+        with pytest.raises(ValueError, match="script_json_links"):
+            _validated_script_json_links(config)
+
+    def test_rejects_duplicate_provider_identities(self):
+        config = _validated_script_json_links(self.CONFIG)
+        assert config is not None
+
+        with pytest.raises(ValueError, match="duplicate"):
+            _extract_script_json_links(
+                self._html("same-job", "same-job"),
+                "https://council.nyc.gov/jobs/",
+                config,
+                None,
+            )
+
+    async def test_dom_discover_reads_complete_untruncated_assignment(self):
+        fetch = AsyncMock(return_value=self._html("one", "two"))
+        with patch(_FETCH_PATCH, fetch):
+            result = await dom_discover(
+                {
+                    "board_url": "https://council.nyc.gov/jobs/",
+                    "metadata": {
+                        "script_json_links": self.CONFIG,
+                        "url_filter": r"^https://council\.nyc\.gov/jobs/[^/]+/$",
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == {
+            "https://council.nyc.gov/jobs/one/",
+            "https://council.nyc.gov/jobs/two/",
+        }
+        assert fetch.await_args.kwargs["max_chars"] is None
+
+    def test_nyc_council_probe_returns_provider_preset(self):
+        result = _nyc_council_jobs_probe_config(
+            self._html("one", "two"),
+            "https://council.nyc.gov/jobs/",
+        )
+
+        assert result == {
+            "urls": 2,
+            "script_json_links": self.CONFIG,
+            "url_filter": r"^https://council\.nyc\.gov/jobs/[^/?#]+/$",
+            "request_headers": {"User-Agent": "jobseek-crawler (+https://jseek.co/)"},
+        }
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://council.nyc.gov/jobs/",
+            "https://user@council.nyc.gov/jobs/",
+            "https://council.nyc.gov:444/jobs/",
+            "https://council.nyc.gov/jobs/?preview=true",
+        ],
+    )
+    def test_nyc_council_probe_rejects_noncanonical_board_urls(self, url):
+        assert _nyc_council_jobs_probe_config(self._html("one"), url) is None
+
+    async def test_can_handle_retries_council_with_public_user_agent(self):
+        html = self._html("one", "two")
+        fallback_fetch = AsyncMock(return_value=html)
+        with (
+            patch("src.core.monitors.fetch_page_text", AsyncMock(return_value=None)),
+            patch(_FETCH_PATCH, fallback_fetch),
+        ):
+            result = await can_handle("https://council.nyc.gov/jobs/", AsyncMock())
+
+        assert result is not None
+        assert result["urls"] == 2
+        assert result["request_headers"] == {"User-Agent": "jobseek-crawler (+https://jseek.co/)"}
+        assert fallback_fetch.await_args.kwargs == {
+            "headers": {"User-Agent": "jobseek-crawler (+https://jseek.co/)"},
+            "public_headers": True,
+            "transient_403": True,
+            "max_chars": None,
+        }
 
 
 # ---------------------------------------------------------------------------

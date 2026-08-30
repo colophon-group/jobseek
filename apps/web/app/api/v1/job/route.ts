@@ -5,6 +5,7 @@ import { withPublicApiObservability } from "@/lib/public-api-observability";
 import {
   checkRateLimit,
   apiResponse,
+  sharedApiResponse,
   parseApiLocale,
   siteUrl,
 } from "../_shared";
@@ -21,7 +22,7 @@ async function handleGet(request: NextRequest) {
   if (!id) {
     return apiResponse(
       { error: "Missing required parameter: id" },
-      { maxAge: 0, status: 400 },
+      { status: 400 },
     );
   }
 
@@ -30,11 +31,11 @@ async function handleGet(request: NextRequest) {
   if (!detail) {
     return apiResponse(
       { error: "Job posting not found" },
-      { maxAge: 0, status: 404 },
+      { status: 404 },
     );
   }
 
-  return apiResponse(
+  return sharedApiResponse(
     {
       id: detail.id,
       title: detail.title,
@@ -71,7 +72,6 @@ async function handleGet(request: NextRequest) {
       url: siteUrl(`/${locale}/company/${detail.company.slug}?show=${detail.id}`),
       firstSeenAt: detail.firstSeenAt,
     },
-    { rateLimit: rl },
   );
 }
 

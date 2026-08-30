@@ -20,11 +20,10 @@ x-common-env: &common-env
   TYPESENSE_PROTOCOL: ${TYPESENSE_PROTOCOL}
   TYPESENSE_OPERATIONS_KEY: ${TYPESENSE_OPERATIONS_KEY}
   # Proxy provider — applies to boards with ``"proxy": true`` in their
-  # monitor_config / scraper_config (see src/shared/proxy.py). Secrets
-  # for idle providers stay set so operators can swap with one env flip.
+  # monitor_config / scraper_config (see src/shared/proxy.py).
   PROXY_PROVIDER: ${PROXY_PROVIDER:-none}
+  WEBSHARE_PROXY_URLS: "${WEBSHARE_PROXY_URLS:-[]}"
   WEBSHARE_PROXY_URL: ${WEBSHARE_PROXY_URL:-}
-  DECODO_PROXY_URL: ${DECODO_PROXY_URL:-}
 
 services:
   # -- Redis -------------------------------------------------------

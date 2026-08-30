@@ -4,6 +4,7 @@ import type { SimilarCompany } from "@/lib/actions/company";
 
 const mocks = vi.hoisted(() => ({
   getSimilarCompanies: vi.fn(),
+  tryGetSimilarCompaniesDirect: vi.fn(),
 }));
 
 let currentSearchParams = new URLSearchParams();
@@ -21,6 +22,10 @@ vi.mock("@lingui/react/macro", () => ({
 vi.mock("@/lib/actions/company", () => ({
   getSimilarCompanies: (...args: unknown[]) =>
     mocks.getSimilarCompanies(...args),
+}));
+vi.mock("@/lib/search/search-runner", () => ({
+  tryGetSimilarCompaniesDirect: (...args: unknown[]) =>
+    mocks.tryGetSimilarCompaniesDirect(...args),
 }));
 vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({ isPending: false }),
@@ -61,7 +66,6 @@ function renderStrip(overrides: Partial<React.ComponentProps<typeof SimilarCompa
       industryId={7}
       initialCompanies={initialCompanies}
       initialHasMore={false}
-      initialPageLoaded
       locale="en"
       {...overrides}
     />,
@@ -71,6 +75,7 @@ function renderStrip(overrides: Partial<React.ComponentProps<typeof SimilarCompa
 beforeEach(() => {
   currentSearchParams = new URLSearchParams();
   mocks.getSimilarCompanies.mockReset();
+  mocks.tryGetSimilarCompaniesDirect.mockReset();
   mocks.getSimilarCompanies.mockResolvedValue({
     companies: [
       {
@@ -83,21 +88,42 @@ beforeEach(() => {
     ],
     hasMore: false,
   });
+  mocks.tryGetSimilarCompaniesDirect.mockResolvedValue({
+    companies: [
+      {
+        id: "fresh-peer",
+        slug: "fresh-peer",
+        name: "Fresh Peer",
+        icon: null,
+        activeJobCount: 6,
+      },
+    ],
+    hasMore: false,
+  });
 });
 
 describe("SimilarCompaniesStrip cached initial page", () => {
-  it("does not issue a mount-time Server Action for an unfiltered visit", async () => {
+  it("refreshes an unfiltered visit browser-direct without a Server Action", async () => {
     renderStrip();
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(screen.getByText("Peer One")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText("Fresh Peer")).toBeTruthy();
+    });
+    expect(mocks.tryGetSimilarCompaniesDirect).toHaveBeenCalledWith({
+      companyId: "company-1",
+      industryId: 7,
+      limit: 10,
+    });
     expect(mocks.getSimilarCompanies).not.toHaveBeenCalled();
   });
 
-  it("does not retry a cached empty result on mount", async () => {
+  it("keeps a cached empty result when the direct refresh is unavailable", async () => {
+    mocks.tryGetSimilarCompaniesDirect.mockResolvedValue(null);
     const { container } = renderStrip({ initialCompanies: [] });
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await waitFor(() => {
+      expect(mocks.tryGetSimilarCompaniesDirect).toHaveBeenCalledOnce();
+    });
     expect(container.innerHTML).toBe("");
     expect(mocks.getSimilarCompanies).not.toHaveBeenCalled();
   });
@@ -118,7 +144,7 @@ describe("SimilarCompaniesStrip cached initial page", () => {
     expect(screen.getByText("Filtered Peer")).toBeTruthy();
   });
 
-  it("restores the cached unfiltered page when filters are cleared", async () => {
+  it("refreshes browser-direct when filters are cleared", async () => {
     currentSearchParams = new URLSearchParams("q=python");
     const view = renderStrip();
 
@@ -133,14 +159,14 @@ describe("SimilarCompaniesStrip cached initial page", () => {
         industryId={7}
         initialCompanies={initialCompanies}
         initialHasMore={false}
-        initialPageLoaded
         locale="en"
       />,
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Peer One")).toBeTruthy();
+      expect(screen.getByText("Fresh Peer")).toBeTruthy();
     });
     expect(mocks.getSimilarCompanies).toHaveBeenCalledTimes(1);
+    expect(mocks.tryGetSimilarCompaniesDirect).toHaveBeenCalledTimes(1);
   });
 });

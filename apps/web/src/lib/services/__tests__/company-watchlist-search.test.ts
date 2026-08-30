@@ -155,6 +155,16 @@ describe("suggestCompanies", () => {
     expect(mocks.dbExecute).not.toHaveBeenCalled();
   });
 
+  it("rethrows availability failures when a caller requires strict results", async () => {
+    const error = Object.assign(new Error("reset"), { code: "ECONNRESET" });
+    searchMock.mockRejectedValue(error);
+
+    await expect(
+      suggestCompanies({ query: "acme", failOnUnavailable: true }),
+    ).rejects.toBe(error);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
   it("does not hide non-availability Typesense errors", async () => {
     const error = Object.assign(new Error("Bad Request"), { httpStatus: 400 });
     searchMock.mockRejectedValue(error);

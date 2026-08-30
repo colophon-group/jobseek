@@ -13,7 +13,12 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+  logExternalError: vi.fn(),
   suggestCompanies: vi.fn(),
+}));
+
+vi.mock("@/lib/safe-external-error", () => ({
+  logExternalError: mocks.logExternalError,
 }));
 
 vi.mock("@/lib/actions/company", () => ({
@@ -33,6 +38,7 @@ function makeReq(qs: string): NextRequest {
 
 describe("GET /api/v1/companies service boundary (#3331)", () => {
   beforeEach(() => {
+    mocks.logExternalError.mockReset();
     mocks.suggestCompanies.mockReset();
   });
 
@@ -76,7 +82,10 @@ describe("GET /api/v1/companies service boundary (#3331)", () => {
     };
 
     expect(res.status).toBe(200);
-    expect(mocks.suggestCompanies).toHaveBeenCalledWith({ query: "goo" });
+    expect(mocks.suggestCompanies).toHaveBeenCalledWith({
+      query: "goo",
+      failOnUnavailable: true,
+    });
     expect(body.companies).toEqual([
       {
         name: "Google",
@@ -85,5 +94,25 @@ describe("GET /api/v1/companies service boundary (#3331)", () => {
         url: "https://jseek.co/de/company/google",
       },
     ]);
+  });
+
+  it("returns a non-cacheable safe error when Typesense is unavailable", async () => {
+    const providerError = new Error("provider-internal-canary-do-not-expose");
+    mocks.suggestCompanies.mockRejectedValue(providerError);
+
+    const res = await GET(makeReq("?q=goo&locale=en"));
+    const body = await res.json();
+
+    expect(res.status).toBe(500);
+    expect(body).toEqual({ error: "Search service unavailable" });
+    expect(JSON.stringify(body)).not.toContain("provider-internal-canary");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Vercel-CDN-Cache-Control")).toBeNull();
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(mocks.logExternalError).toHaveBeenCalledWith(
+      "error",
+      { service: "typesense", operation: "public_api_companies" },
+      providerError,
+    );
   });
 });

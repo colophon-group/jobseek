@@ -105,6 +105,7 @@ Monitor Types (cheapest first):
   herp              10      Job URLs          Auto-configured
   hrmos             10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
+  infor             10      Full/partial      Auto-enriched
   intervieweb       10      Job URLs          Auto-configured
   jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
@@ -139,6 +140,7 @@ Monitor Types (cheapest first):
   recruiter_co_kr   15      Full job data     No (skipped)
   umantis           15      Full/partial      Description enrichment
   nextdata          20      URLs or full      If URL-only
+  papa_johns        45      Job URLs          Auto-configured JSON-LD
   talemetry         45      URL set           Yes
   talentbrew        45      URL set           Yes
   sitemap           50      URL set           Yes
@@ -839,7 +841,8 @@ headhunter — HeadHunter employer vacancies API
             non-destructive truncated result). Page/count/ID drift fails closed.
   Note:     HeadHunter's ddos-guard blocks some datacenter networks. Detected
             employer boards therefore set proxy=true automatically and use the
-            crawler's configured static proxy transport.
+            crawler's configured Webshare pool. HTTP rotates between top-level
+            requests while each browser launch keeps one affine exit.
 
   Config:
     {"employer_id": "4556149", "host": "hh.ru", "proxy": true}
@@ -1149,7 +1152,7 @@ practicematch — PracticeMatch Employer Landing Pages
   Config:
     {"proxy": true}       Auto-filled during detection. PracticeMatch drops
                            direct datacenter connections, so production uses
-                           the configured static proxy transport.
+                           the configured Webshare rotating transport.
     {"max_pages": 2000}  Optional safety cap per profession stream.
 
   Pair with:  json-ld (auto-configured with proxy=true)"""
@@ -1408,6 +1411,20 @@ inline — Single-Page Extraction (rich)
       ]
     }
 
+    Semantic accordions can use each summary as the repeated title and stop
+    the description at the next summary. Do not use the structural details
+    wrapper as item_boundary_tag because flattened extraction keeps
+    contentful elements, not empty container markers:
+    {
+      "require_zero_proof": true,
+      "steps": [
+        {"tag": "summary", "field": "title"},
+        {"tag": "p", "field": "description", "html": true,
+         "stop_tag": "summary"}
+      ],
+      "defaults": {"locations": ["Japan"]}
+    }
+
     render       true = Playwright, false = static HTTP (default: false)
     detail_click_selector
                  Playwright selector for click-only job-card controls. The
@@ -1479,6 +1496,9 @@ inline — Single-Page Extraction (rich)
                  Optional HTML tag that starts each posting (for example h2).
                  Each repeated step run is restricted to one such block, so an
                  optional field cannot consume content from the next posting.
+                 Use a contentful repeated tag, not a structural wrapper such
+                 as details; details/summary accordions should instead stop
+                 each description at the next summary as shown above.
     synthetic_identity_field
                  Optional extracted field containing a provider-stable identity
                  for ordinary static inline rows. The identity, rather than the
@@ -1646,6 +1666,15 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    Matching links are trusted as jobs, so this is useful when
                    stable job-card markup exists but URLs lack job keywords.
                    Example: "li.job-card a.details-link"
+    script_json_links
+                   Extract detail URLs from one JSON array assigned to an
+                   inline JavaScript variable when the page creates links only
+                   in client code:
+                   {"variable": "jobAds", "url_field": "slug",
+                    "url_template": "https://example.com/jobs/{value}/"}
+                   The assignment and every item are validated fail-closed;
+                   generated URLs must be unique and same-origin. Static
+                   single-page discovery only.
     oracle_adf_job_ids
                    Narrow preset for Oracle ADF recruitment lists whose rows
                    expose form/PPR View actions instead of hrefs. The rendered
@@ -2376,11 +2405,17 @@ earcu — eArcu live-vacancy XML feed
 
   Config:
     {"feed_url": "https://careers.example.com/jobs/allvacancies/"}
+    {"feed_url": "https://careers.example.com/vacancies/allvacancies/",
+     "proxy": true}
 
     feed_url  Public eArcu allvacancies XML URL. Auto-filled by ws probe
               from listing URLs such as /jobs/vacancy/find/results/.
+    proxy     Route the feed through the configured proxy provider when the
+              eArcu CNAME applies its browser WAF rule to /allvacancies/ too.
 
-  Detection:  ws probe shows "eArcu live-vacancy feed — N jobs at URL"
+  Detection:  ws probe shows "eArcu live-vacancy feed — N jobs at URL".
+              A provider-specific listing path whose feed returns 401/403 is
+              retained as a proxy-required eArcu detection.
   Zero jobs?  A valid empty <positions> feed means the board currently has
               no advertised vacancies."""
 
@@ -3309,11 +3344,27 @@ dom — Step-based Extraction Engine
         {"text": "About", "field": "description", "stop": "Requirements", "html": true}
       ],
       "render": true,
+      "defaults_by_url": {
+        "https://company.example/jobs/42": {
+          "title": "Canonical role title",
+          "locations": ["London, United Kingdom"]
+        }
+      },
       "wait": "networkidle"
     }
 
     steps          Extraction step list (see: ws help steps)
     render         false (default) = static HTTP, true = Playwright
+    defaults_by_url
+                   Exact canonical posting URL -> missing-field defaults.
+                   Use for small stable boards whose detail pages expose a
+                   generic heading or omit per-role locations. Extracted
+                   values always win; unmatched URLs receive no URL defaults.
+    request_headers
+                   Static-only allowlisted public request headers (Accept,
+                   Accept-Language, Cache-Control, Pragma, or User-Agent).
+                   Use for origins that require explicit content negotiation
+                   or crawler identification. Credentials are rejected.
     wait           Wait strategy (Playwright only): load | domcontentloaded
                    | networkidle (default) | commit
     wait_fallback  Fallback load state checked on the current document after
@@ -3601,7 +3652,10 @@ Browser Resource Policy — bandwidth reduction without blind anti-bot regressio
        Record HTTP status/final URL, challenge text, discovered count, required
        fields, and the page/flat/debug artifacts.
     2. Repeat on the same egress with lean (or aggressive only for a reviewed,
-       text-only board). Do not compare runs from different IPs/providers.
+       text-only board). With the Webshare pool, set
+       WEBSHARE_PROXY_CANARY_SLOT=0 for both commands so separate browser
+       launches retain the same exit. This operator-only value is not deployed;
+       never persist it in board JSON. Do not compare different IPs/providers.
     3. Any new 401/403/429, captcha/challenge page, redirect, missing API call,
        count drop, or required-field drop is a regression: keep none and record
        the evidence in ws feedback notes.
@@ -4014,6 +4068,21 @@ unisante — Unisanté first-party careers monitor
   the exact server-visible empty inventory contract; the `#no-ads` marker that
   is normally hidden on non-empty pages is not zero evidence by itself."""
 
+MONITOR_PAPA_JOHNS = """\
+papa_johns — Papa Johns branded careers
+
+  Listing:  GET https://jobs.papajohns.com/jobs/
+  Returns:  Canonical job detail URLs
+  Scraper:  Auto-configured JSON-LD
+  Cost:     45
+  Proxy:    Required in production
+
+  The monitor validates the provider's explicit inventory count, follows
+  bounded page_jobs pagination, and fails closed if the count or page total
+  changes during collection. It accepts only the exact unfiltered listing URL.
+"""
+
+
 MONITOR_CARDS: dict[str, str] = {
     "accenture": MONITOR_ACCENTURE,
     "almacareer": MONITOR_ALMACAREER,
@@ -4060,6 +4129,7 @@ MONITOR_CARDS: dict[str, str] = {
     "jobstreet": MONITOR_JOBSTREET,
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,
+    "papa_johns": MONITOR_PAPA_JOHNS,
     "icims": MONITOR_ICIMS,
     "infoniqa": """\
 infoniqa — Infoniqa jobexchange form-pagination monitor
@@ -4146,6 +4216,23 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
                      Use only for a verified tenant whose TotalJobsCount counts
                      repeated database rows. Cross-page duplicates remain
                      governed by offset_overlap.""",
+    "infor": """\
+infor — Infor Global HR / Lawson CandidateSelfService monitor
+
+  Auto-detected for hosted Infor CandidateSelfService board URLs carrying
+  context.session.key.JobBoard and context.session.key.HROrganization.
+  Bootstraps an anonymous Landmark session, then reads the provider's native
+  JobPostingListWebServices operation; no browser is needed.
+
+  Rich monitor — returns title, location, and posting date.
+  Pair with the auto-configured infor scraper + enrich: ["description"] for
+  complete detail records.
+
+  Board metadata (auto-detected from URL):
+    origin           Validated *.cloud.infor.com origin
+    dataarea         Landmark data area (for example lmghr)
+    job_board        Infor external board identifier
+    hr_organization  Infor HR organization identifier""",
     "dom": MONITOR_DOM,
     "inline": MONITOR_INLINE,
     "unifr": """\
@@ -4534,6 +4621,17 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
 
   Best used with enrich: ["description"] — monitor provides title/location/date,
   scraper fills in description from the detail API.""",
+    "infor": """\
+infor — Infor Global HR / Lawson CandidateSelfService detail scraper
+
+  Bootstraps an anonymous CandidateSelfService session and fetches the native
+  Find_PostingDisplay_FormOperation response. No browser is needed.
+
+  Available fields: title, HTML description, location, posting date, and
+  provider requisition/category metadata.
+
+  Best used with enrich: ["description"] — the monitor provides summary fields
+  and stable JobReq/JobPost URLs; the scraper fills in the description.""",
     "skip": SCRAPER_SKIP,
     "linkedin": SCRAPER_LINKEDIN,
     "headhunter": SCRAPER_HEADHUNTER,

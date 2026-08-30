@@ -506,6 +506,113 @@ func (BrowserCapability) EnumDescriptor() ([]byte, []int) {
 	return file_runtime_proto_rawDescGZIP(), []int{7}
 }
 
+// A bounded, backend-neutral capability tier derived from the complete set of
+// capabilities required by one BrowserPlan. The selected backend is a separate
+// decision: either service may own a tier when frozen capability evidence says
+// that it is supported.
+type BrowserCapabilityClass int32
+
+const (
+	BrowserCapabilityClass_BROWSER_CAPABILITY_CLASS_UNSPECIFIED           BrowserCapabilityClass = 0
+	BrowserCapabilityClass_BROWSER_CAPABILITY_CLASS_NAVIGATION_EVALUATION BrowserCapabilityClass = 1
+	BrowserCapabilityClass_BROWSER_CAPABILITY_CLASS_INTERACTION_CAPTURE   BrowserCapabilityClass = 2
+	BrowserCapabilityClass_BROWSER_CAPABILITY_CLASS_IDENTITY_TRANSPORT    BrowserCapabilityClass = 3
+)
+
+// Enum value maps for BrowserCapabilityClass.
+var (
+	BrowserCapabilityClass_name = map[int32]string{
+		0: "BROWSER_CAPABILITY_CLASS_UNSPECIFIED",
+		1: "BROWSER_CAPABILITY_CLASS_NAVIGATION_EVALUATION",
+		2: "BROWSER_CAPABILITY_CLASS_INTERACTION_CAPTURE",
+		3: "BROWSER_CAPABILITY_CLASS_IDENTITY_TRANSPORT",
+	}
+	BrowserCapabilityClass_value = map[string]int32{
+		"BROWSER_CAPABILITY_CLASS_UNSPECIFIED":           0,
+		"BROWSER_CAPABILITY_CLASS_NAVIGATION_EVALUATION": 1,
+		"BROWSER_CAPABILITY_CLASS_INTERACTION_CAPTURE":   2,
+		"BROWSER_CAPABILITY_CLASS_IDENTITY_TRANSPORT":    3,
+	}
+)
+
+func (x BrowserCapabilityClass) Enum() *BrowserCapabilityClass {
+	p := new(BrowserCapabilityClass)
+	*p = x
+	return p
+}
+
+func (x BrowserCapabilityClass) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (BrowserCapabilityClass) Descriptor() protoreflect.EnumDescriptor {
+	return file_runtime_proto_enumTypes[8].Descriptor()
+}
+
+func (BrowserCapabilityClass) Type() protoreflect.EnumType {
+	return &file_runtime_proto_enumTypes[8]
+}
+
+func (x BrowserCapabilityClass) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use BrowserCapabilityClass.Descriptor instead.
+func (BrowserCapabilityClass) EnumDescriptor() ([]byte, []int) {
+	return file_runtime_proto_rawDescGZIP(), []int{8}
+}
+
+// Closed service/queue/capacity identity. Lightpanda and Chromium never share
+// this lane even when they accept the same BrowserPlan shape.
+type BrowserServiceLane int32
+
+const (
+	BrowserServiceLane_BROWSER_SERVICE_LANE_UNSPECIFIED BrowserServiceLane = 0
+	BrowserServiceLane_BROWSER_SERVICE_LANE_LIGHTPANDA  BrowserServiceLane = 1
+	BrowserServiceLane_BROWSER_SERVICE_LANE_CHROMIUM    BrowserServiceLane = 2
+)
+
+// Enum value maps for BrowserServiceLane.
+var (
+	BrowserServiceLane_name = map[int32]string{
+		0: "BROWSER_SERVICE_LANE_UNSPECIFIED",
+		1: "BROWSER_SERVICE_LANE_LIGHTPANDA",
+		2: "BROWSER_SERVICE_LANE_CHROMIUM",
+	}
+	BrowserServiceLane_value = map[string]int32{
+		"BROWSER_SERVICE_LANE_UNSPECIFIED": 0,
+		"BROWSER_SERVICE_LANE_LIGHTPANDA":  1,
+		"BROWSER_SERVICE_LANE_CHROMIUM":    2,
+	}
+)
+
+func (x BrowserServiceLane) Enum() *BrowserServiceLane {
+	p := new(BrowserServiceLane)
+	*p = x
+	return p
+}
+
+func (x BrowserServiceLane) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (BrowserServiceLane) Descriptor() protoreflect.EnumDescriptor {
+	return file_runtime_proto_enumTypes[9].Descriptor()
+}
+
+func (BrowserServiceLane) Type() protoreflect.EnumType {
+	return &file_runtime_proto_enumTypes[9]
+}
+
+func (x BrowserServiceLane) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use BrowserServiceLane.Descriptor instead.
+func (BrowserServiceLane) EnumDescriptor() ([]byte, []int) {
+	return file_runtime_proto_rawDescGZIP(), []int{9}
+}
+
 type WaitCondition int32
 
 const (
@@ -545,11 +652,11 @@ func (x WaitCondition) String() string {
 }
 
 func (WaitCondition) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[8].Descriptor()
+	return file_runtime_proto_enumTypes[10].Descriptor()
 }
 
 func (WaitCondition) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[8]
+	return &file_runtime_proto_enumTypes[10]
 }
 
 func (x WaitCondition) Number() protoreflect.EnumNumber {
@@ -558,7 +665,7 @@ func (x WaitCondition) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use WaitCondition.Descriptor instead.
 func (WaitCondition) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{8}
+	return file_runtime_proto_rawDescGZIP(), []int{10}
 }
 
 // Declares whether executing a browser action is permitted to contact the
@@ -596,11 +703,11 @@ func (x BrowserNetworkEffect) String() string {
 }
 
 func (BrowserNetworkEffect) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[9].Descriptor()
+	return file_runtime_proto_enumTypes[11].Descriptor()
 }
 
 func (BrowserNetworkEffect) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[9]
+	return &file_runtime_proto_enumTypes[11]
 }
 
 func (x BrowserNetworkEffect) Number() protoreflect.EnumNumber {
@@ -609,7 +716,7 @@ func (x BrowserNetworkEffect) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use BrowserNetworkEffect.Descriptor instead.
 func (BrowserNetworkEffect) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{9}
+	return file_runtime_proto_rawDescGZIP(), []int{11}
 }
 
 type ExtensionEncoding int32
@@ -645,11 +752,11 @@ func (x ExtensionEncoding) String() string {
 }
 
 func (ExtensionEncoding) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[10].Descriptor()
+	return file_runtime_proto_enumTypes[12].Descriptor()
 }
 
 func (ExtensionEncoding) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[10]
+	return &file_runtime_proto_enumTypes[12]
 }
 
 func (x ExtensionEncoding) Number() protoreflect.EnumNumber {
@@ -658,7 +765,7 @@ func (x ExtensionEncoding) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ExtensionEncoding.Descriptor instead.
 func (ExtensionEncoding) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{10}
+	return file_runtime_proto_rawDescGZIP(), []int{12}
 }
 
 type SelectorKind int32
@@ -697,11 +804,11 @@ func (x SelectorKind) String() string {
 }
 
 func (SelectorKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[11].Descriptor()
+	return file_runtime_proto_enumTypes[13].Descriptor()
 }
 
 func (SelectorKind) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[11]
+	return &file_runtime_proto_enumTypes[13]
 }
 
 func (x SelectorKind) Number() protoreflect.EnumNumber {
@@ -710,7 +817,7 @@ func (x SelectorKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SelectorKind.Descriptor instead.
 func (SelectorKind) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{11}
+	return file_runtime_proto_rawDescGZIP(), []int{13}
 }
 
 type ScrollDirection int32
@@ -746,11 +853,11 @@ func (x ScrollDirection) String() string {
 }
 
 func (ScrollDirection) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[12].Descriptor()
+	return file_runtime_proto_enumTypes[14].Descriptor()
 }
 
 func (ScrollDirection) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[12]
+	return &file_runtime_proto_enumTypes[14]
 }
 
 func (x ScrollDirection) Number() protoreflect.EnumNumber {
@@ -759,7 +866,7 @@ func (x ScrollDirection) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ScrollDirection.Descriptor instead.
 func (ScrollDirection) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{12}
+	return file_runtime_proto_rawDescGZIP(), []int{14}
 }
 
 type CaptureKind int32
@@ -798,11 +905,11 @@ func (x CaptureKind) String() string {
 }
 
 func (CaptureKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[13].Descriptor()
+	return file_runtime_proto_enumTypes[15].Descriptor()
 }
 
 func (CaptureKind) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[13]
+	return &file_runtime_proto_enumTypes[15]
 }
 
 func (x CaptureKind) Number() protoreflect.EnumNumber {
@@ -811,7 +918,7 @@ func (x CaptureKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CaptureKind.Descriptor instead.
 func (CaptureKind) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{13}
+	return file_runtime_proto_rawDescGZIP(), []int{15}
 }
 
 type OriginContactDisposition int32
@@ -847,11 +954,11 @@ func (x OriginContactDisposition) String() string {
 }
 
 func (OriginContactDisposition) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[14].Descriptor()
+	return file_runtime_proto_enumTypes[16].Descriptor()
 }
 
 func (OriginContactDisposition) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[14]
+	return &file_runtime_proto_enumTypes[16]
 }
 
 func (x OriginContactDisposition) Number() protoreflect.EnumNumber {
@@ -860,7 +967,7 @@ func (x OriginContactDisposition) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use OriginContactDisposition.Descriptor instead.
 func (OriginContactDisposition) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{14}
+	return file_runtime_proto_rawDescGZIP(), []int{16}
 }
 
 type ReplayAdapter int32
@@ -896,11 +1003,11 @@ func (x ReplayAdapter) String() string {
 }
 
 func (ReplayAdapter) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[15].Descriptor()
+	return file_runtime_proto_enumTypes[17].Descriptor()
 }
 
 func (ReplayAdapter) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[15]
+	return &file_runtime_proto_enumTypes[17]
 }
 
 func (x ReplayAdapter) Number() protoreflect.EnumNumber {
@@ -909,7 +1016,7 @@ func (x ReplayAdapter) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReplayAdapter.Descriptor instead.
 func (ReplayAdapter) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{15}
+	return file_runtime_proto_rawDescGZIP(), []int{17}
 }
 
 // Closed identifiers for the canonical byte shape and digest construction.
@@ -945,11 +1052,11 @@ func (x CanonicalizationRule) String() string {
 }
 
 func (CanonicalizationRule) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[16].Descriptor()
+	return file_runtime_proto_enumTypes[18].Descriptor()
 }
 
 func (CanonicalizationRule) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[16]
+	return &file_runtime_proto_enumTypes[18]
 }
 
 func (x CanonicalizationRule) Number() protoreflect.EnumNumber {
@@ -958,7 +1065,7 @@ func (x CanonicalizationRule) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CanonicalizationRule.Descriptor instead.
 func (CanonicalizationRule) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{16}
+	return file_runtime_proto_rawDescGZIP(), []int{18}
 }
 
 type HashRule int32
@@ -994,11 +1101,11 @@ func (x HashRule) String() string {
 }
 
 func (HashRule) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[17].Descriptor()
+	return file_runtime_proto_enumTypes[19].Descriptor()
 }
 
 func (HashRule) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[17]
+	return &file_runtime_proto_enumTypes[19]
 }
 
 func (x HashRule) Number() protoreflect.EnumNumber {
@@ -1007,7 +1114,7 @@ func (x HashRule) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use HashRule.Descriptor instead.
 func (HashRule) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{17}
+	return file_runtime_proto_rawDescGZIP(), []int{19}
 }
 
 type EventDirection int32
@@ -1046,11 +1153,11 @@ func (x EventDirection) String() string {
 }
 
 func (EventDirection) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[18].Descriptor()
+	return file_runtime_proto_enumTypes[20].Descriptor()
 }
 
 func (EventDirection) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[18]
+	return &file_runtime_proto_enumTypes[20]
 }
 
 func (x EventDirection) Number() protoreflect.EnumNumber {
@@ -1059,7 +1166,7 @@ func (x EventDirection) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use EventDirection.Descriptor instead.
 func (EventDirection) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{18}
+	return file_runtime_proto_rawDescGZIP(), []int{20}
 }
 
 type DisconnectPoint int32
@@ -1101,11 +1208,11 @@ func (x DisconnectPoint) String() string {
 }
 
 func (DisconnectPoint) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[19].Descriptor()
+	return file_runtime_proto_enumTypes[21].Descriptor()
 }
 
 func (DisconnectPoint) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[19]
+	return &file_runtime_proto_enumTypes[21]
 }
 
 func (x DisconnectPoint) Number() protoreflect.EnumNumber {
@@ -1114,7 +1221,7 @@ func (x DisconnectPoint) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DisconnectPoint.Descriptor instead.
 func (DisconnectPoint) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{19}
+	return file_runtime_proto_rawDescGZIP(), []int{21}
 }
 
 type ProjectedAction int32
@@ -1150,11 +1257,11 @@ func (x ProjectedAction) String() string {
 }
 
 func (ProjectedAction) Descriptor() protoreflect.EnumDescriptor {
-	return file_runtime_proto_enumTypes[20].Descriptor()
+	return file_runtime_proto_enumTypes[22].Descriptor()
 }
 
 func (ProjectedAction) Type() protoreflect.EnumType {
-	return &file_runtime_proto_enumTypes[20]
+	return &file_runtime_proto_enumTypes[22]
 }
 
 func (x ProjectedAction) Number() protoreflect.EnumNumber {
@@ -1163,7 +1270,7 @@ func (x ProjectedAction) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ProjectedAction.Descriptor instead.
 func (ProjectedAction) EnumDescriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{20}
+	return file_runtime_proto_rawDescGZIP(), []int{22}
 }
 
 type Limits struct {
@@ -5317,19 +5424,91 @@ func (x *BrowserPlan) GetOriginOperations() []*OriginOperationRef {
 	return nil
 }
 
+// Immutable pre-origin routing decision. The authoritative owner validates and
+// binds this value before invoking a provider or dispatching any origin
+// operation. An unsupported or failed provider never changes this assignment.
+type BrowserAssignment struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Backend         BrowserBackend         `protobuf:"varint,1,opt,name=backend,proto3,enum=jobseek.crawler.runtime.v1.BrowserBackend" json:"backend,omitempty"`
+	CapabilityClass BrowserCapabilityClass `protobuf:"varint,2,opt,name=capability_class,json=capabilityClass,proto3,enum=jobseek.crawler.runtime.v1.BrowserCapabilityClass" json:"capability_class,omitempty"`
+	ServiceLane     BrowserServiceLane     `protobuf:"varint,3,opt,name=service_lane,json=serviceLane,proto3,enum=jobseek.crawler.runtime.v1.BrowserServiceLane" json:"service_lane,omitempty"`
+	RoutingRevision string                 `protobuf:"bytes,4,opt,name=routing_revision,json=routingRevision,proto3" json:"routing_revision,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *BrowserAssignment) Reset() {
+	*x = BrowserAssignment{}
+	mi := &file_runtime_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BrowserAssignment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BrowserAssignment) ProtoMessage() {}
+
+func (x *BrowserAssignment) ProtoReflect() protoreflect.Message {
+	mi := &file_runtime_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BrowserAssignment.ProtoReflect.Descriptor instead.
+func (*BrowserAssignment) Descriptor() ([]byte, []int) {
+	return file_runtime_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *BrowserAssignment) GetBackend() BrowserBackend {
+	if x != nil {
+		return x.Backend
+	}
+	return BrowserBackend_BROWSER_BACKEND_UNSPECIFIED
+}
+
+func (x *BrowserAssignment) GetCapabilityClass() BrowserCapabilityClass {
+	if x != nil {
+		return x.CapabilityClass
+	}
+	return BrowserCapabilityClass_BROWSER_CAPABILITY_CLASS_UNSPECIFIED
+}
+
+func (x *BrowserAssignment) GetServiceLane() BrowserServiceLane {
+	if x != nil {
+		return x.ServiceLane
+	}
+	return BrowserServiceLane_BROWSER_SERVICE_LANE_UNSPECIFIED
+}
+
+func (x *BrowserAssignment) GetRoutingRevision() string {
+	if x != nil {
+		return x.RoutingRevision
+	}
+	return ""
+}
+
 // Browser execution is correlated through its enclosing ExecutionRequest.
 // It therefore inherits request/attempt IDs, deadline, cancellation, limits,
 // resume semantics, and the length-delimited protocol transport.
 type BrowserExecutionInput struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Plan          *BrowserPlan           `protobuf:"bytes,1,opt,name=plan,proto3" json:"plan,omitempty"`
+	Assignment    *BrowserAssignment     `protobuf:"bytes,2,opt,name=assignment,proto3" json:"assignment,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *BrowserExecutionInput) Reset() {
 	*x = BrowserExecutionInput{}
-	mi := &file_runtime_proto_msgTypes[49]
+	mi := &file_runtime_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5341,7 +5520,7 @@ func (x *BrowserExecutionInput) String() string {
 func (*BrowserExecutionInput) ProtoMessage() {}
 
 func (x *BrowserExecutionInput) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[49]
+	mi := &file_runtime_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5354,12 +5533,19 @@ func (x *BrowserExecutionInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserExecutionInput.ProtoReflect.Descriptor instead.
 func (*BrowserExecutionInput) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{49}
+	return file_runtime_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *BrowserExecutionInput) GetPlan() *BrowserPlan {
 	if x != nil {
 		return x.Plan
+	}
+	return nil
+}
+
+func (x *BrowserExecutionInput) GetAssignment() *BrowserAssignment {
+	if x != nil {
+		return x.Assignment
 	}
 	return nil
 }
@@ -5375,7 +5561,7 @@ type ActionOutcome struct {
 
 func (x *ActionOutcome) Reset() {
 	*x = ActionOutcome{}
-	mi := &file_runtime_proto_msgTypes[50]
+	mi := &file_runtime_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5387,7 +5573,7 @@ func (x *ActionOutcome) String() string {
 func (*ActionOutcome) ProtoMessage() {}
 
 func (x *ActionOutcome) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[50]
+	mi := &file_runtime_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5400,7 +5586,7 @@ func (x *ActionOutcome) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActionOutcome.ProtoReflect.Descriptor instead.
 func (*ActionOutcome) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{50}
+	return file_runtime_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *ActionOutcome) GetActionId() string {
@@ -5434,7 +5620,7 @@ type CapturedValue struct {
 
 func (x *CapturedValue) Reset() {
 	*x = CapturedValue{}
-	mi := &file_runtime_proto_msgTypes[51]
+	mi := &file_runtime_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5446,7 +5632,7 @@ func (x *CapturedValue) String() string {
 func (*CapturedValue) ProtoMessage() {}
 
 func (x *CapturedValue) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[51]
+	mi := &file_runtime_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5459,7 +5645,7 @@ func (x *CapturedValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapturedValue.ProtoReflect.Descriptor instead.
 func (*CapturedValue) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{51}
+	return file_runtime_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *CapturedValue) GetCaptureId() string {
@@ -5486,7 +5672,7 @@ type EvaluationValue struct {
 
 func (x *EvaluationValue) Reset() {
 	*x = EvaluationValue{}
-	mi := &file_runtime_proto_msgTypes[52]
+	mi := &file_runtime_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5498,7 +5684,7 @@ func (x *EvaluationValue) String() string {
 func (*EvaluationValue) ProtoMessage() {}
 
 func (x *EvaluationValue) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[52]
+	mi := &file_runtime_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5511,7 +5697,7 @@ func (x *EvaluationValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluationValue.ProtoReflect.Descriptor instead.
 func (*EvaluationValue) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{52}
+	return file_runtime_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *EvaluationValue) GetEvaluationId() string {
@@ -5543,7 +5729,7 @@ type BrowserSuccess struct {
 
 func (x *BrowserSuccess) Reset() {
 	*x = BrowserSuccess{}
-	mi := &file_runtime_proto_msgTypes[53]
+	mi := &file_runtime_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5555,7 +5741,7 @@ func (x *BrowserSuccess) String() string {
 func (*BrowserSuccess) ProtoMessage() {}
 
 func (x *BrowserSuccess) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[53]
+	mi := &file_runtime_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5568,7 +5754,7 @@ func (x *BrowserSuccess) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserSuccess.ProtoReflect.Descriptor instead.
 func (*BrowserSuccess) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{53}
+	return file_runtime_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *BrowserSuccess) GetFinalUrl() string {
@@ -5630,7 +5816,7 @@ type BrowserFailure struct {
 
 func (x *BrowserFailure) Reset() {
 	*x = BrowserFailure{}
-	mi := &file_runtime_proto_msgTypes[54]
+	mi := &file_runtime_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5642,7 +5828,7 @@ func (x *BrowserFailure) String() string {
 func (*BrowserFailure) ProtoMessage() {}
 
 func (x *BrowserFailure) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[54]
+	mi := &file_runtime_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5655,7 +5841,7 @@ func (x *BrowserFailure) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserFailure.ProtoReflect.Descriptor instead.
 func (*BrowserFailure) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{54}
+	return file_runtime_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *BrowserFailure) GetError() *RuntimeError {
@@ -5682,7 +5868,7 @@ type BrowserUnsupported struct {
 
 func (x *BrowserUnsupported) Reset() {
 	*x = BrowserUnsupported{}
-	mi := &file_runtime_proto_msgTypes[55]
+	mi := &file_runtime_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5694,7 +5880,7 @@ func (x *BrowserUnsupported) String() string {
 func (*BrowserUnsupported) ProtoMessage() {}
 
 func (x *BrowserUnsupported) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[55]
+	mi := &file_runtime_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5707,7 +5893,7 @@ func (x *BrowserUnsupported) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserUnsupported.ProtoReflect.Descriptor instead.
 func (*BrowserUnsupported) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{55}
+	return file_runtime_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *BrowserUnsupported) GetCapabilities() []BrowserCapability {
@@ -5740,7 +5926,7 @@ type BrowserResult struct {
 
 func (x *BrowserResult) Reset() {
 	*x = BrowserResult{}
-	mi := &file_runtime_proto_msgTypes[56]
+	mi := &file_runtime_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5752,7 +5938,7 @@ func (x *BrowserResult) String() string {
 func (*BrowserResult) ProtoMessage() {}
 
 func (x *BrowserResult) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[56]
+	mi := &file_runtime_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5765,7 +5951,7 @@ func (x *BrowserResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserResult.ProtoReflect.Descriptor instead.
 func (*BrowserResult) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{56}
+	return file_runtime_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *BrowserResult) GetContractVersion() string {
@@ -5854,7 +6040,7 @@ type DisconnectFault struct {
 
 func (x *DisconnectFault) Reset() {
 	*x = DisconnectFault{}
-	mi := &file_runtime_proto_msgTypes[57]
+	mi := &file_runtime_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5866,7 +6052,7 @@ func (x *DisconnectFault) String() string {
 func (*DisconnectFault) ProtoMessage() {}
 
 func (x *DisconnectFault) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[57]
+	mi := &file_runtime_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5879,7 +6065,7 @@ func (x *DisconnectFault) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisconnectFault.ProtoReflect.Descriptor instead.
 func (*DisconnectFault) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{57}
+	return file_runtime_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *DisconnectFault) GetPoint() DisconnectPoint {
@@ -5932,7 +6118,7 @@ type ProtocolEvent struct {
 
 func (x *ProtocolEvent) Reset() {
 	*x = ProtocolEvent{}
-	mi := &file_runtime_proto_msgTypes[58]
+	mi := &file_runtime_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5944,7 +6130,7 @@ func (x *ProtocolEvent) String() string {
 func (*ProtocolEvent) ProtoMessage() {}
 
 func (x *ProtocolEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[58]
+	mi := &file_runtime_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5957,7 +6143,7 @@ func (x *ProtocolEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProtocolEvent.ProtoReflect.Descriptor instead.
 func (*ProtocolEvent) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{58}
+	return file_runtime_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *ProtocolEvent) GetDirection() EventDirection {
@@ -6034,7 +6220,7 @@ type ProtocolTranscript struct {
 
 func (x *ProtocolTranscript) Reset() {
 	*x = ProtocolTranscript{}
-	mi := &file_runtime_proto_msgTypes[59]
+	mi := &file_runtime_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6046,7 +6232,7 @@ func (x *ProtocolTranscript) String() string {
 func (*ProtocolTranscript) ProtoMessage() {}
 
 func (x *ProtocolTranscript) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[59]
+	mi := &file_runtime_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6059,7 +6245,7 @@ func (x *ProtocolTranscript) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProtocolTranscript.ProtoReflect.Descriptor instead.
 func (*ProtocolTranscript) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{59}
+	return file_runtime_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *ProtocolTranscript) GetContractVersion() string {
@@ -6095,7 +6281,7 @@ type CapturedRequest struct {
 
 func (x *CapturedRequest) Reset() {
 	*x = CapturedRequest{}
-	mi := &file_runtime_proto_msgTypes[60]
+	mi := &file_runtime_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6107,7 +6293,7 @@ func (x *CapturedRequest) String() string {
 func (*CapturedRequest) ProtoMessage() {}
 
 func (x *CapturedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[60]
+	mi := &file_runtime_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6120,7 +6306,7 @@ func (x *CapturedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapturedRequest.ProtoReflect.Descriptor instead.
 func (*CapturedRequest) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{60}
+	return file_runtime_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *CapturedRequest) GetMethod() string {
@@ -6162,7 +6348,7 @@ type CapturedResponse struct {
 
 func (x *CapturedResponse) Reset() {
 	*x = CapturedResponse{}
-	mi := &file_runtime_proto_msgTypes[61]
+	mi := &file_runtime_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6174,7 +6360,7 @@ func (x *CapturedResponse) String() string {
 func (*CapturedResponse) ProtoMessage() {}
 
 func (x *CapturedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[61]
+	mi := &file_runtime_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6187,7 +6373,7 @@ func (x *CapturedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapturedResponse.ProtoReflect.Descriptor instead.
 func (*CapturedResponse) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{61}
+	return file_runtime_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *CapturedResponse) GetStatus() uint32 {
@@ -6227,7 +6413,7 @@ type CapturedExchange struct {
 
 func (x *CapturedExchange) Reset() {
 	*x = CapturedExchange{}
-	mi := &file_runtime_proto_msgTypes[62]
+	mi := &file_runtime_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6239,7 +6425,7 @@ func (x *CapturedExchange) String() string {
 func (*CapturedExchange) ProtoMessage() {}
 
 func (x *CapturedExchange) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[62]
+	mi := &file_runtime_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6252,7 +6438,7 @@ func (x *CapturedExchange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapturedExchange.ProtoReflect.Descriptor instead.
 func (*CapturedExchange) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{62}
+	return file_runtime_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *CapturedExchange) GetOperation() *OriginOperationRef {
@@ -6303,7 +6489,7 @@ type JobEffect struct {
 
 func (x *JobEffect) Reset() {
 	*x = JobEffect{}
-	mi := &file_runtime_proto_msgTypes[63]
+	mi := &file_runtime_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6315,7 +6501,7 @@ func (x *JobEffect) String() string {
 func (*JobEffect) ProtoMessage() {}
 
 func (x *JobEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[63]
+	mi := &file_runtime_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6328,7 +6514,7 @@ func (x *JobEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JobEffect.ProtoReflect.Descriptor instead.
 func (*JobEffect) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{63}
+	return file_runtime_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *JobEffect) GetSourceUrl() string {
@@ -6363,7 +6549,7 @@ type ProjectedTarget struct {
 
 func (x *ProjectedTarget) Reset() {
 	*x = ProjectedTarget{}
-	mi := &file_runtime_proto_msgTypes[64]
+	mi := &file_runtime_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6375,7 +6561,7 @@ func (x *ProjectedTarget) String() string {
 func (*ProjectedTarget) ProtoMessage() {}
 
 func (x *ProjectedTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[64]
+	mi := &file_runtime_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6388,7 +6574,7 @@ func (x *ProjectedTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectedTarget.ProtoReflect.Descriptor instead.
 func (*ProjectedTarget) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{64}
+	return file_runtime_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ProjectedTarget) GetUrl() string {
@@ -6441,7 +6627,7 @@ type ProjectedEffects struct {
 
 func (x *ProjectedEffects) Reset() {
 	*x = ProjectedEffects{}
-	mi := &file_runtime_proto_msgTypes[65]
+	mi := &file_runtime_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6453,7 +6639,7 @@ func (x *ProjectedEffects) String() string {
 func (*ProjectedEffects) ProtoMessage() {}
 
 func (x *ProjectedEffects) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[65]
+	mi := &file_runtime_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6466,7 +6652,7 @@ func (x *ProjectedEffects) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectedEffects.ProtoReflect.Descriptor instead.
 func (*ProjectedEffects) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{65}
+	return file_runtime_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ProjectedEffects) GetUrlsToUpsert() []string {
@@ -6606,7 +6792,7 @@ type ReplayCase struct {
 
 func (x *ReplayCase) Reset() {
 	*x = ReplayCase{}
-	mi := &file_runtime_proto_msgTypes[66]
+	mi := &file_runtime_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6618,7 +6804,7 @@ func (x *ReplayCase) String() string {
 func (*ReplayCase) ProtoMessage() {}
 
 func (x *ReplayCase) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[66]
+	mi := &file_runtime_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6631,7 +6817,7 @@ func (x *ReplayCase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayCase.ProtoReflect.Descriptor instead.
 func (*ReplayCase) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{66}
+	return file_runtime_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ReplayCase) GetContractVersion() string {
@@ -6722,7 +6908,7 @@ type ConformanceCase struct {
 
 func (x *ConformanceCase) Reset() {
 	*x = ConformanceCase{}
-	mi := &file_runtime_proto_msgTypes[67]
+	mi := &file_runtime_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6734,7 +6920,7 @@ func (x *ConformanceCase) String() string {
 func (*ConformanceCase) ProtoMessage() {}
 
 func (x *ConformanceCase) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[67]
+	mi := &file_runtime_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6747,7 +6933,7 @@ func (x *ConformanceCase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConformanceCase.ProtoReflect.Descriptor instead.
 func (*ConformanceCase) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{67}
+	return file_runtime_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ConformanceCase) GetName() string {
@@ -7259,9 +7445,17 @@ const file_runtime_proto_rawDesc = "" +
 	"\vevaluations\x18\b \x03(\v2*.jobseek.crawler.runtime.v1.EvaluationPlanR\vevaluations\x12R\n" +
 	"\rinterceptions\x18\t \x03(\v2,.jobseek.crawler.runtime.v1.InterceptionRuleR\rinterceptions\x12[\n" +
 	"\x11origin_operations\x18\n" +
-	" \x03(\v2..jobseek.crawler.runtime.v1.OriginOperationRefR\x10originOperations\"T\n" +
+	" \x03(\v2..jobseek.crawler.runtime.v1.OriginOperationRefR\x10originOperations\"\xb6\x02\n" +
+	"\x11BrowserAssignment\x12D\n" +
+	"\abackend\x18\x01 \x01(\x0e2*.jobseek.crawler.runtime.v1.BrowserBackendR\abackend\x12]\n" +
+	"\x10capability_class\x18\x02 \x01(\x0e22.jobseek.crawler.runtime.v1.BrowserCapabilityClassR\x0fcapabilityClass\x12Q\n" +
+	"\fservice_lane\x18\x03 \x01(\x0e2..jobseek.crawler.runtime.v1.BrowserServiceLaneR\vserviceLane\x12)\n" +
+	"\x10routing_revision\x18\x04 \x01(\tR\x0froutingRevision\"\xa3\x01\n" +
 	"\x15BrowserExecutionInput\x12;\n" +
-	"\x04plan\x18\x01 \x01(\v2'.jobseek.crawler.runtime.v1.BrowserPlanR\x04plan\"k\n" +
+	"\x04plan\x18\x01 \x01(\v2'.jobseek.crawler.runtime.v1.BrowserPlanR\x04plan\x12M\n" +
+	"\n" +
+	"assignment\x18\x02 \x01(\v2-.jobseek.crawler.runtime.v1.BrowserAssignmentR\n" +
+	"assignment\"k\n" +
 	"\rActionOutcome\x12\x1b\n" +
 	"\taction_id\x18\x01 \x01(\tR\bactionId\x12\x1c\n" +
 	"\tcompleted\x18\x02 \x01(\bR\tcompleted\x12\x1f\n" +
@@ -7455,7 +7649,16 @@ const file_runtime_proto_rawDesc = "" +
 	"#BROWSER_CAPABILITY_HEADFUL_IDENTITY\x10\t\x12\x1c\n" +
 	"\x18BROWSER_CAPABILITY_PROXY\x10\n" +
 	"\x12*\n" +
-	"&BROWSER_CAPABILITY_TRANSPORT_OVERRIDES\x10\v*\xab\x01\n" +
+	"&BROWSER_CAPABILITY_TRANSPORT_OVERRIDES\x10\v*\xd9\x01\n" +
+	"\x16BrowserCapabilityClass\x12(\n" +
+	"$BROWSER_CAPABILITY_CLASS_UNSPECIFIED\x10\x00\x122\n" +
+	".BROWSER_CAPABILITY_CLASS_NAVIGATION_EVALUATION\x10\x01\x120\n" +
+	",BROWSER_CAPABILITY_CLASS_INTERACTION_CAPTURE\x10\x02\x12/\n" +
+	"+BROWSER_CAPABILITY_CLASS_IDENTITY_TRANSPORT\x10\x03*\x82\x01\n" +
+	"\x12BrowserServiceLane\x12$\n" +
+	" BROWSER_SERVICE_LANE_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fBROWSER_SERVICE_LANE_LIGHTPANDA\x10\x01\x12!\n" +
+	"\x1dBROWSER_SERVICE_LANE_CHROMIUM\x10\x02*\xab\x01\n" +
 	"\rWaitCondition\x12\x1e\n" +
 	"\x1aWAIT_CONDITION_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15WAIT_CONDITION_COMMIT\x10\x01\x12%\n" +
@@ -7527,8 +7730,8 @@ func file_runtime_proto_rawDescGZIP() []byte {
 	return file_runtime_proto_rawDescData
 }
 
-var file_runtime_proto_enumTypes = make([]protoimpl.EnumInfo, 21)
-var file_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 68)
+var file_runtime_proto_enumTypes = make([]protoimpl.EnumInfo, 23)
+var file_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 69)
 var file_runtime_proto_goTypes = []any{
 	(Implementation)(0),             // 0: jobseek.crawler.runtime.v1.Implementation
 	(EngineOwner)(0),                // 1: jobseek.crawler.runtime.v1.EngineOwner
@@ -7538,218 +7741,225 @@ var file_runtime_proto_goTypes = []any{
 	(ErrorDisposition)(0),           // 5: jobseek.crawler.runtime.v1.ErrorDisposition
 	(BrowserBackend)(0),             // 6: jobseek.crawler.runtime.v1.BrowserBackend
 	(BrowserCapability)(0),          // 7: jobseek.crawler.runtime.v1.BrowserCapability
-	(WaitCondition)(0),              // 8: jobseek.crawler.runtime.v1.WaitCondition
-	(BrowserNetworkEffect)(0),       // 9: jobseek.crawler.runtime.v1.BrowserNetworkEffect
-	(ExtensionEncoding)(0),          // 10: jobseek.crawler.runtime.v1.ExtensionEncoding
-	(SelectorKind)(0),               // 11: jobseek.crawler.runtime.v1.SelectorKind
-	(ScrollDirection)(0),            // 12: jobseek.crawler.runtime.v1.ScrollDirection
-	(CaptureKind)(0),                // 13: jobseek.crawler.runtime.v1.CaptureKind
-	(OriginContactDisposition)(0),   // 14: jobseek.crawler.runtime.v1.OriginContactDisposition
-	(ReplayAdapter)(0),              // 15: jobseek.crawler.runtime.v1.ReplayAdapter
-	(CanonicalizationRule)(0),       // 16: jobseek.crawler.runtime.v1.CanonicalizationRule
-	(HashRule)(0),                   // 17: jobseek.crawler.runtime.v1.HashRule
-	(EventDirection)(0),             // 18: jobseek.crawler.runtime.v1.EventDirection
-	(DisconnectPoint)(0),            // 19: jobseek.crawler.runtime.v1.DisconnectPoint
-	(ProjectedAction)(0),            // 20: jobseek.crawler.runtime.v1.ProjectedAction
-	(*Limits)(nil),                  // 21: jobseek.crawler.runtime.v1.Limits
-	(*StringList)(nil),              // 22: jobseek.crawler.runtime.v1.StringList
-	(*Header)(nil),                  // 23: jobseek.crawler.runtime.v1.Header
-	(*ArtifactHandle)(nil),          // 24: jobseek.crawler.runtime.v1.ArtifactHandle
-	(*DataChunk)(nil),               // 25: jobseek.crawler.runtime.v1.DataChunk
-	(*ChunkManifest)(nil),           // 26: jobseek.crawler.runtime.v1.ChunkManifest
-	(*ExtensionEnvelope)(nil),       // 27: jobseek.crawler.runtime.v1.ExtensionEnvelope
-	(*DiagnosticDetail)(nil),        // 28: jobseek.crawler.runtime.v1.DiagnosticDetail
-	(*RuntimeError)(nil),            // 29: jobseek.crawler.runtime.v1.RuntimeError
-	(*BoardManifest)(nil),           // 30: jobseek.crawler.runtime.v1.BoardManifest
-	(*Salary)(nil),                  // 31: jobseek.crawler.runtime.v1.Salary
-	(*LocalizedJobContent)(nil),     // 32: jobseek.crawler.runtime.v1.LocalizedJobContent
-	(*JobContent)(nil),              // 33: jobseek.crawler.runtime.v1.JobContent
-	(*DiscoveredJob)(nil),           // 34: jobseek.crawler.runtime.v1.DiscoveredJob
-	(*MonitorMetadataUpdates)(nil),  // 35: jobseek.crawler.runtime.v1.MonitorMetadataUpdates
-	(*MonitorResult)(nil),           // 36: jobseek.crawler.runtime.v1.MonitorResult
-	(*ScrapeResult)(nil),            // 37: jobseek.crawler.runtime.v1.ScrapeResult
-	(*MonitorInput)(nil),            // 38: jobseek.crawler.runtime.v1.MonitorInput
-	(*ScrapeInput)(nil),             // 39: jobseek.crawler.runtime.v1.ScrapeInput
-	(*ExecutionRequest)(nil),        // 40: jobseek.crawler.runtime.v1.ExecutionRequest
-	(*FencingContext)(nil),          // 41: jobseek.crawler.runtime.v1.FencingContext
-	(*OriginOperationRef)(nil),      // 42: jobseek.crawler.runtime.v1.OriginOperationRef
-	(*ResumeRequest)(nil),           // 43: jobseek.crawler.runtime.v1.ResumeRequest
-	(*WindowUpdate)(nil),            // 44: jobseek.crawler.runtime.v1.WindowUpdate
-	(*CancelRequest)(nil),           // 45: jobseek.crawler.runtime.v1.CancelRequest
-	(*ClientHello)(nil),             // 46: jobseek.crawler.runtime.v1.ClientHello
-	(*ServerHello)(nil),             // 47: jobseek.crawler.runtime.v1.ServerHello
-	(*OriginContact)(nil),           // 48: jobseek.crawler.runtime.v1.OriginContact
-	(*OriginOperationDeclared)(nil), // 49: jobseek.crawler.runtime.v1.OriginOperationDeclared
-	(*ArtifactFrame)(nil),           // 50: jobseek.crawler.runtime.v1.ArtifactFrame
-	(*Terminal)(nil),                // 51: jobseek.crawler.runtime.v1.Terminal
-	(*ExecutionFrame)(nil),          // 52: jobseek.crawler.runtime.v1.ExecutionFrame
-	(*ResumeRejected)(nil),          // 53: jobseek.crawler.runtime.v1.ResumeRejected
-	(*ClientMessage)(nil),           // 54: jobseek.crawler.runtime.v1.ClientMessage
-	(*ServerMessage)(nil),           // 55: jobseek.crawler.runtime.v1.ServerMessage
-	(*Selector)(nil),                // 56: jobseek.crawler.runtime.v1.Selector
-	(*ClickAction)(nil),             // 57: jobseek.crawler.runtime.v1.ClickAction
-	(*FillAction)(nil),              // 58: jobseek.crawler.runtime.v1.FillAction
-	(*WaitAction)(nil),              // 59: jobseek.crawler.runtime.v1.WaitAction
-	(*ScrollAction)(nil),            // 60: jobseek.crawler.runtime.v1.ScrollAction
-	(*PaginationAction)(nil),        // 61: jobseek.crawler.runtime.v1.PaginationAction
-	(*EvaluateAction)(nil),          // 62: jobseek.crawler.runtime.v1.EvaluateAction
-	(*BrowserAction)(nil),           // 63: jobseek.crawler.runtime.v1.BrowserAction
-	(*NavigationPlan)(nil),          // 64: jobseek.crawler.runtime.v1.NavigationPlan
-	(*SessionPlan)(nil),             // 65: jobseek.crawler.runtime.v1.SessionPlan
-	(*CapturePlan)(nil),             // 66: jobseek.crawler.runtime.v1.CapturePlan
-	(*EvaluationPlan)(nil),          // 67: jobseek.crawler.runtime.v1.EvaluationPlan
-	(*InterceptionRule)(nil),        // 68: jobseek.crawler.runtime.v1.InterceptionRule
-	(*BrowserPlan)(nil),             // 69: jobseek.crawler.runtime.v1.BrowserPlan
-	(*BrowserExecutionInput)(nil),   // 70: jobseek.crawler.runtime.v1.BrowserExecutionInput
-	(*ActionOutcome)(nil),           // 71: jobseek.crawler.runtime.v1.ActionOutcome
-	(*CapturedValue)(nil),           // 72: jobseek.crawler.runtime.v1.CapturedValue
-	(*EvaluationValue)(nil),         // 73: jobseek.crawler.runtime.v1.EvaluationValue
-	(*BrowserSuccess)(nil),          // 74: jobseek.crawler.runtime.v1.BrowserSuccess
-	(*BrowserFailure)(nil),          // 75: jobseek.crawler.runtime.v1.BrowserFailure
-	(*BrowserUnsupported)(nil),      // 76: jobseek.crawler.runtime.v1.BrowserUnsupported
-	(*BrowserResult)(nil),           // 77: jobseek.crawler.runtime.v1.BrowserResult
-	(*DisconnectFault)(nil),         // 78: jobseek.crawler.runtime.v1.DisconnectFault
-	(*ProtocolEvent)(nil),           // 79: jobseek.crawler.runtime.v1.ProtocolEvent
-	(*ProtocolTranscript)(nil),      // 80: jobseek.crawler.runtime.v1.ProtocolTranscript
-	(*CapturedRequest)(nil),         // 81: jobseek.crawler.runtime.v1.CapturedRequest
-	(*CapturedResponse)(nil),        // 82: jobseek.crawler.runtime.v1.CapturedResponse
-	(*CapturedExchange)(nil),        // 83: jobseek.crawler.runtime.v1.CapturedExchange
-	(*JobEffect)(nil),               // 84: jobseek.crawler.runtime.v1.JobEffect
-	(*ProjectedTarget)(nil),         // 85: jobseek.crawler.runtime.v1.ProjectedTarget
-	(*ProjectedEffects)(nil),        // 86: jobseek.crawler.runtime.v1.ProjectedEffects
-	(*ReplayCase)(nil),              // 87: jobseek.crawler.runtime.v1.ReplayCase
-	(*ConformanceCase)(nil),         // 88: jobseek.crawler.runtime.v1.ConformanceCase
+	(BrowserCapabilityClass)(0),     // 8: jobseek.crawler.runtime.v1.BrowserCapabilityClass
+	(BrowserServiceLane)(0),         // 9: jobseek.crawler.runtime.v1.BrowserServiceLane
+	(WaitCondition)(0),              // 10: jobseek.crawler.runtime.v1.WaitCondition
+	(BrowserNetworkEffect)(0),       // 11: jobseek.crawler.runtime.v1.BrowserNetworkEffect
+	(ExtensionEncoding)(0),          // 12: jobseek.crawler.runtime.v1.ExtensionEncoding
+	(SelectorKind)(0),               // 13: jobseek.crawler.runtime.v1.SelectorKind
+	(ScrollDirection)(0),            // 14: jobseek.crawler.runtime.v1.ScrollDirection
+	(CaptureKind)(0),                // 15: jobseek.crawler.runtime.v1.CaptureKind
+	(OriginContactDisposition)(0),   // 16: jobseek.crawler.runtime.v1.OriginContactDisposition
+	(ReplayAdapter)(0),              // 17: jobseek.crawler.runtime.v1.ReplayAdapter
+	(CanonicalizationRule)(0),       // 18: jobseek.crawler.runtime.v1.CanonicalizationRule
+	(HashRule)(0),                   // 19: jobseek.crawler.runtime.v1.HashRule
+	(EventDirection)(0),             // 20: jobseek.crawler.runtime.v1.EventDirection
+	(DisconnectPoint)(0),            // 21: jobseek.crawler.runtime.v1.DisconnectPoint
+	(ProjectedAction)(0),            // 22: jobseek.crawler.runtime.v1.ProjectedAction
+	(*Limits)(nil),                  // 23: jobseek.crawler.runtime.v1.Limits
+	(*StringList)(nil),              // 24: jobseek.crawler.runtime.v1.StringList
+	(*Header)(nil),                  // 25: jobseek.crawler.runtime.v1.Header
+	(*ArtifactHandle)(nil),          // 26: jobseek.crawler.runtime.v1.ArtifactHandle
+	(*DataChunk)(nil),               // 27: jobseek.crawler.runtime.v1.DataChunk
+	(*ChunkManifest)(nil),           // 28: jobseek.crawler.runtime.v1.ChunkManifest
+	(*ExtensionEnvelope)(nil),       // 29: jobseek.crawler.runtime.v1.ExtensionEnvelope
+	(*DiagnosticDetail)(nil),        // 30: jobseek.crawler.runtime.v1.DiagnosticDetail
+	(*RuntimeError)(nil),            // 31: jobseek.crawler.runtime.v1.RuntimeError
+	(*BoardManifest)(nil),           // 32: jobseek.crawler.runtime.v1.BoardManifest
+	(*Salary)(nil),                  // 33: jobseek.crawler.runtime.v1.Salary
+	(*LocalizedJobContent)(nil),     // 34: jobseek.crawler.runtime.v1.LocalizedJobContent
+	(*JobContent)(nil),              // 35: jobseek.crawler.runtime.v1.JobContent
+	(*DiscoveredJob)(nil),           // 36: jobseek.crawler.runtime.v1.DiscoveredJob
+	(*MonitorMetadataUpdates)(nil),  // 37: jobseek.crawler.runtime.v1.MonitorMetadataUpdates
+	(*MonitorResult)(nil),           // 38: jobseek.crawler.runtime.v1.MonitorResult
+	(*ScrapeResult)(nil),            // 39: jobseek.crawler.runtime.v1.ScrapeResult
+	(*MonitorInput)(nil),            // 40: jobseek.crawler.runtime.v1.MonitorInput
+	(*ScrapeInput)(nil),             // 41: jobseek.crawler.runtime.v1.ScrapeInput
+	(*ExecutionRequest)(nil),        // 42: jobseek.crawler.runtime.v1.ExecutionRequest
+	(*FencingContext)(nil),          // 43: jobseek.crawler.runtime.v1.FencingContext
+	(*OriginOperationRef)(nil),      // 44: jobseek.crawler.runtime.v1.OriginOperationRef
+	(*ResumeRequest)(nil),           // 45: jobseek.crawler.runtime.v1.ResumeRequest
+	(*WindowUpdate)(nil),            // 46: jobseek.crawler.runtime.v1.WindowUpdate
+	(*CancelRequest)(nil),           // 47: jobseek.crawler.runtime.v1.CancelRequest
+	(*ClientHello)(nil),             // 48: jobseek.crawler.runtime.v1.ClientHello
+	(*ServerHello)(nil),             // 49: jobseek.crawler.runtime.v1.ServerHello
+	(*OriginContact)(nil),           // 50: jobseek.crawler.runtime.v1.OriginContact
+	(*OriginOperationDeclared)(nil), // 51: jobseek.crawler.runtime.v1.OriginOperationDeclared
+	(*ArtifactFrame)(nil),           // 52: jobseek.crawler.runtime.v1.ArtifactFrame
+	(*Terminal)(nil),                // 53: jobseek.crawler.runtime.v1.Terminal
+	(*ExecutionFrame)(nil),          // 54: jobseek.crawler.runtime.v1.ExecutionFrame
+	(*ResumeRejected)(nil),          // 55: jobseek.crawler.runtime.v1.ResumeRejected
+	(*ClientMessage)(nil),           // 56: jobseek.crawler.runtime.v1.ClientMessage
+	(*ServerMessage)(nil),           // 57: jobseek.crawler.runtime.v1.ServerMessage
+	(*Selector)(nil),                // 58: jobseek.crawler.runtime.v1.Selector
+	(*ClickAction)(nil),             // 59: jobseek.crawler.runtime.v1.ClickAction
+	(*FillAction)(nil),              // 60: jobseek.crawler.runtime.v1.FillAction
+	(*WaitAction)(nil),              // 61: jobseek.crawler.runtime.v1.WaitAction
+	(*ScrollAction)(nil),            // 62: jobseek.crawler.runtime.v1.ScrollAction
+	(*PaginationAction)(nil),        // 63: jobseek.crawler.runtime.v1.PaginationAction
+	(*EvaluateAction)(nil),          // 64: jobseek.crawler.runtime.v1.EvaluateAction
+	(*BrowserAction)(nil),           // 65: jobseek.crawler.runtime.v1.BrowserAction
+	(*NavigationPlan)(nil),          // 66: jobseek.crawler.runtime.v1.NavigationPlan
+	(*SessionPlan)(nil),             // 67: jobseek.crawler.runtime.v1.SessionPlan
+	(*CapturePlan)(nil),             // 68: jobseek.crawler.runtime.v1.CapturePlan
+	(*EvaluationPlan)(nil),          // 69: jobseek.crawler.runtime.v1.EvaluationPlan
+	(*InterceptionRule)(nil),        // 70: jobseek.crawler.runtime.v1.InterceptionRule
+	(*BrowserPlan)(nil),             // 71: jobseek.crawler.runtime.v1.BrowserPlan
+	(*BrowserAssignment)(nil),       // 72: jobseek.crawler.runtime.v1.BrowserAssignment
+	(*BrowserExecutionInput)(nil),   // 73: jobseek.crawler.runtime.v1.BrowserExecutionInput
+	(*ActionOutcome)(nil),           // 74: jobseek.crawler.runtime.v1.ActionOutcome
+	(*CapturedValue)(nil),           // 75: jobseek.crawler.runtime.v1.CapturedValue
+	(*EvaluationValue)(nil),         // 76: jobseek.crawler.runtime.v1.EvaluationValue
+	(*BrowserSuccess)(nil),          // 77: jobseek.crawler.runtime.v1.BrowserSuccess
+	(*BrowserFailure)(nil),          // 78: jobseek.crawler.runtime.v1.BrowserFailure
+	(*BrowserUnsupported)(nil),      // 79: jobseek.crawler.runtime.v1.BrowserUnsupported
+	(*BrowserResult)(nil),           // 80: jobseek.crawler.runtime.v1.BrowserResult
+	(*DisconnectFault)(nil),         // 81: jobseek.crawler.runtime.v1.DisconnectFault
+	(*ProtocolEvent)(nil),           // 82: jobseek.crawler.runtime.v1.ProtocolEvent
+	(*ProtocolTranscript)(nil),      // 83: jobseek.crawler.runtime.v1.ProtocolTranscript
+	(*CapturedRequest)(nil),         // 84: jobseek.crawler.runtime.v1.CapturedRequest
+	(*CapturedResponse)(nil),        // 85: jobseek.crawler.runtime.v1.CapturedResponse
+	(*CapturedExchange)(nil),        // 86: jobseek.crawler.runtime.v1.CapturedExchange
+	(*JobEffect)(nil),               // 87: jobseek.crawler.runtime.v1.JobEffect
+	(*ProjectedTarget)(nil),         // 88: jobseek.crawler.runtime.v1.ProjectedTarget
+	(*ProjectedEffects)(nil),        // 89: jobseek.crawler.runtime.v1.ProjectedEffects
+	(*ReplayCase)(nil),              // 90: jobseek.crawler.runtime.v1.ReplayCase
+	(*ConformanceCase)(nil),         // 91: jobseek.crawler.runtime.v1.ConformanceCase
 }
 var file_runtime_proto_depIdxs = []int32{
-	24,  // 0: jobseek.crawler.runtime.v1.DataChunk.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	25,  // 1: jobseek.crawler.runtime.v1.ChunkManifest.chunks:type_name -> jobseek.crawler.runtime.v1.DataChunk
-	10,  // 2: jobseek.crawler.runtime.v1.ExtensionEnvelope.encoding:type_name -> jobseek.crawler.runtime.v1.ExtensionEncoding
+	26,  // 0: jobseek.crawler.runtime.v1.DataChunk.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	27,  // 1: jobseek.crawler.runtime.v1.ChunkManifest.chunks:type_name -> jobseek.crawler.runtime.v1.DataChunk
+	12,  // 2: jobseek.crawler.runtime.v1.ExtensionEnvelope.encoding:type_name -> jobseek.crawler.runtime.v1.ExtensionEncoding
 	4,   // 3: jobseek.crawler.runtime.v1.RuntimeError.code:type_name -> jobseek.crawler.runtime.v1.ErrorCode
 	5,   // 4: jobseek.crawler.runtime.v1.RuntimeError.disposition:type_name -> jobseek.crawler.runtime.v1.ErrorDisposition
-	28,  // 5: jobseek.crawler.runtime.v1.RuntimeError.diagnostic_details:type_name -> jobseek.crawler.runtime.v1.DiagnosticDetail
-	27,  // 6: jobseek.crawler.runtime.v1.BoardManifest.config_extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
-	22,  // 7: jobseek.crawler.runtime.v1.JobContent.locations:type_name -> jobseek.crawler.runtime.v1.StringList
-	31,  // 8: jobseek.crawler.runtime.v1.JobContent.base_salary:type_name -> jobseek.crawler.runtime.v1.Salary
-	32,  // 9: jobseek.crawler.runtime.v1.JobContent.localizations:type_name -> jobseek.crawler.runtime.v1.LocalizedJobContent
-	27,  // 10: jobseek.crawler.runtime.v1.JobContent.extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
-	33,  // 11: jobseek.crawler.runtime.v1.DiscoveredJob.content:type_name -> jobseek.crawler.runtime.v1.JobContent
-	27,  // 12: jobseek.crawler.runtime.v1.MonitorMetadataUpdates.extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
-	34,  // 13: jobseek.crawler.runtime.v1.MonitorResult.jobs:type_name -> jobseek.crawler.runtime.v1.DiscoveredJob
-	35,  // 14: jobseek.crawler.runtime.v1.MonitorResult.metadata_updates:type_name -> jobseek.crawler.runtime.v1.MonitorMetadataUpdates
-	33,  // 15: jobseek.crawler.runtime.v1.ScrapeResult.content:type_name -> jobseek.crawler.runtime.v1.JobContent
+	30,  // 5: jobseek.crawler.runtime.v1.RuntimeError.diagnostic_details:type_name -> jobseek.crawler.runtime.v1.DiagnosticDetail
+	29,  // 6: jobseek.crawler.runtime.v1.BoardManifest.config_extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
+	24,  // 7: jobseek.crawler.runtime.v1.JobContent.locations:type_name -> jobseek.crawler.runtime.v1.StringList
+	33,  // 8: jobseek.crawler.runtime.v1.JobContent.base_salary:type_name -> jobseek.crawler.runtime.v1.Salary
+	34,  // 9: jobseek.crawler.runtime.v1.JobContent.localizations:type_name -> jobseek.crawler.runtime.v1.LocalizedJobContent
+	29,  // 10: jobseek.crawler.runtime.v1.JobContent.extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
+	35,  // 11: jobseek.crawler.runtime.v1.DiscoveredJob.content:type_name -> jobseek.crawler.runtime.v1.JobContent
+	29,  // 12: jobseek.crawler.runtime.v1.MonitorMetadataUpdates.extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
+	36,  // 13: jobseek.crawler.runtime.v1.MonitorResult.jobs:type_name -> jobseek.crawler.runtime.v1.DiscoveredJob
+	37,  // 14: jobseek.crawler.runtime.v1.MonitorResult.metadata_updates:type_name -> jobseek.crawler.runtime.v1.MonitorMetadataUpdates
+	35,  // 15: jobseek.crawler.runtime.v1.ScrapeResult.content:type_name -> jobseek.crawler.runtime.v1.JobContent
 	2,   // 16: jobseek.crawler.runtime.v1.ExecutionRequest.kind:type_name -> jobseek.crawler.runtime.v1.ExecutionKind
-	30,  // 17: jobseek.crawler.runtime.v1.ExecutionRequest.board_manifest:type_name -> jobseek.crawler.runtime.v1.BoardManifest
-	38,  // 18: jobseek.crawler.runtime.v1.ExecutionRequest.monitor:type_name -> jobseek.crawler.runtime.v1.MonitorInput
-	39,  // 19: jobseek.crawler.runtime.v1.ExecutionRequest.scrape:type_name -> jobseek.crawler.runtime.v1.ScrapeInput
-	70,  // 20: jobseek.crawler.runtime.v1.ExecutionRequest.browser:type_name -> jobseek.crawler.runtime.v1.BrowserExecutionInput
-	42,  // 21: jobseek.crawler.runtime.v1.ExecutionRequest.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	41,  // 22: jobseek.crawler.runtime.v1.ExecutionRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
+	32,  // 17: jobseek.crawler.runtime.v1.ExecutionRequest.board_manifest:type_name -> jobseek.crawler.runtime.v1.BoardManifest
+	40,  // 18: jobseek.crawler.runtime.v1.ExecutionRequest.monitor:type_name -> jobseek.crawler.runtime.v1.MonitorInput
+	41,  // 19: jobseek.crawler.runtime.v1.ExecutionRequest.scrape:type_name -> jobseek.crawler.runtime.v1.ScrapeInput
+	73,  // 20: jobseek.crawler.runtime.v1.ExecutionRequest.browser:type_name -> jobseek.crawler.runtime.v1.BrowserExecutionInput
+	44,  // 21: jobseek.crawler.runtime.v1.ExecutionRequest.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	43,  // 22: jobseek.crawler.runtime.v1.ExecutionRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
 	1,   // 23: jobseek.crawler.runtime.v1.FencingContext.engine_owner:type_name -> jobseek.crawler.runtime.v1.EngineOwner
-	41,  // 24: jobseek.crawler.runtime.v1.ResumeRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
-	41,  // 25: jobseek.crawler.runtime.v1.CancelRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
+	43,  // 24: jobseek.crawler.runtime.v1.ResumeRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
+	43,  // 25: jobseek.crawler.runtime.v1.CancelRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
 	0,   // 26: jobseek.crawler.runtime.v1.ClientHello.implementation:type_name -> jobseek.crawler.runtime.v1.Implementation
-	21,  // 27: jobseek.crawler.runtime.v1.ClientHello.requested_limits:type_name -> jobseek.crawler.runtime.v1.Limits
+	23,  // 27: jobseek.crawler.runtime.v1.ClientHello.requested_limits:type_name -> jobseek.crawler.runtime.v1.Limits
 	0,   // 28: jobseek.crawler.runtime.v1.ServerHello.implementation:type_name -> jobseek.crawler.runtime.v1.Implementation
-	21,  // 29: jobseek.crawler.runtime.v1.ServerHello.accepted_limits:type_name -> jobseek.crawler.runtime.v1.Limits
-	42,  // 30: jobseek.crawler.runtime.v1.OriginContact.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	14,  // 31: jobseek.crawler.runtime.v1.OriginContact.disposition:type_name -> jobseek.crawler.runtime.v1.OriginContactDisposition
-	24,  // 32: jobseek.crawler.runtime.v1.OriginContact.exchange_artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	42,  // 33: jobseek.crawler.runtime.v1.OriginOperationDeclared.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	24,  // 34: jobseek.crawler.runtime.v1.ArtifactFrame.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	23,  // 29: jobseek.crawler.runtime.v1.ServerHello.accepted_limits:type_name -> jobseek.crawler.runtime.v1.Limits
+	44,  // 30: jobseek.crawler.runtime.v1.OriginContact.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	16,  // 31: jobseek.crawler.runtime.v1.OriginContact.disposition:type_name -> jobseek.crawler.runtime.v1.OriginContactDisposition
+	26,  // 32: jobseek.crawler.runtime.v1.OriginContact.exchange_artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	44,  // 33: jobseek.crawler.runtime.v1.OriginOperationDeclared.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	26,  // 34: jobseek.crawler.runtime.v1.ArtifactFrame.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
 	3,   // 35: jobseek.crawler.runtime.v1.Terminal.status:type_name -> jobseek.crawler.runtime.v1.TerminalStatus
-	48,  // 36: jobseek.crawler.runtime.v1.ExecutionFrame.origin_contact:type_name -> jobseek.crawler.runtime.v1.OriginContact
-	36,  // 37: jobseek.crawler.runtime.v1.ExecutionFrame.monitor_batch:type_name -> jobseek.crawler.runtime.v1.MonitorResult
-	37,  // 38: jobseek.crawler.runtime.v1.ExecutionFrame.scrape_result:type_name -> jobseek.crawler.runtime.v1.ScrapeResult
-	50,  // 39: jobseek.crawler.runtime.v1.ExecutionFrame.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactFrame
-	29,  // 40: jobseek.crawler.runtime.v1.ExecutionFrame.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
-	51,  // 41: jobseek.crawler.runtime.v1.ExecutionFrame.terminal:type_name -> jobseek.crawler.runtime.v1.Terminal
-	77,  // 42: jobseek.crawler.runtime.v1.ExecutionFrame.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
-	49,  // 43: jobseek.crawler.runtime.v1.ExecutionFrame.origin_operation_declared:type_name -> jobseek.crawler.runtime.v1.OriginOperationDeclared
-	29,  // 44: jobseek.crawler.runtime.v1.ResumeRejected.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
-	46,  // 45: jobseek.crawler.runtime.v1.ClientMessage.hello:type_name -> jobseek.crawler.runtime.v1.ClientHello
-	40,  // 46: jobseek.crawler.runtime.v1.ClientMessage.start:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
-	43,  // 47: jobseek.crawler.runtime.v1.ClientMessage.resume:type_name -> jobseek.crawler.runtime.v1.ResumeRequest
-	44,  // 48: jobseek.crawler.runtime.v1.ClientMessage.window_update:type_name -> jobseek.crawler.runtime.v1.WindowUpdate
-	45,  // 49: jobseek.crawler.runtime.v1.ClientMessage.cancel:type_name -> jobseek.crawler.runtime.v1.CancelRequest
-	47,  // 50: jobseek.crawler.runtime.v1.ServerMessage.hello:type_name -> jobseek.crawler.runtime.v1.ServerHello
-	52,  // 51: jobseek.crawler.runtime.v1.ServerMessage.frame:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
-	53,  // 52: jobseek.crawler.runtime.v1.ServerMessage.resume_rejected:type_name -> jobseek.crawler.runtime.v1.ResumeRejected
-	11,  // 53: jobseek.crawler.runtime.v1.Selector.kind:type_name -> jobseek.crawler.runtime.v1.SelectorKind
-	56,  // 54: jobseek.crawler.runtime.v1.ClickAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
-	56,  // 55: jobseek.crawler.runtime.v1.FillAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
-	56,  // 56: jobseek.crawler.runtime.v1.WaitAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
-	12,  // 57: jobseek.crawler.runtime.v1.ScrollAction.direction:type_name -> jobseek.crawler.runtime.v1.ScrollDirection
-	56,  // 58: jobseek.crawler.runtime.v1.PaginationAction.next_selector:type_name -> jobseek.crawler.runtime.v1.Selector
-	57,  // 59: jobseek.crawler.runtime.v1.BrowserAction.click:type_name -> jobseek.crawler.runtime.v1.ClickAction
-	58,  // 60: jobseek.crawler.runtime.v1.BrowserAction.fill:type_name -> jobseek.crawler.runtime.v1.FillAction
-	59,  // 61: jobseek.crawler.runtime.v1.BrowserAction.wait:type_name -> jobseek.crawler.runtime.v1.WaitAction
-	60,  // 62: jobseek.crawler.runtime.v1.BrowserAction.scroll:type_name -> jobseek.crawler.runtime.v1.ScrollAction
-	61,  // 63: jobseek.crawler.runtime.v1.BrowserAction.paginate:type_name -> jobseek.crawler.runtime.v1.PaginationAction
-	62,  // 64: jobseek.crawler.runtime.v1.BrowserAction.evaluate:type_name -> jobseek.crawler.runtime.v1.EvaluateAction
-	9,   // 65: jobseek.crawler.runtime.v1.BrowserAction.network_effect:type_name -> jobseek.crawler.runtime.v1.BrowserNetworkEffect
-	8,   // 66: jobseek.crawler.runtime.v1.NavigationPlan.wait_until:type_name -> jobseek.crawler.runtime.v1.WaitCondition
-	23,  // 67: jobseek.crawler.runtime.v1.NavigationPlan.headers:type_name -> jobseek.crawler.runtime.v1.Header
-	13,  // 68: jobseek.crawler.runtime.v1.CapturePlan.kind:type_name -> jobseek.crawler.runtime.v1.CaptureKind
-	9,   // 69: jobseek.crawler.runtime.v1.EvaluationPlan.network_effect:type_name -> jobseek.crawler.runtime.v1.BrowserNetworkEffect
-	23,  // 70: jobseek.crawler.runtime.v1.InterceptionRule.replace_headers:type_name -> jobseek.crawler.runtime.v1.Header
+	50,  // 36: jobseek.crawler.runtime.v1.ExecutionFrame.origin_contact:type_name -> jobseek.crawler.runtime.v1.OriginContact
+	38,  // 37: jobseek.crawler.runtime.v1.ExecutionFrame.monitor_batch:type_name -> jobseek.crawler.runtime.v1.MonitorResult
+	39,  // 38: jobseek.crawler.runtime.v1.ExecutionFrame.scrape_result:type_name -> jobseek.crawler.runtime.v1.ScrapeResult
+	52,  // 39: jobseek.crawler.runtime.v1.ExecutionFrame.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactFrame
+	31,  // 40: jobseek.crawler.runtime.v1.ExecutionFrame.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
+	53,  // 41: jobseek.crawler.runtime.v1.ExecutionFrame.terminal:type_name -> jobseek.crawler.runtime.v1.Terminal
+	80,  // 42: jobseek.crawler.runtime.v1.ExecutionFrame.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
+	51,  // 43: jobseek.crawler.runtime.v1.ExecutionFrame.origin_operation_declared:type_name -> jobseek.crawler.runtime.v1.OriginOperationDeclared
+	31,  // 44: jobseek.crawler.runtime.v1.ResumeRejected.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
+	48,  // 45: jobseek.crawler.runtime.v1.ClientMessage.hello:type_name -> jobseek.crawler.runtime.v1.ClientHello
+	42,  // 46: jobseek.crawler.runtime.v1.ClientMessage.start:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
+	45,  // 47: jobseek.crawler.runtime.v1.ClientMessage.resume:type_name -> jobseek.crawler.runtime.v1.ResumeRequest
+	46,  // 48: jobseek.crawler.runtime.v1.ClientMessage.window_update:type_name -> jobseek.crawler.runtime.v1.WindowUpdate
+	47,  // 49: jobseek.crawler.runtime.v1.ClientMessage.cancel:type_name -> jobseek.crawler.runtime.v1.CancelRequest
+	49,  // 50: jobseek.crawler.runtime.v1.ServerMessage.hello:type_name -> jobseek.crawler.runtime.v1.ServerHello
+	54,  // 51: jobseek.crawler.runtime.v1.ServerMessage.frame:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
+	55,  // 52: jobseek.crawler.runtime.v1.ServerMessage.resume_rejected:type_name -> jobseek.crawler.runtime.v1.ResumeRejected
+	13,  // 53: jobseek.crawler.runtime.v1.Selector.kind:type_name -> jobseek.crawler.runtime.v1.SelectorKind
+	58,  // 54: jobseek.crawler.runtime.v1.ClickAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
+	58,  // 55: jobseek.crawler.runtime.v1.FillAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
+	58,  // 56: jobseek.crawler.runtime.v1.WaitAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
+	14,  // 57: jobseek.crawler.runtime.v1.ScrollAction.direction:type_name -> jobseek.crawler.runtime.v1.ScrollDirection
+	58,  // 58: jobseek.crawler.runtime.v1.PaginationAction.next_selector:type_name -> jobseek.crawler.runtime.v1.Selector
+	59,  // 59: jobseek.crawler.runtime.v1.BrowserAction.click:type_name -> jobseek.crawler.runtime.v1.ClickAction
+	60,  // 60: jobseek.crawler.runtime.v1.BrowserAction.fill:type_name -> jobseek.crawler.runtime.v1.FillAction
+	61,  // 61: jobseek.crawler.runtime.v1.BrowserAction.wait:type_name -> jobseek.crawler.runtime.v1.WaitAction
+	62,  // 62: jobseek.crawler.runtime.v1.BrowserAction.scroll:type_name -> jobseek.crawler.runtime.v1.ScrollAction
+	63,  // 63: jobseek.crawler.runtime.v1.BrowserAction.paginate:type_name -> jobseek.crawler.runtime.v1.PaginationAction
+	64,  // 64: jobseek.crawler.runtime.v1.BrowserAction.evaluate:type_name -> jobseek.crawler.runtime.v1.EvaluateAction
+	11,  // 65: jobseek.crawler.runtime.v1.BrowserAction.network_effect:type_name -> jobseek.crawler.runtime.v1.BrowserNetworkEffect
+	10,  // 66: jobseek.crawler.runtime.v1.NavigationPlan.wait_until:type_name -> jobseek.crawler.runtime.v1.WaitCondition
+	25,  // 67: jobseek.crawler.runtime.v1.NavigationPlan.headers:type_name -> jobseek.crawler.runtime.v1.Header
+	15,  // 68: jobseek.crawler.runtime.v1.CapturePlan.kind:type_name -> jobseek.crawler.runtime.v1.CaptureKind
+	11,  // 69: jobseek.crawler.runtime.v1.EvaluationPlan.network_effect:type_name -> jobseek.crawler.runtime.v1.BrowserNetworkEffect
+	25,  // 70: jobseek.crawler.runtime.v1.InterceptionRule.replace_headers:type_name -> jobseek.crawler.runtime.v1.Header
 	7,   // 71: jobseek.crawler.runtime.v1.BrowserPlan.required_capabilities:type_name -> jobseek.crawler.runtime.v1.BrowserCapability
-	64,  // 72: jobseek.crawler.runtime.v1.BrowserPlan.navigation:type_name -> jobseek.crawler.runtime.v1.NavigationPlan
-	65,  // 73: jobseek.crawler.runtime.v1.BrowserPlan.session:type_name -> jobseek.crawler.runtime.v1.SessionPlan
-	63,  // 74: jobseek.crawler.runtime.v1.BrowserPlan.actions:type_name -> jobseek.crawler.runtime.v1.BrowserAction
-	66,  // 75: jobseek.crawler.runtime.v1.BrowserPlan.captures:type_name -> jobseek.crawler.runtime.v1.CapturePlan
-	67,  // 76: jobseek.crawler.runtime.v1.BrowserPlan.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationPlan
-	68,  // 77: jobseek.crawler.runtime.v1.BrowserPlan.interceptions:type_name -> jobseek.crawler.runtime.v1.InterceptionRule
-	42,  // 78: jobseek.crawler.runtime.v1.BrowserPlan.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	69,  // 79: jobseek.crawler.runtime.v1.BrowserExecutionInput.plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
-	26,  // 80: jobseek.crawler.runtime.v1.CapturedValue.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	27,  // 81: jobseek.crawler.runtime.v1.EvaluationValue.value:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
-	26,  // 82: jobseek.crawler.runtime.v1.BrowserSuccess.html:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	71,  // 83: jobseek.crawler.runtime.v1.BrowserSuccess.action_outcomes:type_name -> jobseek.crawler.runtime.v1.ActionOutcome
-	72,  // 84: jobseek.crawler.runtime.v1.BrowserSuccess.captures:type_name -> jobseek.crawler.runtime.v1.CapturedValue
-	73,  // 85: jobseek.crawler.runtime.v1.BrowserSuccess.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationValue
-	24,  // 86: jobseek.crawler.runtime.v1.BrowserSuccess.artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	29,  // 87: jobseek.crawler.runtime.v1.BrowserFailure.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
-	24,  // 88: jobseek.crawler.runtime.v1.BrowserFailure.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	7,   // 89: jobseek.crawler.runtime.v1.BrowserUnsupported.capabilities:type_name -> jobseek.crawler.runtime.v1.BrowserCapability
-	24,  // 90: jobseek.crawler.runtime.v1.BrowserUnsupported.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	6,   // 91: jobseek.crawler.runtime.v1.BrowserResult.backend:type_name -> jobseek.crawler.runtime.v1.BrowserBackend
-	74,  // 92: jobseek.crawler.runtime.v1.BrowserResult.success:type_name -> jobseek.crawler.runtime.v1.BrowserSuccess
-	75,  // 93: jobseek.crawler.runtime.v1.BrowserResult.error:type_name -> jobseek.crawler.runtime.v1.BrowserFailure
-	76,  // 94: jobseek.crawler.runtime.v1.BrowserResult.unsupported:type_name -> jobseek.crawler.runtime.v1.BrowserUnsupported
-	19,  // 95: jobseek.crawler.runtime.v1.DisconnectFault.point:type_name -> jobseek.crawler.runtime.v1.DisconnectPoint
-	18,  // 96: jobseek.crawler.runtime.v1.ProtocolEvent.direction:type_name -> jobseek.crawler.runtime.v1.EventDirection
-	54,  // 97: jobseek.crawler.runtime.v1.ProtocolEvent.client:type_name -> jobseek.crawler.runtime.v1.ClientMessage
-	55,  // 98: jobseek.crawler.runtime.v1.ProtocolEvent.server:type_name -> jobseek.crawler.runtime.v1.ServerMessage
-	78,  // 99: jobseek.crawler.runtime.v1.ProtocolEvent.fault:type_name -> jobseek.crawler.runtime.v1.DisconnectFault
-	79,  // 100: jobseek.crawler.runtime.v1.ProtocolTranscript.events:type_name -> jobseek.crawler.runtime.v1.ProtocolEvent
-	23,  // 101: jobseek.crawler.runtime.v1.CapturedRequest.headers:type_name -> jobseek.crawler.runtime.v1.Header
-	26,  // 102: jobseek.crawler.runtime.v1.CapturedRequest.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	23,  // 103: jobseek.crawler.runtime.v1.CapturedResponse.headers:type_name -> jobseek.crawler.runtime.v1.Header
-	26,  // 104: jobseek.crawler.runtime.v1.CapturedResponse.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	42,  // 105: jobseek.crawler.runtime.v1.CapturedExchange.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	81,  // 106: jobseek.crawler.runtime.v1.CapturedExchange.request:type_name -> jobseek.crawler.runtime.v1.CapturedRequest
-	82,  // 107: jobseek.crawler.runtime.v1.CapturedExchange.response:type_name -> jobseek.crawler.runtime.v1.CapturedResponse
-	20,  // 108: jobseek.crawler.runtime.v1.ProjectedTarget.action:type_name -> jobseek.crawler.runtime.v1.ProjectedAction
-	84,  // 109: jobseek.crawler.runtime.v1.ProjectedEffects.job_effects:type_name -> jobseek.crawler.runtime.v1.JobEffect
-	2,   // 110: jobseek.crawler.runtime.v1.ProjectedEffects.execution_kind:type_name -> jobseek.crawler.runtime.v1.ExecutionKind
-	85,  // 111: jobseek.crawler.runtime.v1.ProjectedEffects.targets:type_name -> jobseek.crawler.runtime.v1.ProjectedTarget
-	16,  // 112: jobseek.crawler.runtime.v1.ProjectedEffects.canonicalization_rule:type_name -> jobseek.crawler.runtime.v1.CanonicalizationRule
-	17,  // 113: jobseek.crawler.runtime.v1.ProjectedEffects.content_hash_rule:type_name -> jobseek.crawler.runtime.v1.HashRule
-	15,  // 114: jobseek.crawler.runtime.v1.ReplayCase.adapter:type_name -> jobseek.crawler.runtime.v1.ReplayAdapter
-	40,  // 115: jobseek.crawler.runtime.v1.ReplayCase.execution_request:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
-	83,  // 116: jobseek.crawler.runtime.v1.ReplayCase.exchanges:type_name -> jobseek.crawler.runtime.v1.CapturedExchange
-	52,  // 117: jobseek.crawler.runtime.v1.ReplayCase.expected_frames:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
-	86,  // 118: jobseek.crawler.runtime.v1.ReplayCase.expected_projection:type_name -> jobseek.crawler.runtime.v1.ProjectedEffects
-	17,  // 119: jobseek.crawler.runtime.v1.ReplayCase.semantic_hash_rule:type_name -> jobseek.crawler.runtime.v1.HashRule
-	80,  // 120: jobseek.crawler.runtime.v1.ConformanceCase.transcript:type_name -> jobseek.crawler.runtime.v1.ProtocolTranscript
-	69,  // 121: jobseek.crawler.runtime.v1.ConformanceCase.browser_plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
-	77,  // 122: jobseek.crawler.runtime.v1.ConformanceCase.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
-	87,  // 123: jobseek.crawler.runtime.v1.ConformanceCase.replay:type_name -> jobseek.crawler.runtime.v1.ReplayCase
-	124, // [124:124] is the sub-list for method output_type
-	124, // [124:124] is the sub-list for method input_type
-	124, // [124:124] is the sub-list for extension type_name
-	124, // [124:124] is the sub-list for extension extendee
-	0,   // [0:124] is the sub-list for field type_name
+	66,  // 72: jobseek.crawler.runtime.v1.BrowserPlan.navigation:type_name -> jobseek.crawler.runtime.v1.NavigationPlan
+	67,  // 73: jobseek.crawler.runtime.v1.BrowserPlan.session:type_name -> jobseek.crawler.runtime.v1.SessionPlan
+	65,  // 74: jobseek.crawler.runtime.v1.BrowserPlan.actions:type_name -> jobseek.crawler.runtime.v1.BrowserAction
+	68,  // 75: jobseek.crawler.runtime.v1.BrowserPlan.captures:type_name -> jobseek.crawler.runtime.v1.CapturePlan
+	69,  // 76: jobseek.crawler.runtime.v1.BrowserPlan.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationPlan
+	70,  // 77: jobseek.crawler.runtime.v1.BrowserPlan.interceptions:type_name -> jobseek.crawler.runtime.v1.InterceptionRule
+	44,  // 78: jobseek.crawler.runtime.v1.BrowserPlan.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	6,   // 79: jobseek.crawler.runtime.v1.BrowserAssignment.backend:type_name -> jobseek.crawler.runtime.v1.BrowserBackend
+	8,   // 80: jobseek.crawler.runtime.v1.BrowserAssignment.capability_class:type_name -> jobseek.crawler.runtime.v1.BrowserCapabilityClass
+	9,   // 81: jobseek.crawler.runtime.v1.BrowserAssignment.service_lane:type_name -> jobseek.crawler.runtime.v1.BrowserServiceLane
+	71,  // 82: jobseek.crawler.runtime.v1.BrowserExecutionInput.plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
+	72,  // 83: jobseek.crawler.runtime.v1.BrowserExecutionInput.assignment:type_name -> jobseek.crawler.runtime.v1.BrowserAssignment
+	28,  // 84: jobseek.crawler.runtime.v1.CapturedValue.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	29,  // 85: jobseek.crawler.runtime.v1.EvaluationValue.value:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
+	28,  // 86: jobseek.crawler.runtime.v1.BrowserSuccess.html:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	74,  // 87: jobseek.crawler.runtime.v1.BrowserSuccess.action_outcomes:type_name -> jobseek.crawler.runtime.v1.ActionOutcome
+	75,  // 88: jobseek.crawler.runtime.v1.BrowserSuccess.captures:type_name -> jobseek.crawler.runtime.v1.CapturedValue
+	76,  // 89: jobseek.crawler.runtime.v1.BrowserSuccess.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationValue
+	26,  // 90: jobseek.crawler.runtime.v1.BrowserSuccess.artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	31,  // 91: jobseek.crawler.runtime.v1.BrowserFailure.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
+	26,  // 92: jobseek.crawler.runtime.v1.BrowserFailure.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	7,   // 93: jobseek.crawler.runtime.v1.BrowserUnsupported.capabilities:type_name -> jobseek.crawler.runtime.v1.BrowserCapability
+	26,  // 94: jobseek.crawler.runtime.v1.BrowserUnsupported.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	6,   // 95: jobseek.crawler.runtime.v1.BrowserResult.backend:type_name -> jobseek.crawler.runtime.v1.BrowserBackend
+	77,  // 96: jobseek.crawler.runtime.v1.BrowserResult.success:type_name -> jobseek.crawler.runtime.v1.BrowserSuccess
+	78,  // 97: jobseek.crawler.runtime.v1.BrowserResult.error:type_name -> jobseek.crawler.runtime.v1.BrowserFailure
+	79,  // 98: jobseek.crawler.runtime.v1.BrowserResult.unsupported:type_name -> jobseek.crawler.runtime.v1.BrowserUnsupported
+	21,  // 99: jobseek.crawler.runtime.v1.DisconnectFault.point:type_name -> jobseek.crawler.runtime.v1.DisconnectPoint
+	20,  // 100: jobseek.crawler.runtime.v1.ProtocolEvent.direction:type_name -> jobseek.crawler.runtime.v1.EventDirection
+	56,  // 101: jobseek.crawler.runtime.v1.ProtocolEvent.client:type_name -> jobseek.crawler.runtime.v1.ClientMessage
+	57,  // 102: jobseek.crawler.runtime.v1.ProtocolEvent.server:type_name -> jobseek.crawler.runtime.v1.ServerMessage
+	81,  // 103: jobseek.crawler.runtime.v1.ProtocolEvent.fault:type_name -> jobseek.crawler.runtime.v1.DisconnectFault
+	82,  // 104: jobseek.crawler.runtime.v1.ProtocolTranscript.events:type_name -> jobseek.crawler.runtime.v1.ProtocolEvent
+	25,  // 105: jobseek.crawler.runtime.v1.CapturedRequest.headers:type_name -> jobseek.crawler.runtime.v1.Header
+	28,  // 106: jobseek.crawler.runtime.v1.CapturedRequest.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	25,  // 107: jobseek.crawler.runtime.v1.CapturedResponse.headers:type_name -> jobseek.crawler.runtime.v1.Header
+	28,  // 108: jobseek.crawler.runtime.v1.CapturedResponse.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	44,  // 109: jobseek.crawler.runtime.v1.CapturedExchange.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	84,  // 110: jobseek.crawler.runtime.v1.CapturedExchange.request:type_name -> jobseek.crawler.runtime.v1.CapturedRequest
+	85,  // 111: jobseek.crawler.runtime.v1.CapturedExchange.response:type_name -> jobseek.crawler.runtime.v1.CapturedResponse
+	22,  // 112: jobseek.crawler.runtime.v1.ProjectedTarget.action:type_name -> jobseek.crawler.runtime.v1.ProjectedAction
+	87,  // 113: jobseek.crawler.runtime.v1.ProjectedEffects.job_effects:type_name -> jobseek.crawler.runtime.v1.JobEffect
+	2,   // 114: jobseek.crawler.runtime.v1.ProjectedEffects.execution_kind:type_name -> jobseek.crawler.runtime.v1.ExecutionKind
+	88,  // 115: jobseek.crawler.runtime.v1.ProjectedEffects.targets:type_name -> jobseek.crawler.runtime.v1.ProjectedTarget
+	18,  // 116: jobseek.crawler.runtime.v1.ProjectedEffects.canonicalization_rule:type_name -> jobseek.crawler.runtime.v1.CanonicalizationRule
+	19,  // 117: jobseek.crawler.runtime.v1.ProjectedEffects.content_hash_rule:type_name -> jobseek.crawler.runtime.v1.HashRule
+	17,  // 118: jobseek.crawler.runtime.v1.ReplayCase.adapter:type_name -> jobseek.crawler.runtime.v1.ReplayAdapter
+	42,  // 119: jobseek.crawler.runtime.v1.ReplayCase.execution_request:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
+	86,  // 120: jobseek.crawler.runtime.v1.ReplayCase.exchanges:type_name -> jobseek.crawler.runtime.v1.CapturedExchange
+	54,  // 121: jobseek.crawler.runtime.v1.ReplayCase.expected_frames:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
+	89,  // 122: jobseek.crawler.runtime.v1.ReplayCase.expected_projection:type_name -> jobseek.crawler.runtime.v1.ProjectedEffects
+	19,  // 123: jobseek.crawler.runtime.v1.ReplayCase.semantic_hash_rule:type_name -> jobseek.crawler.runtime.v1.HashRule
+	83,  // 124: jobseek.crawler.runtime.v1.ConformanceCase.transcript:type_name -> jobseek.crawler.runtime.v1.ProtocolTranscript
+	71,  // 125: jobseek.crawler.runtime.v1.ConformanceCase.browser_plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
+	80,  // 126: jobseek.crawler.runtime.v1.ConformanceCase.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
+	90,  // 127: jobseek.crawler.runtime.v1.ConformanceCase.replay:type_name -> jobseek.crawler.runtime.v1.ReplayCase
+	128, // [128:128] is the sub-list for method output_type
+	128, // [128:128] is the sub-list for method input_type
+	128, // [128:128] is the sub-list for extension type_name
+	128, // [128:128] is the sub-list for extension extendee
+	0,   // [0:128] is the sub-list for field type_name
 }
 
 func init() { file_runtime_proto_init() }
@@ -7813,23 +8023,23 @@ func file_runtime_proto_init() {
 	file_runtime_proto_msgTypes[44].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[45].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[46].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[53].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[56].OneofWrappers = []any{
+	file_runtime_proto_msgTypes[54].OneofWrappers = []any{}
+	file_runtime_proto_msgTypes[57].OneofWrappers = []any{
 		(*BrowserResult_Success)(nil),
 		(*BrowserResult_Error)(nil),
 		(*BrowserResult_Unsupported)(nil),
 	}
-	file_runtime_proto_msgTypes[57].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[58].OneofWrappers = []any{
+	file_runtime_proto_msgTypes[58].OneofWrappers = []any{}
+	file_runtime_proto_msgTypes[59].OneofWrappers = []any{
 		(*ProtocolEvent_Client)(nil),
 		(*ProtocolEvent_Server)(nil),
 		(*ProtocolEvent_Fault)(nil),
 	}
-	file_runtime_proto_msgTypes[62].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[63].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[64].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[65].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[67].OneofWrappers = []any{
+	file_runtime_proto_msgTypes[66].OneofWrappers = []any{}
+	file_runtime_proto_msgTypes[68].OneofWrappers = []any{
 		(*ConformanceCase_Transcript)(nil),
 		(*ConformanceCase_BrowserPlan)(nil),
 		(*ConformanceCase_BrowserResult)(nil),
@@ -7840,8 +8050,8 @@ func file_runtime_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_runtime_proto_rawDesc), len(file_runtime_proto_rawDesc)),
-			NumEnums:      21,
-			NumMessages:   68,
+			NumEnums:      23,
+			NumMessages:   69,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

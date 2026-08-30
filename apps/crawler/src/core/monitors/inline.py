@@ -802,7 +802,10 @@ async def _fetch_html(
         for fetch_url, _fetch_headers in fetch_candidates:
             try:
                 async with open_page(
-                    pw, browser_cfg, use_proxy=bool(metadata.get("proxy"))
+                    pw,
+                    browser_cfg,
+                    use_proxy=bool(metadata.get("proxy")),
+                    target_url=fetch_url,
                 ) as page:
                     await navigate(page, fetch_url, browser_cfg)
                     await run_actions(page, browser_cfg.get("actions", []))

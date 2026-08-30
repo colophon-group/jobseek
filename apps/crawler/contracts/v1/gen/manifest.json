@@ -7,9 +7,9 @@
   },
   "go_language_version": "1.24.0",
   "outputs": {
-    "gen/go/runtime.pb.go": "e3e5912814b599392f0bcf97bc010d2618838b9d6ee2aa9a4d2151cb7e986e8c",
+    "gen/go/runtime.pb.go": "984260b4fcc72dd2c4e2f9c07c7dbeb44be4c4c9449fafdeb690dd65993cdd7d",
     "python/jobseek_runtime_v1/__init__.py": "7861f55459f5e7d7df98624cee112da2d0dacaf9305a9f47c13cc02406a77e5a",
-    "python/jobseek_runtime_v1/runtime_pb2.py": "141b860bf3b3062e537afcb564bdcf8ca5a0946ebf4d3dbfa960fd31e41f93e8"
+    "python/jobseek_runtime_v1/runtime_pb2.py": "3f4c8ef9101a7501459e55f955a0edaa0c3419701fa14c7055440d271fae8cdc"
   },
   "runtimes": {
     "go_protobuf": "1.36.10",
@@ -17,5 +17,5 @@
     "python_protobuf": "6.33.6"
   },
   "source": "runtime.proto",
-  "source_sha256": "9255752c976b970510fbc1d772321cb731d9f54bb2de6f0bf7193398a19c3191"
+  "source_sha256": "0c3596e4acc53ec5aa674ffa88683761e3af359260089ab87b6e4b04cdacf6b2"
 }

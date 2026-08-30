@@ -1,56 +1,64 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import type { CompanyPageData } from "@/lib/actions/company-page-data";
+import type { CompanyBrowserDataResult } from "@/lib/search/company-browser-data";
 
-// `@/lib/actions/company-page-data` is a server action that transitively
-// imports `server-only`, which throws when loaded in a non-Next runtime.
-// Neutralise the gate, then swap the action itself for a spy.
-vi.mock("server-only", () => ({}));
-const mockFetchCompanyPageData = vi.fn();
-vi.mock("@/lib/actions/company-page-data", async () => {
-  const actual =
-    await vi.importActual<typeof import("@/lib/actions/company-page-data")>(
-      "@/lib/actions/company-page-data",
-    );
-  return {
-    ...actual,
-    fetchCompanyPageData: (...args: unknown[]) => mockFetchCompanyPageData(...args),
-  };
-});
+const mockLoadCompanyBrowserData = vi.fn();
+vi.mock("@/lib/search/company-browser-data", () => ({
+  loadCompanyBrowserData: (...args: unknown[]) =>
+    mockLoadCompanyBrowserData(...args),
+}));
 
-// CompanyPage has a heavy dependency tree (Lingui i18n, Typesense
-// provider, currency rates, infinite scroll, etc.). Stub it out — this
-// suite is testing the conditional-fetch logic in CompanyContent, not
-// CompanyPage's behaviour. Render a marker with initial props so the
-// stale-ISR-data regression test can assert which dataset mounted it.
+let sessionState: {
+  isLoggedIn: boolean;
+  isPending: boolean;
+  preferences: {
+    displayCurrency?: string;
+    jobLanguages?: string[];
+  } | null;
+};
+const stableRates = [{ currency: "CHF", toEur: 1.04 }];
+vi.mock("@/components/providers/SessionProvider", () => ({
+  useSession: () => sessionState,
+}));
+vi.mock("@/components/providers/SalaryDisplayProvider", () => ({
+  useSalaryRates: () => stableRates,
+}));
+
 vi.mock("../company-page", () => ({
   CompanyPage: ({
     company,
     initialActiveCount,
     initialEmploymentTypes,
+    jobLanguages,
+    displayCurrency,
+    initialSearchUnavailable,
+    initialDirectRefreshAttempted,
   }: {
     company: CompanyPageData["company"];
     initialActiveCount: number;
     initialEmploymentTypes: string[];
+    jobLanguages: string[];
+    displayCurrency: string;
+    initialSearchUnavailable?: boolean;
+    initialDirectRefreshAttempted?: boolean;
   }) => (
     <div
       data-testid="company-page"
       data-company={company.slug}
       data-active={initialActiveCount}
       data-etypes={initialEmploymentTypes.join(",")}
+      data-languages={jobLanguages.join(",")}
+      data-currency={displayCurrency}
+      data-unavailable={String(Boolean(initialSearchUnavailable))}
+      data-direct-attempted={String(Boolean(initialDirectRefreshAttempted))}
     />
   ),
 }));
-
-// Skeleton stub — a distinct marker so tests can assert when CompanyPage
-// is intentionally unmounted while personalised data is loading.
 vi.mock("@/components/search/company-skeleton", () => ({
   CompanySkeleton: () => <div data-testid="company-skeleton" />,
 }));
 
-// `useSearchParams` from `next/navigation` returns a `URLSearchParams`-
-// like object in the test environment. Mock it per-test to control the
-// filter state being observed by the component.
 let currentSearchParams = new URLSearchParams();
 vi.mock("next/navigation", () => ({
   useSearchParams: () => currentSearchParams,
@@ -81,12 +89,12 @@ function makeCompany(): CompanyPageData["company"] {
   };
 }
 
-function makeInitialData(overrides: Partial<CompanyPageData> = {}): CompanyPageData {
+function makeData(overrides: Partial<CompanyPageData> = {}): CompanyPageData {
   return {
     company: makeCompany(),
     postings: [],
-    activeCount: 0,
-    yearCount: 0,
+    activeCount: 5,
+    yearCount: 8,
     parsed: {
       keywords: [],
       locations: [],
@@ -111,11 +119,21 @@ function makeInitialData(overrides: Partial<CompanyPageData> = {}): CompanyPageD
   };
 }
 
+function successfulResult(
+  data: CompanyPageData,
+  directAttempted = true,
+): CompanyBrowserDataResult {
+  return { data, unavailable: false, directAttempted };
+}
+
 beforeEach(() => {
-  mockFetchCompanyPageData.mockReset();
-  mockFetchCompanyPageData.mockResolvedValue(makeInitialData());
   currentSearchParams = new URLSearchParams();
+  sessionState = { isLoggedIn: false, isPending: false, preferences: null };
   setDocumentCookie("");
+  mockLoadCompanyBrowserData.mockReset();
+  mockLoadCompanyBrowserData.mockImplementation(({ initialData }) =>
+    Promise.resolve(successfulResult(initialData)),
+  );
 });
 
 afterEach(() => {
@@ -123,242 +141,38 @@ afterEach(() => {
   cookieSpy = undefined;
 });
 
-describe("CompanyContent — server-render initial-data path (#3203)", () => {
-  it("does not force-scroll to the top on mount or remount", async () => {
-    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
-    const initialData = makeInitialData();
-
-    try {
-      const { unmount } = render(
-        <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-      );
-
-      await new Promise((r) => setTimeout(r, 0));
-      expect(scrollTo).not.toHaveBeenCalled();
-
-      unmount();
-      render(
-        <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-      );
-
-      await new Promise((r) => setTimeout(r, 0));
-      expect(scrollTo).not.toHaveBeenCalled();
-    } finally {
-      scrollTo.mockRestore();
-    }
-  });
-
-  it("does NOT call fetchCompanyPageData for an anonymous, no-filter visit with prerendered initialData", async () => {
-    const initialData = makeInitialData();
-    render(
-      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-    );
-
-    // Wait for any queued effects to run — give them a real chance to
-    // misbehave before asserting that they didn't.
-    await new Promise((r) => setTimeout(r, 0));
-    expect(mockFetchCompanyPageData).not.toHaveBeenCalled();
-  });
-
-  it("calls fetchCompanyPageData when the `logged_in` hint cookie is present even without filters", async () => {
-    setDocumentCookie("logged_in=1");
-
-    const initialData = makeInitialData();
-    render(
-      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-    );
-
-    await waitFor(() => {
-      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it("calls fetchCompanyPageData when the anon job-languages hint cookie is present", async () => {
-    // Issue #2850: anonymous viewers persist `jobLanguages` via the
-    // JSEEK_JOB_LANGUAGES cookie. When present, the server-rendered
-    // anonymous-default data may not match what the personalized
-    // server action would return, so we must refetch.
-    setDocumentCookie("JSEEK_JOB_LANGUAGES=en,de");
-
-    const initialData = makeInitialData();
-    render(
-      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-    );
-
-    await waitFor(() => {
-      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it("calls fetchCompanyPageData when a filter searchParam is present", async () => {
-    currentSearchParams = new URLSearchParams("q=python");
-
-    const initialData = makeInitialData();
-    render(
-      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-    );
-
-    await waitFor(() => {
-      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    });
-
-    const callArgs = mockFetchCompanyPageData.mock.calls[0]?.[0] as {
-      slug: string;
-      searchParams: Record<string, string | undefined>;
-      locale: string;
-    };
-    expect(callArgs.slug).toBe("test-company");
-    expect(callArgs.locale).toBe("en");
-    expect(callArgs.searchParams.q).toBe("python");
-  });
-
-  it("calls fetchCompanyPageData when initialData is omitted (legacy path)", async () => {
-    render(<CompanyContent locale="en" slug="test-company" />);
-
-    await waitFor(() => {
-      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it("does NOT call fetchCompanyPageData when a non-filter searchParam is present (e.g. utm tracking)", async () => {
-    currentSearchParams = new URLSearchParams("utm_source=google");
-
-    const initialData = makeInitialData();
-    render(
-      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-    );
-
-    await new Promise((r) => setTimeout(r, 0));
-    expect(mockFetchCompanyPageData).not.toHaveBeenCalled();
-  });
-
-  it("recognises every documented filter searchParam as a refetch trigger", async () => {
-    const filterParams = [
-      "q",
-      "loc",
-      "occ",
-      "sen",
-      "tech",
-      "wm",
-      "etype",
-      "sal",
-      "salcur",
-      "exp",
-    ];
-    for (const param of filterParams) {
-      mockFetchCompanyPageData.mockClear();
-      currentSearchParams = new URLSearchParams(`${param}=x`);
-
-      const initialData = makeInitialData();
-      const { unmount } = render(
-        <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-      );
-
-      await waitFor(() => {
-        expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-      });
-      unmount();
-    }
-  });
-
-  it("does not refetch company results when only the selected posting changes", async () => {
-    setDocumentCookie("logged_in=1");
-    const initialData = makeInitialData({ activeCount: 5 });
-    const personalizedData = makeInitialData({ activeCount: 4 });
-    mockFetchCompanyPageData.mockResolvedValue(personalizedData);
-
-    const { queryByTestId, rerender } = render(
-      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-    );
-
-    await waitFor(() => {
-      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-      expect(queryByTestId("company-page")?.getAttribute("data-active")).toBe(
-        "4",
-      );
-    });
-
-    currentSearchParams = new URLSearchParams("show=posting-1");
-    rerender(
-      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-    );
-    currentSearchParams = new URLSearchParams("show=posting-2");
-    rerender(
-      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+describe("CompanyContent browser initialization", () => {
+  it("uses the prerendered shell with zero mount request for default anonymous views", async () => {
+    const { getByTestId } = render(
+      <CompanyContent locale="en" slug="test-company" initialData={makeData()} />,
     );
 
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    expect(queryByTestId("company-skeleton")).toBeNull();
-    expect(queryByTestId("company-page")?.getAttribute("data-active")).toBe(
-      "4",
-    );
+    expect(mockLoadCompanyBrowserData).not.toHaveBeenCalled();
+    expect(getByTestId("company-page").getAttribute("data-active")).toBe("5");
   });
 
-  it("keeps `show` out of filtered fetches and does not refetch when it changes", async () => {
-    currentSearchParams = new URLSearchParams("q=python&show=posting-1");
-    const initialData = makeInitialData();
+  it("ignores non-result params, including selected posting changes", async () => {
+    currentSearchParams = new URLSearchParams("utm_source=test&show=posting-1");
+    const initialData = makeData();
     const { rerender } = render(
       <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
     );
 
-    await waitFor(() => {
-      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    });
-    expect(mockFetchCompanyPageData.mock.calls[0]?.[0]).toMatchObject({
-      searchParams: { q: "python" },
-    });
-    expect(
-      (mockFetchCompanyPageData.mock.calls[0]?.[0] as {
-        searchParams: Record<string, string | undefined>;
-      }).searchParams.show,
-    ).toBeUndefined();
-
-    currentSearchParams = new URLSearchParams("q=python&show=posting-2");
+    currentSearchParams = new URLSearchParams("show=posting-2");
     rerender(
       <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
     );
-
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
+    expect(mockLoadCompanyBrowserData).not.toHaveBeenCalled();
   });
 
-  it("passes etype through when it triggers a personalized fetch", async () => {
-    currentSearchParams = new URLSearchParams("etype=internship");
-
-    const initialData = makeInitialData();
-    render(
-      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
-    );
-
-    await waitFor(() => {
-      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    });
-
-    const callArgs = mockFetchCompanyPageData.mock.calls[0]?.[0] as {
-      searchParams: Record<string, string | undefined>;
-    };
-    expect(callArgs.searchParams.etype).toBe("internship");
-  });
-
-  it("unmounts stale prerendered data until the filtered etype fetch resolves", async () => {
-    currentSearchParams = new URLSearchParams("etype=internship");
-    const unfilteredInitial = makeInitialData({
-      activeCount: 3835,
+  it("loads filter-bearing anonymous views through the browser path", async () => {
+    currentSearchParams = new URLSearchParams("q=python&etype=internship");
+    const filtered = makeData({
+      activeCount: 2,
       parsed: {
-        keywords: [],
-        locations: [],
-        occupations: [],
-        seniorities: [],
-        technologies: [],
-        workMode: [],
-        employmentTypes: [],
-      },
-    });
-    const filteredData = makeInitialData({
-      activeCount: 870,
-      parsed: {
-        keywords: [],
+        keywords: ["python"],
         locations: [],
         occupations: [],
         seniorities: [],
@@ -367,129 +181,156 @@ describe("CompanyContent — server-render initial-data path (#3203)", () => {
         employmentTypes: ["internship"],
       },
     });
+    mockLoadCompanyBrowserData.mockResolvedValue(successfulResult(filtered));
 
-    let resolve: (v: CompanyPageData) => void = () => {};
-    mockFetchCompanyPageData.mockReturnValueOnce(
-      new Promise<CompanyPageData>((r) => {
-        resolve = r;
-      }),
+    const { getByTestId } = render(
+      <CompanyContent locale="en" slug="test-company" initialData={makeData()} />,
     );
 
-    const { queryByTestId } = render(
-      <CompanyContent locale="en" slug="test-company" initialData={unfilteredInitial} />,
-    );
-
-    await waitFor(() => {
-      expect(queryByTestId("company-skeleton")).not.toBeNull();
+    await waitFor(() => expect(mockLoadCompanyBrowserData).toHaveBeenCalledOnce());
+    expect(mockLoadCompanyBrowserData.mock.calls[0]?.[0]).toMatchObject({
+      locale: "en",
+      isLoggedIn: false,
+      jobLanguages: [],
     });
-    expect(queryByTestId("company-page")).toBeNull();
-
-    resolve(filteredData);
-
-    await waitFor(() => {
-      expect(queryByTestId("company-page")).not.toBeNull();
-    });
-    expect(queryByTestId("company-skeleton")).toBeNull();
-    expect(queryByTestId("company-page")?.getAttribute("data-active")).toBe(
-      "870",
+    await waitFor(() =>
+      expect(getByTestId("company-page").getAttribute("data-active")).toBe("2"),
     );
-    expect(queryByTestId("company-page")?.getAttribute("data-etypes")).toBe(
+    expect(getByTestId("company-page").getAttribute("data-etypes")).toBe(
       "internship",
     );
   });
 
-  it("refetches on page identity changes and ignores stale responses", async () => {
-    let resolveAlpha: (v: CompanyPageData) => void = () => {};
-    let resolveBeta: (v: CompanyPageData) => void = () => {};
-    mockFetchCompanyPageData
+  it.each(["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp"])(
+    "treats %s as a result-bearing param",
+    async (param) => {
+      currentSearchParams = new URLSearchParams(`${param}=x`);
+      const { unmount } = render(
+        <CompanyContent locale="en" slug="test-company" initialData={makeData()} />,
+      );
+      await waitFor(() => expect(mockLoadCompanyBrowserData).toHaveBeenCalledOnce());
+      unmount();
+      mockLoadCompanyBrowserData.mockClear();
+    },
+  );
+
+  it("waits for authenticated bootstrap and reuses its preferences", async () => {
+    setDocumentCookie("logged_in=1");
+    sessionState = { isLoggedIn: false, isPending: true, preferences: null };
+    const initialData = makeData();
+    const personalized = makeData({
+      displayCurrency: "CHF",
+      jobLanguages: ["de", "en"],
+      languages: ["de", "en"],
+    });
+    mockLoadCompanyBrowserData.mockResolvedValue(successfulResult(personalized));
+    const { getByTestId, rerender } = render(
+      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mockLoadCompanyBrowserData).not.toHaveBeenCalled();
+
+    sessionState = {
+      isLoggedIn: true,
+      isPending: false,
+      preferences: { displayCurrency: "CHF", jobLanguages: ["de", "en"] },
+    };
+    rerender(
+      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+    );
+
+    await waitFor(() => expect(mockLoadCompanyBrowserData).toHaveBeenCalledOnce());
+    expect(mockLoadCompanyBrowserData.mock.calls[0]?.[0]).toMatchObject({
+      displayCurrency: "CHF",
+      jobLanguages: ["de", "en"],
+      isLoggedIn: true,
+    });
+    await waitFor(() =>
+      expect(getByTestId("company-page").getAttribute("data-currency")).toBe(
+        "CHF",
+      ),
+    );
+  });
+
+  it("parses anonymous language preferences locally", async () => {
+    setDocumentCookie(
+      "JSEEK_JOB_LANGUAGES=%5B%22de%22%2C%22en%22%5D",
+    );
+    render(
+      <CompanyContent locale="en" slug="test-company" initialData={makeData()} />,
+    );
+
+    await waitFor(() => expect(mockLoadCompanyBrowserData).toHaveBeenCalledOnce());
+    expect(mockLoadCompanyBrowserData.mock.calls[0]?.[0]).toMatchObject({
+      jobLanguages: ["de", "en"],
+      isLoggedIn: false,
+    });
+  });
+
+  it("renders an explicit unavailable state without restoring broad shell results", async () => {
+    currentSearchParams = new URLSearchParams("loc=missing-place");
+    const failed = makeData({ activeCount: 0, yearCount: 0, postings: [] });
+    mockLoadCompanyBrowserData.mockResolvedValue({
+      data: failed,
+      unavailable: true,
+      directAttempted: true,
+    });
+    const { getByTestId, queryByTestId } = render(
+      <CompanyContent
+        locale="en"
+        slug="test-company"
+        initialData={makeData({ activeCount: 99 })}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(getByTestId("company-page").getAttribute("data-unavailable")).toBe(
+        "true",
+      ),
+    );
+    expect(getByTestId("company-page").getAttribute("data-active")).toBe("0");
+    expect(getByTestId("company-page").getAttribute("data-direct-attempted")).toBe(
+      "true",
+    );
+    expect(queryByTestId("company-skeleton")).toBeNull();
+  });
+
+  it("ignores stale browser responses across page identity changes", async () => {
+    currentSearchParams = new URLSearchParams("q=engineer");
+    let resolveAlpha: (result: CompanyBrowserDataResult) => void = () => {};
+    let resolveBeta: (result: CompanyBrowserDataResult) => void = () => {};
+    mockLoadCompanyBrowserData
       .mockReturnValueOnce(
-        new Promise<CompanyPageData>((resolve) => {
+        new Promise<CompanyBrowserDataResult>((resolve) => {
           resolveAlpha = resolve;
         }),
       )
       .mockReturnValueOnce(
-        new Promise<CompanyPageData>((resolve) => {
+        new Promise<CompanyBrowserDataResult>((resolve) => {
           resolveBeta = resolve;
         }),
       );
-
+    const alpha = makeData({ company: { ...makeCompany(), slug: "alpha" } });
+    const beta = makeData({ company: { ...makeCompany(), slug: "beta" } });
     const { queryByTestId, rerender } = render(
-      <CompanyContent locale="en" slug="alpha" />,
+      <CompanyContent locale="en" slug="alpha" initialData={alpha} />,
     );
+    await waitFor(() => expect(mockLoadCompanyBrowserData).toHaveBeenCalledOnce());
 
-    await waitFor(() => {
-      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    });
-    expect(mockFetchCompanyPageData.mock.calls[0]?.[0]).toMatchObject({
-      slug: "alpha",
-      locale: "en",
-    });
-
-    rerender(<CompanyContent locale="en" slug="beta" />);
-
-    await waitFor(() => {
-      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(2);
-    });
-    expect(mockFetchCompanyPageData.mock.calls[1]?.[0]).toMatchObject({
-      slug: "beta",
-      locale: "en",
-    });
-
-    resolveAlpha(makeInitialData({
-      company: { ...makeCompany(), slug: "alpha" },
-      activeCount: 1,
-    }));
-
-    await new Promise((r) => setTimeout(r, 0));
+    rerender(<CompanyContent locale="en" slug="beta" initialData={beta} />);
+    await waitFor(() =>
+      expect(mockLoadCompanyBrowserData).toHaveBeenCalledTimes(2),
+    );
+    resolveAlpha(successfulResult(alpha));
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(queryByTestId("company-page")).toBeNull();
 
-    resolveBeta(makeInitialData({
-      company: { ...makeCompany(), slug: "beta" },
-      activeCount: 2,
-    }));
-
-    await waitFor(() => {
+    resolveBeta(successfulResult(beta));
+    await waitFor(() =>
       expect(queryByTestId("company-page")?.getAttribute("data-company")).toBe(
         "beta",
-      );
-    });
-    expect(queryByTestId("company-page")?.getAttribute("data-active")).toBe(
-      "2",
+      ),
     );
-  });
-
-  it("renders the CompanySkeleton fallback when no initialData and the fetch is in-flight", async () => {
-    // Never-resolving promise to keep the component in the loading
-    // state for the duration of the assertion.
-    mockFetchCompanyPageData.mockReturnValue(new Promise(() => {}));
-
-    const { queryByTestId } = render(
-      <CompanyContent locale="en" slug="test-company" />,
-    );
-
-    await waitFor(() => {
-      expect(queryByTestId("company-skeleton")).not.toBeNull();
-    });
-    expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    expect(queryByTestId("company-page")).toBeNull();
-  });
-
-  it("triggers the not-found path when fetchCompanyPageData resolves to null", async () => {
-    mockFetchCompanyPageData.mockResolvedValueOnce(null);
-
-    // The Lingui <Trans> macros inside CompanyNotFound need an i18n
-    // provider to render their text — outside that scope they emit
-    // empty strings. So we assert the call resolved with null and the
-    // component re-rendered (no crash, no infinite loading) rather
-    // than text content.
-    const { container } = render(<CompanyContent locale="en" slug="ghost-slug" />);
-
-    await waitFor(() => {
-      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
-    });
-    // Sanity check: the component rendered something (the not-found
-    // shell wrapper), not crashed.
-    await new Promise((r) => setTimeout(r, 0));
-    expect(container).toBeTruthy();
   });
 });

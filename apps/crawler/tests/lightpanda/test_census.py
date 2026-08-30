@@ -340,9 +340,9 @@ def test_committed_manifest_is_current_and_contains_kpmg_fallback() -> None:
     manifest = check_manifest()
 
     assert manifest["input"]["network_access"] is False
-    assert manifest["summary"]["browser_board_count"] == 461
-    assert manifest["summary"]["browser_required_step_count"] == 600
-    assert manifest["summary"]["configured_profile_occurrence_count"] == 602
+    assert manifest["summary"]["browser_board_count"] == 464
+    assert manifest["summary"]["browser_required_step_count"] == 603
+    assert manifest["summary"]["configured_profile_occurrence_count"] == 605
     assert any(
         record["profile_kind"] == "configured"
         and record["surface"] == "scraper"

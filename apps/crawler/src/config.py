@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import math
+from ipaddress import ip_address
 from urllib.parse import urlparse
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,12 +19,24 @@ class Settings(BaseSettings):
 
     # Proxy provider — applies to hosts with ``"proxy": true`` in
     # ``monitor_config`` / ``scraper_config`` (``data/boards.csv``). See
-    # ``src.shared.proxy`` for the provider registry. Swap provider by
-    # changing ``PROXY_PROVIDER``; credentials for idle providers stay
-    # around for ad-hoc testing / quick fallback.
-    proxy_provider: str = "none"  # none | webshare | decodo
+    # ``src.shared.proxy`` for the provider implementation. Webshare's pool entries
+    # are per-proxy backbone URLs (p.webshare.io), so a request/redirect chain
+    # or browser launch can keep one exit even when Webshare replaces the
+    # underlying ISP addresses each month.
+    proxy_provider: str = "none"  # none | webshare
+    webshare_proxy_urls: list[str] = Field(default_factory=list)
+    # Local/operator diagnostic only. Deployment intentionally does not
+    # forward this value; it pins same-egress anti-bot A/B canaries.
+    webshare_proxy_canary_slot: int | None = None
+    # Migration-only direct/static fallback. Direct Webshare addresses become
+    # stale when recurring replacements run; prefer WEBSHARE_PROXY_URLS.
     webshare_proxy_url: str = ""
-    decodo_proxy_url: str = ""
+    # Operator-only Webshare control-plane credential. The production deploy
+    # deliberately does not forward this into crawler containers.
+    webshare_api_key: str = ""
+    # Operator-side source allowlist used by ``crawler proxy-audit``. Values
+    # are compared in memory and never emitted in the report.
+    webshare_expected_client_ips: list[str] = Field(default_factory=list)
 
     # SSRF guard — comma-separated list of ``host`` or ``host:port``
     # entries that bypass the private-IP rejection in
@@ -190,6 +203,58 @@ class Settings(BaseSettings):
     # sweep hammers Vercel image transforms. Unsubmitted URLs stay
     # hash-mismatched and return next tick. Set to 0 to disable the cap.
     indexnow_max_urls_per_tick: int = 500
+
+    @model_validator(mode="after")
+    def _validate_proxy_settings(self) -> Settings:
+        self.proxy_provider = self.proxy_provider.strip().lower()
+        if self.proxy_provider not in {"none", "webshare"}:
+            raise ValueError("PROXY_PROVIDER must be one of: none, webshare")
+
+        if len(self.webshare_proxy_urls) > 64:
+            raise ValueError("WEBSHARE_PROXY_URLS must contain at most 64 entries")
+
+        normalized_urls: list[str] = []
+        for index, raw_url in enumerate(self.webshare_proxy_urls):
+            url = raw_url.strip()
+            try:
+                parsed = urlparse(url)
+                port = parsed.port
+            except ValueError as exc:
+                raise ValueError(f"WEBSHARE_PROXY_URLS entry {index} has an invalid port") from exc
+            if (
+                parsed.scheme not in {"http", "https", "socks5"}
+                or parsed.hostname != "p.webshare.io"
+                or port is None
+                or not parsed.username
+                or parsed.password is None
+                or parsed.query
+                or parsed.fragment
+                or parsed.path not in {"", "/"}
+            ):
+                raise ValueError(
+                    "WEBSHARE_PROXY_URLS entries must be credentialed "
+                    "p.webshare.io proxy URLs without path, query, or fragment"
+                )
+            normalized_urls.append(url.rstrip("/"))
+        if len(set(normalized_urls)) != len(normalized_urls):
+            raise ValueError("WEBSHARE_PROXY_URLS must not contain duplicate entries")
+        self.webshare_proxy_urls = normalized_urls
+
+        if self.webshare_proxy_canary_slot is not None:
+            available = len(normalized_urls) or (1 if self.webshare_proxy_url else 0)
+            if not 0 <= self.webshare_proxy_canary_slot < available:
+                raise ValueError("WEBSHARE_PROXY_CANARY_SLOT must select a configured proxy slot")
+
+        normalized_ips: list[str] = []
+        for raw_ip in self.webshare_expected_client_ips:
+            try:
+                normalized_ips.append(str(ip_address(raw_ip.strip())))
+            except ValueError as exc:
+                raise ValueError(
+                    "WEBSHARE_EXPECTED_CLIENT_IPS entries must be IPv4 or IPv6 addresses"
+                ) from exc
+        self.webshare_expected_client_ips = sorted(set(normalized_ips))
+        return self
 
     @model_validator(mode="after")
     def _validate_drain_retry_window(self) -> Settings:

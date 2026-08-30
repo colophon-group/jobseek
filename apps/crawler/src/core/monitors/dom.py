@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import codecs
 import io
+import json
 import random
 import re
 from collections.abc import Callable
@@ -62,6 +63,13 @@ _MAX_EXPLICIT_EMPTY_BODY_BYTES = 2 * 1024 * 1024
 _RESPONSE_FINGERPRINT_CONCURRENCY = 4
 _MAX_RESPONSE_FINGERPRINT_URLS = 100
 _MAX_RICH_ROWS_LIFECYCLE_URLS = 500
+_MAX_SCRIPT_JSON_NAME_LENGTH = 128
+_MAX_SCRIPT_JSON_FIELD_LENGTH = 128
+_MAX_SCRIPT_JSON_TEMPLATE_LENGTH = 2_048
+_MAX_SCRIPT_JSON_VALUE_LENGTH = 512
+_NYC_COUNCIL_JOBS_USER_AGENT = "jobseek-crawler (+https://jseek.co/)"
+
+_SCRIPT_JSON_NAME_RE = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
 _MAX_ORACLE_ADF_JOB_IDS = 500
 _MAX_ORACLE_ADF_ID_SCAN = 5_000
 
@@ -141,6 +149,13 @@ _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
 
 class _PartitionSnapshotChanged(ValueError):
     """A counted facet changed while its paginated URLs were collected."""
+
+
+@dataclass(frozen=True)
+class _ScriptJsonLinksConfig:
+    variable: str
+    url_field: str
+    url_template: str
 
 
 _YOUSTY_HOST = "www.yousty.ch"
@@ -1714,6 +1729,108 @@ def _extract_links_static(
                 urls.add(absolute)
         elif link_selector is not None or _matches_default_job_url(absolute):
             urls.add(absolute)
+    return urls
+
+
+def _validated_script_json_links(value: object) -> _ScriptJsonLinksConfig | None:
+    """Validate URL discovery from one JSON array assigned in an inline script."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {
+        "variable",
+        "url_field",
+        "url_template",
+    }:
+        raise ValueError(
+            "DOM monitor script_json_links must contain only variable, url_field, and url_template"
+        )
+
+    variable = value.get("variable")
+    if (
+        not isinstance(variable, str)
+        or len(variable) > _MAX_SCRIPT_JSON_NAME_LENGTH
+        or _SCRIPT_JSON_NAME_RE.fullmatch(variable) is None
+    ):
+        raise ValueError("DOM monitor script_json_links.variable must be a JS identifier")
+
+    url_field = value.get("url_field")
+    if (
+        not isinstance(url_field, str)
+        or not url_field
+        or len(url_field) > _MAX_SCRIPT_JSON_FIELD_LENGTH
+        or "\x00" in url_field
+    ):
+        raise ValueError("DOM monitor script_json_links.url_field must be a bounded field name")
+
+    url_template = value.get("url_template")
+    if (
+        not isinstance(url_template, str)
+        or len(url_template) > _MAX_SCRIPT_JSON_TEMPLATE_LENGTH
+        or url_template.count("{value}") != 1
+        or "\x00" in url_template
+    ):
+        raise ValueError(
+            "DOM monitor script_json_links.url_template must contain one {value} placeholder"
+        )
+    parsed_template = urlsplit(url_template.replace("{value}", "placeholder"))
+    if parsed_template.scheme not in {"http", "https"} or not parsed_template.netloc:
+        raise ValueError("DOM monitor script_json_links.url_template must be an absolute HTTP URL")
+
+    return _ScriptJsonLinksConfig(variable, url_field, url_template)
+
+
+def _extract_script_json_links(
+    html: str,
+    board_url: str,
+    config: _ScriptJsonLinksConfig,
+    url_matcher: re.Pattern | None,
+) -> set[str]:
+    """Extract canonical links from an authoritative inline JSON array.
+
+    The assignment must occur exactly once and every array item must produce one
+    unique, same-origin URL. Any provider drift therefore fails the monitor cycle
+    instead of publishing a partial inventory.
+    """
+    assignment = re.compile(rf"(?:const|let|var)\s+{re.escape(config.variable)}\s*=\s*")
+    matches = list(assignment.finditer(html))
+    if len(matches) != 1:
+        raise ValueError("DOM monitor script_json_links expected exactly one variable assignment")
+
+    payload_text = html[matches[0].end() :].lstrip()
+    try:
+        payload, _ = json.JSONDecoder().raw_decode(payload_text)
+    except json.JSONDecodeError as exc:
+        raise ValueError("DOM monitor script_json_links assignment is not valid JSON") from exc
+    if not isinstance(payload, list):
+        raise ValueError("DOM monitor script_json_links assignment must contain a JSON array")
+    if len(payload) > MAX_URLS:
+        raise ValueError("DOM monitor script_json_links array exceeds the URL cap")
+
+    urls: set[str] = set()
+    for index, item in enumerate(payload):
+        if not isinstance(item, dict):
+            raise ValueError(f"DOM monitor script_json_links item {index} must be a JSON object")
+        value = item.get(config.url_field)
+        if (
+            not isinstance(value, str)
+            or not value
+            or len(value) > _MAX_SCRIPT_JSON_VALUE_LENGTH
+            or "\x00" in value
+        ):
+            raise ValueError(f"DOM monitor script_json_links item {index} omitted its URL field")
+        url = config.url_template.replace("{value}", value)
+        parsed = urlsplit(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError(f"DOM monitor script_json_links item {index} produced an invalid URL")
+        if not same_origin(url, board_url):
+            raise ValueError(
+                f"DOM monitor script_json_links item {index} produced a cross-origin URL"
+            )
+        if url_matcher is not None and url_matcher.search(url) is None:
+            raise ValueError(f"DOM monitor script_json_links item {index} failed the URL filter")
+        if url in urls:
+            raise ValueError("DOM monitor script_json_links produced duplicate URLs")
+        urls.add(url)
     return urls
 
 
@@ -3458,6 +3575,54 @@ async def _paginate_partitioned_urls(
 # ---------------------------------------------------------------------------
 
 
+def _is_nyc_council_jobs_url(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme.casefold() == "https"
+        and (parsed.hostname or "").casefold() == "council.nyc.gov"
+        and parsed.username is None
+        and parsed.password is None
+        and port in {None, 443}
+        and parsed.path in {"/jobs", "/jobs/"}
+        and not parsed.query
+        and not parsed.fragment
+    )
+
+
+def _nyc_council_jobs_probe_config(html: str, url: str) -> dict | None:
+    """Return the fail-closed embedded-array preset for NYC Council jobs."""
+    if not _is_nyc_council_jobs_url(url) or "let jobAdArray" not in html or "post_name" not in html:
+        return None
+
+    script_json_links = {
+        "variable": "jobAdArray",
+        "url_field": "post_name",
+        "url_template": "https://council.nyc.gov/jobs/{value}/",
+    }
+    url_filter = r"^https://council\.nyc\.gov/jobs/[^/?#]+/$"
+    try:
+        config = _validated_script_json_links(script_json_links)
+        assert config is not None
+        urls = _extract_script_json_links(
+            html,
+            url,
+            config,
+            re.compile(url_filter),
+        )
+    except ValueError:
+        return None
+    return {
+        "urls": len(urls),
+        "script_json_links": script_json_links,
+        "url_filter": url_filter,
+        "request_headers": {"User-Agent": _NYC_COUNCIL_JOBS_USER_AGENT},
+    }
+
+
 def _oracle_adf_probe_config(html: str, url: str) -> dict | None:
     """Recognize Oracle ADF job lists whose rows expose only PPR actions."""
     if "Created by Oracle ADF" not in html:
@@ -3510,8 +3675,24 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     from src.core.monitors import fetch_page_text
 
     html = await fetch_page_text(url, client)
+    is_nyc_council_jobs = _is_nyc_council_jobs_url(url)
+    if not html and is_nyc_council_jobs:
+        from src.shared.http_retry import fetch_with_retry
+
+        html = await fetch_with_retry(
+            client,
+            url,
+            headers={"User-Agent": _NYC_COUNCIL_JOBS_USER_AGENT},
+            public_headers=True,
+            transient_403=True,
+            max_chars=None,
+        )
     if not html:
         return None
+
+    nyc_council_jobs = _nyc_council_jobs_probe_config(html, url)
+    if nyc_council_jobs is not None:
+        return nyc_council_jobs
 
     oracle_adf = _oracle_adf_probe_config(html, url)
     if oracle_adf is not None:
@@ -3658,6 +3839,20 @@ async def dom_discover(
     empty_state_name = "empty_states" if empty_states else "empty_selector"
     advertised_total = _validated_advertised_total_config(metadata.get("advertised_total"))
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
+    script_json_links = _validated_script_json_links(metadata.get("script_json_links"))
+    if script_json_links is not None and (
+        render
+        or actions
+        or pagination
+        or rich_rows is not None
+        or link_selector is not None
+        or configured_empty_states
+        or advertised_total is not None
+        or metadata.get("include_board_url")
+        or metadata.get("fetch_url_transform")
+    ):
+        raise ValueError("DOM monitor script_json_links supports static single-page discovery only")
+
     if oracle_adf_job_ids is not None:
         if not render:
             raise ValueError("DOM monitor oracle_adf_job_ids requires render=true")
@@ -3776,7 +3971,12 @@ async def dom_discover(
         combined = {**metadata, "_board_url": board_url}
 
         if pw is not None:
-            async with open_page(pw, combined, use_proxy=bool(metadata.get("proxy"))) as page:
+            async with open_page(
+                pw,
+                combined,
+                use_proxy=bool(metadata.get("proxy")),
+                target_url=board_url,
+            ) as page:
                 urls = await _extract_links_rendered(page, combined, url_matcher, client)
                 if configured_empty_states:
                     _validate_explicit_empty_states(
@@ -3806,7 +4006,12 @@ async def dom_discover(
 
             async with (
                 async_playwright() as p,
-                open_page(p, combined, use_proxy=bool(metadata.get("proxy"))) as page,
+                open_page(
+                    p,
+                    combined,
+                    use_proxy=bool(metadata.get("proxy")),
+                    target_url=board_url,
+                ) as page,
             ):
                 urls = await _extract_links_rendered(page, combined, url_matcher, client)
                 if configured_empty_states:
@@ -3856,7 +4061,9 @@ async def dom_discover(
                 # Rich rows are authoritative structured input. The shared
                 # 500k listing-preview limit can cut a complete trailing row
                 # and make a partial inventory look healthy.
-                max_chars=None if rich_rows is not None else 500_000,
+                max_chars=None
+                if rich_rows is not None or script_json_links is not None
+                else 500_000,
             )
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)
@@ -3927,7 +4134,15 @@ async def dom_discover(
                 log.warning("dom.truncated", total=len(jobs), cap=MAX_URLS)
                 return truncated_rich_result(jobs)
             return jobs
-        urls = _extract_links_static(html, fetch_board_url, url_matcher, link_selector)
+        if script_json_links is not None:
+            urls = _extract_script_json_links(
+                html,
+                board_url,
+                script_json_links,
+                url_matcher,
+            )
+        else:
+            urls = _extract_links_static(html, fetch_board_url, url_matcher, link_selector)
         if configured_empty_states:
             _validate_explicit_empty_states(html, configured_empty_states, urls, board_url)
         expected_total = None

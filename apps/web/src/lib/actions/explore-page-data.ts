@@ -284,19 +284,18 @@ export async function fetchExplorePageData(params: {
  *
  * Critically does NOT call :func:`getPreferences` (reads
  * ``cookies()``) or :func:`getGeoFromHeaders` (reads ``headers()``) —
- * both forces dynamic rendering and would silently break the page's
+ * both force dynamic rendering and would silently break the page's
  * ISR eligibility. Returns the same ``ExploreData`` shape with
  * anonymous defaults: EUR currency, no job-language filter, no geo
- * proximity bias. The client component conditionally re-fetches the
- * personalized variant via :func:`fetchExplorePageData` when the
- * ``logged_in`` hint cookie or any filter searchParams are present.
+ * proximity bias. The client component resolves preference- or filter-bearing
+ * views through the browser loader and scoped Typesense key. Semantic free
+ * text retains only the narrow geo-aware parser action.
  *
  * Net effect: anonymous visitors hitting ``/explore`` with no
  * filters get a CDN-cached prerendered page with embedded
- * ``initialData``, no Vercel function invocation. Logged-in users
- * still pay the function call (one fetch on mount, same as today).
- * Filter changes always go through ``fetchExplorePageData`` because the
- * defaults can't reflect them.
+ * ``initialData``, no Vercel function invocation. Logged-in users reuse the
+ * layout bootstrap they already need; Explore no longer invokes this full
+ * page-data action on mount.
  */
 export async function fetchExplorePageDefaults(params: {
   locale: string;

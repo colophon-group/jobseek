@@ -1,0 +1,170 @@
+{
+  "$id": "https://jobseek.dev/contracts/crawler/v1/chromium-service-config.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "active_session_ttl_ms": {
+      "maximum": 86400000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "backend": {
+      "const": "chromium"
+    },
+    "browser_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "browser_version": {
+      "pattern": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$",
+      "type": "string"
+    },
+    "cdp_client_version": {
+      "pattern": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$",
+      "type": "string"
+    },
+    "drop_all_capabilities": {
+      "const": true
+    },
+    "egress_policy_revision": {
+      "pattern": "^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$",
+      "type": "string"
+    },
+    "image_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "max_concurrency": {
+      "maximum": 1024,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_file_descriptors": {
+      "maximum": 1000000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_origin_operations": {
+      "maximum": 100000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_pids": {
+      "maximum": 32768,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_process_age_ms": {
+      "maximum": 604800000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_requests": {
+      "maximum": 100000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_rss_bytes": {
+      "maximum": 68719476736,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_sockets": {
+      "maximum": 65535,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_targets": {
+      "maximum": 1024,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_transfer_bytes": {
+      "maximum": 10995116277760,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "no_new_privileges": {
+      "const": true
+    },
+    "read_only_root": {
+      "const": true
+    },
+    "recycle_after_tasks": {
+      "maximum": 1000000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "run_as_gid": {
+      "maximum": 65535,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "run_as_uid": {
+      "maximum": 65535,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "seccomp_profile": {
+      "const": "runtime/default"
+    },
+    "service_lane": {
+      "const": "chromium"
+    },
+    "shutdown_grace_ms": {
+      "maximum": 60000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "socket_path": {
+      "allOf": [
+        {
+          "pattern": "^/run/jobseek/chromium/[0-9A-Za-z][0-9A-Za-z._-]{0,63}\\.sock$"
+        },
+        {
+          "not": {
+            "pattern": "\\.\\."
+          }
+        }
+      ],
+      "type": "string"
+    },
+    "writable_tmpfs_bytes": {
+      "maximum": 17179869184,
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "active_session_ttl_ms",
+    "backend",
+    "browser_digest",
+    "browser_version",
+    "cdp_client_version",
+    "drop_all_capabilities",
+    "egress_policy_revision",
+    "image_digest",
+    "max_concurrency",
+    "max_file_descriptors",
+    "max_origin_operations",
+    "max_pids",
+    "max_process_age_ms",
+    "max_requests",
+    "max_rss_bytes",
+    "max_sockets",
+    "max_targets",
+    "max_transfer_bytes",
+    "no_new_privileges",
+    "read_only_root",
+    "recycle_after_tasks",
+    "run_as_gid",
+    "run_as_uid",
+    "seccomp_profile",
+    "service_lane",
+    "shutdown_grace_ms",
+    "socket_path",
+    "writable_tmpfs_bytes"
+  ],
+  "title": "Dormant isolated Chromium service configuration v1",
+  "type": "object"
+}
