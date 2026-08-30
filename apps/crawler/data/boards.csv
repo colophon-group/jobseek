@@ -1042,6 +1042,7 @@ broadway-ventures,broadway-ventures-greenhouse,https://job-boards.greenhouse.io/
 broeder-ruckh-consulting-gmbh,broeder-ruckh-consulting-gmbh-join,https://join.com/companies/broeder-ruckhde,join,"{""slug"": ""broeder-ruckhde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 brookdale-senior-living,brookdale-senior-living-careers,https://ibmwjb.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 brooklinen,brooklinen-greenhouse,https://job-boards.greenhouse.io/brooklinen,greenhouse,"{""token"": ""brooklinen""}",skip,
+brookshires,brookshires-careers,https://brookshires.wd108.myworkdayjobs.com/bgc,workday,,workday,
 browser-use,browser-use-careers,https://www.ycombinator.com/companies/browser-use/jobs,dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 45000, ""url_filter"": ""/companies/browser-use/jobs/""}",json-ld,"{""render"": true, ""wait"": ""load"", ""timeout"": 45000}"
 browserbase,browserbase-ashby,https://jobs.ashbyhq.com/browserbase,ashby,"{""token"": ""browserbase""}",skip,
 brunswick-group,brunswick-group-greenhouse,https://job-boards.greenhouse.io/brunswickgroup,greenhouse,"{""token"": ""brunswickgroup""}",skip,
