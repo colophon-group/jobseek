@@ -8,9 +8,9 @@ from src.shared.response_fingerprint import same_origin_response
 
 
 def test_configured_public_headers_allow_representation_selection():
-    assert validated_public_request_headers(
-        {"X-Return-Format": "html"}, owner="test"
-    ) == {"X-Return-Format": "html"}
+    assert validated_public_request_headers({"X-Return-Format": "html"}, owner="test") == {
+        "X-Return-Format": "html"
+    }
 
 
 @pytest.mark.parametrize(

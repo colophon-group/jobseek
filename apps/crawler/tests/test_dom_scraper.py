@@ -161,6 +161,18 @@ class TestDomScraper:
         assert requested[0].headers["x-return-format"] == "html"
         assert "authorization" not in requested[0].headers
 
+    async def test_request_headers_reject_actions_that_enable_rendering(self):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "actions": [{"action": "dismiss_overlays"}],
+            "request_headers": {"X-Return-Format": "html"},
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="only when render=false"):
+                await scrape("https://gateway.example/jobs/42", config, client)
+
     async def test_fetch_url_transform_reads_gateway_without_changing_extraction(self):
         from src.core.scrapers.dom import scrape
 

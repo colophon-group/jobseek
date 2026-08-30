@@ -128,7 +128,7 @@ async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], boo
                 sleep=asyncio.sleep,
             )
         except PaginationFetchError as exc:
-            if exc.last_status != 429:
+            if exc.last_status != 429 or urls:
                 raise
             log.warning("workable.rate_limited_markdown_fallback", slug=slug)
             verified_empty = await _markdown_empty(slug, client)

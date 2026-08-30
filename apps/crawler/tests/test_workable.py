@@ -250,7 +250,16 @@ class TestDiscover:
                     200,
                     json={"results": [{"shortcode": "SC1"}], "nextPage": "next"},
                 )
-            return httpx.Response(429)
+            if request.method == "POST":
+                return httpx.Response(429)
+            return httpx.Response(
+                200,
+                text=(
+                    "- All open roles "
+                    "(GET `https://apply.workable.com/testco/jobs.md`): "
+                    "0 current openings\n"
+                ),
+            )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             board = {
@@ -261,9 +270,9 @@ class TestDiscover:
                 await discover(board, client)
 
         assert exc.value.last_status == 429
-        # One successful API page, four rate-limited API attempts, then the
-        # three-attempt fail-closed markdown fallback.
-        assert calls == 8
+        # A verified-empty fallback is authoritative only before any API page
+        # has been consumed; otherwise it could discard a partial inventory.
+        assert calls == 5
 
 
 class TestCanHandle:

@@ -1153,11 +1153,6 @@ async def scrape(
         config.get("request_headers"), owner="DOM scraper"
     )
 
-    if render and document_fallback is not None:
-        raise ValueError("DOM scraper document_fallback requires render=false")
-    if render and request_headers:
-        raise ValueError("DOM scraper request_headers are supported only when render=false")
-
     if not render and config.get("actions"):
         log.warning(
             "dom.misconfiguration",
@@ -1165,6 +1160,11 @@ async def scrape(
             detail="actions require render=true; overriding render to true",
         )
         render = True
+
+    if render and document_fallback is not None:
+        raise ValueError("DOM scraper document_fallback requires render=false")
+    if render and request_headers:
+        raise ValueError("DOM scraper request_headers are supported only when render=false")
 
     if render and same_origin_redirects:
         raise ValueError("DOM scraper same_origin_redirects requires render=false")
