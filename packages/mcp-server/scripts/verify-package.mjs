@@ -14,6 +14,7 @@ import {
   SEARCH_LANGUAGE_LIST_PATTERN,
   SEARCH_WORK_MODE_LIST_PATTERN,
   SEARCH_WORK_MODE_VALUES,
+  PUBLIC_WATCHLIST_DISCOVERY_SUNSET,
 } from "../dist/public-api-contract.js";
 
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
@@ -117,7 +118,6 @@ const expectedToolSchemas = {
     properties: [...PUBLIC_SEARCH_QUERY_PARAMETERS].sort(),
     required: [],
   },
-  search_watchlists: { properties: ["locale", "q"], required: [] },
   trigger_batch_ghost_analysis: {
     properties: ["companies"],
     required: ["companies"],
@@ -182,6 +182,7 @@ for (const name of ["sal", "exp"]) {
 }
 
 for (const [path, pathItem] of Object.entries(openApi.paths ?? {})) {
+  if (path === "/api/v1/watchlists") continue;
   const parameters = pathItem?.get?.parameters;
   assert(Array.isArray(parameters), `OpenAPI ${path} must define GET parameters`);
   const localeParameter = parameters.find(
@@ -202,6 +203,27 @@ for (const [path, pathItem] of Object.entries(openApi.paths ?? {})) {
   );
 }
 
+const retiredWatchlistOperation =
+  openApi.paths?.["/api/v1/watchlists"]?.get;
+assert(
+  retiredWatchlistOperation?.deprecated === true,
+  "OpenAPI must mark anonymous watchlist discovery as retired",
+);
+assert(
+  JSON.stringify(retiredWatchlistOperation?.parameters) === "[]",
+  "Retired watchlist discovery must ignore all former query parameters",
+);
+assert(
+  retiredWatchlistOperation?.responses?.["200"] === undefined &&
+    retiredWatchlistOperation?.responses?.["410"],
+  "OpenAPI must replace public watchlist results with the 410 contract",
+);
+assert(
+  retiredWatchlistOperation.responses["410"]?.headers?.Sunset?.schema?.const ===
+    PUBLIC_WATCHLIST_DISCOVERY_SUNSET,
+  "OpenAPI watchlist sunset must match the shared compatibility boundary",
+);
+
 const server = createServer("https://example.invalid");
 const client = new Client({ name: "jobseek-package-verifier", version: "1.0.0" });
 const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -213,10 +235,14 @@ try {
   ]);
 
   const { tools } = await client.listTools();
-  const retiredTools = ["get_discovery_results", "trigger_discovery_run"];
+  const retiredTools = [
+    "get_discovery_results",
+    "search_watchlists",
+    "trigger_discovery_run",
+  ];
   assert(
     retiredTools.every((name) => !tools.some((tool) => tool.name === name)),
-    "MCP tool registry must not restore the retired vendor-backed discovery tools",
+    "MCP tool registry must not restore retired discovery tools",
   );
   assert(
     JSON.stringify(tools.map(({ name }) => name).sort()) ===

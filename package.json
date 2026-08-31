@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.11",
-    "turbo": "^2.10.11"
+    "turbo": "^2.10.12"
   },
   "packageManager": "pnpm@10.30.0"
 }

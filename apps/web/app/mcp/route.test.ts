@@ -222,6 +222,23 @@ describe("/mcp instrumentation", () => {
     expect(_logEntry().rpc_method).toBe("resources/templates/list");
   });
 
+  it("classifies the retired search_watchlists tool as unknown", async () => {
+    mocks.handleMcpRequest.mockResolvedValueOnce(
+      new Response("ok", { status: 200 }),
+    );
+    await POST(
+      new Request("http://localhost/mcp", {
+        method: "POST",
+        body: JSON.stringify({
+          method: "tools/call",
+          params: { name: "search_watchlists" },
+        }),
+      }),
+    );
+
+    expect(_logEntry().tool).toBe("unknown");
+  });
+
   it("logs GET requests with body_bytes=0 and rpc_method=null", async () => {
     mocks.handleMcpRequest.mockResolvedValueOnce(new Response(null, { status: 405 }));
     const res = await GET(new Request("http://localhost/mcp"));

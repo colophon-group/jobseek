@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 6884,
-    "boards_sha256": "7d0a3742754cf0859f5b2b00966692cae0956b314c4e1f8fd8aab0e09f7164f6",
+    "boards_row_count": 6893,
+    "boards_sha256": "de8e5e27e90589cf16f1be4a3b7cc298a1689b6c4734c0d274fdc5df0bf7cef0",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "aec674d80cfdbbfc7aacc3363d62a1bbcafdd9a1995d06df4e712dde4f272bd6",
+  "manifest_sha256": "76635bee7eddddb87d1ed72fbd7e0ce60983d7f27b131d56dfd74a6c2c2124dc",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -5532,12 +5532,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "71af8679effa34adf4669829bff2a837eecd1ac6f02252dedf7c0ce91a3314de",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "439d326d84cc2533fb5787e81f1210444f36555cf2ef95c6d6338e38426c8eaf",
+      "digest_sha256": "3e5a3341922437d57931c4fc7ab66564f4626fe95be4e41248cf3241d74a9d30",
       "fixture": "synthetic.network_session.v1",
       "id": "registry.monitor.api_sniffer",
       "profile_kind": "registry",
-      "source_count": 313,
-      "source_refs_sha256": "52bb5489f700f3f95d70f3628c016253a0496ebbfe77fe44f25a6f86f68ecabd",
+      "source_count": 314,
+      "source_refs_sha256": "c9676231907c6df77d070202ccb13207afdef313dc7ba78079bb33cb91d16bf8",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -5728,12 +5728,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "b61980d4ade990d89845e0b22cf5f6bbb87454b9cd1e803e89d1fdf6c11795d4",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "e30c5989fd738719125d591a1fde28eae0a57c6106c65d884f03f339b6580bbc",
+      "digest_sha256": "bc34c239dfbb0c45239e2ba5d54214d2710426e2646b8b52f16908f3710d21e7",
       "fixture": "synthetic.network_session.v1",
       "id": "registry.scraper.api_sniffer",
       "profile_kind": "registry",
-      "source_count": 50,
-      "source_refs_sha256": "e87a5bed7e6f596ea242b6f34bc8ca46e2c29bd595ca8c9d16c424738ed0b67d",
+      "source_count": 51,
+      "source_refs_sha256": "edebd8a404f81232a2d5229707153e92eea678f7854f2e694a57e3784abbb43f",
       "status": "inventory",
       "surface": "scraper"
     },
@@ -5749,12 +5749,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "5a08da4785afa1c964a303d332bbded26bf22deb8d73751ad343279b74d02707",
       "crawler_type": "dom",
-      "digest_sha256": "545b3b92f75b77e0e3b7b0e560201bdcfcd20111be252d17aff8720dcdb11d4e",
+      "digest_sha256": "df862c205c6fe9d83182589340bb6919739ba1221917cb97177aa28627d6b366",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.scraper.dom",
       "profile_kind": "registry",
-      "source_count": 568,
-      "source_refs_sha256": "6b34f5d46d6f5cbf138097601690a92ee16dafd9b65119cf72a6d8c8564a9b5e",
+      "source_count": 569,
+      "source_refs_sha256": "66348098a7d651f407311ff778e6c53e23a36c38f4f6f8e85bfa4b27e6d454d6",
       "status": "inventory",
       "surface": "scraper"
     },

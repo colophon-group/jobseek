@@ -60,4 +60,14 @@ describe("createWatchlistFromHandoff", () => {
     }, mocks)).resolves.toEqual({ error: "invalid_companies" });
     expect(mocks.createWatchlist).not.toHaveBeenCalled();
   });
+
+  it("propagates the account-wide limit from the atomic create path", async () => {
+    mocks.getCompanyIdsBySlugs.mockResolvedValue(new Map());
+    mocks.createWatchlist.mockResolvedValue({ error: "limit_reached" });
+
+    await expect(createWatchlistFromHandoffWithDeps({
+      title: "Eleventh",
+      companySlugs: [],
+    }, mocks)).resolves.toEqual({ error: "limit_reached" });
+  });
 });
