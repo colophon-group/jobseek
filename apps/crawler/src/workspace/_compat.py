@@ -177,6 +177,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "practicematch",
     "taleo",
     "rippling",
+    "seek",
     "smartrecruiters",
     "softgarden",
     "umantis",
@@ -232,6 +233,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "pdf",
         "phuketall",
         "rippling",
+        "seek",
         "skip",
         "smartrecruiters",
         "taleo",
@@ -479,6 +481,17 @@ def detect_ats_from_url(url: str) -> str | None:
         )
     ):
         return "jobstreet"
+    if (
+        host in {"au.seek.com", "www.seek.com.au", "nz.seek.com", "www.seek.co.nz"}
+        and parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and parsed.path.rstrip("/") == "/jobs"
+        and not parsed.fragment
+        and re.fullmatch(r"advertiserid=\d{1,18}", parsed.query)
+    ):
+        return "seek"
     if (
         host.endswith(".icims.com")
         and host.count(".") == 2
@@ -844,6 +857,8 @@ def auto_scraper_type(
                 ]
             },
         )
+    if monitor_type == "seek":
+        return ("seek", None)
     if monitor_type == "headhunter":
         return (
             "headhunter",

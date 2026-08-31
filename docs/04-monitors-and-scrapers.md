@@ -70,6 +70,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `jobbank104` | URL-only | json-ld | 104 Job Bank server-rendered company listings, proxy-capable for Cloudflare challenges |
 | `jobdiva` | URL-only | api_sniffer | JobDiva candidate portals with token bootstrap and native range pagination |
 | `jobstreet` | Rich + enrichment | jobstreet | JobStreet employer-scoped public search plus GraphQL detail enrichment |
+| `seek` | URL-only | seek | SEEK AU/NZ advertiser-scoped public search plus GraphQL detail enrichment |
 | `jobvite` | URL-only | json-ld | Jobvite static listings, including branded career-site routes |
 | `pageup` | Rich + enrichment | dom | PageUp static listings with streamed total-checked pagination and DOM description enrichment |
 | `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
@@ -372,6 +373,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `pdf` | Static | Downloads PDFs and extracts text content |
 | `phuketall` | Static | Parses PhuketAll employer job pages from an exact HTTPS provider identity under a 2 MiB response cap, including canonical Thai field labels |
 | `rippling` | Static | Fetches Rippling detail API records |
+| `seek` | Static | Fetches SEEK AU/NZ vacancy detail GraphQL data |
 | `skip` | No fetch | Explicit no-scrape marker for rich monitors that already returned complete job data |
 | `smartrecruiters` | Static | Fetches SmartRecruiters detail API records |
 | `taleo` | Static | Parses the bounded `api.fillList` payload embedded in Taleo Enterprise detail pages |

@@ -501,6 +501,11 @@ def _build_comment(name: str, metadata: dict) -> str:
         jobs = metadata.get("jobs")
         label = f"JobStreet employer profile \u2014 company: {company_id}"
         return f"{label}, {jobs} jobs" if jobs is not None else label
+    if name == "seek":
+        advertiser_id = metadata.get("advertiser_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"SEEK advertiser board \u2014 advertiser: {advertiser_id}"
+        return f"{label}, {jobs} jobs" if jobs is not None else label
     if name == "infoniqa":
         employer = metadata.get("employer_name", "?")
         jobs = metadata.get("jobs")
@@ -1037,6 +1042,7 @@ from src.core.monitors import (  # noqa: E402
     recruiterbox,  # noqa: F401
     rippling,  # noqa: F401
     rss,  # noqa: F401
+    seek,  # noqa: F401
     seamlesshiring,  # noqa: F401
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401

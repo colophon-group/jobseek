@@ -113,6 +113,7 @@ Monitor Types (cheapest first):
   jobbank104        10      Job URLs          Auto-configured JSON-LD
   jobdiva           10      Job URLs          api_sniffer detail scraper
   jobstreet         10      Full/partial      Auto-enriched
+  seek              10      Job URLs          Auto-configured
   johdi             10      Job URLs          Auto-configured
   pageup            10      Full/partial      Auto-enriched DOM
   keka              10      Full job data     No (skipped)
@@ -2833,6 +2834,27 @@ jobstreet — JobStreet employer profile
   Detection:  ws probe shows "JobStreet employer profile — company: ID, N jobs"
   Zero jobs?  The employer-scoped search API must report totalCount=0."""
 
+MONITOR_SEEK = """\
+seek — SEEK AU/NZ advertiser board
+
+  Listing:  GET https://{market}/api/jobsearch/v5/search
+  Detail:   POST https://{market}/graphql (api_sniffer SEEK preset)
+  Returns:  Canonical https://{market}/job/{id} detail URLs
+  Scraper:  Auto-configured SEEK GraphQL detail scraper
+  Note:     Use an exact unfiltered /jobs?advertiserid={id} URL. Browser-facing
+            listings can return a 403 challenge on crawler egress; the public
+            first-party list and detail APIs remain available without browser
+            navigation. Australia and New Zealand markets are supported.
+
+  Config:
+    {"host": "au.seek.com", "advertiser_id": "9094357"}
+
+    host           Market host. Auto-filled from the board URL.
+    advertiser_id  Numeric SEEK advertiser ID. Auto-filled from the query.
+
+  Detection:  ws probe shows "SEEK advertiser board — advertiser: ID, N jobs"
+  Zero jobs?  The advertiser-scoped search API must report totalCount=0."""
+
 MONITOR_ICIMS = """\
 icims — iCIMS server-rendered listings
 
@@ -4194,6 +4216,7 @@ jobdiva — JobDiva candidate portal API monitor
 """,
     "computrabajo": MONITOR_COMPUTRABAJO,
     "jobstreet": MONITOR_JOBSTREET,
+    "seek": MONITOR_SEEK,
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,
     "papa_johns": MONITOR_PAPA_JOHNS,
@@ -4459,6 +4482,18 @@ jobstreet — JobStreet vacancy detail GraphQL scraper
             only the company-scoped listing pass.
 """
 
+SCRAPER_SEEK = """\
+seek — SEEK AU/NZ vacancy detail GraphQL scraper
+
+  API:      POST https://{market}/graphql
+  Returns:  title, complete HTML description, locations, employment type,
+            posting and expiry dates, plus advertiser metadata
+  Config:   None needed — derives the market and numeric ID from the job URL
+  Note:     Auto-configured when selecting the seek monitor. Direct browser
+            navigation is deliberately avoided because SEEK can return a 403
+            challenge while its anonymous first-party GraphQL query succeeds.
+"""
+
 SCRAPER_ONLYFY = """\
 onlyfy — Onlyfy/Prescreen server-rendered detail scraper
 
@@ -4703,6 +4738,7 @@ infor — Infor Global HR / Lawson CandidateSelfService detail scraper
     "linkedin": SCRAPER_LINKEDIN,
     "headhunter": SCRAPER_HEADHUNTER,
     "jobstreet": SCRAPER_JOBSTREET,
+    "seek": SCRAPER_SEEK,
     "paycom": SCRAPER_PAYCOM,
     "jazzhr": SCRAPER_JAZZHR,
     "paycor": SCRAPER_PAYCOR,
