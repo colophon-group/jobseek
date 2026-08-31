@@ -7,18 +7,11 @@ import {
   type WatchlistDetail,
   type WatchlistPostingEntry,
 } from "@/lib/services/watchlists";
-import { getCurrencyRates } from "@/lib/services/search";
-import { resolveLocationSlugs } from "@/lib/services/locations";
-import {
-  resolveOccupationSlugs,
-  resolveSenioritySlugs,
-  resolveTechnologySlugs,
-} from "@/lib/services/taxonomy";
 import { resolveJobLanguages } from "@/lib/job-languages";
-import { convertToEur } from "@/lib/salary";
 import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
 import { logExternalError } from "@/lib/safe-external-error";
 import type { WatchlistPostingsParams } from "@/lib/search/typesense-browser-watchlist";
+import { compileWatchlistMatcherSources } from "@/lib/services/watchlist-matcher";
 
 /**
  * Existing watchlist routes must return a usable degraded response before a
@@ -96,72 +89,27 @@ async function buildWatchlistPageDataUnbounded(
     jobLanguages,
     publicSnapshot,
   } = params;
-  const languages = resolveJobLanguages(jobLanguages, locale);
-  const filters = detail.filters;
-
-  const [locMap, occMap, senMap, techMap] = await Promise.all([
-    filters.locationSlugs?.length
-      ? resolveLocationSlugs(filters.locationSlugs, locale)
-      : Promise.resolve(new Map()),
-    filters.occupationSlugs?.length
-      ? resolveOccupationSlugs(filters.occupationSlugs, locale)
-      : Promise.resolve(new Map()),
-    filters.senioritySlugs?.length
-      ? resolveSenioritySlugs(filters.senioritySlugs, locale)
-      : Promise.resolve(new Map()),
-    filters.technologySlugs?.length
-      ? resolveTechnologySlugs(filters.technologySlugs)
-      : Promise.resolve(new Map()),
-  ]);
-
-  const resolvedLocations = (filters.locationSlugs ?? [])
-    .map((slug) => locMap.get(slug))
-    .filter((location): location is NonNullable<typeof location> => location != null)
-    .map((location) => ({
+  const [compiled] = await compileWatchlistMatcherSources([{
+    watchlistId: detail.id,
+    watchlistLabel: detail.title,
+    filters: detail.filters,
+    companyIds: detail.companies.map((company) => company.id),
+    locale,
+    jobLanguages,
+  }]);
+  const browserPostingFilters = compiled.candidateFilters;
+  const languages = browserPostingFilters.languages ?? resolveJobLanguages(jobLanguages, locale);
+  const resolvedLocations = compiled.resolvedLocations.map((location) => ({
       id: location.id,
       slug: location.slug,
       name: location.name,
       type: location.type as "macro" | "country" | "region" | "city",
       parentName: location.parentName ?? null,
     }));
-  const resolvedOccupations = (filters.occupationSlugs ?? [])
-    .map((slug) => occMap.get(slug))
-    .filter((occupation): occupation is NonNullable<typeof occupation> => occupation != null);
-  const resolvedSeniorities = (filters.senioritySlugs ?? [])
-    .map((slug) => senMap.get(slug))
-    .filter((seniority): seniority is NonNullable<typeof seniority> => seniority != null);
-  const resolvedTechnologies = (filters.technologySlugs ?? [])
-    .map((slug) => techMap.get(slug))
-    .filter((technology): technology is NonNullable<typeof technology> => technology != null);
-
-  const workModes = new Set(["onsite", "hybrid", "remote"] as const);
-  const validatedWorkMode = (filters.workMode ?? []).filter(
-    (mode): mode is "onsite" | "hybrid" | "remote" => workModes.has(mode),
-  );
-  const salaryCurrency = filters.salaryCurrency ?? "EUR";
-  const rates =
-    filters.salaryMin != null || filters.salaryMax != null
-      ? await getCurrencyRates()
-      : [];
-  const salaryMinEur = convertToEur(filters.salaryMin, salaryCurrency, rates);
-  const salaryMaxEur = convertToEur(filters.salaryMax, salaryCurrency, rates);
-
-  const browserPostingFilters = {
-    companyIds: filters.anyCompany ? [] : detail.companies.map((company) => company.id),
-    anyCompany: filters.anyCompany,
-    keywords: filters.keywords,
-    locationIds: resolvedLocations.map((location) => location.id),
-    occupationIds: resolvedOccupations.map((occupation) => occupation.id),
-    seniorityIds: resolvedSeniorities.map((seniority) => seniority.id),
-    technologyIds: resolvedTechnologies.map((technology) => technology.id),
-    workMode: validatedWorkMode.length > 0 ? validatedWorkMode : undefined,
-    employmentType: filters.employmentType?.length ? filters.employmentType : undefined,
-    salaryMin: salaryMinEur,
-    salaryMax: salaryMaxEur,
-    experienceMin: filters.experienceMin,
-    experienceMax: filters.experienceMax,
-    languages,
-  } satisfies Omit<WatchlistPostingsParams, "offset" | "limit">;
+  const resolvedOccupations = compiled.resolvedOccupations;
+  const resolvedSeniorities = compiled.resolvedSeniorities;
+  const resolvedTechnologies = compiled.resolvedTechnologies;
+  browserPostingFilters satisfies Omit<WatchlistPostingsParams, "offset" | "limit">;
   const sharedCountsParams = {
     ...browserPostingFilters,
     abortSignal,
