@@ -73,4 +73,33 @@ describe("watchlists service tier boundary (#3332)", () => {
       /export async function getWatchlistByUserAndSlug\b/,
     );
   });
+
+  it("keeps every mutation entrypoint private and copy authorization visibility-free", () => {
+    const actionSrc = readSource("src/lib/actions/watchlists.ts");
+    const serviceSrc = readSource("src/lib/services/watchlists.ts");
+    const handoffSrc = readSource("src/lib/services/watchlist-handoff.ts");
+    const copyPolicySrc = readSource("src/lib/watchlist-copy-policy.ts");
+
+    expect(actionSrc).toContain("return service.createWatchlist(...args);");
+    expect(actionSrc).toContain("return service.updateWatchlist(...args);");
+    expect(actionSrc).toContain("return service.copyWatchlist(...args);");
+
+    expect(serviceSrc).toContain(
+      'if (params.isPublic === true) return { error: "visibility_locked" };',
+    );
+    expect(serviceSrc).toContain(
+      'if (params.isPublic !== undefined) return { error: "visibility_locked" };',
+    );
+    expect(serviceSrc).not.toContain("isPublic: params.isPublic");
+    expect(serviceSrc).not.toContain("updates.isPublic");
+    expect(serviceSrc).not.toContain("copy_watchlist_mirror_count");
+    expect(serviceSrc).not.toContain("_getWatchlistMirrorCount");
+
+    expect(handoffSrc).not.toContain("isPublic");
+    expect(copyPolicySrc).not.toContain("source.isPublic");
+    expect(copyPolicySrc).toContain('case "owned"');
+    expect(copyPolicySrc).toContain('case "grant"');
+    expect(copyPolicySrc).toContain('case "share"');
+    expect(copyPolicySrc).toContain('case "template"');
+  });
 });

@@ -279,28 +279,31 @@ beforeEach(() => {
 });
 
 describe("#3114 — watchlist multi-table writes are atomic", () => {
-  it("commits parent and company rows before registering post-commit work", async () => {
+  it("commits a private parent and company rows atomically", async () => {
     const audit = vi.spyOn(console, "info").mockImplementation(() => {});
     try {
       await expect(createWatchlist({
         title: "New watchlist",
         companyIds: ["company-1"],
-        isPublic: true,
       })).resolves.toEqual({ id: "wl-new", slug: "new-watchlist" });
 
       expect(mocks.snapshot()).toEqual({
-        watchlists: [expect.objectContaining({ id: "wl-new", title: "New watchlist" })],
+        watchlists: [expect.objectContaining({
+          id: "wl-new",
+          title: "New watchlist",
+          isPublic: false,
+        })],
         companies: [{ watchlistId: "wl-new", companyId: "company-1" }],
       });
       expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 0 });
       expect(audit).toHaveBeenCalledTimes(1);
-      expect(mocks.afterFn).toHaveBeenCalledTimes(2);
+      expect(mocks.afterFn).not.toHaveBeenCalled();
     } finally {
       audit.mockRestore();
     }
   });
 
-  it("retries a slug conflict in a fresh transaction and emits hooks once", async () => {
+  it("retries a slug conflict in a fresh transaction and audits once", async () => {
     const audit = vi.spyOn(console, "info").mockImplementation(() => {});
     mocks.queueRootSelect([], [{ slug: "new-watchlist" }]);
     mocks.failSlugInserts(1);
@@ -309,7 +312,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       await expect(createWatchlist({
         title: "New watchlist",
         companyIds: ["company-1"],
-        isPublic: true,
       })).resolves.toEqual({ id: "wl-new", slug: "new-watchlist-2" });
 
       expect(mocks.snapshot()).toEqual({
@@ -318,7 +320,25 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       });
       expect(mocks.calls).toEqual({ transactions: 2, rollbacks: 1 });
       expect(audit).toHaveBeenCalledTimes(1);
-      expect(mocks.afterFn).toHaveBeenCalledTimes(2);
+      expect(mocks.afterFn).not.toHaveBeenCalled();
+    } finally {
+      audit.mockRestore();
+    }
+  });
+
+  it("rejects a legacy public create before capacity or transaction work", async () => {
+    const audit = vi.spyOn(console, "info").mockImplementation(() => {});
+    try {
+      await expect(createWatchlist({
+        title: "Must stay private",
+        companyIds: ["company-1"],
+        isPublic: true,
+      })).resolves.toEqual({ error: "visibility_locked" });
+
+      expect(mocks.snapshot()).toEqual({ watchlists: [], companies: [] });
+      expect(mocks.calls).toEqual({ transactions: 0, rollbacks: 0 });
+      expect(mocks.afterFn).not.toHaveBeenCalled();
+      expect(audit).not.toHaveBeenCalled();
     } finally {
       audit.mockRestore();
     }
@@ -435,15 +455,48 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     expect(mocks.afterFn).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { current: false, requested: true },
+    { current: true, requested: false },
+  ])(
+    "rejects the visibility update from $current to $requested before mutation work",
+    async ({ current, requested }) => {
+      const originalState = {
+        watchlists: [{
+          id: WATCHLIST_ID,
+          userId: USER_ID,
+          slug: "existing",
+          title: "Existing",
+          description: null,
+          isPublic: current,
+          filters: {},
+        }],
+        companies: [],
+      };
+      mocks.setState(originalState);
+      mocks.queueRootSelect([{ ...originalState.watchlists[0] }]);
+
+      await expect(updateWatchlist({
+        watchlistId: WATCHLIST_ID,
+        description: "Must not partially apply",
+        isPublic: requested,
+      })).resolves.toEqual({ error: "visibility_locked" });
+
+      expect(mocks.snapshot()).toEqual(originalState);
+      expect(mocks.calls).toEqual({ transactions: 0, rollbacks: 0 });
+      expect(mocks.afterFn).not.toHaveBeenCalled();
+    },
+  );
+
   it("rolls back the destination watchlist when copied company rows fail", async () => {
     const originalState = {
       watchlists: [{
         id: WATCHLIST_ID,
-        userId: "source-owner",
+        userId: USER_ID,
         slug: "source",
         title: "Source",
         description: null,
-        isPublic: true,
+        isPublic: false,
         filters: {},
       }],
       companies: [{ watchlistId: WATCHLIST_ID, companyId: "company-1" }],
@@ -462,8 +515,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     expect(mocks.afterFn).not.toHaveBeenCalled();
   });
 
-  it("copies a cross-user public source when the destination has capacity", async () => {
-    const audit = vi.spyOn(console, "info").mockImplementation(() => {});
+  it("fails closed for a cross-user source despite a legacy public flag", async () => {
     const source = {
       id: WATCHLIST_ID,
       userId: "source-owner",
@@ -484,38 +536,92 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     }));
     mocks.setState({ watchlists: [source, ...destinationRows], companies: [] });
     mocks.queueRootSelect([{ ...source }]);
+    await expect(copyWatchlist(WATCHLIST_ID)).resolves.toEqual({
+      error: "not_found",
+    });
+
+    expect(mocks.snapshot().watchlists).toEqual([source, ...destinationRows]);
+    expect(mocks.calls).toEqual({ transactions: 0, rollbacks: 0 });
+    expect(mocks.afterFn).not.toHaveBeenCalled();
+  });
+
+  it("atomically duplicates an owned source with provenance and source-kind audit", async () => {
+    const audit = vi.spyOn(console, "info").mockImplementation(() => {});
+    const source = {
+      id: WATCHLIST_ID,
+      userId: USER_ID,
+      slug: "source",
+      title: "Owned source",
+      description: "Private filters",
+      isPublic: false,
+      filters: { keywords: ["engineer"] },
+    };
+    const destinationRows = Array.from({ length: 8 }, (_, index) => ({
+      id: `destination-${index}`,
+      userId: USER_ID,
+      slug: `destination-${index}`,
+      title: `Destination ${index}`,
+      description: null,
+      isPublic: false,
+      filters: {},
+    }));
+    mocks.setState({
+      watchlists: [source, ...destinationRows],
+      companies: [{ watchlistId: WATCHLIST_ID, companyId: "company-1" }],
+    });
+    mocks.queueRootSelect([{ ...source }]);
     mocks.setNextWatchlistId("wl-copy");
 
     try {
       await expect(copyWatchlist(WATCHLIST_ID)).resolves.toEqual({
         id: "wl-copy",
-        slug: "shared-source",
+        slug: "owned-source",
       });
 
-      const rows = mocks.snapshot().watchlists;
-      expect(rows.filter((row) => row.userId === USER_ID)).toHaveLength(10);
-      expect(rows).toContainEqual(expect.objectContaining({
+      const state = mocks.snapshot();
+      expect(state.watchlists.filter((row) => row.userId === USER_ID)).toHaveLength(10);
+      expect(state.watchlists).toContainEqual(expect.objectContaining({
         id: "wl-copy",
         userId: USER_ID,
-        title: "Shared source",
+        title: "Owned source",
+        description: "Private filters",
+        isPublic: false,
+        filters: { keywords: ["engineer"] },
         sourceWatchlistId: WATCHLIST_ID,
       }));
+      expect(state.companies).toContainEqual({
+        watchlistId: "wl-copy",
+        companyId: "company-1",
+      });
+      expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 0 });
+      expect(mocks.afterFn).toHaveBeenCalledTimes(1);
+
+      const payload = JSON.parse(audit.mock.calls[0][0] as string) as Record<string, unknown>;
+      expect(payload).toMatchObject({
+        action: "watchlist.copy",
+        watchlist_id: "wl-copy",
+        copy_source_kind: "owned",
+        is_public_after: false,
+      });
+      expect(JSON.stringify(payload)).not.toContain(USER_ID);
+      expect(JSON.stringify(payload)).not.toContain("engineer");
+      expect(JSON.stringify(payload)).not.toContain(WATCHLIST_ID);
     } finally {
       audit.mockRestore();
     }
   });
 
-  it("applies copy capacity to the destination owner, not the cross-user source", async () => {
+  it("applies copy capacity to the destination owner independently of source authorization", async () => {
     const source = {
       id: WATCHLIST_ID,
-      userId: "source-owner",
+      userId: USER_ID,
       slug: "source",
       title: "Shared source",
       description: null,
-      isPublic: true,
+      isPublic: false,
       filters: {},
     };
-    const destinationRows = Array.from({ length: 10 }, (_, index) => ({
+    const destinationRows = Array.from({ length: 9 }, (_, index) => ({
       id: `destination-${index}`,
       userId: USER_ID,
       slug: `destination-${index}`,
@@ -538,11 +644,11 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
   it("rechecks copy authorization inside the transaction", async () => {
     mocks.queueRootSelect([{
       id: WATCHLIST_ID,
-      userId: "source-owner",
+      userId: USER_ID,
       slug: "source",
       title: "Source",
       description: null,
-      isPublic: true,
+      isPublic: false,
       filters: {},
     }]);
 
@@ -553,24 +659,24 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     expect(mocks.afterFn).not.toHaveBeenCalled();
   });
 
-  it("rejects a source that becomes private before the copy transaction", async () => {
+  it("rejects a source whose ownership changes before the copy transaction", async () => {
     mocks.setState({
       watchlists: [{
         id: WATCHLIST_ID,
-        userId: "source-owner",
+        userId: "different-owner",
         slug: "source",
         title: "Source",
         description: null,
-        isPublic: false,
+        isPublic: true,
         filters: {},
       }],
       companies: [],
     });
     mocks.queueRootSelect([{
-      userId: "source-owner",
+      userId: USER_ID,
       title: "Source",
       description: null,
-      isPublic: true,
+      isPublic: false,
       filters: {},
     }]);
 
