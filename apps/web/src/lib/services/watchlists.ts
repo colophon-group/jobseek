@@ -24,7 +24,10 @@ import {
   createWithinWatchlistLimit,
   WatchlistLimitReachedError,
 } from "@/lib/watchlist-limit";
-import { canCopyWatchlistSource } from "@/lib/watchlist-copy-policy";
+import {
+  authorizeWatchlistCopySource,
+  type WatchlistCopySourceKind,
+} from "@/lib/watchlist-copy-policy";
 import {
   generateUniqueSlug,
   insertWatchlistWithUniqueSlug,
@@ -204,6 +207,7 @@ type WatchlistAuditPayload = {
   slug_after?: string | null;
   is_public_before?: boolean | null;
   is_public_after?: boolean | null;
+  copy_source_kind?: WatchlistCopySourceKind;
   company_count_delta?: number | null;
 };
 
@@ -242,6 +246,12 @@ export async function createWatchlist(params: {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
 
+  // Bounded compatibility for callers that still send the retired field:
+  // false is harmless, but an attempt to create a public row fails before the
+  // slug lookup, capacity lock, or transaction. All persisted creates below
+  // are private by construction.
+  if (params.isPublic === true) return { error: "visibility_locked" };
+
   // Slug allocation is concurrency-safe: `insertWatchlistWithUniqueSlug`
   // wraps the INSERT in a retry loop that recovers from the SELECT-then-
   // INSERT race on `idx_wl_user_slug` (#3201). Two browser tabs (or a
@@ -266,7 +276,7 @@ export async function createWatchlist(params: {
               slug: candidate,
               title: params.title,
               description: params.description ?? null,
-              isPublic: params.isPublic ?? false,
+              isPublic: false,
               filters: { anyCompany: true, ...params.filters },
             })
             .returning({ id: watchlist.id });
@@ -291,15 +301,6 @@ export async function createWatchlist(params: {
   if (!inserted) return { error: "limit_reached" };
   const { row, slug } = inserted;
 
-  // Typesense + IndexNow hook: upsert if public and non-trivial.
-  // Wrapped in after() so the registration is synchronous in the
-  // request scope — calling notifyIndexNow from a detached .then()
-  // chain (the previous shape) silently broke because next/server's
-  // after() requires a live request context to attach work.
-  const isPublic = params.isPublic ?? false;
-  const mergedFilters = { anyCompany: true, ...params.filters };
-  const trivial = isTrivialWatchlist(mergedFilters, params.companyIds.length);
-
   _logWatchlistAudit({
     action: "watchlist.create",
     userId,
@@ -307,42 +308,9 @@ export async function createWatchlist(params: {
     slug_before: null,
     slug_after: slug,
     is_public_before: null,
-    is_public_after: isPublic,
+    is_public_after: false,
     company_count_delta: params.companyIds.length,
   });
-
-  // Cache invalidation runs unconditionally for public watchlists
-  // (even trivial ones): if the URL was visited before the watchlist
-  // existed, the page-level `'use cache'` may hold a null-detail
-  // noindex render that needs busting. Trivial watchlists don't go
-  // into Typesense / IndexNow (those flows are gated on !trivial).
-  if (isPublic) {
-    after(async () => {
-      try {
-        await _invalidateWatchlistCaches(userId, [slug]);
-      } catch (err) {
-        logExternalError("error", { service: "redis", operation: "create_watchlist_invalidate" }, err);
-      }
-    });
-  }
-
-  if (isPublic && !trivial) {
-    after(async () => {
-      try {
-        await _reindexPublicWatchlist(userId, {
-          id: row.id,
-          slug,
-          title: params.title,
-          description: params.description,
-          company_count: params.companyIds.length,
-          filters: mergedFilters,
-          logLabel: "createWatchlist",
-        });
-      } catch (err) {
-        logExternalError("error", { service: "external_http", operation: "create_watchlist_hook" }, err);
-      }
-    });
-  }
 
   return { id: row.id, slug };
 }
@@ -391,6 +359,11 @@ export async function updateWatchlist(params: {
 
   if (!wl || wl.userId !== userId) return { error: "not_found" };
 
+  // Visibility is no longer mutable through the domain service. Keep the
+  // field in the input temporarily so the backend can fail closed while the
+  // separate UI cutover removes legacy toggles.
+  if (params.isPublic !== undefined) return { error: "visibility_locked" };
+
   let newSlug = wl.slug;
   const updates: Record<string, unknown> = {};
 
@@ -410,8 +383,6 @@ export async function updateWatchlist(params: {
   }
   if (params.description !== undefined) updates.description = params.description;
   if (params.filters !== undefined) updates.filters = params.filters;
-  if (params.isPublic !== undefined) updates.isPublic = params.isPublic;
-
   if (Object.keys(updates).length > 0 || params.companyIds !== undefined) {
     await db.transaction(async (tx) => {
       if (params.companyIds !== undefined) {
@@ -456,7 +427,7 @@ export async function updateWatchlist(params: {
   // after the response is flushed but before Vercel terminates the
   // function.
   const wasPublic = wl.isPublic;
-  const nowPublic = params.isPublic !== undefined ? params.isPublic : wasPublic;
+  const nowPublic = wasPublic;
   const newFilters = params.filters !== undefined
     ? params.filters
     : (wl.filters ?? {}) as WatchlistFilters;
@@ -481,8 +452,9 @@ export async function updateWatchlist(params: {
       // Bust both cache layers so the next read of the page (and its
       // OG meta + JSON-LD) reflects the edit. Pass both old + new slug:
       // a rename leaves the old URL pointing at a stale cached entry
-      // until its TTL expires. Privacy toggles + filter/companies edits
-      // also flow through here. See cache-components.md "Layered TTL".
+      // until its TTL expires. Filter/company edits to grandfathered public
+      // rows also flow through here until migration. See cache-components.md
+      // "Layered TTL".
       const slugsToInvalidate = newSlug !== wl.slug ? [wl.slug, newSlug] : [wl.slug];
       await _invalidateWatchlistCaches(userId, slugsToInvalidate);
 
@@ -580,24 +552,29 @@ export async function copyWatchlist(
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
 
+  // The server action exposes only owner duplication today. Future verified
+  // grant/share/template entrypoints can select another source kind, but must
+  // still pass through the policy recheck and destination transaction below.
+  const requestedSourceKind: WatchlistCopySourceKind = "owned";
+
   const [source] = await db
     .select({
       title: watchlist.title,
-      description: watchlist.description,
-      filters: watchlist.filters,
-      isPublic: watchlist.isPublic,
       userId: watchlist.userId,
     })
     .from(watchlist)
     .where(eq(watchlist.id, watchlistId))
     .limit(1);
 
-  if (!source || !canCopyWatchlistSource(source, userId)) {
+  const sourceAuthorization = source
+    ? authorizeWatchlistCopySource(source, userId, requestedSourceKind)
+    : null;
+  if (!sourceAuthorization) {
     return { error: "not_found" };
   }
 
   // Same race shape as createWatchlist (#3201): two fast clicks of the
-  // "Copy" button on a public watchlist used to race the SELECT-then-
+  // "Copy" button on a watchlist used to race the SELECT-then-
   // INSERT slug pick and crash the loser. The helper retries on a
   // `idx_wl_user_slug` 23505. As in create, each retry attempt owns a
   // fresh transaction so a rejected candidate never poisons the next. Re-read
@@ -617,7 +594,6 @@ export async function copyWatchlist(
                 title: watchlist.title,
                 description: watchlist.description,
                 filters: watchlist.filters,
-                isPublic: watchlist.isPublic,
                 userId: watchlist.userId,
               })
               .from(watchlist)
@@ -625,10 +601,14 @@ export async function copyWatchlist(
               .for("share")
               .limit(1);
 
-            if (
-              !currentSource
-              || !canCopyWatchlistSource(currentSource, userId)
-            ) {
+            const currentAuthorization = currentSource
+              ? authorizeWatchlistCopySource(
+                currentSource,
+                userId,
+                sourceAuthorization.sourceKind,
+              )
+              : null;
+            if (!currentAuthorization) {
               throw new WatchlistCopySourceUnavailableError();
             }
 
@@ -662,7 +642,11 @@ export async function copyWatchlist(
               );
             }
 
-            return { row: r, companies };
+            return {
+              row: r,
+              companies,
+              sourceKind: currentAuthorization.sourceKind,
+            };
           }),
         ),
     );
@@ -677,7 +661,7 @@ export async function copyWatchlist(
   }
 
   const { row: copyResult, slug } = inserted;
-  const { row, companies } = copyResult;
+  const { row, companies, sourceKind } = copyResult;
 
   _logWatchlistAudit({
     action: "watchlist.copy",
@@ -687,6 +671,7 @@ export async function copyWatchlist(
     slug_after: slug,
     is_public_before: null,
     is_public_after: false,
+    copy_source_kind: sourceKind,
     company_count_delta: companies.length,
   });
 
@@ -706,19 +691,8 @@ export async function copyWatchlist(
     }
   });
 
-  // Copies now default to private, so they must not enter Typesense,
-  // sitemaps, or IndexNow until the owner explicitly makes them public.
-
-  // 2. Update source watchlist's mirror_count (increment). No IndexNow
-  // here — the source URL hasn't changed visible content.
-  after(async () => {
-    try {
-      const count = await _getWatchlistMirrorCount(watchlistId);
-      tsUpdateWatchlistField(watchlistId, { mirror_count: count });
-    } catch (err) {
-      logExternalError("error", { service: "typesense", operation: "copy_watchlist_mirror_count" }, err);
-    }
-  });
+  // Copies are private by construction, so they never enter Typesense,
+  // sitemaps, or IndexNow.
 
   return { id: row.id, slug };
 }
@@ -2576,16 +2550,4 @@ async function _countWatchlistCompanies(watchlistId: string): Promise<number> {
 async function _syncWatchlistCompanyCountToTypesense(watchlistId: string): Promise<void> {
   const count = await _countWatchlistCompanies(watchlistId);
   tsUpdateWatchlistField(watchlistId, { company_count: count });
-}
-
-/** Get the mirror count for a watchlist (number of copies). */
-async function _getWatchlistMirrorCount(watchlistId: string): Promise<number> {
-  const [row] = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; cnt: number }>(
-        sql`SELECT count(*)::int AS cnt FROM watchlist WHERE source_watchlist_id = ${watchlistId}`,
-      ),
-    { label: `watchlistMirrorCount[${watchlistId}]` },
-  );
-  return (row as unknown as { cnt: number })?.cnt ?? 0;
 }
