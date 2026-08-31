@@ -214,19 +214,28 @@ class TestDiscover:
             "Workable llms.txt advertises zero current openings"
         )
 
-    async def test_rate_limit_rejects_positive_markdown_inventory(self, monkeypatch):
+    async def test_rate_limit_falls_back_to_verified_positive_markdown(self, monkeypatch):
         monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
 
         def handler(request):
             if request.method == "POST":
                 return httpx.Response(429)
-            assert str(request.url).endswith("/testco/llms.txt")
+            if str(request.url).endswith("/testco/llms.txt"):
+                return httpx.Response(
+                    200,
+                    text=(
+                        "- All open roles "
+                        "(GET `https://apply.workable.com/testco/jobs.md`): "
+                        "2 current openings\n"
+                    ),
+                )
+            assert str(request.url).endswith("/testco/jobs.md")
             return httpx.Response(
                 200,
                 text=(
-                    "- All open roles "
-                    "(GET `https://apply.workable.com/testco/jobs.md`): "
-                    "2 current openings\n"
+                    "| Title | Details |\n"
+                    "| One | [View](https://apply.workable.com/testco/jobs/view/SC1.md) |\n"
+                    "| Two | [View](https://apply.workable.com/testco/jobs/view/SC2.md) |\n"
                 ),
             )
 
@@ -235,7 +244,42 @@ class TestDiscover:
                 "board_url": "https://apply.workable.com/testco",
                 "metadata": {"token": "testco"},
             }
-            with pytest.raises(ValueError, match="positive markdown inventories"):
+            urls = await discover(board, client)
+
+        assert urls == {
+            "https://apply.workable.com/testco/j/SC1/",
+            "https://apply.workable.com/testco/j/SC2/",
+        }
+
+    async def test_rate_limit_rejects_partial_markdown_inventory(self, monkeypatch):
+        monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
+
+        def handler(request):
+            if request.method == "POST":
+                return httpx.Response(429)
+            if str(request.url).endswith("/testco/llms.txt"):
+                return httpx.Response(
+                    200,
+                    text=(
+                        "- All open roles "
+                        "(GET `https://apply.workable.com/testco/jobs.md`): "
+                        "2 current openings\n"
+                    ),
+                )
+            return httpx.Response(
+                200,
+                text=(
+                    "| Title | Details |\n"
+                    "| One | [View](https://apply.workable.com/testco/jobs/view/SC1.md) |\n"
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://apply.workable.com/testco",
+                "metadata": {"token": "testco"},
+            }
+            with pytest.raises(ValueError, match="inventory count mismatch"):
                 await discover(board, client)
 
     async def test_mid_pagination_429_fails_closed(self, monkeypatch):
