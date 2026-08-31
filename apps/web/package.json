@@ -58,7 +58,7 @@
     "@upstash/redis": "^1.38.3",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "better-auth": "^1.7.2",
+    "better-auth": "^1.7.1",
     "csv-parse": "^7.0.2",
     "dompurify": "^3.4.14",
     "drizzle-orm": "^0.45.2",
