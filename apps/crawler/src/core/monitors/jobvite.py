@@ -257,6 +257,7 @@ async def _discover_search_pages(
     urls: set[str] = set()
     pages_fetched = 0
     for category in sorted(categories):
+        category_urls: set[str] = set()
         expected_total: int | None = None
         page_size: int | None = None
         page = 0
@@ -300,10 +301,15 @@ async def _discover_search_pages(
                 or len(page_jobs) != expected_end - expected_start + 1
             ):
                 raise ValueError(f"Jobvite category pagination drifted: {page_url}")
+            if category_urls & page_jobs:
+                raise ValueError(f"Jobvite category pagination repeated jobs: {page_url}")
+            category_urls.update(page_jobs)
             urls.update(page_jobs)
             if len(urls) > MAX_JOBS:
                 raise ValueError(f"Jobvite listing exceeded the {MAX_JOBS:,}-job safety cap")
             if expected_end == expected_total:
+                if len(category_urls) != expected_total:
+                    raise ValueError(f"Jobvite category pagination drifted: {page_url}")
                 break
 
             expected_next = _SearchPage(category=category, page=page + 1)

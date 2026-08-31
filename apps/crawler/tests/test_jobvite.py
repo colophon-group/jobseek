@@ -332,6 +332,45 @@ class TestMonitor:
             with pytest.raises(ValueError, match="pagination drifted"):
                 await discover({"board_url": LISTING_URL}, client)
 
+    async def test_category_pagination_fails_closed_on_repeated_rows(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == f"/{TENANT}/search":
+                page = int(request.url.params["p"])
+                if page == 0:
+                    return httpx.Response(
+                        200,
+                        text=_search_listing(
+                            "oaGwAfwG",
+                            "o57bAfwH",
+                            category="Nursing",
+                            start=1,
+                            end=2,
+                            total=3,
+                            next_page=1,
+                        ),
+                        request=request,
+                    )
+                return httpx.Response(
+                    200,
+                    text=_search_listing(
+                        "o57bAfwH",
+                        category="Nursing",
+                        start=3,
+                        end=3,
+                        total=3,
+                    ),
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                text=_listing(extra=f'<a href="/{TENANT}/search?c=Nursing&amp;p=0">Show More</a>'),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="repeated jobs"):
+                await discover({"board_url": LISTING_URL}, client)
+
     async def test_marketing_or_cross_tenant_page_fails_not_empty(self):
         transport = httpx.MockTransport(
             lambda request: httpx.Response(
