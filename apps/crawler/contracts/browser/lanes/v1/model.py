@@ -270,12 +270,14 @@ def _parse_decimal(token: str) -> float:
 
 
 def parse_document(raw: bytes) -> Any:
-    """Strictly parse one canonical JSON document; never reflect parser input."""
+    """Parse canonical runtime bytes, reserving one final LF for a corpus envelope."""
     if not isinstance(raw, bytes) or len(raw) > MAX_DOCUMENT_BYTES:
         raise ContractError("invalid_input")
+    has_final_lf = raw.endswith(b"\n")
+    payload = raw[:-1] if has_final_lf else raw
     try:
         value = json.loads(
-            raw.decode("utf-8"),
+            payload.decode("utf-8"),
             object_pairs_hook=_strict_object,
             parse_constant=_reject_constant,
             parse_float=_parse_decimal,
@@ -284,12 +286,19 @@ def parse_document(raw: bytes) -> Any:
     except (UnicodeDecodeError, json.JSONDecodeError, ContractError):
         raise ContractError("invalid_input") from None
     _validate_json_shape(value)
-    if raw not in {canonical_bytes(value), canonical_bytes(value, newline=True)}:
+    is_corpus = (
+        isinstance(value, dict)
+        and frozenset(value) == {"cases", "format"}
+        and value.get("format") == FORMAT
+        and isinstance(value.get("cases"), list)
+    )
+    if payload != canonical_bytes(value) or has_final_lf != is_corpus:
         raise ContractError("invalid_input")
     return value
 
 
 def load_json(path: Any) -> Any:
+    """Load a canonical corpus file, which has exactly one required final LF."""
     return parse_document(path.read_bytes())
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import socket
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,6 +12,7 @@ import pytest
 from contracts.browser.lanes.v1 import model
 
 NOW = 1_000
+CORPUS_PATH = Path(__file__).resolve().parents[2] / "fixtures" / "scenarios.json"
 
 
 def _fence(lane: str, *, queue_revision: str = "queue-1") -> dict[str, Any]:
@@ -431,6 +433,39 @@ def test_malformed_documents_are_a_fixed_non_reflecting_error(raw: bytes) -> Non
     result = model.evaluate_document(raw)
     assert result == b'{"error":"invalid_input"}'
     assert b"private" not in result and b"marker" not in result and b"alpha" not in result
+
+
+def test_runtime_final_lf_is_a_fixed_non_reflecting_error() -> None:
+    document = _snapshot(ready=[_placement(0, "lightpanda")])
+    raw = model.canonical_bytes(document)
+
+    assert model.evaluate_document(raw) == model.canonical_bytes(model.evaluate(document))
+    result = model.evaluate_document(raw + b"\n")
+
+    assert result == b'{"error":"invalid_input"}'
+    assert b"routing-1" not in result
+    with pytest.raises(model.ContractError, match="invalid_input"):
+        model.parse_document(raw + b"\n")
+
+
+def test_corpus_envelope_requires_exactly_one_final_lf(tmp_path: Path) -> None:
+    raw = CORPUS_PATH.read_bytes()
+    assert raw.endswith(b"\n") and not raw.endswith(b"\n\n")
+
+    corpus = model.load_json(CORPUS_PATH)
+
+    assert corpus["format"] == model.FORMAT
+    assert len(corpus["cases"]) == 79
+    for name, malformed in (("missing-lf.json", raw[:-1]), ("double-lf.json", raw + b"\n")):
+        path = tmp_path / name
+        path.write_bytes(malformed)
+        with pytest.raises(model.ContractError, match="invalid_input"):
+            model.load_json(path)
+
+    case_input = model.canonical_bytes(corpus["cases"][0]["input"])
+    assert model.parse_document(case_input) == corpus["cases"][0]["input"]
+    with pytest.raises(model.ContractError, match="invalid_input"):
+        model.parse_document(case_input + b"\n")
 
 
 def test_small_canonical_decimal_round_trips_but_exponent_form_is_rejected() -> None:
