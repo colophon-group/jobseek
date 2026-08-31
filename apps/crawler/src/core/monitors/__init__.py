@@ -1042,8 +1042,8 @@ from src.core.monitors import (  # noqa: E402
     recruiterbox,  # noqa: F401
     rippling,  # noqa: F401
     rss,  # noqa: F401
-    seek,  # noqa: F401
     seamlesshiring,  # noqa: F401
+    seek,  # noqa: F401
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401
