@@ -41,6 +41,7 @@ _DOUBLE_ESCAPED_WHITESPACE_ENTITY_RE = re.compile(
     re.IGNORECASE,
 )
 _LOCATION_PLACEHOLDERS = frozenset({"unavailable", "not available", "n/a", "none", "null", "-"})
+_JOB_CONTENT_FIELDS = frozenset(JobContent.__dataclass_fields__)
 
 _CDATA_WRAPPERS = (
     ("//<![CDATA[", "//]]>"),
@@ -255,7 +256,16 @@ def _clean_text(value: object) -> str | None:
     """Decode HTML entities and normalize whitespace in scalar text fields."""
     if not isinstance(value, str):
         return None
-    text = re.sub(r"\s+", " ", html_module.unescape(value)).strip()
+    text = value
+    # Some WordPress job plugins encode scalar JSON-LD fields twice (for
+    # example ``Senior I&amp;amp;C Engineer``). Scalar fields contain no HTML
+    # markup to preserve, so decode the bounded nested entity layer here.
+    for _ in range(2):
+        decoded = html_module.unescape(text)
+        if decoded == text:
+            break
+        text = decoded
+    text = re.sub(r"\s+", " ", text).strip()
     return text or None
 
 
@@ -594,6 +604,37 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
     return JobContent()
 
 
+def _apply_defaults_by_url(content: JobContent, config: dict, url: str) -> JobContent:
+    """Fill missing fields from exact posting-scoped JSON-LD defaults.
+
+    A small number of otherwise valid detail pages omit one required
+    ``JobPosting`` field. Exact URL keys keep those upstream exceptions
+    explicit and prevent a board-wide default from assigning invented data to
+    unrelated postings. Extracted values always remain authoritative.
+    """
+    defaults_by_url = config.get("defaults_by_url")
+    if defaults_by_url is None:
+        return content
+    if not isinstance(defaults_by_url, dict):
+        raise ValueError("JSON-LD scraper defaults_by_url must be an object")
+
+    for posting_url, values in defaults_by_url.items():
+        if not isinstance(posting_url, str) or not isinstance(values, dict):
+            raise ValueError("JSON-LD scraper defaults_by_url must map URL strings to objects")
+
+    posting_defaults = defaults_by_url.get(url)
+    if not posting_defaults:
+        return content
+
+    for field, value in posting_defaults.items():
+        if field not in _JOB_CONTENT_FIELDS:
+            raise ValueError(f"JSON-LD scraper defaults_by_url has unknown field: {field}")
+        current = getattr(content, field)
+        if current is None or current == "" or current == []:
+            setattr(content, field, value)
+    return content
+
+
 def contains_job_posting(
     html: str,
     *,
@@ -684,7 +725,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
         headers = clean_headers(request_headers)
         html = await _fetch_html(url, http, headers=headers or None)
 
-    content = parse_html(html, config)
+    content = _apply_defaults_by_url(parse_html(html, config), config, url)
     if content.title:
         log.debug("jsonld.extracted", url=url, title=content.title)
     else:

@@ -3251,6 +3251,13 @@ json-ld — Structured JobPosting Extractor
                    Omit addressRegion while retaining addressLocality and
                    addressCountry. Use only when a provider demonstrably
                    publishes incorrect regions across otherwise valid jobs.
+    defaults_by_url
+                   Exact canonical posting URL -> missing-field defaults. Use
+                   for a small number of stable upstream exceptions where an
+                   otherwise valid JobPosting omits a required field. Extracted
+                   values always win. Example:
+                   {"https://example.com/job/42":
+                    {"locations": ["London, United Kingdom"]}}
 
   Fields extracted (from schema.org properties):
     title          ← title or name
