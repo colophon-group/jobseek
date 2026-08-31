@@ -57,7 +57,22 @@ function fakeRepository(users: EligibleNotificationUser[]) {
   type Row = { id: string; status: string; matchCount: number | null };
   const rows = new Map<string, Row>();
   const repository: NotificationSchedulerRepository = {
-    listEligibleUsers: vi.fn(async () => users),
+    listEligibleUserCandidatesPage: vi.fn(async ({ afterUserId, limit }) => {
+      const ordered = [...users].sort((left, right) =>
+        left.userId.localeCompare(right.userId),
+      );
+      const remaining = afterUserId
+        ? ordered.filter((entry) => entry.userId > afterUserId)
+        : ordered;
+      const selected = remaining.slice(0, limit);
+      return {
+        candidates: selected.map(({ watchlists: _watchlists, ...candidate }) => candidate),
+        nextCursor: remaining.length > limit ? selected.at(-1)!.userId : null,
+      };
+    }),
+    loadEligibleWatchlists: vi.fn(async (userIds) => users
+      .filter((entry) => userIds.includes(entry.userId))
+      .map((entry) => ({ userId: entry.userId, watchlists: entry.watchlists }))),
     claim: vi.fn(async (input): Promise<NotificationClaimResult> => {
       const key = `${input.userId}:${input.cadence}:${input.scheduledFor.toISOString()}`;
       const existing = rows.get(key);
@@ -103,14 +118,17 @@ describe("providerless notification scheduler core", () => {
   it("is purely off by default and performs no reads or matching", async () => {
     const { repository } = fakeRepository([makeUser()]);
     const match = vi.fn();
+    const clock = vi.fn(() => now);
     const result = await runNotificationSchedulerCore(
       { sweep, quota, concurrency: 2 },
-      { repository, match, now: () => now },
+      { repository, match, now: clock },
     );
     expect(result.plans).toEqual([]);
     expect(result.telemetry.mode).toBe("off");
-    expect(repository.listEligibleUsers).not.toHaveBeenCalled();
+    expect(repository.listEligibleUserCandidatesPage).not.toHaveBeenCalled();
+    expect(repository.loadEligibleWatchlists).not.toHaveBeenCalled();
     expect(match).not.toHaveBeenCalled();
+    expect(clock).not.toHaveBeenCalled();
   });
 
   it("claims once across duplicate invocation and advances zero-match windows", async () => {
@@ -125,6 +143,28 @@ describe("providerless notification scheduler core", () => {
     expect(second.telemetry.duplicate).toBe(1);
     expect(match).toHaveBeenCalledTimes(1);
     expect([...rows.values()][0]).toMatchObject({ status: "skipped", matchCount: 0 });
+  });
+
+  it("processes every bounded recovery slot in chronological order", async () => {
+    const recoverySweep = {
+      windowStart: sweep.windowStart,
+      windowEnd: new Date("2026-09-14T00:00:00.000Z"),
+    };
+    const { repository } = fakeRepository([makeUser()]);
+    const match = vi.fn().mockResolvedValue({
+      postings: [], uniqueMatchCount: 0, watchlistMatchCount: 0, truncated: false,
+    });
+    const result = await runNotificationSchedulerCore(
+      { mode: "shadow", sweep: recoverySweep, quota, concurrency: 2 },
+      { repository, match, now: () => now },
+    );
+    expect(result.telemetry).toMatchObject({ due: 2, empty: 2 });
+    const scheduled = vi.mocked(repository.claim).mock.calls.map(
+      ([input]) => input.scheduledFor.getTime(),
+    );
+    expect(scheduled).toHaveLength(2);
+    expect(scheduled).toEqual([...scheduled].sort((left, right) => left - right));
+    expect(match).toHaveBeenCalledTimes(2);
   });
 
   it("uses independent enable/resume floors, retains labels, and caps display at 20", async () => {
@@ -221,5 +261,46 @@ describe("providerless notification scheduler core", () => {
     );
     expect(result.telemetry).toMatchObject({ eligibleUsers: 0, due: 0 });
     expect(match).not.toHaveBeenCalled();
+  });
+
+  it("pages large owner cohorts and hydrates only bounded due-owner batches", async () => {
+    const users = Array.from({ length: 60 }, (_, index) =>
+      makeUser({ userId: `user-${String(index).padStart(3, "0")}` }),
+    );
+    const { repository } = fakeRepository(users);
+    const match = vi.fn().mockResolvedValue({
+      postings: [], uniqueMatchCount: 0, watchlistMatchCount: 0, truncated: false,
+    });
+    const first = await runNotificationSchedulerCore(
+      { mode: "shadow", sweep, quota, concurrency: 4 },
+      { repository, match, now: () => now },
+    );
+    expect(first.telemetry.eligibleUsers).toBe(50);
+    expect(first.continuation).toEqual({ afterUserId: "user-049" });
+    expect(repository.loadEligibleWatchlists).toHaveBeenLastCalledWith(
+      expect.any(Array),
+    );
+    expect(
+      vi.mocked(repository.loadEligibleWatchlists).mock.calls[0]![0],
+    ).toHaveLength(50);
+
+    const second = await runNotificationSchedulerCore(
+      {
+        mode: "shadow",
+        sweep,
+        quota,
+        concurrency: 4,
+        cursor: first.continuation!.afterUserId,
+      },
+      { repository, match, now: () => now },
+    );
+    expect(second.telemetry.eligibleUsers).toBe(10);
+    expect(second.continuation).toBeNull();
+    expect(
+      vi.mocked(repository.loadEligibleWatchlists).mock.calls[1]![0],
+    ).toHaveLength(10);
+    for (const [input] of vi.mocked(repository.listEligibleUserCandidatesPage).mock.calls) {
+      expect(input.limit).toBe(50);
+    }
   });
 });

@@ -5,12 +5,14 @@ import type {
   NotificationDeliveryStatus,
 } from "./contracts";
 import {
+  advancesNotificationWindow,
   createNotificationDeliveryIdempotencyKey,
   getNotificationWindowFloor,
 } from "./policy";
 import {
   DEFAULT_NOTIFICATION_EXECUTION_MODE,
   NOTIFICATION_DISPLAY_ITEM_LIMIT,
+  NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE,
   assertUtcWindow,
   calculateNotificationQuota,
   getNotificationScheduleSlots,
@@ -36,14 +38,16 @@ export type OpenNotificationDelivery = Readonly<{
   status: Exclude<NotificationDeliveryStatus, "sent" | "skipped">;
 }>;
 
-export type EligibleNotificationUser = Readonly<{
+export type EligibleNotificationUserCandidate = Readonly<{
   userId: string;
   cadence: NotificationCadence;
   notificationsStateChangedAt: Date;
   lastProcessedWindowEnd: Date | null;
   openDelivery: OpenNotificationDelivery | null;
-  watchlists: readonly EligibleNotificationWatchlist[];
 }>;
+
+export type EligibleNotificationUser = EligibleNotificationUserCandidate &
+  Readonly<{ watchlists: readonly EligibleNotificationWatchlist[] }>;
 
 export type NotificationDeliveryClaim = Readonly<{
   id: string;
@@ -94,7 +98,19 @@ export type NotificationRunTelemetry = Readonly<{
 }>;
 
 export type NotificationSchedulerRepository = Readonly<{
-  listEligibleUsers(): Promise<readonly EligibleNotificationUser[]>;
+  listEligibleUserCandidatesPage(input: {
+    afterUserId: string | null;
+    limit: number;
+  }): Promise<Readonly<{
+    candidates: readonly EligibleNotificationUserCandidate[];
+    nextCursor: string | null;
+  }>>;
+  loadEligibleWatchlists(
+    userIds: readonly string[],
+  ): Promise<readonly Readonly<{
+    userId: string;
+    watchlists: readonly EligibleNotificationWatchlist[];
+  }>[]>;
   claim(input: {
     userId: string;
     cadence: NotificationCadence;
@@ -145,8 +161,8 @@ type WorkItem = Readonly<{
 
 type MatchOutcome =
   | Readonly<{ kind: "matched"; work: WorkItem; claim: NotificationDeliveryClaim; match: NotificationMatchSummary; window: UtcWindow; idempotencyKey: string }>
-  | Readonly<{ kind: "claimed_empty" }>
-  | Readonly<{ kind: "duplicate" }>
+  | Readonly<{ kind: "claimed_empty"; scheduledFor: Date }>
+  | Readonly<{ kind: "duplicate"; status: NotificationDeliveryStatus; scheduledFor: Date }>
   | Readonly<{ kind: "unknown" }>
   | Readonly<{ kind: "failed" }>
   | Readonly<{ kind: "state_conflict" }>
@@ -189,22 +205,33 @@ function workItemsForUser(
       },
     }];
   }
-  const [scheduledFor] = getNotificationScheduleSlots({
+  return getNotificationScheduleSlots({
     userId: user.userId,
     cadence: user.cadence,
     sweep,
-  });
-  return scheduledFor ? [{ user, scheduledFor, originalWindow: null }] : [];
+  }).map((scheduledFor) => ({ user, scheduledFor, originalWindow: null }));
 }
 
-function eligibleWindows(work: WorkItem): Array<
-  EligibleNotificationWatchlist & { windowStart: Date }
-> {
+function candidateIsDue(
+  candidate: EligibleNotificationUserCandidate,
+  sweep: UtcWindow,
+): boolean {
+  return candidate.openDelivery !== null || getNotificationScheduleSlots({
+    userId: candidate.userId,
+    cadence: candidate.cadence,
+    sweep,
+  }).length > 0;
+}
+
+function eligibleWindows(
+  work: WorkItem,
+  lastProcessedWindowEnd: Date | null,
+): Array<EligibleNotificationWatchlist & { windowStart: Date }> {
   return work.user.watchlists.flatMap((watchlist) => {
     const windowStart = getNotificationWindowFloor({
       alertsEnabledAt: watchlist.alertsEnabledAt,
       notificationsStateChangedAt: work.user.notificationsStateChangedAt,
-      lastProcessedWindowEnd: work.user.lastProcessedWindowEnd,
+      lastProcessedWindowEnd,
     });
     return windowStart.getTime() < work.scheduledFor.getTime()
       ? [{ ...watchlist, windowStart }]
@@ -215,6 +242,7 @@ function eligibleWindows(work: WorkItem): Array<
 /**
  * Build durable shadow plans only. There is deliberately no provider callback
  * or live mode in this contract, making external delivery impossible here.
+ * One keyset owner page is processed per call; `continuation` reaches the next.
  */
 export async function runNotificationSchedulerCore(
   input: {
@@ -222,93 +250,153 @@ export async function runNotificationSchedulerCore(
     sweep: UtcWindow;
     quota: NotificationQuotaState;
     concurrency: number;
+    cursor?: string | null;
   },
   dependencies: NotificationSchedulerDependencies,
 ): Promise<{
   plans: readonly NotificationDeliveryPlan[];
   telemetry: NotificationRunTelemetry;
+  continuation: Readonly<{ afterUserId: string }> | null;
 }> {
   const mode = input.mode ?? DEFAULT_NOTIFICATION_EXECUTION_MODE;
+  if (mode === "off") {
+    return {
+      plans: [],
+      telemetry: emptyTelemetry(mode, input.quota),
+      continuation: null,
+    };
+  }
+
+  assertUtcWindow(input.sweep);
   const startedAt = dependencies.now?.() ?? new Date();
   let telemetry = emptyTelemetry(mode, input.quota);
-  if (mode === "off") return { plans: [], telemetry };
-  assertUtcWindow(input.sweep);
+  const page = await dependencies.repository.listEligibleUserCandidatesPage({
+    afterUserId: input.cursor ?? null,
+    limit: NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE,
+  });
+  const dueCandidates = page.candidates.filter((candidate) =>
+    candidateIsDue(candidate, input.sweep),
+  );
+  const hydrated = dueCandidates.length === 0
+    ? []
+    : await dependencies.repository.loadEligibleWatchlists(
+        dueCandidates.map((candidate) => candidate.userId),
+      );
+  const watchlistsByUser = new Map(
+    hydrated.map((entry) => [entry.userId, entry.watchlists]),
+  );
+  const users = dueCandidates.map((candidate): EligibleNotificationUser => ({
+    ...candidate,
+    watchlists: watchlistsByUser.get(candidate.userId) ?? [],
+  }));
+  const workByUser = users.map((user) => workItemsForUser(user, input.sweep));
+  telemetry = {
+    ...telemetry,
+    eligibleUsers: page.candidates.length,
+    due: workByUser.reduce((total, work) => total + work.length, 0),
+  };
 
-  const users = await dependencies.repository.listEligibleUsers();
-  const work = users.flatMap((user) => workItemsForUser(user, input.sweep));
-  telemetry = { ...telemetry, eligibleUsers: users.length, due: work.length };
-
-  const outcomes = await mapWithConcurrency(
-    work,
-    input.concurrency,
-    async (item): Promise<MatchOutcome> => {
-      if (item.user.openDelivery?.status === "unknown") {
-        return { kind: "unknown" };
-      }
-      const watchlists = eligibleWindows(item);
-      if (watchlists.length === 0 && !item.originalWindow) {
-        return { kind: "not_due" };
-      }
-      const windowStart = watchlists.length > 0
-        ? new Date(Math.min(...watchlists.map((entry) => entry.windowStart.getTime())))
-        : item.originalWindow!.windowStart;
-      const windowEnd = item.scheduledFor;
-      const idempotencyKey = createNotificationDeliveryIdempotencyKey({
-        userId: item.user.userId,
-        cadence: item.user.cadence,
-        scheduledFor: item.scheduledFor,
-      });
-      const claimed = await dependencies.repository.claim({
-        userId: item.user.userId,
-        cadence: item.user.cadence,
-        scheduledFor: item.scheduledFor,
-        windowStart,
-        windowEnd,
-        idempotencyKey,
-        now: startedAt,
-      });
-      if (claimed.kind === "duplicate") return { kind: "duplicate" };
-
-      if (watchlists.length === 0) {
-        return (await dependencies.repository.markSkipped({
-          claim: claimed.claim,
-          completedAt: startedAt,
-        }))
-          ? { kind: "claimed_empty" }
-          : { kind: "state_conflict" };
-      }
-
-      let match: NotificationMatchSummary;
-      try {
-        match = await dependencies.match({ watchlists, windowEnd });
-      } catch {
-        return (await dependencies.repository.markFailed({
-          claim: claimed.claim,
-          errorCode: "matcher_error",
-          failedAt: startedAt,
-        }))
-          ? { kind: "failed" }
-          : { kind: "state_conflict" };
-      }
-
-      if (match.uniqueMatchCount === 0) {
-        return (await dependencies.repository.markSkipped({
-          claim: claimed.claim,
-          completedAt: startedAt,
-        }))
-          ? { kind: "claimed_empty" }
-          : { kind: "state_conflict" };
-      }
+  async function processWork(
+    item: WorkItem,
+    lastProcessedWindowEnd: Date | null,
+  ): Promise<MatchOutcome> {
+    if (item.user.openDelivery?.status === "unknown") {
+      return { kind: "unknown" };
+    }
+    const watchlists = eligibleWindows(item, lastProcessedWindowEnd);
+    if (watchlists.length === 0 && !item.originalWindow) {
+      return { kind: "not_due" };
+    }
+    const windowStart = watchlists.length > 0
+      ? new Date(Math.min(...watchlists.map((entry) => entry.windowStart.getTime())))
+      : item.originalWindow!.windowStart;
+    const windowEnd = item.scheduledFor;
+    const idempotencyKey = createNotificationDeliveryIdempotencyKey({
+      userId: item.user.userId,
+      cadence: item.user.cadence,
+      scheduledFor: item.scheduledFor,
+    });
+    const claimed = await dependencies.repository.claim({
+      userId: item.user.userId,
+      cadence: item.user.cadence,
+      scheduledFor: item.scheduledFor,
+      windowStart,
+      windowEnd,
+      idempotencyKey,
+      now: startedAt,
+    });
+    if (claimed.kind === "duplicate") {
       return {
-        kind: "matched",
-        work: item,
-        claim: claimed.claim,
-        match,
-        window: { windowStart, windowEnd },
-        idempotencyKey,
+        kind: "duplicate",
+        status: claimed.status,
+        scheduledFor: item.scheduledFor,
       };
+    }
+    if (watchlists.length === 0) {
+      return (await dependencies.repository.markSkipped({
+        claim: claimed.claim,
+        completedAt: startedAt,
+      }))
+        ? { kind: "claimed_empty", scheduledFor: item.scheduledFor }
+        : { kind: "state_conflict" };
+    }
+
+    let match: NotificationMatchSummary;
+    try {
+      match = await dependencies.match({ watchlists, windowEnd });
+    } catch {
+      return (await dependencies.repository.markFailed({
+        claim: claimed.claim,
+        errorCode: "matcher_error",
+        failedAt: startedAt,
+      }))
+        ? { kind: "failed" }
+        : { kind: "state_conflict" };
+    }
+    if (match.uniqueMatchCount === 0) {
+      return (await dependencies.repository.markSkipped({
+        claim: claimed.claim,
+        completedAt: startedAt,
+      }))
+        ? { kind: "claimed_empty", scheduledFor: item.scheduledFor }
+        : { kind: "state_conflict" };
+    }
+    return {
+      kind: "matched",
+      work: item,
+      claim: claimed.claim,
+      match,
+      window: { windowStart, windowEnd },
+      idempotencyKey,
+    };
+  }
+
+  const outcomeGroups = await mapWithConcurrency(
+    workByUser,
+    input.concurrency,
+    async (work): Promise<MatchOutcome[]> => {
+      const outcomes: MatchOutcome[] = [];
+      let lastProcessedWindowEnd = work[0]?.user.lastProcessedWindowEnd ?? null;
+      for (const item of work) {
+        const outcome = await processWork(item, lastProcessedWindowEnd);
+        outcomes.push(outcome);
+        if (outcome.kind === "claimed_empty") {
+          lastProcessedWindowEnd = outcome.scheduledFor;
+          continue;
+        }
+        if (
+          outcome.kind === "duplicate" &&
+          advancesNotificationWindow(outcome.status)
+        ) {
+          lastProcessedWindowEnd = outcome.scheduledFor;
+          continue;
+        }
+        break;
+      }
+      return outcomes;
     },
   );
+  const outcomes = outcomeGroups.flat();
 
   const plans: NotificationDeliveryPlan[] = [];
   let quota = input.quota;
@@ -388,5 +476,11 @@ export async function runNotificationSchedulerCore(
     quotaMonthlyRemaining: Math.max(0, quota.monthlyCap - quota.monthlyUsed),
     durationMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
   };
-  return { plans, telemetry };
+  return {
+    plans,
+    telemetry,
+    continuation: page.nextCursor
+      ? { afterUserId: page.nextCursor }
+      : null,
+  };
 }

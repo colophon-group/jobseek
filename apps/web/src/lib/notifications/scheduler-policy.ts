@@ -15,6 +15,10 @@ export const DEFAULT_NOTIFICATION_EXECUTION_MODE = "off" as const;
 export const NOTIFICATION_DISPLAY_ITEM_LIMIT = 20;
 export const NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST = 250;
 export const NOTIFICATION_CLAIM_LEASE_MS = 15 * 60 * 1_000;
+export const NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE = 50;
+export const NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE = 250;
+export const NOTIFICATION_COMPANY_MEMBERSHIP_QUERY_PAGE_SIZE = 500;
+export const MAX_NOTIFICATION_RECOVERY_SLOTS_PER_USER = 8;
 
 export type NotificationExecutionMode = "off" | "shadow";
 
@@ -106,7 +110,8 @@ export function getNotificationScheduleAssignment(input: {
 /**
  * Return every stable cadence slot in the half-open UTC sweep. A caller may
  * deliberately pass more than one period for bounded operational recovery;
- * ordinary daily sweeps return either zero or one slot per user.
+ * ordinary daily sweeps return either zero or one slot per user. Recovery is
+ * rejected rather than truncated if it exceeds the explicit per-user bound.
  */
 export function getNotificationScheduleSlots(input: {
   userId: string;
@@ -137,7 +142,14 @@ export function getNotificationScheduleSlots(input: {
   ) {
     const slotMs = SCHEDULE_EPOCH_MS + period * intervalMs + slotOffsetMs;
     if (slotMs >= input.sweep.windowEnd.getTime()) break;
-    if (slotMs >= input.sweep.windowStart.getTime()) slots.push(new Date(slotMs));
+    if (slotMs >= input.sweep.windowStart.getTime()) {
+      if (slots.length >= MAX_NOTIFICATION_RECOVERY_SLOTS_PER_USER) {
+        throw new RangeError(
+          `sweep exceeds ${MAX_NOTIFICATION_RECOVERY_SLOTS_PER_USER} recovery slots`,
+        );
+      }
+      slots.push(new Date(slotMs));
+    }
   }
   return slots;
 }

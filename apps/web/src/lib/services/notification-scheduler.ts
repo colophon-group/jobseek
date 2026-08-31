@@ -4,6 +4,7 @@ import {
   and,
   asc,
   eq,
+  gt,
   inArray,
   isNotNull,
   lt,
@@ -28,7 +29,7 @@ import type {
 import { MAX_NOTIFICATION_PROVIDER_ATTEMPTS } from "@/lib/notifications/policy";
 import {
   runNotificationSchedulerCore,
-  type EligibleNotificationUser,
+  type EligibleNotificationUserCandidate,
   type EligibleNotificationWatchlist,
   type NotificationDeliveryClaim,
   type NotificationMatchSummary,
@@ -36,7 +37,10 @@ import {
 } from "@/lib/notifications/scheduler-core";
 import {
   NOTIFICATION_CLAIM_LEASE_MS,
+  NOTIFICATION_COMPANY_MEMBERSHIP_QUERY_PAGE_SIZE,
+  NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE,
   NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST,
+  NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE,
   type NotificationExecutionMode,
   type NotificationQuotaState,
   type UtcWindow,
@@ -57,35 +61,41 @@ function identityKey(userId: string, cadence: NotificationCadence): string {
   return `${userId}\u0000${cadence}`;
 }
 
-async function listEligibleUsers(): Promise<readonly EligibleNotificationUser[]> {
-  const rows = await db
+async function listEligibleUserCandidatesPage(input: {
+  afterUserId: string | null;
+  limit: number;
+}) {
+  if (input.limit < 1 || input.limit > NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE) {
+    throw new RangeError("eligible owner page exceeds the scheduler batch cap");
+  }
+  const ownerRows = await db
     .select({
       userId: user.id,
       cadence: userPreferences.notificationCadence,
       notificationsStateChangedAt:
         userPreferences.notificationsStateChangedAt,
-      locale: userPreferences.locale,
-      jobLanguages: userPreferences.jobLanguages,
-      watchlistId: watchlist.id,
-      watchlistLabel: watchlist.title,
-      filters: watchlist.filters,
-      alertsEnabledAt: watchlist.alertsEnabledAt,
-      companyId: watchlistCompany.companyId,
     })
     .from(user)
     .innerJoin(userPreferences, eq(userPreferences.userId, user.id))
-    .innerJoin(watchlist, eq(watchlist.userId, user.id))
-    .leftJoin(watchlistCompany, eq(watchlistCompany.watchlistId, watchlist.id))
     .where(and(
       eq(user.emailVerified, true),
       eq(userPreferences.notificationsPaused, false),
-      eq(watchlist.alertsEnabled, true),
-      isNotNull(watchlist.alertsEnabledAt),
+      input.afterUserId ? gt(user.id, input.afterUserId) : undefined,
+      sql`EXISTS (
+        SELECT 1 FROM "watchlist" eligible_watchlist
+        WHERE eligible_watchlist.user_id = ${user.id}
+          AND eligible_watchlist.alerts_enabled = true
+          AND eligible_watchlist.alerts_enabled_at IS NOT NULL
+      )`,
     ))
-    .orderBy(asc(user.id), asc(watchlist.id), asc(watchlistCompany.companyId));
+    .orderBy(asc(user.id))
+    .limit(input.limit + 1);
 
-  const userIds = [...new Set(rows.map((row) => row.userId))];
-  if (userIds.length === 0) return [];
+  const pageRows = ownerRows.slice(0, input.limit);
+  const userIds = pageRows.map((row) => row.userId);
+  if (userIds.length === 0) {
+    return { candidates: [], nextCursor: null };
+  }
   const [completedRows, openRows] = await Promise.all([
     db
       .select({
@@ -130,50 +140,9 @@ async function listEligibleUsers(): Promise<readonly EligibleNotificationUser[]>
     }
   }
 
-  type MutableUser = {
-    userId: string;
-    cadence: NotificationCadence;
-    notificationsStateChangedAt: Date;
-    watchlists: Map<string, {
-      source: EligibleNotificationWatchlist["source"];
-      alertsEnabledAt: Date;
-      companyIds: Set<string>;
-    }>;
-  };
-  const grouped = new Map<string, MutableUser>();
-  for (const row of rows) {
-    if (!row.alertsEnabledAt) continue;
-    const key = identityKey(row.userId, row.cadence);
-    let owner = grouped.get(key);
-    if (!owner) {
-      owner = {
-        userId: row.userId,
-        cadence: row.cadence,
-        notificationsStateChangedAt: row.notificationsStateChangedAt,
-        watchlists: new Map(),
-      };
-      grouped.set(key, owner);
-    }
-    let entry = owner.watchlists.get(row.watchlistId);
-    if (!entry) {
-      entry = {
-        source: {
-          watchlistId: row.watchlistId,
-          watchlistLabel: row.watchlistLabel,
-          filters: row.filters as WatchlistFilters,
-          companyIds: [],
-          locale: row.locale,
-          jobLanguages: row.jobLanguages,
-        },
-        alertsEnabledAt: row.alertsEnabledAt,
-        companyIds: new Set(),
-      };
-      owner.watchlists.set(row.watchlistId, entry);
-    }
-    if (row.companyId) entry.companyIds.add(row.companyId);
-  }
-
-  return [...grouped.entries()].map(([key, owner]) => ({
+  const candidates: EligibleNotificationUserCandidate[] = pageRows.map((owner) => {
+    const key = identityKey(owner.userId, owner.cadence);
+    return {
     userId: owner.userId,
     cadence: owner.cadence,
     notificationsStateChangedAt: owner.notificationsStateChangedAt,
@@ -189,11 +158,107 @@ async function listEligibleUsers(): Promise<readonly EligibleNotificationUser[]>
           >,
         }
       : null,
-    watchlists: [...owner.watchlists.values()].map((entry) => ({
-      alertsEnabledAt: entry.alertsEnabledAt,
-      source: { ...entry.source, companyIds: [...entry.companyIds] },
-    })),
-  }));
+    };
+  });
+  return {
+    candidates,
+    nextCursor: ownerRows.length > input.limit
+      ? pageRows.at(-1)!.userId
+      : null,
+  };
+}
+
+async function loadEligibleWatchlists(userIds: readonly string[]) {
+  if (userIds.length === 0) return [];
+  if (userIds.length > NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE) {
+    throw new RangeError("watchlist hydration exceeds the owner batch cap");
+  }
+  const watchlistRows: Array<{
+    userId: string;
+    locale: "en" | "de" | "fr" | "it";
+    jobLanguages: string[];
+    watchlistId: string;
+    watchlistLabel: string;
+    filters: unknown;
+    alertsEnabledAt: Date | null;
+  }> = [];
+  let watchlistCursor: string | null = null;
+  for (;;) {
+    const page = await db.select({
+      userId: watchlist.userId,
+      locale: userPreferences.locale,
+      jobLanguages: userPreferences.jobLanguages,
+      watchlistId: watchlist.id,
+      watchlistLabel: watchlist.title,
+      filters: watchlist.filters,
+      alertsEnabledAt: watchlist.alertsEnabledAt,
+    }).from(watchlist)
+      .innerJoin(userPreferences, eq(userPreferences.userId, watchlist.userId))
+      .where(and(
+        inArray(watchlist.userId, [...userIds]),
+        eq(watchlist.alertsEnabled, true),
+        isNotNull(watchlist.alertsEnabledAt),
+        watchlistCursor ? gt(watchlist.id, watchlistCursor) : undefined,
+      ))
+      .orderBy(asc(watchlist.id))
+      .limit(NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE);
+    watchlistRows.push(...page);
+    if (page.length < NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE) break;
+    watchlistCursor = page.at(-1)!.watchlistId;
+  }
+
+  const companyIds = new Map<string, Set<string>>();
+  const ids = watchlistRows.map((row) => row.watchlistId);
+  for (let offset = 0; offset < ids.length; offset += NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE) {
+    const chunk = ids.slice(offset, offset + NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE);
+    let membershipCursor: { watchlistId: string; companyId: string } | null = null;
+    for (;;) {
+      const page = await db.select({
+        watchlistId: watchlistCompany.watchlistId,
+        companyId: watchlistCompany.companyId,
+      }).from(watchlistCompany)
+        .where(and(
+          inArray(watchlistCompany.watchlistId, chunk),
+          membershipCursor
+            ? or(
+                gt(watchlistCompany.watchlistId, membershipCursor.watchlistId),
+                and(
+                  eq(watchlistCompany.watchlistId, membershipCursor.watchlistId),
+                  gt(watchlistCompany.companyId, membershipCursor.companyId),
+                ),
+              )
+            : undefined,
+        ))
+        .orderBy(asc(watchlistCompany.watchlistId), asc(watchlistCompany.companyId))
+        .limit(NOTIFICATION_COMPANY_MEMBERSHIP_QUERY_PAGE_SIZE);
+      for (const row of page) {
+        const values = companyIds.get(row.watchlistId) ?? new Set<string>();
+        values.add(row.companyId);
+        companyIds.set(row.watchlistId, values);
+      }
+      if (page.length < NOTIFICATION_COMPANY_MEMBERSHIP_QUERY_PAGE_SIZE) break;
+      membershipCursor = page.at(-1)!;
+    }
+  }
+
+  const grouped = new Map<string, EligibleNotificationWatchlist[]>();
+  for (const row of watchlistRows) {
+    if (!row.alertsEnabledAt) continue;
+    const entries = grouped.get(row.userId) ?? [];
+    entries.push({
+      alertsEnabledAt: row.alertsEnabledAt,
+      source: {
+        watchlistId: row.watchlistId,
+        watchlistLabel: row.watchlistLabel,
+        filters: row.filters as WatchlistFilters,
+        companyIds: [...(companyIds.get(row.watchlistId) ?? [])],
+        locale: row.locale,
+        jobLanguages: row.jobLanguages,
+      },
+    });
+    grouped.set(row.userId, entries);
+  }
+  return [...grouped].map(([userId, watchlists]) => ({ userId, watchlists }));
 }
 
 async function claim(input: {
@@ -290,7 +355,8 @@ function pendingLease(claim: NotificationDeliveryClaim) {
 }
 
 const repository: NotificationSchedulerRepository = {
-  listEligibleUsers,
+  listEligibleUserCandidatesPage,
+  loadEligibleWatchlists,
   claim,
   async markSkipped(input) {
     const rows = await db.update(notificationDelivery).set({

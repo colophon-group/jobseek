@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import {
+  MAX_NOTIFICATION_RECOVERY_SLOTS_PER_USER,
   calculateNotificationQuota,
   getNotificationScheduleAssignment,
   getNotificationScheduleSlots,
@@ -42,6 +43,20 @@ describe("notification scheduler policy", () => {
       cadence: "weekly",
       sweep: { windowStart: new Date(slot.getTime() - 1), windowEnd: slot },
     })).toEqual([]);
+  });
+
+  it("rejects recovery sweeps beyond the explicit per-user work bound", () => {
+    expect(() => getNotificationScheduleSlots({
+      userId: "user-1",
+      cadence: "weekly",
+      sweep: {
+        windowStart: new Date("2026-01-01T00:00:00.000Z"),
+        windowEnd: new Date(
+          Date.parse("2026-01-01T00:00:00.000Z") +
+          (MAX_NOTIFICATION_RECOVERY_SLOTS_PER_USER + 2) * 7 * 24 * 60 * 60 * 1_000,
+        ),
+      },
+    })).toThrow("recovery slots");
   });
 
   it("calculates daily and monthly deferral without owning cap configuration", () => {
