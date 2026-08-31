@@ -21,6 +21,11 @@ import { withDbRetry } from "@/lib/db-retry";
 import { watchlistCacheTag } from "@/lib/cache-tags";
 import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
 import {
+  createWithinWatchlistLimit,
+  WatchlistLimitReachedError,
+} from "@/lib/watchlist-limit";
+import { canCopyWatchlistSource } from "@/lib/watchlist-copy-policy";
+import {
   generateUniqueSlug,
   insertWatchlistWithUniqueSlug,
 } from "@/lib/watchlist-slug";
@@ -237,9 +242,6 @@ export async function createWatchlist(params: {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
 
-  const { allowed } = await canCreateWatchlist(userId);
-  if (!allowed) return { error: "limit_reached" };
-
   // Slug allocation is concurrency-safe: `insertWatchlistWithUniqueSlug`
   // wraps the INSERT in a retry loop that recovers from the SELECT-then-
   // INSERT race on `idx_wl_user_slug` (#3201). Two browser tabs (or a
@@ -251,35 +253,43 @@ export async function createWatchlist(params: {
   // its transaction in Postgres; allowing that transaction to reject
   // before the helper retries gives every slug candidate a fresh
   // transaction while keeping the parent + company rows atomic.
-  const { row, slug } = await insertWatchlistWithUniqueSlug(
+  const inserted = await insertWatchlistWithUniqueSlug(
     userId,
     params.title,
     async (candidate) =>
-      db.transaction(async (tx) => {
-        const [r] = await tx
-          .insert(watchlist)
-          .values({
-            userId,
-            slug: candidate,
-            title: params.title,
-            description: params.description ?? null,
-            isPublic: params.isPublic ?? false,
-            filters: { anyCompany: true, ...params.filters },
-          })
-          .returning({ id: watchlist.id });
+      db.transaction((tx) =>
+        createWithinWatchlistLimit(tx, userId, async () => {
+          const [r] = await tx
+            .insert(watchlist)
+            .values({
+              userId,
+              slug: candidate,
+              title: params.title,
+              description: params.description ?? null,
+              isPublic: params.isPublic ?? false,
+              filters: { anyCompany: true, ...params.filters },
+            })
+            .returning({ id: watchlist.id });
 
-        if (params.companyIds.length > 0) {
-          await tx.insert(watchlistCompany).values(
-            params.companyIds.map((companyId) => ({
-              watchlistId: r.id,
-              companyId,
-            })),
-          );
-        }
+          if (params.companyIds.length > 0) {
+            await tx.insert(watchlistCompany).values(
+              params.companyIds.map((companyId) => ({
+                watchlistId: r.id,
+                companyId,
+              })),
+            );
+          }
 
-        return r;
-      }),
-  );
+          return r;
+        }),
+      ),
+  ).catch((error: unknown) => {
+    if (error instanceof WatchlistLimitReachedError) return null;
+    throw error;
+  });
+
+  if (!inserted) return { error: "limit_reached" };
+  const { row, slug } = inserted;
 
   // Typesense + IndexNow hook: upsert if public and non-trivial.
   // Wrapped in after() so the registration is synchronous in the
@@ -404,6 +414,18 @@ export async function updateWatchlist(params: {
 
   if (Object.keys(updates).length > 0 || params.companyIds !== undefined) {
     await db.transaction(async (tx) => {
+      if (params.companyIds !== undefined) {
+        // Copy takes a shared lock on this row before reading company
+        // membership. Coordinate company-only edits with that lock so a copy
+        // observes one coherent source version under READ COMMITTED.
+        await tx
+          .select({ id: watchlist.id })
+          .from(watchlist)
+          .where(eq(watchlist.id, params.watchlistId))
+          .for("update")
+          .limit(1);
+      }
+
       if (Object.keys(updates).length > 0) {
         await tx
           .update(watchlist)
@@ -558,9 +580,6 @@ export async function copyWatchlist(
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
 
-  const { allowed } = await canCreateWatchlist(userId);
-  if (!allowed) return { error: "limit_reached" };
-
   const [source] = await db
     .select({
       title: watchlist.title,
@@ -573,8 +592,7 @@ export async function copyWatchlist(
     .where(eq(watchlist.id, watchlistId))
     .limit(1);
 
-  // Allow mirroring if public or owned by the user
-  if (!source || (!source.isPublic && source.userId !== userId)) {
+  if (!source || !canCopyWatchlistSource(source, userId)) {
     return { error: "not_found" };
   }
 
@@ -584,16 +602,16 @@ export async function copyWatchlist(
   // `idx_wl_user_slug` 23505. As in create, each retry attempt owns a
   // fresh transaction so a rejected candidate never poisons the next. Re-read
   // and authorize the source inside that transaction too: the first read is
-  // only a slug-allocation hint, while the repeatable-read snapshot supplies
-  // every field and company row that is actually copied.
+  // only a slug-allocation hint. The shared source-row lock coordinates with
+  // edits so the fields and company rows belong to one coherent version.
   let inserted;
   try {
     inserted = await insertWatchlistWithUniqueSlug(
       userId,
       source.title,
       async (candidate) =>
-        db.transaction(
-          async (tx) => {
+        db.transaction(async (tx) =>
+          createWithinWatchlistLimit(tx, userId, async () => {
             const [currentSource] = await tx
               .select({
                 title: watchlist.title,
@@ -609,7 +627,7 @@ export async function copyWatchlist(
 
             if (
               !currentSource
-              || (!currentSource.isPublic && currentSource.userId !== userId)
+              || !canCopyWatchlistSource(currentSource, userId)
             ) {
               throw new WatchlistCopySourceUnavailableError();
             }
@@ -645,13 +663,15 @@ export async function copyWatchlist(
             }
 
             return { row: r, companies };
-          },
-          { isolationLevel: "repeatable read" },
+          }),
         ),
     );
   } catch (error) {
     if (error instanceof WatchlistCopySourceUnavailableError) {
       return { error: "not_found" };
+    }
+    if (error instanceof WatchlistLimitReachedError) {
+      return { error: "limit_reached" };
     }
     throw error;
   }

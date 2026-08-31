@@ -888,6 +888,8 @@ bitmex,bitmex-greenhouse,https://job-boards.greenhouse.io/bitmex,greenhouse,"{""
 bitpanda,bitpanda-greenhouse,https://job-boards.greenhouse.io/bitpanda,greenhouse,"{""token"": ""bitpanda""}",skip,
 bits-technology,bits-technology-careers,https://careers.bits.bi/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.bits.bi/jobs.rss""}",skip,
 bitso,bitso-greenhouse,https://job-boards.greenhouse.io/bitso,greenhouse,"{""token"": ""bitso""}",skip,
+bjak,bjak-careers,https://jobs.ashbyhq.com/bjakcareer,ashby,"{""token"": ""bjakcareer""}",skip,
+bjak,bjak-workable,https://apply.workable.com/bjak-1/,workable,"{""token"": ""bjak-1""}",workable,
 bjs-wholesale-club,bjs-wholesale-club-careers,https://bjswholesaleclub.wd1.myworkdayjobs.com/bjscareers,workday,,workday,
 bkw,bkw-careers,https://jobs.bkw.com/en/vacancies,api_sniffer,"{""api_url"": ""https://jobs.bkw.com/_api/v1/structureddata"", ""method"": ""GET"", ""json_path"": ""data"", ""params"": {""configFromContentElement"": ""82381"", ""language"": ""en-ch""}, ""url_field"": ""url"", ""fields"": {""title"": ""title"", ""metadata.ats_job_id"": ""id""}}",json-ld,"{""enrich"": [""description"", ""locations"", ""employment_type"", ""job_location_type"", ""date_posted""]}"
 bl-mlein-ai-automation-gmbh,bl-mlein-ai-automation-gmbh-join,https://join.com/companies/danielbluemleinde,join,"{""slug"": ""danielbluemleinde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"

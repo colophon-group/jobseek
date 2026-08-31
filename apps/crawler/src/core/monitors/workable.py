@@ -2,7 +2,7 @@
 
 Public APIs:
   List:      POST https://apply.workable.com/api/v3/accounts/{slug}/jobs
-  Fallback:  GET  https://apply.workable.com/{slug}/llms.txt
+  Fallback:  GET  https://apply.workable.com/{slug}/{llms.txt,jobs.md}
 
 The list endpoint returns metadata (title, location, department) but not the
 full job description.  The monitor discovers job URLs only; a dedicated
@@ -68,6 +68,10 @@ def _llms_url(slug: str) -> str:
     return f"https://apply.workable.com/{slug}/llms.txt"
 
 
+def _jobs_markdown_url(slug: str) -> str:
+    return f"https://apply.workable.com/{slug}/jobs.md"
+
+
 def _parse_markdown_count(markdown: str) -> int:
     match = re.search(r"All open roles .*?:\s*([\d,]+) current openings\b", markdown)
     if match is None:
@@ -75,12 +79,23 @@ def _parse_markdown_count(markdown: str) -> int:
     return int(match.group(1).replace(",", ""))
 
 
-async def _markdown_empty(slug: str, client: httpx.AsyncClient) -> bool:
-    """Verify the one authoritative fallback state exposed by ``llms.txt``.
+def _parse_markdown_job_urls(slug: str, markdown: str) -> set[str]:
+    """Extract canonical job URLs from an unfiltered Workable ``jobs.md``."""
+    pattern = re.compile(
+        rf"https://apply\.workable\.com/{re.escape(slug)}/jobs/view/([\w-]+)\.md\b"
+    )
+    return {_job_url(slug, match.group(1)) for match in pattern.finditer(markdown)}
 
-    A positive Workable ``jobs.md`` request returns search facets rather than
-    an unfiltered inventory, so it cannot safely replace the list API. Only an
-    explicit advertised zero is accepted; positive counts fail closed.
+
+async def _markdown_inventory(
+    slug: str,
+    client: httpx.AsyncClient,
+) -> tuple[set[str], bool]:
+    """Fetch and cross-check Workable's public Markdown inventory.
+
+    ``jobs.md`` also supports filtered query strings, so its contents are only
+    authoritative when the unique job-link count from the queryless endpoint
+    exactly matches the independently advertised total in ``llms.txt``.
     """
     llms = await fetch_text_page_with_retry(
         client,
@@ -96,11 +111,27 @@ async def _markdown_empty(slug: str, client: httpx.AsyncClient) -> bool:
     advertised = _parse_markdown_count(llms)
     if advertised == 0:
         log.info("workable.markdown_empty", slug=slug)
-        return True
-    raise ValueError(
-        "Workable list API was rate limited and llms.txt advertises "
-        f"{advertised} current openings; positive markdown inventories are not authoritative"
+        return set(), True
+
+    jobs_markdown = await fetch_text_page_with_retry(
+        client,
+        _jobs_markdown_url(slug),
+        retries=_MARKDOWN_RETRY_ATTEMPTS,
+        base_delay=_MARKDOWN_RETRY_BASE_DELAY,
+        end_of_pagination_statuses=(),
+        require_nonempty=True,
+        log_event="workable.markdown_jobs_backoff",
+        sleep=asyncio.sleep,
     )
+    assert jobs_markdown is not None
+    urls = _parse_markdown_job_urls(slug, jobs_markdown)
+    if len(urls) != advertised:
+        raise ValueError(
+            "Workable Markdown inventory count mismatch: "
+            f"llms.txt advertises {advertised}, jobs.md contains {len(urls)} unique jobs"
+        )
+    log.info("workable.markdown_listed", slug=slug, postings=len(urls))
+    return urls, False
 
 
 async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], bool, bool]:
@@ -131,8 +162,8 @@ async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], boo
             if exc.last_status != 429 or urls:
                 raise
             log.warning("workable.rate_limited_markdown_fallback", slug=slug)
-            verified_empty = await _markdown_empty(slug, client)
-            return set(), False, verified_empty
+            markdown_urls, verified_empty = await _markdown_inventory(slug, client)
+            return markdown_urls, False, verified_empty
 
         results = data.get("results", [])
         for item in results:
