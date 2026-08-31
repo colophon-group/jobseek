@@ -1,15 +1,22 @@
 import { RefreshCw } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
+import { cookies } from "next/headers";
 import { getSession } from "@/lib/sessionCache";
 import {
-  getPopularWatchlists,
+  getOwnedWatchlistById,
   getUserWatchlistsWithLimit,
 } from "@/lib/services/watchlists";
+import { buildWatchlistPageData } from "@/lib/services/watchlist-page-data";
+import { getPreferences } from "@/lib/actions/preferences";
+import { getUserPlan, PLAN_LIMITS } from "@/lib/plans";
 import { logExternalError } from "@/lib/safe-external-error";
+import {
+  WATCHLIST_SELECTION_COOKIE,
+  decodeWatchlistSelection,
+} from "@/lib/watchlist-selection";
 import { WatchlistsPage } from "./watchlists-page";
 
 const WATCHLIST_LOAD_TIMEOUT_MS = 8_000;
-const PUBLIC_WATCHLIST_PAGE_SIZE = 10;
 
 async function loadWatchlists(locale: string) {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -35,33 +42,69 @@ async function loadWatchlists(locale: string) {
  * responses, keeping this core page unusable after hydration (#5896).
  */
 export async function WatchlistsLoader({ locale }: { locale: string }) {
-  const session = await getSession();
+  const [session, cookieStore] = await Promise.all([getSession(), cookies()]);
 
   try {
-    const [{ watchlists, limitReached }, popular] = await Promise.all([
-      loadWatchlists(locale),
-      // A cold precise-count pass can take longer than three seconds. Do not
-      // abandon it here: this is the only mount read, so a timed-out result
-      // would leave the public panel empty until the user hard-reloads.
-      getPopularWatchlists({
-        offset: 0,
-        limit: PUBLIC_WATCHLIST_PAGE_SIZE,
-        locale,
-      }).catch((err) => {
-        logExternalError(
-          "error",
-          { service: "typesense", operation: "load_popular_watchlists" },
-          err,
-        );
-        return { watchlists: [], total: 0 };
-      }),
-    ]);
+    const { watchlists, limitReached } = await loadWatchlists(locale);
+    const rawSelection = cookieStore.get(WATCHLIST_SELECTION_COOKIE)?.value;
+
+    if (!session) {
+      return (
+        <WatchlistsPage
+          initialWatchlists={[]}
+          initialPageData={null}
+          selectionSync={rawSelection ? "clear" : "none"}
+          limitReached
+          locale={locale}
+        />
+      );
+    }
+
+    const hintedId = decodeWatchlistSelection(
+      rawSelection,
+      session.user.id,
+    );
+    let detail = hintedId
+      ? await getOwnedWatchlistById(hintedId, session.user.id)
+      : null;
+    let selectionSync: "none" | "replace" | "clear" =
+      detail ? "none" : "clear";
+
+    if (!detail) {
+      // The list query is deterministically ordered by last access, creation,
+      // then id. Re-check candidates through the exact owner predicate so a
+      // concurrent deletion cannot promote a stale overview row.
+      for (const candidate of watchlists) {
+        detail = await getOwnedWatchlistById(candidate.id, session.user.id);
+        if (detail) {
+          selectionSync = "replace";
+          break;
+        }
+      }
+    }
+
+    const initialPageData = detail
+      ? await Promise.all([
+          getUserPlan(session.user.id),
+          getPreferences(),
+        ]).then(([plan, preferences]) =>
+          buildWatchlistPageData({
+            detail,
+            locale,
+            isOwner: true,
+            isPaidPlan: PLAN_LIMITS[plan].canReceiveAlerts,
+            limitReached,
+            jobLanguages: preferences?.jobLanguages ?? [],
+            publicSnapshot: false,
+          }),
+        )
+      : null;
+
     return (
       <WatchlistsPage
         initialWatchlists={watchlists}
-        initialPopularWatchlists={popular.watchlists}
-        initialPopularTotal={popular.total}
-        username={session?.user.username ?? null}
+        initialPageData={initialPageData}
+        selectionSync={selectionSync}
         limitReached={limitReached}
         locale={locale}
       />

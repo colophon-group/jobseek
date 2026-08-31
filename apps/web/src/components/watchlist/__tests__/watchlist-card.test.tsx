@@ -11,29 +11,21 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@/test-utils/lingui-mock";
 
-vi.mock("next/link", () => ({
-  default: ({ children, href, prefetch: _prefetch, ...props }: Record<string, unknown>) => (
-    <a href={href as string} {...props}>{children as React.ReactNode}</a>
-  ),
-}));
-
-vi.mock("@/lib/useLocalePath", () => ({
-  useLocalePath: () => (p: string) => `/en${p}`,
-}));
-
 import { CreateWatchlistCard, WatchlistCard } from "../watchlist-card";
 
 beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("WatchlistCard navigation", () => {
-  it("scrolls to top synchronously when navigating to a watchlist", () => {
-    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+describe("WatchlistCard selection", () => {
+  it("selects in place and exposes the active state", () => {
+    const onSelect = vi.fn();
 
     render(
       <WatchlistCard
-        ownerUsername="colophongroup"
+        active
+        selecting={false}
+        onSelect={onSelect}
         watchlist={{
           id: "watchlist-1",
           slug: "maangplus",
@@ -49,15 +41,19 @@ describe("WatchlistCard navigation", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("link", { name: /maang\+/i }));
+    const button = screen.getByRole("button", { name: /maang\+/i });
+    fireEvent.click(button);
 
-    expect(scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "instant" });
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(button.getAttribute("aria-pressed")).toBe("true");
   });
 
   it("shows a useful company count until the live job count arrives", () => {
     render(
       <WatchlistCard
-        ownerUsername="colophongroup"
+        active={false}
+        selecting={false}
+        onSelect={() => {}}
         watchlist={{
           id: "watchlist-1",
           slug: "maangplus",
@@ -82,26 +78,22 @@ describe("CreateWatchlistCard (issue #3036)", () => {
     render(<CreateWatchlistCard onClick={() => {}} disabled />);
     // The button is the Tooltip trigger when disabled; find by accessible
     // text "Create".
-    const btn = screen.getByRole("button", { name: /create/i });
+    const btn = screen.getByRole("button", { name: /maximum of 10/i });
     expect(btn.className).toContain("opacity-50");
   });
 
   it("does not call onClick when disabled (gating intact)", () => {
     const onClick = vi.fn();
     render(<CreateWatchlistCard onClick={onClick} disabled />);
-    const btn = screen.getByRole("button", { name: /create/i });
+    const btn = screen.getByRole("button", { name: /maximum of 10/i });
     fireEvent.click(btn);
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("opens the upgrade modal (with billing CTA) when clicked while disabled", async () => {
+  it("announces the account-wide ceiling instead of an upgrade state", () => {
     render(<CreateWatchlistCard onClick={() => {}} disabled />);
-    const btn = screen.getByRole("button", { name: /create/i });
-    fireEvent.click(btn);
-
-    // The upgrade modal portals a link to /settings/billing — sub-bug 3.
-    const link = await screen.findByRole("link", { name: /upgrade/i });
-    expect(link.getAttribute("href")).toBe("/en/settings/billing");
+    const btn = screen.getByRole("button", { name: /maximum of 10/i });
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
   });
 
   it("calls onClick when enabled", () => {

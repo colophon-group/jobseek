@@ -1,30 +1,43 @@
 "use client";
 
-import Link from "next/link";
-import { Plus, Eye, Lock, Loader2, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Plus } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { useLocalePath } from "@/lib/useLocalePath";
-import { scrollToTopOnNav } from "@/lib/scroll-on-nav";
 import type { UserWatchlistOverview } from "@/lib/actions/watchlists";
-import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import { tooltipWarningClass } from "@/components/ui/tooltip-styles";
 
-export function WatchlistCard({ watchlist, ownerUsername }: { watchlist: UserWatchlistOverview; ownerUsername: string | null }) {
+export function WatchlistCard({
+  watchlist,
+  active,
+  selecting,
+  onSelect,
+}: {
+  watchlist: UserWatchlistOverview;
+  active: boolean;
+  selecting: boolean;
+  onSelect: () => void;
+}) {
   const { t } = useLingui();
-  const lp = useLocalePath();
-  const href = ownerUsername ? lp(`/${ownerUsername}/${watchlist.slug}`) : "#";
 
   return (
-    <Link
-      href={href}
-      prefetch={false}
-      onClick={() => scrollToTopOnNav(href)}
-      className="flex h-28 w-28 shrink-0 flex-col items-center justify-center gap-1.5 rounded-lg border border-border-soft bg-surface p-3 text-center transition-colors hover:border-primary/30 hover:bg-border-soft"
+    <button
+      type="button"
+      aria-pressed={active}
+      aria-busy={selecting}
+      onClick={onSelect}
+      className={`flex h-28 w-28 shrink-0 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border bg-surface p-3 text-center transition-colors ${
+        active
+          ? "border-primary ring-1 ring-primary/30"
+          : "border-border-soft hover:border-primary/30 hover:bg-border-soft"
+      }`}
     >
-      <div className="flex items-center gap-1 text-muted">
-        {watchlist.isPublic ? <Eye size={14} /> : <Lock size={14} />}
-      </div>
+      <span className="h-4 text-primary" aria-hidden="true">
+        {selecting
+          ? <Loader2 size={14} className="motion-safe:animate-spin" />
+          : active
+            ? <Check size={14} />
+            : null}
+      </span>
       <span className="line-clamp-2 text-xs font-medium leading-tight">
         {watchlist.title}
       </span>
@@ -43,44 +56,44 @@ export function WatchlistCard({ watchlist, ownerUsername }: { watchlist: UserWat
           </>
         )}
       </span>
-    </Link>
+    </button>
   );
 }
 
-export function CreateWatchlistCard({ onClick, creating, disabled }: { onClick: () => void; creating?: boolean; disabled?: boolean }) {
+export function CreateWatchlistCard({
+  onClick,
+  creating,
+  disabled,
+}: {
+  onClick: () => void;
+  creating?: boolean;
+  disabled?: boolean;
+}) {
   const { t } = useLingui();
-  const upgrade = useUpgradeModal();
 
-  function handleClick() {
-    if (creating) return;
-    if (disabled) {
-      upgrade.show(t({
-        id: "upgrade.reason.watchlistLimit",
-        comment: "Reason shown in upgrade modal when watchlist creation limit reached",
-        message: "You've reached your watchlist limit. Upgrade your plan to create more watchlists.",
-      }));
-      return;
-    }
-    onClick();
-  }
-
-  const warningLabel = t({
+  const limitLabel = t({
     id: "watchlists.card.limitReached",
-    comment: "Warning tooltip when watchlist limit reached on create card",
-    message: "Watchlist limit reached",
+    comment: "Warning tooltip when the account-wide watchlist limit is reached",
+    message: "Maximum of 10 watchlists reached",
   });
 
   const button = (
     <button
       type="button"
-      onClick={handleClick}
-      className={`flex h-28 w-28 shrink-0 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-soft bg-surface p-3 text-center text-muted transition-colors cursor-pointer ${
+      onClick={() => {
+        if (!creating && !disabled) onClick();
+      }}
+      aria-disabled={disabled || creating}
+      aria-label={disabled ? limitLabel : undefined}
+      className={`flex h-28 w-28 shrink-0 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-soft bg-surface p-3 text-center text-muted transition-colors ${
         creating || disabled
-          ? "opacity-50"
-          : "hover:border-primary/30 hover:text-foreground"
+          ? "cursor-not-allowed opacity-50"
+          : "cursor-pointer hover:border-primary/30 hover:text-foreground"
       }`}
     >
-      {creating ? <Loader2 size={20} className="animate-spin" /> : <Plus size={20} />}
+      {creating
+        ? <Loader2 size={20} className="motion-safe:animate-spin" aria-hidden="true" />
+        : <Plus size={20} aria-hidden="true" />}
       <span className="text-xs font-medium">
         <Trans id="watchlists.card.create" comment="Label on the create watchlist card">
           Create
@@ -89,26 +102,22 @@ export function CreateWatchlistCard({ onClick, creating, disabled }: { onClick: 
     </button>
   );
 
+  if (!disabled) return button;
+
   return (
-    <>
-      {disabled ? (
-        <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
-          <Tooltip.Root>
-            <Tooltip.Trigger asChild>
-              {button}
-            </Tooltip.Trigger>
-            <Tooltip.Portal>
-              <Tooltip.Content className={`${tooltipWarningClass} flex items-center gap-1.5`} sideOffset={6}>
-                <AlertTriangle size={12} className="shrink-0" />
-                {warningLabel}
-              </Tooltip.Content>
-            </Tooltip.Portal>
-          </Tooltip.Root>
-        </Tooltip.Provider>
-      ) : (
-        button
-      )}
-      <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
-    </>
+    <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>{button}</Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            className={`${tooltipWarningClass} flex items-center gap-1.5`}
+            sideOffset={6}
+          >
+            <AlertTriangle size={12} className="shrink-0" aria-hidden="true" />
+            {limitLabel}
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
   );
 }

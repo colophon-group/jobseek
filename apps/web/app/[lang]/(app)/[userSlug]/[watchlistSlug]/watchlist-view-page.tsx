@@ -1,12 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2, Building2, Pencil } from "lucide-react";
-import { BackLink } from "@/components/BackLink";
 import { useLingui } from "@lingui/react/macro";
-import { useLocalePath } from "@/lib/useLocalePath";
-import { useSession } from "@/components/providers/SessionProvider";
 import type {
   WatchlistDetail,
   WatchlistFilters,
@@ -43,7 +39,6 @@ export function WatchlistViewPage({
   detail,
   isOwner,
   isPaidPlan,
-  limitReached,
   initialPostings,
   initialTotal,
   yearTotal,
@@ -58,7 +53,6 @@ export function WatchlistViewPage({
   detail: WatchlistDetail;
   isOwner: boolean;
   isPaidPlan: boolean;
-  limitReached: boolean;
   initialPostings: WatchlistPostingEntry[];
   initialTotal: number;
   yearTotal: number;
@@ -71,9 +65,6 @@ export function WatchlistViewPage({
   languages: string[];
 }) {
   const { t } = useLingui();
-  const router = useRouter();
-  const lp = useLocalePath();
-  const { user } = useSession();
 
   // ── Editable title ──
   const [title, setTitle] = useState(detail.title);
@@ -96,10 +87,8 @@ export function WatchlistViewPage({
     const result = await updateWatchlist({ watchlistId: detail.id, title: trimmed });
     setSavingTitle(false);
     setEditingTitle(false);
-    if ("slug" in result && user?.username) {
-      router.replace(lp(`/${user.username}/${result.slug}`));
-    }
-  }, [title, detail.title, detail.id, user?.username, router, lp]);
+    if ("error" in result) setTitle(detail.title);
+  }, [title, detail.title, detail.id]);
 
   // ── Editable description ──
   const [description, setDescription] = useState(detail.description ?? "");
@@ -371,11 +360,6 @@ export function WatchlistViewPage({
 
   return (
     <div className="space-y-6">
-      {/* Back link */}
-      <BackLink href={lp("/watchlists")}>
-        {t({ id: "watchlists.view.back", comment: "Back to watchlists link", message: "Watchlists" })}
-      </BackLink>
-
       {/* Configuration area */}
       <div className="space-y-4 rounded-lg border border-border-soft bg-surface p-4">
         {/* Header */}
@@ -411,17 +395,11 @@ export function WatchlistViewPage({
                 {isOwner && <Pencil size={14} className="ml-2 inline-block text-muted opacity-0 transition-opacity group-hover/title:opacity-100" />}
               </h1>
             )}
-            <p className="mt-0.5 text-sm text-muted">
-              @{detail.owner.displayUsername ?? detail.owner.username ?? detail.owner.name}
-            </p>
           </div>
           <WatchlistActionBar
             watchlistId={detail.id}
-            isOwner={isOwner}
-            isPublic={detail.isPublic}
             alertsEnabled={detail.alertsEnabled}
             isPaidPlan={isPaidPlan}
-            limitReached={limitReached}
           />
         </div>
 
