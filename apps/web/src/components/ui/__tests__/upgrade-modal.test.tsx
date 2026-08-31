@@ -21,6 +21,20 @@ vi.mock("@/lib/useLocalePath", () => ({
 
 import { UpgradeModal } from "../upgrade-modal";
 
+function expectMotionSafeEntrance(dialog: HTMLElement) {
+  const overlay = [...document.querySelectorAll<HTMLElement>("[data-state='open']")]
+    .find((element) => element !== dialog && element.className.includes("bg-black/40"));
+
+  expect(overlay).toBeTruthy();
+  for (const element of [overlay!, dialog]) {
+    const classes = element.className.split(/\s+/);
+    expect(classes).toContain("motion-safe:data-[state=open]:animate-in");
+    expect(classes).toContain("motion-safe:data-[state=open]:fade-in-0");
+    expect(classes).not.toContain("data-[state=open]:animate-in");
+    expect(classes).not.toContain("data-[state=open]:fade-in-0");
+  }
+}
+
 describe("UpgradeModal (issue #3036)", () => {
   it("links its Upgrade CTA to /settings/billing, not /settings", () => {
     render(
@@ -47,5 +61,21 @@ describe("UpgradeModal (issue #3036)", () => {
       />,
     );
     expect(screen.getByText("custom reason xyz")).toBeTruthy();
+  });
+
+  it("only animates its entrance when reduced motion is not requested", () => {
+    render(
+      <UpgradeModal
+        open={true}
+        onOpenChange={() => {}}
+        reason="This feature requires a subscription."
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Upgrade required" });
+    expectMotionSafeEntrance(dialog);
+    const classes = dialog.className.split(/\s+/);
+    expect(classes).toContain("motion-safe:data-[state=open]:zoom-in-95");
+    expect(classes).not.toContain("data-[state=open]:zoom-in-95");
   });
 });
