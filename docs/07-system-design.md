@@ -198,6 +198,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `jobbank104`      | URL-only | json-ld     | 104 Job Bank company-page links through optional proxy transport |
 | 10   | `jobdiva`         | URL-only | api_sniffer | JobDiva token bootstrap + native range pagination |
 | 10   | `jobstreet`       | Rich     | jobstreet   | JobStreet employer search summaries + GraphQL detail enrichment |
+| 10   | `seek`            | URL-only | seek        | SEEK AU/NZ advertiser search + GraphQL detail enrichment |
 | 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
 | 10   | `infoniqa`        | URL-only | --          | Infoniqa employer-bound session POST pagination |
 | 10   | `infor`           | Rich     | infor       | Infor CandidateSelfService Landmark APIs + detail enrichment |
@@ -316,6 +317,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
 | `phuketall`    | Parse PhuketAll employer job pages                 | None                   |
 | `rippling`     | Fetch Rippling detail API records                  | None                   |
+| `seek`         | Fetch SEEK AU/NZ vacancy detail GraphQL data        | None                   |
 | `skip`         | No-scrape marker for rich monitor output           | None                   |
 | `smartrecruiters` | Fetch SmartRecruiters detail API records        | None                   |
 | `taleo`       | Parse Taleo Enterprise embedded detail payload      | None                   |

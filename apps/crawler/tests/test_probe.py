@@ -712,6 +712,7 @@ class TestProbeScrapers:
             "pdf",
             "taleo",
             "dom",
+            "seek",
             "api_sniffer",
         ]
 
@@ -877,5 +878,6 @@ class TestProbeScrapersPw:
             "pdf",
             "taleo",
             "dom",
+            "seek",
             "api_sniffer",
         ]
