@@ -167,6 +167,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "intervieweb",
     "jazzhr",
     "jobbank104",
+    "jobdiva",
     "johdi",
     "jobvite",
     "jobs_ch",

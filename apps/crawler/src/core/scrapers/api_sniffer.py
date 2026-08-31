@@ -697,6 +697,59 @@ async def _scrape_http(
         for key, val in placeholders.items():
             post_body = post_body.replace(f"{{{key}}}", val)
 
+    auth_request = config.get("auth_request")
+    if auth_request is not None:
+        if not isinstance(auth_request, dict):
+            raise ValueError("api_sniffer auth_request must be a mapping")
+        auth_url = auth_request.get("api_url")
+        header_fields = auth_request.get("header_fields")
+        if not isinstance(auth_url, str) or not auth_url:
+            raise ValueError("api_sniffer auth_request requires api_url")
+        if not isinstance(header_fields, dict) or not header_fields or len(header_fields) > 32:
+            raise ValueError(
+                "api_sniffer auth_request requires a bounded non-empty header_fields mapping"
+            )
+        auth_method = auth_request.get("method", "GET")
+        if auth_method not in {"GET", "POST"}:
+            raise ValueError("api_sniffer auth_request method must be GET or POST")
+        auth_headers = clean_headers(auth_request.get("request_headers") or {})
+        auth_body = auth_request.get("post_body") or auth_request.get("post_data")
+        if auth_body is not None and not isinstance(auth_body, str):
+            raise ValueError("api_sniffer auth_request post body must be a string")
+        auth_data = await http_fetch_with_retry(
+            http,
+            auth_method,
+            auth_url,
+            auth_headers,
+            auth_body,
+            raise_non_retryable=True,
+        )
+        auth_path = auth_request.get("json_path")
+        if auth_path:
+            import jmespath as _jmespath
+
+            auth_data = _jmespath.search(auth_path, auth_data)
+        if not isinstance(auth_data, dict):
+            raise RuntimeError("api_sniffer auth_request returned no header data")
+        for header_name, field_spec in header_fields.items():
+            if (
+                not isinstance(header_name, str)
+                or not header_name
+                or "\r" in header_name
+                or "\n" in header_name
+                or not isinstance(field_spec, (str, list, dict))
+            ):
+                raise ValueError("api_sniffer auth_request header_fields is invalid")
+            header_value = extract_field(auth_data, field_spec)
+            if header_value is None or isinstance(header_value, list):
+                raise RuntimeError(
+                    f"api_sniffer auth_request omitted scalar field for {header_name!r}"
+                )
+            normalized_value = str(header_value)
+            if "\r" in normalized_value or "\n" in normalized_value:
+                raise ValueError("api_sniffer auth_request produced an invalid header value")
+            headers[header_name] = normalized_value
+
     try:
         data = await http_fetch_with_retry(
             http,
