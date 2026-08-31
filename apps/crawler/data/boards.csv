@@ -5128,6 +5128,7 @@ rasa,rasa-ashby,https://jobs.ashbyhq.com/rasa,ashby,"{""token"": ""rasa""}",skip
 raycast,raycast-ashby,https://jobs.ashbyhq.com/raycast,ashby,"{""token"": ""raycast""}",skip,
 razorpay,razorpay-pinpoint,https://razorpay.pinpointhq.com,pinpoint,"{""slug"": ""razorpay""}",skip,
 razorpay-software-private-limited,razorpay-software-private-limited-greenhouse,https://job-boards.greenhouse.io/razorpaysoftwareprivatelimited,greenhouse,"{""token"": ""razorpaysoftwareprivatelimited""}",skip,
+rbc,rbc-careers,https://rbc.wd3.myworkdayjobs.com/rbcglobal1,workday,"{""company"": ""rbc"", ""wd_instance"": ""wd3"", ""site"": ""rbcglobal1"", ""sites"": [""rbcglobal1"", ""RBCEARLYTALENT1""]}",workday,
 re-build-manufacturing,re-build-manufacturing-greenhouse,https://job-boards.greenhouse.io/rebuildmanufacturing,greenhouse,"{""token"": ""rebuildmanufacturing""}",skip,
 reach,reach-recruitee,https://reach.recruitee.com,recruitee,"{""token"": ""reach""}",skip,
 reach3-insights,reach3-insights-greenhouse,https://job-boards.greenhouse.io/reach3insights,greenhouse,"{""token"": ""reach3insights""}",skip,
