@@ -3,15 +3,18 @@ import {
   invalidateTypesenseBrowserConfigIfUnauthorized,
   type TypesenseBrowserConfig,
 } from "./typesense-browser-key";
-import {
-  buildFilterString,
-  POSTING_BASE_FILTER,
-  POSTING_FLOW_FILTER,
-} from "./typesense-filters";
+import { buildFilterString, POSTING_FLOW_FILTER } from "./typesense-filters";
 import { COMPANY_BATCH_SIZE } from "./constants";
 import { isTypesenseQueryStringSafe } from "./typesense-query-size";
-import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
+import type {
+  WatchlistCandidateFilters,
+  WatchlistPostingEntry,
+} from "@/lib/watchlist-matcher-contract";
 import { normalizePostingTitle } from "@/lib/posting-title";
+import {
+  buildWatchlistCandidateSearchParams,
+  hasWatchlistCandidateScope,
+} from "./watchlist-candidate-query";
 
 interface JobPostingDoc {
   id: string;
@@ -148,25 +151,9 @@ function mapHit(doc: Record<string, unknown>): WatchlistPostingEntry {
   };
 }
 
-export interface WatchlistPostingsParams {
-  companyIds: string[];
-  anyCompany?: boolean;
+export interface WatchlistPostingsParams extends WatchlistCandidateFilters {
   offset: number;
   limit: number;
-  keywords?: string[];
-  locationIds?: number[];
-  occupationIds?: number[];
-  seniorityIds?: number[];
-  technologyIds?: number[];
-  /** Work-mode filter — `onsite | hybrid | remote` (issue #3037). */
-  workMode?: ("onsite" | "hybrid" | "remote")[];
-  /** Employment-type filter (issue #3037). */
-  employmentType?: string[];
-  salaryMin?: number;
-  salaryMax?: number;
-  experienceMin?: number;
-  experienceMax?: number;
-  languages?: string[];
 }
 
 /**
@@ -180,43 +167,18 @@ export interface WatchlistPostingsParams {
 export async function getWatchlistPostingsBrowser(
   params: WatchlistPostingsParams,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number }> {
-  if (!params.anyCompany && params.companyIds.length === 0) {
+  if (!hasWatchlistCandidateScope(params)) {
     return { postings: [], total: 0 };
   }
   if (params.companyIds.length > COMPANY_BATCH_SIZE) {
     throw new Error("watchlist exceeds COMPANY_BATCH_SIZE — falling back");
   }
 
-  const filterStr = buildFilterString({
-    locationIds: params.locationIds,
-    occupationIds: params.occupationIds,
-    seniorityIds: params.seniorityIds,
-    technologyIds: params.technologyIds,
-    workMode: params.workMode?.length ? params.workMode : undefined,
-    employmentTypes: params.employmentType?.length ? params.employmentType : undefined,
-    salaryMinEur: params.salaryMin,
-    salaryMaxEur: params.salaryMax,
-    experienceMin: params.experienceMin,
-    experienceMax: params.experienceMax,
-    languages: params.languages,
+  const searchParams = buildWatchlistCandidateSearchParams({
+    filters: params,
+    offset: params.offset,
+    limit: params.limit,
   });
-  const hasKeywords = params.keywords && params.keywords.length > 0;
-  const q = hasKeywords ? params.keywords!.join(" ") : "*";
-
-  const filterParts = [POSTING_BASE_FILTER];
-  if (params.companyIds.length > 0) {
-    filterParts.push(`company_id:[${params.companyIds.join(",")}]`);
-  }
-  if (filterStr) filterParts.push(filterStr);
-
-  const searchParams = {
-    q,
-    query_by: "title",
-    filter_by: filterParts.join(" && "),
-    sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
-    per_page: params.limit === 0 ? 0 : params.limit,
-    page: params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,
-  };
   if (!isTypesenseQueryStringSafe(searchParams)) {
     throw new Error("watchlist Typesense query exceeds GET limit — falling back");
   }
