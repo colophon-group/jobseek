@@ -111,6 +111,7 @@ Monitor Types (cheapest first):
   jazzhr            10      Job URLs          Auto-configured
   job51             10      Full job data     No (skipped)
   jobbank104        10      Job URLs          Auto-configured JSON-LD
+  jobdiva           10      Job URLs          api_sniffer detail scraper
   jobstreet         10      Full/partial      Auto-enriched
   johdi             10      Job URLs          Auto-configured
   pageup            10      Full/partial      Auto-enriched DOM
@@ -3488,6 +3489,12 @@ api_sniffer — XHR/Fetch API Capture (single page)
     post_body POST request body (JSON string). Supports {id} placeholder.
     json_path jmespath expression to navigate to the job object in the response.
     request_headers  Dict of HTTP headers to include in the request.
+    auth_request
+              Optional public preflight request for short-lived detail API
+              headers. Configure api_url, method/request_headers as needed,
+              and ``header_fields`` mapping destination header names to fields
+              in the preflight JSON response. The preflight runs immediately
+              before each detail request.
     enrich    List of field names to fetch from the detail API when the
               monitor already provides partial data (e.g. ["description"]).
               Only those fields are scraped; others come from the monitor.
@@ -4161,6 +4168,20 @@ MONITOR_CARDS: dict[str, str] = {
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
     "jobbank104": MONITOR_JOBBANK104,
+    "jobdiva": """\
+jobdiva — JobDiva candidate portal API monitor
+
+  Returns:  Canonical portal detail URLs
+  Scraper:  api_sniffer with an auth_request token bootstrap
+  Cost:     10
+  Browser:  No
+
+  Config:
+    {"token": "<tenant key>"}
+
+  The monitor runs the provider's public auth bootstrap, starts the form POST
+  search, then drains the separate position-based getmore API in 200-row pages.
+""",
     "computrabajo": MONITOR_COMPUTRABAJO,
     "jobstreet": MONITOR_JOBSTREET,
     "jobvite": MONITOR_JOBVITE,

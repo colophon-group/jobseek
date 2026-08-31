@@ -8,6 +8,7 @@ import { db } from "@/db";
 import {
   watchlist,
   watchlistCompany,
+  userPreferences,
 } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { getViewerLanguages } from "@/lib/viewer";
@@ -19,7 +20,7 @@ import {
 } from "@/lib/cache-ttl";
 import { withDbRetry } from "@/lib/db-retry";
 import { watchlistCacheTag } from "@/lib/cache-tags";
-import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
+import { canCreateWatchlist } from "@/lib/plans";
 import {
   createWithinWatchlistLimit,
   WatchlistLimitReachedError,
@@ -55,6 +56,8 @@ import { isTrivialWatchlist, buildFilterCacheKey } from "@/lib/watchlist-utils";
 import { notifyIndexNow, logIndexNowResult } from "@/lib/indexnow";
 import { createWatchlistFromHandoffWithDeps } from "@/lib/services/watchlist-handoff";
 import { publicWatchlistRouteStatusCacheKey } from "@/lib/services/public-resource-status";
+import { toggleWatchlistAlertState } from "@/lib/notifications/policy";
+import { lockNotificationPolicyForUser } from "@/lib/services/notification-preferences";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -729,27 +732,57 @@ export async function toggleWatchlistAlerts(
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
 
-  const [wl] = await db
-    .select({
-      userId: watchlist.userId,
-      alertsEnabled: watchlist.alertsEnabled,
-    })
-    .from(watchlist)
-    .where(eq(watchlist.id, watchlistId))
-    .limit(1);
+  return db.transaction(async (tx) => {
+    await lockNotificationPolicyForUser(tx, userId);
+    const changedAt = new Date();
 
-  if (!wl || wl.userId !== userId) return { error: "not_found" };
+    const [wl] = await tx
+      .select({
+        alertsEnabled: watchlist.alertsEnabled,
+        alertsEnabledAt: watchlist.alertsEnabledAt,
+      })
+      .from(watchlist)
+      .where(
+        and(eq(watchlist.id, watchlistId), eq(watchlist.userId, userId)),
+      )
+      .for("update")
+      .limit(1);
 
-  const plan = await getUserPlan(userId);
-  if (!PLAN_LIMITS[plan].canReceiveAlerts) return { error: "paid_only" };
+    if (!wl) return { error: "not_found" };
 
-  const newVal = !wl.alertsEnabled;
-  await db
-    .update(watchlist)
-    .set({ alertsEnabled: newVal })
-    .where(eq(watchlist.id, watchlistId));
+    // Older accounts may not have materialized a preference row yet. Create
+    // the conservative weekly/unpaused baseline so every enabled alert has a
+    // persisted global state timestamp available to later window policy.
+    await tx
+      .insert(userPreferences)
+      .values({
+        userId,
+        notificationsStateChangedAt: changedAt,
+      })
+      .onConflictDoNothing({ target: userPreferences.userId });
 
-  return { enabled: newVal };
+    const [preferences] = await tx
+      .select({ notificationsPaused: userPreferences.notificationsPaused })
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId))
+      .limit(1);
+
+    const transition = toggleWatchlistAlertState(
+      wl,
+      preferences?.notificationsPaused ?? false,
+      changedAt,
+    );
+    if (!transition.ok) return { error: transition.error };
+
+    await tx
+      .update(watchlist)
+      .set(transition.state)
+      .where(
+        and(eq(watchlist.id, watchlistId), eq(watchlist.userId, userId)),
+      );
+
+    return { enabled: transition.state.alertsEnabled };
+  });
 }
 
 /**

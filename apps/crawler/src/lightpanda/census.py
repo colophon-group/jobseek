@@ -256,6 +256,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
     "api_sniffer": frozenset(
         {
             "api_url",
+            "auth_request",
             "browser",
             "channel",
             "enrich",
