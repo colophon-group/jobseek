@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
     description: string | null;
     isPublic: boolean;
     filters: Record<string, unknown>;
+    sourceWatchlistId?: string | null;
   };
   type CompanyRow = { watchlistId: string; companyId: string };
   type State = { watchlists: WatchlistRow[]; companies: CompanyRow[] };
@@ -51,9 +52,20 @@ const mocks = vi.hoisted(() => {
     companies: state.companies.map((row) => ({ ...row })),
   });
 
-  const makeSelect = (state: State, useRootQueue: boolean) => {
+  const makeSelect = (
+    state: State,
+    useRootQueue: boolean,
+    projection?: Record<string, unknown>,
+  ) => {
     let table: unknown;
     const rows = () => {
+      if (
+        projection
+        && "value" in projection
+        && (projection.value as { kind?: string }).kind === "count"
+      ) {
+        return [{ value: state.watchlists.filter((row) => row.userId === "user-1").length }];
+      }
       if (useRootQueue) return rootSelectRows.shift() ?? [];
       if (table === watchlistCompany) {
         return state.companies.map(({ companyId }) => ({ companyId }));
@@ -106,6 +118,7 @@ const mocks = vi.hoisted(() => {
           description: (value.description as string | null) ?? null,
           isPublic: Boolean(value.isPublic),
           filters: (value.filters as Record<string, unknown>) ?? {},
+          sourceWatchlistId: (value.sourceWatchlistId as string | null) ?? null,
         };
         state.watchlists.push(row);
         return [{ id: row.id }];
@@ -147,14 +160,15 @@ const mocks = vi.hoisted(() => {
   };
 
   const makeTx = (state: State) => ({
-    select: () => makeSelect(state, false),
+    execute: async () => [],
+    select: (projection?: Record<string, unknown>) => makeSelect(state, false, projection),
     insert: (table: unknown) => makeInsert(state, table),
     update: (table: unknown) => makeUpdate(state, table),
     delete: (table: unknown) => makeDelete(state, table),
   });
 
   const db = {
-    select: () => makeSelect(committed, true),
+    select: (projection?: Record<string, unknown>) => makeSelect(committed, true, projection),
     insert: () => {
       throw new Error("mutation escaped transaction");
     },
@@ -242,6 +256,7 @@ vi.mock("drizzle-orm", () => {
   const sql = (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values });
   sql.join = (..._args: unknown[]) => ({ strings: [], values: [] });
   return {
+    count: () => ({ kind: "count" }),
     eq: (...args: unknown[]) => ({ kind: "eq", args }),
     and: (...args: unknown[]) => ({ kind: "and", args }),
     sql,
@@ -322,6 +337,76 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     expect(mocks.afterFn).not.toHaveBeenCalled();
   });
 
+  it("rejects the 11th direct create inside the insert transaction", async () => {
+    mocks.setState({
+      watchlists: Array.from({ length: 10 }, (_, index) => ({
+        id: `wl-${index}`,
+        userId: USER_ID,
+        slug: `existing-${index}`,
+        title: `Existing ${index}`,
+        description: null,
+        isPublic: false,
+        filters: {},
+      })),
+      companies: [],
+    });
+
+    await expect(createWatchlist({
+      title: "Eleventh",
+      companyIds: [],
+    })).resolves.toEqual({ error: "limit_reached" });
+
+    expect(mocks.snapshot().watchlists).toHaveLength(10);
+    expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 1 });
+    expect(mocks.afterFn).not.toHaveBeenCalled();
+  });
+
+  it("preserves a grandfathered 16-watchlist account while blocking create", async () => {
+    mocks.setState({
+      watchlists: Array.from({ length: 16 }, (_, index) => ({
+        id: `wl-${index}`,
+        userId: USER_ID,
+        slug: `existing-${index}`,
+        title: `Existing ${index}`,
+        description: null,
+        isPublic: false,
+        filters: {},
+      })),
+      companies: [],
+    });
+
+    await expect(createWatchlist({
+      title: "Seventeenth",
+      companyIds: [],
+    })).resolves.toEqual({ error: "limit_reached" });
+
+    expect(mocks.snapshot().watchlists).toHaveLength(16);
+    expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 1 });
+    expect(mocks.afterFn).not.toHaveBeenCalled();
+  });
+
+  it("still permits edits for a grandfathered 16-watchlist account", async () => {
+    const existing = Array.from({ length: 16 }, (_, index) => ({
+      id: index === 0 ? WATCHLIST_ID : `wl-${index}`,
+      userId: USER_ID,
+      slug: `existing-${index}`,
+      title: `Existing ${index}`,
+      description: null,
+      isPublic: false,
+      filters: {},
+    }));
+    mocks.setState({ watchlists: existing, companies: [] });
+    mocks.queueRootSelect([{ ...existing[0] }]);
+
+    await expect(updateWatchlist({
+      watchlistId: WATCHLIST_ID,
+      description: "Still editable",
+    })).resolves.toEqual({ slug: "existing-0" });
+
+    expect(mocks.snapshot().watchlists).toHaveLength(16);
+    expect(mocks.snapshot().watchlists[0].description).toBe("Still editable");
+  });
+
   it("preserves metadata and company membership when replacement fails", async () => {
     const originalState = {
       watchlists: [{
@@ -375,6 +460,79 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     expect(mocks.snapshot()).toEqual(originalState);
     expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 1 });
     expect(mocks.afterFn).not.toHaveBeenCalled();
+  });
+
+  it("copies a cross-user public source when the destination has capacity", async () => {
+    const audit = vi.spyOn(console, "info").mockImplementation(() => {});
+    const source = {
+      id: WATCHLIST_ID,
+      userId: "source-owner",
+      slug: "source",
+      title: "Shared source",
+      description: null,
+      isPublic: true,
+      filters: {},
+    };
+    const destinationRows = Array.from({ length: 9 }, (_, index) => ({
+      id: `destination-${index}`,
+      userId: USER_ID,
+      slug: `destination-${index}`,
+      title: `Destination ${index}`,
+      description: null,
+      isPublic: false,
+      filters: {},
+    }));
+    mocks.setState({ watchlists: [source, ...destinationRows], companies: [] });
+    mocks.queueRootSelect([{ ...source }]);
+    mocks.setNextWatchlistId("wl-copy");
+
+    try {
+      await expect(copyWatchlist(WATCHLIST_ID)).resolves.toEqual({
+        id: "wl-copy",
+        slug: "shared-source",
+      });
+
+      const rows = mocks.snapshot().watchlists;
+      expect(rows.filter((row) => row.userId === USER_ID)).toHaveLength(10);
+      expect(rows).toContainEqual(expect.objectContaining({
+        id: "wl-copy",
+        userId: USER_ID,
+        title: "Shared source",
+        sourceWatchlistId: WATCHLIST_ID,
+      }));
+    } finally {
+      audit.mockRestore();
+    }
+  });
+
+  it("applies copy capacity to the destination owner, not the cross-user source", async () => {
+    const source = {
+      id: WATCHLIST_ID,
+      userId: "source-owner",
+      slug: "source",
+      title: "Shared source",
+      description: null,
+      isPublic: true,
+      filters: {},
+    };
+    const destinationRows = Array.from({ length: 10 }, (_, index) => ({
+      id: `destination-${index}`,
+      userId: USER_ID,
+      slug: `destination-${index}`,
+      title: `Destination ${index}`,
+      description: null,
+      isPublic: false,
+      filters: {},
+    }));
+    mocks.setState({ watchlists: [source, ...destinationRows], companies: [] });
+    mocks.queueRootSelect([{ ...source }]);
+
+    await expect(copyWatchlist(WATCHLIST_ID)).resolves.toEqual({
+      error: "limit_reached",
+    });
+
+    expect(mocks.snapshot().watchlists).toEqual([source, ...destinationRows]);
+    expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 1 });
   });
 
   it("rechecks copy authorization inside the transaction", async () => {

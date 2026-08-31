@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Job Seek API",
-    "version": "1.2.0",
-    "description": "Public API for AI agents to search jobs, companies, watchlists, and taxonomies on jseek.co. Anonymous GETs share a pre-cache edge budget of 60 requests per minute per IP with public-read Server Actions. Requests that execute an API origin additionally use a 30 requests per minute sliding limit. Successful deterministic responses may be served from Vercel's CDN; they omit caller-specific rate-limit headers. The edge may return HTTP 403 when its shared budget is exceeded, while the origin returns a non-cacheable HTTP 429 with reset metadata.\n\nIMPORTANT: Filter parameters (loc, occ, sen, tech) require exact slugs, NOT freetext. Use /api/v1/resolve to convert freetext to slugs first, or /api/v1/taxonomies to list all valid slugs. Passing freetext like loc=Zurich will NOT work — use loc=zurich (the slug)."
+    "version": "1.3.0",
+    "description": "Public API for AI agents to search jobs, companies, and taxonomies on jseek.co and to create private watchlist handoff links. Anonymous GETs share a pre-cache edge budget of 60 requests per minute per IP with public-read Server Actions. Active requests that execute an API origin additionally use a 30 requests per minute sliding limit. Successful deterministic responses may be served from Vercel's CDN; they omit caller-specific rate-limit headers. The edge may return HTTP 403 when its shared budget is exceeded, while the origin returns a non-cacheable HTTP 429 with reset metadata. Anonymous watchlist discovery is retired: GET /api/v1/watchlists returns a uniform, non-cacheable HTTP 410 through 31 October 2026, then the compatibility route may be removed. Authenticated owner-scoped watchlist list/read access is deferred until verified API identity exists; cross-user discovery is not a replacement contract.\n\nIMPORTANT: Filter parameters (loc, occ, sen, tech) require exact slugs, NOT freetext. Use /api/v1/resolve to convert freetext to slugs first, or /api/v1/taxonomies to list all valid slugs. Passing freetext like loc=Zurich will NOT work — use loc=zurich (the slug)."
   },
   "servers": [{ "url": "https://jseek.co" }],
   "paths": {
@@ -297,42 +297,36 @@
     },
     "/api/v1/watchlists": {
       "get": {
-        "operationId": "searchWatchlists",
-        "summary": "Search public watchlists",
-        "description": "Returns up to 10 public watchlists. Without query, returns most popular.",
-        "parameters": [
-          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Search query for watchlist title/description" },
-          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en", "enum": ["en", "de", "fr", "it"] } }
-        ],
+        "operationId": "retiredWatchlistDiscovery",
+        "summary": "Public watchlist discovery retired",
+        "description": "Anonymous watchlist discovery no longer returns watchlist data. During the bounded compatibility window through 31 October 2026, every origin request returns the same non-cacheable 410 response regardless of query parameters, locale, session state, or stored watchlists. The route may be removed after the Sunset instant. Future list/read access is deferred until API authentication can derive and enforce the authenticated owner; client-supplied user identity alone will never authorize access. The separate /api/v1/watchlist/create private handoff remains available.",
+        "deprecated": true,
+        "parameters": [],
         "responses": {
-          "200": {
-            "description": "Matching watchlists",
+          "403": { "$ref": "#/components/responses/EdgeRateLimited" },
+          "410": {
+            "description": "Anonymous public-watchlist discovery is gone. This compatibility response is available only through the documented Sunset instant and reveals no watchlist existence or metadata.",
+            "headers": {
+              "Cache-Control": {
+                "description": "The compatibility response is never cacheable.",
+                "schema": { "type": "string", "const": "no-store" }
+              },
+              "Access-Control-Allow-Origin": {
+                "description": "Cross-origin access is permitted for compatibility clients.",
+                "schema": { "type": "string", "const": "*" }
+              },
+              "Sunset": {
+                "description": "Last instant of the bounded compatibility window; the route may be removed afterward.",
+                "schema": { "type": "string", "const": "Sat, 31 Oct 2026 23:59:59 GMT" }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "watchlists": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "title": { "type": "string" },
-                          "description": { "type": "string", "nullable": true },
-                          "owner": { "type": "string" },
-                          "companyCount": { "type": "integer" },
-                          "url": { "type": "string" }
-                        }
-                      }
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "error": "Public watchlist discovery is no longer available" }
               }
             }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "403": { "$ref": "#/components/responses/EdgeRateLimited" },
-          "500": { "$ref": "#/components/responses/ProviderUnavailable" }
+          }
         }
       }
     },

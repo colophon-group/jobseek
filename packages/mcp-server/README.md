@@ -1,6 +1,6 @@
 # @jseek/mcp-server
 
-MCP server for [Job Seek](https://jseek.co) — search jobs, companies, and watchlists directly from Claude, ChatGPT, Cursor, or any MCP-compatible client.
+MCP server for [Job Seek](https://jseek.co) — search jobs and companies directly from Claude, ChatGPT, Cursor, or any MCP-compatible client.
 
 ## Remote Endpoint
 
@@ -59,10 +59,17 @@ Add to `.cursor/mcp.json`:
 | `search_companies` | Search companies by name |
 | `list_taxonomies` | List valid filter values (seniority levels, occupations, technologies, industries) |
 | `resolve_slugs` | Convert freetext to exact slugs needed for filter params |
-| `search_watchlists` | Search public watchlists |
 | `create_watchlist_link` | Generate a prefilled watchlist creation link |
 
 All tools are annotated as read-only and non-destructive.
+
+Anonymous watchlist discovery has been retired: `search_watchlists` is no
+longer registered, and `GET /api/v1/watchlists` returns a uniform
+non-cacheable `410 Gone` through 31 October 2026 before the compatibility
+route is removed. `create_watchlist_link` remains available because saving the
+prefilled watchlist requires the user to sign in. Any future REST/MCP list or
+read capability is deferred until API authentication can enforce the
+authenticated owner boundary; cross-user discovery will not return.
 
 ## Usage Examples
 
