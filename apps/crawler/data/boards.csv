@@ -3923,6 +3923,7 @@ maven-emerging-talent,maven-emerging-talent-greenhouse,https://job-boards.greenh
 mavenoid,mavenoid-careers,https://jobs.eu.lever.co/mavenoid,lever,"{""token"": ""mavenoid"", ""region"": ""eu""}",skip,
 may-mobility,may-mobility-greenhouse,https://job-boards.greenhouse.io/maymobility,greenhouse,"{""token"": ""maymobility""}",skip,
 mayflower,mayflower-careers,https://mayflower.recruitee.com,recruitee,"{""slug"": ""mayflower"", ""api_base"": ""https://mayflower.recruitee.com""}",skip,
+mayo-clinic,mayo-clinic-careers,https://fa-euwp-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/mayo-us,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 maze-therapeutics,maze-therapeutics-careers,https://boards.greenhouse.io/mazetherapeutics,greenhouse,"{""token"": ""mazetherapeutics""}",skip,
 mb-f,mb-f-main,https://www.mbandf.com/jobs,dom,"{""render"": false, ""url_filter"": ""/fileadmin/user_upload/Jobs/[^?#]+\\.pdf(?:$|[?#])""}",pdf,"{""title_source"": ""text"", ""location_pattern"": ""(?i)\\b(Gen\u00e8ve|Meyrin|Carouge|Plan[- ]les[- ]Ouates|Le Grand[- ]Saconnex)\\b""}"
 mbc,mbc-jobup,https://www.mbc.ch/jobup,dom,"{""link_selector"": ""a[href*=\""jobup.ch\""]""}",json-ld,
