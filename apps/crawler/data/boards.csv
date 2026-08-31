@@ -5613,6 +5613,8 @@ sightline-media-group,sightline-media-group-greenhouse,https://job-boards.greenh
 sigma-computing,sigma-computing-greenhouse,https://job-boards.greenhouse.io/sigmacomputing,greenhouse,"{""token"": ""sigmacomputing""}",skip,
 sigmoid,sigmoid-greenhouse,https://job-boards.greenhouse.io/sigmoid,greenhouse,"{""token"": ""sigmoid""}",skip,
 signers-national,signers-national-greenhouse,https://job-boards.greenhouse.io/signerscareers,greenhouse,"{""token"": ""signerscareers""}",skip,
+signet-jewelers,signet-jewelers-careers,https://signetjewelers.wd1.myworkdayjobs.com/signetjeweleryretailsales,workday,"{""company"": ""signetjewelers"", ""wd_instance"": ""wd1"", ""site"": ""signetjeweleryretailsales""}",workday,
+signet-jewelers,signet-jewelers-uk,https://careers.signetjobs.co.uk/search,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""link_selector"": ""a[href^=\""/search/\""]"", ""url_filter"": ""/search/.+""}",json-ld,
 signifyd,signifyd-greenhouse,https://job-boards.greenhouse.io/signifyd95,greenhouse,"{""token"": ""signifyd95""}",skip,
 signoz,signoz-ashby,https://jobs.ashbyhq.com/signoz,ashby,"{""token"": ""signoz""}",skip,
 sika,sika-careers,https://www.sika.com/en/career/jobs.html,sitemap,"{""sitemap_url"": ""https://www.sika.com/en.sitemap.xml"", ""url_filter"": ""/career/jobs/job-posting-page/""}",json-ld,
