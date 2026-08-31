@@ -1705,6 +1705,7 @@ flowchart TD
     F10 --> F11
     F7 --> F12["AF-12 Owner endpoints"]
     F11 --> F12
+    W --> F12
     G0 --> I["AF-17 Paid API identity design"]
     W --> I
     F12 --> U["AF-13..AF-16 Subscriber UX"]
