@@ -1681,7 +1681,7 @@ flowchart TD
     A3 --> G0["G0 Feasibility gate"]
     A4 --> G0
     A5 --> G0
-    A1 --> L["#8316 External universal max 10 watchlists"]
+    L["#8316 Independent pre-AI max 10 watchlists"]
     A1 --> W["AF-13A Retire public watchlists"]
     L --> W
     G0 --> F
@@ -1691,15 +1691,24 @@ flowchart TD
     W --> I
     R --> U["AF-13..AF-16 Subscriber UX"]
     W --> U
-    R --> O["AF-19..AF-20 Ops + eval gates"]
+    F -->|"AF-6 + AF-10 only"| O19["AF-19 Ops/telemetry"]
+    A2 --> O20["AF-20 Eval/replay gates"]
+    A3 --> O20
+    F -->|"AF-10 only"| O20
     U --> P["AF-21 Pilot"]
-    O --> P
+    O19 --> P
+    O20 --> P
     I --> API["AF-18 Async paid API"]
     P --> API
 ```
 
-AF-17 API identity design may start before the pilot, but AF-18 should not ship
-until the domain service and web behavior have production evidence.
+#8316 is an independent pre-AI prerequisite, not a child of AF-1. AF-13A
+coordinates with it, and its universal-limit policy also feeds the later
+foundations. AF-19 begins from AF-6 and AF-10. AF-20 depends on AF-2, AF-3, and
+AF-10. Neither AF-19 nor AF-20 waits for AF-11/AF-12 unless a live issue later
+adds that dependency. AF-17 API identity design may start before the pilot,
+but AF-18 should not ship until the domain service and web behavior have
+production evidence.
 
 ## Pre-AI dependency snapshot
 
