@@ -3112,10 +3112,6 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      the cycle. Must be paired with require_pdf_pattern.
     pagination       Pagination config (auto-detected from multiple requests)
                      style is "offset" or "page" for ordinary pagination.
-                     For inclusive range APIs, set ``end_param_name`` alongside
-                     an offset ``param_name``. With start_value=1 and
-                     increment=200, ``from``/``to`` requests advance as
-                     1-200, 201-400, and so on.
                      Use "cumulative_limit" when a load-more API accepts only
                      an increasing limit and repeats the earlier result prefix;
                      the monitor makes one bounded request using the advertised
@@ -4184,7 +4180,7 @@ jobdiva — JobDiva candidate portal API monitor
     {"token": "<tenant key>"}
 
   The monitor runs the provider's public auth bootstrap, starts the form POST
-  search, then drains the separate getmore API in inclusive 200-row ranges.
+  search, then drains the separate position-based getmore API in 200-row pages.
 """,
     "computrabajo": MONITOR_COMPUTRABAJO,
     "jobstreet": MONITOR_JOBSTREET,

@@ -1,13 +1,12 @@
 """JobDiva candidate portal monitor.
 
 JobDiva's public portal starts a search with a form POST, then drains the
-remaining results from a separate inclusive-range endpoint.  Both calls need
+remaining results from a separate position-based endpoint.  Both calls need
 the short-lived token returned by the portal's public bootstrap endpoint.
 """
 
 from __future__ import annotations
 
-import math
 import re
 from urllib.parse import parse_qs, quote, urlencode, urlparse
 
@@ -16,14 +15,6 @@ import structlog
 
 from src.core.monitors import register
 from src.core.monitors.api_sniffer import http_fetch_with_retry
-from src.shared.api_sniff import (
-    ArrayCandidate,
-    Exchange,
-    JobListResult,
-    PaginationInfo,
-    make_http_fetcher,
-    paginate_all,
-)
 from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
@@ -35,6 +26,7 @@ _MORE_URL = f"{_BASE_URL}/job/getmore"
 _PUBLIC_BASIC_AUTH = "Basic YXhlbG9uOmF4ZWxvbg=="
 _PAGE_SIZE = 200
 _MAX_JOBS = 50_000
+_SNAPSHOT_ATTEMPTS = 4
 _TENANT_RE = re.compile(r"[A-Za-z0-9_-]{16,128}")
 
 
@@ -137,64 +129,134 @@ async def _first_page(
     return headers, total, items
 
 
+def _append_job_ids(rows: list[dict], ids: list[str], seen: set[str]) -> str | None:
+    """Append valid, unique IDs and describe the first inconsistent row."""
+    for row in rows:
+        job_id = row.get("id")
+        if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id <= 0:
+            return "JobDiva returned a row without a valid positive integer ID"
+        value = str(job_id)
+        if value in seen:
+            return f"JobDiva repeated job ID {value} while pagination was in progress"
+        seen.add(value)
+        ids.append(value)
+    return None
+
+
+async def _collect_snapshot(
+    client: httpx.AsyncClient,
+    tenant: str,
+) -> tuple[tuple[str, ...], int, str | None]:
+    """Drain one bounded inventory snapshot without trusting the volatile total."""
+    headers, advertised_total, first_items = await _first_page(client, tenant)
+    ids: list[str] = []
+    seen: set[str] = set()
+    expected_first = min(advertised_total, _PAGE_SIZE)
+    if len(first_items) != expected_first:
+        return (
+            tuple(ids),
+            advertised_total,
+            f"JobDiva returned {len(first_items)} first-page rows, expected {expected_first}",
+        )
+    inconsistency = _append_job_ids(first_items, ids, seen)
+    if inconsistency is not None:
+        return tuple(ids), advertised_total, inconsistency
+
+    # Mirror the storefront's getMoreJobs(from, 0, count) contract. Its last
+    # request uses count=201 and caps the rendered rows at 200. Supplying ``to``
+    # as a range end or ``count`` as the advertised total yields unstable,
+    # overlong slices. The repeated full-snapshot proof below handles a total
+    # that changes between search requests without trusting mixed snapshots.
+    page_count = max(1, (advertised_total + _PAGE_SIZE - 1) // _PAGE_SIZE)
+    if page_count > 1:
+        for page_number in range(2, page_count + 1):
+            start = (page_number - 1) * _PAGE_SIZE + 1
+            count = _PAGE_SIZE + 1 if page_number == page_count else _PAGE_SIZE
+            query = urlencode({"from": start, "to": 0, "count": count, "portaltype": 1})
+            url = f"{_MORE_URL}?{query}"
+            data = await http_fetch_with_retry(
+                client,
+                "GET",
+                url,
+                headers,
+                None,
+                raise_non_retryable=True,
+            )
+            if not isinstance(data, dict) or not isinstance(data.get("data"), list):
+                raise ValueError("JobDiva pagination returned an invalid response")
+            items = data["data"]
+            if len(items) > count or any(not isinstance(item, dict) for item in items):
+                raise ValueError("JobDiva pagination returned an invalid page")
+            visible_items = items[:_PAGE_SIZE]
+            expected = min(_PAGE_SIZE, advertised_total - len(ids))
+            bounded_items = visible_items[:expected]
+            inconsistency = _append_job_ids(bounded_items, ids, seen)
+            if inconsistency is not None:
+                return tuple(ids), advertised_total, inconsistency
+            if len(visible_items) != expected:
+                return (
+                    tuple(ids),
+                    advertised_total,
+                    f"JobDiva page {page_number} returned {len(visible_items)} rows, "
+                    f"expected {expected}",
+                )
+
+    return tuple(ids), advertised_total, None
+
+
 async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     """Return every canonical JobDiva portal detail URL."""
     _ = pw
     tenant = _tenant_from_board(board)
-    headers, total, first_items = await _first_page(client, tenant)
-    if total == 0:
-        return set()
+    previous_ids: tuple[str, ...] | None = None
+    last_total = 0
+    accumulated_ids: set[str] = set()
 
-    more_url = (
-        f"{_MORE_URL}?{urlencode({'from': 1, 'to': _PAGE_SIZE, 'count': total, 'portaltype': 1})}"
-    )
-    result = JobListResult(
-        candidate=ArrayCandidate(
-            exchange=Exchange(
-                method="GET",
-                url=more_url,
-                request_headers=headers,
-                post_data=None,
-                status=200,
-                body={"total": total, "data": first_items},
-                content_type="application/json",
-                phase="load",
-            ),
-            json_path="data",
-            items=first_items,
-        ),
-        url_field=None,
-        total_count=total,
-        pagination=PaginationInfo(
-            param_name="from",
-            style="offset",
-            start_value=1,
-            increment=_PAGE_SIZE,
-            location="query",
-            end_param_name="to",
-        ),
-    )
-    rows = await paginate_all(
-        make_http_fetcher(client),
-        result,
-        max_pages=max(1, math.ceil(total / _PAGE_SIZE)),
-        require_object_items=True,
-    )
-
-    ids: list[str] = []
-    invalid = False
-    for row in rows:
-        job_id = row.get("id")
-        if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id <= 0:
-            invalid = True
+    # A stable result must be reproduced by two bounded drains. That catches
+    # both duplicate-producing backward shifts and silent gaps caused by
+    # forward shifts while the range cursor is walking the listing.
+    for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
+        ids, advertised_total, inconsistency = await _collect_snapshot(client, tenant)
+        last_total = advertised_total
+        accumulated_ids.update(ids)
+        if inconsistency is not None:
+            log.warning(
+                "jobdiva.snapshot_inconsistent",
+                attempt=attempt,
+                jobs=len(ids),
+                advertised=advertised_total,
+                reason=inconsistency,
+            )
             continue
-        ids.append(str(job_id))
-    unique_ids = set(ids)
-    truncated = invalid or len(ids) != total or len(unique_ids) != total
-    urls = {_portal_job_url(tenant, job_id) for job_id in unique_ids}
-    log_method = log.warning if truncated else log.info
-    log_method("jobdiva.discovered", jobs=len(urls), expected=total, truncated=truncated)
-    return truncated_url_result(urls) if truncated else urls
+        if previous_ids == ids:
+            urls = {_portal_job_url(tenant, job_id) for job_id in ids}
+            log.info(
+                "jobdiva.discovered",
+                jobs=len(urls),
+                advertised=advertised_total,
+                attempts=attempt,
+                truncated=False,
+            )
+            return urls
+        if previous_ids is not None:
+            log.warning(
+                "jobdiva.snapshot_changed",
+                attempt=attempt,
+                previous_jobs=len(previous_ids),
+                jobs=len(ids),
+                advertised=advertised_total,
+            )
+        previous_ids = ids
+
+    urls = {_portal_job_url(tenant, job_id) for job_id in accumulated_ids}
+    log.warning(
+        "jobdiva.discovered",
+        jobs=len(urls),
+        advertised=last_total,
+        attempts=_SNAPSHOT_ATTEMPTS,
+        truncated=True,
+    )
+    return truncated_url_result(urls)
 
 
 async def can_handle(
