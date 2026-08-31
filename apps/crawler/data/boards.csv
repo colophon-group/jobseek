@@ -5793,6 +5793,7 @@ stambaugh-ness,stambaugh-ness-greenhouse,https://job-boards.greenhouse.io/stamba
 standard-nuclear,standard-nuclear-careers,https://job-boards.greenhouse.io/standardnuclearinc,greenhouse,"{""token"": ""standardnuclearinc""}",skip,
 standardfleet,standardfleet-ashby,https://jobs.ashbyhq.com/standardfleet,ashby,"{""token"": ""standardfleet""}",skip,
 stanley-1913,stanley-1913-greenhouse,https://job-boards.greenhouse.io/stanley1913-us,greenhouse,"{""token"": ""stanley1913-us""}",skip,
+stantec,stantec-global-jobs,https://stantec.jobs/jobs/,sitemap,"{""sitemap_url"":""https://stantec.jobs/sitemap.xml"",""url_filter"":{""include"":""/[0-9A-Fa-f]{32}/job/$"",""exclude"":""/(about|benefits|company|locations)/""}}",api_sniffer,"{""fields"":{""title"":""title"",""description"":""text"",""employment_type"":""job_type"",""locations"":""location""}}"
 starbridge,starbridge-ashby,https://jobs.ashbyhq.com/starbridge,ashby,"{""token"": ""starbridge""}",skip,
 starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""pcsx_watermark"": {""auto_full_crawl"": false}, ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 starbucks-china,starbucks-china-careers,https://starbucks.zhiye.com/,beisen,"{""tenant"": ""starbucks"", ""variant"": ""modern"", ""portal_id"": ""447d00df-76b1-4da9-a0c5-287e2adb7b0c"", ""tenant_id"": 604302}",skip,
