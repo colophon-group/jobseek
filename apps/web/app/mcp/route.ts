@@ -31,7 +31,6 @@ const JOBSEEK_TOOL_NAMES = new Set([
   "resolve_slugs",
   "search_companies",
   "search_jobs",
-  "search_watchlists",
   "trigger_batch_ghost_analysis",
   "trigger_ghost_analysis",
 ]);

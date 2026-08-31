@@ -180,12 +180,16 @@ describe("0087 Better Auth account issuer migration", () => {
     );
   });
 
-  it("appends one monotonic journal entry", () => {
+  it("retains the exact 0087 journal identity", () => {
     const journal = JSON.parse(
       readFileSync(resolve(webRoot, "drizzle/meta/_journal.json"), "utf8"),
     ) as { entries: { idx: number; when: number; tag: string }[] };
 
-    expect(journal.entries.at(-1)).toEqual({
+    expect(
+      journal.entries.find(
+        (entry) => entry.tag === "0087_better_auth_account_issuer",
+      ),
+    ).toEqual({
       idx: 75,
       version: "7",
       when: 1_787_560_116_000,
