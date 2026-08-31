@@ -13,7 +13,7 @@ HOST_CONFIG = (ROOT / "deploy" / "observability" / "alloy-host.alloy").read_text
 HOST_INSTALLER = (ROOT / "deploy" / "observability" / "install-host.sh").read_text(encoding="utf-8")
 HOST_SERVICE = (ROOT / "deploy" / "systemd" / "jobseek-alloy.service").read_text(encoding="utf-8")
 EXPECTED_ALLOY_IMAGE = (
-    "grafana/alloy:v1.18.1@sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33"
+    "grafana/alloy:v1.19.2@sha256:b8ec653c44235fbe910879145dac3597d66b0aaecf60bcbbe82580767771a839"
 )
 
 
@@ -41,8 +41,8 @@ def test_alloy_uses_supported_environment_lookup():
 def test_crawler_alloy_is_pinned_and_no_longer_privileged():
     assert EXPECTED_ALLOY_IMAGE in COMPOSE
     assert EXPECTED_ALLOY_IMAGE in CRAWLER_DEPLOY
-    assert 'ALLOY_VERSION="1.18.1"' in HOST_INSTALLER
-    assert EXPECTED_ALLOY_IMAGE.replace("v1.18.1", "v${ALLOY_VERSION}") in HOST_INSTALLER
+    assert 'ALLOY_VERSION="1.19.2"' in HOST_INSTALLER
+    assert EXPECTED_ALLOY_IMAGE.replace("v1.19.2", "v${ALLOY_VERSION}") in HOST_INSTALLER
     alloy_section = COMPOSE.split("  alloy:\n", 1)[1].split("\nvolumes:", 1)[0]
     assert "privileged:" not in alloy_section
     assert "pid: host" not in alloy_section
