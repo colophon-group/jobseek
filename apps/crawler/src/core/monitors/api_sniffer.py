@@ -20,7 +20,7 @@ import contextlib
 import json
 import random
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from math import ceil
 from pathlib import Path
 from string import Formatter
@@ -216,6 +216,81 @@ _PROSPECTIVE_DETECTION_RETRIES = 5
 _PROSPECTIVE_DETECTION_BASE_DELAY = 0.5
 _LUMESSE_API_PATH = "/fo/rest/jobs"
 _LUMESSE_BOARD_PATH_RE = re.compile(r"/lumesse_jobsearch\.html/?$", re.I)
+_LUMESSE_GUEST_USER_RE = re.compile(r"^[A-Za-z0-9_-]{8,128}:guest:FO$")
+
+
+def _lumesse_branded_apply_origin(
+    board_url: str,
+    items: list[dict],
+    request_headers: Mapping[str, str] | None,
+) -> str | None:
+    """Validate a branded TalentLink widget and return its apply origin.
+
+    Unlike the legacy ``lumesse_jobsearch.html`` template, branded wrappers
+    can use any first-party path. Require the captured public guest request to
+    originate from that board and require every emitted application URL to be
+    a stable TalentLink URL containing the provider item ID before enabling
+    the provider-specific rich mapping.
+    """
+
+    headers = {str(key).casefold(): str(value) for key, value in (request_headers or {}).items()}
+    referer = headers.get("referer")
+    username = headers.get("username", "")
+    if not referer or _LUMESSE_GUEST_USER_RE.fullmatch(username) is None:
+        return None
+
+    try:
+        board = urlparse(board_url)
+        ref = urlparse(referer)
+        board_port = board.port
+        ref_port = ref.port
+    except ValueError:
+        return None
+    if (
+        ref.scheme.casefold() != board.scheme.casefold()
+        or (ref.hostname or "").casefold() != (board.hostname or "").casefold()
+        or ref_port != board_port
+        or ref.username is not None
+        or ref.password is not None
+    ):
+        return None
+
+    apply_origin: str | None = None
+    for item in items:
+        job_fields = item.get("jobFields")
+        application_url = job_fields.get("applicationUrl") if isinstance(job_fields, dict) else None
+        item_id = item.get("id")
+        if not isinstance(application_url, str) or not isinstance(item_id, (int, str)):
+            return None
+        try:
+            parsed = urlparse(application_url)
+            port = parsed.port
+        except ValueError:
+            return None
+        host = (parsed.hostname or "").casefold()
+        item_id_text = str(item_id)
+        query_ids = parse_qs(parsed.query).get("jobId", [])
+        identity_matches = parsed.path.rstrip("/").endswith(f"/{item_id_text}") or any(
+            value == item_id_text or value.endswith(f"-{item_id_text}") for value in query_ids
+        )
+        if (
+            parsed.scheme.casefold() != "https"
+            or not host.endswith(".recruitmentplatform.com")
+            or parsed.username is not None
+            or parsed.password is not None
+            or port not in (None, 443)
+            or not parsed.path.startswith("/apply")
+            or not identity_matches
+        ):
+            return None
+        origin = f"https://{host}"
+        if apply_origin is None:
+            apply_origin = origin
+        elif origin != apply_origin:
+            return None
+    return apply_origin
+
+
 _WP_JOB_MANAGER_API_PATH = "/jm-ajax/get_listings/"
 _WP_JOB_MANAGER_PAGE_SIZE = 100
 _WP_JOB_MANAGER_MAX_PAGES = 200
@@ -356,6 +431,7 @@ def _lumesse_config_overrides(
     api_url: str,
     items: list[dict],
     response: object,
+    request_headers: Mapping[str, str] | None = None,
 ) -> dict | None:
     """Return rich-field overrides for Lumesse TalentLink list payloads.
 
@@ -392,10 +468,20 @@ def _lumesse_config_overrides(
         or parsed_api.password is not None
         or board_port not in (None, 443)
         or api_port not in (None, 443)
-        or _LUMESSE_BOARD_PATH_RE.fullmatch(parsed_board.path) is None
         or parsed_api.path.rstrip("/") != _LUMESSE_API_PATH
     ):
         return None
+
+    legacy_template = _LUMESSE_BOARD_PATH_RE.fullmatch(parsed_board.path) is not None
+    branded_apply_origin = None
+    if not legacy_template:
+        branded_apply_origin = _lumesse_branded_apply_origin(
+            board_url,
+            items,
+            request_headers,
+        )
+        if branded_apply_origin is None:
+            return None
 
     for item in items[:5]:
         job_fields = item.get("jobFields")
@@ -416,10 +502,8 @@ def _lumesse_config_overrides(
 
     globals_obj = response.get("globals")
     total = globals_obj.get("jobsCount") if isinstance(globals_obj, dict) else None
-    detail_url = urljoin(board_url, "lumesse_jobdescription.html?jobId={id}")
     overrides: dict = {
         "browser": False,
-        "url_template": detail_url,
         "total_path": "globals.jobsCount",
         "fields": {
             "title": "jobFields.jobTitle || jobFields.SJOBTITLE",
@@ -440,6 +524,15 @@ def _lumesse_config_overrides(
             "metadata.apply_url": "jobFields.applicationUrl",
         },
     }
+    if legacy_template:
+        overrides["url_template"] = urljoin(
+            board_url,
+            "lumesse_jobdescription.html?jobId={id}",
+        )
+    else:
+        assert branded_apply_origin is not None
+        overrides["url_field"] = "jobFields.applicationUrl"
+        overrides["url_filter"] = rf"(?i)^{re.escape(branded_apply_origin)}/"
     if isinstance(total, (int, float)):
         overrides["total"] = int(total)
     return overrides
@@ -1000,6 +1093,7 @@ async def can_handle(
                 ex.url,
                 result.candidate.items,
                 ex.body,
+                ex.request_headers,
             )
             if lumesse_overrides is not None:
                 # The canonical detail URL is preferable to TalentLink's

@@ -37,6 +37,10 @@ _PAGINATION_PAIRS = {
         "folderOffset",
     ),
     frozenset({"pipelineOffset"}): (None, "pipelineOffset"),
+    frozenset({"pipelineRecordsPerPage", "pipelineOffset"}): (
+        "pipelineRecordsPerPage",
+        "pipelineOffset",
+    ),
 }
 
 

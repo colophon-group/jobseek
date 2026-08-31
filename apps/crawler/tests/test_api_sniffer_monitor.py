@@ -345,6 +345,81 @@ def test_lumesse_config_overrides_build_rich_canonical_config():
     }
 
 
+def test_lumesse_config_overrides_supports_validated_branded_widget():
+    items = _lumesse_items()
+    config = _lumesse_config_overrides(
+        "https://karriere.hsbc.de/karriere/stellenboerse",
+        "https://global3.recruitmentplatform.com/fo/rest/jobs?firstResult=0",
+        items,
+        {"globals": {"jobsCount": 1}, "jobs": items},
+        {
+            "referer": "https://karriere.hsbc.de/",
+            "username": "PIDFK026203F3VBQB79V77VIY:guest:FO",
+        },
+    )
+
+    assert config is not None
+    assert config["url_field"] == "jobFields.applicationUrl"
+    assert "url_template" not in config
+    assert config["url_filter"] == (r"(?i)^https://emea3\.recruitmentplatform\.com/")
+    jobs = _extract_rich(
+        items,
+        config["fields"],
+        config["url_field"],
+        None,
+        "https://karriere.hsbc.de/karriere/stellenboerse",
+    )
+    assert len(jobs) == 1
+    assert jobs[0].url == "https://emea3.recruitmentplatform.com/apply/160572"
+    assert jobs[0].description.startswith("<h3>Job Purpose</h3>")
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {},
+        {
+            "referer": "https://evil.example/",
+            "username": "PIDFK026203F3VBQB79V77VIY:guest:FO",
+        },
+        {
+            "referer": "https://karriere.hsbc.de/",
+            "username": "not-a-public-talentlink-user",
+        },
+    ],
+)
+def test_lumesse_config_overrides_rejects_unvalidated_branded_widget(headers):
+    items = _lumesse_items()
+    assert (
+        _lumesse_config_overrides(
+            "https://karriere.hsbc.de/karriere/stellenboerse",
+            "https://global3.recruitmentplatform.com/fo/rest/jobs",
+            items,
+            {"jobs": items},
+            headers,
+        )
+        is None
+    )
+
+
+def test_lumesse_config_overrides_rejects_mismatched_branded_apply_identity():
+    items = _lumesse_items()
+    items[0]["jobFields"]["applicationUrl"] = "https://emea3.recruitmentplatform.com/apply/999999"
+    assert (
+        _lumesse_config_overrides(
+            "https://karriere.hsbc.de/karriere/stellenboerse",
+            "https://global3.recruitmentplatform.com/fo/rest/jobs",
+            items,
+            {"jobs": items},
+            {
+                "referer": "https://karriere.hsbc.de/",
+                "username": "PIDFK026203F3VBQB79VIY:guest:FO",
+            },
+        )
+        is None
+    )
+
+
 @pytest.mark.parametrize(
     ("board_url", "api_url"),
     [
