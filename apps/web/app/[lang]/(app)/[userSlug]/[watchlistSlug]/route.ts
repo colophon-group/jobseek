@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/sessionCache";
 import { getOwnedWatchlistByLegacyPath } from "@/lib/services/watchlists";
-import { defaultLocale, isLocale } from "@/lib/i18n";
+import { defaultLocale, isLocale, type Locale } from "@/lib/i18n";
 import { staticMissingResourceDocument } from "@/lib/missing-resource-recovery";
 import {
   WATCHLIST_SELECTION_COOKIE,
@@ -17,7 +17,7 @@ type RouteContext = {
   }>;
 };
 
-function privateNotFound(locale: string): NextResponse {
+function privateNotFound(locale: Locale): NextResponse {
   return new NextResponse(
     staticMissingResourceDocument("watchlist", locale),
     {
@@ -27,6 +27,7 @@ function privateNotFound(locale: string): NextResponse {
         "Content-Language": locale,
         "Content-Type": "text/html; charset=utf-8",
         "Referrer-Policy": "no-referrer",
+        "Content-Security-Policy": "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
         "X-Content-Type-Options": "nosniff",
         "X-Robots-Tag": "noindex, follow",
       },

@@ -13,6 +13,8 @@ import "@/test-utils/lingui-mock";
 
 const pushMock = vi.fn();
 const createWatchlistMock = vi.fn();
+const selectOwnedWatchlistMock = vi.fn();
+const broadcastSelectionMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
@@ -36,12 +38,23 @@ vi.mock("@/lib/actions/watchlists", () => ({
   createWatchlist: (...args: unknown[]) => createWatchlistMock(...args),
 }));
 
+vi.mock("@/lib/actions/watchlist-selection", () => ({
+  selectOwnedWatchlist: (watchlistId: string) =>
+    selectOwnedWatchlistMock(watchlistId),
+}));
+
+vi.mock("@/lib/watchlist-selection-client", () => ({
+  broadcastWatchlistSelectionChanged: () => broadcastSelectionMock(),
+}));
+
 import { SaveSearchButton } from "../save-search-button";
 
 describe("SaveSearchButton (issue #3036)", () => {
   beforeEach(() => {
     pushMock.mockReset();
     createWatchlistMock.mockReset();
+    selectOwnedWatchlistMock.mockReset().mockResolvedValue({ ok: true });
+    broadcastSelectionMock.mockReset();
   });
 
   it("opens upgrade modal (not a redirect) when the server reports limit_reached", async () => {
@@ -79,7 +92,9 @@ describe("SaveSearchButton (issue #3036)", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/en/alice/my-search"));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/en/watchlists"));
+    expect(selectOwnedWatchlistMock).toHaveBeenCalledWith("w1");
+    expect(broadcastSelectionMock).toHaveBeenCalledOnce();
     expect(createWatchlistMock.mock.calls[0]?.[0]).toMatchObject({
       isPublic: false,
     });
@@ -106,5 +121,43 @@ describe("SaveSearchButton (issue #3036)", () => {
         employmentType: ["internship"],
       },
     });
+  });
+
+  it("preserves the current selection when creation fails", async () => {
+    createWatchlistMock.mockRejectedValue(new Error("database unavailable"));
+
+    render(
+      <SaveSearchButton
+        keywords={["engineer"]}
+        locations={[]}
+        occupations={[]}
+        seniorities={[]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
+
+    await waitFor(() => expect(createWatchlistMock).toHaveBeenCalledOnce());
+    expect(selectOwnedWatchlistMock).not.toHaveBeenCalled();
+    expect(broadcastSelectionMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("does not navigate or broadcast when destination selection is rejected", async () => {
+    createWatchlistMock.mockResolvedValue({ id: "w1", slug: "my-search" });
+    selectOwnedWatchlistMock.mockResolvedValue({ ok: false });
+
+    render(
+      <SaveSearchButton
+        keywords={["engineer"]}
+        locations={[]}
+        occupations={[]}
+        seniorities={[]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
+
+    await waitFor(() => expect(selectOwnedWatchlistMock).toHaveBeenCalledWith("w1"));
+    expect(broadcastSelectionMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });

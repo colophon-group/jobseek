@@ -10,6 +10,7 @@ import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
 import { createWatchlist, type WatchlistFilters } from "@/lib/actions/watchlists";
 import { selectOwnedWatchlist } from "@/lib/actions/watchlist-selection";
+import { broadcastWatchlistSelectionChanged } from "@/lib/watchlist-selection-client";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import type { SelectedLocation } from "@/lib/search/types";
 import type { WorkMode } from "@/lib/search/types";
@@ -105,8 +106,12 @@ export function SaveSearchButton({
       }
 
       if (await selectOwnedWatchlist(result.id).then((selection) => selection.ok)) {
+        broadcastWatchlistSelectionChanged();
         router.push(lp("/watchlists"));
       }
+    } catch {
+      // Keep the current route and active watchlist unchanged. A later click
+      // is an explicit retry; failed creates never emit a selection event.
     } finally {
       setSaving(false);
     }

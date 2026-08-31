@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { SearchBar } from "@/components/search/search-bar";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
 import { UserAvatar } from "@/components/UserAvatar";
+import { broadcastWatchlistSelectionChanged } from "@/lib/watchlist-selection-client";
 
 const iconBtnClass =
   "inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors cursor-pointer";
@@ -68,6 +69,7 @@ export function AppHeader() {
     document.cookie = "__Secure-better-auth.session_token=; Max-Age=0; Path=/; Secure";
     document.cookie = "better-auth.session_data=; Max-Age=0; Path=/";
     document.cookie = "__Secure-better-auth.session_data=; Max-Age=0; Path=/; Secure";
+    broadcastWatchlistSelectionChanged();
     window.location.href = lp("/explore");
   }
 

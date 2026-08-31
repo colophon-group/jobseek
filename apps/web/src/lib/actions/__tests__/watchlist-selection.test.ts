@@ -4,8 +4,9 @@ const mocks = vi.hoisted(() => ({
   getUserId: vi.fn(),
   getOwned: vi.fn(),
   setCookie: vi.fn(),
-  encode: vi.fn(() => "signed-selection"),
 }));
+
+vi.mock("server-only", () => ({}));
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({ set: mocks.setCookie }),
@@ -16,29 +17,23 @@ vi.mock("@/lib/sessionCache", () => ({
 }));
 
 vi.mock("@/lib/services/watchlists", () => ({
-  getOwnedWatchlistById: (...args: unknown[]) => mocks.getOwned(...args),
-}));
-
-vi.mock("@/lib/watchlist-selection", () => ({
-  WATCHLIST_SELECTION_COOKIE: "jobseek.watchlist-selection",
-  encodeWatchlistSelection: (...args: unknown[]) => mocks.encode(...args),
-  isWatchlistId: (value: string) => value.includes("-"),
-  watchlistSelectionCookieOptions: {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: true,
-    path: "/",
-    maxAge: 100,
-  },
+  getOwnedWatchlistById: (watchlistId: string, userId: string) =>
+    mocks.getOwned(watchlistId, userId),
 }));
 
 import { selectOwnedWatchlist } from "@/lib/actions/watchlist-selection";
+import {
+  decodeWatchlistSelection,
+  WATCHLIST_SELECTION_COOKIE,
+  WATCHLIST_SELECTION_MAX_AGE,
+} from "@/lib/watchlist-selection";
 
 const WATCHLIST_ID = "11111111-1111-4111-8111-111111111111";
 
 describe("selectOwnedWatchlist", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("BETTER_AUTH_SECRET", "test-only-selection-secret");
     mocks.getUserId.mockResolvedValue("user-1");
   });
 
@@ -48,12 +43,17 @@ describe("selectOwnedWatchlist", () => {
     await expect(selectOwnedWatchlist(WATCHLIST_ID)).resolves.toEqual({ ok: true });
 
     expect(mocks.getOwned).toHaveBeenCalledWith(WATCHLIST_ID, "user-1");
-    expect(mocks.encode).toHaveBeenCalledWith("user-1", WATCHLIST_ID);
-    expect(mocks.setCookie).toHaveBeenCalledWith(
-      "jobseek.watchlist-selection",
-      "signed-selection",
-      expect.objectContaining({ httpOnly: true, sameSite: "lax", path: "/" }),
-    );
+    const [name, value, options] = mocks.setCookie.mock.calls[0];
+    expect(name).toBe(WATCHLIST_SELECTION_COOKIE);
+    expect(value).not.toContain(WATCHLIST_ID);
+    expect(decodeWatchlistSelection(value, "user-1")).toBe(WATCHLIST_ID);
+    expect(options).toEqual({
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      path: "/",
+      maxAge: WATCHLIST_SELECTION_MAX_AGE,
+    });
   });
 
   it("clears the hint for a stale or cross-account id", async () => {
@@ -66,6 +66,5 @@ describe("selectOwnedWatchlist", () => {
       "",
       expect.objectContaining({ maxAge: 0 }),
     );
-    expect(mocks.encode).not.toHaveBeenCalled();
   });
 });

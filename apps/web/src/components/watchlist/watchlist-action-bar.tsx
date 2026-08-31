@@ -8,6 +8,7 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { deleteWatchlist, toggleWatchlistAlerts } from "@/lib/actions/watchlists";
 import { clearWatchlistSelection } from "@/lib/actions/watchlist-selection";
+import { broadcastWatchlistSelectionChanged } from "@/lib/watchlist-selection-client";
 import { tooltipClass, tooltipWarningClass } from "@/components/ui/tooltip-styles";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 
@@ -78,6 +79,7 @@ export function WatchlistActionBar({
     try {
       await deleteWatchlist(watchlistId);
       await clearWatchlistSelection();
+      broadcastWatchlistSelectionChanged();
       router.refresh();
     } finally {
       setBusy(false);
