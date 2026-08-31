@@ -4469,6 +4469,8 @@ northmarq,northmarq-greenhouse,https://job-boards.greenhouse.io/northmarq,greenh
 northmill,northmill-careers,https://careers.northmill.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.northmill.com/jobs.rss""}",skip,
 northrop-grumman,northrop-grumman-eightfold,https://jobs.northropgrumman.com/careers,eightfold,"{""proxy"": true, ""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 northside-hospital,northside-hospital-careers,https://careers-northside.icims.com/,icims,,json-ld,
+northwell-health,northwell-health-careers,https://eppr.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+northwell-health,northwell-health-hudson-valley-connecticut,https://jobs.jobvite.com/careers/nuvance/jobs,jobvite,"{""tenant"": ""nuvance"", ""listing_url"": ""https://jobs.jobvite.com/careers/nuvance/jobs""}",json-ld,
 northwest-pipe-fittings,northwest-pipe-fittings-greenhouse,https://job-boards.greenhouse.io/northwestpipefittings,greenhouse,"{""token"": ""northwestpipefittings""}",skip,
 northwestern-memorial-healthcare,northwestern-memorial-healthcare-careers,https://careers.smartrecruiters.com/northwesternmedicine,smartrecruiters,,smartrecruiters,
 northwood-space,northwood-space-careers,https://jobs.ashbyhq.com/NorthwoodSpace,ashby,"{""org"": ""NorthwoodSpace""}",skip,
