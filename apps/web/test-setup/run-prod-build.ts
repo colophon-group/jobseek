@@ -9,8 +9,9 @@ import { fileURLToPath } from "node:url";
  * Runs `pnpm build` once before the test file and writes the captured
  * stdout to a known artifact path that the test reads. The test then
  * parses the per-route classification (`◐` / `○` / `ƒ`) from the build
- * output and asserts that each route in the must-stay-cacheable list
- * is NOT classified as `ƒ Dynamic`. See `apps/web/__tests__/build-output.test.ts`.
+ * output and asserts that each guarded route retains its intentional static,
+ * Partial Prerender, or request-bound Dynamic classification. See
+ * `apps/web/__tests__/build-output.test.ts`.
  *
  * Skipping the build: set `BUILD_OUTPUT_LOG` to point at an existing
  * captured-stdout file. CI splits this into a separate job that already
