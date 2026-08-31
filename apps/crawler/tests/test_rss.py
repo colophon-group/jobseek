@@ -15,6 +15,8 @@ from src.core.monitors.rss import (
     _advertised_rss_feed_url,
     _build_feed_url,
     _g,
+    _governmentjobs_agency_from_url,
+    _governmentjobs_feed_url,
     _parse_feed,
     _parse_generic_item,
     _parse_sf_item,
@@ -1454,10 +1456,100 @@ class TestDiscover:
 # ── can_handle ───────────────────────────────────────────────────────────
 
 
+class TestGovernmentJobsFeed:
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            ("https://www.governmentjobs.com/careers/fleg", "fleg"),
+            ("https://governmentjobs.com/careers/City-Of-Acme/", "city-of-acme"),
+            ("http://www.governmentjobs.com/careers/fleg", None),
+            ("https://www.governmentjobs.com/careers/fleg?page=2", None),
+            ("https://www.governmentjobs.com/careers/fleg/jobs/123", None),
+            ("https://evil.example/careers/fleg", None),
+            ("https://user@www.governmentjobs.com/careers/fleg", None),
+        ],
+    )
+    def test_strict_agency_identity(self, url, expected):
+        assert _governmentjobs_agency_from_url(url) == expected
+
+    def test_feed_url(self):
+        assert _governmentjobs_feed_url("fleg") == (
+            "https://www.governmentjobs.com/SearchEngine/JobsFeed?agency=fleg"
+        )
+
+    async def test_discover_derives_feed_from_board(self):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Public Service Analyst</title>
+                <link>https://www.governmentjobs.com/careers/fleg/jobs/123/analyst</link>
+                <description>&lt;p&gt;Serve the public.&lt;/p&gt;</description>
+                <Location>Tallahassee, Florida</Location>
+                <JobID>123</JobID>
+            </item>
+        """)
+
+        def handler(request):
+            assert request.url.path == "/SearchEngine/JobsFeed"
+            assert request.url.params.get("agency") == "fleg"
+            return httpx.Response(200, text=feed_xml)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://www.governmentjobs.com/careers/fleg",
+                    "metadata": {"preset": "governmentjobs"},
+                },
+                client,
+            )
+
+        assert len(jobs) == 1
+        assert jobs[0].title == "Public Service Analyst"
+        assert jobs[0].locations == ["Tallahassee, Florida"]
+        assert jobs[0].description == "<p>Serve the public.</p>"
+        assert jobs[0].metadata == {"id": "123"}
+
+
 class TestCanHandle:
     async def test_returns_none_without_client(self):
         result = await can_handle("https://example.com/careers")
         assert result is None
+
+    async def test_detects_governmentjobs_feed_before_fetching_careers_page(self):
+        rss_xml = _rss_xml("""
+            <item>
+                <title>Public Service Analyst</title>
+                <link>https://www.governmentjobs.com/careers/fleg/jobs/123/analyst</link>
+                <description>&lt;p&gt;Serve the public.&lt;/p&gt;</description>
+                <Location>Tallahassee, Florida</Location>
+                <JobID>123</JobID>
+            </item>
+        """)
+
+        def handler(request):
+            assert request.url.path == "/SearchEngine/JobsFeed"
+            assert request.url.params.get("agency") == "fleg"
+            return httpx.Response(200, text=rss_xml)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://www.governmentjobs.com/careers/fleg", client)
+
+        assert result == {
+            "preset": "governmentjobs",
+            "agency": "fleg",
+            "feed_url": "https://www.governmentjobs.com/SearchEngine/JobsFeed?agency=fleg",
+            "jobs": 1,
+        }
+
+    async def test_governmentjobs_empty_feed_is_authoritative(self):
+        def handler(request):
+            return httpx.Response(200, text=_rss_xml(""))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://governmentjobs.com/careers/fleg/", client)
+
+        assert result is not None
+        assert result["preset"] == "governmentjobs"
+        assert result["jobs"] == 0
 
     async def test_detects_successfactors_in_page(self):
         rss_xml = _rss_xml("""

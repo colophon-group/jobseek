@@ -5,6 +5,7 @@ Supports multiple ATS platforms that expose job listings via RSS/XML-style trans
   plus native static DWR pagination for legacy ``/career?company=...`` tenants
 - **teamtailor**: Teamtailor ``/jobs.rss`` (offset-paginated, ``tt:`` namespace)
 - **wp_job_manager**: WordPress WP Job Manager ``?feed=job_feed`` (page-paginated)
+- **governmentjobs**: NEOGOV/GovernmentJobs ``/SearchEngine/JobsFeed?agency=...``
 - **generic**: Standard RSS 2.0 (manual config, not auto-detected)
 
 Config: ``{"preset": "<name>", "feed_url": "..."}``. Legacy SuccessFactors
@@ -81,6 +82,8 @@ _SF_WRAPPER_QUERY_KEYS = frozenset(
         "site",
     }
 )
+_GOVERNMENTJOBS_HOSTS = frozenset({"governmentjobs.com", "www.governmentjobs.com"})
+_GOVERNMENTJOBS_BOARD_RE = re.compile(r"^/careers/(?P<agency>[a-z0-9][a-z0-9-]{0,63})/?$")
 
 
 async def _sleep(delay: float) -> None:
@@ -174,6 +177,11 @@ _PRESETS: dict[str, _Preset] = {
         paginated=True,
         page_size=10,
         page_query_param="paged",
+    ),
+    "governmentjobs": _Preset(
+        feed_paths=[],
+        page_patterns=[],
+        feed_ns={},
     ),
 }
 
@@ -417,6 +425,7 @@ def _parse_generic_item(item: ET.Element) -> DiscoveredJob | None:
 _PARSERS: dict[str, Callable[[ET.Element], DiscoveredJob | None]] = {
     "successfactors": _parse_sf_item,
     "teamtailor": _parse_tt_item,
+    "governmentjobs": _parse_generic_item,
     "generic": _parse_generic_item,
 }
 
@@ -737,6 +746,31 @@ def _build_feed_url(board_url: str, path: str) -> str:
     return f"{parsed.scheme}://{parsed.netloc}{path}"
 
 
+def _governmentjobs_agency_from_url(board_url: str) -> str | None:
+    """Return a strict NEOGOV agency tenant from an unfiltered careers URL."""
+    try:
+        parsed = urlparse(board_url)
+        port = parsed.port
+    except (TypeError, ValueError):
+        return None
+    if (
+        parsed.scheme.casefold() != "https"
+        or (parsed.hostname or "").casefold() not in _GOVERNMENTJOBS_HOSTS
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+    match = _GOVERNMENTJOBS_BOARD_RE.fullmatch(parsed.path.casefold())
+    return match.group("agency").casefold() if match is not None else None
+
+
+def _governmentjobs_feed_url(agency: str) -> str:
+    return "https://www.governmentjobs.com/SearchEngine/JobsFeed?" + urlencode({"agency": agency})
+
+
 def _add_pagination(url: str, offset: int, per_page: int) -> str:
     """Add pagination query parameters to a URL."""
     parsed = urlparse(url)
@@ -991,7 +1025,14 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
 
     # Determine feed URL: explicit config > derive from preset > fallback
     feed_url = metadata.get("feed_url")
-    if not feed_url and preset:
+    if not feed_url and preset_name == "governmentjobs":
+        agency = metadata.get("agency") or _governmentjobs_agency_from_url(board_url)
+        normalized_agency = agency.casefold() if isinstance(agency, str) else None
+        if normalized_agency and _GOVERNMENTJOBS_BOARD_RE.fullmatch(
+            f"/careers/{normalized_agency}"
+        ):
+            feed_url = _governmentjobs_feed_url(normalized_agency)
+    if not feed_url and preset and preset.feed_paths:
         feed_url = _build_feed_url(board_url, preset.feed_paths[0])
     if not feed_url:
         log.error("rss.no_feed_url", board_url=board_url, preset=preset_name)
@@ -1303,6 +1344,29 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     if client is None:
         return None
 
+    # NEOGOV publishes a first-party RSS feed keyed by the strict tenant in
+    # /careers/<agency>. Probe it before fetching the JS-heavy careers shell;
+    # a valid zero-item RSS document is authoritative empty-board evidence.
+    governmentjobs_agency = _governmentjobs_agency_from_url(url)
+    if governmentjobs_agency is not None:
+        feed = _governmentjobs_feed_url(governmentjobs_agency)
+        found, count = await _probe_feed(feed, client, "governmentjobs")
+        if found:
+            result: dict = {
+                "preset": "governmentjobs",
+                "agency": governmentjobs_agency,
+                "feed_url": feed,
+            }
+            if count is not None:
+                result["jobs"] = count
+            log.info(
+                "rss.governmentjobs_detected",
+                url=url,
+                agency=governmentjobs_agency,
+                jobs=count,
+            )
+            return result
+
     # Legacy SAP-hosted tenants use a case-sensitive company identity and a
     # static DWR listing protocol. Probe this strict direct shape before the
     # general HTML/feed path. Some of these URLs redirect to a migrated CSB
@@ -1443,9 +1507,16 @@ async def save_raw(
             )
         return
     feed = metadata.get("feed_url")
+    if not feed and metadata.get("preset") == "governmentjobs":
+        agency = metadata.get("agency") or _governmentjobs_agency_from_url(board_url)
+        normalized_agency = agency.casefold() if isinstance(agency, str) else None
+        if normalized_agency and _GOVERNMENTJOBS_BOARD_RE.fullmatch(
+            f"/careers/{normalized_agency}"
+        ):
+            feed = _governmentjobs_feed_url(normalized_agency)
     if not feed:
         preset = _PRESETS.get(metadata.get("preset", "generic"))
-        if preset:
+        if preset and preset.feed_paths:
             feed = _build_feed_url(board_url, preset.feed_paths[0])
     if not feed:
         return

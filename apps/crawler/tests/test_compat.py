@@ -70,6 +70,13 @@ def test_detect_ats_breezy_host():
     assert detect_ats_from_url("https://acme.breezy.hr") == "breezy"
 
 
+def test_detect_governmentjobs_unfiltered_agency_board_as_rss():
+    assert detect_ats_from_url("https://www.governmentjobs.com/careers/fleg") == "rss"
+    assert detect_ats_from_url("https://governmentjobs.com/careers/fleg/") == "rss"
+    assert detect_ats_from_url("https://www.governmentjobs.com/careers/fleg?page=2") is None
+    assert detect_ats_from_url("https://www.governmentjobs.com/careers/fleg/jobs/123") is None
+
+
 def test_detect_dualoo_portal_as_dom():
     assert detect_ats_from_url("https://jobs.dualoo.com/portal/fyuan4bk?lang=DE") == "dom"
     assert detect_ats_from_url("https://jobs.dualoo.com/login") is None

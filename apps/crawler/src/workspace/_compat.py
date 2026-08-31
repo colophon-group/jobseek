@@ -618,6 +618,19 @@ def detect_ats_from_url(url: str) -> str | None:
     if host.endswith(".teamtailor.com"):
         return "rss"
 
+    # NEOGOV / GovernmentJobs — unfiltered agency Career Pages feed.
+    if (
+        host in {"governmentjobs.com", "www.governmentjobs.com"}
+        and parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.query
+        and not parsed.fragment
+        and re.fullmatch(r"/careers/[a-z0-9][a-z0-9-]{0,63}/?", parsed.path, re.IGNORECASE)
+    ):
+        return "rss"
+
     # SAP SuccessFactors — modern CSB hosts and strict legacy company URLs.
     if successfactors_legacy_board_from_url(url) is not None or is_successfactors_host(host):
         return "rss"
