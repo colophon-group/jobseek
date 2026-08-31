@@ -6686,7 +6686,7 @@ vitol,vitol-careers,https://careers.smartrecruiters.com/Vitol,smartrecruiters,"{
 vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",skip,
 vivo-defence-services,vivo-defence-services-careers,https://apply-now.serco.com/VIVO,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://apply-now.serco.com/googlefeed.xml"", ""url_filter"": ""/VIVO/job/""}",skip,
 vodafone,vodafone-cz-almacareer,https://vodafone.jobs.cz/,almacareer,"{""slug"": ""vodafone"", ""country"": ""cz""}",skip,
-vodafone,vodafone-jobs,https://jobs.vodafone.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
+vodafone,vodafone-jobs,https://jobs.vodafone.com/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 vohra-physicians,vohra-physicians-careers,https://jobs.lever.co/vohra,lever,,skip,
 vohra-physicians,vohra-physicians-corporate-careers,https://vohrawoundcare.com/corporate-careers/,dom,"{""link_selector"": ""a[href*=\""/corporate-careers/corporate-career-opening-\""]"", ""inactive_detail_states"": [{""selector"": "".job-status"", ""exact_text"": ""Applications are closed""}]}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Qualifications""}, {""text"": ""location"", ""match_regex"": ""(?i)^\\s*location\\s*(?:[:\uff1a]\\s*)?$"", ""offset"": 1, ""field"": ""location"", ""optional"": true, ""from"": 0}]}"
 voi,voi-careers,https://careers.voi.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.voi.com/jobs.rss""}",skip,
