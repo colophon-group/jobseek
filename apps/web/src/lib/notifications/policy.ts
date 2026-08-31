@@ -13,6 +13,7 @@ const DAY_MS = 24 * 60 * 60 * 1_000;
 export type NotificationCadencePolicy = Readonly<{
   minimumIntervalDays: number;
   deliveryBuckets: number;
+  timeBucketsPerDeliveryBucket: number;
 }>;
 
 /**
@@ -23,6 +24,7 @@ export const NOTIFICATION_CADENCES = {
   weekly: {
     minimumIntervalDays: 7,
     deliveryBuckets: 7,
+    timeBucketsPerDeliveryBucket: 24,
   },
 } as const satisfies Record<NotificationCadence, NotificationCadencePolicy>;
 
