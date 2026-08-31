@@ -30,7 +30,6 @@ vi.mock("@/components/providers/SessionProvider", () => ({
 vi.mock("@/lib/actions/watchlists", () => ({
   copyWatchlist: mocks.copyWatchlist,
   deleteWatchlist: mocks.deleteWatchlist,
-  toggleWatchlistAlerts: vi.fn(),
   updateWatchlist: vi.fn(),
 }));
 
@@ -40,16 +39,6 @@ vi.mock("@/components/watchlist/watchlist-limit-modal", () => ({
     open: false,
     setOpen: vi.fn(),
     show: mocks.showLimit,
-  }),
-}));
-
-vi.mock("@/components/ui/upgrade-modal", () => ({
-  UpgradeModal: () => null,
-  useUpgradeModal: () => ({
-    open: false,
-    setOpen: vi.fn(),
-    reason: "",
-    show: vi.fn(),
   }),
 }));
 
@@ -151,5 +140,13 @@ describe("WatchlistActionBar universal copy limit", () => {
 
     await waitFor(() => expect(mocks.showLimit).toHaveBeenCalledOnce());
     expect(mocks.push).not.toHaveBeenCalled();
+  });
+});
+
+describe("WatchlistActionBar notification availability", () => {
+  it("does not offer alert delivery before the notification system ships", () => {
+    renderActionBar();
+
+    expect(screen.queryByRole("button", { name: /alerts/i })).toBeNull();
   });
 });

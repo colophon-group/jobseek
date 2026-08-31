@@ -281,6 +281,43 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
     ));
   });
 
+  it("recovers truthfully when a URL handoff loses the final slot", async () => {
+    mocks.searchParams = new URLSearchParams({
+      title: "Retryable roles",
+      companies: "stripe",
+    });
+    mocks.createWatchlistFromHandoff.mockResolvedValue({
+      error: "limit_reached",
+    });
+
+    const props = {
+      initialWatchlists: overview,
+      username: "alice",
+      limitReached: false,
+      locale: "en",
+    };
+    const { rerender } = render(<WatchlistsPage {...props} />);
+
+    await waitFor(() => {
+      expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1);
+      expect(mocks.showLimit).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Create" }).getAttribute(
+        "data-limit-reached",
+      )).toBe("true");
+    });
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.searchParams.toString()).toBe(
+      "title=Retryable+roles&companies=stripe",
+    );
+
+    rerender(<WatchlistsPage {...props} locale="de" />);
+    await waitFor(() => {
+      expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1);
+      expect(mocks.showLimit).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("preserves the handoff across an anonymous sign-in return", async () => {
     mocks.searchParams = new URLSearchParams({
       title: "Stripe roles",
