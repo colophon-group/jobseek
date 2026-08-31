@@ -179,7 +179,13 @@ vi.mock("@/db/schema", () => ({
     description: { _col: "description" },
     isPublic: { _col: "isPublic" },
     alertsEnabled: { _col: "alertsEnabled" },
+    alertsEnabledAt: { _col: "alertsEnabledAt" },
     filters: { _col: "filters" },
+  },
+  userPreferences: {
+    userId: { _col: "userId" },
+    notificationsPaused: { _col: "notificationsPaused" },
+    notificationsStateChangedAt: { _col: "notificationsStateChangedAt" },
   },
   watchlistCompany: {
     watchlistId: { _col: "watchlistId" },
@@ -674,18 +680,36 @@ describe("createWatchlist trivial public watchlist", () => {
 });
 
 describe("toggleWatchlistAlerts (private-only mutation)", () => {
-  it("does NOT call updateTag or invalidate", async () => {
-    mocks.selectLimitResult.mockResolvedValue([
-      { userId: USER_ID, alertsEnabled: false },
-    ]);
-    mocks.getUserPlan.mockResolvedValue("paid");
+  it("allows free users and does NOT call updateTag or invalidate", async () => {
+    mocks.selectLimitResult
+      .mockResolvedValueOnce([
+        { alertsEnabled: false, alertsEnabledAt: null },
+      ])
+      .mockResolvedValueOnce([{ notificationsPaused: false }]);
+    mocks.getUserPlan.mockResolvedValue("free");
 
-    await toggleWatchlistAlerts(WATCHLIST_ID);
+    await expect(toggleWatchlistAlerts(WATCHLIST_ID)).resolves.toEqual({
+      enabled: true,
+    });
     await flushAfterQueue();
 
+    expect(mocks.getUserPlan).not.toHaveBeenCalled();
     expect(mocks.updateTag).not.toHaveBeenCalled();
     expect(mocks.invalidate).not.toHaveBeenCalled();
     // Defensively also assert no after() callbacks were even registered.
+    expect(mocks.afterFn).not.toHaveBeenCalled();
+  });
+
+  it("rejects a toggle while globally paused without changing its value", async () => {
+    mocks.selectLimitResult
+      .mockResolvedValueOnce([
+        { alertsEnabled: true, alertsEnabledAt: new Date("2026-08-01") },
+      ])
+      .mockResolvedValueOnce([{ notificationsPaused: true }]);
+
+    await expect(toggleWatchlistAlerts(WATCHLIST_ID)).resolves.toEqual({
+      error: "notifications_paused",
+    });
     expect(mocks.afterFn).not.toHaveBeenCalled();
   });
 });
