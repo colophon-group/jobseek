@@ -95,6 +95,9 @@ Status tags:
 - [22 - PostgreSQL Connection Budget](22-postgresql-connections.md) `[runbook]` -
   exact service and deploy-overlap pool ceilings, ownership metrics, reserves,
   idle-transaction controls, and seven-day production acceptance.
+- [24 - Watchlist Visibility Migration](24-watchlist-visibility-migration.md)
+  `[runbook]` - staged inventory, transactional private-row migration,
+  observation, and exact rollback contract for #8369.
 - [Didi Reactivation Runbook](runbook-didi-reactivate-2026-05-10.md)
   `[runbook]` - historical Didi reactivation notes.
 

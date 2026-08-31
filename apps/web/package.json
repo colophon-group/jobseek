@@ -15,6 +15,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:migrate:apply-account-issuer": "tsx scripts/apply-better-auth-account-issuer.ts",
     "db:migrate:verify-account-issuer": "tsx scripts/verify-better-auth-account-issuer.ts",
+    "db:migrate:watchlist-visibility": "tsx scripts/watchlist-visibility-migration.ts",
     "db:migrate:verify-retirement": "tsx scripts/verify-job-posting-retirement.ts",
     "db:seed": "tsx src/db/seed.ts",
     "db:push": "drizzle-kit push",
