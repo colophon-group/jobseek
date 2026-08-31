@@ -1341,7 +1341,10 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     # Prefer the provider-specific jobs feed when its plugin markers are
     # present, otherwise auto-detection would silently monitor blog posts.
     wp_job_manager = _PRESETS["wp_job_manager"]
-    if html_text and any(pattern.search(html_text) for pattern in wp_job_manager.page_patterns):
+    wp_job_manager_page = bool(
+        html_text and any(pattern.search(html_text) for pattern in wp_job_manager.page_patterns)
+    )
+    if wp_job_manager_page:
         feed = _build_feed_url(url, wp_job_manager.feed_paths[0])
         found, count = await _probe_feed(feed, client, "wp_job_manager")
         if found:
@@ -1356,7 +1359,9 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
             )
             return result
 
-    advertised_feed = _advertised_rss_feed_url(url, html_text or "")
+    advertised_feed = (
+        None if wp_job_manager_page else _advertised_rss_feed_url(url, html_text or "")
+    )
     if advertised_feed:
         found, count = await _probe_feed(advertised_feed, client, "generic")
         if found:

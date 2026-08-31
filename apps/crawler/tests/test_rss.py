@@ -1533,6 +1533,36 @@ class TestCanHandle:
             "jobs": 1,
         }
 
+    async def test_wp_job_manager_without_jobs_feed_skips_wordpress_post_feed(self):
+        blog_xml = _rss_xml("""
+            <item>
+                <title>Employee profile</title>
+                <link>https://example.com/video/employee-profile/</link>
+            </item>
+        """)
+
+        def handler(request):
+            if request.url.params.get("feed") == "job_feed":
+                return httpx.Response(404)
+            if request.url.path == "/feed/":
+                return httpx.Response(200, text=blog_xml)
+            if "googlefeed.xml" in str(request.url) or "jobs.rss" in str(request.url):
+                return httpx.Response(404)
+            return httpx.Response(
+                200,
+                text=(
+                    '<html><head><link rel="alternate" type="application/rss+xml" '
+                    'href="/feed/"></head><body>'
+                    '<script src="/wp-content/plugins/wp-job-manager/assets/job-listings.js">'
+                    "</script></body></html>"
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://example.com/open-positions/", client)
+
+        assert result is None
+
     async def test_detects_advertised_generic_feed(self):
         rss_xml = _rss_xml(
             """
