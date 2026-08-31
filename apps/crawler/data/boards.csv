@@ -3744,6 +3744,8 @@ life-trading,life-trading-greenhouse,https://job-boards.greenhouse.io/lifetradin
 life360,life360-greenhouse,https://job-boards.greenhouse.io/life360,greenhouse,"{""token"": ""life360""}",skip,
 lifepoint-health,lifepoint-health-careers,https://ibnjjb.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,"{""duplicate_row_tolerance"": 5, ""offset_overlap"": 20, ""total_count_tolerance"": 5}",oracle_hcm,"{""enrich"": [""description"", ""employment_type""]}"
 lifepoint-health,lifepoint-health-provider-careers,https://providercareers.lifepointhealth.net/jobs/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""actions"": [{""action"": ""repeat"", ""selector"": ""#loadmore .button:visible"", ""max"": 10, ""wait_ms"": 1000}], ""url_filter"": ""^https?://jobs\\.lifepointhealth\\.net/job/.+/$""}",json-ld,
+lifestance-health,lifestance-health-careers,https://jobs.lever.co/lifestance,lever,,skip,
+lifestance-health,lifestance-health-workday,https://lifestance.wd5.myworkdayjobs.com/Careers,workday,"{""company"": ""lifestance"", ""wd_instance"": ""wd5"", ""site"": ""Careers""}",workday,
 lifetime,lifetime-careers,https://lifetime.wd1.myworkdayjobs.com/lifetime,workday,,workday,
 liftoff,liftoff-greenhouse,https://job-boards.greenhouse.io/liftoff,greenhouse,"{""token"": ""liftoff""}",skip,
 light,light-ashby,https://jobs.ashbyhq.com/light,ashby,"{""token"": ""light""}",skip,
