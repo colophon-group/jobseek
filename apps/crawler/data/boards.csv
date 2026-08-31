@@ -2806,6 +2806,8 @@ gunvor,gunvor-rotterdam,https://gunvorenergyrotterdam.cvw.io/?lang=en-US,dom,"{"
 gunvor,gunvor-workday,https://gunvor.wd3.myworkdayjobs.com/Gunvor_Careers,workday,"{""company"": ""gunvor"", ""wd_instance"": ""wd3"", ""site"": ""Gunvor_Careers""}",workday,
 gusto-inc,gusto-inc-greenhouse,https://job-boards.greenhouse.io/gusto,greenhouse,"{""token"": ""gusto""}",skip,
 gwi,gwi-greenhouse,https://job-boards.greenhouse.io/globalwebindex,greenhouse,"{""token"": ""globalwebindex""}",skip,
+gxo,gxo-careers,https://jobs.gxo.com/,rss,"{""preset"": ""successfactors""}",skip,
+gxo,gxo-latam,https://gxologisticsinc.teamtailor.com/,sitemap,"{""url_filter"": {""include"": ""^https://gxologisticsinc\\.teamtailor\\.com/jobs/[^/?#]+$""}}",json-ld,
 gymshark,gymshark-greenhouse,https://job-boards.greenhouse.io/gymshark,greenhouse,"{""token"": ""gymshark""}",skip,
 h-company,h-company-careers,https://jobs.ashbyhq.com/hcompany,ashby,"{""token"": ""hcompany""}",skip,
 h-moser-cie,h-moser-cie-jobs,https://www.h-moser.com/en/jobs,dom,"{""url_filter"":""content\\.h-moser\\.com/media/pages/jobs/.+\\.pdf$""}",pdf,"{""ocr"":true,""ocr_languages"":""deu+eng"",""ocr_scale"":2,""title_source"":""text"",""title_pattern"":""(?im)^(sales coordinator\\s*[–-]\\s*north america|director people\\s*&\\s*culture\\s*/\\s*mitglied der gl\\s*\\(m/w/d\\)|sachbearbeiter kreditorenbuchhaltung\\s*50\\s*-\\s*70%\\s*\\(m/w/d\\)|uhrmacher\\*?in,?\\s*r\\s*égleur\\s*/\\s*r\\s*égleuse\\s*-?\\s*100%)"",""location_pattern"":""(?i)(New York, NY|Neuhausen am Rheinfall)"",""repair_split_initial"":true}"
