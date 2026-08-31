@@ -6706,6 +6706,8 @@ vow,vow-ashby,https://jobs.ashbyhq.com/vow,ashby,"{""token"": ""vow""}",skip,
 vox-ai,vox-ai-join,https://join.com/companies/vox,join,"{""slug"": ""vox""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 vox-media-llc,vox-media-llc-greenhouse,https://job-boards.greenhouse.io/voxmedia,greenhouse,"{""token"": ""voxmedia""}",skip,
 voyager-technologies-inc,voyager-technologies-inc-greenhouse,https://job-boards.greenhouse.io/voyagertechnologiesinc,greenhouse,"{""token"": ""voyagertechnologiesinc""}",skip,
+voyah,voyah-campus,https://app.mokahr.com/campus-recruitment/voyah/146293,mokahr,"{""org_id"": ""voyah"", ""site_id"": 146293}",mokahr,"{""enrich"": [""description""]}"
+voyah,voyah-careers,https://app.mokahr.com/social-recruitment/voyah/146292,mokahr,"{""org_id"": ""voyah"", ""site_id"": 146292}",mokahr,"{""enrich"": [""description""]}"
 vsco,vsco-greenhouse,https://job-boards.greenhouse.io/vsco39,greenhouse,"{""token"": ""vsco39""}",skip,
 vtex,vtex-greenhouse,https://job-boards.greenhouse.io/vtex,greenhouse,"{""token"": ""vtex""}",skip,
 vts,vts-greenhouse,https://job-boards.greenhouse.io/vts,greenhouse,"{""token"": ""vts""}",skip,
