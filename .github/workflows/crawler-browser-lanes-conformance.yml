@@ -4,11 +4,15 @@ on:
   push:
     branches: [main]
     paths:
+      - 'apps/crawler/contracts/v1/**'
+      - 'apps/crawler/contracts/queue/v2/**'
       - 'apps/crawler/contracts/browser/lanes/v1/**'
       - '.github/workflows/crawler-browser-lanes-conformance.yml'
   pull_request:
     branches: [main]
     paths:
+      - 'apps/crawler/contracts/v1/**'
+      - 'apps/crawler/contracts/queue/v2/**'
       - 'apps/crawler/contracts/browser/lanes/v1/**'
       - '.github/workflows/crawler-browser-lanes-conformance.yml'
   workflow_dispatch:
