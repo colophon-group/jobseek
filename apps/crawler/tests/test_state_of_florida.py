@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parents[1] / "data"
@@ -38,7 +39,10 @@ def test_state_of_florida_keeps_complementary_official_boards() -> None:
     }
 
 
-def test_state_of_florida_stages_both_company_images() -> None:
-    image_dir = DATA_DIR / "images" / "state-of-florida"
-    assert (image_dir / "logo.png").stat().st_size > 0
-    assert (image_dir / "icon.png").stat().st_size > 0
+def test_state_of_florida_references_uploaded_company_images() -> None:
+    with (DATA_DIR / "companies.csv").open(newline="", encoding="utf-8") as handle:
+        company = next(row for row in csv.DictReader(handle) if row["slug"] == "state-of-florida")
+
+    asset_root = "https://jobseek-assets.colophon-group.org/companies/state-of-florida"
+    assert re.fullmatch(rf"{asset_root}/logo-[0-9a-f]{{64}}\.png", company["logo_url"])
+    assert re.fullmatch(rf"{asset_root}/icon-[0-9a-f]{{64}}\.webp", company["icon_url"])
