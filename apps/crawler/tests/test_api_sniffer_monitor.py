@@ -37,6 +37,7 @@ from src.core.monitors.api_sniffer import (
     _validated_required_pdf_pattern,
     _validated_slug_fields,
     _validated_url_field_match,
+    _wp_job_manager_probe_config,
     can_handle,
     discover,
 )
@@ -1127,6 +1128,83 @@ class TestProspectiveDetection:
                     )
                     is None
                 )
+
+
+class TestWpJobManagerDetection:
+    @staticmethod
+    def _payload(*urls: str, max_pages: int) -> dict:
+        cards = "".join(
+            f'''<div class="post-{index} job_listing type-job_listing status-publish hentry">
+              <a href="{url}"><h5 class="job_title">Role {index}</h5></a>
+              <a href="{url}">See Job Details</a>
+            </div>'''
+            for index, url in enumerate(urls, start=1)
+        )
+        return {
+            "found_jobs": bool(urls),
+            "max_num_pages": max_pages,
+            "html": cards,
+        }
+
+    @pytest.mark.asyncio
+    async def test_builds_complete_unfiltered_ajax_config_without_browser(self):
+        page_one = self._payload(
+            "https://jobs.example.com/job/engineer/",
+            "https://jobs.example.com/job/architect/",
+            max_pages=2,
+        )
+        page_two = self._payload(
+            "https://jobs.example.com/job/designer/",
+            max_pages=2,
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url.path == "/jm-ajax/get_listings/"
+            page = request.url.params.get("page", "1")
+            payload = page_one if page == "1" else page_two
+            return httpx.Response(200, json=payload, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            config = await _wp_job_manager_probe_config(
+                "https://jobs.example.com/careers/",
+                client,
+            )
+
+        assert config is not None
+        assert config["api_url"] == "https://jobs.example.com/jm-ajax/get_listings/"
+        assert config["params"] == {"per_page": "100"}
+        assert config["json_path"] == "html"
+        assert config["empty_response"] == {"found_jobs": False}
+        assert config["pagination"] == {
+            "param_name": "page",
+            "style": "page",
+            "start_value": 1,
+            "increment": 1,
+            "location": "query",
+            "page_size": 100,
+            "max_pages": 200,
+        }
+        assert config["items"] == 3
+        assert config["total"] == 3
+        assert config["score"] == 100
+
+    @pytest.mark.asyncio
+    async def test_rejects_cross_origin_or_non_published_cards(self):
+        payload = self._payload(
+            "https://evil.example/job/engineer/",
+            max_pages=1,
+        )
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            assert (
+                await _wp_job_manager_probe_config(
+                    "https://jobs.example.com/careers/",
+                    client,
+                )
+                is None
+            )
 
 
 class TestItemProjector:
