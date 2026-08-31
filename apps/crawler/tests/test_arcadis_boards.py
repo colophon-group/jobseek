@@ -1,4 +1,4 @@
-"""Board, fallback, metadata, and asset contracts for Arcadis."""
+"""Board, fallback, metadata, and asset URL contracts for Arcadis."""
 
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ def _rows(path: str, key: str, value: str) -> list[dict[str, str]]:
         return [row for row in csv.DictReader(handle) if row[key] == value]
 
 
-def test_arcadis_uses_global_aggregate_and_distinct_dps_board() -> None:
+def test_arcadis_keeps_complete_discovery_and_dps_fallbacks() -> None:
     rows = {row["board_slug"]: row for row in _rows("boards.csv", "company_slug", "arcadis")}
 
-    assert set(rows) == {"arcadis-careers-global", "arcadis-careers-dps"}
-    global_board = rows["arcadis-careers-global"]
+    assert set(rows) == {"arcadis-careers", "arcadis-dps", "arcadis-kua-dc"}
+    global_board = rows["arcadis-careers"]
     assert (global_board["monitor_type"], global_board["scraper_type"]) == (
         "eightfold",
         "eightfold",
@@ -30,12 +30,11 @@ def test_arcadis_uses_global_aggregate_and_distinct_dps_board() -> None:
     assert json.loads(global_board["monitor_config"]) == {"url_filter": "/careers/job/"}
     assert json.loads(global_board["scraper_config"]) == {"enrich": ["description"]}
 
-    dps = rows["arcadis-careers-dps"]
-    assert (dps["monitor_type"], dps["scraper_type"]) == ("sitemap", "json-ld")
-    assert json.loads(dps["monitor_config"]) == {
-        "sitemap_url": "https://www.dpsgroupglobal.com/sitemap.xml",
-        "url_filter": r"^https://www\.dpsgroupglobal\.com/job/[^/?#]+/?$",
-    }
+    dps = rows["arcadis-dps"]
+    assert (dps["monitor_type"], dps["scraper_type"]) == ("api_sniffer", "json-ld")
+    monitor_config = json.loads(dps["monitor_config"])
+    assert monitor_config["api_url"] == ("https://www.dpsgroupglobal.com/jm-ajax/get_listings/")
+    assert monitor_config["pagination"]["page_size"] == 100
     defaults = json.loads(dps["scraper_config"])["defaults_by_url"]
     assert len(defaults) == 5
     assert defaults["https://www.dpsgroupglobal.com/job/structural-designer/"] == {
@@ -44,7 +43,7 @@ def test_arcadis_uses_global_aggregate_and_distinct_dps_board() -> None:
 
 
 async def test_arcadis_dps_jsonld_fills_exact_locationless_posting() -> None:
-    dps = _rows("boards.csv", "board_slug", "arcadis-careers-dps")[0]
+    dps = _rows("boards.csv", "board_slug", "arcadis-dps")[0]
     config = json.loads(dps["scraper_config"])
     url = "https://www.dpsgroupglobal.com/job/structural-designer/"
     page_html = """<script type="application/ld+json">
@@ -61,7 +60,7 @@ async def test_arcadis_dps_jsonld_fills_exact_locationless_posting() -> None:
     assert content.locations == ["Albany, New York, United States"]
 
 
-def test_arcadis_metadata_descriptions_and_staged_assets() -> None:
+def test_arcadis_metadata_descriptions_and_uploaded_assets() -> None:
     company = _rows("companies.csv", "slug", "arcadis")[0]
     assert company["name"] == "Arcadis"
     assert company["website"] == "https://www.arcadis.com"
@@ -72,5 +71,9 @@ def test_arcadis_metadata_descriptions_and_staged_assets() -> None:
 
     description = _rows("company_descriptions.csv", "slug", "arcadis")[0]
     assert all(description[locale] for locale in ("en", "de", "fr", "it"))
-    assert (DATA_DIR / "images/arcadis/logo.png").is_file()
-    assert (DATA_DIR / "images/arcadis/icon.png").is_file()
+    assert company["logo_url"].startswith(
+        "https://jobseek-assets.colophon-group.org/companies/arcadis/logo-"
+    )
+    assert company["icon_url"].startswith(
+        "https://jobseek-assets.colophon-group.org/companies/arcadis/icon-"
+    )
