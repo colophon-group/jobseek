@@ -44,11 +44,11 @@ function FreeTier() {
             </span>
           </div>
           <p className="mt-2 text-muted">
-            <Trans id="home.pricing.free.description" comment="Free tier description">Full search, one watchlist, and a built-in application tracker to manage your pipeline.</Trans>
+            <Trans id="home.pricing.free.description" comment="Free tier description">Full search, up to 10 watchlists, and a built-in application tracker to manage your pipeline.</Trans>
           </p>
           <ul className="mt-4 flex-1 space-y-2">
             <FeatureItem><Trans id="home.pricing.free.f1" comment="Free feature: full search">Search across all companies and filters</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.free.f2" comment="Free feature: one watchlist">1 watchlist</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.free.f2" comment="Free feature: universal watchlist limit">Up to 10 watchlists</Trans></FeatureItem>
             <FeatureItem><Trans id="home.pricing.free.f3" comment="Free feature: application tracker">Application tracker with interview log</Trans></FeatureItem>
           </ul>
         </div>
@@ -86,12 +86,11 @@ function ProTier() {
             </span>
           </div>
           <p className="mt-2 text-muted">
-            <Trans id="home.pricing.pro.description" comment="Pro tier description">Unlimited watchlists with email alerts so you never miss an opening.</Trans>
+            <Trans id="home.pricing.pro.description" comment="Pro tier description without promising unannounced features">Pro is coming soon. Plan details will be announced before launch.</Trans>
           </p>
           <ul className="mt-4 flex-1 space-y-2">
             <FeatureItem><Trans id="home.pricing.pro.f0" comment="Pro feature: includes free">Everything in Free</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.pro.f1" comment="Pro feature: unlimited watchlists">Unlimited watchlists</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.pro.f2" comment="Pro feature: email alerts">Email alerts on new matches</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.pro.f1" comment="Pro plan availability detail">Plan details coming soon</Trans></FeatureItem>
           </ul>
         </div>
         <div className="px-6 pb-6">
@@ -118,7 +117,7 @@ export function Pricing() {
           <Trans id="home.pricing.title" comment="Pricing section heading">Choose the right plan for you</Trans>
         </h2>
         <p className="text-muted">
-          <Trans id="home.pricing.description" comment="Pricing section description">Simple, transparent pricing. Start for free and upgrade when you get serious about your job search.</Trans>
+          <Trans id="home.pricing.description" comment="Pricing section description">Start for free. Pro plan details will be announced before launch.</Trans>
         </p>
       </div>
 

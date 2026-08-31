@@ -5,18 +5,18 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { ThemedImage } from "@/components/ThemedImage";
 import { eyebrowClass, sectionHeadingClass, sectionScrollMarginClass } from "@/lib/styles";
-import { Globe, SlidersHorizontal, Bell, GitGraph, ClipboardList, BarChart3, Target, Building2, Share2 } from "lucide-react";
+import { Globe, SlidersHorizontal, Eye, GitGraph, ClipboardList, BarChart3, Target, Building2, ListChecks } from "lucide-react";
 
 const iconMap: Record<string, ElementType> = {
   source: Globe,
   filters: SlidersHorizontal,
-  alerts: Bell,
+  alerts: Eye,
   tracking: GitGraph,
   interviews: ClipboardList,
   stats: BarChart3,
   curate: Target,
   companies: Building2,
-  share: Share2,
+  share: ListChecks,
 };
 
 const CONTAINER_MAX = 1200;
@@ -70,7 +70,7 @@ type PointBlockProps = {
 };
 
 function PointBlock({ icon, title, description }: PointBlockProps) {
-  const IconComponent = iconMap[icon] ?? Bell;
+  const IconComponent = iconMap[icon] ?? Eye;
   return (
     <div className="flex items-start gap-4">
       <IconComponent size={20} className="mt-0.5 shrink-0" />
@@ -187,8 +187,8 @@ function FeatureSection1() {
               />
               <PointBlock
                 icon={cfg.pointIcons[2]}
-                title={<Trans id="home.features.s1.p3.title" comment="Feature: watchlists and alerts title">Watchlists and alerts</Trans>}
-                description={<Trans id="home.features.s1.p3.description" comment="Feature: watchlists and alerts description">Save any search as a watchlist and get email alerts when new roles match your criteria.</Trans>}
+                title={<Trans id="home.features.s1.p3.title" comment="Feature: saved searches title">Saved searches</Trans>}
+                description={<Trans id="home.features.s1.p3.description" comment="Feature: saved searches description">Save any search as a watchlist and return to the latest matching roles whenever you want.</Trans>}
               />
             </dl>
           </div>
@@ -293,7 +293,7 @@ function FeatureSection3() {
                 <Trans id="home.features.s3.title" comment="Feature section 3 heading">Curate a watchlist for any niche</Trans>
               </h2>
               <p className="mt-4 text-muted">
-                <Trans id="home.features.s3.description" comment="Feature section 3 description">Pick the companies you care about, set your filters, and get a live feed of matching roles. Share it publicly or keep it private.</Trans>
+                <Trans id="home.features.s3.description" comment="Feature section 3 description">Pick the companies you care about, set your filters, and get a live feed of matching roles.</Trans>
               </p>
             </div>
             <dl className="mt-8 flex flex-col gap-6">
@@ -309,8 +309,8 @@ function FeatureSection3() {
               />
               <PointBlock
                 icon={cfg.pointIcons[2]}
-                title={<Trans id="home.features.s3.p3.title" comment="Feature: share watchlists title">Share with anyone</Trans>}
-                description={<Trans id="home.features.s3.p3.description" comment="Feature: share watchlists description">Make a watchlist public and share the link with friends, communities, or your network.</Trans>}
+                title={<Trans id="home.features.s3.p3.title" comment="Feature: universal watchlist limit title">Up to 10 watchlists</Trans>}
+                description={<Trans id="home.features.s3.p3.description" comment="Feature: organizing multiple watchlists description">Organize watchlists around different roles, locations, or groups of companies.</Trans>}
               />
             </dl>
           </div>

@@ -7,7 +7,6 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { scrollToTopOnNav } from "@/lib/scroll-on-nav";
 import type { UserWatchlistOverview } from "@/lib/actions/watchlists";
-import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import { tooltipWarningClass } from "@/components/ui/tooltip-styles";
 
 export function WatchlistCard({ watchlist, ownerUsername }: { watchlist: UserWatchlistOverview; ownerUsername: string | null }) {
@@ -47,18 +46,23 @@ export function WatchlistCard({ watchlist, ownerUsername }: { watchlist: UserWat
   );
 }
 
-export function CreateWatchlistCard({ onClick, creating, disabled }: { onClick: () => void; creating?: boolean; disabled?: boolean }) {
+export function CreateWatchlistCard({
+  onClick,
+  onLimitReached,
+  creating,
+  limitReached,
+}: {
+  onClick: () => void;
+  onLimitReached: () => void;
+  creating?: boolean;
+  limitReached?: boolean;
+}) {
   const { t } = useLingui();
-  const upgrade = useUpgradeModal();
 
   function handleClick() {
     if (creating) return;
-    if (disabled) {
-      upgrade.show(t({
-        id: "upgrade.reason.watchlistLimit",
-        comment: "Reason shown in upgrade modal when watchlist creation limit reached",
-        message: "You've reached your watchlist limit. Upgrade your plan to create more watchlists.",
-      }));
+    if (limitReached) {
+      onLimitReached();
       return;
     }
     onClick();
@@ -75,7 +79,7 @@ export function CreateWatchlistCard({ onClick, creating, disabled }: { onClick: 
       type="button"
       onClick={handleClick}
       className={`flex h-28 w-28 shrink-0 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-soft bg-surface p-3 text-center text-muted transition-colors cursor-pointer ${
-        creating || disabled
+        creating || limitReached
           ? "opacity-50"
           : "hover:border-primary/30 hover:text-foreground"
       }`}
@@ -91,7 +95,7 @@ export function CreateWatchlistCard({ onClick, creating, disabled }: { onClick: 
 
   return (
     <>
-      {disabled ? (
+      {limitReached ? (
         <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
           <Tooltip.Root>
             <Tooltip.Trigger asChild>
@@ -108,7 +112,6 @@ export function CreateWatchlistCard({ onClick, creating, disabled }: { onClick: 
       ) : (
         button
       )}
-      <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
     </>
   );
 }

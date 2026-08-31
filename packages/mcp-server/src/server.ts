@@ -22,7 +22,7 @@ IMPORTANT WORKFLOW:
 2. Use resolve_slugs to convert the user's freetext to slugs BEFORE calling search_jobs with filters.
 3. Only the 'q' param in search_jobs accepts freetext keywords.
 4. Use get_job_detail to drill into a specific posting from search results (salary, technologies, seniority, experience).
-5. After showing results, offer to create a watchlist if the user wants email alerts for new matching jobs.
+5. After showing results, offer to create a watchlist if the user wants to save the search and revisit matching jobs.
 
 GHOST JOB DETECTION:
 - Use trigger_ghost_analysis to check if a company is posting fake/ghost jobs (open for months, never filled).

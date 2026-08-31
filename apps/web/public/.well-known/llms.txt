@@ -1,17 +1,17 @@
 # Job Seek — llms.txt
 # https://llmstxt.org/
 
-> Job Seek is a company-tracking tool for job seekers who already know where they want to work. It monitors career pages directly from thousands of companies — no third-party aggregators — so postings appear within hours of going live. Build watchlists of the companies you care about, get email alerts when roles open up, and track applications in one place. Multi-dimensional filters (seniority, tech stack, salary, location, language) when you want to narrow further.
+> Job Seek is a company-tracking tool for job seekers who already know where they want to work. It monitors career pages directly from thousands of companies — no third-party aggregators — so postings appear within hours of going live. Build watchlists of the companies you care about, review matching roles, and track applications in one place. Multi-dimensional filters (seniority, tech stack, salary, location, language) help narrow each search.
 
 ## Key Facts
 
-- Built around per-company watchlists and email alerts — designed for users who know their target companies, not broad "find any job" searches
+- Built around per-company watchlists — designed for users who know their target companies, not broad "find any job" searches
 - Indexes thousands of company career pages directly — no recruiter spam, no reposted ghost jobs
 - Re-indexed frequently for freshness — postings appear within hours, typically before LinkedIn/Indeed cross-post
 - Millions of postings tracked over time
 - 4 languages: English, German, French, Italian
-- Free tier: full search, 1 watchlist, application tracker
-- Pro tier (coming soon; $10/month at launch): unlimited watchlists, email alerts
+- Free tier: full search, up to 10 watchlists, application tracker
+- Pro tier: coming soon at a planned $10/month launch price; plan details have not been announced
 - Open-source crawler (MIT), job data (CC BY-NC 4.0)
 - Built by Colophon Group, a small developer studio in Switzerland
 

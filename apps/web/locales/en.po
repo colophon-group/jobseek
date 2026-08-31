@@ -188,7 +188,7 @@ msgstr "$10 / month"
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:51
 msgid "home.pricing.free.f2"
-msgstr "1 watchlist"
+msgstr "Up to 10 watchlists"
 
 #. Heading for the 'install the Murmur MCP server' step on the agent-prompt success card
 #. js-lingui-explicit-id
@@ -206,7 +206,7 @@ msgstr "2. Run the prompt"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:74
 msgid "faq.a.whatIsWatchlist"
-msgstr "A watchlist is a saved search with optional company filtering. Pick the companies you care about, set your filters (role, location, seniority, salary), and get a live feed of matching jobs. You can share watchlists publicly or keep them private."
+msgstr "A watchlist is a saved search with optional company filtering. Pick the companies you care about, set your filters (role, location, seniority, salary), and get a live feed of matching jobs. Each account can have up to 10 watchlists."
 
 #. JSON-LD page name for the public About page.
 #. SEO title for the public About page.
@@ -600,13 +600,13 @@ msgstr "Browse the repository at"
 #: app/[lang]/(public)/page.tsx:25
 #: app/[lang]/(public)/page.tsx:62
 msgid "home.meta.description"
-msgstr "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings."
+msgstr "Build watchlists of the companies you care about, review matching roles, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings."
 
 #. Hero description paragraph — watchlist + alerts pitch with direct sourcing as supporting claim
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:31
 msgid "home.hero.description"
-msgstr "Build watchlists of the companies you care about, get email alerts when new roles open up, and track every application in one place. We monitor career pages directly — postings show up within hours, before LinkedIn or Indeed cross-post them."
+msgstr "Build watchlists of the companies you care about, review matching roles, and track every application in one place. We monitor career pages directly — postings show up within hours, before LinkedIn or Indeed cross-post them."
 
 #. About page heading
 #. js-lingui-explicit-id
@@ -972,13 +972,13 @@ msgstr "Request this company"
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:121
 msgid "app.schema.description"
-msgstr "Company-tracking tool for job seekers who already know which companies they want to work at. Build watchlists, get email alerts when new roles open up, and track applications in one place — postings sourced directly from company career pages."
+msgstr "Company-tracking tool for job seekers who already know which companies they want to work at. Build watchlists, review matching roles, and track applications in one place — postings sourced directly from company career pages."
 
 #. Organization JSON-LD description for Job Seek and Colophon Group.
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:85
 msgid "app.schema.org.description"
-msgstr "Company-tracking tool for targeted job seekers — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland."
+msgstr "Company-tracking tool for targeted job seekers — watchlists, application tracking, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland."
 
 #. Confirm delete button
 #. js-lingui-explicit-id
@@ -1366,13 +1366,13 @@ msgstr "Email alerts are a paid feature. Upgrade to get notified when new jobs m
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx:97
 msgid "settings.billing.pro.f1"
-msgstr "Email alerts for new postings"
+msgstr "Plan details coming soon"
 
 #. Pro feature: email alerts
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:94
 msgid "home.pricing.pro.f2"
-msgstr "Email alerts on new matches"
+msgstr "Plan details coming soon"
 
 #. Email or username input label for sign-in
 #. js-lingui-explicit-id
@@ -1677,7 +1677,7 @@ msgstr "Free"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:70
 msgid "faq.a.freeVsPro"
-msgstr "Free gives you full search across all companies, one watchlist, and the application tracker with interview logging. Pro is coming soon and will add unlimited watchlists and email alerts when new roles match your criteria."
+msgstr "Free gives you full search across all companies, up to 10 watchlists, and the application tracker with interview logging. Pro is coming soon; plan details will be announced before launch."
 
 #. FAQ page heading
 #. js-lingui-explicit-id
@@ -1701,13 +1701,13 @@ msgstr "Full job search"
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:132
 msgid "app.schema.offer.free"
-msgstr "Full search, 1 watchlist, application tracker"
+msgstr "Full search, up to 10 watchlists, application tracker"
 
 #. Free tier description
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:47
 msgid "home.pricing.free.description"
-msgstr "Full search, one watchlist, and a built-in application tracker to manage your pipeline."
+msgstr "Full search, up to 10 watchlists, and a built-in application tracker to manage your pipeline."
 
 #. Employment type: full-time
 #. js-lingui-explicit-id
@@ -2099,7 +2099,7 @@ msgstr "Job Seek application tracker showing saved jobs and interview details"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:50
 msgid "faq.a.whatIsJobseek"
-msgstr "Job Seek helps you track the companies you actually want to work at. Build a watchlist, get email alerts when new roles open up, and track applications in one place. Postings come straight from company career pages, so you see them within hours of going live — typically before LinkedIn or Indeed cross-post them."
+msgstr "Job Seek helps you track the companies you actually want to work at. Build watchlists, review matching roles, and track applications in one place. Postings come straight from company career pages, so you see them within hours of going live — typically before LinkedIn or Indeed cross-post them."
 
 #. JSON-LD page description for the public About page.
 #. SEO description for the public About page.
@@ -2107,7 +2107,7 @@ msgstr "Job Seek helps you track the companies you actually want to work at. Bui
 #: app/[lang]/(public)/about/page.tsx:22
 #: app/[lang]/(public)/about/page.tsx:56
 msgid "about.meta.description"
-msgstr "Job Seek helps you track the companies you want to work at — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland."
+msgstr "Job Seek helps you track the companies you want to work at with watchlists, direct career-page postings, and an application tracker. Built by Colophon Group, a small developer studio in Switzerland."
 
 #. Indexing page description — company-tracking framing, not 'search engine'
 #. js-lingui-explicit-id
@@ -2381,7 +2381,7 @@ msgstr "Log in to save this search as a watchlist"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:313
 msgid "home.features.s3.p3.description"
-msgstr "Make a watchlist public and share the link with friends, communities, or your network."
+msgstr "Organize watchlists around different roles, locations, or groups of companies."
 
 #. Make watchlist private tooltip
 #. js-lingui-explicit-id
@@ -3047,7 +3047,7 @@ msgstr "Phone Screen"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:296
 msgid "home.features.s3.description"
-msgstr "Pick the companies you care about, set your filters, and get a live feed of matching roles. Share it publicly or keep it private."
+msgstr "Pick the companies you care about, set your filters, and get a live feed of matching roles."
 
 #. Plan section heading in billing settings
 #. js-lingui-explicit-id
@@ -3237,7 +3237,7 @@ msgstr "Read the full Terms of Service"
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:157
 msgid "app.schema.feature.alerts"
-msgstr "Real-time job posting alerts"
+msgstr "Saved watchlist searches"
 
 #. Sort option: recently updated
 #. js-lingui-explicit-id
@@ -3599,7 +3599,7 @@ msgstr "Save any role you find, move it through your pipeline as you apply and i
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:191
 msgid "home.features.s1.p3.description"
-msgstr "Save any search as a watchlist and get email alerts when new roles match your criteria."
+msgstr "Save any search as a watchlist and return to the latest matching roles whenever you want."
 
 #. Save job aria label
 #. js-lingui-explicit-id
@@ -3708,7 +3708,7 @@ msgstr "Search for \"{trimmedInput}\" in job titles"
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/explore/page.tsx:44
 msgid "explore.meta.description"
-msgstr "Search jobs across thousands of companies scraped directly from career pages. Filter by seniority, tech stack, salary, and location — then save watchlists and get alerts."
+msgstr "Search jobs across thousands of companies scraped directly from career pages. Filter by seniority, tech stack, salary, and location, then save searches as watchlists."
 
 #. Placeholder for search input in all-languages modal
 #. js-lingui-explicit-id
@@ -3870,7 +3870,7 @@ msgstr "Settings"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:312
 msgid "home.features.s3.p3.title"
-msgstr "Share with anyone"
+msgstr "Up to 10 watchlists"
 
 #. Collapse location pill list
 #. js-lingui-explicit-id
@@ -3996,7 +3996,7 @@ msgstr "Similar companies"
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:121
 msgid "home.pricing.description"
-msgstr "Simple, transparent pricing. Start for free and upgrade when you get serious about your job search."
+msgstr "Start for free. Pro plan details will be announced before launch."
 
 #. Step 1 title
 #. js-lingui-explicit-id
@@ -4392,19 +4392,19 @@ msgstr "Under GDPR you can ask for a copy of your data, have it corrected or del
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:93
 msgid "home.pricing.pro.f1"
-msgstr "Unlimited watchlists"
+msgstr "Plan details coming soon"
 
 #. Pro tier description
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:89
 msgid "home.pricing.pro.description"
-msgstr "Unlimited watchlists with email alerts so you never miss an opening."
+msgstr "Pro is coming soon. Plan details will be announced before launch."
 
 #. WebApplication JSON-LD offer description for the Pro plan.
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:144
 msgid "app.schema.offer.pro"
-msgstr "Unlimited watchlists, email alerts on new matches"
+msgstr "Plan details coming soon"
 
 #. Unsave job aria label
 #. js-lingui-explicit-id
@@ -4583,7 +4583,7 @@ msgstr "Watchlists"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:190
 msgid "home.features.s1.p3.title"
-msgstr "Watchlists and alerts"
+msgstr "Saved searches"
 
 #. WebApplication JSON-LD feature list item about watchlists and application tracking.
 #. js-lingui-explicit-id
@@ -4797,7 +4797,7 @@ msgstr "years"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:54
 msgid "faq.a.targetedSeeker"
-msgstr "Yes — that's the use case we built around. Add the companies you care about to a watchlist, set your filters (role, location, seniority, salary), and Job Seek monitors their career pages and alerts you the moment new roles match. You don't have to keep checking each company's site by hand or fight LinkedIn's algorithm."
+msgstr "Yes — that's the use case we built around. Add the companies you care about to a watchlist, set your filters (role, location, seniority, salary), and Job Seek keeps matching roles together in one feed. You don't have to search each company's site separately or fight LinkedIn's algorithm."
 
 #. FAQ answer explaining how companies can opt out of indexing.
 #. js-lingui-explicit-id
@@ -4895,19 +4895,19 @@ msgstr "You've hit the hourly limit for company requests. Please try again later
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx:34
 #: src/components/watchlist/watchlist-card.tsx:45
 msgid "upgrade.reason.watchlistLimit"
-msgstr "You've reached your watchlist limit. Upgrade your plan to create more watchlists."
+msgstr "You can have up to 10 watchlists. Delete one before adding another."
 
 #. Reason shown in upgrade modal when mirror limit reached
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx:93
 msgid "upgrade.reason.mirrorLimit"
-msgstr "You've reached your watchlist limit. Upgrade your plan to mirror more watchlists."
+msgstr "You can have up to 10 watchlists. Delete one before adding another."
 
 #. Reason shown in upgrade modal when saving a search hits the watchlist limit
 #. js-lingui-explicit-id
 #: src/components/search/save-search-button.tsx:96
 msgid "upgrade.reason.saveSearch"
-msgstr "You've reached your watchlist limit. Upgrade your plan to save more searches as watchlists."
+msgstr "You can have up to 10 watchlists. Delete one before adding another."
 
 #. Feature section 3 eyebrow text
 #. js-lingui-explicit-id
@@ -5136,3 +5136,33 @@ msgstr "Live job results are temporarily unavailable."
 #: src/components/search/explore-repository-fallback.tsx
 msgid "explore.fallback.body"
 msgstr "Try refreshing the page. In the meantime, you can explore these company profiles."
+
+#. Free plan feature: universal watchlist limit
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.free.f0"
+msgstr "Up to 10 watchlists"
+
+#. Title of the neutral notice shown when an account has 10 watchlists
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-limit-modal.tsx
+msgid "watchlists.limit.title"
+msgstr "10-watchlist limit"
+
+#. Explanation shown when any watchlist creation path reaches the universal account limit
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-limit-modal.tsx
+msgid "watchlists.limit.description"
+msgstr "You can have up to 10 watchlists. Delete one before adding another."
+
+#. Aria label for the watchlist-limit notice close button
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-limit-modal.tsx
+msgid "watchlists.limit.close"
+msgstr "Close"
+
+#. Dismiss the watchlist-limit notice
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-limit-modal.tsx
+msgid "watchlists.limit.dismiss"
+msgstr "Got it"

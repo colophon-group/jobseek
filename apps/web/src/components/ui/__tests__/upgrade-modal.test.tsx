@@ -27,7 +27,7 @@ describe("UpgradeModal (issue #3036)", () => {
       <UpgradeModal
         open={true}
         onOpenChange={() => {}}
-        reason="You've reached your watchlist limit."
+        reason="This feature requires a subscription."
       />,
     );
 

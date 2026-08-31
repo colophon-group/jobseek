@@ -89,14 +89,15 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
   const isFree = planInfo.plan === "free";
 
   const freePlanFeatures = [
+    t({ id: "settings.billing.free.f0", comment: "Free plan feature: universal watchlist limit", message: "Up to 10 watchlists" }),
     t({ id: "settings.billing.free.f1", comment: "Free plan feature: star companies", message: "Star companies" }),
     t({ id: "settings.billing.free.f2", comment: "Free plan feature: search", message: "Full job search" }),
     t({ id: "settings.billing.free.f3", comment: "Free plan feature: save jobs", message: "Save jobs" }),
   ];
 
   const proPlanFeatures = [
-    t({ id: "settings.billing.pro.f1", comment: "Pro plan feature: alerts", message: "Email alerts for new postings" }),
     t({ id: "settings.billing.pro.f2", comment: "Pro plan feature: everything free", message: "Everything in Free" }),
+    t({ id: "settings.billing.pro.f1", comment: "Pro plan availability detail", message: "Plan details coming soon" }),
   ];
 
   async function handleUpgrade() {

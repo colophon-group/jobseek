@@ -28,8 +28,8 @@ export function Hero() {
             <Trans id="home.hero.title" comment="Main heading on the landing page — leads with company-watchlist ICP">Track the companies you actually want to work at.</Trans>
           </h1>
           <p className="text-muted">
-            <Trans id="home.hero.description" comment="Hero description paragraph — watchlist + alerts pitch with direct sourcing as supporting claim">
-              Build watchlists of the companies you care about, get email alerts when new roles open up, and track every application in one place. We monitor career pages directly — postings show up within hours, before LinkedIn or Indeed cross-post them.
+            <Trans id="home.hero.description" comment="Hero description paragraph — watchlist workflow with direct sourcing as supporting claim">
+              Build watchlists of the companies you care about, review matching roles, and track every application in one place. We monitor career pages directly — postings show up within hours, before LinkedIn or Indeed cross-post them.
             </Trans>
           </p>
           <div className="flex flex-col gap-4 pt-4 sm:flex-row">

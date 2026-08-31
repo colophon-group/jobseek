@@ -188,7 +188,7 @@ msgstr "10 $ / mois"
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:51
 msgid "home.pricing.free.f2"
-msgstr "1 watchlist"
+msgstr "Jusqu’à 10 watchlists"
 
 #. Heading for the 'install the Murmur MCP server' step on the agent-prompt success card
 #. js-lingui-explicit-id
@@ -206,7 +206,7 @@ msgstr "2. Exécuter le prompt"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:74
 msgid "faq.a.whatIsWatchlist"
-msgstr "Une liste de suivi est une recherche enregistrée avec filtrage optionnel par entreprise. Choisissez les entreprises qui vous intéressent, définissez vos filtres (poste, lieu, séniorité, salaire) et obtenez un flux en direct des offres correspondantes. Vous pouvez partager vos listes publiquement ou les garder privées."
+msgstr "Une watchlist est une recherche enregistrée avec un filtre facultatif par entreprise. Choisis les entreprises qui t’intéressent, définis tes filtres (poste, lieu, séniorité, salaire) et obtiens un flux des offres correspondantes. Chaque compte peut avoir jusqu’à 10 watchlists."
 
 #. JSON-LD page name for the public About page.
 #. SEO title for the public About page.
@@ -600,13 +600,13 @@ msgstr "Parcourir le dépôt sur"
 #: app/[lang]/(public)/page.tsx:25
 #: app/[lang]/(public)/page.tsx:62
 msgid "home.meta.description"
-msgstr "Crée des watchlists des entreprises qui t'intéressent, reçois des alertes par e-mail dès qu'un nouveau poste s'ouvre, et suis tes candidatures en un seul endroit. Les offres viennent directement des pages carrières des entreprises, dans les heures suivant leur publication — pas de spam de recruteurs, pas d'annonces republiées."
+msgstr "Crée des watchlists des entreprises qui t’intéressent, consulte les postes correspondants et suis tes candidatures en un seul endroit. Les offres viennent directement des pages carrières des entreprises, dans les heures suivant leur publication — pas de spam de recruteurs, pas d’annonces republiées."
 
 #. Hero description paragraph — watchlist + alerts pitch with direct sourcing as supporting claim
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:31
 msgid "home.hero.description"
-msgstr "Crée des watchlists des entreprises qui t'intéressent, reçois des alertes par e-mail dès qu'un nouveau poste s'ouvre, et suis chaque candidature en un seul endroit. Nous surveillons les pages carrières directement — les offres apparaissent en quelques heures, avant que LinkedIn ou Indeed ne les relaient."
+msgstr "Crée des watchlists des entreprises qui t’intéressent, consulte les postes correspondants et suis chaque candidature en un seul endroit. Nous surveillons directement les pages carrières — les offres apparaissent en quelques heures, avant que LinkedIn ou Indeed ne les relaient."
 
 #. About page heading
 #. js-lingui-explicit-id
@@ -972,13 +972,13 @@ msgstr "Demander cette entreprise"
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:121
 msgid "app.schema.description"
-msgstr "Outil de suivi d'entreprises pour les candidats qui savent déjà dans quelles entreprises ils veulent travailler. Crée des watchlists, reçois des alertes par e-mail dès qu'un nouveau poste s'ouvre, et suis tes candidatures en un seul endroit — les offres viennent directement des pages carrières des entreprises."
+msgstr "Outil de suivi d’entreprises pour les candidats qui savent déjà où ils veulent travailler. Crée des watchlists, consulte les postes correspondants et suis tes candidatures en un seul endroit — les offres viennent directement des pages carrières des entreprises."
 
 #. Organization JSON-LD description for Job Seek and Colophon Group.
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:85
 msgid "app.schema.org.description"
-msgstr "Outil de suivi d'entreprises pour les candidats ciblés — watchlists, alertes par e-mail et offres directement issues des pages carrières des entreprises. Créé par Colophon Group, un petit studio de développeurs en Suisse."
+msgstr "Outil de suivi d’entreprises pour les candidats ciblés — watchlists, suivi des candidatures et offres directement issues des pages carrières des entreprises. Créé par Colophon Group, un petit studio de développeurs en Suisse."
 
 #. Confirm delete button
 #. js-lingui-explicit-id
@@ -1366,13 +1366,13 @@ msgstr "Les alertes par e-mail sont une fonctionnalité payante. Passez à un pl
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx:97
 msgid "settings.billing.pro.f1"
-msgstr "Suivi illimité d'entreprises"
+msgstr "Détails du forfait à venir"
 
 #. Pro feature: email alerts
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:94
 msgid "home.pricing.pro.f2"
-msgstr "Alertes e-mail sur les nouvelles correspondances"
+msgstr "Détails du forfait à venir"
 
 #. Email or username input label for sign-in
 #. js-lingui-explicit-id
@@ -1677,7 +1677,7 @@ msgstr "Gratuit"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:70
 msgid "faq.a.freeVsPro"
-msgstr "La version gratuite vous offre une recherche complète sur toutes les entreprises, une liste de suivi et le suivi des candidatures avec journal des entretiens. Pro sera bientôt disponible et ajoutera des listes de suivi illimitées et des alertes email lorsque de nouvelles offres correspondront à vos critères."
+msgstr "La version gratuite offre la recherche complète sur toutes les entreprises, jusqu’à 10 watchlists et le suivi des candidatures avec journal des entretiens. Pro sera bientôt disponible ; les détails du forfait seront annoncés avant son lancement."
 
 #. FAQ page heading
 #. js-lingui-explicit-id
@@ -1701,13 +1701,13 @@ msgstr "Recherche d'emploi complète"
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:132
 msgid "app.schema.offer.free"
-msgstr "Recherche complète, 1 liste de suivi, suivi des candidatures"
+msgstr "Recherche complète, jusqu’à 10 watchlists, suivi des candidatures"
 
 #. Free tier description
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:47
 msgid "home.pricing.free.description"
-msgstr "Recherche complète, une watchlist et un suivi des candidatures intégré pour gérer ton pipeline."
+msgstr "Recherche complète, jusqu’à 10 watchlists et un suivi des candidatures intégré pour gérer ton pipeline."
 
 #. Employment type: full-time
 #. js-lingui-explicit-id
@@ -2099,7 +2099,7 @@ msgstr "Suivi de candidatures Job Seek montrant les postes sauvegardés et les d
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:50
 msgid "faq.a.whatIsJobseek"
-msgstr "Job Seek t'aide à suivre les entreprises pour lesquelles tu veux vraiment travailler. Crée une watchlist, reçois des alertes par e-mail dès qu'un nouveau poste s'ouvre, et suis tes candidatures en un seul endroit. Les offres viennent directement des pages carrières des entreprises, donc tu les vois dans les heures suivant leur publication — généralement avant que LinkedIn ou Indeed ne les relaient."
+msgstr "Job Seek t’aide à suivre les entreprises pour lesquelles tu veux vraiment travailler. Crée des watchlists, consulte les postes correspondants et suis tes candidatures en un seul endroit. Les offres viennent directement des pages carrières des entreprises, donc tu les vois dans les heures suivant leur publication — généralement avant que LinkedIn ou Indeed ne les relaient."
 
 #. JSON-LD page description for the public About page.
 #. SEO description for the public About page.
@@ -2107,7 +2107,7 @@ msgstr "Job Seek t'aide à suivre les entreprises pour lesquelles tu veux vraime
 #: app/[lang]/(public)/about/page.tsx:22
 #: app/[lang]/(public)/about/page.tsx:56
 msgid "about.meta.description"
-msgstr "Job Seek t'aide à suivre les entreprises pour lesquelles tu veux travailler — watchlists, alertes par e-mail et offres directement issues des pages carrières. Créé par Colophon Group, un petit studio de développeurs en Suisse."
+msgstr "Job Seek t’aide à suivre les entreprises pour lesquelles tu veux travailler grâce aux watchlists, aux offres issues directement des pages carrières et au suivi des candidatures. Créé par Colophon Group, un petit studio de développeurs en Suisse."
 
 #. Indexing page description — company-tracking framing, not 'search engine'
 #. js-lingui-explicit-id
@@ -2381,7 +2381,7 @@ msgstr "Connectez-vous pour enregistrer cette recherche comme liste de suivi"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:313
 msgid "home.features.s3.p3.description"
-msgstr "Rends une liste de suivi publique et partage le lien avec tes amis, communautés ou ton réseau."
+msgstr "Organise tes watchlists par poste, lieu ou groupe d’entreprises."
 
 #. Make watchlist private tooltip
 #. js-lingui-explicit-id
@@ -3047,7 +3047,7 @@ msgstr "Entretien téléphonique"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:296
 msgid "home.features.s3.description"
-msgstr "Choisis les entreprises qui t'intéressent, définis tes filtres et obtiens un flux en direct des postes correspondants. Partage-le publiquement ou garde-le privé."
+msgstr "Choisis les entreprises qui t’intéressent, définis tes filtres et obtiens un flux des postes correspondants."
 
 #. Plan section heading in billing settings
 #. js-lingui-explicit-id
@@ -3237,7 +3237,7 @@ msgstr "Lire les conditions d'utilisation complètes"
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:157
 msgid "app.schema.feature.alerts"
-msgstr "Alertes en temps réel sur les nouvelles offres"
+msgstr "Recherches enregistrées en watchlist"
 
 #. Sort option: recently updated
 #. js-lingui-explicit-id
@@ -3599,7 +3599,7 @@ msgstr "Sauvegarde n'importe quel poste que tu trouves, fais-le avancer dans ton
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:191
 msgid "home.features.s1.p3.description"
-msgstr "Enregistre n'importe quelle recherche en watchlist et reçois des alertes par e-mail quand de nouveaux postes correspondent à tes critères."
+msgstr "Enregistre n’importe quelle recherche en watchlist et retrouve les derniers postes correspondants quand tu le souhaites."
 
 #. Save job aria label
 #. js-lingui-explicit-id
@@ -3708,7 +3708,7 @@ msgstr "Rechercher \"{trimmedInput}\" dans les titres de postes"
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/explore/page.tsx:44
 msgid "explore.meta.description"
-msgstr "Recherchez des emplois dans des milliers d'entreprises, scrapés directement des pages carrières. Filtrez par niveau, stack technique, salaire et localisation — créez des watchlists et recevez des alertes."
+msgstr "Recherche des emplois dans des milliers d’entreprises, directement depuis leurs pages carrières. Filtre par niveau, stack technique, salaire et lieu, puis enregistre tes recherches en watchlists."
 
 #. Placeholder for search input in all-languages modal
 #. js-lingui-explicit-id
@@ -3870,7 +3870,7 @@ msgstr "Paramètres"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:312
 msgid "home.features.s3.p3.title"
-msgstr "Partager avec tout le monde"
+msgstr "Jusqu’à 10 watchlists"
 
 #. Collapse location pill list
 #. js-lingui-explicit-id
@@ -3996,7 +3996,7 @@ msgstr "Entreprises similaires"
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:121
 msgid "home.pricing.description"
-msgstr "Des tarifs simples et transparents. Commence gratuitement et passe à la vitesse supérieure quand ta recherche d'emploi devient sérieuse."
+msgstr "Commence gratuitement. Les détails du forfait Pro seront annoncés avant son lancement."
 
 #. Step 1 title
 #. js-lingui-explicit-id
@@ -4392,19 +4392,19 @@ msgstr "Selon le RGPD, tu peux demander une copie de tes données, les faire cor
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:93
 msgid "home.pricing.pro.f1"
-msgstr "Watchlists illimitées"
+msgstr "Détails du forfait à venir"
 
 #. Pro tier description
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:89
 msgid "home.pricing.pro.description"
-msgstr "Watchlists illimitées avec alertes par e-mail pour ne jamais rater une ouverture."
+msgstr "Pro sera bientôt disponible. Les détails du forfait seront annoncés avant son lancement."
 
 #. WebApplication JSON-LD offer description for the Pro plan.
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:144
 msgid "app.schema.offer.pro"
-msgstr "Listes de suivi illimitées, alertes email sur les nouveaux résultats"
+msgstr "Détails du forfait à venir"
 
 #. Unsave job aria label
 #. js-lingui-explicit-id
@@ -4583,7 +4583,7 @@ msgstr "Listes de suivi"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:190
 msgid "home.features.s1.p3.title"
-msgstr "Watchlists et alertes"
+msgstr "Recherches enregistrées"
 
 #. WebApplication JSON-LD feature list item about watchlists and application tracking.
 #. js-lingui-explicit-id
@@ -4797,7 +4797,7 @@ msgstr "ans"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:54
 msgid "faq.a.targetedSeeker"
-msgstr "Oui — c'est précisément le cas d'usage pour lequel nous l'avons conçu. Ajoute les entreprises qui t'intéressent à une watchlist, définis tes filtres (poste, lieu, séniorité, salaire), et Job Seek surveille leurs pages carrières et te prévient dès qu'un nouveau poste correspond. Plus besoin de vérifier chaque site d'entreprise à la main ni de combattre l'algorithme de LinkedIn."
+msgstr "Oui — c’est précisément le cas d’usage pour lequel nous l’avons conçu. Ajoute les entreprises qui t’intéressent à une watchlist, définis tes filtres (poste, lieu, séniorité, salaire), et Job Seek regroupe les postes correspondants dans un seul flux. Plus besoin de parcourir séparément chaque site d’entreprise ni de combattre l’algorithme de LinkedIn."
 
 #. FAQ answer explaining how companies can opt out of indexing.
 #. js-lingui-explicit-id
@@ -4895,19 +4895,19 @@ msgstr "Vous avez atteint la limite horaire de demandes d'entreprises. Veuillez 
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx:34
 #: src/components/watchlist/watchlist-card.tsx:45
 msgid "upgrade.reason.watchlistLimit"
-msgstr "Vous avez atteint la limite de vos listes de suivi. Passez à un plan supérieur pour en créer davantage."
+msgstr "Tu peux avoir jusqu’à 10 watchlists. Supprime-en une avant d’en ajouter une autre."
 
 #. Reason shown in upgrade modal when mirror limit reached
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx:93
 msgid "upgrade.reason.mirrorLimit"
-msgstr "Vous avez atteint la limite de vos listes de suivi. Passez à un plan supérieur pour en copier davantage."
+msgstr "Tu peux avoir jusqu’à 10 watchlists. Supprime-en une avant d’en ajouter une autre."
 
 #. Reason shown in upgrade modal when saving a search hits the watchlist limit
 #. js-lingui-explicit-id
 #: src/components/search/save-search-button.tsx:96
 msgid "upgrade.reason.saveSearch"
-msgstr "Vous avez atteint la limite de vos listes de suivi. Passez à un plan supérieur pour enregistrer davantage de recherches."
+msgstr "Tu peux avoir jusqu’à 10 watchlists. Supprime-en une avant d’en ajouter une autre."
 
 #. Feature section 3 eyebrow text
 #. js-lingui-explicit-id
@@ -5136,3 +5136,33 @@ msgstr "Les résultats d’emploi en temps réel sont temporairement indisponibl
 #: src/components/search/explore-repository-fallback.tsx
 msgid "explore.fallback.body"
 msgstr "Essayez d’actualiser la page. En attendant, vous pouvez consulter ces profils d’entreprise."
+
+#. Free plan feature: universal watchlist limit
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.free.f0"
+msgstr "Jusqu’à 10 watchlists"
+
+#. Title of the neutral notice shown when an account has 10 watchlists
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-limit-modal.tsx
+msgid "watchlists.limit.title"
+msgstr "Limite de 10 watchlists"
+
+#. Explanation shown when any watchlist creation path reaches the universal account limit
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-limit-modal.tsx
+msgid "watchlists.limit.description"
+msgstr "Tu peux avoir jusqu’à 10 watchlists. Supprime-en une avant d’en ajouter une autre."
+
+#. Aria label for the watchlist-limit notice close button
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-limit-modal.tsx
+msgid "watchlists.limit.close"
+msgstr "Fermer"
+
+#. Dismiss the watchlist-limit notice
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-limit-modal.tsx
+msgid "watchlists.limit.dismiss"
+msgstr "Compris"

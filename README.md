@@ -37,9 +37,9 @@ Job Seek is for people who already have a sense of where they want to work. Inst
 | [![Explore jobs](.github/assets/readme/explore.png)](https://jseek.co/en/explore) | **Explore.** Search postings across every tracked company and combine filters without creating an account. |
 | [![Stripe company page](.github/assets/readme/company.png)](https://jseek.co/en/company/stripe) | **Company pages.** See active and last-year posting counts, filter within one company, explore similar employers, and open every role at its source. |
 
-With a free account, you can create one watchlist and use the built-in **application tracker** to move roles through `saved → applied → interviewing → offered/rejected`, record interview rounds, and review pipeline statistics.
+With a free account, you can create up to 10 watchlists and use the built-in **application tracker** to move roles through `saved → applied → interviewing → offered/rejected`, record interview rounds, and review pipeline statistics.
 
-**Pro is coming soon.** The planned $10/month tier adds unlimited watchlists and email alerts for new matches.
+**Pro is coming soon.** The planned launch price is $10/month; plan details will be announced before launch.
 
 > Built by [Colophon Group](https://colophon-group.org), a small team in Switzerland — so German, French, and Italian are first-class product languages, not afterthoughts.
 

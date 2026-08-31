@@ -16,6 +16,10 @@ import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
 import { tooltipClass, tooltipWarningClass } from "@/components/ui/tooltip-styles";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
+import {
+  WatchlistLimitModal,
+  useWatchlistLimitModal,
+} from "@/components/watchlist/watchlist-limit-modal";
 
 const iconBtnClass =
   "inline-flex items-center justify-center rounded-md p-1.5 text-muted hover:bg-border-soft hover:text-foreground transition-colors cursor-pointer";
@@ -87,6 +91,7 @@ export function WatchlistActionBar({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const upgrade = useUpgradeModal();
+  const limitNotice = useWatchlistLimitModal();
 
   async function handleCopy() {
     if (!isLoggedIn) {
@@ -94,17 +99,15 @@ export function WatchlistActionBar({
       return;
     }
     if (limitReached) {
-      upgrade.show(t({
-        id: "upgrade.reason.mirrorLimit",
-        comment: "Reason shown in upgrade modal when mirror limit reached",
-        message: "You've reached your watchlist limit. Upgrade your plan to mirror more watchlists.",
-      }));
+      limitNotice.show();
       return;
     }
     setBusy(true);
     try {
       const result = await copyWatchlist(watchlistId);
-      if ("slug" in result && user?.username) {
+      if ("error" in result) {
+        if (result.error === "limit_reached") limitNotice.show();
+      } else if ("slug" in result && user?.username) {
         router.push(lp(`/${user.username}/${result.slug}`));
       } else {
         router.refresh();
@@ -264,6 +267,10 @@ export function WatchlistActionBar({
         </div>
       </Tooltip.Provider>
       <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
+      <WatchlistLimitModal
+        open={limitNotice.open}
+        onOpenChange={limitNotice.setOpen}
+      />
     </>
   );
 }
