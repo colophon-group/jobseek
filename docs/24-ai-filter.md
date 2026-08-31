@@ -1684,17 +1684,32 @@ flowchart TD
     L["#8316 Independent pre-AI max 10 watchlists"]
     A1 --> W["AF-13A Retire public watchlists"]
     L --> W
-    G0 --> F
-    L --> F["AF-6..AF-10 Foundations + exact cache"]
-    F --> R["AF-11..AF-12 Orchestration + endpoints"]
+    G0 --> F6["AF-6 Policy/budgets"]
+    G0 --> F7["AF-7 Persistence"]
+    G0 --> F8["AF-8 Candidate reader"]
+    G0 --> F9["AF-9 Description loading"]
+    L --> F6
+    A3 --> F10["AF-10 Classifier/cache/ledger"]
+    A5 --> F10
+    F6 --> F10
+    F7 --> F10
+    F9 --> F10
+    F6 --> F11["AF-11 Orchestration"]
+    F7 --> F11
+    F8 --> F11
+    F9 --> F11
+    F10 --> F11
+    F7 --> F12["AF-12 Owner endpoints"]
+    F11 --> F12
     G0 --> I["AF-17 Paid API identity design"]
     W --> I
-    R --> U["AF-13..AF-16 Subscriber UX"]
+    F12 --> U["AF-13..AF-16 Subscriber UX"]
     W --> U
-    F -->|"AF-6 + AF-10 only"| O19["AF-19 Ops/telemetry"]
+    F6 --> O19["AF-19 Ops/telemetry"]
+    F10 --> O19
     A2 --> O20["AF-20 Eval/replay gates"]
     A3 --> O20
-    F -->|"AF-10 only"| O20
+    F10 --> O20
     U --> P["AF-21 Pilot"]
     O19 --> P
     O20 --> P
