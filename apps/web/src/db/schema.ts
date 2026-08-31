@@ -18,6 +18,10 @@ import {
   jsonb,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import {
+  NOTIFICATION_CADENCE_VALUES,
+  NOTIFICATION_DELIVERY_STATUS_VALUES,
+} from "../lib/notifications/contracts";
 
 // ── Better Auth core tables ──────────────────────────────────────────
 
@@ -116,6 +120,16 @@ export const verification = pgTable(
 
 // ── User preferences (1:1 with user) ────────────────────────────────
 
+export const notificationCadenceEnum = pgEnum(
+  "notification_cadence",
+  NOTIFICATION_CADENCE_VALUES,
+);
+
+export const notificationDeliveryStatusEnum = pgEnum(
+  "notification_delivery_status",
+  NOTIFICATION_DELIVERY_STATUS_VALUES,
+);
+
 export const userPreferences = pgTable("user_preferences", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id")
@@ -131,6 +145,18 @@ export const userPreferences = pgTable("user_preferences", {
   salaryPeriod: text("salary_period"),
   cookieConsent: boolean("cookie_consent").default(false).notNull(),
   dismissedBanners: text("dismissed_banners").array().notNull().default([]),
+  notificationCadence: notificationCadenceEnum("notification_cadence")
+    .default("weekly")
+    .notNull(),
+  notificationsPaused: boolean("notifications_paused")
+    .default(false)
+    .notNull(),
+  notificationsStateChangedAt: timestamp(
+    "notifications_state_changed_at",
+    { withTimezone: true },
+  )
+    .defaultNow()
+    .notNull(),
   themeUpdatedAt: timestamp("theme_updated_at", { withTimezone: true }),
   localeUpdatedAt: timestamp("locale_updated_at", { withTimezone: true }),
   lastPasswordResetAt: timestamp("last_password_reset_at", {
@@ -722,6 +748,7 @@ export const watchlist = pgTable(
     description: text("description"),
     isPublic: boolean("is_public").default(false).notNull(),
     alertsEnabled: boolean("alerts_enabled").default(false).notNull(),
+    alertsEnabledAt: timestamp("alerts_enabled_at", { withTimezone: true }),
     filters: jsonb("filters").default({}).notNull(),
     sourceWatchlistId: uuid("source_watchlist_id").references((): AnyPgColumn => watchlist.id, {
       onDelete: "set null",
@@ -743,6 +770,124 @@ export const watchlist = pgTable(
     index("idx_wl_public")
       .on(table.isPublic)
       .where(sql`is_public = true`),
+    check(
+      "watchlist_alerts_enabled_at_check",
+      sql`(${table.alertsEnabled} AND ${table.alertsEnabledAt} IS NOT NULL)
+        OR (NOT ${table.alertsEnabled} AND ${table.alertsEnabledAt} IS NULL)`,
+    ),
+  ],
+);
+
+export const notificationDelivery = pgTable(
+  "notification_delivery",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    cadence: notificationCadenceEnum("cadence").notNull(),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    windowEnd: timestamp("window_end", { withTimezone: true }).notNull(),
+    status: notificationDeliveryStatusEnum("status")
+      .default("pending")
+      .notNull(),
+    matchCount: integer("match_count"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    providerMessageId: text("provider_message_id"),
+    providerAttemptCount: integer("provider_attempt_count")
+      .default(0)
+      .notNull(),
+    lastProviderAttemptAt: timestamp("last_provider_attempt_at", {
+      withTimezone: true,
+    }),
+    lastErrorCode: text("last_error_code"),
+    deferredUntil: timestamp("deferred_until", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("notification_delivery_period_uidx").on(
+      table.userId,
+      table.cadence,
+      table.scheduledFor,
+    ),
+    uniqueIndex("notification_delivery_idempotency_key_uidx").on(
+      table.idempotencyKey,
+    ),
+    index("notification_delivery_due_idx").on(
+      table.status,
+      table.scheduledFor,
+    ),
+    index("notification_delivery_user_window_idx").on(
+      table.userId,
+      table.windowEnd,
+    ),
+    check(
+      "notification_delivery_window_check",
+      sql`${table.windowStart} < ${table.windowEnd}
+        AND ${table.windowEnd} <= ${table.scheduledFor}`,
+    ),
+    check(
+      "notification_delivery_match_count_check",
+      sql`${table.matchCount} IS NULL OR ${table.matchCount} >= 0`,
+    ),
+    check(
+      "notification_delivery_attempt_count_check",
+      sql`${table.providerAttemptCount} >= 0`,
+    ),
+    check(
+      "notification_delivery_completion_check",
+      sql`(
+          ${table.status} IN ('sent', 'skipped')
+          AND ${table.completedAt} IS NOT NULL
+        ) OR (
+          ${table.status} NOT IN ('sent', 'skipped')
+          AND ${table.completedAt} IS NULL
+        )`,
+    ),
+    check(
+      "notification_delivery_skipped_check",
+      sql`${table.status} <> 'skipped' OR (
+        ${table.matchCount} = 0
+        AND ${table.providerAttemptCount} = 0
+        AND ${table.lastProviderAttemptAt} IS NULL
+        AND ${table.providerMessageId} IS NULL
+      )`,
+    ),
+    check(
+      "notification_delivery_sendable_match_check",
+      sql`${table.status} NOT IN ('sent', 'unknown', 'quota_deferred')
+        OR ${table.matchCount} > 0`,
+    ),
+    check(
+      "notification_delivery_provider_attempt_check",
+      sql`${table.status} NOT IN ('sent', 'unknown') OR (
+        ${table.providerAttemptCount} > 0
+        AND ${table.lastProviderAttemptAt} IS NOT NULL
+      )`,
+    ),
+    check(
+      "notification_delivery_sent_provider_check",
+      sql`${table.status} <> 'sent'
+        OR NULLIF(BTRIM(${table.providerMessageId}), '') IS NOT NULL`,
+    ),
+    check(
+      "notification_delivery_deferred_check",
+      sql`(
+          ${table.status} = 'quota_deferred'
+          AND ${table.deferredUntil} IS NOT NULL
+        ) OR (
+          ${table.status} <> 'quota_deferred'
+          AND ${table.deferredUntil} IS NULL
+        )`,
+    ),
   ],
 );
 
