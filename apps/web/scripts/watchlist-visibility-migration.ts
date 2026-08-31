@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 import dotenv from "dotenv";
 import { readMigrationFiles, type MigrationMeta } from "drizzle-orm/migrator";
-import postgres, { type Sql } from "postgres";
+import postgres, { type Sql, type TransactionSql } from "postgres";
 
 import { logExternalError } from "../src/lib/safe-external-error";
 import {
@@ -191,7 +191,9 @@ function writePrivateJson(path: string, value: unknown, exclusive: boolean): voi
   });
 }
 
-async function readAggregateEvidence(sql: Sql): Promise<AggregateEvidence> {
+async function readAggregateEvidence(
+  sql: TransactionSql,
+): Promise<AggregateEvidence> {
   const [watchlists] = await sql<
     Omit<AggregateEvidence, "membershipCount" | "membershipDigest" | "publicInventoryDigest">[]
   >`
@@ -261,7 +263,7 @@ async function readAggregateEvidence(sql: Sql): Promise<AggregateEvidence> {
   return { ...watchlists, ...memberships, ...publicInventory };
 }
 
-async function readPublicRows(sql: Sql): Promise<InventoryRow[]> {
+async function readPublicRows(sql: TransactionSql): Promise<InventoryRow[]> {
   return sql<InventoryRow[]>`
     SELECT
       w.id AS "watchlistId",
@@ -312,7 +314,7 @@ async function readPublicRows(sql: Sql): Promise<InventoryRow[]> {
   `;
 }
 
-async function assertCompatibilitySchema(sql: Sql): Promise<void> {
+async function assertCompatibilitySchema(sql: TransactionSql): Promise<void> {
   const [column] = await sql<
     { count: number; defaultValue: string | null }[]
   >`
@@ -354,7 +356,7 @@ async function assertCompatibilitySchema(sql: Sql): Promise<void> {
 }
 
 async function assertLedgerPreflight(
-  sql: Sql,
+  sql: TransactionSql,
   prerequisite: MigrationMeta,
   target: MigrationMeta,
 ): Promise<void> {
@@ -580,7 +582,7 @@ async function applyMigration(sql: Sql, artifact: InventoryArtifact): Promise<vo
   process.stdout.write(`${JSON.stringify({ command: "apply", migration: targetTag, outcome })}\n`);
 }
 
-async function readState(sql: Sql) {
+async function readState(sql: TransactionSql) {
   const [state] = await sql<
     ({ status: "private" | "rolled_back" } & Omit<
       AggregateEvidence,
@@ -607,7 +609,7 @@ async function readState(sql: Sql) {
 }
 
 async function assertRollbackArtifact(
-  sql: Sql,
+  sql: TransactionSql,
   artifact: InventoryArtifact,
 ): Promise<{ changedRows: number; changedMemberships: number; ownerFailures: number }> {
   const [evidence] = await sql<

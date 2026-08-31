@@ -83,7 +83,9 @@ describe("watchlist visibility apply evidence", () => {
       publicCount: 7,
       publicInventoryDigest: "a".repeat(32),
     });
+    const approvedBy: string = evidence.routeCutoverApprovedBy;
 
+    expect(approvedBy).toBe("privacy-reviewer");
     expect(evidence.publicApiCutoverDeploySha).toBe("3".repeat(40));
     expect(evidence.publicApiCutoverVerificationRunId).toBe(202);
     expect(evidence.expectedPublicCount).toBe(7);
@@ -108,5 +110,27 @@ describe("watchlist visibility apply evidence", () => {
         publicInventoryDigest: "a".repeat(32),
       }),
     ).toThrow(message);
+  });
+
+  it("returns a definite trimmed approval string and rejects blank input", () => {
+    const evidence = requiredWatchlistApplyEvidence(
+      {
+        ...validApplyEnvironment,
+        WATCHLIST_ROUTE_CUTOVER_APPROVED_BY: "  privacy-reviewer  ",
+      },
+      { publicCount: 7, publicInventoryDigest: "a".repeat(32) },
+    );
+    const approvedBy: string = evidence.routeCutoverApprovedBy;
+    expect(approvedBy).toBe("privacy-reviewer");
+
+    expect(() =>
+      requiredWatchlistApplyEvidence(
+        {
+          ...validApplyEnvironment,
+          WATCHLIST_ROUTE_CUTOVER_APPROVED_BY: "   ",
+        },
+        { publicCount: 7, publicInventoryDigest: "a".repeat(32) },
+      ),
+    ).toThrow(/must be a non-empty string/);
   });
 });

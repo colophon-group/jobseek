@@ -144,6 +144,18 @@ function deployedSha(environment: ApplyEnvironment, name: string): string {
   return value;
 }
 
+function requiredNonBlankString(
+  environment: ApplyEnvironment,
+  name: string,
+): string {
+  const value = environment[name];
+  invariant(
+    typeof value === "string" && value.trim().length > 0,
+    `${name} must be a non-empty string`,
+  );
+  return value.trim();
+}
+
 export function requiredWatchlistApplyEvidence(
   environment: ApplyEnvironment,
   inventory: InventoryIdentity,
@@ -152,11 +164,9 @@ export function requiredWatchlistApplyEvidence(
     environment.WATCHLIST_PRIVACY_CONFIRMATION === "PRIVATE-WATCHLISTS-0089",
     "Apply confirmation is invalid",
   );
-  const routeCutoverApprovedBy =
-    environment.WATCHLIST_ROUTE_CUTOVER_APPROVED_BY;
-  invariant(
-    routeCutoverApprovedBy?.trim(),
-    "WATCHLIST_ROUTE_CUTOVER_APPROVED_BY must record the human approver",
+  const routeCutoverApprovedBy = requiredNonBlankString(
+    environment,
+    "WATCHLIST_ROUTE_CUTOVER_APPROVED_BY",
   );
 
   return {
