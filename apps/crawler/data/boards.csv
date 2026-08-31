@@ -1157,6 +1157,11 @@ caci,caci-careers-uk,https://jobs.dayforcehcm.com/en-GB/caciltd/CANDIDATEPORTAL,
 caddell-construction,caddell-construction-greenhouse,https://job-boards.greenhouse.io/caddellconstruction,greenhouse,"{""token"": ""caddellconstruction""}",skip,
 cadence-solutions,cadence-solutions-greenhouse,https://job-boards.greenhouse.io/cadencesolutions,greenhouse,"{""token"": ""cadencesolutions""}",skip,
 cadwell,cadwell-greenhouse,https://job-boards.greenhouse.io/cadwell,greenhouse,"{""token"": ""cadwell""}",skip,
+caesars-entertainment,caesars-entertainment-careers,https://edmn.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+caesars-entertainment,caesars-entertainment-harrahs-cherokee,https://epgr.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1002,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+caesars-entertainment,caesars-entertainment-harrahs-norcal,https://harrahsnorcal.prismhr-hire.com/,dom,,json-ld,
+caesars-entertainment,caesars-entertainment-harrahs-socal,https://edmn.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_8001,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+caesars-entertainment,caesars-entertainment-harrahs-valley-river,https://epgr.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 caffeine-ai,caffeine-ai-careers,https://jobs.gem.com/caffeine-ai,gem,"{""token"": ""caffeine-ai""}",skip,
 cailabs,cailabs-careers,https://rejoignez.cailabs.com/en/cailabs/offres/,sitemap,"{""sitemap_url"": ""https://rejoignez.cailabs.com/sitemap.xml""}",json-ld,
 cais,cais-greenhouse,https://job-boards.greenhouse.io/cais,greenhouse,"{""token"": ""cais""}",skip,
