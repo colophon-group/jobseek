@@ -68,6 +68,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
 | `job51` | Rich | skip | 51job employer microsite listing and detail CoAPI |
 | `jobbank104` | URL-only | json-ld | 104 Job Bank server-rendered company listings, proxy-capable for Cloudflare challenges |
+| `jobdiva` | URL-only | api_sniffer | JobDiva candidate portals with token bootstrap and native range pagination |
 | `jobstreet` | Rich + enrichment | jobstreet | JobStreet employer-scoped public search plus GraphQL detail enrichment |
 | `jobvite` | URL-only | json-ld | Jobvite static listings, including branded career-site routes |
 | `pageup` | Rich + enrichment | dom | PageUp static listings with streamed total-checked pagination and DOM description enrichment |

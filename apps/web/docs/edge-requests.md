@@ -557,7 +557,7 @@ inside the pre-cache Vercel WAF budget:
 | `GET /api/v1/companies` | Upstash + Typesense | 1h | revalidate | 15-60ms |
 | `GET /api/v1/resolve` | Upstash + Typesense | 1h | revalidate | 15-60ms |
 | `GET /api/v1/taxonomies` | Upstash + Typesense | 1h | revalidate | 15-50ms |
-| `GET /api/v1/watchlists` | Upstash + Typesense | 5min | revalidate | 40-200ms+ |
+| `GET /api/v1/watchlists` | Uniform retired-contract `410` + bounded aggregate telemetry | None | `no-store` | <10ms handler |
 | `GET /api/v1/watchlist/create` | Upstash + Typesense | 5min | revalidate | 40-180ms |
 | `POST /api/auth/*` | 1-5 | Session: 5min | None | 20-150ms |
 | `POST /api/stripe/webhook` | 1-2 | None | None | 15-60ms |

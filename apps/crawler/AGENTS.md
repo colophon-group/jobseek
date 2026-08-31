@@ -793,7 +793,7 @@ uv run crawler refresh-typesense
 ### Alloy (Metrics + Logs Collector)
 
 The crawler Compose Alloy scrapes crawler application and Redis metrics and
-tails crawler Docker logs. Its official 1.18.1 image is digest-pinned,
+tails crawler Docker logs. Its official 1.19.2 image is digest-pinned,
 read-only, capability-dropped, and no longer privileged or host-PID aware.
 Its remote-write queue uses one bounded shard, Redis metrics use an explicit
 operational allowlist, and per-origin circuit-breaker metrics are dropped in

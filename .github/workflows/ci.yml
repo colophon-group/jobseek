@@ -988,6 +988,14 @@ jobs:
           scripts/test-better-auth-account-issuer-pg17.ts
           --database-url "$AUTH_FIXTURE_DATABASE_URL"
 
+      - name: Execute notification policy migration against PostgreSQL 17
+        env:
+          NOTIFICATION_FIXTURE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jobseek_auth_fixture
+        run: >-
+          pnpm --filter @jobseek/web exec tsx
+          scripts/test-notification-policy-pg17.ts
+          --database-url "$NOTIFICATION_FIXTURE_DATABASE_URL"
+
   web-smoke:
     name: Web Build Smoke
     needs: changes
