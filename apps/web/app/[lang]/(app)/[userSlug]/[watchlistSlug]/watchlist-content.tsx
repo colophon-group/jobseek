@@ -118,7 +118,6 @@ export function WatchlistContent({
       detail={data.detail}
       isOwner={data.isOwner}
       isPaidPlan={data.isPaidPlan}
-      limitReached={data.limitReached}
       initialPostings={data.postings}
       initialTotal={data.total}
       yearTotal={data.yearTotal}

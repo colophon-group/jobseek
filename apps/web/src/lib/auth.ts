@@ -10,6 +10,10 @@ import { sendVerificationEmail, sendResetPasswordEmail } from "@/lib/email";
 import { type Locale, defaultLocale, isLocale } from "@/lib/i18n";
 import { invalidateSessionCache } from "@/lib/sessionCache";
 import { LOGGED_IN_COOKIE } from "@/lib/client-cookies";
+import {
+  WATCHLIST_SELECTION_COOKIE,
+  watchlistSelectionCookieOptions,
+} from "@/lib/watchlist-selection";
 import { sql } from "drizzle-orm";
 import { usernameFromEmail, withRandomSuffix, isReservedUsername } from "@/lib/username";
 
@@ -118,6 +122,11 @@ export const auth = betterAuth({
           sameSite: "lax",
           secure,
           path: "/",
+          maxAge: 0,
+        });
+        ctx.setCookie(WATCHLIST_SELECTION_COOKIE, "", {
+          ...watchlistSelectionCookieOptions,
+          secure,
           maxAge: 0,
         });
       }

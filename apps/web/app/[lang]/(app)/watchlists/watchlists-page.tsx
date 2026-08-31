@@ -7,7 +7,6 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
 import type {
-  PublicWatchlistEntry,
   UserWatchlistOverview,
   WatchlistFilters,
 } from "@/lib/actions/watchlists";
@@ -15,15 +14,24 @@ import {
   createWatchlist,
   createWatchlistFromHandoff,
 } from "@/lib/actions/watchlists";
-import { WatchlistCard, CreateWatchlistCard } from "@/components/watchlist/watchlist-card";
-import { PublicWatchlistSearch } from "@/components/watchlist/public-watchlist-search";
-import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
+import {
+  clearWatchlistSelection,
+  selectOwnedWatchlist,
+} from "@/lib/actions/watchlist-selection";
+import type { WatchlistPageData } from "@/lib/services/watchlist-page-data";
+import {
+  WatchlistCard,
+  CreateWatchlistCard,
+} from "@/components/watchlist/watchlist-card";
 import { Button } from "@/components/ui/Button";
 import {
   parseEmploymentTypeParam,
   parseWorkModeParam,
 } from "@/lib/search/query-params";
 import { withAuthReturnPath } from "@/lib/auth-return";
+import { WatchlistViewPage } from "../[userSlug]/[watchlistSlug]/watchlist-view-page";
+
+const SELECTION_CHANNEL = "jobseek-watchlist-selection";
 
 function commaSeparatedValues(value: string | null): string[] {
   if (!value) return [];
@@ -32,28 +40,59 @@ function commaSeparatedValues(value: string | null): string[] {
 
 export function WatchlistsPage({
   initialWatchlists,
-  initialPopularWatchlists = [],
-  initialPopularTotal = 0,
-  username,
+  initialPageData,
+  selectionSync,
   limitReached,
   locale,
 }: {
   initialWatchlists: UserWatchlistOverview[];
-  initialPopularWatchlists?: PublicWatchlistEntry[];
-  initialPopularTotal?: number;
-  username: string | null;
+  initialPageData: WatchlistPageData | null;
+  selectionSync: "none" | "replace" | "clear";
   limitReached: boolean;
   locale: string;
 }) {
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { user, isLoggedIn, isPending } = useSession();
+  const { isLoggedIn, isPending } = useSession();
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
+  const [selectingId, setSelectingId] = useState<string | null>(null);
   const [watchlists, setWatchlists] = useState(initialWatchlists);
-  const upgrade = useUpgradeModal();
   const handoffAttemptedRef = useRef(false);
+  const selectionSyncKeyRef = useRef<string | null>(null);
+  const selectionChannelRef = useRef<BroadcastChannel | null>(null);
+
+  function notifyOtherTabs(): void {
+    selectionChannelRef.current?.postMessage("changed");
+  }
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const channel = new BroadcastChannel(SELECTION_CHANNEL);
+    selectionChannelRef.current = channel;
+    channel.addEventListener("message", () => router.refresh());
+    return () => {
+      selectionChannelRef.current = null;
+      channel.close();
+    };
+  }, [router]);
+
+  useEffect(() => {
+    const selectedId = initialPageData?.detail.id ?? "empty";
+    const syncKey = `${selectionSync}:${selectedId}`;
+    if (selectionSync === "none" || selectionSyncKeyRef.current === syncKey) {
+      return;
+    }
+    selectionSyncKeyRef.current = syncKey;
+
+    const sync = selectionSync === "replace" && initialPageData
+      ? selectOwnedWatchlist(initialPageData.detail.id)
+      : clearWatchlistSelection();
+    void sync.then(notifyOtherTabs).catch(() => {
+      selectionSyncKeyRef.current = null;
+    });
+  }, [initialPageData, selectionSync]);
 
   useEffect(() => {
     setWatchlists(initialWatchlists);
@@ -96,12 +135,18 @@ export function WatchlistsPage({
     };
   }, [initialWatchlists, isLoggedIn, locale]);
 
-  function showLimitUpgrade() {
-    upgrade.show(t({
-      id: "upgrade.reason.watchlistLimit",
-      comment: "Reason shown in upgrade modal when watchlist creation limit reached",
-      message: "You've reached your watchlist limit. Upgrade your plan to create more watchlists.",
-    }));
+  async function handleSelect(watchlistId: string) {
+    if (selectingId || watchlistId === initialPageData?.detail.id) return;
+    setSelectingId(watchlistId);
+    try {
+      const result = await selectOwnedWatchlist(watchlistId);
+      if (result.ok) {
+        notifyOtherTabs();
+        router.refresh();
+      }
+    } finally {
+      setSelectingId(null);
+    }
   }
 
   async function handleCreate(
@@ -113,15 +158,7 @@ export function WatchlistsPage({
     },
     navigation: "push" | "replace" = "push",
   ) {
-    if (creating || !isLoggedIn) return;
-    if (limitReached) {
-      // Issue #3036: redirecting to /settings (general tab) hid the
-      // reason from the user and put them on a tab unrelated to plans.
-      // Surface the same upgrade modal used elsewhere in the gating
-      // subsystem so the destination (billing) is explicit.
-      showLimitUpgrade();
-      return;
-    }
+    if (creating || !isLoggedIn || limitReached) return;
     setCreating(true);
     try {
       const result = prefill?.companySlugs !== undefined
@@ -138,22 +175,12 @@ export function WatchlistsPage({
             filters: prefill?.filters,
             isPublic: false,
           });
-      if ("error" in result) {
-        // Server-side race: client thought limit wasn't reached, but a
-        // concurrent create elsewhere raised the count. Same UX.
-        if (result.error === "limit_reached") showLimitUpgrade();
-        return;
-      }
-      if ("slug" in result && (username ?? user?.username)) {
-        const destination = lp(`/${username ?? user?.username}/${result.slug}`);
-        if (navigation === "replace") {
-          router.replace(destination);
-        } else {
-          router.push(destination);
-        }
-      } else if (navigation === "replace") {
-        // A successful handoff without a navigable owner/slug still needs to
-        // lose the mutating query string so refresh/back cannot create again.
+      if ("error" in result) return;
+
+      const selected = await selectOwnedWatchlist(result.id);
+      if (!selected.ok) return;
+      notifyOtherTabs();
+      if (navigation === "replace" || searchParams.size > 0) {
         router.replace(lp("/watchlists"));
       } else {
         router.refresh();
@@ -172,11 +199,6 @@ export function WatchlistsPage({
     }) => handleCreate(prefill, "replace"),
   );
 
-  // Auto-create a watchlist from URL params (for example, the URL emitted by
-  // /api/v1/watchlist/create). Wait for the asynchronous session bootstrap,
-  // then claim this mounted handoff before any mutation or modal side effect.
-  // The ref lets the effect react to bootstrap without allowing later context
-  // or URL identity changes to create the same watchlist twice.
   useEffect(() => {
     if (isPending || handoffAttemptedRef.current) return;
 
@@ -184,14 +206,7 @@ export function WatchlistsPage({
     if (!title) return;
 
     handoffAttemptedRef.current = true;
-    if (!isLoggedIn) return;
-    if (limitReached) {
-      // Issue #3036: arriving with `?title=...` while at the plan
-      // limit used to silently no-op. Tell the user why nothing
-      // happened by surfacing the same upgrade modal.
-      showLimitUpgrade();
-      return;
-    }
+    if (!isLoggedIn || limitReached) return;
 
     const q = searchParams.get("q");
     const loc = searchParams.get("loc");
@@ -232,7 +247,6 @@ export function WatchlistsPage({
       companySlugs,
     }).catch(() => {
       // Keep the handoff URL intact after a terminal action/database failure.
-      // A reload is then an explicit retry, while this mount stays one-shot.
     });
   }, [isLoggedIn, isPending, limitReached, searchParams]);
 
@@ -244,19 +258,17 @@ export function WatchlistsPage({
   );
 
   return (
-    <>
     <div className="space-y-8">
-      {/* My watchlists */}
-      <div>
-        <h1 className="mb-4 text-lg font-semibold">
-          <Trans id="watchlists.page.title" comment="Title of the watchlists exploration page">
+      <section aria-labelledby="watchlists-heading">
+        <h1 id="watchlists-heading" className="mb-4 text-lg font-semibold">
+          <Trans id="watchlists.page.title" comment="Title of the private watchlists page">
             Watchlists
           </Trans>
         </h1>
 
         {!isLoggedIn ? (
           <div className="flex flex-col items-center gap-3 py-8 text-center text-muted">
-            <Eye size={32} />
+            <Eye size={32} aria-hidden="true" />
             <p className="text-sm">
               <Trans
                 id="watchlists.page.loginPrompt"
@@ -266,29 +278,25 @@ export function WatchlistsPage({
               </Trans>
             </p>
             <Button href={loginHref} variant="primary" size="sm" className="gap-2">
-              <LogIn size={16} />
+              <LogIn size={16} aria-hidden="true" />
               {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
             </Button>
           </div>
         ) : watchlists.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-8 text-center text-muted">
-            <Eye size={32} />
+            <Eye size={32} aria-hidden="true" />
             <p className="text-sm">
-              <Trans
-                id="watchlists.page.empty"
-                comment="Empty state when user has no watchlists"
-              >
-                No watchlists yet. Create one to track jobs from your favorite
-                companies.
+              <Trans id="watchlists.page.empty" comment="Empty state when user has no watchlists">
+                No watchlists yet. Create one to track jobs from your favorite companies.
               </Trans>
             </p>
             <button
               type="button"
               onClick={() => handleCreate()}
               disabled={creating}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-contrast transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-contrast transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {creating && <Loader2 size={14} className="animate-spin" />}
+              {creating && <Loader2 size={14} className="motion-safe:animate-spin" aria-hidden="true" />}
               <Trans id="watchlists.page.createFirst" comment="Button to create first watchlist">
                 Create watchlist
               </Trans>
@@ -296,29 +304,42 @@ export function WatchlistsPage({
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {watchlists.map((wl) => (
+            {watchlists.map((watchlist) => (
               <WatchlistCard
-                key={wl.id}
-                watchlist={wl}
-                ownerUsername={username}
+                key={watchlist.id}
+                watchlist={watchlist}
+                active={watchlist.id === initialPageData?.detail.id}
+                selecting={watchlist.id === selectingId}
+                onSelect={() => handleSelect(watchlist.id)}
               />
             ))}
             <CreateWatchlistCard
-              onClick={handleCreate}
+              onClick={() => handleCreate()}
               creating={creating}
               disabled={limitReached}
             />
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Public search — always visible */}
-      <PublicWatchlistSearch
-        initialWatchlists={initialPopularWatchlists}
-        initialTotal={initialPopularTotal}
-      />
+      {initialPageData && (
+        <WatchlistViewPage
+          key={initialPageData.detail.id}
+          detail={initialPageData.detail}
+          isOwner
+          isPaidPlan={initialPageData.isPaidPlan}
+          initialPostings={initialPageData.postings}
+          initialTotal={initialPageData.total}
+          yearTotal={initialPageData.yearTotal}
+          locale={locale}
+          resolvedLocations={initialPageData.resolvedLocations}
+          resolvedOccupations={initialPageData.resolvedOccupations}
+          resolvedSeniorities={initialPageData.resolvedSeniorities}
+          resolvedTechnologies={initialPageData.resolvedTechnologies}
+          jobLanguages={initialPageData.jobLanguages}
+          languages={initialPageData.languages}
+        />
+      )}
     </div>
-    <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
-    </>
   );
 }

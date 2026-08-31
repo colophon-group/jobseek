@@ -18,8 +18,12 @@ export default async function WatchlistsRoute({ params }: Props) {
 
 function WatchlistsFallback() {
   return (
-    <div className="flex items-center justify-center py-24">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+    <div
+      className="flex items-center justify-center py-24"
+      role="status"
+      aria-label="Loading watchlists"
+    >
+      <div className="h-8 w-8 rounded-full border-4 border-muted border-t-primary motion-safe:animate-spin" />
     </div>
   );
 }
