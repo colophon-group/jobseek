@@ -1689,6 +1689,10 @@ flowchart TD
     G0 --> F8["AF-8 Candidate reader"]
     G0 --> F9["AF-9 Description loading"]
     L --> F6
+    F6 --> F7
+    F6 --> F8
+    F7 --> F8
+    F8 --> F9
     A3 --> F10["AF-10 Classifier/cache/ledger"]
     A5 --> F10
     F6 --> F10
