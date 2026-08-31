@@ -855,7 +855,8 @@ export const notificationDelivery = pgTable(
     check(
       "notification_delivery_skipped_check",
       sql`${table.status} <> 'skipped' OR (
-        ${table.matchCount} = 0
+        ${table.matchCount} IS NOT NULL
+        AND ${table.matchCount} = 0
         AND ${table.providerAttemptCount} = 0
         AND ${table.lastProviderAttemptAt} IS NULL
         AND ${table.providerMessageId} IS NULL
@@ -864,7 +865,7 @@ export const notificationDelivery = pgTable(
     check(
       "notification_delivery_sendable_match_check",
       sql`${table.status} NOT IN ('sent', 'unknown', 'quota_deferred')
-        OR ${table.matchCount} > 0`,
+        OR (${table.matchCount} IS NOT NULL AND ${table.matchCount} > 0)`,
     ),
     check(
       "notification_delivery_provider_attempt_check",

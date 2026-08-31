@@ -8,6 +8,15 @@ const migration = readFileSync(
   resolve(webRoot, "drizzle/0088_notification_policy_foundation.sql"),
   "utf8",
 );
+const schema = readFileSync(resolve(webRoot, "src/db/schema.ts"), "utf8");
+const executionHarness = readFileSync(
+  resolve(webRoot, "scripts/test-notification-policy-pg17.ts"),
+  "utf8",
+);
+const ciWorkflow = readFileSync(
+  resolve(webRoot, "../../.github/workflows/ci.yml"),
+  "utf8",
+);
 
 describe("0088 notification policy foundation migration", () => {
   it("adds one extensible weekly cadence with conservative preference defaults", () => {
@@ -83,6 +92,43 @@ describe("0088 notification policy foundation migration", () => {
     );
     expect(migration).toContain("notification_delivery_sent_provider_check");
     expect(migration).toContain("notification_delivery_deferred_check");
+  });
+
+  it("requires concrete match counts in both migration and Drizzle constraints", () => {
+    const normalizedMigration = migration.replace(/\s+/g, " ");
+    const normalizedSchema = schema.replace(/\s+/g, " ");
+
+    expect(normalizedMigration).toContain(
+      "match_count IS NOT NULL AND match_count = 0",
+    );
+    expect(normalizedMigration).toContain(
+      "match_count IS NOT NULL AND match_count > 0",
+    );
+    expect(normalizedSchema).toContain(
+      '${table.matchCount} IS NOT NULL AND ${table.matchCount} = 0',
+    );
+    expect(normalizedSchema).toContain(
+      '${table.matchCount} IS NOT NULL AND ${table.matchCount} > 0',
+    );
+  });
+
+  it("runs the real migration and status matrix against PostgreSQL 17 in CI", () => {
+    expect(executionHarness).toContain(
+      '"drizzle/0088_notification_policy_foundation.sql"',
+    );
+    expect(executionHarness).toContain('pgError.code === "23514"');
+    expect(executionHarness).toContain(
+      '"notification_delivery_skipped_check"',
+    );
+    expect(executionHarness).toContain(
+      '"notification_delivery_sendable_match_check"',
+    );
+    for (const status of ["skipped", "sent", "unknown", "quota_deferred"]) {
+      expect(executionHarness).toContain(`"${status}"`);
+    }
+    expect(ciWorkflow).toContain(
+      "scripts/test-notification-policy-pg17.ts",
+    );
   });
 
   it("appends exactly one monotonic journal entry", () => {

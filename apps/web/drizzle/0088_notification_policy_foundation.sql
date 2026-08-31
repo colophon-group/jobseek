@@ -121,7 +121,8 @@ CREATE TABLE public.notification_delivery (
   CONSTRAINT notification_delivery_skipped_check CHECK (
     status <> 'skipped'
     OR (
-      match_count = 0
+      match_count IS NOT NULL
+      AND match_count = 0
       AND provider_attempt_count = 0
       AND last_provider_attempt_at IS NULL
       AND provider_message_id IS NULL
@@ -129,7 +130,7 @@ CREATE TABLE public.notification_delivery (
   ),
   CONSTRAINT notification_delivery_sendable_match_check CHECK (
     status NOT IN ('sent', 'unknown', 'quota_deferred')
-    OR match_count > 0
+    OR (match_count IS NOT NULL AND match_count > 0)
   ),
   CONSTRAINT notification_delivery_provider_attempt_check CHECK (
     status NOT IN ('sent', 'unknown')
