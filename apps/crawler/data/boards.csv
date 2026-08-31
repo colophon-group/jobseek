@@ -5550,6 +5550,7 @@ sentry,sentry-ashby,https://jobs.ashbyhq.com/sentry,ashby,"{""token"": ""sentry"
 seo-sponsors-for-educational-opportunity,seo-sponsors-for-educational-opportunity-greenhouse,https://job-boards.greenhouse.io/sponsorsforeducationalopportunity,greenhouse,"{""token"": ""sponsorsforeducationalopportunity""}",skip,
 seon,seon-ashby,https://jobs.ashbyhq.com/seon,ashby,"{""token"": ""seon""}",skip,
 seoul-robotics,seoul-robotics-greenhouse,https://job-boards.greenhouse.io/seoulrobotics,greenhouse,"{""token"": ""seoulrobotics""}",skip,
+sephora,sephora-careers,https://jobs.sephora.com/,rss,"{""preset"": ""successfactors""}",skip,
 seprify,seprify-careers,https://seprify.com/careers,sitemap,"{""url_filter"": ""/vacancies/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""offset"": 1, ""field"": ""location"", ""optional"": true}, {""text"": ""Back"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""stop"": ""Cookie Consent""}]}"
 septerna,septerna-greenhouse,https://job-boards.greenhouse.io/septerna,greenhouse,"{""token"": ""septerna""}",skip,
 sequence,sequence-ashby,https://jobs.ashbyhq.com/sequence,ashby,"{""token"": ""sequence""}",skip,
