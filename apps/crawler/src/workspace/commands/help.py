@@ -3795,6 +3795,9 @@ Browser Action Pipeline — pre-extraction actions for Playwright
           page_size           Optional value to select before pagination
           force               If true, use Playwright force-click. Useful when
                               consent overlays intercept page controls.
+          stop_when_hidden    If true, a matching but hidden next-page control
+                              is treated as the terminal state. Use for portals
+                              that retain the final control in the DOM.
         Use this instead of repeat when each click replaces the current result
         page, including JSF/Visualforce postback pagination. Make next_selector
         exclude the disabled last-page control so pagination terminates cleanly.

@@ -344,61 +344,62 @@ afterEach(() => {
 // ---- Per-mutator happy-path tests -----------------------------------
 
 describe("watchlist mutator cache invalidation", () => {
-  it("createWatchlist invalidates both username + displayUsername slug variants", async () => {
-    queueOwnerInfo();
+  it("createWatchlist persists privately without public cache/index work", async () => {
     mocks.insertReturningResult.mockResolvedValue([{ id: WATCHLIST_ID }]);
 
-    await createWatchlist({
+    await expect(createWatchlist({
       title: "My Watchlist",
       companyIds: ["co-1", "co-2"],
-      isPublic: true,
-    });
+      isPublic: false,
+    })).resolves.toEqual({ id: WATCHLIST_ID, slug: SLUG });
     await flushAfterQueue();
 
-    const tagCalls = mocks.updateTag.mock.calls.map((c) => c[0]);
-    expect(tagCalls.sort()).toEqual(expectedTagPair(SLUG).sort());
-    const invalidateCalls = mocks.invalidate.mock.calls.map((c) => c[0]);
-    expect(invalidateCalls.sort()).toEqual(expectedInvalidateKeyPair(SLUG).sort());
+    expect(mocks.updateTag).not.toHaveBeenCalled();
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+    expect(mocks.tsUpsertWatchlist).not.toHaveBeenCalled();
+    expect(mocks.notifyIndexNow).not.toHaveBeenCalled();
+    expect(mocks.afterFn).not.toHaveBeenCalled();
   });
 
-  it("createWatchlist upserts indexed filters_json for public anyCompany watchlists", async () => {
-    queueOwnerInfo();
-    mocks.insertReturningResult.mockResolvedValue([{ id: WATCHLIST_ID }]);
-    const { resolveLocationSlugs } = await import("@/lib/actions/locations");
-    const { resolveOccupationSlugs } = await import("@/lib/services/taxonomy");
-    vi.mocked(resolveLocationSlugs).mockResolvedValueOnce(
-      new Map([
-        ["switzerland", { id: 30, slug: "switzerland", name: "Switzerland", type: "country", parentName: null }],
-      ]),
-    );
-    vi.mocked(resolveOccupationSlugs).mockResolvedValueOnce(
-      new Map([
-        ["account-executive", { id: 101, slug: "account-executive", name: "Account Executive" }],
-      ]),
-    );
-
-    await createWatchlist({
-      title: "Enterprise Sales in Switzerland",
-      companyIds: [],
-      filters: {
-        anyCompany: true,
-        locationSlugs: ["switzerland"],
-        occupationSlugs: ["account-executive"],
-      },
+  it("rejects public create intent before hooks or writes", async () => {
+    await expect(createWatchlist({
+      title: "Must stay private",
+      companyIds: ["co-1"],
       isPublic: true,
-    });
+    })).resolves.toEqual({ error: "visibility_locked" });
     await flushAfterQueue();
 
-    expect(mocks.tsUpsertWatchlist).toHaveBeenCalledTimes(1);
-    const doc = mocks.tsUpsertWatchlist.mock.calls[0][0];
-    const payload = JSON.parse(doc.filters_json);
-    expect(payload).toMatchObject({
-      anyCompany: true,
-      locationSlugs: ["switzerland"],
-      locationIds: [30],
-      occupationSlugs: ["account-executive"],
-      occupationIds: [101],
-    });
+    expect(mocks.insertReturningResult).not.toHaveBeenCalled();
+    expect(mocks.updateTag).not.toHaveBeenCalled();
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+    expect(mocks.tsUpsertWatchlist).not.toHaveBeenCalled();
+    expect(mocks.notifyIndexNow).not.toHaveBeenCalled();
+    expect(mocks.afterFn).not.toHaveBeenCalled();
+  });
+
+  it("rejects visibility updates without invalidation or index hooks", async () => {
+    mocks.selectLimitResult.mockResolvedValue([{
+      id: WATCHLIST_ID,
+      userId: USER_ID,
+      slug: SLUG,
+      title: "Existing",
+      description: null,
+      isPublic: false,
+      filters: {},
+    }]);
+
+    await expect(updateWatchlist({
+      watchlistId: WATCHLIST_ID,
+      isPublic: true,
+    })).resolves.toEqual({ error: "visibility_locked" });
+    await flushAfterQueue();
+
+    expect(mocks.updateTag).not.toHaveBeenCalled();
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+    expect(mocks.tsUpsertWatchlist).not.toHaveBeenCalled();
+    expect(mocks.tsDeleteWatchlist).not.toHaveBeenCalled();
+    expect(mocks.notifyIndexNow).not.toHaveBeenCalled();
+    expect(mocks.afterFn).not.toHaveBeenCalled();
   });
 
   it("updateWatchlist invalidates current slug pair when title is unchanged", async () => {
@@ -451,6 +452,7 @@ describe("watchlist mutator cache invalidation", () => {
   });
 
   it("copyWatchlist invalidates new copy's slug for both variants", async () => {
+    const audit = spyAuditLog();
     queueOwnerInfo();
     // First select: source watchlist slug hint; second: the authoritative
     // source snapshot inside the transaction; third: copied companies.
@@ -459,7 +461,7 @@ describe("watchlist mutator cache invalidation", () => {
       description: null,
       filters: {},
       isPublic: true,
-      userId: "other",
+      userId: USER_ID,
     };
     mocks.selectLimitResult
       .mockResolvedValueOnce([source])
@@ -470,10 +472,9 @@ describe("watchlist mutator cache invalidation", () => {
     // makeChain.then resolves with selectLimitResult() — when no more
     // queued, returns `undefined`. The companies query needs `[]`:
     mocks.selectLimitResult.mockResolvedValueOnce([]);
-    // Mirror count
-    mocks.dbExecute
-      .mockResolvedValueOnce([{ name: "Alice", username: USER_NAME, display_username: DISPLAY_USER_NAME }])
-      .mockResolvedValueOnce([{ cnt: 0 }]);
+    mocks.dbExecute.mockResolvedValueOnce([
+      { name: "Alice", username: USER_NAME, display_username: DISPLAY_USER_NAME },
+    ]);
     mocks.insertReturningResult.mockResolvedValue([{ id: "wl-copy" }]);
 
     await copyWatchlist(WATCHLIST_ID);
@@ -485,6 +486,16 @@ describe("watchlist mutator cache invalidation", () => {
     expect(mocks.invalidate.mock.calls.map((c) => c[0]).sort()).toEqual(
       expectedInvalidateKeyPair(SLUG).sort(),
     );
+    expect(mocks.tsUpdateWatchlistField).not.toHaveBeenCalled();
+
+    const payload = expectSingleAuditPayload(audit);
+    expect(payload).toMatchObject({
+      action: "watchlist.copy",
+      copy_source_kind: "owned",
+      is_public_after: false,
+    });
+    expect(JSON.stringify(payload)).not.toContain(USER_ID);
+    expect(JSON.stringify(payload)).not.toContain(WATCHLIST_ID);
   });
 
   it("addCompanyToWatchlist invalidates both slug variants for public watchlists", async () => {
@@ -648,37 +659,6 @@ describe("updateWatchlist title rename", () => {
   });
 });
 
-describe("createWatchlist trivial public watchlist", () => {
-  /**
-   * Round-5 fix (PR #2888): cache invalidation runs unconditionally for
-   * public watchlists, even trivial ones, to bust any pre-existing
-   * null-detail render cached at the page level. Typesense + IndexNow
-   * are gated on !trivial; only invalidation must fire here.
-   */
-  it("still invalidates caches when no companies + no filters", async () => {
-    queueOwnerInfo();
-    mocks.insertReturningResult.mockResolvedValue([{ id: WATCHLIST_ID }]);
-
-    await createWatchlist({
-      title: "Empty",
-      companyIds: [],
-      isPublic: true,
-      // no filters → trivial
-    });
-    await flushAfterQueue();
-
-    expect(mocks.updateTag.mock.calls.map((c) => c[0]).sort()).toEqual(
-      expectedTagPair(SLUG).sort(),
-    );
-    expect(mocks.invalidate.mock.calls.map((c) => c[0]).sort()).toEqual(
-      expectedInvalidateKeyPair(SLUG).sort(),
-    );
-    // Trivial → must NOT touch Typesense / IndexNow.
-    expect(mocks.tsUpsertWatchlist).not.toHaveBeenCalled();
-    expect(mocks.notifyIndexNow).not.toHaveBeenCalled();
-  });
-});
-
 describe("toggleWatchlistAlerts (private-only mutation)", () => {
   it("allows free users and does NOT call updateTag or invalidate", async () => {
     mocks.selectLimitResult
@@ -740,7 +720,6 @@ const SOURCE_PATH = join(__dirname, "..", "..", "services", "watchlists.ts");
 
 /** Mutators that MUST call `_invalidateWatchlistCaches`. */
 const EXPECTED_INVALIDATING_MUTATORS = new Set<string>([
-  "createWatchlist",
   "updateWatchlist",
   "deleteWatchlist",
   "copyWatchlist",
@@ -755,6 +734,9 @@ const EXPECTED_INVALIDATING_MUTATORS = new Set<string>([
  * a one-line comment justifying why no invalidation is required.
  */
 const EXPECTED_NON_INVALIDATING = new Set<string>([
+  // New watchlists are private by construction and have no public cache or
+  // search document to invalidate.
+  "createWatchlist",
   // alertsEnabled is a private field — never rendered on the public page,
   // so no public cache key is affected by toggling it.
   "toggleWatchlistAlerts",
