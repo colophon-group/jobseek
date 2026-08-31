@@ -22,7 +22,8 @@ export type WatchlistFilters = {
 
 /** Fully resolved filter state consumed by the canonical candidate reader. */
 export type WatchlistCandidateFilters = {
-  companyIds: string[];
+  /** Candidate readers treat company membership as immutable input. */
+  companyIds: readonly string[];
   anyCompany?: boolean;
   keywords?: string[];
   locationIds?: number[];

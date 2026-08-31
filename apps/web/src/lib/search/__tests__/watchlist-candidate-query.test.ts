@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import type { WatchlistCandidateFilters } from "@/lib/watchlist-matcher-contract";
 
 import {
   buildWatchlistCandidateSearchParams,
@@ -9,6 +10,12 @@ import {
 const companyId = "11111111-1111-1111-1111-111111111111";
 
 describe("canonical watchlist candidate query", () => {
+  it("keeps candidate company membership readonly at the compiler boundary", () => {
+    expectTypeOf<WatchlistCandidateFilters["companyIds"]>().toEqualTypeOf<
+      readonly string[]
+    >();
+  });
+
   it("preserves every interactive structured-filter dimension", () => {
     const search = buildWatchlistCandidateSearchParams({
       filters: {

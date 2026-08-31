@@ -21,6 +21,7 @@ import {
   ANON_MAX_WATCHLIST_POSTINGS,
 } from "./constants";
 import { logExternalError } from "@/lib/safe-external-error";
+import type { WatchlistCandidateFilters } from "@/lib/watchlist-matcher-contract";
 
 type SearchInput = SearchFilters & { keywords: string[]; offset: number; limit: number };
 type ListInput = SearchFilters & { offset: number; limit: number };
@@ -143,25 +144,9 @@ export async function tryListTopCompaniesDirect(
   return null;
 }
 
-type WatchlistPostingsInput = {
-  companyIds: string[];
-  anyCompany?: boolean;
+type WatchlistPostingsInput = WatchlistCandidateFilters & {
   offset: number;
   limit: number;
-  keywords?: string[];
-  locationIds?: number[];
-  occupationIds?: number[];
-  seniorityIds?: number[];
-  technologyIds?: number[];
-  /** Work-mode filter — `onsite | hybrid | remote` (issue #3037). */
-  workMode?: ("onsite" | "hybrid" | "remote")[];
-  /** Employment-type filter (issue #3037). */
-  employmentType?: string[];
-  salaryMin?: number;
-  salaryMax?: number;
-  experienceMin?: number;
-  experienceMax?: number;
-  languages?: string[];
 };
 
 type WatchlistRefreshResult = {
