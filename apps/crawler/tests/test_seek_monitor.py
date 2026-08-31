@@ -7,6 +7,8 @@ from src.core.monitors import all_monitor_types, seek
 from src.core.monitors.seek import _identity_from_url, can_handle, discover
 from src.core.scrapers import all_scraper_types
 from src.core.scrapers.seek import scrape
+from src.shared.http_retry import ResponseBodyTooLargeError
+from src.shared.tdm import TDMReservedError
 from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 
 ADVERTISER_ID = "9094357"
@@ -117,6 +119,34 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             assert await discover({"board_url": NZ_BOARD_URL}, client) == set()
 
+    async def test_rejects_invalid_or_mismatched_configured_identity(self):
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request: None)) as client:
+            with pytest.raises(ValueError, match="Cannot derive"):
+                await discover(
+                    {
+                        "board_url": "https://careers.example/seek",
+                        "metadata": {"host": "au.seek.com", "advertiser_id": ADVERTISER_ID},
+                    },
+                    client,
+                )
+            with pytest.raises(ValueError, match="does not match"):
+                await discover(
+                    {
+                        "board_url": AU_BOARD_URL,
+                        "metadata": {"host": "au.seek.com", "advertiser_id": "999"},
+                    },
+                    client,
+                )
+
+    async def test_caps_search_response_size(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(seek, "MAX_JSON_BYTES", 16)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, content=b"{" + (b"x" * 64), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ResponseBodyTooLargeError):
+                await discover({"board_url": AU_BOARD_URL}, client)
+
     async def test_paginates_and_rejects_cross_advertiser_rows(
         self, monkeypatch: pytest.MonkeyPatch
     ):
@@ -194,6 +224,19 @@ class TestProbe:
                 "jobs": 2,
             }
 
+    async def test_tdm_reservation_propagates(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json=_payload([]),
+                headers={"tdm-reservation": "1"},
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(TDMReservedError):
+                await can_handle(AU_BOARD_URL, client)
+
 
 class TestScraper:
     async def test_hydrates_detail_without_browser_navigation(self):
@@ -242,3 +285,20 @@ class TestScraper:
             "status": "Active",
             "is_expired": "False",
         }
+
+    async def test_probe_propagates_tdm_reservation(self, monkeypatch: pytest.MonkeyPatch):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={},
+                headers={"tdm-reservation": "1"},
+                request=request,
+            )
+        )
+        client = httpx.AsyncClient(transport=transport)
+        monkeypatch.setattr("src.shared.http.create_http_client", lambda: client)
+
+        from src.core.scrapers.seek import probe_pw
+
+        with pytest.raises(TDMReservedError):
+            await probe_pw(["https://au.seek.com/job/94267983"], None)

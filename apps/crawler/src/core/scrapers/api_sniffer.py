@@ -494,6 +494,7 @@ async def _probe_http_preset(
     """Verify a provider preset against sampled jobs through direct HTTP."""
 
     from src.shared.http import create_http_client
+    from src.shared.tdm import TDMReservedError
 
     quality_fields = (
         "title",
@@ -511,6 +512,10 @@ async def _probe_http_preset(
         )
     finally:
         await http.aclose()
+
+    for result in raw_results:
+        if isinstance(result, TDMReservedError):
+            raise result
 
     contents = [result for result in raw_results if isinstance(result, JobContent)]
     detected_contents = [

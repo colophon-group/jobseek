@@ -18,11 +18,13 @@ import structlog
 
 from src.core.monitors import register
 from src.shared.http_retry import fetch_json_page_with_retry
+from src.shared.tdm import TDMReservedError
 
 log = structlog.get_logger()
 
 PAGE_SIZE = 100
 MAX_JOBS = 50_000
+MAX_JSON_BYTES = 2_000_000
 
 _MARKETS = {
     "au.seek.com": {
@@ -88,6 +90,34 @@ def _job_url(host: str, job_id: str) -> str:
     return f"https://{_MARKETS[host]['job_host']}/job/{job_id}"
 
 
+def _board_identity(board: dict) -> tuple[str, str]:
+    """Validate that URL and optional config describe one exact advertiser board."""
+    identity = _identity_from_url(board["board_url"])
+    if identity is None:
+        raise ValueError(f"Cannot derive SEEK advertiser identity from {board['board_url']!r}")
+
+    metadata = board.get("metadata") or {}
+    if not isinstance(metadata, dict):
+        raise ValueError("SEEK monitor configuration must be a mapping")
+    has_configured_identity = bool({"host", "advertiser_id"} & metadata.keys())
+    if has_configured_identity:
+        configured_host = metadata.get("host")
+        configured_advertiser_id = metadata.get("advertiser_id")
+        if (
+            configured_host not in _MARKETS
+            or not isinstance(configured_advertiser_id, str)
+            or _NUMERIC_ID_RE.fullmatch(configured_advertiser_id) is None
+        ):
+            raise ValueError("Invalid or incomplete SEEK monitor configuration")
+        host, advertiser_id = identity
+        if (
+            _MARKETS[configured_host]["job_host"] != _MARKETS[host]["job_host"]
+            or configured_advertiser_id != advertiser_id
+        ):
+            raise ValueError("Configured SEEK identity does not match the board URL")
+    return identity
+
+
 async def _fetch_page(
     client: httpx.AsyncClient,
     *,
@@ -106,6 +136,7 @@ async def _fetch_page(
             "siteKey": _MARKETS[host]["site_key"],
         },
         headers={"Accept": "application/json"},
+        max_bytes=MAX_JSON_BYTES,
         retryable_statuses={202, 403, 429},
         log_event="seek.list_backoff",
     )
@@ -207,16 +238,7 @@ async def _fetch_job_ids(
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     """Return all canonical jobs from one SEEK AU/NZ advertiser board."""
     _ = pw
-    metadata = board.get("metadata") or {}
-    identity = _identity_from_url(board["board_url"])
-    host = identity[0] if identity else metadata.get("host")
-    advertiser_id = identity[1] if identity else metadata.get("advertiser_id")
-    if (
-        host not in _MARKETS
-        or not isinstance(advertiser_id, str)
-        or _NUMERIC_ID_RE.fullmatch(advertiser_id) is None
-    ):
-        raise ValueError(f"Cannot derive SEEK advertiser identity from {board['board_url']!r}")
+    host, advertiser_id = _board_identity(board)
 
     job_ids = await _fetch_job_ids(client, host=host, advertiser_id=advertiser_id)
     log.info("seek.discovered", advertiser_id=advertiser_id, jobs=len(job_ids))
@@ -239,6 +261,8 @@ async def can_handle(
         return result
     try:
         job_ids = await _fetch_job_ids(client, host=host, advertiser_id=advertiser_id)
+    except TDMReservedError:
+        raise
     except Exception:
         log.debug("seek.probe_failed", url=url, exc_info=True)
         return result
