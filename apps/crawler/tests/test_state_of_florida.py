@@ -27,7 +27,7 @@ def test_state_of_florida_keeps_complementary_official_boards() -> None:
     assert (courts["monitor_type"], courts["scraper_type"]) == ("nextdata", "skip")
     assert courts_config["source"] == "browser"
     assert courts_config["path"] == "items"
-    assert courts_config["resource_policy"] == "none"
+    assert "resource_policy" not in courts_config
     assert courts_config["fields"]["title"] == "position_title"
     assert courts_config["fields"]["locations"] == "job_location"
 

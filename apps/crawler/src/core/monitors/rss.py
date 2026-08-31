@@ -84,6 +84,7 @@ _SF_WRAPPER_QUERY_KEYS = frozenset(
 )
 _GOVERNMENTJOBS_HOSTS = frozenset({"governmentjobs.com", "www.governmentjobs.com"})
 _GOVERNMENTJOBS_BOARD_RE = re.compile(r"^/careers/(?P<agency>[a-z0-9][a-z0-9-]{0,63})/?$")
+_GOVERNMENTJOBS_NS = "http://www.neogov.com/namespaces/JobListing"
 
 
 async def _sleep(delay: float) -> None:
@@ -122,7 +123,10 @@ def _parse_feed(text: str, feed_url: str) -> ET.Element:
     named error up-front so the monitor's ``last_error`` identifies the root
     cause instead of a column offset in a JavaScript blob.
     """
-    head = text.lstrip()[:512].lower()
+    # Some first-party feeds (including NEOGOV) start with a UTF-8 BOM.
+    # ``str.lstrip()`` does not consider U+FEFF whitespace, so strip it
+    # explicitly before rejecting an otherwise valid XML document.
+    head = text.lstrip("\ufeff \t\r\n")[:512].lower()
     if not head.startswith(("<?xml", "<rss", "<feed")):
         raise RssFeedNotXml(f"feed returned non-XML content: {feed_url}")
     return ET.fromstring(text)
@@ -213,6 +217,14 @@ def _text(item: ET.Element, tag: str) -> str | None:
 def _g(item: ET.Element, tag: str) -> str | None:
     """Get text from a Google Base namespace child element."""
     child = item.find(f"{{{_G_NS}}}{tag}")
+    if child is not None and child.text:
+        return child.text.strip()
+    return None
+
+
+def _governmentjobs(item: ET.Element, tag: str) -> str | None:
+    """Get text from a NEOGOV JobListing namespace child element."""
+    child = item.find(f"{{{_GOVERNMENTJOBS_NS}}}{tag}")
     if child is not None and child.text:
         return child.text.strip()
     return None
@@ -422,10 +434,50 @@ def _parse_generic_item(item: ET.Element) -> DiscoveredJob | None:
     )
 
 
+def _parse_governmentjobs_item(item: ET.Element) -> DiscoveredJob | None:
+    """Parse NEOGOV's RSS extension without dropping its namespaced fields."""
+    link = _text(item, "link")
+    if not link:
+        return None
+
+    sections = [
+        (None, _text(item, "description")),
+        ("Examples of Duties", _governmentjobs(item, "examplesofduties")),
+        ("Qualifications", _governmentjobs(item, "qualifications")),
+        ("Supplemental Information", _governmentjobs(item, "supplementalinformation")),
+    ]
+    description_parts: list[str] = []
+    for heading, raw_value in sections:
+        if not raw_value:
+            continue
+        if heading:
+            description_parts.append(f"<h2>{heading}</h2>")
+        description_parts.append(html.unescape(raw_value))
+
+    job_id = _governmentjobs(item, "jobId")
+    department = _governmentjobs(item, "department")
+    metadata: dict = {}
+    if job_id:
+        metadata["id"] = job_id
+    if department:
+        metadata["department"] = department
+
+    location = _governmentjobs(item, "location")
+    return DiscoveredJob(
+        url=link,
+        title=_text(item, "title"),
+        description="\n".join(description_parts) or None,
+        locations=[location] if location else None,
+        employment_type=_governmentjobs(item, "jobType"),
+        date_posted=_text(item, "pubDate"),
+        metadata=metadata or None,
+    )
+
+
 _PARSERS: dict[str, Callable[[ET.Element], DiscoveredJob | None]] = {
     "successfactors": _parse_sf_item,
     "teamtailor": _parse_tt_item,
-    "governmentjobs": _parse_generic_item,
+    "governmentjobs": _parse_governmentjobs_item,
     "generic": _parse_generic_item,
 }
 
@@ -771,6 +823,23 @@ def _governmentjobs_feed_url(agency: str) -> str:
     return "https://www.governmentjobs.com/SearchEngine/JobsFeed?" + urlencode({"agency": agency})
 
 
+def _governmentjobs_feed_from_config(board_url: str, metadata: Mapping) -> str | None:
+    """Resolve a feed only when URL, tenant config, and endpoint agree."""
+    board_agency = _governmentjobs_agency_from_url(board_url)
+    if board_agency is None:
+        return None
+    configured_agency = metadata.get("agency")
+    if configured_agency is not None and (
+        not isinstance(configured_agency, str) or configured_agency.casefold() != board_agency
+    ):
+        return None
+    expected_feed = _governmentjobs_feed_url(board_agency)
+    configured_feed = metadata.get("feed_url")
+    if configured_feed is not None and configured_feed != expected_feed:
+        return None
+    return expected_feed
+
+
 def _add_pagination(url: str, offset: int, per_page: int) -> str:
     """Add pagination query parameters to a URL."""
     parsed = urlparse(url)
@@ -795,7 +864,7 @@ def _add_page_number(url: str, page: int, query_param: str) -> str:
 
 def _feed_head_is_xml(head: bytes, encoding: str | None) -> bool:
     """Return whether the bounded response prefix looks like XML/RSS."""
-    text = head.decode(encoding or "utf-8", errors="ignore").lstrip().lower()
+    text = head.decode(encoding or "utf-8", errors="ignore").lstrip("\ufeff \t\r\n").lower()
     return text.startswith(("<?xml", "<rss", "<feed"))
 
 
@@ -1025,13 +1094,8 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
 
     # Determine feed URL: explicit config > derive from preset > fallback
     feed_url = metadata.get("feed_url")
-    if not feed_url and preset_name == "governmentjobs":
-        agency = metadata.get("agency") or _governmentjobs_agency_from_url(board_url)
-        normalized_agency = agency.casefold() if isinstance(agency, str) else None
-        if normalized_agency and _GOVERNMENTJOBS_BOARD_RE.fullmatch(
-            f"/careers/{normalized_agency}"
-        ):
-            feed_url = _governmentjobs_feed_url(normalized_agency)
+    if preset_name == "governmentjobs":
+        feed_url = _governmentjobs_feed_from_config(board_url, metadata)
     if not feed_url and preset and preset.feed_paths:
         feed_url = _build_feed_url(board_url, preset.feed_paths[0])
     if not feed_url:
@@ -1506,20 +1570,10 @@ async def save_raw(
                 follow_redirects=False,
             )
         return
-    feed = metadata.get("feed_url")
-    if not feed and metadata.get("preset") == "governmentjobs":
-        agency = metadata.get("agency") or _governmentjobs_agency_from_url(board_url)
-        normalized_agency = agency.casefold() if isinstance(agency, str) else None
-        if normalized_agency and _GOVERNMENTJOBS_BOARD_RE.fullmatch(
-            f"/careers/{normalized_agency}"
-        ):
-            feed = _governmentjobs_feed_url(normalized_agency)
-    if not feed:
-        preset = _PRESETS.get(metadata.get("preset", "generic"))
-        if preset and preset.feed_paths:
-            feed = _build_feed_url(board_url, preset.feed_paths[0])
-    if not feed:
+    config = _feed_config({"board_url": board_url, "metadata": metadata})
+    if config is None:
         return
+    _preset_name, feed, _preset = config
     await save_text_response(
         artifact_dir,
         client,

@@ -14,11 +14,14 @@ from src.core.monitors.rss import (
     _add_pagination,
     _advertised_rss_feed_url,
     _build_feed_url,
+    _feed_config,
+    _feed_head_is_xml,
     _g,
     _governmentjobs_agency_from_url,
     _governmentjobs_feed_url,
     _parse_feed,
     _parse_generic_item,
+    _parse_governmentjobs_item,
     _parse_sf_item,
     _parse_tt_item,
     _text,
@@ -1477,14 +1480,76 @@ class TestGovernmentJobsFeed:
             "https://www.governmentjobs.com/SearchEngine/JobsFeed?agency=fleg"
         )
 
+    def test_utf8_bom_is_accepted_as_xml(self):
+        document = b'\xef\xbb\xbf<?xml version="1.0"?><rss><channel /></rss>'
+        assert _feed_head_is_xml(document, "utf-8") is True
+        assert _parse_feed(document.decode(), "https://example.com/feed").tag == "rss"
+
+    def test_parser_preserves_namespaced_fields_and_full_description(self):
+        item = ET.fromstring("""
+            <item xmlns:joblisting="http://www.neogov.com/namespaces/JobListing">
+                <title>Public Service Analyst</title>
+                <link>https://www.governmentjobs.com/careers/fleg/jobs/123/analyst</link>
+                <description>&amp;lt;p&amp;gt;Overview.&amp;lt;/p&amp;gt;</description>
+                <pubDate>Mon, 31 Aug 2026 00:00:00 GMT</pubDate>
+                <joblisting:jobId>123</joblisting:jobId>
+                <joblisting:location>Tallahassee, Florida</joblisting:location>
+                <joblisting:jobType>Salaried Full-Time</joblisting:jobType>
+                <joblisting:department>House Operations</joblisting:department>
+                <joblisting:examplesofduties>
+                    &amp;lt;p&amp;gt;Analyze policy.&amp;lt;/p&amp;gt;
+                </joblisting:examplesofduties>
+                <joblisting:qualifications>
+                    &amp;lt;p&amp;gt;Bachelor's degree.&amp;lt;/p&amp;gt;
+                </joblisting:qualifications>
+            </item>
+        """)
+
+        result = _parse_governmentjobs_item(item)
+
+        assert result is not None
+        assert result.locations == ["Tallahassee, Florida"]
+        assert result.employment_type == "Salaried Full-Time"
+        assert result.metadata == {"id": "123", "department": "House Operations"}
+        assert result.description == (
+            "<p>Overview.</p>\n"
+            "<h2>Examples of Duties</h2>\n<p>Analyze policy.</p>\n"
+            "<h2>Qualifications</h2>\n<p>Bachelor's degree.</p>"
+        )
+
+    def test_config_rejects_cross_tenant_or_arbitrary_feed(self):
+        board_url = "https://www.governmentjobs.com/careers/fleg"
+        assert (
+            _feed_config(
+                {
+                    "board_url": board_url,
+                    "metadata": {"preset": "governmentjobs", "agency": "other"},
+                }
+            )
+            is None
+        )
+        assert (
+            _feed_config(
+                {
+                    "board_url": board_url,
+                    "metadata": {
+                        "preset": "governmentjobs",
+                        "agency": "fleg",
+                        "feed_url": "https://evil.example/jobs.xml",
+                    },
+                }
+            )
+            is None
+        )
+
     async def test_discover_derives_feed_from_board(self):
         feed_xml = _rss_xml("""
-            <item>
+            <item xmlns:joblisting="http://www.neogov.com/namespaces/JobListing">
                 <title>Public Service Analyst</title>
                 <link>https://www.governmentjobs.com/careers/fleg/jobs/123/analyst</link>
                 <description>&lt;p&gt;Serve the public.&lt;/p&gt;</description>
-                <Location>Tallahassee, Florida</Location>
-                <JobID>123</JobID>
+                <joblisting:location>Tallahassee, Florida</joblisting:location>
+                <joblisting:jobId>123</joblisting:jobId>
             </item>
         """)
 
