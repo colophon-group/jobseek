@@ -4760,6 +4760,7 @@ people-ai,people-ai-careers,https://jobs.lever.co/people-ai,lever,,skip,
 people-can-fly,people-can-fly-careers,https://jobs.smartrecruiters.com/PeopleCanFly,smartrecruiters,"{""token"": ""PeopleCanFly""}",smartrecruiters,
 pep,pep-greenhouse,https://job-boards.greenhouse.io/pep,greenhouse,"{""token"": ""pep""}",skip,
 per-scholas,per-scholas-greenhouse,https://job-boards.greenhouse.io/perscholashires,greenhouse,"{""token"": ""perscholashires""}",skip,
+peraton,peraton-careers,https://careers-peraton.icims.com/,icims,,json-ld,
 percepta,percepta-ashby,https://jobs.ashbyhq.com/percepta,ashby,"{""token"": ""percepta""}",skip,
 percepto,percepto-careers,https://percepto.co/careers/,dom,"{""render"": false, ""url_filter"": ""^https://percepto\\.co/careers/(?!#|$).+""}",dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""text"": ""\u00b7"", ""field"": ""locations"", ""regex"": ""^(.+?)\\s*\u00b7""}, {""text"": ""\u00b7 Full-time"", ""field"": ""employment_type"", ""regex"": ""\u00b7\\s*(Full-time)"", ""optional"": true, ""from"": 0}, {""text"": ""About The Position"", ""field"": ""description"", ""stop"": ""Apply for this position"", ""html"": true}]}"
 peregrine-technologies,peregrine-technologies-greenhouse,https://job-boards.greenhouse.io/peregrinetechnologies,greenhouse,"{""token"": ""peregrinetechnologies""}",skip,
