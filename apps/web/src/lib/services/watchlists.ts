@@ -37,19 +37,14 @@ import { ANON_MAX_WATCHLIST_POSTINGS, COMPANY_BATCH_SIZE } from "@/lib/search/co
 import { resolveLocationSlugs } from "@/lib/actions/locations";
 import { resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/services/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
-import { normalizePostingTitle } from "@/lib/posting-title";
 import { logExternalError } from "@/lib/safe-external-error";
 import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "@/lib/search/typesense-filters";
 import {
   assertTypesenseSearchResult,
   isTypesenseUnavailableError,
-  malformedTypesenseResponseError,
   withTypesenseRetry,
 } from "@/lib/search/typesense-retry";
-import {
-  isTypesenseQueryStringSafe,
-  splitValuesForTypesenseQuery,
-} from "@/lib/search/typesense-query-size";
+import { splitValuesForTypesenseQuery } from "@/lib/search/typesense-query-size";
 import {
   upsertWatchlist as tsUpsertWatchlist,
   deleteWatchlist as tsDeleteWatchlist,
@@ -61,43 +56,19 @@ import { createWatchlistFromHandoffWithDeps } from "@/lib/services/watchlist-han
 import { publicWatchlistRouteStatusCacheKey } from "@/lib/services/public-resource-status";
 import { toggleWatchlistAlertState } from "@/lib/notifications/policy";
 import { lockNotificationPolicyForUser } from "@/lib/services/notification-preferences";
+import { readWatchlistCandidates } from "@/lib/services/watchlist-matcher";
+import type {
+  WatchlistCandidateFilters,
+  WatchlistFilters,
+  WatchlistPostingEntry,
+} from "@/lib/watchlist-matcher-contract";
+
+export type {
+  WatchlistFilters,
+  WatchlistPostingEntry,
+} from "@/lib/watchlist-matcher-contract";
 
 // ── Types ───────────────────────────────────────────────────────────
-
-export type WatchlistFilters = {
-  keywords?: string[];
-  locationSlugs?: string[];
-  occupationSlugs?: string[];
-  senioritySlugs?: string[];
-  technologySlugs?: string[];
-  /**
-   * Work-mode (location_types) filter — `onsite | hybrid | remote`.
-   * Issue #2983. Backwards-compatible: missing field on existing
-   * watchlists ⇒ undefined ⇒ no filter applied. Reading code must
-   * defensively re-validate strings against {@link WORK_MODE_VALUES}
-   * before passing to Typesense (this column is JSONB and could carry
-   * legacy garbage from older client versions).
-   */
-  workMode?: ("onsite" | "hybrid" | "remote")[];
-  /**
-   * Employment-type filter — `full_time | part_time | contract |
-   * internship | temporary | volunteer`. Issue #3037 — closes the
-   * parity gap between this watchlist editor and the explore page's
-   * `AdvancedSearchPanel`. Same backwards-compat shape as `workMode`:
-   * missing on legacy rows ⇒ undefined ⇒ no filter applied. The
-   * column is JSONB and untrusted at read time; downstream consumers
-   * forward values straight into Typesense `filter_by` so any future
-   * sanitisation must live in `buildFilterString` (already accepts
-   * `employmentTypes`).
-   */
-  employmentType?: string[];
-  salaryMin?: number;
-  salaryMax?: number;
-  salaryCurrency?: string;
-  experienceMin?: number;
-  experienceMax?: number;
-  anyCompany?: boolean;
-};
 
 type WorkMode = NonNullable<WatchlistFilters["workMode"]>[number];
 
@@ -152,37 +123,7 @@ export type WatchlistDetail = {
   }[];
 };
 
-export type WatchlistPostingEntry = {
-  id: string;
-  title: string | null;
-  /** Leaf location names, in source order, used to disambiguate repeated titles. */
-  locationNames?: string[];
-  sourceUrl: string;
-  firstSeenAt: string;
-  isActive: boolean;
-  company: {
-    id: string;
-    name: string;
-    slug: string;
-    icon: string | null;
-  };
-};
-
-type WatchlistPostingFilterParams = {
-  companyIds: string[];
-  anyCompany?: boolean;
-  keywords?: string[];
-  locationIds?: number[];
-  occupationIds?: number[];
-  seniorityIds?: number[];
-  technologyIds?: number[];
-  workMode?: ("onsite" | "hybrid" | "remote")[];
-  employmentType?: string[];
-  salaryMin?: number;
-  salaryMax?: number;
-  experienceMin?: number;
-  experienceMax?: number;
-  languages?: string[];
+type WatchlistPostingFilterParams = WatchlistCandidateFilters & {
   abortSignal?: AbortSignal;
 };
 
@@ -1709,7 +1650,18 @@ export async function getWatchlistPostings(
   }
 
   try {
-    return await _getWatchlistPostingsTypesense(params, userId);
+    const result = await readWatchlistCandidates({
+      filters: params,
+      offset: params.offset,
+      limit: params.limit,
+      abortSignal: params.abortSignal,
+    });
+    return {
+      ...result,
+      ...(!userId && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS
+        ? { truncated: true }
+        : {}),
+    };
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
     logExternalError("error", { service: "typesense", operation: "watchlist_postings" }, err);
@@ -1743,7 +1695,18 @@ export async function getPublicWatchlistPostings(
   }
 
   try {
-    return await _getWatchlistPostingsTypesense(params, null);
+    const result = await readWatchlistCandidates({
+      filters: params,
+      offset: params.offset,
+      limit: params.limit,
+      abortSignal: params.abortSignal,
+    });
+    return {
+      ...result,
+      ...(params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS
+        ? { truncated: true }
+        : {}),
+    };
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
     logExternalError("error", { service: "typesense", operation: "public_watchlist_postings" }, err);
@@ -2166,239 +2129,6 @@ function buildWatchlistPostingFilter(
     companyIds.length > 0 ? `company_id:[${companyIds.join(",")}]` : "",
     filterStr,
   ].filter(Boolean).join(" && ");
-}
-
-function mapWatchlistPostingHit(hit: {
-  document: object;
-}): WatchlistPostingEntry {
-  const doc = hit.document as Record<string, unknown>;
-  const optionalString = (value: unknown) =>
-    value == null || typeof value === "string";
-  if (
-    typeof doc.id !== "string" ||
-    !optionalString(doc.title) ||
-    !optionalString(doc.source_url) ||
-    typeof doc.first_seen_at !== "number" ||
-    !Number.isFinite(doc.first_seen_at) ||
-    (doc.is_active != null && typeof doc.is_active !== "boolean") ||
-    !optionalString(doc.company_id) ||
-    !optionalString(doc.company_name) ||
-    !optionalString(doc.company_slug) ||
-    !optionalString(doc.company_icon)
-  ) {
-    throw malformedTypesenseResponseError();
-  }
-
-  const firstSeenAt = new Date(doc.first_seen_at * 1000);
-  if (!Number.isFinite(firstSeenAt.getTime())) {
-    throw malformedTypesenseResponseError();
-  }
-
-  return {
-    id: doc.id,
-    title: normalizePostingTitle(doc.title),
-    locationNames: Array.isArray(doc.location_names)
-      ? doc.location_names.filter(
-          (name): name is string => typeof name === "string" && name.length > 0,
-        )
-      : [],
-    sourceUrl: doc.source_url ?? "",
-    firstSeenAt: firstSeenAt.toISOString(),
-    isActive: doc.is_active ?? true,
-    company: {
-      id: doc.company_id ?? "",
-      name: doc.company_name ?? "",
-      slug: doc.company_slug ?? "",
-      icon: doc.company_icon ?? null,
-    },
-  };
-}
-
-async function _getWatchlistPostingsTypesense(
-  params: WatchlistPostingQueryParams,
-  userId: string | null,
-): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
-  const client = getSearchClient();
-
-  // No expansion needed — ancestor IDs are stored on each Typesense document
-  // Build filter string from watchlist context filters
-  // Map salaryMin/salaryMax to salaryMinEur/salaryMaxEur
-  const filterStr = buildFilterString({
-    locationIds: params.locationIds,
-    occupationIds: params.occupationIds,
-    seniorityIds: params.seniorityIds,
-    technologyIds: params.technologyIds,
-    workMode: params.workMode?.length ? params.workMode : undefined,
-    employmentTypes: params.employmentType?.length ? params.employmentType : undefined,
-    salaryMinEur: params.salaryMin,
-    salaryMaxEur: params.salaryMax,
-    experienceMin: params.experienceMin,
-    experienceMax: params.experienceMax,
-    languages: params.languages,
-  });
-
-  const hasKeywords = params.keywords && params.keywords.length > 0;
-  const keywordsQ = hasKeywords ? params.keywords!.join(" ") : "*";
-
-  // Build company_id filter — omit for "any company" mode
-  const fullFilter = buildWatchlistPostingFilter(
-    [POSTING_BASE_FILTER],
-    params.companyIds,
-    filterStr,
-  );
-  const searchParams = {
-    q: keywordsQ,
-    query_by: "title",
-    filter_by: fullFilter,
-    sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
-    per_page: params.limit === 0 ? 0 : params.limit,
-    page: params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,
-  };
-
-  if (
-    params.companyIds.length > 0 &&
-    (params.companyIds.length > COMPANY_BATCH_SIZE ||
-      !isTypesenseQueryStringSafe(searchParams))
-  ) {
-    return _getWatchlistPostingsBatched(params, userId);
-  }
-
-  const result = await withTypesenseRetry(
-    () =>
-      client.collections("job_posting").documents().search(
-        searchParams,
-        { abortSignal: params.abortSignal },
-      ),
-    { label: "getWatchlistPostings", abortSignal: params.abortSignal },
-  );
-  assertTypesenseSearchResult(result, { expectHits: params.limit !== 0 });
-
-  const total = result.found ?? 0;
-  if (total === 0 || params.limit === 0) return { postings: [], total };
-
-  const postings = (result.hits ?? []).map(mapWatchlistPostingHit);
-
-  return {
-    postings,
-    total,
-    ...(!userId && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS ? { truncated: true } : {}),
-  };
-}
-
-/** Batched version for large watchlists or large serialized filters. */
-async function _getWatchlistPostingsBatched(
-  params: WatchlistPostingQueryParams,
-  userId: string | null,
-): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
-  const client = getSearchClient();
-
-  // No expansion needed — ancestor IDs are stored on each Typesense document
-  const filterStr = buildFilterString({
-    locationIds: params.locationIds,
-    occupationIds: params.occupationIds,
-    seniorityIds: params.seniorityIds,
-    technologyIds: params.technologyIds,
-    workMode: params.workMode?.length ? params.workMode : undefined,
-    employmentTypes: params.employmentType?.length ? params.employmentType : undefined,
-    salaryMinEur: params.salaryMin,
-    salaryMaxEur: params.salaryMax,
-    experienceMin: params.experienceMin,
-    experienceMax: params.experienceMax,
-    languages: params.languages,
-  });
-
-  const hasKeywords = params.keywords && params.keywords.length > 0;
-  const keywordsQ = hasKeywords ? params.keywords!.join(" ") : "*";
-  const sortBy = hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc";
-  const needed = params.offset + params.limit;
-  const buildFilter = (batch: readonly string[]) =>
-    buildWatchlistPostingFilter([POSTING_BASE_FILTER], batch, filterStr);
-  const buildCountSearchParams = (batch: readonly string[]) => ({
-    q: keywordsQ,
-    query_by: "title",
-    filter_by: buildFilter(batch),
-    per_page: 0,
-  });
-  const buildRowsSearchParams = (batch: readonly string[]) => ({
-    q: keywordsQ,
-    query_by: "title",
-    filter_by: buildFilter(batch),
-    sort_by: sortBy,
-    per_page: needed,
-    page: 1,
-  });
-
-  const batches = splitValuesForTypesenseQuery(
-    params.companyIds,
-    buildRowsSearchParams,
-    COMPANY_BATCH_SIZE,
-  );
-
-  // Query each batch for total count (per_page: 0)
-  const countResults = await Promise.all(
-    batches.map((batch) => {
-      return withTypesenseRetry(
-        () =>
-          client.collections("job_posting").documents().search(
-            buildCountSearchParams(batch),
-            { abortSignal: params.abortSignal },
-          ),
-        {
-          label: "getWatchlistPostings.batched.count",
-          abortSignal: params.abortSignal,
-        },
-      );
-    }),
-  );
-  for (const result of countResults) assertTypesenseSearchResult(result);
-
-  const total = countResults.reduce((sum, r) => sum + (r.found ?? 0), 0);
-  if (total === 0 || params.limit === 0) return { postings: [], total };
-
-  // For actual postings, query all batches with enough per_page to cover
-  // offset+limit, then merge using the same global order requested from each
-  // batch. Pulling the top K from every disjoint batch is sufficient to
-  // compute the global top K.
-  const postingsResults = await Promise.all(
-    batches.map((batch) => {
-      return withTypesenseRetry(
-        () =>
-          client.collections("job_posting").documents().search(
-            buildRowsSearchParams(batch),
-            { abortSignal: params.abortSignal },
-          ),
-        {
-          label: "getWatchlistPostings.batched.rows",
-          abortSignal: params.abortSignal,
-        },
-      );
-    }),
-  );
-  for (const result of postingsResults) {
-    assertTypesenseSearchResult(result, { expectHits: true });
-  }
-
-  // Merge all hits, sort, and paginate
-  const allHits = postingsResults.flatMap((r) => r.hits ?? []);
-  allHits.sort((a, b) => {
-    const aDoc = a.document as Record<string, unknown>;
-    const bDoc = b.document as Record<string, unknown>;
-    if (hasKeywords) {
-      const relevanceDelta = (b.text_match ?? 0) - (a.text_match ?? 0);
-      if (relevanceDelta !== 0) return relevanceDelta;
-    }
-    return ((bDoc.first_seen_at as number) ?? 0) - ((aDoc.first_seen_at as number) ?? 0);
-  });
-
-  const pageHits = allHits.slice(params.offset, params.offset + params.limit);
-
-  const postings = pageHits.map(mapWatchlistPostingHit);
-
-  return {
-    postings,
-    total,
-    ...(!userId && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS ? { truncated: true } : {}),
-  };
 }
 
 // ── Helper functions for Typesense write hooks ────────────────────────
