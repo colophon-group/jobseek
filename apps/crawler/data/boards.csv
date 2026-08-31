@@ -2091,6 +2091,7 @@ emag,emag-careers,https://teams.emag.ro/jobs/,greenhouse,"{""token"": ""emag""}"
 emarketer,emarketer-greenhouse,https://job-boards.greenhouse.io/emarketer,greenhouse,"{""token"": ""emarketer""}",skip,
 embark,embark-pinpoint,https://embark.pinpointhq.com,pinpoint,"{""slug"": ""embark""}",skip,
 embrace,embrace-greenhouse,https://job-boards.greenhouse.io/embrace,greenhouse,"{""token"": ""embrace""}",skip,
+emcor-group,emcor-group-careers,https://careers-emcorgroup.icims.com/,icims,,json-ld,
 emergent-labs,emergent-labs-greenhouse,https://job-boards.greenhouse.io/emergentlabsinc,greenhouse,"{""token"": ""emergentlabsinc""}",skip,
 emerging-travel-group,emerging-travel-group-careers,https://apply.workable.com/emerging-travel-group/,workable,"{""token"": ""emerging-travel-group""}",workable,
 emerging-travel-group,emerging-travel-group-careers-ratehawk,https://apply.workable.com/ratehawk/,workable,"{""token"": ""ratehawk""}",workable,
