@@ -1,8 +1,12 @@
 import "server-only";
 
-import { eq, and, count } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
-import { subscription, watchlist } from "@/db/schema";
+import { subscription } from "@/db/schema";
+import {
+  canCreateWatchlist,
+  MAX_WATCHLISTS_PER_ACCOUNT,
+} from "@/lib/watchlist-limit";
 
 export type PlanId = "free" | "unlimited";
 
@@ -16,12 +20,12 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
     maxAlerts: 0,
     canReceiveAlerts: false,
-    maxWatchlists: 1,
+    maxWatchlists: MAX_WATCHLISTS_PER_ACCOUNT,
   },
   unlimited: {
     maxAlerts: Number.MAX_SAFE_INTEGER,
     canReceiveAlerts: true,
-    maxWatchlists: Number.MAX_SAFE_INTEGER,
+    maxWatchlists: MAX_WATCHLISTS_PER_ACCOUNT,
   },
 };
 
@@ -35,20 +39,6 @@ export async function getUserPlan(userId: string): Promise<PlanId> {
   return (row?.plan as PlanId) ?? "free";
 }
 
-export async function canCreateWatchlist(
-  userId: string,
-): Promise<{ allowed: boolean; current: number; max: number }> {
-  const plan = await getUserPlan(userId);
-  const limits = PLAN_LIMITS[plan];
-
-  const [{ value: current }] = await db
-    .select({ value: count() })
-    .from(watchlist)
-    .where(eq(watchlist.userId, userId));
-
-  return {
-    allowed: current < limits.maxWatchlists,
-    current,
-    max: limits.maxWatchlists,
-  };
-}
+// Compatibility re-export for existing page-data consumers. The ownership
+// ceiling is account-wide domain policy, not a subscription entitlement.
+export { canCreateWatchlist };
