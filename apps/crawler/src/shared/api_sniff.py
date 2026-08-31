@@ -296,6 +296,10 @@ class PaginationInfo:
     increment: int
     location: str  # "query" or "body"
     observed_value: int | None = None
+    # Inclusive end of a range window paired with ``param_name``.  Some
+    # public APIs paginate with ``from=1&to=200``, then
+    # ``from=201&to=400``, rather than a single offset parameter.
+    end_param_name: str | None = None
 
 
 @dataclass
@@ -1445,6 +1449,38 @@ async def paginate_all(
     if pag is None:
         return all_items
 
+    if pag.end_param_name is not None:
+        if (
+            not isinstance(pag.end_param_name, str)
+            or not pag.end_param_name.strip()
+            or pag.end_param_name == pag.param_name
+        ):
+            raise ValueError("pagination end_param_name must name a distinct parameter")
+        if pag.style != "offset" or pag.increment <= 0:
+            raise ValueError("pagination end_param_name requires positive offset pagination")
+
+    def pagination_request(value: int) -> tuple[str, str | None]:
+        """Build one ordinary page request, including an optional range end."""
+        if pag.location == "query":
+            request_url = set_url_param(ex.url, pag.param_name, value)
+            request_body = ex.post_data
+            if pag.end_param_name is not None:
+                request_url = set_url_param(
+                    request_url,
+                    pag.end_param_name,
+                    value + pag.increment - 1,
+                )
+        else:
+            request_url = ex.url
+            request_body = set_body_param(ex.post_data, pag.param_name, value)
+            if pag.end_param_name is not None:
+                request_body = set_body_param(
+                    request_body,
+                    pag.end_param_name,
+                    value + pag.increment - 1,
+                )
+        return request_url, request_body
+
     page_size = len(result.candidate.items)
     if page_size == 0:
         return all_items
@@ -1560,12 +1596,7 @@ async def paginate_all(
     empty_count = 0
 
     while pages_fetched < total_pages:
-        if pag.location == "query":
-            fetch_url = set_url_param(ex.url, pag.param_name, current_value)
-            fetch_body = ex.post_data
-        else:
-            fetch_url = ex.url
-            fetch_body = set_body_param(ex.post_data, pag.param_name, current_value)
+        fetch_url, fetch_body = pagination_request(current_value)
 
         log.debug(
             "api_sniff.paginate",

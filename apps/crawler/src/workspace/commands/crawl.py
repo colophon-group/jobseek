@@ -1126,6 +1126,7 @@ def select_monitor(
                 "start",
                 "start_value",
                 "increment",
+                "end_param_name",
                 "location",
                 "max_pages",
                 "page_size",

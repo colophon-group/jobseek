@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from unittest.mock import AsyncMock
+from urllib.parse import parse_qsl
 
 import httpx
 import pytest
@@ -972,6 +973,44 @@ class TestFetchFactories:
 
 
 class TestPaginateAllWithFetchFn:
+    @pytest.mark.asyncio
+    async def test_paginate_inclusive_body_range(self):
+        page1_items = [{"id": 1}, {"id": 2}]
+        requested_ranges: list[tuple[int, int]] = []
+
+        async def mock_fetch(method, url, headers, body):
+            parsed = dict(parse_qsl(body))
+            requested_ranges.append((int(parsed["from"]), int(parsed["to"])))
+            return {
+                "jobs": [{"id": 3}, {"id": 4}] if parsed["from"] == "3" else [{"id": 5}],
+                "total": 5,
+            }
+
+        ex = _make_exchange(
+            method="POST",
+            url="https://example.com/api/jobs",
+            post_data="from=1&to=2&keywords=",
+            body={"jobs": page1_items, "total": 5},
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items),
+            url_field=None,
+            total_count=5,
+            pagination=PaginationInfo(
+                param_name="from",
+                end_param_name="to",
+                style="offset",
+                start_value=1,
+                increment=2,
+                location="body",
+            ),
+        )
+
+        items = await paginate_all(mock_fetch, result, max_pages=5)
+
+        assert requested_ranges == [(3, 4), (5, 6)]
+        assert [item["id"] for item in items] == [1, 2, 3, 4, 5]
+
     @pytest.mark.asyncio
     async def test_required_object_items_rejects_paginated_non_object(self):
         page1_items = [{"id": 1}]
