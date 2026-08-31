@@ -177,6 +177,42 @@ describe("WatchlistsLoader private selection", () => {
     expect(screen.getByTestId("watchlists-page").getAttribute("data-selection-sync"))
       .toBe("clear");
   });
+
+  it("isolates consecutive users and locales without reusing private page data", async () => {
+    mocks.cookieValue = "user-one-token";
+    mocks.decode.mockReturnValue(FIRST_ID);
+    mocks.load.mockResolvedValue({
+      watchlists: [overview(FIRST_ID)],
+      limitReached: false,
+    });
+    mocks.getOwned.mockResolvedValue(detail(FIRST_ID));
+
+    const first = render(await WatchlistsLoader({ locale: "en" }));
+    expect(screen.getByTestId("watchlists-page").getAttribute("data-active"))
+      .toBe(FIRST_ID);
+    first.unmount();
+
+    mocks.getSession.mockResolvedValue({ user: { id: "user-2" } });
+    mocks.cookieValue = "user-two-token";
+    mocks.decode.mockReturnValue(SECOND_ID);
+    mocks.load.mockResolvedValue({
+      watchlists: [overview(SECOND_ID)],
+      limitReached: false,
+    });
+    mocks.getOwned.mockResolvedValue(detail(SECOND_ID));
+
+    render(await WatchlistsLoader({ locale: "it" }));
+    const second = screen.getByTestId("watchlists-page");
+    expect(second.getAttribute("data-active")).toBe(SECOND_ID);
+    expect(second.getAttribute("data-locale")).toBe("it");
+    expect(mocks.getOwned).toHaveBeenLastCalledWith(SECOND_ID, "user-2");
+    expect(mocks.build).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({ id: SECOND_ID }),
+        locale: "it",
+      }),
+    );
+  });
 });
 
 describe("Watchlists route partial prerendering", () => {

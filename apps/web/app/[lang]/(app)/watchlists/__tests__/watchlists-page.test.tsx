@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
   createWatchlistFromHandoff: vi.fn(),
   selectOwnedWatchlist: vi.fn(),
   clearWatchlistSelection: vi.fn(),
+  broadcastSelection: vi.fn(),
+  subscribeSelection: vi.fn(),
+  externalSelection: null as null | (() => void),
   searchParams: new URLSearchParams(),
   session: { isLoggedIn: true, isPending: false },
 }));
@@ -40,6 +43,12 @@ vi.mock("@/lib/actions/watchlists", () => ({
 vi.mock("@/lib/actions/watchlist-selection", () => ({
   selectOwnedWatchlist: mocks.selectOwnedWatchlist,
   clearWatchlistSelection: mocks.clearWatchlistSelection,
+}));
+
+vi.mock("@/lib/watchlist-selection-client", () => ({
+  broadcastWatchlistSelectionChanged: () => mocks.broadcastSelection(),
+  subscribeToWatchlistSelection: (callback: () => void) =>
+    mocks.subscribeSelection(callback),
 }));
 
 vi.mock("../../[userSlug]/[watchlistSlug]/watchlist-view-page", () => ({
@@ -102,6 +111,11 @@ describe("WatchlistsPage canonical private route", () => {
     mocks.session = { isLoggedIn: true, isPending: false };
     mocks.selectOwnedWatchlist.mockResolvedValue({ ok: true });
     mocks.clearWatchlistSelection.mockResolvedValue(undefined);
+    mocks.externalSelection = null;
+    mocks.subscribeSelection.mockImplementation((callback: () => void) => {
+      mocks.externalSelection = callback;
+      return vi.fn();
+    });
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -132,7 +146,12 @@ describe("WatchlistsPage canonical private route", () => {
     fireEvent.click(screen.getByRole("button", { name: /Design/ }));
     await waitFor(() => expect(mocks.selectOwnedWatchlist).toHaveBeenCalledWith(SECOND_ID));
     expect(mocks.refresh).toHaveBeenCalledOnce();
+    expect(mocks.broadcastSelection).toHaveBeenCalledOnce();
     expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.replace).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(mocks.selectOwnedWatchlist).toHaveBeenCalledOnce();
   });
 
   it("synchronizes a server-chosen fallback without trusting client identity", async () => {
@@ -165,7 +184,42 @@ describe("WatchlistsPage canonical private route", () => {
 
     await waitFor(() => expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledOnce());
     expect(mocks.selectOwnedWatchlist).toHaveBeenCalledWith(SECOND_ID);
+    expect(mocks.broadcastSelection).toHaveBeenCalledOnce();
     expect(mocks.replace).toHaveBeenCalledWith("/en/watchlists");
+  });
+
+  it("does not loop, navigate, or change selection after a failed handoff", async () => {
+    mocks.searchParams = new URLSearchParams({
+      title: "Retryable roles",
+      companies: "stripe",
+    });
+    mocks.createWatchlistFromHandoff.mockRejectedValue(
+      new Error("database unavailable"),
+    );
+    const props = {
+      initialWatchlists: [overview(FIRST_ID, "Existing")],
+      initialPageData: pageData(FIRST_ID),
+      selectionSync: "none" as const,
+      limitReached: false,
+      locale: "en",
+    };
+
+    const { rerender } = render(<WatchlistsPage {...props} />);
+    await waitFor(() => expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledOnce());
+    rerender(<WatchlistsPage {...props} locale="de" />);
+
+    expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledOnce();
+    expect(mocks.selectOwnedWatchlist).not.toHaveBeenCalled();
+    expect(mocks.broadcastSelection).not.toHaveBeenCalled();
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.searchParams.toString()).toBe("title=Retryable+roles&companies=stripe");
+  });
+
+  it("refreshes when another tab changes selection", () => {
+    render(<WatchlistsPage {...baseProps} />);
+    expect(mocks.externalSelection).not.toBeNull();
+    mocks.externalSelection?.();
+    expect(mocks.refresh).toHaveBeenCalledOnce();
   });
 
   it("renders the zero state and enforces the exact ten-watchlist ceiling", () => {

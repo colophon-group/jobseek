@@ -241,7 +241,7 @@ describe("missing-resource HTTP boundary", () => {
   async function requestThroughHttp(
     pathname: string,
     headers: Record<string, string> = {},
-  ): Promise<{ status: number; body: string }> {
+  ): Promise<{ status: number; body: string; headers: Record<string, string | string[] | undefined> }> {
     const server = createServer(async (request, response) => {
       const requestHeaders: Record<string, string> = {};
       for (const [name, value] of Object.entries(request.headers)) {
@@ -277,7 +277,7 @@ describe("missing-resource HTTP boundary", () => {
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const { port } = server.address() as AddressInfo;
     try {
-      return await new Promise<{ status: number; body: string }>((resolve, reject) => {
+      return await new Promise<{ status: number; body: string; headers: Record<string, string | string[] | undefined> }>((resolve, reject) => {
         const request = sendHttpRequest({
           hostname: "127.0.0.1",
           port,
@@ -290,6 +290,7 @@ describe("missing-resource HTTP boundary", () => {
           response.on("end", () => resolve({
             status: response.statusCode ?? 0,
             body: Buffer.concat(chunks).toString("utf8"),
+            headers: response.headers,
           }));
         });
         request.on("error", reject);
@@ -383,20 +384,22 @@ describe("missing-resource HTTP boundary", () => {
     log.mockRestore();
   });
 
-  it("gives absent and private anonymous watchlists the same 404 response", async () => {
-    resourceStatusMocks.hasPublicWatchlistRoute.mockResolvedValue(false);
-
+  it("gives absent, private, and grandfathered-public anonymous watchlists the same 404", async () => {
     const absent = await proxy(documentRequest("/en/ghost/missing"));
     const privateResponse = await proxy(
       documentRequest("/en/alice/private-list"),
     );
+    const grandfatheredPublic = await proxy(
+      documentRequest("/en/alice/still-public"),
+    );
 
-    for (const response of [absent, privateResponse]) {
+    for (const response of [absent, privateResponse, grandfatheredPublic]) {
       expect(response.status).toBe(404);
       expect(response.headers.get("x-middleware-rewrite")).toBeNull();
       expect(response.headers.get("cache-control")).toBe("private, no-store");
       expect(response.headers.get("x-robots-tag")).toBe("noindex, follow");
     }
+    expect(resourceStatusMocks.hasPublicWatchlistRoute).not.toHaveBeenCalled();
   });
 
   it("hard-404s syntactically impossible non-reserved watchlist paths", async () => {
@@ -407,13 +410,12 @@ describe("missing-resource HTTP boundary", () => {
     expect(authMocks.getSession).not.toHaveBeenCalled();
   });
 
-  it("passes a known public watchlist through", async () => {
-    resourceStatusMocks.hasPublicWatchlistRoute.mockResolvedValue(true);
-
+  it("does not preserve anonymous access to a grandfathered public watchlist", async () => {
     const response = await proxy(documentRequest("/fr/alice/public-list"));
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(resourceStatusMocks.hasPublicWatchlistRoute).not.toHaveBeenCalled();
   });
 
   it("preserves a private route for its verified owner", async () => {
@@ -438,15 +440,10 @@ describe("missing-resource HTTP boundary", () => {
     const request = documentRequest("/en/alice/private-list");
     request.cookies.set("better-auth.session_token", "stale-session");
     authMocks.getSession.mockResolvedValue(null);
-    resourceStatusMocks.hasPublicWatchlistRoute.mockResolvedValue(false);
-
     const response = await proxy(request);
 
     expect(response.status).toBe(404);
-    expect(resourceStatusMocks.hasPublicWatchlistRoute).toHaveBeenCalledWith(
-      "alice",
-      "private-list",
-    );
+    expect(resourceStatusMocks.hasPublicWatchlistRoute).not.toHaveBeenCalled();
     expect(resourceStatusMocks.hasWatchlistRouteForViewer).not.toHaveBeenCalled();
   });
 
@@ -460,6 +457,32 @@ describe("missing-resource HTTP boundary", () => {
 
     expect(response.status).toBe(404);
     expect(resourceStatusMocks.hasPublicWatchlistRoute).not.toHaveBeenCalled();
+  });
+
+  it("makes public, private, and missing rows HTTP-indistinguishable to a verified non-owner", async () => {
+    authMocks.getSession.mockResolvedValue({ user: { id: "other-user" } });
+    resourceStatusMocks.hasWatchlistRouteForViewer.mockResolvedValue(false);
+
+    const responses = await Promise.all([
+      requestThroughHttp("/en/alice/still-public", {
+        cookie: "better-auth.session_token=other-session",
+      }),
+      requestThroughHttp("/en/alice/private-list", {
+        cookie: "better-auth.session_token=other-session",
+      }),
+      requestThroughHttp("/en/alice/missing", {
+        cookie: "better-auth.session_token=other-session",
+      }),
+    ]);
+
+    for (const response of responses) {
+      expect(response.status).toBe(404);
+      expect(response.headers["cache-control"]).toBe("private, no-store");
+      expect(response.headers["x-robots-tag"]).toBe("noindex, follow");
+      expect(response.headers["content-security-policy"]).toContain("default-src 'none'");
+      expect(response.body).toContain("<h1>Watchlist not found</h1>");
+    }
+    expect(new Set(responses.map((response) => response.body)).size).toBe(1);
   });
 
   it("preserves anonymous-private 404 and verified-owner 200 over HTTP", async () => {
@@ -575,7 +598,6 @@ describe("public browsing Server Action rate limit", () => {
     ["explore", "/en/explore"],
     ["company", "/de/company/acme"],
     ["watchlists", "/fr/watchlists"],
-    ["watchlist detail", "/it/alice/backend-jobs"],
   ])("checks both windows for %s actions", async (_surface, pathname) => {
     resourceStatusMocks.hasPublicWatchlistRoute.mockResolvedValue(true);
     const response = await proxy(new NextRequest(`http://localhost${pathname}`, {
@@ -592,9 +614,7 @@ describe("public browsing Server Action rate limit", () => {
     expect(rateLimitMocks.sustained).toHaveBeenCalledWith("203.0.113.7");
   });
 
-  it("hard-404s a missing watchlist action before it can reach Typesense", async () => {
-    resourceStatusMocks.hasPublicWatchlistRoute.mockResolvedValue(false);
-
+  it("hard-404s every retired legacy watchlist action without an existence lookup", async () => {
     const response = await proxy(new NextRequest(
       "http://localhost/en/alice/missing-list",
       {
@@ -607,15 +627,11 @@ describe("public browsing Server Action rate limit", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("x-robots-tag")).toBe("noindex, follow");
     expect(response.headers.get("x-middleware-next")).toBeNull();
-    expect(resourceStatusMocks.hasPublicWatchlistRoute).toHaveBeenCalledWith(
-      "alice",
-      "missing-list",
-    );
+    expect(resourceStatusMocks.hasPublicWatchlistRoute).not.toHaveBeenCalled();
+    expect(resourceStatusMocks.hasWatchlistRouteForViewer).not.toHaveBeenCalled();
   });
 
-  it("passes an existing watchlist action through after the authoritative check", async () => {
-    resourceStatusMocks.hasPublicWatchlistRoute.mockResolvedValue(true);
-
+  it("does not revive a legacy action merely because its row once existed", async () => {
     const response = await proxy(new NextRequest(
       "http://localhost/en/alice/backend-jobs",
       {
@@ -624,16 +640,11 @@ describe("public browsing Server Action rate limit", () => {
       },
     ));
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.status).toBe(404);
+    expect(response.headers.get("x-middleware-next")).toBeNull();
   });
 
-  it("fails open instead of false-404ing a watchlist action when Postgres is unavailable", async () => {
-    resourceStatusMocks.hasPublicWatchlistRoute.mockRejectedValue(
-      new Error("database unavailable"),
-    );
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
-
+  it("does not call Postgres for a retired legacy action", async () => {
     const response = await proxy(new NextRequest(
       "http://localhost/en/alice/backend-jobs",
       {
@@ -642,9 +653,9 @@ describe("public browsing Server Action rate limit", () => {
       },
     ));
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("x-middleware-next")).toBe("1");
-    error.mockRestore();
+    expect(response.status).toBe(404);
+    expect(resourceStatusMocks.hasPublicWatchlistRoute).not.toHaveBeenCalled();
+    expect(resourceStatusMocks.hasWatchlistRouteForViewer).not.toHaveBeenCalled();
   });
 
   it("returns a non-cacheable 429 before the page action when either window is exhausted", async () => {

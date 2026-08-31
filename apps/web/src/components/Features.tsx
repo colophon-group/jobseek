@@ -293,7 +293,7 @@ function FeatureSection3() {
                 <Trans id="home.features.s3.title" comment="Feature section 3 heading">Curate a watchlist for any niche</Trans>
               </h2>
               <p className="mt-4 text-muted">
-                <Trans id="home.features.s3.description" comment="Feature section 3 description">Pick the companies you care about, set your filters, and get a live feed of matching roles. Share it publicly or keep it private.</Trans>
+                <Trans id="home.features.s3.description" comment="Feature section 3 description">Pick the companies you care about, set your filters, and get a private live feed of matching roles.</Trans>
               </p>
             </div>
             <dl className="mt-8 flex flex-col gap-6">
@@ -309,8 +309,8 @@ function FeatureSection3() {
               />
               <PointBlock
                 icon={cfg.pointIcons[2]}
-                title={<Trans id="home.features.s3.p3.title" comment="Feature: share watchlists title">Share with anyone</Trans>}
-                description={<Trans id="home.features.s3.p3.description" comment="Feature: share watchlists description">Make a watchlist public and share the link with friends, communities, or your network.</Trans>}
+                title={<Trans id="home.features.s3.p3.title" comment="Feature: private watchlists title">Private to your account</Trans>}
+                description={<Trans id="home.features.s3.p3.description" comment="Feature: private watchlists description">Only you can open and manage your watchlists, with no public profile or sharing link.</Trans>}
               />
             </dl>
           </div>

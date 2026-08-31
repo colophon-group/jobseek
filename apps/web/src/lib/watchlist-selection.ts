@@ -1,9 +1,16 @@
 import "server-only";
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  createHmac,
+  randomBytes,
+  timingSafeEqual,
+} from "node:crypto";
 
 export const WATCHLIST_SELECTION_COOKIE = "jobseek.watchlist-selection";
-export const WATCHLIST_SELECTION_VERSION = "v1";
+export const WATCHLIST_SELECTION_VERSION = "v2";
 export const WATCHLIST_SELECTION_MAX_AGE = 60 * 60 * 24 * 90;
 
 const WATCHLIST_ID_PATTERN =
@@ -31,17 +38,26 @@ function selectionSecret(): string {
 
 function signatureFor(
   userId: string,
-  watchlistId: string,
+  nonce: string,
+  ciphertext: string,
   secret: string,
 ): string {
   return createHmac("sha256", secret)
-    .update(`${WATCHLIST_SELECTION_VERSION}:${userId}:${watchlistId}`)
+    .update(`${WATCHLIST_SELECTION_VERSION}:${userId}:${nonce}:${ciphertext}`)
     .digest("base64url");
 }
 
+function encryptionKey(secret: string): Buffer {
+  return createHash("sha256")
+    .update(`jobseek:watchlist-selection:${secret}`)
+    .digest();
+}
+
 /**
- * The persisted value exposes no username or mutable slug. Its UUID is only a
- * hint: every consumer must still resolve `(id, session user)` in Postgres.
+ * Authenticated encryption keeps the selected UUID opaque on the wire. The
+ * separately verified HMAC binds the versioned token to one session user.
+ * Decryption is still only a hint: every consumer must resolve `(id, user)` in
+ * Postgres before returning data or accepting a selection.
  */
 export function encodeWatchlistSelection(
   userId: string,
@@ -51,10 +67,21 @@ export function encodeWatchlistSelection(
   if (!isWatchlistId(watchlistId)) {
     throw new Error("Invalid watchlist id");
   }
+  const nonce = randomBytes(12);
+  const nonceValue = nonce.toString("base64url");
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(secret), nonce);
+  cipher.setAAD(Buffer.from(`${WATCHLIST_SELECTION_VERSION}:${userId}`));
+  const encrypted = Buffer.concat([
+    cipher.update(watchlistId, "utf8"),
+    cipher.final(),
+  ]);
+  const ciphertext = Buffer.concat([encrypted, cipher.getAuthTag()])
+    .toString("base64url");
   return [
     WATCHLIST_SELECTION_VERSION,
-    watchlistId,
-    signatureFor(userId, watchlistId, secret),
+    nonceValue,
+    ciphertext,
+    signatureFor(userId, nonceValue, ciphertext, secret),
   ].join(".");
 }
 
@@ -64,17 +91,18 @@ export function decodeWatchlistSelection(
   secret = selectionSecret(),
 ): string | null {
   if (!value) return null;
-  const [version, watchlistId, signature, extra] = value.split(".");
+  const [version, nonce, ciphertext, signature, extra] = value.split(".");
   if (
     version !== WATCHLIST_SELECTION_VERSION ||
-    !isWatchlistId(watchlistId ?? "") ||
+    !nonce ||
+    !ciphertext ||
     !signature ||
     extra !== undefined
   ) {
     return null;
   }
 
-  const expected = signatureFor(userId, watchlistId, secret);
+  const expected = signatureFor(userId, nonce, ciphertext, secret);
   const actualBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
   if (
@@ -83,5 +111,22 @@ export function decodeWatchlistSelection(
   ) {
     return null;
   }
-  return watchlistId;
+  try {
+    const encrypted = Buffer.from(ciphertext, "base64url");
+    if (encrypted.length <= 16) return null;
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      encryptionKey(secret),
+      Buffer.from(nonce, "base64url"),
+    );
+    decipher.setAAD(Buffer.from(`${WATCHLIST_SELECTION_VERSION}:${userId}`));
+    decipher.setAuthTag(encrypted.subarray(encrypted.length - 16));
+    const watchlistId = Buffer.concat([
+      decipher.update(encrypted.subarray(0, -16)),
+      decipher.final(),
+    ]).toString("utf8");
+    return isWatchlistId(watchlistId) ? watchlistId : null;
+  } catch {
+    return null;
+  }
 }

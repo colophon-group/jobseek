@@ -35,10 +35,13 @@ describe("WatchlistRuntimeFallback", () => {
   });
 
   it("guards the session-aware route boundary from an empty fallback", () => {
-    const source = readFileSync(join(__dirname, "page.tsx"), "utf8");
+    const source = readFileSync(
+      join(__dirname, "../../watchlists/page.tsx"),
+      "utf8",
+    );
 
     expect(source).toContain(
-      "<Suspense fallback={<WatchlistRuntimeFallback locale={locale} />}>",
+      "<Suspense fallback={<WatchlistsFallback />}>",
     );
     expect(source).not.toContain("<Suspense fallback={null}>");
   });

@@ -7,6 +7,7 @@ import "@/test-utils/lingui-mock";
 const mocks = vi.hoisted(() => ({
   deleteWatchlist: vi.fn(),
   clearSelection: vi.fn(),
+  broadcastSelection: vi.fn(),
   refresh: vi.fn(),
 }));
 
@@ -32,6 +33,10 @@ vi.mock("@/lib/actions/watchlists", () => ({
 
 vi.mock("@/lib/actions/watchlist-selection", () => ({
   clearWatchlistSelection: mocks.clearSelection,
+}));
+
+vi.mock("@/lib/watchlist-selection-client", () => ({
+  broadcastWatchlistSelectionChanged: mocks.broadcastSelection,
 }));
 
 vi.mock("@/components/ui/upgrade-modal", () => ({
@@ -111,6 +116,7 @@ describe("WatchlistActionBar delete focus", () => {
     await waitFor(() => {
       expect(mocks.deleteWatchlist).toHaveBeenCalledWith("watchlist-1");
       expect(mocks.clearSelection).toHaveBeenCalledOnce();
+      expect(mocks.broadcastSelection).toHaveBeenCalledOnce();
       expect(mocks.refresh).toHaveBeenCalledOnce();
     });
   });

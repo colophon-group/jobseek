@@ -76,11 +76,6 @@ msgstr "(apre in una nuova scheda)"
 msgid "search.detail.showMoreLocations"
 msgstr "{0} in più"
 
-#. SEO metadata count text for a company page; {count} is the active job count.
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:42
-msgid "company.meta.positionCount"
-msgstr "{count, plural, one {# posizione aperta} other {# posizioni aperte}}"
 
 #. Active posting count on each similar-company card
 #. js-lingui-explicit-id
@@ -100,11 +95,6 @@ msgstr "{count, plural, one {offerta attiva} other {offerte attive}}"
 msgid "blog.mention.watchlist.companiesLabel"
 msgstr "{count, plural, one {azienda} other {aziende}}"
 
-#. SEO description prefix for a public watchlist; {description} is the existing watchlist summary.
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:108
-msgid "watchlist.meta.tracking"
-msgstr "{count, plural, one {# azienda monitorata} other {# aziende monitorate}}. {description}"
 
 #. Heatmap tooltip and accessible summary for an application-activity day; {date} is a localized date and {count} is the number of applications that day.
 #. js-lingui-explicit-id
@@ -124,11 +114,6 @@ msgstr "Attività di candidatura"
 msgid "myJobs.heatmap.emptySummary"
 msgstr "Nessuna attività di candidatura nell’anno visualizzato."
 
-#. SEO metadata suffix when a watchlist includes more companies than can be listed by name.
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:62
-msgid "watchlist.meta.moreCompanies"
-msgstr "altre {count}"
 
 #. SEO description for a company page when no company summary is available.
 #. js-lingui-explicit-id
@@ -206,7 +191,7 @@ msgstr "2. Esegui il prompt"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:74
 msgid "faq.a.whatIsWatchlist"
-msgstr "Una watchlist è una ricerca salvata con filtro opzionale per azienda. Scegli le aziende che ti interessano, imposta i filtri (ruolo, località, seniority, stipendio) e ottieni un feed in tempo reale delle offerte corrispondenti. Puoi condividere le watchlist pubblicamente o mantenerle private."
+msgstr "Una watchlist è una ricerca salvata privata con filtro opzionale per azienda. Scegli le aziende che ti interessano, imposta i filtri (ruolo, località, seniority, stipendio) e ottieni un feed in tempo reale delle offerte corrispondenti. Le tue watchlist restano associate al tuo account."
 
 #. JSON-LD page name for the public About page.
 #. SEO title for the public About page.
@@ -1897,11 +1882,6 @@ msgstr "Se noti attività impreviste del nostro crawler o preferisci che il tuo 
 msgid "indexing.outreach.body"
 msgstr "Se noti un comportamento anomalo del crawler, preferisci che non indicizziamo i tuoi contenuti o hai suggerimenti su come migliorare le nostre misure di sicurezza, contattaci."
 
-#. SEO metadata phrase listing locations filtered by a public watchlist.
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:80
-msgid "watchlist.meta.inLocations"
-msgstr "a {locations}"
 
 #. Tooltip on a disabled filter pill explaining the row is implied by an already-selected ancestor (e.g. 'Included in European Union' when EU is selected).
 #. js-lingui-explicit-id
@@ -2153,11 +2133,6 @@ msgstr "Watchlist di Job Seek con posizioni selezionate in ingegneria robotica a
 msgid "license.hero.description"
 msgstr "Il codice sorgente di Job Seek è open source sotto licenza MIT. I dati sugli annunci che raccogliamo e arricchiamo sono Creative Commons BY-NC 4.0. Di seguito il riepilogo in linguaggio semplice — si prega di leggere le licenze complete per i termini esatti."
 
-#. Fallback SEO description for a public watchlist with no description or filters.
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:89
-msgid "watchlist.meta.fallback"
-msgstr "Lista lavori di @{owner}"
 
 #. Plural job count on watchlist card
 #. js-lingui-explicit-id
@@ -2177,11 +2152,6 @@ msgstr "offerte"
 msgid "company.meta.title"
 msgstr "Lavori presso {name}"
 
-#. SEO metadata phrase listing companies tracked by a public watchlist.
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:69
-msgid "watchlist.meta.jobsAt"
-msgstr "Lavori presso {names}"
 
 #. Add keyword filter
 #. js-lingui-explicit-id
@@ -2381,19 +2351,9 @@ msgstr "Accedi per salvare questa ricerca come watchlist"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:313
 msgid "home.features.s3.p3.description"
-msgstr "Rendi una watchlist pubblica e condividi il link con amici, community o il tuo network."
+msgstr "Solo tu puoi aprire e gestire le tue watchlist, senza profilo pubblico o link di condivisione."
 
-#. Make watchlist private tooltip
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx:177
-msgid "watchlists.actions.makePrivate"
-msgstr "Rendi privata"
 
-#. Make watchlist public tooltip
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx:178
-msgid "watchlists.actions.makePublic"
-msgstr "Rendi pubblica"
 
 #. Manage subscription button label
 #. js-lingui-explicit-id
@@ -2455,13 +2415,6 @@ msgstr "Min"
 msgid "watchlists.explore.mirrorSingular"
 msgstr "copia"
 
-#. Mirror watchlist tooltip
-#. Mirror watchlist tooltip
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx:199
-#: src/components/watchlist/watchlist-action-bar.tsx:257
-msgid "watchlists.actions.mirror"
-msgstr "Copia"
 
 #. Tip banner explaining that public watchlists can be mirrored
 #. js-lingui-explicit-id
@@ -3047,7 +3000,7 @@ msgstr "Colloquio telefonico"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:296
 msgid "home.features.s3.description"
-msgstr "Scegli le aziende che ti interessano, imposta i filtri e ottieni un feed in tempo reale delle offerte corrispondenti. Condividilo pubblicamente o tienilo privato."
+msgstr "Scegli le aziende che ti interessano, imposta i filtri e ottieni un feed privato delle offerte corrispondenti."
 
 #. Plan section heading in billing settings
 #. js-lingui-explicit-id
@@ -3870,7 +3823,7 @@ msgstr "Impostazioni"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:312
 msgid "home.features.s3.p3.title"
-msgstr "Condividi con chiunque"
+msgstr "Private nel tuo account"
 
 #. Collapse location pill list
 #. js-lingui-explicit-id
@@ -3938,11 +3891,6 @@ msgstr "Accedi per vederne altri"
 msgid "watchlists.page.loginPrompt"
 msgstr "Accedi per creare e gestire le tue liste di osservazione."
 
-#. Mirror watchlist tooltip for non-logged-in users
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx:258
-msgid "watchlists.actions.mirrorSignIn"
-msgstr "Accedi per copiare"
 
 #. Prompt shown when anonymous user hits the company pagination limit
 #. js-lingui-explicit-id
@@ -4548,7 +4496,7 @@ msgstr "Watchlist"
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-card.tsx:55
 msgid "watchlists.card.limitReached"
-msgstr "Limite liste raggiunto"
+msgstr "Raggiunto il massimo di 10 watchlist"
 
 #. Heading shown when the watchlist URL doesn't resolve to a public watchlist
 #. js-lingui-explicit-id
@@ -4567,11 +4515,6 @@ msgstr "Esplora le watchlist"
 msgid "watchlists.page.title"
 msgstr "Liste di osservazione"
 
-#. Back to watchlists link
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx:352
-msgid "watchlists.view.back"
-msgstr "Liste di osservazione"
 
 #. Watchlists nav icon tooltip
 #. js-lingui-explicit-id
@@ -4889,19 +4832,7 @@ msgstr "Hai raggiunto il limite orario per le richieste di aziende. Riprova più
 msgid "app.home.request.agent.rateLimited"
 msgstr "Hai raggiunto il limite orario per le richieste di aziende. Riprova più tardi."
 
-#. Reason shown in upgrade modal when watchlist creation limit reached
-#. Reason shown in upgrade modal when watchlist creation limit reached
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/watchlists-page.tsx:34
-#: src/components/watchlist/watchlist-card.tsx:45
-msgid "upgrade.reason.watchlistLimit"
-msgstr "Hai raggiunto il limite delle tue liste di osservazione. Effettua l'upgrade per crearne altre."
 
-#. Reason shown in upgrade modal when mirror limit reached
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx:93
-msgid "upgrade.reason.mirrorLimit"
-msgstr "Hai raggiunto il limite delle tue liste di osservazione. Effettua l'upgrade per copiarne altre."
 
 #. Reason shown in upgrade modal when saving a search hits the watchlist limit
 #. js-lingui-explicit-id
@@ -5034,6 +4965,12 @@ msgstr "Impossibile caricare le tue liste di osservazione."
 #: app/[lang]/(app)/watchlists/watchlists-loader.tsx
 msgid "watchlists.load.retry"
 msgstr "Riprova"
+
+#. Accessible loading status for the private watchlists route
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/page.tsx
+msgid "watchlists.load.loading"
+msgstr "Caricamento delle watchlist…"
 
 #. Label for the company name or careers-page URL request field
 #. js-lingui-explicit-id

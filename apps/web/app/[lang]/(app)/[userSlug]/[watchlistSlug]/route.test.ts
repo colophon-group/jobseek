@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   getOwned: vi.fn(),
-  encode: vi.fn(() => "signed-selection"),
+  encode: vi.fn((_userId: string, _watchlistId: string) => "signed-selection"),
 }));
 
 vi.mock("@/lib/sessionCache", () => ({
@@ -12,12 +12,17 @@ vi.mock("@/lib/sessionCache", () => ({
 }));
 
 vi.mock("@/lib/services/watchlists", () => ({
-  getOwnedWatchlistByLegacyPath: (...args: unknown[]) => mocks.getOwned(...args),
+  getOwnedWatchlistByLegacyPath: (
+    userSlug: string,
+    watchlistSlug: string,
+    userId: string,
+  ) => mocks.getOwned(userSlug, watchlistSlug, userId),
 }));
 
 vi.mock("@/lib/watchlist-selection", () => ({
   WATCHLIST_SELECTION_COOKIE: "jobseek.watchlist-selection",
-  encodeWatchlistSelection: (...args: unknown[]) => mocks.encode(...args),
+  encodeWatchlistSelection: (userId: string, watchlistId: string) =>
+    mocks.encode(userId, watchlistId),
   watchlistSelectionCookieOptions: {
     httpOnly: true,
     sameSite: "lax",

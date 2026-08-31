@@ -29,9 +29,11 @@ import {
   parseWorkModeParam,
 } from "@/lib/search/query-params";
 import { withAuthReturnPath } from "@/lib/auth-return";
+import {
+  broadcastWatchlistSelectionChanged,
+  subscribeToWatchlistSelection,
+} from "@/lib/watchlist-selection-client";
 import { WatchlistViewPage } from "../[userSlug]/[watchlistSlug]/watchlist-view-page";
-
-const SELECTION_CHANNEL = "jobseek-watchlist-selection";
 
 function commaSeparatedValues(value: string | null): string[] {
   if (!value) return [];
@@ -61,21 +63,9 @@ export function WatchlistsPage({
   const [watchlists, setWatchlists] = useState(initialWatchlists);
   const handoffAttemptedRef = useRef(false);
   const selectionSyncKeyRef = useRef<string | null>(null);
-  const selectionChannelRef = useRef<BroadcastChannel | null>(null);
-
-  function notifyOtherTabs(): void {
-    selectionChannelRef.current?.postMessage("changed");
-  }
 
   useEffect(() => {
-    if (typeof BroadcastChannel === "undefined") return;
-    const channel = new BroadcastChannel(SELECTION_CHANNEL);
-    selectionChannelRef.current = channel;
-    channel.addEventListener("message", () => router.refresh());
-    return () => {
-      selectionChannelRef.current = null;
-      channel.close();
-    };
+    return subscribeToWatchlistSelection(() => router.refresh());
   }, [router]);
 
   useEffect(() => {
@@ -89,7 +79,7 @@ export function WatchlistsPage({
     const sync = selectionSync === "replace" && initialPageData
       ? selectOwnedWatchlist(initialPageData.detail.id)
       : clearWatchlistSelection();
-    void sync.then(notifyOtherTabs).catch(() => {
+    void sync.then(broadcastWatchlistSelectionChanged).catch(() => {
       selectionSyncKeyRef.current = null;
     });
   }, [initialPageData, selectionSync]);
@@ -141,7 +131,7 @@ export function WatchlistsPage({
     try {
       const result = await selectOwnedWatchlist(watchlistId);
       if (result.ok) {
-        notifyOtherTabs();
+        broadcastWatchlistSelectionChanged();
         router.refresh();
       }
     } finally {
@@ -179,7 +169,7 @@ export function WatchlistsPage({
 
       const selected = await selectOwnedWatchlist(result.id);
       if (!selected.ok) return;
-      notifyOtherTabs();
+      broadcastWatchlistSelectionChanged();
       if (navigation === "replace" || searchParams.size > 0) {
         router.replace(lp("/watchlists"));
       } else {

@@ -261,6 +261,22 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     });
   }
 
+  const legacyWatchlistAction = request.nextUrl.pathname.match(
+    LOCALIZED_WATCHLIST_PATH,
+  );
+  if (
+    request.method === "POST" &&
+    request.headers.has("next-action") &&
+    legacyWatchlistAction &&
+    !isReservedUsername(legacyWatchlistAction[2].toLowerCase())
+  ) {
+    return missingResourceResponse(
+      request,
+      "watchlist",
+      legacyWatchlistAction[1],
+    );
+  }
+
   const actionSurface = publicReadActionSurface(request);
   if (actionSurface) {
     const rateLimited = await publicReadRateLimitResponse(

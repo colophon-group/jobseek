@@ -6,6 +6,12 @@ const loaderSource = readFileSync(
   "app/[lang]/(app)/watchlists/watchlists-loader.tsx",
   "utf8",
 );
+const actionSource = readFileSync(
+  "src/lib/actions/watchlist-selection.ts",
+  "utf8",
+);
+const authSource = readFileSync("src/lib/auth.ts", "utf8");
+const headerSource = readFileSync("src/components/AppHeader.tsx", "utf8");
 
 describe("private watchlist route contract", () => {
   it("keeps fallback ordering deterministic", () => {
@@ -24,5 +30,20 @@ describe("private watchlist route contract", () => {
     expect(loaderSource).not.toContain("getPopularWatchlists");
     expect(loaderSource).not.toContain("getPublicWatchlist");
     expect(loaderSource).not.toContain("PublicWatchlistSearch");
+  });
+
+  it("keeps user-bound selection reads and writes out of shared caches", () => {
+    for (const source of [loaderSource, actionSource]) {
+      expect(source).not.toContain('"use cache"');
+      expect(source).not.toContain("cached(");
+      expect(source).not.toContain("cacheLife(");
+      expect(source).not.toContain("cacheTag(");
+    }
+  });
+
+  it("clears on session termination and invalidates other tabs on sign-out", () => {
+    expect(authSource).toContain("ctx.setCookie(WATCHLIST_SELECTION_COOKIE, \"\"");
+    expect(authSource).toContain("maxAge: 0");
+    expect(headerSource).toContain("broadcastWatchlistSelectionChanged();");
   });
 });
