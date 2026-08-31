@@ -95,6 +95,14 @@ vi.mock("@/lib/plans", () => ({
   getUserPlan: mocks.getUserPlan,
   PLAN_LIMITS: { free: { canReceiveAlerts: false }, paid: { canReceiveAlerts: true } },
 }));
+vi.mock("@/lib/watchlist-limit", () => ({
+  createWithinWatchlistLimit: async (
+    _tx: unknown,
+    _userId: string,
+    create: () => Promise<unknown>,
+  ) => create(),
+  WatchlistLimitReachedError: class WatchlistLimitReachedError extends Error {},
+}));
 
 vi.mock("@/lib/watchlist-slug", () => ({
   generateUniqueSlug: mocks.generateUniqueSlug,
