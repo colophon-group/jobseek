@@ -216,6 +216,139 @@ _PROSPECTIVE_DETECTION_RETRIES = 5
 _PROSPECTIVE_DETECTION_BASE_DELAY = 0.5
 _LUMESSE_API_PATH = "/fo/rest/jobs"
 _LUMESSE_BOARD_PATH_RE = re.compile(r"/lumesse_jobsearch\.html/?$", re.I)
+_WP_JOB_MANAGER_API_PATH = "/jm-ajax/get_listings/"
+_WP_JOB_MANAGER_PAGE_SIZE = 100
+_WP_JOB_MANAGER_MAX_PAGES = 200
+
+
+def _wp_job_manager_job_url_regex(origin: str) -> str:
+    """Return a same-origin WP Job Manager permalink matcher."""
+
+    return rf"""(?i)href=["']((?:{re.escape(origin)})?/job/[a-z0-9-]+/?)["']"""
+
+
+def _wp_job_manager_page_urls(html: str, board_url: str, origin: str) -> set[str]:
+    """Extract and validate published WP Job Manager cards from one API page."""
+
+    urls = _extract_urls_from_html(
+        html,
+        board_url,
+        _wp_job_manager_job_url_regex(origin),
+    )
+    published_cards = len(re.findall(r"\bjob_listing\s+type-job_listing\s+status-publish\b", html))
+    if len(urls) != published_cards:
+        return set()
+    return urls
+
+
+async def _wp_job_manager_probe_config(
+    url: str,
+    client: httpx.AsyncClient,
+) -> dict | None:
+    """Detect WP Job Manager's authoritative same-origin AJAX listing API.
+
+    Some installations disable or redirect ``?feed=job_feed`` while their
+    public listing page still uses the plugin's stable AJAX endpoint. Browser
+    capture can miss that request after the initial six cards have rendered,
+    or rank unrelated analytics payloads above it. Probe the provider endpoint
+    directly and validate every advertised page before returning a config.
+    """
+
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.casefold() != "https"
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+    ):
+        return None
+
+    origin = f"https://{parsed.netloc.lower()}"
+    api_url = f"{origin}{_WP_JOB_MANAGER_API_PATH}"
+    params = {"per_page": str(_WP_JOB_MANAGER_PAGE_SIZE), "page": "1"}
+
+    try:
+        payload = await http_fetch_with_retry(
+            client,
+            "GET",
+            _merge_params(api_url, params),
+        )
+    except PaginationFetchError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    found_jobs = payload.get("found_jobs")
+    max_pages = payload.get("max_num_pages")
+    html = payload.get("html")
+    if (
+        not isinstance(found_jobs, bool)
+        or isinstance(max_pages, bool)
+        or not isinstance(max_pages, int)
+        or max_pages < 0
+        or max_pages > _WP_JOB_MANAGER_MAX_PAGES
+        or not isinstance(html, str)
+    ):
+        return None
+
+    all_urls = _wp_job_manager_page_urls(html, url, origin)
+    if found_jobs:
+        if max_pages < 1 or not all_urls:
+            return None
+    elif max_pages != 0 or all_urls:
+        return None
+
+    for page in range(2, max_pages + 1):
+        page_params = {**params, "page": str(page)}
+        try:
+            page_payload = await http_fetch_with_retry(
+                client,
+                "GET",
+                _merge_params(api_url, page_params),
+            )
+        except PaginationFetchError:
+            return None
+        if not isinstance(page_payload, dict):
+            return None
+        page_html = page_payload.get("html")
+        if (
+            page_payload.get("found_jobs") is not True
+            or page_payload.get("max_num_pages") != max_pages
+            or not isinstance(page_html, str)
+        ):
+            return None
+        page_urls = _wp_job_manager_page_urls(page_html, url, origin)
+        if not page_urls or page_urls & all_urls:
+            return None
+        all_urls.update(page_urls)
+
+    config = {
+        "api_url": api_url,
+        "method": "GET",
+        "params": {"per_page": str(_WP_JOB_MANAGER_PAGE_SIZE)},
+        "json_path": "html",
+        "url_regex": _wp_job_manager_job_url_regex(origin),
+        "empty_response": {"found_jobs": False},
+        "pagination": {
+            "param_name": "page",
+            "style": "page",
+            "start_value": 1,
+            "increment": 1,
+            "location": "query",
+            "page_size": _WP_JOB_MANAGER_PAGE_SIZE,
+            "max_pages": _WP_JOB_MANAGER_MAX_PAGES,
+        },
+        "total": len(all_urls),
+        "score": 100,
+    }
+    if all_urls:
+        config["items"] = min(len(all_urls), _WP_JOB_MANAGER_PAGE_SIZE)
+    return config
 
 
 def _lumesse_config_overrides(
@@ -704,6 +837,10 @@ async def can_handle(
     prospective_config = await _detect_prospective_config(url, client)
     if prospective_config is not None:
         return prospective_config
+
+    wp_job_manager_config = await _wp_job_manager_probe_config(url, client)
+    if wp_job_manager_config is not None:
+        return wp_job_manager_config
 
     if pw is None:
         return None
