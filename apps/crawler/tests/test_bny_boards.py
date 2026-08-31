@@ -20,9 +20,7 @@ def test_bny_company_metadata_is_complete() -> None:
     assert company["employee_count_range"] == "8"
     assert company["founded_year"] == "1784"
 
-    with (DATA_DIR / "company_descriptions.csv").open(
-        newline="", encoding="utf-8"
-    ) as handle:
+    with (DATA_DIR / "company_descriptions.csv").open(newline="", encoding="utf-8") as handle:
         descriptions = next(row for row in csv.DictReader(handle) if row["slug"] == "bny")
 
     assert all(descriptions[locale] for locale in ("en", "de", "fr", "it"))
@@ -41,8 +39,7 @@ def test_bny_uses_verified_complementary_boards() -> None:
 
     primary = by_slug["bny-careers"]
     assert primary["board_url"] == (
-        "https://eofe.fa.us2.oraclecloud.com/"
-        "hcmUI/CandidateExperience/en/sites/CX_1"
+        "https://eofe.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1"
     )
     assert primary["monitor_type"] == primary["scraper_type"] == "oracle_hcm"
     assert json.loads(primary["monitor_config"]) == {"total_count_tolerance": 3}
