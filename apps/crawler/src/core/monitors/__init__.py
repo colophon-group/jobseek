@@ -1006,6 +1006,7 @@ from src.core.monitors import (  # noqa: E402
     jazzhr,  # noqa: F401
     job51,  # noqa: F401
     jobbank104,  # noqa: F401
+    jobdiva,  # noqa: F401
     jobs_ch,  # noqa: F401
     jobstreet,  # noqa: F401
     jobvite,  # noqa: F401
