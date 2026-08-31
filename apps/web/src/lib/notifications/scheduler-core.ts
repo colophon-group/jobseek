@@ -13,6 +13,7 @@ import {
   DEFAULT_NOTIFICATION_EXECUTION_MODE,
   NOTIFICATION_DISPLAY_ITEM_LIMIT,
   NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE,
+  MAX_NOTIFICATION_HYDRATION_CURSOR_PROBES_PER_PERIOD,
   MAX_NOTIFICATION_HYDRATION_SEGMENTS_PER_PERIOD,
   NOTIFICATION_MATCH_AGGREGATE_ITEM_LIMIT,
   assertUtcWindow,
@@ -303,23 +304,30 @@ export async function runNotificationSchedulerCore(
     visitor: (watchlist: EligibleNotificationWatchlist) => Promise<void> | void,
   ): Promise<void> {
     let cursor: NotificationWatchlistHydrationCursor | null = null;
+    let visitedSegments = 0;
     for (
-      let segment = 0;
-      segment < MAX_NOTIFICATION_HYDRATION_SEGMENTS_PER_PERIOD;
-      segment += 1
+      let probe = 0;
+      probe < MAX_NOTIFICATION_HYDRATION_CURSOR_PROBES_PER_PERIOD;
+      probe += 1
     ) {
       const page = await dependencies.repository.loadEligibleWatchlistSegment({
         userId,
         cursor,
       });
-      if (page.watchlist) await visitor(page.watchlist);
+      if (page.watchlist) {
+        if (visitedSegments >= MAX_NOTIFICATION_HYDRATION_SEGMENTS_PER_PERIOD) {
+          throw new Error("Notification hydration segment budget exhausted");
+        }
+        visitedSegments += 1;
+        await visitor(page.watchlist);
+      }
       if (!page.nextCursor) return;
       if (JSON.stringify(page.nextCursor) === JSON.stringify(cursor)) {
         throw new Error("Notification hydration cursor did not advance");
       }
       cursor = page.nextCursor;
     }
-    throw new Error("Notification hydration segment budget exhausted");
+    throw new Error("Notification hydration cursor probe budget exhausted");
   }
 
   async function processWork(

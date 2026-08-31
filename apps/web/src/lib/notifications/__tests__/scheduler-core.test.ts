@@ -408,14 +408,28 @@ describe("providerless notification scheduler core", () => {
       },
     }));
     const { repository } = fakeRepository([makeUser({ watchlists })]);
-    const match = vi.fn().mockResolvedValue({
-      postings: [], uniqueMatchCount: 0, watchlistMatchCount: 0, truncated: false,
+    const matchedMembershipIds: string[] = [];
+    const producedPostingIds: string[] = [];
+    const match = vi.fn().mockImplementation(async ({ watchlists }) => {
+      const source = watchlists[0]!.source;
+      matchedMembershipIds.push(...source.companyIds);
+      const postingId = `job-${source.companyIds[0]}`;
+      producedPostingIds.push(postingId);
+      return {
+        postings: [posting(postingId, [{
+          id: source.watchlistId,
+          label: source.watchlistLabel,
+        }])],
+        uniqueMatchCount: 1,
+        watchlistMatchCount: 1,
+        truncated: false,
+      };
     });
     const result = await runNotificationSchedulerCore(
       { mode: "shadow", sweep, quota, concurrency: 1 },
       { repository, match, now: () => now },
     );
-    expect(result.telemetry.empty).toBe(1);
+    expect(result.plans[0]).toMatchObject({ totalMatches: 36 });
     const matchedSegments = match.mock.calls.map(
       (call) => call[0].watchlists[0]!,
     );
@@ -426,5 +440,136 @@ describe("providerless notification scheduler core", () => {
       ...matchedSegments.map((entry) => entry.source.companyIds.length),
     )).toBe(100);
     expect(matchedSegments).toHaveLength(36);
+    expect(matchedMembershipIds).toHaveLength(12 * 225);
+    expect(new Set(matchedMembershipIds)).toHaveLength(12 * 225);
+    expect(producedPostingIds).toHaveLength(36);
+    expect(new Set(producedPostingIds)).toHaveLength(36);
   });
+
+  it("accepts exactly 500 real hydration segments with one EOF lookahead", async () => {
+    const watchlists = Array.from({ length: 500 }, (_, index) => ({
+      alertsEnabledAt: new Date("2026-08-15T00:00:00.000Z"),
+      source: {
+        ...makeUser().watchlists[0]!.source,
+        watchlistId: `watchlist-${String(index).padStart(3, "0")}`,
+        watchlistLabel: `Watchlist ${index}`,
+        companyIds: [`company-${String(index).padStart(3, "0")}`],
+      },
+    }));
+    const { repository } = fakeRepository([makeUser({ watchlists })]);
+    const seenMemberships: string[] = [];
+    const seenPostings: string[] = [];
+    const match = vi.fn().mockImplementation(async ({ watchlists }) => {
+      const source = watchlists[0]!.source;
+      seenMemberships.push(...source.companyIds);
+      const postingId = `job-${source.companyIds[0]}`;
+      seenPostings.push(postingId);
+      return {
+        postings: [posting(postingId, [{
+          id: source.watchlistId,
+          label: source.watchlistLabel,
+        }])],
+        uniqueMatchCount: 1,
+        watchlistMatchCount: 1,
+        truncated: false,
+      };
+    });
+    const result = await runNotificationSchedulerCore(
+      { mode: "shadow", sweep, quota, concurrency: 1 },
+      { repository, match, now: () => now },
+    );
+
+    expect(result.telemetry.failed).toBe(0);
+    expect(result.plans[0]).toMatchObject({
+      totalMatches: 500,
+      watchlistMatchCount: 500,
+      sourceResultsTruncated: false,
+    });
+    expect(match).toHaveBeenCalledTimes(500);
+    expect(seenMemberships).toHaveLength(500);
+    expect(new Set(seenMemberships)).toHaveLength(500);
+    expect(seenPostings).toHaveLength(500);
+    expect(new Set(seenPostings)).toHaveLength(500);
+  });
+
+  it("rejects actual hydration segment 501 before matching or claiming", async () => {
+    const watchlists = Array.from({ length: 501 }, (_, index) => ({
+      alertsEnabledAt: new Date("2026-08-15T00:00:00.000Z"),
+      source: {
+        ...makeUser().watchlists[0]!.source,
+        watchlistId: `watchlist-${String(index).padStart(3, "0")}`,
+        companyIds: [`company-${index}`],
+      },
+    }));
+    const { repository } = fakeRepository([makeUser({ watchlists })]);
+    const match = vi.fn();
+    const result = await runNotificationSchedulerCore(
+      { mode: "shadow", sweep, quota, concurrency: 1 },
+      { repository, match, now: () => now },
+    );
+
+    expect(result.telemetry.failed).toBe(1);
+    expect(result.plans).toEqual([]);
+    expect(repository.claim).not.toHaveBeenCalled();
+    expect(match).not.toHaveBeenCalled();
+    expect(repository.loadEligibleWatchlistSegment).toHaveBeenCalledTimes(501);
+  });
+
+  it.each([
+    { uniquePostings: 2_500, expectedStored: 2_500, truncated: false },
+    { uniquePostings: 2_501, expectedStored: 2_500, truncated: true },
+  ])(
+    "bounds aggregate memory at $uniquePostings unique postings with exact-once inputs",
+    async ({ uniquePostings, expectedStored, truncated }) => {
+      const segmentCount = Math.ceil(uniquePostings / 250);
+      const watchlists = Array.from({ length: segmentCount }, (_, index) => ({
+        alertsEnabledAt: new Date("2026-08-15T00:00:00.000Z"),
+        source: {
+          ...makeUser().watchlists[0]!.source,
+          watchlistId: `watchlist-${String(index).padStart(2, "0")}`,
+          watchlistLabel: `Watchlist ${index}`,
+          companyIds: [`company-${String(index).padStart(2, "0")}`],
+        },
+      }));
+      const { repository } = fakeRepository([makeUser({ watchlists })]);
+      const generatedPostingIds: string[] = [];
+      const matchedMembershipIds: string[] = [];
+      let remaining = uniquePostings;
+      const match = vi.fn().mockImplementation(async ({ watchlists }) => {
+        const source = watchlists[0]!.source;
+        matchedMembershipIds.push(...source.companyIds);
+        const count = Math.min(250, remaining);
+        remaining -= count;
+        const postings = Array.from({ length: count }, (_, index) => {
+          const id = `job-${source.watchlistId}-${String(index).padStart(3, "0")}`;
+          generatedPostingIds.push(id);
+          return posting(id, [{
+            id: source.watchlistId,
+            label: source.watchlistLabel,
+          }]);
+        });
+        return {
+          postings,
+          uniqueMatchCount: postings.length,
+          watchlistMatchCount: postings.length,
+          truncated: false,
+        };
+      });
+      const result = await runNotificationSchedulerCore(
+        { mode: "shadow", sweep, quota, concurrency: 1 },
+        { repository, match, now: () => now },
+      );
+
+      expect(generatedPostingIds).toHaveLength(uniquePostings);
+      expect(new Set(generatedPostingIds)).toHaveLength(uniquePostings);
+      expect(matchedMembershipIds).toHaveLength(segmentCount);
+      expect(new Set(matchedMembershipIds)).toHaveLength(segmentCount);
+      expect(result.plans[0]).toMatchObject({
+        totalMatches: expectedStored,
+        watchlistMatchCount: uniquePostings,
+        sourceResultsTruncated: truncated,
+      });
+      expect(result.plans[0]!.displayPostings).toHaveLength(20);
+    },
+  );
 });
