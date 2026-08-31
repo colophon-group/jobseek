@@ -802,7 +802,7 @@ fresh successful backup, and no archive failure in the latest hour.
 
 All three hosts run the same repo-owned host telemetry surface:
 
-- `jobseek-alloy.service` runs Alloy 1.18.1 as the dedicated unprivileged
+- `jobseek-alloy.service` runs Alloy 1.19.2 as the dedicated unprivileged
   `jobseek-alloy` user. The binary is extracted from the checksum-pinned
   official container image during deployment; no mutable `latest` tag or
   package repository is trusted at runtime.
