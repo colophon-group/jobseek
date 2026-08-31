@@ -37,10 +37,9 @@ import {
 } from "@/lib/notifications/scheduler-core";
 import {
   NOTIFICATION_CLAIM_LEASE_MS,
-  NOTIFICATION_COMPANY_MEMBERSHIP_QUERY_PAGE_SIZE,
+  NOTIFICATION_COMPANY_MEMBERSHIP_SEGMENT_SIZE,
   NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE,
   NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST,
-  NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE,
   type NotificationExecutionMode,
   type NotificationQuotaState,
   type UtcWindow,
@@ -168,97 +167,91 @@ async function listEligibleUserCandidatesPage(input: {
   };
 }
 
-async function loadEligibleWatchlists(userIds: readonly string[]) {
-  if (userIds.length === 0) return [];
-  if (userIds.length > NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE) {
-    throw new RangeError("watchlist hydration exceeds the owner batch cap");
-  }
-  const watchlistRows: Array<{
-    userId: string;
-    locale: "en" | "de" | "fr" | "it";
-    jobLanguages: string[];
-    watchlistId: string;
-    watchlistLabel: string;
-    filters: unknown;
-    alertsEnabledAt: Date | null;
-  }> = [];
-  let watchlistCursor: string | null = null;
-  for (;;) {
-    const page = await db.select({
-      userId: watchlist.userId,
-      locale: userPreferences.locale,
-      jobLanguages: userPreferences.jobLanguages,
-      watchlistId: watchlist.id,
-      watchlistLabel: watchlist.title,
-      filters: watchlist.filters,
-      alertsEnabledAt: watchlist.alertsEnabledAt,
-    }).from(watchlist)
-      .innerJoin(userPreferences, eq(userPreferences.userId, watchlist.userId))
-      .where(and(
-        inArray(watchlist.userId, [...userIds]),
-        eq(watchlist.alertsEnabled, true),
-        isNotNull(watchlist.alertsEnabledAt),
-        watchlistCursor ? gt(watchlist.id, watchlistCursor) : undefined,
-      ))
-      .orderBy(asc(watchlist.id))
-      .limit(NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE);
-    watchlistRows.push(...page);
-    if (page.length < NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE) break;
-    watchlistCursor = page.at(-1)!.watchlistId;
+async function loadEligibleWatchlistSegment(input: Parameters<
+  NotificationSchedulerRepository["loadEligibleWatchlistSegment"]
+>[0]) {
+  const continuingWatchlistId = input.cursor?.watchlistId ?? null;
+  const [row] = await db.select({
+    locale: userPreferences.locale,
+    jobLanguages: userPreferences.jobLanguages,
+    watchlistId: watchlist.id,
+    watchlistLabel: watchlist.title,
+    filters: watchlist.filters,
+    alertsEnabledAt: watchlist.alertsEnabledAt,
+  }).from(watchlist)
+    .innerJoin(userPreferences, eq(userPreferences.userId, watchlist.userId))
+    .innerJoin(user, eq(user.id, watchlist.userId))
+    .where(and(
+      eq(watchlist.userId, input.userId),
+      continuingWatchlistId
+        ? eq(watchlist.id, continuingWatchlistId)
+        : input.cursor?.afterWatchlistId
+          ? gt(watchlist.id, input.cursor.afterWatchlistId)
+          : undefined,
+      eq(watchlist.alertsEnabled, true),
+      isNotNull(watchlist.alertsEnabledAt),
+      eq(userPreferences.notificationsPaused, false),
+      eq(user.emailVerified, true),
+    ))
+    .orderBy(asc(watchlist.id))
+    .limit(1);
+
+  if (!row || !row.alertsEnabledAt) {
+    return continuingWatchlistId
+      ? {
+          watchlist: null,
+          nextCursor: {
+            afterWatchlistId: continuingWatchlistId,
+            watchlistId: null,
+            afterCompanyId: null,
+          },
+        }
+      : { watchlist: null, nextCursor: null };
   }
 
-  const companyIds = new Map<string, Set<string>>();
-  const ids = watchlistRows.map((row) => row.watchlistId);
-  for (let offset = 0; offset < ids.length; offset += NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE) {
-    const chunk = ids.slice(offset, offset + NOTIFICATION_WATCHLIST_QUERY_PAGE_SIZE);
-    let membershipCursor: { watchlistId: string; companyId: string } | null = null;
-    for (;;) {
-      const page = await db.select({
-        watchlistId: watchlistCompany.watchlistId,
-        companyId: watchlistCompany.companyId,
-      }).from(watchlistCompany)
+  const filters = row.filters as WatchlistFilters;
+  const memberships = filters.anyCompany === true
+    ? []
+    : await db.select({ companyId: watchlistCompany.companyId })
+        .from(watchlistCompany)
         .where(and(
-          inArray(watchlistCompany.watchlistId, chunk),
-          membershipCursor
-            ? or(
-                gt(watchlistCompany.watchlistId, membershipCursor.watchlistId),
-                and(
-                  eq(watchlistCompany.watchlistId, membershipCursor.watchlistId),
-                  gt(watchlistCompany.companyId, membershipCursor.companyId),
-                ),
-              )
+          eq(watchlistCompany.watchlistId, row.watchlistId),
+          input.cursor?.afterCompanyId
+            ? gt(watchlistCompany.companyId, input.cursor.afterCompanyId)
             : undefined,
         ))
-        .orderBy(asc(watchlistCompany.watchlistId), asc(watchlistCompany.companyId))
-        .limit(NOTIFICATION_COMPANY_MEMBERSHIP_QUERY_PAGE_SIZE);
-      for (const row of page) {
-        const values = companyIds.get(row.watchlistId) ?? new Set<string>();
-        values.add(row.companyId);
-        companyIds.set(row.watchlistId, values);
-      }
-      if (page.length < NOTIFICATION_COMPANY_MEMBERSHIP_QUERY_PAGE_SIZE) break;
-      membershipCursor = page.at(-1)!;
-    }
-  }
-
-  const grouped = new Map<string, EligibleNotificationWatchlist[]>();
-  for (const row of watchlistRows) {
-    if (!row.alertsEnabledAt) continue;
-    const entries = grouped.get(row.userId) ?? [];
-    entries.push({
+        .orderBy(asc(watchlistCompany.companyId))
+        .limit(NOTIFICATION_COMPANY_MEMBERSHIP_SEGMENT_SIZE + 1);
+  const selected = memberships.slice(
+    0,
+    NOTIFICATION_COMPANY_MEMBERSHIP_SEGMENT_SIZE,
+  );
+  const hasMoreMemberships =
+    memberships.length > NOTIFICATION_COMPANY_MEMBERSHIP_SEGMENT_SIZE;
+  return {
+    watchlist: {
       alertsEnabledAt: row.alertsEnabledAt,
       source: {
         watchlistId: row.watchlistId,
         watchlistLabel: row.watchlistLabel,
-        filters: row.filters as WatchlistFilters,
-        companyIds: [...(companyIds.get(row.watchlistId) ?? [])],
+        filters,
+        companyIds: selected.map((membership) => membership.companyId),
         locale: row.locale,
         jobLanguages: row.jobLanguages,
       },
-    });
-    grouped.set(row.userId, entries);
-  }
-  return [...grouped].map(([userId, watchlists]) => ({ userId, watchlists }));
+    },
+    nextCursor: hasMoreMemberships
+      ? {
+          afterWatchlistId: input.cursor?.afterWatchlistId ?? null,
+          watchlistId: row.watchlistId,
+          afterCompanyId: selected.at(-1)!.companyId,
+        }
+      : {
+          afterWatchlistId: row.watchlistId,
+          watchlistId: null,
+          afterCompanyId: null,
+        },
+  };
 }
 
 async function claim(input: {
@@ -356,7 +349,7 @@ function pendingLease(claim: NotificationDeliveryClaim) {
 
 const repository: NotificationSchedulerRepository = {
   listEligibleUserCandidatesPage,
-  loadEligibleWatchlists,
+  loadEligibleWatchlistSegment,
   claim,
   async markSkipped(input) {
     const rows = await db.update(notificationDelivery).set({
@@ -456,6 +449,7 @@ export async function runNotificationScheduler(input: {
   sweep: UtcWindow;
   quota: NotificationQuotaState;
   concurrency: number;
+  cursor?: string | null;
 }) {
   return runNotificationSchedulerCore(input, { repository, match });
 }

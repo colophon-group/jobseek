@@ -13,6 +13,8 @@ import {
   DEFAULT_NOTIFICATION_EXECUTION_MODE,
   NOTIFICATION_DISPLAY_ITEM_LIMIT,
   NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE,
+  MAX_NOTIFICATION_HYDRATION_SEGMENTS_PER_PERIOD,
+  NOTIFICATION_MATCH_AGGREGATE_ITEM_LIMIT,
   assertUtcWindow,
   calculateNotificationQuota,
   getNotificationScheduleSlots,
@@ -25,6 +27,7 @@ import type {
   MatchedWatchlistPosting,
   WatchlistMatcherSource,
 } from "@/lib/watchlist-matcher-contract";
+import { canonicalStringCompare } from "@/lib/sort";
 
 export type EligibleNotificationWatchlist = Readonly<{
   source: WatchlistMatcherSource;
@@ -48,6 +51,12 @@ export type EligibleNotificationUserCandidate = Readonly<{
 
 export type EligibleNotificationUser = EligibleNotificationUserCandidate &
   Readonly<{ watchlists: readonly EligibleNotificationWatchlist[] }>;
+
+export type NotificationWatchlistHydrationCursor = Readonly<{
+  afterWatchlistId: string | null;
+  watchlistId: string | null;
+  afterCompanyId: string | null;
+}>;
 
 export type NotificationDeliveryClaim = Readonly<{
   id: string;
@@ -105,12 +114,13 @@ export type NotificationSchedulerRepository = Readonly<{
     candidates: readonly EligibleNotificationUserCandidate[];
     nextCursor: string | null;
   }>>;
-  loadEligibleWatchlists(
-    userIds: readonly string[],
-  ): Promise<readonly Readonly<{
+  loadEligibleWatchlistSegment(input: {
     userId: string;
-    watchlists: readonly EligibleNotificationWatchlist[];
-  }>[]>;
+    cursor: NotificationWatchlistHydrationCursor | null;
+  }): Promise<Readonly<{
+    watchlist: EligibleNotificationWatchlist | null;
+    nextCursor: NotificationWatchlistHydrationCursor | null;
+  }>>;
   claim(input: {
     userId: string;
     cadence: NotificationCadence;
@@ -154,7 +164,7 @@ export type NotificationSchedulerDependencies = Readonly<{
 }>;
 
 type WorkItem = Readonly<{
-  user: EligibleNotificationUser;
+  user: EligibleNotificationUserCandidate;
   scheduledFor: Date;
   originalWindow: UtcWindow | null;
 }>;
@@ -165,6 +175,7 @@ type MatchOutcome =
   | Readonly<{ kind: "duplicate"; status: NotificationDeliveryStatus; scheduledFor: Date }>
   | Readonly<{ kind: "unknown" }>
   | Readonly<{ kind: "failed" }>
+  | Readonly<{ kind: "hydration_failed" }>
   | Readonly<{ kind: "state_conflict" }>
   | Readonly<{ kind: "not_due" }>;
 
@@ -192,7 +203,7 @@ function emptyTelemetry(
 }
 
 function workItemsForUser(
-  user: EligibleNotificationUser,
+  user: EligibleNotificationUserCandidate,
   sweep: UtcWindow,
 ): WorkItem[] {
   if (user.openDelivery) {
@@ -225,9 +236,10 @@ function candidateIsDue(
 
 function eligibleWindows(
   work: WorkItem,
+  watchlists: readonly EligibleNotificationWatchlist[],
   lastProcessedWindowEnd: Date | null,
 ): Array<EligibleNotificationWatchlist & { windowStart: Date }> {
-  return work.user.watchlists.flatMap((watchlist) => {
+  return watchlists.flatMap((watchlist) => {
     const windowStart = getNotificationWindowFloor({
       alertsEnabledAt: watchlist.alertsEnabledAt,
       notificationsStateChangedAt: work.user.notificationsStateChangedAt,
@@ -277,24 +289,38 @@ export async function runNotificationSchedulerCore(
   const dueCandidates = page.candidates.filter((candidate) =>
     candidateIsDue(candidate, input.sweep),
   );
-  const hydrated = dueCandidates.length === 0
-    ? []
-    : await dependencies.repository.loadEligibleWatchlists(
-        dueCandidates.map((candidate) => candidate.userId),
-      );
-  const watchlistsByUser = new Map(
-    hydrated.map((entry) => [entry.userId, entry.watchlists]),
+  const workByUser = dueCandidates.map((user) =>
+    workItemsForUser(user, input.sweep),
   );
-  const users = dueCandidates.map((candidate): EligibleNotificationUser => ({
-    ...candidate,
-    watchlists: watchlistsByUser.get(candidate.userId) ?? [],
-  }));
-  const workByUser = users.map((user) => workItemsForUser(user, input.sweep));
   telemetry = {
     ...telemetry,
     eligibleUsers: page.candidates.length,
     due: workByUser.reduce((total, work) => total + work.length, 0),
   };
+
+  async function visitWatchlistSegments(
+    userId: string,
+    visitor: (watchlist: EligibleNotificationWatchlist) => Promise<void> | void,
+  ): Promise<void> {
+    let cursor: NotificationWatchlistHydrationCursor | null = null;
+    for (
+      let segment = 0;
+      segment < MAX_NOTIFICATION_HYDRATION_SEGMENTS_PER_PERIOD;
+      segment += 1
+    ) {
+      const page = await dependencies.repository.loadEligibleWatchlistSegment({
+        userId,
+        cursor,
+      });
+      if (page.watchlist) await visitor(page.watchlist);
+      if (!page.nextCursor) return;
+      if (JSON.stringify(page.nextCursor) === JSON.stringify(cursor)) {
+        throw new Error("Notification hydration cursor did not advance");
+      }
+      cursor = page.nextCursor;
+    }
+    throw new Error("Notification hydration segment budget exhausted");
+  }
 
   async function processWork(
     item: WorkItem,
@@ -303,13 +329,29 @@ export async function runNotificationSchedulerCore(
     if (item.user.openDelivery?.status === "unknown") {
       return { kind: "unknown" };
     }
-    const watchlists = eligibleWindows(item, lastProcessedWindowEnd);
-    if (watchlists.length === 0 && !item.originalWindow) {
+    let earliestWindowStart: Date | null = null;
+    try {
+      await visitWatchlistSegments(item.user.userId, (watchlist) => {
+        const [eligible] = eligibleWindows(
+          item,
+          [watchlist],
+          lastProcessedWindowEnd,
+        );
+        if (
+          eligible &&
+          (!earliestWindowStart ||
+            eligible.windowStart.getTime() < earliestWindowStart.getTime())
+        ) {
+          earliestWindowStart = eligible.windowStart;
+        }
+      });
+    } catch {
+      return { kind: "hydration_failed" };
+    }
+    if (!earliestWindowStart && !item.originalWindow) {
       return { kind: "not_due" };
     }
-    const windowStart = watchlists.length > 0
-      ? new Date(Math.min(...watchlists.map((entry) => entry.windowStart.getTime())))
-      : item.originalWindow!.windowStart;
+    const windowStart = earliestWindowStart ?? item.originalWindow!.windowStart;
     const windowEnd = item.scheduledFor;
     const idempotencyKey = createNotificationDeliveryIdempotencyKey({
       userId: item.user.userId,
@@ -332,7 +374,7 @@ export async function runNotificationSchedulerCore(
         scheduledFor: item.scheduledFor,
       };
     }
-    if (watchlists.length === 0) {
+    if (!earliestWindowStart) {
       return (await dependencies.repository.markSkipped({
         claim: claimed.claim,
         completedAt: startedAt,
@@ -341,9 +383,43 @@ export async function runNotificationSchedulerCore(
         : { kind: "state_conflict" };
     }
 
-    let match: NotificationMatchSummary;
+    const postings = new Map<string, MatchedWatchlistPosting>();
+    let watchlistMatchCount = 0;
+    let truncated = false;
     try {
-      match = await dependencies.match({ watchlists, windowEnd });
+      await visitWatchlistSegments(item.user.userId, async (watchlist) => {
+        const watchlists = eligibleWindows(
+          item,
+          [watchlist],
+          lastProcessedWindowEnd,
+        );
+        if (watchlists.length === 0) return;
+        const segmentMatch = await dependencies.match({ watchlists, windowEnd });
+        watchlistMatchCount += segmentMatch.watchlistMatchCount;
+        truncated ||= segmentMatch.truncated;
+        for (const posting of segmentMatch.postings) {
+          const existing = postings.get(posting.id);
+          if (existing) {
+            const labels = new Set(
+              existing.matchedWatchlists.map((label) => label.id),
+            );
+            existing.matchedWatchlists.push(
+              ...posting.matchedWatchlists.filter(
+                (label) => !labels.has(label.id),
+              ),
+            );
+          } else if (
+            postings.size < NOTIFICATION_MATCH_AGGREGATE_ITEM_LIMIT
+          ) {
+            postings.set(posting.id, {
+              ...posting,
+              matchedWatchlists: [...posting.matchedWatchlists],
+            });
+          } else {
+            truncated = true;
+          }
+        }
+      });
     } catch {
       return (await dependencies.repository.markFailed({
         claim: claimed.claim,
@@ -353,6 +429,16 @@ export async function runNotificationSchedulerCore(
         ? { kind: "failed" }
         : { kind: "state_conflict" };
     }
+    const orderedPostings = [...postings.values()].sort((left, right) =>
+      Date.parse(right.firstSeenAt) - Date.parse(left.firstSeenAt) ||
+      canonicalStringCompare(left.id, right.id),
+    );
+    const match: NotificationMatchSummary = {
+      postings: orderedPostings,
+      uniqueMatchCount: orderedPostings.length,
+      watchlistMatchCount,
+      truncated,
+    };
     if (match.uniqueMatchCount === 0) {
       return (await dependencies.repository.markSkipped({
         claim: claimed.claim,
@@ -391,6 +477,7 @@ export async function runNotificationSchedulerCore(
           lastProcessedWindowEnd = outcome.scheduledFor;
           continue;
         }
+        if (outcome.kind === "not_due") continue;
         break;
       }
       return outcomes;
@@ -406,7 +493,9 @@ export async function runNotificationSchedulerCore(
   const duplicate = outcomes.filter((result) => result.kind === "duplicate").length;
   const unknown = outcomes.filter((result) => result.kind === "unknown").length;
   const empty = outcomes.filter((result) => result.kind === "claimed_empty").length;
-  const failed = outcomes.filter((result) => result.kind === "failed").length;
+  const failed = outcomes.filter((result) =>
+    result.kind === "failed" || result.kind === "hydration_failed",
+  ).length;
   let stateConflicts = outcomes.filter((result) => result.kind === "state_conflict").length;
   let deferred = 0;
   let matched = 0;
