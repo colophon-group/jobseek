@@ -6,10 +6,11 @@ import path from "path";
  * (`apps/web/__tests__/build-output.test.ts`, see #2885).
  *
  * Runs `pnpm build` once via globalSetup, captures the per-route
- * classification (`◐` / `○` / `ƒ`) from stdout, and asserts the
- * must-stay-cacheable routes are not Dynamic. Excluded from the
- * default `pnpm test` config (which only includes `src/**` and
- * `app/**`).
+ * classification (`◐` / `○` / `ƒ`) from stdout, and asserts each guarded
+ * route retains its intentional rendering boundary. Most entries must stay
+ * cacheable; explicitly request-bound private handlers must stay Dynamic.
+ * Excluded from the default `pnpm test` config (which only includes `src/**`
+ * and `app/**`).
  *
  * Usage:
  *   pnpm test:isr          # run build + classifier locally
