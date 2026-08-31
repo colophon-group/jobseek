@@ -6,18 +6,15 @@ import { readMigrationFiles, type MigrationMeta } from "drizzle-orm/migrator";
 import postgres, { type Sql } from "postgres";
 
 import { logExternalError } from "../src/lib/safe-external-error";
+import {
+  assertWatchlistPathVariantMatrix,
+  requiredWatchlistApplyEvidence,
+  type WatchlistPathVariant,
+} from "./watchlist-visibility-contract";
 
 dotenv.config({ path: ".env.local", quiet: true });
 
 type Command = "inventory" | "apply" | "verify" | "rollback";
-
-type PathVariant = {
-  locale: "en" | "de" | "fr" | "it";
-  ownerSlugKind: "username" | "display_username";
-  ownerSlug: string;
-  pagePath: string;
-  ogPath: string;
-};
 
 type InventoryRow = {
   watchlistId: string;
@@ -28,7 +25,7 @@ type InventoryRow = {
   watchlistSlug: string;
   watchlistPayload: Record<string, unknown>;
   companyMemberships: Array<Record<string, unknown>>;
-  pathVariants: PathVariant[];
+  pathVariants: WatchlistPathVariant[];
 };
 
 type AggregateEvidence = {
@@ -172,6 +169,17 @@ function readArtifact(path: string): InventoryArtifact {
     /^[0-9a-f]{32}$/.test(artifact.aggregates.publicInventoryDigest),
     "Inventory digest is invalid",
   );
+  for (const row of artifact.publicWatchlists) {
+    assertWatchlistPathVariantMatrix(
+      {
+        watchlistId: row.watchlistId,
+        ownerUsername: row.ownerUsername,
+        ownerDisplayUsername: row.ownerDisplayUsername,
+        watchlistSlug: row.watchlistSlug,
+      },
+      row.pathVariants,
+    );
+  }
   return artifact as InventoryArtifact;
 }
 
@@ -279,7 +287,9 @@ async function readPublicRows(sql: Sql): Promise<InventoryRow[]> {
               'ownerSlugKind', owner_slug.kind,
               'ownerSlug', owner_slug.value,
               'pagePath', format('/%s/%s/%s', locale.value, owner_slug.value, w.slug),
-              'ogPath', format('/og/watchlist/%s/%s/%s', locale.value, owner_slug.value, w.slug)
+              'ogPath', format('/og/watchlist/%s/%s/%s', locale.value, owner_slug.value, w.slug),
+              'legacyOgPathPattern', format('/%s/%s/%s/opengraph-image-:hash', locale.value, owner_slug.value, w.slug),
+              'legacyOgPurgePattern', format('/%s/%s/%s/opengraph-image-*', locale.value, owner_slug.value, w.slug)
             )
             ORDER BY owner_slug.kind, locale.value
           )
@@ -423,14 +433,14 @@ async function inventory(sql: Sql, outputPath: string): Promise<void> {
       "Public inventory lost an owner or row",
     );
     for (const row of publicWatchlists) {
-      const ownerSlugs = new Set(
-        [row.ownerUsername, row.ownerDisplayUsername].filter(
-          (value): value is string => value !== null,
-        ),
-      );
-      invariant(
-        row.pathVariants.length === ownerSlugs.size * 4,
-        `Localized path inventory is incomplete for watchlist ${row.watchlistId}`,
+      assertWatchlistPathVariantMatrix(
+        {
+          watchlistId: row.watchlistId,
+          ownerUsername: row.ownerUsername,
+          ownerDisplayUsername: row.ownerDisplayUsername,
+          watchlistSlug: row.watchlistSlug,
+        },
+        row.pathVariants,
       );
     }
 
@@ -469,45 +479,6 @@ async function inventory(sql: Sql, outputPath: string): Promise<void> {
   );
 }
 
-function requiredApplyEvidence(artifact: InventoryArtifact) {
-  const confirmation = process.env.WATCHLIST_PRIVACY_CONFIRMATION;
-  const rawBackupRunId = process.env.WATCHLIST_PRIVACY_BACKUP_RESTORE_RUN_ID;
-  const privateMutationsDeploySha =
-    process.env.WATCHLIST_PRIVATE_MUTATIONS_DEPLOY_SHA;
-  const routeCutoverDeploySha = process.env.WATCHLIST_ROUTE_CUTOVER_DEPLOY_SHA;
-  const routeCutoverApprovedBy =
-    process.env.WATCHLIST_ROUTE_CUTOVER_APPROVED_BY;
-  const backupRestoreRunId = Number(rawBackupRunId);
-
-  invariant(confirmation === "PRIVATE-WATCHLISTS-0089", "Apply confirmation is invalid");
-  invariant(
-    rawBackupRunId && /^\d+$/.test(rawBackupRunId) && Number.isSafeInteger(backupRestoreRunId) && backupRestoreRunId > 0,
-    "WATCHLIST_PRIVACY_BACKUP_RESTORE_RUN_ID must be a positive run ID",
-  );
-  invariant(
-    privateMutationsDeploySha && /^[0-9a-f]{40}$/.test(privateMutationsDeploySha),
-    "WATCHLIST_PRIVATE_MUTATIONS_DEPLOY_SHA must be a deployed 40-hex SHA",
-  );
-  invariant(
-    routeCutoverDeploySha && /^[0-9a-f]{40}$/.test(routeCutoverDeploySha),
-    "WATCHLIST_ROUTE_CUTOVER_DEPLOY_SHA must be a deployed 40-hex SHA",
-  );
-  invariant(
-    routeCutoverApprovedBy?.trim(),
-    "WATCHLIST_ROUTE_CUTOVER_APPROVED_BY must record the human approver",
-  );
-
-  return {
-    confirmation,
-    backupRestoreRunId,
-    privateMutationsDeploySha,
-    routeCutoverDeploySha,
-    routeCutoverApprovedBy,
-    expectedPublicCount: artifact.aggregates.publicCount,
-    expectedPublicDigest: artifact.aggregates.publicInventoryDigest,
-  };
-}
-
 async function applyMigration(sql: Sql, artifact: InventoryArtifact): Promise<void> {
   const { prerequisite, target } = loadMigrations();
   invariant(
@@ -515,7 +486,10 @@ async function applyMigration(sql: Sql, artifact: InventoryArtifact): Promise<vo
       artifact.target.hash === target.hash,
     "Inventory was not captured for the checked-out migration hashes",
   );
-  const evidence = requiredApplyEvidence(artifact);
+  const evidence = requiredWatchlistApplyEvidence(process.env, {
+    publicCount: artifact.aggregates.publicCount,
+    publicInventoryDigest: artifact.aggregates.publicInventoryDigest,
+  });
 
   const outcome = await sql.begin(async (tx) => {
     await tx`SET LOCAL lock_timeout = '10s'`;
@@ -560,6 +534,8 @@ async function applyMigration(sql: Sql, artifact: InventoryArtifact): Promise<vo
         private_mutations_deploy_sha text NOT NULL,
         route_cutover_deploy_sha text NOT NULL,
         route_cutover_approved_by text NOT NULL,
+        public_api_cutover_deploy_sha text NOT NULL,
+        public_api_cutover_verification_run_id bigint NOT NULL,
         expected_public_count bigint NOT NULL,
         expected_public_digest text NOT NULL,
         attested_at timestamp with time zone NOT NULL
@@ -572,6 +548,8 @@ async function applyMigration(sql: Sql, artifact: InventoryArtifact): Promise<vo
         private_mutations_deploy_sha,
         route_cutover_deploy_sha,
         route_cutover_approved_by,
+        public_api_cutover_deploy_sha,
+        public_api_cutover_verification_run_id,
         expected_public_count,
         expected_public_digest,
         attested_at
@@ -581,6 +559,8 @@ async function applyMigration(sql: Sql, artifact: InventoryArtifact): Promise<vo
         ${evidence.privateMutationsDeploySha},
         ${evidence.routeCutoverDeploySha},
         ${evidence.routeCutoverApprovedBy},
+        ${evidence.publicApiCutoverDeploySha},
+        ${evidence.publicApiCutoverVerificationRunId},
         ${evidence.expectedPublicCount},
         ${evidence.expectedPublicDigest},
         clock_timestamp()

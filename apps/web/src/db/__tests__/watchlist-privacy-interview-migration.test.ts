@@ -36,6 +36,10 @@ const privacyRunner = readFileSync(
   ),
   "utf8",
 );
+const nextConfig = readFileSync(
+  join(__dirname, "..", "..", "..", "next.config.ts"),
+  "utf8",
+);
 
 describe("0083 Supabase baseline reconciliation", () => {
   it("aligns the database interview CHECK with the general UI option", () => {
@@ -82,6 +86,10 @@ describe("0089 legacy watchlist visibility migration", () => {
     expect(privacyMigrationSql).toContain("private_mutations_deploy_sha");
     expect(privacyMigrationSql).toContain("route_cutover_deploy_sha");
     expect(privacyMigrationSql).toContain("route_cutover_approved_by");
+    expect(privacyMigrationSql).toContain("public_api_cutover_deploy_sha");
+    expect(privacyMigrationSql).toContain(
+      "public_api_cutover_verification_run_id",
+    );
     expect(privacyMigrationSql).toMatch(
       /UPDATE public\.watchlist\s+SET is_public = false\s+WHERE is_public = true/,
     );
@@ -103,6 +111,12 @@ describe("0089 legacy watchlist visibility migration", () => {
     }
     expect(privacyMigrationSql).toContain("'pagePath'");
     expect(privacyMigrationSql).toContain("'ogPath'");
+    expect(privacyMigrationSql).toContain("'legacyOgPathPattern'");
+    expect(privacyMigrationSql).toContain("'legacyOgPurgePattern'");
+    expect(privacyMigrationSql).toContain("opengraph-image-:hash");
+    expect(nextConfig).toContain(
+      'source: "/:lang(en|de|fr|it)/:userSlug/:watchlistSlug/opengraph-image-:hash"',
+    );
   });
 
   it("asserts rows, filters, alerts, provenance, owners, and memberships", () => {
@@ -135,10 +149,7 @@ describe("0089 legacy watchlist visibility migration", () => {
     );
     expect(privacyRunner).toContain("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY");
     expect(privacyRunner).toContain("MIGRATION_REQUIRE_UNPOOLED");
-    expect(privacyRunner).toContain("WATCHLIST_PRIVATE_MUTATIONS_DEPLOY_SHA");
-    expect(privacyRunner).toContain("WATCHLIST_ROUTE_CUTOVER_DEPLOY_SHA");
-    expect(privacyRunner).toContain("WATCHLIST_ROUTE_CUTOVER_APPROVED_BY");
-    expect(privacyRunner).toContain("WATCHLIST_PRIVACY_BACKUP_RESTORE_RUN_ID");
+    expect(privacyRunner).toContain("requiredWatchlistApplyEvidence(process.env");
     expect(privacyRunner).toContain("ROLLBACK-PRIVATE-WATCHLISTS-0089");
     expect(privacyRunner).toContain('mode: 0o600');
     expect(privacyRunner).not.toContain("notifyIndexNow");

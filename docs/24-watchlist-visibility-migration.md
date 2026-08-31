@@ -43,8 +43,13 @@ DATABASE_URL_UNPOOLED="$DATABASE_URL_UNPOOLED" \
 The artifact includes every public row ID, owner ID/name, canonical username,
 display username, slug, full watchlist payload (filters, alerts and source
 provenance included), exact company memberships, and page/OG paths for `en`,
-`de`, `fr`, and `it`. Record its public count, digest, filesystem checksum,
-owner, and retention deadline in the private change record.
+`de`, `fr`, and `it`. Both owner-slug labels are retained when `username` and
+`display_username` have the same value. The inventory also carries the legacy
+`/:lang/:userSlug/:watchlistSlug/opengraph-image-:hash` route and its
+`opengraph-image-*` purge pattern because historical hashes cannot be
+reconstructed from Postgres. Record the artifact's public count, digest,
+filesystem checksum, owner, and retention deadline in the private change
+record.
 
 Go only when the inventory command passes, the backup restore evidence is
 fresh, #8376/#8368/#8367 deployment evidence is immutable, no privacy/API
@@ -64,6 +69,8 @@ export WATCHLIST_PRIVACY_BACKUP_RESTORE_RUN_ID=<successful-run-id>
 export WATCHLIST_PRIVATE_MUTATIONS_DEPLOY_SHA=<deployed-8376-sha>
 export WATCHLIST_ROUTE_CUTOVER_DEPLOY_SHA=<deployed-8368-sha>
 export WATCHLIST_ROUTE_CUTOVER_APPROVED_BY=<github-login>
+export WATCHLIST_PUBLIC_API_CUTOVER_DEPLOY_SHA=<deployed-8367-sha>
+export WATCHLIST_PUBLIC_API_CUTOVER_VERIFICATION_RUN_ID=<successful-run-id>
 
 pnpm db:migrate:watchlist-visibility -- \
   apply /secure/watchlist-0089-inventory.json
@@ -72,8 +79,11 @@ pnpm db:migrate:watchlist-visibility -- \
   /secure/watchlist-0089-postflight.json
 ```
 
-The targeted runner, not generic `db:migrate`, owns this operation. It takes
-the web migration advisory lock and supplies a session-local attestation. SQL
+Before applying, verify the immutable `#8367` run ID succeeded for the supplied
+deploy SHA and recorded passing anonymous REST and MCP not-found probes. The
+targeted runner, not generic `db:migrate`, owns this operation. It takes the
+web migration advisory lock and supplies a session-local attestation binding
+both #8367 evidence values. SQL
 then locks `watchlist`, `watchlist_company`, and owner rows; stores the durable
 rollback/path inventory; updates only `is_public=true`; and compares exact
 row, filter, alert, provenance, owner, and membership digests/content before
@@ -92,8 +102,10 @@ During the observation window, verify:
 
 Do not run cache, Typesense, sitemap, OG, or IndexNow cleanup here. Hand the
 retained `pathVariants` inventory to #8370 only after the observation window
-is accepted. Keep `is_public`, `idx_wl_public`, and both 0089 artifact tables
-until the rollback window closes; #8371 owns their later removal.
+is accepted. That handoff must purge both `/og/watchlist/...` and every
+matching localized `opengraph-image-*` legacy URL before removing the redirect.
+Keep `is_public`, `idx_wl_public`, and both 0089 artifact tables until the
+rollback window closes; #8371 owns their later removal.
 
 ## Rollback
 

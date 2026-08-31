@@ -46,6 +46,8 @@ BEGIN
     AND private_mutations_deploy_sha ~ '^[0-9a-f]{40}$'
     AND route_cutover_deploy_sha ~ '^[0-9a-f]{40}$'
     AND NULLIF(btrim(route_cutover_approved_by), '') IS NOT NULL
+    AND public_api_cutover_deploy_sha ~ '^[0-9a-f]{40}$'
+    AND public_api_cutover_verification_run_id > 0
     AND expected_public_count >= 0
     AND expected_public_digest ~ '^[0-9a-f]{32}$'
     AND attested_at >= clock_timestamp() - interval '30 minutes'
@@ -186,7 +188,9 @@ SELECT
           'ownerSlugKind', owner_slug.kind,
           'ownerSlug', owner_slug.value,
           'pagePath', format('/%s/%s/%s', locale.value, owner_slug.value, w.slug),
-          'ogPath', format('/og/watchlist/%s/%s/%s', locale.value, owner_slug.value, w.slug)
+          'ogPath', format('/og/watchlist/%s/%s/%s', locale.value, owner_slug.value, w.slug),
+          'legacyOgPathPattern', format('/%s/%s/%s/opengraph-image-:hash', locale.value, owner_slug.value, w.slug),
+          'legacyOgPurgePattern', format('/%s/%s/%s/opengraph-image-*', locale.value, owner_slug.value, w.slug)
         )
         ORDER BY owner_slug.kind, locale.value
       )
