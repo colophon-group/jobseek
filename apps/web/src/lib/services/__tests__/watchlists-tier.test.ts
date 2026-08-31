@@ -62,9 +62,15 @@ describe("watchlists service tier boundary (#3332)", () => {
     expect(valueReExport.test(actionSrc)).toBe(false);
   });
 
-  it("public watchlists REST route imports the service tier", () => {
-    const src = readSource("app/api/v1/watchlists/route.ts");
-    expect(src).toContain('from "@/lib/services/watchlists"');
-    expect(src).not.toContain('from "@/lib/actions/watchlists"');
+  it("retired REST discovery is isolated while owner-scoped domain seams remain", () => {
+    const routeSrc = readSource("app/api/v1/watchlists/route.ts");
+    const serviceSrc = readSource("src/lib/services/watchlists.ts");
+
+    expect(routeSrc).not.toContain('from "@/lib/services/watchlists"');
+    expect(routeSrc).not.toContain('from "@/lib/actions/watchlists"');
+    expect(serviceSrc).toMatch(/export async function getUserWatchlists\b/);
+    expect(serviceSrc).toMatch(
+      /export async function getWatchlistByUserAndSlug\b/,
+    );
   });
 });

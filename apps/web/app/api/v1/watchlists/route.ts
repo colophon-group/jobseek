@@ -1,63 +1,18 @@
-import { type NextRequest, NextResponse } from "next/server";
-import {
-  searchPublicWatchlists,
-  getPopularWatchlists,
-} from "@/lib/services/watchlists";
-import {
-  checkRateLimit,
-  apiProviderUnavailableResponse,
-  sharedApiResponse,
-  parseApiLocale,
-  siteUrl,
-} from "../_shared";
+import { type NextRequest } from "next/server";
+import { PUBLIC_WATCHLIST_DISCOVERY_SUNSET } from "@jseek/mcp-server/public-api-contract";
+import { apiResponse } from "../_shared";
 import { withPublicApiObservability } from "@/lib/public-api-observability";
 
-const MAX_RESULTS = 10;
-
-async function handleGet(request: NextRequest) {
-  const rl = await checkRateLimit(request);
-  if (rl instanceof NextResponse) return rl;
-
-  const sp = request.nextUrl.searchParams;
-  const q = sp.get("q") ?? "";
-  const locale = parseApiLocale(sp, rl);
-  if (locale instanceof NextResponse) return locale;
-
-  let result: Awaited<ReturnType<typeof searchPublicWatchlists>>;
-  try {
-    result = q
-      ? await searchPublicWatchlists({
-          query: q,
-          offset: 0,
-          limit: MAX_RESULTS,
-          locale,
-          failOnUnavailable: true,
-        })
-      : await getPopularWatchlists({
-          offset: 0,
-          limit: MAX_RESULTS,
-          locale,
-          failOnUnavailable: true,
-        });
-  } catch (error) {
-    return apiProviderUnavailableResponse(
-      "public_api_watchlists",
-      rl,
-      error,
-    );
-  }
-
-  const watchlists = result.watchlists.map((w) => ({
-    title: w.title,
-    description: w.description,
-    owner: w.ownerUsername ? `@${w.ownerUsername}` : w.ownerName,
-    companyCount: w.companyCount,
-    url: siteUrl(
-      `/${locale}/${w.ownerUsername ?? w.ownerName}/${w.slug}`,
-    ),
-  }));
-
-  return sharedApiResponse({ watchlists });
+async function handleGet(_request: NextRequest) {
+  // Keep this response independent of query parameters, sessions, and stored
+  // watchlists. The route exists only for the bounded compatibility window;
+  // authenticated owner-scoped list/read access is deferred to #8343.
+  const response = apiResponse(
+    { error: "Public watchlist discovery is no longer available" },
+    { status: 410 },
+  );
+  response.headers.set("Sunset", PUBLIC_WATCHLIST_DISCOVERY_SUNSET);
+  return response;
 }
 
 export const GET = withPublicApiObservability("watchlists", handleGet);
