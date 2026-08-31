@@ -3944,6 +3944,7 @@ maersk,maersk-careers,https://maersk.wd3.myworkdayjobs.com/Maersk_Careers,workda
 magic,magic-pinpoint,https://magic.pinpointhq.com,pinpoint,"{""slug"": ""magic""}",skip,
 magic-leap,magic-leap-greenhouse,https://job-boards.greenhouse.io/magicleap,greenhouse,"{""token"": ""magicleap""}",skip,
 magiceden,magiceden-ashby,https://jobs.ashbyhq.com/magiceden,ashby,"{""token"": ""magiceden""}",skip,
+magna,magna-careers,https://magna.wd3.myworkdayjobs.com/magna,workday,,workday,
 magnolia,magnolia-greenhouse,https://job-boards.greenhouse.io/magnolia,greenhouse,"{""token"": ""magnolia""}",skip,
 mahindra-group,mahindra-group-careers,https://jobs.mahindracareers.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.mahindracareers.com/googlefeed.xml""}",skip,
 mainstay,mainstay-ashby,https://jobs.ashbyhq.com/mainstay,ashby,"{""token"": ""mainstay""}",skip,
