@@ -90,6 +90,13 @@ jobs:
         if: steps.paths.outputs.deploy == 'true'
         run: pnpm install --frozen-lockfile
 
+      - name: Require production database at checked-out migration head
+        if: steps.paths.outputs.deploy == 'true'
+        working-directory: apps/web
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+        run: pnpm db:migrate:verify-head
+
       - name: Pull production project settings
         if: steps.paths.outputs.deploy == 'true'
         run: >-
@@ -173,41 +180,23 @@ jobs:
           rm -f -- "$scanner_headers"
           trap - EXIT
 
-      - name: Require the migration revision is still main
+      - name: Require the staged revision is still main
         if: steps.paths.outputs.deploy == 'true'
         env:
           EXPECTED_SHA: ${{ steps.paths.outputs.current_sha }}
         run: |
           current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           if [[ "$current_main" != "$EXPECTED_SHA" ]]; then
-            echo "Refusing database migration for stale revision $EXPECTED_SHA; main is $current_main" >&2
+            echo "Refusing promotion for stale revision $EXPECTED_SHA; main is $current_main" >&2
             exit 1
           fi
 
-      - name: Verify Better Auth account issuer preflight
+      - name: Reverify production migration head immediately before promotion
         if: steps.paths.outputs.deploy == 'true'
+        working-directory: apps/web
         env:
           DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
-        run: >-
-          pnpm --filter @jobseek/web db:migrate:verify-account-issuer --
-          preflight "$RUNNER_TEMP/better-auth-account-issuer-preflight.json"
-
-      - name: Apply the reviewed Better Auth account issuer migration
-        if: steps.paths.outputs.deploy == 'true'
-        env:
-          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
-          MIGRATION_REQUIRE_UNPOOLED: "true"
-        run: >-
-          timeout --signal=TERM --kill-after=15s 12m
-          pnpm --filter @jobseek/web db:migrate:apply-account-issuer
-
-      - name: Verify Better Auth account issuer postflight
-        if: steps.paths.outputs.deploy == 'true'
-        env:
-          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
-        run: >-
-          pnpm --filter @jobseek/web db:migrate:verify-account-issuer --
-          postflight "$RUNNER_TEMP/better-auth-account-issuer-postflight.json"
+        run: pnpm db:migrate:verify-head
 
       - name: Promote only if this SHA is still main
         if: steps.paths.outputs.deploy == 'true'

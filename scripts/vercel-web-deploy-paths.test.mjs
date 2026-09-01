@@ -141,37 +141,34 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.match(workflow, /Smoke \$path -> HTTP \$status/);
   assert.match(workflow, /Scanner path exposed/);
   assert.match(workflow, /pnpm install --frozen-lockfile/);
-  assert.match(workflow, /db:migrate:verify-account-issuer --[\s\S]*preflight/);
-  assert.match(workflow, /db:migrate:apply-account-issuer/);
-  assert.match(workflow, /db:migrate:verify-account-issuer --[\s\S]*postflight/);
+  assert.equal(
+    [...workflow.matchAll(/run: pnpm db:migrate:verify-head/g)].length,
+    2,
+  );
+  assert.doesNotMatch(workflow, /db:migrate:apply-account-issuer/);
+  assert.doesNotMatch(workflow, /run: pnpm db:migrate\s*$/m);
   assert.match(
     workflow,
     /DATABASE_URL_UNPOOLED: \$\{\{ secrets\.DATABASE_URL_UNPOOLED \}\}/,
   );
-  assert.match(workflow, /MIGRATION_REQUIRE_UNPOOLED: "true"/);
+  const install = workflow.indexOf("Install locked dependencies");
+  const initialHeadCheck = workflow.indexOf(
+    "Require production database at checked-out migration head",
+  );
+  const pull = workflow.indexOf("Pull production project settings");
   const stagedSmoke = workflow.indexOf("Verify staged production functionality");
-  const migrationPreflight = workflow.indexOf(
-    "Verify Better Auth account issuer preflight",
-  );
   const currentMainGuard = workflow.indexOf(
-    "Require the migration revision is still main",
+    "Require the staged revision is still main",
   );
-  const targetedMigration = workflow.indexOf(
-    "Apply the reviewed Better Auth account issuer migration",
-  );
-  const migrationPostflight = workflow.indexOf(
-    "Verify Better Auth account issuer postflight",
+  const finalHeadCheck = workflow.indexOf(
+    "Reverify production migration head immediately before promotion",
   );
   const promotion = workflow.indexOf("Promote only if this SHA is still main");
+  assert.ok(install < initialHeadCheck);
+  assert.ok(initialHeadCheck < pull);
   assert.ok(stagedSmoke < currentMainGuard);
-  assert.ok(currentMainGuard < migrationPreflight);
-  assert.ok(migrationPreflight < targetedMigration);
-  assert.ok(targetedMigration < migrationPostflight);
-  assert.ok(migrationPostflight < promotion);
-  assert.doesNotMatch(
-    workflow.slice(migrationPreflight, promotion),
-    /\bdb:migrate(?:\s|$)/,
-  );
+  assert.ok(currentMainGuard < finalHeadCheck);
+  assert.ok(finalHeadCheck < promotion);
   assert.doesNotMatch(workflow, /--cwd=apps\/web/);
   assert.doesNotMatch(workflow, /--git-branch/);
   assert.match(workflow, /environment: Production/);
