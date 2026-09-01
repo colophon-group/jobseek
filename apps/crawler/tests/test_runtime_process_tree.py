@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import ctypes
+import json
 import multiprocessing
 import os
 import signal
+import socket
 import sys
 import threading
 import time
+from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -20,6 +24,7 @@ from src.runtime_cost.process_tree import (
     TimingHistogramSnapshot,
     _decode_sampler_snapshot,
     _encode_sampler_snapshot,
+    _SamplerChild,
     _SamplerChildSnapshot,
     parse_proc_stat,
     run_process_tree_sampler,
@@ -441,6 +446,156 @@ def test_sampling_loop_classifies_wake_lateness_and_collection_overrun_exactly()
     assert failures == 0
 
 
+def _run_adversarial_cycles(
+    *,
+    oversleep_seconds: list[float],
+    collection_seconds: list[float],
+    handoff_seconds: list[float],
+    handoff_errors: set[int] | None = None,
+) -> tuple[
+    list[float],
+    list[tuple[str, int]],
+    list[tuple[str, float]],
+    int,
+]:
+    clock = _VirtualClock()
+    sampler = _WorkingSampler(
+        clock,
+        interval_seconds=0.5,
+        work_seconds=collection_seconds,
+    )
+    stop_event = _VirtualStopEvent(clock, oversleep_seconds=oversleep_seconds)
+    gaps: list[tuple[str, int]] = []
+    timings: list[tuple[str, float]] = []
+    failures = 0
+    observations = 0
+    handoffs = iter(handoff_seconds)
+    handoff_attempt = 0
+
+    def observe(_sample: ProcessTreeSample) -> None:
+        nonlocal observations
+        observations += 1
+        if observations == len(collection_seconds):
+            stop_event.set()
+
+    def record_failure() -> None:
+        nonlocal failures
+        failures += 1
+
+    def flush() -> None:
+        nonlocal handoff_attempt
+        handoff_attempt += 1
+        clock.advance(next(handoffs))
+        if handoff_attempt in (handoff_errors or set()):
+            raise OSError("synthetic final handoff failure")
+
+    run_process_tree_sampler(
+        sampler,  # type: ignore[arg-type]
+        interval_seconds=0.5,
+        stop_event=stop_event,
+        observe=observe,
+        record_failure=record_failure,
+        record_gap=lambda reason, count: gaps.append((reason, count)),
+        record_timing=lambda kind, seconds: timings.append((kind, seconds)),
+        flush=flush,
+        monotonic=clock.monotonic,
+    )
+    return sampler.started_at, gaps, timings, failures
+
+
+@pytest.mark.parametrize(
+    (
+        "oversleep_seconds",
+        "collection_seconds",
+        "handoff_seconds",
+        "expected_starts",
+        "expected_gaps",
+        "expected_timing_sums",
+    ),
+    [
+        ([], [0.0, 0.0], [0.0, 0.0], [0.0, 0.5], [], (0.0, 0.0, 0.0)),
+        (
+            [1.1],
+            [0.0, 0.0],
+            [0.0, 0.0],
+            [0.0, 1.6],
+            [("scheduler_late", 2)],
+            (1.1, 0.0, 0.0),
+        ),
+        (
+            [],
+            [1.1, 0.0],
+            [0.0, 0.0],
+            [0.0, 1.5],
+            [("collection_overrun", 2)],
+            (0.0, 1.1, 0.0),
+        ),
+        (
+            [],
+            [0.0, 0.0],
+            [0.6, 0.0],
+            [0.0, 1.0],
+            [("collection_overrun", 1)],
+            (0.0, 0.0, 0.6),
+        ),
+        (
+            [],
+            [0.0, 0.0],
+            [1.1, 0.0],
+            [0.0, 1.5],
+            [("collection_overrun", 2)],
+            (0.0, 0.0, 1.1),
+        ),
+        (
+            [0.6],
+            [0.0, 0.6],
+            [0.0, 0.4],
+            [0.0, 1.1],
+            [("scheduler_late", 1), ("collection_overrun", 2)],
+            (0.6, 0.6, 0.4),
+        ),
+    ],
+)
+def test_sampling_loop_attributes_every_deadline_after_complete_handoff(
+    oversleep_seconds: list[float],
+    collection_seconds: list[float],
+    handoff_seconds: list[float],
+    expected_starts: list[float],
+    expected_gaps: list[tuple[str, int]],
+    expected_timing_sums: tuple[float, float, float],
+) -> None:
+    starts, gaps, timings, failures = _run_adversarial_cycles(
+        oversleep_seconds=oversleep_seconds,
+        collection_seconds=collection_seconds,
+        handoff_seconds=handoff_seconds,
+    )
+
+    timing_sums = tuple(
+        sum(seconds for observed_kind, seconds in timings if observed_kind == kind)
+        for kind in ("wake_lateness", "collection", "handoff")
+    )
+    assert starts == pytest.approx(expected_starts)
+    assert gaps == expected_gaps
+    assert sum(count for _reason, count in gaps) == sum(count for _reason, count in expected_gaps)
+    assert timing_sums == pytest.approx(expected_timing_sums)
+    assert failures == 0
+
+
+def test_failed_final_handoff_is_timed_and_causally_attributed() -> None:
+    starts, gaps, timings, failures = _run_adversarial_cycles(
+        oversleep_seconds=[],
+        collection_seconds=[0.0, 0.0],
+        handoff_seconds=[1.1, 0.0],
+        handoff_errors={1},
+    )
+
+    assert starts == pytest.approx([0.0, 1.5])
+    assert gaps == [("collection_overrun", 2)]
+    assert sum(count for reason, count in gaps if reason == "scheduler_late") == 0
+    assert [seconds for kind, seconds in timings if kind == "handoff"] == pytest.approx([1.1, 0.0])
+    assert failures == 1
+
+
 class _LongScheduleSampler:
     def __init__(self, clock: _VirtualClock, interval_seconds: float) -> None:
         self.clock = clock
@@ -516,6 +671,125 @@ def test_sampler_ipc_rejects_partial_frame_without_replacing_complete_snapshot()
         with pytest.raises(ValueError, match="complete JSON"):
             _decode_sampler_snapshot(truncated)
     assert _decode_sampler_snapshot(encoded) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "message"),
+    [
+        (b"", "size is invalid"),
+        (b"x" * (64 * 1024 + 1), "size is invalid"),
+        (b"[]", "must be an object"),
+        (b'{"version":1}', "fields are invalid"),
+        (
+            lambda: json.dumps(
+                {
+                    **json.loads(_encode_sampler_snapshot(_child_snapshot())),
+                    "version": 2,
+                }
+            ).encode(),
+            "version is unsupported",
+        ),
+        (
+            lambda: json.dumps(
+                {
+                    **json.loads(_encode_sampler_snapshot(_child_snapshot())),
+                    "successes": "1",
+                }
+            ).encode(),
+            "must be a non-negative integer",
+        ),
+    ],
+)
+def test_sampler_ipc_rejects_malformed_frame_matrix(
+    raw: bytes | Callable[[], bytes],
+    message: str,
+) -> None:
+    payload = raw() if callable(raw) else raw
+
+    with pytest.raises(ValueError, match=message):
+        _decode_sampler_snapshot(payload)
+
+
+def test_sampler_ipc_rejects_inconsistent_and_regressing_sample_times() -> None:
+    earlier = _child_snapshot()
+
+    with pytest.raises(ValueError, match="cannot be observed after"):
+        replace(earlier, emitted_monotonic_seconds=9.0)
+
+    regressing = replace(
+        _child_snapshot(sequence=2),
+        emitted_monotonic_seconds=10.5,
+        sample=_sample(2, 9.5, 0.5),
+    )
+    assert not regressing.contains(earlier)
+
+
+class _AlwaysAliveProcess:
+    def is_alive(self) -> bool:
+        return True
+
+
+class _FrameReceiver:
+    def __init__(self, frames: list[tuple[bytes, int]]) -> None:
+        self._frames = iter(frames)
+
+    def recvmsg(self, _max_bytes: int):
+        try:
+            raw, flags = next(self._frames)
+        except StopIteration as exc:
+            raise BlockingIOError from exc
+        return raw, [], flags, None
+
+
+def test_parent_rejects_future_and_regressing_frames_without_postponing_stale_recovery() -> None:
+    clock = _VirtualClock()
+    clock.advance(10.0)
+    valid = _child_snapshot()
+    future = replace(
+        _child_snapshot(sequence=2),
+        emitted_monotonic_seconds=1_000.0,
+        sample=_sample(2, 10.5, 0.5),
+    )
+    regressing = replace(
+        _child_snapshot(sequence=2),
+        emitted_monotonic_seconds=10.5,
+        sample=_sample(2, 9.5, 0.5),
+    )
+    child = _SamplerChild(
+        process=_AlwaysAliveProcess(),  # type: ignore[arg-type]
+        receiver=_FrameReceiver(  # type: ignore[arg-type]
+            [
+                (_encode_sampler_snapshot(valid), 0),
+                (b"truncated", socket.MSG_TRUNC),
+                (_encode_sampler_snapshot(future), 0),
+                (_encode_sampler_snapshot(regressing), 0),
+            ]
+        ),
+        stop_sender=None,  # type: ignore[arg-type]
+        started_monotonic_seconds=clock.monotonic(),
+    )
+    supervisor = ProcessTreeSamplerProcess.__new__(ProcessTreeSamplerProcess)
+    supervisor.interval_seconds = 0.5
+    supervisor._monotonic = clock.monotonic
+    supervisor._local_failures = 0
+    supervisor._last_sample = None
+    supervisor._stale_reported = False
+    supervisor._stale_after_seconds = 5.0
+
+    supervisor._drain_frames(child)
+
+    assert supervisor._local_failures == 3
+    assert child.snapshot == valid
+    assert supervisor._last_sample == valid.sample
+    assert child.last_valid_frame_received_monotonic_seconds == 10.0
+
+    clock.advance(5.5)
+    restarted: list[_SamplerChild] = []
+    supervisor._restart_child = lambda stale_child: restarted.append(stale_child)  # type: ignore[method-assign]
+    supervisor._restart_if_unhealthy(child, clock.monotonic())
+
+    assert restarted == [child]
+    assert supervisor._local_failures == 4
 
 
 def _wait_for_process_snapshot(
@@ -653,6 +927,28 @@ def test_sampler_process_death_fails_closed_and_restarts_with_monotonic_counters
         assert recovered.sample is not None
         assert recovered.sample.process_tree_cpu_seconds >= recovered.sample.root_cpu_seconds
         assert recovered.sample.process_tree_rss_bytes >= recovered.sample.root_rss_bytes
+
+        second_pid = sampler_process.child_pid
+        assert second_pid is not None
+        os.kill(second_pid, signal.SIGKILL)
+        restarted_again = _wait_for_process_snapshot(
+            sampler_process,
+            lambda snapshot: snapshot.starts >= 3 and snapshot.failures > recovered.failures,
+        )
+        recovered_again = _wait_for_process_snapshot(
+            sampler_process,
+            lambda snapshot: snapshot.successes > recovered.successes,
+        )
+
+        assert restarted_again.starts == 3
+        assert recovered_again.starts == 3
+        assert recovered_again.successes > recovered.successes
+        assert recovered_again.failures > recovered.failures
+        assert recovered_again.scheduler_late_gaps >= recovered.scheduler_late_gaps
+        assert recovered_again.collection_overrun_gaps >= recovered.collection_overrun_gaps
+        assert recovered_again.wake_lateness.contains(recovered.wake_lateness)
+        assert recovered_again.collection_duration.contains(recovered.collection_duration)
+        assert recovered_again.handoff_duration.contains(recovered.handoff_duration)
     finally:
         sampler_process.close()
 

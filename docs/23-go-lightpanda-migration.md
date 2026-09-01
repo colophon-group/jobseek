@@ -160,9 +160,17 @@ inside the tree totals while root-process totals retain their prior meaning.
 The child publishes cumulative evidence over bounded Unix datagrams: each
 datagram is an atomic complete snapshot, truncated or malformed frames are
 discarded, and the parent never assembles fields from separate generations.
+Each sampling cycle has exactly one publication boundary. Serialization and
+send time are included in that cycle's handoff duration before elapsed
+deadlines are classified; the next cumulative datagram carries that completed
+handoff and classification, avoiding any self-referential partial flush.
 The parent supervisor preserves monotonic counters across a child replacement;
 death, stale output, malformed IPC, and a restart all remain explicit failure
-or start evidence that blocks capture promotion.
+or start evidence that blocks capture promotion. Staleness uses the parent's
+local receipt time, not a child-controlled emission timestamp. Frames with an
+unreasonable future emission, sample-after-emission ordering, or a regressing
+sample time are rejected without replacing the last immutable sample or
+refreshing the stale deadline.
 
 Skipped deadlines retain the existing total counter and are additionally
 partitioned, exactly once, into `scheduler_late` deadlines that elapsed before

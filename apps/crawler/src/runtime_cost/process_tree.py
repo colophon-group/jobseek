@@ -50,6 +50,7 @@ SAMPLER_TIMING_BUCKETS: Final[tuple[float, ...]] = (
 _SAMPLER_FRAME_VERSION = 1
 _MAX_SAMPLER_FRAME_BYTES = 64 * 1024
 _SAMPLER_SOCKET_BUFFER_BYTES = 256 * 1024
+_MAX_SAMPLER_CLOCK_AHEAD_SECONDS = 1.0
 
 
 class WaitableEvent(Protocol):
@@ -292,15 +293,28 @@ class _SamplerChildSnapshot:
                 raise ValueError("sampler frame without a sample cannot report successes")
         elif self.sample.observation_sequence != self.successes:
             raise ValueError("sampler frame sequence must equal successful samples")
+        elif self.sample.observation_monotonic_seconds > self.emitted_monotonic_seconds:
+            raise ValueError("sampler sample cannot be observed after its frame was emitted")
 
     def contains(self, earlier: _SamplerChildSnapshot) -> bool:
         """Reject regressions or reordered frames from one child generation."""
 
         current_sequence = self.sample.observation_sequence if self.sample is not None else 0
         earlier_sequence = earlier.sample.observation_sequence if earlier.sample is not None else 0
+        sample_time_is_monotonic = (
+            self.sample is None
+            or earlier.sample is None
+            or self.sample.observation_monotonic_seconds
+            >= earlier.sample.observation_monotonic_seconds
+        )
+        unchanged_sequence_is_immutable = (
+            current_sequence != earlier_sequence or self.sample == earlier.sample
+        )
         return (
-            self.emitted_monotonic_seconds >= earlier.emitted_monotonic_seconds
+            self.emitted_monotonic_seconds > earlier.emitted_monotonic_seconds
             and current_sequence >= earlier_sequence
+            and sample_time_is_monotonic
+            and unchanged_sequence_is_immutable
             and self.successes >= earlier.successes
             and self.failures >= earlier.failures
             and self.scheduler_late_gaps >= earlier.scheduler_late_gaps
@@ -777,9 +791,10 @@ def run_process_tree_sampler(
             except (OSError, RuntimeError, ValueError):
                 record_failure()
 
-        # The first flush is the measured IPC publication. A second bounded
-        # frame below carries the duration and any deadlines crossed by that
-        # publication; datagram framing keeps both generations indivisible.
+        # One datagram is the complete atomic publication boundary for this
+        # cycle. Its serialization and send are part of handoff time. The
+        # resulting duration and gap classification are cumulative state and
+        # are therefore carried by the next cycle's indivisible datagram.
         if flush is not None:
             try:
                 flush()
@@ -817,11 +832,6 @@ def run_process_tree_sampler(
                 record_gap("scheduler_late", scheduler_late)
             if collection_overrun:
                 record_gap("collection_overrun", collection_overrun)
-        if flush is not None:
-            try:
-                flush()
-            except (OSError, RuntimeError, ValueError):
-                record_failure()
         deadline_index = first_future_deadline_index
 
 
@@ -944,6 +954,7 @@ class _SamplerChild:
     stop_sender: socket.socket
     started_monotonic_seconds: float
     snapshot: _SamplerChildSnapshot | None = None
+    last_valid_frame_received_monotonic_seconds: float | None = None
 
 
 class ProcessTreeSamplerProcess:
@@ -1061,12 +1072,25 @@ class ProcessTreeSamplerProcess:
             except ValueError:
                 self._local_failures += 1
                 continue
-            if child.snapshot is not None and not snapshot.contains(child.snapshot):
+            received_at = self._monotonic()
+            sample = snapshot.sample
+            if (
+                snapshot.emitted_monotonic_seconds > received_at + _MAX_SAMPLER_CLOCK_AHEAD_SECONDS
+                or (sample is not None and sample.interval_seconds != self.interval_seconds)
+                or (
+                    sample is not None
+                    and self._last_sample is not None
+                    and sample.observation_monotonic_seconds
+                    < self._last_sample.observation_monotonic_seconds
+                )
+                or (child.snapshot is not None and not snapshot.contains(child.snapshot))
+            ):
                 self._local_failures += 1
                 continue
             child.snapshot = snapshot
-            if snapshot.sample is not None:
-                self._last_sample = snapshot.sample
+            child.last_valid_frame_received_monotonic_seconds = received_at
+            if sample is not None:
+                self._last_sample = sample
             self._stale_reported = False
 
     def _roll_child_into_offsets(self, child: _SamplerChild) -> None:
@@ -1104,12 +1128,12 @@ class ProcessTreeSamplerProcess:
 
     def _restart_if_unhealthy(self, child: _SamplerChild, now: float) -> None:
         dead = not child.process.is_alive()
-        last_emitted = (
-            child.snapshot.emitted_monotonic_seconds
-            if child.snapshot is not None
+        last_received = (
+            child.last_valid_frame_received_monotonic_seconds
+            if child.last_valid_frame_received_monotonic_seconds is not None
             else child.started_monotonic_seconds
         )
-        stale = now - last_emitted > self._stale_after_seconds
+        stale = now - last_received > self._stale_after_seconds
         if not dead and not stale:
             return
         if not self._stale_reported:
