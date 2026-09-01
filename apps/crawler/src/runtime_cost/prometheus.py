@@ -516,16 +516,31 @@ def _boundary_covered(last_sample: float | None, boundary: datetime) -> bool:
     return 0 <= age_seconds <= PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS
 
 
-def _strict_labelled_counter_vector(
+def _strict_labelled_source_counter_vector(
     rows: list[dict[str, Any]],
     *,
     label_names: tuple[str, ...],
     expected_keys: set[tuple[str, ...]],
-) -> dict[tuple[str, ...], int] | None:
+) -> (
+    tuple[
+        dict[tuple[str, ...], int],
+        dict[tuple[str, ...], tuple[tuple[str, str], ...]],
+    ]
+    | None
+):
+    """Parse exactly one identity-preserved source series per bounded child."""
+
     values: dict[tuple[str, ...], int] = {}
+    source_identities: dict[tuple[str, ...], tuple[tuple[str, str], ...]] = {}
     for row in rows:
         metric = row.get("metric")
-        if not isinstance(metric, dict) or set(metric) != set(label_names):
+        if (
+            not isinstance(metric, dict)
+            or not set(label_names) <= set(metric)
+            or not all(
+                isinstance(name, str) and isinstance(value, str) for name, value in metric.items()
+            )
+        ):
             return None
         raw_key = tuple(metric.get(name) for name in label_names)
         if not all(isinstance(value, str) for value in raw_key):
@@ -541,9 +556,12 @@ def _strict_labelled_counter_vector(
         if value is None:
             return None
         values[key] = value
+        source_identities[key] = tuple(
+            sorted((name, value) for name, value in metric.items() if name != "__name__")
+        )
     if set(values) != expected_keys:
         return None
-    return values
+    return values, source_identities
 
 
 def _capture_browser_retry_target(
@@ -570,21 +588,20 @@ def _capture_browser_retry_target(
             tuple(str(value) for value in values)
             for values in product(*(tuple(item[1]) for item in label_contract))
         }
-        group = ",".join(label_names)
-        boundary_expression = f"sum by ({group}) ({metric}{{{selector}}})"
-        start_values = _strict_labelled_counter_vector(
+        boundary_expression = f"{metric}{{{selector}}}"
+        start_boundary = _strict_labelled_source_counter_vector(
             query(boundary_expression, start_at),
             label_names=label_names,
             expected_keys=expected_keys,
         )
-        end_values = _strict_labelled_counter_vector(
+        end_boundary = _strict_labelled_source_counter_vector(
             query(boundary_expression, end_at),
             label_names=label_names,
             expected_keys=expected_keys,
         )
-        reset_values = _strict_labelled_counter_vector(
+        reset_boundary = _strict_labelled_source_counter_vector(
             query(
-                f"sum by ({group}) (resets({metric}{{{selector}}}[{range_selector}]))",
+                f"resets({metric}{{{selector}}}[{range_selector}])",
                 end_at,
             ),
             label_names=label_names,
@@ -594,11 +611,19 @@ def _capture_browser_retry_target(
         events: list[dict[str, Any]] = []
         retry_events: int | None = 0
         counter_resets: int | None = None
-        complete = start_values is not None and end_values is not None and reset_values is not None
+        complete = (
+            start_boundary is not None and end_boundary is not None and reset_boundary is not None
+        )
         if complete:
-            assert start_values is not None and end_values is not None and reset_values is not None
+            assert start_boundary is not None
+            assert end_boundary is not None
+            assert reset_boundary is not None
+            start_values, start_sources = start_boundary
+            end_values, end_sources = end_boundary
+            reset_values, reset_sources = reset_boundary
+            complete = start_sources == end_sources == reset_sources
             counter_resets = sum(reset_values.values())
-            complete = counter_resets == 0
+            complete = complete and counter_resets == 0
             for key in sorted(expected_keys):
                 start_value = start_values[key]
                 end_value = end_values[key]
@@ -625,10 +650,10 @@ def _capture_browser_retry_target(
                 "execution_class": "browser",
                 "required_children": len(expected_keys),
                 "observed_children": (
-                    len(start_values)
-                    if start_values is not None
-                    and end_values is not None
-                    and reset_values is not None
+                    len(start_boundary[0])
+                    if start_boundary is not None
+                    and end_boundary is not None
+                    and reset_boundary is not None
                     else 0
                 ),
                 "counter_resets": counter_resets,

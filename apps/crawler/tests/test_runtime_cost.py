@@ -1140,7 +1140,7 @@ def _synthetic_capture_query(
     def scalar(value: int | float) -> list[dict]:
         return [{"metric": {}, "value": [0, str(value)]}]
 
-    def retry_rows(expression: str, at: datetime) -> list[dict]:
+    def retry_rows(expression: str, at: datetime, metric_name: str) -> list[dict]:
         if "navigation_network" in expression:
             keys = [
                 {"reason": reason, "outcome": outcome}
@@ -1152,6 +1152,15 @@ def _synthetic_capture_query(
         reset_query = "resets(" in expression
         rows = []
         for index, labels in enumerate(keys):
+            source_labels = {
+                "job": "crawler",
+                "instance": "browser-1",
+                "prometheus_replica": "replica-a",
+            }
+            if not reset_query:
+                source_labels["__name__"] = metric_name
+            if fault == "retry-source-identity-drift" and at == end_at:
+                source_labels["prometheus_replica"] = "replica-b"
             value: int | float = 0 if reset_query else 10
             if (
                 not reset_query
@@ -1164,13 +1173,20 @@ def _synthetic_capture_query(
                 value = 1
             if fault == "retry-fractional" and not reset_query and at == end_at and index == 0:
                 value = 10.5
-            rows.append({"metric": labels, "value": [0, str(value)]})
+            rows.append({"metric": {**source_labels, **labels}, "value": [0, str(value)]})
         if fault == "missing-retry-child":
             rows.pop()
         if fault == "retry-label-drift" and "navigation_network" in expression:
-            rows[0]["metric"] = {"reason": "new_reason", "outcome": "retry"}
-        if fault == "retry-duplicate" and not reset_query and at == end_at:
-            rows.append(deepcopy(rows[0]))
+            rows[0]["metric"]["reason"] = "new_reason"
+        duplicate_source_series = (
+            (fault == "retry-duplicate-source-series-start" and at != end_at and not reset_query)
+            or (fault == "retry-duplicate-source-series-end" and at == end_at and not reset_query)
+            or (fault == "retry-duplicate-source-series-reset" and reset_query)
+        )
+        if duplicate_source_series:
+            duplicate = deepcopy(rows[0])
+            duplicate["metric"]["prometheus_replica"] = "replica-b"
+            rows.append(duplicate)
         return rows
 
     def fake_query(expression: str, at: datetime) -> list[dict]:
@@ -1181,15 +1197,20 @@ def _synthetic_capture_query(
             return []
         if "crawler_build_info" in expression:
             return [{"metric": {"version": "2.0.0"}, "value": [0, "1"]}]
-        if "sum by" in expression and any(
-            metric in expression
-            for metric in (
-                "crawler_browser_navigation_network_retry_total",
-                "crawler_browser_content_retry_total",
-                "crawler_browser_target_closed_retries_total",
-            )
-        ):
-            return retry_rows(expression, at)
+        retry_metric = next(
+            (
+                metric
+                for metric in (
+                    "crawler_browser_navigation_network_retry_total",
+                    "crawler_browser_content_retry_total",
+                    "crawler_browser_target_closed_retries_total",
+                )
+                if metric in expression
+            ),
+            None,
+        )
+        if retry_metric is not None:
+            return retry_rows(expression, at, retry_metric)
         if expression.startswith("count("):
             if fault == "missing-failure-series" and 'outcome="failure"' in expression:
                 return scalar(0)
@@ -1556,7 +1577,10 @@ def test_exact_six_target_capture_blocks_incomplete_paired_evidence(fault: str) 
         "retry-reset",
         "retry-label-drift",
         "retry-fractional",
-        "retry-duplicate",
+        "retry-duplicate-source-series-start",
+        "retry-duplicate-source-series-end",
+        "retry-duplicate-source-series-reset",
+        "retry-source-identity-drift",
     ],
 )
 def test_exact_six_target_capture_blocks_incomplete_retry_evidence(fault: str) -> None:
@@ -1578,6 +1602,56 @@ def test_exact_six_target_capture_blocks_incomplete_retry_evidence(fault: str) -
         blocker.startswith("browser-retry-evidence-incomplete:browser-worker-1:")
         for blocker in result["evidence_gaps"]
     )
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "retry-duplicate-source-series-start",
+        "retry-duplicate-source-series-end",
+        "retry-duplicate-source-series-reset",
+    ],
+)
+def test_duplicate_browser_retry_source_series_are_rejected_before_model_acceptance(
+    fault: str,
+) -> None:
+    targets = _json(RUNTIME_COST / "python-production-targets-v1.json")
+    end_at = datetime(2026, 9, 2, 0, tzinfo=UTC)
+    expressions: list[str] = []
+    synthetic_query = _synthetic_capture_query(
+        end_at,
+        window_seconds=86_400,
+        fault=fault,
+    )
+
+    def recording_query(expression: str, at: datetime) -> list[dict]:
+        expressions.append(expression)
+        return synthetic_query(expression, at)
+
+    result = capture_prometheus_measurement(
+        targets,
+        query=recording_query,
+        end_at=end_at,
+        window_seconds=86_400,
+        source_revision=f"synthetic-{fault}",
+    )
+
+    retry_expressions = [
+        expression
+        for expression in expressions
+        if "crawler_browser_" in expression and "retry" in expression
+    ]
+    assert retry_expressions
+    assert all("sum by" not in expression for expression in retry_expressions)
+    browser = next(role for role in result["roles"] if role["execution_class"] == "browser")
+    assert browser["retry_events"] is None
+    assert all(not item["complete"] for item in browser["retry_coverage"])
+    with pytest.raises(ModelError, match="browser retry .* is incomplete"):
+        project_runtime_cost(
+            _json(RUNTIME_COST / "projected-workload-v1.json"),
+            result,
+            _json(RUNTIME_COST / "pricing/hetzner-eu-2026-06-15.json"),
+        )
 
 
 def test_86400_second_capture_rejects_any_target_set_drift() -> None:
