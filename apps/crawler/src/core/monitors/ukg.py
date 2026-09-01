@@ -46,6 +46,11 @@ _PAGE_PATTERNS = [
         r"[A-Za-z0-9]{3,64}/JobBoard/[0-9a-f-]{36})",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"(https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.rec\.pro\.ukg\.net/"
+        r"[A-Za-z0-9]{3,64}/JobBoard/[0-9a-f-]{36})",
+        re.IGNORECASE,
+    ),
 ]
 
 

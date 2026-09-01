@@ -2138,10 +2138,11 @@ ukg — UKG Pro public recruiting API
   Description field from UKG's CandidateOpportunityDetail JSON constructor.
 
   Detection accepts direct or explicitly linked public UKG board URLs on
-  recruiting*.ultipro.com and recruiting.ultipro.ca. It never guesses tenant
-  or board UUIDs. First-page 404/410 is definitive gone; transient auth, rate
-  limit, transport, and server failures fail the run without removing jobs.
-  Pagination is capped at 50,000 opportunities.
+  recruiting*.ultipro.com, recruiting.ultipro.ca, and branded
+  <company>.rec.pro.ukg.net hosts. It never guesses tenant or board UUIDs.
+  First-page 404/410 is definitive gone; transient auth, rate limit, transport,
+  and server failures fail the run without removing jobs. Pagination is capped
+  at 50,000 opportunities.
 
   Upstream ats-scrapers is inventory input only. Jobseek neither imports nor
   executes upstream scraper code.
