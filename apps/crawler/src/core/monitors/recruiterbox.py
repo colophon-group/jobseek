@@ -2,7 +2,8 @@
 
 The platform renders stable job links and an authoritative total into each
 listing page. This monitor composes Jobseek's DOM link extractor with shared
-HTTP retry and truncation primitives; job details remain with JSON-LD.
+HTTP retry and truncation primitives; the dedicated Recruiterbox scraper reads
+job details from Trakstar's server-rendered markup.
 """
 
 from __future__ import annotations
