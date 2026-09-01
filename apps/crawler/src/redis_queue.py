@@ -327,6 +327,7 @@ _KNOWN_ATS_DOMAIN_SUFFIXES = (
     ".tbe.taleo.net",
     ".ultipro.com",
     ".ultipro.ca",
+    ".rec.pro.ukg.net",
     ".successfactors.com",
     ".successfactors.eu",
     ".sapsf.com",

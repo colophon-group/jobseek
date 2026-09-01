@@ -31,6 +31,7 @@ from src.workspace.commands.crawl import _MONITOR_CONFIG_HINTS
 from src.workspace.commands.help import MONITOR_CARDS
 
 HOST = "recruiting.ultipro.com"
+MODERN_HOST = "baptisthealth.rec.pro.ukg.net"
 TENANT = "AMI1003AMIK"
 BOARD_ID = "132b6065-9187-4e0f-a292-4f67e675d1d0"
 JOB_ID = "2b34c2a1-f814-4355-b347-11d1b89a948c"
@@ -93,6 +94,10 @@ def _client(handler) -> httpx.AsyncClient:
             UKGBoard("recruiting.ultipro.ca", TENANT, BOARD_ID),
         ),
         (
+            BOARD_URL.replace("recruiting.ultipro.com", MODERN_HOST),
+            UKGBoard(MODERN_HOST, TENANT, BOARD_ID),
+        ),
+        (
             BOARD_URL.replace(TENANT, TENANT.lower()),
             UKGBoard(HOST, TENANT.lower(), BOARD_ID),
         ),
@@ -110,6 +115,9 @@ def test_board_identity_accepts_public_urls(url: str, expected: UKGBoard):
         BOARD_URL.replace(HOST, f"{HOST}:444"),
         BOARD_URL.replace(HOST, f"{HOST}.evil.test"),
         BOARD_URL.replace(HOST, "jobs.ultipro.com"),
+        BOARD_URL.replace(HOST, "rec.pro.ukg.net"),
+        BOARD_URL.replace(HOST, "a.b.rec.pro.ukg.net"),
+        BOARD_URL.replace(HOST, "baptisthealth.rec.pro.ukg.net.evil.test"),
         BOARD_URL + "?location=remote",
         BOARD_URL + "#jobs",
         BOARD_URL.replace("/JobBoard/", "/Other/"),
@@ -432,6 +440,34 @@ async def test_direct_and_explicit_page_detection_require_api_proof():
 
 
 @pytest.mark.asyncio
+async def test_branded_host_direct_and_page_detection_require_api_proof():
+    homepage = "https://example.com/careers"
+    board = UKGBoard(MODERN_HOST, TENANT, BOARD_ID)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == homepage:
+            return httpx.Response(
+                200,
+                text=f'<a href="{board.listing_url()}">Jobs</a>',
+                request=request,
+            )
+        return httpx.Response(200, json=_payload([_row(1)], total=145), request=request)
+
+    async with _client(handler) as client:
+        direct = await can_handle(board.listing_url(), client)
+        linked = await can_handle(homepage, client)
+    expected = {
+        "host": MODERN_HOST,
+        "tenant": TENANT,
+        "board_id": BOARD_ID,
+        "listing_url": board.listing_url(),
+        "jobs": 145,
+    }
+    assert direct == expected
+    assert linked == expected
+
+
+@pytest.mark.asyncio
 async def test_does_not_guess_company_slug_or_accept_unverified_direct_board():
     async with _client(
         lambda request: httpx.Response(200, text="<html>No ATS here</html>", request=request)
@@ -481,6 +517,7 @@ def test_workspace_registry_discovery_and_throttle_integration():
     assert delay_for_domain(HOST) == settings.throttle_delay_ats
     assert delay_for_domain("recruiting2.ultipro.com") == settings.throttle_delay_ats
     assert delay_for_domain("recruiting.ultipro.ca") == settings.throttle_delay_ats
+    assert delay_for_domain(MODERN_HOST) == settings.throttle_delay_ats
     assert delay_for_domain("ultipro.com.evil.test") == settings.throttle_delay_default
     assert (
         _build_comment("ukg", {"tenant": TENANT, "board_id": BOARD_ID, "jobs": 17})
@@ -493,6 +530,18 @@ def test_workspace_scanner_finds_listing_and_canonicalizes_detail():
         f'<a href="{BOARD_URL}">Jobs</a><a href="{BOARD.job_url(JOB_ID)}">Role</a>'
     )
     assert {candidate.url for candidate in found} == {BOARD_URL, BOARD.job_url(JOB_ID)}
+
+
+def test_workspace_scanner_finds_branded_host_listing_and_detail():
+    board = UKGBoard(MODERN_HOST, TENANT, BOARD_ID)
+    found = _scan_ats_urls_in_html(
+        f'<a href="{board.listing_url()}">Jobs</a>'
+        f'<a href="{board.job_url(JOB_ID)}">Role</a>'
+    )
+    assert {candidate.url for candidate in found} == {
+        board.listing_url(),
+        board.job_url(JOB_ID),
+    }
 
 
 @pytest.mark.asyncio
