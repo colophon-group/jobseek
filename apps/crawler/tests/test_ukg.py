@@ -535,8 +535,7 @@ def test_workspace_scanner_finds_listing_and_canonicalizes_detail():
 def test_workspace_scanner_finds_branded_host_listing_and_detail():
     board = UKGBoard(MODERN_HOST, TENANT, BOARD_ID)
     found = _scan_ats_urls_in_html(
-        f'<a href="{board.listing_url()}">Jobs</a>'
-        f'<a href="{board.job_url(JOB_ID)}">Role</a>'
+        f'<a href="{board.listing_url()}">Jobs</a><a href="{board.job_url(JOB_ID)}">Role</a>'
     )
     assert {candidate.url for candidate in found} == {
         board.listing_url(),
