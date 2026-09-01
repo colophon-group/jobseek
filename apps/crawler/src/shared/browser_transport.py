@@ -1745,8 +1745,9 @@ class ChromiumAutoAttachObserver:
                 (session_id, target_id, target_type, "Runtime.runIfWaitingForDebugger")
             )
         except Exception:
+            self._transition_fatal(defer_transport_close=True)
             await self._release_or_close_target(session_id, target_id)
-            self._transition_fatal()
+            self._schedule_fatal_transport_close()
 
     async def _release_or_close_target(self, session_id: str, target_id: str) -> None:
         try:

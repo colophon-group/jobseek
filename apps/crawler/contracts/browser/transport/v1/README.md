@@ -68,6 +68,8 @@ or a required child setup failure enters one fatal transition: readiness is
 revoked, future admission is permanently frozen, live generation records are
 terminalized as transport failures (or partial responses when bytes exist),
 paused targets are released or closed, and the raw transport is closed.
+An explicit child setup error enters that fatal transition before any cleanup
+await; only raw transport closure is deferred while bounded release runs.
 Duplicate-session resume and detach are part of required initialization:
 failure of either acknowledgement enters the same fatal transition before any
 further application admission, while cleanup continues only long enough to

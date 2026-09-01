@@ -962,6 +962,45 @@ async def test_post_ready_child_network_failure_revokes_readiness_and_admission(
 
 
 @pytest.mark.asyncio
+async def test_known_child_setup_error_revokes_admission_before_hung_cleanup(
+    monkeypatch,
+):
+    monkeypatch.setattr(transport, "CDP_TARGET_INITIALIZATION_TIMEOUT_SECONDS", 0.05)
+    websocket, tracker, observer = await _post_ready_observer_with_live_request()
+    websocket.errored_commands.add(("Network.enable", "late-session"))
+    websocket.blocked_methods.add("Runtime.runIfWaitingForDebugger")
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "late-session",
+            "targetInfo": {"targetId": "late-target", "type": "worker"},
+        },
+    )
+    await _flush_tasks()
+
+    assert websocket.methods_for("late-session") == [
+        "Target.setAutoAttach",
+        "Network.enable",
+        "Runtime.runIfWaitingForDebugger",
+    ]
+    assert not observer.ready
+    assert not websocket.closed
+    assert len(observer._initialization_tasks) == 1
+    assert tracker.live_count == 0
+    assert len(tracker.terminals) == 1
+    assert tracker.terminals[0].outcome is TerminalOutcome.TRANSPORT_FAILURE
+    assert not tracker.accept_task(
+        "during-known-failure-cleanup",
+        _attribution(stage=Stage.DETAIL),
+    )
+
+    await asyncio.sleep(0.07)
+    await _flush_tasks()
+
+    _assert_initialization_timeout_failed_closed(websocket, tracker, observer)
+
+
+@pytest.mark.asyncio
 async def test_post_ready_child_missing_network_ack_expires_one_target_deadline(
     monkeypatch,
 ):
