@@ -1004,9 +1004,7 @@ async def discover(
         metadata.get("exclude_description_regex")
     )
     item_boundary_tag = _validated_item_boundary_tag(metadata.get("item_boundary_tag"))
-    item_boundary = _validated_section_boundary(
-        metadata.get("item_boundary"), name="item_boundary"
-    )
+    item_boundary = _validated_section_boundary(metadata.get("item_boundary"), name="item_boundary")
     if item_boundary_tag is not None and item_boundary is not None:
         raise ValueError("inline item_boundary and item_boundary_tag cannot be combined")
     if item_boundary is None and item_boundary_tag is not None:
