@@ -55,14 +55,8 @@ SENSITIVE_KEY_PATTERN: Final = (
     r"[A-Za-z0-9_.-]*(?:password|token|secret|key|database_url|redis_url)"
     r"[A-Za-z0-9_.-]*"
 )
-QUOTED_ASSIGNMENT_PATTERN: Final = re.compile(
-    rf"(?P<prefix>\b{SENSITIVE_KEY_PATTERN}(?:['\"])?\s*[:=]\s*)"
-    r"(?P<quote>['\"])(?P<value>.*?)(?P=quote)",
-    re.IGNORECASE,
-)
-UNQUOTED_ASSIGNMENT_PATTERN: Final = re.compile(
-    rf"(?P<prefix>\b{SENSITIVE_KEY_PATTERN}(?:['\"])?\s*[:=]\s*)"
-    r"(?P<value>(?!['\"])[^\s,;]+)",
+SENSITIVE_ASSIGNMENT_PREFIX_PATTERN: Final = re.compile(
+    rf"\b{SENSITIVE_KEY_PATTERN}(?:['\"])?\s*[:=]\s*",
     re.IGNORECASE,
 )
 
@@ -210,6 +204,58 @@ def _require(condition: bool, message: str) -> None:
         raise ProbeError(message)
 
 
+def _redact_sensitive_assignments(value: str) -> tuple[str, dict[str, int]]:
+    """Mask assignment values without treating escaped quotes as delimiters."""
+
+    pieces: list[str] = []
+    replacement_counts: dict[str, int] = {}
+    cursor = 0
+    while match := SENSITIVE_ASSIGNMENT_PREFIX_PATTERN.search(value, cursor):
+        value_start = match.end()
+        pieces.append(value[cursor:value_start])
+        category = "assignment"
+
+        if value_start < len(value) and value[value_start] in {'"', "'"}:
+            category = "quoted_assignment"
+            quote = value[value_start]
+            value_end = value_start + 1
+            escaped = False
+            closed = False
+            while value_end < len(value):
+                character = value[value_end]
+                # An unterminated diagnostic value must not swallow later log lines.
+                if character in "\r\n":
+                    break
+                if escaped:
+                    escaped = False
+                elif character == "\\":
+                    escaped = True
+                elif character == quote:
+                    closed = True
+                    value_end += 1
+                    break
+                value_end += 1
+            closing_quote = quote if closed else ""
+            pieces.append(f"{quote}[REDACTED]{closing_quote}")
+        else:
+            value_end = value_start
+            while value_end < len(value):
+                character = value[value_end]
+                if character == "\\" and value_end + 1 < len(value):
+                    value_end += 2
+                    continue
+                if character.isspace() or character in ",;":
+                    break
+                value_end += 1
+            pieces.append("[REDACTED]")
+
+        replacement_counts[category] = replacement_counts.get(category, 0) + 1
+        cursor = value_end
+
+    pieces.append(value[cursor:])
+    return "".join(pieces), replacement_counts
+
+
 def _redact_text(value: str) -> tuple[str, dict[str, Any]]:
     """Mask credential forms before diagnostic text enters durable evidence."""
 
@@ -226,21 +272,8 @@ def _redact_text(value: str) -> tuple[str, dict[str, Any]]:
             replacement_counts[name] = replacement_counts.get(name, 0) + count
         return redacted
 
-    redacted = apply(
-        "quoted_assignment",
-        QUOTED_ASSIGNMENT_PATTERN,
-        lambda match: (
-            f"{match.group('prefix')}{match.group('quote')}[REDACTED]"
-            f"{match.group('quote')}"
-        ),
-        value,
-    )
-    redacted = apply(
-        "assignment",
-        UNQUOTED_ASSIGNMENT_PATTERN,
-        lambda match: f"{match.group('prefix')}[REDACTED]",
-        redacted,
-    )
+    redacted, assignment_counts = _redact_sensitive_assignments(value)
+    replacement_counts.update(assignment_counts)
     redacted = apply(
         "authorization",
         AUTHORIZATION_PATTERN,
@@ -1917,6 +1950,106 @@ class _SelfTests(unittest.TestCase):
             self.assertNotIn("--entrypoint", command)
             self.assertEqual(command[-1], image)
 
+    def test_credential_redaction_is_escape_aware(self) -> None:
+        escaped_left = "escaped-left-fragment"
+        escaped_right = "escaped-right-fragment"
+        slash_left = "slash-left-fragment"
+        slash_right = "slash-right-fragment"
+        even_slash_secret = "even-slash-secret"
+        multi_password = "multiple-password-secret"
+        multi_token = "multiple-token-secret"
+        shell_left = "shell-left-fragment"
+        shell_right = "shell-right-fragment"
+        unicode_secret = "päss-秘密-secret"
+        unterminated_secret = "unterminated-line-secret"
+        uri_user = "combo-uri-user"
+        uri_password = "combo-uri-password"
+        bearer_secret = "combo-bearer-secret"
+        raw_lines = [
+            (
+                'escaped-json={"password":"'
+                + escaped_left
+                + '\\"'
+                + escaped_right
+                + '","safe":"visible-json"}'
+            ),
+            (
+                'escaped-slashes={"api_token":"'
+                + slash_left
+                + ("\\" * 3)
+                + '"'
+                + slash_right
+                + '","safe":"visible-slashes"}'
+            ),
+            (
+                'even-slashes={"api_key":"'
+                + even_slash_secret
+                + ("\\" * 2)
+                + '","safe":"visible-even"}'
+            ),
+            (
+                'multiple={"password":"'
+                + multi_password
+                + '","token":"'
+                + multi_token
+                + '","safe":"visible-multiple"}'
+            ),
+            (
+                "shell SECRET_KEY='"
+                + shell_left
+                + "\\'"
+                + shell_right
+                + "' SAFE_LABEL=visible-shell"
+            ),
+            f'unicode PASSWORD="{unicode_secret}" safe=visible-unicode',
+            f'unterminated PASSWORD="{unterminated_secret}',
+            "normal line after unterminated value ✓",
+            (
+                f"combo=redis://{uri_user}:{uri_password}@localhost/0 "
+                f"Authorization: Bearer {bearer_secret}"
+            ),
+        ]
+        raw = "\n".join(raw_lines)
+
+        redacted, metadata = _redact_text(raw)
+        serialized = json.dumps(
+            {"diagnostics": {"text": redacted, "redaction": metadata}},
+            ensure_ascii=False,
+        )
+
+        for secret in (
+            escaped_left,
+            escaped_right,
+            slash_left,
+            slash_right,
+            even_slash_secret,
+            multi_password,
+            multi_token,
+            shell_left,
+            shell_right,
+            unicode_secret,
+            unterminated_secret,
+            uri_user,
+            uri_password,
+            bearer_secret,
+        ):
+            self.assertNotIn(secret, serialized)
+        for useful_evidence in (
+            '"safe":"visible-json"',
+            '"safe":"visible-slashes"',
+            '"safe":"visible-even"',
+            '"safe":"visible-multiple"',
+            "SAFE_LABEL=visible-shell",
+            "safe=visible-unicode",
+            "normal line after unterminated value ✓",
+            "redis://[REDACTED]@localhost/0 Authorization: Bearer [REDACTED]",
+        ):
+            self.assertIn(useful_evidence, redacted)
+        self.assertGreaterEqual(
+            metadata["replacement_counts"]["quoted_assignment"],
+            7,
+        )
+
     def test_early_exit_diagnostics_are_redacted_before_remove(self) -> None:
         container_id = "a" * 64
         image_id = "sha256:" + "b" * 64
@@ -1950,20 +2083,20 @@ class _SelfTests(unittest.TestCase):
                 "tmpfs_tmp": "rw,noexec,nosuid,nodev,size=64m",
             },
         }
-        stdout = "\n".join(
-            (
-                "normal stdout line one",
-                "normal stdout line two",
-                "postgresql://uri-user:uri-pass@localhost/db",
-                "Authorization: Bearer bearer-secret",
-                "PASSWORD=password-secret",
-                "API_TOKEN=token-secret",
-                "CLIENT_SECRET=client-secret",
-                "API_KEY=key-secret",
-                "DATABASE_URL=postgresql://db-user:db-pass@localhost/db",
-                "REDIS_URL=redis://redis-user:redis-pass@localhost/0",
-                'config={"password":"json-secret"}',
-            )
+        stdout = (
+            "normal stdout line one\n"
+            "normal stdout line two\n"
+            "postgresql://uri-user:uri-pass@localhost/db\n"
+            "Authorization: Bearer bearer-secret\n"
+            "PASSWORD=password-secret\n"
+            "API_TOKEN=token-secret\n"
+            "CLIENT_SECRET=client-secret\n"
+            "API_KEY=key-secret\n"
+            "DATABASE_URL=postgresql://db-user:db-pass@localhost/db\n"
+            "REDIS_URL=redis://redis-user:redis-pass@localhost/0\n"
+            'config={"password":"json-secret"}\n'
+            r'escaped={"password":"evidence-left-fragment\"evidence-right-fragment",'
+            r'"safe":"visible-after-escape"}'
         )
         stderr = "Authorization=Basic basic-secret\nnormal stderr line"
 
@@ -2063,7 +2196,7 @@ class _SelfTests(unittest.TestCase):
         capture = case["diagnostic_captures"][-1]
         self.assertTrue(capture["inspect"]["success"])
         self.assertTrue(capture["logs"]["success"])
-        self.assertEqual(capture["logs"]["stdout"]["line_count"], 11)
+        self.assertEqual(capture["logs"]["stdout"]["line_count"], 12)
         self.assertEqual(capture["logs"]["stderr"]["line_count"], 2)
         self.assertEqual(
             capture["logs"]["stdout"]["raw_byte_count"],
@@ -2080,6 +2213,7 @@ class _SelfTests(unittest.TestCase):
             "normal stdout line one",
             "normal stdout line two",
             "normal stderr line",
+            '"safe":"visible-after-escape"',
         ):
             self.assertIn(line, redacted_logs)
         self.assertGreater(
@@ -2107,6 +2241,8 @@ class _SelfTests(unittest.TestCase):
             "redis-user",
             "redis-pass",
             "json-secret",
+            "evidence-left-fragment",
+            "evidence-right-fragment",
         ):
             self.assertNotIn(secret, serialized)
         self.assertTrue(

@@ -878,6 +878,12 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
   assert.match(crawlerSamplerContainerSmoke, /URI_USERINFO_PATTERN/);
   assert.match(crawlerSamplerContainerSmoke, /AUTHORIZATION_PATTERN/);
   assert.match(crawlerSamplerContainerSmoke, /SENSITIVE_KEY_PATTERN/);
+  assert.match(
+    crawlerSamplerContainerSmoke,
+    /SENSITIVE_ASSIGNMENT_PREFIX_PATTERN/,
+  );
+  assert.match(crawlerSamplerContainerSmoke, /def _redact_sensitive_assignments\(/);
+  assert.doesNotMatch(crawlerSamplerContainerSmoke, /QUOTED_ASSIGNMENT_PATTERN/);
   assert.match(crawlerSamplerContainerSmoke, /def _capture_container_diagnostics\(/);
   for (const diagnosticState of [
     '"path": raw.get("Path")',
@@ -911,6 +917,7 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
   );
   for (const failureTest of [
     "test_docker_run_uses_tmp_uv_cache_without_overrides",
+    "test_credential_redaction_is_escape_aware",
     "test_early_exit_diagnostics_are_redacted_before_remove",
     "test_diagnostic_inspect_failure_is_typed",
     "test_diagnostic_log_failure_is_typed",
