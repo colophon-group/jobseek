@@ -880,6 +880,20 @@ def _validate_metrics(raw: str) -> dict[str, Any]:
         )
         for reason in ("scheduler_late", "collection_overrun")
     }
+    timing_limit_violations = {
+        phase: _metric_value(
+            samples,
+            "crawler_runtime_process_tree_sampler_timing_limit_violations_total",
+            {"phase": phase},
+        )
+        for phase in ("wake_lateness", "collection", "handoff")
+    }
+    timing_limit_children = [
+        labels
+        for metric, labels, _value in samples
+        if metric
+        == "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
+    ]
     interval = _metric_value(
         samples, "crawler_runtime_process_tree_sample_interval_seconds"
     )
@@ -922,6 +936,14 @@ def _validate_metrics(raw: str) -> dict[str, Any]:
         "sampler gap reason is non-zero",
     )
     _require(
+        len(timing_limit_children) == 3,
+        "sampler strict timing phase set is not exact",
+    )
+    _require(
+        all(value == 0 for value in timing_limit_violations.values()),
+        "sampler strict timing violation counter is non-zero",
+    )
+    _require(
         interval == SAMPLER_INTERVAL_SECONDS, "sampler interval is not 0.5 seconds"
     )
     _require(root_cpu > 0 and tree_cpu > 0, "sampled CPU fields are not positive")
@@ -954,6 +976,9 @@ def _validate_metrics(raw: str) -> dict[str, Any]:
         "sampler_starts": int(starts),
         "sampling_gaps": int(gaps),
         "gap_reasons": {key: int(value) for key, value in gap_reasons.items()},
+        "timing_limit_violations": {
+            key: int(value) for key, value in timing_limit_violations.items()
+        },
         "interval_seconds": interval,
         "observation_sequence": int(sequence),
         "observation_unixtime_seconds": observation_time,
@@ -1882,7 +1907,14 @@ class _SelfTests(unittest.TestCase):
             "crawler_runtime_process_tree_sampler_starts_total 1",
             "crawler_runtime_process_tree_sampling_gaps_total 0",
             'crawler_runtime_process_tree_sampling_gap_reasons_total{reason="scheduler_late"} 0',
-            'crawler_runtime_process_tree_sampling_gap_reasons_total{reason="collection_overrun"} 0',
+            "crawler_runtime_process_tree_sampling_gap_reasons_total"
+            '{reason="collection_overrun"} 0',
+            "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
+            '{phase="wake_lateness"} 0',
+            "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
+            '{phase="collection"} 0',
+            "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
+            '{phase="handoff"} 0',
             "crawler_runtime_process_tree_sample_interval_seconds 0.5",
             "crawler_runtime_process_root_cpu_seconds_total 0.2",
             "crawler_runtime_process_tree_cpu_seconds_total 0.3",
@@ -1908,6 +1940,10 @@ class _SelfTests(unittest.TestCase):
         metrics = _validate_metrics("\n".join(lines))
         self.assertEqual(metrics["observation_sequence"], 2)
         self.assertEqual(metrics["descendant_count"], 1)
+        self.assertEqual(
+            metrics["timing_limit_violations"],
+            {"wake_lateness": 0, "collection": 0, "handoff": 0},
+        )
 
     def test_full_image_process_topology(self) -> None:
         def process(

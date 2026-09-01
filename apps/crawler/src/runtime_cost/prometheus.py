@@ -23,6 +23,7 @@ from src.runtime_cost.model import (
     PROCESS_TREE_MIN_COVERAGE_RATIO,
     ModelError,
 )
+from src.runtime_cost.process_tree import SAMPLER_STRICT_TIMING_LIMIT_SECONDS
 
 TARGET_SCHEMA = "jobseek.crawler-runtime-capture-targets/v1"
 EXACT_24H_TARGET_INSTANCES = frozenset(
@@ -35,6 +36,7 @@ _PROCESS_TREE_OBSERVATION_COMPONENTS = (
     "tree_rss",
     "descendants",
 )
+_SAMPLER_TIMING_PHASES = ("wake_lateness", "collection", "handoff")
 Query = Callable[[str, datetime], list[dict[str, Any]]]
 
 
@@ -669,6 +671,89 @@ def _capture_browser_retry_target(
     return coverage, target_complete, target_retry_events if target_complete else None
 
 
+def _capture_strict_sampler_timing(
+    query: Query,
+    *,
+    selector: str,
+    start_at: datetime,
+    end_at: datetime,
+    range_selector: str,
+) -> tuple[dict[str, Any], bool, int | None]:
+    """Retain exact reset-free boundaries for every fixed sampler phase."""
+
+    metric = "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
+    expected_keys = {(phase,) for phase in _SAMPLER_TIMING_PHASES}
+    expression = f"{metric}{{{selector}}}"
+    start_boundary = _strict_labelled_source_counter_vector(
+        query(expression, start_at),
+        label_names=("phase",),
+        expected_keys=expected_keys,
+    )
+    end_boundary = _strict_labelled_source_counter_vector(
+        query(expression, end_at),
+        label_names=("phase",),
+        expected_keys=expected_keys,
+    )
+    reset_boundary = _strict_labelled_source_counter_vector(
+        query(f"resets({expression}[{range_selector}])", end_at),
+        label_names=("phase",),
+        expected_keys=expected_keys,
+    )
+
+    boundaries_complete = (
+        start_boundary is not None and end_boundary is not None and reset_boundary is not None
+    )
+    source_identity_complete = False
+    reset_total: int | None = None
+    if boundaries_complete:
+        assert start_boundary is not None
+        assert end_boundary is not None
+        assert reset_boundary is not None
+        start_values, start_sources = start_boundary
+        end_values, end_sources = end_boundary
+        reset_values, reset_sources = reset_boundary
+        source_identity_complete = start_sources == end_sources == reset_sources
+        reset_total = sum(reset_values.values())
+    else:
+        start_values = {}
+        end_values = {}
+        reset_values = {}
+
+    phases: list[dict[str, Any]] = []
+    complete = boundaries_complete and source_identity_complete
+    for phase in _SAMPLER_TIMING_PHASES:
+        key = (phase,)
+        start_value = start_values.get(key)
+        end_value = end_values.get(key)
+        reset_value = reset_values.get(key)
+        violations = (
+            end_value - start_value
+            if start_value is not None and end_value is not None and end_value >= start_value
+            else None
+        )
+        phase_complete = violations == 0 and reset_value == 0
+        complete = complete and phase_complete
+        phases.append(
+            {
+                "phase": phase,
+                "start": start_value,
+                "end": end_value,
+                "violations": violations,
+                "resets": reset_value,
+            }
+        )
+
+    return (
+        {
+            "limit_seconds": SAMPLER_STRICT_TIMING_LIMIT_SECONDS,
+            "phases": phases,
+            "complete": complete,
+        },
+        complete,
+        reset_total,
+    )
+
+
 def _capture_process_tree_target(
     query: Query,
     *,
@@ -775,6 +860,14 @@ def _capture_process_tree_target(
     )
     sampler_restarts = _counter_delta(sampler_starts_start, sampler_starts_end)
 
+    strict_timing, strict_timing_complete, strict_timing_resets = _capture_strict_sampler_timing(
+        query,
+        selector=selector,
+        start_at=start_at,
+        end_at=end_at,
+        range_selector=range_selector,
+    )
+
     reset_expressions = (
         f'crawler_runtime_process_tree_samples_total{{{selector},outcome="success"}}',
         f'crawler_runtime_process_tree_samples_total{{{selector},outcome="failure"}}',
@@ -795,8 +888,12 @@ def _capture_process_tree_target(
         for expression in reset_expressions
     ]
     counter_resets = None
-    if all(isinstance(value, int) for value in reset_counts):
-        counter_resets = sum(value for value in reset_counts if isinstance(value, int))
+    if all(isinstance(value, int) for value in reset_counts) and isinstance(
+        strict_timing_resets, int
+    ):
+        counter_resets = (
+            sum(value for value in reset_counts if isinstance(value, int)) + strict_timing_resets
+        )
 
     component_names = _PROCESS_TREE_OBSERVATION_COMPONENTS
     component_keys = {(component,) for component in component_names}
@@ -970,6 +1067,7 @@ def _capture_process_tree_target(
         "end_observation_sequence": sequence_end,
         "paired_start": paired_start,
         "paired_end": paired_end,
+        "strict_timing": strict_timing,
     }
     complete = (
         interval_seconds is not None
@@ -979,6 +1077,9 @@ def _capture_process_tree_target(
         and failed_samples == 0
         and missing_samples is not None
         and counter_resets == 0
+        and strict_timing_complete
+        and sampler_starts_start == 1
+        and sampler_starts_end == 1
         and sampler_restarts == 0
         and gap_samples == 0
         and coverage_ratio is not None

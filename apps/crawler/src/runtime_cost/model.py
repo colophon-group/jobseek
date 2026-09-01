@@ -10,6 +10,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from src.runtime_cost.process_tree import SAMPLER_STRICT_TIMING_LIMIT_SECONDS
+
 WORKLOAD_SCHEMA = "jobseek.crawler-runtime-workload/v1"
 MEASUREMENT_SCHEMA = "jobseek.crawler-runtime-measurement/v1"
 PRICING_SCHEMA = "jobseek.crawler-runtime-pricing/v1"
@@ -119,6 +121,69 @@ def _nonnegative_int(value: object, field: str) -> int:
     return value
 
 
+def _validate_strict_timing_coverage(value: object, *, prefix: str) -> None:
+    _require(isinstance(value, dict), f"{prefix}.strict_timing is missing or invalid")
+    assert isinstance(value, dict)
+    _require(
+        set(value) == {"limit_seconds", "phases", "complete"},
+        f"{prefix}.strict_timing fields are invalid",
+    )
+    limit_seconds = value.get("limit_seconds")
+    _require(
+        isinstance(limit_seconds, int | float)
+        and not isinstance(limit_seconds, bool)
+        and math.isfinite(float(limit_seconds))
+        and float(limit_seconds) == SAMPLER_STRICT_TIMING_LIMIT_SECONDS,
+        f"{prefix}.strict_timing.limit_seconds differs from the contract",
+    )
+    phases = value.get("phases")
+    _require(
+        isinstance(phases, list) and len(phases) == 3,
+        f"{prefix}.strict_timing phases must contain exactly three children",
+    )
+    assert isinstance(phases, list)
+    expected_phases = {"wake_lateness", "collection", "handoff"}
+    observed_phases: set[str] = set()
+    for index, phase_item in enumerate(phases):
+        phase_prefix = f"{prefix}.strict_timing.phases[{index}]"
+        _require(isinstance(phase_item, dict), f"{phase_prefix} must be an object")
+        assert isinstance(phase_item, dict)
+        _require(
+            set(phase_item) == {"phase", "start", "end", "violations", "resets"},
+            f"{phase_prefix} fields are invalid",
+        )
+        phase = phase_item.get("phase")
+        _require(
+            isinstance(phase, str) and phase in expected_phases,
+            f"{phase_prefix}.phase is invalid",
+        )
+        assert isinstance(phase, str)
+        _require(
+            phase not in observed_phases,
+            f"{prefix}.strict_timing phase is duplicated",
+        )
+        observed_phases.add(phase)
+        start = _nonnegative_int(phase_item.get("start"), f"{phase_prefix}.start")
+        end = _nonnegative_int(phase_item.get("end"), f"{phase_prefix}.end")
+        violations = _nonnegative_int(
+            phase_item.get("violations"),
+            f"{phase_prefix}.violations",
+        )
+        resets = _nonnegative_int(phase_item.get("resets"), f"{phase_prefix}.resets")
+        _require(end >= start, f"{phase_prefix} counter regressed")
+        _require(
+            violations == end - start,
+            f"{phase_prefix}.violations is inconsistent",
+        )
+        _require(resets == 0, f"{phase_prefix} contains counter resets")
+        _require(violations == 0, f"{phase_prefix} contains timing limit violations")
+    _require(
+        observed_phases == expected_phases,
+        f"{prefix}.strict_timing phase set differs from the contract",
+    )
+    _require(value.get("complete") is True, f"{prefix}.strict_timing is incomplete")
+
+
 def _validate_process_tree_coverage(
     observed: dict[str, Any],
     *,
@@ -157,6 +222,7 @@ def _validate_process_tree_coverage(
         )
         coverage_ids.add(target_id)
         prefix = f"measurement role {role} process-tree coverage {target_id}"
+        _validate_strict_timing_coverage(item.get("strict_timing"), prefix=prefix)
         interval_seconds = _positive_number(
             item.get("sample_interval_seconds"),
             f"{prefix}.sample_interval_seconds",

@@ -359,6 +359,7 @@ def _committed_process_tree_measurement() -> dict:
                     "end_observation_sequence": 165988,
                     "paired_start": True,
                     "paired_end": True,
+                    "strict_timing": _complete_strict_timing(),
                     "complete": True,
                     "successful_samples": 165888,
                     "target_id": "browser-worker-1",
@@ -371,6 +372,23 @@ def _committed_process_tree_measurement() -> dict:
         }
     )
     return measurement
+
+
+def _complete_strict_timing(start: int = 7) -> dict:
+    return {
+        "limit_seconds": 0.25,
+        "phases": [
+            {
+                "phase": phase,
+                "start": start,
+                "end": start,
+                "violations": 0,
+                "resets": 0,
+            }
+            for phase in ("wake_lateness", "collection", "handoff")
+        ],
+        "complete": True,
+    }
 
 
 def _complete_retry_coverage(target_id: str) -> list[dict]:
@@ -541,6 +559,21 @@ def test_process_tree_schema_requires_integer_conditional_coverage() -> None:
     assert any("integer" in error.message for error in errors)
 
 
+def test_process_tree_schema_requires_complete_strict_timing_evidence() -> None:
+    schema = _json(RUNTIME_COST / "schemas/measurement-v1.schema.json")
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    missing = _committed_process_tree_measurement()
+    missing["roles"][0]["process_tree_coverage"][0].pop("strict_timing")
+    inconsistent = _committed_process_tree_measurement()
+    inconsistent["roles"][0]["process_tree_coverage"][0]["strict_timing"]["phases"][0].update(
+        end=8,
+        violations=1,
+    )
+
+    assert list(validator.iter_errors(missing))
+    assert list(validator.iter_errors(inconsistent))
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [
@@ -580,6 +613,47 @@ def test_process_tree_schema_requires_integer_conditional_coverage() -> None:
         (
             lambda role: role["process_tree_coverage"][0].update(start_covered=False),
             "does not cover window start",
+        ),
+        (
+            lambda role: role["process_tree_coverage"][0].pop("strict_timing"),
+            "strict_timing is missing or invalid",
+        ),
+        (
+            lambda role: role["process_tree_coverage"][0]["strict_timing"].update(
+                limit_seconds=0.2500001
+            ),
+            "limit_seconds differs from the contract",
+        ),
+        (
+            lambda role: role["process_tree_coverage"][0]["strict_timing"]["phases"].__setitem__(
+                2,
+                {
+                    "phase": "collection",
+                    "start": 7,
+                    "end": 7,
+                    "violations": 0,
+                    "resets": 0,
+                },
+            ),
+            "phase is duplicated",
+        ),
+        (
+            lambda role: role["process_tree_coverage"][0]["strict_timing"]["phases"][0].update(
+                end=8, violations=0
+            ),
+            "violations is inconsistent",
+        ),
+        (
+            lambda role: role["process_tree_coverage"][0]["strict_timing"]["phases"][0].update(
+                end=8, violations=1
+            ),
+            "contains timing limit violations",
+        ),
+        (
+            lambda role: role["process_tree_coverage"][0]["strict_timing"]["phases"][0].update(
+                resets=1
+            ),
+            "contains counter resets",
         ),
     ],
 )
@@ -1189,6 +1263,44 @@ def _synthetic_capture_query(
             rows.append(duplicate)
         return rows
 
+    def strict_timing_rows(expression: str, at: datetime) -> list[dict]:
+        reset_query = "resets(" in expression
+        rows = []
+        for index, phase in enumerate(("wake_lateness", "collection", "handoff")):
+            labels = {
+                "job": "crawler",
+                "instance": "browser-1",
+                "prometheus_replica": "replica-a",
+                "phase": phase,
+            }
+            if not reset_query:
+                labels["__name__"] = (
+                    "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
+                )
+            value: int | float = 0 if reset_query else 7
+            if fault == "timing-reset" and reset_query and index == 0:
+                value = 1
+            if fault == "timing-regression" and not reset_query and at == end_at and index == 0:
+                value = 6
+            if fault == "timing-positive-delta" and not reset_query and at == end_at and index == 0:
+                value = 8
+            if fault == "timing-fractional" and not reset_query and at == end_at and index == 0:
+                value = 7.5
+            if fault == "timing-negative" and not reset_query and at == start_at and index == 0:
+                value = -1
+            rows.append({"metric": labels, "value": [0, str(value)]})
+        if fault == "timing-missing-phase":
+            rows.pop()
+        if fault == "timing-extra-phase":
+            extra = deepcopy(rows[0])
+            extra["metric"]["phase"] = "serialization"
+            rows.append(extra)
+        if fault == "timing-duplicate-phase":
+            duplicate = deepcopy(rows[0])
+            duplicate["metric"]["prometheus_replica"] = "replica-b"
+            rows.append(duplicate)
+        return rows
+
     def fake_query(expression: str, at: datetime) -> list[dict]:
         if any(metric in expression for metric in _ATTRIBUTION_METRICS):
             return []
@@ -1211,6 +1323,8 @@ def _synthetic_capture_query(
         )
         if retry_metric is not None:
             return retry_rows(expression, at, retry_metric)
+        if "crawler_runtime_process_tree_sampler_timing_limit_violations_total" in expression:
+            return strict_timing_rows(expression, at)
         if expression.startswith("count("):
             if fault == "missing-failure-series" and 'outcome="failure"' in expression:
                 return scalar(0)
@@ -1259,6 +1373,8 @@ def _synthetic_capture_query(
         if "crawler_runtime_process_tree_sampling_gaps_total" in expression:
             return scalar(1 if fault == "sampling-gap" and at == end_at else 0)
         if "crawler_runtime_process_tree_sampler_starts_total" in expression:
+            if fault == "sampler-started-before-window":
+                return scalar(2)
             return scalar(2 if fault == "sampler-restart" and at == end_at else 1)
         if "min(min_over_time" in expression:
             return scalar(0 if fault not in {"cpu-margin", "rss-margin"} else -1)
@@ -1368,6 +1484,7 @@ def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
             "end_observation_sequence": 7300,
             "paired_start": True,
             "paired_end": True,
+            "strict_timing": _complete_strict_timing(),
             "complete": True,
             "successful_samples": 7200,
             "target_id": "browser-a",
@@ -1432,11 +1549,20 @@ def test_prometheus_capture_rejects_partial_process_tree_role_coverage() -> None
         "missing-failure-series",
         "counter-reset",
         "sampler-restart",
+        "sampler-started-before-window",
         "sampling-gap",
         "missing-start",
         "missing-end",
         "tree-cpu-below-root",
         "tree-rss-below-root",
+        "timing-missing-phase",
+        "timing-extra-phase",
+        "timing-duplicate-phase",
+        "timing-reset",
+        "timing-regression",
+        "timing-positive-delta",
+        "timing-fractional",
+        "timing-negative",
     ],
 )
 def test_prometheus_capture_fails_closed_for_incomplete_tree_window(fault: str) -> None:
@@ -1521,6 +1647,7 @@ def test_exact_86400_second_six_target_capture_is_complete(interval_seconds: flo
         item["expected_samples"] == expected
         and item["successful_samples"] == expected
         and item["coverage_ratio"] == 1
+        and item["strict_timing"] == _complete_strict_timing()
         for role in result["roles"]
         for item in role["process_tree_coverage"]
     )

@@ -182,6 +182,22 @@ restart; the reason and timing metrics provide causal burn-in evidence rather
 than relaxing that gate. Sampling interval, workload, browser concurrency,
 container CPU quota, and host size are not changed by this isolation repair.
 
+Strict timing promotion additionally uses the pre-seeded fixed-cardinality
+`crawler_runtime_process_tree_sampler_timing_limit_violations_total` family.
+Its only label is `phase`, with exactly `wake_lateness`, `collection`, and
+`handoff`; each child increments for a finite non-negative duration greater
+than or equal to 0.25 seconds, so equality fails the strict less-than limit.
+The count shares the histogram's atomic child snapshot and remains monotonic
+through sampler-child replacement. Capture retains raw integer start/end
+values, their exact difference, and per-series reset counts for every phase.
+Complete process-tree evidence requires the exact phase set, unchanged source
+identity, zero resets, zero differences, and `limit_seconds` exactly 0.25.
+Missing, extra, duplicate, fractional, negative, regressing, or threshold-
+mismatched evidence fails closed; `increase()` and inclusive histogram buckets
+are not accepted as strict-maximum proof. Historical generic measurement-v1
+root-process evidence remains valid because the strict object is additive, but
+all newly promoted complete process-tree coverage requires it.
+
 Navigation-network, content, and target-closed retry children are pre-created
 for every declared bounded reason/outcome, including healthy zeros. The
 target-closed counter emits one `outcome="retry"` at the accepted redispatch

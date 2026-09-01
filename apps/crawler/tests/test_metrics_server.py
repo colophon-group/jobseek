@@ -103,9 +103,10 @@ def test_process_tree_exposition_keeps_one_generation_during_concurrent_publish(
 def test_process_tree_exposition_includes_isolated_process_causal_evidence() -> None:
     collector = _ProcessTreeMetricsCollector()
     histogram = TimingHistogramSnapshot(
-        bucket_counts=(0, 0, *([1] * (len(SAMPLER_TIMING_BUCKETS) - 2))),
+        bucket_counts=(0, 0, 0, 0, 0, 0, *([1] * (len(SAMPLER_TIMING_BUCKETS) - 6))),
         count=1,
-        sum_seconds=0.01,
+        sum_seconds=0.25,
+        limit_violations=1,
     )
     snapshot = SamplerMetricsSnapshot(
         sample=_sample(3),
@@ -149,16 +150,40 @@ def test_process_tree_exposition_includes_isolated_process_causal_evidence() -> 
     )
     assert samples[("crawler_runtime_process_tree_sampler_starts_total", ())] == 2
     assert samples[("crawler_runtime_process_tree_sampler_wake_lateness_seconds_count", ())] == 1
-    assert samples[("crawler_runtime_process_tree_sampler_wake_lateness_seconds_sum", ())] == 0.01
+    assert samples[("crawler_runtime_process_tree_sampler_wake_lateness_seconds_sum", ())] == 0.25
     assert (
         samples[
             (
                 "crawler_runtime_process_tree_sampler_wake_lateness_seconds_bucket",
-                (("le", "0.01"),),
+                (("le", "0.25"),),
             )
         ]
         == 1
     )
+    assert {
+        labels: value
+        for (name, labels), value in samples.items()
+        if name == "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
+    } == {
+        (("phase", "wake_lateness"),): 1,
+        (("phase", "collection"),): 1,
+        (("phase", "handoff"),): 1,
+    }
+
+
+def test_process_tree_strict_timing_children_are_preseeded_at_zero() -> None:
+    samples = [
+        sample
+        for family in _ProcessTreeMetricsCollector().collect()
+        for sample in family.samples
+        if sample.name == "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
+    ]
+
+    assert {tuple(sample.labels.items()): sample.value for sample in samples} == {
+        (("phase", "wake_lateness"),): 0,
+        (("phase", "collection"),): 0,
+        (("phase", "handoff"),): 0,
+    }
 
 
 def test_process_tree_source_failure_is_persistent_and_metrics_endpoint_stays_available() -> None:

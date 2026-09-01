@@ -47,7 +47,8 @@ SAMPLER_TIMING_BUCKETS: Final[tuple[float, ...]] = (
     2.5,
     5.0,
 )
-_SAMPLER_FRAME_VERSION = 1
+SAMPLER_STRICT_TIMING_LIMIT_SECONDS: Final = 0.25
+_SAMPLER_FRAME_VERSION = 2
 _MAX_SAMPLER_FRAME_BYTES = 64 * 1024
 _SAMPLER_SOCKET_BUFFER_BYTES = 256 * 1024
 _MAX_SAMPLER_CLOCK_AHEAD_SECONDS = 1.0
@@ -162,11 +163,27 @@ class TimingHistogramSnapshot:
     bucket_counts: tuple[int, ...]
     count: int
     sum_seconds: float
+    limit_violations: int
 
     def __post_init__(self) -> None:
         if len(self.bucket_counts) != len(SAMPLER_TIMING_BUCKETS):
             raise ValueError("sampler timing histogram bucket count is invalid")
-        if self.count < 0 or any(value < 0 for value in self.bucket_counts):
+        if (
+            not isinstance(self.count, int)
+            or isinstance(self.count, bool)
+            or not isinstance(self.limit_violations, int)
+            or isinstance(self.limit_violations, bool)
+            or any(
+                not isinstance(value, int) or isinstance(value, bool)
+                for value in self.bucket_counts
+            )
+        ):
+            raise ValueError("sampler timing histogram counts must be integers")
+        if (
+            self.count < 0
+            or self.limit_violations < 0
+            or any(value < 0 for value in self.bucket_counts)
+        ):
             raise ValueError("sampler timing histogram counts must be non-negative")
         if any(
             right < left
@@ -175,6 +192,8 @@ class TimingHistogramSnapshot:
             raise ValueError("sampler timing histogram buckets must be cumulative")
         if self.bucket_counts and self.bucket_counts[-1] > self.count:
             raise ValueError("sampler timing histogram bucket exceeds total count")
+        if self.limit_violations > self.count:
+            raise ValueError("sampler timing violations exceed total count")
         if not math.isfinite(self.sum_seconds) or self.sum_seconds < 0:
             raise ValueError("sampler timing histogram sum must be finite and non-negative")
 
@@ -184,6 +203,7 @@ class TimingHistogramSnapshot:
             bucket_counts=(0,) * len(SAMPLER_TIMING_BUCKETS),
             count=0,
             sum_seconds=0.0,
+            limit_violations=0,
         )
 
     def __add__(self, other: TimingHistogramSnapshot) -> TimingHistogramSnapshot:
@@ -198,6 +218,7 @@ class TimingHistogramSnapshot:
             ),
             count=self.count + other.count,
             sum_seconds=self.sum_seconds + other.sum_seconds,
+            limit_violations=self.limit_violations + other.limit_violations,
         )
 
     def contains(self, earlier: TimingHistogramSnapshot) -> bool:
@@ -206,6 +227,7 @@ class TimingHistogramSnapshot:
         return (
             self.count >= earlier.count
             and self.sum_seconds >= earlier.sum_seconds
+            and self.limit_violations >= earlier.limit_violations
             and all(
                 current >= previous
                 for current, previous in zip(
@@ -332,12 +354,15 @@ class _TimingHistogram:
         self._bucket_counts = [0] * len(SAMPLER_TIMING_BUCKETS)
         self._count = 0
         self._sum_seconds = 0.0
+        self._limit_violations = 0
 
     def observe(self, seconds: float) -> None:
         if not math.isfinite(seconds) or seconds < 0:
             raise ValueError("sampler timing must be finite and non-negative")
         self._count += 1
         self._sum_seconds += seconds
+        if seconds >= SAMPLER_STRICT_TIMING_LIMIT_SECONDS:
+            self._limit_violations += 1
         for index, boundary in enumerate(SAMPLER_TIMING_BUCKETS):
             if seconds <= boundary:
                 self._bucket_counts[index] += 1
@@ -347,6 +372,7 @@ class _TimingHistogram:
             bucket_counts=tuple(self._bucket_counts),
             count=self._count,
             sum_seconds=self._sum_seconds,
+            limit_violations=self._limit_violations,
         )
 
 
@@ -493,7 +519,12 @@ def _decode_sample(value: object) -> ProcessTreeSample | None:
     )
 
 
-_TIMING_HISTOGRAM_KEYS = {"bucket_counts", "count", "sum_seconds"}
+_TIMING_HISTOGRAM_KEYS = {
+    "bucket_counts",
+    "count",
+    "sum_seconds",
+    "limit_violations",
+}
 
 
 def _histogram_payload(histogram: TimingHistogramSnapshot) -> dict[str, object]:
@@ -501,6 +532,7 @@ def _histogram_payload(histogram: TimingHistogramSnapshot) -> dict[str, object]:
         "bucket_counts": list(histogram.bucket_counts),
         "count": histogram.count,
         "sum_seconds": histogram.sum_seconds,
+        "limit_violations": histogram.limit_violations,
     }
 
 
@@ -516,6 +548,10 @@ def _decode_histogram(value: object, field: str) -> TimingHistogramSnapshot:
         ),
         count=_require_nonnegative_int(payload["count"], f"{field} count"),
         sum_seconds=_require_finite_number(payload["sum_seconds"], f"{field} sum_seconds"),
+        limit_violations=_require_nonnegative_int(
+            payload["limit_violations"],
+            f"{field} limit_violations",
+        ),
     )
 
 

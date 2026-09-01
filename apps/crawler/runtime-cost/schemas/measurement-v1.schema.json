@@ -139,8 +139,10 @@
             ,"end_observation_sequence": {"minimum": 1, "type": "integer"}
             ,"paired_start": {"const": true}
             ,"paired_end": {"const": true}
+            ,"strict_timing": {"$ref": "#/$defs/completeStrictTimingCoverage"}
             ,"complete": {"const": true}
-          }
+          },
+          "required": ["strict_timing"]
         }
       ]
     },
@@ -237,12 +239,70 @@
         "end_observation_sequence": {"minimum": 0, "type": ["integer", "null"]},
         "paired_start": {"type": "boolean"},
         "paired_end": {"type": "boolean"},
+        "strict_timing": {"$ref": "#/$defs/strictTimingCoverage"},
         "complete": {"type": "boolean"},
         "successful_samples": {"minimum": 0, "type": ["integer", "null"]},
         "target_id": {"minLength": 1, "type": "string"}
       },
       "required": ["target_id", "sample_interval_seconds", "expected_samples", "successful_samples", "failed_samples", "missing_samples", "counter_resets", "sampler_restarts", "gap_samples", "coverage_ratio", "required_coverage_ratio", "boundary_tolerance_seconds", "start_covered", "end_covered", "start_observation_sequence", "end_observation_sequence", "paired_start", "paired_end", "complete"],
       "type": "object"
+    },
+    "strictTimingPhase": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {"minimum": 0, "type": ["integer", "null"]},
+        "phase": {"enum": ["wake_lateness", "collection", "handoff"]},
+        "resets": {"minimum": 0, "type": ["integer", "null"]},
+        "start": {"minimum": 0, "type": ["integer", "null"]},
+        "violations": {"minimum": 0, "type": ["integer", "null"]}
+      },
+      "required": ["phase", "start", "end", "violations", "resets"],
+      "type": "object"
+    },
+    "strictTimingCoverage": {
+      "additionalProperties": false,
+      "properties": {
+        "complete": {"type": "boolean"},
+        "limit_seconds": {"const": 0.25},
+        "phases": {
+          "allOf": [
+            {"contains": {"properties": {"phase": {"const": "wake_lateness"}}, "required": ["phase"]}, "maxContains": 1, "minContains": 1},
+            {"contains": {"properties": {"phase": {"const": "collection"}}, "required": ["phase"]}, "maxContains": 1, "minContains": 1},
+            {"contains": {"properties": {"phase": {"const": "handoff"}}, "required": ["phase"]}, "maxContains": 1, "minContains": 1}
+          ],
+          "items": {"$ref": "#/$defs/strictTimingPhase"},
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        }
+      },
+      "required": ["limit_seconds", "phases", "complete"],
+      "type": "object"
+    },
+    "completeStrictTimingCoverage": {
+      "allOf": [
+        {"$ref": "#/$defs/strictTimingCoverage"},
+        {
+          "properties": {
+            "complete": {"const": true},
+            "phases": {
+              "items": {
+                "allOf": [
+                  {"$ref": "#/$defs/strictTimingPhase"},
+                  {
+                    "properties": {
+                      "end": {"minimum": 0, "type": "integer"},
+                      "resets": {"const": 0},
+                      "start": {"minimum": 0, "type": "integer"},
+                      "violations": {"const": 0}
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
     },
     "retryEvent": {
       "additionalProperties": false,
