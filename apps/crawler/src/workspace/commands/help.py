@@ -1526,6 +1526,12 @@ inline — Single-Page Extraction (rich)
                  Use a contentful repeated tag, not a structural wrapper such
                  as details; details/summary accordions should instead stop
                  each description at the next summary as shown above.
+    item_boundary
+                 Optional matcher object for pages where posting boundaries
+                 share a tag with unrelated content. Supports tag, text, attr,
+                 and match_regex, using the same matching rules as section_start
+                 and section_end. Cannot be combined with item_boundary_tag.
+                 Example: {"tag": "p", "attr": "itemprop=headline"}.
     synthetic_identity_field
                  Optional extracted field containing a provider-stable identity
                  for ordinary static inline rows. The identity, rather than the
