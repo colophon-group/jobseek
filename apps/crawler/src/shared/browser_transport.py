@@ -1034,6 +1034,7 @@ type RequestClassifier = Callable[[str, str, Mapping[str, Any]], RequestDeclarat
 
 LOOPBACK_CDP_ADDRESS = "127.0.0.1"
 CDP_SETUP_TIMEOUT_SECONDS = 5.0
+CDP_TARGET_INITIALIZATION_TIMEOUT_SECONDS = 5.0
 CDP_TARGET_FILTER = (
     {"type": "page"},
     {"type": "iframe"},
@@ -1644,6 +1645,26 @@ class ChromiumAutoAttachObserver:
             self._handle_network_event(session_id, method, params)
 
     async def _initialize_target(
+        self,
+        params: Mapping[str, Any],
+        *,
+        parent_session_id: str | None,
+    ) -> None:
+        deadline = asyncio.get_running_loop().time() + CDP_TARGET_INITIALIZATION_TIMEOUT_SECONDS
+        try:
+            async with asyncio.timeout_at(deadline):
+                await self._initialize_target_before_deadline(
+                    params,
+                    parent_session_id=parent_session_id,
+                )
+        except TimeoutError:
+            # The one absolute target budget includes command send/response and
+            # every release, detach, or close fallback. Once it is exhausted,
+            # closing the controlling transport is the final release path.
+            self._transition_fatal(defer_transport_close=True)
+            self._schedule_fatal_transport_close()
+
+    async def _initialize_target_before_deadline(
         self,
         params: Mapping[str, Any],
         *,

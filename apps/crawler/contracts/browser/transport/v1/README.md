@@ -72,6 +72,11 @@ Duplicate-session resume and detach are part of required initialization:
 failure of either acknowledgement enters the same fatal transition before any
 further application admission, while cleanup continues only long enough to
 prove the paused target was resumed, detached, or closed.
+Every target initialization has one absolute 5.0-second acknowledgement
+deadline covering command send and response, duplicate cleanup, and all
+release/detach/close fallbacks. Cleanup never receives a fresh timeout. Missing
+acknowledgements exhaust that shared budget, enter the fatal transition, and
+close the raw transport as the final paused-target release path.
 
 Request identity is `(browser_generation, session_id, request_id,
 redirect_hop)`. Attribution and request class freeze at

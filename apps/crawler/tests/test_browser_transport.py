@@ -635,6 +635,59 @@ async def _flush_tasks() -> None:
         await asyncio.sleep(0)
 
 
+async def _post_ready_observer_with_live_request() -> tuple[
+    FakeRawWebSocket,
+    BrowserTransportTracker,
+    ChromiumAutoAttachObserver,
+]:
+    websocket = FakeRawWebSocket()
+    tracker = BrowserTransportTracker()
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
+        tracker,
+        lambda *_args: RequestDeclaration("task"),
+        stage=Stage.DETAIL,
+    )
+    assert observer is not None and observer.ready
+    assert tracker.accept_task("task", _attribution(stage=Stage.DETAIL))
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "owner-session",
+            "targetInfo": {"targetId": "owner-target", "type": "page"},
+        },
+    )
+    await _flush_tasks()
+    websocket.emit_event(
+        "Network.requestWillBeSent",
+        {"requestId": "live-request", "timestamp": 1},
+        session_id="owner-session",
+    )
+    await _flush_tasks()
+    assert tracker.live_count == 1
+    return websocket, tracker, observer
+
+
+def _assert_initialization_timeout_failed_closed(
+    websocket: FakeRawWebSocket,
+    tracker: BrowserTransportTracker,
+    observer: ChromiumAutoAttachObserver,
+) -> None:
+    assert not observer.ready
+    assert websocket.closed
+    assert not observer._initialization_tasks
+    assert tracker.live_count == 0
+    assert len(tracker.terminals) == 1
+    assert tracker.terminals[0].outcome is TerminalOutcome.TRANSPORT_FAILURE
+    assert not tracker.accept_task("after-timeout", _attribution(stage=Stage.DETAIL))
+    assert (
+        tracker.instrumentation_counts[
+            (Stage.DETAIL, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+        ]
+        == 1
+    )
+
+
 async def _attach_fake_ownership_protocol(
     monkeypatch: pytest.MonkeyPatch,
     websocket: FakeRawWebSocket,
@@ -909,6 +962,31 @@ async def test_post_ready_child_network_failure_revokes_readiness_and_admission(
 
 
 @pytest.mark.asyncio
+async def test_post_ready_child_missing_network_ack_expires_one_target_deadline(
+    monkeypatch,
+):
+    monkeypatch.setattr(transport, "CDP_TARGET_INITIALIZATION_TIMEOUT_SECONDS", 0.02)
+    websocket, tracker, observer = await _post_ready_observer_with_live_request()
+    websocket.blocked_methods.add("Network.enable")
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "late-session",
+            "targetInfo": {"targetId": "late-target", "type": "worker"},
+        },
+    )
+
+    await asyncio.sleep(0.04)
+    await _flush_tasks()
+
+    assert websocket.methods_for("late-session") == [
+        "Target.setAutoAttach",
+        "Network.enable",
+    ]
+    _assert_initialization_timeout_failed_closed(websocket, tracker, observer)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "failed_commands",
     [
@@ -1016,6 +1094,90 @@ async def test_nested_duplicate_session_detaches_through_its_parent_session():
     assert observer.ready
     assert not tracker.instrumentation_counts
     await observer.drain_and_detach()
+
+
+@pytest.mark.asyncio
+async def test_duplicate_missing_resume_ack_expires_one_target_deadline(monkeypatch):
+    monkeypatch.setattr(transport, "CDP_TARGET_INITIALIZATION_TIMEOUT_SECONDS", 0.02)
+    websocket, tracker, observer = await _post_ready_observer_with_live_request()
+    websocket.blocked_methods.add("Runtime.runIfWaitingForDebugger")
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "duplicate-session",
+            "targetInfo": {"targetId": "owner-target", "type": "page"},
+        },
+        session_id="owner-session",
+    )
+
+    await asyncio.sleep(0.04)
+    await _flush_tasks()
+
+    assert websocket.methods_for("duplicate-session") == ["Runtime.runIfWaitingForDebugger"]
+    assert not [
+        message for message in websocket.sent if message["method"] == "Target.detachFromTarget"
+    ]
+    _assert_initialization_timeout_failed_closed(websocket, tracker, observer)
+
+
+@pytest.mark.asyncio
+async def test_parent_routed_duplicate_missing_detach_ack_expires_target_deadline(
+    monkeypatch,
+):
+    monkeypatch.setattr(transport, "CDP_TARGET_INITIALIZATION_TIMEOUT_SECONDS", 0.02)
+    websocket, tracker, observer = await _post_ready_observer_with_live_request()
+    websocket.blocked_methods.add("Target.detachFromTarget")
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "duplicate-session",
+            "targetInfo": {"targetId": "owner-target", "type": "page"},
+        },
+        session_id="owner-session",
+    )
+
+    await asyncio.sleep(0.04)
+    await _flush_tasks()
+
+    detach = [
+        message for message in websocket.sent if message["method"] == "Target.detachFromTarget"
+    ]
+    assert len(detach) == 1
+    assert detach[0]["params"] == {"sessionId": "duplicate-session"}
+    assert detach[0]["sessionId"] == "owner-session"
+    _assert_initialization_timeout_failed_closed(websocket, tracker, observer)
+
+
+@pytest.mark.asyncio
+async def test_duplicate_error_cleanup_cannot_outlive_remaining_target_budget(monkeypatch):
+    monkeypatch.setattr(transport, "CDP_TARGET_INITIALIZATION_TIMEOUT_SECONDS", 0.05)
+    websocket, tracker, observer = await _post_ready_observer_with_live_request()
+    websocket.errored_commands.add(("Runtime.runIfWaitingForDebugger", "duplicate-session"))
+    websocket.blocked_methods.add("Target.detachFromTarget")
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "duplicate-session",
+            "targetInfo": {"targetId": "owner-target", "type": "page"},
+        },
+        session_id="owner-session",
+    )
+    await _flush_tasks()
+
+    assert not observer.ready
+    assert tracker.live_count == 0
+    assert len(tracker.terminals) == 1
+    assert not tracker.accept_task("during-cleanup", _attribution(stage=Stage.DETAIL))
+    detach = [
+        message for message in websocket.sent if message["method"] == "Target.detachFromTarget"
+    ]
+    assert len(detach) == 1
+    assert detach[0]["sessionId"] == "owner-session"
+
+    await asyncio.sleep(0.07)
+    await _flush_tasks()
+
+    _assert_initialization_timeout_failed_closed(websocket, tracker, observer)
 
 
 @pytest.mark.asyncio
