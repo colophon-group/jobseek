@@ -1,12 +1,4 @@
-/**
- * Tests for SaveSearchButton — issue #3036 sub-bug 1.
- *
- * When createWatchlist returns `{ error: "limit_reached" }`, the
- * pre-fix behavior was a silent `router.push("/settings")` (opaque
- * redirect to the General tab, no reason shown). Post-fix the same
- * upgrade modal used elsewhere in the gating subsystem opens; its CTA
- * links to `/settings/billing` (locked down by upgrade-modal.test.tsx).
- */
+/** Tests for saving a search through the universal watchlist-cap flow. */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@/test-utils/lingui-mock";
@@ -44,7 +36,7 @@ describe("SaveSearchButton (issue #3036)", () => {
     createWatchlistMock.mockReset();
   });
 
-  it("opens upgrade modal (not a redirect) when the server reports limit_reached", async () => {
+  it("opens a neutral limit notice when the server reports limit_reached", async () => {
     createWatchlistMock.mockResolvedValue({ error: "limit_reached" });
 
     render(
@@ -58,12 +50,13 @@ describe("SaveSearchButton (issue #3036)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
 
-    // Upgrade CTA appears (linking to /settings/billing — sub-bug 3) and
-    // there is NO opaque router.push to /settings (sub-bug 1).
-    const upgradeLink = await screen.findByRole("link", { name: /upgrade/i });
-    expect(upgradeLink.getAttribute("href")).toBe("/en/settings/billing");
+    const notice = await screen.findByRole("dialog", { name: "10-watchlist limit" });
+    expect(notice.textContent).toContain(
+      "You can have up to 10 watchlists. Delete one before adding another.",
+    );
+    expect(screen.queryByRole("link", { name: /upgrade/i })).toBeNull();
     await waitFor(() => expect(createWatchlistMock).toHaveBeenCalledTimes(1));
-    expect(pushMock).not.toHaveBeenCalledWith("/en/settings");
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("navigates to the new watchlist on success", async () => {

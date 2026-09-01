@@ -702,12 +702,12 @@ export async function toggleWatchlistAlerts(
 
 /**
  * Combined fetch for the watchlists overview page: returns the user's
- * watchlist summaries AND whether they've reached their plan limit.
+ * watchlist summaries AND whether they've reached the universal account cap.
  *
  * Issue #3036: the loader previously hardcoded ``limitReached: false``,
  * which meant the ``CreateWatchlistCard`` never rendered its disabled
- * state (tooltip + dimmed + upgrade modal on click). Compute the real
- * value server-side so the gating UX matches the watchlist-detail page.
+ * state (tooltip + dimmed + limit notice on click). Compute the real value
+ * server-side so the overview matches the watchlist-detail page.
  */
 export async function getUserWatchlistsWithLimit(
   _locale: string,

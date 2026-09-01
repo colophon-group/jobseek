@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = i18n._({
     id: "about.meta.description",
     comment: "SEO description for the public About page.",
-    message: "Job Seek helps you track the companies you want to work at — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland.",
+    message: "Job Seek helps you track the companies you want to work at with watchlists, direct career-page postings, and an application tracker. Built by Colophon Group, a small developer studio in Switzerland.",
   });
 
   return {
@@ -56,7 +56,7 @@ export default async function AboutPage({ params }: Props) {
         description: i18n._({
           id: "about.meta.description",
           comment: "JSON-LD page description for the public About page.",
-          message: "Job Seek helps you track the companies you want to work at — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland.",
+          message: "Job Seek helps you track the companies you want to work at with watchlists, direct career-page postings, and an application tracker. Built by Colophon Group, a small developer studio in Switzerland.",
         }),
         url: `${siteConfig.url}/${locale}/about`,
         inLanguage: locale,

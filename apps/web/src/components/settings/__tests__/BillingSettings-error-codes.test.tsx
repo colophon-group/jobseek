@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
-  createCheckoutSession: vi.fn(),
   createPortalSession: vi.fn(),
 }));
 
@@ -20,7 +19,6 @@ vi.mock("@/lib/useLocalePath", () => ({
 }));
 
 vi.mock("@/lib/actions/billing", () => ({
-  createCheckoutSession: mocks.createCheckoutSession,
   createPortalSession: mocks.createPortalSession,
 }));
 
@@ -29,29 +27,19 @@ import { BillingSettings } from "../BillingSettings";
 describe("BillingSettings action errors", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.createCheckoutSession.mockResolvedValue({ url: null });
     mocks.createPortalSession.mockResolvedValue({ url: null });
   });
 
-  it("translates checkout error codes before rendering them", async () => {
-    mocks.createCheckoutSession.mockResolvedValueOnce({
-      url: null,
-      error: "payments_unavailable",
-    });
-
+  it("offers no purchase action while Pro billing is unavailable", () => {
     render(
       <BillingSettings
         planInfo={{ plan: "free", canReceiveAlerts: false }}
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Upgrade to Pro" }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("alert").textContent).toBe(
-        "Payments are not available yet.",
-      );
-    });
+    expect(screen.getByText("Plan details coming soon")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Upgrade to Pro" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Upgrade to Pro" })).toBeNull();
   });
 
   it("translates portal error codes before rendering them", async () => {

@@ -217,31 +217,34 @@ export function SearchToolbar({
           {(Object.entries(unresolvedExplicitSlugs ?? {}) as Array<
             [keyof UnresolvedExplicitSlugs, string[]]
           >).flatMap(([kind, slugs]) =>
-            slugs.map((slug) => (
-              <span
-                key={`unresolved-${kind}-${slug.toLowerCase()}`}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
-              >
-                {kind === "loc" ? <MapPin size={12} className="shrink-0" /> : null}
-                {kind === "occ" ? <Briefcase size={12} className="shrink-0" /> : null}
-                {kind === "sen" ? <BarChart3 size={12} className="shrink-0" /> : null}
-                {kind === "tech" ? <Code2 size={12} className="shrink-0" /> : null}
-                {slug}
-                {onRemoveUnresolvedSlug ? (
-                  <button
-                    onClick={() => onRemoveUnresolvedSlug(kind, slug)}
-                    className="ml-0.5 cursor-pointer rounded-full p-0.5 transition-colors hover:bg-primary/20"
-                    aria-label={t({
-                      id: "search.filters.removeFilter",
-                      comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value",
-                      message: `Remove ${slug} filter`,
-                    })}
-                  >
-                    <X size={12} aria-hidden="true" />
-                  </button>
-                ) : null}
-              </span>
-            )),
+            slugs.map((slug) => {
+              const name = slug;
+              return (
+                <span
+                  key={`unresolved-${kind}-${slug.toLowerCase()}`}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+                >
+                  {kind === "loc" ? <MapPin size={12} className="shrink-0" /> : null}
+                  {kind === "occ" ? <Briefcase size={12} className="shrink-0" /> : null}
+                  {kind === "sen" ? <BarChart3 size={12} className="shrink-0" /> : null}
+                  {kind === "tech" ? <Code2 size={12} className="shrink-0" /> : null}
+                  {slug}
+                  {onRemoveUnresolvedSlug ? (
+                    <button
+                      onClick={() => onRemoveUnresolvedSlug(kind, slug)}
+                      className="ml-0.5 cursor-pointer rounded-full p-0.5 transition-colors hover:bg-primary/20"
+                      aria-label={t({
+                        id: "search.filters.removeFilter",
+                        comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value",
+                        message: `Remove ${name} filter`,
+                      })}
+                    >
+                      <X size={12} aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </span>
+              );
+            }),
           )}
           {occupations.map((occ) => {
             const name = occ.name;

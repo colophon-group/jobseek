@@ -17,7 +17,10 @@ import {
 } from "@/lib/actions/watchlists";
 import { WatchlistCard, CreateWatchlistCard } from "@/components/watchlist/watchlist-card";
 import { PublicWatchlistSearch } from "@/components/watchlist/public-watchlist-search";
-import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
+import {
+  WatchlistLimitModal,
+  useWatchlistLimitModal,
+} from "@/components/watchlist/watchlist-limit-modal";
 import { Button } from "@/components/ui/Button";
 import {
   parseEmploymentTypeParam,
@@ -52,7 +55,8 @@ export function WatchlistsPage({
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
   const [watchlists, setWatchlists] = useState(initialWatchlists);
-  const upgrade = useUpgradeModal();
+  const [atLimit, setAtLimit] = useState(limitReached);
+  const limitNotice = useWatchlistLimitModal();
   const handoffAttemptedRef = useRef(false);
 
   useEffect(() => {
@@ -96,13 +100,7 @@ export function WatchlistsPage({
     };
   }, [initialWatchlists, isLoggedIn, locale]);
 
-  function showLimitUpgrade() {
-    upgrade.show(t({
-      id: "upgrade.reason.watchlistLimit",
-      comment: "Reason shown in upgrade modal when watchlist creation limit reached",
-      message: "You've reached your watchlist limit. Upgrade your plan to create more watchlists.",
-    }));
-  }
+  useEffect(() => setAtLimit(limitReached), [limitReached]);
 
   async function handleCreate(
     prefill?: {
@@ -114,12 +112,8 @@ export function WatchlistsPage({
     navigation: "push" | "replace" = "push",
   ) {
     if (creating || !isLoggedIn) return;
-    if (limitReached) {
-      // Issue #3036: redirecting to /settings (general tab) hid the
-      // reason from the user and put them on a tab unrelated to plans.
-      // Surface the same upgrade modal used elsewhere in the gating
-      // subsystem so the destination (billing) is explicit.
-      showLimitUpgrade();
+    if (atLimit) {
+      limitNotice.show();
       return;
     }
     setCreating(true);
@@ -139,9 +133,13 @@ export function WatchlistsPage({
             isPublic: false,
           });
       if ("error" in result) {
-        // Server-side race: client thought limit wasn't reached, but a
-        // concurrent create elsewhere raised the count. Same UX.
-        if (result.error === "limit_reached") showLimitUpgrade();
+        // A concurrent ownership-increasing write can make the server the
+        // first place this mount learns about the cap. Keep the overview's
+        // Create state aligned with that authoritative result.
+        if (result.error === "limit_reached") {
+          setAtLimit(true);
+          limitNotice.show();
+        }
         return;
       }
       if ("slug" in result && (username ?? user?.username)) {
@@ -185,11 +183,8 @@ export function WatchlistsPage({
 
     handoffAttemptedRef.current = true;
     if (!isLoggedIn) return;
-    if (limitReached) {
-      // Issue #3036: arriving with `?title=...` while at the plan
-      // limit used to silently no-op. Tell the user why nothing
-      // happened by surfacing the same upgrade modal.
-      showLimitUpgrade();
+    if (atLimit) {
+      limitNotice.show();
       return;
     }
 
@@ -234,7 +229,7 @@ export function WatchlistsPage({
       // Keep the handoff URL intact after a terminal action/database failure.
       // A reload is then an explicit retry, while this mount stays one-shot.
     });
-  }, [isLoggedIn, isPending, limitReached, searchParams]);
+  }, [atLimit, isLoggedIn, isPending, searchParams]);
 
   const loginHref = withAuthReturnPath(
     lp("/sign-in"),
@@ -305,8 +300,9 @@ export function WatchlistsPage({
             ))}
             <CreateWatchlistCard
               onClick={handleCreate}
+              onLimitReached={limitNotice.show}
               creating={creating}
-              disabled={limitReached}
+              limitReached={atLimit}
             />
           </div>
         )}
@@ -318,7 +314,10 @@ export function WatchlistsPage({
         initialTotal={initialPopularTotal}
       />
     </div>
-    <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
+    <WatchlistLimitModal
+      open={limitNotice.open}
+      onOpenChange={limitNotice.setOpen}
+    />
     </>
   );
 }

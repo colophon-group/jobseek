@@ -47,11 +47,11 @@ export default async function FaqPage({ params }: Props) {
   const faqItems = [
     {
       q: i18n._({ id: "faq.q.whatIsJobseek", comment: "FAQ question asking for a short product definition.", message: "What is Job Seek?" }),
-      a: i18n._({ id: "faq.a.whatIsJobseek", comment: "FAQ answer explaining what Job Seek does for targeted job seekers.", message: "Job Seek helps you track the companies you actually want to work at. Build a watchlist, get email alerts when new roles open up, and track applications in one place. Postings come straight from company career pages, so you see them within hours of going live — typically before LinkedIn or Indeed cross-post them." }),
+      a: i18n._({ id: "faq.a.whatIsJobseek", comment: "FAQ answer explaining what Job Seek does for targeted job seekers.", message: "Job Seek helps you track the companies you actually want to work at. Build watchlists, review matching roles, and track applications in one place. Postings come straight from company career pages, so you see them within hours of going live — typically before LinkedIn or Indeed cross-post them." }),
     },
     {
       q: i18n._({ id: "faq.q.targetedSeeker", comment: "FAQ question about whether the product suits company-targeted job seekers.", message: "Is Job Seek for me if I already know which companies I want to work for?" }),
-      a: i18n._({ id: "faq.a.targetedSeeker", comment: "FAQ answer explaining the company watchlist use case.", message: "Yes — that's the use case we built around. Add the companies you care about to a watchlist, set your filters (role, location, seniority, salary), and Job Seek monitors their career pages and alerts you the moment new roles match. You don't have to keep checking each company's site by hand or fight LinkedIn's algorithm." }),
+      a: i18n._({ id: "faq.a.targetedSeeker", comment: "FAQ answer explaining the company watchlist use case.", message: "Yes — that's the use case we built around. Add the companies you care about to a watchlist, set your filters (role, location, seniority, salary), and Job Seek keeps matching roles together in one feed. You don't have to search each company's site separately or fight LinkedIn's algorithm." }),
     },
     {
       q: i18n._({ id: "faq.q.howOftenUpdated", comment: "FAQ question about job listing refresh cadence.", message: "How often are job listings updated?" }),
@@ -67,11 +67,11 @@ export default async function FaqPage({ params }: Props) {
     },
     {
       q: i18n._({ id: "faq.q.freeVsPro", comment: "FAQ question comparing the Free and Pro plans.", message: "What's the difference between Free and Pro?" }),
-      a: i18n._({ id: "faq.a.freeVsPro", comment: "FAQ answer summarizing Free and the upcoming Pro plan.", message: "Free gives you full search across all companies, one watchlist, and the application tracker with interview logging. Pro is coming soon and will add unlimited watchlists and email alerts when new roles match your criteria." }),
+      a: i18n._({ id: "faq.a.freeVsPro", comment: "FAQ answer summarizing Free and the upcoming Pro plan without promising unannounced features.", message: "Free gives you full search across all companies, up to 10 watchlists, and the application tracker with interview logging. Pro is coming soon; plan details will be announced before launch." }),
     },
     {
       q: i18n._({ id: "faq.q.whatIsWatchlist", comment: "FAQ question defining a watchlist.", message: "What is a watchlist?" }),
-      a: i18n._({ id: "faq.a.whatIsWatchlist", comment: "FAQ answer explaining saved-search watchlists and sharing options.", message: "A watchlist is a saved search with optional company filtering. Pick the companies you care about, set your filters (role, location, seniority, salary), and get a live feed of matching jobs. You can share watchlists publicly or keep them private." }),
+      a: i18n._({ id: "faq.a.whatIsWatchlist", comment: "FAQ answer explaining saved-search watchlists and the universal account limit.", message: "A watchlist is a saved search with optional company filtering. Pick the companies you care about, set your filters (role, location, seniority, salary), and get a live feed of matching jobs. Each account can have up to 10 watchlists." }),
     },
     {
       q: i18n._({ id: "faq.q.trackerLimit", comment: "FAQ question about application tracker limits.", message: "Is there a limit to how many jobs I can track?" }),

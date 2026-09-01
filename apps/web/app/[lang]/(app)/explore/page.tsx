@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = i18n._({
     id: "explore.meta.description",
     comment: "SEO description for the Explore jobs page.",
-    message: "Search jobs across thousands of companies scraped directly from career pages. Filter by seniority, tech stack, salary, and location — then save watchlists and get alerts.",
+    message: "Search jobs across thousands of companies scraped directly from career pages. Filter by seniority, tech stack, salary, and location, then save searches as watchlists.",
   });
 
   return {

@@ -2,20 +2,22 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, BellOff, Trash2, Pencil, Copy, Loader2, Globe, Lock, AlertTriangle } from "lucide-react";
+import { Trash2, Pencil, Copy, Loader2, Globe, Lock, AlertTriangle } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import {
   copyWatchlist,
   deleteWatchlist,
-  toggleWatchlistAlerts,
   updateWatchlist,
 } from "@/lib/actions/watchlists";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
 import { tooltipClass, tooltipWarningClass } from "@/components/ui/tooltip-styles";
-import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
+import {
+  WatchlistLimitModal,
+  useWatchlistLimitModal,
+} from "@/components/watchlist/watchlist-limit-modal";
 
 const iconBtnClass =
   "inline-flex items-center justify-center rounded-md p-1.5 text-muted hover:bg-border-soft hover:text-foreground transition-colors cursor-pointer";
@@ -65,8 +67,6 @@ export function WatchlistActionBar({
   watchlistId,
   isOwner,
   isPublic: initialIsPublic,
-  alertsEnabled,
-  isPaidPlan,
   limitReached,
   onEdit,
 }: {
@@ -86,7 +86,7 @@ export function WatchlistActionBar({
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
-  const upgrade = useUpgradeModal();
+  const limitNotice = useWatchlistLimitModal();
 
   async function handleCopy() {
     if (!isLoggedIn) {
@@ -94,17 +94,15 @@ export function WatchlistActionBar({
       return;
     }
     if (limitReached) {
-      upgrade.show(t({
-        id: "upgrade.reason.mirrorLimit",
-        comment: "Reason shown in upgrade modal when mirror limit reached",
-        message: "You've reached your watchlist limit. Upgrade your plan to mirror more watchlists.",
-      }));
+      limitNotice.show();
       return;
     }
     setBusy(true);
     try {
       const result = await copyWatchlist(watchlistId);
-      if ("slug" in result && user?.username) {
+      if ("error" in result) {
+        if (result.error === "limit_reached") limitNotice.show();
+      } else if ("slug" in result && user?.username) {
         router.push(lp(`/${user.username}/${result.slug}`));
       } else {
         router.refresh();
@@ -128,21 +126,6 @@ export function WatchlistActionBar({
     const next = !isPublic;
     setIsPublic(next);
     updateWatchlist({ watchlistId, isPublic: next });
-  }
-
-  function handleToggleAlerts() {
-    if (!isPaidPlan) {
-      upgrade.show(t({
-        id: "upgrade.reason.alerts",
-        comment: "Reason shown in upgrade modal when trying to enable alerts",
-        message: "Email alerts are a paid feature. Upgrade to get notified when new jobs match your watchlist.",
-      }));
-      return;
-    }
-    setBusy(true);
-    toggleWatchlistAlerts(watchlistId)
-      .then(() => router.refresh())
-      .finally(() => setBusy(false));
   }
 
   if (busy) {
@@ -176,18 +159,6 @@ export function WatchlistActionBar({
                 onClick={handleToggleVisibility}
               >
                 {isPublic ? <Globe size={16} aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
-              </ActionButton>
-              <ActionButton
-                label={
-                  alertsEnabled
-                    ? t({ id: "watchlists.actions.disableAlerts", comment: "Disable alerts tooltip", message: "Disable alerts" })
-                    : t({ id: "watchlists.actions.enableAlerts", comment: "Enable alerts tooltip", message: "Enable alerts" })
-                }
-                onClick={handleToggleAlerts}
-                disabled={!isPaidPlan}
-                warning={!isPaidPlan}
-              >
-                {alertsEnabled ? <BellOff size={16} aria-hidden="true" /> : <Bell size={16} aria-hidden="true" />}
               </ActionButton>
               <ActionButton
                 label={t({ id: "watchlists.actions.mirror", comment: "Mirror watchlist tooltip", message: "Mirror" })}
@@ -263,7 +234,10 @@ export function WatchlistActionBar({
           )}
         </div>
       </Tooltip.Provider>
-      <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
+      <WatchlistLimitModal
+        open={limitNotice.open}
+        onOpenChange={limitNotice.setOpen}
+      />
     </>
   );
 }

@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
+  copyWatchlist: vi.fn(),
   deleteWatchlist: vi.fn(),
+  showLimit: vi.fn(),
   push: vi.fn(),
   refresh: vi.fn(),
 }));
@@ -26,25 +28,23 @@ vi.mock("@/components/providers/SessionProvider", () => ({
 }));
 
 vi.mock("@/lib/actions/watchlists", () => ({
-  copyWatchlist: vi.fn(),
+  copyWatchlist: mocks.copyWatchlist,
   deleteWatchlist: mocks.deleteWatchlist,
-  toggleWatchlistAlerts: vi.fn(),
   updateWatchlist: vi.fn(),
 }));
 
-vi.mock("@/components/ui/upgrade-modal", () => ({
-  UpgradeModal: () => null,
-  useUpgradeModal: () => ({
+vi.mock("@/components/watchlist/watchlist-limit-modal", () => ({
+  WatchlistLimitModal: () => null,
+  useWatchlistLimitModal: () => ({
     open: false,
     setOpen: vi.fn(),
-    reason: "",
-    show: vi.fn(),
+    show: mocks.showLimit,
   }),
 }));
 
 import { WatchlistActionBar } from "../watchlist-action-bar";
 
-function renderActionBar() {
+function renderActionBar({ limitReached = false }: { limitReached?: boolean } = {}) {
   return render(
     <WatchlistActionBar
       watchlistId="watchlist-1"
@@ -52,7 +52,7 @@ function renderActionBar() {
       isPublic={false}
       alertsEnabled={false}
       isPaidPlan
-      limitReached={false}
+      limitReached={limitReached}
     />,
   );
 }
@@ -70,6 +70,7 @@ describe("WatchlistActionBar delete focus", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.deleteWatchlist.mockResolvedValue({ ok: true });
+    mocks.copyWatchlist.mockResolvedValue({ slug: "copy" });
   });
 
   it("restores focus to Delete after Cancel", async () => {
@@ -112,5 +113,40 @@ describe("WatchlistActionBar delete focus", () => {
       expect(mocks.deleteWatchlist).toHaveBeenCalledWith("watchlist-1");
       expect(mocks.push).toHaveBeenCalledWith("/en/watchlists");
     });
+  });
+});
+
+describe("WatchlistActionBar universal copy limit", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("shows the neutral notice without copying when the page is already at the limit", async () => {
+    const user = userEvent.setup();
+    renderActionBar({ limitReached: true });
+
+    await user.click(screen.getByRole("button", { name: "Mirror" }));
+
+    expect(mocks.showLimit).toHaveBeenCalledOnce();
+    expect(mocks.copyWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("shows the neutral notice when a concurrent copy loses the final slot", async () => {
+    const user = userEvent.setup();
+    mocks.copyWatchlist.mockResolvedValue({ error: "limit_reached" });
+    renderActionBar();
+
+    await user.click(screen.getByRole("button", { name: "Mirror" }));
+
+    await waitFor(() => expect(mocks.showLimit).toHaveBeenCalledOnce());
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+});
+
+describe("WatchlistActionBar notification availability", () => {
+  it("does not offer alert delivery before the notification system ships", () => {
+    renderActionBar();
+
+    expect(screen.queryByRole("button", { name: /alerts/i })).toBeNull();
   });
 });

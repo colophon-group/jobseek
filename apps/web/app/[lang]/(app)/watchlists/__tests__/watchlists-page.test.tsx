@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   createWatchlist: vi.fn(),
   createWatchlistFromHandoff: vi.fn(),
+  showLimit: vi.fn(),
   searchParams: new URLSearchParams(),
   session: {
     user: { username: "alice" } as { username: string } | null,
@@ -46,20 +47,35 @@ vi.mock("@/components/watchlist/watchlist-card", () => ({
         : `${watchlist.activeJobCount} jobs`}
     </div>
   ),
-  CreateWatchlistCard: () => <button type="button">Create</button>,
+  CreateWatchlistCard: ({
+    onClick,
+    onLimitReached,
+    limitReached,
+  }: {
+    onClick: () => void;
+    onLimitReached: () => void;
+    limitReached?: boolean;
+  }) => (
+    <button
+      type="button"
+      data-limit-reached={String(Boolean(limitReached))}
+      onClick={limitReached ? onLimitReached : onClick}
+    >
+      Create
+    </button>
+  ),
 }));
 
 vi.mock("@/components/watchlist/public-watchlist-search", () => ({
   PublicWatchlistSearch: () => null,
 }));
 
-vi.mock("@/components/ui/upgrade-modal", () => ({
-  UpgradeModal: () => null,
-  useUpgradeModal: () => ({
+vi.mock("@/components/watchlist/watchlist-limit-modal", () => ({
+  WatchlistLimitModal: () => null,
+  useWatchlistLimitModal: () => ({
     open: false,
     setOpen: vi.fn(),
-    reason: "",
-    show: vi.fn(),
+    show: mocks.showLimit,
   }),
 }));
 
@@ -89,6 +105,7 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
     vi.clearAllMocks();
     mocks.createWatchlist.mockReset();
     mocks.createWatchlistFromHandoff.mockReset();
+    mocks.showLimit.mockReset();
     mocks.searchParams = new URLSearchParams();
     mocks.session = {
       user: { username: "alice" },
@@ -143,6 +160,54 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
       "/api/web/watchlists/counts?locale=de",
       expect.objectContaining({ cache: "no-store" }),
     );
+  });
+
+  it("passes the initial cap state to Create and shows the neutral notice", () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ counts: {} }),
+    }));
+
+    render(
+      <WatchlistsPage
+        initialWatchlists={overview}
+        username="alice"
+        limitReached
+        locale="en"
+      />,
+    );
+
+    const create = screen.getByRole("button", { name: "Create" });
+    expect(create.getAttribute("data-limit-reached")).toBe("true");
+    fireEvent.click(create);
+    expect(mocks.showLimit).toHaveBeenCalledOnce();
+    expect(mocks.createWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("updates the overview cap state after an authoritative create rejection", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ counts: {} }),
+    }));
+    mocks.createWatchlist.mockResolvedValue({ error: "limit_reached" });
+
+    render(
+      <WatchlistsPage
+        initialWatchlists={overview}
+        username="alice"
+        limitReached={false}
+        locale="en"
+      />,
+    );
+
+    const create = screen.getByRole("button", { name: "Create" });
+    expect(create.getAttribute("data-limit-reached")).toBe("false");
+    fireEvent.click(create);
+
+    await waitFor(() => {
+      expect(mocks.showLimit).toHaveBeenCalledOnce();
+      expect(create.getAttribute("data-limit-reached")).toBe("true");
+    });
   });
 
   it("waits for bootstrap and creates one complete URL handoff", async () => {
@@ -214,6 +279,43 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
     await waitFor(() => (
       expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1)
     ));
+  });
+
+  it("recovers truthfully when a URL handoff loses the final slot", async () => {
+    mocks.searchParams = new URLSearchParams({
+      title: "Retryable roles",
+      companies: "stripe",
+    });
+    mocks.createWatchlistFromHandoff.mockResolvedValue({
+      error: "limit_reached",
+    });
+
+    const props = {
+      initialWatchlists: overview,
+      username: "alice",
+      limitReached: false,
+      locale: "en",
+    };
+    const { rerender } = render(<WatchlistsPage {...props} />);
+
+    await waitFor(() => {
+      expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1);
+      expect(mocks.showLimit).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Create" }).getAttribute(
+        "data-limit-reached",
+      )).toBe("true");
+    });
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.searchParams.toString()).toBe(
+      "title=Retryable+roles&companies=stripe",
+    );
+
+    rerender(<WatchlistsPage {...props} locale="de" />);
+    await waitFor(() => {
+      expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1);
+      expect(mocks.showLimit).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("preserves the handoff across an anonymous sign-in return", async () => {

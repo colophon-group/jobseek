@@ -1,12 +1,4 @@
-/**
- * Tests for the watchlist CreateWatchlistCard disabled state — issue
- * #3036 sub-bug 2. The card must:
- *   1. dim visually (`opacity-50`) when `disabled`
- *   2. not invoke `onClick` when `disabled` (so it can't create a 2nd
- *      watchlist on a free plan)
- *   3. open the upgrade modal instead, telling the user why nothing
- *      happened
- */
+/** Tests for the watchlist CreateWatchlistCard limit state. */
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@/test-utils/lingui-mock";
@@ -78,35 +70,33 @@ describe("WatchlistCard navigation", () => {
 });
 
 describe("CreateWatchlistCard (issue #3036)", () => {
-  it("applies dimmed styling when disabled", () => {
-    render(<CreateWatchlistCard onClick={() => {}} disabled />);
+  it("applies dimmed styling when the universal limit is reached", () => {
+    render(<CreateWatchlistCard onClick={() => {}} onLimitReached={() => {}} limitReached />);
     // The button is the Tooltip trigger when disabled; find by accessible
     // text "Create".
     const btn = screen.getByRole("button", { name: /create/i });
     expect(btn.className).toContain("opacity-50");
   });
 
-  it("does not call onClick when disabled (gating intact)", () => {
+  it("does not call the create callback when the limit is reached", () => {
     const onClick = vi.fn();
-    render(<CreateWatchlistCard onClick={onClick} disabled />);
+    render(<CreateWatchlistCard onClick={onClick} onLimitReached={() => {}} limitReached />);
     const btn = screen.getByRole("button", { name: /create/i });
     fireEvent.click(btn);
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("opens the upgrade modal (with billing CTA) when clicked while disabled", async () => {
-    render(<CreateWatchlistCard onClick={() => {}} disabled />);
+  it("delegates the reached-limit notice to the overview", () => {
+    const onLimitReached = vi.fn();
+    render(<CreateWatchlistCard onClick={() => {}} onLimitReached={onLimitReached} limitReached />);
     const btn = screen.getByRole("button", { name: /create/i });
     fireEvent.click(btn);
-
-    // The upgrade modal portals a link to /settings/billing — sub-bug 3.
-    const link = await screen.findByRole("link", { name: /upgrade/i });
-    expect(link.getAttribute("href")).toBe("/en/settings/billing");
+    expect(onLimitReached).toHaveBeenCalledOnce();
   });
 
   it("calls onClick when enabled", () => {
     const onClick = vi.fn();
-    render(<CreateWatchlistCard onClick={onClick} />);
+    render(<CreateWatchlistCard onClick={onClick} onLimitReached={() => {}} />);
     const btn = screen.getByRole("button", { name: /create/i });
     fireEvent.click(btn);
     expect(onClick).toHaveBeenCalledTimes(1);

@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = i18n._({
     id: "home.meta.description",
     comment: "SEO description for the public homepage.",
-    message: "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings.",
+    message: "Build watchlists of the companies you care about, review matching roles, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings.",
   });
 
   return {
@@ -62,7 +62,7 @@ export default async function HomePage({ params }: Props) {
         description: i18n._({
           id: "home.meta.description",
           comment: "JSON-LD page description for the public homepage.",
-          message: "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings.",
+          message: "Build watchlists of the companies you care about, review matching roles, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings.",
         }),
         url: `${siteConfig.url}/${locale}`,
         inLanguage: locale,

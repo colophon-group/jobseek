@@ -9,7 +9,10 @@ import { tooltipClass } from "@/components/ui/tooltip-styles";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
 import { createWatchlist, type WatchlistFilters } from "@/lib/actions/watchlists";
-import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
+import {
+  WatchlistLimitModal,
+  useWatchlistLimitModal,
+} from "@/components/watchlist/watchlist-limit-modal";
 import type { SelectedLocation } from "@/lib/search/types";
 import type { WorkMode } from "@/lib/search/types";
 
@@ -49,7 +52,7 @@ export function SaveSearchButton({
   const lp = useLocalePath();
   const { user, isLoggedIn } = useSession();
   const [saving, setSaving] = useState(false);
-  const upgrade = useUpgradeModal();
+  const limitNotice = useWatchlistLimitModal();
 
   async function handleSave() {
     if (!isLoggedIn) {
@@ -89,16 +92,7 @@ export function SaveSearchButton({
 
       if ("error" in result) {
         if (result.error === "limit_reached") {
-          // Surface the upgrade modal with billing CTA instead of an
-          // opaque redirect to /settings — mirrors the pattern used by
-          // "make private", "enable alerts", and "mirror" in
-          // watchlist-action-bar. The modal itself links to
-          // /settings/billing (see upgrade-modal.tsx).
-          upgrade.show(t({
-            id: "upgrade.reason.saveSearch",
-            comment: "Reason shown in upgrade modal when saving a search hits the watchlist limit",
-            message: "You've reached your watchlist limit. Upgrade your plan to save more searches as watchlists.",
-          }));
+          limitNotice.show();
         }
         return;
       }
@@ -151,7 +145,10 @@ export function SaveSearchButton({
         </Tooltip.Portal>
       </Tooltip.Root>
       </Tooltip.Provider>
-      <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
+      <WatchlistLimitModal
+        open={limitNotice.open}
+        onOpenChange={limitNotice.setOpen}
+      />
     </>
   );
 }
