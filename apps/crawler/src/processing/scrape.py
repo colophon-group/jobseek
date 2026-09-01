@@ -533,6 +533,10 @@ async def _scrape_with_browser_target_recovery(
         ):
             raise
 
+    # This is the single scheduling/acceptance edge for the bounded
+    # redispatch.  Emit exactly once before the replacement attempt begins;
+    # exception logging and resource cleanup must not create retries.
+    browser_target_closed_retries_total.labels(outcome="retry").inc()
     log.warning(
         "batch.scrape.browser_target_closed_retry",
         url=url,

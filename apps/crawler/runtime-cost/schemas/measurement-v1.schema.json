@@ -42,7 +42,8 @@
           "process_tree_peak_rss_bytes_per_instance": {"minimum": 0, "type": ["number", "null"]},
           "process_tree_successful_samples": {"minimum": 1, "type": ["integer", "null"]},
           "resource_scope": {"enum": ["root-process", "process-tree"]},
-          "retry_events": {"minimum": 0, "type": "number"},
+          "retry_events": {"minimum": 0, "type": ["number", "null"]},
+          "retry_coverage": {"items": {"$ref": "#/$defs/retryCoverage"}, "type": "array"},
           "role": {"minLength": 1, "type": "string"},
           "root_peak_rss_bytes_per_instance": {"minimum": 0, "type": "number"},
           "root_process_cpu_seconds": {"minimum": 0, "type": "number"},
@@ -73,6 +74,27 @@
               }
             }
           }
+          ,
+          {
+            "if": {
+              "properties": {
+                "execution_class": {"const": "browser"},
+                "resource_scope": {"const": "process-tree"}
+              },
+              "required": ["execution_class", "resource_scope"]
+            },
+            "then": {
+              "properties": {
+                "retry_coverage": {
+                  "items": {"$ref": "#/$defs/completeRetryCoverage"},
+                  "minItems": 3,
+                  "type": "array"
+                },
+                "retry_events": {"minimum": 0, "type": "number"}
+              },
+              "required": ["retry_coverage"]
+            }
+          }
         ],
         "type": "object"
       },
@@ -80,7 +102,7 @@
       "type": "array"
     },
     "schema_version": {"const": "jobseek.crawler-runtime-measurement/v1"},
-    "source_releases": {"items": {"minLength": 1, "type": "string"}, "type": "array", "uniqueItems": true},
+    "source_releases": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true},
     "source_revision": {"minLength": 1, "type": "string"},
     "window": {
       "additionalProperties": false,
@@ -113,6 +135,11 @@
             "sample_interval_seconds": {"exclusiveMinimum": 0, "maximum": 1, "type": "number"},
             "start_covered": {"const": true},
             "successful_samples": {"minimum": 1, "type": "integer"}
+            ,"start_observation_sequence": {"minimum": 1, "type": "integer"}
+            ,"end_observation_sequence": {"minimum": 1, "type": "integer"}
+            ,"paired_start": {"const": true}
+            ,"paired_end": {"const": true}
+            ,"complete": {"const": true}
           }
         }
       ]
@@ -206,11 +233,55 @@
         "sampler_restarts": {"minimum": 0, "type": ["integer", "null"]},
         "sample_interval_seconds": {"exclusiveMinimum": 0, "type": ["number", "null"]},
         "start_covered": {"type": "boolean"},
+        "start_observation_sequence": {"minimum": 0, "type": ["integer", "null"]},
+        "end_observation_sequence": {"minimum": 0, "type": ["integer", "null"]},
+        "paired_start": {"type": "boolean"},
+        "paired_end": {"type": "boolean"},
+        "complete": {"type": "boolean"},
         "successful_samples": {"minimum": 0, "type": ["integer", "null"]},
         "target_id": {"minLength": 1, "type": "string"}
       },
-      "required": ["target_id", "sample_interval_seconds", "expected_samples", "successful_samples", "failed_samples", "missing_samples", "counter_resets", "sampler_restarts", "gap_samples", "coverage_ratio", "required_coverage_ratio", "boundary_tolerance_seconds", "start_covered", "end_covered"],
+      "required": ["target_id", "sample_interval_seconds", "expected_samples", "successful_samples", "failed_samples", "missing_samples", "counter_resets", "sampler_restarts", "gap_samples", "coverage_ratio", "required_coverage_ratio", "boundary_tolerance_seconds", "start_covered", "end_covered", "start_observation_sequence", "end_observation_sequence", "paired_start", "paired_end", "complete"],
       "type": "object"
+    },
+    "retryEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "events": {"minimum": 0, "type": "integer"},
+        "outcome": {"enum": ["retry", "recovered", "exhausted", "failed"]},
+        "reason": {"enum": ["connection_reset", "network_changed", "socket_not_connected"]}
+      },
+      "required": ["outcome", "events"],
+      "type": "object"
+    },
+    "retryCoverage": {
+      "additionalProperties": false,
+      "properties": {
+        "complete": {"type": "boolean"},
+        "counter_resets": {"minimum": 0, "type": ["integer", "null"]},
+        "events": {"items": {"$ref": "#/$defs/retryEvent"}, "type": "array"},
+        "execution_class": {"const": "browser"},
+        "family": {"enum": ["navigation-network", "content", "target-closed"]},
+        "observed_children": {"minimum": 0, "type": "integer"},
+        "required_children": {"minimum": 1, "type": "integer"},
+        "retry_events": {"minimum": 0, "type": ["integer", "null"]},
+        "stage": {"enum": ["browser-navigation", "browser-content", "detail"]},
+        "target_id": {"minLength": 1, "type": "string"}
+      },
+      "required": ["target_id", "family", "stage", "execution_class", "required_children", "observed_children", "counter_resets", "retry_events", "events", "complete"],
+      "type": "object"
+    },
+    "completeRetryCoverage": {
+      "allOf": [
+        {"$ref": "#/$defs/retryCoverage"},
+        {
+          "properties": {
+            "complete": {"const": true},
+            "counter_resets": {"const": 0},
+            "retry_events": {"minimum": 0, "type": "integer"}
+          }
+        }
+      ]
     }
   }
 }

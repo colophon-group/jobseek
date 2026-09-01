@@ -14,12 +14,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.request import urlopen
 
 import pytest
+from prometheus_client.parser import text_string_to_metric_families
 
 from src.metrics import (
+    BROWSER_RETRY_CAPTURE_CONTRACT,
+    _ProcessTreeMetricsCollector,
     _QuietThreadingWSGIServer,
     _start_metrics_http_server,
     start_metrics_server,
 )
+from src.runtime_cost.process_tree import ProcessTreeSample
 
 
 def _reset_connection(port: int) -> None:
@@ -46,6 +50,86 @@ def test_metrics_server_starts_process_tree_sampler() -> None:
 
     start_sampler.assert_called_once_with()
     start_http.assert_called_once_with(9123)
+
+
+def _sample(sequence: int) -> ProcessTreeSample:
+    return ProcessTreeSample(
+        observation_sequence=sequence,
+        observation_monotonic_seconds=float(sequence),
+        observation_unixtime_seconds=1_800_000_000 + sequence,
+        interval_seconds=0.5,
+        root_cpu_seconds=float(sequence * 10),
+        process_tree_cpu_seconds=float(sequence * 10 + 2),
+        process_tree_cpu_delta_seconds=float(sequence * 10 + 2),
+        root_rss_bytes=sequence * 100,
+        process_tree_rss_bytes=sequence * 100 + 20,
+        descendant_count=sequence,
+    )
+
+
+def test_process_tree_exposition_keeps_one_generation_during_concurrent_publish() -> None:
+    collector = _ProcessTreeMetricsCollector()
+    collector.start(0.5)
+    collector.publish(_sample(1))
+
+    exposition = collector.collect()
+    families = [next(exposition)]
+    collector.publish(_sample(2))
+    families.extend(exposition)
+    samples = {
+        (sample.name, tuple(sorted(sample.labels.items()))): sample.value
+        for family in families
+        for sample in family.samples
+    }
+
+    assert samples[("crawler_runtime_process_root_cpu_seconds_total", ())] == 10
+    assert samples[("crawler_runtime_process_tree_cpu_seconds_total", ())] == 12
+    assert samples[("crawler_runtime_process_root_resident_memory_bytes", ())] == 100
+    assert samples[("crawler_runtime_process_tree_resident_memory_bytes", ())] == 120
+    for component in ("root_cpu", "tree_cpu", "root_rss", "tree_rss", "descendants"):
+        labels = (("component", component),)
+        assert samples[("crawler_runtime_process_tree_observation_sequence", labels)] == 1
+        assert (
+            samples[("crawler_runtime_process_tree_observation_unixtime_seconds", labels)]
+            == 1_800_000_001
+        )
+
+
+def test_fresh_process_seeds_every_browser_retry_child_at_zero() -> None:
+    script = """
+from prometheus_client import generate_latest
+import src.metrics
+print(generate_latest().decode())
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    seeded = {
+        (sample.name, tuple(sorted(sample.labels.items()))): sample.value
+        for family in text_string_to_metric_families(completed.stdout)
+        for sample in family.samples
+    }
+    for family in BROWSER_RETRY_CAPTURE_CONTRACT:
+        metric = str(family["metric"])
+        labels = family["labels"]
+        if len(labels) == 1:
+            label_name, values = labels[0]
+            for value in values:
+                assert seeded[(metric, ((label_name, value),))] == 0
+        else:
+            first_name, first_values = labels[0]
+            second_name, second_values = labels[1]
+            for first_value in first_values:
+                for second_value in second_values:
+                    expected_labels = tuple(
+                        sorted(((first_name, first_value), (second_name, second_value)))
+                    )
+                    assert seeded[(metric, expected_labels)] == 0
 
 
 @pytest.mark.parametrize("command", ["run", "run-browser", "export", "drain"])

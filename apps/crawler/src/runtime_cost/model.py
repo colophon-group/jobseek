@@ -17,6 +17,34 @@ PROJECTION_SCHEMA = "jobseek.crawler-runtime-projection/v1"
 PROCESS_TREE_MIN_COVERAGE_RATIO = 0.95
 PROCESS_TREE_MAX_SAMPLE_INTERVAL_SECONDS = 1.0
 PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS = 60
+EXACT_24H_TARGET_IDS = frozenset(
+    {
+        "http-worker-1",
+        "http-worker-2",
+        "http-worker-3",
+        "browser-worker-1",
+        "exporter-1",
+        "drain-1",
+    }
+)
+_BROWSER_RETRY_FAMILIES = {
+    "navigation-network": {
+        "stage": "browser-navigation",
+        "keys": {
+            (reason, outcome)
+            for reason in ("connection_reset", "network_changed", "socket_not_connected")
+            for outcome in ("retry", "recovered", "exhausted")
+        },
+    },
+    "content": {
+        "stage": "browser-content",
+        "keys": {(None, outcome) for outcome in ("retry", "recovered", "failed")},
+    },
+    "target-closed": {
+        "stage": "detail",
+        "keys": {(None, outcome) for outcome in ("retry", "recovered", "failed")},
+    },
+}
 
 ALLOWED_COST_CATEGORIES = frozenset(
     {
@@ -187,12 +215,122 @@ def _validate_process_tree_coverage(
         )
         _require(item.get("start_covered") is True, f"{prefix} does not cover window start")
         _require(item.get("end_covered") is True, f"{prefix} does not cover window end")
+        _require(item.get("paired_start") is True, f"{prefix} start observation is not paired")
+        _require(item.get("paired_end") is True, f"{prefix} end observation is not paired")
+        _require(item.get("complete") is True, f"{prefix} is incomplete")
+        start_sequence = _nonnegative_int(
+            item.get("start_observation_sequence"),
+            f"{prefix}.start_observation_sequence",
+        )
+        end_sequence = _nonnegative_int(
+            item.get("end_observation_sequence"),
+            f"{prefix}.end_observation_sequence",
+        )
+        _require(start_sequence > 0, f"{prefix}.start_observation_sequence must be > 0")
+        _require(
+            end_sequence >= start_sequence,
+            f"{prefix} observation sequence regressed",
+        )
+        _require(
+            end_sequence - start_sequence == successful_samples,
+            f"{prefix} observation sequence is inconsistent with successful samples",
+        )
         total_successful_samples += successful_samples
     _require(
         coverage_ids == target_ids,
         f"measurement role {role} process-tree coverage targets differ from target_ids",
     )
     return total_successful_samples
+
+
+def _validate_browser_retry_coverage(observed: dict[str, Any], *, role: str) -> None:
+    target_ids_raw = observed.get("target_ids")
+    assert isinstance(target_ids_raw, list)
+    target_ids = set(target_ids_raw)
+    coverage = observed.get("retry_coverage")
+    _require(
+        isinstance(coverage, list) and bool(coverage),
+        f"measurement role {role} browser retry coverage is missing",
+    )
+    assert isinstance(coverage, list)
+    observed_keys: set[tuple[str, str]] = set()
+    total_retry_events = 0
+    for index, item in enumerate(coverage):
+        _require(
+            isinstance(item, dict),
+            f"measurement role {role} browser retry coverage {index} must be an object",
+        )
+        assert isinstance(item, dict)
+        target_id = item.get("target_id")
+        family = item.get("family")
+        _require(
+            isinstance(target_id, str) and target_id in target_ids,
+            f"measurement role {role} browser retry target is invalid",
+        )
+        _require(
+            family in _BROWSER_RETRY_FAMILIES,
+            f"measurement role {role} browser retry family is invalid",
+        )
+        assert isinstance(target_id, str)
+        assert isinstance(family, str)
+        key = (target_id, str(family))
+        _require(
+            key not in observed_keys,
+            f"measurement role {role} browser retry family is duplicated",
+        )
+        observed_keys.add(key)
+        contract = _BROWSER_RETRY_FAMILIES[str(family)]
+        prefix = f"measurement role {role} browser retry {target_id}/{family}"
+        _require(item.get("stage") == contract["stage"], f"{prefix} stage is invalid")
+        _require(item.get("execution_class") == "browser", f"{prefix} class is invalid")
+        _require(item.get("complete") is True, f"{prefix} is incomplete")
+        _require(item.get("counter_resets") == 0, f"{prefix} contains counter resets")
+        required_children = _nonnegative_int(
+            item.get("required_children"), f"{prefix}.required_children"
+        )
+        observed_children = _nonnegative_int(
+            item.get("observed_children"), f"{prefix}.observed_children"
+        )
+        expected_event_keys = contract["keys"]
+        assert isinstance(expected_event_keys, set)
+        _require(
+            required_children == len(expected_event_keys)
+            and observed_children == required_children,
+            f"{prefix} child presence is incomplete",
+        )
+        events_raw = item.get("events")
+        _require(isinstance(events_raw, list), f"{prefix}.events must be an array")
+        assert isinstance(events_raw, list)
+        event_keys: set[tuple[str | None, str]] = set()
+        retry_events = 0
+        for event in events_raw:
+            _require(isinstance(event, dict), f"{prefix} event must be an object")
+            assert isinstance(event, dict)
+            reason = event.get("reason")
+            outcome = event.get("outcome")
+            _require(isinstance(outcome, str), f"{prefix} event outcome is invalid")
+            assert isinstance(outcome, str)
+            event_key = (str(reason) if reason is not None else None, outcome)
+            _require(event_key not in event_keys, f"{prefix} event is duplicated")
+            event_keys.add(event_key)
+            count = _nonnegative_int(event.get("events"), f"{prefix} event count")
+            if outcome == "retry":
+                retry_events += count
+        _require(event_keys == expected_event_keys, f"{prefix} event children differ")
+        _require(item.get("retry_events") == retry_events, f"{prefix} retry total differs")
+        total_retry_events += retry_events
+    _require(
+        observed_keys
+        == {(target_id, family) for target_id in target_ids for family in _BROWSER_RETRY_FAMILIES},
+        f"measurement role {role} browser retry coverage targets differ from target_ids",
+    )
+    role_retry_events = _optional_nonnegative_number(
+        observed.get("retry_events"), f"measurement role {role}.retry_events"
+    )
+    _require(
+        role_retry_events is not None and role_retry_events >= total_retry_events,
+        f"measurement role {role} browser retry total is incomplete",
+    )
 
 
 def project_runtime_cost(
@@ -217,6 +355,35 @@ def project_runtime_cost(
         measurement.get("workload_revision") == workload.get("revision"),
         "measurement and workload revisions differ",
     )
+    if measurement.get("window", {}).get("seconds") == 86_400:
+        source_releases = measurement.get("source_releases")
+        _require(
+            isinstance(source_releases, list)
+            and len(source_releases) == 1
+            and isinstance(source_releases[0], str)
+            and bool(source_releases[0]),
+            "86,400-second measurement requires one source release",
+        )
+        measured_target_ids: list[str] = []
+        measured_roles = measurement.get("roles")
+        _require(isinstance(measured_roles, list), "measurement roles must be an array")
+        assert isinstance(measured_roles, list)
+        for measured_role in measured_roles:
+            _require(isinstance(measured_role, dict), "measurement role must be an object")
+            assert isinstance(measured_role, dict)
+            role_target_ids = measured_role.get("target_ids")
+            _require(
+                isinstance(role_target_ids, list)
+                and all(isinstance(target_id, str) for target_id in role_target_ids),
+                "measurement role target_ids is invalid",
+            )
+            assert isinstance(role_target_ids, list)
+            measured_target_ids.extend(str(target_id) for target_id in role_target_ids)
+        _require(
+            len(measured_target_ids) == len(EXACT_24H_TARGET_IDS)
+            and set(measured_target_ids) == EXACT_24H_TARGET_IDS,
+            "86,400-second measurement requires the exact six-target fleet",
+        )
     _require(pricing.get("provider") == "hetzner", "pricing provider must be Hetzner")
     _require(pricing.get("source_currency") == "EUR", "Hetzner source currency must be EUR")
     _require(
@@ -551,6 +718,8 @@ def project_runtime_cost(
                 tree_peak_rss >= root_peak_rss,
                 f"measurement role {role} process-tree RSS is below root RSS",
             )
+            if execution_class == "browser":
+                _validate_browser_retry_coverage(observed, role=role)
         elif resource_scope not in {None, "root-process"}:
             raise ModelError(f"measurement role {role} resource scope is invalid")
         if execution_class == "browser" and resource_scope != "process-tree":

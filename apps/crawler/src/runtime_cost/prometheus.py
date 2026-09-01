@@ -12,8 +12,10 @@ import urllib.request
 from collections import defaultdict
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from itertools import product
 from typing import Any
 
+from src.metrics import BROWSER_RETRY_CAPTURE_CONTRACT
 from src.runtime_cost.model import (
     MEASUREMENT_SCHEMA,
     PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS,
@@ -23,6 +25,16 @@ from src.runtime_cost.model import (
 )
 
 TARGET_SCHEMA = "jobseek.crawler-runtime-capture-targets/v1"
+EXACT_24H_TARGET_INSTANCES = frozenset(
+    {"worker-1", "worker-2", "worker-3", "browser-1", "exporter", "drain"}
+)
+_PROCESS_TREE_OBSERVATION_COMPONENTS = (
+    "root_cpu",
+    "tree_cpu",
+    "root_rss",
+    "tree_rss",
+    "descendants",
+)
 Query = Callable[[str, datetime], list[dict[str, Any]]]
 
 
@@ -117,6 +129,83 @@ def _counter_delta(start: float | None, end: float | None) -> int | None:
     if start_count is None or end_count is None or end_count < start_count:
         return None
     return end_count - start_count
+
+
+def _strict_scalar(
+    query: Query,
+    expression: str,
+    at: datetime,
+    query_name: str,
+    *,
+    integer: bool = False,
+) -> float | int | None:
+    """Read one unlabelled finite scalar without hiding duplicate evidence."""
+
+    rows = query(expression, at)
+    if len(rows) != 1 or rows[0].get("metric") != {}:
+        return None
+    try:
+        value = float(rows[0]["value"][1])
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+    if not math.isfinite(value) or value < 0:
+        return None
+    if not integer:
+        return value
+    return _nonnegative_integer(value)
+
+
+def _strict_counter_boundary(
+    query: Query,
+    metric: str,
+    *,
+    selector: str,
+    at: datetime,
+    query_name: str,
+) -> int | None:
+    count = _strict_scalar(
+        query,
+        f"count({metric}{{{selector}}})",
+        at,
+        f"{query_name} series count",
+        integer=True,
+    )
+    if count != 1:
+        return None
+    value = _strict_scalar(
+        query,
+        f"sum({metric}{{{selector}}})",
+        at,
+        query_name,
+        integer=True,
+    )
+    return value if isinstance(value, int) else None
+
+
+def _strict_numeric_boundary(
+    query: Query,
+    metric: str,
+    *,
+    selector: str,
+    at: datetime,
+    query_name: str,
+) -> float | None:
+    count = _strict_scalar(
+        query,
+        f"count({metric}{{{selector}}})",
+        at,
+        f"{query_name} series count",
+        integer=True,
+    )
+    if count != 1:
+        return None
+    value = _strict_scalar(
+        query,
+        f"sum({metric}{{{selector}}})",
+        at,
+        query_name,
+    )
+    return float(value) if value is not None else None
 
 
 def _capture_egress_target_stage(
@@ -427,6 +516,134 @@ def _boundary_covered(last_sample: float | None, boundary: datetime) -> bool:
     return 0 <= age_seconds <= PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS
 
 
+def _strict_labelled_counter_vector(
+    rows: list[dict[str, Any]],
+    *,
+    label_names: tuple[str, ...],
+    expected_keys: set[tuple[str, ...]],
+) -> dict[tuple[str, ...], int] | None:
+    values: dict[tuple[str, ...], int] = {}
+    for row in rows:
+        metric = row.get("metric")
+        if not isinstance(metric, dict) or set(metric) != set(label_names):
+            return None
+        raw_key = tuple(metric.get(name) for name in label_names)
+        if not all(isinstance(value, str) for value in raw_key):
+            return None
+        key = tuple(str(value) for value in raw_key)
+        if key in values:
+            return None
+        try:
+            raw_value = float(row["value"][1])
+        except (KeyError, IndexError, TypeError, ValueError):
+            return None
+        value = _nonnegative_integer(raw_value)
+        if value is None:
+            return None
+        values[key] = value
+    if set(values) != expected_keys:
+        return None
+    return values
+
+
+def _capture_browser_retry_target(
+    query: Query,
+    *,
+    selector: str,
+    target_id: str,
+    start_at: datetime,
+    end_at: datetime,
+    range_selector: str,
+) -> tuple[list[dict[str, Any]], bool, int | None]:
+    """Capture every pre-seeded bounded browser retry child exactly."""
+
+    coverage: list[dict[str, Any]] = []
+    target_complete = True
+    target_retry_events = 0
+    for contract in BROWSER_RETRY_CAPTURE_CONTRACT:
+        metric = str(contract["metric"])
+        family = str(contract["family"])
+        stage = str(contract["stage"])
+        label_contract = tuple(contract["labels"])
+        label_names = tuple(str(item[0]) for item in label_contract)
+        expected_keys = {
+            tuple(str(value) for value in values)
+            for values in product(*(tuple(item[1]) for item in label_contract))
+        }
+        group = ",".join(label_names)
+        boundary_expression = f"sum by ({group}) ({metric}{{{selector}}})"
+        start_values = _strict_labelled_counter_vector(
+            query(boundary_expression, start_at),
+            label_names=label_names,
+            expected_keys=expected_keys,
+        )
+        end_values = _strict_labelled_counter_vector(
+            query(boundary_expression, end_at),
+            label_names=label_names,
+            expected_keys=expected_keys,
+        )
+        reset_values = _strict_labelled_counter_vector(
+            query(
+                f"sum by ({group}) (resets({metric}{{{selector}}}[{range_selector}]))",
+                end_at,
+            ),
+            label_names=label_names,
+            expected_keys=expected_keys,
+        )
+
+        events: list[dict[str, Any]] = []
+        retry_events: int | None = 0
+        counter_resets: int | None = None
+        complete = start_values is not None and end_values is not None and reset_values is not None
+        if complete:
+            assert start_values is not None and end_values is not None and reset_values is not None
+            counter_resets = sum(reset_values.values())
+            complete = counter_resets == 0
+            for key in sorted(expected_keys):
+                start_value = start_values[key]
+                end_value = end_values[key]
+                if end_value < start_value:
+                    complete = False
+                    break
+                delta = end_value - start_value
+                event: dict[str, Any] = {
+                    name: value for name, value in zip(label_names, key, strict=True)
+                }
+                event["events"] = delta
+                events.append(event)
+                if event.get("outcome") == "retry":
+                    assert retry_events is not None
+                    retry_events += delta
+        if not complete:
+            retry_events = None
+            events = []
+        coverage.append(
+            {
+                "target_id": target_id,
+                "family": family,
+                "stage": stage,
+                "execution_class": "browser",
+                "required_children": len(expected_keys),
+                "observed_children": (
+                    len(start_values)
+                    if start_values is not None
+                    and end_values is not None
+                    and reset_values is not None
+                    else 0
+                ),
+                "counter_resets": counter_resets,
+                "retry_events": retry_events,
+                "events": events,
+                "complete": complete,
+            }
+        )
+        target_complete = target_complete and complete
+        if retry_events is not None:
+            target_retry_events += retry_events
+
+    return coverage, target_complete, target_retry_events if target_complete else None
+
+
 def _capture_process_tree_target(
     query: Query,
     *,
@@ -436,34 +653,29 @@ def _capture_process_tree_target(
     end_at: datetime,
     window_seconds: int,
     range_selector: str,
-    root_cpu_seconds: float,
-    root_peak_rss_bytes: float,
-) -> tuple[dict[str, Any], bool, float | None, float | None]:
-    """Return explicit coverage plus complete tree CPU/RSS when promotable."""
+) -> tuple[
+    dict[str, Any],
+    bool,
+    float | None,
+    float | None,
+    float | None,
+    float | None,
+]:
+    """Return strict same-generation root/tree evidence for one target."""
 
-    def boundary_value(
-        metric: str,
-        at: datetime,
-        label: str,
-        extra_selector: str | None = None,
-    ) -> float | None:
-        labels = selector if extra_selector is None else f"{selector},{extra_selector}"
-        return _optional_instant_sum(
-            query,
-            f"sum({metric}{{{labels}}})",
-            at,
-            f"{target_id} {label}",
-        )
-
-    interval_start = boundary_value(
+    interval_start = _strict_numeric_boundary(
+        query,
         "crawler_runtime_process_tree_sample_interval_seconds",
-        start_at,
-        "process-tree start interval",
+        selector=selector,
+        at=start_at,
+        query_name=f"{target_id} process-tree start interval",
     )
-    interval_end = boundary_value(
+    interval_end = _strict_numeric_boundary(
+        query,
         "crawler_runtime_process_tree_sample_interval_seconds",
-        end_at,
-        "process-tree end interval",
+        selector=selector,
+        at=end_at,
+        query_name=f"{target_id} process-tree end interval",
     )
     interval_seconds: float | None = None
     if (
@@ -477,78 +689,152 @@ def _capture_process_tree_target(
         math.floor(window_seconds / interval_seconds) if interval_seconds is not None else None
     )
 
-    success_start = boundary_value(
+    success_start = _strict_counter_boundary(
+        query,
         "crawler_runtime_process_tree_samples_total",
-        start_at,
-        "process-tree start successes",
-        'outcome="success"',
+        selector=f'{selector},outcome="success"',
+        at=start_at,
+        query_name=f"{target_id} process-tree start successes",
     )
-    success_end = boundary_value(
+    success_end = _strict_counter_boundary(
+        query,
         "crawler_runtime_process_tree_samples_total",
-        end_at,
-        "process-tree end successes",
-        'outcome="success"',
+        selector=f'{selector},outcome="success"',
+        at=end_at,
+        query_name=f"{target_id} process-tree end successes",
     )
-    failure_start = boundary_value(
+    failure_start = _strict_counter_boundary(
+        query,
         "crawler_runtime_process_tree_samples_total",
-        start_at,
-        "process-tree start failures",
-        'outcome="failure"',
+        selector=f'{selector},outcome="failure"',
+        at=start_at,
+        query_name=f"{target_id} process-tree start failures",
     )
-    failure_end = boundary_value(
+    failure_end = _strict_counter_boundary(
+        query,
         "crawler_runtime_process_tree_samples_total",
-        end_at,
-        "process-tree end failures",
-        'outcome="failure"',
+        selector=f'{selector},outcome="failure"',
+        at=end_at,
+        query_name=f"{target_id} process-tree end failures",
     )
-    gap_start = boundary_value(
+    gap_start = _strict_counter_boundary(
+        query,
         "crawler_runtime_process_tree_sampling_gaps_total",
-        start_at,
-        "process-tree start gaps",
+        selector=selector,
+        at=start_at,
+        query_name=f"{target_id} process-tree start gaps",
     )
-    gap_end = boundary_value(
+    gap_end = _strict_counter_boundary(
+        query,
         "crawler_runtime_process_tree_sampling_gaps_total",
-        end_at,
-        "process-tree end gaps",
+        selector=selector,
+        at=end_at,
+        query_name=f"{target_id} process-tree end gaps",
     )
     successful_samples = _counter_delta(success_start, success_end)
     failed_samples = _counter_delta(failure_start, failure_end)
     gap_samples = _counter_delta(gap_start, gap_end)
-    sampler_starts_start = boundary_value(
+    sampler_starts_start = _strict_counter_boundary(
+        query,
         "crawler_runtime_process_tree_sampler_starts_total",
-        start_at,
-        "process-tree start sampler starts",
+        selector=selector,
+        at=start_at,
+        query_name=f"{target_id} process-tree start sampler starts",
     )
-    sampler_starts_end = boundary_value(
+    sampler_starts_end = _strict_counter_boundary(
+        query,
         "crawler_runtime_process_tree_sampler_starts_total",
-        end_at,
-        "process-tree end sampler starts",
+        selector=selector,
+        at=end_at,
+        query_name=f"{target_id} process-tree end sampler starts",
     )
     sampler_restarts = _counter_delta(sampler_starts_start, sampler_starts_end)
 
-    counter_resets = _nonnegative_integer(
-        _optional_instant_sum(
+    reset_expressions = (
+        f'crawler_runtime_process_tree_samples_total{{{selector},outcome="success"}}',
+        f'crawler_runtime_process_tree_samples_total{{{selector},outcome="failure"}}',
+        f"crawler_runtime_process_tree_sampling_gaps_total{{{selector}}}",
+        f"crawler_runtime_process_tree_sampler_starts_total{{{selector}}}",
+        f"crawler_runtime_process_root_cpu_seconds_total{{{selector}}}",
+        f"crawler_runtime_process_tree_cpu_seconds_total{{{selector}}}",
+        f"crawler_runtime_process_tree_observation_sequence{{{selector}}}",
+    )
+    reset_counts = [
+        _strict_scalar(
             query,
-            (
-                "sum(resets(crawler_runtime_process_tree_samples_total"
-                f'{{{selector},outcome="success"}}[{range_selector}]))'
-            ),
+            f"sum(resets({expression}[{range_selector}]))",
             end_at,
-            f"{target_id} process-tree counter resets",
+            f"{target_id} process-tree reset evidence",
+            integer=True,
         )
+        for expression in reset_expressions
+    ]
+    counter_resets = None
+    if all(isinstance(value, int) for value in reset_counts):
+        counter_resets = sum(value for value in reset_counts if isinstance(value, int))
+
+    component_names = _PROCESS_TREE_OBSERVATION_COMPONENTS
+    component_keys = {(component,) for component in component_names}
+
+    def component_vector(metric: str, at: datetime, *, integer: bool) -> dict[str, float] | None:
+        rows = query(f"max by (component) ({metric}{{{selector}}})", at)
+        values: dict[str, float] = {}
+        for row in rows:
+            labels = row.get("metric")
+            if not isinstance(labels, dict) or set(labels) != {"component"}:
+                return None
+            component = labels.get("component")
+            if not isinstance(component, str) or component in values:
+                return None
+            try:
+                value = float(row["value"][1])
+            except (KeyError, IndexError, TypeError, ValueError):
+                return None
+            if not math.isfinite(value) or value < 0 or (integer and not value.is_integer()):
+                return None
+            values[component] = value
+        if {(component,) for component in values} != component_keys:
+            return None
+        return values
+
+    sequence_start_values = component_vector(
+        "crawler_runtime_process_tree_observation_sequence", start_at, integer=True
     )
-    last_sample_start = boundary_value(
-        "crawler_runtime_process_tree_last_sample_unixtime_seconds",
-        start_at,
-        "process-tree start heartbeat",
+    sequence_end_values = component_vector(
+        "crawler_runtime_process_tree_observation_sequence", end_at, integer=True
     )
-    last_sample_end = boundary_value(
-        "crawler_runtime_process_tree_last_sample_unixtime_seconds",
-        end_at,
-        "process-tree end heartbeat",
+    observed_start_values = component_vector(
+        "crawler_runtime_process_tree_observation_unixtime_seconds", start_at, integer=False
     )
-    start_covered = _boundary_covered(last_sample_start, start_at)
-    end_covered = _boundary_covered(last_sample_end, end_at)
+    observed_end_values = component_vector(
+        "crawler_runtime_process_tree_observation_unixtime_seconds", end_at, integer=False
+    )
+
+    def one_value(values: dict[str, float] | None) -> float | None:
+        if values is None or len(set(values.values())) != 1:
+            return None
+        return next(iter(values.values()))
+
+    sequence_start_raw = one_value(sequence_start_values)
+    sequence_end_raw = one_value(sequence_end_values)
+    sequence_start = _nonnegative_integer(sequence_start_raw)
+    sequence_end = _nonnegative_integer(sequence_end_raw)
+    observed_start = one_value(observed_start_values)
+    observed_end = one_value(observed_end_values)
+    paired_start = (
+        sequence_start is not None
+        and sequence_start > 0
+        and observed_start is not None
+        and _boundary_covered(observed_start, start_at)
+    )
+    paired_end = (
+        sequence_end is not None
+        and sequence_end > 0
+        and observed_end is not None
+        and _boundary_covered(observed_end, end_at)
+    )
+    start_covered = paired_start
+    end_covered = paired_end
 
     coverage_ratio: float | None = None
     missing_samples: int | None = None
@@ -559,15 +845,40 @@ def _capture_process_tree_target(
             expected_samples - successful_samples - (failed_samples or 0),
         )
 
-    tree_cpu_start = boundary_value(
-        "crawler_runtime_process_tree_cpu_seconds_total",
-        start_at,
-        "process-tree start CPU",
+    root_cpu_start = _strict_numeric_boundary(
+        query,
+        "crawler_runtime_process_root_cpu_seconds_total",
+        selector=selector,
+        at=start_at,
+        query_name=f"{target_id} process-root start CPU",
     )
-    tree_cpu_end = boundary_value(
+    root_cpu_end = _strict_numeric_boundary(
+        query,
+        "crawler_runtime_process_root_cpu_seconds_total",
+        selector=selector,
+        at=end_at,
+        query_name=f"{target_id} process-root end CPU",
+    )
+    tree_cpu_start = _strict_numeric_boundary(
+        query,
         "crawler_runtime_process_tree_cpu_seconds_total",
-        end_at,
-        "process-tree end CPU",
+        selector=selector,
+        at=start_at,
+        query_name=f"{target_id} process-tree start CPU",
+    )
+    tree_cpu_end = _strict_numeric_boundary(
+        query,
+        "crawler_runtime_process_tree_cpu_seconds_total",
+        selector=selector,
+        at=end_at,
+        query_name=f"{target_id} process-tree end CPU",
+    )
+    root_cpu_seconds = (
+        root_cpu_end - root_cpu_start
+        if root_cpu_start is not None
+        and root_cpu_end is not None
+        and root_cpu_end >= root_cpu_start
+        else None
     )
     tree_cpu_seconds = (
         tree_cpu_end - tree_cpu_start
@@ -576,7 +887,16 @@ def _capture_process_tree_target(
         and tree_cpu_end >= tree_cpu_start
         else None
     )
-    tree_peak_rss_bytes = _optional_instant_sum(
+    root_peak_rss_bytes = _strict_scalar(
+        query,
+        (
+            "max(max_over_time(crawler_runtime_process_root_resident_memory_bytes"
+            f"{{{selector}}}[{range_selector}]))"
+        ),
+        end_at,
+        f"{target_id} process-root window peak RSS",
+    )
+    tree_peak_rss_bytes = _strict_scalar(
         query,
         (
             "max(max_over_time(crawler_runtime_process_tree_resident_memory_bytes"
@@ -584,6 +904,26 @@ def _capture_process_tree_target(
         ),
         end_at,
         f"{target_id} process-tree window peak RSS",
+    )
+    min_cpu_margin = _strict_scalar(
+        query,
+        (
+            "min(min_over_time((crawler_runtime_process_tree_cpu_seconds_total"
+            f"{{{selector}}} - crawler_runtime_process_root_cpu_seconds_total{{{selector}}})"
+            f"[{range_selector}:]))"
+        ),
+        end_at,
+        f"{target_id} process-tree CPU margin",
+    )
+    min_rss_margin = _strict_scalar(
+        query,
+        (
+            "min(min_over_time((crawler_runtime_process_tree_resident_memory_bytes"
+            f"{{{selector}}} - crawler_runtime_process_root_resident_memory_bytes{{{selector}}})"
+            f"[{range_selector}:]))"
+        ),
+        end_at,
+        f"{target_id} process-tree RSS margin",
     )
 
     coverage = {
@@ -601,6 +941,10 @@ def _capture_process_tree_target(
         "boundary_tolerance_seconds": PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS,
         "start_covered": start_covered,
         "end_covered": end_covered,
+        "start_observation_sequence": sequence_start,
+        "end_observation_sequence": sequence_end,
+        "paired_start": paired_start,
+        "paired_end": paired_end,
     }
     complete = (
         interval_seconds is not None
@@ -616,12 +960,32 @@ def _capture_process_tree_target(
         and coverage_ratio >= PROCESS_TREE_MIN_COVERAGE_RATIO
         and start_covered
         and end_covered
+        and paired_start
+        and paired_end
+        and sequence_start is not None
+        and sequence_end is not None
+        and sequence_end >= sequence_start
+        and successful_samples == sequence_end - sequence_start
         and tree_cpu_seconds is not None
+        and root_cpu_seconds is not None
         and tree_cpu_seconds >= root_cpu_seconds
         and tree_peak_rss_bytes is not None
+        and root_peak_rss_bytes is not None
         and tree_peak_rss_bytes >= root_peak_rss_bytes
+        and min_cpu_margin is not None
+        and min_cpu_margin >= 0
+        and min_rss_margin is not None
+        and min_rss_margin >= 0
     )
-    return coverage, complete, tree_cpu_seconds, tree_peak_rss_bytes
+    coverage["complete"] = complete
+    return (
+        coverage,
+        complete,
+        root_cpu_seconds,
+        float(root_peak_rss_bytes) if root_peak_rss_bytes is not None else None,
+        tree_cpu_seconds,
+        tree_peak_rss_bytes,
+    )
 
 
 def capture_prometheus_measurement(
@@ -647,6 +1011,7 @@ def capture_prometheus_measurement(
     range_selector = f"{window_seconds}s"
 
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    target_instances: list[str] = []
     for target in targets.get("targets", []):
         role = target.get("role")
         instance = target.get("instance")
@@ -656,10 +1021,18 @@ def capture_prometheus_measurement(
             raise ModelError(
                 f"capture target instance {instance!r} contains unsupported characters"
             )
+        target_instances.append(instance)
         grouped[role].append(target)
+
+    if window_seconds == 86_400 and (
+        len(target_instances) != len(EXACT_24H_TARGET_INSTANCES)
+        or set(target_instances) != EXACT_24H_TARGET_INSTANCES
+    ):
+        raise ModelError("86,400-second capture requires the exact six-target fleet")
 
     role_measurements: list[dict[str, Any]] = []
     releases: set[str] = set()
+    capture_evidence_gaps: list[str] = []
     for role, role_targets in sorted(grouped.items()):
         lane_totals: dict[tuple[str, str], dict[str, float]] = defaultdict(
             lambda: {"successful_cycles": 0.0, "attempted_cycles": 0.0, "task_active_seconds": 0.0}
@@ -675,6 +1048,8 @@ def capture_prometheus_measurement(
         role_process_tree_coverage: list[dict[str, Any]] = []
         role_process_tree_complete = True
         role_retries = 0.0
+        role_retry_complete = True
+        role_retry_coverage: list[dict[str, Any]] = []
         role_target_ids: list[str] = []
         cost_categories: set[str] = set()
         discovery_concurrencies: set[float | None] = set()
@@ -690,37 +1065,28 @@ def capture_prometheus_measurement(
             role_target_ids.append(str(target.get("id", instance)))
             label = _prom_label(instance)
             selector = f'job="crawler",instance="{label}"'
-            root_cpu = _instant_sum(
-                query,
-                f"sum(increase(process_cpu_seconds_total{{{selector}}}[{range_selector}]))",
-                end_at,
-                f"{instance} process CPU",
-            )
-            root_peak_rss = _instant_sum(
-                query,
-                f"max(max_over_time(process_resident_memory_bytes{{{selector}}}[{range_selector}]))",
-                end_at,
-                f"{instance} peak RSS",
-            )
-            role_root_cpu += root_cpu
-            role_root_peak_rss = max(role_root_peak_rss, root_peak_rss)
-
             target_id = str(target.get("id", instance))
-            coverage, target_tree_complete, process_tree_cpu, process_tree_peak_rss = (
-                _capture_process_tree_target(
-                    query,
-                    selector=selector,
-                    target_id=target_id,
-                    start_at=start_at,
-                    end_at=end_at,
-                    window_seconds=window_seconds,
-                    range_selector=range_selector,
-                    root_cpu_seconds=root_cpu,
-                    root_peak_rss_bytes=root_peak_rss,
-                )
+            (
+                coverage,
+                target_tree_complete,
+                root_cpu,
+                root_peak_rss,
+                process_tree_cpu,
+                process_tree_peak_rss,
+            ) = _capture_process_tree_target(
+                query,
+                selector=selector,
+                target_id=target_id,
+                start_at=start_at,
+                end_at=end_at,
+                window_seconds=window_seconds,
+                range_selector=range_selector,
             )
+            role_root_cpu += root_cpu or 0.0
+            role_root_peak_rss = max(role_root_peak_rss, root_peak_rss or 0.0)
             role_process_tree_coverage.append(coverage)
             if target_tree_complete:
+                assert root_cpu is not None
                 assert process_tree_cpu is not None
                 assert process_tree_peak_rss is not None
                 role_process_tree_cpu += process_tree_cpu
@@ -737,22 +1103,41 @@ def capture_prometheus_measurement(
                 f"{instance} HTTP retries",
             )
             if target.get("execution_class") == "browser":
-                for metric in (
-                    "crawler_browser_navigation_network_retry_total",
-                    "crawler_browser_content_retry_total",
-                    "crawler_browser_target_closed_retries_total",
-                ):
-                    role_retries += _instant_sum(
+                retry_coverage, retry_complete, browser_retry_events = (
+                    _capture_browser_retry_target(
                         query,
-                        f'sum(increase({metric}{{{selector},outcome="retry"}}[{range_selector}]))',
-                        end_at,
-                        f"{instance} {metric}",
+                        selector=selector,
+                        target_id=target_id,
+                        start_at=start_at,
+                        end_at=end_at,
+                        range_selector=range_selector,
                     )
+                )
+                role_retry_coverage.extend(retry_coverage)
+                role_retry_complete = role_retry_complete and retry_complete
+                if browser_retry_events is not None:
+                    role_retries += browser_retry_events
 
-            for row in query(f"max by (version) (crawler_build_info{{{selector}}})", end_at):
-                version = row.get("metric", {}).get("version")
-                if isinstance(version, str) and version:
-                    releases.add(version)
+            release_boundaries: list[str] = []
+            for boundary in (start_at, end_at):
+                rows = query(f"max by (version) (crawler_build_info{{{selector}}})", boundary)
+                if len(rows) != 1 or set(rows[0].get("metric", {})) != {"version"}:
+                    release_boundaries = []
+                    break
+                version = rows[0]["metric"].get("version")
+                try:
+                    raw_release_value = float(rows[0]["value"][1])
+                except (KeyError, IndexError, TypeError, ValueError):
+                    raw_release_value = float("nan")
+                value = _nonnegative_integer(raw_release_value)
+                if not isinstance(version, str) or not version or value != 1:
+                    release_boundaries = []
+                    break
+                release_boundaries.append(version)
+            if len(release_boundaries) == 2 and len(set(release_boundaries)) == 1:
+                releases.add(release_boundaries[0])
+            else:
+                capture_evidence_gaps.append(f"release-boundary-incomplete:{target_id}")
 
             vcpu_limits.add(
                 float(target["vcpu_limit"]) if target.get("vcpu_limit") is not None else None
@@ -979,7 +1364,8 @@ def capture_prometheus_measurement(
                     role_process_tree_samples if role_process_tree_complete else None
                 ),
                 "process_tree_coverage": role_process_tree_coverage,
-                "retry_events": role_retries,
+                "retry_events": role_retries if role_retry_complete else None,
+                "retry_coverage": role_retry_coverage,
                 "egress_coverage": egress_coverage,
                 "capability_mix": {
                     "implementation": "python",
@@ -1050,6 +1436,20 @@ def capture_prometheus_measurement(
     )
     if not browser_tree_complete:
         evidence_gaps.insert(0, "browser-child-cpu-and-rss-not-in-process-metrics")
+    for role in role_measurements:
+        for coverage in role["process_tree_coverage"]:
+            if not coverage["complete"]:
+                evidence_gaps.append(f"process-tree-evidence-incomplete:{coverage['target_id']}")
+        for coverage in role["retry_coverage"]:
+            if not coverage["complete"]:
+                evidence_gaps.append(
+                    "browser-retry-evidence-incomplete:"
+                    f"{coverage['target_id']}:{coverage['family']}"
+                )
+    evidence_gaps.extend(capture_evidence_gaps)
+    if len(releases) != 1:
+        evidence_gaps.append("release-fleet-incoherent")
+    evidence_gaps = list(dict.fromkeys(evidence_gaps))
 
     measurement_id = f"python-production-{end_at:%Y%m%d}-{window_seconds}s"
     return {
