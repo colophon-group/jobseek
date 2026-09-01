@@ -3053,7 +3053,7 @@ honda,honda-careers-europe,https://jobs.honda.eu/,rss,"{""url"": ""https://jobs.
 honda,honda-malaysia,https://www.honda.com.my/career,dom,"{""render"": false}",dom,"{""render"": false, ""steps"": [{""tag"": ""h2"", ""attr"": ""class=career-position-title"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=department-loc"", ""field"": ""locations""}, {""text"": ""Job"", ""field"": ""description"", ""stop"": ""STAY UPDATED"", ""html"": true}]}"
 hone-health,hone-health-greenhouse,https://job-boards.greenhouse.io/honehealth,greenhouse,"{""token"": ""honehealth""}",skip,
 honeycomb-io,honeycomb-io-greenhouse,https://job-boards.greenhouse.io/honeycomb,greenhouse,"{""token"": ""honeycomb""}",skip,
-honeywell,honeywell-careers,https://careers.honeywell.com/en/sites/Honeywell,oracle_hcm,"{""host"": ""ibqbjb.fa.ocs.oraclecloud.com"", ""site"": ""CX_1""}",oracle_hcm,"{""host"": ""ibqbjb.fa.ocs.oraclecloud.com"", ""site"": ""CX_1"", ""enrich"": [""description""]}"
+honeywell,honeywell-careers,https://ibqbjb.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/Honeywell/jobs,oracle_hcm,"{""host"": ""ibqbjb.fa.ocs.oraclecloud.com"", ""site"": ""CX_1""}",oracle_hcm,"{""enrich"": [""description""]}"
 honor,honor-greenhouse,https://job-boards.greenhouse.io/honor,greenhouse,"{""token"": ""honor""}",skip,
 hook,hook-ashby,https://jobs.ashbyhq.com/hook,ashby,"{""token"": ""hook""}",skip,
 hook,hook-greenhouse,https://job-boards.greenhouse.io/hook,greenhouse,"{""token"": ""hook""}",skip,
