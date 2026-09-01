@@ -6355,6 +6355,7 @@ tomorrow-io,tomorrow-io-greenhouse,https://job-boards.greenhouse.io/tomorrow,gre
 tomtom,tomtom-careers-lever,https://jobs.eu.lever.co/tomtom,lever,"{""token"": ""tomtom""}",skip,
 tonal,tonal-ashby,https://jobs.ashbyhq.com/tonal,ashby,"{""token"": ""tonal""}",skip,
 too-good-to-go,too-good-to-go-greenhouse,https://job-boards.greenhouse.io/toogoodtogo,greenhouse,"{""token"": ""toogoodtogo""}",skip,
+top-closers,top-closers-careers,https://topclosers.hire.trakstar.com/jobs,recruiterbox,"{""tenant"": ""topclosers""}",recruiterbox,
 topcompare,topcompare-greenhouse,https://job-boards.greenhouse.io/topcompare,greenhouse,"{""token"": ""topcompare""}",skip,
 topkey,topkey-careers,https://topkey.io/careers,dom,"{""url_filter"": ""/careers/"", ""render"": false}",dom,"{""render"": false, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""from"": 0}, {""tag"": ""h3"", ""field"": ""description"", ""html"": true, ""stop"": ""How to Apply"", ""optional"": true}]}"
 topsort,topsort-greenhouse,https://job-boards.greenhouse.io/topsort,greenhouse,"{""token"": ""topsort""}",skip,

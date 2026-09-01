@@ -1969,7 +1969,8 @@ recruiterbox — Recruiterbox / Trakstar Hire static listing monitor
   Listing:  GET https://{tenant}.hire.trakstar.com/?limit=100&p={page}
   Legacy:   https://{tenant}.recruiterbox.com redirects to Trakstar Hire
   Returns:  Job URLs from server-rendered HTML
-  Scraper:  Auto-configured (json-ld) for title, description, location, and dates
+  Scraper:  Auto-configured (recruiterbox) for title, description, location,
+            employment type, and remote/hybrid status
   Cost:     10 (HTTP only; no browser)
   Cap:      50,000 jobs
 

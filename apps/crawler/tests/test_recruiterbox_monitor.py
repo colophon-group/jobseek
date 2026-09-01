@@ -389,7 +389,7 @@ class TestIntegration:
         assert "recruiterbox" in all_monitor_types()
         assert detect_ats_from_url(LEGACY_URL) == "recruiterbox"
         assert detect_ats_from_url(JOB_URL) == "recruiterbox"
-        assert auto_scraper_type("recruiterbox") == ("json-ld", None)
+        assert auto_scraper_type("recruiterbox") == ("recruiterbox", None)
         assert "recruiterbox" in MONITOR_CARDS
         assert "recruiterbox" in _MONITOR_CONFIG_HINTS
         assert delay_for_domain(f"{TENANT}.recruiterbox.com") == delay_for_domain(
