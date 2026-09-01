@@ -15,6 +15,10 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
+const crawlerSamplerContainerSmoke = readFileSync(
+  ".github/scripts/crawler-sampler-container-smoke.py",
+  "utf8",
+);
 const webBuildEnvAction = readFileSync(
   ".github/actions/setup-web-build-env/action.yml",
   "utf8",
@@ -588,7 +592,7 @@ test("runtime taxonomies and contract derivation require crawler version gates",
   assert.match(workflow, /id: filter-combined[\s\S]*CRAWLER_RUNTIME_BOUNDARY/);
 });
 
-test("PR-only CI gates cover pull requests and dispatched PRs", () => {
+test("PR-context CI gates distinguish pull requests from dispatched PRs", () => {
   const changesJob = jobBlock("changes");
   const crawlerImageJob = jobBlock("crawler-image");
   const versionJob = jobBlock("version-check");
@@ -599,7 +603,10 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   assert.match(changesJob, /id: manual-pr[\s\S]*classify-pr-paths\.sh/);
   assert.match(changesJob, /id: pull-request[\s\S]*echo "is_pr=true"/);
   assert.match(changesJob, /echo "base_ref=\$BASE_REF"/);
-  assert.match(crawlerImageJob, /if: needs\.changes\.outputs\.is_pr == 'true' && needs\.changes\.outputs\.crawler_code == 'true'/);
+  assert.match(
+    crawlerImageJob,
+    /if: github\.event_name == 'pull_request' && needs\.changes\.outputs\.is_pr == 'true' && needs\.changes\.outputs\.crawler_code == 'true'/,
+  );
   assert.match(crawlerImageJob, /docker\/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e/);
   assert.match(crawlerImageJob, /docker\/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a/);
   assert.match(crawlerImageJob, /context: apps\/crawler/);
@@ -636,11 +643,164 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   assert.match(probeJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
   assert.match(probeJob, /BASE_REF: \$\{\{ needs\.changes\.outputs\.base_ref \}\}/);
   assert.match(requiredCiJob, /const isPr = needs\.changes\?\.outputs\?\.is_pr === "true"/);
-  assert.match(requiredCiJob, /requireSuccess\("crawler-image", isPr && crawlerCode\)/);
+  assert.match(
+    requiredCiJob,
+    /requireSuccess\("crawler-image", eventName === "pull_request" && isPr && crawlerCode\)/,
+  );
   assert.match(requiredCiJob, /requireSuccess\("version-check", isPr && crawlerCode\)/);
   assert.match(requiredCiJob, /requireSuccess\("probe-new-boards", isPr && boardsCsv\)/);
   assert.doesNotMatch(versionJob, /github\.event_name == 'pull_request'/);
   assert.doesNotMatch(probeJob, /github\.event_name == 'pull_request'/);
+});
+
+test("crawler image job proves live sampler and shutdown lifecycle", () => {
+  const crawlerImageJob = jobBlock("crawler-image");
+
+  assert.match(
+    crawlerImageJob,
+    /services:\n      postgres:\n        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193/,
+  );
+  assert.match(crawlerImageJob, /POSTGRES_USER: crawler/);
+  assert.match(crawlerImageJob, /POSTGRES_PASSWORD: crawler/);
+  assert.match(crawlerImageJob, /POSTGRES_DB: crawler/);
+  assert.match(crawlerImageJob, /- 5432:5432/);
+  assert.match(crawlerImageJob, /pg_isready -U crawler -d crawler/);
+  assert.match(
+    crawlerImageJob,
+    /redis:\n        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241/,
+  );
+  assert.match(crawlerImageJob, /- 6379:6379/);
+  assert.match(crawlerImageJob, /redis-cli ping/);
+
+  assert.match(
+    crawlerImageJob,
+    /actions\/checkout@[0-9a-f]+[^\n]*\n        with:\n          fetch-depth: 0\n          persist-credentials: false/,
+  );
+  assert.match(crawlerImageJob, /name: Verify exact PR merge provenance/);
+  assert.match(crawlerImageJob, /TESTED_BUILD_SHA: \$\{\{ github\.sha \}\}/);
+  assert.match(
+    crawlerImageJob,
+    /PR_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+  );
+  assert.match(
+    crawlerImageJob,
+    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+  );
+  assert.match(crawlerImageJob, /git rev-list --parents -n 1 HEAD/);
+  assert.match(crawlerImageJob, /test "\$parent_one" = "\$BASE_SHA"/);
+  assert.match(crawlerImageJob, /test "\$parent_two" = "\$PR_HEAD_SHA"/);
+  assert.match(crawlerImageJob, /git rev-parse HEAD\^1/);
+  assert.match(crawlerImageJob, /git rev-parse HEAD\^2/);
+
+  assert.equal(
+    (crawlerImageJob.match(/org\.opencontainers\.image\.source=/g) ?? []).length,
+    2,
+  );
+  assert.equal(
+    (crawlerImageJob.match(/org\.opencontainers\.image\.revision=\$\{\{ github\.sha \}\}/g) ?? [])
+      .length,
+    2,
+  );
+  assert.equal(
+    (crawlerImageJob.match(/com\.colophon-group\.jobseek\.pr-head=/g) ?? []).length,
+    2,
+  );
+  assert.equal(
+    (crawlerImageJob.match(/com\.colophon-group\.jobseek\.base=/g) ?? []).length,
+    2,
+  );
+
+  assert.match(crawlerImageJob, /crawler-sampler-container-smoke\.py --self-test/);
+  assert.match(
+    crawlerImageJob,
+    /name: Exercise real sampler and container shutdown lifecycle[\s\S]*crawler-sampler-container-smoke\.py[\s\S]*--slim-image jobseek-crawler-slim-ci:pr[\s\S]*--full-image jobseek-crawler-ci:pr[\s\S]*--tested-build-sha "\$TESTED_BUILD_SHA"[\s\S]*--pr-head-sha "\$PR_HEAD_SHA"[\s\S]*--base-sha "\$BASE_SHA"[\s\S]*--metrics-port 19091[\s\S]*--evidence "\$EVIDENCE_PATH"/,
+  );
+  assert.match(
+    crawlerImageJob,
+    /if: always\(\)[\s\S]*actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a[\s\S]*crawler-sampler-container-smoke\.json[\s\S]*if-no-files-found: error/,
+  );
+
+  for (const flag of [
+    '"--platform",\n        "linux/amd64"',
+    '"--init"',
+    '"--cgroupns=private"',
+    '"--network",\n        "host"',
+    '"--read-only"',
+    '"/tmp:rw,noexec,nosuid,nodev,size=64m"',
+    '"--stop-timeout",\n        "30"',
+  ]) {
+    assert.match(crawlerSamplerContainerSmoke, new RegExp(flag));
+  }
+  for (const forbidden of [
+    "--privileged",
+    "--pid=host",
+    "/proc:/proc",
+    "/sys/fs/cgroup:/sys/fs/cgroup",
+    "--cap-add",
+  ]) {
+    assert.doesNotMatch(crawlerSamplerContainerSmoke, new RegExp(forbidden));
+  }
+  assert.match(crawlerSamplerContainerSmoke, /"CRAWLER_DB_POOL_MIN": "1"/);
+  assert.match(crawlerSamplerContainerSmoke, /"CRAWLER_DB_POOL_MAX": "2"/);
+  assert.match(crawlerSamplerContainerSmoke, /"DISCOVERY_CONCURRENCY": "1"/);
+  assert.match(crawlerSamplerContainerSmoke, /"MONITOR_CONCURRENCY": "1"/);
+  assert.match(crawlerSamplerContainerSmoke, /"SHUTDOWN_GRACE_SECONDS": "2"/);
+  assert.match(crawlerSamplerContainerSmoke, /"PROXY_PROVIDER": "none"/);
+  assert.match(crawlerSamplerContainerSmoke, /for mode in \("graceful", "forced"\)/);
+  assert.match(crawlerSamplerContainerSmoke, /for image_key, expected_role in \(\("slim", "run"\), \("full", "run-browser"\)\)/);
+  assert.match(crawlerSamplerContainerSmoke, /"host_pid"/);
+  assert.match(crawlerSamplerContainerSmoke, /"host_ppid"/);
+  assert.match(crawlerSamplerContainerSmoke, /"start_time_ticks"/);
+  assert.match(crawlerSamplerContainerSmoke, /"crawler_runtime_process_tree_observation_sequence"/);
+  assert.match(crawlerSamplerContainerSmoke, /\["docker", "stop", f"--time=\{stop_time\}"/);
+  assert.match(crawlerSamplerContainerSmoke, /stopped\["state"\]\["exit_code"\] == 137/);
+  assert.match(crawlerSamplerContainerSmoke, /stopped\["state"\]\["exit_code"\] == 0/);
+  assert.match(crawlerSamplerContainerSmoke, /GITHUB_STEP_SUMMARY/);
+  assert.match(crawlerSamplerContainerSmoke, /_atomic_write_json\(evidence_path, evidence\)/);
+  for (const requiredEvidence of [
+    '"content_id"',
+    '"platform": "linux/amd64"',
+    '"created"',
+    '"host_pid"',
+    '"host_ppid"',
+    '"container_pid"',
+    '"start_time_ticks"',
+    '"docker_stop_seconds"',
+    '"exit_code"',
+    '"oom_killed"',
+    '"log_markers"',
+    '"all_recorded_identities_gone"',
+  ]) {
+    assert.ok(crawlerSamplerContainerSmoke.includes(requiredEvidence), requiredEvidence);
+  }
+  for (const liveContract of [
+    "container PID 1 is not docker-init",
+    "expected exactly one default uv crawler launcher command",
+    "expected exactly one real crawler root command",
+    "expected exactly one multiprocessing sampler child",
+    "sampler parent is not the crawler root",
+    "processes are not at the private cgroup-v2 namespace root",
+    "full image did not start exactly one Xvfb",
+    "crawler_runtime_process_tree_samples_total",
+    "crawler_runtime_process_tree_sampler_starts_total",
+    "crawler_runtime_process_tree_sampling_gaps_total",
+    "crawler_runtime_process_tree_sample_interval_seconds",
+    "crawler_runtime_process_root_cpu_seconds_total",
+    "crawler_runtime_process_tree_cpu_seconds_total",
+    "crawler_runtime_process_root_resident_memory_bytes",
+    "crawler_runtime_process_tree_resident_memory_bytes",
+    "crawler_runtime_process_tree_descendants",
+    "pipeline.stopped",
+    "cli.shutting_down",
+    "cli.stopped",
+  ]) {
+    assert.ok(crawlerSamplerContainerSmoke.includes(liveContract), liveContract);
+  }
+  assert.match(crawlerSamplerContainerSmoke, /READINESS_TIMEOUT_SECONDS: Final = 30\.0/);
+  assert.match(crawlerSamplerContainerSmoke, /GRACEFUL_STOP_TIMEOUT_SECONDS: Final = 20\.0/);
+  assert.match(crawlerSamplerContainerSmoke, /FORCED_STOP_TIMEOUT_SECONDS: Final = 5\.0/);
+  assert.match(crawlerSamplerContainerSmoke, /ORPHAN_TIMEOUT_SECONDS: Final = 5\.0/);
+  assert.match(crawlerSamplerContainerSmoke, /"signal": "SIGSTOP"/);
 });
 
 test("workflow-security runs repository script tests", () => {
