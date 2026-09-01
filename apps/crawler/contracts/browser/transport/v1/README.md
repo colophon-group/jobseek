@@ -44,11 +44,14 @@ remote-origin flags.
 Endpoint syntax and loopback location are not treated as ownership. Once the
 raw controller's root auto-attach acknowledgement is established, Playwright's
 native connection creates a high-entropy `about:blank` proof page without a
-network request. The raw endpoint must expose and fully initialize that exact
-target. The verified page/context is then transferred for application use. A
-port collision, competing controller, proof mismatch, bind failure, or proof
-setup failure closes the proof context and admits no application task or
-traffic; the secret proof value is never a metric label or log field.
+network request. The raw endpoint must expose exactly one matching proof target
+ID, attach exactly one session to that ID, and record that session's ordered
+child auto-attach, Network enable, and debugger-resume acknowledgements before
+ownership is verified. The verified page/context is then transferred for
+application use. A port collision, competing controller, proof mismatch,
+missing attachment or acknowledgement, bind failure, or proof setup failure
+closes the proof context and admits no application task or traffic; the secret
+proof value is never a metric label or log field.
 
 The controller sends `Target.setAutoAttach` with `flatten=true`,
 `waitForDebuggerOnStart=true`, and an explicit filter for page, OOPIF/iframe,
@@ -65,6 +68,10 @@ or a required child setup failure enters one fatal transition: readiness is
 revoked, future admission is permanently frozen, live generation records are
 terminalized as transport failures (or partial responses when bytes exist),
 paused targets are released or closed, and the raw transport is closed.
+Duplicate-session resume and detach are part of required initialization:
+failure of either acknowledgement enters the same fatal transition before any
+further application admission, while cleanup continues only long enough to
+prove the paused target was resumed, detached, or closed.
 
 Request identity is `(browser_generation, session_id, request_id,
 redirect_hop)`. Attribution and request class freeze at

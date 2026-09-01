@@ -1282,6 +1282,7 @@ class ChromiumAutoAttachObserver:
         self._target_by_session: dict[str, tuple[str, str]] = {}
         self._session_by_target: dict[str, str] = {}
         self._ignored_duplicate_sessions: set[str] = set()
+        self._auto_attach_ready_sessions: set[str] = set()
         self._network_ready_sessions: set[str] = set()
         self._resumed_sessions: set[str] = set()
         self._preboundary_request_slots: set[tuple[str, str]] = set()
@@ -1452,20 +1453,31 @@ class ChromiumAutoAttachObserver:
             await proof_preparer()
             target_result = await self._send_command("Target.getTargets", {})
             target_infos = target_result.get("targetInfos")
-            if not isinstance(target_infos, list) or not any(
-                isinstance(target, dict)
-                and target.get("type") == "page"
-                and secrets.compare_digest(str(target.get("url")), required_proof)
-                for target in target_infos
-            ):
+            proof_targets = (
+                [
+                    target
+                    for target in target_infos
+                    if isinstance(target, dict)
+                    and target.get("type") == "page"
+                    and isinstance(target.get("url"), str)
+                    and secrets.compare_digest(target["url"], required_proof)
+                ]
+                if isinstance(target_infos, list)
+                else []
+            )
+            if len(proof_targets) != 1:
                 raise RuntimeError("raw CDP endpoint ownership mismatch")
+            proof_target_id = proof_targets[0].get("targetId")
+            if not isinstance(proof_target_id, str) or not proof_target_id:
+                raise RuntimeError("raw CDP ownership target omitted its target id")
             await self._await_stable_initialization(deadline)
             if self._reader_failed or self._fatal:
                 raise RuntimeError("raw CDP reader failed during ownership setup")
-            self._ownership_verified = True
+            self._require_initialized_proof_target(proof_target_id)
             if proof_releaser is None:
                 raise RuntimeError("raw CDP ownership proof cannot be released")
             await proof_releaser()
+            self._ownership_verified = True
             await self._send_command("Target.getTargets", {})
             await self._await_stable_initialization(deadline)
         if self._reader_failed or self._fatal:
@@ -1474,20 +1486,61 @@ class ChromiumAutoAttachObserver:
             raise RuntimeError("tracker admission cannot be opened")
         self._ready = True
 
-    def _transition_fatal(self) -> None:
+    def _schedule_fatal_transport_close(self) -> None:
+        if self._draining or self._closing or self._fatal_cleanup_task is not None:
+            return
+        self._fatal_cleanup_task = asyncio.create_task(self._close_transport())
+
+    def _transition_fatal(self, *, defer_transport_close: bool = False) -> None:
         if self._fatal:
             return
         was_ready = self._ready
         self._fatal = True
         self._ready = False
         self._tracker.observer_transport_lost(self._stage)
-        if was_ready and not self._draining and self._fatal_cleanup_task is None:
-            self._fatal_cleanup_task = asyncio.create_task(self._close_transport())
+        if was_ready and not defer_transport_close:
+            self._schedule_fatal_transport_close()
 
-    def _spawn_initialization(self, params: Mapping[str, Any]) -> None:
+    def _require_initialized_proof_target(self, target_id: str) -> None:
+        attached = [
+            (session_id, target_type)
+            for session_id, (attached_target_id, target_type) in self._target_by_session.items()
+            if attached_target_id == target_id
+        ]
+        if len(attached) != 1:
+            raise RuntimeError("raw CDP ownership target was not uniquely attached")
+        session_id, target_type = attached[0]
+        if (
+            target_type != "page"
+            or self._session_by_target.get(target_id) != session_id
+            or session_id not in self._auto_attach_ready_sessions
+            or session_id not in self._network_ready_sessions
+            or session_id not in self._resumed_sessions
+        ):
+            raise RuntimeError("raw CDP ownership target setup was incomplete")
+        proof_trace = [
+            method
+            for trace_session, trace_target, trace_type, method in self._setup_trace
+            if trace_session == session_id and trace_target == target_id and trace_type == "page"
+        ]
+        if proof_trace != [
+            "Target.setAutoAttach",
+            "Network.enable",
+            "Runtime.runIfWaitingForDebugger",
+        ]:
+            raise RuntimeError("raw CDP ownership target acknowledgements were incomplete")
+
+    def _spawn_initialization(
+        self,
+        params: Mapping[str, Any],
+        *,
+        parent_session_id: str | None,
+    ) -> None:
         if self._closing:
             return
-        task = asyncio.create_task(self._initialize_target(params))
+        task = asyncio.create_task(
+            self._initialize_target(params, parent_session_id=parent_session_id)
+        )
         self._task_generation += 1
         self._initialization_tasks.add(task)
         task.add_done_callback(self._initialization_done)
@@ -1545,7 +1598,9 @@ class ChromiumAutoAttachObserver:
                 else:
                     if command_details is not None:
                         method, response_session_id = command_details
-                        if method == "Network.enable" and response_session_id is not None:
+                        if method == "Target.setAutoAttach" and response_session_id is not None:
+                            self._auto_attach_ready_sessions.add(response_session_id)
+                        elif method == "Network.enable" and response_session_id is not None:
                             self._network_ready_sessions.add(response_session_id)
                             self._tracker.observer_network_enabled(response_session_id)
                         elif (
@@ -1562,7 +1617,10 @@ class ChromiumAutoAttachObserver:
             self._transition_fatal()
             return
         if method == "Target.attachedToTarget":
-            self._spawn_initialization(params)
+            if session_id is not None and not isinstance(session_id, str):
+                self._transition_fatal()
+                return
+            self._spawn_initialization(params, parent_session_id=session_id)
         elif method == "Target.detachedFromTarget":
             detached_session = params.get("sessionId")
             if isinstance(detached_session, str):
@@ -1574,6 +1632,7 @@ class ChromiumAutoAttachObserver:
                     and self._session_by_target.get(detached_target[0]) == detached_session
                 ):
                     self._session_by_target.pop(detached_target[0], None)
+                self._auto_attach_ready_sessions.discard(detached_session)
                 self._network_ready_sessions.discard(detached_session)
                 self._resumed_sessions.discard(detached_session)
                 self._preboundary_request_slots = {
@@ -1584,7 +1643,12 @@ class ChromiumAutoAttachObserver:
         elif method.startswith("Network."):
             self._handle_network_event(session_id, method, params)
 
-    async def _initialize_target(self, params: Mapping[str, Any]) -> None:
+    async def _initialize_target(
+        self,
+        params: Mapping[str, Any],
+        *,
+        parent_session_id: str | None,
+    ) -> None:
         session_id = params.get("sessionId")
         target_info = params.get("targetInfo")
         if not isinstance(session_id, str) or not isinstance(target_info, dict):
@@ -1603,17 +1667,37 @@ class ChromiumAutoAttachObserver:
         owner_session = self._session_by_target.get(target_id)
         if owner_session is not None and owner_session != session_id:
             self._ignored_duplicate_sessions.add(session_id)
-            with suppress(Exception):
+            resume_failed = False
+            detach_failed = False
+            try:
                 await self._send_command(
                     "Runtime.runIfWaitingForDebugger",
                     {},
                     session_id=session_id,
                 )
-            with suppress(Exception):
+            except Exception:
+                resume_failed = True
+                self._transition_fatal(defer_transport_close=True)
+            try:
                 await self._send_command(
                     "Target.detachFromTarget",
                     {"sessionId": session_id},
+                    session_id=parent_session_id,
                 )
+            except Exception:
+                detach_failed = True
+                self._transition_fatal(defer_transport_close=True)
+            if resume_failed and detach_failed:
+                try:
+                    await self._send_command("Target.closeTarget", {"targetId": target_id})
+                except Exception:
+                    # Closing the raw transport below is the final release path:
+                    # Chromium resumes debugger-paused targets when their
+                    # controlling DevTools connection disappears.
+                    self._schedule_fatal_transport_close()
+                    return
+            if resume_failed or detach_failed:
+                self._schedule_fatal_transport_close()
             return
         self._session_by_target[target_id] = session_id
         self._target_by_session[session_id] = (target_id, target_type)

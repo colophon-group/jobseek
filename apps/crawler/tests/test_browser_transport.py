@@ -635,6 +635,66 @@ async def _flush_tasks() -> None:
         await asyncio.sleep(0)
 
 
+async def _attach_fake_ownership_protocol(
+    monkeypatch: pytest.MonkeyPatch,
+    websocket: FakeRawWebSocket,
+    tracker: BrowserTransportTracker,
+    *,
+    emit_proof_attachment: bool,
+) -> tuple[ChromiumAutoAttachObserver | None, list[str]]:
+    ownership = ChromiumLoopbackOwnership.create(debug_port=9222)
+    await ownership.prepare(object())
+    proof_url = f"about:blank#jobseek-cdp-owner={ownership._proof_token}"
+    proof_queries = 0
+
+    async def install_proof(_ownership: ChromiumLoopbackOwnership) -> None:
+        return None
+
+    async def fetch_endpoint(_debug_port: int, _timeout: float) -> str:
+        return "ws://127.0.0.1:9222/devtools/browser/fake-browser"
+
+    async def connect_endpoint(_url: str, _timeout: float) -> FakeRawWebSocket:
+        return websocket
+
+    def expose_proof(message: dict[str, Any]) -> None:
+        nonlocal proof_queries
+        if message["method"] != "Target.getTargets" or "sessionId" in message:
+            return
+        proof_queries += 1
+        targets: list[dict[str, str]] = []
+        if proof_queries >= 2:
+            targets.append(
+                {
+                    "targetId": "proof-target",
+                    "type": "page",
+                    "url": proof_url,
+                }
+            )
+            if emit_proof_attachment and proof_queries == 2:
+                websocket.emit_event(
+                    "Target.attachedToTarget",
+                    {
+                        "sessionId": "proof-session",
+                        "targetInfo": {"targetId": "proof-target", "type": "page"},
+                    },
+                )
+        websocket.result_overrides[("Target.getTargets", None)] = {"targetInfos": targets}
+
+    classifier_calls: list[str] = []
+    websocket.on_command = expose_proof
+    monkeypatch.setattr(ChromiumLoopbackOwnership, "_install_proof", install_proof)
+    monkeypatch.setattr(transport, "_fetch_loopback_websocket_url", fetch_endpoint)
+    observer = await ChromiumAutoAttachObserver.attach(
+        ownership,
+        tracker,
+        lambda target_id, *_args: classifier_calls.append(target_id),
+        stage=Stage.MONITOR,
+        setup_timeout=0.25,
+        connector=connect_endpoint,
+    )
+    return observer, classifier_calls
+
+
 @pytest.mark.asyncio
 async def test_raw_cdp_observer_recursively_enables_targets_and_uses_frozen_attribution():
     websocket = FakeRawWebSocket()
@@ -846,6 +906,228 @@ async def test_post_ready_child_network_failure_revokes_readiness_and_admission(
         ]
         == 1
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failed_commands",
+    [
+        frozenset({("Runtime.runIfWaitingForDebugger", "duplicate-session")}),
+        frozenset({("Target.detachFromTarget", None)}),
+        frozenset(
+            {
+                ("Runtime.runIfWaitingForDebugger", "duplicate-session"),
+                ("Target.detachFromTarget", None),
+            }
+        ),
+    ],
+    ids=["resume", "detach", "resume-and-detach"],
+)
+async def test_duplicate_session_cleanup_failure_revokes_readiness_and_admission(
+    failed_commands,
+):
+    websocket = FakeRawWebSocket()
+    tracker = BrowserTransportTracker()
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
+        tracker,
+        lambda *_args: RequestDeclaration("task"),
+        stage=Stage.DETAIL,
+    )
+    assert observer is not None and observer.ready
+    assert tracker.accept_task("task", _attribution(stage=Stage.DETAIL))
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "owner-session",
+            "targetInfo": {"targetId": "shared-target", "type": "page"},
+        },
+    )
+    await _flush_tasks()
+    websocket.emit_event(
+        "Network.requestWillBeSent",
+        {"requestId": "live-request", "timestamp": 1},
+        session_id="owner-session",
+    )
+    await _flush_tasks()
+    assert tracker.live_count == 1
+
+    websocket.errored_commands.update(failed_commands)
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "duplicate-session",
+            "targetInfo": {"targetId": "shared-target", "type": "page"},
+        },
+    )
+    await _flush_tasks()
+
+    assert websocket.methods_for("duplicate-session") == ["Runtime.runIfWaitingForDebugger"]
+    assert "Target.detachFromTarget" in websocket.methods_for(None)
+    if len(failed_commands) == 2:
+        assert "Target.closeTarget" in websocket.methods_for(None)
+    assert not observer.ready
+    assert websocket.closed
+    assert tracker.terminals[-1].outcome is TerminalOutcome.TRANSPORT_FAILURE
+    assert not tracker.accept_task("after-duplicate-failure", _attribution(stage=Stage.DETAIL))
+    assert (
+        tracker.instrumentation_counts[
+            (Stage.DETAIL, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+        ]
+        == 1
+    )
+
+
+@pytest.mark.asyncio
+async def test_nested_duplicate_session_detaches_through_its_parent_session():
+    websocket = FakeRawWebSocket()
+    tracker = BrowserTransportTracker()
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
+        tracker,
+        lambda *_args: None,
+        stage=Stage.MONITOR,
+    )
+    assert observer is not None and observer.ready
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "owner-session",
+            "targetInfo": {"targetId": "shared-target", "type": "service_worker"},
+        },
+    )
+    await _flush_tasks()
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "duplicate-session",
+            "targetInfo": {"targetId": "shared-target", "type": "service_worker"},
+        },
+        session_id="owner-session",
+    )
+    await _flush_tasks()
+
+    detach = [
+        message for message in websocket.sent if message["method"] == "Target.detachFromTarget"
+    ]
+    assert len(detach) == 1
+    assert detach[0]["params"] == {"sessionId": "duplicate-session"}
+    assert detach[0]["sessionId"] == "owner-session"
+    assert observer.ready
+    assert not tracker.instrumentation_counts
+    await observer.drain_and_detach()
+
+
+@pytest.mark.asyncio
+async def test_ownership_proof_listing_without_attachment_never_opens_admission(monkeypatch):
+    websocket = FakeRawWebSocket()
+    tracker = BrowserTransportTracker()
+    observer, classifier_calls = await _attach_fake_ownership_protocol(
+        monkeypatch,
+        websocket,
+        tracker,
+        emit_proof_attachment=False,
+    )
+
+    assert observer is None
+    assert websocket.methods_for(None) == [
+        "Target.setAutoAttach",
+        "Target.getTargets",
+        "Target.getTargets",
+    ]
+    assert not [message for message in websocket.sent if "sessionId" in message]
+    assert websocket.closed
+    assert not classifier_calls
+    assert not tracker.accepted_task_counts
+    assert not tracker.accept_task("application-task", _attribution())
+    assert (
+        tracker.instrumentation_counts[
+            (Stage.MONITOR, InstrumentationReason.OBSERVER_ATTACH_FAILED)
+        ]
+        == 1
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "missing_ack",
+    [
+        "Target.setAutoAttach",
+        "Network.enable",
+        "Runtime.runIfWaitingForDebugger",
+    ],
+)
+async def test_ownership_proof_session_missing_each_required_ack_fails_closed(
+    monkeypatch,
+    missing_ack,
+):
+    websocket = FakeRawWebSocket()
+    websocket.errored_commands.add((missing_ack, "proof-session"))
+    tracker = BrowserTransportTracker()
+    observer, classifier_calls = await _attach_fake_ownership_protocol(
+        monkeypatch,
+        websocket,
+        tracker,
+        emit_proof_attachment=True,
+    )
+
+    assert observer is None
+    assert missing_ack in websocket.methods_for("proof-session")
+    assert websocket.closed
+    assert not classifier_calls
+    assert not tracker.accepted_task_counts
+    assert not tracker.accept_task("application-task", _attribution())
+    assert (
+        tracker.instrumentation_counts[
+            (Stage.MONITOR, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+        ]
+        == 1
+    )
+    assert (
+        tracker.instrumentation_counts[
+            (Stage.MONITOR, InstrumentationReason.OBSERVER_ATTACH_FAILED)
+        ]
+        == 1
+    )
+
+
+@pytest.mark.parametrize(
+    "missing_ack",
+    [
+        "Target.setAutoAttach",
+        "Network.enable",
+        "Runtime.runIfWaitingForDebugger",
+    ],
+)
+def test_exact_proof_target_state_rejects_each_missing_ack(missing_ack):
+    tracker = BrowserTransportTracker()
+    observer = ChromiumAutoAttachObserver(
+        FakeRawWebSocket(),
+        tracker,
+        lambda *_args: None,
+        stage=Stage.MONITOR,
+    )
+    observer._target_by_session["proof-session"] = ("proof-target", "page")
+    observer._session_by_target["proof-target"] = "proof-session"
+    acknowledgements = [
+        "Target.setAutoAttach",
+        "Network.enable",
+        "Runtime.runIfWaitingForDebugger",
+    ]
+    for method in acknowledgements:
+        if method == missing_ack:
+            continue
+        observer._setup_trace.append(("proof-session", "proof-target", "page", method))
+        if method == "Target.setAutoAttach":
+            observer._auto_attach_ready_sessions.add("proof-session")
+        elif method == "Network.enable":
+            observer._network_ready_sessions.add("proof-session")
+        else:
+            observer._resumed_sessions.add("proof-session")
+
+    with pytest.raises(RuntimeError, match="ownership target"):
+        observer._require_initialized_proof_target("proof-target")
+    assert not tracker.accept_task("application-task", _attribution())
 
 
 @pytest.mark.asyncio
@@ -1360,22 +1642,29 @@ window.__ready = (async () => {{
                     )
                 await asyncio.sleep(1.25)
 
+                assert observer.ready
                 assert observer.observed_target_types == PUBLIC_CDP_TARGET_TYPES
                 trace_by_session: dict[str, list[str]] = {}
                 for session_id, _target_id, _target_type, method in observer.setup_trace:
                     trace_by_session.setdefault(session_id, []).append(method)
                 assert trace_by_session
-                assert all(
-                    methods
-                    == [
+                incomplete_trace = {
+                    session_id: methods
+                    for session_id, methods in trace_by_session.items()
+                    if methods
+                    != [
                         "Target.setAutoAttach",
                         "Network.enable",
                         "Runtime.runIfWaitingForDebugger",
                     ]
-                    for methods in trace_by_session.values()
-                )
+                }
+                assert not incomplete_trace, incomplete_trace
                 terminal_types = {terminal.target_type for terminal in tracker.terminals}
-                assert terminal_types >= PUBLIC_CDP_TARGET_TYPES
+                assert terminal_types >= PUBLIC_CDP_TARGET_TYPES, {
+                    "observer_ready": observer.ready,
+                    "instrumentation": dict(tracker.instrumentation_counts),
+                    "terminal_types": terminal_types,
+                }
                 assert any(
                     terminal.request_class is RequestClass.REDIRECT
                     for terminal in tracker.terminals
