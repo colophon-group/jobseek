@@ -204,12 +204,71 @@ jobs:
   crawler-image:
     name: Build Crawler Browser Image
     needs: changes
-    if: needs.changes.outputs.is_pr == 'true' && needs.changes.outputs.crawler_code == 'true'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.is_pr == 'true' && needs.changes.outputs.crawler_code == 'true'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: crawler
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crawler -d crawler"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact PR merge provenance
+        env:
+          TESTED_BUILD_SHA: ${{ github.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          read -r commit parent_one parent_two extra <<<"$(git rev-list --parents -n 1 HEAD)"
+          test "$commit" = "$TESTED_BUILD_SHA"
+          test "$parent_one" = "$BASE_SHA"
+          test "$parent_two" = "$PR_HEAD_SHA"
+          test -z "${extra:-}"
+          test "$(git rev-parse HEAD)" = "$TESTED_BUILD_SHA"
+          test "$(git rev-parse HEAD^1)" = "$BASE_SHA"
+          test "$(git rev-parse HEAD^2)" = "$PR_HEAD_SHA"
 
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Guard exact slim image build context
+        env:
+          TESTED_BUILD_SHA: ${{ github.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          read -r commit parent_one parent_two extra <<<"$(git rev-list --parents -n 1 HEAD)"
+          test "$commit" = "$TESTED_BUILD_SHA"
+          test "$parent_one" = "$BASE_SHA"
+          test "$parent_two" = "$PR_HEAD_SHA"
+          test -z "${extra:-}"
+          test "$(git rev-parse HEAD)" = "$TESTED_BUILD_SHA"
+          test "$(git rev-parse HEAD^1)" = "$BASE_SHA"
+          test "$(git rev-parse HEAD^2)" = "$PR_HEAD_SHA"
 
       - name: Build slim crawler image
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -218,10 +277,52 @@ jobs:
           target: slim
           platforms: linux/amd64
           tags: jobseek-crawler-slim-ci:pr
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            com.colophon-group.jobseek.pr-head=${{ github.event.pull_request.head.sha }}
+            com.colophon-group.jobseek.base=${{ github.event.pull_request.base.sha }}
           load: true
           push: false
           cache-from: type=gha,scope=crawler-slim
           cache-to: type=gha,mode=max,scope=crawler-slim,ignore-error=true
+
+      - name: Guard exact full image build context
+        env:
+          TESTED_BUILD_SHA: ${{ github.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          read -r commit parent_one parent_two extra <<<"$(git rev-list --parents -n 1 HEAD)"
+          test "$commit" = "$TESTED_BUILD_SHA"
+          test "$parent_one" = "$BASE_SHA"
+          test "$parent_two" = "$PR_HEAD_SHA"
+          test -z "${extra:-}"
+          test "$(git rev-parse HEAD)" = "$TESTED_BUILD_SHA"
+          test "$(git rev-parse HEAD^1)" = "$BASE_SHA"
+          test "$(git rev-parse HEAD^2)" = "$PR_HEAD_SHA"
+
+      - name: Build full crawler image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: apps/crawler
+          target: full
+          platforms: linux/amd64
+          tags: jobseek-crawler-ci:pr
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            com.colophon-group.jobseek.pr-head=${{ github.event.pull_request.head.sha }}
+            com.colophon-group.jobseek.base=${{ github.event.pull_request.base.sha }}
+          load: true
+          push: false
+          cache-from: type=gha,scope=crawler-browser
+          cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
+
+      - name: Self-test sampler container probe
+        run: python3 .github/scripts/crawler-sampler-container-smoke.py --self-test
 
       - name: Verify installed build info for all long-lived roles
         run: |
@@ -405,18 +506,6 @@ jobs:
             'installed crawler sync requires /app/data to be a separate read-only mount' \
             <<<"$missing_output"
 
-      - name: Build full crawler image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: apps/crawler
-          target: full
-          platforms: linux/amd64
-          tags: jobseek-crawler-ci:pr
-          load: true
-          push: false
-          cache-from: type=gha,scope=crawler-browser
-          cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
-
       - name: Smoke-test read-only crawler entry point
         run: |
           docker run --rm \
@@ -426,6 +515,33 @@ jobs:
             --entrypoint /app/.venv/bin/crawler \
             jobseek-crawler-ci:pr \
             --help >/dev/null
+
+      - name: Exercise real sampler and container shutdown lifecycle
+        env:
+          TESTED_BUILD_SHA: ${{ github.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SOURCE_URL: https://github.com/${{ github.repository }}
+          EVIDENCE_PATH: ${{ runner.temp }}/crawler-sampler-container-smoke.json
+        run: |
+          python3 .github/scripts/crawler-sampler-container-smoke.py \
+            --slim-image jobseek-crawler-slim-ci:pr \
+            --full-image jobseek-crawler-ci:pr \
+            --tested-build-sha "$TESTED_BUILD_SHA" \
+            --pr-head-sha "$PR_HEAD_SHA" \
+            --base-sha "$BASE_SHA" \
+            --source-url "$SOURCE_URL" \
+            --metrics-port 19091 \
+            --evidence "$EVIDENCE_PATH"
+
+      - name: Upload sampler lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: crawler-sampler-container-smoke-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/crawler-sampler-container-smoke.json
+          if-no-files-found: error
+          retention-days: 14
 
   lint-web:
     name: Lint Web
@@ -1191,7 +1307,7 @@ jobs:
           requireSuccess("changes");
           requireSuccess("data-validation");
           requireSuccess("dependency-review", eventName === "pull_request" && code);
-          requireSuccess("crawler-image", isPr && crawlerCode);
+          requireSuccess("crawler-image", eventName === "pull_request" && isPr && crawlerCode);
 
           for (const job of [
             "lint-web",

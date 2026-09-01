@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import atexit
 import json
+import os
 import re
 import socketserver
 import sys
 import threading
+from collections.abc import Callable
 from importlib.metadata import Distribution, PackageNotFoundError
 from importlib.metadata import distribution as get_distribution
 from pathlib import Path
@@ -13,12 +16,18 @@ from urllib.parse import unquote, urlparse
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from prometheus_client import REGISTRY, Counter, Gauge, Histogram, make_wsgi_app
-from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
+from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily, HistogramMetricFamily
 
 from src.shared.constants import is_source_checkout
 
 if TYPE_CHECKING:
-    from src.runtime_cost.process_tree import ProcessTreeSample
+    from src.runtime_cost.process_tree import (
+        ProcessTreeSample,
+        ProcessTreeSamplerProcess,
+        SamplerMetricsSnapshot,
+        SamplingGapReason,
+        TimingHistogramSnapshot,
+    )
 
 # ── Worker metrics (per profile) ────────────────────────────────────
 
@@ -692,17 +701,35 @@ class _ProcessTreeMetricsCollector:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
+        self._source_refresh_lock = threading.Lock()
         self._sample: ProcessTreeSample | None = None
         self._successes = 0
         self._failures = 0
-        self._gaps = 0
+        self._scheduler_late_gaps = 0
+        self._collection_overrun_gaps = 0
         self._starts = 0
         self._configured_interval_seconds: float | None = None
+        self._source: Callable[[], SamplerMetricsSnapshot] | None = None
+        self._source_failures = 0
+        self._wake_lateness: TimingHistogramSnapshot | None = None
+        self._collection_duration: TimingHistogramSnapshot | None = None
+        self._handoff_duration: TimingHistogramSnapshot | None = None
 
     def start(self, interval_seconds: float) -> None:
         with self._lock:
             self._starts += 1
             self._configured_interval_seconds = interval_seconds
+
+    def attach(
+        self,
+        interval_seconds: float,
+        source: Callable[[], SamplerMetricsSnapshot],
+    ) -> None:
+        """Attach the isolated process source without importing it at module load."""
+
+        with self._lock:
+            self._configured_interval_seconds = interval_seconds
+            self._source = source
 
     def publish(self, sample: ProcessTreeSample) -> None:
         # ProcessTreeSample is frozen. One assignment under this lock makes
@@ -715,20 +742,60 @@ class _ProcessTreeMetricsCollector:
         with self._lock:
             self._failures += 1
 
-    def record_gaps(self, missed_intervals: int) -> None:
+    def record_gaps(
+        self,
+        missed_intervals: int,
+        reason: SamplingGapReason = "collection_overrun",
+    ) -> None:
         if missed_intervals <= 0:
             return
         with self._lock:
-            self._gaps += missed_intervals
+            if reason == "scheduler_late":
+                self._scheduler_late_gaps += missed_intervals
+            else:
+                self._collection_overrun_gaps += missed_intervals
+
+    def _refresh_from_source(self) -> None:
+        # Preserve source ordering across concurrent Prometheus scrapes so an
+        # older completed poll can never overwrite a newer generation.
+        with self._source_refresh_lock:
+            with self._lock:
+                source = self._source
+            if source is None:
+                return
+            try:
+                snapshot = source()
+            except (OSError, RuntimeError, ValueError):
+                # A parent-side IPC/lifecycle failure must surface explicitly
+                # but must never make the metrics endpoint unavailable.
+                with self._lock:
+                    self._source_failures += 1
+                    self._failures += 1
+                return
+            with self._lock:
+                self._sample = snapshot.sample
+                self._successes = snapshot.successes
+                self._failures = snapshot.failures + self._source_failures
+                self._scheduler_late_gaps = snapshot.scheduler_late_gaps
+                self._collection_overrun_gaps = snapshot.collection_overrun_gaps
+                self._starts = snapshot.starts
+                self._wake_lateness = snapshot.wake_lateness
+                self._collection_duration = snapshot.collection_duration
+                self._handoff_duration = snapshot.handoff_duration
 
     def collect(self):
+        self._refresh_from_source()
         with self._lock:
             sample = self._sample
             successes = self._successes
             failures = self._failures
-            gaps = self._gaps
+            scheduler_late_gaps = self._scheduler_late_gaps
+            collection_overrun_gaps = self._collection_overrun_gaps
             starts = self._starts
             configured_interval_seconds = self._configured_interval_seconds
+            wake_lateness = self._wake_lateness
+            collection_duration = self._collection_duration
+            handoff_duration = self._handoff_duration
 
         outcomes = CounterMetricFamily(
             "crawler_runtime_process_tree_samples_total",
@@ -741,10 +808,19 @@ class _ProcessTreeMetricsCollector:
 
         gap_counter = CounterMetricFamily(
             "crawler_runtime_process_tree_sampling_gaps_total",
-            "Exact scheduled process-tree observations skipped after deadline overruns",
+            "Exact scheduled process-tree observations skipped after sampler lateness",
         )
-        gap_counter.add_metric([], gaps)
+        gap_counter.add_metric([], scheduler_late_gaps + collection_overrun_gaps)
         yield gap_counter
+
+        gap_reasons = CounterMetricFamily(
+            "crawler_runtime_process_tree_sampling_gap_reasons_total",
+            "Skipped process-tree deadlines by exact bounded cause",
+            labels=["reason"],
+        )
+        gap_reasons.add_metric(["scheduler_late"], scheduler_late_gaps)
+        gap_reasons.add_metric(["collection_overrun"], collection_overrun_gaps)
+        yield gap_reasons
 
         starts_counter = CounterMetricFamily(
             "crawler_runtime_process_tree_sampler_starts_total",
@@ -763,6 +839,34 @@ class _ProcessTreeMetricsCollector:
         if interval_value is not None:
             interval.add_metric([], interval_value)
         yield interval
+
+        timing_families = (
+            (
+                "crawler_runtime_process_tree_sampler_wake_lateness_seconds",
+                "Sampler wake lateness after the absolute monotonic deadline",
+                wake_lateness,
+            ),
+            (
+                "crawler_runtime_process_tree_sampler_collection_duration_seconds",
+                "Duration of one process-tree resource collection",
+                collection_duration,
+            ),
+            (
+                "crawler_runtime_process_tree_sampler_handoff_duration_seconds",
+                "Duration of handing one completed sample to the IPC publisher",
+                handoff_duration,
+            ),
+        )
+        for name, documentation, histogram in timing_families:
+            if histogram is None:
+                continue
+            family = HistogramMetricFamily(name, documentation)
+            family.add_metric(
+                [],
+                buckets=histogram.prometheus_buckets(),
+                sum_value=histogram.sum_seconds,
+            )
+            yield family
 
         if sample is None:
             return
@@ -991,20 +1095,7 @@ def _start_metrics_http_server(
 
 
 _process_tree_sampler_lock = threading.Lock()
-_process_tree_sampler_thread: threading.Thread | None = None
-_process_tree_sampler_stop = threading.Event()
-
-
-def _observe_process_tree(sample: ProcessTreeSample) -> None:
-    _process_tree_metrics.publish(sample)
-
-
-def _record_process_tree_sample_failure() -> None:
-    _process_tree_metrics.record_failure()
-
-
-def _record_process_tree_sampling_gap(missed_intervals: int) -> None:
-    _process_tree_metrics.record_gaps(missed_intervals)
+_process_tree_sampler_process: ProcessTreeSamplerProcess | None = None
 
 
 def _seed_process_tree_sample_outcomes(samples_counter: Counter) -> None:
@@ -1014,34 +1105,34 @@ def _seed_process_tree_sample_outcomes(samples_counter: Counter) -> None:
         samples_counter.labels(outcome=outcome).inc(0)
 
 
-def _start_process_tree_sampler(interval_seconds: float = 0.5) -> threading.Thread:
-    """Start the process-tree sampler once per crawler process."""
+def _start_process_tree_sampler(interval_seconds: float = 0.5) -> ProcessTreeSamplerProcess:
+    """Start one same-cgroup sampler process, isolated from the crawler GIL."""
 
-    from src.runtime_cost.process_tree import ProcessTreeSampler, run_process_tree_sampler
+    from src.runtime_cost.process_tree import ProcessTreeSamplerProcess
 
-    global _process_tree_sampler_thread
+    global _process_tree_sampler_process
     with _process_tree_sampler_lock:
-        if _process_tree_sampler_thread is not None and _process_tree_sampler_thread.is_alive():
-            return _process_tree_sampler_thread
-        _process_tree_sampler_stop.clear()
-        sampler = ProcessTreeSampler(interval_seconds=interval_seconds)
-        _process_tree_metrics.start(interval_seconds)
-        thread = threading.Thread(
-            target=run_process_tree_sampler,
-            kwargs={
-                "sampler": sampler,
-                "interval_seconds": interval_seconds,
-                "stop_event": _process_tree_sampler_stop,
-                "observe": _observe_process_tree,
-                "record_failure": _record_process_tree_sample_failure,
-                "record_gap": _record_process_tree_sampling_gap,
-            },
-            name="crawler-process-tree-metrics",
-            daemon=True,
+        if _process_tree_sampler_process is not None:
+            return _process_tree_sampler_process
+        sampler_process = ProcessTreeSamplerProcess(
+            root_pid=os.getpid(),
+            interval_seconds=interval_seconds,
         )
-        thread.start()
-        _process_tree_sampler_thread = thread
-        return thread
+        _process_tree_metrics.attach(interval_seconds, sampler_process.snapshot)
+        _process_tree_sampler_process = sampler_process
+        return sampler_process
+
+
+def _close_process_tree_sampler() -> None:
+    global _process_tree_sampler_process
+    with _process_tree_sampler_lock:
+        sampler_process = _process_tree_sampler_process
+        _process_tree_sampler_process = None
+    if sampler_process is not None:
+        sampler_process.close()
+
+
+atexit.register(_close_process_tree_sampler)
 
 
 def start_metrics_server(port: int) -> None:
