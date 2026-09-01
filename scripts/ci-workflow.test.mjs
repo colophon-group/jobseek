@@ -918,6 +918,7 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
   for (const failureTest of [
     "test_docker_run_uses_tmp_uv_cache_without_overrides",
     "test_credential_redaction_is_escape_aware",
+    "test_shell_assignment_redaction_consumes_complete_word",
     "test_early_exit_diagnostics_are_redacted_before_remove",
     "test_diagnostic_inspect_failure_is_typed",
     "test_diagnostic_log_failure_is_typed",

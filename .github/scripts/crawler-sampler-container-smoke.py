@@ -56,7 +56,7 @@ SENSITIVE_KEY_PATTERN: Final = (
     r"[A-Za-z0-9_.-]*"
 )
 SENSITIVE_ASSIGNMENT_PREFIX_PATTERN: Final = re.compile(
-    rf"\b{SENSITIVE_KEY_PATTERN}(?:['\"])?\s*[:=]\s*",
+    rf"\b{SENSITIVE_KEY_PATTERN}(?:['\"])?\s*(?P<operator>[:=])\s*",
     re.IGNORECASE,
 )
 
@@ -205,7 +205,7 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _redact_sensitive_assignments(value: str) -> tuple[str, dict[str, int]]:
-    """Mask assignment values without treating escaped quotes as delimiters."""
+    """Mask complete shell words and line-bounded structured values."""
 
     pieces: list[str] = []
     replacement_counts: dict[str, int] = {}
@@ -213,40 +213,48 @@ def _redact_sensitive_assignments(value: str) -> tuple[str, dict[str, int]]:
     while match := SENSITIVE_ASSIGNMENT_PREFIX_PATTERN.search(value, cursor):
         value_start = match.end()
         pieces.append(value[cursor:value_start])
-        category = "assignment"
+        initial_quote = (
+            value[value_start]
+            if value_start < len(value) and value[value_start] in {'"', "'"}
+            else None
+        )
+        category = "quoted_assignment" if initial_quote is not None else "assignment"
+        structured = match.group("operator") == ":"
+        quote: str | None = None
+        escaped = False
+        value_end = value_start
+        while value_end < len(value):
+            character = value[value_end]
+            # An unterminated diagnostic value must not swallow later log lines.
+            if character in "\r\n":
+                break
+            if escaped:
+                escaped = False
+                value_end += 1
+                continue
+            if character == "\\":
+                escaped = True
+                value_end += 1
+                continue
+            if quote is not None:
+                if character == quote:
+                    quote = None
+                value_end += 1
+                continue
+            if character in {'"', "'"}:
+                quote = character
+                value_end += 1
+                continue
+            if character.isspace():
+                break
+            if structured and character in ",;]}":
+                break
+            value_end += 1
 
-        if value_start < len(value) and value[value_start] in {'"', "'"}:
-            category = "quoted_assignment"
-            quote = value[value_start]
-            value_end = value_start + 1
-            escaped = False
-            closed = False
-            while value_end < len(value):
-                character = value[value_end]
-                # An unterminated diagnostic value must not swallow later log lines.
-                if character in "\r\n":
-                    break
-                if escaped:
-                    escaped = False
-                elif character == "\\":
-                    escaped = True
-                elif character == quote:
-                    closed = True
-                    value_end += 1
-                    break
-                value_end += 1
-            closing_quote = quote if closed else ""
-            pieces.append(f"{quote}[REDACTED]{closing_quote}")
+        if structured and initial_quote is not None:
+            closing_quote = initial_quote if quote is None else ""
+            pieces.append(f"{initial_quote}[REDACTED]{closing_quote}")
         else:
-            value_end = value_start
-            while value_end < len(value):
-                character = value[value_end]
-                if character == "\\" and value_end + 1 < len(value):
-                    value_end += 2
-                    continue
-                if character.isspace() or character in ",;":
-                    break
-                value_end += 1
             pieces.append("[REDACTED]")
 
         replacement_counts[category] = replacement_counts.get(category, 0) + 1
@@ -2048,6 +2056,66 @@ class _SelfTests(unittest.TestCase):
         self.assertGreaterEqual(
             metadata["replacement_counts"]["quoted_assignment"],
             7,
+        )
+
+    def test_shell_assignment_redaction_consumes_complete_word(self) -> None:
+        adjacent_left = "adjacent-left-A17Q"
+        adjacent_right = "adjacent-right-Z93M"
+        splice_left = "splice-left-B28R"
+        splice_right = "splice-right-Y84N"
+        mixed_left = "mixed-left-C39S"
+        mixed_middle = "mixed-middle-X75P"
+        mixed_right = "mixed-right-W66K"
+        escaped_left = "escaped-segment-left-D40T"
+        escaped_middle = "escaped-segment-middle-V57J"
+        escaped_right = "escaped-segment-right-U48H"
+        whitespace_left = "whitespace-left-E51U"
+        whitespace_right = "whitespace-right-T39G"
+        backslash_tail = "backslash-tail-S20F"
+        raw = (
+            f"SECRET_KEY='{adjacent_left}'{adjacent_right} "
+            "SAFE_LABEL=visible-adjacent SAFE_MODE=enabled-adjacent\n"
+            f"SECRET='{splice_left}'\\''{splice_right}' "
+            "SAFE_LABEL=visible-splice SAFE_MODE=enabled-splice\n"
+            f"SECRET='{mixed_left}'\"{mixed_middle}\"{mixed_right} "
+            "SAFE_LABEL=visible-mixed SAFE_MODE=enabled-mixed\n"
+            f"SECRET='{escaped_left}'\\\"{escaped_middle}\\\"{escaped_right} "
+            "SAFE_LABEL=visible-escaped SAFE_MODE=enabled-escaped\n"
+            f"SECRET={whitespace_left}\\ {whitespace_right}\\\\{backslash_tail} "
+            "SAFE_LABEL=visible-whitespace SAFE_MODE=enabled-whitespace"
+        )
+
+        artifact = _redacted_log_stream(raw)
+        serialized = json.dumps(artifact, ensure_ascii=False, sort_keys=True)
+
+        for secret_fragment in (
+            adjacent_left,
+            adjacent_right,
+            splice_left,
+            splice_right,
+            mixed_left,
+            mixed_middle,
+            mixed_right,
+            escaped_left,
+            escaped_middle,
+            escaped_right,
+            whitespace_left,
+            whitespace_right,
+            backslash_tail,
+        ):
+            self.assertNotIn(secret_fragment, serialized)
+        for safe_evidence in (
+            "SAFE_LABEL=visible-adjacent SAFE_MODE=enabled-adjacent",
+            "SAFE_LABEL=visible-splice SAFE_MODE=enabled-splice",
+            "SAFE_LABEL=visible-mixed SAFE_MODE=enabled-mixed",
+            "SAFE_LABEL=visible-escaped SAFE_MODE=enabled-escaped",
+            "SAFE_LABEL=visible-whitespace SAFE_MODE=enabled-whitespace",
+        ):
+            self.assertIn(safe_evidence, artifact["text"])
+        self.assertEqual(artifact["line_count"], 5)
+        self.assertEqual(
+            artifact["redaction"]["replacement_counts"],
+            {"assignment": 1, "quoted_assignment": 4},
         )
 
     def test_early_exit_diagnostics_are_redacted_before_remove(self) -> None:
