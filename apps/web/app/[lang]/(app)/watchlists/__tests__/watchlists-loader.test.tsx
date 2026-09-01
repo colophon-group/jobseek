@@ -5,41 +5,70 @@ import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
   load: vi.fn(),
-  popular: vi.fn(),
+  getOwned: vi.fn(),
   getSession: vi.fn(),
+  cookieValue: undefined as string | undefined,
+  decode: vi.fn(),
+  build: vi.fn(),
+  getPlan: vi.fn(),
+  getPreferences: vi.fn(),
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: () => mocks.cookieValue ? { value: mocks.cookieValue } : undefined,
+  }),
 }));
 
 vi.mock("@/lib/services/watchlists", () => ({
   getUserWatchlistsWithLimit: (...args: unknown[]) => mocks.load(...args),
-  getPopularWatchlists: (...args: unknown[]) => mocks.popular(...args),
+  getOwnedWatchlistById: (...args: unknown[]) => mocks.getOwned(...args),
 }));
 
 vi.mock("@/lib/sessionCache", () => ({
   getSession: () => mocks.getSession(),
 }));
 
+vi.mock("@/lib/watchlist-selection", () => ({
+  WATCHLIST_SELECTION_COOKIE: "jobseek.watchlist-selection",
+  decodeWatchlistSelection: (...args: unknown[]) => mocks.decode(...args),
+}));
+
+vi.mock("@/lib/services/watchlist-page-data", () => ({
+  buildWatchlistPageData: (...args: unknown[]) => mocks.build(...args),
+}));
+
+vi.mock("@/lib/plans", () => ({
+  getUserPlan: (...args: unknown[]) => mocks.getPlan(...args),
+  PLAN_LIMITS: {
+    free: { canReceiveAlerts: false },
+    unlimited: { canReceiveAlerts: true },
+  },
+}));
+
+vi.mock("@/lib/actions/preferences", () => ({
+  getPreferences: (...args: unknown[]) => mocks.getPreferences(...args),
+}));
+
 vi.mock("../watchlists-page", () => ({
   WatchlistsPage: ({
     initialWatchlists,
-    initialPopularWatchlists,
-    initialPopularTotal,
-    username,
+    initialPageData,
+    selectionSync,
     limitReached,
     locale,
   }: {
     initialWatchlists: unknown[];
-    initialPopularWatchlists: unknown[];
-    initialPopularTotal: number;
-    username: string | null;
+    initialPageData: { detail?: { id?: string } } | null;
+    selectionSync: string;
     limitReached: boolean;
     locale: string;
   }) => (
     <div
       data-testid="watchlists-page"
       data-count={initialWatchlists.length}
-      data-popular-count={initialPopularWatchlists.length}
-      data-popular-total={String(initialPopularTotal)}
-      data-username={username ?? ""}
+      data-active={initialPageData?.detail?.id ?? ""}
+      data-selection-sync={selectionSync}
       data-limit-reached={String(limitReached)}
       data-locale={locale}
     />
@@ -48,120 +77,150 @@ vi.mock("../watchlists-page", () => ({
 
 import { WatchlistsLoader } from "../watchlists-loader";
 
-describe("WatchlistsLoader server read (#5896)", () => {
+const FIRST_ID = "11111111-1111-4111-8111-111111111111";
+const SECOND_ID = "22222222-2222-4222-8222-222222222222";
+const overview = (id: string) => ({ id });
+const detail = (id: string) => ({ id, filters: {}, companies: [] });
+
+describe("WatchlistsLoader private selection", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    mocks.load.mockReset();
-    mocks.popular.mockReset();
-    mocks.getSession.mockReset();
-    mocks.getSession.mockResolvedValue({ user: { username: "alice" } });
-    mocks.popular.mockResolvedValue({
-      watchlists: [{ id: "public-wl-1" }],
-      total: 12,
-    });
+    for (const fn of Object.values(mocks)) {
+      if (typeof fn === "function" && "mockReset" in fn) fn.mockReset();
+    }
+    mocks.cookieValue = undefined;
+    mocks.getSession.mockResolvedValue({ user: { id: "user-1" } });
+    mocks.getPlan.mockResolvedValue("free");
+    mocks.getPreferences.mockResolvedValue({ jobLanguages: ["en"] });
+    mocks.build.mockImplementation(async ({ detail: active }) => ({ detail: active }));
   });
 
-  it("passes the server-loaded overview to the interactive page", async () => {
+  it("uses a valid selected id only after the exact owner query succeeds", async () => {
+    mocks.cookieValue = "signed";
+    mocks.decode.mockReturnValue(SECOND_ID);
     mocks.load.mockResolvedValue({
-      watchlists: [{ id: "wl-1" }],
+      watchlists: [overview(FIRST_ID), overview(SECOND_ID)],
       limitReached: false,
     });
+    mocks.getOwned.mockResolvedValue(detail(SECOND_ID));
 
     render(await WatchlistsLoader({ locale: "en" }));
 
     const page = screen.getByTestId("watchlists-page");
-    expect(page.getAttribute("data-count")).toBe("1");
-    expect(page.getAttribute("data-popular-count")).toBe("1");
-    expect(page.getAttribute("data-popular-total")).toBe("12");
-    expect(page.getAttribute("data-username")).toBe("alice");
-    expect(page.getAttribute("data-limit-reached")).toBe("false");
-    expect(page.getAttribute("data-locale")).toBe("en");
-    expect(mocks.load).toHaveBeenCalledOnce();
-    expect(mocks.load).toHaveBeenCalledWith("en");
-    expect(mocks.popular).toHaveBeenCalledWith({
-      offset: 0,
-      limit: 10,
-      locale: "en",
-    });
+    expect(page.getAttribute("data-active")).toBe(SECOND_ID);
+    expect(page.getAttribute("data-selection-sync")).toBe("none");
+    expect(mocks.getOwned).toHaveBeenCalledWith(SECOND_ID, "user-1");
   });
 
-  it("renders the anonymous overview without a username", async () => {
-    mocks.getSession.mockResolvedValue(null);
-    mocks.load.mockResolvedValue({ watchlists: [], limitReached: true });
+  it("replaces a stale selection with the deterministic first owned row", async () => {
+    mocks.cookieValue = "signed-stale";
+    mocks.decode.mockReturnValue(SECOND_ID);
+    mocks.load.mockResolvedValue({
+      watchlists: [overview(FIRST_ID)],
+      limitReached: false,
+    });
+    mocks.getOwned
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(detail(FIRST_ID));
 
     render(await WatchlistsLoader({ locale: "de" }));
 
     const page = screen.getByTestId("watchlists-page");
-    expect(page.getAttribute("data-username")).toBe("");
-    expect(page.getAttribute("data-limit-reached")).toBe("true");
+    expect(page.getAttribute("data-active")).toBe(FIRST_ID);
+    expect(page.getAttribute("data-selection-sync")).toBe("replace");
+    expect(mocks.getOwned.mock.calls).toEqual([
+      [SECOND_ID, "user-1"],
+      [FIRST_ID, "user-1"],
+    ]);
   });
 
-  it("renders a localized hard-reload recovery link when the server read fails", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    mocks.load.mockRejectedValue(new Error("database unavailable"));
+  it("never queries a cross-account hint decoded for another user", async () => {
+    mocks.cookieValue = "bound-to-someone-else";
+    mocks.decode.mockReturnValue(null);
+    mocks.load.mockResolvedValue({
+      watchlists: [overview(FIRST_ID)],
+      limitReached: false,
+    });
+    mocks.getOwned.mockResolvedValue(detail(FIRST_ID));
 
     render(await WatchlistsLoader({ locale: "fr" }));
 
-    expect(screen.getByText(/couldn't load your watchlists/i)).toBeTruthy();
-    expect(screen.getByRole("link", { name: /try again/i }).getAttribute("href")).toBe(
-      "/fr/watchlists",
-    );
-    expect(mocks.load).toHaveBeenCalledOnce();
+    expect(mocks.getOwned).toHaveBeenCalledOnce();
+    expect(mocks.getOwned).toHaveBeenCalledWith(FIRST_ID, "user-1");
+    expect(screen.getByTestId("watchlists-page").getAttribute("data-selection-sync"))
+      .toBe("replace");
   });
 
-  it("keeps the overview usable when popular-watchlist discovery is unavailable", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    mocks.load.mockResolvedValue({
-      watchlists: [{ id: "wl-1" }],
-      limitReached: false,
-    });
-    mocks.popular.mockRejectedValue(new Error("typesense unavailable"));
+  it("clears stale state when the owner has zero watchlists", async () => {
+    mocks.cookieValue = "stale";
+    mocks.decode.mockReturnValue(SECOND_ID);
+    mocks.load.mockResolvedValue({ watchlists: [], limitReached: false });
+    mocks.getOwned.mockResolvedValue(null);
 
     render(await WatchlistsLoader({ locale: "it" }));
 
     const page = screen.getByTestId("watchlists-page");
-    expect(page.getAttribute("data-count")).toBe("1");
-    expect(page.getAttribute("data-popular-count")).toBe("0");
-    expect(page.getAttribute("data-popular-total")).toBe("0");
+    expect(page.getAttribute("data-count")).toBe("0");
+    expect(page.getAttribute("data-active")).toBe("");
+    expect(page.getAttribute("data-selection-sync")).toBe("clear");
   });
 
-  it("does not discard a cold popular-watchlist response after three seconds", async () => {
-    vi.useFakeTimers();
-    try {
-      mocks.load.mockResolvedValue({
-        watchlists: [{ id: "wl-1" }],
-        limitReached: false,
-      });
-      mocks.popular.mockImplementation(
-        () => new Promise((resolve) => {
-          setTimeout(() => resolve({
-            watchlists: [{ id: "public-wl-1" }],
-            total: 12,
-          }), 3_100);
-        }),
-      );
+  it("never serializes another account's data for an anonymous request", async () => {
+    mocks.getSession.mockResolvedValue(null);
+    mocks.cookieValue = "previous-account";
+    mocks.load.mockResolvedValue({ watchlists: [], limitReached: true });
 
-      const loader = WatchlistsLoader({ locale: "en" });
-      await vi.advanceTimersByTimeAsync(3_100);
-      render(await loader);
+    render(await WatchlistsLoader({ locale: "en" }));
 
-      const page = screen.getByTestId("watchlists-page");
-      expect(page.getAttribute("data-popular-count")).toBe("1");
-      expect(page.getAttribute("data-popular-total")).toBe("12");
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(mocks.decode).not.toHaveBeenCalled();
+    expect(mocks.getOwned).not.toHaveBeenCalled();
+    expect(screen.getByTestId("watchlists-page").getAttribute("data-selection-sync"))
+      .toBe("clear");
+  });
+
+  it("isolates consecutive users and locales without reusing private page data", async () => {
+    mocks.cookieValue = "user-one-token";
+    mocks.decode.mockReturnValue(FIRST_ID);
+    mocks.load.mockResolvedValue({
+      watchlists: [overview(FIRST_ID)],
+      limitReached: false,
+    });
+    mocks.getOwned.mockResolvedValue(detail(FIRST_ID));
+
+    const first = render(await WatchlistsLoader({ locale: "en" }));
+    expect(screen.getByTestId("watchlists-page").getAttribute("data-active"))
+      .toBe(FIRST_ID);
+    first.unmount();
+
+    mocks.getSession.mockResolvedValue({ user: { id: "user-2" } });
+    mocks.cookieValue = "user-two-token";
+    mocks.decode.mockReturnValue(SECOND_ID);
+    mocks.load.mockResolvedValue({
+      watchlists: [overview(SECOND_ID)],
+      limitReached: false,
+    });
+    mocks.getOwned.mockResolvedValue(detail(SECOND_ID));
+
+    render(await WatchlistsLoader({ locale: "it" }));
+    const second = screen.getByTestId("watchlists-page");
+    expect(second.getAttribute("data-active")).toBe(SECOND_ID);
+    expect(second.getAttribute("data-locale")).toBe("it");
+    expect(mocks.getOwned).toHaveBeenLastCalledWith(SECOND_ID, "user-2");
+    expect(mocks.build).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({ id: SECOND_ID }),
+        locale: "it",
+      }),
+    );
   });
 });
 
 describe("Watchlists route partial prerendering", () => {
-  it("places the session-scoped server loader behind Suspense", () => {
-    const source = readFileSync(
-      "app/[lang]/(app)/watchlists/page.tsx",
-      "utf8",
-    );
-
+  it("keeps session and cookie reads behind Suspense with reduced-motion loading", () => {
+    const source = readFileSync("app/[lang]/(app)/watchlists/page.tsx", "utf8");
     expect(source).toContain("<Suspense fallback={<WatchlistsFallback />}>");
     expect(source).toContain("<WatchlistsLoader locale={locale} />");
+    expect(source).toContain('role="status"');
+    expect(source).toContain("motion-safe:animate-spin");
   });
 });

@@ -1,33 +1,19 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-describe("public watchlist scanner path guard", () => {
-  it("guards metadata and the page before any watchlist data lookup", () => {
+describe("legacy watchlist route guard", () => {
+  it("requires a session and exact owner lookup before redirecting", () => {
     const source = readFileSync(
-      "app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx",
+      "app/[lang]/(app)/[userSlug]/[watchlistSlug]/route.ts",
       "utf8",
     );
-    const metadataStart = source.indexOf("export async function generateMetadata");
-    const metadataGuard = source.indexOf(
-      "if (!isPlausiblePublicWatchlistPath(userSlug, watchlistSlug))",
-      metadataStart,
-    );
-    const metadataLookup = source.indexOf(
-      "getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug)",
-      metadataStart,
-    );
-    expect(metadataGuard).toBeGreaterThan(metadataStart);
-    expect(metadataGuard).toBeLessThan(metadataLookup);
-    expect(source.slice(metadataGuard, metadataLookup)).toContain("notFound();");
-
-    const routeStart = source.indexOf("export default async function WatchlistRoute");
-    const routeGuard = source.indexOf(
-      "if (!isPlausiblePublicWatchlistPath(userSlug, watchlistSlug)) notFound();",
-      routeStart,
-    );
-    const routeLookup = source.indexOf("getWatchlistRouteSnapshot(", routeStart);
-    expect(routeGuard).toBeGreaterThan(routeStart);
-    expect(routeGuard).toBeLessThan(routeLookup);
+    const sessionGuard = source.indexOf("if (!session) return privateNotFound(locale)");
+    const ownerLookup = source.indexOf("getOwnedWatchlistByLegacyPath(");
+    const redirect = source.indexOf("NextResponse.redirect(");
+    expect(sessionGuard).toBeGreaterThan(0);
+    expect(sessionGuard).toBeLessThan(ownerLookup);
+    expect(ownerLookup).toBeLessThan(redirect);
+    expect(source).not.toContain("getPublicWatchlistByUserAndSlug");
   });
 
   it("guards the OG route before its data lookup and font read", () => {

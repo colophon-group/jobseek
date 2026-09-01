@@ -9,6 +9,8 @@ import { tooltipClass } from "@/components/ui/tooltip-styles";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
 import { createWatchlist, type WatchlistFilters } from "@/lib/actions/watchlists";
+import { selectOwnedWatchlist } from "@/lib/actions/watchlist-selection";
+import { broadcastWatchlistSelectionChanged } from "@/lib/watchlist-selection-client";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import type { SelectedLocation } from "@/lib/search/types";
 import type { WorkMode } from "@/lib/search/types";
@@ -47,7 +49,7 @@ export function SaveSearchButton({
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { user, isLoggedIn } = useSession();
+  const { isLoggedIn } = useSession();
   const [saving, setSaving] = useState(false);
   const upgrade = useUpgradeModal();
 
@@ -97,15 +99,19 @@ export function SaveSearchButton({
           upgrade.show(t({
             id: "upgrade.reason.saveSearch",
             comment: "Reason shown in upgrade modal when saving a search hits the watchlist limit",
-            message: "You've reached your watchlist limit. Upgrade your plan to save more searches as watchlists.",
+            message: "You've reached the maximum of 10 watchlists.",
           }));
         }
         return;
       }
 
-      if ("slug" in result && user?.username) {
-        router.push(lp(`/${user.username}/${result.slug}`));
+      if (await selectOwnedWatchlist(result.id).then((selection) => selection.ok)) {
+        broadcastWatchlistSelectionChanged();
+        router.push(lp("/watchlists"));
       }
+    } catch {
+      // Keep the current route and active watchlist unchanged. A later click
+      // is an explicit retry; failed creates never emit a selection event.
     } finally {
       setSaving(false);
     }

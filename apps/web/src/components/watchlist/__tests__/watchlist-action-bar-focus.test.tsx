@@ -6,12 +6,13 @@ import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
   deleteWatchlist: vi.fn(),
-  push: vi.fn(),
+  clearSelection: vi.fn(),
+  broadcastSelection: vi.fn(),
   refresh: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
+  useRouter: () => ({ refresh: mocks.refresh }),
 }));
 
 vi.mock("@/lib/useLocalePath", () => ({
@@ -26,10 +27,16 @@ vi.mock("@/components/providers/SessionProvider", () => ({
 }));
 
 vi.mock("@/lib/actions/watchlists", () => ({
-  copyWatchlist: vi.fn(),
   deleteWatchlist: mocks.deleteWatchlist,
   toggleWatchlistAlerts: vi.fn(),
-  updateWatchlist: vi.fn(),
+}));
+
+vi.mock("@/lib/actions/watchlist-selection", () => ({
+  clearWatchlistSelection: mocks.clearSelection,
+}));
+
+vi.mock("@/lib/watchlist-selection-client", () => ({
+  broadcastWatchlistSelectionChanged: mocks.broadcastSelection,
 }));
 
 vi.mock("@/components/ui/upgrade-modal", () => ({
@@ -48,11 +55,8 @@ function renderActionBar() {
   return render(
     <WatchlistActionBar
       watchlistId="watchlist-1"
-      isOwner
-      isPublic={false}
       alertsEnabled={false}
       isPaidPlan
-      limitReached={false}
     />,
   );
 }
@@ -70,6 +74,7 @@ describe("WatchlistActionBar delete focus", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.deleteWatchlist.mockResolvedValue({ ok: true });
+    mocks.clearSelection.mockResolvedValue(undefined);
   });
 
   it("restores focus to Delete after Cancel", async () => {
@@ -101,7 +106,7 @@ describe("WatchlistActionBar delete focus", () => {
     });
   });
 
-  it("still deletes and navigates back to Watchlists", async () => {
+  it("deletes, clears the active hint, and refreshes the canonical route", async () => {
     const user = userEvent.setup();
     renderActionBar();
 
@@ -110,7 +115,9 @@ describe("WatchlistActionBar delete focus", () => {
 
     await waitFor(() => {
       expect(mocks.deleteWatchlist).toHaveBeenCalledWith("watchlist-1");
-      expect(mocks.push).toHaveBeenCalledWith("/en/watchlists");
+      expect(mocks.clearSelection).toHaveBeenCalledOnce();
+      expect(mocks.broadcastSelection).toHaveBeenCalledOnce();
+      expect(mocks.refresh).toHaveBeenCalledOnce();
     });
   });
 });

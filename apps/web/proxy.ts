@@ -9,7 +9,6 @@ import { logExternalError } from "@/lib/safe-external-error";
 import { auth } from "@/lib/auth";
 import {
   hasPublicCompanyRoute,
-  hasPublicWatchlistRoute,
   hasWatchlistRouteForViewer,
 } from "@/lib/services/public-resource-status";
 import { staticMissingResourceDocument } from "@/lib/missing-resource-recovery";
@@ -37,8 +36,7 @@ const LOCALIZED_SCANNER_PATH =
 type PublicReadActionSurface =
   | "explore"
   | "company"
-  | "watchlists"
-  | "watchlist-detail";
+  | "watchlists";
 
 function publicReadActionSurface(
   request: NextRequest,
@@ -52,16 +50,7 @@ function publicReadActionSurface(
   if (LOCALIZED_WATCHLIST_INDEX_PATH.test(pathname)) return "watchlists";
   if (LOCALIZED_COMPANY_PATH.test(pathname)) return "company";
 
-  const watchlistMatch = pathname.match(LOCALIZED_WATCHLIST_PATH);
-  if (!watchlistMatch) return null;
-  const [, , userSlug, watchlistSlug] = watchlistMatch;
-  if (
-    isReservedUsername(userSlug.toLowerCase()) ||
-    !isPlausiblePublicWatchlistPath(userSlug, watchlistSlug)
-  ) {
-    return null;
-  }
-  return "watchlist-detail";
+  return null;
 }
 
 function clientReference(ip: string): string {
@@ -231,7 +220,7 @@ async function resolveLocalizedResourceRequest(
             watchlistSlug,
             viewerUserId,
           )
-        : await hasPublicWatchlistRoute(userSlug, watchlistSlug);
+        : false;
       return routeExists
         ? NextResponse.next()
         : await missingResourceResponse(request, "watchlist", lang);
@@ -272,6 +261,22 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     });
   }
 
+  const legacyWatchlistAction = request.nextUrl.pathname.match(
+    LOCALIZED_WATCHLIST_PATH,
+  );
+  if (
+    request.method === "POST" &&
+    request.headers.has("next-action") &&
+    legacyWatchlistAction &&
+    !isReservedUsername(legacyWatchlistAction[2].toLowerCase())
+  ) {
+    return missingResourceResponse(
+      request,
+      "watchlist",
+      legacyWatchlistAction[1],
+    );
+  }
+
   const actionSurface = publicReadActionSurface(request);
   if (actionSurface) {
     const rateLimited = await publicReadRateLimitResponse(
@@ -279,17 +284,6 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       actionSurface,
     );
     if (rateLimited) return rateLimited;
-    if (actionSurface === "watchlist-detail") {
-      // A stale/replayed action can carry arguments captured while a
-      // watchlist existed, even when its current URL is missing or private.
-      // Resolve that URL through Postgres before the action can touch
-      // Typesense. Database failures still fail open, while a definitive
-      // miss keeps the same hard-404/no-store/noindex contract as documents.
-      const watchlistMatch = request.nextUrl.pathname.match(
-        LOCALIZED_WATCHLIST_PATH,
-      );
-      return resolveLocalizedResourceRequest(request, null, watchlistMatch);
-    }
     return NextResponse.next();
   }
 

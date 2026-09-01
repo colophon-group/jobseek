@@ -760,7 +760,7 @@ async function _getUserWatchlistRows(userId: string): Promise<UserWatchlistRow[]
                ) AS company_ids
         FROM watchlist w
         WHERE w.user_id = ${userId}
-        ORDER BY w.last_accessed_at DESC
+        ORDER BY w.last_accessed_at DESC, w.created_at DESC, w.id ASC
       `),
     { label: "userWatchlists" },
   );
@@ -808,6 +808,135 @@ export async function getUserWatchlistCounts(locale: string): Promise<Record<str
   const watchlists = await getUserWatchlists(locale);
   return Object.fromEntries(
     watchlists.map((watchlist) => [watchlist.id, watchlist.activeJobCount]),
+  );
+}
+
+type OwnedWatchlistCompanyRow = {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+};
+
+type OwnedWatchlistDetailRow = {
+  wl_id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  is_public: boolean;
+  alerts_enabled: boolean;
+  filters: WatchlistFilters | null;
+  source_watchlist_id: string | null;
+  created_at: Date;
+  owner_id: string;
+  username: string | null;
+  display_username: string | null;
+  owner_name: string;
+  companies: OwnedWatchlistCompanyRow[];
+};
+
+function _ownedWatchlistDetail(row: OwnedWatchlistDetailRow): WatchlistDetail {
+  return {
+    id: row.wl_id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    isPublic: row.is_public,
+    alertsEnabled: row.alerts_enabled,
+    filters: (row.filters ?? {}) as WatchlistFilters,
+    sourceWatchlistId: row.source_watchlist_id,
+    createdAt: new Date(row.created_at).toISOString(),
+    owner: {
+      id: row.owner_id,
+      username: row.username,
+      displayUsername: row.display_username,
+      name: row.owner_name,
+    },
+    companies: row.companies ?? [],
+  };
+}
+
+async function _getOwnedWatchlistDetail(
+  userId: string,
+  predicate: ReturnType<typeof sql>,
+  label: string,
+): Promise<WatchlistDetail | null> {
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown } & OwnedWatchlistDetailRow>(sql`
+        SELECT
+          w.id AS wl_id, w.slug, w.title, w.description,
+          w.is_public, w.alerts_enabled, w.filters,
+          w.source_watchlist_id, w.created_at,
+          u.id AS owner_id, u.username, u.display_username, u.name AS owner_name,
+          COALESCE(
+            (
+              SELECT json_agg(
+                json_build_object(
+                  'id', c.id,
+                  'name', c.name,
+                  'slug', c.slug,
+                  'icon', c.icon
+                )
+                ORDER BY c.name
+              )
+              FROM watchlist_company wc
+              JOIN company c ON c.id = wc.company_id
+              WHERE wc.watchlist_id = w.id
+            ),
+            '[]'::json
+          ) AS companies
+        FROM watchlist w
+        JOIN "user" u ON u.id = w.user_id
+        WHERE w.user_id = ${userId} AND ${predicate}
+        LIMIT 1
+      `),
+    { label },
+  );
+  const row = (rows as unknown as OwnedWatchlistDetailRow[])[0];
+  if (!row) return null;
+
+  after(async () => {
+    try {
+      await db
+        .update(watchlist)
+        .set({ lastAccessedAt: new Date() })
+        .where(and(eq(watchlist.id, row.wl_id), eq(watchlist.userId, userId)));
+    } catch (err) {
+      logExternalError(
+        "error",
+        { service: "database", operation: "touch_owned_watchlist_access" },
+        err,
+      );
+    }
+  });
+
+  return _ownedWatchlistDetail(row);
+}
+
+/** Resolve an opaque selection hint with ownership in the SQL predicate. */
+export async function getOwnedWatchlistById(
+  watchlistId: string,
+  userId: string,
+): Promise<WatchlistDetail | null> {
+  return _getOwnedWatchlistDetail(
+    userId,
+    sql`w.id = ${watchlistId}`,
+    "ownedWatchlistById",
+  );
+}
+
+/** Bounded compatibility lookup for the former username/slug URL. */
+export async function getOwnedWatchlistByLegacyPath(
+  userSlug: string,
+  watchlistSlug: string,
+  userId: string,
+): Promise<WatchlistDetail | null> {
+  return _getOwnedWatchlistDetail(
+    userId,
+    sql`w.slug = ${watchlistSlug}
+      AND (u.username = ${userSlug} OR u.display_username = ${userSlug})`,
+    "ownedWatchlistByLegacyPath",
   );
 }
 

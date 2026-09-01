@@ -86,10 +86,11 @@ export async function hasPublicWatchlistRoute(
 }
 
 /**
- * Session-aware route check for authenticated document requests. The caller
- * must supply a user id from a verified Better Auth session; cookie presence
- * alone is never sufficient. This result is intentionally not shared-cached
- * because it includes private authorization state.
+ * Owner-only compatibility check for authenticated legacy-route requests.
+ * Grandfathered public rows intentionally do not pass for other users: during
+ * the private-route transition, public/private/missing rows must remain
+ * indistinguishable to every non-owner. The caller must supply a user id from
+ * a verified Better Auth session; this result is never shared-cached.
  */
 export async function hasWatchlistRouteForViewer(
   userSlug: string,
@@ -107,7 +108,7 @@ export async function hasWatchlistRouteForViewer(
           JOIN "user" u ON u.id = w.user_id
           WHERE (u.username = ${userSlug} OR u.display_username = ${userSlug})
             AND w.slug = ${watchlistSlug}
-            AND (w.is_public = true OR w.user_id = ${viewerUserId})
+            AND w.user_id = ${viewerUserId}
         ) AS route_exists
       `),
     { label: `watchlistRouteForViewer[${userSlug}/${watchlistSlug}]` },
