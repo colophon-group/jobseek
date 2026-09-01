@@ -520,11 +520,15 @@ def _walk_bounded_item(
     elements: list[dict],
     steps: list[dict],
     cursor: int,
-    boundary_tag: str,
+    boundary: dict,
 ) -> tuple[dict[str, str | list[str] | None], int]:
-    """Run extraction inside one tag-delimited posting block."""
+    """Run extraction inside one matcher-delimited posting block."""
     item_start = next(
-        (index for index in range(cursor, len(elements)) if elements[index]["tag"] == boundary_tag),
+        (
+            index
+            for index in range(cursor, len(elements))
+            if _boundary_matches(elements[index], boundary)
+        ),
         len(elements),
     )
     if item_start >= len(elements):
@@ -533,7 +537,7 @@ def _walk_bounded_item(
         (
             index
             for index in range(item_start + 1, len(elements))
-            if elements[index]["tag"] == boundary_tag
+            if _boundary_matches(elements[index], boundary)
         ),
         len(elements),
     )
@@ -943,7 +947,9 @@ async def discover(
         empty_requires_no_jobs — accept the marker only after all extracted rows are filtered
         require_zero_proof — fail when extraction returns no jobs without an explicit
                              empty_selector/empty_text match (default: false)
-        item_boundary_tag — optional tag that starts and bounds each posting
+        item_boundary — optional tag/text/attribute/regex matcher that starts and bounds
+                        each posting
+        item_boundary_tag — legacy shorthand for item_boundary={"tag": value}
         synthetic_identity_field — extracted provider-stable field used instead of title
                                    for synthetic URL identity; duplicates fail closed
         section_start — first page-section boundary (exclusive; requires section_end)
@@ -998,6 +1004,13 @@ async def discover(
         metadata.get("exclude_description_regex")
     )
     item_boundary_tag = _validated_item_boundary_tag(metadata.get("item_boundary_tag"))
+    item_boundary = _validated_section_boundary(
+        metadata.get("item_boundary"), name="item_boundary"
+    )
+    if item_boundary_tag is not None and item_boundary is not None:
+        raise ValueError("inline item_boundary and item_boundary_tag cannot be combined")
+    if item_boundary is None and item_boundary_tag is not None:
+        item_boundary = {"tag": item_boundary_tag}
     synthetic_identity_field = _validated_synthetic_identity_field(
         metadata.get("synthetic_identity_field")
     )
@@ -1007,9 +1020,9 @@ async def discover(
             "inline synthetic_identity_field cannot be combined with detail-card identity"
         )
     if uses_detail_expansion:
-        if item_boundary_tag is not None:
+        if item_boundary is not None:
             raise ValueError("inline detail-card expansion sets its item boundary automatically")
-        item_boundary_tag = _DETAIL_BOUNDARY_TAG
+        item_boundary = {"tag": _DETAIL_BOUNDARY_TAG}
     source_identity_selector, source_identity_attribute, source_identity_pattern = (
         _validated_source_identity_config(
             metadata,
@@ -1108,7 +1121,7 @@ async def discover(
     source_identity_index = 0
 
     while cursor < len(elements) and processed_count < _MAX_JOBS:
-        if item_boundary_tag is None:
+        if item_boundary is None:
             result, new_cursor = walk_steps(elements, steps, start=cursor)
             provider_identity = None
         else:
@@ -1116,7 +1129,7 @@ async def discover(
                 elements,
                 steps,
                 cursor,
-                item_boundary_tag,
+                item_boundary,
             )
             provider_identity = None
             if uses_detail_expansion and new_cursor > cursor:
@@ -1136,7 +1149,7 @@ async def discover(
         if not title:
             if uses_detail_expansion:
                 raise ValueError("inline expanded detail omitted its title")
-            if item_boundary_tag is None:
+            if item_boundary is None:
                 break
             cursor = new_cursor
             continue
