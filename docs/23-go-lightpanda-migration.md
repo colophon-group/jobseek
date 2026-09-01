@@ -73,6 +73,13 @@ Use `GRAFANA_PROM_USERNAME` and `GRAFANA_PROM_PASSWORD` by default, or select
 different secret-bearing environment variable names with `--username-env`
 and `--password-env`.
 
+An exact 86,400-second capture is accepted only for the frozen six-target set:
+`worker-1`, `worker-2`, `worker-3`, `browser-1`, `exporter`, and `drain`.
+Start and end build identity must be the same single release on every target.
+Missing targets, duplicate series, label drift, fractional counters, counter
+resets, stale boundaries, or an incomplete paired observation remain explicit
+blockers; the adapter never converts absence into a healthy zero.
+
 The checked-in pricing revision uses the official price change effective 15
 June 2026 for the FSN/NBG/HEL price group. The current crawler is evidenced as
 a CX43, but its exact datacenter within that price group is unknown. Long-lived
@@ -128,27 +135,43 @@ excluding VAT. Because that subtotal omits blocked attributable costs,
 shortfall remain `null`; the subtotal must not be interpreted as evidence that
 CHF 50 is sufficient.
 
-Issue #8159 adds the prerequisite for a defensible browser resource capture.
-Every long-running crawler metrics process samples its Linux process tree at a
-bounded interval and exports label-free container-cgroup CPU, aggregate current
-RSS, descendant count, and sampler-health metrics. Cgroup-v2 CPU accounting
-survives exited Chromium processes and children that live entirely between
-`/proc` observations. Each capture target is one crawler role container; the
-evidence records `container-cgroup-v2` and
-`one-crawler-role-container-per-target` so host-wide accounting cannot be
-silently substituted. Capture derives peak RSS with `max_over_time` from the
-current aggregate gauge, so a spike before the selected window cannot leak
-into later evidence. The adapter promotes a role from `root-process` to
-`process-tree` only when every target covers both window boundaries, reports
-integer success/failure/reset/gap counts, has zero failures, resets, and missed
-intervals, and reaches at least 95% of the expected observations at a sampler
-interval no greater than one second. Partial or absent coverage keeps the
-original blocker and parent-only values. The model and schema independently
-enforce the same per-target counts plus tree CPU/RSS invariants. The checked-in
-2026-08-29 evidence predates these metrics and is therefore marked
-`root-process` explicitly. A new sanitized production window after deployment
-is still required to close the browser-child blocker; no child usage is
-inferred into the historical artifact.
+Closed #8159 and merged #8161 are sampler provenance. Successor repair #8401
+defines the capture contract after the #8228 preflight rejected the first
+attempt. Every long-running crawler metrics process samples at monotonic,
+absolute deadlines (`D(n) = D(0) + n*I`) with `0 < I <= 1s`; collection time is
+not added to the cadence, skipped deadlines are counted exactly, and the loop
+never runs an unbounded catch-up burst.
+
+One frozen sample contains absolute root and container-tree CPU, root and tree
+RSS, descendant count, observation sequence, interval, and observation time.
+The metrics collector stores that object under one lock and exposes every
+component from the same generation. Bounded per-component sequence and time
+children let the read-only adapter reject cross-generation or stale pairs.
+The first cgroup-v2 observation publishes full CPU usage instead of an
+artificial zero. The sampler withholds a sample if tree CPU or RSS is below its
+paired root value; the adapter also checks the in-window paired margins.
+Cgroup CPU remains exit-safe for Chromium children that disappear between
+`/proc` traversals.
+
+Navigation-network, content, and target-closed retry children are pre-created
+for every declared bounded reason/outcome, including healthy zeros. The
+target-closed counter emits one `outcome="retry"` at the accepted redispatch
+edge, followed by exactly one `recovered` or `failed` terminal outcome. Capture
+reads exact start/end counter values and reset evidence for every required
+child. Missing children, unknown reasons/outcomes, duplicate or fractional
+values, and resets block promotion. Labels remain limited to the declared
+reason/outcome dimensions: URLs, hosts, companies, boards, postings, exception
+text, image identities, and endpoints are forbidden.
+
+The adapter promotes a role from `root-process` to `process-tree` only when
+every target has coherent fresh boundaries, exact integer conservation, zero
+failures/resets/restarts/gaps, at least 95% scheduled coverage, and paired tree
+CPU/RSS no lower than root. The schema and model enforce the same evidence,
+including complete browser retry matrices. The checked-in 2026-08-29 evidence
+predates these metrics and remains `root-process`; no child usage or retry zero
+is inferred into it. A new normally deployed release, passive burn-in, and
+independently authorized exact window are still required. #8228 remains
+clockless until those operational gates pass.
 
 ## Existing isolation points
 

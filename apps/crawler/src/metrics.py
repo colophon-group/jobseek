@@ -5,7 +5,6 @@ import re
 import socketserver
 import sys
 import threading
-import time
 from importlib.metadata import Distribution, PackageNotFoundError
 from importlib.metadata import distribution as get_distribution
 from pathlib import Path
@@ -13,7 +12,8 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlparse
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
-from prometheus_client import Counter, Gauge, Histogram, make_wsgi_app
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, make_wsgi_app
+from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 from src.shared.constants import is_source_checkout
 
@@ -623,52 +623,213 @@ browser_target_closed_retries_total = Counter(
     ["outcome"],
 )
 
-# Direct process-tree resource evidence. The default prometheus_client process
-# collector exposes only the Python parent and therefore omits Playwright and
-# Chromium descendants. These aggregates are label-free and are emitted by
-# every long-running crawler role; the runtime-cost capture adapter consumes
-# them only after observing successful sampler coverage for every target in a
-# role.
-runtime_process_tree_cpu_seconds_total = Counter(
-    "crawler_runtime_process_tree_cpu_seconds_total",
-    "Cgroup CPU seconds consumed by the crawler role container",
+# Complete, bounded browser-retry contract.  prometheus_client does not expose
+# a labelled child until ``labels()`` has been called at least once, so an
+# otherwise healthy process used to omit retry families that remained at zero.
+# The capture adapter imports this registry and requires every child exactly;
+# unknown/missing children are never interpreted as zero.  Keep the values
+# bounded and free of URL, host, board, company, posting, endpoint, or exception
+# labels.
+BROWSER_RETRY_CAPTURE_CONTRACT = (
+    {
+        "family": "navigation-network",
+        "metric": "crawler_browser_navigation_network_retry_total",
+        "stage": "browser-navigation",
+        "labels": (
+            ("reason", ("connection_reset", "network_changed", "socket_not_connected")),
+            ("outcome", ("retry", "recovered", "exhausted")),
+        ),
+    },
+    {
+        "family": "content",
+        "metric": "crawler_browser_content_retry_total",
+        "stage": "browser-content",
+        "labels": (("outcome", ("retry", "recovered", "failed")),),
+    },
+    {
+        "family": "target-closed",
+        "metric": "crawler_browser_target_closed_retries_total",
+        "stage": "detail",
+        "labels": (("outcome", ("retry", "recovered", "failed")),),
+    },
 )
 
-runtime_process_tree_resident_memory_bytes = Gauge(
-    "crawler_runtime_process_tree_resident_memory_bytes",
-    "Current aggregate RSS of the crawler process and all descendants",
+
+def _seed_browser_retry_metrics() -> None:
+    counters = {
+        "crawler_browser_navigation_network_retry_total": (browser_navigation_network_retry_total),
+        "crawler_browser_content_retry_total": browser_content_retry_total,
+        "crawler_browser_target_closed_retries_total": browser_target_closed_retries_total,
+    }
+    for family in BROWSER_RETRY_CAPTURE_CONTRACT:
+        counter = counters[str(family["metric"])]
+        labels = family["labels"]
+        if len(labels) == 1:
+            label_name, values = labels[0]
+            for value in values:
+                counter.labels(**{label_name: value})
+            continue
+        first_name, first_values = labels[0]
+        second_name, second_values = labels[1]
+        for first_value in first_values:
+            for second_value in second_values:
+                counter.labels(**{first_name: first_value, second_name: second_value})
+
+
+_seed_browser_retry_metrics()
+
+_PROCESS_TREE_OBSERVATION_COMPONENTS = (
+    "root_cpu",
+    "tree_cpu",
+    "root_rss",
+    "tree_rss",
+    "descendants",
 )
 
-runtime_process_tree_descendants = Gauge(
-    "crawler_runtime_process_tree_descendants",
-    "Current number of descendant processes attributed to the crawler process",
-)
 
-runtime_process_tree_samples_total = Counter(
-    "crawler_runtime_process_tree_samples_total",
-    "Process-tree resource sampler observations by bounded outcome",
-    ["outcome"],
-)
+class _ProcessTreeMetricsCollector:
+    """Publish one immutable process observation and its counters atomically."""
 
-runtime_process_tree_sampling_gaps_total = Counter(
-    "crawler_runtime_process_tree_sampling_gaps_total",
-    "Scheduled process-tree observations missed because the sampler loop was delayed",
-)
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._sample: ProcessTreeSample | None = None
+        self._successes = 0
+        self._failures = 0
+        self._gaps = 0
+        self._starts = 0
+        self._configured_interval_seconds: float | None = None
 
-runtime_process_tree_sampler_starts_total = Counter(
-    "crawler_runtime_process_tree_sampler_starts_total",
-    "Process-tree sampler thread starts, used to reject restarted capture windows",
-)
+    def start(self, interval_seconds: float) -> None:
+        with self._lock:
+            self._starts += 1
+            self._configured_interval_seconds = interval_seconds
 
-runtime_process_tree_sample_interval_seconds = Gauge(
-    "crawler_runtime_process_tree_sample_interval_seconds",
-    "Configured interval between process-tree resource observations",
-)
+    def publish(self, sample: ProcessTreeSample) -> None:
+        # ProcessTreeSample is frozen. One assignment under this lock makes
+        # all values below one generation even while scrapes run concurrently.
+        with self._lock:
+            self._sample = sample
+            self._successes += 1
 
-runtime_process_tree_last_sample_unixtime_seconds = Gauge(
-    "crawler_runtime_process_tree_last_sample_unixtime_seconds",
-    "Unix timestamp of the latest successful or failed process-tree observation",
-)
+    def record_failure(self) -> None:
+        with self._lock:
+            self._failures += 1
+
+    def record_gaps(self, missed_intervals: int) -> None:
+        if missed_intervals <= 0:
+            return
+        with self._lock:
+            self._gaps += missed_intervals
+
+    def collect(self):
+        with self._lock:
+            sample = self._sample
+            successes = self._successes
+            failures = self._failures
+            gaps = self._gaps
+            starts = self._starts
+            configured_interval_seconds = self._configured_interval_seconds
+
+        outcomes = CounterMetricFamily(
+            "crawler_runtime_process_tree_samples_total",
+            "Process-tree resource sampler observations by bounded outcome",
+            labels=["outcome"],
+        )
+        outcomes.add_metric(["success"], successes)
+        outcomes.add_metric(["failure"], failures)
+        yield outcomes
+
+        gap_counter = CounterMetricFamily(
+            "crawler_runtime_process_tree_sampling_gaps_total",
+            "Exact scheduled process-tree observations skipped after deadline overruns",
+        )
+        gap_counter.add_metric([], gaps)
+        yield gap_counter
+
+        starts_counter = CounterMetricFamily(
+            "crawler_runtime_process_tree_sampler_starts_total",
+            "Process-tree sampler starts, used to reject restarted capture windows",
+        )
+        starts_counter.add_metric([], starts)
+        yield starts_counter
+
+        interval = GaugeMetricFamily(
+            "crawler_runtime_process_tree_sample_interval_seconds",
+            "Configured fixed-rate process-tree observation interval",
+        )
+        interval_value = (
+            sample.interval_seconds if sample is not None else configured_interval_seconds
+        )
+        if interval_value is not None:
+            interval.add_metric([], interval_value)
+        yield interval
+
+        if sample is None:
+            return
+
+        root_cpu = CounterMetricFamily(
+            "crawler_runtime_process_root_cpu_seconds_total",
+            "Absolute root-process CPU seconds in the completed observation",
+        )
+        root_cpu.add_metric([], sample.root_cpu_seconds)
+        yield root_cpu
+
+        tree_cpu = CounterMetricFamily(
+            "crawler_runtime_process_tree_cpu_seconds_total",
+            "Absolute cgroup CPU seconds in the completed observation",
+        )
+        tree_cpu.add_metric([], sample.process_tree_cpu_seconds)
+        yield tree_cpu
+
+        root_rss = GaugeMetricFamily(
+            "crawler_runtime_process_root_resident_memory_bytes",
+            "Root-process RSS in the completed observation",
+        )
+        root_rss.add_metric([], sample.root_rss_bytes)
+        yield root_rss
+
+        tree_rss = GaugeMetricFamily(
+            "crawler_runtime_process_tree_resident_memory_bytes",
+            "Aggregate process-tree RSS in the completed observation",
+        )
+        tree_rss.add_metric([], sample.process_tree_rss_bytes)
+        yield tree_rss
+
+        descendants = GaugeMetricFamily(
+            "crawler_runtime_process_tree_descendants",
+            "Descendant count in the completed observation",
+        )
+        descendants.add_metric([], sample.descendant_count)
+        yield descendants
+
+        sequence = GaugeMetricFamily(
+            "crawler_runtime_process_tree_observation_sequence",
+            "Completed observation sequence repeated for each paired component",
+            labels=["component"],
+        )
+        observed_at = GaugeMetricFamily(
+            "crawler_runtime_process_tree_observation_unixtime_seconds",
+            "Completed observation Unix timestamp repeated for each paired component",
+            labels=["component"],
+        )
+        for component in _PROCESS_TREE_OBSERVATION_COMPONENTS:
+            sequence.add_metric([component], sample.observation_sequence)
+            observed_at.add_metric([component], sample.observation_unixtime_seconds)
+        yield sequence
+        yield observed_at
+
+        # Compatibility heartbeat for existing alerts. Unlike the predecessor
+        # it advances only for a fully validated, atomically published sample.
+        last_sample = GaugeMetricFamily(
+            "crawler_runtime_process_tree_last_sample_unixtime_seconds",
+            "Unix timestamp of the latest completed process-tree observation",
+        )
+        last_sample.add_metric([], sample.observation_unixtime_seconds)
+        yield last_sample
+
+
+_process_tree_metrics = _ProcessTreeMetricsCollector()
+REGISTRY.register(_process_tree_metrics)
 
 
 # Build info — emitted once at startup so Grafana can confirm which
@@ -835,20 +996,15 @@ _process_tree_sampler_stop = threading.Event()
 
 
 def _observe_process_tree(sample: ProcessTreeSample) -> None:
-    runtime_process_tree_cpu_seconds_total.inc(sample.process_tree_cpu_delta_seconds)
-    runtime_process_tree_resident_memory_bytes.set(sample.process_tree_rss_bytes)
-    runtime_process_tree_descendants.set(sample.descendant_count)
-    runtime_process_tree_samples_total.labels(outcome="success").inc()
-    runtime_process_tree_last_sample_unixtime_seconds.set(time.time())
+    _process_tree_metrics.publish(sample)
 
 
 def _record_process_tree_sample_failure() -> None:
-    runtime_process_tree_samples_total.labels(outcome="failure").inc()
-    runtime_process_tree_last_sample_unixtime_seconds.set(time.time())
+    _process_tree_metrics.record_failure()
 
 
 def _record_process_tree_sampling_gap(missed_intervals: int) -> None:
-    runtime_process_tree_sampling_gaps_total.inc(missed_intervals)
+    _process_tree_metrics.record_gaps(missed_intervals)
 
 
 def _seed_process_tree_sample_outcomes(samples_counter: Counter) -> None:
@@ -868,10 +1024,8 @@ def _start_process_tree_sampler(interval_seconds: float = 0.5) -> threading.Thre
         if _process_tree_sampler_thread is not None and _process_tree_sampler_thread.is_alive():
             return _process_tree_sampler_thread
         _process_tree_sampler_stop.clear()
-        _seed_process_tree_sample_outcomes(runtime_process_tree_samples_total)
-        runtime_process_tree_sampler_starts_total.inc()
-        runtime_process_tree_sample_interval_seconds.set(interval_seconds)
-        sampler = ProcessTreeSampler()
+        sampler = ProcessTreeSampler(interval_seconds=interval_seconds)
+        _process_tree_metrics.start(interval_seconds)
         thread = threading.Thread(
             target=run_process_tree_sampler,
             kwargs={

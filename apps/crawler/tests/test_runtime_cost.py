@@ -355,6 +355,11 @@ def _committed_process_tree_measurement() -> dict:
                     "sampler_restarts": 0,
                     "sample_interval_seconds": 0.5,
                     "start_covered": True,
+                    "start_observation_sequence": 100,
+                    "end_observation_sequence": 165988,
+                    "paired_start": True,
+                    "paired_end": True,
+                    "complete": True,
                     "successful_samples": 165888,
                     "target_id": "browser-worker-1",
                 }
@@ -362,9 +367,49 @@ def _committed_process_tree_measurement() -> dict:
             "process_tree_peak_rss_bytes_per_instance": root_rss + 1024,
             "process_tree_successful_samples": 165888,
             "resource_scope": "process-tree",
+            "retry_coverage": _complete_retry_coverage("browser-worker-1"),
         }
     )
     return measurement
+
+
+def _complete_retry_coverage(target_id: str) -> list[dict]:
+    families = (
+        (
+            "navigation-network",
+            "browser-navigation",
+            [
+                {"reason": reason, "outcome": outcome, "events": 0}
+                for reason in ("connection_reset", "network_changed", "socket_not_connected")
+                for outcome in ("retry", "recovered", "exhausted")
+            ],
+        ),
+        (
+            "content",
+            "browser-content",
+            [{"outcome": outcome, "events": 0} for outcome in ("retry", "recovered", "failed")],
+        ),
+        (
+            "target-closed",
+            "detail",
+            [{"outcome": outcome, "events": 0} for outcome in ("retry", "recovered", "failed")],
+        ),
+    )
+    return [
+        {
+            "target_id": target_id,
+            "family": family,
+            "stage": stage,
+            "execution_class": "browser",
+            "required_children": len(events),
+            "observed_children": len(events),
+            "counter_resets": 0,
+            "retry_events": 0,
+            "events": events,
+            "complete": True,
+        }
+        for family, stage, events in families
+    ]
 
 
 def test_model_reports_current_sustainable_budget_separately_from_projected_load():
@@ -548,6 +593,47 @@ def test_model_rejects_adversarial_process_tree_evidence(mutation, message: str)
         project_runtime_cost(workload, measurement, pricing)
 
 
+def test_model_rejects_missing_browser_retry_child() -> None:
+    workload = _json(RUNTIME_COST / "projected-workload-v1.json")
+    measurement = _committed_process_tree_measurement()
+    pricing = _json(RUNTIME_COST / "pricing/hetzner-eu-2026-06-15.json")
+    measurement["roles"][0]["retry_coverage"][0]["events"].pop()
+
+    with pytest.raises(ModelError, match="event children differ"):
+        project_runtime_cost(workload, measurement, pricing)
+
+
+@pytest.mark.parametrize(("recovered", "failed"), [(0, 0), (1, 1)])
+def test_model_rejects_target_closed_retry_terminal_nonconservation(
+    recovered: int, failed: int
+) -> None:
+    workload = _json(RUNTIME_COST / "projected-workload-v1.json")
+    measurement = _committed_process_tree_measurement()
+    pricing = _json(RUNTIME_COST / "pricing/hetzner-eu-2026-06-15.json")
+    target_closed = next(
+        item
+        for item in measurement["roles"][0]["retry_coverage"]
+        if item["family"] == "target-closed"
+    )
+    counts = {"retry": 1, "recovered": recovered, "failed": failed}
+    for event in target_closed["events"]:
+        event["events"] = counts[event["outcome"]]
+    target_closed["retry_events"] = 1
+
+    with pytest.raises(ModelError, match="retry terminal accounting differs"):
+        project_runtime_cost(workload, measurement, pricing)
+
+
+def test_model_rejects_86400_second_target_loss() -> None:
+    workload = _json(RUNTIME_COST / "projected-workload-v1.json")
+    measurement = _json(RUNTIME_COST / "evidence/python-production-2026-08-29-24h.json")
+    pricing = _json(RUNTIME_COST / "pricing/hetzner-eu-2026-06-15.json")
+    measurement["roles"][1]["target_ids"].pop()
+
+    with pytest.raises(ModelError, match="exact six-target fleet"):
+        project_runtime_cost(workload, measurement, pricing)
+
+
 def test_huge_response_volume_changes_network_cost_and_complete_total():
     baseline = project_runtime_cost(_workload(), _measurement(), _pricing())
     baseline_cost = baseline["comparison_points"]["current_sustainable"][
@@ -693,10 +779,10 @@ def test_prometheus_capture_is_read_only_and_sanitized():
         "targets_revision": "test-targets",
     }
     assert result["source_releases"] == ["1.2.3"]
-    assert result["roles"][0]["process_cpu_seconds"] == 12
-    assert result["roles"][0]["peak_rss_bytes_per_instance"] == 128
+    assert result["roles"][0]["process_cpu_seconds"] == 0
+    assert result["roles"][0]["peak_rss_bytes_per_instance"] == 0
     assert result["roles"][0]["resource_scope"] == "root-process"
-    assert result["roles"][0]["root_process_cpu_seconds"] == 12
+    assert result["roles"][0]["root_process_cpu_seconds"] == 0
     assert result["roles"][0]["descendant_process_cpu_seconds"] is None
     assert result["roles"][0]["discovery_concurrency_per_instance"] == 3
     assert result["roles"][0]["monitor_concurrency_per_instance"] == 2
@@ -704,6 +790,7 @@ def test_prometheus_capture_is_read_only_and_sanitized():
         "http://" not in query.lower() and "https://" not in query.lower() for query in queries
     )
     assert "browser-child-cpu-and-rss-not-in-process-metrics" in result["evidence_gaps"]
+    assert "process-tree-evidence-incomplete:worker-a" in result["evidence_gaps"]
 
 
 def _attributed_http_query(end_at: datetime, fault: str | None = None):
@@ -1039,6 +1126,161 @@ def test_prometheus_capture_rejects_duplicate_lanes_across_roles() -> None:
         )
 
 
+def _synthetic_capture_query(
+    end_at: datetime,
+    *,
+    window_seconds: int,
+    interval_seconds: float = 0.5,
+    fault: str | None = None,
+):
+    start_at = datetime.fromtimestamp(end_at.timestamp() - window_seconds, tz=UTC)
+    expected_samples = int(window_seconds / interval_seconds)
+    components = ("root_cpu", "tree_cpu", "root_rss", "tree_rss", "descendants")
+
+    def scalar(value: int | float) -> list[dict]:
+        return [{"metric": {}, "value": [0, str(value)]}]
+
+    def retry_rows(expression: str, at: datetime, metric_name: str) -> list[dict]:
+        if "navigation_network" in expression:
+            keys = [
+                {"reason": reason, "outcome": outcome}
+                for reason in ("connection_reset", "network_changed", "socket_not_connected")
+                for outcome in ("retry", "recovered", "exhausted")
+            ]
+        else:
+            keys = [{"outcome": outcome} for outcome in ("retry", "recovered", "failed")]
+        reset_query = "resets(" in expression
+        rows = []
+        for index, labels in enumerate(keys):
+            source_labels = {
+                "job": "crawler",
+                "instance": "browser-1",
+                "prometheus_replica": "replica-a",
+            }
+            if not reset_query:
+                source_labels["__name__"] = metric_name
+            if fault == "retry-source-identity-drift" and at == end_at:
+                source_labels["prometheus_replica"] = "replica-b"
+            value: int | float = 0 if reset_query else 10
+            if (
+                not reset_query
+                and at == end_at
+                and "target_closed" in expression
+                and labels["outcome"] in {"retry", "recovered"}
+            ):
+                value = 11
+            if fault == "retry-reset" and reset_query and index == 0:
+                value = 1
+            if fault == "retry-fractional" and not reset_query and at == end_at and index == 0:
+                value = 10.5
+            rows.append({"metric": {**source_labels, **labels}, "value": [0, str(value)]})
+        if fault == "missing-retry-child":
+            rows.pop()
+        if fault == "retry-label-drift" and "navigation_network" in expression:
+            rows[0]["metric"]["reason"] = "new_reason"
+        duplicate_source_series = (
+            (fault == "retry-duplicate-source-series-start" and at != end_at and not reset_query)
+            or (fault == "retry-duplicate-source-series-end" and at == end_at and not reset_query)
+            or (fault == "retry-duplicate-source-series-reset" and reset_query)
+        )
+        if duplicate_source_series:
+            duplicate = deepcopy(rows[0])
+            duplicate["metric"]["prometheus_replica"] = "replica-b"
+            rows.append(duplicate)
+        return rows
+
+    def fake_query(expression: str, at: datetime) -> list[dict]:
+        if any(metric in expression for metric in _ATTRIBUTION_METRICS):
+            return []
+        target_lost = fault == "target-loss" and 'instance="drain"' in expression
+        if target_lost and "crawler_runtime_process" in expression:
+            return []
+        if "crawler_build_info" in expression:
+            return [{"metric": {"version": "2.0.0"}, "value": [0, "1"]}]
+        retry_metric = next(
+            (
+                metric
+                for metric in (
+                    "crawler_browser_navigation_network_retry_total",
+                    "crawler_browser_content_retry_total",
+                    "crawler_browser_target_closed_retries_total",
+                )
+                if metric in expression
+            ),
+            None,
+        )
+        if retry_metric is not None:
+            return retry_rows(expression, at, retry_metric)
+        if expression.startswith("count("):
+            if fault == "missing-failure-series" and 'outcome="failure"' in expression:
+                return scalar(0)
+            return scalar(1)
+        if "max by (component)" in expression:
+            if "observation_sequence" in expression:
+                value: int | float = 100 if at == start_at else 100 + expected_samples
+                rows = [
+                    {"metric": {"component": component}, "value": [0, str(value)]}
+                    for component in components
+                ]
+                if fault == "generation-mismatch" and at == end_at:
+                    rows[3]["value"][1] = str(int(value) + 1)
+                return rows
+            observed = at.timestamp()
+            if fault == "stale-start" and at == start_at:
+                observed -= 61
+            if fault == "stale-end" and at == end_at:
+                observed -= 61
+            return [
+                {"metric": {"component": component}, "value": [0, str(observed)]}
+                for component in components
+            ]
+        if "resets(" in expression:
+            return scalar(1 if fault == "counter-reset" else 0)
+        if "crawler_runtime_process_tree_sample_interval_seconds" in expression:
+            return scalar(interval_seconds)
+        if (
+            "crawler_runtime_process_tree_samples_total" in expression
+            and 'outcome="success"' in expression
+        ):
+            value = 100 if at == start_at else 100 + expected_samples
+            if fault == "one-sample" and at == end_at:
+                value = 101
+            if fault == "fractional-samples" and at == end_at:
+                value += 0.5
+            rows = scalar(value)
+            if fault == "duplicate-samples" and at == end_at:
+                rows.append(deepcopy(rows[0]))
+            return rows
+        if (
+            "crawler_runtime_process_tree_samples_total" in expression
+            and 'outcome="failure"' in expression
+        ):
+            return scalar(1 if fault == "failed-sample" and at == end_at else 0)
+        if "crawler_runtime_process_tree_sampling_gaps_total" in expression:
+            return scalar(1 if fault == "sampling-gap" and at == end_at else 0)
+        if "crawler_runtime_process_tree_sampler_starts_total" in expression:
+            return scalar(2 if fault == "sampler-restart" and at == end_at else 1)
+        if "min(min_over_time" in expression:
+            return scalar(0 if fault not in {"cpu-margin", "rss-margin"} else -1)
+        if "crawler_runtime_process_root_cpu_seconds_total" in expression:
+            return scalar(10 if at == start_at else 20)
+        if "crawler_runtime_process_tree_cpu_seconds_total" in expression:
+            return scalar(30 if at == start_at else 42)
+        if "crawler_runtime_process_root_resident_memory_bytes" in expression:
+            return scalar(128)
+        if "crawler_runtime_process_tree_resident_memory_bytes" in expression:
+            return scalar(512)
+        if 'status="succeeded"' in expression:
+            return scalar(10)
+        if "crawler_tasks_total" in expression:
+            return scalar(12)
+        if "duration_seconds_sum" in expression:
+            return scalar(25)
+        return scalar(0)
+
+    return fake_query
+
+
 def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
     targets = {
         "schema_version": "jobseek.crawler-runtime-capture-targets/v1",
@@ -1061,7 +1303,6 @@ def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
     }
 
     end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
-    start_at = datetime(2026, 8, 29, 11, tzinfo=UTC)
     queries: list[str] = []
     registry = CollectorRegistry()
     exposed_samples = Counter(
@@ -1074,7 +1315,6 @@ def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
     exposed_samples.labels(outcome="success").inc(100)
     start_exposition = generate_latest(registry)
     exposed_samples.labels(outcome="success").inc(7000)
-    end_exposition = generate_latest(registry)
     assert (
         _exposed_counter_value(
             start_exposition,
@@ -1086,55 +1326,10 @@ def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
 
     def fake_query(expression: str, at: datetime) -> list[dict]:
         queries.append(expression)
-        if any(metric in expression for metric in _ATTRIBUTION_METRICS):
-            return []
-        if "crawler_build_info" in expression:
-            return [{"metric": {"version": "2.0.0"}, "value": [0, "1"]}]
-        if "crawler_runtime_process_tree_sample_interval_seconds" in expression:
-            value = 0.5
-        elif "resets(crawler_runtime_process_tree_samples_total" in expression:
-            value = 0
-        elif (
-            "crawler_runtime_process_tree_samples_total" in expression
-            and 'outcome="success"' in expression
-        ):
-            value = _exposed_counter_value(
-                start_exposition if at == start_at else end_exposition,
-                "crawler_runtime_process_tree_samples_total",
-                "success",
-            )
-        elif (
-            "crawler_runtime_process_tree_samples_total" in expression
-            and 'outcome="failure"' in expression
-        ):
-            value = _exposed_counter_value(
-                start_exposition if at == start_at else end_exposition,
-                "crawler_runtime_process_tree_samples_total",
-                "failure",
-            )
-        elif "crawler_runtime_process_tree_sampling_gaps_total" in expression:
-            value = 0
-        elif "crawler_runtime_process_tree_sampler_starts_total" in expression:
-            value = 1
-        elif "crawler_runtime_process_tree_last_sample_unixtime_seconds" in expression:
-            value = at.timestamp()
-        elif "crawler_runtime_process_tree_cpu_seconds_total" in expression:
-            value = 100 if at == start_at else 142
-        elif "crawler_runtime_process_tree_resident_memory_bytes" in expression:
-            value = 512
-        elif "process_resident_memory_bytes" in expression:
-            value = 128
-        elif "process_cpu_seconds_total" in expression:
-            value = 12
-        elif 'status="succeeded"' in expression:
-            value = 10
-        elif "crawler_tasks_total" in expression:
-            value = 12
-        elif "duration_seconds_sum" in expression:
-            value = 25
-        else:
-            value = 0
-        return [{"metric": {}, "value": [0, str(value)]}]
+        return _synthetic_capture_query(
+            end_at,
+            window_seconds=3600,
+        )(expression, at)
 
     result = capture_prometheus_measurement(
         targets,
@@ -1146,30 +1341,35 @@ def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
 
     role = result["roles"][0]
     assert role["resource_scope"] == "process-tree"
-    assert role["root_process_cpu_seconds"] == 12
-    assert role["descendant_process_cpu_seconds"] == 30
-    assert role["process_cpu_seconds"] == 42
+    assert role["root_process_cpu_seconds"] == 10
+    assert role["descendant_process_cpu_seconds"] == 2
+    assert role["process_cpu_seconds"] == 12
     assert role["process_tree_cpu_source"] == "container-cgroup-v2"
     assert role["process_tree_cpu_scope"] == "one-crawler-role-container-per-target"
     assert role["root_peak_rss_bytes_per_instance"] == 128
     assert role["process_tree_peak_rss_bytes_per_instance"] == 512
     assert role["peak_rss_bytes_per_instance"] == 512
-    assert role["process_tree_successful_samples"] == 7000
+    assert role["process_tree_successful_samples"] == 7200
     assert role["process_tree_coverage"] == [
         {
             "boundary_tolerance_seconds": 60,
             "counter_resets": 0,
-            "coverage_ratio": pytest.approx(7000 / 7200),
+            "coverage_ratio": 1,
             "end_covered": True,
             "expected_samples": 7200,
             "failed_samples": 0,
             "gap_samples": 0,
-            "missing_samples": 200,
+            "missing_samples": 0,
             "required_coverage_ratio": 0.95,
             "sampler_restarts": 0,
             "sample_interval_seconds": 0.5,
             "start_covered": True,
-            "successful_samples": 7000,
+            "start_observation_sequence": 100,
+            "end_observation_sequence": 7300,
+            "paired_start": True,
+            "paired_end": True,
+            "complete": True,
+            "successful_samples": 7200,
             "target_id": "browser-a",
         }
     ]
@@ -1201,51 +1401,11 @@ def test_prometheus_capture_rejects_partial_process_tree_role_coverage() -> None
     }
 
     end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
-    start_at = datetime(2026, 8, 29, 11, tzinfo=UTC)
 
     def fake_query(expression: str, at: datetime) -> list[dict]:
-        if any(metric in expression for metric in _ATTRIBUTION_METRICS):
+        if "crawler_runtime_process" in expression and 'instance="browser-2"' in expression:
             return []
-        if "crawler_build_info" in expression:
-            return [{"metric": {"version": "2.0.0"}, "value": [0, "1"]}]
-        is_tree_metric = "crawler_runtime_" in expression
-        if is_tree_metric and 'instance="browser-2"' in expression:
-            return []
-        if "crawler_runtime_process_tree_sample_interval_seconds" in expression:
-            value = 0.5
-        elif "resets(crawler_runtime_process_tree_samples_total" in expression:
-            value = 0
-        elif (
-            "crawler_runtime_process_tree_samples_total" in expression
-            and 'outcome="success"' in expression
-        ):
-            value = 100 if at == start_at else 7100
-        elif (
-            "crawler_runtime_process_tree_samples_total" in expression
-            and 'outcome="failure"' in expression
-        ) or "crawler_runtime_process_tree_sampling_gaps_total" in expression:
-            value = 0
-        elif "crawler_runtime_process_tree_sampler_starts_total" in expression:
-            value = 1
-        elif "crawler_runtime_process_tree_last_sample_unixtime_seconds" in expression:
-            value = at.timestamp()
-        elif "crawler_runtime_process_tree_cpu_seconds_total" in expression:
-            value = 100 if at == start_at else 142
-        elif "crawler_runtime_process_tree_resident_memory_bytes" in expression:
-            value = 512
-        elif "process_resident_memory_bytes" in expression:
-            value = 128
-        elif "process_cpu_seconds_total" in expression:
-            value = 12
-        elif 'status="succeeded"' in expression:
-            value = 10
-        elif "crawler_tasks_total" in expression:
-            value = 12
-        elif "duration_seconds_sum" in expression:
-            value = 25
-        else:
-            value = 0
-        return [{"metric": {}, "value": [0, str(value)]}]
+        return _synthetic_capture_query(end_at, window_seconds=3600)(expression, at)
 
     result = capture_prometheus_measurement(
         targets,
@@ -1257,7 +1417,7 @@ def test_prometheus_capture_rejects_partial_process_tree_role_coverage() -> None
 
     role = result["roles"][0]
     assert role["resource_scope"] == "root-process"
-    assert role["process_cpu_seconds"] == 24
+    assert role["process_cpu_seconds"] == 10
     assert role["peak_rss_bytes_per_instance"] == 128
     assert role["descendant_process_cpu_seconds"] is None
     assert "browser-child-cpu-and-rss-not-in-process-metrics" in result["evidence_gaps"]
@@ -1300,64 +1460,19 @@ def test_prometheus_capture_fails_closed_for_incomplete_tree_window(fault: str) 
         ],
     }
     end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
-    start_at = datetime(2026, 8, 29, 11, tzinfo=UTC)
 
     def fake_query(expression: str, at: datetime) -> list[dict]:
-        if any(metric in expression for metric in _ATTRIBUTION_METRICS):
-            return []
-        if "crawler_build_info" in expression:
-            return [{"metric": {"version": "2.0.0"}, "value": [0, "1"]}]
-        if "crawler_runtime_process_tree_sample_interval_seconds" in expression:
-            value = 0.5
-        elif "resets(crawler_runtime_process_tree_samples_total" in expression:
-            value = 1 if fault == "counter-reset" else 0
-        elif (
-            "crawler_runtime_process_tree_samples_total" in expression
-            and 'outcome="success"' in expression
-        ):
-            if at == start_at:
-                value = 100
-            elif fault == "one-sample":
-                value = 101
-            elif fault == "fractional-samples":
-                value = 7100.5
-            else:
-                value = 7100
-        elif (
-            "crawler_runtime_process_tree_samples_total" in expression
-            and 'outcome="failure"' in expression
-        ):
-            if fault == "missing-failure-series":
-                return []
-            value = 1 if fault == "failed-sample" and at == end_at else 0
-        elif "crawler_runtime_process_tree_sampling_gaps_total" in expression:
-            value = 1 if fault == "sampling-gap" and at == end_at else 0
-        elif "crawler_runtime_process_tree_sampler_starts_total" in expression:
-            value = 2 if fault == "sampler-restart" and at == end_at else 1
-        elif "crawler_runtime_process_tree_last_sample_unixtime_seconds" in expression:
-            if (fault == "missing-start" and at == start_at) or (
-                fault == "missing-end" and at == end_at
-            ):
-                value = at.timestamp() - 61
-            else:
-                value = at.timestamp()
-        elif "crawler_runtime_process_tree_cpu_seconds_total" in expression:
-            value = 100 if at == start_at else (110 if fault == "tree-cpu-below-root" else 142)
-        elif "crawler_runtime_process_tree_resident_memory_bytes" in expression:
-            value = 64 if fault == "tree-rss-below-root" else 512
-        elif "process_resident_memory_bytes" in expression:
-            value = 128
-        elif "process_cpu_seconds_total" in expression:
-            value = 12
-        elif 'status="succeeded"' in expression:
-            value = 10
-        elif "crawler_tasks_total" in expression:
-            value = 12
-        elif "duration_seconds_sum" in expression:
-            value = 25
-        else:
-            value = 0
-        return [{"metric": {}, "value": [0, str(value)]}]
+        mapped_fault = {
+            "missing-start": "stale-start",
+            "missing-end": "stale-end",
+            "tree-cpu-below-root": "cpu-margin",
+            "tree-rss-below-root": "rss-margin",
+        }.get(fault, fault)
+        return _synthetic_capture_query(
+            end_at,
+            window_seconds=3600,
+            fault=mapped_fault,
+        )(expression, at)
 
     result = capture_prometheus_measurement(
         targets,
@@ -1369,7 +1484,186 @@ def test_prometheus_capture_fails_closed_for_incomplete_tree_window(fault: str) 
 
     role = result["roles"][0]
     assert role["resource_scope"] == "root-process"
-    assert role["process_cpu_seconds"] == 12
+    assert role["process_cpu_seconds"] == 10
     assert role["peak_rss_bytes_per_instance"] == 128
     assert role["process_tree_successful_samples"] is None
     assert "browser-child-cpu-and-rss-not-in-process-metrics" in result["evidence_gaps"]
+
+
+@pytest.mark.parametrize("interval_seconds", [0.5, 1.0])
+def test_exact_86400_second_six_target_capture_is_complete(interval_seconds: float) -> None:
+    targets = _json(RUNTIME_COST / "python-production-targets-v1.json")
+    end_at = datetime(2026, 9, 2, 0, tzinfo=UTC)
+
+    result = capture_prometheus_measurement(
+        targets,
+        query=_synthetic_capture_query(
+            end_at,
+            window_seconds=86_400,
+            interval_seconds=interval_seconds,
+        ),
+        end_at=end_at,
+        window_seconds=86_400,
+        source_revision="synthetic-six-target",
+    )
+
+    assert {target for role in result["roles"] for target in role["target_ids"]} == {
+        "http-worker-1",
+        "http-worker-2",
+        "http-worker-3",
+        "browser-worker-1",
+        "exporter-1",
+        "drain-1",
+    }
+    assert all(role["resource_scope"] == "process-tree" for role in result["roles"])
+    expected = int(86_400 / interval_seconds)
+    assert all(
+        item["expected_samples"] == expected
+        and item["successful_samples"] == expected
+        and item["coverage_ratio"] == 1
+        for role in result["roles"]
+        for item in role["process_tree_coverage"]
+    )
+    browser = next(role for role in result["roles"] if role["execution_class"] == "browser")
+    assert browser["retry_events"] == 1
+    assert all(item["complete"] for item in browser["retry_coverage"])
+    schema = _json(RUNTIME_COST / "schemas/measurement-v1.schema.json")
+    assert (
+        list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(result)) == []
+    )
+    projection = project_runtime_cost(
+        _json(RUNTIME_COST / "projected-workload-v1.json"),
+        result,
+        _json(RUNTIME_COST / "pricing/hetzner-eu-2026-06-15.json"),
+    )
+    assert "browser-child-cpu-and-rss-not-in-process-metrics" not in projection["blockers"]
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "target-loss",
+        "stale-start",
+        "stale-end",
+        "generation-mismatch",
+        "fractional-samples",
+        "duplicate-samples",
+        "counter-reset",
+    ],
+)
+def test_exact_six_target_capture_blocks_incomplete_paired_evidence(fault: str) -> None:
+    targets = _json(RUNTIME_COST / "python-production-targets-v1.json")
+    end_at = datetime(2026, 9, 2, 0, tzinfo=UTC)
+
+    result = capture_prometheus_measurement(
+        targets,
+        query=_synthetic_capture_query(end_at, window_seconds=86_400, fault=fault),
+        end_at=end_at,
+        window_seconds=86_400,
+        source_revision=f"synthetic-{fault}",
+    )
+
+    assert any(
+        blocker.startswith("process-tree-evidence-incomplete:")
+        for blocker in result["evidence_gaps"]
+    )
+    assert any(role["resource_scope"] == "root-process" for role in result["roles"])
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "missing-retry-child",
+        "retry-reset",
+        "retry-label-drift",
+        "retry-fractional",
+        "retry-duplicate-source-series-start",
+        "retry-duplicate-source-series-end",
+        "retry-duplicate-source-series-reset",
+        "retry-source-identity-drift",
+    ],
+)
+def test_exact_six_target_capture_blocks_incomplete_retry_evidence(fault: str) -> None:
+    targets = _json(RUNTIME_COST / "python-production-targets-v1.json")
+    end_at = datetime(2026, 9, 2, 0, tzinfo=UTC)
+
+    result = capture_prometheus_measurement(
+        targets,
+        query=_synthetic_capture_query(end_at, window_seconds=86_400, fault=fault),
+        end_at=end_at,
+        window_seconds=86_400,
+        source_revision=f"synthetic-{fault}",
+    )
+
+    browser = next(role for role in result["roles"] if role["execution_class"] == "browser")
+    assert browser["retry_events"] is None
+    assert any(not item["complete"] for item in browser["retry_coverage"])
+    assert any(
+        blocker.startswith("browser-retry-evidence-incomplete:browser-worker-1:")
+        for blocker in result["evidence_gaps"]
+    )
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "retry-duplicate-source-series-start",
+        "retry-duplicate-source-series-end",
+        "retry-duplicate-source-series-reset",
+    ],
+)
+def test_duplicate_browser_retry_source_series_are_rejected_before_model_acceptance(
+    fault: str,
+) -> None:
+    targets = _json(RUNTIME_COST / "python-production-targets-v1.json")
+    end_at = datetime(2026, 9, 2, 0, tzinfo=UTC)
+    expressions: list[str] = []
+    synthetic_query = _synthetic_capture_query(
+        end_at,
+        window_seconds=86_400,
+        fault=fault,
+    )
+
+    def recording_query(expression: str, at: datetime) -> list[dict]:
+        expressions.append(expression)
+        return synthetic_query(expression, at)
+
+    result = capture_prometheus_measurement(
+        targets,
+        query=recording_query,
+        end_at=end_at,
+        window_seconds=86_400,
+        source_revision=f"synthetic-{fault}",
+    )
+
+    retry_expressions = [
+        expression
+        for expression in expressions
+        if "crawler_browser_" in expression and "retry" in expression
+    ]
+    assert retry_expressions
+    assert all("sum by" not in expression for expression in retry_expressions)
+    browser = next(role for role in result["roles"] if role["execution_class"] == "browser")
+    assert browser["retry_events"] is None
+    assert all(not item["complete"] for item in browser["retry_coverage"])
+    with pytest.raises(ModelError, match="browser retry .* is incomplete"):
+        project_runtime_cost(
+            _json(RUNTIME_COST / "projected-workload-v1.json"),
+            result,
+            _json(RUNTIME_COST / "pricing/hetzner-eu-2026-06-15.json"),
+        )
+
+
+def test_86400_second_capture_rejects_any_target_set_drift() -> None:
+    targets = _json(RUNTIME_COST / "python-production-targets-v1.json")
+    targets["targets"].pop()
+    end_at = datetime(2026, 9, 2, 0, tzinfo=UTC)
+
+    with pytest.raises(ModelError, match="exact six-target fleet"):
+        capture_prometheus_measurement(
+            targets,
+            query=_synthetic_capture_query(end_at, window_seconds=86_400),
+            end_at=end_at,
+            window_seconds=86_400,
+            source_revision="synthetic-missing-target",
+        )

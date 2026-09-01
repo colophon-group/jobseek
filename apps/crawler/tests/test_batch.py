@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import csv
 import json
 from datetime import UTC, datetime, timedelta
@@ -2969,7 +2970,13 @@ class TestProcessOneScrape:
         self, mock_scrape, mock_pool, mock_http
     ):
         """A lost browser target gets one immediate fresh-context attempt."""
+        from src.metrics import browser_target_closed_retries_total
+
         pool, conn = mock_pool
+        before = {
+            outcome: _counter_value(browser_target_closed_retries_total, outcome=outcome)
+            for outcome in ("retry", "recovered", "failed")
+        }
         mock_scrape.side_effect = [
             PlaywrightError("Page.goto: Target page, context or browser has been closed"),
             _job_content(),
@@ -2991,6 +2998,11 @@ class TestProcessOneScrape:
 
         assert ok is True
         assert mock_scrape.await_count == 2
+        assert {
+            outcome: _counter_value(browser_target_closed_retries_total, outcome=outcome)
+            - before[outcome]
+            for outcome in before
+        } == {"retry": 1, "recovered": 1, "failed": 0}
         assert not any(
             call.args[0] == _RECORD_SCRAPE_TRANSIENT for call in conn.execute.await_args_list
         )
@@ -2998,7 +3010,13 @@ class TestProcessOneScrape:
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_browser_target_closed_retry_is_bounded(self, mock_scrape, mock_pool, mock_http):
         """Two lost targets exhaust the one-retry budget and back off normally."""
+        from src.metrics import browser_target_closed_retries_total
+
         pool, conn = mock_pool
+        before = {
+            outcome: _counter_value(browser_target_closed_retries_total, outcome=outcome)
+            for outcome in ("retry", "recovered", "failed")
+        }
         mock_scrape.side_effect = PlaywrightError(
             "Page.goto: Target page, context or browser has been closed"
         )
@@ -3019,12 +3037,57 @@ class TestProcessOneScrape:
 
         assert ok is False
         assert mock_scrape.await_count == 2
+        assert {
+            outcome: _counter_value(browser_target_closed_retries_total, outcome=outcome)
+            - before[outcome]
+            for outcome in before
+        } == {"retry": 1, "recovered": 0, "failed": 1}
         transient_calls = [
             call
             for call in conn.execute.await_args_list
             if call.args[0] == _RECORD_SCRAPE_TRANSIENT
         ]
         assert len(transient_calls) == 1
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_browser_target_closed_retry_cancellation_is_terminal(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Cancellation propagates after closing the accepted retry metric."""
+        from src.metrics import browser_target_closed_retries_total
+
+        before = {
+            outcome: _counter_value(browser_target_closed_retries_total, outcome=outcome)
+            for outcome in ("retry", "recovered", "failed")
+        }
+        cancellation = asyncio.CancelledError("worker shutdown")
+        mock_scrape.side_effect = [
+            PlaywrightError("Page.goto: Target page, context or browser has been closed"),
+            cancellation,
+        ]
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+        )
+
+        with pytest.raises(asyncio.CancelledError) as raised:
+            await _process_one_scrape(
+                item,
+                mock_pool[0],
+                mock_http,
+                "dom",
+                {"render": True, "steps": [{"tag": "h1", "field": "title"}]},
+                pw=MagicMock(),
+            )
+
+        assert raised.value is cancellation
+        assert mock_scrape.await_count == 2
+        assert {
+            outcome: _counter_value(browser_target_closed_retries_total, outcome=outcome)
+            - before[outcome]
+            for outcome in before
+        } == {"retry": 1, "recovered": 0, "failed": 1}
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_non_browser_target_closed_text_is_not_retried(
