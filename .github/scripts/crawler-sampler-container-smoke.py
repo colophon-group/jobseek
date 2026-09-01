@@ -940,8 +940,11 @@ def _validate_metrics(raw: str) -> dict[str, Any]:
         "sampler strict timing phase set is not exact",
     )
     _require(
-        all(value == 0 for value in timing_limit_violations.values()),
-        "sampler strict timing violation counter is non-zero",
+        all(
+            value >= 0 and value.is_integer()
+            for value in timing_limit_violations.values()
+        ),
+        "sampler strict timing violation counter is not a non-negative integer",
     )
     _require(
         interval == SAMPLER_INTERVAL_SECONDS, "sampler interval is not 0.5 seconds"
@@ -1910,7 +1913,7 @@ class _SelfTests(unittest.TestCase):
             "crawler_runtime_process_tree_sampling_gap_reasons_total"
             '{reason="collection_overrun"} 0',
             "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
-            '{phase="wake_lateness"} 0',
+            '{phase="wake_lateness"} 2',
             "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
             '{phase="collection"} 0',
             "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
@@ -1942,7 +1945,7 @@ class _SelfTests(unittest.TestCase):
         self.assertEqual(metrics["descendant_count"], 1)
         self.assertEqual(
             metrics["timing_limit_violations"],
-            {"wake_lateness": 0, "collection": 0, "handoff": 0},
+            {"wake_lateness": 2, "collection": 0, "handoff": 0},
         )
 
     def test_full_image_process_topology(self) -> None:

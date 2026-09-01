@@ -26,7 +26,7 @@ from src.runtime_cost.model import (
 from src.runtime_cost.process_tree import SAMPLER_STRICT_TIMING_LIMIT_SECONDS
 
 TARGET_SCHEMA = "jobseek.crawler-runtime-capture-targets/v1"
-EXACT_24H_TARGET_INSTANCES = frozenset(
+EXACT_PROCESS_TREE_TARGET_INSTANCES = frozenset(
     {"worker-1", "worker-2", "worker-3", "browser-1", "exporter", "drain"}
 )
 _PROCESS_TREE_OBSERVATION_COMPONENTS = (
@@ -712,7 +712,16 @@ def _capture_strict_sampler_timing(
         start_values, start_sources = start_boundary
         end_values, end_sources = end_boundary
         reset_values, reset_sources = reset_boundary
-        source_identity_complete = start_sources == end_sources == reset_sources
+        normalized_sources: list[tuple[tuple[str, str], ...] | None] = []
+        for sources in (start_sources, end_sources, reset_sources):
+            identities = {
+                tuple(item for item in identity if item[0] != "phase")
+                for identity in sources.values()
+            }
+            normalized_sources.append(next(iter(identities)) if len(identities) == 1 else None)
+        source_identity_complete = (
+            normalized_sources[0] is not None and len(set(normalized_sources)) == 1
+        )
         reset_total = sum(reset_values.values())
     else:
         start_values = {}
@@ -1150,10 +1159,11 @@ def capture_prometheus_measurement(
         target_instances.append(instance)
         grouped[role].append(target)
 
-    if window_seconds == 86_400 and (
-        len(target_instances) != len(EXACT_24H_TARGET_INSTANCES)
-        or set(target_instances) != EXACT_24H_TARGET_INSTANCES
-    ):
+    exact_process_tree_fleet = (
+        len(target_instances) == len(EXACT_PROCESS_TREE_TARGET_INSTANCES)
+        and set(target_instances) == EXACT_PROCESS_TREE_TARGET_INSTANCES
+    )
+    if window_seconds == 86_400 and not exact_process_tree_fleet:
         raise ModelError("86,400-second capture requires the exact six-target fleet")
 
     role_measurements: list[dict[str, Any]] = []
@@ -1208,6 +1218,12 @@ def capture_prometheus_measurement(
                 window_seconds=window_seconds,
                 range_selector=range_selector,
             )
+            if not exact_process_tree_fleet:
+                strict_timing = coverage.get("strict_timing")
+                if isinstance(strict_timing, dict):
+                    strict_timing["complete"] = False
+                coverage["complete"] = False
+                target_tree_complete = False
             role_root_cpu += root_cpu or 0.0
             role_root_peak_rss = max(role_root_peak_rss, root_peak_rss or 0.0)
             role_process_tree_coverage.append(coverage)

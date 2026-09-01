@@ -19,7 +19,7 @@ PROJECTION_SCHEMA = "jobseek.crawler-runtime-projection/v1"
 PROCESS_TREE_MIN_COVERAGE_RATIO = 0.95
 PROCESS_TREE_MAX_SAMPLE_INTERVAL_SECONDS = 1.0
 PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS = 60
-EXACT_24H_TARGET_IDS = frozenset(
+EXACT_PROCESS_TREE_TARGET_IDS = frozenset(
     {
         "http-worker-1",
         "http-worker-2",
@@ -429,20 +429,18 @@ def project_runtime_cost(
         measurement.get("workload_revision") == workload.get("revision"),
         "measurement and workload revisions differ",
     )
-    if measurement.get("window", {}).get("seconds") == 86_400:
-        source_releases = measurement.get("source_releases")
-        _require(
-            isinstance(source_releases, list)
-            and len(source_releases) == 1
-            and isinstance(source_releases[0], str)
-            and bool(source_releases[0]),
-            "86,400-second measurement requires one source release",
-        )
-        measured_target_ids: list[str] = []
-        measured_roles = measurement.get("roles")
-        _require(isinstance(measured_roles, list), "measurement roles must be an array")
-        assert isinstance(measured_roles, list)
-        for measured_role in measured_roles:
+    measured_roles_raw = measurement.get("roles")
+    process_tree_promoted = isinstance(measured_roles_raw, list) and any(
+        isinstance(measured_role, dict) and measured_role.get("resource_scope") == "process-tree"
+        for measured_role in measured_roles_raw
+    )
+    measured_target_ids: list[str] = []
+    all_roles_process_tree = True
+    exact_day = measurement.get("window", {}).get("seconds") == 86_400
+    if exact_day or process_tree_promoted:
+        _require(isinstance(measured_roles_raw, list), "measurement roles must be an array")
+        assert isinstance(measured_roles_raw, list)
+        for measured_role in measured_roles_raw:
             _require(isinstance(measured_role, dict), "measurement role must be an object")
             assert isinstance(measured_role, dict)
             role_target_ids = measured_role.get("target_ids")
@@ -453,10 +451,30 @@ def project_runtime_cost(
             )
             assert isinstance(role_target_ids, list)
             measured_target_ids.extend(str(target_id) for target_id in role_target_ids)
+            all_roles_process_tree = (
+                all_roles_process_tree and measured_role.get("resource_scope") == "process-tree"
+            )
+
+    if exact_day:
+        source_releases = measurement.get("source_releases")
         _require(
-            len(measured_target_ids) == len(EXACT_24H_TARGET_IDS)
-            and set(measured_target_ids) == EXACT_24H_TARGET_IDS,
+            isinstance(source_releases, list)
+            and len(source_releases) == 1
+            and isinstance(source_releases[0], str)
+            and bool(source_releases[0]),
+            "86,400-second measurement requires one source release",
+        )
+        _require(
+            len(measured_target_ids) == len(EXACT_PROCESS_TREE_TARGET_IDS)
+            and set(measured_target_ids) == EXACT_PROCESS_TREE_TARGET_IDS,
             "86,400-second measurement requires the exact six-target fleet",
+        )
+    if process_tree_promoted:
+        _require(
+            all_roles_process_tree
+            and len(measured_target_ids) == len(EXACT_PROCESS_TREE_TARGET_IDS)
+            and set(measured_target_ids) == EXACT_PROCESS_TREE_TARGET_IDS,
+            "strict process-tree measurement requires the exact complete six-target fleet",
         )
     _require(pricing.get("provider") == "hetzner", "pricing provider must be Hetzner")
     _require(pricing.get("source_currency") == "EUR", "Hetzner source currency must be EUR")

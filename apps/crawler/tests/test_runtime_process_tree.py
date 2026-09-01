@@ -704,6 +704,16 @@ def test_timing_violation_counts_add_and_reject_regression() -> None:
     assert not replace(later, limit_violations=0).contains(earlier)
 
 
+@pytest.mark.parametrize("seconds", [float("nan"), float("inf"), -0.001])
+def test_timing_observation_rejects_nonfinite_and_negative_values(seconds: float) -> None:
+    histogram = _TimingHistogram()
+
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        histogram.observe(seconds)
+
+    assert histogram.snapshot() == TimingHistogramSnapshot.empty()
+
+
 def _child_snapshot(sequence: int = 1) -> _SamplerChildSnapshot:
     empty = TimingHistogramSnapshot.empty()
     return _SamplerChildSnapshot(
@@ -728,6 +738,28 @@ def test_sampler_ipc_rejects_partial_frame_without_replacing_complete_snapshot()
         with pytest.raises(ValueError, match="complete JSON"):
             _decode_sampler_snapshot(truncated)
     assert _decode_sampler_snapshot(encoded) == expected
+
+
+def test_sampler_ipc_round_trip_preserves_distinct_nonzero_timing_violations() -> None:
+    histograms = []
+    for count in (1, 2, 3):
+        histogram = _TimingHistogram()
+        for _ in range(count):
+            histogram.observe(SAMPLER_STRICT_TIMING_LIMIT_SECONDS)
+        histograms.append(histogram.snapshot())
+    expected = replace(
+        _child_snapshot(),
+        wake_lateness=histograms[0],
+        collection_duration=histograms[1],
+        handoff_duration=histograms[2],
+    )
+
+    decoded = _decode_sampler_snapshot(_encode_sampler_snapshot(expected))
+
+    assert decoded == expected
+    assert decoded.wake_lateness.limit_violations == 1
+    assert decoded.collection_duration.limit_violations == 2
+    assert decoded.handoff_duration.limit_violations == 3
 
 
 @pytest.mark.parametrize(
@@ -845,6 +877,70 @@ def test_sampler_child_rollover_preserves_timing_violation_offsets() -> None:
     assert supervisor._wake_lateness_offset.limit_violations == 1
     assert supervisor._collection_duration_offset.limit_violations == 1
     assert supervisor._handoff_duration_offset.limit_violations == 1
+
+
+def test_public_snapshot_preserves_old_and_new_violation_counts_across_restart() -> None:
+    def violated(count: int) -> TimingHistogramSnapshot:
+        histogram = _TimingHistogram()
+        for _ in range(count):
+            histogram.observe(SAMPLER_STRICT_TIMING_LIMIT_SECONDS)
+        return histogram.snapshot()
+
+    old_child = _SamplerChild(
+        process=_AlwaysAliveProcess(),  # type: ignore[arg-type]
+        receiver=None,  # type: ignore[arg-type]
+        stop_sender=None,  # type: ignore[arg-type]
+        started_monotonic_seconds=0.0,
+        snapshot=replace(
+            _child_snapshot(),
+            sample=None,
+            successes=0,
+            wake_lateness=violated(1),
+            collection_duration=violated(2),
+            handoff_duration=violated(3),
+        ),
+    )
+    old_snapshot = old_child.snapshot
+    assert old_snapshot is not None
+    new_child = replace(
+        old_child,
+        snapshot=replace(
+            old_snapshot,
+            wake_lateness=violated(2),
+            collection_duration=violated(1),
+            handoff_duration=violated(3),
+        ),
+    )
+    supervisor = ProcessTreeSamplerProcess.__new__(ProcessTreeSamplerProcess)
+    supervisor._lock = threading.Lock()
+    supervisor._closed = False
+    supervisor._child = old_child
+    supervisor._starts = 1
+    supervisor._local_failures = 0
+    supervisor._success_offset = 0
+    supervisor._failure_offset = 0
+    supervisor._scheduler_late_offset = 0
+    supervisor._collection_overrun_offset = 0
+    supervisor._wake_lateness_offset = TimingHistogramSnapshot.empty()
+    supervisor._collection_duration_offset = TimingHistogramSnapshot.empty()
+    supervisor._handoff_duration_offset = TimingHistogramSnapshot.empty()
+    supervisor._last_sample = None
+    supervisor._monotonic = lambda: 10.0
+    supervisor._drain_frames = lambda _child: None  # type: ignore[method-assign]
+
+    def restart(old: _SamplerChild, _now: float) -> None:
+        supervisor._roll_child_into_offsets(old)
+        supervisor._child = new_child
+        supervisor._starts += 1
+
+    supervisor._restart_if_unhealthy = restart  # type: ignore[method-assign]
+
+    snapshot = supervisor.snapshot()
+
+    assert snapshot.starts == 2
+    assert snapshot.wake_lateness.limit_violations == 3
+    assert snapshot.collection_duration.limit_violations == 3
+    assert snapshot.handoff_duration.limit_violations == 6
 
 
 class _AlwaysAliveProcess:

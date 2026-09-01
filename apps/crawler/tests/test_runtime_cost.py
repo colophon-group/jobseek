@@ -331,47 +331,65 @@ def _pricing() -> dict:
 
 def _committed_process_tree_measurement() -> dict:
     measurement = _json(RUNTIME_COST / "evidence/python-production-2026-08-29-24h.json")
-    browser = measurement["roles"][0]
-    root_cpu = browser["root_process_cpu_seconds"]
-    root_rss = browser["root_peak_rss_bytes_per_instance"]
-    browser.update(
-        {
-            "descendant_process_cpu_seconds": 100.0,
-            "peak_rss_bytes_per_instance": root_rss + 1024,
-            "process_cpu_seconds": root_cpu + 100.0,
-            "process_tree_cpu_scope": "one-crawler-role-container-per-target",
-            "process_tree_cpu_source": "container-cgroup-v2",
-            "process_tree_coverage": [
-                {
-                    "boundary_tolerance_seconds": 60,
-                    "counter_resets": 0,
-                    "coverage_ratio": 0.96,
-                    "end_covered": True,
-                    "expected_samples": 172800,
-                    "failed_samples": 0,
-                    "gap_samples": 0,
-                    "missing_samples": 6912,
-                    "required_coverage_ratio": 0.95,
-                    "sampler_restarts": 0,
-                    "sample_interval_seconds": 0.5,
-                    "start_covered": True,
-                    "start_observation_sequence": 100,
-                    "end_observation_sequence": 165988,
-                    "paired_start": True,
-                    "paired_end": True,
-                    "strict_timing": _complete_strict_timing(),
-                    "complete": True,
-                    "successful_samples": 165888,
-                    "target_id": "browser-worker-1",
-                }
-            ],
-            "process_tree_peak_rss_bytes_per_instance": root_rss + 1024,
-            "process_tree_successful_samples": 165888,
-            "resource_scope": "process-tree",
-            "retry_coverage": _complete_retry_coverage("browser-worker-1"),
-        }
-    )
+    for role_index, role in enumerate(measurement["roles"]):
+        root_cpu = role["root_process_cpu_seconds"]
+        root_rss = role["root_peak_rss_bytes_per_instance"]
+        target_ids = role["target_ids"]
+        successful_samples = 165888
+        role.update(
+            {
+                "descendant_process_cpu_seconds": 100.0 * len(target_ids),
+                "peak_rss_bytes_per_instance": root_rss + 1024,
+                "process_cpu_seconds": root_cpu + 100.0 * len(target_ids),
+                "process_tree_cpu_scope": "one-crawler-role-container-per-target",
+                "process_tree_cpu_source": "container-cgroup-v2",
+                "process_tree_coverage": [
+                    _complete_process_tree_coverage(
+                        target_id,
+                        start_sequence=100 + target_index,
+                        strict_start=7 + role_index * 10 + target_index,
+                    )
+                    for target_index, target_id in enumerate(target_ids)
+                ],
+                "process_tree_peak_rss_bytes_per_instance": root_rss + 1024,
+                "process_tree_successful_samples": successful_samples * len(target_ids),
+                "resource_scope": "process-tree",
+            }
+        )
+        if role["execution_class"] == "browser":
+            role["retry_coverage"] = _complete_retry_coverage(target_ids[0])
     return measurement
+
+
+def _complete_process_tree_coverage(
+    target_id: str,
+    *,
+    start_sequence: int = 100,
+    strict_start: int = 7,
+) -> dict:
+    successful_samples = 165888
+    return {
+        "boundary_tolerance_seconds": 60,
+        "counter_resets": 0,
+        "coverage_ratio": 0.96,
+        "end_covered": True,
+        "expected_samples": 172800,
+        "failed_samples": 0,
+        "gap_samples": 0,
+        "missing_samples": 6912,
+        "required_coverage_ratio": 0.95,
+        "sampler_restarts": 0,
+        "sample_interval_seconds": 0.5,
+        "start_covered": True,
+        "start_observation_sequence": start_sequence,
+        "end_observation_sequence": start_sequence + successful_samples,
+        "paired_start": True,
+        "paired_end": True,
+        "strict_timing": _complete_strict_timing(strict_start),
+        "complete": True,
+        "successful_samples": successful_samples,
+        "target_id": target_id,
+    }
 
 
 def _complete_strict_timing(start: int = 7) -> dict:
@@ -574,6 +592,20 @@ def test_process_tree_schema_requires_complete_strict_timing_evidence() -> None:
     assert list(validator.iter_errors(inconsistent))
 
 
+def test_generic_root_measurement_allows_explicit_incomplete_strict_timing() -> None:
+    schema = _json(RUNTIME_COST / "schemas/measurement-v1.schema.json")
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    measurement = _json(RUNTIME_COST / "evidence/python-production-2026-08-29-24h.json")
+    measurement["window"]["seconds"] = 3_600
+    measurement["roles"] = [measurement["roles"][0]]
+    coverage = _complete_process_tree_coverage("browser-worker-1")
+    coverage["complete"] = False
+    coverage["strict_timing"]["complete"] = False
+    measurement["roles"][0]["process_tree_coverage"] = [coverage]
+
+    assert list(validator.iter_errors(measurement)) == []
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [
@@ -705,6 +737,30 @@ def test_model_rejects_86400_second_target_loss() -> None:
     measurement["roles"][1]["target_ids"].pop()
 
     with pytest.raises(ModelError, match="exact six-target fleet"):
+        project_runtime_cost(workload, measurement, pricing)
+
+
+@pytest.mark.parametrize(
+    "fleet_fault",
+    ["single", "missing", "extra", "incomplete-threshold"],
+)
+def test_model_rejects_strict_process_tree_promotion_without_exact_fleet(
+    fleet_fault: str,
+) -> None:
+    workload = _json(RUNTIME_COST / "projected-workload-v1.json")
+    measurement = _committed_process_tree_measurement()
+    measurement["window"]["seconds"] = 3_600
+    pricing = _json(RUNTIME_COST / "pricing/hetzner-eu-2026-06-15.json")
+    if fleet_fault == "single":
+        measurement["roles"] = [measurement["roles"][0]]
+    elif fleet_fault == "missing":
+        measurement["roles"].pop()
+    elif fleet_fault == "incomplete-threshold":
+        measurement["roles"][-1]["resource_scope"] = "root-process"
+    else:
+        measurement["roles"][0]["target_ids"].append("extra-target")
+
+    with pytest.raises(ModelError, match="exact complete six-target fleet"):
         project_runtime_cost(workload, measurement, pricing)
 
 
@@ -1270,9 +1326,17 @@ def _synthetic_capture_query(
             labels = {
                 "job": "crawler",
                 "instance": "browser-1",
-                "prometheus_replica": "replica-a",
+                "prometheus_replica": (
+                    "replica-b"
+                    if fault == "timing-mixed-phase-source" and index > 0
+                    else "replica-a"
+                ),
                 "phase": phase,
             }
+            if fault == "timing-source-identity-drift" and at == end_at and not reset_query:
+                labels["prometheus_replica"] = "replica-b"
+            if fault == "timing-reset-source-identity-drift" and reset_query:
+                labels["prometheus_replica"] = "replica-b"
             if not reset_query:
                 labels["__name__"] = (
                     "crawler_runtime_process_tree_sampler_timing_limit_violations_total"
@@ -1397,7 +1461,7 @@ def _synthetic_capture_query(
     return fake_query
 
 
-def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
+def test_single_target_capture_keeps_strict_process_tree_evidence_incomplete() -> None:
     targets = {
         "schema_version": "jobseek.crawler-runtime-capture-targets/v1",
         "revision": "browser-tree-targets",
@@ -1456,16 +1520,16 @@ def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
     )
 
     role = result["roles"][0]
-    assert role["resource_scope"] == "process-tree"
+    assert role["resource_scope"] == "root-process"
     assert role["root_process_cpu_seconds"] == 10
-    assert role["descendant_process_cpu_seconds"] == 2
-    assert role["process_cpu_seconds"] == 12
-    assert role["process_tree_cpu_source"] == "container-cgroup-v2"
-    assert role["process_tree_cpu_scope"] == "one-crawler-role-container-per-target"
+    assert role["descendant_process_cpu_seconds"] is None
+    assert role["process_cpu_seconds"] == 10
+    assert role["process_tree_cpu_source"] is None
+    assert role["process_tree_cpu_scope"] is None
     assert role["root_peak_rss_bytes_per_instance"] == 128
-    assert role["process_tree_peak_rss_bytes_per_instance"] == 512
-    assert role["peak_rss_bytes_per_instance"] == 512
-    assert role["process_tree_successful_samples"] == 7200
+    assert role["process_tree_peak_rss_bytes_per_instance"] is None
+    assert role["peak_rss_bytes_per_instance"] == 128
+    assert role["process_tree_successful_samples"] is None
     assert role["process_tree_coverage"] == [
         {
             "boundary_tolerance_seconds": 60,
@@ -1484,15 +1548,19 @@ def test_prometheus_capture_includes_complete_browser_process_tree() -> None:
             "end_observation_sequence": 7300,
             "paired_start": True,
             "paired_end": True,
-            "strict_timing": _complete_strict_timing(),
-            "complete": True,
+            "strict_timing": {**_complete_strict_timing(), "complete": False},
+            "complete": False,
             "successful_samples": 7200,
             "target_id": "browser-a",
         }
     ]
     assert any("crawler_runtime_process_tree_resident_memory_bytes" in item for item in queries)
     assert all("process_tree_peak_resident_memory_bytes" not in item for item in queries)
-    assert "browser-child-cpu-and-rss-not-in-process-metrics" not in result["evidence_gaps"]
+    assert "browser-child-cpu-and-rss-not-in-process-metrics" in result["evidence_gaps"]
+    schema = _json(RUNTIME_COST / "schemas/measurement-v1.schema.json")
+    assert (
+        list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(result)) == []
+    )
 
 
 def test_prometheus_capture_rejects_partial_process_tree_role_coverage() -> None:
@@ -1563,28 +1631,13 @@ def test_prometheus_capture_rejects_partial_process_tree_role_coverage() -> None
         "timing-positive-delta",
         "timing-fractional",
         "timing-negative",
+        "timing-mixed-phase-source",
+        "timing-source-identity-drift",
+        "timing-reset-source-identity-drift",
     ],
 )
 def test_prometheus_capture_fails_closed_for_incomplete_tree_window(fault: str) -> None:
-    targets = {
-        "schema_version": "jobseek.crawler-runtime-capture-targets/v1",
-        "revision": "adversarial-browser-tree-targets",
-        "workload_revision": "test-v1",
-        "implementation": "python-playwright",
-        "targets": [
-            {
-                "id": "browser-a",
-                "instance": "browser-1",
-                "role": "browser-worker",
-                "execution_class": "browser",
-                "cost_category": "browser",
-                "discovery_concurrency": 7,
-                "monitor_concurrency": 4,
-                "vcpu_limit": 3,
-                "memory_limit_bytes": 4096,
-            }
-        ],
-    }
+    targets = _json(RUNTIME_COST / "python-production-targets-v1.json")
     end_at = datetime(2026, 8, 29, 12, tzinfo=UTC)
 
     def fake_query(expression: str, at: datetime) -> list[dict]:
@@ -1596,7 +1649,7 @@ def test_prometheus_capture_fails_closed_for_incomplete_tree_window(fault: str) 
         }.get(fault, fault)
         return _synthetic_capture_query(
             end_at,
-            window_seconds=3600,
+            window_seconds=1_800,
             fault=mapped_fault,
         )(expression, at)
 
@@ -1604,7 +1657,7 @@ def test_prometheus_capture_fails_closed_for_incomplete_tree_window(fault: str) 
         targets,
         query=fake_query,
         end_at=end_at,
-        window_seconds=3600,
+        window_seconds=1_800,
         source_revision=f"fault-{fault}",
     )
 
@@ -1616,8 +1669,14 @@ def test_prometheus_capture_fails_closed_for_incomplete_tree_window(fault: str) 
     assert "browser-child-cpu-and-rss-not-in-process-metrics" in result["evidence_gaps"]
 
 
-@pytest.mark.parametrize("interval_seconds", [0.5, 1.0])
-def test_exact_86400_second_six_target_capture_is_complete(interval_seconds: float) -> None:
+@pytest.mark.parametrize(
+    ("window_seconds", "interval_seconds"),
+    [(1_800, 0.5), (86_400, 0.5), (86_400, 1.0)],
+)
+def test_exact_six_target_strict_capture_is_complete(
+    window_seconds: int,
+    interval_seconds: float,
+) -> None:
     targets = _json(RUNTIME_COST / "python-production-targets-v1.json")
     end_at = datetime(2026, 9, 2, 0, tzinfo=UTC)
 
@@ -1625,11 +1684,11 @@ def test_exact_86400_second_six_target_capture_is_complete(interval_seconds: flo
         targets,
         query=_synthetic_capture_query(
             end_at,
-            window_seconds=86_400,
+            window_seconds=window_seconds,
             interval_seconds=interval_seconds,
         ),
         end_at=end_at,
-        window_seconds=86_400,
+        window_seconds=window_seconds,
         source_revision="synthetic-six-target",
     )
 
@@ -1642,7 +1701,7 @@ def test_exact_86400_second_six_target_capture_is_complete(interval_seconds: flo
         "drain-1",
     }
     assert all(role["resource_scope"] == "process-tree" for role in result["roles"])
-    expected = int(86_400 / interval_seconds)
+    expected = int(window_seconds / interval_seconds)
     assert all(
         item["expected_samples"] == expected
         and item["successful_samples"] == expected
@@ -1664,6 +1723,80 @@ def test_exact_86400_second_six_target_capture_is_complete(interval_seconds: flo
         _json(RUNTIME_COST / "pricing/hetzner-eu-2026-06-15.json"),
     )
     assert "browser-child-cpu-and-rss-not-in-process-metrics" not in projection["blockers"]
+
+
+@pytest.mark.parametrize("fleet_fault", ["missing", "extra", "duplicate"])
+def test_1800_second_strict_capture_rejects_inexact_fleet(fleet_fault: str) -> None:
+    targets = _json(RUNTIME_COST / "python-production-targets-v1.json")
+    if fleet_fault == "missing":
+        targets["targets"].pop()
+    else:
+        added = deepcopy(targets["targets"][0])
+        added["id"] = f"{fleet_fault}-worker"
+        if fleet_fault == "extra":
+            added["instance"] = "worker-extra"
+        targets["targets"].append(added)
+    end_at = datetime(2026, 9, 2, 0, tzinfo=UTC)
+
+    result = capture_prometheus_measurement(
+        targets,
+        query=_synthetic_capture_query(end_at, window_seconds=1_800),
+        end_at=end_at,
+        window_seconds=1_800,
+        source_revision=f"synthetic-{fleet_fault}-fleet",
+    )
+
+    assert all(role["resource_scope"] == "root-process" for role in result["roles"])
+    assert all(
+        coverage["complete"] is False and coverage["strict_timing"]["complete"] is False
+        for role in result["roles"]
+        for coverage in role["process_tree_coverage"]
+    )
+    schema = _json(RUNTIME_COST / "schemas/measurement-v1.schema.json")
+    assert (
+        list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(result)) == []
+    )
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "timing-mixed-phase-source",
+        "timing-source-identity-drift",
+        "timing-reset-source-identity-drift",
+    ],
+)
+def test_exact_fleet_strict_timing_rejects_ambiguous_source_identity(fault: str) -> None:
+    targets = _json(RUNTIME_COST / "python-production-targets-v1.json")
+    end_at = datetime(2026, 9, 2, 0, tzinfo=UTC)
+
+    result = capture_prometheus_measurement(
+        targets,
+        query=_synthetic_capture_query(
+            end_at,
+            window_seconds=1_800,
+            fault=fault,
+        ),
+        end_at=end_at,
+        window_seconds=1_800,
+        source_revision=f"synthetic-{fault}",
+    )
+
+    assert all(role["resource_scope"] == "root-process" for role in result["roles"])
+    assert all(
+        coverage["strict_timing"]["complete"] is False
+        for role in result["roles"]
+        for coverage in role["process_tree_coverage"]
+    )
+    assert all(
+        phase["start"] == 7
+        and phase["end"] == 7
+        and phase["violations"] == 0
+        and phase["resets"] == 0
+        for role in result["roles"]
+        for coverage in role["process_tree_coverage"]
+        for phase in coverage["strict_timing"]["phases"]
+    )
 
 
 @pytest.mark.parametrize(

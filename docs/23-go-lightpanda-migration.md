@@ -191,12 +191,21 @@ The count shares the histogram's atomic child snapshot and remains monotonic
 through sampler-child replacement. Capture retains raw integer start/end
 values, their exact difference, and per-series reset counts for every phase.
 Complete process-tree evidence requires the exact phase set, unchanged source
-identity, zero resets, zero differences, and `limit_seconds` exactly 0.25.
+identity shared by all three phase children, zero resets, zero differences,
+and `limit_seconds` exactly 0.25. Strict process-tree promotion also requires
+the complete exact six-target production fleet; a generic smaller capture
+retains its raw strict object as incomplete and stays at root-process scope.
 Missing, extra, duplicate, fractional, negative, regressing, or threshold-
 mismatched evidence fails closed; `increase()` and inclusive histogram buckets
 are not accepted as strict-maximum proof. Historical generic measurement-v1
 root-process evidence remains valid because the strict object is additive, but
 all newly promoted complete process-tree coverage requires it.
+
+Installed-image lifecycle smoke treats these counters as structural evidence:
+it requires exactly the three bounded labels and finite non-negative integer
+values, but permits nonzero values on a contended hosted runner. Only a fresh
+production capture proves performance, using zero reset-free raw boundary
+deltas for every phase on every target.
 
 Navigation-network, content, and target-closed retry children are pre-created
 for every declared bounded reason/outcome, including healthy zeros. The
