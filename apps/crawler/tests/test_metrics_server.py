@@ -23,7 +23,12 @@ from src.metrics import (
     _start_metrics_http_server,
     start_metrics_server,
 )
-from src.runtime_cost.process_tree import ProcessTreeSample
+from src.runtime_cost.process_tree import (
+    SAMPLER_TIMING_BUCKETS,
+    ProcessTreeSample,
+    SamplerMetricsSnapshot,
+    TimingHistogramSnapshot,
+)
 
 
 def _reset_connection(port: int) -> None:
@@ -93,6 +98,105 @@ def test_process_tree_exposition_keeps_one_generation_during_concurrent_publish(
             samples[("crawler_runtime_process_tree_observation_unixtime_seconds", labels)]
             == 1_800_000_001
         )
+
+
+def test_process_tree_exposition_includes_isolated_process_causal_evidence() -> None:
+    collector = _ProcessTreeMetricsCollector()
+    histogram = TimingHistogramSnapshot(
+        bucket_counts=(0, 0, *([1] * (len(SAMPLER_TIMING_BUCKETS) - 2))),
+        count=1,
+        sum_seconds=0.01,
+    )
+    snapshot = SamplerMetricsSnapshot(
+        sample=_sample(3),
+        successes=3,
+        failures=1,
+        scheduler_late_gaps=2,
+        collection_overrun_gaps=4,
+        starts=2,
+        wake_lateness=histogram,
+        collection_duration=histogram,
+        handoff_duration=histogram,
+    )
+    collector.attach(0.5, lambda: snapshot)
+
+    samples = {
+        (sample.name, tuple(sorted(sample.labels.items()))): sample.value
+        for family in collector.collect()
+        for sample in family.samples
+    }
+
+    assert samples[("crawler_runtime_process_tree_samples_total", (("outcome", "success"),))] == 3
+    assert samples[("crawler_runtime_process_tree_samples_total", (("outcome", "failure"),))] == 1
+    assert samples[("crawler_runtime_process_tree_sampling_gaps_total", ())] == 6
+    assert (
+        samples[
+            (
+                "crawler_runtime_process_tree_sampling_gap_reasons_total",
+                (("reason", "scheduler_late"),),
+            )
+        ]
+        == 2
+    )
+    assert (
+        samples[
+            (
+                "crawler_runtime_process_tree_sampling_gap_reasons_total",
+                (("reason", "collection_overrun"),),
+            )
+        ]
+        == 4
+    )
+    assert samples[("crawler_runtime_process_tree_sampler_starts_total", ())] == 2
+    assert samples[("crawler_runtime_process_tree_sampler_wake_lateness_seconds_count", ())] == 1
+    assert samples[("crawler_runtime_process_tree_sampler_wake_lateness_seconds_sum", ())] == 0.01
+    assert (
+        samples[
+            (
+                "crawler_runtime_process_tree_sampler_wake_lateness_seconds_bucket",
+                (("le", "0.01"),),
+            )
+        ]
+        == 1
+    )
+
+
+def test_process_tree_source_failure_is_persistent_and_metrics_endpoint_stays_available() -> None:
+    collector = _ProcessTreeMetricsCollector()
+    calls = 0
+    empty = TimingHistogramSnapshot.empty()
+    healthy = SamplerMetricsSnapshot(
+        sample=_sample(1),
+        successes=1,
+        failures=0,
+        scheduler_late_gaps=0,
+        collection_overrun_gaps=0,
+        starts=1,
+        wake_lateness=empty,
+        collection_duration=empty,
+        handoff_duration=empty,
+    )
+
+    def source() -> SamplerMetricsSnapshot:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("synthetic IPC failure")
+        return healthy
+
+    collector.attach(0.5, source)
+    first = list(collector.collect())
+    second = list(collector.collect())
+    failures = [
+        sample.value
+        for family in second
+        for sample in family.samples
+        if sample.name == "crawler_runtime_process_tree_samples_total"
+        and sample.labels == {"outcome": "failure"}
+    ]
+
+    assert first
+    assert failures == [1]
 
 
 def test_fresh_process_seeds_every_browser_retry_child_at_zero() -> None:

@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+import ctypes
+import multiprocessing
+import os
+import signal
+import sys
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -9,6 +16,11 @@ import pytest
 from src.runtime_cost.process_tree import (
     ProcessTreeSample,
     ProcessTreeSampler,
+    ProcessTreeSamplerProcess,
+    TimingHistogramSnapshot,
+    _decode_sampler_snapshot,
+    _encode_sampler_snapshot,
+    _SamplerChildSnapshot,
     parse_proc_stat,
     run_process_tree_sampler,
 )
@@ -81,10 +93,16 @@ class _VirtualClock:
 
 
 class _VirtualStopEvent:
-    def __init__(self, clock: _VirtualClock) -> None:
+    def __init__(
+        self,
+        clock: _VirtualClock,
+        *,
+        oversleep_seconds: list[float] | None = None,
+    ) -> None:
         self.clock = clock
         self.waits: list[float] = []
         self.stopped = False
+        self.oversleep_seconds = iter(oversleep_seconds or [])
 
     def is_set(self) -> bool:
         return self.stopped
@@ -92,9 +110,10 @@ class _VirtualStopEvent:
     def set(self) -> None:
         self.stopped = True
 
-    def wait(self, seconds: float) -> bool:
-        self.waits.append(seconds)
-        self.clock.advance(seconds)
+    def wait(self, timeout: float | None = None) -> bool:
+        assert timeout is not None
+        self.waits.append(timeout)
+        self.clock.advance(timeout + next(self.oversleep_seconds, 0.0))
         return self.stopped
 
 
@@ -127,10 +146,14 @@ def _run_virtual_sampler(
     sampler: _WorkingSampler,
     *,
     observations: int,
-) -> tuple[list[ProcessTreeSample], list[int], int, _VirtualStopEvent]:
-    stop_event = _VirtualStopEvent(sampler.clock)
+    oversleep_seconds: list[float] | None = None,
+) -> tuple[list[ProcessTreeSample], list[tuple[str, int]], int, _VirtualStopEvent]:
+    stop_event = _VirtualStopEvent(
+        sampler.clock,
+        oversleep_seconds=oversleep_seconds,
+    )
     observed: list[ProcessTreeSample] = []
-    gaps: list[int] = []
+    gaps: list[tuple[str, int]] = []
     failures = 0
 
     def observe(sample: ProcessTreeSample) -> None:
@@ -148,7 +171,7 @@ def _run_virtual_sampler(
         stop_event=stop_event,  # type: ignore[arg-type]
         observe=observe,
         record_failure=record_failure,
-        record_gap=gaps.append,
+        record_gap=lambda reason, count: gaps.append((reason, count)),
         monotonic=sampler.clock.monotonic,
     )
     return observed, gaps, failures, stop_event
@@ -302,6 +325,36 @@ def test_sampler_fails_closed_when_root_is_missing(tmp_path: Path) -> None:
         sampler.sample()
 
 
+def test_sampler_handles_high_process_count_and_disappearing_proc_entries(
+    tmp_path: Path,
+) -> None:
+    records = {20: _stat(20, 1, user_ticks=100, rss_pages=2)}
+    records.update({pid: _stat(pid, 20, user_ticks=1, rss_pages=1) for pid in range(1000, 1600)})
+    _snapshot(tmp_path, records)
+    # One descendant disappears after enumeration in production. Leaving its
+    # directory without stat deterministically exercises the same fail-open
+    # proc read while preserving the rest of the complete generation.
+    (tmp_path / "1599" / "stat").unlink()
+    sampler = ProcessTreeSampler(
+        root_pid=20,
+        proc_root=tmp_path,
+        cgroup_cpu_stat_path=_cgroup_cpu(tmp_path, 10_000_000),
+        clock_ticks_per_second=100,
+        page_size_bytes=4096,
+        interval_seconds=0.5,
+    )
+
+    started_at = time.monotonic()
+    sample = sampler.sample()
+    elapsed = time.monotonic() - started_at
+
+    assert sample.descendant_count == 599
+    assert sample.root_rss_bytes == 2 * 4096
+    assert sample.process_tree_rss_bytes == 601 * 4096
+    assert sample.process_tree_cpu_seconds >= sample.root_cpu_seconds
+    assert elapsed < sampler.interval_seconds
+
+
 def test_sampling_loop_is_deadline_anchored_with_nonzero_work() -> None:
     clock = _VirtualClock()
     sampler = _WorkingSampler(
@@ -332,7 +385,7 @@ def test_sampling_loop_counts_exact_overrun_gaps_without_catch_up() -> None:
     assert len(observed) == 2
     assert sampler.started_at == pytest.approx([0, 1.5])
     assert stop_event.waits == pytest.approx([0.3])
-    assert gaps == [2]
+    assert gaps == [("collection_overrun", 2)]
     assert failures == 0
 
 
@@ -347,7 +400,7 @@ def test_sampling_loop_counts_deadline_boundary_as_skipped() -> None:
     _, gaps, _, _ = _run_virtual_sampler(sampler, observations=2)
 
     assert sampler.started_at == pytest.approx([0, 2])
-    assert gaps == [3]
+    assert gaps == [("collection_overrun", 3)]
 
 
 def test_sampling_failure_and_overrun_gap_are_accounted_independently() -> None:
@@ -363,8 +416,279 @@ def test_sampling_failure_and_overrun_gap_are_accounted_independently() -> None:
 
     assert len(observed) == 1
     assert sampler.started_at == pytest.approx([0, 1.5])
-    assert gaps == [2]
+    assert gaps == [("collection_overrun", 2)]
     assert failures == 1
+
+
+def test_sampling_loop_classifies_wake_lateness_and_collection_overrun_exactly() -> None:
+    clock = _VirtualClock()
+    sampler = _WorkingSampler(
+        clock,
+        interval_seconds=0.5,
+        work_seconds=[0.1, 0.4],
+    )
+
+    observed, gaps, failures, _ = _run_virtual_sampler(
+        sampler,
+        observations=2,
+        oversleep_seconds=[0.8],
+    )
+
+    assert len(observed) == 2
+    assert sampler.started_at == pytest.approx([0, 1.3])
+    assert gaps == [("scheduler_late", 1), ("collection_overrun", 1)]
+    assert sum(count for _reason, count in gaps) == 2
+    assert failures == 0
+
+
+class _LongScheduleSampler:
+    def __init__(self, clock: _VirtualClock, interval_seconds: float) -> None:
+        self.clock = clock
+        self.interval_seconds = interval_seconds
+        self.attempts = 0
+        self.first_started_at: float | None = None
+        self.last_started_at: float | None = None
+
+    def sample(self) -> ProcessTreeSample:
+        self.attempts += 1
+        started_at = self.clock.monotonic()
+        if self.first_started_at is None:
+            self.first_started_at = started_at
+        self.last_started_at = started_at
+        return _sample(self.attempts, started_at, self.interval_seconds)
+
+
+@pytest.mark.parametrize("interval_seconds", [0.5, 1.0])
+def test_sampling_loop_conserves_simulated_86400_second_schedule(
+    interval_seconds: float,
+) -> None:
+    clock = _VirtualClock()
+    sampler = _LongScheduleSampler(clock, interval_seconds)
+    stop_event = _VirtualStopEvent(clock)
+    expected_samples = int(86_400 / interval_seconds)
+    observed = 0
+    gaps: list[tuple[str, int]] = []
+
+    def observe(_sample: ProcessTreeSample) -> None:
+        nonlocal observed
+        observed += 1
+        if observed == expected_samples:
+            stop_event.set()
+
+    run_process_tree_sampler(
+        sampler,  # type: ignore[arg-type]
+        interval_seconds=interval_seconds,
+        stop_event=stop_event,
+        observe=observe,
+        record_failure=_ignore_call,
+        record_gap=lambda reason, count: gaps.append((reason, count)),
+        monotonic=clock.monotonic,
+    )
+
+    assert observed == expected_samples
+    assert sampler.attempts == expected_samples
+    assert sampler.first_started_at == 0
+    assert sampler.last_started_at == pytest.approx(86_400 - interval_seconds)
+    assert gaps == []
+
+
+def _child_snapshot(sequence: int = 1) -> _SamplerChildSnapshot:
+    empty = TimingHistogramSnapshot.empty()
+    return _SamplerChildSnapshot(
+        emitted_monotonic_seconds=10.0,
+        sample=_sample(sequence, 10.0, 0.5),
+        successes=sequence,
+        failures=0,
+        scheduler_late_gaps=0,
+        collection_overrun_gaps=0,
+        wake_lateness=empty,
+        collection_duration=empty,
+        handoff_duration=empty,
+    )
+
+
+def test_sampler_ipc_rejects_partial_frame_without_replacing_complete_snapshot() -> None:
+    expected = _child_snapshot()
+    encoded = _encode_sampler_snapshot(expected)
+
+    assert _decode_sampler_snapshot(encoded) == expected
+    for truncated in (encoded[:1], encoded[:-1], encoded[: len(encoded) // 2]):
+        with pytest.raises(ValueError, match="complete JSON"):
+            _decode_sampler_snapshot(truncated)
+    assert _decode_sampler_snapshot(encoded) == expected
+
+
+def _wait_for_process_snapshot(
+    sampler_process: ProcessTreeSamplerProcess,
+    predicate,
+    *,
+    timeout: float = 8.0,
+):
+    deadline = time.monotonic() + timeout
+    latest = sampler_process.snapshot()
+    while not predicate(latest) and time.monotonic() < deadline:
+        time.sleep(0.02)
+        latest = sampler_process.snapshot()
+    assert predicate(latest), latest
+    return latest
+
+
+def _fake_process_tree_paths(tmp_path: Path) -> tuple[Path, Path]:
+    proc_root = tmp_path / "proc"
+    proc_root.mkdir()
+    _snapshot(proc_root, {20: _stat(20, 1, user_ticks=10, rss_pages=2)})
+    return proc_root, _cgroup_cpu(tmp_path, 1_000_000)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="requires POSIX process and libc behavior")
+def test_sampler_process_keeps_half_second_cadence_during_parent_gil_hold(
+    tmp_path: Path,
+) -> None:
+    proc_root, cgroup_cpu_path = _fake_process_tree_paths(tmp_path)
+    sampler_process = ProcessTreeSamplerProcess(
+        root_pid=20,
+        proc_root=proc_root,
+        cgroup_cpu_stat_path=cgroup_cpu_path,
+        interval_seconds=0.5,
+        process_context=multiprocessing.get_context("spawn"),
+    )
+    thread_stop = threading.Event()
+    thread_started = threading.Event()
+    thread_gaps: list[tuple[str, int]] = []
+    thread_sampler = ProcessTreeSampler(
+        root_pid=20,
+        proc_root=proc_root,
+        cgroup_cpu_stat_path=cgroup_cpu_path,
+        interval_seconds=0.5,
+    )
+
+    def observe_thread(_sample: ProcessTreeSample) -> None:
+        if thread_started.is_set():
+            thread_stop.set()
+        thread_started.set()
+
+    old_thread = threading.Thread(
+        target=run_process_tree_sampler,
+        kwargs={
+            "sampler": thread_sampler,
+            "interval_seconds": 0.5,
+            "stop_event": thread_stop,
+            "observe": observe_thread,
+            "record_failure": _ignore_call,
+            "record_gap": lambda reason, count: thread_gaps.append((reason, count)),
+        },
+    )
+    old_thread_started = False
+    try:
+        initial = _wait_for_process_snapshot(
+            sampler_process,
+            lambda snapshot: snapshot.successes >= 1,
+        )
+        old_thread.start()
+        old_thread_started = True
+        assert thread_started.wait(timeout=2)
+
+        libc = ctypes.PyDLL(None)
+        try:
+            usleep = libc.usleep
+        except AttributeError:
+            pytest.skip("libc does not expose usleep")
+        usleep.argtypes = [ctypes.c_uint]
+        usleep.restype = ctypes.c_int
+        assert usleep(1_100_000) == 0
+
+        process_after_hold = _wait_for_process_snapshot(
+            sampler_process,
+            lambda snapshot: snapshot.successes >= initial.successes + 2,
+        )
+        old_thread.join(timeout=2)
+
+        assert process_after_hold.scheduler_late_gaps == 0
+        assert process_after_hold.collection_overrun_gaps == 0
+        assert not old_thread.is_alive()
+        assert sum(count for reason, count in thread_gaps if reason == "scheduler_late") >= 1
+    finally:
+        thread_stop.set()
+        if old_thread_started:
+            old_thread.join(timeout=2)
+        sampler_process.close()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="requires POSIX process signals")
+def test_sampler_process_death_fails_closed_and_restarts_with_monotonic_counters(
+    tmp_path: Path,
+) -> None:
+    proc_root, cgroup_cpu_path = _fake_process_tree_paths(tmp_path)
+    sampler_process = ProcessTreeSamplerProcess(
+        root_pid=20,
+        proc_root=proc_root,
+        cgroup_cpu_stat_path=cgroup_cpu_path,
+        interval_seconds=0.5,
+        process_context=multiprocessing.get_context("spawn"),
+    )
+    try:
+        before = _wait_for_process_snapshot(
+            sampler_process,
+            lambda snapshot: snapshot.successes >= 1,
+        )
+        old_pid = sampler_process.child_pid
+        assert old_pid is not None
+        os.kill(old_pid, signal.SIGKILL)
+
+        restarted = _wait_for_process_snapshot(
+            sampler_process,
+            lambda snapshot: snapshot.starts >= 2 and snapshot.failures >= 1,
+        )
+        new_pid = sampler_process.child_pid
+        assert new_pid is not None and new_pid != old_pid
+        recovered = _wait_for_process_snapshot(
+            sampler_process,
+            lambda snapshot: snapshot.successes > before.successes,
+        )
+
+        assert restarted.starts == 2
+        assert recovered.starts == 2
+        assert recovered.successes > before.successes
+        assert recovered.failures >= 1
+        assert recovered.sample is not None
+        assert recovered.sample.process_tree_cpu_seconds >= recovered.sample.root_cpu_seconds
+        assert recovered.sample.process_tree_rss_bytes >= recovered.sample.root_rss_bytes
+    finally:
+        sampler_process.close()
+
+    assert sampler_process.child_pid is None
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="requires POSIX process signals")
+def test_sampler_process_stale_output_fails_closed_and_restarts(tmp_path: Path) -> None:
+    proc_root, cgroup_cpu_path = _fake_process_tree_paths(tmp_path)
+    sampler_process = ProcessTreeSamplerProcess(
+        root_pid=20,
+        proc_root=proc_root,
+        cgroup_cpu_stat_path=cgroup_cpu_path,
+        interval_seconds=0.1,
+        stale_after_seconds=0.2,
+        process_context=multiprocessing.get_context("spawn"),
+    )
+    try:
+        before = _wait_for_process_snapshot(
+            sampler_process,
+            lambda snapshot: snapshot.successes >= 1,
+        )
+        old_pid = sampler_process.child_pid
+        assert old_pid is not None
+        os.kill(old_pid, signal.SIGSTOP)
+        time.sleep(0.3)
+
+        restarted = _wait_for_process_snapshot(
+            sampler_process,
+            lambda snapshot: snapshot.starts == 2 and snapshot.failures >= 1,
+        )
+
+        assert restarted.successes >= before.successes
+        assert sampler_process.child_pid not in (None, old_pid)
+    finally:
+        sampler_process.close()
 
 
 @pytest.mark.parametrize("interval_seconds", [0, -0.5, 1.01])
@@ -403,5 +727,5 @@ def _ignore_call() -> None:
     pass
 
 
-def _ignore_gap(_gaps: int) -> None:
+def _ignore_gap(_reason: str, _gaps: int) -> None:
     pass

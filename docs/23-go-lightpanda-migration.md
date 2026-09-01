@@ -153,6 +153,27 @@ paired root value; the adapter also checks the in-window paired margins.
 Cgroup CPU remains exit-safe for Chromium children that disappear between
 `/proc` traversals.
 
+#8405 isolates those absolute deadlines and `/proc` reads in one spawned
+sampler process inside the same crawler container and cgroup. The process is a
+descendant of the exact crawler root, so its bounded monitoring overhead stays
+inside the tree totals while root-process totals retain their prior meaning.
+The child publishes cumulative evidence over bounded Unix datagrams: each
+datagram is an atomic complete snapshot, truncated or malformed frames are
+discarded, and the parent never assembles fields from separate generations.
+The parent supervisor preserves monotonic counters across a child replacement;
+death, stale output, malformed IPC, and a restart all remain explicit failure
+or start evidence that blocks capture promotion.
+
+Skipped deadlines retain the existing total counter and are additionally
+partitioned, exactly once, into `scheduler_late` deadlines that elapsed before
+collection began and `collection_overrun` deadlines that elapsed during
+collection or handoff. Bounded, label-free histograms expose wake lateness,
+collection duration, and handoff duration. The capture schema stays backward
+compatible and continues to reject any total gap, failure, reset, or sampler
+restart; the reason and timing metrics provide causal burn-in evidence rather
+than relaxing that gate. Sampling interval, workload, browser concurrency,
+container CPU quota, and host size are not changed by this isolation repair.
+
 Navigation-network, content, and target-closed retry children are pre-created
 for every declared bounded reason/outcome, including healthy zeros. The
 target-closed counter emits one `outcome="retry"` at the accepted redispatch
