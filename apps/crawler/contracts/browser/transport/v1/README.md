@@ -33,12 +33,40 @@ Positive observed bytes make a failed, cancelled, or closed lifecycle one
 death is `target_closed`, ordinary teardown is `cancelled`, and the remaining
 bounded terminal classes are frozen in the registry.
 
-The public-CDP observer must attach recursively to page, OOPIF/iframe,
-dedicated/shared worker, and service-worker targets and enable `Network` before
-accepting complete byte evidence. Missing coverage is
-`byte_lifecycle_missing`, never an inferred healthy zero. Teardown freezes new
-admission, terminalizes live records, drains for exactly 5.0 seconds, records a
-bounded `drain_timeout` if needed, then detaches public listeners/sessions.
+Chromium is launched normally by Playwright with a randomly reserved debugging
+port bound only to `127.0.0.1`. A separate raw WebSocket controller discovers
+the public browser endpoint at that exact loopback origin. It does not use
+Playwright private connections, browser-level `CDPSession`,
+`connect_over_cdp`, host publishing, credentials, query tokens, or relaxed
+remote-origin flags.
+
+The controller sends `Target.setAutoAttach` with `flatten=true`,
+`waitForDebuggerOnStart=true`, and an explicit filter for page, OOPIF/iframe,
+dedicated worker, shared worker, and service-worker targets. Every accepted
+target is armed recursively in this order: child `Target.setAutoAttach`
+acknowledgement, `Network.enable` acknowledgement, then
+`Runtime.runIfWaitingForDebugger` acknowledgement. A session is not a complete
+byte source until that sequence succeeds; events queued before the
+`Network.enable` acknowledgement remain outside the accounting boundary.
+Ready is published only after target setup and incoming envelopes are stable.
+
+Request identity is `(browser_generation, session_id, request_id,
+redirect_hop)`. Attribution and request class freeze at
+`Network.requestWillBeSent`; sparse follow-ups never rerun the classifier.
+Exact request-event replay across a reattached session aliases the existing
+attempt. Chromium bootstrap tails reparented from a page to its newly attached
+iframe/worker session may alias the one unambiguous current request with the
+same request id. A different declaration with a reused id is a new attempt,
+while ambiguity or malformed relevant evidence fails closed. Valid unrelated
+`Network.*` notifications are ignored. Cache, prefetch, and service-worker
+wrappers proven to perform no transport are suppressed so their underlying
+network attempt is counted once.
+
+Teardown freezes new admission and uses one absolute 5.0-second deadline across
+both target barriers, recursively spawned setup tasks, incoming envelopes, and
+live-record terminalization. Timeout records the bounded `drain_timeout`, then
+the raw WebSocket and reader are closed. Cleanup is cancellation-safe and the
+caller's cancellation is re-raised after cleanup.
 
 ## Exact cardinality ledger
 

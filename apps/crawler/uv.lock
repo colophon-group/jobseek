@@ -902,6 +902,7 @@ dependencies = [
     { name = "typesense" },
     { name = "tzdata" },
     { name = "upstash-redis" },
+    { name = "websockets" },
 ]
 
 [package.optional-dependencies]
@@ -960,6 +961,7 @@ requires-dist = [
     { name = "typesense", specifier = ">=0.21" },
     { name = "tzdata", specifier = ">=2026.3" },
     { name = "upstash-redis", specifier = ">=1.7.0" },
+    { name = "websockets", specifier = ">=16.0" },
 ]
 provides-extras = ["enrich"]
 

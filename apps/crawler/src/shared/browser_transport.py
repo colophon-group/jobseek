@@ -10,13 +10,19 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import socket
 from collections import Counter
-from collections.abc import Callable, Coroutine, Iterable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
+from contextlib import suppress
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Protocol, cast
+from urllib.parse import urlsplit
+
+import httpx
+from websockets.asyncio.client import connect as connect_websocket
 
 REGISTRY_SCHEMA = "jobseek.browser-transport-registry/v1"
 CAPTURE_SCHEMA = "jobseek.browser-transport-capture-fixture/v1"
@@ -555,8 +561,8 @@ class RequestDeclaration:
 
 @dataclass(frozen=True, slots=True)
 class RequestKey:
-    task_id: str
-    target_id: str
+    browser_generation: int
+    session_id: str
     request_id: str
     redirect_hop: int
 
@@ -564,11 +570,16 @@ class RequestKey:
 @dataclass(slots=True)
 class _RequestRecord:
     key: RequestKey
+    task_id: str
+    target_id: str
+    target_type: str
     attribution: TaskAttribution
     request_class: RequestClass
     observer_complete: bool
     encoded_bytes: int = 0
     seen_data_events: set[str] = field(default_factory=set)
+    seen_terminal_events: set[str] = field(default_factory=set)
+    suppressed_non_transport: bool = False
     terminal: TerminalOutcome | None = None
 
 
@@ -580,6 +591,7 @@ class TerminalRecord:
     outcome: TerminalOutcome
     encoded_bytes: int
     observer_complete: bool
+    target_type: str
 
 
 def classify_request(*, explicitly_warmup: bool, initial_navigation: bool) -> RequestClass:
@@ -593,22 +605,38 @@ def classify_request(*, explicitly_warmup: bool, initial_navigation: bool) -> Re
 class BrowserTransportTracker:
     """Pure idempotent request lifecycle FSM; identifiers never become labels."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, browser_generation: int = 0) -> None:
+        if (
+            not isinstance(browser_generation, int)
+            or isinstance(browser_generation, bool)
+            or browser_generation < 0
+        ):
+            raise ValueError("browser_generation must be a nonnegative integer")
+        self._browser_generation = browser_generation
         self._tasks: dict[str, TaskAttribution] = {}
         self._accepted = Counter[TaskAttribution]()
         self._pretransport = Counter[tuple[Stage, PretransportReason]]()
         self._instrumentation = Counter[tuple[Stage, InstrumentationReason]]()
         self._records: dict[RequestKey, _RequestRecord] = {}
-        self._current: dict[tuple[str, str, str], RequestKey] = {}
+        self._current: dict[tuple[str, str], RequestKey] = {}
         self._terminals: list[TerminalRecord] = []
-        self._seen_request_events: set[tuple[str, str, str]] = set()
+        self._request_event_keys: dict[tuple[str, str], RequestKey] = {}
+        self._seen_rejected_request_events: set[tuple[str, str]] = set()
+        self._rejected_current: set[tuple[str, str]] = set()
         self._session_targets: dict[str, tuple[str, str]] = {}
         self._network_enabled: set[str] = set()
         self._admission_frozen = False
 
     @property
     def live_count(self) -> int:
-        return sum(record.terminal is None for record in self._records.values())
+        return sum(
+            record.terminal is None and not record.suppressed_non_transport
+            for record in self._records.values()
+        )
+
+    @property
+    def non_transport_count(self) -> int:
+        return sum(record.suppressed_non_transport for record in self._records.values())
 
     @property
     def terminals(self) -> tuple[TerminalRecord, ...]:
@@ -633,6 +661,9 @@ class BrowserTransportTracker:
         self._pretransport[(stage, reason)] += 1
 
     def accept_task(self, task_id: str, attribution: TaskAttribution) -> bool:
+        if self._admission_frozen:
+            self.instrument(attribution.stage, InstrumentationReason.LIFECYCLE_CONFLICT)
+            return False
         existing = self._tasks.get(task_id)
         if existing is None:
             self._tasks[task_id] = attribution
@@ -670,17 +701,23 @@ class BrowserTransportTracker:
         redirect_response: bool,
         stage: Stage | None = None,
     ) -> RequestKey | None:
-        if self._admission_frozen:
+        dedupe = (request_id, event_fingerprint)
+        replay_key = self._request_event_keys.get(dedupe)
+        if replay_key is not None:
+            if replay_key.session_id != session_id:
+                self._current[(session_id, request_id)] = replay_key
+            return replay_key
+        if dedupe in self._seen_rejected_request_events:
             return None
-        dedupe = (target_id, request_id, event_fingerprint)
-        if dedupe in self._seen_request_events:
-            return (
-                self._current.get((declaration.task_id, target_id, request_id))
-                if declaration
-                else None
-            )
-        self._seen_request_events.add(dedupe)
+        if self._admission_frozen:
+            self._seen_rejected_request_events.add(dedupe)
+            self._rejected_current.add((session_id, request_id))
+            for affected_stage in Stage if stage is None else (stage,):
+                self.instrument(affected_stage, InstrumentationReason.LIFECYCLE_CONFLICT)
+            return None
         if declaration is None:
+            self._seen_rejected_request_events.add(dedupe)
+            self._rejected_current.add((session_id, request_id))
             for affected_stage in Stage if stage is None else (stage,):
                 self.instrument(
                     affected_stage,
@@ -689,17 +726,19 @@ class BrowserTransportTracker:
             return None
         attribution = self._tasks.get(declaration.task_id)
         if attribution is None:
+            self._seen_rejected_request_events.add(dedupe)
+            self._rejected_current.add((session_id, request_id))
             for affected_stage in Stage if stage is None else (stage,):
                 self.instrument(affected_stage, InstrumentationReason.UNATTRIBUTED_TASK)
             return None
-        current_slot = (declaration.task_id, target_id, request_id)
+        current_slot = (session_id, request_id)
         previous_key = self._current.get(current_slot)
         if redirect_response:
             if previous_key is None:
                 self.instrument(attribution.stage, InstrumentationReason.LIFECYCLE_CONFLICT)
                 return None
             previous = self._records[previous_key]
-            if previous.terminal is not None:
+            if previous.terminal is not None or previous.suppressed_non_transport:
                 self.instrument(attribution.stage, InstrumentationReason.LIFECYCLE_CONFLICT)
                 return None
             previous.request_class = RequestClass.REDIRECT
@@ -719,9 +758,12 @@ class BrowserTransportTracker:
         )
         if not observer_complete:
             self.instrument(attribution.stage, InstrumentationReason.BYTE_LIFECYCLE_MISSING)
-        key = RequestKey(declaration.task_id, target_id, request_id, hop)
+        key = RequestKey(self._browser_generation, session_id, request_id, hop)
         record = _RequestRecord(
             key=key,
+            task_id=declaration.task_id,
+            target_id=target_id,
+            target_type=observed_target[1] if observed_target is not None else "unknown",
             attribution=attribution,
             request_class=classify_request(
                 explicitly_warmup=declaration.explicitly_warmup,
@@ -731,19 +773,59 @@ class BrowserTransportTracker:
         )
         self._records[key] = record
         self._current[current_slot] = key
+        self._request_event_keys[dedupe] = key
         return key
+
+    def associate_replayed_tail(
+        self,
+        session_id: str,
+        request_id: str,
+        *,
+        stage: Stage | None = None,
+    ) -> bool | None:
+        """Bind a sparse reparented tail iff its canonical request is unambiguous.
+
+        Chromium can declare an iframe or worker bootstrap request on its parent
+        session, then emit the response tail on the newly attached child
+        session. A tail cannot declare a new attempt. It may therefore inherit
+        the one current key with the same Chromium request id; multiple matches
+        remain ambiguous and must fail closed.
+        """
+
+        slot = (session_id, request_id)
+        if slot in self._current or slot in self._rejected_current:
+            return True
+        candidates = {
+            key
+            for (_candidate_session, candidate_request_id), key in self._current.items()
+            if candidate_request_id == request_id
+        }
+        if len(candidates) == 1:
+            self._current[slot] = next(iter(candidates))
+            return True
+        if candidates:
+            for affected_stage in Stage if stage is None else (stage,):
+                self.instrument(affected_stage, InstrumentationReason.LIFECYCLE_CONFLICT)
+            return False
+        return None
 
     def data_received(
         self,
         *,
-        task_id: str,
-        target_id: str,
+        session_id: str,
         request_id: str,
         encoded_data_length: object,
         event_fingerprint: str,
+        stage: Stage | None = None,
     ) -> None:
-        record = self._find_current(task_id, target_id, request_id)
-        if record is None or event_fingerprint in record.seen_data_events:
+        record = self._find_current(session_id, request_id)
+        if record is None:
+            if (session_id, request_id) in self._rejected_current:
+                return
+            for affected_stage in Stage if stage is None else (stage,):
+                self.instrument(affected_stage, InstrumentationReason.LIFECYCLE_CONFLICT)
+            return
+        if event_fingerprint in record.seen_data_events:
             return
         record.seen_data_events.add(event_fingerprint)
         if (
@@ -753,27 +835,61 @@ class BrowserTransportTracker:
         ):
             self.instrument(record.attribution.stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
             return
+        if record.suppressed_non_transport:
+            if encoded_data_length > 0:
+                self.instrument(
+                    record.attribution.stage,
+                    InstrumentationReason.LIFECYCLE_CONFLICT,
+                )
+            return
         if record.terminal is not None:
             self.instrument(record.attribution.stage, InstrumentationReason.LIFECYCLE_CONFLICT)
             return
         record.encoded_bytes += encoded_data_length
 
-    def loading_finished(self, *, task_id: str, target_id: str, request_id: str) -> None:
-        record = self._find_current(task_id, target_id, request_id)
-        if record is not None:
-            self._terminalize(record, TerminalOutcome.COMPLETE_RESPONSE)
+    def loading_finished(
+        self,
+        *,
+        session_id: str,
+        request_id: str,
+        event_fingerprint: str,
+        stage: Stage | None = None,
+    ) -> None:
+        record = self._find_current(session_id, request_id)
+        if record is None:
+            if (session_id, request_id) in self._rejected_current:
+                return
+            for affected_stage in Stage if stage is None else (stage,):
+                self.instrument(affected_stage, InstrumentationReason.LIFECYCLE_CONFLICT)
+            return
+        if event_fingerprint in record.seen_terminal_events:
+            return
+        record.seen_terminal_events.add(event_fingerprint)
+        if record.suppressed_non_transport:
+            return
+        self._terminalize(record, TerminalOutcome.COMPLETE_RESPONSE)
 
     def loading_failed(
         self,
         *,
-        task_id: str,
-        target_id: str,
+        session_id: str,
         request_id: str,
+        event_fingerprint: str,
         cancelled: bool = False,
         policy_rejected: bool = False,
+        stage: Stage | None = None,
     ) -> None:
-        record = self._find_current(task_id, target_id, request_id)
+        record = self._find_current(session_id, request_id)
         if record is None:
+            if (session_id, request_id) in self._rejected_current:
+                return
+            for affected_stage in Stage if stage is None else (stage,):
+                self.instrument(affected_stage, InstrumentationReason.LIFECYCLE_CONFLICT)
+            return
+        if event_fingerprint in record.seen_terminal_events:
+            return
+        record.seen_terminal_events.add(event_fingerprint)
+        if record.suppressed_non_transport:
             return
         desired = (
             TerminalOutcome.POLICY_REJECTED
@@ -785,22 +901,61 @@ class BrowserTransportTracker:
         self._terminalize(record, desired)
 
     def target_closed(self, *, session_id: str | None = None, target_id: str | None = None) -> None:
-        if target_id is None and session_id is not None:
-            target = self._session_targets.get(session_id)
-            target_id = target[0] if target is not None else None
-        if target_id is None:
+        if session_id is None and target_id is None:
             return
         for record in tuple(self._records.values()):
-            if record.key.target_id == target_id and record.terminal is None:
+            if (
+                (
+                    (session_id is not None and record.key.session_id == session_id)
+                    or (session_id is None and record.target_id == target_id)
+                )
+                and record.terminal is None
+                and not record.suppressed_non_transport
+            ):
                 self._terminalize(record, TerminalOutcome.TARGET_CLOSED)
+
+    def mark_non_transport(
+        self,
+        *,
+        session_id: str,
+        request_id: str,
+        stage: Stage | None = None,
+    ) -> None:
+        """Suppress a cache/service-worker wrapper that made no transport attempt."""
+
+        record = self._find_current(session_id, request_id)
+        if record is None:
+            if (session_id, request_id) in self._rejected_current:
+                return
+            for affected_stage in Stage if stage is None else (stage,):
+                self.instrument(affected_stage, InstrumentationReason.LIFECYCLE_CONFLICT)
+            return
+        if record.suppressed_non_transport:
+            return
+        if record.terminal is not None or record.encoded_bytes > 0:
+            self.instrument(record.attribution.stage, InstrumentationReason.LIFECYCLE_CONFLICT)
+        record.suppressed_non_transport = True
 
     def freeze_new_admission(self) -> None:
         self._admission_frozen = True
 
-    def terminalize_live(self) -> None:
+    def terminalize_live(
+        self,
+        *,
+        stage: Stage | None = None,
+        desired: TerminalOutcome = TerminalOutcome.CANCELLED,
+    ) -> None:
         for record in tuple(self._records.values()):
-            if record.terminal is None:
-                self._terminalize(record, TerminalOutcome.CANCELLED)
+            if (
+                record.terminal is None
+                and not record.suppressed_non_transport
+                and (stage is None or record.attribution.stage is stage)
+            ):
+                self._terminalize(record, desired)
+
+    def observer_transport_lost(self, stage: Stage) -> None:
+        self.instrument(stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+        self.terminalize_live(stage=stage, desired=TerminalOutcome.TRANSPORT_FAILURE)
 
     def aggregate_rows(self) -> dict[tuple[str, ...], dict[str, Any]]:
         rows: dict[tuple[str, ...], dict[str, Any]] = {}
@@ -834,8 +989,8 @@ class BrowserTransportTracker:
                 row["response_sizes"].append(terminal.encoded_bytes)
         return rows
 
-    def _find_current(self, task_id: str, target_id: str, request_id: str) -> _RequestRecord | None:
-        key = self._current.get((task_id, target_id, request_id))
+    def _find_current(self, session_id: str, request_id: str) -> _RequestRecord | None:
+        key = self._current.get((session_id, request_id))
         return self._records.get(key) if key is not None else None
 
     def _terminalize(self, record: _RequestRecord, desired: TerminalOutcome) -> None:
@@ -859,149 +1014,387 @@ class BrowserTransportTracker:
                 outcome=outcome,
                 encoded_bytes=record.encoded_bytes,
                 observer_complete=record.observer_complete,
+                target_type=record.target_type,
             )
         )
 
 
-class PublicCDPSession(Protocol):
-    async def send(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]: ...
-
-    def on(self, event: str, handler: Callable[[dict[str, Any]], object]) -> object: ...
-
-    def remove_listener(
-        self, event: str, handler: Callable[[dict[str, Any]], object]
-    ) -> object: ...
-
-    async def detach(self) -> None: ...
-
-
-class PublicChromiumBrowser(Protocol):
-    async def new_browser_cdp_session(self) -> PublicCDPSession: ...
-
-
 type RequestClassifier = Callable[[str, str, Mapping[str, Any]], RequestDeclaration | None]
+
+LOOPBACK_CDP_ADDRESS = "127.0.0.1"
+CDP_SETUP_TIMEOUT_SECONDS = 5.0
+CDP_TARGET_FILTER = (
+    {"type": "page"},
+    {"type": "iframe"},
+    {"type": "worker"},
+    {"type": "shared_worker"},
+    {"type": "service_worker"},
+    {"exclude": True},
+)
+ACCOUNTING_NETWORK_METHODS = frozenset(
+    {
+        "Network.requestWillBeSent",
+        "Network.dataReceived",
+        "Network.loadingFinished",
+        "Network.loadingFailed",
+    }
+)
+CORRELATION_NETWORK_METHODS = frozenset(
+    {"Network.requestServedFromCache", "Network.responseReceived"}
+)
+
+
+class RawCDPWebSocket(Protocol):
+    async def send(self, message: str) -> None: ...
+
+    async def recv(self) -> str | bytes: ...
+
+    async def close(self, code: int = 1000, reason: str = "") -> None: ...
+
+
+type RawCDPConnector = Callable[[str, float], Awaitable[RawCDPWebSocket]]
+
+
+def _validate_debug_port(debug_port: int) -> int:
+    if (
+        not isinstance(debug_port, int)
+        or isinstance(debug_port, bool)
+        or not 1 <= debug_port <= 65_535
+    ):
+        raise ValueError("debug_port must be an integer from 1 through 65535")
+    return debug_port
+
+
+def reserve_loopback_debug_port() -> int:
+    """Reserve an ephemeral loopback port for the immediately following launch."""
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind((LOOPBACK_CDP_ADDRESS, 0))
+        listener.listen(1)
+        return cast(int, listener.getsockname()[1])
+
+
+def chromium_loopback_debug_args(debug_port: int) -> tuple[str, str]:
+    """Return the only permitted Chromium remote-debugging launch flags."""
+
+    port = _validate_debug_port(debug_port)
+    return (
+        f"--remote-debugging-address={LOOPBACK_CDP_ADDRESS}",
+        f"--remote-debugging-port={port}",
+    )
+
+
+def _validate_loopback_websocket_url(value: object, debug_port: int) -> str:
+    if not isinstance(value, str):
+        raise ValueError("CDP endpoint omitted its WebSocket URL")
+    parsed = urlsplit(value)
+    browser_path = parsed.path.removeprefix("/devtools/browser/")
+    if (
+        parsed.scheme != "ws"
+        or parsed.hostname != LOOPBACK_CDP_ADDRESS
+        or parsed.port != debug_port
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or not browser_path
+        or "/" in browser_path
+    ):
+        raise ValueError("CDP WebSocket endpoint is outside the bounded loopback origin")
+    return value
+
+
+async def _fetch_loopback_websocket_url(debug_port: int, timeout: float) -> str:
+    port = _validate_debug_port(debug_port)
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    endpoint = f"http://{LOOPBACK_CDP_ADDRESS}:{port}/json/version"
+    last_error: Exception | None = None
+    async with httpx.AsyncClient(trust_env=False, timeout=min(timeout, 1.0)) as client:
+        while loop.time() < deadline:
+            try:
+                response = await client.get(endpoint)
+                response.raise_for_status()
+                document = response.json()
+                if not isinstance(document, dict):
+                    raise ValueError("CDP version endpoint did not return an object")
+                return _validate_loopback_websocket_url(
+                    document.get("webSocketDebuggerUrl"),
+                    port,
+                )
+            except (httpx.HTTPError, json.JSONDecodeError, ValueError) as exc:
+                last_error = exc
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    break
+                await asyncio.sleep(min(0.05, remaining))
+    raise TimeoutError("loopback CDP endpoint did not become ready") from last_error
+
+
+async def _connect_raw_cdp(url: str, timeout: float) -> RawCDPWebSocket:
+    return await connect_websocket(
+        url,
+        open_timeout=timeout,
+        compression=None,
+        ping_interval=None,
+        max_size=16 * 1024 * 1024,
+    )
+
+
+def _auto_attach_params(*, enabled: bool = True) -> dict[str, Any]:
+    return {
+        "autoAttach": enabled,
+        "waitForDebuggerOnStart": enabled,
+        "flatten": True,
+        "filter": [dict(item) for item in CDP_TARGET_FILTER],
+    }
+
+
+def _network_event_fingerprint(method: str, params: Mapping[str, Any]) -> str:
+    payload = json.dumps(
+        {"method": method, "params": dict(params)},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    return hashlib.sha256(payload).hexdigest()
 
 
 class ChromiumAutoAttachObserver:
-    """Recursive observer using only public Playwright/CDP surfaces.
+    """Bounded raw-CDP observer for a normally launched Playwright Chromium.
 
-    A browser-level public CDP session installs ``Target.setAutoAttach`` before
-    admission. Child commands use the public ``Target.sendMessageToTarget``
-    command, and only ``Network.dataReceived.encodedDataLength`` contributes
-    bytes.
+    The controller uses Chromium's public loopback DevTools WebSocket in
+    parallel with Playwright's native connection. It never reads or patches a
+    Playwright connection, channel, session, or transport object.
     """
 
     def __init__(
         self,
-        session: PublicCDPSession,
+        websocket: RawCDPWebSocket,
         tracker: BrowserTransportTracker,
         classifier: RequestClassifier,
         *,
         stage: Stage,
     ) -> None:
-        self._session = session
+        self._websocket = websocket
         self._tracker = tracker
         self._classifier = classifier
         self._stage = stage
-        self._tasks: set[asyncio.Task[None]] = set()
+        self._initialization_tasks: set[asyncio.Task[None]] = set()
         self._target_by_session: dict[str, tuple[str, str]] = {}
-        self._pending_commands: dict[tuple[str, int], asyncio.Future[dict[str, Any]]] = {}
+        self._session_by_target: dict[str, str] = {}
+        self._ignored_duplicate_sessions: set[str] = set()
+        self._network_ready_sessions: set[str] = set()
+        self._resumed_sessions: set[str] = set()
+        self._preboundary_request_slots: set[tuple[str, str]] = set()
+        self._pending_commands: dict[int, asyncio.Future[dict[str, Any]]] = {}
+        self._pending_command_details: dict[int, tuple[str, str | None]] = {}
         self._command_id = 0
+        self._send_lock = asyncio.Lock()
+        self._reader_task: asyncio.Task[None] | None = None
+        self._drain_task: asyncio.Task[None] | None = None
+        self._envelope_generation = 0
+        self._task_generation = 0
+        self._setup_trace: list[tuple[str, str, str, str]] = []
+        self._ready = False
+        self._draining = False
+        self._closing = False
         self._closed = False
-        self._session.on("Target.attachedToTarget", self._on_attached)
-        self._session.on("Target.receivedMessageFromTarget", self._on_message)
-        self._session.on("Target.detachedFromTarget", self._on_detached)
+        self._reader_failed = False
+
+    @property
+    def ready(self) -> bool:
+        return self._ready and not self._closed
+
+    @property
+    def observed_target_types(self) -> frozenset[str]:
+        return frozenset(
+            target_type for _target_id, target_type in self._target_by_session.values()
+        )
+
+    @property
+    def setup_trace(self) -> tuple[tuple[str, str, str, str], ...]:
+        return tuple(self._setup_trace)
+
+    @property
+    def reader_done(self) -> bool:
+        return self._reader_task is None or self._reader_task.done()
 
     @classmethod
     async def attach(
         cls,
-        browser: PublicChromiumBrowser,
+        debug_port: int,
         tracker: BrowserTransportTracker,
         classifier: RequestClassifier,
         *,
         stage: Stage,
+        setup_timeout: float = CDP_SETUP_TIMEOUT_SECONDS,
+        connector: RawCDPConnector = _connect_raw_cdp,
     ) -> ChromiumAutoAttachObserver | None:
-        session: PublicCDPSession | None = None
+        websocket: RawCDPWebSocket | None = None
         observer: ChromiumAutoAttachObserver | None = None
         try:
-            session = await browser.new_browser_cdp_session()
-            observer = cls(session, tracker, classifier, stage=stage)
-            await session.send(
-                "Target.setAutoAttach",
-                {
-                    "autoAttach": True,
-                    "waitForDebuggerOnStart": True,
-                    "flatten": False,
-                },
-            )
+            if setup_timeout <= 0:
+                raise ValueError("setup_timeout must be positive")
+            websocket_url = await _fetch_loopback_websocket_url(debug_port, setup_timeout)
+            websocket = await connector(websocket_url, setup_timeout)
+            observer = cls(websocket, tracker, classifier, stage=stage)
+            async with asyncio.timeout(setup_timeout):
+                await observer._start()
             return observer
+        except asyncio.CancelledError:
+            if observer is not None:
+                await observer._close_transport()
+            elif websocket is not None:
+                await websocket.close()
+            raise
         except Exception:
             tracker.instrument(stage, InstrumentationReason.OBSERVER_ATTACH_FAILED)
             if observer is not None:
-                observer._remove_listeners()
-            if session is not None:
+                await observer._close_transport()
+            elif websocket is not None:
                 try:
-                    await session.detach()
+                    await websocket.close()
                 except Exception:
                     tracker.instrument(stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
             return None
 
-    def _spawn(self, awaitable: Coroutine[Any, Any, None]) -> None:
-        task = asyncio.create_task(awaitable)
-        self._tasks.add(task)
-        task.add_done_callback(self._task_done)
+    @classmethod
+    async def attach_websocket(
+        cls,
+        websocket: RawCDPWebSocket,
+        tracker: BrowserTransportTracker,
+        classifier: RequestClassifier,
+        *,
+        stage: Stage,
+        setup_timeout: float = CDP_SETUP_TIMEOUT_SECONDS,
+    ) -> ChromiumAutoAttachObserver | None:
+        """Attach an already-open raw transport for deterministic conformance tests."""
 
-    def _task_done(self, task: asyncio.Task[None]) -> None:
-        self._tasks.discard(task)
+        observer = cls(websocket, tracker, classifier, stage=stage)
+        try:
+            async with asyncio.timeout(setup_timeout):
+                await observer._start()
+            return observer
+        except asyncio.CancelledError:
+            await observer._close_transport()
+            raise
+        except Exception:
+            tracker.instrument(stage, InstrumentationReason.OBSERVER_ATTACH_FAILED)
+            await observer._close_transport()
+            return None
+
+    async def _start(self) -> None:
+        self._reader_task = asyncio.create_task(self._reader_loop())
+        await self._send_command("Target.setAutoAttach", _auto_attach_params())
+        await self._send_command("Target.getTargets", {})
+        deadline = asyncio.get_running_loop().time() + CDP_SETUP_TIMEOUT_SECONDS
+        await self._await_stable_initialization(deadline)
+        if self._reader_failed:
+            raise RuntimeError("raw CDP reader failed during setup")
+        self._ready = True
+
+    def _spawn_initialization(self, params: Mapping[str, Any]) -> None:
+        if self._closing:
+            return
+        task = asyncio.create_task(self._initialize_target(params))
+        self._task_generation += 1
+        self._initialization_tasks.add(task)
+        task.add_done_callback(self._initialization_done)
+
+    def _initialization_done(self, task: asyncio.Task[None]) -> None:
+        self._initialization_tasks.discard(task)
+        self._task_generation += 1
         if task.cancelled():
             return
         if task.exception() is not None:
             self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
 
-    def _on_attached(self, params: dict[str, Any]) -> None:
-        self._spawn(self._initialize_target(params))
-
-    def _on_detached(self, params: dict[str, Any]) -> None:
-        session_id = params.get("sessionId")
-        if isinstance(session_id, str):
-            self._tracker.target_closed(session_id=session_id)
-
-    def _on_message(self, params: dict[str, Any]) -> None:
-        session_id = params.get("sessionId")
-        raw_message = params.get("message")
-        if not isinstance(session_id, str) or not isinstance(raw_message, str):
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
-            return
+    async def _reader_loop(self) -> None:
         try:
+            while True:
+                raw_message = await self._websocket.recv()
+                self._envelope_generation += 1
+                self._dispatch_envelope(raw_message)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            if not self._closing:
+                self._reader_failed = True
+                self._tracker.observer_transport_lost(self._stage)
+        finally:
+            failure = RuntimeError("raw CDP reader stopped")
+            for future in tuple(self._pending_commands.values()):
+                if not future.done():
+                    future.set_exception(failure)
+
+    def _dispatch_envelope(self, raw_message: str | bytes) -> None:
+        try:
+            if isinstance(raw_message, bytes):
+                raw_message = raw_message.decode("utf-8")
             message = json.loads(raw_message)
-        except json.JSONDecodeError:
+        except (UnicodeDecodeError, json.JSONDecodeError):
             self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
             return
         if not isinstance(message, dict):
             self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
             return
         command_id = message.get("id")
-        if isinstance(command_id, int):
-            future = self._pending_commands.pop((session_id, command_id), None)
+        if isinstance(command_id, int) and not isinstance(command_id, bool):
+            future = self._pending_commands.pop(command_id, None)
+            command_details = self._pending_command_details.pop(command_id, None)
             if future is None or future.done():
+                self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
                 return
             if "error" in message:
-                future.set_exception(RuntimeError("public CDP child command failed"))
+                future.set_exception(RuntimeError("raw CDP command failed"))
             else:
-                result = message.get("result")
-                future.set_result(result if isinstance(result, dict) else {})
+                result = message.get("result", {})
+                if not isinstance(result, dict):
+                    future.set_exception(RuntimeError("raw CDP response result was malformed"))
+                else:
+                    if command_details is not None:
+                        method, response_session_id = command_details
+                        if method == "Network.enable" and response_session_id is not None:
+                            self._network_ready_sessions.add(response_session_id)
+                            self._tracker.observer_network_enabled(response_session_id)
+                        elif (
+                            method == "Runtime.runIfWaitingForDebugger"
+                            and response_session_id is not None
+                        ):
+                            self._resumed_sessions.add(response_session_id)
+                    future.set_result(result)
             return
         method = message.get("method")
-        event_params = message.get("params", {})
-        if not isinstance(method, str) or not isinstance(event_params, dict):
+        params = message.get("params", {})
+        session_id = message.get("sessionId")
+        if not isinstance(method, str) or not isinstance(params, dict):
             self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
             return
         if method == "Target.attachedToTarget":
-            self._spawn(self._initialize_target(event_params))
+            self._spawn_initialization(params)
         elif method == "Target.detachedFromTarget":
-            self._on_detached(event_params)
+            detached_session = params.get("sessionId")
+            if isinstance(detached_session, str):
+                self._ignored_duplicate_sessions.discard(detached_session)
+                self._tracker.target_closed(session_id=detached_session)
+                detached_target = self._target_by_session.pop(detached_session, None)
+                if (
+                    detached_target is not None
+                    and self._session_by_target.get(detached_target[0]) == detached_session
+                ):
+                    self._session_by_target.pop(detached_target[0], None)
+                self._network_ready_sessions.discard(detached_session)
+                self._resumed_sessions.discard(detached_session)
+                self._preboundary_request_slots = {
+                    slot for slot in self._preboundary_request_slots if slot[0] != detached_session
+                }
+            else:
+                self._tracker.instrument(
+                    self._stage,
+                    InstrumentationReason.OBSERVER_PROTOCOL_ERROR,
+                )
         elif method.startswith("Network."):
-            self._handle_network_event(session_id, method, event_params)
+            self._handle_network_event(session_id, method, params)
 
     async def _initialize_target(self, params: Mapping[str, Any]) -> None:
         session_id = params.get("sessionId")
@@ -1019,56 +1412,94 @@ class ChromiumAutoAttachObserver:
             if existing != (target_id, target_type):
                 self._tracker.instrument(self._stage, InstrumentationReason.LIFECYCLE_CONFLICT)
             return
+        owner_session = self._session_by_target.get(target_id)
+        if owner_session is not None and owner_session != session_id:
+            self._ignored_duplicate_sessions.add(session_id)
+            with suppress(Exception):
+                await self._send_command(
+                    "Runtime.runIfWaitingForDebugger",
+                    {},
+                    session_id=session_id,
+                )
+            with suppress(Exception):
+                await self._send_command(
+                    "Target.detachFromTarget",
+                    {"sessionId": session_id},
+                )
+            return
+        self._session_by_target[target_id] = session_id
         self._target_by_session[session_id] = (target_id, target_type)
         self._tracker.observer_target_attached(session_id, target_id, target_type)
+        if target_type not in PUBLIC_CDP_TARGET_TYPES:
+            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            with suppress(Exception):
+                await self._send_command(
+                    "Runtime.runIfWaitingForDebugger",
+                    {},
+                    session_id=session_id,
+                )
+            return
         try:
-            await self._send_child(
-                session_id,
+            await self._send_command(
                 "Target.setAutoAttach",
-                {
-                    "autoAttach": True,
-                    "waitForDebuggerOnStart": True,
-                    "flatten": False,
-                },
+                _auto_attach_params(),
+                session_id=session_id,
+            )
+            self._setup_trace.append((session_id, target_id, target_type, "Target.setAutoAttach"))
+            await self._send_command("Network.enable", {}, session_id=session_id)
+            self._setup_trace.append((session_id, target_id, target_type, "Network.enable"))
+            await self._send_command(
+                "Runtime.runIfWaitingForDebugger",
+                {},
+                session_id=session_id,
+            )
+            self._setup_trace.append(
+                (session_id, target_id, target_type, "Runtime.runIfWaitingForDebugger")
             )
         except Exception:
             self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
-        if target_type in PUBLIC_CDP_TARGET_TYPES:
-            try:
-                await self._send_child(session_id, "Network.enable", {})
-                self._tracker.observer_network_enabled(session_id)
-            except Exception:
-                self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
-        try:
-            await self._send_child(session_id, "Runtime.runIfWaitingForDebugger", {})
-        except Exception:
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
 
-    async def _send_child(
-        self, session_id: str, method: str, params: Mapping[str, Any]
+    async def _send_command(
+        self,
+        method: str,
+        params: Mapping[str, Any],
+        *,
+        session_id: str | None = None,
     ) -> dict[str, Any]:
+        if self._closing:
+            raise RuntimeError("raw CDP controller is closing")
         self._command_id += 1
         command_id = self._command_id
         loop = asyncio.get_running_loop()
         future: asyncio.Future[dict[str, Any]] = loop.create_future()
-        self._pending_commands[(session_id, command_id)] = future
-        message = json.dumps(
-            {"id": command_id, "method": method, "params": dict(params)},
-            sort_keys=True,
-            separators=(",", ":"),
-        )
+        self._pending_commands[command_id] = future
+        self._pending_command_details[command_id] = (method, session_id)
+        envelope: dict[str, Any] = {
+            "id": command_id,
+            "method": method,
+            "params": dict(params),
+        }
+        if session_id is not None:
+            envelope["sessionId"] = session_id
+        message = json.dumps(envelope, sort_keys=True, separators=(",", ":"))
         try:
-            await self._session.send(
-                "Target.sendMessageToTarget",
-                {"sessionId": session_id, "message": message},
-            )
+            async with self._send_lock:
+                await self._websocket.send(message)
             return await future
         finally:
-            self._pending_commands.pop((session_id, command_id), None)
+            self._pending_commands.pop(command_id, None)
+            self._pending_command_details.pop(command_id, None)
 
     def _handle_network_event(
-        self, session_id: str, method: str, params: Mapping[str, Any]
+        self, session_id: object, method: str, params: Mapping[str, Any]
     ) -> None:
+        if method not in ACCOUNTING_NETWORK_METHODS | CORRELATION_NETWORK_METHODS:
+            return
+        if not isinstance(session_id, str):
+            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            return
+        if session_id in self._ignored_duplicate_sessions:
+            return
         target = self._target_by_session.get(session_id)
         request_id = params.get("requestId")
         if target is None or not isinstance(request_id, str):
@@ -1077,15 +1508,66 @@ class ChromiumAutoAttachObserver:
         target_id, target_type = target
         if target_type not in PUBLIC_CDP_TARGET_TYPES:
             return
-        try:
-            declaration = self._classifier(target_id, target_type, params)
-            fingerprint = hashlib.sha256(
-                canonical_registry_bytes(cast(Mapping[str, Any], params))
-            ).hexdigest()
-        except Exception:
-            self._tracker.instrument(self._stage, InstrumentationReason.CLASSIFICATION_MISSING)
+        slot = (session_id, request_id)
+        if session_id not in self._network_ready_sessions:
+            # Remember request ids exposed while Network.enable is in flight so
+            # their later sparse tails cannot masquerade as covered attempts.
+            self._preboundary_request_slots.add(slot)
+            return
+        if slot in self._preboundary_request_slots:
+            if method in {"Network.loadingFinished", "Network.loadingFailed"}:
+                self._preboundary_request_slots.discard(slot)
+            return
+        fingerprint = _network_event_fingerprint(method, params)
+        if method != "Network.requestWillBeSent":
+            association = self._tracker.associate_replayed_tail(
+                session_id,
+                request_id,
+                stage=self._stage,
+            )
+            if association is False:
+                return
+            if association is None and session_id not in self._resumed_sessions:
+                # A target's bootstrap request can begin before Network is
+                # enabled and expose only a sparse tail while it is paused.
+                return
+            if association is None and method == "Network.responseReceived":
+                self._tracker.instrument(
+                    self._stage,
+                    InstrumentationReason.LIFECYCLE_CONFLICT,
+                )
+                return
+        if method == "Network.requestServedFromCache":
+            self._tracker.mark_non_transport(
+                session_id=session_id,
+                request_id=request_id,
+                stage=self._stage,
+            )
+            return
+        if method == "Network.responseReceived":
+            response = params.get("response")
+            if not isinstance(response, dict):
+                self._tracker.instrument(
+                    self._stage,
+                    InstrumentationReason.OBSERVER_PROTOCOL_ERROR,
+                )
+                return
+            if any(
+                response.get(name) is True
+                for name in ("fromDiskCache", "fromPrefetchCache", "fromServiceWorker")
+            ):
+                self._tracker.mark_non_transport(
+                    session_id=session_id,
+                    request_id=request_id,
+                    stage=self._stage,
+                )
             return
         if method == "Network.requestWillBeSent":
+            try:
+                declaration = self._classifier(target_id, target_type, params)
+            except Exception:
+                self._tracker.instrument(self._stage, InstrumentationReason.CLASSIFICATION_MISSING)
+                return
             self._tracker.request_will_be_sent(
                 session_id=session_id,
                 target_id=target_id,
@@ -1096,60 +1578,128 @@ class ChromiumAutoAttachObserver:
                 stage=self._stage,
             )
             return
-        if declaration is None:
-            self._tracker.instrument(self._stage, InstrumentationReason.CLASSIFICATION_MISSING)
-            return
         if method == "Network.dataReceived":
             self._tracker.data_received(
-                task_id=declaration.task_id,
-                target_id=target_id,
+                session_id=session_id,
                 request_id=request_id,
                 encoded_data_length=params.get("encodedDataLength"),
                 event_fingerprint=fingerprint,
+                stage=self._stage,
             )
         elif method == "Network.loadingFinished":
             self._tracker.loading_finished(
-                task_id=declaration.task_id, target_id=target_id, request_id=request_id
+                session_id=session_id,
+                request_id=request_id,
+                event_fingerprint=fingerprint,
+                stage=self._stage,
             )
         elif method == "Network.loadingFailed":
             self._tracker.loading_failed(
-                task_id=declaration.task_id,
-                target_id=target_id,
+                session_id=session_id,
                 request_id=request_id,
+                event_fingerprint=fingerprint,
                 cancelled=params.get("canceled") is True,
                 policy_rejected=isinstance(params.get("blockedReason"), str),
+                stage=self._stage,
             )
 
-    async def drain_and_detach(self) -> None:
-        """Freeze, terminalize, bounded-drain, then detach public listeners/session."""
+    async def _await_stable_initialization(self, deadline: float) -> None:
+        stable_observations = 0
+        previous: tuple[int, int] | None = None
+        loop = asyncio.get_running_loop()
+        while stable_observations < 2:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise TimeoutError("raw CDP target initialization did not drain")
+            pending = tuple(self._initialization_tasks)
+            if pending:
+                done, _still_pending = await asyncio.wait(
+                    pending,
+                    timeout=remaining,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if not done:
+                    raise TimeoutError("raw CDP target initialization did not drain")
+                stable_observations = 0
+                previous = None
+                continue
+            state = (self._envelope_generation, self._task_generation)
+            await asyncio.sleep(0)
+            if self._initialization_tasks:
+                stable_observations = 0
+                previous = None
+                continue
+            current = (self._envelope_generation, self._task_generation)
+            if current == state == previous:
+                stable_observations += 1
+            else:
+                stable_observations = 1 if current == state else 0
+            previous = current
 
+    async def drain_and_detach(self) -> None:
+        """Drain under one deadline and close raw sessions, even if cancelled."""
+
+        if self._drain_task is None:
+            self._drain_task = asyncio.create_task(self._drain_impl())
+        cancellation: asyncio.CancelledError | None = None
+        while not self._drain_task.done():
+            try:
+                await asyncio.shield(self._drain_task)
+            except asyncio.CancelledError as exc:
+                cancellation = cancellation or exc
+        self._drain_task.result()
+        if cancellation is not None:
+            raise cancellation
+
+    async def _drain_impl(self) -> None:
         if self._closed:
             return
-        self._closed = True
+        self._draining = True
         self._tracker.freeze_new_admission()
-        self._tracker.terminalize_live()
-        pending = tuple(self._tasks)
-        if pending:
-            try:
-                await asyncio.wait_for(
-                    asyncio.gather(*pending, return_exceptions=True),
-                    timeout=DRAIN_TIMEOUT_SECONDS,
-                )
-            except TimeoutError:
-                self._tracker.instrument(self._stage, InstrumentationReason.DRAIN_TIMEOUT)
-                for task in pending:
-                    task.cancel()
-                await asyncio.gather(*pending, return_exceptions=True)
-        self._remove_listeners()
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + DRAIN_TIMEOUT_SECONDS
         try:
-            await self._session.detach()
+            async with asyncio.timeout_at(deadline):
+                await self._send_command("Target.getTargets", {})
+                await self._await_stable_initialization(deadline)
+                self._tracker.terminalize_live(stage=self._stage)
+                await self._send_command("Target.getTargets", {})
+                await self._await_stable_initialization(deadline)
+        except TimeoutError:
+            self._tracker.instrument(self._stage, InstrumentationReason.DRAIN_TIMEOUT)
         except Exception:
             self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+        finally:
+            self._tracker.terminalize_live(stage=self._stage)
+            await self._close_transport()
+            self._closed = True
+            self._draining = False
+            self._ready = False
 
-    def _remove_listeners(self) -> None:
-        self._session.remove_listener("Target.attachedToTarget", self._on_attached)
-        self._session.remove_listener("Target.receivedMessageFromTarget", self._on_message)
-        self._session.remove_listener("Target.detachedFromTarget", self._on_detached)
+    async def _close_transport(self) -> None:
+        if self._closing:
+            reader = self._reader_task
+            if reader is not None and reader is not asyncio.current_task():
+                await asyncio.gather(reader, return_exceptions=True)
+            return
+        self._closing = True
+        for task in tuple(self._initialization_tasks):
+            task.cancel()
+        if self._initialization_tasks:
+            await asyncio.gather(*tuple(self._initialization_tasks), return_exceptions=True)
+        for future in tuple(self._pending_commands.values()):
+            if not future.done():
+                future.set_exception(RuntimeError("raw CDP controller closed"))
+        try:
+            async with asyncio.timeout(1.0):
+                await self._websocket.close()
+        except Exception:
+            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+        reader = self._reader_task
+        if reader is not None and reader is not asyncio.current_task():
+            if not reader.done():
+                reader.cancel()
+            await asyncio.gather(reader, return_exceptions=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1444,11 +1994,19 @@ def _event_tape_totals(
             ):
                 _block(blockers, affected, "event_tape_mismatch")
                 continue
-            if event.get("configured_proxy_provider") == "none" and (
+            configured_provider = event.get("configured_proxy_provider")
+            if configured_provider not in {"none", "static-proxy"}:
+                _block(blockers, affected, "event_tape_mismatch")
+                continue
+            if configured_provider == "none" and (
                 route,
                 provider,
             ) != ("direct", "direct"):
                 _block(blockers, affected, "provider_none_misclassification")
+            if (route, provider) == ("proxy", "static-proxy") and configured_provider != (
+                "static-proxy"
+            ):
+                _block(blockers, affected, "event_tape_mismatch")
             request_class = event.get("request_class")
             expected_class = (
                 "redirect"

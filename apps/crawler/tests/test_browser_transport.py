@@ -1,10 +1,12 @@
-"""Standalone Chromium transport tracker/observer tests; no real browser."""
+"""Standalone Chromium transport tracker and raw-CDP conformance tests."""
 
 from __future__ import annotations
 
 import asyncio
 import json
-from collections import defaultdict
+import shutil
+from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -193,8 +195,12 @@ def test_redirect_predecessor_precedence_retry_main_and_idempotent_callbacks():
         redirect_response=True,
     )
     assert second is not None and second.redirect_hop == 1
-    tracker.loading_finished(task_id="task", target_id="target", request_id="redirect-chain")
-    tracker.loading_finished(task_id="task", target_id="target", request_id="redirect-chain")
+    tracker.loading_finished(
+        session_id="session", request_id="redirect-chain", event_fingerprint="finished-1"
+    )
+    tracker.loading_finished(
+        session_id="session", request_id="redirect-chain", event_fingerprint="finished-1"
+    )
 
     retry = tracker.request_will_be_sent(
         session_id="session",
@@ -205,7 +211,9 @@ def test_redirect_predecessor_precedence_retry_main_and_idempotent_callbacks():
         redirect_response=False,
     )
     assert retry is not None
-    tracker.loading_finished(task_id="task", target_id="target", request_id="retry-request")
+    tracker.loading_finished(
+        session_id="session", request_id="retry-request", event_fingerprint="finished-2"
+    )
 
     assert [(item.request_class, item.outcome) for item in tracker.terminals] == [
         (RequestClass.REDIRECT, TerminalOutcome.COMPLETE_RESPONSE),
@@ -229,9 +237,6 @@ def test_target_reattachment_and_service_worker_replay_do_not_duplicate_attempt(
         declaration=declaration,
         redirect_response=False,
     )
-    tracker.loading_finished(
-        task_id="task", target_id="service-worker-target", request_id="request"
-    )
     tracker.observer_target_attached("session-b", "service-worker-target", "service_worker")
     tracker.observer_network_enabled("session-b")
     replay = tracker.request_will_be_sent(
@@ -242,9 +247,126 @@ def test_target_reattachment_and_service_worker_replay_do_not_duplicate_attempt(
         declaration=declaration,
         redirect_response=False,
     )
+    tracker.data_received(
+        session_id="session-b",
+        request_id="request",
+        encoded_data_length=17,
+        event_fingerprint="data",
+    )
+    tracker.loading_finished(
+        session_id="session-b", request_id="request", event_fingerprint="finished"
+    )
 
     assert replay == tracker.terminals[0].key
     assert len(tracker.terminals) == 1
+    assert tracker.terminals[0].encoded_bytes == 17
+
+
+def test_sparse_reparented_tail_binds_only_to_one_unambiguous_current_request():
+    tracker = BrowserTransportTracker()
+    tracker.accept_task("task", _attribution())
+    for session_id in ("page-a", "page-b"):
+        tracker.observer_target_attached(session_id, session_id, "page")
+        tracker.observer_network_enabled(session_id)
+    tracker.request_will_be_sent(
+        session_id="page-a",
+        target_id="page-a",
+        request_id="bootstrap",
+        event_fingerprint="declaration",
+        declaration=RequestDeclaration("task"),
+        redirect_response=False,
+    )
+
+    assert tracker.associate_replayed_tail("worker", "bootstrap") is True
+    tracker.data_received(
+        session_id="worker",
+        request_id="bootstrap",
+        encoded_data_length=23,
+        event_fingerprint="data",
+    )
+    tracker.loading_finished(
+        session_id="worker",
+        request_id="bootstrap",
+        event_fingerprint="finished",
+    )
+
+    assert len(tracker.terminals) == 1
+    assert tracker.terminals[0].encoded_bytes == 23
+    assert not tracker.instrumentation_counts
+
+
+def test_sparse_reparented_tail_with_ambiguous_reused_id_fails_closed():
+    tracker = BrowserTransportTracker()
+    tracker.accept_task("task", _attribution())
+    for session_id, fingerprint in (("page-a", "declaration-a"), ("page-b", "declaration-b")):
+        tracker.observer_target_attached(session_id, session_id, "page")
+        tracker.observer_network_enabled(session_id)
+        tracker.request_will_be_sent(
+            session_id=session_id,
+            target_id=session_id,
+            request_id="reused",
+            event_fingerprint=fingerprint,
+            declaration=RequestDeclaration("task"),
+            redirect_response=False,
+        )
+
+    assert tracker.associate_replayed_tail("worker", "reused", stage=Stage.MONITOR) is False
+    assert (
+        tracker.instrumentation_counts[(Stage.MONITOR, InstrumentationReason.LIFECYCLE_CONFLICT)]
+        == 1
+    )
+
+
+def test_cross_session_reused_request_id_is_a_new_conserved_attempt():
+    tracker = BrowserTransportTracker(browser_generation=19)
+    tracker.accept_task("task", _attribution())
+    declaration = RequestDeclaration("task")
+    for session_id, fingerprint in (("session-a", "event-a"), ("session-b", "event-b")):
+        tracker.observer_target_attached(session_id, "same-target", "service_worker")
+        tracker.observer_network_enabled(session_id)
+        key = tracker.request_will_be_sent(
+            session_id=session_id,
+            target_id="same-target",
+            request_id="reused",
+            event_fingerprint=fingerprint,
+            declaration=declaration,
+            redirect_response=False,
+        )
+        assert key is not None
+        tracker.loading_finished(
+            session_id=session_id,
+            request_id="reused",
+            event_fingerprint=f"finished-{session_id}",
+        )
+
+    assert len(tracker.terminals) == 2
+    assert {item.key.session_id for item in tracker.terminals} == {"session-a", "session-b"}
+    assert {item.key.browser_generation for item in tracker.terminals} == {19}
+    assert sum(row["attempts"] for row in tracker.aggregate_rows().values()) == 2
+
+
+def test_late_request_admission_fails_closed_once_per_real_event():
+    tracker = _covered_tracker()
+    tracker.freeze_new_admission()
+    for _ in range(2):
+        assert (
+            tracker.request_will_be_sent(
+                session_id="session",
+                target_id="target",
+                request_id="late",
+                event_fingerprint="same-late-event",
+                declaration=RequestDeclaration("task"),
+                redirect_response=False,
+                stage=Stage.MONITOR,
+            )
+            is None
+        )
+
+    assert not tracker.terminals
+    assert (
+        tracker.instrumentation_counts[(Stage.MONITOR, InstrumentationReason.LIFECYCLE_CONFLICT)]
+        == 1
+    )
 
 
 def test_partial_bytes_override_cancellation_and_duplicate_data_is_idempotent():
@@ -259,16 +381,15 @@ def test_partial_bytes_override_cancellation_and_duplicate_data_is_idempotent():
     )
     for fingerprint in ("chunk-a", "chunk-a", "chunk-b"):
         tracker.data_received(
-            task_id="task",
-            target_id="target",
+            session_id="session",
             request_id="partial",
             encoded_data_length=125,
             event_fingerprint=fingerprint,
         )
     tracker.loading_failed(
-        task_id="task",
-        target_id="target",
+        session_id="session",
         request_id="partial",
+        event_fingerprint="failed",
         cancelled=True,
     )
     tracker.target_closed(target_id="target")
@@ -277,6 +398,35 @@ def test_partial_bytes_override_cancellation_and_duplicate_data_is_idempotent():
     terminal = tracker.terminals[0]
     assert terminal.encoded_bytes == 250
     assert terminal.outcome is TerminalOutcome.PARTIAL_RESPONSE
+
+
+def test_cache_or_service_worker_wrapper_is_not_a_transport_attempt():
+    tracker = _covered_tracker()
+    tracker.request_will_be_sent(
+        session_id="session",
+        target_id="target",
+        request_id="cached",
+        event_fingerprint="request",
+        declaration=RequestDeclaration("task"),
+        redirect_response=False,
+    )
+    tracker.mark_non_transport(session_id="session", request_id="cached")
+    tracker.mark_non_transport(session_id="session", request_id="cached")
+    tracker.data_received(
+        session_id="session",
+        request_id="cached",
+        encoded_data_length=0,
+        event_fingerprint="zero-chunk",
+    )
+    tracker.loading_finished(
+        session_id="session",
+        request_id="cached",
+        event_fingerprint="finished",
+    )
+
+    assert tracker.live_count == 0
+    assert not tracker.terminals
+    assert not tracker.instrumentation_counts
 
 
 @pytest.mark.parametrize(
@@ -302,9 +452,9 @@ def test_zero_byte_terminal_mapping(terminalizer, expected):
         tracker.target_closed(target_id="target")
     else:
         tracker.loading_failed(
-            task_id="task",
-            target_id="target",
+            session_id="session",
             request_id="zero",
+            event_fingerprint=f"failed-{terminalizer}",
             cancelled=terminalizer == "cancel",
             policy_rejected=terminalizer == "policy",
         )
@@ -369,62 +519,88 @@ def test_missing_byte_coverage_and_classification_are_bounded_blockers():
     assert set(reason.value for reason in InstrumentationReason) == set(INSTRUMENTATION_REASONS)
 
 
-class FakeSession:
-    def __init__(self, *, answer_child_commands: bool = True) -> None:
-        self.handlers: dict[str, list[Any]] = defaultdict(list)
-        self.sent: list[tuple[str, dict[str, Any] | None]] = []
-        self.child_commands: list[tuple[str, str]] = []
-        self.answer_child_commands = answer_child_commands
-        self.detached = False
+def test_chromium_debugging_boundary_is_exactly_loopback_and_never_relaxes_origins():
+    assert transport.chromium_loopback_debug_args(9222) == (
+        "--remote-debugging-address=127.0.0.1",
+        "--remote-debugging-port=9222",
+    )
+    assert transport._validate_loopback_websocket_url(  # type: ignore[attr-defined]
+        "ws://127.0.0.1:9222/devtools/browser/browser-id",
+        9222,
+    ).startswith("ws://127.0.0.1:9222/")
+    for endpoint in (
+        "wss://127.0.0.1:9222/devtools/browser/browser-id",
+        "ws://localhost:9222/devtools/browser/browser-id",
+        "ws://127.0.0.1:9223/devtools/browser/browser-id",
+        "ws://user@127.0.0.1:9222/devtools/browser/browser-id",
+        "ws://127.0.0.1:9222/devtools/page/page-id",
+        "ws://127.0.0.1:9222/devtools/browser/browser-id?token=secret",
+        "ws://127.0.0.1:9222/devtools/browser/browser-id#fragment",
+    ):
+        with pytest.raises(ValueError):
+            transport._validate_loopback_websocket_url(endpoint, 9222)  # type: ignore[attr-defined]
 
-    async def send(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        self.sent.append((method, params))
-        if method == "Target.sendMessageToTarget" and params is not None:
-            message = json.loads(params["message"])
-            session_id = params["sessionId"]
-            self.child_commands.append((session_id, message["method"]))
-            if self.answer_child_commands:
-                self.emit(
-                    "Target.receivedMessageFromTarget",
-                    {
-                        "sessionId": session_id,
-                        "message": json.dumps({"id": message["id"], "result": {}}),
-                    },
-                )
-        return {}
-
-    def on(self, event: str, handler) -> None:
-        self.handlers[event].append(handler)
-
-    def remove_listener(self, event: str, handler) -> None:
-        self.handlers[event].remove(handler)
-
-    async def detach(self) -> None:
-        self.detached = True
-
-    def emit(self, event: str, params: dict[str, Any]) -> None:
-        for handler in tuple(self.handlers[event]):
-            handler(params)
-
-    def emit_child(self, session_id: str, method: str, params: dict[str, Any]) -> None:
-        self.emit(
-            "Target.receivedMessageFromTarget",
-            {
-                "sessionId": session_id,
-                "message": json.dumps({"method": method, "params": params}),
-            },
-        )
+    assert all(
+        "remote-allow-origins" not in arg for arg in transport.chromium_loopback_debug_args(9222)
+    )
 
 
-class FakeBrowser:
-    def __init__(self, session: FakeSession | None = None, *, fail: bool = False) -> None:
-        self.session = session or FakeSession()
-        self.fail = fail
+class FakeRawWebSocket:
+    _CLOSED = object()
 
-    async def new_browser_cdp_session(self) -> FakeSession:
-        if self.fail:
-            raise RuntimeError("attach failed")
-        return self.session
+    def __init__(self) -> None:
+        self.incoming: asyncio.Queue[object] = asyncio.Queue()
+        self.sent: list[dict[str, Any]] = []
+        self.blocked_methods: set[str] = set()
+        self.on_command: Callable[[dict[str, Any]], None] | None = None
+        self.closed = False
+
+    async def send(self, message: str) -> None:
+        parsed: dict[str, Any] = json.loads(message)
+        self.sent.append(parsed)
+        callback = self.on_command
+        if callback is not None:
+            callback(parsed)
+        if parsed["method"] not in self.blocked_methods:
+            response: dict[str, Any] = {"id": parsed["id"], "result": {}}
+            if "sessionId" in parsed:
+                response["sessionId"] = parsed["sessionId"]
+            self.incoming.put_nowait(json.dumps(response))
+
+    async def recv(self) -> str | bytes:
+        item = await self.incoming.get()
+        if item is self._CLOSED:
+            raise EOFError("fake WebSocket closed")
+        if isinstance(item, BaseException):
+            raise item
+        assert isinstance(item, (str, bytes))
+        return item
+
+    async def close(self, code: int = 1000, reason: str = "") -> None:
+        del code, reason
+        if not self.closed:
+            self.closed = True
+            self.incoming.put_nowait(self._CLOSED)
+
+    def emit_event(
+        self,
+        method: str,
+        params: dict[str, Any],
+        *,
+        session_id: str | None = None,
+    ) -> None:
+        message: dict[str, Any] = {"method": method, "params": params}
+        if session_id is not None:
+            message["sessionId"] = session_id
+        self.incoming.put_nowait(json.dumps(message))
+
+    def fail(self) -> None:
+        self.incoming.put_nowait(ConnectionError("simulated WebSocket loss"))
+
+    def methods_for(self, session_id: str | None) -> list[str]:
+        return [
+            message["method"] for message in self.sent if message.get("sessionId") == session_id
+        ]
 
 
 async def _flush_tasks() -> None:
@@ -433,91 +609,118 @@ async def _flush_tasks() -> None:
 
 
 @pytest.mark.asyncio
-async def test_public_cdp_observer_recursively_enables_all_relevant_targets_and_counts_bytes():
-    session = FakeSession()
-    browser = FakeBrowser(session)
+async def test_raw_cdp_observer_recursively_enables_targets_and_uses_frozen_attribution():
+    websocket = FakeRawWebSocket()
     tracker = BrowserTransportTracker()
     tracker.accept_task("task", _attribution())
+    classifications = 0
 
     def classifier(_target_id: str, _target_type: str, _params: Any) -> RequestDeclaration:
+        nonlocal classifications
+        classifications += 1
         return RequestDeclaration("task")
 
-    observer = await ChromiumAutoAttachObserver.attach(
-        browser, tracker, classifier, stage=Stage.MONITOR
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
+        tracker,
+        classifier,
+        stage=Stage.MONITOR,
     )
     assert observer is not None
-    assert session.sent[0] == (
-        "Target.setAutoAttach",
-        {"autoAttach": True, "waitForDebuggerOnStart": True, "flatten": False},
-    )
+    assert observer.ready
+    assert websocket.sent[0]["method"] == "Target.setAutoAttach"
+    assert websocket.sent[0]["params"]["flatten"] is True
+    assert websocket.sent[0]["params"]["waitForDebuggerOnStart"] is True
+    assert websocket.sent[0]["params"]["filter"] == [
+        {"type": "page"},
+        {"type": "iframe"},
+        {"type": "worker"},
+        {"type": "shared_worker"},
+        {"type": "service_worker"},
+        {"exclude": True},
+    ]
+
+    def emit_preboundary_bootstrap_tail(message: dict[str, Any]) -> None:
+        if (
+            message["method"]
+            in {
+                "Network.enable",
+                "Runtime.runIfWaitingForDebugger",
+            }
+            and "sessionId" in message
+        ):
+            websocket.emit_event(
+                "Network.loadingFinished",
+                {"requestId": f"bootstrap-{message['method']}-{message['sessionId']}"},
+                session_id=message["sessionId"],
+            )
+
+    websocket.on_command = emit_preboundary_bootstrap_tail
 
     for index, target_type in enumerate(sorted(PUBLIC_CDP_TARGET_TYPES)):
         session_id = f"session-{index}"
         target_id = f"target-{index}"
-        if index == 0:
-            session.emit(
-                "Target.attachedToTarget",
-                {
-                    "sessionId": session_id,
-                    "targetInfo": {"targetId": target_id, "type": target_type},
-                },
-            )
-        else:
-            session.emit_child(
-                "session-0",
-                "Target.attachedToTarget",
-                {
-                    "sessionId": session_id,
-                    "targetInfo": {"targetId": target_id, "type": target_type},
-                },
-            )
+        websocket.emit_event(
+            "Target.attachedToTarget",
+            {
+                "sessionId": session_id,
+                "targetInfo": {"targetId": target_id, "type": target_type},
+            },
+        )
     await _flush_tasks()
+    websocket.on_command = None
 
     for index, _target_type in enumerate(sorted(PUBLIC_CDP_TARGET_TYPES)):
         session_id = f"session-{index}"
         target_id = f"target-{index}"
         request_id = f"request-{index}"
-        session.emit_child(
-            session_id,
+        websocket.emit_event(
             "Network.requestWillBeSent",
             {"requestId": request_id, "timestamp": index},
+            session_id=session_id,
         )
-        session.emit_child(
-            session_id,
+        websocket.emit_event(
             "Network.dataReceived",
             {"requestId": request_id, "timestamp": index + 0.1, "encodedDataLength": index + 1},
+            session_id=session_id,
         )
-        session.emit_child(
-            session_id,
+        websocket.emit_event(
             "Network.loadingFinished",
             {"requestId": request_id, "timestamp": index + 0.2},
+            session_id=session_id,
         )
+        websocket.emit_event("Network.policyUpdated", {}, session_id=session_id)
     await _flush_tasks()
 
     assert len(tracker.terminals) == len(PUBLIC_CDP_TARGET_TYPES)
+    assert classifications == len(PUBLIC_CDP_TARGET_TYPES)
     assert sum(item.encoded_bytes for item in tracker.terminals) == sum(
         range(1, len(PUBLIC_CDP_TARGET_TYPES) + 1)
     )
     for index in range(len(PUBLIC_CDP_TARGET_TYPES)):
-        commands = [method for sid, method in session.child_commands if sid == f"session-{index}"]
-        assert commands == [
+        assert websocket.methods_for(f"session-{index}") == [
             "Target.setAutoAttach",
             "Network.enable",
             "Runtime.runIfWaitingForDebugger",
         ]
+    assert observer.observed_target_types == PUBLIC_CDP_TARGET_TYPES
+    assert not tracker.instrumentation_counts
     await observer.drain_and_detach()
-    assert session.detached is True
-    assert all(session.handlers[event] == [] for event in session.handlers)
+    assert websocket.closed is True
+    assert observer.reader_done
 
 
 @pytest.mark.asyncio
 async def test_attach_failure_and_drain_timeout_are_bounded(monkeypatch):
     tracker = BrowserTransportTracker()
-    failed = await ChromiumAutoAttachObserver.attach(
-        FakeBrowser(fail=True),
+    blocked = FakeRawWebSocket()
+    blocked.blocked_methods.add("Target.setAutoAttach")
+    failed = await ChromiumAutoAttachObserver.attach_websocket(
+        blocked,
         tracker,
         lambda *_args: None,
         stage=Stage.DETAIL,
+        setup_timeout=0.001,
     )
     assert failed is None
     assert (
@@ -525,20 +728,438 @@ async def test_attach_failure_and_drain_timeout_are_bounded(monkeypatch):
         == 1
     )
 
-    session = FakeSession(answer_child_commands=False)
-    observer = await ChromiumAutoAttachObserver.attach(
-        FakeBrowser(session),
+    websocket = FakeRawWebSocket()
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
         tracker,
         lambda *_args: RequestDeclaration("missing"),
         stage=Stage.DETAIL,
     )
     assert observer is not None
-    session.emit(
+    websocket.emit_event(
         "Target.attachedToTarget",
         {"sessionId": "stuck", "targetInfo": {"targetId": "target", "type": "page"}},
     )
-    await asyncio.sleep(0)
+    await _flush_tasks()
+    websocket.blocked_methods.add("Target.getTargets")
     monkeypatch.setattr(transport, "DRAIN_TIMEOUT_SECONDS", 0.001)
     await observer.drain_and_detach()
     assert tracker.instrumentation_counts[(Stage.DETAIL, InstrumentationReason.DRAIN_TIMEOUT)] == 1
-    assert session.detached is True
+    assert websocket.closed is True
+
+
+@pytest.mark.asyncio
+async def test_unknown_sparse_tail_after_target_setup_fails_closed():
+    websocket = FakeRawWebSocket()
+    tracker = BrowserTransportTracker()
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
+        tracker,
+        lambda *_args: None,
+        stage=Stage.MONITOR,
+    )
+    assert observer is not None
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {"sessionId": "session", "targetInfo": {"targetId": "target", "type": "worker"}},
+    )
+    await _flush_tasks()
+    websocket.emit_event(
+        "Network.loadingFinished",
+        {"requestId": "orphan"},
+        session_id="session",
+    )
+    await _flush_tasks()
+
+    assert (
+        tracker.instrumentation_counts[(Stage.MONITOR, InstrumentationReason.LIFECYCLE_CONFLICT)]
+        == 1
+    )
+    await observer.drain_and_detach()
+
+
+@pytest.mark.asyncio
+async def test_websocket_loss_terminalizes_live_request_and_blocks_stage():
+    websocket = FakeRawWebSocket()
+    tracker = BrowserTransportTracker(browser_generation=7)
+    tracker.accept_task("task", _attribution())
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
+        tracker,
+        lambda *_args: RequestDeclaration("task"),
+        stage=Stage.MONITOR,
+    )
+    assert observer is not None
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {"sessionId": "session", "targetInfo": {"targetId": "target", "type": "page"}},
+    )
+    await _flush_tasks()
+    websocket.emit_event(
+        "Network.requestWillBeSent",
+        {"requestId": "request", "timestamp": 1},
+        session_id="session",
+    )
+    await _flush_tasks()
+    websocket.fail()
+    await _flush_tasks()
+
+    assert tracker.terminals[0].key.browser_generation == 7
+    assert tracker.terminals[0].outcome is TerminalOutcome.TRANSPORT_FAILURE
+    assert (
+        tracker.instrumentation_counts[
+            (Stage.MONITOR, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+        ]
+        == 1
+    )
+    await observer.drain_and_detach()
+
+
+@pytest.mark.asyncio
+async def test_drain_tracks_tasks_and_late_events_spawned_during_drain():
+    websocket = FakeRawWebSocket()
+    tracker = BrowserTransportTracker()
+    tracker.accept_task("task", _attribution())
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
+        tracker,
+        lambda *_args: RequestDeclaration("task"),
+        stage=Stage.MONITOR,
+    )
+    assert observer is not None
+    spawned = False
+    emitted_late_request = False
+
+    def spawn_during_barrier(message: dict[str, Any]) -> None:
+        nonlocal emitted_late_request, spawned
+        if message["method"] == "Target.getTargets" and not spawned:
+            spawned = True
+            websocket.emit_event(
+                "Target.attachedToTarget",
+                {
+                    "sessionId": "late-session",
+                    "targetInfo": {"targetId": "late-target", "type": "worker"},
+                },
+            )
+        elif (
+            message["method"] == "Runtime.runIfWaitingForDebugger"
+            and message.get("sessionId") == "late-session"
+            and not emitted_late_request
+        ):
+            emitted_late_request = True
+            websocket.emit_event(
+                "Network.requestWillBeSent",
+                {"requestId": "late-request", "timestamp": 1},
+                session_id="late-session",
+            )
+
+    websocket.on_command = spawn_during_barrier
+    await observer.drain_and_detach()
+
+    assert spawned
+    assert websocket.methods_for("late-session") == [
+        "Target.setAutoAttach",
+        "Network.enable",
+        "Runtime.runIfWaitingForDebugger",
+    ]
+    assert not tracker.terminals
+    assert (
+        tracker.instrumentation_counts[(Stage.MONITOR, InstrumentationReason.LIFECYCLE_CONFLICT)]
+        == 1
+    )
+    assert (Stage.MONITOR, InstrumentationReason.DRAIN_TIMEOUT) not in (
+        tracker.instrumentation_counts
+    )
+
+
+@pytest.mark.asyncio
+async def test_drain_cleanup_is_cancellation_safe_and_reraises(monkeypatch):
+    websocket = FakeRawWebSocket()
+    tracker = BrowserTransportTracker()
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
+        tracker,
+        lambda *_args: None,
+        stage=Stage.DETAIL,
+    )
+    assert observer is not None
+    websocket.blocked_methods.add("Target.getTargets")
+    monkeypatch.setattr(transport, "DRAIN_TIMEOUT_SECONDS", 0.01)
+    draining = asyncio.create_task(observer.drain_and_detach())
+    await asyncio.sleep(0)
+    draining.cancel("caller cancelled")
+
+    with pytest.raises(asyncio.CancelledError):
+        await draining
+    assert websocket.closed
+    assert observer.reader_done
+    assert tracker.instrumentation_counts[(Stage.DETAIL, InstrumentationReason.DRAIN_TIMEOUT)] == 1
+
+
+type _Route = tuple[str, dict[str, str], bytes, float]
+
+
+class _LoopbackOrigin:
+    def __init__(self) -> None:
+        self.routes: dict[str, _Route] = {}
+        self.requests: list[str] = []
+        self.server: asyncio.Server | None = None
+        self.port = 0
+
+    async def __aenter__(self) -> _LoopbackOrigin:
+        self.server = await asyncio.start_server(self._handle, "127.0.0.1", 0)
+        sockets = self.server.sockets
+        assert sockets
+        self.port = sockets[0].getsockname()[1]
+        return self
+
+    async def __aexit__(self, *_args: object) -> None:
+        assert self.server is not None
+        self.server.close()
+        await self.server.wait_closed()
+
+    async def _handle(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+    ) -> None:
+        try:
+            request = await reader.readuntil(b"\r\n\r\n")
+            path = request.split(b" ", 2)[1].decode("ascii")
+            self.requests.append(path)
+            status, headers, body, stream_delay = self.routes.get(
+                path,
+                ("404 Not Found", {}, b"not found", 0.0),
+            )
+            response_headers = {
+                "Connection": "close",
+                "Content-Length": str(len(body)),
+                **headers,
+            }
+            head = (
+                f"HTTP/1.1 {status}\r\n"
+                + "".join(f"{name}: {value}\r\n" for name, value in response_headers.items())
+                + "\r\n"
+            ).encode()
+            if stream_delay:
+                writer.write(head + body[:512])
+                await writer.drain()
+                await asyncio.sleep(stream_delay)
+                writer.write(body[512:])
+            else:
+                writer.write(head + body)
+            await writer.drain()
+        except (ConnectionError, asyncio.IncompleteReadError):
+            pass
+        finally:
+            writer.close()
+            with suppress(Exception):
+                await writer.wait_closed()
+
+
+def _installed_chromium_executable(playwright: Any) -> str | None:
+    candidates = [
+        Path(playwright.chromium.executable_path),
+        Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+    ]
+    for command in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser"):
+        executable = shutil.which(command)
+        if executable:
+            candidates.append(Path(executable))
+    return next((str(candidate) for candidate in candidates if candidate.is_file()), None)
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_real_chromium_loopback_controller_covers_all_targets_and_conserves_bytes():
+    playwright_module = pytest.importorskip("playwright.async_api")
+    async with _LoopbackOrigin() as origin:
+        direct_origin = f"http://127.0.0.1:{origin.port}"
+        cross_site_origin = f"http://localhost:{origin.port}"
+        main_html = f"""<!doctype html>
+<iframe src="{cross_site_origin}/frame"></iframe>
+<script>
+window.__worker = new Worker('/worker.js');
+window.__shared = new SharedWorker('/shared.js');
+window.__shared.port.start();
+window.__shared.port.postMessage('start');
+window.__ready = (async () => {{
+  await navigator.serviceWorker.register('/service.js');
+  await navigator.serviceWorker.ready;
+  if (!navigator.serviceWorker.controller) {{
+    await new Promise(resolve => navigator.serviceWorker.addEventListener(
+      'controllerchange', resolve, {{once: true}}
+    ));
+  }}
+  const redirect = fetch('/redirect').then(response => response.text());
+  const warmup = fetch('/warmup').then(response => response.text());
+  const cached = fetch('/cached').then(response => response.text());
+  const controller = new AbortController();
+  const partial = fetch('/stream', {{signal: controller.signal}}).then(async response => {{
+    const reader = response.body.getReader();
+    await reader.read();
+    controller.abort();
+    try {{ await reader.read(); }} catch (_error) {{}}
+  }}).catch(() => undefined);
+  await Promise.all([redirect, warmup, cached, partial]);
+  return true;
+}})();
+</script>""".encode()
+        origin.routes = {
+            "/": ("200 OK", {"Content-Type": "text/html"}, main_html, 0.0),
+            "/frame": (
+                "200 OK",
+                {"Content-Type": "text/html"},
+                b"<script>fetch('/frame-data'); setInterval(() => {}, 1000)</script>",
+                0.0,
+            ),
+            "/frame-data": ("200 OK", {}, b"frame", 0.0),
+            "/worker.js": (
+                "200 OK",
+                {"Content-Type": "application/javascript"},
+                b"fetch('/worker-data'); setInterval(() => {}, 1000)",
+                0.0,
+            ),
+            "/worker-data": ("200 OK", {}, b"worker", 0.0),
+            "/shared.js": (
+                "200 OK",
+                {"Content-Type": "application/javascript"},
+                b"onconnect=e=>{const p=e.ports[0];p.onmessage=()=>fetch('/shared-data');"
+                b"p.start();setInterval(()=>{},1000)}",
+                0.0,
+            ),
+            "/shared-data": ("200 OK", {}, b"shared", 0.0),
+            "/service.js": (
+                "200 OK",
+                {
+                    "Content-Type": "application/javascript",
+                    "Service-Worker-Allowed": "/",
+                },
+                b"self.addEventListener('install',e=>e.waitUntil((async()=>{"
+                b"const c=await caches.open('v1');await c.add('/cached');"
+                b"await fetch('/service-data')})()));"
+                b"self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));"
+                b"self.addEventListener('fetch',e=>{if(new URL(e.request.url).pathname==='/cached')"
+                b"e.respondWith(caches.match(e.request))})",
+                0.0,
+            ),
+            "/service-data": ("200 OK", {}, b"service", 0.0),
+            "/cached": ("200 OK", {}, b"cached", 0.0),
+            "/redirect": ("302 Found", {"Location": "/redirect-final"}, b"", 0.0),
+            "/redirect-final": ("200 OK", {}, b"redirected", 0.0),
+            "/warmup": ("200 OK", {}, b"warmup", 0.0),
+            "/stream": ("200 OK", {}, b"x" * 65_536, 1.0),
+            "/favicon.ico": ("204 No Content", {}, b"", 0.0),
+        }
+        tracker = BrowserTransportTracker(browser_generation=23)
+        assert tracker.accept_task("real-task", _attribution())
+
+        def classifier(
+            _target_id: str,
+            _target_type: str,
+            params: Any,
+        ) -> RequestDeclaration | None:
+            request = params.get("request")
+            url = request.get("url") if isinstance(request, dict) else None
+            if not isinstance(url, str) or not url.startswith(
+                (f"{direct_origin}/", f"{cross_site_origin}/")
+            ):
+                return None
+            return RequestDeclaration(
+                "real-task",
+                explicitly_warmup=url == f"{direct_origin}/warmup",
+                initial_navigation=url == f"{direct_origin}/",
+            )
+
+        async with playwright_module.async_playwright() as playwright:
+            executable = _installed_chromium_executable(playwright)
+            if executable is None:
+                pytest.skip("no real Chromium executable is installed")
+            debug_port = transport.reserve_loopback_debug_port()
+            browser = await playwright.chromium.launch(
+                headless=True,
+                executable_path=executable,
+                args=[
+                    *transport.chromium_loopback_debug_args(debug_port),
+                    "--site-per-process",
+                ],
+            )
+            observer = await ChromiumAutoAttachObserver.attach(
+                debug_port,
+                tracker,
+                classifier,
+                stage=Stage.MONITOR,
+            )
+            assert observer is not None and observer.ready
+            context = await browser.new_context(service_workers="allow")
+            page = await context.new_page()
+            try:
+                await page.goto(f"{direct_origin}/")
+                try:
+                    async with asyncio.timeout(10):
+                        while not (
+                            observer.observed_target_types >= PUBLIC_CDP_TARGET_TYPES
+                            and {
+                                "/frame-data",
+                                "/worker-data",
+                                "/shared-data",
+                                "/service-data",
+                                "/redirect",
+                                "/redirect-final",
+                                "/warmup",
+                                "/stream",
+                            }
+                            <= set(origin.requests)
+                        ):
+                            await asyncio.sleep(0.05)
+                except TimeoutError:
+                    pytest.fail(
+                        "real target probe did not converge: "
+                        f"types={sorted(observer.observed_target_types)!r} "
+                        f"requests={origin.requests!r} "
+                        f"trace={observer.setup_trace!r} "
+                        f"instrumentation={dict(tracker.instrumentation_counts)!r}"
+                    )
+                await asyncio.sleep(1.25)
+
+                assert observer.observed_target_types == PUBLIC_CDP_TARGET_TYPES
+                trace_by_session: dict[str, list[str]] = {}
+                for session_id, _target_id, _target_type, method in observer.setup_trace:
+                    trace_by_session.setdefault(session_id, []).append(method)
+                assert trace_by_session
+                assert all(
+                    methods
+                    == [
+                        "Target.setAutoAttach",
+                        "Network.enable",
+                        "Runtime.runIfWaitingForDebugger",
+                    ]
+                    for methods in trace_by_session.values()
+                )
+                terminal_types = {terminal.target_type for terminal in tracker.terminals}
+                assert terminal_types >= PUBLIC_CDP_TARGET_TYPES
+                assert any(
+                    terminal.request_class is RequestClass.REDIRECT
+                    for terminal in tracker.terminals
+                )
+                assert any(
+                    terminal.request_class is RequestClass.WARMUP for terminal in tracker.terminals
+                )
+                partials = [
+                    terminal
+                    for terminal in tracker.terminals
+                    if terminal.outcome is TerminalOutcome.PARTIAL_RESPONSE
+                ]
+                assert partials and all(terminal.encoded_bytes > 0 for terminal in partials)
+                assert tracker.non_transport_count >= 1
+                assert origin.requests.count("/cached") == 1
+                assert not tracker.instrumentation_counts
+                rows = tracker.aggregate_rows()
+                assert sum(row["attempts"] for row in rows.values()) == len(tracker.terminals)
+                assert sum(sum(row["outcomes"].values()) for row in rows.values()) == len(
+                    tracker.terminals
+                )
+            finally:
+                await observer.drain_and_detach()
+                await context.close()
+                await browser.close()

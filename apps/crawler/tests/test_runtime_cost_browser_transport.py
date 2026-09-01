@@ -320,6 +320,18 @@ def test_provider_none_proxy_misclassification_fails_closed():
     )
 
 
+def test_unknown_configured_provider_fails_closed_instead_of_becoming_direct():
+    document = _fixture()
+    event = next(
+        event
+        for event in document["event_tape"]
+        if event["kind"] == "request_terminal" and event["configured_proxy_provider"] == "none"
+    )
+    event["configured_proxy_provider"] = "arbitrary-provider"
+
+    _assert_failed_closed(document, stage=event["stage"], blocker="event_tape_mismatch")
+
+
 def test_pretransport_reason_set_is_closed():
     assert set(PRETRANSPORT_REASONS) == {
         "required_proxy_unavailable",
