@@ -232,6 +232,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "paylocity",
         "pdf",
         "phuketall",
+        "recruiterbox",
         "rippling",
         "seek",
         "skip",
@@ -1046,7 +1047,7 @@ def auto_scraper_type(
     if monitor_type == "hrmos":
         return ("json-ld", None)
     if monitor_type == "recruiterbox":
-        return ("json-ld", None)
+        return ("recruiterbox", None)
     if monitor_type == "taleo":
         return ("json-ld", None)
     if monitor_type == "avature":
