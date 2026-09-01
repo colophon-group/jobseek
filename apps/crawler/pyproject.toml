@@ -33,6 +33,7 @@ dependencies = [
     "huggingface-hub>=1.27.0",
     "cryptography>=50.0.0",
     "typesense>=0.21",
+    "websockets>=16.0",
     "beautifulsoup4>=4.15.0",
     "jsonschema>=4.23",
     "tzdata>=2026.3",
