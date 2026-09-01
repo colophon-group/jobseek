@@ -102,42 +102,15 @@ describe("0087 Better Auth account issuer migration", () => {
     expect(verifier).toContain('status: "failed"');
   });
 
-  it("applies 0087 after staged smoke and before promotion", () => {
-    const stagedSmoke = deployWorkflow.indexOf(
-      "Verify staged production functionality",
-    );
-    const preflight = deployWorkflow.indexOf(
+  it("does not keep a one-off 0087 write in the production deploy", () => {
+    expect(deployWorkflow).not.toContain("db:migrate:apply-account-issuer");
+    expect(deployWorkflow).not.toContain(
       "Verify Better Auth account issuer preflight",
     );
-    const currentMainGuard = deployWorkflow.indexOf(
-      "Require the migration revision is still main",
-    );
-    const apply = deployWorkflow.indexOf(
-      "Apply the reviewed Better Auth account issuer migration",
-    );
-    const postflight = deployWorkflow.indexOf(
+    expect(deployWorkflow).not.toContain(
       "Verify Better Auth account issuer postflight",
     );
-    const promote = deployWorkflow.indexOf(
-      "Promote only if this SHA is still main",
-    );
-
-    expect(stagedSmoke).toBeGreaterThan(0);
-    expect(currentMainGuard).toBeGreaterThan(stagedSmoke);
-    expect(preflight).toBeGreaterThan(currentMainGuard);
-    expect(apply).toBeGreaterThan(preflight);
-    expect(postflight).toBeGreaterThan(apply);
-    expect(promote).toBeGreaterThan(postflight);
-    expect(deployWorkflow).toContain("pnpm install --frozen-lockfile");
-    expect(deployWorkflow).toContain("db:migrate:apply-account-issuer");
-    expect(deployWorkflow).toContain("db:migrate:verify-account-issuer");
-    expect(deployWorkflow).toContain(
-      "DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}",
-    );
-    expect(deployWorkflow).toContain('MIGRATION_REQUIRE_UNPOOLED: "true"');
-    expect(
-      deployWorkflow.slice(preflight, promote),
-    ).not.toMatch(/\bdb:migrate(?:\s|$)/);
+    expect(deployWorkflow).not.toMatch(/run: pnpm db:migrate\s*$/m);
   });
 
   it("checks the applied issuer contract in scheduled drift verification", () => {

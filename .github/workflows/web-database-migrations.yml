@@ -316,6 +316,9 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check exact Drizzle migration head
+        run: pnpm --filter @jobseek/web db:migrate:verify-head
+
       - name: Check for production baseline drift
         run: >-
           pnpm --filter @jobseek/web db:migrate:verify-retirement --
