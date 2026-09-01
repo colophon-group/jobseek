@@ -592,8 +592,10 @@ def _inspect_container(container_name: str) -> dict[str, Any]:
         "container inspect was invalid",
     )
     raw = decoded[0]
+    config = raw.get("Config")
     state = raw.get("State")
     host_config = raw.get("HostConfig")
+    _require(isinstance(config, dict), "container configuration is missing")
     _require(isinstance(state, dict), "container state is missing")
     _require(isinstance(host_config, dict), "container host configuration is missing")
     return {
@@ -619,7 +621,7 @@ def _inspect_container(container_name: str) -> dict[str, Any]:
             "cgroupns_mode": host_config.get("CgroupnsMode"),
             "network_mode": host_config.get("NetworkMode"),
             "read_only_rootfs": host_config.get("ReadonlyRootfs"),
-            "stop_timeout_seconds": host_config.get("StopTimeout"),
+            "stop_timeout_seconds": config.get("StopTimeout"),
             "tmpfs_tmp": (host_config.get("Tmpfs") or {}).get("/tmp"),
         },
     }
@@ -640,7 +642,8 @@ def _validate_container_runtime(container: Mapping[str, Any], image_id: str) -> 
         runtime["read_only_rootfs"] is True, "container root filesystem is writable"
     )
     _require(
-        runtime["stop_timeout_seconds"] == 30,
+        type(runtime["stop_timeout_seconds"]) is int
+        and runtime["stop_timeout_seconds"] == 30,
         "container stop timeout is not 30 seconds",
     )
     tmpfs = runtime["tmpfs_tmp"]
@@ -1972,6 +1975,68 @@ class _SelfTests(unittest.TestCase):
             self.assertIn("UV_CACHE_DIR=/tmp/uv-cache", command)
             self.assertNotIn("--entrypoint", command)
             self.assertEqual(command[-1], image)
+
+    def test_container_inspect_uses_config_stop_timeout(self) -> None:
+        image_id = "sha256:" + "a" * 64
+        hosted_inspect = {
+            "Id": "b" * 64,
+            "Image": image_id,
+            "Path": "uv",
+            "Args": ["run", "--no-sync", "crawler", "run"],
+            "Config": {"StopTimeout": 30},
+            "State": {
+                "Status": "running",
+                "Running": True,
+                "Paused": False,
+                "Restarting": False,
+                "Dead": False,
+                "Pid": 5382,
+                "ExitCode": 0,
+                "OOMKilled": False,
+                "Error": "",
+                "StartedAt": "2026-09-01T08:32:37.07527363Z",
+                "FinishedAt": "0001-01-01T00:00:00Z",
+            },
+            "HostConfig": {
+                "Init": True,
+                "CgroupnsMode": "private",
+                "NetworkMode": "host",
+                "ReadonlyRootfs": True,
+                "Tmpfs": {"/tmp": "rw,noexec,nosuid,nodev,size=64m"},
+            },
+        }
+
+        def inspect(raw: Mapping[str, Any]) -> dict[str, Any]:
+            result = subprocess.CompletedProcess(
+                args=["docker", "inspect", "fixture"],
+                returncode=0,
+                stdout=json.dumps([raw]),
+                stderr="",
+            )
+            with mock.patch(__name__ + "._run", return_value=result):
+                return _inspect_container("fixture")
+
+        container = inspect(hosted_inspect)
+        self.assertEqual(container["runtime"]["stop_timeout_seconds"], 30)
+        _validate_container_runtime(container, image_id)
+
+        for value in (None, 29, "30", True, 30.0):
+            with self.subTest(stop_timeout=value):
+                invalid = json.loads(json.dumps(hosted_inspect))
+                invalid["Config"]["StopTimeout"] = value
+                invalid["HostConfig"]["StopTimeout"] = 30
+                with self.assertRaisesRegex(
+                    ProbeError, "container stop timeout is not 30 seconds"
+                ):
+                    _validate_container_runtime(inspect(invalid), image_id)
+
+        missing = json.loads(json.dumps(hosted_inspect))
+        del missing["Config"]["StopTimeout"]
+        missing["HostConfig"]["StopTimeout"] = 30
+        with self.assertRaisesRegex(
+            ProbeError, "container stop timeout is not 30 seconds"
+        ):
+            _validate_container_runtime(inspect(missing), image_id)
 
     def test_credential_redaction_is_escape_aware(self) -> None:
         escaped_left = "escaped-left-fragment"
