@@ -692,6 +692,46 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
   assert.match(crawlerImageJob, /git rev-parse HEAD\^1/);
   assert.match(crawlerImageJob, /git rev-parse HEAD\^2/);
 
+  const buildxIndex = crawlerImageJob.indexOf("docker/setup-buildx-action@");
+  const slimGuardIndex = crawlerImageJob.indexOf("name: Guard exact slim image build context");
+  const slimBuildIndex = crawlerImageJob.indexOf("name: Build slim crawler image");
+  const fullGuardIndex = crawlerImageJob.indexOf("name: Guard exact full image build context");
+  const fullBuildIndex = crawlerImageJob.indexOf("name: Build full crawler image");
+  const probeSelfTestIndex = crawlerImageJob.indexOf("name: Self-test sampler container probe");
+  assert.ok(buildxIndex < slimGuardIndex);
+  assert.ok(slimGuardIndex < slimBuildIndex);
+  assert.ok(slimBuildIndex < fullGuardIndex);
+  assert.ok(fullGuardIndex < fullBuildIndex);
+  assert.ok(fullBuildIndex < probeSelfTestIndex);
+  const namedBuildSteps = [
+    ...crawlerImageJob.matchAll(/^      - name: (.+)$/gm),
+  ].map((match) => match[1]);
+  assert.equal(
+    namedBuildSteps[namedBuildSteps.indexOf("Guard exact slim image build context") + 1],
+    "Build slim crawler image",
+  );
+  assert.equal(
+    namedBuildSteps[namedBuildSteps.indexOf("Guard exact full image build context") + 1],
+    "Build full crawler image",
+  );
+  assert.equal(
+    (crawlerImageJob.match(/git status --porcelain=v1 --untracked-files=all/g) ?? []).length,
+    2,
+  );
+  for (const guard of [
+    crawlerImageJob.slice(slimGuardIndex, slimBuildIndex),
+    crawlerImageJob.slice(fullGuardIndex, fullBuildIndex),
+  ]) {
+    assert.match(guard, /test -z "\$\(git status --porcelain=v1 --untracked-files=all\)"/);
+    assert.match(guard, /git rev-list --parents -n 1 HEAD/);
+    assert.match(guard, /test "\$commit" = "\$TESTED_BUILD_SHA"/);
+    assert.match(guard, /test "\$parent_one" = "\$BASE_SHA"/);
+    assert.match(guard, /test "\$parent_two" = "\$PR_HEAD_SHA"/);
+    assert.match(guard, /git rev-parse HEAD\^1/);
+    assert.match(guard, /git rev-parse HEAD\^2/);
+    assert.doesNotMatch(guard, /python|node|apps\/crawler/);
+  }
+
   assert.equal(
     (crawlerImageJob.match(/org\.opencontainers\.image\.source=/g) ?? []).length,
     2,
@@ -801,6 +841,35 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
   assert.match(crawlerSamplerContainerSmoke, /FORCED_STOP_TIMEOUT_SECONDS: Final = 5\.0/);
   assert.match(crawlerSamplerContainerSmoke, /ORPHAN_TIMEOUT_SECONDS: Final = 5\.0/);
   assert.match(crawlerSamplerContainerSmoke, /"signal": "SIGSTOP"/);
+
+  const lifecycleCase = crawlerSamplerContainerSmoke.slice(
+    crawlerSamplerContainerSmoke.indexOf("def _run_lifecycle_case("),
+    crawlerSamplerContainerSmoke.indexOf("def _append_summary("),
+  );
+  assert.ok(lifecycleCase.indexOf("registry.register(container_name, case)") >= 0);
+  assert.ok(
+    lifecycleCase.indexOf("registry.register(container_name, case)") <
+      lifecycleCase.indexOf("result = _run("),
+  );
+  assert.match(lifecycleCase, /registry\.capture_best_effort\(container_name, phase="post-create"\)/);
+  assert.doesNotMatch(lifecycleCase, /created\s*=/);
+  assert.match(crawlerSamplerContainerSmoke, /class _ActiveContainerRegistry:/);
+  assert.match(crawlerSamplerContainerSmoke, /def cleanup_all\(self\)/);
+  assert.match(crawlerSamplerContainerSmoke, /\["docker", "rm", "--force", container_name\]/);
+  assert.match(crawlerSamplerContainerSmoke, /"registered_before_create": True/);
+  assert.match(crawlerSamplerContainerSmoke, /"all_known_identities_gone"/);
+  assert.match(crawlerSamplerContainerSmoke, /signal\.signal\(signum, self\._handle\)/);
+  assert.match(crawlerSamplerContainerSmoke, /except BaseException as exc:/);
+  assert.match(crawlerSamplerContainerSmoke, /cleanup_failures = registry\.cleanup_all\(\)/);
+  assert.match(crawlerSamplerContainerSmoke, /finally:[\s\S]*signal_controller\.restore\(\)/);
+  for (const failureTest of [
+    "test_create_failure_cleanup_is_name_driven",
+    "test_readiness_failure_cleanup_polls_early_identity",
+    "test_signal_interruption_is_idempotent_for_cleanup",
+    "test_cleanup_failure_fails_closed",
+  ]) {
+    assert.ok(crawlerSamplerContainerSmoke.includes(failureTest), failureTest);
+  }
 });
 
 test("workflow-security runs repository script tests", () => {

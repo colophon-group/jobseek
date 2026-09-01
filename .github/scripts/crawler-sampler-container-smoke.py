@@ -14,6 +14,7 @@ import json
 import math
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -23,7 +24,9 @@ import urllib.request
 import uuid
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from types import FrameType
 from typing import Any, Final
+from unittest import mock
 
 READINESS_TIMEOUT_SECONDS: Final = 30.0
 GRACEFUL_STOP_TIMEOUT_SECONDS: Final = 20.0
@@ -135,6 +138,40 @@ class ProbeError(RuntimeError):
     """A fail-closed lifecycle contract violation."""
 
 
+class ProbeInterrupted(BaseException):
+    """A handled runner cancellation that must traverse lifecycle cleanup."""
+
+
+class _SignalController:
+    """Turn the first SIGINT/SIGTERM into a cleanup-aware interruption."""
+
+    def __init__(self) -> None:
+        self.received: str | None = None
+        self._previous: dict[int, Any] = {}
+        self._cleanup_started = False
+
+    def install(self) -> None:
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            self._previous[signum] = signal.getsignal(signum)
+            signal.signal(signum, self._handle)
+
+    def restore(self) -> None:
+        for signum, handler in self._previous.items():
+            signal.signal(signum, handler)
+        self._previous.clear()
+
+    def begin_cleanup(self) -> None:
+        self._cleanup_started = True
+
+    def _handle(self, signum: int, _frame: FrameType | None) -> None:
+        if self.received is not None:
+            return
+        self.received = signal.Signals(signum).name
+        if self._cleanup_started:
+            return
+        raise ProbeInterrupted(f"received {self.received}")
+
+
 def _utc_now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -232,11 +269,11 @@ def _parse_docker_top(raw: str) -> list[tuple[int, int, str]]:
 def _record_host_processes(container_name: str) -> list[dict[str, Any]]:
     deadline = time.monotonic() + 2.0
     last_problem = "docker top did not return a stable process set"
-    while time.monotonic() < deadline:
+    while (remaining := deadline - time.monotonic()) > 0:
         result = _run(
             ["docker", "top", container_name, "-eo", "pid,ppid,args"],
             description="record container process identities",
-            timeout=5.0,
+            timeout=remaining,
         )
         rows = _parse_docker_top(result.stdout)
         identities: list[dict[str, Any]] = []
@@ -465,14 +502,16 @@ def _validate_inside_snapshot(
         snapshot.get("cgroup_v2") is True, "hosted container does not expose cgroup v2"
     )
     processes = snapshot.get("processes")
-    _require(isinstance(processes, list), "inside process list is missing")
+    if not isinstance(processes, list):
+        raise ProbeError("inside process list is missing")
     by_pid = {
         process.get("pid"): process
         for process in processes
         if isinstance(process, dict) and isinstance(process.get("pid"), int)
     }
     pid1 = by_pid.get(1)
-    _require(pid1 is not None, "container PID 1 is missing")
+    if pid1 is None:
+        raise ProbeError("container PID 1 is missing")
     _require(pid1.get("comm") == "docker-init", "container PID 1 is not docker-init")
 
     launcher_candidates = [
@@ -900,6 +939,171 @@ def _remove_container(container_name: str, *, force: bool) -> bool:
     return result.returncode == 0
 
 
+def _force_remove_container_name(container_name: str) -> dict[str, Any]:
+    """Force-remove one intended name and prove removal or prior absence."""
+
+    started = time.monotonic()
+    try:
+        result = _run(
+            ["docker", "rm", "--force", container_name],
+            description=f"force-remove container {container_name}",
+            timeout=10.0,
+            check=False,
+        )
+    # Cancellation cleanup must record its outcome rather than escape.
+    except BaseException as exc:  # noqa: BLE001
+        return {
+            "attempted": True,
+            "success": False,
+            "outcome": "command-error",
+            "duration_seconds": time.monotonic() - started,
+            "error": {"type": type(exc).__name__, "message": str(exc)[:500]},
+        }
+
+    output = result.stdout + result.stderr
+    if result.returncode == 0:
+        return {
+            "attempted": True,
+            "success": True,
+            "outcome": "removed",
+            "returncode": result.returncode,
+            "duration_seconds": time.monotonic() - started,
+        }
+    if "No such container" in output or "No such object" in output:
+        return {
+            "attempted": True,
+            "success": True,
+            "outcome": "already-absent",
+            "returncode": result.returncode,
+            "duration_seconds": time.monotonic() - started,
+        }
+    return {
+        "attempted": True,
+        "success": False,
+        "outcome": "remove-failed",
+        "returncode": result.returncode,
+        "duration_seconds": time.monotonic() - started,
+    }
+
+
+class _ActiveContainerRegistry:
+    """Track intended names and every observed host PID identity until final cleanup."""
+
+    def __init__(self) -> None:
+        self._entries: dict[str, dict[str, Any]] = {}
+
+    def register(self, container_name: str, case: dict[str, Any]) -> None:
+        _require(
+            container_name not in self._entries, "container name was registered twice"
+        )
+        self._entries[container_name] = {
+            "case": case,
+            "identities": {},
+        }
+        case["cleanup_registration"] = {
+            "registered_before_create": True,
+            "container_name": container_name,
+        }
+
+    def note_identities(
+        self, container_name: str, identities: Sequence[Mapping[str, Any]]
+    ) -> None:
+        entry = self._entries[container_name]
+        known: dict[tuple[int, int], dict[str, Any]] = entry["identities"]
+        for identity in identities:
+            key = (int(identity["host_pid"]), int(identity["start_time_ticks"]))
+            known[key] = dict(identity)
+        entry["case"]["known_process_identities"] = sorted(
+            known.values(), key=lambda identity: identity["host_pid"]
+        )
+
+    def capture_best_effort(
+        self,
+        container_name: str,
+        *,
+        phase: str,
+        propagate_interruption: bool = True,
+    ) -> list[dict[str, Any]]:
+        entry = self._entries[container_name]
+        case: dict[str, Any] = entry["case"]
+        started = time.monotonic()
+        try:
+            identities = _record_host_processes(container_name)
+        except ProbeInterrupted:
+            if propagate_interruption:
+                raise
+            identities = []
+            outcome: dict[str, Any] = {
+                "phase": phase,
+                "success": False,
+                "duration_seconds": time.monotonic() - started,
+                "error": {
+                    "type": "ProbeInterrupted",
+                    "message": "identity capture interrupted",
+                },
+            }
+        # Best-effort capture must not block the name-driven cleanup attempt.
+        except BaseException as exc:  # noqa: BLE001
+            identities = []
+            outcome = {
+                "phase": phase,
+                "success": False,
+                "duration_seconds": time.monotonic() - started,
+                "error": {"type": type(exc).__name__, "message": str(exc)[:500]},
+            }
+        else:
+            self.note_identities(container_name, identities)
+            outcome = {
+                "phase": phase,
+                "success": True,
+                "duration_seconds": time.monotonic() - started,
+                "identity_count": len(identities),
+            }
+        case.setdefault("identity_capture_attempts", []).append(outcome)
+        return identities
+
+    def cleanup_all(self) -> list[str]:
+        """Unconditionally remove every registered name and poll known identities."""
+
+        failures: list[str] = []
+        for container_name, entry in list(self._entries.items()):
+            case: dict[str, Any] = entry["case"]
+            self.capture_best_effort(
+                container_name,
+                phase="outer-finally",
+                propagate_interruption=False,
+            )
+            removal = _force_remove_container_name(container_name)
+            identities = sorted(
+                entry["identities"].values(), key=lambda identity: identity["host_pid"]
+            )
+            try:
+                orphan_seconds, survivors = _wait_for_identities_gone(identities)
+                orphan_error = None
+            # Cleanup must continue for every registered name.
+            except BaseException as exc:  # noqa: BLE001
+                orphan_seconds = 0.0
+                survivors = identities
+                orphan_error = {"type": type(exc).__name__, "message": str(exc)[:500]}
+            success = bool(removal.get("success")) and not survivors
+            case["final_cleanup"] = {
+                "name_driven": True,
+                "forced_removal": removal,
+                "known_identity_count": len(identities),
+                "orphan_poll_seconds": orphan_seconds,
+                "all_known_identities_gone": not survivors,
+                "surviving_identities": survivors,
+                "success": success,
+            }
+            if orphan_error is not None:
+                case["final_cleanup"]["orphan_poll_error"] = orphan_error
+            if not success:
+                case["status"] = "failed"
+                failures.append(container_name)
+            del self._entries[container_name]
+        return failures
+
+
 def _container_logs(container_name: str, *, timeout: float = 10.0) -> str:
     result = _run(
         ["docker", "logs", container_name],
@@ -937,6 +1141,7 @@ def _run_lifecycle_case(
     metrics_port: int,
     evidence: dict[str, Any],
     evidence_path: Path,
+    registry: _ActiveContainerRegistry,
 ) -> None:
     suffix = uuid.uuid4().hex[:8]
     container_name = f"crawler-sampler-{image_key}-{mode}-{suffix}"
@@ -953,8 +1158,8 @@ def _run_lifecycle_case(
         "timings_seconds": {},
     }
     evidence["runs"].append(case)
+    registry.register(container_name, case)
     _atomic_write_json(evidence_path, evidence)
-    created = False
     recorded_identities: list[dict[str, Any]] = []
     try:
         started = time.monotonic()
@@ -968,7 +1173,8 @@ def _run_lifecycle_case(
             description=f"start {image_key} {mode} crawler container",
             timeout=15.0,
         )
-        created = True
+        registry.capture_best_effort(container_name, phase="post-create")
+        _atomic_write_json(evidence_path, evidence)
         container_id = result.stdout.strip()
         _require(bool(container_id), "docker run did not return a container ID")
         container = _inspect_container(container_name)
@@ -986,6 +1192,7 @@ def _run_lifecycle_case(
         case["live"] = live
         case["timings_seconds"]["readiness"] = readiness_seconds
         recorded_identities = _record_host_processes(container_name)
+        registry.note_identities(container_name, recorded_identities)
         required_container_pids = {
             1,
             int(live["launcher"]["pid"]),
@@ -1088,21 +1295,10 @@ def _run_lifecycle_case(
         case["status"] = "passed"
         case["completed_at"] = _utc_now()
         _atomic_write_json(evidence_path, evidence)
-    except Exception as exc:
+    except BaseException as exc:
         case["status"] = "failed"
         case["completed_at"] = _utc_now()
         case["error"] = {"type": type(exc).__name__, "message": str(exc)[:500]}
-        if created:
-            _remove_container(container_name, force=True)
-            if recorded_identities:
-                cleanup_seconds, survivors = _wait_for_identities_gone(
-                    recorded_identities
-                )
-                case["failure_cleanup"] = {
-                    "orphan_poll_seconds": cleanup_seconds,
-                    "all_recorded_identities_gone": not survivors,
-                    "surviving_identities": survivors,
-                }
         _atomic_write_json(evidence_path, evidence)
         raise
 
@@ -1126,6 +1322,7 @@ def _append_summary(evidence: Mapping[str, Any], summary_path: str | None) -> No
                 continue
             timings = run.get("timings_seconds") or {}
             shutdown = run.get("shutdown") or {}
+            final_cleanup = run.get("final_cleanup") or {}
             ready = timings.get("readiness", "-")
             stop = timings.get("docker_stop", "-")
             ready_text = f"{ready:.2f}s" if isinstance(ready, (int, float)) else "-"
@@ -1143,6 +1340,7 @@ def _append_summary(evidence: Mapping[str, Any], summary_path: str | None) -> No
                     orphans=(
                         "none"
                         if shutdown.get("all_recorded_identities_gone") is True
+                        or final_cleanup.get("all_known_identities_gone") is True
                         else "not-proven"
                     ),
                 )
@@ -1181,8 +1379,12 @@ def _run_probe(args: argparse.Namespace) -> int:
         "images": {},
         "runs": [],
     }
-    _atomic_write_json(evidence_path, evidence)
+    registry = _ActiveContainerRegistry()
+    signal_controller = _SignalController()
+    exit_code = 1
     try:
+        signal_controller.install()
+        _atomic_write_json(evidence_path, evidence)
         _validate_sha(tested_build_sha, "tested build SHA")
         _validate_sha(pr_head_sha, "PR head SHA")
         _validate_sha(base_sha, "base SHA")
@@ -1218,23 +1420,51 @@ def _run_probe(args: argparse.Namespace) -> int:
                     metrics_port=args.metrics_port,
                     evidence=evidence,
                     evidence_path=evidence_path,
+                    registry=registry,
                 )
         evidence["status"] = "passed"
-        evidence["completed_at"] = _utc_now()
         _atomic_write_json(evidence_path, evidence)
-        return 0
-    except Exception as exc:  # noqa: BLE001 - persist evidence for unexpected probe defects
+        exit_code = 0
+    # Persist evidence for both ordinary defects and handled cancellation.
+    except BaseException as exc:  # noqa: BLE001
         evidence["status"] = "failed"
-        evidence["completed_at"] = _utc_now()
         evidence["error"] = {"type": type(exc).__name__, "message": str(exc)[:500]}
         _atomic_write_json(evidence_path, evidence)
         print(
             f"crawler sampler container smoke failed: {type(exc).__name__}: {str(exc)[:500]}",
             file=sys.stderr,
         )
-        return 1
     finally:
-        _append_summary(evidence, os.environ.get("GITHUB_STEP_SUMMARY"))
+        signal_controller.begin_cleanup()
+        try:
+            try:
+                cleanup_failures = registry.cleanup_all()
+            # Final evidence must survive even an unexpected cleanup defect.
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                cleanup_failures = ["cleanup-registry-error"]
+                evidence["cleanup_registry_error"] = {
+                    "type": type(cleanup_exc).__name__,
+                    "message": str(cleanup_exc)[:500],
+                }
+            if cleanup_failures:
+                evidence["status"] = "failed"
+                evidence["cleanup_failures"] = cleanup_failures
+                evidence.setdefault(
+                    "error",
+                    {
+                        "type": "ProbeError",
+                        "message": "one or more registered container names failed cleanup",
+                    },
+                )
+                exit_code = 1
+            if signal_controller.received is not None:
+                evidence["received_signal"] = signal_controller.received
+            evidence["completed_at"] = _utc_now()
+            _atomic_write_json(evidence_path, evidence)
+            _append_summary(evidence, os.environ.get("GITHUB_STEP_SUMMARY"))
+        finally:
+            signal_controller.restore()
+    return exit_code
 
 
 class _SelfTests(unittest.TestCase):
@@ -1380,6 +1610,234 @@ class _SelfTests(unittest.TestCase):
         self.assertEqual(topology["crawler"]["pid"], 3)
         self.assertEqual(topology["sampler"]["pid"], 4)
         self.assertEqual(topology["xvfb"]["pid"], 5)
+
+    def test_create_failure_cleanup_is_name_driven(self) -> None:
+        registry = _ActiveContainerRegistry()
+        evidence: dict[str, Any] = {"runs": []}
+        removal = {
+            "attempted": True,
+            "success": True,
+            "outcome": "already-absent",
+            "returncode": 1,
+        }
+        with (
+            mock.patch(
+                __name__ + "._run",
+                side_effect=ProbeError("injected docker create failure"),
+            ),
+            mock.patch(__name__ + "._atomic_write_json"),
+        ):
+            with self.assertRaisesRegex(ProbeError, "injected docker create failure"):
+                _run_lifecycle_case(
+                    image_key="slim",
+                    image={"reference": "slim:test", "content_id": "sha256:slim"},
+                    mode="graceful",
+                    expected_role="run",
+                    metrics_port=19091,
+                    evidence=evidence,
+                    evidence_path=Path("unused.json"),
+                    registry=registry,
+                )
+
+        case = evidence["runs"][0]
+        container_name = case["container_name"]
+        self.assertTrue(case["cleanup_registration"]["registered_before_create"])
+        with (
+            mock.patch(
+                __name__ + "._record_host_processes",
+                side_effect=ProbeError("container name is absent"),
+            ),
+            mock.patch(
+                __name__ + "._force_remove_container_name",
+                return_value=removal,
+            ) as remove,
+            mock.patch(
+                __name__ + "._wait_for_identities_gone",
+                return_value=(0.0, []),
+            ),
+        ):
+            failures = registry.cleanup_all()
+        self.assertEqual(failures, [])
+        remove.assert_called_once_with(container_name)
+        self.assertTrue(case["final_cleanup"]["success"])
+
+    def test_readiness_failure_cleanup_polls_early_identity(self) -> None:
+        registry = _ActiveContainerRegistry()
+        evidence: dict[str, Any] = {"runs": []}
+        identity = {
+            "host_pid": 123,
+            "host_ppid": 1,
+            "container_pid": 3,
+            "argv": "python crawler",
+            "start_time_ticks": 456,
+        }
+        removal = {"attempted": True, "success": True, "outcome": "removed"}
+        with (
+            mock.patch(
+                __name__ + "._run",
+                return_value=subprocess.CompletedProcess(
+                    args=["docker", "run"],
+                    returncode=0,
+                    stdout="container-id\n",
+                    stderr="",
+                ),
+            ),
+            mock.patch(
+                __name__ + "._record_host_processes",
+                return_value=[identity],
+            ),
+            mock.patch(__name__ + "._inspect_container", return_value={}),
+            mock.patch(__name__ + "._validate_container_runtime"),
+            mock.patch(
+                __name__ + "._wait_for_live_assertions",
+                side_effect=ProbeError("injected readiness failure"),
+            ),
+            mock.patch(__name__ + "._atomic_write_json"),
+        ):
+            with self.assertRaisesRegex(ProbeError, "injected readiness failure"):
+                _run_lifecycle_case(
+                    image_key="full",
+                    image={"reference": "full:test", "content_id": "sha256:full"},
+                    mode="graceful",
+                    expected_role="run-browser",
+                    metrics_port=19091,
+                    evidence=evidence,
+                    evidence_path=Path("unused.json"),
+                    registry=registry,
+                )
+
+        case = evidence["runs"][0]
+        with (
+            mock.patch(
+                __name__ + "._record_host_processes",
+                return_value=[identity],
+            ),
+            mock.patch(
+                __name__ + "._force_remove_container_name",
+                return_value=removal,
+            ),
+            mock.patch(
+                __name__ + "._wait_for_identities_gone",
+                return_value=(0.1, []),
+            ) as orphan_poll,
+        ):
+            failures = registry.cleanup_all()
+        self.assertEqual(failures, [])
+        orphan_poll.assert_called_once_with([identity])
+        self.assertEqual(case["final_cleanup"]["known_identity_count"], 1)
+        self.assertTrue(case["final_cleanup"]["all_known_identities_gone"])
+
+    def test_signal_interruption_is_idempotent_for_cleanup(self) -> None:
+        handlers: dict[int, Any] = {}
+        evidence_snapshots: list[dict[str, Any]] = []
+
+        def remember_handler(signum: int, handler: Any) -> None:
+            if callable(handler):
+                handlers[signum] = handler
+
+        def interrupt_case(**kwargs: Any) -> None:
+            case = {
+                "image": kwargs["image_key"],
+                "mode": kwargs["mode"],
+                "status": "starting",
+                "container_name": "signal-interrupted",
+            }
+            kwargs["evidence"]["runs"].append(case)
+            kwargs["registry"].register("signal-interrupted", case)
+            handlers[signal.SIGTERM](signal.SIGTERM, None)
+
+        def record_evidence(_path: Path, evidence: Mapping[str, Any]) -> None:
+            evidence_snapshots.append(json.loads(json.dumps(evidence)))
+
+        args = argparse.Namespace(
+            evidence="unused.json",
+            tested_build_sha="1" * 40,
+            pr_head_sha="2" * 40,
+            base_sha="3" * 40,
+            source_url="https://github.com/example/repository",
+            slim_image="slim:test",
+            full_image="full:test",
+            metrics_port=19091,
+        )
+        with (
+            mock.patch(__name__ + ".signal.getsignal", return_value=signal.SIG_DFL),
+            mock.patch(__name__ + ".signal.signal", side_effect=remember_handler),
+            mock.patch(
+                __name__ + "._inspect_image",
+                side_effect=lambda image, **_kwargs: {
+                    "reference": image,
+                    "content_id": f"sha256:{image}",
+                },
+            ),
+            mock.patch(__name__ + "._run_lifecycle_case", side_effect=interrupt_case),
+            mock.patch(
+                __name__ + "._record_host_processes",
+                side_effect=ProbeError("container is already absent"),
+            ),
+            mock.patch(
+                __name__ + "._force_remove_container_name",
+                return_value={"attempted": True, "success": True, "outcome": "removed"},
+            ) as remove,
+            mock.patch(
+                __name__ + "._wait_for_identities_gone",
+                return_value=(0.0, []),
+            ),
+            mock.patch(__name__ + "._atomic_write_json", side_effect=record_evidence),
+            mock.patch(__name__ + "._append_summary") as append_summary,
+        ):
+            self.assertEqual(_run_probe(args), 1)
+
+        remove.assert_called_once_with("signal-interrupted")
+        append_summary.assert_called_once()
+        final_evidence = evidence_snapshots[-1]
+        self.assertEqual(final_evidence["status"], "failed")
+        self.assertEqual(final_evidence["received_signal"], "SIGTERM")
+        self.assertTrue(final_evidence["runs"][0]["final_cleanup"]["success"])
+        self.assertIn("completed_at", final_evidence)
+
+        cleanup_controller = _SignalController()
+        cleanup_controller.begin_cleanup()
+        cleanup_controller._handle(signal.SIGINT, None)
+        cleanup_controller._handle(signal.SIGTERM, None)
+        self.assertEqual(cleanup_controller.received, "SIGINT")
+
+    def test_cleanup_failure_fails_closed(self) -> None:
+        registry = _ActiveContainerRegistry()
+        case: dict[str, Any] = {"status": "failed"}
+        identity = {
+            "host_pid": 123,
+            "host_ppid": 1,
+            "container_pid": 3,
+            "argv": "python crawler",
+            "start_time_ticks": 456,
+        }
+        registry.register("cleanup-failed", case)
+        registry.note_identities("cleanup-failed", [identity])
+        removal = {
+            "attempted": True,
+            "success": False,
+            "outcome": "remove-failed",
+            "returncode": 1,
+        }
+        with (
+            mock.patch(
+                __name__ + "._record_host_processes",
+                return_value=[identity],
+            ),
+            mock.patch(
+                __name__ + "._force_remove_container_name",
+                return_value=removal,
+            ),
+            mock.patch(
+                __name__ + "._wait_for_identities_gone",
+                return_value=(ORPHAN_TIMEOUT_SECONDS, [identity]),
+            ),
+        ):
+            failures = registry.cleanup_all()
+        self.assertEqual(failures, ["cleanup-failed"])
+        self.assertEqual(case["status"], "failed")
+        self.assertFalse(case["final_cleanup"]["success"])
+        self.assertEqual(case["final_cleanup"]["surviving_identities"], [identity])
 
 
 def _run_self_tests() -> int:
