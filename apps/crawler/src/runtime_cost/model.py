@@ -10,6 +10,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from src.runtime_cost.process_tree import SAMPLER_STRICT_TIMING_LIMIT_SECONDS
+
 WORKLOAD_SCHEMA = "jobseek.crawler-runtime-workload/v1"
 MEASUREMENT_SCHEMA = "jobseek.crawler-runtime-measurement/v1"
 PRICING_SCHEMA = "jobseek.crawler-runtime-pricing/v1"
@@ -17,7 +19,7 @@ PROJECTION_SCHEMA = "jobseek.crawler-runtime-projection/v1"
 PROCESS_TREE_MIN_COVERAGE_RATIO = 0.95
 PROCESS_TREE_MAX_SAMPLE_INTERVAL_SECONDS = 1.0
 PROCESS_TREE_BOUNDARY_TOLERANCE_SECONDS = 60
-EXACT_24H_TARGET_IDS = frozenset(
+EXACT_PROCESS_TREE_TARGET_IDS = frozenset(
     {
         "http-worker-1",
         "http-worker-2",
@@ -119,6 +121,69 @@ def _nonnegative_int(value: object, field: str) -> int:
     return value
 
 
+def _validate_strict_timing_coverage(value: object, *, prefix: str) -> None:
+    _require(isinstance(value, dict), f"{prefix}.strict_timing is missing or invalid")
+    assert isinstance(value, dict)
+    _require(
+        set(value) == {"limit_seconds", "phases", "complete"},
+        f"{prefix}.strict_timing fields are invalid",
+    )
+    limit_seconds = value.get("limit_seconds")
+    _require(
+        isinstance(limit_seconds, int | float)
+        and not isinstance(limit_seconds, bool)
+        and math.isfinite(float(limit_seconds))
+        and float(limit_seconds) == SAMPLER_STRICT_TIMING_LIMIT_SECONDS,
+        f"{prefix}.strict_timing.limit_seconds differs from the contract",
+    )
+    phases = value.get("phases")
+    _require(
+        isinstance(phases, list) and len(phases) == 3,
+        f"{prefix}.strict_timing phases must contain exactly three children",
+    )
+    assert isinstance(phases, list)
+    expected_phases = {"wake_lateness", "collection", "handoff"}
+    observed_phases: set[str] = set()
+    for index, phase_item in enumerate(phases):
+        phase_prefix = f"{prefix}.strict_timing.phases[{index}]"
+        _require(isinstance(phase_item, dict), f"{phase_prefix} must be an object")
+        assert isinstance(phase_item, dict)
+        _require(
+            set(phase_item) == {"phase", "start", "end", "violations", "resets"},
+            f"{phase_prefix} fields are invalid",
+        )
+        phase = phase_item.get("phase")
+        _require(
+            isinstance(phase, str) and phase in expected_phases,
+            f"{phase_prefix}.phase is invalid",
+        )
+        assert isinstance(phase, str)
+        _require(
+            phase not in observed_phases,
+            f"{prefix}.strict_timing phase is duplicated",
+        )
+        observed_phases.add(phase)
+        start = _nonnegative_int(phase_item.get("start"), f"{phase_prefix}.start")
+        end = _nonnegative_int(phase_item.get("end"), f"{phase_prefix}.end")
+        violations = _nonnegative_int(
+            phase_item.get("violations"),
+            f"{phase_prefix}.violations",
+        )
+        resets = _nonnegative_int(phase_item.get("resets"), f"{phase_prefix}.resets")
+        _require(end >= start, f"{phase_prefix} counter regressed")
+        _require(
+            violations == end - start,
+            f"{phase_prefix}.violations is inconsistent",
+        )
+        _require(resets == 0, f"{phase_prefix} contains counter resets")
+        _require(violations == 0, f"{phase_prefix} contains timing limit violations")
+    _require(
+        observed_phases == expected_phases,
+        f"{prefix}.strict_timing phase set differs from the contract",
+    )
+    _require(value.get("complete") is True, f"{prefix}.strict_timing is incomplete")
+
+
 def _validate_process_tree_coverage(
     observed: dict[str, Any],
     *,
@@ -157,6 +222,7 @@ def _validate_process_tree_coverage(
         )
         coverage_ids.add(target_id)
         prefix = f"measurement role {role} process-tree coverage {target_id}"
+        _validate_strict_timing_coverage(item.get("strict_timing"), prefix=prefix)
         interval_seconds = _positive_number(
             item.get("sample_interval_seconds"),
             f"{prefix}.sample_interval_seconds",
@@ -363,20 +429,18 @@ def project_runtime_cost(
         measurement.get("workload_revision") == workload.get("revision"),
         "measurement and workload revisions differ",
     )
-    if measurement.get("window", {}).get("seconds") == 86_400:
-        source_releases = measurement.get("source_releases")
-        _require(
-            isinstance(source_releases, list)
-            and len(source_releases) == 1
-            and isinstance(source_releases[0], str)
-            and bool(source_releases[0]),
-            "86,400-second measurement requires one source release",
-        )
-        measured_target_ids: list[str] = []
-        measured_roles = measurement.get("roles")
-        _require(isinstance(measured_roles, list), "measurement roles must be an array")
-        assert isinstance(measured_roles, list)
-        for measured_role in measured_roles:
+    measured_roles_raw = measurement.get("roles")
+    process_tree_promoted = isinstance(measured_roles_raw, list) and any(
+        isinstance(measured_role, dict) and measured_role.get("resource_scope") == "process-tree"
+        for measured_role in measured_roles_raw
+    )
+    measured_target_ids: list[str] = []
+    all_roles_process_tree = True
+    exact_day = measurement.get("window", {}).get("seconds") == 86_400
+    if exact_day or process_tree_promoted:
+        _require(isinstance(measured_roles_raw, list), "measurement roles must be an array")
+        assert isinstance(measured_roles_raw, list)
+        for measured_role in measured_roles_raw:
             _require(isinstance(measured_role, dict), "measurement role must be an object")
             assert isinstance(measured_role, dict)
             role_target_ids = measured_role.get("target_ids")
@@ -387,10 +451,30 @@ def project_runtime_cost(
             )
             assert isinstance(role_target_ids, list)
             measured_target_ids.extend(str(target_id) for target_id in role_target_ids)
+            all_roles_process_tree = (
+                all_roles_process_tree and measured_role.get("resource_scope") == "process-tree"
+            )
+
+    if exact_day:
+        source_releases = measurement.get("source_releases")
         _require(
-            len(measured_target_ids) == len(EXACT_24H_TARGET_IDS)
-            and set(measured_target_ids) == EXACT_24H_TARGET_IDS,
+            isinstance(source_releases, list)
+            and len(source_releases) == 1
+            and isinstance(source_releases[0], str)
+            and bool(source_releases[0]),
+            "86,400-second measurement requires one source release",
+        )
+        _require(
+            len(measured_target_ids) == len(EXACT_PROCESS_TREE_TARGET_IDS)
+            and set(measured_target_ids) == EXACT_PROCESS_TREE_TARGET_IDS,
             "86,400-second measurement requires the exact six-target fleet",
+        )
+    if process_tree_promoted:
+        _require(
+            all_roles_process_tree
+            and len(measured_target_ids) == len(EXACT_PROCESS_TREE_TARGET_IDS)
+            and set(measured_target_ids) == EXACT_PROCESS_TREE_TARGET_IDS,
+            "strict process-tree measurement requires the exact complete six-target fleet",
         )
     _require(pricing.get("provider") == "hetzner", "pricing provider must be Hetzner")
     _require(pricing.get("source_currency") == "EUR", "Hetzner source currency must be EUR")

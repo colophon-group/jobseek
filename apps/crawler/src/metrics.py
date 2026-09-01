@@ -842,22 +842,37 @@ class _ProcessTreeMetricsCollector:
 
         timing_families = (
             (
+                "wake_lateness",
                 "crawler_runtime_process_tree_sampler_wake_lateness_seconds",
                 "Sampler wake lateness after the absolute monotonic deadline",
                 wake_lateness,
             ),
             (
+                "collection",
                 "crawler_runtime_process_tree_sampler_collection_duration_seconds",
                 "Duration of one process-tree resource collection",
                 collection_duration,
             ),
             (
+                "handoff",
                 "crawler_runtime_process_tree_sampler_handoff_duration_seconds",
                 "Duration of handing one completed sample to the IPC publisher",
                 handoff_duration,
             ),
         )
-        for name, documentation, histogram in timing_families:
+        violations = CounterMetricFamily(
+            "crawler_runtime_process_tree_sampler_timing_limit_violations_total",
+            "Sampler phase durations greater than or equal to the strict 0.25-second limit",
+            labels=["phase"],
+        )
+        for phase, _name, _documentation, histogram in timing_families:
+            violations.add_metric(
+                [phase],
+                histogram.limit_violations if histogram is not None else 0,
+            )
+        yield violations
+
+        for _phase, name, documentation, histogram in timing_families:
             if histogram is None:
                 continue
             family = HistogramMetricFamily(name, documentation)

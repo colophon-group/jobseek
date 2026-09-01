@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import json
+import math
 import multiprocessing
 import os
 import signal
@@ -18,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from src.runtime_cost.process_tree import (
+    SAMPLER_STRICT_TIMING_LIMIT_SECONDS,
     ProcessTreeSample,
     ProcessTreeSampler,
     ProcessTreeSamplerProcess,
@@ -25,7 +27,9 @@ from src.runtime_cost.process_tree import (
     _decode_sampler_snapshot,
     _encode_sampler_snapshot,
     _SamplerChild,
+    _SamplerChildAccumulator,
     _SamplerChildSnapshot,
+    _TimingHistogram,
     parse_proc_stat,
     run_process_tree_sampler,
 )
@@ -623,6 +627,11 @@ def test_sampling_loop_conserves_simulated_86400_second_schedule(
     expected_samples = int(86_400 / interval_seconds)
     observed = 0
     gaps: list[tuple[str, int]] = []
+    timings = {
+        "wake_lateness": _TimingHistogram(),
+        "collection": _TimingHistogram(),
+        "handoff": _TimingHistogram(),
+    }
 
     def observe(_sample: ProcessTreeSample) -> None:
         nonlocal observed
@@ -637,6 +646,7 @@ def test_sampling_loop_conserves_simulated_86400_second_schedule(
         observe=observe,
         record_failure=_ignore_call,
         record_gap=lambda reason, count: gaps.append((reason, count)),
+        record_timing=lambda phase, seconds: timings[phase].observe(seconds),
         monotonic=clock.monotonic,
     )
 
@@ -645,6 +655,63 @@ def test_sampling_loop_conserves_simulated_86400_second_schedule(
     assert sampler.first_started_at == 0
     assert sampler.last_started_at == pytest.approx(86_400 - interval_seconds)
     assert gaps == []
+    assert all(item.snapshot().count == expected_samples for item in timings.values())
+    assert all(item.snapshot().limit_violations == 0 for item in timings.values())
+
+
+def test_strict_timing_limit_uses_exact_float_boundary_for_every_phase() -> None:
+    sender, receiver = socket.socketpair(type=socket.SOCK_DGRAM)
+    accumulator = _SamplerChildAccumulator(sender)
+    try:
+        for phase in ("wake_lateness", "collection", "handoff"):
+            accumulator.record_timing(
+                phase,  # type: ignore[arg-type]
+                math.nextafter(SAMPLER_STRICT_TIMING_LIMIT_SECONDS, 0.0),
+            )
+            accumulator.record_timing(phase, SAMPLER_STRICT_TIMING_LIMIT_SECONDS)  # type: ignore[arg-type]
+            accumulator.record_timing(
+                phase,  # type: ignore[arg-type]
+                math.nextafter(SAMPLER_STRICT_TIMING_LIMIT_SECONDS, math.inf),
+            )
+        snapshot = accumulator.snapshot()
+    finally:
+        sender.close()
+        receiver.close()
+
+    for histogram in (
+        snapshot.wake_lateness,
+        snapshot.collection_duration,
+        snapshot.handoff_duration,
+    ):
+        assert histogram.count == 3
+        assert histogram.limit_violations == 2
+
+
+def test_timing_violation_counts_add_and_reject_regression() -> None:
+    earlier_histogram = _TimingHistogram()
+    earlier_histogram.observe(SAMPLER_STRICT_TIMING_LIMIT_SECONDS)
+    earlier = earlier_histogram.snapshot()
+    later_histogram = _TimingHistogram()
+    later_histogram.observe(SAMPLER_STRICT_TIMING_LIMIT_SECONDS)
+    later_histogram.observe(SAMPLER_STRICT_TIMING_LIMIT_SECONDS)
+    later = later_histogram.snapshot()
+
+    combined = earlier + later
+
+    assert combined.limit_violations == 3
+    assert combined.count == 3
+    assert later.contains(earlier)
+    assert not replace(later, limit_violations=0).contains(earlier)
+
+
+@pytest.mark.parametrize("seconds", [float("nan"), float("inf"), -0.001])
+def test_timing_observation_rejects_nonfinite_and_negative_values(seconds: float) -> None:
+    histogram = _TimingHistogram()
+
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        histogram.observe(seconds)
+
+    assert histogram.snapshot() == TimingHistogramSnapshot.empty()
 
 
 def _child_snapshot(sequence: int = 1) -> _SamplerChildSnapshot:
@@ -673,6 +740,28 @@ def test_sampler_ipc_rejects_partial_frame_without_replacing_complete_snapshot()
     assert _decode_sampler_snapshot(encoded) == expected
 
 
+def test_sampler_ipc_round_trip_preserves_distinct_nonzero_timing_violations() -> None:
+    histograms = []
+    for count in (1, 2, 3):
+        histogram = _TimingHistogram()
+        for _ in range(count):
+            histogram.observe(SAMPLER_STRICT_TIMING_LIMIT_SECONDS)
+        histograms.append(histogram.snapshot())
+    expected = replace(
+        _child_snapshot(),
+        wake_lateness=histograms[0],
+        collection_duration=histograms[1],
+        handoff_duration=histograms[2],
+    )
+
+    decoded = _decode_sampler_snapshot(_encode_sampler_snapshot(expected))
+
+    assert decoded == expected
+    assert decoded.wake_lateness.limit_violations == 1
+    assert decoded.collection_duration.limit_violations == 2
+    assert decoded.handoff_duration.limit_violations == 3
+
+
 @pytest.mark.parametrize(
     ("raw", "message"),
     [
@@ -684,7 +773,7 @@ def test_sampler_ipc_rejects_partial_frame_without_replacing_complete_snapshot()
             lambda: json.dumps(
                 {
                     **json.loads(_encode_sampler_snapshot(_child_snapshot())),
-                    "version": 2,
+                    "version": 1,
                 }
             ).encode(),
             "version is unsupported",
@@ -710,6 +799,32 @@ def test_sampler_ipc_rejects_malformed_frame_matrix(
         _decode_sampler_snapshot(payload)
 
 
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda histogram: histogram.pop("limit_violations"), "fields are invalid"),
+        (lambda histogram: histogram.update(extra=0), "fields are invalid"),
+        (
+            lambda histogram: histogram.update(limit_violations=-1),
+            "must be a non-negative integer",
+        ),
+        (
+            lambda histogram: histogram.update(limit_violations=0.5),
+            "must be a non-negative integer",
+        ),
+    ],
+)
+def test_sampler_ipc_rejects_malformed_timing_violation_field(
+    mutation: Callable[[dict[str, object]], object],
+    message: str,
+) -> None:
+    payload = json.loads(_encode_sampler_snapshot(_child_snapshot()))
+    mutation(payload["timings"]["collection_duration"])
+
+    with pytest.raises(ValueError, match=message):
+        _decode_sampler_snapshot(json.dumps(payload).encode())
+
+
 def test_sampler_ipc_rejects_inconsistent_and_regressing_sample_times() -> None:
     earlier = _child_snapshot()
 
@@ -722,6 +837,110 @@ def test_sampler_ipc_rejects_inconsistent_and_regressing_sample_times() -> None:
         sample=_sample(2, 9.5, 0.5),
     )
     assert not regressing.contains(earlier)
+
+    violated = _TimingHistogram()
+    violated.observe(SAMPLER_STRICT_TIMING_LIMIT_SECONDS)
+    assert not replace(
+        _child_snapshot(sequence=2),
+        emitted_monotonic_seconds=10.5,
+        wake_lateness=replace(violated.snapshot(), limit_violations=0),
+    ).contains(replace(earlier, wake_lateness=violated.snapshot()))
+
+
+def test_sampler_child_rollover_preserves_timing_violation_offsets() -> None:
+    violated = _TimingHistogram()
+    violated.observe(SAMPLER_STRICT_TIMING_LIMIT_SECONDS)
+    histogram = violated.snapshot()
+    child = _SamplerChild(
+        process=_AlwaysAliveProcess(),  # type: ignore[arg-type]
+        receiver=None,  # type: ignore[arg-type]
+        stop_sender=None,  # type: ignore[arg-type]
+        started_monotonic_seconds=0.0,
+        snapshot=replace(
+            _child_snapshot(),
+            wake_lateness=histogram,
+            collection_duration=histogram,
+            handoff_duration=histogram,
+        ),
+    )
+    supervisor = ProcessTreeSamplerProcess.__new__(ProcessTreeSamplerProcess)
+    supervisor._success_offset = 0
+    supervisor._failure_offset = 0
+    supervisor._scheduler_late_offset = 0
+    supervisor._collection_overrun_offset = 0
+    supervisor._wake_lateness_offset = TimingHistogramSnapshot.empty()
+    supervisor._collection_duration_offset = TimingHistogramSnapshot.empty()
+    supervisor._handoff_duration_offset = TimingHistogramSnapshot.empty()
+
+    supervisor._roll_child_into_offsets(child)
+
+    assert supervisor._wake_lateness_offset.limit_violations == 1
+    assert supervisor._collection_duration_offset.limit_violations == 1
+    assert supervisor._handoff_duration_offset.limit_violations == 1
+
+
+def test_public_snapshot_preserves_old_and_new_violation_counts_across_restart() -> None:
+    def violated(count: int) -> TimingHistogramSnapshot:
+        histogram = _TimingHistogram()
+        for _ in range(count):
+            histogram.observe(SAMPLER_STRICT_TIMING_LIMIT_SECONDS)
+        return histogram.snapshot()
+
+    old_child = _SamplerChild(
+        process=_AlwaysAliveProcess(),  # type: ignore[arg-type]
+        receiver=None,  # type: ignore[arg-type]
+        stop_sender=None,  # type: ignore[arg-type]
+        started_monotonic_seconds=0.0,
+        snapshot=replace(
+            _child_snapshot(),
+            sample=None,
+            successes=0,
+            wake_lateness=violated(1),
+            collection_duration=violated(2),
+            handoff_duration=violated(3),
+        ),
+    )
+    old_snapshot = old_child.snapshot
+    assert old_snapshot is not None
+    new_child = replace(
+        old_child,
+        snapshot=replace(
+            old_snapshot,
+            wake_lateness=violated(2),
+            collection_duration=violated(1),
+            handoff_duration=violated(3),
+        ),
+    )
+    supervisor = ProcessTreeSamplerProcess.__new__(ProcessTreeSamplerProcess)
+    supervisor._lock = threading.Lock()
+    supervisor._closed = False
+    supervisor._child = old_child
+    supervisor._starts = 1
+    supervisor._local_failures = 0
+    supervisor._success_offset = 0
+    supervisor._failure_offset = 0
+    supervisor._scheduler_late_offset = 0
+    supervisor._collection_overrun_offset = 0
+    supervisor._wake_lateness_offset = TimingHistogramSnapshot.empty()
+    supervisor._collection_duration_offset = TimingHistogramSnapshot.empty()
+    supervisor._handoff_duration_offset = TimingHistogramSnapshot.empty()
+    supervisor._last_sample = None
+    supervisor._monotonic = lambda: 10.0
+    supervisor._drain_frames = lambda _child: None  # type: ignore[method-assign]
+
+    def restart(old: _SamplerChild, _now: float) -> None:
+        supervisor._roll_child_into_offsets(old)
+        supervisor._child = new_child
+        supervisor._starts += 1
+
+    supervisor._restart_if_unhealthy = restart  # type: ignore[method-assign]
+
+    snapshot = supervisor.snapshot()
+
+    assert snapshot.starts == 2
+    assert snapshot.wake_lateness.limit_violations == 3
+    assert snapshot.collection_duration.limit_violations == 3
+    assert snapshot.handoff_duration.limit_violations == 6
 
 
 class _AlwaysAliveProcess:
