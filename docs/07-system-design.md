@@ -316,6 +316,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `linkedin`     | Fetch LinkedIn public guest-job detail fragments   | None                   |
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
 | `phuketall`    | Parse PhuketAll employer job pages                 | None                   |
+| `recruiterbox` | Parse Recruiterbox / Trakstar Hire server-rendered detail fields | None       |
 | `rippling`     | Fetch Rippling detail API records                  | None                   |
 | `seek`         | Fetch SEEK AU/NZ vacancy detail GraphQL data        | None                   |
 | `skip`         | No-scrape marker for rich monitor output           | None                   |
