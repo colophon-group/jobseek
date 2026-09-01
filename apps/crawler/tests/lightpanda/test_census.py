@@ -82,6 +82,8 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
                         "type": "json-ld",
                     },
                     "render": True,
+                    "resource_policy": "none",
+                    "wait_fallback": "domcontentloaded",
                 },
             ),
         ],
@@ -370,9 +372,9 @@ def test_committed_manifest_is_current_and_contains_kpmg_fallback() -> None:
     manifest = check_manifest()
 
     assert manifest["input"]["network_access"] is False
-    assert manifest["summary"]["browser_board_count"] == 468
-    assert manifest["summary"]["browser_required_step_count"] == 607
-    assert manifest["summary"]["configured_profile_occurrence_count"] == 609
+    assert manifest["summary"]["browser_board_count"] == 470
+    assert manifest["summary"]["browser_required_step_count"] == 610
+    assert manifest["summary"]["configured_profile_occurrence_count"] == 612
     assert any(
         record["profile_kind"] == "configured"
         and record["surface"] == "scraper"

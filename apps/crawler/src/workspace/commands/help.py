@@ -2535,7 +2535,7 @@ personio — Personio XML Feed + HTML Fallback
 
 MONITOR_RSS = """\
 rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
-      (presets: successfactors, teamtailor, wp_job_manager, generic)
+      (presets: successfactors, teamtailor, wp_job_manager, governmentjobs, generic)
 
   Feed:     GET {feed_url}
   Returns:  Feeds: full job data. Legacy SuccessFactors: title, location,
@@ -2549,6 +2549,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
               or native static DWR pagination for /career?company=... boards
             - teamtailor: /jobs.rss (offset-paginated)
             - wp_job_manager: /?feed=job_feed (page-paginated)
+            - governmentjobs: /SearchEngine/JobsFeed?agency=<tenant>
             - generic: standard RSS 2.0 (manual feed URL)
 
   Config:
@@ -2560,6 +2561,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
     {"preset": "teamtailor", "feed_url": "https://company.teamtailor.com/jobs.rss"}
     {"preset": "wp_job_manager",
      "feed_url": "https://example.com/?feed=job_feed"}
+    {"preset": "governmentjobs", "agency": "clineville"}
     {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
 
     preset     Feed parser preset. Auto-detected when possible.

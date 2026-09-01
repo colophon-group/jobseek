@@ -296,6 +296,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "proxy",
             "render",
             "request_headers",
+            "resource_policy",
             "retry_statuses",
             "same_origin_redirects",
             "scope",
@@ -305,6 +306,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "timeout",
             "user_agent",
             "wait",
+            "wait_fallback",
             "warmup_url",
         }
     ),
