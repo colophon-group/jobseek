@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import socket
+import secrets
 from collections import Counter
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from contextlib import suppress
@@ -625,7 +625,8 @@ class BrowserTransportTracker:
         self._rejected_current: set[tuple[str, str]] = set()
         self._session_targets: dict[str, tuple[str, str]] = {}
         self._network_enabled: set[str] = set()
-        self._admission_frozen = False
+        self._admission_ready = False
+        self._admission_closed = False
 
     @property
     def live_count(self) -> int:
@@ -660,8 +661,16 @@ class BrowserTransportTracker:
     def record_pretransport(self, stage: Stage, reason: PretransportReason) -> None:
         self._pretransport[(stage, reason)] += 1
 
+    def observer_ready(self) -> bool:
+        """Open task admission once, only after complete observer setup."""
+
+        if self._admission_closed:
+            return False
+        self._admission_ready = True
+        return True
+
     def accept_task(self, task_id: str, attribution: TaskAttribution) -> bool:
-        if self._admission_frozen:
+        if not self._admission_ready or self._admission_closed:
             self.instrument(attribution.stage, InstrumentationReason.LIFECYCLE_CONFLICT)
             return False
         existing = self._tasks.get(task_id)
@@ -709,7 +718,7 @@ class BrowserTransportTracker:
             return replay_key
         if dedupe in self._seen_rejected_request_events:
             return None
-        if self._admission_frozen:
+        if not self._admission_ready or self._admission_closed:
             self._seen_rejected_request_events.add(dedupe)
             self._rejected_current.add((session_id, request_id))
             for affected_stage in Stage if stage is None else (stage,):
@@ -937,7 +946,8 @@ class BrowserTransportTracker:
         record.suppressed_non_transport = True
 
     def freeze_new_admission(self) -> None:
-        self._admission_frozen = True
+        self._admission_ready = False
+        self._admission_closed = True
 
     def terminalize_live(
         self,
@@ -954,6 +964,7 @@ class BrowserTransportTracker:
                 self._terminalize(record, desired)
 
     def observer_transport_lost(self, stage: Stage) -> None:
+        self.freeze_new_admission()
         self.instrument(stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
         self.terminalize_live(stage=stage, desired=TerminalOutcome.TRANSPORT_FAILURE)
 
@@ -1065,15 +1076,6 @@ def _validate_debug_port(debug_port: int) -> int:
     return debug_port
 
 
-def reserve_loopback_debug_port() -> int:
-    """Reserve an ephemeral loopback port for the immediately following launch."""
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
-        listener.bind((LOOPBACK_CDP_ADDRESS, 0))
-        listener.listen(1)
-        return cast(int, listener.getsockname()[1])
-
-
 def chromium_loopback_debug_args(debug_port: int) -> tuple[str, str]:
     """Return the only permitted Chromium remote-debugging launch flags."""
 
@@ -1082,6 +1084,103 @@ def chromium_loopback_debug_args(debug_port: int) -> tuple[str, str]:
         f"--remote-debugging-address={LOOPBACK_CDP_ADDRESS}",
         f"--remote-debugging-port={port}",
     )
+
+
+@dataclass(slots=True)
+class ChromiumLoopbackOwnership:
+    """One-shot proof that a loopback CDP endpoint owns a Playwright browser.
+
+    The candidate port is chosen without opening and releasing a listener.
+    After the raw controller is armed, a high-entropy, non-network page target
+    is created through Playwright's native browser connection. The controller
+    must observe and fully initialize that exact target before it may open task
+    admission. The verified page is then reused for application navigation.
+    """
+
+    debug_port: int
+    _proof_token: str = field(repr=False)
+    _browser: Any | None = field(default=None, init=False, repr=False)
+    _proof_context: Any | None = field(default=None, init=False, repr=False)
+    _proof_page: Any | None = field(default=None, init=False, repr=False)
+    _proof_url: str | None = field(default=None, init=False, repr=False)
+    _proof_active: bool = field(default=False, init=False, repr=False)
+    _claimed: bool = field(default=False, init=False, repr=False)
+
+    @classmethod
+    def create(cls, *, debug_port: int | None = None) -> ChromiumLoopbackOwnership:
+        port = (
+            49_152 + secrets.randbelow(65_536 - 49_152)
+            if debug_port is None
+            else _validate_debug_port(debug_port)
+        )
+        return cls(port, secrets.token_urlsafe(32))
+
+    @property
+    def launch_args(self) -> tuple[str, str]:
+        return chromium_loopback_debug_args(self.debug_port)
+
+    async def prepare(self, browser: Any) -> None:
+        """Bind this one-shot ownership proof to the native Playwright browser."""
+
+        if self._browser is not None or self._claimed:
+            raise RuntimeError("loopback CDP ownership proof is one-shot")
+        self._browser = browser
+
+    async def _install_proof(self) -> None:
+        browser = self._browser
+        if browser is None or self._proof_context is not None or not self._claimed:
+            raise RuntimeError("loopback CDP ownership proof was not bound")
+        context = await browser.new_context(service_workers="allow")
+        proof_url = f"about:blank#jobseek-cdp-owner={self._proof_token}"
+        try:
+            page = await context.new_page()
+            await page.goto(proof_url)
+            if page.url != proof_url:
+                raise RuntimeError("Chromium ownership proof target URL mismatch")
+        except BaseException:
+            await context.close()
+            raise
+        self._proof_context = context
+        self._proof_page = page
+        self._proof_url = proof_url
+        self._proof_active = True
+
+    def _claim_proof(self) -> str:
+        if self._claimed or self._browser is None:
+            raise RuntimeError("loopback CDP ownership proof was not prepared")
+        self._claimed = True
+        return f"about:blank#jobseek-cdp-owner={self._proof_token}"
+
+    async def _release_proof(self) -> None:
+        self._proof_active = False
+
+    def take_verified_context_and_page(self) -> tuple[Any, Any]:
+        """Transfer the verified context/page only after observer readiness."""
+
+        if (
+            not self._claimed
+            or self._proof_active
+            or self._proof_context is None
+            or self._proof_page is None
+        ):
+            raise RuntimeError("loopback CDP ownership has not been verified")
+        context = self._proof_context
+        page = self._proof_page
+        self._proof_context = None
+        self._proof_page = None
+        self._proof_url = None
+        self._browser = None
+        return context, page
+
+    async def _abort(self) -> None:
+        context = self._proof_context
+        self._proof_context = None
+        self._proof_page = None
+        self._proof_url = None
+        self._browser = None
+        self._proof_active = False
+        if context is not None:
+            await context.close()
 
 
 def _validate_loopback_websocket_url(value: object, debug_port: int) -> str:
@@ -1192,6 +1291,7 @@ class ChromiumAutoAttachObserver:
         self._send_lock = asyncio.Lock()
         self._reader_task: asyncio.Task[None] | None = None
         self._drain_task: asyncio.Task[None] | None = None
+        self._fatal_cleanup_task: asyncio.Task[None] | None = None
         self._envelope_generation = 0
         self._task_generation = 0
         self._setup_trace: list[tuple[str, str, str, str]] = []
@@ -1200,6 +1300,8 @@ class ChromiumAutoAttachObserver:
         self._closing = False
         self._closed = False
         self._reader_failed = False
+        self._fatal = False
+        self._ownership_verified = False
 
     @property
     def ready(self) -> bool:
@@ -1212,6 +1314,10 @@ class ChromiumAutoAttachObserver:
         )
 
     @property
+    def ownership_verified(self) -> bool:
+        return self._ownership_verified and not self._fatal
+
+    @property
     def setup_trace(self) -> tuple[tuple[str, str, str, str], ...]:
         return tuple(self._setup_trace)
 
@@ -1222,7 +1328,7 @@ class ChromiumAutoAttachObserver:
     @classmethod
     async def attach(
         cls,
-        debug_port: int,
+        ownership: ChromiumLoopbackOwnership,
         tracker: BrowserTransportTracker,
         classifier: RequestClassifier,
         *,
@@ -1232,22 +1338,44 @@ class ChromiumAutoAttachObserver:
     ) -> ChromiumAutoAttachObserver | None:
         websocket: RawCDPWebSocket | None = None
         observer: ChromiumAutoAttachObserver | None = None
+        attached = False
         try:
             if setup_timeout <= 0:
                 raise ValueError("setup_timeout must be positive")
-            websocket_url = await _fetch_loopback_websocket_url(debug_port, setup_timeout)
+            proof = ownership._claim_proof()
+            websocket_url = await _fetch_loopback_websocket_url(
+                ownership.debug_port,
+                setup_timeout,
+            )
             websocket = await connector(websocket_url, setup_timeout)
             observer = cls(websocket, tracker, classifier, stage=stage)
             async with asyncio.timeout(setup_timeout):
-                await observer._start()
+                await observer._start(
+                    required_proof=proof,
+                    proof_preparer=ownership._install_proof,
+                    proof_releaser=ownership._release_proof,
+                )
+            if observer._fatal:
+                raise RuntimeError("raw CDP observer failed during attach")
+            attached = True
             return observer
         except asyncio.CancelledError:
+            tracker.freeze_new_admission()
+            tracker.terminalize_live(
+                stage=stage,
+                desired=TerminalOutcome.TRANSPORT_FAILURE,
+            )
             if observer is not None:
                 await observer._close_transport()
             elif websocket is not None:
                 await websocket.close()
             raise
         except Exception:
+            tracker.freeze_new_admission()
+            tracker.terminalize_live(
+                stage=stage,
+                desired=TerminalOutcome.TRANSPORT_FAILURE,
+            )
             tracker.instrument(stage, InstrumentationReason.OBSERVER_ATTACH_FAILED)
             if observer is not None:
                 await observer._close_transport()
@@ -1257,6 +1385,13 @@ class ChromiumAutoAttachObserver:
                 except Exception:
                     tracker.instrument(stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
             return None
+        finally:
+            if not attached:
+                try:
+                    await ownership._abort()
+                except Exception:
+                    tracker.freeze_new_admission()
+                    tracker.instrument(stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
 
     @classmethod
     async def attach_websocket(
@@ -1273,25 +1408,81 @@ class ChromiumAutoAttachObserver:
         observer = cls(websocket, tracker, classifier, stage=stage)
         try:
             async with asyncio.timeout(setup_timeout):
-                await observer._start()
+                await observer._start(
+                    required_proof=None,
+                    proof_preparer=None,
+                    proof_releaser=None,
+                )
             return observer
         except asyncio.CancelledError:
+            tracker.freeze_new_admission()
+            tracker.terminalize_live(
+                stage=stage,
+                desired=TerminalOutcome.TRANSPORT_FAILURE,
+            )
             await observer._close_transport()
             raise
         except Exception:
+            tracker.freeze_new_admission()
+            tracker.terminalize_live(
+                stage=stage,
+                desired=TerminalOutcome.TRANSPORT_FAILURE,
+            )
             tracker.instrument(stage, InstrumentationReason.OBSERVER_ATTACH_FAILED)
             await observer._close_transport()
             return None
 
-    async def _start(self) -> None:
+    async def _start(
+        self,
+        *,
+        required_proof: str | None,
+        proof_preparer: Callable[[], Awaitable[None]] | None,
+        proof_releaser: Callable[[], Awaitable[None]] | None,
+    ) -> None:
         self._reader_task = asyncio.create_task(self._reader_loop())
         await self._send_command("Target.setAutoAttach", _auto_attach_params())
-        await self._send_command("Target.getTargets", {})
         deadline = asyncio.get_running_loop().time() + CDP_SETUP_TIMEOUT_SECONDS
+        await self._send_command("Target.getTargets", {})
         await self._await_stable_initialization(deadline)
-        if self._reader_failed:
+        if self._reader_failed or self._fatal:
             raise RuntimeError("raw CDP reader failed during setup")
+        if required_proof is not None:
+            if proof_preparer is None:
+                raise RuntimeError("raw CDP ownership proof cannot be installed")
+            await proof_preparer()
+            target_result = await self._send_command("Target.getTargets", {})
+            target_infos = target_result.get("targetInfos")
+            if not isinstance(target_infos, list) or not any(
+                isinstance(target, dict)
+                and target.get("type") == "page"
+                and secrets.compare_digest(str(target.get("url")), required_proof)
+                for target in target_infos
+            ):
+                raise RuntimeError("raw CDP endpoint ownership mismatch")
+            await self._await_stable_initialization(deadline)
+            if self._reader_failed or self._fatal:
+                raise RuntimeError("raw CDP reader failed during ownership setup")
+            self._ownership_verified = True
+            if proof_releaser is None:
+                raise RuntimeError("raw CDP ownership proof cannot be released")
+            await proof_releaser()
+            await self._send_command("Target.getTargets", {})
+            await self._await_stable_initialization(deadline)
+        if self._reader_failed or self._fatal:
+            raise RuntimeError("raw CDP reader failed during setup")
+        if not self._tracker.observer_ready():
+            raise RuntimeError("tracker admission cannot be opened")
         self._ready = True
+
+    def _transition_fatal(self) -> None:
+        if self._fatal:
+            return
+        was_ready = self._ready
+        self._fatal = True
+        self._ready = False
+        self._tracker.observer_transport_lost(self._stage)
+        if was_ready and not self._draining and self._fatal_cleanup_task is None:
+            self._fatal_cleanup_task = asyncio.create_task(self._close_transport())
 
     def _spawn_initialization(self, params: Mapping[str, Any]) -> None:
         if self._closing:
@@ -1307,7 +1498,7 @@ class ChromiumAutoAttachObserver:
         if task.cancelled():
             return
         if task.exception() is not None:
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            self._transition_fatal()
 
     async def _reader_loop(self) -> None:
         try:
@@ -1320,7 +1511,7 @@ class ChromiumAutoAttachObserver:
         except Exception:
             if not self._closing:
                 self._reader_failed = True
-                self._tracker.observer_transport_lost(self._stage)
+                self._transition_fatal()
         finally:
             failure = RuntimeError("raw CDP reader stopped")
             for future in tuple(self._pending_commands.values()):
@@ -1333,17 +1524,17 @@ class ChromiumAutoAttachObserver:
                 raw_message = raw_message.decode("utf-8")
             message = json.loads(raw_message)
         except (UnicodeDecodeError, json.JSONDecodeError):
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            self._transition_fatal()
             return
         if not isinstance(message, dict):
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            self._transition_fatal()
             return
         command_id = message.get("id")
         if isinstance(command_id, int) and not isinstance(command_id, bool):
             future = self._pending_commands.pop(command_id, None)
             command_details = self._pending_command_details.pop(command_id, None)
             if future is None or future.done():
-                self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+                self._transition_fatal()
                 return
             if "error" in message:
                 future.set_exception(RuntimeError("raw CDP command failed"))
@@ -1368,7 +1559,7 @@ class ChromiumAutoAttachObserver:
         params = message.get("params", {})
         session_id = message.get("sessionId")
         if not isinstance(method, str) or not isinstance(params, dict):
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            self._transition_fatal()
             return
         if method == "Target.attachedToTarget":
             self._spawn_initialization(params)
@@ -1389,10 +1580,7 @@ class ChromiumAutoAttachObserver:
                     slot for slot in self._preboundary_request_slots if slot[0] != detached_session
                 }
             else:
-                self._tracker.instrument(
-                    self._stage,
-                    InstrumentationReason.OBSERVER_PROTOCOL_ERROR,
-                )
+                self._transition_fatal()
         elif method.startswith("Network."):
             self._handle_network_event(session_id, method, params)
 
@@ -1400,17 +1588,17 @@ class ChromiumAutoAttachObserver:
         session_id = params.get("sessionId")
         target_info = params.get("targetInfo")
         if not isinstance(session_id, str) or not isinstance(target_info, dict):
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            self._transition_fatal()
             return
         target_id = target_info.get("targetId")
         target_type = target_info.get("type")
         if not isinstance(target_id, str) or not isinstance(target_type, str):
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            self._transition_fatal()
             return
         existing = self._target_by_session.get(session_id)
         if existing is not None:
             if existing != (target_id, target_type):
-                self._tracker.instrument(self._stage, InstrumentationReason.LIFECYCLE_CONFLICT)
+                self._transition_fatal()
             return
         owner_session = self._session_by_target.get(target_id)
         if owner_session is not None and owner_session != session_id:
@@ -1431,13 +1619,8 @@ class ChromiumAutoAttachObserver:
         self._target_by_session[session_id] = (target_id, target_type)
         self._tracker.observer_target_attached(session_id, target_id, target_type)
         if target_type not in PUBLIC_CDP_TARGET_TYPES:
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
-            with suppress(Exception):
-                await self._send_command(
-                    "Runtime.runIfWaitingForDebugger",
-                    {},
-                    session_id=session_id,
-                )
+            await self._release_or_close_target(session_id, target_id)
+            self._transition_fatal()
             return
         try:
             await self._send_command(
@@ -1457,7 +1640,21 @@ class ChromiumAutoAttachObserver:
                 (session_id, target_id, target_type, "Runtime.runIfWaitingForDebugger")
             )
         except Exception:
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            await self._release_or_close_target(session_id, target_id)
+            self._transition_fatal()
+
+    async def _release_or_close_target(self, session_id: str, target_id: str) -> None:
+        try:
+            await self._send_command(
+                "Runtime.runIfWaitingForDebugger",
+                {},
+                session_id=session_id,
+            )
+            return
+        except Exception:
+            pass
+        with suppress(Exception):
+            await self._send_command("Target.closeTarget", {"targetId": target_id})
 
     async def _send_command(
         self,
@@ -1496,14 +1693,14 @@ class ChromiumAutoAttachObserver:
         if method not in ACCOUNTING_NETWORK_METHODS | CORRELATION_NETWORK_METHODS:
             return
         if not isinstance(session_id, str):
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            self._transition_fatal()
             return
         if session_id in self._ignored_duplicate_sessions:
             return
         target = self._target_by_session.get(session_id)
         request_id = params.get("requestId")
         if target is None or not isinstance(request_id, str):
-            self._tracker.instrument(self._stage, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+            self._transition_fatal()
             return
         target_id, target_type = target
         if target_type not in PUBLIC_CDP_TARGET_TYPES:
@@ -1526,16 +1723,18 @@ class ChromiumAutoAttachObserver:
                 stage=self._stage,
             )
             if association is False:
+                self._transition_fatal()
                 return
             if association is None and session_id not in self._resumed_sessions:
                 # A target's bootstrap request can begin before Network is
                 # enabled and expose only a sparse tail while it is paused.
                 return
-            if association is None and method == "Network.responseReceived":
+            if association is None:
                 self._tracker.instrument(
                     self._stage,
                     InstrumentationReason.LIFECYCLE_CONFLICT,
                 )
+                self._transition_fatal()
                 return
         if method == "Network.requestServedFromCache":
             self._tracker.mark_non_transport(
@@ -1547,10 +1746,7 @@ class ChromiumAutoAttachObserver:
         if method == "Network.responseReceived":
             response = params.get("response")
             if not isinstance(response, dict):
-                self._tracker.instrument(
-                    self._stage,
-                    InstrumentationReason.OBSERVER_PROTOCOL_ERROR,
-                )
+                self._transition_fatal()
                 return
             if any(
                 response.get(name) is True
@@ -1579,10 +1775,18 @@ class ChromiumAutoAttachObserver:
             )
             return
         if method == "Network.dataReceived":
+            encoded_data_length = params.get("encodedDataLength")
+            if (
+                not isinstance(encoded_data_length, int)
+                or isinstance(encoded_data_length, bool)
+                or encoded_data_length < 0
+            ):
+                self._transition_fatal()
+                return
             self._tracker.data_received(
                 session_id=session_id,
                 request_id=request_id,
-                encoded_data_length=params.get("encodedDataLength"),
+                encoded_data_length=encoded_data_length,
                 event_fingerprint=fingerprint,
                 stage=self._stage,
             )
@@ -1700,6 +1904,8 @@ class ChromiumAutoAttachObserver:
             if not reader.done():
                 reader.cancel()
             await asyncio.gather(reader, return_exceptions=True)
+        self._closed = True
+        self._ready = False
 
 
 @dataclass(frozen=True, slots=True)

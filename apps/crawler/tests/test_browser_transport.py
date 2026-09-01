@@ -20,6 +20,7 @@ from src.shared.browser_transport import (
     BrowserTransportTracker,
     Capability,
     ChromiumAutoAttachObserver,
+    ChromiumLoopbackOwnership,
     InstrumentationReason,
     PretransportReason,
     RegistryError,
@@ -55,6 +56,7 @@ def _attribution(
 
 def _covered_tracker(task_id: str = "task") -> BrowserTransportTracker:
     tracker = BrowserTransportTracker()
+    assert tracker.observer_ready()
     assert tracker.accept_task(task_id, _attribution())
     tracker.observer_target_attached("session", "target", "page")
     tracker.observer_network_enabled("session")
@@ -94,6 +96,19 @@ def test_registry_enumerates_exact_private_bounded_exposition():
         "request_id",
     ):
         assert all(forbidden not in dict(item.labels) for item in series)
+
+
+def test_task_admission_opens_only_after_observer_readiness_and_never_reopens():
+    tracker = BrowserTransportTracker()
+
+    assert not tracker.accept_task("too-early", _attribution())
+    assert not tracker.accepted_task_counts
+    assert tracker.observer_ready()
+    assert tracker.accept_task("ready", _attribution())
+    tracker.freeze_new_admission()
+    assert not tracker.accept_task("too-late", _attribution())
+    assert not tracker.observer_ready()
+    assert list(tracker.accepted_task_counts.values()) == [1]
 
 
 def test_registry_rejects_any_cardinality_or_label_broadening():
@@ -225,6 +240,7 @@ def test_redirect_predecessor_precedence_retry_main_and_idempotent_callbacks():
 
 def test_target_reattachment_and_service_worker_replay_do_not_duplicate_attempt():
     tracker = BrowserTransportTracker()
+    tracker.observer_ready()
     tracker.accept_task("task", _attribution())
     declaration = RequestDeclaration("task")
     tracker.observer_target_attached("session-a", "service-worker-target", "service_worker")
@@ -264,6 +280,7 @@ def test_target_reattachment_and_service_worker_replay_do_not_duplicate_attempt(
 
 def test_sparse_reparented_tail_binds_only_to_one_unambiguous_current_request():
     tracker = BrowserTransportTracker()
+    tracker.observer_ready()
     tracker.accept_task("task", _attribution())
     for session_id in ("page-a", "page-b"):
         tracker.observer_target_attached(session_id, session_id, "page")
@@ -297,6 +314,7 @@ def test_sparse_reparented_tail_binds_only_to_one_unambiguous_current_request():
 
 def test_sparse_reparented_tail_with_ambiguous_reused_id_fails_closed():
     tracker = BrowserTransportTracker()
+    tracker.observer_ready()
     tracker.accept_task("task", _attribution())
     for session_id, fingerprint in (("page-a", "declaration-a"), ("page-b", "declaration-b")):
         tracker.observer_target_attached(session_id, session_id, "page")
@@ -319,6 +337,7 @@ def test_sparse_reparented_tail_with_ambiguous_reused_id_fails_closed():
 
 def test_cross_session_reused_request_id_is_a_new_conserved_attempt():
     tracker = BrowserTransportTracker(browser_generation=19)
+    tracker.observer_ready()
     tracker.accept_task("task", _attribution())
     declaration = RequestDeclaration("task")
     for session_id, fingerprint in (("session-a", "event-a"), ("session-b", "event-b")):
@@ -493,6 +512,7 @@ def test_teardown_freezes_admission_terminalizes_once_and_conserves():
 
 def test_missing_byte_coverage_and_classification_are_bounded_blockers():
     tracker = BrowserTransportTracker()
+    tracker.observer_ready()
     tracker.accept_task("task", _attribution())
     tracker.observer_target_attached("session", "target", "page")
     tracker.request_will_be_sent(
@@ -520,10 +540,12 @@ def test_missing_byte_coverage_and_classification_are_bounded_blockers():
 
 
 def test_chromium_debugging_boundary_is_exactly_loopback_and_never_relaxes_origins():
-    assert transport.chromium_loopback_debug_args(9222) == (
+    ownership = ChromiumLoopbackOwnership.create(debug_port=9222)
+    assert ownership.launch_args == (
         "--remote-debugging-address=127.0.0.1",
         "--remote-debugging-port=9222",
     )
+    assert not hasattr(transport, "reserve_loopback_debug_port")
     assert transport._validate_loopback_websocket_url(  # type: ignore[attr-defined]
         "ws://127.0.0.1:9222/devtools/browser/browser-id",
         9222,
@@ -540,9 +562,7 @@ def test_chromium_debugging_boundary_is_exactly_loopback_and_never_relaxes_origi
         with pytest.raises(ValueError):
             transport._validate_loopback_websocket_url(endpoint, 9222)  # type: ignore[attr-defined]
 
-    assert all(
-        "remote-allow-origins" not in arg for arg in transport.chromium_loopback_debug_args(9222)
-    )
+    assert all("remote-allow-origins" not in arg for arg in ownership.launch_args)
 
 
 class FakeRawWebSocket:
@@ -552,6 +572,8 @@ class FakeRawWebSocket:
         self.incoming: asyncio.Queue[object] = asyncio.Queue()
         self.sent: list[dict[str, Any]] = []
         self.blocked_methods: set[str] = set()
+        self.errored_commands: set[tuple[str, str | None]] = set()
+        self.result_overrides: dict[tuple[str, str | None], dict[str, Any]] = {}
         self.on_command: Callable[[dict[str, Any]], None] | None = None
         self.closed = False
 
@@ -562,7 +584,12 @@ class FakeRawWebSocket:
         if callback is not None:
             callback(parsed)
         if parsed["method"] not in self.blocked_methods:
-            response: dict[str, Any] = {"id": parsed["id"], "result": {}}
+            command = (parsed["method"], parsed.get("sessionId"))
+            response: dict[str, Any] = {"id": parsed["id"]}
+            if command in self.errored_commands:
+                response["error"] = {"code": -32_000, "message": "simulated command failure"}
+            else:
+                response["result"] = self.result_overrides.get(command, {})
             if "sessionId" in parsed:
                 response["sessionId"] = parsed["sessionId"]
             self.incoming.put_nowait(json.dumps(response))
@@ -612,7 +639,6 @@ async def _flush_tasks() -> None:
 async def test_raw_cdp_observer_recursively_enables_targets_and_uses_frozen_attribution():
     websocket = FakeRawWebSocket()
     tracker = BrowserTransportTracker()
-    tracker.accept_task("task", _attribution())
     classifications = 0
 
     def classifier(_target_id: str, _target_type: str, _params: Any) -> RequestDeclaration:
@@ -628,6 +654,7 @@ async def test_raw_cdp_observer_recursively_enables_targets_and_uses_frozen_attr
     )
     assert observer is not None
     assert observer.ready
+    assert tracker.accept_task("task", _attribution())
     assert websocket.sent[0]["method"] == "Target.setAutoAttach"
     assert websocket.sent[0]["params"]["flatten"] is True
     assert websocket.sent[0]["params"]["waitForDebuggerOnStart"] is True
@@ -711,6 +738,117 @@ async def test_raw_cdp_observer_recursively_enables_targets_and_uses_frozen_attr
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failed_method",
+    [
+        "Target.setAutoAttach",
+        "Network.enable",
+        "Runtime.runIfWaitingForDebugger",
+    ],
+)
+async def test_initial_attach_fails_closed_at_every_child_setup_boundary(failed_method):
+    websocket = FakeRawWebSocket()
+    websocket.errored_commands.add((failed_method, "child-session"))
+    emitted_child = False
+
+    def emit_initial_child(message: dict[str, Any]) -> None:
+        nonlocal emitted_child
+        if (
+            message["method"] == "Target.getTargets"
+            and "sessionId" not in message
+            and not emitted_child
+        ):
+            emitted_child = True
+            websocket.emit_event(
+                "Target.attachedToTarget",
+                {
+                    "sessionId": "child-session",
+                    "targetInfo": {"targetId": "child-target", "type": "worker"},
+                },
+            )
+
+    websocket.on_command = emit_initial_child
+    tracker = BrowserTransportTracker()
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
+        tracker,
+        lambda *_args: RequestDeclaration("never-admitted"),
+        stage=Stage.MONITOR,
+    )
+
+    assert emitted_child
+    assert observer is None
+    assert websocket.closed
+    assert not tracker.accepted_task_counts
+    assert not tracker.accept_task("after-failed-attach", _attribution())
+    assert (
+        tracker.instrumentation_counts[
+            (Stage.MONITOR, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+        ]
+        == 1
+    )
+    assert (
+        tracker.instrumentation_counts[
+            (Stage.MONITOR, InstrumentationReason.OBSERVER_ATTACH_FAILED)
+        ]
+        == 1
+    )
+    if failed_method == "Runtime.runIfWaitingForDebugger":
+        assert "Target.closeTarget" in websocket.methods_for(None)
+    else:
+        assert "Runtime.runIfWaitingForDebugger" in websocket.methods_for("child-session")
+
+
+@pytest.mark.asyncio
+async def test_post_ready_child_network_failure_revokes_readiness_and_admission():
+    websocket = FakeRawWebSocket()
+    tracker = BrowserTransportTracker()
+    observer = await ChromiumAutoAttachObserver.attach_websocket(
+        websocket,
+        tracker,
+        lambda *_args: RequestDeclaration("task"),
+        stage=Stage.DETAIL,
+    )
+    assert observer is not None and observer.ready
+    assert tracker.accept_task("task", _attribution(stage=Stage.DETAIL))
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "primary-session",
+            "targetInfo": {"targetId": "primary-target", "type": "page"},
+        },
+    )
+    await _flush_tasks()
+    websocket.emit_event(
+        "Network.requestWillBeSent",
+        {"requestId": "live-request", "timestamp": 1},
+        session_id="primary-session",
+    )
+    await _flush_tasks()
+    assert tracker.live_count == 1
+    websocket.errored_commands.add(("Network.enable", "late-session"))
+    websocket.emit_event(
+        "Target.attachedToTarget",
+        {
+            "sessionId": "late-session",
+            "targetInfo": {"targetId": "late-target", "type": "service_worker"},
+        },
+    )
+    await _flush_tasks()
+
+    assert not observer.ready
+    assert websocket.closed
+    assert tracker.terminals[-1].outcome is TerminalOutcome.TRANSPORT_FAILURE
+    assert not tracker.accept_task("after-child-failure", _attribution(stage=Stage.DETAIL))
+    assert (
+        tracker.instrumentation_counts[
+            (Stage.DETAIL, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+        ]
+        == 1
+    )
+
+
+@pytest.mark.asyncio
 async def test_attach_failure_and_drain_timeout_are_bounded(monkeypatch):
     tracker = BrowserTransportTracker()
     blocked = FakeRawWebSocket()
@@ -728,10 +866,11 @@ async def test_attach_failure_and_drain_timeout_are_bounded(monkeypatch):
         == 1
     )
 
+    drain_tracker = BrowserTransportTracker()
     websocket = FakeRawWebSocket()
     observer = await ChromiumAutoAttachObserver.attach_websocket(
         websocket,
-        tracker,
+        drain_tracker,
         lambda *_args: RequestDeclaration("missing"),
         stage=Stage.DETAIL,
     )
@@ -744,7 +883,10 @@ async def test_attach_failure_and_drain_timeout_are_bounded(monkeypatch):
     websocket.blocked_methods.add("Target.getTargets")
     monkeypatch.setattr(transport, "DRAIN_TIMEOUT_SECONDS", 0.001)
     await observer.drain_and_detach()
-    assert tracker.instrumentation_counts[(Stage.DETAIL, InstrumentationReason.DRAIN_TIMEOUT)] == 1
+    assert (
+        drain_tracker.instrumentation_counts[(Stage.DETAIL, InstrumentationReason.DRAIN_TIMEOUT)]
+        == 1
+    )
     assert websocket.closed is True
 
 
@@ -775,6 +917,14 @@ async def test_unknown_sparse_tail_after_target_setup_fails_closed():
         tracker.instrumentation_counts[(Stage.MONITOR, InstrumentationReason.LIFECYCLE_CONFLICT)]
         == 1
     )
+    assert (
+        tracker.instrumentation_counts[
+            (Stage.MONITOR, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
+        ]
+        == 1
+    )
+    assert not observer.ready
+    assert not tracker.accept_task("after-failure", _attribution())
     await observer.drain_and_detach()
 
 
@@ -782,7 +932,6 @@ async def test_unknown_sparse_tail_after_target_setup_fails_closed():
 async def test_websocket_loss_terminalizes_live_request_and_blocks_stage():
     websocket = FakeRawWebSocket()
     tracker = BrowserTransportTracker(browser_generation=7)
-    tracker.accept_task("task", _attribution())
     observer = await ChromiumAutoAttachObserver.attach_websocket(
         websocket,
         tracker,
@@ -790,6 +939,7 @@ async def test_websocket_loss_terminalizes_live_request_and_blocks_stage():
         stage=Stage.MONITOR,
     )
     assert observer is not None
+    assert tracker.accept_task("task", _attribution())
     websocket.emit_event(
         "Target.attachedToTarget",
         {"sessionId": "session", "targetInfo": {"targetId": "target", "type": "page"}},
@@ -806,6 +956,9 @@ async def test_websocket_loss_terminalizes_live_request_and_blocks_stage():
 
     assert tracker.terminals[0].key.browser_generation == 7
     assert tracker.terminals[0].outcome is TerminalOutcome.TRANSPORT_FAILURE
+    assert not observer.ready
+    assert not tracker.accept_task("after-websocket-loss", _attribution())
+    assert list(tracker.accepted_task_counts.values()) == [1]
     assert (
         tracker.instrumentation_counts[
             (Stage.MONITOR, InstrumentationReason.OBSERVER_PROTOCOL_ERROR)
@@ -819,7 +972,6 @@ async def test_websocket_loss_terminalizes_live_request_and_blocks_stage():
 async def test_drain_tracks_tasks_and_late_events_spawned_during_drain():
     websocket = FakeRawWebSocket()
     tracker = BrowserTransportTracker()
-    tracker.accept_task("task", _attribution())
     observer = await ChromiumAutoAttachObserver.attach_websocket(
         websocket,
         tracker,
@@ -827,6 +979,7 @@ async def test_drain_tracks_tasks_and_late_events_spawned_during_drain():
         stage=Stage.MONITOR,
     )
     assert observer is not None
+    assert tracker.accept_task("task", _attribution())
     spawned = False
     emitted_late_request = False
 
@@ -971,6 +1124,81 @@ def _installed_chromium_executable(playwright: Any) -> str | None:
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+async def test_competing_loopback_listener_cannot_claim_launched_browser_ownership():
+    playwright_module = pytest.importorskip("playwright.async_api")
+    async with _LoopbackOrigin() as competitor:
+        websocket_url = f"ws://127.0.0.1:{competitor.port}/devtools/browser/competing-process"
+        competitor.routes = {
+            "/json/version": (
+                "200 OK",
+                {"Content-Type": "application/json"},
+                json.dumps({"webSocketDebuggerUrl": websocket_url}).encode(),
+                0.0,
+            )
+        }
+        async with playwright_module.async_playwright() as playwright:
+            executable = _installed_chromium_executable(playwright)
+            if executable is None:
+                pytest.skip("no real Chromium executable is installed")
+            ownership = ChromiumLoopbackOwnership.create(debug_port=competitor.port)
+            browser = await playwright.chromium.launch(
+                headless=True,
+                executable_path=executable,
+                args=list(ownership.launch_args),
+            )
+            await ownership.prepare(browser)
+            competing_websocket = FakeRawWebSocket()
+            competing_websocket.result_overrides[("Target.getTargets", None)] = {"targetInfos": []}
+            connected_urls: list[str] = []
+
+            async def connect_competing_endpoint(
+                url: str,
+                timeout: float,
+            ) -> FakeRawWebSocket:
+                assert timeout > 0
+                connected_urls.append(url)
+                return competing_websocket
+
+            tracker = BrowserTransportTracker()
+            classifier_calls = 0
+
+            def classifier(*_args: Any) -> RequestDeclaration | None:
+                nonlocal classifier_calls
+                classifier_calls += 1
+                return RequestDeclaration("must-not-run")
+
+            try:
+                observer = await ChromiumAutoAttachObserver.attach(
+                    ownership,
+                    tracker,
+                    classifier,
+                    stage=Stage.MONITOR,
+                    connector=connect_competing_endpoint,
+                )
+                assert observer is None
+                assert connected_urls == [websocket_url]
+                assert competitor.requests == ["/json/version"]
+                assert competing_websocket.methods_for(None) == [
+                    "Target.setAutoAttach",
+                    "Target.getTargets",
+                    "Target.getTargets",
+                ]
+                assert competing_websocket.closed
+                assert classifier_calls == 0
+                assert not tracker.accepted_task_counts
+                assert not tracker.accept_task("application-task", _attribution())
+                assert (
+                    tracker.instrumentation_counts[
+                        (Stage.MONITOR, InstrumentationReason.OBSERVER_ATTACH_FAILED)
+                    ]
+                    == 1
+                )
+            finally:
+                await browser.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_real_chromium_loopback_controller_covers_all_targets_and_conserves_bytes():
     playwright_module = pytest.importorskip("playwright.async_api")
     async with _LoopbackOrigin() as origin:
@@ -984,16 +1212,8 @@ window.__shared = new SharedWorker('/shared.js');
 window.__shared.port.start();
 window.__shared.port.postMessage('start');
 window.__ready = (async () => {{
-  await navigator.serviceWorker.register('/service.js');
-  await navigator.serviceWorker.ready;
-  if (!navigator.serviceWorker.controller) {{
-    await new Promise(resolve => navigator.serviceWorker.addEventListener(
-      'controllerchange', resolve, {{once: true}}
-    ));
-  }}
   const redirect = fetch('/redirect').then(response => response.text());
   const warmup = fetch('/warmup').then(response => response.text());
-  const cached = fetch('/cached').then(response => response.text());
   const controller = new AbortController();
   const partial = fetch('/stream', {{signal: controller.signal}}).then(async response => {{
     const reader = response.body.getReader();
@@ -1001,7 +1221,17 @@ window.__ready = (async () => {{
     controller.abort();
     try {{ await reader.read(); }} catch (_error) {{}}
   }}).catch(() => undefined);
-  await Promise.all([redirect, warmup, cached, partial]);
+  await Promise.all([redirect, warmup, partial]);
+  await fetch('/cacheable').then(response => response.text());
+  await fetch('/cacheable').then(response => response.text());
+  await navigator.serviceWorker.register('/service.js');
+  await navigator.serviceWorker.ready;
+  if (!navigator.serviceWorker.controller) {{
+    await new Promise(resolve => navigator.serviceWorker.addEventListener(
+      'controllerchange', resolve, {{once: true}}
+    ));
+  }}
+  await fetch('/cached').then(response => response.text());
   return true;
 }})();
 </script>""".encode()
@@ -1048,11 +1278,16 @@ window.__ready = (async () => {{
             "/redirect": ("302 Found", {"Location": "/redirect-final"}, b"", 0.0),
             "/redirect-final": ("200 OK", {}, b"redirected", 0.0),
             "/warmup": ("200 OK", {}, b"warmup", 0.0),
+            "/cacheable": (
+                "200 OK",
+                {"Cache-Control": "public, max-age=3600"},
+                b"cacheable",
+                0.0,
+            ),
             "/stream": ("200 OK", {}, b"x" * 65_536, 1.0),
             "/favicon.ico": ("204 No Content", {}, b"", 0.0),
         }
         tracker = BrowserTransportTracker(browser_generation=23)
-        assert tracker.accept_task("real-task", _attribution())
 
         def classifier(
             _target_id: str,
@@ -1075,24 +1310,26 @@ window.__ready = (async () => {{
             executable = _installed_chromium_executable(playwright)
             if executable is None:
                 pytest.skip("no real Chromium executable is installed")
-            debug_port = transport.reserve_loopback_debug_port()
+            ownership = ChromiumLoopbackOwnership.create()
             browser = await playwright.chromium.launch(
                 headless=True,
                 executable_path=executable,
                 args=[
-                    *transport.chromium_loopback_debug_args(debug_port),
+                    *ownership.launch_args,
                     "--site-per-process",
                 ],
             )
+            await ownership.prepare(browser)
             observer = await ChromiumAutoAttachObserver.attach(
-                debug_port,
+                ownership,
                 tracker,
                 classifier,
                 stage=Stage.MONITOR,
             )
             assert observer is not None and observer.ready
-            context = await browser.new_context(service_workers="allow")
-            page = await context.new_page()
+            assert observer.ownership_verified
+            assert tracker.accept_task("real-task", _attribution())
+            context, page = ownership.take_verified_context_and_page()
             try:
                 await page.goto(f"{direct_origin}/")
                 try:
@@ -1108,6 +1345,7 @@ window.__ready = (async () => {{
                                 "/redirect-final",
                                 "/warmup",
                                 "/stream",
+                                "/cacheable",
                             }
                             <= set(origin.requests)
                         ):
@@ -1152,6 +1390,7 @@ window.__ready = (async () => {{
                 ]
                 assert partials and all(terminal.encoded_bytes > 0 for terminal in partials)
                 assert tracker.non_transport_count >= 1
+                assert origin.requests.count("/cacheable") == 1
                 assert origin.requests.count("/cached") == 1
                 assert not tracker.instrumentation_counts
                 rows = tracker.aggregate_rows()

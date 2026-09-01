@@ -33,12 +33,22 @@ Positive observed bytes make a failed, cancelled, or closed lifecycle one
 death is `target_closed`, ordinary teardown is `cancelled`, and the remaining
 bounded terminal classes are frozen in the registry.
 
-Chromium is launched normally by Playwright with a randomly reserved debugging
-port bound only to `127.0.0.1`. A separate raw WebSocket controller discovers
-the public browser endpoint at that exact loopback origin. It does not use
+Chromium is launched normally by Playwright with a cryptographically selected
+debugging-port candidate bound only to `127.0.0.1`. No socket is opened and
+released before launch. A separate raw WebSocket controller discovers the
+public browser endpoint at that exact loopback origin. It does not use
 Playwright private connections, browser-level `CDPSession`,
 `connect_over_cdp`, host publishing, credentials, query tokens, or relaxed
 remote-origin flags.
+
+Endpoint syntax and loopback location are not treated as ownership. Once the
+raw controller's root auto-attach acknowledgement is established, Playwright's
+native connection creates a high-entropy `about:blank` proof page without a
+network request. The raw endpoint must expose and fully initialize that exact
+target. The verified page/context is then transferred for application use. A
+port collision, competing controller, proof mismatch, bind failure, or proof
+setup failure closes the proof context and admits no application task or
+traffic; the secret proof value is never a metric label or log field.
 
 The controller sends `Target.setAutoAttach` with `flatten=true`,
 `waitForDebuggerOnStart=true`, and an explicit filter for page, OOPIF/iframe,
@@ -48,7 +58,13 @@ acknowledgement, `Network.enable` acknowledgement, then
 `Runtime.runIfWaitingForDebugger` acknowledgement. A session is not a complete
 byte source until that sequence succeeds; events queued before the
 `Network.enable` acknowledgement remain outside the accounting boundary.
-Ready is published only after target setup and incoming envelopes are stable.
+The tracker begins with admission closed. Ready and task admission are opened
+only after endpoint ownership, every required child acknowledgement, and
+incoming setup envelopes are stable. Reader loss, malformed relevant protocol,
+or a required child setup failure enters one fatal transition: readiness is
+revoked, future admission is permanently frozen, live generation records are
+terminalized as transport failures (or partial responses when bytes exist),
+paused targets are released or closed, and the raw transport is closed.
 
 Request identity is `(browser_generation, session_id, request_id,
 redirect_hop)`. Attribution and request class freeze at
