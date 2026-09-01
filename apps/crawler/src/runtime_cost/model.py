@@ -302,6 +302,7 @@ def _validate_browser_retry_coverage(observed: dict[str, Any], *, role: str) -> 
         _require(isinstance(events_raw, list), f"{prefix}.events must be an array")
         assert isinstance(events_raw, list)
         event_keys: set[tuple[str | None, str]] = set()
+        outcome_events: dict[str, int] = {}
         retry_events = 0
         for event in events_raw:
             _require(isinstance(event, dict), f"{prefix} event must be an object")
@@ -314,10 +315,17 @@ def _validate_browser_retry_coverage(observed: dict[str, Any], *, role: str) -> 
             _require(event_key not in event_keys, f"{prefix} event is duplicated")
             event_keys.add(event_key)
             count = _nonnegative_int(event.get("events"), f"{prefix} event count")
+            outcome_events[outcome] = outcome_events.get(outcome, 0) + count
             if outcome == "retry":
                 retry_events += count
         _require(event_keys == expected_event_keys, f"{prefix} event children differ")
         _require(item.get("retry_events") == retry_events, f"{prefix} retry total differs")
+        if family == "target-closed":
+            terminal_events = outcome_events["recovered"] + outcome_events["failed"]
+            _require(
+                retry_events == terminal_events,
+                f"{prefix} retry terminal accounting differs",
+            )
         total_retry_events += retry_events
     _require(
         observed_keys

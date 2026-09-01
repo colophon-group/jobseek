@@ -545,7 +545,9 @@ async def _scrape_with_browser_target_recovery(
     )
     try:
         content = await runtime.scrape(url, scraper_type, scraper_config, http, pw=pw)
-    except Exception:
+    except BaseException:
+        # Cancellation is a BaseException on supported Python versions. Close
+        # the accepted retry's terminal accounting, then propagate unchanged.
         browser_target_closed_retries_total.labels(outcome="failed").inc()
         raise
 

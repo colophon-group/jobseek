@@ -603,6 +603,27 @@ def test_model_rejects_missing_browser_retry_child() -> None:
         project_runtime_cost(workload, measurement, pricing)
 
 
+@pytest.mark.parametrize(("recovered", "failed"), [(0, 0), (1, 1)])
+def test_model_rejects_target_closed_retry_terminal_nonconservation(
+    recovered: int, failed: int
+) -> None:
+    workload = _json(RUNTIME_COST / "projected-workload-v1.json")
+    measurement = _committed_process_tree_measurement()
+    pricing = _json(RUNTIME_COST / "pricing/hetzner-eu-2026-06-15.json")
+    target_closed = next(
+        item
+        for item in measurement["roles"][0]["retry_coverage"]
+        if item["family"] == "target-closed"
+    )
+    counts = {"retry": 1, "recovered": recovered, "failed": failed}
+    for event in target_closed["events"]:
+        event["events"] = counts[event["outcome"]]
+    target_closed["retry_events"] = 1
+
+    with pytest.raises(ModelError, match="retry terminal accounting differs"):
+        project_runtime_cost(workload, measurement, pricing)
+
+
 def test_model_rejects_86400_second_target_loss() -> None:
     workload = _json(RUNTIME_COST / "projected-workload-v1.json")
     measurement = _json(RUNTIME_COST / "evidence/python-production-2026-08-29-24h.json")
