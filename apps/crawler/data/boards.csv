@@ -4766,6 +4766,7 @@ oxyle,oxyle-careers,https://oxyle.com/careers,workable,"{""token"": ""oxyle-ag-1
 oyster,oyster-ashby,https://jobs.ashbyhq.com/oyster,ashby,"{""token"": ""oyster""}",skip,
 p2p-org,p2p-org-ashby,https://jobs.ashbyhq.com/p2p.org,ashby,"{""token"": ""p2p.org""}",skip,
 pac-nyc,pac-nyc-greenhouse,https://job-boards.greenhouse.io/pacnyc,greenhouse,"{""token"": ""pacnyc""}",skip,
+pacific-bells,pacific-bells-careers,https://www.paycomonline.net/v4/ats/web.php/portal/37ad8e8d17dee6dd404a9ade55b502e8/career-page,paycom,,paycom,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""job_location_type"", ""date_posted"", ""base_salary""]}"
 pacific-legal-foundation,pacific-legal-foundation-greenhouse,https://job-boards.greenhouse.io/pacificlegalfoundation,greenhouse,"{""token"": ""pacificlegalfoundation""}",skip,
 pacvue,pacvue-greenhouse,https://job-boards.greenhouse.io/pacvue,greenhouse,"{""token"": ""pacvue""}",skip,
 paddle,paddle-ashby,https://jobs.ashbyhq.com/paddle,ashby,"{""token"": ""paddle""}",skip,
