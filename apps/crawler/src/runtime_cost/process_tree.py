@@ -15,6 +15,7 @@ also includes a child that is born and exits between sampler observations.
 
 from __future__ import annotations
 
+import math
 import os
 import threading
 import time
@@ -37,11 +38,49 @@ class ProcessStat:
 
 @dataclass(frozen=True)
 class ProcessTreeSample:
-    """One resource observation rooted at the crawler Python process."""
+    """One immutable, validated process-tree observation generation."""
 
+    observation_sequence: int
+    observation_monotonic_seconds: float
+    observation_unixtime_seconds: float
+    interval_seconds: float
+    root_cpu_seconds: float
+    process_tree_cpu_seconds: float
     process_tree_cpu_delta_seconds: float
+    root_rss_bytes: int
     process_tree_rss_bytes: int
     descendant_count: int
+
+    def __post_init__(self) -> None:
+        if self.observation_sequence <= 0:
+            raise ValueError("observation_sequence must be positive")
+        finite_seconds = (
+            self.observation_monotonic_seconds,
+            self.observation_unixtime_seconds,
+            self.root_cpu_seconds,
+            self.process_tree_cpu_seconds,
+            self.process_tree_cpu_delta_seconds,
+        )
+        if not all(math.isfinite(value) for value in finite_seconds):
+            raise ValueError("process-tree sample seconds must be finite")
+        if not 0 < self.interval_seconds <= 1:
+            raise ValueError("interval_seconds must be positive and no greater than one")
+        if (
+            min(
+                self.root_cpu_seconds,
+                self.process_tree_cpu_seconds,
+                self.process_tree_cpu_delta_seconds,
+                self.root_rss_bytes,
+                self.process_tree_rss_bytes,
+                self.descendant_count,
+            )
+            < 0
+        ):
+            raise ValueError("process-tree sample resources must be non-negative")
+        if self.process_tree_cpu_seconds < self.root_cpu_seconds:
+            raise ValueError("process-tree CPU cannot be lower than root CPU")
+        if self.process_tree_rss_bytes < self.root_rss_bytes:
+            raise ValueError("process-tree RSS cannot be lower than root RSS")
 
 
 def parse_proc_stat(raw: str) -> ProcessStat:
@@ -82,6 +121,9 @@ class ProcessTreeSampler:
         cgroup_cpu_stat_path: Path = Path("/sys/fs/cgroup/cpu.stat"),
         clock_ticks_per_second: int | None = None,
         page_size_bytes: int | None = None,
+        interval_seconds: float = 0.5,
+        monotonic: Callable[[], float] = time.monotonic,
+        wall_clock: Callable[[], float] = time.time,
     ) -> None:
         self.root_pid = os.getpid() if root_pid is None else root_pid
         self.proc_root = proc_root
@@ -94,11 +136,17 @@ class ProcessTreeSampler:
         self.page_size_bytes = (
             int(os.sysconf("SC_PAGE_SIZE")) if page_size_bytes is None else page_size_bytes
         )
+        self.interval_seconds = interval_seconds
+        self.monotonic = monotonic
+        self.wall_clock = wall_clock
         if self.root_pid <= 0:
             raise ValueError("root_pid must be positive")
         if self.clock_ticks_per_second <= 0 or self.page_size_bytes <= 0:
             raise ValueError("process sampling units must be positive")
+        if not 0 < self.interval_seconds <= 1:
+            raise ValueError("interval_seconds must be positive and no greater than one")
         self._previous_cgroup_cpu_seconds: float | None = None
+        self._observation_sequence = 0
 
     def _read_stats(self) -> dict[int, ProcessStat]:
         stats: dict[int, ProcessStat] = {}
@@ -154,6 +202,7 @@ class ProcessTreeSampler:
             descendant_pids.append(pid)
             queue.extend(children.get(pid, []))
 
+        root_rss_bytes = root.rss_pages * self.page_size_bytes
         rss_pages = root.rss_pages
         for pid in descendant_pids:
             process = stats[pid]
@@ -161,18 +210,35 @@ class ProcessTreeSampler:
 
         cgroup_cpu_seconds = self._read_cgroup_cpu_seconds()
         if self._previous_cgroup_cpu_seconds is None:
-            cpu_delta_seconds = 0.0
+            cpu_delta_seconds = cgroup_cpu_seconds
         else:
             if cgroup_cpu_seconds < self._previous_cgroup_cpu_seconds:
                 raise RuntimeError("cgroup-v2 CPU usage counter regressed")
             cpu_delta_seconds = cgroup_cpu_seconds - self._previous_cgroup_cpu_seconds
-        self._previous_cgroup_cpu_seconds = cgroup_cpu_seconds
+        root_cpu_seconds = root.cpu_ticks / self.clock_ticks_per_second
         rss_bytes = rss_pages * self.page_size_bytes
-        return ProcessTreeSample(
+        if cgroup_cpu_seconds < root_cpu_seconds:
+            raise RuntimeError("process-tree CPU is lower than root CPU")
+        if rss_bytes < root_rss_bytes:
+            raise RuntimeError("process-tree RSS is lower than root RSS")
+
+        sample = ProcessTreeSample(
+            observation_sequence=self._observation_sequence + 1,
+            observation_monotonic_seconds=self.monotonic(),
+            observation_unixtime_seconds=self.wall_clock(),
+            interval_seconds=self.interval_seconds,
+            root_cpu_seconds=root_cpu_seconds,
+            process_tree_cpu_seconds=cgroup_cpu_seconds,
             process_tree_cpu_delta_seconds=cpu_delta_seconds,
+            root_rss_bytes=root_rss_bytes,
             process_tree_rss_bytes=rss_bytes,
             descendant_count=len(descendant_pids),
         )
+        # Only a complete, invariant-safe observation advances either public
+        # generation or the exit-safe CPU baseline.
+        self._observation_sequence = sample.observation_sequence
+        self._previous_cgroup_cpu_seconds = cgroup_cpu_seconds
+        return sample
 
 
 def run_process_tree_sampler(
@@ -192,19 +258,44 @@ def run_process_tree_sampler(
     successful coverage exists.
     """
 
-    if interval_seconds <= 0:
-        raise ValueError("interval_seconds must be positive")
-    previous_attempt_at: float | None = None
+    if not 0 < interval_seconds <= 1:
+        raise ValueError("interval_seconds must be positive and no greater than one")
+    if interval_seconds != sampler.interval_seconds:
+        raise ValueError("loop interval_seconds must equal the sampler interval")
+
+    deadline_origin = monotonic()
+    deadline_index = 0
     while not stop_event.is_set():
-        attempted_at = monotonic()
-        if previous_attempt_at is not None:
-            elapsed = max(0.0, attempted_at - previous_attempt_at)
-            missed_intervals = max(0, int(elapsed / interval_seconds) - 1)
-            if missed_intervals:
-                record_gap(missed_intervals)
-        previous_attempt_at = attempted_at
+        deadline = deadline_origin + deadline_index * interval_seconds
+        while (remaining := deadline - monotonic()) > 0:
+            if stop_event.wait(remaining):
+                return
+        if stop_event.is_set():
+            return
+
         try:
             observe(sampler.sample())
         except (OSError, RuntimeError, ValueError):
             record_failure()
-        stop_event.wait(interval_seconds)
+
+        completed_at = monotonic()
+        next_deadline_index = deadline_index + 1
+        last_elapsed_deadline_index = math.floor(
+            (completed_at - deadline_origin) / interval_seconds
+        )
+        # Correct the quotient around floating-point deadline boundaries.
+        while (
+            deadline_origin + (last_elapsed_deadline_index + 1) * interval_seconds <= completed_at
+        ):
+            last_elapsed_deadline_index += 1
+        while (
+            last_elapsed_deadline_index >= 0
+            and deadline_origin + last_elapsed_deadline_index * interval_seconds > completed_at
+        ):
+            last_elapsed_deadline_index -= 1
+
+        first_future_deadline_index = max(next_deadline_index, last_elapsed_deadline_index + 1)
+        skipped_deadlines = first_future_deadline_index - next_deadline_index
+        if skipped_deadlines:
+            record_gap(skipped_deadlines)
+        deadline_index = first_future_deadline_index
