@@ -36,6 +36,35 @@ SAMPLER_INTERVAL_SECONDS: Final = 0.5
 ROOT_RSS_ABSOLUTE_TOLERANCE_BYTES: Final = 16 * 1024 * 1024
 SHA_PATTERN: Final = re.compile(r"^[0-9a-f]{40}$")
 IMAGE_ID_PATTERN: Final = re.compile(r"^sha256:[0-9a-f]{64}$")
+CONTAINER_ID_PATTERN: Final = re.compile(r"^[0-9a-f]{64}$")
+URI_USERINFO_PATTERN: Final = re.compile(
+    r"(?P<prefix>\b[a-z][a-z0-9+.-]*://)[^/\s@]+@",
+    re.IGNORECASE,
+)
+AUTHORIZATION_PATTERN: Final = re.compile(
+    r"(?P<prefix>\bauthorization(?:['\"])?\s*[:=]\s*(?:['\"])?\s*)"
+    r"(?:(?P<scheme>bearer|basic)(?P<spacing>\s+))?"
+    r"(?P<value>[^\s,;]+)",
+    re.IGNORECASE,
+)
+AUTH_SCHEME_PATTERN: Final = re.compile(
+    r"\b(?P<scheme>bearer|basic)(?P<spacing>\s+)(?P<value>[A-Za-z0-9._~+/=-]+)",
+    re.IGNORECASE,
+)
+SENSITIVE_KEY_PATTERN: Final = (
+    r"[A-Za-z0-9_.-]*(?:password|token|secret|key|database_url|redis_url)"
+    r"[A-Za-z0-9_.-]*"
+)
+QUOTED_ASSIGNMENT_PATTERN: Final = re.compile(
+    rf"(?P<prefix>\b{SENSITIVE_KEY_PATTERN}(?:['\"])?\s*[:=]\s*)"
+    r"(?P<quote>['\"])(?P<value>.*?)(?P=quote)",
+    re.IGNORECASE,
+)
+UNQUOTED_ASSIGNMENT_PATTERN: Final = re.compile(
+    rf"(?P<prefix>\b{SENSITIVE_KEY_PATTERN}(?:['\"])?\s*[:=]\s*)"
+    r"(?P<value>(?!['\"])[^\s,;]+)",
+    re.IGNORECASE,
+)
 
 REVISION_LABEL: Final = "org.opencontainers.image.revision"
 SOURCE_LABEL: Final = "org.opencontainers.image.source"
@@ -179,6 +208,111 @@ def _utc_now() -> str:
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise ProbeError(message)
+
+
+def _redact_text(value: str) -> tuple[str, dict[str, Any]]:
+    """Mask credential forms before diagnostic text enters durable evidence."""
+
+    replacement_counts: dict[str, int] = {}
+
+    def apply(
+        name: str,
+        pattern: re.Pattern[str],
+        replacement: Any,
+        text: str,
+    ) -> str:
+        redacted, count = pattern.subn(replacement, text)
+        if count:
+            replacement_counts[name] = replacement_counts.get(name, 0) + count
+        return redacted
+
+    redacted = apply(
+        "quoted_assignment",
+        QUOTED_ASSIGNMENT_PATTERN,
+        lambda match: (
+            f"{match.group('prefix')}{match.group('quote')}[REDACTED]"
+            f"{match.group('quote')}"
+        ),
+        value,
+    )
+    redacted = apply(
+        "assignment",
+        UNQUOTED_ASSIGNMENT_PATTERN,
+        lambda match: f"{match.group('prefix')}[REDACTED]",
+        redacted,
+    )
+    redacted = apply(
+        "authorization",
+        AUTHORIZATION_PATTERN,
+        lambda match: (
+            f"{match.group('prefix')}"
+            f"{(match.group('scheme') + match.group('spacing')) if match.group('scheme') else ''}"
+            "[REDACTED]"
+        ),
+        redacted,
+    )
+    redacted = apply(
+        "auth_scheme",
+        AUTH_SCHEME_PATTERN,
+        lambda match: f"{match.group('scheme')}{match.group('spacing')}[REDACTED]",
+        redacted,
+    )
+    redacted = apply(
+        "uri_userinfo",
+        URI_USERINFO_PATTERN,
+        lambda match: f"{match.group('prefix')}[REDACTED]@",
+        redacted,
+    )
+    return redacted, {
+        "total_replacements": sum(replacement_counts.values()),
+        "replacement_counts": replacement_counts,
+    }
+
+
+def _merge_redaction_counts(target: dict[str, int], source: Mapping[str, Any]) -> None:
+    counts = source.get("replacement_counts")
+    if not isinstance(counts, dict):
+        return
+    for name, count in counts.items():
+        if isinstance(name, str) and isinstance(count, int):
+            target[name] = target.get(name, 0) + count
+
+
+def _redact_diagnostic_value(value: Any) -> tuple[Any, dict[str, Any]]:
+    replacement_counts: dict[str, int] = {}
+
+    def redact(item: Any) -> Any:
+        if isinstance(item, str):
+            redacted, metadata = _redact_text(item)
+            _merge_redaction_counts(replacement_counts, metadata)
+            return redacted
+        if isinstance(item, list):
+            return [redact(child) for child in item]
+        if isinstance(item, dict):
+            return {key: redact(child) for key, child in item.items()}
+        return item
+
+    redacted = redact(value)
+    return redacted, {
+        "total_replacements": sum(replacement_counts.values()),
+        "replacement_counts": replacement_counts,
+    }
+
+
+def _typed_redacted_error(exc: BaseException) -> dict[str, str]:
+    message, _metadata = _redact_text(str(exc))
+    return {"type": type(exc).__name__, "message": message[:500]}
+
+
+def _redacted_log_stream(value: str) -> dict[str, Any]:
+    redacted, metadata = _redact_text(value)
+    return {
+        "text": redacted,
+        "raw_byte_count": len(value.encode("utf-8", errors="replace")),
+        "redacted_byte_count": len(redacted.encode("utf-8", errors="replace")),
+        "line_count": len(value.splitlines()),
+        "redaction": metadata,
+    }
 
 
 def _run(
@@ -409,11 +543,20 @@ def _inspect_container(container_name: str) -> dict[str, Any]:
     return {
         "id": raw.get("Id"),
         "image_content_id": raw.get("Image"),
+        "path": raw.get("Path"),
+        "args": raw.get("Args"),
         "state": {
             "status": state.get("Status"),
             "running": state.get("Running"),
+            "paused": state.get("Paused"),
+            "restarting": state.get("Restarting"),
+            "dead": state.get("Dead"),
+            "pid": state.get("Pid"),
             "exit_code": state.get("ExitCode"),
             "oom_killed": state.get("OOMKilled"),
+            "error": state.get("Error"),
+            "started_at": state.get("StartedAt"),
+            "finished_at": state.get("FinishedAt"),
         },
         "runtime": {
             "init": host_config.get("Init"),
@@ -897,6 +1040,7 @@ def _docker_run_command(
         "SHUTDOWN_GRACE_SECONDS": "2",
         "PROXY_PROVIDER": "none",
         "METRICS_PORT": str(metrics_port),
+        "UV_CACHE_DIR": "/tmp/uv-cache",
         "PYTHONDONTWRITEBYTECODE": "1",
         "LOG_LEVEL": "INFO",
     }
@@ -957,7 +1101,7 @@ def _force_remove_container_name(container_name: str) -> dict[str, Any]:
             "success": False,
             "outcome": "command-error",
             "duration_seconds": time.monotonic() - started,
-            "error": {"type": type(exc).__name__, "message": str(exc)[:500]},
+            "error": _typed_redacted_error(exc),
         }
 
     output = result.stdout + result.stderr
@@ -986,11 +1130,95 @@ def _force_remove_container_name(container_name: str) -> dict[str, Any]:
     }
 
 
+def _read_container_logs(
+    container_name: str, *, timeout: float = 10.0
+) -> subprocess.CompletedProcess[str]:
+    return _run(
+        ["docker", "logs", container_name],
+        description=f"read logs for {container_name}",
+        timeout=timeout,
+        check=False,
+    )
+
+
+def _container_logs(container_name: str, *, timeout: float = 10.0) -> str:
+    result = _read_container_logs(container_name, timeout=timeout)
+    return result.stdout + result.stderr
+
+
+def _capture_container_diagnostics(
+    container_name: str,
+    *,
+    phase: str,
+) -> dict[str, Any]:
+    """Capture redacted inspect state and complete logs before name removal."""
+
+    started = time.monotonic()
+    try:
+        raw_inspect = _inspect_container(container_name)
+        inspect_record, inspect_redaction = _redact_diagnostic_value(raw_inspect)
+        if not isinstance(inspect_record, dict):
+            raise ProbeError("redacted container inspect record is invalid")
+        inspect_capture: dict[str, Any] = {
+            "success": True,
+            "record": inspect_record,
+            "redaction": inspect_redaction,
+        }
+    # A missing/half-created container must not prevent the independent log read.
+    except BaseException as exc:  # noqa: BLE001
+        inspect_capture = {
+            "success": False,
+            "error": _typed_redacted_error(exc),
+        }
+
+    try:
+        result = _read_container_logs(container_name)
+        logs_capture: dict[str, Any] = {
+            "success": result.returncode == 0,
+            "returncode": result.returncode,
+            "stdout": _redacted_log_stream(result.stdout),
+            "stderr": _redacted_log_stream(result.stderr),
+        }
+        if result.returncode != 0:
+            logs_capture["error"] = {
+                "type": "ProbeError",
+                "message": (
+                    f"read container logs failed with exit status {result.returncode}"
+                ),
+            }
+    # Preserve an explicit typed error and zero-length stream facts on capture failure.
+    except BaseException as exc:  # noqa: BLE001
+        logs_capture = {
+            "success": False,
+            "stdout": _redacted_log_stream(""),
+            "stderr": _redacted_log_stream(""),
+            "error": _typed_redacted_error(exc),
+        }
+
+    return {
+        "phase": phase,
+        "captured_at": _utc_now(),
+        "duration_seconds": time.monotonic() - started,
+        "inspect": inspect_capture,
+        "logs": logs_capture,
+    }
+
+
 class _ActiveContainerRegistry:
     """Track intended names and every observed host PID identity until final cleanup."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        evidence: dict[str, Any] | None = None,
+        evidence_path: Path | None = None,
+    ) -> None:
         self._entries: dict[str, dict[str, Any]] = {}
+        self._evidence = evidence
+        self._evidence_path = evidence_path
+
+    def _persist(self) -> None:
+        if self._evidence is not None and self._evidence_path is not None:
+            _atomic_write_json(self._evidence_path, self._evidence)
 
     def register(self, container_name: str, case: dict[str, Any]) -> None:
         _require(
@@ -1049,7 +1277,7 @@ class _ActiveContainerRegistry:
                 "phase": phase,
                 "success": False,
                 "duration_seconds": time.monotonic() - started,
-                "error": {"type": type(exc).__name__, "message": str(exc)[:500]},
+                "error": _typed_redacted_error(exc),
             }
         else:
             self.note_identities(container_name, identities)
@@ -1062,6 +1290,38 @@ class _ActiveContainerRegistry:
         case.setdefault("identity_capture_attempts", []).append(outcome)
         return identities
 
+    def capture_diagnostics(
+        self,
+        container_name: str,
+        *,
+        phase: str,
+    ) -> dict[str, Any]:
+        case: dict[str, Any] = self._entries[container_name]["case"]
+        try:
+            capture = _capture_container_diagnostics(container_name, phase=phase)
+        # An unexpected diagnostic defect must be typed and cannot skip name removal.
+        except BaseException as exc:  # noqa: BLE001
+            error = _typed_redacted_error(exc)
+            capture = {
+                "phase": phase,
+                "captured_at": _utc_now(),
+                "inspect": {"success": False, "error": error},
+                "logs": {
+                    "success": False,
+                    "stdout": _redacted_log_stream(""),
+                    "stderr": _redacted_log_stream(""),
+                    "error": error,
+                },
+            }
+        case.setdefault("diagnostic_captures", []).append(capture)
+        # Diagnostics must reach partial JSON before any following removal attempt.
+        try:
+            self._persist()
+        # Removal still has to proceed when the evidence medium itself fails.
+        except BaseException as exc:  # noqa: BLE001
+            capture["persistence_error"] = _typed_redacted_error(exc)
+        return capture
+
     def cleanup_all(self) -> list[str]:
         """Unconditionally remove every registered name and poll known identities."""
 
@@ -1072,6 +1332,10 @@ class _ActiveContainerRegistry:
                 container_name,
                 phase="outer-finally",
                 propagate_interruption=False,
+            )
+            self.capture_diagnostics(
+                container_name,
+                phase="outer-finally-before-force-remove",
             )
             removal = _force_remove_container_name(container_name)
             identities = sorted(
@@ -1084,7 +1348,7 @@ class _ActiveContainerRegistry:
             except BaseException as exc:  # noqa: BLE001
                 orphan_seconds = 0.0
                 survivors = identities
-                orphan_error = {"type": type(exc).__name__, "message": str(exc)[:500]}
+                orphan_error = _typed_redacted_error(exc)
             success = bool(removal.get("success")) and not survivors
             case["final_cleanup"] = {
                 "name_driven": True,
@@ -1100,18 +1364,15 @@ class _ActiveContainerRegistry:
             if not success:
                 case["status"] = "failed"
                 failures.append(container_name)
+            try:
+                self._persist()
+            except BaseException as exc:  # noqa: BLE001
+                case["final_cleanup"]["persistence_error"] = _typed_redacted_error(exc)
+                case["status"] = "failed"
+                if container_name not in failures:
+                    failures.append(container_name)
             del self._entries[container_name]
         return failures
-
-
-def _container_logs(container_name: str, *, timeout: float = 10.0) -> str:
-    result = _run(
-        ["docker", "logs", container_name],
-        description=f"read logs for {container_name}",
-        timeout=timeout,
-        check=False,
-    )
-    return result.stdout + result.stderr
 
 
 def _send_sigstop(container_name: str, crawler_pid: int) -> None:
@@ -1173,13 +1434,23 @@ def _run_lifecycle_case(
             description=f"start {image_key} {mode} crawler container",
             timeout=15.0,
         )
+        container_id = result.stdout.strip()
+        _require(
+            CONTAINER_ID_PATTERN.fullmatch(container_id) is not None,
+            "docker run did not return an exact container ID",
+        )
+        case["container_id"] = container_id
+        _atomic_write_json(evidence_path, evidence)
         registry.capture_best_effort(container_name, phase="post-create")
         _atomic_write_json(evidence_path, evidence)
-        container_id = result.stdout.strip()
-        _require(bool(container_id), "docker run did not return a container ID")
-        container = _inspect_container(container_name)
-        _validate_container_runtime(container, str(image["content_id"]))
+        raw_container = _inspect_container(container_name)
+        container, container_redaction = _redact_diagnostic_value(raw_container)
+        if not isinstance(container, dict):
+            raise ProbeError("redacted initial container inspect is invalid")
         case["container"] = container
+        case["container_inspect_redaction"] = container_redaction
+        _atomic_write_json(evidence_path, evidence)
+        _validate_container_runtime(container, str(image["content_id"]))
         case["status"] = "waiting-for-live-sample"
         _atomic_write_json(evidence_path, evidence)
 
@@ -1241,8 +1512,33 @@ def _run_lifecycle_case(
             stop_seconds < stop_timeout, f"{mode} docker stop exceeded its strict bound"
         )
 
-        stopped = _inspect_container(container_name)
-        logs = _container_logs(container_name)
+        stopped_capture = registry.capture_diagnostics(
+            container_name,
+            phase=f"{mode}-stopped-before-remove",
+        )
+        _require(
+            "persistence_error" not in stopped_capture,
+            "post-stop diagnostics could not be persisted before removal",
+        )
+        stopped_inspect = stopped_capture["inspect"]
+        _require(
+            stopped_inspect.get("success") is True,
+            "post-stop container inspect capture failed",
+        )
+        stopped = stopped_inspect.get("record")
+        _require(isinstance(stopped, dict), "post-stop container inspect is missing")
+        stopped_logs = stopped_capture["logs"]
+        _require(
+            stopped_logs.get("success") is True,
+            "post-stop container log capture failed",
+        )
+        stdout = stopped_logs.get("stdout")
+        stderr = stopped_logs.get("stderr")
+        _require(
+            isinstance(stdout, dict) and isinstance(stderr, dict),
+            "post-stop container log streams are missing",
+        )
+        logs = str(stdout.get("text", "")) + str(stderr.get("text", ""))
         markers = {
             marker: marker in logs
             for marker in ("pipeline.stopped", "cli.shutting_down", "cli.stopped")
@@ -1298,7 +1594,7 @@ def _run_lifecycle_case(
     except BaseException as exc:
         case["status"] = "failed"
         case["completed_at"] = _utc_now()
-        case["error"] = {"type": type(exc).__name__, "message": str(exc)[:500]}
+        case["error"] = _typed_redacted_error(exc)
         _atomic_write_json(evidence_path, evidence)
         raise
 
@@ -1379,7 +1675,7 @@ def _run_probe(args: argparse.Namespace) -> int:
         "images": {},
         "runs": [],
     }
-    registry = _ActiveContainerRegistry()
+    registry = _ActiveContainerRegistry(evidence, evidence_path)
     signal_controller = _SignalController()
     exit_code = 1
     try:
@@ -1428,10 +1724,11 @@ def _run_probe(args: argparse.Namespace) -> int:
     # Persist evidence for both ordinary defects and handled cancellation.
     except BaseException as exc:  # noqa: BLE001
         evidence["status"] = "failed"
-        evidence["error"] = {"type": type(exc).__name__, "message": str(exc)[:500]}
+        evidence["error"] = _typed_redacted_error(exc)
         _atomic_write_json(evidence_path, evidence)
         print(
-            f"crawler sampler container smoke failed: {type(exc).__name__}: {str(exc)[:500]}",
+            "crawler sampler container smoke failed: "
+            f"{evidence['error']['type']}: {evidence['error']['message']}",
             file=sys.stderr,
         )
     finally:
@@ -1442,10 +1739,7 @@ def _run_probe(args: argparse.Namespace) -> int:
             # Final evidence must survive even an unexpected cleanup defect.
             except BaseException as cleanup_exc:  # noqa: BLE001
                 cleanup_failures = ["cleanup-registry-error"]
-                evidence["cleanup_registry_error"] = {
-                    "type": type(cleanup_exc).__name__,
-                    "message": str(cleanup_exc)[:500],
-                }
+                evidence["cleanup_registry_error"] = _typed_redacted_error(cleanup_exc)
             if cleanup_failures:
                 evidence["status"] = "failed"
                 evidence["cleanup_failures"] = cleanup_failures
@@ -1611,6 +1905,270 @@ class _SelfTests(unittest.TestCase):
         self.assertEqual(topology["sampler"]["pid"], 4)
         self.assertEqual(topology["xvfb"]["pid"], 5)
 
+    def test_docker_run_uses_tmp_uv_cache_without_overrides(self) -> None:
+        for image in ("slim:test", "full:test"):
+            command = _docker_run_command(
+                image=image,
+                container_name="fixed-container-name",
+                role_name="ci-sampler",
+                metrics_port=19091,
+            )
+            self.assertIn("UV_CACHE_DIR=/tmp/uv-cache", command)
+            self.assertNotIn("--entrypoint", command)
+            self.assertEqual(command[-1], image)
+
+    def test_early_exit_diagnostics_are_redacted_before_remove(self) -> None:
+        container_id = "a" * 64
+        image_id = "sha256:" + "b" * 64
+        evidence: dict[str, Any] = {"runs": []}
+        evidence_snapshots: list[dict[str, Any]] = []
+        events: list[str] = []
+        raw_inspect = {
+            "id": container_id,
+            "image_content_id": image_id,
+            "path": "/bin/uv",
+            "args": ["run", "--no-sync", "crawler", "run"],
+            "state": {
+                "status": "exited",
+                "running": False,
+                "paused": False,
+                "restarting": False,
+                "dead": True,
+                "pid": 0,
+                "exit_code": 17,
+                "oom_killed": False,
+                "error": "launcher failed token=state-secret",
+                "started_at": "2026-09-01T07:22:17.500000000Z",
+                "finished_at": "2026-09-01T07:22:17.600000000Z",
+            },
+            "runtime": {
+                "init": True,
+                "cgroupns_mode": "private",
+                "network_mode": "host",
+                "read_only_rootfs": True,
+                "stop_timeout_seconds": 30,
+                "tmpfs_tmp": "rw,noexec,nosuid,nodev,size=64m",
+            },
+        }
+        stdout = "\n".join(
+            (
+                "normal stdout line one",
+                "normal stdout line two",
+                "postgresql://uri-user:uri-pass@localhost/db",
+                "Authorization: Bearer bearer-secret",
+                "PASSWORD=password-secret",
+                "API_TOKEN=token-secret",
+                "CLIENT_SECRET=client-secret",
+                "API_KEY=key-secret",
+                "DATABASE_URL=postgresql://db-user:db-pass@localhost/db",
+                "REDIS_URL=redis://redis-user:redis-pass@localhost/0",
+                'config={"password":"json-secret"}',
+            )
+        )
+        stderr = "Authorization=Basic basic-secret\nnormal stderr line"
+
+        def record_evidence(_path: Path, current: Mapping[str, Any]) -> None:
+            evidence_snapshots.append(json.loads(json.dumps(current)))
+
+        def inspect_container(_name: str) -> dict[str, Any]:
+            events.append("inspect")
+            return raw_inspect
+
+        def read_logs(
+            _name: str, *, timeout: float = 10.0
+        ) -> subprocess.CompletedProcess[str]:
+            del timeout
+            events.append("logs")
+            return subprocess.CompletedProcess(
+                args=["docker", "logs"],
+                returncode=0,
+                stdout=stdout,
+                stderr=stderr,
+            )
+
+        def force_remove(_name: str) -> dict[str, Any]:
+            events.append("remove")
+            return {"attempted": True, "success": True, "outcome": "removed"}
+
+        registry = _ActiveContainerRegistry(evidence, Path("unused.json"))
+        with (
+            mock.patch(
+                __name__ + "._run",
+                return_value=subprocess.CompletedProcess(
+                    args=["docker", "run"],
+                    returncode=0,
+                    stdout=f"{container_id}\n",
+                    stderr="",
+                ),
+            ),
+            mock.patch(
+                __name__ + "._record_host_processes",
+                side_effect=ProbeError("injected early docker top failure"),
+            ),
+            mock.patch(__name__ + "._inspect_container", side_effect=inspect_container),
+            mock.patch(__name__ + "._read_container_logs", side_effect=read_logs),
+            mock.patch(
+                __name__ + "._force_remove_container_name",
+                side_effect=force_remove,
+            ),
+            mock.patch(
+                __name__ + "._wait_for_identities_gone",
+                return_value=(0.0, []),
+            ),
+            mock.patch(
+                __name__ + "._atomic_write_json",
+                side_effect=record_evidence,
+            ),
+        ):
+            with self.assertRaisesRegex(ProbeError, "container exited"):
+                _run_lifecycle_case(
+                    image_key="slim",
+                    image={"reference": "slim:test", "content_id": image_id},
+                    mode="graceful",
+                    expected_role="run",
+                    metrics_port=19091,
+                    evidence=evidence,
+                    evidence_path=Path("unused.json"),
+                    registry=registry,
+                )
+            self.assertEqual(registry.cleanup_all(), [])
+
+        case = evidence["runs"][0]
+        self.assertEqual(case["container_id"], container_id)
+        self.assertEqual(
+            case["cleanup_registration"]["container_name"], case["container_name"]
+        )
+        self.assertEqual(case["container"]["id"], container_id)
+        self.assertEqual(case["container"]["image_content_id"], image_id)
+        self.assertEqual(case["container"]["path"], "/bin/uv")
+        self.assertEqual(
+            case["container"]["args"], ["run", "--no-sync", "crawler", "run"]
+        )
+        self.assertEqual(
+            case["container"]["state"],
+            {
+                "status": "exited",
+                "running": False,
+                "paused": False,
+                "restarting": False,
+                "dead": True,
+                "pid": 0,
+                "exit_code": 17,
+                "oom_killed": False,
+                "error": "launcher failed token=[REDACTED]",
+                "started_at": "2026-09-01T07:22:17.500000000Z",
+                "finished_at": "2026-09-01T07:22:17.600000000Z",
+            },
+        )
+        capture = case["diagnostic_captures"][-1]
+        self.assertTrue(capture["inspect"]["success"])
+        self.assertTrue(capture["logs"]["success"])
+        self.assertEqual(capture["logs"]["stdout"]["line_count"], 11)
+        self.assertEqual(capture["logs"]["stderr"]["line_count"], 2)
+        self.assertEqual(
+            capture["logs"]["stdout"]["raw_byte_count"],
+            len(stdout.encode("utf-8")),
+        )
+        self.assertEqual(
+            capture["logs"]["stderr"]["raw_byte_count"],
+            len(stderr.encode("utf-8")),
+        )
+        redacted_logs = (
+            capture["logs"]["stdout"]["text"] + capture["logs"]["stderr"]["text"]
+        )
+        for line in (
+            "normal stdout line one",
+            "normal stdout line two",
+            "normal stderr line",
+        ):
+            self.assertIn(line, redacted_logs)
+        self.assertGreater(
+            capture["logs"]["stdout"]["redaction"]["total_replacements"],
+            0,
+        )
+        self.assertTrue(case["final_cleanup"]["forced_removal"]["success"])
+        self.assertEqual(case["final_cleanup"]["known_identity_count"], 0)
+        remove_index = events.index("remove")
+        self.assertIn("inspect", events[:remove_index])
+        self.assertIn("logs", events[:remove_index])
+        serialized = json.dumps(evidence)
+        for secret in (
+            "state-secret",
+            "uri-user",
+            "uri-pass",
+            "bearer-secret",
+            "basic-secret",
+            "password-secret",
+            "token-secret",
+            "client-secret",
+            "key-secret",
+            "db-user",
+            "db-pass",
+            "redis-user",
+            "redis-pass",
+            "json-secret",
+        ):
+            self.assertNotIn(secret, serialized)
+        self.assertTrue(
+            any(
+                snapshot["runs"][0].get("container_id") == container_id
+                and "diagnostic_captures" not in snapshot["runs"][0]
+                for snapshot in evidence_snapshots
+            )
+        )
+        self.assertTrue(
+            evidence_snapshots[0]["runs"][0]["cleanup_registration"][
+                "registered_before_create"
+            ]
+        )
+
+    def test_diagnostic_inspect_failure_is_typed(self) -> None:
+        with (
+            mock.patch(
+                __name__ + "._inspect_container",
+                side_effect=ProbeError("inspect failed token=inspect-secret"),
+            ),
+            mock.patch(
+                __name__ + "._read_container_logs",
+                return_value=subprocess.CompletedProcess(
+                    args=["docker", "logs"],
+                    returncode=0,
+                    stdout="available log line\n",
+                    stderr="",
+                ),
+            ),
+        ):
+            capture = _capture_container_diagnostics(
+                "inspect-failed",
+                phase="injected-inspect-failure",
+            )
+        self.assertFalse(capture["inspect"]["success"])
+        self.assertEqual(capture["inspect"]["error"]["type"], "ProbeError")
+        self.assertNotIn("inspect-secret", json.dumps(capture))
+        self.assertTrue(capture["logs"]["success"])
+
+    def test_diagnostic_log_failure_is_typed(self) -> None:
+        with (
+            mock.patch(
+                __name__ + "._inspect_container",
+                return_value={"id": "c" * 64, "state": {"status": "exited"}},
+            ),
+            mock.patch(
+                __name__ + "._read_container_logs",
+                side_effect=ProbeError("logs failed password=log-secret"),
+            ),
+        ):
+            capture = _capture_container_diagnostics(
+                "logs-failed",
+                phase="injected-log-failure",
+            )
+        self.assertTrue(capture["inspect"]["success"])
+        self.assertFalse(capture["logs"]["success"])
+        self.assertEqual(capture["logs"]["error"]["type"], "ProbeError")
+        self.assertEqual(capture["logs"]["stdout"]["raw_byte_count"], 0)
+        self.assertEqual(capture["logs"]["stderr"]["raw_byte_count"], 0)
+        self.assertNotIn("log-secret", json.dumps(capture))
+
     def test_create_failure_cleanup_is_name_driven(self) -> None:
         registry = _ActiveContainerRegistry()
         evidence: dict[str, Any] = {"runs": []}
@@ -1652,6 +2210,13 @@ class _SelfTests(unittest.TestCase):
                 return_value=removal,
             ) as remove,
             mock.patch(
+                __name__ + "._capture_container_diagnostics",
+                return_value={
+                    "inspect": {"success": False},
+                    "logs": {"success": False},
+                },
+            ),
+            mock.patch(
                 __name__ + "._wait_for_identities_gone",
                 return_value=(0.0, []),
             ),
@@ -1678,7 +2243,7 @@ class _SelfTests(unittest.TestCase):
                 return_value=subprocess.CompletedProcess(
                     args=["docker", "run"],
                     returncode=0,
-                    stdout="container-id\n",
+                    stdout=f"{'a' * 64}\n",
                     stderr="",
                 ),
             ),
@@ -1715,6 +2280,10 @@ class _SelfTests(unittest.TestCase):
             mock.patch(
                 __name__ + "._force_remove_container_name",
                 return_value=removal,
+            ),
+            mock.patch(
+                __name__ + "._capture_container_diagnostics",
+                return_value={"inspect": {"success": True}, "logs": {"success": True}},
             ),
             mock.patch(
                 __name__ + "._wait_for_identities_gone",
@@ -1779,6 +2348,13 @@ class _SelfTests(unittest.TestCase):
                 return_value={"attempted": True, "success": True, "outcome": "removed"},
             ) as remove,
             mock.patch(
+                __name__ + "._capture_container_diagnostics",
+                return_value={
+                    "inspect": {"success": False},
+                    "logs": {"success": False},
+                },
+            ),
+            mock.patch(
                 __name__ + "._wait_for_identities_gone",
                 return_value=(0.0, []),
             ),
@@ -1827,6 +2403,10 @@ class _SelfTests(unittest.TestCase):
             mock.patch(
                 __name__ + "._force_remove_container_name",
                 return_value=removal,
+            ),
+            mock.patch(
+                __name__ + "._capture_container_diagnostics",
+                return_value={"inspect": {"success": True}, "logs": {"success": True}},
             ),
             mock.patch(
                 __name__ + "._wait_for_identities_gone",

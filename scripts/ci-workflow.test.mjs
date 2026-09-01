@@ -786,6 +786,13 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
   assert.match(crawlerSamplerContainerSmoke, /"MONITOR_CONCURRENCY": "1"/);
   assert.match(crawlerSamplerContainerSmoke, /"SHUTDOWN_GRACE_SECONDS": "2"/);
   assert.match(crawlerSamplerContainerSmoke, /"PROXY_PROVIDER": "none"/);
+  assert.match(crawlerSamplerContainerSmoke, /"UV_CACHE_DIR": "\/tmp\/uv-cache"/);
+  const dockerRunCommand = crawlerSamplerContainerSmoke.slice(
+    crawlerSamplerContainerSmoke.indexOf("def _docker_run_command("),
+    crawlerSamplerContainerSmoke.indexOf("def _remove_container("),
+  );
+  assert.doesNotMatch(dockerRunCommand, /--entrypoint|--privileged|--pid=host|--cap-add/);
+  assert.match(dockerRunCommand, /command\.append\(image\)\n    return command/);
   assert.match(crawlerSamplerContainerSmoke, /for mode in \("graceful", "forced"\)/);
   assert.match(crawlerSamplerContainerSmoke, /for image_key, expected_role in \(\("slim", "run"\), \("full", "run-browser"\)\)/);
   assert.match(crawlerSamplerContainerSmoke, /"host_pid"/);
@@ -810,6 +817,12 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
     '"oom_killed"',
     '"log_markers"',
     '"all_recorded_identities_gone"',
+    '"container_id"',
+    '"diagnostic_captures"',
+    '"raw_byte_count"',
+    '"redacted_byte_count"',
+    '"line_count"',
+    '"redaction"',
   ]) {
     assert.ok(crawlerSamplerContainerSmoke.includes(requiredEvidence), requiredEvidence);
   }
@@ -862,7 +875,45 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
   assert.match(crawlerSamplerContainerSmoke, /except BaseException as exc:/);
   assert.match(crawlerSamplerContainerSmoke, /cleanup_failures = registry\.cleanup_all\(\)/);
   assert.match(crawlerSamplerContainerSmoke, /finally:[\s\S]*signal_controller\.restore\(\)/);
+  assert.match(crawlerSamplerContainerSmoke, /URI_USERINFO_PATTERN/);
+  assert.match(crawlerSamplerContainerSmoke, /AUTHORIZATION_PATTERN/);
+  assert.match(crawlerSamplerContainerSmoke, /SENSITIVE_KEY_PATTERN/);
+  assert.match(crawlerSamplerContainerSmoke, /def _capture_container_diagnostics\(/);
+  for (const diagnosticState of [
+    '"path": raw.get("Path")',
+    '"args": raw.get("Args")',
+    '"paused": state.get("Paused")',
+    '"restarting": state.get("Restarting")',
+    '"dead": state.get("Dead")',
+    '"pid": state.get("Pid")',
+    '"error": state.get("Error")',
+    '"started_at": state.get("StartedAt")',
+    '"finished_at": state.get("FinishedAt")',
+  ]) {
+    assert.ok(crawlerSamplerContainerSmoke.includes(diagnosticState), diagnosticState);
+  }
+  const cleanupAll = crawlerSamplerContainerSmoke.slice(
+    crawlerSamplerContainerSmoke.indexOf("    def cleanup_all(self)"),
+    crawlerSamplerContainerSmoke.indexOf("def _send_sigstop("),
+  );
+  assert.ok(cleanupAll.indexOf("self.capture_diagnostics(") >= 0);
+  assert.ok(
+    cleanupAll.indexOf("self.capture_diagnostics(") <
+      cleanupAll.indexOf("_force_remove_container_name(container_name)"),
+  );
+  assert.ok(
+    lifecycleCase.indexOf('case["container"] = container') <
+      lifecycleCase.indexOf("_validate_container_runtime(container"),
+  );
+  assert.ok(
+    lifecycleCase.indexOf("stopped_capture = registry.capture_diagnostics(") <
+      lifecycleCase.indexOf("_remove_container(container_name"),
+  );
   for (const failureTest of [
+    "test_docker_run_uses_tmp_uv_cache_without_overrides",
+    "test_early_exit_diagnostics_are_redacted_before_remove",
+    "test_diagnostic_inspect_failure_is_typed",
+    "test_diagnostic_log_failure_is_typed",
     "test_create_failure_cleanup_is_name_driven",
     "test_readiness_failure_cleanup_polls_early_identity",
     "test_signal_interruption_is_idempotent_for_cleanup",
