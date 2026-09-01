@@ -59,6 +59,7 @@ SENSITIVE_ASSIGNMENT_PREFIX_PATTERN: Final = re.compile(
     rf"\b{SENSITIVE_KEY_PATTERN}(?:['\"])?\s*(?P<operator>[:=])\s*",
     re.IGNORECASE,
 )
+SHELL_CONTROL_OPERATOR_STARTS: Final = frozenset(";&|()<>")
 
 REVISION_LABEL: Final = "org.opencontainers.image.revision"
 SOURCE_LABEL: Final = "org.opencontainers.image.source"
@@ -222,16 +223,27 @@ def _redact_sensitive_assignments(value: str) -> tuple[str, dict[str, int]]:
         structured = match.group("operator") == ":"
         quote: str | None = None
         escaped = False
+        continuation_breaks: list[str] = []
         value_end = value_start
         while value_end < len(value):
             character = value[value_end]
+            if escaped:
+                escaped = False
+                if character in "\r\n":
+                    if structured:
+                        break
+                    if character == "\r" and value[value_end : value_end + 2] == "\r\n":
+                        continuation_breaks.append("\r\n")
+                        value_end += 2
+                    else:
+                        continuation_breaks.append(character)
+                        value_end += 1
+                    continue
+                value_end += 1
+                continue
             # An unterminated diagnostic value must not swallow later log lines.
             if character in "\r\n":
                 break
-            if escaped:
-                escaped = False
-                value_end += 1
-                continue
             if character == "\\":
                 escaped = True
                 value_end += 1
@@ -249,13 +261,16 @@ def _redact_sensitive_assignments(value: str) -> tuple[str, dict[str, int]]:
                 break
             if structured and character in ",;]}":
                 break
+            if not structured and character in SHELL_CONTROL_OPERATOR_STARTS:
+                break
             value_end += 1
 
         if structured and initial_quote is not None:
             closing_quote = initial_quote if quote is None else ""
-            pieces.append(f"{initial_quote}[REDACTED]{closing_quote}")
+            replacement = f"{initial_quote}[REDACTED]{closing_quote}"
         else:
-            pieces.append("[REDACTED]")
+            replacement = "[REDACTED]"
+        pieces.append(replacement + "".join(continuation_breaks))
 
         replacement_counts[category] = replacement_counts.get(category, 0) + 1
         cursor = value_end
@@ -2117,6 +2132,111 @@ class _SelfTests(unittest.TestCase):
             artifact["redaction"]["replacement_counts"],
             {"assignment": 1, "quoted_assignment": 4},
         )
+
+    def test_shell_assignment_redaction_honors_continuations_and_controls(
+        self,
+    ) -> None:
+        newline_left = "newline-left-H8"
+        newline_right = "newline-right-I9"
+        crlf_left = "crlf-left-J10"
+        crlf_right = "crlf-right-K11"
+        continuation = "\\"
+        continuation_raw = (
+            f"PASSWORD={newline_left}{continuation}\n{newline_right} "
+            "SAFE_LABEL=newline-safe SAFE_MODE=newline-enabled\n"
+            f"TOKEN={crlf_left}{continuation}\r\n{crlf_right} "
+            "SAFE_LABEL=crlf-safe SAFE_MODE=crlf-enabled"
+        )
+        continuation_artifact = _redacted_log_stream(continuation_raw)
+        continuation_serialized = json.dumps(
+            continuation_artifact,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        for secret_fragment in (
+            newline_left,
+            newline_right,
+            crlf_left,
+            crlf_right,
+        ):
+            self.assertNotIn(secret_fragment, continuation_serialized)
+        for safe_evidence in (
+            "SAFE_LABEL=newline-safe SAFE_MODE=newline-enabled",
+            "SAFE_LABEL=crlf-safe SAFE_MODE=crlf-enabled",
+        ):
+            self.assertIn(safe_evidence, continuation_artifact["text"])
+        self.assertEqual(
+            continuation_artifact["text"].count("\n"),
+            continuation_raw.count("\n"),
+        )
+        self.assertEqual(continuation_artifact["text"].count("\r\n"), 1)
+
+        operator_cases = (
+            ("semicolon-control-L12", ";", "semicolon"),
+            ("and-control-M13", "&&", "and"),
+            ("or-control-N14", "||", "or"),
+            ("pipe-control-O15", "|", "pipe"),
+            ("pipe-background-control-P16", "|&", "pipe-background"),
+            ("background-control-Q17", "&", "background"),
+            ("left-parenthesis-control-R18", "(", "left-parenthesis"),
+            ("right-parenthesis-control-S19", ")", "right-parenthesis"),
+            ("redirect-out-control-T20", ">>output.log;", "redirect-out"),
+            ("redirect-in-control-U21", "<<input-marker;", "redirect-in"),
+            ("redirect-fd-control-V22", ">&2;", "redirect-fd"),
+        )
+        operator_lines = [
+            (
+                f"SECRET={secret}{control}SAFE_LABEL={label}-visible;"
+                f"SAFE_MODE={label}-enabled"
+            )
+            for secret, control, label in operator_cases
+        ]
+        quoted_left = "quoted-control-left-W23"
+        quoted_right = "quoted-control-right-X24"
+        quoted_tail = "quoted-control-tail-Y25"
+        escaped_left = "escaped-control-left-Z26"
+        escaped_right = "escaped-control-right-A27"
+        operator_lines.extend(
+            (
+                (
+                    f"SECRET='{quoted_left};&|()<>{quoted_right}'{quoted_tail} "
+                    "SAFE_LABEL=quoted-control-visible "
+                    "SAFE_MODE=quoted-control-enabled"
+                ),
+                (
+                    f"SECRET={escaped_left}\\;\\&\\|\\(\\)\\<\\>{escaped_right} "
+                    "SAFE_LABEL=escaped-control-visible "
+                    "SAFE_MODE=escaped-control-enabled"
+                ),
+            )
+        )
+        operator_artifact = _redacted_log_stream("\n".join(operator_lines))
+        operator_serialized = json.dumps(
+            operator_artifact,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+        for secret_fragment in (
+            *(case[0] for case in operator_cases),
+            quoted_left,
+            quoted_right,
+            quoted_tail,
+            escaped_left,
+            escaped_right,
+        ):
+            self.assertNotIn(secret_fragment, operator_serialized)
+        for _secret, control, label in operator_cases:
+            self.assertIn(
+                f"{control}SAFE_LABEL={label}-visible;SAFE_MODE={label}-enabled",
+                operator_artifact["text"],
+            )
+        for safe_evidence in (
+            "SAFE_LABEL=quoted-control-visible SAFE_MODE=quoted-control-enabled",
+            "SAFE_LABEL=escaped-control-visible SAFE_MODE=escaped-control-enabled",
+        ):
+            self.assertIn(safe_evidence, operator_artifact["text"])
 
     def test_early_exit_diagnostics_are_redacted_before_remove(self) -> None:
         container_id = "a" * 64
