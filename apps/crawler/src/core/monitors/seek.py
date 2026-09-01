@@ -161,6 +161,9 @@ def _parse_page(
     page_number = _required_int(metadata.get("pageNumber"), "pageNumber")
     page_size = _required_int(metadata.get("pageSize"), "pageSize")
     reported_total = _required_int(metadata.get("totalJobCount"), "totalJobCount")
+    reported_advertiser_id = metadata.get("advertiser")
+    if reported_advertiser_id != advertiser_id:
+        raise ValueError("SEEK search response advertiser does not match the request")
     if page_number != requested_page or page_size != PAGE_SIZE or reported_total != total:
         raise ValueError("SEEK search response pagination does not match the request")
 

@@ -5,15 +5,16 @@ import pytest
 
 from src.core.monitors import all_monitor_types, seek
 from src.core.monitors.seek import _identity_from_url, can_handle, discover
-from src.core.scrapers import all_scraper_types
+from src.core.scrapers import JobContent, all_scraper_types
 from src.core.scrapers.seek import scrape
 from src.shared.http_retry import ResponseBodyTooLargeError
 from src.shared.tdm import TDMReservedError
 from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 
 ADVERTISER_ID = "9094357"
+NZ_ADVERTISER_ID = "22265755"
 AU_BOARD_URL = f"https://au.seek.com/jobs?advertiserid={ADVERTISER_ID}"
-NZ_BOARD_URL = "https://nz.seek.com/jobs?advertiserid=22265755"
+NZ_BOARD_URL = f"https://nz.seek.com/jobs?advertiserid={NZ_ADVERTISER_ID}"
 
 
 def _row(job_id: str, *, advertiser_id: str = ADVERTISER_ID) -> dict:
@@ -30,6 +31,7 @@ def _payload(
     total: int | None = None,
     page: int = 1,
     page_size: int | None = None,
+    advertiser_id: str = ADVERTISER_ID,
 ) -> dict:
     count = len(rows) if total is None else total
     size = seek.PAGE_SIZE if page_size is None else page_size
@@ -37,10 +39,42 @@ def _payload(
         "data": rows,
         "totalCount": count,
         "solMetadata": {
+            "advertiser": advertiser_id,
             "pageNumber": page,
             "pageSize": size,
             "totalJobCount": count,
         },
+    }
+
+
+def _detail_payload(
+    job_id: str,
+    *,
+    advertiser_id: str = ADVERTISER_ID,
+    expired: bool = False,
+    status: str = "Active",
+) -> dict:
+    return {
+        "data": {
+            "jobDetails": {
+                "job": {
+                    "id": job_id,
+                    "title": "Forklift Operator",
+                    "content": "<p>Operate equipment safely.</p>",
+                    "abstract": "Operate equipment.",
+                    "location": {"label": "Bassendean, Perth WA"},
+                    "advertiser": {
+                        "id": advertiser_id,
+                        "name": "United Rentals Australia Pty Ltd",
+                    },
+                    "workTypes": {"label": "Full time"},
+                    "createdAt": {"dateTimeUtc": "2026-08-28T05:39:42Z"},
+                    "expiresAt": {"dateTimeUtc": "2026-09-27T13:59:59Z"},
+                    "isExpired": expired,
+                    "status": status,
+                }
+            }
+        }
     }
 
 
@@ -114,13 +148,63 @@ class TestMonitor:
         def handler(request: httpx.Request) -> httpx.Response:
             assert request.url.host == "nz.seek.com"
             assert request.url.params["siteKey"] == "NZ-Main"
-            return httpx.Response(200, json=_payload([], total=0), request=request)
+            return httpx.Response(
+                200,
+                json=_payload(
+                    [_row("94300044", advertiser_id=NZ_ADVERTISER_ID)],
+                    advertiser_id=NZ_ADVERTISER_ID,
+                ),
+                request=request,
+            )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            assert await discover({"board_url": NZ_BOARD_URL}, client) == set()
+            assert await discover({"board_url": NZ_BOARD_URL}, client) == {
+                "https://nz.seek.com/job/94300044"
+            }
+
+    async def test_accepts_authoritative_zero_result(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json=_payload([], total=0),
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            assert await discover({"board_url": AU_BOARD_URL}, client) == set()
+
+    @pytest.mark.parametrize(
+        ("rows", "reported_advertiser_id"),
+        [
+            ([], None),
+            ([], "999"),
+            ([_row("94267983")], None),
+            ([_row("94267983")], "999"),
+        ],
+        ids=["zero-missing", "zero-wrong", "nonzero-missing", "nonzero-wrong"],
+    )
+    async def test_rejects_unbound_search_response_advertiser(
+        self,
+        rows: list[dict],
+        reported_advertiser_id: str | None,
+    ):
+        payload = _payload(rows)
+        if reported_advertiser_id is None:
+            payload["solMetadata"].pop("advertiser")
+        else:
+            payload["solMetadata"]["advertiser"] = reported_advertiser_id
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="advertiser does not match"):
+                await discover({"board_url": AU_BOARD_URL}, client)
 
     async def test_rejects_invalid_or_mismatched_configured_identity(self):
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request: None)) as client:
+        def unexpected_request(request: httpx.Request) -> httpx.Response:
+            raise AssertionError(f"unexpected request to {request.url}")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(unexpected_request)) as client:
             with pytest.raises(ValueError, match="Cannot derive"):
                 await discover(
                     {
@@ -244,28 +328,7 @@ class TestScraper:
             assert request.url == "https://au.seek.com/graphql"
             return httpx.Response(
                 200,
-                json={
-                    "data": {
-                        "jobDetails": {
-                            "job": {
-                                "id": "94267983",
-                                "title": "Forklift Operator",
-                                "content": "<p>Operate equipment safely.</p>",
-                                "abstract": "Operate equipment.",
-                                "location": {"label": "Bassendean, Perth WA"},
-                                "advertiser": {
-                                    "id": ADVERTISER_ID,
-                                    "name": "United Rentals Australia Pty Ltd",
-                                },
-                                "workTypes": {"label": "Full time"},
-                                "createdAt": {"dateTimeUtc": "2026-08-28T05:39:42Z"},
-                                "expiresAt": {"dateTimeUtc": "2026-09-27T13:59:59Z"},
-                                "isExpired": False,
-                                "status": "Active",
-                            }
-                        }
-                    }
-                },
+                json=_detail_payload("94267983"),
                 request=request,
             )
 
@@ -285,6 +348,94 @@ class TestScraper:
             "status": "Active",
             "is_expired": "False",
         }
+
+    async def test_hydrates_new_zealand_detail_with_authoritative_advertiser(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url == "https://nz.seek.com/graphql"
+            return httpx.Response(
+                200,
+                json=_detail_payload("94300044", advertiser_id=NZ_ADVERTISER_ID),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://nz.seek.com/job/94300044",
+                {"advertiser_id": NZ_ADVERTISER_ID},
+                client,
+            )
+
+        assert result.title == "Forklift Operator"
+        assert result.metadata and result.metadata["seek_id"] == "94300044"
+        assert result.metadata["advertiser_id"] == NZ_ADVERTISER_ID
+
+    @pytest.mark.parametrize("response_id", [None, "99999999"], ids=["missing", "wrong"])
+    async def test_rejects_missing_or_mismatched_detail_id(self, response_id: str | None):
+        payload = _detail_payload("94267983")
+        job = payload["data"]["jobDetails"]["job"]
+        if response_id is None:
+            job.pop("id")
+        else:
+            job["id"] = response_id
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="ID does not match 94267983"):
+                await scrape("https://au.seek.com/job/94267983", {}, client)
+
+    @pytest.mark.parametrize(
+        "response_advertiser_id",
+        [None, "123456"],
+        ids=["missing", "wrong"],
+    )
+    async def test_rejects_missing_or_mismatched_detail_advertiser(
+        self,
+        response_advertiser_id: str | None,
+    ):
+        payload = _detail_payload("94267983")
+        advertiser = payload["data"]["jobDetails"]["job"]["advertiser"]
+        if response_advertiser_id is None:
+            advertiser.pop("id")
+        else:
+            advertiser["id"] = response_advertiser_id
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="advertiser"):
+                await scrape(
+                    "https://au.seek.com/job/94267983",
+                    {"advertiser_id": ADVERTISER_ID},
+                    client,
+                )
+
+    @pytest.mark.parametrize(
+        ("expired", "status"),
+        [(True, "Active"), (False, "Expired")],
+    )
+    async def test_inactive_detail_returns_empty_content(self, expired: bool, status: str):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json=_detail_payload("94267983", expired=expired, status=status),
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            assert await scrape("https://au.seek.com/job/94267983", {}, client) == JobContent()
+
+    async def test_rejects_malformed_active_detail(self):
+        payload = _detail_payload("94267983")
+        payload["data"]["jobDetails"]["job"].pop("status")
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="invalid status fields"):
+                await scrape("https://au.seek.com/job/94267983", {}, client)
 
     async def test_probe_propagates_tdm_reservation(self, monkeypatch: pytest.MonkeyPatch):
         transport = httpx.MockTransport(
