@@ -189,6 +189,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "fetch_json_path",
             "fetch_urls",
             "include_hidden",
+            "item_boundary",
             "item_boundary_tag",
             "nonempty_selector",
             "positions_per_listing",

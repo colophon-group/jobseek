@@ -372,6 +372,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |
 | `phuketall` | Static | Parses PhuketAll employer job pages from an exact HTTPS provider identity under a 2 MiB response cap, including canonical Thai field labels |
+| `recruiterbox` | Static | Parses Recruiterbox / Trakstar Hire server-rendered title, opening metadata, and description fields |
 | `rippling` | Static | Fetches Rippling detail API records |
 | `seek` | Static | Fetches SEEK AU/NZ vacancy detail GraphQL data |
 | `skip` | No fetch | Explicit no-scrape marker for rich monitors that already returned complete job data |

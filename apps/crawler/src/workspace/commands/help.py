@@ -203,6 +203,7 @@ Scraper Types:
   veryeast       Static      No               VeryEast employer job pages
   onlyfy         Static      No               Onlyfy/Prescreen job pages
   paycor         Static      No               Paycor/Newton legacy job pages
+  recruiterbox   Static      No               Recruiterbox/Trakstar Hire job pages
   pdf            Static      No               PDF job descriptions
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    HTTP/PW     Optional (fields)  SPA/XHR or direct API
@@ -1525,6 +1526,12 @@ inline — Single-Page Extraction (rich)
                  Use a contentful repeated tag, not a structural wrapper such
                  as details; details/summary accordions should instead stop
                  each description at the next summary as shown above.
+    item_boundary
+                 Optional matcher object for pages where posting boundaries
+                 share a tag with unrelated content. Supports tag, text, attr,
+                 and match_regex, using the same matching rules as section_start
+                 and section_end. Cannot be combined with item_boundary_tag.
+                 Example: {"tag": "p", "attr": "itemprop=headline"}.
     synthetic_identity_field
                  Optional extracted field containing a provider-stable identity
                  for ordinary static inline rows. The identity, rather than the
@@ -1969,7 +1976,8 @@ recruiterbox — Recruiterbox / Trakstar Hire static listing monitor
   Listing:  GET https://{tenant}.hire.trakstar.com/?limit=100&p={page}
   Legacy:   https://{tenant}.recruiterbox.com redirects to Trakstar Hire
   Returns:  Job URLs from server-rendered HTML
-  Scraper:  Auto-configured (json-ld) for title, description, location, and dates
+  Scraper:  Auto-configured (recruiterbox) for title, description, location,
+            employment type, and remote/hybrid status
   Cost:     10 (HTTP only; no browser)
   Cap:      50,000 jobs
 
@@ -2130,10 +2138,11 @@ ukg — UKG Pro public recruiting API
   Description field from UKG's CandidateOpportunityDetail JSON constructor.
 
   Detection accepts direct or explicitly linked public UKG board URLs on
-  recruiting*.ultipro.com and recruiting.ultipro.ca. It never guesses tenant
-  or board UUIDs. First-page 404/410 is definitive gone; transient auth, rate
-  limit, transport, and server failures fail the run without removing jobs.
-  Pagination is capped at 50,000 opportunities.
+  recruiting*.ultipro.com, recruiting.ultipro.ca, and branded
+  <company>.rec.pro.ukg.net hosts. It never guesses tenant or board UUIDs.
+  First-page 404/410 is definitive gone; transient auth, rate limit, transport,
+  and server failures fail the run without removing jobs. Pagination is capped
+  at 50,000 opportunities.
 
   Upstream ats-scrapers is inventory input only. Jobseek neither imports nor
   executes upstream scraper code.
@@ -4534,6 +4543,19 @@ jazzhr — JazzHR JSON-LD with DOM fallback
             No browser or upstream dependency is required.
 """
 
+SCRAPER_RECRUITERBOX = """\
+recruiterbox — Recruiterbox / Trakstar Hire detail scraper
+
+  Page:     GET the server-rendered Recruiterbox or Trakstar Hire job URL
+  Returns:  title, HTML description, location, employment_type, and
+            job_location_type when the opening metadata declares it
+  Config:   None needed
+  Note:     Auto-configured with the recruiterbox monitor. Current provider
+            pages do not publish JobPosting JSON-LD, so this scraper parses
+            the provider's stable title, opening-info, and description nodes
+            directly without a browser.
+"""
+
 SCRAPER_WORKDAY = """\
 workday — Workday Detail API scraper
 
@@ -4743,6 +4765,7 @@ infor — Infor Global HR / Lawson CandidateSelfService detail scraper
     "seek": SCRAPER_SEEK,
     "paycom": SCRAPER_PAYCOM,
     "jazzhr": SCRAPER_JAZZHR,
+    "recruiterbox": SCRAPER_RECRUITERBOX,
     "paycor": SCRAPER_PAYCOR,
     "paylocity": SCRAPER_PAYLOCITY,
     "bite": SCRAPER_BITE,
