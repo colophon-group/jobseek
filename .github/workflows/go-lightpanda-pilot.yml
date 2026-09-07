@@ -1,0 +1,47 @@
+name: Go Lightpanda Pilot
+
+on:
+  pull_request:
+    paths:
+      - "pilots/go-lightpanda/**"
+      - ".github/workflows/go-lightpanda-pilot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-lightpanda-pilot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test Go Lightpanda Pilot
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: pilots/go-lightpanda
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: pilots/go-lightpanda/go.mod
+          cache-dependency-path: pilots/go-lightpanda/go.sum
+
+      - name: Test, race, vet, and formatting
+        run: |
+          go test ./...
+          go test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
+      - name: Exercise checksum-pinned stable Lightpanda
+        run: docker build --platform linux/amd64 --target integration-test --tag jobseek-lightpanda-integration:${{ github.run_id }} .
+
+      - name: Build bounded runtime image
+        run: docker build --platform linux/amd64 --target runtime --tag jobseek-lightpanda-pilot:${{ github.run_id }} .
