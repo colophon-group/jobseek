@@ -6834,6 +6834,9 @@ who-gives-a-crap,who-gives-a-crap-greenhouse,https://job-boards.greenhouse.io/wh
 whoop,whoop-ashby,https://jobs.ashbyhq.com/whoop,ashby,"{""token"": ""whoop""}",skip,
 whoop,whoop-lever,https://jobs.lever.co/whoop,lever,"{""token"": ""whoop""}",skip,
 wikimedia-foundation,wikimedia-foundation-greenhouse,https://job-boards.greenhouse.io/wikimedia,greenhouse,"{""token"": ""wikimedia""}",skip,
+williams-sonoma,williams-sonoma-careers,https://ehac.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+williams-sonoma,williams-sonoma-customer-care,https://wsgc.applicantstack.com/x/openings,dom,"{""render"": false, ""link_selector"": ""a[href*=\""/x/detail/\""]"", ""url_filter"": ""/x/detail/""}",json-ld,
+williams-sonoma,williams-sonoma-supply-chain,https://wssupplychain.applicantstack.com/x/openings,dom,"{""link_selector"": ""a[href*=\""/x/detail/\""]""}",json-ld,
 wilson-elser-business-legal-professionals,wilson-elser-business-legal-professionals-greenhouse,https://job-boards.greenhouse.io/wilsonelser,greenhouse,"{""token"": ""wilsonelser""}",skip,
 win-home-inspection,win-home-inspection-greenhouse,https://job-boards.greenhouse.io/winhomeinspection,greenhouse,"{""token"": ""winhomeinspection""}",skip,
 windmill,windmill-ashby,https://jobs.ashbyhq.com/windmill,ashby,"{""token"": ""windmill""}",skip,
