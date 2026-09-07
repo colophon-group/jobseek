@@ -1339,6 +1339,9 @@ async def _execute_paginate_collect(page, action: dict) -> None:
         max_pages (int): Safety cap on pagination clicks (default 50).
         force (bool): Use Playwright's force-click behavior when consent
             overlays or other non-semantic elements intercept the control.
+        stop_when_hidden (bool): Treat a matching but hidden next-page control
+            as the terminal state. Some portals keep the final control in the
+            DOM instead of removing or disabling it.
     """
     next_sel = action.get("next_selector", "li.next:not(.next_disabled) a")
     ps_selector = action.get("page_size_selector", "")
@@ -1346,6 +1349,7 @@ async def _execute_paginate_collect(page, action: dict) -> None:
     wait_ms = action.get("wait_ms", 5000)
     max_pages = action.get("max_pages", 50)
     force = action.get("force", False)
+    stop_when_hidden = action.get("stop_when_hidden", False)
 
     if ps_selector and page_size:
         await page.evaluate(
@@ -1375,6 +1379,9 @@ async def _execute_paginate_collect(page, action: dict) -> None:
     for _ in range(max_pages):
         next_el = page.locator(next_sel).first
         if await next_el.count() == 0:
+            break
+        if stop_when_hidden and not await next_el.is_visible():
+            log.info("browser.paginate_collect.next_hidden")
             break
         await next_el.click(force=force)
         await asyncio.sleep(wait_ms / 1000)

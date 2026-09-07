@@ -42,6 +42,30 @@ def _listing(*job_ids: str, tenant: str = TENANT, extra: str = "") -> str:
     """
 
 
+def _search_listing(
+    *job_ids: str,
+    category: str,
+    start: int,
+    end: int,
+    total: int,
+    next_page: int | None = None,
+) -> str:
+    next_link = (
+        f'<a class="jv-pagination-next" '
+        f'href="/{TENANT}/search/?p={next_page}&amp;c={category}">Next</a>'
+        if next_page is not None
+        else ""
+    )
+    return _listing(
+        *job_ids,
+        extra=(
+            '<div class="jv-pagination">'
+            f'<div class="jv-pagination-text">{start}-{end} of {total}</div>'
+            f"{next_link}</div>"
+        ),
+    )
+
+
 class TestIdentity:
     @pytest.mark.parametrize(
         ("url", "expected"),
@@ -203,6 +227,149 @@ class TestMonitor:
             result = await discover({"board_url": landing}, client)
         assert result == {JOB_URL}
         assert requested == [landing, jobs_listing]
+
+    async def test_expands_paginated_category_links(self):
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            if request.url.path == f"/{TENANT}/search":
+                page = int(request.url.params["p"])
+                if page == 0:
+                    return httpx.Response(
+                        200,
+                        text=_search_listing(
+                            "oaGwAfwG",
+                            "o57bAfwH",
+                            category="Nursing",
+                            start=1,
+                            end=2,
+                            total=3,
+                            next_page=1,
+                        ),
+                        request=request,
+                    )
+                return httpx.Response(
+                    200,
+                    text=_search_listing(
+                        "oABcDefG",
+                        category="Nursing",
+                        start=3,
+                        end=3,
+                        total=3,
+                    ),
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                text=_listing(
+                    "oaGwAfwG",
+                    extra=f'<a href="/{TENANT}/search?c=Nursing&amp;p=0">Show More</a>',
+                ),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": LISTING_URL}, client)
+
+        assert result == {
+            JOB_URL,
+            f"https://jobs.jobvite.com/{TENANT}/job/o57bAfwH",
+            f"https://jobs.jobvite.com/{TENANT}/job/oABcDefG",
+        }
+        assert requested == [
+            LISTING_URL,
+            f"https://jobs.jobvite.com/{TENANT}/search?c=Nursing&p=0",
+            f"https://jobs.jobvite.com/{TENANT}/search?c=Nursing&p=1",
+        ]
+
+    async def test_category_pagination_fails_closed_without_next_link(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == f"/{TENANT}/search":
+                return httpx.Response(
+                    200,
+                    text=_search_listing(
+                        "oaGwAfwG",
+                        "o57bAfwH",
+                        category="Nursing",
+                        start=1,
+                        end=2,
+                        total=3,
+                    ),
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                text=_listing(extra=f'<a href="/{TENANT}/search?c=Nursing&amp;p=0">Show More</a>'),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="omitted its next link"):
+                await discover({"board_url": LISTING_URL}, client)
+
+    async def test_category_pagination_fails_closed_on_row_count_drift(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == f"/{TENANT}/search":
+                return httpx.Response(
+                    200,
+                    text=_search_listing(
+                        "oaGwAfwG",
+                        category="Nursing",
+                        start=1,
+                        end=2,
+                        total=2,
+                    ),
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                text=_listing(extra=f'<a href="/{TENANT}/search?c=Nursing&amp;p=0">Show More</a>'),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="pagination drifted"):
+                await discover({"board_url": LISTING_URL}, client)
+
+    async def test_category_pagination_fails_closed_on_repeated_rows(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == f"/{TENANT}/search":
+                page = int(request.url.params["p"])
+                if page == 0:
+                    return httpx.Response(
+                        200,
+                        text=_search_listing(
+                            "oaGwAfwG",
+                            "o57bAfwH",
+                            category="Nursing",
+                            start=1,
+                            end=2,
+                            total=3,
+                            next_page=1,
+                        ),
+                        request=request,
+                    )
+                return httpx.Response(
+                    200,
+                    text=_search_listing(
+                        "o57bAfwH",
+                        category="Nursing",
+                        start=3,
+                        end=3,
+                        total=3,
+                    ),
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                text=_listing(extra=f'<a href="/{TENANT}/search?c=Nursing&amp;p=0">Show More</a>'),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="repeated jobs"):
+                await discover({"board_url": LISTING_URL}, client)
 
     async def test_marketing_or_cross_tenant_page_fails_not_empty(self):
         transport = httpx.MockTransport(

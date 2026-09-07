@@ -160,6 +160,7 @@ _PROBE_ORDER = [
     "pdf",
     "taleo",
     "dom",
+    "seek",
     "api_sniffer",
 ]
 
@@ -403,6 +404,7 @@ from src.core.scrapers import (  # noqa: E402
     pdf,  # noqa: F401
     phuketall,  # noqa: F401
     rippling,  # noqa: F401
+    seek,  # noqa: F401
     skip,  # noqa: F401
     smartrecruiters,  # noqa: F401
     taleo,  # noqa: F401

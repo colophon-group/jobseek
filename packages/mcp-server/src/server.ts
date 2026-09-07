@@ -5,7 +5,6 @@ import { register as registerJobDetail } from "./tools/job-detail.js";
 import { register as registerCompanies } from "./tools/companies.js";
 import { register as registerTaxonomies } from "./tools/taxonomies.js";
 import { register as registerResolve } from "./tools/resolve.js";
-import { register as registerWatchlists } from "./tools/watchlists.js";
 import { register as registerCreateWatchlist } from "./tools/create-watchlist.js";
 
 export function createServer(
@@ -13,7 +12,7 @@ export function createServer(
   options: JobseekClientOptions = {},
 ) {
   const server = new McpServer(
-    { name: "jobseek", version: "0.1.4" },
+    { name: "jobseek", version: "0.2.0" },
     {
       instructions: `You are connected to Job Seek (jseek.co), a job search engine that monitors 290+ company career pages across Switzerland and Europe.
 
@@ -44,7 +43,6 @@ Rate limit: 30 requests per minute.`,
   registerCompanies(server, client);
   registerTaxonomies(server, client);
   registerResolve(server, client);
-  registerWatchlists(server, client);
   registerCreateWatchlist(server, client);
 
   // Register taxonomy resource template

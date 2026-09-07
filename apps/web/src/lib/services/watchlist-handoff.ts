@@ -22,7 +22,6 @@ export async function createWatchlistFromHandoffWithDeps(params: {
     description?: string;
     companyIds: string[];
     filters?: WatchlistFilters;
-    isPublic: boolean;
   }) => Promise<{ id: string; slug: string } | { error: string }>;
 }): Promise<{ id: string; slug: string } | { error: string }> {
   if (params.companySlugs.length > MAX_HANDOFF_COMPANIES) {
@@ -56,6 +55,5 @@ export async function createWatchlistFromHandoffWithDeps(params: {
     description: params.description,
     companyIds,
     filters,
-    isPublic: false,
   });
 }

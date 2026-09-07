@@ -24,10 +24,8 @@ from src.core.monitors import _REGISTRY, DiscoveredJob, MonitorType
 
 _BOARDS_PATH = Path(__file__).parents[1] / "data" / "boards.csv"
 _GLOBAL_BOARD = "mediamarktsaturn-careers-global"
-_DTB_BOARDS = {
-    "mediamarktsaturn-dtb-headquarters",
-    "mediamarktsaturn-dtb-technicians",
-}
+_DTB_INLINE_BOARDS = {"mediamarktsaturn-dtb-headquarters"}
+_DTB_JOIN_BOARD = "mediamarktsaturn-dtb-technicians"
 _SOURCE_ALLOWLIST = (
     r"^https://careers\.mediamarktsaturn\.com/"
     r"[A-Za-z][A-Za-z0-9]*/job/[^/?#]+/\d+/$"
@@ -431,14 +429,22 @@ def test_global_successfactors_conflicting_provider_identity_fails_closed():
         _apply_url_transform(result, {"url_transform": _STABLE_TRANSFORM})
 
 
-def test_dtb_boards_use_salesforce_record_ids_for_inline_identity():
+def test_dtb_inline_boards_use_salesforce_record_ids_for_identity():
     rows = _board_rows()
 
-    for board_slug in _DTB_BOARDS:
+    for board_slug in _DTB_INLINE_BOARDS:
         config = _config(rows[board_slug])
         assert config["detail_identity_selector"] == 'label[for^="a7u"]'
         assert config["detail_identity_attribute"] == "for"
         assert config["detail_identity_regex"] == r"^(a7u[A-Za-z0-9]{15})-.+$"
+
+
+def test_dtb_technicians_uses_verified_join_provider():
+    row = _board_rows()[_DTB_JOIN_BOARD]
+
+    assert row["monitor_type"] == "join"
+    assert _config(row) == {"slug": "deutsche-technikberatung"}
+    assert row["scraper_type"] == "json-ld"
 
 
 def test_turkey_board_keeps_numeric_provider_id_in_discovered_url():

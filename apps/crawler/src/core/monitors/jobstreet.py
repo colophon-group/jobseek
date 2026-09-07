@@ -50,6 +50,7 @@ _COMPANY_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 _NUMERIC_ID_RE = re.compile(r"^\d{1,18}$")
+_EXPLICIT_USD_RE = re.compile(r"(?:\bUSD\b|US\$)", re.IGNORECASE)
 
 _COMPANY_QUERY = """
 query Company($id: CompanyId!) {
@@ -310,6 +311,22 @@ def _summary_location_type(summary: dict) -> str | None:
     return None
 
 
+def _parse_salary_label(label: str | None, *, host: str) -> dict | None:
+    """Apply the country portal's currency to an ambiguous dollar label."""
+    if not label:
+        return None
+    salary = parse_salary_text(label)
+    if (
+        salary
+        and host == "sg.jobstreet.com"
+        and salary.get("currency") == "USD"
+        and "$" in label
+        and _EXPLICIT_USD_RE.search(label) is None
+    ):
+        salary = {**salary, "currency": "SGD"}
+    return salary
+
+
 def _parse_summary(summary: dict, *, host: str, company_id: str) -> DiscoveredJob:
     job_id = str(summary["id"])
     title = _clean_text(summary.get("title"))
@@ -343,7 +360,7 @@ def _parse_summary(summary: dict, *, host: str, company_id: str) -> DiscoveredJo
         employment_type=_summary_employment_type(summary),
         job_location_type=_summary_location_type(summary),
         date_posted=_clean_text(summary.get("listingDate")),
-        base_salary=parse_salary_text(salary_label) if salary_label else None,
+        base_salary=_parse_salary_label(salary_label, host=host),
         language=_HOST_CONFIG[host]["language"],
         metadata=metadata,
     )

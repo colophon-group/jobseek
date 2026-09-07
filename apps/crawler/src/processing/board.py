@@ -110,6 +110,12 @@ from src.shared.tdm import TDMReservedError
 
 log = structlog.get_logger()
 
+_INSERT_MONITOR_DESCRIPTION_FALLBACK = (
+    "INSERT INTO descriptions (posting_id, locale, html, hash, r2_uploaded) "
+    "VALUES ($1, $2, $3, $4, false) "
+    "ON CONFLICT (posting_id, locale) DO NOTHING"
+)
+
 
 class SourceIdentityConflictError(RuntimeError):
     """An explicit provider identity could not be proven safe to apply."""
@@ -1688,6 +1694,21 @@ def _build_rich_new_records(
     return records, staging
 
 
+def _monitor_owns_existing_description(enrich_fields: list[str] | None) -> bool:
+    """Return whether monitor refreshes may replace an existing description.
+
+    A rich monitor can provide a useful teaser while a newly discovered row
+    waits for its first detail scrape.  Once the row exists, however, a board
+    that explicitly enriches ``description`` delegates that field to the
+    detail scraper.  The monitor may still insert a missing locale as an
+    availability fallback, but it must never update a locale the scraper may
+    already own.  Keeping this decision separate from the other rich fields
+    lets monitor-owned title, location, and lifecycle data continue to refresh
+    without alternating the stored R2 body back to the teaser.
+    """
+    return "description" not in (enrich_fields or ())
+
+
 # ── Monitor Processing ───────────────────────────────────────────────
 
 
@@ -1748,6 +1769,7 @@ async def _process_one_board_streaming(
             metadata = json.loads(metadata)
 
         enrich_fields = _effective_board_enrich(metadata, crawler_type)
+        monitor_owns_existing_description = _monitor_owns_existing_description(enrich_fields)
 
         # Use a per-board http client when the monitor opts out of SSL
         # verification or into the proxy provider. We reuse the shared
@@ -2157,14 +2179,23 @@ async def _process_one_board_streaming(
                             )
                             await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
                             for posting_id, locale, desc_html, desc_hash in update_descriptions:
-                                await conn.execute(
-                                    _UPSERT_DESCRIPTION,
-                                    posting_id,
-                                    locale,
-                                    desc_html,
-                                    desc_hash,
-                                    desc_hash,
-                                )
+                                if monitor_owns_existing_description:
+                                    await conn.execute(
+                                        _UPSERT_DESCRIPTION,
+                                        posting_id,
+                                        locale,
+                                        desc_html,
+                                        desc_hash,
+                                        desc_hash,
+                                    )
+                                else:
+                                    await conn.execute(
+                                        _INSERT_MONITOR_DESCRIPTION_FALLBACK,
+                                        posting_id,
+                                        locale,
+                                        desc_html,
+                                        desc_hash,
+                                    )
 
                         if stub_new_urls:
                             inserted = await _insert_stub_discoveries(

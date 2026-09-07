@@ -123,6 +123,8 @@ describe("production migration safety", () => {
     expect(workflow).toContain(
       "timeout --signal=TERM --kill-after=15s 12m pnpm db:migrate",
     );
+    expect(workflow).toContain("Check exact Drizzle migration head");
+    expect(workflow).toContain("db:migrate:verify-head");
 
     const maintenance = readRepo(
       ".github/workflows/crawler-scheduled-maintenance.yml",
@@ -134,5 +136,23 @@ describe("production migration safety", () => {
     expect(maintenance).toContain(
       'run-name: "Crawler maintenance: ${{ inputs.task || \'refresh-typesense\' }} @ ${{ inputs.expected_crawler_revision || \'scheduled\' }}"',
     );
+  });
+
+  it("blocks production promotion unless the exact local migration head exists", () => {
+    const deployWorkflow = readRepo(
+      ".github/workflows/deploy-web-production.yml",
+    );
+    const verifier = readWeb("scripts/verify-production-migration-head.ts");
+
+    expect(
+      deployWorkflow.match(/run: pnpm db:migrate:verify-head/g),
+    ).toHaveLength(2);
+    expect(deployWorkflow).not.toContain("db:migrate:apply-account-issuer");
+    expect(deployWorkflow).not.toMatch(/run: pnpm db:migrate\s*$/m);
+    expect(verifier).toContain("readMigrationFiles");
+    expect(verifier).toContain("SET TRANSACTION READ ONLY");
+    expect(verifier).toContain("DATABASE_URL_UNPOOLED");
+    expect(verifier).toContain('new URL(databaseUrl).port === "6543"');
+    expect(verifier).toContain("assertMigrationHead(expected, observed)");
   });
 });

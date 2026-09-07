@@ -29,6 +29,35 @@ def _row(**overrides) -> dict:
 
 
 @pytest.mark.asyncio
+async def test_rss_probe_uses_runtime_governmentjobs_feed_resolution():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/SearchEngine/JobsFeed"
+        assert request.url.params.get("agency") == "fleg"
+        return httpx.Response(
+            200,
+            content=(
+                b'\xef\xbb\xbf<?xml version="1.0"?><rss><channel><item>'
+                b"<link>https://www.governmentjobs.com/careers/fleg/jobs/123</link>"
+                b"</item></channel></rss>"
+            ),
+            headers={"content-type": "text/xml; charset=utf-8"},
+        )
+
+    row = _row(
+        board_slug="state-of-florida-legislature",
+        board_url="https://www.governmentjobs.com/careers/fleg",
+        monitor_type="rss",
+        monitor_config=json.dumps({"preset": "governmentjobs", "agency": "fleg"}),
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await probe_row(row, client)
+
+    assert result.status == "ok"
+    assert result.probe_url == ("https://www.governmentjobs.com/SearchEngine/JobsFeed?agency=fleg")
+    assert result.message == "valid RSS/XML: 1 jobs"
+
+
+@pytest.mark.asyncio
 async def test_probe_rows_uses_cookie_safe_shared_client(monkeypatch):
     """A malformed pagination cookie must not make CI disagree with runtime."""
     seen_cookie_headers: list[str] = []

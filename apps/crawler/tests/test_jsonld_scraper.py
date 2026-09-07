@@ -757,6 +757,17 @@ class TestParsePosting:
         assert result.title == "Visual Merchandising & Space Planning Manager"
         assert result.locations == ["Düsseldorf & Köln"]
 
+    def test_decodes_double_escaped_scalar_entities(self):
+        result = _parse_posting(
+            {
+                "title": "Senior I&amp;amp;C Engineer",
+                "jobLocation": {"name": "R&amp;amp;D Campus"},
+            }
+        )
+
+        assert result.title == "Senior I&C Engineer"
+        assert result.locations == ["R&D Campus"]
+
     def test_decodes_talentbrew_double_escaped_description_line_breaks(self):
         posting = {
             "description": (
@@ -836,6 +847,65 @@ class TestScrape:
             result = await scrape("https://example.com/job", {}, client)
             assert result.title == "Engineer"
             assert result.description == "Build stuff"
+
+    async def test_defaults_by_url_fill_only_matching_missing_fields(self):
+        canonical = "https://example.com/job/locationless"
+        page_html = """<html><head>
+        <script type="application/ld+json">
+        {"@type":"JobPosting","title":"Structural Designer",
+         "description":"<p>Design advanced facilities.</p>"}
+        </script>
+        </head></html>"""
+        config = {
+            "defaults_by_url": {
+                canonical: {"locations": ["Albany, New York, United States"]},
+                "https://example.com/job/other": {"locations": ["London"]},
+            }
+        }
+
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, text=page_html))
+        ) as client:
+            result = await scrape(canonical, config, client)
+
+        assert result.title == "Structural Designer"
+        assert result.description == "<p>Design advanced facilities.</p>"
+        assert result.locations == ["Albany, New York, United States"]
+
+    async def test_defaults_by_url_never_replace_extracted_fields(self):
+        canonical = "https://example.com/job/located"
+        page_html = """<script type="application/ld+json">
+        {"@type":"JobPosting","title":"Engineer",
+         "jobLocation":{"name":"Cary, North Carolina, United States"}}
+        </script>"""
+        config = {"defaults_by_url": {canonical: {"locations": ["Wrong location"]}}}
+
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, text=page_html))
+        ) as client:
+            result = await scrape(canonical, config, client)
+
+        assert result.locations == ["Cary, North Carolina, United States"]
+
+    @pytest.mark.parametrize(
+        "defaults_by_url",
+        [
+            [],
+            {42: {"locations": ["London"]}},
+            {"https://example.com/job/42": ["London"]},
+            {"https://example.com/job/42": {"unknown": "value"}},
+        ],
+    )
+    async def test_defaults_by_url_rejects_invalid_config(self, defaults_by_url):
+        page_html = """<script type="application/ld+json">
+        {"@type":"JobPosting","title":"Engineer"}
+        </script>"""
+        config = {"defaults_by_url": defaults_by_url}
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, text=page_html))
+        ) as client:
+            with pytest.raises(ValueError, match="defaults_by_url"):
+                await scrape("https://example.com/job/42", config, client)
 
     async def test_no_jsonld_returns_empty(self):
         def handler(request):

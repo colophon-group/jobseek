@@ -243,6 +243,14 @@ def test_pagination_url_is_strict_and_canonical():
         "https://acme.avature.net/careers/SearchJobsMaps/?pipelineOffset=30",
         30,
     )
+    assert avature_pagination_url(
+        "/careers/SearchJobsMaps?pipelineRecordsPerPage=10&pipelineOffset=30",
+        map_board,
+    ) == (
+        "https://acme.avature.net/careers/SearchJobsMaps/"
+        "?pipelineRecordsPerPage=10&pipelineOffset=30",
+        30,
+    )
 
 
 @pytest.mark.asyncio
@@ -303,6 +311,38 @@ async def test_discover_supports_folder_pagination_parameters():
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         result = await discover(
             {"board_url": "https://acme.avature.net/careers/SearchJobs", "metadata": {}},
+            client,
+        )
+    assert len(result.urls) == 2
+    assert result.truncated is False
+
+
+@pytest.mark.asyncio
+async def test_discover_supports_pipeline_page_size_and_offset_parameters():
+    first = _listing(
+        url="https://acme.avature.net/careers/SearchJobsMaps",
+        page="SearchJobsMaps",
+        jobs=["/careers/PipelineDetail/Engineer/101"],
+        total="2",
+        next_url=("/careers/SearchJobsMaps/?pipelineRecordsPerPage=1&pipelineOffset=1"),
+    )
+    second = _listing(
+        url="https://acme.avature.net/careers/SearchJobsMaps",
+        page="SearchJobsMaps",
+        jobs=["/careers/PipelineDetail/Analyst/102"],
+        start=2,
+        total="2",
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=second if request.url.params else first)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(
+            {
+                "board_url": "https://acme.avature.net/careers/SearchJobsMaps",
+                "metadata": {},
+            },
             client,
         )
     assert len(result.urls) == 2

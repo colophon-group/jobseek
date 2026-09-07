@@ -8,7 +8,14 @@ export const API_LOCALES = ["en", "de", "fr", "it"] as const;
 
 export const DEFAULT_API_LOCALE = API_LOCALES[0];
 
-export const PUBLIC_API_VERSION = "1.2.0";
+export const PUBLIC_API_VERSION = "1.3.0";
+
+/**
+ * End of the compatibility period for anonymous watchlist discovery.
+ * After this instant the retired REST route can be removed entirely.
+ */
+export const PUBLIC_WATCHLIST_DISCOVERY_SUNSET =
+  "Sat, 31 Oct 2026 23:59:59 GMT";
 
 export const PUBLIC_SEARCH_QUERY_PARAMETERS = [
   "q",

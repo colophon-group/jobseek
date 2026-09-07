@@ -106,7 +106,7 @@ async function loadLedgerFixture(): Promise<{
   const migrations = readMigrationFiles({ migrationsFolder: migrationFolder });
 
   invariant(journal.entries.length === migrations.length, "Journal and SQL migration counts differ");
-  invariant(migrations.length === 76, `Expected 76 real journal migrations, found ${migrations.length}`);
+  invariant(migrations.length === 77, `Expected 77 real journal migrations, found ${migrations.length}`);
 
   const retirementIndex = journal.entries.findIndex((entry) => entry.tag === retirementTag);
   invariant(retirementIndex !== -1, `Journal does not contain ${retirementTag}`);
@@ -115,7 +115,7 @@ async function loadLedgerFixture(): Promise<{
   const through0085 = migrations.slice(0, retirementIndex);
   const subsequent = migrations.slice(retirementIndex + 1);
   invariant(through0085.length === 74, "Expected 74 journal entries through 0085");
-  invariant(subsequent.length === 1, "Expected exactly one journal entry after 0086");
+  invariant(subsequent.length === 2, "Expected exactly two journal entries after 0086");
 
   // The production guard intentionally expects 75 ledger rows at the 0085
   // tip, one more than the current 74 journal entries through 0085. Model that
@@ -147,6 +147,23 @@ const baseFixtureSql = String.raw`
     account_id text NOT NULL,
     provider_id text NOT NULL,
     user_id text NOT NULL
+  );
+
+  CREATE TABLE public.user_preferences (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id text NOT NULL UNIQUE,
+    CONSTRAINT user_preferences_user_id_user_id_fk
+      FOREIGN KEY (user_id) REFERENCES public."user"(id)
+      ON DELETE CASCADE ON UPDATE NO ACTION
+  );
+
+  CREATE TABLE public.watchlist (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id text NOT NULL,
+    alerts_enabled boolean DEFAULT false NOT NULL,
+    CONSTRAINT watchlist_user_id_user_id_fk
+      FOREIGN KEY (user_id) REFERENCES public."user"(id)
+      ON DELETE CASCADE ON UPDATE NO ACTION
   );
 
   CREATE TABLE public.company (
@@ -609,8 +626,11 @@ async function runHarness(databaseUrl: string): Promise<void> {
     invariant(!afterSuccess.jobPostingPresent, "0086 did not remove public.job_posting");
     assertEqual(
       afterSuccess.publicTables,
-      beforeSuccess.publicTables.filter((table) => table !== "job_posting"),
-      "0086 changed a public table other than public.job_posting",
+      [
+        ...beforeSuccess.publicTables.filter((table) => table !== "job_posting"),
+        "notification_delivery",
+      ].sort(),
+      "0086 plus subsequent additive migrations changed unexpected public tables",
     );
     invariant(
       afterSuccess.savedJobDigest === beforeSuccess.savedJobDigest,
@@ -701,7 +721,11 @@ async function runHarness(databaseUrl: string): Promise<void> {
     );
     const restored = await captureProof(sql);
     invariant(!restored.jobPostingPresent, "Restore convergence recreated job_posting");
-    assertEqual(restored.publicTables, restoreShape.publicTables, "Restore convergence changed public tables");
+    assertEqual(
+      restored.publicTables,
+      [...restoreShape.publicTables, "notification_delivery"].sort(),
+      "Restore convergence changed unexpected public tables",
+    );
     invariant(
       restored.savedJobDigest === restoreShape.savedJobDigest &&
         restored.relationshipDigest === restoreShape.relationshipDigest &&

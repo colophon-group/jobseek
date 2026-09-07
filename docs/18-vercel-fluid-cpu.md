@@ -108,6 +108,13 @@ pnpm and Turbo configuration, and dependency patches. Crawler code, crawler
 board configuration, documentation, and company CSV changes do not deploy the
 web.
 
+The same workflow verifies the production Drizzle ledger before building and
+again immediately before promotion. Its timestamp and SQL hash must match the
+exact migration head in the checked-out artifact, recorded exactly once. This
+check is read-only and fails closed: apply pending migrations through the
+reviewed production-migration path, then rerun the deployment. The scheduled
+database-drift job performs the same check with its read-only credential.
+
 Company CSV changes are safe to exclude because the external OG prewarm job
 publishes `og/company/<renderer>/_complete/current.json` only after the full
 company/locale matrix and its immutable source-version marker exist. Company

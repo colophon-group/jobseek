@@ -8,8 +8,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors.jobstreet import _HOST_CONFIG, _clean_text, _graphql
-from src.core.salary_extract import parse_salary_text
+from src.core.monitors.jobstreet import _HOST_CONFIG, _clean_text, _graphql, _parse_salary_label
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -100,7 +99,7 @@ def parse_payload(payload: dict, *, host: str, job_id: str) -> JobContent:
         locations=[location_label] if location_label else None,
         employment_type=employment_type,
         date_posted=_date_time(job, "createdAt"),
-        base_salary=parse_salary_text(salary_label) if salary_label else None,
+        base_salary=_parse_salary_label(salary_label, host=host),
         language=_HOST_CONFIG[host]["language"],
         metadata=metadata,
     )

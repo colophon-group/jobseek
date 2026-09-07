@@ -111,7 +111,9 @@ Monitor Types (cheapest first):
   jazzhr            10      Job URLs          Auto-configured
   job51             10      Full job data     No (skipped)
   jobbank104        10      Job URLs          Auto-configured JSON-LD
+  jobdiva           10      Job URLs          api_sniffer detail scraper
   jobstreet         10      Full/partial      Auto-enriched
+  seek              10      Job URLs          Auto-configured
   johdi             10      Job URLs          Auto-configured
   pageup            10      Full/partial      Auto-enriched DOM
   keka              10      Full job data     No (skipped)
@@ -2533,7 +2535,7 @@ personio — Personio XML Feed + HTML Fallback
 
 MONITOR_RSS = """\
 rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
-      (presets: successfactors, teamtailor, wp_job_manager, generic)
+      (presets: successfactors, teamtailor, wp_job_manager, governmentjobs, generic)
 
   Feed:     GET {feed_url}
   Returns:  Feeds: full job data. Legacy SuccessFactors: title, location,
@@ -2547,6 +2549,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
               or native static DWR pagination for /career?company=... boards
             - teamtailor: /jobs.rss (offset-paginated)
             - wp_job_manager: /?feed=job_feed (page-paginated)
+            - governmentjobs: /SearchEngine/JobsFeed?agency=<tenant>
             - generic: standard RSS 2.0 (manual feed URL)
 
   Config:
@@ -2558,6 +2561,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
     {"preset": "teamtailor", "feed_url": "https://company.teamtailor.com/jobs.rss"}
     {"preset": "wp_job_manager",
      "feed_url": "https://example.com/?feed=job_feed"}
+    {"preset": "governmentjobs", "agency": "clineville"}
     {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
 
     preset     Feed parser preset. Auto-detected when possible.
@@ -2831,6 +2835,27 @@ jobstreet — JobStreet employer profile
 
   Detection:  ws probe shows "JobStreet employer profile — company: ID, N jobs"
   Zero jobs?  The employer-scoped search API must report totalCount=0."""
+
+MONITOR_SEEK = """\
+seek — SEEK AU/NZ advertiser board
+
+  Listing:  GET https://{market}/api/jobsearch/v5/search
+  Detail:   POST https://{market}/graphql (api_sniffer SEEK preset)
+  Returns:  Canonical https://{market}/job/{id} detail URLs
+  Scraper:  Auto-configured SEEK GraphQL detail scraper
+  Note:     Use an exact unfiltered /jobs?advertiserid={id} URL. Browser-facing
+            listings can return a 403 challenge on crawler egress; the public
+            first-party list and detail APIs remain available without browser
+            navigation. Australia and New Zealand markets are supported.
+
+  Config:
+    {"host": "au.seek.com", "advertiser_id": "9094357"}
+
+    host           Market host. Auto-filled from the board URL.
+    advertiser_id  Numeric SEEK advertiser ID. Auto-filled from the query.
+
+  Detection:  ws probe shows "SEEK advertiser board — advertiser: ID, N jobs"
+  Zero jobs?  The advertiser-scoped search API must report totalCount=0."""
 
 MONITOR_ICIMS = """\
 icims — iCIMS server-rendered listings
@@ -3250,6 +3275,13 @@ json-ld — Structured JobPosting Extractor
                    Omit addressRegion while retaining addressLocality and
                    addressCountry. Use only when a provider demonstrably
                    publishes incorrect regions across otherwise valid jobs.
+    defaults_by_url
+                   Exact canonical posting URL -> missing-field defaults. Use
+                   for a small number of stable upstream exceptions where an
+                   otherwise valid JobPosting omits a required field. Extracted
+                   values always win. Example:
+                   {"https://example.com/job/42":
+                    {"locations": ["London, United Kingdom"]}}
 
   Fields extracted (from schema.org properties):
     title          ← title or name
@@ -3488,6 +3520,12 @@ api_sniffer — XHR/Fetch API Capture (single page)
     post_body POST request body (JSON string). Supports {id} placeholder.
     json_path jmespath expression to navigate to the job object in the response.
     request_headers  Dict of HTTP headers to include in the request.
+    auth_request
+              Optional public preflight request for short-lived detail API
+              headers. Configure api_url, method/request_headers as needed,
+              and ``header_fields`` mapping destination header names to fields
+              in the preflight JSON response. The preflight runs immediately
+              before each detail request.
     enrich    List of field names to fetch from the detail API when the
               monitor already provides partial data (e.g. ["description"]).
               Only those fields are scraped; others come from the monitor.
@@ -3788,6 +3826,9 @@ Browser Action Pipeline — pre-extraction actions for Playwright
           page_size           Optional value to select before pagination
           force               If true, use Playwright force-click. Useful when
                               consent overlays intercept page controls.
+          stop_when_hidden    If true, a matching but hidden next-page control
+                              is treated as the terminal state. Use for portals
+                              that retain the final control in the DOM.
         Use this instead of repeat when each click replaces the current result
         page, including JSF/Visualforce postback pagination. Make next_selector
         exclude the disabled last-page control so pagination terminates cleanly.
@@ -4161,8 +4202,23 @@ MONITOR_CARDS: dict[str, str] = {
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
     "jobbank104": MONITOR_JOBBANK104,
+    "jobdiva": """\
+jobdiva — JobDiva candidate portal API monitor
+
+  Returns:  Canonical portal detail URLs
+  Scraper:  api_sniffer with an auth_request token bootstrap
+  Cost:     10
+  Browser:  No
+
+  Config:
+    {"token": "<tenant key>"}
+
+  The monitor runs the provider's public auth bootstrap, starts the form POST
+  search, then drains the separate position-based getmore API in 200-row pages.
+""",
     "computrabajo": MONITOR_COMPUTRABAJO,
     "jobstreet": MONITOR_JOBSTREET,
+    "seek": MONITOR_SEEK,
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,
     "papa_johns": MONITOR_PAPA_JOHNS,
@@ -4428,6 +4484,18 @@ jobstreet — JobStreet vacancy detail GraphQL scraper
             only the company-scoped listing pass.
 """
 
+SCRAPER_SEEK = """\
+seek — SEEK AU/NZ vacancy detail GraphQL scraper
+
+  API:      POST https://{market}/graphql
+  Returns:  title, complete HTML description, locations, employment type,
+            posting and expiry dates, plus advertiser metadata
+  Config:   None needed — derives the market and numeric ID from the job URL
+  Note:     Auto-configured when selecting the seek monitor. Direct browser
+            navigation is deliberately avoided because SEEK can return a 403
+            challenge while its anonymous first-party GraphQL query succeeds.
+"""
+
 SCRAPER_ONLYFY = """\
 onlyfy — Onlyfy/Prescreen server-rendered detail scraper
 
@@ -4672,6 +4740,7 @@ infor — Infor Global HR / Lawson CandidateSelfService detail scraper
     "linkedin": SCRAPER_LINKEDIN,
     "headhunter": SCRAPER_HEADHUNTER,
     "jobstreet": SCRAPER_JOBSTREET,
+    "seek": SCRAPER_SEEK,
     "paycom": SCRAPER_PAYCOM,
     "jazzhr": SCRAPER_JAZZHR,
     "paycor": SCRAPER_PAYCOR,

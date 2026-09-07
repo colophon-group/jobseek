@@ -256,6 +256,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
     "api_sniffer": frozenset(
         {
             "api_url",
+            "auth_request",
             "browser",
             "channel",
             "enrich",
@@ -295,6 +296,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "proxy",
             "render",
             "request_headers",
+            "resource_policy",
             "retry_statuses",
             "same_origin_redirects",
             "scope",
@@ -304,6 +306,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "timeout",
             "user_agent",
             "wait",
+            "wait_fallback",
             "warmup_url",
         }
     ),
@@ -315,6 +318,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "actions",
             "channel",
             "defaults",
+            "defaults_by_url",
             "enrich",
             "fallback",
             "headless",
@@ -378,6 +382,7 @@ _ACTION_KEYS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
                 "page_size",
                 "page_size_selector",
                 "required",
+                "stop_when_hidden",
                 "timeout",
                 "wait_ms",
             }
@@ -563,6 +568,8 @@ def _validate_actions(value: object, *, path: str) -> tuple[dict[str, Any], ...]
             raise CensusError(f"{action_path}.required must be boolean")
         if "force" in action and not isinstance(action["force"], bool):
             raise CensusError(f"{action_path}.force must be boolean")
+        if "stop_when_hidden" in action and not isinstance(action["stop_when_hidden"], bool):
+            raise CensusError(f"{action_path}.stop_when_hidden must be boolean")
         for key in ("max", "max_pages", "ms", "timeout", "wait_ms"):
             if key in action:
                 _validate_number(action[key], path=f"{action_path}.{key}")

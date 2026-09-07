@@ -501,6 +501,11 @@ def _build_comment(name: str, metadata: dict) -> str:
         jobs = metadata.get("jobs")
         label = f"JobStreet employer profile \u2014 company: {company_id}"
         return f"{label}, {jobs} jobs" if jobs is not None else label
+    if name == "seek":
+        advertiser_id = metadata.get("advertiser_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"SEEK advertiser board \u2014 advertiser: {advertiser_id}"
+        return f"{label}, {jobs} jobs" if jobs is not None else label
     if name == "infoniqa":
         employer = metadata.get("employer_name", "?")
         jobs = metadata.get("jobs")
@@ -868,6 +873,7 @@ def _build_comment(name: str, metadata: dict) -> str:
             "successfactors": "SuccessFactors RSS",
             "teamtailor": "Teamtailor RSS",
             "wp_job_manager": "WP Job Manager RSS",
+            "governmentjobs": "NEOGOV/GovernmentJobs RSS",
         }.get(preset, f"RSS ({preset})")
         count_str = f"{jobs}" if jobs is not None else ""
         # For paginated presets, first-page count may be approximate
@@ -1006,6 +1012,7 @@ from src.core.monitors import (  # noqa: E402
     jazzhr,  # noqa: F401
     job51,  # noqa: F401
     jobbank104,  # noqa: F401
+    jobdiva,  # noqa: F401
     jobs_ch,  # noqa: F401
     jobstreet,  # noqa: F401
     jobvite,  # noqa: F401
@@ -1037,6 +1044,7 @@ from src.core.monitors import (  # noqa: E402
     rippling,  # noqa: F401
     rss,  # noqa: F401
     seamlesshiring,  # noqa: F401
+    seek,  # noqa: F401
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401

@@ -942,6 +942,9 @@ _MONITOR_CONFIG_HINTS = {
         "Requires: company_id (auto-filled from a canonical my.jobstreet.com/companies URL); "
         "organisation_id is auto-resolved"
     ),
+    "seek": (
+        "Requires: host and advertiser_id (auto-filled from an exact AU/NZ /jobs?advertiserid= URL)"
+    ),
     "jobvite": "Requires: tenant + listing_url (auto-filled from a jobs.jobvite.com URL)",
     "johdi": "Requires: company_key, flow, locale (auto-filled from an embedded Johdi widget)",
     "pageup": "Requires: instance, source_pointer, locale (auto-filled from a PageUp URL)",

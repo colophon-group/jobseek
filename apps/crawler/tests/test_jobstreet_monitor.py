@@ -6,7 +6,12 @@ import httpx
 import pytest
 
 from src.core.monitors import all_monitor_types, jobstreet
-from src.core.monitors.jobstreet import _identity_from_url, can_handle, discover
+from src.core.monitors.jobstreet import (
+    _identity_from_url,
+    _parse_salary_label,
+    can_handle,
+    discover,
+)
 from src.core.scrapers import JobContent
 from src.core.scrapers.jobstreet import (
     _job_identity_from_url,
@@ -154,6 +159,20 @@ class TestIdentity:
 
 
 class TestMonitor:
+    @pytest.mark.parametrize(
+        ("label", "expected_currency"),
+        [
+            ("$2,280 per month", "SGD"),
+            ("S$2,280 per month", "SGD"),
+            ("US$2,280 per month", "USD"),
+            ("USD $2,280 per month", "USD"),
+        ],
+    )
+    def test_singapore_salary_currency_uses_portal_context(self, label, expected_currency):
+        salary = _parse_salary_label(label, host="sg.jobstreet.com")
+        assert salary is not None
+        assert salary["currency"] == expected_currency
+
     async def test_discovers_rich_summaries_without_detail_requests(self):
         job_id = "93872133"
         graphql_queries: list[str] = []
@@ -356,6 +375,19 @@ class TestScraper:
             "jobstreet_job_id": "93872133",
             "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
             "expiration_date": "2026-09-09T13:59:59.999Z",
+        }
+
+    def test_singapore_detail_salary_uses_sgd_for_ambiguous_dollar(self):
+        payload = _detail_payload("93872133")["data"]
+        payload["jobDetails"]["job"]["salary"]["label"] = "$2,280 per month"
+
+        result = parse_payload(payload, host="sg.jobstreet.com", job_id="93872133")
+
+        assert result.base_salary == {
+            "currency": "SGD",
+            "min": 2280,
+            "max": None,
+            "unit": "month",
         }
 
     def test_expired_job_returns_empty_content(self):

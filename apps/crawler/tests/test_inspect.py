@@ -2333,3 +2333,43 @@ class TestAmmannBoardConfig:
         assert config["dualoo_portal"] == "fyuan4bk"
         assert config["require_jsonld_jobposting"] is True
         assert config["url_filter"]["exclude"] == ("/502f2f7b-72a8-4ddf-939c-72981563028c/")
+
+
+class TestArcadisBoardConfig:
+    """Keep all three Arcadis sources complete and independently scoped."""
+
+    def test_global_dps_and_kua_sources_are_pinned(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        data_dir = get_data_dir()
+        _, rows = read_csv(data_dir / "boards.csv")
+        by_slug = {row["board_slug"]: row for row in rows if row["company_slug"] == "arcadis"}
+
+        assert set(by_slug) == {"arcadis-careers", "arcadis-dps", "arcadis-kua-dc"}
+
+        dps = by_slug["arcadis-dps"]
+        dps_config = json.loads(dps["monitor_config"])
+        assert dps["monitor_type"] == "api_sniffer"
+        assert dps_config["api_url"] == ("https://www.dpsgroupglobal.com/jm-ajax/get_listings/")
+        assert dps_config["params"] == {"per_page": "100"}
+        assert "filter_job_type" not in dps_config["params"]
+        assert dps_config["pagination"]["max_pages"] == 200
+        assert "(?!a/)" in dps_config["url_regex"]
+        assert dps["scraper_type"] == "json-ld"
+
+        kua = by_slug["arcadis-kua-dc"]
+        kua_config = json.loads(kua["monitor_config"])
+        assert kua["monitor_type"] == "inline"
+        assert kua_config["render"] is True
+        assert "resource_policy" not in kua_config
+        assert kua_config["require_zero_proof"] is True
+        assert kua_config["defaults"] == {"locations": ["Frankfurt, Germany"]}
+
+        _, companies = read_csv(data_dir / "companies.csv")
+        company = next(row for row in companies if row["slug"] == "arcadis")
+        assert company["industry"] == "12"
+        assert company["employee_count_range"] == "8"
+        assert company["founded_year"] == "1888"

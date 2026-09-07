@@ -246,6 +246,64 @@ class TestScrapeHttpPlaceholders:
         assert content.description == "<p>Manage warehouse inventory.</p>"
         assert content.locations == ["Wilmer, TX, US"]
 
+    @pytest.mark.asyncio
+    async def test_auth_request_injects_fresh_detail_headers(self):
+        requests: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request.url.path)
+            if request.url.path == "/auth":
+                assert request.headers["authorization"] == "Basic public-portal"
+                return httpx.Response(
+                    200,
+                    json={"token": "fresh-token", "portalID": 198, "a": "tenant"},
+                )
+            assert request.headers["token"] == "fresh-token"
+            assert request.headers["portalid"] == "198"
+            assert request.headers["a"] == "tenant"
+            return httpx.Response(
+                200,
+                json={
+                    "job": {
+                        "title": "Project Manager",
+                        "jobDescription": "<p>Lead a complex delivery program.</p>",
+                        "location": "New York, NY",
+                    }
+                },
+            )
+
+        config = {
+            "api_url": "https://api.example.com/jobs/{id}",
+            "url_pattern": r"[?&]id=(?P<id>\d+)",
+            "json_path": "job",
+            "auth_request": {
+                "api_url": "https://api.example.com/auth",
+                "request_headers": {"authorization": "Basic public-portal"},
+                "header_fields": {
+                    "token": "token",
+                    "portalid": "portalID",
+                    "a": "a",
+                },
+            },
+            "fields": {
+                "title": "title",
+                "description": "jobDescription",
+                "locations": "location",
+            },
+        }
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            content = await _scrape_http(
+                "https://jobs.example.com/portal/?id=29179927",
+                config,
+                http,
+            )
+
+        assert requests == ["/auth", "/jobs/29179927"]
+        assert content.title == "Project Manager"
+        assert content.description == "<p>Lead a complex delivery program.</p>"
+        assert content.locations == ["New York, NY"]
+
 
 class TestSeekHttpPreset:
     def test_recognizes_canonical_au_job_urls(self):

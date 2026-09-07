@@ -3,23 +3,15 @@ import { NextRequest } from "next/server";
 
 vi.mock("server-only", () => ({}));
 
-vi.mock("@/lib/rate-limit", () => ({
-  apiLimiter: {
-    limit: vi.fn(async () => {
-      throw new Error("no redis in unit tests");
-    }),
-  },
-  getClientIp: () => "test-ip",
-}));
-
 const mocks = vi.hoisted(() => ({
-  logExternalError: vi.fn(),
+  apiLimit: vi.fn(),
   searchPublicWatchlists: vi.fn(),
   getPopularWatchlists: vi.fn(),
 }));
 
-vi.mock("@/lib/safe-external-error", () => ({
-  logExternalError: mocks.logExternalError,
+vi.mock("@/lib/rate-limit", () => ({
+  apiLimiter: { limit: mocks.apiLimit },
+  getClientIp: () => "test-ip",
 }));
 
 vi.mock("@/lib/services/watchlists", () => ({
@@ -33,53 +25,37 @@ function makeReq(qs: string): NextRequest {
   return new NextRequest(`http://localhost/api/v1/watchlists${qs}`);
 }
 
-describe("GET /api/v1/watchlists locale contract (#6132)", () => {
+describe("GET /api/v1/watchlists retirement contract (#8367)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.searchPublicWatchlists.mockResolvedValue({ watchlists: [], total: 0 });
-    mocks.getPopularWatchlists.mockResolvedValue({ watchlists: [], total: 0 });
   });
 
-  it("rejects unsupported locales before querying or constructing links", async () => {
-    const res = await GET(makeReq("?q=engineering&locale=xx"));
-    const body = (await res.json()) as { error?: string };
+  it.each(["", "?q=engineering&locale=en", "?q=private-canary&locale=xx"])(
+    "returns the same bounded non-cacheable 410 for %s",
+    async (query) => {
+      const res = await GET(makeReq(query));
+      const body = await res.json();
 
-    expect(res.status).toBe(400);
-    expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(body.error).toBe("Invalid 'locale' param. Supported: en, de, fr, it");
+      expect(res.status).toBe(410);
+      expect(body).toEqual({
+        error: "Public watchlist discovery is no longer available",
+      });
+      expect(JSON.stringify(body)).not.toContain("private-canary");
+      expect(res.headers.get("Sunset")).toBe(
+        "Sat, 31 Oct 2026 23:59:59 GMT",
+      );
+      expect(res.headers.get("Cache-Control")).toBe("no-store");
+      expect(res.headers.get("Vercel-CDN-Cache-Control")).toBeNull();
+      expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    },
+  );
+
+  it("does not rate-limit, search, or read watchlists while serving the compatibility response", async () => {
+    const res = await GET(makeReq("?q=anything&locale=de"));
+
+    expect(res.status).toBe(410);
+    expect(mocks.apiLimit).not.toHaveBeenCalled();
     expect(mocks.searchPublicWatchlists).not.toHaveBeenCalled();
     expect(mocks.getPopularWatchlists).not.toHaveBeenCalled();
-  });
-
-  it("requests strict provider handling for cacheable successes", async () => {
-    const res = await GET(makeReq("?q=engineering&locale=en"));
-
-    expect(res.status).toBe(200);
-    expect(mocks.searchPublicWatchlists).toHaveBeenCalledWith({
-      query: "engineering",
-      offset: 0,
-      limit: 10,
-      locale: "en",
-      failOnUnavailable: true,
-    });
-  });
-
-  it("returns a non-cacheable safe error when Typesense is unavailable", async () => {
-    const providerError = new Error("provider-internal-canary-do-not-expose");
-    mocks.getPopularWatchlists.mockRejectedValue(providerError);
-
-    const res = await GET(makeReq("?locale=en"));
-    const body = await res.json();
-
-    expect(res.status).toBe(500);
-    expect(body).toEqual({ error: "Search service unavailable" });
-    expect(JSON.stringify(body)).not.toContain("provider-internal-canary");
-    expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(res.headers.get("Vercel-CDN-Cache-Control")).toBeNull();
-    expect(mocks.logExternalError).toHaveBeenCalledWith(
-      "error",
-      { service: "typesense", operation: "public_api_watchlists" },
-      providerError,
-    );
   });
 });

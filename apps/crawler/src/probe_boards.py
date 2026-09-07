@@ -1371,26 +1371,23 @@ async def _probe_rss(row: dict, client: httpx.AsyncClient) -> ProbeResult:
             f"legacy SuccessFactors DWR: {result['jobs']} jobs",
         )
 
-    feed_url = cfg.get("feed_url")
-    if not isinstance(feed_url, str) or not feed_url:
-        preset = cfg.get("preset")
-        suffix = "/jobs.rss" if preset == "teamtailor" else "/googlefeed.xml"
-        parsed = urlparse(row["board_url"])
-        if parsed.scheme in {"http", "https"} and parsed.netloc:
-            feed_url = f"{parsed.scheme}://{parsed.netloc}{suffix}"
-    if not isinstance(feed_url, str) or not feed_url:
+    # Resolve the endpoint through the runtime path so CI cannot probe a
+    # different fallback URL from the one workers will actually fetch.
+    from src.core.monitors.rss import _feed_config, _probe_feed
+
+    feed_config = _feed_config({"board_url": row["board_url"], "metadata": cfg})
+    if feed_config is None:
         return ProbeResult(
             row["board_slug"],
             "rss",
             row["board_url"],
-            "warn",
-            "no feed_url in monitor_config",
+            "fail" if cfg.get("preset") == "governmentjobs" else "warn",
+            "invalid RSS board identity or no resolvable feed URL",
         )
+    preset_name, feed_url, _preset = feed_config
     # Reuse the runtime's streamed XML parser so a retired feed returning an
     # HTML landing page with HTTP 200 cannot be reported healthy here.
-    from src.core.monitors.rss import _probe_feed
-
-    valid, count = await _probe_feed(feed_url, client, cfg.get("preset"))
+    valid, count = await _probe_feed(feed_url, client, preset_name)
     if not valid:
         return ProbeResult(
             row["board_slug"],

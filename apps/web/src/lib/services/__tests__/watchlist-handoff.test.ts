@@ -45,7 +45,6 @@ describe("createWatchlistFromHandoff", () => {
       description: "Selected companies",
       companyIds: ["uuid-stripe", "uuid-gitlab"],
       filters: { workMode: ["remote"], anyCompany: false },
-      isPublic: false,
     });
   });
 
