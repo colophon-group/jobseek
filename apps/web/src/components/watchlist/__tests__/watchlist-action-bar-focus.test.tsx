@@ -7,7 +7,6 @@ import "@/test-utils/lingui-mock";
 const mocks = vi.hoisted(() => ({
   copyWatchlist: vi.fn(),
   deleteWatchlist: vi.fn(),
-  showLimit: vi.fn(),
   push: vi.fn(),
   refresh: vi.fn(),
 }));
@@ -31,15 +30,6 @@ vi.mock("@/lib/actions/watchlists", () => ({
   copyWatchlist: mocks.copyWatchlist,
   deleteWatchlist: mocks.deleteWatchlist,
   updateWatchlist: vi.fn(),
-}));
-
-vi.mock("@/components/watchlist/watchlist-limit-modal", () => ({
-  WatchlistLimitModal: () => null,
-  useWatchlistLimitModal: () => ({
-    open: false,
-    setOpen: vi.fn(),
-    show: mocks.showLimit,
-  }),
 }));
 
 import { WatchlistActionBar } from "../watchlist-action-bar";
@@ -125,10 +115,14 @@ describe("WatchlistActionBar universal copy limit", () => {
     const user = userEvent.setup();
     renderActionBar({ limitReached: true });
 
-    await user.click(screen.getByRole("button", { name: "Mirror" }));
+    const trigger = screen.getByRole("button", { name: "Mirror" });
+    await user.click(trigger);
 
-    expect(mocks.showLimit).toHaveBeenCalledOnce();
+    await screen.findByRole("dialog", { name: "10-watchlist limit" });
     expect(mocks.copyWatchlist).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Got it" }));
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
   it("shows the neutral notice when a concurrent copy loses the final slot", async () => {
@@ -136,10 +130,19 @@ describe("WatchlistActionBar universal copy limit", () => {
     mocks.copyWatchlist.mockResolvedValue({ error: "limit_reached" });
     renderActionBar();
 
-    await user.click(screen.getByRole("button", { name: "Mirror" }));
+    const replacedTrigger = screen.getByRole("button", { name: "Mirror" });
+    await user.click(replacedTrigger);
 
-    await waitFor(() => expect(mocks.showLimit).toHaveBeenCalledOnce());
+    await screen.findByRole("dialog", { name: "10-watchlist limit" });
     expect(mocks.push).not.toHaveBeenCalled();
+
+    const replacementTrigger = screen.getByRole("button", {
+      name: "Mirror",
+      hidden: true,
+    });
+    expect(replacementTrigger).not.toBe(replacedTrigger);
+    await user.click(screen.getByRole("button", { name: "Got it" }));
+    await waitFor(() => expect(document.activeElement).toBe(replacementTrigger));
   });
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, Loader2 } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
@@ -52,6 +52,7 @@ export function SaveSearchButton({
   const lp = useLocalePath();
   const { user, isLoggedIn } = useSession();
   const [saving, setSaving] = useState(false);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
   const limitNotice = useWatchlistLimitModal();
 
   async function handleSave() {
@@ -92,7 +93,7 @@ export function SaveSearchButton({
 
       if ("error" in result) {
         if (result.error === "limit_reached") {
-          limitNotice.show();
+          limitNotice.show(() => saveButtonRef.current);
         }
         return;
       }
@@ -129,6 +130,7 @@ export function SaveSearchButton({
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
           <button
+            ref={saveButtonRef}
             onClick={handleSave}
             disabled={saving}
             className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
@@ -148,6 +150,7 @@ export function SaveSearchButton({
       <WatchlistLimitModal
         open={limitNotice.open}
         onOpenChange={limitNotice.setOpen}
+        onCloseAutoFocus={limitNotice.restoreFocus}
       />
     </>
   );

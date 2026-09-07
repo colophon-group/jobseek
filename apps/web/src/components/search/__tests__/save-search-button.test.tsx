@@ -48,7 +48,8 @@ describe("SaveSearchButton (issue #3036)", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
+    const saveButton = screen.getByRole("button", { name: /save this search/i });
+    fireEvent.click(saveButton);
 
     const notice = await screen.findByRole("dialog", { name: "10-watchlist limit" });
     expect(notice.textContent).toContain(
@@ -57,6 +58,9 @@ describe("SaveSearchButton (issue #3036)", () => {
     expect(screen.queryByRole("link", { name: /upgrade/i })).toBeNull();
     await waitFor(() => expect(createWatchlistMock).toHaveBeenCalledTimes(1));
     expect(pushMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Got it" }));
+    await waitFor(() => expect(document.activeElement).toBe(saveButton));
   });
 
   it("navigates to the new watchlist on success", async () => {

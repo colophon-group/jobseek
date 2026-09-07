@@ -58,6 +58,7 @@ export function WatchlistsPage({
   const [atLimit, setAtLimit] = useState(limitReached);
   const limitNotice = useWatchlistLimitModal();
   const handoffAttemptedRef = useRef(false);
+  const pageHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     setWatchlists(initialWatchlists);
@@ -110,10 +111,17 @@ export function WatchlistsPage({
       companySlugs?: string[];
     },
     navigation: "push" | "replace" = "push",
+    returnFocus?: () => HTMLElement | null,
   ) {
+    const initiatingElement = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const focusTarget = returnFocus ?? (() => initiatingElement);
+    const fallbackFocus = () => pageHeadingRef.current;
+
     if (creating || !isLoggedIn) return;
     if (atLimit) {
-      limitNotice.show();
+      limitNotice.show(focusTarget, fallbackFocus);
       return;
     }
     setCreating(true);
@@ -138,7 +146,7 @@ export function WatchlistsPage({
         // Create state aligned with that authoritative result.
         if (result.error === "limit_reached") {
           setAtLimit(true);
-          limitNotice.show();
+          limitNotice.show(focusTarget, fallbackFocus);
         }
         return;
       }
@@ -167,7 +175,7 @@ export function WatchlistsPage({
       description?: string;
       filters?: WatchlistFilters;
       companySlugs: string[];
-    }) => handleCreate(prefill, "replace"),
+    }) => handleCreate(prefill, "replace", () => pageHeadingRef.current),
   );
 
   // Auto-create a watchlist from URL params (for example, the URL emitted by
@@ -184,7 +192,7 @@ export function WatchlistsPage({
     handoffAttemptedRef.current = true;
     if (!isLoggedIn) return;
     if (atLimit) {
-      limitNotice.show();
+      limitNotice.show(() => pageHeadingRef.current);
       return;
     }
 
@@ -243,7 +251,11 @@ export function WatchlistsPage({
     <div className="space-y-8">
       {/* My watchlists */}
       <div>
-        <h1 className="mb-4 text-lg font-semibold">
+        <h1
+          ref={pageHeadingRef}
+          tabIndex={-1}
+          className="mb-4 text-lg font-semibold"
+        >
           <Trans id="watchlists.page.title" comment="Title of the watchlists exploration page">
             Watchlists
           </Trans>
@@ -317,6 +329,7 @@ export function WatchlistsPage({
     <WatchlistLimitModal
       open={limitNotice.open}
       onOpenChange={limitNotice.setOpen}
+      onCloseAutoFocus={limitNotice.restoreFocus}
     />
     </>
   );

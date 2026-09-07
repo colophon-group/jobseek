@@ -86,6 +86,7 @@ export function WatchlistActionBar({
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
   const limitNotice = useWatchlistLimitModal();
 
   async function handleCopy() {
@@ -94,14 +95,16 @@ export function WatchlistActionBar({
       return;
     }
     if (limitReached) {
-      limitNotice.show();
+      limitNotice.show(() => copyButtonRef.current);
       return;
     }
     setBusy(true);
     try {
       const result = await copyWatchlist(watchlistId);
       if ("error" in result) {
-        if (result.error === "limit_reached") limitNotice.show();
+        if (result.error === "limit_reached") {
+          limitNotice.show(() => copyButtonRef.current);
+        }
       } else if ("slug" in result && user?.username) {
         router.push(lp(`/${user.username}/${result.slug}`));
       } else {
@@ -165,6 +168,7 @@ export function WatchlistActionBar({
                 onClick={handleCopy}
                 disabled={limitReached}
                 warning={limitReached}
+                buttonRef={copyButtonRef}
               >
                 <Copy size={16} aria-hidden="true" />
               </ActionButton>
@@ -228,6 +232,7 @@ export function WatchlistActionBar({
               onClick={handleCopy}
               disabled={isLoggedIn && limitReached}
               warning={isLoggedIn && limitReached}
+              buttonRef={copyButtonRef}
             >
               <Copy size={16} aria-hidden="true" />
             </ActionButton>
@@ -237,6 +242,7 @@ export function WatchlistActionBar({
       <WatchlistLimitModal
         open={limitNotice.open}
         onOpenChange={limitNotice.setOpen}
+        onCloseAutoFocus={limitNotice.restoreFocus}
       />
     </>
   );

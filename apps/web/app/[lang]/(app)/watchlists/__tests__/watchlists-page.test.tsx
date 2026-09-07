@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
@@ -8,7 +9,6 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   createWatchlist: vi.fn(),
   createWatchlistFromHandoff: vi.fn(),
-  showLimit: vi.fn(),
   searchParams: new URLSearchParams(),
   session: {
     user: { username: "alice" } as { username: string } | null,
@@ -59,7 +59,13 @@ vi.mock("@/components/watchlist/watchlist-card", () => ({
     <button
       type="button"
       data-limit-reached={String(Boolean(limitReached))}
-      onClick={limitReached ? onLimitReached : onClick}
+      onClick={() => {
+        if (limitReached) {
+          onLimitReached();
+        } else {
+          onClick();
+        }
+      }}
     >
       Create
     </button>
@@ -68,15 +74,6 @@ vi.mock("@/components/watchlist/watchlist-card", () => ({
 
 vi.mock("@/components/watchlist/public-watchlist-search", () => ({
   PublicWatchlistSearch: () => null,
-}));
-
-vi.mock("@/components/watchlist/watchlist-limit-modal", () => ({
-  WatchlistLimitModal: () => null,
-  useWatchlistLimitModal: () => ({
-    open: false,
-    setOpen: vi.fn(),
-    show: mocks.showLimit,
-  }),
 }));
 
 vi.mock("@/components/ui/Button", () => ({
@@ -105,7 +102,6 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
     vi.clearAllMocks();
     mocks.createWatchlist.mockReset();
     mocks.createWatchlistFromHandoff.mockReset();
-    mocks.showLimit.mockReset();
     mocks.searchParams = new URLSearchParams();
     mocks.session = {
       user: { username: "alice" },
@@ -162,7 +158,8 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
     );
   });
 
-  it("passes the initial cap state to Create and shows the neutral notice", () => {
+  it("passes the initial cap state to Create and restores focus after the neutral notice", async () => {
+    const user = userEvent.setup();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ counts: {} }),
@@ -179,12 +176,16 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
 
     const create = screen.getByRole("button", { name: "Create" });
     expect(create.getAttribute("data-limit-reached")).toBe("true");
-    fireEvent.click(create);
-    expect(mocks.showLimit).toHaveBeenCalledOnce();
+    await user.click(create);
+    await screen.findByRole("dialog", { name: "10-watchlist limit" });
     expect(mocks.createWatchlist).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Got it" }));
+    await waitFor(() => expect(document.activeElement).toBe(create));
   });
 
   it("updates the overview cap state after an authoritative create rejection", async () => {
+    const user = userEvent.setup();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ counts: {} }),
@@ -202,12 +203,36 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
 
     const create = screen.getByRole("button", { name: "Create" });
     expect(create.getAttribute("data-limit-reached")).toBe("false");
-    fireEvent.click(create);
+    await user.click(create);
 
     await waitFor(() => {
-      expect(mocks.showLimit).toHaveBeenCalledOnce();
+      expect(screen.getByRole("dialog", { name: "10-watchlist limit" })).toBeTruthy();
       expect(create.getAttribute("data-limit-reached")).toBe("true");
     });
+
+    await user.click(screen.getByRole("button", { name: "Got it" }));
+    await waitFor(() => expect(document.activeElement).toBe(create));
+  });
+
+  it("restores focus to the empty-state Create control after a limit rejection", async () => {
+    const user = userEvent.setup();
+    mocks.createWatchlist.mockResolvedValue({ error: "limit_reached" });
+
+    render(
+      <WatchlistsPage
+        initialWatchlists={[]}
+        username="alice"
+        limitReached={false}
+        locale="en"
+      />,
+    );
+
+    const create = screen.getByRole("button", { name: "Create watchlist" });
+    await user.click(create);
+    await screen.findByRole("dialog", { name: "10-watchlist limit" });
+
+    await user.click(screen.getByRole("button", { name: "Got it" }));
+    await waitFor(() => expect(document.activeElement).toBe(create));
   });
 
   it("waits for bootstrap and creates one complete URL handoff", async () => {
@@ -282,6 +307,7 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
   });
 
   it("recovers truthfully when a URL handoff loses the final slot", async () => {
+    const user = userEvent.setup();
     mocks.searchParams = new URLSearchParams({
       title: "Retryable roles",
       companies: "stripe",
@@ -300,8 +326,8 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
 
     await waitFor(() => {
       expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1);
-      expect(mocks.showLimit).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole("button", { name: "Create" }).getAttribute(
+      expect(screen.getByRole("dialog", { name: "10-watchlist limit" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Create", hidden: true }).getAttribute(
         "data-limit-reached",
       )).toBe("true");
     });
@@ -311,10 +337,17 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
       "title=Retryable+roles&companies=stripe",
     );
 
+    await user.click(screen.getByRole("button", { name: "Got it" }));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { name: "Watchlists" }),
+      );
+    });
+
     rerender(<WatchlistsPage {...props} locale="de" />);
     await waitFor(() => {
       expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1);
-      expect(mocks.showLimit).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("dialog")).toBeNull();
     });
   });
 
