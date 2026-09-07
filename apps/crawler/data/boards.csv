@@ -1764,6 +1764,8 @@ datasmart-point-gmbh,datasmart-point-gmbh-join,https://join.com/companies/datasm
 datasnipper,datasnipper-ashby,https://jobs.ashbyhq.com/datasnipper,ashby,"{""token"": ""datasnipper""}",skip,
 datologyai,datologyai-ashby,https://jobs.ashbyhq.com/datologyai,ashby,"{""token"": ""datologyai""}",skip,
 dave,dave-ashby,https://jobs.ashbyhq.com/dave,ashby,"{""token"": ""dave""}",skip,
+dave-and-busters,dave-and-busters-careers,https://daveandbusters.wd1.myworkdayjobs.com/dave_and_busters_careers,workday,"{""company"": ""daveandbusters"", ""wd_instance"": ""wd1"", ""site"": ""Dave_and_Busters_Careers"", ""all_sites"": false}",workday,
+dave-and-busters,dave-and-busters-main-event,https://daveandbusters.wd1.myworkdayjobs.com/Main_Event_Careers,workday,"{""company"": ""daveandbusters"", ""wd_instance"": ""wd1"", ""site"": ""Main_Event_Careers"", ""all_sites"": false}",workday,
 david-zwirner,david-zwirner-greenhouse,https://job-boards.greenhouse.io/davidzwirnergallery,greenhouse,"{""token"": ""davidzwirnergallery""}",skip,
 davis-development,davis-development-greenhouse,https://job-boards.greenhouse.io/davisdevelopment,greenhouse,"{""token"": ""davisdevelopment""}",skip,
 davis-polk,davis-polk-careers-workday,https://davispolk.wd5.myworkdayjobs.com/business-professionals-services-usa,workday,"{""company"": ""davispolk"", ""wd_instance"": ""wd5"", ""site"": ""business-professionals-services-usa""}",workday,
