@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+type testConnectionIDKey struct{}
+
 func testClient(t *testing.T, mutate func(*Config)) *Client {
 	t.Helper()
 	config := Config{
@@ -144,6 +146,36 @@ func TestGetCancellationInterruptsBodyRead(t *testing.T) {
 	}
 }
 
+func TestGetCancellationInterruptsStatusBodyDrain(t *testing.T) {
+	started := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		close(started)
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+
+	session := testClient(t, nil).NewSession()
+	defer session.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := session.Get(ctx, server.URL, nil)
+		done <- err
+	}()
+	<-started
+	cancel()
+	if got := errorKind(t, <-done); got != ErrorCanceled {
+		t.Fatalf("kind=%s", got)
+	}
+	if stats := session.Stats(); stats.Requests != 1 || stats.WireAttempts != 1 {
+		t.Fatalf("stats=%+v", stats)
+	}
+}
+
 func TestGetClassifiesRequestTimeout(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -203,7 +235,7 @@ func TestGetReturnsNonSuccessStatusWithoutReadingLargeBody(t *testing.T) {
 			if response.StatusCode != status || len(response.Body) != 0 {
 				t.Fatalf("response=%+v", response)
 			}
-			if stats := session.Stats(); stats.Requests != 1 || stats.DecodedBytes != 0 {
+			if stats := session.Stats(); stats.Requests != 1 || stats.WireAttempts != 1 || stats.DecodedBytes != 0 || stats.StatusBodyBytes != 8 {
 				t.Fatalf("stats=%+v", stats)
 			}
 		})
@@ -240,6 +272,9 @@ func TestRequestCapMatchesWireRequestsWithoutTransparentRetries(t *testing.T) {
 		if r.ProtoMajor != 1 {
 			t.Errorf("protocol=%s", r.Proto)
 		}
+		if r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
+			t.Errorf("GET was not bodyless: content_length=%d transfer_encoding=%v", r.ContentLength, r.TransferEncoding)
+		}
 		_, _ = w.Write([]byte("ok"))
 	}))
 	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
@@ -251,11 +286,12 @@ func TestRequestCapMatchesWireRequestsWithoutTransparentRetries(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(t, func(config *Config) { config.MaxRequests = 2 })
-	transport, ok := client.httpClient.Transport.(*http.Transport)
-	if !ok || !transport.DisableKeepAlives || transport.ForceAttemptHTTP2 || transport.TLSNextProto == nil || len(transport.TLSNextProto) != 0 || transport.TLSClientConfig == nil || len(transport.TLSClientConfig.NextProtos) != 1 || transport.TLSClientConfig.NextProtos[0] != "http/1.1" {
-		t.Fatalf("pilot transport is not fresh-connection HTTP/1: %#v", client.httpClient.Transport)
+	transport := client.transport
+	if transport.DisableKeepAlives || transport.ForceAttemptHTTP2 || transport.TLSNextProto == nil || len(transport.TLSNextProto) != 0 || transport.TLSClientConfig == nil || len(transport.TLSClientConfig.NextProtos) != 1 || transport.TLSClientConfig.NextProtos[0] != "http/1.1" {
+		t.Fatalf("pilot transport is not pooled HTTP/1: %#v", transport)
 	}
 	session := client.NewSession()
+	defer session.Close()
 	for range 2 {
 		if _, err := session.Get(context.Background(), server.URL, nil); err != nil {
 			t.Fatal(err)
@@ -264,8 +300,95 @@ func TestRequestCapMatchesWireRequestsWithoutTransparentRetries(t *testing.T) {
 	if _, err := session.Get(context.Background(), server.URL, nil); errorKind(t, err) != ErrorRequestLimit {
 		t.Fatal("expected request limit")
 	}
-	if got := session.Stats().Requests; got != 2 || wireRequests.Load() != 2 || connections.Load() != 2 {
-		t.Fatalf("stats=%d wire=%d connections=%d", got, wireRequests.Load(), connections.Load())
+	if stats := session.Stats(); stats.Requests != 2 || stats.WireAttempts != 2 || wireRequests.Load() != 2 || connections.Load() != 1 {
+		t.Fatalf("stats=%+v wire=%d connections=%d", stats, wireRequests.Load(), connections.Load())
+	}
+}
+
+func TestConnectionPoolIsScopedToSession(t *testing.T) {
+	var connections atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}))
+	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			connections.Add(1)
+		}
+	}
+	server.Start()
+	defer server.Close()
+
+	client := testClient(t, nil)
+	for range 2 {
+		session := client.NewSession()
+		if _, err := session.Get(context.Background(), server.URL, nil); err != nil {
+			t.Fatal(err)
+		}
+		session.Close()
+	}
+	if connections.Load() != 2 {
+		t.Fatalf("connections=%d", connections.Load())
+	}
+}
+
+func TestStalePooledConnectionIsNotTransparentlyReplayed(t *testing.T) {
+	var connections atomic.Int32
+	var requests atomic.Int32
+	var requestsOnFirstConnection atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		connectionID, ok := r.Context().Value(testConnectionIDKey{}).(int32)
+		if !ok {
+			t.Error("missing connection identity")
+			return
+		}
+		if connectionID == 1 && requestsOnFirstConnection.Add(1) == 2 {
+			// The second explicit GET is fully written on a reused connection,
+			// then loses that connection before a response. A replayable GET
+			// would make net/http silently issue the same request on connection 2.
+			hijacker, ok := w.(http.Hijacker)
+			if !ok {
+				t.Error("HTTP/1 response writer cannot hijack")
+				return
+			}
+			conn, _, err := hijacker.Hijack()
+			if err != nil {
+				t.Errorf("hijack: %v", err)
+				return
+			}
+			_ = conn.Close()
+			return
+		}
+		_, _ = w.Write([]byte("ok"))
+	}))
+	server.Config.ConnContext = func(ctx context.Context, _ net.Conn) context.Context {
+		return context.WithValue(ctx, testConnectionIDKey{}, connections.Add(1))
+	}
+	server.Start()
+	defer server.Close()
+
+	session := testClient(t, func(config *Config) { config.MaxRequests = 3 }).NewSession()
+	defer session.Close()
+	if _, err := session.Get(context.Background(), server.URL, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := session.Get(context.Background(), server.URL, nil); errorKind(t, err) != ErrorTransport {
+		t.Fatalf("expected the explicit attempt to fail without transparent replay, got %v", err)
+	}
+	if stats := session.Stats(); stats.Requests != 2 || stats.WireAttempts != 2 || requests.Load() != 2 || connections.Load() != 1 {
+		t.Fatalf("after failed attempt: stats=%+v requests=%d connections=%d", stats, requests.Load(), connections.Load())
+	}
+	if _, err := session.Get(context.Background(), server.URL, nil); err != nil {
+		t.Fatal(err)
+	}
+	if stats := session.Stats(); stats.Requests != 3 || stats.WireAttempts != 3 || requests.Load() != 3 || connections.Load() != 2 {
+		t.Fatalf("after explicit recovery: stats=%+v requests=%d connections=%d", stats, requests.Load(), connections.Load())
+	}
+	if _, err := session.Get(context.Background(), server.URL, nil); errorKind(t, err) != ErrorRequestLimit {
+		t.Fatal("expected request limit")
+	}
+	if stats := session.Stats(); stats.Requests != 3 || stats.WireAttempts != 3 || requests.Load() != 3 {
+		t.Fatalf("request cap changed counters: stats=%+v requests=%d", stats, requests.Load())
 	}
 }
 
@@ -312,7 +435,7 @@ func TestTLSNegotiatesHTTP11WhenServerOffersHTTP2(t *testing.T) {
 	defer server.Close()
 
 	client := testClient(t, nil)
-	transport := client.httpClient.Transport.(*http.Transport)
+	transport := client.transport
 	tlsConfig := transport.TLSClientConfig.Clone()
 	roots := x509.NewCertPool()
 	roots.AddCert(server.Certificate())
@@ -320,6 +443,7 @@ func TestTLSNegotiatesHTTP11WhenServerOffersHTTP2(t *testing.T) {
 	transport.TLSClientConfig = tlsConfig
 
 	session := client.NewSession()
+	defer session.Close()
 	response, err := session.Get(context.Background(), server.URL, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -331,7 +455,7 @@ func TestTLSNegotiatesHTTP11WhenServerOffersHTTP2(t *testing.T) {
 	if got.requestProtocol != "HTTP/1.1" || got.negotiatedProtocol != "http/1.1" {
 		t.Fatalf("request protocol=%q negotiated ALPN=%q", got.requestProtocol, got.negotiatedProtocol)
 	}
-	if stats := session.Stats(); stats.Requests != 1 || stats.DecodedBytes != 2 {
+	if stats := session.Stats(); stats.Requests != 1 || stats.WireAttempts != 1 || stats.DecodedBytes != 2 {
 		t.Fatalf("stats=%+v", stats)
 	}
 }

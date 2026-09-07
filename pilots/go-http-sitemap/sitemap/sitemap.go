@@ -144,6 +144,7 @@ func New(client *boundedhttp.Client, config Config) (*Runner, error) {
 
 func (r *Runner) Run(ctx context.Context) (Result, error) {
 	session := r.client.NewSession()
+	defer session.Close()
 	fail := func(err error) (Result, error) {
 		return Result{TransportMetrics: session.Stats()}, err
 	}

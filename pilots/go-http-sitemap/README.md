@@ -29,14 +29,17 @@ most, with context-aware deterministic waits of 500 ms and then 1 s. Children ar
 single-attempt. Cancellation and config, body, aggregate, request-cap, 404/410,
 other 4xx, and nonempty malformed XML failures are never retried.
 
-For wire-accurate Phase 0 accounting, each counted GET uses a fresh HTTP/1
-connection. This prevents `net/http` from transparently retrying a GET on a
-stale reused connection, but deliberately sacrifices connection pooling and
-HTTP/2 throughput. A pooled, protocol-flexible transport with wire-attempt
-instrumentation remains a production blocker. In particular, the hermetic
-connection-aware fixture documents that this fresh-connection policy cannot
-recover an origin that returns 500 for the first request on every connection
-and 200 only for a later request on that same connection.
+Each sitemap invocation owns an HTTP/1 connection pool, so explicit root
+retries and child fetches can reuse a connection without leaking idle state to
+another invocation. Every admitted GET carries a zero-byte, non-replayable
+body. It is bodyless on the wire, but prevents Go's HTTP/1 transport from
+transparently replaying an idempotent GET on a stale pooled connection. The
+request cap therefore bounds explicit transport attempts; `WireAttempts`
+separately records `net/http`'s request-write hook and must never exceed the
+admitted `Requests`. A hermetic connection-aware fixture proves recovery when
+an origin returns 500 for the first request on a connection and 200 for the
+second. HTTP/2 remains excluded because it has a separate transparent retry
+path.
 
 This directory has no production wiring and does not import crawler contracts,
 Redis, Postgres, browser code, or publisher code.

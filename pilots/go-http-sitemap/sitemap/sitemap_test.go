@@ -479,7 +479,7 @@ func TestDefaultRootRetryRecoversAfterTwo500sWithPythonParityCadence(t *testing.
 	}
 }
 
-func TestFreshConnectionsExposeConnectionScopedRetryBlocker(t *testing.T) {
+func TestPooledConnectionRecoversConnectionScopedRetry(t *testing.T) {
 	var connections atomic.Int32
 	var requests atomic.Int32
 	var requestsMu sync.Mutex
@@ -498,6 +498,7 @@ func TestFreshConnectionsExposeConnectionScopedRetryBlocker(t *testing.T) {
 		requestsMu.Unlock()
 		if requestOnConnection == 1 {
 			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("retry on this connection"))
 			return
 		}
 		_, _ = w.Write([]byte(`<urlset><url><loc>https://example.test/jobs/1</loc></url></urlset>`))
@@ -512,17 +513,16 @@ func TestFreshConnectionsExposeConnectionScopedRetryBlocker(t *testing.T) {
 	var sleeps []time.Duration
 	noWait(runner, &sleeps)
 	result, err := runner.Run(context.Background())
-	var exhausted *RetryExhaustedError
-	if !errors.As(err, &exhausted) || exhausted.Attempts != 3 || exhausted.LastStatus != http.StatusInternalServerError || exhausted.LastTransportKind != "" {
-		t.Fatalf("retry error=%+v err=%v", exhausted, err)
+	if err != nil {
+		t.Fatal(err)
 	}
 	requestsMu.Lock()
 	defer requestsMu.Unlock()
-	if requests.Load() != 3 || connections.Load() != 3 || len(requestsByConnection) != 3 || result.TransportMetrics.Requests != 3 || !reflect.DeepEqual(sleeps, []time.Duration{500 * time.Millisecond, time.Second}) || len(result.URLs) != 0 {
+	if requests.Load() != 2 || connections.Load() != 1 || len(requestsByConnection) != 1 || result.TransportMetrics.Requests != 2 || result.TransportMetrics.WireAttempts != 2 || result.TransportMetrics.StatusBodyBytes != int64(len("retry on this connection")) || !reflect.DeepEqual(sleeps, []time.Duration{500 * time.Millisecond}) || !reflect.DeepEqual(result.URLs, []string{"https://example.test/jobs/1"}) {
 		t.Fatalf("requests=%d connections=%d requests_by_connection=%v sleeps=%v result=%+v", requests.Load(), connections.Load(), requestsByConnection, sleeps, result)
 	}
 	for connectionID, count := range requestsByConnection {
-		if count != 1 {
+		if count != 2 {
 			t.Fatalf("connection %d received %d requests", connectionID, count)
 		}
 	}
