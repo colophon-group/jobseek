@@ -2,11 +2,13 @@ package sitemap
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -30,6 +32,20 @@ type getStep struct {
 type sequenceGetter struct {
 	steps []getStep
 	calls int
+}
+
+type frozenLiteralFilterFixture struct {
+	BoardSlug             string   `json:"board_slug"`
+	SourcePath            string   `json:"source_path"`
+	SourceCommit          string   `json:"source_commit"`
+	PythonFilterMode      string   `json:"python_filter_mode"`
+	LiteralSubsetReason   string   `json:"literal_subset_reason"`
+	ExpectedFilteredCount int      `json:"expected_filtered_count"`
+	ExpectedURLs          []string `json:"expected_urls"`
+	MonitorConfig         struct {
+		URL       string `json:"url"`
+		URLFilter string `json:"url_filter"`
+	} `json:"monitor_config"`
 }
 
 func (g *sequenceGetter) Get(context.Context, string, http.Header) (boundedhttp.Response, error) {
@@ -121,6 +137,50 @@ func TestURLSetParitySubset(t *testing.T) {
 				t.Fatalf("result=%+v", result)
 			}
 		})
+	}
+}
+
+func TestFrozenAbbVieLiteralFilterConfigParity(t *testing.T) {
+	fixtureBytes, err := os.ReadFile("testdata/abbvie-careers-literal-filter.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture frozenLiteralFilterFixture
+	decoder := json.NewDecoder(strings.NewReader(string(fixtureBytes)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&fixture); err != nil {
+		t.Fatal(err)
+	}
+	if fixture.BoardSlug != "abbvie-careers" || fixture.SourcePath != "apps/crawler/data/boards.csv" || fixture.SourceCommit != "eb4234c2bc3ede2ef04f4b5cd5ed65bf37fd3c89" {
+		t.Fatalf("unexpected fixture identity: %+v", fixture)
+	}
+	if fixture.MonitorConfig.URL != "https://careers.abbvie.com/en/sitemap.xml" || fixture.MonitorConfig.URLFilter != "/job/" || fixture.PythonFilterMode != "re.search" || fixture.LiteralSubsetReason == "" {
+		t.Fatalf("unexpected frozen monitor config: %+v", fixture)
+	}
+
+	xmlBody, err := os.ReadFile("testdata/abbvie-careers-literal-filter.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		_, _ = w.Write(xmlBody)
+	}))
+	defer server.Close()
+
+	runner := newRunner(t, newHTTPClient(t, 1), Config{
+		SitemapURL:       server.URL,
+		IncludeLiteral:   fixture.MonitorConfig.URLFilter,
+		MaxURLs:          50_000,
+		MaxIndexChildren: 1,
+		RootMaxAttempts:  1,
+	})
+	result, err := runner.Run(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(result.URLs, fixture.ExpectedURLs) || result.FilteredCount != fixture.ExpectedFilteredCount || result.Truncated || result.TransportMetrics.Requests != 1 {
+		t.Fatalf("result=%+v expected_urls=%v expected_filtered=%d", result, fixture.ExpectedURLs, fixture.ExpectedFilteredCount)
 	}
 }
 

@@ -8,6 +8,9 @@ The admitted cohort is intentionally small: an explicit configured sitemap
 URL, GET only, XML `urlset` or a one-level `sitemapindex`, namespace-neutral
 parsing, job-child preference, 404/410 child skipping, duplicate removal,
 `utm_*` removal, literal include/exclude filters, and literal prefix rewrite.
+The test corpus includes a frozen `abbvie-careers` repository configuration
+whose `/job/` Python regex is provably equivalent to literal containment for
+the fixture input; this is not general Python-regex compatibility.
 Redirects are rejected as status errors rather than followed.
 All results are held until the complete index succeeds, so a child error never
 publishes a partial URL set. HTTP reads have per-response decoded-byte,
