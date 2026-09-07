@@ -393,12 +393,16 @@ describe("parseAiFilterTerminalResult", () => {
   });
 
   it("rejects accessor-backed fields before reading provider data", () => {
+    let decisionGetterReads = 0;
     const accessorDecision: Record<string, unknown> = {
       candidateId: CANDIDATE_TWO,
     };
     Object.defineProperty(accessorDecision, "decision", {
       enumerable: true,
-      get: () => "accepted",
+      get: () => {
+        decisionGetterReads += 1;
+        return "accepted";
+      },
     });
     expect(() =>
       parseAiFilterTerminalResult(
@@ -410,18 +414,24 @@ describe("parseAiFilterTerminalResult", () => {
         baseRequest,
       ),
     ).toThrow(/plain data fields/);
+    expect(decisionGetterReads).toBe(0);
 
+    let statusGetterReads = 0;
     const accessorStatus: Record<string, unknown> = {
       runId: RUN_ID,
       decisions: completedResult.decisions,
     };
     Object.defineProperty(accessorStatus, "status", {
       enumerable: true,
-      get: () => "completed",
+      get: () => {
+        statusGetterReads += 1;
+        throw new Error("getter executed");
+      },
     });
     expect(() =>
       parseAiFilterTerminalResult(accessorStatus, baseRequest),
-    ).toThrow(/plain data fields/);
+    ).toThrow(AiFilterContractError);
+    expect(statusGetterReads).toBe(0);
 
     const accessorStopReason: Record<string, unknown> = {
       runId: RUN_ID,
@@ -435,6 +445,37 @@ describe("parseAiFilterTerminalResult", () => {
     expect(() =>
       parseAiFilterTerminalResult(accessorStopReason, baseRequest),
     ).toThrow(/plain data fields/);
+  });
+
+  it("snapshots Proxy-backed provider values without invoking get traps", () => {
+    let decisionReads = 0;
+    const proxiedDecision = new Proxy(
+      { candidateId: CANDIDATE_TWO, decision: "rejected" },
+      {
+        get: (target, property, receiver) => {
+          if (property === "decision") {
+            decisionReads += 1;
+            return decisionReads === 1 ? "accepted" : "not-binary";
+          }
+          return Reflect.get(target, property, receiver);
+        },
+      },
+    );
+
+    const result = parseAiFilterTerminalResult(
+      {
+        runId: RUN_ID,
+        status: "stopped",
+        stopReason: "budget_exhausted",
+        decisions: [proxiedDecision],
+      },
+      baseRequest,
+    );
+    expect(result.decisions[0]).toEqual({
+      candidateId: CANDIDATE_TWO,
+      decision: "rejected",
+    });
+    expect(decisionReads).toBe(0);
   });
 
   it("preserves valid paid work when a run stops", () => {

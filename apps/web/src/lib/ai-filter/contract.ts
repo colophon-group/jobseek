@@ -106,12 +106,25 @@ function fail(message: string): never {
   throw new AiFilterContractError(message);
 }
 
-function requireRecord(value: unknown, field: string): Record<string, unknown> {
+function snapshotDataRecord(
+  value: unknown,
+  field: string,
+): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     fail(`${field} must be an object`);
   }
 
-  return value as Record<string, unknown>;
+  const record = value as Record<string, unknown>;
+  const snapshot: Record<string, unknown> = {};
+  for (const key of Reflect.ownKeys(record)) {
+    if (typeof key !== "string") fail(`${field} must contain plain data fields`);
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) {
+      fail(`${field} must contain plain data fields`);
+    }
+    snapshot[key] = descriptor.value;
+  }
+  return snapshot;
 }
 
 function requireExactKeys(
@@ -126,13 +139,6 @@ function requireExactKeys(
     actual.some((key, index) => key !== wanted[index])
   ) {
     fail(`${field} contains missing or unsupported fields`);
-  }
-
-  for (const key of wanted) {
-    const descriptor = Object.getOwnPropertyDescriptor(record, key);
-    if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) {
-      fail(`${field} must contain plain data fields`);
-    }
   }
 }
 
@@ -192,16 +198,44 @@ function addRetention(firstSeenAt: string): string {
 
 function requireDenseArray(value: unknown, field: string): unknown[] {
   if (!Array.isArray(value)) fail(`${field} must be an array`);
-  for (let index = 0; index < value.length; index += 1) {
-    if (!Object.prototype.hasOwnProperty.call(value, index)) {
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+  if (
+    !lengthDescriptor ||
+    !("value" in lengthDescriptor) ||
+    !Number.isSafeInteger(lengthDescriptor.value) ||
+    lengthDescriptor.value < 0 ||
+    lengthDescriptor.value > AI_FILTER_SEGMENT_LIMIT
+  ) {
+    fail(`${field} has an invalid length`);
+  }
+
+  const length = lengthDescriptor.value as number;
+  const expectedKeys = new Set([
+    "length",
+    ...Array.from({ length }, (_, index) => String(index)),
+  ]);
+  const actualKeys = Reflect.ownKeys(value);
+  if (
+    actualKeys.some(
+      (key) => typeof key !== "string" || !expectedKeys.has(key),
+    )
+  ) {
+    fail(`${field} contains unsupported fields`);
+  }
+
+  const snapshot: unknown[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) {
       fail(`${field} must not contain sparse entries`);
     }
+    snapshot.push(descriptor.value);
   }
-  return value;
+  return snapshot;
 }
 
 function parseConfiguration(value: unknown): AiFilterConfiguration {
-  const record = requireRecord(value, "configuration");
+  const record = snapshotDataRecord(value, "configuration");
   requireExactKeys(
     record,
     [
@@ -258,7 +292,7 @@ function parseConfiguration(value: unknown): AiFilterConfiguration {
 }
 
 function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
-  const record = requireRecord(value, "candidate");
+  const record = snapshotDataRecord(value, "candidate");
   requireExactKeys(
     record,
     ["candidateId", "postingFirstSeenAt", "productExpiresAt"],
@@ -293,7 +327,7 @@ function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
 export function parseAiFilterSegmentRequest(
   input: unknown,
 ): AiFilterSegmentRequest {
-  const record = requireRecord(input, "segment request");
+  const record = snapshotDataRecord(input, "segment request");
   requireExactKeys(
     record,
     ["version", "runId", "requestedAt", "configuration", "candidates"],
@@ -403,14 +437,15 @@ export function assertSameAiFilterSelectionBinding(
 }
 
 function parseDecision(value: unknown): AiFilterClassifierDecision {
-  const record = requireRecord(value, "decision");
+  const record = snapshotDataRecord(value, "decision");
   requireExactKeys(record, ["candidateId", "decision"], "decision");
-  if (record.decision !== "accepted" && record.decision !== "rejected") {
+  const decision = record.decision;
+  if (decision !== "accepted" && decision !== "rejected") {
     fail("decision must be binary");
   }
   return Object.freeze({
     candidateId: requireUuid(record.candidateId, "decision.candidateId"),
-    decision: record.decision,
+    decision,
   });
 }
 
@@ -432,7 +467,7 @@ export function parseAiFilterTerminalResult(
   requestInput: unknown,
 ): AiFilterTerminalResult {
   const request = parseAiFilterSegmentRequest(requestInput);
-  const record = requireRecord(input, "terminal result");
+  const record = snapshotDataRecord(input, "terminal result");
   if (record.status === "completed") {
     requireExactKeys(record, ["runId", "status", "decisions"], "terminal result");
   } else if (record.status === "stopped") {
