@@ -1000,7 +1000,10 @@ _MONITOR_CONFIG_HINTS = {
         "Requires: application_identity URL allowlists/link texts/locale priority. "
         "Optional: medium_id and filters allowlist."
     ),
-    "rss": "Optional: preset/variant/feed_url; legacy SuccessFactors host/company auto-fill",
+    "rss": (
+        "Optional: preset/variant/feed_url/customer; legacy SuccessFactors and "
+        "HR Manager tenant fields auto-fill"
+    ),
     "umantis": "Requires: customer_id. Optional: region, listing_path",
     "earcu": "Requires: feed_url (auto-filled from an eArcu careers URL)",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",

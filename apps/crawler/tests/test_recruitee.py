@@ -451,7 +451,7 @@ class TestCanHandle:
     async def test_detects_slug_in_page_html(self):
         def handler(request):
             url = str(request.url)
-            if "/api/offers" in url:
+            if url == "https://myco.recruitee.com/api/offers":
                 return httpx.Response(200, json={"offers": [{"id": 1}]})
             return httpx.Response(
                 200,
@@ -462,6 +462,31 @@ class TestCanHandle:
             result = await can_handle("https://jobs.example.com/careers", client)
             assert result is not None
             assert result.get("slug") == "myco"
+            assert result.get("api_base") == "https://myco.recruitee.com"
+
+    async def test_detects_slug_after_large_wrapper_hydration_payload(self):
+        def handler(request):
+            url = str(request.url)
+            if url == "https://hessovalaiswallis.recruitee.com/api/offers":
+                return httpx.Response(200, json={"offers": []})
+            return httpx.Response(
+                200,
+                text=(
+                    "<html><script>"
+                    + ("x" * 600_000)
+                    + r'"https:\u002F\u002Fhessovalaiswallis.recruitee.com\u002Fo\u002Fexample"'
+                    + "</script></html>"
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://www.hevs.ch/fr/emplois/", client)
+
+        assert result == {
+            "slug": "hessovalaiswallis",
+            "api_base": "https://hessovalaiswallis.recruitee.com",
+            "jobs": 0,
+        }
 
     async def test_detects_recruiteecdn_marker(self):
         def handler(request):

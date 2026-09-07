@@ -77,7 +77,10 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 
 MAX_URLS = 50_000
-MAX_HTML_CHARS = 2_000_000
+# Enterprise Next.js shells can legitimately exceed 2 MB because tenant
+# configuration and localized templates are serialized beside ``pageProps``.
+# Keep the fetch bounded, but leave enough room for the embedded job payload.
+MAX_HTML_CHARS = 4_000_000
 _MAX_CONCURRENT_PAGES = 5
 _PAGE_FETCH_ATTEMPTS = 3
 _PAGE_FETCH_BASE_DELAY = 0.5
@@ -93,6 +96,10 @@ _TITLE_RE = re.compile(r"<title(?:\s[^>]*)?>(.*?)</title>", re.IGNORECASE | re.D
 # Common paths where Next.js apps store job listings.
 _COMMON_PATHS = [
     "props.pageProps.positions",
+    # Some recruitment frontends call the actual posting inventory ``offers``
+    # and reserve ``jobs`` for a shorter list of school/category filters.  Keep
+    # offers ahead of jobs so probing does not select the filter array.
+    "props.pageProps.offers",
     "props.pageProps.jobs",
     "props.pageProps.openings",
     "props.pageProps.allJobs",
@@ -469,12 +476,44 @@ def _compute_page_urls(board_url: str, page_count: int, cfg: dict) -> list[str]:
 
     Page mode uses ``?page=N`` with N in [2..page_count]. Offset mode uses
     ``?from=page_size*N`` for N in [1..page_count-1] (page 1 served by
-    ``board_url`` itself).
+    ``board_url`` itself). ``url_template`` supports path-based pagination;
+    ``start`` is the page value represented by ``board_url`` (default 1).
     """
     if _pagination_mode(cfg) == "offset":
         param = cfg.get("offset_param", "from")
         page_size = int(cfg.get("page_size") or 0)
         return [_add_query_param(board_url, param, page_size * n) for n in range(1, page_count)]
+
+    url_template = cfg.get("url_template")
+    if url_template is not None:
+        if (
+            not isinstance(url_template, str)
+            or url_template.count("{page}") != 1
+            or "\x00" in url_template
+        ):
+            raise ValueError("nextdata pagination url_template must contain one {page} placeholder")
+        start = cfg.get("start", 1)
+        if isinstance(start, bool) or not isinstance(start, int) or start < 0:
+            raise ValueError("nextdata pagination start must be a non-negative integer")
+
+        board = urlparse(board_url)
+        urls: list[str] = []
+        for page in range(start + 1, start + page_count):
+            page_url = url_template.format(page=page)
+            parsed = urlparse(page_url)
+            if (
+                parsed.scheme not in {"http", "https"}
+                or parsed.username is not None
+                or parsed.password is not None
+                or (parsed.scheme, parsed.hostname, parsed.port)
+                != (board.scheme, board.hostname, board.port)
+            ):
+                raise ValueError(
+                    "nextdata pagination url_template must produce same-origin HTTP URLs"
+                )
+            urls.append(page_url)
+        return urls
+
     page_param = cfg.get("page_param", "page")
     return [_add_query_param(board_url, page_param, p) for p in range(2, page_count + 1)]
 

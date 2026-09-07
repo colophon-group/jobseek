@@ -84,6 +84,7 @@ Monitor Types (cheapest first):
   bite              10      Job URLs          Auto-configured
   brassring         10      Full job data     No (skipped)
   breezy            10      Job URLs          Auto-configured
+  bytedance         10      Full job data     No (skipped)
   cnstaff           10      Full job data     No (skipped)
   comeet            10      Full job data     No (skipped)
   computrabajo      10      Job URLs          Auto-configured JSON-LD
@@ -203,6 +204,7 @@ Scraper Types:
   veryeast       Static      No               VeryEast employer job pages
   onlyfy         Static      No               Onlyfy/Prescreen job pages
   paycor         Static      No               Paycor/Newton legacy job pages
+  recruiterbox   Static      No               Recruiterbox/Trakstar Hire job pages
   pdf            Static      No               PDF job descriptions
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    HTTP/PW     Optional (fields)  SPA/XHR or direct API
@@ -293,6 +295,24 @@ accenture — Accenture Career API (dedicated monitor)
     - FR/BR use jobsearch/result endpoint (captured via route interception)
     - When 50k ceiling is hit, partitions by businessArea (discovered from data)
     - If a single area also exceeds 50k, sub-partitions by careerLevel"""
+
+MONITOR_BYTEDANCE = """\
+bytedance — ByteDance first-party careers API
+
+  Boards:   https://joinbytedance.com/search
+            https://jobs.bytedance.com/experienced/position
+            https://jobs.bytedance.com/campus/position
+  Returns:  Full job data (title, description, locations, employment_type,
+            date_posted, team metadata)
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Config:   {} (board URL selects the global, experienced, or campus portal)
+
+  Notes:
+    - Requires a browser session for the first-party POST search API
+    - Uses 1,000 jobs per page with offset in the JSON request body
+    - The experienced portal auto-partitions by provider job category to
+      bypass the API's 10,000-result ceiling without filtered board URLs
+    - Fails closed if totals change, pages repeat, or a partition reaches cap"""
 
 MONITOR_BITE = """\
 bite — BITE GmbH ATS (Job Search API, widget key auth)
@@ -1210,6 +1230,12 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     pagination     Page metadata mapping. Example:
                    {"path":"jobsData.meta","page_count":"totalPages",
                     "page_param":"page"}
+                   For path-based pages, provide an absolute same-origin
+                   "url_template" containing {page}. Set "start" to the page
+                   value represented by the board URL (default 1), for example:
+                   {"path":"pageData.pagination","total_records":"totalRows",
+                    "page_size":6,"start":0,
+                    "url_template":"https://example.com/jobs/p/{page}/index.aspx"}
     include_item_values
                    Retain only items whose configured field exactly matches
                    one of the allowed strings. Applied after all pagination
@@ -1221,7 +1247,7 @@ nextdata — Next.js __NEXT_DATA__ Discovery
   Detection:  ws probe shows "__NEXT_DATA__ — N items at <path>"
               If "(render)" shown, page needs Playwright to load data.
               Auto-searches common paths: props.pageProps.positions,
-              props.pageProps.jobs, props.pageProps.openings,
+              props.pageProps.offers, props.pageProps.jobs, props.pageProps.openings,
               props.pageProps.allJobs, props.pageProps.data.positions,
               props.pageProps.data.jobs, and common RSC equivalents including
               jobsData.data. Needs >= 5 items (all dicts).
@@ -1525,6 +1551,12 @@ inline — Single-Page Extraction (rich)
                  Use a contentful repeated tag, not a structural wrapper such
                  as details; details/summary accordions should instead stop
                  each description at the next summary as shown above.
+    item_boundary
+                 Optional matcher object for pages where posting boundaries
+                 share a tag with unrelated content. Supports tag, text, attr,
+                 and match_regex, using the same matching rules as section_start
+                 and section_end. Cannot be combined with item_boundary_tag.
+                 Example: {"tag": "p", "attr": "itemprop=headline"}.
     synthetic_identity_field
                  Optional extracted field containing a provider-stable identity
                  for ordinary static inline rows. The identity, rather than the
@@ -1969,7 +2001,8 @@ recruiterbox — Recruiterbox / Trakstar Hire static listing monitor
   Listing:  GET https://{tenant}.hire.trakstar.com/?limit=100&p={page}
   Legacy:   https://{tenant}.recruiterbox.com redirects to Trakstar Hire
   Returns:  Job URLs from server-rendered HTML
-  Scraper:  Auto-configured (json-ld) for title, description, location, and dates
+  Scraper:  Auto-configured (recruiterbox) for title, description, location,
+            employment type, and remote/hybrid status
   Cost:     10 (HTTP only; no browser)
   Cap:      50,000 jobs
 
@@ -2130,10 +2163,11 @@ ukg — UKG Pro public recruiting API
   Description field from UKG's CandidateOpportunityDetail JSON constructor.
 
   Detection accepts direct or explicitly linked public UKG board URLs on
-  recruiting*.ultipro.com and recruiting.ultipro.ca. It never guesses tenant
-  or board UUIDs. First-page 404/410 is definitive gone; transient auth, rate
-  limit, transport, and server failures fail the run without removing jobs.
-  Pagination is capped at 50,000 opportunities.
+  recruiting*.ultipro.com, recruiting.ultipro.ca, and branded
+  <company>.rec.pro.ukg.net hosts. It never guesses tenant or board UUIDs.
+  First-page 404/410 is definitive gone; transient auth, rate limit, transport,
+  and server failures fail the run without removing jobs. Pagination is capped
+  at 50,000 opportunities.
 
   Upstream ats-scrapers is inventory input only. Jobseek neither imports nor
   executes upstream scraper code.
@@ -2535,7 +2569,7 @@ personio — Personio XML Feed + HTML Fallback
 
 MONITOR_RSS = """\
 rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
-      (presets: successfactors, teamtailor, wp_job_manager, governmentjobs, generic)
+      (presets: successfactors, teamtailor, wp_job_manager, governmentjobs, hr_manager, generic)
 
   Feed:     GET {feed_url}
   Returns:  Feeds: full job data. Legacy SuccessFactors: title, location,
@@ -2550,6 +2584,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
             - teamtailor: /jobs.rss (offset-paginated)
             - wp_job_manager: /?feed=job_feed (page-paginated)
             - governmentjobs: /SearchEngine/JobsFeed?agency=<tenant>
+            - hr_manager: Talent Recruiter embedded position list + description RSS
             - generic: standard RSS 2.0 (manual feed URL)
 
   Config:
@@ -2562,6 +2597,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
     {"preset": "wp_job_manager",
      "feed_url": "https://example.com/?feed=job_feed"}
     {"preset": "governmentjobs", "agency": "clineville"}
+    {"preset": "hr_manager", "customer": "securitas"}
     {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
 
     preset     Feed parser preset. Auto-detected when possible.
@@ -2570,6 +2606,8 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
                the board URL; for generic feeds set it explicitly.
     variant    SuccessFactors only: "feed" or "legacy". Legacy identity and
                listing_url are auto-filled from strict SAP board URLs.
+    customer   HR Manager tenant alias. Auto-filled from a strict
+               candidate.hr-manager.net vacancies URL.
     fetch_company  SuccessFactors feed only: fetch each public detail page and
                store tenant customfield1 in metadata.company. Use job_filter
                with field=metadata.company for mixed-tenant career sites.
@@ -2582,6 +2620,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
               "SuccessFactors RSS — <feed_url>, N jobs"
               "SuccessFactors legacy DWR — company: X @ host, N jobs"
               "Teamtailor RSS — <feed_url>, N jobs"
+              "Talent Recruiter / HR Manager RSS — <feed_url>, N jobs"
               "RSS (generic) — <feed_url>, N jobs"
   Zero jobs?  Verify feed_url directly in a browser and confirm it returns
               job items (not an empty feed or non-RSS endpoint)."""
@@ -4161,6 +4200,7 @@ papa_johns — Papa Johns branded careers
 
 MONITOR_CARDS: dict[str, str] = {
     "accenture": MONITOR_ACCENTURE,
+    "bytedance": MONITOR_BYTEDANCE,
     "almacareer": MONITOR_ALMACAREER,
     "amazon": MONITOR_AMAZON,
     "bite": MONITOR_BITE,
@@ -4534,6 +4574,19 @@ jazzhr — JazzHR JSON-LD with DOM fallback
             No browser or upstream dependency is required.
 """
 
+SCRAPER_RECRUITERBOX = """\
+recruiterbox — Recruiterbox / Trakstar Hire detail scraper
+
+  Page:     GET the server-rendered Recruiterbox or Trakstar Hire job URL
+  Returns:  title, HTML description, location, employment_type, and
+            job_location_type when the opening metadata declares it
+  Config:   None needed
+  Note:     Auto-configured with the recruiterbox monitor. Current provider
+            pages do not publish JobPosting JSON-LD, so this scraper parses
+            the provider's stable title, opening-info, and description nodes
+            directly without a browser.
+"""
+
 SCRAPER_WORKDAY = """\
 workday — Workday Detail API scraper
 
@@ -4743,6 +4796,7 @@ infor — Infor Global HR / Lawson CandidateSelfService detail scraper
     "seek": SCRAPER_SEEK,
     "paycom": SCRAPER_PAYCOM,
     "jazzhr": SCRAPER_JAZZHR,
+    "recruiterbox": SCRAPER_RECRUITERBOX,
     "paycor": SCRAPER_PAYCOR,
     "paylocity": SCRAPER_PAYLOCITY,
     "bite": SCRAPER_BITE,

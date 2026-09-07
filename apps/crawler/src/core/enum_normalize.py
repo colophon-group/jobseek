@@ -151,6 +151,9 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "voll- oder teilzeit": "full_or_part",
     "voll-/teilzeit": "full_or_part",
     "voll- und teilzeit": "full_or_part",
+    # ── Danish ──────────────────────────────────────────────────────
+    "fuldtid": "full_time",
+    "deltid": "part_time",
     # ── Dutch ───────────────────────────────────────────────────────
     "voltijds": "full_time",
     "deeltijds": "part_time",

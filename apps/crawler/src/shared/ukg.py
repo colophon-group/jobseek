@@ -8,7 +8,10 @@ from dataclasses import dataclass
 from urllib.parse import parse_qsl, urlparse
 from uuid import UUID
 
-_HOST_RE = re.compile(r"^recruiting(?:[2-9])?\.ultipro\.com$|^recruiting\.ultipro\.ca$")
+_HOST_RE = re.compile(
+    r"^(?:recruiting(?:[2-9])?\.ultipro\.com|recruiting\.ultipro\.ca|"
+    r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.rec\.pro\.ukg\.net)$"
+)
 _TENANT_RE = re.compile(r"^[A-Za-z0-9]{3,64}$")
 _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",

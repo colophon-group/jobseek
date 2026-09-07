@@ -160,8 +160,8 @@ The recurring resolver:
 3. Runs Codex CLI on the Hetzner runner to resolve the selected issue
 4. Captures `codex exec --json` trace data and local usage into the governor ledger
 5. The agent follows the AGENTS.md instructions to create a draft PR. Task
-   completion leaves it draft pending independent exact-head review and
-   Required CI/CodeQL.
+   completion verifies the recorded PR head and marks it ready, allowing the
+   image-upload and auto-merge workflows to proceed.
 
 The recurring resolver is not triggered by GitHub Actions or a workstation
 schedule. Use `codex exec --json` for traceable runs and keep manual recovery

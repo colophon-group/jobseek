@@ -190,6 +190,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `beehire`         | Rich     | skip        | Beehire public campaign API              |
 | 10   | `beisen`          | Rich/hybrid | skip/dom | Beisen modern public API + legacy listings |
 | 10   | `brassring`       | Rich     | skip        | BrassRing TGnewUI browser-session search API |
+| 10   | `bytedance`       | Rich     | skip        | ByteDance API with automatic category partitioning |
 | 10   | `cnstaff`         | Rich     | skip        | CNStaff paginated public career-board JSON |
 | 60   | `candidatus`      | URL-only | dom         | Candidatus WinDev browser-resolved detail postbacks |
 | 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
@@ -316,6 +317,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `linkedin`     | Fetch LinkedIn public guest-job detail fragments   | None                   |
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
 | `phuketall`    | Parse PhuketAll employer job pages                 | None                   |
+| `recruiterbox` | Parse Recruiterbox / Trakstar Hire server-rendered detail fields | None       |
 | `rippling`     | Fetch Rippling detail API records                  | None                   |
 | `seek`         | Fetch SEEK AU/NZ vacancy detail GraphQL data        | None                   |
 | `skip`         | No-scrape marker for rich monitor output           | None                   |

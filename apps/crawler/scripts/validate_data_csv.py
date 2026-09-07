@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import csv
+import hashlib
 import json
 import re
 import sys
@@ -11,6 +12,10 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
+CENSUS_FIXTURE = ROOT / "tests" / "lightpanda" / "fixtures" / "census.json"
+CENSUS_REGEN_COMMAND = (
+    "uv run python -m src.lightpanda.census --output tests/lightpanda/fixtures/census.json"
+)
 
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*[a-z0-9]$")
 LOCALE_RE = re.compile(r"^[a-z]{2}$")
@@ -115,6 +120,56 @@ def read_csv(name: str) -> list[dict[str, str]]:
         return list(reader)
 
 
+def validate_census_freshness(
+    boards_path: Path,
+    boards_rows: Sequence[dict[str, str]],
+    census_path: Path,
+) -> None:
+    regeneration = f"regenerate with `{CENSUS_REGEN_COMMAND}`"
+    try:
+        census = json.loads(census_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValidationError(
+            f"{census_path}: missing or malformed Lightpanda census fixture; {regeneration}"
+        ) from exc
+
+    if not isinstance(census, dict) or not isinstance(census.get("input"), dict):
+        raise ValidationError(
+            f"{census_path}: Lightpanda census fixture must contain an input object; {regeneration}"
+        )
+
+    census_input = census["input"]
+    expected_sha256 = census_input.get("boards_sha256")
+    expected_row_count = census_input.get("boards_row_count")
+    if not isinstance(expected_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
+        raise ValidationError(
+            f"{census_path}: Lightpanda census input.boards_sha256 must be a SHA-256 digest; "
+            f"{regeneration}"
+        )
+    if (
+        not isinstance(expected_row_count, int)
+        or isinstance(expected_row_count, bool)
+        or expected_row_count < 0
+    ):
+        raise ValidationError(
+            f"{census_path}: Lightpanda census input.boards_row_count must be a "
+            f"non-negative integer; {regeneration}"
+        )
+
+    actual_sha256 = hashlib.sha256(boards_path.read_bytes()).hexdigest()
+    if expected_sha256 != actual_sha256:
+        raise ValidationError(
+            f"{census_path}: Lightpanda census input.boards_sha256 does not match "
+            f"{boards_path}; {regeneration}"
+        )
+    if expected_row_count != len(boards_rows):
+        raise ValidationError(
+            f"{census_path}: Lightpanda census input.boards_row_count is "
+            f"{expected_row_count}, but {boards_path} has {len(boards_rows)} parsed rows; "
+            f"{regeneration}"
+        )
+
+
 def require_unique(rows: list[dict[str, str]], file_name: str, column: str) -> None:
     seen: dict[str, int] = {}
     for index, row in enumerate(rows, start=2):
@@ -157,6 +212,7 @@ def require_json_object(value: str, file_name: str, line: int, column: str) -> N
 
 def validate() -> None:
     rows = {name: read_csv(name) for name in REQUIRED_COLUMNS}
+    validate_census_freshness(DATA / "boards.csv", rows["boards.csv"], CENSUS_FIXTURE)
 
     for file_name, column in [
         ("companies.csv", "slug"),

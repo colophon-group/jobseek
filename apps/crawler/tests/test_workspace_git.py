@@ -26,6 +26,7 @@ from src.workspace.git import (
     ensure_clone,
     find_open_pr_for_branch,
     local_branch_oid_strict,
+    mark_pr_ready,
     pr_provenance,
     push_branch_at_expected_oid,
     remove_authenticated_worktree,
@@ -232,6 +233,18 @@ class TestGitWrappers:
             mock.return_value.stdout = "https://github.com/owner/repo/pull/42\n"
             pr_number = create_draft_pr("Add stripe", "Closes #10")
             assert pr_number == 42
+
+    def test_mark_pr_ready_uses_github_cli(self):
+        with (
+            patch("src.workspace.git._resolve_repo", return_value="owner/repo"),
+            patch("src.workspace.git._run") as run,
+        ):
+            mark_pr_ready(42)
+
+        run.assert_called_once_with(
+            ["gh", "pr", "ready", "42", "--repo", "owner/repo"],
+            retries=2,
+        )
 
     def test_find_open_pr_for_branch(self):
         with patch("src.workspace.git._run") as mock:

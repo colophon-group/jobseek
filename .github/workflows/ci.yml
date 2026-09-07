@@ -169,12 +169,14 @@ jobs:
               - '!.github/DISCUSSION_TEMPLATE/**'
               - '!apps/crawler/data/**'
               - '!apps/crawler/traces/**'
+              - '!apps/crawler/tests/lightpanda/fixtures/census.json'
               - '!apps/crawler/VERSION'
             crawler_code:
               - 'apps/crawler/**'
               - '!**/*.md'
               - '!apps/crawler/data/**'
               - '!apps/crawler/traces/**'
+              - '!apps/crawler/tests/lightpanda/fixtures/census.json'
               - '!apps/crawler/VERSION'
             crawler_runtime_boundary:
               - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/{derive-crawler-runtime-contract.mjs,verify-crawler-release-bridge.py}}'

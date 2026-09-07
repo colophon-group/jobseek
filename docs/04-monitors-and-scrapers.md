@@ -62,6 +62,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `beehire` | Rich | skip | Beehire public campaign API |
 | `beisen` | Rich/hybrid | skip or DOM enrichment | Beisen modern public API + legacy server-rendered listings |
 | `brassring` | Rich | skip | BrassRing/Infinite Talent TGnewUI browser-session search API |
+| `bytedance` | Rich | skip | ByteDance first-party API with automatic category partitioning |
 | `candidatus` | URL-only | dom | Candidatus WinDev listings with browser-resolved detail postbacks |
 | `cnstaff` | Rich | skip | CNStaff paginated public career-board JSON |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
@@ -372,6 +373,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |
 | `phuketall` | Static | Parses PhuketAll employer job pages from an exact HTTPS provider identity under a 2 MiB response cap, including canonical Thai field labels |
+| `recruiterbox` | Static | Parses Recruiterbox / Trakstar Hire server-rendered title, opening metadata, and description fields |
 | `rippling` | Static | Fetches Rippling detail API records |
 | `seek` | Static | Fetches SEEK AU/NZ vacancy detail GraphQL data |
 | `skip` | No fetch | Explicit no-scrape marker for rich monitors that already returned complete job data |
