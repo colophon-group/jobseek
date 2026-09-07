@@ -7,17 +7,19 @@ import { ThemedImage } from "@/components/ThemedImage";
 import { eyebrowClass, sectionHeadingClass, sectionScrollMarginClass } from "@/lib/styles";
 import { Globe, SlidersHorizontal, Eye, GitGraph, ClipboardList, BarChart3, Target, Building2, ListChecks } from "lucide-react";
 
-const iconMap: Record<string, ElementType> = {
+type FeatureIconKey = (typeof siteConfig.features.sections)[number]["pointIcons"][number];
+
+const iconMap = {
   source: Globe,
   filters: SlidersHorizontal,
-  alerts: Eye,
+  saved: Eye,
   tracking: GitGraph,
   interviews: ClipboardList,
   stats: BarChart3,
   curate: Target,
   companies: Building2,
-  share: ListChecks,
-};
+  organize: ListChecks,
+} satisfies Record<FeatureIconKey, ElementType>;
 
 const CONTAINER_MAX = 1200;
 const CONTAINER_PAD = 16;
@@ -64,16 +66,16 @@ function extraWideInset(mediaWidth: number) {
 }
 
 type PointBlockProps = {
-  icon: string;
+  icon: FeatureIconKey;
   title: React.ReactNode;
   description: React.ReactNode;
 };
 
 function PointBlock({ icon, title, description }: PointBlockProps) {
-  const IconComponent = iconMap[icon] ?? Eye;
+  const IconComponent = iconMap[icon];
   return (
     <div className="flex items-start gap-4">
-      <IconComponent size={20} className="mt-0.5 shrink-0" />
+      <IconComponent aria-hidden="true" size={20} className="mt-0.5 shrink-0" />
       <div>
         <dt className="font-semibold">{title}</dt>
         <dd className="mt-1 text-muted">{description}</dd>

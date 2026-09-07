@@ -92,19 +92,19 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 
 ### Homepage feature pictograms (`Features.tsx::iconMap`)
 
-These are mapped from `siteConfig.features.sections[*].pointIcons` strings — do not introduce new keys without updating both the `iconMap` and the config types.
+These are mapped from `siteConfig.features.sections[*].pointIcons` strings. `FeatureIconKey` is inferred from that config, and `iconMap` must exhaustively cover the inferred keys. Rename a key when its feature concept changes so the config remains meaningful to readers as well as type-safe.
 
 | Key | Icon | Meaning |
 |---|---|---|
 | `source` | `Globe` | Data source (career pages directly) |
 | `filters` | `SlidersHorizontal` | Multi-dimensional filtering |
-| `alerts` | `Bell` | Email alerts on new matches |
+| `saved` | `Eye` | Saved-search watchlists and their latest matching roles |
 | `tracking` | `GitGraph` | Application-tracker pipeline |
 | `interviews` | `ClipboardList` | Interview log |
 | `stats` | `BarChart3` | Pipeline analytics |
 | `curate` | `Target` | Curate companies into a watchlist |
 | `companies` | `Building2` | Companies indexed |
-| `share` | `Share2` | Share watchlists publicly |
+| `organize` | `ListChecks` | Organize multiple watchlists by role, location, or company group |
 
 ## Conventions
 

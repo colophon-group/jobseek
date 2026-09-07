@@ -95,7 +95,7 @@ export const siteConfig = {
           width: 1200,
           height: 630,
         },
-        pointIcons: ["source", "filters", "alerts"] as const,
+        pointIcons: ["source", "filters", "saved"] as const,
       },
       {
         screenshot: {
@@ -113,7 +113,7 @@ export const siteConfig = {
           width: 1200,
           height: 630,
         },
-        pointIcons: ["curate", "companies", "share"] as const,
+        pointIcons: ["curate", "companies", "organize"] as const,
       },
     ],
   },
