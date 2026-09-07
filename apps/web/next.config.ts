@@ -39,12 +39,12 @@ function configuredR2PublicOrigin(): string | null {
  * inputs previously caused thousands of identical cards to be regenerated
  * after unrelated deploys.
  *
- * Force controls:
+ * Full-rebuild controls:
  * - `COMPANY_OG_RENDERER_VERSION_SALT=<ticket/date>`: included in the
  *   hash at build time. Use this to force a new object namespace without
  *   changing code.
- * Repair bad objects under the current hash by dispatching the prewarm
- * workflow with `force=true`; pair that with a CDN purge when necessary.
+ * Bootstrap or repair a namespace only through the prewarm workflow's
+ * explicitly confirmed, write-budgeted manual full rebuild.
  */
 const nextConfig: NextConfig = {
   output: "standalone",

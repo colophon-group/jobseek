@@ -10,51 +10,25 @@ git check-ref-format --branch "$default_branch" >/dev/null
 
 # Merges performed with GITHUB_TOKEN do not emit new workflow runs. Company
 # auto-merges are data-only, so explicitly hand the merged main revision to
-# every required data consumer instead of relying on push path triggers.
-dispatch_started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-gh workflow run prewarm-company-og-cache.yml \
-  --repo "$REPO" \
-  --ref "$default_branch" \
-  -f concurrency=4
-
-prewarm_run_id=""
-prewarm_sha=""
-for attempt in $(seq 1 30); do
-  prewarm_run=$(gh run list \
-    --repo "$REPO" \
-    --workflow prewarm-company-og-cache.yml \
-    --branch "$default_branch" \
-    --event workflow_dispatch \
-    --limit 20 \
-    --json databaseId,createdAt,headSha \
-    --jq ".[] | select(.createdAt >= \"$dispatch_started\") | [.databaseId, .headSha] | @tsv" \
-    | head -n1)
-  if [[ -n "$prewarm_run" ]]; then
-    IFS=$'\t' read -r prewarm_run_id prewarm_sha <<< "$prewarm_run"
-    break
-  fi
-  echo "Waiting for company OG prewarm run to appear (attempt $attempt/30)"
-  sleep 2
-done
-
-if [[ -z "$prewarm_run_id" || ! "$prewarm_sha" =~ ^[a-f0-9]{40}$ ]]; then
-  echo "Unable to identify the dispatched company OG prewarm run" >&2
+# the production sync instead of relying on push path triggers. The sync owns
+# the mandatory exact-revision OG prewarm gate before it mutates production.
+target_revision=$(gh api "repos/$REPO/commits/$default_branch" --jq .sha)
+if [[ ! "$target_revision" =~ ^[a-f0-9]{40}$ ]]; then
+  echo "Unable to resolve exact $default_branch revision" >&2
   exit 1
 fi
 
-echo "Waiting for company OG prewarm run $prewarm_run_id"
-gh run watch "$prewarm_run_id" --repo "$REPO" --exit-status
-
-# Publish through the normal CSV sync after the matching OG namespace is
-# complete. The deployed Proxy snapshot deliberately does not need to contain
+# Publish through the normal CSV sync. The deployed Proxy snapshot deliberately
+# does not need to contain
 # a brand-new slug: candidates absent from that snapshot take the bounded
 # Typesense status path until the next genuine web release regenerates the
 # fast bypass matcher. This preserves immediate visibility and hard 404s
 # without replacing the Next.js build ID and cold-starting every page cache.
-# The sync invalidates the company CSV tag after Typesense is ready.
+# The sync first attests OG coverage, then invalidates the company CSV tag after
+# Typesense is ready.
 gh workflow run sync-data.yml \
   --repo "$REPO" \
   --ref "$default_branch" \
-  -f revision="$prewarm_sha"
+  -f revision="$target_revision"
 
-echo "Dispatched production CSV sync for prewarmed revision $prewarm_sha (${PR:+PR #$PR on }$default_branch)"
+echo "Dispatched production CSV sync for prewarmed revision $target_revision (${PR:+PR #$PR on }$default_branch)"

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       revision:
-        description: "Exact prewarmed main commit to sync (40-character SHA)"
+        description: "Exact main commit to attest and sync (40-character SHA)"
         required: false
         type: string
 
@@ -20,6 +20,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   sync:
@@ -41,6 +42,7 @@ jobs:
           sparse-checkout: |
             scripts/crawler-csv-sync-host.sh
             scripts/derive-crawler-runtime-contract.mjs
+            .github/scripts/ensure-company-og-prewarm.sh
             scripts/verify-crawler-release-bridge.py
           sparse-checkout-cone-mode: false
 
@@ -115,6 +117,15 @@ jobs:
           fi
           printf 'runtime_contract_sha256=%s\n' "$target_contract" >>"$GITHUB_OUTPUT"
           printf 'run_sync=%s\n' "$run_sync" >>"$GITHUB_OUTPUT"
+
+      - name: Ensure exact-revision company OG coverage
+        if: steps.runtime_contract.outputs.run_sync == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TARGET_REVISION: ${{ env.SYNC_REVISION }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: bash .github/scripts/ensure-company-og-prewarm.sh
 
       - name: Build immutable CSV candidate
         if: steps.runtime_contract.outputs.run_sync == 'true'

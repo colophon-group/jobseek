@@ -145,7 +145,7 @@ def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> Non
     assert jobs["deploy"]["permissions"]["actions"] == "read"
     assert murmur_step["env"]["GH_TOKEN"] == "${{ github.token }}"
     assert jobs["promote"]["permissions"]["packages"] == "write"
-    assert set(jobs["deploy"]["needs"]) == {"murmur", "build"}
+    assert set(jobs["deploy"]["needs"]) == {"company-og", "murmur", "build"}
     assert set(jobs["promote"]["needs"]) == {"build", "deploy"}
 
     env_start = script.index('cat > "$ENV_FILE"')
@@ -3675,7 +3675,11 @@ def test_crawler_host_mutation_waits_for_same_revision_murmur_workflow() -> None
     host_copy = workflow.index("- name: Copy deploy files")
     assert wait < host_copy
     assert parsed["jobs"]["murmur"]["timeout-minutes"] == 360
-    assert set(parsed["jobs"]["deploy"]["needs"]) == {"murmur", "build"}
+    assert set(parsed["jobs"]["deploy"]["needs"]) == {
+        "company-og",
+        "murmur",
+        "build",
+    }
     assert "actions: read" in workflow
     assert "actions/workflows/deploy-murmur-shim.yml/runs" in workflow
     assert '-f head_sha="$GITHUB_SHA"' in workflow

@@ -1,18 +1,18 @@
 name: Prewarm company OG cache
+run-name: Prewarm company OG ${{ inputs.target_revision || github.sha }} ${{ inputs.handoff_token || 'automatic' }}
 
 on:
   push:
     branches: [main]
     paths:
       - ".github/workflows/prewarm-company-og-cache.yml"
-      - "apps/crawler/data/companies.csv"
-      - "apps/crawler/data/company_descriptions.csv"
-      - "apps/crawler/data/industries.csv"
       - "apps/web/public/fonts/JetBrainsMono-Bold.ttf"
       - "apps/web/public/android-chrome-512x512.png"
       - "apps/web/script/prewarm-company-og-cache.ts"
       - "apps/web/src/lib/og/company-og-card.tsx"
+      - "apps/web/src/lib/og/company-og-completion-marker.ts"
       - "apps/web/src/lib/og/company-og-key.ts"
+      - "apps/web/src/lib/og/company-og-prewarm-plan.ts"
       - "apps/web/src/lib/og/company-og-renderer-version.ts"
       - "apps/web/src/lib/og/company-og-source-version.ts"
       - "apps/web/src/lib/og/render-company-og.tsx"
@@ -31,17 +31,31 @@ on:
         description: "Optional positive company limit for a canary"
         required: false
         default: ""
-      force:
-        description: "Overwrite objects already in the current namespace"
+      target_revision:
+        description: "Exact 40-character Git revision to prewarm"
+        required: false
+        default: ""
+      handoff_token:
+        description: "Opaque token identifying one trusted sync handoff"
+        required: false
+        default: ""
+      full_rebuild:
+        description: "Rebuild the complete company matrix (manual bootstrap only)"
         required: false
         default: false
         type: boolean
+      full_rebuild_confirmation:
+        description: "Type REBUILD-COMPANY-OG to approve a bounded full rebuild"
+        required: false
+        default: ""
 
 permissions:
   contents: read
 
 concurrency:
-  group: prewarm-company-og-cache-${{ github.ref }}
+  # Every run writes the same production current.json pointer. One global
+  # group plus ancestry checks prevent concurrent publication and rollback.
+  group: prewarm-company-og-cache-production
   cancel-in-progress: false
 
 jobs:
@@ -53,10 +67,12 @@ jobs:
     env:
       PREWARM_CONCURRENCY: ${{ inputs.concurrency || '4' }}
       PREWARM_MAX_COMPANIES: ${{ inputs.max_companies || '' }}
-      PREWARM_FORCE: ${{ inputs.force || false }}
+      PREWARM_TARGET_REVISION: ${{ inputs.target_revision || github.sha }}
+      PREWARM_HANDOFF_TOKEN: ${{ inputs.handoff_token || '' }}
+      PREWARM_FULL_REBUILD: ${{ inputs.full_rebuild || false }}
+      PREWARM_FULL_REBUILD_CONFIRMATION: ${{ inputs.full_rebuild_confirmation || '' }}
       PREWARM_EVENT_NAME: ${{ github.event_name }}
-      PREWARM_BEFORE_SHA: ${{ github.event.before || '' }}
-      PREWARM_SHA: ${{ github.sha }}
+      PREWARM_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       COMPANY_OG_RENDERER_VERSION_SALT: ${{ vars.COMPANY_OG_RENDERER_VERSION_SALT || '' }}
       R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -65,8 +81,31 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 2
+          # Always start from the production branch. A workflow dispatched
+          # from another ref must not execute unmerged code with R2 secrets.
+          ref: ${{ github.event.repository.default_branch }}
+          # Marker lineage may span skipped/cancelled workflow revisions.
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Validate and select exact target revision
+        shell: bash
+        run: |
+          if [[ ! "$PREWARM_TARGET_REVISION" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "target_revision must be an exact 40-character lowercase SHA" >&2
+            exit 1
+          fi
+          if [[ -n "$PREWARM_HANDOFF_TOKEN" && ! "$PREWARM_HANDOFF_TOKEN" =~ ^[a-f0-9]{32}$ ]]; then
+            echo "handoff_token must be empty or 32 lowercase hexadecimal characters" >&2
+            exit 1
+          fi
+          git check-ref-format --branch "$PREWARM_DEFAULT_BRANCH" >/dev/null
+          default_tip=$(git rev-parse "refs/remotes/origin/$PREWARM_DEFAULT_BRANCH")
+          if ! git merge-base --is-ancestor "$PREWARM_TARGET_REVISION" "$default_tip"; then
+            echo "target_revision must be in the production branch history" >&2
+            exit 1
+          fi
+          git switch --detach "$PREWARM_TARGET_REVISION"
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
@@ -84,30 +123,45 @@ jobs:
             echo "concurrency must be a positive integer" >&2
             exit 1
           fi
+          if (( PREWARM_CONCURRENCY > 4 )); then
+            echo "concurrency must not exceed 4" >&2
+            exit 1
+          fi
           if [[ -n "$PREWARM_MAX_COMPANIES" && ! "$PREWARM_MAX_COMPANIES" =~ ^[1-9][0-9]*$ ]]; then
             echo "max_companies must be empty or a positive integer" >&2
             exit 1
           fi
-
-          force="$PREWARM_FORCE"
-          if [[ "$PREWARM_EVENT_NAME" == "push" ]]; then
-            # Source changes reuse the renderer namespace and must replace
-            # existing cards. Renderer changes have a new namespace; script
-            # or workflow-only changes can reconcile incrementally.
-            if ! git diff --quiet "$PREWARM_BEFORE_SHA" "$PREWARM_SHA" -- \
-              apps/crawler/data/companies.csv \
-              apps/crawler/data/company_descriptions.csv \
-              apps/crawler/data/industries.csv; then
-              force=true
+          max_planned_writes=1000
+          max_put_attempts=3000
+          if [[ "$PREWARM_FULL_REBUILD" == "true" ]]; then
+            if [[ "$PREWARM_EVENT_NAME" != "workflow_dispatch" ]]; then
+              echo "full rebuilds are manual-only" >&2
+              exit 1
             fi
+            if [[ "$PREWARM_FULL_REBUILD_CONFIRMATION" != "REBUILD-COMPANY-OG" ]]; then
+              echo "full rebuild confirmation must be REBUILD-COMPANY-OG" >&2
+              exit 1
+            fi
+            # Enough for the current ~23k matrix, but still a hard fail-closed cap.
+            max_planned_writes=30000
+            max_put_attempts=90000
           fi
 
-          args=(--yes --concurrency "$PREWARM_CONCURRENCY")
+          args=(
+            --yes
+            --concurrency "$PREWARM_CONCURRENCY"
+            --target-revision "$PREWARM_TARGET_REVISION"
+            --max-planned-writes "$max_planned_writes"
+            --max-put-attempts "$max_put_attempts"
+          )
           if [[ -n "$PREWARM_MAX_COMPANIES" ]]; then
             args+=(--max-companies "$PREWARM_MAX_COMPANIES")
           fi
-          if [[ "$force" == "true" ]]; then
-            args+=(--force)
+          if [[ "$PREWARM_FULL_REBUILD" == "true" ]]; then
+            args+=(
+              --full-rebuild
+              --approve-full-rebuild "$PREWARM_FULL_REBUILD_CONFIRMATION"
+            )
           fi
 
           pnpm --filter @jobseek/web og:prewarm -- "${args[@]}"
