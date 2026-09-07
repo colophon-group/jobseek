@@ -310,6 +310,18 @@ Producer-consumer pipeline polling `descriptions WHERE NOT r2_uploaded`:
 
 No Redis stream needed -- the `descriptions` table in local Postgres serves as the durable queue.
 
+Description versions are authoritative per `(posting_id, locale)`. Staging
+hashes the normalized HTML bytes that `put_description()` actually uploads;
+title, location, salary, and scraper metadata changes cannot create a new R2
+version. The atomic UPSERT compares the stored and incoming UTF-8 bodies. Equal
+bodies leave the existing hash, retry schedule, and `r2_uploaded` state
+untouched (including an in-flight `NULL` claim); changed bodies receive the
+HTML content hash and one pending upload. `job_posting.description_r2_hash` is
+therefore a post-upload/export signal, not a staging deduplication authority.
+One deterministic 1/256 sample emits old/new checksums and the state decision
+for post-deploy validation without logging description content or adding
+high-cardinality metric labels.
+
 ## Exporter (CDC)
 
 One process exports changed `job_posting` rows from authoritative local

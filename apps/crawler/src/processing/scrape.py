@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 import asyncpg
 import httpx
 import structlog
+from asyncpg.pool import PoolConnectionProxy
 
 import src.queries.lookups as _lookups_mod  # noqa: E402
 from src.core.enum_normalize import normalize_employment_type
@@ -58,35 +59,92 @@ from src.shared.langdetect import detect_all_languages, detect_language
 
 log = structlog.get_logger()
 
-# $4 = new hash (post _deep_sort fix), $5 = same content hashed under the
-# pre-fix algorithm. A stored hash matching either counts as "unchanged"
-# so postings whose hash value is still the legacy one migrate their
-# ``descriptions.hash`` column to ``$4`` without triggering an R2 PUT.
-# When callers don't have a distinct legacy hash (rich-monitor path uses
-# a simple content_hash(html)), they pass the same value for $4 and $5
-# and the check collapses to the original single-hash comparison.
-_UPSERT_DESCRIPTION = (
-    "INSERT INTO descriptions (posting_id, locale, html, hash, r2_uploaded) "
-    "VALUES ($1, $2, $3, $4, false) "
-    "ON CONFLICT (posting_id, locale) DO UPDATE "
-    "SET html = $3, hash = $4, "
-    "r2_uploaded = CASE "
-    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
-    "  THEN descriptions.r2_uploaded "
-    "  ELSE false END, "
-    "r2_upload_failures = CASE "
-    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
-    "  THEN descriptions.r2_upload_failures "
-    "  ELSE 0 END, "
-    "r2_next_attempt_at = CASE "
-    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
-    "  THEN descriptions.r2_next_attempt_at "
-    "  ELSE '-infinity'::timestamptz END, "
-    "updated_at = CASE "
-    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
-    "  THEN descriptions.updated_at "
-    "  ELSE now() END"
+# ``descriptions (posting_id, locale)`` is the content authority. The scalar
+# hash on ``job_posting`` is updated only after an R2 upload and is unsafe as a
+# pre-write deduplication guard: it has no locale identity and may be stale in
+# Redis. Locking the locale row and comparing the exact normalized HTML keeps
+# retries and active drain claims intact when bytes are equal. A real byte
+# change replaces the row with one pending version; the drain's conditional
+# completion still handles a superseded in-flight upload.
+#
+# $5 remains as a compatibility fallback for existing rich-monitor call sites.
+# New staging passes the byte hash in both $4 and $5, so $4 is authoritative.
+_UPSERT_DESCRIPTION = """
+WITH prior AS MATERIALIZED (
+    SELECT html, hash, r2_uploaded
+    FROM descriptions
+    WHERE posting_id = $1
+      AND locale = $2
+    FOR UPDATE
+),
+upserted AS (
+    INSERT INTO descriptions (posting_id, locale, html, hash, r2_uploaded)
+    SELECT $1, $2, $3, COALESCE($4::bigint, $5::bigint), false
+    FROM (SELECT count(*) FROM prior) AS locked_prior
+    WHERE true
+    ON CONFLICT (posting_id, locale) DO UPDATE
+    SET html = EXCLUDED.html,
+        hash = EXCLUDED.hash,
+        r2_uploaded = false,
+        r2_upload_failures = 0,
+        r2_next_attempt_at = '-infinity'::timestamptz,
+        updated_at = now()
+    WHERE convert_to(descriptions.html, 'UTF8')
+        IS DISTINCT FROM convert_to(EXCLUDED.html, 'UTF8')
+    RETURNING r2_uploaded
 )
+SELECT sample.keep AS diagnostic_sampled,
+       EXISTS (SELECT 1 FROM prior) AS row_existed,
+       CASE WHEN sample.keep THEN (SELECT md5(html) FROM prior) END
+           AS old_html_checksum,
+       CASE WHEN sample.keep THEN md5($3) END AS new_html_checksum,
+       EXISTS (SELECT 1 FROM upserted) AS upload_scheduled,
+       EXISTS (SELECT 1 FROM upserted)
+           AND (SELECT r2_uploaded FROM prior) IS DISTINCT FROM false
+           AS upload_state_changed
+FROM (
+    SELECT get_byte(uuid_send($1::uuid), 15) = 0 AS keep
+) AS sample
+"""
+
+_DESCRIPTION_DIAGNOSTIC_SAMPLE_MODULUS = 256
+
+
+async def _upsert_staged_description(
+    conn: asyncpg.Connection | PoolConnectionProxy,
+    *,
+    posting_id: str,
+    board_id: str,
+    staged: tuple[str, str, int, int],
+    source: str,
+) -> None:
+    """Atomically dedupe one candidate and emit sampled checksum evidence."""
+    html, locale, byte_hash, compatibility_hash = staged
+    diagnostic = await conn.fetchrow(
+        _UPSERT_DESCRIPTION,
+        posting_id,
+        locale,
+        html,
+        byte_hash,
+        compatibility_hash,
+    )
+    if diagnostic is None:
+        raise RuntimeError("description_upsert_missing_diagnostic")
+
+    if diagnostic["diagnostic_sampled"]:
+        log.info(
+            "r2.description_dedupe_sample",
+            posting_id=posting_id,
+            board_id=board_id or None,
+            locale=locale,
+            source=source,
+            old_html_checksum=diagnostic["old_html_checksum"],
+            new_html_checksum=diagnostic["new_html_checksum"],
+            row_existed=bool(diagnostic["row_existed"]),
+            upload_scheduled=bool(diagnostic["upload_scheduled"]),
+            upload_state_changed=bool(diagnostic["upload_state_changed"]),
+            sample_modulus=_DESCRIPTION_DIAGNOSTIC_SAMPLE_MODULUS,
+        )
 
 
 class _BatchLookups:
@@ -112,7 +170,7 @@ class ScrapeResult:
     job_posting_id: str
     params: tuple  # positional args for the SQL query
     is_enrich: bool
-    staged: tuple[str, str, int, int] | None = None  # (html, locale, new_hash, legacy_hash)
+    staged: tuple[str, str, int, int] | None = None  # (html, locale, byte_hash, byte_hash)
 
 
 @dataclass
@@ -753,14 +811,12 @@ async def _process_one_enrich_scrape(
                 sen_id,
             )
             if staged:
-                desc_html, locale, desc_hash, desc_hash_legacy = staged
-                await conn.execute(
-                    _UPSERT_DESCRIPTION,
-                    item.job_posting_id,
-                    locale,
-                    desc_html,
-                    desc_hash,
-                    desc_hash_legacy,
+                await _upsert_staged_description(
+                    conn,
+                    posting_id=item.job_posting_id,
+                    board_id=item.board_id,
+                    staged=staged,
+                    source="enrich",
                 )
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 
@@ -1009,14 +1065,12 @@ async def _process_one_scrape(
             if _parse_update_count(update_result) != 1:
                 raise RuntimeError(f"job_posting_not_found:{item.job_posting_id}")
             if staged:
-                desc_html, locale, desc_hash, desc_hash_legacy = staged
-                await conn.execute(
-                    _UPSERT_DESCRIPTION,
-                    item.job_posting_id,
-                    locale,
-                    desc_html,
-                    desc_hash,
-                    desc_hash_legacy,
+                await _upsert_staged_description(
+                    conn,
+                    posting_id=item.job_posting_id,
+                    board_id=item.board_id,
+                    staged=staged,
+                    source="scrape",
                 )
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 

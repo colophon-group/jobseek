@@ -1,16 +1,13 @@
-"""R2 staging — compute hashes, build extras, stage pending uploads."""
+"""R2 staging — build byte-authoritative pending description uploads."""
 
 from __future__ import annotations
-
-import json
 
 from src.core.description_store import content_hash
 from src.processing.cpu import _coerce_datetime
 
-# Fields that are volatile across cycles and should be excluded from the
-# R2 content hash to avoid spurious re-uploads.  They are still stored in
-# extras (visible in history.json) but changes to them alone don't trigger
-# a write.  Checked at top-level extras AND inside nested metadata dict.
+# Historical composite-hash helpers remain re-exported by ``src.batch`` for
+# compatibility. They no longer participate in description staging: R2 stores
+# HTML only, and the byte hash below is the sole description content version.
 _HASH_VOLATILE_FIELDS = frozenset(
     {
         "valid_through",
@@ -20,11 +17,7 @@ _HASH_VOLATILE_FIELDS = frozenset(
 
 
 def _stable_date(val: object | None) -> str | None:
-    """Coerce a date to a stable ISO 8601 date-only string (YYYY-MM-DD).
-
-    Strips time components and timezone offsets so the hash doesn't churn
-    when the source alternates between date-only and datetime formats.
-    """
+    """Coerce a date to a stable ISO 8601 date-only compatibility value."""
     dt = _coerce_datetime(val)
     if dt is None:
         return None
@@ -55,19 +48,7 @@ def _deep_sort(obj: object) -> object:
 
 
 def _deep_sort_legacy(obj: object) -> object:
-    """Pre-fix ``_deep_sort`` preserved to migrate stored hashes without R2 churn.
-
-    Before this fix, ``_deep_sort`` sorted dict keys but left list order
-    untouched despite the docstring claiming otherwise. Any posting whose
-    upstream returned lists-of-strings in non-deterministic order flipped
-    its hash on every re-scrape, producing a spurious R2 PUT each time.
-
-    Keeping the pre-fix behaviour available lets the UPSERT recognise a
-    stored hash that was produced by the old algorithm and treat it as
-    "unchanged" rather than re-uploading. Safe to delete once the drain
-    counter stops showing re-puts keyed on legacy hashes (in practice
-    ~2 weeks — longer than the 24h default rescrape cadence).
-    """
+    """Preserve the pre-#2223 deep-sort behavior for compatibility callers."""
     if isinstance(obj, dict):
         return {k: _deep_sort_legacy(v) for k, v in sorted(obj.items())}
     if isinstance(obj, list):
@@ -86,7 +67,7 @@ def _build_r2_extras(
     employment_type: str | None,
     job_location_type: str | None,
 ) -> dict:
-    """Build the merged extras dict for R2 upload."""
+    """Build the retired composite-hash extras shape for compatibility."""
     merged: dict = {}
     if extras and isinstance(extras, dict):
         merged.update(extras)
@@ -123,34 +104,23 @@ def _hashable_payload(merged_extras: dict) -> dict:
 
 
 def _compute_r2_hash(description: str | None, merged_extras: dict) -> int:
-    """Compute a combined hash of all R2-bound content.
+    """Return the hash of the exact bytes uploaded by ``put_description``.
 
-    Uses deep-sorted JSON serialization so nested dicts (metadata,
-    base_salary, extras) produce a stable hash regardless of key order.
-    Excludes volatile fields (valid_through, expiration_date) that change
-    frequently but don't represent meaningful content updates.
+    ``merged_extras`` remains in the signature for compatibility with callers
+    from before #8455. R2 description objects contain HTML only, so metadata
+    must not affect their content version.
     """
-    parts = description or ""
-    if merged_extras:
-        hashable = _hashable_payload(merged_extras)
-        parts += "\0" + json.dumps(_deep_sort(hashable), sort_keys=True, ensure_ascii=False)
-    return content_hash(parts)
+    return content_hash(description or "")
 
 
 def _compute_r2_hash_legacy(description: str | None, merged_extras: dict) -> int:
-    """Compute the pre-fix hash for the same inputs.
+    """Compatibility alias for the retired composite-hash call shape.
 
-    Used only by the migration shim in ``_UPSERT_DESCRIPTION``: if the
-    stored hash matches this value, the row is already at the latest
-    content — just computed under the old algorithm — and must not
-    trigger a re-upload. Delete alongside ``_deep_sort_legacy`` once
-    all active stored hashes have migrated (~2 weeks of rescrapes).
+    Existing composite hashes are preserved by the exact-HTML UPSERT when the
+    body is unchanged; computing another composite candidate would only risk a
+    migration rewrite wave.
     """
-    parts = description or ""
-    if merged_extras:
-        hashable = _hashable_payload(merged_extras)
-        parts += "\0" + json.dumps(_deep_sort_legacy(hashable), sort_keys=True, ensure_ascii=False)
-    return content_hash(parts)
+    return _compute_r2_hash(description, merged_extras)
 
 
 def _serialize_localizations(
@@ -192,35 +162,22 @@ def _stage_r2_pending(
     source: str = "monitor",
     tech_ids: list[int] | None = None,
 ) -> tuple[str, str, int, int] | None:
-    """Compute R2 pending data without any network I/O.
+    """Build a byte-authoritative R2 description candidate.
 
-    Returns ``(description_html, locale, new_hash, legacy_hash)`` or
-    ``None`` if nothing changed (hash match) or no description.
+    Returns ``(description_html, locale, byte_hash, compatibility_hash)`` or
+    ``None`` when there is no description. Both hash slots contain
+    ``content_hash(description_html)``; the duplicate fourth value preserves
+    the existing call contract while callers migrate away from the former
+    composite-hash compatibility parameter.
 
-    ``legacy_hash`` is the same content hashed under the pre-``_deep_sort``
-    -fix algorithm; callers pass it to the UPSERT so a row whose stored
-    hash still carries the old value is recognised as unchanged and
-    does NOT trigger an R2 re-upload. Once the legacy path is removed
-    this drops back to a 3-tuple.
+    ``current_hash`` is intentionally ignored. It comes from the scalar
+    ``job_posting.description_r2_hash`` and cannot say whether the candidate
+    locale already exists or whether that locale's exact HTML is current. The
+    atomic description-row UPSERT is the final deduplication guard.
     """
     if not description:
         return None
 
     locale = language or "en"
-    merged = _build_r2_extras(
-        title=title,
-        locations=locations,
-        extras=extras,
-        metadata=metadata,
-        date_posted=date_posted,
-        base_salary=base_salary,
-        employment_type=employment_type,
-        job_location_type=job_location_type,
-    )
-    new_hash = _compute_r2_hash(description, merged)
-
-    if current_hash is not None and current_hash == new_hash:
-        return None
-
-    legacy_hash = _compute_r2_hash_legacy(description, merged)
-    return (description, locale, new_hash, legacy_hash)
+    byte_hash = content_hash(description)
+    return (description, locale, byte_hash, byte_hash)

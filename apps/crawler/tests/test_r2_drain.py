@@ -473,8 +473,12 @@ def test_changed_description_resets_durable_retry_state():
     from src.processing.scrape import _UPSERT_DESCRIPTION
 
     compact = " ".join(_UPSERT_DESCRIPTION.split())
-    assert "THEN descriptions.r2_upload_failures ELSE 0 END" in compact
-    assert ("THEN descriptions.r2_next_attempt_at ELSE '-infinity'::timestamptz END") in compact
+    assert "r2_upload_failures = 0" in compact
+    assert "r2_next_attempt_at = '-infinity'::timestamptz" in compact
+    assert (
+        "WHERE convert_to(descriptions.html, 'UTF8') IS DISTINCT FROM "
+        "convert_to(EXCLUDED.html, 'UTF8')"
+    ) in compact
 
 
 class TestEndToEndOrphanRecovery:
