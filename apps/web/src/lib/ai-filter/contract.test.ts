@@ -5,12 +5,11 @@ import {
   AI_FILTER_QUERY_MAX_LENGTH,
   AI_FILTER_SEGMENT_LIMIT,
   AiFilterContractError,
-  assertSameAiFilterRunBinding,
+  assertSameAiFilterSelectionBinding,
   isAiFilterProductDecisionExpired,
   materializeAiFilterProductDecisions,
   parseAiFilterSegmentRequest,
   parseAiFilterTerminalResult,
-  validateAiFilterConfigurationTransition,
 } from "./contract";
 
 const RUN_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
@@ -42,29 +41,45 @@ const baseRequest = {
   configuration: baseConfiguration,
   candidates: [
     {
-      candidateId: CANDIDATE_ONE,
-      postingFirstSeenAt: FIRST_SEEN_ONE,
-      productExpiresAt: EXPIRES_ONE,
-    },
-    {
       candidateId: CANDIDATE_TWO,
       postingFirstSeenAt: FIRST_SEEN_TWO,
       productExpiresAt: EXPIRES_TWO,
+    },
+    {
+      candidateId: CANDIDATE_ONE,
+      postingFirstSeenAt: FIRST_SEEN_ONE,
+      productExpiresAt: EXPIRES_ONE,
     },
   ],
 };
 
 const completedResult = {
+  runId: RUN_ID,
   status: "completed",
   decisions: [
-    { candidateId: CANDIDATE_ONE, decision: "accepted" },
     { candidateId: CANDIDATE_TWO, decision: "rejected" },
+    { candidateId: CANDIDATE_ONE, decision: "accepted" },
   ],
 };
 
 describe("parseAiFilterSegmentRequest", () => {
-  it("parses one bounded, frozen segment without granting execution", () => {
+  it("parses one bounded, immutable segment without granting execution", () => {
     expect(parseAiFilterSegmentRequest(baseRequest)).toEqual(baseRequest);
+  });
+
+  it("returns defensive, deeply frozen selection data", () => {
+    const input = structuredClone(baseRequest);
+    const parsed = parseAiFilterSegmentRequest(input);
+
+    expect(Object.isFrozen(parsed)).toBe(true);
+    expect(Object.isFrozen(parsed.configuration)).toBe(true);
+    expect(Object.isFrozen(parsed.candidates)).toBe(true);
+    expect(Object.isFrozen(parsed.candidates[0])).toBe(true);
+
+    input.configuration.queryText = "mutated caller input";
+    input.candidates.reverse();
+    expect(parsed.configuration.queryText).toBe(baseConfiguration.queryText);
+    expect(parsed.candidates[0]?.candidateId).toBe(CANDIDATE_TWO);
   });
 
   it("uses an opaque run ID that contains no query or owner material", () => {
@@ -154,7 +169,7 @@ describe("parseAiFilterSegmentRequest", () => {
       parseAiFilterSegmentRequest({
         ...baseRequest,
         requestedAt: EXPIRES_ONE,
-        candidates: [baseRequest.candidates[0]],
+        candidates: [baseRequest.candidates[1]],
       }),
     ).toThrow(/expired/);
 
@@ -162,7 +177,7 @@ describe("parseAiFilterSegmentRequest", () => {
       parseAiFilterSegmentRequest({
         ...baseRequest,
         requestedAt: "2026-08-01T12:00:00.000Z",
-        candidates: [baseRequest.candidates[0]],
+        candidates: [baseRequest.candidates[1]],
       }),
     ).toThrow(/seen after/);
 
@@ -171,7 +186,7 @@ describe("parseAiFilterSegmentRequest", () => {
         ...baseRequest,
         candidates: [
           {
-            ...baseRequest.candidates[0],
+            ...baseRequest.candidates[1],
             productExpiresAt: "2026-09-13T12:00:00.000Z",
           },
         ],
@@ -200,104 +215,64 @@ describe("parseAiFilterSegmentRequest", () => {
       }),
     ).toThrow(/out of range/);
   });
-});
 
-describe("validateAiFilterConfigurationTransition", () => {
-  it("accepts an unchanged snapshot and independently revisioned changes", () => {
-    expect(
-      validateAiFilterConfigurationTransition(
-        baseConfiguration,
-        baseConfiguration,
-        { watchlistChanged: false },
-      ),
-    ).toEqual(baseConfiguration);
-
-    const next = {
-      ...baseConfiguration,
-      queryText: "Platform roles",
-      queryRevision: 2,
-      watchlistRevision: 2,
-    };
-    expect(
-      validateAiFilterConfigurationTransition(baseConfiguration, next, {
-        watchlistChanged: true,
-      }),
-    ).toEqual(next);
+  it("enforces newest-first source ordering", () => {
+    const oldestFirst = structuredClone(baseRequest);
+    oldestFirst.candidates.reverse();
+    expect(() => parseAiFilterSegmentRequest(oldestFirst)).toThrow(
+      /newest-first/,
+    );
   });
 
-  it("rejects identity mutation, revision rollback, and revisions detached from change", () => {
-    expect(() =>
-      validateAiFilterConfigurationTransition(
-        baseConfiguration,
-        { ...baseConfiguration, ownerId: "another_owner" },
-        { watchlistChanged: false },
-      ),
-    ).toThrow(/immutable/);
-
-    expect(() =>
-      validateAiFilterConfigurationTransition(
-        { ...baseConfiguration, queryRevision: 2 },
-        baseConfiguration,
-        { watchlistChanged: false },
-      ),
-    ).toThrow(/must not decrease/);
-
-    expect(() =>
-      validateAiFilterConfigurationTransition(
-        baseConfiguration,
-        { ...baseConfiguration, queryText: "Changed without revision" },
-        { watchlistChanged: false },
-      ),
-    ).toThrow(/query revision/);
-
-    expect(() =>
-      validateAiFilterConfigurationTransition(
-        baseConfiguration,
-        { ...baseConfiguration, queryRevision: 2 },
-        { watchlistChanged: false },
-      ),
-    ).toThrow(/query revision/);
-
-    expect(() =>
-      validateAiFilterConfigurationTransition(
-        baseConfiguration,
-        { ...baseConfiguration, watchlistRevision: 2 },
-        { watchlistChanged: false },
-      ),
-    ).toThrow(/watchlist revision/);
+  it("allows ordinary multiline query whitespace but not unsafe controls", () => {
+    expect(
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        configuration: {
+          ...baseConfiguration,
+          queryText: "Backend leadership\nPrefer Go\tAvoid ad tech",
+        },
+      }).configuration.queryText,
+    ).toContain("\n");
   });
 });
 
-describe("assertSameAiFilterRunBinding", () => {
+describe("assertSameAiFilterSelectionBinding", () => {
   it("accepts only an exact retry of the persisted snapshot", () => {
     expect(
-      assertSameAiFilterRunBinding(baseRequest, structuredClone(baseRequest)),
+      assertSameAiFilterSelectionBinding(
+        baseRequest,
+        structuredClone(baseRequest),
+      ),
     ).toEqual(baseRequest);
   });
 
   it("rejects reuse with reordered candidates or changed semantic data", () => {
-    const reordered = structuredClone(baseRequest);
+    const sameTimestampRequest = structuredClone(baseRequest);
+    sameTimestampRequest.candidates[1].postingFirstSeenAt = FIRST_SEEN_TWO;
+    sameTimestampRequest.candidates[1].productExpiresAt = EXPIRES_TWO;
+    const reordered = structuredClone(sameTimestampRequest);
     reordered.candidates.reverse();
-    expect(() => assertSameAiFilterRunBinding(baseRequest, reordered)).toThrow(
-      /different snapshot/,
-    );
+    expect(() =>
+      assertSameAiFilterSelectionBinding(sameTimestampRequest, reordered),
+    ).toThrow(/different selection snapshot/);
 
     const changedQuery = structuredClone(baseRequest);
     changedQuery.configuration.queryText = "A different private query";
     changedQuery.configuration.queryRevision = 2;
-    expect(() => assertSameAiFilterRunBinding(baseRequest, changedQuery)).toThrow(
-      /different snapshot/,
-    );
+    expect(() =>
+      assertSameAiFilterSelectionBinding(baseRequest, changedQuery),
+    ).toThrow(/different selection snapshot/);
 
     const changedCandidate = structuredClone(baseRequest);
     changedCandidate.candidates[0].candidateId =
       "33333333-3333-3333-3333-333333333333";
     expect(() =>
-      assertSameAiFilterRunBinding(baseRequest, changedCandidate),
-    ).toThrow(/different snapshot/);
+      assertSameAiFilterSelectionBinding(baseRequest, changedCandidate),
+    ).toThrow(/different selection snapshot/);
 
     expect(() =>
-      assertSameAiFilterRunBinding(baseRequest, {
+      assertSameAiFilterSelectionBinding(baseRequest, {
         ...baseRequest,
         runId: "dddddddd-dddd-dddd-dddd-dddddddddddd",
       }),
@@ -306,21 +281,26 @@ describe("assertSameAiFilterRunBinding", () => {
 });
 
 describe("parseAiFilterTerminalResult", () => {
-  it("requires a complete, ordered, binary result with no extra fields", () => {
+  it("requires a complete binary result with no extra fields", () => {
     expect(parseAiFilterTerminalResult(completedResult, baseRequest)).toEqual(
       completedResult,
     );
 
     expect(() =>
       parseAiFilterTerminalResult(
-        { status: "completed", decisions: [completedResult.decisions[0]] },
+        {
+          runId: RUN_ID,
+          status: "completed",
+          decisions: [completedResult.decisions[0]],
+        },
         baseRequest,
       ),
     ).toThrow(/every candidate/);
 
-    expect(() =>
+    expect(
       parseAiFilterTerminalResult(
         {
+          runId: RUN_ID,
           status: "completed",
           decisions: [
             completedResult.decisions[1],
@@ -329,11 +309,12 @@ describe("parseAiFilterTerminalResult", () => {
         },
         baseRequest,
       ),
-    ).toThrow(/snapshot order/);
+    ).toEqual(completedResult);
 
     expect(() =>
       parseAiFilterTerminalResult(
         {
+          runId: RUN_ID,
           status: "completed",
           decisions: [
             { ...completedResult.decisions[0], confidence: 0.9 },
@@ -349,6 +330,7 @@ describe("parseAiFilterTerminalResult", () => {
     expect(() =>
       parseAiFilterTerminalResult(
         {
+          runId: RUN_ID,
           status: "completed",
           decisions: [
             {
@@ -365,6 +347,7 @@ describe("parseAiFilterTerminalResult", () => {
     expect(() =>
       parseAiFilterTerminalResult(
         {
+          runId: RUN_ID,
           status: "completed",
           decisions: [
             completedResult.decisions[0],
@@ -378,6 +361,7 @@ describe("parseAiFilterTerminalResult", () => {
     expect(() =>
       parseAiFilterTerminalResult(
         {
+          runId: RUN_ID,
           status: "completed",
           decisions: [
             { candidateId: CANDIDATE_ONE, decision: "maybe" },
@@ -390,14 +374,27 @@ describe("parseAiFilterTerminalResult", () => {
 
     expect(() =>
       parseAiFilterTerminalResult(
-        { status: "completed", decisions: new Array(2) },
+        { runId: RUN_ID, status: "completed", decisions: new Array(2) },
         baseRequest,
       ),
     ).toThrow(/sparse/);
   });
 
+  it("binds terminal output to the opaque run ID", () => {
+    expect(() =>
+      parseAiFilterTerminalResult(
+        {
+          ...completedResult,
+          runId: "dddddddd-dddd-dddd-dddd-dddddddddddd",
+        },
+        baseRequest,
+      ),
+    ).toThrow(/another run/);
+  });
+
   it("preserves valid paid work when a run stops", () => {
     const stopped = {
+      runId: RUN_ID,
       status: "stopped",
       stopReason: "budget_exhausted",
       decisions: [completedResult.decisions[1]],
@@ -407,6 +404,7 @@ describe("parseAiFilterTerminalResult", () => {
     expect(
       parseAiFilterTerminalResult(
         {
+          runId: RUN_ID,
           status: "stopped",
           stopReason: "provider_unavailable",
           decisions: [],
@@ -414,6 +412,7 @@ describe("parseAiFilterTerminalResult", () => {
         baseRequest,
       ),
     ).toEqual({
+      runId: RUN_ID,
       status: "stopped",
       stopReason: "provider_unavailable",
       decisions: [],
@@ -422,6 +421,7 @@ describe("parseAiFilterTerminalResult", () => {
     expect(() =>
       parseAiFilterTerminalResult(
         {
+          runId: RUN_ID,
           status: "stopped",
           stopReason: "budget_exhausted",
           decisions: [
@@ -431,7 +431,7 @@ describe("parseAiFilterTerminalResult", () => {
         },
         baseRequest,
       ),
-    ).toThrow(/snapshot order/);
+    ).toThrow(/leave at least one/);
   });
 });
 
@@ -440,9 +440,10 @@ describe("product decision retention", () => {
     const decisions = materializeAiFilterProductDecisions(
       baseRequest,
       {
+        runId: RUN_ID,
         status: "stopped",
         stopReason: "configuration_changed",
-        decisions: [completedResult.decisions[0]],
+        decisions: [completedResult.decisions[1]],
       },
       "2026-09-01T12:00:01.000Z",
     );

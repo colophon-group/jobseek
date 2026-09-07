@@ -17,6 +17,8 @@ const RETENTION_MS =
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
+const UNSAFE_QUERY_CONTROL_PATTERN =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 
 export type AiFilterDecisionValue = "accepted" | "rejected";
 
@@ -32,44 +34,46 @@ export type AiFilterStopReason =
   | "policy_unavailable";
 
 export interface AiFilterConfiguration {
-  version: typeof AI_FILTER_CONTRACT_VERSION;
-  configurationId: string;
-  ownerId: string;
-  watchlistId: string;
-  candidateConstraint: "canonical_structured_watchlist";
-  queryText: string;
-  queryRevision: number;
-  watchlistRevision: number;
+  readonly version: typeof AI_FILTER_CONTRACT_VERSION;
+  readonly configurationId: string;
+  readonly ownerId: string;
+  readonly watchlistId: string;
+  readonly candidateConstraint: "canonical_structured_watchlist";
+  readonly queryText: string;
+  readonly queryRevision: number;
+  readonly watchlistRevision: number;
 }
 
 export interface AiFilterCandidateSnapshot {
-  candidateId: string;
-  postingFirstSeenAt: string;
-  productExpiresAt: string;
+  readonly candidateId: string;
+  readonly postingFirstSeenAt: string;
+  readonly productExpiresAt: string;
 }
 
 export interface AiFilterSegmentRequest {
-  version: typeof AI_FILTER_CONTRACT_VERSION;
-  runId: string;
-  requestedAt: string;
-  configuration: AiFilterConfiguration;
-  candidates: AiFilterCandidateSnapshot[];
+  readonly version: typeof AI_FILTER_CONTRACT_VERSION;
+  readonly runId: string;
+  readonly requestedAt: string;
+  readonly configuration: AiFilterConfiguration;
+  readonly candidates: readonly AiFilterCandidateSnapshot[];
 }
 
 export interface AiFilterClassifierDecision {
-  candidateId: string;
-  decision: AiFilterDecisionValue;
+  readonly candidateId: string;
+  readonly decision: AiFilterDecisionValue;
 }
 
 export interface AiFilterCompletedResult {
-  status: "completed";
-  decisions: AiFilterClassifierDecision[];
+  readonly runId: string;
+  readonly status: "completed";
+  readonly decisions: readonly AiFilterClassifierDecision[];
 }
 
 export interface AiFilterStoppedResult {
-  status: "stopped";
-  stopReason: AiFilterStopReason;
-  decisions: AiFilterClassifierDecision[];
+  readonly runId: string;
+  readonly status: "stopped";
+  readonly stopReason: AiFilterStopReason;
+  readonly decisions: readonly AiFilterClassifierDecision[];
 }
 
 export type AiFilterTerminalResult =
@@ -77,18 +81,18 @@ export type AiFilterTerminalResult =
   | AiFilterStoppedResult;
 
 export interface AiFilterProductDecision {
-  version: typeof AI_FILTER_CONTRACT_VERSION;
-  runId: string;
-  configurationId: string;
-  ownerId: string;
-  watchlistId: string;
-  queryRevision: number;
-  watchlistRevision: number;
-  candidateId: string;
-  decision: AiFilterDecisionValue;
-  postingFirstSeenAt: string;
-  decidedAt: string;
-  expiresAt: string;
+  readonly version: typeof AI_FILTER_CONTRACT_VERSION;
+  readonly runId: string;
+  readonly configurationId: string;
+  readonly ownerId: string;
+  readonly watchlistId: string;
+  readonly queryRevision: number;
+  readonly watchlistRevision: number;
+  readonly candidateId: string;
+  readonly decision: AiFilterDecisionValue;
+  readonly postingFirstSeenAt: string;
+  readonly decidedAt: string;
+  readonly expiresAt: string;
 }
 
 export class AiFilterContractError extends Error {
@@ -212,12 +216,12 @@ function parseConfiguration(value: unknown): AiFilterConfiguration {
     queryText.trim() !== queryText ||
     queryText.length === 0 ||
     queryText.length > AI_FILTER_QUERY_MAX_LENGTH ||
-    CONTROL_CHARACTER_PATTERN.test(queryText)
+    UNSAFE_QUERY_CONTROL_PATTERN.test(queryText)
   ) {
     fail("configuration.queryText is invalid");
   }
 
-  return {
+  return Object.freeze({
     version: requireLiteral(
       record.version,
       AI_FILTER_CONTRACT_VERSION,
@@ -243,7 +247,7 @@ function parseConfiguration(value: unknown): AiFilterConfiguration {
       record.watchlistRevision,
       "configuration.watchlistRevision",
     ),
-  };
+  });
 }
 
 function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
@@ -266,61 +270,18 @@ function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
     fail("candidate.productExpiresAt must equal the product retention boundary");
   }
 
-  return {
+  return Object.freeze({
     candidateId: requireUuid(record.candidateId, "candidate.candidateId"),
     postingFirstSeenAt,
     productExpiresAt,
-  };
+  });
 }
 
 /**
- * Validates a repository-supplied configuration transition. The caller must
- * derive `watchlistChanged` from the authoritative structured watchlist.
- */
-export function validateAiFilterConfigurationTransition(
-  previousInput: unknown,
-  nextInput: unknown,
-  options: { watchlistChanged: boolean },
-): AiFilterConfiguration {
-  const previous = parseConfiguration(previousInput);
-  const next = parseConfiguration(nextInput);
-
-  if (typeof options?.watchlistChanged !== "boolean") {
-    fail("watchlistChanged must be explicit");
-  }
-  if (
-    previous.configurationId !== next.configurationId ||
-    previous.ownerId !== next.ownerId ||
-    previous.watchlistId !== next.watchlistId ||
-    previous.candidateConstraint !== next.candidateConstraint
-  ) {
-    fail("configuration identity fields are immutable");
-  }
-  if (
-    next.queryRevision < previous.queryRevision ||
-    next.watchlistRevision < previous.watchlistRevision
-  ) {
-    fail("configuration revisions must not decrease");
-  }
-
-  const queryChanged = previous.queryText !== next.queryText;
-  const queryRevisionAdvanced = next.queryRevision > previous.queryRevision;
-  if (queryChanged !== queryRevisionAdvanced) {
-    fail("query revision must advance exactly when query text changes");
-  }
-
-  const watchlistRevisionAdvanced =
-    next.watchlistRevision > previous.watchlistRevision;
-  if (options.watchlistChanged !== watchlistRevisionAdvanced) {
-    fail("watchlist revision must advance exactly when the watchlist changes");
-  }
-
-  return next;
-}
-
-/**
- * Parses a frozen run snapshot. Successful parsing proves only shape and
- * lifetime validity; it is not authorization or an execution permit.
+ * Parses an immutable candidate-selection snapshot. It intentionally does not
+ * bind normalized posting content; AF-9/AF-10 must bind classifier input at
+ * execution time. Successful parsing is not authorization or an execution
+ * permit.
  */
 export function parseAiFilterSegmentRequest(
   input: unknown,
@@ -349,6 +310,7 @@ export function parseAiFilterSegmentRequest(
   }
 
   const seen = new Set<string>();
+  let previousFirstSeenMs = Number.POSITIVE_INFINITY;
   const candidates = candidateInputs.map((candidateInput) => {
     const candidate = parseCandidate(candidateInput);
     if (seen.has(candidate.candidateId)) {
@@ -356,16 +318,21 @@ export function parseAiFilterSegmentRequest(
     }
     seen.add(candidate.candidateId);
 
-    if (new Date(candidate.postingFirstSeenAt).getTime() > requestedAtMs) {
+    const firstSeenMs = new Date(candidate.postingFirstSeenAt).getTime();
+    if (firstSeenMs > requestedAtMs) {
       fail("candidate cannot be seen after the run was requested");
+    }
+    if (firstSeenMs > previousFirstSeenMs) {
+      fail("segment request candidates must be newest-first");
     }
     if (new Date(candidate.productExpiresAt).getTime() <= requestedAtMs) {
       fail("candidate retention expired before the run was requested");
     }
+    previousFirstSeenMs = firstSeenMs;
     return candidate;
   });
 
-  return {
+  return Object.freeze({
     version: requireLiteral(
       record.version,
       AI_FILTER_CONTRACT_VERSION,
@@ -374,16 +341,17 @@ export function parseAiFilterSegmentRequest(
     runId: requireUuid(record.runId, "segment request.runId"),
     requestedAt,
     configuration: parseConfiguration(record.configuration),
-    candidates,
-  };
+    candidates: Object.freeze(candidates),
+  });
 }
 
 /**
- * Enforces opaque run-ID idempotency. A retry may reuse a run ID only with the
- * exact persisted snapshot, including candidate order. No semantic data is
- * placed into or returned as an idempotency key.
+ * Enforces opaque run-ID selection idempotency. A retry may reuse a run ID only
+ * with the same configuration revision and candidate membership/order. This
+ * does not bind normalized classifier content; the execution layer must do so.
+ * No semantic data is placed into or returned as an idempotency key.
  */
-export function assertSameAiFilterRunBinding(
+export function assertSameAiFilterSelectionBinding(
   existingInput: unknown,
   retryInput: unknown,
 ): AiFilterSegmentRequest {
@@ -422,7 +390,7 @@ export function assertSameAiFilterRunBinding(
     !sameConfiguration ||
     !sameCandidates
   ) {
-    fail("run ID is already bound to a different snapshot");
+    fail("run ID is already bound to a different selection snapshot");
   }
   return retry;
 }
@@ -433,10 +401,10 @@ function parseDecision(value: unknown): AiFilterClassifierDecision {
   if (record.decision !== "accepted" && record.decision !== "rejected") {
     fail("decision must be binary");
   }
-  return {
+  return Object.freeze({
     candidateId: requireUuid(record.candidateId, "decision.candidateId"),
     decision: record.decision,
-  };
+  });
 }
 
 const STOP_REASONS = new Set<AiFilterStopReason>([
@@ -451,7 +419,7 @@ const STOP_REASONS = new Set<AiFilterStopReason>([
   "policy_unavailable",
 ]);
 
-/** Validates strict provider output against its frozen request snapshot. */
+/** Validates and canonicalizes strict output against a selection snapshot. */
 export function parseAiFilterTerminalResult(
   input: unknown,
   requestInput: unknown,
@@ -459,11 +427,11 @@ export function parseAiFilterTerminalResult(
   const request = parseAiFilterSegmentRequest(requestInput);
   const record = requireRecord(input, "terminal result");
   if (record.status === "completed") {
-    requireExactKeys(record, ["status", "decisions"], "terminal result");
+    requireExactKeys(record, ["runId", "status", "decisions"], "terminal result");
   } else if (record.status === "stopped") {
     requireExactKeys(
       record,
-      ["status", "stopReason", "decisions"],
+      ["runId", "status", "stopReason", "decisions"],
       "terminal result",
     );
     if (!STOP_REASONS.has(record.stopReason as AiFilterStopReason)) {
@@ -473,6 +441,9 @@ export function parseAiFilterTerminalResult(
     fail("terminal result status is unsupported");
   }
 
+  const runId = requireUuid(record.runId, "terminal result.runId");
+  if (runId !== request.runId) fail("terminal result belongs to another run");
+
   const decisionInputs = requireDenseArray(
     record.decisions,
     "terminal result.decisions",
@@ -481,38 +452,44 @@ export function parseAiFilterTerminalResult(
     fail("terminal result contains too many decisions");
   }
 
-  const candidatePositions = new Map(
-    request.candidates.map((candidate, index) => [candidate.candidateId, index]),
+  const candidateIds = new Set(
+    request.candidates.map((candidate) => candidate.candidateId),
   );
-  const decided = new Set<string>();
-  let lastPosition = -1;
-  const decisions = decisionInputs.map((decisionInput) => {
+  const decisionsByCandidate = new Map<string, AiFilterClassifierDecision>();
+  for (const decisionInput of decisionInputs) {
     const decision = parseDecision(decisionInput);
-    const position = candidatePositions.get(decision.candidateId);
-    if (position === undefined) fail("terminal result contains a foreign candidate");
-    if (decided.has(decision.candidateId)) {
+    if (!candidateIds.has(decision.candidateId)) {
+      fail("terminal result contains a foreign candidate");
+    }
+    if (decisionsByCandidate.has(decision.candidateId)) {
       fail("terminal result contains duplicate decisions");
     }
-    if (position <= lastPosition) {
-      fail("terminal result decisions must preserve snapshot order");
-    }
-    decided.add(decision.candidateId);
-    lastPosition = position;
-    return decision;
-  });
+    decisionsByCandidate.set(decision.candidateId, decision);
+  }
+  const decisions = Object.freeze(
+    request.candidates.flatMap((candidate) => {
+      const decision = decisionsByCandidate.get(candidate.candidateId);
+      return decision ? [decision] : [];
+    }),
+  );
 
   if (record.status === "completed") {
     if (decisions.length !== request.candidates.length) {
       fail("completed result must decide every candidate");
     }
-    return { status: "completed", decisions };
+    return Object.freeze({ runId, status: "completed", decisions });
   }
 
-  return {
+  if (decisions.length === request.candidates.length) {
+    fail("stopped result must leave at least one candidate undecided");
+  }
+
+  return Object.freeze({
+    runId,
     status: "stopped",
     stopReason: record.stopReason as AiFilterStopReason,
     decisions,
-  };
+  });
 }
 
 /** Attaches owner/configuration and product-retention provenance for storage. */
@@ -520,7 +497,7 @@ export function materializeAiFilterProductDecisions(
   requestInput: unknown,
   resultInput: unknown,
   decidedAtInput: unknown,
-): AiFilterProductDecision[] {
+): readonly AiFilterProductDecision[] {
   const request = parseAiFilterSegmentRequest(requestInput);
   const result = parseAiFilterTerminalResult(resultInput, request);
   const decidedAt = requireCanonicalInstant(decidedAtInput, "decidedAt");
@@ -531,10 +508,10 @@ export function materializeAiFilterProductDecisions(
   const candidates = new Map(
     request.candidates.map((candidate) => [candidate.candidateId, candidate]),
   );
-  return result.decisions.map((decision) => {
+  return Object.freeze(result.decisions.map((decision) => {
     const candidate = candidates.get(decision.candidateId);
     if (!candidate) fail("decision candidate is missing from the snapshot");
-    return {
+    return Object.freeze({
       version: AI_FILTER_CONTRACT_VERSION,
       runId: request.runId,
       configurationId: request.configuration.configurationId,
@@ -547,8 +524,8 @@ export function materializeAiFilterProductDecisions(
       postingFirstSeenAt: candidate.postingFirstSeenAt,
       decidedAt,
       expiresAt: candidate.productExpiresAt,
-    };
-  });
+    });
+  }));
 }
 
 export function isAiFilterProductDecisionExpired(
