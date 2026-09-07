@@ -218,4 +218,124 @@ describe("normalizeClassifierInputV1", () => {
       new ClassifierInputValidationError("$.descriptionHtml", "field is required"),
     );
   });
+
+  it("snapshots data descriptors without invoking source getters", () => {
+    let getterCalls = 0;
+    const sourceWithGetter = { ...baseSource } as Record<string, unknown>;
+    Object.defineProperty(sourceWithGetter, "title", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return "GETTER_SECRET";
+      },
+    });
+
+    expect(() => normalizeClassifierInputV1(sourceWithGetter)).toThrow(
+      new ClassifierInputValidationError("$", "accessor fields are not allowed"),
+    );
+    expect(getterCalls).toBe(0);
+    try {
+      normalizeClassifierInputV1(sourceWithGetter);
+    } catch (error) {
+      expect(String(error)).not.toContain("GETTER_SECRET");
+    }
+    expect(getterCalls).toBe(0);
+  });
+
+  it("reads proxy keys and descriptors once, then uses only the snapshot", () => {
+    let ownKeysCalls = 0;
+    let descriptorCalls = 0;
+    let getterTrapCalls = 0;
+    const proxy = new Proxy(baseSource, {
+      ownKeys(target) {
+        ownKeysCalls += 1;
+        return Reflect.ownKeys(target);
+      },
+      getOwnPropertyDescriptor(target, property) {
+        descriptorCalls += 1;
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+      get() {
+        getterTrapCalls += 1;
+        throw new Error("PROXY_GET_SECRET");
+      },
+    });
+
+    expect(normalizeClassifierInputV1(proxy)).toEqual(normalizeClassifierInputV1(baseSource));
+    expect(ownKeysCalls).toBe(1);
+    expect(descriptorCalls).toBe(Object.keys(baseSource).length);
+    expect(getterTrapCalls).toBe(0);
+  });
+
+  it.each([
+    [
+      "non-enumerable",
+      () => {
+        const source = { ...baseSource } as Record<string, unknown>;
+        Object.defineProperty(source, "PRIVATE_NON_ENUMERABLE_SECRET", {
+          enumerable: false,
+          value: "PRIVATE_VALUE_SECRET",
+        });
+        return source;
+      },
+      "non-enumerable fields are not allowed",
+    ],
+    [
+      "symbol",
+      () => ({ ...baseSource, [Symbol("PRIVATE_SYMBOL_SECRET")]: "PRIVATE_VALUE_SECRET" }),
+      "symbol fields are not allowed",
+    ],
+    [
+      "proxy-ownKeys-failure",
+      () =>
+        new Proxy(baseSource, {
+          ownKeys() {
+            throw new Error("PROXY_DESCRIPTOR_SECRET");
+          },
+        }),
+      "own property descriptors could not be read",
+    ],
+    [
+      "proxy-descriptor-failure",
+      () =>
+        new Proxy(baseSource, {
+          getOwnPropertyDescriptor() {
+            throw new Error("PROXY_DESCRIPTOR_SECRET");
+          },
+        }),
+      "own property descriptors could not be read",
+    ],
+  ] as const)("rejects %s descriptor input without leaking it", (_case, createInput, rule) => {
+    let caught: unknown;
+    try {
+      normalizeClassifierInputV1(createInput());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ClassifierInputValidationError);
+    expect(caught).toMatchObject({ path: "$", rule });
+    expect(String(caught)).not.toMatch(/PRIVATE|PROXY_DESCRIPTOR/u);
+  });
+
+  it("deeply freezes the returned payload, sidecar, and wrapper", () => {
+    const result = normalizeClassifierInputV1(baseSource);
+    const payloadBytes = JSON.stringify(result.payload);
+    const contentIdentity = result.contentIdentity;
+
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.payload)).toBe(true);
+    expect(Object.isFrozen(result.sidecar)).toBe(true);
+    expect(() => {
+      (result.payload as { title: string }).title = "Mutated title";
+    }).toThrow(TypeError);
+    expect(() => {
+      (result.sidecar as { truncated: boolean }).truncated = true;
+    }).toThrow(TypeError);
+    expect(() => {
+      (result as { contentIdentity: string }).contentIdentity = "mutated";
+    }).toThrow(TypeError);
+    expect(JSON.stringify(result.payload)).toBe(payloadBytes);
+    expect(result.contentIdentity).toBe(contentIdentity);
+  });
 });

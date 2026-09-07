@@ -7,33 +7,33 @@ export const CLASSIFIER_INPUT_NORMALIZER_VERSION =
 export const CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT = 12_000;
 
 export type ClassifierInputSource = {
-  candidateId: string;
-  title: string;
-  companyName: string;
-  descriptionHtml: string;
-  selectedDescriptionLocale: string;
+  readonly candidateId: string;
+  readonly title: string;
+  readonly companyName: string;
+  readonly descriptionHtml: string;
+  readonly selectedDescriptionLocale: string;
 };
 
 /** The complete allowlist serialized for the model. */
 export type ClassifierInputV1 = {
-  schemaVersion: typeof CLASSIFIER_INPUT_SCHEMA_VERSION;
-  candidateId: string;
-  title: string;
-  companyName: string;
-  descriptionText: string;
+  readonly schemaVersion: typeof CLASSIFIER_INPUT_SCHEMA_VERSION;
+  readonly candidateId: string;
+  readonly title: string;
+  readonly companyName: string;
+  readonly descriptionText: string;
 };
 
 /** Evaluation/runtime metadata which must never be serialized into the model payload. */
 export type ClassifierInputSidecarV1 = {
-  selectedDescriptionLocale: string;
-  truncated: boolean;
+  readonly selectedDescriptionLocale: string;
+  readonly truncated: boolean;
 };
 
 export type NormalizedClassifierInputV1 = {
-  payload: ClassifierInputV1;
-  sidecar: ClassifierInputSidecarV1;
+  readonly payload: ClassifierInputV1;
+  readonly sidecar: ClassifierInputSidecarV1;
   /** Fixture identity only. AF-10 binds this to policy before any cache use. */
-  contentIdentity: string;
+  readonly contentIdentity: string;
 };
 
 const SOURCE_FIELDS = [
@@ -117,10 +117,6 @@ export class ClassifierInputValidationError extends Error {
 
 function fail(path: string, rule: string): never {
   throw new ClassifierInputValidationError(path, rule);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function readRequiredString(
@@ -238,22 +234,47 @@ function truncateDescription(descriptionText: string): {
   return { descriptionText: prefix.join(""), truncated: true };
 }
 
-function assertStrictSource(input: unknown): ClassifierInputSource {
-  if (!isRecord(input)) fail("$", "must be an object");
+function snapshotOwnDataProperties(input: unknown): Record<string, unknown> {
+  if (typeof input !== "object" || input === null) {
+    fail("$", "must be an object");
+  }
 
-  for (const key of Object.keys(input)) {
+  let descriptors: ReturnType<typeof Object.getOwnPropertyDescriptors>;
+  try {
+    descriptors = Object.getOwnPropertyDescriptors(input);
+  } catch {
+    fail("$", "own property descriptors could not be read");
+  }
+
+  const snapshot = Object.create(null) as Record<string, unknown>;
+  for (const key of Reflect.ownKeys(descriptors)) {
+    if (typeof key === "symbol") fail("$", "symbol fields are not allowed");
+
+    const descriptor = descriptors[key];
+    if (!("value" in descriptor)) fail("$", "accessor fields are not allowed");
+    if (!descriptor.enumerable) fail("$", "non-enumerable fields are not allowed");
+    snapshot[key] = descriptor.value;
+  }
+
+  return snapshot;
+}
+
+function assertStrictSource(input: unknown): ClassifierInputSource {
+  const snapshot = snapshotOwnDataProperties(input);
+
+  for (const key of Object.keys(snapshot)) {
     if (!SOURCE_FIELD_SET.has(key)) fail("$", "contains a field that is not allowed");
   }
   for (const field of SOURCE_FIELDS) {
-    if (!Object.hasOwn(input, field)) fail(`$.${field}`, "field is required");
+    if (!Object.hasOwn(snapshot, field)) fail(`$.${field}`, "field is required");
   }
 
   return {
-    candidateId: readRequiredString(input, "candidateId"),
-    title: readRequiredString(input, "title"),
-    companyName: readRequiredString(input, "companyName"),
-    descriptionHtml: readRequiredString(input, "descriptionHtml"),
-    selectedDescriptionLocale: readRequiredString(input, "selectedDescriptionLocale"),
+    candidateId: readRequiredString(snapshot, "candidateId"),
+    title: readRequiredString(snapshot, "title"),
+    companyName: readRequiredString(snapshot, "companyName"),
+    descriptionHtml: readRequiredString(snapshot, "descriptionHtml"),
+    selectedDescriptionLocale: readRequiredString(snapshot, "selectedDescriptionLocale"),
   };
 }
 
@@ -279,23 +300,24 @@ export function normalizeClassifierInputV1(input: unknown): NormalizedClassifier
   }
   const { descriptionText, truncated } = truncateDescription(normalizedDescription);
 
-  const payload: ClassifierInputV1 = {
+  const payload: ClassifierInputV1 = Object.freeze({
     schemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
     candidateId: normalizedRequiredText(source.candidateId, "$.candidateId"),
     title: normalizedRequiredText(source.title, "$.title"),
     companyName: normalizedRequiredText(source.companyName, "$.companyName"),
     descriptionText,
-  };
+  });
+  const sidecar: ClassifierInputSidecarV1 = Object.freeze({
+    selectedDescriptionLocale: normalizedRequiredText(
+      source.selectedDescriptionLocale,
+      "$.selectedDescriptionLocale",
+    ),
+    truncated,
+  });
 
-  return {
+  return Object.freeze({
     payload,
-    sidecar: {
-      selectedDescriptionLocale: normalizedRequiredText(
-        source.selectedDescriptionLocale,
-        "$.selectedDescriptionLocale",
-      ),
-      truncated,
-    },
+    sidecar,
     contentIdentity: contentIdentityFor(payload),
-  };
+  });
 }
