@@ -25,7 +25,7 @@ failure makes that one-shot invocation fail.
 
 The image is Linux x86_64 only. Its Dockerfile downloads the official 0.4.0
 `lightpanda-x86_64-linux` release and verifies SHA-256
-`bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624`.
+`bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624f`.
 
 ```sh
 docker build --platform linux/amd64 -t jobseek-lightpanda-pilot .

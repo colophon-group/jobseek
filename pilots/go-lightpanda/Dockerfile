@@ -19,7 +19,7 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates curl \
     && curl --fail --location --retry 3 --output /usr/local/bin/lightpanda \
         https://github.com/lightpanda-io/browser/releases/download/0.4.0/lightpanda-x86_64-linux \
-    && echo "bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624  /usr/local/bin/lightpanda" \
+    && echo "bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624f  /usr/local/bin/lightpanda" \
         | sha256sum --check --strict \
     && chmod 0755 /usr/local/bin/lightpanda \
     && apt-get purge --yes --auto-remove curl \

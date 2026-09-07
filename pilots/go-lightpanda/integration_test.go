@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-const lightpandaStable040SHA256 = "bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624"
+const lightpandaStable040SHA256 = "bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624f"
 
 func TestLightpandaIntegration(t *testing.T) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
