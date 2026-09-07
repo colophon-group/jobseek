@@ -27,5 +27,6 @@ __pycache__/
 /apps/crawler/data/dual_lang_results.json
 /apps/crawler/data/discovered_employers_ch.csv
 /apps/crawler/traces/
+/apps/web/.private/ai-filter-evaluation/
 .vercel
 .mcpregistry_*
