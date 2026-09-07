@@ -66,8 +66,6 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 | `Copy` | Copy URL / text | `c/watchlist/public-watchlist-search.tsx`, `c/watchlist/watchlist-action-bar.tsx` |
 | `Bookmark` | Save (unfilled) | `c/watchlist/watchlist-job-list.tsx` |
 | `BookmarkCheck` | Saved (filled) — paired with `Bookmark` via `Icon = saved ? BookmarkCheck : Bookmark` | `c/search/save-button.tsx` |
-| `Bell` | Alerts on | `c/watchlist/watchlist-action-bar.tsx` |
-| `BellOff` | Alerts off | `c/watchlist/watchlist-action-bar.tsx` |
 | `Check` | Confirm / done state | `c/settings/BillingSettings.tsx`, `c/my-jobs/quick-actions.tsx` |
 | `Search` | Search input / CTA | `c/AppHeader.tsx`, `c/settings/JobLanguageModal.tsx` |
 | `SlidersHorizontal` | Filter controls toggle / "filters" feature | `c/search/advanced-search-panel.tsx`, `c/Features.tsx` |
