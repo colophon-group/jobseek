@@ -35,8 +35,8 @@ Run `ws resume` to diagnose and retry.
 ## When done
 
 `ws submit` posts stats and transcript but does **not** mark the PR ready for review.
-`ws task complete` also leaves it draft. Independent exact-head review and
-Required CI/CodeQL must complete before a human marks it ready.
+The PR is marked ready by `ws task complete` in the final reflection step,
+which allows the image-upload and auto-merge workflows to proceed.
 
 Advance to the next step explicitly:
 
