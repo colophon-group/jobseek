@@ -84,6 +84,7 @@ Monitor Types (cheapest first):
   bite              10      Job URLs          Auto-configured
   brassring         10      Full job data     No (skipped)
   breezy            10      Job URLs          Auto-configured
+  bytedance         10      Full job data     No (skipped)
   cnstaff           10      Full job data     No (skipped)
   comeet            10      Full job data     No (skipped)
   computrabajo      10      Job URLs          Auto-configured JSON-LD
@@ -294,6 +295,24 @@ accenture — Accenture Career API (dedicated monitor)
     - FR/BR use jobsearch/result endpoint (captured via route interception)
     - When 50k ceiling is hit, partitions by businessArea (discovered from data)
     - If a single area also exceeds 50k, sub-partitions by careerLevel"""
+
+MONITOR_BYTEDANCE = """\
+bytedance — ByteDance first-party careers API
+
+  Boards:   https://joinbytedance.com/search
+            https://jobs.bytedance.com/experienced/position
+            https://jobs.bytedance.com/campus/position
+  Returns:  Full job data (title, description, locations, employment_type,
+            date_posted, team metadata)
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Config:   {} (board URL selects the global, experienced, or campus portal)
+
+  Notes:
+    - Requires a browser session for the first-party POST search API
+    - Uses 1,000 jobs per page with offset in the JSON request body
+    - The experienced portal auto-partitions by provider job category to
+      bypass the API's 10,000-result ceiling without filtered board URLs
+    - Fails closed if totals change, pages repeat, or a partition reaches cap"""
 
 MONITOR_BITE = """\
 bite — BITE GmbH ATS (Job Search API, widget key auth)
@@ -4175,6 +4194,7 @@ papa_johns — Papa Johns branded careers
 
 MONITOR_CARDS: dict[str, str] = {
     "accenture": MONITOR_ACCENTURE,
+    "bytedance": MONITOR_BYTEDANCE,
     "almacareer": MONITOR_ALMACAREER,
     "amazon": MONITOR_AMAZON,
     "bite": MONITOR_BITE,

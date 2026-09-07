@@ -111,6 +111,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
         }
     ),
     "brassring": frozenset({"partner_id", "site_id"}),
+    "bytedance": frozenset(),
     "candidatus": frozenset(),
     "darwinbox": frozenset(),
     "dayforce": frozenset({"offset_overlap", "portal", "tenant"}),
@@ -443,7 +444,7 @@ _FALLBACK_FIELDS = frozenset(
     }
 )
 _INHERENT_BROWSER_MONITORS = frozenset(
-    {"accenture", "brassring", "candidatus", "darwinbox", "dayforce", "njoyn"}
+    {"accenture", "brassring", "bytedance", "candidatus", "darwinbox", "dayforce", "njoyn"}
 )
 
 
