@@ -117,6 +117,17 @@ class Settings(BaseSettings):
     # us mid-drain. We use 30s here against a 60s docker stop budget.
     shutdown_grace_seconds: int = 30
 
+    # Process-level claim-loop watchdog. Prometheus already pages when an
+    # individual worker heartbeat is stale, but the metrics HTTP thread can
+    # remain responsive while every asyncio discovery coroutine is blocked
+    # behind a poisoned DB pool or hung scraper. In that state Docker's HTTP
+    # healthcheck still passes and ``restart: unless-stopped`` never gets a
+    # chance to recover the container. The pipeline watchdog asks the normal
+    # bounded shutdown path to stop the process when *no* discovery loop has
+    # advanced for this long; inflight leases are then recovered by the
+    # reaper and Docker starts a clean process. Set to 0 only for diagnostics.
+    pipeline_stall_timeout_seconds: int = 10 * 60
+
     # Browser workers keep one Playwright driver process per discovery
     # coroutine. Those Node driver processes are intentionally reused between
     # jobs, but production memory snapshots showed their aggregate cgroup

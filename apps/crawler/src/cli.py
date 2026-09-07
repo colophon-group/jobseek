@@ -33,6 +33,7 @@ from src.db import (  # noqa: E402
     create_web_pool,
 )
 from src.metrics import start_metrics_server  # noqa: E402
+from src.shared.constants import get_data_dir  # noqa: E402
 from src.shared.http import create_http_client  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
 from src.shared.output import tty_message  # noqa: E402
@@ -41,6 +42,27 @@ log = structlog.get_logger()
 
 _rand = uuid.uuid4().hex[:8]
 WORKER_ID = f"{settings.worker_id_prefix}-{_rand}" if settings.worker_id_prefix else _rand
+
+
+def _resolve_ats_registry_paths(
+    companies_file: Path | None,
+    boards_file: Path | None,
+) -> tuple[Path, Path]:
+    """Resolve ATS candidate registries for checkout and installed runtimes.
+
+    Explicit operator paths remain authoritative. Defaults go through the
+    shared runtime data contract so an installed wheel reads ``/app/data``
+    instead of deriving a nonexistent sibling directory in site-packages.
+    Resolve lazily because source-only ATS refreshes do not need either CSV.
+    """
+
+    if companies_file is not None and boards_file is not None:
+        return companies_file, boards_file
+    data_dir = get_data_dir()
+    return (
+        companies_file or data_dir / "companies.csv",
+        boards_file or data_dir / "boards.csv",
+    )
 
 
 async def _await_task_or_shutdown[T](
@@ -245,18 +267,17 @@ def parse_args() -> argparse.Namespace:
         default=100,
         help="Stop GitHub reads/writes at or below this primary-rate remaining count",
     )
-    crawler_root = Path(__file__).resolve().parent.parent
     ats_inventory_p.add_argument(
         "--companies-file",
         type=Path,
-        default=crawler_root / "data" / "companies.csv",
-        help="Checked-in company registry used for exact and soft matches",
+        default=None,
+        help="Company registry override (default: runtime data root/companies.csv)",
     )
     ats_inventory_p.add_argument(
         "--boards-file",
         type=Path,
-        default=crawler_root / "data" / "boards.csv",
-        help="Checked-in board registry used for exact URL and ATS-tenant matches",
+        default=None,
+        help="Board registry override (default: runtime data root/boards.csv)",
     )
     ats_inventory_p.add_argument(
         "--candidate-ledger",
@@ -969,7 +990,11 @@ async def run() -> None:
                                 "cached impact does not match the current inventory; rerun with "
                                 "--impact"
                             )
-                        local = LocalRegistryIndex.from_csv(args.companies_file, args.boards_file)
+                        companies_file, boards_file = _resolve_ats_registry_paths(
+                            args.companies_file,
+                            args.boards_file,
+                        )
+                        local = LocalRegistryIndex.from_csv(companies_file, boards_file)
                         ledger_path = args.candidate_ledger or (
                             args.cache_dir / "candidates" / "ledger.sqlite"
                         )
@@ -1035,11 +1060,13 @@ async def run() -> None:
                         except GitHubRateLimitError as exc:
                             report["candidate_issues"] = rate_limit_report(queue_mode, exc)
                         else:
+                            companies_file, boards_file = _resolve_ats_registry_paths(
+                                args.companies_file,
+                                args.boards_file,
+                            )
                             coordinator = await CandidateIssueCoordinator.bootstrap(
                                 client=github,
-                                local=LocalRegistryIndex.from_csv(
-                                    args.companies_file, args.boards_file
-                                ),
+                                local=LocalRegistryIndex.from_csv(companies_file, boards_file),
                                 ledger=ledger,
                                 items=items,
                             )
