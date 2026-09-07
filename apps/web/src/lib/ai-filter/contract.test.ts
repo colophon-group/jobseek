@@ -1,371 +1,498 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   AI_FILTER_CONTRACT_VERSION,
-  AI_FILTER_INITIAL_SEGMENT_LIMIT,
+  AI_FILTER_QUERY_MAX_LENGTH,
+  AI_FILTER_SEGMENT_LIMIT,
   AiFilterContractError,
-  AiFilterNotFoundError,
-  aiFilterConfigurationSchema,
-  aiFilterProductLifetimeSchema,
-  aiFilterSegmentRequestSchema,
-  createAiFilterProductLifetime,
-  createAiFilterSegmentRequest,
-  isAiFilterProductExpired,
-  parseAiFilterSegmentTerminalState,
-  requireAiFilterOwner,
-  type AiFilterConfiguration,
-  type AiFilterDecisionValue,
-  type AiFilterStopReason,
-  type AiFilterWorkloadKind,
+  assertSameAiFilterRunBinding,
+  isAiFilterProductDecisionExpired,
+  materializeAiFilterProductDecisions,
+  parseAiFilterSegmentRequest,
+  parseAiFilterTerminalResult,
+  validateAiFilterConfigurationTransition,
 } from "./contract";
 
-const configuration: AiFilterConfiguration = {
+const RUN_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+const CONFIGURATION_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+const WATCHLIST_ID = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+const CANDIDATE_ONE = "11111111-1111-1111-1111-111111111111";
+const CANDIDATE_TWO = "22222222-2222-2222-2222-222222222222";
+const FIRST_SEEN_ONE = "2026-08-15T12:00:00.000Z";
+const FIRST_SEEN_TWO = "2026-08-16T12:00:00.000Z";
+const EXPIRES_ONE = "2026-09-14T12:00:00.000Z";
+const EXPIRES_TWO = "2026-09-15T12:00:00.000Z";
+const REQUESTED_AT = "2026-09-01T12:00:00.000Z";
+
+const baseConfiguration = {
   version: AI_FILTER_CONTRACT_VERSION,
-  configurationId: "config-1",
-  ownerId: "owner-1",
-  watchlistId: "watchlist-1",
-  candidateConstraint: "canonical_structured_watchlist",
-  queryText: "Backend roles where I can own platform reliability",
-  queryRevision: 2,
-  watchlistRevision: 7,
+  configurationId: CONFIGURATION_ID,
+  ownerId: "user_01k4m8xafp6r6fj4qv2czp6njd",
+  watchlistId: WATCHLIST_ID,
+  candidateConstraint: "canonical_structured_watchlist" as const,
+  queryText: "Senior backend roles with distributed systems ownership",
+  queryRevision: 1,
+  watchlistRevision: 1,
 };
 
-function request(candidateIds: readonly string[] = ["job-3", "job-2", "job-1"]) {
-  return createAiFilterSegmentRequest({
-    configuration,
-    actorId: configuration.ownerId,
-    candidateIds,
-  });
-}
+const baseRequest = {
+  version: AI_FILTER_CONTRACT_VERSION,
+  runId: RUN_ID,
+  requestedAt: REQUESTED_AT,
+  configuration: baseConfiguration,
+  candidates: [
+    {
+      candidateId: CANDIDATE_ONE,
+      postingFirstSeenAt: FIRST_SEEN_ONE,
+      productExpiresAt: EXPIRES_ONE,
+    },
+    {
+      candidateId: CANDIDATE_TWO,
+      postingFirstSeenAt: FIRST_SEEN_TWO,
+      productExpiresAt: EXPIRES_TWO,
+    },
+  ],
+};
 
-describe("AI filter v1 configuration and request", () => {
-  it("pins the only MVP workload and binary decision vocabulary", () => {
-    expectTypeOf<AiFilterWorkloadKind>().toEqualTypeOf<
-      "manual_initial_segment"
-    >();
-    expectTypeOf<AiFilterDecisionValue>().toEqualTypeOf<
-      "accepted" | "rejected"
-    >();
-    expectTypeOf<AiFilterStopReason>().toEqualTypeOf<
-      | "entitlement_unavailable"
-      | "watchlist_too_broad"
-      | "budget_exhausted"
-      | "kill_switch_active"
-      | "cancelled"
-    >();
-  });
+const completedResult = {
+  status: "completed",
+  decisions: [
+    { candidateId: CANDIDATE_ONE, decision: "accepted" },
+    { candidateId: CANDIDATE_TWO, decision: "rejected" },
+  ],
+};
 
-  it("keeps the canonical structured watchlist hard and revisions explicit", () => {
-    const parsed = aiFilterConfigurationSchema.parse(configuration);
-    const segment = request();
-
-    expect(parsed.candidateConstraint).toBe("canonical_structured_watchlist");
-    expect(segment).toMatchObject({
-      version: 1,
-      ownerId: "owner-1",
-      watchlistId: "watchlist-1",
-      queryRevision: 2,
-      watchlistRevision: 7,
-      workloadKind: "manual_initial_segment",
-      candidateIds: ["job-3", "job-2", "job-1"],
-      candidateCount: 3,
-    });
+describe("parseAiFilterSegmentRequest", () => {
+  it("parses one bounded, frozen segment without granting execution", () => {
+    expect(parseAiFilterSegmentRequest(baseRequest)).toEqual(baseRequest);
   });
 
-  it("fails closed with the same not-found error for anonymous and other owners", () => {
-    expect(() => requireAiFilterOwner(configuration, null)).toThrow(
-      AiFilterNotFoundError,
-    );
-    expect(() => requireAiFilterOwner(configuration, "owner-2")).toThrow(
-      AiFilterNotFoundError,
-    );
+  it("uses an opaque run ID that contains no query or owner material", () => {
+    const parsed = parseAiFilterSegmentRequest(baseRequest);
+
+    expect(parsed.runId).toBe(RUN_ID);
+    expect(parsed.runId).not.toContain(baseConfiguration.queryText);
+    expect(parsed.runId).not.toContain(baseConfiguration.ownerId);
+    expect(parsed).not.toHaveProperty("idempotencyIdentity");
+  });
+
+  it("rejects empty, oversized, sparse, duplicate, and extra-field candidates", () => {
     expect(() =>
-      createAiFilterSegmentRequest({
-        configuration,
-        actorId: "owner-2",
-        candidateIds: ["job-1"],
-      }),
-    ).toThrow("AI filter resource not found");
-    expect(requireAiFilterOwner(configuration, "owner-1")).toBe(configuration);
-  });
-
-  it("rejects unknown versions, invalid revisions, and extra fields", () => {
-    expect(() =>
-      aiFilterConfigurationSchema.parse({ ...configuration, version: 2 }),
+      parseAiFilterSegmentRequest({ ...baseRequest, candidates: [] }),
     ).toThrow(AiFilterContractError);
-    expect(() =>
-      aiFilterConfigurationSchema.parse({ ...configuration, queryRevision: 0 }),
-    ).toThrow("queryRevision must be a positive safe integer");
-    expect(() =>
-      aiFilterConfigurationSchema.parse({
-        ...configuration,
-        publicWatchlistId: "not-supported",
+
+    const oversizedCandidates = Array.from(
+      { length: AI_FILTER_SEGMENT_LIMIT + 1 },
+      (_, index) => ({
+        candidateId: `00000000-0000-0000-0000-${String(index).padStart(12, "0")}`,
+        postingFirstSeenAt: FIRST_SEEN_ONE,
+        productExpiresAt: EXPIRES_ONE,
       }),
-    ).toThrow("unexpected or missing fields");
-  });
-
-  it("accepts one bounded segment and rejects empty, duplicate, or oversized input", () => {
-    expect(
-      request(Array.from({ length: 50 }, (_, index) => `job-${index}`))
-        .candidateCount,
-    ).toBe(AI_FILTER_INITIAL_SEGMENT_LIMIT);
-    expect(() => request([])).toThrow("at least one candidate");
-    expect(() => request(["job-1", "job-1"])).toThrow("must be unique");
-    expect(() =>
-      request(Array.from({ length: 51 }, (_, index) => `job-${index}`)),
-    ).toThrow("cannot exceed 50");
-  });
-
-  it("uses a deterministic identity that changes with request semantics", () => {
-    const first = request(["job-2", "job-1"]);
-    const retry = request(["job-2", "job-1"]);
-    const reordered = request(["job-1", "job-2"]);
-    const revised = createAiFilterSegmentRequest({
-      configuration: { ...configuration, queryRevision: 3 },
-      actorId: configuration.ownerId,
-      candidateIds: ["job-2", "job-1"],
-    });
-
-    expect(retry.idempotencyIdentity).toBe(first.idempotencyIdentity);
-    expect(reordered.idempotencyIdentity).not.toBe(first.idempotencyIdentity);
-    expect(revised.idempotencyIdentity).not.toBe(first.idempotencyIdentity);
-  });
-
-  it("rejects tampered count, workload kind, or identity at a boundary", () => {
-    const segment = request();
-    expect(() =>
-      aiFilterSegmentRequestSchema.parse({ ...segment, candidateCount: 2 }),
-    ).toThrow("candidateCount must equal candidateIds.length");
-    expect(() =>
-      aiFilterSegmentRequestSchema.parse({
-        ...segment,
-        workloadKind: "history_scroll",
-      }),
-    ).toThrow("workloadKind must be");
-    expect(() =>
-      aiFilterSegmentRequestSchema.parse({
-        ...segment,
-        idempotencyIdentity: "retry-anything",
-      }),
-    ).toThrow("idempotencyIdentity does not match request content");
-  });
-});
-
-describe("AI filter v1 terminal states", () => {
-  it("accepts all and only requested candidate IDs and restores request order", () => {
-    const segment = request();
-    const terminal = parseAiFilterSegmentTerminalState(
-      {
-        version: 1,
-        status: "completed",
-        requestIdentity: segment.idempotencyIdentity,
-        decisions: [
-          { candidateId: "job-1", decision: "rejected" },
-          { candidateId: "job-3", decision: "accepted" },
-          { candidateId: "job-2", decision: "accepted" },
-        ],
-      },
-      segment,
     );
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: oversizedCandidates,
+      }),
+    ).toThrow(AiFilterContractError);
 
-    expect(terminal).toEqual({
-      version: 1,
-      status: "completed",
-      requestIdentity: segment.idempotencyIdentity,
-      decisions: [
-        { candidateId: "job-3", decision: "accepted" },
-        { candidateId: "job-2", decision: "accepted" },
-        { candidateId: "job-1", decision: "rejected" },
-      ],
-    });
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: new Array(1),
+      }),
+    ).toThrow(/sparse/);
+
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: [baseRequest.candidates[0], baseRequest.candidates[0]],
+      }),
+    ).toThrow(/duplicate/);
+
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: [{ ...baseRequest.candidates[0], title: "must not leak" }],
+      }),
+    ).toThrow(/unsupported fields/);
   });
 
   it.each([
-    {
-      name: "missing",
-      decisions: [
-        { candidateId: "job-3", decision: "accepted" },
-        { candidateId: "job-2", decision: "rejected" },
-      ],
-    },
-    {
-      name: "extra",
-      decisions: [
-        { candidateId: "job-3", decision: "accepted" },
-        { candidateId: "job-2", decision: "rejected" },
-        { candidateId: "job-1", decision: "accepted" },
-        { candidateId: "job-0", decision: "accepted" },
-      ],
-    },
-    {
-      name: "duplicate",
-      decisions: [
-        { candidateId: "job-3", decision: "accepted" },
-        { candidateId: "job-3", decision: "rejected" },
-        { candidateId: "job-1", decision: "accepted" },
-      ],
-    },
-    {
-      name: "foreign",
-      decisions: [
-        { candidateId: "job-3", decision: "accepted" },
-        { candidateId: "job-2", decision: "rejected" },
-        { candidateId: "someone-elses-job", decision: "accepted" },
-      ],
-    },
-  ])("rejects $name candidate output", ({ decisions }) => {
-    const segment = request();
+    "UPPERCASE-UUID",
+    "11111111-1111-1111-1111-11111111111 ",
+    " 11111111-1111-1111-1111-111111111111",
+    "11111111-1111-1111-1111-11111111111\n",
+    "11111111111111111111111111111111",
+  ])("rejects a non-canonical candidate ID: %j", (candidateId) => {
     expect(() =>
-      parseAiFilterSegmentTerminalState(
-        {
-          version: 1,
-          status: "completed",
-          requestIdentity: segment.idempotencyIdentity,
-          decisions,
-        },
-        segment,
-      ),
-    ).toThrow(AiFilterContractError);
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: [{ ...baseRequest.candidates[0], candidateId }],
+      }),
+    ).toThrow(/canonical lowercase UUID/);
   });
 
-  it("rejects non-binary or enriched model output", () => {
-    const segment = request(["job-1"]);
-    expect(() =>
-      parseAiFilterSegmentTerminalState(
-        {
-          version: 1,
-          status: "completed",
-          requestIdentity: segment.idempotencyIdentity,
-          decisions: [{ candidateId: "job-1", decision: "maybe" }],
-        },
-        segment,
-      ),
-    ).toThrow("must be accepted or rejected");
-    expect(() =>
-      parseAiFilterSegmentTerminalState(
-        {
-          version: 1,
-          status: "completed",
-          requestIdentity: segment.idempotencyIdentity,
-          decisions: [
-            {
-              candidateId: "job-1",
-              decision: "rejected",
-              explanation: "Not enough platform work",
-            },
-          ],
-        },
-        segment,
-      ),
-    ).toThrow("unexpected or missing fields");
+  it("rejects invalid query text and limits it before provider work", () => {
+    for (const queryText of [
+      "",
+      " surrounded ",
+      "control\u0000character",
+      "q".repeat(AI_FILTER_QUERY_MAX_LENGTH + 1),
+    ]) {
+      expect(() =>
+        parseAiFilterSegmentRequest({
+          ...baseRequest,
+          configuration: { ...baseConfiguration, queryText },
+        }),
+      ).toThrow(/queryText/);
+    }
   });
 
-  it.each<AiFilterStopReason>([
-    "entitlement_unavailable",
-    "watchlist_too_broad",
-    "budget_exhausted",
-    "kill_switch_active",
-    "cancelled",
-  ])("accepts the typed %s stop without partial decisions", (reason) => {
-    const segment = request();
-    expect(
-      parseAiFilterSegmentTerminalState(
-        {
-          version: 1,
-          status: "stopped",
-          requestIdentity: segment.idempotencyIdentity,
-          reason,
-        },
-        segment,
-      ),
-    ).toEqual({
-      version: 1,
-      status: "stopped",
-      requestIdentity: segment.idempotencyIdentity,
-      reason,
-    });
-  });
+  it("rejects expired, future, incorrect, non-canonical, and overflowing lifetimes", () => {
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        requestedAt: EXPIRES_ONE,
+        candidates: [baseRequest.candidates[0]],
+      }),
+    ).toThrow(/expired/);
 
-  it("rejects unknown stops, mismatched requests, and partial stop output", () => {
-    const segment = request();
     expect(() =>
-      parseAiFilterSegmentTerminalState(
-        {
-          version: 1,
-          status: "stopped",
-          requestIdentity: segment.idempotencyIdentity,
-          reason: "provider_error",
-        },
-        segment,
-      ),
-    ).toThrow("not a supported AI filter stop reason");
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        requestedAt: "2026-08-01T12:00:00.000Z",
+        candidates: [baseRequest.candidates[0]],
+      }),
+    ).toThrow(/seen after/);
+
     expect(() =>
-      parseAiFilterSegmentTerminalState(
-        {
-          version: 1,
-          status: "stopped",
-          requestIdentity: "another-request",
-          reason: "cancelled",
-        },
-        segment,
-      ),
-    ).toThrow("does not match the segment request");
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: [
+          {
+            ...baseRequest.candidates[0],
+            productExpiresAt: "2026-09-13T12:00:00.000Z",
+          },
+        ],
+      }),
+    ).toThrow(/retention boundary/);
+
     expect(() =>
-      parseAiFilterSegmentTerminalState(
-        {
-          version: 1,
-          status: "stopped",
-          requestIdentity: segment.idempotencyIdentity,
-          reason: "budget_exhausted",
-          decisions: [{ candidateId: "job-3", decision: "accepted" }],
-        },
-        segment,
-      ),
-    ).toThrow("unexpected or missing fields");
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        requestedAt: "2026-09-01T12:00:00Z",
+      }),
+    ).toThrow(/canonical ISO instant/);
+
+    const maximumInstant = new Date(8_640_000_000_000_000).toISOString();
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        requestedAt: maximumInstant,
+        candidates: [
+          {
+            candidateId: CANDIDATE_ONE,
+            postingFirstSeenAt: maximumInstant,
+            productExpiresAt: maximumInstant,
+          },
+        ],
+      }),
+    ).toThrow(/out of range/);
   });
 });
 
-describe("AI filter product lifetime", () => {
-  it("expires exactly 30 days after posting first-seen", () => {
-    const lifetime = createAiFilterProductLifetime(
-      "2026-01-31T23:30:00.000Z",
-    );
-    expect(lifetime).toEqual({
-      postingFirstSeenAt: "2026-01-31T23:30:00.000Z",
-      expiresAt: "2026-03-02T23:30:00.000Z",
-    });
+describe("validateAiFilterConfigurationTransition", () => {
+  it("accepts an unchanged snapshot and independently revisioned changes", () => {
     expect(
-      isAiFilterProductExpired(lifetime, "2026-03-02T23:29:59.999Z"),
+      validateAiFilterConfigurationTransition(
+        baseConfiguration,
+        baseConfiguration,
+        { watchlistChanged: false },
+      ),
+    ).toEqual(baseConfiguration);
+
+    const next = {
+      ...baseConfiguration,
+      queryText: "Platform roles",
+      queryRevision: 2,
+      watchlistRevision: 2,
+    };
+    expect(
+      validateAiFilterConfigurationTransition(baseConfiguration, next, {
+        watchlistChanged: true,
+      }),
+    ).toEqual(next);
+  });
+
+  it("rejects identity mutation, revision rollback, and revisions detached from change", () => {
+    expect(() =>
+      validateAiFilterConfigurationTransition(
+        baseConfiguration,
+        { ...baseConfiguration, ownerId: "another_owner" },
+        { watchlistChanged: false },
+      ),
+    ).toThrow(/immutable/);
+
+    expect(() =>
+      validateAiFilterConfigurationTransition(
+        { ...baseConfiguration, queryRevision: 2 },
+        baseConfiguration,
+        { watchlistChanged: false },
+      ),
+    ).toThrow(/must not decrease/);
+
+    expect(() =>
+      validateAiFilterConfigurationTransition(
+        baseConfiguration,
+        { ...baseConfiguration, queryText: "Changed without revision" },
+        { watchlistChanged: false },
+      ),
+    ).toThrow(/query revision/);
+
+    expect(() =>
+      validateAiFilterConfigurationTransition(
+        baseConfiguration,
+        { ...baseConfiguration, queryRevision: 2 },
+        { watchlistChanged: false },
+      ),
+    ).toThrow(/query revision/);
+
+    expect(() =>
+      validateAiFilterConfigurationTransition(
+        baseConfiguration,
+        { ...baseConfiguration, watchlistRevision: 2 },
+        { watchlistChanged: false },
+      ),
+    ).toThrow(/watchlist revision/);
+  });
+});
+
+describe("assertSameAiFilterRunBinding", () => {
+  it("accepts only an exact retry of the persisted snapshot", () => {
+    expect(
+      assertSameAiFilterRunBinding(baseRequest, structuredClone(baseRequest)),
+    ).toEqual(baseRequest);
+  });
+
+  it("rejects reuse with reordered candidates or changed semantic data", () => {
+    const reordered = structuredClone(baseRequest);
+    reordered.candidates.reverse();
+    expect(() => assertSameAiFilterRunBinding(baseRequest, reordered)).toThrow(
+      /different snapshot/,
+    );
+
+    const changedQuery = structuredClone(baseRequest);
+    changedQuery.configuration.queryText = "A different private query";
+    changedQuery.configuration.queryRevision = 2;
+    expect(() => assertSameAiFilterRunBinding(baseRequest, changedQuery)).toThrow(
+      /different snapshot/,
+    );
+
+    const changedCandidate = structuredClone(baseRequest);
+    changedCandidate.candidates[0].candidateId =
+      "33333333-3333-3333-3333-333333333333";
+    expect(() =>
+      assertSameAiFilterRunBinding(baseRequest, changedCandidate),
+    ).toThrow(/different snapshot/);
+
+    expect(() =>
+      assertSameAiFilterRunBinding(baseRequest, {
+        ...baseRequest,
+        runId: "dddddddd-dddd-dddd-dddd-dddddddddddd",
+      }),
+    ).toThrow(/do not match/);
+  });
+});
+
+describe("parseAiFilterTerminalResult", () => {
+  it("requires a complete, ordered, binary result with no extra fields", () => {
+    expect(parseAiFilterTerminalResult(completedResult, baseRequest)).toEqual(
+      completedResult,
+    );
+
+    expect(() =>
+      parseAiFilterTerminalResult(
+        { status: "completed", decisions: [completedResult.decisions[0]] },
+        baseRequest,
+      ),
+    ).toThrow(/every candidate/);
+
+    expect(() =>
+      parseAiFilterTerminalResult(
+        {
+          status: "completed",
+          decisions: [
+            completedResult.decisions[1],
+            completedResult.decisions[0],
+          ],
+        },
+        baseRequest,
+      ),
+    ).toThrow(/snapshot order/);
+
+    expect(() =>
+      parseAiFilterTerminalResult(
+        {
+          status: "completed",
+          decisions: [
+            { ...completedResult.decisions[0], confidence: 0.9 },
+            completedResult.decisions[1],
+          ],
+        },
+        baseRequest,
+      ),
+    ).toThrow(/unsupported fields/);
+  });
+
+  it("rejects foreign, duplicate, non-binary, and sparse decisions", () => {
+    expect(() =>
+      parseAiFilterTerminalResult(
+        {
+          status: "completed",
+          decisions: [
+            {
+              candidateId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+              decision: "accepted",
+            },
+            completedResult.decisions[1],
+          ],
+        },
+        baseRequest,
+      ),
+    ).toThrow(/foreign/);
+
+    expect(() =>
+      parseAiFilterTerminalResult(
+        {
+          status: "completed",
+          decisions: [
+            completedResult.decisions[0],
+            completedResult.decisions[0],
+          ],
+        },
+        baseRequest,
+      ),
+    ).toThrow(/duplicate/);
+
+    expect(() =>
+      parseAiFilterTerminalResult(
+        {
+          status: "completed",
+          decisions: [
+            { candidateId: CANDIDATE_ONE, decision: "maybe" },
+            completedResult.decisions[1],
+          ],
+        },
+        baseRequest,
+      ),
+    ).toThrow(/binary/);
+
+    expect(() =>
+      parseAiFilterTerminalResult(
+        { status: "completed", decisions: new Array(2) },
+        baseRequest,
+      ),
+    ).toThrow(/sparse/);
+  });
+
+  it("preserves valid paid work when a run stops", () => {
+    const stopped = {
+      status: "stopped",
+      stopReason: "budget_exhausted",
+      decisions: [completedResult.decisions[1]],
+    };
+    expect(parseAiFilterTerminalResult(stopped, baseRequest)).toEqual(stopped);
+
+    expect(
+      parseAiFilterTerminalResult(
+        {
+          status: "stopped",
+          stopReason: "provider_unavailable",
+          decisions: [],
+        },
+        baseRequest,
+      ),
+    ).toEqual({
+      status: "stopped",
+      stopReason: "provider_unavailable",
+      decisions: [],
+    });
+
+    expect(() =>
+      parseAiFilterTerminalResult(
+        {
+          status: "stopped",
+          stopReason: "budget_exhausted",
+          decisions: [
+            completedResult.decisions[1],
+            completedResult.decisions[0],
+          ],
+        },
+        baseRequest,
+      ),
+    ).toThrow(/snapshot order/);
+  });
+});
+
+describe("product decision retention", () => {
+  it("attaches run, owner, revisions, and the posting-derived lifetime", () => {
+    const decisions = materializeAiFilterProductDecisions(
+      baseRequest,
+      {
+        status: "stopped",
+        stopReason: "configuration_changed",
+        decisions: [completedResult.decisions[0]],
+      },
+      "2026-09-01T12:00:01.000Z",
+    );
+
+    expect(decisions).toEqual([
+      {
+        version: AI_FILTER_CONTRACT_VERSION,
+        runId: RUN_ID,
+        configurationId: CONFIGURATION_ID,
+        ownerId: baseConfiguration.ownerId,
+        watchlistId: WATCHLIST_ID,
+        queryRevision: 1,
+        watchlistRevision: 1,
+        candidateId: CANDIDATE_ONE,
+        decision: "accepted",
+        postingFirstSeenAt: FIRST_SEEN_ONE,
+        decidedAt: "2026-09-01T12:00:01.000Z",
+        expiresAt: EXPIRES_ONE,
+      },
+    ]);
+  });
+
+  it("uses an inclusive expiry boundary and rejects non-canonical instants", () => {
+    expect(
+      isAiFilterProductDecisionExpired(
+        { expiresAt: EXPIRES_ONE },
+        "2026-09-14T11:59:59.999Z",
+      ),
     ).toBe(false);
     expect(
-      isAiFilterProductExpired(lifetime, "2026-03-02T23:30:00.000Z"),
+      isAiFilterProductDecisionExpired(
+        { expiresAt: EXPIRES_ONE },
+        EXPIRES_ONE,
+      ),
     ).toBe(true);
+    expect(() =>
+      isAiFilterProductDecisionExpired(
+        { expiresAt: EXPIRES_ONE },
+        "2026-09-14T12:00:00Z",
+      ),
+    ).toThrow(/canonical ISO instant/);
   });
 
-  it("cannot slide expiry on retry, read, disable, or entitlement resume", () => {
-    const original = createAiFilterProductLifetime(
-      "2026-06-01T00:00:00.000Z",
-    );
-    const retry = createAiFilterProductLifetime(original.postingFirstSeenAt);
-
-    expect(retry.expiresAt).toBe(original.expiresAt);
+  it("rejects a decision timestamp before the frozen run", () => {
     expect(() =>
-      aiFilterProductLifetimeSchema.parse({
-        ...original,
-        expiresAt: "2026-08-01T00:00:00.000Z",
-      }),
-    ).toThrow("exactly postingFirstSeenAt plus 30 days");
-  });
-
-  it("rejects non-instants and extra retention inputs", () => {
-    expect(() => createAiFilterProductLifetime("not-a-date")).toThrow(
-      "must be a valid instant",
-    );
-    expect(() =>
-      aiFilterProductLifetimeSchema.parse({
-        ...createAiFilterProductLifetime("2026-06-01T00:00:00.000Z"),
-        lastAccessedAt: "2026-06-29T00:00:00.000Z",
-      }),
-    ).toThrow("unexpected or missing fields");
+      materializeAiFilterProductDecisions(
+        baseRequest,
+        completedResult,
+        "2026-09-01T11:59:59.999Z",
+      ),
+    ).toThrow(/cannot precede/);
   });
 });
