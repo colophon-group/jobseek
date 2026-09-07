@@ -788,6 +788,14 @@ def test_sampler_ipc_round_trip_preserves_distinct_nonzero_timing_violations() -
             "must be a non-negative integer",
         ),
     ],
+    ids=[
+        "empty",
+        "oversized",
+        "non-object",
+        "invalid-fields",
+        "unsupported-version",
+        "invalid-counter",
+    ],
 )
 def test_sampler_ipc_rejects_malformed_frame_matrix(
     raw: bytes | Callable[[], bytes],
