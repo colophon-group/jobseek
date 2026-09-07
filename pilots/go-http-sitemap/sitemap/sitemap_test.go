@@ -362,17 +362,26 @@ func TestLargeChildErrorBodyDoesNotMaskStatus(t *testing.T) {
 	}
 }
 
-func TestStripUTMPreservesPythonKeyOrderAndMalformedQueries(t *testing.T) {
+func TestStripUTMMatchesPythonForWellFormedQueries(t *testing.T) {
 	if got, want := stripUTM("https://example.test/jobs/1?b=2&utm_source=x&a=1"), "https://example.test/jobs/1?b=2&a=1"; got != want {
 		t.Fatalf("got=%q want=%q", got, want)
 	}
+}
+
+func TestStripUTMLeavesUnsupportedQueryEncodingUnchanged(t *testing.T) {
 	for _, rawURL := range []string{
 		"https://example.test/jobs/1?a=1;bad=2&utm_source=x",
 		"https://example.test/jobs/1?a=%zz&utm_source=x",
 	} {
 		if got := stripUTM(rawURL); got != rawURL {
-			t.Fatalf("malformed query changed: got=%q want=%q", got, rawURL)
+			t.Fatalf("unsupported query encoding changed: got=%q want=%q", got, rawURL)
 		}
+	}
+}
+
+func TestStripUTMCharacterizesInvalidUTF8OutsideParity(t *testing.T) {
+	if got, want := stripUTM("https://example.test/jobs/1?a=%FF&utm_source=x"), "https://example.test/jobs/1?a=%FF"; got != want {
+		t.Fatalf("got=%q want=%q", got, want)
 	}
 }
 
