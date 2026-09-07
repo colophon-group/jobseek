@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -66,6 +67,10 @@ const reconcileCrawlerDeployGateScript = readFileSync(
   "utf8",
 );
 const labelPrScript = readFileSync(".github/scripts/label-pr.sh", "utf8");
+const crawlStatsEvidenceScript = readFileSync(
+  ".github/scripts/crawl-stats-evidence.py",
+  "utf8",
+);
 const labelPrCsvDiffHelper = ".github/scripts/label_pr_csv_diff.py";
 const publishMcpServerWorkflow = readFileSync(
   ".github/workflows/publish-mcp-server.yml",
@@ -400,7 +405,19 @@ fi
   return { ...result, calls };
 }
 
-function runClassifyPrPaths({ files = [], baseRef = "main" } = {}) {
+function runClassifyPrPaths({
+  files = [],
+  baseRef = "main",
+  baseSha = "a".repeat(40),
+  headSha,
+  githubSha,
+} = {}) {
+  const checkoutSha = spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  }).stdout.trim();
+  const resolvedHeadSha = headSha ?? checkoutSha;
+  const resolvedGithubSha = githubSha ?? checkoutSha;
   const dir = mkdtempSync(join(tmpdir(), "classify-pr-paths-"));
   const output = join(dir, "github-output");
   const gh = join(dir, "gh");
@@ -411,7 +428,7 @@ set -euo pipefail
 if [[ "$*" == *"/files"* ]]; then
   printf '%s\\n' "$MOCK_FILES"
 else
-  printf '%s\\n' "$MOCK_BASE_REF"
+  printf '%s' "$MOCK_PR_JSON"
 fi
 `,
   );
@@ -424,9 +441,13 @@ fi
       GH_TOKEN: "test-token",
       REPO: "colophon-group/jobseek",
       PR: "123",
+      GITHUB_SHA: resolvedGithubSha,
       GITHUB_OUTPUT: output,
       MOCK_FILES: files.join("\n"),
-      MOCK_BASE_REF: baseRef,
+      MOCK_PR_JSON: JSON.stringify({
+        base: { ref: baseRef, sha: baseSha },
+        head: { sha: resolvedHeadSha },
+      }),
     },
     encoding: "utf8",
   });
@@ -437,10 +458,67 @@ fi
     // Failed classifications may stop before writing outputs.
   }
   rmSync(dir, { recursive: true, force: true });
-  return { ...result, outputs };
+  return { ...result, outputs, checkoutSha };
 }
 
-function runCompanyPrLabeler(diff) {
+function crawlStatsComment({
+  association = "MEMBER",
+  body,
+  headSha = "a".repeat(40),
+  id = 1,
+  jobs = 10,
+  monitorTime = 1,
+  updatedAt = "2026-09-07T00:00:00Z",
+} = {}) {
+  return {
+    author_association: association,
+    body:
+      body ??
+      `<!-- crawl-stats ${JSON.stringify({
+        head_sha: headSha,
+        jobs,
+        monitor_time: monitorTime,
+      })} -->`,
+    id,
+    updated_at: updatedAt,
+  };
+}
+
+function crawlStatsFingerprint(comment) {
+  const evidence = JSON.stringify({
+    author_association: comment.author_association,
+    body: comment.body,
+    id: comment.id,
+    updated_at: comment.updated_at,
+  });
+  return createHash("sha256").update(evidence).digest("hex");
+}
+
+function runCompanyPrLabeler(
+  diff,
+  {
+    autoMergeArmed = false,
+    disableAutoFails = false,
+    initialBaseSha = "c".repeat(40),
+    finalBaseSha = initialBaseSha,
+    initialHeadSha = "a".repeat(40),
+    finalHeadSha = initialHeadSha,
+    initialMetadataFails = false,
+    currentLabels = "review-code",
+    commentsApiFails = false,
+    commentsPages,
+    contentEmpty = "",
+    contentFailure = "",
+    contentSchemaFailure = "",
+    files = [
+      "apps/crawler/data/boards.csv",
+      "apps/crawler/data/companies.csv",
+      "apps/crawler/data/company_descriptions.csv",
+    ],
+  } = {},
+) {
+  const resolvedCommentsPages =
+    commentsPages ?? [[crawlStatsComment({ headSha: initialHeadSha })]];
   const dir = mkdtempSync(join(tmpdir(), "label-company-pr-"));
   const output = join(dir, "github-output");
   const log = join(dir, "gh.log");
@@ -449,21 +527,66 @@ function runCompanyPrLabeler(diff) {
     gh,
     `#!/usr/bin/env bash
 set -euo pipefail
-if [[ "$1 $2" == "pr view" && "$*" == *"headRefName"* ]]; then
-  printf '%s\n' 'add-company/example'
-elif [[ "$1 $2" == "pr view" && "$*" == *"labels"* ]]; then
-  printf '%s\n' 'review-code'
+if [[ "$1 $2" == "pr view" && "$*" == *"headRefName,headRefOid,baseRefOid,autoMergeRequest"* ]]; then
+  if [[ "$MOCK_INITIAL_METADATA_FAILS" == "true" ]]; then
+    exit 42
+  fi
+  printf '%s\n' "$MOCK_INITIAL_METADATA"
+elif [[ "$1 $2" == "pr view" && "$*" == *"labels,headRefOid,baseRefOid"* ]]; then
+  printf '%s\n' "$MOCK_FINAL_METADATA"
 elif [[ "$1 $2" == "pr diff" && "$*" == *"--name-only"* ]]; then
-  printf '%s\n' 'apps/crawler/tests/lightpanda/fixtures/census.json'
-  printf '%s\n' 'apps/crawler/data/boards.csv' 'apps/crawler/data/companies.csv' 'apps/crawler/data/company_descriptions.csv'
+  printf '%s\n' "$*" >> "$MOCK_GH_LOG"
+  printf '%s\n' "$MOCK_CHANGED_FILES"
 elif [[ "$1 $2" == "pr diff" ]]; then
+  printf '%s\n' "$*" >> "$MOCK_GH_LOG"
   printf '%s' "$MOCK_DIFF"
 elif [[ "$1" == "api" && "$*" == *"/comments"* ]]; then
-  printf '%s\n' '<!-- crawl-stats {"jobs": 10, "monitor_time": 1.0} -->'
+  printf '%s\n' "$*" >> "$MOCK_GH_LOG"
+  if [[ "$*" != *"--method GET"* || "$*" != *"--paginate"* || "$*" != *"--slurp"* ]]; then
+    exit 44
+  fi
+  if [[ "$MOCK_COMMENTS_API_FAILS" == "true" ]]; then
+    exit 45
+  fi
+  printf '%s' "$MOCK_COMMENTS"
 elif [[ "$1" == "api" && "$*" == *"/contents/"* ]]; then
-  exit 0
+  printf '%s\n' "$*" >> "$MOCK_GH_LOG"
+  if [[ "$*" != *"--method GET"* ]]; then
+    exit 46
+  fi
+  key=""
+  if [[ "$*" == *"apps/crawler/data/companies.csv"* && "$*" == *"ref=$MOCK_HEAD_SHA"* ]]; then
+    key="head-companies"
+  elif [[ "$*" == *"apps/crawler/data/boards.csv"* && "$*" == *"ref=$MOCK_HEAD_SHA"* ]]; then
+    key="head-boards"
+  elif [[ "$*" == *"apps/crawler/data/companies.csv"* && "$*" == *"ref=$MOCK_BASE_SHA"* ]]; then
+    key="base-companies"
+  else
+    exit 47
+  fi
+  if [[ "$MOCK_CONTENT_FAILURE" == "$key" ]]; then
+    exit 48
+  fi
+  if [[ "$MOCK_CONTENT_SCHEMA_FAILURE" == "$key" ]]; then
+    printf '%s\n' 'bad,header'
+  elif [[ "$key" == "head-boards" ]]; then
+    printf '%s\n' 'company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config'
+    if [[ "$MOCK_CONTENT_EMPTY" != "$key" ]]; then
+      printf '%s\n' 'existing,careers,https://existing.example/jobs,comeet,{},skip,'
+    fi
+  else
+    printf '%s\n' 'slug,name,website,logo_url,icon_url,logo_type,industry,employee_count_range,founded_year,extras'
+    if [[ "$MOCK_CONTENT_EMPTY" != "$key" ]]; then
+      printf '%s\n' 'existing,Existing,https://existing.example,https://existing.example/logo.svg,https://existing.example/icon.svg,full,,,,{}'
+    fi
+  fi
 elif [[ "$1 $2" == "label create" ]]; then
   exit 0
+elif [[ "$1 $2" == "pr merge" ]]; then
+  printf '%s\n' "$*" >> "$MOCK_GH_LOG"
+  if [[ "$MOCK_DISABLE_AUTO_FAILS" == "true" ]]; then
+    exit 43
+  fi
 elif [[ "$1 $2" == "pr edit" ]]; then
   printf '%s\n' "$*" >> "$MOCK_GH_LOG"
 else
@@ -483,7 +606,31 @@ fi
       PR: "123",
       GITHUB_OUTPUT: output,
       MOCK_DIFF: diff,
+      MOCK_CHANGED_FILES: files.join("\n"),
+      MOCK_COMMENTS: JSON.stringify(resolvedCommentsPages),
+      MOCK_COMMENTS_API_FAILS: String(commentsApiFails),
+      MOCK_CONTENT_EMPTY: contentEmpty,
+      MOCK_CONTENT_FAILURE: contentFailure,
+      MOCK_CONTENT_SCHEMA_FAILURE: contentSchemaFailure,
+      MOCK_DISABLE_AUTO_FAILS: String(disableAutoFails),
+      MOCK_FINAL_METADATA: JSON.stringify({
+        baseRefOid: finalBaseSha,
+        headRefOid: finalHeadSha,
+        labels: currentLabels
+          .split("\n")
+          .filter(Boolean)
+          .map((name) => ({ name })),
+      }),
       MOCK_GH_LOG: log,
+      MOCK_INITIAL_METADATA: JSON.stringify({
+        autoMergeRequest: autoMergeArmed ? { enabledAt: "2026-09-07T00:00:00Z" } : null,
+        baseRefOid: initialBaseSha,
+        headRefName: "add-company/example",
+        headRefOid: initialHeadSha,
+      }),
+      MOCK_INITIAL_METADATA_FAILS: String(initialMetadataFails),
+      MOCK_BASE_SHA: initialBaseSha,
+      MOCK_HEAD_SHA: initialHeadSha,
     },
     encoding: "utf8",
   });
@@ -501,6 +648,238 @@ fi
   }
   rmSync(dir, { recursive: true, force: true });
   return { ...result, outputs, calls };
+}
+
+function runMaybeAutoMerge({
+  baseSha = "b".repeat(40),
+  commentsApiFails = false,
+  deployState = "SUCCESS",
+  draft = false,
+  state = "OPEN",
+  requiredState = "SUCCESS",
+  files = [],
+  initialHeadSha = "a".repeat(40),
+  labelRuns,
+  leaseBaseSha,
+  leaseDraft = draft,
+  leaseHeadSha,
+  leaseLabels = ["auto-merge"],
+  leaseLabelsAfterComments,
+  leaseCommentsPages,
+  leaseRequiredState = requiredState,
+  leaseState = state,
+  liveLabels = ["auto-merge"],
+  malformedLease = false,
+  mergeState = "CLEAN",
+  mergeable = "MERGEABLE",
+  pushedHeadSha = "d".repeat(40),
+  rebaseNeeded = false,
+} = {}) {
+  const configuredLabelRuns =
+    labelRuns ??
+    (rebaseNeeded
+      ? [
+          { labels: "auto-merge", baseSha, headSha: initialHeadSha },
+          { labels: "auto-merge", baseSha, headSha: pushedHeadSha },
+          { labels: "auto-merge", baseSha, headSha: pushedHeadSha },
+        ]
+      : [
+          { labels: "auto-merge", baseSha, headSha: initialHeadSha },
+          { labels: "auto-merge", baseSha, headSha: initialHeadSha },
+        ]);
+  const resolvedLabelRuns = configuredLabelRuns.map((run) => ({
+    ...run,
+    fingerprint:
+      run.fingerprint ??
+      crawlStatsFingerprint(crawlStatsComment({ headSha: run.headSha })),
+  }));
+  const finalRun = resolvedLabelRuns.at(-1);
+  const resolvedLeaseCommentsPages =
+    leaseCommentsPages ?? [[crawlStatsComment({ headSha: finalRun.headSha })]];
+  const dir = mkdtempSync(join(tmpdir(), "maybe-auto-merge-"));
+  const bin = join(dir, "bin");
+  const trusted = join(dir, "trusted");
+  const calls = join(dir, "calls.log");
+  const labelCount = join(dir, "label-count");
+  mkdirSync(bin);
+  mkdirSync(trusted);
+
+  writeFileSync(
+    join(bin, "gh"),
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1 $2" == "pr view" && "$*" == *"state,isDraft,headRefName,headRepositoryOwner"* ]]; then
+  printf '%s\n' 'initial-metadata' >> "$MOCK_CALLS"
+  printf '%s\n' "$MOCK_INITIAL_PR"
+elif [[ "$1 $2" == "pr view" && "$*" == *"--json labels --jq"* ]]; then
+  printf '%s\n' 'live-labels' >> "$MOCK_CALLS"
+  printf '%s\n' "$MOCK_LIVE_LABELS"
+elif [[ "$1 $2" == "pr view" && "$*" == *"--json statusCheckRollup --jq"* ]]; then
+  printf '%s\n' 'required-wait' >> "$MOCK_CALLS"
+  printf '%s\n' "$MOCK_REQUIRED_STATE"
+elif [[ "$1 $2" == "pr view" && "$*" == *"state,isDraft,headRefOid,baseRefOid,labels,statusCheckRollup,mergeable,mergeStateStatus"* ]]; then
+  printf '%s\n' 'lease' >> "$MOCK_CALLS"
+  if [[ -f "$MOCK_COMMENTS_READ" ]]; then
+    printf '%s\n' "$MOCK_LEASE_AFTER_COMMENTS"
+  else
+    printf '%s\n' "$MOCK_LEASE"
+  fi
+elif [[ "$1" == "api" && "$*" == *"/comments"* ]]; then
+  printf '%s\n' 'lease-comments' >> "$MOCK_CALLS"
+  : > "$MOCK_COMMENTS_READ"
+  if [[ "$*" != *"--method GET"* || "$*" != *"--paginate"* || "$*" != *"--slurp"* ]]; then
+    exit 44
+  fi
+  if [[ "$MOCK_COMMENTS_API_FAILS" == "true" ]]; then
+    exit 45
+  fi
+  printf '%s' "$MOCK_LEASE_COMMENTS"
+elif [[ "$1" == "api" && "$*" == *"/pulls/$PR/files"* ]]; then
+  printf '%s\n' 'files-api' >> "$MOCK_CALLS"
+  printf '%s\n' "$MOCK_FILES"
+elif [[ "$1 $2" == "pr merge" ]]; then
+  printf '%s\n' "$*" >> "$MOCK_CALLS"
+else
+  printf 'unexpected gh call: %s\n' "$*" >&2
+  exit 2
+fi
+`,
+  );
+  writeFileSync(
+    join(bin, "git"),
+    `#!/usr/bin/env bash
+set -euo pipefail
+case "$1" in
+  merge-base)
+    [[ "$MOCK_REBASE_NEEDED" == "true" ]] && exit 1
+    exit 0
+    ;;
+  rev-parse)
+    printf '%s\n' "$MOCK_PUSHED_HEAD"
+    ;;
+  push)
+    printf '%s\n' 'push' >> "$MOCK_CALLS"
+    ;;
+  *) exit 0 ;;
+esac
+`,
+  );
+  writeFileSync(
+    join(bin, "sleep"),
+    `#!/usr/bin/env bash
+exit 0
+`,
+  );
+  writeFileSync(
+    join(trusted, "label-pr.sh"),
+    `#!/usr/bin/env bash
+set -euo pipefail
+count=0
+if [[ -f "$MOCK_LABEL_COUNT" ]]; then count=$(<"$MOCK_LABEL_COUNT"); fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$MOCK_LABEL_COUNT"
+record=$(printf '%s\n' "$MOCK_LABEL_RUNS" | sed -n "$count"p)
+[[ -n "$record" ]]
+IFS='|' read -r labels base head fingerprint <<< "$record"
+printf 'label:%s:%s:%s:%s\n' "$count" "$labels" "$base" "$head" >> "$MOCK_CALLS"
+printf 'labels=%s\nbase_sha=%s\ncrawl_stats_fingerprint=%s\nhead_sha=%s\n' "$labels" "$base" "$fingerprint" "$head" >> "$GITHUB_OUTPUT"
+`,
+  );
+  writeFileSync(join(trusted, "crawl-stats-evidence.py"), crawlStatsEvidenceScript);
+  for (const script of [
+    "dispatch-pr-checks.sh",
+    "dispatch-company-production-sync.sh",
+    "close-linked-company-request-issues.sh",
+  ]) {
+    writeFileSync(
+      join(trusted, script),
+      `#!/usr/bin/env bash
+printf '%s\n' '${script}' >> "$MOCK_CALLS"
+`,
+    );
+  }
+  for (const path of [
+    join(bin, "gh"),
+    join(bin, "git"),
+    join(bin, "sleep"),
+    ...[
+      "label-pr.sh",
+      "dispatch-pr-checks.sh",
+      "dispatch-company-production-sync.sh",
+      "close-linked-company-request-issues.sh",
+    ].map((script) => join(trusted, script)),
+  ]) {
+    chmodSync(path, 0o755);
+  }
+
+  const check = (name, value) => ({
+    __typename: "StatusContext",
+    context: name,
+    state: value,
+  });
+  const lease = {
+    baseRefOid: leaseBaseSha ?? finalRun.baseSha,
+    headRefOid: leaseHeadSha ?? finalRun.headSha,
+    isDraft: leaseDraft,
+    labels: leaseLabels.map((name) => ({ name })),
+    mergeStateStatus: mergeState,
+    mergeable,
+    state: leaseState,
+    statusCheckRollup: [
+      check("Required CI", leaseRequiredState),
+      check("Crawler Deploy Gate", deployState),
+    ],
+  };
+  const leaseAfterComments = {
+    ...lease,
+    labels: (leaseLabelsAfterComments ?? leaseLabels).map((name) => ({ name })),
+  };
+  const result = spawnSync("bash", [".github/scripts/maybe-auto-merge-pr.sh"], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      PATH: `${bin}:${process.env.PATH}`,
+      GH_TOKEN: "test-token",
+      MOCK_CALLS: calls,
+      MOCK_COMMENTS_API_FAILS: String(commentsApiFails),
+      MOCK_COMMENTS_READ: join(dir, "comments-read"),
+      MOCK_FILES: files.join("\n"),
+      MOCK_INITIAL_PR: JSON.stringify({
+        headRefName: "add-company/example",
+        headRepositoryOwner: { login: "colophon-group" },
+        isDraft: draft,
+        state,
+      }),
+      MOCK_LABEL_COUNT: labelCount,
+      MOCK_LABEL_RUNS: resolvedLabelRuns
+        .map(
+          ({ labels, baseSha: runBase, headSha, fingerprint }) =>
+            `${labels}|${runBase}|${headSha}|${fingerprint}`,
+        )
+        .join("\n"),
+      MOCK_LEASE_COMMENTS: JSON.stringify(resolvedLeaseCommentsPages),
+      MOCK_LEASE: malformedLease ? '{"state":' : JSON.stringify(lease),
+      MOCK_LEASE_AFTER_COMMENTS: malformedLease
+        ? '{"state":'
+        : JSON.stringify(leaseAfterComments),
+      MOCK_LIVE_LABELS: liveLabels.join("\n"),
+      MOCK_PUSHED_HEAD: pushedHeadSha,
+      MOCK_REBASE_NEEDED: String(rebaseNeeded),
+      MOCK_REQUIRED_STATE: requiredState,
+      PR: "123",
+      REPO: "colophon-group/jobseek",
+      TRUSTED_SCRIPTS_DIR: trusted,
+    },
+    encoding: "utf8",
+  });
+  let callLog = "";
+  try {
+    callLog = readFileSync(calls, "utf8");
+  } catch {
+    // Early exits may happen before the first logged call.
+  }
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, calls: callLog };
 }
 
 function setupUvBlocks(workflowSource) {
@@ -555,7 +934,6 @@ test("CI change detection preserves the existing non-code exclusions", () => {
     "'!.github/DISCUSSION_TEMPLATE/**'",
     "'!apps/crawler/data/**'",
     "'!apps/crawler/traces/**'",
-    "'!apps/crawler/tests/lightpanda/fixtures/census.json'",
     "'!apps/crawler/VERSION'",
   ]) {
     assert.ok(workflow.includes(pattern), `missing filter pattern ${pattern}`);
@@ -593,21 +971,109 @@ test("manual PR classification exports the validated PR base context", () => {
   assert.match(result.outputs, /^boards_csv=true$/m);
   assert.match(result.outputs, /^is_pr=true$/m);
   assert.match(result.outputs, /^base_ref=main$/m);
+  assert.match(result.outputs, /^base_sha=[0-9a-f]{40}$/m);
+  assert.match(result.outputs, new RegExp(`^head_sha=${result.checkoutSha}$`, "m"));
 });
 
-test("company census fixture remains on the data-only CI path", () => {
-  const result = runClassifyPrPaths({
-    files: [
-      "apps/crawler/data/boards.csv",
-      "apps/crawler/tests/lightpanda/fixtures/census.json",
-    ],
-    baseRef: "main",
+test("Lightpanda semantic census gate covers PR and dispatched fixture-only changes", () => {
+  const probeJob = jobBlock("probe-new-boards");
+  const requiredCiJob = jobBlock("required-ci");
+  const testCrawlerJob = jobBlock("test-crawler");
+  const fixture = "apps/crawler/tests/lightpanda/fixtures/census.json";
+  const dispatched = runClassifyPrPaths({ files: [fixture], baseRef: "main" });
+
+  assert.equal(dispatched.status, 0, dispatched.stderr);
+  assert.match(dispatched.outputs, /^code=true$/m);
+  assert.match(dispatched.outputs, /^crawler_code=true$/m);
+  assert.match(dispatched.outputs, /^boards_csv=false$/m);
+  assert.match(dispatched.outputs, /^codeql=true$/m);
+  assert.equal(
+    workflow.includes("'!apps/crawler/tests/lightpanda/fixtures/census.json'"),
+    false,
+    "the fixture must not be excluded from crawler code classification",
+  );
+  assert.match(
+    probeJob,
+    /if: needs\.changes\.outputs\.is_pr == 'true' && \(needs\.changes\.outputs\.boards_csv == 'true' \|\| needs\.changes\.outputs\.crawler_code == 'true'\)/,
+  );
+  assert.match(
+    workflow,
+    /crawler_code:\n\s+- 'apps\/crawler\/\*\*'/,
+    "pull requests classify the fixture as crawler code",
+  );
+  assert.match(probeJob, /CURRENT_CENSUS: \$\{\{ runner\.temp \}\}\/lightpanda-census-current\.json/);
+  assert.match(
+    probeJob,
+    /PREVIOUS_BASELINE_CENSUS: \$\{\{ runner\.temp \}\}\/lightpanda-census-previous\.json/,
+  );
+  assert.match(probeJob, /--output "\$CURRENT_CENSUS"/);
+  assert.match(
+    probeJob,
+    /python -m src\.lightpanda\.census \\\n+\s+--check \\\n+\s+--output "\$CURRENT_CENSUS" \\\n+\s+--baseline "\$BASELINE_CENSUS"/,
+  );
+  assert.doesNotMatch(probeJob, /REPEAT_CENSUS|cmp -s|allow-new-profiles/);
+  assert.match(
+    probeJob,
+    /--previous-baseline "\$PREVIOUS_BASELINE_CENSUS"/,
+  );
+  assert.match(probeJob, /BASE_SHA: \$\{\{ needs\.changes\.outputs\.base_sha \}\}/);
+  assert.match(probeJob, /git fetch --no-tags --depth=1 origin "\$BASE_SHA"/);
+  assert.match(
+    probeJob,
+    /git show "\$BASE_SHA:apps\/crawler\/tests\/lightpanda\/fixtures\/census\.json"/,
+  );
+  assert.ok(
+    probeJob.indexOf("name: Materialize exact previous Lightpanda baseline") <
+      probeJob.indexOf("name: Verify deterministic Lightpanda semantic census"),
+    "the previous baseline must be materialized in the probe job before comparison",
+  );
+  assert.doesNotMatch(testCrawlerJob, /Materialize exact previous Lightpanda baseline/);
+  assert.match(probeJob, /--base-ref "\$BASE_SHA"/);
+  assert.match(
+    probeJob,
+    /name: Probe added\/changed boards\n\s+if: needs\.changes\.outputs\.boards_csv == 'true'/,
+  );
+  assert.doesNotMatch(probeJob, /continue-on-error/);
+  assert.match(
+    requiredCiJob,
+    /requireSuccess\("probe-new-boards", isPr && \(boardsCsv \|\| crawlerCode\)\)/,
+  );
+});
+
+test("manually dispatched CI accepts only the current checked-out PR head", () => {
+  const accepted = runClassifyPrPaths();
+  assert.equal(accepted.status, 0, accepted.stderr);
+  assert.match(accepted.outputs, /^base_sha=[0-9a-f]{40}$/m);
+  assert.match(accepted.outputs, new RegExp(`^head_sha=${accepted.checkoutSha}$`, "m"));
+
+  const updatedPr = runClassifyPrPaths({ headSha: "b".repeat(40) });
+  assert.notEqual(updatedPr.status, 0);
+  assert.match(
+    updatedPr.stderr,
+    /manually dispatched revision does not match the current PR head/,
+  );
+  assert.equal(updatedPr.outputs, "");
+
+  const wrongCheckout = runClassifyPrPaths({
+    headSha: "c".repeat(40),
+    githubSha: "c".repeat(40),
   });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.outputs, /^code=false$/m);
-  assert.match(result.outputs, /^crawler_code=false$/m);
-  assert.match(result.outputs, /^boards_csv=true$/m);
-  assert.match(result.outputs, /^codeql=false$/m);
+  assert.notEqual(wrongCheckout.status, 0);
+  assert.match(wrongCheckout.stderr, /checked-out revision does not match the current PR head/);
+  assert.equal(wrongCheckout.outputs, "");
+});
+
+test("census code changes route through the required semantic baseline gate", () => {
+  for (const file of [
+    "apps/crawler/src/lightpanda/census.py",
+    "apps/crawler/src/core/monitors/__init__.py",
+    "apps/crawler/src/core/scrapers/__init__.py",
+  ]) {
+    const result = runClassifyPrPaths({ files: [file], baseRef: "main" });
+    assert.equal(result.status, 0, `${file}: ${result.stderr}`);
+    assert.match(result.outputs, /^crawler_code=true$/m, file);
+    assert.match(result.outputs, /^boards_csv=false$/m, file);
+  }
 });
 
 test("runtime contract module and v1 retain full code and crawler CI", () => {
@@ -702,14 +1168,17 @@ test("PR-context CI gates distinguish pull requests from dispatched PRs", () => 
   assert.match(versionJob, /scripts\/check-crawler-version\.mjs/);
   assert.match(versionJob, /\.user\.login/);
   assert.match(probeJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
-  assert.match(probeJob, /BASE_REF: \$\{\{ needs\.changes\.outputs\.base_ref \}\}/);
+  assert.match(probeJob, /BASE_SHA: \$\{\{ needs\.changes\.outputs\.base_sha \}\}/);
   assert.match(requiredCiJob, /const isPr = needs\.changes\?\.outputs\?\.is_pr === "true"/);
   assert.match(
     requiredCiJob,
     /requireSuccess\("crawler-image", eventName === "pull_request" && isPr && crawlerCode\)/,
   );
   assert.match(requiredCiJob, /requireSuccess\("version-check", isPr && crawlerCode\)/);
-  assert.match(requiredCiJob, /requireSuccess\("probe-new-boards", isPr && boardsCsv\)/);
+  assert.match(
+    requiredCiJob,
+    /requireSuccess\("probe-new-boards", isPr && \(boardsCsv \|\| crawlerCode\)\)/,
+  );
   assert.doesNotMatch(versionJob, /github\.event_name == 'pull_request'/);
   assert.doesNotMatch(probeJob, /github\.event_name == 'pull_request'/);
 });
@@ -1614,12 +2083,202 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /required_ci_state\(\)/);
   assert.match(maybeAutoMergeScript, /wait_for_required_ci\(\)/);
   assert.match(maybeAutoMergeScript, /Required CI is successful/);
-  assert.match(maybeAutoMergeScript, /gh pr merge "\$PR" --repo "\$REPO" --rebase/);
+  assert.match(maybeAutoMergeScript, /grep '\^head_sha='/);
   assert.match(
     maybeAutoMergeScript,
-    /gh pr merge "\$PR" --repo "\$REPO" --rebase[\s\S]*dispatch-company-production-sync\.sh[\s\S]*close-linked-company-request-issues\.sh/,
+    /gh pr merge "\$PR" --repo "\$REPO" --rebase \\\n\s+--match-head-commit "\$CLASSIFIED_HEAD_SHA"/,
+  );
+  assert.match(
+    maybeAutoMergeScript,
+    /--match-head-commit "\$CLASSIFIED_HEAD_SHA"[\s\S]*dispatch-company-production-sync\.sh[\s\S]*close-linked-company-request-issues\.sh/,
+  );
+  const initialClassifyIndex = maybeAutoMergeScript.indexOf("\nclassify_current_head\n");
+  const nonAutoDecisionIndex = maybeAutoMergeScript.indexOf(
+    "if ! classification_is_currently_eligible; then",
+    initialClassifyIndex,
+  );
+  const filesApiIndex = maybeAutoMergeScript.indexOf(
+    'files=$(gh api --paginate "repos/$REPO/pulls/$PR/files"',
+  );
+  const imageDelegationIndex = maybeAutoMergeScript.indexOf(
+    "upload-company-images will handle it",
+  );
+  assert.ok(
+    initialClassifyIndex >= 0 &&
+      initialClassifyIndex < nonAutoDecisionIndex &&
+      nonAutoDecisionIndex < filesApiIndex &&
+      filesApiIndex < imageDelegationIndex,
+    "classification and its non-auto exit must precede the files API and image delegation",
+  );
+  const pushIndex = maybeAutoMergeScript.indexOf('git push --force-with-lease origin "$branch"');
+  const reclassifyIndex = maybeAutoMergeScript.indexOf("classify_current_head", pushIndex);
+  const dispatchIndex = maybeAutoMergeScript.indexOf(
+    '"$SCRIPTS_DIR/dispatch-pr-checks.sh"',
+    pushIndex,
+  );
+  assert.ok(pushIndex >= 0 && pushIndex < reclassifyIndex && reclassifyIndex < dispatchIndex);
+  assert.match(
+    maybeAutoMergeScript.slice(reclassifyIndex, dispatchIndex),
+    /classification_is_currently_eligible/,
   );
   assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
+});
+
+test("maybe-auto-merge executes only with a fresh exact merge lease", () => {
+  const head = "a".repeat(40);
+  const base = "b".repeat(40);
+  const auto = { labels: "auto-merge", baseSha: base, headSha: head };
+
+  const valid = runMaybeAutoMerge();
+  assert.equal(valid.status, 0, valid.stderr);
+  assert.match(
+    valid.calls,
+    new RegExp(`pr merge 123 --repo colophon-group/jobseek --rebase --match-head-commit ${head}`),
+  );
+  assert.match(valid.calls, /dispatch-company-production-sync\.sh/);
+  assert.match(valid.calls, /close-linked-company-request-issues\.sh/);
+
+  const changedDecision = runMaybeAutoMerge({
+    labelRuns: [auto, { ...auto, labels: "review-size" }],
+  });
+  assert.equal(changedDecision.status, 0, changedDecision.stderr);
+  assert.match(changedDecision.calls, /label:2:review-size/);
+  assert.doesNotMatch(changedDecision.calls, /pr merge/);
+
+  const held = runMaybeAutoMerge({ liveLabels: ["auto-merge", "on hold"] });
+  assert.equal(held.status, 0, held.stderr);
+  assert.doesNotMatch(held.calls, /files-api|pr merge/);
+
+  const advancedHead = runMaybeAutoMerge({
+    labelRuns: [auto, { ...auto, headSha: "c".repeat(40) }],
+  });
+  assert.equal(advancedHead.status, 0, advancedHead.stderr);
+  assert.doesNotMatch(advancedHead.calls, /lease|pr merge/);
+
+  const advancedBase = runMaybeAutoMerge({
+    labelRuns: [auto, { ...auto, baseSha: "c".repeat(40) }],
+  });
+  assert.equal(advancedBase.status, 0, advancedBase.stderr);
+  assert.doesNotMatch(advancedBase.calls, /lease|pr merge/);
+
+  for (const unsafe of [
+    { leaseDraft: true },
+    { leaseState: "CLOSED" },
+    { leaseHeadSha: "c".repeat(40) },
+    { leaseBaseSha: "c".repeat(40) },
+    { leaseLabels: ["auto-merge", "gate:human-ui"] },
+    { leaseRequiredState: "FAILURE" },
+    { deployState: "FAILURE" },
+    { mergeable: "UNKNOWN" },
+    { mergeState: "UNKNOWN" },
+    { malformedLease: true },
+  ]) {
+    const refused = runMaybeAutoMerge(unsafe);
+    assert.equal(refused.status, 0, refused.stderr);
+    assert.match(refused.calls, /lease/);
+    assert.doesNotMatch(refused.calls, /pr merge/);
+  }
+});
+
+test("maybe-auto-merge final lease refuses changed or unavailable crawl evidence", () => {
+  const head = "a".repeat(40);
+  const refuseWithoutMerge = (result) => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.calls, /lease-comments/);
+    assert.doesNotMatch(result.calls, /pr merge/);
+    assert.doesNotMatch(result.calls, /dispatch-company-production-sync\.sh/);
+    assert.doesNotMatch(result.calls, /close-linked-company-request-issues\.sh/);
+  };
+
+  // The classified head is unchanged, but the metrics/body fingerprint is not.
+  refuseWithoutMerge(
+    runMaybeAutoMerge({
+      leaseCommentsPages: [[crawlStatsComment({ headSha: head, jobs: 11 })]],
+    }),
+  );
+
+  for (const leaseCommentsPages of [
+    [[]],
+    [[crawlStatsComment({ association: "NONE", headSha: head })]],
+  ]) {
+    refuseWithoutMerge(runMaybeAutoMerge({ leaseCommentsPages }));
+  }
+
+  for (const leaseCommentsPages of [
+    [[crawlStatsComment({ body: "<!-- crawl-stats {broken} -->" })]],
+    [[
+      crawlStatsComment({ headSha: head, id: 1 }),
+      crawlStatsComment({ headSha: head, id: 2 }),
+    ]],
+  ]) {
+    refuseWithoutMerge(runMaybeAutoMerge({ leaseCommentsPages }));
+  }
+
+  refuseWithoutMerge(runMaybeAutoMerge({ commentsApiFails: true }));
+});
+
+test("maybe-auto-merge observes a blocker added while final evidence is read", () => {
+  const result = runMaybeAutoMerge({
+    leaseLabelsAfterComments: ["auto-merge", "on hold"],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const commentsIndex = result.calls.indexOf("lease-comments");
+  const leaseIndex = result.calls.indexOf("lease\n", commentsIndex);
+  assert.ok(
+    commentsIndex >= 0 && leaseIndex > commentsIndex,
+    `final PR lease was not refreshed after comments:\n${result.calls}`,
+  );
+  assert.doesNotMatch(result.calls, /pr merge/);
+  assert.doesNotMatch(result.calls, /dispatch-company-production-sync\.sh/);
+  assert.doesNotMatch(result.calls, /close-linked-company-request-issues\.sh/);
+});
+
+test("maybe-auto-merge reclassifies a pushed rebase before checks", () => {
+  const result = runMaybeAutoMerge({ rebaseNeeded: true });
+  assert.equal(result.status, 0, result.stderr);
+  const pushIndex = result.calls.indexOf("push");
+  const reclassifyIndex = result.calls.indexOf("label:2", pushIndex);
+  const dispatchIndex = result.calls.indexOf("dispatch-pr-checks.sh", pushIndex);
+  const waitIndex = result.calls.indexOf("required-wait", pushIndex);
+  assert.ok(
+    pushIndex >= 0 &&
+      pushIndex < reclassifyIndex &&
+      reclassifyIndex < dispatchIndex &&
+      dispatchIndex < waitIndex,
+    `pushed rebase was not reclassified before checks:\n${result.calls}`,
+  );
+  assert.match(result.calls, /label:3:auto-merge/);
+  assert.match(result.calls, /--match-head-commit d{40}/);
+});
+
+test("maybe-auto-merge stops a rebased head classified from stale or unbound evidence", () => {
+  const base = "b".repeat(40);
+  const initialHead = "a".repeat(40);
+  const pushedHead = "d".repeat(40);
+  const unboundFingerprint = createHash("sha256")
+    .update("no-trusted-crawl-stats")
+    .digest("hex");
+  const result = runMaybeAutoMerge({
+    baseSha: base,
+    initialHeadSha: initialHead,
+    labelRuns: [
+      { labels: "auto-merge", baseSha: base, headSha: initialHead },
+      {
+        labels: "review-size",
+        baseSha: base,
+        fingerprint: unboundFingerprint,
+        headSha: pushedHead,
+      },
+    ],
+    pushedHeadSha: pushedHead,
+    rebaseNeeded: true,
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.calls, /push/);
+  assert.match(result.calls, /label:2:review-size/);
+  assert.doesNotMatch(result.calls, /dispatch-pr-checks\.sh|required-wait|lease-comments/);
+  assert.doesNotMatch(result.calls, /pr merge|dispatch-company-production-sync\.sh/);
 });
 
 test("company auto-merges dispatch exact-revision guarded sync without deploying web", () => {
@@ -1630,9 +2289,11 @@ test("company auto-merges dispatch exact-revision guarded sync without deploying
     );
   }
 
+  assert.doesNotMatch(uploadCompanyImagesWorkflow, /name: Dispatch production CSV sync/);
+  assert.doesNotMatch(uploadCompanyImagesWorkflow, /name: Close linked company-request issues/);
   assert.match(
-    uploadCompanyImagesWorkflow,
-    /name: Dispatch production CSV sync[\s\S]*steps\.merge\.outputs\.merged == 'true'[\s\S]*dispatch-company-production-sync\.sh/,
+    maybeAutoMergeScript,
+    /PR #\$PR merged[\s\S]*dispatch-company-production-sync\.sh[\s\S]*close-linked-company-request-issues\.sh/,
   );
   assert.match(
     dispatchCompanyProductionSyncScript,
@@ -1777,9 +2438,9 @@ test("bot-authored company branch updates dispatch path-aware CI", () => {
   assert.match(uploadCompanyImagesWorkflow, /id: image-sync/);
   assert.match(uploadCompanyImagesWorkflow, /steps\.image-sync\.outputs\.pushed == 'true'/);
   assert.match(uploadCompanyImagesWorkflow, /Dispatch checks for image commit/);
-  assert.match(uploadCompanyImagesWorkflow, /Auto merge is not allowed for this repository/);
   assert.match(uploadCompanyImagesWorkflow, /maybe-auto-merge-pr\.sh/);
-  assert.match(uploadCompanyImagesWorkflow, /Retry trusted auto-merge/);
+  assert.match(uploadCompanyImagesWorkflow, /Run trusted auto-merge/);
+  assert.doesNotMatch(uploadCompanyImagesWorkflow, /gh pr merge|--auto|steps\.merge/);
   assert.match(uploadCompanyImagesWorkflow, /TRUSTED_SCRIPTS_DIR: \$\{\{ runner\.temp \}\}\/trusted-scripts/);
 });
 
@@ -1794,10 +2455,9 @@ test("company image upload is PR-scoped and waits for Required CI", () => {
     /uv run python -m src\.image_sync "\$\{image_args\[@\]\}"/,
   );
   assert.doesNotMatch(uploadCompanyImagesWorkflow, /git add apps\/crawler\/data\//);
-  assert.match(
-    uploadCompanyImagesWorkflow,
-    /Branch protection is unavailable; trusted retry will wait for Required CI/,
-  );
+  assert.match(uploadCompanyImagesWorkflow, /Run trusted auto-merge/);
+  assert.match(maybeAutoMergeScript, /wait_for_required_ci/);
+  assert.doesNotMatch(uploadCompanyImagesWorkflow, /gh pr merge|--auto/);
   assert.doesNotMatch(
     uploadCompanyImagesWorkflow,
     /gh pr checks "\$PR" --repo "\$REPO" --watch --fail-fast \|\| true/,
@@ -1871,6 +2531,10 @@ test("company PR label script applies decision labels idempotently", () => {
     labelPrScript,
     /for L in \$ALL_DECISION_LABELS; do\s+gh pr edit "\$PR" --repo "\$REPO" --remove-label "\$L"/,
   );
+  assert.doesNotMatch(
+    labelPrScript.match(/^ALLOWED_FILES=.*$/m)?.[0] ?? "",
+    /lightpanda\/fixtures\/census\.json/,
+  );
 });
 
 function shellAllowlist(name) {
@@ -1912,7 +2576,7 @@ test("company PR static type allowlists match runtime registrations", () => {
   );
 });
 
-test("company PR workflows capture the semantic diff helper as trusted code", () => {
+test("company PR workflows capture classification helpers as trusted code", () => {
   for (const source of [maybeAutoMergeWorkflow, uploadCompanyImagesWorkflow]) {
     assert.match(
       source,
@@ -1921,6 +2585,10 @@ test("company PR workflows capture the semantic diff helper as trusted code", ()
     assert.match(
       source,
       /cp \.github\/scripts\/merge_company_csv_rebase\.py "\$RUNNER_TEMP\/trusted-scripts\/merge_company_csv_rebase\.py"/,
+    );
+    assert.match(
+      source,
+      /cp \.github\/scripts\/crawl-stats-evidence\.py "\$RUNNER_TEMP\/trusted-scripts\/crawl-stats-evidence\.py"/,
     );
   }
 });
@@ -1964,7 +2632,7 @@ diff --git a/apps/crawler/data/boards.csv b/apps/crawler/data/boards.csv
   assert.deepEqual(netAddedCsvRows(diff), [company, board]);
 });
 
-test("company PR labeler auto-merges valid config despite moved historical rows", () => {
+test("company PR labeler rejects census fixtures from the auto-merge path", () => {
   const moved =
     "old-company,careers,https://old.example/jobs,paylocity,,paylocity,";
   const board =
@@ -1989,13 +2657,208 @@ diff --git a/apps/crawler/data/company_descriptions.csv b/apps/crawler/data/comp
 @@ -1 +1 @@
 +${description}
 `;
-  const result = runCompanyPrLabeler(diff);
+  const fixtureFiles = [
+    "apps/crawler/data/boards.csv",
+    "apps/crawler/data/companies.csv",
+    "apps/crawler/data/company_descriptions.csv",
+    "apps/crawler/tests/lightpanda/fixtures/census.json",
+  ];
+  const result = runCompanyPrLabeler(diff, { autoMergeArmed: true });
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Applied labels: auto-merge/);
   assert.match(result.outputs, /^labels=auto-merge$/m);
+  assert.match(result.outputs, /^base_sha=[0-9a-f]{40}$/m);
+  assert.match(result.outputs, /^crawl_stats_fingerprint=[0-9a-f]{64}$/m);
+  assert.match(result.outputs, /^head_sha=[0-9a-f]{40}$/m);
   assert.match(result.calls, /--remove-label review-code/);
   assert.match(result.calls, /--add-label auto-merge/);
+  assert.match(result.calls, /--disable-auto/);
+  assert.ok(
+    result.calls.indexOf("--disable-auto") < result.calls.indexOf("pr diff"),
+    `legacy auto-merge must be disabled before the first diff:\n${result.calls}`,
+  );
+
+  const blocked = runCompanyPrLabeler(diff, {
+    currentLabels: "auto-merge",
+    files: fixtureFiles,
+  });
+  assert.equal(blocked.status, 0, blocked.stderr);
+  assert.match(blocked.stdout, /Unexpected file: apps\/crawler\/tests\/lightpanda\/fixtures\/census\.json/);
+  assert.match(blocked.stdout, /Applied labels: review-code/);
+  assert.match(blocked.outputs, /^labels=review-code$/m);
+  assert.match(blocked.outputs, /^base_sha=[0-9a-f]{40}$/m);
+  assert.match(blocked.outputs, /^head_sha=[0-9a-f]{40}$/m);
+  assert.match(blocked.calls, /--remove-label auto-merge/);
+  assert.match(blocked.calls, /--add-label review-code/);
+  assert.doesNotMatch(blocked.calls, /--disable-auto/);
+  assert.doesNotMatch(blocked.calls, /--rebase/);
+
+  const armed = runCompanyPrLabeler(diff, {
+    autoMergeArmed: true,
+    currentLabels: "auto-merge",
+    files: fixtureFiles,
+  });
+  assert.equal(armed.status, 0, armed.stderr);
+  assert.match(armed.calls, /pr merge 123 --repo colophon-group\/jobseek --disable-auto/);
+  assert.ok(
+    armed.calls.indexOf("--disable-auto") < armed.calls.indexOf("pr diff"),
+    `legacy auto-merge must be disabled before fixture classification:\n${armed.calls}`,
+  );
+  assert.match(armed.outputs, /^labels=review-code$/m);
+
+  const metadataFailure = runCompanyPrLabeler(diff, {
+    initialMetadataFails: true,
+  });
+  assert.notEqual(metadataFailure.status, 0);
+  assert.doesNotMatch(metadataFailure.stdout, /Applied labels:/);
+  assert.equal(metadataFailure.outputs, "");
+  assert.equal(metadataFailure.calls, "");
+
+  const disableFailure = runCompanyPrLabeler(diff, {
+    autoMergeArmed: true,
+    disableAutoFails: true,
+  });
+  assert.notEqual(disableFailure.status, 0);
+  assert.match(disableFailure.calls, /--disable-auto/);
+  assert.doesNotMatch(disableFailure.calls, /pr diff|pr edit/);
+  assert.doesNotMatch(disableFailure.stdout, /Applied labels:/);
+  assert.equal(disableFailure.outputs, "");
+
+  const invalidArmedHead = runCompanyPrLabeler(diff, {
+    autoMergeArmed: true,
+    initialHeadSha: "invalid",
+  });
+  assert.notEqual(invalidArmedHead.status, 0);
+  assert.match(invalidArmedHead.calls, /--disable-auto/);
+  assert.match(invalidArmedHead.stderr, /Invalid PR head SHA/);
+  assert.doesNotMatch(invalidArmedHead.calls, /pr diff|pr edit/);
+  assert.equal(invalidArmedHead.outputs, "");
+
+  const staleHead = runCompanyPrLabeler(diff, {
+    finalHeadSha: "b".repeat(40),
+  });
+  assert.notEqual(staleHead.status, 0);
+  assert.match(staleHead.stderr, /PR head\/base changed during classification/);
+  assert.match(staleHead.calls, /pr diff/);
+  assert.doesNotMatch(staleHead.calls, /pr edit/);
+  assert.equal(staleHead.outputs, "");
+
+  const staleBase = runCompanyPrLabeler(diff, {
+    finalBaseSha: "d".repeat(40),
+  });
+  assert.notEqual(staleBase.status, 0);
+  assert.match(staleBase.stderr, /PR head\/base changed during classification/);
+  assert.match(staleBase.calls, /ref=c{40}/);
+  assert.doesNotMatch(staleBase.calls, /ref=main|pr edit/);
+  assert.equal(staleBase.outputs, "");
+});
+
+test("company PR labeler reads every required CSV at the exact revision and fails closed", () => {
+  const company = "new-company,New Company,https://new.example,,,,,,,";
+  const board = "new-company,careers,https://new.example/jobs,comeet,{},skip,";
+  const diff = `diff --git a/apps/crawler/data/companies.csv b/apps/crawler/data/companies.csv
+--- a/apps/crawler/data/companies.csv
++++ b/apps/crawler/data/companies.csv
+@@ -0,0 +1 @@
++${company}
+diff --git a/apps/crawler/data/boards.csv b/apps/crawler/data/boards.csv
+--- a/apps/crawler/data/boards.csv
++++ b/apps/crawler/data/boards.csv
+@@ -0,0 +1 @@
++${board}
+`;
+
+  const valid = runCompanyPrLabeler(diff);
+  assert.equal(valid.status, 0, valid.stderr);
+  for (const expected of [
+    /api --method GET repos\/colophon-group\/jobseek\/contents\/apps\/crawler\/data\/companies\.csv .*ref=a{40}/,
+    /api --method GET repos\/colophon-group\/jobseek\/contents\/apps\/crawler\/data\/boards\.csv .*ref=a{40}/,
+    /api --method GET repos\/colophon-group\/jobseek\/contents\/apps\/crawler\/data\/companies\.csv .*ref=c{40}/,
+  ]) {
+    assert.match(valid.calls, expected);
+  }
+
+  for (const key of ["head-companies", "head-boards", "base-companies"]) {
+    for (const options of [
+      { contentFailure: key },
+      { contentSchemaFailure: key },
+      { contentEmpty: key },
+    ]) {
+      const failed = runCompanyPrLabeler(diff, options);
+      assert.notEqual(failed.status, 0, `${key} unexpectedly passed`);
+      assert.equal(failed.outputs, "");
+      assert.doesNotMatch(failed.calls, /pr edit/);
+      assert.doesNotMatch(failed.stdout, /Applied labels:/);
+    }
+  }
+});
+
+test("company PR labeler accepts only singular trusted stats for its exact head", () => {
+  const diff = `diff --git a/apps/crawler/data/boards.csv b/apps/crawler/data/boards.csv
+--- a/apps/crawler/data/boards.csv
++++ b/apps/crawler/data/boards.csv
+@@ -0,0 +1 @@
++new-company,careers,https://new.example/jobs,comeet,{},skip,
+`;
+  const head = "a".repeat(40);
+  const otherHead = "d".repeat(40);
+
+  const paginated = runCompanyPrLabeler(diff, {
+    commentsPages: [
+      [crawlStatsComment({ headSha: otherHead, id: 1 })],
+      [
+        crawlStatsComment({
+          headSha: head,
+          id: 2,
+          jobs: 500,
+          monitorTime: 61,
+          updatedAt: "2026-09-07T01:00:00Z",
+        }),
+      ],
+    ],
+  });
+  assert.equal(paginated.status, 0, paginated.stderr);
+  assert.match(paginated.calls, /api --method GET --paginate --slurp .*comments\?per_page=100/);
+  assert.match(paginated.outputs, /^labels=review-size,review-load$/m);
+
+  for (const commentsPages of [
+    [[crawlStatsComment({ association: "NONE", headSha: head })]],
+    [[crawlStatsComment({ body: '<!-- crawl-stats {"jobs":10,"monitor_time":1} -->' })]],
+    [[crawlStatsComment({ headSha: otherHead })]],
+  ]) {
+    const ignored = runCompanyPrLabeler(diff, { commentsPages });
+    assert.equal(ignored.status, 0, ignored.stderr);
+    assert.match(ignored.outputs, /^labels=review-size$/m);
+    assert.doesNotMatch(ignored.outputs, /^labels=auto-merge$/m);
+  }
+
+  for (const commentsPages of [
+    [[crawlStatsComment({ body: "<!-- crawl-stats {broken} -->" })]],
+    [[
+      crawlStatsComment({
+        body:
+          `<!-- crawl-stats ${JSON.stringify({ head_sha: head, jobs: 10, monitor_time: 1 })} -->` +
+          `<!-- crawl-stats ${JSON.stringify({ head_sha: head, jobs: 10, monitor_time: 1 })} -->`,
+      }),
+    ]],
+    [[
+      crawlStatsComment({ headSha: head, id: 1 }),
+      crawlStatsComment({ headSha: head, id: 2 }),
+    ]],
+    [[crawlStatsComment({ body: `<!-- crawl-stats {"head_sha":"${head}","jobs":true,"monitor_time":1} -->` })]],
+    [[crawlStatsComment({ body: `<!-- crawl-stats {"extra":1,"head_sha":"${head}","jobs":10,"monitor_time":1} -->` })]],
+  ]) {
+    const malformed = runCompanyPrLabeler(diff, { commentsPages });
+    assert.notEqual(malformed.status, 0);
+    assert.equal(malformed.outputs, "");
+    assert.doesNotMatch(malformed.calls, /pr edit/);
+  }
+
+  const apiFailure = runCompanyPrLabeler(diff, { commentsApiFails: true });
+  assert.notEqual(apiFailure.status, 0);
+  assert.equal(apiFailure.outputs, "");
+  assert.doesNotMatch(apiFailure.calls, /pr edit/);
 });
 
 test("CodeQL skips full analysis for non-code pull requests", () => {
@@ -2017,11 +2880,15 @@ test("CodeQL skips full analysis for non-code pull requests", () => {
     "'!.github/DISCUSSION_TEMPLATE/**'",
     "'!apps/crawler/data/**'",
     "'!apps/crawler/traces/**'",
-    "'!apps/crawler/tests/lightpanda/fixtures/census.json'",
     "'!apps/crawler/VERSION'",
   ]) {
     assert.ok(changesJob.includes(pattern), `missing CodeQL filter pattern ${pattern}`);
   }
+  assert.equal(
+    codeqlWorkflow.includes("apps/crawler/tests/lightpanda/fixtures/census.json"),
+    false,
+    "a census baseline change must run CodeQL",
+  );
 
   const analyzeJob = workflowJobBlock(codeqlWorkflow, "analyze");
   assert.match(analyzeJob, /name: Analyze \(\$\{\{ matrix\.language \}\}\)/);

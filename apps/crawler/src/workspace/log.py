@@ -6,6 +6,9 @@ YAML has an embedded ``log`` list for board-level actions.
 
 from __future__ import annotations
 
+import json
+import math
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -87,16 +90,18 @@ def _get_active_cfg(board: dict[str, Any]) -> dict[str, Any]:
     return (board.get("configs") or {}).get(active, {})
 
 
-def format_crawl_stats(boards: dict[str, dict[str, Any]]) -> str:
+def format_crawl_stats(boards: dict[str, dict[str, Any]], head_sha: str) -> str:
     """Generate crawl stats comment with per-board rows.
 
     Returns the full markdown comment including the hidden JSON marker.
     Each board gets its own row; a Total row is appended for multi-board.
 
-    The ``<!-- crawl-stats {json} -->`` marker contains ``jobs`` (int)
-    and ``monitor_time`` (float, sum across boards) for CI label-pr.sh.
+    The ``<!-- crawl-stats {json} -->`` marker binds ``jobs`` (int) and
+    ``monitor_time`` (finite non-negative number, summed across boards) to the
+    exact verified PR ``head_sha`` for CI label-pr.sh.
     """
-    import json
+    if re.fullmatch(r"[0-9a-f]{40}", head_sha) is None:
+        raise ValueError("head_sha must be an exact lowercase SHA")
 
     total_jobs = 0
     total_monitor_time = 0.0
@@ -107,6 +112,10 @@ def format_crawl_stats(boards: dict[str, dict[str, Any]]) -> str:
         mr = cfg.get("run") or {}
         jobs = mr.get("jobs", 0)
         mon_time = mr.get("time", 0.0)
+        if type(jobs) is not int or jobs < 0:
+            raise ValueError(f"{alias}: jobs must be a non-negative integer")
+        if type(mon_time) not in {int, float} or not math.isfinite(mon_time) or mon_time < 0:
+            raise ValueError(f"{alias}: monitor time must be finite and non-negative")
         total_jobs += jobs
         total_monitor_time += mon_time
 
@@ -128,7 +137,15 @@ def format_crawl_stats(boards: dict[str, dict[str, Any]]) -> str:
     if len(boards) > 1:
         rows.append(f"| **Total** | | **{total_jobs}** | | |")
 
-    stats_json = json.dumps({"jobs": total_jobs, "monitor_time": total_monitor_time})
+    stats_json = json.dumps(
+        {
+            "head_sha": head_sha,
+            "jobs": total_jobs,
+            "monitor_time": total_monitor_time,
+        },
+        allow_nan=False,
+        sort_keys=True,
+    )
 
     header = "| Board | Monitor | Jobs | Cost | Verdict |\n|---|---|---|---|---|"
     table = "\n".join(rows)

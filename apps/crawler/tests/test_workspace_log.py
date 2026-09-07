@@ -10,6 +10,8 @@ from src.workspace.log import (
     read,
 )
 
+HEAD_SHA = "a" * 40
+
 
 class TestLogAppend:
     def test_append_creates_file(self, tmp_path):
@@ -92,8 +94,9 @@ class TestFormatCrawlStats:
                 },
             }
         }
-        stats = format_crawl_stats(boards)
+        stats = format_crawl_stats(boards, HEAD_SHA)
         assert "<!-- crawl-stats" in stats
+        assert f'"head_sha": "{HEAD_SHA}"' in stats
         # Per-board row with slug, monitor, jobs, cost, verdict columns
         assert "test-careers" in stats
         assert "`sitemap`" in stats
@@ -116,7 +119,7 @@ class TestFormatCrawlStats:
                 },
             }
         }
-        stats = format_crawl_stats(boards)
+        stats = format_crawl_stats(boards, HEAD_SHA)
         assert "`greenhouse`" in stats
         assert "50" in stats
 
@@ -144,7 +147,7 @@ class TestFormatCrawlStats:
                 },
             }
         }
-        stats = format_crawl_stats(boards)
+        stats = format_crawl_stats(boards, HEAD_SHA)
         # Verdict appears in the board row
         assert "**acceptable**" in stats
         # Field coverage is NOT in the stats comment (lives in PR body only)
@@ -178,7 +181,7 @@ class TestFormatCrawlStats:
                 },
             },
         }
-        stats = format_crawl_stats(boards)
+        stats = format_crawl_stats(boards, HEAD_SHA)
         # Both boards appear as rows
         assert "kpmg-careers" in stats
         assert "kpmg-fr" in stats
@@ -188,3 +191,25 @@ class TestFormatCrawlStats:
         # JSON marker has summed values
         assert '"jobs": 273' in stats
         assert '"monitor_time": 17.0' in stats
+
+    def test_rejects_unbound_or_invalid_head(self):
+        import pytest
+
+        with pytest.raises(ValueError, match="exact lowercase SHA"):
+            format_crawl_stats({}, "main")
+
+    def test_rejects_non_finite_or_boolean_metrics(self):
+        import pytest
+
+        def boards(jobs, monitor_time):
+            return {
+                "careers": {
+                    "active_config": "dom",
+                    "configs": {"dom": {"run": {"jobs": jobs, "time": monitor_time}}},
+                }
+            }
+
+        with pytest.raises(ValueError, match="jobs"):
+            format_crawl_stats(boards(True, 1.0), HEAD_SHA)
+        with pytest.raises(ValueError, match="monitor time"):
+            format_crawl_stats(boards(1, float("nan")), HEAD_SHA)

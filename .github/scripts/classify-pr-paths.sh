@@ -5,6 +5,11 @@ set -euo pipefail
 : "${GH_TOKEN:?GH_TOKEN is required}"
 : "${REPO:?REPO is required}"
 : "${PR:?PR is required}"
+: "${GITHUB_SHA:?GITHUB_SHA is required}"
+
+is_sha() {
+  [[ "$1" =~ ^[0-9a-f]{40}$ ]]
+}
 
 is_non_code_path() {
   local file="$1"
@@ -29,7 +34,6 @@ is_non_code_path() {
       .github/DISCUSSION_TEMPLATE/* | \
       apps/crawler/data/* | \
       apps/crawler/traces/* | \
-      apps/crawler/tests/lightpanda/fixtures/census.json | \
       apps/crawler/VERSION)
       return 0
       ;;
@@ -58,7 +62,6 @@ is_crawler_code_path() {
     *.md | \
       apps/crawler/data/* | \
       apps/crawler/traces/* | \
-      apps/crawler/tests/lightpanda/fixtures/census.json | \
       apps/crawler/VERSION)
       return 1
       ;;
@@ -97,9 +100,24 @@ emit() {
   fi
 }
 
-base_ref=$(gh api "repos/$REPO/pulls/$PR" --jq '.base.ref')
+pr=$(gh api "repos/$REPO/pulls/$PR")
+base_ref=$(jq -r '.base.ref' <<<"$pr")
+base_sha=$(jq -r '.base.sha' <<<"$pr")
+head_sha=$(jq -r '.head.sha' <<<"$pr")
 if [[ -z "$base_ref" || "$base_ref" == "null" ]]; then
   echo "PR #$PR has no base branch" >&2
+  exit 1
+fi
+if ! is_sha "$base_sha" || ! is_sha "$head_sha"; then
+  echo "PR #$PR did not resolve to exact base and head revisions" >&2
+  exit 1
+fi
+if ! is_sha "$GITHUB_SHA" || [[ "$GITHUB_SHA" != "$head_sha" ]]; then
+  echo "manually dispatched revision does not match the current PR head" >&2
+  exit 1
+fi
+if [[ "$(git rev-parse HEAD)" != "$head_sha" ]]; then
+  echo "checked-out revision does not match the current PR head" >&2
   exit 1
 fi
 
@@ -109,3 +127,5 @@ emit "boards_csv" "$boards_csv"
 emit "codeql" "$code"
 emit "is_pr" "true"
 emit "base_ref" "$base_ref"
+emit "base_sha" "$base_sha"
+emit "head_sha" "$head_sha"

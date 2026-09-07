@@ -147,10 +147,6 @@ def _patch_all(monkeypatch, tmp_path, *, strict_worktree: bool = False):
     monkeypatch.setattr("src.csvtool.get_data_dir", _data)
     monkeypatch.setattr("src.inspect.get_data_dir", _data)
     monkeypatch.setattr("src.workspace.commands.lifecycle.get_data_dir", _data)
-    monkeypatch.setattr(
-        "src.workspace.commands.lifecycle._refresh_census_manifest",
-        lambda: tmp_path / "tests" / "lightpanda" / "fixtures" / "census.json",
-    )
     monkeypatch.setattr("src.workspace.commands.taxonomy.get_data_dir", _data)
     monkeypatch.setattr("src.workspace.state.get_workspace_dir", _ws)
     monkeypatch.setattr("src.workspace.filelock._LIFECYCLE_LOCKS_DIR", tmp_path / ".locks")
@@ -5021,36 +5017,47 @@ class TestSubmitStepRegistry:
         non_critical_idx = [i for i, (_, _, c) in enumerate(SUBMIT_STEPS) if not c]
         assert max(critical_idx) < min(non_critical_idx)
 
-    def test_refresh_census_manifest_uses_crawler_paths(self, tmp_path, monkeypatch):
-        from src.lightpanda import census
-        from src.workspace.commands import lifecycle
-
-        data_dir = tmp_path / "apps" / "crawler" / "data"
-        write_manifest = MagicMock()
-        monkeypatch.setattr(lifecycle, "get_data_dir", lambda: data_dir)
-        monkeypatch.setattr(census, "write_manifest", write_manifest)
-
-        result = lifecycle._refresh_census_manifest()
-
-        expected = (
-            tmp_path / "apps" / "crawler" / "tests" / "lightpanda" / "fixtures" / "census.json"
-        )
-        assert result == expected
-        write_manifest.assert_called_once_with(data_dir / "boards.csv", expected)
-
-    def test_csv_write_refreshes_census_after_board_changes(self, tmp_path, monkeypatch):
-        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
-        refresh_census = MagicMock()
-        monkeypatch.setattr(
-            "src.workspace.commands.lifecycle._refresh_census_manifest",
-            refresh_census,
-        )
-
+    def test_stats_step_publishes_idempotently_for_verified_head(self, tmp_path, monkeypatch):
         from src.workspace.commands.lifecycle import _execute_submit_step
+
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        verified = _test_pr_details(10)
+        with (
+            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch(
+                "src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation",
+                return_value=verified,
+            ),
+            patch(
+                "src.workspace.commands.lifecycle.action_log.format_crawl_stats",
+                return_value="head-bound stats",
+            ) as format_stats,
+            patch("src.workspace.git.publish_crawl_stats_comment") as publish,
+        ):
+            _execute_submit_step("stats_posted", ws_obj, [board], None)
+
+        format_stats.assert_called_once_with(
+            {board.alias: board.to_dict()},
+            TEST_HEAD_OID,
+        )
+        publish.assert_called_once_with(10, "head-bound stats", TEST_HEAD_OID)
+
+    def test_csv_write_does_not_regenerate_census(self, tmp_path, monkeypatch):
+        from src.lightpanda import census
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        write_manifest = MagicMock()
+        monkeypatch.setattr(census, "write_manifest", write_manifest)
 
         _execute_submit_step("csv_written", ws_obj, [board], None)
 
-        refresh_census.assert_called_once_with()
+        write_manifest.assert_not_called()
+
+    def test_ws_package_excludes_lightpanda_runtime(self):
+        package_config = Path(__file__).resolve().parents[1] / "ws-package" / "pyproject.toml"
+
+        assert '"../src/lightpanda/"' not in package_config.read_text(encoding="utf-8")
 
     def test_csv_fallback_writes_auto_scraper_config(self, tmp_path, monkeypatch):
         """Submit fallback writes the full partial-rich auto configuration."""
@@ -5742,7 +5749,7 @@ class TestSubmitLastError:
         assert result.exit_code == 0
         staged_paths = add_files.call_args[0][0]
         assert "apps/crawler/src/workspace/kb/" in staged_paths
-        assert "apps/crawler/tests/lightpanda/fixtures/census.json" in staged_paths
+        assert "apps/crawler/tests/lightpanda/fixtures/census.json" not in staged_paths
 
 
 class TestBuildPrBody:
@@ -5966,7 +5973,7 @@ class TestFormatCrawlStats:
                 },
             },
         }
-        result = format_crawl_stats(boards)
+        result = format_crawl_stats(boards, TEST_HEAD_OID)
         # Verdict appears in the board row
         assert "**acceptable**" in result
         # Field coverage is NOT in stats comment (only in PR body)
@@ -5988,7 +5995,7 @@ class TestFormatCrawlStats:
                 },
             },
         }
-        result = format_crawl_stats(boards)
+        result = format_crawl_stats(boards, TEST_HEAD_OID)
         assert "50" in result
         assert "Field Coverage" not in result
 
