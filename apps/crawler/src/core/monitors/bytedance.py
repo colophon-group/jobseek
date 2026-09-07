@@ -286,15 +286,19 @@ def _to_job(item: dict, portal: _Portal) -> DiscoveredJob:
     if requirement:
         description_parts.extend(("<h3>Requirements</h3>", requirement))
 
-    city = item.get("city_info") if isinstance(item.get("city_info"), dict) else {}
-    parent = city.get("parent") if isinstance(city.get("parent"), dict) else {}
+    city_value = item.get("city_info")
+    city: dict = city_value if isinstance(city_value, dict) else {}
+    parent_value = city.get("parent")
+    parent: dict = parent_value if isinstance(parent_value, dict) else {}
     location_parts = [_text(city.get("en_name")), _text(parent.get("en_name"))]
     location = ", ".join(dict.fromkeys(part for part in location_parts if part))
 
-    recruit = item.get("recruit_type") if isinstance(item.get("recruit_type"), dict) else {}
+    recruit_value = item.get("recruit_type")
+    recruit: dict = recruit_value if isinstance(recruit_value, dict) else {}
     category = item.get("job_category")
     if not isinstance(category, dict):
-        category = item.get("job_type") if isinstance(item.get("job_type"), dict) else {}
+        category_value = item.get("job_type")
+        category = category_value if isinstance(category_value, dict) else {}
     team = _text(category.get("en_name")) or _text(category.get("name"))
 
     return DiscoveredJob(
