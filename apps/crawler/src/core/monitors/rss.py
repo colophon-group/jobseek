@@ -6,6 +6,7 @@ Supports multiple ATS platforms that expose job listings via RSS/XML-style trans
 - **teamtailor**: Teamtailor ``/jobs.rss`` (offset-paginated, ``tt:`` namespace)
 - **wp_job_manager**: WordPress WP Job Manager ``?feed=job_feed`` (page-paginated)
 - **governmentjobs**: NEOGOV/GovernmentJobs ``/SearchEngine/JobsFeed?agency=...``
+- **hr_manager**: Talent Recruiter / HR Manager embedded positions + full-description RSS
 - **generic**: Standard RSS 2.0 (manual config, not auto-detected)
 
 Config: ``{"preset": "<name>", "feed_url": "..."}``. Legacy SuccessFactors
@@ -17,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import html
+import json
 import random
 import re
 import xml.etree.ElementTree as ET
@@ -85,6 +87,11 @@ _SF_WRAPPER_QUERY_KEYS = frozenset(
 _GOVERNMENTJOBS_HOSTS = frozenset({"governmentjobs.com", "www.governmentjobs.com"})
 _GOVERNMENTJOBS_BOARD_RE = re.compile(r"^/careers/(?P<agency>[a-z0-9][a-z0-9-]{0,63})/?$")
 _GOVERNMENTJOBS_NS = "http://www.neogov.com/namespaces/JobListing"
+_HR_MANAGER_BOARD_HOST = "candidate.hr-manager.net"
+_HR_MANAGER_FEED_HOST = "api.hr-manager.net"
+_HR_MANAGER_BOARD_PATH = "/vacancies/list.aspx"
+_HR_MANAGER_CUSTOMER_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+_HR_MANAGER_POSITION_LIST_ID_SUFFIX = "HiddenField_PositionList"
 
 
 async def _sleep(delay: float) -> None:
@@ -183,6 +190,11 @@ _PRESETS: dict[str, _Preset] = {
         page_query_param="paged",
     ),
     "governmentjobs": _Preset(
+        feed_paths=[],
+        page_patterns=[],
+        feed_ns={},
+    ),
+    "hr_manager": _Preset(
         feed_paths=[],
         page_patterns=[],
         feed_ns={},
@@ -432,6 +444,164 @@ def _parse_generic_item(item: ET.Element) -> DiscoveredJob | None:
         date_posted=date_posted,
         metadata=metadata or None,
     )
+
+
+def _hr_manager_customer_from_url(url: str) -> str | None:
+    """Return the tenant alias from one strict HR Manager board URL."""
+
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+        pairs = parse_qsl(parsed.query, keep_blank_values=True, max_num_fields=2)
+    except (TypeError, ValueError):
+        return None
+    if (
+        parsed.scheme.casefold() != "https"
+        or parsed.hostname is None
+        or parsed.hostname.casefold().rstrip(".") != _HR_MANAGER_BOARD_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.path.casefold() != _HR_MANAGER_BOARD_PATH
+        or parsed.fragment
+        or len(pairs) != 1
+        or pairs[0][0].casefold() != "customer"
+    ):
+        return None
+    customer = pairs[0][1].strip().casefold()
+    return customer if _HR_MANAGER_CUSTOMER_RE.fullmatch(customer) else None
+
+
+def _hr_manager_feed_url(customer: str) -> str:
+    """Build the first-party recruitment feed for a validated tenant alias."""
+
+    if _HR_MANAGER_CUSTOMER_RE.fullmatch(customer) is None:
+        raise ValueError("invalid HR Manager customer alias")
+    return (
+        f"https://{_HR_MANAGER_FEED_HOST}/JobPortal.svc/{customer}/"
+        "PositionList/rss/?protype=RecruitmentProject&incads=true"
+    )
+
+
+def _hr_manager_position_data(page: str, customer: str) -> dict[str, dict]:
+    """Parse and validate the tenant-scoped position JSON embedded in the board."""
+
+    document = LexborHTMLParser(page)
+    node = document.css_first(f'input[id$="{_HR_MANAGER_POSITION_LIST_ID_SUFFIX}"]')
+    raw_value = node.attributes.get("value") if node is not None else None
+    if not raw_value:
+        raise ValueError("HR Manager board is missing its position list")
+    try:
+        payload = json.loads(html.unescape(raw_value))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("HR Manager position list is invalid JSON") from exc
+
+    position_list = payload.get("PositionList")
+    if not isinstance(position_list, dict):
+        raise ValueError("HR Manager position list payload is missing PositionList")
+    alias = position_list.get("CustomerAlias") or payload.get("CustomerAlias")
+    if not isinstance(alias, str) or alias.casefold() != customer:
+        raise ValueError("HR Manager position list tenant does not match the board URL")
+    status = position_list.get("TransactionStatus") or payload.get("TransactionStatus")
+    if not isinstance(status, dict) or status.get("StatusCode") != 0:
+        raise ValueError("HR Manager position list did not report success")
+    items = position_list.get("Items")
+    if not isinstance(items, list):
+        raise ValueError("HR Manager position list items are missing")
+    advertised_count = position_list.get("PositionCountList")
+    if not isinstance(advertised_count, int) or advertised_count != len(items):
+        raise ValueError("HR Manager position count does not match its embedded items")
+
+    positions: dict[str, dict] = {}
+    for item in items:
+        if not isinstance(item, dict) or item.get("ProjectType") != "RecruitmentProject":
+            raise ValueError("HR Manager position list contains an unexpected project type")
+        position_id = item.get("Id")
+        if not isinstance(position_id, int) or position_id <= 0:
+            raise ValueError("HR Manager position has an invalid id")
+        key = str(position_id)
+        if key in positions:
+            raise ValueError("HR Manager position list contains duplicate ids")
+        positions[key] = item
+    return positions
+
+
+def _hr_manager_locations(position: dict) -> list[str] | None:
+    """Return provider-structured workplace/region labels without duplicates."""
+
+    workplace = position.get("WorkPlace")
+    if isinstance(workplace, str) and workplace.strip():
+        return [workplace.strip()]
+
+    values: list[str] = []
+    raw_locations = position.get("PositionLocationMultiSelection")
+    if isinstance(raw_locations, list):
+        for raw in raw_locations:
+            name = raw.get("Name") if isinstance(raw, dict) else None
+            if isinstance(name, str) and name.strip() and name.strip() not in values:
+                values.append(name.strip())
+    if not values:
+        primary = position.get("PositionLocation")
+        name = primary.get("Name") if isinstance(primary, dict) else None
+        if isinstance(name, str) and name.strip():
+            values.append(name.strip())
+    return values or None
+
+
+def _hr_manager_employment_type(position: dict) -> str | None:
+    raw = position.get("CustomList1")
+    value = raw.get("Name") if isinstance(raw, dict) else None
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+async def _discover_hr_manager(
+    board: dict,
+    client: httpx.AsyncClient,
+    *,
+    feed_url: str,
+    preset: _Preset,
+) -> list[DiscoveredJob]:
+    """Join HR Manager's full-description RSS with its tenant-safe location data."""
+
+    metadata = board.get("metadata") or {}
+    customer = metadata.get("customer") or _hr_manager_customer_from_url(board["board_url"])
+    if not isinstance(customer, str) or _HR_MANAGER_CUSTOMER_RE.fullmatch(customer) is None:
+        raise ValueError("HR Manager monitor requires a valid customer alias")
+    page = await fetch_page_text(
+        board["board_url"], client, max_chars=_DETECTION_MAX_CHARS
+    )
+    if not page:
+        raise ValueError("HR Manager board page could not be fetched")
+    positions = _hr_manager_position_data(page, customer)
+
+    jobs: list[DiscoveredJob] = []
+    seen_ids: set[str] = set()
+    async for item in _stream_feed_items(feed_url, preset, client):
+        job = _parse_generic_item(item)
+        if job is None:
+            raise ValueError("HR Manager feed item is missing its job URL")
+        position_id = (job.metadata or {}).get("id")
+        if not isinstance(position_id, str) or position_id not in positions:
+            raise ValueError("HR Manager feed contains a job outside the board position list")
+        if position_id in seen_ids:
+            raise ValueError("HR Manager feed contains duplicate job ids")
+        seen_ids.add(position_id)
+        position = positions[position_id]
+        job.locations = _hr_manager_locations(position)
+        job.employment_type = _hr_manager_employment_type(position)
+        languages = position.get("Languages")
+        if isinstance(languages, list) and languages:
+            code = languages[0].get("Code") if isinstance(languages[0], dict) else None
+            if isinstance(code, str) and re.fullmatch(r"[a-z]{2}", code.casefold()):
+                job.language = code.casefold()
+        job.source_identity = f"hr_manager:{customer}:{position_id}"
+        jobs.append(job)
+        if len(jobs) >= MAX_JOBS:
+            raise ValueError(f"HR Manager feed exceeds the {MAX_JOBS}-job safety cap")
+
+    if seen_ids != set(positions):
+        raise ValueError("HR Manager feed and board position ids do not match")
+    return jobs
 
 
 def _parse_governmentjobs_item(item: ET.Element) -> DiscoveredJob | None:
@@ -1096,6 +1266,10 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
     feed_url = metadata.get("feed_url")
     if preset_name == "governmentjobs":
         feed_url = _governmentjobs_feed_from_config(board_url, metadata)
+    if preset_name == "hr_manager" and not feed_url:
+        customer = metadata.get("customer") or _hr_manager_customer_from_url(board_url)
+        if isinstance(customer, str) and _HR_MANAGER_CUSTOMER_RE.fullmatch(customer):
+            feed_url = _hr_manager_feed_url(customer)
     if not feed_url and preset and preset.feed_paths:
         feed_url = _build_feed_url(board_url, preset.feed_paths[0])
     if not feed_url:
@@ -1128,6 +1302,16 @@ async def discover_stream(
     if config is None:
         return
     preset_name, feed_url, preset = config
+    if preset_name == "hr_manager":
+        hr_manager_jobs = await _discover_hr_manager(
+            board,
+            client,
+            feed_url=feed_url,
+            preset=preset,
+        )
+        for start in range(0, len(hr_manager_jobs), _STREAM_BATCH):
+            yield hr_manager_jobs[start : start + _STREAM_BATCH]
+        return
     detail_fields, required_detail_fields = (
         _sf_detail_fields(metadata) if preset_name == "successfactors" else ({}, frozenset())
     )
@@ -1407,6 +1591,35 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     """Detect RSS-based ATS: HTML scan for preset markers → feed probe."""
     if client is None:
         return None
+
+    # Talent Recruiter / HR Manager boards expose the complete tenant job list
+    # in one hidden JSON field and full descriptions in a provider-owned RSS
+    # endpoint. Validate both sources and require exact count parity so a stale
+    # demo feed or cross-tenant URL cannot be accepted as the requested board.
+    hr_manager_customer = _hr_manager_customer_from_url(url)
+    if hr_manager_customer is not None:
+        page = await fetch_page_text(url, client, max_chars=_DETECTION_MAX_CHARS)
+        if page:
+            try:
+                positions = _hr_manager_position_data(page, hr_manager_customer)
+                feed = _hr_manager_feed_url(hr_manager_customer)
+                found, count = await _probe_feed(feed, client, "hr_manager")
+            except ValueError:
+                log.debug("rss.hr_manager_probe_failed", url=url, exc_info=True)
+            else:
+                if found and count == len(positions):
+                    log.info(
+                        "rss.hr_manager_detected",
+                        url=url,
+                        customer=hr_manager_customer,
+                        jobs=count,
+                    )
+                    return {
+                        "preset": "hr_manager",
+                        "customer": hr_manager_customer,
+                        "feed_url": feed,
+                        "jobs": count,
+                    }
 
     # NEOGOV publishes a first-party RSS feed keyed by the strict tenant in
     # /careers/<agency>. Probe it before fetching the JS-heavy careers shell;

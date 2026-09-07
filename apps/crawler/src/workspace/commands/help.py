@@ -2544,7 +2544,7 @@ personio — Personio XML Feed + HTML Fallback
 
 MONITOR_RSS = """\
 rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
-      (presets: successfactors, teamtailor, wp_job_manager, governmentjobs, generic)
+      (presets: successfactors, teamtailor, wp_job_manager, governmentjobs, hr_manager, generic)
 
   Feed:     GET {feed_url}
   Returns:  Feeds: full job data. Legacy SuccessFactors: title, location,
@@ -2559,6 +2559,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
             - teamtailor: /jobs.rss (offset-paginated)
             - wp_job_manager: /?feed=job_feed (page-paginated)
             - governmentjobs: /SearchEngine/JobsFeed?agency=<tenant>
+            - hr_manager: Talent Recruiter embedded position list + description RSS
             - generic: standard RSS 2.0 (manual feed URL)
 
   Config:
@@ -2571,6 +2572,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
     {"preset": "wp_job_manager",
      "feed_url": "https://example.com/?feed=job_feed"}
     {"preset": "governmentjobs", "agency": "clineville"}
+    {"preset": "hr_manager", "customer": "securitas"}
     {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
 
     preset     Feed parser preset. Auto-detected when possible.
@@ -2579,6 +2581,8 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
                the board URL; for generic feeds set it explicitly.
     variant    SuccessFactors only: "feed" or "legacy". Legacy identity and
                listing_url are auto-filled from strict SAP board URLs.
+    customer   HR Manager tenant alias. Auto-filled from a strict
+               candidate.hr-manager.net vacancies URL.
     fetch_company  SuccessFactors feed only: fetch each public detail page and
                store tenant customfield1 in metadata.company. Use job_filter
                with field=metadata.company for mixed-tenant career sites.
@@ -2591,6 +2595,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
               "SuccessFactors RSS — <feed_url>, N jobs"
               "SuccessFactors legacy DWR — company: X @ host, N jobs"
               "Teamtailor RSS — <feed_url>, N jobs"
+              "Talent Recruiter / HR Manager RSS — <feed_url>, N jobs"
               "RSS (generic) — <feed_url>, N jobs"
   Zero jobs?  Verify feed_url directly in a browser and confirm it returns
               job items (not an empty feed or non-RSS endpoint)."""

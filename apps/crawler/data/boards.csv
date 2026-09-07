@@ -5654,6 +5654,12 @@ securitas,securitas-vietnam,https://www.securitaslonghai.vn/tuyen-dung/,dom,"{""
 securitas-ag,securitas-ag-careers,https://securijob.securitas.ch,dom,"{""render"": false, ""url_filter"": ""-j\\d+\\.html""}",json-ld,
 securitas-ag,securitas-ag-careers-groupservices,https://jobs.groupservices.securitas.ch,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""-j\\d+\\.html""}",json-ld,
 securitas-ag,securitas-ag-careers-tech,https://jobs.securitas.ch,dom,"{""render"": false, ""url_filter"": ""-j\\d+\\.html""}",json-ld,
+securitas-usa,securitas-usa-careers,https://ekaw.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+securitas-usa,securitas-usa-careers-ca,https://ekaw.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+securitas-usa,securitas-usa-careers-dk,https://candidate.hr-manager.net/vacancies/list.aspx?customer=securitas,rss,"{""preset"": ""hr_manager"", ""customer"": ""securitas"", ""feed_url"": ""https://api.hr-manager.net/JobPortal.svc/securitas/PositionList/rss/?protype=RecruitmentProject&incads=true""}",skip,
+securitas-usa,securitas-usa-careers-global,https://securitas.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://securitas.teamtailor.com/jobs.rss""}",skip,
+securitas-usa,securitas-usa-careers-smartrecruiters,https://careers.smartrecruiters.com/Securitas,smartrecruiters,"{""token"": ""Securitas""}",smartrecruiters,
+securitas-usa,securitas-usa-technology-us,https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?ccId=1983092355_1058&cid=dc06b8e7-58c0-4a04-bed7-f7fc807d3866&lang=en_US,adp,"{""cid"": ""dc06b8e7-58c0-4a04-bed7-f7fc807d3866"", ""cc_id"": ""1983092355_1058"", ""locale"": ""en_US""}",adp,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""date_posted"", ""base_salary""]}"
 securitize,securitize-greenhouse,https://job-boards.greenhouse.io/securitize,greenhouse,"{""token"": ""securitize""}",skip,
 security-bank,security-bank-careers,https://sbchero.darwinbox.com/ms/candidate/careers,darwinbox,,skip,
 securityscorecard,securityscorecard-greenhouse,https://job-boards.greenhouse.io/securityscorecard,greenhouse,"{""token"": ""securityscorecard""}",skip,
