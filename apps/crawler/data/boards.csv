@@ -1433,6 +1433,7 @@ classdojo,classdojo-ashby,https://jobs.ashbyhq.com/classdojo,ashby,"{""token"": 
 classen-industries-gmbh,classen-industries-gmbh-join,https://join.com/companies/classen-industriesde,join,"{""slug"": ""classen-industriesde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 classpass,classpass-greenhouse,https://job-boards.greenhouse.io/classpass,greenhouse,"{""token"": ""classpass""}",skip,
 clay,clay-recruitee,https://clay.recruitee.com,recruitee,"{""token"": ""clay""}",skip,
+clean-harbors,clean-harbors-careers,https://epyc.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,"{""total_count_tolerance"": 2}",oracle_hcm,"{""enrich"": [""description""]}"
 clear-corporate,clear-corporate-greenhouse,https://job-boards.greenhouse.io/clear,greenhouse,"{""token"": ""clear""}",skip,
 clear-street,clear-street-greenhouse,https://job-boards.greenhouse.io/clearstreet,greenhouse,"{""token"": ""clearstreet""}",skip,
 clearbank,clearbank-careers,https://jobs.ashbyhq.com/clearbank,ashby,"{""token"": ""clearbank""}",skip,
