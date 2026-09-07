@@ -26,7 +26,7 @@ if [[ "$BRANCH" != add-company/* ]]; then
   exit 0
 fi
 
-ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/data/company_descriptions.csv apps/crawler/VERSION"
+ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/data/company_descriptions.csv apps/crawler/tests/lightpanda/fixtures/census.json apps/crawler/VERSION"
 # Keep these static: this script runs with pull_request_target write
 # permissions and must not import PR-controllable Python.
 VALID_MONITOR_TYPES='accenture|adp|almacareer|amazon|api_sniffer|ashby|avature|bamboohr|beehire|beisen|bite|brassring|breezy|candidatus|cnstaff|comeet|computrabajo|cornerstone|curately|cvwarehouse|darwinbox|dayforce|deel|dom|dvinci|earcu|eightfold|gem|greenhouse|gupy|headhunter|herp|hibob|hirehive|hireology|hrmos|icims|infoniqa|infor|inline|inploi|intervieweb|jarvi|jazzhr|job51|jobbank104|jobdiva|jobs_ch|jobstreet|jobvite|jobylon|johdi|join|keka|kipt|lever|linkedin|manatal|mokahr|nextdata|njoyn|notion|oracle_hcm|pageup|papa_johns|paycom|paylocity|personio|phenom|pinpoint|practicematch|prospective|recruitee|recruiter_co_kr|recruiterbox|rippling|rss|seamlesshiring|seek|sitemap|smartrecruiters|softgarden|talemetry|talentbrew|taleo|traffit|turbohire|typify|ukg|umantis|unifr|unisante|welcometothejungle|workable|workday|ycombinator'

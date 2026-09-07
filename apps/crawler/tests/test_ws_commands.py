@@ -147,6 +147,10 @@ def _patch_all(monkeypatch, tmp_path, *, strict_worktree: bool = False):
     monkeypatch.setattr("src.csvtool.get_data_dir", _data)
     monkeypatch.setattr("src.inspect.get_data_dir", _data)
     monkeypatch.setattr("src.workspace.commands.lifecycle.get_data_dir", _data)
+    monkeypatch.setattr(
+        "src.workspace.commands.lifecycle._refresh_census_manifest",
+        lambda: tmp_path / "tests" / "lightpanda" / "fixtures" / "census.json",
+    )
     monkeypatch.setattr("src.workspace.commands.taxonomy.get_data_dir", _data)
     monkeypatch.setattr("src.workspace.state.get_workspace_dir", _ws)
     monkeypatch.setattr("src.workspace.filelock._LIFECYCLE_LOCKS_DIR", tmp_path / ".locks")
@@ -5017,6 +5021,37 @@ class TestSubmitStepRegistry:
         non_critical_idx = [i for i, (_, _, c) in enumerate(SUBMIT_STEPS) if not c]
         assert max(critical_idx) < min(non_critical_idx)
 
+    def test_refresh_census_manifest_uses_crawler_paths(self, tmp_path, monkeypatch):
+        from src.lightpanda import census
+        from src.workspace.commands import lifecycle
+
+        data_dir = tmp_path / "apps" / "crawler" / "data"
+        write_manifest = MagicMock()
+        monkeypatch.setattr(lifecycle, "get_data_dir", lambda: data_dir)
+        monkeypatch.setattr(census, "write_manifest", write_manifest)
+
+        result = lifecycle._refresh_census_manifest()
+
+        expected = (
+            tmp_path / "apps" / "crawler" / "tests" / "lightpanda" / "fixtures" / "census.json"
+        )
+        assert result == expected
+        write_manifest.assert_called_once_with(data_dir / "boards.csv", expected)
+
+    def test_csv_write_refreshes_census_after_board_changes(self, tmp_path, monkeypatch):
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        refresh_census = MagicMock()
+        monkeypatch.setattr(
+            "src.workspace.commands.lifecycle._refresh_census_manifest",
+            refresh_census,
+        )
+
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        refresh_census.assert_called_once_with()
+
     def test_csv_fallback_writes_auto_scraper_config(self, tmp_path, monkeypatch):
         """Submit fallback writes the full partial-rich auto configuration."""
         ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
@@ -5707,6 +5742,7 @@ class TestSubmitLastError:
         assert result.exit_code == 0
         staged_paths = add_files.call_args[0][0]
         assert "apps/crawler/src/workspace/kb/" in staged_paths
+        assert "apps/crawler/tests/lightpanda/fixtures/census.json" in staged_paths
 
 
 class TestBuildPrBody:
