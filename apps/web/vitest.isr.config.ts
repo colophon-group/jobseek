@@ -16,8 +16,8 @@ import path from "path";
  *   BUILD_OUTPUT_LOG=path  # skip build, read pre-captured log (CI split)
  */
 export default defineConfig({
-  esbuild: {
-    jsx: "automatic",
+  oxc: {
+    jsx: { runtime: "automatic" },
   },
   resolve: {
     alias: {
