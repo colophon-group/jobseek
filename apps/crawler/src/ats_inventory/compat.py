@@ -77,11 +77,7 @@ COMPATIBILITY: dict[str, Compatibility] = {
     "beisen": _native("beisen"),
     "beisen_legacy": _native("beisen"),
     "breezy": _native("breezy"),
-    "bytedance": _generic(
-        "api_sniffer",
-        seedable=False,
-        reason="First-party board; let ws derive and verify the API configuration.",
-    ),
+    "bytedance": _native("bytedance"),
     "cornerstone": _native("cornerstone"),
     "darwinbox": _native("darwinbox"),
     "dayforce": _native("dayforce"),

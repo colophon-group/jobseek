@@ -62,6 +62,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `beehire` | Rich | skip | Beehire public campaign API |
 | `beisen` | Rich/hybrid | skip or DOM enrichment | Beisen modern public API + legacy server-rendered listings |
 | `brassring` | Rich | skip | BrassRing/Infinite Talent TGnewUI browser-session search API |
+| `bytedance` | Rich | skip | ByteDance first-party API with automatic category partitioning |
 | `candidatus` | URL-only | dom | Candidatus WinDev listings with browser-resolved detail postbacks |
 | `cnstaff` | Rich | skip | CNStaff paginated public career-board JSON |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |

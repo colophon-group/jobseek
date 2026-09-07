@@ -281,7 +281,15 @@ def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
     no ``api_url`` is configured (auto-discover mode).  dom always benefits
     from a browser but falls back to static HTML.
     """
-    if name in {"accenture", "brassring", "candidatus", "darwinbox", "dayforce", "njoyn"}:
+    if name in {
+        "accenture",
+        "brassring",
+        "bytedance",
+        "candidatus",
+        "darwinbox",
+        "dayforce",
+        "njoyn",
+    }:
         return True
     if name == "api_sniffer":
         cfg = config or {}
@@ -980,6 +988,7 @@ from src.core.monitors import (  # noqa: E402
     bite,  # noqa: F401
     brassring,  # noqa: F401
     breezy,  # noqa: F401
+    bytedance,  # noqa: F401
     candidatus,  # noqa: F401
     cnstaff,  # noqa: F401
     comeet,  # noqa: F401
