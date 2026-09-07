@@ -234,11 +234,12 @@ func TestCorrelateMainDocumentSnapshot(t *testing.T) {
 }
 
 func testRunner(process *fakeProcess, executor taskExecutor, portOpen func(int) bool) (Config, dependencies) {
-	return Config{
+	config := Config{
 		TaskTimeout:    time.Second,
 		CleanupTimeout: 500 * time.Millisecond,
 		TerminateGrace: 100 * time.Millisecond,
-	}, dependencies{
+	}
+	deps := dependencies{
 		process: &fixedStarter{process: process},
 		ready: readyWaiterFunc(func(context.Context, int, *processState) (string, error) {
 			return "ws://127.0.0.1:9222/devtools/browser/test", nil
@@ -247,6 +248,7 @@ func testRunner(process *fakeProcess, executor taskExecutor, portOpen func(int) 
 		allocatePort: func() (int, error) { return 9222, nil },
 		portOpen:     portOpen,
 	}
+	return config, deps
 }
 
 func validTask() Task {
