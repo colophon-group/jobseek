@@ -58,7 +58,11 @@ from src.core.location_resolve import LocationResolver, ResolvedLocation
 from src.core.monitor import MonitorResult, _apply_url_allowlist, monitor_one
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
-from src.processing.board import BoardMonitorResult, _fetch_diff_batch
+from src.processing.board import (
+    _INSERT_MONITOR_DESCRIPTION_FALLBACK,
+    BoardMonitorResult,
+    _fetch_diff_batch,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -864,6 +868,256 @@ class TestProcessOneBoard:
         # Description is no longer in the INSERT (moved to R2).
         # Verify the job's description was normalized in-place for R2 upload.
         assert job1.description == "<p>Hello</p>"
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_new_rich_enrich_row_keeps_localized_monitor_description_fallback(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """A first-seen row keeps its teaser until detail enrichment succeeds.
+
+        The fallback is intentionally staged even when ``description`` belongs
+        to the detail scraper thereafter.  A failed initial scrape therefore
+        leaves usable localized content instead of an empty posting.
+        """
+        pool, conn = mock_pool
+        url = "https://example.com/job/1"
+        teaser = "<p>Résumé du poste</p>"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url},
+                jobs_by_url={url: _discovered_job(url=url, description=teaser, language="fr")},
+            )
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url)],
+            [],  # MARK_GONE_BY_TIMESTAMP
+        ]
+        conn.fetchrow.return_value = _inserted_row("jp-new", url)
+        board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
+
+        await _process_one_board(board, pool, mock_http)
+
+        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        assert len(desc_calls) == 1
+        assert desc_calls[0].args[1:4] == ("jp-new", "fr", teaser)
+
+    @pytest.mark.parametrize("action", ["touched", "relisted"])
+    @pytest.mark.parametrize(
+        ("crawler_type", "metadata"),
+        [
+            pytest.param(
+                "greenhouse",
+                {"scraper_config": {"enrich": ["description"]}},
+                id="explicit-enrich",
+            ),
+            pytest.param("infor", None, id="auto-enrich"),
+        ],
+    )
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_existing_rich_row_preserves_detail_scraper_description(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        crawler_type,
+        metadata,
+        action,
+        mock_pool,
+        mock_http,
+    ):
+        """Effective description enrichment never replaces an existing locale.
+
+        Rich monitor fields still refresh, but neither an ordinary touch nor a
+        relist may update a full body written by the detail scraper.  The
+        insert-only attempt still makes a genuinely new monitor locale
+        available when one is discovered.
+        """
+        pool, conn = mock_pool
+        url = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url},
+                jobs_by_url={
+                    url: _discovered_job(
+                        url=url,
+                        title="Updated monitor title",
+                        description="<p>Teaser in a different locale</p>",
+                        language="de",
+                    )
+                },
+            )
+        )
+        conn.fetch.side_effect = [
+            [_diff_row(action, row_id="jp-existing", url=url, r2_hash=123)],
+            [],  # MARK_GONE_BY_TIMESTAMP
+        ]
+        board = _mock_board(crawler_type=crawler_type, metadata=metadata)
+
+        await _process_one_board(board, pool, mock_http)
+
+        assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in conn.execute.await_args_list)
+        assert not any(c.args[0] == _UPSERT_DESCRIPTION for c in conn.execute.await_args_list)
+        fallback_calls = [
+            c
+            for c in conn.execute.await_args_list
+            if c.args[0] == _INSERT_MONITOR_DESCRIPTION_FALLBACK
+        ]
+        assert len(fallback_calls) == 1
+        assert fallback_calls[0].args[1:4] == (
+            "jp-existing",
+            "de",
+            "<p>Teaser in a different locale</p>",
+        )
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_existing_rich_row_without_description_enrich_keeps_monitor_ownership(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Rich boards without description enrichment retain prior behavior."""
+        pool, conn = mock_pool
+        url = "https://example.com/job/1"
+        monitor_body = "<p>Vom Monitor aktualisiert</p>"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url},
+                jobs_by_url={
+                    url: _discovered_job(
+                        url=url,
+                        description=monitor_body,
+                        language="de",
+                    )
+                },
+            )
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("touched", row_id="jp-existing", url=url, r2_hash=123)],
+            [],  # MARK_GONE_BY_TIMESTAMP
+        ]
+        board = _mock_board(crawler_type="greenhouse")
+
+        await _process_one_board(board, pool, mock_http)
+
+        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        assert len(desc_calls) == 1
+        assert desc_calls[0].args[1:4] == ("jp-existing", "de", monitor_body)
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_description_ownership_lifecycle_preserves_body_and_adds_new_locale(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        mock_scrape,
+        mock_pool,
+        mock_http,
+    ):
+        """Exercise teaser, failed/successful detail, and later monitor cycles.
+
+        The first monitor body survives a failed detail scrape, a successful
+        detail scrape replaces it, a same-locale monitor refresh cannot revert
+        it, and a later new monitor locale receives one fallback body.
+        """
+        pool, conn = mock_pool
+        url = "https://example.com/job/1"
+        teaser_en = "<p>Short monitor teaser</p>"
+        teaser_de = "<p>Kurzer Monitor-Teaser</p>"
+        full_en = "<p>Complete detail-scraped description with responsibilities.</p>"
+        monitor_results = iter(
+            [
+                MonitorResult(
+                    urls={url},
+                    jobs_by_url={
+                        url: _discovered_job(url=url, description=teaser_en, language="en")
+                    },
+                ),
+                MonitorResult(
+                    urls={url},
+                    jobs_by_url={
+                        url: _discovered_job(url=url, description=teaser_en, language="en")
+                    },
+                ),
+                MonitorResult(
+                    urls={url},
+                    jobs_by_url={
+                        url: _discovered_job(url=url, description=teaser_de, language="de")
+                    },
+                ),
+            ]
+        )
+
+        async def _monitor_stream(*_args, **_kwargs):
+            yield next(monitor_results)
+
+        descriptions: dict[tuple[str, str], str] = {}
+
+        async def _stateful_execute(sql, *args):
+            if sql == _UPSERT_DESCRIPTION:
+                descriptions[(args[0], args[1])] = args[2]
+            elif sql == _INSERT_MONITOR_DESCRIPTION_FALLBACK:
+                descriptions.setdefault((args[0], args[1]), args[2])
+            return "UPDATE 1"
+
+        mock_monitor.side_effect = _monitor_stream
+        conn.execute.side_effect = _stateful_execute
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url)],
+            [],  # first MARK_GONE_BY_TIMESTAMP
+            [_diff_row("touched", row_id="jp-1", url=url, r2_hash=111)],
+            [],  # second MARK_GONE_BY_TIMESTAMP
+            [_diff_row("touched", row_id="jp-1", url=url, r2_hash=222)],
+            [],  # third MARK_GONE_BY_TIMESTAMP
+        ]
+        conn.fetchrow.return_value = _inserted_row("jp-1", url)
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["Monitor title"],
+                "locales": ["en"],
+                "location_ids": [1],
+                "location_types": ["physical"],
+                "employment_type": "full_time",
+            }
+        )
+        board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
+        item = ScrapeItem(job_posting_id="jp-1", url=url, board_id="board-1")
+
+        await _process_one_board(board, pool, mock_http)
+        assert descriptions == {("jp-1", "en"): teaser_en}
+
+        mock_scrape.return_value = _job_content(description=None, language="en")
+        failed, _ = await _process_one_enrich_scrape(
+            item,
+            pool,
+            mock_http,
+            "json-ld",
+            None,
+            ["description"],
+        )
+        assert failed is False
+        assert descriptions == {("jp-1", "en"): teaser_en}
+
+        mock_scrape.return_value = _job_content(description=full_en, language="en")
+        succeeded, _ = await _process_one_enrich_scrape(
+            item,
+            pool,
+            mock_http,
+            "json-ld",
+            None,
+            ["description"],
+        )
+        assert succeeded is True
+        assert descriptions == {("jp-1", "en"): full_en}
+
+        await _process_one_board(board, pool, mock_http)
+        assert descriptions == {("jp-1", "en"): full_en}
+
+        await _process_one_board(board, pool, mock_http)
+        assert descriptions == {
+            ("jp-1", "en"): full_en,
+            ("jp-1", "de"): teaser_de,
+        }
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -2131,6 +2385,11 @@ class TestInsertSqlContract:
 
     def test_insert_url_only_jobs_has_on_conflict(self):
         assert "ON CONFLICT (source_url) DO NOTHING" in _INSERT_URL_ONLY_JOBS
+
+    def test_monitor_description_fallback_is_insert_only_per_locale(self):
+        sql = " ".join(_INSERT_MONITOR_DESCRIPTION_FALLBACK.split())
+        assert "ON CONFLICT (posting_id, locale) DO NOTHING" in sql
+        assert "DO UPDATE" not in sql
 
     def test_diff_batch_has_foreign_touched_cte(self):
         # Pin the cross-board handling added in the follow-up commit:
