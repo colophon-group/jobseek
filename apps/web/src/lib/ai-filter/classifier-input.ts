@@ -3,8 +3,9 @@ import { parseFragment, type DefaultTreeAdapterTypes } from "parse5";
 
 export const CLASSIFIER_INPUT_SCHEMA_VERSION = "classifier-input-v1" as const;
 export const CLASSIFIER_INPUT_NORMALIZER_VERSION =
-  "classifier-input-normalizer-v1" as const;
+  "classifier-input-normalizer-v2" as const;
 export const CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT = 12_000;
+const CLASSIFIER_TRUNCATION_BOUNDARY_WINDOW = 1_000;
 
 export type ClassifierInputSource = {
   readonly candidateId: string;
@@ -215,8 +216,13 @@ function truncateDescription(descriptionText: string): {
   }
 
   const prefix = codePoints.slice(0, CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT);
+  // A semantic boundary is useful only when it is close to the hard cap. An
+  // early heading or space followed by one long block must not discard most
+  // of the model-visible description.
+  const earliestPreferredBoundary =
+    CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT - CLASSIFIER_TRUNCATION_BOUNDARY_WINDOW;
   const lastBlockBoundary = prefix.lastIndexOf("\n");
-  if (lastBlockBoundary > 0) {
+  if (lastBlockBoundary >= earliestPreferredBoundary) {
     return {
       descriptionText: prefix.slice(0, lastBlockBoundary).join("").trimEnd(),
       truncated: true,
@@ -224,7 +230,7 @@ function truncateDescription(descriptionText: string): {
   }
 
   const lastWhitespace = prefix.lastIndexOf(" ");
-  if (lastWhitespace > 0) {
+  if (lastWhitespace >= earliestPreferredBoundary) {
     return {
       descriptionText: prefix.slice(0, lastWhitespace).join("").trimEnd(),
       truncated: true,

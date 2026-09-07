@@ -113,14 +113,42 @@ describe("normalizeClassifierInputV1", () => {
     });
   });
 
-  it("prefers the last HTML block boundary when truncating", () => {
+  it("ignores a block boundary too far before the truncation cap", () => {
     const result = normalizeClassifierInputV1({
       ...baseSource,
       descriptionHtml: `<p>${"a".repeat(6_000)}</p><p>${"b".repeat(7_000)}</p>`,
     });
 
     expect(result.sidecar.truncated).toBe(true);
-    expect(result.payload.descriptionText).toBe("a".repeat(6_000));
+    expect(result.payload.descriptionText).toBe(
+      `${"a".repeat(6_000)}\n${"b".repeat(5_999)}`,
+    );
+    expect(Array.from(result.payload.descriptionText)).toHaveLength(
+      CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT,
+    );
+  });
+
+  it("prefers an HTML block boundary near the truncation cap", () => {
+    const result = normalizeClassifierInputV1({
+      ...baseSource,
+      descriptionHtml: `<p>${"a".repeat(11_500)}</p><p>${"b".repeat(1_000)}</p>`,
+    });
+
+    expect(result.sidecar.truncated).toBe(true);
+    expect(result.payload.descriptionText).toBe("a".repeat(11_500));
+  });
+
+  it("does not collapse a long block after a short heading", () => {
+    const result = normalizeClassifierInputV1({
+      ...baseSource,
+      descriptionHtml: `<h1>A</h1><p>${"x".repeat(13_000)}</p>`,
+    });
+
+    expect(result.sidecar.truncated).toBe(true);
+    expect(result.payload.descriptionText).toBe(`A\n${"x".repeat(11_998)}`);
+    expect(Array.from(result.payload.descriptionText)).toHaveLength(
+      CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT,
+    );
   });
 
   it("falls back to the last whitespace when there is no block boundary", () => {
@@ -131,6 +159,19 @@ describe("normalizeClassifierInputV1", () => {
 
     expect(result.sidecar.truncated).toBe(true);
     expect(result.payload.descriptionText).toBe("a".repeat(11_998));
+  });
+
+  it("ignores whitespace too far before the truncation cap", () => {
+    const result = normalizeClassifierInputV1({
+      ...baseSource,
+      descriptionHtml: `short ${"x".repeat(13_000)}`,
+    });
+
+    expect(result.sidecar.truncated).toBe(true);
+    expect(result.payload.descriptionText).toBe(`short ${"x".repeat(11_994)}`);
+    expect(Array.from(result.payload.descriptionText)).toHaveLength(
+      CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT,
+    );
   });
 
   it("hard-truncates by Unicode code point without splitting a surrogate pair", () => {
@@ -189,7 +230,7 @@ describe("normalizeClassifierInputV1", () => {
   });
 
   it("binds identity to the documented normalizer version", () => {
-    expect(CLASSIFIER_INPUT_NORMALIZER_VERSION).toBe("classifier-input-normalizer-v1");
+    expect(CLASSIFIER_INPUT_NORMALIZER_VERSION).toBe("classifier-input-normalizer-v2");
     expect(fixture.expected.contentIdentity).toMatch(/^[a-f0-9]{64}$/u);
   });
 
