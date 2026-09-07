@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { parseFragment, type DefaultTreeAdapterTypes } from "parse5";
+import { parse, parseFragment, type DefaultTreeAdapterTypes } from "parse5";
 
 export const CLASSIFIER_INPUT_SCHEMA_VERSION = "classifier-input-v1" as const;
 export const CLASSIFIER_INPUT_NORMALIZER_VERSION =
-  "classifier-input-normalizer-v2" as const;
+  "classifier-input-normalizer-v3" as const;
 export const CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT = 12_000;
 const CLASSIFIER_TRUNCATION_BOUNDARY_WINDOW = 1_000;
 
@@ -157,6 +157,22 @@ function hasHiddenSemantics(element: DefaultTreeAdapterTypes.Element): boolean {
   );
 }
 
+function hasHiddenDocumentWrapper(descriptionHtml: string): boolean {
+  const document = parse(descriptionHtml);
+  const htmlElement = document.childNodes.find(
+    (node): node is DefaultTreeAdapterTypes.Element =>
+      isElement(node) && node.tagName.toLowerCase() === "html",
+  );
+  if (!htmlElement) return false;
+  if (hasHiddenSemantics(htmlElement)) return true;
+
+  const bodyElement = htmlElement.childNodes.find(
+    (node): node is DefaultTreeAdapterTypes.Element =>
+      isElement(node) && node.tagName.toLowerCase() === "body",
+  );
+  return bodyElement ? hasHiddenSemantics(bodyElement) : false;
+}
+
 function appendVisibleText(
   node: DefaultTreeAdapterTypes.Node,
   chunks: string[],
@@ -192,6 +208,12 @@ function appendVisibleText(
 }
 
 function normalizeDescriptionHtml(descriptionHtml: string): string {
+  // Fragment parsing intentionally removes html/body wrappers. Fail closed
+  // when full-document recovery applies hidden semantics to either effective
+  // root; preserving malformed late/nested wrappers is not worth leaking
+  // content that a full-document interpretation marks as hidden.
+  if (hasHiddenDocumentWrapper(descriptionHtml)) return "";
+
   const document = parseFragment(descriptionHtml);
   const chunks: string[] = [];
   for (const child of document.childNodes) appendVisibleText(child, chunks);

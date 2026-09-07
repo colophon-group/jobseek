@@ -84,6 +84,52 @@ describe("normalizeClassifierInputV1", () => {
     expect(result.payload.descriptionText).toBe("Visible\nDone");
   });
 
+  it.each([
+    '<body hidden>BODY_SECRET</body><p>Shown</p>',
+    '<html aria-hidden="true"><body>HTML_SECRET</body></html><p>Shown</p>',
+    "\u00a0<body hidden>NBSP_SECRET</body>",
+    "\ufeff<html hidden><body>BOM_SECRET</body></html>",
+    "\u2003<body aria-hidden=true>EM_SPACE_SECRET</body>",
+    "&nbsp;<body hidden>NBSP_ENTITY_SECRET</body>",
+    "&#160;<body hidden>NUMERIC_NBSP_SECRET</body>",
+    "&emsp;<html aria-hidden=true><body>EMSP_ENTITY_SECRET</body></html>",
+    "&#xfeff;<body hidden>FEFF_ENTITY_SECRET</body>",
+    "\u200b<body hidden>ZWSP_SECRET</body>",
+    "<svg><text>OMITTED</text></svg><body hidden>SVG_PREFIX_SECRET</body>",
+    "<iframe>OMITTED</iframe><body aria-hidden=true>IFRAME_PREFIX_SECRET</body>",
+    "<p hidden>OMITTED</p><body hidden>HIDDEN_PREFIX_SECRET</body>",
+    "<br><body hidden>BR_PREFIX_SECRET</body>",
+    "<p>Visible first</p><body hidden><p>LATE_BODY_SECRET</p></body>",
+    "<div><html aria-hidden=true>NESTED_HTML_SECRET</html></div>",
+    "<body><p>Visible</p><body hidden><p>MERGED_BODY_SECRET</p></body>",
+    "<html><body><div><html hidden>MERGED_HTML_SECRET</html></div><p>Visible</p></body></html>",
+  ])("rejects hidden full-document wrappers without exposing their content", (descriptionHtml) => {
+    let caught: unknown;
+    try {
+      normalizeClassifierInputV1({ ...baseSource, descriptionHtml });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toEqual(
+      new ClassifierInputValidationError(
+        "$.descriptionHtml",
+        "must contain visible text",
+      ),
+    );
+    expect(String(caught)).not.toContain("SECRET");
+  });
+
+  it("retains content from visible full-document wrappers", () => {
+    const result = normalizeClassifierInputV1({
+      ...baseSource,
+      descriptionHtml:
+        "<!doctype html><html><head><title>Ignore</title></head><body><main>Visible</main></body></html>",
+    });
+
+    expect(result.payload.descriptionText).toBe("Visible");
+  });
+
   it("retains visible prompt-injection wording from unknown elements as untrusted data", () => {
     const result = normalizeClassifierInputV1({
       ...baseSource,
@@ -230,7 +276,7 @@ describe("normalizeClassifierInputV1", () => {
   });
 
   it("binds identity to the documented normalizer version", () => {
-    expect(CLASSIFIER_INPUT_NORMALIZER_VERSION).toBe("classifier-input-normalizer-v2");
+    expect(CLASSIFIER_INPUT_NORMALIZER_VERSION).toBe("classifier-input-normalizer-v3");
     expect(fixture.expected.contentIdentity).toMatch(/^[a-f0-9]{64}$/u);
   });
 
