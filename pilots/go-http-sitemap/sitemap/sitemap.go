@@ -17,9 +17,9 @@ import (
 
 const (
 	maxProtocolURLs        = 50_000
-	defaultRootMaxAttempts = 2
+	defaultRootMaxAttempts = 3
 	maxRootMaxAttempts     = 3
-	defaultRootBackoff     = 100 * time.Millisecond
+	defaultRootBackoff     = 500 * time.Millisecond
 )
 
 var sitemapHeaders = http.Header{

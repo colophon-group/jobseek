@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -28,6 +30,8 @@ type getStep struct {
 	response boundedhttp.Response
 	err      error
 }
+
+type testConnectionIDKey struct{}
 
 type sequenceGetter struct {
 	steps []getStep
@@ -440,6 +444,78 @@ func TestRootRetryRecoversRetryableStatuses(t *testing.T) {
 				t.Fatalf("requests=%d sleeps=%v result=%+v", requests.Load(), sleeps, result)
 			}
 		})
+	}
+}
+
+func TestDefaultRootRetryRecoversAfterTwo500sWithPythonParityCadence(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if requests.Add(1) <= 2 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write([]byte(`<urlset><url><loc>https://example.test/jobs/1</loc></url></urlset>`))
+	}))
+	defer server.Close()
+
+	runner := newRunner(t, newHTTPClient(t, 3), Config{SitemapURL: server.URL, MaxURLs: 50_000, MaxIndexChildren: 1})
+	var sleeps []time.Duration
+	noWait(runner, &sleeps)
+	result, err := runner.Run(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if requests.Load() != 3 || result.TransportMetrics.Requests != 3 || !reflect.DeepEqual(sleeps, []time.Duration{500 * time.Millisecond, time.Second}) || !reflect.DeepEqual(result.URLs, []string{"https://example.test/jobs/1"}) {
+		t.Fatalf("requests=%d sleeps=%v result=%+v", requests.Load(), sleeps, result)
+	}
+}
+
+func TestFreshConnectionsExposeConnectionScopedRetryBlocker(t *testing.T) {
+	var connections atomic.Int32
+	var requests atomic.Int32
+	var requestsMu sync.Mutex
+	requestsByConnection := make(map[int32]int)
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		connectionID, ok := r.Context().Value(testConnectionIDKey{}).(int32)
+		if !ok {
+			t.Error("missing connection identity")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		requestsMu.Lock()
+		requestsByConnection[connectionID]++
+		requestOnConnection := requestsByConnection[connectionID]
+		requestsMu.Unlock()
+		if requestOnConnection == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write([]byte(`<urlset><url><loc>https://example.test/jobs/1</loc></url></urlset>`))
+	}))
+	server.Config.ConnContext = func(ctx context.Context, _ net.Conn) context.Context {
+		return context.WithValue(ctx, testConnectionIDKey{}, connections.Add(1))
+	}
+	server.Start()
+	defer server.Close()
+
+	runner := newRunner(t, newHTTPClient(t, 3), Config{SitemapURL: server.URL, MaxURLs: 50_000, MaxIndexChildren: 1})
+	var sleeps []time.Duration
+	noWait(runner, &sleeps)
+	result, err := runner.Run(context.Background())
+	var exhausted *RetryExhaustedError
+	if !errors.As(err, &exhausted) || exhausted.Attempts != 3 || exhausted.LastStatus != http.StatusInternalServerError || exhausted.LastTransportKind != "" {
+		t.Fatalf("retry error=%+v err=%v", exhausted, err)
+	}
+	requestsMu.Lock()
+	defer requestsMu.Unlock()
+	if requests.Load() != 3 || connections.Load() != 3 || len(requestsByConnection) != 3 || result.TransportMetrics.Requests != 3 || !reflect.DeepEqual(sleeps, []time.Duration{500 * time.Millisecond, time.Second}) || len(result.URLs) != 0 {
+		t.Fatalf("requests=%d connections=%d requests_by_connection=%v sleeps=%v result=%+v", requests.Load(), connections.Load(), requestsByConnection, sleeps, result)
+	}
+	for connectionID, count := range requestsByConnection {
+		if count != 1 {
+			t.Fatalf("connection %d received %d requests", connectionID, count)
+		}
 	}
 }
 
