@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -225,5 +227,42 @@ func TestErrorsRedactURLSecrets(t *testing.T) {
 	_, err = testClient(t, nil).NewSession().Get(context.Background(), "https://user:password@example.com/sitemap.xml?token=secret#fragment", nil)
 	if !errors.As(err, &boundedErr) || boundedErr.URL != "https://example.com/sitemap.xml" || strings.Contains(fmt.Sprintf("%+v", boundedErr), "password") {
 		t.Fatalf("userinfo-bearing error=%+v", boundedErr)
+	}
+}
+
+func TestRequestCapMatchesWireRequestsWithoutTransparentRetries(t *testing.T) {
+	var connections atomic.Int32
+	var wireRequests atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		wireRequests.Add(1)
+		if r.ProtoMajor != 1 {
+			t.Errorf("protocol=%s", r.Proto)
+		}
+		_, _ = w.Write([]byte("ok"))
+	}))
+	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			connections.Add(1)
+		}
+	}
+	server.Start()
+	defer server.Close()
+
+	client := testClient(t, func(config *Config) { config.MaxRequests = 2 })
+	transport, ok := client.httpClient.Transport.(*http.Transport)
+	if !ok || !transport.DisableKeepAlives || transport.ForceAttemptHTTP2 || transport.TLSNextProto == nil || len(transport.TLSNextProto) != 0 {
+		t.Fatalf("pilot transport is not fresh-connection HTTP/1: %#v", client.httpClient.Transport)
+	}
+	session := client.NewSession()
+	for range 2 {
+		if _, err := session.Get(context.Background(), server.URL, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := session.Get(context.Background(), server.URL, nil); errorKind(t, err) != ErrorRequestLimit {
+		t.Fatal("expected request limit")
+	}
+	if got := session.Stats().Requests; got != 2 || wireRequests.Load() != 2 || connections.Load() != 2 {
+		t.Fatalf("stats=%d wire=%d connections=%d", got, wireRequests.Load(), connections.Load())
 	}
 }

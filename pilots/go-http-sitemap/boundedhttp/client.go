@@ -2,6 +2,7 @@ package boundedhttp
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -87,9 +88,20 @@ func New(config Config) (*Client, error) {
 	if config.RequestTimeout <= 0 || config.MaxDecodedBodyBytes <= 0 || config.MaxDecodedBodyBytes == math.MaxInt64 || config.MaxRequests <= 0 || config.MaxAggregateDecodedBytes <= 0 || config.MaxAggregateDecodedBytes == math.MaxInt64 {
 		return nil, &Error{Kind: ErrorConfig}
 	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	// Phase 0 counts every RoundTrip as one wire request. net/http may
+	// transparently retry an idempotent GET on a stale reused connection, so
+	// connection reuse is disabled until an attempt-aware production transport
+	// can account for retries at the wire boundary. The explicit empty map also
+	// disables automatic HTTP/2 negotiation for this deliberately conservative
+	// pilot transport.
+	transport.DisableKeepAlives = true
+	transport.ForceAttemptHTTP2 = false
+	transport.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
 	return &Client{
 		httpClient: &http.Client{
-			Timeout: config.RequestTimeout,
+			Transport: transport,
+			Timeout:   config.RequestTimeout,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
 				// Redirects are outside the explicit-URL pilot cohort. Returning the
 				// response keeps MaxRequests equal to actual origin requests.

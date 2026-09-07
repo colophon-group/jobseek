@@ -3,16 +3,24 @@ package sitemap
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/colophon-group/jobseek/pilots/go-http-sitemap/boundedhttp"
 )
 
-const maxProtocolURLs = 50_000
+const (
+	maxProtocolURLs        = 50_000
+	defaultRootMaxAttempts = 2
+	maxRootMaxAttempts     = 3
+	defaultRootBackoff     = 100 * time.Millisecond
+)
 
 var sitemapHeaders = http.Header{
 	"User-Agent": {"jobseek-crawler (+https://jseek.co/)"},
@@ -26,6 +34,9 @@ const (
 	ErrorStatus      ErrorKind = "status"
 	ErrorXML         ErrorKind = "xml"
 	ErrorUnsupported ErrorKind = "unsupported"
+	ErrorCanceled    ErrorKind = "canceled"
+	ErrorDeadline    ErrorKind = "deadline"
+	ErrorEmptyBody   ErrorKind = "empty_body"
 )
 
 type Error struct {
@@ -48,6 +59,26 @@ func newError(kind ErrorKind, rawURL string, status int, err error) *Error {
 	return &Error{Kind: kind, URL: redactedURL(rawURL), Status: status, Err: err}
 }
 
+// RetryExhaustedError records why the explicit root request consumed its
+// bounded attempt budget. Child sitemap requests are never retried.
+type RetryExhaustedError struct {
+	URL               string
+	Attempts          int
+	LastStatus        int
+	LastTransportKind boundedhttp.ErrorKind
+	LastOutcome       string
+}
+
+func (e *RetryExhaustedError) Error() string {
+	if e.LastOutcome == "empty_body" {
+		return fmt.Sprintf("sitemap root retry exhausted for %s after %d attempts (status=200 outcome=empty_body)", e.URL, e.Attempts)
+	}
+	if e.LastStatus != 0 {
+		return fmt.Sprintf("sitemap root retry exhausted for %s after %d attempts (status=%d)", e.URL, e.Attempts, e.LastStatus)
+	}
+	return fmt.Sprintf("sitemap root retry exhausted for %s after %d attempts (transport=%s)", e.URL, e.Attempts, e.LastTransportKind)
+}
+
 type Config struct {
 	SitemapURL       string
 	IncludeLiteral   string
@@ -56,6 +87,8 @@ type Config struct {
 	Replacement      string
 	MaxURLs          int
 	MaxIndexChildren int
+	RootMaxAttempts  int
+	RootBackoff      time.Duration
 }
 
 type Result struct {
@@ -69,6 +102,11 @@ type Result struct {
 type Runner struct {
 	client *boundedhttp.Client
 	config Config
+	sleep  func(context.Context, time.Duration) error
+}
+
+type sessionGetter interface {
+	Get(context.Context, string, http.Header) (boundedhttp.Response, error)
 }
 
 type document struct {
@@ -82,7 +120,16 @@ type location struct {
 }
 
 func New(client *boundedhttp.Client, config Config) (*Runner, error) {
+	if config.RootMaxAttempts == 0 {
+		config.RootMaxAttempts = defaultRootMaxAttempts
+	}
+	if config.RootBackoff == 0 {
+		config.RootBackoff = defaultRootBackoff
+	}
 	if client == nil || config.SitemapURL == "" || config.MaxURLs <= 0 || config.MaxURLs > maxProtocolURLs || config.MaxIndexChildren <= 0 {
+		return nil, newError(ErrorConfig, config.SitemapURL, 0, nil)
+	}
+	if config.RootMaxAttempts < 1 || config.RootMaxAttempts > maxRootMaxAttempts || config.RootBackoff < 0 || config.RootBackoff > time.Duration(math.MaxInt64/2) {
 		return nil, newError(ErrorConfig, config.SitemapURL, 0, nil)
 	}
 	parsed, err := url.Parse(config.SitemapURL)
@@ -92,7 +139,7 @@ func New(client *boundedhttp.Client, config Config) (*Runner, error) {
 	if (config.ReplacePrefix == "") != (config.Replacement == "") {
 		return nil, newError(ErrorConfig, config.SitemapURL, 0, nil)
 	}
-	return &Runner{client: client, config: config}, nil
+	return &Runner{client: client, config: config, sleep: sleepContext}, nil
 }
 
 func (r *Runner) Run(ctx context.Context) (Result, error) {
@@ -100,7 +147,7 @@ func (r *Runner) Run(ctx context.Context) (Result, error) {
 	fail := func(err error) (Result, error) {
 		return Result{TransportMetrics: session.Stats()}, err
 	}
-	doc, _, err := fetchDocument(ctx, session, r.config.SitemapURL, false)
+	doc, err := r.fetchRoot(ctx, session)
 	if err != nil {
 		return fail(err)
 	}
@@ -194,7 +241,71 @@ func (r *Runner) Run(ctx context.Context) (Result, error) {
 	}, nil
 }
 
-func fetchDocument(ctx context.Context, session *boundedhttp.Session, rawURL string, child bool) (document, bool, error) {
+func (r *Runner) fetchRoot(ctx context.Context, session sessionGetter) (document, error) {
+	for attempt := 1; attempt <= r.config.RootMaxAttempts; attempt++ {
+		doc, _, err := fetchDocument(ctx, session, r.config.SitemapURL, false)
+		if err == nil {
+			return doc, nil
+		}
+		if callerErr := ctx.Err(); callerErr != nil {
+			kind := ErrorCanceled
+			if errors.Is(callerErr, context.DeadlineExceeded) {
+				kind = ErrorDeadline
+			}
+			return document{}, newError(kind, r.config.SitemapURL, 0, callerErr)
+		}
+		retry, lastStatus, lastTransportKind, lastOutcome := retryableRootFailure(err)
+		if !retry {
+			return document{}, err
+		}
+		if attempt == r.config.RootMaxAttempts {
+			return document{}, &RetryExhaustedError{
+				URL:               redactedURL(r.config.SitemapURL),
+				Attempts:          attempt,
+				LastStatus:        lastStatus,
+				LastTransportKind: lastTransportKind,
+				LastOutcome:       lastOutcome,
+			}
+		}
+		if err := r.sleep(ctx, r.config.RootBackoff*time.Duration(1<<(attempt-1))); err != nil {
+			kind := ErrorCanceled
+			if errors.Is(err, context.DeadlineExceeded) {
+				kind = ErrorDeadline
+			}
+			return document{}, newError(kind, r.config.SitemapURL, 0, err)
+		}
+	}
+	panic("unreachable")
+}
+
+func retryableRootFailure(err error) (bool, int, boundedhttp.ErrorKind, string) {
+	var sitemapErr *Error
+	if errors.As(err, &sitemapErr) {
+		if sitemapErr.Kind == ErrorEmptyBody {
+			return true, http.StatusOK, "", "empty_body"
+		}
+		status := sitemapErr.Status
+		return status == http.StatusAccepted || status == http.StatusUnauthorized || status == http.StatusForbidden || status == http.StatusRequestTimeout || status == http.StatusTooEarly || status == http.StatusTooManyRequests || status >= 500 && status <= 599, status, "", ""
+	}
+	var transportErr *boundedhttp.Error
+	if errors.As(err, &transportErr) && (transportErr.Kind == boundedhttp.ErrorTimeout || transportErr.Kind == boundedhttp.ErrorTransport) {
+		return true, 0, transportErr.Kind, ""
+	}
+	return false, 0, "", ""
+}
+
+func sleepContext(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func fetchDocument(ctx context.Context, session sessionGetter, rawURL string, child bool) (document, bool, error) {
 	response, err := session.Get(ctx, rawURL, sitemapHeaders)
 	if err != nil {
 		return document{}, false, err
@@ -204,6 +315,9 @@ func fetchDocument(ctx context.Context, session *boundedhttp.Session, rawURL str
 	}
 	if response.StatusCode != http.StatusOK {
 		return document{}, false, newError(ErrorStatus, rawURL, response.StatusCode, nil)
+	}
+	if len(response.Body) == 0 {
+		return document{}, false, newError(ErrorEmptyBody, rawURL, http.StatusOK, nil)
 	}
 	var parsed document
 	if err := xml.Unmarshal(response.Body, &parsed); err != nil {
