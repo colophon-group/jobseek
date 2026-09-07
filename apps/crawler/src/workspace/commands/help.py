@@ -1230,6 +1230,12 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     pagination     Page metadata mapping. Example:
                    {"path":"jobsData.meta","page_count":"totalPages",
                     "page_param":"page"}
+                   For path-based pages, provide an absolute same-origin
+                   "url_template" containing {page}. Set "start" to the page
+                   value represented by the board URL (default 1), for example:
+                   {"path":"pageData.pagination","total_records":"totalRows",
+                    "page_size":6,"start":0,
+                    "url_template":"https://example.com/jobs/p/{page}/index.aspx"}
     include_item_values
                    Retain only items whose configured field exactly matches
                    one of the allowed strings. Applied after all pagination
