@@ -874,6 +874,7 @@ def _build_comment(name: str, metadata: dict) -> str:
             "teamtailor": "Teamtailor RSS",
             "wp_job_manager": "WP Job Manager RSS",
             "governmentjobs": "NEOGOV/GovernmentJobs RSS",
+            "hr_manager": "Talent Recruiter / HR Manager RSS",
         }.get(preset, f"RSS ({preset})")
         count_str = f"{jobs}" if jobs is not None else ""
         # For paginated presets, first-page count may be approximate
