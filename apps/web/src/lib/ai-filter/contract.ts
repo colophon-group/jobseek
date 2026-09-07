@@ -115,7 +115,7 @@ function snapshotDataRecord(
   }
 
   const record = value as Record<string, unknown>;
-  const snapshot: Record<string, unknown> = {};
+  const snapshot = Object.create(null) as Record<string, unknown>;
   for (const key of Reflect.ownKeys(record)) {
     if (typeof key !== "string") fail(`${field} must contain plain data fields`);
     const descriptor = Object.getOwnPropertyDescriptor(record, key);
