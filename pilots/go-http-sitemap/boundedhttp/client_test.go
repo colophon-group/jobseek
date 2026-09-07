@@ -3,6 +3,8 @@ package boundedhttp
 import (
 	"compress/gzip"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"math"
@@ -250,7 +252,7 @@ func TestRequestCapMatchesWireRequestsWithoutTransparentRetries(t *testing.T) {
 
 	client := testClient(t, func(config *Config) { config.MaxRequests = 2 })
 	transport, ok := client.httpClient.Transport.(*http.Transport)
-	if !ok || !transport.DisableKeepAlives || transport.ForceAttemptHTTP2 || transport.TLSNextProto == nil || len(transport.TLSNextProto) != 0 {
+	if !ok || !transport.DisableKeepAlives || transport.ForceAttemptHTTP2 || transport.TLSNextProto == nil || len(transport.TLSNextProto) != 0 || transport.TLSClientConfig == nil || len(transport.TLSClientConfig.NextProtos) != 1 || transport.TLSClientConfig.NextProtos[0] != "http/1.1" {
 		t.Fatalf("pilot transport is not fresh-connection HTTP/1: %#v", client.httpClient.Transport)
 	}
 	session := client.NewSession()
@@ -264,5 +266,72 @@ func TestRequestCapMatchesWireRequestsWithoutTransparentRetries(t *testing.T) {
 	}
 	if got := session.Stats().Requests; got != 2 || wireRequests.Load() != 2 || connections.Load() != 2 {
 		t.Fatalf("stats=%d wire=%d connections=%d", got, wireRequests.Load(), connections.Load())
+	}
+}
+
+func TestForceHTTP1ALPNClonesExistingTLSConfig(t *testing.T) {
+	original := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		NextProtos: []string{"h2"},
+		ServerName: "example.test",
+	}
+	transport := &http.Transport{TLSClientConfig: original}
+
+	forceHTTP1ALPN(transport)
+
+	if transport.TLSClientConfig == original {
+		t.Fatal("TLS config was mutated instead of cloned")
+	}
+	if transport.TLSClientConfig.MinVersion != original.MinVersion || transport.TLSClientConfig.ServerName != original.ServerName {
+		t.Fatalf("TLS settings were not preserved: %#v", transport.TLSClientConfig)
+	}
+	if len(transport.TLSClientConfig.NextProtos) != 1 || transport.TLSClientConfig.NextProtos[0] != "http/1.1" {
+		t.Fatalf("ALPN protocols=%v", transport.TLSClientConfig.NextProtos)
+	}
+	if len(original.NextProtos) != 1 || original.NextProtos[0] != "h2" {
+		t.Fatalf("original TLS config was modified: %v", original.NextProtos)
+	}
+}
+
+func TestTLSNegotiatesHTTP11WhenServerOffersHTTP2(t *testing.T) {
+	type observation struct {
+		requestProtocol    string
+		negotiatedProtocol string
+	}
+	observed := make(chan observation, 1)
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		observed <- observation{
+			requestProtocol:    r.Proto,
+			negotiatedProtocol: r.TLS.NegotiatedProtocol,
+		}
+		_, _ = w.Write([]byte("ok"))
+	}))
+	server.EnableHTTP2 = true
+	server.TLS = &tls.Config{NextProtos: []string{"h2", "http/1.1"}}
+	server.StartTLS()
+	defer server.Close()
+
+	client := testClient(t, nil)
+	transport := client.httpClient.Transport.(*http.Transport)
+	tlsConfig := transport.TLSClientConfig.Clone()
+	roots := x509.NewCertPool()
+	roots.AddCert(server.Certificate())
+	tlsConfig.RootCAs = roots
+	transport.TLSClientConfig = tlsConfig
+
+	session := client.NewSession()
+	response, err := session.Get(context.Background(), server.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusOK || string(response.Body) != "ok" {
+		t.Fatalf("response=%+v", response)
+	}
+	got := <-observed
+	if got.requestProtocol != "HTTP/1.1" || got.negotiatedProtocol != "http/1.1" {
+		t.Fatalf("request protocol=%q negotiated ALPN=%q", got.requestProtocol, got.negotiatedProtocol)
+	}
+	if stats := session.Stats(); stats.Requests != 1 || stats.DecodedBytes != 2 {
+		t.Fatalf("stats=%+v", stats)
 	}
 }

@@ -92,12 +92,13 @@ func New(config Config) (*Client, error) {
 	// Phase 0 counts every RoundTrip as one wire request. net/http may
 	// transparently retry an idempotent GET on a stale reused connection, so
 	// connection reuse is disabled until an attempt-aware production transport
-	// can account for retries at the wire boundary. The explicit empty map also
-	// disables automatic HTTP/2 negotiation for this deliberately conservative
-	// pilot transport.
+	// can account for retries at the wire boundary. Pinning TLS ALPN to HTTP/1.1
+	// and the explicit empty map both prevent HTTP/2 negotiation for this
+	// deliberately conservative pilot transport.
 	transport.DisableKeepAlives = true
 	transport.ForceAttemptHTTP2 = false
 	transport.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
+	forceHTTP1ALPN(transport)
 	return &Client{
 		httpClient: &http.Client{
 			Transport: transport,
@@ -110,6 +111,17 @@ func New(config Config) (*Client, error) {
 		},
 		config: config,
 	}, nil
+}
+
+func forceHTTP1ALPN(transport *http.Transport) {
+	tlsConfig := transport.TLSClientConfig
+	if tlsConfig == nil {
+		tlsConfig = &tls.Config{}
+	} else {
+		tlsConfig = tlsConfig.Clone()
+	}
+	tlsConfig.NextProtos = []string{"http/1.1"}
+	transport.TLSClientConfig = tlsConfig
 }
 
 func (c *Client) NewSession() *Session { return &Session{client: c} }
