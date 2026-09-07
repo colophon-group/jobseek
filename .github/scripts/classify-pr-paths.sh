@@ -29,6 +29,7 @@ is_non_code_path() {
       .github/DISCUSSION_TEMPLATE/* | \
       apps/crawler/data/* | \
       apps/crawler/traces/* | \
+      apps/crawler/tests/lightpanda/fixtures/census.json | \
       apps/crawler/VERSION)
       return 0
       ;;
@@ -54,7 +55,11 @@ is_crawler_code_path() {
   [[ "$file" == apps/crawler/* ]] || return 1
 
   case "$file" in
-    *.md | apps/crawler/data/* | apps/crawler/traces/* | apps/crawler/VERSION)
+    *.md | \
+      apps/crawler/data/* | \
+      apps/crawler/traces/* | \
+      apps/crawler/tests/lightpanda/fixtures/census.json | \
+      apps/crawler/VERSION)
       return 1
       ;;
   esac

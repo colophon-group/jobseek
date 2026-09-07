@@ -2684,6 +2684,16 @@ def _verify_workspace_pr_before_mutation(ws: Workspace) -> None:
     )
 
 
+def _refresh_census_manifest() -> Path:
+    """Regenerate the board-derived browser census beside the crawler data."""
+    from src.lightpanda.census import write_manifest
+
+    crawler_root = get_data_dir().parent
+    manifest_path = crawler_root / "tests" / "lightpanda" / "fixtures" / "census.json"
+    write_manifest(get_data_dir() / "boards.csv", manifest_path)
+    return manifest_path
+
+
 def _execute_submit_step(
     step_key: str,
     ws: Workspace,
@@ -2783,6 +2793,7 @@ def _execute_submit_step(
         from src.csvtool import sort_csvs
 
         sort_csvs()
+        _refresh_census_manifest()
 
     elif step_key == "validated":
         errors = validate_csvs()
@@ -2805,6 +2816,7 @@ def _execute_submit_step(
             "apps/crawler/data/boards.csv",
             "apps/crawler/data/company_descriptions.csv",
             "apps/crawler/data/industries.csv",
+            "apps/crawler/tests/lightpanda/fixtures/census.json",
             "apps/crawler/src/workspace/kb/",
         ]
         if img_abs.is_dir():

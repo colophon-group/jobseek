@@ -454,6 +454,7 @@ if [[ "$1 $2" == "pr view" && "$*" == *"headRefName"* ]]; then
 elif [[ "$1 $2" == "pr view" && "$*" == *"labels"* ]]; then
   printf '%s\n' 'review-code'
 elif [[ "$1 $2" == "pr diff" && "$*" == *"--name-only"* ]]; then
+  printf '%s\n' 'apps/crawler/tests/lightpanda/fixtures/census.json'
   printf '%s\n' 'apps/crawler/data/boards.csv' 'apps/crawler/data/companies.csv' 'apps/crawler/data/company_descriptions.csv'
 elif [[ "$1 $2" == "pr diff" ]]; then
   printf '%s' "$MOCK_DIFF"
@@ -554,6 +555,7 @@ test("CI change detection preserves the existing non-code exclusions", () => {
     "'!.github/DISCUSSION_TEMPLATE/**'",
     "'!apps/crawler/data/**'",
     "'!apps/crawler/traces/**'",
+    "'!apps/crawler/tests/lightpanda/fixtures/census.json'",
     "'!apps/crawler/VERSION'",
   ]) {
     assert.ok(workflow.includes(pattern), `missing filter pattern ${pattern}`);
@@ -591,6 +593,21 @@ test("manual PR classification exports the validated PR base context", () => {
   assert.match(result.outputs, /^boards_csv=true$/m);
   assert.match(result.outputs, /^is_pr=true$/m);
   assert.match(result.outputs, /^base_ref=main$/m);
+});
+
+test("company census fixture remains on the data-only CI path", () => {
+  const result = runClassifyPrPaths({
+    files: [
+      "apps/crawler/data/boards.csv",
+      "apps/crawler/tests/lightpanda/fixtures/census.json",
+    ],
+    baseRef: "main",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.outputs, /^code=false$/m);
+  assert.match(result.outputs, /^crawler_code=false$/m);
+  assert.match(result.outputs, /^boards_csv=true$/m);
+  assert.match(result.outputs, /^codeql=false$/m);
 });
 
 test("runtime contract module and v1 retain full code and crawler CI", () => {
@@ -2000,6 +2017,7 @@ test("CodeQL skips full analysis for non-code pull requests", () => {
     "'!.github/DISCUSSION_TEMPLATE/**'",
     "'!apps/crawler/data/**'",
     "'!apps/crawler/traces/**'",
+    "'!apps/crawler/tests/lightpanda/fixtures/census.json'",
     "'!apps/crawler/VERSION'",
   ]) {
     assert.ok(changesJob.includes(pattern), `missing CodeQL filter pattern ${pattern}`);
