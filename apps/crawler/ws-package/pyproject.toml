@@ -49,7 +49,6 @@ packages = ["src"]
 "../src/workspace/" = "src/workspace/"
 "../src/shared/" = "src/shared/"
 "../src/core/" = "src/core/"
-"../src/lightpanda/" = "src/lightpanda/"
 # Inventory-generated company issues are authenticated by
 # src.workspace.ats_seed against this small Jobseek-owned identity subset. It
 # consumes only issue evidence here and never imports or executes upstream

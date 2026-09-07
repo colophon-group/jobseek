@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import math
 import os
 import re
 import stat
@@ -20,6 +22,8 @@ _RETRY_DELAY = 2.0
 
 _DEFAULT_REPO = "colophon-group/jobseek"
 _OID_RE = re.compile(r"^[0-9a-f]{40}$")
+_CRAWL_STATS_MARKER_RE = re.compile(r"<!-- crawl-stats (.*?) -->", re.DOTALL)
+_TRUSTED_CRAWL_STATS_ASSOCIATIONS = {"MEMBER"}
 
 
 def _repo_cwd() -> Path | None:
@@ -1710,6 +1714,128 @@ def comment_on_pr(pr_number: int, body: str) -> None:
         ],
         retries=_GH_RETRIES,
     )
+
+
+def _crawl_stats_payload(body: str) -> dict | None:
+    """Return one strictly valid crawl-stats payload, or None without a marker."""
+    marker_mentions = body.count("<!-- crawl-stats")
+    if marker_mentions == 0:
+        return None
+    matches = _CRAWL_STATS_MARKER_RE.findall(body)
+    if marker_mentions != 1 or len(matches) != 1:
+        raise WorkspaceError("Crawl-stats comment must contain exactly one marker")
+    try:
+        payload = json.loads(matches[0])
+    except json.JSONDecodeError as exc:
+        raise WorkspaceError("Crawl-stats marker contains invalid JSON") from exc
+    if not isinstance(payload, dict):
+        raise WorkspaceError("Crawl-stats marker has an invalid schema")
+
+    keys = set(payload)
+    if keys not in (
+        {"jobs", "monitor_time"},
+        {"head_sha", "jobs", "monitor_time"},
+    ):
+        raise WorkspaceError("Crawl-stats marker has an invalid schema")
+    jobs = payload["jobs"]
+    monitor_time = payload["monitor_time"]
+    if type(jobs) is not int or jobs < 0:
+        raise WorkspaceError("Crawl-stats jobs must be a non-negative integer")
+    if (
+        type(monitor_time) not in {int, float}
+        or not math.isfinite(monitor_time)
+        or monitor_time < 0
+    ):
+        raise WorkspaceError("Crawl-stats monitor_time must be finite and non-negative")
+    if "head_sha" in payload:
+        head_sha = payload["head_sha"]
+        if not isinstance(head_sha, str) or not _OID_RE.fullmatch(head_sha):
+            raise WorkspaceError("Crawl-stats head_sha must be an exact lowercase SHA")
+    return payload
+
+
+def _crawl_stats_comment_exists(pr_number: int, body: str, head_sha: str) -> bool:
+    """Read all PR comments and reconcile one exact trusted head-bound body."""
+    args = [
+        "gh",
+        "api",
+        "--method",
+        "GET",
+        "--paginate",
+        "--slurp",
+        f"repos/{_resolve_repo()}/issues/{pr_number}/comments?per_page=100",
+    ]
+    result = _run(args, retries=_GH_RETRIES)
+    try:
+        pages = json.loads(result.stdout or "[]")
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise GitHubApiError(args, 1, "Could not parse crawl-stats comments") from exc
+    if not isinstance(pages, list) or not all(isinstance(page, list) for page in pages):
+        raise GitHubApiError(args, 1, "Unexpected crawl-stats comments response")
+
+    exact_matches = 0
+    conflicts = 0
+    for comment in (item for page in pages for item in page):
+        if not isinstance(comment, dict):
+            raise GitHubApiError(args, 1, "Unexpected crawl-stats comment entry")
+        comment_body = comment.get("body")
+        association = comment.get("author_association")
+        if (
+            not isinstance(comment_body, str)
+            or association not in _TRUSTED_CRAWL_STATS_ASSOCIATIONS
+        ):
+            continue
+        payload = _crawl_stats_payload(comment_body)
+        if payload is None or "head_sha" not in payload:
+            continue
+        if payload["head_sha"] != head_sha:
+            continue
+        comment_id = comment.get("id")
+        updated_at = comment.get("updated_at")
+        if type(comment_id) is not int or not isinstance(updated_at, str) or not updated_at:
+            raise GitHubApiError(args, 1, "Unexpected crawl-stats comment identity")
+        if comment_body == body:
+            exact_matches += 1
+        else:
+            conflicts += 1
+
+    if conflicts or exact_matches > 1:
+        raise WorkspaceError(f"PR #{pr_number} has conflicting crawl-stats evidence for {head_sha}")
+    return exact_matches == 1
+
+
+def publish_crawl_stats_comment(pr_number: int, body: str, head_sha: str) -> None:
+    """Publish one idempotent, marker-owned crawl-stats comment for an exact head."""
+    if not _OID_RE.fullmatch(head_sha):
+        raise WorkspaceError("Crawl-stats publication requires an exact lowercase head SHA")
+    payload = _crawl_stats_payload(body)
+    if payload is None or payload.get("head_sha") != head_sha:
+        raise WorkspaceError("Crawl-stats body is not bound to the expected head SHA")
+    marker = _CRAWL_STATS_MARKER_RE.search(body)
+    if marker is None or marker.start() != 0:
+        raise WorkspaceError("Crawl-stats body must start with its ownership marker")
+
+    if _crawl_stats_comment_exists(pr_number, body, head_sha):
+        return
+
+    post_args = [
+        "gh",
+        "api",
+        "--method",
+        "POST",
+        f"repos/{_resolve_repo()}/issues/{pr_number}/comments",
+        "-f",
+        f"body={body}",
+    ]
+    try:
+        _run(post_args, retries=0)
+    except GitHubApiError as post_error:
+        try:
+            if _crawl_stats_comment_exists(pr_number, body, head_sha):
+                return
+        except (GitHubApiError, WorkspaceError) as reconcile_error:
+            raise post_error from reconcile_error
+        raise
 
 
 def comment_on_issue(issue_number: int, body: str) -> None:

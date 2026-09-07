@@ -2668,30 +2668,20 @@ def _rebind_workspace_worktree_identity(ws: Workspace) -> None:
         raise
 
 
-def _verify_workspace_pr_before_mutation(ws: Workspace) -> None:
+def _verify_workspace_pr_before_mutation(ws: Workspace) -> dict:
     """Authenticate a recorded PR immediately before a non-create mutation."""
     from src.workspace import git
 
     _authenticate_workspace_worktree(ws)
     if ws.pr is None:
         raise WorkspaceError("Workspace has no PR to mutate")
-    git.verify_recorded_pr(
+    return git.verify_recorded_pr(
         ws.pr_provenance,
         pr_number=ws.pr,
         branch=ws.branch,
         issue=ws.issue,
         slug=ws.slug,
     )
-
-
-def _refresh_census_manifest() -> Path:
-    """Regenerate the board-derived browser census beside the crawler data."""
-    from src.lightpanda.census import write_manifest
-
-    crawler_root = get_data_dir().parent
-    manifest_path = crawler_root / "tests" / "lightpanda" / "fixtures" / "census.json"
-    write_manifest(get_data_dir() / "boards.csv", manifest_path)
-    return manifest_path
 
 
 def _execute_submit_step(
@@ -2793,7 +2783,6 @@ def _execute_submit_step(
         from src.csvtool import sort_csvs
 
         sort_csvs()
-        _refresh_census_manifest()
 
     elif step_key == "validated":
         errors = validate_csvs()
@@ -2816,7 +2805,6 @@ def _execute_submit_step(
             "apps/crawler/data/boards.csv",
             "apps/crawler/data/company_descriptions.csv",
             "apps/crawler/data/industries.csv",
-            "apps/crawler/tests/lightpanda/fixtures/census.json",
             "apps/crawler/src/workspace/kb/",
         ]
         if img_abs.is_dir():
@@ -2957,10 +2945,16 @@ def _execute_submit_step(
         from src.workspace import git
 
         if ws.pr and boards:
-            _verify_workspace_pr_before_mutation(ws)
+            pr_details = _verify_workspace_pr_before_mutation(ws)
+            head_sha = pr_details.get("headRefOid")
+            if not isinstance(head_sha, str):
+                raise WorkspaceError("Verified PR details have no head SHA")
             board_data = {b.alias: b.to_dict() for b in boards}
-            stats_comment = action_log.format_crawl_stats(board_data)
-            git.comment_on_pr(ws.pr, stats_comment)
+            stats_comment = action_log.format_crawl_stats(
+                board_data,
+                head_sha,
+            )
+            git.publish_crawl_stats_comment(ws.pr, stats_comment, head_sha)
 
     elif step_key == "transcript_posted":
         if local:

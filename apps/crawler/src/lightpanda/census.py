@@ -13,7 +13,7 @@ import csv
 import hashlib
 import json
 import math
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -35,6 +35,19 @@ FORMAT = "jobseek.lightpanda.capability-census/v1"
 CRAWLER_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_BOARDS_PATH = CRAWLER_ROOT / "data" / "boards.csv"
 DEFAULT_MANIFEST_PATH = CRAWLER_ROOT / "tests" / "lightpanda" / "fixtures" / "census.json"
+
+_RECORD_PROVENANCE_FIELDS = frozenset({"digest_sha256", "source_count", "source_refs_sha256"})
+_SUMMARY_FIELDS = frozenset(
+    {
+        "browser_board_count",
+        "browser_required_step_count",
+        "configured_profile_occurrence_count",
+        "configured_record_count",
+        "registry_record_count",
+        "total_record_count",
+        "zero_browser_config_registry_count",
+    }
+)
 
 _CSV_COLUMNS = (
     "company_slug",
@@ -1063,6 +1076,321 @@ def manifest_bytes(manifest: Mapping[str, Any]) -> bytes:
     return json.dumps(manifest, ensure_ascii=True, indent=2, sort_keys=True).encode("ascii") + b"\n"
 
 
+def _is_non_negative_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _require_sha256(value: object, *, path: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(char not in "0123456789abcdef" for char in value)
+    ):
+        raise CensusError(f"{path} must be a lowercase SHA-256 digest")
+    return value
+
+
+def _load_manifest(path: Path, *, role: str) -> dict[str, Any]:
+    try:
+        raw = path.read_text(encoding="ascii")
+    except FileNotFoundError as exc:
+        raise CensusError(f"missing {role} census: {path}") from exc
+    except UnicodeDecodeError as exc:
+        raise CensusError(f"{role} census must be ASCII: {path}") from exc
+    try:
+        manifest = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise CensusError(f"{role} census is not valid JSON: {path}") from exc
+    if not isinstance(manifest, dict):
+        raise CensusError(f"{role} census must be a JSON object: {path}")
+    return manifest
+
+
+def _validate_record_integrity(record: Mapping[str, Any], *, role: str) -> None:
+    record_id = record.get("id")
+    if not isinstance(record_id, str) or not record_id:
+        raise CensusError(f"{role} census record has an invalid id")
+    path = f"{role} census record {record_id}"
+
+    digest = _require_sha256(record.get("digest_sha256"), path=f"{path}.digest_sha256")
+    digest_payload = dict(record)
+    digest_payload.pop("digest_sha256", None)
+    if digest != _sha256(digest_payload):
+        raise CensusError(f"{path} digest does not match its content")
+
+    source_count = record.get("source_count")
+    if not _is_non_negative_int(source_count):
+        raise CensusError(f"{path}.source_count must be a non-negative integer")
+    _require_sha256(record.get("source_refs_sha256"), path=f"{path}.source_refs_sha256")
+    config_shape = _require_sha256(
+        record.get("config_shape_sha256"), path=f"{path}.config_shape_sha256"
+    )
+
+    surface = record.get("surface")
+    crawler_type = record.get("crawler_type")
+    profile_kind = record.get("profile_kind")
+    chain_role = record.get("chain_role")
+    browser_required = record.get("browser_required")
+    capabilities = record.get("capabilities")
+    compatibility_class = record.get("compatibility_class")
+    if surface not in {"monitor", "scraper"}:
+        raise CensusError(f"{path}.surface is invalid")
+    if not isinstance(crawler_type, str) or not crawler_type:
+        raise CensusError(f"{path}.crawler_type is invalid")
+    if record.get("browser_capable") is not True:
+        raise CensusError(f"{path}.browser_capable must be true")
+    if not isinstance(browser_required, bool):
+        raise CensusError(f"{path}.browser_required must be boolean")
+    if (
+        not isinstance(capabilities, list)
+        or any(not isinstance(capability, str) or not capability for capability in capabilities)
+        or capabilities != sorted(set(capabilities))
+    ):
+        raise CensusError(f"{path}.capabilities must be sorted and unique")
+    expected_class = _compatibility_class(capabilities)
+    if compatibility_class != expected_class:
+        raise CensusError(f"{path}.compatibility_class does not match its capabilities")
+    if record.get("fixture") != f"synthetic.{expected_class}.v1":
+        raise CensusError(f"{path}.fixture does not match its compatibility class")
+
+    if profile_kind == "configured":
+        if source_count == 0:
+            raise CensusError(f"{path}.source_count must be at least one")
+        if chain_role not in {"primary", "fallback"}:
+            raise CensusError(f"{path}.chain_role is invalid for a configured profile")
+        profile_id_seed = {
+            "browser_required": browser_required,
+            "chain_role": chain_role,
+            "config_shape_sha256": config_shape,
+            "crawler_type": crawler_type,
+            "surface": surface,
+        }
+        expected_id = f"profile.{surface}.{crawler_type}.{_sha256(profile_id_seed)[:16]}"
+        if record_id != expected_id:
+            raise CensusError(f"{path}.id does not match its stable profile identity")
+        expected_status = "pending_replay" if browser_required else "chain_context_only"
+        expected_blocker = (
+            "pinned_lightpanda_replay_required"
+            if browser_required
+            else "downstream_browser_step_requires_replay"
+        )
+        if record.get("status") != expected_status or record.get("blocker") != expected_blocker:
+            raise CensusError(f"{path} is not in its required fail-safe state")
+    elif profile_kind == "registry":
+        if chain_role != "registry":
+            raise CensusError(f"{path}.chain_role is invalid for a registry profile")
+        if record_id != f"registry.{surface}.{crawler_type}":
+            raise CensusError(f"{path}.id does not match its registry identity")
+        status = record.get("status")
+        expected_blockers = {
+            "inventory": "configured_profiles_pending_replay",
+            "zero_browser_config": "no_configured_browser_profile",
+        }
+        if status not in expected_blockers or record.get("blocker") != expected_blockers[status]:
+            raise CensusError(f"{path} has an invalid registry status or blocker")
+    else:
+        raise CensusError(f"{path}.profile_kind is invalid")
+
+
+def _validate_manifest_integrity(manifest: Mapping[str, Any], *, role: str) -> None:
+    if manifest.get("format") != FORMAT:
+        raise CensusError(f"{role} census format must be {FORMAT}")
+
+    inputs = manifest.get("input")
+    if not isinstance(inputs, dict):
+        raise CensusError(f"{role} census input must be an object")
+    if inputs.get("network_access") is not False:
+        raise CensusError(f"{role} census must preserve network_access=false")
+    if inputs.get("sanitization") != "structural-values-only-v1":
+        raise CensusError(f"{role} census sanitization marker is invalid")
+    boards_row_count = inputs.get("boards_row_count")
+    if not _is_non_negative_int(boards_row_count):
+        raise CensusError(f"{role} census boards_row_count must be a non-negative integer")
+    _require_sha256(inputs.get("boards_sha256"), path=f"{role} census input.boards_sha256")
+
+    records = manifest.get("records")
+    if not isinstance(records, list):
+        raise CensusError(f"{role} census records must be an array")
+    record_ids: list[str] = []
+    for record in records:
+        if not isinstance(record, dict):
+            raise CensusError(f"{role} census records must contain only objects")
+        record_id = record.get("id")
+        if not isinstance(record_id, str) or not record_id:
+            raise CensusError(f"{role} census record has an invalid id")
+        record_ids.append(record_id)
+    duplicates = sorted(record_id for record_id, count in Counter(record_ids).items() if count > 1)
+    if duplicates:
+        raise CensusError(f"{role} census contains duplicate record ids: {', '.join(duplicates)}")
+    if record_ids != sorted(record_ids):
+        raise CensusError(f"{role} census record ids must be sorted")
+    for record in records:
+        _validate_record_integrity(record, role=role)
+
+    summary = manifest.get("summary")
+    if not isinstance(summary, dict) or set(summary) != _SUMMARY_FIELDS:
+        raise CensusError(f"{role} census summary fields are invalid")
+    if any(not _is_non_negative_int(summary[field]) for field in _SUMMARY_FIELDS):
+        raise CensusError(f"{role} census summary values must be non-negative integers")
+    configured = [record for record in records if record["profile_kind"] == "configured"]
+    registry = [record for record in records if record["profile_kind"] == "registry"]
+    configured_pairs = {(record["surface"], record["crawler_type"]) for record in configured}
+    registry_pairs = {(record["surface"], record["crawler_type"]) for record in registry}
+    missing_registry_pairs = sorted(configured_pairs - registry_pairs)
+    if missing_registry_pairs:
+        formatted = ", ".join(
+            f"{surface}.{crawler_type}" for surface, crawler_type in missing_registry_pairs
+        )
+        raise CensusError(
+            f"{role} census configured profiles have no corresponding registry record: {formatted}"
+        )
+    configured_browser_pairs = {
+        (record["surface"], record["crawler_type"])
+        for record in configured
+        if record["browser_required"]
+    }
+    for record in registry:
+        pair = (record["surface"], record["crawler_type"])
+        expected_status, expected_blocker = (
+            ("inventory", "configured_profiles_pending_replay")
+            if pair in configured_browser_pairs
+            else ("zero_browser_config", "no_configured_browser_profile")
+        )
+        if record["status"] != expected_status or record["blocker"] != expected_blocker:
+            raise CensusError(
+                f"{role} census record {record['id']} status does not match "
+                "configured browser occurrences"
+            )
+    derived_summary = {
+        "browser_required_step_count": sum(
+            record["source_count"] for record in configured if record["browser_required"]
+        ),
+        "configured_profile_occurrence_count": sum(record["source_count"] for record in configured),
+        "configured_record_count": len(configured),
+        "registry_record_count": len(registry),
+        "total_record_count": len(records),
+        "zero_browser_config_registry_count": sum(
+            record["status"] == "zero_browser_config" for record in registry
+        ),
+    }
+    for field, expected in derived_summary.items():
+        if summary[field] != expected:
+            raise CensusError(f"{role} census summary.{field} is inconsistent with its records")
+    if summary["browser_board_count"] > boards_row_count:
+        raise CensusError(f"{role} census browser_board_count exceeds boards_row_count")
+    if summary["browser_board_count"] > summary["browser_required_step_count"]:
+        raise CensusError(f"{role} census browser_board_count exceeds browser-required steps")
+
+    digest = _require_sha256(manifest.get("manifest_sha256"), path=f"{role} census manifest_sha256")
+    digest_payload = dict(manifest)
+    digest_payload.pop("manifest_sha256", None)
+    if digest != _sha256(digest_payload):
+        raise CensusError(f"{role} census manifest digest does not match its content")
+
+
+def _stable_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    ignored = set(_RECORD_PROVENANCE_FIELDS)
+    if record.get("profile_kind") == "registry":
+        ignored.update({"blocker", "status"})
+    return {key: value for key, value in record.items() if key not in ignored}
+
+
+def compare_semantic_manifests(
+    baseline: Mapping[str, Any],
+    current: Mapping[str, Any],
+    *,
+    allow_additions: bool = False,
+) -> dict[str, Any]:
+    """Require a candidate baseline to exactly cover the current semantics."""
+
+    _validate_manifest_integrity(baseline, role="baseline")
+    _validate_manifest_integrity(current, role="current")
+
+    baseline_records = {record["id"]: record for record in baseline["records"]}
+    current_records = {record["id"]: record for record in current["records"]}
+    baseline_registry_ids = {
+        record_id
+        for record_id, record in baseline_records.items()
+        if record["profile_kind"] == "registry"
+    }
+    current_registry_ids = {
+        record_id
+        for record_id, record in current_records.items()
+        if record["profile_kind"] == "registry"
+    }
+    removed_registry_ids = sorted(baseline_registry_ids - current_registry_ids)
+    if removed_registry_ids:
+        raise CensusError(
+            "current census removed or renamed pinned registry profiles: "
+            + ", ".join(removed_registry_ids)
+        )
+    new_registry_ids = sorted(current_registry_ids - baseline_registry_ids)
+    if new_registry_ids and not allow_additions:
+        raise CensusError("current census registry profile ID set differs from the pinned baseline")
+
+    baseline_configured_ids = {
+        record_id
+        for record_id, record in baseline_records.items()
+        if record["profile_kind"] == "configured"
+    }
+    current_configured_ids = {
+        record_id
+        for record_id, record in current_records.items()
+        if record["profile_kind"] == "configured"
+    }
+    missing_ids = sorted(baseline_configured_ids - current_configured_ids)
+    if missing_ids:
+        raise CensusError(
+            "current census removed or renamed pinned configured profiles: "
+            + ", ".join(missing_ids)
+        )
+    unpinned_ids = sorted(current_configured_ids - baseline_configured_ids)
+    if unpinned_ids and not allow_additions:
+        raise CensusError(
+            "current census has configured profiles absent from the candidate baseline: "
+            + ", ".join(unpinned_ids)
+        )
+
+    changed_ids = sorted(
+        record_id
+        for record_id in baseline_records.keys() & current_records.keys()
+        if _stable_record(baseline_records[record_id]) != _stable_record(current_records[record_id])
+    )
+    if changed_ids:
+        raise CensusError(
+            "current census changed pinned stable profile semantics: " + ", ".join(changed_ids)
+        )
+
+    return {
+        "baseline_configured_profile_count": len(baseline_configured_ids),
+        "current_configured_profile_count": len(current_configured_ids),
+        "new_configured_profile_ids": unpinned_ids,
+        "new_registry_profile_ids": new_registry_ids,
+        "registry_profile_count": len(current_registry_ids),
+    }
+
+
+def compare_baseline_evolution(
+    previous_baseline: Mapping[str, Any],
+    candidate_baseline: Mapping[str, Any],
+    current: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Require an append-only baseline update that exactly covers current output."""
+
+    baseline_update = compare_semantic_manifests(
+        previous_baseline,
+        candidate_baseline,
+        allow_additions=True,
+    )
+    comparison = compare_semantic_manifests(candidate_baseline, current)
+    comparison["new_configured_profile_ids"] = baseline_update["new_configured_profile_ids"]
+    comparison["new_registry_profile_ids"] = baseline_update["new_registry_profile_ids"]
+    comparison["previous_baseline_configured_profile_count"] = baseline_update[
+        "baseline_configured_profile_count"
+    ]
+    return comparison
+
+
 def write_manifest(
     boards_path: Path = DEFAULT_BOARDS_PATH,
     output_path: Path = DEFAULT_MANIFEST_PATH,
@@ -1089,15 +1417,51 @@ def check_manifest(
     return json.loads(actual)
 
 
+def check_semantic_baseline(
+    baseline_path: Path,
+    current_path: Path,
+    *,
+    previous_baseline_path: Path | None = None,
+) -> dict[str, Any]:
+    baseline = _load_manifest(baseline_path, role="baseline")
+    current = _load_manifest(current_path, role="current")
+    if previous_baseline_path is not None:
+        previous_baseline = _load_manifest(previous_baseline_path, role="previous baseline")
+        return compare_baseline_evolution(previous_baseline, baseline, current)
+    return compare_semantic_manifests(baseline, current)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--boards", type=Path, default=DEFAULT_BOARDS_PATH)
     parser.add_argument("--output", type=Path, default=DEFAULT_MANIFEST_PATH)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        help="Pinned semantic baseline to compare after checking the current output",
+    )
+    parser.add_argument(
+        "--previous-baseline",
+        type=Path,
+        help="Base-revision baseline used to enforce append-only semantic changes",
+    )
     args = parser.parse_args()
+    if args.baseline is not None and not args.check:
+        parser.error("--baseline requires --check")
+    if args.previous_baseline is not None and args.baseline is None:
+        parser.error("--previous-baseline requires --baseline")
+
+    comparison: dict[str, Any] | None = None
     if args.check:
         manifest = check_manifest(args.boards, args.output)
         action = "checked"
+        if args.baseline is not None:
+            comparison = check_semantic_baseline(
+                args.baseline,
+                args.output,
+                previous_baseline_path=args.previous_baseline,
+            )
     else:
         manifest = write_manifest(args.boards, args.output)
         action = "wrote"
@@ -1106,6 +1470,22 @@ def main() -> None:
         f"({manifest['summary']['total_record_count']} records, "
         f"{manifest['summary']['browser_board_count']} browser boards)"
     )
+    if comparison is not None:
+        print(
+            "semantic baseline compatible "
+            f"({comparison['current_configured_profile_count']} configured profiles, "
+            f"{len(comparison['new_configured_profile_ids'])} newly pinned profiles)"
+        )
+        if comparison["new_configured_profile_ids"]:
+            print(
+                "ADDITIVE PINNED FAIL-SAFE PROFILES: "
+                + ", ".join(comparison["new_configured_profile_ids"])
+            )
+        if comparison["new_registry_profile_ids"]:
+            print(
+                "ADDITIVE PINNED REGISTRY PROFILES: "
+                + ", ".join(comparison["new_registry_profile_ids"])
+            )
 
 
 if __name__ == "__main__":

@@ -28,6 +28,7 @@ from src.workspace.git import (
     local_branch_oid_strict,
     mark_pr_ready,
     pr_provenance,
+    publish_crawl_stats_comment,
     push_branch_at_expected_oid,
     remove_authenticated_worktree,
     sync_branch_with_main,
@@ -37,6 +38,24 @@ from src.workspace.git import (
 )
 
 TEST_OID = "a" * 40
+CRAWL_STATS_BODY = (
+    '<!-- crawl-stats {"head_sha": "' + TEST_OID + '", "jobs": 10, "monitor_time": 1.0} -->\n'
+    "| Board | Monitor | Jobs | Cost | Verdict |"
+)
+
+
+def _crawl_comment(body: str = CRAWL_STATS_BODY, *, comment_id: int = 1) -> dict:
+    return {
+        "author_association": "MEMBER",
+        "body": body,
+        "id": comment_id,
+        "updated_at": "2026-09-07T00:00:00Z",
+    }
+
+
+def _gh_result(payload: object = None) -> subprocess.CompletedProcess[str]:
+    stdout = "" if payload is None else json.dumps(payload)
+    return subprocess.CompletedProcess([], 0, stdout, "")
 
 
 @pytest.mark.parametrize("returncode", [1, 128])
@@ -280,6 +299,125 @@ class TestGitWrappers:
                 raise AssertionError("_run should reject negative retries")
             mock.assert_not_called()
 
+
+class TestCrawlStatsCommentPublication:
+    def test_normal_create_uses_paginated_get_and_one_non_retried_post(self):
+        with (
+            patch("src.workspace.git._resolve_repo", return_value="owner/repo"),
+            patch(
+                "src.workspace.git._run",
+                side_effect=[_gh_result([[]]), _gh_result()],
+            ) as run,
+        ):
+            publish_crawl_stats_comment(42, CRAWL_STATS_BODY, TEST_OID)
+
+        assert run.call_count == 2
+        assert run.call_args_list[0].args[0] == [
+            "gh",
+            "api",
+            "--method",
+            "GET",
+            "--paginate",
+            "--slurp",
+            "repos/owner/repo/issues/42/comments?per_page=100",
+        ]
+        assert run.call_args_list[0].kwargs == {"retries": 2}
+        post_args = run.call_args_list[1].args[0]
+        assert post_args[:5] == [
+            "gh",
+            "api",
+            "--method",
+            "POST",
+            "repos/owner/repo/issues/42/comments",
+        ]
+        assert post_args[-2:] == ["-f", f"body={CRAWL_STATS_BODY}"]
+        assert run.call_args_list[1].kwargs == {"retries": 0}
+
+    def test_exact_existing_body_is_a_noop_including_after_restart(self):
+        comments: list[dict] = []
+        post_count = 0
+
+        def run_command(args, **_kwargs):
+            nonlocal post_count
+            if "GET" in args:
+                return _gh_result([[*comments]])
+            post_count += 1
+            comments.append(_crawl_comment())
+            return _gh_result()
+
+        with (
+            patch("src.workspace.git._resolve_repo", return_value="owner/repo"),
+            patch("src.workspace.git._run", side_effect=run_command) as run,
+        ):
+            publish_crawl_stats_comment(42, CRAWL_STATS_BODY, TEST_OID)
+            # Simulate restart before the submit checkpoint was persisted.
+            publish_crawl_stats_comment(42, CRAWL_STATS_BODY, TEST_OID)
+
+        assert post_count == 1
+        assert run.call_count == 3
+
+    @pytest.mark.parametrize("message", ["request timed out", "502 bad gateway"])
+    def test_ambiguous_post_reconciles_server_side_success_once(self, message):
+        post_error = GitHubApiError(["gh", "api"], 1, message)
+        with (
+            patch("src.workspace.git._resolve_repo", return_value="owner/repo"),
+            patch(
+                "src.workspace.git._run",
+                side_effect=[
+                    _gh_result([[]]),
+                    post_error,
+                    _gh_result([[_crawl_comment()]]),
+                ],
+            ) as run,
+        ):
+            publish_crawl_stats_comment(42, CRAWL_STATS_BODY, TEST_OID)
+
+        posts = [call for call in run.call_args_list if "POST" in call.args[0]]
+        assert len(posts) == 1
+        assert posts[0].kwargs == {"retries": 0}
+
+    def test_ambiguous_post_without_exact_evidence_reraises(self):
+        post_error = GitHubApiError(["gh", "api"], 1, "request timed out")
+        with (
+            patch("src.workspace.git._resolve_repo", return_value="owner/repo"),
+            patch(
+                "src.workspace.git._run",
+                side_effect=[_gh_result([[]]), post_error, _gh_result([[]])],
+            ) as run,
+            pytest.raises(GitHubApiError) as raised,
+        ):
+            publish_crawl_stats_comment(42, CRAWL_STATS_BODY, TEST_OID)
+
+        assert raised.value is post_error
+        assert sum("POST" in call.args[0] for call in run.call_args_list) == 1
+
+    def test_conflicting_same_head_evidence_refuses_without_post(self):
+        conflicting = CRAWL_STATS_BODY.replace('"jobs": 10', '"jobs": 11')
+        with (
+            patch("src.workspace.git._resolve_repo", return_value="owner/repo"),
+            patch(
+                "src.workspace.git._run",
+                return_value=_gh_result([[_crawl_comment(conflicting)]]),
+            ) as run,
+            pytest.raises(WorkspaceError, match="conflicting crawl-stats evidence"),
+        ):
+            publish_crawl_stats_comment(42, CRAWL_STATS_BODY, TEST_OID)
+
+        assert run.call_count == 1
+
+    @pytest.mark.parametrize("response", [{"comments": []}, [["not-a-comment"]]])
+    def test_malformed_paginated_comment_list_fails_closed(self, response):
+        with (
+            patch("src.workspace.git._resolve_repo", return_value="owner/repo"),
+            patch("src.workspace.git._run", return_value=_gh_result(response)) as run,
+            pytest.raises(GitHubApiError, match="Unexpected crawl-stats"),
+        ):
+            publish_crawl_stats_comment(42, CRAWL_STATS_BODY, TEST_OID)
+
+        assert run.call_count == 1
+
+
+class TestGitBoundaryWrappers:
     def test_run_reports_missing_github_cli_at_command_boundary(self):
         with (
             patch("src.workspace.git._repo_cwd", return_value=None),

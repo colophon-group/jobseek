@@ -18,15 +18,35 @@ set -euo pipefail
 
 SCRIPTS_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
-# Only label add-company/* branches — developer branches are reviewed manually
-BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
+# Read all safety-critical PR metadata in one fail-closed snapshot. Legacy
+# auto-merge requests are disabled before any diff, API, or parsing work.
+PR_METADATA=$(gh pr view "$PR" --repo "$REPO" \
+  --json headRefName,headRefOid,baseRefOid,autoMergeRequest)
+BRANCH=$(jq -er '.headRefName | strings' <<< "$PR_METADATA")
 if [[ "$BRANCH" != add-company/* ]]; then
   echo "Skipping label-pr for non-company branch: $BRANCH"
   echo "labels=" >> "$GITHUB_OUTPUT"
   exit 0
 fi
 
-ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/data/company_descriptions.csv apps/crawler/tests/lightpanda/fixtures/census.json apps/crawler/VERSION"
+AUTO_MERGE_ARMED=$(jq -r '.autoMergeRequest != null' <<< "$PR_METADATA")
+if [[ "$AUTO_MERGE_ARMED" == "true" ]]; then
+  echo "Disabling legacy auto-merge request"
+  gh pr merge "$PR" --repo "$REPO" --disable-auto
+fi
+
+CLASSIFIED_HEAD_SHA=$(jq -er '.headRefOid | strings' <<< "$PR_METADATA")
+if [[ ! "$CLASSIFIED_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "::error::Invalid PR head SHA: $CLASSIFIED_HEAD_SHA" >&2
+  exit 1
+fi
+CLASSIFIED_BASE_SHA=$(jq -er '.baseRefOid | strings' <<< "$PR_METADATA")
+if [[ ! "$CLASSIFIED_BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "::error::Invalid PR base SHA: $CLASSIFIED_BASE_SHA" >&2
+  exit 1
+fi
+
+ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/data/company_descriptions.csv apps/crawler/VERSION"
 # Keep these static: this script runs with pull_request_target write
 # permissions and must not import PR-controllable Python.
 VALID_MONITOR_TYPES='accenture|adp|almacareer|amazon|api_sniffer|ashby|avature|bamboohr|beehire|beisen|bite|brassring|breezy|bytedance|candidatus|cnstaff|comeet|computrabajo|cornerstone|curately|cvwarehouse|darwinbox|dayforce|deel|dom|dvinci|earcu|eightfold|gem|greenhouse|gupy|headhunter|herp|hibob|hirehive|hireology|hrmos|icims|infoniqa|infor|inline|inploi|intervieweb|jarvi|jazzhr|job51|jobbank104|jobdiva|jobs_ch|jobstreet|jobvite|jobylon|johdi|join|keka|kipt|lever|linkedin|manatal|mokahr|nextdata|njoyn|notion|oracle_hcm|pageup|papa_johns|paycom|paylocity|personio|phenom|pinpoint|practicematch|prospective|recruitee|recruiter_co_kr|recruiterbox|rippling|rss|seamlesshiring|seek|sitemap|smartrecruiters|softgarden|talemetry|talentbrew|taleo|traffit|turbohire|typify|ukg|umantis|unifr|unisante|welcometothejungle|workable|workday|ycombinator'
@@ -179,35 +199,54 @@ done <<< "$CSV_ADDITIONS"
 
 INCOMPLETE=false
 
-COMPLETENESS=$(python3 - "$PR" "$REPO" <<'PYEOF'
+COMPLETENESS=$(python3 - "$PR" "$REPO" "$CLASSIFIED_HEAD_SHA" "$CLASSIFIED_BASE_SHA" <<'PYEOF'
 import csv, io, json, subprocess, sys
 
-pr, repo = sys.argv[1], sys.argv[2]
-
-branch = subprocess.check_output(
-    ["gh", "pr", "view", pr, "--repo", repo, "--json", "headRefName", "-q", ".headRefName"],
-    text=True,
-).strip()
+pr, repo, head_sha, base_sha = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
 def get_raw(ref, path):
-    try:
-        return subprocess.check_output(
-            ["gh", "api", f"repos/{repo}/contents/{path}",
-             "-H", "Accept: application/vnd.github.raw+json",
-             "-f", f"ref={ref}"],
-            text=True, stderr=subprocess.DEVNULL,
-        )
-    except Exception:
-        return ""
+    return subprocess.check_output(
+        ["gh", "api", "--method", "GET", f"repos/{repo}/contents/{path}",
+         "-H", "Accept: application/vnd.github.raw+json",
+         "-f", f"ref={ref}"],
+        text=True,
+    )
 
-def parse_csv(text):
-    if not text.strip():
-        return []
-    return list(csv.DictReader(io.StringIO(text)))
+def parse_csv(text, expected_fields, source):
+    reader = csv.DictReader(io.StringIO(text), strict=True)
+    if reader.fieldnames != expected_fields:
+        raise ValueError(f"{source}: unexpected CSV header {reader.fieldnames!r}")
+    rows = list(reader)
+    if not rows:
+        raise ValueError(f"{source}: CSV has no data rows")
+    for line_number, row in enumerate(rows, start=2):
+        if None in row or any(value is None for value in row.values()):
+            raise ValueError(f"{source}:{line_number}: malformed CSV row")
+    return rows
 
-pr_companies = parse_csv(get_raw(branch, "apps/crawler/data/companies.csv"))
-pr_boards = parse_csv(get_raw(branch, "apps/crawler/data/boards.csv"))
-main_companies = parse_csv(get_raw("main", "apps/crawler/data/companies.csv"))
+company_fields = [
+    "slug", "name", "website", "logo_url", "icon_url", "logo_type",
+    "industry", "employee_count_range", "founded_year", "extras",
+]
+board_fields = [
+    "company_slug", "board_slug", "board_url", "monitor_type",
+    "monitor_config", "scraper_type", "scraper_config",
+]
+pr_companies = parse_csv(
+    get_raw(head_sha, "apps/crawler/data/companies.csv"),
+    company_fields,
+    "head companies.csv",
+)
+pr_boards = parse_csv(
+    get_raw(head_sha, "apps/crawler/data/boards.csv"),
+    board_fields,
+    "head boards.csv",
+)
+main_companies = parse_csv(
+    get_raw(base_sha, "apps/crawler/data/companies.csv"),
+    company_fields,
+    "base companies.csv",
+)
 
 main_slugs = {r["slug"] for r in main_companies}
 new_slugs = {r["slug"] for r in pr_companies if r["slug"] not in main_slugs}
@@ -265,16 +304,21 @@ STATS_FOUND=false
 JOBS=0
 MONITOR_TIME=0
 
-COMMENTS=$(gh api "repos/$REPO/issues/$PR/comments" --jq '.[].body')
-STATS_LINE=$(echo "$COMMENTS" | grep '<!-- crawl-stats' | tail -1 || true)
+COMMENTS=$(gh api --method GET --paginate --slurp \
+  "repos/$REPO/issues/$PR/comments?per_page=100")
+STATS_EVIDENCE=$(python3 "$SCRIPTS_DIR/crawl-stats-evidence.py" \
+  "$CLASSIFIED_HEAD_SHA" <<< "$COMMENTS")
 
-if [ -n "$STATS_LINE" ]; then
-  JSON=$(echo "$STATS_LINE" | sed 's/.*<!-- crawl-stats //;s/ -->.*//')
-  echo "Crawl stats: $JSON"
-
-  JOBS=$(echo "$JSON" | jq -r '.jobs // 0')
-  MONITOR_TIME=$(echo "$JSON" | jq -r '.monitor_time // 0')
-  STATS_FOUND=true
+STATS_FOUND=$(jq -r '.found' <<< "$STATS_EVIDENCE")
+CRAWL_STATS_FINGERPRINT=$(jq -er '.fingerprint | strings' <<< "$STATS_EVIDENCE")
+if [[ ! "$CRAWL_STATS_FINGERPRINT" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "::error::Invalid crawl-stats evidence fingerprint" >&2
+  exit 1
+fi
+if [[ "$STATS_FOUND" == "true" ]]; then
+  JOBS=$(jq -er '.jobs' <<< "$STATS_EVIDENCE")
+  MONITOR_TIME=$(jq -er '.monitor_time' <<< "$STATS_EVIDENCE")
+  echo "Crawl stats: jobs=$JOBS monitor_time=$MONITOR_TIME"
 else
   echo "::warning::No crawl-stats comment found"
 fi
@@ -308,7 +352,6 @@ fi
 # --- Apply labels (delta only, so repeated runs do not churn timeline events) ---
 
 ALL_DECISION_LABELS="auto-merge review-code review-size review-load incomplete"
-CURRENT_LABELS=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name')
 DESIRED_LABELS=",$LABELS,"
 
 has_current_label() {
@@ -320,6 +363,18 @@ has_desired_label() {
   local label="$1"
   [[ "$DESIRED_LABELS" == *",$label,"* ]]
 }
+
+# Bind the decision to the same head and base that were inspected. Any
+# synchronize or base-branch advance during classification fails before label
+# mutation or output publication.
+FINAL_METADATA=$(gh pr view "$PR" --repo "$REPO" --json labels,headRefOid,baseRefOid)
+CURRENT_HEAD_SHA=$(jq -er '.headRefOid | strings' <<< "$FINAL_METADATA")
+CURRENT_BASE_SHA=$(jq -er '.baseRefOid | strings' <<< "$FINAL_METADATA")
+if [[ "$CURRENT_HEAD_SHA" != "$CLASSIFIED_HEAD_SHA" || "$CURRENT_BASE_SHA" != "$CLASSIFIED_BASE_SHA" ]]; then
+  echo "::error::PR head/base changed during classification: $CLASSIFIED_HEAD_SHA/$CLASSIFIED_BASE_SHA -> $CURRENT_HEAD_SHA/$CURRENT_BASE_SHA" >&2
+  exit 1
+fi
+CURRENT_LABELS=$(jq -r '.labels[].name' <<< "$FINAL_METADATA")
 
 for L in ${LABELS//,/ }; do
   [ -z "$L" ] && continue
@@ -343,3 +398,6 @@ done
 
 echo "Applied labels: $LABELS"
 echo "labels=$LABELS" >> "$GITHUB_OUTPUT"
+echo "base_sha=$CLASSIFIED_BASE_SHA" >> "$GITHUB_OUTPUT"
+echo "crawl_stats_fingerprint=$CRAWL_STATS_FINGERPRINT" >> "$GITHUB_OUTPUT"
+echo "head_sha=$CLASSIFIED_HEAD_SHA" >> "$GITHUB_OUTPUT"

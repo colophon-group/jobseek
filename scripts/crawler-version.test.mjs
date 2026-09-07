@@ -52,6 +52,29 @@ test("explicit crawler releases remain the default", () => {
   assert.equal(result.kind, "release");
 });
 
+test("Lightpanda census contract changes require a crawler release", () => {
+  const censusFiles = ["apps/crawler/src/lightpanda/census.py"];
+  assert.throws(
+    () =>
+      evaluateCrawlerVersion({
+        baseVersion: "0.13.649",
+        prVersion: "0.13.649",
+        author: "developer",
+        files: censusFiles,
+      }),
+    /must be bumped/,
+  );
+  assert.equal(
+    evaluateCrawlerVersion({
+      baseVersion: "0.13.649",
+      prVersion: "0.13.650",
+      author: "developer",
+      files: [...censusFiles, "apps/crawler/VERSION"],
+    }).kind,
+    "release",
+  );
+});
+
 test("runtime v1 changes require an ordinary crawler release", () => {
   for (const files of [
     ["apps/crawler/contracts/go.mod"],

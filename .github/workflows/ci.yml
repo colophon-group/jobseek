@@ -115,6 +115,8 @@ jobs:
       boards_csv: ${{ steps.manual-default.outputs.boards_csv || steps.manual-pr.outputs.boards_csv || steps.filter.outputs.boards_csv }}
       is_pr: ${{ steps.manual-default.outputs.is_pr || steps.manual-pr.outputs.is_pr || steps.pull-request.outputs.is_pr }}
       base_ref: ${{ steps.manual-default.outputs.base_ref || steps.manual-pr.outputs.base_ref || steps.pull-request.outputs.base_ref }}
+      base_sha: ${{ steps.manual-default.outputs.base_sha || steps.manual-pr.outputs.base_sha || steps.pull-request.outputs.base_sha }}
+      head_sha: ${{ steps.manual-default.outputs.head_sha || steps.manual-pr.outputs.head_sha || steps.pull-request.outputs.head_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -130,6 +132,8 @@ jobs:
             echo "boards_csv=false"
             echo "is_pr=false"
             echo "base_ref="
+            echo "base_sha="
+            echo "head_sha="
           } >> "$GITHUB_OUTPUT"
 
       - name: Classify manually dispatched PR paths
@@ -146,10 +150,14 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.base_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           {
             echo "is_pr=true"
             echo "base_ref=$BASE_REF"
+            echo "base_sha=$BASE_SHA"
+            echo "head_sha=$HEAD_SHA"
           } >> "$GITHUB_OUTPUT"
 
       - name: Detect changed paths
@@ -169,14 +177,12 @@ jobs:
               - '!.github/DISCUSSION_TEMPLATE/**'
               - '!apps/crawler/data/**'
               - '!apps/crawler/traces/**'
-              - '!apps/crawler/tests/lightpanda/fixtures/census.json'
               - '!apps/crawler/VERSION'
             crawler_code:
               - 'apps/crawler/**'
               - '!**/*.md'
               - '!apps/crawler/data/**'
               - '!apps/crawler/traces/**'
-              - '!apps/crawler/tests/lightpanda/fixtures/census.json'
               - '!apps/crawler/VERSION'
             crawler_runtime_boundary:
               - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/{derive-crawler-runtime-contract.mjs,verify-crawler-release-bridge.py}}'
@@ -1212,12 +1218,25 @@ jobs:
   probe-new-boards:
     name: Probe new/changed boards
     needs: changes
-    if: needs.changes.outputs.is_pr == 'true' && needs.changes.outputs.boards_csv == 'true'
+    if: needs.changes.outputs.is_pr == 'true' && (needs.changes.outputs.boards_csv == 'true' || needs.changes.outputs.crawler_code == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+
+      - name: Materialize exact previous Lightpanda baseline
+        env:
+          BASE_SHA: ${{ needs.changes.outputs.base_sha }}
+          PREVIOUS_BASELINE_CENSUS: ${{ runner.temp }}/lightpanda-census-previous.json
+        run: |
+          set -euo pipefail
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git cat-file -e "$BASE_SHA^{commit}"
+          git show "$BASE_SHA:apps/crawler/tests/lightpanda/fixtures/census.json" \
+            >"$PREVIOUS_BASELINE_CENSUS"
+          test -s "$PREVIOUS_BASELINE_CENSUS"
 
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -1232,16 +1251,27 @@ jobs:
       - run: uv sync
         working-directory: apps/crawler
 
-      - name: Fetch base ref
-        env:
-          BASE_REF: ${{ needs.changes.outputs.base_ref }}
-        run: git fetch --depth=1 origin "$BASE_REF"
-
-      - name: Probe added/changed boards
+      - name: Verify deterministic Lightpanda semantic census
         working-directory: apps/crawler
         env:
-          BASE_REF: ${{ needs.changes.outputs.base_ref }}
-        run: uv run python ../../scripts/probe-new-boards.py --base-ref "origin/$BASE_REF"
+          BASELINE_CENSUS: tests/lightpanda/fixtures/census.json
+          CURRENT_CENSUS: ${{ runner.temp }}/lightpanda-census-current.json
+          PREVIOUS_BASELINE_CENSUS: ${{ runner.temp }}/lightpanda-census-previous.json
+        run: |
+          set -euo pipefail
+          uv run python -m src.lightpanda.census --output "$CURRENT_CENSUS"
+          uv run python -m src.lightpanda.census \
+            --check \
+            --output "$CURRENT_CENSUS" \
+            --baseline "$BASELINE_CENSUS" \
+            --previous-baseline "$PREVIOUS_BASELINE_CENSUS"
+
+      - name: Probe added/changed boards
+        if: needs.changes.outputs.boards_csv == 'true'
+        working-directory: apps/crawler
+        env:
+          BASE_SHA: ${{ needs.changes.outputs.base_sha }}
+        run: uv run python ../../scripts/probe-new-boards.py --base-ref "$BASE_SHA"
 
   required-ci:
     name: Required CI
@@ -1335,7 +1365,7 @@ jobs:
 
           requireSuccess("ws-package-smoke", crawlerCode);
           requireSuccess("version-check", isPr && crawlerCode);
-          requireSuccess("probe-new-boards", isPr && boardsCsv);
+          requireSuccess("probe-new-boards", isPr && (boardsCsv || crawlerCode));
 
           if (failures.length > 0) {
             console.error("Required CI failed:");
