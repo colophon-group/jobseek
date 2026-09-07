@@ -1,16 +1,12 @@
-"""Tests for ``src.processing.r2_stage`` — the hash stability contract.
+"""Tests for ``src.processing.r2_stage`` byte-authoritative staging.
 
-These tests guard the invariant that ``_compute_r2_hash`` is insensitive
-to upstream non-determinism that does not represent a real content
-change. Before PR #2223, ``_deep_sort`` silently left list order alone
-despite its docstring, so any posting whose source API returned
-locations (or any list-of-strings metadata field) in a different order
-across scrapes re-uploaded on every scrape, even though the hash was
-supposed to be content-stable.
+The deep-sort helpers remain covered for compatibility, but description
+versions now hash only the normalized HTML that ``put_description`` uploads.
 """
 
 from __future__ import annotations
 
+from src.core.description_store import content_hash
 from src.processing.r2_stage import (
     _compute_r2_hash,
     _compute_r2_hash_legacy,
@@ -97,26 +93,18 @@ class TestComputeR2Hash:
         shifted = dict(self._BASE_EXTRAS, valid_through="2026-11-30")
         assert _compute_r2_hash("d", base) == _compute_r2_hash("d", shifted)
 
-    def test_legacy_sensitive_to_list_order(self):
-        # The legacy hash MUST still flip on list reorderings — that's
-        # the whole reason the migration shim exists. If this were
-        # order-insensitive, every stored hash would already be
-        # order-stable and there'd be no noise to fix.
+    def test_retired_legacy_call_shape_also_ignores_metadata_order(self):
         a = dict(self._BASE_EXTRAS, locations=["London", "New York"])
         b = dict(self._BASE_EXTRAS, locations=["New York", "London"])
-        assert _compute_r2_hash_legacy("d", a) != _compute_r2_hash_legacy("d", b)
+        assert _compute_r2_hash_legacy("d", a) == _compute_r2_hash_legacy("d", b)
 
-    def test_new_and_legacy_agree_when_lists_already_sorted(self):
-        # When upstream happens to emit already-sorted lists, the two
-        # algorithms produce identical output — so most postings will
-        # migrate their stored hash without ever triggering the "legacy
-        # matched" branch of the UPSERT.
+    def test_new_and_legacy_compatibility_wrappers_agree(self):
         extras = dict(self._BASE_EXTRAS, locations=["London", "New York", "Remote"])
         assert _compute_r2_hash("d", extras) == _compute_r2_hash_legacy("d", extras)
 
 
 class TestStageR2Pending:
-    def test_returns_four_tuple_with_both_hashes(self):
+    def test_returns_four_tuple_with_byte_hash_in_both_compatibility_slots(self):
         staged = _stage_r2_pending(
             title="Engineer",
             description="<p>desc</p>",
@@ -134,10 +122,10 @@ class TestStageR2Pending:
         html, locale, new_hash, legacy_hash = staged
         assert html == "<p>desc</p>"
         assert locale == "en"
-        assert isinstance(new_hash, int)
-        assert isinstance(legacy_hash, int)
+        assert new_hash == content_hash(html)
+        assert legacy_hash == new_hash
 
-    def test_short_circuits_on_hash_match(self):
+    def test_scalar_hash_match_does_not_skip_locale_authoritative_upsert(self):
         kwargs = dict(
             title="Engineer",
             description="<p>desc</p>",
@@ -154,27 +142,20 @@ class TestStageR2Pending:
         first = _stage_r2_pending(**kwargs)
         assert first is not None
         _, _, new_hash, _ = first
-        # A subsequent call that already knows the current new_hash
-        # short-circuits to None (the scrape pipeline skips the UPSERT
-        # entirely in that case).
-        assert _stage_r2_pending(**kwargs, current_hash=new_hash) is None
+        # The scalar posting hash has no locale identity and can be stale in a
+        # recurring Redis payload. The descriptions UPSERT must make the final
+        # decision even when that scalar happens to equal the candidate hash.
+        assert _stage_r2_pending(**kwargs, current_hash=new_hash) == first
 
-    def test_returns_tuple_when_only_legacy_matches(self):
-        # Pre-migration state: the stored hash is the legacy value.
-        # ``_stage_r2_pending`` must NOT short-circuit here — it has to
-        # return the (new, legacy) pair so the UPSERT can see the
-        # legacy match and skip the R2 re-upload. Short-circuiting
-        # on legacy would keep the stored hash pinned to the old value
-        # forever and never complete the migration.
+    def test_metadata_changes_do_not_change_the_uploaded_byte_hash(self):
         kwargs = dict(
             title="Engineer",
             description="<p>desc</p>",
             language="en",
-            # Non-sorted order — this is where new vs legacy diverge.
             locations=["NYC", "LA"],
             localizations=None,
             extras=None,
-            metadata=None,
+            metadata={"team": "platform"},
             date_posted=None,
             base_salary=None,
             employment_type=None,
@@ -182,14 +163,12 @@ class TestStageR2Pending:
         )
         staged = _stage_r2_pending(**kwargs)
         assert staged is not None
-        _, _, new_hash, legacy_hash = staged
-        assert new_hash != legacy_hash  # confirms the test exercises divergence
-
-        result = _stage_r2_pending(**kwargs, current_hash=legacy_hash)
-        assert result is not None, "must not short-circuit on legacy-only match"
-        _, _, got_new, got_legacy = result
-        assert got_new == new_hash
-        assert got_legacy == legacy_hash
+        changed_metadata = _stage_r2_pending(
+            **(kwargs | {"metadata": {"team": "growth", "request_id": "volatile"}})
+        )
+        assert changed_metadata is not None
+        assert staged[2:] == changed_metadata[2:]
+        assert staged[2] == content_hash("<p>desc</p>")
 
     def test_returns_none_for_empty_description(self):
         # No description → nothing to stage. Was true before the fix,

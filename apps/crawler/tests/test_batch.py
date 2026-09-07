@@ -1060,6 +1060,21 @@ class TestProcessOneBoard:
                 descriptions.setdefault((args[0], args[1]), args[2])
             return "UPDATE 1"
 
+        async def _stateful_fetchrow(sql, *args):
+            if sql == _COUNT_BOARD_ACTIVE_AND_MISSING:
+                return {"active": 0, "missing": 0}
+            if sql == _UPSERT_DESCRIPTION:
+                descriptions[(args[0], args[1])] = args[2]
+                return {
+                    "diagnostic_sampled": False,
+                    "row_existed": True,
+                    "old_html_checksum": None,
+                    "new_html_checksum": None,
+                    "upload_scheduled": True,
+                    "upload_state_changed": True,
+                }
+            return _inserted_row("jp-1", url)
+
         mock_monitor.side_effect = _monitor_stream
         conn.execute.side_effect = _stateful_execute
         conn.fetch.side_effect = [
@@ -1070,7 +1085,7 @@ class TestProcessOneBoard:
             [_diff_row("touched", row_id="jp-1", url=url, r2_hash=222)],
             [],  # third MARK_GONE_BY_TIMESTAMP
         ]
-        conn.fetchrow.return_value = _inserted_row("jp-1", url)
+        conn.fetchrow.side_effect = _stateful_fetchrow
         pool.fetchrow = AsyncMock(
             return_value={
                 "titles": ["Monitor title"],
@@ -4241,7 +4256,7 @@ class TestEnrichmentScrape:
         ]
         assert len(enrich_calls) == 1
         # Verify description was written to descriptions table
-        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        desc_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
         assert len(desc_calls) == 1
         assert desc_calls[0].args[1] == "jp-1"  # posting_id
         assert desc_calls[0].args[3] is not None  # html
@@ -4278,7 +4293,7 @@ class TestEnrichmentScrape:
         assert call_args[2] is None  # employment_type
         assert call_args[3] is None  # titles
         # Description should be written to descriptions table
-        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        desc_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
         assert len(desc_calls) == 1
         assert desc_calls[0].args[3] is not None  # html
 
