@@ -648,18 +648,8 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 			if exception != nil {
 				return fmt.Errorf("expression evaluation: %w", exception)
 			}
-			if remoteObject != nil && remoteObject.Subtype == runtime.SubtypePromise {
-				return errors.New("expression returned a Promise; only synchronous expressions are supported")
-			}
-			if remoteObject != nil && remoteObject.UnserializableValue != "" {
-				return fmt.Errorf("expression returned non-JSON value %q", remoteObject.UnserializableValue)
-			}
-			if remoteObject == nil || len(remoteObject.Value) == 0 {
-				expression = json.RawMessage("null")
-				return nil
-			}
-			expression = bytes.Clone(remoteObject.Value)
-			return nil
+			expression, err = serializeExpressionResult(remoteObject)
+			return err
 		}),
 	); err != nil {
 		return Result{}, err
@@ -671,4 +661,40 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 		HTML:       html,
 		Expression: expression,
 	}, nil
+}
+
+func serializeExpressionResult(remoteObject *runtime.RemoteObject) (json.RawMessage, error) {
+	if remoteObject == nil {
+		return nil, errors.New("expression returned no remote object")
+	}
+	if remoteObject.Type != runtime.TypeObject && remoteObject.Subtype != "" {
+		return nil, fmt.Errorf("expression returned subtype %q for non-object type %q", remoteObject.Subtype, remoteObject.Type)
+	}
+	if remoteObject.Subtype == runtime.SubtypePromise {
+		return nil, errors.New("expression returned a Promise; only synchronous expressions are supported")
+	}
+	if remoteObject.UnserializableValue != "" {
+		return nil, fmt.Errorf("expression returned non-JSON value %q", remoteObject.UnserializableValue)
+	}
+	switch remoteObject.Type {
+	case runtime.TypeUndefined, runtime.TypeFunction, runtime.TypeSymbol, runtime.TypeBigint, runtime.TypeAccessor:
+		return nil, fmt.Errorf("expression returned non-JSON type %q", remoteObject.Type)
+	case runtime.TypeObject, runtime.TypeString, runtime.TypeNumber, runtime.TypeBoolean:
+	default:
+		return nil, fmt.Errorf("expression returned unsupported type %q", remoteObject.Type)
+	}
+	if remoteObject.Subtype == runtime.SubtypeNull {
+		if len(remoteObject.Value) == 0 || bytes.Equal(remoteObject.Value, []byte("null")) {
+			return json.RawMessage("null"), nil
+		}
+		return nil, errors.New("expression returned inconsistent null value")
+	}
+	if len(remoteObject.Value) == 0 {
+		return nil, fmt.Errorf("expression returned no JSON value for type %q", remoteObject.Type)
+	}
+	value := bytes.Clone(remoteObject.Value)
+	if !json.Valid(value) {
+		return nil, errors.New("expression returned invalid JSON")
+	}
+	return value, nil
 }

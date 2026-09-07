@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -63,6 +64,42 @@ func TestLightpandaIntegration(t *testing.T) {
 	}
 	if string(response.Result.Expression) != `"Lightpanda fixture"` {
 		t.Errorf("expression = %s, want %q", response.Result.Expression, "Lightpanda fixture")
+	}
+
+	output.Reset()
+	exitCode = runCLI([]string{origin.URL + "/fixture", "null"}, &output)
+	if exitCode != 0 {
+		t.Fatalf("null expression exit code = %d, output = %s", exitCode, output.String())
+	}
+	response = cliResponse{}
+	if err := json.Unmarshal(output.Bytes(), &response); err != nil {
+		t.Fatalf("decode null CLI output: %v (output = %s)", err, output.String())
+	}
+	if !response.OK || response.Result == nil || string(response.Result.Expression) != "null" {
+		t.Errorf("null expression was not preserved: %+v", response)
+	}
+
+	for _, test := range []struct {
+		expression string
+		wantType   string
+	}{
+		{expression: "undefined", wantType: "undefined"},
+		{expression: "() => 1", wantType: "function"},
+		{expression: `Symbol("x")`, wantType: "symbol"},
+	} {
+		output.Reset()
+		exitCode = runCLI([]string{origin.URL + "/fixture", test.expression}, &output)
+		if exitCode == 0 {
+			t.Errorf("expression %q succeeded with output %s", test.expression, output.String())
+		}
+		response = cliResponse{}
+		if err := json.Unmarshal(output.Bytes(), &response); err != nil {
+			t.Fatalf("decode %q CLI output: %v (output = %s)", test.expression, err, output.String())
+		}
+		wantError := fmt.Sprintf("non-JSON type %q", test.wantType)
+		if response.OK || !strings.Contains(response.Error, wantError) {
+			t.Errorf("expression %q did not fail with %q: %+v", test.expression, wantError, response)
+		}
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/runtime"
 )
 
 func TestValidateCDPEndpoint(t *testing.T) {
@@ -191,6 +192,44 @@ func TestResultBounds(t *testing.T) {
 	result.Expression = json.RawMessage(`{"not":"closed"`)
 	if err := validateResult(result); err == nil {
 		t.Fatal("validateResult accepted invalid expression JSON")
+	}
+}
+
+func TestSerializeExpressionResult(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		object  *runtime.RemoteObject
+		want    string
+		wantErr bool
+	}{
+		{name: "string", object: &runtime.RemoteObject{Type: runtime.TypeString, Value: []byte(`"Jobs"`)}, want: `"Jobs"`},
+		{name: "object", object: &runtime.RemoteObject{Type: runtime.TypeObject, Value: []byte(`{"jobs":1}`)}, want: `{"jobs":1}`},
+		{name: "null value", object: &runtime.RemoteObject{Type: runtime.TypeObject, Subtype: runtime.SubtypeNull, Value: []byte(`null`)}, want: `null`},
+		{name: "null without value", object: &runtime.RemoteObject{Type: runtime.TypeObject, Subtype: runtime.SubtypeNull}, want: `null`},
+		{name: "nil object", wantErr: true},
+		{name: "undefined", object: &runtime.RemoteObject{Type: runtime.TypeUndefined}, wantErr: true},
+		{name: "function", object: &runtime.RemoteObject{Type: runtime.TypeFunction}, wantErr: true},
+		{name: "symbol", object: &runtime.RemoteObject{Type: runtime.TypeSymbol}, wantErr: true},
+		{name: "promise", object: &runtime.RemoteObject{Type: runtime.TypeObject, Subtype: runtime.SubtypePromise}, wantErr: true},
+		{name: "unserializable number", object: &runtime.RemoteObject{Type: runtime.TypeNumber, UnserializableValue: runtime.UnserializableValue("NaN")}, wantErr: true},
+		{name: "missing object value", object: &runtime.RemoteObject{Type: runtime.TypeObject}, wantErr: true},
+		{name: "invalid JSON", object: &runtime.RemoteObject{Type: runtime.TypeObject, Value: []byte(`{"jobs":`)}, wantErr: true},
+		{name: "inconsistent null", object: &runtime.RemoteObject{Type: runtime.TypeObject, Subtype: runtime.SubtypeNull, Value: []byte(`{}`)}, wantErr: true},
+		{name: "primitive null subtype", object: &runtime.RemoteObject{Type: runtime.TypeString, Subtype: runtime.SubtypeNull, Value: []byte(`null`)}, wantErr: true},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := serializeExpressionResult(test.object)
+			if (err != nil) != test.wantErr {
+				t.Fatalf("serializeExpressionResult() error = %v, wantErr %v", err, test.wantErr)
+			}
+			if string(got) != test.want {
+				t.Fatalf("serializeExpressionResult() = %q, want %q", got, test.want)
+			}
+		})
 	}
 }
 
