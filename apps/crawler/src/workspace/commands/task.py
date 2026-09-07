@@ -460,7 +460,7 @@ _READY_KEYS = {
     "claim_initially_present",
     "attempts",
 }
-_READY_ATTEMPT_KEYS = {"kb_push", "draft_recovery", "workflow_done", "claim_release"}
+_READY_ATTEMPT_KEYS = {"kb_push", "ready", "workflow_done", "claim_release"}
 _PROVENANCE_KEYS = {
     "number",
     "head_ref_name",
@@ -726,15 +726,9 @@ def _finalize_workflow_locked(slug: str) -> None:
                 issue=ws.issue,
                 slug=ws.slug,
             )
-        elif details.get("isDraft") is False:
-            expected_ready = copy.deepcopy(effective)
-            expected_ready["is_draft"] = False
-            if current_provenance != expected_ready:
-                raise WorkspaceError(
-                    "PR readiness changed with review/head/ownership evidence; refusing mutation"
-                )
-            _save_ready_attempt(ws, state, "draft_recovery")
+            _save_ready_attempt(ws, state, "ready")
             _authenticate_workspace_worktree(ws)
+            git.mark_pr_ready(ws.pr)
             git.verify_pr_ready(
                 effective,
                 pr_number=ws.pr,
@@ -742,34 +736,24 @@ def _finalize_workflow_locked(slug: str) -> None:
                 issue=ws.issue,
                 slug=ws.slug,
             )
-            git.mark_pr_draft(ws.pr)
-            git.verify_recorded_pr(
+            out.info("github", f"PR #{ws.pr} marked ready for review")
+        elif details.get("isDraft") is False:
+            expected_ready = copy.deepcopy(effective)
+            expected_ready["is_draft"] = False
+            if current_provenance != expected_ready:
+                raise WorkspaceError(
+                    "PR readiness changed with review/head/ownership evidence; refusing mutation"
+                )
+            git.verify_pr_ready(
                 effective,
                 pr_number=ws.pr,
                 branch=ws.branch,
                 issue=ws.issue,
                 slug=ws.slug,
             )
-            out.warn("github", f"PR #{ws.pr} became ready during automation; returned to draft")
+            out.info("github", f"PR #{ws.pr} is ready for review")
         else:
             raise WorkspaceError("PR draft state is invalid")
-
-        if state["attempts"]["draft_recovery"] and ws.issue:
-            marker = f"<!-- resolver-ready-race:{ws.pr}:{effective['head_ref_oid']} -->"
-            git.comment_on_issue_once(
-                ws.issue,
-                marker,
-                (
-                    f"{marker}\nResolver safety audit: PR #{ws.pr} became ready while "
-                    f"the exact-head lease `{effective['head_ref_oid']}` was active. "
-                    "It was returned to draft; no branch content was overwritten."
-                ),
-            )
-
-        out.info(
-            "github",
-            f"PR #{ws.pr} remains draft pending independent exact-head review and required CI",
-        )
 
     if wf.current_step == "reflect":
         _save_ready_attempt(ws, state, "workflow_done")

@@ -1688,14 +1688,9 @@ def create_draft_pr(title: str, body: str) -> int:
 
 
 def mark_pr_ready(pr_number: int) -> None:
-    """Retired resolver mutation: company automation must leave PRs draft."""
-    raise WorkspaceError(f"Refusing to mark company PR #{pr_number} ready from resolver automation")
-
-
-def mark_pr_draft(pr_number: int) -> None:
-    """Return a PR to draft after a readiness-only race."""
+    """Mark a draft PR as ready for review."""
     _run(
-        ["gh", "pr", "ready", str(pr_number), "--undo", "--repo", _resolve_repo()],
+        ["gh", "pr", "ready", str(pr_number), "--repo", _resolve_repo()],
         retries=_GH_RETRIES,
     )
 
