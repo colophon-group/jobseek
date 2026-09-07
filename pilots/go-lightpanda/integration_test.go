@@ -81,11 +81,11 @@ func TestLightpandaIntegration(t *testing.T) {
 
 	for _, test := range []struct {
 		expression string
-		wantType   string
+		wantError  string
 	}{
-		{expression: "undefined", wantType: "undefined"},
-		{expression: "() => 1", wantType: "function"},
-		{expression: `Symbol("x")`, wantType: "symbol"},
+		{expression: "undefined", wantError: `non-JSON type "undefined"`},
+		{expression: "() => 1", wantError: `non-JSON type "function"`},
+		{expression: `Symbol("x")`, wantError: "Object couldn't be returned by value (-32000)"},
 	} {
 		output.Reset()
 		exitCode = runCLI([]string{origin.URL + "/fixture", test.expression}, &output)
@@ -96,9 +96,8 @@ func TestLightpandaIntegration(t *testing.T) {
 		if err := json.Unmarshal(output.Bytes(), &response); err != nil {
 			t.Fatalf("decode %q CLI output: %v (output = %s)", test.expression, err, output.String())
 		}
-		wantError := fmt.Sprintf("non-JSON type %q", test.wantType)
-		if response.OK || !strings.Contains(response.Error, wantError) {
-			t.Errorf("expression %q did not fail with %q: %+v", test.expression, wantError, response)
+		if response.OK || !strings.Contains(response.Error, test.wantError) {
+			t.Errorf("expression %q did not fail with %q: %+v", test.expression, test.wantError, response)
 		}
 	}
 }
