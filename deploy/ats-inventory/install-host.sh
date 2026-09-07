@@ -22,6 +22,7 @@ FILES=(
   /usr/local/sbin/jobseek-ats-inventory
   /usr/local/sbin/jobseek-ats-inventory-control
   /usr/local/sbin/jobseek-ats-inventory-bounded-tee
+  /usr/local/sbin/jobseek-ats-inventory-registry-snapshot
   /usr/local/sbin/jobseek-ats-inventory-github-token
   /usr/local/sbin/jobseek-ats-inventory-status
   /usr/local/sbin/jobseek-ats-inventory-network
@@ -207,6 +208,7 @@ stop_unit_if_present jobseek-ats-inventory.service
 install -d -o root -g deploy -m 0750 "$STATE_ROOT"
 install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/cache"
 install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/status"
+install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/registry-snapshots"
 rm -rf -- "$STATE_ROOT/acceptance-cache"
 install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/acceptance-cache"
 install -d -o root -g deploy -m 0750 "$CONFIG_ROOT"
@@ -216,6 +218,8 @@ install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/control.sh" \
   /usr/local/sbin/jobseek-ats-inventory-control
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/bounded-tee.py" \
   /usr/local/sbin/jobseek-ats-inventory-bounded-tee
+install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/registry-snapshot.py" \
+  /usr/local/sbin/jobseek-ats-inventory-registry-snapshot
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/github-app-token.py" \
   /usr/local/sbin/jobseek-ats-inventory-github-token
 install -o root -g root -m 0755 "$REPO_ROOT/deploy/ats-inventory/status.py" \

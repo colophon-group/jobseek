@@ -31,6 +31,32 @@ from src.workspace._compat import all_monitor_types
 COMPANIES_URL = "https://storage.stapply.ai/jobhive/v1/companies.csv"
 
 
+def test_candidate_registry_defaults_use_runtime_data_contract(monkeypatch: pytest.MonkeyPatch):
+    from src import cli
+
+    monkeypatch.setattr(cli, "get_data_dir", lambda: Path("/app/data"))
+
+    assert cli._resolve_ats_registry_paths(None, None) == (
+        Path("/app/data/companies.csv"),
+        Path("/app/data/boards.csv"),
+    )
+
+
+def test_candidate_registry_explicit_paths_do_not_probe_runtime_data(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    from src import cli
+
+    def unexpected_data_root() -> Path:
+        raise AssertionError("explicit registry paths must bypass runtime discovery")
+
+    monkeypatch.setattr(cli, "get_data_dir", unexpected_data_root)
+    companies = tmp_path / "companies.csv"
+    boards = tmp_path / "boards.csv"
+
+    assert cli._resolve_ats_registry_paths(companies, boards) == (companies, boards)
+
+
 def test_github_token_prefers_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     token_file = tmp_path / "token"
     token_file.write_text("file-token\n", encoding="utf-8")
