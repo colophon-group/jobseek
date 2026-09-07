@@ -89,6 +89,9 @@ Status tags:
 - [18 - Vercel Fluid CPU Regression Gate](18-vercel-fluid-cpu.md) `[runbook]` -
   clean-window measurement protocol, route budgets, functionality checks, and
   rollback criteria for web CPU interventions.
+- [18 - R2 Class A Write Spike](18-r2-write-incident.md) `[runbook]` -
+  September 2026 incident evidence, root cause, bounded write controls, and
+  post-merge verification plan for Cloudflare R2 usage.
 - [19 - Hetzner Data Backup and Recovery](19-data-backup-recovery.md)
   `[runbook]` - encrypted PostgreSQL and Typesense backups, restore drills,
   retention, scheduling, and replacement gates for legacy server backups.
