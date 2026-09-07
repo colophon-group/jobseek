@@ -622,6 +622,28 @@ class TestCanHandle:
         assert result is not None
         assert result["path"] == "props.pageProps.positions"
 
+    async def test_nextjs_prefers_offers_inventory_over_jobs_filters(self):
+        """Recruitment sites may use ``jobs`` for filters, not postings."""
+        offers = [
+            {
+                "id": i,
+                "title": f"Job {i}",
+                "uri": f"https://example.com/offers/job-{i}",
+                "indexedContent": f"Full description for job {i}",
+            }
+            for i in range(19)
+        ]
+        filters = [{"id": i, "title": f"School {i}"} for i in range(8)]
+        data = {"props": {"pageProps": {"offers": offers, "jobs": filters}}}
+        html = _html_with_next_data(data)
+
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            result = await can_handle("https://example.com/careers", client)
+
+        assert result is not None
+        assert result["path"] == "props.pageProps.offers"
+        assert result["count"] == 19
+
     async def test_non_nextjs_page(self):
         html = "<html><body>Regular page</body></html>"
         async with httpx.AsyncClient(transport=_mock_transport(html)) as client:

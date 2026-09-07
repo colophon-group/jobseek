@@ -1247,7 +1247,7 @@ nextdata — Next.js __NEXT_DATA__ Discovery
   Detection:  ws probe shows "__NEXT_DATA__ — N items at <path>"
               If "(render)" shown, page needs Playwright to load data.
               Auto-searches common paths: props.pageProps.positions,
-              props.pageProps.jobs, props.pageProps.openings,
+              props.pageProps.offers, props.pageProps.jobs, props.pageProps.openings,
               props.pageProps.allJobs, props.pageProps.data.positions,
               props.pageProps.data.jobs, and common RSC equivalents including
               jobsData.data. Needs >= 5 items (all dicts).
