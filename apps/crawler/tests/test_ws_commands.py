@@ -1396,6 +1396,9 @@ class TestTaskComplete:
         def unclaim(_issue):
             state["claimed"] = False
 
+        def ready(_number):
+            state["draft"] = False
+
         real_record = lifecycle._record_current_pr_provenance
         record_calls = {"count": 0}
 
@@ -1432,7 +1435,7 @@ class TestTaskComplete:
             patch("src.workspace.git.push_branch_at_expected_oid", side_effect=push) as push_mock,
             patch("src.workspace.git.get_pr_details_strict", side_effect=details),
             patch("src.workspace.git.get_main_branch", return_value="main"),
-            patch("src.workspace.git.mark_pr_ready") as ready,
+            patch("src.workspace.git.mark_pr_ready", side_effect=ready) as mark_ready,
             patch(
                 "src.workspace.git.is_issue_claimed_strict", side_effect=lambda *_: state["claimed"]
             ),
@@ -1450,9 +1453,9 @@ class TestTaskComplete:
 
         push_mock.assert_called_once_with("add-company/test", published_oid, TEST_HEAD_OID)
         assert _load_wf_from_disk("test").current_step == "done"
-        assert state["draft"] is True
+        assert state["draft"] is False
         assert state["claimed"] is False
-        ready.assert_not_called()
+        mark_ready.assert_called_once_with(10)
 
     @pytest.mark.parametrize("phase", ["before_commit", "before_push"])
     @pytest.mark.parametrize("kind", ["review", "comment", "hold", "ready"])
@@ -1514,7 +1517,7 @@ class TestTaskComplete:
             ),
             patch("src.workspace.git.get_pr_details_strict", side_effect=details),
             patch("src.workspace.git.push_branch_at_expected_oid") as push,
-            patch("src.workspace.git.mark_pr_draft") as mark_draft,
+            patch("src.workspace.git.mark_pr_ready") as mark_ready,
             pytest.raises(WorkspaceError, match="provenance or head changed"),
         ):
             _finalize_workflow("test")
@@ -1522,7 +1525,7 @@ class TestTaskComplete:
         assert commit_mock.call_count == (1 if phase == "before_push" else 0)
         assert state["remote"] == TEST_HEAD_OID
         push.assert_not_called()
-        mark_draft.assert_not_called()
+        mark_ready.assert_not_called()
 
 
 class TestDel:
@@ -2332,7 +2335,7 @@ class TestTerminalCleanupRecovery:
 
 
 class TestReadyRecovery:
-    def test_completion_leaves_pr_draft_and_releases_claim(self, tmp_path, monkeypatch):
+    def test_completion_marks_pr_ready_and_releases_claim(self, tmp_path, monkeypatch):
         from src.workspace.commands.task import _finalize_workflow
         from src.workspace.workflow import WorkflowState, _load_wf_from_disk, _save_wf_to_disk
 
@@ -2357,6 +2360,9 @@ class TestReadyRecovery:
             value["isDraft"] = draft["value"]
             return value
 
+        def mark_ready(_number):
+            draft["value"] = False
+
         with (
             patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
             patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
@@ -2366,7 +2372,7 @@ class TestReadyRecovery:
                 "src.workspace.git.remote_branch_oid_strict", side_effect=lambda *_: remote["oid"]
             ),
             patch("src.workspace.git.get_pr_details_strict", side_effect=details),
-            patch("src.workspace.git.mark_pr_ready") as ready,
+            patch("src.workspace.git.mark_pr_ready", side_effect=mark_ready) as ready,
             patch(
                 "src.workspace.git.is_issue_claimed_strict", side_effect=lambda *_: claimed["value"]
             ),
@@ -2378,12 +2384,12 @@ class TestReadyRecovery:
         ):
             _finalize_workflow("test")
 
-        assert draft["value"] is True
-        ready.assert_not_called()
+        assert draft["value"] is False
+        ready.assert_called_once_with(10)
         assert _load_wf_from_disk("test").current_step == "done"
         unclaim.assert_called_once_with(42)
 
-    def test_readiness_race_is_returned_to_draft_and_ambiguous_response_reconciles(
+    def test_ambiguous_ready_response_is_reconciled_without_second_mutation(
         self, tmp_path, monkeypatch
     ):
         from src.workspace.commands.task import _finalize_workflow
@@ -2400,15 +2406,15 @@ class TestReadyRecovery:
             )
         )
         _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
-        draft = {"value": False}
+        draft = {"value": True}
 
         def details(_number):
             value = _test_pr_details(10, slug="test", issue=None)
             value["isDraft"] = draft["value"]
             return value
 
-        def draft_side_effect(_number):
-            draft["value"] = True
+        def ready_side_effect(_number):
+            draft["value"] = False
             raise RuntimeError("lost response")
 
         with (
@@ -2418,20 +2424,18 @@ class TestReadyRecovery:
             patch("src.workspace.git.changed_paths_strict", return_value=set()),
             patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID),
             patch("src.workspace.git.get_pr_details_strict", side_effect=details),
-            patch("src.workspace.git.mark_pr_draft", side_effect=draft_side_effect) as mark_draft,
-            patch("src.workspace.git.mark_pr_ready") as mark_ready,
+            patch("src.workspace.git.mark_pr_ready", side_effect=ready_side_effect) as mark_ready,
             patch("src.workspace.trace.upload_trace_to_hf", return_value=None),
         ):
             with pytest.raises(RuntimeError, match="lost response"):
                 _finalize_workflow("test")
             _finalize_workflow("test")
 
-        mark_draft.assert_called_once_with(10)
-        mark_ready.assert_not_called()
-        assert draft["value"] is True
+        mark_ready.assert_called_once_with(10)
+        assert draft["value"] is False
         assert _load_wf_from_disk("test").current_step == "done"
 
-    def test_readiness_recovery_rechecks_exact_ready_pr_before_draft_mutation(
+    def test_concurrent_readiness_rechecks_exact_ready_pr_before_completion(
         self, tmp_path, monkeypatch
     ):
         from src.workspace.commands.task import _finalize_workflow
@@ -2470,58 +2474,12 @@ class TestReadyRecovery:
                 "src.workspace.git.get_pr_details_strict",
                 side_effect=[ready, raced],
             ),
-            patch("src.workspace.git.mark_pr_draft") as mark_draft,
             patch("src.workspace.git.mark_pr_ready") as mark_ready,
             pytest.raises(WorkspaceError, match="changed while transitioning to ready"),
         ):
             _finalize_workflow("test")
 
-        mark_draft.assert_not_called()
         mark_ready.assert_not_called()
-
-    def test_readiness_race_recovery_posts_issue_audit(self, tmp_path, monkeypatch):
-        from src.workspace.commands.task import _finalize_workflow
-        from src.workspace.workflow import WorkflowState, _save_wf_to_disk
-
-        _patch_all(monkeypatch, tmp_path)
-        save_workspace(
-            Workspace(
-                slug="test",
-                issue=42,
-                pr=10,
-                branch="add-company/test",
-                pr_provenance=_test_pr_provenance(10, issue=42),
-                submit_state={"pushed": True},
-            )
-        )
-        _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
-        draft = {"value": False}
-
-        def details(_number):
-            value = _test_pr_details(10, slug="test", issue=42)
-            value["isDraft"] = draft["value"]
-            return value
-
-        with (
-            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
-            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
-            patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
-            patch("src.workspace.git.changed_paths_strict", return_value=set()),
-            patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID),
-            patch("src.workspace.git.get_pr_details_strict", side_effect=details),
-            patch(
-                "src.workspace.git.mark_pr_draft",
-                side_effect=lambda _number: draft.__setitem__("value", True),
-            ),
-            patch("src.workspace.git.comment_on_issue_once") as comment,
-            patch("src.workspace.git.is_issue_claimed_strict", return_value=False),
-            patch("src.workspace.trace.upload_trace_to_hf", return_value=None),
-        ):
-            _finalize_workflow("test")
-
-        marker, body = comment.call_args.args[1:]
-        assert marker == f"<!-- resolver-ready-race:10:{TEST_HEAD_OID} -->"
-        assert "returned to draft" in body
 
     def test_tampered_ready_schema_blocks_all_mutations(self, tmp_path, monkeypatch):
         from src.workspace.commands.task import _finalize_workflow
@@ -2547,7 +2505,7 @@ class TestReadyRecovery:
             "claim_initially_present": False,
             "attempts": {
                 "kb_push": False,
-                "draft_recovery": False,
+                "ready": False,
                 "workflow_done": False,
                 "claim_release": False,
             },

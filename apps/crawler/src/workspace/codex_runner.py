@@ -2524,7 +2524,7 @@ class CompanyResolverGovernor:
             if isinstance(branch, str) and branch.startswith("fix-crawler/"):
                 return "submitted", f"coding-mode fix submitted as PR #{number}"
             if worktree and _ws_issue_completed(worktree, admission.issue):
-                return "submitted", f"ws completed and PR #{number} remains draft for review"
+                return "submitted", f"ws completed and PR #{number} is ready for review"
         return None
 
     def _record_pr(self, admission: Admission, pr: dict[str, Any]) -> None:
