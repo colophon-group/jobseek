@@ -209,8 +209,14 @@ async def test_taiwan_annual_cycle_is_not_kept_after_its_committed_deadline(monk
     ],
 )
 async def test_inline_provider_identity_survives_title_edits(
-    slug, original_title, renamed_title, html_template, expected_identity
+    monkeypatch, slug, original_title, renamed_title, html_template, expected_identity
 ):
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 8, 26, tzinfo=tz or UTC)
+
+    monkeypatch.setattr("src.core.monitors.inline.datetime", FixedDateTime)
     row = _board(slug)
     config = json.loads(row["monitor_config"])
 
