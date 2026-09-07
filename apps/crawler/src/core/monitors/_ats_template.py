@@ -72,6 +72,7 @@ async def ats_can_handle[Context](
     extra_probe_log_event: str | None = None,
     allow_slug_guess: bool = True,
     log_token_field: str = "board_token",
+    page_max_chars: int = 500_000,
 ) -> dict | None:
     """Shared can_handle flow for public ATS API monitors.
 
@@ -104,7 +105,7 @@ async def ats_can_handle[Context](
     if client is None:
         return None
 
-    html = await fetch_page_text(url, client)
+    html = await fetch_page_text(url, client, max_chars=page_max_chars)
     if html:
         for pattern in page_patterns:
             match = pattern.search(html)

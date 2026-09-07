@@ -36,7 +36,12 @@ MAX_JOBS = 50_000
 _DOMAIN_RE = re.compile(r"^([\w-]+)\.recruitee\.com$")
 
 _PAGE_PATTERNS = (
-    re.compile(r"([\w-]+)\.recruitee\.com"),
+    # Nuxt hydration serializes URL slashes as JavaScript Unicode escapes.
+    re.compile(r"https?:\\u002F\\u002F([\w-]{1,63})\.recruitee\.com", re.I),
+    # A Recruitee tenant is a DNS label. Bounding the match prevents a large
+    # minified hydration token before ``.recruitee.com`` from causing regex
+    # backtracking across the whole wrapper page.
+    re.compile(r"(?<![\w-])([\w-]{1,63})\.recruitee\.com"),
     re.compile(r"\b(?:recruiteecdn\.com|window\.recruitee)\b()"),
 )
 
@@ -313,8 +318,9 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         match: re.Match[str],
         context: str | None,
     ) -> str | None:
-        _ = (match, context)
-        return _api_base_from_url(url)
+        _ = context
+        slug = match.group(1)
+        return _api_base_from_slug(slug) if slug else _api_base_from_url(url)
 
     return await ats_can_handle(
         url,
@@ -331,6 +337,11 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         page_token_probe=_probe_page_token,
         allow_slug_guess=slug_guess_allowed(),
         log_token_field="slug",
+        # Server-rendered CMS wrappers can put the Recruitee application URL
+        # after a large hydration payload. Keep this provider-specific bound
+        # high enough to inspect those references without changing every ATS
+        # probe's default scan size.
+        page_max_chars=2_000_000,
     )
 
 
