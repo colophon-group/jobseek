@@ -478,6 +478,29 @@ describe("parseAiFilterTerminalResult", () => {
     expect(decisionReads).toBe(0);
   });
 
+  it("does not let an own __proto__ field disappear during strict copying", () => {
+    const decisionWithProto: Record<string, unknown> = {
+      candidateId: CANDIDATE_TWO,
+      decision: "rejected",
+    };
+    Object.defineProperty(decisionWithProto, "__proto__", {
+      enumerable: true,
+      value: { confidence: 1 },
+    });
+
+    expect(() =>
+      parseAiFilterTerminalResult(
+        {
+          runId: RUN_ID,
+          status: "stopped",
+          stopReason: "budget_exhausted",
+          decisions: [decisionWithProto],
+        },
+        baseRequest,
+      ),
+    ).toThrow(/unsupported fields/);
+  });
+
   it("preserves valid paid work when a run stops", () => {
     const stopped = {
       runId: RUN_ID,
