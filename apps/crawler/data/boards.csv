@@ -1273,6 +1273,7 @@ carmax,carmax-careers,https://carmax.wd1.myworkdayjobs.com/external,workday,,wor
 carmax,carmax-careers-edmunds,https://careers.jobscore.com/careers/edmunds,dom,"{""render"": false, ""link_selector"": ""a[href^=\""/careers/edmunds/jobs/\""]"", ""url_filter"": ""/careers/edmunds/jobs/""}",json-ld,
 carniceria-la-caba-a,carniceria-la-caba-a-join,https://join.com/companies/carniceriaslacabanacomar,join,"{""slug"": ""carniceriaslacabanacomar""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 caronsale,caronsale-greenhouse,https://job-boards.greenhouse.io/caronsale,greenhouse,"{""token"": ""caronsale""}",skip,
+carrier,carrier-careers,https://carrier.wd5.myworkdayjobs.com/jobs,workday,,workday,
 carrot,carrot-greenhouse,https://job-boards.greenhouse.io/carrotfertility,greenhouse,"{""token"": ""carrotfertility""}",skip,
 carta,carta-greenhouse,https://job-boards.greenhouse.io/carta,greenhouse,"{""token"": ""carta""}",skip,
 cartier,cartier-careers,https://careers.richemont.com/en/jobs/cartier/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""pagination"": {""param_name"": ""page"", ""max_pages"": 200}, ""url_filter"": ""/jobs/jr\\d+/""}",json-ld,"{""render"": true}"
