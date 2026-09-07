@@ -474,9 +474,7 @@ class TestHrManagerPreset:
             "ProjectType": "RecruitmentProject",
             "PositionLocationMultiSelection": [{"Name": "Region Hovedstaden"}],
         }
-        assert _hr_manager_position_data(_hr_manager_page([item]), "securitas") == {
-            "145195": item
-        }
+        assert _hr_manager_position_data(_hr_manager_page([item]), "securitas") == {"145195": item}
 
         with pytest.raises(ValueError, match="tenant"):
             _hr_manager_position_data(_hr_manager_page([item], customer="other"), "securitas")

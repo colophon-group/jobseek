@@ -567,9 +567,7 @@ async def _discover_hr_manager(
     customer = metadata.get("customer") or _hr_manager_customer_from_url(board["board_url"])
     if not isinstance(customer, str) or _HR_MANAGER_CUSTOMER_RE.fullmatch(customer) is None:
         raise ValueError("HR Manager monitor requires a valid customer alias")
-    page = await fetch_page_text(
-        board["board_url"], client, max_chars=_DETECTION_MAX_CHARS
-    )
+    page = await fetch_page_text(board["board_url"], client, max_chars=_DETECTION_MAX_CHARS)
     if not page:
         raise ValueError("HR Manager board page could not be fetched")
     positions = _hr_manager_position_data(page, customer)
