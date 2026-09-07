@@ -39,5 +39,5 @@ production-readiness conclusion can be drawn from this candidate.
 Sessions are single-goroutine. For parity with the Python monitor, the URL cap
 is applied before duplicate removal and configured filtering; that inherited
 ordering can omit otherwise qualifying URLs and must be revisited before
-production admission. This module is not currently exercised by repository CI,
-so local checks cannot authorize merge.
+production admission. Dedicated path-aware Linux CI is required for every
+change to this module; local checks alone cannot authorize merge.

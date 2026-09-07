@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/colophon-group/jobseek/apps/crawler/pilots/go-http-sitemap/boundedhttp"
+	"github.com/colophon-group/jobseek/pilots/go-http-sitemap/boundedhttp"
 )
 
 const maxProtocolURLs = 50_000
