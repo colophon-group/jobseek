@@ -1179,7 +1179,7 @@ msgstr "Créer"
 #. js-lingui-explicit-id
 #: src/components/TruncationPrompt.tsx
 msgid "truncation.benefits"
-msgstr "Créez un compte gratuit pour parcourir tous les résultats, enregistrer des offres, suivre vos candidatures, créer des listes de veille et recevoir des alertes pour les nouvelles offres."
+msgstr "Créez un compte gratuit pour parcourir tous les résultats, enregistrer des offres, suivre vos candidatures et créer des watchlists."
 
 #. Tooltip explaining save search creates a watchlist
 #. js-lingui-explicit-id
@@ -1996,7 +1996,7 @@ msgstr "L'entrée est trop courte."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx
 msgid "about.p2"
-msgstr "Au lieu d'attendre que les entreprises publient leurs postes sur des sites d'emploi tiers, nous allons directement à la source. Notre crawler surveille des milliers de pages carrières directement et les revérifie fréquemment, donc les postes apparaissent ici dans les heures qui suivent leur publication — généralement avant qu'ils n'atteignent les grands agrégateurs. Crée une watchlist des entreprises qui t'intéressent et reçois une notification dès qu'elles publient."
+msgstr "Au lieu d'attendre que les entreprises publient leurs postes sur des sites d'emploi tiers, nous allons directement à la source. Notre crawler surveille des milliers de pages carrières directement et les revérifie fréquemment, donc les postes apparaissent ici dans les heures qui suivent leur publication — généralement avant qu'ils n'atteignent les grands agrégateurs. Crée une watchlist des entreprises qui t'intéressent et consulte leurs dernières offres au même endroit."
 
 #. Employment type: internship
 #. js-lingui-explicit-id
@@ -2167,7 +2167,7 @@ msgstr "Job Seek t’aide à suivre les entreprises pour lesquelles tu veux trav
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.hero.description"
-msgstr "Job Seek est un outil de suivi d'entreprises — il surveille des milliers de pages carrières d'entreprises pour que les utilisateurs puissent créer des watchlists et recevoir des alertes sur les nouvelles offres. Cette page décrit précisément le comportement de notre robot d'indexation, les contrôles qui garantissent sa courtoisie, et comment les offres atterrissent dans l'index."
+msgstr "Job Seek est un outil de suivi d'entreprises — il surveille des milliers de pages carrières d'entreprises pour que les utilisateurs puissent créer des watchlists et consulter les offres de ces entreprises au même endroit. Cette page décrit précisément le comportement de notre robot d'indexation, les contrôles qui garantissent sa courtoisie, et comment les offres atterrissent dans l'index."
 
 #. Main app page subtitle explaining the app is being built
 #. js-lingui-explicit-id
@@ -2515,7 +2515,7 @@ msgstr "Copier"
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-tip-banner.tsx
 msgid "watchlists.tip.mirror"
-msgstr "Copiez n'importe quelle liste publique pour la personnaliser — modifiez les entreprises, ajustez les filtres ou activez les alertes."
+msgstr "Copiez n'importe quelle liste publique pour la personnaliser — modifiez les entreprises ou ajustez les filtres."
 
 #. Plural mirror count
 #. js-lingui-explicit-id

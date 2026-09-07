@@ -42,7 +42,7 @@ export function TruncationPrompt({ type }: { type: "companies" | "postings" }) {
           id="truncation.benefits"
           comment="Description of benefits shown below the sign-in prompt for anonymous users"
         >
-          Create a free account to browse all results, save jobs, track applications, build watchlists, and get alerts for new openings.
+          Create a free account to browse all results, save jobs, track applications, and build watchlists.
         </Trans>
       </p>
     </div>

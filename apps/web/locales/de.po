@@ -1179,7 +1179,7 @@ msgstr "Erstellen"
 #. js-lingui-explicit-id
 #: src/components/TruncationPrompt.tsx
 msgid "truncation.benefits"
-msgstr "Erstellen Sie ein kostenloses Konto, um alle Ergebnisse zu durchsuchen, Jobs zu speichern, Bewerbungen zu verfolgen, Merklisten zu erstellen und Benachrichtigungen über neue Stellenangebote zu erhalten."
+msgstr "Erstellen Sie ein kostenloses Konto, um alle Ergebnisse zu durchsuchen, Jobs zu speichern, Bewerbungen zu verfolgen und Watchlists zu erstellen."
 
 #. Tooltip explaining save search creates a watchlist
 #. js-lingui-explicit-id
@@ -1996,7 +1996,7 @@ msgstr "Eingabe ist zu kurz."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx
 msgid "about.p2"
-msgstr "Statt darauf zu warten, dass Unternehmen ihre Stellen auf Drittanbieter-Jobportalen veröffentlichen, gehen wir direkt zur Quelle. Unser Crawler überwacht tausende von Karriereseiten direkt und prüft sie häufig erneut, sodass neue Stellen hier innerhalb weniger Stunden nach Veröffentlichung auftauchen — typischerweise bevor sie die großen Aggregatoren erreichen. Erstelle eine Watchlist mit den Unternehmen, die dich interessieren, und werde benachrichtigt, sobald sie etwas posten."
+msgstr "Statt darauf zu warten, dass Unternehmen ihre Stellen auf Drittanbieter-Jobportalen veröffentlichen, gehen wir direkt zur Quelle. Unser Crawler überwacht tausende von Karriereseiten direkt und prüft sie häufig erneut, sodass neue Stellen hier innerhalb weniger Stunden nach Veröffentlichung auftauchen — typischerweise bevor sie die großen Aggregatoren erreichen. Erstelle eine Watchlist mit den Unternehmen, die dich interessieren, und sieh dir ihre neuesten Stellenangebote an einem Ort an."
 
 #. Employment type: internship
 #. js-lingui-explicit-id
@@ -2167,7 +2167,7 @@ msgstr "Job Seek hilft dir, die Unternehmen zu verfolgen, bei denen du arbeiten 
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.hero.description"
-msgstr "Job Seek ist ein Unternehmens-Tracking-Tool — es überwacht tausende Karriereseiten von Unternehmen, damit Nutzer Watchlists erstellen und Benachrichtigungen über neue Stellen erhalten können. Diese Seite dokumentiert genau, wie sich unser Crawler verhält, welche Kontrollen ihn höflich halten und wie Stellen letztlich in den Index gelangen."
+msgstr "Job Seek ist ein Unternehmens-Tracking-Tool — es überwacht tausende Karriereseiten von Unternehmen, damit Nutzer Watchlists erstellen und die Stellenangebote dieser Unternehmen an einem Ort ansehen können. Diese Seite dokumentiert genau, wie sich unser Crawler verhält, welche Kontrollen ihn höflich halten und wie Stellen letztlich in den Index gelangen."
 
 #. Main app page subtitle explaining the app is being built
 #. js-lingui-explicit-id
@@ -2515,7 +2515,7 @@ msgstr "Spiegeln"
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-tip-banner.tsx
 msgid "watchlists.tip.mirror"
-msgstr "Spiegle jede öffentliche Watchlist, um sie zu deiner eigenen zu machen — passe Unternehmen an, ändere Filter oder aktiviere Benachrichtigungen."
+msgstr "Spiegle jede öffentliche Watchlist, um sie zu deiner eigenen zu machen — passe Unternehmen an oder ändere Filter."
 
 #. Plural mirror count
 #. js-lingui-explicit-id

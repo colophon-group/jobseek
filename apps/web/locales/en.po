@@ -1179,7 +1179,7 @@ msgstr "Create"
 #. js-lingui-explicit-id
 #: src/components/TruncationPrompt.tsx
 msgid "truncation.benefits"
-msgstr "Create a free account to browse all results, save jobs, track applications, build watchlists, and get alerts for new openings."
+msgstr "Create a free account to browse all results, save jobs, track applications, and build watchlists."
 
 #. Tooltip explaining save search creates a watchlist
 #. js-lingui-explicit-id
@@ -1996,7 +1996,7 @@ msgstr "Input is too short."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx
 msgid "about.p2"
-msgstr "Instead of waiting for companies to push roles to third-party job boards, we go straight to the source. Our crawler monitors thousands of company career pages directly and re-checks them frequently, so roles show up here within hours of going live — typically before they reach the large aggregators. Build a watchlist of the companies you care about and get notified the moment they post."
+msgstr "Instead of waiting for companies to push roles to third-party job boards, we go straight to the source. Our crawler monitors thousands of company career pages directly and re-checks them frequently, so roles show up here within hours of going live — typically before they reach the large aggregators. Build a watchlist of the companies you care about and review their latest postings in one place."
 
 #. Employment type: internship
 #. js-lingui-explicit-id
@@ -2167,7 +2167,7 @@ msgstr "Job Seek helps you track the companies you want to work at with watchlis
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.hero.description"
-msgstr "Job Seek is a company-tracking tool — it monitors thousands of company career pages so users can build watchlists and get alerts on new postings. This page documents exactly how our crawler behaves, the controls that keep it polite, and how jobs ultimately land in the index."
+msgstr "Job Seek is a company-tracking tool — it monitors thousands of company career pages so users can build watchlists and browse postings from those companies in one place. This page documents exactly how our crawler behaves, the controls that keep it polite, and how jobs ultimately land in the index."
 
 #. Main app page subtitle explaining the app is being built
 #. js-lingui-explicit-id
@@ -2515,7 +2515,7 @@ msgstr "Mirror"
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-tip-banner.tsx
 msgid "watchlists.tip.mirror"
-msgstr "Mirror any public watchlist to make it your own — tweak companies, adjust filters, or enable alerts."
+msgstr "Mirror any public watchlist to make it your own — tweak companies or adjust filters."
 
 #. Plural mirror count
 #. js-lingui-explicit-id

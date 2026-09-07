@@ -50,7 +50,7 @@ export function WatchlistTipBanner({ aboveBottomBar }: { aboveBottomBar?: boolea
               id="watchlists.tip.mirror"
               comment="Tip banner explaining that public watchlists can be mirrored"
             >
-              Mirror any public watchlist to make it your own — tweak companies, adjust filters, or enable alerts.
+              Mirror any public watchlist to make it your own — tweak companies or adjust filters.
             </Trans>
           </p>
         </div>
