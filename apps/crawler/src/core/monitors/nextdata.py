@@ -96,6 +96,10 @@ _TITLE_RE = re.compile(r"<title(?:\s[^>]*)?>(.*?)</title>", re.IGNORECASE | re.D
 # Common paths where Next.js apps store job listings.
 _COMMON_PATHS = [
     "props.pageProps.positions",
+    # Some recruitment frontends call the actual posting inventory ``offers``
+    # and reserve ``jobs`` for a shorter list of school/category filters.  Keep
+    # offers ahead of jobs so probing does not select the filter array.
+    "props.pageProps.offers",
     "props.pageProps.jobs",
     "props.pageProps.openings",
     "props.pageProps.allJobs",
