@@ -127,6 +127,13 @@ function requireExactKeys(
   ) {
     fail(`${field} contains missing or unsupported fields`);
   }
+
+  for (const key of wanted) {
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) {
+      fail(`${field} must contain plain data fields`);
+    }
+  }
 }
 
 function requireLiteral<T extends string | number>(

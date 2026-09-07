@@ -392,6 +392,51 @@ describe("parseAiFilterTerminalResult", () => {
     ).toThrow(/another run/);
   });
 
+  it("rejects accessor-backed fields before reading provider data", () => {
+    const accessorDecision: Record<string, unknown> = {
+      candidateId: CANDIDATE_TWO,
+    };
+    Object.defineProperty(accessorDecision, "decision", {
+      enumerable: true,
+      get: () => "accepted",
+    });
+    expect(() =>
+      parseAiFilterTerminalResult(
+        {
+          runId: RUN_ID,
+          status: "completed",
+          decisions: [accessorDecision, completedResult.decisions[1]],
+        },
+        baseRequest,
+      ),
+    ).toThrow(/plain data fields/);
+
+    const accessorStatus: Record<string, unknown> = {
+      runId: RUN_ID,
+      decisions: completedResult.decisions,
+    };
+    Object.defineProperty(accessorStatus, "status", {
+      enumerable: true,
+      get: () => "completed",
+    });
+    expect(() =>
+      parseAiFilterTerminalResult(accessorStatus, baseRequest),
+    ).toThrow(/plain data fields/);
+
+    const accessorStopReason: Record<string, unknown> = {
+      runId: RUN_ID,
+      status: "stopped",
+      decisions: [],
+    };
+    Object.defineProperty(accessorStopReason, "stopReason", {
+      enumerable: true,
+      get: () => "budget_exhausted",
+    });
+    expect(() =>
+      parseAiFilterTerminalResult(accessorStopReason, baseRequest),
+    ).toThrow(/plain data fields/);
+  });
+
   it("preserves valid paid work when a run stops", () => {
     const stopped = {
       runId: RUN_ID,
