@@ -24,6 +24,7 @@ from src.shared.gupy import gupy_tenant_from_url
 from src.shared.jobvite import jobvite_board_from_url
 from src.shared.keka import keka_board_from_url
 from src.shared.pageup import pageup_board_from_url
+from src.shared.paynet import paynet_company_from_url
 from src.shared.recruiterbox import recruiterbox_board_from_url
 from src.shared.successfactors import (
     is_successfactors_host,
@@ -98,6 +99,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "oracle_hcm",
         "pageup",
         "paycom",
+        "paynet",
         "paylocity",
         "pinpoint",
         "prospective",
@@ -443,6 +445,8 @@ def detect_ats_from_url(url: str) -> str | None:
         re.IGNORECASE,
     ):
         return "paycom"
+    if paynet_company_from_url(url) is not None:
+        return "paynet"
     if (
         host.endswith(".applytojob.com")
         and host.count(".") == 2
