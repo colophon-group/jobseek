@@ -689,6 +689,7 @@ avera,avera-elevacare,https://www.paycomonline.net/v4/ats/web.php/jobs?clientkey
 avera,avera-hawarden,https://www.paycomonline.net/v4/ats/web.php/jobs?clientkey=24D2D50624412E10734B0D004E08CD41&fromClientSide=true,paycom,"{""token"": ""24D2D50624412E10734B0D004E08CD41""}",paycom,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""job_location_type"", ""date_posted"", ""base_salary""], ""defaults"": {""locations"": [""Hawarden, IA""]}}"
 avera,avera-sunset-manor,https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?co=TMS7300,paynet,,skip,
 avera,avera-wakonda-heritage-manor,https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?co=TMS7400,paynet,,skip,
+avera,avera-western-mental-health,https://wmhcinc.org/careers/,dom,"{""url_filter"": ""\\.(?:doc|pdf)$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}], ""document_fallback"": {""doc"": {""title_source"": ""text"", ""title_pattern"": ""(?im)^POSITION TITLE:\\s*(.+)$"", ""defaults"": {""locations"": [""Marshall, MN""]}}, ""pdf"": {""title_pattern"": ""^(.+?)(?:-\\d{8})?$"", ""defaults"": {""locations"": [""Marshall, MN""]}}}}"
 aviatrix,aviatrix-greenhouse,https://job-boards.greenhouse.io/aviatrix,greenhouse,"{""token"": ""aviatrix""}",skip,
 avid4,avid4-careers-ashby,https://jobs.ashbyhq.com/avid4,ashby,"{""token"": ""avid4""}",skip,
 avidxchange-inc,avidxchange-inc-greenhouse,https://job-boards.greenhouse.io/avidxchangeinc,greenhouse,"{""token"": ""avidxchangeinc""}",skip,

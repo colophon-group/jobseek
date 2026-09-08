@@ -3538,11 +3538,12 @@ dom — Step-based Extraction Engine
                    With scope, prepend meta description text for extraction
     document_fallback
                    Static-only per-format configs for detail URLs that may
-                   download PDF or DOCX files instead of returning HTML:
-                   {"pdf": {...}, "docx": {...}}. PDF keys match
-                   `ws help scraper pdf`; DOCX supports title_source: "text",
-                   title_pattern, location_pattern, and defaults. HTML
-                   responses continue through the configured DOM steps.
+                   download legacy DOC, PDF, or DOCX files instead of returning
+                   HTML: {"doc": {...}, "pdf": {...}, "docx": {...}}. PDF
+                   keys match `ws help scraper pdf`; DOC/DOCX support
+                   title_source, title_pattern, location_pattern, and defaults.
+                   Legacy DOC extraction uses the bounded antiword runtime.
+                   HTML responses continue through the configured DOM steps.
 
   Target fields: title, description, locations, employment_type,
   job_location_type, date_posted, valid_through, qualifications,
