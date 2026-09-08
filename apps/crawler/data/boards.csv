@@ -6926,6 +6926,7 @@ weploy,weploy-greenhouse,https://job-boards.greenhouse.io/weploy,greenhouse,"{""
 weride,weride-careers,https://jobs.lever.co/weride,lever,"{""token"": ""weride""}",skip,
 wesort-ai,wesort-ai-careers,https://www.wesort.ai/karriere,sitemap,"{""url_filter"": ""(stellenanzeige-|entwicklungsingenieur|initiativbewerbung)""}",dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 60000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Interesse geweckt"", ""html"": true}]}"
 westhafen-leipzig,westhafen-leipzig-join,https://join.com/companies/westhafen-leipzigde,join,"{""slug"": ""westhafen-leipzigde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+westinghouse-electric-company,westinghouse-electric-company-careers,https://careers.westinghousenuclear.com/,rss,"{""preset"": ""successfactors""}",skip,
 wettermark-keith,wettermark-keith-greenhouse,https://job-boards.greenhouse.io/wettermarkkeith,greenhouse,"{""token"": ""wettermarkkeith""}",skip,
 whalar-group,whalar-group-greenhouse,https://job-boards.greenhouse.io/whalarinc,greenhouse,"{""token"": ""whalarinc""}",skip,
 what3words,what3words-ashby,https://jobs.ashbyhq.com/what3words,ashby,"{""token"": ""what3words""}",skip,
