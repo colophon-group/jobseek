@@ -284,7 +284,7 @@ def validate_csvs() -> list[ValidationError]:
             and not scraper_type
             and (monitor_type not in url_only_monitors or configured_rich)
             and monitor_type != "api_sniffer"
-            and not configured_rich_rows
+            and not configured_partial_dom
         ):
             mc_obj: dict | None = None
             if monitor_config:
