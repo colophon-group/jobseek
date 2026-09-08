@@ -1,10 +1,16 @@
 import { createHash } from "node:crypto";
 import { parse, parseFragment, type DefaultTreeAdapterTypes } from "parse5";
 
+import { parseAiFilterCandidateId } from "./contract";
+
 export const CLASSIFIER_INPUT_SCHEMA_VERSION = "classifier-input-v1" as const;
 export const CLASSIFIER_INPUT_NORMALIZER_VERSION =
-  "classifier-input-normalizer-v3" as const;
+  "classifier-input-normalizer-v4" as const;
 export const CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT = 12_000;
+export const CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT = 250_000;
+export const CLASSIFIER_DESCRIPTION_MARKUP_TOKEN_LIMIT = 2_000;
+export const CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT = 1_000;
+export const CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT = 4_000;
 const CLASSIFIER_TRUNCATION_BOUNDARY_WINDOW = 1_000;
 
 export type ClassifierInputSource = {
@@ -140,9 +146,30 @@ function normalizeInlineText(value: string): string {
 }
 
 function normalizedRequiredText(value: string, path: string): string {
+  if (value.length > CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT) {
+    fail(path, "raw input is too large");
+  }
   const normalized = normalizeInlineText(value);
   if (normalized.length === 0) fail(path, "must contain text");
+  let codePointCount = 0;
+  for (const _codePoint of normalized) {
+    codePointCount += 1;
+    if (codePointCount > CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT) {
+      fail(
+        path,
+        `must not exceed ${CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT} Unicode code points`,
+      );
+    }
+  }
   return normalized;
+}
+
+function normalizedCandidateId(value: string): string {
+  try {
+    return parseAiFilterCandidateId(value);
+  } catch {
+    fail("$.candidateId", "must be a canonical lowercase UUID");
+  }
 }
 
 function isElement(node: DefaultTreeAdapterTypes.Node): node is DefaultTreeAdapterTypes.Element {
@@ -177,37 +204,70 @@ function appendVisibleText(
   node: DefaultTreeAdapterTypes.Node,
   chunks: string[],
 ): void {
-  if (node.nodeName === "#text") {
-    chunks.push(
-      (node as DefaultTreeAdapterTypes.TextNode).value
-        .replace(/\r\n?/gu, "\n")
-        .replace(/\u00a0/gu, " ")
-        .replace(/\s+/gu, " "),
-    );
-    return;
-  }
+  const stack: Array<
+    | { readonly kind: "node"; readonly value: DefaultTreeAdapterTypes.Node }
+    | { readonly kind: "block-end" }
+  > = [{ kind: "node", value: node }];
 
-  if (!isElement(node)) {
-    if ("childNodes" in node) {
-      for (const child of node.childNodes) appendVisibleText(child, chunks);
+  while (stack.length > 0) {
+    const frame = stack.pop();
+    if (!frame) break;
+    if (frame.kind === "block-end") {
+      chunks.push("\n");
+      continue;
     }
-    return;
-  }
 
-  const tagName = node.tagName.toLowerCase();
-  if (OMITTED_SUBTREES.has(tagName) || hasHiddenSemantics(node)) return;
-  if (tagName === "br" || tagName === "hr") {
-    chunks.push("\n");
-    return;
-  }
+    const current = frame.value;
+    if (current.nodeName === "#text") {
+      chunks.push(
+        (current as DefaultTreeAdapterTypes.TextNode).value
+          .replace(/\r\n?/gu, "\n")
+          .replace(/\u00a0/gu, " ")
+          .replace(/\s+/gu, " "),
+      );
+      continue;
+    }
 
-  const isBlock = BLOCK_ELEMENTS.has(tagName);
-  if (isBlock) chunks.push("\n");
-  for (const child of node.childNodes) appendVisibleText(child, chunks);
-  if (isBlock) chunks.push("\n");
+    if (!isElement(current)) {
+      if ("childNodes" in current) {
+        for (let index = current.childNodes.length - 1; index >= 0; index -= 1) {
+          stack.push({ kind: "node", value: current.childNodes[index] });
+        }
+      }
+      continue;
+    }
+
+    const tagName = current.tagName.toLowerCase();
+    if (OMITTED_SUBTREES.has(tagName) || hasHiddenSemantics(current)) continue;
+    if (tagName === "br" || tagName === "hr") {
+      chunks.push("\n");
+      continue;
+    }
+
+    const isBlock = BLOCK_ELEMENTS.has(tagName);
+    if (isBlock) {
+      chunks.push("\n");
+      stack.push({ kind: "block-end" });
+    }
+    for (let index = current.childNodes.length - 1; index >= 0; index -= 1) {
+      stack.push({ kind: "node", value: current.childNodes[index] });
+    }
+  }
 }
 
 function normalizeDescriptionHtml(descriptionHtml: string): string {
+  if (descriptionHtml.length > CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT) {
+    fail("$.descriptionHtml", "exceeds the raw HTML size limit");
+  }
+  let markupTokenCount = 0;
+  for (let index = 0; index < descriptionHtml.length; index += 1) {
+    if (descriptionHtml.charCodeAt(index) !== 60) continue;
+    markupTokenCount += 1;
+    if (markupTokenCount > CLASSIFIER_DESCRIPTION_MARKUP_TOKEN_LIMIT) {
+      fail("$.descriptionHtml", "exceeds the markup token limit");
+    }
+  }
+
   // Fragment parsing intentionally removes html/body wrappers. Fail closed
   // when full-document recovery applies hidden semantics to either effective
   // root; preserving malformed late/nested wrappers is not worth leaking
@@ -330,7 +390,7 @@ export function normalizeClassifierInputV1(input: unknown): NormalizedClassifier
 
   const payload: ClassifierInputV1 = Object.freeze({
     schemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
-    candidateId: normalizedRequiredText(source.candidateId, "$.candidateId"),
+    candidateId: normalizedCandidateId(source.candidateId),
     title: normalizedRequiredText(source.title, "$.title"),
     companyName: normalizedRequiredText(source.companyName, "$.companyName"),
     descriptionText,
