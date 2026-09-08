@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import fixture from "./fixtures/classifier-input-v1.json";
 import {
   CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT,
+  CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT,
+  CLASSIFIER_DESCRIPTION_MARKUP_TOKEN_LIMIT,
+  CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT,
+  CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT,
   CLASSIFIER_INPUT_NORMALIZER_VERSION,
   ClassifierInputValidationError,
   normalizeClassifierInputV1,
@@ -41,6 +45,23 @@ describe("normalizeClassifierInputV1", () => {
     ]);
     expect(Object.keys(result.sidecar)).toEqual(["selectedDescriptionLocale", "truncated"]);
     expect(JSON.stringify(result.payload)).not.toContain("selectedDescriptionLocale");
+  });
+
+  it.each([
+    "00000000-0000-4000-8000-00000000000X",
+    "00000000-0000-4000-8000-000000000001 ",
+    "00000000000040008000000000000001",
+    "candidate-1",
+    "",
+  ])("shares AF-1's canonical candidate-ID boundary: %j", (candidateId) => {
+    expect(() =>
+      normalizeClassifierInputV1({ ...baseSource, candidateId }),
+    ).toThrowError(
+      new ClassifierInputValidationError(
+        "$.candidateId",
+        "must be a canonical lowercase UUID",
+      ),
+    );
   });
 
   it.each([
@@ -130,6 +151,68 @@ describe("normalizeClassifierInputV1", () => {
     expect(result.payload.descriptionText).toBe("Visible");
   });
 
+  it("rejects pathological nesting before parsing", () => {
+    const depth = 20_000;
+    expect(() =>
+      normalizeClassifierInputV1({
+        ...baseSource,
+        descriptionHtml: `${"<div>".repeat(depth)}Visible${"</div>".repeat(depth)}`,
+      }),
+    ).toThrowError(
+      new ClassifierInputValidationError(
+        "$.descriptionHtml",
+        "exceeds the markup token limit",
+      ),
+    );
+  });
+
+  it("enforces the pre-parse raw HTML size boundary", () => {
+    const atLimit = normalizeClassifierInputV1({
+      ...baseSource,
+      descriptionHtml: "x".repeat(CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT),
+    });
+    expect(atLimit.sidecar.truncated).toBe(true);
+
+    expect(() =>
+      normalizeClassifierInputV1({
+        ...baseSource,
+        descriptionHtml: "x".repeat(
+          CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT + 1,
+        ),
+      }),
+    ).toThrowError(
+      new ClassifierInputValidationError(
+        "$.descriptionHtml",
+        "exceeds the raw HTML size limit",
+      ),
+    );
+  });
+
+  it("enforces the pre-parse markup token boundary", () => {
+    expect(
+      normalizeClassifierInputV1({
+        ...baseSource,
+        descriptionHtml: `Visible${"<br>".repeat(
+          CLASSIFIER_DESCRIPTION_MARKUP_TOKEN_LIMIT,
+        )}`,
+      }).payload.descriptionText,
+    ).toBe("Visible");
+
+    expect(() =>
+      normalizeClassifierInputV1({
+        ...baseSource,
+        descriptionHtml: `Visible${"<br>".repeat(
+          CLASSIFIER_DESCRIPTION_MARKUP_TOKEN_LIMIT + 1,
+        )}`,
+      }),
+    ).toThrowError(
+      new ClassifierInputValidationError(
+        "$.descriptionHtml",
+        "exceeds the markup token limit",
+      ),
+    );
+  });
+
   it("retains visible prompt-injection wording from unknown elements as untrusted data", () => {
     const result = normalizeClassifierInputV1({
       ...baseSource,
@@ -158,6 +241,44 @@ describe("normalizeClassifierInputV1", () => {
       descriptionText: "First line continues\nSecond & Café\nThird",
     });
   });
+
+  it.each(["title", "companyName"] as const)(
+    "enforces the canonical %s boundary by Unicode code point",
+    (field) => {
+      const atLimit = "😀".repeat(CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT);
+      expect(
+        normalizeClassifierInputV1({ ...baseSource, [field]: atLimit }).payload[
+          field
+        ],
+      ).toBe(atLimit);
+
+      expect(() =>
+        normalizeClassifierInputV1({
+          ...baseSource,
+          [field]: `${atLimit}😀`,
+        }),
+      ).toThrowError(
+        new ClassifierInputValidationError(
+          `$.${field}`,
+          `must not exceed ${CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT} Unicode code points`,
+        ),
+      );
+    },
+  );
+
+  it.each(["title", "companyName"] as const)(
+    "rejects collapsible oversized raw %s input before normalization",
+    (field) => {
+      expect(() =>
+        normalizeClassifierInputV1({
+          ...baseSource,
+          [field]: `${" ".repeat(CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT)}x`,
+        }),
+      ).toThrowError(
+        new ClassifierInputValidationError(`$.${field}`, "raw input is too large"),
+      );
+    },
+  );
 
   it("ignores a block boundary too far before the truncation cap", () => {
     const result = normalizeClassifierInputV1({
@@ -276,7 +397,7 @@ describe("normalizeClassifierInputV1", () => {
   });
 
   it("binds identity to the documented normalizer version", () => {
-    expect(CLASSIFIER_INPUT_NORMALIZER_VERSION).toBe("classifier-input-normalizer-v3");
+    expect(CLASSIFIER_INPUT_NORMALIZER_VERSION).toBe("classifier-input-normalizer-v4");
     expect(fixture.expected.contentIdentity).toMatch(/^[a-f0-9]{64}$/u);
   });
 
