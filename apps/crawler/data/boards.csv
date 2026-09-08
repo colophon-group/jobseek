@@ -6056,7 +6056,7 @@ strive-health,strive-health-greenhouse,https://job-boards.greenhouse.io/strivehe
 striveworks,striveworks-greenhouse,https://job-boards.greenhouse.io/striveworks,greenhouse,"{""token"": ""striveworks""}",skip,
 stronghold,stronghold-ashby,https://jobs.ashbyhq.com/stronghold,ashby,"{""token"": ""stronghold""}",skip,
 stronghold-investment-management,stronghold-investment-management-greenhouse,https://job-boards.greenhouse.io/strongholdim,greenhouse,"{""token"": ""strongholdim""}",skip,
-stryker,stryker-careers,https://careers.stryker.com/jobs,sitemap,"{""url_filter"": ""/job/""}",json-ld,
+stryker,stryker-careers,https://stryker.wd1.myworkdayjobs.com/strykercareers,workday,,workday,
 stubhub,stubhub-greenhouse,https://job-boards.greenhouse.io/stubhubinc,greenhouse,"{""token"": ""stubhubinc""}",skip,
 studapart,studapart-greenhouse,https://job-boards.greenhouse.io/studapart,greenhouse,"{""token"": ""studapart""}",skip,
 study-com-c,study-com-c-greenhouse,https://job-boards.greenhouse.io/studycontractors,greenhouse,"{""token"": ""studycontractors""}",skip,
