@@ -133,6 +133,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "fetch_url_transform",
             "fingerprint_response",
             "headless",
+            "hotelcareer_profile",
             "include_board_url",
             "inactive_detail_states",
             "job_filter",

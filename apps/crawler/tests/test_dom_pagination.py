@@ -25,6 +25,7 @@ from src.core.monitors.dom import (
     _filter_pdf_text_urls,
     _filter_unexpired_pdf_urls,
     _fingerprint_response_urls,
+    _hotelcareer_probe_config,
     _lucca_probe_config,
     _nyc_council_jobs_probe_config,
     _oracle_adf_probe_config,
@@ -3215,6 +3216,64 @@ class TestCanHandle:
         assert result == _vagas_probe_config(
             "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidades"
         )
+        client.get.assert_not_called()
+
+    def test_hotelcareer_employer_board_uses_proxy_rendered_preset(self):
+        result = _hotelcareer_probe_config(
+            "https://www.hotelcareer.de/jobs/l%C3%B6wen-hotel-montafon-29838"
+        )
+        assert result == {
+            "hotelcareer_profile": "l%C3%B6wen-hotel-montafon-29838",
+            "render": True,
+            "proxy": True,
+            "resource_policy": "none",
+            "url_filter": (
+                r"(?i:^https://www\.hotelcareer\.de/jobs/"
+                r"l%C3%B6wen\-hotel\-montafon\-29838/"
+                r"[^/?#]+-[1-9]\d{0,15}/?(?:[?#].*)?$)"
+            ),
+        }
+        assert auto_scraper_type("dom", result) == (
+            "json-ld",
+            {"render": True, "proxy": True},
+        )
+
+        matcher = re.compile(result["url_filter"])
+        assert matcher.search(
+            "https://www.hotelcareer.de/jobs/l%C3%B6wen-hotel-montafon-29838/"
+            "chef-de-rang-m-w-d-3987654"
+        )
+        assert not matcher.search(
+            "https://www.hotelcareer.de/jobs/other-hotel-42/chef-de-rang-3987654"
+        )
+        assert not matcher.search(
+            "https://evil.example/jobs/l%C3%B6wen-hotel-montafon-29838/role-3987654"
+        )
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://www.hotelcareer.de/jobs/acme-hotel-123",
+            "https://hotelcareer.de/jobs/acme-hotel-123",
+            "https://www.hotelcareer.de:444/jobs/acme-hotel-123",
+            "https://user:secret@www.hotelcareer.de/jobs/acme-hotel-123",
+            "https://www.hotelcareer.de/jobs/acme-hotel-123?location=berlin",
+            "https://www.hotelcareer.de/jobs/acme-hotel-123#jobs",
+            "https://www.hotelcareer.de/jobs/acme-hotel",
+            "https://www.hotelcareer.de/jobs/acme-hotel-123/role-456",
+            "https://evil.example/jobs/acme-hotel-123",
+        ],
+    )
+    def test_hotelcareer_preset_rejects_non_profile_routes(self, url):
+        assert _hotelcareer_probe_config(url) is None
+
+    async def test_hotelcareer_probe_does_not_fetch_blocked_listing(self):
+        client = MagicMock()
+        url = "https://www.hotelcareer.de/jobs/acme-hotel-123"
+
+        result = await can_handle(url, client)
+
+        assert result == _hotelcareer_probe_config(url)
         client.get.assert_not_called()
 
     async def test_talentsoft_without_safran_facets_keeps_ordinary_pagination(self):

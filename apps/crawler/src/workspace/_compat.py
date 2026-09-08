@@ -692,6 +692,8 @@ def auto_scraper_type(
     # on the auto-configured scraper as well as the DOM monitor preset.
     if monitor_type == "dom" and (config or {}).get("vagas_tenant"):
         return ("json-ld", {"proxy": True})
+    if monitor_type == "dom" and (config or {}).get("hotelcareer_profile"):
+        return ("json-ld", {"render": True, "proxy": True})
     if monitor_type == "dom" and (config or {}).get("dualoo_portal"):
         return ("json-ld", None)
     if monitor_type == "dom" and (config or {}).get("yousty_organization"):
