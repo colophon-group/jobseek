@@ -426,6 +426,22 @@ class SafetyTests(unittest.TestCase):
                     ],
                 }
             )
+        reject_sentinel = {
+            "interface": "lo",
+            "destination": "::",
+            "prefix_length": 0,
+            "metric": 0xFFFFFFFF,
+            "flags": 0x00200200,
+        }
+        _validate_loopback_only_network({**base, "ipv6_routes": [reject_sentinel]})
+        with self.assertRaisesRegex(RuntimeError, "IPv6 route"):
+            _validate_loopback_only_network(
+                {**base, "ipv6_routes": [{**reject_sentinel, "flags": 0x00200000}]}
+            )
+        with self.assertRaisesRegex(RuntimeError, "IPv6 route"):
+            _validate_loopback_only_network(
+                {**base, "ipv6_routes": [{**reject_sentinel, "interface": "eth0"}]}
+            )
 
     def test_docker_inspection_binds_image_and_network_none(self) -> None:
         source = load_corpus(BENCH_ROOT)["source"]

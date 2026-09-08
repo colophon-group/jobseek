@@ -102,6 +102,10 @@ server index and exact `Host`; the same path on another of the 32 listeners is
 rejected. Evidence reads the orchestrator and runner network namespace, interface
 census, IPv4 routes, and IPv6 routes and refuses anything other than a shared,
 loopback-only namespace with no usable default or non-loopback route.
+Docker 29 may expose kernel-generated IPv6 `::/0` sentinel rows on `lo`; the
+harness admits such a row only when its `/proc/net/ipv6_route` flags include
+Linux `RTF_REJECT` (`0x200`). A default without that reject bit, any route on a
+non-`lo` interface, and any other non-loopback route still fail closed.
 
 Warmup and measured batches have different immutable batch IDs. Fixture retry
 attempts are keyed by arm, batch, and job. Tests and runtime checks prove that

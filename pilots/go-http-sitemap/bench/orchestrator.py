@@ -36,6 +36,7 @@ PYTHON_SOURCE_FILES = (
     "src/metrics.py",
 )
 IMPLEMENTATIONS = ("go", "python")
+LINUX_RTF_REJECT = 0x200
 EVIDENCE_ROOT = Path("/opt/jobseek-evidence")
 EVIDENCE_SOURCE_ROOT = EVIDENCE_ROOT / "source"
 EVIDENCE_PILOT_ROOT = EVIDENCE_SOURCE_ROOT / "pilots" / "go-http-sitemap"
@@ -582,6 +583,8 @@ def _network_namespace_attestation(pid: int) -> dict[str, Any]:
                         "interface": fields[-1],
                         "destination": str(ipaddress.IPv6Address(int(fields[0], 16))),
                         "prefix_length": int(fields[1], 16),
+                        "metric": int(fields[5], 16),
+                        "flags": int(fields[8], 16),
                     }
                 )
     record = {
@@ -612,11 +615,15 @@ def _validate_loopback_only_network(attestation: dict[str, Any]) -> None:
             raise RuntimeError("evidence network namespace has a non-loopback IPv4 route")
     for route in attestation.get("ipv6_routes", []):
         destination = ipaddress.ip_address(route["destination"])
-        if (
-            route["interface"] != "lo"
-            or not destination.is_loopback
-            or (route["destination"] == "::" and route["prefix_length"] == 0)
-        ):
+        is_default = route["destination"] == "::" and route["prefix_length"] == 0
+        is_kernel_reject_sentinel = (
+            is_default
+            and route["interface"] == "lo"
+            and int(route.get("flags", 0)) & LINUX_RTF_REJECT != 0
+        )
+        if is_kernel_reject_sentinel:
+            continue
+        if route["interface"] != "lo" or not destination.is_loopback or is_default:
             raise RuntimeError("evidence network namespace has a non-loopback IPv6 route")
 
 
