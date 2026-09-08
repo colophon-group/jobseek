@@ -33,6 +33,45 @@ describe("normalizeClassifierInputV1", () => {
     expect(first.contentIdentity).toMatch(/^[a-f0-9]{64}$/u);
   });
 
+  it("isolates payload bytes and identity from inherited toJSON poisoning", () => {
+    const originalToJson = Object.getOwnPropertyDescriptor(Object.prototype, "toJSON");
+    const clean = normalizeClassifierInputV1(baseSource);
+    const cleanPayloadBytes = JSON.stringify(clean.payload);
+    const installPoison = () => {
+      Object.defineProperty(Object.prototype, "toJSON", {
+        configurable: true,
+        value: () => ({
+          title: "ATTACKER_TITLE",
+          descriptionText: "ATTACKER_DESCRIPTION",
+        }),
+      });
+    };
+
+    try {
+      installPoison();
+      const normalizedUnderPoison = normalizeClassifierInputV1(baseSource);
+      expect(JSON.stringify(normalizedUnderPoison.payload)).toBe(cleanPayloadBytes);
+      expect(normalizedUnderPoison.contentIdentity).toBe(clean.contentIdentity);
+
+      delete (Object.prototype as { toJSON?: unknown }).toJSON;
+      const poisonedAfterNormalization = normalizeClassifierInputV1(baseSource);
+      installPoison();
+      expect(JSON.stringify(poisonedAfterNormalization.payload)).toBe(
+        cleanPayloadBytes,
+      );
+      expect(poisonedAfterNormalization.contentIdentity).toBe(clean.contentIdentity);
+      expect(Object.getPrototypeOf(poisonedAfterNormalization)).toBeNull();
+      expect(Object.getPrototypeOf(poisonedAfterNormalization.payload)).toBeNull();
+      expect(Object.getPrototypeOf(poisonedAfterNormalization.sidecar)).toBeNull();
+    } finally {
+      if (originalToJson) {
+        Object.defineProperty(Object.prototype, "toJSON", originalToJson);
+      } else {
+        delete (Object.prototype as { toJSON?: unknown }).toJSON;
+      }
+    }
+  });
+
   it("keeps exactly five fields in the model payload and two in the sidecar", () => {
     const result = normalizeClassifierInputV1(baseSource);
 
@@ -261,6 +300,49 @@ describe("normalizeClassifierInputV1", () => {
         new ClassifierInputValidationError(
           `$.${field}`,
           `must not exceed ${CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT} Unicode code points`,
+        ),
+      );
+    },
+  );
+
+  it.each([
+    ["title", "role\ud800"],
+    ["companyName", "company\udc00"],
+    ["descriptionHtml", "<p>description\ud800</p>"],
+    ["selectedDescriptionLocale", "en\udc00"],
+  ] as const)("rejects ill-formed Unicode in %s", (field, value) => {
+    expect(() =>
+      normalizeClassifierInputV1({ ...baseSource, [field]: value }),
+    ).toThrowError(
+      new ClassifierInputValidationError(`$.${field}`, "contains ill-formed Unicode"),
+    );
+  });
+
+  it.each([
+    ["title", "role\u0007"],
+    ["companyName", "company\u007f"],
+    ["descriptionHtml", "<p>description\u0007</p>"],
+    ["selectedDescriptionLocale", "en\u000b"],
+  ] as const)("rejects unsupported controls in %s", (field, value) => {
+    expect(() =>
+      normalizeClassifierInputV1({ ...baseSource, [field]: value }),
+    ).toThrowError(
+      new ClassifierInputValidationError(
+        `$.${field}`,
+        "contains unsupported control characters",
+      ),
+    );
+  });
+
+  it.each(["<p>a&#7;b</p>", "<p>a&#x7f;b</p>", "<p>a&#11;b</p>"])(
+    "rejects unsupported controls decoded from HTML entities: %s",
+    (descriptionHtml) => {
+      expect(() =>
+        normalizeClassifierInputV1({ ...baseSource, descriptionHtml }),
+      ).toThrowError(
+        new ClassifierInputValidationError(
+          "$.descriptionHtml",
+          "contains unsupported control characters",
         ),
       );
     },
