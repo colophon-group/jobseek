@@ -396,6 +396,51 @@ class TestValidateCsvs:
         else:
             assert not any("use 'skip'" in str(error) for error in errors)
 
+    @pytest.mark.parametrize(
+        ("scraper_type", "scraper_config", "is_valid"),
+        [
+            ("", "", False),
+            ("skip", "", False),
+            ("json-ld", "", False),
+            ("json-ld", '"{""enrich"": [""title""]}"', False),
+            ("json-ld", '"{""enrich"": [""description""]}"', True),
+        ],
+    )
+    def test_dom_rich_script_json_requires_description_enrichment(
+        self,
+        tmp_path,
+        monkeypatch,
+        scraper_type,
+        scraper_config,
+        is_valid,
+    ):
+        monitor_config = (
+            '"{""script_json_links"":{""variable"":""jobs"",""url_field"":""url"",'
+            '""url_template"":""{value}"",""title_field"":""title"",'
+            '""locations_field"":""locations""}}"'
+        )
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,"
+            "scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,dom,{monitor_config},{scraper_type},"
+            f"{scraper_config}\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+        rich_script_errors = [
+            error for error in errors if "DOM monitor rich script_json_links requires" in str(error)
+        ]
+
+        assert bool(rich_script_errors) is not is_valid
+        if is_valid:
+            assert errors == []
+        else:
+            assert not any("use 'skip'" in str(error) for error in errors)
+
     def test_invalid_scraper_type(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
