@@ -12,6 +12,8 @@ export const CLASSIFIER_DESCRIPTION_MARKUP_TOKEN_LIMIT = 2_000;
 export const CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT = 1_000;
 export const CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT = 4_000;
 const CLASSIFIER_TRUNCATION_BOUNDARY_WINDOW = 1_000;
+const UNSUPPORTED_TEXT_CONTROL_PATTERN =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u;
 
 export type ClassifierInputSource = {
   readonly candidateId: string;
@@ -126,6 +128,32 @@ function fail(path: string, rule: string): never {
   throw new ClassifierInputValidationError(path, rule);
 }
 
+function frozenNullPrototypeRecord<T extends object>(values: T): T {
+  return Object.freeze(Object.assign(Object.create(null), values)) as T;
+}
+
+function assertWellFormedText(value: string, path: string): void {
+  for (let index = 0; index < value.length; index += 1) {
+    const codeUnit = value.charCodeAt(index);
+    if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+      const nextCodeUnit = value.charCodeAt(index + 1);
+      if (
+        index + 1 >= value.length ||
+        nextCodeUnit < 0xdc00 ||
+        nextCodeUnit > 0xdfff
+      ) {
+        fail(path, "contains ill-formed Unicode");
+      }
+      index += 1;
+    } else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
+      fail(path, "contains ill-formed Unicode");
+    }
+  }
+  if (UNSUPPORTED_TEXT_CONTROL_PATTERN.test(value)) {
+    fail(path, "contains unsupported control characters");
+  }
+}
+
 function readRequiredString(
   source: Record<string, unknown>,
   field: (typeof SOURCE_FIELDS)[number],
@@ -149,6 +177,7 @@ function normalizedRequiredText(value: string, path: string): string {
   if (value.length > CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT) {
     fail(path, "raw input is too large");
   }
+  assertWellFormedText(value, path);
   const normalized = normalizeInlineText(value);
   if (normalized.length === 0) fail(path, "must contain text");
   let codePointCount = 0;
@@ -219,8 +248,10 @@ function appendVisibleText(
 
     const current = frame.value;
     if (current.nodeName === "#text") {
+      const textValue = (current as DefaultTreeAdapterTypes.TextNode).value;
+      assertWellFormedText(textValue, "$.descriptionHtml");
       chunks.push(
-        (current as DefaultTreeAdapterTypes.TextNode).value
+        textValue
           .replace(/\r\n?/gu, "\n")
           .replace(/\u00a0/gu, " ")
           .replace(/\s+/gu, " "),
@@ -259,6 +290,7 @@ function normalizeDescriptionHtml(descriptionHtml: string): string {
   if (descriptionHtml.length > CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT) {
     fail("$.descriptionHtml", "exceeds the raw HTML size limit");
   }
+  assertWellFormedText(descriptionHtml, "$.descriptionHtml");
   let markupTokenCount = 0;
   for (let index = 0; index < descriptionHtml.length; index += 1) {
     if (descriptionHtml.charCodeAt(index) !== 60) continue;
@@ -367,12 +399,14 @@ function assertStrictSource(input: unknown): ClassifierInputSource {
 }
 
 function contentIdentityFor(payload: ClassifierInputV1): string {
-  const canonicalSemanticContent = JSON.stringify({
-    normalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
-    title: payload.title,
-    companyName: payload.companyName,
-    descriptionText: payload.descriptionText,
-  });
+  const canonicalSemanticContent = JSON.stringify(
+    frozenNullPrototypeRecord({
+      normalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
+      title: payload.title,
+      companyName: payload.companyName,
+      descriptionText: payload.descriptionText,
+    }),
+  );
   return createHash("sha256").update(canonicalSemanticContent, "utf8").digest("hex");
 }
 
@@ -388,14 +422,14 @@ export function normalizeClassifierInputV1(input: unknown): NormalizedClassifier
   }
   const { descriptionText, truncated } = truncateDescription(normalizedDescription);
 
-  const payload: ClassifierInputV1 = Object.freeze({
+  const payload: ClassifierInputV1 = frozenNullPrototypeRecord({
     schemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
     candidateId: normalizedCandidateId(source.candidateId),
     title: normalizedRequiredText(source.title, "$.title"),
     companyName: normalizedRequiredText(source.companyName, "$.companyName"),
     descriptionText,
   });
-  const sidecar: ClassifierInputSidecarV1 = Object.freeze({
+  const sidecar: ClassifierInputSidecarV1 = frozenNullPrototypeRecord({
     selectedDescriptionLocale: normalizedRequiredText(
       source.selectedDescriptionLocale,
       "$.selectedDescriptionLocale",
@@ -403,7 +437,7 @@ export function normalizeClassifierInputV1(input: unknown): NormalizedClassifier
     truncated,
   });
 
-  return Object.freeze({
+  return frozenNullPrototypeRecord({
     payload,
     sidecar,
     contentIdentity: contentIdentityFor(payload),
