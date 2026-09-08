@@ -425,21 +425,23 @@ def _fd_count(pids: set[int]) -> int:
 class ProcessSampler:
     def __init__(self, pid: int) -> None:
         self.pid = pid
-        self.samples: list[dict[str, int]] = []
-        self.periodic_samples = 0
+        self.samples: list[dict[str, int | str]] = []
         self.error: BaseException | None = None
         self.stop_event = threading.Event()
         self.thread = threading.Thread(
             target=self._sample_loop, name=f"benchmark-sampler-{pid}", daemon=True
         )
 
-    def _sample_once(self) -> None:
+    def _sample_once(self, kind: str) -> None:
+        if kind not in {"boundary_start", "periodic", "boundary_stop"}:
+            raise RuntimeError("unknown process sample kind")
         table = _process_table()
         pids = _tree_pids(self.pid, table)
         if not pids:
             return
         self.samples.append(
             {
+                "kind": kind,
                 "at_ns": time.monotonic_ns(),
                 "rss_kib": sum(table[pid][1] for pid in pids),
                 "processes": len(pids),
@@ -450,40 +452,95 @@ class ProcessSampler:
     def _sample_loop(self) -> None:
         try:
             while not self.stop_event.wait(0.01):
-                self._sample_once()
-                self.periodic_samples += 1
+                self._sample_once("periodic")
         except BaseException as exc:
             self.error = exc
             self.stop_event.set()
 
     def start(self) -> None:
-        self._sample_once()
+        self._sample_once("boundary_start")
         self.thread.start()
 
-    def stop(self) -> dict[str, Any]:
+    def stop(
+        self, *, require_complete: bool = True
+    ) -> tuple[dict[str, Any], list[dict[str, int | str]]]:
         self.stop_event.set()
         self.thread.join(timeout=2.0)
         if self.thread.is_alive():
             raise RuntimeError("process sampler thread did not stop")
         if self.error is not None:
             raise RuntimeError("process sampler thread failed") from self.error
-        self._sample_once()
-        rss = [sample["rss_kib"] for sample in self.samples]
-        fds = [sample["open_fds"] for sample in self.samples if sample["open_fds"] >= 0]
-        return {
-            "sample_count": len(self.samples),
-            "periodic_sample_count": self.periodic_samples,
-            "coverage_ns": (
-                self.samples[-1]["at_ns"] - self.samples[0]["at_ns"]
-                if len(self.samples) >= 2
-                else 0
-            ),
-            "sampler_thread_stopped": not self.thread.is_alive(),
-            "steady_rss_kib": statistics.median(rss) if rss else 0,
-            "peak_sampled_rss_kib": max(rss, default=0),
-            "max_open_fds": max(fds, default=-1),
-            "max_processes": max((sample["processes"] for sample in self.samples), default=0),
-        }
+        self._sample_once("boundary_stop")
+        rows = [dict(sample) for sample in self.samples]
+        if not require_complete:
+            return {}, rows
+        return _summarize_process_samples(rows), rows
+
+
+def _summarize_process_samples(
+    rows: list[dict[str, int | str]],
+) -> dict[str, Any]:
+    required = {"kind", "at_ns", "rss_kib", "processes", "open_fds"}
+    previous_at = -1
+    for row in rows:
+        if (
+            set(row) != required
+            or type(row["kind"]) is not str
+            or not all(type(row[field]) is int for field in required - {"kind"})
+        ):
+            raise RuntimeError("process sampler emitted an invalid row")
+        if (
+            row["at_ns"] <= previous_at
+            or row["at_ns"] <= 0
+            or row["rss_kib"] < 0
+            or row["processes"] <= 0
+            or row["open_fds"] < -1
+        ):
+            raise RuntimeError("process sampler emitted an invalid value")
+        previous_at = row["at_ns"]
+    kinds = [row["kind"] for row in rows]
+    if (
+        len(kinds) < 2
+        or kinds[0] != "boundary_start"
+        or kinds[-1] != "boundary_stop"
+        or any(kind != "periodic" for kind in kinds[1:-1])
+    ):
+        raise RuntimeError("process sample boundaries are invalid")
+    rss = [sample["rss_kib"] for sample in rows]
+    fds = [sample["open_fds"] for sample in rows if sample["open_fds"] >= 0]
+    return {
+        "sample_count": len(rows),
+        "periodic_sample_count": len(rows) - 2,
+        "coverage_ns": rows[-1]["at_ns"] - rows[0]["at_ns"] if len(rows) >= 2 else 0,
+        "steady_rss_kib": statistics.median(rss) if rss else 0,
+        "peak_sampled_rss_kib": max(rss, default=0),
+        "max_open_fds": max(fds, default=-1),
+        "max_processes": max((sample["processes"] for sample in rows), default=0),
+    }
+
+
+def _persist_process_samples(
+    *,
+    out: Path,
+    arm_token: str,
+    phase: str,
+    summary: dict[str, Any],
+    rows: list[dict[str, int | str]],
+) -> dict[str, Any]:
+    recomputed = _summarize_process_samples(rows)
+    if recomputed != summary:
+        raise RuntimeError("process sample summary does not match raw rows")
+    relative = Path("raw") / "samples" / f"{arm_token}-{phase}.jsonl"
+    data = b"".join(
+        json.dumps(row, separators=(",", ":"), sort_keys=True).encode() + b"\n" for row in rows
+    )
+    with (out / relative).open("xb") as handle:
+        handle.write(data)
+    return {
+        **summary,
+        "raw_samples_file": str(relative),
+        "raw_samples_sha256": _sha256(data),
+    }
 
 
 def _cgroup_path(pid: int) -> str | None:
@@ -872,7 +929,7 @@ class RunnerProcess:
 
     def batch(
         self, command: dict[str, Any], timeout: float
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
+    ) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, int | str]]]:
         assert self.process.stdin is not None
         sampler = ProcessSampler(int(self.ready["pid"]))
         sampler.start()
@@ -880,11 +937,20 @@ class RunnerProcess:
             self.process.stdin.write(json.dumps(command, separators=(",", ":")) + "\n")
             self.process.stdin.flush()
             result = self._read_json(timeout)
-        finally:
-            samples = sampler.stop()
+        except BaseException as primary:
+            try:
+                sampler.stop(require_complete=False)
+            except BaseException as sampler_error:
+                primary.add_note(
+                    f"process sampler cleanup also failed: "
+                    f"{type(sampler_error).__name__}: {sampler_error}"
+                )
+            raise
+        else:
+            samples, sample_rows = sampler.stop()
         if result.get("type") != "batch":
             raise RuntimeError(f"runner emitted unexpected batch record: {result}")
-        return result, samples
+        return result, samples, sample_rows
 
     def close(self) -> dict[str, Any]:
         if self.process.poll() is not None:
@@ -1288,6 +1354,8 @@ def validate_batch(
         raise RuntimeError(f"runner batch metadata mismatch: {mismatches}")
     if result.get("wall_ns", 0) <= 0:
         raise RuntimeError("runner batch wall time must be positive")
+    if "peak_rss_kib" in result:
+        raise RuntimeError("runner ru_maxrss is not an admissible per-arm RSS measurement")
     if result.get("user_cpu_ns", -1) < 0 or result.get("sys_cpu_ns", -1) < 0:
         raise RuntimeError("runner batch CPU times must be non-negative")
     expected_digest = job_manifest_sha256(jobs)
@@ -1347,8 +1415,6 @@ def validate_batch(
         raise RuntimeError("runner spawned child processes during a measured command")
     if result.get("process_children") != 0:
         raise RuntimeError("runner reported child processes")
-    if not samples.get("sampler_thread_stopped", False):
-        raise RuntimeError("resource sampler did not stop")
     if samples.get("sample_count", 0) < 2:
         raise RuntimeError("resource sampler produced insufficient boundary samples")
     if evidence and (
@@ -1520,10 +1586,7 @@ def arm_metrics(arm: dict[str, Any]) -> dict[str, Any]:
         "end_to_end": _latency([job["end_to_end_ns"] for job in jobs]),
         "cpu_seconds_per_successful_job": cpu_seconds / successes if successes else None,
         "steady_rss_kib": arm["samples"]["steady_rss_kib"],
-        "peak_process_tree_rss_kib": max(
-            arm["samples"]["peak_sampled_rss_kib"], result["peak_rss_kib"]
-        ),
-        "runner_cumulative_peak_rss_kib": result["peak_rss_kib"],
+        "peak_process_tree_rss_kib": arm["samples"]["peak_sampled_rss_kib"],
         "max_open_fds": arm["samples"]["max_open_fds"],
         "max_queued": result["max_queued"],
         "max_in_flight": result["max_in_flight"],
@@ -2025,7 +2088,14 @@ def main() -> int:
         # checked container configuration.
         raise RuntimeError("evidence output must be beneath /evidence")
     out.mkdir(parents=True, exist_ok=False)
-    for relative in ("raw", "raw/stderr", "raw/failures", "manifests", "preexec"):
+    for relative in (
+        "raw",
+        "raw/stderr",
+        "raw/failures",
+        "raw/samples",
+        "manifests",
+        "preexec",
+    ):
         (out / relative).mkdir(parents=True, exist_ok=True)
     _write_status(out, "running")
 
@@ -2332,7 +2402,7 @@ def main() -> int:
                 fleet.state.register_batch(
                     arm_token=arm_token, batch_id=warmup_id, jobs=warmup_jobs
                 )
-                warmup_result, warmup_samples = runner.batch(
+                warmup_result, warmup_samples, warmup_sample_rows = runner.batch(
                     {
                         "action": "batch",
                         "batch_id": warmup_id,
@@ -2341,6 +2411,13 @@ def main() -> int:
                         "jobs": warmup_jobs,
                     },
                     timeout=60.0,
+                )
+                warmup_samples = _persist_process_samples(
+                    out=out,
+                    arm_token=arm_token,
+                    phase="warmup",
+                    summary=warmup_samples,
+                    rows=warmup_sample_rows,
                 )
                 warmup_rows = _wait_for_transcript(
                     fleet,
@@ -2371,7 +2448,7 @@ def main() -> int:
                 fleet.state.register_batch(
                     arm_token=arm_token, batch_id=measured_batch_id, jobs=jobs
                 )
-                result, samples = runner.batch(
+                result, samples, sample_rows = runner.batch(
                     {
                         "action": "batch",
                         "batch_id": measured_batch_id,
@@ -2380,6 +2457,13 @@ def main() -> int:
                         "jobs": jobs,
                     },
                     timeout=120.0,
+                )
+                samples = _persist_process_samples(
+                    out=out,
+                    arm_token=arm_token,
+                    phase="measured",
+                    summary=samples,
+                    rows=sample_rows,
                 )
                 rows = _wait_for_transcript(
                     fleet,

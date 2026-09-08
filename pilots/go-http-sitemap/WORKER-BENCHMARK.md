@@ -109,6 +109,13 @@ Raw observations, source and image identities, commands, manifests, fixture
 transcripts, and summary calculations must be retained. Startup is reported
 separately rather than hidden inside steady-state measurements.
 
+Every external process-tree sample must be tagged as start, periodic, or stop,
+retained, and checksummed per arm so the steady median, sampled peak,
+process-count, file-descriptor maximum, periodic count, and timer coverage can
+be independently recomputed. Runner `ru_maxrss` is not a
+per-arm metric because the fork/exec child may inherit pre-exec high-water
+state from the orchestrator.
+
 ## Decision rule
 
 Correctness, boundedness, and conservation are hard gates. There may be no

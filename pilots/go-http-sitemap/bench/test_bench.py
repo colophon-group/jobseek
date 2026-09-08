@@ -26,7 +26,9 @@ from orchestrator import (
     ProcessSampler,
     RunnerProcess,
     _git_cleanliness,
+    _persist_process_samples,
     _safe_child_environment,
+    _summarize_process_samples,
     _validate_docker_inspect,
     _validate_loopback_only_network,
     _validate_python_ready_environment,
@@ -109,6 +111,117 @@ class CorpusTests(unittest.TestCase):
 
 
 class SafetyTests(unittest.TestCase):
+    def test_raw_process_samples_are_checksummed_and_recompute_summary(self) -> None:
+        rows = [
+            {
+                "kind": "boundary_start",
+                "at_ns": 100,
+                "rss_kib": 10,
+                "processes": 1,
+                "open_fds": 5,
+            },
+            {
+                "kind": "periodic",
+                "at_ns": 200,
+                "rss_kib": 30,
+                "processes": 1,
+                "open_fds": 7,
+            },
+            {
+                "kind": "boundary_stop",
+                "at_ns": 300,
+                "rss_kib": 20,
+                "processes": 1,
+                "open_fds": 6,
+            },
+        ]
+        summary = _summarize_process_samples(rows)
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            (out / "raw" / "samples").mkdir(parents=True)
+            persisted = _persist_process_samples(
+                out=out,
+                arm_token="c5-r00-go",
+                phase="measured",
+                summary=summary,
+                rows=rows,
+            )
+            sample_path = out / persisted["raw_samples_file"]
+            data = sample_path.read_bytes()
+            decoded = [json.loads(line) for line in data.splitlines()]
+
+            self.assertEqual(decoded, rows)
+            self.assertEqual(persisted["raw_samples_sha256"], hashlib.sha256(data).hexdigest())
+            self.assertEqual(persisted["steady_rss_kib"], 20)
+            self.assertEqual(persisted["peak_sampled_rss_kib"], 30)
+            self.assertEqual(persisted["periodic_sample_count"], 1)
+            self.assertEqual(persisted["coverage_ns"], 200)
+            self.assertEqual(persisted["max_open_fds"], 7)
+
+    def test_process_sample_summary_mismatch_fails_before_persistence(self) -> None:
+        rows = [
+            {
+                "kind": "boundary_start",
+                "at_ns": 100,
+                "rss_kib": 10,
+                "processes": 1,
+                "open_fds": 5,
+            },
+            {
+                "kind": "boundary_stop",
+                "at_ns": 200,
+                "rss_kib": 10,
+                "processes": 1,
+                "open_fds": 5,
+            },
+        ]
+        summary = _summarize_process_samples(rows)
+        summary["steady_rss_kib"] = 999
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            (out / "raw" / "samples").mkdir(parents=True)
+            with self.assertRaisesRegex(RuntimeError, "summary does not match"):
+                _persist_process_samples(
+                    out=out,
+                    arm_token="c5-r00-go",
+                    phase="measured",
+                    summary=summary,
+                    rows=rows,
+                )
+            self.assertEqual(list((out / "raw" / "samples").iterdir()), [])
+
+    def test_process_sample_periodic_count_is_derived_from_tagged_rows(self) -> None:
+        rows = [
+            {
+                "kind": "boundary_start",
+                "at_ns": 100,
+                "rss_kib": 10,
+                "processes": 1,
+                "open_fds": 5,
+            },
+            {
+                "kind": "boundary_stop",
+                "at_ns": 200,
+                "rss_kib": 10,
+                "processes": 1,
+                "open_fds": 5,
+            },
+        ]
+        summary = _summarize_process_samples(rows)
+        self.assertEqual(summary["periodic_sample_count"], 0)
+        inflated = {**summary, "periodic_sample_count": 3}
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            (out / "raw" / "samples").mkdir(parents=True)
+            with self.assertRaisesRegex(RuntimeError, "summary does not match"):
+                _persist_process_samples(
+                    out=out,
+                    arm_token="c5-r00-go",
+                    phase="measured",
+                    summary=inflated,
+                    rows=rows,
+                )
+
     def assert_process_gone(self, pid: int) -> None:
         deadline = time.monotonic() + 3.0
         while time.monotonic() < deadline:
@@ -877,7 +990,10 @@ class MetricTests(unittest.TestCase):
                 "wall_ns": 1_000_000_000,
                 "user_cpu_ns": 1,
                 "sys_cpu_ns": 1,
-                "peak_rss_kib": 1,
+                # A legacy runner high-water field must never contaminate the
+                # external process-tree sampler metric. Linux fork/exec can
+                # inherit the orchestrator's pre-exec ru_maxrss.
+                "peak_rss_kib": 999,
                 "panics": 0,
                 "unfinished": 0,
                 "max_queued": 1,
@@ -901,6 +1017,8 @@ class MetricTests(unittest.TestCase):
         metrics = arm_metrics(arm)
         self.assertEqual(metrics["root_attempts"], 1)
         self.assertEqual(metrics["root_retry_intervals"], 0)
+        self.assertEqual(metrics["peak_process_tree_rss_kib"], 1)
+        self.assertNotIn("runner_cumulative_peak_rss_kib", metrics)
         self.assertNotIn("retries", metrics)
 
 
@@ -1031,7 +1149,6 @@ class BatchValidationTests(unittest.TestCase):
                 "sample_count": 2,
                 "periodic_sample_count": 0,
                 "coverage_ns": 100,
-                "sampler_thread_stopped": True,
             },
             scenarios=scenario_map(corpus),
             defaults=corpus["defaults"],
@@ -1115,6 +1232,14 @@ class BatchValidationTests(unittest.TestCase):
         result["phase"] = "warmup"
         with self.assertRaisesRegex(RuntimeError, "batch metadata"):
             self._validate(result, jobs, transcript, snapshot, workers=1, capacity=1)
+
+    def test_runner_ru_maxrss_field_is_rejected(self) -> None:
+        result, jobs, transcript, snapshot = self._case(
+            count=1, same_origin=True, workers=2, capacity=2
+        )
+        result["peak_rss_kib"] = 999
+        with self.assertRaisesRegex(RuntimeError, "ru_maxrss"):
+            self._validate(result, jobs, transcript, snapshot, workers=2, capacity=2)
 
     def test_latency_fields_must_exactly_match_emitted_timestamps(self) -> None:
         for field in ("queue_ns", "service_ns", "end_to_end_ns"):

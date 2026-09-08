@@ -72,7 +72,6 @@ type batchOutput struct {
 	WallNS          int64                       `json:"wall_ns"`
 	UserCPUNS       int64                       `json:"user_cpu_ns"`
 	SysCPUNS        int64                       `json:"sys_cpu_ns"`
-	PeakRSSKiB      int64                       `json:"peak_rss_kib"`
 	OpenFDsEnd      int                         `json:"open_fds_end"`
 	MaxQueued       int                         `json:"max_queued"`
 	MaxInFlight     int                         `json:"max_in_flight"`
@@ -121,9 +120,8 @@ type buildIdentity struct {
 }
 
 type usageSnapshot struct {
-	userNS     int64
-	systemNS   int64
-	peakRSSKiB int64
+	userNS   int64
+	systemNS int64
 }
 
 func usage() usageSnapshot {
@@ -131,14 +129,9 @@ func usage() usageSnapshot {
 	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &value); err != nil {
 		panic(err)
 	}
-	peak := value.Maxrss
-	if runtime.GOOS == "darwin" {
-		peak /= 1024
-	}
 	return usageSnapshot{
-		userNS:     value.Utime.Sec*1_000_000_000 + int64(value.Utime.Usec)*1_000,
-		systemNS:   value.Stime.Sec*1_000_000_000 + int64(value.Stime.Usec)*1_000,
-		peakRSSKiB: peak,
+		userNS:   value.Utime.Sec*1_000_000_000 + int64(value.Utime.Usec)*1_000,
+		systemNS: value.Stime.Sec*1_000_000_000 + int64(value.Stime.Usec)*1_000,
 	}
 }
 
@@ -397,7 +390,6 @@ func runBatch(pool *worker.Pool, client *boundedhttp.Client, input command) batc
 		WallNS:          wallNS,
 		UserCPUNS:       usageAfter.userNS - usageBefore.userNS,
 		SysCPUNS:        usageAfter.systemNS - usageBefore.systemNS,
-		PeakRSSKiB:      usageAfter.peakRSSKiB,
 		OpenFDsEnd:      openFDs(),
 		MaxQueued:       intervalMax(queueIntervals),
 		MaxInFlight:     intervalMax(serviceIntervals),

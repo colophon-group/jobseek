@@ -52,6 +52,13 @@ The default evidence run uses five independent repetitions and alternates arm
 order. `--smoke` deliberately uses one repetition and c1/c5 only; its output is
 verification, never decision evidence.
 
+Peak process-tree RSS comes only from the external `/proc` sampler, which takes
+tagged boundary samples plus 10 ms periodic samples and must cover the complete
+timed interval. The `ru_maxrss` part of runner `getrusage` is deliberately not
+emitted or used: on Linux a fork/exec child can inherit the growing
+orchestrator's pre-exec high-water mark, so it is not a per-arm memory
+observation. `getrusage` remains the symmetric source for CPU deltas.
+
 ## Python production-source seam
 
 Evidence mode stages these exact blobs directly from the issue-frozen
@@ -337,7 +344,10 @@ An output directory is created once and contains:
 
 - `manifests/`: exact ordered warmup/measured job inputs and digests;
 - `raw/fixture.jsonl`: authoritative connection/request/status/byte transcript;
-- `raw/arms.jsonl` and `raw/jobs.jsonl`: resource and per-job observations;
+- `raw/arms.jsonl` and `raw/jobs.jsonl`: aggregate resource and per-job observations;
+- `raw/samples/`: checksummed per-arm warmup/measured process-tree samples with
+  start/periodic/stop kind, monotonic timestamp, RSS, process count, and open
+  file descriptors;
 - `raw/stderr/`: production retry logs, kept outside the JSON protocol;
 - `raw/failures/`: deterministic per-arm diagnostics for failed startup,
   warmup, measurement, validation, or shutdown;
@@ -351,7 +361,7 @@ An output directory is created once and contains:
 
 Per-arm observations include completed/successful jobs per second; queue,
 service, and end-to-end p50/p95/p99; CPU seconds per successful job; steady and
-sampled peak process-tree RSS; cumulative runner peak RSS; historical maximum
+sampled peak process-tree RSS; historical maximum
 queued, in-flight, accepted-but-unfinished, and per-origin service work; file
 descriptors; historical open and reported server-side idle connections;
 requests; response bytes; root attempts and root retry intervals; timeouts;

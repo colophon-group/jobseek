@@ -114,15 +114,11 @@ def _load_production_sitemap(source_bundle: Path):
     return sitemap, http_retry, identities
 
 
-def _usage() -> tuple[int, int, int]:
+def _usage() -> tuple[int, int]:
     value = resource.getrusage(resource.RUSAGE_SELF)
-    peak = value.ru_maxrss
-    if sys.platform == "darwin":
-        peak //= 1024
     return (
         round(value.ru_utime * 1_000_000_000),
         round(value.ru_stime * 1_000_000_000),
-        peak,
     )
 
 
@@ -305,7 +301,7 @@ class AsyncWorkerPool:
 
         accepted_before = self.accepted
         completed_before = self.completed
-        user_before, system_before, _ = _usage()
+        user_before, system_before = _usage()
         wall_start = time.perf_counter_ns()
 
         async def feed() -> None:
@@ -324,7 +320,7 @@ class AsyncWorkerPool:
         await feeder
         await self.input.join()
         wall_ns = time.perf_counter_ns() - wall_start
-        user_after, system_after, peak_rss_kib = _usage()
+        user_after, system_after = _usage()
         outputs.sort(key=lambda output: str(output["id"]))
         return {
             "type": "batch",
@@ -336,7 +332,6 @@ class AsyncWorkerPool:
             "wall_ns": wall_ns,
             "user_cpu_ns": user_after - user_before,
             "sys_cpu_ns": system_after - system_before,
-            "peak_rss_kib": peak_rss_kib,
             "open_fds_end": _open_fds(),
             "max_queued": interval_max(
                 [(output["accepted_ns"], output["started_ns"]) for output in outputs]
