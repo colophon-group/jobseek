@@ -10,15 +10,21 @@
 export const AI_FILTER_CONTRACT_VERSION = 1 as const;
 export const AI_FILTER_SEGMENT_LIMIT = 50;
 export const AI_FILTER_QUERY_MAX_LENGTH = 1_000;
+export const AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION = 1 as const;
 export const AI_FILTER_DECISION_RETENTION_DAYS = 30;
+
+const AI_FILTER_QUERY_RAW_MAX_CODE_UNITS = AI_FILTER_QUERY_MAX_LENGTH * 4;
 
 const RETENTION_MS =
   AI_FILTER_DECISION_RETENTION_DAYS * 24 * 60 * 60 * 1_000;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
-const UNSAFE_QUERY_CONTROL_PATTERN =
-  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+const QUERY_CONTROL_PATTERN = /\p{Cc}/u;
+const QUERY_DEFAULT_IGNORABLE_PATTERN =
+  /\p{Default_Ignorable_Code_Point}/u;
+const QUERY_WHITESPACE_PATTERN = /\p{White_Space}/u;
+const QUERY_WHITESPACE_RUN_PATTERN = /\p{White_Space}+/gu;
 
 export type AiFilterDecisionValue = "accepted" | "rejected";
 
@@ -106,19 +112,47 @@ function fail(message: string): never {
   throw new AiFilterContractError(message);
 }
 
+function inspectArray(value: unknown, field: string): value is unknown[] {
+  try {
+    return Array.isArray(value);
+  } catch {
+    fail(`${field} could not be inspected`);
+  }
+}
+
+function inspectOwnKeys(value: object, field: string): readonly PropertyKey[] {
+  try {
+    return Reflect.ownKeys(value);
+  } catch {
+    fail(`${field} could not be inspected`);
+  }
+}
+
+function inspectOwnPropertyDescriptor(
+  value: object,
+  key: PropertyKey,
+  field: string,
+): PropertyDescriptor | undefined {
+  try {
+    return Object.getOwnPropertyDescriptor(value, key);
+  } catch {
+    fail(`${field} could not be inspected`);
+  }
+}
+
 function snapshotDataRecord(
   value: unknown,
   field: string,
 ): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (value === null || typeof value !== "object" || inspectArray(value, field)) {
     fail(`${field} must be an object`);
   }
 
   const record = value as Record<string, unknown>;
   const snapshot = Object.create(null) as Record<string, unknown>;
-  for (const key of Reflect.ownKeys(record)) {
+  for (const key of inspectOwnKeys(record, field)) {
     if (typeof key !== "string") fail(`${field} must contain plain data fields`);
-    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    const descriptor = inspectOwnPropertyDescriptor(record, key, field);
     if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) {
       fail(`${field} must contain plain data fields`);
     }
@@ -178,6 +212,57 @@ function requireUuid(value: unknown, field: string): string {
   return value;
 }
 
+/**
+ * Parses the single canonical candidate-ID format shared by selection and
+ * classifier boundaries.
+ */
+export function parseAiFilterCandidateId(input: unknown): string {
+  return requireUuid(input, "AI filter candidate ID");
+}
+
+/**
+ * Version 1 of the authoritative soft-query boundary. Length is measured in
+ * Unicode code points after NFC and whitespace canonicalization, not UTF-16
+ * code units.
+ */
+export function normalizeAiFilterSoftQueryV1(input: unknown): string {
+  if (typeof input !== "string") {
+    fail("AI filter soft query must be text");
+  }
+  if (input.length > AI_FILTER_QUERY_RAW_MAX_CODE_UNITS) {
+    fail("AI filter soft query raw input is too large");
+  }
+
+  for (const codePoint of input) {
+    if (
+      QUERY_DEFAULT_IGNORABLE_PATTERN.test(codePoint) ||
+      (QUERY_CONTROL_PATTERN.test(codePoint) &&
+        !QUERY_WHITESPACE_PATTERN.test(codePoint))
+    ) {
+      fail("AI filter soft query contains unsupported code points");
+    }
+  }
+
+  const normalized = input
+    .normalize("NFC")
+    .replace(QUERY_WHITESPACE_RUN_PATTERN, " ")
+    .trim();
+  if (normalized.length === 0) {
+    fail("AI filter soft query must not be empty");
+  }
+
+  let codePointCount = 0;
+  for (const _codePoint of normalized) {
+    codePointCount += 1;
+    if (codePointCount > AI_FILTER_QUERY_MAX_LENGTH) {
+      fail(
+        `AI filter soft query must not exceed ${AI_FILTER_QUERY_MAX_LENGTH} Unicode code points`,
+      );
+    }
+  }
+  return normalized;
+}
+
 function requireCanonicalInstant(value: unknown, field: string): string {
   if (typeof value !== "string") fail(`${field} must be an ISO instant`);
   const parsed = new Date(value);
@@ -197,8 +282,8 @@ function addRetention(firstSeenAt: string): string {
 }
 
 function requireDenseArray(value: unknown, field: string): unknown[] {
-  if (!Array.isArray(value)) fail(`${field} must be an array`);
-  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+  if (!inspectArray(value, field)) fail(`${field} must be an array`);
+  const lengthDescriptor = inspectOwnPropertyDescriptor(value, "length", field);
   if (
     !lengthDescriptor ||
     !("value" in lengthDescriptor) ||
@@ -214,7 +299,7 @@ function requireDenseArray(value: unknown, field: string): unknown[] {
     "length",
     ...Array.from({ length }, (_, index) => String(index)),
   ]);
-  const actualKeys = Reflect.ownKeys(value);
+  const actualKeys = inspectOwnKeys(value, field);
   if (
     actualKeys.some(
       (key) => typeof key !== "string" || !expectedKeys.has(key),
@@ -225,7 +310,7 @@ function requireDenseArray(value: unknown, field: string): unknown[] {
 
   const snapshot: unknown[] = [];
   for (let index = 0; index < length; index += 1) {
-    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    const descriptor = inspectOwnPropertyDescriptor(value, String(index), field);
     if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) {
       fail(`${field} must not contain sparse entries`);
     }
@@ -251,16 +336,7 @@ function parseConfiguration(value: unknown): AiFilterConfiguration {
     "configuration",
   );
 
-  const queryText = record.queryText;
-  if (
-    typeof queryText !== "string" ||
-    queryText.trim() !== queryText ||
-    queryText.length === 0 ||
-    queryText.length > AI_FILTER_QUERY_MAX_LENGTH ||
-    UNSAFE_QUERY_CONTROL_PATTERN.test(queryText)
-  ) {
-    fail("configuration.queryText is invalid");
-  }
+  const queryText = normalizeAiFilterSoftQueryV1(record.queryText);
 
   return Object.freeze({
     version: requireLiteral(
