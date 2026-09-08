@@ -176,6 +176,16 @@ def validate_csvs() -> list[ValidationError]:
         configured_rich_rows = monitor_type == "dom" and bool(
             (monitor_config_obj or {}).get("rich_rows")
         )
+        script_json_links = (monitor_config_obj or {}).get("script_json_links")
+        configured_rich_script_json = (
+            monitor_type == "dom"
+            and isinstance(script_json_links, dict)
+            and bool(
+                script_json_links.get("title_field") and script_json_links.get("locations_field")
+            )
+        )
+        configured_partial_dom = configured_rich_rows or configured_rich_script_json
+        partial_dom_source = "rich_rows" if configured_rich_rows else "rich script_json_links"
         scraper_config_obj: dict | None = None
         if scraper_config:
             try:
@@ -304,7 +314,7 @@ def validate_csvs() -> list[ValidationError]:
         # or personio whose XML feed includes descriptions). Pairing skip
         # with a URL-only monitor leaves descriptions empty silently — see
         # issue #2637 ("Broken descriptions from lazy scraper configurers").
-        if scraper_type == "skip" and not configured_rich_rows:
+        if scraper_type == "skip" and not configured_partial_dom:
             mc_obj_skip: dict | None = None
             if monitor_config:
                 try:
@@ -329,14 +339,14 @@ def validate_csvs() -> list[ValidationError]:
                     )
                 )
 
-        # DOM rich_rows yields URL/title/location but deliberately does not
-        # parse detail-page descriptions. Because it is a partial-rich path,
-        # the runtime only schedules detail scraping when scraper_config
-        # explicitly declares description enrichment. Keep this stricter
-        # than the generic rich-monitor skip rule: accepting an absent/skip
-        # scraper or a config without enrich would silently persist empty
-        # descriptions.
-        if configured_rich_rows:
+        # DOM rich_rows and rich script_json_links yield listing fields but
+        # deliberately do not parse detail-page descriptions. Because these
+        # are partial-rich paths, the runtime only schedules detail scraping
+        # when scraper_config explicitly declares description enrichment.
+        # Keep this stricter than the generic rich-monitor skip rule:
+        # accepting an absent/skip scraper or a config without enrich would
+        # silently persist empty descriptions.
+        if configured_partial_dom:
             enrich = (scraper_config_obj or {}).get("enrich")
             if (
                 not scraper_type
@@ -349,7 +359,7 @@ def validate_csvs() -> list[ValidationError]:
                         "boards.csv",
                         i,
                         (
-                            "DOM monitor rich_rows requires a real enrichment "
+                            f"DOM monitor {partial_dom_source} requires a real enrichment "
                             "scraper and scraper_config.enrich containing "
                             "'description'; scraper_type='skip' is invalid"
                         ),
