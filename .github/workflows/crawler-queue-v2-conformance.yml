@@ -7,6 +7,11 @@ on:
       - 'apps/crawler/contracts/go.mod'
       - 'apps/crawler/contracts/go.sum'
       - 'apps/crawler/contracts/queue/v2/**'
+      - 'pilots/go-http-sitemap/boundedhttp/**'
+      - 'pilots/go-http-sitemap/go.mod'
+      - 'pilots/go-http-sitemap/sitemap/**'
+      - 'pilots/go-http-sitemap/worker/**'
+      - 'pilots/go-queue-v2-admission/**'
       - '.github/workflows/crawler-queue-v2-conformance.yml'
   pull_request:
     branches: [main]
@@ -14,6 +19,11 @@ on:
       - 'apps/crawler/contracts/go.mod'
       - 'apps/crawler/contracts/go.sum'
       - 'apps/crawler/contracts/queue/v2/**'
+      - 'pilots/go-http-sitemap/boundedhttp/**'
+      - 'pilots/go-http-sitemap/go.mod'
+      - 'pilots/go-http-sitemap/sitemap/**'
+      - 'pilots/go-http-sitemap/worker/**'
+      - 'pilots/go-queue-v2-admission/**'
       - '.github/workflows/crawler-queue-v2-conformance.yml'
   workflow_dispatch:
 
@@ -212,3 +222,77 @@ jobs:
       - name: Confirm PostgreSQL conformance left the tree unchanged
         if: always()
         run: git diff --exit-code -- apps/crawler/contracts/queue/v2/postgres
+
+  admission-conformance:
+    name: Go admission-before-claim composition
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24.0"
+          cache-dependency-path: pilots/go-queue-v2-admission/go.sum
+
+      - name: Start isolated production Redis fixture
+        run: |
+          set -euo pipefail
+          docker run --detach --name jobseek-queue-v2-admission-redis \
+            --publish 127.0.0.1:6381:6379 \
+            redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
+            redis-server --save "" --appendonly no
+
+          ready=false
+          for _ in {1..30}; do
+            if docker exec jobseek-queue-v2-admission-redis redis-cli ping | grep -qx PONG; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          test "$(docker exec jobseek-queue-v2-admission-redis redis-cli -n 15 --raw DBSIZE)" = 0
+
+      - name: Verify bounded admission and exact Redis composition
+        working-directory: pilots/go-queue-v2-admission
+        env:
+          QUEUE_V2_ADMISSION_REDIS_ISOLATED: "1"
+          QUEUE_V2_ADMISSION_REDIS_URL: redis://127.0.0.1:6381/15
+        run: |
+          set -euo pipefail
+          test "$(go version)" = "go version go1.24.0 linux/amd64"
+          go test -count=1 -race ./...
+          go vet ./...
+          gofmt -l . > "$RUNNER_TEMP/queue-v2-admission-gofmt.out"
+          if [[ -s "$RUNNER_TEMP/queue-v2-admission-gofmt.out" ]]; then
+            cat "$RUNNER_TEMP/queue-v2-admission-gofmt.out"
+            exit 1
+          fi
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Verify and stop isolated admission Redis fixture
+        if: always()
+        run: |
+          set +e
+          status=0
+          if docker container inspect jobseek-queue-v2-admission-redis >/dev/null 2>&1; then
+            dbsize="$(docker exec jobseek-queue-v2-admission-redis \
+              redis-cli -n 15 --raw DBSIZE)" || status=1
+            if [[ "$dbsize" != 0 ]]; then
+              echo "Redis DB 15 is not empty after admission tests: $dbsize keys" >&2
+              status=1
+            fi
+            docker rm --force jobseek-queue-v2-admission-redis || status=1
+          fi
+          if docker container inspect jobseek-queue-v2-admission-redis >/dev/null 2>&1; then
+            echo "Admission Redis fixture container still exists after cleanup" >&2
+            status=1
+          fi
+          exit "$status"
+
+      - name: Confirm admission conformance left the tree unchanged
+        if: always()
+        run: git diff --exit-code -- pilots/go-queue-v2-admission
