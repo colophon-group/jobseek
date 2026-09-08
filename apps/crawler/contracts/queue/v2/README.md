@@ -35,6 +35,21 @@ contract: work must stop and must not perform an authoritative write after the
 event fires. A later Postgres adapter still has to re-check the fence inside
 the write transaction.
 
+The inactive Go conformance client also exposes a bounded lease supervisor.
+It derives a per-lease work context and cancels it with the retained first
+typed loss cause when a heartbeat is fenced, not current, malformed,
+transport-failed, locally expired, or otherwise ambiguous. A claim grant
+includes Redis server time, the returned lease deadline, and a local monotonic
+timestamp captured before the claim request. That makes local expiry
+conservative without comparing Redis and worker wall clocks. Accepted
+heartbeats advance the deadline only when their exact TTL arithmetic and
+previous-deadline ordering are valid. Parent cancellation stops supervision
+without manufacturing a lease loss, and callers must stop and join supervision
+after work returns and before attempting a terminal queue transition. Stop
+releases the derived context without recording lease loss. The supervisor does
+not claim work, schedule jobs, write Postgres, or authorize mutations; active
+supervisors must be bounded by the caller's worker capacity.
+
 ## Fence identity
 
 Every claim is bound to all of:
@@ -127,6 +142,7 @@ and end empty.
 Later #7938 children still own:
 
 - Postgres mutation predicates and transaction-boundary fault injection;
+- bounded admission-before-claim and worker-pool integration;
 - mixed-protocol rollout, quiescence, rollback, and epoch rotation;
 - rebuild/conservation across scrape fallbacks, learned egress state, circuits,
   strikes, and runtime metadata;
