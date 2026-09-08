@@ -3138,7 +3138,12 @@ async def _discover_replay(
         else:
             # Navigate to board_url to establish cookies/auth context.
             # Capture exchanges so we can refresh stale auth headers from
-            # the requests the page's own JS fires during load.
+            # the requests the page's own JS fires during load.  Prefer a
+            # matching captured response when its configured JSON path
+            # resolves to job data.  Some public APIs (notably Salesforce
+            # Aura) require a per-navigation request body, so replaying a
+            # stored body is neither reliable nor necessary when the page
+            # already fetched the authoritative listing response.
             api_parsed = urlparse(api_url)
             nav_exchanges = await capture_exchanges(page, api_parsed.netloc)
             try:
@@ -3149,14 +3154,39 @@ async def _discover_replay(
                 log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
             await asyncio.sleep(settle)
 
-            # If the page hit the same API endpoint, use its fresh headers
-            # (auth tokens / session headers refreshed by the page's JS).
+            # A shared endpoint may carry unrelated requests.  Rank matching
+            # exchanges by the number of objects at the configured path so a
+            # Salesforce Aura action envelope containing hundreds of jobs
+            # wins over navigation/filter actions sent to the same URL.
+            matching_exchanges: list[tuple[int, Exchange]] = []
             for ex in nav_exchanges:
                 ex_parsed = urlparse(ex.url)
-                if ex_parsed.netloc == api_parsed.netloc and ex_parsed.path == api_parsed.path:
-                    request_headers = ex.request_headers
-                    log.info("api_sniffer.headers_refreshed", url=ex.url[:80])
-                    break
+                if (
+                    ex.method.upper() != method.upper()
+                    or ex_parsed.netloc != api_parsed.netloc
+                    or ex_parsed.path != api_parsed.path
+                ):
+                    continue
+                resolved = ex.body if json_path == "$" else resolve_path(ex.body, json_path)
+                if isinstance(resolved, list):
+                    score = sum(isinstance(item, dict) for item in resolved)
+                elif isinstance(resolved, dict):
+                    score = 1
+                else:
+                    score = 0
+                matching_exchanges.append((score, ex))
+
+            if matching_exchanges:
+                _score, captured_exchange = max(matching_exchanges, key=lambda pair: pair[0])
+                request_headers = captured_exchange.request_headers
+                log.info("api_sniffer.headers_refreshed", url=captured_exchange.url[:80])
+                if _score > 0:
+                    captured_data = captured_exchange.body
+                    log.info(
+                        "api_sniffer.navigation_response_captured",
+                        url=captured_exchange.url[:80],
+                        items=_score,
+                    )
 
         # Replay the API call — try browser first, fall back to HTTP
         headers = clean_headers(request_headers)
