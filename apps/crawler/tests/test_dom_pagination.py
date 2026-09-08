@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from src.core.monitors import DiscoveredJob, is_rich_monitor
 from src.core.monitors.dom import (
     BotChallengeError,
     _build_url_matcher,
@@ -125,12 +126,127 @@ class TestScriptJsonLinks:
             "https://council.nyc.gov/jobs/data-analyst/",
         }
 
+    def test_extracts_rich_jobs_from_function_call_argument(self):
+        config = _validated_script_json_links(
+            {
+                "function": "setUpAgGrid",
+                "argument_index": 2,
+                "url_field": "link",
+                "url_template": "{value}",
+                "title_field": "title",
+                "locations_field": "locations",
+            }
+        )
+        assert config is not None
+        html = """
+            <script type="module">
+              setUpAgGrid(
+                [{column: 'title', data: [{"name": "ignored"}]}],
+                "#opportunities .grid",
+                [{"link":"https:\\/\\/example.com\\/jobs\\/one\\/",
+                  "title":"Physician &#8211; Oncology",
+                  "locations":["Knoxville", "Medical Center"]}],
+                [{field: "title", render: ({data}) => `<a>${data.title}</a>`}]
+              )
+            </script>
+        """
+
+        jobs = _extract_script_json_links(
+            html,
+            "https://example.com/opportunities/",
+            config,
+            re.compile(r"^https://example\.com/jobs/"),
+        )
+
+        assert jobs == [
+            DiscoveredJob(
+                url="https://example.com/jobs/one/",
+                title="Physician – Oncology",
+                locations=["Knoxville", "Medical Center"],
+            )
+        ]
+        assert is_rich_monitor("dom", {"script_json_links": config.__dict__}) is True
+
+    def test_extracts_json_from_first_function_argument(self):
+        config = _validated_script_json_links(
+            {
+                "function": "loadJobs",
+                "argument_index": 0,
+                "url_field": "slug",
+                "url_template": "https://example.com/jobs/{value}/",
+            }
+        )
+        assert config is not None
+
+        urls = _extract_script_json_links(
+            '<script>loadJobs( /* authoritative */ [{"slug":"one"}])</script>',
+            "https://example.com/jobs/",
+            config,
+            None,
+        )
+
+        assert urls == {"https://example.com/jobs/one/"}
+
+    async def test_dom_discover_returns_rich_function_argument_jobs(self):
+        config = {
+            "function": "setUpAgGrid",
+            "argument_index": 2,
+            "url_field": "link",
+            "url_template": "{value}",
+            "title_field": "title",
+            "locations_field": "locations",
+        }
+        html = """
+            <script>setUpAgGrid({}, '#grid', [
+              {"link":"https://example.com/jobs/one/","title":"One",
+               "locations":["Knoxville"]}
+            ])</script>
+        """
+        with patch(_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/opportunities/",
+                    "metadata": {
+                        "script_json_links": config,
+                        "url_filter": r"^https://example\.com/jobs/",
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == [
+            DiscoveredJob(
+                url="https://example.com/jobs/one/",
+                title="One",
+                locations=["Knoxville"],
+            )
+        ]
+
     @pytest.mark.parametrize(
         "config",
         [
             {"variable": "bad-name", "url_field": "slug", "url_template": "https://x/{value}"},
             {"variable": "jobs", "url_field": "slug", "url_template": "https://x/no-slot"},
             {"variable": "jobs", "url_field": "slug", "url_template": "/jobs/{value}"},
+            {
+                "variable": "jobs",
+                "function": "loadJobs",
+                "argument_index": 0,
+                "url_field": "slug",
+                "url_template": "https://x/{value}",
+            },
+            {
+                "function": "loadJobs",
+                "argument_index": True,
+                "url_field": "slug",
+                "url_template": "https://x/{value}",
+            },
+            {
+                "variable": "jobs",
+                "url_field": "url",
+                "url_template": "{value}",
+                "title_field": "title",
+            },
         ],
     )
     def test_rejects_unsafe_config(self, config):

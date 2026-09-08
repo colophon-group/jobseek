@@ -42,6 +42,16 @@ def test_is_rich_monitor_consistency():
 
     dom_cfg = {"rich_rows": {"row_selector": ".job", "link_selector": ".job a"}}
     assert compat_is_rich("dom", dom_cfg) == core_is_rich("dom", dom_cfg) is True
+    dom_script_cfg = {
+        "script_json_links": {
+            "variable": "jobs",
+            "url_field": "url",
+            "url_template": "{value}",
+            "title_field": "title",
+            "locations_field": "locations",
+        }
+    }
+    assert compat_is_rich("dom", dom_script_cfg) == core_is_rich("dom", dom_script_cfg) is True
     assert compat_is_rich("dom", {}) == core_is_rich("dom", {}) is False
 
     smartrecruiters_cfg = {"canonical_job_id_url_template": "https://career.hm.com/job/{job_id}/"}

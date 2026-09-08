@@ -20,6 +20,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from html import unescape as html_unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -153,9 +154,13 @@ class _PartitionSnapshotChanged(ValueError):
 
 @dataclass(frozen=True)
 class _ScriptJsonLinksConfig:
-    variable: str
+    variable: str | None
+    function: str | None
+    argument_index: int | None
     url_field: str
     url_template: str
+    title_field: str | None
+    locations_field: str | None
 
 
 _YOUSTY_HOST = "www.yousty.ch"
@@ -1852,25 +1857,61 @@ def _extract_links_static(
 
 
 def _validated_script_json_links(value: object) -> _ScriptJsonLinksConfig | None:
-    """Validate URL discovery from one JSON array assigned in an inline script."""
+    """Validate rich or URL-only discovery from one inline JSON array."""
     if value is None:
         return None
-    if not isinstance(value, dict) or set(value) != {
+    required_keys = {"url_field", "url_template"}
+    allowed_keys = required_keys | {
         "variable",
-        "url_field",
-        "url_template",
-    }:
+        "function",
+        "argument_index",
+        "title_field",
+        "locations_field",
+    }
+    if (
+        not isinstance(value, dict)
+        or not required_keys.issubset(value)
+        or not set(value).issubset(allowed_keys)
+    ):
         raise ValueError(
-            "DOM monitor script_json_links must contain only variable, url_field, and url_template"
+            "DOM monitor script_json_links requires url_field and url_template plus exactly "
+            "one variable or function/argument_index source"
         )
 
     variable = value.get("variable")
-    if (
-        not isinstance(variable, str)
-        or len(variable) > _MAX_SCRIPT_JSON_NAME_LENGTH
-        or _SCRIPT_JSON_NAME_RE.fullmatch(variable) is None
-    ):
-        raise ValueError("DOM monitor script_json_links.variable must be a JS identifier")
+    function = value.get("function")
+    argument_index = value.get("argument_index")
+    uses_variable = variable is not None
+    uses_function = function is not None or argument_index is not None
+    if uses_variable == uses_function:
+        raise ValueError(
+            "DOM monitor script_json_links requires exactly one variable or "
+            "function/argument_index source"
+        )
+    if uses_variable:
+        if (
+            not isinstance(variable, str)
+            or len(variable) > _MAX_SCRIPT_JSON_NAME_LENGTH
+            or _SCRIPT_JSON_NAME_RE.fullmatch(variable) is None
+        ):
+            raise ValueError("DOM monitor script_json_links.variable must be a JS identifier")
+        function = None
+        argument_index = None
+    else:
+        if (
+            not isinstance(function, str)
+            or len(function) > _MAX_SCRIPT_JSON_NAME_LENGTH
+            or _SCRIPT_JSON_NAME_RE.fullmatch(function) is None
+        ):
+            raise ValueError("DOM monitor script_json_links.function must be a JS identifier")
+        if (
+            not isinstance(argument_index, int)
+            or isinstance(argument_index, bool)
+            or not 0 <= argument_index <= 15
+        ):
+            raise ValueError(
+                "DOM monitor script_json_links.argument_index must be an integer from 0 to 15"
+            )
 
     url_field = value.get("url_field")
     if (
@@ -1891,11 +1932,137 @@ def _validated_script_json_links(value: object) -> _ScriptJsonLinksConfig | None
         raise ValueError(
             "DOM monitor script_json_links.url_template must contain one {value} placeholder"
         )
-    parsed_template = urlsplit(url_template.replace("{value}", "placeholder"))
-    if parsed_template.scheme not in {"http", "https"} or not parsed_template.netloc:
-        raise ValueError("DOM monitor script_json_links.url_template must be an absolute HTTP URL")
+    if url_template != "{value}":
+        parsed_template = urlsplit(url_template.replace("{value}", "placeholder"))
+        if parsed_template.scheme not in {"http", "https"} or not parsed_template.netloc:
+            raise ValueError(
+                "DOM monitor script_json_links.url_template must be an absolute HTTP URL or "
+                "the direct {value} placeholder"
+            )
 
-    return _ScriptJsonLinksConfig(variable, url_field, url_template)
+    rich_fields: list[str | None] = []
+    for name in ("title_field", "locations_field"):
+        field = value.get(name)
+        if field is not None and (
+            not isinstance(field, str)
+            or not field
+            or len(field) > _MAX_SCRIPT_JSON_FIELD_LENGTH
+            or "\x00" in field
+        ):
+            raise ValueError(f"DOM monitor script_json_links.{name} must be a bounded field name")
+        rich_fields.append(field)
+    if (rich_fields[0] is None) != (rich_fields[1] is None):
+        raise ValueError(
+            "DOM monitor script_json_links title_field and locations_field must be "
+            "configured together"
+        )
+
+    return _ScriptJsonLinksConfig(
+        variable=variable if isinstance(variable, str) else None,
+        function=function if isinstance(function, str) else None,
+        argument_index=argument_index if isinstance(argument_index, int) else None,
+        url_field=url_field,
+        url_template=url_template,
+        title_field=rich_fields[0],
+        locations_field=rich_fields[1],
+    )
+
+
+def _script_call_argument_text(html: str, function: str, argument_index: int) -> str:
+    """Return one bounded function-call argument without evaluating JavaScript."""
+    call = re.compile(rf"(?<![A-Za-z0-9_$]){re.escape(function)}\s*\(")
+    matches = list(call.finditer(html))
+    if len(matches) != 1:
+        raise ValueError("DOM monitor script_json_links expected exactly one function call")
+
+    cursor = matches[0].end()
+    current_argument = 0
+    stack: list[str] = []
+    quote: str | None = None
+    escaped = False
+    line_comment = False
+    block_comment = False
+    pairs = {")": "(", "]": "[", "}": "{"}
+
+    while cursor < len(html):
+        char = html[cursor]
+        next_char = html[cursor + 1] if cursor + 1 < len(html) else ""
+        if line_comment:
+            if char in "\r\n":
+                line_comment = False
+            cursor += 1
+            continue
+        if block_comment:
+            if char == "*" and next_char == "/":
+                block_comment = False
+                cursor += 2
+            else:
+                cursor += 1
+            continue
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            cursor += 1
+            continue
+        if char == "/" and next_char == "/":
+            line_comment = True
+            cursor += 2
+            continue
+        if char == "/" and next_char == "*":
+            block_comment = True
+            cursor += 2
+            continue
+        if current_argument == argument_index:
+            if char.isspace():
+                cursor += 1
+                continue
+            return html[cursor:]
+        if char in {'"', "'", "`"}:
+            quote = char
+            cursor += 1
+            continue
+        if char in "[{(":
+            stack.append(char)
+            cursor += 1
+            continue
+        if char in "]}":
+            if not stack or stack.pop() != pairs[char]:
+                raise ValueError("DOM monitor script_json_links function call is malformed")
+            cursor += 1
+            continue
+        if char == ")":
+            if stack:
+                if stack.pop() != "(":
+                    raise ValueError("DOM monitor script_json_links function call is malformed")
+                cursor += 1
+                continue
+            raise ValueError(
+                "DOM monitor script_json_links function call omitted its configured argument"
+            )
+        if char == "," and not stack:
+            current_argument += 1
+            cursor += 1
+            continue
+        cursor += 1
+
+    raise ValueError("DOM monitor script_json_links function call is unterminated")
+
+
+def _script_json_payload_text(html: str, config: _ScriptJsonLinksConfig) -> str:
+    if config.variable is not None:
+        assignment = re.compile(rf"(?:const|let|var)\s+{re.escape(config.variable)}\s*=\s*")
+        matches = list(assignment.finditer(html))
+        if len(matches) != 1:
+            raise ValueError(
+                "DOM monitor script_json_links expected exactly one variable assignment"
+            )
+        return html[matches[0].end() :].lstrip()
+    assert config.function is not None and config.argument_index is not None
+    return _script_call_argument_text(html, config.function, config.argument_index)
 
 
 def _extract_script_json_links(
@@ -1903,29 +2070,25 @@ def _extract_script_json_links(
     board_url: str,
     config: _ScriptJsonLinksConfig,
     url_matcher: re.Pattern | None,
-) -> set[str]:
-    """Extract canonical links from an authoritative inline JSON array.
+) -> set[str] | list[DiscoveredJob]:
+    """Extract canonical jobs from an authoritative inline JSON array.
 
-    The assignment must occur exactly once and every array item must produce one
-    unique, same-origin URL. Any provider drift therefore fails the monitor cycle
-    instead of publishing a partial inventory.
+    The configured assignment or function call must occur exactly once and every
+    array item must produce one unique, same-origin URL. Any provider drift
+    therefore fails the monitor cycle instead of publishing a partial inventory.
     """
-    assignment = re.compile(rf"(?:const|let|var)\s+{re.escape(config.variable)}\s*=\s*")
-    matches = list(assignment.finditer(html))
-    if len(matches) != 1:
-        raise ValueError("DOM monitor script_json_links expected exactly one variable assignment")
-
-    payload_text = html[matches[0].end() :].lstrip()
+    payload_text = _script_json_payload_text(html, config)
     try:
         payload, _ = json.JSONDecoder().raw_decode(payload_text)
     except json.JSONDecodeError as exc:
-        raise ValueError("DOM monitor script_json_links assignment is not valid JSON") from exc
+        raise ValueError("DOM monitor script_json_links payload is not valid JSON") from exc
     if not isinstance(payload, list):
-        raise ValueError("DOM monitor script_json_links assignment must contain a JSON array")
+        raise ValueError("DOM monitor script_json_links payload must contain a JSON array")
     if len(payload) > MAX_URLS:
         raise ValueError("DOM monitor script_json_links array exceeds the URL cap")
 
     urls: set[str] = set()
+    jobs: list[DiscoveredJob] = []
     for index, item in enumerate(payload):
         if not isinstance(item, dict):
             raise ValueError(f"DOM monitor script_json_links item {index} must be a JSON object")
@@ -1950,6 +2113,51 @@ def _extract_script_json_links(
         if url in urls:
             raise ValueError("DOM monitor script_json_links produced duplicate URLs")
         urls.add(url)
+
+        title: str | None = None
+        if config.title_field is not None:
+            raw_title = item.get(config.title_field)
+            if (
+                not isinstance(raw_title, str)
+                or not raw_title.strip()
+                or len(raw_title) > _MAX_SCRIPT_JSON_VALUE_LENGTH
+                or "\x00" in raw_title
+            ):
+                raise ValueError(
+                    f"DOM monitor script_json_links item {index} omitted its title field"
+                )
+            title = html_unescape(raw_title).strip()
+
+        locations: list[str] | None = None
+        if config.locations_field is not None:
+            raw_locations = item.get(config.locations_field)
+            if isinstance(raw_locations, str):
+                raw_location_items = [raw_locations]
+            elif isinstance(raw_locations, list) and 1 <= len(raw_locations) <= 32:
+                raw_location_items = raw_locations
+            else:
+                raise ValueError(
+                    f"DOM monitor script_json_links item {index} omitted its locations field"
+                )
+            locations = []
+            for raw_location in raw_location_items:
+                if (
+                    not isinstance(raw_location, str)
+                    or not raw_location.strip()
+                    or len(raw_location) > _MAX_SCRIPT_JSON_VALUE_LENGTH
+                    or "\x00" in raw_location
+                ):
+                    raise ValueError(
+                        f"DOM monitor script_json_links item {index} has invalid location data"
+                    )
+                location = html_unescape(raw_location).strip()
+                if location not in locations:
+                    locations.append(location)
+
+        if config.title_field is not None:
+            jobs.append(DiscoveredJob(url=url, title=title, locations=locations))
+    if config.title_field is not None:
+        return jobs
     return urls
 
 
@@ -3998,6 +4206,7 @@ async def dom_discover(
     advertised_total = _validated_advertised_total_config(metadata.get("advertised_total"))
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
     script_json_links = _validated_script_json_links(metadata.get("script_json_links"))
+    script_json_jobs: list[DiscoveredJob] | None = None
     if script_json_links is not None and (
         render
         or actions
@@ -4303,12 +4512,17 @@ async def dom_discover(
                 return truncated_rich_result(jobs)
             return jobs
         if script_json_links is not None:
-            urls = _extract_script_json_links(
+            script_json_result = _extract_script_json_links(
                 html,
                 board_url,
                 script_json_links,
                 url_matcher,
             )
+            if isinstance(script_json_result, list):
+                script_json_jobs = script_json_result
+                urls = {job.url for job in script_json_jobs}
+            else:
+                urls = script_json_result
         else:
             urls = _extract_links_static(html, fetch_board_url, url_matcher, link_selector)
         if configured_empty_states:
@@ -4441,6 +4655,8 @@ async def dom_discover(
                 else "all discovered PDF jobs are outside their verified active period"
             ),
         )
+    if script_json_jobs is not None:
+        return [job for job in script_json_jobs if job.url in urls]
     return urls
 
 
