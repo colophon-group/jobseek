@@ -802,6 +802,19 @@ async def _filter_inactive_detail_urls(
 _VAGAS_HOST = "trabalheconosco.vagas.com.br"
 _VAGAS_TENANT_RE = re.compile(r"[a-z0-9][a-z0-9_-]*")
 
+_HOTELCAREER_HOSTS = frozenset(
+    {
+        "www.hotelcareer.at",
+        "www.hotelcareer.ch",
+        "www.hotelcareer.com",
+        "www.hotelcareer.de",
+    }
+)
+_HOTELCAREER_PROFILE_PATH_RE = re.compile(
+    r"/jobs/(?P<profile>[^/?#]+-[1-9]\d{0,10})/?$",
+    re.IGNORECASE,
+)
+
 _DUALOO_HOST = "jobs.dualoo.com"
 _DUALOO_PORTAL_RE = re.compile(r"/portal/([a-z0-9]+)/*$", re.IGNORECASE)
 _DUALOO_JOB_UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
@@ -924,6 +937,51 @@ def _vagas_probe_config(url: str) -> dict | None:
             r"oportunidade/[^/?#]+/\d+/?(?:[?#].*)?$)"
         ),
         "pagination": pagination,
+    }
+
+
+def _hotelcareer_probe_config(url: str) -> dict | None:
+    """Return the proxy-rendered preset for Hotelcareer employer boards.
+
+    Hotelcareer employer and detail pages are protected by an Akamai policy
+    that denies crawler-host egress before the document is rendered.  The
+    canonical employer route contains a stable numeric profile identity, so
+    recognize only that route before the generic probe fetch and keep both
+    discovery and detail extraction on the configured production proxy.
+    """
+
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    host = (parsed.hostname or "").casefold()
+    if (
+        parsed.scheme != "https"
+        or host not in _HOTELCAREER_HOSTS
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+
+    match = _HOTELCAREER_PROFILE_PATH_RE.fullmatch(parsed.path)
+    if match is None:
+        return None
+
+    profile_path = f"/jobs/{match.group('profile')}"
+    origin = f"https://{host}"
+    return {
+        "hotelcareer_profile": match.group("profile"),
+        "render": True,
+        "proxy": True,
+        "resource_policy": "none",
+        "url_filter": (
+            rf"(?i:^{re.escape(origin + profile_path)}/"
+            r"[^/?#]+-[1-9]\d{0,15}/?(?:[?#].*)?$)"
+        ),
     }
 
 
@@ -3764,6 +3822,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
 
     Returns metadata dict when job links are found, None otherwise.
     """
+    hotelcareer = _hotelcareer_probe_config(url)
+    if hotelcareer is not None:
+        return hotelcareer
+
     vagas = _vagas_probe_config(url)
     if vagas is not None:
         return vagas
