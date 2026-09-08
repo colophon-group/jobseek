@@ -46,6 +46,7 @@ _DESCRIPTION_FIELDS = (
     "jobDescription",
     "position_description_html",
     "summary",
+    "Job_Posting_Description__c",
 )
 
 _LOCATION_FIELDS = (
@@ -58,6 +59,7 @@ _LOCATION_FIELDS = (
     "city",
     "cities",
     "place",
+    "Location__c",
 )
 
 _EMPLOYMENT_TYPE_FIELDS = (
@@ -319,6 +321,28 @@ def _find_single_job(exchanges: list, *, json_path: str | None = None) -> dict |
                             s2 = _score_job_object(deep)
                             if s2 > 0:
                                 candidates.append((deep, s2))
+
+            # Salesforce Aura and similar RPC transports wrap each result in
+            # an ``actions`` array before the actual returnValue object.  Walk
+            # bounded response envelopes so a complete detail record can win
+            # on normal title/description/location scoring.  Large lists are
+            # listing payloads rather than single-job envelopes and are
+            # deliberately not expanded here.
+            stack: list[tuple[object, int]] = [(body, 0)]
+            visited = 0
+            while stack and visited < 512:
+                current, depth = stack.pop()
+                visited += 1
+                if depth >= 8:
+                    continue
+                if isinstance(current, dict):
+                    if current is not body:
+                        nested_score = _score_job_object(current)
+                        if nested_score > 0:
+                            candidates.append((current, nested_score))
+                    stack.extend((value, depth + 1) for value in current.values())
+                elif isinstance(current, list) and len(current) <= 50:
+                    stack.extend((value, depth + 1) for value in current)
 
     if not candidates:
         return None

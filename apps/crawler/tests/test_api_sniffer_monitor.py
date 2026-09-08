@@ -3275,6 +3275,50 @@ class TestDiscoverReplay:
         assert len(result) == 3
 
     @pytest.mark.asyncio
+    async def test_replay_uses_matching_navigation_response(self, monkeypatch):
+        """Dynamic RPC bodies can use the response already fetched by the page."""
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.shared.api_sniff import Exchange
+
+        listings = [{"jobPosting": {"Id": f"a3l{i}", "Name": f"Provider {i}"}} for i in range(3)]
+        captured = Exchange(
+            method="POST",
+            url="https://jobs.example.com/s/sfsites/aura?r=9",
+            request_headers={"x-current-context": "fresh"},
+            post_data="message=current",
+            status=200,
+            body={"actions": [{"state": "SUCCESS", "returnValue": listings}]},
+            content_type="application/json",
+            phase="load",
+        )
+        monkeypatch.setattr(
+            api_sniffer_module,
+            "capture_exchanges",
+            AsyncMock(return_value=[captured]),
+        )
+
+        config = {
+            "api_url": "https://jobs.example.com/s/sfsites/aura",
+            "method": "POST",
+            "json_path": "actions[0].returnValue",
+            "browser": True,
+            "url_template": "https://jobs.example.com/s/job-board?id={job_id}",
+            "url_template_fields": {"job_id": "jobPosting.Id"},
+        }
+        board = {"board_url": "https://jobs.example.com/s/job-board", "metadata": config}
+        mock_page = AsyncMock()
+        mock_pw = _make_mock_pw(mock_page)
+
+        result = await discover(board, AsyncMock(), pw=mock_pw)
+
+        assert result == {
+            "https://jobs.example.com/s/job-board?id=a3l0",
+            "https://jobs.example.com/s/job-board?id=a3l1",
+            "https://jobs.example.com/s/job-board?id=a3l2",
+        }
+        mock_page.evaluate.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_no_playwright_returns_empty(self):
         """Without pw and no api_url, discover should return empty set."""
         board = {"board_url": "https://example.com/careers", "metadata": {}}

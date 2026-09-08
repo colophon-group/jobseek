@@ -217,7 +217,7 @@ FIELD_PATTERNS: dict[str, re.Pattern] = {
     "description": re.compile(
         r"^(description|body|content|bodyHtml|body_?html|descriptionHtml"
         r"|description_?html|text|details|job_?description"
-        r"|position_?description_?html|summary)$",
+        r"|position_?description_?html|summary|Job_Posting_Description__c)$",
         re.I,
     ),
     "employment_type": re.compile(
@@ -240,7 +240,7 @@ FIELD_PATTERNS: dict[str, re.Pattern] = {
 # Location patterns — match both simple keys and array-of-object patterns
 _LOCATION_KEY_PATTERNS = re.compile(
     r"^(location|locations|office|offices|city|cities|place|places"
-    r"|requisition_?locations|work_?locations)$",
+    r"|requisition_?locations|work_?locations|Location__c)$",
     re.I,
 )
 _LOCATION_SUBFIELD_PATTERNS = re.compile(
