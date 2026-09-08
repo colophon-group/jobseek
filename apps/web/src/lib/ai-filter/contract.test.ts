@@ -4,10 +4,13 @@ import {
   AI_FILTER_CONTRACT_VERSION,
   AI_FILTER_QUERY_MAX_LENGTH,
   AI_FILTER_SEGMENT_LIMIT,
+  AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
   AiFilterContractError,
   assertSameAiFilterSelectionBinding,
   isAiFilterProductDecisionExpired,
   materializeAiFilterProductDecisions,
+  normalizeAiFilterSoftQueryV1,
+  parseAiFilterCandidateId,
   parseAiFilterSegmentRequest,
   parseAiFilterTerminalResult,
 } from "./contract";
@@ -148,10 +151,9 @@ describe("parseAiFilterSegmentRequest", () => {
     ).toThrow(/canonical lowercase UUID/);
   });
 
-  it("rejects invalid query text and limits it before provider work", () => {
+  it("rejects invalid query text before provider work", () => {
     for (const queryText of [
       "",
-      " surrounded ",
       "control\u0000character",
       "q".repeat(AI_FILTER_QUERY_MAX_LENGTH + 1),
     ]) {
@@ -160,7 +162,7 @@ describe("parseAiFilterSegmentRequest", () => {
           ...baseRequest,
           configuration: { ...baseConfiguration, queryText },
         }),
-      ).toThrow(/queryText/);
+      ).toThrow(AiFilterContractError);
     }
   });
 
@@ -224,16 +226,173 @@ describe("parseAiFilterSegmentRequest", () => {
     );
   });
 
-  it("allows ordinary multiline query whitespace but not unsafe controls", () => {
+  it("stores the authoritative canonical soft query", () => {
     expect(
       parseAiFilterSegmentRequest({
         ...baseRequest,
         configuration: {
           ...baseConfiguration,
-          queryText: "Backend leadership\nPrefer Go\tAvoid ad tech",
+          queryText: "  Backend leadership\nPrefer Go\t Avoid ad tech  ",
         },
       }).configuration.queryText,
-    ).toContain("\n");
+    ).toBe("Backend leadership Prefer Go Avoid ad tech");
+  });
+
+  it("turns hostile request inspection failures into fixed contract errors", () => {
+    const attackerText = "attacker-secret-request-trap";
+    const hostileInputs: unknown[] = [];
+
+    const { proxy: revokedProxy, revoke } = Proxy.revocable({}, {});
+    revoke();
+    hostileInputs.push(revokedProxy);
+    hostileInputs.push(
+      new Proxy(baseRequest, {
+        ownKeys: () => {
+          throw new Error(attackerText);
+        },
+      }),
+    );
+    hostileInputs.push(
+      new Proxy(baseRequest, {
+        getOwnPropertyDescriptor: () => {
+          throw new Error(attackerText);
+        },
+      }),
+    );
+
+    for (const hostileInput of hostileInputs) {
+      let thrown: unknown;
+      try {
+        parseAiFilterSegmentRequest(hostileInput);
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toBeInstanceOf(AiFilterContractError);
+      expect((thrown as Error).message).toBe(
+        "segment request could not be inspected",
+      );
+      expect((thrown as Error).message).not.toContain(attackerText);
+    }
+  });
+
+  it("fails closed when candidate-array Proxy traps throw", () => {
+    const candidates = new Proxy([...baseRequest.candidates], {
+      ownKeys: () => {
+        throw new Error("candidate-array-secret");
+      },
+    });
+
+    expect(() =>
+      parseAiFilterSegmentRequest({ ...baseRequest, candidates }),
+    ).toThrowError(
+      new AiFilterContractError(
+        "segment request.candidates could not be inspected",
+      ),
+    );
+  });
+
+  it("fails closed when nested configuration or candidate Proxy traps throw", () => {
+    const attackerText = "nested-request-secret";
+    const hostileConfiguration = new Proxy(baseConfiguration, {
+      ownKeys: () => {
+        throw new Error(attackerText);
+      },
+    });
+    const hostileCandidate = new Proxy(baseRequest.candidates[0], {
+      getOwnPropertyDescriptor: () => {
+        throw new Error(attackerText);
+      },
+    });
+
+    for (const [input, message] of [
+      [
+        { ...baseRequest, configuration: hostileConfiguration },
+        "configuration could not be inspected",
+      ],
+      [
+        {
+          ...baseRequest,
+          candidates: [hostileCandidate, baseRequest.candidates[1]],
+        },
+        "candidate could not be inspected",
+      ],
+    ] as const) {
+      let thrown: unknown;
+      try {
+        parseAiFilterSegmentRequest(input);
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toBeInstanceOf(AiFilterContractError);
+      expect((thrown as Error).message).toBe(message);
+      expect((thrown as Error).message).not.toContain(attackerText);
+    }
+  });
+});
+
+describe("authoritative AI-filter identifiers and query normalization", () => {
+  it("exports the versioned NFC and Unicode-whitespace query boundary", () => {
+    expect(AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION).toBe(1);
+    expect(
+      normalizeAiFilterSoftQueryV1(" \tCafe\u0301\n\u2003platform roles  "),
+    ).toBe("Café platform roles");
+  });
+
+  it("counts the 1,000-character query cap as Unicode code points", () => {
+    const maximumAstralQuery = "😀".repeat(AI_FILTER_QUERY_MAX_LENGTH);
+    expect(normalizeAiFilterSoftQueryV1(maximumAstralQuery)).toBe(
+      maximumAstralQuery,
+    );
+    expect(() =>
+      normalizeAiFilterSoftQueryV1(`${maximumAstralQuery}😀`),
+    ).toThrow(/1000 Unicode code points/);
+  });
+
+  it("rejects oversized raw input before normalization work", () => {
+    for (const queryText of [
+      `${" ".repeat(AI_FILTER_QUERY_MAX_LENGTH * 4)}x`,
+      `${"e\u0301".repeat(AI_FILTER_QUERY_MAX_LENGTH * 2)} x`,
+    ]) {
+      expect(() => normalizeAiFilterSoftQueryV1(queryText)).toThrowError(
+        new AiFilterContractError("AI filter soft query raw input is too large"),
+      );
+    }
+  });
+
+  it.each(["only\u0000control", "soft\u00adhyphen", "zero\u200bwidth"])(
+    "rejects controls and default-ignorable code points: %j",
+    (queryText) => {
+      expect(() => normalizeAiFilterSoftQueryV1(queryText)).toThrowError(
+        new AiFilterContractError(
+          "AI filter soft query contains unsupported code points",
+        ),
+      );
+    },
+  );
+
+  it("rejects non-text and whitespace-only canonical queries", () => {
+    expect(() => normalizeAiFilterSoftQueryV1(42)).toThrowError(
+      new AiFilterContractError("AI filter soft query must be text"),
+    );
+    expect(() => normalizeAiFilterSoftQueryV1(" \t\n\u2003 ")).toThrowError(
+      new AiFilterContractError("AI filter soft query must not be empty"),
+    );
+  });
+
+  it("exports one canonical lowercase candidate-ID parser", () => {
+    expect(parseAiFilterCandidateId(CANDIDATE_ONE)).toBe(CANDIDATE_ONE);
+    for (const candidateId of [
+      "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+      ` ${CANDIDATE_ONE}`,
+      CANDIDATE_ONE.replaceAll("-", ""),
+      42,
+    ]) {
+      expect(() => parseAiFilterCandidateId(candidateId)).toThrowError(
+        new AiFilterContractError(
+          "AI filter candidate ID must be a canonical lowercase UUID",
+        ),
+      );
+    }
   });
 });
 
@@ -476,6 +635,86 @@ describe("parseAiFilterTerminalResult", () => {
       decision: "rejected",
     });
     expect(decisionReads).toBe(0);
+  });
+
+  it("turns hostile terminal-result inspection failures into fixed errors", () => {
+    const attackerText = "attacker-secret-terminal-trap";
+    const hostileInputs: unknown[] = [];
+    const { proxy: revokedProxy, revoke } = Proxy.revocable({}, {});
+    revoke();
+    hostileInputs.push(revokedProxy);
+    hostileInputs.push(
+      new Proxy(completedResult, {
+        ownKeys: () => {
+          throw new Error(attackerText);
+        },
+      }),
+    );
+    hostileInputs.push(
+      new Proxy(completedResult, {
+        getOwnPropertyDescriptor: () => {
+          throw new Error(attackerText);
+        },
+      }),
+    );
+
+    for (const hostileInput of hostileInputs) {
+      let thrown: unknown;
+      try {
+        parseAiFilterTerminalResult(hostileInput, baseRequest);
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toBeInstanceOf(AiFilterContractError);
+      expect((thrown as Error).message).toBe(
+        "terminal result could not be inspected",
+      );
+      expect((thrown as Error).message).not.toContain(attackerText);
+    }
+  });
+
+  it("fails closed when decision-array Proxy traps throw", () => {
+    const decisions = new Proxy([...completedResult.decisions], {
+      getOwnPropertyDescriptor: () => {
+        throw new Error("decision-array-secret");
+      },
+    });
+
+    expect(() =>
+      parseAiFilterTerminalResult(
+        { ...completedResult, decisions },
+        baseRequest,
+      ),
+    ).toThrowError(
+      new AiFilterContractError(
+        "terminal result.decisions could not be inspected",
+      ),
+    );
+  });
+
+  it("fails closed when a nested decision Proxy trap throws", () => {
+    const attackerText = "nested-decision-secret";
+    const hostileDecision = new Proxy(completedResult.decisions[0], {
+      ownKeys: () => {
+        throw new Error(attackerText);
+      },
+    });
+
+    let thrown: unknown;
+    try {
+      parseAiFilterTerminalResult(
+        {
+          ...completedResult,
+          decisions: [hostileDecision, completedResult.decisions[1]],
+        },
+        baseRequest,
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(AiFilterContractError);
+    expect((thrown as Error).message).toBe("decision could not be inspected");
+    expect((thrown as Error).message).not.toContain(attackerText);
   });
 
   it("does not let an own __proto__ field disappear during strict copying", () => {
