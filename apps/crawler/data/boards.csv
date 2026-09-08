@@ -404,6 +404,9 @@ ammann,ammann-global,https://jobs.ammann.com/,rss,"{""preset"": ""successfactors
 amo,amo-ashby,https://jobs.ashbyhq.com/amo,ashby,"{""token"": ""amo""}",skip,
 amoria-group,amoria-group-greenhouse,https://job-boards.greenhouse.io/amoriabond,greenhouse,"{""token"": ""amoriabond""}",skip,
 amp-ai-powered-sortation-for-waste-and-recycling,amp-ai-powered-sortation-for-waste-and-recycling-greenhouse,https://job-boards.greenhouse.io/ampsortation,greenhouse,"{""token"": ""ampsortation""}",skip,
+ampact,ampact-careers,https://servicesite-ampact.icims.com/,icims,,json-ld,
+ampact,ampact-heading-home,https://headinghomecorps-ampact.icims.com/jobs/intro,icims,"{""host"": ""headinghomecorps-ampact.icims.com""}",json-ld,
+ampact,ampact-recovery,https://recovery-ampact.icims.com/jobs/intro,icims,"{""host"": ""recovery-ampact.icims.com""}",json-ld,
 amperity,amperity-greenhouse,https://job-boards.greenhouse.io/amperity,greenhouse,"{""token"": ""amperity""}",skip,
 amperos,amperos-ashby,https://jobs.ashbyhq.com/amperos,ashby,"{""token"": ""amperos""}",skip,
 amplemarket,amplemarket-greenhouse,https://job-boards.greenhouse.io/amplemarket,greenhouse,"{""token"": ""amplemarket""}",skip,
@@ -1633,6 +1636,8 @@ coursera,coursera-greenhouse,https://job-boards.greenhouse.io/coursera,greenhous
 court-of-arbitration-for-sport,court-of-arbitration-for-sport-careers,https://www.tas-cas.org/en/general-information/jobs,dom,"{""render"": false, ""link_selector"": ""main a[href$=\"".pdf\""]"", ""empty_selector"": ""main"", ""empty_text"": ""The Court of Arbitration for Sport (CAS) has no open positions available at this time.""}",pdf,"{""title_source"": ""url"", ""location_pattern"": ""(?i)(?:location|lieu|arbeitsort|sede)\\s*:?\\s*([^\\n]+)""}"
 covar,covar-greenhouse,https://job-boards.greenhouse.io/covar,greenhouse,"{""token"": ""covar""}",skip,
 cove,cove-join,https://join.com/companies/covepartners,join,"{""slug"": ""covepartners""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+covenant-health,covenant-health-careers,https://careers-covenanthealth.icims.com/,icims,,json-ld,
+covenant-health,covenant-health-physician-opportunities,https://www.covenanthealth.com/physician-services/opportunities/,dom,"{""script_json_links"":{""function"":""setUpAgGrid"",""argument_index"":2,""url_field"":""link"",""url_template"":""{value}"",""title_field"":""title"",""locations_field"":""locations""},""url_filter"":""^https://www\\.covenanthealth\\.com/blog/opportunity/[^/?#]+/$""}",dom,"{""enrich"":[""description""],""scope"":""#mainContent > .wp-block-columns > .wp-block-column:first-child"",""include_document_title"":true,""steps"":[{""tag"":""title"",""field"":""title"",""regex"":""^(.+?) - Covenant Health$""},{""field"":""description"",""html"":true,""to_end"":true}]}"
 covera-health,covera-health-greenhouse,https://job-boards.greenhouse.io/coverahealth,greenhouse,"{""token"": ""coverahealth""}",skip,
 coverdash,coverdash-ashby,https://jobs.ashbyhq.com/coverdash,ashby,"{""token"": ""coverdash""}",skip,
 covergenius,covergenius-pinpoint,https://covergenius.pinpointhq.com,pinpoint,"{""slug"": ""covergenius""}",skip,
@@ -4924,6 +4929,7 @@ pecan,pecan-careers,https://www.pecan.ai/careers/,dom,"{""render"": false, ""url
 peec-ai,peec-ai-careers,https://jobs.ashbyhq.com/peec,ashby,,skip,
 peloton,peloton-greenhouse,https://job-boards.greenhouse.io/peloton,greenhouse,"{""token"": ""peloton""}",skip,
 pendo,pendo-greenhouse,https://job-boards.greenhouse.io/pendo,greenhouse,"{""token"": ""pendo""}",skip,
+penn-entertainment,penn-entertainment-careers,https://careersapply-pennentertainment.icims.com/,icims,,json-ld,
 penn-interactive,penn-interactive-greenhouse,https://job-boards.greenhouse.io/penninteractive,greenhouse,"{""token"": ""penninteractive""}",skip,
 penn-state-university,penn-state-university-careers,https://psu.wd1.myworkdayjobs.com/psu_staff,workday,,workday,
 penny-cz,penny-cz-almacareer,https://penny.jobs.cz/,almacareer,{},skip,
@@ -4959,6 +4965,7 @@ petrochina,petrochina-careers-indonesia,https://petrochina.odoo.com/jobs,dom,"{"
 petrochina,petrochina-careers-london,https://careers.petroineos.com,pinpoint,"{""slug"": ""petroineos""}",skip,
 petrochina,petrochina-careers-singapore,https://www.spc.com.sg/career/job-opportunities/,dom,"{""render"": true, ""url_filter"": ""job_opportunities"", ""actions"": [{""action"": ""evaluate"", ""script"": ""document.querySelectorAll(\""a.email-btn\"").forEach(a => { const m = a.href.match(/https:\\/\\/www\\.spc\\.com\\.sg\\/job_opportunities\\/[^/]+\\//); if (m) { const link = document.createElement(\""a\""); link.href = m[0]; link.textContent = \""job\""; document.body.appendChild(link); } })""}]}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""attr"": ""class=text-center"", ""field"": ""title""}, {""text"": ""Job Overview"", ""field"": ""description"", ""stop"": ""Please write in"", ""html"": true}]}"
 petrochina,petrochina-careers-usa,https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=a48f12a2-1618-470d-a5ac-fa1f2d59fcb4&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter,api_sniffer,"{""render"": true, ""api_url"": ""https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=a48f12a2-1618-470d-a5ac-fa1f2d59fcb4&ccId=19000101_000001&lang=en_US"", ""json_path"": ""jobRequisitions"", ""url_template"": ""https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=a48f12a2-1618-470d-a5ac-fa1f2d59fcb4&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId={itemID}"", ""fields"": {""title"": ""requisitionTitle"", ""locations"": ""requisitionLocations[].nameCode.shortName"", ""employment_type"": ""workLevelCode.shortName"", ""date_posted"": ""postDate""}}",json-ld,"{""render"": true}"
+pf-changs,pf-changs-careers,https://pfchangs.wd501.myworkdayjobs.com/pf-changs-external-careers,workday,,workday,
 pfasuiki-gmbh,pfasuiki-gmbh-join,https://join.com/companies/pfasuikicom,join,"{""slug"": ""pfasuikicom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 pfizer,pfizer-dejobs,https://pfizer.dejobs.org/jobs/,sitemap,"{""sitemap_url"": ""https://pfizer.dejobs.org/sitemap.xml""}",json-ld,"{""render"": true}"
 pfizer,pfizer-workday-main,https://pfizer.wd1.myworkdayjobs.com/PfizerCareers,workday,"{""company"": ""pfizer"", ""wd_instance"": ""wd1"", ""site"": ""PfizerCareers""}",workday,
@@ -6523,6 +6530,7 @@ truecaller,truecaller-greenhouse,https://job-boards.greenhouse.io/truecaller,gre
 truelayer,truelayer-greenhouse,https://job-boards.greenhouse.io/truelayer,greenhouse,"{""token"": ""truelayer""}",skip,
 truemed,truemed-careers,https://api.ashbyhq.com/posting-api/job-board/truemed,ashby,"{""token"": ""truemed""}",skip,
 truffle-security,truffle-security-careers,https://boards.greenhouse.io/trufflesecurity,greenhouse,"{""token"": ""trufflesecurity""}",skip,
+truist,truist-careers,https://truist.wd1.myworkdayjobs.com/careers,workday,,workday,
 trulioo,trulioo-ashby,https://jobs.ashbyhq.com/trulioo,ashby,"{""token"": ""trulioo""}",skip,
 trunk,trunk-careers,https://api.lever.co/v0/postings/trunkio?mode=json,lever,"{""token"": ""trunkio""}",skip,
 trust-bank,trust-bank-greenhouse,https://job-boards.greenhouse.io/trustbank,greenhouse,"{""token"": ""trustbank""}",skip,
@@ -6922,6 +6930,7 @@ weploy,weploy-greenhouse,https://job-boards.greenhouse.io/weploy,greenhouse,"{""
 weride,weride-careers,https://jobs.lever.co/weride,lever,"{""token"": ""weride""}",skip,
 wesort-ai,wesort-ai-careers,https://www.wesort.ai/karriere,sitemap,"{""url_filter"": ""(stellenanzeige-|entwicklungsingenieur|initiativbewerbung)""}",dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 60000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Interesse geweckt"", ""html"": true}]}"
 westhafen-leipzig,westhafen-leipzig-join,https://join.com/companies/westhafen-leipzigde,join,"{""slug"": ""westhafen-leipzigde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+westinghouse-electric-company,westinghouse-electric-company-careers,https://careers.westinghousenuclear.com/,rss,"{""preset"": ""successfactors""}",skip,
 wettermark-keith,wettermark-keith-greenhouse,https://job-boards.greenhouse.io/wettermarkkeith,greenhouse,"{""token"": ""wettermarkkeith""}",skip,
 whalar-group,whalar-group-greenhouse,https://job-boards.greenhouse.io/whalarinc,greenhouse,"{""token"": ""whalarinc""}",skip,
 what3words,what3words-ashby,https://jobs.ashbyhq.com/what3words,ashby,"{""token"": ""what3words""}",skip,

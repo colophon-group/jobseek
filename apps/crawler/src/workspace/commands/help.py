@@ -1730,9 +1730,15 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    in client code:
                    {"variable": "jobAds", "url_field": "slug",
                     "url_template": "https://example.com/jobs/{value}/"}
+                   Arrays passed directly to a function are selected by a
+                   zero-based argument index. Setting title and location
+                   fields together makes the monitor return partial rich jobs:
+                   {"function": "loadGrid", "argument_index": 2,
+                    "url_field": "link", "url_template": "{value}",
+                    "title_field": "title", "locations_field": "locations"}
                    The assignment and every item are validated fail-closed;
-                   generated URLs must be unique and same-origin. Static
-                   single-page discovery only.
+                   calls must be unique, and generated URLs must be unique and
+                   same-origin. Static single-page discovery only.
     oracle_adf_job_ids
                    Narrow preset for Oracle ADF recruitment lists whose rows
                    expose form/PPR View actions instead of hrefs. The rendered
