@@ -16,7 +16,8 @@ query was authored. Agents must not generate queries, labels, or adjudications.
 
 - Query authors write synthetic evaluation queries from the approved profile.
   They must not copy production searches or user/account/watchlist data into an
-  example.
+  example. WIP and ready manifests pin AF-1 soft-query normalizer version 1,
+  and every stored query must already equal that normalizer's canonical output.
 - An annotator judges only the eval-authored query and normalized posting
   snapshot. A positive label requires direct, sufficient evidence in that
   snapshot; ambiguity or insufficient evidence is negative under this binary
@@ -31,7 +32,8 @@ query was authored. Agents must not generate queries, labels, or adjudications.
   the same match rubric and use the fixed `prompt_injection` scenario slice.
 - Do not put source URLs, filters, provenance, personal identifiers, free-text
   notes, evidence excerpts, or production identities into WIP or frozen files.
-  Eval actor/work IDs are pseudonymous and scoped to this dataset.
+  Candidate IDs use AF-1's canonical lowercase UUID format. Eval actor/work IDs
+  are pseudonymous and scoped to this dataset.
 - A named licensing/privacy approver must authorize every source class before
   collection. A named access owner must restrict the private root to approved
   operators; the harness requires a process-owned root without group/world
@@ -63,7 +65,10 @@ CI, snapshots, coverage artifacts, logs, screenshots, or public datasets.
 
 1. `validateStageAWip` validates strict WIP examples and recomputes every
    `classifier-input-v1` content identity with the production TypeScript
-   normalizer.
+   `classifier-input-normalizer-v4`. Source schemas use conservative outer
+   bounds for raw UTF-16 inputs; the exact production normalizer remains
+   authoritative for canonical text and resource-limit enforcement. The WIP
+   pins both classifier normalizer v4 and AF-1 soft-query normalizer v1.
 2. `digestStageAReadyPolicy` computes the candidate policy digest for human
    approval and separate storage.
 3. `writeStageAFreezeFile` requires that external policy pin, enforces exactly
@@ -71,7 +76,8 @@ CI, snapshots, coverage artifacts, logs, screenshots, or public datasets.
    complete adjudication, and the approved coverage minimums, then publishes one
    canonical immutable file using an exclusive hard-link.
 4. `loadStageABenchmark` requires external policy and manifest pins, reruns all
-   validation and derivation, and returns only
+   validation and derivation (including both normalizer-version compatibility
+   pins), and returns only
    `{ softQuery, classifierInput, goldLabel }`.
 5. `reportStageAFreeze` returns fixed aggregate dimensions. It suppresses an
    entire dimension or agreement breakdown when any complementary cell is below

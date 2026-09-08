@@ -11,12 +11,21 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT,
+  CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT,
+  CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT,
+  CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT,
   CLASSIFIER_INPUT_NORMALIZER_VERSION,
   CLASSIFIER_INPUT_SCHEMA_VERSION,
   normalizeClassifierInputV1,
   type ClassifierInputSource,
   type ClassifierInputV1,
 } from "../classifier-input";
+import {
+  AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+  normalizeAiFilterSoftQueryV1,
+  parseAiFilterCandidateId,
+} from "../contract";
 
 export const STAGE_A_EXAMPLE_SCHEMA_VERSION = "ai-filter-stage-a-example-v1" as const;
 export const STAGE_A_WIP_SCHEMA_VERSION = "ai-filter-stage-a-wip-v1" as const;
@@ -76,6 +85,7 @@ export type StageAWipV1 = {
   readonly datasetId: string;
   readonly classifierInputSchemaVersion: typeof CLASSIFIER_INPUT_SCHEMA_VERSION;
   readonly classifierInputNormalizerVersion: typeof CLASSIFIER_INPUT_NORMALIZER_VERSION;
+  readonly softQueryNormalizerVersion: typeof AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION;
   readonly examples: readonly StageAExampleV1[];
 };
 
@@ -95,6 +105,7 @@ export type StageAManifestV1 = {
   readonly datasetId: string;
   readonly classifierInputSchemaVersion: typeof CLASSIFIER_INPUT_SCHEMA_VERSION;
   readonly classifierInputNormalizerVersion: typeof CLASSIFIER_INPUT_NORMALIZER_VERSION;
+  readonly softQueryNormalizerVersion: typeof AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION;
   readonly readyPolicy: StageAReadyPolicyV1;
   readonly readyPolicyDigest: string;
   readonly examples: readonly StageAReadyExampleV1[];
@@ -154,6 +165,24 @@ export class StageAEvaluationError extends Error {
 
 function fail(pathValue: string, rule: string): never {
   throw new StageAEvaluationError(pathValue, rule);
+}
+
+const SAFE_ARRAY_PROTOTYPE = Object.freeze(
+  Object.defineProperty(Object.create(Array.prototype), "toJSON", {
+    value(this: unknown[]) {
+      return this;
+    },
+  }),
+);
+
+function safeArray<T>(values: readonly T[]): T[] {
+  const output = Array.from(values);
+  Object.setPrototypeOf(output, SAFE_ARRAY_PROTOTYPE);
+  return output;
+}
+
+function frozenNullPrototypeRecord<T extends object>(values: T): T {
+  return Object.freeze(Object.assign(Object.create(null), values)) as T;
 }
 
 function rawStringCompare(left: string, right: string): number {
@@ -258,11 +287,25 @@ function requiredString(
   if (typeof value !== "string") fail(pathValue, "string_required");
   if (value.length === 0) fail(pathValue, "nonempty_required");
   if (Array.from(value).length > maximumCodePoints) fail(pathValue, "string_too_long");
-  if (value.includes("\0")) fail(pathValue, "nul_forbidden");
   return value;
 }
 
-function requiredLiteral<T extends string>(
+function requiredSourceString(
+  record: Record<string, unknown>,
+  field: string,
+  pathValue: string,
+  maximumCodePoints: number,
+): string {
+  const value = required(record, field, pathValue);
+  if (typeof value !== "string") fail(pathValue, "string_required");
+  // JSON Schema and this outer boundary count Unicode code points. The
+  // production normalizer remains authoritative for its stricter UTF-16
+  // code-unit limits and all normalized-value requirements.
+  if (Array.from(value).length > maximumCodePoints) fail(pathValue, "string_too_long");
+  return value;
+}
+
+function requiredLiteral<T extends string | number>(
   record: Record<string, unknown>,
   field: string,
   pathValue: string,
@@ -289,6 +332,25 @@ function requiredEnum<T extends string>(
 function validateEvalId(value: string, pathValue: string): string {
   if (!EVAL_ID_PATTERN.test(value)) fail(pathValue, "eval_id_required");
   return value;
+}
+
+function validateCandidateId(value: unknown, pathValue: string): string {
+  try {
+    return parseAiFilterCandidateId(value);
+  } catch {
+    fail(pathValue, "canonical_candidate_id_required");
+  }
+}
+
+function validateSoftQuery(value: unknown, pathValue: string): string {
+  let normalized: string;
+  try {
+    normalized = normalizeAiFilterSoftQueryV1(value);
+  } catch {
+    fail(pathValue, "canonical_query_required");
+  }
+  if (value !== normalized) fail(pathValue, "canonical_query_required");
+  return normalized;
 }
 
 function validateDigest(value: unknown, pathValue: string): string {
@@ -344,20 +406,33 @@ function validateClassifierSource(input: unknown, pathValue: string): Classifier
   ] as const;
   const record = snapshotRecord(input, pathValue, fields);
   return Object.freeze({
-    candidateId: requiredString(record, "candidateId", `${pathValue}.candidateId`, 256),
-    title: requiredString(record, "title", `${pathValue}.title`, 1_000),
-    companyName: requiredString(record, "companyName", `${pathValue}.companyName`, 1_000),
-    descriptionHtml: requiredString(
+    candidateId: validateCandidateId(
+      required(record, "candidateId", `${pathValue}.candidateId`),
+      `${pathValue}.candidateId`,
+    ),
+    title: requiredSourceString(
+      record,
+      "title",
+      `${pathValue}.title`,
+      CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT,
+    ),
+    companyName: requiredSourceString(
+      record,
+      "companyName",
+      `${pathValue}.companyName`,
+      CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT,
+    ),
+    descriptionHtml: requiredSourceString(
       record,
       "descriptionHtml",
       `${pathValue}.descriptionHtml`,
-      2_000_000,
+      CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT,
     ),
-    selectedDescriptionLocale: requiredEnum(
+    selectedDescriptionLocale: requiredSourceString(
       record,
       "selectedDescriptionLocale",
       `${pathValue}.selectedDescriptionLocale`,
-      LOCALES,
+      CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT,
     ),
   });
 }
@@ -376,10 +451,28 @@ function validateFrozenClassifierInput(input: unknown, pathValue: string): void 
     `${pathValue}.schemaVersion`,
     CLASSIFIER_INPUT_SCHEMA_VERSION,
   );
-  requiredString(record, "candidateId", `${pathValue}.candidateId`, 1_000);
-  requiredString(record, "title", `${pathValue}.title`, 1_000);
-  requiredString(record, "companyName", `${pathValue}.companyName`, 1_000);
-  requiredString(record, "descriptionText", `${pathValue}.descriptionText`, 12_000);
+  validateCandidateId(
+    required(record, "candidateId", `${pathValue}.candidateId`),
+    `${pathValue}.candidateId`,
+  );
+  requiredString(
+    record,
+    "title",
+    `${pathValue}.title`,
+    CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT,
+  );
+  requiredString(
+    record,
+    "companyName",
+    `${pathValue}.companyName`,
+    CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT,
+  );
+  requiredString(
+    record,
+    "descriptionText",
+    `${pathValue}.descriptionText`,
+    CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT,
+  );
 }
 
 function normalizeClassifierSource(source: ClassifierInputSource, pathValue: string) {
@@ -409,14 +502,10 @@ function validateExample(input: unknown, pathValue: string): StageAExampleV1 {
     `${pathValue}.schemaVersion`,
     STAGE_A_EXAMPLE_SCHEMA_VERSION,
   );
-  const softQuery = requiredString(record, "softQuery", `${pathValue}.softQuery`, 2_000);
-  const canonicalQuery = softQuery.normalize("NFC").replace(/\s+/gu, " ").trim();
-  if (
-    softQuery !== canonicalQuery ||
-    /(?:\p{Cc}|\p{Default_Ignorable_Code_Point})/u.test(softQuery)
-  ) {
-    fail(`${pathValue}.softQuery`, "canonical_query_required");
-  }
+  const softQuery = validateSoftQuery(
+    required(record, "softQuery", `${pathValue}.softQuery`),
+    `${pathValue}.softQuery`,
+  );
 
   const annotationsValue = snapshotArray(
     required(record, "annotations", `${pathValue}.annotations`),
@@ -490,6 +579,7 @@ export function validateStageAWip(input: unknown): StageAWipV1 {
     "datasetId",
     "classifierInputSchemaVersion",
     "classifierInputNormalizerVersion",
+    "softQueryNormalizerVersion",
     "examples",
   ]);
   requiredLiteral(record, "schemaVersion", "$.schemaVersion", STAGE_A_WIP_SCHEMA_VERSION);
@@ -504,6 +594,12 @@ export function validateStageAWip(input: unknown): StageAWipV1 {
     "classifierInputNormalizerVersion",
     "$.classifierInputNormalizerVersion",
     CLASSIFIER_INPUT_NORMALIZER_VERSION,
+  );
+  requiredLiteral(
+    record,
+    "softQueryNormalizerVersion",
+    "$.softQueryNormalizerVersion",
+    AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
   );
   const examplesValue = snapshotArray(
     required(record, "examples", "$.examples"),
@@ -532,6 +628,7 @@ export function validateStageAWip(input: unknown): StageAWipV1 {
     ),
     classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
     classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
+    softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
     examples: Object.freeze(examples),
   });
 }
@@ -594,7 +691,7 @@ function canonicalValue(input: unknown): unknown {
     if (!Number.isSafeInteger(input)) fail("$", "canonical_integer_required");
     return input;
   }
-  if (Array.isArray(input)) return input.map(canonicalValue);
+  if (Array.isArray(input)) return safeArray(input.map(canonicalValue));
   if (typeof input === "object") {
     const output = Object.create(null) as Record<string, unknown>;
     for (const key of Object.keys(input).sort(rawStringCompare)) {
@@ -690,6 +787,7 @@ export function buildStageAReadyManifest(
     datasetId: wip.datasetId,
     classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
     classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
+    softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
     readyPolicy,
     readyPolicyDigest,
     examples: Object.freeze(examples),
@@ -763,6 +861,7 @@ function validateFrozen(
     "datasetId",
     "classifierInputSchemaVersion",
     "classifierInputNormalizerVersion",
+    "softQueryNormalizerVersion",
     "readyPolicy",
     "readyPolicyDigest",
     "examples",
@@ -791,6 +890,11 @@ function validateFrozen(
       manifestRecord,
       "classifierInputNormalizerVersion",
       "$.manifest.classifierInputNormalizerVersion",
+    ),
+    softQueryNormalizerVersion: required(
+      manifestRecord,
+      "softQueryNormalizerVersion",
+      "$.manifest.softQueryNormalizerVersion",
     ),
     examples: examplesInput.map((example, index) =>
       baseExampleFromFrozen(example, `$.manifest.examples[${index}]`),
@@ -1152,11 +1256,15 @@ export async function loadStageABenchmark(
     expectedPolicyDigest,
   );
   return deepFreeze(
-    frozen.manifest.examples.map(({ softQuery, classifierInput, goldLabel }) => ({
-      softQuery,
-      classifierInput: { ...classifierInput },
-      goldLabel,
-    })),
+    safeArray(
+      frozen.manifest.examples.map(({ softQuery, classifierInput, goldLabel }) =>
+        frozenNullPrototypeRecord({
+          softQuery,
+          classifierInput,
+          goldLabel,
+        }),
+      ),
+    ),
   );
 }
 

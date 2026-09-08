@@ -5,10 +5,18 @@ import { restoreTestEnv, setTestEnv, snapshotTestEnv } from "@/test-utils/env";
 import Ajv from "ajv";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT,
+  CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT,
   CLASSIFIER_INPUT_NORMALIZER_VERSION,
   CLASSIFIER_INPUT_SCHEMA_VERSION,
   normalizeClassifierInputV1,
 } from "../classifier-input";
+import {
+  AI_FILTER_QUERY_MAX_LENGTH,
+  AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+  normalizeAiFilterSoftQueryV1,
+  parseAiFilterCandidateId,
+} from "../contract";
 import {
   STAGE_A_EXAMPLE_V1_SCHEMA,
   STAGE_A_FREEZE_V1_SCHEMA,
@@ -58,7 +66,7 @@ const scenarios = [
 
 function syntheticSource(index: number) {
   return {
-    candidateId: `synthetic-candidate-${index}`,
+    candidateId: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
     title: `Synthetic role ${index}`,
     companyName: "Synthetic Company",
     descriptionHtml: `<p>Synthetic description ${index}</p>`,
@@ -109,6 +117,7 @@ function syntheticWip(): StageAWipV1 {
     datasetId: "eval-synthetic-stage-a",
     classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
     classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
+    softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
     examples: Array.from({ length: 200 }, (_, index) => syntheticExample(index)),
   };
 }
@@ -165,7 +174,7 @@ describe("strict Stage A contracts", () => {
     expect(STAGE_A_FREEZE_V1_SCHEMA.additionalProperties).toBe(false);
   });
 
-  it("compiles every public schema and rejects known runtime-invalid fields", () => {
+  it("compiles every public schema with authoritative pins and safe source supersets", () => {
     const ajv = new Ajv({ allErrors: true, strict: true });
     for (const schema of [
       STAGE_A_EXAMPLE_V1_SCHEMA,
@@ -185,16 +194,86 @@ describe("strict Stage A contracts", () => {
     expect(validateExample!(invisible)).toBe(false);
     invisible.softQuery = "synthetic\u00adquery";
     expect(validateExample!(invisible)).toBe(false);
-    const emptyTitle = clone(syntheticExample(0));
-    emptyTitle.classifierSource.title = "";
-    expect(validateExample!(emptyTitle)).toBe(false);
+    const invalidCandidate = clone(syntheticExample(0));
+    invalidCandidate.classifierSource.candidateId =
+      "00000000-0000-4000-8000-00000000000A";
+    expect(validateExample!(invalidCandidate)).toBe(false);
+
+    const collapsibleTitle = clone(syntheticExample(0));
+    collapsibleTitle.classifierSource.title = `${" ".repeat(1_100)}Synthetic role`;
+    expect(normalizeClassifierInputV1(collapsibleTitle.classifierSource).payload.title).toBe(
+      "Synthetic role",
+    );
+    expect(validateExample!(collapsibleTitle)).toBe(true);
+
+    expect(STAGE_A_EXAMPLE_V1_SCHEMA.properties.softQuery.maxLength).toBe(
+      AI_FILTER_QUERY_MAX_LENGTH,
+    );
+    expect(
+      STAGE_A_EXAMPLE_V1_SCHEMA.properties.classifierSource.properties.title.maxLength,
+    ).toBe(CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT);
+    expect(
+      STAGE_A_EXAMPLE_V1_SCHEMA.properties.classifierSource.properties.descriptionHtml
+        .maxLength,
+    ).toBe(CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT);
+    expect(STAGE_A_WIP_V1_SCHEMA.properties.softQueryNormalizerVersion.const).toBe(
+      AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+    );
+    expect(STAGE_A_MANIFEST_V1_SCHEMA.properties.softQueryNormalizerVersion.const).toBe(
+      AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+    );
   });
 
   it("accepts synthetic WIP and recomputes every parent content identity", () => {
     const validated = validateStageAWip(syntheticWip());
     expect(validated.examples).toHaveLength(200);
-    expect(validated.classifierInputNormalizerVersion).toBe("classifier-input-normalizer-v3");
+    expect(validated.classifierInputNormalizerVersion).toBe("classifier-input-normalizer-v4");
+    expect(validated.softQueryNormalizerVersion).toBe(
+      AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+    );
     expect(Object.isFrozen(validated.examples)).toBe(true);
+  });
+
+  it("lets classifier v4 normalize accepted raw source forms", () => {
+    const input = clone(syntheticWip());
+    const source = input.examples[0].classifierSource;
+    source.title = `${" ".repeat(1_100)}Synthetic role`;
+    source.companyName = `Synthetic${" ".repeat(1_100)} Company`;
+    source.selectedDescriptionLocale = " en ";
+    input.examples[0].contentIdentity = normalizeClassifierInputV1(source).contentIdentity;
+
+    const validated = validateStageAWip(input);
+    expect(normalizeClassifierInputV1(validated.examples[0].classifierSource).payload).toMatchObject(
+      {
+        title: "Synthetic role",
+        companyName: "Synthetic Company",
+      },
+    );
+  });
+
+  it("requires the exact AF-1 soft-query version pin", () => {
+    const input = clone(syntheticWip()) as Record<string, unknown>;
+    input.softQueryNormalizerVersion = AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION + 1;
+    expect(() => validateStageAWip(input)).toThrow(
+      new StageAEvaluationError("$.softQueryNormalizerVersion", "literal_required"),
+    );
+  });
+
+  it("uses AF-1's canonical lowercase UUID boundary with a fixed Stage A error", () => {
+    for (const candidateId of [
+      "00000000-0000-4000-8000-00000000000A",
+      "candidate-0",
+      "00000000-0000-4000-8000-000000000001 ",
+    ]) {
+      const input = clone(syntheticWip());
+      input.examples[0].classifierSource.candidateId = candidateId;
+      expect(() => validateStageAWip(input)).toThrow(
+        new StageAEvaluationError(
+          "$.examples[0].classifierSource.candidateId",
+          "canonical_candidate_id_required",
+        ),
+      );
+    }
   });
 
   it("keeps the JSON schema and runtime ID boundary aligned at 68 characters", () => {
@@ -355,7 +434,38 @@ describe("strict Stage A contracts", () => {
     ]) {
       const input = clone(syntheticWip());
       input.examples[0].softQuery = softQuery;
-      expect(() => validateStageAWip(input)).toThrow(/canonical_query_required/u);
+      expect(() => validateStageAWip(input)).toThrow(
+        new StageAEvaluationError(
+          "$.examples[0].softQuery",
+          "canonical_query_required",
+        ),
+      );
+    }
+  });
+
+  it("delegates soft-query validation and canonicalization to AF-1", () => {
+    const accepted = clone(syntheticWip());
+    accepted.examples[0].softQuery = "😀".repeat(AI_FILTER_QUERY_MAX_LENGTH);
+    const validated = validateStageAWip(accepted);
+    expect(validated.examples[0].softQuery).toBe(
+      normalizeAiFilterSoftQueryV1(accepted.examples[0].softQuery),
+    );
+
+    for (const softQuery of [
+      "😀".repeat(AI_FILTER_QUERY_MAX_LENGTH + 1),
+      "synthetic\u0007query",
+      42,
+    ]) {
+      const input = clone(syntheticWip()) as {
+        examples: Array<{ softQuery: unknown }>;
+      };
+      input.examples[0].softQuery = softQuery;
+      expect(() => validateStageAWip(input)).toThrow(
+        new StageAEvaluationError(
+          "$.examples[0].softQuery",
+          "canonical_query_required",
+        ),
+      );
     }
   });
 
@@ -426,6 +536,33 @@ describe("deterministic freeze", () => {
     );
   });
 
+  it("isolates canonical bytes and manifest digests from inherited toJSON", () => {
+    const policy = syntheticPolicy();
+    const policyDigest = digestStageAReadyPolicy(policy);
+    const baseline = freezeStageA(syntheticWip(), policy, policyDigest);
+    const baselineBytes = canonicalStageAJson(baseline);
+    const originalToJson = Object.getOwnPropertyDescriptor(Object.prototype, "toJSON");
+
+    try {
+      Object.defineProperty(Object.prototype, "toJSON", {
+        configurable: true,
+        value: () => ({ POISONED: true }),
+      });
+      const underPoison = freezeStageA(syntheticWip(), policy, policyDigest);
+      expect(underPoison.manifestDigest).toBe(baseline.manifestDigest);
+      expect(canonicalStageAJson(underPoison)).toBe(baselineBytes);
+      expect(canonicalStageAJson({ examples: [{ value: 1 }], schemaVersion: "demo" })).toBe(
+        '{"examples":[{"value":1}],"schemaVersion":"demo"}\n',
+      );
+    } finally {
+      if (originalToJson) {
+        Object.defineProperty(Object.prototype, "toJSON", originalToJson);
+      } else {
+        delete (Object.prototype as { toJSON?: unknown }).toJSON;
+      }
+    }
+  });
+
   it("changes the manifest digest when a scoring-relevant leaf changes", () => {
     const policy = syntheticPolicy();
     const expectedPolicyDigest = digestStageAReadyPolicy(policy);
@@ -438,6 +575,88 @@ describe("deterministic freeze", () => {
 });
 
 describe("private filesystem and loader boundary", () => {
+  it("keeps validated, frozen, and loaded examples conformant with AF-1", async () => {
+    const input = syntheticWip();
+    const validated = validateStageAWip(input);
+    expect(validated.softQueryNormalizerVersion).toBe(
+      AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+    );
+    for (const example of validated.examples) {
+      expect(normalizeAiFilterSoftQueryV1(example.softQuery)).toBe(example.softQuery);
+      expect(parseAiFilterCandidateId(example.classifierSource.candidateId)).toBe(
+        example.classifierSource.candidateId,
+      );
+    }
+
+    const policy = syntheticPolicy();
+    const policyDigest = digestStageAReadyPolicy(policy);
+    const frozen = freezeStageA(input, policy, policyDigest);
+    expect(frozen.manifest.classifierInputNormalizerVersion).toBe(
+      CLASSIFIER_INPUT_NORMALIZER_VERSION,
+    );
+    expect(frozen.manifest.softQueryNormalizerVersion).toBe(
+      AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+    );
+    expect(canonicalStageAJson(frozen.manifest)).toContain(
+      `"softQueryNormalizerVersion":${AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION}`,
+    );
+    for (const example of frozen.manifest.examples) {
+      expect(normalizeAiFilterSoftQueryV1(example.softQuery)).toBe(example.softQuery);
+      expect(parseAiFilterCandidateId(example.classifierInput.candidateId)).toBe(
+        example.classifierInput.candidateId,
+      );
+    }
+
+    const root = await useTemporaryRoot();
+    await writeFile(path.join(root, "ready.json"), canonicalStageAJson(frozen), {
+      mode: 0o600,
+    });
+    const loaded = await loadStageABenchmark(
+      "ready.json",
+      frozen.manifestDigest,
+      policyDigest,
+    );
+    for (const example of loaded) {
+      expect(normalizeAiFilterSoftQueryV1(example.softQuery)).toBe(example.softQuery);
+      expect(parseAiFilterCandidateId(example.classifierInput.candidateId)).toBe(
+        example.classifierInput.candidateId,
+      );
+    }
+  });
+
+  it("keeps loaded benchmark serialization isolated from inherited toJSON", async () => {
+    const { policyDigest, manifestDigest } = await writeReadyFixture();
+    const clean = await loadStageABenchmark(
+      "ready.json",
+      manifestDigest,
+      policyDigest,
+    );
+    const cleanBytes = JSON.stringify(clean);
+    const originalToJson = Object.getOwnPropertyDescriptor(Object.prototype, "toJSON");
+
+    try {
+      Object.defineProperty(Object.prototype, "toJSON", {
+        configurable: true,
+        value: () => ({ POISONED: true }),
+      });
+      expect(JSON.stringify(clean)).toBe(cleanBytes);
+      const loadedUnderPoison = await loadStageABenchmark(
+        "ready.json",
+        manifestDigest,
+        policyDigest,
+      );
+      expect(JSON.stringify(loadedUnderPoison)).toBe(cleanBytes);
+      expect(Object.getPrototypeOf(loadedUnderPoison[0])).toBeNull();
+      expect(Object.getPrototypeOf(loadedUnderPoison[0].classifierInput)).toBeNull();
+    } finally {
+      if (originalToJson) {
+        Object.defineProperty(Object.prototype, "toJSON", originalToJson);
+      } else {
+        delete (Object.prototype as { toJSON?: unknown }).toJSON;
+      }
+    }
+  });
+
   it("publishes one complete 0600 file across concurrent no-replace freezes", async () => {
     const root = await useTemporaryRoot();
     const input = syntheticWip();
@@ -684,6 +903,31 @@ describe("private filesystem and loader boundary", () => {
       ),
     );
     expect(`${String(caught)} ${JSON.stringify(caught)}`).not.toContain("must-not-leak");
+  });
+
+  it("rejects a noncanonical frozen candidate ID with a fixed Stage A error", async () => {
+    const root = await useTemporaryRoot();
+    const policy = syntheticPolicy();
+    const policyDigest = digestStageAReadyPolicy(policy);
+    const frozen = clone(freezeStageA(syntheticWip(), policy, policyDigest));
+    frozen.manifest.examples[0].classifierInput.candidateId =
+      "00000000-0000-4000-8000-00000000000A";
+    await writeFile(path.join(root, "invalid-candidate.json"), canonicalStageAJson(frozen), {
+      mode: 0o600,
+    });
+
+    await expect(
+      loadStageABenchmark(
+        "invalid-candidate.json",
+        frozen.manifestDigest,
+        policyDigest,
+      ),
+    ).rejects.toEqual(
+      new StageAEvaluationError(
+        "$.manifest.examples[0].classifierInput.candidateId",
+        "canonical_candidate_id_required",
+      ),
+    );
   });
 });
 

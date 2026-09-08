@@ -1,5 +1,20 @@
+import {
+  CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT,
+  CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT,
+  CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT,
+  CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT,
+  CLASSIFIER_INPUT_NORMALIZER_VERSION,
+  CLASSIFIER_INPUT_SCHEMA_VERSION,
+} from "../classifier-input";
+import {
+  AI_FILTER_QUERY_MAX_LENGTH,
+  AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+} from "../contract";
+
 const idPattern = "^eval-[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$";
 const digestPattern = "^[a-f0-9]{64}$";
+const candidateIdPattern =
+  "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 const canonicalQueryPattern =
   "^(?![\\s\\S]*(?:\\p{Cc}|\\p{Default_Ignorable_Code_Point}))(?![\\s\\S]*[^\\S ])(?:\\S|\\S(?:[^\\s]| (?! ))*\\S)$";
 
@@ -36,11 +51,20 @@ const classifierSourceSchema = {
     "selectedDescriptionLocale",
   ],
   properties: {
-    candidateId: { type: "string", minLength: 1, maxLength: 256 },
-    title: { type: "string", minLength: 1, maxLength: 1_000 },
-    companyName: { type: "string", minLength: 1, maxLength: 1_000 },
-    descriptionHtml: { type: "string", minLength: 1, maxLength: 2_000_000 },
-    selectedDescriptionLocale: { type: "string", enum: ["de", "en", "fr", "it"] },
+    candidateId: { type: "string", pattern: candidateIdPattern },
+    title: { type: "string", maxLength: CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT },
+    companyName: {
+      type: "string",
+      maxLength: CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT,
+    },
+    descriptionHtml: {
+      type: "string",
+      maxLength: CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT,
+    },
+    selectedDescriptionLocale: {
+      type: "string",
+      maxLength: CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT,
+    },
   },
 } as const;
 
@@ -66,7 +90,7 @@ export const STAGE_A_EXAMPLE_V1_SCHEMA = {
     softQuery: {
       type: "string",
       minLength: 1,
-      maxLength: 2_000,
+      maxLength: AI_FILTER_QUERY_MAX_LENGTH,
       pattern: canonicalQueryPattern,
     },
     queryOrigin: { const: "eval_authored" },
@@ -96,13 +120,15 @@ export const STAGE_A_WIP_V1_SCHEMA = {
     "datasetId",
     "classifierInputSchemaVersion",
     "classifierInputNormalizerVersion",
+    "softQueryNormalizerVersion",
     "examples",
   ],
   properties: {
     schemaVersion: { const: "ai-filter-stage-a-wip-v1" },
     datasetId: { type: "string", pattern: idPattern },
-    classifierInputSchemaVersion: { const: "classifier-input-v1" },
-    classifierInputNormalizerVersion: { const: "classifier-input-normalizer-v3" },
+    classifierInputSchemaVersion: { const: CLASSIFIER_INPUT_SCHEMA_VERSION },
+    classifierInputNormalizerVersion: { const: CLASSIFIER_INPUT_NORMALIZER_VERSION },
+    softQueryNormalizerVersion: { const: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION },
     examples: {
       type: "array",
       maxItems: 200,
@@ -148,11 +174,23 @@ const classifierInputSchema = {
   additionalProperties: false,
   required: ["schemaVersion", "candidateId", "title", "companyName", "descriptionText"],
   properties: {
-    schemaVersion: { const: "classifier-input-v1" },
-    candidateId: { type: "string", minLength: 1, maxLength: 1_000 },
-    title: { type: "string", minLength: 1, maxLength: 1_000 },
-    companyName: { type: "string", minLength: 1, maxLength: 1_000 },
-    descriptionText: { type: "string", minLength: 1, maxLength: 12_000 },
+    schemaVersion: { const: CLASSIFIER_INPUT_SCHEMA_VERSION },
+    candidateId: { type: "string", pattern: candidateIdPattern },
+    title: {
+      type: "string",
+      minLength: 1,
+      maxLength: CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT,
+    },
+    companyName: {
+      type: "string",
+      minLength: 1,
+      maxLength: CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT,
+    },
+    descriptionText: {
+      type: "string",
+      minLength: 1,
+      maxLength: CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT,
+    },
   },
 } as const;
 
@@ -176,6 +214,7 @@ export const STAGE_A_MANIFEST_V1_SCHEMA = {
     "datasetId",
     "classifierInputSchemaVersion",
     "classifierInputNormalizerVersion",
+    "softQueryNormalizerVersion",
     "readyPolicy",
     "readyPolicyDigest",
     "examples",
@@ -183,8 +222,9 @@ export const STAGE_A_MANIFEST_V1_SCHEMA = {
   properties: {
     schemaVersion: { const: "ai-filter-stage-a-manifest-v1" },
     datasetId: { type: "string", pattern: idPattern },
-    classifierInputSchemaVersion: { const: "classifier-input-v1" },
-    classifierInputNormalizerVersion: { const: "classifier-input-normalizer-v3" },
+    classifierInputSchemaVersion: { const: CLASSIFIER_INPUT_SCHEMA_VERSION },
+    classifierInputNormalizerVersion: { const: CLASSIFIER_INPUT_NORMALIZER_VERSION },
+    softQueryNormalizerVersion: { const: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION },
     readyPolicy: { $ref: "ai-filter-stage-a-ready-policy-v1" },
     readyPolicyDigest: { type: "string", pattern: digestPattern },
     examples: {
