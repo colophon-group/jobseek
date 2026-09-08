@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 7104,
-    "boards_sha256": "adf871667d1ba19057dd04b66accd87ff52a272fc5bca51dca701a0a9ba7e847",
+    "boards_row_count": 7105,
+    "boards_sha256": "a2917bf29f2dc2d8b030da63efe70bca66b02571f3bf7a06af8e9d18860be5d6",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "e8215febc4bd81f9ec16c1c879f8bc85ec2f6e8a404a72a0a2e7794f0c4e7ca1",
+  "manifest_sha256": "8ea86388eb43dd17508af3c99e150ea5421734ceefdf416c19f7c8b56c0f3349",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -1322,12 +1322,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "352150739ce26e47e3bfe0a1a290bc3c3f1f0e7b77da9c9351489c9fcea6eab5",
       "crawler_type": "dayforce",
-      "digest_sha256": "fccc1ca1308e72d138880fa1c68f0696654dd834bdadec82c0f3878fe54d1ecb",
+      "digest_sha256": "32c6228ce8b2f9ff606cc9575f2487f57a1780380927d8e3322f9a4bb4f1e183",
       "fixture": "synthetic.network_session.v1",
       "id": "profile.monitor.dayforce.13270b88de0bdba1",
       "profile_kind": "configured",
-      "source_count": 4,
-      "source_refs_sha256": "d0a128a9b9b6981b47f6db7d4ad2ef3337172c2a18a450a226feb16920896118",
+      "source_count": 3,
+      "source_refs_sha256": "5d4b9f5dae7d9c3eb9648e8ec2c26ec0470f493eb1e37873d6d48b4076f9a7d8",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -1344,12 +1344,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "64c866510a8e61326e8b742a915986eec5c1795ac7f94256acb62ef2e4e7e500",
       "crawler_type": "dayforce",
-      "digest_sha256": "fc8fcb53f00d7c8ee031a54e25bba3a174cde52b5de06f16dddc3306b78d6b70",
+      "digest_sha256": "aa164d245c248bb4f530c0bc85e5b6f0d8f9e766afcd2a732db0e3b4b5d6eb8d",
       "fixture": "synthetic.network_session.v1",
       "id": "profile.monitor.dayforce.e372cc46b3d50c9b",
       "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "19db29fd12fdad7b1ea391b556b2552f3daff594590b7b9d1993352e15bbbc7c",
+      "source_count": 2,
+      "source_refs_sha256": "686a86c03c9834211b6399737db77004a956c405c640de223f817d0ff9d5511e",
       "status": "pending_replay",
       "surface": "monitor"
     },
