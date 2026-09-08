@@ -1,6 +1,7 @@
 # Queue protocol v2 candidate contract
 
-Status: **inactive conformance candidate** for #8227, a bounded child of #7938.
+Status: **inactive conformance candidate** for #8227 and #7950, bounded children
+of #7938.
 
 This directory freezes the queue-v2 safety contract before Postgres or worker
 integration. `model.py` is the Python reference state machine. The Go package
@@ -29,11 +30,29 @@ and claim-sequence exhaustion fail before lifecycle mutation.
 Nothing here is imported by the production crawler. It does not change queue
 ownership, enable a Go worker, or authorize a deployment.
 
+The inactive PostgreSQL candidate under `postgres/` proves the complementary
+authoritative-write boundary. A retained per-task sidecar row stores the full
+fence and a per-task generation high-water mark. The require operation locks
+that row with `SELECT ... FOR UPDATE`, raises unless every field and active
+state match, and returns no reusable authorization value. The caller must run
+require and all authoritative effects in one explicit transaction; calling it
+in autocommit and writing later is unsafe. Rotation and revocation use the same
+row lock, so whichever transaction locks first is ordered before the other.
+
+This PostgreSQL row is not synchronized atomically with Redis. A writer that
+locks first may commit before a later handoff even if Redis changes meanwhile.
+The candidate contains no lease timestamp or clock comparison, no historical
+route-global token ledger, and no exactly-once guarantee. It does not migrate a
+production table or model real posting, watermark, gone, batching, or failure
+state. Production integration must define cross-store activation order and
+must reauthorize in a new transaction after rollback to an earlier savepoint,
+deadlock, serialization failure, or retry.
+
 The Python lease handle exposes an `asyncio.Event` that fires on fenced,
 not-current, or transport-error outcomes. This is the prototype cancellation
 contract: work must stop and must not perform an authoritative write after the
-event fires. A later Postgres adapter still has to re-check the fence inside
-the write transaction.
+event fires. The inactive Postgres adapter in this tree re-checks the fence
+inside a caller-owned transaction; production mutation paths do not use it.
 
 The inactive Go conformance client also exposes a bounded lease supervisor.
 It derives a per-lease work context and cancels it with the retained first
@@ -141,7 +160,7 @@ and end empty.
 
 Later #7938 children still own:
 
-- Postgres mutation predicates and transaction-boundary fault injection;
+- integration of the proven Postgres predicate into real mutation paths;
 - bounded admission-before-claim and worker-pool integration;
 - mixed-protocol rollout, quiescence, rollback, and epoch rotation;
 - rebuild/conservation across scrape fallbacks, learned egress state, circuits,

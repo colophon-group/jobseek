@@ -131,3 +131,84 @@ jobs:
       - name: Confirm generation left the tree unchanged
         if: always()
         run: git diff --exit-code -- apps/crawler/contracts/queue/v2
+
+  postgres-conformance:
+    name: PostgreSQL transactional fencing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.15"
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.3"
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+
+      - name: Install locked Python test environment
+        working-directory: apps/crawler
+        run: uv sync --frozen --group dev
+
+      - name: Start isolated PostgreSQL fence fixture
+        run: |
+          set -euo pipefail
+          docker run --detach --name jobseek-queue-v2-postgres \
+            --env POSTGRES_USER=queue_v2 \
+            --env POSTGRES_PASSWORD=queue_v2 \
+            --env POSTGRES_DB=queue_v2_contract \
+            --publish 127.0.0.1:5433:5432 \
+            postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+
+          ready=false
+          for _ in {1..30}; do
+            if docker exec jobseek-queue-v2-postgres \
+              pg_isready -U queue_v2 -d queue_v2_contract >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          test "$(docker exec jobseek-queue-v2-postgres \
+            psql -U queue_v2 -d queue_v2_contract -Atqc \
+            "SELECT count(*) FROM pg_namespace WHERE nspname = 'queue_v2_contract'")" = 0
+
+      - name: Verify transaction-bound PostgreSQL fencing
+        working-directory: apps/crawler
+        env:
+          QUEUE_V2_POSTGRES_ISOLATED: "1"
+          QUEUE_V2_POSTGRES_URL: postgresql://queue_v2:queue_v2@127.0.0.1:5433/queue_v2_contract
+        run: uv run pytest -q contracts/queue/v2/postgres/python
+
+      - name: Verify and stop isolated PostgreSQL fence fixture
+        if: always()
+        run: |
+          set +e
+          status=0
+          if docker container inspect jobseek-queue-v2-postgres >/dev/null 2>&1; then
+            residue="$(docker exec jobseek-queue-v2-postgres \
+              psql -U queue_v2 -d queue_v2_contract -Atqc \
+              "SELECT count(*) FROM pg_namespace WHERE nspname = 'queue_v2_contract'" \
+              2>/dev/null)" || status=1
+            if [[ "$residue" != 0 ]]; then
+              echo "PostgreSQL queue-v2 contract schema remains after tests" >&2
+              status=1
+            fi
+            docker rm --force jobseek-queue-v2-postgres || status=1
+          fi
+          if docker container inspect jobseek-queue-v2-postgres >/dev/null 2>&1; then
+            echo "PostgreSQL fixture container still exists after cleanup" >&2
+            status=1
+          fi
+          exit "$status"
+
+      - name: Confirm PostgreSQL conformance left the tree unchanged
+        if: always()
+        run: git diff --exit-code -- apps/crawler/contracts/queue/v2/postgres
