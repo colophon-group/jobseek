@@ -1,0 +1,31 @@
+[project]
+name = "jobseek-go-http-sitemap-benchmark"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "anyio==4.12.1",
+  "certifi==2026.2.25",
+  "h11==0.16.0",
+  "httpcore==1.0.9",
+  "httpx==0.28.1",
+  "idna==3.18",
+  "prometheus-client==0.26.0",
+  "structlog==26.1.0",
+  "typing-extensions==4.15.0",
+]
+
+[dependency-groups]
+dev = ["ruff==0.16.3"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]

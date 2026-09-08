@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "label": "saturated-executor-throughput-not-production-throughput",
+  "source": {
+    "python_source_commit": "fb6117b06a3008cdac76adc258327b2f220085f8",
+    "python_runtime": "3.13.15",
+    "python_image_identity": "python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f",
+    "python_lock_sha256": "cead98a5d934cb3f54879e1317fe332e2887e742d838ead307dc4703c1f09f7d",
+    "python_runtime_packages": {
+      "anyio": "4.12.1",
+      "certifi": "2026.2.25",
+      "h11": "0.16.0",
+      "httpcore": "1.0.9",
+      "httpx": "0.28.1",
+      "idna": "3.18",
+      "prometheus-client": "0.26.0",
+      "structlog": "26.1.0",
+      "typing-extensions": "4.15.0"
+    },
+    "python_absent_runtime_packages": ["sniffio"],
+    "python_os_release": {"ID": "debian", "VERSION_ID": "13"},
+    "go_toolchain": "go1.24.0",
+    "go_module": "github.com/colophon-group/jobseek/pilots/go-http-sitemap",
+    "go_runner_path": "github.com/colophon-group/jobseek/pilots/go-http-sitemap/bench/go-runner",
+    "python_files": [
+      {"relative_path": "src/core/monitors/sitemap.py", "sha256": "d9872b6c0e8c9421b7aae99d6f979bb9587b8c21e8ee9583fdfb2300124e903f"},
+      {"relative_path": "src/shared/http_retry.py", "sha256": "e088d370960a9a678c26dd0a03eb24e3b23a1011a1205a5ea101a968d9955252"},
+      {"relative_path": "src/shared/tdm.py", "sha256": "fdd32b741365620eb5af7ae349069961b7f02ea4e2eea914d3e1a6c107556607"},
+      {"relative_path": "src/shared/constants.py", "sha256": "5bf8434283b699e2c0900032e3f95feca1eac4e1ceb63d52209567adb93e3f7b"},
+      {"relative_path": "src/metrics.py", "sha256": "d7772a5a531faa88b391e2727f16ff27cb2fa66bcec5f0e501d7509bef3e1f1d"}
+    ]
+  },
+  "defaults": {
+    "global_active_requests": 20,
+    "global_total_connections": 20,
+    "global_idle_connections": 10,
+    "idle_connections_per_origin": 2,
+    "idle_expiry_seconds": 5,
+    "per_origin_concurrency": 2,
+    "request_timeout_seconds": 5,
+    "job_timeout_seconds": 15,
+    "file_descriptor_limit": 256,
+    "origin_count": 32,
+    "warmup_jobs": 128,
+    "capacity_jobs": 512,
+    "overload_jobs": 1024,
+    "repetitions": 5
+  },
+  "ladder": [
+    {"name": "c1", "workers": 1, "capacity_multiplier": 2, "kind": "capacity"},
+    {"name": "c5", "workers": 5, "capacity_multiplier": 2, "kind": "capacity"},
+    {"name": "c20", "workers": 20, "capacity_multiplier": 2, "kind": "capacity"},
+    {"name": "c50", "workers": 50, "capacity_multiplier": 2, "kind": "capacity"},
+    {"name": "overload-c20", "workers": 20, "capacity_multiplier": 2, "kind": "overload"}
+  ],
+  "scenarios": [
+    {
+      "id": "urlset-512",
+      "suite": "capacity",
+      "weight": 3,
+      "response_delay_ms": 2,
+      "url_count": 512,
+      "index_children": 0,
+      "root_statuses": [200],
+      "expected_outcome": "success",
+      "expected_url_digest_sha256": "7a68c74906073eb1d7ec2add2fd3e36d5fc18d14eb365aab37e5f2dc76fe2ede",
+      "expected_requests": 1
+    },
+    {
+      "id": "index-4x128",
+      "suite": "capacity",
+      "weight": 1,
+      "response_delay_ms": 1,
+      "url_count": 512,
+      "index_children": 4,
+      "root_statuses": [200],
+      "expected_outcome": "success",
+      "expected_url_digest_sha256": "345381d2e29915142c22f7fe6bad2358cc9028daa6ea1bb4f304cb2640a5f3b6",
+      "expected_requests": 5
+    },
+    {
+      "id": "retry-recovered",
+      "suite": "policy",
+      "weight": 1,
+      "response_delay_ms": 1,
+      "url_count": 64,
+      "index_children": 0,
+      "root_statuses": [500, 500, 200],
+      "expected_outcome": "success",
+      "expected_url_digest_sha256": "dbd8427d214a5ccd9fbf874703857c74eeaf693c8a045c6251a87beca758016e",
+      "expected_requests": 3
+    },
+    {
+      "id": "retry-exhausted",
+      "suite": "policy",
+      "weight": 1,
+      "response_delay_ms": 1,
+      "url_count": 0,
+      "index_children": 0,
+      "root_statuses": [500, 500, 500],
+      "expected_outcome": "retry_exhausted",
+      "expected_url_digest_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected_requests": 3
+    }
+  ],
+  "correctness_only_exclusions": [
+    "literal include/exclude filters and literal prefix transforms are not in the measured capacity corpus; future admitted cases must invoke production monitor_one on Python",
+    "general Python regular-expression filters and transforms",
+    "child retries and nested sitemap indexes",
+    "redirects and root rediscovery after 404 or 410",
+    "non-retryable 4xx and malformed XML",
+    "TDM reservation, proxies, skip-TLS, and public-network behavior",
+    "byte-versus-character limit boundaries and unsupported query syntax",
+    "the known Next live-origin incompatibility"
+  ]
+}

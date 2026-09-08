@@ -52,10 +52,11 @@ Both implementations must:
 - receive no repository data, environment file, credentials, Redis, Postgres,
   production volume, production network, or public egress.
 
-The fixture runs outside the measured cgroup on a Docker internal-only network.
-Distinct DNS aliases represent distinct origins while remaining hermetic. Its
-request transcript is authoritative for admitted requests, wire attempts,
-status order, and response bytes.
+The fixture runs outside the measured cgroup in the same Docker network
+namespace, with public networking disabled. Distinct loopback listeners on
+distinct ports represent distinct origins while remaining hermetic. Its request
+transcript is authoritative for admitted requests, wire attempts, status order,
+and response bytes.
 
 Current Python/httpx has a global idle bound but no configurable per-origin
 idle bound. Go's additional per-host idle bound is therefore a disclosed
