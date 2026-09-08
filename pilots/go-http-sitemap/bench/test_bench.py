@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import os
@@ -13,6 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 import orchestrator
+import python_runner
 from common import job_manifest_sha256, load_corpus, scenario_map, validate_fixture_origin
 from fixture import FixtureFleet, FixtureState, raw_http_get
 from orchestrator import (
@@ -170,6 +172,35 @@ class SafetyTests(unittest.TestCase):
             {item["relative_path"]: item["sha256"] for item in identity["files"]},
             {item["relative_path"]: item["sha256"] for item in corpus["source"]["python_files"]},
         )
+
+    def test_python_protocol_accepts_the_largest_evidence_manifest_frame(self) -> None:
+        corpus = load_corpus(BENCH_ROOT)
+        origins = [f"http://127.0.0.1:{31_000 + index}" for index in range(32)]
+        jobs = make_jobs(
+            corpus,
+            origins,
+            batch_id="overload-c20-r00-measured",
+            suite="capacity",
+            count=int(corpus["defaults"]["overload_jobs"]),
+        )
+        command = {
+            "action": "batch",
+            "batch_id": "overload-c20-r00-measured",
+            "phase": "measured",
+            "manifest_sha256": job_manifest_sha256(jobs),
+            "jobs": jobs,
+        }
+        frame = json.dumps(command, separators=(",", ":")).encode() + b"\n"
+        self.assertGreater(len(frame), 64 * 1024)
+        self.assertLess(len(frame), python_runner.PROTOCOL_FRAME_LIMIT_BYTES)
+
+        async def read_frame() -> bytes:
+            reader = python_runner._protocol_stream_reader()
+            reader.feed_data(frame)
+            reader.feed_eof()
+            return await reader.readline()
+
+        self.assertEqual(asyncio.run(read_frame()), frame)
 
     def test_runner_startup_timeout_reaps_child(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

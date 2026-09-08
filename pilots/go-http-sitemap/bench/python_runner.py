@@ -37,6 +37,7 @@ RUNTIME_PACKAGES = (
     "typing-extensions",
 )
 ABSENT_RUNTIME_PACKAGES = ("sniffio",)
+PROTOCOL_FRAME_LIMIT_BYTES = 16 * 1024 * 1024
 
 
 def _canonical_distribution_name(value: str) -> str:
@@ -140,6 +141,10 @@ def _open_fds() -> int:
         except OSError:
             pass
     return -1
+
+
+def _protocol_stream_reader() -> asyncio.StreamReader:
+    return asyncio.StreamReader(limit=PROTOCOL_FRAME_LIMIT_BYTES)
 
 
 def _url_digest(urls: set[str]) -> str:
@@ -433,7 +438,7 @@ async def _protocol(args: argparse.Namespace) -> int:
         print(json.dumps(ready, sort_keys=True), flush=True)
 
         loop = asyncio.get_running_loop()
-        reader = asyncio.StreamReader()
+        reader = _protocol_stream_reader()
         protocol = asyncio.StreamReaderProtocol(reader)
         await loop.connect_read_pipe(lambda: protocol, sys.stdin)
         try:

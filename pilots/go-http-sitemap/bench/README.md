@@ -325,7 +325,9 @@ before its next JSON record is distinguished from a still-running protocol
 timeout. Every arm failure writes `raw/failures/<arm-token>.json` before the
 exception escapes, retaining the command, ready record, PID/exit status, full
 captured stderr, error type, and the bounded stderr tail also included in the
-raised error.
+raised error. Both runners cap newline-delimited control frames at 16 MiB; the
+largest frozen 1,024-job evidence manifest is regression-tested above Python's
+64 KiB default and below that common bound.
 
 An output directory is created once and contains:
 
