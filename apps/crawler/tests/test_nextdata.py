@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -621,6 +622,28 @@ class TestCanHandle:
         assert result is not None
         assert result["path"] == "props.pageProps.positions"
 
+    async def test_nextjs_prefers_offers_inventory_over_jobs_filters(self):
+        """Recruitment sites may use ``jobs`` for filters, not postings."""
+        offers = [
+            {
+                "id": i,
+                "title": f"Job {i}",
+                "uri": f"https://example.com/offers/job-{i}",
+                "indexedContent": f"Full description for job {i}",
+            }
+            for i in range(19)
+        ]
+        filters = [{"id": i, "title": f"School {i}"} for i in range(8)]
+        data = {"props": {"pageProps": {"offers": offers, "jobs": filters}}}
+        html = _html_with_next_data(data)
+
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            result = await can_handle("https://example.com/careers", client)
+
+        assert result is not None
+        assert result["path"] == "props.pageProps.offers"
+        assert result["count"] == 19
+
     async def test_non_nextjs_page(self):
         html = "<html><body>Regular page</body></html>"
         async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
@@ -1188,6 +1211,51 @@ class TestPagination:
             result = await discover(BOARD_PAGINATED, client)
         assert isinstance(result, set)
         assert len(result) == 6
+
+    async def test_multi_page_path_template_with_zero_based_source(self):
+        """Path pagination may number the board root as page zero."""
+        requested_paths: list[str] = []
+
+        def handler(request: httpx.Request):
+            requested_paths.append(request.url.path)
+            match = re.search(r"/p/(\d+)/index\.aspx$", request.url.path)
+            logical_page = int(match.group(1)) + 1 if match else 1
+            data = _paginated_data(logical_page, page_count=3)
+            return httpx.Response(200, text=_html_with_next_data(data))
+
+        board = {
+            **BOARD_PAGINATED,
+            "metadata": {
+                **BOARD_PAGINATED["metadata"],
+                "pagination": {
+                    **BOARD_PAGINATED["metadata"]["pagination"],
+                    "start": 0,
+                    "url_template": "https://example.com/jobs/p/{page}/index.aspx",
+                },
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert len(result) == 6
+        assert requested_paths == [
+            "/jobs",
+            "/jobs/p/1/index.aspx",
+            "/jobs/p/2/index.aspx",
+        ]
+
+    async def test_large_enterprise_nextdata_shell_is_bounded_but_supported(self):
+        """Tenant configuration can push legitimate Next.js HTML beyond 2 MB."""
+        data = _paginated_data(page=1, page_count=1)
+        html = "<!--" + ("x" * 2_100_000) + "-->" + _html_with_next_data(data)
+
+        def handler(_request: httpx.Request):
+            return httpx.Response(200, text=html)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(BOARD_PAGINATED, client)
+
+        assert len(result) == 2
 
     async def test_multi_page_rich_mode(self):
         """Pagination works in rich mode too."""
@@ -2239,6 +2307,40 @@ class TestOffsetPaginationHelpers:
             "https://x.com/jobs?page=2",
             "https://x.com/jobs?page=3",
         ]
+
+    def test_compute_page_urls_path_template_with_zero_based_source(self):
+        from src.core.monitors.nextdata import _compute_page_urls
+
+        urls = _compute_page_urls(
+            "https://x.com/jobs",
+            page_count=3,
+            cfg={
+                "url_template": "https://x.com/jobs/p/{page}/index.aspx",
+                "start": 0,
+            },
+        )
+        assert urls == [
+            "https://x.com/jobs/p/1/index.aspx",
+            "https://x.com/jobs/p/2/index.aspx",
+        ]
+
+    @pytest.mark.parametrize(
+        "template",
+        [
+            "https://other.example/jobs/p/{page}",
+            "https://user:password@x.com/jobs/p/{page}",
+            "https://x.com/jobs/p/static",
+        ],
+    )
+    def test_compute_page_urls_rejects_unsafe_path_template(self, template):
+        from src.core.monitors.nextdata import _compute_page_urls
+
+        with pytest.raises(ValueError, match="pagination url_template"):
+            _compute_page_urls(
+                "https://x.com/jobs",
+                page_count=3,
+                cfg={"url_template": template},
+            )
 
     def test_offset_page_count_one_returns_empty(self):
         from src.core.monitors.nextdata import _compute_page_urls

@@ -565,6 +565,25 @@ class TestInferPagination:
         assert result.param_name == "offset"
         assert result.location == "body"
 
+    def test_same_post_offset_in_query_and_body_prefers_body(self):
+        base = "https://example.com/api/jobs"
+        ex1 = _make_exchange(
+            url=f"{base}?offset=0",
+            method="POST",
+            post_data='{"offset": 0, "limit": 20}',
+            phase="load",
+        )
+        ex2 = _make_exchange(
+            url=f"{base}?offset=20",
+            method="POST",
+            post_data='{"offset": 20, "limit": 20}',
+            phase="interaction",
+        )
+        result = infer_pagination([ex1, ex2], f"{base}?offset=0", 20)
+        assert result is not None
+        assert result.param_name == "offset"
+        assert result.location == "body"
+
     def test_single_exchange_guessing(self):
         ex = _make_exchange(url="https://example.com/api/jobs?offset=0&limit=20")
         result = infer_pagination([ex], "https://example.com/api/jobs?offset=0&limit=20", 20)

@@ -672,9 +672,29 @@ def infer_pagination(
         pairs.sort(key=lambda x: x[0])
 
         for _, ex1, ex2 in pairs:
-            diff = _diff_query_params(ex1.url, ex2.url)
-            if diff:
-                name, v1, v2 = diff
+            query_diff = _diff_query_params(ex1.url, ex2.url)
+            body_diff = _diff_json_bodies(ex1.post_data, ex2.post_data)
+
+            # Some POST APIs (notably ByteDance) mirror the offset in both
+            # the query string and JSON body, but only honor the body value
+            # during replay. Prefer the body when both observations describe
+            # the same pagination parameter; retain query priority when the
+            # two locations differ so unrelated changing body values do not
+            # override a clear URL contract.
+            if body_diff and query_diff and body_diff[0] == query_diff[0]:
+                name, v1, v2 = body_diff
+                inc = abs(v2 - v1)
+                style = "offset" if inc == page_size else "page"
+                return PaginationInfo(
+                    param_name=name,
+                    style=style,
+                    start_value=min(v1, v2),
+                    increment=inc,
+                    location="body",
+                )
+
+            if query_diff:
+                name, v1, v2 = query_diff
                 inc = abs(v2 - v1)
                 style = "offset" if inc == page_size else "page"
                 return PaginationInfo(
@@ -685,9 +705,8 @@ def infer_pagination(
                     location="query",
                 )
 
-            diff = _diff_json_bodies(ex1.post_data, ex2.post_data)
-            if diff:
-                name, v1, v2 = diff
+            if body_diff:
+                name, v1, v2 = body_diff
                 inc = abs(v2 - v1)
                 style = "offset" if inc == page_size else "page"
                 return PaginationInfo(

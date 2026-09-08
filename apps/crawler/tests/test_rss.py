@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import html
+import json
 import xml.etree.ElementTree as ET
 from unittest.mock import AsyncMock
 
@@ -19,6 +21,9 @@ from src.core.monitors.rss import (
     _g,
     _governmentjobs_agency_from_url,
     _governmentjobs_feed_url,
+    _hr_manager_customer_from_url,
+    _hr_manager_feed_url,
+    _hr_manager_position_data,
     _parse_feed,
     _parse_generic_item,
     _parse_governmentjobs_item,
@@ -35,6 +40,36 @@ from src.shared.http_retry import PaginationFetchError
 
 _G_NS = "http://base.google.com/ns/1.0"
 _TT_NS = "https://teamtailor.com/locations"
+
+
+def _hr_manager_page(items: list[dict], *, customer: str = "securitas") -> str:
+    payload = {
+        "CustomerAlias": customer,
+        "PositionList": {
+            "CustomerAlias": customer,
+            "PositionCountList": len(items),
+            "Items": items,
+            "TransactionStatus": {"StatusCode": 0},
+        },
+    }
+    value = html.escape(json.dumps(payload), quote=True)
+    return f'<input id="test_HiddenField_PositionList" value="{value}">'
+
+
+def _hr_manager_feed(ids: list[int]) -> str:
+    items = "".join(
+        f"""
+        <item>
+          <guid>{position_id}</guid>
+          <link>https://candidate.hr-manager.net/ApplicationInit.aspx?cid=1675&amp;ProjectId={position_id}&amp;DepartmentId=19000&amp;MediaId=5</link>
+          <title>Role {position_id}</title>
+          <description>&lt;p&gt;Full description {position_id}&lt;/p&gt;</description>
+          <pubDate>Fri, 14 Aug 2026 08:09:35 +0200</pubDate>
+        </item>
+        """
+        for position_id in ids
+    )
+    return f"<rss version='2.0'><channel>{items}</channel></rss>"
 
 
 def _make_item(xml_str: str) -> ET.Element:
@@ -411,6 +446,112 @@ class TestParseGenericItem:
         item = ET.fromstring(xml)
         result = _parse_generic_item(item)
         assert result.metadata is None
+
+
+class TestHrManagerPreset:
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            (
+                "https://candidate.hr-manager.net/vacancies/list.aspx?customer=Securitas",
+                "securitas",
+            ),
+            ("http://candidate.hr-manager.net/vacancies/list.aspx?customer=securitas", None),
+            ("https://evil.example/vacancies/list.aspx?customer=securitas", None),
+            (
+                "https://candidate.hr-manager.net/vacancies/list.aspx?customer=securitas&depid=1",
+                None,
+            ),
+            ("https://candidate.hr-manager.net/vacancies/list.aspx?customer=../other", None),
+        ],
+    )
+    def test_customer_parser_is_strict(self, url, expected):
+        assert _hr_manager_customer_from_url(url) == expected
+
+    def test_position_payload_requires_matching_tenant_and_count(self):
+        item = {
+            "Id": 145195,
+            "ProjectType": "RecruitmentProject",
+            "PositionLocationMultiSelection": [{"Name": "Region Hovedstaden"}],
+        }
+        assert _hr_manager_position_data(_hr_manager_page([item]), "securitas") == {"145195": item}
+
+        with pytest.raises(ValueError, match="tenant"):
+            _hr_manager_position_data(_hr_manager_page([item], customer="other"), "securitas")
+
+    async def test_detects_and_discovers_exact_tenant_feed(self):
+        positions = [
+            {
+                "Id": 145195,
+                "ProjectType": "RecruitmentProject",
+                "WorkPlace": "",
+                "PositionLocationMultiSelection": [
+                    {"Name": "Region Hovedstaden"},
+                    {"Name": "Region Sjælland"},
+                ],
+                "CustomList1": {"Name": "Fuldtid"},
+                "Languages": [{"Code": "da"}],
+            },
+            {
+                "Id": 145198,
+                "ProjectType": "RecruitmentProject",
+                "WorkPlace": "Aalborg",
+                "PositionLocationMultiSelection": [{"Name": "Region Nordjylland"}],
+                "CustomList1": None,
+                "Languages": [{"Code": "da"}],
+            },
+        ]
+        page = _hr_manager_page(positions)
+        feed = _hr_manager_feed([145195, 145198])
+
+        def handler(request):
+            if request.url.host == "candidate.hr-manager.net":
+                return httpx.Response(200, text=page)
+            assert str(request.url).startswith(
+                "https://api.hr-manager.net/JobPortal.svc/securitas/PositionList/rss/"
+            )
+            return httpx.Response(200, text=feed)
+
+        board_url = "https://candidate.hr-manager.net/vacancies/list.aspx?customer=securitas"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            detected = await can_handle(board_url, client)
+            jobs = await discover(
+                {
+                    "board_url": board_url,
+                    "metadata": detected,
+                },
+                client,
+            )
+
+        assert detected == {
+            "preset": "hr_manager",
+            "customer": "securitas",
+            "feed_url": _hr_manager_feed_url("securitas"),
+            "jobs": 2,
+        }
+        assert [job.title for job in jobs] == ["Role 145195", "Role 145198"]
+        assert jobs[0].description == "<p>Full description 145195</p>"
+        assert jobs[0].locations == ["Region Hovedstaden", "Region Sjælland"]
+        assert jobs[0].employment_type == "Fuldtid"
+        assert jobs[0].language == "da"
+        assert jobs[0].source_identity == "hr_manager:securitas:145195"
+        assert jobs[1].locations == ["Aalborg"]
+
+    async def test_detection_rejects_feed_and_board_count_mismatch(self):
+        position = {"Id": 145195, "ProjectType": "RecruitmentProject"}
+
+        def handler(request):
+            if request.url.host == "candidate.hr-manager.net":
+                return httpx.Response(200, text=_hr_manager_page([position]))
+            return httpx.Response(200, text=_hr_manager_feed([]))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle(
+                "https://candidate.hr-manager.net/vacancies/list.aspx?customer=securitas",
+                client,
+            )
+
+        assert result is None
 
 
 # ── _build_feed_url ──────────────────────────────────────────────────────

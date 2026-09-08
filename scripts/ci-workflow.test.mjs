@@ -41,6 +41,10 @@ const dispatchCompanyProductionSyncScript = readFileSync(
   ".github/scripts/dispatch-company-production-sync.sh",
   "utf8",
 );
+const ensureCompanyOgPrewarmScript = readFileSync(
+  ".github/scripts/ensure-company-og-prewarm.sh",
+  "utf8",
+);
 const classifyPrPathsScript = readFileSync(
   ".github/scripts/classify-pr-paths.sh",
   "utf8",
@@ -308,8 +312,7 @@ exit 1
 function runDispatchCompanyProductionSync({
   defaultBranch = "main",
   includeDefaultBranch = true,
-  prewarmSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  prewarmWatchStatus = 0,
+  targetRevision = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "dispatch-company-sync-"));
   const log = join(dir, "gh.log");
@@ -319,14 +322,8 @@ function runDispatchCompanyProductionSync({
     `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
-if [[ "$1 $2" == "run list" ]]; then
-  if [[ "$*" == *"--workflow prewarm-company-og-cache.yml"* ]]; then
-    printf '4242\\t%s\\n' "$MOCK_PREWARM_SHA"
-  else
-    printf '4343\\n'
-  fi
-elif [[ "$1 $2" == "run watch" ]]; then
-  exit "$MOCK_PREWARM_WATCH_STATUS"
+if [[ "$1" == "api" ]]; then
+  printf '%s\\n' "$MOCK_TARGET_REVISION"
 fi
 `,
   );
@@ -338,8 +335,7 @@ fi
     REPO: "colophon-group/jobseek",
     PR: "123",
     MOCK_GH_LOG: log,
-    MOCK_PREWARM_SHA: prewarmSha,
-    MOCK_PREWARM_WATCH_STATUS: String(prewarmWatchStatus),
+    MOCK_TARGET_REVISION: targetRevision,
   };
   if (includeDefaultBranch) env.DEFAULT_BRANCH = defaultBranch;
   const result = spawnSync(
@@ -350,6 +346,54 @@ fi
       env,
       encoding: "utf8",
     },
+  );
+  const calls = readFileSync(log, "utf8");
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, calls };
+}
+
+function runEnsureCompanyOgPrewarm({
+  defaultBranch = "main",
+  includeDefaultBranch = true,
+  targetRevision = "cccccccccccccccccccccccccccccccccccccccc",
+  prewarmWatchStatus = 0,
+} = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "ensure-company-og-"));
+  const log = join(dir, "gh.log");
+  const gh = join(dir, "gh");
+  const openssl = join(dir, "openssl");
+  writeFileSync(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
+if [[ "$1 $2" == "run list" ]]; then
+  printf '4242\\n'
+elif [[ "$1 $2" == "run watch" ]]; then
+  exit "$MOCK_PREWARM_WATCH_STATUS"
+fi
+`,
+  );
+  chmodSync(gh, 0o755);
+  writeFileSync(
+    openssl,
+    "#!/usr/bin/env bash\nprintf '%s\\n' bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n",
+  );
+  chmodSync(openssl, 0o755);
+  const env = {
+    ...process.env,
+    PATH: `${dir}:${process.env.PATH}`,
+    GH_TOKEN: "test-token",
+    REPO: "colophon-group/jobseek",
+    TARGET_REVISION: targetRevision,
+    MOCK_GH_LOG: log,
+    MOCK_PREWARM_WATCH_STATUS: String(prewarmWatchStatus),
+  };
+  if (includeDefaultBranch) env.DEFAULT_BRANCH = defaultBranch;
+  const result = spawnSync(
+    "bash",
+    [".github/scripts/ensure-company-og-prewarm.sh"],
+    { cwd: process.cwd(), env, encoding: "utf8" },
   );
   const calls = readFileSync(log, "utf8");
   rmSync(dir, { recursive: true, force: true });
@@ -410,6 +454,7 @@ if [[ "$1 $2" == "pr view" && "$*" == *"headRefName"* ]]; then
 elif [[ "$1 $2" == "pr view" && "$*" == *"labels"* ]]; then
   printf '%s\n' 'review-code'
 elif [[ "$1 $2" == "pr diff" && "$*" == *"--name-only"* ]]; then
+  printf '%s\n' 'apps/crawler/tests/lightpanda/fixtures/census.json'
   printf '%s\n' 'apps/crawler/data/boards.csv' 'apps/crawler/data/companies.csv' 'apps/crawler/data/company_descriptions.csv'
 elif [[ "$1 $2" == "pr diff" ]]; then
   printf '%s' "$MOCK_DIFF"
@@ -510,6 +555,7 @@ test("CI change detection preserves the existing non-code exclusions", () => {
     "'!.github/DISCUSSION_TEMPLATE/**'",
     "'!apps/crawler/data/**'",
     "'!apps/crawler/traces/**'",
+    "'!apps/crawler/tests/lightpanda/fixtures/census.json'",
     "'!apps/crawler/VERSION'",
   ]) {
     assert.ok(workflow.includes(pattern), `missing filter pattern ${pattern}`);
@@ -547,6 +593,21 @@ test("manual PR classification exports the validated PR base context", () => {
   assert.match(result.outputs, /^boards_csv=true$/m);
   assert.match(result.outputs, /^is_pr=true$/m);
   assert.match(result.outputs, /^base_ref=main$/m);
+});
+
+test("company census fixture remains on the data-only CI path", () => {
+  const result = runClassifyPrPaths({
+    files: [
+      "apps/crawler/data/boards.csv",
+      "apps/crawler/tests/lightpanda/fixtures/census.json",
+    ],
+    baseRef: "main",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.outputs, /^code=false$/m);
+  assert.match(result.outputs, /^crawler_code=false$/m);
+  assert.match(result.outputs, /^boards_csv=true$/m);
+  assert.match(result.outputs, /^codeql=false$/m);
 });
 
 test("runtime contract module and v1 retain full code and crawler CI", () => {
@@ -1561,7 +1622,7 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
 });
 
-test("company auto-merges prewarm before exact-revision production sync without deploying web", () => {
+test("company auto-merges dispatch exact-revision guarded sync without deploying web", () => {
   for (const source of [maybeAutoMergeWorkflow, uploadCompanyImagesWorkflow]) {
     assert.match(
       source,
@@ -1575,7 +1636,11 @@ test("company auto-merges prewarm before exact-revision production sync without 
   );
   assert.match(
     dispatchCompanyProductionSyncScript,
-    /gh workflow run prewarm-company-og-cache\.yml[\s\S]*gh run watch "\$prewarm_run_id"[\s\S]*gh workflow run sync-data\.yml[\s\S]*-f revision="\$prewarm_sha"/,
+    /target_revision=\$\(gh api[\s\S]*gh workflow run sync-data\.yml[\s\S]*-f revision="\$target_revision"/,
+  );
+  assert.doesNotMatch(
+    dispatchCompanyProductionSyncScript,
+    /prewarm-company-og-cache|run watch/,
   );
   assert.doesNotMatch(
     dispatchCompanyProductionSyncScript,
@@ -1592,28 +1657,109 @@ test("company auto-merges prewarm before exact-revision production sync without 
       ? fixture.defaultBranch
       : "main";
     const calls = result.calls.trim().split("\n");
-    assert.deepEqual(
-      [calls[0], calls[2], calls[3]],
-      [
-        `workflow run prewarm-company-og-cache.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f concurrency=4`,
-        "run watch 4242 --repo colophon-group/jobseek --exit-status",
-        `workflow run sync-data.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f revision=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`,
-      ],
+    assert.equal(
+      calls[0],
+      `api repos/colophon-group/jobseek/commits/${expectedBranch} --jq .sha`,
+    );
+    assert.equal(
+      calls[1],
+      `workflow run sync-data.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f revision=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`,
+    );
+    assert.equal(calls.length, 2);
+    assert.doesNotMatch(result.calls, /deploy-web-production\.yml/);
+  }
+});
+
+test("every CSV publication target gets a unique exact-revision OG attestation", () => {
+  for (const fixture of [
+    { defaultBranch: "main", includeDefaultBranch: false },
+    { defaultBranch: "release", includeDefaultBranch: true },
+  ]) {
+    const result = runEnsureCompanyOgPrewarm(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    const expectedBranch = fixture.includeDefaultBranch
+      ? fixture.defaultBranch
+      : "main";
+    const calls = result.calls.trim().split("\n");
+    assert.equal(
+      calls[0],
+      `workflow run prewarm-company-og-cache.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f concurrency=4 -f target_revision=cccccccccccccccccccccccccccccccccccccccc -f handoff_token=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`,
     );
     assert.match(
       calls[1],
       new RegExp(
-        `^run list --repo colophon-group/jobseek --workflow prewarm-company-og-cache\\.yml --branch ${expectedBranch} --event workflow_dispatch`,
+        `^run list --repo colophon-group/jobseek --workflow prewarm-company-og-cache\\.yml --branch ${expectedBranch} --event workflow_dispatch[\\s\\S]*Prewarm company OG c{40} b{32}`,
       ),
     );
-    assert.doesNotMatch(result.calls, /deploy-web-production\.yml/);
+    assert.equal(
+      calls[2],
+      "run watch 4242 --repo colophon-group/jobseek --exit-status",
+    );
   }
 
-  const failedPrewarm = runDispatchCompanyProductionSync({ prewarmWatchStatus: 1 });
-  assert.equal(failedPrewarm.status, 1);
-  assert.doesNotMatch(failedPrewarm.calls, /workflow run deploy-web-production\.yml/);
-  assert.doesNotMatch(failedPrewarm.calls, /workflow run sync-data\.yml/);
+  // Models failed source commit A followed by unrelated target B: B's own
+  // exact prewarm still fails closed, irrespective of the immediate diff.
+  const failedTargetB = runEnsureCompanyOgPrewarm({ prewarmWatchStatus: 1 });
+  assert.equal(failedTargetB.status, 1);
+  assert.match(failedTargetB.calls, /target_revision=c{40}/);
+});
 
+test("company OG workflow is incremental, exact-revision, and write-budgeted", () => {
+  const prewarmWorkflow = readFileSync(
+    ".github/workflows/prewarm-company-og-cache.yml",
+    "utf8",
+  );
+  assert.match(
+    prewarmWorkflow,
+    /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/,
+  );
+  assert.match(prewarmWorkflow, /fetch-depth: 0/);
+  assert.match(
+    prewarmWorkflow,
+    /git merge-base --is-ancestor "\$PREWARM_TARGET_REVISION" "\$default_tip"/,
+  );
+  assert.match(
+    prewarmWorkflow,
+    /git switch --detach "\$PREWARM_TARGET_REVISION"/,
+  );
+  assert.match(prewarmWorkflow, /max_planned_writes=1000/);
+  assert.match(prewarmWorkflow, /max_put_attempts=3000/);
+  assert.match(prewarmWorkflow, /PREWARM_CONCURRENCY > 4/);
+  assert.match(prewarmWorkflow, /full rebuilds are manual-only/);
+  assert.match(
+    prewarmWorkflow,
+    /group: prewarm-company-og-cache-production/,
+  );
+  assert.match(prewarmWorkflow, /REBUILD-COMPANY-OG/);
+  assert.doesNotMatch(prewarmWorkflow, /apps\/crawler\/data\/.*\.csv/);
+  assert.match(
+    prewarmWorkflow,
+    /run-name: Prewarm company OG[\s\S]*inputs\.handoff_token[\s\S]*PREWARM_HANDOFF_TOKEN[\s\S]*\^\[a-f0-9\]\{32\}\$/,
+  );
+  assert.match(syncDataWorkflow, /permissions:[\s\S]*actions: write/);
+  assert.match(
+    syncDataWorkflow,
+    /name: Ensure exact-revision company OG coverage[\s\S]*if: steps\.runtime_contract\.outputs\.run_sync == 'true'[\s\S]*TARGET_REVISION: \$\{\{ env\.SYNC_REVISION \}\}[\s\S]*ensure-company-og-prewarm\.sh/,
+  );
+  const syncAttestation = syncDataWorkflow.slice(
+    syncDataWorkflow.indexOf("- name: Ensure exact-revision company OG coverage"),
+    syncDataWorkflow.indexOf("- name: Build immutable CSV candidate"),
+  );
+  assert.doesNotMatch(syncAttestation, /BEFORE_REVISION|git diff|event_name/);
+  assert.match(syncDataWorkflow, /workflow_dispatch:[\s\S]*revision:/);
+  assert.match(
+    ensureCompanyOgPrewarmScript,
+    /TARGET_REVISION[\s\S]*handoff_token=\$\(openssl rand -hex 16\)[\s\S]*-f target_revision="\$TARGET_REVISION"[\s\S]*-f handoff_token="\$handoff_token"[\s\S]*gh run watch/,
+  );
+  assert.match(
+    deployCrawlerWorkflow,
+    /company-og:[\s\S]*actions: write[\s\S]*name: Ensure exact-revision company OG coverage[\s\S]*TARGET_REVISION: \$\{\{ github\.sha \}\}[\s\S]*ensure-company-og-prewarm\.sh/,
+  );
+  assert.match(
+    deployCrawlerWorkflow,
+    /deploy:\n\s+needs: \[company-og, murmur, build\]/,
+  );
+  assert.doesNotMatch(prewarmWorkflow, /--force|force=true|PREWARM_FORCE/);
 });
 
 test("bot-authored company branch updates dispatch path-aware CI", () => {
@@ -1871,6 +2017,7 @@ test("CodeQL skips full analysis for non-code pull requests", () => {
     "'!.github/DISCUSSION_TEMPLATE/**'",
     "'!apps/crawler/data/**'",
     "'!apps/crawler/traces/**'",
+    "'!apps/crawler/tests/lightpanda/fixtures/census.json'",
     "'!apps/crawler/VERSION'",
   ]) {
     assert.ok(changesJob.includes(pattern), `missing CodeQL filter pattern ${pattern}`);

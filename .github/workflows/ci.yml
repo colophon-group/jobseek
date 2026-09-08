@@ -169,12 +169,14 @@ jobs:
               - '!.github/DISCUSSION_TEMPLATE/**'
               - '!apps/crawler/data/**'
               - '!apps/crawler/traces/**'
+              - '!apps/crawler/tests/lightpanda/fixtures/census.json'
               - '!apps/crawler/VERSION'
             crawler_code:
               - 'apps/crawler/**'
               - '!**/*.md'
               - '!apps/crawler/data/**'
               - '!apps/crawler/traces/**'
+              - '!apps/crawler/tests/lightpanda/fixtures/census.json'
               - '!apps/crawler/VERSION'
             crawler_runtime_boundary:
               - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/{derive-crawler-runtime-contract.mjs,verify-crawler-release-bridge.py}}'
@@ -455,6 +457,7 @@ jobs:
           from pathlib import Path
 
           from src import sync
+          from src.cli import _resolve_ats_registry_paths
           from src.core import occupation_resolve, seniority_resolve, technology_resolve
           from src.core.enrich import company, taxonomy
 
@@ -464,6 +467,10 @@ jobs:
           assert "/app/src" not in sys.path
           assert Path.cwd() == Path("/tmp")
           assert sync.get_data_dir() == Path("/app/data")
+          assert _resolve_ats_registry_paths(None, None) == (
+              Path("/app/data/companies.csv"),
+              Path("/app/data/boards.csv"),
+          )
           sync._require_installed_sync_data_mount()
           assert sync._load_companies()["slug"].to_list() == ["ci-staged"]
           assert sync._load_boards()["board_slug"].to_list() == ["ci-staged"]

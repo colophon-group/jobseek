@@ -1773,6 +1773,69 @@ async def test_discover_rejects_invalid_item_boundary_tag(value):
 
 
 @pytest.mark.asyncio
+async def test_discover_bounds_items_with_attribute_matcher():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "item_boundary": {"tag": "p", "attr": "itemprop=headline"},
+            "steps": [
+                {"tag": "p", "attr": "itemprop=headline", "field": "title"},
+                {"tag": "p", "field": "description", "html": True, "to_end": True},
+            ],
+            "defaults": {"locations": ["United Kingdom"]},
+        },
+    }
+    html = """
+    <p>Introductory copy that is not a posting.</p>
+    <p itemprop="headline">Registered Nurse</p>
+    <p>First role description.</p>
+    <p>First role requirements.</p>
+    <p itemprop="headline">Healthcare Assistant</p>
+    <p>Second role description.</p>
+    """
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [(job.title, job.description) for job in jobs] == [
+        (
+            "Registered Nurse",
+            "<p>First role description.</p><p>First role requirements.</p>",
+        ),
+        ("Healthcare Assistant", "<p>Second role description.</p>"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_discover_rejects_conflicting_item_boundary_forms():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "item_boundary_tag": "p",
+            "item_boundary": {"attr": "itemprop=headline"},
+            "steps": [{"tag": "p", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="cannot be combined"):
+        await discover(board, _FakeClient('<p itemprop="headline">Nurse</p>'))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["", {"unknown": "value"}, {"match_regex": "("}])
+async def test_discover_rejects_invalid_item_boundary(value):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "item_boundary": value,
+            "steps": [{"tag": "p", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="item_boundary"):
+        await discover(board, _FakeClient("<p>Nurse</p>"))
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("value", ["", "(", 123, "x" * 2_049])
 async def test_discover_rejects_invalid_exclude_title_regex(value):
     board = {
