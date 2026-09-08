@@ -320,7 +320,12 @@ origin, concurrency, queue, connection, result-conservation, process-child, or
 config mismatch. Batch output has an external deadline; a dead worker task or
 lost result causes process-group termination rather than an incomplete
 observation. The fixed wrapper must `exec`, and invalid or unexpected JSON
-startup records also tear down the complete process group.
+startup records also tear down the complete process group. A runner that exits
+before its next JSON record is distinguished from a still-running protocol
+timeout. Every arm failure writes `raw/failures/<arm-token>.json` before the
+exception escapes, retaining the command, ready record, PID/exit status, full
+captured stderr, error type, and the bounded stderr tail also included in the
+raised error.
 
 An output directory is created once and contains:
 
@@ -328,6 +333,8 @@ An output directory is created once and contains:
 - `raw/fixture.jsonl`: authoritative connection/request/status/byte transcript;
 - `raw/arms.jsonl` and `raw/jobs.jsonl`: resource and per-job observations;
 - `raw/stderr/`: production retry logs, kept outside the JSON protocol;
+- `raw/failures/`: deterministic per-arm diagnostics for failed startup,
+  warmup, measurement, validation, or shutdown;
 - `preexec/`: exact corpus, corpus checksum, runner script, and Go binary used;
 - `harness-identity.json`, `source-identity.json`, `image-identity.json`,
   `commands.json`, and `environment.json`;

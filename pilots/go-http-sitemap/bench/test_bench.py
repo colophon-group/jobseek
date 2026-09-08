@@ -173,20 +173,140 @@ class SafetyTests(unittest.TestCase):
 
     def test_runner_startup_timeout_reaps_child(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            pid_file = Path(directory) / "pid"
+            root = Path(directory)
+            pid_file = root / "pid"
             script = (
                 "import os,time,pathlib; "
                 f"pathlib.Path({str(pid_file)!r}).write_text(str(os.getpid())); "
                 "time.sleep(60)"
             )
-            with self.assertRaises(RuntimeError):
+            command = [sys.executable, "-c", script]
+            with self.assertRaises(orchestrator.RunnerStartupError) as caught:
                 RunnerProcess(
-                    [sys.executable, "-c", script],
-                    cwd=Path(directory),
+                    command,
+                    cwd=root,
                     ready_timeout=0.2,
                 )
             pid = int(pid_file.read_text())
+            failure_path, _ = orchestrator._persist_arm_failure(
+                out=root,
+                arm_token="startup-timeout",
+                command=command,
+                runner=None,
+                error=caught.exception,
+            )
+            diagnostic = json.loads(failure_path.read_text())
+            self.assertEqual(diagnostic["failure_kind"], "timeout")
+            self.assertEqual(diagnostic["cause_type"], "TimeoutError")
+            self.assertIsNone(diagnostic["runner_observed_returncode"])
+            self.assertIn("process remained alive", diagnostic["cause"])
             self.assert_process_gone(pid)
+
+    def test_runner_startup_exit_is_distinct_from_timeout_and_retained(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pid_file = root / "pid"
+            marker = "STARTUP-EARLY-EXIT"
+            script = (
+                "import os,pathlib,sys; "
+                f"pathlib.Path({str(pid_file)!r}).write_text(str(os.getpid())); "
+                f"sys.stderr.write({(marker + chr(10))!r}); sys.stderr.flush(); "
+                "raise SystemExit(7)"
+            )
+            command = [sys.executable, "-c", script]
+            with self.assertRaises(orchestrator.RunnerStartupError) as caught:
+                RunnerProcess(command, cwd=root, ready_timeout=2.0)
+            pid = int(pid_file.read_text())
+            failure_path, _ = orchestrator._persist_arm_failure(
+                out=root,
+                arm_token="startup-exit",
+                command=command,
+                runner=None,
+                error=caught.exception,
+            )
+            diagnostic = json.loads(failure_path.read_text())
+            self.assertEqual(diagnostic["failure_kind"], "early_exit")
+            self.assertEqual(diagnostic["cause_type"], "RuntimeError")
+            self.assertEqual(diagnostic["runner_observed_returncode"], 7)
+            self.assertEqual(diagnostic["runner_returncode"], 7)
+            self.assertIn("exit=7", diagnostic["cause"])
+            self.assertIn(marker, diagnostic["stderr"])
+            self.assert_process_gone(pid)
+
+    def test_runner_thread_start_failure_reaps_child(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = "THREAD-START-STDERR-MARKER"
+            script = (
+                "import sys,time; "
+                f"sys.stderr.write({(marker + chr(10))!r}); sys.stderr.flush(); "
+                "time.sleep(60)"
+            )
+            command = [sys.executable, "-c", script]
+            original_start = threading.Thread.start
+            starts = 0
+
+            def fail_second_start(thread: threading.Thread) -> None:
+                nonlocal starts
+                starts += 1
+                if starts == 2:
+                    time.sleep(0.1)
+                    raise RuntimeError("synthetic thread start failure")
+                original_start(thread)
+
+            with (
+                mock.patch.object(
+                    threading.Thread,
+                    "start",
+                    autospec=True,
+                    side_effect=fail_second_start,
+                ),
+                self.assertRaises(orchestrator.RunnerStartupError) as caught,
+            ):
+                RunnerProcess(command, cwd=root)
+            self.assertEqual(starts, 2)
+            self.assertEqual(caught.exception.failure_kind, "protocol")
+            self.assertEqual(caught.exception.cause_type, "RuntimeError")
+            self.assertIn("synthetic thread start failure", caught.exception.cause)
+            self.assertIn(marker, caught.exception.stderr)
+            self.assert_process_gone(caught.exception.pid)
+
+    def test_runner_thread_construction_failure_reaps_child(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = "THREAD-CONSTRUCTION-STDERR-MARKER"
+            script = (
+                "import sys,time; "
+                f"sys.stderr.write({(marker + chr(10))!r}); sys.stderr.flush(); "
+                "time.sleep(60)"
+            )
+            command = [sys.executable, "-c", script]
+            original_thread = threading.Thread
+            constructions = 0
+
+            def fail_second_construction(*args: object, **kwargs: object) -> threading.Thread:
+                nonlocal constructions
+                constructions += 1
+                if constructions == 2:
+                    time.sleep(0.1)
+                    raise RuntimeError("synthetic thread construction failure")
+                return original_thread(*args, **kwargs)
+
+            with (
+                mock.patch.object(
+                    orchestrator.threading,
+                    "Thread",
+                    side_effect=fail_second_construction,
+                ),
+                self.assertRaises(orchestrator.RunnerStartupError) as caught,
+            ):
+                RunnerProcess(command, cwd=root)
+            self.assertEqual(constructions, 2)
+            self.assertEqual(caught.exception.failure_kind, "protocol")
+            self.assertEqual(caught.exception.cause_type, "RuntimeError")
+            self.assertIn("synthetic thread construction failure", caught.exception.cause)
+            self.assertIn(marker, caught.exception.stderr)
+            self.assert_process_gone(caught.exception.pid)
 
     def test_unexpected_or_non_mapping_ready_reaps_runner(self) -> None:
         for ready_json in ({"type": "unexpected"}, ["ready"]):
@@ -200,6 +320,40 @@ class SafetyTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     RunnerProcess([sys.executable, "-c", script], cwd=Path(directory))
                 self.assert_process_gone(int(pid_file.read_text()))
+
+    def test_invalid_ready_construction_retains_record_stderr_and_reaps_runner(self) -> None:
+        for index, ready_record in enumerate(({"type": "unexpected", "detail": 7}, ["ready"])):
+            with (
+                self.subTest(ready_record=ready_record),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                pid_file = root / "pid"
+                marker = f"INVALID-READY-DIAGNOSTIC-{index}"
+                script = (
+                    "import json,os,pathlib,sys,time; "
+                    f"pathlib.Path({str(pid_file)!r}).write_text(str(os.getpid())); "
+                    f"sys.stderr.write({(marker + chr(10))!r}); sys.stderr.flush(); "
+                    f"print(json.dumps({ready_record!r}),flush=True); time.sleep(60)"
+                )
+                command = [sys.executable, "-c", script]
+                with self.assertRaises(orchestrator.RunnerStartupError) as caught:
+                    RunnerProcess(command, cwd=root)
+                pid = int(pid_file.read_text())
+                failure_path, tail = orchestrator._persist_arm_failure(
+                    out=root,
+                    arm_token=f"invalid-ready-{index}",
+                    command=command,
+                    runner=None,
+                    error=caught.exception,
+                )
+                diagnostic = json.loads(failure_path.read_text())
+                self.assertEqual(diagnostic["ready"], ready_record)
+                self.assertEqual(diagnostic["command"], command)
+                self.assertEqual(diagnostic["runner_pid"], pid)
+                self.assertIn(marker, diagnostic["stderr"])
+                self.assertIn(marker, tail)
+                self.assert_process_gone(pid)
 
     def test_startup_failure_kills_non_exec_prefix_descendant(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -234,6 +388,44 @@ class SafetyTests(unittest.TestCase):
                 )
             )
             runner.terminate()
+
+    def test_batch_exit_retains_diagnostic_and_exposes_bounded_stderr_tail(self) -> None:
+        marker = "REAL-RUNNER-EXIT-DIAGNOSTIC"
+        script = (
+            "import json,os,sys; "
+            "print(json.dumps({'type':'ready','pid':os.getpid()}),flush=True); "
+            "sys.stdin.readline(); "
+            f"sys.stderr.write('x'*6000+'{marker}\\n'); sys.stderr.flush(); "
+            "raise SystemExit(2)"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            command = [sys.executable, "-c", script]
+            runner = RunnerProcess(command, cwd=root)
+            pid = runner.process.pid
+            with self.assertRaisesRegex(RuntimeError, "exited before emitting") as caught:
+                runner.batch({"action": "batch"}, timeout=2.0)
+            self.assertNotIsInstance(caught.exception, TimeoutError)
+            self.assertIn("exit=2", str(caught.exception))
+            self.assertIn(marker, str(caught.exception))
+            runner.terminate()
+            failure_path, tail = orchestrator._persist_arm_failure(
+                out=root,
+                arm_token="diagnostic-arm",
+                command=command,
+                runner=runner,
+                error=caught.exception,
+            )
+            self.assertEqual(failure_path, root / "raw/failures/diagnostic-arm.json")
+            diagnostic = json.loads(failure_path.read_text())
+            self.assertEqual(diagnostic["arm_token"], "diagnostic-arm")
+            self.assertEqual(diagnostic["command"], command)
+            self.assertEqual(diagnostic["ready"], {"type": "ready", "pid": pid})
+            self.assertEqual(diagnostic["runner_returncode"], 2)
+            self.assertIn(marker, diagnostic["stderr"])
+            self.assertEqual(diagnostic["stderr_tail_exposed"], tail)
+            self.assertLessEqual(len(tail), orchestrator.STDERR_TAIL_CHARACTERS + 11)
+            self.assert_process_gone(pid)
 
     def test_sampler_thread_failure_is_propagated_and_stopped(self) -> None:
         table = {os.getpid(): (os.getppid(), 1)}

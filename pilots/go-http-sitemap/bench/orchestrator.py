@@ -696,6 +696,48 @@ def _memory_event(snapshot: dict[str, Any] | None, name: str) -> int:
     raise RuntimeError(f"cgroup memory event counter is unavailable: {name}")
 
 
+STDERR_TAIL_CHARACTERS = 4096
+
+
+def _bounded_stderr_tail(stderr: str) -> str:
+    if len(stderr) <= STDERR_TAIL_CHARACTERS:
+        return stderr
+    return "<truncated>" + stderr[-STDERR_TAIL_CHARACTERS:]
+
+
+class RunnerStartupError(RuntimeError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        command: list[str],
+        pid: int,
+        returncode: int | None,
+        observed_returncode: int | None,
+        stderr: str,
+        ready: Any,
+        failure_kind: str,
+        cause_type: str,
+        cause: str,
+    ) -> None:
+        super().__init__(message)
+        self.command = command
+        self.pid = pid
+        self.returncode = returncode
+        self.observed_returncode = observed_returncode
+        self.stderr = stderr
+        self.ready = ready
+        self.failure_kind = failure_kind
+        self.cause_type = cause_type
+        self.cause = cause
+
+
+class RunnerProtocolError(RuntimeError):
+    def __init__(self, message: str, *, parsed_record: Any) -> None:
+        super().__init__(message)
+        self.parsed_record = parsed_record
+
+
 class RunnerProcess:
     def __init__(self, command: list[str], *, cwd: Path, ready_timeout: float = 30.0) -> None:
         self.command = command
@@ -713,20 +755,45 @@ class RunnerProcess:
             bufsize=1,
             start_new_session=True,
         )
-        assert self.process.stdout is not None and self.process.stderr is not None
-        self.stdout_thread = threading.Thread(target=self._read_stdout, daemon=True)
-        self.stderr_thread = threading.Thread(target=self._read_stderr, daemon=True)
-        self.stdout_thread.start()
-        self.stderr_thread.start()
+        self.stdout_thread: threading.Thread | None = None
+        self.stderr_thread: threading.Thread | None = None
         try:
+            assert self.process.stdout is not None and self.process.stderr is not None
+            self.stdout_thread = threading.Thread(target=self._read_stdout, daemon=True)
+            self.stderr_thread = threading.Thread(target=self._read_stderr, daemon=True)
+            self.stdout_thread.start()
+            self.stderr_thread.start()
             self.ready = self._read_json(ready_timeout)
             if self.ready.get("type") != "ready":
                 raise RuntimeError(f"runner did not emit ready record: {self.ready}")
         except Exception as exc:
+            observed_returncode = self.process.poll()
+            failure_kind = (
+                "timeout"
+                if isinstance(exc, TimeoutError)
+                else "early_exit"
+                if observed_returncode is not None
+                else "protocol"
+            )
+            cause_type = type(exc).__name__
+            cause = _bounded_stderr_tail(str(exc))
             self.terminate()
-            raise RuntimeError(
-                f"runner startup failed: exit={self.process.returncode} "
-                f"stderr={''.join(self.stderr)!r}"
+            stderr = self.stderr_text()
+            ready = getattr(self, "ready", getattr(exc, "parsed_record", None))
+            raise RunnerStartupError(
+                "runner startup failed: "
+                f"kind={failure_kind} observed_exit={observed_returncode} "
+                f"cleanup_exit={self.process.returncode} cause={cause_type}: {cause}; "
+                f"stderr_tail={_bounded_stderr_tail(stderr)!r}",
+                command=command,
+                pid=self.process.pid,
+                returncode=self.process.returncode,
+                observed_returncode=observed_returncode,
+                stderr=stderr,
+                ready=ready,
+                failure_kind=failure_kind,
+                cause_type=cause_type,
+                cause=cause,
             ) from exc
         self.startup_ns = time.monotonic_ns() - started
 
@@ -740,11 +807,39 @@ class RunnerProcess:
         for line in self.process.stderr:
             self.stderr.append(line)
 
+    def stderr_text(self) -> str:
+        if (
+            self.process.poll() is not None
+            and self.stderr_thread is not None
+            and self.stderr_thread.ident is not None
+        ):
+            self.stderr_thread.join(timeout=0.5)
+        return "".join(self.stderr)
+
     def _close_pipes(self) -> None:
         for handle in (self.process.stdin, self.process.stdout, self.process.stderr):
             if handle is not None and not handle.closed:
                 with contextlib.suppress(BrokenPipeError, OSError):
                     handle.close()
+
+    def _drain_unstarted_stderr(self) -> None:
+        if self.stderr_thread is not None and self.stderr_thread.ident is not None:
+            return
+        if self.process.stderr is not None and not self.process.stderr.closed:
+            descriptor = self.process.stderr.fileno()
+            chunks: list[bytes] = []
+            with contextlib.suppress(OSError):
+                was_blocking = os.get_blocking(descriptor)
+                os.set_blocking(descriptor, False)
+                try:
+                    while chunk := os.read(descriptor, 65_536):
+                        chunks.append(chunk)
+                except BlockingIOError:
+                    pass
+                finally:
+                    os.set_blocking(descriptor, was_blocking)
+            if chunks:
+                self.stderr.append(b"".join(chunks).decode(errors="replace"))
 
     def _read_json(self, timeout: float) -> dict[str, Any]:
         deadline = time.monotonic() + timeout
@@ -753,16 +848,26 @@ class RunnerProcess:
                 line = self.lines.get(timeout=min(0.1, max(0.0, deadline - time.monotonic())))
                 break
             except queue.Empty as exc:
-                if self.process.poll() is not None or time.monotonic() >= deadline:
+                returncode = self.process.poll()
+                if returncode is not None:
+                    raise RuntimeError(
+                        "runner exited before emitting the expected JSON record: "
+                        f"exit={returncode} "
+                        f"stderr_tail={_bounded_stderr_tail(self.stderr_text())!r}"
+                    ) from exc
+                if time.monotonic() >= deadline:
                     raise TimeoutError(
-                        f"runner output timed out; exit={self.process.poll()}"
+                        "runner output timed out while process remained alive: "
+                        f"stderr_tail={_bounded_stderr_tail(self.stderr_text())!r}"
                     ) from exc
         try:
             value = json.loads(line)
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"runner emitted non-JSON stdout: {line!r}") from exc
         if not isinstance(value, dict):
-            raise RuntimeError(f"runner emitted a non-mapping JSON record: {value!r}")
+            raise RunnerProtocolError(
+                f"runner emitted a non-mapping JSON record: {value!r}", parsed_record=value
+            )
         return value
 
     def batch(
@@ -783,15 +888,20 @@ class RunnerProcess:
 
     def close(self) -> dict[str, Any]:
         if self.process.poll() is not None:
-            raise RuntimeError(f"runner exited early with {self.process.returncode}")
+            raise RuntimeError(
+                f"runner exited early with {self.process.returncode}: "
+                f"stderr_tail={_bounded_stderr_tail(self.stderr_text())!r}"
+            )
         assert self.process.stdin is not None
         self.process.stdin.write('{"action":"shutdown"}\n')
         self.process.stdin.flush()
         stopped = self._read_json(40.0)
         self.process.stdin.close()
         returncode = self.process.wait(timeout=10.0)
-        self.stdout_thread.join(timeout=2.0)
-        self.stderr_thread.join(timeout=2.0)
+        if self.stdout_thread is not None and self.stdout_thread.ident is not None:
+            self.stdout_thread.join(timeout=2.0)
+        if self.stderr_thread is not None and self.stderr_thread.ident is not None:
+            self.stderr_thread.join(timeout=2.0)
         self._close_pipes()
         if stopped.get("type") != "stopped" or returncode != 0:
             raise RuntimeError(f"runner shutdown failed: stopped={stopped} exit={returncode}")
@@ -818,9 +928,58 @@ class RunnerProcess:
             # group remains ours and must not survive a failed benchmark arm.
             with contextlib.suppress(PermissionError, ProcessLookupError):
                 os.killpg(self.process.pid, signal.SIGKILL)
-        self.stdout_thread.join(timeout=2.0)
-        self.stderr_thread.join(timeout=2.0)
+        self._drain_unstarted_stderr()
+        if self.stdout_thread is not None and self.stdout_thread.ident is not None:
+            self.stdout_thread.join(timeout=2.0)
+        if self.stderr_thread is not None and self.stderr_thread.ident is not None:
+            self.stderr_thread.join(timeout=2.0)
         self._close_pipes()
+
+
+def _persist_arm_failure(
+    *,
+    out: Path,
+    arm_token: str,
+    command: list[str],
+    runner: RunnerProcess | None,
+    error: BaseException,
+) -> tuple[Path, str]:
+    if runner is not None:
+        stderr = runner.stderr_text()
+        ready = getattr(runner, "ready", None)
+        pid = runner.process.pid
+        returncode = runner.process.poll()
+    else:
+        stderr = str(getattr(error, "stderr", ""))
+        ready = getattr(error, "ready", None)
+        pid = getattr(error, "pid", None)
+        returncode = getattr(error, "returncode", None)
+    tail = _bounded_stderr_tail(stderr)
+    failure_kind = getattr(
+        error,
+        "failure_kind",
+        "timeout" if isinstance(error, TimeoutError) else "arm_error",
+    )
+    record = {
+        "arm_token": arm_token,
+        "command": command,
+        "ready": ready,
+        "runner_pid": pid,
+        "runner_returncode": returncode,
+        "runner_observed_returncode": getattr(error, "observed_returncode", None),
+        "stderr": stderr,
+        "stderr_tail_exposed": tail,
+        "failure_kind": failure_kind,
+        "error_type": type(error).__name__,
+        "error": str(error),
+        "cause_type": getattr(error, "cause_type", type(error).__name__),
+        "cause": getattr(error, "cause", _bounded_stderr_tail(str(error))),
+    }
+    directory = out / "raw" / "failures"
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{arm_token}.json"
+    path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path, tail
 
 
 def _scenario_schedule(corpus: dict[str, Any], suite: str) -> list[dict[str, Any]]:
@@ -1835,7 +1994,7 @@ def main() -> int:
         # checked container configuration.
         raise RuntimeError("evidence output must be beneath /evidence")
     out.mkdir(parents=True, exist_ok=False)
-    for relative in ("raw", "raw/stderr", "manifests", "preexec"):
+    for relative in ("raw", "raw/stderr", "raw/failures", "manifests", "preexec"):
         (out / relative).mkdir(parents=True, exist_ok=True)
     _write_status(out, "running")
 
@@ -2026,9 +2185,30 @@ def main() -> int:
                     "environment_keys": sorted(_safe_child_environment()),
                 }
             )
-            fleet.state.activate_arm(arm_token)
-            runner = RunnerProcess(command, cwd=out / "preexec")
+            runner: RunnerProcess | None = None
+
+            def fail_arm(exc: BaseException) -> None:
+                if runner is not None:
+                    with contextlib.suppress(Exception):
+                        runner.terminate()
+                failure_path, stderr_tail = _persist_arm_failure(
+                    out=out,
+                    arm_token=arm_token,
+                    command=command,
+                    runner=runner,
+                    error=exc,
+                )
+                with contextlib.suppress(RuntimeError):
+                    fleet.state.deactivate_arm(arm_token)
+                raise RuntimeError(
+                    f"benchmark arm {arm_token} failed; "
+                    f"diagnostic={failure_path.relative_to(out)}; "
+                    f"cause={type(exc).__name__}: {exc}; stderr_tail={stderr_tail!r}"
+                ) from exc
+
             try:
+                fleet.state.activate_arm(arm_token)
+                runner = RunnerProcess(command, cwd=out / "preexec")
                 _validate_ready(
                     runner.ready,
                     workers=workers,
@@ -2215,69 +2395,69 @@ def main() -> int:
                     if args.evidence
                     else None
                 )
-            except Exception:
-                runner.terminate()
-                with contextlib.suppress(RuntimeError):
-                    fleet.state.deactivate_arm(arm_token)
-                raise
+            except Exception as exc:
+                fail_arm(exc)
 
-            fleet.state.deactivate_arm(arm_token)
+            try:
+                fleet.state.deactivate_arm(arm_token)
 
-            stderr_path = out / "raw" / "stderr" / f"{arm_token}.log"
-            stderr_path.write_text(shutdown["stderr"])
-            arm = {
-                "arm_token": arm_token,
-                "implementation": implementation,
-                "level": level,
-                "suite": suite,
-                "repetition": repetition,
-                "workers": workers,
-                "capacity": capacity,
-                "order_sequence": len(arms) + 1,
-                "startup_ns": runner.startup_ns,
-                "ready": runner.ready,
-                "cgroup_before": cgroup,
-                "cgroup_after": cgroup_after,
-                "cgroup_post_shutdown": cgroup_post_shutdown,
-                "network_namespace": runner_network,
-                "source_identity": source_identity,
-                "image_identity": image_identity,
-                "warmup": {
-                    "manifest_sha256": warmup_digest,
-                    "result": warmup_result,
-                    "enriched_jobs": warmup_enriched,
-                    "samples": warmup_samples,
-                },
-                "manifest_sha256": manifest_digest,
-                "result": result,
-                "enriched_jobs": enriched,
-                "samples": samples,
-                "connections": connections,
-                "crashes": 0,
-                "ooms": ooms,
-                "shutdown_returncode": shutdown["returncode"],
-                "stderr_file": str(stderr_path.relative_to(out)),
-            }
-            arm["metrics"] = arm_metrics(arm)
-            with (out / "raw" / "arms.jsonl").open("a") as handle:
-                handle.write(json.dumps(arm, sort_keys=True) + "\n")
-            with (out / "raw" / "jobs.jsonl").open("a") as handle:
-                for job in enriched:
-                    handle.write(
-                        json.dumps(
-                            {
-                                "arm_token": arm_token,
-                                "level": level,
-                                "suite": suite,
-                                "repetition": repetition,
-                                **job,
-                            },
-                            sort_keys=True,
+                stderr_path = out / "raw" / "stderr" / f"{arm_token}.log"
+                stderr_path.write_text(shutdown["stderr"])
+                arm = {
+                    "arm_token": arm_token,
+                    "implementation": implementation,
+                    "level": level,
+                    "suite": suite,
+                    "repetition": repetition,
+                    "workers": workers,
+                    "capacity": capacity,
+                    "order_sequence": len(arms) + 1,
+                    "startup_ns": runner.startup_ns,
+                    "ready": runner.ready,
+                    "cgroup_before": cgroup,
+                    "cgroup_after": cgroup_after,
+                    "cgroup_post_shutdown": cgroup_post_shutdown,
+                    "network_namespace": runner_network,
+                    "source_identity": source_identity,
+                    "image_identity": image_identity,
+                    "warmup": {
+                        "manifest_sha256": warmup_digest,
+                        "result": warmup_result,
+                        "enriched_jobs": warmup_enriched,
+                        "samples": warmup_samples,
+                    },
+                    "manifest_sha256": manifest_digest,
+                    "result": result,
+                    "enriched_jobs": enriched,
+                    "samples": samples,
+                    "connections": connections,
+                    "crashes": 0,
+                    "ooms": ooms,
+                    "shutdown_returncode": shutdown["returncode"],
+                    "stderr_file": str(stderr_path.relative_to(out)),
+                }
+                arm["metrics"] = arm_metrics(arm)
+                with (out / "raw" / "arms.jsonl").open("a") as handle:
+                    handle.write(json.dumps(arm, sort_keys=True) + "\n")
+                with (out / "raw" / "jobs.jsonl").open("a") as handle:
+                    for job in enriched:
+                        handle.write(
+                            json.dumps(
+                                {
+                                    "arm_token": arm_token,
+                                    "level": level,
+                                    "suite": suite,
+                                    "repetition": repetition,
+                                    **job,
+                                },
+                                sort_keys=True,
+                            )
+                            + "\n"
                         )
-                        + "\n"
-                    )
-            arms.append(arm)
-            return arm
+                arms.append(arm)
+                return arm
+            except Exception as exc:
+                fail_arm(exc)
 
         for level_index, entry in enumerate(ladder):
             level = str(entry["name"])
