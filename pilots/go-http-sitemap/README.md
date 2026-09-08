@@ -29,9 +29,11 @@ most, with context-aware deterministic waits of 500 ms and then 1 s. Children ar
 single-attempt. Cancellation and config, body, aggregate, request-cap, 404/410,
 other 4xx, and nonempty malformed XML failures are never retried.
 
-Each sitemap invocation owns an HTTP/1 connection pool, so explicit root
-retries and child fetches can reuse a connection without leaking idle state to
-another invocation. Every admitted GET carries a zero-byte, non-replayable
+By default, each sitemap invocation owns an HTTP/1 connection pool, so explicit
+root retries and child fetches can reuse a connection without leaking idle
+state to another invocation. The concurrent-worker pilot can opt into one
+explicitly bounded process-owned transport while retaining task-local sessions,
+budgets, and counters. Every admitted GET carries a zero-byte, non-replayable
 body. It is bodyless on the wire, but prevents Go's HTTP/1 transport from
 transparently replaying an idempotent GET on a stale pooled connection. The
 request cap therefore bounds explicit transport attempts; `WireAttempts`
@@ -40,6 +42,11 @@ admitted `Requests`. A hermetic connection-aware fixture proves recovery when
 an origin returns 500 for the first request on a connection and 200 for the
 second. HTTP/2 remains excluded because it has a separate transparent retry
 path.
+
+The `worker` package adds a non-production, fixed-goroutine scheduler with
+bounded admission/results, origin-fair dispatch, task deadlines, panic
+containment, and bounded shutdown cancellation. Its fixed-resource comparison
+method is frozen in [WORKER-BENCHMARK.md](WORKER-BENCHMARK.md).
 
 This directory has no production wiring and does not import crawler contracts,
 Redis, Postgres, browser code, or publisher code.
@@ -53,7 +60,7 @@ go test -race ./...
 go vet ./...
 ```
 
-Not implemented and therefore production-blocking: Python parity corpus,
+Not implemented and therefore production-blocking: Python fleet parity corpus,
 child-request retries, auto-discovery/rediscovery,
 nested indexes/cycle handling, TDM reservation, proxy and skip-TLS inputs,
 Python-regex-compatible filters/transforms, transcript capture, benchmark/CPU/
@@ -63,8 +70,9 @@ entries without a usable `loc` are ignored and can yield an empty success,
 matching the inherited Python extraction behavior. No migration ROI or
 production-readiness conclusion can be drawn from this candidate.
 
-Sessions are single-goroutine. For parity with the Python monitor, the URL cap
-is applied before duplicate removal and configured filtering; that inherited
-ordering can omit otherwise qualifying URLs and must be revisited before
-production admission. Dedicated path-aware Linux CI is required for every
-change to this module; local checks alone cannot authorize merge.
+Sessions remain single-goroutine and are never shared between tasks; only the
+underlying transport may be shared. For parity with the Python monitor, the URL
+cap is applied before duplicate removal and configured filtering; that
+inherited ordering can omit otherwise qualifying URLs and must be revisited
+before production admission. Dedicated path-aware Linux CI is required for
+every change to this module; local checks alone cannot authorize merge.

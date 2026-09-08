@@ -11,7 +11,9 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -46,6 +48,17 @@ func errorKind(t *testing.T, err error) ErrorKind {
 	return boundedErr.Kind
 }
 
+func waitForCondition(t *testing.T, condition func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for !condition() {
+		if time.Now().After(deadline) {
+			t.Fatal("condition was not met")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func TestNewRejectsUnboundedConfig(t *testing.T) {
 	if _, err := New(Config{}); errorKind(t, err) != ErrorConfig {
 		t.Fatal("expected config error")
@@ -58,6 +71,23 @@ func TestNewRejectsUnboundedConfig(t *testing.T) {
 		mutate(&config)
 		if _, err := New(config); errorKind(t, err) != ErrorConfig {
 			t.Fatal("expected sentinel-overflow config error")
+		}
+	}
+	for _, shared := range []*SharedTransportConfig{
+		{},
+		{MaxIdleConns: 2, MaxIdleConnsPerHost: 3, MaxConnsPerHost: 3, MaxConnections: 3, MaxConcurrentRequests: 3, IdleConnTimeout: time.Second},
+		{MaxIdleConns: 3, MaxIdleConnsPerHost: 3, MaxConnsPerHost: 2, MaxConnections: 3, MaxConcurrentRequests: 3, IdleConnTimeout: time.Second},
+		{MaxIdleConns: 4, MaxIdleConnsPerHost: 2, MaxConnsPerHost: 2, MaxConnections: 3, MaxConcurrentRequests: 3, IdleConnTimeout: time.Second},
+	} {
+		config := Config{
+			RequestTimeout:           time.Second,
+			MaxDecodedBodyBytes:      1,
+			MaxRequests:              1,
+			MaxAggregateDecodedBytes: 1,
+			SharedTransport:          shared,
+		}
+		if _, err := New(config); errorKind(t, err) != ErrorConfig {
+			t.Fatal("expected shared-transport config error")
 		}
 	}
 }
@@ -328,6 +358,667 @@ func TestConnectionPoolIsScopedToSession(t *testing.T) {
 	}
 	if connections.Load() != 2 {
 		t.Fatalf("connections=%d", connections.Load())
+	}
+}
+
+func TestSharedTransportReusesConnectionsAcrossSessionsUntilClientClose(t *testing.T) {
+	var connections atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}))
+	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			connections.Add(1)
+		}
+	}
+	server.Start()
+	defer server.Close()
+
+	shared := &SharedTransportConfig{
+		MaxIdleConns:          4,
+		MaxIdleConnsPerHost:   2,
+		MaxConnsPerHost:       2,
+		MaxConnections:        4,
+		MaxConcurrentRequests: 2,
+		IdleConnTimeout:       time.Minute,
+	}
+	client := testClient(t, func(config *Config) { config.SharedTransport = shared })
+	if client.transport.MaxIdleConns != shared.MaxIdleConns || client.transport.MaxIdleConnsPerHost != shared.MaxIdleConnsPerHost || client.transport.MaxConnsPerHost != shared.MaxConnsPerHost || client.transport.IdleConnTimeout != shared.IdleConnTimeout {
+		t.Fatalf("shared transport bounds were not applied: %#v", client.transport)
+	}
+	if cap(client.requestPermits) != shared.MaxConcurrentRequests {
+		t.Fatalf("global request permits=%d", cap(client.requestPermits))
+	}
+	if cap(client.connections.permits) != shared.MaxConnections {
+		t.Fatalf("global connection permits=%d", cap(client.connections.permits))
+	}
+	for range 2 {
+		session := client.NewSession()
+		if _, err := session.Get(context.Background(), server.URL, nil); err != nil {
+			t.Fatal(err)
+		}
+		// Session.Close must not close a Client-owned shared pool.
+		session.Close()
+	}
+	if connections.Load() != 1 {
+		t.Fatalf("connections before client close=%d", connections.Load())
+	}
+
+	client.Close()
+	session := client.NewSession()
+	defer session.Close()
+	if _, err := session.Get(context.Background(), server.URL, nil); err != nil {
+		t.Fatal(err)
+	}
+	if connections.Load() != 2 {
+		t.Fatalf("connections after client close=%d", connections.Load())
+	}
+}
+
+func TestSharedTransportKeepsConcurrentSessionStatsIsolated(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bodyBytes := int(r.URL.Path[1] - 'a' + 1)
+		_, _ = w.Write([]byte(strings.Repeat("x", bodyBytes)))
+	}))
+	defer server.Close()
+
+	const sessionCount = 20
+	client := testClient(t, func(config *Config) {
+		config.SharedTransport = &SharedTransportConfig{
+			MaxIdleConns:          sessionCount,
+			MaxIdleConnsPerHost:   sessionCount,
+			MaxConnsPerHost:       sessionCount,
+			MaxConnections:        sessionCount,
+			MaxConcurrentRequests: sessionCount,
+			IdleConnTimeout:       time.Minute,
+		}
+		config.MaxDecodedBodyBytes = sessionCount
+		config.MaxAggregateDecodedBytes = sessionCount
+		config.MaxRequests = 1
+	})
+	defer client.Close()
+
+	sessions := make([]*Session, sessionCount)
+	errs := make(chan error, sessionCount)
+	var wg sync.WaitGroup
+	for index := range sessionCount {
+		sessions[index] = client.NewSession()
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			_, err := sessions[index].Get(context.Background(), fmt.Sprintf("%s/%c", server.URL, 'a'+index), nil)
+			errs <- err
+		}(index)
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for index, session := range sessions {
+		stats := session.Stats()
+		if stats.Requests != 1 || stats.WireAttempts != 1 || stats.DecodedBytes != int64(index+1) || stats.StatusBodyBytes != 0 {
+			t.Fatalf("session %d stats=%+v", index, stats)
+		}
+		session.Close()
+	}
+}
+
+func TestSharedTransportCapsActiveRequestsAcrossOrigins(t *testing.T) {
+	var active atomic.Int32
+	var maxActive atomic.Int32
+	started := make(chan struct{}, 6)
+	release := make(chan struct{})
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		current := active.Add(1)
+		for observed := maxActive.Load(); current > observed; observed = maxActive.Load() {
+			if maxActive.CompareAndSwap(observed, current) {
+				break
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+		started <- struct{}{}
+		<-release
+		active.Add(-1)
+		_, _ = w.Write([]byte("ok"))
+	})
+	first := httptest.NewServer(handler)
+	defer first.Close()
+	second := httptest.NewServer(handler)
+	defer second.Close()
+
+	client := testClient(t, func(config *Config) {
+		config.SharedTransport = &SharedTransportConfig{
+			MaxIdleConns:          8,
+			MaxIdleConnsPerHost:   4,
+			MaxConnsPerHost:       4,
+			MaxConnections:        8,
+			MaxConcurrentRequests: 2,
+			IdleConnTimeout:       time.Minute,
+		}
+	})
+	defer client.Close()
+
+	errCh := make(chan error, 6)
+	for index := range 6 {
+		endpoint := first.URL
+		if index%2 == 1 {
+			endpoint = second.URL
+		}
+		go func() {
+			session := client.NewSession()
+			defer session.Close()
+			_, err := session.Get(context.Background(), endpoint, nil)
+			errCh <- err
+		}()
+	}
+	for range 2 {
+		select {
+		case <-started:
+		case <-time.After(time.Second):
+			t.Fatal("two requests did not start")
+		}
+	}
+	time.Sleep(20 * time.Millisecond)
+	if got := maxActive.Load(); got != 2 {
+		t.Fatalf("max active requests=%d", got)
+	}
+	if got := len(started); got != 0 {
+		t.Fatalf("additional requests crossed the global permit: %d", got)
+	}
+	close(release)
+	for range 6 {
+		if err := <-errCh; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := maxActive.Load(); got != 2 {
+		t.Fatalf("final max active requests=%d", got)
+	}
+}
+
+func TestSharedTransportPermitWaitIsContextAwareAndDoesNotConsumeRequestCap(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		close(started)
+		<-release
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	client := testClient(t, func(config *Config) {
+		config.SharedTransport = &SharedTransportConfig{
+			MaxIdleConns:          2,
+			MaxIdleConnsPerHost:   2,
+			MaxConnsPerHost:       2,
+			MaxConnections:        2,
+			MaxConcurrentRequests: 1,
+			IdleConnTimeout:       time.Minute,
+		}
+	})
+	defer client.Close()
+
+	first := client.NewSession()
+	firstDone := make(chan error, 1)
+	go func() {
+		_, err := first.Get(context.Background(), server.URL, nil)
+		firstDone <- err
+	}()
+	<-started
+
+	canceled := client.NewSession()
+	canceledContext, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := canceled.Get(canceledContext, server.URL, nil); errorKind(t, err) != ErrorCanceled {
+		t.Fatalf("canceled wait error=%v", err)
+	}
+	if stats := canceled.Stats(); stats.Requests != 0 || stats.WireAttempts != 0 {
+		t.Fatalf("canceled stats=%+v", stats)
+	}
+
+	timedOut := client.NewSession()
+	deadlineContext, deadlineCancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer deadlineCancel()
+	if _, err := timedOut.Get(deadlineContext, server.URL, nil); errorKind(t, err) != ErrorTimeout {
+		t.Fatalf("deadline wait error=%v", err)
+	}
+	if stats := timedOut.Stats(); stats.Requests != 0 || stats.WireAttempts != 0 {
+		t.Fatalf("deadline stats=%+v", stats)
+	}
+
+	close(release)
+	if err := <-firstDone; err != nil {
+		t.Fatal(err)
+	}
+	first.Close()
+}
+
+func TestSharedTransportRejectsDoneContextBeforeAvailableRequestPermit(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	client := testClient(t, func(config *Config) {
+		config.SharedTransport = &SharedTransportConfig{
+			MaxIdleConns:          1,
+			MaxIdleConnsPerHost:   1,
+			MaxConnsPerHost:       1,
+			MaxConnections:        1,
+			MaxConcurrentRequests: 1,
+			IdleConnTimeout:       time.Minute,
+		}
+	})
+	defer client.Close()
+
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	expired, expiredCancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer expiredCancel()
+	for name, testCase := range map[string]struct {
+		ctx  context.Context
+		kind ErrorKind
+	}{
+		"canceled": {ctx: canceled, kind: ErrorCanceled},
+		"deadline": {ctx: expired, kind: ErrorTimeout},
+	} {
+		t.Run(name, func(t *testing.T) {
+			session := client.NewSession()
+			if _, err := session.Get(testCase.ctx, server.URL, nil); errorKind(t, err) != testCase.kind {
+				t.Fatalf("error=%v", err)
+			}
+			if stats := session.Stats(); stats.Requests != 0 || stats.WireAttempts != 0 {
+				t.Fatalf("stats=%+v", stats)
+			}
+		})
+	}
+	if requests.Load() != 0 || len(client.requestPermits) != 0 || len(client.connections.permits) != 0 {
+		t.Fatalf("requests=%d request_permits=%d connection_permits=%d", requests.Load(), len(client.requestPermits), len(client.connections.permits))
+	}
+}
+
+func TestSharedTransportGloballyCapsActiveAndIdleConnectionsAcrossOrigins(t *testing.T) {
+	servers := make([]*httptest.Server, 4)
+	for index := range servers {
+		servers[index] = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte("ok"))
+		}))
+		defer servers[index].Close()
+	}
+
+	client := testClient(t, func(config *Config) {
+		config.SharedTransport = &SharedTransportConfig{
+			MaxIdleConns:          2,
+			MaxIdleConnsPerHost:   1,
+			MaxConnsPerHost:       1,
+			MaxConnections:        2,
+			MaxConcurrentRequests: 2,
+			// Progress below must come from explicit saturated-pool eviction,
+			// not the configured idle timeout.
+			IdleConnTimeout: time.Hour,
+		}
+	})
+	defer client.Close()
+
+	for index := range 2 {
+		session := client.NewSession()
+		if _, err := session.Get(context.Background(), servers[index].URL, nil); err != nil {
+			t.Fatal(err)
+		}
+		session.Close()
+	}
+	if open, permits := client.connections.open.Load(), len(client.connections.permits); open != 2 || permits != 2 {
+		t.Fatalf("old-origin idle pool: open=%d permits=%d", open, permits)
+	}
+
+	done := make(chan error, 2)
+	for index := 2; index < 4; index++ {
+		endpoint := servers[index].URL
+		go func() {
+			session := client.NewSession()
+			defer session.Close()
+			_, err := session.Get(context.Background(), endpoint, nil)
+			done <- err
+		}()
+	}
+	for range 2 {
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("new-origin wave did not progress after old idle eviction")
+		}
+	}
+	if maximum := client.connections.maxOpen.Load(); maximum > 2 {
+		t.Fatalf("maximum open connections=%d", maximum)
+	}
+	if permits := len(client.connections.permits); permits > 2 {
+		t.Fatalf("connection permits=%d", permits)
+	}
+
+	client.Close()
+	waitForCondition(t, func() bool {
+		return client.connections.open.Load() == 0 && len(client.connections.permits) == 0
+	})
+}
+
+func TestSharedConnectionWaiterEvictsSocketsThatBecomeIdleLater(t *testing.T) {
+	oldStarted := make(chan struct{}, 1)
+	releaseOld := make(chan struct{})
+	oldOrigin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		oldStarted <- struct{}{}
+		<-releaseOld
+		_, _ = w.Write([]byte("old"))
+	}))
+	defer oldOrigin.Close()
+	newOrigin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("new"))
+	}))
+	defer newOrigin.Close()
+
+	client := testClient(t, func(config *Config) {
+		config.SharedTransport = &SharedTransportConfig{
+			MaxIdleConns:          1,
+			MaxIdleConnsPerHost:   1,
+			MaxConnsPerHost:       1,
+			MaxConnections:        1,
+			MaxConcurrentRequests: 2,
+			IdleConnTimeout:       time.Hour,
+		}
+	})
+	defer client.Close()
+
+	oldDone := make(chan error, 1)
+	go func() {
+		_, err := client.NewSession().Get(context.Background(), oldOrigin.URL, nil)
+		oldDone <- err
+	}()
+	<-oldStarted
+	newDone := make(chan error, 1)
+	go func() {
+		_, err := client.NewSession().Get(context.Background(), newOrigin.URL, nil)
+		newDone <- err
+	}()
+	waitForCondition(t, func() bool { return client.connections.waiters.Load() == 1 })
+	close(releaseOld)
+	if err := <-oldDone; err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-newDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("connection waiter did not progress when active socket became idle")
+	}
+	if maximum := client.connections.maxOpen.Load(); maximum > 1 {
+		t.Fatalf("maximum open connections=%d", maximum)
+	}
+}
+
+func TestSharedConnectionPermitIsReleasedOnDialAndTLSFailure(t *testing.T) {
+	client := testClient(t, func(config *Config) {
+		config.SharedTransport = &SharedTransportConfig{
+			MaxIdleConns:          1,
+			MaxIdleConnsPerHost:   1,
+			MaxConnsPerHost:       1,
+			MaxConnections:        1,
+			MaxConcurrentRequests: 1,
+			IdleConnTimeout:       time.Minute,
+		}
+	})
+	defer client.Close()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unreachableURL := "http://" + listener.Addr().String()
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.NewSession().Get(context.Background(), unreachableURL, nil); errorKind(t, err) != ErrorTransport {
+		t.Fatalf("dial error=%v", err)
+	}
+	waitForCondition(t, func() bool { return len(client.connections.permits) == 0 })
+
+	tlsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("unexpected"))
+	}))
+	defer tlsServer.Close()
+	if _, err := client.NewSession().Get(context.Background(), tlsServer.URL, nil); errorKind(t, err) != ErrorTransport {
+		t.Fatalf("TLS error=%v", err)
+	}
+	waitForCondition(t, func() bool {
+		return client.connections.open.Load() == 0 && len(client.connections.permits) == 0
+	})
+}
+
+func TestConnectionLimiterReleasesPermitWhenDialIsCanceled(t *testing.T) {
+	limiter := &connectionLimiter{
+		permits:   make(chan struct{}, 1),
+		closeIdle: func() {},
+	}
+	dialStarted := make(chan struct{})
+	dial := limiter.wrapDialContext(func(ctx context.Context, _, _ string) (net.Conn, error) {
+		close(dialStarted)
+		<-ctx.Done()
+		return nil, ctx.Err()
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := dial(ctx, "tcp", "example.test:80")
+		done <- err
+	}()
+	<-dialStarted
+	if len(limiter.permits) != 1 {
+		t.Fatalf("permits during dial=%d", len(limiter.permits))
+	}
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("dial error=%v", err)
+	}
+	if len(limiter.permits) != 0 || limiter.open.Load() != 0 {
+		t.Fatalf("permits=%d open=%d", len(limiter.permits), limiter.open.Load())
+	}
+}
+
+func TestConnectionLimiterReleasesSuccessfulConnectionExactlyOnce(t *testing.T) {
+	limiter := &connectionLimiter{
+		permits:   make(chan struct{}, 1),
+		closeIdle: func() {},
+	}
+	clientConn, serverConn := net.Pipe()
+	defer serverConn.Close()
+	dial := limiter.wrapDialContext(func(context.Context, string, string) (net.Conn, error) {
+		return clientConn, nil
+	})
+	conn, err := dial(context.Background(), "tcp", "example.test:80")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(limiter.permits) != 1 || limiter.open.Load() != 1 || limiter.maxOpen.Load() != 1 {
+		t.Fatalf("after dial: permits=%d open=%d max=%d", len(limiter.permits), limiter.open.Load(), limiter.maxOpen.Load())
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.Close()
+	if len(limiter.permits) != 0 || limiter.open.Load() != 0 {
+		t.Fatalf("after repeated close: permits=%d open=%d", len(limiter.permits), limiter.open.Load())
+	}
+}
+
+func TestSharedHostAdmissionPreventsSameOriginTransportHandoffStarvation(t *testing.T) {
+	firstAStarted := make(chan struct{})
+	releaseFirstA := make(chan struct{})
+	requestOrder := make(chan string, 3)
+	var aRequests atomic.Int32
+	aOrigin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if aRequests.Add(1) == 1 {
+			close(firstAStarted)
+			<-releaseFirstA
+		} else {
+			requestOrder <- "A"
+		}
+		_, _ = w.Write([]byte("a"))
+	}))
+	defer aOrigin.Close()
+	bOrigin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requestOrder <- "B"
+		_, _ = w.Write([]byte("b"))
+	}))
+	defer bOrigin.Close()
+
+	client := testClient(t, func(config *Config) {
+		config.MaxRequests = 1
+		config.SharedTransport = &SharedTransportConfig{
+			MaxIdleConns:          1,
+			MaxIdleConnsPerHost:   1,
+			MaxConnsPerHost:       1,
+			MaxConnections:        1,
+			MaxConcurrentRequests: 3,
+			IdleConnTimeout:       time.Hour,
+		}
+	})
+	defer client.Close()
+
+	type outcome struct {
+		name string
+		err  error
+	}
+	outcomes := make(chan outcome, 4)
+	run := func(name, endpoint string) {
+		go func() {
+			session := client.NewSession()
+			_, err := session.Get(context.Background(), endpoint, nil)
+			outcomes <- outcome{name: name, err: err}
+		}()
+	}
+
+	run("A1", aOrigin.URL)
+	<-firstAStarted
+	run("A2", aOrigin.URL)
+	waitForCondition(t, func() bool { return client.hosts.refs(aOrigin.URL) == 2 })
+	run("B", bOrigin.URL)
+	waitForCondition(t, func() bool { return client.connections.waiters.Load() == 1 })
+	run("A3", aOrigin.URL)
+	waitForCondition(t, func() bool { return client.hosts.refs(aOrigin.URL) == 3 })
+
+	close(releaseFirstA)
+	select {
+	case origin := <-requestOrder:
+		if origin != "B" {
+			t.Fatalf("same-origin backlog recycled the connection before B: first=%s", origin)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("neither queued origin progressed")
+	}
+
+	seen := make(map[string]bool)
+	for range 4 {
+		select {
+		case outcome := <-outcomes:
+			if outcome.err != nil {
+				t.Fatalf("%s: %v", outcome.name, outcome.err)
+			}
+			seen[outcome.name] = true
+		case <-time.After(time.Second):
+			t.Fatal("timed out waiting for admitted requests")
+		}
+	}
+	if len(seen) != 4 || client.connections.maxOpen.Load() > 1 {
+		t.Fatalf("outcomes=%v max_open=%d", seen, client.connections.maxOpen.Load())
+	}
+	waitForCondition(t, func() bool {
+		return client.hosts.size() == 0 && len(client.requestPermits) == 0
+	})
+}
+
+func TestSharedHostAdmissionCancellationDoesNotConsumeGlobalAdmission(t *testing.T) {
+	firstStarted := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		close(firstStarted)
+		<-releaseFirst
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	client := testClient(t, func(config *Config) {
+		config.MaxRequests = 1
+		config.SharedTransport = &SharedTransportConfig{
+			MaxIdleConns:          1,
+			MaxIdleConnsPerHost:   1,
+			MaxConnsPerHost:       1,
+			MaxConnections:        1,
+			MaxConcurrentRequests: 2,
+			IdleConnTimeout:       time.Hour,
+		}
+	})
+	defer client.Close()
+
+	first := client.NewSession()
+	firstDone := make(chan error, 1)
+	go func() {
+		_, err := first.Get(context.Background(), server.URL, nil)
+		firstDone <- err
+	}()
+	<-firstStarted
+
+	waiting := client.NewSession()
+	waitingContext, cancelWaiting := context.WithCancel(context.Background())
+	waitingDone := make(chan error, 1)
+	go func() {
+		_, err := waiting.Get(waitingContext, server.URL, nil)
+		waitingDone <- err
+	}()
+	waitForCondition(t, func() bool { return client.hosts.refs(server.URL) == 2 })
+	cancelWaiting()
+	if err := <-waitingDone; errorKind(t, err) != ErrorCanceled {
+		t.Fatalf("waiting error=%v", err)
+	}
+	if stats := waiting.Stats(); stats.Requests != 0 || stats.WireAttempts != 0 {
+		t.Fatalf("waiting stats=%+v", stats)
+	}
+	if refs, global := client.hosts.refs(server.URL), len(client.requestPermits); refs != 1 || global != 1 {
+		t.Fatalf("host refs=%d global permits=%d", refs, global)
+	}
+
+	close(releaseFirst)
+	if err := <-firstDone; err != nil {
+		t.Fatal(err)
+	}
+	waitForCondition(t, func() bool {
+		return client.hosts.size() == 0 && len(client.requestPermits) == 0
+	})
+}
+
+func TestCanonicalOriginNormalizesCaseAndDefaultPorts(t *testing.T) {
+	for rawURL, expected := range map[string]string{
+		"http://EXAMPLE.com:80/a":   "http://example.com",
+		"https://EXAMPLE.com:443/a": "https://example.com",
+		"https://[::1]:8443/a":      "https://[::1]:8443",
+	} {
+		parsed, err := url.Parse(rawURL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if origin := canonicalOrigin(parsed); origin != expected {
+			t.Fatalf("canonicalOrigin(%q)=%q, want %q", rawURL, origin, expected)
+		}
 	}
 }
 
