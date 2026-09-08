@@ -4314,6 +4314,8 @@ moneyhero-group,moneyhero-group-greenhouse,https://job-boards.greenhouse.io/mone
 moneysmart-group,moneysmart-group-greenhouse,https://job-boards.greenhouse.io/moneysmart,greenhouse,"{""token"": ""moneysmart""}",skip,
 mongodb,mongodb-greenhouse,https://job-boards.greenhouse.io/mongodb,greenhouse,"{""token"": ""mongodb""}",skip,
 moniepoint,moniepoint-greenhouse,https://job-boards.greenhouse.io/moniepoint,greenhouse,"{""token"": ""moniepoint""}",skip,
+monro,monro-careers,https://ibqmjb.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/Monro-Careers,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+monro,monro-smartrecruiters,https://careers.smartrecruiters.com/monroinc,smartrecruiters,"{""token"": ""monroinc""}",smartrecruiters,
 monroe-tractor,monroe-tractor-greenhouse,https://job-boards.greenhouse.io/monroetractor,greenhouse,"{""token"": ""monroetractor""}",skip,
 monumental,monumental-ashby,https://jobs.ashbyhq.com/monumental,ashby,"{""token"": ""monumental""}",skip,
 monumental-sports-entertainment,monumental-sports-entertainment-greenhouse,https://job-boards.greenhouse.io/monumentalsports,greenhouse,"{""token"": ""monumentalsports""}",skip,
