@@ -400,7 +400,11 @@ fi
   return { ...result, calls };
 }
 
-function runClassifyPrPaths({ files = [], baseRef = "main" } = {}) {
+function runClassifyPrPaths({
+  files = [],
+  baseRef = "main",
+  fileApiStatus = 0,
+} = {}) {
   const dir = mkdtempSync(join(tmpdir(), "classify-pr-paths-"));
   const output = join(dir, "github-output");
   const gh = join(dir, "gh");
@@ -409,7 +413,10 @@ function runClassifyPrPaths({ files = [], baseRef = "main" } = {}) {
     `#!/usr/bin/env bash
 set -euo pipefail
 if [[ "$*" == *"/files"* ]]; then
-  printf '%s\\n' "$MOCK_FILES"
+  if (( MOCK_FILE_API_STATUS != 0 )); then
+    exit "$MOCK_FILE_API_STATUS"
+  fi
+  jq -r "$5" <<<"$MOCK_FILES_JSON"
 else
   printf '%s\\n' "$MOCK_BASE_REF"
 fi
@@ -425,7 +432,12 @@ fi
       REPO: "colophon-group/jobseek",
       PR: "123",
       GITHUB_OUTPUT: output,
-      MOCK_FILES: files.join("\n"),
+      MOCK_FILES_JSON: JSON.stringify(
+        files.map((file) =>
+          typeof file === "string" ? { filename: file } : file,
+        ),
+      ),
+      MOCK_FILE_API_STATUS: String(fileApiStatus),
       MOCK_BASE_REF: baseRef,
     },
     encoding: "utf8",
@@ -542,6 +554,10 @@ test("CI change detection uses the pinned paths-filter action", () => {
   assert.match(workflow, /predicate-quantifier: every/);
   assert.match(workflow, /code:\n(?:              - .+\n)+/);
   assert.match(workflow, /crawler_code:\n(?:              - .+\n)+/);
+  assert.match(
+    workflow,
+    /go_http_pilot:\n              - 'pilots\/go-http-sitemap\/\*\*'/,
+  );
   assert.match(workflow, /boards_csv:\n              - 'apps\/crawler\/data\/boards\.csv'/);
 });
 
@@ -575,9 +591,13 @@ test("manual CI dispatch can classify a PR without full code checks", () => {
   assert.match(changesJob, /id: manual-default/);
   assert.match(changesJob, /id: manual-pr/);
   assert.match(changesJob, /\.github\/scripts\/classify-pr-paths\.sh/);
-  assert.match(classifyPrPathsScript, /gh api --paginate "repos\/\$REPO\/pulls\/\$PR\/files"/);
+  assert.match(
+    classifyPrPathsScript,
+    /gh api --paginate "repos\/\$REPO\/pulls\/\$PR\/files" --jq '\.\[\] \| \.filename, \(\.previous_filename \/\/ empty\)'/,
+  );
   assert.match(classifyPrPathsScript, /emit "code" "\$code"/);
   assert.match(classifyPrPathsScript, /emit "crawler_code" "\$crawler_code"/);
+  assert.match(classifyPrPathsScript, /emit "go_http_pilot" "\$go_http_pilot"/);
   assert.match(classifyPrPathsScript, /emit "boards_csv" "\$boards_csv"/);
   assert.match(classifyPrPathsScript, /emit "codeql" "\$code"/);
 });
@@ -590,6 +610,7 @@ test("manual PR classification exports the validated PR base context", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.outputs, /^code=true$/m);
   assert.match(result.outputs, /^crawler_code=true$/m);
+  assert.match(result.outputs, /^go_http_pilot=false$/m);
   assert.match(result.outputs, /^boards_csv=true$/m);
   assert.match(result.outputs, /^is_pr=true$/m);
   assert.match(result.outputs, /^base_ref=main$/m);
@@ -608,6 +629,54 @@ test("company census fixture remains on the data-only CI path", () => {
   assert.match(result.outputs, /^crawler_code=false$/m);
   assert.match(result.outputs, /^boards_csv=true$/m);
   assert.match(result.outputs, /^codeql=false$/m);
+});
+
+test("Go HTTP pilot changes use dedicated CI without crawler release classification", () => {
+  const result = runClassifyPrPaths({
+    files: ["pilots/go-http-sitemap/sitemap/sitemap.go"],
+    baseRef: "main",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.outputs, /^code=true$/m);
+  assert.match(result.outputs, /^crawler_code=false$/m);
+  assert.match(result.outputs, /^go_http_pilot=true$/m);
+  assert.match(result.outputs, /^codeql=true$/m);
+
+  const unrelated = runClassifyPrPaths({
+    files: ["apps/crawler/src/core/monitor.py"],
+    baseRef: "main",
+  });
+  assert.equal(unrelated.status, 0, unrelated.stderr);
+  assert.match(unrelated.outputs, /^crawler_code=true$/m);
+  assert.match(unrelated.outputs, /^go_http_pilot=false$/m);
+});
+
+test("manual PR classification retains a renamed pilot source path", () => {
+  const result = runClassifyPrPaths({
+    files: [
+      {
+        filename: "archive/go-http-sitemap/sitemap.go",
+        previous_filename: "pilots/go-http-sitemap/sitemap/sitemap.go",
+        status: "renamed",
+      },
+    ],
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.outputs, /^code=true$/m);
+  assert.match(result.outputs, /^crawler_code=false$/m);
+  assert.match(result.outputs, /^go_http_pilot=true$/m);
+});
+
+test("manual PR classification fails closed on files API failure or empty results", () => {
+  const failed = runClassifyPrPaths({ fileApiStatus: 22 });
+  assert.notEqual(failed.status, 0);
+  assert.match(failed.stderr, /Failed to list changed files for PR #123/);
+  assert.equal(failed.outputs, "");
+
+  const empty = runClassifyPrPaths({ files: [] });
+  assert.notEqual(empty.status, 0);
+  assert.match(empty.stderr, /PR #123 has no changed files/);
+  assert.equal(empty.outputs, "");
 });
 
 test("runtime contract module and v1 retain full code and crawler CI", () => {
@@ -712,6 +781,46 @@ test("PR-context CI gates distinguish pull requests from dispatched PRs", () => 
   assert.match(requiredCiJob, /requireSuccess\("probe-new-boards", isPr && boardsCsv\)/);
   assert.doesNotMatch(versionJob, /github\.event_name == 'pull_request'/);
   assert.doesNotMatch(probeJob, /github\.event_name == 'pull_request'/);
+});
+
+test("Go HTTP pilot CI is path-aware, Linux-based, and required when selected", () => {
+  const changesJob = jobBlock("changes");
+  const goPilotJob = jobBlock("test-go-http-pilot");
+  const requiredCiJob = jobBlock("required-ci");
+
+  assert.match(
+    changesJob,
+    /go_http_pilot: \$\{\{ steps\.manual-default\.outputs\.go_http_pilot \|\| steps\.manual-pr\.outputs\.go_http_pilot \|\| steps\.filter\.outputs\.go_http_pilot \}\}/,
+  );
+  assert.match(changesJob, /echo "go_http_pilot=true"/);
+  assert.match(
+    goPilotJob,
+    /if: needs\.changes\.outputs\.go_http_pilot == 'true'/,
+  );
+  assert.match(goPilotJob, /runs-on: ubuntu-latest/);
+  assert.match(goPilotJob, /timeout-minutes: 10/);
+  assert.match(
+    goPilotJob,
+    /go-version-file: pilots\/go-http-sitemap\/go\.mod/,
+  );
+  assert.match(goPilotJob, /working-directory: pilots\/go-http-sitemap/);
+  assert.match(
+    goPilotJob,
+    /test -z "\$\(find \. -type f -name '\*\.go' -exec gofmt -l \{\} \+\)"/,
+  );
+  assert.match(goPilotJob, /run: go test \.\/\.\.\./);
+  assert.match(goPilotJob, /run: go test -race \.\/\.\.\./);
+  assert.match(goPilotJob, /run: go vet \.\/\.\.\./);
+  assert.match(goPilotJob, /run: go mod tidy -diff/);
+  assert.match(requiredCiJob, /- test-go-http-pilot/);
+  assert.match(
+    requiredCiJob,
+    /const goHttpPilot = needs\.changes\?\.outputs\?\.go_http_pilot === "true"/,
+  );
+  assert.match(
+    requiredCiJob,
+    /requireSuccess\("test-go-http-pilot", goHttpPilot\)/,
+  );
 });
 
 test("crawler image job proves live sampler and shutdown lifecycle", () => {
