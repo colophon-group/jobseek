@@ -705,10 +705,18 @@ func TestSharedTransportGloballyCapsActiveAndIdleConnectionsAcrossOrigins(t *tes
 	if permits := len(client.connections.permits); permits > 2 {
 		t.Fatalf("connection permits=%d", permits)
 	}
+	connectionStats := client.ConnectionStats()
+	if connectionStats.PermitLimit != 2 || connectionStats.MaximumOpen > 2 || connectionStats.MaximumInUsePermits > 2 || connectionStats.MaximumOpen == 0 || connectionStats.MaximumInUsePermits == 0 {
+		t.Fatalf("unexpected client-local connection stats: %+v", connectionStats)
+	}
+	if connectionStats.Open > connectionStats.InUsePermits || connectionStats.InUsePermits > connectionStats.PermitLimit {
+		t.Fatalf("inconsistent client-local connection stats: %+v", connectionStats)
+	}
 
 	client.Close()
 	waitForCondition(t, func() bool {
-		return client.connections.open.Load() == 0 && len(client.connections.permits) == 0
+		stats := client.ConnectionStats()
+		return stats.Open == 0 && stats.InUsePermits == 0 && len(client.connections.permits) == 0
 	})
 }
 
@@ -791,7 +799,9 @@ func TestSharedConnectionPermitIsReleasedOnDialAndTLSFailure(t *testing.T) {
 	if _, err := client.NewSession().Get(context.Background(), unreachableURL, nil); errorKind(t, err) != ErrorTransport {
 		t.Fatalf("dial error=%v", err)
 	}
-	waitForCondition(t, func() bool { return len(client.connections.permits) == 0 })
+	waitForCondition(t, func() bool {
+		return len(client.connections.permits) == 0 && client.connections.permitsInUse.Load() == 0
+	})
 
 	tlsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("unexpected"))
@@ -801,7 +811,7 @@ func TestSharedConnectionPermitIsReleasedOnDialAndTLSFailure(t *testing.T) {
 		t.Fatalf("TLS error=%v", err)
 	}
 	waitForCondition(t, func() bool {
-		return client.connections.open.Load() == 0 && len(client.connections.permits) == 0
+		return client.connections.open.Load() == 0 && len(client.connections.permits) == 0 && client.connections.permitsInUse.Load() == 0
 	})
 }
 
@@ -823,15 +833,15 @@ func TestConnectionLimiterReleasesPermitWhenDialIsCanceled(t *testing.T) {
 		done <- err
 	}()
 	<-dialStarted
-	if len(limiter.permits) != 1 {
-		t.Fatalf("permits during dial=%d", len(limiter.permits))
+	if len(limiter.permits) != 1 || limiter.permitsInUse.Load() != 1 || limiter.maxPermitsUse.Load() != 1 {
+		t.Fatalf("permits during dial: channel=%d current=%d max=%d", len(limiter.permits), limiter.permitsInUse.Load(), limiter.maxPermitsUse.Load())
 	}
 	cancel()
 	if err := <-done; !errors.Is(err, context.Canceled) {
 		t.Fatalf("dial error=%v", err)
 	}
-	if len(limiter.permits) != 0 || limiter.open.Load() != 0 {
-		t.Fatalf("permits=%d open=%d", len(limiter.permits), limiter.open.Load())
+	if len(limiter.permits) != 0 || limiter.permitsInUse.Load() != 0 || limiter.open.Load() != 0 {
+		t.Fatalf("permits=%d tracked=%d open=%d", len(limiter.permits), limiter.permitsInUse.Load(), limiter.open.Load())
 	}
 }
 
@@ -849,15 +859,15 @@ func TestConnectionLimiterReleasesSuccessfulConnectionExactlyOnce(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(limiter.permits) != 1 || limiter.open.Load() != 1 || limiter.maxOpen.Load() != 1 {
-		t.Fatalf("after dial: permits=%d open=%d max=%d", len(limiter.permits), limiter.open.Load(), limiter.maxOpen.Load())
+	if len(limiter.permits) != 1 || limiter.permitsInUse.Load() != 1 || limiter.maxPermitsUse.Load() != 1 || limiter.open.Load() != 1 || limiter.maxOpen.Load() != 1 {
+		t.Fatalf("after dial: permits=%d tracked=%d max_permits=%d open=%d max_open=%d", len(limiter.permits), limiter.permitsInUse.Load(), limiter.maxPermitsUse.Load(), limiter.open.Load(), limiter.maxOpen.Load())
 	}
 	if err := conn.Close(); err != nil {
 		t.Fatal(err)
 	}
 	_ = conn.Close()
-	if len(limiter.permits) != 0 || limiter.open.Load() != 0 {
-		t.Fatalf("after repeated close: permits=%d open=%d", len(limiter.permits), limiter.open.Load())
+	if len(limiter.permits) != 0 || limiter.permitsInUse.Load() != 0 || limiter.open.Load() != 0 {
+		t.Fatalf("after repeated close: permits=%d tracked=%d open=%d", len(limiter.permits), limiter.permitsInUse.Load(), limiter.open.Load())
 	}
 }
 

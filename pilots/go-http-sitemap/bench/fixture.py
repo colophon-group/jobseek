@@ -372,10 +372,10 @@ class FixtureState:
                 "max_idle_per_origin": max(idle_by_origin.values(), default=0),
                 "max_active_global": self.max_active_global_by_arm.get(arm_token, 0),
                 "max_active_per_origin": self.max_active_origin_by_arm.get(arm_token, 0),
-                "max_open_global": self.max_open_global_by_arm.get(arm_token, 0),
-                "max_open_per_origin_observed": self.max_open_origin_by_arm.get(arm_token, 0),
-                "max_idle_global_observed": self.max_idle_global_by_arm.get(arm_token, 0),
-                "max_idle_per_origin_observed": self.max_idle_origin_by_arm.get(arm_token, 0),
+                "max_server_handler_open_global": self.max_open_global_by_arm.get(arm_token, 0),
+                "max_server_handler_open_per_origin": self.max_open_origin_by_arm.get(arm_token, 0),
+                "max_server_handler_idle_global": self.max_idle_global_by_arm.get(arm_token, 0),
+                "max_server_handler_idle_per_origin": self.max_idle_origin_by_arm.get(arm_token, 0),
             }
 
 

@@ -58,6 +58,14 @@ distinct ports represent distinct origins while remaining hermetic. Its request
 transcript is authoritative for admitted requests, wire attempts, status order,
 and response bytes.
 
+Connection bounds use the lifecycle owned by the client, not the peer handler:
+historical active requests and settled peer connections are hard fixture gates;
+Go's client-local connection/dial permits and established-connection high-water
+marks are also hard gates. Historical peer-handler open/idle peaks are retained
+as diagnostics because FIN delivery and handler scheduling can briefly outlive
+an already-closed client file descriptor. Python's exact pinned httpcore pool
+must attest its resolved total and idle limits before timed work begins.
+
 Current Python/httpx has a global idle bound but no configurable per-origin
 idle bound. Go's additional per-host idle bound is therefore a disclosed
 conservative safety constraint, not a symmetric comparison input; the corpus

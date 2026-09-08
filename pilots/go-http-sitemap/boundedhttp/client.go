@@ -110,11 +110,13 @@ type hostLimiter struct {
 }
 
 type connectionLimiter struct {
-	permits   chan struct{}
-	waiters   atomic.Int64
-	open      atomic.Int64
-	maxOpen   atomic.Int64
-	closeIdle func()
+	permits       chan struct{}
+	permitsInUse  atomic.Int64
+	maxPermitsUse atomic.Int64
+	waiters       atomic.Int64
+	open          atomic.Int64
+	maxOpen       atomic.Int64
+	closeIdle     func()
 }
 
 type limitedConn struct {
@@ -138,6 +140,18 @@ type Stats struct {
 	WireAttempts    int
 	DecodedBytes    int64
 	StatusBodyBytes int64
+}
+
+// ConnectionStats reports the shared transport's client-local resource state.
+// InUsePermits includes established connections and in-progress dials. The
+// maxima cover the lifetime of this Client, including any warmup batch.
+type ConnectionStats struct {
+	Open                int64 `json:"open"`
+	MaximumOpen         int64 `json:"maximum_open"`
+	InUsePermits        int64 `json:"in_use_permits"`
+	MaximumInUsePermits int64 `json:"maximum_in_use_permits"`
+	PermitLimit         int64 `json:"permit_limit"`
+	Waiters             int64 `json:"waiters"`
 }
 
 type Session struct {
@@ -279,12 +293,15 @@ func (l *connectionLimiter) wrapDialContext(baseDial func(context.Context, strin
 				return nil, ctx.Err()
 			}
 		}
+		permitsInUse := l.permitsInUse.Add(1)
+		storeAtomicMax(&l.maxPermitsUse, permitsInUse)
 
 		conn, err := baseDial(ctx, network, address)
 		if err != nil {
 			if conn != nil {
 				_ = conn.Close()
 			}
+			l.permitsInUse.Add(-1)
 			<-l.permits
 			return nil, err
 		}
@@ -294,6 +311,7 @@ func (l *connectionLimiter) wrapDialContext(baseDial func(context.Context, strin
 			Conn: conn,
 			release: func() {
 				l.open.Add(-1)
+				l.permitsInUse.Add(-1)
 				<-l.permits
 			},
 		}, nil
@@ -367,6 +385,23 @@ func (s *Session) Close() {
 // call concurrently with active requests; it neither interrupts them nor
 // prevents later sessions from opening new connections.
 func (c *Client) Close() { c.transport.CloseIdleConnections() }
+
+// ConnectionStats returns zeros when the Client does not use a shared
+// transport. Shared clients expose exact local high-water counters without
+// consulting peer-observed TCP state.
+func (c *Client) ConnectionStats() ConnectionStats {
+	if c.connections == nil {
+		return ConnectionStats{}
+	}
+	return ConnectionStats{
+		Open:                c.connections.open.Load(),
+		MaximumOpen:         c.connections.maxOpen.Load(),
+		InUsePermits:        c.connections.permitsInUse.Load(),
+		MaximumInUsePermits: c.connections.maxPermitsUse.Load(),
+		PermitLimit:         int64(cap(c.connections.permits)),
+		Waiters:             c.connections.waiters.Load(),
+	}
+}
 
 // Stats returns counters for this session. A Session is deliberately
 // single-goroutine; one sitemap traversal owns it from start to finish.

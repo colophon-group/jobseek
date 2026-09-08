@@ -202,6 +202,18 @@ class SafetyTests(unittest.TestCase):
 
         self.assertEqual(asyncio.run(read_frame()), frame)
 
+    def test_pinned_httpcore_pool_reports_configured_limits_before_measurement(self) -> None:
+        async def inspect_limits() -> tuple[int, int]:
+            limits = python_runner.httpx.Limits(
+                max_connections=20,
+                max_keepalive_connections=10,
+                keepalive_expiry=5.0,
+            )
+            async with python_runner.httpx.AsyncClient(limits=limits) as client:
+                return python_runner._httpcore_pool_limits(client)
+
+        self.assertEqual(asyncio.run(inspect_limits()), (20, 10))
+
     def test_runner_startup_timeout_reaps_child(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -974,6 +986,14 @@ class BatchValidationTests(unittest.TestCase):
             "max_queued": orchestrator.interval_max(queue_intervals),
             "max_in_flight": orchestrator.interval_max(service_intervals),
             "max_unfinished": orchestrator.interval_max(unfinished_intervals),
+            "transport_connections": {
+                "open": 1,
+                "maximum_open": 1,
+                "in_use_permits": 1,
+                "maximum_in_use_permits": 1,
+                "permit_limit": 20,
+                "waiters": 0,
+            },
         }
         snapshot = {
             "open": 1,
@@ -983,10 +1003,10 @@ class BatchValidationTests(unittest.TestCase):
             "max_idle_per_origin": 1,
             "max_active_global": 1,
             "max_active_per_origin": 1,
-            "max_open_global": 1,
-            "max_open_per_origin_observed": 1,
-            "max_idle_global_observed": 1,
-            "max_idle_per_origin_observed": 1,
+            "max_server_handler_open_global": 1,
+            "max_server_handler_open_per_origin": 1,
+            "max_server_handler_idle_global": 1,
+            "max_server_handler_idle_per_origin": 1,
         }
         return result, jobs, transcript, snapshot
 
@@ -1032,23 +1052,54 @@ class BatchValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "accepted-but-unfinished"):
             self._validate(result, jobs, transcript, snapshot, workers=3, capacity=2)
 
-    def test_historical_connection_overcap_is_not_hidden_by_settled_value(self) -> None:
+    def test_server_handler_close_propagation_peak_is_diagnostic(self) -> None:
         result, jobs, transcript, snapshot = self._case(
             count=1, same_origin=True, workers=2, capacity=2
         )
         snapshot["max_open_per_origin"] = 1
-        snapshot["max_open_per_origin_observed"] = 3
-        with self.assertRaisesRegex(RuntimeError, "too many connections"):
+        snapshot["max_server_handler_open_global"] = 21
+        snapshot["max_server_handler_open_per_origin"] = 3
+        self._validate(result, jobs, transcript, snapshot, workers=2, capacity=2)
+
+    def test_client_local_or_settled_connection_overcap_is_rejected(self) -> None:
+        for source in ("local", "settled-global", "settled-origin"):
+            with self.subTest(source=source):
+                result, jobs, transcript, snapshot = self._case(
+                    count=1, same_origin=True, workers=2, capacity=2
+                )
+                if source == "local":
+                    result["transport_connections"]["maximum_in_use_permits"] = 21
+                elif source == "settled-global":
+                    snapshot["open"] = 21
+                else:
+                    snapshot["max_open_per_origin"] = 3
+                with self.assertRaisesRegex(RuntimeError, "connection cap exceeded"):
+                    self._validate(result, jobs, transcript, snapshot, workers=2, capacity=2)
+
+    def test_boolean_client_local_transport_counters_are_rejected(self) -> None:
+        result, jobs, transcript, snapshot = self._case(
+            count=1, same_origin=True, workers=2, capacity=2
+        )
+        result["transport_connections"].update(
+            {
+                "open": True,
+                "maximum_open": True,
+                "in_use_permits": True,
+                "maximum_in_use_permits": True,
+                "waiters": False,
+            }
+        )
+        with self.assertRaisesRegex(RuntimeError, "counters are invalid"):
             self._validate(result, jobs, transcript, snapshot, workers=2, capacity=2)
 
     def test_post_response_pre_fin_idle_peak_is_reported_but_settled_idle_is_gated(self) -> None:
         result, jobs, transcript, snapshot = self._case(
             count=1, same_origin=True, workers=1, capacity=1
         )
-        snapshot["max_idle_global_observed"] = 99
-        snapshot["max_idle_per_origin_observed"] = 99
+        snapshot["max_server_handler_idle_global"] = 99
+        snapshot["max_server_handler_idle_per_origin"] = 99
         self._validate(result, jobs, transcript, snapshot, workers=1, capacity=1)
-        self.assertEqual(snapshot["max_idle_global_observed"], 99)
+        self.assertEqual(snapshot["max_server_handler_idle_global"], 99)
 
     def test_per_origin_service_concurrency_is_independently_gated(self) -> None:
         result, jobs, transcript, snapshot = self._case(
@@ -1085,9 +1136,9 @@ class FixtureTests(unittest.TestCase):
             state.open_connection(0, ("127.0.0.1", 40_000 + index)) for index in range(3)
         ]
         snapshot = state.connection_snapshot("open-arm")
-        self.assertEqual(snapshot["max_open_global"], 3)
-        self.assertEqual(snapshot["max_open_per_origin_observed"], 3)
-        self.assertEqual(snapshot["max_idle_global_observed"], 0)
+        self.assertEqual(snapshot["max_server_handler_open_global"], 3)
+        self.assertEqual(snapshot["max_server_handler_open_per_origin"], 3)
+        self.assertEqual(snapshot["max_server_handler_idle_global"], 0)
         for connection in connections:
             state.close_connection(connection, "test")
         state.deactivate_arm("open-arm")

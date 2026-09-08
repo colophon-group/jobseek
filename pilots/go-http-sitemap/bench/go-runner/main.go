@@ -63,26 +63,27 @@ type jobOutput struct {
 }
 
 type batchOutput struct {
-	Type            string      `json:"type"`
-	Implementation  string      `json:"implementation"`
-	BatchID         string      `json:"batch_id"`
-	Phase           string      `json:"phase"`
-	ManifestSHA256  string      `json:"manifest_sha256"`
-	Jobs            []jobOutput `json:"jobs"`
-	WallNS          int64       `json:"wall_ns"`
-	UserCPUNS       int64       `json:"user_cpu_ns"`
-	SysCPUNS        int64       `json:"sys_cpu_ns"`
-	PeakRSSKiB      int64       `json:"peak_rss_kib"`
-	OpenFDsEnd      int         `json:"open_fds_end"`
-	MaxQueued       int         `json:"max_queued"`
-	MaxInFlight     int         `json:"max_in_flight"`
-	MaxUnfinished   int         `json:"max_unfinished"`
-	Accepted        uint64      `json:"accepted"`
-	Completed       uint64      `json:"completed"`
-	Panics          uint64      `json:"panics"`
-	Unfinished      int         `json:"unfinished"`
-	GoroutinesEnd   int         `json:"goroutines_end"`
-	ProcessChildren int         `json:"process_children"`
+	Type            string                      `json:"type"`
+	Implementation  string                      `json:"implementation"`
+	BatchID         string                      `json:"batch_id"`
+	Phase           string                      `json:"phase"`
+	ManifestSHA256  string                      `json:"manifest_sha256"`
+	Jobs            []jobOutput                 `json:"jobs"`
+	WallNS          int64                       `json:"wall_ns"`
+	UserCPUNS       int64                       `json:"user_cpu_ns"`
+	SysCPUNS        int64                       `json:"sys_cpu_ns"`
+	PeakRSSKiB      int64                       `json:"peak_rss_kib"`
+	OpenFDsEnd      int                         `json:"open_fds_end"`
+	MaxQueued       int                         `json:"max_queued"`
+	MaxInFlight     int                         `json:"max_in_flight"`
+	MaxUnfinished   int                         `json:"max_unfinished"`
+	Accepted        uint64                      `json:"accepted"`
+	Completed       uint64                      `json:"completed"`
+	Panics          uint64                      `json:"panics"`
+	Unfinished      int                         `json:"unfinished"`
+	GoroutinesEnd   int                         `json:"goroutines_end"`
+	ProcessChildren int                         `json:"process_children"`
+	Transport       boundedhttp.ConnectionStats `json:"transport_connections"`
 }
 
 type readyOutput struct {
@@ -288,7 +289,7 @@ func intervalMax(intervals [][2]int64) int {
 	return maximum
 }
 
-func runBatch(pool *worker.Pool, input command) batchOutput {
+func runBatch(pool *worker.Pool, client *boundedhttp.Client, input command) batchOutput {
 	digest, err := manifestDigest(input.Jobs)
 	if err != nil || digest != input.ManifestSHA256 {
 		panic("job manifest digest mismatch")
@@ -384,6 +385,7 @@ func runBatch(pool *worker.Pool, input command) batchOutput {
 	wallNS := time.Since(wallStart).Nanoseconds()
 	usageAfter := usage()
 	statsAfter := pool.Stats()
+	transportStats := settledConnectionStats(client.ConnectionStats, time.Second)
 	sort.Slice(outputs, func(i, j int) bool { return outputs[i].ID < outputs[j].ID })
 	return batchOutput{
 		Type:            "batch",
@@ -406,6 +408,28 @@ func runBatch(pool *worker.Pool, input command) batchOutput {
 		Unfinished:      len(byWorkerID),
 		GoroutinesEnd:   runtime.NumGoroutine(),
 		ProcessChildren: 0,
+		Transport:       transportStats,
+	}
+}
+
+// settledConnectionStats samples after the timed batch until independently
+// loaded counters cannot straddle limitedConn's two atomic close updates. A
+// persistent mismatch or waiter is a real runner invariant failure, not an
+// admissible measurement.
+func settledConnectionStats(
+	snapshot func() boundedhttp.ConnectionStats,
+	timeout time.Duration,
+) boundedhttp.ConnectionStats {
+	deadline := time.Now().Add(timeout)
+	for {
+		stats := snapshot()
+		if stats.Open == stats.InUsePermits && stats.Waiters == 0 {
+			return stats
+		}
+		if time.Now().After(deadline) {
+			panic("client-local transport counters did not settle after the batch")
+		}
+		runtime.Gosched()
 	}
 }
 
@@ -497,7 +521,7 @@ func main() {
 		}
 		switch input.Action {
 		case "batch":
-			if err := encoder.Encode(runBatch(pool, input)); err != nil {
+			if err := encoder.Encode(runBatch(pool, client, input)); err != nil {
 				panic(err)
 			}
 		case "shutdown":

@@ -1358,15 +1358,46 @@ def validate_batch(
         raise RuntimeError("evidence RSS sampler coverage is insufficient")
     if connection_snapshot["max_active_global"] > defaults["global_active_requests"]:
         raise RuntimeError("global request cap exceeded")
-    if connection_snapshot["max_open_global"] > defaults["global_total_connections"]:
-        raise RuntimeError("global total-connection cap exceeded")
     effective_per_origin = min(defaults["per_origin_concurrency"], workers)
     if connection_snapshot["max_active_per_origin"] > effective_per_origin:
         raise RuntimeError("per-origin request cap exceeded")
+    if connection_snapshot["open"] > defaults["global_total_connections"]:
+        raise RuntimeError("settled global total-connection cap exceeded")
     if connection_snapshot["idle"] > defaults["global_idle_connections"]:
         raise RuntimeError("global idle-connection cap exceeded")
-    if connection_snapshot["max_open_per_origin_observed"] > effective_per_origin:
-        raise RuntimeError("fixture observed too many connections for one origin")
+    if connection_snapshot["max_open_per_origin"] > effective_per_origin:
+        raise RuntimeError("settled per-origin connection cap exceeded")
+    if implementation == "go":
+        transport = result.get("transport_connections")
+        required_transport_fields = {
+            "open",
+            "maximum_open",
+            "in_use_permits",
+            "maximum_in_use_permits",
+            "permit_limit",
+            "waiters",
+        }
+        if not isinstance(transport, dict) or set(transport) != required_transport_fields:
+            raise RuntimeError("Go client-local transport counters are missing")
+        if not all(type(transport[field]) is int for field in required_transport_fields):
+            raise RuntimeError("Go client-local transport counters are invalid")
+        connection_limit = defaults["global_total_connections"]
+        if transport["permit_limit"] != connection_limit:
+            raise RuntimeError("Go client-local transport limit does not match the corpus")
+        if (
+            min(transport.values()) < 0
+            or transport["maximum_open"] == 0
+            or transport["maximum_in_use_permits"] == 0
+            or transport["open"] > transport["maximum_open"]
+            or transport["in_use_permits"] > transport["maximum_in_use_permits"]
+            or transport["maximum_open"] > transport["maximum_in_use_permits"]
+            or transport["maximum_in_use_permits"] > connection_limit
+            or transport["open"] > transport["in_use_permits"]
+            or transport["in_use_permits"] > connection_limit
+        ):
+            raise RuntimeError("Go client-local total-connection cap exceeded")
+        if transport["open"] != transport["in_use_permits"] or transport["waiters"] != 0:
+            raise RuntimeError("Go client-local transport did not settle after the batch")
     max_service_per_origin = max(
         (interval_max(intervals) for intervals in service_by_origin.values()), default=0
     )
@@ -2219,6 +2250,13 @@ def main() -> int:
                 if implementation == "python":
                     if args.evidence and runner.ready.get("runtime") != "3.13.15":
                         raise RuntimeError("evidence Python runtime must be exactly 3.13.15")
+                    if (
+                        runner.ready.get("httpcore_pool_max_connections")
+                        != defaults["global_total_connections"]
+                        or runner.ready.get("httpcore_pool_max_keepalive_connections")
+                        != defaults["global_idle_connections"]
+                    ):
+                        raise RuntimeError("Python httpcore pool limits do not match the corpus")
                     observed_sources = {
                         item["relative_path"]: item["sha256"]
                         for item in runner.ready.get("source_modules", [])
@@ -2256,6 +2294,8 @@ def main() -> int:
                             "absent_runtime_packages",
                             "installed_distributions",
                             "os_release",
+                            "httpcore_pool_max_connections",
+                            "httpcore_pool_max_keepalive_connections",
                         )
                         if key in runner.ready
                     }

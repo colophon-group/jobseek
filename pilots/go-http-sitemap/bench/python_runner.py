@@ -147,6 +147,16 @@ def _protocol_stream_reader() -> asyncio.StreamReader:
     return asyncio.StreamReader(limit=PROTOCOL_FRAME_LIMIT_BYTES)
 
 
+def _httpcore_pool_limits(client: httpx.AsyncClient) -> tuple[int, int]:
+    transport = getattr(client, "_transport", None)
+    pool = getattr(transport, "_pool", None)
+    max_connections = getattr(pool, "_max_connections", None)
+    max_keepalive_connections = getattr(pool, "_max_keepalive_connections", None)
+    if not isinstance(max_connections, int) or not isinstance(max_keepalive_connections, int):
+        raise RuntimeError("pinned httpcore pool limits are unavailable")
+    return max_connections, max_keepalive_connections
+
+
 def _url_digest(urls: set[str]) -> str:
     return hashlib.sha256("\n".join(sorted(urls)).encode("utf-8")).hexdigest()
 
@@ -387,6 +397,11 @@ async def _protocol(args: argparse.Namespace) -> int:
         follow_redirects=False,
         trust_env=False,
     ) as client:
+        pool_max_connections, pool_max_keepalive_connections = _httpcore_pool_limits(client)
+        if pool_max_connections != args.total_connections:
+            raise RuntimeError("httpcore total-connection limit does not match configuration")
+        if pool_max_keepalive_connections != args.global_idle:
+            raise RuntimeError("httpcore idle-connection limit does not match configuration")
         pool = AsyncWorkerPool(
             sitemap_module=sitemap,
             pagination_error=http_retry.PaginationFetchError,
@@ -417,6 +432,8 @@ async def _protocol(args: argparse.Namespace) -> int:
             "file_descriptor_soft_limit": soft_fd_limit,
             "client_constructed_before_ready": True,
             "pool_constructed_before_ready": True,
+            "httpcore_pool_max_connections": pool_max_connections,
+            "httpcore_pool_max_keepalive_connections": pool_max_keepalive_connections,
             "source_modules": source_modules,
             "source_commit": args.source_commit,
             "source_identity_sha256": args.source_identity_sha256,

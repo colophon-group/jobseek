@@ -28,11 +28,15 @@ regex semantics in this harness.
 - Python/httpx has no independent per-origin idle setting. Go's per-host idle
   value is an extra safety bound equal to the maximum connections the workload
   can create for that origin, so it cannot bind earlier than the common
-  per-origin active limit. The fixture gates historical open connections and
-  settled idle connections per origin for both arms. It also reports historical
-  server-side idle observations, but does not treat their close-propagation
-  window as an internal client-pool bound or claim an httpx setting that does
-  not exist.
+  per-origin active limit. The fixture gates historical active requests plus
+  settled open and idle connections for both arms. Its historical server-handler
+  open/idle peaks remain diagnostics: after a client closes a local socket, the
+  peer handler may observe FIN milliseconds later, so that lifetime is not a
+  client-pool bound. Go additionally emits and hard-gates exact client-local
+  established-connection and connection/dial-permit high-water counters. The
+  pinned Python/httpcore pool reports its resolved total and idle limits before
+  measurement; the harness refuses a mismatch without instrumenting private
+  Python mutation points inside timed work.
 - The fixed ladder is 1, 5, 20, and 50 service workers plus `overload-c20`.
   Only c5 matches the frozen production monitor semaphore; larger values are
   executor headroom experiments.
