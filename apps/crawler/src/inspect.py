@@ -176,6 +176,12 @@ def validate_csvs() -> list[ValidationError]:
         configured_rich_rows = monitor_type == "dom" and bool(
             (monitor_config_obj or {}).get("rich_rows")
         )
+        rich_rows_config = (monitor_config_obj or {}).get("rich_rows")
+        configured_full_rich_rows = (
+            configured_rich_rows
+            and isinstance(rich_rows_config, dict)
+            and bool(rich_rows_config.get("description_selector"))
+        )
         script_json_links = (monitor_config_obj or {}).get("script_json_links")
         configured_rich_script_json = (
             monitor_type == "dom"
@@ -184,7 +190,9 @@ def validate_csvs() -> list[ValidationError]:
                 script_json_links.get("title_field") and script_json_links.get("locations_field")
             )
         )
-        configured_partial_dom = configured_rich_rows or configured_rich_script_json
+        configured_partial_dom = (
+            configured_rich_rows and not configured_full_rich_rows
+        ) or configured_rich_script_json
         partial_dom_source = "rich_rows" if configured_rich_rows else "rich script_json_links"
         scraper_config_obj: dict | None = None
         if scraper_config:

@@ -9,7 +9,7 @@ from src.core.scrapers import _REGISTRY as scraper_registry
 from src.workspace._compat import all_monitor_types as compat_all
 from src.workspace._compat import all_scraper_types as compat_scraper_all
 from src.workspace._compat import api_monitor_types as compat_api
-from src.workspace._compat import detect_ats_from_url
+from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 from src.workspace._compat import is_rich_monitor as compat_is_rich
 
 
@@ -42,6 +42,14 @@ def test_is_rich_monitor_consistency():
 
     dom_cfg = {"rich_rows": {"row_selector": ".job", "link_selector": ".job a"}}
     assert compat_is_rich("dom", dom_cfg) == core_is_rich("dom", dom_cfg) is True
+    full_dom_cfg = {
+        "rich_rows": {
+            "row_selector": ".job",
+            "link_selector": ".job a",
+            "description_selector": ".description",
+        }
+    }
+    assert auto_scraper_type("dom", full_dom_cfg) == ("skip", None)
     dom_script_cfg = {
         "script_json_links": {
             "variable": "jobs",
