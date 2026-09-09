@@ -1090,6 +1090,34 @@ test("fleet benchmark workflow is bounded, isolated, and uses the reviewed wire 
   );
   assert.match(
     goSitemapFleetWorkflow,
+    /config\.get\("Entrypoint"\) == image\["Config"\]\.get\("Entrypoint"\)/,
+  );
+  assert.match(
+    goSitemapFleetWorkflow,
+    /config\.get\("Cmd"\) == \["--profile", os\.environ\["PROFILE"\]\]/,
+  );
+  assert.doesNotMatch(
+    goSitemapFleetWorkflow,
+    /container\["Args"\] == \["--profile", os\.environ\["PROFILE"\]\]/,
+  );
+  assert.equal(
+    (
+      goSitemapFleetWorkflow.match(
+        /docker ps -aq --no-trunc --filter "label=\$\{label_key\}=\$\{(?:owner|label_value)\}"/g,
+      ) ?? []
+    ).length,
+    2,
+  );
+  assert.equal(
+    (
+      goSitemapFleetWorkflow.match(
+        /\[\[ "\$(?:id|candidate_id)" =~ \^\[0-9a-f\]\{64\}\$ \]\]/g,
+      ) ?? []
+    ).length,
+    2,
+  );
+  assert.match(
+    goSitemapFleetWorkflow,
     /remote_docker_config="\/tmp\/jobseek-sitemap-fleet-auth\.\$owner"/,
   );
   assert.match(

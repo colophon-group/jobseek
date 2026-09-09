@@ -98,6 +98,10 @@ The manual `crawler-sitemap-fleet-benchmark.yml` workflow is dispatchable only
 from merged `main`. It builds immutable ARM64 images for both runtimes, pins
 them by digest, verifies protected Murmur services before and after every arm,
 and uploads one sanitized JSON artifact even when a benchmark arm fails.
+Each container's inherited image entrypoint and explicit profile command are
+attested separately so the Go and Python image layouts receive the same check.
+Cleanup discovers exact-owned containers by their full 64-character IDs before
+removal; it does not act on unrelated containers.
 Production-safety invariant failures stop the schedule immediately.
 If preflight fails before `RUN_META`, the remote cleanup trap emits exactly one
 record containing an allowlisted stage name, the exit status, and the protected-

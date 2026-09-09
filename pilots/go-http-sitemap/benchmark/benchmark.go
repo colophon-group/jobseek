@@ -415,16 +415,22 @@ func Run(ctx context.Context, started time.Time, manifest Manifest, manifestSHA2
 		ProcessCurrentRSSBytes: readCurrentRSS(),
 		OpenFDs:                readOpenFDs(),
 	}
-	report.CgroupMemoryPeakBytes = readCgroupMemoryPeak()
-	report.CgroupMemoryCurrentBytes = readCgroupValue("memory.current")
-	report.CgroupOOMEvents = readCgroupEvent("oom")
 	expected := uint64(len(manifest.Jobs) * roundsPerProcess)
-	if failed != 0 || len(report.Rounds) != roundsPerProcess || stats.Accepted != expected || stats.Completed != expected || stats.Panics != 0 || stats.Queued != 0 || stats.InFlight != 0 || stats.MaxInFlight != int64(concurrency) || connections.Open != 0 || connections.InUsePermits != 0 || connections.Waiters != 0 || connections.PermitLimit != maxConnections || connections.MaximumOpen > maxConnections || !report.resourceMetricsValid() {
+	return finishCompletedRun(finish, func(report Report) bool {
+		return failed == 0 && len(report.Rounds) == roundsPerProcess && stats.Accepted == expected && stats.Completed == expected && stats.Panics == 0 && stats.Queued == 0 && stats.InFlight == 0 && stats.MaxInFlight == int64(concurrency) && connections.Open == 0 && connections.InUsePermits == 0 && connections.Waiters == 0 && connections.PermitLimit == maxConnections && connections.MaximumOpen <= maxConnections && report.resourceMetricsValid()
+	})
+}
+
+// finishCompletedRun captures terminal metrics before applying the final gate,
+// and returns the exact captured report that the gate evaluated.
+func finishCompletedRun(capture func() Report, valid func(Report) bool) Report {
+	report := capture()
+	if !valid(report) {
 		report.ErrorKind = "final_invariant"
-		return finish()
+		return report
 	}
 	report.Status = "succeeded"
-	return finish()
+	return report
 }
 
 func runRound(parent context.Context, pool *worker.Pool, manifest Manifest, round int, state string, expectedConcurrency int) RoundReport {

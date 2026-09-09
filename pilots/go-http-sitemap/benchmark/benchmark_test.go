@@ -244,3 +244,20 @@ func TestResourceMetricsMustBePresentBoundedAndLeakFree(t *testing.T) {
 		t.Fatal("cgroup OOM unexpectedly accepted")
 	}
 }
+
+func TestCompletedRunCapturesBeforeTerminalValidation(t *testing.T) {
+	order := make([]string, 0, 2)
+	report := finishCompletedRun(func() Report {
+		order = append(order, "capture")
+		return Report{ProcessMaxRSSBytes: 64 << 20, Status: "failed"}
+	}, func(report Report) bool {
+		order = append(order, "validate")
+		return report.ProcessMaxRSSBytes > 0
+	})
+	if report.Status != "succeeded" || report.ProcessMaxRSSBytes != 64<<20 {
+		t.Fatalf("completed report=%+v", report)
+	}
+	if got := strings.Join(order, ","); got != "capture,validate" {
+		t.Fatalf("terminal order=%q, want capture,validate", got)
+	}
+}

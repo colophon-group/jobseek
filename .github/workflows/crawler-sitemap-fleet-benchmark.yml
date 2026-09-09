@@ -284,7 +284,7 @@ jobs:
                 label_key=org.colophon.jobseek.fleet-benchmark.owner
                 [[ "$owner" =~ ^[A-Za-z0-9]+$ ]] || exit 70
                 [[ "$auth_path" == "/tmp/jobseek-sitemap-fleet-auth.$owner" ]] || exit 70
-                mapfile -t ids < <(timeout 20s docker ps -aq --filter "label=${label_key}=${owner}" 2>/dev/null || true)
+                mapfile -t ids < <(timeout 20s docker ps -aq --no-trunc --filter "label=${label_key}=${owner}" 2>/dev/null || true)
                 for id in "${ids[@]}"; do
                   [[ "$id" =~ ^[0-9a-f]{64}$ ]] && timeout 20s docker rm -f "$id" >/dev/null 2>&1 || true
                 done
@@ -359,7 +359,7 @@ jobs:
                 "$preflight_stage" "$status" "${protected_sha256:-none}" || true
             fi
             if (( cleanup_armed )); then
-              mapfile -t owned_ids < <(timeout 20s docker ps -aq --filter "label=${label_key}=${label_value}" 2>/dev/null || true)
+              mapfile -t owned_ids < <(timeout 20s docker ps -aq --no-trunc --filter "label=${label_key}=${label_value}" 2>/dev/null || true)
               for candidate_id in "${owned_ids[@]}"; do
                 [[ "$candidate_id" =~ ^[0-9a-f]{64}$ ]] && timeout 20s docker rm -f "$candidate_id" >/dev/null 2>&1 || true
               done
@@ -556,7 +556,8 @@ jobs:
           checks = [
               config["Image"] == os.environ["IMAGE_REF"], config["User"] == "65532:65532",
               config["Labels"].get(os.environ["LABEL_KEY"]) == os.environ["LABEL_VALUE"],
-              container["Args"] == ["--profile", os.environ["PROFILE"]], host["ReadonlyRootfs"] is True,
+              config.get("Entrypoint") == image["Config"].get("Entrypoint"),
+              config.get("Cmd") == ["--profile", os.environ["PROFILE"]], host["ReadonlyRootfs"] is True,
               host["NetworkMode"] == "bridge", host["NanoCpus"] == 1_000_000_000,
               host["Memory"] == 1_073_741_824, host["MemorySwap"] == 1_073_741_824,
               host["PidsLimit"] == 128, not host.get("Binds"), not container.get("Mounts"),
