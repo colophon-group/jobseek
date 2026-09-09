@@ -96,6 +96,15 @@ _MAX_REFRESH_PAGE_BYTES = 2_000_000
 _MAX_ITEM_FILTER_FIELDS = 16
 _MAX_ITEM_FILTER_VALUES = 100
 _MAX_REQUIRED_PDF_PATTERN_CHARS = 1_024
+_CAREERSGOVSG_BOARD_HOST = "jobs.careers.gov.sg"
+_CAREERSGOVSG_FEED_URL = (
+    "https://raw.githubusercontent.com/opengovsg/"
+    "careersgovsg-jobs-data/refs/heads/main/data/job-listings.json"
+)
+_CAREERSGOVSG_JOB_ID_RE = re.compile(r"^[0-9]+$")
+_CAREERSGOVSG_POSTING_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+)
 
 
 class _DedupePreference(NamedTuple):
@@ -907,6 +916,116 @@ def _configured_post_data(config: dict) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+async def _careersgovsg_probe_config(
+    url: str,
+    client: httpx.AsyncClient,
+) -> dict | None:
+    """Return the public OpenGovSG feed config for the blocked HRP portal."""
+    parsed = urlparse(url)
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.lower() != "https"
+        or parsed.hostname != _CAREERSGOVSG_BOARD_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+        or parsed.path not in ("", "/", "/allvacancies", "/allvacancies/")
+    ):
+        return None
+
+    try:
+        payload = await http_fetch_with_retry(client, "GET", _CAREERSGOVSG_FEED_URL)
+    except PaginationFetchError:
+        return None
+    if not isinstance(payload, list):
+        return None
+
+    hrp_jobs: list[dict] = []
+    for item in payload:
+        if not isinstance(item, dict) or item.get("platform") != "hrp":
+            continue
+        job_id = item.get("jobId")
+        posting_no = item.get("postingNo")
+        if (
+            not isinstance(job_id, str)
+            or _CAREERSGOVSG_JOB_ID_RE.fullmatch(job_id) is None
+            or not isinstance(posting_no, str)
+            or _CAREERSGOVSG_POSTING_RE.fullmatch(posting_no) is None
+            or not isinstance(item.get("jobTitle"), str)
+            or not item["jobTitle"].strip()
+        ):
+            return None
+        hrp_jobs.append(item)
+    if not hrp_jobs:
+        return None
+
+    return {
+        "api_url": _CAREERSGOVSG_FEED_URL,
+        "method": "GET",
+        "json_path": "@",
+        "url_template": ("https://jobs.careers.gov.sg/jobs/hrp/{jobId}/{postingNo}"),
+        "item_filter": {
+            "include": {"platform": ["hrp"]},
+            "require_regex": {
+                "jobId": _CAREERSGOVSG_JOB_ID_RE.pattern,
+                "postingNo": _CAREERSGOVSG_POSTING_RE.pattern,
+            },
+            "dedupe_by": ["platform", "jobId", "postingNo"],
+        },
+        "fields": {
+            "title": "jobTitle",
+            "description": {
+                "concat": [
+                    "=<h2>What the role is</h2>",
+                    "jobDescription",
+                    "=<h2>What you will be working on</h2>",
+                    "jobResponsibilities",
+                    "=<h2>What we are looking for</h2>",
+                    "jobRequirements",
+                ],
+                "separator": "\n\n",
+            },
+            "locations": "=Singapore",
+            "employment_type": {
+                "path": "workArrangement || employmentType",
+                "map": {
+                    "Full-time": "full_time",
+                    "Part-time": "part_time",
+                    "Permanent": "full_time",
+                    "Permanent/Contract": "full_time",
+                    "Fixed Terms": "contract",
+                    "Contract": "contract",
+                    "Internship": "internship",
+                    "Casual": "temporary",
+                    "Traineeship": "internship",
+                },
+            },
+            "date_posted": {
+                "path": "startDate",
+                "timestamp_unit": "milliseconds",
+            },
+            "responsibilities": "jobResponsibilities",
+            "qualifications": "jobRequirements",
+            "valid_through": {
+                "path": "closingDate",
+                "timestamp_unit": "milliseconds",
+            },
+            "metadata.agency": "agency",
+            "metadata.agency_id": "agencyId",
+            "metadata.category": "category",
+            "metadata.field": "field",
+            "metadata.industry": "industry",
+            "metadata.experience_required": "experienceRequired",
+            "metadata.work_arrangement": "workArrangement",
+        },
+        "items": len(hrp_jobs),
+        "score": 100,
+    }
+
+
 async def can_handle(
     url: str,
     client: httpx.AsyncClient,
@@ -923,6 +1042,10 @@ async def can_handle(
     script URL discoveries, and CMS detection results — even when detection
     fails.  This allows callers to show diagnostic output to the user.
     """
+    careersgovsg = await _careersgovsg_probe_config(url, client)
+    if careersgovsg is not None:
+        return careersgovsg
+
     prospective = await _prospective_probe_config(url, client)
     if prospective is not None:
         return prospective

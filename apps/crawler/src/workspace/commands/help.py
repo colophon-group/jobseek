@@ -3634,7 +3634,7 @@ Job Data Fields — types, formats, importance
     Important    job_location_type str       "remote", "hybrid", "onsite"
     Optional     employment_type   str       "full_time", "part_time", "contract", etc.
     Optional     date_posted       str       ISO 8601 date (YYYY-MM-DD)
-    Optional     valid_through     str       ISO 8601 date (scraper only, not in DiscoveredJob)
+    Optional     valid_through     str       ISO 8601 date (stored in DiscoveredJob extras)
     Optional     base_salary       dict      {currency, min, max, unit}
     Optional     skills            [str]     List of skill strings
     Optional     responsibilities  [str]     List of bullet-point strings
@@ -3673,6 +3673,9 @@ Job Data Fields — types, formats, importance
     Unmapped values produce null (not passthrough).
   Decode APIs that return HTML as entities before storing descriptions:
     "description": {"path": "body", "html_unescape": true}
+  Convert Unix timestamps to ISO-8601 UTC values:
+    "date_posted": {"path": "publishedAt", "timestamp_unit": "milliseconds"}
+    Supported timestamp units are "seconds" and "milliseconds".
   Use enrich to scrape only specific fields for rich monitors:
     "enrich": ["description"] — fetches only description from detail pages.
     Titles and descriptions must be N/N — 0/N on either = do not submit.
