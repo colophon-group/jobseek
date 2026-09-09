@@ -567,7 +567,7 @@ test("CI change detection uses the pinned paths-filter action", () => {
   assert.match(workflow, /crawler_code:\n(?:              - .+\n)+/);
   assert.match(
     workflow,
-    /go_http_pilot:\n              - 'pilots\/go-http-sitemap\/\*\*'\n              - '\.github\/workflows\/crawler-go-sitemap-shadow\.yml'/,
+    /go_http_pilot:\n              - '\{pilots\/go-http-sitemap\/\*\*,\.github\/workflows\/crawler-go-sitemap-shadow\.yml\}'/,
   );
   assert.match(workflow, /boards_csv:\n              - 'apps\/crawler\/data\/boards\.csv'/);
 });

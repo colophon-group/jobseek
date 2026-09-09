@@ -183,8 +183,7 @@ jobs:
             crawler_runtime_boundary:
               - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/{derive-crawler-runtime-contract.mjs,verify-crawler-release-bridge.py}}'
             go_http_pilot:
-              - 'pilots/go-http-sitemap/**'
-              - '.github/workflows/crawler-go-sitemap-shadow.yml'
+              - '{pilots/go-http-sitemap/**,.github/workflows/crawler-go-sitemap-shadow.yml}'
             boards_csv:
               - 'apps/crawler/data/boards.csv'
 
