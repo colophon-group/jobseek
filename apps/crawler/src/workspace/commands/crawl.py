@@ -933,6 +933,8 @@ _MONITOR_CONFIG_HINTS = {
     "candidatus": "No config required; resolves WinDev listing postbacks in a browser",
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
     "paynet": "No config required; uses the exact unfiltered Pay-Net board URL",
+    "talentreef": "Optional: alias and locale (auto-filled from a JobAppNetwork URL)",
+    "nowhiring": "Optional: slug (auto-filled from a NowHiring career-site URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
     "jobbank104": (
         "Requires: token (auto-filled from a www.104.com.tw/company URL); use proxy when challenged"

@@ -136,6 +136,10 @@ def test_detect_ats_hibob_host():
 
 def test_detect_ats_beehire_career_page():
     assert detect_ats_from_url("https://app.beehire.com/career/gichd") == "beehire"
+    assert detect_ats_from_url("https://apply.jobappnetwork.com/fulen-tacobell/en") == "talentreef"
+    assert detect_ats_from_url("https://nowhiring.com/fulenwiderkfc/") == "nowhiring"
+    assert detect_ats_from_url("https://apply.jobappnetwork.com/fulen-tacobell/jobs/1") is None
+    assert detect_ats_from_url("https://nowhiring.com/fulenwiderkfc/job-details/1") is None
     assert detect_ats_from_url("https://app.beehire.com/invite/6L-oDP2wk") is None
 
 

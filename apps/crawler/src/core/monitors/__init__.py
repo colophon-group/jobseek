@@ -1057,6 +1057,7 @@ from src.core.monitors import (  # noqa: E402
     nextdata,  # noqa: F401
     njoyn,  # noqa: F401
     notion,  # noqa: F401
+    nowhiring,  # noqa: F401
     oracle_hcm,  # noqa: F401
     pageup,  # noqa: F401
     papa_johns,  # noqa: F401
@@ -1080,6 +1081,7 @@ from src.core.monitors import (  # noqa: E402
     softgarden,  # noqa: F401
     talemetry,  # noqa: F401
     talentbrew,  # noqa: F401
+    talentreef,  # noqa: F401
     taleo,  # noqa: F401
     traffit,  # noqa: F401
     turbohire,  # noqa: F401
