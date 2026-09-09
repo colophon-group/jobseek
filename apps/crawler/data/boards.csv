@@ -4096,6 +4096,7 @@ maruti-suzuki,maruti-suzuki-careers-hansalpur,https://smgsuzuki.app.param.ai/job
 marvel-fusion,marvel-fusion-greenhouse,https://job-boards.eu.greenhouse.io/marvelfusion,greenhouse,"{""token"": ""marvelfusion""}",skip,
 mass-general-brigham,mass-general-brigham-careers,https://massgeneralbrigham.wd1.myworkdayjobs.com/mgbexternal,workday,,workday,
 massar-capital,massar-capital-greenhouse,https://job-boards.greenhouse.io/massarcapital,greenhouse,"{""token"": ""massarcapital""}",skip,
+mastercard,mastercard-careers,https://careers.mastercard.com/,phenom,,json-ld,
 mastercard,mastercard-careers-wd,https://mastercard.wd1.myworkdayjobs.com/CorporateCareers,workday,"{""company"": ""mastercard"", ""wd_instance"": ""wd1"", ""site"": ""CorporateCareers""}",workday,"{""proxy"": true}"
 masterclass,masterclass-greenhouse,https://job-boards.greenhouse.io/masterclass,greenhouse,"{""token"": ""masterclass""}",skip,
 material-bank,material-bank-greenhouse,https://job-boards.greenhouse.io/materialbank,greenhouse,"{""token"": ""materialbank""}",skip,
