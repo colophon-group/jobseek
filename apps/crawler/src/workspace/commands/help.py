@@ -1235,6 +1235,11 @@ nextdata — Next.js __NEXT_DATA__ Discovery
                    array wildcard (a[].b — extracts from all items)
     slug_fields    List of item fields to slugify + join for {slug} variable
     render         If true, use Playwright to render page (default: false)
+    request_headers
+                   Optional public static HTTP headers: Accept,
+                   Accept-Language, Cache-Control, Pragma, and User-Agent.
+                   Secret headers are rejected and redirects must remain
+                   same-origin. Requires render=false.
     actions        Browser action pipeline (auto-enables render)
     wait           Navigation wait strategy (Playwright only)
     wait_fallback  Fallback load state checked on the current document after

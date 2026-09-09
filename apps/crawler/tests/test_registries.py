@@ -163,6 +163,17 @@ class TestFetchPageText:
             result = await fetch_page_text("https://example.com", client, max_chars=100)
             assert len(result) == 100
 
+    async def test_configured_headers_are_validated_at_transport_boundary(self):
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _request: None)
+        ) as client:
+            with pytest.raises(ValueError, match="unsafe header"):
+                await fetch_page_text(
+                    "https://example.com",
+                    client,
+                    request_headers={"Authorization": "Bearer secret"},
+                )
+
 
 class TestDetectMonitorType:
     async def test_detects_greenhouse_url(self):

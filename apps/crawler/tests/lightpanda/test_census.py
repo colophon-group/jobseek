@@ -147,6 +147,31 @@ def test_nextdata_item_inclusions_are_sanitized_and_tracked(tmp_path: Path) -> N
     assert "secret-tenant" not in rendered
 
 
+def test_nextdata_static_request_headers_are_accepted_without_leaking(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "static-nextdata",
+                monitor_type="nextdata",
+                monitor_config={
+                    "request_headers": {"User-Agent": "secret-agent"},
+                    "source": "rsc",
+                },
+            )
+        ],
+    )
+
+    manifest = build_manifest(boards)
+    rendered = manifest_bytes(manifest).decode("ascii")
+
+    assert not any(
+        record["profile_kind"] == "configured" and record["crawler_type"] == "nextdata"
+        for record in manifest["records"]
+    )
+    assert "secret-agent" not in rendered
+
+
 def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
     boards = _write_boards(tmp_path / "boards.csv", [_row("static")])
 

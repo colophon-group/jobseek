@@ -400,6 +400,7 @@ async def fetch_page_text(
     max_chars: int = 500_000,
     *,
     board_gone_statuses: frozenset[int] = frozenset(),
+    request_headers: dict[str, str] | None = None,
 ) -> str | None:
     """Fetch a page and return its text content (capped), or None on error.
 
@@ -416,8 +417,21 @@ async def fetch_page_text(
     from src.shared.tdm import TDMReservedError
     from src.shared.tdm import check_response as _tdm_check
 
+    public_headers: dict[str, str] = {}
+    if request_headers:
+        from src.shared.public_request_headers import validated_public_request_headers
+
+        public_headers = validated_public_request_headers(
+            request_headers, owner="monitor page fetch"
+        )
+
     try:
-        resp = await client.get(url, follow_redirects=True)
+        if public_headers:
+            from src.shared.public_request_headers import public_get
+
+            resp = await public_get(client, url, headers=public_headers)
+        else:
+            resp = await client.get(url, follow_redirects=True)
         if resp.status_code in board_gone_statuses:
             raise BoardGoneError(
                 f"Board page returned HTTP {resp.status_code}",
