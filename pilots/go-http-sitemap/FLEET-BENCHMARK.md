@@ -12,9 +12,9 @@ not change the authoritative worker, queue, database, exporter, or publisher.
 - The manifest is embedded into both images. A test proves that every board
   URL, sitemap URL, and literal `url_filter` still exactly matches
   `apps/crawler/data/boards.csv`.
-- Profiles `c2`, `c4`, `c5`, `c8`, `c12`, and `c16` vary only active worker
-  permits. Both runtimes retain a fixed HTTP/1.1 pool of 20 total and 10 idle
-  connections with 30-second keepalive expiry.
+- Scheduled profiles `c5`, `c12`, and `c16` vary only active worker permits. Both
+  runtimes retain a fixed HTTP/1.1 pool of 20 total and 10 idle connections
+  with 30-second keepalive expiry.
 - `c5` is the current Python operating-point anchor. `c12` and `c16` measure
   bounded density/headroom only; 32 jobs are not enough to establish sustained
   production capacity at those levels.
@@ -22,10 +22,19 @@ not change the authoritative worker, queue, database, exporter, or publisher.
   `pool_warm` batch through the same long-lived worker and client. `pool_warm`
   means the pool survives between batches; it does not assert that all 32
   origins retained an idle connection.
-- The committed seed-8648 schedule contains 30 independent Go/Python pairs:
-  six pairs each for `c5`, `c12`, and `c16`, and four each for `c2`, `c4`, and
-  `c8`. Go-first and Python-first order is balanced per profile. The two rounds
-  inside a container are correlated observations, not independent samples.
+- The committed seed-8648 admission schedule contains 18 independent
+  Go/Python pairs: six pairs each for `c5`, `c12`, and `c16`. Each consecutive
+  three-pair block contains all three profiles, every profile occupies each
+  within-block position twice, and Go-first/Python-first order is balanced per
+  profile across early, middle, and late blocks. The two rounds inside a
+  container are correlated observations, not independent samples.
+- This admission-only schedule replaces the original 30-pair exploratory
+  schedule after run 34376977564 completed its first 50 arms, then encountered
+  cross-runtime timeouts, slow responses, and status rejections from three
+  external origins in seven of the final ten arms. The descriptive `c2`, `c4`,
+  and `c8` pairs controlled no admission threshold, so retaining them would add
+  48 GETs per origin without answering the RAM-density decision. Results from
+  that failed run are not pooled into the replacement run.
 - Each arm is limited to 1 CPU, 1 GiB total memory with no additional swap,
   128 PIDs, and 256 file descriptors. Containers are non-root, read-only,
   capability-free, and run one at a time on the allocated Murmur machine. The
@@ -39,8 +48,8 @@ not change the authoritative worker, queue, database, exporter, or publisher.
   expansion. Requests use `Accept-Encoding: identity`; decoded response and
   aggregate byte caps remain enforced.
 
-The full schedule makes at most 3,840 source GETs: 30 pairs x 2 runtimes x 2
-rounds x 32 origins, or 120 GETs per origin. DNS is resolved once before the
+The full schedule makes at most 2,304 source GETs: 18 pairs x 2 runtimes x 2
+rounds x 32 origins, or 72 GETs per origin. DNS is resolved once before the
 schedule, restricted to public addresses that are not Murmur, and the exact
 same singleton host pins are injected into both runtimes. There is no
 benchmark-only in-container DNS fanout before the measured rounds: Python
@@ -68,7 +77,7 @@ approaches 1 GiB, the result demonstrates headroom for this slice, not the
 production RAM ceiling. Per-arm p99 across 32 jobs is effectively a maximum
 and is descriptive only.
 
-The Go density case is admitted only when all 60 arms succeed, every paired
+The Go density case is admitted only when all 36 arms succeed, every paired
 round has identical non-empty count and digest, no policy, OOM, container, or
 resource invariant fails, and all aggregate byte deltas remain within 5%.
 Collapse each arm's cold and warm rounds deterministically: throughput is

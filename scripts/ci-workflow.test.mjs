@@ -1189,6 +1189,19 @@ test("fleet benchmark workflow is bounded, isolated, and uses the reviewed wire 
     (goSitemapFleetWorkflow.match(/len\(hosts\) != 32 or len\(set\(hosts\)\) != 32/g) ?? [])
       .length >= 2,
   );
+  assert.match(goSitemapFleetWorkflow, /len\(pairs\) != 18/);
+  assert.match(goSitemapFleetWorkflow, /len\(rows\) == 18/);
+  assert.match(
+    goSitemapFleetWorkflow,
+    /\[\[ "\$pair" =~ \^p\(0\[1-9\]\|1\[0-8\]\)\$ && "\$profile" =~ \^c\(5\|12\|16\)\$ \]\] \|\| exit 71/,
+  );
+  assert.equal(
+    (goSitemapFleetWorkflow.match(/expected = \{"c5": 6, "c12": 6, "c16": 6\}/g) ?? [])
+      .length,
+    2,
+  );
+  assert.match(goSitemapFleetWorkflow, /arm_number == 36/);
+  assert.match(goSitemapFleetWorkflow, /"\$arm_number" -eq 36/);
   assert.match(
     goSitemapFleetWorkflow,
     /any\(unsafe\(address\) or address in excluded for address in answers\)/,
@@ -1199,6 +1212,7 @@ test("fleet benchmark workflow is bounded, isolated, and uses the reviewed wire 
     goSitemapFleetWorkflow,
     /\.status == "succeeded" and \.report_valid == true and \.timing_comparable == true/,
   );
+  assert.match(goSitemapFleetWorkflow, /\(\.arms \| length == 36\)/);
 });
 
 test("Go sitemap production shadow is manual, isolated, and Murmur-scoped", () => {

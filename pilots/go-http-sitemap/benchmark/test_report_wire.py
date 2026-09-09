@@ -249,8 +249,8 @@ class ReportWireTest(unittest.TestCase):
         self.assertEqual(report["status"], "succeeded")
         self.assertTrue(report["report_valid"])
         self.assertTrue(report["timing_comparable"])
-        self.assertEqual(len(report["arms"]), 60)
-        self.assertEqual(len(report["byte_deltas"]), 60)
+        self.assertEqual(len(report["arms"]), 36)
+        self.assertEqual(len(report["byte_deltas"]), 36)
 
     def test_preflight_failure_retains_exact_stage_without_safety_alarm(self) -> None:
         wire = self.make_preflight_failure_wire("pull_go_image")
@@ -326,7 +326,7 @@ class ReportWireTest(unittest.TestCase):
         report = report_wire.parse_report(self.args(self.make_wire(arms), 0))
         self.assertEqual(report["error_kind"], "benchmark_or_source_failure")
         self.assertTrue(report["report_valid"])
-        self.assertEqual(len(report["arms"]), 60)
+        self.assertEqual(len(report["arms"]), 36)
 
     def test_partial_safety_abort_retains_prefix(self) -> None:
         report = report_wire.parse_report(
@@ -356,7 +356,7 @@ class ReportWireTest(unittest.TestCase):
         self.assertTrue(report["report_valid"])
 
     def test_unknown_and_url_typed_metric_are_rejected_without_leak(self) -> None:
-        raw = self.raw_report("go", "c2")
+        raw = self.raw_report("go", self.expected_arms[0][1])
         raw["run_duration_ms"] = "https://secret.example/job/1"
         raw["unknown"] = "https://secret.example/job/2"
         report = report_wire.parse_report(
@@ -373,7 +373,7 @@ class ReportWireTest(unittest.TestCase):
         self.assertFalse(report["report_valid"])
 
     def test_nan_is_rejected_without_nonfinite_output(self) -> None:
-        raw = self.raw_report("go", "c2")
+        raw = self.raw_report("go", self.expected_arms[0][1])
         text = json.dumps(raw, separators=(",", ":")).replace(
             '"run_duration_ms":210', '"run_duration_ms":NaN'
         )
@@ -387,6 +387,14 @@ class ReportWireTest(unittest.TestCase):
         )
         self.assertFalse(report["arms"][0]["raw_report_valid"])
         json.dumps(report, allow_nan=False)
+
+    def test_unscheduled_profile_is_rejected_cleanly(self) -> None:
+        schedule = self.temp / "unscheduled-profile.json"
+        payload = json.loads(self.schedule.read_text(encoding="utf-8"))
+        payload["pairs"][0]["profile"] = "c2"
+        schedule.write_text(json.dumps(payload), encoding="utf-8")
+        with self.assertRaises(report_wire.InputError):
+            report_wire._load_contract(self.fleet, schedule, 8)
 
     def test_postflight_protected_digest_mismatch_invalidates_transport(self) -> None:
         args = self.args(self.make_wire(self.successful_arms()), 0)
