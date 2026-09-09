@@ -2,9 +2,9 @@
   "schema_version": 1,
   "jobs": [
     {
-      "id": "snap-fusion-atlantic-recruitee",
-      "sitemap_url": "https://jobsatlanticvcfoodlabs.recruitee.com/sitemap.xml",
-      "include_literal": "fusion-energy-venture",
+      "id": "acosta-group-dee-set",
+      "sitemap_url": "https://careers.deeset.co.uk/jobs/sitemap.xml",
+      "include_literal": "/jobs/vacancy/",
       "exclude_literal": "",
       "max_urls": 50000,
       "max_index_children": 16

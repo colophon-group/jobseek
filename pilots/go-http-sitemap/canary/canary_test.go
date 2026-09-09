@@ -36,8 +36,8 @@ func TestProductionManifestIsStrictAndBounded(t *testing.T) {
 func TestDecodeManifestRejectsUnknownAndModifiedInputs(t *testing.T) {
 	tests := []string{
 		`{"schema_version":1,"jobs":[],"extra":true}`,
-		`{"schema_version":1,"jobs":[{"id":"snap-fusion-atlantic-recruitee","sitemap_url":"https://example.com/sitemap.xml","include_literal":"fusion-energy-venture","exclude_literal":"","max_urls":50000,"max_index_children":16}]}`,
-		`{"schema_version":1,"jobs":[{"id":"snap-fusion-atlantic-recruitee","sitemap_url":"https://jobsatlanticvcfoodlabs.recruitee.com/sitemap.xml","include_literal":"fusion-energy-venture","exclude_literal":"","max_urls":50000,"max_index_children":16},{"id":"snap-fusion-atlantic-recruitee","sitemap_url":"https://jobsatlanticvcfoodlabs.recruitee.com/sitemap.xml","include_literal":"fusion-energy-venture","exclude_literal":"","max_urls":50000,"max_index_children":16}]}`,
+		`{"schema_version":1,"jobs":[{"id":"acosta-group-dee-set","sitemap_url":"https://example.com/sitemap.xml","include_literal":"/jobs/vacancy/","exclude_literal":"","max_urls":50000,"max_index_children":16}]}`,
+		`{"schema_version":1,"jobs":[{"id":"acosta-group-dee-set","sitemap_url":"https://careers.deeset.co.uk/jobs/sitemap.xml","include_literal":"/jobs/vacancy/","exclude_literal":"","max_urls":50000,"max_index_children":16},{"id":"acosta-group-dee-set","sitemap_url":"https://careers.deeset.co.uk/jobs/sitemap.xml","include_literal":"/jobs/vacancy/","exclude_literal":"","max_urls":50000,"max_index_children":16}]}`,
 		`{"schema_version":1,"jobs":[{"id":"unknown","sitemap_url":"https://unknown.invalid/sitemap.xml","include_literal":"","exclude_literal":"","max_urls":1,"max_index_children":1}]}`,
 		`{"schema_version":1,"jobs":[]} {}`,
 	}
@@ -71,7 +71,7 @@ func TestCanonicalURLSHA256IsOrderIndependentAndUnambiguous(t *testing.T) {
 
 func TestJobReportNeverSerializesDiscoveredURLsOrRawError(t *testing.T) {
 	result := worker.Result{
-		JobID: "snap-fusion-atlantic-recruitee",
+		JobID: "acosta-group-dee-set",
 		Sitemap: sitemap.Result{
 			URLs: []string{"https://secret.example/credential?token=do-not-emit"},
 		},
