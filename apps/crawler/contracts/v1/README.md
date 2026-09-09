@@ -32,6 +32,9 @@ Files:
   this activation.
 - `queue.md` — Redis/Lua scheduling, lease, and politeness invariants.
 - `metrics.md` — cross-runtime metrics required for cutover and reversal.
+- `lightpanda-adapter.md` and `lightpandaadapter/` — dormant fake-only B1
+  assignment, lifecycle, bounded mapping, and mandatory evaluation-privacy
+  seam; they do not contain a provider client or activate browser work.
 
 Compatibility rules:
 
