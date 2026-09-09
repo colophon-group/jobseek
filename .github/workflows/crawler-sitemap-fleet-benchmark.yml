@@ -379,13 +379,31 @@ jobs:
           [[ -z "$existing_benchmark_ids" ]] || exit 70
           cleanup_armed=1
 
+          inspect_protected_service() {
+            local service="$1" container_id="$2" state_payload
+            state_payload="$(timeout 20s docker inspect --format '{{.Id}}|{{.RestartCount}}|{{json .State}}' "$container_id")" || return 1
+            PROTECTED_SERVICE="$service" PROTECTED_STATE="$state_payload" python3 - <<'PY'
+          import json, os, re
+          container_id, restart_text, state_text = os.environ["PROTECTED_STATE"].split("|", 2)
+          state = json.loads(state_text)
+          health_state = state.get("Health")
+          health = "none" if health_state is None else health_state.get("Status")
+          restart_count = int(restart_text)
+          if (re.fullmatch(r"[0-9a-f]{64}", container_id) is None or restart_count < 0
+                  or state.get("Status") not in {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
+                  or not isinstance(health, str)):
+              raise SystemExit(1)
+          print(f'{os.environ["PROTECTED_SERVICE"]}|{container_id}|{state["Status"]}|{restart_count}|{health}')
+          PY
+          }
+
           snapshot_protected_services() {
             for service in murmur cloudflared; do
               ids_text="$(timeout 20s docker ps -aq --filter label=com.docker.compose.project=deploy \
                 --filter "label=com.docker.compose.service=$service")" || return 1
               mapfile -t ids <<<"$ids_text"
               [[ ${#ids[@]} -eq 1 ]] || return 1
-              timeout 20s docker inspect --format "${service}|{{.Id}}|{{.State.Status}}|{{.RestartCount}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}" "${ids[0]}"
+              inspect_protected_service "$service" "${ids[0]}"
             done
           }
           protected_base="$(snapshot_protected_services)" || exit 70
@@ -759,12 +777,29 @@ jobs:
           python_images="$(timeout 20s docker image ls --quiet --no-trunc "$python_ref")"
           [[ -z "$benchmark_ids" && -z "$go_images" && -z "$python_images" ]]
           [[ ! -e "$auth_path" ]]
+          inspect_protected_service() {
+            local service="$1" container_id="$2" state_payload
+            state_payload="$(timeout 20s docker inspect --format '{{.Id}}|{{.RestartCount}}|{{json .State}}' "$container_id")" || return 1
+            PROTECTED_SERVICE="$service" PROTECTED_STATE="$state_payload" python3 - <<'PY'
+          import json, os, re
+          container_id, restart_text, state_text = os.environ["PROTECTED_STATE"].split("|", 2)
+          state = json.loads(state_text)
+          health_state = state.get("Health")
+          health = "none" if health_state is None else health_state.get("Status")
+          restart_count = int(restart_text)
+          if (re.fullmatch(r"[0-9a-f]{64}", container_id) is None or restart_count < 0
+                  or state.get("Status") not in {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
+                  or not isinstance(health, str)):
+              raise SystemExit(1)
+          print(f'{os.environ["PROTECTED_SERVICE"]}|{container_id}|{state["Status"]}|{restart_count}|{health}')
+          PY
+          }
           snapshot=""
           for service in murmur cloudflared; do
             ids_text="$(timeout 20s docker ps -q --filter label=com.docker.compose.project=deploy --filter "label=com.docker.compose.service=$service")"
             mapfile -t ids <<<"$ids_text"
             [[ ${#ids[@]} -eq 1 ]]
-            line="$(timeout 20s docker inspect --format "${service}|{{.Id}}|{{.State.Status}}|{{.RestartCount}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}" "${ids[0]}")"
+            line="$(inspect_protected_service "$service" "${ids[0]}")"
             IFS='|' read -r _ _ status _ health <<<"$line"
             [[ "$status" == running && ("$health" == none || "$health" == healthy) ]]
             snapshot+="${snapshot:+$'\n'}$line"

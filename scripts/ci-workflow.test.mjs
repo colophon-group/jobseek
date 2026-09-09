@@ -1108,6 +1108,19 @@ test("fleet benchmark workflow is bounded, isolated, and uses the reviewed wire 
     goSitemapFleetWorkflow,
     /--protected-postflight-sha256 "\$protected_postflight_sha256"/,
   );
+  assert.equal(goSitemapFleetWorkflow.includes("{{if .State.Health}}"), false);
+  assert.equal(
+    (
+      goSitemapFleetWorkflow.match(
+        /\{\{\.Id\}\}\|\{\{\.RestartCount\}\}\|\{\{json \.State\}\}/g,
+      ) ?? []
+    ).length,
+    2,
+  );
+  assert.equal(
+    (goSitemapFleetWorkflow.match(/health_state = state\.get\("Health"\)/g) ?? []).length,
+    2,
+  );
   assert.match(
     goSitemapFleetWorkflow,
     /\.status == "succeeded" and \.report_valid == true and \.timing_comparable == true/,
