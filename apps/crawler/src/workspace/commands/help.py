@@ -1766,6 +1766,8 @@ dom — Link or Listing-Row Extraction (fallback)
                    {"function": "loadGrid", "argument_index": 2,
                     "url_field": "link", "url_template": "{value}",
                     "title_field": "title", "locations_field": "locations"}
+                   Set "html_unescape": true when the function call is stored
+                   in an HTML attribute and its JSON quotes are entity-encoded.
                    The assignment and every item are validated fail-closed;
                    calls must be unique, and generated URLs must be unique and
                    same-origin. Static single-page discovery only.
