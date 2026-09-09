@@ -15,7 +15,7 @@ def _rows(filename: str, slug_field: str) -> list[dict[str, str]]:
         ]
 
 
-def test_company_metadata_and_images_are_complete() -> None:
+def test_company_metadata_and_uploaded_assets_are_complete() -> None:
     company = _rows("companies.csv", "slug")
     descriptions = _rows("company_descriptions.csv", "slug")
 
@@ -26,8 +26,14 @@ def test_company_metadata_and_images_are_complete() -> None:
     assert company[0]["founded_year"] == "1997"
     assert len(descriptions) == 1
     assert all(descriptions[0][locale] for locale in ("en", "de", "fr", "it"))
-    assert (DATA_DIR / "images/indiana-university-health/logo.jpg").is_file()
-    assert (DATA_DIR / "images/indiana-university-health/icon.jpg").is_file()
+    assert company[0]["logo_url"].startswith(
+        "https://jobseek-assets.colophon-group.org/companies/indiana-university-health/logo-"
+    )
+    assert company[0]["logo_url"].endswith(".jpg")
+    assert company[0]["icon_url"].startswith(
+        "https://jobseek-assets.colophon-group.org/companies/indiana-university-health/icon-"
+    )
+    assert company[0]["icon_url"].endswith(".webp")
 
 
 def test_general_and_physician_inventories_are_distinct_and_complete() -> None:
