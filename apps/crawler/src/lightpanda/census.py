@@ -226,6 +226,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "pagination",
             "path",
             "render",
+            "request_headers",
             "require_item_values",
             "rescrape_policy",
             "slug_fields",

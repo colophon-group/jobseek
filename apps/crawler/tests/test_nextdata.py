@@ -2071,6 +2071,117 @@ class TestRscDiscover:
         assert result[0].title == "Watchmaker"
         assert result[0].description == "Build watch movements 0"
 
+    async def test_static_request_headers_unlock_rsc_listing_and_stream(self):
+        seen_headers: list[httpx.Headers] = []
+        jobs = [
+            {
+                "id": str(i),
+                "title": f"Sky role {i}",
+                "location": "Unterfoehring near Munich",
+                "description": "Join the team.",
+                "tasks": "<ul><li>Build streaming products.</li></ul>",
+                "requirements": "<ul><li>Work collaboratively.</li></ul>",
+            }
+            for i in range(6)
+        ]
+        html = _html_with_rsc_data({"children": [{"vacancies": {"alt": jobs}}]})
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen_headers.append(request.headers)
+            if request.headers.get("user-agent") != "jobseek-crawler":
+                return httpx.Response(403, request=request)
+            return httpx.Response(200, text=html, request=request)
+
+        board = {
+            "board_url": "https://careers.example.com/jobs",
+            "metadata": {
+                "source": "rsc",
+                "path": "children[0].vacancies.alt",
+                "url_template": "https://careers.example.com/jobs/{id}",
+                "request_headers": {"User-Agent": "jobseek-crawler"},
+                "fields": {
+                    "title": "title",
+                    "locations": "location",
+                    "description": [
+                        "description",
+                        "=<h2>Tasks</h2>",
+                        "tasks",
+                        "=<h2>Requirements</h2>",
+                        "requirements",
+                    ],
+                },
+            },
+        }
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            batches = [
+                batch
+                async for batch in monitor_one_stream(
+                    board["board_url"], "nextdata", board["metadata"], client
+                )
+            ]
+
+        assert len(result) == 6
+        assert len(batches) == 1
+        assert batches[0].jobs_by_url is not None
+        assert len(batches[0].jobs_by_url) == 6
+        assert len(seen_headers) == 2
+        assert all(headers.get("user-agent") == "jobseek-crawler" for headers in seen_headers)
+        assert result[0].locations == ["Unterfoehring near Munich"]
+        assert result[0].description == (
+            "Join the team.\n<h2>Tasks</h2>\n"
+            "<ul><li>Build streaming products.</li></ul>\n"
+            "<h2>Requirements</h2>\n<ul><li>Work collaboratively.</li></ul>"
+        )
+
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            {"Cookie": "session=secret"},
+            {"Authorization": "Bearer secret"},
+        ],
+    )
+    async def test_static_request_headers_reject_secrets(self, headers):
+        board = {
+            **BOARD_RSC,
+            "metadata": {**BOARD_RSC["metadata"], "request_headers": headers},
+        }
+        async with httpx.AsyncClient(transport=_mock_transport(RSC_HTML)) as client:
+            with pytest.raises(ValueError, match="unsafe header"):
+                await discover(board, client)
+
+    async def test_static_request_headers_reject_render_mode(self):
+        board = {
+            **BOARD_RSC,
+            "metadata": {
+                **BOARD_RSC["metadata"],
+                "render": True,
+                "request_headers": {"User-Agent": "jobseek-crawler"},
+            },
+        }
+        async with httpx.AsyncClient(transport=_mock_transport(RSC_HTML)) as client:
+            with pytest.raises(ValueError, match="supported only when render=false"):
+                await discover(board, client)
+
+    async def test_static_request_headers_reject_actions_that_enable_render(self):
+        board = {
+            **BOARD_RSC,
+            "metadata": {
+                **BOARD_RSC["metadata"],
+                "actions": [{"type": "wait", "timeout": 1}],
+                "request_headers": {"User-Agent": "jobseek-crawler"},
+            },
+        }
+        async with httpx.AsyncClient(transport=_mock_transport(RSC_HTML)) as client:
+            with pytest.raises(ValueError, match="supported only when render=false"):
+                await discover(board, client)
+        async with httpx.AsyncClient(transport=_mock_transport(RSC_HTML)) as client:
+            stream = discover_stream(board, client)
+            with pytest.raises(ValueError, match="supported only when render=false"):
+                await anext(stream)
+
 
 def _onlyfy_rsc_data(page: int, *, page_count: int = 2, page_size: int = 5) -> dict:
     start = (page - 1) * page_size
