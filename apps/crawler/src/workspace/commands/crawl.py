@@ -932,6 +932,7 @@ _MONITOR_CONFIG_HINTS = {
     "brassring": "Requires: partner_id and site_id (auto-filled from a TGnewUI URL)",
     "candidatus": "No config required; resolves WinDev listing postbacks in a browser",
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
+    "paynet": "No config required; uses the exact unfiltered Pay-Net board URL",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
     "jobbank104": (
         "Requires: token (auto-filled from a www.104.com.tw/company URL); use proxy when challenged"

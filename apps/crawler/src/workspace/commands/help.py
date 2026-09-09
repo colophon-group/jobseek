@@ -122,6 +122,7 @@ Monitor Types (cheapest first):
   linkedin          10      Full/partial      Auto-enriched
   manatal           10      Full job data     No (skipped)
   paycom            10      Full/partial      Auto-enriched
+  paynet            10      Full job data     No (skipped)
   paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
   recruitee         10      Full job data     No (skipped)
@@ -2767,6 +2768,22 @@ paycom — Paycom public portal API
   Detection:  ws probe shows "Paycom API — portal: TOKEN, N jobs"
   Zero jobs?  Confirm the preview API reports count 0 after a valid bootstrap."""
 
+MONITOR_PAYNET = """\
+paynet — Pay-Net public applicant API
+
+  Listing:  GET https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=...
+  Returns:  Full job data from the public listing payload
+  Scraper:  Not needed (skipped)
+  Browser:  Not required
+  Config:   None. The company ID is validated from the exact unfiltered
+            https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?co=... URL.
+  Note:     Pay-Net returns successful listing payloads with HTTP 201. The
+            monitor explicitly accepts that provider behavior while retaining
+            bounded response-size, retry, response-shape, and identity checks.
+
+  Detection:  ws probe shows "Pay-Net API — company: ID, N jobs"
+  Zero jobs?  Confirm the public API returns an empty JSON array."""
+
 MONITOR_BAMBOOHR = """\
 bamboohr — BambooHR public careers API
 
@@ -3521,11 +3538,12 @@ dom — Step-based Extraction Engine
                    With scope, prepend meta description text for extraction
     document_fallback
                    Static-only per-format configs for detail URLs that may
-                   download PDF or DOCX files instead of returning HTML:
-                   {"pdf": {...}, "docx": {...}}. PDF keys match
-                   `ws help scraper pdf`; DOCX supports title_source: "text",
-                   title_pattern, location_pattern, and defaults. HTML
-                   responses continue through the configured DOM steps.
+                   download legacy DOC, PDF, or DOCX files instead of returning
+                   HTML: {"doc": {...}, "pdf": {...}, "docx": {...}}. PDF
+                   keys match `ws help scraper pdf`; DOC/DOCX support
+                   title_source, title_pattern, location_pattern, and defaults.
+                   Legacy DOC extraction uses the bounded antiword runtime.
+                   HTML responses continue through the configured DOM steps.
 
   Target fields: title, description, locations, employment_type,
   job_location_type, date_posted, valid_through, qualifications,
@@ -4249,6 +4267,7 @@ MONITOR_CARDS: dict[str, str] = {
     "brassring": MONITOR_BRASSRING,
     "candidatus": MONITOR_CANDIDATUS,
     "paycom": MONITOR_PAYCOM,
+    "paynet": MONITOR_PAYNET,
     "jazzhr": MONITOR_JAZZHR,
     "jobbank104": MONITOR_JOBBANK104,
     "jobdiva": """\
@@ -4564,7 +4583,9 @@ paycom — Paycom public detail API scraper
   API:       GET the validated regional /api/ats/job-postings/{id} endpoint
   Returns:   title, HTML description and qualifications, locations,
              employment/workplace type, date, salary, and job metadata
-  Config:    None needed — portal token and job ID come from the canonical URL
+  Config:    Portal token and job ID come from the canonical URL. Optional
+             {"defaults": {"locations": ["City, ST"]}} fills only locations
+             omitted by the employer's detail records; extracted values win.
   Note:      Auto-configured with the paycom monitor. It reuses the monitor's
              bootstrap validation and shared HTTP retry path; no browser or
              upstream scraper dependency is required.
