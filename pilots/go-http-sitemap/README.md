@@ -62,6 +62,40 @@ bounded admission/results, origin-fair dispatch, task deadlines, panic
 containment, and bounded shutdown cancellation. Its fixed-resource comparison
 method is frozen in [WORKER-BENCHMARK.md](WORKER-BENCHMARK.md).
 
+The additive `admission` package is an inactive, dependency-injected
+claim-boundary proof with a hermetic real HTTP/sitemap composition test. Its
+private processor adapter enters the injected claim operation only
+after `worker.Pool` assigns both a worker and an origin slot; callers cannot
+bypass the pool through a public `Process` method. `Candidate` requires the
+exact `crawler.runtime/v1` discriminator and snapshots the complete normalized
+sitemap config plus the identity/revision/fingerprint subset of runtime-v1
+`BoardManifest`. `sitemap.NormalizeConfig` is the single pure validation and
+defaulting seam used by both admission and execution, so their attempted
+request count/backoff and every other config value cannot drift.
+
+The injected claim grant keeps its local candidate digest separate from the
+opaque 32-byte runtime-v1 fence digest. Its immutable `Fence` adds local task
+and board bindings to the seven losslessly mapped runtime-v1 `FencingContext`
+fields: shard, routing epoch, Go engine owner, config revision, claim token,
+lease ID, and fence digest. Server time, lease-until time, and the monotonic
+claim-request start stay outside fence identity so a future lease supervisor
+can derive a conservative deadline without comparing server and worker wall
+clocks. Supervisor handles, execution, and terminal publication must echo and
+exactly compare the fence. A future authoritative terminal adapter must compare
+that entire fence and the candidate's manifest revision/fingerprint in the
+same transaction as its mutation; an echo alone never authorizes a write.
+
+Admission and execution contexts remain separate. Cancellation, timeout,
+lease loss, invalid echoes, dependency panic, or supervisor cleanup failure
+suppress terminal mutation. A supervisor is stopped and deadline-joined before
+any terminal attempt. Closing starts the existing bounded worker drain,
+cancels and joins any claim already in progress, and prevents queued or later
+tasks from starting a claim. Duplicate and stale task rejection deliberately
+belongs to the injected atomic claim operation rather than a second in-memory
+scheduler. There is still no Redis/Lua client, Postgres mutation, retry loop,
+browser/Lightpanda adapter, global cross-process politeness, queue authority,
+workflow, image, or deployment path in this package.
+
 The RAM-density comparison against the production Python sitemap monitor is
 frozen separately in [FLEET-BENCHMARK.md](FLEET-BENCHMARK.md). It uses 32
 distinct production origins and paired `c2` through `c16` profiles without
