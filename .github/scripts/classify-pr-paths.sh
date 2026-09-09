@@ -71,7 +71,18 @@ is_go_http_pilot_path() {
   local file="$1"
 
   [[ "$file" == pilots/go-http-sitemap/* || \
-    "$file" == .github/workflows/crawler-go-sitemap-shadow.yml ]]
+    "$file" == .github/workflows/crawler-go-sitemap-shadow.yml || \
+    "$file" == .github/workflows/crawler-sitemap-fleet-benchmark.yml || \
+    "$file" == apps/crawler/Dockerfile || \
+    "$file" == apps/crawler/uv.lock || \
+    "$file" == apps/crawler/data/boards.csv || \
+    "$file" == apps/crawler/src/core/__init__.py || \
+    "$file" == apps/crawler/src/core/monitor.py || \
+    "$file" == apps/crawler/src/core/monitors/raw.py || \
+    "$file" == apps/crawler/src/core/monitors/sitemap.py || \
+    "$file" == apps/crawler/src/shared/__init__.py || \
+    "$file" == apps/crawler/src/shared/ssrf.py || \
+    "$file" == apps/crawler/src/shared/tdm.py ]]
 }
 
 code=false

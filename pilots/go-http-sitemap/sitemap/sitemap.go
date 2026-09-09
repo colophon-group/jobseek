@@ -91,6 +91,10 @@ type Config struct {
 	MaxIndexChildren int
 	RootMaxAttempts  int
 	RootBackoff      time.Duration
+	// RequireURLSet rejects an index immediately after the root response. It
+	// gives the fleet benchmark a provable one-request-per-origin contract
+	// without changing the production-shadow canary's admitted index behavior.
+	RequireURLSet bool
 	// AllowHTTPForTesting permits hermetic HTTP origins. Production sitemap
 	// roots and every fetched child are otherwise confined to the root's exact
 	// HTTPS origin.
@@ -165,6 +169,9 @@ func (r *Runner) Run(ctx context.Context) (Result, error) {
 	case "urlset":
 		rawURLs = extractURLs(doc)
 	case "sitemapindex":
+		if r.config.RequireURLSet {
+			return fail(newError(ErrorUnsupported, r.config.SitemapURL, 0, nil))
+		}
 		children := extractChildren(doc)
 		jobChildren := make([]string, 0, len(children))
 		for _, child := range children {

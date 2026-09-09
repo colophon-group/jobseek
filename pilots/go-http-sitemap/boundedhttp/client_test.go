@@ -114,6 +114,33 @@ func TestGetCapsDecodedGzipBody(t *testing.T) {
 	}
 }
 
+func TestGetCanRequireIdentityEncodingBeforeReadingBody(t *testing.T) {
+	var requestEncoding string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestEncoding = r.Header.Get("Accept-Encoding")
+		w.Header().Set("Content-Encoding", "gzip")
+		_, _ = w.Write([]byte("must not be read"))
+	}))
+	defer server.Close()
+
+	client := testClient(t, func(c *Config) { c.RequireIdentityEncoding = true })
+	session := client.NewSession()
+	headers := http.Header{"Accept-Encoding": {"gzip"}}
+	_, err := session.Get(context.Background(), server.URL, headers)
+	if got := errorKind(t, err); got != ErrorContentEncoding {
+		t.Fatalf("kind=%s", got)
+	}
+	if requestEncoding != "identity" {
+		t.Fatalf("accept-encoding=%q", requestEncoding)
+	}
+	if got := headers.Get("Accept-Encoding"); got != "gzip" {
+		t.Fatalf("caller headers mutated: accept-encoding=%q", got)
+	}
+	if stats := session.Stats(); stats.Requests != 1 || stats.WireAttempts != 1 || stats.DecodedBytes != 0 || stats.StatusBodyBytes != 0 {
+		t.Fatalf("stats=%+v", stats)
+	}
+}
+
 func TestGetEnforcesRequestAndAggregateLimits(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("four"))

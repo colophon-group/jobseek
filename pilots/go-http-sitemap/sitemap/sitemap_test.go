@@ -149,6 +149,37 @@ func TestURLSetParitySubset(t *testing.T) {
 	}
 }
 
+func TestRequireURLSetRejectsIndexWithoutChildRequest(t *testing.T) {
+	var requests atomic.Int64
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	mux.HandleFunc("/sitemap.xml", func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, _ = fmt.Fprintf(w, `<sitemapindex><sitemap><loc>%s/child.xml</loc></sitemap></sitemapindex>`, server.URL)
+	})
+	mux.HandleFunc("/child.xml", func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, _ = w.Write([]byte(`<urlset/>`))
+	})
+
+	runner := newRunner(t, newHTTPClient(t, 2), Config{
+		SitemapURL:       server.URL + "/sitemap.xml",
+		MaxURLs:          50_000,
+		MaxIndexChildren: 1,
+		RootMaxAttempts:  1,
+		RequireURLSet:    true,
+	})
+	_, err := runner.Run(context.Background())
+	var sitemapErr *Error
+	if !errors.As(err, &sitemapErr) || sitemapErr.Kind != ErrorUnsupported {
+		t.Fatalf("error=%v, want unsupported", err)
+	}
+	if got := requests.Load(); got != 1 {
+		t.Fatalf("requests=%d, want exactly root request", got)
+	}
+}
+
 func TestFrozenAbbVieLiteralFilterConfigParity(t *testing.T) {
 	fixtureBytes, err := os.ReadFile("testdata/abbvie-careers-literal-filter.json")
 	if err != nil {

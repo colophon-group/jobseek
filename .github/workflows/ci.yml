@@ -183,7 +183,7 @@ jobs:
             crawler_runtime_boundary:
               - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/{derive-crawler-runtime-contract.mjs,verify-crawler-release-bridge.py}}'
             go_http_pilot:
-              - '{pilots/go-http-sitemap/**,.github/workflows/crawler-go-sitemap-shadow.yml}'
+              - '{pilots/go-http-sitemap/**,.github/workflows/crawler-go-sitemap-shadow.yml,.github/workflows/crawler-sitemap-fleet-benchmark.yml,apps/crawler/Dockerfile,apps/crawler/uv.lock,apps/crawler/data/boards.csv,apps/crawler/src/core/__init__.py,apps/crawler/src/core/monitor.py,apps/crawler/src/core/monitors/raw.py,apps/crawler/src/core/monitors/sitemap.py,apps/crawler/src/shared/__init__.py,apps/crawler/src/shared/ssrf.py,apps/crawler/src/shared/tdm.py}'
             boards_csv:
               - 'apps/crawler/data/boards.csv'
 
@@ -212,7 +212,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.go_http_pilot == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -220,6 +220,16 @@ jobs:
         with:
           go-version-file: pilots/go-http-sitemap/go.mod
           cache: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
 
       - name: Check formatting
         working-directory: pilots/go-http-sitemap
@@ -241,6 +251,23 @@ jobs:
         working-directory: pilots/go-http-sitemap
         run: go mod tidy -diff
 
+      - name: Install Python comparator test dependencies
+        working-directory: apps/crawler
+        run: uv sync --group dev
+
+      - name: Test Python comparator
+        working-directory: apps/crawler
+        run: |
+          uv run python -m unittest discover -s ../../pilots/go-http-sitemap/python_shadow -p 'test_*.py'
+          uv run python -m unittest discover -s ../../pilots/go-http-sitemap/benchmark -p 'test_report_wire.py'
+
+      - name: Lint Python comparator
+        working-directory: apps/crawler
+        run: |
+          uv run ruff check ../../pilots/go-http-sitemap/python_shadow ../../pilots/go-http-sitemap/benchmark/*.py
+          uv run ruff format --check ../../pilots/go-http-sitemap/python_shadow ../../pilots/go-http-sitemap/benchmark/*.py
+          uv run pyright --level error ../../pilots/go-http-sitemap/python_shadow/runner.py ../../pilots/go-http-sitemap/benchmark/report_wire.py
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
@@ -257,6 +284,34 @@ jobs:
             IMAGE_IDENTITY=ghcr.io/colophon-group/jobseek-go-sitemap-shadow:sha-${{ github.sha }}
           cache-from: type=gha,scope=go-sitemap-shadow
           cache-to: type=gha,mode=max,scope=go-sitemap-shadow,ignore-error=true
+
+      - name: Build ARM64 Go fleet benchmark image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: pilots/go-http-sitemap/Dockerfile.benchmark
+          platforms: linux/arm64
+          push: false
+          outputs: type=cacheonly
+          build-args: |
+            SOURCE_COMMIT=${{ github.sha }}
+            IMAGE_IDENTITY=ghcr.io/colophon-group/jobseek-sitemap-fleet-go:sha-${{ github.sha }}
+          cache-from: type=gha,scope=sitemap-fleet-go
+          cache-to: type=gha,mode=max,scope=sitemap-fleet-go,ignore-error=true
+
+      - name: Build ARM64 Python fleet benchmark image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: pilots/go-http-sitemap/Dockerfile.python-benchmark
+          platforms: linux/arm64
+          push: false
+          outputs: type=cacheonly
+          build-args: |
+            SOURCE_COMMIT=${{ github.sha }}
+            IMAGE_IDENTITY=ghcr.io/colophon-group/jobseek-sitemap-fleet-python:sha-${{ github.sha }}
+          cache-from: type=gha,scope=sitemap-fleet-python
+          cache-to: type=gha,mode=max,scope=sitemap-fleet-python,ignore-error=true
 
   crawler-image:
     name: Build Crawler Browser Image

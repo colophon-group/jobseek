@@ -22,15 +22,16 @@ import (
 type ErrorKind string
 
 const (
-	ErrorConfig         ErrorKind = "config"
-	ErrorRequestLimit   ErrorKind = "request_limit"
-	ErrorBodyLimit      ErrorKind = "body_limit"
-	ErrorAggregateLimit ErrorKind = "aggregate_limit"
-	ErrorCanceled       ErrorKind = "canceled"
-	ErrorTimeout        ErrorKind = "timeout"
-	ErrorTransport      ErrorKind = "transport"
-	ErrorNetworkPolicy  ErrorKind = "network_policy"
-	ErrorTDMReservation ErrorKind = "tdm_reservation"
+	ErrorConfig          ErrorKind = "config"
+	ErrorRequestLimit    ErrorKind = "request_limit"
+	ErrorBodyLimit       ErrorKind = "body_limit"
+	ErrorAggregateLimit  ErrorKind = "aggregate_limit"
+	ErrorCanceled        ErrorKind = "canceled"
+	ErrorTimeout         ErrorKind = "timeout"
+	ErrorTransport       ErrorKind = "transport"
+	ErrorNetworkPolicy   ErrorKind = "network_policy"
+	ErrorTDMReservation  ErrorKind = "tdm_reservation"
+	ErrorContentEncoding ErrorKind = "content_encoding"
 )
 
 type Error struct {
@@ -70,6 +71,10 @@ type Config struct {
 	MaxDecodedBodyBytes      int64
 	MaxRequests              int
 	MaxAggregateDecodedBytes int64
+	// RequireIdentityEncoding rejects a non-identity Content-Encoding before
+	// reading the body. The fleet benchmark uses this to equalize wire bytes
+	// across runtimes; normal callers retain net/http's decoded-body behavior.
+	RequireIdentityEncoding bool
 	// AllowPrivateNetwork disables the default public-network-only dial policy.
 	// It exists for hermetic tests; production sitemap clients must leave it
 	// false so DNS answers are resolved, validated, and pinned before dialing.
@@ -572,7 +577,14 @@ func (s *Session) Get(ctx context.Context, rawURL string, headers http.Header) (
 	if err != nil {
 		return Response{}, newError(ErrorConfig, rawURL, 0, nil)
 	}
-	req.Header = headers.Clone()
+	requestHeaders := headers.Clone()
+	if requestHeaders == nil {
+		requestHeaders = make(http.Header)
+	}
+	if s.client.config.RequireIdentityEncoding {
+		requestHeaders.Set("Accept-Encoding", "identity")
+	}
+	req.Header = requestHeaders
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), &httptrace.ClientTrace{
 		WroteRequest: func(httptrace.WroteRequestInfo) {
 			s.wireAttempts.Add(1)
@@ -609,6 +621,12 @@ func (s *Session) Get(ctx context.Context, rawURL string, headers http.Header) (
 		// Do not read or drain a publisher-reserved response. Closing an unread
 		// body also prevents this connection from being reused accidentally.
 		return response, newError(ErrorTDMReservation, rawURL, 0, nil)
+	}
+	if s.client.config.RequireIdentityEncoding {
+		encoding := strings.TrimSpace(strings.ToLower(resp.Header.Get("Content-Encoding")))
+		if encoding != "" && encoding != "identity" {
+			return response, newError(ErrorContentEncoding, rawURL, 0, nil)
+		}
 	}
 	if resp.StatusCode != http.StatusOK {
 		// Drain only within the existing decoded-byte bounds. A complete drain
