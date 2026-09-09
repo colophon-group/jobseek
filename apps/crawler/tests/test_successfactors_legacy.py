@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import httpx
 import pytest
@@ -58,12 +59,12 @@ class _Graph:
         )
 
 
-def _filters(graph: _Graph, total: int) -> str:
+def _filters(graph: _Graph, total: int, *, display_total: str | None = None) -> str:
     filters = graph.obj()
     configs = graph.obj()
     fields = graph.array()
     location = graph.obj()
-    graph.assign(filters, "postingCount", _quote(str(total)))
+    graph.assign(filters, "postingCount", _quote(display_total or str(total)))
     graph.assign(filters, "configs", configs)
     graph.assign(configs, "filters", fields)
     graph.item(fields, 0, location)
@@ -105,10 +106,10 @@ def _posting(graph: _Graph, job_id: int, *, with_location: bool = False) -> str:
     return posting
 
 
-def _initial_response(total: int) -> str:
+def _initial_response(total: int, *, display_total: str | None = None) -> str:
     graph = _Graph()
     root = graph.obj()
-    filters = _filters(graph, total)
+    filters = _filters(graph, total, display_total=display_total)
     results = graph.obj()
     postings = graph.array()
     options = _pagination(graph, total=total, page=1, page_size=10)
@@ -307,6 +308,25 @@ class TestDiscovery:
         assert first.language == "en"
         assert [request.method for request in requests] == ["GET", "POST", "POST", "POST"]
 
+    async def test_marks_server_capped_tail_as_truncated(self):
+        def handler(request: httpx.Request):
+            if request.method == "GET":
+                return _bootstrap_response()
+            if request.url.path.endswith("getInitialJobSearchData.dwr"):
+                return httpx.Response(200, text=_initial_response(1_038))
+
+            body = request.content.decode()
+            page = int(re.search(r"c0-e1=number:(\d+)", body).group(1))
+            first_id = ((page - 1) * 100) + 1
+            ids = list(range(first_id, min(first_id + 100, 1_025)))
+            return httpx.Response(200, text=_search_response(1_038, page, ids))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(_board(), client)
+
+        assert len(result.urls) == 1_024
+        assert result.truncated is True
+
     async def test_materialized_result_preserves_hybrid_flag(self):
         def handler(request: httpx.Request):
             if request.method == "GET":
@@ -388,6 +408,21 @@ class TestDiscovery:
 
 
 class TestDetectionAndWorkspace:
+    async def test_direct_legacy_probe_accepts_grouped_display_count(self):
+        def handler(request: httpx.Request):
+            if request.method == "GET":
+                return _bootstrap_response()
+            return httpx.Response(
+                200,
+                text=_initial_response(1_038, display_total="1,038"),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle(_board()["board_url"], client)
+
+        assert result is not None
+        assert result["jobs"] == 1_038
+
     async def test_direct_legacy_probe_returns_canonical_config(self):
         def handler(request: httpx.Request):
             if request.method == "GET":

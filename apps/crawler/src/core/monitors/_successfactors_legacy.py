@@ -38,6 +38,7 @@ log = structlog.get_logger()
 PAGE_SIZE = 100
 MAX_JOBS = 50_000
 MAX_PAGES = MAX_JOBS // PAGE_SIZE
+LEGACY_RESULT_CAP = 1_024
 MAX_BOOTSTRAP_CHARS = 5_000_000
 MAX_DWR_CHARS = 5_000_000
 _TRANSIENT_STATUSES = frozenset({401, 403, 429})
@@ -66,6 +67,7 @@ _PRELUDE_RE = re.compile(
 _WHITESPACE_RE = re.compile(r"\s*")
 _INITIAL_ROOT_RE = re.compile(r"\{payload:(s\d+)\}")
 _SEARCH_ROOT_RE = re.compile(r"\{filters:(s\d+),results:(s\d+)\}")
+_GROUPED_COUNT_RE = re.compile(r"[1-9]\d{0,2}(?:,\d{3})+")
 _LOCATION_LABEL_RE = re.compile(
     r"(?:location|duty\s+station|work\s*(?:place|site)|city|country|region|"
     r"standort|arbeitsort|lieu|emplacement|ubicaci[oó]n|localit[aà]|sede|"
@@ -419,8 +421,11 @@ def _parse_dwr(response: str, *, batch: int, initial: bool) -> dict:
 def _as_count(value: object, field: str) -> int:
     if isinstance(value, bool):
         raise SuccessFactorsLegacyProtocolError(f"{field} was not an integer")
-    if isinstance(value, str) and value.isdigit():
-        value = int(value)
+    if isinstance(value, str):
+        if value.isdigit():
+            value = int(value)
+        elif _GROUPED_COUNT_RE.fullmatch(value):
+            value = int(value.replace(",", ""))
     if not isinstance(value, int) or not 0 <= value <= MAX_JOBS:
         raise SuccessFactorsLegacyProtocolError(f"{field} exceeded the supported range")
     return value
@@ -704,6 +709,7 @@ async def discover_legacy_stream(
     if pages > MAX_PAGES:
         raise SuccessFactorsLegacyProtocolError("SuccessFactors pagination exceeded the page cap")
     seen: set[int] = set()
+    truncated = False
     for page in range(1, pages + 1):
         response = await _post_dwr(
             session,
@@ -741,7 +747,23 @@ async def discover_legacy_stream(
             labels=labels,
         )
         if len(jobs) != expected_count:
-            raise SuccessFactorsLegacyProtocolError("SuccessFactors page was incomplete")
+            visible = len(seen) + len(jobs)
+            if (
+                page != pages
+                or total <= LEGACY_RESULT_CAP
+                or visible != LEGACY_RESULT_CAP
+            ):
+                raise SuccessFactorsLegacyProtocolError("SuccessFactors page was incomplete")
+            truncated = True
+            log.warning(
+                "rss.successfactors_legacy_server_cap",
+                host=identity.host,
+                company=identity.company,
+                cap=LEGACY_RESULT_CAP,
+                expected=expected_count,
+                jobs=len(jobs),
+                total=total,
+            )
         page_ids = {int((job.metadata or {})["id"]) for job in jobs}
         if len(page_ids) != len(jobs) or seen & page_ids:
             raise SuccessFactorsLegacyProtocolError(
@@ -760,9 +782,14 @@ async def discover_legacy_stream(
             jobs=len(jobs),
             total=total,
         )
-        yield MonitorResult(urls=set(by_url), jobs_by_url=by_url, hybrid=True)
+        yield MonitorResult(
+            urls=set(by_url),
+            jobs_by_url=by_url,
+            hybrid=True,
+            truncated=truncated,
+        )
 
-    if len(seen) != total:
+    if len(seen) != total and not truncated:
         raise SuccessFactorsLegacyProtocolError("SuccessFactors crawl did not match its total")
 
 
@@ -771,7 +798,9 @@ async def discover_legacy(
     client: httpx.AsyncClient,
 ) -> MonitorResult:
     jobs: dict[str, DiscoveredJob] = {}
+    truncated = False
     async for batch in discover_legacy_stream(board, client):
+        truncated = truncated or batch.truncated
         if batch.jobs_by_url:
             overlap = jobs.keys() & batch.jobs_by_url.keys()
             if overlap:
@@ -779,4 +808,9 @@ async def discover_legacy(
                     "SuccessFactors materialization found duplicate URLs"
                 )
             jobs.update(batch.jobs_by_url)
-    return MonitorResult(urls=set(jobs), jobs_by_url=jobs or None, hybrid=True)
+    return MonitorResult(
+        urls=set(jobs),
+        jobs_by_url=jobs or None,
+        hybrid=True,
+        truncated=truncated,
+    )
