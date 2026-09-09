@@ -67,9 +67,26 @@ is_crawler_code_path() {
   return 0
 }
 
+is_go_http_pilot_path() {
+  local file="$1"
+
+  [[ "$file" == pilots/go-http-sitemap/* || \
+    "$file" == .github/workflows/crawler-go-sitemap-shadow.yml ]]
+}
+
 code=false
 crawler_code=false
+go_http_pilot=false
 boards_csv=false
+
+if ! changed_files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[] | .filename, (.previous_filename // empty)'); then
+  echo "Failed to list changed files for PR #$PR" >&2
+  exit 1
+fi
+if [[ -z "$changed_files" ]]; then
+  echo "PR #$PR has no changed files" >&2
+  exit 1
+fi
 
 while IFS= read -r file; do
   [[ -n "$file" ]] || continue
@@ -82,10 +99,14 @@ while IFS= read -r file; do
     crawler_code=true
   fi
 
+  if is_go_http_pilot_path "$file"; then
+    go_http_pilot=true
+  fi
+
   if [[ "$file" == "apps/crawler/data/boards.csv" ]]; then
     boards_csv=true
   fi
-done < <(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
+done <<< "$changed_files"
 
 emit() {
   local name="$1"
@@ -105,6 +126,7 @@ fi
 
 emit "code" "$code"
 emit "crawler_code" "$crawler_code"
+emit "go_http_pilot" "$go_http_pilot"
 emit "boards_csv" "$boards_csv"
 emit "codeql" "$code"
 emit "is_pr" "true"
