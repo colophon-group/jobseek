@@ -882,9 +882,27 @@ test("Go sitemap production shadow is manual, isolated, and Murmur-scoped", () =
   assert.match(goSitemapShadowWorkflow, /com\.docker\.compose\.service=\$service/);
   assert.match(goSitemapShadowWorkflow, /protected_services_unchanged/);
   assert.match(goSitemapShadowWorkflow, /\.State\.OOMKilled/);
-  assert.match(goSitemapShadowWorkflow, /docker rm -f "\$name"/);
+  assert.match(goSitemapShadowWorkflow, /SHADOW_LIFECYCLE\\t%s\\t%s\\t%s\\t%s\\t%s/);
+  assert.match(goSitemapShadowWorkflow, /report_transport_invalid/);
+  assert.match(goSitemapShadowWorkflow, /write_fallback_report\n/);
+  assert.match(
+    goSitemapShadowWorkflow,
+    /jq -e -s 'length == 1 and \(\.\[0\] \| type == "object"\)'/,
+  );
+  assert.match(goSitemapShadowWorkflow, /'\.\[0\] \+ \{/);
+  assert.match(goSitemapShadowWorkflow, /tail -n \+2 "\$wire_path"/);
+  assert.match(goSitemapShadowWorkflow, /if-no-files-found: error/);
+  assert.match(goSitemapShadowWorkflow, /org\.colophon\.jobseek\.shadow\.owner/);
+  assert.match(goSitemapShadowWorkflow, /--cidfile "\$cid_file"/);
+  assert.match(goSitemapShadowWorkflow, /docker rm -f "\$\{owned_ids\[@\]\}"/);
   assert.doesNotMatch(goSitemapShadowWorkflow, /docker compose/);
   assert.doesNotMatch(goSitemapShadowWorkflow, /HETZNER_CRAWLER_KNOWN_HOSTS/);
+
+  const remoteScript = goSitemapShadowWorkflow.match(
+    /<<'REMOTE'\n([\s\S]*?)\n          REMOTE/,
+  )?.[1];
+  assert.ok(remoteScript, "remote shadow script must remain inspectable");
+  assert.doesNotMatch(remoteScript, /\bjq\b/);
 
   assert.match(
     goSitemapShadowDockerfile,
@@ -901,10 +919,31 @@ test("Go sitemap production shadow is manual, isolated, and Murmur-scoped", () =
   assert.match(goSitemapShadowDockerfile, /^USER 65532:65532$/m);
 
   assert.equal(goSitemapShadowManifest.schema_version, 1);
+  assert.equal(
+    goSitemapShadowManifest.jobs.find(
+      ({ id }) => id === "acosta-group-dee-set",
+    )?.sitemap_url,
+    "https://careers.deeset.co.uk/jobs/sitemap.xml",
+  );
   assert.deepEqual(
     goSitemapShadowManifest.jobs.map(({ id }) => id).sort(),
-    ["snap-fusion-atlantic-recruitee", "verity-breezy"],
+    ["acosta-group-dee-set", "verity-breezy"],
   );
+});
+
+test("Go sitemap shadow accepts exactly one report document", () => {
+  const expression = 'length == 1 and (.[0] | type == "object")';
+  const one = spawnSync("jq", ["-e", "-s", expression], {
+    input: '{"status":"failed"}\n',
+    encoding: "utf8",
+  });
+  assert.equal(one.status, 0, one.stderr);
+
+  const multiple = spawnSync("jq", ["-e", "-s", expression], {
+    input: '{"status":"failed"}\n{"status":"succeeded"}\n',
+    encoding: "utf8",
+  });
+  assert.notEqual(multiple.status, 0, multiple.stderr);
 });
 
 test("crawler image job proves live sampler and shutdown lifecycle", () => {

@@ -125,6 +125,40 @@ jobs:
 
           image_ref="${IMAGE_REPOSITORY}@${IMAGE_DIGEST}"
           report_path="$RUNNER_TEMP/go-sitemap-shadow-report.json"
+          raw_report_path="$RUNNER_TEMP/go-sitemap-shadow-report.raw.json"
+          wire_path="$RUNNER_TEMP/go-sitemap-shadow-report.wire"
+          write_fallback_report() {
+            jq -n \
+              --arg commit "$EXPECTED_SOURCE_COMMIT" \
+              --arg identity "$IMAGE_IDENTITY" \
+              --arg digest "$IMAGE_DIGEST" \
+              '{
+                schema_version: 1,
+                source_commit: $commit,
+                image_identity: $identity,
+                image_digest: $digest,
+                status: "failed",
+                error_kind: "report_transport_invalid",
+                run_duration_ms: 0,
+                jobs: [],
+                worker: {},
+                connections: {},
+                container_lifecycle: {
+                  name: "jobseek-go-sitemap-shadow",
+                  status: "unknown",
+                  exit_code: -1,
+                  oom_killed: true,
+                  valid: false
+                },
+                protected_services_unchanged: false
+              }' >"$report_path"
+            cp "$report_path" go-sitemap-shadow-report.json
+          }
+          # Create evidence before the first network operation. Validated
+          # container output may replace it, but every failure retains an
+          # uploadable sanitized artifact.
+          write_fallback_report
+
           remote_docker_config="$(ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" \
             'mktemp -d /tmp/jobseek-go-sitemap-shadow-auth.XXXXXX')"
           [[ "$remote_docker_config" =~ ^/tmp/jobseek-go-sitemap-shadow-auth\.[A-Za-z0-9]+$ ]]
@@ -149,21 +183,36 @@ jobs:
           ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" \
             timeout --signal=TERM --kill-after=15s 180s \
             bash -s -- "$image_ref" "$IMAGE_IDENTITY" "$EXPECTED_SOURCE_COMMIT" "$remote_docker_config" \
-            >"$report_path" <<'REMOTE'
+            >"$wire_path" <<'REMOTE'
           set -euo pipefail
           image_ref="$1"
           image_identity="$2"
           expected_commit="$3"
           docker_config="$4"
           name=jobseek-go-sitemap-shadow
-          created=0
+          cleanup_label_key=org.colophon.jobseek.shadow.owner
+          cleanup_label_value="${docker_config##*.}"
+          cid_file="$docker_config/canary.cid"
+          cleanup_armed=0
           report_file=""
 
           cleanup_remote() {
             status=$?
             trap - EXIT HUP INT TERM
-            if (( created )); then
-              docker rm -f "$name" >/dev/null 2>&1 || true
+            if (( cleanup_armed )); then
+              owned_ids=()
+              if [[ -s "$cid_file" ]]; then
+                candidate_id="$(<"$cid_file")"
+                if [[ "$candidate_id" =~ ^[0-9a-f]{64}$ ]]; then
+                  owned_ids+=("$candidate_id")
+                fi
+              fi
+              mapfile -t label_ids < <(docker ps -aq \
+                --filter "label=${cleanup_label_key}=${cleanup_label_value}")
+              owned_ids+=("${label_ids[@]}")
+              if (( ${#owned_ids[@]} )); then
+                docker rm -f "${owned_ids[@]}" >/dev/null 2>&1 || true
+              fi
             fi
             if [[ -n "$report_file" ]]; then
               rm -f -- "$report_file"
@@ -185,6 +234,12 @@ jobs:
             echo "A sitemap shadow container already exists; refusing overlap" >&2
             exit 1
           fi
+          if docker ps -aq \
+               --filter "label=${cleanup_label_key}=${cleanup_label_value}" | grep -q .; then
+            echo "A sitemap shadow ownership label already exists; refusing overlap" >&2
+            exit 1
+          fi
+          cleanup_armed=1
 
           snapshot_protected_services() {
             for service in murmur cloudflared; do
@@ -212,6 +267,8 @@ jobs:
           report_file="$(mktemp /tmp/jobseek-go-sitemap-shadow-report.XXXXXX)"
           docker create \
             --name "$name" \
+            --cidfile "$cid_file" \
+            --label "$cleanup_label_key=$cleanup_label_value" \
             --read-only \
             --network bridge \
             --security-opt no-new-privileges:true \
@@ -221,7 +278,7 @@ jobs:
             --memory 256m \
             --memory-swap 256m \
             "$image_ref" >/dev/null
-          created=1
+          [[ -s "$cid_file" ]]
 
           set +e
           timeout --signal=TERM --kill-after=10s 120s \
@@ -247,16 +304,62 @@ jobs:
           protected_unchanged=false
           [[ "$protected_after" == "$protected_before" ]] && protected_unchanged=true
 
-          if [[ -s "$report_file" ]] && jq -e . "$report_file" >/dev/null 2>&1; then
-            jq \
-              --arg image_digest "${image_ref##*@}" \
-              --arg container_name "$name" \
+          # Keep the target dependency-free: send one validated lifecycle line
+          # followed by the canary's already-sanitized, single-line JSON. The
+          # GitHub runner owns JSON validation and artifact construction.
+          printf 'SHADOW_LIFECYCLE\t%s\t%s\t%s\t%s\t%s\n' \
+            "$container_status" "$container_exit" "$oom_killed" \
+            "$lifecycle_ok" "$protected_unchanged"
+          if [[ -s "$report_file" ]] && (( $(wc -c <"$report_file") <= 65536 )); then
+            cat "$report_file"
+          fi
+
+          [[ "$lifecycle_ok" == true && "$protected_unchanged" == true ]] || exit 1
+          exit "$canary_status"
+          REMOTE
+          remote_status=$?
+          set -e
+
+          protocol=""
+          container_status="unknown"
+          container_exit=-1
+          oom_killed=true
+          lifecycle_ok=false
+          protected_unchanged=false
+          extra=""
+          lifecycle_metadata_valid=false
+          if [[ -s "$wire_path" ]]; then
+            IFS=$'\t' read -r protocol container_status container_exit oom_killed \
+              lifecycle_ok protected_unchanged extra <"$wire_path" || true
+            tail -n +2 "$wire_path" >"$raw_report_path"
+            if [[ "$protocol" == SHADOW_LIFECYCLE && -z "$extra" && \
+                  "$container_status" =~ ^[a-z]+$ && \
+                  "$container_exit" =~ ^[0-9]+$ && \
+                  "$oom_killed" =~ ^(true|false)$ && \
+                  "$lifecycle_ok" =~ ^(true|false)$ && \
+                  "$protected_unchanged" =~ ^(true|false)$ ]] && \
+               (( container_exit <= 255 )); then
+              lifecycle_metadata_valid=true
+            fi
+          else
+            : >"$raw_report_path"
+          fi
+
+          if [[ "$lifecycle_metadata_valid" == true && \
+                -s "$raw_report_path" && \
+                $(wc -c <"$raw_report_path") -le 65536 && \
+                $(wc -l <"$raw_report_path") -eq 1 ]] && \
+             jq -e -s 'length == 1 and (.[0] | type == "object")' \
+               "$raw_report_path" >/dev/null 2>&1; then
+            jq -s \
+              --arg image_digest "$IMAGE_DIGEST" \
+              --arg container_name jobseek-go-sitemap-shadow \
               --arg container_status "$container_status" \
               --argjson container_exit "$container_exit" \
               --argjson oom_killed "$oom_killed" \
               --argjson lifecycle_ok "$lifecycle_ok" \
               --argjson protected_services_unchanged "$protected_unchanged" \
-              '. + {
+              '.[0] + {
                 image_digest: $image_digest,
                 container_lifecycle: {
                   name: $container_name,
@@ -266,18 +369,10 @@ jobs:
                   valid: $lifecycle_ok
                 },
                 protected_services_unchanged: $protected_services_unchanged
-              }' "$report_file"
-          fi
-
-          [[ "$lifecycle_ok" == true && "$protected_unchanged" == true ]] || exit 1
-          exit "$canary_status"
-          REMOTE
-          remote_status=$?
-          set -e
-
-          if [[ -s "$report_path" ]] && jq -e . "$report_path" >/dev/null 2>&1; then
+              }' "$raw_report_path" >"$report_path"
             cp "$report_path" go-sitemap-shadow-report.json
           fi
+
           if ! ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" \
             "! docker ps -a --format '{{.Names}}' | grep -Fxq jobseek-go-sitemap-shadow"; then
             echo "Shadow container cleanup was not completed" >&2
@@ -325,5 +420,5 @@ jobs:
         with:
           name: go-sitemap-shadow-${{ github.run_id }}-${{ github.run_attempt }}
           path: go-sitemap-shadow-report.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14

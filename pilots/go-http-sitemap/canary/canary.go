@@ -105,10 +105,10 @@ type ConnectionReport struct {
 }
 
 var productionJobs = map[string]ManifestJob{
-	"snap-fusion-atlantic-recruitee": {
-		ID:               "snap-fusion-atlantic-recruitee",
-		SitemapURL:       "https://jobsatlanticvcfoodlabs.recruitee.com/sitemap.xml",
-		IncludeLiteral:   "fusion-energy-venture",
+	"acosta-group-dee-set": {
+		ID:               "acosta-group-dee-set",
+		SitemapURL:       "https://careers.deeset.co.uk/jobs/sitemap.xml",
+		IncludeLiteral:   "/jobs/vacancy/",
 		MaxURLs:          maxProtocolURLs,
 		MaxIndexChildren: maxIndexChildren,
 	},
