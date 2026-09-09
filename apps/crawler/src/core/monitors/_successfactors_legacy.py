@@ -749,7 +749,7 @@ async def discover_legacy_stream(
         if len(jobs) != expected_count:
             visible = len(seen) + len(jobs)
             if (
-                page != pages
+                len(jobs) >= expected_count
                 or total <= LEGACY_RESULT_CAP
                 or visible != LEGACY_RESULT_CAP
             ):
@@ -788,6 +788,8 @@ async def discover_legacy_stream(
             hybrid=True,
             truncated=truncated,
         )
+        if truncated:
+            break
 
     if len(seen) != total and not truncated:
         raise SuccessFactorsLegacyProtocolError("SuccessFactors crawl did not match its total")

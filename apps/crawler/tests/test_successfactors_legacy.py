@@ -309,17 +309,19 @@ class TestDiscovery:
         assert [request.method for request in requests] == ["GET", "POST", "POST", "POST"]
 
     async def test_marks_server_capped_tail_as_truncated(self):
+        advertised_total = 2_038
+
         def handler(request: httpx.Request):
             if request.method == "GET":
                 return _bootstrap_response()
             if request.url.path.endswith("getInitialJobSearchData.dwr"):
-                return httpx.Response(200, text=_initial_response(1_038))
+                return httpx.Response(200, text=_initial_response(advertised_total))
 
             body = request.content.decode()
             page = int(re.search(r"c0-e1=number:(\d+)", body).group(1))
             first_id = ((page - 1) * 100) + 1
             ids = list(range(first_id, min(first_id + 100, 1_025)))
-            return httpx.Response(200, text=_search_response(1_038, page, ids))
+            return httpx.Response(200, text=_search_response(advertised_total, page, ids))
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover(_board(), client)
