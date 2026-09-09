@@ -1972,6 +1972,7 @@ docplanner,docplanner-careers-tuotempo,https://jobs.ashbyhq.com/tuotempo,ashby,"
 docplanner,docplanner-careers-znany-lekarz,https://jobs.ashbyhq.com/znanyLekarz,ashby,"{""token"": ""znanyLekarz""}",skip,
 doctolib,doctolib-greenhouse,https://job-boards.greenhouse.io/doctolib,greenhouse,"{""token"": ""doctolib""}",skip,
 doctrin,doctrin-main,https://career.doctrin.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.doctrin.se/jobs.rss""}",skip,
+doherty-enterprises,doherty-enterprises-careers,https://careers-dohertyinc.icims.com/,icims,,json-ld,
 doit,doit-greenhouse,https://job-boards.greenhouse.io/doitintl,greenhouse,"{""token"": ""doitintl""}",skip,
 dollar-tree,dollar-tree-canada,https://dollartree.wd5.myworkdayjobs.com/dollartreeca,workday,"{""company"": ""dollartree"", ""wd_instance"": ""wd5"", ""site"": ""dollartreeca"", ""all_sites"": false}",workday,
 dollar-tree,dollar-tree-us-careers,https://dollartree.wd5.myworkdayjobs.com/dollartreeus,workday,"{""company"": ""dollartree"", ""wd_instance"": ""wd5"", ""site"": ""dollartreeus"", ""all_sites"": false, ""search_text"": ""Dollar Tree""}",workday,
