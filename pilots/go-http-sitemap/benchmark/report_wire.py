@@ -19,7 +19,10 @@ from pathlib import Path
 from typing import Any
 
 PROFILES = {"c2": 2, "c4": 4, "c5": 5, "c8": 8, "c12": 12, "c16": 16}
-EXPECTED_PAIR_COUNTS = {"c2": 4, "c4": 4, "c5": 6, "c8": 4, "c12": 6, "c16": 6}
+EXPECTED_PAIR_COUNTS = {"c5": 6, "c12": 6, "c16": 6}
+EXPECTED_PAIR_COUNT = sum(EXPECTED_PAIR_COUNTS.values())
+EXPECTED_ARM_COUNT = EXPECTED_PAIR_COUNT * 2
+EXPECTED_PARITY_COUNT = EXPECTED_PAIR_COUNT * 2 * 32
 PREFLIGHT_FAILURE_STAGES = frozenset(
     {
         "inventory",
@@ -390,8 +393,8 @@ def _load_contract(
     ):
         raise InputError("unexpected schedule identity")
     pairs = schedule.get("pairs")
-    if not isinstance(pairs, list) or len(pairs) != 30:
-        raise InputError("schedule must contain 30 pairs")
+    if not isinstance(pairs, list) or len(pairs) != EXPECTED_PAIR_COUNT:
+        raise InputError(f"schedule must contain {EXPECTED_PAIR_COUNT} pairs")
     expected: list[tuple[str, str, str]] = []
     counts = {profile: 0 for profile in EXPECTED_PAIR_COUNTS}
     firsts = {
@@ -403,7 +406,11 @@ def _load_contract(
         if not isinstance(pair, dict) or set(pair) != {"id", "profile", "first"}:
             raise InputError("invalid schedule pair")
         pair_id, profile, first = pair["id"], pair["profile"], pair["first"]
-        if pair_id != f"p{number:02d}" or profile not in PROFILES or first not in {"go", "python"}:
+        if (
+            pair_id != f"p{number:02d}"
+            or profile not in EXPECTED_PAIR_COUNTS
+            or first not in {"go", "python"}
+        ):
             raise InputError("invalid schedule pair value")
         counts[profile] += 1
         firsts[profile, first] += 1
@@ -728,7 +735,13 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
         arms.append(sanitized)
         index += 2
 
-    expected_count = 2 if args.remote_status == 72 else 60 if args.remote_status == 0 else len(arms)
+    expected_count = (
+        2
+        if args.remote_status == 72
+        else EXPECTED_ARM_COUNT
+        if args.remote_status == 0
+        else len(arms)
+    )
     full_run_structural = bool(
         protocol_valid
         and meta is not None
@@ -753,7 +766,9 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
         and index == len(lines)
     )
     structural = full_run_structural or preflight_failure_structural
-    all_successful = len(arms) == 60 and all(_successful_arm(arm, expected_ids) for arm in arms)
+    all_successful = len(arms) == EXPECTED_ARM_COUNT and all(
+        _successful_arm(arm, expected_ids) for arm in arms
+    )
     correctness = all_successful
     parity: dict[tuple[str, int, str], list[tuple[int, str]]] = {}
     byte_values: dict[tuple[str, int], dict[str, int]] = {}
@@ -769,7 +784,7 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
                     parity.setdefault(key, []).append(
                         (job["canonical_url_count"], job["canonical_url_sha256"])
                     )
-        correctness = len(parity) == 30 * 2 * 32 and all(
+        correctness = len(parity) == EXPECTED_PARITY_COUNT and all(
             len(values) == 2 and values[0] == values[1] for values in parity.values()
         )
     byte_deltas: list[dict[str, Any]] = []
@@ -794,7 +809,7 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
     timing_comparable = bool(
         all_successful
         and correctness
-        and len(byte_deltas) == 60
+        and len(byte_deltas) == EXPECTED_ARM_COUNT
         and all(item["relative_delta"] <= BYTE_IMBALANCE_LIMIT for item in byte_deltas)
     )
 

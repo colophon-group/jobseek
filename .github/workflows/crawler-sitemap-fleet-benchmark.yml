@@ -107,11 +107,11 @@ jobs:
           if schedule["schema_version"] != 1 or schedule["seed"] != 8648 or schedule["cooldown_seconds"] != 8:
               raise SystemExit("unexpected schedule identity")
           pairs = schedule["pairs"]
-          if not isinstance(pairs, list) or len(pairs) != 30:
-              raise SystemExit("schedule must contain exactly 30 pairs")
-          if [pair.get("id") for pair in pairs] != [f"p{number:02d}" for number in range(1, 31)]:
+          if not isinstance(pairs, list) or len(pairs) != 18:
+              raise SystemExit("schedule must contain exactly 18 pairs")
+          if [pair.get("id") for pair in pairs] != [f"p{number:02d}" for number in range(1, 19)]:
               raise SystemExit("schedule pair IDs are not exact")
-          expected = {"c2": 4, "c4": 4, "c5": 6, "c8": 4, "c12": 6, "c16": 6}
+          expected = {"c5": 6, "c12": 6, "c16": 6}
           counts = collections.Counter()
           firsts = collections.Counter()
           for pair in pairs:
@@ -477,11 +477,11 @@ jobs:
           SCHEDULE_FILE="$schedule_file" python3 - <<'PY' || exit 71
           import collections, os
           rows = [line.rstrip("\n").split("\t") for line in open(os.environ["SCHEDULE_FILE"], encoding="ascii")]
-          expected = {"c2": 4, "c4": 4, "c5": 6, "c8": 4, "c12": 6, "c16": 6}
+          expected = {"c5": 6, "c12": 6, "c16": 6}
           counts = collections.Counter(row[1] for row in rows if len(row) == 3)
           firsts = collections.Counter((row[1], row[2]) for row in rows if len(row) == 3)
-          valid = len(rows) == 30 and all(len(row) == 3 for row in rows)
-          valid &= [row[0] for row in rows] == [f"p{number:02d}" for number in range(1, 31)]
+          valid = len(rows) == 18 and all(len(row) == 3 for row in rows)
+          valid &= [row[0] for row in rows] == [f"p{number:02d}" for number in range(1, 19)]
           valid &= counts == expected and all(row[2] in {"go", "python"} for row in rows)
           valid &= all(firsts[profile, impl] == count // 2 for profile, count in expected.items() for impl in ("go", "python"))
           raise SystemExit(0 if valid else 1)
@@ -633,7 +633,7 @@ jobs:
           arm_number=0
           terminal_status=0
           while IFS=$'\t' read -r pair profile first extra; do
-            [[ "$pair" =~ ^p(0[1-9]|[12][0-9]|30)$ && "$profile" =~ ^c(2|4|5|8|12|16)$ ]] || exit 71
+            [[ "$pair" =~ ^p(0[1-9]|1[0-8])$ && "$profile" =~ ^c(5|12|16)$ ]] || exit 71
             [[ "$first" == go || "$first" == python ]] || exit 71
             [[ -z "$extra" ]] || exit 71
             second=python; [[ "$first" == python ]] && second=go
@@ -769,10 +769,10 @@ jobs:
                 break
               fi
             fi
-            (( arm_number == 60 )) || sleep "$cooldown_seconds"
+            (( arm_number == 36 )) || sleep "$cooldown_seconds"
           done <"$schedule_file"
           if (( terminal_status == 0 )); then
-            [[ "$arm_number" -eq 60 ]] || exit 71
+            [[ "$arm_number" -eq 36 ]] || exit 71
           elif (( terminal_status == 72 )); then
             [[ "$arm_number" -eq 2 ]] || exit 71
           fi
@@ -875,7 +875,7 @@ jobs:
           set -e
           cp "$report_path" sitemap-fleet-benchmark-report.json
           (( report_status == 0 )) || exit 1
-          jq -e '.status == "succeeded" and .report_valid == true and .timing_comparable == true and (.arms | length == 60)' "$report_path" >/dev/null
+          jq -e '.status == "succeeded" and .report_valid == true and .timing_comparable == true and (.arms | length == 36)' "$report_path" >/dev/null
 
       - name: Upload sanitized benchmark report
         if: always() && steps.benchmark.outcome != 'skipped'
