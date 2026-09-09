@@ -62,12 +62,19 @@ bounded admission/results, origin-fair dispatch, task deadlines, panic
 containment, and bounded shutdown cancellation. Its fixed-resource comparison
 method is frozen in [WORKER-BENCHMARK.md](WORKER-BENCHMARK.md).
 
+The RAM-density comparison against the production Python sitemap monitor is
+frozen separately in [FLEET-BENCHMARK.md](FLEET-BENCHMARK.md). It uses 32
+distinct production origins and paired `c2` through `c16` profiles without
+granting either candidate queue or persistence authority.
+
 `cmd/shadowcanary`, `canary/production.json`, `Dockerfile.shadow`, and the
-manual `crawler-go-sitemap-shadow.yml` workflow are the only production wiring.
-The workflow runs merged `main` only, pins the image by digest, targets
-`linux/arm64`, uses a read-only non-root container with strict CPU, memory, PID,
-capability, and time limits, and removes the exact one-shot container. It also
-proves the pre-existing Murmur and Cloudflare container identities, states, and
+manual `crawler-go-sitemap-shadow.yml` workflow remain the only single-shadow
+production wiring. The separate credential-free fleet benchmark described
+above is also allowed to use the allocated Murmur host, but has no crawler
+authority. Both workflows run merged `main` only, pin images by digest, target
+`linux/arm64`, use read-only non-root containers with strict CPU, memory, PID,
+capability, and time limits, and remove the exact owned containers. They also
+prove the pre-existing Murmur and Cloudflare container identities, states, and
 restart counts did not change. This directory still does not import crawler
 contracts, Redis, Postgres, browser code, or publisher code.
 
@@ -80,11 +87,11 @@ go test -race ./...
 go vet ./...
 ```
 
-Not implemented and therefore blocking authoritative ownership: Python fleet parity corpus,
+Not implemented and therefore blocking authoritative ownership: full mixed-monitor Python fleet parity,
 child-request retries, auto-discovery/rediscovery,
 nested indexes/cycle handling, proxy and skip-TLS inputs,
 Python-regex-compatible filters/transforms, transcript capture, benchmark/CPU/
-RSS evidence, and any queue or persistence ownership. Unknown root
+RSS evidence for the full worker pipeline, and any queue or persistence ownership. Unknown root
 documents, nested indexes, and invalid configuration fail closed. Individual
 entries without a usable `loc` are ignored and can yield an empty success,
 matching the inherited Python extraction behavior. No migration ROI or

@@ -91,10 +91,27 @@ const goSitemapShadowDockerfile = readFileSync(
   "pilots/go-http-sitemap/Dockerfile.shadow",
   "utf8",
 );
+const goSitemapFleetWorkflow = readFileSync(
+  ".github/workflows/crawler-sitemap-fleet-benchmark.yml",
+  "utf8",
+);
+const pythonFleetDockerfile = readFileSync(
+  "pilots/go-http-sitemap/Dockerfile.python-benchmark",
+  "utf8",
+);
+const pythonFleetRequirements = readFileSync(
+  "pilots/go-http-sitemap/python_shadow/requirements.lock",
+  "utf8",
+);
 const goSitemapShadowManifest = JSON.parse(
   readFileSync("pilots/go-http-sitemap/canary/production.json", "utf8"),
 );
+const goSitemapFleetManifest = JSON.parse(
+  readFileSync("pilots/go-http-sitemap/benchmark/fleet.json", "utf8"),
+);
+const crawlerBoards = readFileSync("apps/crawler/data/boards.csv", "utf8");
 const crawlerDockerfile = readFileSync("apps/crawler/Dockerfile", "utf8");
+const crawlerUvLock = readFileSync("apps/crawler/uv.lock", "utf8");
 const crawlerPyproject = readFileSync("apps/crawler/pyproject.toml", "utf8");
 const crawlerDeployScript = readFileSync("apps/crawler/deploy.sh", "utf8");
 const crawlerMaintenanceScript = readFileSync(
@@ -136,6 +153,40 @@ const crawlerHostHygieneScript = readFileSync(
 const mainStrictGateRuleset = JSON.parse(
   readFileSync(".github/rulesets/main-strict-gate.json", "utf8"),
 );
+
+function parseCsvRecord(record) {
+  const fields = [];
+  let field = "";
+  let quoted = false;
+  for (let index = 0; index < record.length; index += 1) {
+    const character = record[index];
+    if (character === '"') {
+      if (quoted && record[index + 1] === '"') {
+        field += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (character === "," && !quoted) {
+      fields.push(field);
+      field = "";
+    } else {
+      field += character;
+    }
+  }
+  assert.equal(quoted, false, "CSV record has an unterminated quoted field");
+  fields.push(field);
+  return fields;
+}
+
+function parseCsvRecords(contents) {
+  const records = contents.trimEnd().split("\n").map(parseCsvRecord);
+  const header = records.shift();
+  return records.map((fields) => {
+    assert.equal(fields.length, header.length);
+    return Object.fromEntries(header.map((name, index) => [name, fields[index]]));
+  });
+}
 
 function runDispatchPrChecks({
   state = "OPEN",
@@ -565,10 +616,26 @@ test("CI change detection uses the pinned paths-filter action", () => {
   assert.match(workflow, /predicate-quantifier: every/);
   assert.match(workflow, /code:\n(?:              - .+\n)+/);
   assert.match(workflow, /crawler_code:\n(?:              - .+\n)+/);
-  assert.match(
-    workflow,
-    /go_http_pilot:\n              - '\{pilots\/go-http-sitemap\/\*\*,\.github\/workflows\/crawler-go-sitemap-shadow\.yml\}'/,
-  );
+  const pilotInputs = [
+    "pilots/go-http-sitemap/**",
+    ".github/workflows/crawler-go-sitemap-shadow.yml",
+    ".github/workflows/crawler-sitemap-fleet-benchmark.yml",
+    "apps/crawler/Dockerfile",
+    "apps/crawler/uv.lock",
+    "apps/crawler/data/boards.csv",
+    "apps/crawler/src/core/__init__.py",
+    "apps/crawler/src/core/monitor.py",
+    "apps/crawler/src/core/monitors/raw.py",
+    "apps/crawler/src/core/monitors/sitemap.py",
+    "apps/crawler/src/shared/__init__.py",
+    "apps/crawler/src/shared/ssrf.py",
+    "apps/crawler/src/shared/tdm.py",
+  ];
+  const pilotFilter = workflow.match(/go_http_pilot:\n              - '([^']+)'/);
+  assert.ok(pilotFilter, "missing Go HTTP pilot filter");
+  for (const input of pilotInputs) {
+    assert.ok(pilotFilter[1].includes(input), `pilot filter omits ${input}`);
+  }
   assert.match(workflow, /boards_csv:\n              - 'apps\/crawler\/data\/boards\.csv'/);
 });
 
@@ -621,7 +688,7 @@ test("manual PR classification exports the validated PR base context", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.outputs, /^code=true$/m);
   assert.match(result.outputs, /^crawler_code=true$/m);
-  assert.match(result.outputs, /^go_http_pilot=false$/m);
+  assert.match(result.outputs, /^go_http_pilot=true$/m);
   assert.match(result.outputs, /^boards_csv=true$/m);
   assert.match(result.outputs, /^is_pr=true$/m);
   assert.match(result.outputs, /^base_ref=main$/m);
@@ -653,8 +720,16 @@ test("Go HTTP pilot changes use dedicated CI without crawler release classificat
   assert.match(result.outputs, /^go_http_pilot=true$/m);
   assert.match(result.outputs, /^codeql=true$/m);
 
-  const unrelated = runClassifyPrPaths({
+  const productionComparatorInput = runClassifyPrPaths({
     files: ["apps/crawler/src/core/monitor.py"],
+    baseRef: "main",
+  });
+  assert.equal(productionComparatorInput.status, 0, productionComparatorInput.stderr);
+  assert.match(productionComparatorInput.outputs, /^crawler_code=true$/m);
+  assert.match(productionComparatorInput.outputs, /^go_http_pilot=true$/m);
+
+  const unrelated = runClassifyPrPaths({
+    files: ["apps/crawler/src/exporter.py"],
     baseRef: "main",
   });
   assert.equal(unrelated.status, 0, unrelated.stderr);
@@ -669,6 +744,15 @@ test("Go HTTP pilot changes use dedicated CI without crawler release classificat
   assert.match(deploymentWorkflow.outputs, /^code=true$/m);
   assert.match(deploymentWorkflow.outputs, /^crawler_code=false$/m);
   assert.match(deploymentWorkflow.outputs, /^go_http_pilot=true$/m);
+
+  const fleetWorkflow = runClassifyPrPaths({
+    files: [".github/workflows/crawler-sitemap-fleet-benchmark.yml"],
+    baseRef: "main",
+  });
+  assert.equal(fleetWorkflow.status, 0, fleetWorkflow.stderr);
+  assert.match(fleetWorkflow.outputs, /^code=true$/m);
+  assert.match(fleetWorkflow.outputs, /^crawler_code=false$/m);
+  assert.match(fleetWorkflow.outputs, /^go_http_pilot=true$/m);
 });
 
 test("manual PR classification retains a renamed pilot source path", () => {
@@ -818,7 +902,7 @@ test("Go HTTP pilot CI is path-aware, builds ARM64, and is required when selecte
     /if: needs\.changes\.outputs\.go_http_pilot == 'true'/,
   );
   assert.match(goPilotJob, /runs-on: ubuntu-latest/);
-  assert.match(goPilotJob, /timeout-minutes: 15/);
+  assert.match(goPilotJob, /timeout-minutes: 25/);
   assert.match(
     goPilotJob,
     /go-version-file: pilots\/go-http-sitemap\/go\.mod/,
@@ -832,6 +916,21 @@ test("Go HTTP pilot CI is path-aware, builds ARM64, and is required when selecte
   assert.match(goPilotJob, /run: go test -race \.\/\.\.\./);
   assert.match(goPilotJob, /run: go vet \.\/\.\.\./);
   assert.match(goPilotJob, /run: go mod tidy -diff/);
+  assert.match(goPilotJob, /Test Python comparator/);
+  assert.match(
+    goPilotJob,
+    /uv run python -m unittest discover -s \.\.\/\.\.\/pilots\/go-http-sitemap\/python_shadow/,
+  );
+  assert.match(
+    goPilotJob,
+    /uv run python -m unittest discover -s \.\.\/\.\.\/pilots\/go-http-sitemap\/benchmark -p 'test_report_wire\.py'/,
+  );
+  assert.match(goPilotJob, /uv run ruff check \.\.\/\.\.\/pilots\/go-http-sitemap\/python_shadow/);
+  assert.match(goPilotJob, /pilots\/go-http-sitemap\/benchmark\/\*\.py/);
+  assert.match(
+    goPilotJob,
+    /uv run pyright --level error \.\.\/\.\.\/pilots\/go-http-sitemap\/python_shadow\/runner\.py \.\.\/\.\.\/pilots\/go-http-sitemap\/benchmark\/report_wire\.py/,
+  );
   assert.match(
     goPilotJob,
     /docker\/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e/,
@@ -849,6 +948,20 @@ test("Go HTTP pilot CI is path-aware, builds ARM64, and is required when selecte
     goPilotJob,
     /IMAGE_IDENTITY=ghcr\.io\/colophon-group\/jobseek-go-sitemap-shadow:sha-\$\{\{ github\.sha \}\}/,
   );
+  assert.match(goPilotJob, /file: pilots\/go-http-sitemap\/Dockerfile\.benchmark/);
+  assert.match(
+    goPilotJob,
+    /IMAGE_IDENTITY=ghcr\.io\/colophon-group\/jobseek-sitemap-fleet-go:sha-\$\{\{ github\.sha \}\}/,
+  );
+  assert.match(
+    goPilotJob,
+    /file: pilots\/go-http-sitemap\/Dockerfile\.python-benchmark/,
+  );
+  assert.match(
+    goPilotJob,
+    /IMAGE_IDENTITY=ghcr\.io\/colophon-group\/jobseek-sitemap-fleet-python:sha-\$\{\{ github\.sha \}\}/,
+  );
+  assert.equal((goPilotJob.match(/platforms: linux\/arm64/g) ?? []).length, 3);
   assert.match(requiredCiJob, /- test-go-http-pilot/);
   assert.match(
     requiredCiJob,
@@ -857,6 +970,147 @@ test("Go HTTP pilot CI is path-aware, builds ARM64, and is required when selecte
   assert.match(
     requiredCiJob,
     /requireSuccess\("test-go-http-pilot", goHttpPilot\)/,
+  );
+});
+
+test("Python fleet comparator stays locked to its production authorities", () => {
+  const crawlerBase = crawlerDockerfile.match(
+    /^FROM (python:[^ ]+@sha256:[0-9a-f]{64}) AS base$/m,
+  );
+  const comparatorBase = pythonFleetDockerfile.match(
+    /^ARG PYTHON_IMAGE=(python:[^ ]+@sha256:[0-9a-f]{64})$/m,
+  );
+  assert.ok(crawlerBase, "crawler Python base must remain digest-pinned");
+  assert.ok(comparatorBase, "comparator Python base must remain digest-pinned");
+  assert.equal(comparatorBase[1], crawlerBase[1]);
+
+  const requirements = pythonFleetRequirements
+    .trim()
+    .split("\n")
+    .map((line) => {
+      const match = line.match(
+        /^([a-z0-9-]+)==([A-Za-z0-9.+!-]+) --hash=sha256:([0-9a-f]{64})$/,
+      );
+      assert.ok(match, `invalid locked comparator requirement: ${line}`);
+      return { name: match[1], version: match[2], hash: match[3] };
+    });
+  assert.deepEqual(
+    requirements.map(({ name }) => name),
+    ["anyio", "certifi", "h11", "httpcore", "httpx", "idna", "structlog"],
+  );
+  for (const requirement of requirements) {
+    const marker = `[[package]]\nname = "${requirement.name}"\n`;
+    const start = crawlerUvLock.indexOf(marker);
+    assert.notEqual(start, -1, `uv.lock omits ${requirement.name}`);
+    const next = crawlerUvLock.indexOf("\n[[package]]", start + marker.length);
+    const block = crawlerUvLock.slice(start, next === -1 ? undefined : next);
+    assert.match(
+      block,
+      new RegExp(`^version = "${requirement.version.replaceAll(".", "\\.")}"$`, "m"),
+    );
+    assert.ok(
+      block.includes(`hash = "sha256:${requirement.hash}"`),
+      `${requirement.name} wheel hash drifted from uv.lock`,
+    );
+  }
+
+  for (const source of [
+    "apps/crawler/src/core/__init__.py",
+    "apps/crawler/src/core/monitor.py",
+    "apps/crawler/src/core/monitors/raw.py",
+    "apps/crawler/src/core/monitors/sitemap.py",
+    "apps/crawler/src/shared/__init__.py",
+    "apps/crawler/src/shared/ssrf.py",
+    "apps/crawler/src/shared/tdm.py",
+  ]) {
+    assert.ok(pythonFleetDockerfile.includes(`COPY ${source} `), `comparator omits ${source}`);
+    const classified = runClassifyPrPaths({ files: [source], baseRef: "main" });
+    assert.equal(classified.status, 0, classified.stderr);
+    assert.match(classified.outputs, /^go_http_pilot=true$/m);
+  }
+});
+
+test("fleet benchmark manifest remains an exact literal-only production projection", () => {
+  const boards = new Map(
+    parseCsvRecords(crawlerBoards).map((board) => [board.board_slug, board]),
+  );
+  assert.equal(goSitemapFleetManifest.schema_version, 1);
+  assert.equal(goSitemapFleetManifest.jobs.length, 32);
+  assert.equal(
+    new Set(goSitemapFleetManifest.jobs.map((job) => job.id)).size,
+    32,
+  );
+  assert.equal(
+    new Set(
+      goSitemapFleetManifest.jobs.map(
+        (job) => new URL(job.sitemap_url).origin,
+      ),
+    ).size,
+    32,
+  );
+  for (const job of goSitemapFleetManifest.jobs) {
+    const board = boards.get(job.id);
+    assert.ok(board, `missing production board ${job.id}`);
+    assert.equal(board.monitor_type, "sitemap");
+    assert.equal(board.board_url, job.board_url);
+    const config = JSON.parse(board.monitor_config);
+    assert.deepEqual(
+      Object.keys(config).sort(),
+      config.url_filter === undefined
+        ? ["sitemap_url"]
+        : ["sitemap_url", "url_filter"],
+    );
+    assert.equal(typeof (config.url_filter ?? ""), "string");
+    assert.equal(config.sitemap_url, job.sitemap_url);
+    assert.equal(config.url_filter ?? "", job.include_literal);
+    assert.equal(job.exclude_literal, "");
+    assert.equal(job.max_urls, 50_000);
+    assert.equal(job.max_index_children, 1);
+  }
+});
+
+test("fleet benchmark workflow is bounded, isolated, and uses the reviewed wire parser", () => {
+  assert.match(goSitemapFleetWorkflow, /^on:\n  workflow_dispatch:\s*$/m);
+  assert.match(goSitemapFleetWorkflow, /group: deploy-murmur-shim/);
+  assert.match(goSitemapFleetWorkflow, /timeout-minutes: 360/);
+  assert.match(goSitemapFleetWorkflow, /\[\[ "\$DISPATCH_REF" == refs\/heads\/main \]\]/);
+  assert.match(goSitemapFleetWorkflow, /platforms: linux\/arm64/g);
+  assert.match(goSitemapFleetWorkflow, /timeout --signal=TERM --kill-after=30s 18000s bash -s/);
+  assert.match(goSitemapFleetWorkflow, /--read-only --network bridge/);
+  assert.match(goSitemapFleetWorkflow, /--cap-drop ALL --pids-limit 128/);
+  assert.match(goSitemapFleetWorkflow, /--cpus 1 --memory 1g/);
+  assert.match(goSitemapFleetWorkflow, /--memory-swap 1g --user 65532:65532/);
+  assert.match(
+    goSitemapFleetWorkflow,
+    /remote_docker_config="\/tmp\/jobseek-sitemap-fleet-auth\.\$owner"/,
+  );
+  assert.match(
+    goSitemapFleetWorkflow,
+    /python3 pilots\/go-http-sitemap\/benchmark\/report_wire\.py/,
+  );
+  assert.equal(goSitemapFleetWorkflow.includes("def safe_raw"), false);
+  const explicitCleanup = goSitemapFleetWorkflow.indexOf(
+    "run_remote_cleanup >/dev/null 2>\"$remote_stderr_path\"",
+  );
+  const independentAudit = goSitemapFleetWorkflow.indexOf(
+    "# This independent read-only check runs after both success and trap cleanup.",
+  );
+  assert.ok(explicitCleanup > 0 && independentAudit > explicitCleanup);
+  const policyClassification = goSitemapFleetWorkflow.indexOf(
+    'policy_kind="$(report_policy_kind "$stdout_file")"',
+  );
+  const lifecycleEmission = goSitemapFleetWorkflow.indexOf(
+    'emit_arm "$pair" "$implementation" "$profile" "$container_status"',
+    policyClassification,
+  );
+  assert.ok(policyClassification > 0 && lifecycleEmission > policyClassification);
+  assert.match(
+    goSitemapFleetWorkflow,
+    /--protected-postflight-sha256 "\$protected_postflight_sha256"/,
+  );
+  assert.match(
+    goSitemapFleetWorkflow,
+    /\.status == "succeeded" and \.report_valid == true and \.timing_comparable == true/,
   );
 });
 

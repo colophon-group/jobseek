@@ -1,0 +1,54 @@
+# syntax=docker/dockerfile:1.7
+
+ARG PYTHON_IMAGE=python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f
+FROM --platform=$BUILDPLATFORM ${PYTHON_IMAGE} AS build
+
+WORKDIR /app
+
+# Exact direct dependencies for the copied production sitemap/monitor/SSRF
+# modules. The comparator intentionally omits the crawler's DB, Redis,
+# browser, image, OCR, and data-science dependencies.
+COPY pilots/go-http-sitemap/python_shadow/requirements.lock /tmp/requirements.lock
+RUN pip install --no-cache-dir --no-deps --only-binary=:all: --require-hashes \
+      --target /install -r /tmp/requirements.lock \
+ && [ -z "$(find /install -type f \( -name '*.so' -o -name '*.pyd' \) -print -quit)" ] \
+ && rm /tmp/requirements.lock
+
+COPY pilots/go-http-sitemap/python_shadow/shims/core_monitors_init.py /app/src/core/monitors/__init__.py
+COPY pilots/go-http-sitemap/python_shadow/shims/shared_http.py /app/src/shared/http.py
+COPY apps/crawler/src/core/__init__.py /app/src/core/__init__.py
+COPY apps/crawler/src/core/monitor.py /app/src/core/monitor.py
+COPY apps/crawler/src/core/monitors/raw.py /app/src/core/monitors/raw.py
+COPY apps/crawler/src/core/monitors/sitemap.py /app/src/core/monitors/sitemap.py
+COPY apps/crawler/src/shared/__init__.py /app/src/shared/__init__.py
+COPY apps/crawler/src/shared/ssrf.py /app/src/shared/ssrf.py
+COPY apps/crawler/src/shared/tdm.py /app/src/shared/tdm.py
+COPY pilots/go-http-sitemap/python_shadow/runner.py /app/python_shadow_runner.py
+COPY pilots/go-http-sitemap/benchmark/fleet.json /canary/fleet.json
+
+ARG SOURCE_COMMIT
+ARG IMAGE_IDENTITY
+ARG TARGETOS
+ARG TARGETARCH
+RUN case "$SOURCE_COMMIT" in (*[!0-9a-f]*|'') exit 1;; esac \
+ && [ "${#SOURCE_COMMIT}" -eq 40 ] \
+ && [ "$IMAGE_IDENTITY" = "ghcr.io/colophon-group/jobseek-sitemap-fleet-python:sha-$SOURCE_COMMIT" ] \
+ && [ "$TARGETOS" = linux ] \
+ && [ "$TARGETARCH" = arm64 ] \
+ && MANIFEST_SHA256="$(sha256sum /canary/fleet.json | cut -d ' ' -f 1)" \
+ && case "$MANIFEST_SHA256" in (*[!0-9a-f]*|'') exit 1;; esac \
+ && [ "${#MANIFEST_SHA256}" -eq 64 ] \
+ && sed -i "s/@SOURCE_COMMIT@/$SOURCE_COMMIT/g; s|@IMAGE_IDENTITY@|$IMAGE_IDENTITY|g; s/@MANIFEST_SHA256@/$MANIFEST_SHA256/g" /app/python_shadow_runner.py \
+ && python -m compileall -q /app \
+ && find /app -type d -name __pycache__ -prune -exec rm -rf '{}' +
+
+FROM ${PYTHON_IMAGE}
+
+WORKDIR /app
+COPY --from=build /install /usr/local/lib/python3.13/site-packages
+COPY --from=build --chown=65532:65532 /app /app
+COPY --from=build --chown=65532:65532 /canary /canary
+
+ENV PYTHONDONTWRITEBYTECODE=1
+USER 65532:65532
+ENTRYPOINT ["python", "-I", "/app/python_shadow_runner.py"]
