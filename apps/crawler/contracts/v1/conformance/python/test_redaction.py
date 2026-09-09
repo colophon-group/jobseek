@@ -23,6 +23,13 @@ REGISTRY: dict[str, Any] = json.loads(REGISTRY_PATH.read_text())
 MANIFEST: dict[str, Any] = json.loads(MANIFEST_PATH.read_text())
 
 MANDATORY_CASE_IDS = {
+    "browser_evaluation_payload_limit",
+    "browser_evaluation_payload_limit_plus_1",
+    "browser_evaluation_redacted_payload_limit_plus_1",
+    "browser_evaluation_depth_limit",
+    "browser_evaluation_depth_limit_plus_1",
+    "browser_evaluation_nodes_limit",
+    "browser_evaluation_nodes_limit_plus_1",
     "redact_api_key",
     "redact_authentication",
     "redact_basic",
@@ -34,6 +41,9 @@ MANDATORY_CASE_IDS = {
     "redact_email_json",
     "redact_envelope_inline",
     "redact_envelope_metadata",
+    "redact_browser_evaluation_envelope",
+    "redact_browser_evaluation_email_label_boundary",
+    "redact_browser_evaluation_scalar_email",
     "redact_form_secret",
     "redact_json_secret_key",
     "redact_secret_access_key",
@@ -60,6 +70,19 @@ MANDATORY_CASE_IDS = {
     "json_depth_limit_minus_1",
     "json_depth_limit_plus_1",
     "reject_chunk_artifact",
+    "reject_browser_evaluation_hash_mismatch",
+    "reject_browser_evaluation_digest_shape",
+    "reject_browser_evaluation_exponent",
+    "reject_browser_evaluation_fraction",
+    "reject_browser_evaluation_negative_zero",
+    "reject_browser_evaluation_negative_unsafe_integer",
+    "reject_browser_evaluation_base64_newline",
+    "reject_browser_evaluation_noncanonical_base64",
+    "reject_browser_evaluation_noncanonical_payload",
+    "reject_browser_evaluation_unsafe_integer",
+    "reject_browser_evaluation_version",
+    "reject_base64_wrapper_nonzero_pad_bits_with_secret",
+    "reject_envelope_artifact_precedence",
     "reject_chunks_incomplete",
     "reject_chunks_misordered",
     "reject_chunks_wrong_digest",
@@ -73,6 +96,13 @@ MANDATORY_CASE_IDS = {
     "reject_malformed_url",
     "reject_envelope_inner_extreme_depth",
     "reject_envelope_inner_lone_surrogate",
+    "reject_envelope_null_schema_id",
+    "reject_envelope_null_schema_version",
+    "reject_envelope_null_payload_sha256",
+    "reject_envelope_schema_version_overflow",
+    "reject_unknown_envelope_with_null_digest",
+    "reject_envelope_extra_metadata_member",
+    "reject_envelope_extra_inline_member",
     "reject_envelope_outer_duplicate_key",
     "reject_json_duplicate_key",
     "reject_json_extreme_depth",
@@ -84,6 +114,11 @@ MANDATORY_CASE_IDS = {
     "reject_unknown_envelope_version",
     "reject_unknown_wrapper",
     "safe_base64_wrapper",
+    "safe_browser_evaluation_envelope",
+    "safe_browser_evaluation_invalid_email_label_too_long",
+    "safe_browser_evaluation_invalid_email_trailing_hyphen",
+    "safe_browser_evaluation_integer_boundaries",
+    "safe_browser_evaluation_null",
     "safe_extension_envelope",
     "safe_form",
     "safe_header_colon_value",
@@ -134,6 +169,24 @@ def _fail(code: str) -> Never:
     raise RedactionFailure(code)
 
 
+def test_privacy_registry_has_exact_unique_extension_envelopes() -> None:
+    assert REGISTRY["extension_envelopes"] == [
+        {
+            "encoding": "canonical_json",
+            "max_payload_bytes": 65_536,
+            "payload_contexts": ["json"],
+            "schema_id": "jobseek.browser.evaluation-json",
+            "schema_version": 1,
+        },
+        {
+            "encoding": "canonical_json",
+            "payload_contexts": ["headers", "url", "json", "form"],
+            "schema_id": "jobseek.synthetic.capture",
+            "schema_version": 1,
+        },
+    ]
+
+
 def _canonical_json(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
 
@@ -142,9 +195,12 @@ def _decode_b64(value: object, code: str = "malformed_encoding") -> bytes:
     if not isinstance(value, str) or not value.isascii():
         _fail(code)
     try:
-        return base64.b64decode(value, validate=True)
+        decoded = base64.b64decode(value, validate=True)
     except (binascii.Error, ValueError):
         _fail(code)
+    if base64.b64encode(decoded).decode() != value:
+        _fail(code)
+    return decoded
 
 
 def _bounded(observed: int, maximum: int) -> None:
@@ -237,9 +293,10 @@ def _decode_wrapper(raw: bytes, wrapper: object) -> bytes:
         value = _decode_percent(raw)
     else:
         try:
-            value = base64.b64decode(raw, validate=True)
-        except (binascii.Error, ValueError):
+            encoded = raw.decode("ascii")
+        except UnicodeDecodeError:
             _fail("malformed_encoding")
+        value = _decode_b64(encoded)
     _bounded(len(value), LIMITS["max_decoded_working_set_bytes"])
     return value
 
@@ -495,6 +552,26 @@ def _json_metrics(value: Any, depth: int = 1) -> tuple[int, int]:
     return max([depth, *(item[0] for item in child)]), 1 + sum(item[1] for item in child)
 
 
+def _validate_evaluation_value(value: Any) -> None:
+    if value is None or isinstance(value, (bool, str)):
+        return
+    if isinstance(value, int):
+        if not -(2**53 - 1) <= value <= 2**53 - 1:
+            _fail("malformed_encoding")
+        return
+    if isinstance(value, list):
+        for item in value:
+            _validate_evaluation_value(item)
+        return
+    if isinstance(value, dict):
+        for item in value.values():
+            _validate_evaluation_value(item)
+        return
+    # Floats cover fractional/exponent forms (including -0.0); the later
+    # canonical-byte comparison separately rejects integer spelling -0.
+    _fail("malformed_encoding")
+
+
 def _redact_json_value(
     value: Any,
     context: str,
@@ -584,18 +661,68 @@ def _extension_envelope(raw: bytes) -> tuple[bytes, list[dict[str, str]], int]:
     }:
         _fail("malformed_encoding")
     if (
-        outer["schema_id"] != "jobseek.synthetic.capture"
-        or outer["schema_version"] != 1
-        or outer["encoding"] != "canonical_json"
+        not isinstance(outer["schema_id"], str)
+        or not isinstance(outer["encoding"], str)
+        or not isinstance(outer["schema_version"], int)
+        or isinstance(outer["schema_version"], bool)
     ):
+        _fail("malformed_encoding")
+    if not 0 <= outer["schema_version"] <= 2**32 - 1:
+        _fail("malformed_encoding")
+    matching = [
+        entry
+        for entry in REGISTRY["extension_envelopes"]
+        if entry["schema_id"] == outer["schema_id"]
+        and entry["schema_version"] == outer["schema_version"]
+        and entry["encoding"] == outer["encoding"]
+    ]
+    if len(matching) != 1:
         _fail("unsupported_envelope")
+    registration = matching[0]
     if not isinstance(outer["payload_sha256"], str):
         _fail("malformed_encoding")
-    inner = _json_loads(_decode_b64(outer["payload_b64"]))
-    if not isinstance(inner, dict) or not isinstance(inner.get("metadata"), list):
+    payload = _decode_b64(outer["payload_b64"])
+    if outer["schema_id"] == "jobseek.browser.evaluation-json":
+        maximum = registration.get("max_payload_bytes")
+        if (
+            not isinstance(maximum, int)
+            or isinstance(maximum, bool)
+            or maximum <= 0
+            or registration.get("payload_contexts") != ["json"]
+        ):
+            _fail("unsupported_envelope")
+        _bounded(len(payload), maximum)
+        if not HEX64.fullmatch(outer["payload_sha256"]):
+            _fail("malformed_encoding")
+        if hashlib.sha256(payload).hexdigest() != outer["payload_sha256"]:
+            _fail("malformed_encoding")
+        value = _json_loads(payload)
+        _validate_evaluation_value(value)
+        depth, item_count = _json_metrics(value)
+        _bounded(depth, LIMITS["max_json_depth"])
+        _bounded(item_count, LIMITS["max_structured_items"])
+        if _canonical_json(value) != payload:
+            _fail("malformed_encoding")
+        safe_value, findings = _redact_json_value(value, "extension_envelope")
+        output = _canonical_json(safe_value)
+        _bounded(len(output), maximum)
+        safe_outer = {
+            "encoding": "canonical_json",
+            "payload_b64": base64.b64encode(output).decode(),
+            "payload_sha256": hashlib.sha256(output).hexdigest(),
+            "schema_id": "jobseek.browser.evaluation-json",
+            "schema_version": 1,
+        }
+        return _canonical_json(safe_outer), findings, item_count
+    if outer["schema_id"] != "jobseek.synthetic.capture":
+        _fail("unsupported_envelope")
+    inner = _json_loads(payload)
+    if not isinstance(inner, dict):
         _fail("malformed_encoding")
     if "artifact" in inner:
         _fail("artifact_unavailable")
+    if not isinstance(inner.get("metadata"), list):
+        _fail("malformed_encoding")
     if set(inner) != {"inline", "metadata"} or not isinstance(inner["inline"], dict):
         _fail("malformed_encoding")
     metadata: list[dict[str, str]] = []
@@ -614,7 +741,7 @@ def _extension_envelope(raw: bytes) -> tuple[bytes, list[dict[str, str]], int]:
     inline = inner["inline"]
     if set(inline) != {"context", "data_b64"} or not isinstance(inline["context"], str):
         _fail("malformed_encoding")
-    if inline["context"] not in {"headers", "url", "json", "form"}:
+    if inline["context"] not in set(registration["payload_contexts"]):
         _fail("unsupported_envelope")
     inline_output, inline_findings, item_count = _context(
         _decode_b64(inline["data_b64"]), inline["context"], "extension_envelope"
