@@ -77,6 +77,47 @@ type Config struct {
 	CycleLateness  time.Duration
 }
 
+type runtimeTopology struct {
+	transport boundedhttp.SharedTransportConfig
+	worker    worker.Config
+}
+
+func fixedRuntimeTopology() runtimeTopology {
+	return runtimeTopology{
+		transport: boundedhttp.SharedTransportConfig{
+			MaxIdleConns:          maxKeepalive,
+			MaxIdleConnsPerHost:   perOriginConcurrent,
+			MaxConnsPerHost:       transportPerHost,
+			MaxConnections:        maxConnections,
+			MaxConcurrentRequests: workerCount,
+			IdleConnTimeout:       idleConnectionTTL,
+		},
+		worker: worker.Config{
+			Workers:              workerCount,
+			Capacity:             capacity,
+			ResultCapacity:       resultCapacity,
+			PerOriginConcurrency: perOriginConcurrent,
+			JobTimeout:           jobTimeout,
+			ShutdownGrace:        shutdownGrace,
+		},
+	}
+}
+
+func validRuntimeTopology(topology runtimeTopology) bool {
+	return topology.worker.Workers == workerCount &&
+		topology.worker.Capacity == capacity &&
+		topology.worker.ResultCapacity == resultCapacity &&
+		topology.worker.PerOriginConcurrency == perOriginConcurrent &&
+		topology.transport.MaxIdleConns == maxKeepalive &&
+		topology.transport.MaxIdleConnsPerHost == perOriginConcurrent &&
+		topology.transport.MaxConnsPerHost == transportPerHost &&
+		topology.transport.MaxConnsPerHost > topology.worker.PerOriginConcurrency &&
+		topology.transport.MaxConnections == maxConnections &&
+		topology.transport.MaxConnections >= topology.worker.Workers &&
+		topology.transport.MaxConcurrentRequests == topology.worker.Workers &&
+		topology.transport.IdleConnTimeout == idleConnectionTTL
+}
+
 func DefaultConfig(duration time.Duration) Config {
 	return Config{
 		Duration:       duration,
@@ -329,6 +370,10 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 	if err := validateConfig(config); err != nil {
 		return fail("config_invalid")
 	}
+	topology := fixedRuntimeTopology()
+	if !validRuntimeTopology(topology) {
+		return fail("topology_invalid")
+	}
 	// Capture cgroup event counters before allocating the fixture so warm-up or
 	// fixture initialization cannot hide a recoverable OOM event.
 	report.Startup = read()
@@ -346,28 +391,14 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 		MaxAggregateDecodedBytes: maxAggregateBytes,
 		RequireIdentityEncoding:  true,
 		AllowPrivateNetwork:      true,
-		SharedTransport: &boundedhttp.SharedTransportConfig{
-			MaxIdleConns:          maxKeepalive,
-			MaxIdleConnsPerHost:   perOriginConcurrent,
-			MaxConnsPerHost:       transportPerHost,
-			MaxConnections:        maxConnections,
-			MaxConcurrentRequests: workerCount,
-			IdleConnTimeout:       idleConnectionTTL,
-		},
+		SharedTransport:          &topology.transport,
 	})
 	if err != nil {
 		return fail("client_config")
 	}
 	defer client.Close()
 
-	pool, err := worker.New(client, worker.Config{
-		Workers:              workerCount,
-		Capacity:             capacity,
-		ResultCapacity:       resultCapacity,
-		PerOriginConcurrency: perOriginConcurrent,
-		JobTimeout:           jobTimeout,
-		ShutdownGrace:        shutdownGrace,
-	})
+	pool, err := worker.New(client, topology.worker)
 	if err != nil {
 		return fail("worker_config")
 	}
@@ -403,7 +434,7 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 	// conservation totals.
 	if err := runObservedWave(ctx, 0, probe, feedRequests, feedResults, resultEvents); err != nil {
 		shutdown()
-		populateReport(&report, pool, client, probe, totals)
+		populateReport(&report, pool, client, probe, totals, topology)
 		if shutdownErr != nil {
 			return fail("fixture_close")
 		}
@@ -412,11 +443,11 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 	totals.completeCycle()
 	runtime.GC()
 	report.Baseline = read()
-	baselineSnapshot := makeSnapshot("baseline", 0, started, started, sourceCommit, imageIdentity, pool, client, probe, totals, read)
+	baselineSnapshot := makeSnapshot("baseline", 0, started, started, sourceCommit, imageIdentity, pool, client, probe, totals, topology, read)
 	baselineSnapshot.Resources = report.Baseline
 	if err := sink(baselineSnapshot); err != nil {
 		shutdown()
-		populateReport(&report, pool, client, probe, totals)
+		populateReport(&report, pool, client, probe, totals, topology)
 		if shutdownErr != nil {
 			return fail("fixture_close")
 		}
@@ -450,7 +481,7 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 					periodicErr <- errors.New("sample_late")
 					return
 				}
-				snapshot := makeSnapshot("resident", sequence, started, expected, sourceCommit, imageIdentity, pool, client, probe, totals, read)
+				snapshot := makeSnapshot("resident", sequence, started, expected, sourceCommit, imageIdentity, pool, client, probe, totals, topology, read)
 				if err := sink(snapshot); err != nil {
 					periodicErr <- errors.New("snapshot_write")
 					return
@@ -530,7 +561,7 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 	report.AgingElapsedMillis = time.Since(agingStarted).Milliseconds()
 	runtime.GC()
 	report.FinalActive = read()
-	activeSnapshot := makeSnapshot("final_active", sampleCount.Load(), started, agingStarted.Add(config.Duration), sourceCommit, imageIdentity, pool, client, probe, totals, read)
+	activeSnapshot := makeSnapshot("final_active", sampleCount.Load(), started, agingStarted.Add(config.Duration), sourceCommit, imageIdentity, pool, client, probe, totals, topology, read)
 	activeSnapshot.Resources = report.FinalActive
 	if err := sink(activeSnapshot); err != nil && errorKind == "" {
 		errorKind = "snapshot_write"
@@ -539,7 +570,7 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 	}
 
 	shutdown()
-	populateReport(&report, pool, client, probe, totals)
+	populateReport(&report, pool, client, probe, totals, topology)
 	report.SamplesEmitted = sampleCount.Load()
 	if shutdownErr != nil {
 		errorKind = "fixture_close"
@@ -744,7 +775,7 @@ func currentRequests(c *counters) uint64 {
 	return results.Requests
 }
 
-func makeSnapshot(phase string, sequence uint64, started, expected time.Time, sourceCommit, imageIdentity string, pool *worker.Pool, client *boundedhttp.Client, probe *fixture, totals *counters, read resourceReader) Snapshot {
+func makeSnapshot(phase string, sequence uint64, started, expected time.Time, sourceCommit, imageIdentity string, pool *worker.Pool, client *boundedhttp.Client, probe *fixture, totals *counters, topology runtimeTopology, read resourceReader) Snapshot {
 	cycles, results := totals.snapshot()
 	now := time.Now()
 	return Snapshot{
@@ -761,16 +792,16 @@ func makeSnapshot(phase string, sequence uint64, started, expected time.Time, so
 		Worker:          workerReport(pool.Stats()),
 		Connections:     client.ConnectionStats(),
 		Results:         results,
-		Fixture:         probe.report(),
+		Fixture:         probe.report(topology),
 		Resources:       read(),
 	}
 }
 
-func populateReport(report *Report, pool *worker.Pool, client *boundedhttp.Client, probe *fixture, totals *counters) {
+func populateReport(report *Report, pool *worker.Pool, client *boundedhttp.Client, probe *fixture, totals *counters, topology runtimeTopology) {
 	report.Worker = workerReport(pool.Stats())
 	report.Connections = client.ConnectionStats()
 	report.CyclesCompleted, report.Results = totals.snapshot()
-	report.Fixture = probe.report()
+	report.Fixture = probe.report(topology)
 	if report.Startup.CgroupOOMEvents != nil && report.FinalClosed.CgroupOOMEvents != nil {
 		report.OOMEventDelta = *report.FinalClosed.CgroupOOMEvents - *report.Startup.CgroupOOMEvents
 	}
@@ -1077,7 +1108,7 @@ func (f *fixture) handle(origin int, payload []byte, response http.ResponseWrite
 	_, _ = response.Write(payload)
 }
 
-func (f *fixture) report() FixtureReport {
+func (f *fixture) report(topology runtimeTopology) FixtureReport {
 	maximumPerOrigin := int64(0)
 	minimumHandled := ^uint64(0)
 	maximumHandled := uint64(0)
@@ -1090,9 +1121,9 @@ func (f *fixture) report() FixtureReport {
 	return FixtureReport{
 		Origins:               len(f.jobs),
 		URLsPerSitemap:        f.urlCount,
-		WorkerLimit:           workerCount,
-		WorkerPerOriginLimit:  perOriginConcurrent,
-		TransportPerHostLimit: transportPerHost,
+		WorkerLimit:           topology.worker.Workers,
+		WorkerPerOriginLimit:  topology.worker.PerOriginConcurrency,
+		TransportPerHostLimit: topology.transport.MaxConnsPerHost,
 		PayloadSHA256:         f.payloadHash,
 		HandledRequests:       f.handled.Load(),
 		ActiveRequests:        f.active.Load(),

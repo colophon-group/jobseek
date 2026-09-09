@@ -17,8 +17,9 @@ func testIdentity() string {
 }
 
 func TestRunExercisesResidentC5WithExactConservation(t *testing.T) {
-	if transportPerHost <= perOriginConcurrent {
-		t.Fatalf("transport per-host limit %d masks worker origin limit %d", transportPerHost, perOriginConcurrent)
+	topology := fixedRuntimeTopology()
+	if !validRuntimeTopology(topology) {
+		t.Fatalf("fixed runtime topology is invalid: %+v", topology)
 	}
 	config := Config{
 		Duration:       450 * time.Millisecond,
@@ -77,6 +78,28 @@ func TestRunExercisesResidentC5WithExactConservation(t *testing.T) {
 		if strings.Contains(string(encoded), forbidden) {
 			t.Fatalf("sanitized evidence leaked %q", forbidden)
 		}
+	}
+}
+
+func TestRuntimeTopologyRejectsTransportMaskingAndDrift(t *testing.T) {
+	for name, mutate := range map[string]func(*runtimeTopology){
+		"transport_masks_worker": func(topology *runtimeTopology) {
+			topology.transport.MaxConnsPerHost = topology.worker.PerOriginConcurrency
+		},
+		"transport_limit_drift": func(topology *runtimeTopology) {
+			topology.transport.MaxConnsPerHost--
+		},
+		"worker_origin_drift": func(topology *runtimeTopology) {
+			topology.worker.PerOriginConcurrency++
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			topology := fixedRuntimeTopology()
+			mutate(&topology)
+			if validRuntimeTopology(topology) {
+				t.Fatalf("invalid runtime topology was accepted: %+v", topology)
+			}
+		})
 	}
 }
 
