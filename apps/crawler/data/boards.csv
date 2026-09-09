@@ -7053,6 +7053,7 @@ wonderflow,wonderflow-bamboohr,https://wonderflow.bamboohr.com/careers,api_sniff
 wonderful,wonderful-careers,https://jobs.ashbyhq.com/wonderful,ashby,"{""token"": ""wonderful""}",skip,
 wonderschool,wonderschool-greenhouse,https://job-boards.greenhouse.io/wonderschool,greenhouse,"{""token"": ""wonderschool""}",skip,
 woo-x,woo-x-greenhouse,https://job-boards.greenhouse.io/woo,greenhouse,"{""token"": ""woo""}",skip,
+wood,wood-careers,https://ehif.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 woolpert,woolpert-greenhouse,https://job-boards.greenhouse.io/woolpert,greenhouse,"{""token"": ""woolpert""}",skip,
 wordware-ai,wordware-ai-ashby,https://jobs.ashbyhq.com/wordware.ai,ashby,"{""token"": ""wordware.ai""}",skip,
 workato,workato-greenhouse,https://job-boards.greenhouse.io/workato,greenhouse,"{""token"": ""workato""}",skip,
