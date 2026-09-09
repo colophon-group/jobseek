@@ -16,8 +16,18 @@ concurrency:
 
 jobs:
   test:
-    name: Test Go Lightpanda Pilot
-    runs-on: ubuntu-24.04
+    name: Test Go Lightpanda Pilot (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     defaults:
       run:
@@ -41,7 +51,7 @@ jobs:
           test -z "$(gofmt -l .)"
 
       - name: Exercise checksum-pinned stable Lightpanda
-        run: docker build --platform linux/amd64 --target integration-test --tag jobseek-lightpanda-integration:${{ github.run_id }} .
+        run: docker build --platform ${{ matrix.platform }} --target integration-test --tag jobseek-lightpanda-integration:${{ matrix.arch }}-${{ github.run_id }} .
 
       - name: Build bounded runtime image
-        run: docker build --platform linux/amd64 --target runtime --tag jobseek-lightpanda-pilot:${{ github.run_id }} .
+        run: docker build --platform ${{ matrix.platform }} --target runtime --tag jobseek-lightpanda-pilot:${{ matrix.arch }}-${{ github.run_id }} .

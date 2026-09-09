@@ -23,9 +23,14 @@ failure makes that one-shot invocation fail.
 
 ## Build and run
 
-The image is Linux x86_64 only. Its Dockerfile downloads the official 0.4.0
-`lightpanda-x86_64-linux` release and verifies SHA-256
-`bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624f`.
+The image supports Linux amd64 and arm64. Its Dockerfile selects the official
+Lightpanda 0.4.0 binary by Docker target architecture and verifies the release
+SHA-256 before installing it:
+
+- amd64 `lightpanda-x86_64-linux`:
+  `bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624f`
+- arm64 `lightpanda-aarch64-linux`:
+  `5e3b54deed642ffeb2b8f24a1931e54c51161f44d9d728135da3d4863cb722fb`
 
 ```sh
 docker build --platform linux/amd64 -t jobseek-lightpanda-pilot .
@@ -63,17 +68,24 @@ Unit tests run without Lightpanda:
 go test ./...
 ```
 
-The real-binary integration test is opt-in, Linux x86_64 only, and verifies the
-binary's stable-0.4.0 checksum before use. It serves the navigated page from a
-local `httptest` origin, so test execution requires no destination network. The
-direct command is only for an already-isolated disposable Linux environment:
+The real-binary integration test is opt-in on Linux amd64 and arm64 and
+verifies the architecture-specific stable-0.4.0 checksum before use. It serves
+the navigated page from a local `httptest` origin, so test execution requires
+no destination network. The direct command is only for an already-isolated
+disposable Linux environment:
 
 ```sh
 LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-x86_64-linux \
   go test -run '^TestLightpandaIntegration$' -count=1 -v .
 
 docker build --platform linux/amd64 --target integration-test \
-  -t jobseek-lightpanda-integration .
+  -t jobseek-lightpanda-integration:amd64 .
+
+LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-aarch64-linux \
+  go test -run '^TestLightpandaIntegration$' -count=1 -v .
+
+docker build --platform linux/arm64 --target integration-test \
+  -t jobseek-lightpanda-integration:arm64 .
 ```
 
 The Docker integration target is the supported way to download and exercise

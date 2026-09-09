@@ -7,19 +7,27 @@ COPY *.go ./
 
 FROM go-source AS build
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/go-lightpanda .
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go build -trimpath -ldflags="-s -w" -o /out/go-lightpanda .
 
 FROM go-source AS integration-build
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go test -c -o /out/go-lightpanda.test .
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go test -c -o /out/go-lightpanda.test .
 
 FROM debian:bookworm-slim AS lightpanda
 
-RUN apt-get update \
+ARG TARGETARCH
+RUN case "${TARGETARCH}" in \
+        amd64) lightpanda_arch=x86_64; lightpanda_sha=bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624f ;; \
+        arm64) lightpanda_arch=aarch64; lightpanda_sha=5e3b54deed642ffeb2b8f24a1931e54c51161f44d9d728135da3d4863cb722fb ;; \
+        *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates curl \
     && curl --fail --location --retry 3 --output /usr/local/bin/lightpanda \
-        https://github.com/lightpanda-io/browser/releases/download/0.4.0/lightpanda-x86_64-linux \
-    && echo "bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624f  /usr/local/bin/lightpanda" \
+        "https://github.com/lightpanda-io/browser/releases/download/0.4.0/lightpanda-${lightpanda_arch}-linux" \
+    && echo "${lightpanda_sha}  /usr/local/bin/lightpanda" \
         | sha256sum --check --strict \
     && chmod 0755 /usr/local/bin/lightpanda \
     && apt-get purge --yes --auto-remove curl \

@@ -14,17 +14,21 @@ import (
 	"testing"
 )
 
-const lightpandaStable040SHA256 = "bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624f"
+var lightpandaStable040SHA256 = map[string]string{
+	"amd64": "bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624f",
+	"arm64": "5e3b54deed642ffeb2b8f24a1931e54c51161f44d9d728135da3d4863cb722fb",
+}
 
 func TestLightpandaIntegration(t *testing.T) {
-	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
-		t.Skip("stable Lightpanda 0.4.0 integration binary is Linux x86_64 only")
+	expectedSHA256, supported := lightpandaStable040SHA256[runtime.GOARCH]
+	if runtime.GOOS != "linux" || !supported {
+		t.Skip("stable Lightpanda 0.4.0 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
 		t.Skip("set LIGHTPANDA_INTEGRATION_BIN to opt in")
 	}
-	if err := verifyFileSHA256(binary, lightpandaStable040SHA256); err != nil {
+	if err := verifyFileSHA256(binary, expectedSHA256); err != nil {
 		t.Fatal(err)
 	}
 
