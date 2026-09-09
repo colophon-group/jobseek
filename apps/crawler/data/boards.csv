@@ -2172,6 +2172,8 @@ emergent-labs,emergent-labs-greenhouse,https://job-boards.greenhouse.io/emergent
 emerging-travel-group,emerging-travel-group-careers,https://apply.workable.com/emerging-travel-group/,workable,"{""token"": ""emerging-travel-group""}",workable,
 emerging-travel-group,emerging-travel-group-careers-ratehawk,https://apply.workable.com/ratehawk/,workable,"{""token"": ""ratehawk""}",workable,
 emerging-travel-group,emerging-travel-group-careers-roundtrip,https://apply.workable.com/roundtrip-travel/,workable,"{""token"": ""roundtrip-travel""}",workable,
+emerson,emerson-aspentech-careers,https://aspentech.wd5.myworkdayjobs.com/aspentech,workday,"{""company"": ""aspentech"", ""wd_instance"": ""wd5"", ""site"": ""aspentech""}",workday,
+emerson,emerson-careers,https://hdjq.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,"{""total_count_tolerance"": 1, ""page_shortfall_tolerance"": 1}",oracle_hcm,"{""enrich"": [""description""]}"
 emerton,emerton-careers,https://emertongroup.recruitee.com,recruitee,"{""slug"": ""emertongroup"", ""api_base"": ""https://emertongroup.recruitee.com""}",skip,
 emirates-group,emirates-group-dnata-au,https://dnata.expr3ss.com/home,dom,,json-ld,
 emirates-group,emirates-group-dnata-catering-au,https://dnatacatering.expr3ss.com/home,dom,,json-ld,
