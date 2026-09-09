@@ -20,6 +20,19 @@ from typing import Any
 
 PROFILES = {"c2": 2, "c4": 4, "c5": 5, "c8": 8, "c12": 12, "c16": 16}
 EXPECTED_PAIR_COUNTS = {"c2": 4, "c4": 4, "c5": 6, "c8": 4, "c12": 6, "c16": 6}
+PREFLIGHT_FAILURE_STAGES = frozenset(
+    {
+        "inventory",
+        "protected_services",
+        "host_resources_before_pull",
+        "pull_go_image",
+        "pull_python_image",
+        "host_resources_after_pull",
+        "image_attestation",
+        "schedule_validation",
+        "dns_pinning",
+    }
+)
 MAX_WIRE_BYTES = 8_388_608
 BYTE_IMBALANCE_LIMIT = 0.05
 TOKEN_RE = re.compile(r"^[a-z0-9_]{1,64}$")
@@ -541,19 +554,42 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
         )
     except (OSError, UnicodeError):
         lines, protocol_valid = [], False
+    protected_baseline_sha256: str | None = None
+    preflight_failure_stage: str | None = None
     meta: dict[str, Any] | None = None
     postflight_valid = False
     arms: list[dict[str, Any]] = []
     index = 0
     if lines:
         fields = lines[0].split("\t")
-        if (
+        if fields[0] == "PREFLIGHT_FAILURE":
+            marker_valid = False
+            if len(fields) == 4:
+                try:
+                    marker_status = int(fields[2])
+                except ValueError:
+                    marker_status = -1
+                marker_valid = bool(
+                    len(lines) == 1
+                    and fields[1] in PREFLIGHT_FAILURE_STAGES
+                    and marker_status == args.remote_status
+                    and marker_status in {70, 71}
+                    and (fields[3] == "none" or SHA_RE.fullmatch(fields[3]))
+                )
+            protocol_valid &= marker_valid
+            if marker_valid:
+                preflight_failure_stage = fields[1]
+                if fields[3] != "none":
+                    protected_baseline_sha256 = fields[3]
+            index = 1
+        elif (
             len(fields) == 10
             and fields[0] == "RUN_META"
             and SHA_RE.fullmatch(fields[1])
             and SHA_RE.fullmatch(fields[2])
         ):
             try:
+                protected_baseline_sha256 = fields[2]
                 meta = {
                     "pinset_sha256": fields[1],
                     "protected_baseline_sha256": fields[2],
@@ -575,9 +611,9 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
                     meta = None
             except ValueError:
                 protocol_valid = False
+            index += 1
         else:
             protocol_valid = False
-        index = 1
     else:
         protocol_valid = False
 
@@ -594,6 +630,9 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
             )
             index += 1
             protocol_valid &= index == len(lines)
+            break
+        if meta is None:
+            protocol_valid = False
             break
         if len(fields) != 15 or fields[0] != "ARM_LIFECYCLE" or index + 1 >= len(lines):
             protocol_valid = False
@@ -690,7 +729,7 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
         index += 2
 
     expected_count = 2 if args.remote_status == 72 else 60 if args.remote_status == 0 else len(arms)
-    structural = bool(
+    full_run_structural = bool(
         protocol_valid
         and meta is not None
         and args.cleanup_verified
@@ -698,6 +737,22 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
         and all(arm["raw_report_valid"] for arm in arms)
         and (postflight_valid or args.remote_status not in {0, 72, 73})
     )
+    protected_digest_match = bool(
+        protected_baseline_sha256
+        and args.protected_postflight_sha256
+        and protected_baseline_sha256 == args.protected_postflight_sha256
+    )
+    preflight_failure_structural = bool(
+        protocol_valid
+        and meta is None
+        and args.remote_status in {70, 71}
+        and args.cleanup_verified
+        and protected_digest_match
+        and preflight_failure_stage is not None
+        and not arms
+        and index == len(lines)
+    )
+    structural = full_run_structural or preflight_failure_structural
     all_successful = len(arms) == 60 and all(_successful_arm(arm, expected_ids) for arm in arms)
     correctness = all_successful
     parity: dict[tuple[str, int, str], list[tuple[int, str]]] = {}
@@ -743,11 +798,6 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
         and all(item["relative_delta"] <= BYTE_IMBALANCE_LIMIT for item in byte_deltas)
     )
 
-    protected_digest_match = bool(
-        meta is not None
-        and args.protected_postflight_sha256
-        and meta["protected_baseline_sha256"] == args.protected_postflight_sha256
-    )
     safety_event = (
         args.remote_status == 70
         or not args.cleanup_verified
@@ -787,7 +837,8 @@ def parse_report(args: argparse.Namespace) -> dict[str, Any]:
         "go_image_digest": args.go_digest,
         "python_image_digest": args.python_digest,
         "pinset_sha256": meta["pinset_sha256"] if meta else None,
-        "protected_baseline_sha256": meta["protected_baseline_sha256"] if meta else None,
+        "protected_baseline_sha256": protected_baseline_sha256,
+        "preflight_failure_stage": preflight_failure_stage,
         "cooldown_seconds": args.cooldown,
         "protocol_valid": protocol_valid,
         "postflight_valid": postflight_valid,

@@ -72,6 +72,13 @@ from merged `main`. It builds immutable ARM64 images for both runtimes, pins
 them by digest, verifies protected Murmur services before and after every arm,
 and uploads one sanitized JSON artifact even when a benchmark arm fails.
 Production-safety invariant failures stop the schedule immediately.
+If preflight fails before `RUN_META`, the remote cleanup trap emits exactly one
+record containing an allowlisted stage name, the exit status, and the protected-
+service baseline digest (or `none` if no baseline was established). Such a
+failure is classified as ordinary benchmark infrastructure only when the
+independent postflight digest exactly matches that baseline; missing or changed
+protected-state evidence remains a production-safety abort. Raw remote stderr,
+host addresses, credentials, and temporary paths are never retained.
 
 Run local conformance from `pilots/go-http-sitemap`:
 

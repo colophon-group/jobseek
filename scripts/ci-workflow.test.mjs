@@ -1123,6 +1123,25 @@ test("fleet benchmark workflow is bounded, isolated, and uses the reviewed wire 
   );
   assert.match(
     goSitemapFleetWorkflow,
+    /printf 'PREFLIGHT_FAILURE\\t%s\\t%s\\t%s\\n'/,
+  );
+  assert.match(goSitemapFleetWorkflow, /status != 0 && meta_emitted == 0/);
+  assert.match(goSitemapFleetWorkflow, /meta_emitted=1/);
+  for (const stage of [
+    "inventory",
+    "protected_services",
+    "host_resources_before_pull",
+    "pull_go_image",
+    "pull_python_image",
+    "host_resources_after_pull",
+    "image_attestation",
+    "schedule_validation",
+    "dns_pinning",
+  ]) {
+    assert.match(goSitemapFleetWorkflow, new RegExp(`preflight_stage=${stage}`));
+  }
+  assert.match(
+    goSitemapFleetWorkflow,
     /\.status == "succeeded" and \.report_valid == true and \.timing_comparable == true/,
   );
 });
