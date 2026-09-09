@@ -121,6 +121,7 @@ Monitor Types (cheapest first):
   lever             10      Full job data     No (skipped)
   linkedin          10      Full/partial      Auto-enriched
   manatal           10      Full job data     No (skipped)
+  nowhiring         10      Full job data     No (skipped)
   paycom            10      Full/partial      Auto-enriched
   paynet            10      Full job data     No (skipped)
   paylocity         10      Full/partial      Auto-enriched
@@ -133,6 +134,7 @@ Monitor Types (cheapest first):
   smartrecruiters   10      Job URLs          Auto-configured
   softgarden        10      Job URLs          Auto-configured
   traffit           10      Full job data     No (skipped)
+  talentreef        10      Full job data     No (skipped)
   ukg               10      Full/partial      Auto-enriched
   unifr             10      Full or PDF URLs  skip/pdf (fixed source)
   workable          10      Job URLs          Auto-configured
@@ -482,6 +484,32 @@ beehire — Beehire public career-page monitor
   Detection:  ws probe verifies the public campaigns payload and reports its
               current job count.
   Zero jobs?  A valid campaigns: [] payload is an active empty board."""
+
+MONITOR_TALENTREEF = """\
+talentreef — TalentReef / JobAppNetwork public career-page monitor
+
+  Sources:  Career-page alias API plus the brand-scoped public posting search
+  Returns:  Full job data (title, HTML description, address, employment type,
+            posting date, and provider-stable identity)
+  Scraper:  Not needed
+  Cap:      50,000 jobs
+
+  Config:   alias and locale are auto-filled from apply.jobappnetwork.com URLs.
+  Detection:  ws probe verifies the published alias, client/brand scope, and
+              current public posting count, including a verified zero."""
+
+MONITOR_NOWHIRING = """\
+nowhiring — NowHiring / Snagajob career-site monitor
+
+  Sources:  Public career-site config, scoped job search, and job detail APIs
+  Returns:  Full job data (title, HTML description, address, employment type,
+            posting date, application URL metadata, and stable identity)
+  Scraper:  Not needed
+  Cap:      50,000 jobs
+
+  Config:   slug is auto-filled from https://nowhiring.com/{slug}/.
+  Detection:  ws probe verifies the site's billing-account scope and current
+              public job count, including a verified zero."""
 
 MONITOR_JOHDI = """\
 johdi — Johdi Suite embedded careers monitor
@@ -4246,6 +4274,7 @@ MONITOR_CARDS: dict[str, str] = {
     "typify": MONITOR_TYPIFY,
     "greenhouse": MONITOR_GREENHOUSE,
     "beehire": MONITOR_BEEHIRE,
+    "talentreef": MONITOR_TALENTREEF,
     "hibob": MONITOR_HIBOB,
     "hirehive": MONITOR_HIREHIVE,
     "hireology": MONITOR_HIREOLOGY,
@@ -4269,6 +4298,7 @@ MONITOR_CARDS: dict[str, str] = {
     "candidatus": MONITOR_CANDIDATUS,
     "paycom": MONITOR_PAYCOM,
     "paynet": MONITOR_PAYNET,
+    "nowhiring": MONITOR_NOWHIRING,
     "jazzhr": MONITOR_JAZZHR,
     "jobbank104": MONITOR_JOBBANK104,
     "jobdiva": """\

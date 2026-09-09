@@ -96,6 +96,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "linkedin",
         "manatal",
         "mokahr",
+        "nowhiring",
         "oracle_hcm",
         "pageup",
         "paycom",
@@ -108,6 +109,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "rss",
         "seamlesshiring",
         "traffit",
+        "talentreef",
         "typify",
         "ukg",
         "unifr",
@@ -448,6 +450,32 @@ def detect_ats_from_url(url: str) -> str | None:
         return "paycom"
     if paynet_company_from_url(url) is not None:
         return "paynet"
+    if (
+        host == "apply.jobappnetwork.com"
+        and parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.query
+        and not parsed.fragment
+        and re.fullmatch(
+            r"/[a-z0-9][a-z0-9_-]{0,127}(?:/[a-z]{2}(?:-[a-z]{2})?)?/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+    ):
+        return "talentreef"
+    if (
+        host == "nowhiring.com"
+        and parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.query
+        and not parsed.fragment
+        and re.fullmatch(r"/[a-z0-9][a-z0-9_-]{0,127}/?", parsed.path, re.IGNORECASE)
+    ):
+        return "nowhiring"
     if (
         host.endswith(".applytojob.com")
         and host.count(".") == 2

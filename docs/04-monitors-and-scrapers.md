@@ -67,6 +67,8 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `cnstaff` | Rich | skip | CNStaff paginated public career-board JSON |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
 | `paynet` | Rich | skip | Pay-Net Applicant public postings API |
+| `talentreef` | Rich | skip | TalentReef / JobAppNetwork published career pages and brand-scoped posting search |
+| `nowhiring` | Rich | skip | NowHiring / Snagajob scoped search plus public job details |
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
 | `job51` | Rich | skip | 51job employer microsite listing and detail CoAPI |
 | `jobbank104` | URL-only | json-ld | 104 Job Bank server-rendered company listings, proxy-capable for Cloudflare challenges |
