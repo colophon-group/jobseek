@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -16,6 +17,9 @@ func testIdentity() string {
 }
 
 func TestRunExercisesResidentC5WithExactConservation(t *testing.T) {
+	if transportPerHost <= perOriginConcurrent {
+		t.Fatalf("transport per-host limit %d masks worker origin limit %d", transportPerHost, perOriginConcurrent)
+	}
 	config := Config{
 		Duration:       450 * time.Millisecond,
 		CycleInterval:  100 * time.Millisecond,
@@ -44,7 +48,7 @@ func TestRunExercisesResidentC5WithExactConservation(t *testing.T) {
 	if report.Results.Requests != wantTerminal || report.Results.WireAttempts != wantTerminal || report.Fixture.HandledRequests != wantTerminal {
 		t.Fatalf("request totals do not conserve: results=%+v fixture=%+v", report.Results, report.Fixture)
 	}
-	if report.Worker.MaxInFlight != workerCount || report.Fixture.MaxConcurrent != workerCount || report.Fixture.MaxPerOrigin != perOriginConcurrent || report.Fixture.MinHandledPerOrigin != report.CyclesCompleted*jobsPerOrigin || report.Fixture.MaxHandledPerOrigin != report.CyclesCompleted*jobsPerOrigin {
+	if report.Worker.MaxInFlight != workerCount || report.Fixture.MaxConcurrent != workerCount || report.Fixture.MaxPerOrigin != perOriginConcurrent || report.Fixture.WavesObserved != report.CyclesCompleted || report.Fixture.C5Waves != report.CyclesCompleted || report.Fixture.OriginSafeWaves != report.CyclesCompleted || report.Fixture.ConnectionReuseWaves != report.CyclesCompleted || report.Fixture.MinHandledPerOrigin != report.CyclesCompleted*jobsPerOrigin || report.Fixture.MaxHandledPerOrigin != report.CyclesCompleted*jobsPerOrigin {
 		t.Fatalf("concurrency was not exact: worker=%+v fixture=%+v", report.Worker, report.Fixture)
 	}
 	if report.Connections.Open != 0 || report.Connections.InUsePermits != 0 || report.Connections.Waiters != 0 || report.Fixture.NewConnections >= report.Fixture.HandledRequests || report.Fixture.NewConnections != report.Fixture.ClosedConnections || report.Fixture.CurrentConnections != 0 {
@@ -73,6 +77,79 @@ func TestRunExercisesResidentC5WithExactConservation(t *testing.T) {
 		if strings.Contains(string(encoded), forbidden) {
 			t.Fatalf("sanitized evidence leaked %q", forbidden)
 		}
+	}
+}
+
+func TestEndWaveRejectsNonDiscriminatingEvidence(t *testing.T) {
+	newFixture := func(mutate func(*fixtureWave, *fixture)) *fixture {
+		wave := &fixtureWave{
+			barrier:       make(chan struct{}),
+			slowRelease:   make(chan struct{}),
+			originActive:  make([]atomic.Int64, originCount),
+			originMax:     make([]atomic.Int64, originCount),
+			originHandled: make([]atomic.Uint64, originCount),
+			newAtStart:    10,
+		}
+		wave.barrierHits.Store(workerCount)
+		wave.maxActive.Store(workerCount)
+		wave.originMax[0].Store(perOriginConcurrent)
+		wave.handled.Store(jobsPerWave)
+		probe := &fixture{wave: wave}
+		probe.newConnections.Store(20)
+		mutate(wave, probe)
+		return probe
+	}
+	tests := map[string]struct {
+		mutate func(*fixtureWave, *fixture)
+		want   string
+	}{
+		"serial": {
+			mutate: func(wave *fixtureWave, _ *fixture) { wave.maxActive.Store(1) },
+			want:   "wave_c5",
+		},
+		"origin overlap": {
+			mutate: func(wave *fixtureWave, _ *fixture) { wave.originMax[0].Store(2) },
+			want:   "wave_origin",
+		},
+		"no reuse": {
+			mutate: func(_ *fixtureWave, probe *fixture) { probe.newConnections.Store(10 + jobsPerWave) },
+			want:   "wave_reuse",
+		},
+		"missing request": {
+			mutate: func(wave *fixtureWave, _ *fixture) { wave.handled.Store(jobsPerWave - 1) },
+			want:   "wave_handled",
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			probe := newFixture(test.mutate)
+			if err := probe.endWave(0); err == nil || err.Error() != test.want {
+				t.Fatalf("endWave error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestFixtureCloseWaitsForConnectionCallbacks(t *testing.T) {
+	probe := &fixture{}
+	probe.newConnections.Store(1)
+	probe.currentConnections.Store(1)
+	done := make(chan error, 1)
+	go func() { done <- probe.close() }()
+	select {
+	case err := <-done:
+		t.Fatalf("close returned before connection callback: %v", err)
+	case <-time.After(10 * time.Millisecond):
+	}
+	probe.closedConnections.Store(1)
+	probe.currentConnections.Store(0)
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("close error: %v", err)
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("close did not observe connection callback")
 	}
 }
 

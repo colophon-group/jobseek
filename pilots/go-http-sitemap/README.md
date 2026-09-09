@@ -73,10 +73,14 @@ transport as one long-lived `c5` process. This is a retention/stability gate,
 not another fleet-parity benchmark. Its twelve canonical origins are
 in-process listeners bound to literal `127.0.0.1` addresses and dynamic ports;
 no origin, URL, manifest, proxy, credential, or crawler input is accepted. Any
-future admitted container must use `--network none`. A fixed first-wave barrier
-proves five simultaneous requests; a queued duplicate of a deliberately slower
-origin makes the server-observed one-per-origin limit non-tautological. Worker
-admission and results remain bounded below each two-per-origin wave. The
+future admitted container must use `--network none`. A fresh fixed barrier in
+every wave proves five simultaneous requests; the transport permits five live requests to
+one host, so a queued duplicate of a deliberately slower origin makes the
+server-observed worker one-per-origin limit non-tautological. Worker admission
+and results remain bounded below each two-per-origin wave. A fresh barrier and
+connection delta make every warm-up and aging wave prove c5 overlap,
+one-per-origin service, and at least one reused connection; lifetime warm-up
+maxima alone cannot satisfy the final gate. The
 deterministic XML payload is created before the forced-GC warm baseline so its
 stable memory is included in both ends of the retention comparison.
 
@@ -88,7 +92,8 @@ concurrency, drained connections, no FD/goroutine drift beyond four, and
 post-GC active heap/RSS/cgroup memory within the larger of 1.5x baseline or a
 fixed 16/16/32 MiB allowance. It also requires the observed cgroup
 `memory.max` to equal the declared 384 MiB limit and measures OOM events from
-before warm-up. The loopback fixture intentionally makes absolute RSS
+before warm-up. Shutdown waits within a fixed bound for every accepted server
+connection to reach its closed callback before final evidence. The loopback fixture intentionally makes absolute RSS
 conservative; public DNS/TLS behavior, Python-versus-Go density, queue safety,
 and production throughput remain outside this evidence. A later manual Murmur
 workflow must remain absent until the frozen fleet gate authorizes the

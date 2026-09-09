@@ -36,6 +36,9 @@ const (
 	capacity            = workerCount + 1
 	resultCapacity      = workerCount
 	perOriginConcurrent = 1
+	// Keep this strictly above the worker origin limit so fixture evidence
+	// observes worker scheduling rather than transport-side queuing.
+	transportPerHost    = workerCount
 	maxConnections      = 12
 	maxKeepalive        = 10
 	maxResponseBytes    = 8 << 20
@@ -45,6 +48,7 @@ const (
 	requestTimeout      = 5 * time.Second
 	jobTimeout          = 10 * time.Second
 	shutdownGrace       = 15 * time.Second
+	fixtureCloseWait    = time.Second
 	idleConnectionTTL   = 30 * time.Second
 	fixtureHandlerDelay = 5 * time.Millisecond
 	containerMemory     = int64(384 << 20)
@@ -136,6 +140,10 @@ type FixtureReport struct {
 	MaxConcurrent        int64  `json:"max_concurrent"`
 	MaxPerOrigin         int64  `json:"max_per_origin"`
 	FirstWaveBarrierHits int64  `json:"first_wave_barrier_hits"`
+	WavesObserved        uint64 `json:"waves_observed"`
+	C5Waves              uint64 `json:"c5_waves"`
+	OriginSafeWaves      uint64 `json:"origin_safe_waves"`
+	ConnectionReuseWaves uint64 `json:"connection_reuse_waves"`
 	MinHandledPerOrigin  uint64 `json:"min_handled_per_origin"`
 	MaxHandledPerOrigin  uint64 `json:"max_handled_per_origin"`
 	NewConnections       uint64 `json:"new_connections"`
@@ -222,6 +230,23 @@ type counters struct {
 	errorKinds      map[string]int
 }
 
+type fixtureWave struct {
+	barrier         chan struct{}
+	barrierOnce     sync.Once
+	slowRelease     chan struct{}
+	slowReleaseOnce sync.Once
+	slowOrigin      int
+	initialOrigins  [originCount]bool
+	barrierHits     atomic.Int64
+	active          atomic.Int64
+	maxActive       atomic.Int64
+	originActive    []atomic.Int64
+	originMax       []atomic.Int64
+	originHandled   []atomic.Uint64
+	handled         atomic.Uint64
+	newAtStart      uint64
+}
+
 type fixture struct {
 	servers            []*http.Server
 	listeners          []net.Listener
@@ -232,9 +257,13 @@ type fixture struct {
 	handled            atomic.Uint64
 	active             atomic.Int64
 	maxActive          atomic.Int64
-	barrierHits        atomic.Int64
-	barrierOnce        sync.Once
-	barrier            chan struct{}
+	firstBarrierHits   atomic.Int64
+	wavesObserved      atomic.Uint64
+	c5Waves            atomic.Uint64
+	originSafeWaves    atomic.Uint64
+	reuseWaves         atomic.Uint64
+	waveMu             sync.RWMutex
+	wave               *fixtureWave
 	originActive       []atomic.Int64
 	originMax          []atomic.Int64
 	originHandled      []atomic.Uint64
@@ -244,6 +273,7 @@ type fixture struct {
 	maximumConnections atomic.Int64
 	serveDone          []chan struct{}
 	closeOnce          sync.Once
+	closeErr           error
 	delay              time.Duration
 }
 
@@ -316,7 +346,7 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 		SharedTransport: &boundedhttp.SharedTransportConfig{
 			MaxIdleConns:          maxKeepalive,
 			MaxIdleConnsPerHost:   perOriginConcurrent,
-			MaxConnsPerHost:       perOriginConcurrent,
+			MaxConnsPerHost:       transportPerHost,
 			MaxConnections:        maxConnections,
 			MaxConcurrentRequests: workerCount,
 			IdleConnTimeout:       idleConnectionTTL,
@@ -349,6 +379,7 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 	go runDrainer(pool.Results(), probe, totals, resultEvents, drainerDone)
 
 	closed := false
+	var shutdownErr error
 	shutdown := func() {
 		if closed {
 			return
@@ -358,7 +389,7 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 		pool.Close()
 		<-drainerDone
 		client.Close()
-		probe.close()
+		shutdownErr = probe.close()
 		runtime.GC()
 		report.FinalClosed = read()
 		closed = true
@@ -367,9 +398,12 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 	// The first wave fills the shared transport and crosses the fixed c5
 	// fixture barrier. It is outside the aging window but remains in exact
 	// conservation totals.
-	if err := runWave(ctx, 0, feedRequests, feedResults, resultEvents); err != nil {
+	if err := runObservedWave(ctx, 0, probe, feedRequests, feedResults, resultEvents); err != nil {
 		shutdown()
 		populateReport(&report, pool, client, probe, totals)
+		if shutdownErr != nil {
+			return fail("fixture_close")
+		}
 		return fail(classifyControlError(err))
 	}
 	totals.completeCycle()
@@ -380,6 +414,9 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 	if err := sink(baselineSnapshot); err != nil {
 		shutdown()
 		populateReport(&report, pool, client, probe, totals)
+		if shutdownErr != nil {
+			return fail("fixture_close")
+		}
 		return fail("snapshot_write")
 	}
 	var sampleCount atomic.Uint64
@@ -465,7 +502,7 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 			errorKind = "cycle_late"
 			break
 		}
-		if err := runWave(ctx, cycle, feedRequests, feedResults, resultEvents); err != nil {
+		if err := runObservedWave(ctx, cycle, probe, feedRequests, feedResults, resultEvents); err != nil {
 			errorKind = classifyControlError(err)
 			break
 		}
@@ -501,6 +538,9 @@ func run(ctx context.Context, started time.Time, config Config, sourceCommit, im
 	shutdown()
 	populateReport(&report, pool, client, probe, totals)
 	report.SamplesEmitted = sampleCount.Load()
+	if shutdownErr != nil {
+		errorKind = "fixture_close"
+	}
 
 	if errorKind == "" {
 		errorKind = validateFinal(report)
@@ -641,6 +681,18 @@ func runWave(ctx context.Context, cycle uint64, requests chan<- feedRequest, out
 	return firstErr
 }
 
+func runObservedWave(ctx context.Context, cycle uint64, probe *fixture, requests chan<- feedRequest, outcomes <-chan feedResult, events <-chan resultEvent) error {
+	if err := probe.beginWave(cycle); err != nil {
+		return err
+	}
+	runErr := runWave(ctx, cycle, requests, outcomes, events)
+	observationErr := probe.endWave(cycle)
+	if runErr != nil {
+		return runErr
+	}
+	return observationErr
+}
+
 func (c *counters) record(result worker.Result, expectedURLs int, validationErr error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -750,7 +802,7 @@ func validateFinal(report Report) string {
 		return "worker_invariant"
 	}
 	expectedPerOrigin := report.CyclesCompleted * jobsPerOrigin
-	if report.Fixture.Origins != originCount || report.Fixture.HandledRequests != report.Results.Requests || report.Fixture.ActiveRequests != 0 || report.Fixture.MaxConcurrent != workerCount || report.Fixture.MaxPerOrigin != perOriginConcurrent || report.Fixture.FirstWaveBarrierHits != workerCount || report.Fixture.MinHandledPerOrigin != expectedPerOrigin || report.Fixture.MaxHandledPerOrigin != expectedPerOrigin || report.Fixture.NewConnections == 0 || report.Fixture.NewConnections >= report.Fixture.HandledRequests || report.Fixture.CurrentConnections != 0 || report.Fixture.ClosedConnections != report.Fixture.NewConnections || report.Fixture.MaximumConnections > maxConnections+workerCount {
+	if report.Fixture.Origins != originCount || report.Fixture.HandledRequests != report.Results.Requests || report.Fixture.ActiveRequests != 0 || report.Fixture.MaxConcurrent != workerCount || report.Fixture.MaxPerOrigin != perOriginConcurrent || report.Fixture.FirstWaveBarrierHits != workerCount || report.Fixture.WavesObserved != report.CyclesCompleted || report.Fixture.C5Waves != report.CyclesCompleted || report.Fixture.OriginSafeWaves != report.CyclesCompleted || report.Fixture.ConnectionReuseWaves != report.CyclesCompleted || report.Fixture.MinHandledPerOrigin != expectedPerOrigin || report.Fixture.MaxHandledPerOrigin != expectedPerOrigin || report.Fixture.NewConnections == 0 || report.Fixture.NewConnections >= report.Fixture.HandledRequests || report.Fixture.CurrentConnections != 0 || report.Fixture.ClosedConnections != report.Fixture.NewConnections || report.Fixture.MaximumConnections > maxConnections+workerCount {
 		return "fixture_invariant"
 	}
 	if report.Connections.Open != 0 || report.Connections.InUsePermits != 0 || report.Connections.Waiters != 0 || report.Connections.PermitLimit != maxConnections || report.Connections.MaximumOpen > maxConnections || report.Connections.MaximumInUsePermits > maxConnections {
@@ -821,7 +873,6 @@ func startFixture(urlCount int, delay time.Duration) (*fixture, error) {
 		payloadHash:   hex.EncodeToString(digest[:]),
 		urlDigest:     canonicalURLSHA256(urls),
 		urlCount:      urlCount,
-		barrier:       make(chan struct{}),
 		originActive:  make([]atomic.Int64, originCount),
 		originMax:     make([]atomic.Int64, originCount),
 		originHandled: make([]atomic.Uint64, originCount),
@@ -890,7 +941,86 @@ func validateFixtureJobs(jobs []worker.Job) error {
 	return nil
 }
 
+func (f *fixture) beginWave(cycle uint64) error {
+	order := waveOrder(cycle, len(f.jobs))
+	if len(order) != jobsPerWave || f.active.Load() != 0 {
+		return errors.New("wave_state")
+	}
+	wave := &fixtureWave{
+		barrier:       make(chan struct{}),
+		slowRelease:   make(chan struct{}),
+		slowOrigin:    order[0],
+		originActive:  make([]atomic.Int64, originCount),
+		originMax:     make([]atomic.Int64, originCount),
+		originHandled: make([]atomic.Uint64, originCount),
+		newAtStart:    f.newConnections.Load(),
+	}
+	for _, origin := range order[:workerCount] {
+		wave.initialOrigins[origin] = true
+	}
+	f.waveMu.Lock()
+	defer f.waveMu.Unlock()
+	if f.wave != nil {
+		return errors.New("wave_state")
+	}
+	f.wave = wave
+	return nil
+}
+
+func (f *fixture) currentWave() *fixtureWave {
+	f.waveMu.RLock()
+	defer f.waveMu.RUnlock()
+	return f.wave
+}
+
+func (f *fixture) endWave(cycle uint64) error {
+	f.waveMu.Lock()
+	wave := f.wave
+	f.wave = nil
+	f.waveMu.Unlock()
+	if wave == nil || wave.active.Load() != 0 {
+		return errors.New("wave_state")
+	}
+	maximumPerOrigin := int64(0)
+	for index := range wave.originMax {
+		maximumPerOrigin = max(maximumPerOrigin, wave.originMax[index].Load())
+	}
+	handled := wave.handled.Load()
+	newConnections := f.newConnections.Load() - wave.newAtStart
+	f.wavesObserved.Add(1)
+	if wave.maxActive.Load() == workerCount {
+		f.c5Waves.Add(1)
+	}
+	if maximumPerOrigin == perOriginConcurrent {
+		f.originSafeWaves.Add(1)
+	}
+	if handled == jobsPerWave && newConnections < handled {
+		f.reuseWaves.Add(1)
+	}
+	if cycle == 0 {
+		f.firstBarrierHits.Store(min(wave.barrierHits.Load(), workerCount))
+	}
+	if handled != jobsPerWave {
+		return errors.New("wave_handled")
+	}
+	if wave.maxActive.Load() != workerCount || wave.barrierHits.Load() < workerCount {
+		return errors.New("wave_c5")
+	}
+	if maximumPerOrigin != perOriginConcurrent {
+		return errors.New("wave_origin")
+	}
+	if newConnections >= handled {
+		return errors.New("wave_reuse")
+	}
+	return nil
+}
+
 func (f *fixture) handle(origin int, payload []byte, response http.ResponseWriter, request *http.Request) {
+	wave := f.currentWave()
+	if wave == nil {
+		http.Error(response, "fixture wave unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	active := f.active.Add(1)
 	storeMax(&f.maxActive, active)
 	originActive := f.originActive[origin].Add(1)
@@ -898,25 +1028,40 @@ func (f *fixture) handle(origin int, payload []byte, response http.ResponseWrite
 	defer f.active.Add(-1)
 	defer f.originActive[origin].Add(-1)
 	f.handled.Add(1)
-	originRequest := f.originHandled[origin].Add(1)
+	f.originHandled[origin].Add(1)
 
-	hits := f.barrierHits.Add(1)
+	waveActive := wave.active.Add(1)
+	storeMax(&wave.maxActive, waveActive)
+	waveOriginActive := wave.originActive[origin].Add(1)
+	storeMax(&wave.originMax[origin], waveOriginActive)
+	defer wave.active.Add(-1)
+	defer wave.originActive[origin].Add(-1)
+	wave.handled.Add(1)
+	waveOriginRequest := wave.originHandled[origin].Add(1)
+
+	hits := wave.barrierHits.Add(1)
 	if hits == workerCount {
-		f.barrierOnce.Do(func() { close(f.barrier) })
+		wave.barrierOnce.Do(func() { close(wave.barrier) })
 	}
 	if hits <= workerCount {
 		select {
-		case <-f.barrier:
+		case <-wave.barrier:
 		case <-request.Context().Done():
 			return
 		}
 	}
-	delay := f.delay
-	if origin == 0 && originRequest == 1 {
-		delay *= 4
+	if !wave.initialOrigins[origin] || origin == wave.slowOrigin && waveOriginRequest > 1 {
+		wave.slowReleaseOnce.Do(func() { close(wave.slowRelease) })
 	}
-	if delay > 0 {
-		timer := time.NewTimer(delay)
+	if origin == wave.slowOrigin && waveOriginRequest == 1 {
+		select {
+		case <-wave.slowRelease:
+		case <-request.Context().Done():
+			return
+		}
+	}
+	if f.delay > 0 {
+		timer := time.NewTimer(f.delay)
 		select {
 		case <-timer.C:
 		case <-request.Context().Done():
@@ -947,7 +1092,11 @@ func (f *fixture) report() FixtureReport {
 		ActiveRequests:       f.active.Load(),
 		MaxConcurrent:        f.maxActive.Load(),
 		MaxPerOrigin:         maximumPerOrigin,
-		FirstWaveBarrierHits: min(f.barrierHits.Load(), workerCount),
+		FirstWaveBarrierHits: f.firstBarrierHits.Load(),
+		WavesObserved:        f.wavesObserved.Load(),
+		C5Waves:              f.c5Waves.Load(),
+		OriginSafeWaves:      f.originSafeWaves.Load(),
+		ConnectionReuseWaves: f.reuseWaves.Load(),
 		MinHandledPerOrigin:  minimumHandled,
 		MaxHandledPerOrigin:  maximumHandled,
 		NewConnections:       f.newConnections.Load(),
@@ -957,7 +1106,7 @@ func (f *fixture) report() FixtureReport {
 	}
 }
 
-func (f *fixture) close() {
+func (f *fixture) close() error {
 	f.closeOnce.Do(func() {
 		for _, server := range f.servers {
 			_ = server.Close()
@@ -968,7 +1117,20 @@ func (f *fixture) close() {
 		for _, done := range f.serveDone {
 			<-done
 		}
+		deadline := time.NewTimer(fixtureCloseWait)
+		defer deadline.Stop()
+		ticker := time.NewTicker(time.Millisecond)
+		defer ticker.Stop()
+		for f.currentConnections.Load() != 0 || f.closedConnections.Load() != f.newConnections.Load() {
+			select {
+			case <-ticker.C:
+			case <-deadline.C:
+				f.closeErr = errors.New("fixture connections did not close")
+				return
+			}
+		}
 	})
+	return f.closeErr
 }
 
 func (f *fixture) connectionState(_ net.Conn, state http.ConnState) {
@@ -1089,7 +1251,7 @@ func typedErrorKind(err error) string {
 		return "http_" + string(httpErr.Kind)
 	}
 	switch err.Error() {
-	case "result_invariant", "result_digest", "job_id_invalid", "feed_cycle_mismatch", "result_cycle_mismatch", "results_closed", "wave_conservation":
+	case "result_invariant", "result_digest", "job_id_invalid", "feed_cycle_mismatch", "result_cycle_mismatch", "results_closed", "wave_conservation", "wave_state", "wave_handled", "wave_c5", "wave_origin", "wave_reuse":
 		return err.Error()
 	default:
 		return "internal"
