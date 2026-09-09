@@ -451,6 +451,8 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "'apps/crawler/pyproject.toml'" in workflow
     assert "'!apps/crawler/contracts/v1/**'" not in workflow
     assert "apps/crawler/contracts/v1/*) ;;" not in workflow
+    # Tests validate the host runner but are not copied into its runtime image.
+    assert "apps/crawler/tests/*) ;;" in workflow
     assert "inactive_v1_policy" not in workflow
     assert "#8046" not in workflow
     # VERSION, runtime v1, another contract version, and crawler source all
