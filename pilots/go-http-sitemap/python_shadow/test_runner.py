@@ -7,7 +7,6 @@ import hashlib
 import http.cookiejar
 import io
 import json
-import socket
 import struct
 import sys
 import unittest
@@ -28,7 +27,6 @@ from runner import (
     AttemptLimitError,
     ConnectionProbe,
     ExactTargetTransport,
-    HostPinError,
     ManifestError,
     ResponseBodyTooLargeError,
     RoundMeter,
@@ -40,7 +38,6 @@ from runner import (
     _fetch_and_extract,
     _final_invariants_valid,
     _monitor_config,
-    _public_host_pin,
     _RejectAllCookiePolicy,
     _run_round,
     canonical_url_sha256,
@@ -442,37 +439,6 @@ class FetchSafetyTests(unittest.IsolatedAsyncioTestCase):
             await self.fetch(index)
 
 
-class HostPinTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.job = decode_manifest(manifest_bytes()).jobs[0]
-        from src.shared import ssrf
-
-        self.ssrf = ssrf
-
-    @staticmethod
-    def infos(*addresses: str) -> list[tuple]:
-        return [
-            (socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 443)) for address in addresses
-        ]
-
-    def test_exactly_one_public_hosts_entry_is_admitted(self) -> None:
-        with mock.patch("socket.getaddrinfo", return_value=self.infos("93.184.216.34")):
-            self.assertEqual(_public_host_pin(self.job, self.ssrf), "93.184.216.34")
-
-    def test_mixed_multi_answer_and_private_results_are_rejected(self) -> None:
-        for addresses in (
-            ("93.184.216.34", "93.184.216.35"),
-            ("93.184.216.34", "10.0.0.5"),
-            ("127.0.0.1",),
-        ):
-            with (
-                self.subTest(addresses=addresses),
-                mock.patch("socket.getaddrinfo", return_value=self.infos(*addresses)),
-                self.assertRaises(HostPinError),
-            ):
-                _public_host_pin(self.job, self.ssrf)
-
-
 class ConnectionProbeTests(unittest.IsolatedAsyncioTestCase):
     async def test_pinned_httpcore_pool_open_waiter_and_close_shape(self) -> None:
         import httpcore
@@ -704,10 +670,13 @@ class RoundTests(unittest.IsolatedAsyncioTestCase):
                 await task
         self.assertEqual(meter.in_flight, 0)
 
-    async def test_process_deadline_with_zero_rounds_returns_structural_failure(
+    async def test_process_deadline_has_no_eager_dns_fanout_and_is_structural(
         self,
     ) -> None:
         manifest = decode_manifest(manifest_bytes())
+        import certifi
+
+        from src.shared import ssrf
 
         async def never_finishes(*args, **kwargs):
             del args, kwargs
@@ -716,9 +685,13 @@ class RoundTests(unittest.IsolatedAsyncioTestCase):
         with (
             mock.patch(
                 "runner._load_runtime",
-                return_value=(None, None, None, None, object(), None),
+                return_value=(httpx, certifi, object(), object(), ssrf, object()),
             ),
-            mock.patch("runner._validate_host_pins", side_effect=never_finishes),
+            mock.patch("runner._run_round", side_effect=never_finishes),
+            mock.patch(
+                "src.shared.ssrf.socket.getaddrinfo",
+                side_effect=AssertionError("unexpected eager DNS validation"),
+            ),
             mock.patch("runner.PROCESS_TIMEOUT_SECONDS", 0.01),
         ):
             report = await run(manifest, "0" * 64, "c5", 5)

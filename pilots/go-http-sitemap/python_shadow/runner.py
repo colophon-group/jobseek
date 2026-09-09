@@ -17,7 +17,6 @@ import ipaddress
 import json
 import re
 import resource
-import socket
 import ssl
 import stat
 import struct
@@ -44,7 +43,6 @@ REQUEST_TIMEOUT_SECONDS = 20
 JOB_TIMEOUT_SECONDS = 25
 ROUND_TIMEOUT_SECONDS = 90
 PROCESS_TIMEOUT_SECONDS = 210
-HOST_PIN_TIMEOUT_SECONDS = 5
 MAX_FILE_DESCRIPTORS = 256
 ROUNDS = 2
 ALLOWED_CONCURRENCY = (2, 4, 5, 8, 12, 16)
@@ -100,10 +98,6 @@ class SitemapIndexRejectedError(RuntimeError):
 
 
 class EmptyResultError(RuntimeError):
-    pass
-
-
-class HostPinError(RuntimeError):
     pass
 
 
@@ -384,7 +378,6 @@ def _safe_error_kind(exc: BaseException) -> str:
         ("ContentEncodingRejectedError", "content_encoding_rejected"),
         ("SitemapIndexRejectedError", "sitemap_index_rejected"),
         ("EmptyResultError", "empty_result"),
-        ("HostPinError", "host_pin_invalid"),
         ("TimeoutError", "deadline"),
         ("HTTPError", "http_transport"),
         ("ParseError", "xml"),
@@ -424,38 +417,6 @@ def _load_runtime():
     from src.shared import tdm as production_tdm
 
     return httpx, certifi, production_monitor, production_sitemap, production_ssrf, production_tdm
-
-
-def _public_host_pin(job: Job, production_ssrf) -> str:
-    host = urlparse(job.sitemap_url).hostname
-    assert host is not None
-    try:
-        infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
-        addresses = {
-            str(sockaddr[0]).split("%", 1)[0]
-            for family, _socktype, _proto, _canonname, sockaddr in infos
-            if family in (socket.AF_INET, socket.AF_INET6)
-        }
-        chosen = production_ssrf._public_address_from_infos(job.sitemap_url, host, infos)
-    except Exception as exc:
-        raise HostPinError from exc
-    # The workflow installs exactly one validated address per hostname in the
-    # container's /etc/hosts. Requiring a single result proves that httpx's
-    # subsequent resolver call is constrained to that same pinned address.
-    if len(addresses) != 1 or chosen not in addresses:
-        raise HostPinError
-    return chosen
-
-
-async def _validate_host_pins(jobs: tuple[Job, ...], production_ssrf) -> None:
-    semaphore = asyncio.Semaphore(8)
-
-    async def validate(job: Job) -> None:
-        async with semaphore:
-            async with asyncio.timeout(HOST_PIN_TIMEOUT_SECONDS):
-                await asyncio.to_thread(_public_host_pin, job, production_ssrf)
-
-    await asyncio.gather(*(validate(job) for job in jobs))
 
 
 class ExactTargetTransport:
@@ -759,7 +720,6 @@ async def run(
                 production_ssrf,
                 production_tdm,
             ) = _load_runtime()
-            await _validate_host_pins(manifest.jobs, production_ssrf)
 
             context = ssl.create_default_context(cafile=certifi.where())
             context.options |= ssl.OP_NO_TICKET

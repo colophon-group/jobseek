@@ -1149,6 +1149,16 @@ test("fleet benchmark workflow is bounded, isolated, and uses the reviewed wire 
       .length,
     2,
   );
+  assert.ok(
+    (goSitemapFleetWorkflow.match(/len\(hosts\) != 32 or len\(set\(hosts\)\) != 32/g) ?? [])
+      .length >= 2,
+  );
+  assert.match(
+    goSitemapFleetWorkflow,
+    /any\(unsafe\(address\) or address in excluded for address in answers\)/,
+  );
+  assert.match(goSitemapFleetWorkflow, /add_host_args\+=\(--add-host "\$host:\$address"\)/);
+  assert.match(goSitemapFleetWorkflow, /host\.get\("ExtraHosts"\) == expected_hosts/);
   assert.match(
     goSitemapFleetWorkflow,
     /\.status == "succeeded" and \.report_valid == true and \.timing_comparable == true/,
