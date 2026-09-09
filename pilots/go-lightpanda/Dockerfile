@@ -15,7 +15,7 @@ FROM go-source AS integration-build
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go test -c -o /out/go-lightpanda.test .
 
-FROM debian:bookworm-slim AS lightpanda
+FROM debian:trixie-20260824-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS lightpanda
 
 ARG TARGETARCH
 RUN case "${TARGETARCH}" in \

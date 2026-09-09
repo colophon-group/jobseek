@@ -32,6 +32,11 @@ SHA-256 before installing it:
 - arm64 `lightpanda-aarch64-linux`:
   `5e3b54deed642ffeb2b8f24a1931e54c51161f44d9d728135da3d4863cb722fb`
 
+The runtime stage uses the digest-pinned multi-architecture Debian Trixie
+2026-08-24 slim image. Its glibc 2.41 satisfies the arm64 release binary's
+GLIBC 2.38 requirement. The Go builder tag and packages resolved during
+`apt-get` are not snapshot-pinned, so the complete build is not reproducible.
+
 ```sh
 docker build --platform linux/amd64 -t jobseek-lightpanda-pilot .
 
