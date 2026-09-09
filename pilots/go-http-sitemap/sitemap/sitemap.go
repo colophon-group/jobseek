@@ -131,26 +131,42 @@ type location struct {
 }
 
 func New(client *boundedhttp.Client, config Config) (*Runner, error) {
+	if client == nil {
+		return nil, newError(ErrorConfig, config.SitemapURL, 0, nil)
+	}
+	normalized, err := NormalizeConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	config = normalized
+	parsed, _ := url.Parse(config.SitemapURL)
+	return &Runner{client: client, config: config, allowedOrigin: canonicalOrigin(parsed), sleep: sleepContext}, nil
+}
+
+// NormalizeConfig applies the exact defaults and validation used by New
+// without allocating an HTTP client or runner. It lets bounded admission
+// snapshot the precise configuration that execution will receive.
+func NormalizeConfig(config Config) (Config, error) {
 	if config.RootMaxAttempts == 0 {
 		config.RootMaxAttempts = defaultRootMaxAttempts
 	}
 	if config.RootBackoff == 0 {
 		config.RootBackoff = defaultRootBackoff
 	}
-	if client == nil || config.SitemapURL == "" || config.MaxURLs <= 0 || config.MaxURLs > maxProtocolURLs || config.MaxIndexChildren <= 0 {
-		return nil, newError(ErrorConfig, config.SitemapURL, 0, nil)
+	if config.SitemapURL == "" || config.MaxURLs <= 0 || config.MaxURLs > maxProtocolURLs || config.MaxIndexChildren <= 0 {
+		return Config{}, newError(ErrorConfig, config.SitemapURL, 0, nil)
 	}
 	if config.RootMaxAttempts < 1 || config.RootMaxAttempts > maxRootMaxAttempts || config.RootBackoff < 0 || config.RootBackoff > time.Duration(math.MaxInt64/2) {
-		return nil, newError(ErrorConfig, config.SitemapURL, 0, nil)
+		return Config{}, newError(ErrorConfig, config.SitemapURL, 0, nil)
 	}
 	parsed, err := url.Parse(config.SitemapURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" || parsed.User != nil || parsed.Scheme != "https" && !(config.AllowHTTPForTesting && parsed.Scheme == "http") {
-		return nil, newError(ErrorConfig, config.SitemapURL, 0, nil)
+		return Config{}, newError(ErrorConfig, config.SitemapURL, 0, nil)
 	}
 	if (config.ReplacePrefix == "") != (config.Replacement == "") {
-		return nil, newError(ErrorConfig, config.SitemapURL, 0, nil)
+		return Config{}, newError(ErrorConfig, config.SitemapURL, 0, nil)
 	}
-	return &Runner{client: client, config: config, allowedOrigin: canonicalOrigin(parsed), sleep: sleepContext}, nil
+	return config, nil
 }
 
 func (r *Runner) Run(ctx context.Context) (Result, error) {

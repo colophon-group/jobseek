@@ -564,6 +564,28 @@ func TestInvalidConfigMakesNoRequest(t *testing.T) {
 	}
 }
 
+func TestNormalizeConfigMatchesNewDefaults(t *testing.T) {
+	config := Config{
+		SitemapURL:       "https://example.test/sitemap.xml",
+		MaxURLs:          10,
+		MaxIndexChildren: 2,
+	}
+	normalized, err := NormalizeConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if normalized.RootMaxAttempts != defaultRootMaxAttempts || normalized.RootBackoff != defaultRootBackoff {
+		t.Fatalf("wrong defaults: %#v", normalized)
+	}
+	runner, err := New(newHTTPClient(t, 1), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runner.config != normalized {
+		t.Fatalf("New normalized %#v, want %#v", runner.config, normalized)
+	}
+}
+
 func TestRootRetryRecoversRetryableStatuses(t *testing.T) {
 	for _, status := range []int{http.StatusAccepted, http.StatusUnauthorized, http.StatusForbidden, http.StatusRequestTimeout, http.StatusTooEarly, http.StatusTooManyRequests, http.StatusInternalServerError, 599} {
 		t.Run(fmt.Sprintf("status=%d", status), func(t *testing.T) {
