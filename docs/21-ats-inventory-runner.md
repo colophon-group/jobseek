@@ -295,8 +295,10 @@ interactive terminal also receives a readable JSON report.
 ## Hetzner deployment and rollout
 
 Production runs as `jobseek-ats-inventory.timer` on the ordinary crawler host,
-not as a Codex task. The persistent daily timer uses a 45-minute randomized
-delay. Its hardened one-shot resolves the immutable crawler image from the
+not as a Codex task. The persistent timer runs at 03:00 and 15:00 UTC with a
+45-minute randomized delay. Each pass creates at most 25 candidates and the
+durable ledger limits both passes to 50 combined per UTC day. Its hardened
+one-shot resolves the immutable crawler image from the
 atomic `/home/deploy/.crawler-active-release/success.env` marker selected only
 after the crawler health gates pass and then verified before rollback is
 disarmed. Under the crawler mutation lock, the wrapper attests the active
@@ -414,5 +416,6 @@ verified/fallback/PR/closed outcome, and the exactly-one replacement refill in
 #6190. Repeat those gates at cap 5. Before moving to cap 25, test `disable`, run
 the service once, and prove the effective mode was `report` with zero creates;
 then re-enable only after configuring `refill 25`. The daily cap remains 50,
-the per-tick cap remains 25, all open requests remain below 600, and bootstrap
-toward 500 occurs over multiple daily/manual evidence-gated runs.
+the per-tick cap remains 25, all open requests remain below 600, and the two
+scheduled passes can reach the full daily ceiling while bootstrap toward 500
+remains bounded by the same evidence-gated controls.
