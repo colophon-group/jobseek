@@ -138,6 +138,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "inactive_detail_states",
             "job_filter",
             "job_link_pattern",
+            "jobtoolz_tenant",
             "link_selector",
             "lucca_board",
             "oracle_adf_job_ids",

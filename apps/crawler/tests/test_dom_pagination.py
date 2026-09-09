@@ -27,6 +27,7 @@ from src.core.monitors.dom import (
     _filter_unexpired_pdf_urls,
     _fingerprint_response_urls,
     _hotelcareer_probe_config,
+    _jobtoolz_probe_config,
     _lucca_probe_config,
     _nyc_council_jobs_probe_config,
     _oracle_adf_probe_config,
@@ -187,6 +188,33 @@ class TestScriptJsonLinks:
 
         assert urls == {"https://example.com/jobs/one/"}
 
+    def test_extracts_entity_encoded_function_argument(self):
+        config = _validated_script_json_links(
+            {
+                "function": "jobComponent",
+                "argument_index": 0,
+                "url_field": "url",
+                "url_template": "{value}",
+                "html_unescape": True,
+            }
+        )
+        assert config is not None
+        html = """
+            <div id="jobs" x-data="window.jobComponent(
+              [{&quot;url&quot;:&quot;https://acme.jobtoolz.com/en/backend-engineer&quot;}],
+              999
+            )"></div>
+        """
+
+        urls = _extract_script_json_links(
+            html,
+            "https://acme.jobtoolz.com/en",
+            config,
+            None,
+        )
+
+        assert urls == {"https://acme.jobtoolz.com/en/backend-engineer"}
+
     async def test_dom_discover_returns_rich_function_argument_jobs(self):
         config = {
             "function": "setUpAgGrid",
@@ -246,6 +274,12 @@ class TestScriptJsonLinks:
                 "url_field": "url",
                 "url_template": "{value}",
                 "title_field": "title",
+            },
+            {
+                "variable": "jobs",
+                "url_field": "url",
+                "url_template": "{value}",
+                "html_unescape": "yes",
             },
         ],
     )
@@ -309,6 +343,44 @@ class TestScriptJsonLinks:
     )
     def test_nyc_council_probe_rejects_noncanonical_board_urls(self, url):
         assert _nyc_council_jobs_probe_config(self._html("one"), url) is None
+
+    def test_jobtoolz_probe_returns_entity_encoded_listing_preset(self):
+        html = """
+            <div id="jobs" x-data="window.jobComponent(
+              [{&quot;url&quot;:&quot;https://acme.jobtoolz.com/en/backend-engineer&quot;}],
+              999
+            )"></div>
+        """
+
+        result = _jobtoolz_probe_config(html, "https://acme.jobtoolz.com/en")
+
+        assert result == {
+            "urls": 1,
+            "jobtoolz_tenant": "acme",
+            "script_json_links": {
+                "function": "jobComponent",
+                "argument_index": 0,
+                "url_field": "url",
+                "url_template": "{value}",
+                "html_unescape": True,
+            },
+            "require_jsonld_jobposting": True,
+        }
+        assert auto_scraper_type("dom", result) == ("json-ld", None)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://acme.jobtoolz.com/en",
+            "https://user@acme.jobtoolz.com/en",
+            "https://acme.jobtoolz.com:444/en",
+            "https://jobtoolz.com/en",
+        ],
+    )
+    def test_jobtoolz_probe_rejects_untrusted_board_urls(self, url):
+        html = '<div id="jobs" x-data="window.jobComponent([], 999)"></div>'
+
+        assert _jobtoolz_probe_config(html, url) is None
 
     async def test_can_handle_retries_council_with_public_user_agent(self):
         html = self._html("one", "two")

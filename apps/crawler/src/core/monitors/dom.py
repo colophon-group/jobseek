@@ -169,6 +169,7 @@ class _ScriptJsonLinksConfig:
     url_template: str
     title_field: str | None
     locations_field: str | None
+    html_unescape: bool
 
 
 _YOUSTY_HOST = "www.yousty.ch"
@@ -1883,6 +1884,7 @@ def _validated_script_json_links(value: object) -> _ScriptJsonLinksConfig | None
         "argument_index",
         "title_field",
         "locations_field",
+        "html_unescape",
     }
     if (
         not isinstance(value, dict)
@@ -1973,6 +1975,10 @@ def _validated_script_json_links(value: object) -> _ScriptJsonLinksConfig | None
             "configured together"
         )
 
+    decode_html_entities = value.get("html_unescape", False)
+    if not isinstance(decode_html_entities, bool):
+        raise ValueError("DOM monitor script_json_links.html_unescape must be a boolean")
+
     return _ScriptJsonLinksConfig(
         variable=variable if isinstance(variable, str) else None,
         function=function if isinstance(function, str) else None,
@@ -1981,6 +1987,7 @@ def _validated_script_json_links(value: object) -> _ScriptJsonLinksConfig | None
         url_template=url_template,
         title_field=rich_fields[0],
         locations_field=rich_fields[1],
+        html_unescape=decode_html_entities,
     )
 
 
@@ -2069,6 +2076,12 @@ def _script_call_argument_text(html: str, function: str, argument_index: int) ->
 
 
 def _script_json_payload_text(html: str, config: _ScriptJsonLinksConfig) -> str:
+    if config.html_unescape:
+        # Some server-rendered boards keep their authoritative JSON array in
+        # an HTML attribute (for example Alpine's ``x-data``). Decode entities
+        # before locating the configured assignment/function call, without
+        # evaluating any provider JavaScript.
+        html = html_unescape(html)
     if config.variable is not None:
         assignment = re.compile(rf"(?:const|let|var)\s+{re.escape(config.variable)}\s*=\s*")
         matches = list(assignment.finditer(html))
@@ -4109,6 +4122,44 @@ def _nyc_council_jobs_probe_config(html: str, url: str) -> dict | None:
     }
 
 
+def _jobtoolz_probe_config(html: str, url: str) -> dict | None:
+    """Return a fail-closed preset for Jobtoolz's Alpine listing payload."""
+    try:
+        parsed = urlsplit(url)
+    except ValueError:
+        return None
+    host = (parsed.hostname or "").casefold()
+    if (
+        parsed.scheme.casefold() != "https"
+        or not host.endswith(".jobtoolz.com")
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port not in {None, 443}
+        or "window.jobComponent(" not in html
+    ):
+        return None
+
+    script_json_links = {
+        "function": "jobComponent",
+        "argument_index": 0,
+        "url_field": "url",
+        "url_template": "{value}",
+        "html_unescape": True,
+    }
+    try:
+        config = _validated_script_json_links(script_json_links)
+        assert config is not None
+        urls = _extract_script_json_links(html, url, config, None)
+    except ValueError:
+        return None
+    return {
+        "urls": len(urls),
+        "jobtoolz_tenant": host.removesuffix(".jobtoolz.com"),
+        "script_json_links": script_json_links,
+        "require_jsonld_jobposting": True,
+    }
+
+
 def _oracle_adf_probe_config(html: str, url: str) -> dict | None:
     """Recognize Oracle ADF job lists whose rows expose only PPR actions."""
     if "Created by Oracle ADF" not in html:
@@ -4183,6 +4234,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     nyc_council_jobs = _nyc_council_jobs_probe_config(html, url)
     if nyc_council_jobs is not None:
         return nyc_council_jobs
+
+    jobtoolz = _jobtoolz_probe_config(html, url)
+    if jobtoolz is not None:
+        return jobtoolz
 
     oracle_adf = _oracle_adf_probe_config(html, url)
     if oracle_adf is not None:
