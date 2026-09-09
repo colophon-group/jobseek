@@ -3484,6 +3484,7 @@ ivalua,ivalua-greenhouse,https://job-boards.greenhouse.io/ivalua,greenhouse,"{""
 ixl-learning,ixl-learning-greenhouse,https://job-boards.greenhouse.io/ixllearning,greenhouse,"{""token"": ""ixllearning""}",skip,
 ixm,ixm-china-campus,https://app.mokahr.com/campus-recruitment/ixmetals/140496?locale=zh-CN,mokahr,"{""org_id"": ""ixmetals"", ""site_id"": 140496, ""locale"": ""zh-CN""}",mokahr,"{""enrich"": [""description""]}"
 ixm,ixm-linkedin,https://www.linkedin.com/company/ixm/jobs/,linkedin,"{""company_id"": ""18656467"", ""company_slug"": ""ixm"", ""keywords"": ""IXM""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
+j-crew,j-crew-careers,https://jcrew.wd1.myworkdayjobs.com/jcrewcareers,workday,,workday,
 j-safra-sarasin,j-safra-sarasin-careers,https://jsafrasarasin.umantis.com/Jobs/All,umantis,"{""customer_id"": ""jsafrasarasin"", ""cname"": ""jsafrasarasin.umantis.com"", ""region"": """"}",dom,"{""same_origin_redirects"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""field"": ""locations""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply""}]}"
 jabil,jabil-careers,https://jabil.wd5.myworkdayjobs.com/jabil_careers,workday,,workday,
 jade-biosciences,jade-biosciences-greenhouse,https://job-boards.greenhouse.io/jadebiosciences,greenhouse,"{""token"": ""jadebiosciences""}",skip,
