@@ -7003,6 +7003,7 @@ welbehealth,welbehealth-greenhouse,https://job-boards.greenhouse.io/welbehealth,
 welcome-to-the-jungle,welcome-to-the-jungle-greenhouse,https://job-boards.greenhouse.io/artefactjobs,greenhouse,"{""token"": ""artefactjobs""}",skip,
 wellpower-all-jobs,wellpower-all-jobs-greenhouse,https://job-boards.greenhouse.io/mentalhealthcenterofdenver,greenhouse,"{""token"": ""mentalhealthcenterofdenver""}",skip,
 wells-fargo,wells-fargo-careers,https://wd1.myworkdaysite.com/recruiting/wf/WellsFargoJobs,workday,"{""company"": ""wf"", ""wd_instance"": ""wd1"", ""site"": ""WellsFargoJobs""}",workday,"{""proxy"": true}"
+wellspan-health,wellspan-health-careers,https://fa-evzu-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 weploy,weploy-greenhouse,https://job-boards.greenhouse.io/weploy,greenhouse,"{""token"": ""weploy""}",skip,
 weride,weride-careers,https://jobs.lever.co/weride,lever,"{""token"": ""weride""}",skip,
 wesort-ai,wesort-ai-careers,https://www.wesort.ai/karriere,sitemap,"{""url_filter"": ""(stellenanzeige-|entwicklungsingenieur|initiativbewerbung)""}",dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 60000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Interesse geweckt"", ""html"": true}]}"
