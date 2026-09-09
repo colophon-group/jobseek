@@ -1082,6 +1082,14 @@ test("fleet benchmark workflow is bounded, isolated, and uses the reviewed wire 
   assert.match(goSitemapFleetWorkflow, /--memory-swap 1g --user 65532:65532/);
   assert.match(
     goSitemapFleetWorkflow,
+    /--log-driver local --log-opt max-size=256k --log-opt max-file=1 --log-opt compress=false/,
+  );
+  assert.match(
+    goSitemapFleetWorkflow,
+    /"Config": \{"compress": "false", "max-file": "1", "max-size": "256k"\}/,
+  );
+  assert.match(
+    goSitemapFleetWorkflow,
     /remote_docker_config="\/tmp\/jobseek-sitemap-fleet-auth\.\$owner"/,
   );
   assert.match(

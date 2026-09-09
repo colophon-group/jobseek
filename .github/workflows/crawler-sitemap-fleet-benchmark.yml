@@ -564,7 +564,7 @@ jobs:
               host.get("CapDrop") == ["ALL"], not host.get("CapAdd"),
               sorted(host.get("SecurityOpt") or []) == ["no-new-privileges:true"],
               host.get("Ulimits") == [{"Name": "nofile", "Hard": 256, "Soft": 256}],
-              host.get("LogConfig") == {"Type": "local", "Config": {"max-size": "256k", "max-file": "1"}},
+              host.get("LogConfig") == {"Type": "local", "Config": {"compress": "false", "max-file": "1", "max-size": "256k"}},
               host.get("ExtraHosts") == expected_hosts, config.get("Env") == image["Config"].get("Env"),
           ]
           raise SystemExit(0 if all(checks) else 1)
@@ -658,7 +658,7 @@ jobs:
               set +e
               timeout --signal=TERM --kill-after=5s 30s docker create \
                 --name "$name" --cidfile "$cid_file" --label "$label_key=$label_value" \
-                --log-driver local --log-opt max-size=256k --log-opt max-file=1 \
+                --log-driver local --log-opt max-size=256k --log-opt max-file=1 --log-opt compress=false \
                 --read-only --network bridge "${add_host_args[@]}" --security-opt no-new-privileges:true \
                 --cap-drop ALL --pids-limit 128 --ulimit nofile=256:256 --cpus 1 --memory 1g \
                 --memory-swap 1g --user 65532:65532 "$image_ref" --profile "$profile" \
