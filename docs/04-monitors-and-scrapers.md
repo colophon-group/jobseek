@@ -133,6 +133,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `ukg` | Rich | embedded | UKG Pro public paginated search API plus embedded detail enrichment |
 | `unisante` | Rich | skip | Unisanté dual-alias official inventory with bounded visible-detail validation |
 | `welcometothejungle` | Rich | skip | Welcome to the Jungle public jobs APIs |
+| `woowa` | Rich | skip | Woowa Brothers and Woowa Youths public careers APIs |
 | `workable` | URL-only | workable | Workable ATS |
 | `workday` | URL-only | workday | Workday ATS |
 | `ycombinator` | URL-only | json-ld | YC Jobs fallback pages |
