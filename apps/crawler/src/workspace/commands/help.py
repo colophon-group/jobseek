@@ -203,6 +203,7 @@ Scraper Types:
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
   phuketall      Static      No               PhuketAll employer job pages
   veryeast       Static      No               VeryEast employer job pages
+  tupu360        Static      No               Tupu360 employer job pages
   onlyfy         Static      No               Onlyfy/Prescreen job pages
   paycor         Static      No               Paycor/Newton legacy job pages
   recruiterbox   Static      No               Recruiterbox/Trakstar Hire job pages
@@ -4517,6 +4518,19 @@ veryeast — VeryEast (最佳东方) employer-board detail scraper
             oversized pages fail instead of being silently truncated.
 """
 
+SCRAPER_TUPU360 = """\
+tupu360 — Tupu360 (图谱天下) employer-board detail scraper
+
+  Page:     GET https://careersite.tupu360.com/{tenant}/position/detail?positionId={id}
+  Returns:  title, complete HTML description, location, posting date and
+            provider identity metadata
+  Config:   None needed.
+  Note:     Pair with a DOM monitor for the employer listing page. The detail
+            page is server-rendered, so no browser is required. Requests are
+            restricted to exact HTTPS provider URLs and the returned posting
+            identity must match the URL.
+"""
+
 SCRAPER_LINKEDIN = """\
 linkedin — LinkedIn public guest-job detail scraper
 
@@ -4758,6 +4772,7 @@ SCRAPER_CARDS: dict[str, str] = {
     "embedded": SCRAPER_EMBEDDED,
     "phuketall": SCRAPER_PHUKETALL,
     "veryeast": SCRAPER_VERYEAST,
+    "tupu360": SCRAPER_TUPU360,
     "onlyfy": SCRAPER_ONLYFY,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,

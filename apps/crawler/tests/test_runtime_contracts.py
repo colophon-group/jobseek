@@ -130,7 +130,7 @@ def test_board_runtime_config_preserves_worker_fail_open_decoding() -> None:
     assert config.check_interval_minutes == 60
 
 
-@pytest.mark.parametrize("scraper_type", ["phuketall", "veryeast"])
+@pytest.mark.parametrize("scraper_type", ["phuketall", "veryeast", "tupu360"])
 def test_provider_scrapers_are_registered_for_runtime_dispatch(scraper_type: str) -> None:
     config = BoardRuntimeConfig.from_mapping(
         {
