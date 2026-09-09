@@ -29,6 +29,11 @@ not change the authoritative worker, queue, database, exporter, or publisher.
 - Each arm is limited to 1 CPU, 1 GiB total memory with no additional swap,
   128 PIDs, and 256 file descriptors. Containers are non-root, read-only,
   capability-free, and run one at a time on the allocated Murmur machine.
+- Before and after image pulls, Murmur must provide at least 1.5 GiB available
+  memory, 5 GiB Docker storage, and a one-minute load average no greater than
+  1.50. At each gate, the workflow waits up to 60 seconds for transient load to
+  fall below that unchanged ceiling and rechecks protected services before
+  continuing.
 - Every job permits exactly one GET, no retry, redirect, proxy, or sitemap-index
   expansion. Requests use `Accept-Encoding: identity`; decoded response and
   aggregate byte caps remain enforced.

@@ -430,22 +430,42 @@ jobs:
             [[ "$available" =~ ^[0-9]+$ && "$free" =~ ^[0-9]+$ && "$load" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
             printf '%s|%s|%s\n' "$available" "$free" "$load"
           }
+          wait_for_quiet_host() {
+            local attempt resources available free load
+            for attempt in {1..13}; do
+              resources="$(host_resources)" || return 2
+              IFS='|' read -r available free load <<<"$resources"
+              (( available >= 1572864 && free >= 5242880 )) || return 2
+              if awk -v value="$load" 'BEGIN { exit !(value <= 1.50) }'; then
+                printf '%s\n' "$resources"
+                return 0
+              fi
+              (( attempt == 13 )) || sleep 5
+            done
+            return 1
+          }
           preflight_stage=host_resources_before_pull
           docker_root_dir="$(timeout 20s docker info --format '{{.DockerRootDir}}' 2>/dev/null)" || exit 70
           [[ "$docker_root_dir" == /* && "$docker_root_dir" != / ]] || exit 70
-          resources_before_pull="$(host_resources)" || exit 70
+          set +e
+          resources_before_pull="$(wait_for_quiet_host)"
+          capacity_status=$?
+          set -e
+          (( capacity_status == 0 )) || { (( capacity_status == 2 )) && exit 70 || exit 71; }
           IFS='|' read -r mem_before_pull disk_before_pull load_before_pull <<<"$resources_before_pull"
-          (( mem_before_pull >= 1572864 && disk_before_pull >= 5242880 )) || exit 70
-          awk -v load="$load_before_pull" 'BEGIN { exit !(load <= 1.50) }' || exit 71
+          [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
           preflight_stage=pull_go_image
           DOCKER_CONFIG="$docker_config" timeout 300s docker pull "$go_ref" >/dev/null 2>&1 || exit 71
           preflight_stage=pull_python_image
           DOCKER_CONFIG="$docker_config" timeout 300s docker pull "$python_ref" >/dev/null 2>&1 || exit 71
           preflight_stage=host_resources_after_pull
-          resources_after_pull="$(host_resources)" || exit 70
+          set +e
+          resources_after_pull="$(wait_for_quiet_host)"
+          capacity_status=$?
+          set -e
+          (( capacity_status == 0 )) || { (( capacity_status == 2 )) && exit 70 || exit 71; }
           IFS='|' read -r mem_after_pull disk_after_pull load_after_pull <<<"$resources_after_pull"
-          (( mem_after_pull >= 1572864 && disk_after_pull >= 5242880 )) || exit 70
-          awk -v load="$load_after_pull" 'BEGIN { exit !(load <= 1.50) }' || exit 71
+          [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
           preflight_stage=image_attestation
           [[ "$(uname -m)" == aarch64 ]] || exit 71
           [[ "$(timeout 20s docker image inspect --format '{{.Os}}|{{.Architecture}}' "$go_ref" 2>/dev/null)" == 'linux|arm64' ]] || exit 71
