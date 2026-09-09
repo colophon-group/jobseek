@@ -1178,8 +1178,10 @@ disabling the timer does not undo already verified downstream repairs.
 ## ATS Inventory Candidate Timer
 
 `jobseek-ats-inventory.timer` runs the data-only company inventory and impact
-refresh daily on the crawler host, with persistent catch-up and a 45-minute
-random delay. It uses the immutable crawler image named by the atomic committed
+refresh twice daily at 03:00 and 15:00 UTC on the crawler host, with persistent
+catch-up and a 45-minute random delay. Each pass creates at most 25 candidates;
+the durable UTC-day ledger caps the two passes at 50 combined. It uses the
+immutable crawler image named by the atomic committed
 release marker (published after crawler health and rollback disarm) and never runs
 Codex or upstream scraper code. Three root-owned GitHub App credentials enter
 the service through systemd `LoadCredential`; only a short-lived installation
