@@ -948,6 +948,14 @@ test("Go HTTP pilot CI is path-aware, builds ARM64, and is required when selecte
     goPilotJob,
     /IMAGE_IDENTITY=ghcr\.io\/colophon-group\/jobseek-go-sitemap-shadow:sha-\$\{\{ github\.sha \}\}/,
   );
+  assert.match(
+    goPilotJob,
+    /file: pilots\/go-http-sitemap\/Dockerfile\.resident-shadow/,
+  );
+  assert.match(
+    goPilotJob,
+    /IMAGE_IDENTITY=ghcr\.io\/colophon-group\/jobseek-go-sitemap-resident-shadow:sha-\$\{\{ github\.sha \}\}/,
+  );
   assert.match(goPilotJob, /file: pilots\/go-http-sitemap\/Dockerfile\.benchmark/);
   assert.match(
     goPilotJob,
@@ -961,7 +969,7 @@ test("Go HTTP pilot CI is path-aware, builds ARM64, and is required when selecte
     goPilotJob,
     /IMAGE_IDENTITY=ghcr\.io\/colophon-group\/jobseek-sitemap-fleet-python:sha-\$\{\{ github\.sha \}\}/,
   );
-  assert.equal((goPilotJob.match(/platforms: linux\/arm64/g) ?? []).length, 3);
+  assert.equal((goPilotJob.match(/platforms: linux\/arm64/g) ?? []).length, 4);
   assert.match(requiredCiJob, /- test-go-http-pilot/);
   assert.match(
     requiredCiJob,
