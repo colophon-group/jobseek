@@ -215,9 +215,18 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         if not page:
             raise ValueError("NowHiring search stopped before its advertised total")
 
-    ids = [str(item.get("id", "")).strip() for item in summaries]
-    if any(not _ID_RE.fullmatch(job_id) for job_id in ids):
-        raise ValueError("NowHiring search returned a job without a valid id")
+    ids: list[str] = []
+    seen_ids: set[str] = set()
+    duplicates = 0
+    for summary in summaries:
+        job_id = str(summary.get("id", "")).strip()
+        if not _ID_RE.fullmatch(job_id):
+            raise ValueError("NowHiring search returned a job without a valid id")
+        if job_id in seen_ids:
+            duplicates += 1
+            continue
+        seen_ids.add(job_id)
+        ids.append(job_id)
     semaphore = asyncio.Semaphore(_DETAIL_CONCURRENCY)
 
     async def hydrate(job_id: str) -> dict:
@@ -234,7 +243,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     invalid = len(details) - len(jobs)
     if details and not jobs:
         raise ValueError("NowHiring details returned no valid jobs")
-    truncated = invalid > 0 or total > len(summaries)
+    truncated = invalid > 0 or duplicates > 0 or total > len(summaries)
     if truncated:
         log.warning(
             "nowhiring.truncated",
@@ -242,6 +251,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             total=total,
             returned=len(jobs),
             invalid=invalid,
+            duplicates=duplicates,
         )
         return truncated_rich_result(jobs)
     log.info("nowhiring.discovered", slug=slug, jobs=len(jobs))

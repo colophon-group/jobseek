@@ -4,6 +4,7 @@ import json
 
 import httpx
 
+from src.core.monitor import MonitorResult
 from src.core.monitors import _REGISTRY
 from src.core.monitors.nowhiring import (
     _site_url,
@@ -109,6 +110,18 @@ async def test_discover_hydrates_rich_nowhiring_jobs():
 async def test_discover_accepts_empty_inventory_without_detail_requests():
     async with httpx.AsyncClient(transport=_transport([])) as client:
         assert await discover({"board_url": BOARD_URL, "metadata": {}}, client) == []
+
+
+async def test_duplicate_search_rows_return_a_truncated_unique_result():
+    async with httpx.AsyncClient(transport=_transport([_summary(), _summary()])) as client:
+        result = await discover({"board_url": BOARD_URL, "metadata": {}}, client)
+
+    assert isinstance(result, MonitorResult)
+    assert result.truncated is True
+    assert result.jobs_by_url is not None
+    assert list(result.jobs_by_url) == [
+        "https://nowhiring.com/fulenwiderkfc/job-details/1227688605"
+    ]
 
 
 def test_registered_as_rich_monitor():
