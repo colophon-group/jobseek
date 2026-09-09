@@ -4126,15 +4126,16 @@ def _jobtoolz_probe_config(html: str, url: str) -> dict | None:
     """Return a fail-closed preset for Jobtoolz's Alpine listing payload."""
     try:
         parsed = urlsplit(url)
+        host = (parsed.hostname or "").casefold()
+        port = parsed.port
     except ValueError:
         return None
-    host = (parsed.hostname or "").casefold()
     if (
         parsed.scheme.casefold() != "https"
         or not host.endswith(".jobtoolz.com")
         or parsed.username is not None
         or parsed.password is not None
-        or parsed.port not in {None, 443}
+        or port not in {None, 443}
         or "window.jobComponent(" not in html
     ):
         return None

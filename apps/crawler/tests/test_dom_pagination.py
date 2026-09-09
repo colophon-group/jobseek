@@ -374,6 +374,8 @@ class TestScriptJsonLinks:
             "http://acme.jobtoolz.com/en",
             "https://user@acme.jobtoolz.com/en",
             "https://acme.jobtoolz.com:444/en",
+            "https://acme.jobtoolz.com:invalid/en",
+            "https://acme.jobtoolz.com:70000/en",
             "https://jobtoolz.com/en",
         ],
     )
