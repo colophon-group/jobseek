@@ -41,9 +41,12 @@ not change the authoritative worker, queue, database, exporter, or publisher.
 The full schedule makes at most 3,840 source GETs: 30 pairs x 2 runtimes x 2
 rounds x 32 origins, or 120 GETs per origin. DNS is resolved once before the
 schedule, restricted to public addresses that are not Murmur, and the exact
-same singleton host pins are injected into both runtimes. No crawler secrets,
-volumes, Docker socket, Redis, Postgres, R2, Typesense, or Lightpanda endpoint
-are available to either container.
+same singleton host pins are injected into both runtimes. There is no
+benchmark-only in-container DNS fanout before the measured rounds: Python
+validates each request and Go validates each dial against those pinned public
+answers on their normal transport paths. No crawler secrets, volumes, Docker
+socket, Redis, Postgres, R2, Typesense, or Lightpanda endpoint are available to
+either container.
 
 ## Admission and interpretation
 
@@ -58,11 +61,29 @@ scaling. Per-pair, per-round decoded-byte deltas are always disclosed. Timing
 is comparable only when every aggregate Go/Python byte delta is at most 5%; a
 larger difference leaves the artifact valid but makes the performance result
 `inconclusive_workload_imbalance`. It does not invalidate count/hash parity or
-trigger more source requests. `ru_maxrss` and cgroup `memory.peak` are lifetime high-water values,
-not phase-specific incremental memory. If neither runtime approaches 1 GiB,
-the result demonstrates headroom for this slice, not the production RAM
-ceiling. Per-arm p99 across 32 jobs is effectively a maximum and is descriptive
-only.
+trigger more source requests. `ru_maxrss` and cgroup `memory.peak` are lifetime
+high-water values, not phase-specific incremental memory. If neither runtime
+approaches 1 GiB, the result demonstrates headroom for this slice, not the
+production RAM ceiling. Per-arm p99 across 32 jobs is effectively a maximum
+and is descriptive only.
+
+The Go density case is admitted only when all 60 arms succeed, every paired
+round has identical non-empty count and digest, no policy, OOM, container, or
+resource invariant fails, and all aggregate byte deltas remain within 5%.
+Collapse each arm's cold and warm rounds deterministically: throughput is
+`64,000 / sum(round run_duration_ms)` jobs/second, CPU/job is
+`sum(round cpu_user_ms + cpu_system_ms) / 64`, and density is arm throughput
+divided by arm `cgroup_memory_peak_bytes`. For each schedule pair, divide the
+Go arm metric by its Python arm metric; each thresholded profile result is the
+median of its six paired ratios. At both `c12` and `c16`, median paired density
+must be at least 1.25, at least five of six density ratios must be greater than
+1.0, and the median of the six paired Go/Python cgroup-peak ratios must be no
+more than 0.85. Median paired throughput must be at least 0.90 at `c5`, `c12`,
+and `c16`; median paired CPU/job must be no more than 1.25 at `c12` and `c16`.
+Finally, the median of the six Go arm throughputs at `c16` must be at least 1.5
+times the median of the six Go arm throughputs at `c5`. A valid parity result
+that misses any threshold remains useful correctness evidence but does not
+establish a RAM-density advantage or authorize a resident shadow.
 
 A repeatable Go density advantage authorizes continued work on a long-lived,
 continuously fed Go worker with bounded global and per-origin permits. It does

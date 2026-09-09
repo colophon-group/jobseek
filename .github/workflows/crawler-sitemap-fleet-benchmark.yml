@@ -593,7 +593,7 @@ jobs:
           import json, os
           data = json.load(open(os.environ["RAW_FILE"], encoding="utf-8"))
           source_denied = {"tdm_reserved", "http_tdm_reservation"}
-          egress_denied = {"ssrf_refused", "target_rejected", "host_pin_invalid", "http_network_policy"}
+          egress_denied = {"ssrf_refused", "target_rejected", "http_network_policy"}
           kinds = {data.get("error_kind")}
           for round_report in data.get("rounds", []):
               kinds.add(round_report.get("error_kind"))
