@@ -1219,8 +1219,8 @@ def _document_fallback_config(config: dict) -> dict | None:
     value = config.get("document_fallback")
     if value is None or value is False:
         return None
-    if not isinstance(value, dict) or set(value) - {"pdf", "docx"}:
-        raise ValueError("DOM scraper document_fallback must contain only pdf/docx configs")
+    if not isinstance(value, dict) or set(value) - {"doc", "pdf", "docx"}:
+        raise ValueError("DOM scraper document_fallback must contain only doc/pdf/docx configs")
     for kind, kind_config in value.items():
         if not isinstance(kind_config, dict):
             raise ValueError(f"DOM scraper document_fallback.{kind} must be an object")
@@ -1261,6 +1261,12 @@ async def _parse_static_document(
             docx_config,
         )
         return _map_to_job_content(raw), "docx"
+
+    if content.startswith(bytes.fromhex("d0cf11e0a1b11ae1")):
+        from src.core.scrapers.legacy_doc import parse_bytes
+
+        parsed = await parse_bytes(content, url, fallback.get("doc") or {})
+        return parsed, "doc"
 
     return None
 

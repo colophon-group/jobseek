@@ -6,14 +6,19 @@ umask 077
 STATE_ROOT=/var/lib/jobseek-ats-inventory
 CONFIG=/etc/jobseek-ats-inventory/config.env
 WRITE_DISABLED=/etc/jobseek-ats-inventory/writes-disabled
+ACTIVE_RELEASE_POINTER=/home/deploy/.crawler-active-release
+ACTIVE_RELEASE_ROOT=/home/deploy/.crawler-release-generations
 DEPLOY_SUCCESS=/home/deploy/.crawler-active-release/success.env
+CRAWLER_LOCK=/run/lock/jobseek-crawler-mutation.lock
 ACCEPTANCE_PIN="$STATE_ROOT/acceptance-crawler.env"
 CACHE_ROOT="$STATE_ROOT/cache"
+REGISTRY_SNAPSHOT_ROOT="$STATE_ROOT/registry-snapshots"
 CONTAINER=jobseek-ats-inventory
 NETWORK=jobseek-ats-inventory-egress
 NETWORK_ATTESTATION=/run/lock/jobseek-ats-inventory-network.verified
 TOKEN_FILE=""
 RUN_LOG=""
+REGISTRY_SNAPSHOT=""
 requested_mode=report
 effective_mode=report
 rollout_cap=1
@@ -40,6 +45,10 @@ cleanup() {
       }
   fi
   [[ -z "$RUN_LOG" ]] || rm -f -- "$RUN_LOG"
+  if [[ -n "$REGISTRY_SNAPSHOT" && \
+    "$REGISTRY_SNAPSHOT" == "$REGISTRY_SNAPSHOT_ROOT"/run.* ]]; then
+    rm -rf -- "$REGISTRY_SNAPSHOT"
+  fi
   exit "$status"
 }
 trap cleanup EXIT
@@ -47,7 +56,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-for command in awk date docker flock grep id mktemp openssl python3 sed sha256sum stat tail timeout tr; do
+for command in awk date docker flock grep id mktemp openssl python3 rm sed sha256sum stat tail timeout tr; do
   command -v "$command" >/dev/null || {
     echo "ERROR: required command ${command} is unavailable" >&2
     exit 1
@@ -75,6 +84,10 @@ STATUS_ARMED=1
 }
 [[ -x /usr/local/sbin/jobseek-ats-inventory-bounded-tee ]] || {
   echo "ERROR: ATS inventory bounded logger is unavailable" >&2
+  exit 1
+}
+[[ -x /usr/local/sbin/jobseek-ats-inventory-registry-snapshot ]] || {
+  echo "ERROR: ATS inventory registry snapshot helper is unavailable" >&2
   exit 1
 }
 [[ -f "$NETWORK_ATTESTATION" && ! -L "$NETWORK_ATTESTATION" ]] || {
@@ -138,6 +151,35 @@ read_exact_release() {
   printf '%s' "${matches[0]}"
 }
 
+prepare_registry_snapshot() {
+  local expected_image="$1" expected_revision="$2"
+  [[ -d "$REGISTRY_SNAPSHOT_ROOT" && ! -L "$REGISTRY_SNAPSHOT_ROOT" ]] || {
+    echo "ERROR: ATS inventory registry snapshot root is unavailable or unsafe" >&2
+    return 1
+  }
+  [[ "$(stat -c '%U:%G:%a' "$REGISTRY_SNAPSHOT_ROOT")" == deploy:deploy:770 ]] || {
+    echo "ERROR: ATS inventory registry snapshot ownership is unsafe" >&2
+    return 1
+  }
+
+  # Resolve, attest, and copy the immutable format-v3 generation while the
+  # crawler mutation lock is held. The private copy remains valid across a
+  # later data promotion/prune and gives both phases one coherent registry.
+  REGISTRY_SNAPSHOT="$(
+    /usr/local/sbin/jobseek-ats-inventory-registry-snapshot \
+      --active-release-pointer "$ACTIVE_RELEASE_POINTER" \
+      --active-release-root "$ACTIVE_RELEASE_ROOT" \
+      --snapshot-root "$REGISTRY_SNAPSHOT_ROOT" \
+      --expected-image "$expected_image" \
+      --expected-revision "$expected_revision"
+  )"
+  [[ "$REGISTRY_SNAPSHOT" == "$REGISTRY_SNAPSHOT_ROOT"/run.* && \
+    -d "$REGISTRY_SNAPSHOT" && ! -L "$REGISTRY_SNAPSHOT" ]] || {
+    echo "ERROR: ATS inventory registry snapshot helper returned an unsafe path" >&2
+    return 1
+  }
+}
+
 configured_mode="$(read_exact_config ATS_INVENTORY_MODE)"
 configured_cap="$(read_exact_config ATS_INVENTORY_ROLLOUT_CAP)"
 case "$configured_mode" in
@@ -168,6 +210,26 @@ wrapper_sha="$(tr -d '\n' <"$STATE_ROOT/wrapper-sha256")"
   exit 1
 }
 
+if docker ps --format '{{.Names}}' | grep -Fxq "$CONTAINER"; then
+  echo "ERROR: ATS inventory container already exists" >&2
+  exit 1
+fi
+docker rm "$CONTAINER" >/dev/null 2>&1 || true
+
+[[ -f "$CRAWLER_LOCK" && ! -L "$CRAWLER_LOCK" ]] || {
+  echo "ERROR: crawler mutation lock is unavailable or unsafe" >&2
+  exit 1
+}
+[[ "$(stat -c '%U:%G:%a' "$CRAWLER_LOCK")" == deploy:deploy:600 ]] || {
+  echo "ERROR: crawler mutation lock ownership is unsafe" >&2
+  exit 1
+}
+exec 8<"$CRAWLER_LOCK"
+flock --shared -w 300 8 || {
+  echo "ERROR: timed out waiting for the crawler mutation lock" >&2
+  exit 75
+}
+
 release_file="$DEPLOY_SUCCESS"
 if [[ -e "$ACCEPTANCE_PIN" ]]; then
   release_file="$ACCEPTANCE_PIN"
@@ -192,12 +254,8 @@ crawler_revision="$(read_exact_release "$release_file" JOBSEEK_DEPLOY_REVISION)"
   echo "ERROR: committed crawler deployment revision is invalid" >&2
   exit 1
 }
-
-if docker ps --format '{{.Names}}' | grep -Fxq "$CONTAINER"; then
-  echo "ERROR: ATS inventory container already exists" >&2
-  exit 1
-fi
-docker rm "$CONTAINER" >/dev/null 2>&1 || true
+prepare_registry_snapshot "$image" "$crawler_revision"
+flock -u 8
 
 run_phase() {
   local budget="$1" phase="$2" candidate_mode="$3" use_token="$4"
@@ -222,6 +280,7 @@ run_phase() {
     --security-opt no-new-privileges \
     --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
     --mount "type=bind,src=$CACHE_ROOT,dst=/state/cache" \
+    --mount "type=bind,src=$REGISTRY_SNAPSHOT,dst=/app/data,readonly" \
     "${docker_extra[@]}" \
     -e PYTHONDONTWRITEBYTECODE=1 \
     --label jobseek.maintenance.operation=ats-inventory \

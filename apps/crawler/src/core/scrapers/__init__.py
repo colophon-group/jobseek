@@ -155,6 +155,7 @@ _PROBE_ORDER = [
     "embedded",
     "phuketall",
     "veryeast",
+    "tupu360",
     "recruiterbox",
     "onlyfy",
     "paycor",
@@ -410,6 +411,7 @@ from src.core.scrapers import (  # noqa: E402
     skip,  # noqa: F401
     smartrecruiters,  # noqa: F401
     taleo,  # noqa: F401
+    tupu360,  # noqa: F401
     veryeast,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401

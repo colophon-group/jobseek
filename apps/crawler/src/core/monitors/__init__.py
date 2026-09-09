@@ -250,7 +250,8 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     Statically-rich monitors (greenhouse, lever, etc.) always return True.
     api_sniffer/nextdata are rich when ``fields`` is present; SmartRecruiters
     is rich when exact ``jobId`` locale collapse is configured; dom is partial
-    rich when strict static ``rich_rows`` extraction is configured.
+    rich when strict ``rich_rows`` or rich ``script_json_links``
+    extraction is configured.
     """
     return (
         monitor_type in api_monitor_types()
@@ -263,7 +264,19 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
             monitor_type == "smartrecruiters"
             and (config or {}).get("canonical_identity") in {"job-v1", "job-location-v1"}
         )
-        or (monitor_type == "dom" and bool((config or {}).get("rich_rows")))
+        or (
+            monitor_type == "dom"
+            and (
+                bool((config or {}).get("rich_rows"))
+                or (
+                    isinstance((config or {}).get("script_json_links"), dict)
+                    and bool(
+                        (config or {})["script_json_links"].get("title_field")
+                        and (config or {})["script_json_links"].get("locations_field")
+                    )
+                )
+            )
+        )
     )
 
 
@@ -476,6 +489,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Paycom API \u2014 portal: {token}, {jobs} jobs"
         return f"Paycom API \u2014 portal: {token}"
+    if name == "paynet":
+        company_id = metadata.get("company_id", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Pay-Net API \u2014 company: {company_id}, {jobs} jobs"
+        return f"Pay-Net API \u2014 company: {company_id}"
     if name == "jazzhr":
         tenant = metadata.get("tenant", "?")
         jobs = metadata.get("jobs")
@@ -1038,11 +1057,13 @@ from src.core.monitors import (  # noqa: E402
     nextdata,  # noqa: F401
     njoyn,  # noqa: F401
     notion,  # noqa: F401
+    nowhiring,  # noqa: F401
     oracle_hcm,  # noqa: F401
     pageup,  # noqa: F401
     papa_johns,  # noqa: F401
     paycom,  # noqa: F401
     paylocity,  # noqa: F401
+    paynet,  # noqa: F401
     personio,  # noqa: F401
     phenom,  # noqa: F401
     pinpoint,  # noqa: F401
@@ -1060,6 +1081,7 @@ from src.core.monitors import (  # noqa: E402
     softgarden,  # noqa: F401
     talemetry,  # noqa: F401
     talentbrew,  # noqa: F401
+    talentreef,  # noqa: F401
     taleo,  # noqa: F401
     traffit,  # noqa: F401
     turbohire,  # noqa: F401

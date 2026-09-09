@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -1960,3 +1961,95 @@ async def test_run_pipeline_zero_grace_cancels_immediately(monkeypatch):
     assert len(cancellations) == 1
     cancelled_after = _shutdown_metric_value("crawler_shutdown_cancelled_total", wtype="simple")
     assert cancelled_after - cancelled_before == pytest.approx(1.0)
+
+
+def test_pipeline_watchdog_stops_live_but_stalled_process():
+    """A responsive event loop with no discovery progress is asked to stop."""
+    from src.workers.pipeline import _pipeline_watchdog
+
+    stop_event = threading.Event()
+    shutdown_requested = threading.Event()
+    started = time.monotonic() - 1
+
+    def request_shutdown() -> None:
+        shutdown_requested.set()
+        stop_event.set()
+
+    watchdog = threading.Thread(
+        target=_pipeline_watchdog,
+        kwargs={
+            "stop_event": stop_event,
+            "browser": False,
+            "last_progress": lambda: started,
+            "request_shutdown": request_shutdown,
+            "timeout_seconds": 0.02,
+            "hard_exit_grace_seconds": 0.02,
+        },
+    )
+    watchdog.start()
+    watchdog.join(timeout=1)
+
+    assert not watchdog.is_alive()
+    assert shutdown_requested.is_set()
+
+
+def test_pipeline_watchdog_hard_exits_if_event_loop_is_blocked():
+    """The independent thread escapes when asyncio cannot handle shutdown."""
+    from src.workers.pipeline import _pipeline_watchdog
+
+    stop_event = threading.Event()
+    shutdown_requested = threading.Event()
+    exit_codes: list[int] = []
+    started = time.monotonic() - 1
+
+    watchdog = threading.Thread(
+        target=_pipeline_watchdog,
+        kwargs={
+            "stop_event": stop_event,
+            "browser": True,
+            "last_progress": lambda: started,
+            "request_shutdown": shutdown_requested.set,
+            "hard_exit": lambda code: exit_codes.append(code),
+            "timeout_seconds": 0.02,
+            "hard_exit_grace_seconds": 0.02,
+        },
+    )
+    watchdog.start()
+    watchdog.join(timeout=1)
+
+    assert not watchdog.is_alive()
+    assert shutdown_requested.is_set()
+    assert exit_codes == [70]
+
+
+def test_pipeline_watchdog_accepts_progress_from_any_worker():
+    """One advancing discovery loop keeps the whole process healthy."""
+    from src.workers.pipeline import _pipeline_watchdog
+
+    stop_event = threading.Event()
+    shutdown_requested = threading.Event()
+    exit_codes: list[int] = []
+    progress_at = time.monotonic()
+
+    watchdog = threading.Thread(
+        target=_pipeline_watchdog,
+        kwargs={
+            "stop_event": stop_event,
+            "browser": True,
+            "last_progress": lambda: progress_at,
+            "request_shutdown": shutdown_requested.set,
+            "hard_exit": lambda code: exit_codes.append(code),
+            "timeout_seconds": 0.08,
+            "hard_exit_grace_seconds": 0.02,
+        },
+    )
+    watchdog.start()
+    for _ in range(4):
+        time.sleep(0.03)
+        progress_at = time.monotonic()
+    stop_event.set()
+    watchdog.join(timeout=1)
+
+    assert not watchdog.is_alive()
+    assert not shutdown_requested.is_set()
+    assert exit_codes == []

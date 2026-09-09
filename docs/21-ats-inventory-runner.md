@@ -295,14 +295,22 @@ interactive terminal also receives a readable JSON report.
 ## Hetzner deployment and rollout
 
 Production runs as `jobseek-ats-inventory.timer` on the ordinary crawler host,
-not as a Codex task. The persistent daily timer uses a 45-minute randomized
-delay. Its hardened one-shot resolves the immutable crawler image from the
+not as a Codex task. The persistent timer runs at 03:00 and 15:00 UTC with a
+45-minute randomized delay. Each pass creates at most 25 candidates and the
+durable ledger limits both passes to 50 combined per UTC day. Its hardened
+one-shot resolves the immutable crawler image from the
 atomic `/home/deploy/.crawler-active-release/success.env` marker selected only
 after the crawler health gates pass and then verified before rollback is
-disarmed. It mounts only the persistent cache subdirectory and one short-lived
-GitHub App installation-token file, and invokes the installed `crawler` entry
-point directly. It never installs or executes upstream code. The data-only
-container uses a dedicated
+disarmed. Under the crawler mutation lock, the wrapper attests the active
+format-v3 CSV manifest and copies that exact generation into a private,
+short-lived registry snapshot. Both phases mount the snapshot read-only at
+`/app/data`, so data-only CSV promotions are visible even when they do not
+rebuild the crawler image, while concurrent generation pruning cannot change a
+run in progress. The lock is released before any network work. The wrapper
+also mounts only the persistent cache subdirectory and, for the GitHub phase,
+one short-lived GitHub App installation-token file, and invokes the installed
+`crawler` entry point directly. It never installs or executes upstream code.
+The data-only container uses a dedicated
 IPv4-only Docker bridge. A root oneshot rebuilds its `DOCKER-USER` egress chain
 before every run: host input and private/reserved destinations are rejected,
 inter-container communication is disabled, and only public HTTPS/DNS egress is
@@ -336,7 +344,9 @@ disable/rollback. The wrapper has a non-blocking host lock in addition to the
 cache lock, a four-hour service cap, 1.5 GiB memory limit, one CPU, PID cap,
 read-only container root, dropped capabilities, and no-new-privileges. A
 streaming logger mirrors output to journald while retaining at most a 16 MiB
-parseable tail for status extraction.
+parseable tail for status extraction. Registry snapshots are removed on every
+normal exit and stale strictly named snapshots are pruned at the next run after
+a SIGKILL or host reboot.
 
 Every run records a credential-free operator status at
 `/var/lib/jobseek-ats-inventory/status/current.json`: inventory freshness and
@@ -406,5 +416,6 @@ verified/fallback/PR/closed outcome, and the exactly-one replacement refill in
 #6190. Repeat those gates at cap 5. Before moving to cap 25, test `disable`, run
 the service once, and prove the effective mode was `report` with zero creates;
 then re-enable only after configuring `refill 25`. The daily cap remains 50,
-the per-tick cap remains 25, all open requests remain below 600, and bootstrap
-toward 500 occurs over multiple daily/manual evidence-gated runs.
+the per-tick cap remains 25, all open requests remain below 600, and the two
+scheduled passes can reach the full daily ceiling while bootstrap toward 500
+remains bounded by the same evidence-gated controls.

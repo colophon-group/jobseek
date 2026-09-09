@@ -14,8 +14,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
+import threading
 import time
 import uuid
+from collections.abc import Callable
 from typing import cast
 from urllib.parse import urlparse
 
@@ -90,6 +93,11 @@ _IDLE_BACKOFF_S = 2.0
 # must not pin a discovery coroutine forever during scheduled recycling or
 # container shutdown.
 _PLAYWRIGHT_STOP_TIMEOUT_S = 15.0
+
+# Check frequently enough to recover near the configured deadline without
+# adding meaningful process work. This deliberately runs outside asyncio: a
+# blocked event loop is one of the failure modes it must recover.
+_PIPELINE_WATCHDOG_INTERVAL_S = 30.0
 
 
 def _timestamp(value) -> float:
@@ -711,6 +719,62 @@ async def _reaper_loop(
         reaper_log.info("pipeline.reaper.stopped")
 
 
+def _pipeline_watchdog(
+    stop_event: threading.Event,
+    *,
+    browser: bool,
+    last_progress: Callable[[], float],
+    request_shutdown: Callable[[], None],
+    hard_exit: Callable[[int], object] = os._exit,
+    timeout_seconds: float | None = None,
+    hard_exit_grace_seconds: float | None = None,
+) -> None:
+    """Stop a live-but-stalled pipeline from outside the asyncio loop.
+
+    The metrics server runs in a separate thread, so a process whose asyncio
+    discovery workers are all blocked still passes the container's HTTP
+    healthcheck. ``worker_heartbeat_ts`` makes that state observable but does
+    not recover it. Running this watchdog in another thread lets it request a
+    bounded shutdown even when asyncio is merely idle, and hard-exit if a
+    synchronous call has wedged the event loop itself. Docker then recreates
+    the process and the inflight lease reaper preserves claimed work.
+
+    ``last_progress`` is the newest monotonic timestamp from any discovery
+    loop. A single healthy worker therefore keeps the process alive while a
+    genuinely slow task occupies one of its siblings.
+    """
+
+    configured_timeout = (
+        settings.pipeline_stall_timeout_seconds if timeout_seconds is None else timeout_seconds
+    )
+    timeout = max(0.0, float(configured_timeout))
+    configured_grace = (
+        settings.shutdown_grace_seconds + 5
+        if hard_exit_grace_seconds is None
+        else hard_exit_grace_seconds
+    )
+    hard_exit_grace = max(0.0, float(configured_grace))
+    if timeout == 0:
+        stop_event.wait()
+        return
+
+    interval = min(_PIPELINE_WATCHDOG_INTERVAL_S, max(0.01, timeout / 2))
+    while not stop_event.wait(interval):
+        if time.monotonic() - last_progress() < timeout:
+            continue
+
+        # Do not log from this thread before arming recovery. Structlog's
+        # shared output lock can itself be held by a wedged event-loop thread.
+        # The scheduled callback logs if asyncio remains responsive; this
+        # thread retains a lock-independent hard-exit deadline if it does not.
+        request_shutdown()
+        if stop_event.wait(hard_exit_grace):
+            return
+
+        hard_exit(70)
+        return
+
+
 # ---------------------------------------------------------------------------
 # Scraper resolution from Redis board hash
 # ---------------------------------------------------------------------------
@@ -937,6 +1001,7 @@ async def _discovery_worker(
     *,
     browser: bool = False,
     monitor_semaphore: asyncio.Semaphore | None = None,
+    progress_callback: Callable[[], None] | None = None,
 ) -> None:
     """Single discovery worker coroutine.
 
@@ -974,6 +1039,8 @@ async def _discovery_worker(
                 if replacement_ctx is not None:
                     pw_ctx = replacement_ctx
             worker_heartbeat_ts.labels(worker_id=str(worker_id)).set_to_current_time()
+            if progress_callback is not None:
+                progress_callback()
             try:
                 work = await claim_work(browser=browser)
             except Exception:
@@ -1771,6 +1838,18 @@ async def run_pipeline(
     monitor_sem = asyncio.Semaphore(monitor_cap) if monitor_cap > 0 else None
     grace_s = max(0, int(settings.shutdown_grace_seconds))
     wtype = "browser" if browser else "simple"
+    progress_at = time.monotonic()
+    progress_lock = threading.Lock()
+
+    def record_progress() -> None:
+        nonlocal progress_at
+        with progress_lock:
+            progress_at = time.monotonic()
+
+    def last_progress() -> float:
+        with progress_lock:
+            return progress_at
+
     log.info(
         "pipeline.starting",
         concurrency=concurrency,
@@ -1793,6 +1872,7 @@ async def run_pipeline(
                     shutdown_event,
                     browser=browser,
                     monitor_semaphore=monitor_sem,
+                    progress_callback=record_progress,
                 ),
                 name=f"discovery-{i}",
             )
@@ -1805,6 +1885,42 @@ async def run_pipeline(
         name="reaper",
     )
     tasks.append(reaper_task)
+    watchdog_stop = threading.Event()
+    loop = asyncio.get_running_loop()
+
+    def request_watchdog_shutdown() -> None:
+        def stop_stalled_pipeline() -> None:
+            shutdown_event.set()
+            log.critical(
+                "pipeline.watchdog.stalled",
+                stalled_seconds=round(time.monotonic() - last_progress(), 1),
+                timeout_seconds=settings.pipeline_stall_timeout_seconds,
+                hard_exit_grace_seconds=grace_s + 5,
+                browser=browser,
+            )
+
+        loop.call_soon_threadsafe(stop_stalled_pipeline)
+
+    watchdog_thread = threading.Thread(
+        target=_pipeline_watchdog,
+        kwargs={
+            "stop_event": watchdog_stop,
+            "browser": browser,
+            "last_progress": last_progress,
+            "request_shutdown": request_watchdog_shutdown,
+            "timeout_seconds": settings.pipeline_stall_timeout_seconds,
+            "hard_exit_grace_seconds": grace_s + 5,
+        },
+        name="pipeline-watchdog",
+        daemon=True,
+    )
+    watchdog_thread.start()
+    log.info(
+        "pipeline.watchdog.started",
+        timeout_seconds=settings.pipeline_stall_timeout_seconds,
+        hard_exit_grace_seconds=grace_s + 5,
+        browser=browser,
+    )
 
     try:
         # Phase 1: wait until either shutdown_event fires or a worker
@@ -1878,6 +1994,10 @@ async def run_pipeline(
                 log.info("pipeline.drain.complete", browser=browser)
                 shutdown_drain_total.labels(wtype=wtype, outcome="drained").inc()
     finally:
+        watchdog_stop.set()
+        watchdog_thread.join(timeout=1.0)
+        if watchdog_thread.is_alive():
+            log.warning("pipeline.watchdog.join_timeout", browser=browser)
         # Surface any non-cancellation exceptions from the workers so
         # they don't get swallowed.
         for t in tasks:

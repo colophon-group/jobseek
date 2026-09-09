@@ -1,0 +1,887 @@
+name: Crawler sitemap fleet benchmark
+run-name: "Go/Python sitemap fleet benchmark @ ${{ github.sha }}"
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  GO_IMAGE_REPOSITORY: ghcr.io/colophon-group/jobseek-sitemap-fleet-go
+  PYTHON_IMAGE_REPOSITORY: ghcr.io/colophon-group/jobseek-sitemap-fleet-python
+
+concurrency:
+  group: deploy-murmur-shim
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    # Container execution is bounded to 240 seconds per arm and every Docker
+    # client call has its own deadline. The remote phase has a 300-minute cap.
+    timeout-minutes: 360
+    environment: Production
+    steps:
+      - name: Refuse non-main dispatch
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          [[ "$DISPATCH_REF" == refs/heads/main ]] || {
+            echo "Production benchmark runs must be dispatched from main" >&2
+            exit 1
+          }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Attest current main and exact benchmark sources
+        id: source
+        run: |
+          set -euo pipefail
+          source_commit="$(git rev-parse HEAD)"
+          [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]]
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          [[ "$remote_main" == "$source_commit" ]] || {
+            echo "Checked-out revision is no longer current main" >&2
+            exit 1
+          }
+          manifest=pilots/go-http-sitemap/benchmark/fleet.json
+          schedule=pilots/go-http-sitemap/benchmark/schedule.json
+          boards=apps/crawler/data/boards.csv
+          python3 - "$manifest" "$schedule" "$boards" <<'PY'
+          import collections
+          import csv
+          import json
+          import sys
+
+          manifest_path, schedule_path, boards_path = sys.argv[1:]
+          with open(manifest_path, encoding="utf-8") as handle:
+              manifest = json.load(handle)
+          if set(manifest) != {"schema_version", "jobs"} or manifest["schema_version"] != 1:
+              raise SystemExit("invalid fleet schema")
+          jobs = manifest["jobs"]
+          if not isinstance(jobs, list) or len(jobs) != 32:
+              raise SystemExit("fleet must contain exactly 32 jobs")
+          with open(boards_path, encoding="utf-8", newline="") as handle:
+              rows = {row["board_slug"]: row for row in csv.DictReader(handle)}
+          origins = set()
+          for job in jobs:
+              if set(job) != {"id", "board_url", "sitemap_url", "include_literal", "exclude_literal", "max_urls", "max_index_children"}:
+                  raise SystemExit("invalid fleet job schema")
+              row = rows.get(job["id"])
+              if row is None or row["monitor_type"] != "sitemap":
+                  raise SystemExit("fleet member absent from production sitemap source")
+              config = json.loads(row["monitor_config"])
+              expected_keys = {"sitemap_url"} | ({"url_filter"} if "url_filter" in config else set())
+              if set(config) != expected_keys:
+                  raise SystemExit("fleet member uses unsupported sitemap configuration")
+              if (
+                  job["board_url"] != row["board_url"]
+                  or job["sitemap_url"] != config["sitemap_url"]
+                  or job["include_literal"] != config.get("url_filter", "")
+                  or job["exclude_literal"] != ""
+                  or job["max_urls"] != 50_000
+                  or job["max_index_children"] != 1
+              ):
+                  raise SystemExit("fleet manifest drifted from boards.csv")
+              from urllib.parse import urlsplit
+              parsed = urlsplit(job["sitemap_url"])
+              if parsed.scheme != "https" or not parsed.hostname or parsed.port not in (None, 443):
+                  raise SystemExit("fleet target is not direct HTTPS")
+              origin = (parsed.hostname.lower(), parsed.port or 443)
+              if origin in origins:
+                  raise SystemExit("fleet origins must be distinct")
+              origins.add(origin)
+
+          with open(schedule_path, encoding="utf-8") as handle:
+              schedule = json.load(handle)
+          if set(schedule) != {"schema_version", "seed", "cooldown_seconds", "pairs"}:
+              raise SystemExit("invalid schedule schema")
+          if schedule["schema_version"] != 1 or schedule["seed"] != 8648 or schedule["cooldown_seconds"] != 8:
+              raise SystemExit("unexpected schedule identity")
+          pairs = schedule["pairs"]
+          if not isinstance(pairs, list) or len(pairs) != 18:
+              raise SystemExit("schedule must contain exactly 18 pairs")
+          if [pair.get("id") for pair in pairs] != [f"p{number:02d}" for number in range(1, 19)]:
+              raise SystemExit("schedule pair IDs are not exact")
+          expected = {"c5": 6, "c12": 6, "c16": 6}
+          counts = collections.Counter()
+          firsts = collections.Counter()
+          for pair in pairs:
+              if set(pair) != {"id", "profile", "first"} or pair["profile"] not in expected or pair["first"] not in {"go", "python"}:
+                  raise SystemExit("invalid schedule pair")
+              counts[pair["profile"]] += 1
+              firsts[pair["profile"], pair["first"]] += 1
+          if counts != expected or any(firsts[profile, implementation] != count // 2 for profile, count in expected.items() for implementation in ("go", "python")):
+              raise SystemExit("schedule is not exactly balanced")
+          PY
+          manifest_sha256="$(sha256sum "$manifest" | awk '{print $1}')"
+          schedule_sha256="$(sha256sum "$schedule" | awk '{print $1}')"
+          hosts_csv="$(jq -er '.jobs | map(.sitemap_url | sub("^https://"; "") | split("/")[0]) | join(",")' "$manifest")"
+          schedule_payload="$(jq -er '.pairs[] | [.id, .profile, .first] | @tsv' "$schedule")"
+          schedule_payload_sha256="$(printf '%s\n' "$schedule_payload" | sha256sum | awk '{print $1}')"
+          schedule_payload_b64="$(printf '%s\n' "$schedule_payload" | base64 -w 0)"
+          cooldown_seconds="$(jq -er '.cooldown_seconds' "$schedule")"
+          {
+            printf 'source_commit=%s\n' "$source_commit"
+            printf 'go_image_identity=%s:sha-%s\n' "$GO_IMAGE_REPOSITORY" "$source_commit"
+            printf 'python_image_identity=%s:sha-%s\n' "$PYTHON_IMAGE_REPOSITORY" "$source_commit"
+            printf 'manifest_sha256=%s\n' "$manifest_sha256"
+            printf 'schedule_sha256=%s\n' "$schedule_sha256"
+            printf 'schedule_payload_sha256=%s\n' "$schedule_payload_sha256"
+            printf 'schedule_payload_b64=%s\n' "$schedule_payload_b64"
+            printf 'hosts_csv=%s\n' "$hosts_csv"
+            printf 'cooldown_seconds=%s\n' "$cooldown_seconds"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push exact Go ARM64 benchmark image
+        id: build_go
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: pilots/go-http-sitemap/Dockerfile.benchmark
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.source.outputs.go_image_identity }}
+          build-args: |
+            SOURCE_COMMIT=${{ steps.source.outputs.source_commit }}
+            IMAGE_IDENTITY=${{ steps.source.outputs.go_image_identity }}
+          cache-from: type=gha,scope=sitemap-fleet-go
+          cache-to: type=gha,mode=max,scope=sitemap-fleet-go,ignore-error=true
+
+      - name: Build and push exact Python ARM64 benchmark image
+        id: build_python
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: pilots/go-http-sitemap/Dockerfile.python-benchmark
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.source.outputs.python_image_identity }}
+          build-args: |
+            SOURCE_COMMIT=${{ steps.source.outputs.source_commit }}
+            IMAGE_IDENTITY=${{ steps.source.outputs.python_image_identity }}
+          cache-from: type=gha,scope=sitemap-fleet-python
+          cache-to: type=gha,mode=max,scope=sitemap-fleet-python,ignore-error=true
+
+      - name: Reattest current main after image builds
+        env:
+          EXPECTED_SOURCE_COMMIT: ${{ steps.source.outputs.source_commit }}
+        run: |
+          set -euo pipefail
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          [[ "$remote_main" == "$EXPECTED_SOURCE_COMMIT" ]] || {
+            echo "Main changed while benchmark images were building" >&2
+            exit 1
+          }
+
+      - name: Run paired bounded benchmark on Murmur
+        id: benchmark
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_MURMUR_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_MURMUR_KNOWN_HOSTS }}
+          GHCR_PULL_USERNAME: ${{ github.actor }}
+          GHCR_PULL_TOKEN: ${{ github.token }}
+          GO_IMAGE_IDENTITY: ${{ steps.source.outputs.go_image_identity }}
+          GO_IMAGE_DIGEST: ${{ steps.build_go.outputs.digest }}
+          PYTHON_IMAGE_IDENTITY: ${{ steps.source.outputs.python_image_identity }}
+          PYTHON_IMAGE_DIGEST: ${{ steps.build_python.outputs.digest }}
+          EXPECTED_SOURCE_COMMIT: ${{ steps.source.outputs.source_commit }}
+          EXPECTED_MANIFEST_SHA256: ${{ steps.source.outputs.manifest_sha256 }}
+          EXPECTED_SCHEDULE_SHA256: ${{ steps.source.outputs.schedule_sha256 }}
+          SCHEDULE_PAYLOAD_SHA256: ${{ steps.source.outputs.schedule_payload_sha256 }}
+          SCHEDULE_PAYLOAD_B64: ${{ steps.source.outputs.schedule_payload_b64 }}
+          HOSTS_CSV: ${{ steps.source.outputs.hosts_csv }}
+          COOLDOWN_SECONDS: ${{ steps.source.outputs.cooldown_seconds }}
+        run: |
+          set -euo pipefail
+          : "${TARGET_HOST:?Murmur host is required}"
+          : "${SSH_PRIVATE_KEY:?SSH private key is required}"
+          : "${SSH_KNOWN_HOSTS:?pinned Murmur host keys are required}"
+          [[ "$GO_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$PYTHON_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$EXPECTED_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EXPECTED_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$EXPECTED_SCHEDULE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$SCHEDULE_PAYLOAD_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$COOLDOWN_SECONDS" == 8 ]]
+          TARGET_HOST="$TARGET_HOST" HOSTS_CSV="$HOSTS_CSV" python3 - <<'PY'
+          import ipaddress
+          import os
+          import re
+
+          label = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
+          def valid_dns(value, lowercase=False):
+              if not value or len(value) > 253 or any(character.isspace() for character in value):
+                  return False
+              if lowercase and value != value.lower():
+                  return False
+              return all(label.fullmatch(part) for part in value.rstrip(".").split("."))
+
+          target = os.environ["TARGET_HOST"]
+          hosts = os.environ["HOSTS_CSV"].split(",")
+          try:
+              target_valid = ipaddress.ip_address(target).version == 4
+          except ValueError:
+              target_valid = valid_dns(target)
+          if not target_valid or len(hosts) != 32 or len(set(hosts)) != 32:
+              raise SystemExit("invalid remote target arguments")
+          if any(not valid_dns(host, lowercase=True) for host in hosts):
+              raise SystemExit("invalid benchmark host arguments")
+          PY
+
+          ssh_root="$(mktemp -d)"
+          report_path="$RUNNER_TEMP/sitemap-fleet-benchmark-report.json"
+          wire_path="$RUNNER_TEMP/sitemap-fleet-benchmark.wire"
+          remote_stderr_path="$RUNNER_TEMP/sitemap-fleet-benchmark-remote.stderr"
+          [[ "${GITHUB_RUN_ID:-}" =~ ^[0-9]+$ && "${GITHUB_RUN_ATTEMPT:-}" =~ ^[0-9]+$ ]]
+          owner="r${GITHUB_RUN_ID}a${GITHUB_RUN_ATTEMPT}"
+          [[ "$owner" =~ ^[A-Za-z0-9]+$ ]]
+          remote_docker_config="/tmp/jobseek-sitemap-fleet-auth.$owner"
+          go_ref="$GO_IMAGE_REPOSITORY@$GO_IMAGE_DIGEST"
+          python_ref="$PYTHON_IMAGE_REPOSITORY@$PYTHON_IMAGE_DIGEST"
+          write_fallback_report() {
+            jq -n --arg commit "$EXPECTED_SOURCE_COMMIT" --arg manifest "$EXPECTED_MANIFEST_SHA256" \
+              --arg schedule "$EXPECTED_SCHEDULE_SHA256" --arg go_digest "$GO_IMAGE_DIGEST" \
+              --arg python_digest "$PYTHON_IMAGE_DIGEST" \
+              '{schema_version:1,source_commit:$commit,manifest_sha256:$manifest,schedule_sha256:$schedule,
+                go_image_digest:$go_digest,python_image_digest:$python_digest,status:"failed",
+                report_valid:false,error_kind:"report_transport_invalid",arms:[]}' >"$report_path"
+            cp "$report_path" sitemap-fleet-benchmark-report.json
+          }
+          cleanup_local() {
+            status=$?
+            trap - EXIT HUP INT TERM
+            run_remote_cleanup >/dev/null 2>&1 || true
+            rm -rf -- "$ssh_root"
+            rm -f -- "$wire_path" "$remote_stderr_path"
+            exit "$status"
+          }
+          run_remote_cleanup() {
+            timeout --signal=TERM --kill-after=5s 60s \
+              ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" bash -s -- "$owner" "$go_ref" "$python_ref" \
+              "$remote_docker_config" <<'CLEANUP'
+                set -u
+                owner="$1"; go_ref="$2"; python_ref="$3"; auth_path="$4"
+                label_key=org.colophon.jobseek.fleet-benchmark.owner
+                [[ "$owner" =~ ^[A-Za-z0-9]+$ ]] || exit 70
+                [[ "$auth_path" == "/tmp/jobseek-sitemap-fleet-auth.$owner" ]] || exit 70
+                mapfile -t ids < <(timeout 20s docker ps -aq --no-trunc --filter "label=${label_key}=${owner}" 2>/dev/null || true)
+                for id in "${ids[@]}"; do
+                  [[ "$id" =~ ^[0-9a-f]{64}$ ]] && timeout 20s docker rm -f "$id" >/dev/null 2>&1 || true
+                done
+                [[ -z "$go_ref" ]] || timeout 20s docker image rm "$go_ref" >/dev/null 2>&1 || true
+                [[ -z "$python_ref" ]] || timeout 20s docker image rm "$python_ref" >/dev/null 2>&1 || true
+                rm -rf -- "$auth_path"
+          CLEANUP
+          }
+          chmod 0700 "$ssh_root"
+          printf '%s\n' "$SSH_PRIVATE_KEY" >"$ssh_root/id"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" >"$ssh_root/known_hosts"
+          chmod 0600 "$ssh_root/id" "$ssh_root/known_hosts"
+          ssh_options=(-i "$ssh_root/id" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes
+            -o "UserKnownHostsFile=$ssh_root/known_hosts" -o ConnectTimeout=15
+            -o ServerAliveInterval=15 -o ServerAliveCountMax=2)
+          trap cleanup_local EXIT
+          trap 'exit 129' HUP
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          write_fallback_report
+
+          [[ "$GHCR_PULL_USERNAME" =~ ^[A-Za-z0-9_-]+$ ]]
+          set +e
+          timeout --signal=TERM --kill-after=5s 60s \
+            ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" bash -s -- "$remote_docker_config" \
+            >/dev/null 2>"$remote_stderr_path" <<'SETUP'
+          set -euo pipefail
+          auth_path="$1"
+          [[ "$auth_path" =~ ^/tmp/jobseek-sitemap-fleet-auth\.[A-Za-z0-9]+$ ]]
+          mkdir -m 0700 -- "$auth_path"
+          SETUP
+          setup_status=$?
+          login_status=1
+          if (( setup_status == 0 )); then
+            # shellcheck disable=SC2029 # Validated path/user expand locally; token stays on stdin.
+            printf '%s' "$GHCR_PULL_TOKEN" | timeout --signal=TERM --kill-after=5s 60s \
+              ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" \
+                "DOCKER_CONFIG='$remote_docker_config' docker login ghcr.io --username '$GHCR_PULL_USERNAME' --password-stdin" \
+                >/dev/null 2>"$remote_stderr_path"
+            login_status=$?
+          fi
+          remote_status=71
+          if (( setup_status == 0 && login_status == 0 )); then
+            ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" \
+              timeout --signal=TERM --kill-after=30s 18000s bash -s -- \
+              "$go_ref" "$python_ref" "$GO_IMAGE_IDENTITY" "$PYTHON_IMAGE_IDENTITY" \
+              "$EXPECTED_SOURCE_COMMIT" "$remote_docker_config" "$HOSTS_CSV" \
+              "$SCHEDULE_PAYLOAD_B64" "$SCHEDULE_PAYLOAD_SHA256" "$TARGET_HOST" "$COOLDOWN_SECONDS" \
+              "$EXPECTED_MANIFEST_SHA256" \
+            >"$wire_path" 2>"$remote_stderr_path" <<'REMOTE'
+          set -euo pipefail
+          go_ref="$1"; python_ref="$2"; go_identity="$3"; python_identity="$4"
+          expected_commit="$5"; docker_config="$6"; hosts_csv="$7"; schedule_b64="$8"
+          schedule_payload_sha256="$9"; target_host="${10}"; cooldown_seconds="${11}"
+          expected_manifest_sha256="${12}"
+          label_key=org.colophon.jobseek.fleet-benchmark.owner
+          owner="${docker_config##*.}"
+          label_value="$owner"
+          schedule_file="$docker_config/schedule.tsv"
+          pins_file="$docker_config/pins.tsv"
+          docker_root_dir=""
+          cleanup_armed=0
+          meta_emitted=0
+          preflight_stage=inventory
+          protected_sha256=""
+
+          cleanup_remote() {
+            status=$?
+            trap - EXIT HUP INT TERM
+            if (( status != 0 && meta_emitted == 0 )); then
+              printf 'PREFLIGHT_FAILURE\t%s\t%s\t%s\n' \
+                "$preflight_stage" "$status" "${protected_sha256:-none}" || true
+            fi
+            if (( cleanup_armed )); then
+              mapfile -t owned_ids < <(timeout 20s docker ps -aq --no-trunc --filter "label=${label_key}=${label_value}" 2>/dev/null || true)
+              for candidate_id in "${owned_ids[@]}"; do
+                [[ "$candidate_id" =~ ^[0-9a-f]{64}$ ]] && timeout 20s docker rm -f "$candidate_id" >/dev/null 2>&1 || true
+              done
+              timeout 30s docker image rm "$go_ref" "$python_ref" >/dev/null 2>&1 || true
+            fi
+            rm -rf -- "$docker_config"
+            exit "$status"
+          }
+          trap cleanup_remote EXIT
+          trap 'exit 129' HUP
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+
+          [[ "$go_ref" =~ ^ghcr\.io/colophon-group/jobseek-sitemap-fleet-go@sha256:[0-9a-f]{64}$ ]] || exit 71
+          [[ "$python_ref" =~ ^ghcr\.io/colophon-group/jobseek-sitemap-fleet-python@sha256:[0-9a-f]{64}$ ]] || exit 71
+          [[ "$expected_commit" =~ ^[0-9a-f]{40}$ ]] || exit 71
+          [[ "$expected_manifest_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 71
+          [[ "$go_identity" == "ghcr.io/colophon-group/jobseek-sitemap-fleet-go:sha-$expected_commit" ]] || exit 71
+          [[ "$python_identity" == "ghcr.io/colophon-group/jobseek-sitemap-fleet-python:sha-$expected_commit" ]] || exit 71
+          [[ "$docker_config" =~ ^/tmp/jobseek-sitemap-fleet-auth\.[A-Za-z0-9]+$ ]] || exit 70
+          [[ "$owner" =~ ^[A-Za-z0-9]+$ && "$schedule_payload_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 71
+          [[ "$cooldown_seconds" == 8 ]] || exit 71
+          existing_benchmark_ids="$(timeout 20s docker ps -aq --filter "label=${label_key}")" || exit 70
+          [[ -z "$existing_benchmark_ids" ]] || exit 70
+          cleanup_armed=1
+          preflight_stage=protected_services
+
+          inspect_protected_service() {
+            local service="$1" container_id="$2" state_payload
+            state_payload="$(timeout 20s docker inspect --format '{{.Id}}|{{.RestartCount}}|{{json .State}}' "$container_id")" || return 1
+            PROTECTED_SERVICE="$service" PROTECTED_STATE="$state_payload" python3 - <<'PY'
+          import json, os, re
+          container_id, restart_text, state_text = os.environ["PROTECTED_STATE"].split("|", 2)
+          state = json.loads(state_text)
+          health_state = state.get("Health")
+          health = "none" if health_state is None else health_state.get("Status")
+          restart_count = int(restart_text)
+          if (re.fullmatch(r"[0-9a-f]{64}", container_id) is None or restart_count < 0
+                  or state.get("Status") not in {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
+                  or not isinstance(health, str)):
+              raise SystemExit(1)
+          print(f'{os.environ["PROTECTED_SERVICE"]}|{container_id}|{state["Status"]}|{restart_count}|{health}')
+          PY
+          }
+
+          snapshot_protected_services() {
+            for service in murmur cloudflared; do
+              ids_text="$(timeout 20s docker ps -aq --filter label=com.docker.compose.project=deploy \
+                --filter "label=com.docker.compose.service=$service")" || return 1
+              mapfile -t ids <<<"$ids_text"
+              [[ ${#ids[@]} -eq 1 ]] || return 1
+              inspect_protected_service "$service" "${ids[0]}"
+            done
+          }
+          protected_base="$(snapshot_protected_services)" || exit 70
+          while IFS='|' read -r service _ status _ health; do
+            [[ -n "$service" && "$status" == running ]] || exit 70
+            [[ "$health" == none || "$health" == healthy ]] || exit 70
+          done <<<"$protected_base"
+          protected_sha256="$(printf '%s\n' "$protected_base" | sha256sum | awk '{print $1}')"
+          [[ "$protected_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 70
+
+          host_resources() {
+            local available free load
+            available="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)"
+            free="$(df -Pk "$docker_root_dir" | awk 'NR == 2 {print $4}')"
+            load="$(awk '{print $1}' /proc/loadavg)"
+            [[ "$available" =~ ^[0-9]+$ && "$free" =~ ^[0-9]+$ && "$load" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
+            printf '%s|%s|%s\n' "$available" "$free" "$load"
+          }
+          wait_for_quiet_host() {
+            local attempt resources available free load
+            for attempt in {1..13}; do
+              resources="$(host_resources)" || return 2
+              IFS='|' read -r available free load <<<"$resources"
+              (( available >= 1572864 && free >= 5242880 )) || return 2
+              if awk -v value="$load" 'BEGIN { exit !(value <= 1.50) }'; then
+                printf '%s\n' "$resources"
+                return 0
+              fi
+              (( attempt == 13 )) || sleep 5
+            done
+            return 1
+          }
+          preflight_stage=host_resources_before_pull
+          docker_root_dir="$(timeout 20s docker info --format '{{.DockerRootDir}}' 2>/dev/null)" || exit 70
+          [[ "$docker_root_dir" == /* && "$docker_root_dir" != / ]] || exit 70
+          set +e
+          resources_before_pull="$(wait_for_quiet_host)"
+          capacity_status=$?
+          set -e
+          (( capacity_status == 0 )) || { (( capacity_status == 2 )) && exit 70 || exit 71; }
+          IFS='|' read -r mem_before_pull disk_before_pull load_before_pull <<<"$resources_before_pull"
+          [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
+          preflight_stage=pull_go_image
+          DOCKER_CONFIG="$docker_config" timeout 300s docker pull "$go_ref" >/dev/null 2>&1 || exit 71
+          preflight_stage=pull_python_image
+          DOCKER_CONFIG="$docker_config" timeout 300s docker pull "$python_ref" >/dev/null 2>&1 || exit 71
+          preflight_stage=host_resources_after_pull
+          set +e
+          resources_after_pull="$(wait_for_quiet_host)"
+          capacity_status=$?
+          set -e
+          (( capacity_status == 0 )) || { (( capacity_status == 2 )) && exit 70 || exit 71; }
+          IFS='|' read -r mem_after_pull disk_after_pull load_after_pull <<<"$resources_after_pull"
+          [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
+          preflight_stage=image_attestation
+          [[ "$(uname -m)" == aarch64 ]] || exit 71
+          [[ "$(timeout 20s docker image inspect --format '{{.Os}}|{{.Architecture}}' "$go_ref" 2>/dev/null)" == 'linux|arm64' ]] || exit 71
+          [[ "$(timeout 20s docker image inspect --format '{{.Os}}|{{.Architecture}}' "$python_ref" 2>/dev/null)" == 'linux|arm64' ]] || exit 71
+
+          preflight_stage=schedule_validation
+          printf '%s' "$schedule_b64" | base64 -d >"$schedule_file"
+          [[ "$(sha256sum "$schedule_file" | awk '{print $1}')" == "$schedule_payload_sha256" ]] || exit 71
+          SCHEDULE_FILE="$schedule_file" python3 - <<'PY' || exit 71
+          import collections, os
+          rows = [line.rstrip("\n").split("\t") for line in open(os.environ["SCHEDULE_FILE"], encoding="ascii")]
+          expected = {"c5": 6, "c12": 6, "c16": 6}
+          counts = collections.Counter(row[1] for row in rows if len(row) == 3)
+          firsts = collections.Counter((row[1], row[2]) for row in rows if len(row) == 3)
+          valid = len(rows) == 18 and all(len(row) == 3 for row in rows)
+          valid &= [row[0] for row in rows] == [f"p{number:02d}" for number in range(1, 19)]
+          valid &= counts == expected and all(row[2] in {"go", "python"} for row in rows)
+          valid &= all(firsts[profile, impl] == count // 2 for profile, count in expected.items() for impl in ("go", "python"))
+          raise SystemExit(0 if valid else 1)
+          PY
+
+          preflight_stage=dns_pinning
+          read -r _ _ ssh_server_ip _ <<<"${SSH_CONNECTION:-}"
+          [[ -n "$ssh_server_ip" ]] || exit 70
+          PIN_HOSTS="$hosts_csv" PIN_TARGET="$target_host" PIN_SSH_SERVER="$ssh_server_ip" \
+            timeout --signal=TERM --kill-after=5s 45s python3 - <<'PY' >"$pins_file" || exit 70
+          import ipaddress, os, socket, subprocess
+          hosts = os.environ["PIN_HOSTS"].split(",")
+          if len(hosts) != 32 or len(set(hosts)) != 32:
+              raise SystemExit(1)
+          excluded = set()
+          for token in subprocess.check_output(["hostname", "-I"], text=True).split():
+              excluded.add(ipaddress.ip_address(token.split("%", 1)[0]))
+          for protected in (os.environ["PIN_TARGET"], os.environ["PIN_SSH_SERVER"]):
+              try:
+                  answers = {ipaddress.ip_address(protected)}
+              except ValueError:
+                  answers = {ipaddress.ip_address(item[4][0].split("%", 1)[0]) for item in socket.getaddrinfo(protected, None, type=socket.SOCK_STREAM)}
+              if not answers:
+                  raise SystemExit(1)
+              excluded.update(answers)
+          def unsafe(address):
+              flags = (not address.is_global or address.is_private or address.is_multicast or address.is_loopback
+                       or address.is_link_local or address.is_reserved or address.is_unspecified)
+              embedded = []
+              if getattr(address, "ipv4_mapped", None): embedded.append(address.ipv4_mapped)
+              if getattr(address, "sixtofour", None): embedded.append(address.sixtofour)
+              if getattr(address, "teredo", None): embedded.extend(address.teredo)
+              return flags or any(unsafe(item) for item in embedded)
+          for host in hosts:
+              if not host or len(host) > 253 or any(char not in "abcdefghijklmnopqrstuvwxyz0123456789-." for char in host):
+                  raise SystemExit(1)
+              answers = {ipaddress.ip_address(item[4][0].split("%", 1)[0]) for item in socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)}
+              if not answers or any(unsafe(address) or address in excluded for address in answers):
+                  raise SystemExit(1)
+              ipv4 = sorted((address for address in answers if address.version == 4), key=int)
+              if not ipv4:
+                  raise SystemExit(1)
+              print(f"{host}|{ipv4[0]}")
+          PY
+          [[ "$(wc -l <"$pins_file")" -eq 32 ]] || exit 70
+          pinset_sha256="$(sha256sum "$pins_file" | awk '{print $1}')"
+          [[ "$pinset_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 70
+          add_host_args=()
+          while IFS='|' read -r host address extra; do
+            [[ -n "$host" && -n "$address" && -z "$extra" ]] || exit 70
+            add_host_args+=(--add-host "$host:$address")
+          done <"$pins_file"
+          printf 'RUN_META\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$pinset_sha256" "$protected_sha256" "$cooldown_seconds" "$mem_before_pull" \
+            "$disk_before_pull" "$load_before_pull" "$mem_after_pull" "$disk_after_pull" "$load_after_pull"
+          meta_emitted=1
+
+          validate_host_config() {
+            local name="$1" image_ref="$2" profile="$3"
+            local container_inspect="$docker_config/container-inspect.json"
+            local image_inspect="$docker_config/image-inspect.json"
+            timeout 20s docker inspect "$name" >"$container_inspect" 2>/dev/null || return 1
+            timeout 20s docker image inspect "$image_ref" >"$image_inspect" 2>/dev/null || return 1
+            CONTAINER_INSPECT="$container_inspect" IMAGE_INSPECT="$image_inspect" LABEL_KEY="$label_key" \
+              LABEL_VALUE="$label_value" IMAGE_REF="$image_ref" PROFILE="$profile" PINS_FILE="$pins_file" python3 - <<'PY'
+          import json, os
+          container = json.load(open(os.environ["CONTAINER_INSPECT"], encoding="utf-8"))[0]
+          image = json.load(open(os.environ["IMAGE_INSPECT"], encoding="utf-8"))[0]
+          host = container["HostConfig"]
+          config = container["Config"]
+          expected_hosts = [line.rstrip("\n").replace("|", ":", 1) for line in open(os.environ["PINS_FILE"], encoding="ascii")]
+          checks = [
+              config["Image"] == os.environ["IMAGE_REF"], config["User"] == "65532:65532",
+              config["Labels"].get(os.environ["LABEL_KEY"]) == os.environ["LABEL_VALUE"],
+              config.get("Entrypoint") == image["Config"].get("Entrypoint"),
+              config.get("Cmd") == ["--profile", os.environ["PROFILE"]], host["ReadonlyRootfs"] is True,
+              host["NetworkMode"] == "bridge", host["NanoCpus"] == 1_000_000_000,
+              host["Memory"] == 1_073_741_824, host["MemorySwap"] == 1_073_741_824,
+              host["PidsLimit"] == 128, not host.get("Binds"), not container.get("Mounts"),
+              host["RestartPolicy"] == {"Name": "no", "MaximumRetryCount": 0},
+              host.get("CapDrop") == ["ALL"], not host.get("CapAdd"),
+              sorted(host.get("SecurityOpt") or []) == ["no-new-privileges:true"],
+              host.get("Ulimits") == [{"Name": "nofile", "Hard": 256, "Soft": 256}],
+              host.get("LogConfig") == {"Type": "local", "Config": {"compress": "false", "max-file": "1", "max-size": "256k"}},
+              host.get("ExtraHosts") == expected_hosts, config.get("Env") == image["Config"].get("Env"),
+          ]
+          raise SystemExit(0 if all(checks) else 1)
+          PY
+          }
+
+          raw_core_valid() {
+            RAW_FILE="$1" IMPLEMENTATION="$2" PROFILE="$3" COMMIT="$expected_commit" \
+              MANIFEST_SHA256="$expected_manifest_sha256" \
+              GO_IDENTITY="$go_identity" PYTHON_IDENTITY="$python_identity" python3 - <<'PY'
+          import json, os
+          try: data = json.load(open(os.environ["RAW_FILE"], encoding="utf-8"))
+          except Exception: raise SystemExit(1)
+          implementation = os.environ["IMPLEMENTATION"]
+          identity = os.environ["GO_IDENTITY"] if implementation == "go" else os.environ["PYTHON_IDENTITY"]
+          valid = isinstance(data, dict) and data.get("schema_version") == 1 and data.get("implementation") == implementation
+          valid &= data.get("profile") == os.environ["PROFILE"] and data.get("source_commit") == os.environ["COMMIT"]
+          valid &= data.get("manifest_sha256") == os.environ["MANIFEST_SHA256"]
+          valid &= data.get("image_identity") == identity and data.get("status") in {"succeeded", "failed"}
+          raise SystemExit(0 if valid else 1)
+          PY
+          }
+
+          report_policy_kind() {
+            RAW_FILE="$1" python3 - <<'PY'
+          import json, os
+          data = json.load(open(os.environ["RAW_FILE"], encoding="utf-8"))
+          source_denied = {"tdm_reserved", "http_tdm_reservation"}
+          egress_denied = {"ssrf_refused", "target_rejected", "http_network_policy"}
+          kinds = {data.get("error_kind")}
+          for round_report in data.get("rounds", []):
+              kinds.add(round_report.get("error_kind"))
+              kinds.update(job.get("error_kind") for job in round_report.get("jobs", []))
+          if kinds & egress_denied:
+              print("egress_policy_denial")
+          elif kinds & source_denied:
+              print("source_policy_denial")
+          else:
+              print("none")
+          PY
+          }
+
+          wait_for_arm_capacity() {
+            local attempt resources available free load
+            for attempt in 1 2 3 4 5 6 7; do
+              resources="$(host_resources)" || return 2
+              IFS='|' read -r available free load <<<"$resources"
+              (( available >= 1572864 && free >= 5242880 )) || return 2
+              if awk -v value="$load" 'BEGIN { exit !(value <= 2.00) }'; then
+                return 0
+              fi
+              (( attempt == 7 )) || sleep 5
+            done
+            return 1
+          }
+
+          emit_arm() {
+            printf 'ARM_LIFECYCLE\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+              "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}" "${14}"
+            [[ "${14}" == true ]] && cat "${15}" || printf '{}\n'
+          }
+
+          first_pair_go="$docker_config/admission-go.json"
+          first_pair_python="$docker_config/admission-python.json"
+          arm_number=0
+          terminal_status=0
+          while IFS=$'\t' read -r pair profile first extra; do
+            [[ "$pair" =~ ^p(0[1-9]|1[0-8])$ && "$profile" =~ ^c(5|12|16)$ ]] || exit 71
+            [[ "$first" == go || "$first" == python ]] || exit 71
+            [[ -z "$extra" ]] || exit 71
+            second=python; [[ "$first" == python ]] && second=go
+            for implementation in "$first" "$second"; do
+              (( arm_number += 1 ))
+              [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
+              set +e
+              wait_for_arm_capacity
+              capacity_status=$?
+              set -e
+              (( capacity_status == 0 )) || { (( capacity_status == 2 )) && exit 70 || exit 71; }
+              image_ref="$go_ref"; [[ "$implementation" == python ]] && image_ref="$python_ref"
+              name="jobseek-fleet-${owner}-${pair}-${implementation}"
+              [[ "$name" =~ ^[A-Za-z0-9_.-]+$ ]] || exit 70
+              cid_file="$docker_config/${pair}-${implementation}.cid"
+              stdout_file="$docker_config/${pair}-${implementation}.json"
+              stderr_file="$docker_config/${pair}-${implementation}.stderr"
+              wait_file="$docker_config/${pair}-${implementation}.wait"
+              rm -f -- "$cid_file" "$stdout_file" "$stderr_file" "$wait_file"
+              load_before="$(awk '{print $1}' /proc/loadavg)"
+              mem_before="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)"
+
+              set +e
+              timeout --signal=TERM --kill-after=5s 30s docker create \
+                --name "$name" --cidfile "$cid_file" --label "$label_key=$label_value" \
+                --log-driver local --log-opt max-size=256k --log-opt max-file=1 --log-opt compress=false \
+                --read-only --network bridge "${add_host_args[@]}" --security-opt no-new-privileges:true \
+                --cap-drop ALL --pids-limit 128 --ulimit nofile=256:256 --cpus 1 --memory 1g \
+                --memory-swap 1g --user 65532:65532 "$image_ref" --profile "$profile" \
+                >/dev/null 2>"$stderr_file"
+              create_status=$?
+              set -e
+              if (( create_status != 0 )) || [[ ! -s "$cid_file" ]]; then
+                load_after="$(awk '{print $1}' /proc/loadavg)"; mem_after="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)"
+                [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
+                emit_arm "$pair" "$implementation" "$profile" absent 125 false false true "$load_before" \
+                  "$load_after" "$mem_before" "$mem_after" container_create_failed false "$stdout_file"
+                rm -f -- "$cid_file" "$stdout_file" "$stderr_file"
+                [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
+                terminal_status=71
+                break
+              fi
+              cid="$(<"$cid_file")"
+              [[ "$cid" =~ ^[0-9a-f]{64}$ ]] || exit 70
+              validate_host_config "$cid" "$image_ref" "$profile" || exit 70
+
+              set +e
+              timeout --signal=TERM --kill-after=5s 20s docker start "$cid" >/dev/null 2>>"$stderr_file"; start_status=$?
+              wait_status=0
+              if (( start_status == 0 )); then
+                timeout --signal=TERM --kill-after=10s 240s docker wait "$cid" >"$wait_file" 2>>"$stderr_file"
+                wait_status=$?
+              fi
+              arm_status=255
+              if (( start_status == 0 && wait_status == 0 )) && [[ "$(cat "$wait_file")" =~ ^[0-9]+$ ]] && (( $(cat "$wait_file") <= 255 )); then
+                arm_status="$(cat "$wait_file")"
+              elif (( wait_status == 124 )); then
+                arm_status=124
+              fi
+              timeout --signal=TERM --kill-after=5s 20s docker logs "$cid" >"$stdout_file" 2>"$docker_config/logs.stderr"; logs_status=$?
+              lifecycle="$(timeout --signal=TERM --kill-after=5s 20s docker inspect --format '{{.State.Status}}|{{.State.ExitCode}}|{{.State.OOMKilled}}|{{.Config.Image}}' "$cid" 2>/dev/null)"
+              inspect_status=$?
+              set -e
+              rm -f -- "$wait_file" "$docker_config/logs.stderr"
+              container_status=unknown; container_exit=255; oom_killed=false; configured_image=unknown
+              (( inspect_status != 0 )) || IFS='|' read -r container_status container_exit oom_killed configured_image <<<"$lifecycle"
+              lifecycle_ok=true
+              [[ "$container_status" == exited && "$oom_killed" == false && "$configured_image" == "$image_ref" ]] || lifecycle_ok=false
+              (( arm_status < 125 )) && [[ "$container_exit" == "$arm_status" ]] || lifecycle_ok=false
+              load_after="$(awk '{print $1}' /proc/loadavg)"; mem_after="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)"
+              raw_valid=false
+              if [[ -s "$stdout_file" && $(wc -c <"$stdout_file") -le 131072 && $(wc -l <"$stdout_file") -eq 1 ]] && \
+                  raw_core_valid "$stdout_file" "$implementation" "$profile"; then raw_valid=true; fi
+              source_kind=none
+              if (( start_status != 0 )); then source_kind=container_start_failed
+              elif (( inspect_status != 0 )); then source_kind=container_inspect_failed
+              elif (( logs_status != 0 )); then source_kind=container_logs_failed
+              elif (( arm_status == 124 )); then source_kind=container_timeout
+              elif [[ "$oom_killed" == true ]]; then source_kind=container_oom
+              elif (( arm_status != 0 )); then source_kind=container_exit_nonzero
+              elif [[ "$raw_valid" != true ]]; then source_kind=stdout_invalid
+              elif [[ "$(RAW_FILE="$stdout_file" python3 -c 'import json,os; print(json.load(open(os.environ["RAW_FILE"]))["status"])')" != succeeded ]]; then source_kind=runner_report_failed
+              fi
+              case "$source_kind" in
+                container_start_failed|container_inspect_failed|container_logs_failed|container_timeout|stdout_invalid)
+                  terminal_status=71
+                  ;;
+              esac
+              if [[ "$raw_valid" == true ]]; then
+                policy_kind="$(report_policy_kind "$stdout_file")" || exit 70
+                if [[ "$policy_kind" == source_policy_denial || "$policy_kind" == egress_policy_denial ]]; then
+                  source_kind="$policy_kind"
+                  terminal_status=73
+                fi
+              fi
+              [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
+              emit_arm "$pair" "$implementation" "$profile" "$container_status" "$container_exit" "$oom_killed" \
+                "$lifecycle_ok" true "$load_before" "$load_after" "$mem_before" "$mem_after" "$source_kind" "$raw_valid" "$stdout_file"
+              if [[ "$pair" == p01 ]]; then
+                admission_file="$first_pair_go"; [[ "$implementation" == python ]] && admission_file="$first_pair_python"
+                [[ "$raw_valid" == true ]] && cp "$stdout_file" "$admission_file" || printf '{}\n' >"$admission_file"
+              fi
+              timeout --signal=TERM --kill-after=5s 20s docker rm -f "$cid" >/dev/null 2>&1 || exit 70
+              rm -f -- "$cid_file" "$stdout_file" "$stderr_file"
+              [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
+              (( terminal_status == 0 )) || break
+            done
+            (( terminal_status == 0 )) || break
+            if [[ "$pair" == p01 ]]; then
+              set +e
+              python3 - "$first_pair_go" "$first_pair_python" <<'PY'
+          import json, sys
+          reports = [json.load(open(path, encoding="utf-8")) for path in sys.argv[1:]]
+          if len(reports) != 2 or any(report.get("status") != "succeeded" for report in reports): raise SystemExit(1)
+          values = {}
+          for report in reports:
+              if len(report.get("rounds", [])) != 2: raise SystemExit(1)
+              for round_report in report["rounds"]:
+                  jobs = round_report.get("jobs", [])
+                  if len(jobs) != 32 or len({job.get("id") for job in jobs}) != 32: raise SystemExit(1)
+                  if round_report.get("decoded_bytes") != sum(job.get("decoded_bytes", -1) for job in jobs): raise SystemExit(1)
+                  for job in jobs:
+                      key = (round_report.get("round"), job.get("id"))
+                      value = (job.get("canonical_url_count"), job.get("canonical_url_sha256"))
+                      if key in values and values[key] != value: raise SystemExit(1)
+                      values.setdefault(key, value)
+          if len(values) != 64: raise SystemExit(1)
+          PY
+              admission_status=$?
+              set -e
+              if (( admission_status != 0 )); then
+                terminal_status=72
+                break
+              fi
+            fi
+            (( arm_number == 36 )) || sleep "$cooldown_seconds"
+          done <"$schedule_file"
+          if (( terminal_status == 0 )); then
+            [[ "$arm_number" -eq 36 ]] || exit 71
+          elif (( terminal_status == 72 )); then
+            [[ "$arm_number" -eq 2 ]] || exit 71
+          fi
+          [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
+          remaining_benchmark_ids="$(timeout 20s docker ps -aq --filter "label=${label_key}")" || exit 70
+          [[ -z "$remaining_benchmark_ids" ]] || exit 70
+          timeout 30s docker image rm "$go_ref" "$python_ref" >/dev/null 2>&1 || exit 70
+          remaining_go_images="$(timeout 20s docker image ls --quiet --no-trunc "$go_ref")" || exit 70
+          remaining_python_images="$(timeout 20s docker image ls --quiet --no-trunc "$python_ref")" || exit 70
+          [[ -z "$remaining_go_images" && -z "$remaining_python_images" ]] || exit 70
+          rm -rf -- "$docker_config"
+          [[ ! -e "$docker_config" ]] || exit 70
+          [[ "$(snapshot_protected_services)" == "$protected_base" ]] || exit 70
+          cleanup_armed=0
+          printf 'RUN_POSTFLIGHT\ttrue\t%s\t%s\n' "$pinset_sha256" "$protected_sha256"
+          (( terminal_status == 0 )) || exit "$terminal_status"
+          REMOTE
+            remote_status=$?
+          fi
+          set -e
+
+          # Always perform the deterministic cleanup before the independent audit.
+          set +e
+          run_remote_cleanup >/dev/null 2>"$remote_stderr_path"
+          explicit_cleanup_status=$?
+          set -e
+
+          cleanup_verified=true
+          (( explicit_cleanup_status == 0 )) || cleanup_verified=false
+          set +e
+          # This independent read-only check runs after both success and trap cleanup.
+          timeout --signal=TERM --kill-after=5s 60s \
+            ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" bash -s -- "$go_ref" "$python_ref" \
+            "$remote_docker_config" >"$RUNNER_TEMP/postflight.stdout" 2>"$remote_stderr_path" <<'VERIFY'
+          set -euo pipefail
+          go_ref="$1"; python_ref="$2"; auth_path="$3"
+          benchmark_ids="$(timeout 20s docker ps -aq --filter label=org.colophon.jobseek.fleet-benchmark.owner)"
+          go_images="$(timeout 20s docker image ls --quiet --no-trunc "$go_ref")"
+          python_images="$(timeout 20s docker image ls --quiet --no-trunc "$python_ref")"
+          [[ -z "$benchmark_ids" && -z "$go_images" && -z "$python_images" ]]
+          [[ ! -e "$auth_path" ]]
+          inspect_protected_service() {
+            local service="$1" container_id="$2" state_payload
+            state_payload="$(timeout 20s docker inspect --format '{{.Id}}|{{.RestartCount}}|{{json .State}}' "$container_id")" || return 1
+            PROTECTED_SERVICE="$service" PROTECTED_STATE="$state_payload" python3 - <<'PY'
+          import json, os, re
+          container_id, restart_text, state_text = os.environ["PROTECTED_STATE"].split("|", 2)
+          state = json.loads(state_text)
+          health_state = state.get("Health")
+          health = "none" if health_state is None else health_state.get("Status")
+          restart_count = int(restart_text)
+          if (re.fullmatch(r"[0-9a-f]{64}", container_id) is None or restart_count < 0
+                  or state.get("Status") not in {"created", "running", "paused", "restarting", "removing", "exited", "dead"}
+                  or not isinstance(health, str)):
+              raise SystemExit(1)
+          print(f'{os.environ["PROTECTED_SERVICE"]}|{container_id}|{state["Status"]}|{restart_count}|{health}')
+          PY
+          }
+          snapshot=""
+          for service in murmur cloudflared; do
+            ids_text="$(timeout 20s docker ps -q --filter label=com.docker.compose.project=deploy --filter "label=com.docker.compose.service=$service")"
+            mapfile -t ids <<<"$ids_text"
+            [[ ${#ids[@]} -eq 1 ]]
+            line="$(inspect_protected_service "$service" "${ids[0]}")"
+            IFS='|' read -r _ _ status _ health <<<"$line"
+            [[ "$status" == running && ("$health" == none || "$health" == healthy) ]]
+            snapshot+="${snapshot:+$'\n'}$line"
+          done
+          printf '%s\n' "$snapshot" | sha256sum | awk '{print $1}'
+          VERIFY
+          cleanup_status=$?
+          set -e
+          protected_postflight_sha256=""
+          if [[ "$cleanup_status" -eq 0 && $(wc -l <"$RUNNER_TEMP/postflight.stdout") -eq 1 ]]; then
+            protected_postflight_sha256="$(<"$RUNNER_TEMP/postflight.stdout")"
+            [[ "$protected_postflight_sha256" =~ ^[0-9a-f]{64}$ ]] || cleanup_verified=false
+          else
+            cleanup_verified=false
+          fi
+          rm -f -- "$RUNNER_TEMP/postflight.stdout" "$remote_stderr_path"
+
+          set +e
+          python3 pilots/go-http-sitemap/benchmark/report_wire.py \
+            --wire "$wire_path" \
+            --out "$report_path" \
+            --fleet pilots/go-http-sitemap/benchmark/fleet.json \
+            --schedule pilots/go-http-sitemap/benchmark/schedule.json \
+            --remote-status "$remote_status" \
+            --cleanup-verified "$cleanup_verified" \
+            --source-commit "$EXPECTED_SOURCE_COMMIT" \
+            --manifest-sha256 "$EXPECTED_MANIFEST_SHA256" \
+            --schedule-sha256 "$EXPECTED_SCHEDULE_SHA256" \
+            --go-identity "$GO_IMAGE_IDENTITY" \
+            --python-identity "$PYTHON_IMAGE_IDENTITY" \
+            --go-digest "$GO_IMAGE_DIGEST" \
+            --python-digest "$PYTHON_IMAGE_DIGEST" \
+            --protected-postflight-sha256 "$protected_postflight_sha256" \
+            --cooldown "$COOLDOWN_SECONDS"
+          report_status=$?
+          set -e
+          cp "$report_path" sitemap-fleet-benchmark-report.json
+          (( report_status == 0 )) || exit 1
+          jq -e '.status == "succeeded" and .report_valid == true and .timing_comparable == true and (.arms | length == 36)' "$report_path" >/dev/null
+
+      - name: Upload sanitized benchmark report
+        if: always() && steps.benchmark.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sitemap-fleet-benchmark-${{ github.run_id }}-${{ github.run_attempt }}
+          path: sitemap-fleet-benchmark-report.json
+          if-no-files-found: error
+          retention-days: 14

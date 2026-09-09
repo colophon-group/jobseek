@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import importlib.util
 import json
 import os
@@ -10,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 DEPLOY = ROOT / "deploy" / "ats-inventory"
@@ -21,6 +24,7 @@ REMOTE = DEPLOY / "deploy-remote.sh"
 TOKEN_HELPER = DEPLOY / "github-app-token.py"
 STATUS_HELPER = DEPLOY / "status.py"
 BOUNDED_TEE = DEPLOY / "bounded-tee.py"
+REGISTRY_SNAPSHOT = DEPLOY / "registry-snapshot.py"
 NETWORK_HELPER = DEPLOY / "network.sh"
 NETWORK_PROBE = DEPLOY / "network-probe.py"
 SERVICE = ROOT / "deploy" / "systemd" / "jobseek-ats-inventory.service"
@@ -40,6 +44,7 @@ def _load(name: str, path: Path):
 token_helper = _load("ats_inventory_github_app_token", TOKEN_HELPER)
 status_helper = _load("ats_inventory_status", STATUS_HELPER)
 bounded_tee = _load("ats_inventory_bounded_tee", BOUNDED_TEE)
+registry_snapshot = _load("ats_inventory_registry_snapshot", REGISTRY_SNAPSHOT)
 network_probe = _load("ats_inventory_network_probe", NETWORK_PROBE)
 
 
@@ -49,6 +54,67 @@ def test_shell_surfaces_parse() -> None:
             ["bash", "-n", str(path)], capture_output=True, text=True, check=False
         )
         assert result.returncode == 0, f"{path}: {result.stderr}"
+
+
+def test_registry_snapshot_copies_exact_attested_active_generation(tmp_path: Path) -> None:
+    release_root = tmp_path / "releases"
+    generation = release_root / "release-abc.123"
+    data = generation / "data"
+    snapshot_root = tmp_path / "snapshots"
+    data.mkdir(parents=True)
+    snapshot_root.mkdir()
+    companies = b"slug,name\nacme,Acme\n"
+    boards = b"company_slug,board_url\nacme,https://acme.test/jobs\n"
+    (data / "companies.csv").write_bytes(companies)
+    (data / "boards.csv").write_bytes(boards)
+    rows = "".join(
+        f"{hashlib.sha256(body).hexdigest()}  {name}\n"
+        for name, body in sorted((("companies.csv", companies), ("boards.csv", boards)))
+    )
+    files_manifest = rows.encode()
+    (generation / "data-files.sha256").write_bytes(files_manifest)
+    manifest_digest = hashlib.sha256(files_manifest).hexdigest()
+    (generation / "release.manifest").write_text(
+        "\n".join(
+            (
+                "RELEASE_FORMAT_VERSION=3",
+                f"DATA_FILES_SHA256={manifest_digest}",
+                f"DATA_CONTRACT_SHA256={manifest_digest}",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    image = f"ghcr.io/colophon-group/jobseek-crawler@sha256:{'a' * 64}"
+    revision = "b" * 40
+    (generation / "success.env").write_text(
+        f"CRAWLER_IMAGE_REF={image}\nJOBSEEK_DEPLOY_REVISION={revision}\n",
+        encoding="utf-8",
+    )
+    pointer = tmp_path / "active"
+    pointer.symlink_to(generation)
+
+    snapshot = registry_snapshot.prepare_registry_snapshot(
+        active_release_pointer=pointer,
+        active_release_root=release_root,
+        snapshot_root=snapshot_root,
+        expected_image=image,
+        expected_revision=revision,
+    )
+
+    assert snapshot.parent == snapshot_root
+    assert (snapshot / "companies.csv").read_bytes() == companies
+    assert (snapshot / "boards.csv").read_bytes() == boards
+
+    (data / "boards.csv").write_text("tampered", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="exact manifest"):
+        registry_snapshot.prepare_registry_snapshot(
+            active_release_pointer=pointer,
+            active_release_root=release_root,
+            snapshot_root=snapshot_root,
+            expected_image=image,
+            expected_revision=revision,
+        )
 
 
 def test_app_jwt_is_short_lived_and_signed_without_key_material_in_argv(
@@ -206,6 +272,7 @@ def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> 
     assert "--cpus 1.0" in source
     assert "--pids-limit 256" in source
     assert "type=bind,src=$CACHE_ROOT,dst=/state/cache" in source
+    assert "type=bind,src=$REGISTRY_SNAPSHOT,dst=/app/data,readonly" in source
     assert "type=bind,src=$STATE_ROOT,dst=/state" not in source
     assert "com.docker.compose.oneoff" not in source
     assert "com.docker.compose.project" not in source
@@ -235,6 +302,19 @@ def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> 
     assert "--network host" not in source
     assert "--network bridge" not in source
     assert "jobseek-ats-inventory-network.verified" in source
+    assert "ACTIVE_RELEASE_ROOT=/home/deploy/.crawler-release-generations" in source
+    assert "jobseek-ats-inventory-registry-snapshot" in source
+    assert (
+        "committed crawler CSV snapshot does not match its exact manifest"
+        in REGISTRY_SNAPSHOT.read_text(encoding="utf-8")
+    )
+    assert "flock --shared -w 300 8" in source
+    assert source.index("flock --shared -w 300 8") < source.index(
+        'prepare_registry_snapshot "$image" "$crawler_revision"'
+    )
+    assert source.index('prepare_registry_snapshot "$image" "$crawler_revision"') < source.index(
+        "run_phase 9900s data off 0"
+    )
     assert "attestation_age >= 0 && attestation_age <= 300" in source
     assert "root:deploy:640" in source
     assert source.index("STATUS_ARMED=1") < source.index('[[ -r "$CONFIG" ]]')
@@ -263,6 +343,7 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert "|| true" not in quiesce
     assert "SERVICE_WAS_ACTIVE" in installer
     assert 'install -d -o root -g deploy -m 0750 "$STATE_ROOT"' in installer
+    assert 'install -d -o deploy -g deploy -m 0770 "$STATE_ROOT/registry-snapshots"' in installer
     assert "TIMER_WAS_ENABLED" in installer and "TIMER_WAS_ACTIVE" in installer
     assert "systemd-analyze verify" in installer
     assert "systemctl enable jobseek-ats-inventory.timer" in installer
@@ -308,7 +389,7 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert 'network.sh" teardown' in installer
 
 
-def test_systemd_timer_is_daily_persistent_randomized_and_hardened() -> None:
+def test_systemd_timer_is_twice_daily_persistent_randomized_and_hardened() -> None:
     service = SERVICE.read_text(encoding="utf-8")
     timer = TIMER.read_text(encoding="utf-8")
     for credential in (
@@ -327,7 +408,9 @@ def test_systemd_timer_is_daily_persistent_randomized_and_hardened() -> None:
     assert "User=root" in network_service
     assert "ExecStart=/usr/local/sbin/jobseek-ats-inventory-network ensure" in network_service
     assert "ReadWritePaths=/run/lock" in network_service
+    assert timer.count("OnCalendar=") == 2
     assert "OnCalendar=*-*-* 03:00:00 UTC" in timer
+    assert "OnCalendar=*-*-* 15:00:00 UTC" in timer
     assert "Persistent=true" in timer
     assert "RandomizedDelaySec=45m" in timer
 
@@ -344,6 +427,7 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "HETZNER_BACKUP_KNOWN_HOSTS" not in workflow
     assert "deploy-remote.sh" in workflow
     assert "deploy/ats-inventory/network-probe.py" in workflow
+    assert "deploy/ats-inventory/registry-snapshot.py" in workflow
     assert "deploy/systemd/jobseek-ats-inventory-network.service" in workflow
     assert 'PYTHONPYCACHEPREFIX="$RUNNER_TEMP/ats-inventory-pycache"' in workflow
     assert 'PYTHONDONTWRITEBYTECODE: "1"' in workflow
@@ -362,8 +446,13 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "'apps/crawler/contracts/v1/**'" in workflow
     assert "'apps/crawler/contracts/go.mod'" in workflow
     assert "'apps/crawler/contracts/go.sum'" in workflow
+    assert "'apps/crawler/src/shared/constants.py'" in workflow
+    assert "'apps/crawler/Dockerfile'" in workflow
+    assert "'apps/crawler/pyproject.toml'" in workflow
     assert "'!apps/crawler/contracts/v1/**'" not in workflow
     assert "apps/crawler/contracts/v1/*) ;;" not in workflow
+    # Tests validate the host runner but are not copied into its runtime image.
+    assert "apps/crawler/tests/*) ;;" in workflow
     assert "inactive_v1_policy" not in workflow
     assert "#8046" not in workflow
     # VERSION, runtime v1, another contract version, and crawler source all
