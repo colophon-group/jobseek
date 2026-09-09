@@ -720,6 +720,14 @@ def auto_scraper_type(
 
     Returns None when manual scraper selection is needed.
     """
+    rich_rows = (config or {}).get("rich_rows")
+    if (
+        monitor_type == "dom"
+        and isinstance(rich_rows, dict)
+        and bool(rich_rows.get("description_selector"))
+    ):
+        return ("skip", None)
+
     # VAGAS.com detail pages publish complete JobPosting JSON-LD. Both listing
     # and detail hosts use the same Cloudflare policy, so preserve proxy routing
     # on the auto-configured scraper as well as the DOM monitor preset.
@@ -1166,7 +1174,7 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     Statically-rich monitors (greenhouse, lever, etc.) always return True.
     api_sniffer/nextdata are rich when ``fields`` is present; SmartRecruiters
     is rich when exact ``jobId`` locale collapse is configured; dom is partial
-    rich when strict static ``rich_rows`` or rich ``script_json_links``
+    rich when strict ``rich_rows`` or rich ``script_json_links``
     extraction is configured.
 
     Note: this is narrower than ``auto_scraper_type``. Workday has an

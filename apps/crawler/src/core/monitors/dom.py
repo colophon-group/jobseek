@@ -133,6 +133,14 @@ _LINKEDIN_JOB_TRANSFORM = {
 
 _KONTACT_MARKER = "kontactintelligence.com"
 _KONTACT_URL_FILTER = r"/Physician_Job/Details/"
+_KONTACT_RICH_ROWS = {
+    "row_selector": "#accordion .panel.panel-default",
+    "link_selector": "a[title='View this opportunity'][href*='/Physician_Job/Details/']",
+    "title_selector": ".panel-heading .col-md-8",
+    "title_regex": r"^\s*\*?\s*(.+?)\s*$",
+    "location_selectors": [".panel-heading .col-md-4"],
+    "description_selector": ".jobDropDownDesc",
+}
 
 _TALENTSOFT_MARKERS = ("ts-offer-list-item", "ts-search-engine-form__rss-cta")
 _TALENTSOFT_PATH_FILTER = r"/(?:job/job|offre-de-emploi/emploi)-[^/?#]+_\d+\.aspx(?:[?#]|$)"
@@ -1564,20 +1572,28 @@ def _jposting_probe_config(html: str, url: str) -> dict | None:
 def _kontact_probe_config(html: str, url: str) -> dict | None:
     """Return the complete DOM config for a KontactIntelligence board.
 
-    These physician boards expose server-rendered links and use a stable
-    ``?pg=N`` contract, so the regular HTTP pagination path is sufficient.
-    Keeping the provider on that path avoids holding a browser worker while
-    walking what can be dozens of otherwise static result pages.
+    These physician boards expose the title, location, and complete description
+    in strict server-rendered rows and use a stable ``?pg=N`` contract. Detail
+    routes are not consistently fetchable, so retain the authoritative listing
+    fields instead of scheduling one request per job.
     """
 
     if _KONTACT_MARKER not in html.casefold():
         return None
 
     matcher = _build_url_matcher(_KONTACT_URL_FILTER)
-    urls = _extract_links_static(html, url, matcher)
+    rich_rows = dict(_KONTACT_RICH_ROWS)
+    try:
+        config = _validated_rich_rows(rich_rows)
+        if config is None:
+            return None
+        jobs = _extract_rich_rows_static(html, url, config, matcher)
+    except ValueError:
+        return None
     return {
-        "urls": len(urls),
+        "urls": len(jobs),
         "url_filter": _KONTACT_URL_FILTER,
+        "rich_rows": rich_rows,
         "pagination": {
             "param_name": "pg",
             "max_pages": 1_000,
@@ -2534,6 +2550,8 @@ _RichRowsConfig = tuple[
     frozenset[str],
     str | None,
     re.Pattern[str] | None,
+    str | None,
+    re.Pattern[str] | None,
 ]
 
 
@@ -2607,6 +2625,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "inactive_urls",
         "row_required_selector",
         "row_text_pattern",
+        "description_selector",
+        "title_regex",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
     row_selector = _validate_css_selector(value.get("row_selector"), name="rich_rows.row_selector")
@@ -2718,6 +2738,30 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
             raise ValueError(
                 "DOM monitor rich_rows.row_text_pattern must be a valid regex"
             ) from exc
+    description_selector = _validate_css_selector(
+        value.get("description_selector"),
+        name="rich_rows.description_selector",
+    )
+    title_regex_raw = value.get("title_regex")
+    title_regex = None
+    if title_regex_raw is not None:
+        if (
+            not isinstance(title_regex_raw, str)
+            or not title_regex_raw
+            or len(title_regex_raw) > 2_048
+            or "\x00" in title_regex_raw
+        ):
+            raise ValueError(
+                "DOM monitor rich_rows.title_regex must be a non-empty regex up to 2048 chars"
+            )
+        try:
+            title_regex = re.compile(title_regex_raw)
+        except re.error as exc:
+            raise ValueError("DOM monitor rich_rows.title_regex must be a valid regex") from exc
+        if title_regex.groups != 1:
+            raise ValueError(
+                "DOM monitor rich_rows.title_regex must contain exactly one capture group"
+            )
     if total_selector is not None and (
         row_required_selector is not None or row_text_pattern is not None
     ):
@@ -2737,6 +2781,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         inactive_urls,
         row_required_selector,
         row_text_pattern,
+        description_selector,
+        title_regex,
     )
 
 
@@ -2801,6 +2847,8 @@ def _extract_rich_rows_static(
         inactive_urls,
         row_required_selector,
         row_text_pattern,
+        description_selector,
+        title_regex,
     ) = config
     tree = LexborHTMLParser(html)
     advertised_total: int | None = None
@@ -2836,6 +2884,9 @@ def _extract_rich_rows_static(
         href = link.attributes.get(link_attr) if link is not None else None
         title_node = row.css_first(title_selector) if title_selector is not None else link
         title = title_node.text(separator=" ", strip=True).strip() if title_node is not None else ""
+        if title and title_regex is not None:
+            match = title_regex.search(title)
+            title = match.group(1).strip() if match is not None else ""
         if not href or not title:
             raise ValueError(f"DOM monitor rich_rows row {index} omitted its link or title")
         url = urljoin(base_url, href)
@@ -2877,9 +2928,22 @@ def _extract_rich_rows_static(
                     f"DOM monitor rich_rows row {index} omitted configured metadata {field!r}"
                 )
             metadata[field] = value
+
+        description: str | None = None
+        if description_selector is not None:
+            description_node = row.css_first(description_selector)
+            if (
+                description_node is None
+                or not description_node.text(separator=" ", strip=True).strip()
+            ):
+                raise ValueError(
+                    f"DOM monitor rich_rows row {index} omitted its configured description"
+                )
+            description = description_node.html.strip()
         job = DiscoveredJob(
             url=canonical_url,
             title=title,
+            description=description,
             locations=[", ".join(location_parts)] if location_parts else None,
             metadata=metadata or None,
         )
@@ -2903,7 +2967,7 @@ def _extract_rich_rows_static(
     return list(jobs_by_url.values())
 
 
-async def _paginate_rich_rows_static(
+async def _paginate_rich_rows(
     board_url: str,
     pagination: dict,
     initial_jobs: list[DiscoveredJob],
@@ -2911,8 +2975,9 @@ async def _paginate_rich_rows_static(
     rich_rows: _RichRowsConfig,
     url_matcher: re.Pattern | None,
     encoding: str | None,
+    page=None,
 ) -> list[DiscoveredJob]:
-    """Fetch and merge strict rich listing rows across static pages."""
+    """Fetch and merge strict rich listing rows across sequential pages."""
     from src.shared.api_sniff import set_url_param
     from src.shared.http_retry import fetch_with_retry
 
@@ -2924,8 +2989,13 @@ async def _paginate_rich_rows_static(
     transient_403 = pagination.get("transient_403", False)
     if not isinstance(transient_403, bool):
         raise ValueError("DOM pagination transient_403 must be a boolean")
-    if pagination.get("browser") or pagination.get("partition_selector"):
-        raise ValueError("DOM monitor rich_rows pagination supports static sequential pages only")
+    use_browser = pagination.get("browser", False)
+    if not isinstance(use_browser, bool):
+        raise ValueError("DOM pagination browser must be a boolean")
+    if pagination.get("partition_selector"):
+        raise ValueError("DOM monitor rich_rows does not support partitioned pagination")
+    if use_browser and page is None:
+        raise ValueError("DOM monitor rich_rows browser pagination requires render=true")
     if not url_template and not isinstance(param_name, str):
         raise ValueError("DOM pagination requires param_name or url_template")
 
@@ -2939,13 +3009,21 @@ async def _paginate_rich_rows_static(
             assert isinstance(param_name, str)
             page_url = set_url_param(board_url, param_name, value)
 
-        html = await fetch_with_retry(
-            client,
-            page_url,
-            encoding=encoding,
-            transient_403=transient_403,
-            max_chars=None,
-        )
+        if use_browser:
+            html = await _fetch_via_page(
+                page,
+                page_url,
+                transient_403=transient_403,
+                max_chars=None,
+            )
+        else:
+            html = await fetch_with_retry(
+                client,
+                page_url,
+                encoding=encoding,
+                transient_403=transient_403,
+                max_chars=None,
+            )
         if not html:
             log.info("dom.pagination.end", page=page_num, url=page_url)
             break
@@ -3195,6 +3273,51 @@ async def _extract_links_rendered(
     return urls
 
 
+async def _extract_rich_rows_rendered(
+    page,
+    metadata: dict,
+    rich_rows: _RichRowsConfig,
+    url_matcher: re.Pattern | None,
+    client: httpx.AsyncClient,
+    configured_empty_states: tuple,
+) -> list[DiscoveredJob]:
+    """Render and extract authoritative rows, including browser-fetched tails."""
+    board_url = metadata["_board_url"]
+    browser_config = {k: v for k, v in metadata.items() if k in BROWSER_KEYS}
+    await navigate(page, board_url, browser_config)
+    await run_actions(page, browser_config.get("actions", []))
+
+    html = await safe_content(page)
+    _raise_if_bot_challenge(page.url, html)
+    jobs = _extract_rich_rows_static(
+        html,
+        page.url,
+        rich_rows,
+        url_matcher,
+        allow_empty=bool(configured_empty_states),
+    )
+    if configured_empty_states:
+        _validate_explicit_empty_states(
+            html,
+            configured_empty_states,
+            {job.url for job in jobs},
+            board_url,
+        )
+    pagination = metadata.get("pagination")
+    if pagination:
+        jobs = await _paginate_rich_rows(
+            board_url,
+            pagination,
+            jobs,
+            client,
+            rich_rows,
+            url_matcher,
+            None,
+            page=page,
+        )
+    return jobs
+
+
 # ---------------------------------------------------------------------------
 # Pagination — fetch additional pages and merge links
 # ---------------------------------------------------------------------------
@@ -3207,12 +3330,13 @@ async def _fetch_via_page(
     retries: int = _BROWSER_FETCH_RETRIES,
     base_delay: float = _BROWSER_FETCH_BASE_DELAY,
     transient_403: bool = False,
+    max_chars: int | None = _BROWSER_FETCH_MAX_CHARS,
 ) -> str | None:
     """Fetch ``url`` via Playwright ``page.evaluate(fetch(...))`` with bounded retries.
 
     Returns:
-        - ``str`` (truncated to ``_BROWSER_FETCH_MAX_CHARS``) on HTTP 200
-          with a **non-empty** body.
+        - ``str`` (truncated to ``max_chars`` when it is not ``None``) on
+          HTTP 200 with a **non-empty** body.
         - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination), or
           any other non-retryable 4xx (lenient stop, mirrors the
           httpx-side ``fetch_with_retry``). When ``transient_403`` is true,
@@ -3278,7 +3402,7 @@ async def _fetch_via_page(
                     # opt-out signal is honored even when the page is
                     # reached via a Playwright fetch (``pagination.browser=true``).
                     check_browser_response(resp_headers, text, url=url)
-                    return text[:_BROWSER_FETCH_MAX_CHARS]
+                    return text if max_chars is None else text[:max_chars]
                 # Empty-200 (#2739): transient, fall through to backoff.
                 last_exc = None
                 log.info(
@@ -4303,8 +4427,7 @@ async def dom_discover(
         )
 
     if rich_rows is not None and (
-        render
-        or metadata.get("include_board_url")
+        metadata.get("include_board_url")
         or require_jsonld_jobposting
         or require_unexpired_pdf is not None
         or require_pdf_text is not None
@@ -4312,7 +4435,9 @@ async def dom_discover(
         or inactive_detail_states
         or fingerprint_response is not None
     ):
-        raise ValueError("DOM monitor rich_rows supports static listing extraction only")
+        raise ValueError(
+            "DOM monitor rich_rows is incompatible with detail verification and direct-board mode"
+        )
 
     if advertised_total is not None and (
         render
@@ -4354,24 +4479,34 @@ async def dom_discover(
                 use_proxy=bool(metadata.get("proxy")),
                 target_url=board_url,
             ) as page:
-                urls = await _extract_links_rendered(page, combined, url_matcher, client)
-                if configured_empty_states:
-                    _validate_explicit_empty_states(
-                        await safe_content(page), configured_empty_states, urls, board_url
-                    )
-                if pagination:
-                    browser_page = page if pagination.get("browser") else None
-                    urls = await _paginate_urls(
-                        board_url,
-                        pagination,
-                        urls,
-                        client,
-                        browser_page,
+                if rich_rows is not None:
+                    jobs = await _extract_rich_rows_rendered(
+                        page,
+                        combined,
+                        rich_rows,
                         url_matcher,
-                        url_transform,
-                        encoding,
-                        link_selector,
+                        client,
+                        configured_empty_states,
                     )
+                else:
+                    urls = await _extract_links_rendered(page, combined, url_matcher, client)
+                    if configured_empty_states:
+                        _validate_explicit_empty_states(
+                            await safe_content(page), configured_empty_states, urls, board_url
+                        )
+                    if pagination:
+                        browser_page = page if pagination.get("browser") else None
+                        urls = await _paginate_urls(
+                            board_url,
+                            pagination,
+                            urls,
+                            client,
+                            browser_page,
+                            url_matcher,
+                            url_transform,
+                            encoding,
+                            link_selector,
+                        )
         else:
             try:
                 from playwright.async_api import async_playwright
@@ -4390,24 +4525,40 @@ async def dom_discover(
                     target_url=board_url,
                 ) as page,
             ):
-                urls = await _extract_links_rendered(page, combined, url_matcher, client)
-                if configured_empty_states:
-                    _validate_explicit_empty_states(
-                        await safe_content(page), configured_empty_states, urls, board_url
-                    )
-                if pagination:
-                    browser_page = page if pagination.get("browser") else None
-                    urls = await _paginate_urls(
-                        board_url,
-                        pagination,
-                        urls,
-                        client,
-                        browser_page,
+                if rich_rows is not None:
+                    jobs = await _extract_rich_rows_rendered(
+                        page,
+                        combined,
+                        rich_rows,
                         url_matcher,
-                        url_transform,
-                        encoding,
-                        link_selector,
+                        client,
+                        configured_empty_states,
                     )
+                else:
+                    urls = await _extract_links_rendered(page, combined, url_matcher, client)
+                    if configured_empty_states:
+                        _validate_explicit_empty_states(
+                            await safe_content(page), configured_empty_states, urls, board_url
+                        )
+                    if pagination:
+                        browser_page = page if pagination.get("browser") else None
+                        urls = await _paginate_urls(
+                            board_url,
+                            pagination,
+                            urls,
+                            client,
+                            browser_page,
+                            url_matcher,
+                            url_transform,
+                            encoding,
+                            link_selector,
+                        )
+        if rich_rows is not None:
+            log.info("dom.complete", board_url=board_url, urls_found=len(jobs), render=True)
+            if len(jobs) > MAX_URLS:
+                log.warning("dom.truncated", total=len(jobs), cap=MAX_URLS)
+                return truncated_rich_result(jobs)
+            return jobs
     else:
         if configured_empty_states:
             from src.shared.http_retry import fetch_text_page_with_retry
@@ -4497,7 +4648,7 @@ async def dom_discover(
                     board_url,
                 )
             if pagination:
-                jobs = await _paginate_rich_rows_static(
+                jobs = await _paginate_rich_rows(
                     board_url,
                     pagination,
                     jobs,

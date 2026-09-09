@@ -1687,7 +1687,7 @@ kipt — NSC KIPT PDF vacancy bulletins (rich)
   Fields:      title, description, locations, date_posted, language, metadata."""
 
 MONITOR_DOM = """\
-dom — Link or Static Listing-Row Extraction (fallback)
+dom — Link or Listing-Row Extraction (fallback)
 
   Returns:  URL set, or partial rich rows when rich_rows is configured
   Cap:      50,000 URLs
@@ -1851,8 +1851,9 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    role is classified inactive, the monitor returns runtime-verified
                    empty evidence. Static, single-page link-selector discovery only;
                    1-4 states and at most 500 discovered URLs.
-    rich_rows      Optional static listing-row extraction. It supports the
-                   ordinary sequential pagination config shown above:
+    rich_rows      Optional strict listing-row extraction. It supports static
+                   pages and rendered pages, including ordinary sequential
+                   pagination:
                    {"row_selector": ".job", "link_selector": ".job-title a",
                     "location_selectors": [".job-location", ".job-country"],
                     "total_selector": ".jobs-total .total"}
@@ -1879,6 +1880,12 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    {"row_selector": "tr[data-href]", "link_attr": "data-href",
                     "title_selector": "td.title",
                     "location_selectors": ["td.city", "td.country"]}.
+                   Add description_selector when the listing row contains the
+                   complete job description. Its HTML is preserved and the
+                   monitor becomes fully rich, so scraper_type=skip is valid:
+                   {"description_selector": ".job-description"}.
+                   title_regex may contain exactly one capture group to clean a
+                   stable decoration from the selected title text.
                    The selected link or title node text becomes the title;
                    location components are joined in selector order. Every
                    configured field is strict. Set
@@ -1886,8 +1893,10 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    rows intentionally omit location and the detail scraper
                    enriches it; those rows return locations=null. Otherwise
                    markup drift fails the cycle instead of publishing a partial
-                   authoritative result. Incompatible with rendering,
-                   browser or partitioned pagination, and include_board_url.
+                   authoritative result. Rendered rich rows require
+                   pagination.browser=true when their tail also needs browser
+                   transport. Incompatible with partitioned pagination and
+                   include_board_url.
                    total_selector additionally requires an exact non-negative
                    count equal to the accepted unique rows and is limited to
                    single-page extraction.

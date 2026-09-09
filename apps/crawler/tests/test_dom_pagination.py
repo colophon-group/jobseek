@@ -2104,6 +2104,32 @@ class TestRichRowsStatic:
             ),
         ]
 
+    def test_extracts_complete_html_description_and_normalizes_title(self):
+        html = """
+        <div class="job">
+          <div class="job-title"><a href="jobs/physician---123"> * Physician </a></div>
+          <div class="job-location">Indianapolis</div>
+          <div class="job-country">United States</div>
+          <div class="description"><p>Provide patient care.</p><ul><li>MD or DO</li></ul></div>
+        </div>
+        """
+        config = _validated_rich_rows(
+            {
+                **self.CONFIG,
+                "title_regex": r"^\s*\*?\s*(.+?)\s*$",
+                "description_selector": ".description",
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers/", config, None)
+
+        assert len(jobs) == 1
+        assert jobs[0].title == "Physician"
+        assert jobs[0].description == (
+            '<div class="description"><p>Provide patient care.</p><ul><li>MD or DO</li></ul></div>'
+        )
+
     def test_fails_closed_when_a_configured_location_is_missing(self):
         html = """
         <div class="job">
@@ -2493,6 +2519,9 @@ class TestRichRowsStatic:
             },
             {"row_selector": ".job", "link_selector": ".job a", "location_selectors": "p"},
             {"row_selector": ".job", "link_selector": ".job a", "total_selector": "a["},
+            {"row_selector": ".job", "description_selector": "a["},
+            {"row_selector": ".job", "title_regex": r"^no capture$"},
+            {"row_selector": ".job", "title_regex": r"(one)(two)"},
             {"row_selector": ".job", "location_selectors": False},
             {"row_selector": ".job", "location_selectors": 0},
             {"row_selector": ".job", "location_selectors": {}},
@@ -2642,19 +2671,76 @@ class TestRichRowsStatic:
         ]
 
     @pytest.mark.asyncio
-    async def test_rejects_rendered_rich_rows(self):
-        for incompatible in (
-            {"render": True},
-            {"require_jsonld_jobposting": True},
+    async def test_rendered_rich_rows_use_browser_pagination(self):
+        first = """
+        <div class="job">
+          <div class="job-title"><a href="/jobs/first">First</a></div>
+          <div class="job-location">Indianapolis</div>
+          <div class="job-country">United States</div>
+          <div class="description"><p>First description</p></div>
+        </div>
+        """
+        second = """
+        <div class="job">
+          <div class="job-title"><a href="/jobs/second">Second</a></div>
+          <div class="job-location">Muncie</div>
+          <div class="job-country">United States</div>
+          <div class="description"><p>Second description</p></div>
+        </div>
+        """
+        page = MagicMock()
+        page.url = "https://example.com/careers/"
+        context = MagicMock()
+        context.__aenter__ = AsyncMock(return_value=page)
+        context.__aexit__ = AsyncMock(return_value=None)
+
+        with (
+            patch("src.core.monitors.dom.open_page", return_value=context),
+            patch("src.core.monitors.dom.navigate", AsyncMock()),
+            patch("src.core.monitors.dom.run_actions", AsyncMock()),
+            patch("src.core.monitors.dom.safe_content", AsyncMock(return_value=first)),
+            patch(
+                "src.core.monitors.dom._fetch_via_page",
+                AsyncMock(side_effect=[second, None]),
+            ) as fetch,
         ):
-            with pytest.raises(ValueError, match="static listing"):
-                await dom_discover(
-                    {
-                        "board_url": "https://example.com/careers/",
-                        "metadata": {**incompatible, "rich_rows": self.CONFIG},
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers/",
+                    "metadata": {
+                        "render": True,
+                        "rich_rows": {**self.CONFIG, "description_selector": ".description"},
+                        "pagination": {
+                            "param_name": "page",
+                            "browser": True,
+                            "max_pages": 10,
+                        },
                     },
-                    AsyncMock(),
-                )
+                },
+                AsyncMock(),
+                pw=MagicMock(),
+            )
+
+        assert isinstance(result, list)
+        assert [(job.title, job.locations) for job in result] == [
+            ("First", ["Indianapolis, United States"]),
+            ("Second", ["Muncie, United States"]),
+        ]
+        assert all(job.description for job in result)
+        assert fetch.await_args_list[0].kwargs["max_chars"] is None
+
+    async def test_rejects_detail_verification_with_rich_rows(self):
+        with pytest.raises(ValueError, match="incompatible with detail verification"):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/careers/",
+                    "metadata": {
+                        "require_jsonld_jobposting": True,
+                        "rich_rows": self.CONFIG,
+                    },
+                },
+                AsyncMock(),
+            )
 
     @pytest.mark.asyncio
     async def test_rejects_browser_pagination_for_rich_rows(self):
@@ -2671,7 +2757,7 @@ class TestRichRowsStatic:
             """
                 ),
             ),
-            pytest.raises(ValueError, match="static sequential pages"),
+            pytest.raises(ValueError, match="browser pagination requires render=true"),
         ):
             await dom_discover(
                 {
@@ -3619,12 +3705,20 @@ class TestCanHandle:
         assert result is not None
         assert result["urls"] == 2
 
-    async def test_kontact_board_returns_complete_browser_pagination_config(self):
+    async def test_kontact_board_returns_complete_rich_row_pagination_config(self):
         html = """
         <html><head>
           <meta name="Author" content="KontactIntelligence.com">
         </head><body>
-          <a href="/Physician_Job/Details/Family-Medicine/123">View</a>
+          <div id="accordion">
+            <div class="panel panel-default">
+              <div class="panel-heading"><div class="col-md-8"> * Family Physician </div>
+                <div class="col-md-4">Indianapolis, IN</div></div>
+              <a title="View this opportunity"
+                 href="/Physician_Job/Details/Family-Medicine/123">View</a>
+              <div class="jobDropDownDesc"><p>Full role description.</p></div>
+            </div>
+          </div>
           <a href="?pg=2">2</a>
         </body></html>
         """
@@ -3637,6 +3731,16 @@ class TestCanHandle:
         assert result == {
             "urls": 1,
             "url_filter": r"/Physician_Job/Details/",
+            "rich_rows": {
+                "row_selector": "#accordion .panel.panel-default",
+                "link_selector": (
+                    "a[title='View this opportunity'][href*='/Physician_Job/Details/']"
+                ),
+                "title_selector": ".panel-heading .col-md-8",
+                "title_regex": r"^\s*\*?\s*(.+?)\s*$",
+                "location_selectors": [".panel-heading .col-md-4"],
+                "description_selector": ".jobDropDownDesc",
+            },
             "pagination": {
                 "param_name": "pg",
                 "max_pages": 1_000,

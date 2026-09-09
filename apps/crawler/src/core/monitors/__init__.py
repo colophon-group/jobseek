@@ -250,7 +250,7 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     Statically-rich monitors (greenhouse, lever, etc.) always return True.
     api_sniffer/nextdata are rich when ``fields`` is present; SmartRecruiters
     is rich when exact ``jobId`` locale collapse is configured; dom is partial
-    rich when strict static ``rich_rows`` or rich ``script_json_links``
+    rich when strict ``rich_rows`` or rich ``script_json_links``
     extraction is configured.
     """
     return (
