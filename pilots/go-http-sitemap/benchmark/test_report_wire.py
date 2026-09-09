@@ -208,7 +208,7 @@ class ReportWireTest(unittest.TestCase):
                     "6000000",
                     "0.4",
                 )
-            )
+            ),
         ]
         for (pair, profile, implementation), raw, source, remote_valid in arms:
             lines.append(
@@ -219,6 +219,16 @@ class ReportWireTest(unittest.TestCase):
             lines.append(f"RUN_POSTFLIGHT\ttrue\t{PIN_SHA}\t{PROTECTED_SHA}")
         path = self.temp / "wire"
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return path
+
+    def make_preflight_failure_wire(
+        self, stage: str, *, status: int = 71, baseline: str = PROTECTED_SHA
+    ) -> Path:
+        path = self.temp / "preflight-wire"
+        path.write_text(
+            f"PREFLIGHT_FAILURE\t{stage}\t{status}\t{baseline}\n",
+            encoding="utf-8",
+        )
         return path
 
     def successful_arms(self, *, python_factor: float = 1.0):
@@ -241,6 +251,46 @@ class ReportWireTest(unittest.TestCase):
         self.assertTrue(report["timing_comparable"])
         self.assertEqual(len(report["arms"]), 60)
         self.assertEqual(len(report["byte_deltas"]), 60)
+
+    def test_preflight_failure_retains_exact_stage_without_safety_alarm(self) -> None:
+        wire = self.make_preflight_failure_wire("pull_go_image")
+        report = report_wire.parse_report(self.args(wire, 71))
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(report["error_kind"], "benchmark_infrastructure_failure")
+        self.assertEqual(report["preflight_failure_stage"], "pull_go_image")
+        self.assertEqual(report["protected_baseline_sha256"], PROTECTED_SHA)
+        self.assertTrue(report["report_valid"])
+
+    def test_preflight_failure_stage_must_be_allowlisted(self) -> None:
+        wire = self.temp / "bad-stage-wire"
+        wire.write_text(
+            f"PREFLIGHT_FAILURE\tnot_a_stage\t71\t{PROTECTED_SHA}\n",
+            encoding="utf-8",
+        )
+        report = report_wire.parse_report(self.args(wire, 71))
+        self.assertEqual(report["error_kind"], "production_safety_violation")
+        self.assertFalse(report["report_valid"])
+
+    def test_preflight_safety_status_retains_sanitized_stage(self) -> None:
+        wire = self.make_preflight_failure_wire("dns_pinning", status=70)
+        report = report_wire.parse_report(self.args(wire, 70))
+        self.assertEqual(report["status"], "aborted")
+        self.assertEqual(report["error_kind"], "production_safety_violation")
+        self.assertEqual(report["preflight_failure_stage"], "dns_pinning")
+        self.assertTrue(report["report_valid"])
+
+    def test_preflight_failure_status_must_match_remote_exit(self) -> None:
+        wire = self.make_preflight_failure_wire("pull_go_image", status=70)
+        report = report_wire.parse_report(self.args(wire, 71))
+        self.assertEqual(report["error_kind"], "production_safety_violation")
+        self.assertFalse(report["report_valid"])
+
+    def test_preflight_failure_without_baseline_fails_closed_as_safety(self) -> None:
+        wire = self.make_preflight_failure_wire("inventory", baseline="none")
+        report = report_wire.parse_report(self.args(wire, 71))
+        self.assertEqual(report["status"], "aborted")
+        self.assertEqual(report["error_kind"], "production_safety_violation")
+        self.assertFalse(report["report_valid"])
 
     def test_byte_imbalance_is_inconclusive_not_correctness_failure(self) -> None:
         report = report_wire.parse_report(

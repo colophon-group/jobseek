@@ -347,10 +347,17 @@ jobs:
           pins_file="$docker_config/pins.tsv"
           docker_root_dir=""
           cleanup_armed=0
+          meta_emitted=0
+          preflight_stage=inventory
+          protected_sha256=""
 
           cleanup_remote() {
             status=$?
             trap - EXIT HUP INT TERM
+            if (( status != 0 && meta_emitted == 0 )); then
+              printf 'PREFLIGHT_FAILURE\t%s\t%s\t%s\n' \
+                "$preflight_stage" "$status" "${protected_sha256:-none}" || true
+            fi
             if (( cleanup_armed )); then
               mapfile -t owned_ids < <(timeout 20s docker ps -aq --filter "label=${label_key}=${label_value}" 2>/dev/null || true)
               for candidate_id in "${owned_ids[@]}"; do
@@ -378,6 +385,7 @@ jobs:
           existing_benchmark_ids="$(timeout 20s docker ps -aq --filter "label=${label_key}")" || exit 70
           [[ -z "$existing_benchmark_ids" ]] || exit 70
           cleanup_armed=1
+          preflight_stage=protected_services
 
           inspect_protected_service() {
             local service="$1" container_id="$2" state_payload
@@ -422,22 +430,28 @@ jobs:
             [[ "$available" =~ ^[0-9]+$ && "$free" =~ ^[0-9]+$ && "$load" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
             printf '%s|%s|%s\n' "$available" "$free" "$load"
           }
+          preflight_stage=host_resources_before_pull
           docker_root_dir="$(timeout 20s docker info --format '{{.DockerRootDir}}' 2>/dev/null)" || exit 70
           [[ "$docker_root_dir" == /* && "$docker_root_dir" != / ]] || exit 70
           resources_before_pull="$(host_resources)" || exit 70
           IFS='|' read -r mem_before_pull disk_before_pull load_before_pull <<<"$resources_before_pull"
           (( mem_before_pull >= 1572864 && disk_before_pull >= 5242880 )) || exit 70
           awk -v load="$load_before_pull" 'BEGIN { exit !(load <= 1.50) }' || exit 71
+          preflight_stage=pull_go_image
           DOCKER_CONFIG="$docker_config" timeout 300s docker pull "$go_ref" >/dev/null 2>&1 || exit 71
+          preflight_stage=pull_python_image
           DOCKER_CONFIG="$docker_config" timeout 300s docker pull "$python_ref" >/dev/null 2>&1 || exit 71
+          preflight_stage=host_resources_after_pull
           resources_after_pull="$(host_resources)" || exit 70
           IFS='|' read -r mem_after_pull disk_after_pull load_after_pull <<<"$resources_after_pull"
           (( mem_after_pull >= 1572864 && disk_after_pull >= 5242880 )) || exit 70
           awk -v load="$load_after_pull" 'BEGIN { exit !(load <= 1.50) }' || exit 71
+          preflight_stage=image_attestation
           [[ "$(uname -m)" == aarch64 ]] || exit 71
           [[ "$(timeout 20s docker image inspect --format '{{.Os}}|{{.Architecture}}' "$go_ref" 2>/dev/null)" == 'linux|arm64' ]] || exit 71
           [[ "$(timeout 20s docker image inspect --format '{{.Os}}|{{.Architecture}}' "$python_ref" 2>/dev/null)" == 'linux|arm64' ]] || exit 71
 
+          preflight_stage=schedule_validation
           printf '%s' "$schedule_b64" | base64 -d >"$schedule_file"
           [[ "$(sha256sum "$schedule_file" | awk '{print $1}')" == "$schedule_payload_sha256" ]] || exit 71
           SCHEDULE_FILE="$schedule_file" python3 - <<'PY' || exit 71
@@ -453,6 +467,7 @@ jobs:
           raise SystemExit(0 if valid else 1)
           PY
 
+          preflight_stage=dns_pinning
           read -r _ _ ssh_server_ip _ <<<"${SSH_CONNECTION:-}"
           [[ -n "$ssh_server_ip" ]] || exit 70
           PIN_HOSTS="$hosts_csv" PIN_TARGET="$target_host" PIN_SSH_SERVER="$ssh_server_ip" \
@@ -502,6 +517,7 @@ jobs:
           printf 'RUN_META\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
             "$pinset_sha256" "$protected_sha256" "$cooldown_seconds" "$mem_before_pull" \
             "$disk_before_pull" "$load_before_pull" "$mem_after_pull" "$disk_after_pull" "$load_after_pull"
+          meta_emitted=1
 
           validate_host_config() {
             local name="$1" image_ref="$2" profile="$3"
