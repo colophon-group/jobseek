@@ -996,6 +996,7 @@ _MONITOR_CONFIG_HINTS = {
     "softgarden": "Requires: slug. Optional: job_url_pattern",
     "traffit": "Requires: slug (auto-filled from probe)",
     "workable": "Requires: token (auto-filled from probe)",
+    "woowa": "No config required; exact first-party host selects the API variant",
     "workday": "Requires: company, wd_instance, site (auto-filled from probe)",
     "personio": "Requires: slug. Optional: language, backfill_languages",
     "practicematch": "Optional: max_pages. Proxy-routed employer form pagination.",

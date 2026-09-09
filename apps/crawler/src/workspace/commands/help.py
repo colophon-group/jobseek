@@ -139,6 +139,7 @@ Monitor Types (cheapest first):
   unifr             10      Full or PDF URLs  skip/pdf (fixed source)
   workable          10      Job URLs          Auto-configured
   welcometothejungle 10      Full job data     No (skipped)
+  woowa             10      Full job data     No (skipped)
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
   practicematch     10      Job URLs          Auto-configured
@@ -3357,6 +3358,20 @@ welcometothejungle — Welcome to the Jungle public jobs APIs
   organization_slug  Internal WTTJ slug; may be a legacy company name and is
                      auto-resolved when omitted."""
 
+MONITOR_WOOWA = """\
+woowa — Woowa public careers API
+
+  Boards:   career.woowahan.com, career.woowayouths.com,
+            bmart-career.woowayouths.com
+  Returns:  Full job data (title, HTML description, location, employment type,
+            posting date, deadline and Korean language)
+  Scraper:  Not needed (skipped)
+  Cost:     10
+
+  The monitor recognizes the exact first-party hosts, drains the public /w1
+  listing API, validates its advertised total, and enriches every row from the
+  matching detail endpoint. No configuration is required."""
+
 SCRAPER_JSONLD = """\
 json-ld — Structured JobPosting Extractor
 
@@ -4375,6 +4390,7 @@ infoniqa — Infoniqa jobexchange form-pagination monitor
     "umantis": MONITOR_UMANTIS,
     "workable": MONITOR_WORKABLE,
     "welcometothejungle": MONITOR_WELCOMETOTHEJUNGLE,
+    "woowa": MONITOR_WOOWA,
     "workday": MONITOR_WORKDAY,
     "paylocity": MONITOR_PAYLOCITY,
     "pinpoint": MONITOR_PINPOINT,
