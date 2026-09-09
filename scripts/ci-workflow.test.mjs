@@ -1140,6 +1140,15 @@ test("fleet benchmark workflow is bounded, isolated, and uses the reviewed wire 
   ]) {
     assert.match(goSitemapFleetWorkflow, new RegExp(`preflight_stage=${stage}`));
   }
+  assert.match(goSitemapFleetWorkflow, /wait_for_quiet_host\(\)/);
+  assert.match(goSitemapFleetWorkflow, /for attempt in \{1\.\.13\}/);
+  assert.match(goSitemapFleetWorkflow, /value <= 1\.50/);
+  assert.match(goSitemapFleetWorkflow, /attempt == 13 \)\) \|\| sleep 5/);
+  assert.equal(
+    (goSitemapFleetWorkflow.match(/resources_(?:before|after)_pull="\$\(wait_for_quiet_host\)"/g) ?? [])
+      .length,
+    2,
+  );
   assert.match(
     goSitemapFleetWorkflow,
     /\.status == "succeeded" and \.report_valid == true and \.timing_comparable == true/,
