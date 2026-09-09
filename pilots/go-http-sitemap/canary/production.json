@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "jobs": [
+    {
+      "id": "snap-fusion-atlantic-recruitee",
+      "sitemap_url": "https://jobsatlanticvcfoodlabs.recruitee.com/sitemap.xml",
+      "include_literal": "fusion-energy-venture",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 16
+    },
+    {
+      "id": "verity-breezy",
+      "sitemap_url": "https://verity-ag.breezy.hr/sitemap.xml",
+      "include_literal": "/p/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 16
+    }
+  ]
+}
