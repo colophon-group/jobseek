@@ -6993,6 +6993,7 @@ weekend,weekend-ashby,https://jobs.ashbyhq.com/weekend,ashby,"{""token"": ""week
 wefix-gmbh,wefix-gmbh-join,https://join.com/companies/shekocom,join,"{""slug"": ""shekocom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 weflow,weflow-join,https://join.com/companies/getweflowcom,join,"{""slug"": ""getweflowcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 weinstein-properties,weinstein-properties-greenhouse,https://job-boards.greenhouse.io/weinsteinproperties,greenhouse,"{""token"": ""weinsteinproperties""}",skip,
+weis-markets,weis-markets-careers,https://weis.wd108.myworkdayjobs.com/careers,workday,,workday,
 weiss-asset-management,weiss-asset-management-greenhouse,https://job-boards.greenhouse.io/weissassetmanagement,greenhouse,"{""token"": ""weissassetmanagement""}",skip,
 welbehealth,welbehealth-greenhouse,https://job-boards.greenhouse.io/welbehealth,greenhouse,"{""token"": ""welbehealth""}",skip,
 welcome-to-the-jungle,welcome-to-the-jungle-greenhouse,https://job-boards.greenhouse.io/artefactjobs,greenhouse,"{""token"": ""artefactjobs""}",skip,
