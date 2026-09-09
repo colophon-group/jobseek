@@ -489,6 +489,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Paycom API \u2014 portal: {token}, {jobs} jobs"
         return f"Paycom API \u2014 portal: {token}"
+    if name == "paynet":
+        company_id = metadata.get("company_id", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Pay-Net API \u2014 company: {company_id}, {jobs} jobs"
+        return f"Pay-Net API \u2014 company: {company_id}"
     if name == "jazzhr":
         tenant = metadata.get("tenant", "?")
         jobs = metadata.get("jobs")
@@ -1056,6 +1062,7 @@ from src.core.monitors import (  # noqa: E402
     papa_johns,  # noqa: F401
     paycom,  # noqa: F401
     paylocity,  # noqa: F401
+    paynet,  # noqa: F401
     personio,  # noqa: F401
     phenom,  # noqa: F401
     pinpoint,  # noqa: F401

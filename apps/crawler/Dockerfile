@@ -5,10 +5,10 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5f
 
 WORKDIR /app
 
-# OCR is an opt-in fallback for job offers published as image-only PDFs.
+# Document extraction supports legacy Word postings and opt-in OCR for image-only PDFs.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng \
+       antiword tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies (cached layer)

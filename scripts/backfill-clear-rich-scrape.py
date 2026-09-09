@@ -69,6 +69,7 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "kipt",
     "lever",
     "manatal",
+    "paynet",
     "pinpoint",
     "prospective",
     "recruitee",

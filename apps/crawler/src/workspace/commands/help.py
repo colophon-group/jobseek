@@ -122,6 +122,7 @@ Monitor Types (cheapest first):
   linkedin          10      Full/partial      Auto-enriched
   manatal           10      Full job data     No (skipped)
   paycom            10      Full/partial      Auto-enriched
+  paynet            10      Full job data     No (skipped)
   paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
   recruitee         10      Full job data     No (skipped)
@@ -202,6 +203,7 @@ Scraper Types:
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
   phuketall      Static      No               PhuketAll employer job pages
   veryeast       Static      No               VeryEast employer job pages
+  tupu360        Static      No               Tupu360 employer job pages
   onlyfy         Static      No               Onlyfy/Prescreen job pages
   paycor         Static      No               Paycor/Newton legacy job pages
   recruiterbox   Static      No               Recruiterbox/Trakstar Hire job pages
@@ -2767,6 +2769,22 @@ paycom — Paycom public portal API
   Detection:  ws probe shows "Paycom API — portal: TOKEN, N jobs"
   Zero jobs?  Confirm the preview API reports count 0 after a valid bootstrap."""
 
+MONITOR_PAYNET = """\
+paynet — Pay-Net public applicant API
+
+  Listing:  GET https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=...
+  Returns:  Full job data from the public listing payload
+  Scraper:  Not needed (skipped)
+  Browser:  Not required
+  Config:   None. The company ID is validated from the exact unfiltered
+            https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?co=... URL.
+  Note:     Pay-Net returns successful listing payloads with HTTP 201. The
+            monitor explicitly accepts that provider behavior while retaining
+            bounded response-size, retry, response-shape, and identity checks.
+
+  Detection:  ws probe shows "Pay-Net API — company: ID, N jobs"
+  Zero jobs?  Confirm the public API returns an empty JSON array."""
+
 MONITOR_BAMBOOHR = """\
 bamboohr — BambooHR public careers API
 
@@ -3521,11 +3539,12 @@ dom — Step-based Extraction Engine
                    With scope, prepend meta description text for extraction
     document_fallback
                    Static-only per-format configs for detail URLs that may
-                   download PDF or DOCX files instead of returning HTML:
-                   {"pdf": {...}, "docx": {...}}. PDF keys match
-                   `ws help scraper pdf`; DOCX supports title_source: "text",
-                   title_pattern, location_pattern, and defaults. HTML
-                   responses continue through the configured DOM steps.
+                   download legacy DOC, PDF, or DOCX files instead of returning
+                   HTML: {"doc": {...}, "pdf": {...}, "docx": {...}}. PDF
+                   keys match `ws help scraper pdf`; DOC/DOCX support
+                   title_source, title_pattern, location_pattern, and defaults.
+                   Legacy DOC extraction uses the bounded antiword runtime.
+                   HTML responses continue through the configured DOM steps.
 
   Target fields: title, description, locations, employment_type,
   job_location_type, date_posted, valid_through, qualifications,
@@ -3634,7 +3653,7 @@ Job Data Fields — types, formats, importance
     Important    job_location_type str       "remote", "hybrid", "onsite"
     Optional     employment_type   str       "full_time", "part_time", "contract", etc.
     Optional     date_posted       str       ISO 8601 date (YYYY-MM-DD)
-    Optional     valid_through     str       ISO 8601 date (scraper only, not in DiscoveredJob)
+    Optional     valid_through     str       ISO 8601 date (stored in DiscoveredJob extras)
     Optional     base_salary       dict      {currency, min, max, unit}
     Optional     skills            [str]     List of skill strings
     Optional     responsibilities  [str]     List of bullet-point strings
@@ -3673,6 +3692,9 @@ Job Data Fields — types, formats, importance
     Unmapped values produce null (not passthrough).
   Decode APIs that return HTML as entities before storing descriptions:
     "description": {"path": "body", "html_unescape": true}
+  Convert Unix timestamps to ISO-8601 UTC values:
+    "date_posted": {"path": "publishedAt", "timestamp_unit": "milliseconds"}
+    Supported timestamp units are "seconds" and "milliseconds".
   Use enrich to scrape only specific fields for rich monitors:
     "enrich": ["description"] — fetches only description from detail pages.
     Titles and descriptions must be N/N — 0/N on either = do not submit.
@@ -4246,6 +4268,7 @@ MONITOR_CARDS: dict[str, str] = {
     "brassring": MONITOR_BRASSRING,
     "candidatus": MONITOR_CANDIDATUS,
     "paycom": MONITOR_PAYCOM,
+    "paynet": MONITOR_PAYNET,
     "jazzhr": MONITOR_JAZZHR,
     "jobbank104": MONITOR_JOBBANK104,
     "jobdiva": """\
@@ -4495,6 +4518,19 @@ veryeast — VeryEast (最佳东方) employer-board detail scraper
             oversized pages fail instead of being silently truncated.
 """
 
+SCRAPER_TUPU360 = """\
+tupu360 — Tupu360 (图谱天下) employer-board detail scraper
+
+  Page:     GET https://careersite.tupu360.com/{tenant}/position/detail?positionId={id}
+  Returns:  title, complete HTML description, location, posting date and
+            provider identity metadata
+  Config:   None needed.
+  Note:     Pair with a DOM monitor for the employer listing page. The detail
+            page is server-rendered, so no browser is required. Requests are
+            restricted to exact HTTPS provider URLs and the returned posting
+            identity must match the URL.
+"""
+
 SCRAPER_LINKEDIN = """\
 linkedin — LinkedIn public guest-job detail scraper
 
@@ -4561,7 +4597,9 @@ paycom — Paycom public detail API scraper
   API:       GET the validated regional /api/ats/job-postings/{id} endpoint
   Returns:   title, HTML description and qualifications, locations,
              employment/workplace type, date, salary, and job metadata
-  Config:    None needed — portal token and job ID come from the canonical URL
+  Config:    Portal token and job ID come from the canonical URL. Optional
+             {"defaults": {"locations": ["City, ST"]}} fills only locations
+             omitted by the employer's detail records; extracted values win.
   Note:      Auto-configured with the paycom monitor. It reuses the monitor's
              bootstrap validation and shared HTTP retry path; no browser or
              upstream scraper dependency is required.
@@ -4734,6 +4772,7 @@ SCRAPER_CARDS: dict[str, str] = {
     "embedded": SCRAPER_EMBEDDED,
     "phuketall": SCRAPER_PHUKETALL,
     "veryeast": SCRAPER_VERYEAST,
+    "tupu360": SCRAPER_TUPU360,
     "onlyfy": SCRAPER_ONLYFY,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,

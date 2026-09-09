@@ -199,6 +199,11 @@ class TestExtractFieldShared:
         item = {}
         assert self._extract(item, ["=heading", "null_path"]) is None
 
+    @pytest.mark.parametrize("value", ["", "   ", []])
+    def test_list_spec_empty_value_drops_preceding_constant(self, value):
+        item = {"empty": value}
+        assert self._extract(item, ["=heading", "empty"]) is None
+
     def test_list_spec_null_drops_constant_keeps_rest(self):
         item = {"exists": "val"}
         result = self._extract(item, ["=<h3>X</h3>", "missing", "=<h3>Y</h3>", "exists"])
@@ -234,6 +239,46 @@ class TestExtractFieldShared:
     def test_path_spec_html_unescape_preserves_none(self):
         result = self._extract({}, {"path": "body", "html_unescape": True})
         assert result is None
+
+    @pytest.mark.parametrize(
+        ("value", "unit", "expected"),
+        [
+            (1_787_184_000, "seconds", "2026-08-20T00:00:00+00:00"),
+            (1_787_184_000_000, "milliseconds", "2026-08-20T00:00:00+00:00"),
+        ],
+    )
+    def test_path_spec_timestamp_unit(self, value, unit, expected):
+        assert (
+            self._extract(
+                {"published": value},
+                {"path": "published", "timestamp_unit": unit},
+            )
+            == expected
+        )
+
+    def test_path_spec_timestamp_unit_preserves_none(self):
+        assert (
+            self._extract(
+                {},
+                {"path": "published", "timestamp_unit": "milliseconds"},
+            )
+            is None
+        )
+
+    @pytest.mark.parametrize("value", ["not-a-timestamp", "1e9999"])
+    def test_path_spec_timestamp_unit_rejects_invalid_value(self, value):
+        with pytest.raises(ValueError, match="numeric Unix timestamp"):
+            self._extract(
+                {"published": value},
+                {"path": "published", "timestamp_unit": "milliseconds"},
+            )
+
+    def test_path_spec_timestamp_unit_rejects_unknown_unit(self):
+        with pytest.raises(ValueError, match="timestamp_unit"):
+            self._extract(
+                {"published": 1},
+                {"path": "published", "timestamp_unit": "days"},
+            )
 
 
 class TestExtractFieldLookupJoin:

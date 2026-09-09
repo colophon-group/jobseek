@@ -61,7 +61,22 @@ def _google_job(detail: dict) -> dict:
     return payload if isinstance(payload, dict) else {}
 
 
-def _parse_detail(payload: dict) -> JobContent:
+def _default_locations(config: dict) -> list[str] | None:
+    defaults = config.get("defaults")
+    if defaults is None:
+        return None
+    if not isinstance(defaults, dict) or set(defaults) != {"locations"}:
+        raise ValueError("Paycom defaults must contain only locations")
+    raw_locations = defaults["locations"]
+    if not isinstance(raw_locations, list) or not raw_locations:
+        raise ValueError("Paycom default locations must be a non-empty list")
+    locations = [clean_paycom_string(value) for value in raw_locations]
+    if any(value is None for value in locations):
+        raise ValueError("Paycom default locations must be non-empty strings")
+    return list(dict.fromkeys(value for value in locations if value is not None))
+
+
+def _parse_detail(payload: dict, *, default_locations: list[str] | None = None) -> JobContent:
     detail = payload.get("jobPosting")
     if not isinstance(detail, dict):
         raise ValueError("Paycom detail response omitted jobPosting")
@@ -87,7 +102,7 @@ def _parse_detail(payload: dict) -> JobContent:
         title=clean_paycom_string(detail.get("jobTitle"))
         or clean_paycom_string(google_job.get("title")),
         description=description,
-        locations=_locations(detail),
+        locations=_locations(detail) or default_locations,
         employment_type=clean_paycom_string(detail.get("positionType"))
         or clean_paycom_string(google_job.get("employmentType")),
         job_location_type=normalize_job_location_type(
@@ -112,7 +127,8 @@ async def scrape(
     **kwargs,
 ) -> JobContent:
     """Bootstrap the portal and fetch one authoritative job detail object."""
-    _ = config, kwargs
+    _ = kwargs
+    default_locations = _default_locations(config)
     token = paycom_token_from_url(url)
     job_id = _job_id_from_url(url)
     if token is None or job_id is None:
@@ -136,7 +152,7 @@ async def scrape(
             log.info("paycom_scraper.job_gone", url=url)
             return JobContent()
         raise
-    return _parse_detail(payload)
+    return _parse_detail(payload, default_locations=default_locations)
 
 
 register("paycom", scrape, can_handle=can_handle)
