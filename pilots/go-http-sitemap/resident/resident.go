@@ -132,24 +132,27 @@ type ResultReport struct {
 }
 
 type FixtureReport struct {
-	Origins              int    `json:"origins"`
-	URLsPerSitemap       int    `json:"urls_per_sitemap"`
-	PayloadSHA256        string `json:"payload_sha256"`
-	HandledRequests      uint64 `json:"handled_requests"`
-	ActiveRequests       int64  `json:"active_requests"`
-	MaxConcurrent        int64  `json:"max_concurrent"`
-	MaxPerOrigin         int64  `json:"max_per_origin"`
-	FirstWaveBarrierHits int64  `json:"first_wave_barrier_hits"`
-	WavesObserved        uint64 `json:"waves_observed"`
-	C5Waves              uint64 `json:"c5_waves"`
-	OriginSafeWaves      uint64 `json:"origin_safe_waves"`
-	ConnectionReuseWaves uint64 `json:"connection_reuse_waves"`
-	MinHandledPerOrigin  uint64 `json:"min_handled_per_origin"`
-	MaxHandledPerOrigin  uint64 `json:"max_handled_per_origin"`
-	NewConnections       uint64 `json:"new_connections"`
-	ClosedConnections    uint64 `json:"closed_connections"`
-	CurrentConnections   int64  `json:"current_connections"`
-	MaximumConnections   int64  `json:"maximum_connections"`
+	Origins               int    `json:"origins"`
+	URLsPerSitemap        int    `json:"urls_per_sitemap"`
+	WorkerLimit           int    `json:"worker_limit"`
+	WorkerPerOriginLimit  int    `json:"worker_per_origin_limit"`
+	TransportPerHostLimit int    `json:"transport_per_host_limit"`
+	PayloadSHA256         string `json:"payload_sha256"`
+	HandledRequests       uint64 `json:"handled_requests"`
+	ActiveRequests        int64  `json:"active_requests"`
+	MaxConcurrent         int64  `json:"max_concurrent"`
+	MaxPerOrigin          int64  `json:"max_per_origin"`
+	FirstWaveBarrierHits  int64  `json:"first_wave_barrier_hits"`
+	WavesObserved         uint64 `json:"waves_observed"`
+	C5Waves               uint64 `json:"c5_waves"`
+	OriginSafeWaves       uint64 `json:"origin_safe_waves"`
+	ConnectionReuseWaves  uint64 `json:"connection_reuse_waves"`
+	MinHandledPerOrigin   uint64 `json:"min_handled_per_origin"`
+	MaxHandledPerOrigin   uint64 `json:"max_handled_per_origin"`
+	NewConnections        uint64 `json:"new_connections"`
+	ClosedConnections     uint64 `json:"closed_connections"`
+	CurrentConnections    int64  `json:"current_connections"`
+	MaximumConnections    int64  `json:"maximum_connections"`
 }
 
 type Snapshot struct {
@@ -802,7 +805,7 @@ func validateFinal(report Report) string {
 		return "worker_invariant"
 	}
 	expectedPerOrigin := report.CyclesCompleted * jobsPerOrigin
-	if report.Fixture.Origins != originCount || report.Fixture.HandledRequests != report.Results.Requests || report.Fixture.ActiveRequests != 0 || report.Fixture.MaxConcurrent != workerCount || report.Fixture.MaxPerOrigin != perOriginConcurrent || report.Fixture.FirstWaveBarrierHits != workerCount || report.Fixture.WavesObserved != report.CyclesCompleted || report.Fixture.C5Waves != report.CyclesCompleted || report.Fixture.OriginSafeWaves != report.CyclesCompleted || report.Fixture.ConnectionReuseWaves != report.CyclesCompleted || report.Fixture.MinHandledPerOrigin != expectedPerOrigin || report.Fixture.MaxHandledPerOrigin != expectedPerOrigin || report.Fixture.NewConnections == 0 || report.Fixture.NewConnections >= report.Fixture.HandledRequests || report.Fixture.CurrentConnections != 0 || report.Fixture.ClosedConnections != report.Fixture.NewConnections || report.Fixture.MaximumConnections > maxConnections+workerCount {
+	if report.Fixture.Origins != originCount || report.Fixture.WorkerLimit != workerCount || report.Fixture.WorkerPerOriginLimit != perOriginConcurrent || report.Fixture.TransportPerHostLimit != transportPerHost || report.Fixture.TransportPerHostLimit <= report.Fixture.WorkerPerOriginLimit || report.Fixture.HandledRequests != report.Results.Requests || report.Fixture.ActiveRequests != 0 || report.Fixture.MaxConcurrent != workerCount || report.Fixture.MaxPerOrigin != perOriginConcurrent || report.Fixture.FirstWaveBarrierHits != workerCount || report.Fixture.WavesObserved != report.CyclesCompleted || report.Fixture.C5Waves != report.CyclesCompleted || report.Fixture.OriginSafeWaves != report.CyclesCompleted || report.Fixture.ConnectionReuseWaves != report.CyclesCompleted || report.Fixture.MinHandledPerOrigin != expectedPerOrigin || report.Fixture.MaxHandledPerOrigin != expectedPerOrigin || report.Fixture.NewConnections == 0 || report.Fixture.NewConnections >= report.Fixture.HandledRequests || report.Fixture.CurrentConnections != 0 || report.Fixture.ClosedConnections != report.Fixture.NewConnections || report.Fixture.MaximumConnections > maxConnections+workerCount {
 		return "fixture_invariant"
 	}
 	if report.Connections.Open != 0 || report.Connections.InUsePermits != 0 || report.Connections.Waiters != 0 || report.Connections.PermitLimit != maxConnections || report.Connections.MaximumOpen > maxConnections || report.Connections.MaximumInUsePermits > maxConnections {
@@ -1085,24 +1088,27 @@ func (f *fixture) report() FixtureReport {
 		maximumHandled = max(maximumHandled, handled)
 	}
 	return FixtureReport{
-		Origins:              len(f.jobs),
-		URLsPerSitemap:       f.urlCount,
-		PayloadSHA256:        f.payloadHash,
-		HandledRequests:      f.handled.Load(),
-		ActiveRequests:       f.active.Load(),
-		MaxConcurrent:        f.maxActive.Load(),
-		MaxPerOrigin:         maximumPerOrigin,
-		FirstWaveBarrierHits: f.firstBarrierHits.Load(),
-		WavesObserved:        f.wavesObserved.Load(),
-		C5Waves:              f.c5Waves.Load(),
-		OriginSafeWaves:      f.originSafeWaves.Load(),
-		ConnectionReuseWaves: f.reuseWaves.Load(),
-		MinHandledPerOrigin:  minimumHandled,
-		MaxHandledPerOrigin:  maximumHandled,
-		NewConnections:       f.newConnections.Load(),
-		ClosedConnections:    f.closedConnections.Load(),
-		CurrentConnections:   f.currentConnections.Load(),
-		MaximumConnections:   f.maximumConnections.Load(),
+		Origins:               len(f.jobs),
+		URLsPerSitemap:        f.urlCount,
+		WorkerLimit:           workerCount,
+		WorkerPerOriginLimit:  perOriginConcurrent,
+		TransportPerHostLimit: transportPerHost,
+		PayloadSHA256:         f.payloadHash,
+		HandledRequests:       f.handled.Load(),
+		ActiveRequests:        f.active.Load(),
+		MaxConcurrent:         f.maxActive.Load(),
+		MaxPerOrigin:          maximumPerOrigin,
+		FirstWaveBarrierHits:  f.firstBarrierHits.Load(),
+		WavesObserved:         f.wavesObserved.Load(),
+		C5Waves:               f.c5Waves.Load(),
+		OriginSafeWaves:       f.originSafeWaves.Load(),
+		ConnectionReuseWaves:  f.reuseWaves.Load(),
+		MinHandledPerOrigin:   minimumHandled,
+		MaxHandledPerOrigin:   maximumHandled,
+		NewConnections:        f.newConnections.Load(),
+		ClosedConnections:     f.closedConnections.Load(),
+		CurrentConnections:    f.currentConnections.Load(),
+		MaximumConnections:    f.maximumConnections.Load(),
 	}
 }
 
