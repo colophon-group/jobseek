@@ -6799,6 +6799,7 @@ urban-sports-club,urban-sports-club-greenhouse,https://job-boards.greenhouse.io/
 ursa-major,ursa-major-greenhouse,https://job-boards.greenhouse.io/ursamajor,greenhouse,"{""token"": ""ursamajor""}",skip,
 urschel-laboratories-inc,urschel-laboratories-inc-greenhouse,https://job-boards.greenhouse.io/urschellaboratoriesinc,greenhouse,"{""token"": ""urschellaboratoriesinc""}",skip,
 us-conec-ltd,us-conec-ltd-greenhouse,https://job-boards.greenhouse.io/usconec,greenhouse,"{""token"": ""usconec""}",skip,
+us-physical-therapy,us-physical-therapy-careers,https://careers.smartrecruiters.com/usphysicaltherapy2,smartrecruiters,,smartrecruiters,
 usa-mechanical-energy-services,usa-mechanical-energy-services-greenhouse,https://job-boards.greenhouse.io/usamechasp,greenhouse,"{""token"": ""usamechasp""}",skip,
 utonomy,utonomy-join,https://join.com/companies/utonomyeu,join,"{""slug"": ""utonomyeu""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 uvcyber,uvcyber-pinpoint,https://uvcyber.pinpointhq.com,pinpoint,"{""slug"": ""uvcyber""}",skip,
