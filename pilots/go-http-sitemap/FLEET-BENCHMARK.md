@@ -28,7 +28,8 @@ not change the authoritative worker, queue, database, exporter, or publisher.
   inside a container are correlated observations, not independent samples.
 - Each arm is limited to 1 CPU, 1 GiB total memory with no additional swap,
   128 PIDs, and 256 file descriptors. Containers are non-root, read-only,
-  capability-free, and run one at a time on the allocated Murmur machine.
+  capability-free, and run one at a time on the allocated Murmur machine. The
+  local log driver keeps one uncompressed 256 KiB file per ephemeral arm.
 - Before and after image pulls, Murmur must provide at least 1.5 GiB available
   memory, 5 GiB Docker storage, and a one-minute load average no greater than
   1.50. At each gate, the workflow waits up to 60 seconds for transient load to
