@@ -844,6 +844,30 @@ _LUCCA_RICH_ROWS = {
 _LUCCA_EMPTY_SELECTOR = ".jobBoard-offers-empty"
 _LUCCA_EMPTY_TEXT = "There are no job vacancies at the moment."
 
+_LG_HOST_SUFFIX = ".lg.com.br"
+_LG_BOARD_PATH_RE = re.compile(
+    r"(?P<prefix>/Vagas/c/[0-9A-Fa-f-]{36}/p/[A-Za-z0-9_-]+/"
+    r"[a-z]{2}-[A-Z]{2})/Busca/Vagas/?$"
+)
+_LG_DETAIL_PATH = r"/Vaga/Divulgacao\?codigo=[^&#]+$"
+_LG_LOCATION_PATTERN = (
+    r"(?i)(?:\b(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|"
+    r"RJ|RN|RS|RO|RR|SC|SP|TO|SPI)\b|^(?:sede\b|cd\b|local(?: de trabalho)?\s*:|"
+    r"profarma\b|rua\b|lojas?\b.+(?:-|/)))"
+)
+_LG_RICH_ROWS = {
+    "row_selector": ".vaga",
+    "link_selector": "a[href*='/Vaga/Divulgacao?codigo=']",
+    "title_selector": "h3.text-primary",
+    "location_selectors": [
+        ".info span[title='Localidade']",
+        ".table-wrap-col > p:not(.info):not(.descricao-da-vaga)",
+    ],
+    "location_selector_mode": "first",
+    "location_value_patterns": [None, _LG_LOCATION_PATTERN],
+    "allow_missing_locations": True,
+}
+
 _PROSPECTIVE_CAREERCENTER_ASSET_RE = re.compile(
     r"/careercenter/(?P<medium_id>\d+)/assets/",
     re.IGNORECASE,
@@ -1216,6 +1240,72 @@ def _lucca_probe_config(html: str, url: str) -> dict | None:
         "rich_rows": rich_rows,
         "empty_selector": _LUCCA_EMPTY_SELECTOR,
         "empty_text": _LUCCA_EMPTY_TEXT,
+    }
+
+
+def _lg_portal_probe_config(html: str, url: str) -> dict | None:
+    """Return the static rich-row preset for LG Lugar de Gente portals.
+
+    LG listing pages use ordinary detail anchors, but their pagination controls
+    carry only ``data-page`` values. The provider script translates those values
+    into the sibling ``Busca?pagina=N`` route. Build that deterministic route
+    here so a DOM monitor follows every page without browser interaction. Listing
+    rows are also the only reliable source of location for some postings, so keep
+    clean row locations and let the detail scraper enrich only descriptions.
+    """
+
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    host = (parsed.hostname or "").casefold()
+    path_match = _LG_BOARD_PATH_RE.fullmatch(parsed.path)
+    if (
+        parsed.scheme != "https"
+        or not host.endswith(_LG_HOST_SUFFIX)
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.query
+        or parsed.fragment
+        or path_match is None
+    ):
+        return None
+
+    tree = LexborHTMLParser(html)
+    if (
+        'requirejs(["!domReady", "Busca/Index"]' not in html
+        and "requirejs(['!domReady', 'Busca/Index']" not in html
+    ) or tree.css_first(".pagination [data-page]") is None:
+        return None
+
+    origin = f"https://{parsed.netloc}"
+    prefix = path_match.group("prefix")
+    url_filter = rf"^{re.escape(origin + prefix)}{_LG_DETAIL_PATH}"
+    rich_rows = dict(_LG_RICH_ROWS)
+    try:
+        validated_rich_rows = _validated_rich_rows(rich_rows)
+        if validated_rich_rows is None:
+            return None
+        jobs = _extract_rich_rows_static(
+            html,
+            url,
+            validated_rich_rows,
+            re.compile(url_filter),
+        )
+    except ValueError:
+        return None
+
+    return {
+        "lg_portal": True,
+        "urls": len(jobs),
+        "url_filter": url_filter,
+        "rich_rows": rich_rows,
+        "pagination": {
+            "url_template": f"{origin}{prefix}/Busca/Busca?pagina={{page}}",
+            "start": 1,
+        },
     }
 
 
@@ -2555,6 +2645,8 @@ _RichRowsConfig = tuple[
     str | None,
     str | None,
     tuple[str, ...],
+    str,
+    tuple[re.Pattern[str] | None, ...],
     tuple[tuple[str, str], ...],
     bool,
     tuple[str, str | None] | None,
@@ -2632,6 +2724,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "title_selector",
         "total_selector",
         "location_selectors",
+        "location_selector_mode",
+        "location_value_patterns",
         "metadata_selectors",
         "allow_missing_locations",
         "section_start",
@@ -2680,6 +2774,35 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         _validate_css_selector(selector, name="rich_rows.location_selectors") or ""
         for selector in locations
     )
+    location_selector_mode = value.get("location_selector_mode", "all")
+    if location_selector_mode not in {"all", "first"}:
+        raise ValueError("DOM monitor rich_rows.location_selector_mode must be 'all' or 'first'")
+    location_value_patterns_raw = value.get("location_value_patterns")
+    if location_value_patterns_raw is None:
+        location_value_patterns = (None,) * len(location_selectors)
+    else:
+        if (
+            not isinstance(location_value_patterns_raw, list)
+            or len(location_value_patterns_raw) != len(location_selectors)
+            or any(
+                item is not None
+                and (not isinstance(item, str) or not item or len(item) > 1_024 or "\x00" in item)
+                for item in location_value_patterns_raw
+            )
+        ):
+            raise ValueError(
+                "DOM monitor rich_rows.location_value_patterns must match "
+                "location_selectors and contain bounded regexes or null"
+            )
+        try:
+            location_value_patterns = tuple(
+                re.compile(item) if item is not None else None
+                for item in location_value_patterns_raw
+            )
+        except re.error as exc:
+            raise ValueError(
+                "DOM monitor rich_rows.location_value_patterns must contain valid regexes"
+            ) from exc
     metadata = value.get("metadata_selectors")
     if metadata is None:
         metadata = {}
@@ -2827,6 +2950,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         title_selector,
         total_selector,
         location_selectors,
+        location_selector_mode,
+        location_value_patterns,
         metadata_selectors,
         allow_missing_locations,
         section_start,
@@ -2904,6 +3029,8 @@ def _extract_rich_rows_static(
         title_selector,
         total_selector,
         location_selectors,
+        location_selector_mode,
+        location_value_patterns,
         metadata_selectors,
         allow_missing_locations,
         section_start,
@@ -2976,15 +3103,27 @@ def _extract_rich_rows_static(
                 )
 
         location_parts: list[str] = []
-        for selector in location_selectors:
+        for selector, location_value_pattern in zip(
+            location_selectors, location_value_patterns, strict=True
+        ):
             node = row.css_first(selector)
             value = node.text(separator=" ", strip=True).strip() if node is not None else ""
-            if not value and not allow_missing_locations:
+            if (
+                value
+                and location_value_pattern is not None
+                and location_value_pattern.search(value) is None
+            ):
+                value = ""
+            if not value and location_selector_mode == "all" and not allow_missing_locations:
                 raise ValueError(
                     f"DOM monitor rich_rows row {index} omitted configured location data"
                 )
             if value and value not in location_parts:
                 location_parts.append(value)
+                if location_selector_mode == "first":
+                    break
+        if location_selectors and not location_parts and not allow_missing_locations:
+            raise ValueError(f"DOM monitor rich_rows row {index} omitted configured location data")
 
         metadata: dict[str, str] = {}
         for field, selector in metadata_selectors:
@@ -4323,6 +4462,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     lucca = _lucca_probe_config(html, url)
     if lucca is not None:
         return lucca
+
+    lg_portal = _lg_portal_probe_config(html, url)
+    if lg_portal is not None:
+        return lg_portal
 
     prospective = _prospective_probe_config(html, url)
     if prospective is not None:
