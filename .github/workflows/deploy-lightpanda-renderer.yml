@@ -97,7 +97,7 @@ jobs:
             --tag jobseek-lightpanda-renderer:pr \
             .
           test "$(docker image inspect --format '{{.Architecture}}' jobseek-lightpanda-renderer:pr)" = arm64
-          test "$(docker image inspect --format '{{index .Config.Labels \"org.jobseek.lightpanda.source-commit\"}}' jobseek-lightpanda-renderer:pr)" = "$SOURCE_COMMIT"
+          test "$(docker image inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.source-commit"}}' jobseek-lightpanda-renderer:pr)" = "$SOURCE_COMMIT"
           cd ../..
           bash deploy/lightpanda-renderer/ci-smoke.sh \
             jobseek-lightpanda-renderer:pr "$SOURCE_COMMIT"

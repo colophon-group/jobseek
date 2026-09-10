@@ -259,6 +259,7 @@ def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
     assert workflow.count("packages: write") == 1
     assert "needs: publish" in workflow
     assert "JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE: disabled" in workflow
+    assert '{{index .Config.Labels \\"' not in workflow
 
 
 def test_compose_source_has_no_host_publication_or_external_authority() -> None:
