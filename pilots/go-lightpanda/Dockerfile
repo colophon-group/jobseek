@@ -10,6 +10,7 @@ COPY --from=contracts v1/lightpandaadapter/ /workspace/apps/crawler/contracts/v1
 COPY go.mod go.sum ./
 RUN go mod download
 COPY *.go ./
+COPY density/workload.v1.json ./density/workload.v1.json
 
 FROM go-source AS build
 
@@ -20,6 +21,13 @@ FROM go-source AS integration-build
 
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go test -c -o /out/go-lightpanda.test .
+
+FROM go-source AS density-build
+
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go build \
+    -tags densitybench -trimpath -ldflags="-s -w" \
+    -o /out/go-lightpanda-density .
 
 FROM debian:trixie-20260824-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS lightpanda
 
@@ -59,3 +67,15 @@ FROM pilot-base AS runtime
 COPY --from=build /out/go-lightpanda /usr/local/bin/go-lightpanda
 
 ENTRYPOINT ["/usr/local/bin/go-lightpanda"]
+
+FROM pilot-base AS density
+
+USER 0:0
+RUN install -d --owner=10001 --group=10001 --mode=0555 /density
+COPY --from=density-build /out/go-lightpanda-density /usr/local/bin/go-lightpanda-density
+COPY --chown=10001:10001 --chmod=0444 \
+	density/workload.v1.json /density/workload.v1.json
+USER 10001:10001
+RUN test -r /density/workload.v1.json
+
+ENTRYPOINT ["/usr/local/bin/go-lightpanda-density"]
