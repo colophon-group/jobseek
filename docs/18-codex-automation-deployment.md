@@ -14,9 +14,8 @@ deployment artifacts; do not treat them as source of truth.
 | `jobseek-codex-governor.timer` | self-regulated, checked after each governor run | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
 | `jobseek-codex-docker-lifecycle.service` | continuous | root read-only event watcher producing allowlisted evidence for the isolated runner | this runbook and the committed unit/script | no model invocation |
 
-The recurring company resolver and daily routines must not be triggered by
-GitHub Actions or workstation schedules. They run on the Hetzner crawler host
-through the runner user's Codex CLI auth so they can use the
+The recurring company resolver and daily routines run on the Hetzner crawler
+host through the runner user's Codex CLI auth so they can use the
 subscription-backed Codex surface where possible.
 GitHub Actions may still deploy the Hetzner runner host surface. The
 [`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml)

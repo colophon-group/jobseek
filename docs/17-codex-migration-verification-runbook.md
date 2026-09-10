@@ -26,8 +26,7 @@ trace outside the repo. Do not trigger recurring company resolver work from
 GitHub Actions.
 
 For emergency resolver recovery, invoke the same committed runner entry point
-once from a throwaway worktree and set `CODEX_EXEC_JSONL` explicitly. Do not
-introduce a GitHub Actions or workstation schedule for Hetzner-owned routines.
+once from a throwaway worktree and set `CODEX_EXEC_JSONL` explicitly.
 
 ## Common Preflight
 
@@ -138,8 +137,8 @@ workflow names, direct-provider API phrasing, and claims that GitHub Actions
 Codex runs are paid through a ChatGPT subscription.
 
 The recurring company resolver and daily routines run through the Hetzner
-Codex runner. Docs, AGENTS files, and workflows should not reference alternate
-schedulers for those surfaces.
+Codex runner. Docs, AGENTS files, and workflows should identify that scheduling
+surface directly.
 
 ## Prompt-Duplication Checks
 

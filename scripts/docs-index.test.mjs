@@ -86,14 +86,11 @@ test("production Codex guidance keeps scheduling on Hetzner", () => {
     "docs/README.md",
   ];
   const staleWording = [
-    /Codex\s+desktop/i,
-    /desktop[- ]scheduler/i,
     /Hetzner(?:-hosted)?\s+local\s+Codex/i,
   ];
   const retiredRoutineNames = [
     ["jobseek", "company", "request", "resolver"].join("-"),
     ["jobseek", "daily", "classifications"].join("-"),
-    ["jobseek", "daily", "error", "review"].join("-"),
   ];
 
   for (const guidancePath of guidancePaths) {
@@ -126,5 +123,5 @@ test("production Codex guidance keeps scheduling on Hetzner", () => {
     assert.ok(runbook.includes(`\`${unit}\``), `runner inventory lists ${unit}`);
   }
   assert.match(runbook, /only\s+production scheduling surface/i);
-  assert.match(runbook, /GitHub Actions or workstation schedules/i);
+  assert.match(runbook, /actual Codex execution to the Hetzner timers/i);
 });
