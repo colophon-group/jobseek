@@ -70,8 +70,12 @@ ENTRYPOINT ["/usr/local/bin/go-lightpanda"]
 
 FROM pilot-base AS density
 
+USER 0:0
+RUN install -d --owner=10001 --group=10001 --mode=0555 /density
 COPY --from=density-build /out/go-lightpanda-density /usr/local/bin/go-lightpanda-density
 COPY --chown=10001:10001 --chmod=0444 \
-	density/workload.v1.json /density/
+	density/workload.v1.json /density/workload.v1.json
+USER 10001:10001
+RUN test -r /density/workload.v1.json
 
 ENTRYPOINT ["/usr/local/bin/go-lightpanda-density"]
