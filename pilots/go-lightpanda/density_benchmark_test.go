@@ -164,12 +164,13 @@ type densityFixtureRunner struct {
 	gates      map[string]chan struct{}
 	active     map[string]int
 	completed  map[string]int
+	opened     map[string]bool
 	barrier    int
 	outOfOrder bool
 }
 
 func newDensityFixtureRunner(workload densityWorkload, barrier int) *densityFixtureRunner {
-	r := &densityFixtureRunner{tasks: map[string]densityTask{}, gates: map[string]chan struct{}{"w0": make(chan struct{}), "w1": make(chan struct{})}, active: map[string]int{}, completed: map[string]int{}, barrier: barrier}
+	r := &densityFixtureRunner{tasks: map[string]densityTask{}, gates: map[string]chan struct{}{"w0": make(chan struct{}), "w1": make(chan struct{})}, active: map[string]int{}, completed: map[string]int{}, opened: map[string]bool{}, barrier: barrier}
 	for _, wave := range workload.Waves {
 		for _, task := range wave.Tasks {
 			r.tasks["http://"+task.OriginID+".bench.test:8080"+task.RelativePath] = task
@@ -187,8 +188,9 @@ func (r *densityFixtureRunner) Run(_ context.Context, bound lightpandaadapter.Bo
 		r.outOfOrder = true
 	}
 	r.active[wave]++
-	if r.active[wave] == r.barrier {
+	if r.active[wave] == r.barrier && !r.opened[wave] {
 		close(r.gates[wave])
+		r.opened[wave] = true
 	}
 	gate := r.gates[wave]
 	r.mu.Unlock()
