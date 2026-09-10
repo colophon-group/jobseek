@@ -45,6 +45,22 @@ error results contain no partial authoritative HTML, action, capture, or
 evaluation output. Provider errors remain typed by `RuntimeError`; they never
 select the sibling backend.
 
+## Evaluation value envelope
+
+Each successful `EvaluationValue.value` uses the registered
+`jobseek.browser.evaluation-json` version `1` canonical-JSON
+`ExtensionEnvelope`. The payload is the JSON value itself, not a wrapper or a
+string containing JSON. It is canonical, structurally redacted, capped at the
+lower of `EvaluationPlan.max_result_bytes` and 65,536 bytes, and hashed exactly
+as specified in `redaction.md`. Unknown registrations, a bad digest,
+noncanonical bytes, fractional/exponent/negative-zero numbers, unsafe
+integers, or an input/output size violation fail closed without an evaluation
+value or partial authoritative browser result.
+
+This registration is only the dormant result representation needed by a
+future B1 adapter. It does not implement evaluation, select Lightpanda, invoke
+a provider, activate a service, or grant queue/persistence authority.
+
 ## Lifecycle and retirement
 
 Lightpanda and Chromium are separate first-class service lanes whenever frozen

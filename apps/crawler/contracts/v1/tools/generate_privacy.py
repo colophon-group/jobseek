@@ -30,10 +30,17 @@ REGISTRY: dict[str, Any] = {
     "extension_envelopes": [
         {
             "encoding": "canonical_json",
+            "max_payload_bytes": 65_536,
+            "payload_contexts": ["json"],
+            "schema_id": "jobseek.browser.evaluation-json",
+            "schema_version": 1,
+        },
+        {
+            "encoding": "canonical_json",
             "payload_contexts": ["headers", "url", "json", "form"],
             "schema_id": "jobseek.synthetic.capture",
             "schema_version": 1,
-        }
+        },
     ],
     "format": "jobseek.runtime.privacy-registry/v1",
     "key_normalization": {
@@ -252,6 +259,28 @@ def safe_envelope_output(inner: dict[str, Any]) -> bytes:
     return envelope(inner, payload_sha256="")
 
 
+def evaluation_envelope_payload(
+    payload: bytes,
+    *,
+    version: int = 1,
+    encoding: str = "canonical_json",
+    payload_sha256: str | None = None,
+) -> bytes:
+    return envelope_payload(
+        payload,
+        schema="jobseek.browser.evaluation-json",
+        version=version,
+        encoding=encoding,
+        payload_sha256=(
+            hashlib.sha256(payload).hexdigest() if payload_sha256 is None else payload_sha256
+        ),
+    )
+
+
+def evaluation_envelope(value: Any) -> bytes:
+    return evaluation_envelope_payload(canonical_json(value))
+
+
 def wrapped(value: bytes, wrapper: str) -> bytes:
     if wrapper == "base64":
         return base64.b64encode(value)
@@ -290,6 +319,281 @@ def make_cases() -> list[dict[str, Any]]:
             [],
         )
     )
+
+    safe_evaluation = evaluation_envelope({"count": 2, "label": "public"})
+    cases.append(
+        case(
+            "safe_browser_evaluation_envelope",
+            "extension_envelope",
+            safe_evaluation,
+            safe_evaluation,
+            [],
+        )
+    )
+    null_evaluation = evaluation_envelope(None)
+    cases.append(
+        case(
+            "safe_browser_evaluation_null",
+            "extension_envelope",
+            null_evaluation,
+            null_evaluation,
+            [],
+        )
+    )
+    safe_integer_boundaries = evaluation_envelope([-9_007_199_254_740_991, 9_007_199_254_740_991])
+    cases.append(
+        case(
+            "safe_browser_evaluation_integer_boundaries",
+            "extension_envelope",
+            safe_integer_boundaries,
+            safe_integer_boundaries,
+            [],
+        )
+    )
+    for case_id, value in (
+        ("safe_browser_evaluation_invalid_email_trailing_hyphen", "x@y-.com"),
+        ("safe_browser_evaluation_invalid_email_label_too_long", f"x@{'a' * 64}.com"),
+    ):
+        encoded = evaluation_envelope(value)
+        cases.append(case(case_id, "extension_envelope", encoded, encoded, []))
+    boundary_email = f"x@{'a' * 63}.com"
+    cases.append(
+        case(
+            "redact_browser_evaluation_email_label_boundary",
+            "extension_envelope",
+            evaluation_envelope(boundary_email),
+            evaluation_envelope("[REDACTED:email]"),
+            [finding("email", "extension_envelope")],
+        )
+    )
+    evaluation_with_secret = canonical_json(
+        {"nested": {"token": "SYNTHETIC_BROWSER_EVALUATION_TOKEN"}}
+    )
+    safe_evaluation_payload = canonical_json({"nested": {"token": "[REDACTED:secret_key]"}})
+    cases.append(
+        case(
+            "redact_browser_evaluation_envelope",
+            "extension_envelope",
+            evaluation_envelope_payload(evaluation_with_secret),
+            evaluation_envelope_payload(safe_evaluation_payload),
+            [finding("secret_key", "extension_envelope")],
+        )
+    )
+    scalar_email = canonical_json("synthetic.browser@example.invalid")
+    safe_scalar_email = canonical_json("[REDACTED:email]")
+    cases.append(
+        case(
+            "redact_browser_evaluation_scalar_email",
+            "extension_envelope",
+            evaluation_envelope_payload(scalar_email),
+            evaluation_envelope_payload(safe_scalar_email),
+            [finding("email", "extension_envelope")],
+        )
+    )
+    cases.extend(
+        [
+            reject_case(
+                "reject_browser_evaluation_hash_mismatch",
+                "extension_envelope",
+                "malformed_encoding",
+                evaluation_envelope_payload(
+                    canonical_json({"safe": True}), payload_sha256="0" * 64
+                ),
+            ),
+            reject_case(
+                "reject_browser_evaluation_digest_shape",
+                "extension_envelope",
+                "malformed_encoding",
+                evaluation_envelope_payload(
+                    canonical_json({"safe": True}),
+                    payload_sha256=hashlib.sha256(canonical_json({"safe": True}))
+                    .hexdigest()
+                    .upper(),
+                ),
+            ),
+            reject_case(
+                "reject_browser_evaluation_noncanonical_base64",
+                "extension_envelope",
+                "malformed_encoding",
+                canonical_json(
+                    {
+                        "encoding": "canonical_json",
+                        "payload_b64": "MB==",
+                        "payload_sha256": hashlib.sha256(b"0").hexdigest(),
+                        "schema_id": "jobseek.browser.evaluation-json",
+                        "schema_version": 1,
+                    }
+                ),
+            ),
+            reject_case(
+                "reject_browser_evaluation_base64_newline",
+                "extension_envelope",
+                "malformed_encoding",
+                canonical_json(
+                    {
+                        "encoding": "canonical_json",
+                        "payload_b64": "M\nA==",
+                        "payload_sha256": hashlib.sha256(b"0").hexdigest(),
+                        "schema_id": "jobseek.browser.evaluation-json",
+                        "schema_version": 1,
+                    }
+                ),
+            ),
+            reject_case(
+                "reject_browser_evaluation_noncanonical_payload",
+                "extension_envelope",
+                "malformed_encoding",
+                evaluation_envelope_payload(b'{"z": 1, "a": 2}'),
+            ),
+            reject_case(
+                "reject_browser_evaluation_version",
+                "extension_envelope",
+                "unsupported_envelope",
+                evaluation_envelope_payload(canonical_json({"safe": True}), version=2),
+            ),
+            reject_case(
+                "reject_unknown_envelope_with_null_digest",
+                "extension_envelope",
+                "unsupported_envelope",
+                canonical_json(
+                    {
+                        "encoding": "canonical_json",
+                        "payload_b64": b64(canonical_json(None)),
+                        "payload_sha256": None,
+                        "schema_id": "jobseek.unknown",
+                        "schema_version": 1,
+                    }
+                ),
+            ),
+            reject_case(
+                "reject_envelope_null_schema_id",
+                "extension_envelope",
+                "malformed_encoding",
+                canonical_json(
+                    {
+                        "encoding": "canonical_json",
+                        "payload_b64": b64(canonical_json(None)),
+                        "payload_sha256": hashlib.sha256(canonical_json(None)).hexdigest(),
+                        "schema_id": None,
+                        "schema_version": 1,
+                    }
+                ),
+            ),
+            reject_case(
+                "reject_envelope_null_schema_version",
+                "extension_envelope",
+                "malformed_encoding",
+                canonical_json(
+                    {
+                        "encoding": "canonical_json",
+                        "payload_b64": b64(canonical_json(None)),
+                        "payload_sha256": hashlib.sha256(canonical_json(None)).hexdigest(),
+                        "schema_id": "jobseek.browser.evaluation-json",
+                        "schema_version": None,
+                    }
+                ),
+            ),
+            reject_case(
+                "reject_envelope_schema_version_overflow",
+                "extension_envelope",
+                "malformed_encoding",
+                canonical_json(
+                    {
+                        "encoding": "canonical_json",
+                        "payload_b64": b64(canonical_json(None)),
+                        "payload_sha256": hashlib.sha256(canonical_json(None)).hexdigest(),
+                        "schema_id": "jobseek.browser.evaluation-json",
+                        "schema_version": 2**32,
+                    }
+                ),
+            ),
+            reject_case(
+                "reject_browser_evaluation_fraction",
+                "extension_envelope",
+                "malformed_encoding",
+                evaluation_envelope_payload(b"1.5"),
+            ),
+            reject_case(
+                "reject_browser_evaluation_exponent",
+                "extension_envelope",
+                "malformed_encoding",
+                evaluation_envelope_payload(b"1e0"),
+            ),
+            reject_case(
+                "reject_browser_evaluation_negative_zero",
+                "extension_envelope",
+                "malformed_encoding",
+                evaluation_envelope_payload(b"-0"),
+            ),
+            reject_case(
+                "reject_browser_evaluation_unsafe_integer",
+                "extension_envelope",
+                "malformed_encoding",
+                evaluation_envelope_payload(b"9007199254740992"),
+            ),
+            reject_case(
+                "reject_browser_evaluation_negative_unsafe_integer",
+                "extension_envelope",
+                "malformed_encoding",
+                evaluation_envelope_payload(b"-9007199254740992"),
+            ),
+        ]
+    )
+    evaluation_limit = 65_536
+    exact_evaluation = b'"' + b"a" * (evaluation_limit - 2) + b'"'
+    exact_evaluation_outer = evaluation_envelope_payload(exact_evaluation)
+    cases.append(
+        case(
+            "browser_evaluation_payload_limit",
+            "extension_envelope",
+            exact_evaluation_outer,
+            exact_evaluation_outer,
+            [],
+        )
+    )
+    cases.append(
+        reject_case(
+            "browser_evaluation_payload_limit_plus_1",
+            "extension_envelope",
+            "limit_exceeded",
+            evaluation_envelope_payload(b'"' + b"a" * (evaluation_limit - 1) + b'"'),
+        )
+    )
+    expansion_value = {"email": "a@b.co", "padding": ""}
+    expansion_base = canonical_json(expansion_value)
+    expansion_value["padding"] = "a" * (evaluation_limit - len(expansion_base))
+    expansion_payload = canonical_json(expansion_value)
+    assert len(expansion_payload) == evaluation_limit
+    cases.append(
+        reject_case(
+            "browser_evaluation_redacted_payload_limit_plus_1",
+            "extension_envelope",
+            "limit_exceeded",
+            evaluation_envelope_payload(expansion_payload),
+        )
+    )
+    for suffix, depth, accepted in (
+        ("limit", LIMITS["max_json_depth"], True),
+        ("limit_plus_1", LIMITS["max_json_depth"] + 1, False),
+    ):
+        payload = b"[" * (depth - 1) + b"0" + b"]" * (depth - 1)
+        outer = evaluation_envelope_payload(payload)
+        case_id = f"browser_evaluation_depth_{suffix}"
+        if accepted:
+            cases.append(case(case_id, "extension_envelope", outer, outer, []))
+        else:
+            cases.append(reject_case(case_id, "extension_envelope", "limit_exceeded", outer))
+    for suffix, nodes, accepted in (
+        ("limit", LIMITS["max_structured_items"], True),
+        ("limit_plus_1", LIMITS["max_structured_items"] + 1, False),
+    ):
+        payload = canonical_json([0] * (nodes - 1))
+        outer = evaluation_envelope_payload(payload)
+        case_id = f"browser_evaluation_nodes_{suffix}"
+        if accepted:
+            cases.append(case(case_id, "extension_envelope", outer, outer, []))
+        else:
+            cases.append(reject_case(case_id, "extension_envelope", "limit_exceeded", outer))
 
     for case_id, key in (
         ("redact_separator_vt", "api\vkey"),
@@ -476,6 +780,15 @@ def make_cases() -> list[dict[str, Any]]:
                 wrapper=wrapper,
             )
         )
+    cases.append(
+        reject_case(
+            "reject_base64_wrapper_nonzero_pad_bits_with_secret",
+            "json",
+            "malformed_encoding",
+            b"ImFAYi5jbyJ=",
+            wrapper="base64",
+        )
+    )
 
     envelope_inner = {
         "inline": {"context": "json", "data_b64": b64(b'{"name":"Ada"}')},
@@ -493,6 +806,48 @@ def make_cases() -> list[dict[str, Any]]:
             outer,
             safe_envelope_output(envelope_safe_inner),
             [finding("secret_key", "extension_envelope")],
+        )
+    )
+    cases.append(
+        reject_case(
+            "reject_envelope_null_payload_sha256",
+            "extension_envelope",
+            "malformed_encoding",
+            canonical_json(
+                {
+                    "encoding": "canonical_json",
+                    "payload_b64": b64(canonical_json(envelope_inner)),
+                    "payload_sha256": None,
+                    "schema_id": "jobseek.synthetic.capture",
+                    "schema_version": 1,
+                }
+            ),
+        )
+    )
+    cases.append(
+        reject_case(
+            "reject_envelope_artifact_precedence",
+            "extension_envelope",
+            "artifact_unavailable",
+            envelope({"artifact": {}, "inline": {}, "metadata": None}),
+        )
+    )
+    extra_metadata_inner = {
+        "inline": envelope_inner["inline"],
+        "metadata": [
+            {
+                "extra": True,
+                "name": "x-api-token",
+                "value": "SYNTHETIC_ENVELOPE_TOKEN",
+            }
+        ],
+    }
+    cases.append(
+        reject_case(
+            "reject_envelope_extra_metadata_member",
+            "extension_envelope",
+            "malformed_encoding",
+            envelope(extra_metadata_inner),
         )
     )
     envelope_inline = {
@@ -517,6 +872,18 @@ def make_cases() -> list[dict[str, Any]]:
             outer,
             safe_envelope_output(envelope_inline_safe),
             [finding("email", "extension_envelope")],
+        )
+    )
+    extra_inline_inner = {
+        "inline": {**envelope_inline["inline"], "extra": True},
+        "metadata": [],
+    }
+    cases.append(
+        reject_case(
+            "reject_envelope_extra_inline_member",
+            "extension_envelope",
+            "malformed_encoding",
+            envelope(extra_inline_inner),
         )
     )
 

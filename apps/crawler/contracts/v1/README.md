@@ -20,7 +20,9 @@ Files:
 - `gen/go/` and `python/jobseek_runtime_v1/` — generated bindings; regenerate
   with `./generate.sh` and verify byte stability with `./generate.sh --check`.
 - `framing/` and `privacy_registry.json` — wheel-packaged framing and privacy
-  assets used by both installed-artifact smoke tests.
+  assets used by both installed-artifact smoke tests. The registry includes
+  the dormant canonical/redacted browser-evaluation envelope required by
+  `EvaluationValue`; it does not activate a browser runtime.
 - `fixtures/` and `conformance/` — shared framing, compatibility, control,
   redaction, semantics, and source-identity corpora for Python and Go.
 - `baseline/` and the adjacent-version policy specimen — immutable descriptor
@@ -30,6 +32,9 @@ Files:
   this activation.
 - `queue.md` — Redis/Lua scheduling, lease, and politeness invariants.
 - `metrics.md` — cross-runtime metrics required for cutover and reversal.
+- `lightpanda-adapter.md` and `lightpandaadapter/` — dormant fake-only B1
+  assignment, lifecycle, bounded mapping, and mandatory evaluation-privacy
+  seam; they do not contain a provider client or activate browser work.
 
 Compatibility rules:
 

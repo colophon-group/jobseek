@@ -69,6 +69,7 @@ from src.shared.nextdata import (
     extract_rsc_data,
     resolve_path,
 )
+from src.shared.public_request_headers import validated_public_request_headers
 from src.shared.slug import slugify
 
 if TYPE_CHECKING:
@@ -833,6 +834,9 @@ async def discover(
     pagination_cfg: dict | None = metadata.get("pagination")
     base_salary_cfg: dict | None = metadata.get("base_salary")
     board_gone_statuses = _board_gone_statuses(metadata)
+    request_headers = validated_public_request_headers(
+        metadata.get("request_headers"), owner="nextdata monitor"
+    )
 
     if expected_page_title is not None and source == "browser":
         raise ValueError("nextdata expected_page_title does not support browser source")
@@ -842,6 +846,8 @@ async def discover(
         raise ValueError(
             "nextdata include_item_values cannot validate an unfiltered pagination total"
         )
+    if (render or actions) and request_headers:
+        raise ValueError("nextdata monitor request_headers are supported only when render=false")
 
     if not render and actions:
         log.warning(
@@ -880,6 +886,7 @@ async def discover(
                 browser_config=browser_config,
                 allow_empty=True,
                 board_gone_statuses=board_gone_statuses,
+                request_headers=request_headers,
             )
         else:
             html = await _fetch_html(
@@ -889,6 +896,7 @@ async def discover(
                 pw=pw,
                 browser_config=browser_config,
                 board_gone_statuses=board_gone_statuses,
+                request_headers=request_headers,
             )
             if not html:
                 log.warning("nextdata.fetch_failed", board_url=board_url)
@@ -929,6 +937,7 @@ async def discover(
             source=source,
             pw=pw,
             browser_config=browser_config,
+            request_headers=request_headers,
         )
 
     items = _filter_included_items(items, item_inclusions)
@@ -1015,6 +1024,9 @@ async def discover_stream(
     pagination_cfg: dict | None = metadata.get("pagination")
     base_salary_cfg: dict | None = metadata.get("base_salary")
     board_gone_statuses = _board_gone_statuses(metadata)
+    request_headers = validated_public_request_headers(
+        metadata.get("request_headers"), owner="nextdata monitor"
+    )
 
     if expected_page_title is not None and source == "browser":
         raise ValueError("nextdata expected_page_title does not support browser source")
@@ -1024,6 +1036,8 @@ async def discover_stream(
         raise ValueError(
             "nextdata include_item_values cannot validate an unfiltered pagination total"
         )
+    if (render or actions) and request_headers:
+        raise ValueError("nextdata monitor request_headers are supported only when render=false")
 
     if not render and actions:
         render = True
@@ -1063,6 +1077,7 @@ async def discover_stream(
                 browser_config=browser_config,
                 allow_empty=True,
                 board_gone_statuses=board_gone_statuses,
+                request_headers=request_headers,
             )
         else:
             html = await _fetch_html(
@@ -1072,6 +1087,7 @@ async def discover_stream(
                 pw=pw,
                 browser_config=browser_config,
                 board_gone_statuses=board_gone_statuses,
+                request_headers=request_headers,
             )
             if not html:
                 if strict_path:
@@ -1148,6 +1164,7 @@ async def discover_stream(
                 source=source,
                 pw=pw,
                 browser_config=browser_config,
+                request_headers=request_headers,
             )
             return page_items
 
@@ -1245,6 +1262,7 @@ async def _fetch_html(
     pw=None,
     browser_config: dict | None = None,
     board_gone_statuses: frozenset[int] = frozenset(),
+    request_headers: dict[str, str] | None = None,
 ) -> str | None:
     """Fetch page HTML via httpx or Playwright.
 
@@ -1265,6 +1283,7 @@ async def _fetch_html(
         client,
         max_chars=MAX_HTML_CHARS,
         board_gone_statuses=board_gone_statuses,
+        request_headers=request_headers,
     )
 
 
@@ -1279,6 +1298,7 @@ async def _fetch_embedded_page_with_retry(
     browser_config: dict | None = None,
     allow_empty: bool = False,
     board_gone_statuses: frozenset[int] = frozenset(),
+    request_headers: dict[str, str] | None = None,
 ) -> tuple[dict, list]:
     """Fetch and parse one required embedded-data page or fail the run.
 
@@ -1295,6 +1315,7 @@ async def _fetch_embedded_page_with_retry(
             pw=pw,
             browser_config=browser_config,
             board_gone_statuses=board_gone_statuses,
+            request_headers=request_headers,
         )
         if not html:
             failure = "empty or unavailable HTML"
@@ -1392,6 +1413,7 @@ async def _fetch_remaining_pages(
     source: str = "nextdata",
     pw=None,
     browser_config: dict | None = None,
+    request_headers: dict[str, str] | None = None,
 ) -> list:
     """Fetch pages 2..N and merge items with the first page."""
     page_count = _resolve_page_count(data, pagination_cfg)
@@ -1424,6 +1446,7 @@ async def _fetch_remaining_pages(
                 source=source,
                 pw=pw,
                 browser_config=browser_config,
+                request_headers=request_headers,
             )
             return items
 

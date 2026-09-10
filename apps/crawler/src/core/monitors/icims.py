@@ -234,12 +234,12 @@ def _parse_listing_identities(page: str, host: str) -> dict[str, tuple[str, str,
                 break
         raw_title = title.text(strip=True)
         raw_region = visible_region_spans[-1].text(strip=True) if visible_region_spans else ""
-        if url is None or not raw_title or not raw_region or not job_type:
+        if url is None or not raw_title or not raw_region:
             raise ValueError(f"iCIMS host {host!r} returned an incomplete listing identity")
         identity = (
             _normalized_listing_text(raw_title),
             _normalized_listing_text(raw_region),
-            _normalized_listing_text(job_type),
+            _normalized_listing_text(job_type or ""),
         )
         previous = records.setdefault(url, identity)
         if previous != identity:

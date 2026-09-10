@@ -17,13 +17,17 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
 
 const privacyResultDomain = "jobseek.runtime.v1.redaction.result\x00"
 
-var emailScalarPattern = regexp.MustCompile(`[A-Za-z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+`)
+var (
+	emailScalarPattern                = regexp.MustCompile(`(?:^|[^A-Za-z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-])[A-Za-z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+(?:$|[^A-Za-z0-9-])`)
+	canonicalEvaluationIntegerPattern = regexp.MustCompile(`^-?(?:0|[1-9][0-9]*)$`)
+)
 
 type privacyFailure struct{ code string }
 
@@ -56,16 +60,24 @@ type privacyRule struct {
 	Prefixes []string `json:"prefixes"`
 }
 
+type extensionEnvelopeRegistration struct {
+	Encoding       string   `json:"encoding"`
+	MaxPayload     int      `json:"max_payload_bytes"`
+	PayloadContext []string `json:"payload_contexts"`
+	SchemaID       string   `json:"schema_id"`
+	SchemaVersion  int      `json:"schema_version"`
+}
+
 type privacyRegistry struct {
-	Contexts           []string         `json:"contexts"`
-	ExtensionEnvelopes []map[string]any `json:"extension_envelopes"`
-	Format             string           `json:"format"`
-	KeyNormalization   map[string]any   `json:"key_normalization"`
-	Limits             privacyLimits    `json:"limits"`
-	RejectedCodes      []string         `json:"rejected_codes"`
-	Rules              []privacyRule    `json:"rules"`
-	Statuses           []string         `json:"statuses"`
-	Wrappers           []string         `json:"wrappers"`
+	Contexts           []string                        `json:"contexts"`
+	ExtensionEnvelopes []extensionEnvelopeRegistration `json:"extension_envelopes"`
+	Format             string                          `json:"format"`
+	KeyNormalization   map[string]any                  `json:"key_normalization"`
+	Limits             privacyLimits                   `json:"limits"`
+	RejectedCodes      []string                        `json:"rejected_codes"`
+	Rules              []privacyRule                   `json:"rules"`
+	Statuses           []string                        `json:"statuses"`
+	Wrappers           []string                        `json:"wrappers"`
 }
 
 type privacyCorpus struct {
@@ -286,7 +298,7 @@ func bounded(observed int, maximum int) error {
 
 func strictBase64(value string, code string) ([]byte, error) {
 	decoded, err := base64.StdEncoding.Strict().DecodeString(value)
-	if err != nil {
+	if err != nil || base64.StdEncoding.EncodeToString(decoded) != value {
 		return nil, privacyFail(code)
 	}
 	return decoded, nil
@@ -830,6 +842,39 @@ func jsonMetrics(value any, depth int) (int, int) {
 	return maximumDepth, nodes
 }
 
+func validateEvaluationValue(value any) error {
+	switch typed := value.(type) {
+	case nil, bool, string:
+		return nil
+	case json.Number:
+		lexeme := typed.String()
+		if lexeme == "-0" || !canonicalEvaluationIntegerPattern.MatchString(lexeme) {
+			return privacyFail("malformed_encoding")
+		}
+		integer, err := strconv.ParseInt(lexeme, 10, 64)
+		if err != nil || integer < -9007199254740991 || integer > 9007199254740991 {
+			return privacyFail("malformed_encoding")
+		}
+		return nil
+	case []any:
+		for _, item := range typed {
+			if err := validateEvaluationValue(item); err != nil {
+				return err
+			}
+		}
+		return nil
+	case map[string]any:
+		for _, item := range typed {
+			if err := validateEvaluationValue(item); err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		return privacyFail("malformed_encoding")
+	}
+}
+
 func (validator privacyValidator) redactJSONValue(value any, findingContext string, forcedRule string) (any, []privacyFinding) {
 	switch typed := value.(type) {
 	case map[string]any:
@@ -963,6 +1008,28 @@ type extensionInline struct {
 	DataB64 string `json:"data_b64"`
 }
 
+func (validator privacyValidator) extensionRegistration(outer extensionOuter) (extensionEnvelopeRegistration, bool) {
+	var match extensionEnvelopeRegistration
+	matches := 0
+	for _, registration := range validator.registry.ExtensionEnvelopes {
+		if registration.SchemaID == outer.SchemaID &&
+			registration.SchemaVersion == outer.SchemaVersion &&
+			registration.Encoding == outer.Encoding {
+			match = registration
+			matches++
+		}
+	}
+	return match, matches == 1
+}
+
+func validSHA256(value string) bool {
+	if len(value) != 64 || strings.ToLower(value) != value {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
+}
+
 func rawObjectKeys(raw []byte, maximumDepth int) (map[string]json.RawMessage, error) {
 	if err := preflightJSON(raw, maximumDepth); err != nil {
 		return nil, err
@@ -972,6 +1039,50 @@ func rawObjectKeys(raw []byte, maximumDepth int) (map[string]json.RawMessage, er
 		return nil, privacyFail("malformed_encoding")
 	}
 	return value, nil
+}
+
+func outerIdentity(outerKeys map[string]json.RawMessage) (string, int, string, error) {
+	schemaValue, err := decodeJSONValue(outerKeys["schema_id"], 1)
+	if err != nil {
+		return "", 0, "", privacyFail("malformed_encoding")
+	}
+	schemaID, ok := schemaValue.(string)
+	if !ok {
+		return "", 0, "", privacyFail("malformed_encoding")
+	}
+	versionValue, err := decodeJSONValue(outerKeys["schema_version"], 1)
+	if err != nil {
+		return "", 0, "", privacyFail("malformed_encoding")
+	}
+	versionNumber, ok := versionValue.(json.Number)
+	if !ok || !canonicalEvaluationIntegerPattern.MatchString(versionNumber.String()) {
+		return "", 0, "", privacyFail("malformed_encoding")
+	}
+	parsedVersion, err := strconv.ParseInt(versionNumber.String(), 10, 64)
+	if err != nil || parsedVersion < 0 || parsedVersion > 1<<32-1 {
+		return "", 0, "", privacyFail("malformed_encoding")
+	}
+	encodingValue, err := decodeJSONValue(outerKeys["encoding"], 1)
+	if err != nil {
+		return "", 0, "", privacyFail("malformed_encoding")
+	}
+	encoding, ok := encodingValue.(string)
+	if !ok {
+		return "", 0, "", privacyFail("malformed_encoding")
+	}
+	return schemaID, int(parsedVersion), encoding, nil
+}
+
+func outerString(outerKeys map[string]json.RawMessage, key string) (string, error) {
+	value, err := decodeJSONValue(outerKeys[key], 1)
+	if err != nil {
+		return "", privacyFail("malformed_encoding")
+	}
+	text, ok := value.(string)
+	if !ok {
+		return "", privacyFail("malformed_encoding")
+	}
+	return text, nil
 }
 
 func (validator privacyValidator) redactEnvelope(raw []byte) ([]byte, []privacyFinding, int, error) {
@@ -987,16 +1098,86 @@ func (validator privacyValidator) redactEnvelope(raw []byte) ([]byte, []privacyF
 			return nil, nil, 0, privacyFail("malformed_encoding")
 		}
 	}
-	var outer extensionOuter
-	if err := json.Unmarshal(raw, &outer); err != nil {
-		return nil, nil, 0, privacyFail("malformed_encoding")
+	schemaID, schemaVersion, encoding, err := outerIdentity(outerKeys)
+	if err != nil {
+		return nil, nil, 0, err
 	}
-	if outer.SchemaID != "jobseek.synthetic.capture" || outer.SchemaVersion != 1 || outer.Encoding != "canonical_json" {
+	outer := extensionOuter{
+		SchemaID:      schemaID,
+		SchemaVersion: schemaVersion,
+		Encoding:      encoding,
+	}
+	registration, ok := validator.extensionRegistration(outer)
+	if !ok {
 		return nil, nil, 0, privacyFail("unsupported_envelope")
 	}
+	payloadB64, err := outerString(outerKeys, "payload_b64")
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	payloadSHA256, err := outerString(outerKeys, "payload_sha256")
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	outer.PayloadB64 = payloadB64
+	outer.PayloadSHA256 = payloadSHA256
 	payload, err := strictBase64(outer.PayloadB64, "malformed_encoding")
 	if err != nil {
 		return nil, nil, 0, err
+	}
+	if outer.SchemaID == "jobseek.browser.evaluation-json" {
+		if registration.MaxPayload <= 0 || len(registration.PayloadContext) != 1 || registration.PayloadContext[0] != "json" {
+			return nil, nil, 0, privacyFail("unsupported_envelope")
+		}
+		if err := bounded(len(payload), registration.MaxPayload); err != nil {
+			return nil, nil, 0, err
+		}
+		if !validSHA256(outer.PayloadSHA256) {
+			return nil, nil, 0, privacyFail("malformed_encoding")
+		}
+		inputDigest := sha256.Sum256(payload)
+		if hex.EncodeToString(inputDigest[:]) != outer.PayloadSHA256 {
+			return nil, nil, 0, privacyFail("malformed_encoding")
+		}
+		value, err := decodeJSONValue(payload, validator.registry.Limits.MaxJSONDepth)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		if err := validateEvaluationValue(value); err != nil {
+			return nil, nil, 0, err
+		}
+		depth, itemCount := jsonMetrics(value, 1)
+		if err := bounded(depth, validator.registry.Limits.MaxJSONDepth); err != nil {
+			return nil, nil, 0, err
+		}
+		if err := bounded(itemCount, validator.registry.Limits.MaxStructuredItems); err != nil {
+			return nil, nil, 0, err
+		}
+		canonicalInput, err := canonicalJSON(value)
+		if err != nil || !bytes.Equal(canonicalInput, payload) {
+			return nil, nil, 0, privacyFail("malformed_encoding")
+		}
+		safeValue, findings := validator.redactJSONValue(value, "extension_envelope", "")
+		output, err := canonicalJSON(safeValue)
+		if err != nil {
+			return nil, nil, 0, privacyFail("malformed_encoding")
+		}
+		if err := bounded(len(output), registration.MaxPayload); err != nil {
+			return nil, nil, 0, err
+		}
+		outputDigest := sha256.Sum256(output)
+		safeOuter := extensionOuter{
+			Encoding:      "canonical_json",
+			PayloadB64:    base64.StdEncoding.EncodeToString(output),
+			PayloadSHA256: hex.EncodeToString(outputDigest[:]),
+			SchemaID:      "jobseek.browser.evaluation-json",
+			SchemaVersion: 1,
+		}
+		encoded, err := canonicalJSON(safeOuter)
+		return encoded, findings, itemCount, err
+	}
+	if outer.SchemaID != "jobseek.synthetic.capture" {
+		return nil, nil, 0, privacyFail("unsupported_envelope")
 	}
 	inner, err := rawObjectKeys(payload, validator.registry.Limits.MaxJSONDepth)
 	if err != nil {
@@ -1008,15 +1189,40 @@ func (validator privacyValidator) redactEnvelope(raw []byte) ([]byte, []privacyF
 	if len(inner) != 2 || inner["inline"] == nil || inner["metadata"] == nil {
 		return nil, nil, 0, privacyFail("malformed_encoding")
 	}
-	var metadata []extensionHeader
-	var inline extensionInline
-	if err := json.Unmarshal(inner["metadata"], &metadata); err != nil {
+	var metadataRaw []json.RawMessage
+	if err := json.Unmarshal(inner["metadata"], &metadataRaw); err != nil || metadataRaw == nil {
 		return nil, nil, 0, privacyFail("malformed_encoding")
 	}
-	if err := json.Unmarshal(inner["inline"], &inline); err != nil {
+	metadata := make([]extensionHeader, 0, len(metadataRaw))
+	for _, encodedHeader := range metadataRaw {
+		headerKeys, err := rawObjectKeys(encodedHeader, validator.registry.Limits.MaxJSONDepth)
+		if err != nil || len(headerKeys) != 2 || headerKeys["name"] == nil || headerKeys["value"] == nil {
+			return nil, nil, 0, privacyFail("malformed_encoding")
+		}
+		name, err := outerString(headerKeys, "name")
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		value, err := outerString(headerKeys, "value")
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		metadata = append(metadata, extensionHeader{Name: name, Value: value})
+	}
+	inlineKeys, err := rawObjectKeys(inner["inline"], validator.registry.Limits.MaxJSONDepth)
+	if err != nil || len(inlineKeys) != 2 || inlineKeys["context"] == nil || inlineKeys["data_b64"] == nil {
 		return nil, nil, 0, privacyFail("malformed_encoding")
 	}
-	if !contains([]string{"headers", "url", "json", "form"}, inline.Context) {
+	inlineContext, err := outerString(inlineKeys, "context")
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	inlineDataB64, err := outerString(inlineKeys, "data_b64")
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	inline := extensionInline{Context: inlineContext, DataB64: inlineDataB64}
+	if !contains(registration.PayloadContext, inline.Context) {
 		return nil, nil, 0, privacyFail("unsupported_envelope")
 	}
 	findings := []privacyFinding{}

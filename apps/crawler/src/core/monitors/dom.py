@@ -20,6 +20,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from html import unescape as html_unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -132,6 +133,14 @@ _LINKEDIN_JOB_TRANSFORM = {
 
 _KONTACT_MARKER = "kontactintelligence.com"
 _KONTACT_URL_FILTER = r"/Physician_Job/Details/"
+_KONTACT_RICH_ROWS = {
+    "row_selector": "#accordion .panel.panel-default",
+    "link_selector": "a[title='View this opportunity'][href*='/Physician_Job/Details/']",
+    "title_selector": ".panel-heading .col-md-8",
+    "title_regex": r"^\s*\*?\s*(.+?)\s*$",
+    "location_selectors": [".panel-heading .col-md-4"],
+    "description_selector": ".jobDropDownDesc",
+}
 
 _TALENTSOFT_MARKERS = ("ts-offer-list-item", "ts-search-engine-form__rss-cta")
 _TALENTSOFT_PATH_FILTER = r"/(?:job/job|offre-de-emploi/emploi)-[^/?#]+_\d+\.aspx(?:[?#]|$)"
@@ -153,9 +162,14 @@ class _PartitionSnapshotChanged(ValueError):
 
 @dataclass(frozen=True)
 class _ScriptJsonLinksConfig:
-    variable: str
+    variable: str | None
+    function: str | None
+    argument_index: int | None
     url_field: str
     url_template: str
+    title_field: str | None
+    locations_field: str | None
+    html_unescape: bool
 
 
 _YOUSTY_HOST = "www.yousty.ch"
@@ -1559,20 +1573,28 @@ def _jposting_probe_config(html: str, url: str) -> dict | None:
 def _kontact_probe_config(html: str, url: str) -> dict | None:
     """Return the complete DOM config for a KontactIntelligence board.
 
-    These physician boards expose server-rendered links and use a stable
-    ``?pg=N`` contract, so the regular HTTP pagination path is sufficient.
-    Keeping the provider on that path avoids holding a browser worker while
-    walking what can be dozens of otherwise static result pages.
+    These physician boards expose the title, location, and complete description
+    in strict server-rendered rows and use a stable ``?pg=N`` contract. Detail
+    routes are not consistently fetchable, so retain the authoritative listing
+    fields instead of scheduling one request per job.
     """
 
     if _KONTACT_MARKER not in html.casefold():
         return None
 
     matcher = _build_url_matcher(_KONTACT_URL_FILTER)
-    urls = _extract_links_static(html, url, matcher)
+    rich_rows = dict(_KONTACT_RICH_ROWS)
+    try:
+        config = _validated_rich_rows(rich_rows)
+        if config is None:
+            return None
+        jobs = _extract_rich_rows_static(html, url, config, matcher)
+    except ValueError:
+        return None
     return {
-        "urls": len(urls),
+        "urls": len(jobs),
         "url_filter": _KONTACT_URL_FILTER,
+        "rich_rows": rich_rows,
         "pagination": {
             "param_name": "pg",
             "max_pages": 1_000,
@@ -1852,25 +1874,62 @@ def _extract_links_static(
 
 
 def _validated_script_json_links(value: object) -> _ScriptJsonLinksConfig | None:
-    """Validate URL discovery from one JSON array assigned in an inline script."""
+    """Validate rich or URL-only discovery from one inline JSON array."""
     if value is None:
         return None
-    if not isinstance(value, dict) or set(value) != {
+    required_keys = {"url_field", "url_template"}
+    allowed_keys = required_keys | {
         "variable",
-        "url_field",
-        "url_template",
-    }:
+        "function",
+        "argument_index",
+        "title_field",
+        "locations_field",
+        "html_unescape",
+    }
+    if (
+        not isinstance(value, dict)
+        or not required_keys.issubset(value)
+        or not set(value).issubset(allowed_keys)
+    ):
         raise ValueError(
-            "DOM monitor script_json_links must contain only variable, url_field, and url_template"
+            "DOM monitor script_json_links requires url_field and url_template plus exactly "
+            "one variable or function/argument_index source"
         )
 
     variable = value.get("variable")
-    if (
-        not isinstance(variable, str)
-        or len(variable) > _MAX_SCRIPT_JSON_NAME_LENGTH
-        or _SCRIPT_JSON_NAME_RE.fullmatch(variable) is None
-    ):
-        raise ValueError("DOM monitor script_json_links.variable must be a JS identifier")
+    function = value.get("function")
+    argument_index = value.get("argument_index")
+    uses_variable = variable is not None
+    uses_function = function is not None or argument_index is not None
+    if uses_variable == uses_function:
+        raise ValueError(
+            "DOM monitor script_json_links requires exactly one variable or "
+            "function/argument_index source"
+        )
+    if uses_variable:
+        if (
+            not isinstance(variable, str)
+            or len(variable) > _MAX_SCRIPT_JSON_NAME_LENGTH
+            or _SCRIPT_JSON_NAME_RE.fullmatch(variable) is None
+        ):
+            raise ValueError("DOM monitor script_json_links.variable must be a JS identifier")
+        function = None
+        argument_index = None
+    else:
+        if (
+            not isinstance(function, str)
+            or len(function) > _MAX_SCRIPT_JSON_NAME_LENGTH
+            or _SCRIPT_JSON_NAME_RE.fullmatch(function) is None
+        ):
+            raise ValueError("DOM monitor script_json_links.function must be a JS identifier")
+        if (
+            not isinstance(argument_index, int)
+            or isinstance(argument_index, bool)
+            or not 0 <= argument_index <= 15
+        ):
+            raise ValueError(
+                "DOM monitor script_json_links.argument_index must be an integer from 0 to 15"
+            )
 
     url_field = value.get("url_field")
     if (
@@ -1891,11 +1950,148 @@ def _validated_script_json_links(value: object) -> _ScriptJsonLinksConfig | None
         raise ValueError(
             "DOM monitor script_json_links.url_template must contain one {value} placeholder"
         )
-    parsed_template = urlsplit(url_template.replace("{value}", "placeholder"))
-    if parsed_template.scheme not in {"http", "https"} or not parsed_template.netloc:
-        raise ValueError("DOM monitor script_json_links.url_template must be an absolute HTTP URL")
+    if url_template != "{value}":
+        parsed_template = urlsplit(url_template.replace("{value}", "placeholder"))
+        if parsed_template.scheme not in {"http", "https"} or not parsed_template.netloc:
+            raise ValueError(
+                "DOM monitor script_json_links.url_template must be an absolute HTTP URL or "
+                "the direct {value} placeholder"
+            )
 
-    return _ScriptJsonLinksConfig(variable, url_field, url_template)
+    rich_fields: list[str | None] = []
+    for name in ("title_field", "locations_field"):
+        field = value.get(name)
+        if field is not None and (
+            not isinstance(field, str)
+            or not field
+            or len(field) > _MAX_SCRIPT_JSON_FIELD_LENGTH
+            or "\x00" in field
+        ):
+            raise ValueError(f"DOM monitor script_json_links.{name} must be a bounded field name")
+        rich_fields.append(field)
+    if (rich_fields[0] is None) != (rich_fields[1] is None):
+        raise ValueError(
+            "DOM monitor script_json_links title_field and locations_field must be "
+            "configured together"
+        )
+
+    decode_html_entities = value.get("html_unescape", False)
+    if not isinstance(decode_html_entities, bool):
+        raise ValueError("DOM monitor script_json_links.html_unescape must be a boolean")
+
+    return _ScriptJsonLinksConfig(
+        variable=variable if isinstance(variable, str) else None,
+        function=function if isinstance(function, str) else None,
+        argument_index=argument_index if isinstance(argument_index, int) else None,
+        url_field=url_field,
+        url_template=url_template,
+        title_field=rich_fields[0],
+        locations_field=rich_fields[1],
+        html_unescape=decode_html_entities,
+    )
+
+
+def _script_call_argument_text(html: str, function: str, argument_index: int) -> str:
+    """Return one bounded function-call argument without evaluating JavaScript."""
+    call = re.compile(rf"(?<![A-Za-z0-9_$]){re.escape(function)}\s*\(")
+    matches = list(call.finditer(html))
+    if len(matches) != 1:
+        raise ValueError("DOM monitor script_json_links expected exactly one function call")
+
+    cursor = matches[0].end()
+    current_argument = 0
+    stack: list[str] = []
+    quote: str | None = None
+    escaped = False
+    line_comment = False
+    block_comment = False
+    pairs = {")": "(", "]": "[", "}": "{"}
+
+    while cursor < len(html):
+        char = html[cursor]
+        next_char = html[cursor + 1] if cursor + 1 < len(html) else ""
+        if line_comment:
+            if char in "\r\n":
+                line_comment = False
+            cursor += 1
+            continue
+        if block_comment:
+            if char == "*" and next_char == "/":
+                block_comment = False
+                cursor += 2
+            else:
+                cursor += 1
+            continue
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            cursor += 1
+            continue
+        if char == "/" and next_char == "/":
+            line_comment = True
+            cursor += 2
+            continue
+        if char == "/" and next_char == "*":
+            block_comment = True
+            cursor += 2
+            continue
+        if current_argument == argument_index:
+            if char.isspace():
+                cursor += 1
+                continue
+            return html[cursor:]
+        if char in {'"', "'", "`"}:
+            quote = char
+            cursor += 1
+            continue
+        if char in "[{(":
+            stack.append(char)
+            cursor += 1
+            continue
+        if char in "]}":
+            if not stack or stack.pop() != pairs[char]:
+                raise ValueError("DOM monitor script_json_links function call is malformed")
+            cursor += 1
+            continue
+        if char == ")":
+            if stack:
+                if stack.pop() != "(":
+                    raise ValueError("DOM monitor script_json_links function call is malformed")
+                cursor += 1
+                continue
+            raise ValueError(
+                "DOM monitor script_json_links function call omitted its configured argument"
+            )
+        if char == "," and not stack:
+            current_argument += 1
+            cursor += 1
+            continue
+        cursor += 1
+
+    raise ValueError("DOM monitor script_json_links function call is unterminated")
+
+
+def _script_json_payload_text(html: str, config: _ScriptJsonLinksConfig) -> str:
+    if config.html_unescape:
+        # Some server-rendered boards keep their authoritative JSON array in
+        # an HTML attribute (for example Alpine's ``x-data``). Decode entities
+        # before locating the configured assignment/function call, without
+        # evaluating any provider JavaScript.
+        html = html_unescape(html)
+    if config.variable is not None:
+        assignment = re.compile(rf"(?:const|let|var)\s+{re.escape(config.variable)}\s*=\s*")
+        matches = list(assignment.finditer(html))
+        if len(matches) != 1:
+            raise ValueError(
+                "DOM monitor script_json_links expected exactly one variable assignment"
+            )
+        return html[matches[0].end() :].lstrip()
+    assert config.function is not None and config.argument_index is not None
+    return _script_call_argument_text(html, config.function, config.argument_index)
 
 
 def _extract_script_json_links(
@@ -1903,29 +2099,25 @@ def _extract_script_json_links(
     board_url: str,
     config: _ScriptJsonLinksConfig,
     url_matcher: re.Pattern | None,
-) -> set[str]:
-    """Extract canonical links from an authoritative inline JSON array.
+) -> set[str] | list[DiscoveredJob]:
+    """Extract canonical jobs from an authoritative inline JSON array.
 
-    The assignment must occur exactly once and every array item must produce one
-    unique, same-origin URL. Any provider drift therefore fails the monitor cycle
-    instead of publishing a partial inventory.
+    The configured assignment or function call must occur exactly once and every
+    array item must produce one unique, same-origin URL. Any provider drift
+    therefore fails the monitor cycle instead of publishing a partial inventory.
     """
-    assignment = re.compile(rf"(?:const|let|var)\s+{re.escape(config.variable)}\s*=\s*")
-    matches = list(assignment.finditer(html))
-    if len(matches) != 1:
-        raise ValueError("DOM monitor script_json_links expected exactly one variable assignment")
-
-    payload_text = html[matches[0].end() :].lstrip()
+    payload_text = _script_json_payload_text(html, config)
     try:
         payload, _ = json.JSONDecoder().raw_decode(payload_text)
     except json.JSONDecodeError as exc:
-        raise ValueError("DOM monitor script_json_links assignment is not valid JSON") from exc
+        raise ValueError("DOM monitor script_json_links payload is not valid JSON") from exc
     if not isinstance(payload, list):
-        raise ValueError("DOM monitor script_json_links assignment must contain a JSON array")
+        raise ValueError("DOM monitor script_json_links payload must contain a JSON array")
     if len(payload) > MAX_URLS:
         raise ValueError("DOM monitor script_json_links array exceeds the URL cap")
 
     urls: set[str] = set()
+    jobs: list[DiscoveredJob] = []
     for index, item in enumerate(payload):
         if not isinstance(item, dict):
             raise ValueError(f"DOM monitor script_json_links item {index} must be a JSON object")
@@ -1950,6 +2142,51 @@ def _extract_script_json_links(
         if url in urls:
             raise ValueError("DOM monitor script_json_links produced duplicate URLs")
         urls.add(url)
+
+        title: str | None = None
+        if config.title_field is not None:
+            raw_title = item.get(config.title_field)
+            if (
+                not isinstance(raw_title, str)
+                or not raw_title.strip()
+                or len(raw_title) > _MAX_SCRIPT_JSON_VALUE_LENGTH
+                or "\x00" in raw_title
+            ):
+                raise ValueError(
+                    f"DOM monitor script_json_links item {index} omitted its title field"
+                )
+            title = html_unescape(raw_title).strip()
+
+        locations: list[str] | None = None
+        if config.locations_field is not None:
+            raw_locations = item.get(config.locations_field)
+            if isinstance(raw_locations, str):
+                raw_location_items = [raw_locations]
+            elif isinstance(raw_locations, list) and 1 <= len(raw_locations) <= 32:
+                raw_location_items = raw_locations
+            else:
+                raise ValueError(
+                    f"DOM monitor script_json_links item {index} omitted its locations field"
+                )
+            locations = []
+            for raw_location in raw_location_items:
+                if (
+                    not isinstance(raw_location, str)
+                    or not raw_location.strip()
+                    or len(raw_location) > _MAX_SCRIPT_JSON_VALUE_LENGTH
+                    or "\x00" in raw_location
+                ):
+                    raise ValueError(
+                        f"DOM monitor script_json_links item {index} has invalid location data"
+                    )
+                location = html_unescape(raw_location).strip()
+                if location not in locations:
+                    locations.append(location)
+
+        if config.title_field is not None:
+            jobs.append(DiscoveredJob(url=url, title=title, locations=locations))
+    if config.title_field is not None:
+        return jobs
     return urls
 
 
@@ -2326,6 +2563,8 @@ _RichRowsConfig = tuple[
     frozenset[str],
     str | None,
     re.Pattern[str] | None,
+    str | None,
+    re.Pattern[str] | None,
 ]
 
 
@@ -2399,6 +2638,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "inactive_urls",
         "row_required_selector",
         "row_text_pattern",
+        "description_selector",
+        "title_regex",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
     row_selector = _validate_css_selector(value.get("row_selector"), name="rich_rows.row_selector")
@@ -2510,6 +2751,30 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
             raise ValueError(
                 "DOM monitor rich_rows.row_text_pattern must be a valid regex"
             ) from exc
+    description_selector = _validate_css_selector(
+        value.get("description_selector"),
+        name="rich_rows.description_selector",
+    )
+    title_regex_raw = value.get("title_regex")
+    title_regex = None
+    if title_regex_raw is not None:
+        if (
+            not isinstance(title_regex_raw, str)
+            or not title_regex_raw
+            or len(title_regex_raw) > 2_048
+            or "\x00" in title_regex_raw
+        ):
+            raise ValueError(
+                "DOM monitor rich_rows.title_regex must be a non-empty regex up to 2048 chars"
+            )
+        try:
+            title_regex = re.compile(title_regex_raw)
+        except re.error as exc:
+            raise ValueError("DOM monitor rich_rows.title_regex must be a valid regex") from exc
+        if title_regex.groups != 1:
+            raise ValueError(
+                "DOM monitor rich_rows.title_regex must contain exactly one capture group"
+            )
     if total_selector is not None and (
         row_required_selector is not None or row_text_pattern is not None
     ):
@@ -2529,6 +2794,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         inactive_urls,
         row_required_selector,
         row_text_pattern,
+        description_selector,
+        title_regex,
     )
 
 
@@ -2593,6 +2860,8 @@ def _extract_rich_rows_static(
         inactive_urls,
         row_required_selector,
         row_text_pattern,
+        description_selector,
+        title_regex,
     ) = config
     tree = LexborHTMLParser(html)
     advertised_total: int | None = None
@@ -2628,6 +2897,9 @@ def _extract_rich_rows_static(
         href = link.attributes.get(link_attr) if link is not None else None
         title_node = row.css_first(title_selector) if title_selector is not None else link
         title = title_node.text(separator=" ", strip=True).strip() if title_node is not None else ""
+        if title and title_regex is not None:
+            match = title_regex.search(title)
+            title = match.group(1).strip() if match is not None else ""
         if not href or not title:
             raise ValueError(f"DOM monitor rich_rows row {index} omitted its link or title")
         url = urljoin(base_url, href)
@@ -2669,9 +2941,22 @@ def _extract_rich_rows_static(
                     f"DOM monitor rich_rows row {index} omitted configured metadata {field!r}"
                 )
             metadata[field] = value
+
+        description: str | None = None
+        if description_selector is not None:
+            description_node = row.css_first(description_selector)
+            if (
+                description_node is None
+                or not description_node.text(separator=" ", strip=True).strip()
+            ):
+                raise ValueError(
+                    f"DOM monitor rich_rows row {index} omitted its configured description"
+                )
+            description = description_node.html.strip()
         job = DiscoveredJob(
             url=canonical_url,
             title=title,
+            description=description,
             locations=[", ".join(location_parts)] if location_parts else None,
             metadata=metadata or None,
         )
@@ -2695,7 +2980,7 @@ def _extract_rich_rows_static(
     return list(jobs_by_url.values())
 
 
-async def _paginate_rich_rows_static(
+async def _paginate_rich_rows(
     board_url: str,
     pagination: dict,
     initial_jobs: list[DiscoveredJob],
@@ -2703,8 +2988,9 @@ async def _paginate_rich_rows_static(
     rich_rows: _RichRowsConfig,
     url_matcher: re.Pattern | None,
     encoding: str | None,
+    page=None,
 ) -> list[DiscoveredJob]:
-    """Fetch and merge strict rich listing rows across static pages."""
+    """Fetch and merge strict rich listing rows across sequential pages."""
     from src.shared.api_sniff import set_url_param
     from src.shared.http_retry import fetch_with_retry
 
@@ -2716,8 +3002,13 @@ async def _paginate_rich_rows_static(
     transient_403 = pagination.get("transient_403", False)
     if not isinstance(transient_403, bool):
         raise ValueError("DOM pagination transient_403 must be a boolean")
-    if pagination.get("browser") or pagination.get("partition_selector"):
-        raise ValueError("DOM monitor rich_rows pagination supports static sequential pages only")
+    use_browser = pagination.get("browser", False)
+    if not isinstance(use_browser, bool):
+        raise ValueError("DOM pagination browser must be a boolean")
+    if pagination.get("partition_selector"):
+        raise ValueError("DOM monitor rich_rows does not support partitioned pagination")
+    if use_browser and page is None:
+        raise ValueError("DOM monitor rich_rows browser pagination requires render=true")
     if not url_template and not isinstance(param_name, str):
         raise ValueError("DOM pagination requires param_name or url_template")
 
@@ -2731,13 +3022,21 @@ async def _paginate_rich_rows_static(
             assert isinstance(param_name, str)
             page_url = set_url_param(board_url, param_name, value)
 
-        html = await fetch_with_retry(
-            client,
-            page_url,
-            encoding=encoding,
-            transient_403=transient_403,
-            max_chars=None,
-        )
+        if use_browser:
+            html = await _fetch_via_page(
+                page,
+                page_url,
+                transient_403=transient_403,
+                max_chars=None,
+            )
+        else:
+            html = await fetch_with_retry(
+                client,
+                page_url,
+                encoding=encoding,
+                transient_403=transient_403,
+                max_chars=None,
+            )
         if not html:
             log.info("dom.pagination.end", page=page_num, url=page_url)
             break
@@ -2987,6 +3286,51 @@ async def _extract_links_rendered(
     return urls
 
 
+async def _extract_rich_rows_rendered(
+    page,
+    metadata: dict,
+    rich_rows: _RichRowsConfig,
+    url_matcher: re.Pattern | None,
+    client: httpx.AsyncClient,
+    configured_empty_states: tuple,
+) -> list[DiscoveredJob]:
+    """Render and extract authoritative rows, including browser-fetched tails."""
+    board_url = metadata["_board_url"]
+    browser_config = {k: v for k, v in metadata.items() if k in BROWSER_KEYS}
+    await navigate(page, board_url, browser_config)
+    await run_actions(page, browser_config.get("actions", []))
+
+    html = await safe_content(page)
+    _raise_if_bot_challenge(page.url, html)
+    jobs = _extract_rich_rows_static(
+        html,
+        page.url,
+        rich_rows,
+        url_matcher,
+        allow_empty=bool(configured_empty_states),
+    )
+    if configured_empty_states:
+        _validate_explicit_empty_states(
+            html,
+            configured_empty_states,
+            {job.url for job in jobs},
+            board_url,
+        )
+    pagination = metadata.get("pagination")
+    if pagination:
+        jobs = await _paginate_rich_rows(
+            board_url,
+            pagination,
+            jobs,
+            client,
+            rich_rows,
+            url_matcher,
+            None,
+            page=page,
+        )
+    return jobs
+
+
 # ---------------------------------------------------------------------------
 # Pagination — fetch additional pages and merge links
 # ---------------------------------------------------------------------------
@@ -2999,12 +3343,13 @@ async def _fetch_via_page(
     retries: int = _BROWSER_FETCH_RETRIES,
     base_delay: float = _BROWSER_FETCH_BASE_DELAY,
     transient_403: bool = False,
+    max_chars: int | None = _BROWSER_FETCH_MAX_CHARS,
 ) -> str | None:
     """Fetch ``url`` via Playwright ``page.evaluate(fetch(...))`` with bounded retries.
 
     Returns:
-        - ``str`` (truncated to ``_BROWSER_FETCH_MAX_CHARS``) on HTTP 200
-          with a **non-empty** body.
+        - ``str`` (truncated to ``max_chars`` when it is not ``None``) on
+          HTTP 200 with a **non-empty** body.
         - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination), or
           any other non-retryable 4xx (lenient stop, mirrors the
           httpx-side ``fetch_with_retry``). When ``transient_403`` is true,
@@ -3070,7 +3415,7 @@ async def _fetch_via_page(
                     # opt-out signal is honored even when the page is
                     # reached via a Playwright fetch (``pagination.browser=true``).
                     check_browser_response(resp_headers, text, url=url)
-                    return text[:_BROWSER_FETCH_MAX_CHARS]
+                    return text if max_chars is None else text[:max_chars]
                 # Empty-200 (#2739): transient, fall through to backoff.
                 last_exc = None
                 log.info(
@@ -3777,6 +4122,45 @@ def _nyc_council_jobs_probe_config(html: str, url: str) -> dict | None:
     }
 
 
+def _jobtoolz_probe_config(html: str, url: str) -> dict | None:
+    """Return a fail-closed preset for Jobtoolz's Alpine listing payload."""
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").casefold()
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.casefold() != "https"
+        or not host.endswith(".jobtoolz.com")
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or "window.jobComponent(" not in html
+    ):
+        return None
+
+    script_json_links = {
+        "function": "jobComponent",
+        "argument_index": 0,
+        "url_field": "url",
+        "url_template": "{value}",
+        "html_unescape": True,
+    }
+    try:
+        config = _validated_script_json_links(script_json_links)
+        assert config is not None
+        urls = _extract_script_json_links(html, url, config, None)
+    except ValueError:
+        return None
+    return {
+        "urls": len(urls),
+        "jobtoolz_tenant": host.removesuffix(".jobtoolz.com"),
+        "script_json_links": script_json_links,
+        "require_jsonld_jobposting": True,
+    }
+
+
 def _oracle_adf_probe_config(html: str, url: str) -> dict | None:
     """Recognize Oracle ADF job lists whose rows expose only PPR actions."""
     if "Created by Oracle ADF" not in html:
@@ -3851,6 +4235,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     nyc_council_jobs = _nyc_council_jobs_probe_config(html, url)
     if nyc_council_jobs is not None:
         return nyc_council_jobs
+
+    jobtoolz = _jobtoolz_probe_config(html, url)
+    if jobtoolz is not None:
+        return jobtoolz
 
     oracle_adf = _oracle_adf_probe_config(html, url)
     if oracle_adf is not None:
@@ -3998,6 +4386,7 @@ async def dom_discover(
     advertised_total = _validated_advertised_total_config(metadata.get("advertised_total"))
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
     script_json_links = _validated_script_json_links(metadata.get("script_json_links"))
+    script_json_jobs: list[DiscoveredJob] | None = None
     if script_json_links is not None and (
         render
         or actions
@@ -4094,8 +4483,7 @@ async def dom_discover(
         )
 
     if rich_rows is not None and (
-        render
-        or metadata.get("include_board_url")
+        metadata.get("include_board_url")
         or require_jsonld_jobposting
         or require_unexpired_pdf is not None
         or require_pdf_text is not None
@@ -4103,7 +4491,9 @@ async def dom_discover(
         or inactive_detail_states
         or fingerprint_response is not None
     ):
-        raise ValueError("DOM monitor rich_rows supports static listing extraction only")
+        raise ValueError(
+            "DOM monitor rich_rows is incompatible with detail verification and direct-board mode"
+        )
 
     if advertised_total is not None and (
         render
@@ -4145,24 +4535,34 @@ async def dom_discover(
                 use_proxy=bool(metadata.get("proxy")),
                 target_url=board_url,
             ) as page:
-                urls = await _extract_links_rendered(page, combined, url_matcher, client)
-                if configured_empty_states:
-                    _validate_explicit_empty_states(
-                        await safe_content(page), configured_empty_states, urls, board_url
-                    )
-                if pagination:
-                    browser_page = page if pagination.get("browser") else None
-                    urls = await _paginate_urls(
-                        board_url,
-                        pagination,
-                        urls,
-                        client,
-                        browser_page,
+                if rich_rows is not None:
+                    jobs = await _extract_rich_rows_rendered(
+                        page,
+                        combined,
+                        rich_rows,
                         url_matcher,
-                        url_transform,
-                        encoding,
-                        link_selector,
+                        client,
+                        configured_empty_states,
                     )
+                else:
+                    urls = await _extract_links_rendered(page, combined, url_matcher, client)
+                    if configured_empty_states:
+                        _validate_explicit_empty_states(
+                            await safe_content(page), configured_empty_states, urls, board_url
+                        )
+                    if pagination:
+                        browser_page = page if pagination.get("browser") else None
+                        urls = await _paginate_urls(
+                            board_url,
+                            pagination,
+                            urls,
+                            client,
+                            browser_page,
+                            url_matcher,
+                            url_transform,
+                            encoding,
+                            link_selector,
+                        )
         else:
             try:
                 from playwright.async_api import async_playwright
@@ -4181,24 +4581,40 @@ async def dom_discover(
                     target_url=board_url,
                 ) as page,
             ):
-                urls = await _extract_links_rendered(page, combined, url_matcher, client)
-                if configured_empty_states:
-                    _validate_explicit_empty_states(
-                        await safe_content(page), configured_empty_states, urls, board_url
-                    )
-                if pagination:
-                    browser_page = page if pagination.get("browser") else None
-                    urls = await _paginate_urls(
-                        board_url,
-                        pagination,
-                        urls,
-                        client,
-                        browser_page,
+                if rich_rows is not None:
+                    jobs = await _extract_rich_rows_rendered(
+                        page,
+                        combined,
+                        rich_rows,
                         url_matcher,
-                        url_transform,
-                        encoding,
-                        link_selector,
+                        client,
+                        configured_empty_states,
                     )
+                else:
+                    urls = await _extract_links_rendered(page, combined, url_matcher, client)
+                    if configured_empty_states:
+                        _validate_explicit_empty_states(
+                            await safe_content(page), configured_empty_states, urls, board_url
+                        )
+                    if pagination:
+                        browser_page = page if pagination.get("browser") else None
+                        urls = await _paginate_urls(
+                            board_url,
+                            pagination,
+                            urls,
+                            client,
+                            browser_page,
+                            url_matcher,
+                            url_transform,
+                            encoding,
+                            link_selector,
+                        )
+        if rich_rows is not None:
+            log.info("dom.complete", board_url=board_url, urls_found=len(jobs), render=True)
+            if len(jobs) > MAX_URLS:
+                log.warning("dom.truncated", total=len(jobs), cap=MAX_URLS)
+                return truncated_rich_result(jobs)
+            return jobs
     else:
         if configured_empty_states:
             from src.shared.http_retry import fetch_text_page_with_retry
@@ -4288,7 +4704,7 @@ async def dom_discover(
                     board_url,
                 )
             if pagination:
-                jobs = await _paginate_rich_rows_static(
+                jobs = await _paginate_rich_rows(
                     board_url,
                     pagination,
                     jobs,
@@ -4303,12 +4719,17 @@ async def dom_discover(
                 return truncated_rich_result(jobs)
             return jobs
         if script_json_links is not None:
-            urls = _extract_script_json_links(
+            script_json_result = _extract_script_json_links(
                 html,
                 board_url,
                 script_json_links,
                 url_matcher,
             )
+            if isinstance(script_json_result, list):
+                script_json_jobs = script_json_result
+                urls = {job.url for job in script_json_jobs}
+            else:
+                urls = script_json_result
         else:
             urls = _extract_links_static(html, fetch_board_url, url_matcher, link_selector)
         if configured_empty_states:
@@ -4441,6 +4862,8 @@ async def dom_discover(
                 else "all discovered PDF jobs are outside their verified active period"
             ),
         )
+    if script_json_jobs is not None:
+        return [job for job in script_json_jobs if job.url in urls]
     return urls
 
 

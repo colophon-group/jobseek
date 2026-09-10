@@ -66,6 +66,9 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `candidatus` | URL-only | dom | Candidatus WinDev listings with browser-resolved detail postbacks |
 | `cnstaff` | Rich | skip | CNStaff paginated public career-board JSON |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
+| `paynet` | Rich | skip | Pay-Net Applicant public postings API |
+| `talentreef` | Rich | skip | TalentReef / JobAppNetwork published career pages and brand-scoped posting search |
+| `nowhiring` | Rich | skip | NowHiring / Snagajob scoped search plus public job details |
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
 | `job51` | Rich | skip | 51job employer microsite listing and detail CoAPI |
 | `jobbank104` | URL-only | json-ld | 104 Job Bank server-rendered company listings, proxy-capable for Cloudflare challenges |
@@ -130,6 +133,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `ukg` | Rich | embedded | UKG Pro public paginated search API plus embedded detail enrichment |
 | `unisante` | Rich | skip | Unisanté dual-alias official inventory with bounded visible-detail validation |
 | `welcometothejungle` | Rich | skip | Welcome to the Jungle public jobs APIs |
+| `woowa` | Rich | skip | Woowa Brothers and Woowa Youths public careers APIs |
 | `workable` | URL-only | workable | Workable ATS |
 | `workday` | URL-only | workday | Workday ATS |
 | `ycombinator` | URL-only | json-ld | YC Jobs fallback pages |
@@ -373,6 +377,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |
 | `phuketall` | Static | Parses PhuketAll employer job pages from an exact HTTPS provider identity under a 2 MiB response cap, including canonical Thai field labels |
+| `tupu360` | Static | Parses server-rendered Tupu360 employer job pages and validates the returned posting identity against the exact HTTPS detail URL |
 | `recruiterbox` | Static | Parses Recruiterbox / Trakstar Hire server-rendered title, opening metadata, and description fields |
 | `rippling` | Static | Fetches Rippling detail API records |
 | `seek` | Static | Fetches SEEK AU/NZ vacancy detail GraphQL data |

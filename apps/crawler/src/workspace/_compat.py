@@ -24,6 +24,7 @@ from src.shared.gupy import gupy_tenant_from_url
 from src.shared.jobvite import jobvite_board_from_url
 from src.shared.keka import keka_board_from_url
 from src.shared.pageup import pageup_board_from_url
+from src.shared.paynet import paynet_company_from_url
 from src.shared.recruiterbox import recruiterbox_board_from_url
 from src.shared.successfactors import (
     is_successfactors_host,
@@ -95,9 +96,11 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "linkedin",
         "manatal",
         "mokahr",
+        "nowhiring",
         "oracle_hcm",
         "pageup",
         "paycom",
+        "paynet",
         "paylocity",
         "pinpoint",
         "prospective",
@@ -106,11 +109,13 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "rss",
         "seamlesshiring",
         "traffit",
+        "talentreef",
         "typify",
         "ukg",
         "unifr",
         "unisante",
         "welcometothejungle",
+        "woowa",
     }
 )
 
@@ -239,6 +244,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "skip",
         "smartrecruiters",
         "taleo",
+        "tupu360",
         "veryeast",
         "workable",
         "workday",
@@ -443,6 +449,34 @@ def detect_ats_from_url(url: str) -> str | None:
         re.IGNORECASE,
     ):
         return "paycom"
+    if paynet_company_from_url(url) is not None:
+        return "paynet"
+    if (
+        host == "apply.jobappnetwork.com"
+        and parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.query
+        and not parsed.fragment
+        and re.fullmatch(
+            r"/[a-z0-9][a-z0-9_-]{0,127}(?:/[a-z]{2}(?:-[a-z]{2})?)?/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+    ):
+        return "talentreef"
+    if (
+        host == "nowhiring.com"
+        and parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.query
+        and not parsed.fragment
+        and re.fullmatch(r"/[a-z0-9][a-z0-9_-]{0,127}/?", parsed.path, re.IGNORECASE)
+    ):
+        return "nowhiring"
     if (
         host.endswith(".applytojob.com")
         and host.count(".") == 2
@@ -554,6 +588,12 @@ def detect_ats_from_url(url: str) -> str | None:
         return "hireology"
     if host.endswith(".hirehive.com"):
         return "hirehive"
+    if host in {
+        "career.woowahan.com",
+        "career.woowayouths.com",
+        "bmart-career.woowayouths.com",
+    }:
+        return "woowa"
     if host.endswith(".turbohire.co"):
         return "turbohire"
     if host == "careers.curately.ai" and re.fullmatch(
@@ -687,6 +727,14 @@ def auto_scraper_type(
 
     Returns None when manual scraper selection is needed.
     """
+    rich_rows = (config or {}).get("rich_rows")
+    if (
+        monitor_type == "dom"
+        and isinstance(rich_rows, dict)
+        and bool(rich_rows.get("description_selector"))
+    ):
+        return ("skip", None)
+
     # VAGAS.com detail pages publish complete JobPosting JSON-LD. Both listing
     # and detail hosts use the same Cloudflare policy, so preserve proxy routing
     # on the auto-configured scraper as well as the DOM monitor preset.
@@ -695,6 +743,8 @@ def auto_scraper_type(
     if monitor_type == "dom" and (config or {}).get("hotelcareer_profile"):
         return ("json-ld", {"render": True, "proxy": True})
     if monitor_type == "dom" and (config or {}).get("dualoo_portal"):
+        return ("json-ld", None)
+    if monitor_type == "dom" and (config or {}).get("jobtoolz_tenant"):
         return ("json-ld", None)
     if monitor_type == "dom" and (config or {}).get("yousty_organization"):
         return ("json-ld", None)
@@ -1133,7 +1183,8 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     Statically-rich monitors (greenhouse, lever, etc.) always return True.
     api_sniffer/nextdata are rich when ``fields`` is present; SmartRecruiters
     is rich when exact ``jobId`` locale collapse is configured; dom is partial
-    rich when strict static ``rich_rows`` extraction is configured.
+    rich when strict ``rich_rows`` or rich ``script_json_links``
+    extraction is configured.
 
     Note: this is narrower than ``auto_scraper_type``. Workday has an
     auto-configured scraper but is NOT rich (monitor returns URLs only).
@@ -1145,7 +1196,19 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
             monitor_type == "smartrecruiters"
             and bool((config or {}).get("canonical_job_id_url_template"))
         )
-        or (monitor_type == "dom" and bool((config or {}).get("rich_rows")))
+        or (
+            monitor_type == "dom"
+            and (
+                bool((config or {}).get("rich_rows"))
+                or (
+                    isinstance((config or {}).get("script_json_links"), dict)
+                    and bool(
+                        (config or {})["script_json_links"].get("title_field")
+                        and (config or {})["script_json_links"].get("locations_field")
+                    )
+                )
+            )
+        )
         or (
             monitor_type == "smartrecruiters"
             and (config or {}).get("canonical_identity") in {"job-v1", "job-location-v1"}

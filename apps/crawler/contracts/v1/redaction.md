@@ -52,8 +52,9 @@ precedence over value rules.
 
 Findings follow input header/form/query order. URL userinfo precedes query
 findings. JSON uses depth-first traversal with object keys in Unicode
-code-point order and arrays in input order. An envelope emits metadata
-findings in input order, followed by inline-payload findings. Duplicate
+code-point order and arrays in input order. A synthetic capture envelope emits
+metadata findings in input order, followed by inline-payload findings. A
+browser evaluation envelope follows the JSON order directly. Duplicate
 findings are retained because each denotes a distinct replacement.
 
 ## One decode and canonical output
@@ -62,10 +63,10 @@ The encoded projection is checked before decoding. If a wrapper is declared,
 decode it exactly once, then decode the context exactly once. Percent syntax
 requires complete two-hex-digit escapes; its canonical form uses uppercase
 hex and leaves only RFC 3986 unreserved bytes literal. Base64 is padded RFC
-4648 standard base64. Transformed output is re-encoded with the declared
-wrapper. There is no heuristic or recursive decoding, decompression, archive
-handling, charset detection, descriptor discovery, or generic protobuf
-parsing.
+4648 standard base64 with zero pad bits. Transformed output is re-encoded with
+the declared wrapper. There is no heuristic or recursive decoding,
+decompression, archive handling, charset detection, descriptor discovery, or
+generic protobuf parsing.
 
 Supported context syntax and emission are:
 
@@ -91,16 +92,28 @@ Supported context syntax and emission are:
 - Form data is zero or more ordered `name=value` fields separated by `&`.
   Names and values use the canonical percent rule; `+` is literal rather than
   an alternate space spelling.
-- `ExtensionEnvelope` is the frozen JSON projection of the registry entry
-  `jobseek.synthetic.capture`, version `1`, encoding `canonical_json`. Its
-  outer keys are exactly `schema_id`, `schema_version`, `encoding`,
-  `payload_b64`, and `payload_sha256`. The canonical-JSON payload contains an
-  ordered `metadata` header list and exactly one `inline` object with a closed
-  non-envelope context and `data_b64`. The inline payload is scanned once.
-  The pre-existing `payload_sha256` is never computed or compared and is
-  cleared to the empty string in safe normalized output. An `artifact` member
-  rejects as unavailable; unknown schema/version/encoding rejects as
-  unsupported.
+- `ExtensionEnvelope` uses exactly the outer JSON keys `schema_id`,
+  `schema_version`, `encoding`, `payload_b64`, and `payload_sha256`. Unknown
+  schema/version/encoding tuples reject as unsupported. The frozen registry
+  entry `jobseek.synthetic.capture`, version `1`, encoding `canonical_json`,
+  retains its original behavior: the payload contains an ordered `metadata`
+  header list and exactly one `inline` object with a closed non-envelope
+  context and `data_b64`; the pre-existing `payload_sha256` is not compared
+  and is cleared in safe normalized output; and an `artifact` member rejects
+  as unavailable.
+- The registry entry `jobseek.browser.evaluation-json`, version `1`, encoding
+  `canonical_json`, carries the evaluated JSON value directly as payload. Its
+  closed value set is null, booleans, strings, arrays, objects, and minimal
+  decimal integers in JavaScript's interoperable safe range
+  `[-9007199254740991, 9007199254740991]`. Fractions, exponent notation,
+  negative zero, and integers outside that range reject as malformed. The
+  payload must already be canonical before privacy transformation: object keys
+  use Unicode code-point order, arrays retain order, strings use the JSON rules
+  above, integers use the minimal decimal spelling, and there is no whitespace
+  or trailing newline. The lowercase `payload_sha256` must match the exact
+  incoming payload before any transformation. Sensitive JSON keys and scalar
+  values are then redacted recursively, the safe value is recanonicalized, and
+  `payload_sha256` is recomputed over those exact safe payload bytes.
 
 An accepted input without findings must already have the emitted byte form;
 otherwise it rejects as `malformed_encoding`. This keeps `unchanged` literal
@@ -118,6 +131,13 @@ All maxima are inclusive:
 | Output | 2,097,152 bytes |
 | JSON depth | 32 |
 | Aggregate headers, form fields, or JSON nodes | 10,000 |
+
+The browser evaluation registration additionally caps both the decoded input
+payload and the recanonicalized redacted payload at 65,536 bytes. A runtime
+adapter must also enforce `EvaluationPlan.max_result_bytes`; the effective
+limit is the lower caller limit, never more than this registration ceiling.
+The base64 envelope and any outer transport remain subject to the global
+encoded-input, decoded-working-set, and output limits above.
 
 Known declared sizes/counts are checked before materialization. Chunk count
 and total declared size are checked first. A complete manifest must then have

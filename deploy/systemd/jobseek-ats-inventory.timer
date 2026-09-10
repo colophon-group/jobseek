@@ -1,8 +1,9 @@
 [Unit]
-Description=Run the Jobseek ATS inventory candidate runner daily
+Description=Run the Jobseek ATS inventory candidate runner twice daily
 
 [Timer]
 OnCalendar=*-*-* 03:00:00 UTC
+OnCalendar=*-*-* 15:00:00 UTC
 Persistent=true
 RandomizedDelaySec=45m
 AccuracySec=5m

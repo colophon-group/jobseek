@@ -291,6 +291,7 @@ async def fetch_json_page_with_retry(
     follow_redirects: bool = False,
     max_bytes: int | None = None,
     retryable_statuses: Collection[int] = (),
+    success_statuses: Collection[int] = (200,),
     retries: int = 3,
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
@@ -313,6 +314,7 @@ async def fetch_json_page_with_retry(
     follow_redirects: bool = False,
     max_bytes: int | None = None,
     retryable_statuses: Collection[int] = (),
+    success_statuses: Collection[int] = (200,),
     retries: int = 3,
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
@@ -334,6 +336,7 @@ async def fetch_json_page_with_retry(
     follow_redirects: bool = False,
     max_bytes: int | None = None,
     retryable_statuses: Collection[int] = (),
+    success_statuses: Collection[int] = (200,),
     retries: int = 3,
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
@@ -350,6 +353,8 @@ async def fetch_json_page_with_retry(
       transient statuses through ``retryable_statuses``;
     - successful JSON responses must decode to *expect_shape* or the page is
       treated as transient and retried before surfacing;
+    - callers may explicitly allow provider-specific 2xx statuses through
+      ``success_statuses``; HTTP 200 remains the only default;
     - callers may supply ``max_bytes`` to stream the body and abort before
       buffering more than that many decoded bytes.
     """
@@ -359,6 +364,9 @@ async def fetch_json_page_with_retry(
 
     if method not in ("GET", "POST"):
         raise ValueError(f"unsupported retry method: {method!r}")
+    allowed_successes = frozenset(success_statuses)
+    if not allowed_successes or any(status < 200 or status >= 300 for status in allowed_successes):
+        raise ValueError("success_statuses must contain only HTTP 2xx statuses")
     if max_bytes is not None and max_bytes < 1:
         raise ValueError("max_bytes must be positive")
 
@@ -380,7 +388,7 @@ async def fetch_json_page_with_retry(
                     request_kwargs["json"] = json_body
                 async with client.stream(method, url, **request_kwargs) as resp:
                     last_status = resp.status_code
-                    if resp.status_code == 200:
+                    if resp.status_code in allowed_successes:
                         _tdm_check(resp)
                         body = bytearray()
                         async for chunk in resp.aiter_bytes():
@@ -412,7 +420,7 @@ async def fetch_json_page_with_retry(
                     follow_redirects=follow_redirects,
                 )
             last_status = resp.status_code
-            if resp.status_code == 200:
+            if resp.status_code in allowed_successes:
                 if max_bytes is None:
                     _tdm_check(resp)
                     data = resp.json()

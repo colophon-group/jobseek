@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "seed": 8648,
+  "cooldown_seconds": 8,
+  "pairs": [
+    {"id": "p01", "profile": "c5", "first": "go"},
+    {"id": "p02", "profile": "c12", "first": "python"},
+    {"id": "p03", "profile": "c16", "first": "go"},
+    {"id": "p04", "profile": "c12", "first": "go"},
+    {"id": "p05", "profile": "c16", "first": "python"},
+    {"id": "p06", "profile": "c5", "first": "python"},
+    {"id": "p07", "profile": "c16", "first": "python"},
+    {"id": "p08", "profile": "c5", "first": "go"},
+    {"id": "p09", "profile": "c12", "first": "python"},
+    {"id": "p10", "profile": "c16", "first": "go"},
+    {"id": "p11", "profile": "c12", "first": "go"},
+    {"id": "p12", "profile": "c5", "first": "python"},
+    {"id": "p13", "profile": "c12", "first": "python"},
+    {"id": "p14", "profile": "c5", "first": "go"},
+    {"id": "p15", "profile": "c16", "first": "go"},
+    {"id": "p16", "profile": "c5", "first": "python"},
+    {"id": "p17", "profile": "c16", "first": "python"},
+    {"id": "p18", "profile": "c12", "first": "go"}
+  ]
+}

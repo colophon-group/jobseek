@@ -13,6 +13,42 @@ import (
 )
 
 var mandatoryPrivacyCaseIDs = map[string]bool{
+	"browser_evaluation_payload_limit":                      true,
+	"browser_evaluation_payload_limit_plus_1":               true,
+	"browser_evaluation_redacted_payload_limit_plus_1":      true,
+	"browser_evaluation_depth_limit":                        true,
+	"browser_evaluation_depth_limit_plus_1":                 true,
+	"browser_evaluation_nodes_limit":                        true,
+	"browser_evaluation_nodes_limit_plus_1":                 true,
+	"redact_browser_evaluation_envelope":                    true,
+	"redact_browser_evaluation_email_label_boundary":        true,
+	"redact_browser_evaluation_scalar_email":                true,
+	"reject_browser_evaluation_digest_shape":                true,
+	"reject_browser_evaluation_exponent":                    true,
+	"reject_browser_evaluation_fraction":                    true,
+	"reject_browser_evaluation_hash_mismatch":               true,
+	"reject_browser_evaluation_negative_zero":               true,
+	"reject_browser_evaluation_negative_unsafe_integer":     true,
+	"reject_browser_evaluation_noncanonical_base64":         true,
+	"reject_browser_evaluation_base64_newline":              true,
+	"reject_browser_evaluation_noncanonical_payload":        true,
+	"reject_browser_evaluation_unsafe_integer":              true,
+	"reject_browser_evaluation_version":                     true,
+	"reject_base64_wrapper_nonzero_pad_bits_with_secret":    true,
+	"reject_envelope_artifact_precedence":                   true,
+	"reject_envelope_null_schema_id":                        true,
+	"reject_envelope_null_schema_version":                   true,
+	"reject_envelope_null_payload_sha256":                   true,
+	"reject_envelope_schema_version_overflow":               true,
+	"reject_unknown_envelope_with_null_digest":              true,
+	"reject_envelope_extra_metadata_member":                 true,
+	"reject_envelope_extra_inline_member":                   true,
+	"safe_browser_evaluation_envelope":                      true,
+	"safe_browser_evaluation_invalid_email_label_too_long":  true,
+	"safe_browser_evaluation_invalid_email_trailing_hyphen": true,
+	"safe_browser_evaluation_integer_boundaries":            true,
+	"safe_browser_evaluation_null":                          true,
+
 	"redact_api_key":                       true,
 	"redact_authentication":                true,
 	"redact_basic":                         true,
@@ -131,6 +167,31 @@ func TestPrivacyCorpusMatchesEveryExpectedResultAndDigest(t *testing.T) {
 	}
 	if !reflect.DeepEqual(seen, mandatoryPrivacyCaseIDs) {
 		t.Fatalf("mandatory privacy case set drifted: seen=%v mandatory=%v", seen, mandatoryPrivacyCaseIDs)
+	}
+}
+
+func TestPrivacyRegistryHasExactUniqueExtensionEnvelopes(t *testing.T) {
+	validator, _, err := loadPrivacyAssets(contractRoot(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []extensionEnvelopeRegistration{
+		{
+			Encoding:       "canonical_json",
+			MaxPayload:     65536,
+			PayloadContext: []string{"json"},
+			SchemaID:       "jobseek.browser.evaluation-json",
+			SchemaVersion:  1,
+		},
+		{
+			Encoding:       "canonical_json",
+			PayloadContext: []string{"headers", "url", "json", "form"},
+			SchemaID:       "jobseek.synthetic.capture",
+			SchemaVersion:  1,
+		},
+	}
+	if !reflect.DeepEqual(validator.registry.ExtensionEnvelopes, want) {
+		t.Fatalf("extension registry drifted: got=%v want=%v", validator.registry.ExtensionEnvelopes, want)
 	}
 }
 

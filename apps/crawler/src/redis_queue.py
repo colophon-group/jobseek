@@ -269,6 +269,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "cornerstone",
         "dayforce",
         "paycom",
+        "paynet",
         "jazzhr",
         "www.104.com.tw",
         "jobs.jobvite.com",

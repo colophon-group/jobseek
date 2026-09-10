@@ -194,6 +194,9 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `cnstaff`         | Rich     | skip        | CNStaff paginated public career-board JSON |
 | 60   | `candidatus`      | URL-only | dom         | Candidatus WinDev browser-resolved detail postbacks |
 | 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
+| 10   | `paynet`          | Rich     | skip        | Pay-Net Applicant public postings API   |
+| 10   | `talentreef`      | Rich     | skip        | TalentReef career-page API + brand-scoped posting search |
+| 10   | `nowhiring`       | Rich     | skip        | NowHiring scoped search + public job details |
 | 10   | `jazzhr`          | URL-only | jazzhr      | ApplyToJob static listing + JSON-LD/DOM detail parsing |
 | 10   | `job51`           | Rich     | skip        | 51job employer microsite listing and detail CoAPI |
 | 10   | `jobbank104`      | URL-only | json-ld     | 104 Job Bank company-page links through optional proxy transport |
@@ -255,6 +258,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `unifr`           | Rich/URL-only | skip/pdf | University of Fribourg FR/DE and faculty inventories |
 | 10   | `unisante`        | Rich     | skip        | Bounded Unisanté official listing/detail validation |
 | 10   | `welcometothejungle` | Rich  | skip        | Welcome to the Jungle public jobs APIs  |
+| 10   | `woowa`           | Rich     | skip        | Woowa Brothers/Youths public careers APIs |
 | 10   | `workable`        | URL-only | workable    | Workable API                            |
 | 10   | `workday`         | URL-only | workday     | Workday Job Board API                   |
 | 10   | `ycombinator`     | URL-only | json-ld     | YCombinator Jobs fallback pages         |
@@ -317,6 +321,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `linkedin`     | Fetch LinkedIn public guest-job detail fragments   | None                   |
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
 | `phuketall`    | Parse PhuketAll employer job pages                 | None                   |
+| `tupu360`      | Parse Tupu360 employer job pages                   | None                   |
 | `recruiterbox` | Parse Recruiterbox / Trakstar Hire server-rendered detail fields | None       |
 | `rippling`     | Fetch Rippling detail API records                  | None                   |
 | `seek`         | Fetch SEEK AU/NZ vacancy detail GraphQL data        | None                   |

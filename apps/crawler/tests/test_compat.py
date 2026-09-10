@@ -9,7 +9,7 @@ from src.core.scrapers import _REGISTRY as scraper_registry
 from src.workspace._compat import all_monitor_types as compat_all
 from src.workspace._compat import all_scraper_types as compat_scraper_all
 from src.workspace._compat import api_monitor_types as compat_api
-from src.workspace._compat import detect_ats_from_url
+from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 from src.workspace._compat import is_rich_monitor as compat_is_rich
 
 
@@ -42,6 +42,24 @@ def test_is_rich_monitor_consistency():
 
     dom_cfg = {"rich_rows": {"row_selector": ".job", "link_selector": ".job a"}}
     assert compat_is_rich("dom", dom_cfg) == core_is_rich("dom", dom_cfg) is True
+    full_dom_cfg = {
+        "rich_rows": {
+            "row_selector": ".job",
+            "link_selector": ".job a",
+            "description_selector": ".description",
+        }
+    }
+    assert auto_scraper_type("dom", full_dom_cfg) == ("skip", None)
+    dom_script_cfg = {
+        "script_json_links": {
+            "variable": "jobs",
+            "url_field": "url",
+            "url_template": "{value}",
+            "title_field": "title",
+            "locations_field": "locations",
+        }
+    }
+    assert compat_is_rich("dom", dom_script_cfg) == core_is_rich("dom", dom_script_cfg) is True
     assert compat_is_rich("dom", {}) == core_is_rich("dom", {}) is False
 
     smartrecruiters_cfg = {"canonical_job_id_url_template": "https://career.hm.com/job/{job_id}/"}
@@ -126,6 +144,10 @@ def test_detect_ats_hibob_host():
 
 def test_detect_ats_beehire_career_page():
     assert detect_ats_from_url("https://app.beehire.com/career/gichd") == "beehire"
+    assert detect_ats_from_url("https://apply.jobappnetwork.com/fulen-tacobell/en") == "talentreef"
+    assert detect_ats_from_url("https://nowhiring.com/fulenwiderkfc/") == "nowhiring"
+    assert detect_ats_from_url("https://apply.jobappnetwork.com/fulen-tacobell/jobs/1") is None
+    assert detect_ats_from_url("https://nowhiring.com/fulenwiderkfc/job-details/1") is None
     assert detect_ats_from_url("https://app.beehire.com/invite/6L-oDP2wk") is None
 
 
