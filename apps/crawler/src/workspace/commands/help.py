@@ -1892,6 +1892,15 @@ dom — Link or Listing-Row Extraction (fallback)
                    complete job description. Its HTML is preserved and the
                    monitor becomes fully rich, so scraper_type=skip is valid:
                    {"description_selector": ".job-description"}.
+                   When each title/link row is immediately followed by a
+                   separate description element, use
+                   {"description_next_selector": "p.job-description"} instead.
+                   The adjacency is strict so intervening markup fails closed.
+                   default_locations supplies one or more verified full place
+                   names only when rows omit location data:
+                   {"default_locations": ["British Columbia, CA"]}.
+                   It is mutually exclusive with location_selectors and
+                   allow_missing_locations.
                    title_regex may contain exactly one capture group to clean a
                    stable decoration from the selected title text.
                    The selected link or title node text becomes the title;

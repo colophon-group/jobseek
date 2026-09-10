@@ -2204,6 +2204,58 @@ class TestRichRowsStatic:
             '<div class="description"><p>Provide patient care.</p><ul><li>MD or DO</li></ul></div>'
         )
 
+    def test_extracts_adjacent_descriptions_with_default_locations(self):
+        html = """
+        <section class="opportunities">
+          <p class="opportunity"><a href="https://ats.example/jobs/one">Role one</a></p>
+          <p class="summary">Lead the first research programme.</p>
+          <p class="opportunity"><a href="https://ats.example/jobs/two">Role two</a></p>
+          <p class="summary">Lead the second research programme.</p>
+        </section>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": ".opportunity",
+                "link_selector": "a[href]",
+                "description_next_selector": "p.summary",
+                "default_locations": ["British Columbia, CA"],
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
+        assert [(job.title, job.description, job.locations) for job in jobs] == [
+            (
+                "Role one",
+                '<p class="summary">Lead the first research programme.</p>',
+                ["British Columbia, CA"],
+            ),
+            (
+                "Role two",
+                '<p class="summary">Lead the second research programme.</p>',
+                ["British Columbia, CA"],
+            ),
+        ]
+
+    def test_adjacent_description_must_be_the_immediate_element_sibling(self):
+        html = """
+        <p class="opportunity"><a href="/jobs/one">Role one</a></p>
+        <aside>Unrelated content</aside>
+        <p class="summary">A displaced description must not be accepted.</p>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": ".opportunity",
+                "link_selector": "a[href]",
+                "description_next_selector": "p.summary",
+            }
+        )
+
+        assert config is not None
+        with pytest.raises(ValueError, match="omitted its configured adjacent description"):
+            _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
     def test_fails_closed_when_a_configured_location_is_missing(self):
         html = """
         <div class="job">
@@ -2594,6 +2646,25 @@ class TestRichRowsStatic:
             {"row_selector": ".job", "link_selector": ".job a", "location_selectors": "p"},
             {"row_selector": ".job", "link_selector": ".job a", "total_selector": "a["},
             {"row_selector": ".job", "description_selector": "a["},
+            {"row_selector": ".job", "description_next_selector": "a["},
+            {
+                "row_selector": ".job",
+                "description_selector": ".description",
+                "description_next_selector": ".summary",
+            },
+            {"row_selector": ".job", "default_locations": []},
+            {"row_selector": ".job", "default_locations": [""]},
+            {"row_selector": ".job", "default_locations": "British Columbia"},
+            {
+                "row_selector": ".job",
+                "location_selectors": [".location"],
+                "default_locations": ["British Columbia, CA"],
+            },
+            {
+                "row_selector": ".job",
+                "allow_missing_locations": True,
+                "default_locations": ["British Columbia, CA"],
+            },
             {"row_selector": ".job", "title_regex": r"^no capture$"},
             {"row_selector": ".job", "title_regex": r"(one)(two)"},
             {"row_selector": ".job", "location_selectors": False},

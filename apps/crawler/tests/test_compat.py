@@ -50,6 +50,15 @@ def test_is_rich_monitor_consistency():
         }
     }
     assert auto_scraper_type("dom", full_dom_cfg) == ("skip", None)
+    adjacent_dom_cfg = {
+        "rich_rows": {
+            "row_selector": ".job",
+            "link_selector": ".job a",
+            "description_next_selector": ".description",
+            "default_locations": ["British Columbia, CA"],
+        }
+    }
+    assert auto_scraper_type("dom", adjacent_dom_cfg) == ("skip", None)
     dom_script_cfg = {
         "script_json_links": {
             "variable": "jobs",
