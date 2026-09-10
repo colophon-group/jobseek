@@ -16,6 +16,16 @@ import type { SelectedLocation } from "@/lib/search/types";
 import type { WorkMode } from "@/lib/search/types";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
+const GENERATED_TITLE_MAX_LENGTH = 100;
+
+function boundedGeneratedTitle(value: string): string {
+  let title = value.slice(0, GENERATED_TITLE_MAX_LENGTH).trimEnd();
+  const finalCodeUnit = title.charCodeAt(title.length - 1);
+  if (finalCodeUnit >= 0xd800 && finalCodeUnit <= 0xdbff) {
+    title = title.slice(0, -1).trimEnd();
+  }
+  return title;
+}
 
 interface SaveSearchButtonProps {
   keywords: string[];
@@ -80,13 +90,15 @@ export function SaveSearchButton({
       if (keywords.length > 0) parts.push(keywords.join(", "));
       if (locations.length > 0) parts.push(locations.map((l) => l.name).join(", "));
       if (occupations.length > 0) parts.push(occupations.map((o) => o.name).join(", "));
-      const title = parts.length > 0
-        ? parts.join(" · ")
-        : t({
+      const title = boundedGeneratedTitle(
+        parts.length > 0
+          ? parts.join(" · ")
+          : t({
             id: "watchlists.savedSearch.defaultTitle",
             comment: "Default watchlist title when saving a search without descriptive filters",
             message: "My search",
-          });
+          }),
+      );
 
       const filters: WatchlistFilters = {};
       if (keywords.length > 0) filters.keywords = keywords;

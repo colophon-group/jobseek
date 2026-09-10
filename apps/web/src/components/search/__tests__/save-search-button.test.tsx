@@ -81,6 +81,31 @@ describe("SaveSearchButton (issue #3036)", () => {
     });
   });
 
+  it("bounds a generated title from valid long filters before saving", async () => {
+    createWatchlistMock.mockResolvedValue({ id: "w1", slug: "long-search" });
+
+    render(
+      <SaveSearchButton
+        keywords={[
+          `${"x".repeat(99)}😀later`,
+          ...Array.from({ length: 19 }, (_, index) => `keyword-${index}`),
+        ]}
+        locations={[]}
+        occupations={[]}
+        seniorities={[]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/en/watchlists/w1"));
+    const input = createWatchlistMock.mock.calls[0]?.[0] as { title: string };
+    expect(input.title.length).toBeLessThanOrEqual(100);
+    expect(input.title).not.toMatch(/[\uD800-\uDBFF]$/);
+    expect((createWatchlistMock.mock.calls[0]?.[0] as {
+      filters: { keywords: string[] };
+    }).filters.keywords).toHaveLength(20);
+  });
+
   it("includes employment type filters when saving the search", async () => {
     createWatchlistMock.mockResolvedValue({ id: "w1", slug: "internships" });
 

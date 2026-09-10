@@ -8,8 +8,8 @@ export const WATCHLIST_TITLE_MAX_LENGTH = 100;
 export const WATCHLIST_DESCRIPTION_MAX_LENGTH = 1_000;
 export const WATCHLIST_HANDOFF_COMPANY_MAX = 25;
 export const WATCHLIST_COMPANY_MAX = 250;
+export const WATCHLIST_KEYWORD_MAX_COUNT = 20;
 
-const KEYWORD_MAX_COUNT = 12;
 const KEYWORD_MAX_LENGTH = 120;
 const TAXONOMY_MAX_COUNT = 20;
 const TAXONOMY_SLUG_MAX_LENGTH = 100;
@@ -184,7 +184,7 @@ function normalizeFiltersForWrite(value: unknown): Normalized<WatchlistFilters> 
   let stringBudget = 0;
 
   const listFields = [
-    ["keywords", KEYWORD_MAX_COUNT, KEYWORD_MAX_LENGTH, undefined, true],
+    ["keywords", WATCHLIST_KEYWORD_MAX_COUNT, KEYWORD_MAX_LENGTH, undefined, true],
     ["locationSlugs", TAXONOMY_MAX_COUNT, TAXONOMY_SLUG_MAX_LENGTH, TAXONOMY_SLUG, false],
     ["occupationSlugs", TAXONOMY_MAX_COUNT, TAXONOMY_SLUG_MAX_LENGTH, TAXONOMY_SLUG, false],
     ["senioritySlugs", TAXONOMY_MAX_COUNT, TAXONOMY_SLUG_MAX_LENGTH, TAXONOMY_SLUG, false],
@@ -405,7 +405,7 @@ export function normalizeWatchlistFiltersForRead(value: unknown): WatchlistFilte
   if (!isRecord(value)) return {};
   const filters: WatchlistFilters = {};
   const keywords = normalizeStringArrayForRead(value.keywords, {
-    maxCount: KEYWORD_MAX_COUNT,
+    maxCount: WATCHLIST_KEYWORD_MAX_COUNT,
     maxLength: KEYWORD_MAX_LENGTH,
     caseInsensitive: true,
   });

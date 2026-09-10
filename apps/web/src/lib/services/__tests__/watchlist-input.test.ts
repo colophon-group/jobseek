@@ -89,7 +89,7 @@ describe("watchlist server input normalization", () => {
       ),
     },
     { title: "Valid", companyIds: ["not-a-uuid"] },
-    { title: "Valid", companyIds: [], filters: { keywords: Array.from({ length: 13 }, (_, i) => `k${i}`) } },
+    { title: "Valid", companyIds: [], filters: { keywords: Array.from({ length: 21 }, (_, i) => `k${i}`) } },
     { title: "Valid", companyIds: [], filters: { locationSlugs: ["unsafe slug"] } },
     { title: "Valid", companyIds: [], filters: { workMode: ["sometimes"] } },
     { title: "Valid", companyIds: [], filters: { employmentType: ["gig"] } },
@@ -159,7 +159,10 @@ describe("watchlist defensive JSON reads", () => {
       experienceMax: 8,
       anyCompany: "true",
     })).toEqual({
-      keywords: ["Platform", "k0", "k1", "k2", "k3", "k4", "k5", "k6", "k7"],
+      keywords: [
+        "Platform",
+        ...Array.from({ length: 16 }, (_, index) => `k${index}`),
+      ],
       locationSlugs: ["switzerland"],
       workMode: ["remote"],
       employmentType: ["contract"],
