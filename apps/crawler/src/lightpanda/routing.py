@@ -16,7 +16,7 @@ from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any, Final, Literal
 
-from src.core.scrapers import JobContent
+from src.core.job_content import JobContent
 
 ASSIGNMENT_KEYS: Final = frozenset({"browser_backend", "routing_revision"})
 _REQUIRED_KEYS: Final = frozenset(

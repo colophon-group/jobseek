@@ -13,7 +13,8 @@ import ipaddress
 import json
 import re
 import ssl
-from contextlib import suppress
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, NoReturn, cast
@@ -34,6 +35,7 @@ SERVICE_MEMORY_SWAP_MAX_BYTES: Final = 0
 HELLO_FRAME_LIMIT: Final = 512
 INPUT_FRAME_LIMIT: Final = 128 * 1024 + 3
 RESULT_FRAME_LIMIT: Final = 2 * 1024 * 1024
+CLOSE_TIMEOUT_SECONDS: Final = 1.0
 _MAX_PEM_BYTES: Final = 128 * 1024
 _SHA256_RE: Final = re.compile(r"^[0-9a-f]{64}$")
 _PRIVATE_NETWORKS: Final = (
@@ -72,8 +74,68 @@ class LightpandaB0Client:
         self._config = _validate_config(config)
         self._ssl_context = _build_ssl_context(self._config)
 
+    @asynccontextmanager
+    async def reserve(self) -> AsyncIterator[LightpandaB0Reservation]:
+        """Reserve one verified service connection before claiming Redis work."""
+
+        writer: asyncio.StreamWriter | None = None
+        try:
+            try:
+                async with asyncio.timeout(15):
+                    reader, writer = await asyncio.open_connection(
+                        host=self._config.host,
+                        port=self._config.port,
+                        ssl=self._ssl_context,
+                        server_hostname=self._config.host,
+                        ssl_handshake_timeout=10,
+                    )
+                    _verify_negotiated_tls(writer, self._config)
+                    hello = await _read_record(reader, HELLO_FRAME_LIMIT)
+                    _verify_hello(hello)
+            except LightpandaServiceError:
+                raise
+            except (TimeoutError, OSError, ssl.SSLError, asyncio.IncompleteReadError) as exc:
+                raise LightpandaServiceError("Lightpanda service transport failed closed") from exc
+            yield LightpandaB0Reservation(reader, writer)
+        finally:
+            if writer is not None:
+                await _close_writer(writer)
+
     async def execute(self, task: LightpandaB0Task) -> Message:
-        """Execute one task once, without transport retry or backend fallback."""
+        """Compatibility entry point for one reserved, one-shot execution."""
+
+        _require_canonical_task(task)
+        async with self.reserve() as reservation:
+            return await reservation.execute(task)
+
+
+class LightpandaB0Reservation:
+    """A held, hello-verified service slot that accepts exactly one task."""
+
+    def __init__(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+    ) -> None:
+        self._reader = reader
+        self._writer = writer
+        self._used = False
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        """Synchronously close the TLS transport for lease loss or cancellation."""
+
+        self._cancelled = True
+        self._writer.close()
+
+    async def execute(self, task: LightpandaB0Task) -> Message:
+        """Execute one task once, without opening, retrying, or falling back."""
+
+        if self._used:
+            raise LightpandaServiceError("Lightpanda reservation is one-shot")
+        if self._cancelled:
+            raise LightpandaServiceError("Lightpanda reservation is closed")
+        self._used = True
 
         canonical_task = _require_canonical_task(task)
         request = _execution_input(canonical_task)
@@ -84,34 +146,27 @@ class LightpandaB0Client:
         outbound = request_record + b"\x00"
         timeout_seconds = canonical_task.assignment.timeout_ms / 1000 + 15
 
-        writer: asyncio.StreamWriter | None = None
         try:
             async with asyncio.timeout(timeout_seconds):
-                reader, writer = await asyncio.open_connection(
-                    host=self._config.host,
-                    port=self._config.port,
-                    ssl=self._ssl_context,
-                    server_hostname=self._config.host,
-                    ssl_handshake_timeout=10,
-                )
-                _verify_negotiated_tls(writer, self._config)
-                hello = await _read_record(reader, HELLO_FRAME_LIMIT)
-                _verify_hello(hello)
-                writer.write(outbound)
-                await writer.drain()
-                result_payload = await _read_record(reader, RESULT_FRAME_LIMIT)
-                if await reader.read(1) != b"":
+                self._writer.write(outbound)
+                await self._writer.drain()
+                result_payload = await _read_record(self._reader, RESULT_FRAME_LIMIT)
+                if await self._reader.read(1) != b"":
                     _fail("service sent bytes after its one result")
                 return _decode_result(result_payload)
         except LightpandaServiceError:
             raise
         except (TimeoutError, OSError, ssl.SSLError, asyncio.IncompleteReadError) as exc:
             raise LightpandaServiceError("Lightpanda service transport failed closed") from exc
-        finally:
-            if writer is not None:
-                writer.close()
-                with suppress(OSError, ssl.SSLError):
-                    await writer.wait_closed()
+
+
+async def _close_writer(writer: asyncio.StreamWriter) -> None:
+    """Close immediately and give TLS shutdown a small, bounded drain window."""
+
+    writer.close()
+    with suppress(TimeoutError, OSError, ssl.SSLError):
+        async with asyncio.timeout(CLOSE_TIMEOUT_SECONDS):
+            await writer.wait_closed()
 
 
 def _validate_config(config: LightpandaServiceConfig) -> LightpandaServiceConfig:
@@ -375,6 +430,7 @@ def _fail(message: str) -> NoReturn:
 
 __all__ = [
     "LightpandaB0Client",
+    "LightpandaB0Reservation",
     "LightpandaServiceConfig",
     "LightpandaServiceError",
 ]
