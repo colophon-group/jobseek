@@ -15,6 +15,14 @@ routing.
 The adapter still requires an injected evaluation-privacy implementation;
 only a loopback-fixture sealer exists in tests.
 
+The package also contains a non-authoritative bounded execution pool for the
+fixed-RAM pilot. The pool admits immutable runtime-v1 inputs into a fixed set
+of workers, dispatches different origins fairly, and permits at most one task
+per origin at a time. Every active slot still owns a separate one-shot
+Lightpanda process and the same cleanup proof below. Processes are not reused
+or shared between tasks. The pool has no CLI, queue, crawler, or production
+entry point.
+
 The bridge preserves the pilot's stricter 512 KiB HTML ceiling and reports an
 oversized document as the adapter's closed `RESOURCE_LIMIT` result. B1 uses
 the smaller of the plan's `max_result_bytes` and the pilot's 64 KiB ceiling.
@@ -23,7 +31,9 @@ timeout or cancellation; other provider details are reduced to message-free,
 fail-closed adapter errors.
 
 The runner starts a new Lightpanda process for its single task on a chosen free
-loopback port:
+loopback port. Concurrent in-process runners retain each allocated port until
+that process has been cleaned up, preventing sibling tasks from selecting the
+same close-then-bind port:
 
 ```text
 lightpanda serve --host 127.0.0.1 --port <port> --log-level error
@@ -76,9 +86,11 @@ docker run --rm \
 
 Those CPU, memory, PID, network-namespace, capability, privilege,
 read-only-root, and tmpfs controls are caller responsibilities and are required
-for every pilot run. Run exactly one pilot task per container. Keep Docker's
+for every pilot run. The public CLI still runs exactly one task per container;
+the test-only fixed-RAM pool may run its declared number of independent
+one-shot processes inside one harder whole-container bound. Keep Docker's
 private PID namespace and a dedicated network namespace: never use
-`--pid=host`, `--network=host`, or expose the internal CDP port. The unavoidable
+`--pid=host`, `--network=host`, or expose an internal CDP port. The unavoidable
 close-then-bind free-port handoff and numeric process-group cleanup are accepted
 only under those isolation conditions.
 
@@ -100,7 +112,7 @@ disposable Linux environment:
 
 ```sh
 LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-x86_64-linux \
-  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration)$' \
+  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaPoolRuntimeV1IntegrationC4)$' \
   -count=1 -v .
 
 docker build --build-context contracts=../../apps/crawler/contracts \
@@ -108,7 +120,7 @@ docker build --build-context contracts=../../apps/crawler/contracts \
   -t jobseek-lightpanda-integration:amd64 .
 
 LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-aarch64-linux \
-  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration)$' \
+  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaPoolRuntimeV1IntegrationC4)$' \
   -count=1 -v .
 
 docker build --build-context contracts=../../apps/crawler/contracts \
@@ -151,7 +163,8 @@ content, or expressions.
 ## Scope exclusions
 
 This pilot intentionally has no queues, crawler wiring, browser fallback,
-process pooling, proxy or authentication support, request interception,
+resident or shared browser-process pooling, proxy or authentication support,
+request interception,
 `networkidle` waiting, `stopLoading`, iframe capture, nightly binary, deployment,
 or observability integration. The runtime-v1 bridge is exercised only against
 loopback fixtures and has no reusable production evaluation-privacy sealer or
