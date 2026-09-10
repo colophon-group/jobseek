@@ -209,7 +209,10 @@ def validate_csvs() -> list[ValidationError]:
         configured_full_rich_rows = (
             configured_rich_rows
             and isinstance(rich_rows_config, dict)
-            and bool(rich_rows_config.get("description_selector"))
+            and bool(
+                rich_rows_config.get("description_selector")
+                or rich_rows_config.get("description_next_selector")
+            )
         )
         script_json_links = (monitor_config_obj or {}).get("script_json_links")
         configured_rich_script_json = (

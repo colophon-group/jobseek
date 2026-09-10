@@ -28,7 +28,7 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlsplit, urlu
 
 import httpx
 import structlog
-from selectolax.lexbor import LexborHTMLParser, SelectolaxError
+from selectolax.lexbor import LexborHTMLParser, LexborNode, SelectolaxError
 
 from src.core.monitors import DiscoveredJob, register
 from src.core.monitors.raw import save_text_response
@@ -2565,6 +2565,8 @@ _RichRowsConfig = tuple[
     re.Pattern[str] | None,
     str | None,
     re.Pattern[str] | None,
+    str | None,
+    tuple[str, ...],
 ]
 
 
@@ -2639,6 +2641,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "row_required_selector",
         "row_text_pattern",
         "description_selector",
+        "description_next_selector",
+        "default_locations",
         "title_regex",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
@@ -2755,6 +2759,43 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         value.get("description_selector"),
         name="rich_rows.description_selector",
     )
+    description_next_selector = _validate_css_selector(
+        value.get("description_next_selector"),
+        name="rich_rows.description_next_selector",
+    )
+    if description_selector is not None and description_next_selector is not None:
+        raise ValueError(
+            "DOM monitor rich_rows description_selector and "
+            "description_next_selector are mutually exclusive"
+        )
+    default_locations_raw = value.get("default_locations")
+    if default_locations_raw is None:
+        default_locations: tuple[str, ...] = ()
+    elif (
+        not isinstance(default_locations_raw, list)
+        or not 1 <= len(default_locations_raw) <= 4
+        or not all(
+            isinstance(location, str)
+            and location.strip()
+            and len(location) <= 256
+            and "\x00" not in location
+            for location in default_locations_raw
+        )
+    ):
+        raise ValueError(
+            "DOM monitor rich_rows.default_locations must be a bounded list of place names"
+        )
+    else:
+        default_locations = tuple(location.strip() for location in default_locations_raw)
+    if default_locations and location_selectors:
+        raise ValueError(
+            "DOM monitor rich_rows.default_locations cannot be combined with location_selectors"
+        )
+    if default_locations and allow_missing_locations:
+        raise ValueError(
+            "DOM monitor rich_rows.default_locations cannot be combined with "
+            "allow_missing_locations"
+        )
     title_regex_raw = value.get("title_regex")
     title_regex = None
     if title_regex_raw is not None:
@@ -2796,7 +2837,18 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         row_text_pattern,
         description_selector,
         title_regex,
+        description_next_selector,
+        default_locations,
     )
+
+
+def _immediate_next_element(node: LexborNode) -> LexborNode | None:
+    """Return the immediate following element sibling, ignoring text nodes."""
+
+    current = node.next
+    while current is not None and current.tag == "-text":
+        current = current.next
+    return current
 
 
 def _rows_between_boundaries(tree, rows: list, start, end) -> list:
@@ -2862,6 +2914,8 @@ def _extract_rich_rows_static(
         row_text_pattern,
         description_selector,
         title_regex,
+        description_next_selector,
+        default_locations,
     ) = config
     tree = LexborHTMLParser(html)
     advertised_total: int | None = None
@@ -2953,11 +3007,25 @@ def _extract_rich_rows_static(
                     f"DOM monitor rich_rows row {index} omitted its configured description"
                 )
             description = description_node.html.strip()
+        elif description_next_selector is not None:
+            description_node = _immediate_next_element(row)
+            if (
+                description_node is None
+                or not description_node.css_matches(description_next_selector)
+                or not description_node.text(separator=" ", strip=True).strip()
+            ):
+                raise ValueError(
+                    f"DOM monitor rich_rows row {index} omitted its configured adjacent description"
+                )
+            description = description_node.html.strip()
+        locations = (
+            [", ".join(location_parts)] if location_parts else list(default_locations) or None
+        )
         job = DiscoveredJob(
             url=canonical_url,
             title=title,
             description=description,
-            locations=[", ".join(location_parts)] if location_parts else None,
+            locations=locations,
             metadata=metadata or None,
         )
         existing = jobs_by_url.get(canonical_url)

@@ -731,7 +731,9 @@ def auto_scraper_type(
     if (
         monitor_type == "dom"
         and isinstance(rich_rows, dict)
-        and bool(rich_rows.get("description_selector"))
+        and bool(
+            rich_rows.get("description_selector") or rich_rows.get("description_next_selector")
+        )
     ):
         return ("skip", None)
 
