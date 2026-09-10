@@ -2064,6 +2064,51 @@ exit 23
   assert.doesNotMatch(calls, /^start beta\.timer$/m);
 });
 
+test("Codex deploy restores both previously active daily timers without opting in others", () => {
+  const dir = mkdtempSync(join(tmpdir(), "codex-deploy-daily-timers-"));
+  const log = join(dir, "systemctl.log");
+  const result = spawnSync(
+    "bash",
+    [
+      "-c",
+      `set -euo pipefail
+source scripts/deploy-codex-runner-host.sh
+TIMERS=(alpha.timer jobseek-codex-daily-annotations.timer jobseek-codex-daily-error-review.timer inactive.timer)
+START_TIMERS=0
+LABELLER_CONTRACT_VERIFIED=1
+systemctl() {
+  printf '%s\\n' "$*" >> "$MOCK_SYSTEMCTL_LOG"
+  if [[ "$1" == "is-active" ]]; then
+    [[ "$3" == "alpha.timer" || "$3" == "jobseek-codex-daily-annotations.timer" || "$3" == "jobseek-codex-daily-error-review.timer" ]]
+    return
+  fi
+  return 0
+}
+pause_timer_activations
+exit 23
+`,
+    ],
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, MOCK_SYSTEMCTL_LOG: log },
+      encoding: "utf8",
+    },
+  );
+  const calls = readFileSync(log, "utf8");
+  rmSync(dir, { recursive: true, force: true });
+
+  assert.equal(result.status, 23, result.stderr);
+  assert.match(
+    calls,
+    /^stop alpha\.timer jobseek-codex-daily-annotations\.timer jobseek-codex-daily-error-review\.timer$/m,
+  );
+  assert.match(
+    calls,
+    /^start alpha\.timer jobseek-codex-daily-annotations\.timer jobseek-codex-daily-error-review\.timer$/m,
+  );
+  assert.doesNotMatch(calls, /^start .*inactive\.timer/m);
+});
+
 test("scheduled maintenance always reports host hygiene independently", () => {
   assert.match(crawlerHostHygieneScript, /from datetime import datetime, timezone/);
   assert.match(crawlerHostHygieneScript, /UTC = timezone\.utc/);

@@ -3,7 +3,7 @@
 Description=Jobseek Codex daily crawler error review
 Documentation=file:///srv/jobseek-codex/repo/docs/18-codex-automation-deployment.md
 Wants=network-online.target
-After=network-online.target
+After=network-online.target jobseek-codex-daily-annotations.service
 ConditionPathIsDirectory=/srv/jobseek-codex/repo
 ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py
 ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-error-review-bundle.py

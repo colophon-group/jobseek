@@ -10,8 +10,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 DEPLOY = ROOT / "scripts" / "deploy-codex-runner-host.sh"
 GOVERNOR_SERVICE = ROOT / "deploy" / "systemd" / "jobseek-codex-governor.service"
+GOVERNOR_TIMER = ROOT / "deploy" / "systemd" / "jobseek-codex-governor.timer"
 ANNOTATIONS_SERVICE = ROOT / "deploy" / "systemd" / "jobseek-codex-daily-annotations.service"
+ANNOTATIONS_TIMER = ROOT / "deploy" / "systemd" / "jobseek-codex-daily-annotations.timer"
 ERROR_REVIEW_SERVICE = ROOT / "deploy" / "systemd" / "jobseek-codex-daily-error-review.service"
+ERROR_REVIEW_TIMER = ROOT / "deploy" / "systemd" / "jobseek-codex-daily-error-review.timer"
 GOVERNOR_ENV_EXAMPLE = ROOT / "deploy" / "systemd" / "jobseek-codex-governor.env.example"
 LEAK_MARKER = "not-a-real-password-7f93"
 
@@ -94,6 +97,29 @@ def test_governor_lock_and_home_write_scope_cover_managed_worktree_reconciliatio
     assert "ReadWritePaths=/srv/jobseek-codex /home/codex-runner" in service
     assert 'flock -w "${LOCK_TIMEOUT_S}" 9' in deploy
     assert '"${REPO_DIR}/scripts/codex-worktree-reconcile.py" --apply' in deploy
+
+
+def test_daily_timers_catch_up_missed_calendar_activations_under_the_shared_lock() -> None:
+    timers = {
+        ANNOTATIONS_TIMER: "OnCalendar=*-*-* 08:00:00 UTC",
+        ERROR_REVIEW_TIMER: "OnCalendar=*-*-* 09:00:00 UTC",
+    }
+    for timer_path, calendar in timers.items():
+        timer = timer_path.read_text()
+        assert calendar in timer
+        assert "Persistent=true" in timer
+        assert "Persistent=false" not in timer
+
+    assert "Persistent=false" in GOVERNOR_TIMER.read_text()
+    assert (
+        "After=network-online.target jobseek-codex-daily-annotations.service"
+        in ERROR_REVIEW_SERVICE.read_text()
+    )
+    for service_path in (ANNOTATIONS_SERVICE, ERROR_REVIEW_SERVICE):
+        exec_start = next(
+            line for line in service_path.read_text().splitlines() if line.startswith("ExecStart=")
+        )
+        assert "/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock" in exec_start
 
 
 def test_all_crawler_runner_units_use_the_python_313_virtualenv() -> None:

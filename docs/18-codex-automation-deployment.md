@@ -113,7 +113,9 @@ prompt, or routine source:
    [`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml).
    That workflow runs
    [`deploy-codex-runner-host.sh`](../scripts/deploy-codex-runner-host.sh)
-   with `JOBSEEK_CODEX_START_TIMERS=0`, so it does not start a Codex run.
+   with `JOBSEEK_CODEX_START_TIMERS=0`, so it does not opt in inactive timers
+   or invoke a service directly. Restoring a previously active persistent
+   daily timer may deliver one overdue scheduled activation.
 
 If a host timer is unavailable, repair the committed runner/unit configuration
 or perform one bounded manual CLI run using the same ledger, lock, prompt, and
@@ -244,13 +246,15 @@ Committed deployment templates:
   - runs one daily labelled-postings routine from an isolated worktree, with
     DB access limited to `/etc/jobseek-codex/labeller.env`.
 - [`../deploy/systemd/jobseek-codex-daily-annotations.timer`](../deploy/systemd/jobseek-codex-daily-annotations.timer)
-  - starts once per day at 08:00 UTC with jitter and no missed-run catch-up.
+  - starts once per day at 08:00 UTC with jitter and persists an activation
+    missed while the timer is stopped.
 - [`../deploy/systemd/jobseek-codex-daily-error-review.service`](../deploy/systemd/jobseek-codex-daily-error-review.service)
   - root `ExecStartPre` collects a redacted read-only Docker/host evidence
     bundle, then Codex analyzes that bundle without Docker or deploy-shell
     access.
 - [`../deploy/systemd/jobseek-codex-daily-error-review.timer`](../deploy/systemd/jobseek-codex-daily-error-review.timer)
-  - starts once per day at 09:00 UTC with jitter and no missed-run catch-up.
+  - starts once per day at 09:00 UTC with jitter and persists an activation
+    missed while the timer is stopped.
 - [`../deploy/systemd/jobseek-codex-governor.env.example`](../deploy/systemd/jobseek-codex-governor.env.example)
   - non-secret governor defaults, including conservative budgets and usage
   thresholds.
@@ -314,8 +318,9 @@ systemd service runs
 `/srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py`
 under `flock -n /srv/jobseek-codex/state/codex-runner.lock`; daily services
 use the same lock with a bounded wait. This keeps all Hetzner Codex routines at
-one active process without firing missed daily jobs immediately after a
-deployment.
+one active process. Restoring a previously active daily timer may enqueue one
+overdue activation, with the timer's existing jitter; the shared lock keeps
+that catch-up serialized with every other routine.
 
 For annotations, provision `/etc/jobseek-codex/labeller.env` with mode `0640`
 and group `codex-runner`. Prefer a read-only local Postgres role that can
@@ -360,8 +365,9 @@ detached because its Git common directory also creates resolver worktrees;
 moving a local `main` ref must not manufacture tracked changes in the
 deployment checkout. Resolver worktrees start from freshly fetched
 `origin/main`. A genuine tracked edit still blocks deployment fail-closed.
-The workflow sets `JOBSEEK_CODEX_START_TIMERS=0`, so deployment updates the
-host and restores timer state without directly starting a routine.
+The workflow sets `JOBSEEK_CODEX_START_TIMERS=0`, so deployment restores the
+existing timer state without opting in a previously inactive timer or directly
+starting a routine.
 
 The deploy never interrupts a live Codex routine. Before waiting for the shared
 runner lock, it records which Codex timers are active and stops those timer
@@ -369,7 +375,11 @@ units only. A service that already holds the lock continues normally, while no
 new resolver or daily routine can jump ahead of the pending deploy. An exit
 trap restores the previously active timers on both success and failure; the
 workflow's `JOBSEEK_CODEX_START_TIMERS=0` therefore means "restore existing
-timer state", not "leave production paused".
+timer state", not "leave production paused". Because the two daily timers are
+persistent, restoration after an elapsed calendar event may deliver one
+overdue scheduled activation. Multiple missed events coalesce into one
+activation, and the daily ledger prevents duplicate completed output for the
+same UTC date.
 
 The lock wait is bounded at 15,000 seconds: the governor's four-hour service
 limit plus lock-release headroom. The SSH command has a five-hour envelope so
