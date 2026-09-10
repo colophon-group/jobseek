@@ -256,9 +256,9 @@ class InspectTests(unittest.TestCase):
         inspect = self.valid_inspect()
         inspect["Config"]["Labels"][controller.LABEL_ROLE] = "go"
         inspect["NetworkSettings"]["Networks"]["network"]["Aliases"] = []
-        inspect["HostConfig"].update(Memory=controller.GIB, MemorySwap=controller.GIB, PidsLimit=128, Tmpfs={"/tmp": controller.MEASURED_TMPFS})
+        inspect["HostConfig"].update(Memory=controller.GIB, MemorySwap=controller.GIB, PidsLimit=controller.MEASURED_PIDS, Tmpfs={"/tmp": controller.MEASURED_TMPFS})
         controller.attest_container(inspect, "network", "go", "run", "sha256:" + "b" * 64, measured=True)
-        for key, value in (("Memory", 1), ("MemorySwap", 2 * controller.GIB), ("PidsLimit", 129), ("NanoCpus", 2_000_000_000)):
+        for key, value in (("Memory", 1), ("MemorySwap", 2 * controller.GIB), ("PidsLimit", controller.MEASURED_PIDS + 1), ("NanoCpus", 2_000_000_000)):
             mutated = copy.deepcopy(inspect)
             mutated["HostConfig"][key] = value
             self.assertEqual(failure_id(lambda mutated=mutated: controller.attest_container(mutated, "network", "go", "run", "sha256:" + "b" * 64, measured=True)), "inspect")
@@ -430,7 +430,7 @@ class SamplerTests(unittest.TestCase):
                 "usage_usec 3\nuser_usec 2\nsystem_usec 1\n"
                 "core_sched.force_idle_usec 0\n"
             ),
-            "pids.max": "128\n", "pids.events": "max 0\n",
+            "pids.max": f"{controller.MEASURED_PIDS}\n", "pids.events": "max 0\n",
             "pids.peak": "2\n", "cgroup.procs": "",
         }
         for name, value in values.items():
@@ -455,13 +455,14 @@ class SamplerTests(unittest.TestCase):
             self.assertEqual(result["memory_peak"], 9)
             self.assertEqual(result["memory_limit"], controller.GIB)
             self.assertEqual(result["memory_swap_limit"], 0)
-            self.assertEqual(result["pids_limit"], 128)
+            self.assertEqual(result["pids_limit"], controller.MEASURED_PIDS)
             self.assertEqual(result["pids_events"], {"max": 0})
             self.assertEqual(result["cpu_max"], [100000, 100000])
             controller.validate_resources(result)
             for key, value, want in (
                 ("memory_swap_limit", 1, "inspect"),
                 ("cpu_max", [200000, 100000], "inspect"),
+                ("pids_peak", controller.MEASURED_PIDS + 1, "inspect"),
                 ("pids_events", {"max": 1}, "oom"),
             ):
                 mutated = copy.deepcopy(result)

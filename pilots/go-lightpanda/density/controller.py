@@ -27,6 +27,7 @@ from typing import Any
 GIB = 1024**3
 FIXTURE_MEMORY = 256 * 1024**2
 FIXTURE_PIDS = 64
+MEASURED_PIDS = 512
 FIXTURE_TMPFS = "rw,noexec,nosuid,nodev,size=16777216,uid=10001,gid=10001,mode=0700"
 MEASURED_TMPFS = "rw,noexec,nosuid,nodev,size=268435456,uid=10001,gid=10001,mode=0700"
 START_GATE = "/tmp/controller-start"
@@ -350,14 +351,14 @@ def validate_resources(resources: dict[str, Any]) -> None:
     events = _object(resources.get("memory_events"), {"low", "high", "max", "oom", "oom_kill", "oom_group_kill"})
     cpu = resources.get("cpu_stat")
     if (resources.get("memory_limit") != GIB or resources.get("memory_swap_limit") != 0 or
-            resources.get("pids_limit") != 128):
+            resources.get("pids_limit") != MEASURED_PIDS):
         raise SmokeFailure("inspect")
     cpu_max = resources.get("cpu_max")
     if (not isinstance(cpu_max, list) or len(cpu_max) != 2 or
             any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in cpu_max) or
             cpu_max[0] != cpu_max[1]):
         raise SmokeFailure("inspect")
-    if current > GIB or peak > GIB or pids_peak > 128:
+    if current > GIB or peak > GIB or pids_peak > MEASURED_PIDS:
         raise SmokeFailure("inspect")
     if not isinstance(cpu, dict):
         raise SmokeFailure("missing_cgroup")
@@ -476,7 +477,7 @@ def attest_container(inspect: dict[str, Any], network: str, role: str, run_id: s
             raise KeyError
         if role != "fixture" and aliases:
             raise KeyError
-        expected_memory, expected_pids = (GIB, 128) if measured else (FIXTURE_MEMORY, FIXTURE_PIDS)
+        expected_memory, expected_pids = (GIB, MEASURED_PIDS) if measured else (FIXTURE_MEMORY, FIXTURE_PIDS)
         if (host.get("NanoCpus") != 1_000_000_000 or host.get("Memory") != expected_memory or
                 host.get("MemorySwap") != expected_memory or host.get("PidsLimit") != expected_pids):
             raise KeyError
@@ -780,7 +781,7 @@ class SmokeController:
                 if time.monotonic() >= ready_deadline:
                     raise SmokeFailure("start_timeout")
                 time.sleep(0.05)
-            measured_args = [*common, "--label", f"{LABEL_ROLE}={implementation}", "--cpus", "1", "--memory", "1g", "--memory-swap", "1g", "--pids-limit", "128", "--ulimit", "nofile=256:256", "--tmpfs", f"/tmp:{MEASURED_TMPFS}",
+            measured_args = [*common, "--label", f"{LABEL_ROLE}={implementation}", "--cpus", "1", "--memory", "1g", "--memory-swap", "1g", "--pids-limit", str(MEASURED_PIDS), "--ulimit", "nofile=256:256", "--tmpfs", f"/tmp:{MEASURED_TMPFS}",
                              identity, "--workload", "/density/workload.v1.json", "--concurrency", str(self.concurrency), "--source-commit", self.source, "--image-identity", identity, "--start-gate", START_GATE]
             measured_id = self._create(measured_args)
             attest_container(self._inspect_one(measured_id), network, implementation, self.run_id, identity, measured=True)

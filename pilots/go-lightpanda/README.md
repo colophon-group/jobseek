@@ -185,7 +185,7 @@ The Python arm warms exactly four Playwright drivers before its measured clock
 and creates a fresh browser, context, and page for every task. The Go arm creates
 one fixed four-worker pool before its measured clock and retains the existing
 fresh one-shot Lightpanda lifecycle per task. Both measured containers are
-limited to one CPU, 1 GiB memory with no additional swap, 128 PIDs, and 256 file
+limited to one CPU, 1 GiB memory with no additional swap, 512 PIDs, and 256 file
 descriptors. The fixture runs outside that cgroup on a unique Docker internal
 network and is separately bounded. The controller verifies the effective
 cgroup-v2 limits and aggregate counters, exact image IDs, stopped-container
