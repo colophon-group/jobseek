@@ -97,6 +97,7 @@ Monitor Types (cheapest first):
   gem               10      Full job data     No (skipped)
   greenhouse        10      Full job data     No (skipped)
   gupy              10      Job URLs          Auto-configured
+  universia         10      Full job data     No (skipped)
   headhunter        10      Full/partial      Auto-enriched
   beehire           10      Full job data     No (skipped)
   hibob             10      Full job data     No (skipped)
@@ -3044,6 +3045,27 @@ gupy — Gupy NextData listing
   Zero jobs?  A valid page still contains matching NextData career metadata
               and an empty jobs array."""
 
+MONITOR_UNIVERSIA = """\
+universia — Universia branded jobboard API
+
+  Listing:  GET api-manager.universia.net/orientacion-job-posting/v1/api/job-posting
+  Returns:  Full job data
+  Scraper:  None (skipped)
+  Cost:     10
+  Browser:  No
+
+  Board URLs use https://jobboard.universia.net/{slug}. The monitor resolves
+  the provider's full entity UUID from the public board configuration, drains
+  the UUID-scoped job inventory, and validates totals, pagination, job board
+  membership, and public URLs. An explicit total=0 response is authoritative.
+
+  Optional config:
+    {"board_id": "<uuid>", "language": "es"}
+
+  A configured board_id is checked against the live configuration every run;
+  it is never trusted as a replacement for provider identity validation.
+"""
+
 MONITOR_CORNERSTONE = """\
 cornerstone — Cornerstone public career-site API
 
@@ -4386,6 +4408,7 @@ infoniqa — Infoniqa jobexchange form-pagination monitor
 """,
     "intervieweb": MONITOR_INTERVIEWEB,
     "gupy": MONITOR_GUPY,
+    "universia": MONITOR_UNIVERSIA,
     "cornerstone": MONITOR_CORNERSTONE,
     "darwinbox": MONITOR_DARWINBOX,
     "dayforce": MONITOR_DAYFORCE,

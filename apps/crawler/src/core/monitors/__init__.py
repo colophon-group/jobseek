@@ -582,6 +582,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Gupy NextData listing \u2014 tenant: {tenant}, {jobs} jobs"
         return f"Gupy NextData listing \u2014 tenant: {tenant}"
+    if name == "universia":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Universia public API \u2014 board: {slug}, {jobs} jobs"
+        return f"Universia public API \u2014 board: {slug}"
     if name == "earcu":
         feed_url = metadata.get("feed_url", "?")
         jobs = metadata.get("jobs")
@@ -1110,6 +1116,7 @@ from src.core.monitors import (  # noqa: E402
     umantis,  # noqa: F401
     unifr,  # noqa: F401
     unisante,  # noqa: F401
+    universia,  # noqa: F401
     welcometothejungle,  # noqa: F401
     woowa,  # noqa: F401
     workable,  # noqa: F401

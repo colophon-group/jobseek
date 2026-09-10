@@ -113,6 +113,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "talentreef",
         "typify",
         "ukg",
+        "universia",
         "unifr",
         "unisante",
         "welcometothejungle",
@@ -366,6 +367,17 @@ def detect_ats_from_url(url: str) -> str | None:
         return "beisen"
     if gupy_tenant_from_url(url) is not None:
         return "gupy"
+    if (
+        parsed.scheme == "https"
+        and host == "jobboard.universia.net"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.query
+        and not parsed.fragment
+        and re.fullmatch(r"/[a-z0-9][a-z0-9-]{0,126}[a-z0-9]/?", parsed.path)
+    ):
+        return "universia"
     if cornerstone_board_from_url(url) is not None:
         return "cornerstone"
     if darwinbox_board_from_url(url) is not None:
