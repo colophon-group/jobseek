@@ -2,14 +2,38 @@
 
 Status: **inactive conformance candidate** for #8227, a bounded child of #7938.
 
-This directory freezes the first queue-v2 safety slice before Redis, Postgres,
-or worker integration. `model.py` is the Python reference state machine. The Go
-package under `conformance/go/` independently implements the same transitions.
-Both consume the generated synthetic corpus in `fixtures/scenarios.json` and
-must produce identical canonical JSON bytes and SHA-256 result digests.
+This directory freezes the queue-v2 safety contract before Postgres or worker
+integration. `model.py` is the Python reference state machine. The Go package
+under `conformance/go/` independently implements the same transitions. Both
+consume the generated synthetic corpus in `fixtures/scenarios.json` and must
+produce identical canonical JSON bytes and SHA-256 result digests.
+
+The next inactive slice binds that fence to one shared Redis Lua program at
+`contracts/queue/v2/redis/lifecycle.lua`. The Python client and tests live
+under the same contract tree, outside the crawler wheel and runtime image; the
+Go conformance client executes the exact same Lua file. This candidate uses
+Redis `TIME` and a bounded monotonic `claim_sequence` high-water field in the
+exact-shape route hash. It retains no per-claim ledger. Every transition
+atomically checks route, revision, token, lease, and exactly-one lifecycle
+indexing. Its only wire outcomes are `accepted`, `fenced`, `not_current`, and
+`transport-error`.
+
+All Redis-side numeric values use canonical decimal integers in
+`0..9,999,999,999,999`. That 13-digit bound safely round-trips through Redis
+Lua, cjson, sorted-set scores, Python, and Go while accommodating epoch
+milliseconds through the year 2286. Redis time, caller durations, route and
+config revisions, failure counters, record fields, scores, transition replies,
+and token components are checked against the same domain. Checked addition
+and claim-sequence exhaustion fail before lifecycle mutation.
 
 Nothing here is imported by the production crawler. It does not change queue
 ownership, enable a Go worker, or authorize a deployment.
+
+The Python lease handle exposes an `asyncio.Event` that fires on fenced,
+not-current, or transport-error outcomes. This is the prototype cancellation
+contract: work must stop and must not perform an authoritative write after the
+event fires. A later Postgres adapter still has to re-check the fence inside
+the write transaction.
 
 ## Fence identity
 
@@ -71,16 +95,43 @@ Generate or verify it from `apps/crawler/`:
 uv run python contracts/queue/v2/tools/generate_corpus.py
 uv run python contracts/queue/v2/tools/generate_corpus.py --check
 uv run pytest -q contracts/queue/v2/conformance/python
+uv run pytest -q contracts/queue/v2/redis/python
 cd contracts && go test -race ./queue/v2/... && go vet ./queue/v2/...
 ```
+
+The fakeredis suite runs by default. Real-Redis tests in both languages are
+opt-in and fail closed unless the operator explicitly marks the target as
+isolated:
+
+```bash
+export QUEUE_V2_REDIS_URL=redis://127.0.0.1:6379/15
+export QUEUE_V2_REDIS_ISOLATED=1
+uv run pytest -q contracts/queue/v2/redis/python
+cd contracts && go test -race ./queue/v2/...
+```
+
+Both implementations consume
+`contracts/queue/v2/redis/fixtures/lifecycle_scenarios.json`. The shared trace
+covers every fence field, heartbeat, completion, reschedule, expiry/reap,
+reclaim and stale-token rejection, dead-letter threshold, client restart,
+concurrent double-claim, and before/invalid/ambiguous transport failures. Tests
+use unique hash-tagged namespaces and delete only their seven known keys; they
+never call `FLUSHDB`.
+
+The dedicated conformance workflow makes both real-Redis suites non-skippable
+against the production-pinned Redis 8 image and requires database 15 to start
+and end empty.
 
 ## Deferred production work
 
 Later #7938 children still own:
 
-- Redis Lua/stored-contract compare-and-set transitions;
 - Postgres mutation predicates and transaction-boundary fault injection;
 - mixed-protocol rollout, quiescence, rollback, and epoch rotation;
 - rebuild/conservation across scrape fallbacks, learned egress state, circuits,
   strikes, and runtime metadata;
 - production Go worker ownership.
+
+Redis process crash semantics, persistence recovery, replication/failover, and
+cluster resharding remain unproven and deferred. This candidate is not a
+deployment authorization.
