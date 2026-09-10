@@ -224,6 +224,9 @@ def test_transaction_is_renderer_scoped_and_contains_no_global_mutation() -> Non
     assert 'docker rm --force "$candidate_container_id"' in scripts
     assert 'docker restart --time 30 "$candidate_container_id"' in scripts
     assert 'docker network rm "$candidate_network_id"' in scripts
+    assert 'install -m 0400 "$STAGE/pki/server-key.pem"' in scripts
+    assert "-ceu 'chown 10001:10001 /server-key.pem'" in scripts
+    assert "--cap-add FOWNER" not in scripts
     assert 'up --detach --no-deps "$SERVICE"' in scripts
     assert "assert-protected" in scripts
     assert "/home/deploy/.local/share/jobseek-lightpanda" in scripts

@@ -187,7 +187,7 @@ install -m 0555 "$STAGE/verify.py" "$GENERATION/verify.py"
 install -m 0555 "$STAGE/validate_pki.py" "$GENERATION/validate_pki.py"
 install -m 0444 "$STAGE/pki/ca.pem" "$GENERATION/pki/ca.pem"
 install -m 0444 "$STAGE/pki/server.pem" "$GENERATION/pki/server.pem"
-install -m 0600 "$STAGE/pki/server-key.pem" "$GENERATION/pki/server-key.pem"
+install -m 0400 "$STAGE/pki/server-key.pem" "$GENERATION/pki/server-key.pem"
 install -m 0600 "$STAGE/pki/client.pem" "$GENERATION/pki/client.pem"
 install -m 0600 "$STAGE/release.env" "$GENERATION/release.env"
 install -m 0444 "$STAGE/pins.env" "$GENERATION/pins.env"
@@ -213,7 +213,7 @@ docker run --rm \
   --entrypoint /bin/sh \
   --mount "type=bind,source=$GENERATION/pki/server-key.pem,target=/server-key.pem" \
   "$IMAGE_REF" \
-  -ceu 'chmod 0400 /server-key.pem && chown 10001:10001 /server-key.pem'
+  -ceu 'chown 10001:10001 /server-key.pem'
 [[ "$(stat -c '%u:%g:%a' "$GENERATION/pki/server-key.pem")" == 10001:10001:400 ]] || exit 1
 [[ "$(stat -c '%a' "$GENERATION/pki/ca.pem")" == 444 ]] || exit 1
 [[ "$(stat -c '%a' "$GENERATION/pki/server.pem")" == 444 ]] || exit 1
