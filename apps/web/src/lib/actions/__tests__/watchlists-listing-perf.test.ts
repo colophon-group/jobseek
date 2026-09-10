@@ -83,6 +83,8 @@ const mocks = vi.hoisted(() => {
     dbExecute: vi.fn(),
     withDbRetry: vi.fn(),
     cached: vi.fn(),
+    kvMget: vi.fn(),
+    kvSet: vi.fn(),
     sqlTag,
 
     // Typesense search call counter — every collection().documents().search()
@@ -93,6 +95,7 @@ const mocks = vi.hoisted(() => {
     tsCollectionsCalls: [] as string[],
 
     getViewerLanguages: vi.fn().mockResolvedValue(["en"]),
+    getCurrencyRates: vi.fn().mockResolvedValue([]),
     resolveLocationSlugs: vi.fn(),
     resolveOccupationSlugs: vi.fn(),
     resolveSenioritySlugs: vi.fn(),
@@ -133,6 +136,8 @@ vi.mock("@/lib/cache", () => ({
   }),
   invalidate: vi.fn(),
   invalidatePattern: vi.fn(),
+  kvMget: mocks.kvMget,
+  kvSet: mocks.kvSet,
 }));
 
 vi.mock("@/lib/cache-ttl", () => ({
@@ -155,6 +160,10 @@ vi.mock("@/lib/sessionCache", () => ({
 
 vi.mock("@/lib/viewer", () => ({
   getViewerLanguages: mocks.getViewerLanguages,
+}));
+
+vi.mock("@/lib/services/search", () => ({
+  getCurrencyRates: mocks.getCurrencyRates,
 }));
 
 vi.mock("@/lib/plans", () => ({
@@ -215,6 +224,14 @@ vi.mock("@/lib/search/typesense-filters", () => ({
     if (Array.isArray(filters.languages) && filters.languages.length) {
       parts.push(`locales:[${[...filters.languages, "_none"].join(",")}]`);
     }
+    if (
+      (typeof filters.salaryMinEur === "number" && filters.salaryMinEur > 0) ||
+      (typeof filters.salaryMaxEur === "number" && filters.salaryMaxEur > 0)
+    ) {
+      parts.push(
+        `salary_eur:[${filters.salaryMinEur ?? 0}..${filters.salaryMaxEur ?? 999999}]`,
+      );
+    }
     return parts.join(" && ");
   }),
   POSTING_BASE_FILTER: "is_active:true",
@@ -274,6 +291,7 @@ vi.mock("@/db", () => ({
 import {
   getUserWatchlists,
   getUserWatchlistCountsForUser,
+  getUserWatchlistActivityPreviewsForUser,
   getUserWatchlistsWithLimit,
   getPopularWatchlists,
   searchPublicWatchlists,
@@ -287,7 +305,10 @@ beforeEach(() => {
   mocks.getSessionUserId.mockResolvedValue(USER_ID);
   mocks.canCreateWatchlist.mockResolvedValue({ allowed: true });
   mocks.getViewerLanguages.mockResolvedValue(["en"]);
+  mocks.getCurrencyRates.mockResolvedValue([]);
   mocks.tsMultiSearch.mockResolvedValue({ results: [] });
+  mocks.kvMget.mockImplementation(async (keys: string[]) => keys.map(() => null));
+  mocks.kvSet.mockResolvedValue(undefined);
   mocks.resolveLocationSlugs.mockResolvedValue(new Map([
     ["zurich", { id: 2657896, slug: "zurich", name: "Zurich" }],
     ["switzerland", { id: 2658434, slug: "switzerland", name: "Switzerland" }],
@@ -393,6 +414,381 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     });
   });
 
+  it("loads exact activity and ordered company previews with one multi_search and one hydration query", async () => {
+    const rows = [
+      fakeUserWatchlistRow(0, 0, {
+        filters: { locationSlugs: ["switzerland"] },
+        company_ids: ["company-a", "company-b"],
+      }),
+      fakeUserWatchlistRow(1, 0, {
+        filters: { anyCompany: true, keywords: ["python"] },
+        company_ids: [],
+      }),
+      fakeUserWatchlistRow(2, 0, {
+        filters: { anyCompany: true },
+        company_ids: [],
+      }),
+    ];
+    mocks.dbExecute
+      .mockResolvedValueOnce(rows)
+      .mockResolvedValueOnce([{ job_languages: ["de"] }])
+      .mockResolvedValueOnce([
+        { id: "company-a", name: "Alpha", icon: "alpha.png" },
+        { id: "company-b", name: "Beta", icon: null },
+        { id: "company-c", name: "Gamma", icon: "gamma.png" },
+      ]);
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: [
+        {
+          found: 8,
+          facet_counts: [{
+            field_name: "company_id",
+            counts: [
+              { value: "company-a", count: 6 },
+              { value: "company-b", count: 2 },
+            ],
+            stats: { total_values: 2 },
+          }],
+        },
+        {
+          found: 12,
+          facet_counts: [{
+            field_name: "company_id",
+            counts: [
+              { value: "company-c", count: 7 },
+              { value: "company-a", count: 5 },
+            ],
+            stats: { total_values: 9 },
+          }],
+        },
+        {
+          found: 0,
+          facet_counts: [{
+            field_name: "company_id",
+            counts: [],
+            stats: { total_values: 0 },
+          }],
+        },
+      ],
+    });
+
+    const result = await getUserWatchlistActivityPreviewsForUser(USER_ID, "en");
+
+    expect(result).toEqual({
+      "wl-0": {
+        activeJobCount: 8,
+        activeCompanyCount: 2,
+        topCompanies: [
+          { id: "company-a", name: "Alpha", icon: "alpha.png" },
+          { id: "company-b", name: "Beta", icon: null },
+        ],
+      },
+      "wl-1": {
+        activeJobCount: 12,
+        activeCompanyCount: 9,
+        topCompanies: [
+          { id: "company-c", name: "Gamma", icon: "gamma.png" },
+          { id: "company-a", name: "Alpha", icon: "alpha.png" },
+        ],
+      },
+      "wl-2": {
+        activeJobCount: 0,
+        activeCompanyCount: 0,
+        topCompanies: [],
+      },
+    });
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    const searches = mocks.tsMultiSearch.mock.calls[0]?.[0].searches;
+    expect(searches).toHaveLength(3);
+    expect(searches[0]).toMatchObject({
+      facet_by: "company_id",
+      facet_strategy: "exhaustive",
+      max_facet_values: 4,
+      per_page: 0,
+      filter_by: expect.stringContaining("company_id:[company-a,company-b]"),
+    });
+    expect(searches[0].filter_by).toContain("location_ids:[2658434]");
+    expect(searches[0].filter_by).toContain("locales:[de,_none]");
+    expect(searches[1]).toMatchObject({
+      q: "python",
+      filter_by: expect.not.stringContaining("company_id:["),
+    });
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(3);
+    const hydrationQueries = mocks.dbExecute.mock.calls.filter(([query]) =>
+      (query as { text: string }).text.includes("FROM company c"),
+    );
+    expect(hydrationQueries).toHaveLength(1);
+  });
+
+  it("keeps activity I/O constant as watchlist count grows", async () => {
+    const rowCount = 20;
+    const rows = Array.from({ length: rowCount }, (_, index) =>
+      fakeUserWatchlistRow(index, 0, {
+        company_ids: [`company-${index}`],
+      }),
+    );
+    mocks.dbExecute
+      .mockResolvedValueOnce(rows)
+      .mockResolvedValueOnce([{ job_languages: ["en"] }])
+      .mockResolvedValueOnce(
+        rows.map((_, index) => ({
+          id: `company-${index}`,
+          name: `Company ${index}`,
+          icon: null,
+        })),
+      );
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: rows.map((_, index) => ({
+        found: index + 1,
+        facet_counts: [{
+          field_name: "company_id",
+          counts: [{ value: `company-${index}`, count: index + 1 }],
+          stats: { total_values: 1 },
+        }],
+      })),
+    });
+
+    const result = await getUserWatchlistActivityPreviewsForUser(USER_ID, "en");
+
+    expect(Object.keys(result)).toHaveLength(rowCount);
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch.mock.calls[0]?.[0].searches).toHaveLength(rowCount);
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(3);
+    expect(
+      mocks.dbExecute.mock.calls.filter(([query]) =>
+        (query as { text: string }).text.includes("FROM company c"),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("deduplicates identical watchlist activity plans before exhaustive faceting", async () => {
+    const rows = [
+      fakeUserWatchlistRow(0, 0, {
+        filters: { anyCompany: true, keywords: ["platform"] },
+        company_ids: [],
+      }),
+      fakeUserWatchlistRow(1, 0, {
+        filters: { anyCompany: true, keywords: ["platform"] },
+        company_ids: [],
+      }),
+    ];
+    mocks.dbExecute
+      .mockResolvedValueOnce(rows)
+      .mockResolvedValueOnce([{ job_languages: ["en"] }])
+      .mockResolvedValueOnce([
+        { id: "company-a", name: "Alpha", icon: "alpha.png" },
+      ]);
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: [{
+        found: 14,
+        facet_counts: [{
+          field_name: "company_id",
+          counts: [{ value: "company-a", count: 14 }],
+          stats: { total_values: 1 },
+        }],
+      }],
+    });
+
+    const result = await getUserWatchlistActivityPreviewsForUser(USER_ID, "en");
+
+    expect(mocks.tsMultiSearch).toHaveBeenCalledOnce();
+    expect(mocks.tsMultiSearch.mock.calls[0]?.[0].searches).toHaveLength(1);
+    expect(result["wl-0"]).toEqual(result["wl-1"]);
+    expect(result["wl-0"]?.activeJobCount).toBe(14);
+    expect(mocks.kvSet).toHaveBeenCalledOnce();
+    expect(mocks.kvSet.mock.calls[0]?.[0]).toMatch(/^watchlist-activity:v1:[a-f0-9]{64}$/);
+    expect(mocks.kvSet.mock.calls[0]?.[0]).not.toContain("platform");
+  });
+
+  it("reuses a valid activity-plan cache hit without querying Typesense", async () => {
+    mocks.dbExecute
+      .mockResolvedValueOnce([
+        fakeUserWatchlistRow(0, 0, {
+          filters: { anyCompany: true },
+          company_ids: [],
+        }),
+      ])
+      .mockResolvedValueOnce([{ job_languages: ["en"] }]);
+    mocks.kvMget.mockResolvedValueOnce([{
+      found: 0,
+      facet_counts: [{
+        field_name: "company_id",
+        counts: [],
+        stats: { total_values: 0 },
+      }],
+    }]);
+
+    const result = await getUserWatchlistActivityPreviewsForUser(USER_ID, "en");
+
+    expect(result["wl-0"]).toEqual({
+      activeJobCount: 0,
+      activeCompanyCount: 0,
+      topCompanies: [],
+    });
+    expect(mocks.tsMultiSearch).not.toHaveBeenCalled();
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps oversized explicit company scopes inside one multi_search and merges exact facets", async () => {
+    const companyIds = Array.from({ length: 101 }, (_, index) =>
+      `company-${index}`,
+    );
+    mocks.dbExecute
+      .mockResolvedValueOnce([
+        fakeUserWatchlistRow(0, 0, { company_ids: companyIds }),
+      ])
+      .mockResolvedValueOnce([{ job_languages: ["en"] }])
+      .mockResolvedValueOnce([
+        { id: "company-100", name: "Largest", icon: "largest.png" },
+        { id: "company-0", name: "Runner-up", icon: "runner-up.png" },
+      ]);
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: [
+        {
+          found: 40,
+          facet_counts: [{
+            field_name: "company_id",
+            counts: [{ value: "company-0", count: 10 }],
+            stats: { total_values: 70 },
+          }],
+        },
+        {
+          found: 99,
+          facet_counts: [{
+            field_name: "company_id",
+            counts: [{ value: "company-100", count: 99 }],
+            stats: { total_values: 1 },
+          }],
+        },
+      ],
+    });
+
+    const result = await getUserWatchlistActivityPreviewsForUser(USER_ID, "en");
+
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch.mock.calls[0]?.[0].searches).toHaveLength(2);
+    expect(result["wl-0"]).toEqual({
+      activeJobCount: 139,
+      activeCompanyCount: 71,
+      topCompanies: [
+        { id: "company-100", name: "Largest", icon: "largest.png" },
+        { id: "company-0", name: "Runner-up", icon: "runner-up.png" },
+      ],
+    });
+  });
+
+  it("converts non-EUR salary filters with one shared currency-rate load", async () => {
+    const rows = [
+      fakeUserWatchlistRow(0, 0, {
+        filters: {
+          anyCompany: true,
+          salaryMin: 100_000,
+          salaryMax: 120_000,
+          salaryCurrency: "USD",
+        },
+        company_ids: [],
+      }),
+      fakeUserWatchlistRow(1, 0, {
+        filters: {
+          anyCompany: true,
+          salaryMin: 80_000,
+          salaryMax: 100_000,
+          salaryCurrency: "CHF",
+        },
+        company_ids: [],
+      }),
+    ];
+    mocks.dbExecute
+      .mockResolvedValueOnce(rows)
+      .mockResolvedValueOnce([{ job_languages: ["en"] }]);
+    mocks.getCurrencyRates.mockResolvedValueOnce([
+      { currency: "EUR", toEur: 1 },
+      { currency: "USD", toEur: 0.92 },
+      { currency: "CHF", toEur: 1.04 },
+    ]);
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: rows.map(() => ({
+        found: 0,
+        facet_counts: [{
+          field_name: "company_id",
+          counts: [],
+          stats: { total_values: 0 },
+        }],
+      })),
+    });
+
+    await getUserWatchlistActivityPreviewsForUser(USER_ID, "en");
+
+    expect(mocks.getCurrencyRates).toHaveBeenCalledTimes(1);
+    const searches = mocks.tsMultiSearch.mock.calls[0]?.[0].searches;
+    expect(searches[0].filter_by).toContain("salary_eur:[92000..110400]");
+    expect(searches[1].filter_by).toContain("salary_eur:[83200..104000]");
+  });
+
+  it("omits only the watchlist whose split result contains a malformed slot", async () => {
+    const splitCompanyIds = Array.from({ length: 101 }, (_, index) =>
+      `split-company-${index}`,
+    );
+    mocks.dbExecute
+      .mockResolvedValueOnce([
+        fakeUserWatchlistRow(0, 0, { company_ids: ["company-good"] }),
+        fakeUserWatchlistRow(1, 0, { company_ids: splitCompanyIds }),
+      ])
+      .mockResolvedValueOnce([{ job_languages: ["en"] }])
+      .mockResolvedValueOnce([
+        { id: "company-good", name: "Good Company", icon: "good.png" },
+      ]);
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: [
+        {
+          found: 5,
+          facet_counts: [{
+            field_name: "company_id",
+            counts: [{ value: "company-good", count: 5 }],
+            stats: { total_values: 1 },
+          }],
+        },
+        {
+          found: 20,
+          facet_counts: [{
+            field_name: "company_id",
+            counts: [{ value: "split-company-0", count: 4 }],
+            stats: { total_values: 12 },
+          }],
+        },
+        { error: "query failed", code: 400 },
+      ],
+    });
+
+    const result = await getUserWatchlistActivityPreviewsForUser(USER_ID, "en");
+
+    expect(result).toEqual({
+      "wl-0": {
+        activeJobCount: 5,
+        activeCompanyCount: 1,
+        topCompanies: [
+          { id: "company-good", name: "Good Company", icon: "good.png" },
+        ],
+      },
+    });
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.tsMultiSearch.mock.calls[0]?.[0].searches).toHaveLength(3);
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(3);
+  });
+
+  it("omits unavailable activity without a hydration query when Typesense fails", async () => {
+    mocks.dbExecute
+      .mockResolvedValueOnce([fakeUserWatchlistRow(0, 0)])
+      .mockResolvedValueOnce([{ job_languages: ["en"] }]);
+    mocks.tsMultiSearch.mockRejectedValueOnce(new Error("typesense unavailable"));
+
+    const result = await getUserWatchlistActivityPreviewsForUser(USER_ID, "en");
+
+    expect(result).toEqual({});
+    expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps the initial overview independent from active-count aggregation (#5896)", async () => {
     const rows = [
       fakeUserWatchlistRow(0, 42),
@@ -405,10 +801,6 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     expect(result.watchlists.map((watchlist) => watchlist.activeJobCount)).toEqual([
       null,
       null,
-    ]);
-    expect(result.watchlists.map((watchlist) => watchlist.anyCompany)).toEqual([
-      false,
-      true,
     ]);
     expect(mocks.tsMultiSearch).not.toHaveBeenCalled();
     expect(mocks.getViewerLanguages).not.toHaveBeenCalled();

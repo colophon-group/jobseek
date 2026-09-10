@@ -41,8 +41,11 @@ describe("getWatchlistPostingsBrowser (#3477)", () => {
     vi.clearAllMocks();
   });
 
-  it("falls back before sending an oversized company-id filter", async () => {
-    const fetchMock = vi.fn<typeof fetch>();
+  it("splits an oversized company-id filter into URL-safe browser batches", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => ({ found: 0, hits: [] }),
+    } as Response);
     globalThis.fetch = fetchMock;
 
     await expect(
@@ -51,10 +54,183 @@ describe("getWatchlistPostingsBrowser (#3477)", () => {
         offset: 0,
         limit: 20,
       }),
-    ).rejects.toThrow("watchlist Typesense query exceeds GET limit");
+    ).resolves.toEqual({ postings: [], total: 0 });
 
-    expect(mocks.getTypesenseBrowserConfig).not.toHaveBeenCalled();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.getTypesenseBrowserConfig).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+    for (const [request] of fetchMock.mock.calls) {
+      expect(String(request).length).toBeLessThanOrEqual(7_500);
+    }
+  });
+
+  it("sums year counts across large persisted watchlists", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => ({ found: 7 }),
+    } as Response);
+    globalThis.fetch = fetchMock;
+
+    const count = await getWatchlistPostingYearCountBrowser({
+      companyIds: Array.from({ length: 101 }, (_, i) => makeUuid(i + 1)),
+    });
+
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+    expect(count).toBe(fetchMock.mock.calls.length * 7);
+  });
+
+  it("paginates each company batch past Typesense's 250-row page limit", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (request) => {
+      const url = new URL(String(request));
+      const offset = Number(url.searchParams.get("offset") ?? "0");
+      const limit = Number(url.searchParams.get("limit") ?? "0");
+      const hitCount = Math.min(limit, Math.max(0, 260 - offset));
+      return {
+        ok: true,
+        json: async () => ({
+          found: 260,
+          hits: Array.from({ length: hitCount }, (_, index) => ({
+            document: validDocument(offset + index + 1),
+          })),
+        }),
+      } as Response;
+    });
+    globalThis.fetch = fetchMock;
+
+    const result = await getWatchlistPostingsBrowser({
+      companyIds: Array.from({ length: 101 }, (_, i) => makeUuid(i + 1)),
+      offset: 240,
+      limit: 20,
+    });
+
+    expect(result.postings).toHaveLength(20);
+    expect(result.total).toBeGreaterThanOrEqual(520);
+    const urls = fetchMock.mock.calls.map(([request]) => new URL(String(request)));
+    expect(urls.some((url) => (
+      url.searchParams.get("offset") === "250"
+      && url.searchParams.get("limit") === "10"
+    ))).toBe(true);
+    expect(urls.every((url) => (
+      Number(url.searchParams.get("limit")) <= 250
+      && url.searchParams.get("per_page") === null
+    ))).toBe(true);
+  });
+
+  it.each([108, 250])(
+    "keeps repeated load-more windows exact and bounded for %i companies",
+    async (companyCount) => {
+      const companyIds = Array.from(
+        { length: companyCount },
+        (_, index) => makeUuid(index + 1),
+      );
+      const fetchMock = vi.fn<typeof fetch>().mockImplementation(
+        async (request) => {
+          const url = new URL(String(request));
+          const filter = url.searchParams.get("filter_by") ?? "";
+          const batchCompanyIds = filter.match(
+            /00000000-0000-0000-0000-\d{12}/g,
+          ) ?? [];
+          const offset = Number(url.searchParams.get("offset") ?? "0");
+          const limit = Number(url.searchParams.get("limit") ?? "0");
+          const documents = batchCompanyIds
+            .map((companyId) => Number(companyId.slice(-12)))
+            .sort((a, b) => b - a)
+            .map((index) => ({
+              ...validDocument(index),
+              id: `posting-${index}`,
+              first_seen_at: 1_700_000_000 + index,
+            }));
+
+          return {
+            ok: true,
+            json: async () => ({
+              found: documents.length,
+              hits: documents.slice(offset, offset + limit).map((document) => ({
+                document,
+              })),
+            }),
+          } as Response;
+        },
+      );
+      globalThis.fetch = fetchMock;
+
+      const expectedOrder = Array.from(
+        { length: companyCount },
+        (_, index) => `posting-${companyCount - index}`,
+      );
+
+      for (const offset of [0, 20, 40]) {
+        const firstCall = fetchMock.mock.calls.length;
+        const result = await getWatchlistPostingsBrowser({
+          companyIds,
+          offset,
+          limit: 20,
+        });
+
+        expect(result.total).toBe(companyCount);
+        expect(result.postings.map((posting) => posting.id)).toEqual(
+          expectedOrder.slice(offset, offset + 20),
+        );
+
+        const windowUrls = fetchMock.mock.calls
+          .slice(firstCall)
+          .map(([request]) => new URL(String(request)));
+        expect(windowUrls.length).toBeGreaterThan(1);
+        expect(windowUrls.every((url) => (
+          url.searchParams.get("offset") === "0"
+          && url.searchParams.get("limit") === String(offset + 20)
+          && url.searchParams.get("per_page") === null
+        ))).toBe(true);
+      }
+    },
+  );
+
+  it("uses the canonical posting-id tie-break across browser page boundaries", async () => {
+    const companyIds = Array.from(
+      { length: 101 },
+      (_, index) => makeUuid(index + 1),
+    );
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(
+      async (request) => {
+        const url = new URL(String(request));
+        const filter = url.searchParams.get("filter_by") ?? "";
+        const isFirstBatch = filter.includes(makeUuid(1));
+        return {
+          ok: true,
+          json: async () => ({
+            found: 1,
+            hits: [{
+              text_match: 100,
+              document: {
+                ...validDocument(),
+                id: isFirstBatch ? "posting-z" : "posting-a",
+                first_seen_at: 1_700_000_000,
+              },
+            }],
+          }),
+        } as Response;
+      },
+    );
+    globalThis.fetch = fetchMock;
+
+    const firstPage = await getWatchlistPostingsBrowser({
+      companyIds,
+      keywords: ["engineer"],
+      offset: 0,
+      limit: 1,
+    });
+    const secondPage = await getWatchlistPostingsBrowser({
+      companyIds,
+      keywords: ["engineer"],
+      offset: 1,
+      limit: 1,
+    });
+
+    expect(firstPage.postings.map((posting) => posting.id)).toEqual([
+      "posting-a",
+    ]);
+    expect(secondPage.postings.map((posting) => posting.id)).toEqual([
+      "posting-z",
+    ]);
   });
 
   it("uses the flow filter for a browser-direct year count", async () => {

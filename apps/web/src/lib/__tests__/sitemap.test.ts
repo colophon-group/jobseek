@@ -1,81 +1,33 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { siteConfig } from "@/content/config";
 
-const { dbExecuteMock, searchMock } = vi.hoisted(() => ({
+const { dbExecuteMock } = vi.hoisted(() => ({
   dbExecuteMock: vi.fn(),
-  searchMock: vi.fn(),
 }));
 
-// Mock the database — the sitemap data layer queries the DB for
-// companies (via Postgres fallback) and watchlists.
+// Public watchlists are account-private resources and must not pull the
+// database back into sitemap generation.
 vi.mock("@/db", () => ({
   db: {
     execute: dbExecuteMock,
   },
 }));
 
-// Mock the cache. Memoize per-key within a single test — that's what
-// real Redis would do, and it matches how the production code expects
-// to share work across requests within an ISR window.
-const cacheStore = new Map<string, unknown>();
-vi.mock("@/lib/cache", () => ({
-  cached: async (
-    key: string,
-    fetcher: () => Promise<unknown>,
-    options?: { skipIf?: (data: unknown) => boolean },
-  ) => {
-    if (cacheStore.has(key)) return cacheStore.get(key);
-    const data = await fetcher();
-    if (!options?.skipIf?.(data)) cacheStore.set(key, data);
-    return data;
-  },
-}));
-
-vi.mock("@/lib/search/typesense-client", () => ({
-  getSearchClient: () => ({
-    collections: () => ({
-      documents: () => ({
-        search: searchMock,
-      }),
-    }),
-  }),
-}));
-
 import {
   buildSitemap,
   serializeUrlset,
-  SITEMAP_TTL_SECONDS,
 } from "../sitemap";
-
-function typesensePage(slugs: string[], found: number) {
-  return {
-    found,
-    hits: slugs.map((slug) => ({
-      document: { slug, active_posting_count: 1 },
-    })),
-  };
-}
 
 describe("sitemap data layer", () => {
   beforeEach(() => {
     dbExecuteMock.mockReset();
     dbExecuteMock.mockResolvedValue([]);
-    searchMock.mockReset();
-    searchMock.mockRejectedValue(new Error("Typesense unavailable"));
-    cacheStore.clear();
   });
 
   it("returns an array of entries", async () => {
     const result = await buildSitemap();
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(0);
-  });
-
-  it("exposes a 1h ISR window for the cache wrappers (issue #2245)", () => {
-    // Without ISR, every crawler hit runs the full handler (Postgres +
-    // Typesense + serialization). Regression guard: a future refactor
-    // must not silently change this constant.
-    expect(SITEMAP_TTL_SECONDS).toBe(3600);
   });
 
   it("generates entries for all 4 locales", async () => {
@@ -170,15 +122,6 @@ describe("sitemap data layer", () => {
   });
 
   it("excludes /company/ URLs (#2821: companies left the index)", async () => {
-    // Even with a healthy Typesense full of companies, the sitemap must
-    // not surface any `/company/{slug}` URL. `noindex,follow` on the
-    // page itself is the primary signal, but keeping company URLs out
-    // of the sitemap closes the secondary discovery path.
-    searchMock.mockResolvedValueOnce(typesensePage(
-      Array.from({ length: 50 }, (_, i) => `company-${i + 1}`),
-      50,
-    ));
-
     const result = await buildSitemap();
     expect(result.some((entry) => entry.url.includes("/company/"))).toBe(false);
   });
@@ -200,13 +143,8 @@ describe("sitemap data layer", () => {
     expect(welcomeUrls).toHaveLength(4);
   });
 
-  it("preserves watchlist locale coverage and curated ordering metadata", async () => {
-    searchMock.mockResolvedValueOnce({
-      found: 0,
-      hits: [],
-    });
-
-    dbExecuteMock.mockResolvedValueOnce([
+  it("does not query or publish legacy public watchlists", async () => {
+    dbExecuteMock.mockResolvedValue([
       {
         user_slug: "curated-user",
         watchlist_slug: "hot-list",
@@ -222,48 +160,13 @@ describe("sitemap data layer", () => {
     ]);
 
     const result = await buildSitemap();
-    const watchlistRowEntries = result.filter((entry) =>
-      entry.url.includes("/curated-user/hot-list") || entry.url.includes("/regular-user/daily-list"),
-    );
-
-    expect(watchlistRowEntries).toHaveLength(8);
-    expect(watchlistRowEntries.filter((entry) => entry.url.includes("/curated-user/hot-list"))).toHaveLength(4);
-    expect(watchlistRowEntries.filter((entry) => entry.url.includes("/regular-user/daily-list"))).toHaveLength(4);
-    expect(watchlistRowEntries.find((entry) => entry.url.endsWith("/en/curated-user/hot-list"))?.changeFrequency).toBe("daily");
-    expect(watchlistRowEntries.find((entry) => entry.url.endsWith("/en/curated-user/hot-list"))?.priority).toBe(0.8);
-    expect(watchlistRowEntries.find((entry) => entry.url.endsWith("/en/regular-user/daily-list"))?.changeFrequency).toBe("weekly");
-    expect(watchlistRowEntries.find((entry) => entry.url.endsWith("/en/regular-user/daily-list"))?.priority).toBe(0.6);
-    expect(watchlistRowEntries.find((entry) => entry.url.endsWith("/en/curated-user/hot-list"))?.alternates?.languages).toEqual({
-      en: expect.stringContaining("/en/curated-user/hot-list"),
-      de: expect.stringContaining("/de/curated-user/hot-list"),
-      fr: expect.stringContaining("/fr/curated-user/hot-list"),
-      it: expect.stringContaining("/it/curated-user/hot-list"),
-      "x-default": expect.stringContaining("/en/curated-user/hot-list"),
-    });
-  });
-});
-
-describe("buildSitemap — graceful degradation", () => {
-  beforeEach(() => {
-    dbExecuteMock.mockReset();
-    dbExecuteMock.mockResolvedValue([]);
-    searchMock.mockReset();
-    searchMock.mockRejectedValue(new Error("Typesense unavailable"));
-    cacheStore.clear();
-  });
-
-  it("still serves static + explore entries when watchlist DB throws (issue #2694)", async () => {
-    // Production regression: when `cachedSitemapWatchlists()` threw,
-    // the whole sitemap function threw and Next.js served an empty
-    // `<urlset/>` — wiping out even the hardcoded static + /explore
-    // URLs. buildSitemap must catch the watchlist fetcher and degrade.
-    dbExecuteMock.mockReset();
-    dbExecuteMock.mockRejectedValue(new Error("Postgres unavailable"));
-
-    const entries = await buildSitemap();
-    expect(entries.length).toBeGreaterThan(0);
-    expect(entries.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
-    expect(entries.some((e) => e.url === "https://jseek.co/en")).toBe(true);
+    expect(dbExecuteMock).not.toHaveBeenCalled();
+    expect(
+      result.some((entry) =>
+        entry.url.includes("/curated-user/hot-list")
+        || entry.url.includes("/regular-user/daily-list"),
+      ),
+    ).toBe(false);
   });
 });
 

@@ -12,7 +12,6 @@ import { defaultLocale, isLocale, type Locale } from "@/lib/i18n";
  */
 
 type CompanySnapshotEntry = (typeof snapshot.companies)[number];
-type WatchlistSnapshotEntry = (typeof snapshot.watchlists)[number];
 
 export type BlogCompanyMention = {
   slug: string;
@@ -26,24 +25,8 @@ export type BlogCompanyMention = {
   activeJobCount: null;
 };
 
-export type BlogWatchlistMention = {
-  owner: string;
-  ownerLabel: string;
-  slug: string;
-  title: string;
-  description: string | null;
-  /** Optional only when an author approves a point-in-time editorial value. */
-  companyCount: number | null;
-};
-
 const companiesBySlug = new Map(
   snapshot.companies.map((company) => [company.slug, company] as const),
-);
-const watchlistsByKey = new Map(
-  snapshot.watchlists.map((watchlist) => [
-    `${watchlist.owner}/${watchlist.slug}`,
-    watchlist,
-  ] as const),
 );
 
 function normalizedLocale(locale: string): Locale {
@@ -73,25 +56,6 @@ export function resolveBlogCompanyMention(
     employeeCountRange: company.employeeCountRange,
     foundedYear: company.foundedYear,
     activeJobCount: null,
-  };
-}
-
-export function resolveBlogWatchlistMention(
-  owner: string,
-  slug: string,
-): BlogWatchlistMention | null {
-  const watchlist: WatchlistSnapshotEntry | undefined = watchlistsByKey.get(
-    `${owner}/${slug}`,
-  );
-  if (!watchlist) return null;
-
-  return {
-    owner: watchlist.owner,
-    ownerLabel: watchlist.ownerLabel,
-    slug: watchlist.slug,
-    title: watchlist.title,
-    description: watchlist.description,
-    companyCount: watchlist.companyCount,
   };
 }
 

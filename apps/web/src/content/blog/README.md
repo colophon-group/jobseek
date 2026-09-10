@@ -81,12 +81,11 @@ dateModified: "2026-05-07"          # optional, defaults to datePublished
 author: "Viktor Shcherbakov"        # optional, defaults to siteConfig
 tags: ["data-analysis"]             # optional, free-form taxonomy
 relatedCompanies: ["openai"]        # optional, slug list — informational
-relatedWatchlists: ["owner/slug"]   # optional, "owner/slug" pairs — informational
 relatedPosts: ["other-slug"]        # optional, override "you may also be interested in"
 ---
 ```
 
-Currently `relatedCompanies` and `relatedWatchlists` are advisory frontmatter — they're parsed by the loader but the post page renders mentions inline via the MDX components below. If we ever want a "related" sidebar that surfaces every entity touched by a post, the frontmatter is already populated.
+`relatedCompanies` is advisory frontmatter — it is parsed by the loader but the post page renders mentions inline via the MDX components below. If we add a related-entity sidebar later, the company references are already populated.
 
 `relatedPosts` overrides the auto-selection for the "you may also be interested in" cross-link block at the bottom of the post (#2844). Slugs are kept in authored order; missing or draft slugs are silently dropped at render time. Leave it unset to let the page pick three posts automatically:
 
@@ -105,19 +104,18 @@ The complete `en` / `de` / `fr` / `it` blog build has an external-call budget of
 `mention-snapshot.json` is the only approved build input:
 
 - Company rows are generated from the versioned `apps/crawler/data/companies.csv`, `company_descriptions.csv`, and `industries.csv` sources. The snapshot contains one row per unique company slug used across all locale MDX files; localized descriptions are selected from that single row with English fallback.
-- Watchlist rows are reviewed editorial snapshots. Volatile active/year posting counts are deliberately excluded. Include a company count only when the post author explicitly approves it as point-in-time editorial content.
 
-Every production build runs `pnpm blog-mentions:check`. The gate scans every MDX file, requires exactly one snapshot row for each unique company/watchlist reference, verifies generated company fields against the repository CSVs, and walks the mention component's local import graph. Imports of database/search service layers, Typesense/Postgres/network clients, or a direct `fetch()` fail the build. This both asserts the zero-call budget in CI and prevents a production-host fallback from being introduced behind the snapshot.
+Every production build runs `pnpm blog-mentions:check`. The gate scans every MDX file, requires exactly one snapshot row for each unique company reference, verifies generated company fields against the repository CSVs, and walks the mention component's local import graph. Imports of database/search service layers, Typesense/Postgres/network clients, or a direct `fetch()` fail the build. This both asserts the zero-call budget in CI and prevents a production-host fallback from being introduced behind the snapshot.
 
 After adding or changing a mention:
 
 ```bash
 cd apps/web
-pnpm blog-mentions:update  # regenerate company rows; preserve reviewed watchlists
+pnpm blog-mentions:update  # regenerate company rows
 pnpm blog-mentions:check   # same zero-call gate run by CI and `pnpm build`
 ```
 
-Review the snapshot diff. A newly referenced watchlist has no repository CSV source, so add its stable title/description to `mention-snapshot.json` before running the update command.
+Review the snapshot diff before committing it.
 
 ### `<Company slug="..." />`
 
@@ -128,16 +126,6 @@ The shift was led by <Company slug="stripe" /> and <Company slug="openai" />.
 ```
 
 Source: `MdxMentions.tsx::CompanyMention`. Resolves synchronously from the approved snapshot; no search-plane client is in its import graph.
-
-### `<Watchlist owner="..." slug="..." />`
-
-Inline pill linking to `/{locale}/{owner}/{slug}`. Renders a checklist glyph + the watchlist title + `@owner` chip.
-
-```mdx
-For the curated set, see <Watchlist owner="colophongroup" slug="big-tech-jobs-in-switzerland" />.
-```
-
-Source: `MdxMentions.tsx::WatchlistMention`. Resolves synchronously from the approved snapshot.
 
 ### Adding a new mention type
 
@@ -160,7 +148,7 @@ The sitemap (`apps/web/src/lib/sitemap.ts::blogPostEntries`) emits one URL per (
 To translate a post:
 
 1. Copy `<slug>.mdx` → `<slug>.<locale>.mdx`.
-2. Translate the frontmatter (`title`, `description`, `tags`) and body. Keep MDX components (`<Watchlist>`, `<CompanyCard>`, etc.) as-is — they're identifiers, not user-visible strings.
+2. Translate the frontmatter (`title`, `description`, `tags`) and body. Keep MDX components such as `<CompanyCard>` as-is — they're identifiers, not user-visible strings.
 3. Verify the per-locale URL renders (`pnpm dev` → `/{locale}/blog/<slug>`) and the sitemap widens correctly.
 
 The blog page chrome (`<h1>`, "No posts yet" empty state, "min read", "← Blog" nav, etc.) IS translated for de/fr/it via Lingui — see `locales/{de,fr,it}.po` for the `blog.*` and `common.nav.blog` keys. A pre-commit hook (`scripts/check-i18n-coverage.sh`) blocks commits with untranslated chrome strings.

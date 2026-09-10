@@ -5,11 +5,7 @@ import {
   listTopCompanies as serverListTopCompanies,
 } from "@/lib/actions/search";
 import { getCompanyPostings as serverGetCompanyPostings } from "@/lib/actions/company";
-import {
-  getWatchlistPostings as serverGetWatchlistPostings,
-  getWatchlistPostingYearCount as serverGetWatchlistPostingYearCount,
-  type WatchlistPostingEntry,
-} from "@/lib/actions/watchlists";
+import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
 import type {
   SearchFilters,
   SearchResponse,
@@ -185,27 +181,28 @@ export async function runGetWatchlistPostings(
   params: WatchlistPostingsInput,
   isLoggedIn: boolean,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
-  if (directEnabled) {
-    if (!isLoggedIn && params.offset >= ANON_MAX_WATCHLIST_POSTINGS) {
-      return { postings: [], total: 0, truncated: true };
-    }
-    try {
-      const m = await import("./typesense-browser-watchlist");
-      const result = await m.getWatchlistPostingsBrowser(params);
-      const truncated =
-        !isLoggedIn && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS
-          ? true
-          : undefined;
-      return truncated ? { ...result, truncated } : result;
-    } catch (err) {
-      logExternalError(
-        "error",
-        { service: "typesense", operation: "browser_watchlist_postings" },
-        err,
-      );
-    }
+  if (!directEnabled) {
+    throw new Error("Browser watchlist search is unavailable");
   }
-  return serverGetWatchlistPostings(params);
+  if (!isLoggedIn && params.offset >= ANON_MAX_WATCHLIST_POSTINGS) {
+    return { postings: [], total: 0, truncated: true };
+  }
+  try {
+    const m = await import("./typesense-browser-watchlist");
+    const result = await m.getWatchlistPostingsBrowser(params);
+    const truncated =
+      !isLoggedIn && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS
+        ? true
+        : undefined;
+    return truncated ? { ...result, truncated } : result;
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "browser_watchlist_postings" },
+      err,
+    );
+    throw err;
+  }
 }
 
 /**
@@ -221,7 +218,20 @@ export async function runGetWatchlistPostings(
 export async function runGetWatchlistPostingYearCount(
   params: Omit<WatchlistPostingsInput, "offset" | "limit">,
 ): Promise<number> {
-  return serverGetWatchlistPostingYearCount(params);
+  if (!directEnabled) {
+    throw new Error("Browser watchlist search is unavailable");
+  }
+  try {
+    const m = await import("./typesense-browser-watchlist");
+    return await m.getWatchlistPostingYearCountBrowser(params);
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "browser_watchlist_year_count" },
+      err,
+    );
+    throw err;
+  }
 }
 
 export async function runGetCompanyPostings(

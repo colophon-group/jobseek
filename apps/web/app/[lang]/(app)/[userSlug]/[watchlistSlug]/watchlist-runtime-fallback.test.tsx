@@ -41,7 +41,7 @@ describe("WatchlistRuntimeFallback", () => {
     );
 
     expect(source).toContain(
-      "<Suspense fallback={<WatchlistsFallback />}>",
+      "<Suspense fallback={<WatchlistsFallback label={loadingLabel} />}>",
     );
     expect(source).not.toContain("<Suspense fallback={null}>");
   });

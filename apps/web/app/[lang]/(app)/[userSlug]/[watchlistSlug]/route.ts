@@ -1,13 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/sessionCache";
+import { getSessionUserIdFromHeaders } from "@/lib/sessionCache";
 import { getOwnedWatchlistByLegacyPath } from "@/lib/services/watchlists";
 import { defaultLocale, isLocale, type Locale } from "@/lib/i18n";
 import { staticMissingResourceDocument } from "@/lib/missing-resource-recovery";
-import {
-  WATCHLIST_SELECTION_COOKIE,
-  encodeWatchlistSelection,
-  watchlistSelectionCookieOptions,
-} from "@/lib/watchlist-selection";
 
 type RouteContext = {
   params: Promise<{
@@ -45,25 +40,20 @@ export async function GET(
 ): Promise<NextResponse> {
   const { lang, userSlug, watchlistSlug } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
-  const session = await getSession();
-  if (!session) return privateNotFound(locale);
+  const userId = await getSessionUserIdFromHeaders(request.headers);
+  if (!userId) return privateNotFound(locale);
 
   const detail = await getOwnedWatchlistByLegacyPath(
     userSlug,
     watchlistSlug,
-    session.user.id,
+    userId,
   );
   if (!detail) return privateNotFound(locale);
 
   const response = NextResponse.redirect(
-    new URL(`/${locale}/watchlists`, request.url),
+    new URL(`/${locale}/watchlists/${detail.id}`, request.url),
     307,
   );
   response.headers.set("Cache-Control", "private, no-store");
-  response.cookies.set(
-    WATCHLIST_SELECTION_COOKIE,
-    encodeWatchlistSelection(session.user.id, detail.id),
-    watchlistSelectionCookieOptions,
-  );
   return response;
 }

@@ -69,7 +69,6 @@ const params = {
   detail,
   locale: "en",
   isOwner: false,
-  isPaidPlan: false,
   limitReached: true,
   jobLanguages: [] as string[],
   publicSnapshot: true,
@@ -107,6 +106,7 @@ describe("watchlist page Typesense degradation (#7487)", () => {
       postings: [],
       total: 0,
       yearTotal: 0,
+      searchUnavailable: true,
       browserPostingFilters: null,
     });
     expect(mocks.logExternalError).toHaveBeenCalledWith(
@@ -131,10 +131,36 @@ describe("watchlist page Typesense degradation (#7487)", () => {
       postings: [],
       total: 0,
       yearTotal: 0,
+      searchUnavailable: true,
     });
     expect(mocks.resolveLocationSlugs).toHaveBeenCalledWith(["zurich"], "en");
     expect(mocks.getPublicWatchlistPostings).not.toHaveBeenCalled();
   });
+
+  it.each(["postings", "year count"])(
+    "marks the page unavailable when the strict %s query fails",
+    async (operation) => {
+      const providerError = Object.assign(new Error("request timed out"), {
+        code: "ETIMEDOUT",
+      });
+      if (operation === "postings") {
+        mocks.getPublicWatchlistPostings.mockRejectedValueOnce(providerError);
+      } else {
+        mocks.getWatchlistPostingYearCount.mockRejectedValueOnce(providerError);
+      }
+
+      const result = await buildWatchlistPageData(params);
+
+      expect(result.searchUnavailable).toBe(true);
+      expect(result.browserPostingFilters).toBeNull();
+      expect(mocks.getPublicWatchlistPostings).toHaveBeenCalledWith(
+        expect.objectContaining({ failOnUnavailable: true }),
+      );
+      expect(mocks.getWatchlistPostingYearCount).toHaveBeenCalledWith(
+        expect.objectContaining({ failOnUnavailable: true }),
+      );
+    },
+  );
 });
 
 describe("watchlist browser refresh input (#8258)", () => {
@@ -168,5 +194,6 @@ describe("watchlist browser refresh input (#8258)", () => {
       languages: ["en"],
     });
     expect(result.browserPostingFilters).not.toHaveProperty("abortSignal");
+    expect(result.searchUnavailable).toBe(false);
   });
 });

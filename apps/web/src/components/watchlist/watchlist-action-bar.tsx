@@ -1,16 +1,28 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, BellOff, Trash2, Pencil, Loader2, AlertTriangle } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  BellOff,
+  Check,
+  Loader2,
+  Pencil,
+  Share2,
+  Trash2,
+} from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { deleteWatchlist, toggleWatchlistAlerts } from "@/lib/actions/watchlists";
-import { clearWatchlistSelection } from "@/lib/actions/watchlist-selection";
-import { broadcastWatchlistSelectionChanged } from "@/lib/watchlist-selection-client";
+import {
+  deleteWatchlist,
+  shareWatchlist,
+  toggleWatchlistAlerts,
+} from "@/lib/actions/watchlists";
 import { tooltipClass, tooltipWarningClass } from "@/components/ui/tooltip-styles";
-import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
+import { useLocalePath } from "@/lib/useLocalePath";
+import { copyTextToClipboard } from "@/lib/copy-text-to-clipboard";
 
 const iconBtnClass =
   "inline-flex items-center justify-center rounded-md p-1.5 text-muted hover:bg-border-soft hover:text-foreground transition-colors cursor-pointer";
@@ -18,27 +30,37 @@ const iconBtnClass =
 function ActionButton({
   label,
   onClick,
-  disabled,
   warning,
+  tooltipOpen,
+  announce,
+  busy,
   buttonRef,
   children,
 }: {
   label: string;
   onClick: () => void;
-  disabled?: boolean;
   warning?: boolean;
+  tooltipOpen?: boolean;
+  announce?: boolean;
+  busy?: boolean;
   buttonRef?: React.Ref<HTMLButtonElement>;
   children: React.ReactNode;
 }) {
+  const [tooltipRequestedOpen, setTooltipRequestedOpen] = useState(false);
   return (
-    <Tooltip.Root>
+    <Tooltip.Root
+      open={tooltipOpen === true || tooltipRequestedOpen}
+      onOpenChange={setTooltipRequestedOpen}
+    >
       <Tooltip.Trigger asChild>
         <button
           ref={buttonRef}
           type="button"
           onClick={onClick}
-          className={`${iconBtnClass} ${disabled ? "opacity-40" : ""}`}
+          className={`${iconBtnClass} ${busy ? "cursor-wait" : ""}`}
           aria-label={label}
+          aria-busy={busy || undefined}
+          aria-disabled={busy || undefined}
         >
           {children}
         </button>
@@ -49,7 +71,7 @@ function ActionButton({
           sideOffset={6}
         >
           {warning && <AlertTriangle size={12} className="shrink-0" />}
-          {label}
+          {announce ? <span role="status" aria-live="polite">{label}</span> : label}
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
@@ -59,55 +81,117 @@ function ActionButton({
 export function WatchlistActionBar({
   watchlistId,
   alertsEnabled,
-  isPaidPlan,
   onEdit,
 }: {
   watchlistId: string;
   alertsEnabled: boolean;
-  isPaidPlan: boolean;
   onEdit?: () => void;
 }) {
   const { t } = useLingui();
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const lp = useLocalePath();
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [alertsBusy, setAlertsBusy] = useState(false);
+  const [displayAlertsEnabled, setDisplayAlertsEnabled] = useState(alertsEnabled);
+  const [alertsError, setAlertsError] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [shareState, setShareState] = useState<"idle" | "sharing" | "copied" | "error">("idle");
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
-  const upgrade = useUpgradeModal();
+  const shareResetRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const alertsResetRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const alertsMutationInFlightRef = useRef(false);
+
+  useEffect(() => {
+    setDisplayAlertsEnabled(alertsEnabled);
+  }, [alertsEnabled]);
+
+  useEffect(() => () => {
+    clearTimeout(shareResetRef.current);
+    clearTimeout(alertsResetRef.current);
+  }, []);
+
+  async function handleShare() {
+    if (shareState === "sharing") return;
+    clearTimeout(shareResetRef.current);
+    setShareState("sharing");
+    try {
+      const result = await shareWatchlist(watchlistId);
+      if ("error" in result) throw new Error(result.error);
+      await copyTextToClipboard(result.url);
+      setShareState("copied");
+      shareResetRef.current = setTimeout(() => setShareState("idle"), 2_500);
+    } catch {
+      setShareState("error");
+    }
+  }
 
   async function handleDelete() {
-    setBusy(true);
+    setDeleteBusy(true);
+    setDeleteError("");
     try {
-      await deleteWatchlist(watchlistId);
-      await clearWatchlistSelection();
-      broadcastWatchlistSelectionChanged();
+      const result = await deleteWatchlist(watchlistId);
+      if (!result.ok) {
+        setDeleteError(t({
+          id: "watchlists.actions.deleteFailed",
+          comment: "Error shown when deleting a watchlist fails",
+          message: "Could not delete this watchlist.",
+        }));
+        return;
+      }
+      router.replace(lp("/watchlists"));
       router.refresh();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function handleToggleAlerts() {
-    if (!isPaidPlan) {
-      upgrade.show(t({
-        id: "upgrade.reason.alerts",
-        comment: "Reason shown in upgrade modal when trying to enable alerts",
-        message: "Email alerts are a paid feature. Upgrade to get notified when new jobs match your watchlist.",
+    } catch {
+      setDeleteError(t({
+        id: "watchlists.actions.deleteFailed",
+        comment: "Error shown when deleting a watchlist fails",
+        message: "Could not delete this watchlist.",
       }));
-      return;
+    } finally {
+      setDeleteBusy(false);
     }
-    setBusy(true);
-    toggleWatchlistAlerts(watchlistId)
-      .then(() => router.refresh())
-      .finally(() => setBusy(false));
   }
 
-  if (busy) {
+  async function handleToggleAlerts() {
+    if (alertsMutationInFlightRef.current) return;
+    alertsMutationInFlightRef.current = true;
+    clearTimeout(alertsResetRef.current);
+    setAlertsError(false);
+    setAlertsBusy(true);
+    try {
+      const result = await toggleWatchlistAlerts(watchlistId);
+      if ("error" in result) {
+        throw new Error(result.error);
+      }
+      setDisplayAlertsEnabled(result.enabled);
+      router.refresh();
+    } catch {
+      setAlertsError(true);
+      alertsResetRef.current = setTimeout(() => setAlertsError(false), 2_500);
+    } finally {
+      alertsMutationInFlightRef.current = false;
+      setAlertsBusy(false);
+    }
+  }
+
+  if (deleteBusy) {
     return (
       <div className="flex items-center gap-1">
         <Loader2 size={16} className="motion-safe:animate-spin text-muted" />
       </div>
     );
   }
+
+  const shareLabel = shareState === "copied"
+    ? t({ id: "watchlists.actions.copied", comment: "Confirmation after copying an unlisted watchlist link", message: "Link copied" })
+    : shareState === "error"
+      ? t({ id: "watchlists.actions.shareFailed", comment: "Error after an unlisted watchlist link cannot be copied", message: "Copy failed" })
+      : t({ id: "watchlists.actions.share", comment: "Action to share a watchlist by unlisted link", message: "Share" });
+  const alertsLabel = alertsError
+    ? t({ id: "watchlists.actions.alertsFailed", comment: "Error after a watchlist alert preference cannot be updated", message: "Could not update alerts" })
+    : displayAlertsEnabled
+      ? t({ id: "watchlists.actions.disableAlerts", comment: "Disable alerts tooltip", message: "Disable alerts" })
+      : t({ id: "watchlists.actions.enableAlerts", comment: "Enable alerts tooltip", message: "Enable alerts" });
 
   return (
     <>
@@ -123,16 +207,35 @@ export function WatchlistActionBar({
               </ActionButton>
             )}
             <ActionButton
-              label={
-                alertsEnabled
-                  ? t({ id: "watchlists.actions.disableAlerts", comment: "Disable alerts tooltip", message: "Disable alerts" })
-                  : t({ id: "watchlists.actions.enableAlerts", comment: "Enable alerts tooltip", message: "Enable alerts" })
-              }
-              onClick={handleToggleAlerts}
-              disabled={!isPaidPlan}
-              warning={!isPaidPlan}
+              label={shareLabel}
+              onClick={() => void handleShare()}
+              warning={shareState === "error"}
+              tooltipOpen={shareState === "copied" || shareState === "error" ? true : undefined}
+              announce={shareState === "copied" || shareState === "error"}
             >
-              {alertsEnabled ? <BellOff size={16} aria-hidden="true" /> : <Bell size={16} aria-hidden="true" />}
+              {shareState === "sharing" ? (
+                <Loader2 size={16} className="motion-safe:animate-spin" aria-hidden="true" />
+              ) : shareState === "copied" ? (
+                <Check size={16} aria-hidden="true" />
+              ) : (
+                <Share2 size={16} aria-hidden="true" />
+              )}
+            </ActionButton>
+            <ActionButton
+              label={alertsLabel}
+              onClick={() => void handleToggleAlerts()}
+              busy={alertsBusy}
+              warning={alertsError}
+              tooltipOpen={alertsError ? true : undefined}
+              announce={alertsError}
+            >
+              {alertsBusy ? (
+                <Loader2 size={16} className="motion-safe:animate-spin" aria-hidden="true" />
+              ) : displayAlertsEnabled ? (
+                <BellOff size={16} aria-hidden="true" />
+              ) : (
+                <Bell size={16} aria-hidden="true" />
+              )}
             </ActionButton>
             <AlertDialog.Root open={deleteOpen} onOpenChange={setDeleteOpen}>
               <ActionButton
@@ -182,7 +285,7 @@ export function WatchlistActionBar({
           </>
         </div>
       </Tooltip.Provider>
-      <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
+      {deleteError ? <span className="text-xs text-error" role="alert">{deleteError}</span> : null}
     </>
   );
 }

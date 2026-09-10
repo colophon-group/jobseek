@@ -6,8 +6,8 @@ const loaderSource = readFileSync(
   "app/[lang]/(app)/watchlists/watchlists-loader.tsx",
   "utf8",
 );
-const actionSource = readFileSync(
-  "src/lib/actions/watchlist-selection.ts",
+const detailLoaderSource = readFileSync(
+  "app/[lang]/(app)/watchlists/[watchlistId]/owned-watchlist-loader.tsx",
   "utf8",
 );
 const authSource = readFileSync("src/lib/auth.ts", "utf8");
@@ -20,10 +20,15 @@ describe("private watchlist route contract", () => {
     );
   });
 
-  it("resolves selection through an exact owner predicate", () => {
-    expect(serviceSource).toContain("WHERE w.user_id = ${userId} AND ${predicate}");
-    expect(serviceSource).toContain("sql`w.id = ${watchlistId}`");
-    expect(loaderSource).toContain("getOwnedWatchlistById(hintedId, session.user.id)");
+  it("resolves direct UUID routes through an exact owner predicate", () => {
+    expect(serviceSource).toContain("sql`w.user_id = ${userId} AND ${predicate}`");
+    expect(serviceSource).toContain("sql`w.id = ${normalizedWatchlistId}`");
+    expect(detailLoaderSource).toContain(
+      "getOwnedWatchlistById(watchlistId, session.user.id)",
+    );
+    expect(detailLoaderSource).toContain(
+      'isWatchlistId } from "@/lib/watchlist-id"',
+    );
   });
 
   it("does not load public or popular data on the canonical route", () => {
@@ -32,18 +37,11 @@ describe("private watchlist route contract", () => {
     expect(loaderSource).not.toContain("PublicWatchlistSearch");
   });
 
-  it("keeps user-bound selection reads and writes out of shared caches", () => {
-    for (const source of [loaderSource, actionSource]) {
-      expect(source).not.toContain('"use cache"');
-      expect(source).not.toContain("cached(");
-      expect(source).not.toContain("cacheLife(");
-      expect(source).not.toContain("cacheTag(");
+  it("does not retain selection-cookie or cross-tab channel coupling", () => {
+    for (const source of [loaderSource, detailLoaderSource, authSource, headerSource]) {
+      expect(source).not.toContain("WATCHLIST_SELECTION_COOKIE");
+      expect(source).not.toContain("watchlist-selection-client");
+      expect(source).not.toContain("broadcastWatchlistSelectionChanged");
     }
-  });
-
-  it("clears on session termination and invalidates other tabs on sign-out", () => {
-    expect(authSource).toContain("ctx.setCookie(WATCHLIST_SELECTION_COOKIE, \"\"");
-    expect(authSource).toContain("maxAge: 0");
-    expect(headerSource).toContain("broadcastWatchlistSelectionChanged();");
   });
 });

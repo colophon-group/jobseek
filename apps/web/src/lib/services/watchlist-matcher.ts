@@ -23,6 +23,7 @@ import {
 import {
   isTypesenseQueryStringSafe,
   splitValuesForTypesenseQuery,
+  type TypesenseQueryParams,
 } from "@/lib/search/typesense-query-size";
 import { COMPANY_BATCH_SIZE } from "@/lib/search/constants";
 import { normalizePostingTitle } from "@/lib/posting-title";
@@ -47,6 +48,7 @@ type WorkMode = NonNullable<WatchlistCandidateFilters["workMode"]>[number];
 
 const WORK_MODES = new Set<WorkMode>(["onsite", "hybrid", "remote"]);
 const MULTI_SEARCH_CHUNK_SIZE = 40;
+const TYPESENSE_MAX_PAGE_SIZE = 250;
 
 export type CompiledWatchlistFilter = CompiledWatchlistMatcher & {
   resolvedLocations: ResolvedLocation[];
@@ -285,9 +287,22 @@ function compareHits(
   return canonicalStringCompare(String(aDoc.id ?? ""), String(bDoc.id ?? ""));
 }
 
+function assertCandidatePageCardinality(
+  result: TypesenseMultiSearchResult<object>,
+  params: { offset: number; limit: number },
+): void {
+  const hits = result.hits ?? [];
+  const expectedHits = params.limit === 0
+    ? 0
+    : Math.min(params.limit, Math.max(0, result.found - params.offset));
+  if (hits.length !== expectedHits) {
+    throw malformedTypesenseResponseError();
+  }
+}
+
 function batchesForFilters(
   filters: WatchlistCandidateFilters,
-  buildParams: (filters: WatchlistCandidateFilters) => WatchlistCandidateSearchParams,
+  buildParams: (filters: WatchlistCandidateFilters) => TypesenseQueryParams,
 ): WatchlistCandidateFilters[] {
   if (filters.anyCompany || filters.companyIds.length === 0) return [filters];
   const batches = splitValuesForTypesenseQuery(
@@ -346,15 +361,32 @@ export async function readWatchlistCandidates(params: {
   }
 
   const needed = params.offset + params.limit;
-  const filterBatches = batchesForFilters(params.filters, (filters) =>
-    buildWatchlistCandidateSearchParams({
+  const buildWindowSearchParams = (
+    filters: WatchlistCandidateFilters,
+    offset: number,
+    limit: number,
+  ) => {
+    const {
+      page: _page,
+      per_page: _perPage,
+      ...candidateSearchParams
+    } = buildWatchlistCandidateSearchParams({
       filters,
-      offset: 0,
-      limit: needed,
+      offset,
+      limit,
       window: params.window,
       order,
-    }),
+    });
+    return { ...candidateSearchParams, offset, limit };
+  };
+  const filterBatches = batchesForFilters(params.filters, (filters) =>
+    buildWindowSearchParams(filters, needed, TYPESENSE_MAX_PAGE_SIZE),
   );
+  if (filterBatches.some((filters) => !isTypesenseQueryStringSafe(
+    buildWindowSearchParams(filters, needed, TYPESENSE_MAX_PAGE_SIZE),
+  ))) {
+    throw new Error("watchlist Typesense query exceeds GET limit");
+  }
   const countResults = await Promise.all(
     filterBatches.map((filters) =>
       withTypesenseRetry(
@@ -380,31 +412,40 @@ export async function readWatchlistCandidates(params: {
   const total = countResults.reduce((sum, result) => sum + (result.found ?? 0), 0);
   if (total === 0 || params.limit === 0) return { postings: [], total };
 
-  const rowResults = await Promise.all(
-    filterBatches.map((filters) =>
-      withTypesenseRetry(
-        () =>
-          client.collections("job_posting").documents().search(
-            buildWatchlistCandidateSearchParams({
-              filters,
-              offset: 0,
-              limit: needed,
-              window: params.window,
-              order,
-            }),
-            { abortSignal: params.abortSignal },
-          ),
-        {
-          label: "readWatchlistCandidates.batched.rows",
-          abortSignal: params.abortSignal,
-        },
-      ),
-    ),
+  const rowResultsByBatch = await Promise.all(
+    filterBatches.map(async (filters) => {
+      const pages: TypesenseMultiSearchResult<object>[] = [];
+      for (let batchOffset = 0; batchOffset < needed;) {
+        const requestLimit = Math.min(
+          TYPESENSE_MAX_PAGE_SIZE,
+          needed - batchOffset,
+        );
+        const result = await withTypesenseRetry(
+          () =>
+            client.collections("job_posting").documents().search(
+              buildWindowSearchParams(filters, batchOffset, requestLimit),
+              { abortSignal: params.abortSignal },
+            ),
+          {
+            label: "readWatchlistCandidates.batched.rows",
+            abortSignal: params.abortSignal,
+          },
+        );
+        assertTypesenseSearchResult(result, { expectHits: true });
+        assertCandidatePageCardinality(result, {
+          offset: batchOffset,
+          limit: requestLimit,
+        });
+        pages.push(result);
+        batchOffset += requestLimit;
+        if (batchOffset >= result.found) break;
+      }
+      return pages;
+    }),
   );
-  for (const result of rowResults) {
-    assertTypesenseSearchResult(result, { expectHits: true });
-  }
-  const allHits = rowResults.flatMap((result) => result.hits ?? []);
+  const allHits = rowResultsByBatch.flatMap((pages) =>
+    pages.flatMap((result) => result.hits ?? []),
+  );
   allHits.sort((a, b) => compareHits(a, b, order));
   return {
     postings: allHits

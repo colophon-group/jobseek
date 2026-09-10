@@ -210,7 +210,7 @@ vi.mock("@/db", () => ({
 import {
   getWatchlistByUserAndSlug,
   getPublicWatchlistByUserAndSlug,
-} from "../watchlists";
+} from "../../services/watchlists";
 
 const USER_ID = "user-1";
 const TEST_DATABASE_URL =

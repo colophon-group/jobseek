@@ -67,12 +67,12 @@ export function ScrollFade({
       <div className={`relative flex overflow-hidden rounded-[inherit] ${wrapperClassName}`}>
         {canScrollStart && (
           <div
-            className={`pointer-events-none absolute inset-y-0 left-0 z-10 ${resolvedFadeSize} bg-gradient-to-r from-surface via-surface/40 to-transparent`}
+            className={`pointer-events-none absolute inset-y-0 left-0 z-30 ${resolvedFadeSize} bg-gradient-to-r from-surface via-surface/40 to-transparent`}
           />
         )}
         {canScrollEnd && (
           <div
-            className={`pointer-events-none absolute inset-y-0 right-0 z-10 ${resolvedFadeSize} bg-gradient-to-l from-surface via-surface/40 to-transparent`}
+            className={`pointer-events-none absolute inset-y-0 right-0 z-30 ${resolvedFadeSize} bg-gradient-to-l from-surface via-surface/40 to-transparent`}
           />
         )}
         <div
@@ -90,12 +90,12 @@ export function ScrollFade({
     <div className={`relative flex flex-col overflow-hidden rounded-[inherit] ${wrapperClassName}`}>
       {canScrollStart && (
         <div
-          className={`pointer-events-none absolute inset-x-0 top-0 z-10 ${resolvedFadeSize} bg-gradient-to-b from-surface via-surface/40 to-transparent`}
+          className={`pointer-events-none absolute inset-x-0 top-0 z-30 ${resolvedFadeSize} bg-gradient-to-b from-surface via-surface/40 to-transparent`}
         />
       )}
       {canScrollEnd && (
         <div
-          className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 ${resolvedFadeSize} bg-gradient-to-t from-surface via-surface/40 to-transparent`}
+          className={`pointer-events-none absolute inset-x-0 bottom-0 z-30 ${resolvedFadeSize} bg-gradient-to-t from-surface via-surface/40 to-transparent`}
         />
       )}
       <div

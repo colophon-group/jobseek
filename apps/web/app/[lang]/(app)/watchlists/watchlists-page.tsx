@@ -2,38 +2,34 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, Loader2, LogIn } from "lucide-react";
+import { Eye, LogIn } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
 import type {
+  UserWatchlistActivityPreview,
   UserWatchlistOverview,
   WatchlistFilters,
 } from "@/lib/actions/watchlists";
 import {
   createWatchlist,
   createWatchlistFromHandoff,
+  deleteWatchlist,
+  shareWatchlist,
 } from "@/lib/actions/watchlists";
-import {
-  clearWatchlistSelection,
-  selectOwnedWatchlist,
-} from "@/lib/actions/watchlist-selection";
-import type { WatchlistPageData } from "@/lib/services/watchlist-page-data";
 import {
   WatchlistCard,
   CreateWatchlistCard,
 } from "@/components/watchlist/watchlist-card";
 import { Button } from "@/components/ui/Button";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 import {
   parseEmploymentTypeParam,
   parseWorkModeParam,
 } from "@/lib/search/query-params";
 import { withAuthReturnPath } from "@/lib/auth-return";
-import {
-  broadcastWatchlistSelectionChanged,
-  subscribeToWatchlistSelection,
-} from "@/lib/watchlist-selection-client";
-import { WatchlistViewPage } from "../[userSlug]/[watchlistSlug]/watchlist-view-page";
+import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
+import { copyTextToClipboard } from "@/lib/copy-text-to-clipboard";
 
 function commaSeparatedValues(value: string | null): string[] {
   if (!value) return [];
@@ -42,14 +38,10 @@ function commaSeparatedValues(value: string | null): string[] {
 
 export function WatchlistsPage({
   initialWatchlists,
-  initialPageData,
-  selectionSync,
   limitReached,
   locale,
 }: {
   initialWatchlists: UserWatchlistOverview[];
-  initialPageData: WatchlistPageData | null;
-  selectionSync: "none" | "replace" | "clear";
   limitReached: boolean;
   locale: string;
 }) {
@@ -57,35 +49,26 @@ export function WatchlistsPage({
   const router = useRouter();
   const lp = useLocalePath();
   const { isLoggedIn, isPending } = useSession();
+  const currencyRates = useSalaryRates();
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
-  const [selectingId, setSelectingId] = useState<string | null>(null);
-  const [watchlists, setWatchlists] = useState(initialWatchlists);
+  const [createError, setCreateError] = useState("");
+  const [activityById, setActivityById] = useState<
+    Record<string, UserWatchlistActivityPreview>
+  >({});
+  const [activityPending, setActivityPending] = useState(
+    () => initialWatchlists.length > 0,
+  );
   const handoffAttemptedRef = useRef(false);
-  const selectionSyncKeyRef = useRef<string | null>(null);
+  const defaultWatchlistTitle = t({
+    id: "watchlists.defaultTitle",
+    comment: "Default title assigned to a newly created watchlist",
+    message: "New watchlist",
+  });
 
   useEffect(() => {
-    return subscribeToWatchlistSelection(() => router.refresh());
-  }, [router]);
-
-  useEffect(() => {
-    const selectedId = initialPageData?.detail.id ?? "empty";
-    const syncKey = `${selectionSync}:${selectedId}`;
-    if (selectionSync === "none" || selectionSyncKeyRef.current === syncKey) {
-      return;
-    }
-    selectionSyncKeyRef.current = syncKey;
-
-    const sync = selectionSync === "replace" && initialPageData
-      ? selectOwnedWatchlist(initialPageData.detail.id)
-      : clearWatchlistSelection();
-    void sync.then(broadcastWatchlistSelectionChanged).catch(() => {
-      selectionSyncKeyRef.current = null;
-    });
-  }, [initialPageData, selectionSync]);
-
-  useEffect(() => {
-    setWatchlists(initialWatchlists);
+    setActivityById({});
+    setActivityPending(isLoggedIn && initialWatchlists.length > 0);
     if (!isLoggedIn || initialWatchlists.length === 0) return;
 
     const controller = new AbortController();
@@ -97,26 +80,21 @@ export function WatchlistsPage({
       signal: controller.signal,
     })
       .then(async (response) => {
-        if (!response.ok) throw new Error(`Watchlist counts failed: ${response.status}`);
-        return response.json() as Promise<{ counts?: Record<string, unknown> }>;
+        if (!response.ok) throw new Error(`Watchlist previews failed: ${response.status}`);
+        return response.json() as Promise<{
+          previews?: Record<string, UserWatchlistActivityPreview>;
+        }>;
       })
-      .then(({ counts }) => {
-        if (!counts || disposed) return;
-        setWatchlists((current) =>
-          current.map((watchlist) => {
-            const count = counts[watchlist.id];
-            return {
-              ...watchlist,
-              activeJobCount:
-                typeof count === "number" ? count : watchlist.activeJobCount,
-            };
-          }),
-        );
+      .then(({ previews }) => {
+        if (previews && !disposed) setActivityById(previews);
       })
       .catch(() => {
-        // Company counts remain visible when the optional live count fails.
+        // The overview remains navigable when optional live activity fails.
       })
-      .finally(() => clearTimeout(timeoutId));
+      .finally(() => {
+        clearTimeout(timeoutId);
+        if (!disposed) setActivityPending(false);
+      });
 
     return () => {
       disposed = true;
@@ -125,18 +103,13 @@ export function WatchlistsPage({
     };
   }, [initialWatchlists, isLoggedIn, locale]);
 
-  async function handleSelect(watchlistId: string) {
-    if (selectingId || watchlistId === initialPageData?.detail.id) return;
-    setSelectingId(watchlistId);
-    try {
-      const result = await selectOwnedWatchlist(watchlistId);
-      if (result.ok) {
-        broadcastWatchlistSelectionChanged();
-        router.refresh();
-      }
-    } finally {
-      setSelectingId(null);
-    }
+  function navigateToCreatedWatchlist(
+    id: string,
+    navigation: "push" | "replace",
+  ) {
+    const destination = lp(`/watchlists/${id}`);
+    if (navigation === "replace") router.replace(destination);
+    else router.push(destination);
   }
 
   async function handleCreate(
@@ -150,34 +123,53 @@ export function WatchlistsPage({
   ) {
     if (creating || !isLoggedIn || limitReached) return;
     setCreating(true);
+    setCreateError("");
     try {
       const result = prefill?.companySlugs !== undefined
         ? await createWatchlistFromHandoff({
-            title: prefill.title || "New watchlist",
+            title: prefill.title || defaultWatchlistTitle,
             description: prefill.description,
             companySlugs: prefill.companySlugs,
             filters: prefill.filters,
           })
         : await createWatchlist({
-            title: prefill?.title || "New watchlist",
+            title: prefill?.title || defaultWatchlistTitle,
             description: prefill?.description,
             companyIds: [],
             filters: prefill?.filters,
             isPublic: false,
           });
-      if ("error" in result) return;
-
-      const selected = await selectOwnedWatchlist(result.id);
-      if (!selected.ok) return;
-      broadcastWatchlistSelectionChanged();
-      if (navigation === "replace" || searchParams.size > 0) {
-        router.replace(lp("/watchlists"));
-      } else {
-        router.refresh();
+      if ("error" in result) {
+        setCreateError(t({
+          id: "watchlists.createFailed",
+          comment: "Error shown when a new watchlist cannot be created",
+          message: "Could not create this watchlist.",
+        }));
+        return;
       }
+
+      navigateToCreatedWatchlist(result.id, navigation);
+    } catch {
+      setCreateError(t({
+        id: "watchlists.createFailed",
+        comment: "Error shown when a new watchlist cannot be created",
+        message: "Could not create this watchlist.",
+      }));
     } finally {
       setCreating(false);
     }
+  }
+
+  async function handleShare(watchlistId: string) {
+    const result = await shareWatchlist(watchlistId);
+    if ("error" in result) throw new Error(result.error);
+    await copyTextToClipboard(result.url);
+  }
+
+  async function handleDelete(watchlistId: string) {
+    const result = await deleteWatchlist(watchlistId);
+    if (!result.ok) throw new Error("delete_failed");
+    router.refresh();
   }
 
   const runWatchlistHandoff = useEffectEvent(
@@ -218,11 +210,26 @@ export function WatchlistsPage({
     if (tech) filters.technologySlugs = commaSeparatedValues(tech);
     if (workMode.length > 0) filters.workMode = workMode;
     if (employmentType.length > 0) filters.employmentType = employmentType;
-    if (salcur) filters.salaryCurrency = salcur;
     if (sal) {
       const [minStr, maxStr] = sal.split("-");
-      if (minStr) filters.salaryMin = parseInt(minStr, 10);
-      if (maxStr) filters.salaryMax = parseInt(maxStr, 10);
+      const salaryMinEur = minStr ? parseInt(minStr, 10) : undefined;
+      const salaryMaxEur = maxStr ? parseInt(maxStr, 10) : undefined;
+      const rate = salcur && salcur !== "EUR"
+        ? currencyRates.find((candidate) => candidate.currency === salcur)?.toEur
+        : 1;
+      if (rate && rate > 0) {
+        filters.salaryCurrency = salcur ?? "EUR";
+        if (salaryMinEur !== undefined) filters.salaryMin = Math.round(salaryMinEur / rate);
+        if (salaryMaxEur !== undefined) filters.salaryMax = Math.round(salaryMaxEur / rate);
+      } else {
+        // `sal` in the public handoff contract is EUR. If the requested
+        // display currency is unsupported, preserve the filter's meaning.
+        filters.salaryCurrency = "EUR";
+        if (salaryMinEur !== undefined) filters.salaryMin = salaryMinEur;
+        if (salaryMaxEur !== undefined) filters.salaryMax = salaryMaxEur;
+      }
+    } else if (salcur) {
+      filters.salaryCurrency = salcur;
     }
     if (exp) {
       const [minStr, maxStr] = exp.split("-");
@@ -238,7 +245,7 @@ export function WatchlistsPage({
     }).catch(() => {
       // Keep the handoff URL intact after a terminal action/database failure.
     });
-  }, [isLoggedIn, isPending, limitReached, searchParams]);
+  }, [currencyRates, isLoggedIn, isPending, limitReached, searchParams]);
 
   const loginHref = withAuthReturnPath(
     lp("/sign-in"),
@@ -248,91 +255,91 @@ export function WatchlistsPage({
   );
 
   return (
-    <div className="space-y-8">
-      <section aria-labelledby="watchlists-heading">
-        <h1 id="watchlists-heading" className="mb-4 text-lg font-semibold">
-          <Trans id="watchlists.page.title" comment="Title of the private watchlists page">
-            Watchlists
-          </Trans>
-        </h1>
+    <section aria-labelledby="watchlists-heading">
+      <h1 id="watchlists-heading" className="mb-4 text-lg font-semibold">
+        <Trans id="watchlists.page.title" comment="Title of the private watchlists page">
+          Watchlists
+        </Trans>
+      </h1>
 
-        {!isLoggedIn ? (
-          <div className="flex flex-col items-center gap-3 py-8 text-center text-muted">
-            <Eye size={32} aria-hidden="true" />
-            <p className="text-sm">
-              <Trans
-                id="watchlists.page.loginPrompt"
-                comment="Prompt for non-logged-in users to sign in to create watchlists"
-              >
-                Sign in to create and manage your own watchlists.
-              </Trans>
+      {isPending ? (
+        <div className="flex items-center justify-center py-8" role="status">
+          <div className="size-7 rounded-full border-4 border-muted border-t-primary motion-safe:animate-spin" />
+          <span className="sr-only">
+            <Trans id="watchlists.load.loading" comment="Accessible loading status for the private watchlists overview route">
+              Loading watchlists…
+            </Trans>
+          </span>
+        </div>
+      ) : !isLoggedIn ? (
+        <div className="flex flex-col items-center gap-3 py-8 text-center text-muted">
+          <Eye size={32} aria-hidden="true" />
+          <p className="text-sm">
+            <Trans
+              id="watchlists.page.loginPrompt"
+              comment="Prompt for non-logged-in users to sign in to create watchlists"
+            >
+              Sign in to create and manage your own watchlists.
+            </Trans>
+          </p>
+          <Button href={loginHref} variant="primary" size="sm" className="gap-2">
+            <LogIn size={16} aria-hidden="true" />
+            {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
+          </Button>
+        </div>
+      ) : (
+        <div className="max-w-3xl" aria-busy={activityPending}>
+          {initialWatchlists.length > 0 && !activityPending ? (
+            <span className="sr-only" role="status" aria-live="polite">
+              {t({
+                id: "watchlists.activity.loaded",
+                comment: "Screen-reader announcement after watchlist activity previews finish loading",
+                message: "Watchlist activity finished loading.",
+              })}
+            </span>
+          ) : null}
+          {createError ? (
+            <p className="mb-3 rounded-md border border-error/30 bg-error-bg px-3 py-2 text-sm text-error" role="alert">
+              {createError}
             </p>
-            <Button href={loginHref} variant="primary" size="sm" className="gap-2">
-              <LogIn size={16} aria-hidden="true" />
-              {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
-            </Button>
-          </div>
-        ) : watchlists.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-8 text-center text-muted">
-            <Eye size={32} aria-hidden="true" />
-            <p className="text-sm">
+          ) : null}
+          {initialWatchlists.length === 0 ? (
+            <p className="mb-4 text-sm text-muted">
               <Trans id="watchlists.page.empty" comment="Empty state when user has no watchlists">
                 No watchlists yet. Create one to track jobs from your favorite companies.
               </Trans>
             </p>
-            <button
-              type="button"
-              onClick={() => handleCreate()}
-              disabled={creating}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-contrast transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {creating && <Loader2 size={14} className="motion-safe:animate-spin" aria-hidden="true" />}
-              <Trans id="watchlists.page.createFirst" comment="Button to create first watchlist">
-                Create watchlist
-              </Trans>
-            </button>
-          </div>
-        ) : (
-          <div className="max-w-3xl space-y-3">
-            <ul className="space-y-3 sm:max-h-[32rem] sm:overflow-y-auto sm:pr-2">
-              {watchlists.map((watchlist) => (
+          ) : null}
+          <ScrollFade
+            wrapperClassName="max-h-[max(12rem,calc(100dvh_-_8rem))]"
+            className="overscroll-contain pr-2"
+            fadeSize="h-8"
+            deps={[initialWatchlists.length, activityById]}
+          >
+            <ul className="space-y-3 pb-10 md:pb-6">
+              {initialWatchlists.map((watchlist) => (
                 <li key={watchlist.id}>
                   <WatchlistCard
                     watchlist={watchlist}
-                    active={watchlist.id === initialPageData?.detail.id}
-                    selecting={watchlist.id === selectingId}
-                    onSelect={() => handleSelect(watchlist.id)}
+                    activity={activityById[watchlist.id] ?? null}
+                    activityPending={activityPending}
+                    href={lp(`/watchlists/${watchlist.id}`)}
+                    onShare={() => handleShare(watchlist.id)}
+                    onDelete={() => handleDelete(watchlist.id)}
                   />
                 </li>
               ))}
+              <li>
+                <CreateWatchlistCard
+                  onClick={() => void handleCreate()}
+                  creating={creating}
+                  disabled={limitReached}
+                />
+              </li>
             </ul>
-            <CreateWatchlistCard
-              onClick={() => handleCreate()}
-              creating={creating}
-              disabled={limitReached}
-            />
-          </div>
-        )}
-      </section>
-
-      {initialPageData && (
-        <WatchlistViewPage
-          key={initialPageData.detail.id}
-          detail={initialPageData.detail}
-          isOwner
-          isPaidPlan={initialPageData.isPaidPlan}
-          initialPostings={initialPageData.postings}
-          initialTotal={initialPageData.total}
-          yearTotal={initialPageData.yearTotal}
-          locale={locale}
-          resolvedLocations={initialPageData.resolvedLocations}
-          resolvedOccupations={initialPageData.resolvedOccupations}
-          resolvedSeniorities={initialPageData.resolvedSeniorities}
-          resolvedTechnologies={initialPageData.resolvedTechnologies}
-          jobLanguages={initialPageData.jobLanguages}
-          languages={initialPageData.languages}
-        />
+          </ScrollFade>
+        </div>
       )}
-    </div>
+    </section>
   );
 }

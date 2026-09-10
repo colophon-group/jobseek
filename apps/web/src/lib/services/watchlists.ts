@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { after } from "next/server";
-import { updateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { eq, and, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -11,9 +11,16 @@ import {
   userPreferences,
 } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
+import { siteConfig } from "@/content/config";
 import { getViewerLanguages } from "@/lib/viewer";
 import { resolveJobLanguages } from "@/lib/job-languages";
-import { cached, invalidate } from "@/lib/cache";
+import { convertToEur } from "@/lib/salary";
+import {
+  cached,
+  invalidate,
+  kvMget,
+  kvSet,
+} from "@/lib/cache";
 import {
   CACHE_TTL_SHORT,
   CACHE_TTL_POPULAR,
@@ -36,6 +43,7 @@ import {
 } from "@/lib/watchlist-slug";
 import { ANON_MAX_WATCHLIST_POSTINGS, COMPANY_BATCH_SIZE } from "@/lib/search/constants";
 import { resolveLocationSlugs } from "@/lib/actions/locations";
+import { getCurrencyRates } from "@/lib/services/search";
 import { resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/services/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { logExternalError } from "@/lib/safe-external-error";
@@ -43,21 +51,31 @@ import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "@/l
 import {
   assertTypesenseSearchResult,
   isTypesenseUnavailableError,
+  malformedTypesenseResponseError,
   withTypesenseRetry,
 } from "@/lib/search/typesense-retry";
 import { splitValuesForTypesenseQuery } from "@/lib/search/typesense-query-size";
-import {
-  upsertWatchlist as tsUpsertWatchlist,
-  deleteWatchlist as tsDeleteWatchlist,
-  updateWatchlistField as tsUpdateWatchlistField,
-} from "@/lib/search/typesense-watchlist";
-import { isTrivialWatchlist, buildFilterCacheKey } from "@/lib/watchlist-utils";
+import { deleteWatchlist as tsDeleteWatchlist } from "@/lib/search/typesense-watchlist";
+import { buildFilterCacheKey } from "@/lib/watchlist-utils";
 import { notifyIndexNow, logIndexNowResult } from "@/lib/indexnow";
 import { createWatchlistFromHandoffWithDeps } from "@/lib/services/watchlist-handoff";
 import { publicWatchlistRouteStatusCacheKey } from "@/lib/services/public-resource-status";
 import { toggleWatchlistAlertState } from "@/lib/notifications/policy";
 import { lockNotificationPolicyForUser } from "@/lib/services/notification-preferences";
+import { sharedWatchlistCloneLimiter } from "@/lib/rate-limit";
 import { readWatchlistCandidates } from "@/lib/services/watchlist-matcher";
+import {
+  normalizeCreateWatchlistInput,
+  normalizeHandoffWatchlistInput,
+  normalizeSharedWatchlistMetadata,
+  normalizeUpdateWatchlistInput,
+  normalizeWatchlistCompaniesForRead,
+  normalizeWatchlistCompanyIdsForRead,
+  normalizeWatchlistFiltersForRead,
+  normalizeWatchlistFiltersForSharedRead,
+  normalizeWatchlistUuid,
+  WATCHLIST_COMPANY_MAX,
+} from "@/lib/services/watchlist-input";
 import type {
   WatchlistCandidateFilters,
   WatchlistFilters,
@@ -95,11 +113,22 @@ export type WatchlistSummary = {
   createdAt: string;
 };
 
-export type UserWatchlistOverview = Omit<WatchlistSummary, "activeJobCount"> & {
-  /** Whether this watchlist searches across all companies instead of explicit membership. */
-  anyCompany: boolean;
+export type UserWatchlistOverview = Omit<WatchlistSummary, "activeJobCount" | "isPublic"> & {
+  isShared: boolean;
   /** Loaded after the overview renders so count aggregation cannot block navigation. */
   activeJobCount: number | null;
+};
+
+export type UserWatchlistActivityPreview = {
+  activeJobCount: number;
+  /** Exact number of distinct companies contributing at least one matching active job. */
+  activeCompanyCount: number;
+  /** Highest-activity matching companies, ordered by active job count. */
+  topCompanies: Array<{
+    id: string;
+    name: string;
+    icon: string | null;
+  }>;
 };
 
 export type WatchlistDetail = {
@@ -126,8 +155,23 @@ export type WatchlistDetail = {
   }[];
 };
 
+/**
+ * The only watchlist fields allowed across the RSC boundary into the result UI.
+ * Owner identity, source lineage, legacy visibility, slugs, and timestamps stay
+ * server-only, including for anonymous shared-link viewers.
+ */
+export type WatchlistViewDetail = Pick<
+  WatchlistDetail,
+  "id" | "title" | "description" | "filters" | "companies"
+> & {
+  /** Present for owner views only; shared snapshots do not expose alert state. */
+  alertsEnabled?: boolean;
+};
+
 type WatchlistPostingFilterParams = WatchlistCandidateFilters & {
   abortSignal?: AbortSignal;
+  /** Let an orchestrating page distinguish provider failure from a real zero. */
+  failOnUnavailable?: boolean;
 };
 
 type WatchlistPostingQueryParams = WatchlistPostingFilterParams & {
@@ -139,6 +183,7 @@ type WatchlistAuditAction =
   | "watchlist.create"
   | "watchlist.update"
   | "watchlist.delete"
+  | "watchlist.share"
   | "watchlist.copy"
   | "watchlist.company.add"
   | "watchlist.companies.clear"
@@ -149,37 +194,58 @@ type WatchlistAuditPayload = {
   occurred_at: string;
   action: WatchlistAuditAction;
   user_ref: string;
-  watchlist_id: string;
+  watchlist_ref: string;
   slug_before?: string | null;
   slug_after?: string | null;
   is_public_before?: boolean | null;
   is_public_after?: boolean | null;
+  share_enabled_before?: boolean | null;
+  share_enabled_after?: boolean | null;
   copy_source_kind?: WatchlistCopySourceKind;
   company_count_delta?: number | null;
 };
 
 type WatchlistAuditInput = Omit<
   WatchlistAuditPayload,
-  "event" | "occurred_at" | "user_ref"
+  "event" | "occurred_at" | "user_ref" | "watchlist_ref"
 > & {
   userId: string;
+  watchlist_id: string;
 };
 
 function _watchlistAuditUserRef(userId: string): string {
   return createHash("sha256").update(userId).digest("hex").slice(0, 12);
 }
 
-function _logWatchlistAudit({ userId, ...entry }: WatchlistAuditInput): void {
+function _logWatchlistAudit({ userId, watchlist_id, ...entry }: WatchlistAuditInput): void {
   const payload: WatchlistAuditPayload = {
     event: "watchlist.audit",
     occurred_at: new Date().toISOString(),
     user_ref: _watchlistAuditUserRef(userId),
+    watchlist_ref: createHash("sha256")
+      .update(watchlist_id)
+      .digest("hex")
+      .slice(0, 12),
     ...entry,
   };
   console.info(JSON.stringify(payload));
 }
 
+function _revalidatePrivateWatchlistOverview(): void {
+  try {
+    revalidatePath("/[lang]/(app)/watchlists", "page");
+  } catch (err) {
+    logExternalError(
+      "warn",
+      { service: "external_http", operation: "revalidate_watchlist_overview" },
+      err,
+    );
+  }
+}
+
 class WatchlistCopySourceUnavailableError extends Error {}
+class WatchlistCopySourceTooLargeError extends Error {}
+class WatchlistCopySourceInvalidError extends Error {}
 
 // ── Actions ─────────────────────────────────────────────────────────
 
@@ -197,7 +263,13 @@ export async function createWatchlist(params: {
   // false is harmless, but an attempt to create a public row fails before the
   // slug lookup, capacity lock, or transaction. All persisted creates below
   // are private by construction.
-  if (params.isPublic === true) return { error: "visibility_locked" };
+  if (params && typeof params === "object" && params.isPublic === true) {
+    return { error: "visibility_locked" };
+  }
+
+  const normalized = normalizeCreateWatchlistInput(params);
+  if (!normalized.ok) return { error: "invalid_input" };
+  params = normalized.value;
 
   // Slug allocation is concurrency-safe: `insertWatchlistWithUniqueSlug`
   // wraps the INSERT in a retry loop that recovers from the SELECT-then-
@@ -258,6 +330,7 @@ export async function createWatchlist(params: {
     is_public_after: false,
     company_count_delta: params.companyIds.length,
   });
+  _revalidatePrivateWatchlistOverview();
 
   return { id: row.id, slug };
 }
@@ -268,12 +341,15 @@ export async function createWatchlistFromHandoff(params: {
   companySlugs: string[];
   filters?: WatchlistFilters;
 }): Promise<{ id: string; slug: string } | { error: string }> {
+  const normalized = normalizeHandoffWatchlistInput(params);
+  if (!normalized.ok) return { error: "invalid_input" };
+
   // Keep the company-detail cache/search module off the ordinary watchlist
   // import path. It is needed only for this explicit public-API handoff.
   const { getCompanyIdsBySlugs } = await import(
     "@/lib/services/company-detail"
   );
-  return createWatchlistFromHandoffWithDeps(params, {
+  return createWatchlistFromHandoffWithDeps(normalized.value, {
     getCompanyIdsBySlugs,
     createWatchlist,
   });
@@ -289,6 +365,10 @@ export async function updateWatchlist(params: {
 }): Promise<{ slug: string } | { error: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
+
+  const normalized = normalizeUpdateWatchlistInput(params);
+  if (!normalized.ok) return { error: "invalid_input" };
+  params = normalized.value;
 
   const [wl] = await db
     .select({
@@ -374,10 +454,6 @@ export async function updateWatchlist(params: {
   // after the response is flushed but before Vercel terminates the
   // function.
   const wasPublic = wl.isPublic;
-  const nowPublic = wasPublic;
-  const newFilters = params.filters !== undefined
-    ? params.filters
-    : (wl.filters ?? {}) as WatchlistFilters;
   const didUpdateWatchlist = Object.keys(updates).length > 0;
   const didReplaceCompanies = params.companyIds !== undefined;
 
@@ -389,7 +465,7 @@ export async function updateWatchlist(params: {
       slug_before: wl.slug,
       slug_after: newSlug,
       is_public_before: wasPublic,
-      is_public_after: nowPublic,
+      is_public_after: wasPublic,
       company_count_delta: didReplaceCompanies ? null : undefined,
     });
   }
@@ -405,35 +481,14 @@ export async function updateWatchlist(params: {
       const slugsToInvalidate = newSlug !== wl.slug ? [wl.slug, newSlug] : [wl.slug];
       await _invalidateWatchlistCaches(userId, slugsToInvalidate);
 
-      const newCompanyCount = params.companyIds !== undefined
-        ? params.companyIds.length
-        : await _countWatchlistCompanies(params.watchlistId);
-      const shouldIndex = nowPublic && !isTrivialWatchlist(newFilters, newCompanyCount);
-
-      if (shouldIndex) {
-        // Idempotent upsert — doc may or may not exist (public↔private or
-        // trivial↔non-trivial transitions can leave stale or missing docs).
-        const desc = params.description !== undefined ? params.description : wl.description;
-        await _reindexPublicWatchlist(userId, {
-          id: params.watchlistId,
-          slug: newSlug,
-          title: params.title ?? wl.title,
-          description: desc,
-          company_count: newCompanyCount,
-          filters: newFilters,
-          previousSlugs: newSlug !== wl.slug ? [wl.slug] : undefined,
-          logLabel: "updateWatchlist",
-        });
-      } else if (wasPublic) {
-        // Was indexed and shouldn't be now — delete from Typesense and
-        // ping IndexNow so engines re-crawl and discover the 404/private
-        // response. IndexNow has no explicit delete; submitting the URL
-        // is the canonical re-crawl trigger.
+      if (wasPublic) {
+        // Public discovery is retired. Editing a grandfathered row removes
+        // any stale search document instead of refreshing it.
         await _unindexPublicWatchlist(
           userId,
           params.watchlistId,
           [wl.slug],
-          "updateWatchlist:unpublish",
+          "updateWatchlist:retired-public-cleanup",
         );
       }
     } catch (err) {
@@ -441,7 +496,79 @@ export async function updateWatchlist(params: {
     }
   });
 
+  if (didUpdateWatchlist || didReplaceCompanies) {
+    _revalidatePrivateWatchlistOverview();
+  }
   return { slug: newSlug };
+}
+
+/** Make an owned watchlist available at its opaque, unlisted id URL. */
+export async function shareWatchlist(
+  watchlistId: string,
+): Promise<{ ok: true; url: string } | { error: string }> {
+  const userId = await getSessionUserId();
+  if (!userId) throw new Error("Not authenticated");
+  const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
+  if (!normalizedWatchlistId) return { error: "invalid_input" };
+  watchlistId = normalizedWatchlistId;
+
+  const eligibility = await db.transaction(async (tx) => {
+    const [owned] = await tx
+      .select({
+        id: watchlist.id,
+        userId: watchlist.userId,
+        title: watchlist.title,
+        description: watchlist.description,
+        filters: watchlist.filters,
+        shareEnabled: watchlist.shareEnabled,
+      })
+      .from(watchlist)
+      .where(and(eq(watchlist.id, watchlistId), eq(watchlist.userId, userId)))
+      .for("update")
+      .limit(1);
+    if (!owned || owned.userId !== userId) return { error: "not_found" } as const;
+    if (
+      !normalizeSharedWatchlistMetadata(owned) ||
+      !normalizeWatchlistFiltersForSharedRead(owned.filters)
+    ) {
+      return { error: "invalid_source" } as const;
+    }
+    const companies = await tx
+      .select({ companyId: watchlistCompany.companyId })
+      .from(watchlistCompany)
+      .where(eq(watchlistCompany.watchlistId, watchlistId))
+      .limit(WATCHLIST_COMPANY_MAX + 1);
+    if (companies.length > WATCHLIST_COMPANY_MAX) {
+      return { error: "too_large" } as const;
+    }
+    if (owned.shareEnabled) return { changed: false } as const;
+
+    await tx
+      .update(watchlist)
+      .set({ shareEnabled: true })
+      .where(and(eq(watchlist.id, watchlistId), eq(watchlist.userId, userId)));
+    return { changed: true } as const;
+  });
+
+  if ("error" in eligibility && typeof eligibility.error === "string") {
+    return { error: eligibility.error };
+  }
+  if ("changed" in eligibility && eligibility.changed) {
+    _logWatchlistAudit({
+      action: "watchlist.share",
+      userId,
+      watchlist_id: watchlistId,
+      share_enabled_before: false,
+      share_enabled_after: true,
+    });
+    _revalidatePrivateWatchlistOverview();
+  }
+
+  // Sharing is deliberately unlisted: no Typesense, sitemap, or IndexNow hook.
+  return {
+    ok: true,
+    url: new URL(`/watchlists/${watchlistId}`, siteConfig.url).toString(),
+  };
 }
 
 export async function deleteWatchlist(
@@ -449,6 +576,9 @@ export async function deleteWatchlist(
 ): Promise<{ ok: boolean }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
+  const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
+  if (!normalizedWatchlistId) return { ok: false };
+  watchlistId = normalizedWatchlistId;
 
   const [wl] = await db
     .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
@@ -490,24 +620,34 @@ export async function deleteWatchlist(
     }
   });
 
+  _revalidatePrivateWatchlistOverview();
+
   return { ok: true };
 }
 
-export async function copyWatchlist(
+async function _copyWatchlist(
   watchlistId: string,
+  requestedSourceKind: WatchlistCopySourceKind,
 ): Promise<{ id: string; slug: string } | { error: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
+  const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
+  if (!normalizedWatchlistId) return { error: "invalid_input" };
+  watchlistId = normalizedWatchlistId;
 
-  // The server action exposes only owner duplication today. Future verified
-  // grant/share/template entrypoints can select another source kind, but must
-  // still pass through the policy recheck and destination transaction below.
-  const requestedSourceKind: WatchlistCopySourceKind = "owned";
+  // Server Actions can be replayed against a different pathname, so the
+  // shared-link mutation owns its abuse boundary instead of relying only on
+  // route-scoped proxy matching.
+  if (requestedSourceKind === "share") {
+    const { success } = await sharedWatchlistCloneLimiter.limit(userId);
+    if (!success) return { error: "rate_limited" };
+  }
 
   const [source] = await db
     .select({
       title: watchlist.title,
       userId: watchlist.userId,
+      isShared: watchlist.shareEnabled,
     })
     .from(watchlist)
     .where(eq(watchlist.id, watchlistId))
@@ -519,6 +659,11 @@ export async function copyWatchlist(
   if (!sourceAuthorization) {
     return { error: "not_found" };
   }
+  const sourceTitle = normalizeSharedWatchlistMetadata({
+    title: source.title,
+    description: null,
+  })?.title;
+  if (!sourceTitle) return { error: "invalid_source" };
 
   // Same race shape as createWatchlist (#3201): two fast clicks of the
   // "Copy" button on a watchlist used to race the SELECT-then-
@@ -532,7 +677,7 @@ export async function copyWatchlist(
   try {
     inserted = await insertWatchlistWithUniqueSlug(
       userId,
-      source.title,
+      sourceTitle,
       async (candidate) =>
         db.transaction(async (tx) =>
           createWithinWatchlistLimit(tx, userId, async () => {
@@ -542,6 +687,7 @@ export async function copyWatchlist(
                 description: watchlist.description,
                 filters: watchlist.filters,
                 userId: watchlist.userId,
+                isShared: watchlist.shareEnabled,
               })
               .from(watchlist)
               .where(eq(watchlist.id, watchlistId))
@@ -558,16 +704,21 @@ export async function copyWatchlist(
             if (!currentAuthorization) {
               throw new WatchlistCopySourceUnavailableError();
             }
+            const metadata = normalizeSharedWatchlistMetadata(currentSource);
+            const filters = normalizeWatchlistFiltersForSharedRead(currentSource.filters);
+            if (!metadata || !filters) {
+              throw new WatchlistCopySourceInvalidError();
+            }
 
             const [r] = await tx
               .insert(watchlist)
               .values({
                 userId,
                 slug: candidate,
-                title: currentSource.title,
-                description: currentSource.description,
+                title: metadata.title,
+                description: metadata.description,
                 isPublic: false,
-                filters: (currentSource.filters ?? {}) as WatchlistFilters,
+                filters,
                 sourceWatchlistId: watchlistId,
               })
               .returning({ id: watchlist.id });
@@ -578,7 +729,12 @@ export async function copyWatchlist(
             const companies = await tx
               .select({ companyId: watchlistCompany.companyId })
               .from(watchlistCompany)
-              .where(eq(watchlistCompany.watchlistId, watchlistId));
+              .where(eq(watchlistCompany.watchlistId, watchlistId))
+              .limit(WATCHLIST_COMPANY_MAX + 1);
+
+            if (companies.length > WATCHLIST_COMPANY_MAX) {
+              throw new WatchlistCopySourceTooLargeError();
+            }
 
             if (companies.length > 0) {
               await tx.insert(watchlistCompany).values(
@@ -600,6 +756,12 @@ export async function copyWatchlist(
   } catch (error) {
     if (error instanceof WatchlistCopySourceUnavailableError) {
       return { error: "not_found" };
+    }
+    if (error instanceof WatchlistCopySourceTooLargeError) {
+      return { error: "source_too_large" };
+    }
+    if (error instanceof WatchlistCopySourceInvalidError) {
+      return { error: "invalid_source" };
     }
     if (error instanceof WatchlistLimitReachedError) {
       return { error: "limit_reached" };
@@ -641,7 +803,21 @@ export async function copyWatchlist(
   // Copies are private by construction, so they never enter Typesense,
   // sitemaps, or IndexNow.
 
+  _revalidatePrivateWatchlistOverview();
+
   return { id: row.id, slug };
+}
+
+export function copyWatchlist(
+  watchlistId: string,
+): Promise<{ id: string; slug: string } | { error: string }> {
+  return _copyWatchlist(watchlistId, "owned");
+}
+
+export function copySharedWatchlist(
+  watchlistId: string,
+): Promise<{ id: string; slug: string } | { error: string }> {
+  return _copyWatchlist(watchlistId, "share");
 }
 
 export async function toggleWatchlistAlerts(
@@ -649,6 +825,9 @@ export async function toggleWatchlistAlerts(
 ): Promise<{ enabled: boolean } | { error: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
+  const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
+  if (!normalizedWatchlistId) return { error: "invalid_input" };
+  watchlistId = normalizedWatchlistId;
 
   return db.transaction(async (tx) => {
     await lockNotificationPolicyForUser(tx, userId);
@@ -705,12 +884,12 @@ export async function toggleWatchlistAlerts(
 
 /**
  * Combined fetch for the watchlists overview page: returns the user's
- * watchlist summaries AND whether they've reached their plan limit.
+ * watchlist summaries AND whether they've reached the universal account limit.
  *
  * Issue #3036: the loader previously hardcoded ``limitReached: false``,
  * which meant the ``CreateWatchlistCard`` never rendered its disabled
- * state (tooltip + dimmed + upgrade modal on click). Compute the real
- * value server-side so the gating UX matches the watchlist-detail page.
+ * state (tooltip + dimmed + explanatory modal on click). Compute the real
+ * value server-side so the limit UX matches the watchlist-detail page.
  */
 export async function getUserWatchlistsWithLimit(
   _locale: string,
@@ -734,6 +913,7 @@ type UserWatchlistRow = {
   title: string;
   description: string | null;
   is_public: boolean;
+  share_enabled: boolean;
   alerts_enabled: boolean;
   filters: WatchlistFilters;
   last_accessed_at: Date;
@@ -753,7 +933,7 @@ async function _getUserWatchlistRows(userId: string): Promise<UserWatchlistRow[]
   const rows = await withDbRetry(
     () =>
       db.execute<UserWatchlistRow & { [key: string]: unknown }>(sql`
-        SELECT w.id, w.slug, w.title, w.description, w.is_public, w.alerts_enabled, w.filters,
+        SELECT w.id, w.slug, w.title, w.description, w.is_public, w.share_enabled, w.alerts_enabled, w.filters,
                w.last_accessed_at, w.created_at,
                (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_count,
                (
@@ -768,7 +948,11 @@ async function _getUserWatchlistRows(userId: string): Promise<UserWatchlistRow[]
     { label: "userWatchlists" },
   );
 
-  return rows as unknown as UserWatchlistRow[];
+  return (rows as unknown as UserWatchlistRow[]).map((row) => ({
+    ...row,
+    filters: normalizeWatchlistFiltersForRead(row.filters),
+    company_ids: normalizeWatchlistCompanyIdsForRead(row.company_ids),
+  }));
 }
 
 function _toUserWatchlistSummary(
@@ -780,9 +964,8 @@ function _toUserWatchlistSummary(
     slug: row.slug,
     title: row.title,
     description: row.description,
-    isPublic: row.is_public,
+    isShared: row.share_enabled,
     alertsEnabled: row.alerts_enabled,
-    anyCompany: row.filters?.anyCompany === true,
     companyCount: row.company_count,
     activeJobCount,
     lastAccessedAt: new Date(row.last_accessed_at).toISOString(),
@@ -794,7 +977,7 @@ async function _getUserWatchlistsForUser(
   userId: string,
   locale: string,
   loadLanguages: () => Promise<string[]> = () => getViewerLanguages(locale),
-): Promise<WatchlistSummary[]> {
+): Promise<UserWatchlistOverview[]> {
   // Viewer language preference is used by the batched Typesense count so
   // listing counts match the watchlist-detail page.
   const [rows, languages] = await Promise.all([
@@ -809,7 +992,7 @@ async function _getUserWatchlistsForUser(
   }));
 }
 
-export async function getUserWatchlists(locale: string): Promise<WatchlistSummary[]> {
+export async function getUserWatchlists(locale: string): Promise<UserWatchlistOverview[]> {
   const userId = await getSessionUserId();
   if (!userId) return [];
 
@@ -844,25 +1027,44 @@ export async function getUserWatchlistCountsForUser(
     () => _getViewerLanguagesForUser(userId, locale),
   );
   return Object.fromEntries(
-    watchlists.map((watchlist) => [watchlist.id, watchlist.activeJobCount]),
+    watchlists.map((watchlist) => [watchlist.id, watchlist.activeJobCount ?? 0]),
   );
+}
+
+/**
+ * Load the private overview's activity preview without an N+1 fan-out.
+ *
+ * All watchlists share one faceted Typesense multi-search. The at-most-four
+ * leading company IDs from each result are then hydrated in one bounded SQL
+ * query so the API never trusts denormalized display metadata from postings.
+ */
+export async function getUserWatchlistActivityPreviewsForUser(
+  userId: string,
+  locale: string,
+): Promise<Record<string, UserWatchlistActivityPreview>> {
+  const [rows, languages] = await Promise.all([
+    _getUserWatchlistRows(userId),
+    _getViewerLanguagesForUser(userId, locale),
+  ]);
+  const previews = await _resolveUserActivityPreviews(rows, locale, languages);
+  return Object.fromEntries(previews);
 }
 
 export async function getUserWatchlistCounts(locale: string): Promise<Record<string, number>> {
   const watchlists = await getUserWatchlists(locale);
   return Object.fromEntries(
-    watchlists.map((watchlist) => [watchlist.id, watchlist.activeJobCount]),
+    watchlists.map((watchlist) => [watchlist.id, watchlist.activeJobCount ?? 0]),
   );
 }
 
-type OwnedWatchlistCompanyRow = {
+type WatchlistDetailCompanyRow = {
   id: string;
   name: string;
   slug: string;
   icon: string | null;
 };
 
-type OwnedWatchlistDetailRow = {
+type WatchlistDetailRow = {
   wl_id: string;
   slug: string;
   title: string;
@@ -876,10 +1078,10 @@ type OwnedWatchlistDetailRow = {
   username: string | null;
   display_username: string | null;
   owner_name: string;
-  companies: OwnedWatchlistCompanyRow[];
+  companies: WatchlistDetailCompanyRow[];
 };
 
-function _ownedWatchlistDetail(row: OwnedWatchlistDetailRow): WatchlistDetail {
+function _watchlistDetail(row: WatchlistDetailRow): WatchlistDetail {
   return {
     id: row.wl_id,
     slug: row.slug,
@@ -887,7 +1089,7 @@ function _ownedWatchlistDetail(row: OwnedWatchlistDetailRow): WatchlistDetail {
     description: row.description,
     isPublic: row.is_public,
     alertsEnabled: row.alerts_enabled,
-    filters: (row.filters ?? {}) as WatchlistFilters,
+    filters: normalizeWatchlistFiltersForRead(row.filters),
     sourceWatchlistId: row.source_watchlist_id,
     createdAt: new Date(row.created_at).toISOString(),
     owner: {
@@ -896,18 +1098,17 @@ function _ownedWatchlistDetail(row: OwnedWatchlistDetailRow): WatchlistDetail {
       displayUsername: row.display_username,
       name: row.owner_name,
     },
-    companies: row.companies ?? [],
+    companies: normalizeWatchlistCompaniesForRead(row.companies) ?? [],
   };
 }
 
-async function _getOwnedWatchlistDetail(
-  userId: string,
+async function _getWatchlistDetailRow(
   predicate: ReturnType<typeof sql>,
   label: string,
-): Promise<WatchlistDetail | null> {
+): Promise<WatchlistDetailRow | null> {
   const rows = await withDbRetry(
     () =>
-      db.execute<{ [key: string]: unknown } & OwnedWatchlistDetailRow>(sql`
+      db.execute<{ [key: string]: unknown } & WatchlistDetailRow>(sql`
         SELECT
           w.id AS wl_id, w.slug, w.title, w.description,
           w.is_public, w.alerts_enabled, w.filters,
@@ -932,12 +1133,23 @@ async function _getOwnedWatchlistDetail(
           ) AS companies
         FROM watchlist w
         JOIN "user" u ON u.id = w.user_id
-        WHERE w.user_id = ${userId} AND ${predicate}
+        WHERE ${predicate}
         LIMIT 1
       `),
     { label },
   );
-  const row = (rows as unknown as OwnedWatchlistDetailRow[])[0];
+  return (rows as unknown as WatchlistDetailRow[])[0] ?? null;
+}
+
+async function _getOwnedWatchlistDetail(
+  userId: string,
+  predicate: ReturnType<typeof sql>,
+  label: string,
+): Promise<WatchlistDetail | null> {
+  const row = await _getWatchlistDetailRow(
+    sql`w.user_id = ${userId} AND ${predicate}`,
+    label,
+  );
   if (!row) return null;
 
   after(async () => {
@@ -955,7 +1167,7 @@ async function _getOwnedWatchlistDetail(
     }
   });
 
-  return _ownedWatchlistDetail(row);
+  return _watchlistDetail(row);
 }
 
 /** Resolve an opaque selection hint with ownership in the SQL predicate. */
@@ -963,11 +1175,83 @@ export async function getOwnedWatchlistById(
   watchlistId: string,
   userId: string,
 ): Promise<WatchlistDetail | null> {
+  const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
+  if (!normalizedWatchlistId) return null;
   return _getOwnedWatchlistDetail(
     userId,
-    sql`w.id = ${watchlistId}`,
+    sql`w.id = ${normalizedWatchlistId}`,
     "ownedWatchlistById",
   );
+}
+
+/** Resolve an unlisted shared watchlist by its opaque id. */
+export async function getSharedWatchlistById(
+  watchlistId: string,
+): Promise<WatchlistViewDetail | null> {
+  const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
+  if (!normalizedWatchlistId) return null;
+  type SharedWatchlistRow = Pick<
+    WatchlistDetailRow,
+    "wl_id" | "title" | "description" | "filters" | "companies"
+  > & { companies_over_limit: boolean };
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{ [key: string]: unknown } & SharedWatchlistRow>(sql`
+        SELECT
+          w.id AS wl_id, w.title, w.description, w.filters,
+          EXISTS (
+            SELECT 1
+            FROM watchlist_company over_limit
+            WHERE over_limit.watchlist_id = w.id
+            OFFSET ${WATCHLIST_COMPANY_MAX}
+            LIMIT 1
+          ) AS companies_over_limit,
+          COALESCE(
+            (
+              SELECT json_agg(
+                json_build_object(
+                  'id', bounded_company.id,
+                  'name', bounded_company.name,
+                  'slug', bounded_company.slug,
+                  'icon', bounded_company.icon
+                )
+                ORDER BY bounded_company.name
+              )
+              FROM (
+                SELECT c.id, c.name, c.slug, c.icon
+                FROM watchlist_company wc
+                JOIN company c ON c.id = wc.company_id
+                WHERE wc.watchlist_id = w.id
+                ORDER BY c.name
+                LIMIT ${WATCHLIST_COMPANY_MAX}
+              ) bounded_company
+            ),
+            '[]'::json
+          ) AS companies
+        FROM watchlist w
+        WHERE w.id = ${normalizedWatchlistId} AND w.share_enabled = true
+        LIMIT 1
+      `),
+    { label: "sharedWatchlistById" },
+  );
+  const row = (rows as unknown as SharedWatchlistRow[])[0];
+  if (!row || row.companies_over_limit) return null;
+  const metadata = normalizeSharedWatchlistMetadata(row);
+  if (!metadata) return null;
+  const filters = normalizeWatchlistFiltersForSharedRead(row.filters);
+  if (!filters) return null;
+  const companies = normalizeWatchlistCompaniesForRead(
+    row.companies,
+    WATCHLIST_COMPANY_MAX,
+  );
+  if (!companies) return null;
+  return {
+    id: row.wl_id,
+    title: metadata.title,
+    description: metadata.description,
+    filters,
+    companies,
+  };
 }
 
 /** Bounded compatibility lookup for the former username/slug URL. */
@@ -993,6 +1277,18 @@ async function _resolveUserListingCounts(
   locale: string,
   languages: string[],
 ): Promise<Map<string, number>> {
+  const candidates = await _buildUserListingCandidates(rows, locale);
+  return resolvePreciseListingCounts(candidates, languages, "getUserWatchlists");
+}
+
+async function _buildUserListingCandidates(
+  rows: Array<{
+    id: string;
+    filters: WatchlistFilters | null;
+    company_ids: string[] | null;
+  }>,
+  locale: string,
+): Promise<ListingCountCandidate[]> {
   const filteredRows = rows.filter((r) => hasPreciseListingCountFilters(r.filters));
 
   let indexedById = new Map<string, IndexedWatchlistFilters | null>();
@@ -1018,8 +1314,7 @@ async function _resolveUserListingCounts(
       fallbackCount: 0,
     });
   }
-
-  return resolvePreciseListingCounts(candidates, languages, "getUserWatchlists");
+  return candidates;
 }
 
 async function buildIndexedFiltersForUserRows(
@@ -1168,6 +1463,366 @@ function buildListingCountSearch(
   };
 }
 
+function buildListingActivitySearch(
+  filters: IndexedWatchlistFilters,
+  companyIds: readonly string[],
+  languages: string[],
+): ListingActivitySearch {
+  return {
+    ...buildListingCountSearch(filters, [...companyIds], languages),
+    facet_by: "company_id",
+    facet_strategy: "exhaustive",
+    max_facet_values: 4,
+  };
+}
+
+type ListingActivitySearchResult = {
+  error?: unknown;
+  found?: number;
+  facet_counts?: Array<{
+    field_name?: string;
+    counts?: Array<{ value?: unknown; count?: unknown }>;
+    stats?: { total_values?: unknown };
+  }>;
+};
+
+type UniqueListingActivityPlan = {
+  cacheKey: string;
+  search: ListingActivitySearch;
+  watchlistIds: Set<string>;
+};
+
+function listingActivityPlanCacheKey(search: ListingActivitySearch): string {
+  const digest = createHash("sha256")
+    .update(JSON.stringify(search))
+    .digest("hex");
+  return `watchlist-activity:v1:${digest}`;
+}
+
+function isCacheableListingActivityResult(
+  value: unknown,
+): value is ListingActivitySearchResult {
+  if (!value || typeof value !== "object") return false;
+  const result = value as ListingActivitySearchResult;
+  if (
+    result.error != null ||
+    typeof result.found !== "number" ||
+    !Number.isFinite(result.found) ||
+    result.found < 0
+  ) {
+    return false;
+  }
+
+  const companyFacet = result.facet_counts?.find(
+    (facet) => facet.field_name === "company_id",
+  );
+  if (result.found === 0 && !companyFacet) return true;
+  const totalValues = companyFacet?.stats?.total_values;
+  return Boolean(
+    companyFacet &&
+      Array.isArray(companyFacet.counts) &&
+      typeof totalValues === "number" &&
+      Number.isFinite(totalValues) &&
+      totalValues >= 0 &&
+      companyFacet.counts.every(
+        (entry) =>
+          typeof entry.value === "string" &&
+          typeof entry.count === "number" &&
+          Number.isFinite(entry.count) &&
+          entry.count >= 0,
+      ),
+  );
+}
+
+async function resolveListingActivityPlanResults(
+  plans: UniqueListingActivityPlan[],
+): Promise<Map<string, ListingActivitySearchResult>> {
+  const results = new Map<string, ListingActivitySearchResult>();
+  let cacheHits: Array<ListingActivitySearchResult | null> = plans.map(() => null);
+  try {
+    cacheHits = await kvMget<ListingActivitySearchResult>(
+      plans.map((plan) => plan.cacheKey),
+    );
+  } catch (err) {
+    logExternalError(
+      "warn",
+      { service: "redis", operation: "watchlist_activity_preview_cache_read" },
+      err,
+    );
+  }
+
+  const missingPlans: UniqueListingActivityPlan[] = [];
+  plans.forEach((plan, index) => {
+    const hit = cacheHits[index];
+    if (isCacheableListingActivityResult(hit)) {
+      results.set(plan.cacheKey, hit);
+    } else {
+      missingPlans.push(plan);
+    }
+  });
+  if (missingPlans.length === 0) return results;
+
+  try {
+    const client = getSearchClient();
+    const response = await client.multiSearch.perform({
+      searches: missingPlans.map((plan) => plan.search),
+    });
+    const responseResults = (response as {
+      results?: ListingActivitySearchResult[];
+    }).results;
+    if (
+      !Array.isArray(responseResults) ||
+      responseResults.length !== missingPlans.length
+    ) {
+      throw malformedTypesenseResponseError();
+    }
+
+    const cacheWrites: Promise<void>[] = [];
+    missingPlans.forEach((plan, index) => {
+      const result = responseResults[index];
+      if (!isCacheableListingActivityResult(result)) return;
+      results.set(plan.cacheKey, result);
+      cacheWrites.push(kvSet(plan.cacheKey, result, { ttl: CACHE_TTL_SHORT }));
+    });
+    await Promise.all(cacheWrites);
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "watchlist_activity_preview" },
+      err,
+    );
+  }
+
+  return results;
+}
+
+async function _resolveUserActivityPreviews(
+  rows: Array<{
+    id: string;
+    filters: WatchlistFilters | null;
+    company_ids: string[] | null;
+  }>,
+  locale: string,
+  languages: string[],
+): Promise<Map<string, UserWatchlistActivityPreview>> {
+  const emptyPreview = (): UserWatchlistActivityPreview => ({
+    activeJobCount: 0,
+    activeCompanyCount: 0,
+    topCompanies: [],
+  });
+  // A missing entry means the activity service could not determine the
+  // answer. Keep that distinct from an explicit zero so outages and
+  // unresolved legacy filters never masquerade as "no active jobs".
+  const previews = new Map<string, UserWatchlistActivityPreview>();
+  const needsCurrencyRates = rows.some((row) => {
+    const filters = row.filters;
+    return Boolean(
+      (filters?.salaryMin != null || filters?.salaryMax != null) &&
+        (filters.salaryCurrency ?? "EUR") !== "EUR",
+    );
+  });
+  const [candidates, currencyRates] = await Promise.all([
+    _buildUserListingCandidates(rows, locale),
+    needsCurrencyRates ? getCurrencyRates() : Promise.resolve([]),
+  ]);
+  const searchable: ListingCountCandidate[] = [];
+  for (const candidate of candidates) {
+    if (!candidate.filters.anyCompany && candidate.companyIds.length === 0) {
+      previews.set(candidate.id, emptyPreview());
+    } else {
+      searchable.push(candidate);
+    }
+  }
+  if (searchable.length === 0) return previews;
+
+  const plansByCacheKey = new Map<string, UniqueListingActivityPlan>();
+  for (const candidate of searchable) {
+    const salaryCurrency = candidate.filters.salaryCurrency ?? "EUR";
+    const filters = {
+      ...candidate.filters,
+      salaryMin: convertToEur(
+        candidate.filters.salaryMin,
+        salaryCurrency,
+        currencyRates,
+      ),
+      salaryMax: convertToEur(
+        candidate.filters.salaryMax,
+        salaryCurrency,
+        currencyRates,
+      ),
+    };
+    const companyIds = candidate.filters.anyCompany
+      ? []
+      : [...new Set(candidate.companyIds)].sort();
+    const buildSearch = (batch: readonly string[]) =>
+      buildListingActivitySearch(filters, batch, languages);
+    const batches = filters.anyCompany
+      ? [[]]
+      : splitValuesForTypesenseQuery(
+          companyIds,
+          buildSearch,
+          COMPANY_BATCH_SIZE,
+        );
+    for (const batch of batches) {
+      const search = buildSearch(batch);
+      const cacheKey = listingActivityPlanCacheKey(search);
+      const plan = plansByCacheKey.get(cacheKey) ?? {
+        cacheKey,
+        search,
+        watchlistIds: new Set<string>(),
+      };
+      plan.watchlistIds.add(candidate.id);
+      plansByCacheKey.set(cacheKey, plan);
+    }
+  }
+  const plans = [...plansByCacheKey.values()];
+  if (plans.length === 0) return previews;
+
+  const results = await resolveListingActivityPlanResults(plans);
+
+  const aggregates = new Map<string, ListingActivityAggregate>();
+  const invalidWatchlistIds = new Set<string>();
+  plans.forEach((plan) => {
+    const result = results.get(plan.cacheKey);
+    for (const watchlistId of plan.watchlistIds) {
+      if (invalidWatchlistIds.has(watchlistId)) continue;
+      try {
+        if (
+          !result ||
+          result.error != null ||
+          typeof result.found !== "number" ||
+          !Number.isFinite(result.found) ||
+          result.found < 0
+        ) {
+          throw malformedTypesenseResponseError();
+        }
+        const aggregate = aggregates.get(watchlistId) ?? {
+          activeJobCount: 0,
+          activeCompanyCount: 0,
+          companyCounts: new Map<string, number>(),
+        };
+        aggregate.activeJobCount += result.found;
+        const companyFacet = result.facet_counts?.find(
+          (facet) => facet.field_name === "company_id",
+        );
+        const totalValues = companyFacet?.stats?.total_values;
+        if (
+          result.found > 0 &&
+          (!companyFacet ||
+            !Array.isArray(companyFacet.counts) ||
+            typeof totalValues !== "number" ||
+            !Number.isFinite(totalValues) ||
+            totalValues < 0)
+        ) {
+          throw malformedTypesenseResponseError();
+        }
+        if (typeof totalValues === "number" && Number.isFinite(totalValues)) {
+          // Explicit-company batches contain disjoint IDs, so their exact
+          // distinct totals can be summed without double-counting.
+          aggregate.activeCompanyCount += Math.max(0, totalValues);
+        }
+        for (const facetCount of companyFacet?.counts ?? []) {
+          if (
+            typeof facetCount.value !== "string" ||
+            typeof facetCount.count !== "number" ||
+            !Number.isFinite(facetCount.count) ||
+            facetCount.count < 0
+          ) {
+            throw malformedTypesenseResponseError();
+          }
+          aggregate.companyCounts.set(
+            facetCount.value,
+            (aggregate.companyCounts.get(facetCount.value) ?? 0) +
+              Math.max(0, facetCount.count),
+          );
+        }
+        aggregates.set(watchlistId, aggregate);
+      } catch {
+        // A multi-search can return an error envelope for one slot while
+        // sibling searches succeed. Drop the whole affected watchlist (all of
+        // its split plans must be valid for exact totals), but retain siblings.
+        invalidWatchlistIds.add(watchlistId);
+        aggregates.delete(watchlistId);
+      }
+    }
+  });
+  if (invalidWatchlistIds.size > 0) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "watchlist_activity_preview" },
+      malformedTypesenseResponseError(),
+    );
+  }
+
+  const topCompanyIdsByWatchlist = new Map<string, string[]>();
+  const allTopCompanyIds = new Set<string>();
+  for (const [watchlistId, aggregate] of aggregates) {
+    const topCompanyIds = [...aggregate.companyCounts.entries()]
+      .sort(([leftId, leftCount], [rightId, rightCount]) =>
+        rightCount - leftCount || (leftId < rightId ? -1 : leftId > rightId ? 1 : 0),
+      )
+      .slice(0, 4)
+      .map(([companyId]) => companyId);
+    topCompanyIdsByWatchlist.set(watchlistId, topCompanyIds);
+    topCompanyIds.forEach((companyId) => allTopCompanyIds.add(companyId));
+    previews.set(watchlistId, {
+      activeJobCount: aggregate.activeJobCount,
+      activeCompanyCount: aggregate.activeCompanyCount,
+      topCompanies: [],
+    });
+  }
+
+  if (allTopCompanyIds.size === 0) return previews;
+
+  let companiesById: Map<string, { id: string; name: string; icon: string | null }>;
+  try {
+    companiesById = await _hydrateActivityPreviewCompanies([...allTopCompanyIds]);
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "database", operation: "hydrate_watchlist_activity_companies" },
+      err,
+    );
+    return previews;
+  }
+
+  for (const [watchlistId, companyIds] of topCompanyIdsByWatchlist) {
+    const preview = previews.get(watchlistId);
+    if (!preview) continue;
+    preview.topCompanies = companyIds.flatMap((companyId) => {
+      const company = companiesById.get(companyId);
+      return company ? [company] : [];
+    });
+  }
+  return previews;
+}
+
+async function _hydrateActivityPreviewCompanies(
+  companyIds: string[],
+): Promise<Map<string, { id: string; name: string; icon: string | null }>> {
+  if (companyIds.length === 0) return new Map();
+  const pgArray = pgTextArrayLiteral(companyIds);
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{
+        [key: string]: unknown;
+        id: string;
+        name: string;
+        icon: string | null;
+      }>(sql`
+        SELECT c.id::text AS id, c.name, c.icon
+        FROM company c
+        WHERE c.id = ANY(${pgArray}::uuid[])
+      `),
+    { label: "watchlistActivityPreviewCompanies" },
+  );
+  return new Map(
+    (rows as unknown as Array<{ id: string; name: string; icon: string | null }>).map(
+      (company) => [company.id, company],
+    ),
+  );
+}
+
 export async function getWatchlistByUserAndSlug(
   userSlug: string,
   watchlistSlug: string,
@@ -1223,16 +1878,21 @@ export async function getWatchlistByUserAndSlug(
             (
               SELECT json_agg(
                 json_build_object(
-                  'id', c.id,
-                  'name', c.name,
-                  'slug', c.slug,
-                  'icon', c.icon
+                  'id', bounded_company.id,
+                  'name', bounded_company.name,
+                  'slug', bounded_company.slug,
+                  'icon', bounded_company.icon
                 )
-                ORDER BY c.name
+                ORDER BY bounded_company.name
               )
-              FROM watchlist_company wc
-              JOIN company c ON c.id = wc.company_id
-              WHERE wc.watchlist_id = w.id
+              FROM (
+                SELECT c.id, c.name, c.slug, c.icon
+                FROM watchlist_company wc
+                JOIN company c ON c.id = wc.company_id
+                WHERE wc.watchlist_id = w.id
+                ORDER BY c.name
+                LIMIT ${WATCHLIST_COMPANY_MAX}
+              ) bounded_company
             ),
             '[]'::json
           ) AS companies
@@ -1274,7 +1934,7 @@ export async function getWatchlistByUserAndSlug(
     description: row.description,
     isPublic: row.is_public,
     alertsEnabled: row.alerts_enabled,
-    filters: (row.filters ?? {}) as WatchlistFilters,
+    filters: normalizeWatchlistFiltersForRead(row.filters),
     sourceWatchlistId: row.source_watchlist_id,
     createdAt: new Date(row.created_at).toISOString(),
     owner: {
@@ -1283,7 +1943,7 @@ export async function getWatchlistByUserAndSlug(
       displayUsername: row.display_username,
       name: row.owner_name,
     },
-    companies: row.companies ?? [],
+    companies: normalizeWatchlistCompaniesForRead(row.companies) ?? [],
   };
 }
 
@@ -1353,16 +2013,21 @@ async function _fetchPublicWatchlistByUserAndSlug(
             (
               SELECT json_agg(
                 json_build_object(
-                  'id', c.id,
-                  'name', c.name,
-                  'slug', c.slug,
-                  'icon', c.icon
+                  'id', bounded_company.id,
+                  'name', bounded_company.name,
+                  'slug', bounded_company.slug,
+                  'icon', bounded_company.icon
                 )
-                ORDER BY c.name
+                ORDER BY bounded_company.name
               )
-              FROM watchlist_company wc
-              JOIN company c ON c.id = wc.company_id
-              WHERE wc.watchlist_id = w.id
+              FROM (
+                SELECT c.id, c.name, c.slug, c.icon
+                FROM watchlist_company wc
+                JOIN company c ON c.id = wc.company_id
+                WHERE wc.watchlist_id = w.id
+                ORDER BY c.name
+                LIMIT ${WATCHLIST_COMPANY_MAX}
+              ) bounded_company
             ),
             '[]'::json
           ) AS companies
@@ -1387,7 +2052,7 @@ async function _fetchPublicWatchlistByUserAndSlug(
     description: row.description,
     isPublic: row.is_public,
     alertsEnabled: row.alerts_enabled,
-    filters: (row.filters ?? {}) as WatchlistFilters,
+    filters: normalizeWatchlistFiltersForRead(row.filters),
     sourceWatchlistId: row.source_watchlist_id,
     createdAt: new Date(row.created_at).toISOString(),
     owner: {
@@ -1396,7 +2061,7 @@ async function _fetchPublicWatchlistByUserAndSlug(
       displayUsername: row.display_username,
       name: row.owner_name,
     },
-    companies: row.companies ?? [],
+    companies: normalizeWatchlistCompaniesForRead(row.companies) ?? [],
   };
 }
 
@@ -1425,6 +2090,18 @@ type ListingCountSearch = {
   query_by: "title";
   filter_by: string;
   per_page: 0;
+};
+
+type ListingActivitySearch = ListingCountSearch & {
+  facet_by: "company_id";
+  facet_strategy: "exhaustive";
+  max_facet_values: 4;
+};
+
+type ListingActivityAggregate = {
+  activeJobCount: number;
+  activeCompanyCount: number;
+  companyCounts: Map<string, number>;
 };
 
 /** Stable cache-key fragment for a viewer's language filter. */
@@ -1511,45 +2188,6 @@ function buildIndexedWatchlistFiltersPayload(
   if (technologyIds) payload.technologyIds = technologyIds;
 
   return payload;
-}
-
-async function buildIndexedWatchlistFiltersJson(filters: WatchlistFilters): Promise<string | undefined> {
-  let resolvedIds:
-    | Pick<IndexedWatchlistFilters, "locationIds" | "occupationIds" | "seniorityIds" | "technologyIds">
-    | undefined;
-  try {
-    const [locMap, occMap, senMap, techMap] = await Promise.all([
-      filters.locationSlugs?.length ? resolveLocationSlugs(filters.locationSlugs, "en") : Promise.resolve(new Map()),
-      filters.occupationSlugs?.length ? resolveOccupationSlugs(filters.occupationSlugs, "en") : Promise.resolve(new Map()),
-      filters.senioritySlugs?.length ? resolveSenioritySlugs(filters.senioritySlugs, "en") : Promise.resolve(new Map()),
-      filters.technologySlugs?.length ? resolveTechnologySlugs(filters.technologySlugs) : Promise.resolve(new Map()),
-    ]);
-
-    resolvedIds = {
-      locationIds: locMap.size > 0 ? [...locMap.values()].map((l) => l.id) : undefined,
-      occupationIds: occMap.size > 0 ? [...occMap.values()].map((o) => o.id) : undefined,
-      seniorityIds: senMap.size > 0 ? [...senMap.values()].map((s) => s.id) : undefined,
-      technologyIds: techMap.size > 0 ? [...techMap.values()].map((t) => t.id) : undefined,
-    };
-  } catch (err) {
-    logExternalError("error", { service: "typesense", operation: "indexed_watchlist_taxonomy" }, err);
-  }
-
-  const payload = buildIndexedWatchlistFiltersPayload(filters, resolvedIds);
-
-  return Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined;
-}
-
-async function safeBuildIndexedWatchlistFiltersJson(
-  filters: WatchlistFilters,
-  _label: string,
-): Promise<string | undefined> {
-  try {
-    return await buildIndexedWatchlistFiltersJson(filters);
-  } catch (err) {
-    logExternalError("error", { service: "typesense", operation: "indexed_watchlist_filters" }, err);
-    return undefined;
-  }
 }
 
 function parseIndexedWatchlistFilters(raw: unknown): IndexedWatchlistFilters | null {
@@ -1837,6 +2475,7 @@ export async function getWatchlistPostings(
     };
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
+    if (params.failOnUnavailable) throw err;
     logExternalError("error", { service: "typesense", operation: "watchlist_postings" }, err);
     return {
       postings: [],
@@ -1882,6 +2521,7 @@ export async function getPublicWatchlistPostings(
     };
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
+    if (params.failOnUnavailable) throw err;
     logExternalError("error", { service: "typesense", operation: "public_watchlist_postings" }, err);
     return {
       postings: [],
@@ -1960,6 +2600,7 @@ export async function getWatchlistPostingYearCount(
     return results.reduce((sum, result) => sum + (result.found ?? 0), 0);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
+    if (params.failOnUnavailable) throw err;
     logExternalError("error", { service: "typesense", operation: "watchlist_posting_year_count" }, err);
     return 0;
   }
@@ -2068,19 +2709,44 @@ export async function addCompanyToWatchlist(
 ): Promise<{ ok: boolean }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
+  const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
+  const normalizedCompanyId = normalizeWatchlistUuid(companyId);
+  if (!normalizedWatchlistId || !normalizedCompanyId) return { ok: false };
+  watchlistId = normalizedWatchlistId;
+  companyId = normalizedCompanyId;
 
-  const [wl] = await db
-    .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
-    .from(watchlist)
-    .where(eq(watchlist.id, watchlistId))
-    .limit(1);
+  // Serialize membership growth on the parent row. Checking the bounded
+  // membership set while holding this lock prevents two concurrent adds from
+  // both observing slot 250 as available.
+  const mutation = await db.transaction(async (tx) => {
+    const [owned] = await tx
+      .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
+      .from(watchlist)
+      .where(and(eq(watchlist.id, watchlistId), eq(watchlist.userId, userId)))
+      .for("update")
+      .limit(1);
+    if (!owned) return null;
 
-  if (!wl || wl.userId !== userId) return { ok: false };
+    const existing = await tx
+      .select({ companyId: watchlistCompany.companyId })
+      .from(watchlistCompany)
+      .where(eq(watchlistCompany.watchlistId, watchlistId))
+      .limit(WATCHLIST_COMPANY_MAX);
+    if (existing.some((row) => row.companyId === companyId)) {
+      return { wl: owned, changed: false };
+    }
+    if (existing.length >= WATCHLIST_COMPANY_MAX) return null;
 
-  await db
-    .insert(watchlistCompany)
-    .values({ watchlistId, companyId })
-    .onConflictDoNothing();
+    await tx
+      .insert(watchlistCompany)
+      .values({ watchlistId, companyId })
+      .onConflictDoNothing();
+    return { wl: owned, changed: true };
+  });
+
+  if (!mutation) return { ok: false };
+  if (!mutation.changed) return { ok: true };
+  const wl = mutation.wl;
 
   _logWatchlistAudit({
     action: "watchlist.company.add",
@@ -2100,7 +2766,7 @@ export async function addCompanyToWatchlist(
     after(async () => {
       try {
         await _invalidateWatchlistCaches(userId, [wl.slug]);
-        await _syncWatchlistCompanyCountToTypesense(watchlistId);
+        await _unindexPublicWatchlist(userId, watchlistId, [wl.slug], "addWatchlistCompany");
       } catch (err) {
         logExternalError("error", { service: "typesense", operation: "add_watchlist_company_hook" }, err);
       }
@@ -2115,6 +2781,9 @@ export async function clearWatchlistCompanies(
 ): Promise<{ ok: boolean }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
+  const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
+  if (!normalizedWatchlistId) return { ok: false };
+  watchlistId = normalizedWatchlistId;
 
   const [wl] = await db
     .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
@@ -2143,7 +2812,7 @@ export async function clearWatchlistCompanies(
     after(async () => {
       try {
         await _invalidateWatchlistCaches(userId, [wl.slug]);
-        await _syncWatchlistCompanyCountToTypesense(watchlistId);
+        await _unindexPublicWatchlist(userId, watchlistId, [wl.slug], "clearWatchlistCompanies");
       } catch (err) {
         logExternalError("error", { service: "typesense", operation: "clear_watchlist_companies_hook" }, err);
       }
@@ -2159,6 +2828,11 @@ export async function removeCompanyFromWatchlist(
 ): Promise<{ ok: boolean }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
+  const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
+  const normalizedCompanyId = normalizeWatchlistUuid(companyId);
+  if (!normalizedWatchlistId || !normalizedCompanyId) return { ok: false };
+  watchlistId = normalizedWatchlistId;
+  companyId = normalizedCompanyId;
 
   const [wl] = await db
     .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
@@ -2192,7 +2866,7 @@ export async function removeCompanyFromWatchlist(
     after(async () => {
       try {
         await _invalidateWatchlistCaches(userId, [wl.slug]);
-        await _syncWatchlistCompanyCountToTypesense(watchlistId);
+        await _unindexPublicWatchlist(userId, watchlistId, [wl.slug], "removeWatchlistCompany");
       } catch (err) {
         logExternalError("error", { service: "typesense", operation: "remove_watchlist_company_hook" }, err);
       }
@@ -2312,53 +2986,6 @@ type WatchlistOwnerInfo = {
   displayUsername: string | null;
 };
 
-type ReindexPublicWatchlistParams = {
-  id: string;
-  slug: string;
-  title: string;
-  description?: string | null;
-  company_count: number;
-  filters: WatchlistFilters;
-  previousSlugs?: string[];
-  logLabel: string;
-};
-
-async function _reindexPublicWatchlist(
-  userId: string,
-  params: ReindexPublicWatchlistParams,
-): Promise<void> {
-  const owner = await _getOwnerInfo(userId);
-  if (!owner) return;
-
-  const filtersJson = await safeBuildIndexedWatchlistFiltersJson(
-    params.filters,
-    params.logLabel,
-  );
-
-  tsUpsertWatchlist({
-    id: params.id,
-    slug: params.slug,
-    title: params.title,
-    description: params.description ?? undefined,
-    owner_name: owner.name,
-    owner_username: owner.username ?? undefined,
-    filters_json: filtersJson,
-    company_count: params.company_count,
-    active_job_count: 0, // refreshed by reconciliation cron
-    mirror_count: 0,
-    is_featured: _isFeaturedWatchlistOwner(owner),
-    has_description: !!params.description,
-    created_at: _unixNowSeconds(),
-    is_public: true,
-  });
-
-  await _notifyWatchlistUrls(
-    owner,
-    [params.slug, ...(params.previousSlugs ?? [])],
-    params.logLabel,
-  );
-}
-
 async function _unindexPublicWatchlist(
   userId: string,
   watchlistId: string,
@@ -2395,14 +3022,6 @@ function _watchlistIndexNowUrls(
 
   const userSlug = owner.displayUsername ?? owner.username;
   return [...new Set(slugs)].map((slug) => `/${userSlug}/${slug}`);
-}
-
-function _isFeaturedWatchlistOwner(owner: WatchlistOwnerInfo): boolean {
-  return (owner.username ?? "").toLowerCase() === "colophongroup";
-}
-
-function _unixNowSeconds(): number {
-  return Math.floor(Date.now() / 1000);
 }
 
 /**
@@ -2468,22 +3087,4 @@ async function _getOwnerInfo(
   const row = (rows as unknown as { name: string; username: string | null; display_username: string | null }[])[0];
   if (!row) return null;
   return { name: row.name, username: row.username, displayUsername: row.display_username };
-}
-
-/** Count companies in a watchlist. */
-async function _countWatchlistCompanies(watchlistId: string): Promise<number> {
-  const [row] = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; cnt: number }>(
-        sql`SELECT count(*)::int AS cnt FROM watchlist_company WHERE watchlist_id = ${watchlistId}`,
-      ),
-    { label: `countWatchlistCompanies[${watchlistId}]` },
-  );
-  return (row as unknown as { cnt: number })?.cnt ?? 0;
-}
-
-/** Patch Typesense with the current Postgres company count. */
-async function _syncWatchlistCompanyCountToTypesense(watchlistId: string): Promise<void> {
-  const count = await _countWatchlistCompanies(watchlistId);
-  tsUpdateWatchlistField(watchlistId, { company_count: count });
 }

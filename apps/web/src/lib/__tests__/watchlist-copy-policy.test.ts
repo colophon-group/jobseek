@@ -20,7 +20,20 @@ describe("watchlist copy source policy", () => {
     expect(authorizeWatchlistCopySource(legacyPublicSource, "owner-2")).toBeNull();
   });
 
-  it.each(["grant", "share", "template"] as const)(
+  it("authorizes a cross-user clone only from explicit unlisted-share evidence", () => {
+    expect(authorizeWatchlistCopySource(
+      { userId: "owner-1", isShared: true },
+      "owner-2",
+      "share",
+    )).toEqual({ sourceKind: "share" });
+    expect(authorizeWatchlistCopySource(
+      { userId: "owner-1", isShared: false },
+      "owner-2",
+      "share",
+    )).toBeNull();
+  });
+
+  it.each(["grant", "template"] as const)(
     "keeps the future %s policy dormant until real authorization exists",
     (sourceKind) => {
       expect(authorizeWatchlistCopySource(

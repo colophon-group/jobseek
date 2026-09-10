@@ -310,7 +310,7 @@ function FeatureSection3() {
               <PointBlock
                 icon={cfg.pointIcons[2]}
                 title={<Trans id="home.features.s3.p3.title" comment="Feature: private watchlists title">Private to your account</Trans>}
-                description={<Trans id="home.features.s3.p3.description" comment="Feature: private watchlists description">Only you can open and manage your watchlists, with no public profile or sharing link.</Trans>}
+                description={<Trans id="home.features.s3.p3.description" comment="Feature: private-by-default watchlists with optional unlisted sharing">Your watchlists are private by default. Share an unlisted link only when you choose; only you can manage the list.</Trans>}
               />
             </dl>
           </div>

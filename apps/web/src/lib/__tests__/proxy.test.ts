@@ -594,6 +594,9 @@ describe("Explore PPR shell normalization", () => {
 });
 
 describe("public browsing Server Action rate limit", () => {
+  const watchlistId = "11111111-1111-4111-8111-111111111111";
+  const uuidV7WatchlistId = "11111111-1111-7111-8111-111111111111";
+
   it.each([
     ["explore", "/en/explore"],
     ["company", "/de/company/acme"],
@@ -685,6 +688,114 @@ describe("public browsing Server Action rate limit", () => {
     warn.mockRestore();
   });
 
+  it("rate-limits UUID watchlist actions even with spoofed login cookies", async () => {
+    rateLimitMocks.sustained.mockResolvedValue({
+      success: false,
+      limit: 300,
+      remaining: 0,
+      reset: Date.now() + 45_000,
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const request = new NextRequest(
+      `http://localhost/en/watchlists/${watchlistId}`,
+      {
+        method: "POST",
+        headers: {
+          cookie:
+            "logged_in=1; better-auth.session_token=forged-session-token",
+          "next-action": "current-watchlist-action-id",
+        },
+      },
+    );
+
+    const response = await proxy(request);
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-middleware-next")).toBeNull();
+    expect(rateLimitMocks.burst).toHaveBeenCalledWith("203.0.113.7");
+    expect(rateLimitMocks.sustained).toHaveBeenCalledWith("203.0.113.7");
+    expect(authMocks.getSession).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it.each([
+    ["HTML GET", "GET", { accept: "text/html,application/xhtml+xml" }],
+    ["RSC GET", "GET", { accept: "text/x-component", rsc: "1" }],
+    ["wildcard GET", "GET", { accept: "*/*" }],
+    ["JSON GET", "GET", { accept: "application/json" }],
+    ["HEAD", "HEAD", { accept: "*/*" }],
+  ])("rate-limits UUID watchlist %s without trusting login cookies", async (
+    _requestKind,
+    method,
+    routeHeaders,
+  ) => {
+    authMocks.getSession.mockClear();
+    rateLimitMocks.burst.mockResolvedValue({
+      success: false,
+      limit: 30,
+      remaining: 0,
+      reset: Date.now() + 45_000,
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const request = new NextRequest(
+      `http://localhost/en/watchlists/${watchlistId}`,
+      {
+        method,
+        headers: {
+          ...routeHeaders,
+          cookie:
+            "logged_in=1; better-auth.session_token=forged-session-token",
+        },
+      },
+    );
+
+    const response = await proxy(request);
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-middleware-next")).toBeNull();
+    expect(rateLimitMocks.burst).toHaveBeenCalledWith("203.0.113.7");
+    expect(rateLimitMocks.sustained).toHaveBeenCalledWith("203.0.113.7");
+    expect(authMocks.getSession).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("allows an under-limit UUID watchlist document without a session lookup", async () => {
+    authMocks.getSession.mockClear();
+
+    const response = await proxy(new NextRequest(
+      `http://localhost/fr/watchlists/${watchlistId}`,
+      { headers: { accept: "text/html" } },
+    ));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(rateLimitMocks.burst).toHaveBeenCalledWith("203.0.113.7");
+    expect(rateLimitMocks.sustained).toHaveBeenCalledWith("203.0.113.7");
+    expect(authMocks.getSession).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits UUIDv7 watchlist documents accepted by the page validator", async () => {
+    rateLimitMocks.burst.mockResolvedValue({
+      success: false,
+      limit: 30,
+      remaining: 0,
+      reset: Date.now() + 45_000,
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const response = await proxy(new NextRequest(
+      `http://localhost/en/watchlists/${uuidV7WatchlistId}`,
+      { headers: { accept: "text/html" } },
+    ));
+
+    expect(response.status).toBe(429);
+    expect(rateLimitMocks.burst).toHaveBeenCalledWith("203.0.113.7");
+    expect(authMocks.getSession).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("fails open on Redis transport errors and logs only a hashed client reference", async () => {
     rateLimitMocks.burst.mockRejectedValue(new Error("secret transport detail"));
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -734,6 +845,8 @@ describe("scanner path boundary", () => {
 });
 
 describe("proxy config", () => {
+  const watchlistId = "11111111-1111-4111-8111-111111111111";
+
   it("has a matcher pattern", () => {
     expect(config.matcher).toBeDefined();
     expect(config.matcher.length).toBeGreaterThan(0);
@@ -850,6 +963,83 @@ describe("proxy config", () => {
         },
       }),
     ).toBe(true);
+  });
+
+  it("unconditionally matches UUID watchlist routes but excludes non-UUID paths", () => {
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: `/en/watchlists/${watchlistId}`,
+        headers: {
+          accept: "text/x-component",
+          "next-action": "action-id",
+        },
+      }),
+    ).toBe(true);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/watchlists/11111111-1111-7111-8111-111111111111",
+        headers: { accept: "text/html" },
+      }),
+    ).toBe(true);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: `/en/watchlists/${watchlistId}`,
+        headers: { accept: "text/html" },
+      }),
+    ).toBe(true);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: `/en/watchlists/${watchlistId}`,
+      }),
+    ).toBe(true);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: `/en/watchlists/${watchlistId}?_rsc=abc123`,
+        headers: { accept: "text/x-component", rsc: "1" },
+      }),
+    ).toBe(true);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: `/en/watchlists/${watchlistId}`,
+        headers: { accept: "*/*" },
+      }),
+    ).toBe(true);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: `/en/watchlists/${watchlistId}`,
+        headers: { accept: "application/json" },
+      }),
+    ).toBe(true);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/watchlists/not-a-uuid",
+        headers: { "next-action": "action-id" },
+      }),
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/watchlists/not-a-uuid",
+        headers: { accept: "text/html" },
+      }),
+    ).toBe(false);
   });
 
   it.each(["en", "de", "fr", "it"])(

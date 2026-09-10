@@ -58,6 +58,7 @@ export function WatchlistJobList({
   initialPostings,
   initialTotal,
   yearTotal,
+  initialSearchUnavailable = false,
   jobLanguages,
   locale,
 }: {
@@ -65,6 +66,7 @@ export function WatchlistJobList({
   initialPostings: WatchlistPostingEntry[];
   initialTotal: number;
   yearTotal: number;
+  initialSearchUnavailable?: boolean;
   jobLanguages: string[];
   locale: string;
 }) {
@@ -82,6 +84,7 @@ export function WatchlistJobList({
   const yesterdayLabel = t({ id: "watchlists.jobList.yesterday", comment: "Date divider label for yesterday", message: "Yesterday" });
 
   const filtersKey = JSON.stringify(filters);
+  const [searchUnavailable, setSearchUnavailable] = useState(initialSearchUnavailable);
 
   // Pagination state machine. `filtersKey` doubles as the reset key —
   // changing filters re-fetches page 1 and clears local state.
@@ -97,11 +100,17 @@ export function WatchlistJobList({
     batchSize: BATCH,
     itemKey: (p) => p.id,
     resetKey: filtersKey,
-    fetcher: ({ offset, limit }) =>
-      runGetWatchlistPostings(
-        { ...filtersRef.current, offset, limit },
-        isLoggedInRef.current,
-      ),
+    fetcher: async ({ offset, limit }) => {
+      try {
+        return await runGetWatchlistPostings(
+          { ...filtersRef.current, offset, limit },
+          isLoggedInRef.current,
+        );
+      } catch (error) {
+        setSearchUnavailable(true);
+        throw error;
+      }
+    },
   });
 
   // Year-count refetch on filter change. The SSR-prerendered
@@ -120,11 +129,13 @@ export function WatchlistJobList({
   const initialFiltersKeyRef = useRef(filtersKey);
   useEffect(() => {
     if (filtersKey === initialFiltersKeyRef.current) return;
+    setSearchUnavailable(false);
     let cancelled = false;
     runGetWatchlistPostingYearCount(filtersRef.current).then((next) => {
       if (cancelled) return;
       setYearTotal(next);
     }).catch((err) => {
+      setSearchUnavailable(true);
       logExternalError("error", { service: "typesense", operation: "watchlist_year_count" }, err);
     });
     return () => {
@@ -133,7 +144,9 @@ export function WatchlistJobList({
   }, [filtersKey]);
 
   const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: loadMore });
-  const showUnavailable = postings.length === 0 && !isLoading && total > 0;
+  const showUnavailable = searchUnavailable || (
+    postings.length === 0 && !isLoading && total > 0
+  );
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
@@ -269,12 +282,14 @@ export function WatchlistJobList({
   // edits the watchlist filters in-place.
   const listColumn = (
     <div className="space-y-4">
-      <LanguageStatsRow
-        jobLanguages={jobLanguages}
-        locale={locale}
-        activeCount={total}
-        yearCount={yearTotal_}
-      />
+      {!searchUnavailable && (
+        <LanguageStatsRow
+          jobLanguages={jobLanguages}
+          locale={locale}
+          activeCount={total}
+          yearCount={yearTotal_}
+        />
+      )}
       {/* `[overflow-anchor:none]` opts the whole postings list out of the
           browser's automatic scroll-anchor selection. Without it, when
           pagination appends new rows the anchoring heuristic can pick a
