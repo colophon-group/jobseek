@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -104,6 +105,7 @@ func TestRunTaskFailsAfterUnverifiedCleanup(t *testing.T) {
 	}), func(int) bool { return true })
 	config.CleanupTimeout = 20 * time.Millisecond
 	config.TerminateGrace = 5 * time.Millisecond
+	deps.releasePort = func(int) { events.add("release-port") }
 
 	if _, err := runTaskWithDependencies(context.Background(), config, deps, validTask()); err == nil || !errors.Is(err, errCleanupUnproved) {
 		t.Fatal("Run succeeded despite listener cleanup failure")
@@ -111,6 +113,26 @@ func TestRunTaskFailsAfterUnverifiedCleanup(t *testing.T) {
 	if contains(events.snapshot(), "signal-9") {
 		t.Fatal("cleanup sent SIGKILL after the process group was already gone")
 	}
+	if contains(events.snapshot(), "release-port") {
+		t.Fatal("unproved cleanup released the quarantined process-local port reservation")
+	}
+}
+
+func TestRunTaskReleasesPortAfterSuccessfulCleanup(t *testing.T) {
+	events := &eventLog{}
+	process := newFakeProcess(events, true)
+	config, deps := testRunner(process, taskExecutorFunc(func(context.Context, string, Task) (Result, error) {
+		return validResult(), nil
+	}), func(int) bool {
+		events.add("verify-listener")
+		return false
+	})
+	deps.releasePort = func(int) { events.add("release-port") }
+
+	if _, err := runTaskWithDependencies(context.Background(), config, deps, validTask()); err != nil {
+		t.Fatal(err)
+	}
+	assertOrdered(t, events.snapshot(), "verify-listener", "release-port")
 }
 
 func TestRunTaskContainsExecutorPanicAndCleansUp(t *testing.T) {
@@ -129,6 +151,74 @@ func TestRunTaskContainsExecutorPanicAndCleansUp(t *testing.T) {
 		t.Fatalf("Run error = %v", err)
 	}
 	assertOrdered(t, events.snapshot(), "execute-panic", "signal-15", "wait-reaped", "verify-listener")
+}
+
+func TestRunTaskReleasesPortOnStartFailure(t *testing.T) {
+	released := 0
+	deps := dependencies{
+		process: processStarterFunc(func(int) (managedProcess, error) {
+			return nil, errors.New("start failed")
+		}),
+		allocatePort: func() (int, error) { return 9222, nil },
+		releasePort:  func(port int) { released = port },
+	}
+
+	if _, err := runTaskWithDependencies(context.Background(), Config{}, deps, validTask()); err == nil {
+		t.Fatal("Run succeeded after process start failure")
+	}
+	if released != 9222 {
+		t.Fatalf("released port = %d, want 9222", released)
+	}
+}
+
+func TestLoopbackPortReservationsAreUniqueUntilReleased(t *testing.T) {
+	const count = 128
+	ports := make([]int, 0, count)
+	seen := make(map[int]bool, count)
+	defer func() {
+		for _, port := range ports {
+			releaseLoopbackPort(port)
+		}
+	}()
+
+	for range count {
+		port, err := allocateLoopbackPort()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if seen[port] {
+			t.Fatalf("port %d was allocated twice while reserved", port)
+		}
+		seen[port] = true
+		ports = append(ports, port)
+	}
+}
+
+func TestLoopbackPortReservationSkipsSiblingCloseThenBindCollision(t *testing.T) {
+	const firstPort = 61001
+	ports := []int{firstPort, firstPort, firstPort + 1}
+	listen := func() (net.Listener, error) {
+		if len(ports) == 0 {
+			return nil, errors.New("test listener sequence exhausted")
+		}
+		port := ports[0]
+		ports = ports[1:]
+		return &fixedPortListener{port: port}, nil
+	}
+
+	first, err := allocateLoopbackPortWithListener(listen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer releaseLoopbackPort(first)
+	second, err := allocateLoopbackPortWithListener(listen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer releaseLoopbackPort(second)
+	if first != firstPort || second != firstPort+1 {
+		t.Fatalf("reserved ports = %d, %d", first, second)
+	}
 }
 
 func TestReadyWaiterChecksChildBeforeRequest(t *testing.T) {
@@ -386,6 +476,26 @@ type fixedStarter struct {
 
 func (starter *fixedStarter) Start(int) (managedProcess, error) {
 	return starter.process, nil
+}
+
+type processStarterFunc func(int) (managedProcess, error)
+
+func (function processStarterFunc) Start(port int) (managedProcess, error) {
+	return function(port)
+}
+
+type fixedPortListener struct {
+	port int
+}
+
+func (*fixedPortListener) Accept() (net.Conn, error) {
+	return nil, errors.New("fixed listener does not accept")
+}
+
+func (*fixedPortListener) Close() error { return nil }
+
+func (listener *fixedPortListener) Addr() net.Addr {
+	return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: listener.port}
 }
 
 type fakeProcess struct {

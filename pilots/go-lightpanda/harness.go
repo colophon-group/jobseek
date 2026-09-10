@@ -39,6 +39,10 @@ const (
 var (
 	errCleanupUnproved = errors.New("lightpanda cleanup could not be proved")
 	errResourceLimit   = errors.New("lightpanda result exceeded a resource limit")
+	loopbackPorts      = struct {
+		sync.Mutex
+		reserved map[int]struct{}
+	}{reserved: make(map[int]struct{})}
 )
 
 // Task is intentionally small: the pilot navigates once and optionally
@@ -88,6 +92,7 @@ type dependencies struct {
 	ready        readyWaiter
 	executor     taskExecutor
 	allocatePort func() (int, error)
+	releasePort  func(int)
 	portOpen     func(int) bool
 }
 
@@ -121,6 +126,7 @@ func runTask(ctx context.Context, config Config, task Task) (Result, error) {
 		ready:        httpReadyWaiter{interval: defaultReadyInterval},
 		executor:     chromedpExecutor{},
 		allocatePort: allocateLoopbackPort,
+		releasePort:  releaseLoopbackPort,
 		portOpen:     loopbackPortOpen,
 	}, task)
 }
@@ -139,6 +145,9 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 	}
 	process, err := deps.process.Start(port)
 	if err != nil {
+		if deps.releasePort != nil {
+			deps.releasePort(port)
+		}
 		return Result{}, fmt.Errorf("start lightpanda: %w", err)
 	}
 	state := watchProcess(process)
@@ -154,6 +163,8 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 			errCleanupUnproved,
 			fmt.Errorf("cleanup lightpanda: %w", cleanupErr),
 		)
+	} else if deps.releasePort != nil {
+		deps.releasePort(port)
 	}
 	if runErr != nil {
 		return Result{}, runErr
@@ -525,15 +536,46 @@ func (b *boundedBuffer) String() string {
 }
 
 func allocateLoopbackPort() (int, error) {
-	listener, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		return 0, err
+	return allocateLoopbackPortWithListener(func() (net.Listener, error) {
+		return net.Listen("tcp4", "127.0.0.1:0")
+	})
+}
+
+func allocateLoopbackPortWithListener(listen func() (net.Listener, error)) (int, error) {
+	for {
+		listener, err := listen()
+		if err != nil {
+			return 0, err
+		}
+		port := listener.Addr().(*net.TCPAddr).Port
+
+		loopbackPorts.Lock()
+		_, alreadyReserved := loopbackPorts.reserved[port]
+		if !alreadyReserved {
+			loopbackPorts.reserved[port] = struct{}{}
+		}
+		loopbackPorts.Unlock()
+
+		if err := listener.Close(); err != nil {
+			if !alreadyReserved {
+				releaseLoopbackPort(port)
+			}
+			return 0, err
+		}
+		if !alreadyReserved {
+			return port, nil
+		}
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	if err := listener.Close(); err != nil {
-		return 0, err
-	}
-	return port, nil
+}
+
+// releaseLoopbackPort ends the ownership established by allocateLoopbackPort.
+// The kernel listener must be closed before Lightpanda can bind, so this
+// process-local reservation prevents a concurrent sibling task from receiving
+// the same close-then-bind port without serializing unrelated executions.
+func releaseLoopbackPort(port int) {
+	loopbackPorts.Lock()
+	delete(loopbackPorts.reserved, port)
+	loopbackPorts.Unlock()
 }
 
 func loopbackPortOpen(port int) bool {
