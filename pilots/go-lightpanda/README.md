@@ -55,8 +55,10 @@ constructed with that exact qualified policy.
 Each connection sends the fixed capacity hello, consumes one runtime-v1 request
 plus its canonical empty closure frame, returns one sanitized result, and
 closes. Evaluation is rejected by the render-only adapter before its runner can
-contact an origin. The `service` Docker target packages this mode but no
-deployment, certificate, firewall, queue claimant, or board route is included.
+contact an origin. The `service` Docker target packages this mode with an exact
+source-commit label. A manual exact-main workflow can deploy one dormant ARM64
+instance to Murmur, but its internal-only bridge has no host publication or
+default route, and no queue claimant or board route points at it.
 Peer closure after the request marker cancels its active execution. Service
 shutdown closes all admitted connections promptly, and an unproved Lightpanda
 cleanup poisons the resident service and exits nonzero so a supervisor can
@@ -201,20 +203,28 @@ service contract; this command does not authorize a deployment:
 ```sh
 docker build \
   --build-context contracts=../../apps/crawler/contracts \
-  --platform linux/amd64 \
+  --build-arg SOURCE_COMMIT="$(git rev-parse HEAD)" \
+  --platform linux/arm64 \
   --target service \
   -t jobseek-lightpanda-service .
 ```
 
-When a deployment later starts that target, its closed service arguments must
-include every reviewed host/project prefix as one flag (values shown are
-documentation placeholders, not a deployment inventory):
+The dormant Murmur deployment starts that target on a dedicated internal
+`172.30.94.0/29` bridge at `172.30.94.2`, with no published host port. Its
+closed service arguments include every reviewed host/project prefix as one
+flag (values shown are documentation placeholders, not a deployment inventory):
 
 ```text
 --deployment-deny-cidr <service-private-ip>/32 \
 --deployment-deny-cidr <host-public-ip>/32 \
 --deployment-deny-cidr <project-network-cidr>
 ```
+
+The server identity remains the future caller-visible private IP `10.0.0.5`,
+not the internal bridge address. A host-local probe verifies TCP accept and
+the exact TLS 1.3 `certificate_required` rejection without copying the client
+private key to Murmur. Positive mTLS, origin egress, crawler routing, and a B0
+board canary remain separate activation work.
 
 The framed render-only handler uses stdin/stdout rather than target or
 expression arguments. This example is for an already isolated offline fixture

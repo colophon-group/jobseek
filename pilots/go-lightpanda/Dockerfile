@@ -71,6 +71,11 @@ ENTRYPOINT ["/usr/local/bin/go-lightpanda"]
 
 FROM pilot-base AS service
 
+ARG SOURCE_COMMIT
+RUN test "${#SOURCE_COMMIT}" -eq 40 \
+    && case "${SOURCE_COMMIT}" in ''|*[!0-9a-f]*) exit 1 ;; esac
+LABEL org.jobseek.lightpanda.source-commit="${SOURCE_COMMIT}"
+
 COPY --from=build /out/go-lightpanda /usr/local/bin/go-lightpanda
 
 ENTRYPOINT ["/usr/local/bin/go-lightpanda", "--runtime-v1-service"]

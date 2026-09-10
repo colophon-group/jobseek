@@ -13,6 +13,9 @@ on:
       - "apps/crawler/src/lightpanda/routing.py"
       - "apps/crawler/src/lightpanda_queue.py"
       - "apps/crawler/tests/lightpanda/test_client.py"
+      - "apps/crawler/tests/test_lightpanda_renderer_deployment.py"
+      - "deploy/lightpanda-renderer/**"
+      - ".github/workflows/deploy-lightpanda-renderer.yml"
       - ".github/workflows/go-lightpanda-pilot.yml"
   workflow_dispatch:
 
@@ -87,7 +90,7 @@ jobs:
         run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target runtime --tag jobseek-lightpanda-pilot:${{ matrix.arch }}-${{ github.run_id }} .
 
       - name: Build inactive mTLS service image
-        run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target service --tag jobseek-lightpanda-service:${{ matrix.arch }}-${{ github.run_id }} .
+        run: docker build --build-context contracts=../../apps/crawler/contracts --build-arg SOURCE_COMMIT=${{ github.sha }} --platform ${{ matrix.platform }} --target service --tag jobseek-lightpanda-service:${{ matrix.arch }}-${{ github.run_id }} .
 
       - name: Build native density smoke images
         env:
