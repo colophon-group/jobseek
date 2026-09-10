@@ -49,7 +49,7 @@ cleanup() {
   trap - EXIT HUP INT TERM
   if [[ "$exit_status" -ne 0 ]]; then
     printf 'ci-smoke failed after phase: %s (status %s)\n' \
-      "$last_phase" "$exit_status" >&2
+      "$last_phase" "$exit_status" >&2 || :
   fi
   if docker inspect "$CONTAINER" >/dev/null 2>&1; then
     project="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$CONTAINER")"
