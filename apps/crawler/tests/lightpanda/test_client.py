@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from cryptography import x509
@@ -21,6 +22,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 from jobseek_runtime_v1 import runtime_pb2
 
+import src.lightpanda.client as client_module
 from src.lightpanda.client import (
     HELLO_FRAME_LIMIT,
     RESULT_FRAME_LIMIT,
@@ -309,6 +311,98 @@ async def test_client_uses_raw_literal_ip_tls_and_ignores_proxy_environment(
 
     assert result.WhichOneof("outcome") == "error"
     assert os.environ["HTTPS_PROXY"].startswith("http://user:secret")
+
+
+async def test_reservation_completes_tls_and_hello_before_any_task_is_sent(
+    monkeypatch: pytest.MonkeyPatch,
+    tls_files: tuple[LightpandaServiceConfig, ssl.SSLContext],
+) -> None:
+    config, server_context = tls_files
+    hello_verified = asyncio.Event()
+    peer_closed = asyncio.Event()
+
+    async def handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            hello = json.dumps(_HELLO, separators=(",", ":")).encode("ascii")
+            writer.write(_encode_record(hello, HELLO_FRAME_LIMIT))
+            await writer.drain()
+            hello_verified.set()
+            assert await reader.read() == b""
+            peer_closed.set()
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    async with _service(monkeypatch, server_context, handler):
+        async with LightpandaB0Client(config).reserve():
+            assert hello_verified.is_set()
+
+        await asyncio.wait_for(peer_closed.wait(), timeout=1)
+
+
+async def test_held_reservation_executes_exactly_once(
+    monkeypatch: pytest.MonkeyPatch,
+    tls_files: tuple[LightpandaServiceConfig, ssl.SSLContext],
+) -> None:
+    config, server_context = tls_files
+
+    async with (
+        _service(monkeypatch, server_context, _good_handler),
+        LightpandaB0Client(config).reserve() as reservation,
+    ):
+        result = await reservation.execute(_task())
+        assert result.WhichOneof("outcome") == "error"
+        with pytest.raises(LightpandaServiceError, match="one-shot"):
+            await reservation.execute(_task())
+
+
+async def test_cancelling_reservation_owner_closes_tls_immediately(
+    monkeypatch: pytest.MonkeyPatch,
+    tls_files: tuple[LightpandaServiceConfig, ssl.SSLContext],
+) -> None:
+    config, server_context = tls_files
+    entered = asyncio.Event()
+    peer_closed = asyncio.Event()
+
+    async def handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            hello = json.dumps(_HELLO, separators=(",", ":")).encode("ascii")
+            writer.write(_encode_record(hello, HELLO_FRAME_LIMIT))
+            await writer.drain()
+            assert await reader.read() == b""
+            peer_closed.set()
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    async def hold() -> None:
+        async with LightpandaB0Client(config).reserve():
+            entered.set()
+            await asyncio.Event().wait()
+
+    async with _service(monkeypatch, server_context, handler):
+        owner = asyncio.create_task(hold())
+        await asyncio.wait_for(entered.wait(), timeout=1)
+        owner.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await owner
+        await asyncio.wait_for(peer_closed.wait(), timeout=1)
+
+
+async def test_tls_wait_closed_is_bounded_after_synchronous_close(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def wait_forever() -> None:
+        await asyncio.Event().wait()
+
+    writer = MagicMock()
+    writer.wait_closed = AsyncMock(side_effect=wait_forever)
+    monkeypatch.setattr(client_module, "CLOSE_TIMEOUT_SECONDS", 0.001)
+
+    await asyncio.wait_for(client_module._close_writer(writer), timeout=0.1)
+
+    writer.close.assert_called_once_with()
+    writer.wait_closed.assert_awaited_once_with()
 
 
 def test_client_builds_only_the_closed_b0_runtime_input() -> None:

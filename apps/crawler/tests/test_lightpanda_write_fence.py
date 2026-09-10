@@ -159,6 +159,50 @@ async def test_authoritative_write_checks_mutates_and_revokes_in_one_transaction
     ]
 
 
+async def test_authority_guard_enters_before_pool_and_exits_after_commit() -> None:
+    pool, connection = _pool_and_connection()
+    fence = LightpandaWriteFence.from_lease(_lease())
+    guard_exited = False
+
+    @asynccontextmanager
+    async def authority_guard():
+        nonlocal guard_exited
+        pool.acquire.assert_not_called()
+        yield
+        assert connection.execute.await_args_list[-1].args[0] == _REVOKE
+        guard_exited = True
+
+    async with authoritative_write(
+        pool,
+        fence,
+        job_posting_id=str(fence.job_posting_id),
+        authority_guard=authority_guard,
+    ) as writer:
+        await writer.execute("UPDATE protected SET value = true")
+
+    assert guard_exited
+
+
+async def test_authority_guard_requires_a_write_fence() -> None:
+    pool = MagicMock()
+
+    @asynccontextmanager
+    async def authority_guard():
+        raise AssertionError("guard must not start")
+        yield  # pragma: no cover
+
+    with pytest.raises(ValueError, match="requires a write fence"):
+        async with authoritative_write(
+            pool,
+            None,
+            job_posting_id="legacy-id",
+            authority_guard=authority_guard,
+        ):
+            raise AssertionError("unreachable")
+
+    pool.acquire.assert_not_called()
+
+
 async def test_legacy_authoritative_write_keeps_autocommit_shape() -> None:
     pool, connection = _pool_and_connection()
 
@@ -231,7 +275,8 @@ def _recording_authority(
     seen_fences: list[LightpandaWriteFence | None],
 ) -> None:
     @asynccontextmanager
-    async def recording_write(_pool, fence, *, job_posting_id):
+    async def recording_write(_pool, fence, *, job_posting_id, authority_guard=None):
+        assert authority_guard is None
         if fence is not None:
             assert job_posting_id == str(fence.job_posting_id)
         seen_fences.append(fence)
@@ -342,7 +387,8 @@ async def test_fence_rejection_bypasses_scrape_failure_writer(
     authority_attempts = 0
 
     @asynccontextmanager
-    async def rejected_write(_pool, supplied_fence, *, job_posting_id):
+    async def rejected_write(_pool, supplied_fence, *, job_posting_id, authority_guard=None):
+        assert authority_guard is None
         nonlocal authority_attempts
         authority_attempts += 1
         assert supplied_fence == fence
@@ -439,6 +485,112 @@ async def test_fenced_location_miss_flush_is_best_effort(
     )
 
     assert success is True
+
+
+@pytest.mark.parametrize("enrich", [False, True], ids=("scrape", "enrich"))
+async def test_fenced_failure_persistence_database_errors_propagate(
+    monkeypatch: pytest.MonkeyPatch,
+    enrich: bool,
+) -> None:
+    _install_scrape_dependencies(monkeypatch)
+    fence = LightpandaWriteFence.from_lease(_lease())
+
+    @asynccontextmanager
+    async def unavailable_write(
+        _pool,
+        supplied_fence,
+        *,
+        job_posting_id,
+        authority_guard=None,
+    ):
+        assert authority_guard is None
+        assert supplied_fence == fence
+        assert job_posting_id == str(fence.job_posting_id)
+        raise RuntimeError("failure persistence unavailable")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(scrape_module, "authoritative_write", unavailable_write)
+    runtime = PythonScrapeRuntime(AsyncMock(side_effect=RuntimeError("render failed")))
+    item = ScrapeItem(
+        job_posting_id=str(fence.job_posting_id),
+        url="https://jobs.example.com/posting",
+        board_id="board-1",
+    )
+
+    with pytest.raises(RuntimeError, match="failure persistence unavailable"):
+        if enrich:
+            await scrape_module._process_one_enrich_scrape(
+                item,
+                MagicMock(),
+                AsyncMock(),
+                "json-ld",
+                None,
+                ["title"],
+                scrape_runtime=runtime,
+                write_fence=fence,
+            )
+        else:
+            await scrape_module._process_one_scrape(
+                item,
+                MagicMock(),
+                AsyncMock(),
+                "json-ld",
+                None,
+                scrape_runtime=runtime,
+                write_fence=fence,
+            )
+
+
+@pytest.mark.parametrize("enrich", [False, True], ids=("scrape", "enrich"))
+async def test_legacy_failure_persistence_database_errors_remain_suppressed(
+    monkeypatch: pytest.MonkeyPatch,
+    enrich: bool,
+) -> None:
+    _install_scrape_dependencies(monkeypatch)
+
+    @asynccontextmanager
+    async def unavailable_write(
+        _pool,
+        supplied_fence,
+        *,
+        job_posting_id,
+        authority_guard=None,
+    ):
+        assert authority_guard is None
+        assert supplied_fence is None
+        assert job_posting_id == "legacy-posting"
+        raise RuntimeError("failure persistence unavailable")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(scrape_module, "authoritative_write", unavailable_write)
+    runtime = PythonScrapeRuntime(AsyncMock(side_effect=RuntimeError("render failed")))
+    item = ScrapeItem(
+        job_posting_id="legacy-posting",
+        url="https://jobs.example.com/posting",
+        board_id="board-1",
+    )
+
+    if enrich:
+        success, _duration = await scrape_module._process_one_enrich_scrape(
+            item,
+            MagicMock(),
+            AsyncMock(),
+            "json-ld",
+            None,
+            ["title"],
+            scrape_runtime=runtime,
+        )
+    else:
+        success, _duration = await scrape_module._process_one_scrape(
+            item,
+            MagicMock(),
+            AsyncMock(),
+            "json-ld",
+            None,
+            scrape_runtime=runtime,
+        )
+
+    assert success is False
 
 
 def test_migration_is_retained_public_uuid_fence_with_guarded_downgrade() -> None:
