@@ -79,6 +79,10 @@ const deployCrawlerWorkflow = readFileSync(
   ".github/workflows/deploy-crawler-browser.yml",
   "utf8",
 );
+const deployMurmurShimWorkflow = readFileSync(
+  ".github/workflows/deploy-murmur-shim.yml",
+  "utf8",
+);
 const crawlerRuntimeContractsWorkflow = readFileSync(
   ".github/workflows/crawler-runtime-contracts.yml",
   "utf8",
@@ -1601,6 +1605,24 @@ test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /scripts\/crawler-host-hygiene\.test\.mjs/);
   assert.match(workflow, /scripts\/docs-index\.test\.mjs/);
   assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
+});
+
+test("murmur-shim deploy watches its web build inputs", () => {
+  const pushTrigger = deployMurmurShimWorkflow.match(
+    /^on:\n  push:\n[\s\S]*?^  workflow_dispatch:/m,
+  );
+  assert.ok(pushTrigger, "deploy-murmur-shim push trigger is missing");
+
+  for (const buildInput of [
+    "apps/web/src/db/schema.ts",
+    "apps/web/src/lib/notifications/contracts.ts",
+  ]) {
+    assert.match(
+      pushTrigger[0],
+      new RegExp(`^      - ${buildInput.replaceAll(".", "\\.")}$`, "m"),
+      `${buildInput} must trigger a murmur-shim deployment`,
+    );
+  }
 });
 
 test("crawler deploys derive immutable versions for unchanged releases", () => {

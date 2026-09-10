@@ -7,9 +7,9 @@
 #
 # Trigger model:
 #   - `push` to `murmur-demo` touching the shim source, the crawler
-#     compose (where the murmur-shim service is declared by H3), or
-#     this workflow file. The path filter prevents accidental redeploys
-#     when unrelated files change.
+#     compose (where the murmur-shim service is declared by H3), the web
+#     schema inputs compiled into the shim, or this workflow file. The path
+#     filter prevents accidental redeploys when unrelated files change.
 #   - `workflow_dispatch`: manual trigger so the operator can force a
 #     redeploy without a code commit (e.g. after rotating MURMUR_TOKEN).
 #
@@ -60,6 +60,8 @@ on:
     branches: [main, murmur-demo]
     paths:
       - apps/murmur-shim/**
+      - apps/web/src/db/schema.ts
+      - apps/web/src/lib/notifications/contracts.ts
       - apps/crawler/docker-compose.yml
       - apps/crawler/deploy.sh
       - scripts/verify-crawler-release-bridge.py
