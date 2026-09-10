@@ -27,7 +27,8 @@ Alternative pagination using total_records + page_size (computes page_count)::
         "path": "loaderData.search",
         "total_records": "totalRecords",
         "page_size": 20,
-        "page_param": "page"
+        "page_param": "page",
+        "start": 0
     }
 
 Offset mode (Phenom Canvas-style ``?from=25&from=50...``)::
@@ -473,17 +474,22 @@ def _board_gone_statuses(metadata: dict) -> frozenset[int]:
 
 
 def _compute_page_urls(board_url: str, page_count: int, cfg: dict) -> list[str]:
-    """Return URLs for pages 2..page_count under the current pagination config.
+    """Return URLs after the board page under the current pagination config.
 
-    Page mode uses ``?page=N`` with N in [2..page_count]. Offset mode uses
-    ``?from=page_size*N`` for N in [1..page_count-1] (page 1 served by
-    ``board_url`` itself). ``url_template`` supports path-based pagination;
-    ``start`` is the page value represented by ``board_url`` (default 1).
+    Page mode uses ``?page=N``. ``start`` is the page value represented by
+    ``board_url`` (default 1), so zero-based sources fetch pages 1..N-1.
+    Offset mode uses ``?from=page_size*N`` for N in [1..page_count-1]
+    (the first page is served by ``board_url`` itself). ``url_template``
+    supports path-based pagination with the same ``start`` semantics.
     """
     if _pagination_mode(cfg) == "offset":
         param = cfg.get("offset_param", "from")
         page_size = int(cfg.get("page_size") or 0)
         return [_add_query_param(board_url, param, page_size * n) for n in range(1, page_count)]
+
+    start = cfg.get("start", 1)
+    if isinstance(start, bool) or not isinstance(start, int) or start < 0:
+        raise ValueError("nextdata pagination start must be a non-negative integer")
 
     url_template = cfg.get("url_template")
     if url_template is not None:
@@ -493,10 +499,6 @@ def _compute_page_urls(board_url: str, page_count: int, cfg: dict) -> list[str]:
             or "\x00" in url_template
         ):
             raise ValueError("nextdata pagination url_template must contain one {page} placeholder")
-        start = cfg.get("start", 1)
-        if isinstance(start, bool) or not isinstance(start, int) or start < 0:
-            raise ValueError("nextdata pagination start must be a non-negative integer")
-
         board = urlparse(board_url)
         urls: list[str] = []
         for page in range(start + 1, start + page_count):
@@ -516,7 +518,9 @@ def _compute_page_urls(board_url: str, page_count: int, cfg: dict) -> list[str]:
         return urls
 
     page_param = cfg.get("page_param", "page")
-    return [_add_query_param(board_url, page_param, p) for p in range(2, page_count + 1)]
+    return [
+        _add_query_param(board_url, page_param, p) for p in range(start + 1, start + page_count)
+    ]
 
 
 def _resolve_field(item: dict, spec: str | dict) -> str | list[str] | None:

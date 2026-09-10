@@ -1118,6 +1118,8 @@ def select_monitor(
                 "page_size",
                 "page_param",
                 "offset_param",
+                "start",
+                "url_template",
             }
         elif type_ == "dom":
             _VALID_PAG_KEYS = {
