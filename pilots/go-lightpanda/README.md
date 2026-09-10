@@ -9,11 +9,11 @@ containing the top-level document's final response status, final URL,
 The same package also contains a dormant in-process implementation of the
 runtime-v1 `lightpandaadapter.Runner`. It maps only B0 render or B1 render plus
 one synchronous evaluation declared to have no network effect onto exactly
-one existing one-shot lifecycle. It is exposed only through the dormant
-render-only framed mode below and adds no service, endpoint, queue,
-persistence, fallback, deployment, or production routing. The B1 constructor
-still requires an injected evaluation-privacy implementation; only a
-loopback-fixture sealer exists in tests.
+one existing one-shot lifecycle. It is exposed through the dormant framed
+modes below and adds no queue, persistence, fallback, deployment, or
+production routing. The B1 constructor still requires an injected
+evaluation-privacy implementation; only a loopback-fixture sealer exists in
+tests.
 
 An explicit `--runtime-v1-stdio` mode exposes the narrower render-only adapter
 for offline fixtures and CI. Its process arguments contain only that fixed
@@ -33,6 +33,23 @@ readers and are never closed implicitly; borrowed inputs must be nonblocking
 because cancellation cannot interrupt an active borrowed read. A reusable
 caller that supplies a blocking owned input must provide an interrupt that
 returns promptly if it needs goroutine cleanup without process exit.
+
+An inactive `--runtime-v1-service` mode exposes that same render-only adapter
+over the closed one-request mTLS boundary in
+`apps/crawler/contracts/v1/lightpanda-service.md`. It is fixed to a caller-
+configured private literal IP on port 9443, TLS 1.3, the
+`jobseek-lightpanda-b0/1` ALPN, one fingerprinted CA, exact peer SAN/EKU, and
+required peer leaf/SPKI pins. The server attests exactly 1 GiB `memory.max`
+and zero `memory.swap.max` before listening and admits exactly four active
+connections without a work queue. Each connection sends the fixed capacity
+hello, consumes one runtime-v1 request plus its canonical empty closure frame,
+returns one sanitized result, and closes. Evaluation is rejected by the
+render-only adapter before its runner can contact an origin. The `service`
+Docker target packages this mode but no deployment, certificate, firewall,
+queue claimant, or board route is included. Peer closure after the request
+marker cancels its active execution. Service shutdown closes all admitted
+connections promptly, and an unproved Lightpanda cleanup poisons the resident
+service and exits nonzero so a supervisor can replace it.
 
 The package also contains a non-authoritative bounded execution pool for the
 fixed-RAM pilot. The pool admits immutable runtime-v1 inputs into a fixed set
@@ -157,6 +174,19 @@ docker run --rm \
   jobseek-lightpanda-pilot \
   'https://staging.example.test/jobs' \
   'document.title'
+```
+
+The inactive service target can be built for contract and image checks. A
+caller must still mount the reviewed credentials and enforce every cgroup,
+network, filesystem, PID, capability, and restart control described in the
+service contract; this command does not authorize a deployment:
+
+```sh
+docker build \
+  --build-context contracts=../../apps/crawler/contracts \
+  --platform linux/amd64 \
+  --target service \
+  -t jobseek-lightpanda-service .
 ```
 
 The framed render-only handler uses stdin/stdout rather than target or
