@@ -380,12 +380,19 @@ class _Keys:
         ]
 
 
+def validate_lightpanda_b0_namespace(namespace: object) -> str:
+    """Validate the Redis hash-tag namespace without creating a client."""
+
+    if not isinstance(namespace, str) or not _SAFE_NAMESPACE_RE.fullmatch(namespace):
+        raise ValueError("namespace must be 1-64 safe key characters")
+    return namespace
+
+
 class LightpandaB0Queue:
     """Strict async adapter for the inactive B0 Redis lifecycle."""
 
     def __init__(self, redis: Redis, *, namespace: str) -> None:
-        if not isinstance(namespace, str) or not _SAFE_NAMESPACE_RE.fullmatch(namespace):
-            raise ValueError("namespace must be 1-64 safe key characters")
+        namespace = validate_lightpanda_b0_namespace(namespace)
         tag = f"lightpanda-b0:{{{namespace}}}"
         self._redis = redis
         self._keys = _Keys(
