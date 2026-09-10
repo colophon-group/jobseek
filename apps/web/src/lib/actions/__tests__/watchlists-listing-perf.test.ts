@@ -273,6 +273,7 @@ vi.mock("@/db", () => ({
 // Module under test must be imported AFTER all vi.mock factories.
 import {
   getUserWatchlists,
+  getUserWatchlistCountsForUser,
   getUserWatchlistsWithLimit,
   getPopularWatchlists,
   searchPublicWatchlists,
@@ -357,6 +358,41 @@ function fakePublicWatchlistHit(
 // ---- getUserWatchlists (user's own listing page) -----------------------
 
 describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
+  it("loads route-handler counts from an explicit user without ambient request APIs", async () => {
+    const rows = [fakeUserWatchlistRow(0, 5)];
+    mocks.dbExecute
+      .mockResolvedValueOnce(rows)
+      .mockResolvedValueOnce([{ job_languages: ["de"] }]);
+    mocks.tsMultiSearch.mockResolvedValueOnce({
+      results: [{ found: 5, hits: [] }],
+    });
+
+    const result = await getUserWatchlistCountsForUser(USER_ID, "en");
+
+    expect(result).toEqual({ "wl-0": 5 });
+    expect(mocks.getSessionUserId).not.toHaveBeenCalled();
+    expect(mocks.getViewerLanguages).not.toHaveBeenCalled();
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(2);
+    const queries = mocks.dbExecute.mock.calls.map(([query]) =>
+      query as { text: string; values: unknown[] },
+    );
+    expect(queries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: expect.stringContaining("FROM watchlist w"),
+          values: expect.arrayContaining([USER_ID]),
+        }),
+        expect.objectContaining({
+          text: expect.stringContaining("FROM user_preferences"),
+          values: expect.arrayContaining([USER_ID]),
+        }),
+      ]),
+    );
+    expect(mocks.tsMultiSearch.mock.calls[0]?.[0].searches[0]).toMatchObject({
+      filter_by: expect.stringContaining("locales:[de,_none]"),
+    });
+  });
+
   it("keeps the initial overview independent from active-count aggregation (#5896)", async () => {
     const rows = [
       fakeUserWatchlistRow(0, 42),

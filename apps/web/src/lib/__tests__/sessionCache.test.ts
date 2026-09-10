@@ -41,6 +41,7 @@ import { kvDelete, kvGet, kvMget, kvScan, kvSet } from "@/lib/cache";
 import {
   getSession,
   getSessionUserId,
+  getSessionUserIdFromHeaders,
   invalidateSessionCache,
   invalidateAllUserSessionCacheEntries,
 } from "../sessionCache";
@@ -169,6 +170,46 @@ describe("getSessionUserId", () => {
 
     const result = await getSessionUserId();
     expect(result).toBeNull();
+  });
+
+  it("uses explicit route-handler headers without reading Next request context", async () => {
+    const routeHeaders = new Headers({
+      cookie: "better-auth.session_token=route-token",
+    });
+    mockKvGet.mockResolvedValue({
+      user: { id: "route-user" },
+      session: { id: "route-session" },
+    });
+
+    const result = await getSessionUserIdFromHeaders(routeHeaders);
+
+    expect(result).toBe("route-user");
+    expect(mockHeadersGet).not.toHaveBeenCalled();
+    expect(mockKvGet).toHaveBeenCalledWith("session:route-token");
+  });
+
+  it("passes explicit route-handler headers through Better Auth on a cache miss", async () => {
+    const routeHeaders = new Headers({
+      cookie: "better-auth.session_token=cold-route-token",
+    });
+    const sessionData = {
+      user: { id: "cold-route-user" },
+      session: { id: "cold-route-session" },
+    };
+    mockKvGet.mockResolvedValue(null);
+    mockKvSet.mockResolvedValue(undefined);
+    mockGetSession.mockResolvedValue(sessionData);
+
+    const result = await getSessionUserIdFromHeaders(routeHeaders);
+
+    expect(result).toBe("cold-route-user");
+    expect(mockHeadersGet).not.toHaveBeenCalled();
+    expect(mockGetSession).toHaveBeenCalledWith({ headers: routeHeaders });
+    expect(mockKvSet).toHaveBeenCalledWith(
+      "session:cold-route-token",
+      sessionData,
+      { ttl: 300 },
+    );
   });
 });
 

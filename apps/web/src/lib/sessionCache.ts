@@ -26,8 +26,9 @@ function extractToken(cookieHeader: string): string | null {
   return null;
 }
 
-async function fetchSession(): Promise<SessionResult> {
-  const headersList = await headers();
+async function fetchSessionFromHeaders(
+  headersList: Headers,
+): Promise<SessionResult> {
   const cookieHeader = headersList.get("cookie") ?? "";
   const token = extractToken(cookieHeader);
   if (!token) return null;
@@ -55,6 +56,10 @@ async function fetchSession(): Promise<SessionResult> {
   return result;
 }
 
+async function fetchSession(): Promise<SessionResult> {
+  return fetchSessionFromHeaders(await headers());
+}
+
 /**
  * Per-request cached session getter (full user object).
  *
@@ -71,6 +76,21 @@ export const getSession = cache(fetchSession);
  */
 export async function getSessionUserId(): Promise<string | null> {
   const session = await getSession();
+  return session?.user?.id ?? null;
+}
+
+/**
+ * Route-handler session check using the request's explicit headers.
+ *
+ * Route handlers are not React render scopes, so wrapping a dynamic
+ * `headers()` read in React `cache()` can lose Next's request context.
+ * Passing the handler's headers keeps the auth lookup request-bound while
+ * preserving the shared Redis/DB session path.
+ */
+export async function getSessionUserIdFromHeaders(
+  headersList: Headers,
+): Promise<string | null> {
+  const session = await fetchSessionFromHeaders(headersList);
   return session?.user?.id ?? null;
 }
 
