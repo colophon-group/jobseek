@@ -209,11 +209,13 @@ def test_crawler_sync_cli_cannot_select_legacy_mirror(monkeypatch) -> None:
         parse_args()
 
 
-def test_watchlist_sync_has_no_web_job_posting_fallback() -> None:
-    source = inspect.getsource(sync.sync_watchlists_typesense)
+def test_normal_typesense_sync_cannot_repopulate_retired_watchlist_index() -> None:
+    orchestrator_source = inspect.getsource(sync.sync_typesense)
+    run_source = inspect.getsource(sync.run_sync)
 
-    assert "JOIN job_posting" not in source
-    assert "local_conn or web_conn" not in source
+    assert "sync_watchlists_typesense" not in orchestrator_source
+    assert "purge_retired_watchlist_index(" not in orchestrator_source
+    assert "create_web_pool" not in run_source
 
 
 async def test_legacy_mirror_failure_is_loud_and_blocks_redis(monkeypatch) -> None:
@@ -283,20 +285,12 @@ async def test_legacy_board_mirror_uses_remote_schema_disable_query() -> None:
     assert "quarantined_at" in sync._DISABLE_REMOVED_BOARDS_LOCAL
 
 
-async def test_typesense_and_web_boundary_run_only_after_local_commit(monkeypatch) -> None:
+async def test_typesense_local_boundary_runs_only_after_local_commit(monkeypatch) -> None:
     events: list[str] = []
     _patch_inputs(monkeypatch)
     _patch_local_writes(monkeypatch, events)
     local_conn = _Connection(events, "local")
-    web_conn = _Connection(events, "web")
     monkeypatch.setattr(sync, "create_local_pool", AsyncMock(return_value=_Pool(local_conn)))
-
-    async def create_web_pool() -> _Pool:
-        assert "local_commit" in events
-        events.append("web_pool")
-        return _Pool(web_conn)
-
-    monkeypatch.setattr(sync, "create_web_pool", create_web_pool)
     monkeypatch.setattr(sync, "get_typesense_client", lambda: object())
     monkeypatch.setattr(sync, "_snapshot_name_maps", AsyncMock(return_value={}))
     monkeypatch.setattr(sync, "_apply_taxonomy_renames", AsyncMock())
@@ -304,10 +298,9 @@ async def test_typesense_and_web_boundary_run_only_after_local_commit(monkeypatc
     async def apply_redis(_effects: sync.BoardSyncEffects) -> None:
         events.append("redis")
 
-    async def sync_typesense(local, web, client) -> None:
+    async def sync_typesense(local, client) -> None:
         del client
         assert local is local_conn
-        assert web is web_conn
         assert "local_commit" in events
         events.append("typesense")
 
@@ -316,5 +309,4 @@ async def test_typesense_and_web_boundary_run_only_after_local_commit(monkeypatc
 
     await sync.run_sync()
 
-    assert events.index("local_commit") < events.index("web_pool")
-    assert events.index("web_pool") < events.index("redis") < events.index("typesense")
+    assert events.index("local_commit") < events.index("redis") < events.index("typesense")

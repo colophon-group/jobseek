@@ -508,7 +508,18 @@ def parse_args() -> argparse.Namespace:
         help="Strict local-Postgres -> Typesense taxonomy readiness gate",
     )
 
-    sub.add_parser("refresh-typesense", help="Refresh Typesense counts + reconcile watchlists")
+    sub.add_parser("refresh-typesense", help="Refresh Typesense taxonomy/company counts")
+
+    purge_watchlists_p = sub.add_parser(
+        "purge-retired-watchlist-index",
+        help="Permanently delete documents from the retired Typesense watchlist index",
+    )
+    purge_watchlists_p.add_argument(
+        "--confirm",
+        action="store_true",
+        required=True,
+        help="Acknowledge that every legacy watchlist discovery document will be deleted",
+    )
 
     refresh_currency_p = sub.add_parser(
         "refresh-currency-rates",
@@ -1211,8 +1222,7 @@ async def run() -> None:
 
             async with cron_run("refresh-typesense"):
                 local_pool = await create_local_pool()
-                web_pool = await create_web_pool()
-                from src.sync import refresh_typesense_counts, sync_watchlists_typesense
+                from src.sync import refresh_typesense_counts
                 from src.typesense_client import get_typesense_client
 
                 ts_client = get_typesense_client()
@@ -1222,12 +1232,21 @@ async def run() -> None:
                     # silent any more.
                     log.error("refresh-typesense: Typesense not configured")
                     raise RuntimeError("refresh-typesense: Typesense not configured")
-                async with local_pool.acquire() as local_conn, web_pool.acquire() as web_conn:
+                async with local_pool.acquire() as local_conn:
                     local_connection = cast(asyncpg.Connection, local_conn)
-                    web_connection = cast(asyncpg.Connection, web_conn)
                     await refresh_typesense_counts(local_connection, ts_client)
-                    await sync_watchlists_typesense(web_connection, local_connection, ts_client)
                 log.info("refresh-typesense: done")
+
+        elif args.command == "purge-retired-watchlist-index":
+            from src.sync import purge_retired_watchlist_index
+            from src.typesense_client import get_typesense_client
+
+            ts_client = get_typesense_client()
+            if not ts_client:
+                log.error("purge-retired-watchlist-index: Typesense not configured")
+                raise RuntimeError("purge-retired-watchlist-index: Typesense not configured")
+            deleted = await asyncio.to_thread(purge_retired_watchlist_index, ts_client)
+            log.info("purge-retired-watchlist-index: done", deleted=deleted)
 
         elif args.command == "refresh-currency-rates":
             from src.cron_metrics import cron_run

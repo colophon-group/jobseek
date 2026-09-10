@@ -31,7 +31,6 @@ required_vars=(
   JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID
   JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256
   JOBSEEK_RECONCILIATION_WRAPPER_SHA256
-  WEB_DATABASE_URL
   LOCAL_DATABASE_URL
   R2_ACCESS_KEY_ID
   R2_SECRET_ACCESS_KEY
@@ -1272,7 +1271,10 @@ repair_umantis_identity_cutover() {
 
 rollback_sync_previous_config() {
   local crawler_ref restored_web_database_url status
-  local -a data_args=()
+  local -a data_args=() restored_web_database_urls=() sync_env_args=()
+
+  # Do not let a failed prior attempt leak its legacy credential into a retry.
+  ROLLBACK_SYNC_WEB_DATABASE_URL=""
 
   crawler_ref="$(read_exact_release_value "$ENV_FILE" CRAWLER_IMAGE_REF)" || {
     echo "ERROR: restored crawler image identity is unavailable for config rollback" >&2
@@ -1282,18 +1284,24 @@ rollback_sync_previous_config() {
     echo "ERROR: restored crawler image identity is invalid for config rollback" >&2
     return 1
   }
-  restored_web_database_url="$(
-    read_exact_release_value "$ENV_FILE" WEB_DATABASE_URL
-  )" || {
-    echo "ERROR: restored web database credential is unavailable for config rollback" >&2
+  # The first rollout after retiring public-watchlist indexing may still need
+  # to roll back to an older image whose sync command opens WEB_DATABASE_URL.
+  # Preserve that credential only when it is present in the restored release;
+  # current releases neither persist nor require it.
+  mapfile -t restored_web_database_urls < <(
+    sed -n 's/^WEB_DATABASE_URL=//p' "$ENV_FILE"
+  )
+  if (( ${#restored_web_database_urls[@]} > 1 )); then
+    echo "ERROR: restored web database credential is duplicated for config rollback" >&2
     return 1
-  }
-  [[ -n "$restored_web_database_url" ]] || {
-    echo "ERROR: restored web database credential is empty for config rollback" >&2
-    return 1
-  }
-
-  ROLLBACK_SYNC_WEB_DATABASE_URL="$restored_web_database_url"
+  fi
+  if (( ${#restored_web_database_urls[@]} == 1 )); then
+    restored_web_database_url="${restored_web_database_urls[0]}"
+    [[ -n "$restored_web_database_url" ]] || {
+      echo "ERROR: restored web database credential is empty for config rollback" >&2
+      return 1
+    }
+  fi
   if [[ "${ACTIVE_RELEASE_FORMAT:-}" == 3 ]]; then
     verify_exact_csv_tree "${ACTIVE_DATA_SNAPSHOT:-}" "${ACTIVE_DATA_FILES_MANIFEST:-}"
     data_args=(-v "${ACTIVE_DATA_SNAPSHOT}:/app/data:ro")
@@ -1301,9 +1309,13 @@ rollback_sync_previous_config() {
     echo "ERROR: exact previous CSV rollback evidence is unavailable" >&2
     return 1
   fi
+  if (( ${#restored_web_database_urls[@]} == 1 )); then
+    ROLLBACK_SYNC_WEB_DATABASE_URL="$restored_web_database_url"
+    sync_env_args=(-e WEB_DATABASE_URL)
+  fi
   if rollback_compose run --rm --no-deps \
     "${data_args[@]}" \
-    -e WEB_DATABASE_URL \
+    "${sync_env_args[@]}" \
     -e CRAWLER_DB_ROLE=rollback-sync \
     -e CRAWLER_DB_POOL_MIN=0 \
     -e CRAWLER_DB_POOL_MAX=4 \
@@ -2007,7 +2019,6 @@ BROWSER_IMAGE_REF=${BROWSER_IMAGE_REF}
 SHIM_IMAGE_REF=${SHIM_IMAGE_REF}
 JOBSEEK_DEPLOY_REVISION=${JOBSEEK_DEPLOY_REVISION}
 JOBSEEK_RUNTIME_CONTRACT_SHA256=${JOBSEEK_RUNTIME_CONTRACT_SHA256}
-WEB_DATABASE_URL=${WEB_DATABASE_URL}
 LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}
 R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
 R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
@@ -2099,7 +2110,6 @@ docker run --rm \
 FORWARD_SYNC_STARTED=1
 docker run --rm \
   -e LOCAL_DATABASE_URL \
-  -e WEB_DATABASE_URL \
   -e CRAWLER_DB_ROLE=deploy-sync \
   -e CRAWLER_DB_POOL_MIN=0 \
   -e CRAWLER_DB_POOL_MAX=4 \
