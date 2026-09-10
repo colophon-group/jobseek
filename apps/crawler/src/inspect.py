@@ -13,6 +13,11 @@ from dataclasses import fields as dc_fields
 
 from src.core.scrapers import _REGISTRY as SCRAPER_REGISTRY
 from src.core.scrapers import JobContent
+from src.lightpanda.routing import (
+    RenderAssignmentError,
+    has_render_assignment,
+    resolve_render_assignment,
+)
 from src.shared.browser import _resolve_resource_blocking
 from src.shared.constants import LOGO_TYPES, SLUG_RE, URL_RE, get_data_dir
 from src.shared.csv_io import read_csv
@@ -67,6 +72,30 @@ def _validate_browser_resource_config(
                 "boards.csv",
                 row,
                 f"Invalid browser resource config in {config_name}: {exc}",
+            )
+        )
+
+
+def _validate_render_assignment(
+    scraper_type: str,
+    config: dict,
+    *,
+    scraper_step: int,
+    row: int,
+    errors: list[ValidationError],
+) -> None:
+    """Fail closed on partial/unsafe routing metadata during CSV validation."""
+
+    if not has_render_assignment(config):
+        return
+    try:
+        resolve_render_assignment(scraper_type, config, scraper_step=scraper_step)
+    except RenderAssignmentError as exc:
+        errors.append(
+            ValidationError(
+                "boards.csv",
+                row,
+                f"Invalid Lightpanda render assignment at scraper step {scraper_step}: {exc}",
             )
         )
 
@@ -438,6 +467,13 @@ def validate_csvs() -> list[ValidationError]:
             try:
                 sc_obj = json.loads(scraper_config)
                 if isinstance(sc_obj, dict):
+                    _validate_render_assignment(
+                        scraper_type,
+                        sc_obj,
+                        scraper_step=0,
+                        row=i,
+                        errors=errors,
+                    )
                     if "proxy" in sc_obj and not isinstance(sc_obj["proxy"], bool):
                         errors.append(
                             ValidationError(
@@ -537,6 +573,13 @@ def validate_csvs() -> list[ValidationError]:
                             )
                         )
                     if isinstance(fb_cfg, dict):
+                        _validate_render_assignment(
+                            fb_type,
+                            fb_cfg,
+                            scraper_step=depth + 1,
+                            row=i,
+                            errors=errors,
+                        )
                         _validate_browser_resource_config(
                             fb_cfg,
                             config_name="fallback config",

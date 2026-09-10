@@ -17,7 +17,7 @@ import time
 import uuid
 from contextlib import suppress
 from dataclasses import dataclass, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from src.workspace.codex_runner import (
@@ -34,8 +34,6 @@ from src.workspace.codex_runner import (
     retry_failed_trace_exports,
 )
 from src.workspace.safe_cleanup import safe_rmtree_child
-
-UTC = timezone.utc  # noqa: UP017 - systemd runs this module with Python 3.10.
 
 
 @dataclass(frozen=True)
