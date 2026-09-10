@@ -172,6 +172,33 @@ def test_nextdata_static_request_headers_are_accepted_without_leaking(tmp_path: 
     assert "secret-agent" not in rendered
 
 
+def test_inline_skip_ssl_is_accepted_and_sanitized(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "static-inline",
+                monitor_type="inline",
+                monitor_config={
+                    "skip_ssl": True,
+                    "steps": [{"tag": "h2", "field": "title"}],
+                },
+                scraper_type="skip",
+            )
+        ],
+    )
+
+    manifest = build_manifest(boards)
+    records = {record["id"]: record for record in manifest["records"]}
+
+    assert records["registry.monitor.inline"]["source_count"] == 1
+    assert not any(
+        record["profile_kind"] == "configured" and record["crawler_type"] == "inline"
+        for record in manifest["records"]
+    )
+    assert "do-not-commit" not in manifest_bytes(manifest).decode("ascii")
+
+
 def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
     boards = _write_boards(tmp_path / "boards.csv", [_row("static")])
 
