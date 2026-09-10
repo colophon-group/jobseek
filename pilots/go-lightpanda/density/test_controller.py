@@ -401,7 +401,10 @@ class SamplerTests(unittest.TestCase):
             "memory.max": f"{controller.GIB}\n", "memory.swap.max": "0\n",
             "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
             "cpu.max": "100000 100000\n",
-            "cpu.stat": "usage_usec 3\nuser_usec 2\nsystem_usec 1\n",
+            "cpu.stat": (
+                "usage_usec 3\nuser_usec 2\nsystem_usec 1\n"
+                "core_sched.force_idle_usec 0\n"
+            ),
             "pids.max": "128\n", "pids.events": "max 0\n",
             "pids.peak": "2\n", "cgroup.procs": "",
         }
@@ -454,6 +457,16 @@ class SamplerTests(unittest.TestCase):
             (path / "memory.events").write_text("low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n", encoding="ascii")
             with self.assertRaises(ValueError):
                 controller.CgroupSampler(path)._read_resources()
+
+    def test_flat_cgroup_parser_rejects_malformed_or_duplicate_keys(self):
+        for raw in (
+            "core_sched..force_idle_usec 0\n",
+            ".core_sched 0\n",
+            "usage_usec -1\n",
+            "usage_usec 1\nusage_usec 2\n",
+        ):
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                controller._parse_flat(raw, set())
 
     def test_cgroup_diagnostics_are_closed_canonical_ids(self):
         self.assertEqual(set(controller.CGROUP_FILE_FAILURES), set(controller.CGROUP_FILES))

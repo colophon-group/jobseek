@@ -517,7 +517,8 @@ def _parse_flat(raw: str, required: set[str]) -> dict[str, int]:
     for line in raw.splitlines():
         parts = line.split()
         if (len(parts) != 2 or parts[0] in result or
-                re.fullmatch(r"[a-z_]+", parts[0]) is None or not parts[1].isdigit()):
+                re.fullmatch(r"[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*", parts[0]) is None or
+                not parts[1].isdigit()):
             raise ValueError
         result[parts[0]] = int(parts[1])
     if not required <= set(result):
