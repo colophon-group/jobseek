@@ -10,7 +10,7 @@ Prior exemplars (follow their shape): #2622, #2621, #2470, #2431.
 
 ## Invocation
 
-- **Preferred scheduled route:** Hetzner Codex runner through
+- **Scheduled route:** Hetzner Codex runner through
   `jobseek-codex-daily-error-review.timer`. A root `ExecStartPre` collector
   writes a redacted read-only evidence bundle for the unprivileged
   `codex-runner` account, so the Codex process does not need Docker,
@@ -31,8 +31,6 @@ Prior exemplars (follow their shape): #2622, #2621, #2470, #2431.
   repo root, asking it to use the `jobseek-error-review` skill.
 - **Manual traceable pilot:** run `codex exec --json` with the skill/runbook as
   the prompt and save the JSONL trace for agent trace collection checks.
-- **Avoid:** GitHub Actions or workstation schedules for this routine. The
-  Hetzner runner owns recurring execution.
 - **Claude fallback:** `/jobseek-error-review` remains available through the
   legacy Claude Code slash command for compatibility.
 

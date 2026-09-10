@@ -86,9 +86,8 @@ uv run labeller upload --date <date>
 ## Ops routines (Codex-first, Claude-compatible)
 
 Scheduled ops routines are documented as repo runbooks and skills. The
-Hetzner Codex runner is the only production scheduler; do not add GitHub
-Actions or workstation schedules that execute these Hetzner-owned
-automations. CI/CD may still deploy the Hetzner runner host surface.
+Hetzner Codex runner is the production scheduler, and CI/CD deploys its host
+surface.
 `codex exec --json` is the traceable noninteractive surface for bounded
 manual recovery and agent trace collection. Legacy
 Claude Code slash commands remain compatibility fallbacks where present.
