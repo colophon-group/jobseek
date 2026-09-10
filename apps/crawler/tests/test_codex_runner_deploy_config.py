@@ -111,6 +111,10 @@ def test_daily_timers_catch_up_missed_calendar_activations_under_the_shared_lock
         assert "Persistent=false" not in timer
 
     assert "Persistent=false" in GOVERNOR_TIMER.read_text()
+    assert (
+        "After=network-online.target jobseek-codex-daily-annotations.service"
+        in ERROR_REVIEW_SERVICE.read_text()
+    )
     for service_path in (ANNOTATIONS_SERVICE, ERROR_REVIEW_SERVICE):
         exec_start = next(
             line for line in service_path.read_text().splitlines() if line.startswith("ExecStart=")
