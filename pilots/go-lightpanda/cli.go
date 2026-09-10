@@ -36,7 +36,7 @@ func runCLIWithRunner(args []string, output io.Writer, runner taskRunner) int {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	result, err := runner(ctx, Config{Binary: binary}, Task{
+	result, err := runner(ctx, Config{Binary: binary, EgressPolicy: defaultEgressPolicy()}, Task{
 		URL: args[0],
 		Evaluation: &TaskEvaluation{
 			Expression:     args[1],

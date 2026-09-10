@@ -63,7 +63,7 @@ func TestRuntimeV1RunnerTranslatesB0AndB1ExactlyOnce(t *testing.T) {
 			input := bridgeInput("https://example.test/jobs", test.expression, 17)
 			calls := 0
 			runner := runtimeV1Runner{
-				config: Config{Binary: "/fixed/lightpanda"},
+				config: Config{Binary: "/fixed/lightpanda", EgressPolicy: defaultEgressPolicy()},
 				run: func(_ context.Context, config Config, task Task) (Result, error) {
 					calls++
 					if config.Binary != "/fixed/lightpanda" || config.TaskTimeout != 1250*time.Millisecond {
@@ -449,7 +449,7 @@ func TestRuntimeV1RunnerContainsExecutorPanicBeforeAdapterBoundary(t *testing.T)
 		return false
 	})
 	runner := runtimeV1Runner{
-		config: Config{CleanupTimeout: 500 * time.Millisecond, TerminateGrace: 100 * time.Millisecond},
+		config: Config{EgressPolicy: defaultEgressPolicy(), CleanupTimeout: 500 * time.Millisecond, TerminateGrace: 100 * time.Millisecond},
 		run: func(ctx context.Context, config Config, task Task) (Result, error) {
 			return runTaskWithDependencies(ctx, config, deps, task)
 		},
@@ -486,7 +486,7 @@ func TestRuntimeV1RunnerCleanupFailureDominatesTimedOutExecutorPanic(t *testing.
 		return true
 	})
 	runner := runtimeV1Runner{
-		config: Config{CleanupTimeout: 20 * time.Millisecond, TerminateGrace: 5 * time.Millisecond},
+		config: Config{EgressPolicy: defaultEgressPolicy(), CleanupTimeout: 20 * time.Millisecond, TerminateGrace: 5 * time.Millisecond},
 		run: func(ctx context.Context, config Config, task Task) (Result, error) {
 			return runTaskWithDependencies(ctx, config, deps, task)
 		},

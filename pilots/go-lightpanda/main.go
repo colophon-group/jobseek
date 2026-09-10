@@ -16,7 +16,7 @@ func main() {
 	if len(args) > 0 && args[0] == runtimeV1StdioFlag {
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		adapter, err := lightpandaadapter.NewRenderOnly(
-			runtimeV1Runner{config: Config{Binary: os.Getenv("LIGHTPANDA_BIN")}},
+			runtimeV1Runner{config: Config{Binary: os.Getenv("LIGHTPANDA_BIN"), EgressPolicy: defaultEgressPolicy()}},
 		)
 		exitCode := 1
 		if err != nil {

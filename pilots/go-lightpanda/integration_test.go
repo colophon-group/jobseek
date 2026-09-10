@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"runtime"
 	"strings"
@@ -36,7 +35,7 @@ func TestLightpandaIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	origin := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	origin := newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != "/fixture" {
 			http.NotFound(writer, request)
 			return
@@ -45,11 +44,15 @@ func TestLightpandaIntegration(t *testing.T) {
 		writer.WriteHeader(http.StatusCreated)
 		_, _ = io.WriteString(writer, `<!doctype html><html><head><title>Lightpanda fixture</title></head><body><main id="fixture">local only</main></body></html>`)
 	}))
-	defer origin.Close()
 
 	t.Setenv("LIGHTPANDA_BIN", binary)
+	fixtureRunner := testOnlyFixtureRunner(binary, "127.0.0.2")
 	var output bytes.Buffer
-	exitCode := runCLI([]string{origin.URL + "/fixture", "document.title"}, &output)
+	exitCode := runCLIWithRunner(
+		[]string{origin.URL + "/fixture", "document.title"},
+		&output,
+		fixtureRunner,
+	)
 	if exitCode != 0 {
 		t.Fatalf("runCLI exit code = %d, output = %s", exitCode, output.String())
 	}
@@ -75,7 +78,7 @@ func TestLightpandaIntegration(t *testing.T) {
 	}
 
 	output.Reset()
-	exitCode = runCLI([]string{origin.URL + "/fixture", "null"}, &output)
+	exitCode = runCLIWithRunner([]string{origin.URL + "/fixture", "null"}, &output, fixtureRunner)
 	if exitCode != 0 {
 		t.Fatalf("null expression exit code = %d, output = %s", exitCode, output.String())
 	}
@@ -96,7 +99,7 @@ func TestLightpandaIntegration(t *testing.T) {
 		{expression: `Symbol("x")`, wantError: "Object couldn't be returned by value (-32000)"},
 	} {
 		output.Reset()
-		exitCode = runCLI([]string{origin.URL + "/fixture", test.expression}, &output)
+		exitCode = runCLIWithRunner([]string{origin.URL + "/fixture", test.expression}, &output, fixtureRunner)
 		if exitCode == 0 {
 			t.Errorf("expression %q succeeded with output %s", test.expression, output.String())
 		}
@@ -123,7 +126,7 @@ func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	origin := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	origin := newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != "/runtime-v1-fixture" {
 			http.NotFound(writer, request)
 			return
@@ -132,7 +135,6 @@ func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 		writer.WriteHeader(http.StatusCreated)
 		_, _ = io.WriteString(writer, `<!doctype html><html><head><title>Runtime v1 fixture</title></head><body><main id="runtime-v1-fixture">local only</main></body></html>`)
 	}))
-	defer origin.Close()
 
 	for _, test := range []struct {
 		name       string
@@ -144,7 +146,10 @@ func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			privacy := &bridgeFixturePrivacy{}
 			adapter, err := lightpandaadapter.New(
-				runtimeV1Runner{config: Config{Binary: binary}},
+				runtimeV1Runner{
+					config: Config{Binary: binary, EgressPolicy: defaultEgressPolicy()},
+					run:    testOnlyFixtureRunner(binary, "127.0.0.2"),
+				},
 				privacy,
 			)
 			if err != nil {
@@ -186,7 +191,7 @@ func TestLightpandaRuntimeV1StdioIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	origin := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+	origin := newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != "/runtime-v1-stdio-fixture" {
 			http.NotFound(writer, request)
 			return
@@ -195,10 +200,12 @@ func TestLightpandaRuntimeV1StdioIntegration(t *testing.T) {
 		writer.WriteHeader(http.StatusCreated)
 		_, _ = io.WriteString(writer, `<!doctype html><html><body><main id="runtime-v1-stdio-fixture">local only</main></body></html>`)
 	}))
-	defer origin.Close()
 
 	adapter, err := lightpandaadapter.NewRenderOnly(
-		runtimeV1Runner{config: Config{Binary: binary}},
+		runtimeV1Runner{
+			config: Config{Binary: binary, EgressPolicy: defaultEgressPolicy()},
+			run:    testOnlyFixtureRunner(binary, "127.0.0.2"),
+		},
 	)
 	if err != nil {
 		t.Fatal(err)

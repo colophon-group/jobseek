@@ -51,15 +51,65 @@ timeout or cancellation; other provider details are reduced to message-free,
 fail-closed adapter errors.
 
 The runner starts a new Lightpanda process for its single task on a chosen free
-loopback port. The child receives a fixed non-secret environment that disables
-Lightpanda telemetry and core dumps; it inherits no parent credentials or
-configuration through environment variables. Concurrent in-process runners retain
-each allocated port until that process has been cleaned up, preventing sibling tasks
-from selecting the same close-then-bind port:
+loopback port. Before allocating that port or starting a child, it requires a
+validated immutable egress policy. The default CLI and runtime constructors
+always install the version-controlled registry baseline; a zero, malformed,
+noncanonical, duplicate, overlapping, whitespace-padded, IPv4-mapped, or
+allow-exemption (`-CIDR`) policy fails closed. Trusted startup code may add
+canonical non-overlapping exact host or project CIDRs, but task/request data
+cannot select or modify policy. Baseline-only construction is sufficient for
+this dormant/local harness, not for a public service.
+
+The baseline omits deployment-specific globally routable host addresses. A
+future public service needs a separate constructor that requires a nonempty,
+trusted deployment address inventory (host public/private interfaces and
+project networks), reconciles it with the browser deny policy and external
+network enforcement, and fails startup if coverage is incomplete. That
+service-level constructor and deployment inventory are outside this slice.
+
+The child receives a fixed non-secret environment that disables Lightpanda
+telemetry and core dumps; it inherits no parent credentials, proxy variables,
+or configuration through environment variables. No proxy argument or CDP
+proxy override is exposed. Concurrent in-process runners retain each allocated
+port until that process has been cleaned up, preventing sibling tasks from
+selecting the same close-then-bind port:
 
 ```text
-lightpanda serve --host 127.0.0.1 --port <port> --log-level error
+lightpanda serve --host 127.0.0.1 --port <port> --log-level error \
+  --cdp-max-connections 2 --cdp-max-pending-connections 1 \
+  --http-max-concurrent 8 --http-max-host-open 4 \
+  --http-connect-timeout 5000 --http-max-response-size 8388608 \
+  --ws-max-concurrent 1 --block-private-networks \
+  --block-cidrs <one-canonical-comma-separated-deny-list>
 ```
+
+The two active CDP-server slots cover the pinned server's two-connection
+chromedp bootstrap: a short-lived `/json/version` HTTP connection followed
+immediately by a separate WebSocket connection. The server releases the HTTP
+slot only when that worker unwinds, so a one-slot cap races the WebSocket
+connect even though the response requests connection close. The pending limit
+is the separate, bounded kernel listen backlog; only one WebSocket driver is
+used.
+
+The baseline is a conservative superset of the IANA IPv4/IPv6 non-global
+special-purpose registries. It also covers RFC1918/shared/link-local/loopback,
+metadata-reachable ranges, IPv4 and IPv6 multicast/reserved space, IPv4-mapped
+private destinations, NAT64/6to4 and other transition space, and currently
+reserved IPv6 space outside `2000::/3`. It deliberately overblocks the limited
+globally reachable exceptions inside `192.0.0.0/24`, `2001::/23`, and
+`64:ff9b::/96`; compatibility with those exceptional destinations requires a
+reviewed baseline revision, never an allow exemption. The exact baseline is in
+`egress_policy.go`.
+
+Pinned Lightpanda 0.4.0 applies the filter when its HTTP/WebSocket stack opens
+the resolved socket, below page JavaScript and CDP navigation. That covers
+direct navigation, redirects, subresources, in-page fetch/XHR, and WebSocket
+connection attempts. This is a browser-level destination policy, not an OS
+sandbox and not RCE containment: a browser-native compromise could bypass its
+own checks. The future service still needs an external network boundary. DNS
+answer changes are checked at socket-open time in the pinned implementation,
+but deterministic DNS-rebinding evidence is deferred to the isolated Murmur
+canary and is not claimed by this slice.
 
 It polls `http://127.0.0.1:<port>/json/version`, accepts only a `ws` endpoint
 whose literal host is `127.0.0.1` and whose port is the allocated port, checks
@@ -133,8 +183,9 @@ close-then-bind free-port handoff and numeric process-group cleanup are accepted
 only under those isolation conditions.
 
 Do not point this pilot at a production origin; use a disposable fixture, local
-test server, or explicitly authorized staging origin. Ordinary
-destination-network controls remain a caller concern.
+test server, or explicitly authorized staging origin. The in-browser deny
+policy is mandatory, while external egress enforcement and host-public-IP
+blocking remain caller/service responsibilities.
 
 Unit tests run without Lightpanda:
 
@@ -145,12 +196,19 @@ go test ./...
 The real-binary integration test is opt-in on Linux amd64 and arm64 and
 verifies the architecture-specific stable-0.4.0 checksum before use. It serves
 the navigated page from a local `httptest` origin, so test execution requires
-no destination network. The direct command is only for an already-isolated
-disposable Linux environment:
+no destination network. Positive semantic fixtures use an `_test.go`-only
+exact `127.0.0.2/32` exemption; that escape hatch is absent from the default
+binary and is not policy evidence. A separate negative matrix runs the
+default registry baseline for direct navigation and keeps `127.0.0.1`
+(CDP-shaped) and `127.0.0.3` sinks blocked through redirects, script
+subresources, fetch, XHR,
+and WebSocket attempts, with explicit invocation markers and zero-hit
+transcripts. The direct command is only for an already-isolated disposable
+Linux environment:
 
 ```sh
 LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-x86_64-linux \
-  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4)$' \
+  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration)$' \
   -count=1 -v .
 
 docker build --build-context contracts=../../apps/crawler/contracts \
@@ -158,7 +216,7 @@ docker build --build-context contracts=../../apps/crawler/contracts \
   -t jobseek-lightpanda-integration:amd64 .
 
 LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-aarch64-linux \
-  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4)$' \
+  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration)$' \
   -count=1 -v .
 
 docker build --build-context contracts=../../apps/crawler/contracts \
@@ -205,17 +263,19 @@ resident or shared browser-process pooling, proxy or authentication support,
 request interception,
 `networkidle` waiting, `stopLoading`, iframe capture, nightly binary, deployment,
 or observability integration. The runtime-v1 bridge is exercised only against
-loopback fixtures and has no reusable production evaluation-privacy sealer or
-destination/subresource policy. It is not a production service or production
-browser-security boundary.
+loopback fixtures and has no reusable production evaluation-privacy sealer. It
+has a mandatory browser-internal destination policy but is not a production
+service, an external network boundary, or an OS/browser-compromise security
+boundary.
 
 The framed handler is reusable protocol/core code only. It must not run for a
 public URL inside the credentialed, root, host-network production browser
 worker. Production use remains blocked on a separately reviewed
 credential-free, non-root isolated Go service/container/cgroup; browser-wide
-egress enforcement for private addresses, redirects, subresources,
-WebSockets, and in-page fetch; and a Python supervisor with immutable
-assignment, cancellation, backpressure, health, and rollback behavior. A
+egress enforcement independent of the browser process, including deterministic
+DNS-rebinding evidence and the service host's exact addresses; and a Python
+supervisor with immutable assignment, cancellation, backpressure, health, and
+rollback behavior. A
 future service may wrap one framed request and response per connection around
 this handler and place fresh one-shot Lightpanda children behind a bounded
 origin-fair pool. None of that authority is introduced here.
@@ -239,6 +299,12 @@ network and is separately bounded. The controller verifies the effective
 cgroup-v2 limits and aggregate counters, exact image IDs, stopped-container
 isolation, task/oracle conservation, browser cleanup, and zero labeled-resource
 postflight. Only its allowlisted report is retained.
+
+Only the `densitybench` build resolves the fixed embedded `.bench.test` origin
+and adds that one fixture container's exact private IPv4 `/32` as a Lightpanda
+test exemption. It rejects loopback, IPv6, public, multiple-answer, and
+non-workload hosts. The default runtime binary cannot select this path, and the
+density run is not destination-policy evidence.
 
 This is an implementation and containment smoke, not comparative performance
 evidence. It does not execute the counterbalanced repetitions, retain partial

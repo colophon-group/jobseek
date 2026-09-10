@@ -52,7 +52,10 @@ func runDensityCLIWithProtocol(args []string, output io.Writer, waitInitial, wai
 		report := densityFailureReport(started, *concurrency, *sourceCommit, *imageIdentity, "manifest_invalid")
 		return finishDensityCLI(ctx, output, report, 2, waitFinal)
 	}
-	adapter, err := lightpandaadapter.New(runtimeV1Runner{config: Config{Binary: os.Getenv("LIGHTPANDA_BIN")}}, densityRawPrivacy{})
+	adapter, err := lightpandaadapter.New(runtimeV1Runner{
+		config: Config{Binary: os.Getenv("LIGHTPANDA_BIN"), EgressPolicy: defaultEgressPolicy()},
+		run:    densityFixtureTaskRunner,
+	}, densityRawPrivacy{})
 	if err != nil {
 		report := densityFailureReport(started, *concurrency, *sourceCommit, *imageIdentity, "adapter_initialization")
 		return finishDensityCLI(ctx, output, report, 2, waitFinal)
