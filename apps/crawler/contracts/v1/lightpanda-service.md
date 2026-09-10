@@ -3,9 +3,10 @@
 This contract defines the one-shot network boundary between the Python-owned
 Lightpanda B0 claimant and the Go render process. A dedicated claimant command
 is available in the slim crawler image, but it fails closed unless explicitly
-enabled with complete route and mTLS configuration. There is no Compose
-service, host unit, certificate, firewall rule, board assignment, deployment
-secret, or production route.
+enabled with complete route and mTLS configuration. A separate manual workflow
+can install one dormant renderer on the existing ARM64 Murmur host. Its
+internal-only bridge has no host port or default route, and no crawler or board
+route points at it.
 
 Python remains authoritative for claiming, leases, retry policy, parser
 configuration, parsing, PostgreSQL writes, and queue transitions. The Go
@@ -37,11 +38,14 @@ The listen address is exactly `0.0.0.0:9443`, used only as the container-local
 bridge bind. It is never a certificate identity, client endpoint, or authority
 to publish the service publicly. The separate service IP must be a canonical
 literal private IPv4 address that is neither loopback nor unspecified. A later
-deployment must publish port 9443 only on that private host IP and admit only
-the crawler's private source address. TLS is exactly TLS 1.3, session tickets
-are disabled, and the only ALPN is `jobseek-lightpanda-b0/1`. Both peers load
-one dedicated CA certificate and verify its DER SHA-256 before opening a
-connection.
+activation must publish port 9443 only on that private host IP and admit only
+the crawler's private source address. The dormant deployment has no host port;
+its isolated bridge has no host gateway or host route. A one-shot probe runs
+inside the renderer network namespace and requires the exact TLS 1.3
+`certificate_required` rejection while still verifying the server's
+`10.0.0.5` identity. Session tickets are disabled, and the only ALPN is
+`jobseek-lightpanda-b0/1`. Both peers load one dedicated CA certificate and
+verify its DER SHA-256 before opening a connection.
 
 Each trusted deployment address or project prefix is supplied once with the
 repeatable `--deployment-deny-cidr` startup flag. The inventory is nonempty,
@@ -131,21 +135,27 @@ cleanup-unproved runner outcome poisons the entire resident service: admission
 stops atomically, all connections are cancelled and closed, and the service
 returns an error so its supervised container exits nonzero.
 
-The dedicated `service` Docker target packages this binary but declares no
-host deployment. Its caller must enforce the 1 GiB/no-swap cgroup, PID limit,
+The dedicated `service` Docker target packages this binary with its exact
+source-commit label. Its caller must enforce the 1 GiB/no-swap cgroup, PID limit,
 read-only filesystem, non-root identity, dropped capabilities, private network
 namespace, certificate mounts, and restart policy.
 
 ## Activation blockers
 
-This boundary is inactive until separate reviewed slices provide all of:
+The dormant process remains inactive for crawler traffic until separate
+reviewed slices provide all of:
 
 - production deployment wiring for the Python capacity-reserving claimant;
-- Murmur certificate generation, protected delivery, rotation, and rollback;
 - an external default-deny egress boundary covering host/public/private and
   project ranges in addition to the service-qualified browser deny policy;
 - fixed 1 GiB/no-swap service containment and production observability; and
 - a one-board B0 canary with frozen assignment and explicit rollback.
 
-Do not expose port 9443 publicly, deploy this target, or route a board based on
-this document alone.
+The manual deployment uses `/home/deploy/.local/share/jobseek-lightpanda`, the
+separate `jobseek-lightpanda` Compose project, one `renderer` service, and an
+internal `172.30.94.0/29` bridge. It retains only the CA, server certificate,
+server key, and public pins; no client private key reaches Murmur. The paused
+legacy Murmur containers remain stopped and byte-for-byte unchanged. Do not
+expose port 9443 or route a board based on this document alone. The dormant
+container uses bounded `on-failure:3` restart behavior and bounded local logs;
+neither a reboot loop nor unbounded log growth is accepted.

@@ -57,6 +57,66 @@ func TestRuntimeV1ServiceHelloIsExactAndBounded(t *testing.T) {
 	}
 }
 
+func TestRuntimeV1ServiceNoClientProbeRequiresCertificateRequired(t *testing.T) {
+	fixture := newServiceTLSFixture(t)
+	_, address, stop := startRuntimeV1ServiceTest(t, fixture, runtimeV1ExecutorFunc(
+		func(context.Context, *runtimev1.BrowserExecutionInput) *runtimev1.BrowserResult {
+			t.Fatal("unauthenticated probe reached executor")
+			return nil
+		},
+	))
+	defer stop()
+	if err := probeRuntimeV1ServiceWithoutClient(address, fixture.server.CAPath, serviceTestIP); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRuntimeV1ServiceNoClientProbeRejectsPermissiveServer(t *testing.T) {
+	fixture := newServiceTLSFixture(t)
+	pair, err := tls.LoadX509KeyPair(
+		fixture.server.CertificatePath,
+		fixture.server.PrivateKeyPath,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	done := make(chan error, 1)
+	go func() {
+		raw, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			done <- acceptErr
+			return
+		}
+		defer raw.Close()
+		connection := tls.Server(raw, &tls.Config{
+			MinVersion:   tls.VersionTLS13,
+			MaxVersion:   tls.VersionTLS13,
+			Certificates: []tls.Certificate{pair},
+			NextProtos:   []string{runtimeV1ServiceALPN},
+		})
+		if handshakeErr := connection.Handshake(); handshakeErr != nil {
+			done <- handshakeErr
+			return
+		}
+		_, writeErr := connection.Write([]byte{1})
+		done <- writeErr
+	}()
+	err = probeRuntimeV1ServiceWithoutClient(
+		listener.Addr().String(), fixture.server.CAPath, serviceTestIP,
+	)
+	if err == nil || !strings.Contains(err.Error(), "accepted a client without a certificate") {
+		t.Fatalf("permissive service probe error = %v", err)
+	}
+	if serverErr := <-done; serverErr != nil {
+		t.Fatal(serverErr)
+	}
+}
+
 func TestRuntimeV1ServiceConfigArgumentsAreClosed(t *testing.T) {
 	config, err := runtimeV1ServiceConfigFromArgs([]string{
 		"--listen", runtimeV1ServiceListenAddress, "--service-ip", serviceTestIP,

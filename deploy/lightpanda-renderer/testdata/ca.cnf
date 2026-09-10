@@ -1,0 +1,13 @@
+[req]
+distinguished_name=dn
+x509_extensions=ca_ext
+prompt=no
+
+[dn]
+CN=Jobseek Lightpanda B0 Test CA
+
+[ca_ext]
+basicConstraints=critical,CA:TRUE,pathlen:0
+keyUsage=critical,keyCertSign,cRLSign
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "host_architecture": "arm64",
+  "service_ip": "10.0.0.5",
+  "public_ipv4": "178.105.51.62/32",
+  "public_ipv6_prefix": "2a01:4f8:1c18:d64c::/64",
+  "public_ipv6_address": "2a01:4f8:1c18:d64c::1",
+  "private_ipv4": "10.0.0.5/32",
+  "project_network": "10.0.0.0/16",
+  "default_docker_network": "172.17.0.0/16",
+  "provider_gateway": "172.31.1.1/32",
+  "renderer_network_name": "jobseek-lightpanda-renderer",
+  "renderer_network": "172.30.94.0/29",
+  "renderer_address": "172.30.94.2"
+}

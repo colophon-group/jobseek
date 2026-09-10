@@ -31,6 +31,7 @@ import (
 
 const (
 	runtimeV1ServiceFlag          = "--runtime-v1-service"
+	runtimeV1ServiceProbeNoClient = "--runtime-v1-service-probe-no-client"
 	runtimeV1ServiceProtocol      = "jobseek.lightpanda.service/v1"
 	runtimeV1ServiceALPN          = "jobseek-lightpanda-b0/1"
 	runtimeV1ServiceClientURI     = "spiffe://jobseek/crawler/lightpanda-b0"
@@ -46,6 +47,45 @@ const (
 	defaultMemoryMaxPath          = "/sys/fs/cgroup/memory.max"
 	defaultMemorySwapMaxPath      = "/sys/fs/cgroup/memory.swap.max"
 )
+
+func probeRuntimeV1ServiceWithoutClient(address, caPath, serverName string) error {
+	caPEM, err := os.ReadFile(caPath)
+	if err != nil {
+		return err
+	}
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM(caPEM) {
+		return errors.New("runtime-v1 probe CA is invalid")
+	}
+	dialer := net.Dialer{Timeout: 3 * time.Second}
+	raw, err := dialer.Dial("tcp", address)
+	if err != nil {
+		return err
+	}
+	defer raw.Close()
+	connection := tls.Client(raw, &tls.Config{
+		MinVersion: tls.VersionTLS13,
+		MaxVersion: tls.VersionTLS13,
+		RootCAs:    roots,
+		ServerName: serverName,
+		NextProtos: []string{runtimeV1ServiceALPN},
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err = connection.HandshakeContext(ctx)
+	if err == nil {
+		_ = connection.SetReadDeadline(time.Now().Add(3 * time.Second))
+		var one [1]byte
+		_, err = connection.Read(one[:])
+	}
+	if err == nil {
+		return errors.New("runtime-v1 service accepted a client without a certificate")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "certificate required") {
+		return errors.New("runtime-v1 service did not return certificate_required")
+	}
+	return nil
+}
 
 var runtimeV1ServiceHelloJSON = []byte(
 	`{"protocol":"jobseek.lightpanda.service/v1","runtime_contract":"crawler.runtime/v1","mode":"b0","capacity":4,"memory_max_bytes":1073741824,"memory_swap_max_bytes":0}`,

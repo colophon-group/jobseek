@@ -1,4 +1,5 @@
-FROM golang:1.24-bookworm AS go-source
+ARG GO_IMAGE=golang:1.24.7-alpine3.22@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+FROM ${GO_IMAGE} AS go-source
 
 # The primary build context remains this pilot directory. The caller supplies
 # apps/crawler/contracts as the narrowly scoped BuildKit context "contracts";
@@ -70,6 +71,11 @@ COPY --from=build /out/go-lightpanda /usr/local/bin/go-lightpanda
 ENTRYPOINT ["/usr/local/bin/go-lightpanda"]
 
 FROM pilot-base AS service
+
+ARG SOURCE_COMMIT
+RUN test "${#SOURCE_COMMIT}" -eq 40 \
+    && case "${SOURCE_COMMIT}" in ''|*[!0-9a-f]*) exit 1 ;; esac
+LABEL org.jobseek.lightpanda.source-commit="${SOURCE_COMMIT}"
 
 COPY --from=build /out/go-lightpanda /usr/local/bin/go-lightpanda
 
