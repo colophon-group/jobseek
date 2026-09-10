@@ -53,7 +53,7 @@ if (( ! ci_rollback_smoke )); then
   [[ "$GHCR_PULL_USERNAME" =~ ^[A-Za-z0-9_-]+$ && -n "$GHCR_PULL_TOKEN" ]] || exit 2
 fi
 
-for relative in compose.yml inventory.json verify.py validate_pki.py pins.env release.env pki/ca.pem pki/server.pem pki/server-key.pem pki/client.pem; do
+for relative in compose.yml inventory.json verify.py validate_pki.py lock.sh pins.env release.env pki/ca.pem pki/server.pem pki/server-key.pem pki/client.pem; do
   [[ -f "$STAGE/$relative" && ! -L "$STAGE/$relative" ]] || exit 2
   [[ "$(stat -c '%s' "$STAGE/$relative")" -le 131072 ]] || exit 2
 done
@@ -81,13 +81,9 @@ else
 fi
 [[ "$(stat -c '%U:%G:%a' "$ROOT")" == deploy:deploy:700 ]] || exit 1
 install -d -m 0700 "$RELEASE_ROOT"
-[[ -f "$ROOT/renderer.lock" && ! -L "$ROOT/renderer.lock" ]] || {
-  [[ ! -e "$ROOT/renderer.lock" && ! -L "$ROOT/renderer.lock" ]] || exit 1
-  install -m 0600 /dev/null "$ROOT/renderer.lock"
-}
-[[ "$(stat -c '%U:%G:%a' "$ROOT/renderer.lock")" == deploy:deploy:600 ]] || exit 1
-exec 9>"$ROOT/renderer.lock"
-flock -w 900 9 || {
+# shellcheck source=deploy/lightpanda-renderer/lock.sh
+source "$STAGE/lock.sh"
+acquire_renderer_lock "$ROOT/renderer.lock" 900 || {
   echo "renderer deployment lock is busy" >&2
   exit 1
 }

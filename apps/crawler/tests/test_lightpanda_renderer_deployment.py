@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -202,7 +203,7 @@ def test_protected_snapshot_is_stopped_exact_and_secret_safe() -> None:
 def test_transaction_is_renderer_scoped_and_contains_no_global_mutation() -> None:
     scripts = "\n".join(
         (DEPLOY / name).read_text(encoding="utf-8")
-        for name in ("deploy-remote.sh", "install-host.sh")
+        for name in ("deploy-remote.sh", "install-host.sh", "lock.sh")
     )
     forbidden = (
         "docker compose down",
@@ -226,6 +227,8 @@ def test_transaction_is_renderer_scoped_and_contains_no_global_mutation() -> Non
     assert 'up --detach --no-deps "$SERVICE"' in scripts
     assert "assert-protected" in scripts
     assert "/home/deploy/.local/share/jobseek-lightpanda" in scripts
+    assert "set -o noclobber" in scripts
+    assert "/proc/$$/fd/9" in scripts
     assert "JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=after-active-switch" not in (
         DEPLOY / "deploy-remote.sh"
     ).read_text(encoding="utf-8")
@@ -245,7 +248,8 @@ def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
     assert "cancel-in-progress: false" in workflow
     assert "if: github.event_name == 'workflow_dispatch'" in workflow
     assert 'test "$DISPATCH_REF" = refs/heads/main' in workflow
-    assert "ref: main" in workflow
+    assert workflow.count("ref: ${{ github.sha }}") == 2
+    assert "publish revision differs from the validated dispatch revision" in workflow
     assert "platforms: linux/arm64" in workflow
     assert "HETZNER_MURMUR_KNOWN_HOSTS" in workflow
     assert "LIGHTPANDA_B0_CLIENT_KEY_PEM" not in workflow
@@ -281,52 +285,16 @@ def test_compose_source_has_no_host_publication_or_external_authority() -> None:
 
 def test_service_builder_is_patch_and_digest_pinned() -> None:
     dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text(encoding="utf-8")
-    assert (
-        "golang:1.24.7-alpine3.22@sha256:"
-        "fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5" in dockerfile
+    assert re.search(
+        r"^ARG GO_IMAGE=golang:1\.24\.7-alpine3\.22@sha256:[0-9a-f]{64}$",
+        dockerfile,
+        re.MULTILINE,
     )
 
 
 def test_pki_validator_accepts_only_reviewed_profile(tmp_path: Path) -> None:
-    ca_config = tmp_path / "ca.cnf"
-    ca_config.write_text(
-        """
-[req]
-distinguished_name=dn
-x509_extensions=ca_ext
-prompt=no
-[dn]
-CN=Jobseek Lightpanda B0 Test CA
-[ca_ext]
-basicConstraints=critical,CA:TRUE,pathlen:0
-keyUsage=critical,keyCertSign,cRLSign
-subjectKeyIdentifier=hash
-authorityKeyIdentifier=keyid:always
-""".strip()
-        + "\n",
-        encoding="utf-8",
-    )
-    leaf_config = tmp_path / "leaf.cnf"
-    leaf_config.write_text(
-        """
-[server]
-basicConstraints=critical,CA:FALSE
-keyUsage=critical,digitalSignature
-extendedKeyUsage=serverAuth
-subjectAltName=IP:10.0.0.5
-subjectKeyIdentifier=hash
-authorityKeyIdentifier=keyid,issuer
-[client]
-basicConstraints=critical,CA:FALSE
-keyUsage=critical,digitalSignature
-extendedKeyUsage=clientAuth
-subjectAltName=URI:spiffe://jobseek/crawler/lightpanda-b0
-subjectKeyIdentifier=hash
-authorityKeyIdentifier=keyid,issuer
-""".strip()
-        + "\n",
-        encoding="utf-8",
-    )
+    ca_config = DEPLOY / "testdata/ca.cnf"
+    leaf_config = DEPLOY / "testdata/leaf.cnf"
     ca_key, ca_cert = tmp_path / "ca-key.pem", tmp_path / "ca.pem"
     subprocess.run(
         [

@@ -75,38 +75,56 @@ docker_group="$(stat -c '%G' /var/run/docker.sock)"
 [[ "$docker_group" != UNKNOWN ]] || exit 1
 sudo install -d -o deploy -g deploy -m 0700 "$ROOT" "$ROOT/releases"
 
+# Race the exact production lock helper from an absent lock file. Both
+# processes must serialize through one inode and never overlap the critical
+# section.
+lock_source="$(pwd)/deploy/lightpanda-renderer/lock.sh"
+lock_race="$ROOT/lock-race-test"
+lock_barrier="$ROOT/lock-race-start"
+lock_critical="$ROOT/lock-race-critical"
+first_lock_ready="$ROOT/lock-race-ready-1"
+second_lock_ready="$ROOT/lock-race-ready-2"
+lock_race_worker() {
+  local ready_path="$1"
+  sudo -u deploy bash -c '
+    set -euo pipefail
+    source "$1"
+    touch "$5"
+    while [[ ! -e "$2" ]]; do sleep 0.01; done
+    acquire_renderer_lock "$3" 10
+    mkdir "$4"
+    sleep 0.2
+    rmdir "$4"
+  ' bash "$lock_source" "$lock_barrier" "$lock_race" "$lock_critical" "$ready_path"
+}
+lock_race_worker "$first_lock_ready" &
+first_lock_pid=$!
+lock_race_worker "$second_lock_ready" &
+second_lock_pid=$!
+for ((attempt = 0; attempt < 1000; attempt++)); do
+  if [[ -e "$first_lock_ready" && -e "$second_lock_ready" ]]; then
+    break
+  fi
+  kill -0 "$first_lock_pid" "$second_lock_pid" 2>/dev/null || break
+  sleep 0.01
+done
+if [[ ! -e "$first_lock_ready" || ! -e "$second_lock_ready" ]]; then
+  kill "$first_lock_pid" "$second_lock_pid" 2>/dev/null || :
+  wait "$first_lock_pid" "$second_lock_pid" 2>/dev/null || :
+  exit 1
+fi
+sudo -u deploy touch "$lock_barrier"
+lock_race_status=0
+wait "$first_lock_pid" || lock_race_status=1
+wait "$second_lock_pid" || lock_race_status=1
+[[ "$lock_race_status" -eq 0 ]]
+sudo -u deploy rm -- \
+  "$lock_barrier" "$first_lock_ready" "$second_lock_ready" "$lock_race"
+
 work="$(mktemp -d)"
-cat >"$work/ca.cnf" <<'EOF'
-[req]
-distinguished_name=dn
-x509_extensions=ca_ext
-prompt=no
-[dn]
-CN=Jobseek Lightpanda B0 CI CA
-[ca_ext]
-basicConstraints=critical,CA:TRUE,pathlen:0
-keyUsage=critical,keyCertSign,cRLSign
-subjectKeyIdentifier=hash
-authorityKeyIdentifier=keyid:always
-EOF
-cat >"$work/leaf.cnf" <<'EOF'
-[server]
-basicConstraints=critical,CA:FALSE
-keyUsage=critical,digitalSignature
-extendedKeyUsage=serverAuth
-subjectAltName=IP:10.0.0.5
-subjectKeyIdentifier=hash
-authorityKeyIdentifier=keyid,issuer
-[client]
-basicConstraints=critical,CA:FALSE
-keyUsage=critical,digitalSignature
-extendedKeyUsage=clientAuth
-subjectAltName=URI:spiffe://jobseek/crawler/lightpanda-b0
-subjectKeyIdentifier=hash
-authorityKeyIdentifier=keyid,issuer
-EOF
 openssl req -new -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
-  -pkeyopt ec_param_enc:named_curve -nodes -sha256 -days 1095 -config "$work/ca.cnf" \
+  -pkeyopt ec_param_enc:named_curve -nodes -sha256 -days 1095 \
+  -config deploy/lightpanda-renderer/testdata/ca.cnf \
   -keyout "$work/ca-key.pem" -out "$work/ca.pem" >/dev/null 2>&1
 for leaf in server client; do
   openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
@@ -115,7 +133,8 @@ for leaf in server client; do
     >/dev/null 2>&1
   openssl x509 -req -in "$work/$leaf.csr" -CA "$work/ca.pem" \
     -CAkey "$work/ca-key.pem" -CAcreateserial -days 180 -sha256 \
-    -extfile "$work/leaf.cnf" -extensions "$leaf" -out "$work/$leaf.pem" \
+    -extfile deploy/lightpanda-renderer/testdata/leaf.cnf \
+    -extensions "$leaf" -out "$work/$leaf.pem" \
     >/dev/null 2>&1
 done
 python3 deploy/lightpanda-renderer/validate_pki.py \
@@ -175,17 +194,30 @@ docker compose --project-name jobseek-lightpanda \
 previous_container_id="$(python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env")"
 previous_network_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
 [[ "$previous_container_id" =~ ^[0-9a-f]{64}$ && "$previous_network_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
+previous_bridge="br-${previous_network_id:0:12}"
+sudo ip address add 172.30.94.1/29 dev "$previous_bridge"
+set +e
+python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env" >/dev/null 2>&1
+routable_bridge_status=$?
+set -e
+sudo ip address del 172.30.94.1/29 dev "$previous_bridge"
+[[ "$routable_bridge_status" -ne 0 ]] || {
+  echo "renderer verifier accepted a routable host bridge address" >&2
+  exit 1
+}
+python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env" \
+  --expected-id "$previous_container_id" >/dev/null
 sudo -u deploy ln -s "$PREVIOUS_RELEASE" "$ROOT/active"
 
 stage="$(sudo -u deploy mktemp -d '/tmp/jobseek-lightpanda-renderer.r999999a1.XXXXXX')"
 sudo -u deploy install -d -m 0700 "$stage/pki"
-for artifact in compose.yml inventory.json verify.py validate_pki.py install-host.sh; do
+for artifact in compose.yml inventory.json verify.py validate_pki.py lock.sh install-host.sh; do
   sudo -u deploy install -m 0600 "deploy/lightpanda-renderer/$artifact" "$stage/$artifact"
 done
 for file in ca.pem server.pem server-key.pem client.pem; do
-  sudo -u deploy install -m 0600 "$work/$file" "$stage/pki/$file"
+  sudo install -o deploy -g deploy -m 0600 "$work/$file" "$stage/pki/$file"
 done
-sudo -u deploy install -m 0600 "$work/pins.env" "$stage/pins.env"
+sudo install -o deploy -g deploy -m 0600 "$work/pins.env" "$stage/pins.env"
 {
   printf 'RENDERER_IMAGE_REF=%s\n' "$IMAGE"
   printf 'RENDERER_RELEASE_DIR=%s\n' "$CANDIDATE_RELEASE"
@@ -193,7 +225,8 @@ sudo -u deploy install -m 0600 "$work/pins.env" "$stage/pins.env"
   printf 'RELEASE_ID=%s\n' "$CANDIDATE_RELEASE_ID"
   cat "$work/pins.env"
 } >"$work/candidate-release.env"
-sudo -u deploy install -m 0600 "$work/candidate-release.env" "$stage/release.env"
+sudo install -o deploy -g deploy -m 0600 \
+  "$work/candidate-release.env" "$stage/release.env"
 
 set +e
 sudo -u deploy -g "$docker_group" env \
@@ -238,7 +271,8 @@ FIRST_INSTALL_RELEASE="$ROOT/releases/$FIRST_INSTALL_RELEASE_ID"
   printf 'RELEASE_ID=%s\n' "$FIRST_INSTALL_RELEASE_ID"
   cat "$work/pins.env"
 } >"$work/first-install-release.env"
-sudo -u deploy install -m 0600 "$work/first-install-release.env" "$stage/release.env"
+sudo install -o deploy -g deploy -m 0600 \
+  "$work/first-install-release.env" "$stage/release.env"
 set +e
 sudo -u deploy -g "$docker_group" env \
   CI=true \

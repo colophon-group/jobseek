@@ -1,0 +1,15 @@
+[server]
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature
+extendedKeyUsage=serverAuth
+subjectAltName=IP:10.0.0.5
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+
+[client]
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature
+extendedKeyUsage=clientAuth
+subjectAltName=URI:spiffe://jobseek/crawler/lightpanda-b0
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer

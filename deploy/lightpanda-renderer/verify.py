@@ -237,59 +237,36 @@ def all_networks() -> list[dict[str, Any]]:
     return [] if not ids else run_json(["docker", "network", "inspect", *ids])
 
 
-def reconcile_host(inventory: dict[str, object], *, renderer_exists: bool) -> None:
-    if platform.machine().lower() not in {"aarch64", "arm64"}:
-        fail("Murmur host is not ARM64")
-
+def reconcile_renderer_host_isolation(
+    inventory: dict[str, object], *, renderer_exists: bool
+) -> None:
     addresses = run_json(["ip", "-j", "address", "show"])
-    address_info = [
-        info
-        for link in addresses
-        for info in link.get("addr_info", [])
-        if "local" in info and "prefixlen" in info
-    ]
-    observed_addresses = {f"{info['local']}/{info['prefixlen']}" for info in address_info}
-    for key in ("public_ipv4", "private_ipv4"):
-        if inventory[key] not in observed_addresses:
-            fail("live host address inventory drifted")
-    public_ipv6_prefix = ipaddress.ip_network(str(inventory["public_ipv6_prefix"]))
-    if not any(
-        info["local"] == inventory["public_ipv6_address"]
-        and info["prefixlen"] == public_ipv6_prefix.prefixlen
-        for info in address_info
-    ):
-        fail("live host IPv6 address inventory drifted")
-
     routes = run_json(["ip", "-j", "route", "show", "table", "all"])
-    if not any(route.get("dst") == inventory["project_network"] for route in routes):
-        fail("live project route inventory drifted")
-    provider_gateway = str(ipaddress.ip_network(str(inventory["provider_gateway"])).network_address)
-    if not any(route.get("gateway") == provider_gateway for route in routes):
-        fail("live provider gateway inventory drifted")
-
     networks = all_networks()
-    bridge = [network for network in networks if network.get("Name") == "bridge"]
-    if len(bridge) != 1:
-        fail("default Docker bridge identity is not exact")
-    bridge_subnets = {
-        config.get("Subnet") for config in (bridge[0].get("IPAM", {}).get("Config") or [])
-    }
-    if bridge_subnets != {inventory["default_docker_network"]}:
-        fail("default Docker bridge prefix drifted")
-
     candidate = ipaddress.ip_network(str(inventory["renderer_network"]))
     named_renderer = [network for network in networks if network.get("Name") == NETWORK]
+    if renderer_exists and len(named_renderer) != 1:
+        fail("renderer network is absent or duplicated")
+    if len(named_renderer) > 1:
+        fail("renderer network identity is duplicated")
     if named_renderer:
-        if len(named_renderer) != 1:
-            fail("renderer network identity is duplicated")
         renderer = named_renderer[0]
         network_id = str(renderer.get("Id", ""))
         if not re.fullmatch(r"[0-9a-f]{64}", network_id):
             fail("renderer network content ID drifted")
         bridge_name = f"br-{network_id[:12]}"
         bridge_links = [link for link in addresses if link.get("ifname") == bridge_name]
-        if len(bridge_links) != 1 or bridge_links[0].get("addr_info") not in (None, []):
-            fail("isolated renderer bridge unexpectedly has a host address")
+        if len(bridge_links) != 1:
+            fail("isolated renderer bridge device is not exact")
+        bridge_addresses = bridge_links[0].get("addr_info") or []
+        if len(bridge_addresses) > 1 or any(
+            info.get("family") != "inet6"
+            or info.get("scope") != "link"
+            or info.get("prefixlen") != 64
+            or ipaddress.ip_address(str(info.get("local"))) not in ipaddress.ip_network("fe80::/10")
+            for info in bridge_addresses
+        ):
+            fail("isolated renderer bridge unexpectedly has a routable host address")
         subnets = {
             config.get("Subnet") for config in (renderer.get("IPAM", {}).get("Config") or [])
         }
@@ -335,6 +312,49 @@ def reconcile_host(inventory: dict[str, object], *, renderer_exists: bool) -> No
         if route_network.version != candidate.version or not route_network.overlaps(candidate):
             continue
         fail("renderer bridge overlaps an existing host route")
+
+
+def reconcile_host(inventory: dict[str, object], *, renderer_exists: bool) -> None:
+    if platform.machine().lower() not in {"aarch64", "arm64"}:
+        fail("Murmur host is not ARM64")
+
+    addresses = run_json(["ip", "-j", "address", "show"])
+    address_info = [
+        info
+        for link in addresses
+        for info in link.get("addr_info", [])
+        if "local" in info and "prefixlen" in info
+    ]
+    observed_addresses = {f"{info['local']}/{info['prefixlen']}" for info in address_info}
+    for key in ("public_ipv4", "private_ipv4"):
+        if inventory[key] not in observed_addresses:
+            fail("live host address inventory drifted")
+    public_ipv6_prefix = ipaddress.ip_network(str(inventory["public_ipv6_prefix"]))
+    if not any(
+        info["local"] == inventory["public_ipv6_address"]
+        and info["prefixlen"] == public_ipv6_prefix.prefixlen
+        for info in address_info
+    ):
+        fail("live host IPv6 address inventory drifted")
+
+    routes = run_json(["ip", "-j", "route", "show", "table", "all"])
+    if not any(route.get("dst") == inventory["project_network"] for route in routes):
+        fail("live project route inventory drifted")
+    provider_gateway = str(ipaddress.ip_network(str(inventory["provider_gateway"])).network_address)
+    if not any(route.get("gateway") == provider_gateway for route in routes):
+        fail("live provider gateway inventory drifted")
+
+    networks = all_networks()
+    bridge = [network for network in networks if network.get("Name") == "bridge"]
+    if len(bridge) != 1:
+        fail("default Docker bridge identity is not exact")
+    bridge_subnets = {
+        config.get("Subnet") for config in (bridge[0].get("IPAM", {}).get("Config") or [])
+    }
+    if bridge_subnets != {inventory["default_docker_network"]}:
+        fail("default Docker bridge prefix drifted")
+
+    reconcile_renderer_host_isolation(inventory, renderer_exists=renderer_exists)
 
     if not renderer_exists:
         available_kib = None
@@ -779,6 +799,7 @@ def validate_running_inspect(
 def verify_running_with_image(environment: Path, *, image_id: str, expected_id: str | None) -> str:
     env = read_env(environment)
     inventory = load_inventory(environment.parent / "inventory.json")
+    reconcile_renderer_host_isolation(inventory, renderer_exists=True)
     inspects = run_json(["docker", "inspect", CONTAINER])
     if len(inspects) != 1:
         fail("renderer container identity is not exact")
@@ -837,7 +858,10 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
         ["docker", "exec", CONTAINER, "cat", "/proc/net/ipv6_route"]
     ).splitlines()
     if any(
-        len(line.split()) >= 2 and line.split()[0] == "0" * 32 and line.split()[1] == "00"
+        len(line.split()) >= 10
+        and line.split()[0] == "0" * 32
+        and line.split()[1] == "00"
+        and line.split()[-1] != "lo"
         for line in ipv6_routes
     ):
         fail("internal renderer network unexpectedly has an IPv6 default route")

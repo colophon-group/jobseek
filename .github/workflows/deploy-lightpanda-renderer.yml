@@ -38,6 +38,12 @@ jobs:
           bash -n deploy/lightpanda-renderer/deploy-remote.sh
           bash -n deploy/lightpanda-renderer/install-host.sh
           bash -n deploy/lightpanda-renderer/ci-smoke.sh
+          bash -n deploy/lightpanda-renderer/lock.sh
+          shellcheck \
+            deploy/lightpanda-renderer/deploy-remote.sh \
+            deploy/lightpanda-renderer/install-host.sh \
+            deploy/lightpanda-renderer/ci-smoke.sh \
+            deploy/lightpanda-renderer/lock.sh
           python3 -m py_compile \
             deploy/lightpanda-renderer/verify.py \
             deploy/lightpanda-renderer/validate_pki.py
@@ -111,23 +117,31 @@ jobs:
       - name: Refuse non-main production dispatch
         env:
           DISPATCH_REF: ${{ github.ref }}
+          DISPATCH_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           test "$DISPATCH_REF" = refs/heads/main
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
 
       - name: Check out exact main for production dispatch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 1
           persist-credentials: false
 
       - name: Attest source revision
         id: source
+        env:
+          DISPATCH_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           source_commit="$(git rev-parse HEAD)"
           [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$source_commit" == "$DISPATCH_SHA" ]] || {
+            echo "publish revision differs from the validated dispatch revision" >&2
+            exit 1
+          }
           remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')"
           [[ "$remote_main" == "$source_commit" ]] || {
             echo "checked-out revision is no longer exact main" >&2
@@ -182,7 +196,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 1
           persist-credentials: false
 
