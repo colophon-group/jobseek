@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import asyncpg
 import structlog
 
@@ -19,15 +21,19 @@ _technology_id_map: dict[str, int] | None = None
 _occupation_id_map: dict[str, int] | None = None
 _seniority_id_map: dict[str, int] | None = None
 _currency_rates: dict[str, float] | None = None
+_location_resolver_lock = asyncio.Lock()
 
 
 async def _get_location_resolver(pool: asyncpg.Pool) -> LocationResolver:
     """Get or create the location resolver singleton."""
     global _location_resolver
     if _location_resolver is None:
-        _location_resolver = LocationResolver()
-        await _location_resolver.load(pool)
-        log.info("batch.location_resolver.loaded", entries=_location_resolver.entry_count)
+        async with _location_resolver_lock:
+            if _location_resolver is None:
+                resolver = LocationResolver()
+                await resolver.load(pool)
+                _location_resolver = resolver
+                log.info("batch.location_resolver.loaded", entries=resolver.entry_count)
     return _location_resolver
 
 

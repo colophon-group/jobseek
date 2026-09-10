@@ -1,19 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, Loader2 } from "lucide-react";
+import { AlertTriangle, Eye, Loader2 } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { tooltipClass } from "@/components/ui/tooltip-styles";
+import {
+  tooltipClass,
+  tooltipWarningClass,
+} from "@/components/ui/tooltip-styles";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
 import { createWatchlist, type WatchlistFilters } from "@/lib/actions/watchlists";
-import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import type { SelectedLocation } from "@/lib/search/types";
 import type { WorkMode } from "@/lib/search/types";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
+const GENERATED_TITLE_MAX_LENGTH = 100;
+
+function boundedGeneratedTitle(value: string): string {
+  let title = value.slice(0, GENERATED_TITLE_MAX_LENGTH).trimEnd();
+  const finalCodeUnit = title.charCodeAt(title.length - 1);
+  if (finalCodeUnit >= 0xd800 && finalCodeUnit <= 0xdbff) {
+    title = title.slice(0, -1).trimEnd();
+  }
+  return title;
+}
 
 interface SaveSearchButtonProps {
   keywords: string[];
@@ -47,9 +59,23 @@ export function SaveSearchButton({
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { user, isLoggedIn } = useSession();
+  const { isLoggedIn } = useSession();
   const [saving, setSaving] = useState(false);
-  const upgrade = useUpgradeModal();
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const [limitNotice, setLimitNotice] = useState(false);
+  const limitCloseRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => () => clearTimeout(limitCloseRef.current), []);
+
+  function showLimitNotice() {
+    clearTimeout(limitCloseRef.current);
+    setLimitNotice(true);
+    setTooltipOpen(true);
+    limitCloseRef.current = setTimeout(() => {
+      setTooltipOpen(false);
+      setLimitNotice(false);
+    }, 3_000);
+  }
 
   async function handleSave() {
     if (!isLoggedIn) {
@@ -64,7 +90,15 @@ export function SaveSearchButton({
       if (keywords.length > 0) parts.push(keywords.join(", "));
       if (locations.length > 0) parts.push(locations.map((l) => l.name).join(", "));
       if (occupations.length > 0) parts.push(occupations.map((o) => o.name).join(", "));
-      const title = parts.length > 0 ? parts.join(" · ") : "My search";
+      const title = boundedGeneratedTitle(
+        parts.length > 0
+          ? parts.join(" · ")
+          : t({
+            id: "watchlists.savedSearch.defaultTitle",
+            comment: "Default watchlist title when saving a search without descriptive filters",
+            message: "My search",
+          }),
+      );
 
       const filters: WatchlistFilters = {};
       if (keywords.length > 0) filters.keywords = keywords;
@@ -89,23 +123,14 @@ export function SaveSearchButton({
 
       if ("error" in result) {
         if (result.error === "limit_reached") {
-          // Surface the upgrade modal with billing CTA instead of an
-          // opaque redirect to /settings — mirrors the pattern used by
-          // "make private", "enable alerts", and "mirror" in
-          // watchlist-action-bar. The modal itself links to
-          // /settings/billing (see upgrade-modal.tsx).
-          upgrade.show(t({
-            id: "upgrade.reason.saveSearch",
-            comment: "Reason shown in upgrade modal when saving a search hits the watchlist limit",
-            message: "You've reached your watchlist limit. Upgrade your plan to save more searches as watchlists.",
-          }));
+          showLimitNotice();
         }
         return;
       }
 
-      if ("slug" in result && user?.username) {
-        router.push(lp(`/${user.username}/${result.slug}`));
-      }
+      router.push(lp(`/watchlists/${result.id}`));
+    } catch {
+      // Keep the current route unchanged. A later click is an explicit retry.
     } finally {
       setSaving(false);
     }
@@ -128,11 +153,22 @@ export function SaveSearchButton({
         comment: "Tooltip when user needs to log in to save search",
         message: "Log in to save this search as a watchlist",
       });
+  const limitLabel = t({
+    id: "watchlists.card.limitReached",
+    comment: "Warning tooltip when the account-wide watchlist limit is reached",
+    message: "Maximum of 10 watchlists reached",
+  });
 
   return (
     <>
       <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
-      <Tooltip.Root>
+      <Tooltip.Root
+        open={tooltipOpen}
+        onOpenChange={(open) => {
+          setTooltipOpen(open);
+          if (!open) setLimitNotice(false);
+        }}
+      >
         <Tooltip.Trigger asChild>
           <button
             onClick={handleSave}
@@ -144,14 +180,22 @@ export function SaveSearchButton({
           </button>
         </Tooltip.Trigger>
         <Tooltip.Portal>
-          <Tooltip.Content className={tooltipClass} sideOffset={5}>
-            {tooltip}
-            <Tooltip.Arrow className="fill-surface" />
+          <Tooltip.Content
+            className={limitNotice ? tooltipWarningClass : tooltipClass}
+            side="top"
+            sideOffset={5}
+          >
+            <span className="flex items-center gap-1.5">
+              {limitNotice ? (
+                <AlertTriangle size={12} className="shrink-0" aria-hidden="true" />
+              ) : null}
+              {limitNotice ? limitLabel : tooltip}
+            </span>
+            {!limitNotice ? <Tooltip.Arrow className="fill-surface" /> : null}
           </Tooltip.Content>
         </Tooltip.Portal>
       </Tooltip.Root>
       </Tooltip.Provider>
-      <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
     </>
   );
 }

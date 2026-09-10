@@ -63,7 +63,8 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 | `Plus` | Add (job, keyword, watchlist) | `c/my-jobs/quick-actions.tsx`, `c/watchlist/watchlist-card.tsx` |
 | `Pencil` | Edit | `c/watchlist/watchlist-action-bar.tsx`, `a/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx` |
 | `Trash2` | Delete | `c/my-jobs/interview-list.tsx`, `c/watchlist/watchlist-action-bar.tsx` |
-| `Copy` | Copy URL / text | `c/watchlist/public-watchlist-search.tsx`, `c/watchlist/watchlist-action-bar.tsx` |
+| `Copy` | Clone a shared watchlist / copy text | `a/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx`, agent-prompt controls |
+| `Share2` | Copy an unlisted share URL | `c/watchlist/watchlist-card.tsx`, `c/watchlist/watchlist-action-bar.tsx` |
 | `Bookmark` | Save (unfilled) | `c/watchlist/watchlist-job-list.tsx` |
 | `BookmarkCheck` | Saved (filled) — paired with `Bookmark` via `Icon = saved ? BookmarkCheck : Bookmark` | `c/search/save-button.tsx` |
 | `Bell` | Alerts on | `c/watchlist/watchlist-action-bar.tsx` |
@@ -78,7 +79,6 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 |---|---|---|
 | `AlertTriangle` | Warning / dangerous-action confirmation | `c/ui/upgrade-modal.tsx`, `c/PendingJobWarning.tsx` |
 | `Info` | Inline info / disclosure | `c/CookieBanner.tsx`, `c/HowWeIndexContent.tsx` |
-| `Lightbulb` | Tip / suggestion | `c/watchlist/watchlist-tip-banner.tsx` |
 | `CircleCheck` | Success state (post-action confirmation) | `c/Pricing.tsx`, `a/verify-email/page.tsx` |
 | `Loader2` | Loading spinner (`animate-spin`) | `c/InfiniteScrollSentinel.tsx`, `c/search/technology-modal.tsx` |
 | `Construction` | "Work in progress" placeholder | `a/(app)/progress/progress-loader.tsx` |
@@ -104,7 +104,7 @@ These are mapped from `siteConfig.features.sections[*].pointIcons` strings — d
 | `stats` | `BarChart3` | Pipeline analytics |
 | `curate` | `Target` | Curate companies into a watchlist |
 | `companies` | `Building2` | Companies indexed |
-| `share` | `Share2` | Share watchlists publicly |
+| `share` | `Share2` | Copy an unlisted watchlist link |
 
 ## Conventions
 

@@ -6,7 +6,6 @@ import { CookieBanner } from "@/components/CookieBanner";
 import { SearchStateProvider } from "@/components/providers/SearchStateProvider";
 import { ViewerTimezoneCookie } from "@/components/ViewerTimezoneCookie";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
-import { WatchlistTipBanner } from "@/components/watchlist/watchlist-tip-banner";
 import { BackToTop } from "@/components/ui/back-to-top";
 import { SkipToContentLink } from "@/components/SkipToContentLink";
 import { getCurrencyRates } from "@/lib/services/search";
@@ -34,7 +33,6 @@ export default async function AppLayout({ children }: Props) {
           <div className="flex min-h-0 flex-1 flex-col md:pt-12">
             <CookieBanner aboveBottomBar />
             <UpgradeBanner aboveBottomBar />
-            <WatchlistTipBanner aboveBottomBar />
             <main
               id="main-content"
               tabIndex={-1}

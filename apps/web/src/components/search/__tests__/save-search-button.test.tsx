@@ -2,10 +2,8 @@
  * Tests for SaveSearchButton — issue #3036 sub-bug 1.
  *
  * When createWatchlist returns `{ error: "limit_reached" }`, the
- * pre-fix behavior was a silent `router.push("/settings")` (opaque
- * redirect to the General tab, no reason shown). Post-fix the same
- * upgrade modal used elsewhere in the gating subsystem opens; its CTA
- * links to `/settings/billing` (locked down by upgrade-modal.test.tsx).
+ * limit is explained in place without routing the user to a billing page
+ * that has no available purchase action.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -44,7 +42,7 @@ describe("SaveSearchButton (issue #3036)", () => {
     createWatchlistMock.mockReset();
   });
 
-  it("opens upgrade modal (not a redirect) when the server reports limit_reached", async () => {
+  it("shows a non-purchase limit explanation when the server reports limit_reached", async () => {
     createWatchlistMock.mockResolvedValue({ error: "limit_reached" });
 
     render(
@@ -58,12 +56,10 @@ describe("SaveSearchButton (issue #3036)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
 
-    // Upgrade CTA appears (linking to /settings/billing — sub-bug 3) and
-    // there is NO opaque router.push to /settings (sub-bug 1).
-    const upgradeLink = await screen.findByRole("link", { name: /upgrade/i });
-    expect(upgradeLink.getAttribute("href")).toBe("/en/settings/billing");
+    expect(await screen.findByText("Maximum of 10 watchlists reached")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /upgrade/i })).toBeNull();
     await waitFor(() => expect(createWatchlistMock).toHaveBeenCalledTimes(1));
-    expect(pushMock).not.toHaveBeenCalledWith("/en/settings");
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("navigates to the new watchlist on success", async () => {
@@ -79,10 +75,35 @@ describe("SaveSearchButton (issue #3036)", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/en/alice/my-search"));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/en/watchlists/w1"));
     expect(createWatchlistMock.mock.calls[0]?.[0]).toMatchObject({
       isPublic: false,
     });
+  });
+
+  it("bounds a generated title from valid long filters before saving", async () => {
+    createWatchlistMock.mockResolvedValue({ id: "w1", slug: "long-search" });
+
+    render(
+      <SaveSearchButton
+        keywords={[
+          `${"x".repeat(99)}😀later`,
+          ...Array.from({ length: 19 }, (_, index) => `keyword-${index}`),
+        ]}
+        locations={[]}
+        occupations={[]}
+        seniorities={[]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/en/watchlists/w1"));
+    const input = createWatchlistMock.mock.calls[0]?.[0] as { title: string };
+    expect(input.title.length).toBeLessThanOrEqual(100);
+    expect(input.title).not.toMatch(/[\uD800-\uDBFF]$/);
+    expect((createWatchlistMock.mock.calls[0]?.[0] as {
+      filters: { keywords: string[] };
+    }).filters.keywords).toHaveLength(20);
   });
 
   it("includes employment type filters when saving the search", async () => {
@@ -106,5 +127,22 @@ describe("SaveSearchButton (issue #3036)", () => {
         employmentType: ["internship"],
       },
     });
+  });
+
+  it("preserves the current selection when creation fails", async () => {
+    createWatchlistMock.mockRejectedValue(new Error("database unavailable"));
+
+    render(
+      <SaveSearchButton
+        keywords={["engineer"]}
+        locations={[]}
+        occupations={[]}
+        seniorities={[]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
+
+    await waitFor(() => expect(createWatchlistMock).toHaveBeenCalledOnce());
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });

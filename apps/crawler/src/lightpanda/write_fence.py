@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import re
 import uuid
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
@@ -15,6 +15,8 @@ from asyncpg.pool import PoolConnectionProxy
 
 if TYPE_CHECKING:
     from src.lightpanda_queue import Lease
+
+WriteAuthorityGuard = Callable[[], AbstractAsyncContextManager[None]]
 
 _MAX_INTEGER = 9_999_999_999_999
 _TOKEN_RE = re.compile(r"^([1-9][0-9]{0,12}):([1-9][0-9]{0,12})$")
@@ -170,11 +172,20 @@ async def authoritative_write(
     fence: LightpandaWriteFence | None,
     *,
     job_posting_id: str,
+    authority_guard: WriteAuthorityGuard | None = None,
 ) -> AsyncIterator[asyncpg.Connection | PoolConnectionProxy]:
     """Yield the authoritative writer and atomically revoke fenced claims."""
 
     validate_write_fence_target(fence, job_posting_id)
-    async with pool.acquire() as connection:
+
+    @asynccontextmanager
+    async def unguarded() -> AsyncIterator[None]:
+        yield
+
+    if authority_guard is not None and fence is None:
+        raise ValueError("an authority guard requires a write fence")
+    guard = authority_guard() if authority_guard is not None else unguarded()
+    async with guard, pool.acquire() as connection:
         if fence is None:
             yield connection
             return

@@ -24,7 +24,7 @@ export type WatchlistCopyAuthorization = {
 };
 
 export function authorizeWatchlistCopySource(
-  source: { userId: string },
+  source: { userId: string; isShared?: boolean },
   destinationUserId: string,
   requestedSourceKind: WatchlistCopySourceKind = "owned",
 ): WatchlistCopyAuthorization | null {
@@ -33,11 +33,13 @@ export function authorizeWatchlistCopySource(
       return source.userId === destinationUserId
         ? { sourceKind: "owned" }
         : null;
-    case "grant":
     case "share":
+      return source.isShared === true
+        ? { sourceKind: "share" }
+        : null;
+    case "grant":
     case "template":
-      // Dormant until the corresponding server-verified authorization source
-      // exists. In particular, `is_public` is intentionally not evidence.
+      // Dormant until the corresponding server-verified authorization source exists.
       return null;
   }
 }

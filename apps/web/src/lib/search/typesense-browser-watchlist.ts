@@ -5,7 +5,10 @@ import {
 } from "./typesense-browser-key";
 import { buildFilterString, POSTING_FLOW_FILTER } from "./typesense-filters";
 import { COMPANY_BATCH_SIZE } from "./constants";
-import { isTypesenseQueryStringSafe } from "./typesense-query-size";
+import {
+  isTypesenseQueryStringSafe,
+  splitValuesForTypesenseQuery,
+} from "./typesense-query-size";
 import type {
   WatchlistCandidateFilters,
   WatchlistPostingEntry,
@@ -31,12 +34,16 @@ interface JobPostingDoc {
 
 interface SearchHit<T> {
   document: T;
+  text_match?: number;
 }
 
 interface RawSearchResponse {
   found: number;
   hits?: SearchHit<Record<string, unknown>>[];
 }
+
+const TYPESENSE_MAX_PAGE_SIZE = 250;
+const TYPESENSE_BATCH_SAFETY_OFFSET = Number.MAX_SAFE_INTEGER;
 
 async function searchOne(
   cfg: TypesenseBrowserConfig,
@@ -58,6 +65,24 @@ async function searchOne(
     throw new Error(`typesense ${collection} ${res.status}`);
   }
   return res.json();
+}
+
+async function mapWithConcurrency<T, R>(
+  values: readonly T[],
+  concurrency: number,
+  mapper: (value: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(values.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, values.length) }, async () => {
+      while (next < values.length) {
+        const index = next++;
+        results[index] = await mapper(values[index]);
+      }
+    }),
+  );
+  return results;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -157,12 +182,10 @@ export interface WatchlistPostingsParams extends WatchlistCandidateFilters {
 }
 
 /**
- * Browser-side watchlist postings fetch. Mirrors the server-side single-query
- * path when the request fits Typesense's GET query-string limit.
- *
- * For larger requests, throws. Interactive pagination may use its existing
- * server fallback; anonymous shell refreshes instead keep their rendered SSR
- * snapshot so a degraded mount never consumes Fluid CPU.
+ * Browser-side watchlist postings fetch. Large persisted watchlists are split
+ * into URL-safe batches and merged with the same global ordering as the
+ * canonical matcher query. Browser requests are concurrency-bounded so one
+ * valid large list cannot create an unbounded burst against Typesense.
  */
 export async function getWatchlistPostingsBrowser(
   params: WatchlistPostingsParams,
@@ -170,28 +193,152 @@ export async function getWatchlistPostingsBrowser(
   if (!hasWatchlistCandidateScope(params)) {
     return { postings: [], total: 0 };
   }
-  if (params.companyIds.length > COMPANY_BATCH_SIZE) {
-    throw new Error("watchlist exceeds COMPANY_BATCH_SIZE — falling back");
-  }
+  const companyIds = params.anyCompany ? [] : [...new Set(params.companyIds)];
 
   const searchParams = buildWatchlistCandidateSearchParams({
-    filters: params,
+    filters: { ...params, companyIds },
     offset: params.offset,
     limit: params.limit,
   });
-  if (!isTypesenseQueryStringSafe(searchParams)) {
+  const buildBatchPageSearchParams = (
+    batch: readonly string[],
+    offset: number,
+    limit: number,
+  ) => buildWatchlistCandidateSearchParams({
+    filters: {
+      ...params,
+      companyIds: batch,
+      anyCompany: batch.length === 0 ? params.anyCompany : false,
+    },
+    offset,
+    limit,
+  });
+  const buildBatchWindowSearchParams = (
+    batch: readonly string[],
+    offset: number,
+    limit: number,
+  ) => {
+    const {
+      page: _page,
+      per_page: _perPage,
+      ...candidateSearchParams
+    } = buildBatchPageSearchParams(batch, offset, limit);
+    return { ...candidateSearchParams, offset, limit };
+  };
+  const buildBatchSafetyParams = (batch: readonly string[]) =>
+    buildBatchWindowSearchParams(
+      batch,
+      TYPESENSE_BATCH_SAFETY_OFFSET,
+      TYPESENSE_MAX_PAGE_SIZE,
+    );
+
+  const useSingleQuery =
+    companyIds.length <= COMPANY_BATCH_SIZE
+    && isTypesenseQueryStringSafe(buildBatchSafetyParams(companyIds));
+  if (useSingleQuery) {
+    const cfg = await getTypesenseBrowserConfig();
+    const result = await searchOne(cfg, "job_posting", searchParams);
+    assertSearchResponse(result, { expectHits: params.limit !== 0 });
+    assertSearchPageCardinality(result, params);
+
+    const total = result.found;
+    if (total === 0 || params.limit === 0) return { postings: [], total };
+    return {
+      postings: (result.hits ?? []).map((hit) => mapHit(hit.document)),
+      total,
+    };
+  }
+
+  const needed = params.offset + params.limit;
+  const batches = companyIds.length === 0
+    ? [[]]
+    : splitValuesForTypesenseQuery(
+        companyIds,
+        buildBatchSafetyParams,
+        COMPANY_BATCH_SIZE,
+      );
+  if (batches.some((batch) => !isTypesenseQueryStringSafe(
+    buildBatchSafetyParams(batch),
+  ))) {
     throw new Error("watchlist Typesense query exceeds GET limit — falling back");
   }
 
   const cfg = await getTypesenseBrowserConfig();
-  const result = await searchOne(cfg, "job_posting", searchParams);
-  assertSearchResponse(result, { expectHits: params.limit !== 0 });
-  assertSearchPageCardinality(result, params);
+  const resultsByBatch = await mapWithConcurrency(batches, 4, async (batch) => {
+    const pages: RawSearchResponse[] = [];
 
-  const total = result.found;
+    if (params.limit === 0) {
+      const result = await searchOne(
+        cfg,
+        "job_posting",
+        buildBatchPageSearchParams(batch, 0, 0),
+      );
+      assertSearchResponse(result);
+      assertSearchPageCardinality(result, { offset: 0, limit: 0 });
+      pages.push(result);
+      return pages;
+    }
+
+    // An exact global page can contain hits from any company batch, so each
+    // disjoint batch must contribute its top `offset + limit` candidates.
+    // Walk that prefix in <=250-row windows, including an exact-size final
+    // window, rather than downloading a full 250 rows for every load-more.
+    for (let batchOffset = 0; batchOffset < needed;) {
+      const requestLimit = Math.min(
+        TYPESENSE_MAX_PAGE_SIZE,
+        needed - batchOffset,
+      );
+      const result = await searchOne(
+        cfg,
+        "job_posting",
+        buildBatchWindowSearchParams(batch, batchOffset, requestLimit),
+      );
+      assertSearchResponse(result, { expectHits: true });
+      assertSearchPageCardinality(result, {
+        offset: batchOffset,
+        limit: requestLimit,
+      });
+      pages.push(result);
+      batchOffset += requestLimit;
+      if (batchOffset >= result.found) break;
+    }
+    return pages;
+  });
+
+  const total = resultsByBatch.reduce(
+    (sum, pages) => sum + (pages[0]?.found ?? 0),
+    0,
+  );
   if (total === 0 || params.limit === 0) return { postings: [], total };
+
+  const allHits = resultsByBatch.flatMap((pages, batchIndex) => {
+    let hitRank = 0;
+    return pages.flatMap((result) =>
+      (result.hits ?? []).map((hit) => ({
+        hit,
+        batchIndex,
+        hitRank: hitRank++,
+      })),
+    );
+  });
+  const sortsByTextMatch = searchParams.sort_by.startsWith("_text_match:");
+  allHits.sort((a, b) => {
+    if (sortsByTextMatch) {
+      const relevance = (b.hit.text_match ?? 0) - (a.hit.text_match ?? 0);
+      if (relevance !== 0) return relevance;
+    }
+    const freshness = Number(b.hit.document.first_seen_at ?? 0)
+      - Number(a.hit.document.first_seen_at ?? 0);
+    if (freshness !== 0) return freshness;
+    // Typesense uses insertion order after the explicit sort keys tie. Keep
+    // that per-batch rank intact and define batch order as the cross-batch
+    // tie-break so expanding the fetched prefix cannot reorder earlier pages.
+    return a.batchIndex - b.batchIndex || a.hitRank - b.hitRank;
+  });
   return {
-    postings: (result.hits ?? []).map((hit) => mapHit(hit.document)),
+    postings: allHits
+      .slice(params.offset, params.offset + params.limit)
+      .map(({ hit }) => mapHit(hit.document)),
     total,
   };
 }
@@ -200,10 +347,17 @@ export async function getWatchlistPostingsBrowser(
 export async function getWatchlistPostingYearCountBrowser(
   params: Omit<WatchlistPostingsParams, "offset" | "limit">,
 ): Promise<number> {
-  if (!params.anyCompany && params.companyIds.length === 0) return 0;
-  if (params.companyIds.length > COMPANY_BATCH_SIZE) {
-    throw new Error("watchlist exceeds COMPANY_BATCH_SIZE");
-  }
+  if (!hasWatchlistCandidateScope(params)) return 0;
+  const companyIds = params.anyCompany ? [] : [...new Set(params.companyIds)];
+
+  // Reuse the canonical compiler's identifier validation before constructing
+  // the flow-count variant, whose base filter intentionally includes inactive
+  // postings and therefore cannot use the candidate query verbatim.
+  buildWatchlistCandidateSearchParams({
+    filters: { ...params, companyIds },
+    offset: 0,
+    limit: 0,
+  });
 
   const filterStr = buildFilterString({
     locationIds: params.locationIds,
@@ -224,23 +378,35 @@ export async function getWatchlistPostingYearCountBrowser(
   const oneYearAgo = Math.floor(
     (Date.now() - 365 * 24 * 60 * 60 * 1000) / 1000,
   );
-  const filterParts = [POSTING_FLOW_FILTER, `first_seen_at:>${oneYearAgo}`];
-  if (params.companyIds.length > 0) {
-    filterParts.push(`company_id:[${params.companyIds.join(",")}]`);
-  }
-  if (filterStr) filterParts.push(filterStr);
-  const searchParams = {
+  const buildSearchParams = (batch: readonly string[]) => ({
     q,
     query_by: "title",
-    filter_by: filterParts.join(" && "),
+    filter_by: [
+      POSTING_FLOW_FILTER,
+      `first_seen_at:>${oneYearAgo}`,
+      ...(batch.length > 0 ? [`company_id:[${batch.join(",")}]`] : []),
+      ...(filterStr ? [filterStr] : []),
+    ].join(" && "),
     per_page: 0,
-  };
-  if (!isTypesenseQueryStringSafe(searchParams)) {
+  });
+  const batches = companyIds.length === 0
+    ? [[]]
+    : splitValuesForTypesenseQuery(
+        companyIds,
+        buildSearchParams,
+        COMPANY_BATCH_SIZE,
+      );
+  if (batches.some((batch) => !isTypesenseQueryStringSafe(
+    buildSearchParams(batch),
+  ))) {
     throw new Error("watchlist Typesense year-count query exceeds GET limit");
   }
 
   const cfg = await getTypesenseBrowserConfig();
-  const result = await searchOne(cfg, "job_posting", searchParams);
-  assertSearchResponse(result);
-  return result.found;
+  const results = await mapWithConcurrency(batches, 4, async (batch) => {
+    const result = await searchOne(cfg, "job_posting", buildSearchParams(batch));
+    assertSearchResponse(result);
+    return result;
+  });
+  return results.reduce((sum, result) => sum + result.found, 0);
 }

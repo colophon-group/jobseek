@@ -131,20 +131,32 @@ describe("0088 notification policy foundation migration", () => {
     );
   });
 
-  it("appends exactly one monotonic journal entry", () => {
+  it("retains its monotonic journal entry when later migrations are appended", () => {
     const journal = JSON.parse(
       readFileSync(resolve(webRoot, "drizzle/meta/_journal.json"), "utf8"),
-    ) as { entries: { idx: number; when: number; tag: string }[] };
+    ) as {
+      entries: Array<{
+        idx: number;
+        version: string;
+        when: number;
+        tag: string;
+        breakpoints: boolean;
+      }>;
+    };
 
-    expect(journal.entries.at(-1)).toEqual({
+    const entryIndex = journal.entries.findIndex(
+      (entry) => entry.tag === "0088_notification_policy_foundation",
+    );
+    expect(entryIndex).toBeGreaterThan(0);
+    expect(journal.entries[entryIndex]).toEqual({
       idx: 76,
       version: "7",
       when: 1_788_199_156_000,
       tag: "0088_notification_policy_foundation",
       breakpoints: true,
     });
-    expect(journal.entries.at(-2)?.when).toBeLessThan(
-      journal.entries.at(-1)?.when ?? 0,
+    expect(journal.entries[entryIndex - 1]?.when).toBeLessThan(
+      journal.entries[entryIndex]?.when ?? 0,
     );
   });
 });

@@ -251,7 +251,10 @@ const USER_NAME = "username-1";
 const DISPLAY_USER_NAME = "DisplayUser1";
 const SLUG = "my-watchlist";
 const NEW_SLUG = "renamed-watchlist";
-const WATCHLIST_ID = "wl-1";
+const WATCHLIST_ID = "10000000-0000-4000-8000-000000000001";
+const COMPANY_ID_1 = "20000000-0000-4000-8000-000000000001";
+const COMPANY_ID_2 = "20000000-0000-4000-8000-000000000002";
+const COMPANY_ID_9 = "20000000-0000-4000-8000-000000000009";
 
 function expectedTagPair(slug: string) {
   return [
@@ -349,7 +352,7 @@ describe("watchlist mutator cache invalidation", () => {
 
     await expect(createWatchlist({
       title: "My Watchlist",
-      companyIds: ["co-1", "co-2"],
+      companyIds: [COMPANY_ID_1, COMPANY_ID_2],
       isPublic: false,
     })).resolves.toEqual({ id: WATCHLIST_ID, slug: SLUG });
     await flushAfterQueue();
@@ -507,7 +510,7 @@ describe("watchlist mutator cache invalidation", () => {
       .mockResolvedValueOnce([{ name: "Alice", username: USER_NAME, display_username: DISPLAY_USER_NAME }])
       .mockResolvedValueOnce([{ cnt: 1 }]);
 
-    await addCompanyToWatchlist(WATCHLIST_ID, "co-9");
+    await addCompanyToWatchlist(WATCHLIST_ID, COMPANY_ID_9);
     await flushAfterQueue();
 
     expect(mocks.updateTag.mock.calls.map((c) => c[0]).sort()).toEqual(
@@ -535,24 +538,19 @@ describe("watchlist mutator cache invalidation", () => {
     );
   });
 
-  it("clearWatchlistCompanies patches Typesense with a fresh company count", async () => {
+  it("clearWatchlistCompanies removes a grandfathered public discovery document", async () => {
     mocks.selectLimitResult.mockResolvedValue([
       { userId: USER_ID, slug: SLUG, isPublic: true },
     ]);
-    // Simulate another writer adding companies before the after-hook
-    // syncs Typesense. The hook must read Postgres, not assume zero.
-    mocks.dbExecute
-      .mockResolvedValueOnce([
-        { name: "Alice", username: USER_NAME, display_username: DISPLAY_USER_NAME },
-      ])
-      .mockResolvedValueOnce([{ cnt: 2 }]);
+    mocks.dbExecute.mockResolvedValueOnce([
+      { name: "Alice", username: USER_NAME, display_username: DISPLAY_USER_NAME },
+    ]);
 
     await clearWatchlistCompanies(WATCHLIST_ID);
     await flushAfterQueue();
 
-    expect(mocks.tsUpdateWatchlistField).toHaveBeenCalledWith(WATCHLIST_ID, {
-      company_count: 2,
-    });
+    expect(mocks.tsDeleteWatchlist).toHaveBeenCalledWith(WATCHLIST_ID);
+    expect(mocks.tsUpdateWatchlistField).not.toHaveBeenCalled();
   });
 
   it("removeCompanyFromWatchlist invalidates both slug variants for public watchlists", async () => {
@@ -564,7 +562,7 @@ describe("watchlist mutator cache invalidation", () => {
       .mockResolvedValueOnce([{ name: "Alice", username: USER_NAME, display_username: DISPLAY_USER_NAME }])
       .mockResolvedValueOnce([{ cnt: 0 }]);
 
-    await removeCompanyFromWatchlist(WATCHLIST_ID, "co-9");
+    await removeCompanyFromWatchlist(WATCHLIST_ID, COMPANY_ID_9);
     await flushAfterQueue();
 
     expect(mocks.updateTag.mock.calls.map((c) => c[0]).sort()).toEqual(
@@ -591,14 +589,15 @@ describe("watchlist mutation audit logs", () => {
     expect(payload).toMatchObject({
       event: "watchlist.audit",
       action: "watchlist.delete",
-      watchlist_id: WATCHLIST_ID,
       slug_before: SLUG,
       slug_after: null,
       is_public_before: true,
       is_public_after: null,
     });
     expect(payload.user_ref).toMatch(/^[a-f0-9]{12}$/);
+    expect(payload.watchlist_ref).toMatch(/^[a-f0-9]{12}$/);
     expect(JSON.stringify(payload)).not.toContain(USER_ID);
+    expect(JSON.stringify(payload)).not.toContain(WATCHLIST_ID);
     expect(Date.parse(payload.occurred_at as string)).not.toBeNaN();
   });
 
@@ -722,7 +721,6 @@ const SOURCE_PATH = join(__dirname, "..", "..", "services", "watchlists.ts");
 const EXPECTED_INVALIDATING_MUTATORS = new Set<string>([
   "updateWatchlist",
   "deleteWatchlist",
-  "copyWatchlist",
   "addCompanyToWatchlist",
   "clearWatchlistCompanies",
   "removeCompanyFromWatchlist",
@@ -743,6 +741,9 @@ const EXPECTED_NON_INVALIDATING = new Set<string>([
   // lastAccessedAt is a private after-queued analytics touch on the
   // owner's read path; it never appears in any public render.
   "getWatchlistByUserAndSlug",
+  // Shared UUID pages use an uncached, exact-id database read. Enabling the
+  // unlisted grant therefore has no public-route cache or search document.
+  "shareWatchlist",
 ]);
 
 /** Successful watchlist mutators that MUST emit a structured audit log. */
@@ -750,7 +751,7 @@ const EXPECTED_AUDITING_MUTATORS = new Set<string>([
   "createWatchlist",
   "updateWatchlist",
   "deleteWatchlist",
-  "copyWatchlist",
+  "shareWatchlist",
   "addCompanyToWatchlist",
   "clearWatchlistCompanies",
   "removeCompanyFromWatchlist",
@@ -981,7 +982,11 @@ describe("invalidation registry guard", () => {
       "",
     );
     const callSites = (withoutDef.match(/_invalidateWatchlistCaches\s*\(/g) || []).length;
-    expect(callSites).toBe(EXPECTED_INVALIDATING_MUTATORS.size);
+    // `_copyWatchlist` is a private shared implementation used by the owned
+    // and unlisted clone entrypoints; its runtime audit/invalidation behavior
+    // is covered above, but it is intentionally outside the exported-async
+    // registry walked by this static guard.
+    expect(callSites).toBe(EXPECTED_INVALIDATING_MUTATORS.size + 1);
   });
 
   it("does not use silent detached promise catches for watchlist side effects", () => {
@@ -989,7 +994,7 @@ describe("invalidation registry guard", () => {
     expect(source).not.toMatch(/\.catch\(\s*\(\)\s*=>\s*\{\s*\}\s*\)/);
   });
 
-  it("centralizes public watchlist Typesense upsert payload construction", () => {
+  it("never recreates retired public watchlist discovery documents", () => {
     const source = readFileSync(SOURCE_PATH, "utf-8");
     const upsertPayloads = source.match(/tsUpsertWatchlist\(\s*\{/g) || [];
     const featuredFields = source.match(/^\s+is_featured:/gm) || [];
@@ -997,8 +1002,9 @@ describe("invalidation registry guard", () => {
       /created_at:\s*(?:Math\.floor\(Date\.now\(\) \/ 1000\)|_unixNowSeconds\(\))/g,
     ) || [];
 
-    expect(upsertPayloads).toHaveLength(1);
-    expect(featuredFields).toHaveLength(1);
-    expect(createdAtFields).toHaveLength(1);
+    expect(upsertPayloads).toHaveLength(0);
+    expect(featuredFields).toHaveLength(0);
+    expect(createdAtFields).toHaveLength(0);
+    expect(source).toContain("_unindexPublicWatchlist(");
   });
 });

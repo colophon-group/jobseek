@@ -25,19 +25,16 @@ async function temporaryModule(source: string): Promise<string> {
 describe("blog mention build gate", () => {
   it("deduplicates identical entity references across locale sources", () => {
     const refs = collectMentionRefs([
-      '<Company slug="anthropic" /> <WatchlistCard owner="team" slug="ai" />',
-      '<CompanyCard slug="anthropic" /> <Watchlist owner="team" slug="ai" />',
+      '<Company slug="anthropic" />',
+      '<CompanyCard slug="anthropic" />',
     ]);
 
     expect([...refs.companies]).toEqual(["anthropic"]);
-    expect([...refs.watchlists]).toEqual(["team/ai"]);
   });
 
   it("rejects non-literal or malformed mention identifiers", () => {
     expect(() => collectMentionRefs(['<Company slug="Not Canonical" />']))
       .toThrow("canonical literal slug");
-    expect(() => collectMentionRefs(['<Watchlist owner="Team" slug="ai" />']))
-      .toThrow("canonical literal owner");
   });
 
   it("blocks a direct fetch fallback", async () => {

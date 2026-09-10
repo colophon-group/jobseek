@@ -6,7 +6,7 @@ import { useLingui } from "@lingui/react/macro";
 import { Check, Crown } from "lucide-react";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { createCheckoutSession, createPortalSession } from "@/lib/actions/billing";
+import { createPortalSession } from "@/lib/actions/billing";
 import { translateActionError } from "@/lib/action-error-messages";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -82,36 +82,23 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
   const { t } = useLingui();
   const { isLoggedIn } = useSession();
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState<"checkout" | "portal" | null>(null);
+  const [loading, setLoading] = useState<"portal" | null>(null);
 
   if (!isLoggedIn) return <LoginPrompt />;
 
   const isFree = planInfo.plan === "free";
 
   const freePlanFeatures = [
+    t({ id: "settings.billing.free.f0", comment: "Free plan feature: universal watchlist limit", message: "Up to 10 watchlists" }),
     t({ id: "settings.billing.free.f1", comment: "Free plan feature: star companies", message: "Star companies" }),
     t({ id: "settings.billing.free.f2", comment: "Free plan feature: search", message: "Full job search" }),
     t({ id: "settings.billing.free.f3", comment: "Free plan feature: save jobs", message: "Save jobs" }),
   ];
 
   const proPlanFeatures = [
-    t({ id: "settings.billing.pro.f1", comment: "Pro plan feature: alerts", message: "Email alerts for new postings" }),
     t({ id: "settings.billing.pro.f2", comment: "Pro plan feature: everything free", message: "Everything in Free" }),
+    t({ id: "settings.billing.pro.f1", comment: "Pro plan availability detail", message: "Plan details coming soon" }),
   ];
-
-  async function handleUpgrade() {
-    setError("");
-    setLoading("checkout");
-    const result = await createCheckoutSession();
-    setLoading(null);
-    if (result.error) {
-      setError(translateActionError(t, result.error));
-      return;
-    }
-    if (result.url) {
-      window.location.href = result.url;
-    }
-  }
 
   async function handleManage() {
     setError("");
@@ -159,19 +146,8 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
 
         {error && <div className="mt-4"><ErrorAlert message={error} focusOnRender /></div>}
 
-        <div className="mt-4">
-          {isFree ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={handleUpgrade}
-              disabled={loading === "checkout"}
-            >
-              {loading === "checkout"
-                ? t({ id: "settings.billing.upgrading", comment: "Upgrading button loading state", message: "Upgrading…" })
-                : t({ id: "settings.billing.upgrade", comment: "Upgrade button label", message: "Upgrade to Pro" })}
-            </Button>
-          ) : (
+        {!isFree && (
+          <div className="mt-4">
             <Button
               variant="outline"
               size="md"
@@ -182,8 +158,8 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
                 ? t({ id: "settings.billing.managing", comment: "Manage subscription button loading state", message: "Loading…" })
                 : t({ id: "settings.billing.manage", comment: "Manage subscription button label", message: "Manage subscription" })}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </section>
     </div>
   );

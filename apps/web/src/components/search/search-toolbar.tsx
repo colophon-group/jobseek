@@ -217,7 +217,9 @@ export function SearchToolbar({
           {(Object.entries(unresolvedExplicitSlugs ?? {}) as Array<
             [keyof UnresolvedExplicitSlugs, string[]]
           >).flatMap(([kind, slugs]) =>
-            slugs.map((slug) => (
+            slugs.map((slug) => {
+              const name = slug;
+              return (
               <span
                 key={`unresolved-${kind}-${slug.toLowerCase()}`}
                 className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
@@ -234,14 +236,15 @@ export function SearchToolbar({
                     aria-label={t({
                       id: "search.filters.removeFilter",
                       comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value",
-                      message: `Remove ${slug} filter`,
+                      message: `Remove ${name} filter`,
                     })}
                   >
                     <X size={12} aria-hidden="true" />
                   </button>
                 ) : null}
               </span>
-            )),
+              );
+            }),
           )}
           {occupations.map((occ) => {
             const name = occ.name;

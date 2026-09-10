@@ -199,6 +199,43 @@ describe("browser-direct shell refreshes", () => {
     expect(mocks.serverGetWatchlistYearCount).not.toHaveBeenCalled();
   });
 
+  it("uses browser-direct watchlist pagination and year counts without replayable actions", async () => {
+    mocks.browserWatchlistPostings.mockResolvedValue({ postings: [], total: 4 });
+    mocks.browserWatchlistYearCount.mockResolvedValue(9);
+    const {
+      runGetWatchlistPostings,
+      runGetWatchlistPostingYearCount,
+    } = await import("../search-runner");
+
+    await expect(runGetWatchlistPostings({
+      companyIds: ["company-1"],
+      offset: 0,
+      limit: 20,
+    }, false)).resolves.toEqual({
+      postings: [],
+      total: 4,
+      truncated: true,
+    });
+    await expect(runGetWatchlistPostingYearCount({
+      companyIds: ["company-1"],
+    })).resolves.toBe(9);
+    expect(mocks.serverGetWatchlistPostings).not.toHaveBeenCalled();
+    expect(mocks.serverGetWatchlistYearCount).not.toHaveBeenCalled();
+  });
+
+  it("surfaces browser watchlist failures instead of invoking a server action fallback", async () => {
+    const failure = new Error("Typesense unavailable");
+    mocks.browserWatchlistPostings.mockRejectedValue(failure);
+    const { runGetWatchlistPostings } = await import("../search-runner");
+
+    await expect(runGetWatchlistPostings({
+      companyIds: ["company-1"],
+      offset: 0,
+      limit: 20,
+    }, false)).rejects.toBe(failure);
+    expect(mocks.serverGetWatchlistPostings).not.toHaveBeenCalled();
+  });
+
   it("does nothing when browser-direct search is disabled", async () => {
     setTestEnv({ NEXT_PUBLIC_TYPESENSE_DIRECT: "0" });
     vi.resetModules();
