@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "pilots/go-lightpanda/**"
+      - "apps/crawler/contracts/go.mod"
+      - "apps/crawler/contracts/go.sum"
+      - "apps/crawler/contracts/v1/gen/go/**"
+      - "apps/crawler/contracts/v1/lightpandaadapter/**"
       - ".github/workflows/go-lightpanda-pilot.yml"
   workflow_dispatch:
 
@@ -51,7 +55,7 @@ jobs:
           test -z "$(gofmt -l .)"
 
       - name: Exercise checksum-pinned stable Lightpanda
-        run: docker build --platform ${{ matrix.platform }} --target integration-test --tag jobseek-lightpanda-integration:${{ matrix.arch }}-${{ github.run_id }} .
+        run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target integration-test --tag jobseek-lightpanda-integration:${{ matrix.arch }}-${{ github.run_id }} .
 
       - name: Build bounded runtime image
-        run: docker build --platform ${{ matrix.platform }} --target runtime --tag jobseek-lightpanda-pilot:${{ matrix.arch }}-${{ github.run_id }} .
+        run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target runtime --tag jobseek-lightpanda-pilot:${{ matrix.arch }}-${{ github.run_id }} .

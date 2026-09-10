@@ -6,6 +6,22 @@ HTTP(S) URL and one synchronous JavaScript expression. It returns bounded JSON
 containing the top-level document's final response status, final URL,
 `<html>` outerHTML, and the expression value.
 
+The same package also contains a dormant in-process implementation of the
+runtime-v1 `lightpandaadapter.Runner`. It maps only B0 render or B1 render plus
+one synchronous evaluation declared to have no network effect onto exactly
+one existing one-shot lifecycle. It is not exposed by the CLI and adds no
+service, endpoint, queue, persistence, fallback, deployment, or production
+routing.
+The adapter still requires an injected evaluation-privacy implementation;
+only a loopback-fixture sealer exists in tests.
+
+The bridge preserves the pilot's stricter 512 KiB HTML ceiling and reports an
+oversized document as the adapter's closed `RESOURCE_LIMIT` result. B1 uses
+the smaller of the plan's `max_result_bytes` and the pilot's 64 KiB ceiling.
+A typed cleanup-verification failure remains authoritative over a concurrent
+timeout or cancellation; other provider details are reduced to message-free,
+fail-closed adapter errors.
+
 The runner starts a new Lightpanda process for its single task on a chosen free
 loopback port:
 
@@ -38,7 +54,10 @@ GLIBC 2.38 requirement. The Go builder tag and packages resolved during
 `apt-get` are not snapshot-pinned, so the complete build is not reproducible.
 
 ```sh
-docker build --platform linux/amd64 -t jobseek-lightpanda-pilot .
+docker build \
+  --build-context contracts=../../apps/crawler/contracts \
+  --platform linux/amd64 \
+  -t jobseek-lightpanda-pilot .
 
 docker run --rm \
   --cpus=1 \
@@ -81,15 +100,19 @@ disposable Linux environment:
 
 ```sh
 LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-x86_64-linux \
-  go test -run '^TestLightpandaIntegration$' -count=1 -v .
+  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration)$' \
+  -count=1 -v .
 
-docker build --platform linux/amd64 --target integration-test \
+docker build --build-context contracts=../../apps/crawler/contracts \
+  --platform linux/amd64 --target integration-test \
   -t jobseek-lightpanda-integration:amd64 .
 
 LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-aarch64-linux \
-  go test -run '^TestLightpandaIntegration$' -count=1 -v .
+  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration)$' \
+  -count=1 -v .
 
-docker build --platform linux/arm64 --target integration-test \
+docker build --build-context contracts=../../apps/crawler/contracts \
+  --platform linux/arm64 --target integration-test \
   -t jobseek-lightpanda-integration:arm64 .
 ```
 
@@ -113,9 +136,11 @@ they are written. HTML and expression values are necessarily materialized by
 the CDP client before their output-size checks run; the required 512 MiB
 container memory limit is the hard allocation bound. Normally an oversized
 result returns an error, but an extreme page can instead hit the container
-limit. Error strings are truncated only after the originating library creates
-them. Successfully encoded JSON is buffered and size-checked before its single
-output write.
+limit. The runtime-v1 bridge preserves this inherited pre-materialization
+behavior; streamed CDP decoding is deferred and is not implied by the caller's
+smaller evaluation-result ceiling. Error strings are truncated only after the
+originating library creates them. Successfully encoded JSON is buffered and
+size-checked before its single output write.
 
 This CLI is not a secret-handling interface. Its URL and expression are visible
 in process arguments, and final URLs, browser-derived values, child logs, and
@@ -128,5 +153,7 @@ content, or expressions.
 This pilot intentionally has no queues, crawler wiring, browser fallback,
 process pooling, proxy or authentication support, request interception,
 `networkidle` waiting, `stopLoading`, iframe capture, nightly binary, deployment,
-or observability integration. It is not a production service or production
+or observability integration. The runtime-v1 bridge is exercised only against
+loopback fixtures and has no reusable production evaluation-privacy sealer or
+destination/subresource policy. It is not a production service or production
 browser-security boundary.

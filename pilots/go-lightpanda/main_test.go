@@ -13,7 +13,7 @@ import (
 func TestRunCLIReturnsFailureWhenSuccessOutputIsDowngraded(t *testing.T) {
 	result := validResult()
 	result.HTML = strings.Repeat("\x01", maxHTMLBytes)
-	if err := validateResult(result); err != nil {
+	if err := validateResult(validTask(), result); err != nil {
 		t.Fatalf("expansion-heavy result should pass field bounds: %v", err)
 	}
 
