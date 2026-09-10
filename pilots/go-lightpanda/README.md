@@ -45,6 +45,13 @@ The service requires TLS 1.3, the `jobseek-lightpanda-b0/1` ALPN, one
 fingerprinted CA, exact peer SAN/EKU, and required peer leaf/SPKI pins. The
 server attests exactly 1 GiB `memory.max` and zero `memory.swap.max` before
 listening and admits exactly four active connections without a work queue.
+It also requires one repeatable `--deployment-deny-cidr` per trusted host or
+project address prefix. Startup reconciles baseline-covered private/project
+entries and requires at least one uncovered globally routed deployment prefix;
+the resulting service-qualified browser deny policy is validated before
+cgroup, TLS, listener, or child-process work. The baseline-only CLI policy
+cannot qualify service mode, and the service accepts only a render execution
+constructed with that exact qualified policy.
 Each connection sends the fixed capacity hello, consumes one runtime-v1 request
 plus its canonical empty closure frame, returns one sanitized result, and
 closes. Evaluation is rejected by the render-only adapter before its runner can
@@ -81,12 +88,18 @@ canonical non-overlapping exact host or project CIDRs, but task/request data
 cannot select or modify policy. Baseline-only construction is sufficient for
 this dormant/local harness, not for a public service.
 
-The baseline omits deployment-specific globally routable host addresses. A
-future public service needs a separate constructor that requires a nonempty,
-trusted deployment address inventory (host public/private interfaces and
-project networks), reconciles it with the browser deny policy and external
-network enforcement, and fails startup if coverage is incomplete. That
-service-level constructor and deployment inventory are outside this slice.
+The baseline omits deployment-specific globally routable host addresses.
+Service mode therefore requires a nonempty trusted startup inventory through
+repeatable `--deployment-deny-cidr` flags. Entries must be canonical, unique,
+and bounded. Overlapping host/project entries are accepted only when each is
+fully covered by the registry baseline; uncovered overlaps are rejected.
+Private and other baseline-covered entries remain part of the inventory proof
+without duplicating the final deny list; uncovered entries must be globally
+routed, and at least one is required. The service reconstructs and compares the
+policy against every supplied inventory entry before cgroup/TLS setup;
+deployment tooling remains responsible for supplying the complete live
+inventory. This browser-level inventory reconciliation does not replace the
+separate external default-deny boundary required for deployment.
 
 The child receives a fixed non-secret environment that disables Lightpanda
 telemetry and core dumps; it inherits no parent credentials, proxy variables,
@@ -191,6 +204,16 @@ docker build \
   --platform linux/amd64 \
   --target service \
   -t jobseek-lightpanda-service .
+```
+
+When a deployment later starts that target, its closed service arguments must
+include every reviewed host/project prefix as one flag (values shown are
+documentation placeholders, not a deployment inventory):
+
+```text
+--deployment-deny-cidr <service-private-ip>/32 \
+--deployment-deny-cidr <host-public-ip>/32 \
+--deployment-deny-cidr <project-network-cidr>
 ```
 
 The framed render-only handler uses stdin/stdout rather than target or

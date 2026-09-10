@@ -18,7 +18,8 @@ func main() {
 		config, err := runtimeV1ServiceConfigFromArgs(args[1:])
 		if err == nil {
 			execution, executionErr := newRuntimeV1ServiceExecution(Config{
-				Binary: os.Getenv("LIGHTPANDA_BIN"), EgressPolicy: defaultEgressPolicy(),
+				Binary:       os.Getenv("LIGHTPANDA_BIN"),
+				EgressPolicy: config.serviceEgressPolicy.egressPolicy,
 			}, nil)
 			if executionErr != nil {
 				err = executionErr
