@@ -5832,7 +5832,7 @@ seyond,seyond-greenhouse,https://job-boards.greenhouse.io/seyond,greenhouse,"{""
 sezzle,sezzle-greenhouse,https://job-boards.greenhouse.io/sezzle,greenhouse,"{""token"": ""sezzle""}",skip,
 sfcompute,sfcompute-ashby,https://jobs.ashbyhq.com/sfcompute,ashby,"{""token"": ""sfcompute""}",skip,
 sfox,sfox-greenhouse,https://job-boards.greenhouse.io/sfox,greenhouse,"{""token"": ""sfox""}",skip,
-sfs-inc,sfs-inc-careers,https://careers-fdmfieldservices.icims.com/,icims,,json-ld,
+sfs-inc,sfs-inc-careers,https://careers-fdmfieldservices.icims.com/,icims,,json-ld,"{""ignore_date_posted"": true, ""ignore_valid_through"": true}"
 shakepay,shakepay-greenhouse,https://job-boards.greenhouse.io/shakepay,greenhouse,"{""token"": ""shakepay""}",skip,
 shardeum-foundation,shardeum-foundation-greenhouse,https://job-boards.greenhouse.io/shardeumfoundation,greenhouse,"{""token"": ""shardeumfoundation""}",skip,
 sharebite,sharebite-greenhouse,https://job-boards.greenhouse.io/sharebite,greenhouse,"{""token"": ""sharebite""}",skip,
