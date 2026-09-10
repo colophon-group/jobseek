@@ -4,11 +4,15 @@ on:
   push:
     branches: [main]
     paths:
+      - 'apps/crawler/contracts/go.mod'
+      - 'apps/crawler/contracts/go.sum'
       - 'apps/crawler/contracts/queue/v2/**'
       - '.github/workflows/crawler-queue-v2-conformance.yml'
   pull_request:
     branches: [main]
     paths:
+      - 'apps/crawler/contracts/go.mod'
+      - 'apps/crawler/contracts/go.sum'
       - 'apps/crawler/contracts/queue/v2/**'
       - '.github/workflows/crawler-queue-v2-conformance.yml'
   workflow_dispatch:
@@ -69,6 +73,61 @@ jobs:
           test "$(go version)" = "go version go1.24.0 linux/amd64"
           go test -race ./queue/v2/...
           go vet ./queue/v2/...
+          gofmt -l queue/v2 > "$RUNNER_TEMP/queue-v2-gofmt.out"
+          if [[ -s "$RUNNER_TEMP/queue-v2-gofmt.out" ]]; then
+            cat "$RUNNER_TEMP/queue-v2-gofmt.out"
+            exit 1
+          fi
+
+      - name: Start isolated production Redis fixture
+        run: |
+          set -euo pipefail
+          docker run --detach --name jobseek-queue-v2-redis \
+            --publish 127.0.0.1:6380:6379 \
+            redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
+            redis-server --save "" --appendonly no
+
+          ready=false
+          for _ in {1..30}; do
+            if docker exec jobseek-queue-v2-redis redis-cli ping | grep -qx PONG; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          test "$(docker exec jobseek-queue-v2-redis redis-cli -n 15 --raw DBSIZE)" = 0
+
+      - name: Verify Python and Go against real Redis
+        env:
+          QUEUE_V2_REDIS_ISOLATED: "1"
+          QUEUE_V2_REDIS_URL: redis://127.0.0.1:6380/15
+        run: |
+          set -euo pipefail
+          cd apps/crawler
+          uv run pytest -q contracts/queue/v2/redis/python
+          cd contracts
+          go test -count=1 -race ./queue/v2/...
+
+      - name: Verify and stop isolated Redis fixture
+        if: always()
+        run: |
+          set +e
+          status=0
+          if docker container inspect jobseek-queue-v2-redis >/dev/null 2>&1; then
+            dbsize="$(docker exec jobseek-queue-v2-redis redis-cli -n 15 --raw DBSIZE)"
+            if [[ "$dbsize" != 0 ]]; then
+              echo "Redis DB 15 is not empty after queue-v2 tests: $dbsize keys" >&2
+              status=1
+            fi
+            docker rm --force jobseek-queue-v2-redis || status=1
+          fi
+          if docker container inspect jobseek-queue-v2-redis >/dev/null 2>&1; then
+            echo "Redis fixture container still exists after cleanup" >&2
+            status=1
+          fi
+          exit "$status"
 
       - name: Confirm generation left the tree unchanged
+        if: always()
         run: git diff --exit-code -- apps/crawler/contracts/queue/v2
