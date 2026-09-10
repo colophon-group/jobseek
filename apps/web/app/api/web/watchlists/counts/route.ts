@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { locales } from "@/lib/i18n";
-import { getSessionUserId } from "@/lib/sessionCache";
-import { getUserWatchlistCounts } from "@/lib/services/watchlists";
+import { getSessionUserIdFromHeaders } from "@/lib/sessionCache";
+import { getUserWatchlistCountsForUser } from "@/lib/services/watchlists";
 
 export async function GET(request: Request) {
-  if (!(await getSessionUserId())) {
+  const userId = await getSessionUserIdFromHeaders(request.headers);
+  if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
   const locale = requestedLocale && locales.includes(requestedLocale as (typeof locales)[number])
     ? requestedLocale
     : "en";
-  const counts = await getUserWatchlistCounts(locale);
+  const counts = await getUserWatchlistCountsForUser(userId, locale);
 
   return NextResponse.json(
     { counts },
