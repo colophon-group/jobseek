@@ -29,7 +29,12 @@ from src.core.scrapers import (
     get_scraper_type,
     scraper_needs_browser,
 )
-from src.shared.browser import VALID_WAIT_STRATEGIES, _resolve_resource_blocking
+from src.shared.browser import (
+    DEFAULT_WAIT,
+    DEFAULT_WAIT_FALLBACK,
+    VALID_WAIT_STRATEGIES,
+    _resolve_resource_blocking,
+)
 
 FORMAT = "jobseek.lightpanda.capability-census/v1"
 CRAWLER_ROOT = Path(__file__).resolve().parents[2]
@@ -449,6 +454,9 @@ _FALLBACK_FIELDS = frozenset(
 _INHERENT_BROWSER_MONITORS = frozenset(
     {"accenture", "brassring", "bytedance", "candidatus", "darwinbox", "dayforce", "njoyn"}
 )
+_DOMCONTENTLOADED_DEFAULT_MONITORS = frozenset(
+    {"brassring", "candidatus", "darwinbox", "dayforce", "njoyn"}
+)
 
 
 class CensusError(ValueError):
@@ -770,7 +778,16 @@ def _capabilities(
                 capabilities.add(capability)
         elif value:
             capabilities.add(capability)
-    if "wait_fallback" in config:
+    fallback_strategy = config.get("wait_fallback", DEFAULT_WAIT_FALLBACK)
+    wait_strategy = config.get(
+        "wait",
+        (
+            "domcontentloaded"
+            if surface == "monitor" and crawler_type in _DOMCONTENTLOADED_DEFAULT_MONITORS
+            else DEFAULT_WAIT
+        ),
+    )
+    if browser_required and fallback_strategy is not None and fallback_strategy != wait_strategy:
         capabilities.add("navigation.wait_fallback")
     if "wait" in config:
         capabilities.add(f"navigation.wait.{config['wait']}")

@@ -185,6 +185,74 @@ def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
+    ("scraper_config", "expected"),
+    [
+        pytest.param(
+            {"render": True},
+            True,
+            id="omitted-uses-domcontentloaded-default",
+        ),
+        pytest.param(
+            {"render": True, "wait_fallback": None},
+            False,
+            id="explicit-null-disables",
+        ),
+        pytest.param(
+            {"render": True, "wait_fallback": "load"},
+            True,
+            id="explicit-valid-strategy-enables",
+        ),
+        pytest.param(
+            {"render": True, "wait": "domcontentloaded"},
+            False,
+            id="implicit-fallback-equals-primary-is-no-op",
+        ),
+    ],
+)
+def test_wait_fallback_capability_matches_runtime_semantics(
+    tmp_path: Path,
+    scraper_config: dict[str, object],
+    expected: bool,
+) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [_row("rendered-jsonld", scraper_config=scraper_config)],
+    )
+
+    manifest = build_manifest(boards)
+    record = next(
+        record
+        for record in manifest["records"]
+        if record["profile_kind"] == "configured" and record["surface"] == "scraper"
+    )
+
+    assert ("navigation.wait_fallback" in record["capabilities"]) is expected
+
+
+@pytest.mark.parametrize(
+    "monitor_type",
+    ["brassring", "candidatus", "darwinbox", "dayforce", "njoyn"],
+)
+def test_inherent_monitor_default_wait_makes_default_fallback_a_noop(
+    tmp_path: Path,
+    monitor_type: str,
+) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [_row("provider-monitor", monitor_type=monitor_type)],
+    )
+
+    manifest = build_manifest(boards)
+    record = next(
+        record
+        for record in manifest["records"]
+        if record["profile_kind"] == "configured" and record["surface"] == "monitor"
+    )
+
+    assert "navigation.wait_fallback" not in record["capabilities"]
+
+
+@pytest.mark.parametrize(
     "monitor_config",
     [
         {"render": True, "unknown_browser_key": True},
