@@ -49,6 +49,7 @@ type WorkMode = NonNullable<WatchlistCandidateFilters["workMode"]>[number];
 const WORK_MODES = new Set<WorkMode>(["onsite", "hybrid", "remote"]);
 const MULTI_SEARCH_CHUNK_SIZE = 40;
 const TYPESENSE_MAX_PAGE_SIZE = 250;
+const TYPESENSE_BATCH_SAFETY_OFFSET = Number.MAX_SAFE_INTEGER;
 
 export type CompiledWatchlistFilter = CompiledWatchlistMatcher & {
   resolvedLocations: ResolvedLocation[];
@@ -344,11 +345,35 @@ export async function readWatchlistCandidates(params: {
       order,
     });
   const searchParams = buildParams(params.filters);
+  const buildWindowSearchParams = (
+    filters: WatchlistCandidateFilters,
+    offset: number,
+    limit: number,
+  ) => {
+    const {
+      page: _page,
+      per_page: _perPage,
+      ...candidateSearchParams
+    } = buildWatchlistCandidateSearchParams({
+      filters,
+      offset,
+      limit,
+      window: params.window,
+      order,
+    });
+    return { ...candidateSearchParams, offset, limit };
+  };
+  const buildBatchSafetyParams = (filters: WatchlistCandidateFilters) =>
+    buildWindowSearchParams(
+      filters,
+      TYPESENSE_BATCH_SAFETY_OFFSET,
+      TYPESENSE_MAX_PAGE_SIZE,
+    );
   const needsBatches =
     !params.filters.anyCompany &&
     params.filters.companyIds.length > 0 &&
     (params.filters.companyIds.length > COMPANY_BATCH_SIZE ||
-      !isTypesenseQueryStringSafe(searchParams));
+      !isTypesenseQueryStringSafe(buildBatchSafetyParams(params.filters)));
   const client = getSearchClient();
   if (!needsBatches) {
     const result = await withTypesenseRetry(
@@ -370,29 +395,11 @@ export async function readWatchlistCandidates(params: {
   }
 
   const needed = params.offset + params.limit;
-  const buildWindowSearchParams = (
-    filters: WatchlistCandidateFilters,
-    offset: number,
-    limit: number,
-  ) => {
-    const {
-      page: _page,
-      per_page: _perPage,
-      ...candidateSearchParams
-    } = buildWatchlistCandidateSearchParams({
-      filters,
-      offset,
-      limit,
-      window: params.window,
-      order,
-    });
-    return { ...candidateSearchParams, offset, limit };
-  };
   const filterBatches = batchesForFilters(params.filters, (filters) =>
-    buildWindowSearchParams(filters, needed, TYPESENSE_MAX_PAGE_SIZE),
+    buildBatchSafetyParams(filters),
   );
   if (filterBatches.some((filters) => !isTypesenseQueryStringSafe(
-    buildWindowSearchParams(filters, needed, TYPESENSE_MAX_PAGE_SIZE),
+    buildBatchSafetyParams(filters),
   ))) {
     throw new Error("watchlist Typesense query exceeds GET limit");
   }

@@ -43,6 +43,7 @@ interface RawSearchResponse {
 }
 
 const TYPESENSE_MAX_PAGE_SIZE = 250;
+const TYPESENSE_BATCH_SAFETY_OFFSET = Number.MAX_SAFE_INTEGER;
 
 async function searchOne(
   cfg: TypesenseBrowserConfig,
@@ -224,10 +225,16 @@ export async function getWatchlistPostingsBrowser(
     } = buildBatchPageSearchParams(batch, offset, limit);
     return { ...candidateSearchParams, offset, limit };
   };
+  const buildBatchSafetyParams = (batch: readonly string[]) =>
+    buildBatchWindowSearchParams(
+      batch,
+      TYPESENSE_BATCH_SAFETY_OFFSET,
+      TYPESENSE_MAX_PAGE_SIZE,
+    );
 
   const useSingleQuery =
     companyIds.length <= COMPANY_BATCH_SIZE
-    && isTypesenseQueryStringSafe(searchParams);
+    && isTypesenseQueryStringSafe(buildBatchSafetyParams(companyIds));
   if (useSingleQuery) {
     const cfg = await getTypesenseBrowserConfig();
     const result = await searchOne(cfg, "job_posting", searchParams);
@@ -243,14 +250,6 @@ export async function getWatchlistPostingsBrowser(
   }
 
   const needed = params.offset + params.limit;
-  const buildBatchSafetyParams = (batch: readonly string[]) =>
-    params.limit === 0
-      ? buildBatchPageSearchParams(batch, 0, 0)
-      : buildBatchWindowSearchParams(
-          batch,
-          needed,
-          TYPESENSE_MAX_PAGE_SIZE,
-        );
   const batches = companyIds.length === 0
     ? [[]]
     : splitValuesForTypesenseQuery(

@@ -215,6 +215,62 @@ describe("readWatchlistCandidates", () => {
       ...secondPage.postings.map((value) => value.id),
     ])).toHaveLength(40);
   });
+
+  it("keeps URL-safety company batches stable as the server prefix grows", async () => {
+    const companyIds = Array.from(
+      { length: 250 },
+      (_, index) => makeUuid(index + 1),
+    );
+    mocks.singleSearch.mockResolvedValue({ found: 0, hits: [] });
+    const filters = { companyIds, keywords: ["abcdefghijklmn"] };
+
+    await readWatchlistCandidates({
+      filters,
+      offset: 60,
+      limit: 20,
+    });
+    const firstPartitions = mocks.singleSearch.mock.calls.map(([search]) =>
+      (((search as { filter_by?: string }).filter_by ?? "").match(
+        /00000000-0000-0000-0000-\d{12}/g,
+      ) ?? []),
+    );
+
+    mocks.singleSearch.mockClear();
+    await readWatchlistCandidates({
+      filters,
+      offset: 80,
+      limit: 20,
+    });
+    const secondPartitions = mocks.singleSearch.mock.calls.map(([search]) =>
+      (((search as { filter_by?: string }).filter_by ?? "").match(
+        /00000000-0000-0000-0000-\d{12}/g,
+      ) ?? []),
+    );
+
+    expect(firstPartitions.length).toBeGreaterThan(1);
+    expect(secondPartitions).toEqual(firstPartitions);
+  });
+
+  it("does not switch server query mode on deeper pages", async () => {
+    const companyIds = Array.from(
+      { length: 83 },
+      (_, index) => makeUuid(index + 1),
+    );
+    mocks.singleSearch.mockResolvedValue({ found: 0, hits: [] });
+    const filters = { companyIds, keywords: ["x".repeat(93)] };
+
+    await readWatchlistCandidates({ filters, offset: 160, limit: 20 });
+    const shallowCallCount = mocks.singleSearch.mock.calls.length;
+    mocks.singleSearch.mockClear();
+    await readWatchlistCandidates({
+      filters,
+      offset: 180,
+      limit: 20,
+    });
+
+    expect(shallowCallCount).toBeGreaterThan(1);
+    expect(mocks.singleSearch.mock.calls).toHaveLength(shallowCallCount);
+  });
 });
 
 describe("matchCompiledWatchlistsInWindow", () => {

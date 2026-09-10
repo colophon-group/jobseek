@@ -251,6 +251,71 @@ describe("getWatchlistPostingsBrowser (#3477)", () => {
     ])).toHaveLength(40);
   });
 
+  it("keeps URL-safety company batches stable when the requested prefix grows", async () => {
+    const companyIds = Array.from(
+      { length: 250 },
+      (_, index) => makeUuid(index + 1),
+    );
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => ({ found: 0, hits: [] }),
+    } as Response);
+    globalThis.fetch = fetchMock;
+
+    await getWatchlistPostingsBrowser({
+      companyIds,
+      keywords: ["abcdefghijklmn"],
+      offset: 60,
+      limit: 20,
+    });
+    const firstPartitions = fetchMock.mock.calls.map(([request]) =>
+      (new URL(String(request)).searchParams.get("filter_by") ?? "").match(
+        /00000000-0000-0000-0000-\d{12}/g,
+      ) ?? [],
+    );
+
+    fetchMock.mockClear();
+    await getWatchlistPostingsBrowser({
+      companyIds,
+      keywords: ["abcdefghijklmn"],
+      offset: 80,
+      limit: 20,
+    });
+    const secondPartitions = fetchMock.mock.calls.map(([request]) =>
+      (new URL(String(request)).searchParams.get("filter_by") ?? "").match(
+        /00000000-0000-0000-0000-\d{12}/g,
+      ) ?? [],
+    );
+
+    expect(firstPartitions.length).toBeGreaterThan(1);
+    expect(secondPartitions).toEqual(firstPartitions);
+  });
+
+  it("does not switch between a single query and batches on deeper pages", async () => {
+    const companyIds = Array.from(
+      { length: 83 },
+      (_, index) => makeUuid(index + 1),
+    );
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => ({ found: 0, hits: [] }),
+    } as Response);
+    globalThis.fetch = fetchMock;
+    const filters = { companyIds, keywords: ["x".repeat(93)] };
+
+    await getWatchlistPostingsBrowser({ ...filters, offset: 160, limit: 20 });
+    const shallowCallCount = fetchMock.mock.calls.length;
+    fetchMock.mockClear();
+    await getWatchlistPostingsBrowser({
+      ...filters,
+      offset: 180,
+      limit: 20,
+    });
+
+    expect(shallowCallCount).toBeGreaterThan(1);
+    expect(fetchMock.mock.calls).toHaveLength(shallowCallCount);
+  });
+
   it("uses the flow filter for a browser-direct year count", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
       ok: true,
