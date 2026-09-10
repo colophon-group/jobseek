@@ -103,12 +103,16 @@ type dependencies struct {
 
 type Config struct {
 	Binary         string
+	EgressPolicy   EgressPolicy
 	TaskTimeout    time.Duration
 	CleanupTimeout time.Duration
 	TerminateGrace time.Duration
 }
 
-func normalizeConfig(config Config) Config {
+func normalizeConfig(config Config) (Config, error) {
+	if err := config.EgressPolicy.validate(); err != nil {
+		return Config{}, err
+	}
 	if config.Binary == "" {
 		config.Binary = "lightpanda"
 	}
@@ -121,13 +125,17 @@ func normalizeConfig(config Config) Config {
 	if config.TerminateGrace <= 0 {
 		config.TerminateGrace = defaultTerminateGrace
 	}
-	return config
+	return config, nil
 }
 
 func runTask(ctx context.Context, config Config, task Task) (Result, error) {
-	config = normalizeConfig(config)
+	var err error
+	config, err = normalizeConfig(config)
+	if err != nil {
+		return Result{}, fmt.Errorf("configure lightpanda: %w", err)
+	}
 	return runTaskWithDependencies(ctx, config, dependencies{
-		process:      commandStarter{binary: config.Binary},
+		process:      commandStarter{binary: config.Binary, egressPolicy: config.EgressPolicy},
 		ready:        httpReadyWaiter{interval: defaultReadyInterval},
 		executor:     chromedpExecutor{},
 		allocatePort: allocateLoopbackPort,
@@ -137,6 +145,11 @@ func runTask(ctx context.Context, config Config, task Task) (Result, error) {
 }
 
 func runTaskWithDependencies(ctx context.Context, config Config, deps dependencies, task Task) (Result, error) {
+	var err error
+	config, err = normalizeConfig(config)
+	if err != nil {
+		return Result{}, fmt.Errorf("configure lightpanda: %w", err)
+	}
 	if err := validateTask(task); err != nil {
 		return Result{}, err
 	}
@@ -461,30 +474,54 @@ func waitUntil(done <-chan struct{}, timeout time.Duration) bool {
 }
 
 type commandStarter struct {
-	binary string
+	binary       string
+	egressPolicy EgressPolicy
 }
 
 func (s commandStarter) Start(port int) (managedProcess, error) {
 	logs := &boundedBuffer{limit: maxProcessLogBytes}
-	command := s.buildCommand(port, logs)
+	command, err := s.buildCommand(port, logs)
+	if err != nil {
+		return nil, err
+	}
 	if err := command.Start(); err != nil {
 		return nil, err
 	}
 	return &commandProcess{command: command, pgid: command.Process.Pid, logs: logs}, nil
 }
 
-func (s commandStarter) buildCommand(port int, logs io.Writer) *exec.Cmd {
-	command := exec.Command(s.binary,
-		"serve",
-		"--host", "127.0.0.1",
-		"--port", strconv.Itoa(port),
-		"--log-level", "error",
-	)
+func (s commandStarter) buildCommand(port int, logs io.Writer) (*exec.Cmd, error) {
+	if err := s.egressPolicy.validate(); err != nil {
+		return nil, err
+	}
+	command := exec.Command(s.binary, fixedLightpandaServeArgs(port, s.egressPolicy.blockCIDRs)...)
 	command.Env = append([]string(nil), lightpandaChildEnvironment...)
 	command.SysProcAttr = lightpandaProcessAttributes()
 	command.Stdout = logs
 	command.Stderr = logs
-	return command
+	return command, nil
+}
+
+// fixedLightpandaServeArgs is the single source of truth for the pinned 0.4.0
+// command shape. Production callers must validate EgressPolicy before passing
+// its private blockCIDRs. Test-tagged fixture callers can pass one narrowly
+// scoped exact exemption without creating a production configuration surface.
+func fixedLightpandaServeArgs(port int, blockCIDRs string) []string {
+	return []string{
+		"serve",
+		"--host", "127.0.0.1",
+		"--port", strconv.Itoa(port),
+		"--log-level", "error",
+		"--cdp-max-connections", "2",
+		"--cdp-max-pending-connections", "1",
+		"--http-max-concurrent", "8",
+		"--http-max-host-open", "4",
+		"--http-connect-timeout", "5000",
+		"--http-max-response-size", "8388608",
+		"--ws-max-concurrent", "1",
+		"--block-private-networks",
+		"--block-cidrs", blockCIDRs,
+	}
 }
 
 type commandProcess struct {

@@ -38,20 +38,18 @@ func TestLightpandaPoolRuntimeV1IntegrationC4(t *testing.T) {
 	servers := make([]*httptest.Server, 0, originCount)
 	for originID := range originCount {
 		originID := originID
-		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		server := newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			observer.serve(originID, writer, request)
 		}))
 		servers = append(servers, server)
 	}
-	defer func() {
-		for _, server := range servers {
-			server.Close()
-		}
-	}()
 
 	privacy := &lockedBridgePrivacy{}
 	adapter, err := lightpandaadapter.New(
-		runtimeV1Runner{config: Config{Binary: binary}},
+		runtimeV1Runner{
+			config: Config{Binary: binary, EgressPolicy: defaultEgressPolicy()},
+			run:    testOnlyFixtureRunner(binary, "127.0.0.2"),
+		},
 		privacy,
 	)
 	if err != nil {

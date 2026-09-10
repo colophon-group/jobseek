@@ -164,7 +164,7 @@ func TestRunTaskReleasesPortOnStartFailure(t *testing.T) {
 		releasePort:  func(port int) { released = port },
 	}
 
-	if _, err := runTaskWithDependencies(context.Background(), Config{}, deps, validTask()); err == nil {
+	if _, err := runTaskWithDependencies(context.Background(), Config{EgressPolicy: defaultEgressPolicy()}, deps, validTask()); err == nil {
 		t.Fatal("Run succeeded after process start failure")
 	}
 	if released != 9222 {
@@ -176,7 +176,10 @@ func TestCommandStarterBuildCommandDoesNotInheritEnvironment(t *testing.T) {
 	const sentinel = "JOBSEEK_LIGHTPANDA_CHILD_ENV_SENTINEL"
 	t.Setenv(sentinel, "must-not-reach-lightpanda")
 
-	command := (commandStarter{binary: "lightpanda"}).buildCommand(9222, &boundedBuffer{limit: maxProcessLogBytes})
+	command, err := (commandStarter{binary: "lightpanda", egressPolicy: defaultEgressPolicy()}).buildCommand(9222, &boundedBuffer{limit: maxProcessLogBytes})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if command.Env == nil {
 		t.Fatal("Lightpanda command has a nil environment and would inherit the parent environment")
 	}
@@ -198,10 +201,13 @@ func TestCommandStarterBuildCommandDoesNotInheritEnvironment(t *testing.T) {
 func TestCommandStarterArgumentsContainNoTaskMaterial(t *testing.T) {
 	const target = "https://secret.example/token"
 	const expression = "secretExpression()"
-	command := (commandStarter{binary: "lightpanda"}).buildCommand(
+	command, err := (commandStarter{binary: "lightpanda", egressPolicy: defaultEgressPolicy()}).buildCommand(
 		9222,
 		&boundedBuffer{limit: maxProcessLogBytes},
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	arguments := strings.Join(command.Args, " ")
 	if strings.Contains(arguments, target) || strings.Contains(arguments, expression) {
 		t.Fatalf("Lightpanda child arguments contain task material: %q", arguments)
@@ -462,6 +468,7 @@ func TestCorrelateMainDocumentSnapshot(t *testing.T) {
 
 func testRunner(process *fakeProcess, executor taskExecutor, portOpen func(int) bool) (Config, dependencies) {
 	config := Config{
+		EgressPolicy:   defaultEgressPolicy(),
 		TaskTimeout:    time.Second,
 		CleanupTimeout: 500 * time.Millisecond,
 		TerminateGrace: 100 * time.Millisecond,
