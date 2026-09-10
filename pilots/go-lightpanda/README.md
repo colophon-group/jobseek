@@ -9,7 +9,7 @@ containing the top-level document's final response status, final URL,
 The same package also contains a dormant in-process implementation of the
 runtime-v1 `lightpandaadapter.Runner`. It maps only B0 render or B1 render plus
 one synchronous evaluation declared to have no network effect onto exactly
-one existing one-shot lifecycle. It is not exposed by the CLI and adds no
+one existing one-shot lifecycle. It is not exposed by the ordinary CLI and adds no
 service, endpoint, queue, persistence, fallback, deployment, or production
 routing.
 The adapter still requires an injected evaluation-privacy implementation;
@@ -20,8 +20,9 @@ fixed-RAM pilot. The pool admits immutable runtime-v1 inputs into a fixed set
 of workers, dispatches different origins fairly, and permits at most one task
 per origin at a time. Every active slot still owns a separate one-shot
 Lightpanda process and the same cleanup proof below. Processes are not reused
-or shared between tasks. The pool has no CLI, queue, crawler, or production
-entry point.
+or shared between tasks. The ordinary build has no pool CLI, queue, crawler, or
+production entry point. A separate `densitybench` build tag exposes only the
+closed-input implementation smoke described below.
 
 The bridge preserves the pilot's stricter 512 KiB HTML ceiling and reports an
 oversized document as the adapter's closed `RESOURCE_LIMIT` result. B1 uses
@@ -170,3 +171,30 @@ or observability integration. The runtime-v1 bridge is exercised only against
 loopback fixtures and has no reusable production evaluation-privacy sealer or
 destination/subresource policy. It is not a production service or production
 browser-security boundary.
+
+## Native c4 implementation smoke
+
+Pull requests also build a credential-free, build-tagged Go smoke image, a
+production-shaped Python 3.13 + Playwright/Chromium image, and an exact local
+fixture image on native Linux amd64 and arm64 runners. The controller runs one
+Go arm followed by one Python arm at c4. Each arm receives the same 16-task,
+eight-origin, two-wave workload: four render-only B0 tasks and four B1 title
+evaluations per wave, with modes swapped by origin in the second wave.
+
+The Python arm warms exactly four Playwright drivers before its measured clock
+and creates a fresh browser, context, and page for every task. The Go arm creates
+one fixed four-worker pool before its measured clock and retains the existing
+fresh one-shot Lightpanda lifecycle per task. Both measured containers are
+limited to one CPU, 1 GiB memory with no additional swap, 128 PIDs, and 256 file
+descriptors. The fixture runs outside that cgroup on a unique Docker internal
+network and is separately bounded. The controller verifies the effective
+cgroup-v2 limits and aggregate counters, exact image IDs, stopped-container
+isolation, task/oracle conservation, browser cleanup, and zero labeled-resource
+postflight. Only its allowlisted report is retained.
+
+This is an implementation and containment smoke, not comparative performance
+evidence. It does not execute the counterbalanced repetitions, retain partial
+failed-arm evidence, calculate ratios, or make a RAM-density/admission claim.
+Those belong to the still-open fixed-RAM evidence issue and require a separate
+frozen protocol plus independent review. The smoke grants no crawler, queue,
+database, Murmur, or production authority.
