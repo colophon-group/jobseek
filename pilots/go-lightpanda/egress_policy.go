@@ -35,6 +35,16 @@ type EgressPolicy struct {
 	blockCIDRs string
 }
 
+// runtimeV1ServiceEgressPolicy is proof that a service policy was constructed
+// from a bounded deployment inventory, not from the registry baseline alone.
+// Both fields stay private and validation reconstructs them from the startup
+// inventory, so the baseline-only defaultEgressPolicy cannot qualify a
+// network service.
+type runtimeV1ServiceEgressPolicy struct {
+	egressPolicy             EgressPolicy
+	canonicalDeploymentCIDRs string
+}
+
 func defaultEgressPolicy() EgressPolicy {
 	return mustNewEgressPolicy(nil)
 }
@@ -57,6 +67,144 @@ func newEgressPolicy(additional []string) (EgressPolicy, error) {
 		return EgressPolicy{}, err
 	}
 	return EgressPolicy{blockCIDRs: canonical}, nil
+}
+
+// newRuntimeV1ServiceEgressPolicy reconciles the trusted startup inventory
+// with the registry baseline. Entries already contained by the baseline stay
+// in the inventory proof but are not duplicated in Lightpanda's deny list.
+// Every other inventory entry must be an uncovered globally routed prefix.
+func newRuntimeV1ServiceEgressPolicy(inventory []string) (runtimeV1ServiceEgressPolicy, error) {
+	canonicalInventory, uncovered, err := canonicalDeploymentDenyInventory(inventory)
+	if err != nil {
+		return runtimeV1ServiceEgressPolicy{}, err
+	}
+	policy, err := newEgressPolicy(uncovered)
+	if err != nil {
+		return runtimeV1ServiceEgressPolicy{}, errors.New("deployment deny inventory could not qualify the service policy")
+	}
+	qualified := runtimeV1ServiceEgressPolicy{
+		egressPolicy:             policy,
+		canonicalDeploymentCIDRs: canonicalInventory,
+	}
+	if err := qualified.validate(); err != nil {
+		return runtimeV1ServiceEgressPolicy{}, err
+	}
+	return qualified, nil
+}
+
+func (policy runtimeV1ServiceEgressPolicy) validate() error {
+	var inventory []string
+	if policy.canonicalDeploymentCIDRs != "" {
+		inventory = strings.Split(policy.canonicalDeploymentCIDRs, ",")
+	}
+	expected, err := newRuntimeV1ServiceEgressPolicyUnchecked(inventory)
+	if err != nil {
+		return err
+	}
+	if policy.canonicalDeploymentCIDRs != expected.canonicalDeploymentCIDRs ||
+		policy.egressPolicy.blockCIDRs != expected.egressPolicy.blockCIDRs {
+		return errors.New("runtime-v1 service egress policy does not cover its deployment inventory")
+	}
+	return policy.egressPolicy.validate()
+}
+
+func newRuntimeV1ServiceEgressPolicyUnchecked(inventory []string) (runtimeV1ServiceEgressPolicy, error) {
+	canonicalInventory, uncovered, err := canonicalDeploymentDenyInventory(inventory)
+	if err != nil {
+		return runtimeV1ServiceEgressPolicy{}, err
+	}
+	policy, err := newEgressPolicy(uncovered)
+	if err != nil {
+		return runtimeV1ServiceEgressPolicy{}, errors.New("deployment deny inventory could not qualify the service policy")
+	}
+	return runtimeV1ServiceEgressPolicy{
+		egressPolicy:             policy,
+		canonicalDeploymentCIDRs: canonicalInventory,
+	}, nil
+}
+
+func canonicalDeploymentDenyInventory(entries []string) (string, []string, error) {
+	baseline := strings.Split(baselineBlockedCIDRs, ",")
+	if len(entries) == 0 {
+		return "", nil, errors.New("runtime-v1 service deployment deny inventory is required")
+	}
+	if len(entries) > maxEgressCIDRCount-len(baseline) {
+		return "", nil, errors.New("deployment deny inventory exceeds its entry limit")
+	}
+
+	prefixes := make([]netip.Prefix, 0, len(entries))
+	inputBytes := 0
+	for _, entry := range entries {
+		inputBytes += len(entry)
+		if entry == "" || len(entry) > maxSingleCIDRBytes || strings.TrimSpace(entry) != entry || strings.HasPrefix(entry, "-") {
+			return "", nil, errors.New("deployment deny inventory contains a malformed or non-canonical CIDR")
+		}
+		prefix, err := netip.ParsePrefix(entry)
+		if err != nil || !prefix.IsValid() || prefix.Addr().Is4In6() || prefix.Masked() != prefix || prefix.String() != entry {
+			return "", nil, errors.New("deployment deny inventory contains a malformed or non-canonical CIDR")
+		}
+		prefixes = append(prefixes, prefix)
+	}
+	if inputBytes+len(entries)-1 > maxEgressCIDRBytes {
+		return "", nil, errors.New("deployment deny inventory exceeds its byte limit")
+	}
+
+	slices.SortFunc(prefixes, func(left, right netip.Prefix) int {
+		if order := left.Addr().Compare(right.Addr()); order != 0 {
+			return order
+		}
+		return left.Bits() - right.Bits()
+	})
+	for index, prefix := range prefixes {
+		for _, previous := range prefixes[:index] {
+			if previous == prefix {
+				return "", nil, errors.New("deployment deny inventory contains a duplicate CIDR")
+			}
+		}
+	}
+
+	baselinePrefixes := make([]netip.Prefix, 0, len(baseline))
+	for _, entry := range baseline {
+		baselinePrefixes = append(baselinePrefixes, netip.MustParsePrefix(entry))
+	}
+	canonical := make([]string, len(prefixes))
+	uncovered := make([]string, 0, len(prefixes))
+	for index, prefix := range prefixes {
+		canonical[index] = prefix.String()
+		covered := false
+		for _, blocked := range baselinePrefixes {
+			if prefixCoveredBy(prefix, blocked) {
+				covered = true
+				break
+			}
+			if prefixesOverlap(prefix, blocked) {
+				return "", nil, errors.New("deployment deny inventory partially overlaps the registry baseline")
+			}
+		}
+		if covered {
+			continue
+		}
+		if !prefix.Addr().IsGlobalUnicast() {
+			return "", nil, errors.New("deployment deny inventory contains an uncovered non-global CIDR")
+		}
+		uncovered = append(uncovered, prefix.String())
+	}
+	if len(uncovered) == 0 {
+		return "", nil, errors.New("deployment deny inventory requires a globally routable uncovered CIDR")
+	}
+	return strings.Join(canonical, ","), uncovered, nil
+}
+
+func prefixCoveredBy(prefix, covering netip.Prefix) bool {
+	return prefix.Addr().BitLen() == covering.Addr().BitLen() &&
+		prefix.Bits() >= covering.Bits() && covering.Contains(prefix.Addr())
+}
+
+func prefixesOverlap(left, right netip.Prefix) bool {
+	if left.Addr().BitLen() != right.Addr().BitLen() {
+		return false
+	}
+	return left.Contains(right.Addr()) || right.Contains(left.Addr())
 }
 
 func mustNewEgressPolicy(additional []string) EgressPolicy {

@@ -22,6 +22,9 @@ or credential environment:
 go-lightpanda --runtime-v1-service \
   --listen 0.0.0.0:9443 \
   --service-ip 10.0.0.5 \
+  --deployment-deny-cidr <service-private-ip>/32 \
+  --deployment-deny-cidr <host-public-ip>/32 \
+  --deployment-deny-cidr <project-network-cidr> \
   --tls-cert /run/credentials/server.pem \
   --tls-key /run/credentials/server-key.pem \
   --tls-ca /run/credentials/ca.pem \
@@ -39,6 +42,24 @@ the crawler's private source address. TLS is exactly TLS 1.3, session tickets
 are disabled, and the only ALPN is `jobseek-lightpanda-b0/1`. Both peers load
 one dedicated CA certificate and verify its DER SHA-256 before opening a
 connection.
+
+Each trusted deployment address or project prefix is supplied once with the
+repeatable `--deployment-deny-cidr` startup flag. The inventory is nonempty,
+canonical, unique, and bounded. Overlapping host/project entries are accepted
+only when each is fully covered by the version-controlled registry baseline;
+uncovered overlaps are rejected. Baseline-covered entries (including the
+service's private address) are reconciled without adding an overlapping
+Lightpanda CIDR. Every other entry must be a globally routed deployment prefix,
+and at least one such uncovered prefix is required. Service construction
+reconstructs the immutable deny policy and verifies every supplied entry before
+cgroup attestation, TLS loading, listener creation, or any Lightpanda child.
+Deployment tooling remains responsible for supplying the complete live
+inventory. The baseline-only policy used by the standalone CLI and stdio
+fixture cannot qualify service mode. The service accepts only a render
+execution bound to the exact same qualified policy; a baseline-only or
+mismatched execution is rejected at construction. Inventory values are trusted
+deployment configuration, never request fields, and validation failures do not
+echo them.
 
 The server leaf has exactly one IP SAN: the configured private IPv4 service IP.
 It has exactly the `serverAuth` extended usage and an explicit valid
@@ -122,7 +143,7 @@ This boundary is inactive until separate reviewed slices provide all of:
 - production deployment wiring for the Python capacity-reserving claimant;
 - Murmur certificate generation, protected delivery, rotation, and rollback;
 - an external default-deny egress boundary covering host/public/private and
-  project ranges in addition to the existing browser-level deny policy;
+  project ranges in addition to the service-qualified browser deny policy;
 - fixed 1 GiB/no-swap service containment and production observability; and
 - a one-board B0 canary with frozen assignment and explicit rollback.
 

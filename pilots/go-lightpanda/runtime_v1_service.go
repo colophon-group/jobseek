@@ -54,16 +54,31 @@ var runtimeV1ServiceHelloJSON = []byte(
 var subjectAlternativeNameOID = asn1.ObjectIdentifier{2, 5, 29, 17}
 
 type runtimeV1ServiceConfig struct {
-	ListenAddress     string
-	ServiceIP         string
-	CertificatePath   string
-	PrivateKeyPath    string
-	CAPath            string
-	CASHA256          string
-	ClientLeafSHA256  string
-	ClientSPKISHA256  string
-	MemoryMaxPath     string
-	MemorySwapMaxPath string
+	ListenAddress       string
+	ServiceIP           string
+	CertificatePath     string
+	PrivateKeyPath      string
+	CAPath              string
+	CASHA256            string
+	ClientLeafSHA256    string
+	ClientSPKISHA256    string
+	MemoryMaxPath       string
+	MemorySwapMaxPath   string
+	serviceEgressPolicy runtimeV1ServiceEgressPolicy
+}
+
+type repeatedDeploymentCIDRFlag []string
+
+func (values *repeatedDeploymentCIDRFlag) String() string {
+	if values == nil || len(*values) == 0 {
+		return ""
+	}
+	return "<redacted>"
+}
+
+func (values *repeatedDeploymentCIDRFlag) Set(value string) error {
+	*values = append(*values, value)
+	return nil
 }
 
 type runtimeV1Service struct {
@@ -83,14 +98,15 @@ type runtimeV1Service struct {
 // result. The adapter still returns its closed INTERNAL failure, while the
 // resident service independently poisons itself and exits for replacement.
 type runtimeV1ServiceExecution struct {
-	executor runtimeV1Executor
-	fatalMu  sync.Mutex
-	fatal    func(error)
-	fatalErr error
+	executor     runtimeV1Executor
+	egressPolicy EgressPolicy
+	fatalMu      sync.Mutex
+	fatal        func(error)
+	fatalErr     error
 }
 
 func newRuntimeV1ServiceExecution(config Config, run taskRunner) (*runtimeV1ServiceExecution, error) {
-	execution := &runtimeV1ServiceExecution{}
+	execution := &runtimeV1ServiceExecution{egressPolicy: config.EgressPolicy}
 	if run == nil {
 		run = runTask
 	}
@@ -152,8 +168,10 @@ func runtimeV1ServiceConfigFromArgs(args []string) (runtimeV1ServiceConfig, erro
 	set := flag.NewFlagSet("go-lightpanda-service", flag.ContinueOnError)
 	set.SetOutput(io.Discard)
 	config := runtimeV1ServiceConfig{}
+	deploymentDenyCIDRs := repeatedDeploymentCIDRFlag{}
 	set.StringVar(&config.ListenAddress, "listen", "", "fixed container-local TCP bind")
 	set.StringVar(&config.ServiceIP, "service-ip", "", "private literal service identity IP")
+	set.Var(&deploymentDenyCIDRs, "deployment-deny-cidr", "trusted deployment address CIDR to deny (repeatable)")
 	set.StringVar(&config.CertificatePath, "tls-cert", "", "server certificate PEM")
 	set.StringVar(&config.PrivateKeyPath, "tls-key", "", "server private key PEM")
 	set.StringVar(&config.CAPath, "tls-ca", "", "dedicated service CA certificate PEM")
@@ -163,6 +181,11 @@ func runtimeV1ServiceConfigFromArgs(args []string) (runtimeV1ServiceConfig, erro
 	if err := set.Parse(args); err != nil || set.NArg() != 0 || config.ServiceIP == "" {
 		return runtimeV1ServiceConfig{}, errors.New("invalid service arguments")
 	}
+	servicePolicy, err := newRuntimeV1ServiceEgressPolicy(deploymentDenyCIDRs)
+	if err != nil {
+		return runtimeV1ServiceConfig{}, errors.New("invalid service arguments")
+	}
+	config.serviceEgressPolicy = servicePolicy
 	config.MemoryMaxPath = defaultMemoryMaxPath
 	config.MemorySwapMaxPath = defaultMemorySwapMaxPath
 	return config, nil
@@ -170,10 +193,19 @@ func runtimeV1ServiceConfigFromArgs(args []string) (runtimeV1ServiceConfig, erro
 
 func newRuntimeV1Service(
 	config runtimeV1ServiceConfig,
-	executor runtimeV1Executor,
+	execution *runtimeV1ServiceExecution,
 ) (*runtimeV1Service, error) {
-	if executor == nil {
-		return nil, errors.New("runtime-v1 service requires an executor")
+	if err := config.serviceEgressPolicy.validate(); err != nil {
+		return nil, err
+	}
+	if execution == nil || execution.executor == nil {
+		return nil, errors.New("runtime-v1 service requires a bound execution")
+	}
+	if err := execution.egressPolicy.validate(); err != nil {
+		return nil, errors.New("runtime-v1 service execution has an invalid egress policy")
+	}
+	if execution.egressPolicy.blockCIDRs != config.serviceEgressPolicy.egressPolicy.blockCIDRs {
+		return nil, errors.New("runtime-v1 service execution egress policy does not match the qualified service policy")
 	}
 	if err := validateRuntimeV1ServiceBind(config.ListenAddress); err != nil {
 		return nil, err
@@ -193,14 +225,12 @@ func newRuntimeV1Service(
 		return nil, errors.New("runtime-v1 service hello is invalid")
 	}
 	service := &runtimeV1Service{
-		executor: executor, tlsConfig: tlsConfig,
+		executor: execution, tlsConfig: tlsConfig,
 		slots: make(chan struct{}, runtimeV1ServiceCapacity), hello: hello,
 		connections: make(map[net.Conn]context.CancelFunc, runtimeV1ServiceCapacity),
 	}
-	if execution, ok := executor.(*runtimeV1ServiceExecution); ok {
-		if err := execution.bindFatal(service.stop); err != nil {
-			return nil, err
-		}
+	if err := execution.bindFatal(service.stop); err != nil {
+		return nil, err
 	}
 	return service, nil
 }
@@ -208,9 +238,9 @@ func newRuntimeV1Service(
 func runRuntimeV1Service(
 	ctx context.Context,
 	config runtimeV1ServiceConfig,
-	executor runtimeV1Executor,
+	execution *runtimeV1ServiceExecution,
 ) error {
-	service, err := newRuntimeV1Service(config, executor)
+	service, err := newRuntimeV1Service(config, execution)
 	if err != nil {
 		return err
 	}

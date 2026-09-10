@@ -32,7 +32,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const serviceTestIP = "10.0.0.5"
+const (
+	serviceTestIP         = "10.0.0.5"
+	serviceTestPublicCIDR = "93.184.216.34/32"
+)
 
 type serviceTLSFixture struct {
 	server runtimeV1ServiceConfig
@@ -57,6 +60,8 @@ func TestRuntimeV1ServiceHelloIsExactAndBounded(t *testing.T) {
 func TestRuntimeV1ServiceConfigArgumentsAreClosed(t *testing.T) {
 	config, err := runtimeV1ServiceConfigFromArgs([]string{
 		"--listen", runtimeV1ServiceListenAddress, "--service-ip", serviceTestIP,
+		"--deployment-deny-cidr", serviceTestIP + "/32",
+		"--deployment-deny-cidr", serviceTestPublicCIDR,
 		"--tls-cert", "/cert", "--tls-key", "/key",
 		"--tls-ca", "/ca", "--tls-ca-sha256", strings.Repeat("1", 64),
 		"--client-leaf-sha256", strings.Repeat("2", 64),
@@ -64,7 +69,9 @@ func TestRuntimeV1ServiceConfigArgumentsAreClosed(t *testing.T) {
 	})
 	if err != nil || config.MemoryMaxPath != defaultMemoryMaxPath ||
 		config.MemorySwapMaxPath != defaultMemorySwapMaxPath ||
-		config.ListenAddress != runtimeV1ServiceListenAddress || config.ServiceIP != serviceTestIP {
+		config.ListenAddress != runtimeV1ServiceListenAddress || config.ServiceIP != serviceTestIP ||
+		config.serviceEgressPolicy.canonicalDeploymentCIDRs != serviceTestIP+"/32,"+serviceTestPublicCIDR ||
+		config.serviceEgressPolicy.egressPolicy.blockCIDRs == defaultEgressPolicy().blockCIDRs {
 		t.Fatalf("config/error = %#v/%v", config, err)
 	}
 	for _, args := range [][]string{
@@ -73,6 +80,11 @@ func TestRuntimeV1ServiceConfigArgumentsAreClosed(t *testing.T) {
 		{"--listen"},
 		{"--listen", runtimeV1ServiceListenAddress},
 		{"--listen", runtimeV1ServiceListenAddress, "--service-ip"},
+		{"--listen", runtimeV1ServiceListenAddress, "--service-ip", serviceTestIP},
+		{"--listen", runtimeV1ServiceListenAddress, "--service-ip", serviceTestIP,
+			"--deployment-deny-cidr", serviceTestIP + "/32"},
+		{"--listen", runtimeV1ServiceListenAddress, "--service-ip", serviceTestIP,
+			"--deployment-deny-cidr", " "},
 	} {
 		if _, err := runtimeV1ServiceConfigFromArgs(args); err == nil {
 			t.Fatalf("args accepted: %q", args)
@@ -152,6 +164,7 @@ func TestRuntimeV1ServiceConstructionRejectsInvalidEndpointConfiguration(t *test
 	executor := runtimeV1ExecutorFunc(func(context.Context, *runtimev1.BrowserExecutionInput) *runtimev1.BrowserResult {
 		return serviceSuccess("https://example.test/jobs")
 	})
+	execution := boundRuntimeV1ServiceExecutionTest(fixture, executor)
 	for _, test := range []struct {
 		name  string
 		patch func(*runtimeV1ServiceConfig)
@@ -162,14 +175,61 @@ func TestRuntimeV1ServiceConstructionRejectsInvalidEndpointConfiguration(t *test
 		{name: "invalid service identity", patch: func(config *runtimeV1ServiceConfig) {
 			config.ServiceIP = "0.0.0.0"
 		}},
+		{name: "inventory proof tampering", patch: func(config *runtimeV1ServiceConfig) {
+			config.serviceEgressPolicy.canonicalDeploymentCIDRs = serviceTestIP + "/32,93.184.216.35/32"
+		}},
+		{name: "baseline-only policy", patch: func(config *runtimeV1ServiceConfig) {
+			config.serviceEgressPolicy = runtimeV1ServiceEgressPolicy{
+				egressPolicy:             defaultEgressPolicy(),
+				canonicalDeploymentCIDRs: serviceTestIP + "/32," + serviceTestPublicCIDR,
+			}
+		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			config := fixture.server
 			test.patch(&config)
-			if _, err := newRuntimeV1Service(config, executor); err == nil {
+			if _, err := newRuntimeV1Service(config, execution); err == nil {
 				t.Fatal("invalid endpoint configuration reached service construction")
 			}
 		})
+	}
+}
+
+func TestRuntimeV1ServiceConstructionValidatesEgressBeforeCgroupAndTLS(t *testing.T) {
+	fixture := newServiceTLSFixture(t)
+	config := fixture.server
+	config.serviceEgressPolicy = runtimeV1ServiceEgressPolicy{}
+	config.MemoryMaxPath = filepath.Join(t.TempDir(), "missing-memory.max")
+	config.CertificatePath = filepath.Join(t.TempDir(), "missing-server.pem")
+	executor := runtimeV1ExecutorFunc(func(context.Context, *runtimev1.BrowserExecutionInput) *runtimev1.BrowserResult {
+		t.Fatal("invalid service policy reached the executor")
+		return nil
+	})
+	execution := boundRuntimeV1ServiceExecutionTest(fixture, executor)
+	_, err := newRuntimeV1Service(config, execution)
+	if err == nil || !strings.Contains(err.Error(), "deployment deny inventory") {
+		t.Fatalf("construction error = %v, want deployment inventory rejection", err)
+	}
+}
+
+func TestRuntimeV1ServiceRejectsBaselineOnlyExecutionBeforeCgroupAndTLS(t *testing.T) {
+	fixture := newServiceTLSFixture(t)
+	config := fixture.server
+	config.MemoryMaxPath = filepath.Join(t.TempDir(), "missing-memory.max")
+	config.CertificatePath = filepath.Join(t.TempDir(), "missing-server.pem")
+	execution, err := newRuntimeV1ServiceExecution(
+		Config{EgressPolicy: defaultEgressPolicy()},
+		func(context.Context, Config, Task) (Result, error) {
+			t.Fatal("mismatched execution policy reached the runner")
+			return Result{}, nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = newRuntimeV1Service(config, execution)
+	if err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("construction error = %v, want execution policy mismatch", err)
 	}
 }
 
@@ -571,7 +631,9 @@ func TestRuntimeV1ServicePeerCloseCancelsExecutionAndServiceRemainsSound(t *test
 	cleaned := make(chan struct{})
 	var calls atomic.Int32
 	var cleanups atomic.Int32
-	execution, err := newRuntimeV1ServiceExecution(Config{}, func(
+	execution, err := newRuntimeV1ServiceExecution(Config{
+		EgressPolicy: fixture.server.serviceEgressPolicy.egressPolicy,
+	}, func(
 		ctx context.Context,
 		_ Config,
 		task Task,
@@ -623,7 +685,9 @@ func TestRuntimeV1ServicePeerCloseCancelsExecutionAndServiceRemainsSound(t *test
 
 func TestRuntimeV1ServiceCleanupUnprovedPoisonsResidentService(t *testing.T) {
 	fixture := newServiceTLSFixture(t)
-	execution, err := newRuntimeV1ServiceExecution(Config{}, func(
+	execution, err := newRuntimeV1ServiceExecution(Config{
+		EgressPolicy: fixture.server.serviceEgressPolicy.egressPolicy,
+	}, func(
 		context.Context,
 		Config,
 		Task,
@@ -706,7 +770,8 @@ func startRuntimeV1ServiceTest(
 	executor runtimeV1Executor,
 ) (*runtimeV1Service, string, func()) {
 	t.Helper()
-	service, err := newRuntimeV1Service(fixture.server, executor)
+	execution := boundRuntimeV1ServiceExecutionTest(fixture, executor)
+	service, err := newRuntimeV1Service(fixture.server, execution)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -734,6 +799,19 @@ func startRuntimeV1ServiceTest(
 		}
 	}
 	return service, listener.Addr().String(), stop
+}
+
+func boundRuntimeV1ServiceExecutionTest(
+	fixture serviceTLSFixture,
+	executor runtimeV1Executor,
+) *runtimeV1ServiceExecution {
+	if execution, ok := executor.(*runtimeV1ServiceExecution); ok {
+		return execution
+	}
+	return &runtimeV1ServiceExecution{
+		executor:     executor,
+		egressPolicy: fixture.server.serviceEgressPolicy.egressPolicy,
+	}
 }
 
 func dialRuntimeV1ServiceTest(t *testing.T, address string, config *tls.Config) *tls.Conn {
@@ -876,6 +954,11 @@ func newServiceTLSFixture(t *testing.T) serviceTLSFixture {
 	roots := x509.NewCertPool()
 	roots.AddCert(ca)
 	clientLeaf := mustParseCertificate(t, clientDER)
+	deploymentDenyCIDRs := []string{serviceTestIP + "/32", serviceTestPublicCIDR}
+	servicePolicy, err := newRuntimeV1ServiceEgressPolicy(deploymentDenyCIDRs)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return serviceTLSFixture{
 		server: runtimeV1ServiceConfig{
 			ListenAddress: runtimeV1ServiceListenAddress, ServiceIP: serviceTestIP,
@@ -884,6 +967,7 @@ func newServiceTLSFixture(t *testing.T) serviceTLSFixture {
 			CASHA256: hexDigest(caDER), ClientLeafSHA256: hexDigest(clientDER),
 			ClientSPKISHA256: hexDigest(clientLeaf.RawSubjectPublicKeyInfo),
 			MemoryMaxPath:    memoryPath, MemorySwapMaxPath: swapPath,
+			serviceEgressPolicy: servicePolicy,
 		},
 		client: &tls.Config{
 			MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
