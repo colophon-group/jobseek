@@ -36,6 +36,11 @@ const (
 	maxProcessLogBytes    = 32 << 10
 )
 
+var lightpandaChildEnvironment = []string{
+	"LIGHTPANDA_DISABLE_CORE_DUMP=1",
+	"LIGHTPANDA_DISABLE_TELEMETRY=true",
+}
+
 var (
 	errCleanupUnproved = errors.New("lightpanda cleanup could not be proved")
 	errResourceLimit   = errors.New("lightpanda result exceeded a resource limit")
@@ -461,19 +466,25 @@ type commandStarter struct {
 
 func (s commandStarter) Start(port int) (managedProcess, error) {
 	logs := &boundedBuffer{limit: maxProcessLogBytes}
+	command := s.buildCommand(port, logs)
+	if err := command.Start(); err != nil {
+		return nil, err
+	}
+	return &commandProcess{command: command, pgid: command.Process.Pid, logs: logs}, nil
+}
+
+func (s commandStarter) buildCommand(port int, logs io.Writer) *exec.Cmd {
 	command := exec.Command(s.binary,
 		"serve",
 		"--host", "127.0.0.1",
 		"--port", strconv.Itoa(port),
 		"--log-level", "error",
 	)
+	command.Env = append([]string(nil), lightpandaChildEnvironment...)
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	command.Stdout = logs
 	command.Stderr = logs
-	if err := command.Start(); err != nil {
-		return nil, err
-	}
-	return &commandProcess{command: command, pgid: command.Process.Pid, logs: logs}, nil
+	return command
 }
 
 type commandProcess struct {
