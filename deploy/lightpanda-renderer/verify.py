@@ -540,7 +540,16 @@ def validate_compose_model(
     if {str(volume.get("source", "")) for volume in volumes} != expected_sources:
         fail("Compose mount escaped its exact release generation")
     expected_volume_keys = {"type", "source", "target", "read_only", "bind"}
-    if any(set(volume) != expected_volume_keys or volume.get("bind") != {} for volume in volumes):
+
+    def bind_options_are_safe(value: object) -> bool:
+        return isinstance(value, dict) and (
+            not value or (set(value) == {"create_host_path"} and value["create_host_path"] is False)
+        )
+
+    if any(
+        set(volume) != expected_volume_keys or not bind_options_are_safe(volume.get("bind"))
+        for volume in volumes
+    ):
         fail("rendered Compose credential mount keys drifted")
 
     if service.get("networks") != {SERVICE: {"ipv4_address": inventory["renderer_address"]}}:

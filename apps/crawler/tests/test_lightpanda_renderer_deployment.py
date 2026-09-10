@@ -136,6 +136,43 @@ def test_compose_model_is_exactly_one_no_egress_renderer(
     assert model["networks"]["renderer"]["internal"] is True  # type: ignore[index]
 
 
+@pytest.mark.parametrize("accepted_bind", ({}, {"create_host_path": False}))
+def test_compose_verifier_accepts_safe_bind_normalizations(
+    rendered_compose_model: dict[str, object],
+    accepted_bind: dict[str, object],
+) -> None:
+    model = copy.deepcopy(rendered_compose_model)
+    volumes = model["services"]["renderer"]["volumes"]  # type: ignore[index]
+    for volume in volumes:  # type: ignore[union-attr]
+        volume["bind"] = accepted_bind
+    verify.validate_compose_model(
+        model, release_env(), verify.load_inventory(DEPLOY / "inventory.json")
+    )
+
+
+@pytest.mark.parametrize(
+    "rejected_bind",
+    (
+        {"create_host_path": True},
+        {"create_host_path": 0},
+        {"create_host_path": 0.0},
+        {"create_host_path": None},
+        {"create_host_path": "false"},
+        {"create_host_path": False, "propagation": "rshared"},
+    ),
+)
+def test_compose_verifier_rejects_unsafe_bind_normalizations(
+    rendered_compose_model: dict[str, object], rejected_bind: object
+) -> None:
+    model = copy.deepcopy(rendered_compose_model)
+    volumes = model["services"]["renderer"]["volumes"]  # type: ignore[index]
+    volumes[0]["bind"] = rejected_bind  # type: ignore[index]
+    with pytest.raises(verify.VerificationError, match="credential mount keys"):
+        verify.validate_compose_model(
+            model, release_env(), verify.load_inventory(DEPLOY / "inventory.json")
+        )
+
+
 @pytest.mark.parametrize(
     ("key", "value"),
     [
