@@ -180,6 +180,31 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(runner.evaluation_json_bytes("café"), b'"caf\\u00e9"')
         self.assertEqual(runner.evaluation_json_bytes('a"b'), b'"a\\"b"')
 
+    def test_start_gate_waits_for_an_owned_regular_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            gate = Path(directory) / "start"
+            pauses: list[float] = []
+
+            def release(delay: float) -> None:
+                pauses.append(delay)
+                gate.touch(mode=0o600)
+
+            runner.wait_for_start_gate(gate, expected=gate, pause=release)
+            self.assertEqual(pauses, [0.01])
+            with self.assertRaises(runner.ContractError):
+                runner.wait_for_start_gate(Path(directory), expected=Path(directory))
+
+    def test_start_gate_rejects_the_wrong_path_and_symlinks(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "target"
+            target.touch(mode=0o600)
+            gate = Path(directory) / "gate"
+            gate.symlink_to(target)
+            with self.assertRaises(runner.ContractError):
+                runner.wait_for_start_gate(gate, expected=gate)
+            with self.assertRaises(runner.ContractError):
+                runner.wait_for_start_gate(target, expected=gate)
+
 
 class RunnerTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:

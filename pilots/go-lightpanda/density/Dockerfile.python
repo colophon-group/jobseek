@@ -12,6 +12,7 @@ RUN playwright install --with-deps chromium-headless-shell
 RUN python - <<'PY'
 import importlib.metadata
 import os
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -26,14 +27,14 @@ for package, expected in {
 }.items():
     assert importlib.metadata.version(package) == expected
 revision = Path("/ms-playwright/chromium_headless_shell-1234")
-executables = [
-    candidate
-    for candidate in revision.rglob("chrome-headless-shell")
-    if candidate.is_file() and os.access(candidate, os.X_OK)
-]
-assert len(executables) == 1
+executable = {
+    "aarch64": revision / "chrome-linux" / "headless_shell",
+    "x86_64": revision / "chrome-headless-shell-linux64" / "chrome-headless-shell",
+}.get(platform.machine())
+assert executable is not None and executable.is_file()
+assert os.access(executable, os.X_OK)
 version = subprocess.run(
-    [str(executables[0]), "--version"],
+    [str(executable), "--version"],
     check=True,
     capture_output=True,
     text=True,

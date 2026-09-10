@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
 )
@@ -67,6 +68,30 @@ func TestDensityConcurrencyIsFixed(t *testing.T) {
 		if densityAllowedConcurrency(concurrency) {
 			t.Fatalf("accepted concurrency %d", concurrency)
 		}
+	}
+}
+
+func TestDensityStartGateWaitsForARegularFile(t *testing.T) {
+	path := t.TempDir() + "/start"
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		_ = os.WriteFile(path, nil, 0o600)
+	}()
+	if err := waitDensityStartGate(ctx, path); err != nil {
+		t.Fatal(err)
+	}
+	if err := waitDensityStartGate(ctx, t.TempDir()); err == nil {
+		t.Fatal("directory accepted as start gate")
+	}
+}
+
+func TestDensityStartGateHonorsCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := waitDensityStartGate(ctx, t.TempDir()+"/absent"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err=%v", err)
 	}
 }
 

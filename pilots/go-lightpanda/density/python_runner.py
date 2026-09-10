@@ -12,7 +12,9 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import re
+import stat
 import sys
 import time
 from dataclasses import dataclass
@@ -27,6 +29,7 @@ ALLOWED_CONCURRENCY = (1, 4, 8)
 EXPECTED_ORIGINS = tuple(f"origin-{number}" for number in range(8))
 MAX_INPUT_BYTES = 128 << 10
 EXPECTED_WORKLOAD_SHA256 = "3db365d2a484b932049313d53469d07ffb2c5d9fdfe05821fd87cf67b1557740"
+START_GATE = Path("/tmp/controller-start")
 
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _SHA_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -51,6 +54,27 @@ _TASK_KEYS = {
 
 class ContractError(ValueError):
     """A trusted, local pilot input did not match the closed contract."""
+
+
+def wait_for_start_gate(
+    path: Path,
+    *,
+    expected: Path = START_GATE,
+    pause: Callable[[float], None] = time.sleep,
+) -> None:
+    if path != expected:
+        raise ContractError("start gate path")
+    while True:
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            pause(0.01)
+            continue
+        except OSError as exc:
+            raise ContractError("start gate read") from exc
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.geteuid():
+            raise ContractError("start gate type")
+        return
 
 
 @dataclass(frozen=True, slots=True)
@@ -481,8 +505,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--concurrency", type=int, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--image-identity", required=True)
+    parser.add_argument("--start-gate", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        wait_for_start_gate(args.start_gate)
         workload = load_workload(args.workload)
         report = asyncio.run(
             run_benchmark(

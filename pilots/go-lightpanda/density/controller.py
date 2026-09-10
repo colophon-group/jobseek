@@ -29,6 +29,7 @@ FIXTURE_MEMORY = 256 * 1024**2
 FIXTURE_PIDS = 64
 FIXTURE_TMPFS = "rw,noexec,nosuid,nodev,size=16777216,uid=10001,gid=10001,mode=0700"
 MEASURED_TMPFS = "rw,noexec,nosuid,nodev,size=268435456,uid=10001,gid=10001,mode=0700"
+START_GATE = "/tmp/controller-start"
 ALIASES = tuple(f"origin-{i}.bench.test" for i in range(8))
 LABEL_RUN = "org.jobseek.density.run"
 LABEL_ROLE = "org.jobseek.density.role"
@@ -652,6 +653,11 @@ class SmokeController:
             self.docker.run(["kill", container], timeout=10, check=False)
             raise SmokeFailure("start_timeout") from None
 
+    def _release_start_gate(self, container: str) -> None:
+        result = self.docker.run(["exec", container, "touch", START_GATE], timeout=5)
+        if result.stdout or result.stderr:
+            raise SmokeFailure("command")
+
     def _inspect_one(self, container: str) -> dict[str, Any]:
         try:
             data = self.docker.json(["inspect", container])
@@ -741,7 +747,7 @@ class SmokeController:
                     raise SmokeFailure("start_timeout")
                 time.sleep(0.05)
             measured_args = [*common, "--label", f"{LABEL_ROLE}={implementation}", "--cpus", "1", "--memory", "1g", "--memory-swap", "1g", "--pids-limit", "128", "--ulimit", "nofile=256:256", "--tmpfs", f"/tmp:{MEASURED_TMPFS}",
-                             identity, "--workload", "/density/workload.v1.json", "--concurrency", str(self.concurrency), "--source-commit", self.source, "--image-identity", identity]
+                             identity, "--workload", "/density/workload.v1.json", "--concurrency", str(self.concurrency), "--source-commit", self.source, "--image-identity", identity, "--start-gate", START_GATE]
             measured_id = self._create(measured_args)
             attest_container(self._inspect_one(measured_id), network, implementation, self.run_id, identity, measured=True)
             self._start(measured_id)
@@ -749,6 +755,7 @@ class SmokeController:
             sampler = CgroupSampler.from_pid(running.get("State", {}).get("Pid", 0))
             sampler.start()
             try:
+                self._release_start_gate(measured_id)
                 self._wait(measured_id, self.timeout)
                 resources = sampler.stop()
             except BaseException:

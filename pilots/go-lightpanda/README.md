@@ -198,3 +198,8 @@ failed-arm evidence, calculate ratios, or make a RAM-density/admission claim.
 Those belong to the still-open fixed-RAM evidence issue and require a separate
 frozen protocol plus independent review. The smoke grants no crawler, queue,
 database, Murmur, or production authority.
+
+The controller releases each measured runner with one short `docker exec`
+after attaching the cgroup sampler. That helper runs inside the measured
+cgroup, so this smoke's counters prove limit enforcement only. The repeated
+evidence protocol must replace that synchronization before comparing density.

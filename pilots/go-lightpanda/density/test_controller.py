@@ -296,6 +296,8 @@ class FakeDocker:
         self.calls.append(list(args))
         if self.mode == "timeout" and args[0] == "wait":
             raise controller.SmokeFailure("command")
+        if self.mode == "gate_output" and args[0] == "exec":
+            return subprocess.CompletedProcess(args, 0, b"unexpected", b"")
         if args[:2] == ["ps", "-aq"]:
             return subprocess.CompletedProcess(args, 0, b"c" * 64 + b"\n", b"")
         if args[:3] == ["network", "ls", "--format"]:
@@ -319,6 +321,19 @@ class LifecycleTests(unittest.TestCase):
         smoke = self.smoke(docker)
         self.assertEqual(failure_id(lambda: smoke._wait("c" * 64, 0.01)), "timeout")
         self.assertIn(["kill", "c" * 64], docker.calls)
+
+    def test_start_gate_release_is_exact_and_silent(self):
+        docker = FakeDocker("ok")
+        smoke = self.smoke(docker)
+        smoke._release_start_gate("c" * 64)
+        self.assertEqual(
+            docker.calls,
+            [["exec", "c" * 64, "touch", controller.START_GATE]],
+        )
+        self.assertEqual(
+            failure_id(lambda: self.smoke(FakeDocker("gate_output"))._release_start_gate("c" * 64)),
+            "command",
+        )
 
     def test_cleanup_refuses_label_mutation(self):
         docker = FakeDocker("cleanup")
