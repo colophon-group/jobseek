@@ -540,6 +540,13 @@
       "when": 1788199156000,
       "tag": "0088_notification_policy_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1788206680000,
+      "tag": "0089_make_existing_watchlists_private",
+      "breakpoints": true
     }
   ]
 }

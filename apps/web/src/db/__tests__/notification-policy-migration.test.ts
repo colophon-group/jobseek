@@ -136,15 +136,19 @@ describe("0088 notification policy foundation migration", () => {
       readFileSync(resolve(webRoot, "drizzle/meta/_journal.json"), "utf8"),
     ) as { entries: { idx: number; when: number; tag: string }[] };
 
-    expect(journal.entries.at(-1)).toEqual({
+    const notificationIndex = journal.entries.findIndex(
+      (entry) => entry.tag === "0088_notification_policy_foundation",
+    );
+
+    expect(journal.entries[notificationIndex]).toEqual({
       idx: 76,
       version: "7",
       when: 1_788_199_156_000,
       tag: "0088_notification_policy_foundation",
       breakpoints: true,
     });
-    expect(journal.entries.at(-2)?.when).toBeLessThan(
-      journal.entries.at(-1)?.when ?? 0,
+    expect(journal.entries[notificationIndex - 1]?.when).toBeLessThan(
+      journal.entries[notificationIndex]?.when ?? 0,
     );
   });
 });
