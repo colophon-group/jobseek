@@ -132,6 +132,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `typify` | Rich + enrichment | json-ld | Typify function-partitioned vacancy API plus JSON-LD description enrichment |
 | `ukg` | Rich | embedded | UKG Pro public paginated search API plus embedded detail enrichment |
 | `unisante` | Rich | skip | Unisanté dual-alias official inventory with bounded visible-detail validation |
+| `universia` | Rich | skip | Universia branded job boards via the public board configuration and posting APIs |
 | `welcometothejungle` | Rich | skip | Welcome to the Jungle public jobs APIs |
 | `woowa` | Rich | skip | Woowa Brothers and Woowa Youths public careers APIs |
 | `workable` | URL-only | workable | Workable ATS |

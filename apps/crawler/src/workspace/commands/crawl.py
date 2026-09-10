@@ -955,6 +955,10 @@ _MONITOR_CONFIG_HINTS = {
     "infoniqa": "Requires: employer_name (auto-filled from a live Infoniqa board probe)",
     "intervieweb": "No config required (POST endpoint and CSRF token are resolved per run)",
     "gupy": "Requires: tenant (auto-filled from a *.gupy.io URL)",
+    "universia": (
+        "Requires: slug from an exact jobboard.universia.net URL; "
+        "board_id and language are auto-resolved"
+    ),
     "cornerstone": (
         "Requires: tenant, site_id, corp; domain is optional for csodfed.com "
         "(auto-filled from a supported Cornerstone URL)"
