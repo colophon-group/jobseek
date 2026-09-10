@@ -28,7 +28,6 @@
  * author: "Viktor Shcherbakov"       # optional; defaults to siteConfig
  * tags: ["data-analysis"]            # optional
  * relatedCompanies: ["openai", ...]  # optional; sluglist into /company/{slug}
- * relatedWatchlists: ["user/slug"]   # optional; "owner/slug" pairs
  * ---
  * ```
  */
@@ -49,8 +48,6 @@ export type BlogPostFrontmatter = {
   author: string;
   tags: string[];
   relatedCompanies: string[];
-  /** "owner/slug" pairs pointing at /{locale}/{owner}/{slug}. */
-  relatedWatchlists: string[];
   /**
    * Optional author-curated overrides for the "you may also be
    * interested in" block at the bottom of each post (#2844). Slugs
@@ -129,9 +126,6 @@ function coerceFrontmatter(
     tags: Array.isArray(raw.tags) ? raw.tags.filter((t): t is string => typeof t === "string") : [],
     relatedCompanies: Array.isArray(raw.relatedCompanies)
       ? raw.relatedCompanies.filter((s): s is string => typeof s === "string")
-      : [],
-    relatedWatchlists: Array.isArray(raw.relatedWatchlists)
-      ? raw.relatedWatchlists.filter((s): s is string => typeof s === "string")
       : [],
     relatedPosts: Array.isArray(raw.relatedPosts)
       ? raw.relatedPosts.filter((s): s is string => typeof s === "string")

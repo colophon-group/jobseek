@@ -1,16 +1,14 @@
 /**
  * MDX entity-mention components (#2828).
  *
- * Blog posts reference internal entities (companies, watchlists,
+ * Blog posts reference internal entities (companies,
  * future: postings, taxonomies, authors) by id rather than hand-
  * authored markdown links. Two visual treatments per type:
  *
- *  - **Inline pill** (`<Company slug="..." />`, `<Watchlist owner="..."
- *    slug="..." />`) — flows inside paragraph text, just the entity
+ *  - **Inline pill** (`<Company slug="..." />`) — flows inside paragraph text, just the entity
  *    icon + name. Use when the mention is one reference among many in
  *    a sentence.
- *  - **Block card** (`<CompanyCard slug="..." />`, `<WatchlistCard
- *    owner="..." slug="..." />`) — multi-line embed with logo / icon,
+ *  - **Block card** (`<CompanyCard slug="..." />`) — multi-line embed with logo / icon,
  *    name, derived stats, description excerpt, and a "view" CTA. Use
  *    when the mention IS the content — a featured spotlight, a "see
  *    also" reference, or a stat anchor.
@@ -21,9 +19,7 @@
  * Missing references fall back to `<code>{Type ...}</code>` so broken links
  * remain visible during review.
  *
- * Iconography follows `apps/web/docs/icons.md` — `Building2` for
- * companies (avatar fallback), `Eye` for watchlists (matches the
- * watchlists nav slot in `AppHeader`). Don't introduce new icons
+ * Iconography follows `apps/web/docs/icons.md`. Don't introduce new icons
  * without adding rows to `icons.md` first.
  *
  * To add a new mention type: write the inline + card pair, add the
@@ -32,14 +28,11 @@
  * here; `pnpm blog-mentions:check` enforces that boundary.
  */
 
-import { Eye, Briefcase } from "lucide-react";
+import { Briefcase } from "lucide-react";
 import { CompanyIcon } from "@/components/CompanyIcon";
 import { NavLink } from "@/components/NavLink";
 import { loadCatalog, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
-import {
-  resolveBlogCompanyMention,
-  resolveBlogWatchlistMention,
-} from "@/lib/blog-mention-snapshot";
+import { resolveBlogCompanyMention } from "@/lib/blog-mention-snapshot";
 
 /**
  * Helper: load the Lingui catalog for a string locale, normalizing
@@ -195,28 +188,6 @@ export function CompanyMention({
   );
 }
 
-export function WatchlistMention({
-  owner,
-  slug,
-  locale,
-}: {
-  owner: string;
-  slug: string;
-  locale: string;
-}) {
-  const detail = resolveBlogWatchlistMention(owner, slug);
-  if (!detail) return <MissingMention raw={`{Watchlist ${owner}/${slug}}`} />;
-  return (
-    <MentionPill
-      href={`/${locale}/${owner}/${slug}`}
-      // `Eye` matches the watchlists nav slot in AppHeader (see icons.md).
-      icon={<Eye size={14} aria-hidden="true" />}
-      label={detail.title}
-      meta={`@${detail.ownerLabel}`}
-    />
-  );
-}
-
 // ── Block-card mentions ────────────────────────────────────────────
 
 function formatEmployeeRange(range: number | null | undefined): string | null {
@@ -304,55 +275,6 @@ export async function CompanyCard({
   );
 }
 
-export async function WatchlistCard({
-  owner,
-  slug,
-  locale,
-}: {
-  owner: string;
-  slug: string;
-  locale: string;
-}) {
-  const detail = resolveBlogWatchlistMention(owner, slug);
-  if (!detail) return <MissingMention raw={`{WatchlistCard ${owner}/${slug}}`} />;
-
-  const { i18n } = await loadLocaleCatalog(locale);
-
-  const stats: { label: string; value: string }[] = [];
-  // Volatile active/year counts never enter the build snapshot. Render a
-  // company count only when an author explicitly approved that editorial
-  // point-in-time value (for example, the stable five-company MAANG set).
-  if (typeof detail.companyCount === "number") {
-    stats.push({
-      label: i18n._({
-        id: "blog.mention.watchlist.companiesLabel",
-        comment: "Stat label on a WatchlistCard mention card — pluralized 'company' / 'companies'. {count} is the integer count.",
-        message: "{count, plural, one {company} other {companies}}",
-        values: { count: detail.companyCount },
-      }),
-      value: String(detail.companyCount),
-    });
-  }
-
-  const eyebrow = i18n._({
-    id: "blog.mention.watchlist.eyebrow",
-    comment: "Eyebrow label on a WatchlistCard mention card (the small uppercase tag above the watchlist title)",
-    message: "Watchlist",
-  });
-
-  return (
-    <MentionCard
-      href={`/${locale}/${owner}/${slug}`}
-      eyebrow={eyebrow}
-      icon={<Eye size={14} aria-hidden="true" />}
-      title={detail.title}
-      meta={`@${detail.ownerLabel}`}
-      description={detail.description ?? undefined}
-      stats={stats.length > 0 ? stats : undefined}
-    />
-  );
-}
-
 // `Briefcase` is intentionally imported (#2828) so the future
 // `<JobCard id="..." />` mention follows the convention without an
 // extra import shuffle. Remove this hint when JobCard lands.
@@ -382,11 +304,5 @@ export function buildMdxComponents(locale: string): Record<string, React.Compone
   return {
     Company: (props) => <CompanyMention slug={props.slug} locale={locale} />,
     CompanyCard: (props) => <CompanyCard slug={props.slug} locale={locale} />,
-    Watchlist: (props) => (
-      <WatchlistMention owner={props.owner} slug={props.slug} locale={locale} />
-    ),
-    WatchlistCard: (props) => (
-      <WatchlistCard owner={props.owner} slug={props.slug} locale={locale} />
-    ),
   };
 }

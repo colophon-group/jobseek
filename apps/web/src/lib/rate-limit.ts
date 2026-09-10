@@ -81,3 +81,17 @@ export const publicReadSustainedLimiter = new Ratelimit({
   limiter: Ratelimit.slidingWindow(300, "3600 s"),
   prefix: "rl:public-read:hour:v1",
 });
+
+/** Authenticated clones from an unlisted shared link, keyed by user id. */
+export const sharedWatchlistCloneLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, "3600 s"),
+  prefix: "rl:shared-watchlist-clone:hour:v1",
+});
+
+/** Authenticated activity previews: enough for reloads, bounded against replay. */
+export const watchlistActivityLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(12, "60 s"),
+  prefix: "rl:watchlist-activity:minute:v1",
+});

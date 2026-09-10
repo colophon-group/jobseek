@@ -1,9 +1,4 @@
 import type { MetadataRoute } from "next";
-import { sql } from "drizzle-orm";
-import { db } from "@/db";
-import { cached } from "@/lib/cache";
-import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
-import { withDbRetry } from "@/lib/db-retry";
 import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
 import { listBlogPosts, getBlogPostLocales, type BlogPostSummary } from "@/lib/blog";
@@ -23,65 +18,6 @@ import { logExternalError } from "@/lib/safe-external-error";
  * per-shard, #2646). After companies left the index (#2821) the
  * surviving content fits in a single urlset; sharding was retired.
  */
-
-/** ISR window for cached watchlist data. */
-export const SITEMAP_TTL_SECONDS = CACHE_TTL_LONG;
-
-const CURATED_USERNAME = "colophongroup";
-
-export type SitemapWatchlistRow = {
-  user_slug: string;
-  watchlist_slug: string;
-  updated_at: Date;
-  is_curated: boolean;
-};
-
-async function fetchSitemapWatchlists(): Promise<SitemapWatchlistRow[]> {
-  // Quality gate (#2823). Without it, every public watchlist enters the
-  // sitemap regardless of substance — empirical inspection (~half of
-  // public watchlists are templated / default-titled / thin) shows
-  // that as the surface scales the templated ones become a doorway-
-  // page signal. Filter at emit time:
-  //   - title is substantive (≥4 chars, not the default "New watchlist")
-  //   - watchlist is at least 7 days old (lets the user populate it)
-  //   - tracks ≥3 companies OR carries ≥1 keyword OR ≥2 taxonomy filters.
-  //     Salary/experience-only watchlists don't qualify on their own —
-  //     too thin to be a useful landing page.
-  return withDbRetry(
-    () =>
-      db.execute<SitemapWatchlistRow>(sql`
-        SELECT
-          COALESCE(u.display_username, u.username) AS user_slug,
-          w.slug AS watchlist_slug,
-          w.updated_at,
-          (u.username = ${CURATED_USERNAME}) AS is_curated
-        FROM watchlist w
-        JOIN "user" u ON u.id = w.user_id
-        LEFT JOIN watchlist_company wc ON wc.watchlist_id = w.id
-        WHERE w.is_public = true
-          AND u.username IS NOT NULL
-          AND w.title IS NOT NULL
-          AND LENGTH(TRIM(w.title)) >= 4
-          AND LOWER(TRIM(w.title)) <> 'new watchlist'
-          AND w.created_at < NOW() - INTERVAL '7 days'
-        GROUP BY w.id, u.username, u.display_username
-        HAVING
-          COUNT(wc.company_id) >= 3
-          OR COALESCE(jsonb_array_length(w.filters->'keywords'), 0) > 0
-          OR COALESCE(jsonb_array_length(w.filters->'locationSlugs'), 0)
-             + COALESCE(jsonb_array_length(w.filters->'occupationSlugs'), 0)
-             + COALESCE(jsonb_array_length(w.filters->'senioritySlugs'), 0)
-             + COALESCE(jsonb_array_length(w.filters->'technologySlugs'), 0) >= 2
-        ORDER BY is_curated DESC, w.updated_at DESC
-      `),
-    { label: "sitemap.watchlists" },
-  ) as unknown as Promise<SitemapWatchlistRow[]>;
-}
-
-export const cachedSitemapWatchlists = () =>
-  cached("sitemap:watchlists", fetchSitemapWatchlists, {
-    ttl: SITEMAP_TTL_SECONDS,
-  });
 
 /**
  * Build hreflang alternates map for a given path (without locale prefix).
@@ -144,24 +80,6 @@ export function staticAndExploreEntries(): MetadataRoute.Sitemap {
   return entries;
 }
 
-export function watchlistEntries(rows: SitemapWatchlistRow[]): MetadataRoute.Sitemap {
-  const entries: MetadataRoute.Sitemap = [];
-  for (const row of rows) {
-    const path = `/${row.user_slug}/${row.watchlist_slug}`;
-    const languages = langAlternates(path);
-    for (const locale of locales) {
-      entries.push({
-        url: `${siteConfig.url}/${locale}${path}`,
-        lastModified: new Date(row.updated_at),
-        changeFrequency: row.is_curated ? "daily" : "weekly",
-        priority: row.is_curated ? 0.8 : 0.6,
-        alternates: { languages },
-      });
-    }
-  }
-  return entries;
-}
-
 /**
  * Blog post sitemap entries (#2828). Emits one entry per post per
  * locale that has a translated MDX file on disk. Locales without a
@@ -207,20 +125,14 @@ export async function blogPostEntries(
  *
  * Companies are excluded (#2821) — `/company/{slug}` is `noindex,follow`
  * and the per-company URLs are not emitted. The surviving surface is
- * static pages + explore + qualifying watchlists + blog posts.
+ * static pages + explore + blog posts. Legacy public watchlist URLs are
+ * deliberately absent: watchlists are now private account resources rather
+ * than a discovery or search-index surface.
  *
- * Each upstream fetcher is wrapped in try/catch so a Postgres outage
- * degrades to "static entries only" rather than an empty `<urlset/>`.
- * That was the second half of issue #2694 when the route was sharded:
- * a thrown fetcher tore the whole response down.
+ * The blog fetcher is wrapped in try/catch so a malformed post cannot tear
+ * down the otherwise-static urlset.
  */
 export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
-  let watchlists: SitemapWatchlistRow[] = [];
-  try {
-    watchlists = await cachedSitemapWatchlists();
-  } catch (err) {
-    logExternalError("error", { service: "database", operation: "sitemap_watchlists" }, err);
-  }
   let blogEntries: MetadataRoute.Sitemap = [];
   try {
     const blogPosts = await listBlogPosts();
@@ -234,7 +146,6 @@ export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   }
   return [
     ...staticAndExploreEntries(),
-    ...watchlistEntries(watchlists),
     ...blogEntries,
   ];
 }

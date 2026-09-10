@@ -14,7 +14,6 @@
 // through the server-action transform.
 
 import * as service from "@/lib/services/watchlists";
-import { assertBoundedPublicPagination } from "@/lib/public-read-input";
 
 export async function createWatchlist(
   ...args: Parameters<typeof service.createWatchlist>
@@ -34,6 +33,12 @@ export async function updateWatchlist(
   return service.updateWatchlist(...args);
 }
 
+export async function shareWatchlist(
+  ...args: Parameters<typeof service.shareWatchlist>
+): ReturnType<typeof service.shareWatchlist> {
+  return service.shareWatchlist(...args);
+}
+
 export async function deleteWatchlist(
   ...args: Parameters<typeof service.deleteWatchlist>
 ): ReturnType<typeof service.deleteWatchlist> {
@@ -44,6 +49,12 @@ export async function copyWatchlist(
   ...args: Parameters<typeof service.copyWatchlist>
 ): ReturnType<typeof service.copyWatchlist> {
   return service.copyWatchlist(...args);
+}
+
+export async function copySharedWatchlist(
+  ...args: Parameters<typeof service.copySharedWatchlist>
+): ReturnType<typeof service.copySharedWatchlist> {
+  return service.copySharedWatchlist(...args);
 }
 
 export async function toggleWatchlistAlerts(
@@ -70,64 +81,6 @@ export async function getUserWatchlistCounts(
   return service.getUserWatchlistCounts(...args);
 }
 
-export async function getWatchlistByUserAndSlug(
-  ...args: Parameters<typeof service.getWatchlistByUserAndSlug>
-): ReturnType<typeof service.getWatchlistByUserAndSlug> {
-  return service.getWatchlistByUserAndSlug(...args);
-}
-
-export async function getPublicWatchlistByUserAndSlug(
-  ...args: Parameters<typeof service.getPublicWatchlistByUserAndSlug>
-): ReturnType<typeof service.getPublicWatchlistByUserAndSlug> {
-  return service.getPublicWatchlistByUserAndSlug(...args);
-}
-
-export async function getWatchlistMatchingCompanyCount(
-  ...args: Parameters<typeof service.getWatchlistMatchingCompanyCount>
-): ReturnType<typeof service.getWatchlistMatchingCompanyCount> {
-  return service.getWatchlistMatchingCompanyCount(...args);
-}
-
-export async function searchPublicWatchlists(
-  ...args: Parameters<typeof service.searchPublicWatchlists>
-): ReturnType<typeof service.searchPublicWatchlists> {
-  assertBoundedPublicPagination(args[0]);
-  return service.searchPublicWatchlists(...args);
-}
-
-export async function getPopularWatchlists(
-  ...args: Parameters<typeof service.getPopularWatchlists>
-): ReturnType<typeof service.getPopularWatchlists> {
-  assertBoundedPublicPagination(args[0]);
-  return service.getPopularWatchlists(...args);
-}
-
-export async function getWatchlistPostings(
-  ...args: Parameters<typeof service.getWatchlistPostings>
-): ReturnType<typeof service.getWatchlistPostings> {
-  assertBoundedPublicPagination(args[0]);
-  return service.getWatchlistPostings(...args);
-}
-
-export async function getPublicWatchlistPostings(
-  ...args: Parameters<typeof service.getPublicWatchlistPostings>
-): ReturnType<typeof service.getPublicWatchlistPostings> {
-  assertBoundedPublicPagination(args[0]);
-  return service.getPublicWatchlistPostings(...args);
-}
-
-export async function getWatchlistPostingYearCount(
-  ...args: Parameters<typeof service.getWatchlistPostingYearCount>
-): ReturnType<typeof service.getWatchlistPostingYearCount> {
-  return service.getWatchlistPostingYearCount(...args);
-}
-
-export async function getWatchlistPostingDisplayCounts(
-  ...args: Parameters<typeof service.getWatchlistPostingDisplayCounts>
-): ReturnType<typeof service.getWatchlistPostingDisplayCounts> {
-  return service.getWatchlistPostingDisplayCounts(...args);
-}
-
 export async function addCompanyToWatchlist(
   ...args: Parameters<typeof service.addCompanyToWatchlist>
 ): ReturnType<typeof service.addCompanyToWatchlist> {
@@ -150,7 +103,8 @@ export type {
   WatchlistFilters,
   WatchlistSummary,
   UserWatchlistOverview,
+  UserWatchlistActivityPreview,
   WatchlistDetail,
+  WatchlistViewDetail,
   WatchlistPostingEntry,
-  PublicWatchlistEntry,
 } from "@/lib/services/watchlists";

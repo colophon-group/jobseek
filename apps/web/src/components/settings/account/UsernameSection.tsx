@@ -92,9 +92,8 @@ export function UsernameSection({ currentUsername }: { currentUsername: string }
     }
 
     // Re-pull the bootstrap payload so SessionProvider stops handing
-    // the stale `user.username` to URL-building components like
-    // WatchlistCard / save-search / mirror. router.refresh() rebuilds
-    // any RSC tree currently rendered with the old slug.
+    // the stale `user.username` to account chrome. router.refresh() rebuilds
+    // any RSC tree currently rendered with the old identity.
     await refreshSession();
     router.refresh();
     setLoading(false);
@@ -130,8 +129,8 @@ export function UsernameSection({ currentUsername }: { currentUsername: string }
         <Trans id="settings.account.username.title" comment="Username section heading">Username</Trans>
       </h2>
       <p className="mb-4 text-sm text-muted">
-        <Trans id="settings.account.username.description" comment="Username section description">
-          Your unique handle used in your public profile URL.
+        <Trans id="settings.account.username.description" comment="Username section description without retired public-profile wording">
+          Your unique handle for your Job Seek account.
         </Trans>
       </p>
       <ErrorAlert message={error} focusOnRender />

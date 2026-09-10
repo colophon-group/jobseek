@@ -20,7 +20,8 @@ describe("PostgreSQL 17 job_posting retirement execution harness", () => {
 
   it("uses the real journal SQL hashes and the real migration runner", () => {
     expect(harness).toContain("readMigrationFiles({ migrationsFolder: migrationFolder })");
-    expect(harness).toContain("Expected 77 real journal migrations");
+    expect(harness).toContain("Expected 78 real journal migrations");
+    expect(harness).toContain("Expected exactly three journal entries after 0086");
     expect(harness).toContain("const seed = [through0085[0], ...through0085]");
     expect(harness).toContain('resolve(webRoot, "src/db/migrate.ts")');
     expect(harness).toContain("spawn(process.execPath, [tsxRunner, migrationRunner]");
