@@ -29,6 +29,11 @@ from src.core.scrapers import (
     get_scraper_type,
     scraper_needs_browser,
 )
+from src.lightpanda.routing import (
+    RenderAssignmentError,
+    has_render_assignment,
+    resolve_render_assignment,
+)
 from src.shared.browser import (
     DEFAULT_WAIT,
     DEFAULT_WAIT_FALLBACK,
@@ -326,6 +331,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
     "json-ld": frozenset(
         {
             "actions",
+            "browser_backend",
             "channel",
             "defaults",
             "defaults_by_url",
@@ -340,6 +346,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "proxy",
             "render",
             "request_headers",
+            "routing_revision",
             "skip_ssl",
             "stealth",
             "timeout",
@@ -618,7 +625,15 @@ def _abstract_value(key: str, value: object) -> object:
     if isinstance(value, bool) or value is None:
         return value
     if isinstance(value, str):
-        if key in {"channel", "resource_policy", "source", "wait", "wait_fallback"}:
+        if key in {
+            "browser_backend",
+            "channel",
+            "resource_policy",
+            "routing_revision",
+            "source",
+            "wait",
+            "wait_fallback",
+        }:
             return value
         return "string"
     if isinstance(value, int | float):
@@ -902,6 +917,13 @@ def build_manifest(boards_path: Path = DEFAULT_BOARDS_PATH) -> dict[str, Any]:
         chain = _parse_scraper_chain(scraper_type, scraper_config) if scraper_type else []
         validated_chain: dict[int, tuple[dict[str, Any], tuple[dict[str, Any], ...]]] = {}
         for name, config, depth in chain:
+            if has_render_assignment(config):
+                try:
+                    resolve_render_assignment(name, config, scraper_step=depth)
+                except RenderAssignmentError as exc:
+                    raise CensusError(
+                        f"scraper step {depth} Lightpanda render assignment is invalid: {exc}"
+                    ) from None
             if name in capable_scrapers:
                 validated_chain[depth] = _validate_and_abstract_config("scraper", name, config)
 
