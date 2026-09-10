@@ -6,6 +6,7 @@ FROM golang:1.24-bookworm AS go-source
 WORKDIR /workspace/pilots/go-lightpanda
 COPY --from=contracts go.mod go.sum /workspace/apps/crawler/contracts/
 COPY --from=contracts v1/gen/go/ /workspace/apps/crawler/contracts/v1/gen/go/
+COPY --from=contracts v1/framing/ /workspace/apps/crawler/contracts/v1/framing/
 COPY --from=contracts v1/lightpandaadapter/ /workspace/apps/crawler/contracts/v1/lightpandaadapter/
 COPY go.mod go.sum ./
 RUN go mod download
@@ -59,7 +60,7 @@ FROM pilot-base AS integration-test
 COPY --from=integration-build /out/go-lightpanda.test /usr/local/bin/go-lightpanda.test
 ENV LIGHTPANDA_INTEGRATION_BIN=/usr/local/bin/lightpanda
 RUN --network=none /usr/local/bin/go-lightpanda.test \
-    -test.run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaPoolRuntimeV1IntegrationC4)$' \
+    -test.run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4)$' \
     -test.count=1 -test.v
 
 FROM pilot-base AS runtime

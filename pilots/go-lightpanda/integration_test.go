@@ -173,6 +173,50 @@ func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 	}
 }
 
+func TestLightpandaRuntimeV1StdioIntegration(t *testing.T) {
+	expectedSHA256, supported := lightpandaStable040SHA256[runtime.GOARCH]
+	if runtime.GOOS != "linux" || !supported {
+		t.Skip("stable Lightpanda 0.4.0 integration binary requires Linux amd64 or arm64")
+	}
+	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
+	if binary == "" {
+		t.Skip("set LIGHTPANDA_INTEGRATION_BIN to opt in")
+	}
+	if err := verifyFileSHA256(binary, expectedSHA256); err != nil {
+		t.Fatal(err)
+	}
+
+	origin := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/runtime-v1-stdio-fixture" {
+			http.NotFound(writer, request)
+			return
+		}
+		writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+		writer.WriteHeader(http.StatusCreated)
+		_, _ = io.WriteString(writer, `<!doctype html><html><body><main id="runtime-v1-stdio-fixture">local only</main></body></html>`)
+	}))
+	defer origin.Close()
+
+	adapter, err := lightpandaadapter.NewRenderOnly(
+		runtimeV1Runner{config: Config{Binary: binary}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := bridgeInput(origin.URL+"/runtime-v1-stdio-fixture", "", 0)
+	input.Plan.Navigation.TimeoutMs = uint64(defaultTaskTimeout / time.Millisecond)
+	var output bytes.Buffer
+	if code := runRuntimeV1Stdio(context.Background(), runtimeV1BorrowedInput(frameRuntimeV1Input(t, input)), &output, adapter); code != 0 {
+		t.Fatalf("runtime-v1 stdio exit code = %d", code)
+	}
+	result := decodeRuntimeV1Result(t, output.Bytes())
+	if result.GetSuccess() == nil || result.GetSuccess().GetStatus() != http.StatusCreated ||
+		result.GetSuccess().FinalUrl != input.Plan.TargetUrl ||
+		!bytes.Contains(bridgeManifestBody(result.GetSuccess().Html), []byte(`id="runtime-v1-stdio-fixture"`)) {
+		t.Fatalf("unexpected runtime-v1 stdio result: %v", result)
+	}
+}
+
 func verifyFileSHA256(path string, expected string) error {
 	file, err := os.Open(path)
 	if err != nil {

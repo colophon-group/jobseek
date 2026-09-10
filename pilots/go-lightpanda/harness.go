@@ -481,7 +481,7 @@ func (s commandStarter) buildCommand(port int, logs io.Writer) *exec.Cmd {
 		"--log-level", "error",
 	)
 	command.Env = append([]string(nil), lightpandaChildEnvironment...)
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	command.SysProcAttr = lightpandaProcessAttributes()
 	command.Stdout = logs
 	command.Stderr = logs
 	return command

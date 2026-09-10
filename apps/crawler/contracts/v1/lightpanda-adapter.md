@@ -1,9 +1,9 @@
-# Dormant Lightpanda B1 adapter contract
+# Dormant Lightpanda adapter contract
 
-`lightpandaadapter` is an inactive, fake-only Go seam over the generated
-runtime-v1 browser messages. It grants no process, endpoint, origin, queue,
-lease, persistence, deployment, or production-routing authority. There is no
-Lightpanda client implementation in this slice.
+`lightpandaadapter` is an inactive Go seam over the generated runtime-v1
+browser messages. It grants no process, endpoint, origin, queue, lease,
+persistence, deployment, or production-routing authority. The contract
+package contains no Lightpanda client; a caller must inject a `Runner`.
 
 ## Fixed assignment and preflight order
 
@@ -39,6 +39,12 @@ from deterministic protobuf bytes without normalization. The injected runner
 can retrieve only further clones. Its opaque outcome constructors bind that
 fingerprint automatically, preventing plan, assignment, caller, or wrong-task
 mutation from changing the bound task.
+
+`NewRenderOnly` is the narrower B0 constructor for callers that have no
+reviewed evaluation-privacy implementation. It accepts the same validated and
+bound plan shape, but rejects an evaluation plan as unsupported before calling
+the runner or contacting the origin. The existing `New` constructor retains
+the B1 behavior below and still requires `EvaluationPrivacy`.
 
 ## One-shot runner lifecycle
 
