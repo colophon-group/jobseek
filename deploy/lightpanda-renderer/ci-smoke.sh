@@ -73,6 +73,8 @@ if ! id -u deploy >/dev/null 2>&1; then
 fi
 docker_group="$(stat -c '%G' /var/run/docker.sock)"
 [[ "$docker_group" != UNKNOWN ]] || exit 1
+sudo usermod --append --groups "$docker_group" deploy
+sudo -u deploy id -nG | tr ' ' '\n' | grep -Fx "$docker_group" >/dev/null
 sudo install -d -o deploy -g deploy -m 0700 "$ROOT" "$ROOT/releases"
 
 # Race the exact production lock helper from an absent lock file. Both
@@ -229,7 +231,7 @@ sudo install -o deploy -g deploy -m 0600 \
   "$work/candidate-release.env" "$stage/release.env"
 
 set +e
-sudo -u deploy -g "$docker_group" env \
+sudo -u deploy env \
   CI=true \
   GITHUB_ACTIONS=true \
   JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=after-active-switch \
@@ -274,7 +276,7 @@ FIRST_INSTALL_RELEASE="$ROOT/releases/$FIRST_INSTALL_RELEASE_ID"
 sudo install -o deploy -g deploy -m 0600 \
   "$work/first-install-release.env" "$stage/release.env"
 set +e
-sudo -u deploy -g "$docker_group" env \
+sudo -u deploy env \
   CI=true \
   GITHUB_ACTIONS=true \
   JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=after-candidate \
