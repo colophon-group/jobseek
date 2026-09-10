@@ -10,6 +10,7 @@ COPY --from=contracts v1/lightpandaadapter/ /workspace/apps/crawler/contracts/v1
 COPY go.mod go.sum ./
 RUN go mod download
 COPY *.go ./
+COPY density/workload.v1.json ./density/workload.v1.json
 
 FROM go-source AS build
 
