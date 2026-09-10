@@ -88,6 +88,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "infor",
         "jarvi",
         "job51",
+        "jobbank104",
         "jobylon",
         "jobstreet",
         "keka",
@@ -172,7 +173,6 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "infoniqa",
     "intervieweb",
     "jazzhr",
-    "jobbank104",
     "jobdiva",
     "johdi",
     "jobvite",
@@ -1059,8 +1059,6 @@ def auto_scraper_type(
         return ("nextdata", None)
     if monitor_type == "jazzhr":
         return ("jazzhr", None)
-    if monitor_type == "jobbank104":
-        return ("json-ld", None)
     if monitor_type == "computrabajo":
         return ("json-ld", None)
     if monitor_type == "papa_johns":
