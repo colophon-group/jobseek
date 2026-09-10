@@ -68,6 +68,7 @@ ROUTINES = {
 }
 
 ALREADY_COMPLETED_ERROR = "daily routine already completed for date"
+ALREADY_COMPLETED_EXIT_STATUS = 10
 
 
 @dataclass(frozen=True)
@@ -241,7 +242,7 @@ class DailyRoutineRunner:
                 run_id="",
                 routine=self.spec.name,
                 run_date=self.run_date,
-                state="skipped",
+                state="already-completed",
                 error=ALREADY_COMPLETED_ERROR,
             )
 
@@ -686,7 +687,11 @@ def main(argv: list[str] | None = None) -> int:
 def routine_exit_code(result: DailyRunResult) -> int:
     """Return success only when this invocation completed today's durable output."""
 
-    return 0 if result.state == "completed" else 1
+    if result.state == "completed":
+        return 0
+    if result.state == "already-completed":
+        return ALREADY_COMPLETED_EXIT_STATUS
+    return 1
 
 
 if __name__ == "__main__":

@@ -46,6 +46,22 @@ def test_successful_finish_advances_last_success(tmp_path: Path) -> None:
     assert record["last_result"] == "success"
 
 
+def test_already_completed_finish_preserves_last_success(tmp_path: Path) -> None:
+    path = tmp_path / "status.json"
+    path.write_text(
+        json.dumps({"last_attempt_unixtime": 100, "last_success_unixtime": 80}),
+        encoding="utf-8",
+    )
+
+    record = status.finish(path, "success", "exited", "10", now=120)
+
+    assert record["last_attempt_unixtime"] == 100
+    assert record["last_success_unixtime"] == 80
+    assert record["last_attempt_success"] == 1
+    assert record["run_in_progress"] == 0
+    assert record["last_result"] == "already-completed"
+
+
 def test_failed_finish_preserves_last_success(tmp_path: Path) -> None:
     path = tmp_path / "status.json"
     path.write_text(

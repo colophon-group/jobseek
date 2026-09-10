@@ -28,6 +28,7 @@ VALID_RESULTS = frozenset(
 )
 SUCCESS_EXIT_CODE = "exited"
 SUCCESS_EXIT_STATUS = "0"
+ALREADY_COMPLETED_EXIT_STATUS = "10"
 
 
 class RoutineStatusError(RuntimeError):
@@ -97,22 +98,31 @@ def finish(
         raise RoutineStatusError("unrecognized systemd service result")
     main_exit_code = exit_code.strip().lower()
     main_exit_status = exit_status.strip()
-    if result == "success" and (
-        main_exit_code != SUCCESS_EXIT_CODE or main_exit_status != SUCCESS_EXIT_STATUS
-    ):
+    completed = (
+        result == "success"
+        and main_exit_code == SUCCESS_EXIT_CODE
+        and main_exit_status == SUCCESS_EXIT_STATUS
+    )
+    already_completed = (
+        result == "success"
+        and main_exit_code == SUCCESS_EXIT_CODE
+        and main_exit_status == ALREADY_COMPLETED_EXIT_STATUS
+    )
+    if result == "success" and not (completed or already_completed):
         result = "protocol"
     timestamp = int(time.time()) if now is None else now
     previous = _load(path)
     attempt = _timestamp(previous.get("last_attempt_unixtime")) or timestamp
-    success = result == "success"
-    last_success = timestamp if success else _timestamp(previous.get("last_success_unixtime"))
+    success = completed or already_completed
+    previous_success = _timestamp(previous.get("last_success_unixtime"))
+    last_success = timestamp if completed else previous_success
     record = {
         "schema_version": 1,
         "last_attempt_unixtime": attempt,
         "last_success_unixtime": last_success,
         "last_attempt_success": int(success),
         "run_in_progress": 0,
-        "last_result": result,
+        "last_result": "already-completed" if already_completed else result,
     }
     _write(path, record)
     return record

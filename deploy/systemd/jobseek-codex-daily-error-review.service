@@ -11,6 +11,7 @@ ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-routine-status.py
 
 [Service]
 Type=oneshot
+SuccessExitStatus=10
 User=codex-runner
 Group=codex-runner
 EnvironmentFile=/etc/jobseek-codex/governor.env

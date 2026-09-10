@@ -9,6 +9,7 @@ import pytest
 
 from src.workspace.codex_routine_runner import (
     ALREADY_COMPLETED_ERROR,
+    ALREADY_COMPLETED_EXIT_STATUS,
     LABELLER_POSTGRES_ENV,
     DailyRoutineRunner,
     DailyRunResult,
@@ -77,7 +78,7 @@ def test_daily_runner_skips_date_after_completed_ledger_row(tmp_path: Path) -> N
 
     result = runner.run_once()
 
-    assert result.state == "skipped"
+    assert result.state == "already-completed"
     assert result.error == "daily routine already completed for date"
 
 
@@ -87,9 +88,13 @@ def test_daily_runner_skips_date_after_completed_ledger_row(tmp_path: Path) -> N
         (DailyRunResult("run", "error-review", "2026-09-10", "completed"), 0),
         (
             DailyRunResult(
-                "", "error-review", "2026-09-10", "skipped", error=ALREADY_COMPLETED_ERROR
+                "",
+                "error-review",
+                "2026-09-10",
+                "already-completed",
+                error=ALREADY_COMPLETED_ERROR,
             ),
-            1,
+            ALREADY_COMPLETED_EXIT_STATUS,
         ),
         (
             DailyRunResult(
@@ -129,7 +134,7 @@ def test_daily_runner_retries_failed_exports_before_completed_date_skip(
 
     result = runner.run_once()
 
-    assert result.state == "skipped"
+    assert result.state == "already-completed"
     assert calls == ["retry"]
 
 
