@@ -69,8 +69,6 @@ APP_DIR = HERE.parent
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from src.processing.cpu import _extract_salary_fields  # noqa: E402
-
 # GeoNames IDs for the 7 EU countries added in PR #3269 (Scope A).
 SCOPE_A_COUNTRY_IDS: dict[str, int] = {
     "PL": 798544,  # Poland
@@ -436,6 +434,12 @@ async def run_from_args(args: argparse.Namespace) -> int:
 
         if args.stats:
             return 0
+
+        # Keep the CPU processing graph out of global CLI argument parsing.
+        # It loads Polars and the taxonomy matchers, which the slim long-lived
+        # claimant must not import merely because this operator subcommand is
+        # registered on the shared parser.
+        from src.processing.cpu import _extract_salary_fields
 
         # Process per country, accumulating proposed changes.
         bucket_counts: dict[str, Counter] = {label: Counter() for label in country_ids}
