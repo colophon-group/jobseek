@@ -20,7 +20,8 @@ or credential environment:
 
 ```text
 go-lightpanda --runtime-v1-service \
-  --listen 10.0.0.5:9443 \
+  --listen 0.0.0.0:9443 \
+  --service-ip 10.0.0.5 \
   --tls-cert /run/credentials/server.pem \
   --tls-key /run/credentials/server-key.pem \
   --tls-ca /run/credentials/ca.pem \
@@ -29,14 +30,19 @@ go-lightpanda --runtime-v1-service \
   --client-spki-sha256 <lowercase SPKI SHA-256>
 ```
 
-The address must be a canonical literal private IP, not loopback, on fixed TCP
-port 9443. TLS is exactly TLS 1.3, session tickets are disabled, and the only
-ALPN is `jobseek-lightpanda-b0/1`. Both peers load one dedicated CA certificate
-and verify its DER SHA-256 before opening a connection.
+The listen address is exactly `0.0.0.0:9443`, used only as the container-local
+bridge bind. It is never a certificate identity, client endpoint, or authority
+to publish the service publicly. The separate service IP must be a canonical
+literal private IPv4 address that is neither loopback nor unspecified. A later
+deployment must publish port 9443 only on that private host IP and admit only
+the crawler's private source address. TLS is exactly TLS 1.3, session tickets
+are disabled, and the only ALPN is `jobseek-lightpanda-b0/1`. Both peers load
+one dedicated CA certificate and verify its DER SHA-256 before opening a
+connection.
 
-The server leaf has exactly one SAN: the configured private IP. It has exactly
-the `serverAuth` extended usage and an explicit valid BasicConstraints
-extension with `CA=false`. The crawler leaf has exactly one SAN:
+The server leaf has exactly one IP SAN: the configured private IPv4 service IP.
+It has exactly the `serverAuth` extended usage and an explicit valid
+BasicConstraints extension with `CA=false`. The crawler leaf has exactly one SAN:
 `spiffe://jobseek/crawler/lightpanda-b0`. It has exactly the `clientAuth`
 extended usage and the same explicit BasicConstraints `CA=false`. DNS, email,
 additional IP/URI SANs, additional extended usages, unknown usages, and
