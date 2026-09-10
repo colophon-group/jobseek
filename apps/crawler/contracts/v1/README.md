@@ -32,9 +32,11 @@ Files:
   this activation.
 - `queue.md` — Redis/Lua scheduling, lease, and politeness invariants.
 - `metrics.md` — cross-runtime metrics required for cutover and reversal.
-- `lightpanda-adapter.md` and `lightpandaadapter/` — dormant fake-only B1
-  assignment, lifecycle, bounded mapping, and mandatory evaluation-privacy
-  seam; they do not contain a provider client or activate browser work.
+- `lightpanda-adapter.md` and `lightpandaadapter/` — dormant B0/B1 assignment,
+  lifecycle, and bounded mapping seam. B1 requires injected evaluation
+  privacy; the narrower B0 constructor rejects evaluation before runner or
+  origin contact. The contract package contains no provider client and does
+  not activate browser work.
 
 Compatibility rules:
 

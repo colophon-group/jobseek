@@ -195,6 +195,19 @@ func TestCommandStarterBuildCommandDoesNotInheritEnvironment(t *testing.T) {
 	}
 }
 
+func TestCommandStarterArgumentsContainNoTaskMaterial(t *testing.T) {
+	const target = "https://secret.example/token"
+	const expression = "secretExpression()"
+	command := (commandStarter{binary: "lightpanda"}).buildCommand(
+		9222,
+		&boundedBuffer{limit: maxProcessLogBytes},
+	)
+	arguments := strings.Join(command.Args, " ")
+	if strings.Contains(arguments, target) || strings.Contains(arguments, expression) {
+		t.Fatalf("Lightpanda child arguments contain task material: %q", arguments)
+	}
+}
+
 func TestLoopbackPortReservationsAreUniqueUntilReleased(t *testing.T) {
 	const count = 128
 	ports := make([]int, 0, count)

@@ -1,8 +1,9 @@
-// Package lightpandaadapter defines the dormant runtime-v1 B1 adapter seam.
+// Package lightpandaadapter defines the dormant runtime-v1 Lightpanda adapter
+// seam for render-only B0 and privacy-sealed B1 execution.
 //
 // It has no process, network, queue, retry, fallback, or persistence authority.
-// A caller must inject both the one-shot runner and the evaluation privacy
-// boundary.
+// Every caller injects a one-shot runner. New also requires the evaluation
+// privacy boundary; NewRenderOnly rejects evaluation before runner contact.
 package lightpandaadapter
 
 import (
@@ -187,8 +188,9 @@ func (bound BoundInput) Fingerprint() [sha256.Size]byte { return bound.fingerpri
 // Adapter is an inactive in-process contract seam. It owns no goroutine or
 // external lifecycle.
 type Adapter struct {
-	runner  Runner
-	privacy EvaluationPrivacy
+	runner     Runner
+	privacy    EvaluationPrivacy
+	renderOnly bool
 }
 
 // New rejects missing dependencies rather than providing implicit behavior.
@@ -199,6 +201,17 @@ func New(runner Runner, privacy EvaluationPrivacy) (*Adapter, error) {
 	return &Adapter{runner: runner, privacy: privacy}, nil
 }
 
+// NewRenderOnly constructs the narrower B0 adapter. Evaluation plans are
+// rejected after validation and binding but before the runner can contact an
+// origin. It deliberately requires no evaluation-privacy implementation
+// because raw evaluation output can never be produced in this mode.
+func NewRenderOnly(runner Runner) (*Adapter, error) {
+	if runner == nil {
+		return nil, errors.New("render-only lightpanda adapter requires runner")
+	}
+	return &Adapter{runner: runner, renderOnly: true}, nil
+}
+
 // Execute validates and binds before one runner call. There is no retry,
 // fallback, or asynchronous wrapper. Every post-run failure discards all
 // partially mapped output.
@@ -206,7 +219,7 @@ func (adapter *Adapter) Execute(
 	ctx context.Context,
 	input *runtimev1.BrowserExecutionInput,
 ) *runtimev1.BrowserResult {
-	if adapter == nil || adapter.runner == nil || adapter.privacy == nil {
+	if adapter == nil || adapter.runner == nil || (!adapter.renderOnly && adapter.privacy == nil) {
 		return failureResult(
 			runtimev1.ErrorCode_ERROR_CODE_INTERNAL,
 			runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY,
@@ -225,6 +238,11 @@ func (adapter *Adapter) Execute(
 	}
 	if len(unsupported) != 0 {
 		return unsupportedResult(unsupported)
+	}
+	if adapter.renderOnly && len(bound.input.Plan.Evaluations) != 0 {
+		return unsupportedResult([]runtimev1.BrowserCapability{
+			runtimev1.BrowserCapability_BROWSER_CAPABILITY_EVALUATE,
+		})
 	}
 	if err := ctx.Err(); err != nil {
 		return contextFailureResult(err)

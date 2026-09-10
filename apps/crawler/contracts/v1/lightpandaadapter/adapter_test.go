@@ -180,6 +180,49 @@ func TestRenderOnlySuccessDoesNotInvokePrivacy(t *testing.T) {
 	}
 }
 
+func TestNewRenderOnlyRejectsEvaluationBeforeRunnerContact(t *testing.T) {
+	runner := &fakeRunner{run: func(_ context.Context, bound BoundInput) RunnerOutcome {
+		return successfulOutcome(bound)
+	}}
+	adapter, err := NewRenderOnly(runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result := adapter.Execute(context.Background(), validInput())
+	if runner.calls != 0 {
+		t.Fatalf("evaluation input contacted runner %d times", runner.calls)
+	}
+	if result.GetUnsupported() == nil || !reflect.DeepEqual(
+		result.GetUnsupported().Capabilities,
+		[]runtimev1.BrowserCapability{runtimev1.BrowserCapability_BROWSER_CAPABILITY_EVALUATE},
+	) {
+		t.Fatalf("render-only evaluation result = %v", result)
+	}
+}
+
+func TestNewRenderOnlyExecutesRenderWithoutPrivacy(t *testing.T) {
+	input := validInput()
+	input.Plan.RequiredCapabilities = []runtimev1.BrowserCapability{
+		runtimev1.BrowserCapability_BROWSER_CAPABILITY_RENDER,
+	}
+	input.Plan.Evaluations = nil
+	runner := &fakeRunner{run: func(_ context.Context, bound BoundInput) RunnerOutcome {
+		raw := successfulRaw()
+		raw.Evaluations = nil
+		return NewRunnerSuccess(bound, raw)
+	}}
+	adapter, err := NewRenderOnly(runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result := adapter.Execute(context.Background(), input)
+	if runner.calls != 1 || result.GetSuccess() == nil || len(result.GetSuccess().Evaluations) != 0 {
+		t.Fatalf("render-only result/calls = %v/%d", result, runner.calls)
+	}
+}
+
 func TestBoundInputIsFullImmutableCloneWithExactFingerprint(t *testing.T) {
 	input := validInput()
 	original := proto.Clone(input).(*runtimev1.BrowserExecutionInput)
@@ -839,6 +882,9 @@ func TestDependenciesAreMandatory(t *testing.T) {
 	}
 	if adapter, err := New(runner, nil); err == nil || adapter != nil {
 		t.Fatal("nil privacy accepted")
+	}
+	if adapter, err := NewRenderOnly(nil); err == nil || adapter != nil {
+		t.Fatal("render-only adapter accepted nil runner")
 	}
 	var adapter *Adapter
 	assertFailure(t, adapter.Execute(context.Background(), validInput()), runtimev1.ErrorCode_ERROR_CODE_INTERNAL, runtimev1.ErrorDisposition_ERROR_DISPOSITION_FAIL_CLOSED_POLICY)

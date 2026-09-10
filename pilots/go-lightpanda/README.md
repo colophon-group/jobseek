@@ -9,11 +9,30 @@ containing the top-level document's final response status, final URL,
 The same package also contains a dormant in-process implementation of the
 runtime-v1 `lightpandaadapter.Runner`. It maps only B0 render or B1 render plus
 one synchronous evaluation declared to have no network effect onto exactly
-one existing one-shot lifecycle. It is not exposed by the ordinary CLI and adds no
-service, endpoint, queue, persistence, fallback, deployment, or production
-routing.
-The adapter still requires an injected evaluation-privacy implementation;
-only a loopback-fixture sealer exists in tests.
+one existing one-shot lifecycle. It is exposed only through the dormant
+render-only framed mode below and adds no service, endpoint, queue,
+persistence, fallback, deployment, or production routing. The B1 constructor
+still requires an injected evaluation-privacy implementation; only a
+loopback-fixture sealer exists in tests.
+
+An explicit `--runtime-v1-stdio` mode exposes the narrower render-only adapter
+for offline fixtures and CI. Its process arguments contain only that fixed
+flag. It reads exactly one canonical, prefix-inclusive bounded varint frame
+containing `BrowserExecutionInput`, requires EOF, and writes exactly one
+deterministically encoded `BrowserResult` frame to stdout under a 2 MiB
+prefix-inclusive cap. Stdout is wire-only; malformed, oversized, trailing, and
+invalid inputs produce typed, message-bounded results when output remains
+writable. The mode does not admit evaluation plans, so it needs no placeholder
+privacy implementation and rejects `EVALUATE` before the runner or origin can
+be contacted. SIGINT or SIGTERM requests best-effort asynchronous closure of
+only the process-owned stdin handle. Input parsing runs in an isolated
+goroutine so cancellation can write its one result and let the one-shot
+process exit even on Darwin, where closing a pipe-backed stdin can itself wait
+behind the blocked read. Reusable borrowed callers keep ownership of their
+readers and are never closed implicitly; borrowed inputs must be nonblocking
+because cancellation cannot interrupt an active borrowed read. A reusable
+caller that supplies a blocking owned input must provide an interrupt that
+returns promptly if it needs goroutine cleanup without process exit.
 
 The package also contains a non-authoritative bounded execution pool for the
 fixed-RAM pilot. The pool admits immutable runtime-v1 inputs into a fixed set
@@ -48,7 +67,9 @@ that the child is still running before and after readiness, and creates a fresh
 remote allocator and target. After every outcome, including timeout, it
 terminates the Lightpanda process group, waits/reaps the leader, and verifies
 that both the process group and listener are gone. A cleanup verification
-failure makes that one-shot invocation fail.
+failure makes that one-shot invocation fail. Linux children also request
+`SIGKILL` from the kernel when their Go parent dies; supported non-Linux Unix
+builds retain the separate-process-group behavior.
 
 ## Build and run
 
@@ -88,6 +109,19 @@ docker run --rm \
   'document.title'
 ```
 
+The framed render-only handler uses stdin/stdout rather than target or
+expression arguments. This example is for an already isolated offline fixture
+only; `request.frame` must contain one runtime-v1 input record followed by EOF:
+
+```sh
+docker run --rm -i \
+  --cpus=1 --memory=512m --memory-swap=512m --pids-limit=128 \
+  --network=none --cap-drop=ALL --security-opt=no-new-privileges \
+  --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+  jobseek-lightpanda-pilot --runtime-v1-stdio \
+  <request.frame >result.frame
+```
+
 Those CPU, memory, PID, network-namespace, capability, privilege,
 read-only-root, and tmpfs controls are caller responsibilities and are required
 for every pilot run. The public CLI still runs exactly one task per container;
@@ -116,7 +150,7 @@ disposable Linux environment:
 
 ```sh
 LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-x86_64-linux \
-  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaPoolRuntimeV1IntegrationC4)$' \
+  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4)$' \
   -count=1 -v .
 
 docker build --build-context contracts=../../apps/crawler/contracts \
@@ -124,7 +158,7 @@ docker build --build-context contracts=../../apps/crawler/contracts \
   -t jobseek-lightpanda-integration:amd64 .
 
 LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-aarch64-linux \
-  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaPoolRuntimeV1IntegrationC4)$' \
+  go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4)$' \
   -count=1 -v .
 
 docker build --build-context contracts=../../apps/crawler/contracts \
@@ -174,6 +208,17 @@ or observability integration. The runtime-v1 bridge is exercised only against
 loopback fixtures and has no reusable production evaluation-privacy sealer or
 destination/subresource policy. It is not a production service or production
 browser-security boundary.
+
+The framed handler is reusable protocol/core code only. It must not run for a
+public URL inside the credentialed, root, host-network production browser
+worker. Production use remains blocked on a separately reviewed
+credential-free, non-root isolated Go service/container/cgroup; browser-wide
+egress enforcement for private addresses, redirects, subresources,
+WebSockets, and in-page fetch; and a Python supervisor with immutable
+assignment, cancellation, backpressure, health, and rollback behavior. A
+future service may wrap one framed request and response per connection around
+this handler and place fresh one-shot Lightpanda children behind a bounded
+origin-fair pool. None of that authority is introduced here.
 
 ## Native c4 implementation smoke
 
