@@ -27,7 +27,9 @@ work=""
 stage=""
 protected_ids=()
 
-[[ ! -e "$ROOT" && ! -L "$ROOT" ]] || exit 1
+if sudo test -e "$ROOT" || sudo test -L "$ROOT"; then
+  exit 1
+fi
 for name in "$CONTAINER" "$NETWORK" "${PROTECTED[@]}"; do
   if docker inspect "$name" >/dev/null 2>&1 || docker network inspect "$name" >/dev/null 2>&1; then
     echo "CI Docker identity already exists: $name" >&2
@@ -76,11 +78,13 @@ docker_group="$(stat -c '%G' /var/run/docker.sock)"
 sudo usermod --append --groups "$docker_group" deploy
 sudo -u deploy id -nG | tr ' ' '\n' | grep -Fx "$docker_group" >/dev/null
 sudo install -d -o deploy -g deploy -m 0700 "$ROOT" "$ROOT/releases"
+sudo install -o deploy -g deploy -m 0500 \
+  deploy/lightpanda-renderer/lock.sh "$ROOT/lock-race-helper.sh"
 
 # Race the exact production lock helper from an absent lock file. Both
 # processes must serialize through one inode and never overlap the critical
 # section.
-lock_source="$(pwd)/deploy/lightpanda-renderer/lock.sh"
+lock_source="$ROOT/lock-race-helper.sh"
 lock_race="$ROOT/lock-race-test"
 lock_barrier="$ROOT/lock-race-start"
 lock_critical="$ROOT/lock-race-critical"
@@ -104,13 +108,15 @@ first_lock_pid=$!
 lock_race_worker "$second_lock_ready" &
 second_lock_pid=$!
 for ((attempt = 0; attempt < 1000; attempt++)); do
-  if [[ -e "$first_lock_ready" && -e "$second_lock_ready" ]]; then
+  if sudo -u deploy test -e "$first_lock_ready" && \
+    sudo -u deploy test -e "$second_lock_ready"; then
     break
   fi
   kill -0 "$first_lock_pid" "$second_lock_pid" 2>/dev/null || break
   sleep 0.01
 done
-if [[ ! -e "$first_lock_ready" || ! -e "$second_lock_ready" ]]; then
+if ! sudo -u deploy test -e "$first_lock_ready" || \
+  ! sudo -u deploy test -e "$second_lock_ready"; then
   kill "$first_lock_pid" "$second_lock_pid" 2>/dev/null || :
   wait "$first_lock_pid" "$second_lock_pid" 2>/dev/null || :
   exit 1
@@ -172,7 +178,7 @@ install_release() {
 }
 
 install_release "$PREVIOUS_RELEASE" "$PREVIOUS_RELEASE_ID"
-python3 "$PREVIOUS_RELEASE/verify.py" compose \
+sudo -u deploy python3 "$PREVIOUS_RELEASE/verify.py" compose \
   "$PREVIOUS_RELEASE/compose.yml" "$PREVIOUS_RELEASE/release.env" \
   "$PREVIOUS_RELEASE/inventory.json"
 
@@ -190,16 +196,17 @@ for service in murmur cloudflared; do
 done
 python3 deploy/lightpanda-renderer/verify.py snapshot-protected "$work/protected-before.json"
 
-docker compose --project-name jobseek-lightpanda \
+sudo -u deploy docker compose --project-name jobseek-lightpanda \
   --env-file "$PREVIOUS_RELEASE/release.env" --file "$PREVIOUS_RELEASE/compose.yml" \
   up --detach --no-deps renderer
-previous_container_id="$(python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env")"
+previous_container_id="$(sudo -u deploy python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env")"
 previous_network_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
 [[ "$previous_container_id" =~ ^[0-9a-f]{64}$ && "$previous_network_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
 previous_bridge="br-${previous_network_id:0:12}"
 sudo ip address add 172.30.94.1/29 dev "$previous_bridge"
 set +e
-python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env" >/dev/null 2>&1
+sudo -u deploy python3 "$PREVIOUS_RELEASE/verify.py" \
+  running "$PREVIOUS_RELEASE/release.env" >/dev/null 2>&1
 routable_bridge_status=$?
 set -e
 sudo ip address del 172.30.94.1/29 dev "$previous_bridge"
@@ -207,14 +214,16 @@ sudo ip address del 172.30.94.1/29 dev "$previous_bridge"
   echo "renderer verifier accepted a routable host bridge address" >&2
   exit 1
 }
-python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env" \
+sudo -u deploy python3 "$PREVIOUS_RELEASE/verify.py" \
+  running "$PREVIOUS_RELEASE/release.env" \
   --expected-id "$previous_container_id" >/dev/null
 sudo -u deploy ln -s "$PREVIOUS_RELEASE" "$ROOT/active"
 
 stage="$(sudo -u deploy mktemp -d '/tmp/jobseek-lightpanda-renderer.r999999a1.XXXXXX')"
 sudo -u deploy install -d -m 0700 "$stage/pki"
 for artifact in compose.yml inventory.json verify.py validate_pki.py lock.sh install-host.sh; do
-  sudo -u deploy install -m 0600 "deploy/lightpanda-renderer/$artifact" "$stage/$artifact"
+  sudo install -o deploy -g deploy -m 0600 \
+    "deploy/lightpanda-renderer/$artifact" "$stage/$artifact"
 done
 for file in ca.pem server.pem server-key.pem client.pem; do
   sudo install -o deploy -g deploy -m 0600 "$work/$file" "$stage/pki/$file"
@@ -244,9 +253,11 @@ set -e
   exit 1
 }
 
-[[ ! -e "$CANDIDATE_RELEASE" && ! -L "$CANDIDATE_RELEASE" ]] || exit 1
-[[ "$(readlink -f "$ROOT/active")" == "$PREVIOUS_RELEASE" ]] || exit 1
-restored_container_id="$(python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env")"
+if sudo -u deploy test -e "$CANDIDATE_RELEASE" || sudo -u deploy test -L "$CANDIDATE_RELEASE"; then
+  exit 1
+fi
+[[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$PREVIOUS_RELEASE" ]] || exit 1
+restored_container_id="$(sudo -u deploy python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env")"
 [[ "$restored_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
 [[ "$(docker network inspect --format '{{.Id}}' "$NETWORK")" == "$previous_network_id" ]] || exit 1
 mapfile -t leaked_candidates < <(
@@ -285,8 +296,12 @@ sudo -u deploy env \
 first_install_status=$?
 set -e
 [[ "$first_install_status" -eq 96 ]] || exit 1
-[[ ! -e "$FIRST_INSTALL_RELEASE" && ! -L "$FIRST_INSTALL_RELEASE" ]] || exit 1
-[[ ! -e "$ROOT/active" && ! -L "$ROOT/active" ]] || exit 1
+if sudo -u deploy test -e "$FIRST_INSTALL_RELEASE" || sudo -u deploy test -L "$FIRST_INSTALL_RELEASE"; then
+  exit 1
+fi
+if sudo -u deploy test -e "$ROOT/active" || sudo -u deploy test -L "$ROOT/active"; then
+  exit 1
+fi
 if docker inspect "$CONTAINER" >/dev/null 2>&1; then
   exit 1
 fi

@@ -262,6 +262,20 @@ def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
     assert '{{index .Config.Labels \\"' not in workflow
 
 
+def test_ci_smoke_stages_lock_helper_for_deploy_user() -> None:
+    smoke = (DEPLOY / "ci-smoke.sh").read_text(encoding="utf-8")
+    assert 'lock_source="$(pwd)' not in smoke
+    assert 'lock_source="$ROOT/lock-race-helper.sh"' in smoke
+    assert 'deploy/lightpanda-renderer/lock.sh "$ROOT/lock-race-helper.sh"' in smoke
+    assert 'sudo -u deploy install -m 0600 "deploy/lightpanda-renderer/' not in smoke
+    assert '\npython3 "$PREVIOUS_RELEASE/verify.py"' not in smoke
+    assert "\ndocker compose --project-name jobseek-lightpanda" not in smoke
+    assert '$(readlink -f "$ROOT/active")' not in smoke
+    assert '[[ -e "$first_lock_ready"' not in smoke
+    assert '[[ ! -e "$first_lock_ready"' not in smoke
+    assert '[[ ! -e "$ROOT"' not in smoke
+
+
 def test_compose_source_has_no_host_publication_or_external_authority() -> None:
     compose = (DEPLOY / "compose.yml").read_text(encoding="utf-8")
     for token in (
