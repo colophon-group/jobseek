@@ -179,6 +179,8 @@ describe("WatchlistsPage private overview", () => {
     expect(fadeWrapper?.className).toContain("max-h-[max(12rem,calc(100dvh_-_8rem))]");
     expect(fadeWrapper?.className).toContain("overflow-hidden");
     expect(create.className).toContain("w-full");
+    expect(fadeWrapper?.parentElement?.className).toContain("mx-auto");
+    expect(fadeWrapper?.parentElement?.className).toContain("w-full");
     expect(fadeWrapper?.parentElement?.className).toContain("max-w-3xl");
   });
 
