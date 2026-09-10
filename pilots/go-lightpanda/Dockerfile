@@ -70,6 +70,11 @@ ENTRYPOINT ["/usr/local/bin/go-lightpanda"]
 
 FROM pilot-base AS density
 
+ARG SOURCE_COMMIT
+RUN test "${#SOURCE_COMMIT}" -eq 40 \
+    && case "${SOURCE_COMMIT}" in ''|*[!0-9a-f]*) exit 1 ;; esac
+LABEL org.jobseek.density.source-commit="${SOURCE_COMMIT}"
+
 USER 0:0
 RUN install -d --owner=10001 --group=10001 --mode=0555 /density
 COPY --from=density-build /out/go-lightpanda-density /usr/local/bin/go-lightpanda-density

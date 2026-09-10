@@ -14,8 +14,10 @@ import hashlib
 import json
 import os
 import re
+import signal
 import stat
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,8 +31,8 @@ ALLOWED_CONCURRENCY = (1, 4, 8)
 EXPECTED_ORIGINS = tuple(f"origin-{number}" for number in range(8))
 MAX_INPUT_BYTES = 128 << 10
 EXPECTED_WORKLOAD_SHA256 = "3db365d2a484b932049313d53469d07ffb2c5d9fdfe05821fd87cf67b1557740"
-START_GATE = Path("/tmp/controller-start")
-
+INITIAL_MARKER = Path("/tmp/controller-initial")
+FINAL_MARKER = Path("/tmp/controller-final")
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -56,25 +58,91 @@ class ContractError(ValueError):
     """A trusted, local pilot input did not match the closed contract."""
 
 
-def wait_for_start_gate(
-    path: Path,
-    *,
-    expected: Path = START_GATE,
-    pause: Callable[[float], None] = time.sleep,
-) -> None:
-    if path != expected:
-        raise ContractError("start gate path")
-    while True:
+class _ProtocolCancelled(BaseException):
+    """The controller interrupted the evidence process."""
+
+
+class _ClosedArgumentParser(argparse.ArgumentParser):
+    def error(self, _message: str) -> None:
+        raise ContractError("arguments")
+
+
+def _create_marker(path: Path) -> None:
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        metadata = os.fstat(descriptor)
+    finally:
+        os.close(descriptor)
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or stat.S_IMODE(metadata.st_mode) != 0o600
+        or metadata.st_size != 0
+        or metadata.st_nlink != 1
+        or metadata.st_uid != os.geteuid()
+        or metadata.st_gid != os.getegid()
+    ):
+        raise ContractError("protocol marker")
+
+
+def _validate_marker(path: Path) -> None:
+    metadata = path.lstat()
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or stat.S_IMODE(metadata.st_mode) != 0o600
+        or metadata.st_size != 0
+        or metadata.st_nlink != 1
+        or metadata.st_uid != os.geteuid()
+        or metadata.st_gid != os.getegid()
+    ):
+        raise ContractError("protocol marker")
+
+
+class _SignalMarkerProtocol:
+    """Race-free controller rendezvous using distinct main-thread signals."""
+
+    def __init__(self) -> None:
+        self._previous_cancel_handlers = {
+            number: signal.getsignal(number)
+            for number in (signal.SIGINT, signal.SIGTERM)
+        }
+        for number in self._previous_cancel_handlers:
+            signal.signal(number, self._cancel)
+
+    @staticmethod
+    def _cancel(_number: int, _frame: Any) -> None:
+        raise _ProtocolCancelled
+
+    def _wait(self, path: Path, release_signal: signal.Signals) -> None:
+        released = threading.Event()
+        previous = signal.getsignal(release_signal)
+
+        def release(_number: int, _frame: Any) -> None:
+            released.set()
+
+        # Arm the handler before publishing the marker so the controller can
+        # never race marker observation against signal readiness.
+        signal.signal(release_signal, release)
         try:
-            metadata = path.lstat()
-        except FileNotFoundError:
-            pause(0.01)
-            continue
-        except OSError as exc:
-            raise ContractError("start gate read") from exc
-        if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.geteuid():
-            raise ContractError("start gate type")
-        return
+            _create_marker(path)
+            # Python dispatches signal handlers on the main interpreter thread.
+            # signal.pause() yields to that dispatcher; Event.wait() may remain
+            # inside a restarted lock wait and never run the Python handler.
+            while not released.is_set():
+                signal.pause()
+            _validate_marker(path)
+            path.unlink()
+        finally:
+            signal.signal(release_signal, previous)
+
+    def wait_initial(self) -> None:
+        self._wait(INITIAL_MARKER, signal.SIGUSR1)
+
+    def wait_final(self) -> None:
+        self._wait(FINAL_MARKER, signal.SIGUSR2)
+
+    def close(self) -> None:
+        for number, previous in self._previous_cancel_handlers.items():
+            signal.signal(number, previous)
 
 
 @dataclass(frozen=True, slots=True)
@@ -499,34 +567,72 @@ def _raw_sha(path: Path) -> str | None:
         return None
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser()
+def main(
+    argv: list[str] | None = None,
+    *,
+    protocol_factory: Callable[[], Any] = _SignalMarkerProtocol,
+    output: Any = None,
+) -> int:
+    parser = _ClosedArgumentParser(add_help=False)
     parser.add_argument("--workload", type=Path, required=True)
     parser.add_argument("--concurrency", type=int, required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--image-identity", required=True)
-    parser.add_argument("--start-gate", type=Path, required=True)
-    args = parser.parse_args(argv)
+    args = argparse.Namespace(
+        workload=Path(""), concurrency=0, source_commit="", image_identity=""
+    )
+    arguments_ok = False
     try:
-        wait_for_start_gate(args.start_gate)
-        workload = load_workload(args.workload)
-        report = asyncio.run(
-            run_benchmark(
-                workload,
-                args.concurrency,
+        args = parser.parse_args(argv)
+        arguments_ok = True
+    except Exception:
+        pass
+
+    protocol = protocol_factory()
+    try:
+        # The initial release precedes all manifest, Playwright driver, pool,
+        # and browser initialization, giving the controller an idle baseline.
+        protocol.wait_initial()
+
+        if arguments_ok:
+            try:
+                workload = load_workload(args.workload)
+                report = asyncio.run(
+                    run_benchmark(
+                        workload,
+                        args.concurrency,
+                        args.source_commit,
+                        args.image_identity,
+                    )
+                )
+            except Exception:
+                report = _failed_report(
+                    _raw_sha(args.workload),
+                    args.source_commit,
+                    args.image_identity,
+                    args.concurrency,
+                )
+        else:
+            report = _failed_report(
+                _raw_sha(args.workload),
                 args.source_commit,
                 args.image_identity,
+                args.concurrency,
             )
-        )
+
+        # run_benchmark does not return until every page, context, browser,
+        # driver, and worker has been torn down.  Keep the closed report in
+        # memory while the controller takes its final live-cgroup sample.
+        protocol.wait_final()
+        destination = sys.stdout if output is None else output
+        destination.write(json.dumps(report, ensure_ascii=True, separators=(",", ":")) + "\n")
+        return 0 if report["ok"] else 1
+    except _ProtocolCancelled:
+        return 1
     except Exception:
-        report = _failed_report(
-            _raw_sha(args.workload),
-            args.source_commit,
-            args.image_identity,
-            args.concurrency,
-        )
-    sys.stdout.write(json.dumps(report, ensure_ascii=True, separators=(",", ":")) + "\n")
-    return 0 if report["ok"] else 1
+        return 1
+    finally:
+        protocol.close()
 
 
 if __name__ == "__main__":

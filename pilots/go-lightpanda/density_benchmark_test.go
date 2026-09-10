@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -71,33 +73,124 @@ func TestDensityConcurrencyIsFixed(t *testing.T) {
 	}
 }
 
-func TestDensityStartGateWaitsForARegularFile(t *testing.T) {
-	path := t.TempDir() + "/start"
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	go func() {
-		time.Sleep(20 * time.Millisecond)
-		_ = os.WriteFile(path, nil, 0o600)
-	}()
-	if err := waitDensityStartGate(ctx, path); err != nil {
-		t.Fatal(err)
-	}
-	if err := waitDensityStartGate(ctx, t.TempDir()); err == nil {
-		t.Fatal("directory accepted as start gate")
-	}
-}
-
-func TestDensityStartGateHonorsCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	if err := waitDensityStartGate(ctx, t.TempDir()+"/absent"); !errors.Is(err, context.Canceled) {
-		t.Fatalf("err=%v", err)
-	}
-}
-
 // Kept as a variable-sized helper so test writes remain local and obvious.
 func osWriteFileForDensityTest(path string, value []byte) error {
 	return os.WriteFile(path, value, 0o600)
+}
+
+func TestDensityCLIWaitsForInitialAndFinalReleasesAroundWork(t *testing.T) {
+	workloadPath := t.TempDir() + "/workload.json"
+	var output bytes.Buffer
+	events := []string{}
+	waitInitial := func(ctx context.Context) error {
+		events = append(events, "initial")
+		if output.Len() != 0 {
+			t.Fatalf("output emitted before initial release: %q", output.String())
+		}
+		if ctx.Err() != nil {
+			t.Fatal(ctx.Err())
+		}
+		if err := os.WriteFile(workloadPath, []byte("not the manifest"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return nil
+	}
+	waitFinal := func(ctx context.Context) error {
+		events = append(events, "final")
+		if output.Len() != 0 {
+			t.Fatalf("output emitted before final release")
+		}
+		if ctx.Err() != nil {
+			t.Fatal(ctx.Err())
+		}
+		return nil
+	}
+	exitCode := runDensityCLIWithProtocol([]string{
+		"--workload", workloadPath,
+		"--concurrency", "4",
+		"--source-commit", densityTestCommit,
+		"--image-identity", "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+	}, &output, waitInitial, waitFinal)
+	if exitCode != 2 || !slices.Equal(events, []string{"initial", "final"}) {
+		t.Fatalf("exit=%d events=%v output=%q", exitCode, events, output.String())
+	}
+	var report densityReport
+	if json.Unmarshal(output.Bytes(), &report) != nil || report.FailureID != "manifest_invalid" || report.ElapsedNS <= 0 {
+		t.Fatalf("report=%+v output=%q", report, output.String())
+	}
+	if bytes.Count(output.Bytes(), []byte(`"elapsed_ns"`)) != 1 || bytes.Contains(output.Bytes(), []byte(`"elapsed_ms"`)) {
+		t.Fatalf("failure report must expose only elapsed_ns: %s", output.Bytes())
+	}
+}
+
+func TestDensityCLIRemovedStartGateUsesBothProtocolPhases(t *testing.T) {
+	var output bytes.Buffer
+	initialReleases := 0
+	finalReleases := 0
+	waitInitial := func(context.Context) error {
+		initialReleases++
+		if output.Len() != 0 {
+			t.Fatalf("output emitted before initial release")
+		}
+		return nil
+	}
+	waitFinal := func(context.Context) error {
+		finalReleases++
+		return nil
+	}
+	exitCode := runDensityCLIWithProtocol([]string{"--start-gate", "/tmp/controller-start"}, &output, waitInitial, waitFinal)
+	if exitCode != 2 || initialReleases != 1 || finalReleases != 1 {
+		t.Fatalf("exit=%d initial=%d final=%d output=%q", exitCode, initialReleases, finalReleases, output.String())
+	}
+	var report densityReport
+	if json.Unmarshal(output.Bytes(), &report) != nil || report.FailureID != "arguments_invalid" {
+		t.Fatalf("report=%+v output=%q", report, output.String())
+	}
+}
+
+func TestDensityCLIProtocolCancellationEmitsNoEvidence(t *testing.T) {
+	workloadPath := t.TempDir() + "/workload.json"
+	var output bytes.Buffer
+	waitInitial := func(context.Context) error {
+		return os.WriteFile(workloadPath, []byte("not the manifest"), 0o600)
+	}
+	waitFinal := func(context.Context) error {
+		return context.Canceled
+	}
+	exitCode := runDensityCLIWithProtocol([]string{
+		"--workload", workloadPath,
+		"--concurrency", "4",
+		"--source-commit", densityTestCommit,
+		"--image-identity", "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+	}, &output, waitInitial, waitFinal)
+	if exitCode != 1 || output.Len() != 0 {
+		t.Fatalf("exit=%d output=%q", exitCode, output.String())
+	}
+}
+
+func TestDensityProtocolMarkerIsExactExclusiveAndRemoved(t *testing.T) {
+	path := t.TempDir() + "/controller-final"
+	if err := densityCreateMarkerAt(path); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || info.Size() != 0 ||
+		metadata.Nlink != 1 || int(metadata.Uid) != os.Geteuid() || int(metadata.Gid) != os.Getegid() {
+		t.Fatalf("marker=%+v metadata=%+v", info, metadata)
+	}
+	if err := densityCreateMarkerAt(path); err == nil {
+		t.Fatal("exclusive marker creation accepted an existing path")
+	}
+	if err := densityRemoveMarkerAt(path); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(path); !os.IsNotExist(err) {
+		t.Fatalf("marker remained after release: %v", err)
+	}
 }
 
 func TestDensityRawPrivacyPreservesExactAdapterBytes(t *testing.T) {
@@ -138,8 +231,27 @@ func TestDensityBenchmarkRunsSequentialWavesOnOneC4Pool(t *testing.T) {
 			t.Fatalf("asymmetric diagnostic %q in report: %s", forbidden, encoded)
 		}
 	}
-	if bytes.Count(encoded, []byte(`"elapsed_ms"`)) != 1 {
-		t.Fatalf("elapsed_ms must be whole-arm only: %s", encoded)
+	if report.ElapsedNS <= 0 {
+		t.Fatalf("elapsed_ns=%d", report.ElapsedNS)
+	}
+	if bytes.Count(encoded, []byte(`"elapsed_ns"`)) != 1 || bytes.Contains(encoded, []byte(`"elapsed_ms"`)) {
+		t.Fatalf("elapsed_ns must be whole-arm only: %s", encoded)
+	}
+}
+
+func TestDensityFailureReportUsesNanosecondsFromItsMeasuredInterval(t *testing.T) {
+	started := time.Now()
+	time.Sleep(time.Millisecond)
+	report := densityFailureReport(started, 4, densityTestCommit, "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "manifest_invalid")
+	if report.ElapsedNS < int64(time.Millisecond) {
+		t.Fatalf("elapsed_ns=%d", report.ElapsedNS)
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Count(encoded, []byte(`"elapsed_ns"`)) != 1 || bytes.Contains(encoded, []byte(`"elapsed_ms"`)) {
+		t.Fatalf("failure report must expose only elapsed_ns: %s", encoded)
 	}
 }
 

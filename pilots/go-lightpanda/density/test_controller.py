@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import stat
 import subprocess
 import tempfile
 import time
@@ -109,7 +110,7 @@ class ValidationTests(unittest.TestCase):
             "schema_version": 1, "implementation_id": "go-lightpanda",
             "runtime_id": "go1.24.0", "workload_sha256": self.workload_sha,
             "source_commit": "a" * 40, "image_identity": "sha256:" + "b" * 64,
-            "concurrency": 4, "succeeded": True, "elapsed_ms": 1,
+            "concurrency": 4, "succeeded": True, "elapsed_ns": 1,
             "submitted": 16, "accepted": 16, "terminal": 16,
             "succeeded_jobs": 16, "failed_jobs": 0, "oracle_matches": 16,
             "conservation_ok": True, "oracle_ok": True, "max_in_flight_ok": True,
@@ -321,8 +322,12 @@ class FakeDocker:
         self.calls.append(list(args))
         if self.mode == "timeout" and args[0] == "wait":
             raise controller.SmokeFailure("command")
-        if self.mode == "gate_output" and args[0] == "exec":
+        if self.mode == "cleanup_command" and args[:2] == ["ps", "-aq"]:
+            raise controller.SmokeFailure("command")
+        if self.mode == "signal_output" and args[:3] == ["kill", "--signal", "USR1"]:
             return subprocess.CompletedProcess(args, 0, b"unexpected", b"")
+        if args[:3] in (["kill", "--signal", "USR1"], ["kill", "--signal", "USR2"]):
+            return subprocess.CompletedProcess(args, 0, args[3].encode() + b"\n", b"")
         if args[:2] == ["ps", "-aq"]:
             return subprocess.CompletedProcess(args, 0, b"c" * 64 + b"\n", b"")
         if args[:3] == ["network", "ls", "--format"]:
@@ -334,6 +339,9 @@ class FakeDocker:
         if self.mode == "malformed_labels":
             return [{"Config": {"Labels": None}}]
         return [{"Config": {"Labels": {controller.LABEL_RUN: "run", controller.LABEL_ROLE: "attacker"}}}]
+
+    def logs(self, _container):
+        return b"{}"
 
 
 class LifecycleTests(unittest.TestCase):
@@ -347,17 +355,24 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(failure_id(lambda: smoke._wait("c" * 64, 0.01)), "timeout")
         self.assertIn(["kill", "c" * 64], docker.calls)
 
-    def test_start_gate_release_is_exact_and_silent(self):
+    def test_phase_signals_are_exact_and_validate_docker_output(self):
         docker = FakeDocker("ok")
         smoke = self.smoke(docker)
-        smoke._release_start_gate("c" * 64)
+        smoke._signal("c" * 64, "USR1")
+        smoke._signal("c" * 64, "USR2")
         self.assertEqual(
             docker.calls,
-            [["exec", "c" * 64, "touch", controller.START_GATE]],
+            [
+                ["kill", "--signal", "USR1", "c" * 64],
+                ["kill", "--signal", "USR2", "c" * 64],
+            ],
         )
         self.assertEqual(
-            failure_id(lambda: self.smoke(FakeDocker("gate_output"))._release_start_gate("c" * 64)),
+            failure_id(lambda: self.smoke(FakeDocker("signal_output"))._signal("c" * 64, "USR1")),
             "command",
+        )
+        self.assertEqual(
+            failure_id(lambda: smoke._signal("c" * 64, "TERM")), "command"
         )
 
     def test_cleanup_refuses_label_mutation(self):
@@ -371,6 +386,13 @@ class LifecycleTests(unittest.TestCase):
     def test_cleanup_normalizes_null_labels(self):
         docker = FakeDocker("malformed_labels")
         self.assertEqual(failure_id(lambda: self.smoke(docker)._cleanup("network")), "cleanup")
+
+    def test_cleanup_normalizes_docker_command_failure(self):
+        docker = FakeDocker("cleanup_command")
+        self.assertEqual(
+            failure_id(lambda: self.smoke(docker)._cleanup("network")),
+            "cleanup",
+        )
 
     def test_image_identity_rejects_malformed_docker_shapes(self):
         class ImageDocker:
@@ -387,6 +409,333 @@ class LifecycleTests(unittest.TestCase):
             self.smoke(ImageDocker([{"Id": "sha256:" + "b" * 64}])).image_identity("tag"),
             "sha256:" + "b" * 64,
         )
+
+    def test_exit_before_final_stops_sampler_once_and_retains_oom(self):
+        smoke = self.smoke(FakeDocker("ok"))
+        identity = mock.Mock()
+        identity.only_main_process.return_value = True
+        resources = {
+            "memory_events": {
+                "low": 0, "high": 0, "max": 3, "oom": 1,
+                "oom_kill": 1, "oom_group_kill": 0,
+            },
+            "pids_events": {"max": 0},
+        }
+        sampler = mock.Mock()
+        sampler.stop.return_value = resources
+        exited = {
+            "State": {
+                "Status": "exited", "Running": False,
+                "Restarting": False, "Dead": False, "Pid": 0,
+                "ExitCode": 137, "OOMKilled": True,
+            }
+        }
+        with (
+            mock.patch.object(smoke, "image_identity", side_effect=[
+                "sha256:" + "a" * 64, "sha256:" + "b" * 64,
+            ]),
+            mock.patch.object(smoke, "_create", side_effect=["f" * 64, "m" * 64]),
+            mock.patch.object(smoke, "_start"),
+            mock.patch.object(smoke, "_cleanup"),
+            mock.patch.object(smoke, "_inspect_one", side_effect=[
+                {}, {}, {"State": {"Pid": 123}}, exited,
+            ]),
+            mock.patch.object(controller, "attest_network"),
+            mock.patch.object(controller, "attest_container"),
+            mock.patch.object(controller.ProcessIdentity, "capture", return_value=identity),
+            mock.patch.object(controller, "wait_process_phase", side_effect=["matched", "exited"]),
+            mock.patch.object(controller.CgroupSampler, "from_identity", return_value=sampler),
+        ):
+            with self.assertRaises(controller.SmokeFailure) as caught:
+                smoke.run_arm(
+                    "go", "go", "fixture", retain_failure_resources=True
+                )
+        self.assertEqual(caught.exception.failure_id, "oom")
+        self.assertIs(caught.exception.resources, resources)
+        self.assertFalse(caught.exception.resources_final)
+        sampler.stop.assert_called_once_with(reject_oom=False)
+
+    def test_exit_before_initial_retains_kernel_pressure(self):
+        smoke = self.smoke(FakeDocker("ok"))
+        identity = mock.Mock()
+        resources = {
+            "memory_events": {
+                "low": 0, "high": 0, "max": 2, "oom": 1,
+                "oom_kill": 1, "oom_group_kill": 0,
+            },
+            "pids_events": {"max": 0},
+        }
+        sampler = mock.Mock()
+        sampler.stop.return_value = resources
+        with (
+            mock.patch.object(smoke, "image_identity", side_effect=[
+                "sha256:" + "a" * 64, "sha256:" + "b" * 64,
+            ]),
+            mock.patch.object(smoke, "_create", side_effect=["f" * 64, "m" * 64]),
+            mock.patch.object(smoke, "_start"),
+            mock.patch.object(smoke, "_cleanup"),
+            mock.patch.object(smoke, "_inspect_one", side_effect=[
+                {}, {}, {"State": {"Pid": 123}},
+            ]),
+            mock.patch.object(controller, "attest_network"),
+            mock.patch.object(controller, "attest_container"),
+            mock.patch.object(controller.ProcessIdentity, "capture", return_value=identity),
+            mock.patch.object(controller, "wait_process_phase", return_value="exited"),
+            mock.patch.object(controller.CgroupSampler, "from_identity", return_value=sampler),
+        ):
+            with self.assertRaises(controller.SmokeFailure) as caught:
+                smoke.run_arm(
+                    "go", "go", "fixture", retain_failure_resources=True
+                )
+        self.assertEqual(caught.exception.failure_id, "oom")
+        self.assertIs(caught.exception.resources, resources)
+        self.assertFalse(caught.exception.resources_final)
+        sampler.stop.assert_called_once_with(reject_oom=False)
+
+    def test_fixture_failures_are_not_reclassified_from_measured_pressure(self):
+        measured_exit = {
+            "State": {
+                "Status": "exited", "Running": False,
+                "Restarting": False, "Dead": False, "Pid": 0,
+                "ExitCode": 0, "OOMKilled": False,
+            }
+        }
+        fixture_states = {
+            "timeout": measured_exit,
+            "nonzero": {
+                "State": {**measured_exit["State"], "ExitCode": 2},
+            },
+            "oom": {
+                "State": {
+                    **measured_exit["State"], "ExitCode": 137,
+                    "OOMKilled": True,
+                },
+            },
+        }
+        for fixture_failure in ("timeout", "nonzero", "oom"):
+            with self.subTest(fixture_failure=fixture_failure):
+                smoke = self.smoke(FakeDocker("ok"))
+                identity = mock.Mock()
+                identity.only_main_process.return_value = True
+                resources = {
+                    "memory_events": {
+                        "low": 0, "high": 0, "max": 3,
+                        "oom": int(fixture_failure != "oom"),
+                        "oom_kill": int(fixture_failure != "oom"),
+                        "oom_group_kill": 0,
+                    },
+                    "pids_events": {"max": 0},
+                }
+                sampler = mock.Mock()
+                sampler.stop.return_value = resources
+                waits = [None]
+                if fixture_failure == "timeout":
+                    waits.append(controller.SmokeFailure("timeout"))
+                else:
+                    waits.append(None)
+                with (
+                    mock.patch.object(smoke, "image_identity", side_effect=[
+                        "sha256:" + "a" * 64, "sha256:" + "b" * 64,
+                    ]),
+                    mock.patch.object(smoke, "_create", side_effect=["f" * 64, "m" * 64]),
+                    mock.patch.object(smoke, "_start"),
+                    mock.patch.object(smoke, "_signal"),
+                    mock.patch.object(smoke, "_wait", side_effect=waits),
+                    mock.patch.object(smoke, "_cleanup"),
+                    mock.patch.object(smoke, "_inspect_one", side_effect=[
+                        {}, {}, {"State": {"Pid": 123}}, measured_exit,
+                        fixture_states[fixture_failure],
+                    ]),
+                    mock.patch.object(controller, "attest_network"),
+                    mock.patch.object(controller, "attest_container"),
+                    mock.patch.object(controller.ProcessIdentity, "capture", return_value=identity),
+                    mock.patch.object(controller, "wait_process_phase", side_effect=["matched", "matched"]),
+                    mock.patch.object(controller.CgroupSampler, "from_identity", return_value=sampler),
+                ):
+                    with self.assertRaises(controller.SmokeFailure) as caught:
+                        smoke.run_arm(
+                            "go", "go", "fixture",
+                            retain_failure_resources=True,
+                        )
+                self.assertEqual(caught.exception.failure_id, "infrastructure")
+                self.assertIsNone(caught.exception.resources)
+                self.assertFalse(caught.exception.resources_final)
+                sampler.stop.assert_called_once_with(
+                    reject_oom=False, allow_fallback=False,
+                )
+
+    def test_cleanup_failure_overrides_fixture_failure_and_aborts(self):
+        smoke = self.smoke(FakeDocker("ok"))
+        identity = mock.Mock()
+        identity.only_main_process.return_value = True
+        resources = {
+            "memory_events": {
+                "low": 0, "high": 0, "max": 3, "oom": 1,
+                "oom_kill": 1, "oom_group_kill": 0,
+            },
+            "pids_events": {"max": 0},
+        }
+        sampler = mock.Mock()
+        sampler.stop.return_value = resources
+        measured_exit = {
+            "State": {
+                "Status": "exited", "Running": False,
+                "Restarting": False, "Dead": False, "Pid": 0,
+                "ExitCode": 0, "OOMKilled": False,
+            }
+        }
+        with (
+            mock.patch.object(smoke, "image_identity", side_effect=[
+                "sha256:" + "a" * 64, "sha256:" + "b" * 64,
+            ]),
+            mock.patch.object(smoke, "_create", side_effect=["f" * 64, "m" * 64]),
+            mock.patch.object(smoke, "_start"),
+            mock.patch.object(smoke, "_signal"),
+            mock.patch.object(
+                smoke, "_wait",
+                side_effect=[None, controller.SmokeFailure("timeout")],
+            ),
+            mock.patch.object(
+                smoke, "_cleanup", side_effect=controller.SmokeFailure("cleanup")
+            ),
+            mock.patch.object(smoke, "_inspect_one", side_effect=[
+                {}, {}, {"State": {"Pid": 123}}, measured_exit,
+            ]),
+            mock.patch.object(controller, "attest_network"),
+            mock.patch.object(controller, "attest_container"),
+            mock.patch.object(
+                controller.ProcessIdentity, "capture", return_value=identity
+            ),
+            mock.patch.object(
+                controller, "wait_process_phase", side_effect=["matched", "matched"]
+            ),
+            mock.patch.object(
+                controller.CgroupSampler, "from_identity", return_value=sampler
+            ),
+        ):
+            with self.assertRaises(controller.SmokeFailure) as caught:
+                smoke.run_arm(
+                    "go", "go", "fixture", retain_failure_resources=True
+                )
+        self.assertEqual(caught.exception.failure_id, "cleanup")
+        self.assertIsNone(caught.exception.resources)
+        self.assertFalse(caught.exception.resources_final)
+
+    def test_fixture_validation_failures_are_infrastructure(self):
+        exited = {
+            "State": {
+                "Status": "exited", "Running": False,
+                "Restarting": False, "Dead": False, "Pid": 0,
+                "ExitCode": 0, "OOMKilled": False,
+            }
+        }
+        for fixture_failure in ("transcript", "oracle"):
+            with self.subTest(fixture_failure=fixture_failure):
+                smoke = self.smoke(FakeDocker("ok"))
+                identity = mock.Mock()
+                identity.only_main_process.return_value = True
+                sampler = mock.Mock()
+                sampler.stop.return_value = {
+                    "memory_events": {
+                        "low": 0, "high": 0, "max": 3, "oom": 1,
+                        "oom_kill": 1, "oom_group_kill": 0,
+                    },
+                    "pids_events": {"max": 0},
+                }
+                with (
+                    mock.patch.object(smoke, "image_identity", side_effect=[
+                        "sha256:" + "a" * 64, "sha256:" + "b" * 64,
+                    ]),
+                    mock.patch.object(
+                        smoke, "_create", side_effect=["f" * 64, "m" * 64]
+                    ),
+                    mock.patch.object(smoke, "_start"),
+                    mock.patch.object(smoke, "_signal"),
+                    mock.patch.object(smoke, "_wait"),
+                    mock.patch.object(smoke, "_cleanup"),
+                    mock.patch.object(smoke, "_inspect_one", side_effect=[
+                        {}, {}, {"State": {"Pid": 123}}, exited, exited,
+                    ]),
+                    mock.patch.object(controller, "attest_network"),
+                    mock.patch.object(controller, "attest_container"),
+                    mock.patch.object(
+                        controller.ProcessIdentity, "capture", return_value=identity
+                    ),
+                    mock.patch.object(
+                        controller, "wait_process_phase",
+                        side_effect=["matched", "matched"],
+                    ),
+                    mock.patch.object(
+                        controller.CgroupSampler,
+                        "from_identity",
+                        return_value=sampler,
+                    ),
+                    mock.patch.object(controller, "parse_json_object", return_value={}),
+                    mock.patch.object(controller, "validate_measured", return_value={}),
+                    mock.patch.object(
+                        controller, "parse_fixture_output", return_value={}
+                    ),
+                    mock.patch.object(
+                        controller,
+                        "validate_fixture",
+                        side_effect=controller.SmokeFailure(fixture_failure),
+                    ),
+                ):
+                    with self.assertRaises(controller.SmokeFailure) as caught:
+                        smoke.run_arm(
+                            "go", "go", "fixture",
+                            retain_failure_resources=True,
+                        )
+                self.assertEqual(caught.exception.failure_id, "infrastructure")
+                self.assertIsNone(caught.exception.resources)
+                self.assertFalse(caught.exception.resources_final)
+
+    def test_cleanup_overrides_unexpected_runtime_failure(self):
+        smoke = self.smoke(FakeDocker("ok"))
+        identity = mock.Mock()
+        identity.only_main_process.return_value = True
+        sampler = mock.Mock()
+        sampler.stop.return_value = {
+            "memory_events": {
+                "low": 0, "high": 0, "max": 0, "oom": 0,
+                "oom_kill": 0, "oom_group_kill": 0,
+            },
+            "pids_events": {"max": 0},
+        }
+        with (
+            mock.patch.object(smoke, "image_identity", side_effect=[
+                "sha256:" + "a" * 64, "sha256:" + "b" * 64,
+            ]),
+            mock.patch.object(smoke, "_create", side_effect=["f" * 64, "m" * 64]),
+            mock.patch.object(smoke, "_start"),
+            mock.patch.object(smoke, "_signal"),
+            mock.patch.object(
+                smoke, "_cleanup", side_effect=controller.SmokeFailure("cleanup")
+            ),
+            mock.patch.object(smoke, "_inspect_one", side_effect=[
+                {}, {}, {"State": {"Pid": 123}},
+            ]),
+            mock.patch.object(controller, "attest_network"),
+            mock.patch.object(controller, "attest_container"),
+            mock.patch.object(
+                controller.ProcessIdentity, "capture", return_value=identity
+            ),
+            mock.patch.object(
+                controller,
+                "wait_process_phase",
+                side_effect=["matched", RuntimeError("unexpected")],
+            ),
+            mock.patch.object(
+                controller.CgroupSampler, "from_identity", return_value=sampler
+            ),
+        ):
+            with self.assertRaises(controller.SmokeFailure) as caught:
+                smoke.run_arm(
+                    "go", "go", "fixture", retain_failure_resources=True
+                )
+        self.assertEqual(caught.exception.failure_id, "cleanup")
+        self.assertIsNone(caught.exception.resources)
+        self.assertFalse(caught.exception.resources_final)
 
 
 class DockerBoundaryTests(unittest.TestCase):
@@ -431,7 +780,7 @@ class SamplerTests(unittest.TestCase):
                 "core_sched.force_idle_usec 0\n"
             ),
             "pids.max": f"{controller.MEASURED_PIDS}\n", "pids.events": "max 0\n",
-            "pids.peak": "2\n", "cgroup.procs": "",
+            "pids.current": "1\n", "pids.peak": "2\n", "cgroup.procs": "123\n",
         }
         for name, value in values.items():
             (path / name).write_text(value, encoding="ascii")
@@ -456,14 +805,18 @@ class SamplerTests(unittest.TestCase):
             self.assertEqual(result["memory_limit"], controller.GIB)
             self.assertEqual(result["memory_swap_limit"], 0)
             self.assertEqual(result["pids_limit"], controller.MEASURED_PIDS)
+            self.assertEqual(result["pids_current"], 1)
             self.assertEqual(result["pids_events"], {"max": 0})
+            self.assertEqual(result["cgroup_process_count"], 1)
             self.assertEqual(result["cpu_max"], [100000, 100000])
             controller.validate_resources(result)
             for key, value, want in (
                 ("memory_swap_limit", 1, "inspect"),
                 ("cpu_max", [200000, 100000], "inspect"),
+                ("cgroup_process_count", 2, "process_residue"),
+                ("pids_current", controller.MEASURED_PIDS + 1, "inspect"),
                 ("pids_peak", controller.MEASURED_PIDS + 1, "inspect"),
-                ("pids_events", {"max": 1}, "oom"),
+                ("pids_events", {"max": 1}, "pid_limit"),
             ):
                 mutated = copy.deepcopy(result)
                 mutated[key] = value
@@ -471,6 +824,79 @@ class SamplerTests(unittest.TestCase):
                     failure_id(lambda mutated=mutated: controller.validate_resources(mutated)),
                     want,
                 )
+
+            one_page_oom = copy.deepcopy(result)
+            one_page_oom["memory_peak"] = (
+                controller.GIB + one_page_oom["host_page_size"]
+            )
+            one_page_oom["memory_events"]["max"] = 1
+            one_page_oom["memory_events"]["oom"] = 1
+            one_page_oom["memory_events"]["oom_kill"] = 1
+            self.assertEqual(
+                failure_id(lambda: controller.validate_resources(one_page_oom)),
+                "oom",
+            )
+            one_page_pressure = copy.deepcopy(result)
+            one_page_pressure["memory_peak"] = (
+                controller.GIB + one_page_pressure["host_page_size"]
+            )
+            one_page_pressure["memory_events"]["max"] = 1
+            self.assertEqual(
+                failure_id(
+                    lambda: controller.validate_resources(one_page_pressure)
+                ),
+                "memory_pressure",
+            )
+            one_page_without_pressure = copy.deepcopy(result)
+            one_page_without_pressure["memory_peak"] = (
+                controller.GIB
+                + one_page_without_pressure["host_page_size"]
+            )
+            self.assertEqual(
+                failure_id(
+                    lambda: controller.validate_resources(
+                        one_page_without_pressure
+                    )
+                ),
+                "inspect",
+            )
+            for key, value in (
+                (
+                    "memory_peak",
+                    controller.GIB + one_page_oom["host_page_size"] + 1,
+                ),
+                ("cgroup_process_count", 2),
+            ):
+                invalid = copy.deepcopy(one_page_oom)
+                invalid[key] = value
+                with self.subTest(key=key):
+                    self.assertEqual(
+                        failure_id(
+                            lambda invalid=invalid: controller.validate_resources(
+                                invalid
+                            )
+                        ),
+                        (
+                            "process_residue"
+                            if key == "cgroup_process_count"
+                            else "inspect"
+                        ),
+                    )
+
+    def test_final_sample_never_falls_back_to_earlier_read(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cgroup"
+            path.mkdir()
+            self.write_cgroup(path, peak=7)
+            sampler = controller.CgroupSampler(path, interval=0.002)
+            sampler.start()
+            deadline = time.monotonic() + 1
+            while sampler.latest is None and time.monotonic() < deadline:
+                time.sleep(0.002)
+            path.rename(path.with_name("vanished"))
+            with self.assertRaises(controller.SmokeFailure) as caught:
+                sampler.stop(reject_oom=False, allow_fallback=False)
+            self.assertEqual(caught.exception.failure_id, "missing_cgroup")
 
     def test_missing_event_counters_fail_closed(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -480,9 +906,85 @@ class SamplerTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 controller.CgroupSampler(path)._read_resources()
             self.write_cgroup(path, peak=2)
-            (path / "memory.events").write_text("low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n", encoding="ascii")
+            (path / "memory.events").write_text(
+                "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\n", encoding="ascii"
+            )
             with self.assertRaises(ValueError):
                 controller.CgroupSampler(path)._read_resources()
+
+    def test_process_stat_is_strict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            proc_root = Path(directory)
+            process_dir = proc_root / "123"
+            process_dir.mkdir()
+            fields = ["T", *("0" for _ in range(18)), "42"]
+            (process_dir / "stat").write_text(
+                "123 (density runner) " + " ".join(fields) + "\n", encoding="ascii"
+            )
+            self.assertEqual(
+                controller._read_process_stat(123, proc_root=proc_root), ("T", 42)
+            )
+            (process_dir / "stat").write_text("malformed\n", encoding="ascii")
+            self.assertEqual(
+                failure_id(
+                    lambda: controller._read_process_stat(123, proc_root=proc_root)
+                ),
+                "process_identity",
+            )
+
+    def test_only_main_process_rejects_residue_and_malformed_members(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            identity = controller.ProcessIdentity(123, 42, path)
+            (path / "cgroup.procs").write_text("123\n", encoding="ascii")
+            self.assertTrue(identity.only_main_process())
+            (path / "cgroup.procs").write_text("123\n124\n", encoding="ascii")
+            self.assertFalse(identity.only_main_process())
+            (path / "cgroup.procs").write_text("secret\n", encoding="ascii")
+            self.assertEqual(
+                failure_id(identity.only_main_process), "process_residue"
+            )
+
+    def test_phase_markers_are_exact_and_prove_progress(self):
+        identity = controller.ProcessIdentity(123, 42, Path("/cgroup"))
+        valid = mock.Mock(
+            st_mode=stat.S_IFREG | 0o600,
+            st_uid=10001,
+            st_gid=10001,
+            st_nlink=1,
+            st_size=0,
+        )
+        with mock.patch.object(Path, "lstat", return_value=valid):
+            self.assertTrue(identity.marker_ready(controller.INITIAL_MARKER_PATH))
+            self.assertTrue(identity.marker_ready(controller.FINAL_MARKER_PATH))
+        invalid = mock.Mock(
+            st_mode=stat.S_IFREG | 0o600,
+            st_uid=0,
+            st_gid=10001,
+            st_nlink=1,
+            st_size=0,
+        )
+        with mock.patch.object(Path, "lstat", return_value=invalid):
+            self.assertEqual(
+                failure_id(
+                    lambda: identity.marker_ready(controller.FINAL_MARKER_PATH)
+                ),
+                "process_state",
+            )
+
+        class FinalIdentity:
+            def state(self):
+                return "S"
+
+            def marker_ready(self, marker_path):
+                return marker_path == controller.FINAL_MARKER_PATH
+
+        self.assertEqual(
+            controller.wait_process_phase(
+                FinalIdentity(), phase="final", deadline=time.monotonic() + 1
+            ),
+            "matched",
+        )
 
     def test_flat_cgroup_parser_rejects_malformed_or_duplicate_keys(self):
         for raw in (

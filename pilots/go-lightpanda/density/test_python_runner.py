@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import io
 import json
+import os
+import signal
+import stat
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 from typing import Any
 
@@ -180,30 +185,136 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(runner.evaluation_json_bytes("café"), b'"caf\\u00e9"')
         self.assertEqual(runner.evaluation_json_bytes('a"b'), b'"a\\"b"')
 
-    def test_start_gate_waits_for_an_owned_regular_file(self) -> None:
+    def test_cli_protocol_surrounds_manifest_read_and_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            gate = Path(directory) / "start"
-            pauses: list[float] = []
+            workload = Path(directory) / "workload.json"
+            output = io.StringIO()
+            events: list[str] = []
 
-            def release(delay: float) -> None:
-                pauses.append(delay)
-                gate.touch(mode=0o600)
+            class Protocol:
+                def wait_initial(inner_self) -> None:
+                    events.append("initial")
+                    self.assertEqual(output.getvalue(), "")
+                    workload.write_text("not the manifest", encoding="ascii")
 
-            runner.wait_for_start_gate(gate, expected=gate, pause=release)
-            self.assertEqual(pauses, [0.01])
-            with self.assertRaises(runner.ContractError):
-                runner.wait_for_start_gate(Path(directory), expected=Path(directory))
+                def wait_final(inner_self) -> None:
+                    events.append("final")
+                    self.assertEqual(output.getvalue(), "")
 
-    def test_start_gate_rejects_the_wrong_path_and_symlinks(self) -> None:
+                def close(inner_self) -> None:
+                    events.append("close")
+
+            exit_code = runner.main(
+                [
+                    "--workload",
+                    str(workload),
+                    "--concurrency",
+                    "4",
+                    "--source-commit",
+                    SOURCE_COMMIT,
+                    "--image-identity",
+                    IMAGE_IDENTITY,
+                ],
+                protocol_factory=Protocol,
+                output=output,
+            )
+            self.assertEqual(exit_code, 1)
+            self.assertEqual(events, ["initial", "final", "close"])
+            self.assertFalse(json.loads(output.getvalue())["ok"])
+
+    def test_cli_removed_start_gate_uses_both_protocol_phases(self) -> None:
+        output = io.StringIO()
+        events: list[str] = []
+
+        class Protocol:
+            def wait_initial(inner_self) -> None:
+                events.append("initial")
+                self.assertEqual(output.getvalue(), "")
+
+            def wait_final(inner_self) -> None:
+                events.append("final")
+
+            def close(inner_self) -> None:
+                events.append("close")
+
+        exit_code = runner.main(
+            ["--start-gate", "/tmp/controller-start"],
+            protocol_factory=Protocol,
+            output=output,
+        )
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(events, ["initial", "final", "close"])
+        self.assertFalse(json.loads(output.getvalue())["ok"])
+
+    def test_cli_protocol_cancellation_emits_no_evidence(self) -> None:
+        output = io.StringIO()
+        events: list[str] = []
+
+        class Protocol:
+            def wait_initial(inner_self) -> None:
+                events.append("initial")
+
+            def wait_final(inner_self) -> None:
+                events.append("final")
+                raise runner._ProtocolCancelled
+
+            def close(inner_self) -> None:
+                events.append("close")
+
+        exit_code = runner.main(
+            ["--start-gate", "/tmp/controller-start"],
+            protocol_factory=Protocol,
+            output=output,
+        )
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(events, ["initial", "final", "close"])
+        self.assertEqual(output.getvalue(), "")
+
+    def test_protocol_marker_is_exact_exclusive_and_removed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            target = Path(directory) / "target"
-            target.touch(mode=0o600)
-            gate = Path(directory) / "gate"
-            gate.symlink_to(target)
-            with self.assertRaises(runner.ContractError):
-                runner.wait_for_start_gate(gate, expected=gate)
-            with self.assertRaises(runner.ContractError):
-                runner.wait_for_start_gate(target, expected=gate)
+            marker = Path(directory) / "controller-final"
+            runner._create_marker(marker)
+            metadata = marker.lstat()
+            self.assertTrue(stat.S_ISREG(metadata.st_mode))
+            self.assertEqual(stat.S_IMODE(metadata.st_mode), 0o600)
+            self.assertEqual(metadata.st_size, 0)
+            self.assertEqual(metadata.st_nlink, 1)
+            self.assertEqual(metadata.st_uid, os.geteuid())
+            self.assertEqual(metadata.st_gid, os.getegid())
+            with self.assertRaises(FileExistsError):
+                runner._create_marker(marker)
+            runner._validate_marker(marker)
+            marker.unlink()
+            self.assertFalse(marker.exists())
+
+    def test_release_between_handler_arm_and_wait_is_not_lost(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "controller-initial"
+            events: list[str] = []
+            handlers: dict[signal.Signals, Any] = {}
+            create_marker = runner._create_marker
+
+            def install_handler(number: signal.Signals, handler: Any) -> None:
+                events.append("arm" if callable(handler) else "restore")
+                handlers[number] = handler
+
+            def create_and_release(path: Path) -> None:
+                events.append("create")
+                create_marker(path)
+                handlers[signal.SIGUSR1](signal.SIGUSR1, None)
+                events.append("release")
+
+            protocol = object.__new__(runner._SignalMarkerProtocol)
+            with (
+                mock.patch.object(runner.signal, "getsignal", return_value=signal.SIG_DFL),
+                mock.patch.object(runner.signal, "signal", side_effect=install_handler),
+                mock.patch.object(runner.signal, "pause", side_effect=AssertionError("release was lost")),
+                mock.patch.object(runner, "_create_marker", side_effect=create_and_release),
+            ):
+                protocol._wait(marker, signal.SIGUSR1)
+
+            self.assertEqual(events, ["arm", "create", "release", "restore"])
+            self.assertFalse(marker.exists())
 
 
 class RunnerTests(unittest.IsolatedAsyncioTestCase):

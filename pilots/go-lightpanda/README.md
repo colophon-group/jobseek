@@ -68,6 +68,7 @@ GLIBC 2.38 requirement. The Go builder tag and packages resolved during
 docker build \
   --build-context contracts=../../apps/crawler/contracts \
   --platform linux/amd64 \
+  --target runtime \
   -t jobseek-lightpanda-pilot .
 
 docker run --rm \
@@ -199,7 +200,84 @@ Those belong to the still-open fixed-RAM evidence issue and require a separate
 frozen protocol plus independent review. The smoke grants no crawler, queue,
 database, Murmur, or production authority.
 
-The controller releases each measured runner with one short `docker exec`
-after attaching the cgroup sampler. That helper runs inside the measured
-cgroup, so this smoke's counters prove limit enforcement only. The repeated
-evidence protocol must replace that synchronization before comparing density.
+Each measured runner publishes an empty, private initial marker only after its
+release-signal handler is installed. The controller attests the runner's host
+PID identity and sole cgroup membership, starts the sampler, and sends
+`SIGUSR1`. After the workload and all browser resources are torn down, the
+runner publishes a distinct final marker and waits for `SIGUSR2`; only then
+does it emit its single JSON report and exit. The controller never enters the
+measured cgroup, and stale markers cannot satisfy the other phase.
+
+## Frozen Stage B2 density evidence
+
+`density/schedule.v1.json` freezes the comparative protocol independently of
+the pull-request smoke. It runs one diagnostic c1 pair, five counterbalanced
+c4 pairs, and five counterbalanced c8 pairs, for exactly 22 sequential arm
+records. Every arm gets a fresh fixture, internal network, measured container,
+and cgroup with the same one-CPU, 1 GiB no-swap, 768-PID, and 256-file limit.
+There are no retries, substitutions, adaptive profiles, public origins, or
+production queue/database access.
+
+Admission requires both implementations to pass all five c4 arms and Go to
+pass all five c8 arms. If both implementations pass c8, the paired median
+Python/Go elapsed ratio must be at least 1.25 with four strict Go wins, and the
+paired median Go/Python memory ratio must be at most 0.80 with four strict Go
+wins. If both c8 median peaks remain below 70% of the cap, the result is
+inconclusive because the RAM ceiling was not exercised. If Python instead has
+at least three kernel-confirmed c8 memory-pressure failures and no other c8
+failure class, every Go c8 peak must remain strictly below 80% of the cap.
+
+The executor checkpoints all 22 ordered slots in a private atomic report.
+Cleaned runtime, correctness, timeout, and memory-pressure failures are
+retained and later arms continue. Cleanup, containment, protected-host-health,
+or measured-process-residue failures abort the run, leave unstarted slots
+explicitly `not_run`, and can never produce admission. Failed memory samples
+may exceed the cgroup limit by at most one recorded host page; values are never
+clamped. Evidence output contains only closed identifiers, exact image IDs,
+integer timings, and aggregate cgroup counters—never raw logs, URLs, PIDs,
+cgroup paths, or service names.
+
+Run the frozen protocol only on an isolated Linux Docker host after building
+the three density images from the same reviewed source commit. Repeat
+`--protected-container` for any colocated service whose identity, start time,
+restart count, and boundary health must remain unchanged. These checks run
+before and after every arm; resource isolation remains the protection against
+transient interference within an arm:
+
+```sh
+test "$(git rev-parse HEAD)" = "$REVIEWED_SOURCE_COMMIT"
+git diff --quiet
+git diff --cached --quiet
+test -z "$(git ls-files --others --exclude-standard)"
+
+docker build \
+  --build-context contracts=../../apps/crawler/contracts \
+  --build-arg "SOURCE_COMMIT=$REVIEWED_SOURCE_COMMIT" \
+  --target density \
+  --tag jobseek-lightpanda-density:evidence \
+  .
+docker build \
+  --build-arg "SOURCE_COMMIT=$REVIEWED_SOURCE_COMMIT" \
+  --file density/Dockerfile.python \
+  --tag jobseek-python-chromium-density:evidence \
+  density
+docker build \
+  --build-arg "SOURCE_COMMIT=$REVIEWED_SOURCE_COMMIT" \
+  --file density/Dockerfile.fixture \
+  --tag jobseek-density-fixture:evidence \
+  density
+
+sudo --non-interactive python3 density/evidence_runner.py \
+  --go-image jobseek-lightpanda-density:evidence \
+  --python-image jobseek-python-chromium-density:evidence \
+  --fixture-image jobseek-density-fixture:evidence \
+  --source-commit "$REVIEWED_SOURCE_COMMIT" \
+  --protected-container protected-service \
+  --timeout-seconds 180 \
+  --output /tmp/go-lightpanda-density-evidence.json
+```
+
+The final process status reports whether the frozen execution completed; the
+report's closed `summary.status` is the separate admission decision. An
+`inconclusive`, `not_admitted`, or `invalid` summary must not be promoted into
+a production-routing decision.

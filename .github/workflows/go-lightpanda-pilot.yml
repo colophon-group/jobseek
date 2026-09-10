@@ -60,8 +60,7 @@ jobs:
           go test -v -timeout=60s -tags densitybench ./...
           go test -v -timeout=90s -race -tags densitybench ./...
           go vet -tags densitybench ./...
-          cd density
-          python3 -m unittest test_controller.py test_fixture_server.py test_python_runner.py
+          python3 -m unittest discover -s density -p 'test_*.py'
 
       - name: Exercise checksum-pinned stable Lightpanda
         run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target integration-test --tag jobseek-lightpanda-integration:${{ matrix.arch }}-${{ github.run_id }} .
@@ -74,19 +73,23 @@ jobs:
           DENSITY_ARCH: ${{ matrix.arch }}
           DENSITY_PLATFORM: ${{ matrix.platform }}
           DENSITY_RUN_ID: ${{ github.run_id }}
+          DENSITY_SOURCE_COMMIT: ${{ github.sha }}
         run: |
           docker build \
             --build-context contracts=../../apps/crawler/contracts \
+            --build-arg "SOURCE_COMMIT=${DENSITY_SOURCE_COMMIT}" \
             --platform "${DENSITY_PLATFORM}" \
             --target density \
             --tag "jobseek-lightpanda-density:${DENSITY_ARCH}-${DENSITY_RUN_ID}" \
             .
           docker build \
+            --build-arg "SOURCE_COMMIT=${DENSITY_SOURCE_COMMIT}" \
             --platform "${DENSITY_PLATFORM}" \
             --file density/Dockerfile.python \
             --tag "jobseek-python-chromium-density:${DENSITY_ARCH}-${DENSITY_RUN_ID}" \
             density
           docker build \
+            --build-arg "SOURCE_COMMIT=${DENSITY_SOURCE_COMMIT}" \
             --platform "${DENSITY_PLATFORM}" \
             --file density/Dockerfile.fixture \
             --tag "jobseek-density-fixture:${DENSITY_ARCH}-${DENSITY_RUN_ID}" \
