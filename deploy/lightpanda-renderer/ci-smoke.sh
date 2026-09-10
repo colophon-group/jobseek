@@ -117,12 +117,14 @@ acl_symlink_target="$ROOT/lock-race-symlink-target"
 acl_symlink="$ROOT/lock-race-symlink"
 sudo -u deploy touch "$acl_symlink_target"
 sudo -u deploy ln -s "$acl_symlink_target" "$acl_symlink"
+symlink_target_before="$(sudo -u deploy stat -c '%d:%i:%U:%G:%a:%s' "$acl_symlink_target")"
 symlink_status=0
 sudo -u deploy bash -c \
   'source "$1"; acquire_renderer_lock "$2" 0' \
   bash "$ROOT/lock-race-helper.sh" "$acl_symlink" || symlink_status=$?
 [[ "$symlink_status" -ne 0 ]]
 [[ "$(sudo -u deploy readlink "$acl_symlink")" == "$acl_symlink_target" ]]
+[[ "$(sudo -u deploy stat -c '%d:%i:%U:%G:%a:%s' "$acl_symlink_target")" == "$symlink_target_before" ]]
 sudo -u deploy rm -- "$acl_symlink" "$acl_symlink_target"
 
 # Race the exact production lock helper from an absent lock file. Both
