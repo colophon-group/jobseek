@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -119,6 +120,27 @@ func TestRedisCandidateSevenKeysAndBoundedGoInputs(t *testing.T) {
 	}
 }
 
+func TestRedisCandidateRejectsInvalidUTF8IdentityBeforeExecution(t *testing.T) {
+	queue, err := NewRedisCandidateClient(nil, "utf8-validation", candidateLua(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := RedisCandidateOperation{
+		Kind: "claim", TaskID: "task",
+		Route:          Route{ShardID: "shard", RoutingEpoch: 1, EngineOwner: "go"},
+		ConfigRevision: 1, LeaseTTLMS: 1,
+	}
+	base.Route.ShardID = string([]byte{0xff})
+	if _, err := queue.Execute(context.Background(), base); err == nil {
+		t.Fatal("invalid UTF-8 shard id accepted")
+	}
+	base.Route.ShardID = "shard"
+	base.TaskID = string([]byte{0xfe})
+	if _, err := queue.Execute(context.Background(), base); err == nil {
+		t.Fatal("invalid UTF-8 task id accepted")
+	}
+}
+
 func TestOperationAwareGoDecoderRejectsImpossibleReplies(t *testing.T) {
 	heartbeat := RedisCandidateOperation{
 		Kind: "heartbeat", TaskID: "task",
@@ -156,6 +178,149 @@ func TestOperationAwareGoDecoderRejectsImpossibleReplies(t *testing.T) {
 		raw := []any{"accepted", "completed", "100", token, ""}
 		if got := decodeRedisCandidateReply(complete, raw); got != invalidRedisReply() {
 			t.Fatalf("complete accepted wrong token %q: %+v", token, got)
+		}
+	}
+}
+
+func TestGoDecoderRequiresExactCheckedReplyMath(t *testing.T) {
+	route := Route{ShardID: "shard", RoutingEpoch: 7, EngineOwner: "go"}
+	tests := []struct {
+		name      string
+		operation RedisCandidateOperation
+		reason    string
+		server    int64
+		value     int64
+		accepted  bool
+	}{
+		{
+			name: "claim exact", reason: "claimed", server: 100, value: 125, accepted: true,
+			operation: RedisCandidateOperation{Kind: "claim", Route: route, LeaseTTLMS: 25},
+		},
+		{
+			name: "claim maximum boundary", reason: "claimed",
+			server: RedisCandidateMaxInteger - 1, value: RedisCandidateMaxInteger, accepted: true,
+			operation: RedisCandidateOperation{Kind: "claim", Route: route, LeaseTTLMS: 1},
+		},
+		{
+			name: "claim mismatch", reason: "claimed", server: 100, value: 126,
+			operation: RedisCandidateOperation{Kind: "claim", Route: route, LeaseTTLMS: 25},
+		},
+		{
+			name: "claim overflow", reason: "claimed",
+			server: RedisCandidateMaxInteger, value: RedisCandidateMaxInteger,
+			operation: RedisCandidateOperation{Kind: "claim", Route: route, LeaseTTLMS: 1},
+		},
+		{
+			name: "heartbeat exact extension", reason: "lease_extended",
+			server: 100, value: 151, accepted: true,
+			operation: RedisCandidateOperation{
+				Kind: "heartbeat", Route: route, ClaimToken: "7:1",
+				LeaseTTLMS: 51, PreviousLeaseUntil: 150,
+			},
+		},
+		{
+			name: "heartbeat exact but not extended", reason: "lease_extended",
+			server: 100, value: 150,
+			operation: RedisCandidateOperation{
+				Kind: "heartbeat", Route: route, ClaimToken: "7:1",
+				LeaseTTLMS: 50, PreviousLeaseUntil: 150,
+			},
+		},
+		{
+			name: "heartbeat mismatch", reason: "lease_extended", server: 100, value: 152,
+			operation: RedisCandidateOperation{
+				Kind: "heartbeat", Route: route, ClaimToken: "7:1",
+				LeaseTTLMS: 51, PreviousLeaseUntil: 150,
+			},
+		},
+		{
+			name: "heartbeat overflow", reason: "lease_extended",
+			server: RedisCandidateMaxInteger, value: RedisCandidateMaxInteger,
+			operation: RedisCandidateOperation{
+				Kind: "heartbeat", Route: route, ClaimToken: "7:1",
+				LeaseTTLMS: 1, PreviousLeaseUntil: RedisCandidateMaxInteger - 1,
+			},
+		},
+		{
+			name: "zero-delay reschedule", reason: "rescheduled",
+			server: 100, value: 100, accepted: true,
+			operation: RedisCandidateOperation{
+				Kind: "reschedule", Route: route, ClaimToken: "7:1", RescheduleDelayMS: 0,
+			},
+		},
+		{
+			name: "reschedule maximum boundary", reason: "rescheduled",
+			server: RedisCandidateMaxInteger - 1, value: RedisCandidateMaxInteger, accepted: true,
+			operation: RedisCandidateOperation{
+				Kind: "reschedule", Route: route, ClaimToken: "7:1", RescheduleDelayMS: 1,
+			},
+		},
+		{
+			name: "reschedule mismatch", reason: "rescheduled", server: 100, value: 100,
+			operation: RedisCandidateOperation{
+				Kind: "reschedule", Route: route, ClaimToken: "7:1", RescheduleDelayMS: 1,
+			},
+		},
+		{
+			name: "reschedule overflow", reason: "rescheduled",
+			server: RedisCandidateMaxInteger, value: RedisCandidateMaxInteger,
+			operation: RedisCandidateOperation{
+				Kind: "reschedule", Route: route, ClaimToken: "7:1", RescheduleDelayMS: 1,
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			test.operation.TaskID = "task"
+			test.operation.ConfigRevision = 1
+			token := "7:1"
+			if test.operation.Kind == "claim" {
+				token = "7:2"
+			}
+			raw := []any{
+				"accepted", test.reason, strconv.FormatInt(test.server, 10),
+				token, strconv.FormatInt(test.value, 10),
+			}
+			got := decodeRedisCandidateReply(test.operation, raw)
+			if (got.Decision == RedisAccepted) != test.accepted {
+				t.Fatalf("accepted=%v, got %+v", test.accepted, got)
+			}
+			if !test.accepted && got != invalidRedisReply() {
+				t.Fatalf("invalid math did not fail closed: %+v", got)
+			}
+		})
+	}
+}
+
+func TestGoDecoderReapReasonMatchesFailureThreshold(t *testing.T) {
+	route := Route{ShardID: "shard", RoutingEpoch: 7, EngineOwner: "go"}
+	tests := []struct {
+		reason, failures string
+		maxFailures      int64
+		accepted         bool
+	}{
+		{"requeued", "2", 3, true},
+		{"dead_lettered", "3", 3, true},
+		{"dead_lettered", "1", 1, true},
+		{"requeued", strconv.FormatInt(RedisCandidateMaxInteger-1, 10), RedisCandidateMaxInteger, true},
+		{"dead_lettered", strconv.FormatInt(RedisCandidateMaxInteger, 10), RedisCandidateMaxInteger, true},
+		{"requeued", "0", 3, false},
+		{"requeued", "3", 3, false},
+		{"dead_lettered", "2", 3, false},
+	}
+	for _, test := range tests {
+		operation := RedisCandidateOperation{
+			Kind: "reap", TaskID: "task", Route: route, ConfigRevision: 1,
+			ClaimToken: "7:1", MaxFailures: test.maxFailures,
+		}
+		raw := []any{"accepted", test.reason, "100", "7:1", test.failures}
+		got := decodeRedisCandidateReply(operation, raw)
+		if (got.Decision == RedisAccepted) != test.accepted {
+			t.Fatalf("%s/%s max=%d accepted=%v, got %+v", test.reason, test.failures,
+				test.maxFailures, test.accepted, got)
+		}
+		if !test.accepted && got != invalidRedisReply() {
+			t.Fatalf("invalid threshold outcome did not fail closed: %+v", got)
 		}
 	}
 }

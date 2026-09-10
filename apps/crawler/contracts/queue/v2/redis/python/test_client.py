@@ -216,6 +216,16 @@ def test_python_identity_apis_reject_non_string_values():
         Fence("task", ROUTE, 1, 71)  # type: ignore[arg-type]
 
 
+async def test_python_identity_apis_reject_invalid_utf8_before_redis(queue):
+    with pytest.raises(ValueError) as shard_error:
+        RouteIdentity("\ud800", 1, "go")
+    assert type(shard_error.value) is ValueError
+
+    with pytest.raises(ValueError) as task_error:
+        await queue.register("\udfff", route=ROUTE, config_revision=1)
+    assert type(task_error.value) is ValueError
+
+
 async def test_numeric_max_large_fence_round_trips_through_lua_and_cjson(fake_redis):
     route = RouteIdentity("max-shard", MAX_INTEGER, "go")
     queue = QueueV2Candidate(fake_redis, namespace=f"max-{uuid.uuid4().hex}")
@@ -329,6 +339,101 @@ def test_complete_success_requires_exact_expected_token(token):
         route=ROUTE,
         expected_token="7:1",
     ) == TransitionResult(Decision.TRANSPORT_ERROR, "invalid_redis_reply")
+
+
+@pytest.mark.parametrize(
+    ("server_time", "lease_ttl_ms", "value", "accepted"),
+    [
+        (100, 25, 125, True),
+        (MAX_INTEGER - 1, 1, MAX_INTEGER, True),
+        (100, 25, 126, False),
+        (MAX_INTEGER, 1, MAX_INTEGER, False),
+    ],
+)
+def test_claim_reply_requires_exact_checked_lease_math(server_time, lease_ttl_ms, value, accepted):
+    result = _decode_result(
+        "claim",
+        ["accepted", "claimed", str(server_time), "7:1", str(value)],
+        route=ROUTE,
+        lease_ttl_ms=lease_ttl_ms,
+    )
+    assert result.accepted is accepted
+    if not accepted:
+        assert result == TransitionResult(Decision.TRANSPORT_ERROR, "invalid_redis_reply")
+
+
+@pytest.mark.parametrize(
+    ("server_time", "lease_ttl_ms", "previous_lease", "value", "accepted"),
+    [
+        (100, 51, 150, 151, True),
+        (MAX_INTEGER - 1, 1, MAX_INTEGER - 1, MAX_INTEGER, True),
+        (100, 50, 150, 150, False),
+        (100, 51, 150, 152, False),
+        (MAX_INTEGER, 1, MAX_INTEGER - 1, MAX_INTEGER, False),
+    ],
+)
+def test_heartbeat_reply_requires_exact_checked_extending_lease_math(
+    server_time, lease_ttl_ms, previous_lease, value, accepted
+):
+    result = _decode_result(
+        "heartbeat",
+        ["accepted", "lease_extended", str(server_time), "7:1", str(value)],
+        route=ROUTE,
+        expected_token="7:1",
+        lease_ttl_ms=lease_ttl_ms,
+        previous_lease_until=previous_lease,
+    )
+    assert result.accepted is accepted
+    if not accepted:
+        assert result == TransitionResult(Decision.TRANSPORT_ERROR, "invalid_redis_reply")
+
+
+@pytest.mark.parametrize(
+    ("server_time", "delay_ms", "value", "accepted"),
+    [
+        (100, 0, 100, True),
+        (MAX_INTEGER - 1, 1, MAX_INTEGER, True),
+        (100, 1, 100, False),
+        (MAX_INTEGER, 1, MAX_INTEGER, False),
+    ],
+)
+def test_reschedule_reply_requires_exact_checked_delay_math(server_time, delay_ms, value, accepted):
+    result = _decode_result(
+        "reschedule",
+        ["accepted", "rescheduled", str(server_time), "7:1", str(value)],
+        route=ROUTE,
+        expected_token="7:1",
+        reschedule_delay_ms=delay_ms,
+    )
+    assert result.accepted is accepted
+    if not accepted:
+        assert result == TransitionResult(Decision.TRANSPORT_ERROR, "invalid_redis_reply")
+
+
+@pytest.mark.parametrize(
+    ("reason", "failures", "max_failures", "accepted"),
+    [
+        ("requeued", 2, 3, True),
+        ("dead_lettered", 3, 3, True),
+        ("dead_lettered", 1, 1, True),
+        ("requeued", MAX_INTEGER - 1, MAX_INTEGER, True),
+        ("dead_lettered", MAX_INTEGER, MAX_INTEGER, True),
+        ("requeued", 0, 3, False),
+        ("requeued", 3, 3, False),
+        ("dead_lettered", 2, 3, False),
+    ],
+)
+def test_reap_reply_reason_must_match_failure_threshold(reason, failures, max_failures, accepted):
+    result = _decode_result(
+        "reap",
+        ["accepted", reason, "100", "7:1", str(failures)],
+        route=ROUTE,
+        expected_token="7:1",
+        max_failures=max_failures,
+    )
+    assert result.accepted is accepted
+    if not accepted:
+        assert result == TransitionResult(Decision.TRANSPORT_ERROR, "invalid_redis_reply")
 
 
 class _BrokenRedis:

@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -188,7 +189,7 @@ func validateRedisOperation(operation RedisCandidateOperation) error {
 	if !operations[operation.Kind] {
 		return &CandidateValidationError{"unsupported operation"}
 	}
-	if operation.Route.ShardID == "" ||
+	if operation.Route.ShardID == "" || !utf8.ValidString(operation.Route.ShardID) ||
 		(operation.Route.EngineOwner != "python" && operation.Route.EngineOwner != "go") {
 		return &CandidateValidationError{"invalid route"}
 	}
@@ -202,8 +203,8 @@ func validateRedisOperation(operation RedisCandidateOperation) error {
 		}
 		return nil
 	}
-	if operation.TaskID == "" {
-		return &CandidateValidationError{"empty task id"}
+	if operation.TaskID == "" || !utf8.ValidString(operation.TaskID) {
+		return &CandidateValidationError{"empty or invalid UTF-8 task id"}
 	}
 	if err := boundedInt(operation.ConfigRevision, 1, "config revision"); err != nil {
 		return err
@@ -301,6 +302,13 @@ func invalidRedisReply() RedisTransition {
 	return RedisTransition{Decision: RedisTransportError, Reason: "invalid_redis_reply"}
 }
 
+func checkedRedisReplyAdd(left, right, minimum int64) (int64, bool) {
+	if boundedInt(right, minimum, "reply delta") != nil || left > RedisCandidateMaxInteger-right {
+		return 0, false
+	}
+	return left + right, true
+}
+
 func decodeRedisCandidateReply(operation RedisCandidateOperation, raw []any) RedisTransition {
 	if len(raw) != 5 || !operations[operation.Kind] {
 		return invalidRedisReply()
@@ -345,18 +353,28 @@ func decodeRedisCandidateReply(operation RedisCandidateOperation, raw []any) Red
 		case "register":
 			valid = transition.ClaimToken == "" && transition.HasValue && transition.Value == serverTime
 		case "claim":
+			expectedValue, addOK := checkedRedisReplyAdd(serverTime, operation.LeaseTTLMS, 1)
 			valid = validateClaimToken(transition.ClaimToken, operation.Route.RoutingEpoch) == nil &&
-				transition.HasValue && transition.Value > serverTime
+				addOK && transition.HasValue && transition.Value == expectedValue
 		case "heartbeat":
+			expectedValue, addOK := checkedRedisReplyAdd(serverTime, operation.LeaseTTLMS, 1)
 			valid = transition.ClaimToken == operation.ClaimToken && transition.HasValue &&
-				transition.Value > serverTime && transition.Value > operation.PreviousLeaseUntil
+				addOK && transition.Value == expectedValue &&
+				transition.Value > operation.PreviousLeaseUntil
 		case "complete":
 			valid = transition.ClaimToken == operation.ClaimToken && !transition.HasValue
 		case "reschedule":
+			expectedValue, addOK := checkedRedisReplyAdd(
+				serverTime, operation.RescheduleDelayMS, 0,
+			)
 			valid = transition.ClaimToken == operation.ClaimToken && transition.HasValue &&
-				transition.Value >= serverTime
+				addOK && transition.Value == expectedValue
 		case "reap":
-			valid = transition.ClaimToken == operation.ClaimToken && transition.HasValue && transition.Value >= 1
+			valid = transition.ClaimToken == operation.ClaimToken && transition.HasValue &&
+				transition.Value >= 1 &&
+				operation.MaxFailures >= 1 && operation.MaxFailures <= RedisCandidateMaxInteger &&
+				((transition.Reason == "requeued" && transition.Value < operation.MaxFailures) ||
+					(transition.Reason == "dead_lettered" && transition.Value >= operation.MaxFailures))
 		}
 	case RedisFenced:
 		valid = legalFenceReason(operation.Kind, transition.Reason) &&

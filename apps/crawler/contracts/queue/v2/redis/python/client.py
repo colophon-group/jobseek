@@ -155,8 +155,7 @@ class RouteIdentity:
     engine_owner: str
 
     def __post_init__(self) -> None:
-        if not isinstance(self.shard_id, str) or not self.shard_id:
-            raise ValueError("shard_id must be non-empty")
+        _validate_wire_string(self.shard_id, name="shard_id")
         _bounded_int(self.routing_epoch, name="routing_epoch", minimum=1)
         if self.engine_owner not in _OWNERS:
             raise ValueError("engine_owner must be 'python' or 'go'")
@@ -170,8 +169,7 @@ class Fence:
     claim_token: str
 
     def __post_init__(self) -> None:
-        if not isinstance(self.task_id, str) or not self.task_id:
-            raise ValueError("task_id must be non-empty")
+        _validate_wire_string(self.task_id, name="task_id")
         _bounded_int(self.config_revision, name="config_revision", minimum=1)
         _validate_token(self.claim_token, expected_epoch=self.route.routing_epoch)
 
@@ -417,6 +415,9 @@ class QueueV2Candidate:
             raw,
             route=route,
             expected_token=claim_token or None,
+            lease_ttl_ms=lease_ttl_ms,
+            reschedule_delay_ms=reschedule_delay_ms,
+            max_failures=max_failures,
             previous_lease_until=previous_lease_until,
         )
 
@@ -430,9 +431,17 @@ def _bounded_int(value: Any, *, name: str, minimum: int) -> int:
 
 
 def _validate_task_revision(task_id: str, config_revision: int) -> None:
-    if not isinstance(task_id, str) or not task_id:
-        raise ValueError("task_id must be non-empty")
+    _validate_wire_string(task_id, name="task_id")
     _bounded_int(config_revision, name="config_revision", minimum=1)
+
+
+def _validate_wire_string(value: Any, *, name: str) -> None:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{name} must be non-empty")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ValueError(f"{name} must be valid UTF-8") from None
 
 
 def _canonical_uint(text: str, *, minimum: int = 0) -> int:
@@ -461,6 +470,9 @@ def _decode_result(
     *,
     route: RouteIdentity,
     expected_token: str | None = None,
+    lease_ttl_ms: int = 0,
+    reschedule_delay_ms: int = 0,
+    max_failures: int = 0,
     previous_lease_until: int | None = None,
 ) -> TransitionResult:
     invalid = TransitionResult(Decision.TRANSPORT_ERROR, "invalid_redis_reply")
@@ -491,21 +503,35 @@ def _decode_result(
             except ValueError:
                 valid = False
             else:
-                valid = value is not None and value > server_time
+                expected_value = _checked_reply_add(server_time, lease_ttl_ms, minimum=1)
+                valid = expected_value is not None and value == expected_value
         elif operation == "heartbeat":
+            expected_value = _checked_reply_add(server_time, lease_ttl_ms, minimum=1)
             valid = (
                 token == expected_token
-                and value is not None
-                and value > server_time
+                and expected_value is not None
+                and value == expected_value
                 and previous_lease_until is not None
                 and value > previous_lease_until
             )
         elif operation == "complete":
             valid = token == expected_token and value is None
         elif operation == "reschedule":
-            valid = token == expected_token and value is not None and value >= server_time
+            expected_value = _checked_reply_add(server_time, reschedule_delay_ms, minimum=0)
+            valid = (
+                token == expected_token and expected_value is not None and value == expected_value
+            )
         else:  # reap
-            valid = token == expected_token and value is not None and value >= 1
+            valid = (
+                token == expected_token
+                and value is not None
+                and value >= 1
+                and 1 <= max_failures <= MAX_INTEGER
+                and (
+                    (reason == "requeued" and value < max_failures)
+                    or (reason == "dead_lettered" and value >= max_failures)
+                )
+            )
         if not valid:
             return invalid
     elif decision is Decision.FENCED:
@@ -537,6 +563,16 @@ def _decode_result(
         claim_token=token or None,
         value=value,
     )
+
+
+def _checked_reply_add(left: int, right: Any, *, minimum: int) -> int | None:
+    try:
+        _bounded_int(right, name="reply delta", minimum=minimum)
+    except ValueError:
+        return None
+    if left > MAX_INTEGER - right:
+        return None
+    return left + right
 
 
 def _wire_text(value: Any) -> str:
