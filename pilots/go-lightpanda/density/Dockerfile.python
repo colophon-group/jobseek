@@ -25,18 +25,23 @@ for package, expected in {
     "typing_extensions": "4.15.0",
 }.items():
     assert importlib.metadata.version(package) == expected
+revision = Path("/ms-playwright/chromium_headless_shell-1234")
+executables = [
+    candidate
+    for candidate in revision.rglob("chrome-headless-shell")
+    if candidate.is_file() and os.access(candidate, os.X_OK)
+]
+assert len(executables) == 1
+version = subprocess.run(
+    [str(executables[0]), "--version"],
+    check=True,
+    capture_output=True,
+    text=True,
+).stdout.strip()
+assert "151.0.7922.34" in version
 with sync_playwright() as playwright:
-    executable = Path(playwright.chromium.executable_path)
-    assert executable.is_file()
-    assert os.access(executable, os.X_OK)
-    assert "/ms-playwright/chromium_headless_shell-1234/" in str(executable)
-    version = subprocess.run(
-        [str(executable), "--version"],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    assert "151.0.7922.34" in version
+    browser = playwright.chromium.launch(headless=True)
+    browser.close()
 PY
 
 COPY --chmod=0444 python_runner.py workload.v1.json /density/
