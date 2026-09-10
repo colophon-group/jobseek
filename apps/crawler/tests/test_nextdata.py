@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from unittest.mock import AsyncMock, patch
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 import pytest
@@ -1257,6 +1258,33 @@ class TestPagination:
         assert isinstance(result, set)
         assert len(result) == 6
 
+    async def test_multi_page_query_with_zero_based_source(self):
+        """Query pagination may number the board root as page zero."""
+        requested_pages: list[int] = []
+
+        def handler(request: httpx.Request):
+            parsed = urlparse(str(request.url))
+            page = int(parse_qs(parsed.query).get("page", ["0"])[0])
+            requested_pages.append(page)
+            data = _paginated_data(page + 1, page_count=3)
+            return httpx.Response(200, text=_html_with_next_data(data))
+
+        board = {
+            **BOARD_PAGINATED,
+            "metadata": {
+                **BOARD_PAGINATED["metadata"],
+                "pagination": {
+                    **BOARD_PAGINATED["metadata"]["pagination"],
+                    "start": 0,
+                },
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert len(result) == 6
+        assert requested_pages == [0, 1, 2]
+
     async def test_multi_page_path_template_with_zero_based_source(self):
         """Path pagination may number the board root as page zero."""
         requested_paths: list[str] = []
@@ -2462,6 +2490,19 @@ class TestOffsetPaginationHelpers:
         assert urls == [
             "https://x.com/jobs?page=2",
             "https://x.com/jobs?page=3",
+        ]
+
+    def test_compute_page_urls_query_with_zero_based_source(self):
+        from src.core.monitors.nextdata import _compute_page_urls
+
+        urls = _compute_page_urls(
+            "https://x.com/jobs",
+            page_count=3,
+            cfg={"page_param": "page", "start": 0},
+        )
+        assert urls == [
+            "https://x.com/jobs?page=1",
+            "https://x.com/jobs?page=2",
         ]
 
     def test_compute_page_urls_path_template_with_zero_based_source(self):
