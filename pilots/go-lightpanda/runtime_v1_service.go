@@ -34,7 +34,7 @@ const (
 	runtimeV1ServiceProtocol      = "jobseek.lightpanda.service/v1"
 	runtimeV1ServiceALPN          = "jobseek-lightpanda-b0/1"
 	runtimeV1ServiceClientURI     = "spiffe://jobseek/crawler/lightpanda-b0"
-	runtimeV1ServicePort          = uint64(9443)
+	runtimeV1ServiceListenAddress = "0.0.0.0:9443"
 	runtimeV1ServiceCapacity      = 4
 	runtimeV1ServiceMemoryMax     = uint64(1_073_741_824)
 	runtimeV1ServiceMemorySwapMax = uint64(0)
@@ -55,6 +55,7 @@ var subjectAlternativeNameOID = asn1.ObjectIdentifier{2, 5, 29, 17}
 
 type runtimeV1ServiceConfig struct {
 	ListenAddress     string
+	ServiceIP         string
 	CertificatePath   string
 	PrivateKeyPath    string
 	CAPath            string
@@ -151,14 +152,15 @@ func runtimeV1ServiceConfigFromArgs(args []string) (runtimeV1ServiceConfig, erro
 	set := flag.NewFlagSet("go-lightpanda-service", flag.ContinueOnError)
 	set.SetOutput(io.Discard)
 	config := runtimeV1ServiceConfig{}
-	set.StringVar(&config.ListenAddress, "listen", "", "private literal IP and TCP port")
+	set.StringVar(&config.ListenAddress, "listen", "", "fixed container-local TCP bind")
+	set.StringVar(&config.ServiceIP, "service-ip", "", "private literal service identity IP")
 	set.StringVar(&config.CertificatePath, "tls-cert", "", "server certificate PEM")
 	set.StringVar(&config.PrivateKeyPath, "tls-key", "", "server private key PEM")
 	set.StringVar(&config.CAPath, "tls-ca", "", "dedicated service CA certificate PEM")
 	set.StringVar(&config.CASHA256, "tls-ca-sha256", "", "dedicated service CA DER SHA-256")
 	set.StringVar(&config.ClientLeafSHA256, "client-leaf-sha256", "", "required client leaf DER SHA-256")
 	set.StringVar(&config.ClientSPKISHA256, "client-spki-sha256", "", "required client SPKI SHA-256")
-	if err := set.Parse(args); err != nil || set.NArg() != 0 {
+	if err := set.Parse(args); err != nil || set.NArg() != 0 || config.ServiceIP == "" {
 		return runtimeV1ServiceConfig{}, errors.New("invalid service arguments")
 	}
 	config.MemoryMaxPath = defaultMemoryMaxPath
@@ -172,6 +174,12 @@ func newRuntimeV1Service(
 ) (*runtimeV1Service, error) {
 	if executor == nil {
 		return nil, errors.New("runtime-v1 service requires an executor")
+	}
+	if err := validateRuntimeV1ServiceBind(config.ListenAddress); err != nil {
+		return nil, err
+	}
+	if _, err := runtimeV1ServiceIdentityIP(config.ServiceIP); err != nil {
+		return nil, err
 	}
 	if err := attestRuntimeV1ServiceCgroup(config.MemoryMaxPath, config.MemorySwapMaxPath); err != nil {
 		return nil, err
@@ -476,7 +484,7 @@ func readCgroupLimit(path string) (uint64, error) {
 }
 
 func runtimeV1ServiceTLSConfig(config runtimeV1ServiceConfig) (*tls.Config, error) {
-	ip, err := runtimeV1ServiceListenIP(config.ListenAddress)
+	ip, err := runtimeV1ServiceIdentityIP(config.ServiceIP)
 	if err != nil {
 		return nil, err
 	}
@@ -540,15 +548,17 @@ func runtimeV1ServiceTLSConfig(config runtimeV1ServiceConfig) (*tls.Config, erro
 	}, nil
 }
 
-func runtimeV1ServiceListenIP(address string) (net.IP, error) {
-	host, portText, err := net.SplitHostPort(address)
-	if err != nil || host == "" || portText == "" {
-		return nil, errors.New("runtime-v1 service listen address must be a literal private IP and port")
+func validateRuntimeV1ServiceBind(address string) error {
+	if address != runtimeV1ServiceListenAddress {
+		return errors.New("runtime-v1 service listen address must be exactly 0.0.0.0:9443")
 	}
-	ip := net.ParseIP(host)
-	port, portErr := strconv.ParseUint(portText, 10, 16)
-	if ip == nil || !ip.IsPrivate() || ip.IsLoopback() || portErr != nil || port != runtimeV1ServicePort || host != ip.String() {
-		return nil, errors.New("runtime-v1 service listen address must be a literal private IP and port")
+	return nil
+}
+
+func runtimeV1ServiceIdentityIP(value string) (net.IP, error) {
+	ip := net.ParseIP(value)
+	if ip == nil || ip.To4() == nil || !ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() || value != ip.String() {
+		return nil, errors.New("runtime-v1 service identity must be a canonical private IPv4 address")
 	}
 	return ip, nil
 }

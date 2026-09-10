@@ -56,19 +56,23 @@ func TestRuntimeV1ServiceHelloIsExactAndBounded(t *testing.T) {
 
 func TestRuntimeV1ServiceConfigArgumentsAreClosed(t *testing.T) {
 	config, err := runtimeV1ServiceConfigFromArgs([]string{
-		"--listen", "10.0.0.5:9443", "--tls-cert", "/cert", "--tls-key", "/key",
+		"--listen", runtimeV1ServiceListenAddress, "--service-ip", serviceTestIP,
+		"--tls-cert", "/cert", "--tls-key", "/key",
 		"--tls-ca", "/ca", "--tls-ca-sha256", strings.Repeat("1", 64),
 		"--client-leaf-sha256", strings.Repeat("2", 64),
 		"--client-spki-sha256", strings.Repeat("3", 64),
 	})
 	if err != nil || config.MemoryMaxPath != defaultMemoryMaxPath ||
-		config.MemorySwapMaxPath != defaultMemorySwapMaxPath {
+		config.MemorySwapMaxPath != defaultMemorySwapMaxPath ||
+		config.ListenAddress != runtimeV1ServiceListenAddress || config.ServiceIP != serviceTestIP {
 		t.Fatalf("config/error = %#v/%v", config, err)
 	}
 	for _, args := range [][]string{
 		{"--unknown", "value"},
-		{"--listen", "10.0.0.5:9443", "trailing"},
+		{"--listen", runtimeV1ServiceListenAddress, "--service-ip", serviceTestIP, "trailing"},
 		{"--listen"},
+		{"--listen", runtimeV1ServiceListenAddress},
+		{"--listen", runtimeV1ServiceListenAddress, "--service-ip"},
 	} {
 		if _, err := runtimeV1ServiceConfigFromArgs(args); err == nil {
 			t.Fatalf("args accepted: %q", args)
@@ -112,7 +116,64 @@ func TestRuntimeV1ServiceCgroupAttestationIsExact(t *testing.T) {
 	}
 }
 
-func TestRuntimeV1ServiceRejectsWrongEndpointAndRequiredPins(t *testing.T) {
+func TestRuntimeV1ServiceEndpointConfigurationIsClosed(t *testing.T) {
+	if err := validateRuntimeV1ServiceBind(runtimeV1ServiceListenAddress); err != nil {
+		t.Fatal(err)
+	}
+	identity, err := runtimeV1ServiceIdentityIP(serviceTestIP)
+	if err != nil || identity.String() != serviceTestIP {
+		t.Fatalf("identity/error = %v/%v", identity, err)
+	}
+	for _, address := range []string{
+		"", "10.0.0.5:9443", "127.0.0.1:9443", "0.0.0.0:9444",
+		"0.0.0.0:09443", "[::]:9443", "*:9443", "0.0.0.0:9443 ",
+	} {
+		t.Run("bind/"+address, func(t *testing.T) {
+			if err := validateRuntimeV1ServiceBind(address); err == nil {
+				t.Fatalf("bind accepted: %q", address)
+			}
+		})
+	}
+	for _, value := range []string{
+		"", "murmur", "0.0.0.0", "127.0.0.1", "169.254.0.1", "8.8.8.8",
+		"10.0.0.05", "::", "::1", "fd00::5", "2001:db8::5", "::ffff:10.0.0.5",
+		" 10.0.0.5", "10.0.0.5 ",
+	} {
+		t.Run("identity/"+value, func(t *testing.T) {
+			if _, err := runtimeV1ServiceIdentityIP(value); err == nil {
+				t.Fatalf("identity accepted: %q", value)
+			}
+		})
+	}
+}
+
+func TestRuntimeV1ServiceConstructionRejectsInvalidEndpointConfiguration(t *testing.T) {
+	fixture := newServiceTLSFixture(t)
+	executor := runtimeV1ExecutorFunc(func(context.Context, *runtimev1.BrowserExecutionInput) *runtimev1.BrowserResult {
+		return serviceSuccess("https://example.test/jobs")
+	})
+	for _, test := range []struct {
+		name  string
+		patch func(*runtimeV1ServiceConfig)
+	}{
+		{name: "nonfixed bind", patch: func(config *runtimeV1ServiceConfig) {
+			config.ListenAddress = serviceTestIP + ":9443"
+		}},
+		{name: "invalid service identity", patch: func(config *runtimeV1ServiceConfig) {
+			config.ServiceIP = "0.0.0.0"
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config := fixture.server
+			test.patch(&config)
+			if _, err := newRuntimeV1Service(config, executor); err == nil {
+				t.Fatal("invalid endpoint configuration reached service construction")
+			}
+		})
+	}
+}
+
+func TestRuntimeV1ServiceRejectsWrongIdentityAndRequiredPins(t *testing.T) {
 	fixture := newServiceTLSFixture(t)
 	accepted, err := runtimeV1ServiceTLSConfig(fixture.server)
 	if err != nil {
@@ -127,9 +188,10 @@ func TestRuntimeV1ServiceRejectsWrongEndpointAndRequiredPins(t *testing.T) {
 		name  string
 		patch func(*runtimeV1ServiceConfig)
 	}{
-		{name: "hostname", patch: func(c *runtimeV1ServiceConfig) { c.ListenAddress = "murmur:9443" }},
-		{name: "loopback", patch: func(c *runtimeV1ServiceConfig) { c.ListenAddress = "127.0.0.1:9443" }},
-		{name: "wrong port", patch: func(c *runtimeV1ServiceConfig) { c.ListenAddress = "10.0.0.5:9444" }},
+		{name: "missing service IP", patch: func(c *runtimeV1ServiceConfig) { c.ServiceIP = "" }},
+		{name: "hostname", patch: func(c *runtimeV1ServiceConfig) { c.ServiceIP = "murmur" }},
+		{name: "loopback", patch: func(c *runtimeV1ServiceConfig) { c.ServiceIP = "127.0.0.1" }},
+		{name: "wrong server identity", patch: func(c *runtimeV1ServiceConfig) { c.ServiceIP = "10.0.0.6" }},
 		{name: "missing CA pin", patch: func(c *runtimeV1ServiceConfig) { c.CASHA256 = "" }},
 		{name: "missing leaf pin", patch: func(c *runtimeV1ServiceConfig) { c.ClientLeafSHA256 = "" }},
 		{name: "missing SPKI pin", patch: func(c *runtimeV1ServiceConfig) { c.ClientSPKISHA256 = "" }},
@@ -149,7 +211,7 @@ func TestRuntimeV1ServiceRejectsWrongEndpointAndRequiredPins(t *testing.T) {
 				return // The wrong peer pin is rejected during its handshake.
 			}
 			if err == nil {
-				t.Fatal("bad endpoint or pin accepted")
+				t.Fatal("bad identity or pin accepted")
 			}
 		})
 	}
@@ -816,8 +878,9 @@ func newServiceTLSFixture(t *testing.T) serviceTLSFixture {
 	clientLeaf := mustParseCertificate(t, clientDER)
 	return serviceTLSFixture{
 		server: runtimeV1ServiceConfig{
-			ListenAddress: serviceTestIP + ":9443", CertificatePath: serverPath,
-			PrivateKeyPath: serverKeyPath, CAPath: caPath,
+			ListenAddress: runtimeV1ServiceListenAddress, ServiceIP: serviceTestIP,
+			CertificatePath: serverPath,
+			PrivateKeyPath:  serverKeyPath, CAPath: caPath,
 			CASHA256: hexDigest(caDER), ClientLeafSHA256: hexDigest(clientDER),
 			ClientSPKISHA256: hexDigest(clientLeaf.RawSubjectPublicKeyInfo),
 			MemoryMaxPath:    memoryPath, MemorySwapMaxPath: swapPath,

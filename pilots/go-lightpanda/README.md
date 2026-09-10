@@ -36,20 +36,24 @@ returns promptly if it needs goroutine cleanup without process exit.
 
 An inactive `--runtime-v1-service` mode exposes that same render-only adapter
 over the closed one-request mTLS boundary in
-`apps/crawler/contracts/v1/lightpanda-service.md`. It is fixed to a caller-
-configured private literal IP on port 9443, TLS 1.3, the
-`jobseek-lightpanda-b0/1` ALPN, one fingerprinted CA, exact peer SAN/EKU, and
-required peer leaf/SPKI pins. The server attests exactly 1 GiB `memory.max`
-and zero `memory.swap.max` before listening and admits exactly four active
-connections without a work queue. Each connection sends the fixed capacity
-hello, consumes one runtime-v1 request plus its canonical empty closure frame,
-returns one sanitized result, and closes. Evaluation is rejected by the
-render-only adapter before its runner can contact an origin. The `service`
-Docker target packages this mode but no deployment, certificate, firewall,
-queue claimant, or board route is included. Peer closure after the request
-marker cancels its active execution. Service shutdown closes all admitted
-connections promptly, and an unproved Lightpanda cleanup poisons the resident
-service and exits nonzero so a supervisor can replace it.
+`apps/crawler/contracts/v1/lightpanda-service.md`. It has two deliberately
+separate endpoint inputs: the fixed container-local bridge bind
+`--listen 0.0.0.0:9443`, and a canonical private IPv4 `--service-ip` used as the
+server certificate's sole IP SAN and the caller-visible identity. The wildcard
+is never a certificate identity, client endpoint, or public-publish authority.
+The service requires TLS 1.3, the `jobseek-lightpanda-b0/1` ALPN, one
+fingerprinted CA, exact peer SAN/EKU, and required peer leaf/SPKI pins. The
+server attests exactly 1 GiB `memory.max` and zero `memory.swap.max` before
+listening and admits exactly four active connections without a work queue.
+Each connection sends the fixed capacity hello, consumes one runtime-v1 request
+plus its canonical empty closure frame, returns one sanitized result, and
+closes. Evaluation is rejected by the render-only adapter before its runner can
+contact an origin. The `service` Docker target packages this mode but no
+deployment, certificate, firewall, queue claimant, or board route is included.
+Peer closure after the request marker cancels its active execution. Service
+shutdown closes all admitted connections promptly, and an unproved Lightpanda
+cleanup poisons the resident service and exits nonzero so a supervisor can
+replace it.
 
 The package also contains a non-authoritative bounded execution pool for the
 fixed-RAM pilot. The pool admits immutable runtime-v1 inputs into a fixed set
