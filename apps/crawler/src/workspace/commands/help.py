@@ -111,7 +111,7 @@ Monitor Types (cheapest first):
   jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
   job51             10      Full job data     No (skipped)
-  jobbank104        10      Job URLs          Auto-configured JSON-LD
+  jobbank104        10      Full job data     No (skipped)
   jobdiva           10      Job URLs          api_sniffer detail scraper
   jobstreet         10      Full/partial      Auto-enriched
   seek              10      Job URLs          Auto-configured
@@ -2887,21 +2887,20 @@ jazzhr — JazzHR / ApplyToJob static listing
 MONITOR_JOBBANK104 = """\
 jobbank104 — 104 Job Bank company listing
 
-  Listing:  GET https://www.104.com.tw/company/{token}
-  Returns:  Canonical https://www.104.com.tw/job/{job_id} detail URLs
-  Scraper:  Auto-configured JSON-LD scraper
-  Note:     Uses the public server-rendered employer page instead of 104's
-            Cloudflare-guarded private JSON endpoints. Enable proxy for both
-            monitor and scraper when crawler egress receives a challenge.
-            Count drift produces a truncation-safe result, preventing false
-            delisting when a larger employer page is only partially rendered.
+  Listing:  GET https://www.104.com.tw/api/companies/{token}/jobs
+  Returns:  Full job data (title, description, location, canonical detail URL)
+  Scraper:  Skipped; the listing API includes the complete description
+  Note:     Uses the public API behind the employer page. This avoids 104's
+            Cloudflare-guarded detail pages while retaining canonical outbound
+            job URLs. Count drift produces a truncation-safe result, preventing
+            false delisting when a large inventory exceeds the safety cap.
 
   Config:
     {"token": "auzu36g", "proxy": true}
 
     token  Company identifier from /company/{token}. Auto-filled only from an
            exact unfiltered www.104.com.tw company URL.
-    proxy  Routes company and detail requests through the configured provider.
+    proxy  Routes company-listing API requests through the configured provider.
 
   Detection:  ws probe shows "104 Job Bank company listing — token: X, N jobs"
   Zero jobs?  A valid page explicitly advertises 工作機會(0)."""

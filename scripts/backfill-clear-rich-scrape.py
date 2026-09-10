@@ -64,6 +64,7 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "inline",
     "jarvi",
     "job51",
+    "jobbank104",
     "jobylon",
     "keka",
     "kipt",
