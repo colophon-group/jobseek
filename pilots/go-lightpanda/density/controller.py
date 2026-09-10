@@ -34,10 +34,19 @@ ALIASES = tuple(f"origin-{i}.bench.test" for i in range(8))
 LABEL_RUN = "org.jobseek.density.run"
 LABEL_ROLE = "org.jobseek.density.role"
 MAX_REPORT_BYTES = 1024 * 1024
+CGROUP_FILES = (
+    "memory.current", "memory.peak", "memory.max", "memory.swap.max",
+    "memory.events", "cpu.max", "cpu.stat", "pids.max", "pids.events",
+    "pids.peak", "cgroup.procs",
+)
+CGROUP_FILE_FAILURES = {
+    name: "missing_cgroup_" + name.replace(".", "_") for name in CGROUP_FILES
+}
 FAILURE_IDS = {
     "cleanup", "command", "concurrency", "conservation", "image", "inspect",
     "malformed_output", "missing_cgroup", "nonzero", "oom", "oracle",
-    "start_timeout", "timeout", "transcript",
+    "missing_cgroup_membership", "missing_cgroup_path", "missing_cgroup_pid",
+    "start_timeout", "timeout", "transcript", *CGROUP_FILE_FAILURES.values(),
 }
 
 COMMON_KEYS = {
@@ -527,22 +536,21 @@ class CgroupSampler:
     @classmethod
     def from_pid(cls, pid: int) -> "CgroupSampler":
         if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
-            raise SmokeFailure("missing_cgroup")
+            raise SmokeFailure("missing_cgroup_pid")
         try:
             lines = Path(f"/proc/{pid}/cgroup").read_text().splitlines()
+        except (OSError, UnicodeError):
+            raise SmokeFailure("missing_cgroup_membership") from None
+        try:
             relative = next(line.split("::", 1)[1] for line in lines if line.startswith("0::"))
             root = Path("/sys/fs/cgroup").resolve()
             path = (root / relative.lstrip("/")).resolve()
             path.relative_to(root)
-            for name in (
-                "memory.current", "memory.peak", "memory.max", "memory.swap.max",
-                "memory.events", "cpu.max", "cpu.stat", "pids.max", "pids.events", "pids.peak",
-                "cgroup.procs",
-            ):
-                if not (path / name).is_file():
-                    raise OSError
         except (OSError, StopIteration, ValueError, IndexError):
-            raise SmokeFailure("missing_cgroup") from None
+            raise SmokeFailure("missing_cgroup_path") from None
+        for name in CGROUP_FILES:
+            if not (path / name).is_file():
+                raise SmokeFailure(CGROUP_FILE_FAILURES[name])
         return cls(path)
 
     def start(self) -> None:

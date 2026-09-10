@@ -455,6 +455,14 @@ class SamplerTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 controller.CgroupSampler(path)._read_resources()
 
+    def test_cgroup_diagnostics_are_closed_canonical_ids(self):
+        self.assertEqual(set(controller.CGROUP_FILE_FAILURES), set(controller.CGROUP_FILES))
+        self.assertEqual(len(set(controller.CGROUP_FILE_FAILURES.values())), len(controller.CGROUP_FILES))
+        for name, failure in controller.CGROUP_FILE_FAILURES.items():
+            self.assertEqual(failure, "missing_cgroup_" + name.replace(".", "_"))
+            self.assertIn(failure, controller.FAILURE_IDS)
+            self.assertRegex(failure, r"^[a-z_]+$")
+
 
 if __name__ == "__main__":
     unittest.main()
