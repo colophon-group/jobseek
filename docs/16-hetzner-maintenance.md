@@ -1659,8 +1659,9 @@ crawler environment. Deployment templates live in
 [`../deploy/systemd/`](../deploy/systemd/).
 Host-surface deployment is CI/CD-owned by
 [`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml).
-That workflow updates the checked-out repo and systemd units; it does not run
-`codex exec`, select issues, upload labels, or perform error reviews.
+That workflow updates the checked-out repo and systemd units; it does not
+invoke a Codex service directly. Restoring a previously active persistent
+daily timer may deliver one overdue scheduled activation.
 
 Do not add another scheduler for these routines. Manual recovery invokes the
 same committed runner entry point once from a throwaway worktree, with the
@@ -1674,7 +1675,8 @@ gh run list --workflow deploy-codex-runner.yml --branch main --limit 5
 ```
 
 Manual host deploy, when CI/CD is unavailable, runs as root with the same
-script and should not start a timer:
+script. This mode restores only timers that were already active; an overdue
+persistent daily timer may activate after restoration:
 
 ```bash
 git -C /srv/jobseek-codex/repo fetch origin main
