@@ -280,6 +280,12 @@ msgstr "Prompt de l'agent"
 msgid "search.locationModal.allLoaded"
 msgstr "Tous les {totalCountries} pays chargés"
 
+#. Company scope shown for a watchlist that searches across every company
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx
+msgid "watchlists.card.allCompanies"
+msgstr "Toutes les entreprises"
+
 #. Encryption
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
@@ -897,7 +903,7 @@ msgstr "Combine des entreprises spécifiques avec des filtres de rôle pour cibl
 msgid "home.pricing.pro.cta"
 msgstr "Bientôt disponible"
 
-#. Plural company count shown while a watchlist job count loads
+#. Plural company count on a watchlist card
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-card.tsx
 msgid "watchlists.card.companyPlural"
@@ -915,7 +921,7 @@ msgstr "Entreprises"
 msgid "app.home.stats.companies"
 msgstr "Entreprises suivies"
 
-#. Singular company count shown while a watchlist job count loads
+#. Singular company count on a watchlist card
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-card.tsx
 msgid "watchlists.card.companySingular"

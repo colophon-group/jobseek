@@ -18,10 +18,10 @@ beforeEach(() => {
 });
 
 describe("WatchlistCard selection", () => {
-  it("selects in place and exposes the active state", () => {
+  it("selects in place and exposes the active and loading states", () => {
     const onSelect = vi.fn();
 
-    render(
+    const { rerender } = render(
       <WatchlistCard
         active
         selecting={false}
@@ -31,8 +31,9 @@ describe("WatchlistCard selection", () => {
           slug: "maangplus",
           title: "MAANG+",
           description: null,
-          isPublic: true,
+          isPublic: false,
           alertsEnabled: false,
+          anyCompany: false,
           companyCount: 12,
           activeJobCount: 34,
           lastAccessedAt: "2026-07-06T00:00:00.000Z",
@@ -46,9 +47,65 @@ describe("WatchlistCard selection", () => {
 
     expect(onSelect).toHaveBeenCalledOnce();
     expect(button.getAttribute("aria-pressed")).toBe("true");
+    expect(button.getAttribute("aria-busy")).toBe("false");
+    expect(button.className).toContain("border-primary");
+
+    rerender(
+      <WatchlistCard
+        active={false}
+        selecting
+        onSelect={onSelect}
+        watchlist={{
+          id: "watchlist-1",
+          slug: "maangplus",
+          title: "MAANG+",
+          description: null,
+          isPublic: false,
+          alertsEnabled: false,
+          anyCompany: false,
+          companyCount: 12,
+          activeJobCount: 34,
+          lastAccessedAt: "2026-07-06T00:00:00.000Z",
+          createdAt: "2026-07-06T00:00:00.000Z",
+        }}
+      />,
+    );
+
+    expect(button.getAttribute("aria-busy")).toBe("true");
   });
 
-  it("shows a useful company count until the live job count arrives", () => {
+  it("shows a two-line description and both company and loaded job counts", () => {
+    render(
+      <WatchlistCard
+        active={false}
+        selecting={false}
+        onSelect={() => {}}
+        watchlist={{
+          id: "watchlist-1",
+          slug: "maangplus",
+          title: "MAANG+",
+          description: "Engineering roles at a focused group of companies.",
+          isPublic: false,
+          alertsEnabled: false,
+          anyCompany: false,
+          companyCount: 12,
+          activeJobCount: 34,
+          lastAccessedAt: "2026-07-06T00:00:00.000Z",
+          createdAt: "2026-07-06T00:00:00.000Z",
+        }}
+      />,
+    );
+
+    const description = screen.getByText(
+      "Engineering roles at a focused group of companies.",
+    );
+    expect(description.className).toContain("line-clamp-2");
+    expect(screen.getByText("12 companies")).toBeTruthy();
+    expect(screen.getByText("34 jobs")).toBeTruthy();
+    expect(screen.getByRole("button").className).toContain("w-full");
+  });
+
+  it("keeps the company count visible while the live job count loads", () => {
     render(
       <WatchlistCard
         active={false}
@@ -59,8 +116,9 @@ describe("WatchlistCard selection", () => {
           slug: "maangplus",
           title: "MAANG+",
           description: null,
-          isPublic: true,
+          isPublic: false,
           alertsEnabled: false,
+          anyCompany: false,
           companyCount: 12,
           activeJobCount: null,
           lastAccessedAt: "2026-07-06T00:00:00.000Z",
@@ -70,6 +128,34 @@ describe("WatchlistCard selection", () => {
     );
 
     expect(screen.getByText("12 companies")).toBeTruthy();
+    expect(screen.queryByText(/jobs?$/)).toBeNull();
+  });
+
+  it("shows the all-company scope instead of a misleading membership count", () => {
+    render(
+      <WatchlistCard
+        active={false}
+        selecting={false}
+        onSelect={() => {}}
+        watchlist={{
+          id: "watchlist-1",
+          slug: "all-engineering",
+          title: "All engineering",
+          description: null,
+          isPublic: false,
+          alertsEnabled: false,
+          anyCompany: true,
+          companyCount: 0,
+          activeJobCount: 125,
+          lastAccessedAt: "2026-07-06T00:00:00.000Z",
+          createdAt: "2026-07-06T00:00:00.000Z",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("All companies")).toBeTruthy();
+    expect(screen.queryByText("0 companies")).toBeNull();
+    expect(screen.getByText("125 jobs")).toBeTruthy();
   });
 });
 
@@ -102,5 +188,7 @@ describe("CreateWatchlistCard (issue #3036)", () => {
     const btn = screen.getByRole("button", { name: /create/i });
     fireEvent.click(btn);
     expect(onClick).toHaveBeenCalledTimes(1);
+    expect(btn.className).toContain("w-full");
+    expect(btn.className).toContain("border-dashed");
   });
 });

@@ -95,6 +95,8 @@ export type WatchlistSummary = {
 };
 
 export type UserWatchlistOverview = Omit<WatchlistSummary, "activeJobCount"> & {
+  /** Whether this watchlist searches across all companies instead of explicit membership. */
+  anyCompany: boolean;
   /** Loaded after the overview renders so count aggregation cannot block navigation. */
   activeJobCount: number | null;
 };
@@ -779,6 +781,7 @@ function _toUserWatchlistSummary(
     description: row.description,
     isPublic: row.is_public,
     alertsEnabled: row.alerts_enabled,
+    anyCompany: row.filters?.anyCompany === true,
     companyCount: row.company_count,
     activeJobCount,
     lastAccessedAt: new Date(row.last_accessed_at).toISOString(),

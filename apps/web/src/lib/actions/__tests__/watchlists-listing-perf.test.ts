@@ -358,7 +358,10 @@ function fakePublicWatchlistHit(
 
 describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
   it("keeps the initial overview independent from active-count aggregation (#5896)", async () => {
-    const rows = [fakeUserWatchlistRow(0, 42), fakeUserWatchlistRow(1, 7)];
+    const rows = [
+      fakeUserWatchlistRow(0, 42),
+      fakeUserWatchlistRow(1, 7, { filters: { anyCompany: true } }),
+    ];
     mocks.dbExecute.mockResolvedValueOnce(rows);
 
     const result = await getUserWatchlistsWithLimit("en");
@@ -366,6 +369,10 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     expect(result.watchlists.map((watchlist) => watchlist.activeJobCount)).toEqual([
       null,
       null,
+    ]);
+    expect(result.watchlists.map((watchlist) => watchlist.anyCompany)).toEqual([
+      false,
+      true,
     ]);
     expect(mocks.tsMultiSearch).not.toHaveBeenCalled();
     expect(mocks.getViewerLanguages).not.toHaveBeenCalled();

@@ -76,6 +76,7 @@ function overview(id: string, title = id) {
     description: null,
     isPublic: false,
     alertsEnabled: false,
+    anyCompany: false,
     companyCount: 3,
     activeJobCount: null,
     lastAccessedAt: "2026-07-22T00:00:00.000Z",
@@ -116,6 +117,7 @@ describe("WatchlistsPage canonical private route", () => {
       mocks.externalSelection = callback;
       return vi.fn();
     });
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -129,6 +131,39 @@ describe("WatchlistsPage canonical private route", () => {
     render(<WatchlistsPage {...baseProps} />);
     expect(screen.getByTestId("active-watchlist").textContent).toBe(FIRST_ID);
     await screen.findByText("42 jobs");
+  });
+
+  it("keeps enough private rows in mobile document flow and Create outside the desktop scroller", () => {
+    const rows = Array.from({ length: 8 }, (_, index) =>
+      overview(
+        `${String(index + 1).padStart(8, "0")}-1111-4111-8111-111111111111`,
+        `List ${index + 1}`,
+      ),
+    );
+    render(
+      <WatchlistsPage
+        {...baseProps}
+        initialWatchlists={rows}
+        initialPageData={pageData(rows[0].id)}
+      />,
+    );
+
+    const list = screen.getByRole("list");
+    const classNames = list.className.split(" ");
+    const create = screen.getByRole("button", { name: /Create/ });
+    expect(screen.getAllByRole("listitem")).toHaveLength(8);
+    expect(screen.getByRole("button", { name: /List 8/ })).toBeTruthy();
+    expect(classNames).toContain("sm:max-h-[32rem]");
+    expect(classNames).toContain("sm:overflow-y-auto");
+    expect(classNames).not.toContain("max-h-[32rem]");
+    expect(classNames).not.toContain("overflow-y-auto");
+    expect(list.className).not.toContain("overflow-x-auto");
+    expect(list.className).not.toContain("scrollbar-hide");
+    expect(screen.getByRole("button", { name: /List 1/ }).className)
+      .toContain("w-full");
+    expect(create.className).toContain("w-full");
+    expect(list.contains(create)).toBe(false);
+    expect(list.parentElement?.className).toContain("max-w-3xl");
   });
 
   it("selects a card through the owner-validating action and refreshes in place", async () => {

@@ -293,16 +293,19 @@ export function WatchlistsPage({
             </button>
           </div>
         ) : (
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {watchlists.map((watchlist) => (
-              <WatchlistCard
-                key={watchlist.id}
-                watchlist={watchlist}
-                active={watchlist.id === initialPageData?.detail.id}
-                selecting={watchlist.id === selectingId}
-                onSelect={() => handleSelect(watchlist.id)}
-              />
-            ))}
+          <div className="max-w-3xl space-y-3">
+            <ul className="space-y-3 sm:max-h-[32rem] sm:overflow-y-auto sm:pr-2">
+              {watchlists.map((watchlist) => (
+                <li key={watchlist.id}>
+                  <WatchlistCard
+                    watchlist={watchlist}
+                    active={watchlist.id === initialPageData?.detail.id}
+                    selecting={watchlist.id === selectingId}
+                    onSelect={() => handleSelect(watchlist.id)}
+                  />
+                </li>
+              ))}
+            </ul>
             <CreateWatchlistCard
               onClick={() => handleCreate()}
               creating={creating}

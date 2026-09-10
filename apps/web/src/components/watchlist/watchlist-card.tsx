@@ -25,36 +25,50 @@ export function WatchlistCard({
       aria-pressed={active}
       aria-busy={selecting}
       onClick={onSelect}
-      className={`flex h-28 w-28 shrink-0 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border bg-surface p-3 text-center transition-colors ${
+      className={`grid min-h-24 w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-lg border bg-surface px-4 py-3 text-left transition-colors ${
         active
           ? "border-primary ring-1 ring-primary/30"
           : "border-border-soft hover:border-primary/30 hover:bg-border-soft"
       }`}
     >
-      <span className="h-4 text-primary" aria-hidden="true">
+      <span className="min-w-0">
+        <span className="line-clamp-2 text-sm font-semibold leading-snug">
+          {watchlist.title}
+        </span>
+        {watchlist.description ? (
+          <span className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">
+            {watchlist.description}
+          </span>
+        ) : null}
+        <span
+          className="mt-2 flex flex-wrap items-center gap-x-1.5 text-xs text-muted"
+          aria-live="polite"
+        >
+          <span>
+            {watchlist.anyCompany
+              ? t({ id: "watchlists.card.allCompanies", comment: "Company scope shown for a watchlist that searches across every company", message: "All companies" })
+              : <>{watchlist.companyCount} {watchlist.companyCount === 1
+                  ? t({ id: "watchlists.card.companySingular", comment: "Singular company count on a watchlist card", message: "company" })
+                  : t({ id: "watchlists.card.companyPlural", comment: "Plural company count on a watchlist card", message: "companies" })}</>}
+          </span>
+          {watchlist.activeJobCount == null ? null : (
+            <>
+              <span aria-hidden="true">&middot;</span>
+              <span>
+                {watchlist.activeJobCount} {watchlist.activeJobCount === 1
+                  ? t({ id: "watchlists.card.jobSingular", comment: "Singular job count on watchlist card", message: "job" })
+                  : t({ id: "watchlists.card.jobPlural", comment: "Plural job count on watchlist card", message: "jobs" })}
+              </span>
+            </>
+          )}
+        </span>
+      </span>
+      <span className="flex size-5 items-center justify-center text-primary" aria-hidden="true">
         {selecting
-          ? <Loader2 size={14} className="motion-safe:animate-spin" />
+          ? <Loader2 size={16} className="motion-safe:animate-spin" />
           : active
-            ? <Check size={14} />
+            ? <Check size={16} />
             : null}
-      </span>
-      <span className="line-clamp-2 text-xs font-medium leading-tight">
-        {watchlist.title}
-      </span>
-      <span className="text-[10px] text-muted" aria-live="polite">
-        {watchlist.activeJobCount == null ? (
-          <>
-            {watchlist.companyCount} {watchlist.companyCount === 1
-              ? t({ id: "watchlists.card.companySingular", comment: "Singular company count shown while a watchlist job count loads", message: "company" })
-              : t({ id: "watchlists.card.companyPlural", comment: "Plural company count shown while a watchlist job count loads", message: "companies" })}
-          </>
-        ) : (
-          <>
-            {watchlist.activeJobCount} {watchlist.activeJobCount === 1
-              ? t({ id: "watchlists.card.jobSingular", comment: "Singular job count on watchlist card", message: "job" })
-              : t({ id: "watchlists.card.jobPlural", comment: "Plural job count on watchlist card", message: "jobs" })}
-          </>
-        )}
       </span>
     </button>
   );
@@ -85,7 +99,7 @@ export function CreateWatchlistCard({
       }}
       aria-disabled={disabled || creating}
       aria-label={disabled ? limitLabel : undefined}
-      className={`flex h-28 w-28 shrink-0 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-soft bg-surface p-3 text-center text-muted transition-colors ${
+      className={`flex min-h-16 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface px-4 py-3 text-muted transition-colors ${
         creating || disabled
           ? "cursor-not-allowed opacity-50"
           : "cursor-pointer hover:border-primary/30 hover:text-foreground"
@@ -94,7 +108,7 @@ export function CreateWatchlistCard({
       {creating
         ? <Loader2 size={20} className="motion-safe:animate-spin" aria-hidden="true" />
         : <Plus size={20} aria-hidden="true" />}
-      <span className="text-xs font-medium">
+      <span className="text-sm font-medium">
         <Trans id="watchlists.card.create" comment="Label on the create watchlist card">
           Create
         </Trans>
