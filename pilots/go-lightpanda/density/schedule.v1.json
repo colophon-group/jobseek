@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "protocol_id": "go-lightpanda-fixed-ram-density-b2-v1",
+  "workload_sha256": "3db365d2a484b932049313d53469d07ffb2c5d9fdfe05821fd87cf67b1557740",
+  "expected_arm_records": 22,
+  "tasks_per_arm": 16,
+  "resource_envelope": {
+    "cpu_nanos": 1000000000,
+    "cpu_max": [
+      100000,
+      100000
+    ],
+    "memory_bytes": 1073741824,
+    "memory_swap_bytes": 0,
+    "host_page_size_min_bytes": 4096,
+    "host_page_size_max_bytes": 65536,
+    "pids_limit": 768,
+    "nofile_soft": 256,
+    "nofile_hard": 256
+  },
+  "admission": {
+    "c4_required_passes_per_implementation": 5,
+    "go_c8_required_passes": 5,
+    "go_rate_median_min": {
+      "numerator": 5,
+      "denominator": 4
+    },
+    "go_rate_wins_min": 4,
+    "go_memory_median_max": {
+      "numerator": 4,
+      "denominator": 5
+    },
+    "go_memory_wins_min": 4,
+    "ram_relevance_floor": {
+      "numerator": 7,
+      "denominator": 10
+    },
+    "python_memory_pressure_min": 3,
+    "go_pressure_peak_max_exclusive": {
+      "numerator": 4,
+      "denominator": 5
+    }
+  },
+  "pairs": [
+    {
+      "id": "c1-p01",
+      "concurrency": 1,
+      "diagnostic": true,
+      "order": [
+        "python",
+        "go"
+      ]
+    },
+    {
+      "id": "c4-p01",
+      "concurrency": 4,
+      "diagnostic": false,
+      "order": [
+        "go",
+        "python"
+      ]
+    },
+    {
+      "id": "c4-p02",
+      "concurrency": 4,
+      "diagnostic": false,
+      "order": [
+        "python",
+        "go"
+      ]
+    },
+    {
+      "id": "c4-p03",
+      "concurrency": 4,
+      "diagnostic": false,
+      "order": [
+        "go",
+        "python"
+      ]
+    },
+    {
+      "id": "c4-p04",
+      "concurrency": 4,
+      "diagnostic": false,
+      "order": [
+        "python",
+        "go"
+      ]
+    },
+    {
+      "id": "c4-p05",
+      "concurrency": 4,
+      "diagnostic": false,
+      "order": [
+        "go",
+        "python"
+      ]
+    },
+    {
+      "id": "c8-p01",
+      "concurrency": 8,
+      "diagnostic": false,
+      "order": [
+        "python",
+        "go"
+      ]
+    },
+    {
+      "id": "c8-p02",
+      "concurrency": 8,
+      "diagnostic": false,
+      "order": [
+        "go",
+        "python"
+      ]
+    },
+    {
+      "id": "c8-p03",
+      "concurrency": 8,
+      "diagnostic": false,
+      "order": [
+        "python",
+        "go"
+      ]
+    },
+    {
+      "id": "c8-p04",
+      "concurrency": 8,
+      "diagnostic": false,
+      "order": [
+        "go",
+        "python"
+      ]
+    },
+    {
+      "id": "c8-p05",
+      "concurrency": 8,
+      "diagnostic": false,
+      "order": [
+        "python",
+        "go"
+      ]
+    }
+  ]
+}

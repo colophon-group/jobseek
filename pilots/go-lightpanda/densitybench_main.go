@@ -15,83 +15,138 @@ import (
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
 )
 
-const densityStartGatePath = "/tmp/controller-start"
+type densityProtocolPhase func(context.Context) error
+
+const (
+	densityInitialMarkerPath = "/tmp/controller-initial"
+	densityFinalMarkerPath   = "/tmp/controller-final"
+)
 
 func main() { os.Exit(runDensityCLI(os.Args[1:], os.Stdout)) }
 
 func runDensityCLI(args []string, output io.Writer) int {
+	return runDensityCLIWithProtocol(args, output, densityWaitInitialRelease, densityWaitFinalRelease)
+}
+
+func runDensityCLIWithProtocol(args []string, output io.Writer, waitInitial, waitFinal densityProtocolPhase) int {
 	flags := flag.NewFlagSet("go-lightpanda-density", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	workloadPath := flags.String("workload", "", "")
 	concurrency := flags.Int("concurrency", 0, "")
 	sourceCommit := flags.String("source-commit", "", "")
 	imageIdentity := flags.String("image-identity", "", "")
-	startGate := flags.String("start-gate", "", "")
-	started := time.Now()
-	if flags.Parse(args) != nil || flags.NArg() != 0 || *workloadPath == "" || *startGate != densityStartGatePath {
-		return writeDensityFailure(output, started, *concurrency, *sourceCommit, *imageIdentity, "arguments_invalid")
-	}
+	parseErr := flags.Parse(args)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	if waitDensityStartGate(ctx, *startGate) != nil {
-		return writeDensityFailure(output, started, *concurrency, *sourceCommit, *imageIdentity, "start_gate")
+	if waitInitial == nil || waitInitial(ctx) != nil || ctx.Err() != nil {
+		return 1
 	}
+	started := time.Now()
+	if parseErr != nil || flags.NArg() != 0 || *workloadPath == "" {
+		report := densityFailureReport(started, *concurrency, *sourceCommit, *imageIdentity, "arguments_invalid")
+		return finishDensityCLI(ctx, output, report, 2, waitFinal)
+	}
+
 	workload, workloadSHA, err := loadDensityWorkload(*workloadPath)
 	if err != nil {
-		return writeDensityFailure(output, started, *concurrency, *sourceCommit, *imageIdentity, "manifest_invalid")
+		report := densityFailureReport(started, *concurrency, *sourceCommit, *imageIdentity, "manifest_invalid")
+		return finishDensityCLI(ctx, output, report, 2, waitFinal)
 	}
 	adapter, err := lightpandaadapter.New(runtimeV1Runner{config: Config{Binary: os.Getenv("LIGHTPANDA_BIN")}}, densityRawPrivacy{})
 	if err != nil {
-		return writeDensityFailure(output, started, *concurrency, *sourceCommit, *imageIdentity, "adapter_initialization")
+		report := densityFailureReport(started, *concurrency, *sourceCommit, *imageIdentity, "adapter_initialization")
+		return finishDensityCLI(ctx, output, report, 2, waitFinal)
 	}
 	report := runDensityBenchmark(ctx, workload, workloadSHA, *concurrency, *sourceCommit, *imageIdentity, adapter)
-	if encodeDensityReport(output, report) != nil {
-		return 1
-	}
 	if !report.Succeeded {
-		return 1
+		return finishDensityCLI(ctx, output, report, 1, waitFinal)
 	}
-	return 0
+	return finishDensityCLI(ctx, output, report, 0, waitFinal)
 }
 
-func waitDensityStartGate(ctx context.Context, path string) error {
-	if ctx == nil || path == "" {
+func densityWaitInitialRelease(ctx context.Context) error {
+	return densityWaitForMarkerSignal(ctx, densityInitialMarkerPath, syscall.SIGUSR1)
+}
+
+func densityWaitFinalRelease(ctx context.Context) error {
+	return densityWaitForMarkerSignal(ctx, densityFinalMarkerPath, syscall.SIGUSR2)
+}
+
+func densityWaitForMarkerSignal(ctx context.Context, path string, releaseSignal os.Signal) error {
+	if ctx == nil || path == "" || releaseSignal == nil {
 		return errDensityConfig
 	}
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		info, err := os.Lstat(path)
-		if err == nil {
-			metadata, ok := info.Sys().(*syscall.Stat_t)
-			if !info.Mode().IsRegular() || !ok || int(metadata.Uid) != os.Geteuid() {
-				return errDensityConfig
-			}
-			return nil
-		}
-		if !os.IsNotExist(err) {
-			return err
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-		}
+	released := make(chan os.Signal, 1)
+	signal.Notify(released, releaseSignal)
+	defer signal.Stop(released)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := densityCreateMarkerAt(path); err != nil {
+		return err
+	}
+	select {
+	case <-released:
+		return densityRemoveMarkerAt(path)
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
-func writeDensityFailure(output io.Writer, started time.Time, concurrency int, sourceCommit, imageIdentity, failureID string) int {
+func densityCreateMarkerAt(path string) error {
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return err
+	}
+	info, statErr := file.Stat()
+	closeErr := file.Close()
+	if statErr != nil {
+		return statErr
+	}
+	if closeErr != nil || densityValidateMarkerInfo(info) != nil {
+		return errDensityConfig
+	}
+	return nil
+}
+
+func densityRemoveMarkerAt(path string) error {
+	info, err := os.Lstat(path)
+	if err != nil || densityValidateMarkerInfo(info) != nil {
+		return errDensityConfig
+	}
+	return os.Remove(path)
+}
+
+func densityValidateMarkerInfo(info os.FileInfo) error {
+	if info == nil {
+		return errDensityConfig
+	}
+	metadata, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || info.Size() != 0 ||
+		metadata.Nlink != 1 || int(metadata.Uid) != os.Geteuid() || int(metadata.Gid) != os.Getegid() {
+		return errDensityConfig
+	}
+	return nil
+}
+
+func densityFailureReport(started time.Time, concurrency int, sourceCommit, imageIdentity, failureID string) densityReport {
 	if !densityLowerHex(sourceCommit, 40) {
 		sourceCommit = ""
 	}
 	if !densityImageIdentity(imageIdentity) {
 		imageIdentity = ""
 	}
-	report := densityReport{SchemaVersion: 1, ImplementationID: "go-lightpanda", RuntimeID: "go", SourceCommit: sourceCommit, ImageIdentity: imageIdentity, Concurrency: concurrency, FailureID: failureID, ElapsedMS: time.Since(started).Milliseconds(), Waves: []densityWaveReport{}}
+	return densityReport{SchemaVersion: 1, ImplementationID: "go-lightpanda", RuntimeID: "go", SourceCommit: sourceCommit, ImageIdentity: imageIdentity, Concurrency: concurrency, FailureID: failureID, ElapsedNS: time.Since(started).Nanoseconds(), Waves: []densityWaveReport{}}
+}
+
+func finishDensityCLI(ctx context.Context, output io.Writer, report densityReport, exitCode int, waitFinal densityProtocolPhase) int {
+	if waitFinal == nil || waitFinal(ctx) != nil || ctx.Err() != nil {
+		return 1
+	}
 	if encodeDensityReport(output, report) != nil {
 		return 1
 	}
-	return 2
+	return exitCode
 }
 
 func encodeDensityReport(output io.Writer, report densityReport) error {

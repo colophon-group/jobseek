@@ -73,7 +73,7 @@ type densityReport struct {
 	Concurrency      int                 `json:"concurrency"`
 	Succeeded        bool                `json:"succeeded"`
 	FailureID        string              `json:"failure_id,omitempty"`
-	ElapsedMS        int64               `json:"elapsed_ms"`
+	ElapsedNS        int64               `json:"elapsed_ns"`
 	Submitted        int                 `json:"submitted"`
 	Accepted         uint64              `json:"accepted"`
 	Terminal         int                 `json:"terminal"`
@@ -325,7 +325,7 @@ func runDensityBenchmark(ctx context.Context, workload densityWorkload, workload
 		report.OracleMatches += waveReport.OracleMatches
 		report.Waves = append(report.Waves, waveReport)
 	}
-	report.ElapsedMS = measuredFinished.Sub(measuredStarted).Milliseconds()
+	report.ElapsedNS = measuredFinished.Sub(measuredStarted).Nanoseconds()
 	pool.Close()
 	for range drained {
 		report.Terminal++

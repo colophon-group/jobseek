@@ -17,20 +17,23 @@ from pathlib import Path
 import re
 import secrets
 import selectors
+import stat
 import subprocess
 import tempfile
 import threading
 import time
-from typing import Any
+from typing import Any, NamedTuple
 
 
 GIB = 1024**3
 FIXTURE_MEMORY = 256 * 1024**2
 FIXTURE_PIDS = 64
 MEASURED_PIDS = 512
+EVIDENCE_MEASURED_PIDS = 768
 FIXTURE_TMPFS = "rw,noexec,nosuid,nodev,size=16777216,uid=10001,gid=10001,mode=0700"
 MEASURED_TMPFS = "rw,noexec,nosuid,nodev,size=268435456,uid=10001,gid=10001,mode=0700"
-START_GATE = "/tmp/controller-start"
+INITIAL_MARKER_PATH = "/tmp/controller-initial"
+FINAL_MARKER_PATH = "/tmp/controller-final"
 ALIASES = tuple(f"origin-{i}.bench.test" for i in range(8))
 LABEL_RUN = "org.jobseek.density.run"
 LABEL_ROLE = "org.jobseek.density.role"
@@ -38,7 +41,7 @@ MAX_REPORT_BYTES = 1024 * 1024
 CGROUP_FILES = (
     "memory.current", "memory.peak", "memory.max", "memory.swap.max",
     "memory.events", "cpu.max", "cpu.stat", "pids.max", "pids.events",
-    "pids.peak", "cgroup.procs",
+    "pids.current", "pids.peak", "cgroup.procs",
 )
 CGROUP_FILE_FAILURES = {
     name: "missing_cgroup_" + name.replace(".", "_") for name in CGROUP_FILES
@@ -50,10 +53,12 @@ GO_RUNNER_FAILURES = {
     )
 }
 FAILURE_IDS = {
-    "cleanup", "command", "concurrency", "conservation", "image", "inspect",
+    "cleanup", "command", "concurrency", "conservation", "image", "infrastructure", "inspect",
     "malformed_output", "missing_cgroup", "nonzero", "oom", "oracle",
+    "memory_pressure", "pid_limit",
     "missing_cgroup_membership", "missing_cgroup_path", "missing_cgroup_pid",
-    "start_timeout", "timeout", "transcript", *CGROUP_FILE_FAILURES.values(),
+    "process_identity", "process_residue", "process_state", "start_timeout",
+    "timeout", "transcript", *CGROUP_FILE_FAILURES.values(),
     *GO_RUNNER_FAILURES.values(),
 }
 
@@ -62,7 +67,7 @@ COMMON_KEYS = {
     "image_identity", "concurrency",
 }
 GO_KEYS = COMMON_KEYS | {
-    "implementation_id", "runtime_id", "succeeded", "elapsed_ms", "submitted",
+    "implementation_id", "runtime_id", "succeeded", "elapsed_ns", "submitted",
     "accepted", "terminal", "succeeded_jobs", "failed_jobs",
     "oracle_matches", "conservation_ok", "oracle_ok", "max_in_flight_ok",
     "zero_panic_residue", "waves", "pool", "failure_id",
@@ -97,10 +102,18 @@ FIXTURE_UNEXPECTED_KEYS = {"method", "path", "origin", "duplicate", "total"}
 
 
 class SmokeFailure(RuntimeError):
-    def __init__(self, failure_id: str):
+    def __init__(
+        self,
+        failure_id: str,
+        *,
+        resources: dict[str, Any] | None = None,
+        resources_final: bool = False,
+    ) -> None:
         if failure_id not in FAILURE_IDS:
             failure_id = "command"
         self.failure_id = failure_id
+        self.resources = resources
+        self.resources_final = resources_final
         super().__init__(failure_id)
 
 
@@ -198,7 +211,7 @@ def validate_measured(report: dict[str, Any], implementation: str, concurrency: 
                 re.fullmatch(r"go1\.[0-9]+(?:\.[0-9]+)?(?:[a-z0-9.-]+)?", report["runtime_id"]) is None or
                 report.get("failure_id") not in (None, "")):
             raise SmokeFailure("oracle")
-        _integer(report.get("elapsed_ms"))
+        _integer(report.get("elapsed_ns"), minimum=1)
         stats = _object(report.get("pool"), GO_STATS_KEYS)
         if any(report.get(k) != v for k, v in {
             "submitted": 16, "accepted": 16, "terminal": 16, "succeeded_jobs": 16,
@@ -344,22 +357,31 @@ def workload_waves(tasks: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     return [{"id": wave, "tasks": grouped[wave]} for wave in ("w0", "w1")]
 
 
-def validate_resources(resources: dict[str, Any]) -> None:
+def validate_resources(
+    resources: dict[str, Any], *, expected_pids: int = MEASURED_PIDS
+) -> None:
     current = _integer(resources.get("memory_current"))
     peak = _integer(resources.get("memory_peak"), minimum=1)
+    pids_current = _integer(resources.get("pids_current"), minimum=1)
     pids_peak = _integer(resources.get("pids_peak"), minimum=1)
+    process_count = _integer(resources.get("cgroup_process_count"), minimum=1)
+    page_size = _integer(resources.get("host_page_size"), minimum=4096)
     events = _object(resources.get("memory_events"), {"low", "high", "max", "oom", "oom_kill", "oom_group_kill"})
     cpu = resources.get("cpu_stat")
     if (resources.get("memory_limit") != GIB or resources.get("memory_swap_limit") != 0 or
-            resources.get("pids_limit") != MEASURED_PIDS):
+            resources.get("pids_limit") != expected_pids):
         raise SmokeFailure("inspect")
     cpu_max = resources.get("cpu_max")
     if (not isinstance(cpu_max, list) or len(cpu_max) != 2 or
             any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in cpu_max) or
             cpu_max[0] != cpu_max[1]):
         raise SmokeFailure("inspect")
-    if current > GIB or peak > GIB or pids_peak > MEASURED_PIDS:
+    if (current > GIB or peak > GIB + page_size or pids_current > expected_pids or
+            pids_peak > expected_pids or
+            page_size > 65536 or page_size & (page_size - 1)):
         raise SmokeFailure("inspect")
+    if process_count != 1:
+        raise SmokeFailure("process_residue")
     if not isinstance(cpu, dict):
         raise SmokeFailure("missing_cgroup")
     for key in ("usage_usec", "user_usec", "system_usec"):
@@ -367,9 +389,18 @@ def validate_resources(resources: dict[str, Any]) -> None:
     for value in events.values():
         _integer(value)
     pids_events = _object(resources.get("pids_events"), {"max"})
-    if (events["oom"] or events["oom_kill"] or events["oom_group_kill"] or
-            _integer(pids_events.get("max")) != 0):
+    pid_pressure = _integer(pids_events.get("max")) != 0
+    memory_pressure = any(
+        events[key] for key in ("max", "oom", "oom_kill", "oom_group_kill")
+    )
+    if peak > GIB and not memory_pressure:
+        raise SmokeFailure("inspect")
+    if pid_pressure:
+        raise SmokeFailure("pid_limit")
+    if events["oom"] or events["oom_kill"] or events["oom_group_kill"]:
         raise SmokeFailure("oom")
+    if peak > GIB:
+        raise SmokeFailure("memory_pressure")
 
 
 class Docker:
@@ -442,8 +473,16 @@ class Docker:
             return stdout_path.read_bytes()
 
 
-def attest_container(inspect: dict[str, Any], network: str, role: str, run_id: str,
-                     image_identity: str, *, measured: bool) -> None:
+def attest_container(
+    inspect: dict[str, Any],
+    network: str,
+    role: str,
+    run_id: str,
+    image_identity: str,
+    *,
+    measured: bool,
+    measured_pids: int = MEASURED_PIDS,
+) -> None:
     try:
         config, host = inspect["Config"], inspect["HostConfig"]
         labels = config["Labels"]
@@ -477,7 +516,7 @@ def attest_container(inspect: dict[str, Any], network: str, role: str, run_id: s
             raise KeyError
         if role != "fixture" and aliases:
             raise KeyError
-        expected_memory, expected_pids = (GIB, MEASURED_PIDS) if measured else (FIXTURE_MEMORY, FIXTURE_PIDS)
+        expected_memory, expected_pids = (GIB, measured_pids) if measured else (FIXTURE_MEMORY, FIXTURE_PIDS)
         if (host.get("NanoCpus") != 1_000_000_000 or host.get("Memory") != expected_memory or
                 host.get("MemorySwap") != expected_memory or host.get("PidsLimit") != expected_pids):
             raise KeyError
@@ -552,6 +591,140 @@ def _parse_flat(raw: str, required: set[str]) -> dict[str, int]:
     return result
 
 
+def _read_cgroup_members(
+    path: Path, *, allow_empty: bool = False
+) -> tuple[int, ...]:
+    try:
+        lines = (path / "cgroup.procs").read_text(encoding="ascii").splitlines()
+    except (OSError, UnicodeError):
+        raise SmokeFailure("missing_cgroup_cgroup_procs") from None
+    if ((not lines and not allow_empty) or
+            any(not line.isdigit() or int(line) <= 0 for line in lines)):
+        raise SmokeFailure("process_residue")
+    members = tuple(int(line) for line in lines)
+    if len(set(members)) != len(members):
+        raise SmokeFailure("process_residue")
+    return members
+
+
+class ProcessIdentity(NamedTuple):
+    """Host-only identity for the measured container's main process."""
+
+    pid: int
+    start_time: int
+    cgroup_path: Path
+
+    @classmethod
+    def capture(cls, pid: int, *, proc_root: Path = Path("/proc")) -> "ProcessIdentity":
+        try:
+            state, start_time = _read_process_stat(pid, proc_root=proc_root)
+        except FileNotFoundError:
+            raise SmokeFailure("process_identity") from None
+        if not state:
+            raise SmokeFailure("process_identity")
+        cgroup_path = _read_process_cgroup(pid, proc_root=proc_root)
+        return cls(pid=pid, start_time=start_time, cgroup_path=cgroup_path)
+
+    def state(self, *, proc_root: Path = Path("/proc")) -> str | None:
+        try:
+            state, start_time = _read_process_stat(self.pid, proc_root=proc_root)
+            cgroup_path = _read_process_cgroup(self.pid, proc_root=proc_root)
+        except FileNotFoundError:
+            return None
+        if start_time != self.start_time or cgroup_path != self.cgroup_path:
+            raise SmokeFailure("process_identity")
+        return state
+
+    def only_main_process(self) -> bool:
+        return _read_cgroup_members(self.cgroup_path) == (self.pid,)
+
+    def marker_ready(
+        self, marker_path: str, *, proc_root: Path = Path("/proc")
+    ) -> bool:
+        if marker_path not in {INITIAL_MARKER_PATH, FINAL_MARKER_PATH}:
+            raise SmokeFailure("process_state")
+        marker = proc_root / str(self.pid) / "root" / marker_path.lstrip("/")
+        try:
+            metadata = marker.lstat()
+        except FileNotFoundError:
+            return False
+        except OSError:
+            raise SmokeFailure("process_state") from None
+        valid = (
+            stat.S_ISREG(metadata.st_mode)
+            and stat.S_IMODE(metadata.st_mode) == 0o600
+            and metadata.st_uid == 10001
+            and metadata.st_gid == 10001
+            and metadata.st_nlink == 1
+            and metadata.st_size == 0
+        )
+        if not valid:
+            raise SmokeFailure("process_state")
+        return True
+
+
+def _read_process_stat(pid: int, *, proc_root: Path) -> tuple[str, int]:
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+        raise SmokeFailure("missing_cgroup_pid")
+    try:
+        raw = (proc_root / str(pid) / "stat").read_text(encoding="ascii")
+    except FileNotFoundError:
+        raise
+    except (OSError, UnicodeError):
+        raise SmokeFailure("process_identity") from None
+    prefix, separator, tail = raw.rpartition(") ")
+    fields = tail.split()
+    if separator != ") " or not prefix.startswith(f"{pid} (") or len(fields) < 20:
+        raise SmokeFailure("process_identity")
+    state = fields[0]
+    start_time = fields[19]
+    if re.fullmatch(r"[A-Z]", state) is None or not start_time.isdigit():
+        raise SmokeFailure("process_identity")
+    return state, int(start_time)
+
+
+def _read_process_cgroup(pid: int, *, proc_root: Path) -> Path:
+    try:
+        lines = (proc_root / str(pid) / "cgroup").read_text(encoding="ascii").splitlines()
+    except FileNotFoundError:
+        raise
+    except (OSError, UnicodeError):
+        raise SmokeFailure("missing_cgroup_membership") from None
+    memberships = [line.split("::", 1)[1] for line in lines if line.startswith("0::")]
+    if len(memberships) != 1:
+        raise SmokeFailure("missing_cgroup_membership")
+    try:
+        root = Path("/sys/fs/cgroup").resolve()
+        path = (root / memberships[0].lstrip("/")).resolve()
+        path.relative_to(root)
+    except (OSError, ValueError, IndexError):
+        raise SmokeFailure("missing_cgroup_path") from None
+    return path
+
+
+def wait_process_phase(
+    identity: ProcessIdentity, *, phase: str, deadline: float
+) -> str:
+    """Require exact runner-authored markers without entering its cgroup."""
+
+    if phase not in {"initial", "final"}:
+        raise SmokeFailure("process_state")
+    while time.monotonic() < deadline:
+        state = identity.state()
+        if state is None:
+            return "exited"
+        initial_ready = identity.marker_ready(INITIAL_MARKER_PATH)
+        final_ready = identity.marker_ready(FINAL_MARKER_PATH)
+        if phase == "initial" and initial_ready and not final_ready:
+            return "matched"
+        if phase == "final" and not initial_ready and final_ready:
+            return "matched"
+        if final_ready and phase == "initial":
+            raise SmokeFailure("process_state")
+        time.sleep(0.01)
+    return "timeout"
+
+
 class CgroupSampler:
     """Samples only aggregate cgroup counters; PIDs and argv never leave it."""
     def __init__(self, path: Path, interval: float = 0.1) -> None:
@@ -562,19 +735,11 @@ class CgroupSampler:
 
     @classmethod
     def from_pid(cls, pid: int) -> "CgroupSampler":
-        if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
-            raise SmokeFailure("missing_cgroup_pid")
-        try:
-            lines = Path(f"/proc/{pid}/cgroup").read_text().splitlines()
-        except (OSError, UnicodeError):
-            raise SmokeFailure("missing_cgroup_membership") from None
-        try:
-            relative = next(line.split("::", 1)[1] for line in lines if line.startswith("0::"))
-            root = Path("/sys/fs/cgroup").resolve()
-            path = (root / relative.lstrip("/")).resolve()
-            path.relative_to(root)
-        except (OSError, StopIteration, ValueError, IndexError):
-            raise SmokeFailure("missing_cgroup_path") from None
+        return cls.from_identity(ProcessIdentity.capture(pid))
+
+    @classmethod
+    def from_identity(cls, identity: ProcessIdentity) -> "CgroupSampler":
+        path = identity.cgroup_path
         for name in CGROUP_FILES:
             if not (path / name).is_file():
                 raise SmokeFailure(CGROUP_FILE_FAILURES[name])
@@ -584,18 +749,22 @@ class CgroupSampler:
         self._sample()
         self._thread.start()
 
-    def stop(self) -> dict[str, Any]:
+    def stop(
+        self, *, reject_oom: bool = True, allow_fallback: bool = True
+    ) -> dict[str, Any]:
         self._stop.set()
         self._thread.join(timeout=2)
         if self._thread.is_alive():
             raise SmokeFailure("missing_cgroup")
         try:
             result = self._read_resources()
-        except (OSError, ValueError):
+        except (OSError, ValueError, SmokeFailure):
+            if not allow_fallback:
+                raise SmokeFailure("missing_cgroup") from None
             result = self.latest
         if result is None:
             raise SmokeFailure("missing_cgroup")
-        if result["memory_events"]["oom"] or result["memory_events"]["oom_kill"] or result["memory_events"]["oom_group_kill"]:
+        if reject_oom and (result["memory_events"]["oom"] or result["memory_events"]["oom_kill"] or result["memory_events"]["oom_group_kill"]):
             raise SmokeFailure("oom")
         return result
 
@@ -607,7 +776,7 @@ class CgroupSampler:
     def _sample(self) -> None:
         try:
             self.latest = self._read_resources()
-        except (OSError, ValueError):
+        except (OSError, ValueError, SmokeFailure):
             pass
 
     def _read_resources(self) -> dict[str, Any]:
@@ -623,6 +792,7 @@ class CgroupSampler:
                 len(cpu_parts) != 2 or "max" in cpu_parts):
             raise ValueError
         return {
+            "host_page_size": os.sysconf("SC_PAGE_SIZE"),
             "memory_current": int((self.path / "memory.current").read_text()),
             "memory_peak": int((self.path / "memory.peak").read_text()),
             "memory_limit": int(memory_limit),
@@ -635,8 +805,52 @@ class CgroupSampler:
             ) if key in cpu},
             "pids_limit": int(pids_limit),
             "pids_events": {"max": pids_events["max"]},
+            "pids_current": int((self.path / "pids.current").read_text()),
             "pids_peak": int((self.path / "pids.peak").read_text()),
+            "cgroup_process_count": len(
+                _read_cgroup_members(self.path, allow_empty=True)
+            ),
         }
+
+
+def classify_resource_failure(
+    failure_id: str, resources: dict[str, Any] | None
+) -> str:
+    """Prefer kernel pressure only over a secondary process-exit symptom."""
+
+    if failure_id not in {
+        "process_state",
+        "timeout",
+        "nonzero",
+        "oom",
+        "memory_pressure",
+        "pid_limit",
+    } or not isinstance(resources, dict):
+        return failure_id
+    memory_events = resources.get("memory_events")
+    pids_events = resources.get("pids_events")
+    if (
+        isinstance(pids_events, dict)
+        and isinstance(pids_events.get("max"), int)
+        and not isinstance(pids_events.get("max"), bool)
+        and pids_events["max"] > 0
+    ):
+        return "pid_limit"
+    if isinstance(memory_events, dict) and any(
+        isinstance(memory_events.get(key), int)
+        and not isinstance(memory_events.get(key), bool)
+        and memory_events[key] > 0
+        for key in ("oom", "oom_kill", "oom_group_kill")
+    ):
+        return "oom"
+    if (
+        isinstance(memory_events, dict)
+        and isinstance(memory_events.get("max"), int)
+        and not isinstance(memory_events.get("max"), bool)
+        and memory_events["max"] > 0
+    ):
+        return "memory_pressure"
+    return failure_id
 
 
 class SmokeController:
@@ -688,9 +902,13 @@ class SmokeController:
             self.docker.run(["kill", container], timeout=10, check=False)
             raise SmokeFailure("start_timeout") from None
 
-    def _release_start_gate(self, container: str) -> None:
-        result = self.docker.run(["exec", container, "touch", START_GATE], timeout=5)
-        if result.stdout or result.stderr:
+    def _signal(self, container: str, signal_name: str) -> None:
+        if signal_name not in {"USR1", "USR2"}:
+            raise SmokeFailure("command")
+        result = self.docker.run(
+            ["kill", "--signal", signal_name, container], timeout=5
+        )
+        if result.stderr or result.stdout.strip() != container.encode("ascii"):
             raise SmokeFailure("command")
 
     def _inspect_one(self, container: str) -> dict[str, Any]:
@@ -703,6 +921,12 @@ class SmokeController:
         return data[0]
 
     def _cleanup(self, network: str) -> None:
+        try:
+            self._cleanup_checked(network)
+        except (SmokeFailure, UnicodeDecodeError, TypeError, ValueError):
+            raise SmokeFailure("cleanup") from None
+
+    def _cleanup_checked(self, network: str) -> None:
         failed = False
         result = self.docker.run(["ps", "-aq", "--no-trunc", "--filter", f"label={LABEL_RUN}={self.run_id}"], check=False)
         try:
@@ -756,13 +980,35 @@ class SmokeController:
         if failed:
             raise SmokeFailure("cleanup")
 
-    def run_arm(self, implementation: str, image: str, fixture_image: str) -> dict[str, Any]:
+    def run_arm(
+        self,
+        implementation: str,
+        image: str,
+        fixture_image: str,
+        *,
+        measured_pids: int = MEASURED_PIDS,
+        expected_image_identity: str | None = None,
+        expected_fixture_identity: str | None = None,
+        retain_failure_resources: bool = False,
+    ) -> dict[str, Any]:
         network = f"density-{self.run_id}-{implementation}"
         identity = self.image_identity(image)
         fixture_identity = self.image_identity(fixture_image)
+        if (
+            (expected_image_identity is not None
+             and identity != expected_image_identity)
+            or (expected_fixture_identity is not None
+                and fixture_identity != expected_fixture_identity)
+        ):
+            raise SmokeFailure("image")
         fixture_id = measured_id = ""
         primary: SmokeFailure | None = None
         result: dict[str, Any] | None = None
+        resources: dict[str, Any] | None = None
+        resources_final = False
+        sampler: CgroupSampler | None = None
+        failure_subject = "controller"
+        primary_pressure_attributable = False
         try:
             self.docker.run(["network", "create", "--internal", "--label", f"{LABEL_RUN}={self.run_id}", "--label", f"{LABEL_ROLE}=network", network])
             network_data = self.docker.json(["network", "inspect", network])
@@ -781,41 +1027,115 @@ class SmokeController:
                 if time.monotonic() >= ready_deadline:
                     raise SmokeFailure("start_timeout")
                 time.sleep(0.05)
-            measured_args = [*common, "--label", f"{LABEL_ROLE}={implementation}", "--cpus", "1", "--memory", "1g", "--memory-swap", "1g", "--pids-limit", str(MEASURED_PIDS), "--ulimit", "nofile=256:256", "--tmpfs", f"/tmp:{MEASURED_TMPFS}",
-                             identity, "--workload", "/density/workload.v1.json", "--concurrency", str(self.concurrency), "--source-commit", self.source, "--image-identity", identity, "--start-gate", START_GATE]
+            measured_args = [*common, "--label", f"{LABEL_ROLE}={implementation}", "--cpus", "1", "--memory", "1g", "--memory-swap", "1g", "--pids-limit", str(measured_pids), "--ulimit", "nofile=256:256", "--tmpfs", f"/tmp:{MEASURED_TMPFS}",
+                             identity, "--workload", "/density/workload.v1.json", "--concurrency", str(self.concurrency), "--source-commit", self.source, "--image-identity", identity]
             measured_id = self._create(measured_args)
-            attest_container(self._inspect_one(measured_id), network, implementation, self.run_id, identity, measured=True)
+            attest_container(
+                self._inspect_one(measured_id), network, implementation,
+                self.run_id, identity, measured=True,
+                measured_pids=measured_pids,
+            )
+            failure_subject = "measured"
             self._start(measured_id)
             running = self._inspect_one(measured_id)
-            sampler = CgroupSampler.from_pid(running.get("State", {}).get("Pid", 0))
+            process = ProcessIdentity.capture(running.get("State", {}).get("Pid", 0))
+            sampler = CgroupSampler.from_identity(process)
             sampler.start()
+            initial = wait_process_phase(
+                process, phase="initial", deadline=time.monotonic() + 10
+            )
+            if initial != "matched":
+                raise SmokeFailure("start_timeout" if initial == "timeout" else "process_state")
+            if not process.only_main_process():
+                raise SmokeFailure("process_residue")
             try:
-                self._release_start_gate(measured_id)
-                self._wait(measured_id, self.timeout)
-                resources = sampler.stop()
+                self._signal(measured_id, "USR1")
+                finished = wait_process_phase(
+                    process, phase="final", deadline=time.monotonic() + self.timeout
+                )
+                if finished != "matched":
+                    if finished == "timeout":
+                        self.docker.run(["kill", measured_id], timeout=10, check=False)
+                        raise SmokeFailure("timeout")
+                    try:
+                        inspect_measured_exit(
+                            self.docker, measured_id, implementation,
+                            self._inspect_one(measured_id),
+                        )
+                    except SmokeFailure:
+                        raise
+                    raise SmokeFailure("process_state")
+                if not process.only_main_process():
+                    raise SmokeFailure("process_residue")
+                resources_final = True
+                active_sampler, sampler = sampler, None
+                resources = active_sampler.stop(
+                    reject_oom=False, allow_fallback=False
+                )
+                self._signal(measured_id, "USR2")
+                self._wait(measured_id, 10)
             except BaseException:
-                try:
-                    sampler.stop()
-                except SmokeFailure:
-                    pass
+                if sampler is not None:
+                    active_sampler, sampler = sampler, None
+                    try:
+                        resources = active_sampler.stop(reject_oom=False)
+                    except SmokeFailure:
+                        pass
                 raise
             inspect_measured_exit(self.docker, measured_id, implementation,
                                   self._inspect_one(measured_id))
+            failure_subject = "fixture"
             self._wait(fixture_id, 20)
             inspect_exit(self._inspect_one(fixture_id))
+            failure_subject = "measured"
             measured = validate_measured(parse_json_object(self.docker.logs(measured_id)), implementation, self.concurrency, self.source, identity, self.workload_sha, self.tasks)
+            failure_subject = "fixture"
             fixture = validate_fixture(parse_fixture_output(self.docker.logs(fixture_id)), self.concurrency, self.workload_sha, self.tasks)
-            validate_resources(resources)
+            failure_subject = "measured"
+            validate_resources(resources, expected_pids=measured_pids)
+            failure_subject = "controller"
             result = {"implementation": implementation, "image_identity": identity, "fixture_image_identity": fixture_identity, "measured": measured, "fixture": fixture, "resources": resources}
         except SmokeFailure as error:
             primary = error
+            primary_pressure_attributable = failure_subject == "measured"
+        except Exception:
+            # Keep all executor-visible failures closed and allow cleanup to
+            # replace an unexpected implementation error authoritatively.
+            primary = SmokeFailure("infrastructure")
+            failure_subject = "controller"
+            primary_pressure_attributable = False
         finally:
+            if sampler is not None:
+                active_sampler, sampler = sampler, None
+                try:
+                    resources = active_sampler.stop(reject_oom=False)
+                except SmokeFailure:
+                    pass
             try:
                 self._cleanup(network)
             except SmokeFailure as cleanup_error:
                 primary = cleanup_error
+                failure_subject = "controller"
+                primary_pressure_attributable = False
         if primary is not None:
-            raise primary
+            failure_id = primary.failure_id
+            retained_resources: dict[str, Any] | None = None
+            retained_resources_final = False
+            if primary_pressure_attributable:
+                failure_id = classify_resource_failure(failure_id, resources)
+                if retain_failure_resources:
+                    retained_resources = resources
+                    retained_resources_final = resources_final
+            elif failure_subject == "fixture":
+                # The sampled cgroup belongs to the measured container, so a
+                # fixture lifecycle failure must never inherit a measured OOM
+                # identity or measured resource evidence.
+                failure_id = "infrastructure"
+            raise SmokeFailure(
+                failure_id,
+                resources=retained_resources,
+                resources_final=retained_resources_final,
+            )
         assert result is not None
         return result
 
