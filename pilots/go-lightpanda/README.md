@@ -32,9 +32,11 @@ timeout or cancellation; other provider details are reduced to message-free,
 fail-closed adapter errors.
 
 The runner starts a new Lightpanda process for its single task on a chosen free
-loopback port. Concurrent in-process runners retain each allocated port until
-that process has been cleaned up, preventing sibling tasks from selecting the
-same close-then-bind port:
+loopback port. The child receives a fixed non-secret environment that disables
+Lightpanda telemetry and core dumps; it inherits no parent credentials or
+configuration through environment variables. Concurrent in-process runners retain
+each allocated port until that process has been cleaned up, preventing sibling tasks
+from selecting the same close-then-bind port:
 
 ```text
 lightpanda serve --host 127.0.0.1 --port <port> --log-level error

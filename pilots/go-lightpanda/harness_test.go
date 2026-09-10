@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -168,6 +169,29 @@ func TestRunTaskReleasesPortOnStartFailure(t *testing.T) {
 	}
 	if released != 9222 {
 		t.Fatalf("released port = %d, want 9222", released)
+	}
+}
+
+func TestCommandStarterBuildCommandDoesNotInheritEnvironment(t *testing.T) {
+	const sentinel = "JOBSEEK_LIGHTPANDA_CHILD_ENV_SENTINEL"
+	t.Setenv(sentinel, "must-not-reach-lightpanda")
+
+	command := (commandStarter{binary: "lightpanda"}).buildCommand(9222, &boundedBuffer{limit: maxProcessLogBytes})
+	if command.Env == nil {
+		t.Fatal("Lightpanda command has a nil environment and would inherit the parent environment")
+	}
+	environment := command.Environ()
+	for _, entry := range environment {
+		if strings.HasPrefix(entry, sentinel+"=") {
+			t.Fatalf("Lightpanda command inherited sentinel environment variable %q", entry)
+		}
+	}
+	want := []string{
+		"LIGHTPANDA_DISABLE_CORE_DUMP=1",
+		"LIGHTPANDA_DISABLE_TELEMETRY=true",
+	}
+	if !slices.Equal(environment, want) {
+		t.Fatalf("Lightpanda command environment = %q, want fixed non-secret environment %q", environment, want)
 	}
 }
 
