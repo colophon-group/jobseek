@@ -184,7 +184,7 @@ describe("getWatchlistPostingsBrowser (#3477)", () => {
     },
   );
 
-  it("uses the canonical posting-id tie-break across browser page boundaries", async () => {
+  it("keeps tied batched result prefixes stable across browser page boundaries", async () => {
     const companyIds = Array.from(
       { length: 101 },
       (_, index) => makeUuid(index + 1),
@@ -194,18 +194,26 @@ describe("getWatchlistPostingsBrowser (#3477)", () => {
         const url = new URL(String(request));
         const filter = url.searchParams.get("filter_by") ?? "";
         const isFirstBatch = filter.includes(makeUuid(1));
+        const offset = Number(url.searchParams.get("offset") ?? "0");
+        const limit = Number(url.searchParams.get("limit") ?? "0");
+        const documents = Array.from({ length: 40 }, (_, index) => ({
+          ...validDocument(),
+          // Later hits from every other batch deliberately sort before its
+          // earlier hits by ID. Re-sorting growing prefixes by ID would make
+          // page 2 repeat page 1 and omit results.
+          id: isFirstBatch
+            ? `posting-z-${String(index).padStart(2, "0")}`
+            : `${index < 20 ? "posting-m" : "posting-a"}-${String(index).padStart(2, "0")}`,
+          first_seen_at: 1_700_000_000,
+        }));
         return {
           ok: true,
           json: async () => ({
-            found: 1,
-            hits: [{
+            found: documents.length,
+            hits: documents.slice(offset, offset + limit).map((document) => ({
               text_match: 100,
-              document: {
-                ...validDocument(),
-                id: isFirstBatch ? "posting-z" : "posting-a",
-                first_seen_at: 1_700_000_000,
-              },
-            }],
+              document,
+            })),
           }),
         } as Response;
       },
@@ -216,21 +224,31 @@ describe("getWatchlistPostingsBrowser (#3477)", () => {
       companyIds,
       keywords: ["engineer"],
       offset: 0,
-      limit: 1,
+      limit: 20,
     });
     const secondPage = await getWatchlistPostingsBrowser({
       companyIds,
       keywords: ["engineer"],
-      offset: 1,
-      limit: 1,
+      offset: 20,
+      limit: 20,
     });
 
-    expect(firstPage.postings.map((posting) => posting.id)).toEqual([
-      "posting-a",
-    ]);
-    expect(secondPage.postings.map((posting) => posting.id)).toEqual([
-      "posting-z",
-    ]);
+    expect(firstPage.postings.map((posting) => posting.id)).toEqual(
+      Array.from(
+        { length: 20 },
+        (_, index) => `posting-z-${String(index).padStart(2, "0")}`,
+      ),
+    );
+    expect(secondPage.postings.map((posting) => posting.id)).toEqual(
+      Array.from(
+        { length: 20 },
+        (_, index) => `posting-z-${String(index + 20).padStart(2, "0")}`,
+      ),
+    );
+    expect(new Set([
+      ...firstPage.postings.map((posting) => posting.id),
+      ...secondPage.postings.map((posting) => posting.id),
+    ])).toHaveLength(40);
   });
 
   it("uses the flow filter for a browser-direct year count", async () => {

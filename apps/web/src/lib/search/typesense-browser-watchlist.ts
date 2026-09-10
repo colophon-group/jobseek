@@ -14,7 +14,6 @@ import type {
   WatchlistPostingEntry,
 } from "@/lib/watchlist-matcher-contract";
 import { normalizePostingTitle } from "@/lib/posting-title";
-import { canonicalStringCompare } from "@/lib/sort";
 import {
   buildWatchlistCandidateSearchParams,
   hasWatchlistCandidateScope,
@@ -313,27 +312,34 @@ export async function getWatchlistPostingsBrowser(
   );
   if (total === 0 || params.limit === 0) return { postings: [], total };
 
-  const allHits = resultsByBatch.flatMap((pages) =>
-    pages.flatMap((result) => result.hits ?? []),
-  );
+  const allHits = resultsByBatch.flatMap((pages, batchIndex) => {
+    let hitRank = 0;
+    return pages.flatMap((result) =>
+      (result.hits ?? []).map((hit) => ({
+        hit,
+        batchIndex,
+        hitRank: hitRank++,
+      })),
+    );
+  });
   const sortsByTextMatch = searchParams.sort_by.startsWith("_text_match:");
   allHits.sort((a, b) => {
     if (sortsByTextMatch) {
-      const relevance = (b.text_match ?? 0) - (a.text_match ?? 0);
+      const relevance = (b.hit.text_match ?? 0) - (a.hit.text_match ?? 0);
       if (relevance !== 0) return relevance;
     }
-    const freshness = Number(b.document.first_seen_at ?? 0)
-      - Number(a.document.first_seen_at ?? 0);
+    const freshness = Number(b.hit.document.first_seen_at ?? 0)
+      - Number(a.hit.document.first_seen_at ?? 0);
     if (freshness !== 0) return freshness;
-    return canonicalStringCompare(
-      String(a.document.id ?? ""),
-      String(b.document.id ?? ""),
-    );
+    // Typesense uses insertion order after the explicit sort keys tie. Keep
+    // that per-batch rank intact and define batch order as the cross-batch
+    // tie-break so expanding the fetched prefix cannot reorder earlier pages.
+    return a.batchIndex - b.batchIndex || a.hitRank - b.hitRank;
   });
   return {
     postings: allHits
       .slice(params.offset, params.offset + params.limit)
-      .map((hit) => mapHit(hit.document)),
+      .map(({ hit }) => mapHit(hit.document)),
     total,
   };
 }

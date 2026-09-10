@@ -225,6 +225,12 @@ type CandidateHit = {
   text_match?: number;
 };
 
+type RankedCandidateHit = {
+  hit: CandidateHit;
+  batchIndex: number;
+  hitRank: number;
+};
+
 function mapCandidateHit(hit: CandidateHit): WatchlistPostingEntry {
   const doc = hit.document as Record<string, unknown>;
   const optionalString = (value: unknown) =>
@@ -269,22 +275,25 @@ function mapCandidateHit(hit: CandidateHit): WatchlistPostingEntry {
   };
 }
 
-function compareHits(
-  a: CandidateHit,
-  b: CandidateHit,
+function compareRankedHits(
+  a: RankedCandidateHit,
+  b: RankedCandidateHit,
   order: WatchlistCandidateOrder,
 ): number {
   if (order === "interactive") {
-    const relevance = (b.text_match ?? 0) - (a.text_match ?? 0);
+    const relevance = (b.hit.text_match ?? 0) - (a.hit.text_match ?? 0);
     if (relevance !== 0) return relevance;
   }
-  const aDoc = a.document as Record<string, unknown>;
-  const bDoc = b.document as Record<string, unknown>;
+  const aDoc = a.hit.document as Record<string, unknown>;
+  const bDoc = b.hit.document as Record<string, unknown>;
   const freshness =
     ((bDoc.first_seen_at as number) ?? 0) -
     ((aDoc.first_seen_at as number) ?? 0);
   if (freshness !== 0) return freshness;
-  return canonicalStringCompare(String(aDoc.id ?? ""), String(bDoc.id ?? ""));
+  // Typesense uses insertion order after the explicit sort keys tie. Preserve
+  // that per-batch rank and make batch order the deterministic cross-batch
+  // tie-break so a larger requested prefix never reshuffles earlier pages.
+  return a.batchIndex - b.batchIndex || a.hitRank - b.hitRank;
 }
 
 function assertCandidatePageCardinality(
@@ -443,20 +452,28 @@ export async function readWatchlistCandidates(params: {
       return pages;
     }),
   );
-  const allHits = rowResultsByBatch.flatMap((pages) =>
-    pages.flatMap((result) => result.hits ?? []),
-  );
-  allHits.sort((a, b) => compareHits(a, b, order));
+  const allHits = rowResultsByBatch.flatMap((pages, batchIndex) => {
+    let hitRank = 0;
+    return pages.flatMap((result) =>
+      (result.hits ?? []).map((hit) => ({
+        hit,
+        batchIndex,
+        hitRank: hitRank++,
+      })),
+    );
+  });
+  allHits.sort((a, b) => compareRankedHits(a, b, order));
   return {
     postings: allHits
       .slice(params.offset, params.offset + params.limit)
-      .map(mapCandidateHit),
+      .map(({ hit }) => mapCandidateHit(hit)),
     total,
   };
 }
 
 type SearchPlanEntry = {
   watchlistIndex: number;
+  batchIndex: number;
   search: WatchlistCandidateSearchParams & { collection: "job_posting" };
 };
 
@@ -529,9 +546,10 @@ export async function matchCompiledWatchlistsInWindow(params: {
         order: "newest",
       }),
     );
-    for (const filters of batches) {
+    batches.forEach((filters, batchIndex) => {
       plan.push({
         watchlistIndex,
+        batchIndex,
         search: {
           collection: "job_posting",
           ...buildWatchlistCandidateSearchParams({
@@ -543,7 +561,7 @@ export async function matchCompiledWatchlistsInWindow(params: {
           }),
         },
       });
-    }
+    });
   });
 
   const results: TypesenseMultiSearchResult<object>[] = [];
@@ -569,26 +587,34 @@ export async function matchCompiledWatchlistsInWindow(params: {
     }
   }
 
-  const hitsByWatchlist = params.watchlists.map(() => [] as CandidateHit[]);
+  const hitsByWatchlist = params.watchlists.map(
+    () => [] as RankedCandidateHit[],
+  );
   const totals = params.watchlists.map(() => 0);
   results.forEach((result, resultIndex) => {
     const watchlistIndex = plan[resultIndex]!.watchlistIndex;
     totals[watchlistIndex] += result.found;
-    hitsByWatchlist[watchlistIndex].push(...(result.hits ?? []));
+    hitsByWatchlist[watchlistIndex].push(
+      ...(result.hits ?? []).map((hit, hitRank) => ({
+        hit,
+        batchIndex: plan[resultIndex]!.batchIndex,
+        hitRank,
+      })),
+    );
   });
 
   const postings = new Map<string, MatchedWatchlistPosting>();
   const watchlistStats = params.watchlists.map((watchlist, index) => {
-    const uniqueHits = new Map<string, CandidateHit>();
-    for (const hit of hitsByWatchlist[index]) {
-      const doc = hit.document as Record<string, unknown>;
+    const uniqueHits = new Map<string, RankedCandidateHit>();
+    for (const rankedHit of hitsByWatchlist[index]) {
+      const doc = rankedHit.hit.document as Record<string, unknown>;
       if (typeof doc.id !== "string") throw malformedTypesenseResponseError();
-      if (!uniqueHits.has(doc.id)) uniqueHits.set(doc.id, hit);
+      if (!uniqueHits.has(doc.id)) uniqueHits.set(doc.id, rankedHit);
     }
     const selected = [...uniqueHits.values()]
-      .sort((a, b) => compareHits(a, b, "newest"))
+      .sort((a, b) => compareRankedHits(a, b, "newest"))
       .slice(0, params.limitPerWatchlist);
-    for (const hit of selected) {
+    for (const { hit } of selected) {
       const posting = mapCandidateHit(hit);
       const label = {
         id: watchlist.watchlistId,
