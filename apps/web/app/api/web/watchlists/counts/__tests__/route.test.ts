@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getSessionUserId: vi.fn(),
-  getUserWatchlistCounts: vi.fn(),
+  getSessionUserIdFromHeaders: vi.fn(),
+  getUserWatchlistCountsForUser: vi.fn(),
 }));
 
 vi.mock("@/lib/sessionCache", () => ({
-  getSessionUserId: mocks.getSessionUserId,
+  getSessionUserIdFromHeaders: mocks.getSessionUserIdFromHeaders,
 }));
 
 vi.mock("@/lib/services/watchlists", () => ({
-  getUserWatchlistCounts: mocks.getUserWatchlistCounts,
+  getUserWatchlistCountsForUser: mocks.getUserWatchlistCountsForUser,
 }));
 
 import { GET } from "../route";
@@ -18,35 +18,46 @@ import { GET } from "../route";
 describe("GET /api/web/watchlists/counts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getSessionUserId.mockResolvedValue("user-1");
-    mocks.getUserWatchlistCounts.mockResolvedValue({ "watchlist-1": 42 });
+    mocks.getSessionUserIdFromHeaders.mockResolvedValue("user-1");
+    mocks.getUserWatchlistCountsForUser.mockResolvedValue({ "watchlist-1": 42 });
   });
 
   it("requires an authenticated session", async () => {
-    mocks.getSessionUserId.mockResolvedValueOnce(null);
+    mocks.getSessionUserIdFromHeaders.mockResolvedValueOnce(null);
 
     const response = await GET(
       new Request("https://jseek.co/api/web/watchlists/counts?locale=en"),
     );
 
     expect(response.status).toBe(401);
-    expect(mocks.getUserWatchlistCounts).not.toHaveBeenCalled();
+    expect(mocks.getUserWatchlistCountsForUser).not.toHaveBeenCalled();
   });
 
   it("returns private no-store counts in a supported locale", async () => {
-    const response = await GET(
-      new Request("https://jseek.co/api/web/watchlists/counts?locale=de"),
+    const request = new Request(
+      "https://jseek.co/api/web/watchlists/counts?locale=de",
+      { headers: { cookie: "better-auth.session_token=route-token" } },
     );
+    const response = await GET(request);
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await response.json()).toEqual({ counts: { "watchlist-1": 42 } });
-    expect(mocks.getUserWatchlistCounts).toHaveBeenCalledWith("de");
+    expect(mocks.getSessionUserIdFromHeaders).toHaveBeenCalledWith(
+      request.headers,
+    );
+    expect(mocks.getUserWatchlistCountsForUser).toHaveBeenCalledWith(
+      "user-1",
+      "de",
+    );
   });
 
   it("falls back to English for an unsupported locale", async () => {
     await GET(new Request("https://jseek.co/api/web/watchlists/counts?locale=xx"));
 
-    expect(mocks.getUserWatchlistCounts).toHaveBeenCalledWith("en");
+    expect(mocks.getUserWatchlistCountsForUser).toHaveBeenCalledWith(
+      "user-1",
+      "en",
+    );
   });
 });

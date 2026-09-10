@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { getViewerLanguages } from "@/lib/viewer";
+import { resolveJobLanguages } from "@/lib/job-languages";
 import { cached, invalidate } from "@/lib/cache";
 import {
   CACHE_TTL_SHORT,
@@ -786,15 +787,16 @@ function _toUserWatchlistSummary(
   };
 }
 
-export async function getUserWatchlists(locale: string): Promise<WatchlistSummary[]> {
-  const userId = await getSessionUserId();
-  if (!userId) return [];
-
+async function _getUserWatchlistsForUser(
+  userId: string,
+  locale: string,
+  loadLanguages: () => Promise<string[]> = () => getViewerLanguages(locale),
+): Promise<WatchlistSummary[]> {
   // Viewer language preference is used by the batched Typesense count so
   // listing counts match the watchlist-detail page.
   const [rows, languages] = await Promise.all([
     _getUserWatchlistRows(userId),
-    getViewerLanguages(locale),
+    loadLanguages(),
   ]);
 
   const preciseCounts = await _resolveUserListingCounts(rows, locale, languages);
@@ -802,6 +804,45 @@ export async function getUserWatchlists(locale: string): Promise<WatchlistSummar
     ..._toUserWatchlistSummary(row, preciseCounts.get(row.id) ?? 0),
     activeJobCount: preciseCounts.get(row.id) ?? 0,
   }));
+}
+
+export async function getUserWatchlists(locale: string): Promise<WatchlistSummary[]> {
+  const userId = await getSessionUserId();
+  if (!userId) return [];
+
+  return _getUserWatchlistsForUser(userId, locale);
+}
+
+async function _getViewerLanguagesForUser(
+  userId: string,
+  locale: string,
+): Promise<string[]> {
+  const rows = await withDbRetry(
+    () =>
+      db.execute<{ job_languages: string[] | null }>(sql`
+        SELECT job_languages
+        FROM user_preferences
+        WHERE user_id = ${userId}
+        LIMIT 1
+      `),
+    { label: "userWatchlistLanguages" },
+  );
+
+  return resolveJobLanguages(rows[0]?.job_languages ?? [], locale);
+}
+
+export async function getUserWatchlistCountsForUser(
+  userId: string,
+  locale: string,
+): Promise<Record<string, number>> {
+  const watchlists = await _getUserWatchlistsForUser(
+    userId,
+    locale,
+    () => _getViewerLanguagesForUser(userId, locale),
+  );
+  return Object.fromEntries(
+    watchlists.map((watchlist) => [watchlist.id, watchlist.activeJobCount]),
+  );
 }
 
 export async function getUserWatchlistCounts(locale: string): Promise<Record<string, number>> {
