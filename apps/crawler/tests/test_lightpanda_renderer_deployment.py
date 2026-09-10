@@ -276,6 +276,14 @@ def test_ci_smoke_stages_lock_helper_for_deploy_user() -> None:
     assert '[[ ! -e "$ROOT"' not in smoke
 
 
+def test_lock_helper_is_fail_closed_without_caller_errexit() -> None:
+    lock = (DEPLOY / "lock.sh").read_text(encoding="utf-8")
+    assert 'exec 9<>"$lock_path" || return 1' in lock
+    assert 'fd_identity="$(stat -Lc' in lock
+    assert 'path_identity="$(stat -Lc' in lock
+    assert lock.count(')" || return 1') == 2
+
+
 def test_compose_source_has_no_host_publication_or_external_authority() -> None:
     compose = (DEPLOY / "compose.yml").read_text(encoding="utf-8")
     for token in (

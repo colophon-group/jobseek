@@ -12,9 +12,9 @@ acquire_renderer_lock() {
   [[ -f "$lock_path" && ! -L "$lock_path" ]] || return 1
   [[ "$(stat -c '%U:%G:%a' "$lock_path")" == deploy:deploy:600 ]] || return 1
 
-  exec 9<>"$lock_path"
-  fd_identity="$(stat -Lc '%d:%i' "/proc/$$/fd/9")"
-  path_identity="$(stat -Lc '%d:%i' "$lock_path")"
+  exec 9<>"$lock_path" || return 1
+  fd_identity="$(stat -Lc '%d:%i' "/proc/$$/fd/9")" || return 1
+  path_identity="$(stat -Lc '%d:%i' "$lock_path")" || return 1
   [[ "$fd_identity" == "$path_identity" ]] || return 1
   flock -w "$wait_seconds" 9 || return 1
   [[ "$(stat -Lc '%d:%i' "$lock_path")" == "$fd_identity" ]] || return 1

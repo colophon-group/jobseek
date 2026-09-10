@@ -116,23 +116,25 @@ lock_race_worker() {
       local worker_status="$1"
       local lock_path="$2"
       local worker_label="$3"
-      local failed_line="$4"
       local lock_metadata fd_identity path_identity flock_available
       lock_metadata="$(stat -Lc "%U:%G:%a:%F" "$lock_path" 2>/dev/null || printf missing)"
       fd_identity="$(stat -Lc "%d:%i" "/proc/$$/fd/9" 2>/dev/null || printf closed)"
       path_identity="$(stat -Lc "%d:%i" "$lock_path" 2>/dev/null || printf missing)"
       flock_available=no
       command -v flock >/dev/null 2>&1 && flock_available=yes
-      printf "ci-smoke lock worker %s failed at line %s: status=%s metadata=%s fd=%s path=%s flock=%s\n" \
-        "$worker_label" "$failed_line" "$worker_status" "$lock_metadata" \
-        "$fd_identity" "$path_identity" "$flock_available" >&2 || :
+      printf "ci-smoke lock worker %s acquire failed: status=%s metadata=%s fd=%s path=%s flock=%s\n" \
+        "$worker_label" "$worker_status" "$lock_metadata" "$fd_identity" \
+        "$path_identity" "$flock_available" >&2 || :
       exit "$worker_status"
     }
-    trap '\''report_lock_worker_error "$?" "$3" "$6" "$LINENO"'\'' ERR
     source "$1"
     touch "$5"
     while [[ ! -e "$2" ]]; do sleep 0.01; done
-    acquire_renderer_lock "$3" 10
+    lock_status=0
+    acquire_renderer_lock "$3" 10 || lock_status=$?
+    if [[ "$lock_status" -ne 0 ]]; then
+      report_lock_worker_error "$lock_status" "$3" "$6"
+    fi
     mkdir "$4"
     sleep 0.2
     rmdir "$4"
