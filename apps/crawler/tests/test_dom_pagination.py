@@ -28,6 +28,7 @@ from src.core.monitors.dom import (
     _fingerprint_response_urls,
     _hotelcareer_probe_config,
     _jobtoolz_probe_config,
+    _lg_portal_probe_config,
     _lucca_probe_config,
     _nyc_council_jobs_probe_config,
     _oracle_adf_probe_config,
@@ -2292,6 +2293,44 @@ class TestRichRowsStatic:
             ("Consultant", None),
         ]
 
+    def test_location_selectors_can_form_a_filtered_fallback_chain(self):
+        html = """
+        <div class="job">
+          <a href="/jobs/engineer">Engineer</a>
+          <span class="structured-location"></span>
+          <p class="summary">Office - Zurich, CH</p>
+        </div>
+        <div class="job">
+          <a href="/jobs/consultant">Consultant</a>
+          <span class="structured-location">Berlin, DE</span>
+          <p class="summary">Join our consulting team.</p>
+        </div>
+        <div class="job">
+          <a href="/jobs/analyst">Analyst</a>
+          <span class="structured-location"></span>
+          <p class="summary">Join our analytics team.</p>
+        </div>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": ".job",
+                "link_selector": "a[href]",
+                "location_selectors": [".structured-location", ".summary"],
+                "location_selector_mode": "first",
+                "location_value_patterns": [None, r"(?:, (?:CH|DE)$|^Office -)"],
+                "allow_missing_locations": True,
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
+        assert [(job.title, job.locations) for job in jobs] == [
+            ("Engineer", ["Office - Zurich, CH"]),
+            ("Consultant", ["Berlin, DE"]),
+            ("Analyst", None),
+        ]
+
     def test_extracts_synhelion_live_row_shape(self):
         html = """
         <li class="uk-card job-card">
@@ -2667,6 +2706,13 @@ class TestRichRowsStatic:
             },
             {"row_selector": ".job", "title_regex": r"^no capture$"},
             {"row_selector": ".job", "title_regex": r"(one)(two)"},
+            {"row_selector": ".job", "location_selector_mode": "fallback"},
+            {"row_selector": ".job", "location_value_patterns": ["office"]},
+            {
+                "row_selector": ".job",
+                "location_selectors": [".location"],
+                "location_value_patterns": ["("],
+            },
             {"row_selector": ".job", "location_selectors": False},
             {"row_selector": ".job", "location_selectors": 0},
             {"row_selector": ".job", "location_selectors": {}},
@@ -2977,6 +3023,31 @@ class TestCanHandle:
       <p class="jobBoard-offers-empty">There are no job vacancies at the moment.</p>
     </div></body></html>
     """
+    LG_URL = (
+        "https://prd-pc1.lg.com.br/Vagas/c/"
+        "E9BF964D-4EB2-4FFC-A661-75571AB0F49B/p/grupoprofarma/pt-BR/Busca/Vagas"
+    )
+    LG_DETAIL_PREFIX = "/Vagas/c/E9BF964D-4EB2-4FFC-A661-75571AB0F49B/p/grupoprofarma/pt-BR"
+    LG_HTML = """
+    <html><head></head><body>
+      <div class="vaga"><div class="table-wrap-col">
+        <a href="DETAIL_PREFIX/Vaga/Divulgacao?codigo=abc%3d">
+          <h3 class="text-primary">Analyst</h3>
+        </a>
+        <p>Headquarters - Rio de Janeiro / RJ</p>
+        <p class="info text-muted"></p>
+      </div></div>
+      <div class="vaga"><div class="table-wrap-col">
+        <a href="DETAIL_PREFIX/Vaga/Divulgacao?codigo=def%3d">
+          <h3 class="text-primary">Pharmacist</h3>
+        </a>
+        <p>Generic introduction without a location.</p>
+        <p class="info text-muted"><span title="Localidade">NITERÓI</span></p>
+      </div></div>
+      <ul class="pagination"><li data-page="1"></li><li data-page="2"></li></ul>
+      <script>requirejs(["!domReady", "Busca/Index"], function () {});</script>
+    </body></html>
+    """.replace("DETAIL_PREFIX", LG_DETAIL_PREFIX)
     PROSPECTIVE_URL = "https://jobs.example.com/?lang=de"
     PROSPECTIVE_HTML = """
     <html lang="de"><head>
@@ -3045,6 +3116,57 @@ class TestCanHandle:
             result = await can_handle(self.LUCCA_URL, MagicMock())
 
         assert result == _lucca_probe_config(self.LUCCA_HTML, self.LUCCA_URL)
+
+    def test_lg_portal_uses_static_rich_rows_and_provider_pagination(self):
+        result = _lg_portal_probe_config(self.LG_HTML, self.LG_URL)
+
+        assert result is not None
+        assert result["lg_portal"] is True
+        assert result["urls"] == 2
+        assert result["pagination"] == {
+            "url_template": (
+                "https://prd-pc1.lg.com.br/Vagas/c/"
+                "E9BF964D-4EB2-4FFC-A661-75571AB0F49B/p/grupoprofarma/"
+                "pt-BR/Busca/Busca?pagina={page}"
+            ),
+            "start": 1,
+        }
+        config = _validated_rich_rows(result["rich_rows"])
+        assert config is not None
+        jobs = _extract_rich_rows_static(
+            self.LG_HTML,
+            self.LG_URL,
+            config,
+            re.compile(result["url_filter"]),
+        )
+        assert [(job.title, job.locations) for job in jobs] == [
+            ("Analyst", ["Headquarters - Rio de Janeiro / RJ"]),
+            ("Pharmacist", ["NITERÓI"]),
+        ]
+        scraper_type, scraper_config = auto_scraper_type("dom", result) or (None, None)
+        assert scraper_type == "dom"
+        assert scraper_config == {
+            "enrich": ["description"],
+            "scope": ".col-sm-9.col-print-9",
+            "steps": [
+                {"tag": "h2", "field": "title"},
+                {"tag": "h4", "text": "Descrição da vaga"},
+                {
+                    "field": "description",
+                    "html": True,
+                    "to_end": True,
+                },
+            ],
+        }
+
+    async def test_lg_portal_can_handle_returns_provider_preset(self):
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=self.LG_HTML),
+        ):
+            result = await can_handle(self.LG_URL, MagicMock())
+
+        assert result == _lg_portal_probe_config(self.LG_HTML, self.LG_URL)
 
     def test_prospective_board_uses_static_rich_row_preset(self):
         result = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)

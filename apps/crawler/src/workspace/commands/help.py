@@ -1905,8 +1905,12 @@ dom — Link or Listing-Row Extraction (fallback)
                    title_regex may contain exactly one capture group to clean a
                    stable decoration from the selected title text.
                    The selected link or title node text becomes the title;
-                   location components are joined in selector order. Every
-                   configured field is strict. Set
+                   location components are joined in selector order. Set
+                   location_selector_mode to "first" to use the first
+                   non-empty matching selector as a fallback chain. An
+                   optional location_value_patterns list (one regex or null
+                   per selector) rejects values that are not locations before
+                   that selection. Every configured field is strict. Set
                    "allow_missing_locations": true only when some listing
                    rows intentionally omit location and the detail scraper
                    enriches it; those rows return locations=null. Otherwise

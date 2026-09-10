@@ -750,6 +750,23 @@ def auto_scraper_type(
         return ("json-ld", None)
     if monitor_type == "dom" and (config or {}).get("yousty_organization"):
         return ("json-ld", None)
+    if monitor_type == "dom" and (config or {}).get("lg_portal"):
+        return (
+            "dom",
+            {
+                "enrich": ["description"],
+                "scope": ".col-sm-9.col-print-9",
+                "steps": [
+                    {"tag": "h2", "field": "title"},
+                    {"tag": "h4", "text": "Descrição da vaga"},
+                    {
+                        "field": "description",
+                        "html": True,
+                        "to_end": True,
+                    },
+                ],
+            },
+        )
     if monitor_type == "dom" and (config or {}).get("lucca_board"):
         return (
             "dom",
