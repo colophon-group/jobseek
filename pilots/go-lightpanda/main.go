@@ -40,7 +40,13 @@ func runCLIWithRunner(args []string, output io.Writer, runner taskRunner) int {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	result, err := runner(ctx, Config{Binary: binary}, Task{URL: args[0], Expression: args[1]})
+	result, err := runner(ctx, Config{Binary: binary}, Task{
+		URL: args[0],
+		Evaluation: &TaskEvaluation{
+			Expression:     args[1],
+			MaxResultBytes: maxExpressionResult,
+		},
+	})
 	if err != nil {
 		_ = writeCLIResponse(output, cliResponse{OK: false, Error: boundedError(err)})
 		return 1

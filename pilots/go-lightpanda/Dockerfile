@@ -1,6 +1,12 @@
 FROM golang:1.24-bookworm AS go-source
 
-WORKDIR /src
+# The primary build context remains this pilot directory. The caller supplies
+# apps/crawler/contracts as the narrowly scoped BuildKit context "contracts";
+# the repository root and crawler credentials never enter the build context.
+WORKDIR /workspace/pilots/go-lightpanda
+COPY --from=contracts go.mod go.sum /workspace/apps/crawler/contracts/
+COPY --from=contracts v1/gen/go/ /workspace/apps/crawler/contracts/v1/gen/go/
+COPY --from=contracts v1/lightpandaadapter/ /workspace/apps/crawler/contracts/v1/lightpandaadapter/
 COPY go.mod go.sum ./
 RUN go mod download
 COPY *.go ./
@@ -45,7 +51,8 @@ FROM pilot-base AS integration-test
 COPY --from=integration-build /out/go-lightpanda.test /usr/local/bin/go-lightpanda.test
 ENV LIGHTPANDA_INTEGRATION_BIN=/usr/local/bin/lightpanda
 RUN --network=none /usr/local/bin/go-lightpanda.test \
-    -test.run '^TestLightpandaIntegration$' -test.count=1 -test.v
+    -test.run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration)$' \
+    -test.count=1 -test.v
 
 FROM pilot-base AS runtime
 

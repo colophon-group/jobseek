@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -104,12 +105,30 @@ func TestRunTaskFailsAfterUnverifiedCleanup(t *testing.T) {
 	config.CleanupTimeout = 20 * time.Millisecond
 	config.TerminateGrace = 5 * time.Millisecond
 
-	if _, err := runTaskWithDependencies(context.Background(), config, deps, validTask()); err == nil {
+	if _, err := runTaskWithDependencies(context.Background(), config, deps, validTask()); err == nil || !errors.Is(err, errCleanupUnproved) {
 		t.Fatal("Run succeeded despite listener cleanup failure")
 	}
 	if contains(events.snapshot(), "signal-9") {
 		t.Fatal("cleanup sent SIGKILL after the process group was already gone")
 	}
+}
+
+func TestRunTaskContainsExecutorPanicAndCleansUp(t *testing.T) {
+	events := &eventLog{}
+	process := newFakeProcess(events, true)
+	config, deps := testRunner(process, taskExecutorFunc(func(context.Context, string, Task) (Result, error) {
+		events.add("execute-panic")
+		panic("provider detail must not escape")
+	}), func(int) bool {
+		events.add("verify-listener")
+		return false
+	})
+
+	_, err := runTaskWithDependencies(context.Background(), config, deps, validTask())
+	if err == nil || err.Error() != "lightpanda execution panicked" {
+		t.Fatalf("Run error = %v", err)
+	}
+	assertOrdered(t, events.snapshot(), "execute-panic", "signal-15", "wait-reaped", "verify-listener")
 }
 
 func TestReadyWaiterChecksChildBeforeRequest(t *testing.T) {
@@ -179,18 +198,60 @@ func TestReadyWaiterRejectsMismatchedResponsePort(t *testing.T) {
 func TestResultBounds(t *testing.T) {
 	t.Parallel()
 	result := validResult()
-	result.HTML = string(make([]byte, maxHTMLBytes+1))
-	if err := validateResult(result); err == nil {
-		t.Fatal("validateResult accepted oversized HTML")
+	result.HTML = strings.Repeat("h", maxHTMLBytes)
+	if err := validateResult(validTask(), result); err != nil {
+		t.Fatalf("validateResult rejected exact HTML limit: %v", err)
 	}
 	result = validResult()
+	result.HTML = string(make([]byte, maxHTMLBytes+1))
+	if err := validateResult(validTask(), result); err == nil || !errors.Is(err, errResourceLimit) {
+		t.Fatalf("validateResult oversized HTML error = %v", err)
+	}
+
+	limitedTask := validTask()
+	limitedTask.Evaluation.MaxResultBytes = 4
+	result = validResult()
+	result.Expression = json.RawMessage(`"xx"`)
+	if err := validateResult(limitedTask, result); err != nil {
+		t.Fatalf("validateResult rejected exact expression limit: %v", err)
+	}
+	result.Expression = json.RawMessage(`"xxx"`)
+	if err := validateResult(limitedTask, result); err == nil || !errors.Is(err, errResourceLimit) {
+		t.Fatalf("validateResult oversized expression error = %v", err)
+	}
+
+	globalTask := validTask()
+	globalTask.Evaluation.MaxResultBytes = maxExpressionResult
+	if err := validateTask(globalTask); err != nil {
+		t.Fatalf("validateTask rejected global expression limit: %v", err)
+	}
+	globalTask.Evaluation.MaxResultBytes++
+	if err := validateTask(globalTask); err == nil {
+		t.Fatal("validateTask accepted expression limit above global ceiling")
+	}
+
+	renderOnly := Task{URL: "https://example.test/jobs"}
+	result = validResult()
 	result.Expression = nil
-	if err := validateResult(result); err == nil {
+	if err := validateTask(renderOnly); err != nil {
+		t.Fatalf("validateTask rejected B0: %v", err)
+	}
+	if err := validateResult(renderOnly, result); err != nil {
+		t.Fatalf("validateResult rejected B0: %v", err)
+	}
+	renderOnly.Evaluation = &TaskEvaluation{MaxResultBytes: 1}
+	if err := validateTask(renderOnly); err == nil {
+		t.Fatal("validateTask treated malformed B1 as B0")
+	}
+
+	result = validResult()
+	result.Expression = nil
+	if err := validateResult(validTask(), result); err == nil {
 		t.Fatal("validateResult accepted an empty expression result")
 	}
 	result = validResult()
 	result.Expression = json.RawMessage(`{"not":"closed"`)
-	if err := validateResult(result); err == nil {
+	if err := validateResult(validTask(), result); err == nil {
 		t.Fatal("validateResult accepted invalid expression JSON")
 	}
 }
@@ -291,11 +352,20 @@ func testRunner(process *fakeProcess, executor taskExecutor, portOpen func(int) 
 }
 
 func validTask() Task {
-	return Task{URL: "https://example.test/jobs", Expression: "document.title"}
+	return Task{
+		URL: "https://example.test/jobs",
+		Evaluation: &TaskEvaluation{
+			Expression:     "document.title",
+			MaxResultBytes: maxExpressionResult,
+		},
+	}
 }
 
 func validResult() Result {
-	return Result{Status: 200, FinalURL: "https://example.test/jobs", HTML: "<html></html>", Expression: json.RawMessage(`"Jobs"`)}
+	return Result{
+		Status: 200, FinalURL: "https://example.test/jobs", HTML: "<html></html>", HTMLPresent: true,
+		Expression: json.RawMessage(`"Jobs"`),
+	}
 }
 
 type readyWaiterFunc func(context.Context, int, *processState) (string, error)

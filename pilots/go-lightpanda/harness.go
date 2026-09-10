@@ -36,19 +36,32 @@ const (
 	maxProcessLogBytes    = 32 << 10
 )
 
-// Task is intentionally small: the pilot navigates once and evaluates one
-// synchronous JavaScript expression.
+var (
+	errCleanupUnproved = errors.New("lightpanda cleanup could not be proved")
+	errResourceLimit   = errors.New("lightpanda result exceeded a resource limit")
+)
+
+// Task is intentionally small: the pilot navigates once and optionally
+// evaluates one synchronous JavaScript expression.
 type Task struct {
 	URL        string
-	Expression string
+	Evaluation *TaskEvaluation
+}
+
+// TaskEvaluation is present exactly for B1 work. Presence is explicit so an
+// empty or malformed B1 expression can never be mistaken for render-only B0.
+type TaskEvaluation struct {
+	Expression     string
+	MaxResultBytes int
 }
 
 // Result contains only data from the top-level document.
 type Result struct {
-	Status     int             `json:"status"`
-	FinalURL   string          `json:"final_url"`
-	HTML       string          `json:"html"`
-	Expression json.RawMessage `json:"expression"`
+	Status      int             `json:"status"`
+	FinalURL    string          `json:"final_url"`
+	HTML        string          `json:"html"`
+	HTMLPresent bool            `json:"-"`
+	Expression  json.RawMessage `json:"expression"`
 }
 
 type managedProcess interface {
@@ -131,17 +144,38 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 	state := watchProcess(process)
 
 	taskCtx, cancel := context.WithTimeout(ctx, config.TaskTimeout)
-	result, runErr := executeTask(taskCtx, deps, process, state, port, task)
+	result, runErr := executeTaskSafely(taskCtx, deps, process, state, port, task)
 	cancel()
 
 	cleanupErr := cleanupProcess(config, deps, process, state, port)
 	if cleanupErr != nil {
-		runErr = errors.Join(runErr, fmt.Errorf("cleanup lightpanda: %w", cleanupErr))
+		runErr = errors.Join(
+			runErr,
+			errCleanupUnproved,
+			fmt.Errorf("cleanup lightpanda: %w", cleanupErr),
+		)
 	}
 	if runErr != nil {
 		return Result{}, runErr
 	}
 	return result, nil
+}
+
+func executeTaskSafely(
+	ctx context.Context,
+	deps dependencies,
+	process managedProcess,
+	state *processState,
+	port int,
+	task Task,
+) (result Result, err error) {
+	defer func() {
+		if recover() != nil {
+			result = Result{}
+			err = errors.New("lightpanda execution panicked")
+		}
+	}()
+	return executeTask(ctx, deps, process, state, port, task)
 }
 
 func executeTask(ctx context.Context, deps dependencies, process managedProcess, state *processState, port int, task Task) (Result, error) {
@@ -160,7 +194,7 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 	if err != nil {
 		return Result{}, fmt.Errorf("execute CDP task: %w", err)
 	}
-	if err := validateResult(result); err != nil {
+	if err := validateResult(task, result); err != nil {
 		return Result{}, err
 	}
 	return result, nil
@@ -174,8 +208,14 @@ func validateTask(task Task) error {
 	if err != nil || parsed.Host == "" || parsed.User != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return errors.New("URL must be an absolute http or https URL")
 	}
-	if len(task.Expression) == 0 || len(task.Expression) > maxExpressionBytes {
+	if task.Evaluation == nil {
+		return nil
+	}
+	if len(task.Evaluation.Expression) == 0 || len(task.Evaluation.Expression) > maxExpressionBytes {
 		return fmt.Errorf("expression must contain 1..%d bytes", maxExpressionBytes)
+	}
+	if task.Evaluation.MaxResultBytes <= 0 || task.Evaluation.MaxResultBytes > maxExpressionResult {
+		return fmt.Errorf("expression result limit must contain 1..%d bytes", maxExpressionResult)
 	}
 	return nil
 }
@@ -208,21 +248,30 @@ func validateCDPEndpoint(raw string, expectedPort int) error {
 	return nil
 }
 
-func validateResult(result Result) error {
+func validateResult(task Task, result Result) error {
 	if result.Status < 100 || result.Status > 599 {
 		return fmt.Errorf("missing or invalid main-document response status %d", result.Status)
 	}
 	if len(result.FinalURL) == 0 || len(result.FinalURL) > maxURLBytes {
 		return errors.New("final URL is missing or too large")
 	}
+	if !result.HTMLPresent {
+		return errors.New("main-document outerHTML is missing")
+	}
 	if len(result.HTML) > maxHTMLBytes {
-		return fmt.Errorf("main-document outerHTML exceeds %d bytes", maxHTMLBytes)
+		return fmt.Errorf("%w: main-document outerHTML exceeds %d bytes", errResourceLimit, maxHTMLBytes)
+	}
+	if task.Evaluation == nil {
+		if result.Expression != nil {
+			return errors.New("render-only task returned an expression result")
+		}
+		return nil
 	}
 	if len(result.Expression) == 0 {
 		return errors.New("expression result is empty")
 	}
-	if len(result.Expression) > maxExpressionResult {
-		return fmt.Errorf("expression result exceeds %d bytes", maxExpressionResult)
+	if len(result.Expression) > task.Evaluation.MaxResultBytes {
+		return fmt.Errorf("%w: expression result exceeds %d bytes", errResourceLimit, task.Evaluation.MaxResultBytes)
 	}
 	if !json.Valid(result.Expression) {
 		return errors.New("expression result is not valid JSON")
@@ -239,7 +288,15 @@ type processState struct {
 func watchProcess(process managedProcess) *processState {
 	state := &processState{done: make(chan struct{})}
 	go func() {
-		err := process.Wait()
+		var err error
+		func() {
+			defer func() {
+				if recover() != nil {
+					err = errors.New("lightpanda process wait panicked")
+				}
+			}()
+			err = process.Wait()
+		}()
 		state.mu.Lock()
 		state.err = err
 		state.mu.Unlock()
@@ -269,7 +326,7 @@ func (s *processState) readinessError() error {
 func cleanupProcess(config Config, deps dependencies, process managedProcess, state *processState, port int) error {
 	deadline := time.Now().Add(config.CleanupTimeout)
 	var errs []error
-	if err := process.SignalGroup(syscall.SIGTERM); err != nil {
+	if err := signalProcessGroup(process, syscall.SIGTERM); err != nil {
 		errs = append(errs, fmt.Errorf("terminate process group: %w", err))
 	}
 
@@ -278,11 +335,11 @@ func cleanupProcess(config Config, deps dependencies, process managedProcess, st
 		grace = remaining
 	}
 	if !waitUntil(state.done, grace) {
-		alive, err := process.GroupAlive()
+		alive, err := processGroupAlive(process)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("verify process group before kill: %w", err))
 		} else if alive {
-			if err := process.SignalGroup(syscall.SIGKILL); err != nil {
+			if err := signalProcessGroup(process, syscall.SIGKILL); err != nil {
 				errs = append(errs, fmt.Errorf("kill process group: %w", err))
 			}
 		}
@@ -295,29 +352,41 @@ func cleanupProcess(config Config, deps dependencies, process managedProcess, st
 	// The leader may have exited while descendants retained its process group.
 	// Check before signaling so an already-gone group is never killed solely
 	// because its former numeric PGID was retained in commandProcess.
-	alive, err := process.GroupAlive()
+	alive, err := processGroupAlive(process)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("verify residual process group: %w", err))
 	} else if alive {
-		if err := process.SignalGroup(syscall.SIGKILL); err != nil {
+		if err := signalProcessGroup(process, syscall.SIGKILL); err != nil {
 			errs = append(errs, fmt.Errorf("kill residual process group: %w", err))
 		}
 	}
 
 	for {
-		alive, err := process.GroupAlive()
+		alive, err := processGroupAlive(process)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("verify process group: %w", err))
 			break
 		}
-		if !alive && !deps.portOpen(port) {
-			return errors.Join(errs...)
+		if !alive {
+			portOpen, portErr := portOpenSafely(deps.portOpen, port)
+			if portErr != nil {
+				errs = append(errs, fmt.Errorf("verify CDP listener: %w", portErr))
+				break
+			}
+			if !portOpen {
+				return errors.Join(errs...)
+			}
 		}
 		if time.Now().After(deadline) {
 			if alive {
 				errs = append(errs, errors.New("process group still exists after cleanup"))
 			}
-			if deps.portOpen(port) {
+			portOpen, portErr := portOpenSafely(deps.portOpen, port)
+			if portErr != nil {
+				errs = append(errs, fmt.Errorf("verify CDP listener after cleanup deadline: %w", portErr))
+				return errors.Join(errs...)
+			}
+			if portOpen {
 				errs = append(errs, errors.New("CDP listener still accepts connections after cleanup"))
 			}
 			return errors.Join(errs...)
@@ -325,6 +394,35 @@ func cleanupProcess(config Config, deps dependencies, process managedProcess, st
 		time.Sleep(10 * time.Millisecond)
 	}
 	return errors.Join(errs...)
+}
+
+func signalProcessGroup(process managedProcess, signal syscall.Signal) (err error) {
+	defer func() {
+		if recover() != nil {
+			err = errors.New("lightpanda process signal panicked")
+		}
+	}()
+	return process.SignalGroup(signal)
+}
+
+func processGroupAlive(process managedProcess) (alive bool, err error) {
+	defer func() {
+		if recover() != nil {
+			alive = false
+			err = errors.New("lightpanda process-group check panicked")
+		}
+	}()
+	return process.GroupAlive()
+}
+
+func portOpenSafely(check func(int) bool, port int) (open bool, err error) {
+	defer func() {
+		if recover() != nil {
+			open = false
+			err = errors.New("lightpanda listener check panicked")
+		}
+	}()
+	return check(port), nil
 }
 
 func waitUntil(done <-chan struct{}, timeout time.Duration) bool {
@@ -636,30 +734,33 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	}
 
 	var expression json.RawMessage
-	if err := chromedp.Run(targetCtx,
-		chromedp.ActionFunc(func(actionCtx context.Context) error {
-			remoteObject, exception, err := runtime.Evaluate(task.Expression).
-				WithReturnByValue(true).
-				WithAwaitPromise(false).
-				Do(actionCtx)
-			if err != nil {
+	if task.Evaluation != nil {
+		if err := chromedp.Run(targetCtx,
+			chromedp.ActionFunc(func(actionCtx context.Context) error {
+				remoteObject, exception, err := runtime.Evaluate(task.Evaluation.Expression).
+					WithReturnByValue(true).
+					WithAwaitPromise(false).
+					Do(actionCtx)
+				if err != nil {
+					return err
+				}
+				if exception != nil {
+					return fmt.Errorf("expression evaluation: %w", exception)
+				}
+				expression, err = serializeExpressionResult(remoteObject)
 				return err
-			}
-			if exception != nil {
-				return fmt.Errorf("expression evaluation: %w", exception)
-			}
-			expression, err = serializeExpressionResult(remoteObject)
-			return err
-		}),
-	); err != nil {
-		return Result{}, err
+			}),
+		); err != nil {
+			return Result{}, err
+		}
 	}
 
 	return Result{
-		Status:     int(mainStatus),
-		FinalURL:   finalURL,
-		HTML:       html,
-		Expression: expression,
+		Status:      int(mainStatus),
+		FinalURL:    finalURL,
+		HTML:        html,
+		HTMLPresent: true,
+		Expression:  expression,
 	}, nil
 }
 
