@@ -43,9 +43,9 @@ class _WidgetParser(HTMLParser):
         if values.get("id") != "ats-offers":
             return
         self.matches += 1
-        company_key = values.get("data-company-hash-key")
-        flow = values.get("data-flow")
-        locale = values.get("data-locale")
+        company_key = (values.get("data-company-hash-key") or "").strip()
+        flow = (values.get("data-flow") or "").strip()
+        locale = (values.get("data-locale") or "").strip()
         if company_key and flow and locale:
             self.configs.append(
                 {
