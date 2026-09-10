@@ -37,6 +37,9 @@ Files:
   privacy; the narrower B0 constructor rejects evaluation before runner or
   origin contact. The contract package contains no provider client and does
   not activate browser work.
+- `lightpanda-service.md` — source-only, inactive mTLS transport contract for
+  the fixed-capacity B0 service; it provisions no host, credentials, routing,
+  queue claimant, or production deployment.
 
 Compatibility rules:
 

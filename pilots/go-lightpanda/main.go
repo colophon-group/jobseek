@@ -13,6 +13,25 @@ import (
 
 func main() {
 	args := os.Args[1:]
+	if len(args) > 0 && args[0] == runtimeV1ServiceFlag {
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		config, err := runtimeV1ServiceConfigFromArgs(args[1:])
+		if err == nil {
+			execution, executionErr := newRuntimeV1ServiceExecution(Config{
+				Binary: os.Getenv("LIGHTPANDA_BIN"), EgressPolicy: defaultEgressPolicy(),
+			}, nil)
+			if executionErr != nil {
+				err = executionErr
+			} else {
+				err = runRuntimeV1Service(ctx, config, execution)
+			}
+		}
+		cancel()
+		if err != nil {
+			os.Exit(1)
+		}
+		return
+	}
 	if len(args) > 0 && args[0] == runtimeV1StdioFlag {
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		adapter, err := lightpandaadapter.NewRenderOnly(

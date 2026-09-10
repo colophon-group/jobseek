@@ -8,6 +8,11 @@ on:
       - "apps/crawler/contracts/go.sum"
       - "apps/crawler/contracts/v1/gen/go/**"
       - "apps/crawler/contracts/v1/lightpandaadapter/**"
+      - "apps/crawler/contracts/v1/lightpanda-service.md"
+      - "apps/crawler/src/lightpanda/client.py"
+      - "apps/crawler/src/lightpanda/routing.py"
+      - "apps/crawler/src/lightpanda_queue.py"
+      - "apps/crawler/tests/lightpanda/test_client.py"
       - ".github/workflows/go-lightpanda-pilot.yml"
   workflow_dispatch:
 
@@ -46,6 +51,11 @@ jobs:
           go-version-file: pilots/go-lightpanda/go.mod
           cache-dependency-path: pilots/go-lightpanda/go.sum
 
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+
       - name: Test, race, vet, and formatting
         run: |
           go test ./...
@@ -53,6 +63,14 @@ jobs:
           go vet ./...
           go mod tidy -diff
           test -z "$(gofmt -l .)"
+
+      - name: Test one-shot Python mTLS client contract
+        working-directory: apps/crawler
+        run: |
+          uv run --frozen pytest tests/lightpanda/test_client.py -q
+          uv run --frozen ruff check src/lightpanda/client.py tests/lightpanda/test_client.py
+          uv run --frozen ruff format --check src/lightpanda/client.py tests/lightpanda/test_client.py
+          uv run --frozen pyright src/lightpanda/client.py
 
       - name: Test density controller and runners
         timeout-minutes: 5
@@ -67,6 +85,9 @@ jobs:
 
       - name: Build bounded runtime image
         run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target runtime --tag jobseek-lightpanda-pilot:${{ matrix.arch }}-${{ github.run_id }} .
+
+      - name: Build inactive mTLS service image
+        run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target service --tag jobseek-lightpanda-service:${{ matrix.arch }}-${{ github.run_id }} .
 
       - name: Build native density smoke images
         env:

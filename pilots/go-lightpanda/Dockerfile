@@ -69,6 +69,12 @@ COPY --from=build /out/go-lightpanda /usr/local/bin/go-lightpanda
 
 ENTRYPOINT ["/usr/local/bin/go-lightpanda"]
 
+FROM pilot-base AS service
+
+COPY --from=build /out/go-lightpanda /usr/local/bin/go-lightpanda
+
+ENTRYPOINT ["/usr/local/bin/go-lightpanda", "--runtime-v1-service"]
+
 FROM pilot-base AS density
 
 ARG SOURCE_COMMIT
