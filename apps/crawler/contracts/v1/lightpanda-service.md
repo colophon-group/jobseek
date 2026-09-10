@@ -1,9 +1,11 @@
 # Lightpanda B0 mTLS service boundary
 
-This source-only slice defines the one-shot network boundary between the
-Python-owned Lightpanda B0 claimant and the Go render process. It does not add
-a queue consumer, worker command, Compose service, host unit, certificate,
-firewall rule, board assignment, deployment secret, or production route.
+This contract defines the one-shot network boundary between the Python-owned
+Lightpanda B0 claimant and the Go render process. A dedicated claimant command
+is available in the slim crawler image, but it fails closed unless explicitly
+enabled with complete route and mTLS configuration. There is no Compose
+service, host unit, certificate, firewall rule, board assignment, deployment
+secret, or production route.
 
 Python remains authoritative for claiming, leases, retry policy, parser
 configuration, parsing, PostgreSQL writes, and queue transitions. The Go
@@ -111,7 +113,7 @@ namespace, certificate mounts, and restart policy.
 
 This boundary is inactive until separate reviewed slices provide all of:
 
-- the Python capacity-reserving claimant and Redis/PostgreSQL lease fence;
+- production deployment wiring for the Python capacity-reserving claimant;
 - Murmur certificate generation, protected delivery, rotation, and rollback;
 - an external default-deny egress boundary covering host/public/private and
   project ranges in addition to the existing browser-level deny policy;
