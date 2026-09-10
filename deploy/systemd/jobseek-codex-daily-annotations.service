@@ -26,7 +26,7 @@ Environment=LABELLER_DATA_ROOT=/srv/jobseek-codex/data/postings-labelled
 ExecCondition=/bin/sh -c '! /usr/bin/id -nG codex-runner | /usr/bin/tr " " "\\n" | /usr/bin/grep -qx docker'
 
 ExecStartPre=+/usr/bin/install -d -m 0700 -o codex-runner -g codex-runner /srv/jobseek-codex/data/postings-labelled /srv/jobseek-codex/worktrees /srv/jobseek-codex/traces /srv/jobseek-codex/state /srv/jobseek-codex/logs
-ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine annotations
+ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine annotations
 
 TimeoutStartSec=8h
 Nice=10

@@ -30,7 +30,7 @@ test("deploys web runtime and production-workflow inputs", () => {
     "apps/web/app/page.tsx",
     "apps/web/vercel.json",
     "packages/mcp-server/src/handler.ts",
-    "patches/next@16.2.11.patch",
+    "patches/next@16.3.4.patch",
     "package.json",
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml",

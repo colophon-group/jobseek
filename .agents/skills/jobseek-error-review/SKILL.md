@@ -12,8 +12,7 @@ Run recurring reviews through the Hetzner Codex runner. An operator may invoke
 the same skill from the repository root for a bounded manual recovery. The
 Hetzner runner uses an isolated worktree and a root-collected redacted evidence
 bundle, which keeps routine output isolated from active development work while
-avoiding direct Docker or deploy-env access from the Codex process. Do not
-implement it as a GitHub Actions workflow or workstation schedule.
+avoiding direct Docker or deploy-env access from the Codex process.
 
 The legacy Claude slash command at
 `.claude/commands/jobseek-error-review.md` remains a compatibility fallback.

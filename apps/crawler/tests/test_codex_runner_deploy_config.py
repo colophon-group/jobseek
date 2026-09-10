@@ -122,6 +122,17 @@ def test_daily_timers_catch_up_missed_calendar_activations_under_the_shared_lock
         assert "/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock" in exec_start
 
 
+def test_all_crawler_runner_units_use_the_python_313_virtualenv() -> None:
+    expected_python = "/srv/jobseek-codex/repo/apps/crawler/.venv/bin/python"
+
+    for service_path in (GOVERNOR_SERVICE, ANNOTATIONS_SERVICE, ERROR_REVIEW_SERVICE):
+        exec_start = next(
+            line for line in service_path.read_text().splitlines() if line.startswith("ExecStart=")
+        )
+        assert expected_python in exec_start, service_path
+        assert "/usr/bin/python3 " not in exec_start, service_path
+
+
 def test_update_repo_detaches_deployment_checkout_from_mutable_main_ref(tmp_path: Path) -> None:
     origin, seed, first = _deployment_fixture(tmp_path)
     repo = tmp_path / "repo"
