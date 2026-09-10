@@ -78,19 +78,34 @@ test("docs README and ADR relative markdown links resolve", () => {
 
 test("production Codex guidance keeps scheduling on Hetzner", () => {
   const guidancePaths = [
+    ".agents/skills/jobseek-error-review/SKILL.md",
     "AGENTS.md",
+    "apps/crawler/AGENTS.md",
     "docs/00-overview.md",
     "docs/01-agent-workflow.md",
+    "docs/14-error-review-routine.md",
+    "docs/15-data-sampling-routine.md",
     "docs/16-hetzner-maintenance.md",
+    "docs/17-codex-migration-verification-runbook.md",
     "docs/18-codex-automation-deployment.md",
     "docs/README.md",
   ];
   const staleWording = [
+    new RegExp(["Codex", "desktop"].join("\\s+"), "i"),
+    new RegExp(["desktop", "scheduler"].join("[- ]"), "i"),
+    new RegExp(["workstation", "schedule"].join("\\s+"), "i"),
     /Hetzner(?:-hosted)?\s+local\s+Codex/i,
+    new RegExp(["preferred", "new", "automation", "surface"].join("\\s+"), "i"),
+    new RegExp(["alternate", "recurring", "schedule"].join("\\s+"), "i"),
+    new RegExp(
+      ["future", "replacement", "for", "those", "host", "units"].join("\\s+"),
+      "i",
+    ),
   ];
   const retiredRoutineNames = [
     ["jobseek", "company", "request", "resolver"].join("-"),
     ["jobseek", "daily", "classifications"].join("-"),
+    ["jobseek", "daily", "error", "review"].join("-"),
   ];
 
   for (const guidancePath of guidancePaths) {

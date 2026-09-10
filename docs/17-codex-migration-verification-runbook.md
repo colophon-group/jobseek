@@ -19,11 +19,10 @@ codex exec --json "<pilot prompt>" | tee "$CODEX_EXEC_JSONL"
 If no Codex JSONL file is available, trace export falls back to the internal
 `ws` action log so completion remains best-effort.
 
-For the recurring company resolver, use the Hetzner-hosted Codex runner
-documented in [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
-It should set `CODEX_EXEC_JSONL` for every accepted run and store the resulting
-trace outside the repo. Do not trigger recurring company resolver work from
-GitHub Actions.
+The recurring company resolver uses the Hetzner-hosted Codex runner documented
+in [18-codex-automation-deployment.md](18-codex-automation-deployment.md). It
+sets `CODEX_EXEC_JSONL` for every accepted run and stores the resulting trace
+outside the repo.
 
 For emergency resolver recovery, invoke the same committed runner entry point
 once from a throwaway worktree and set `CODEX_EXEC_JSONL` explicitly.

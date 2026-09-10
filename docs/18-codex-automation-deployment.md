@@ -50,17 +50,15 @@ ambiguous evidence.
 
 ## Harness Invariants
 
-These rules must hold whether the run is launched manually by Codex CLI, by the
-Hetzner governor/timers, or by a future replacement for those host units.
+These rules apply to bounded manual recovery and runs launched by the Hetzner
+governor and timers.
 
 - The automation prompt must be self-contained. It cannot rely on the
   conversation that created or updated the automation.
 - The repo docs and skills above are the behavioral source of truth. Update
   them first, then update the deployed automation prompt or runner prompt.
-- Do not install or invoke Claude Code from Codex automations. Do not add
-  GitHub Actions that execute these Hetzner-owned routines.
-- GitHub Actions may deploy runner code and units, but must not select issues,
-  run `ws`, call `codex exec`, upload labels, or perform error reviews.
+- The committed systemd units execute routines, while GitHub Actions deploys
+  runner code and units to the Hetzner host.
 - Run Hetzner Codex routines under a dedicated local user with no sudo,
   no Docker group, no production crawler environment, and no read access to
   crawler `.env` files.
@@ -70,8 +68,6 @@ Hetzner governor/timers, or by a future replacement for those host units.
   ownership to `codex-runner`.
 - Treat `~/.codex/auth.json`, GitHub auth, and HuggingFace auth as password
   material. Do not print, upload, commit, or include them in traces.
-- Keep Claude-compatible files only as migration fallbacks. When a fallback is
-  edited, keep behavior aligned with the Codex-first source.
 - Pin production orchestration to GPT-5.6 Sol with high reasoning.
 - Use the role-specific Terra and Luna project agents in the model-policy
   table for bounded subagent tasks. Escalate an individual subagent attempt to
@@ -121,7 +117,7 @@ prompt, or routine source:
 
 If a host timer is unavailable, repair the committed runner/unit configuration
 or perform one bounded manual CLI run using the same ledger, lock, prompt, and
-verification contracts. Do not create an alternate recurring schedule.
+verification contracts.
 
 ## Hetzner Codex Runner Implementation Plan
 
@@ -364,9 +360,8 @@ detached because its Git common directory also creates resolver worktrees;
 moving a local `main` ref must not manufacture tracked changes in the
 deployment checkout. Resolver worktrees start from freshly fetched
 `origin/main`. A genuine tracked edit still blocks deployment fail-closed.
-The workflow intentionally sets
-`JOBSEEK_CODEX_START_TIMERS=0`, so it does not start a company resolver,
-annotation run, or error review from GitHub Actions.
+The workflow sets `JOBSEEK_CODEX_START_TIMERS=0`, so deployment updates the
+host and restores timer state without directly starting a routine.
 
 The deploy never interrupts a live Codex routine. Before waiting for the shared
 runner lock, it records which Codex timers are active and stops those timer
@@ -408,9 +403,7 @@ Apply host firewall or nftables owner rules for the `codex-runner` UID to
 block private and local service ranges by default, especially
 Redis/Postgres/Typesense private addresses and the Docker socket. Allow public
 internet access needed for GitHub, OpenAI/ChatGPT, npm/pypi package
-installation during setup, and HuggingFace trace upload if enabled. Do not
-replace the local Hetzner timer with a GitHub Actions schedule or workflow
-that executes a Codex routine.
+installation during setup, and HuggingFace trace upload if enabled.
 
 ### Phase 3 - governor decision loop
 
