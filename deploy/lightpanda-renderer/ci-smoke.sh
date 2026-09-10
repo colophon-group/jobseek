@@ -26,7 +26,14 @@ PROTECTED=(deploy-murmur-1 deploy-cloudflared-1)
 work=""
 stage=""
 protected_ids=()
+last_phase=preflight
 
+phase() {
+  last_phase="$1"
+  printf 'ci-smoke phase: %s\n' "$last_phase"
+}
+
+phase "$last_phase"
 if sudo test -e "$ROOT" || sudo test -L "$ROOT"; then
   exit 1
 fi
@@ -40,6 +47,10 @@ done
 cleanup() {
   exit_status=$?
   trap - EXIT HUP INT TERM
+  if [[ "$exit_status" -ne 0 ]]; then
+    printf 'ci-smoke failed after phase: %s (status %s)\n' \
+      "$last_phase" "$exit_status" >&2
+  fi
   if docker inspect "$CONTAINER" >/dev/null 2>&1; then
     project="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$CONTAINER")"
     service="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' "$CONTAINER")"
@@ -70,6 +81,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+phase identity-setup
 if ! id -u deploy >/dev/null 2>&1; then
   sudo useradd --create-home --shell /bin/bash deploy
 fi
@@ -84,6 +96,7 @@ sudo install -o deploy -g deploy -m 0500 \
 # Race the exact production lock helper from an absent lock file. Both
 # processes must serialize through one inode and never overlap the critical
 # section.
+phase lock-race
 lock_source="$ROOT/lock-race-helper.sh"
 lock_race="$ROOT/lock-race-test"
 lock_barrier="$ROOT/lock-race-start"
@@ -129,6 +142,7 @@ wait "$second_lock_pid" || lock_race_status=1
 sudo -u deploy rm -- \
   "$lock_barrier" "$first_lock_ready" "$second_lock_ready" "$lock_race"
 
+phase pki
 work="$(mktemp -d)"
 openssl req -new -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
   -pkeyopt ec_param_enc:named_curve -nodes -sha256 -days 1095 \
@@ -177,6 +191,7 @@ install_release() {
   sudo install -o deploy -g deploy -m 0600 "$work/release.env" "$release/release.env"
 }
 
+phase baseline-release
 install_release "$PREVIOUS_RELEASE" "$PREVIOUS_RELEASE_ID"
 sudo -u deploy python3 "$PREVIOUS_RELEASE/verify.py" compose \
   "$PREVIOUS_RELEASE/compose.yml" "$PREVIOUS_RELEASE/release.env" \
@@ -194,14 +209,17 @@ for service in murmur cloudflared; do
   protected_ids+=("$protected_id")
   docker stop --time 2 "$protected_id" >/dev/null
 done
+phase protected-snapshot
 python3 deploy/lightpanda-renderer/verify.py snapshot-protected "$work/protected-before.json"
 
+phase baseline-start
 sudo -u deploy docker compose --project-name jobseek-lightpanda \
   --env-file "$PREVIOUS_RELEASE/release.env" --file "$PREVIOUS_RELEASE/compose.yml" \
   up --detach --no-deps renderer
 previous_container_id="$(sudo -u deploy python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env")"
 previous_network_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
 [[ "$previous_container_id" =~ ^[0-9a-f]{64}$ && "$previous_network_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
+phase isolation-negative
 previous_bridge="br-${previous_network_id:0:12}"
 sudo ip address add 172.30.94.1/29 dev "$previous_bridge"
 set +e
@@ -239,6 +257,7 @@ sudo install -o deploy -g deploy -m 0600 "$work/pins.env" "$stage/pins.env"
 sudo install -o deploy -g deploy -m 0600 \
   "$work/candidate-release.env" "$stage/release.env"
 
+phase replacement-rollback
 set +e
 sudo -u deploy env \
   CI=true \
@@ -271,6 +290,7 @@ python3 deploy/lightpanda-renderer/verify.py assert-protected "$work/protected-b
 
 # Exercise the first-install rollback too: no active pointer or pre-existing
 # network may survive after a candidate is created and deliberately rejected.
+phase first-install-rollback
 docker rm --force "$restored_container_id" >/dev/null
 sudo -u deploy rm -- "$ROOT/active"
 python3 deploy/lightpanda-renderer/verify.py cleanup-network \
@@ -309,5 +329,7 @@ if docker network inspect "$NETWORK" >/dev/null 2>&1; then
   exit 1
 fi
 python3 deploy/lightpanda-renderer/verify.py assert-protected "$work/protected-before.json"
+phase final-attestation
 test "$(docker image inspect --format '{{.Architecture}}' "$IMAGE")" = arm64
 test "$(docker image inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.source-commit"}}' "$IMAGE")" = "$SOURCE_COMMIT"
+phase complete
