@@ -10,6 +10,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 DEPLOY = ROOT / "scripts" / "deploy-codex-runner-host.sh"
 GOVERNOR_SERVICE = ROOT / "deploy" / "systemd" / "jobseek-codex-governor.service"
+ANNOTATIONS_SERVICE = ROOT / "deploy" / "systemd" / "jobseek-codex-daily-annotations.service"
+ERROR_REVIEW_SERVICE = ROOT / "deploy" / "systemd" / "jobseek-codex-daily-error-review.service"
 GOVERNOR_ENV_EXAMPLE = ROOT / "deploy" / "systemd" / "jobseek-codex-governor.env.example"
 LEAK_MARKER = "not-a-real-password-7f93"
 
@@ -92,6 +94,17 @@ def test_governor_lock_and_home_write_scope_cover_managed_worktree_reconciliatio
     assert "ReadWritePaths=/srv/jobseek-codex /home/codex-runner" in service
     assert 'flock -w "${LOCK_TIMEOUT_S}" 9' in deploy
     assert '"${REPO_DIR}/scripts/codex-worktree-reconcile.py" --apply' in deploy
+
+
+def test_all_crawler_runner_units_use_the_python_313_virtualenv() -> None:
+    expected_python = "/srv/jobseek-codex/repo/apps/crawler/.venv/bin/python"
+
+    for service_path in (GOVERNOR_SERVICE, ANNOTATIONS_SERVICE, ERROR_REVIEW_SERVICE):
+        exec_start = next(
+            line for line in service_path.read_text().splitlines() if line.startswith("ExecStart=")
+        )
+        assert expected_python in exec_start, service_path
+        assert "/usr/bin/python3 " not in exec_start, service_path
 
 
 def test_update_repo_detaches_deployment_checkout_from_mutable_main_ref(tmp_path: Path) -> None:
