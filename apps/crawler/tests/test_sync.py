@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import polars as pl
 import pytest
+from typesense.exceptions import ObjectNotFound
 
 from src.sync import (
     _DISABLE_REMOVED_BOARDS_LOCAL,
@@ -26,7 +26,6 @@ from src.sync import (
     _company_prune_within_safety_budget,
     _fetch_company_posting_counts,
     _fetch_facet_counts,
-    _is_trivial_watchlist,
     _load_boards,
     _load_companies,
     _monitor_config_fingerprint,
@@ -34,6 +33,7 @@ from src.sync import (
     _require_installed_sync_data_mount,
     _ts_bulk_upsert,
     apply_board_redis_effects,
+    purge_retired_watchlist_index,
     refresh_typesense_counts,
     run_sync,
     sync_boards,
@@ -45,7 +45,6 @@ from src.sync import (
     sync_occupations,
     sync_occupations_typesense,
     sync_typesense,
-    sync_watchlists_typesense,
 )
 
 _COMPANY_COLS = ["slug", "name", "website", "logo_url", "icon_url", "logo_type"]
@@ -1365,7 +1364,6 @@ class TestRunSync:
         local_conn.execute = AsyncMock()
         local_conn.transaction.return_value.__aenter__ = AsyncMock()
         local_conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
-        web_conn = MagicMock()
 
         class _Acquire:
             def __init__(self, connection):
@@ -1379,9 +1377,6 @@ class TestRunSync:
 
         local_pool = MagicMock()
         local_pool.acquire.side_effect = lambda: _Acquire(local_conn)
-        web_pool = MagicMock()
-        web_pool.acquire.side_effect = lambda: _Acquire(web_conn)
-
         empty = pl.DataFrame()
         close_pools = AsyncMock()
         close_redis = AsyncMock()
@@ -1397,7 +1392,6 @@ class TestRunSync:
             "_load_boards": MagicMock(return_value=boards),
             "get_typesense_client": MagicMock(return_value=MagicMock()),
             "create_local_pool": AsyncMock(return_value=local_pool),
-            "create_web_pool": AsyncMock(return_value=web_pool),
             "sync_lookup_tables_local": AsyncMock(),
             "sync_companies": AsyncMock(),
             "sync_company_descriptions": AsyncMock(),
@@ -1421,56 +1415,6 @@ class TestRunSync:
 
         close_pools.assert_awaited_once()
         close_redis.assert_awaited_once()
-
-
-class TestIsTrivialWatchlist:
-    def test_no_companies_no_filters_is_trivial(self):
-        assert _is_trivial_watchlist({}, 0) is True
-        assert _is_trivial_watchlist(None, 0) is True
-
-    def test_any_company_and_currency_alone_are_trivial(self):
-        # Defaults/prefs don't count as meaningful.
-        assert _is_trivial_watchlist({"anyCompany": True}, 0) is True
-        assert _is_trivial_watchlist({"salaryCurrency": "USD"}, 0) is True
-        assert _is_trivial_watchlist({"anyCompany": True, "salaryCurrency": "USD"}, 0) is True
-
-    def test_companies_make_non_trivial(self):
-        assert _is_trivial_watchlist({}, 1) is False
-        assert _is_trivial_watchlist({"anyCompany": True}, 3) is False
-
-    @pytest.mark.parametrize(
-        "filters",
-        [
-            {"keywords": ["python"]},
-            {"locationSlugs": ["zurich"]},
-            {"occupationSlugs": ["engineer"]},
-            {"senioritySlugs": ["senior"]},
-            {"technologySlugs": ["react"]},
-            {"workMode": ["remote"]},
-            {"employmentType": ["full_time"]},
-            {"salaryMin": 100000},
-            {"salaryMax": 200000},
-            {"experienceMin": 2},
-            {"experienceMax": 10},
-            {"experienceMin": 0},
-            {"salaryMin": 0},
-        ],
-    )
-    def test_meaningful_filters_make_non_trivial(self, filters):
-        assert _is_trivial_watchlist(filters, 0) is False
-
-    @pytest.mark.parametrize(
-        "filters",
-        [
-            {"keywords": []},
-            {"locationSlugs": []},
-            {"occupationSlugs": []},
-            {"senioritySlugs": []},
-            {"technologySlugs": []},
-        ],
-    )
-    def test_empty_filter_arrays_are_trivial(self, filters):
-        assert _is_trivial_watchlist(filters, 0) is True
 
 
 class TestSyncLookupTablesLocal:
@@ -1531,528 +1475,205 @@ class TestSyncLookupTablesLocal:
         assert not any(sql.startswith("DELETE FROM ") for sql in executed_sql)
 
 
-class TestSyncWatchlistsTypesenseLocalTaxonomy:
-    async def test_any_company_filters_are_indexed_with_resolved_ids(self):
-        watchlist_id = "4ce80d85-2631-47e9-922e-e345e5551afe"
-        created_at = datetime(2026, 7, 6, 12, 0, tzinfo=UTC)
-
-        async def supa_fetch(query: str, *_args):
-            if "FROM watchlist w" in query:
-                return [
-                    _StubRecord(
-                        id=watchlist_id,
-                        slug="enterprise-sales-in-switzerland",
-                        title="Enterprise Sales in Switzerland",
-                        description=None,
-                        is_public=True,
-                        created_at=created_at,
-                        filters={
-                            "anyCompany": True,
-                            "locationSlugs": ["switzerland"],
-                            "occupationSlugs": ["account-executive", "sales-manager"],
-                        },
-                        owner_name="Public User",
-                        owner_username="public-user",
-                    ),
-                ]
-            if "FROM watchlist_company" in query:
-                return []
-            if "source_watchlist_id" in query:
-                return []
-            raise AssertionError(f"unexpected Supabase query: {query}")
-
-        in_local_fetch = False
-
-        async def local_fetch(query: str, slugs):
-            nonlocal in_local_fetch
-            if "FROM location" in query:
-                assert not in_local_fetch
-                in_local_fetch = True
-                await asyncio.sleep(0)
-                in_local_fetch = False
-                return [_StubRecord(slug="switzerland", id=2658434)]
-            if "FROM occupation" in query:
-                assert not in_local_fetch
-                in_local_fetch = True
-                await asyncio.sleep(0)
-                in_local_fetch = False
-                return [
-                    _StubRecord(slug="account-executive", id=36),
-                    _StubRecord(slug="sales-manager", id=105),
-                ]
-            if "FROM seniority" in query or "FROM technology" in query:
-                assert not in_local_fetch
-                in_local_fetch = True
-                await asyncio.sleep(0)
-                in_local_fetch = False
-                return []
-            raise AssertionError(f"unexpected local query: {query} {slugs}")
-
-        supa_conn = AsyncMock()
-        supa_conn.fetch = AsyncMock(side_effect=supa_fetch)
-        local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=local_fetch)
-
-        captured_docs: list[dict] = []
-
-        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
-            captured_docs.extend(docs)
-
-        client = MagicMock()
-        with (
-            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
-            patch("src.sync._ts_bulk_delete_ids"),
-        ):
-            await sync_watchlists_typesense(supa_conn, local_conn, client)
-
-        assert len(captured_docs) == 1
-        doc = captured_docs[0]
-        assert doc["company_count"] == 0
-        assert doc["active_job_count"] == 0
-
-        filters_payload = json.loads(doc["filters_json"])
-        assert filters_payload == {
-            "anyCompany": True,
-            "locationIds": [2658434],
-            "locationSlugs": ["switzerland"],
-            "occupationIds": [36, 105],
-            "occupationSlugs": ["account-executive", "sales-manager"],
-        }
-
-    async def test_filter_id_resolution_falls_back_to_supabase_when_local_is_empty(self):
-        watchlist_id = "4ce80d85-2631-47e9-922e-e345e5551afe"
-        created_at = datetime(2026, 7, 6, 12, 0, tzinfo=UTC)
-
-        async def supa_fetch(query: str, *args):
-            if "FROM watchlist w" in query:
-                return [
-                    _StubRecord(
-                        id=watchlist_id,
-                        slug="enterprise-sales-in-switzerland",
-                        title="Enterprise Sales in Switzerland",
-                        description=None,
-                        is_public=True,
-                        created_at=created_at,
-                        filters={
-                            "anyCompany": True,
-                            "locationSlugs": ["switzerland"],
-                            "occupationSlugs": [
-                                "account-executive",
-                                "sales-manager",
-                                "sales-engineer",
-                            ],
-                        },
-                        owner_name="Public User",
-                        owner_username="public-user",
-                    ),
-                ]
-            if "FROM location WHERE slug" in query:
-                return [_StubRecord(slug="switzerland", id=2658434)]
-            if "FROM occupation WHERE slug" in query:
-                return [
-                    _StubRecord(slug="account-executive", id=36),
-                    _StubRecord(slug="sales-manager", id=105),
-                    _StubRecord(slug="sales-engineer", id=24),
-                ]
-            if "FROM watchlist_company" in query:
-                return []
-            if "source_watchlist_id" in query:
-                return []
-            raise AssertionError(f"unexpected Supabase query: {query} {args}")
-
-        async def local_fetch(query: str, *_args):
-            if any(
-                table in query
-                for table in (
-                    "FROM location",
-                    "FROM occupation",
-                    "FROM seniority",
-                    "FROM technology",
-                )
-            ):
-                return []
-            raise AssertionError(f"unexpected local query: {query}")
-
-        supa_conn = AsyncMock()
-        supa_conn.fetch = AsyncMock(side_effect=supa_fetch)
-        local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=local_fetch)
-
-        captured_docs: list[dict] = []
-
-        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
-            captured_docs.extend(docs)
-
-        client = MagicMock()
-        with (
-            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
-            patch("src.sync._ts_bulk_delete_ids"),
-        ):
-            await sync_watchlists_typesense(supa_conn, local_conn, client)
-
-        assert len(captured_docs) == 1
-        filters_payload = json.loads(captured_docs[0]["filters_json"])
-        assert filters_payload["locationIds"] == [2658434]
-        assert filters_payload["occupationIds"] == [36, 105, 24]
-
-
-# ---------------------------------------------------------------------------
-# TestSyncLocationsTypesense
-# ---------------------------------------------------------------------------
-
-
 class _StubRecord(dict):
     """asyncpg.Record-compatible stub usable as a dict (``r["key"]``)."""
 
 
-class TestSyncWatchlistsTypesense:
-    async def test_watchlist_sync_without_local_connection_fails_closed(self):
-        web_conn = AsyncMock()
+class TestPurgeRetiredWatchlistIndex:
+    def test_absent_alias_and_versioned_collection_are_idempotent_noops(self):
         client = MagicMock()
+        alias = MagicMock()
+        versioned = MagicMock()
+        client.collections.__getitem__.side_effect = {
+            "watchlist": alias,
+            "watchlist_v1": versioned,
+        }.__getitem__
+        alias.retrieve.side_effect = ObjectNotFound("missing")
+        versioned.retrieve.side_effect = ObjectNotFound("missing")
 
-        with pytest.raises(RuntimeError, match="requires a local Postgres connection"):
-            await sync_watchlists_typesense(web_conn, None, client)
+        assert purge_retired_watchlist_index(client) == 0
 
-        web_conn.fetch.assert_not_awaited()
+        alias.documents.search.assert_not_called()
+        versioned.documents.search.assert_not_called()
 
-    async def test_production_cardinality_uses_one_index_facet_without_postgres_aggregate(self):
-        watchlist_ids = [uuid.uuid4() for _ in range(3)]
-        company_ids = [
-            uuid.uuid5(uuid.NAMESPACE_URL, f"https://example.test/company/{index}")
-            for index in range(258)
-        ]
-        memberships = (
-            [(watchlist_ids[0], company_id) for company_id in company_ids]
-            + [(watchlist_ids[1], company_id) for company_id in company_ids]
-            + [(watchlist_ids[2], company_id) for company_id in company_ids[:225]]
-        )
-        assert len(memberships) == 741
-        now = datetime(2026, 8, 30, 12, tzinfo=UTC)
-
-        async def _web_fetch(query: str, *_args):
-            if "FROM watchlist w" in query:
-                return [
-                    _StubRecord(
-                        id=watchlist_id,
-                        slug=f"production-cardinality-{index}",
-                        title=f"Production cardinality {index}",
-                        description=None,
-                        is_public=True,
-                        created_at=now,
-                        filters={"locationSlugs": ["switzerland"]} if index == 0 else {},
-                        owner_name="Public User",
-                        owner_username="public-user",
-                    )
-                    for index, watchlist_id in enumerate(watchlist_ids)
-                ]
-            if "FROM watchlist_company" in query:
-                return [
-                    _StubRecord(watchlist_id=watchlist_id, company_id=company_id)
-                    for watchlist_id, company_id in memberships
-                ]
-            if "source_watchlist_id" in query:
-                return []
-            raise AssertionError(f"unexpected web query: {query}")
-
-        async def _local_fetch(query: str, *_args):
-            if "FROM location" in query:
-                return [_StubRecord(slug="switzerland", id=2658434)]
-            raise AssertionError(f"unexpected local query: {query}")
-
-        web_conn = AsyncMock()
-        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
-        local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=_local_fetch)
+    def test_purges_alias_and_versioned_collection_when_targets_differ(self):
         client = MagicMock()
-        visible_company_ids = company_ids[:-1]
-        client.collections["job_posting"].documents.search.return_value = {
-            "facet_counts": [
-                {
-                    "field_name": "company_id",
-                    "counts": [
-                        {"value": str(company_id), "count": 1} for company_id in visible_company_ids
-                    ],
-                }
-            ]
+        alias_reference = MagicMock()
+        alias_target = MagicMock()
+        versioned_target = MagicMock()
+        client.collections.__getitem__.side_effect = {
+            "watchlist": alias_reference,
+            "watchlist_v2": alias_target,
+            "watchlist_v1": versioned_target,
+        }.__getitem__
+        alias_reference.retrieve.return_value = {
+            "name": "watchlist_v2",
+            "num_documents": 1,
         }
-        captured_docs: list[dict] = []
+        alias_target.retrieve.return_value = {
+            "name": "watchlist_v2",
+            "num_documents": 0,
+        }
+        versioned_target.retrieve.side_effect = [
+            {"name": "watchlist_v1", "num_documents": 1},
+            {"name": "watchlist_v1", "num_documents": 0},
+        ]
+        alias_target.documents.search.return_value = {
+            "found": 1,
+            "hits": [{"document": {"id": "alias-document"}}],
+        }
+        versioned_target.documents.search.return_value = {
+            "found": 1,
+            "hits": [{"document": {"id": "versioned-document"}}],
+        }
 
-        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
-            captured_docs.extend(docs)
+        assert purge_retired_watchlist_index(client) == 2
 
-        with (
-            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
-            patch("src.sync._ts_bulk_delete_ids"),
-        ):
-            await sync_watchlists_typesense(web_conn, local_conn, client)
+        alias_reference.documents.search.assert_not_called()
+        alias_reference.documents.__getitem__.assert_not_called()
+        alias_target.documents.__getitem__.assert_called_once_with("alias-document")
+        alias_target.documents.__getitem__.return_value.delete.assert_called_once_with()
+        versioned_target.documents.__getitem__.assert_called_once_with("versioned-document")
+        versioned_target.documents.__getitem__.return_value.delete.assert_called_once_with()
 
-        local_queries = [call.args[0] for call in local_conn.fetch.await_args_list]
-        assert local_queries
-        assert all("FROM job_posting" not in query for query in local_queries)
-        assert all("COUNT(*)" not in query for query in local_queries)
-        client.collections["job_posting"].documents.search.assert_called_once_with(
+    def test_deletes_all_documents_once_when_alias_and_v1_share_a_target(self):
+        client = MagicMock()
+        alias_reference = MagicMock()
+        concrete_collection = MagicMock()
+        client.collections.__getitem__.side_effect = {
+            "watchlist": alias_reference,
+            "watchlist_v1": concrete_collection,
+        }.__getitem__
+        alias_reference.retrieve.return_value = {
+            "name": "watchlist_v1",
+            "num_documents": 2,
+        }
+        concrete_collection.retrieve.side_effect = [
+            {"name": "watchlist_v1", "num_documents": 0},
+            {"name": "watchlist_v1", "num_documents": 0},
+        ]
+        concrete_collection.documents.search.return_value = {
+            "found": 2,
+            "hits": [
+                {"document": {"id": "watchlist-one"}},
+                {"document": {"id": "watchlist-two"}},
+            ],
+        }
+
+        assert purge_retired_watchlist_index(client) == 2
+
+        alias_reference.documents.search.assert_not_called()
+        alias_reference.documents.__getitem__.assert_not_called()
+        concrete_collection.documents.search.assert_called_once_with(
             {
                 "q": "*",
                 "query_by": "title",
-                "filter_by": "is_active:true && has_content:!=false",
-                "facet_by": "company_id",
-                "max_facet_values": 100_000,
-                "facet_strategy": "exhaustive",
-                "per_page": 0,
+                "include_fields": "id",
+                "enable_overrides": False,
+                "page": 1,
+                "per_page": 250,
             }
         )
-        docs_by_id = {doc["id"]: doc for doc in captured_docs}
-        assert len(docs_by_id) == 3
-        assert docs_by_id[str(watchlist_ids[0])]["company_count"] == 258
-        assert docs_by_id[str(watchlist_ids[0])]["active_job_count"] == 257
-        assert docs_by_id[str(watchlist_ids[1])]["company_count"] == 258
-        assert docs_by_id[str(watchlist_ids[1])]["active_job_count"] == 257
-        assert docs_by_id[str(watchlist_ids[2])]["company_count"] == 225
-        assert docs_by_id[str(watchlist_ids[2])]["active_job_count"] == 225
-
-    async def test_empty_company_membership_skips_posting_facet(self):
-        watchlist_id = uuid.uuid4()
-        now = datetime(2026, 8, 30, 12, tzinfo=UTC)
-
-        async def _web_fetch(query: str, *_args):
-            if "FROM watchlist w" in query:
-                return [
-                    _StubRecord(
-                        id=watchlist_id,
-                        slug="keywords-only",
-                        title="Keywords only",
-                        description=None,
-                        is_public=True,
-                        created_at=now,
-                        filters={"keywords": ["python"]},
-                        owner_name="Public User",
-                        owner_username="public-user",
-                    )
-                ]
-            if "FROM watchlist_company" in query or "source_watchlist_id" in query:
-                return []
-            raise AssertionError(f"unexpected web query: {query}")
-
-        web_conn = AsyncMock()
-        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
-        local_conn = AsyncMock()
-        client = MagicMock()
-        captured_docs: list[dict] = []
-
-        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
-            captured_docs.extend(docs)
-
-        with (
-            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
-            patch("src.sync._ts_bulk_delete_ids"),
-        ):
-            await sync_watchlists_typesense(web_conn, local_conn, client)
-
-        client.collections["job_posting"].documents.search.assert_not_called()
-        assert captured_docs[0]["company_count"] == 0
-        assert captured_docs[0]["active_job_count"] == 0
-
-    async def test_company_facet_failure_prevents_watchlist_write_and_prune(self):
-        watchlist_id = uuid.uuid4()
-        company_id = uuid.uuid4()
-        now = datetime(2026, 8, 30, 12, tzinfo=UTC)
-
-        async def _web_fetch(query: str, *_args):
-            if "FROM watchlist w" in query:
-                return [
-                    _StubRecord(
-                        id=watchlist_id,
-                        slug="blocked-facet",
-                        title="Blocked facet",
-                        description=None,
-                        is_public=True,
-                        created_at=now,
-                        filters={},
-                        owner_name="Public User",
-                        owner_username="public-user",
-                    )
-                ]
-            if "FROM watchlist_company" in query:
-                return [_StubRecord(watchlist_id=watchlist_id, company_id=company_id)]
-            raise AssertionError(f"unexpected web query: {query}")
-
-        web_conn = AsyncMock()
-        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
-        local_conn = AsyncMock()
-        client = MagicMock()
-        client.collections["job_posting"].documents.search.side_effect = TimeoutError(
-            "facet unavailable"
+        assert [
+            call.args[0] for call in concrete_collection.documents.__getitem__.call_args_list
+        ] == [
+            "watchlist-one",
+            "watchlist-two",
+        ]
+        concrete_collection.documents.__getitem__.return_value.delete.assert_has_calls(
+            [call(), call()]
         )
 
-        with (
-            patch("src.sync._ts_bulk_upsert") as upsert,
-            patch("src.sync._ts_bulk_delete_ids") as delete_ids,
-            pytest.raises(TimeoutError, match="facet unavailable"),
-        ):
-            await sync_watchlists_typesense(web_conn, local_conn, client)
-
-        local_conn.fetch.assert_not_awaited()
-        upsert.assert_not_called()
-        delete_ids.assert_not_called()
-
-    async def test_malformed_company_facet_prevents_watchlist_write_and_prune(self):
-        watchlist_id = uuid.uuid4()
-        company_id = uuid.uuid4()
-        now = datetime(2026, 8, 30, 12, tzinfo=UTC)
-
-        async def _web_fetch(query: str, *_args):
-            if "FROM watchlist w" in query:
-                return [
-                    _StubRecord(
-                        id=watchlist_id,
-                        slug="malformed-facet",
-                        title="Malformed facet",
-                        description=None,
-                        is_public=True,
-                        created_at=now,
-                        filters={},
-                        owner_name="Public User",
-                        owner_username="public-user",
-                    )
-                ]
-            if "FROM watchlist_company" in query:
-                return [_StubRecord(watchlist_id=watchlist_id, company_id=company_id)]
-            raise AssertionError(f"unexpected web query: {query}")
-
-        web_conn = AsyncMock()
-        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
-        local_conn = AsyncMock()
+    def test_unexpected_alias_target_fails_before_any_destructive_call(self):
         client = MagicMock()
-        client.collections["job_posting"].documents.search.return_value = {}
+        alias_reference = MagicMock()
+        client.collections.__getitem__.return_value = alias_reference
+        alias_reference.retrieve.return_value = {
+            "name": "job_posting_v1",
+            "num_documents": 1,
+        }
 
-        with (
-            patch("src.sync._ts_bulk_upsert") as upsert,
-            patch("src.sync._ts_bulk_delete_ids") as delete_ids,
-            pytest.raises(RuntimeError, match="missing facet_counts"),
-        ):
-            await sync_watchlists_typesense(web_conn, local_conn, client)
+        with pytest.raises(RuntimeError, match="resolved to an unexpected collection"):
+            purge_retired_watchlist_index(client)
 
-        upsert.assert_not_called()
-        delete_ids.assert_not_called()
+        alias_reference.documents.search.assert_not_called()
+        alias_reference.documents.__getitem__.assert_not_called()
 
-    @pytest.mark.parametrize(
-        "acknowledgement",
-        [
-            pytest.param(
-                [{"success": False, "error": "document contains private details"}],
-                id="rejected",
-            ),
-            pytest.param([], id="truncated"),
-            pytest.param([{}], id="missing-success"),
-            pytest.param(["malformed"], id="non-dict-item"),
-            pytest.param({"success": True}, id="non-list-response"),
-        ],
-    )
-    async def test_invalid_scheduled_import_acknowledgement_blocks_trivial_pruning(
-        self,
-        acknowledgement,
-    ):
-        indexed_id = uuid.uuid4()
-        trivial_id = uuid.uuid4()
-        now = datetime(2026, 8, 11, 12, tzinfo=UTC)
-        rows = [
-            _StubRecord(
-                id=indexed_id,
-                slug="python-jobs",
-                title="Python jobs",
-                description=None,
-                is_public=True,
-                created_at=now,
-                filters={"keywords": ["python"]},
-                owner_name="Public User",
-                owner_username="public-user",
-            ),
-            _StubRecord(
-                id=trivial_id,
-                slug="blank-watchlist",
-                title="Blank watchlist",
-                description=None,
-                is_public=True,
-                created_at=now,
-                filters={},
-                owner_name="Public User",
-                owner_username="public-user",
-            ),
+    def test_enumerates_every_document_across_multiple_pages(self):
+        client = MagicMock()
+        collection = MagicMock()
+        client.collections.__getitem__.return_value = collection
+        collection.retrieve.side_effect = [
+            {"name": "watchlist_v1", "num_documents": 251},
+            {"name": "watchlist_v1", "num_documents": 0},
+            {"name": "watchlist_v1", "num_documents": 0},
+        ]
+        collection.documents.search.side_effect = [
+            {
+                "found": 251,
+                "hits": [{"document": {"id": f"watchlist-{index}"}} for index in range(250)],
+            },
+            {
+                "found": 251,
+                "hits": [{"document": {"id": "watchlist-250"}}],
+            },
         ]
 
-        async def _web_fetch(query: str, *_args):
-            if "FROM watchlist w" in query:
-                return rows
-            if "FROM watchlist_company" in query or "source_watchlist_id" in query:
-                return []
-            raise AssertionError(f"unexpected web query: {query}")
+        assert purge_retired_watchlist_index(client) == 251
 
-        web_conn = AsyncMock()
-        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
-        local_conn = AsyncMock()
+        assert collection.documents.search.call_count == 2
+        assert collection.documents.search.call_args_list[1].args[0]["page"] == 2
+        assert collection.documents.__getitem__.call_count == 251
+
+    def test_empty_index_is_an_idempotent_noop(self):
         client = MagicMock()
-        client.collections["watchlist"].documents.import_.return_value = acknowledgement
+        collection = MagicMock()
+        client.collections.__getitem__.return_value = collection
+        collection.retrieve.return_value = {
+            "name": "watchlist_v1",
+            "num_documents": 0,
+        }
 
-        with (
-            patch("src.sync._ts_bulk_delete_ids") as delete_ids,
-            pytest.raises(
-                RuntimeError,
-                match=(
-                    "collection=watchlist, action=upsert, expected_count=1, acknowledged_count="
-                ),
-            ) as exc_info,
-        ):
-            await sync_watchlists_typesense(web_conn, local_conn, client)
+        assert purge_retired_watchlist_index(client) == 0
 
-        delete_ids.assert_not_called()
-        assert "private details" not in str(exc_info.value)
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()
 
-    async def test_successful_scheduled_import_acknowledgement_allows_trivial_pruning(self):
-        indexed_id = uuid.uuid4()
-        trivial_id = uuid.uuid4()
-        now = datetime(2026, 8, 11, 12, tzinfo=UTC)
-        rows = [
-            _StubRecord(
-                id=indexed_id,
-                slug="python-jobs",
-                title="Python jobs",
-                description=None,
-                is_public=True,
-                created_at=now,
-                filters={"keywords": ["python"]},
-                owner_name="Public User",
-                owner_username="public-user",
-            ),
-            _StubRecord(
-                id=trivial_id,
-                slug="blank-watchlist",
-                title="Blank watchlist",
-                description=None,
-                is_public=True,
-                created_at=now,
-                filters={},
-                owner_name="Public User",
-                owner_username="public-user",
-            ),
+    def test_count_mismatch_fails_before_deleting_any_document(self):
+        client = MagicMock()
+        collection = MagicMock()
+        client.collections.__getitem__.return_value = collection
+        collection.retrieve.return_value = {
+            "name": "watchlist_v1",
+            "num_documents": 2,
+        }
+        collection.documents.search.return_value = {
+            "found": 1,
+            "hits": [{"document": {"id": "watchlist-one"}}],
+        }
+
+        with pytest.raises(RuntimeError, match="metadata and search counts differ"):
+            purge_retired_watchlist_index(client)
+
+        collection.documents.__getitem__.assert_not_called()
+
+    def test_post_delete_non_convergence_fails_loudly(self):
+        client = MagicMock()
+        collection = MagicMock()
+        client.collections.__getitem__.return_value = collection
+        collection.retrieve.side_effect = [
+            {"name": "watchlist_v1", "num_documents": 1},
+            {"name": "watchlist_v1", "num_documents": 1},
         ]
+        collection.documents.search.return_value = {
+            "found": 1,
+            "hits": [{"document": {"id": "watchlist-one"}}],
+        }
 
-        async def _web_fetch(query: str, *_args):
-            if "FROM watchlist w" in query:
-                return rows
-            if "FROM watchlist_company" in query or "source_watchlist_id" in query:
-                return []
-            raise AssertionError(f"unexpected web query: {query}")
+        with pytest.raises(RuntimeError, match="purge did not converge"):
+            purge_retired_watchlist_index(client)
 
-        web_conn = AsyncMock()
-        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
-        local_conn = AsyncMock()
-        client = MagicMock()
-        client.collections["watchlist"].documents.import_.return_value = [{"success": True}]
-
-        with patch("src.sync._ts_bulk_delete_ids") as delete_ids:
-            await sync_watchlists_typesense(web_conn, local_conn, client)
-
-        delete_ids.assert_called_once_with(client, "watchlist", [str(trivial_id)])
+        collection.documents.__getitem__.assert_called_once_with("watchlist-one")
 
 
 def _make_loc_row(
@@ -3393,7 +3014,6 @@ class TestSyncCompaniesTypesense:
     async def test_company_failure_propagates_from_typesense_orchestrator(self):
         client = MagicMock()
         local_conn = AsyncMock()
-        web_conn = AsyncMock()
 
         with (
             patch("src.sync.sync_locations_typesense", new_callable=AsyncMock),
@@ -3407,12 +3027,11 @@ class TestSyncCompaniesTypesense:
             ),
             pytest.raises(CompanyTypesenseSyncError, match="company exact sync"),
         ):
-            await sync_typesense(local_conn, web_conn, client)
+            await sync_typesense(local_conn, client)
 
     async def test_empty_authority_propagates_from_typesense_orchestrator(self):
         client, collection, _remote_ids, _deleted_ids = _company_typesense_client({"co-stale"})
         local_conn = _company_connection([])
-        web_conn = AsyncMock()
 
         with (
             patch("src.sync.sync_locations_typesense", new_callable=AsyncMock),
@@ -3421,7 +3040,7 @@ class TestSyncCompaniesTypesense:
             patch("src.sync.sync_technologies_typesense", new_callable=AsyncMock),
             pytest.raises(CompanyTypesenseSyncError, match="company exact sync"),
         ):
-            await sync_typesense(local_conn, web_conn, client)
+            await sync_typesense(local_conn, client)
 
         collection.retrieve.assert_not_called()
         collection.documents.search.assert_not_called()

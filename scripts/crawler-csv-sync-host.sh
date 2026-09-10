@@ -620,11 +620,28 @@ PY
 }
 
 build_runtime_env() {
-  local release="$1" key
+  local release="$1" key retained_web_database_url
   local -a required_env=(
-    LOCAL_DATABASE_URL WEB_DATABASE_URL TYPESENSE_HOST TYPESENSE_PORT
+    LOCAL_DATABASE_URL TYPESENSE_HOST TYPESENSE_PORT
     TYPESENSE_PROTOCOL TYPESENSE_OPERATIONS_KEY
-  ) matches=()
+  ) matches=() retained_web_database_urls=()
+  # Legacy release snapshots may retain the web-owned credential because their
+  # sync implementation still opens that database. Current release snapshots
+  # omit it, so ordinary post-cutover syncs remain credential-free.
+  mapfile -t retained_web_database_urls < <(
+    sed -n 's/^WEB_DATABASE_URL=//p' "$release/environment.env"
+  )
+  if (( ${#retained_web_database_urls[@]} > 1 )); then
+    echo "ERROR: retained web database credential is duplicated for CSV sync" >&2
+    return 1
+  fi
+  if (( ${#retained_web_database_urls[@]} == 1 )); then
+    retained_web_database_url="${retained_web_database_urls[0]}"
+    [[ -n "$retained_web_database_url" ]] || {
+      echo "ERROR: retained web database credential is empty for CSV sync" >&2
+      return 1
+    }
+  fi
   RUNTIME_ENV="$(mktemp "${RUNTIME_ENV_ROOT}/jobseek-csv-sync-env.XXXXXX")"
   chmod 0600 "$RUNTIME_ENV"
   for key in "${required_env[@]}"; do
@@ -635,6 +652,9 @@ build_runtime_env() {
     fi
     printf '%s\n' "${matches[0]}" >>"$RUNTIME_ENV"
   done
+  if (( ${#retained_web_database_urls[@]} == 1 )); then
+    printf 'WEB_DATABASE_URL=%s\n' "$retained_web_database_url" >>"$RUNTIME_ENV"
+  fi
   printf '%s\n' \
     'CRAWLER_DB_ROLE=csv-sync' \
     'CRAWLER_DB_POOL_MIN=0' \

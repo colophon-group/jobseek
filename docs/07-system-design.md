@@ -42,7 +42,7 @@ Current design of all major subsystems across the crawler and web apps.
 ```
 # Crawler
 LOCAL_DATABASE_URL              # Local Postgres (crawler's authoritative DB)
-WEB_DATABASE_URL                # Optional web-owned watchlist boundary for explicit sync/refresh jobs
+WEB_DATABASE_URL                # Exceptional ops only: protected backup/taxonomy repair or retained legacy rollback; absent from normal crawler runtimes
 REDIS_URL                       # Local Redis (redis://localhost:6379/0)
 R2_ENDPOINT_URL                 # S3-compatible endpoint
 R2_ACCESS_KEY_ID                # R2 API token key ID

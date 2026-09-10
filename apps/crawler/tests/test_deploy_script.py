@@ -247,7 +247,7 @@ def test_operational_sync_entrypoints_are_local_and_typesense_only() -> None:
     assert "--legacy-mirror" not in sync_host
 
 
-def test_production_env_omits_crawler_mirror_and_scopes_web_database() -> None:
+def test_production_env_omits_all_web_database_credentials() -> None:
     script = DEPLOY_SH.read_text()
     workflow = DEPLOY_WORKFLOW.read_text()
     compose = yaml.safe_load(COMPOSE_FILE.read_text())
@@ -255,9 +255,18 @@ def test_production_env_omits_crawler_mirror_and_scopes_web_database() -> None:
 
     assert re.search(r"^DATABASE_URL=", script, re.MULTILINE) is None
     assert "DATABASE_URL_UNPOOLED" not in script
-    assert "WEB_DATABASE_URL=${WEB_DATABASE_URL}" in script
+    assert "WEB_DATABASE_URL=${WEB_DATABASE_URL}" not in script
+    required = script.partition("required_vars=(")[2].partition(")")[0]
+    assert "WEB_DATABASE_URL" not in required
     assert "JOBSEEK_DEPLOY_REVISION=${JOBSEEK_DEPLOY_REVISION}" in script
-    assert "WEB_DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}" in workflow
+    assert "WEB_DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}" not in workflow
+    deploy_step = next(
+        step
+        for step in yaml.safe_load(workflow)["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Deploy via SSH"
+    )
+    assert "WEB_DATABASE_URL" not in deploy_step["with"]["envs"].split(",")
+    assert "WEB_DATABASE_URL" not in deploy_step["env"]
     assert "DATABASE_URL" not in common_env
     assert "WEB_DATABASE_URL" not in common_env
     for service in ("worker-1", "worker-2", "worker-3", "browser-1", "exporter", "drain"):
@@ -265,10 +274,11 @@ def test_production_env_omits_crawler_mirror_and_scopes_web_database() -> None:
         assert "DATABASE_URL" not in environment
         assert "WEB_DATABASE_URL" not in environment
 
-    # Migration/schema one-offs receive no web-owned credential. Only the
-    # explicit registry/watchlist sync invocation is allowlisted for it.
+    # Migration/schema/sync one-offs receive no web-owned credential. The only
+    # remaining deploy-script compatibility path is a rollback to an older
+    # release that still persisted and needed that value.
     forward_deploy = script[script.index("# ── Write env file") :]
-    assert forward_deploy.count("-e WEB_DATABASE_URL") == 1
+    assert "WEB_DATABASE_URL" not in forward_deploy
     assert "env -i \\\n" in script
 
 
@@ -285,13 +295,20 @@ def test_csv_sync_filters_the_host_environment_to_required_boundaries() -> None:
     assert re.search(r"\bDATABASE_URL\b", sync_host) is None
     for key in (
         "LOCAL_DATABASE_URL",
-        "WEB_DATABASE_URL",
         "TYPESENSE_HOST",
         "TYPESENSE_PORT",
         "TYPESENSE_PROTOCOL",
         "TYPESENSE_OPERATIONS_KEY",
     ):
         assert key in sync_host
+    build_runtime_env = sync_host[
+        sync_host.index("build_runtime_env() {") : sync_host.index("sync_release_data() {")
+    ]
+    required_env = build_runtime_env.partition("local -a required_env=(")[2].partition(")")[0]
+    assert "WEB_DATABASE_URL" not in required_env
+    assert "sed -n 's/^WEB_DATABASE_URL=//p'" in build_runtime_env
+    assert "retained web database credential is duplicated" in build_runtime_env
+    assert "retained web database credential is empty" in build_runtime_env
 
 
 def test_csv_sync_requires_the_committed_runtime_contract_before_publication() -> None:
@@ -372,6 +389,8 @@ def _create_v3_release(
     runtime_contract: str,
     revision: str,
     board_value: str,
+    *,
+    web_database_url: str | None = None,
 ) -> tuple[Path, str]:
     release = release_root / name
     release.mkdir(parents=True)
@@ -379,22 +398,18 @@ def _create_v3_release(
     environment = release / "environment.env"
     success = release / "success.env"
     compose.write_text("services: {}\n", encoding="utf-8")
-    environment.write_text(
-        "\n".join(
-            (
-                "CRAWLER_IMAGE_REF=ghcr.io/colophon-group/jobseek-crawler@sha256:" + "b" * 64,
-                f"JOBSEEK_RUNTIME_CONTRACT_SHA256={runtime_contract}",
-                "LOCAL_DATABASE_URL=postgresql://local",
-                "WEB_DATABASE_URL=postgresql://web",
-                "TYPESENSE_HOST=typesense",
-                "TYPESENSE_PORT=8108",
-                "TYPESENSE_PROTOCOL=http",
-                "TYPESENSE_OPERATIONS_KEY=secret",
-                "",
-            )
-        ),
-        encoding="utf-8",
-    )
+    environment_lines = [
+        "CRAWLER_IMAGE_REF=ghcr.io/colophon-group/jobseek-crawler@sha256:" + "b" * 64,
+        f"JOBSEEK_RUNTIME_CONTRACT_SHA256={runtime_contract}",
+        "LOCAL_DATABASE_URL=postgresql://local",
+        "TYPESENSE_HOST=typesense",
+        "TYPESENSE_PORT=8108",
+        "TYPESENSE_PROTOCOL=http",
+        "TYPESENSE_OPERATIONS_KEY=secret",
+    ]
+    if web_database_url is not None:
+        environment_lines.append(f"WEB_DATABASE_URL={web_database_url}")
+    environment.write_text("\n".join((*environment_lines, "")), encoding="utf-8")
     environment.chmod(0o600)
     success.write_text(f"JOBSEEK_RUNTIME_CONTRACT_SHA256={runtime_contract}\n", encoding="utf-8")
     data = release / "data"
@@ -737,9 +752,13 @@ def _install_csv_host_docker(binary_dir: Path) -> None:
         "        if not (Path(__file__).parent / f'omit-{key}').exists(): print(values[key])\n"
         "elif args[:1] == ['run']:\n"
         "    log = os.environ.get('TEST_CSV_SYNC_LOG')\n"
+        "    env_log = os.environ.get('TEST_CSV_SYNC_ENV_LOG')\n"
         "    if log:\n"
         "        volume = next((item for item in args if item.endswith(':/app/data:ro')), '')\n"
         "        Path(log).write_text(volume.split(':', 1)[0] + '\\n')\n"
+        "    if env_log:\n"
+        "        env_file = Path(args[args.index('--env-file') + 1])\n"
+        "        Path(env_log).write_text(env_file.read_text())\n"
         "else:\n"
         "    raise AssertionError(args)\n",
     )
@@ -848,6 +867,7 @@ def test_legacy_format2_bootstrap_attests_old_runtime_and_is_idempotent(
     env = _csv_host_test_environment(tmp_path, release_root, active, live_env, candidates)
     _install_csv_host_docker(tmp_path / "bin")
     env["TEST_CSV_SYNC_LOG"] = str(tmp_path / "sync.log")
+    env["TEST_CSV_SYNC_ENV_LOG"] = str(tmp_path / "sync-env.log")
     candidate_id, data_contract, archive_sha = _create_csv_candidate(
         candidates,
         previous_revision,
@@ -892,6 +912,10 @@ def test_legacy_format2_bootstrap_attests_old_runtime_and_is_idempotent(
     assert Path(env["TEST_CSV_SYNC_LOG"]).read_text(encoding="utf-8").strip() == str(
         bridged / "data"
     )
+    sync_environment = Path(env["TEST_CSV_SYNC_ENV_LOG"]).read_text(encoding="utf-8")
+    assert sync_environment.count("WEB_DATABASE_URL=postgresql://web\n") == 1
+    assert "postgresql://web" not in first.stdout
+    assert "postgresql://web" not in first.stderr
     assert not (candidates / candidate_id).exists()
 
     # A workflow retry re-copies the same immutable archive. Once the bridge
@@ -911,6 +935,188 @@ def test_legacy_format2_bootstrap_attests_old_runtime_and_is_idempotent(
     assert retry.returncode == 0, retry.stderr
     assert active.resolve() == bridged
     assert not (candidates / candidate_id).exists()
+
+
+@pytest.mark.parametrize("action", ["restore-previous", "promote-target"])
+def test_interrupted_csv_publication_scopes_retained_web_credential_to_recovery(
+    tmp_path: Path,
+    action: str,
+) -> None:
+    release_root = tmp_path / "releases"
+    candidates = tmp_path / "candidates"
+    candidates.mkdir()
+    runtime_contract = "1" * 64
+    credential = "postgresql://legacy-recovery-only"
+    previous, _ = _create_v3_release(
+        release_root,
+        "release-previous.legacy",
+        runtime_contract,
+        "a" * 40,
+        "previous",
+        web_database_url=credential if action == "restore-previous" else None,
+    )
+    target, _ = _create_v3_release(
+        release_root,
+        "release-target.legacy",
+        runtime_contract,
+        "b" * 40,
+        "target",
+        web_database_url=credential if action == "promote-target" else None,
+    )
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(previous)
+    live_env = tmp_path / ".env"
+    shutil.copyfile(previous / "environment.env", live_env)
+    live_env.chmod(0o600)
+    journal = tmp_path / "journal"
+    journal.write_text(
+        "\n".join(
+            (
+                "PUBLICATION_FORMAT_VERSION=1",
+                "SYNC_SUCCEEDED=0",
+                f"RECOVERY_ACTION={action}",
+                f"PREVIOUS_RELEASE={previous}",
+                f"TARGET_RELEASE={target}",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    journal.chmod(0o600)
+    env = _csv_host_test_environment(tmp_path, release_root, active, live_env, candidates)
+    _install_csv_host_docker(tmp_path / "bin")
+    sync_environment_log = tmp_path / "sync-environment.log"
+    env["TEST_CSV_SYNC_ENV_LOG"] = str(sync_environment_log)
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    result = subprocess.run(
+        [bash, str(CSV_SYNC_HOST), "--recover-only"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert not journal.exists()
+    assert active.resolve() == (target if action == "promote-target" else previous)
+    sync_environment = sync_environment_log.read_text(encoding="utf-8")
+    assert sync_environment.count(f"WEB_DATABASE_URL={credential}\n") == 1
+    assert credential not in result.stdout
+    assert credential not in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("web_database_lines", "expected_error"),
+    [
+        (
+            "WEB_DATABASE_URL=postgresql://one\nWEB_DATABASE_URL=postgresql://two\n",
+            "retained web database credential is duplicated",
+        ),
+        ("WEB_DATABASE_URL=\n", "retained web database credential is empty"),
+    ],
+)
+def test_csv_recovery_rejects_malformed_retained_web_credential(
+    tmp_path: Path,
+    web_database_lines: str,
+    expected_error: str,
+) -> None:
+    release_root = tmp_path / "releases"
+    candidates = tmp_path / "candidates"
+    candidates.mkdir()
+    runtime_contract = "1" * 64
+    previous, _ = _create_v3_release(
+        release_root, "release-previous.malformed", runtime_contract, "a" * 40, "previous"
+    )
+    target, _ = _create_v3_release(
+        release_root, "release-target.current", runtime_contract, "b" * 40, "target"
+    )
+    environment = previous / "environment.env"
+    environment.write_text(
+        environment.read_text(encoding="utf-8") + web_database_lines,
+        encoding="utf-8",
+    )
+    _refresh_release_snapshot_digests(previous)
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(previous)
+    live_env = tmp_path / ".env"
+    shutil.copyfile(environment, live_env)
+    live_env.chmod(0o600)
+    journal = tmp_path / "journal"
+    journal.write_text(
+        "\n".join(
+            (
+                "PUBLICATION_FORMAT_VERSION=1",
+                "SYNC_SUCCEEDED=0",
+                "RECOVERY_ACTION=restore-previous",
+                f"PREVIOUS_RELEASE={previous}",
+                f"TARGET_RELEASE={target}",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    journal.chmod(0o600)
+    env = _csv_host_test_environment(tmp_path, release_root, active, live_env, candidates)
+    _install_csv_host_docker(tmp_path / "bin")
+    sync_environment_log = tmp_path / "sync-environment.log"
+    env["TEST_CSV_SYNC_ENV_LOG"] = str(sync_environment_log)
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    result = subprocess.run(
+        [bash, str(CSV_SYNC_HOST), "--recover-only"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert result.returncode != 0
+    assert journal.exists()
+    assert not sync_environment_log.exists()
+    assert expected_error in result.stderr
+    assert "postgresql://one" not in result.stderr
+    assert "postgresql://two" not in result.stderr
+
+
+def test_current_csv_sync_runtime_environment_omits_web_credential(tmp_path: Path) -> None:
+    release_root = tmp_path / "releases"
+    candidates = tmp_path / "candidates"
+    candidates.mkdir()
+    runtime_contract = "1" * 64
+    current, _ = _create_v3_release(
+        release_root, "release-current", runtime_contract, "a" * 40, "current"
+    )
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(current)
+    live_env = tmp_path / ".env"
+    shutil.copyfile(current / "environment.env", live_env)
+    live_env.chmod(0o600)
+    revision = "b" * 40
+    candidate_id, data_contract, archive_sha = _create_csv_candidate(
+        candidates, revision, 81, 1, {"boards.csv": b"slug\nnext\n"}
+    )
+    env = _csv_host_test_environment(tmp_path, release_root, active, live_env, candidates)
+    _install_csv_host_docker(tmp_path / "bin")
+    sync_environment_log = tmp_path / "sync-environment.log"
+    env["TEST_CSV_SYNC_ENV_LOG"] = str(sync_environment_log)
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    result = subprocess.run(
+        [
+            bash,
+            str(CSV_SYNC_HOST),
+            revision,
+            runtime_contract,
+            data_contract,
+            candidate_id,
+            archive_sha,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "WEB_DATABASE_URL=" not in sync_environment_log.read_text(encoding="utf-8")
 
 
 def test_legacy_format1_bootstrap_rejects_any_unattested_override_without_mutation(
@@ -2187,7 +2393,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "target: /home/deploy/\n" not in workflow
 
 
-def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
+def test_previous_config_restore_uses_optional_legacy_web_secret_only_when_present(
     tmp_path: Path,
 ) -> None:
     script = DEPLOY_SH.read_text()
@@ -2202,12 +2408,6 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
         )
     ]
     env_file = tmp_path / ".env"
-    env_file.write_text(
-        "CRAWLER_IMAGE_REF="
-        f"ghcr.io/colophon-group/jobseek-crawler@sha256:{'a' * 64}\n"
-        "WEB_DATABASE_URL=postgresql://rollback-only\n",
-        encoding="utf-8",
-    )
     log = tmp_path / "calls.log"
     data_snapshot = tmp_path / "committed-b"
     data_snapshot.mkdir()
@@ -2226,7 +2426,7 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
             read_exact,
             rollback_sync,
             "rollback_compose() {",
-            '  test "$ROLLBACK_SYNC_WEB_DATABASE_URL" = "postgresql://rollback-only"',
+            '  test "$ROLLBACK_SYNC_WEB_DATABASE_URL" = "$EXPECTED_WEB_DATABASE_URL"',
             '  printf \'%s\\n\' "$*" >>"$TEST_LOG"',
             '  return "$COMPOSE_STATUS"',
             "}",
@@ -2242,7 +2442,60 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
         )
     )
 
-    for compose_status, repair_status, expected_status in ((0, 0, 0), (9, 0, 9), (0, 7, 7)):
+    image_line = f"CRAWLER_IMAGE_REF=ghcr.io/colophon-group/jobseek-crawler@sha256:{'a' * 64}\n"
+    for legacy_web_database_url in ("postgresql://rollback-only", ""):
+        env_file.write_text(
+            image_line
+            + (f"WEB_DATABASE_URL={legacy_web_database_url}\n" if legacy_web_database_url else ""),
+            encoding="utf-8",
+        )
+        for compose_status, repair_status, expected_status in (
+            (0, 0, 0),
+            (9, 0, 9),
+            (0, 7, 7),
+        ):
+            log.write_text("", encoding="utf-8")
+            result = subprocess.run(
+                [bash, "-c", harness],
+                check=False,
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "COMPOSE_STATUS": str(compose_status),
+                    "EXPECTED_WEB_DATABASE_URL": legacy_web_database_url,
+                    "REPAIR_STATUS": str(repair_status),
+                    "TEST_ENV_FILE": str(env_file),
+                    "TEST_LOG": str(log),
+                    "TEST_DATA_SNAPSHOT": str(data_snapshot),
+                    "TEST_DATA_MANIFEST": str(tmp_path / "data-files.sha256"),
+                },
+            )
+            assert result.returncode == 0, result.stderr
+            calls = log.read_text(encoding="utf-8").splitlines()
+            expected_web_arg = "-e WEB_DATABASE_URL " if legacy_web_database_url else ""
+            assert calls[0] == (
+                f"run --rm --no-deps -v {data_snapshot}:/app/data:ro "
+                f"{expected_web_arg}-e CRAWLER_DB_ROLE=rollback-sync "
+                "-e CRAWLER_DB_POOL_MIN=0 -e CRAWLER_DB_POOL_MAX=4 "
+                "worker-1 uv run --no-sync crawler sync"
+            )
+            if compose_status == 0:
+                assert calls[1] == "rollback-umantis-identity-cutover"
+                assert calls[2] == f"status={expected_status}"
+            else:
+                assert calls[1] == f"status={compose_status}"
+            assert "postgresql://rollback-only" not in result.stdout
+            assert "postgresql://rollback-only" not in result.stderr
+
+    for malformed_web_lines, expected_error in (
+        (
+            "WEB_DATABASE_URL=postgresql://one\nWEB_DATABASE_URL=postgresql://two\n",
+            "restored web database credential is duplicated",
+        ),
+        ("WEB_DATABASE_URL=\n", "restored web database credential is empty"),
+    ):
+        env_file.write_text(image_line + malformed_web_lines, encoding="utf-8")
         log.write_text("", encoding="utf-8")
         result = subprocess.run(
             [bash, "-c", harness],
@@ -2251,28 +2504,20 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
             text=True,
             env={
                 **os.environ,
-                "COMPOSE_STATUS": str(compose_status),
-                "REPAIR_STATUS": str(repair_status),
+                "COMPOSE_STATUS": "0",
+                "EXPECTED_WEB_DATABASE_URL": "",
+                "REPAIR_STATUS": "0",
                 "TEST_ENV_FILE": str(env_file),
                 "TEST_LOG": str(log),
                 "TEST_DATA_SNAPSHOT": str(data_snapshot),
                 "TEST_DATA_MANIFEST": str(tmp_path / "data-files.sha256"),
             },
         )
-        assert result.returncode == 0, result.stderr
-        calls = log.read_text(encoding="utf-8").splitlines()
-        assert calls[0] == (
-            f"run --rm --no-deps -v {data_snapshot}:/app/data:ro -e WEB_DATABASE_URL "
-            "-e CRAWLER_DB_ROLE=rollback-sync -e CRAWLER_DB_POOL_MIN=0 "
-            "-e CRAWLER_DB_POOL_MAX=4 worker-1 uv run --no-sync crawler sync"
-        )
-        if compose_status == 0:
-            assert calls[1] == "rollback-umantis-identity-cutover"
-            assert calls[2] == f"status={expected_status}"
-        else:
-            assert calls[1] == f"status={compose_status}"
-        assert "postgresql://rollback-only" not in result.stdout
-        assert "postgresql://rollback-only" not in result.stderr
+        assert result.returncode == 0
+        assert log.read_text(encoding="utf-8").splitlines() == ["status=1"]
+        assert expected_error in result.stderr
+        assert "postgresql://one" not in result.stderr
+        assert "postgresql://two" not in result.stderr
 
 
 def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:

@@ -19,7 +19,6 @@ import asyncio
 import hashlib
 import json
 import time
-from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -40,7 +39,7 @@ from src.config import settings
 from src.core.monitors import api_monitor_types, monitor_needs_browser
 from src.core.occupation_resolve import match_occupation, occupation_locale_columns
 from src.core.scrapers import scraper_needs_browser
-from src.db import close_all_pools, create_local_pool, create_pool, create_web_pool
+from src.db import close_all_pools, create_local_pool, create_pool
 from src.redis_queue import (
     MonitorSchedule,
     close_redis,
@@ -1900,41 +1899,6 @@ def _ts_bulk_upsert(
     )
 
 
-def _ts_bulk_delete_ids(
-    client: typesense.Client,
-    collection: str,
-    ids: list[str],
-) -> None:
-    """Delete documents by id from a Typesense collection.
-
-    Iterates per-id (cheap at the scale this is used — excluding trivial
-    watchlists). 404s are expected for ids that were never indexed.
-    """
-    if not ids:
-        return
-    deleted = 0
-    for doc_id in ids:
-        try:
-            client.collections[collection].documents[doc_id].delete()
-            deleted += 1
-        except ObjectNotFound:
-            # Doc may never have been indexed — that's the whole point.
-            pass
-        except Exception as exc:
-            log.warning(
-                "typesense.delete.error",
-                collection=collection,
-                doc_id=doc_id,
-                error=str(exc),
-            )
-    log.info(
-        "typesense.delete.done",
-        collection=collection,
-        requested=len(ids),
-        deleted=deleted,
-    )
-
-
 # ---------------------------------------------------------------------------
 # Typesense taxonomy sync
 # ---------------------------------------------------------------------------
@@ -2670,358 +2634,147 @@ async def sync_companies_typesense(
 
 
 # ---------------------------------------------------------------------------
-# Typesense watchlist sync
+# Retired Typesense watchlist discovery cleanup
 # ---------------------------------------------------------------------------
 
 
-def _is_trivial_watchlist(filters: dict | None, company_count: int) -> bool:
-    """Mirror of the web app's ``isTrivialWatchlist``.
-
-    A watchlist is "trivial" when it tracks no companies and carries no
-    meaningful filters — effectively a blank shell. We exclude these from
-    the public ``watchlist`` collection so they don't dilute search/popular
-    listings. ``anyCompany`` and ``salaryCurrency`` alone don't count
-    (they're defaults/prefs). Keep in sync with
-    ``apps/web/src/lib/watchlist-utils.ts``.
-    """
-    if company_count > 0:
-        return False
-    f = filters or {}
-    return not (
-        f.get("keywords")
-        or f.get("locationSlugs")
-        or f.get("occupationSlugs")
-        or f.get("senioritySlugs")
-        or f.get("technologySlugs")
-        or f.get("workMode")
-        or f.get("employmentType")
-        or f.get("salaryMin") is not None
-        or f.get("salaryMax") is not None
-        or f.get("experienceMin") is not None
-        or f.get("experienceMax") is not None
-    )
+_TYPESENSE_WATCHLIST_ID_PAGE_SIZE = 250
 
 
-def _parse_watchlist_filters(raw_filters) -> dict | None:
-    if isinstance(raw_filters, str):
-        try:
-            parsed = json.loads(raw_filters)
-        except (ValueError, TypeError):
-            return None
-        return parsed if isinstance(parsed, dict) else None
-    return raw_filters if isinstance(raw_filters, dict) else None
-
-
-def _string_list(value) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    return [item for item in value if isinstance(item, str) and item]
-
-
-def _number_value(value) -> int | float | None:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
-    return value
-
-
-def _resolved_ids_for_slugs(slugs: list[str], id_by_slug: dict[str, int]) -> list[int]:
-    seen: set[int] = set()
-    result: list[int] = []
-    for slug in slugs:
-        resolved_id = id_by_slug.get(slug)
-        if resolved_id is None or resolved_id in seen:
-            continue
-        seen.add(resolved_id)
-        result.append(resolved_id)
-    return result
-
-
-def _watchlist_filters_json(
-    filters: dict | None,
-    resolved_ids: dict[str, list[int]],
-) -> str | None:
-    """Build the public, self-contained filter payload for Typesense.
-
-    Public Discover cards use this payload to compute live any-company
-    counts without hydrating ``watchlist.filters`` from Supabase/Postgres.
-    Keep the shape in sync with ``apps/web/src/lib/actions/watchlists.ts``.
-    """
-    f = filters or {}
-    payload: dict = {}
-
-    if f.get("anyCompany") is True:
-        payload["anyCompany"] = True
-
-    for key in (
-        "keywords",
-        "locationSlugs",
-        "occupationSlugs",
-        "senioritySlugs",
-        "technologySlugs",
-        "workMode",
-        "employmentType",
-    ):
-        values = _string_list(f.get(key))
-        if values:
-            payload[key] = values
-
-    salary_currency = f.get("salaryCurrency")
-    if isinstance(salary_currency, str) and salary_currency:
-        payload["salaryCurrency"] = salary_currency
-
-    for key in ("salaryMin", "salaryMax", "experienceMin", "experienceMax"):
-        value = _number_value(f.get(key))
-        if value is not None:
-            payload[key] = value
-
-    for key, values in resolved_ids.items():
-        if values:
-            payload[key] = values
-
-    if not payload:
-        return None
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
-
-
-async def _resolve_watchlist_filter_ids(
-    conn: asyncpg.Connection,
-    filters_by_watchlist: dict[str, dict | None],
+def _fetch_retired_watchlist_ids(
+    collection: Any,
     *,
-    fallback_conn: asyncpg.Connection | None = None,
-) -> dict[str, dict[str, list[int]]]:
-    """Resolve watchlist filter slugs to numeric taxonomy IDs in batches."""
-    location_slugs: set[str] = set()
-    occupation_slugs: set[str] = set()
-    seniority_slugs: set[str] = set()
-    technology_slugs: set[str] = set()
+    metadata_count: int,
+) -> set[str]:
+    """Read every legacy watchlist document before the destructive purge.
 
-    for filters in filters_by_watchlist.values():
-        f = filters or {}
-        location_slugs.update(_string_list(f.get("locationSlugs")))
-        occupation_slugs.update(_string_list(f.get("occupationSlugs")))
-        seniority_slugs.update(_string_list(f.get("senioritySlugs")))
-        technology_slugs.update(_string_list(f.get("technologySlugs")))
-
-    async def _fetch_id_map(label: str, sql: str, slugs: set[str]) -> dict[str, int]:
-        if not slugs:
-            return {}
-        use_fallback = fallback_conn is not None and fallback_conn is not conn
-        try:
-            rows = await conn.fetch(sql, sorted(slugs))
-            found = {r["slug"]: int(r["id"]) for r in rows}
-        except Exception:
-            if not use_fallback:
-                raise
-            log.warning("typesense.watchlists.filter_ids_primary_failed", taxonomy=label)
-            found = {}
-
-        missing = slugs - set(found)
-        if missing and use_fallback:
-            assert fallback_conn is not None
-            try:
-                rows = await fallback_conn.fetch(sql, sorted(missing))
-                found.update({r["slug"]: int(r["id"]) for r in rows})
-            except Exception:
-                if not found:
-                    raise
-                log.warning(
-                    "typesense.watchlists.filter_ids_fallback_failed",
-                    taxonomy=label,
-                    missing=len(missing),
-                )
-        return found
-
-    location_ids = await _fetch_id_map(
-        "location",
-        "SELECT slug, id FROM location WHERE slug = ANY($1::text[])",
-        location_slugs,
-    )
-    occupation_ids = await _fetch_id_map(
-        "occupation",
-        "SELECT slug, id FROM occupation WHERE slug = ANY($1::text[])",
-        occupation_slugs,
-    )
-    seniority_ids = await _fetch_id_map(
-        "seniority",
-        "SELECT slug, id FROM seniority WHERE slug = ANY($1::text[])",
-        seniority_slugs,
-    )
-    technology_ids = await _fetch_id_map(
-        "technology",
-        "SELECT slug, id FROM technology WHERE slug = ANY($1::text[])",
-        technology_slugs,
-    )
-
-    result: dict[str, dict[str, list[int]]] = {}
-    for wid, filters in filters_by_watchlist.items():
-        f = filters or {}
-        result[wid] = {
-            "locationIds": _resolved_ids_for_slugs(
-                _string_list(f.get("locationSlugs")),
-                location_ids,
-            ),
-            "occupationIds": _resolved_ids_for_slugs(
-                _string_list(f.get("occupationSlugs")),
-                occupation_ids,
-            ),
-            "seniorityIds": _resolved_ids_for_slugs(
-                _string_list(f.get("senioritySlugs")),
-                seniority_ids,
-            ),
-            "technologyIds": _resolved_ids_for_slugs(
-                _string_list(f.get("technologySlugs")),
-                technology_ids,
-            ),
-        }
-    return result
-
-
-async def sync_watchlists_typesense(
-    web_conn: asyncpg.Connection,
-    local_conn: asyncpg.Connection | None,
-    client: typesense.Client,
-) -> None:
-    """Sync public watchlists to the Typesense ``watchlist`` collection.
-
-    Watchlists are web-owned, so metadata and ``watchlist_company`` pairs come
-    from ``web_conn``. Active-posting counts come from the same exhaustive
-    Typesense ``company_id`` facet and web-visible filter used for company
-    cards, then are aggregated per watchlist in Python. Shared company UUIDs
-    make that cross-system aggregation exact. This avoids both the retired web
-    posting mirror and a local Postgres bitmap-heap plan that exceeds the
-    scheduled statement timeout at production cardinality. A missing local
-    connection still fails closed because local taxonomy authority is required
-    to resolve watchlist filter ids.
-
-    Trivial watchlists (no companies, no meaningful filters) are deleted
-    from Typesense rather than upserted. Import acknowledgements are validated
-    before those dependent deletes, so a partial scheduled refresh cannot
-    prune against an incompletely updated watchlist collection.
+    Pagination and counts are checked strictly so an incomplete read cannot be
+    mistaken for a successful retirement. The caller deletes only after this
+    function has converged on the collection metadata count.
     """
-    if local_conn is None:
-        raise RuntimeError("watchlist sync requires a local Postgres connection")
-
-    rows = await web_conn.fetch(
-        """
-        SELECT w.id, w.slug, w.title, w.description,
-               w.is_public, w.created_at, w.filters,
-               u.name AS owner_name, u.username AS owner_username
-        FROM watchlist w
-        JOIN "user" u ON u.id = w.user_id
-        WHERE w.is_public = true
-        """
-    )
-    if not rows:
-        log.info("typesense.watchlists.empty")
-        return
-
-    watchlist_ids = [r["id"] for r in rows]
-    parsed_filters_by_id = {str(r["id"]): _parse_watchlist_filters(r["filters"]) for r in rows}
-    try:
-        resolved_filter_ids_by_id = await _resolve_watchlist_filter_ids(
-            local_conn,
-            parsed_filters_by_id,
-            fallback_conn=web_conn,
+    found: int | None = None
+    returned_count = 0
+    seen_ids: set[str] = set()
+    page = 1
+    while returned_count < metadata_count:
+        response = collection.documents.search(
+            {
+                "q": "*",
+                "query_by": "title",
+                "include_fields": "id",
+                "enable_overrides": False,
+                "page": page,
+                "per_page": _TYPESENSE_WATCHLIST_ID_PAGE_SIZE,
+            }
         )
-    except Exception:
-        log.exception("typesense.watchlists.filter_ids_failed")
-        resolved_filter_ids_by_id = {}
+        if not isinstance(response, dict):
+            raise RuntimeError("Typesense watchlist search returned an invalid response")
+        response_found = response.get("found")
+        hits = response.get("hits")
+        if (
+            not isinstance(response_found, int)
+            or isinstance(response_found, bool)
+            or response_found < 0
+            or not isinstance(hits, list)
+        ):
+            raise RuntimeError("Typesense watchlist search returned invalid pagination")
+        if found is None:
+            found = response_found
+        elif response_found != found:
+            raise RuntimeError("Typesense watchlist count changed during pagination")
+        if response_found != metadata_count:
+            raise RuntimeError("Typesense watchlist metadata and search counts differ")
 
-    wc_pairs = await web_conn.fetch(
-        """
-        SELECT watchlist_id, company_id
-        FROM watchlist_company
-        WHERE watchlist_id = ANY($1::uuid[])
-        """,
-        watchlist_ids,
-    )
-    company_counts: dict[str, int] = defaultdict(int)
-    for r in wc_pairs:
-        company_counts[str(r["watchlist_id"])] += 1
+        remaining = response_found - returned_count
+        expected_hits = min(_TYPESENSE_WATCHLIST_ID_PAGE_SIZE, remaining)
+        if len(hits) != expected_hits:
+            raise RuntimeError("Typesense watchlist pagination returned an invalid page size")
 
-    loop = asyncio.get_event_loop()
-    per_company: dict[str, int] = {}
-    if wc_pairs:
-        per_company = await loop.run_in_executor(
-            None,
-            _fetch_facet_counts,
-            client,
-            "company_id",
-            _POSTING_BASE_FILTER,
-        )
-    job_counts: dict[str, int] = defaultdict(int)
-    for r in wc_pairs:
-        job_counts[str(r["watchlist_id"])] += per_company.get(str(r["company_id"]), 0)
+        for hit in hits:
+            if not isinstance(hit, dict) or not isinstance(hit.get("document"), dict):
+                raise RuntimeError("Typesense watchlist search returned an invalid hit")
+            document_id = hit["document"].get("id")
+            if not isinstance(document_id, str) or not document_id:
+                raise RuntimeError("Typesense watchlist search returned an invalid id")
+            if document_id in seen_ids:
+                raise RuntimeError("Typesense watchlist pagination returned a duplicate id")
+            seen_ids.add(document_id)
 
-    # Mirror counts
-    mirror_count_rows = await web_conn.fetch(
-        """
-        SELECT source_watchlist_id, COUNT(*) AS cnt
-        FROM watchlist
-        WHERE source_watchlist_id = ANY($1::uuid[])
-        GROUP BY 1
-        """,
-        watchlist_ids,
-    )
-    mirror_counts = {str(r["source_watchlist_id"]): r["cnt"] for r in mirror_count_rows}
+        returned_count += len(hits)
+        page += 1
 
-    docs: list[dict] = []
-    trivial_ids: list[str] = []
-    for r in rows:
-        wid = str(r["id"])
-        created_ts = int(r["created_at"].timestamp()) if r["created_at"] else 0
-        company_count = company_counts.get(wid, 0)
+    if len(seen_ids) != metadata_count:
+        raise RuntimeError("Typesense watchlist pagination count did not converge")
+    return seen_ids
 
-        filters = parsed_filters_by_id.get(wid)
 
-        if _is_trivial_watchlist(filters, company_count):
-            trivial_ids.append(wid)
+def purge_retired_watchlist_index(client: typesense.Client) -> int:
+    """Delete every document from the retired watchlist discovery index.
+
+    This is deliberately an explicit operator action, not part of ordinary
+    sync or scheduled refreshes. It checks both the alias and the known
+    versioned collection so an absent alias cannot leave documents that a
+    later setup run would accidentally expose again. Re-running the command on
+    an absent or already-empty collection is safe.
+    """
+    seen_collection_names: set[str] = set()
+    deleted = 0
+
+    for reference_name in ("watchlist", "watchlist_v1"):
+        reference_collection = client.collections[reference_name]
+        try:
+            metadata = reference_collection.retrieve()
+        except ObjectNotFound:
             continue
+        if not isinstance(metadata, dict):
+            raise RuntimeError("Typesense watchlist collection returned invalid metadata")
+        collection_name = metadata.get("name")
+        metadata_count = metadata.get("num_documents")
+        if not isinstance(collection_name, str) or not collection_name:
+            raise RuntimeError("Typesense watchlist collection returned an invalid name")
+        version_suffix = collection_name.removeprefix("watchlist_v")
+        if not version_suffix.isdigit():
+            raise RuntimeError("Typesense watchlist alias resolved to an unexpected collection")
+        if (
+            not isinstance(metadata_count, int)
+            or isinstance(metadata_count, bool)
+            or metadata_count < 0
+        ):
+            raise RuntimeError("Typesense watchlist collection returned an invalid count")
+        # Resolve aliases exactly once, then pin every destructive operation to
+        # the concrete collection name. A concurrent alias swap cannot retarget
+        # enumeration, deletion, or convergence verification.
+        collection = client.collections[collection_name]
+        if collection_name in seen_collection_names:
+            continue
+        seen_collection_names.add(collection_name)
 
-        doc: dict = {
-            "id": wid,
-            "slug": r["slug"] or "",
-            "title": r["title"] or "",
-            "owner_name": r["owner_name"] or "",
-            "company_count": company_count,
-            "active_job_count": job_counts.get(wid, 0),
-            "mirror_count": mirror_counts.get(wid, 0),
-            "is_featured": (r["owner_username"] or "").lower() == "colophongroup",
-            "has_description": bool(r["description"]),
-            "created_at": created_ts,
-            "is_public": True,
-        }
-        if r["description"]:
-            doc["description"] = r["description"]
-        if r["owner_username"]:
-            doc["owner_username"] = r["owner_username"]
-        filters_json = _watchlist_filters_json(
-            filters,
-            resolved_filter_ids_by_id.get(wid, {}),
+        document_ids = _fetch_retired_watchlist_ids(
+            collection,
+            metadata_count=metadata_count,
         )
-        if filters_json:
-            doc["filters_json"] = filters_json
-        docs.append(doc)
+        for document_id in sorted(document_ids):
+            try:
+                collection.documents[document_id].delete()
+                deleted += 1
+            except ObjectNotFound:
+                # A concurrent cleanup is compatible with the desired state.
+                pass
 
-    await loop.run_in_executor(
-        None,
-        partial(
-            _ts_bulk_upsert,
-            client,
-            "watchlist",
-            docs,
-            fail_on_error=True,
-        ),
-    )
-    # Drop any trivial watchlists that were previously indexed (e.g. pre-#2177
-    # or a web-side write hook that got skipped). This only touches Typesense;
-    # the rows still exist in Postgres for their owner.
-    await loop.run_in_executor(None, _ts_bulk_delete_ids, client, "watchlist", trivial_ids)
+        try:
+            converged = collection.retrieve()
+        except ObjectNotFound:
+            # Dropping the collection concurrently is also a successful purge.
+            continue
+        if not isinstance(converged, dict) or converged.get("num_documents") != 0:
+            raise RuntimeError("Typesense watchlist index purge did not converge")
+
     log.info(
-        "typesense.watchlists.synced",
-        upserted=len(docs),
-        trivial_deleted=len(trivial_ids),
+        "typesense.watchlists.retired_index_purged",
+        collections=len(seen_collection_names),
+        deleted=deleted,
     )
+    return deleted
 
 
 # ---------------------------------------------------------------------------
@@ -3492,13 +3245,14 @@ async def _apply_taxonomy_renames(
 
 async def sync_typesense(
     local_conn: asyncpg.Connection,
-    web_conn: asyncpg.Connection,
     client: typesense.Client,
 ) -> None:
-    """Sync all taxonomy, company, and watchlist data to Typesense.
+    """Sync crawler-owned taxonomy and company data to Typesense.
 
     Called only after the local transaction commits. Crawler-owned collections
-    read local Postgres; only user-owned watchlists read ``web_conn``.
+    read local Postgres. The retired public-watchlist collection is never
+    repopulated by normal sync; use ``purge-retired-watchlist-index`` once to
+    remove its legacy documents.
     """
     try:
         await sync_locations_typesense(local_conn, client)
@@ -3527,11 +3281,6 @@ async def sync_typesense(
         # attach a client exception that may contain a document identifier.
         log.error("typesense.sync.companies.failed")
         raise CompanyTypesenseSyncError("Typesense company exact sync failed") from None
-
-    try:
-        await sync_watchlists_typesense(web_conn, local_conn, client)
-    except Exception:
-        log.exception("typesense.sync.watchlists.failed")
 
     # Refresh posting counts
     try:
@@ -3628,12 +3377,6 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
                     posting_company_rehomes=board_effects.posting_company_rehomes,
                 )
 
-        web_pool = None
-        if ts_client and not dry_run:
-            # Establish the provider-neutral user-data boundary before Redis
-            # is changed; a missing WEB_DATABASE_URL therefore fails closed.
-            web_pool = await create_web_pool()
-
         if not dry_run:
             await apply_board_redis_effects(board_effects)
 
@@ -3665,14 +3408,12 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
             legacy_mirror=legacy_mirror,
         )
 
-        # Typesense is a post-commit derived target. Crawler-owned collections
-        # read local Postgres; watchlists use only the provider-neutral web DB.
+        # Typesense is a post-commit derived target. All collections maintained
+        # here are crawler-owned and read local Postgres only.
         if ts_client and not dry_run:
-            assert web_pool is not None
             try:
-                async with local_pool.acquire() as local_conn, web_pool.acquire() as web_conn:
+                async with local_pool.acquire() as local_conn:
                     local_connection = cast("asyncpg.Connection", local_conn)
-                    web_connection = cast("asyncpg.Connection", web_conn)
                     if name_maps_before is not None:
                         try:
                             name_maps_after = await _snapshot_name_maps(local_connection)
@@ -3684,7 +3425,7 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
                             )
                         except Exception:
                             log.exception("typesense.rename_detection.failed")
-                    await sync_typesense(local_connection, web_connection, ts_client)
+                    await sync_typesense(local_connection, ts_client)
             except CompanyTypesenseSyncError:
                 log.exception("typesense.sync.failed")
                 raise
