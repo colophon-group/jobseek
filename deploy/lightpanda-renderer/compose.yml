@@ -61,7 +61,12 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0700
     stop_grace_period: 30s
-    restart: unless-stopped
+    restart: "on-failure:3"
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
     volumes:
       - type: bind
         source: "${RENDERER_RELEASE_DIR:?release directory is required}/pki/ca.pem"
@@ -92,6 +97,8 @@ networks:
     internal: true
     enable_ipv6: false
     attachable: false
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: isolated
     ipam:
       config:
         - subnet: 172.30.94.0/29

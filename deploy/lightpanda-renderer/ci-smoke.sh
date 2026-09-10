@@ -1,42 +1,48 @@
 #!/usr/bin/env bash
-# Native ARM64 build/start/inspect smoke with disposable test-only PKI.
+# Native ARM64 start/inspect and rollback smoke with disposable test-only PKI.
 set -euo pipefail
 set +x
 umask 077
+
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 IMAGE="${1:-}"
 SOURCE_COMMIT="${2:-}"
 [[ "$IMAGE" == jobseek-lightpanda-renderer:pr ]] || exit 2
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || exit 2
+[[ "${CI:-}" == true && "${GITHUB_ACTIONS:-}" == true ]] || exit 2
 
 ROOT=/home/deploy/.local/share/jobseek-lightpanda
-RELEASE_ID="sha-${SOURCE_COMMIT}-r1a1"
-RELEASE="$ROOT/releases/$RELEASE_ID"
+PREVIOUS_RELEASE_ID="sha-${SOURCE_COMMIT}-ci-r1a1"
+CANDIDATE_RELEASE_ID="sha-${SOURCE_COMMIT}-ci-r1a2"
+FIRST_INSTALL_RELEASE_ID="sha-${SOURCE_COMMIT}-ci-r1a3"
+PREVIOUS_RELEASE="$ROOT/releases/$PREVIOUS_RELEASE_ID"
+CANDIDATE_RELEASE="$ROOT/releases/$CANDIDATE_RELEASE_ID"
 NETWORK=jobseek-lightpanda-renderer
 CONTAINER=jobseek-lightpanda-renderer
+PROTECTED=(deploy-murmur-1 deploy-cloudflared-1)
 work=""
+stage=""
+protected_ids=()
+
 [[ ! -e "$ROOT" && ! -L "$ROOT" ]] || exit 1
-if docker inspect "$CONTAINER" >/dev/null 2>&1; then
-  echo "CI renderer container already exists" >&2
-  exit 1
-fi
-if docker network inspect "$NETWORK" >/dev/null 2>&1; then
-  echo "CI renderer network already exists" >&2
-  exit 1
-fi
+for name in "$CONTAINER" "$NETWORK" "${PROTECTED[@]}"; do
+  if docker inspect "$name" >/dev/null 2>&1 || docker network inspect "$name" >/dev/null 2>&1; then
+    echo "CI Docker identity already exists: $name" >&2
+    exit 1
+  fi
+done
 
 cleanup() {
-  status=$?
+  exit_status=$?
   trap - EXIT HUP INT TERM
-  mapfile -t candidates < <(
-    docker ps --all --quiet \
-      --filter label=com.docker.compose.project=jobseek-lightpanda \
-      --filter label=com.docker.compose.service=renderer \
-      --filter "label=org.jobseek.lightpanda.release=$RELEASE_ID"
-  )
-  [[ "${#candidates[@]}" -le 1 ]] || exit 1
-  if [[ "${#candidates[@]}" -eq 1 && "${candidates[0]}" =~ ^[0-9a-f]{64}$ ]]; then
-    docker rm --force "${candidates[0]}" >/dev/null
+  if docker inspect "$CONTAINER" >/dev/null 2>&1; then
+    project="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$CONTAINER")"
+    service="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' "$CONTAINER")"
+    [[ "$project" == jobseek-lightpanda && "$service" == renderer ]] || exit 1
+    docker rm --force "$CONTAINER" >/dev/null
   fi
   if docker network inspect "$NETWORK" >/dev/null 2>&1; then
     network_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
@@ -45,18 +51,29 @@ cleanup() {
     [[ "$network_project" == jobseek-lightpanda && "$network_role" == renderer ]] || exit 1
     docker network rm "$network_id" >/dev/null
   fi
+  for index in "${!protected_ids[@]}"; do
+    protected_id="${protected_ids[$index]}"
+    protected_name="${PROTECTED[$index]}"
+    [[ "$(docker inspect --format '{{.Id}}' "$protected_name" 2>/dev/null || :)" == "$protected_id" ]] || exit 1
+    docker rm --force "$protected_id" >/dev/null
+  done
   sudo rm -rf -- "$ROOT"
+  if [[ -n "$stage" ]]; then
+    sudo rm -rf -- "$stage"
+  fi
   if [[ -n "$work" ]]; then
     rm -rf -- "$work"
   fi
-  exit "$status"
+  exit "$exit_status"
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
 
-sudo install -d -m 0711 "$ROOT" "$ROOT/releases" "$RELEASE" "$RELEASE/pki"
-sudo install -m 0644 deploy/lightpanda-renderer/compose.yml "$RELEASE/compose.yml"
-sudo install -m 0555 deploy/lightpanda-renderer/verify.py "$RELEASE/verify.py"
-sudo install -m 0555 deploy/lightpanda-renderer/validate_pki.py "$RELEASE/validate_pki.py"
+if ! id -u deploy >/dev/null 2>&1; then
+  sudo useradd --create-home --shell /bin/bash deploy
+fi
+docker_group="$(stat -c '%G' /var/run/docker.sock)"
+[[ "$docker_group" != UNKNOWN ]] || exit 1
+sudo install -d -o deploy -g deploy -m 0700 "$ROOT" "$ROOT/releases"
 
 work="$(mktemp -d)"
 cat >"$work/ca.cnf" <<'EOF'
@@ -105,45 +122,141 @@ python3 deploy/lightpanda-renderer/validate_pki.py \
   --ca "$work/ca.pem" --server "$work/server.pem" \
   --server-key "$work/server-key.pem" --client "$work/client.pem" \
   --output "$work/pins.env"
-sudo install -m 0444 "$work/ca.pem" "$RELEASE/pki/ca.pem"
-sudo install -m 0444 "$work/server.pem" "$RELEASE/pki/server.pem"
-sudo install -o 10001 -g 10001 -m 0400 "$work/server-key.pem" "$RELEASE/pki/server-key.pem"
-sudo install -m 0644 "$work/pins.env" "$RELEASE/pins.env"
 
-cat >"$work/release.env" <<EOF
-RENDERER_IMAGE_REF=ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:$(printf 'a%.0s' {1..64})
-RENDERER_RELEASE_DIR=$RELEASE
-SOURCE_COMMIT=$SOURCE_COMMIT
-RELEASE_ID=$RELEASE_ID
-EOF
-cat "$work/pins.env" >>"$work/release.env"
-sudo install -o "$(id -u)" -g "$(id -g)" -m 0600 \
-  "$work/release.env" "$RELEASE/release.env"
+install_release() {
+  release="$1"
+  release_id="$2"
+  sudo install -d -o deploy -g deploy -m 0711 "$release" "$release/pki"
+  sudo install -o deploy -g deploy -m 0644 \
+    deploy/lightpanda-renderer/compose.yml "$release/compose.yml"
+  sudo install -o deploy -g deploy -m 0644 \
+    deploy/lightpanda-renderer/inventory.json "$release/inventory.json"
+  sudo install -o deploy -g deploy -m 0555 \
+    deploy/lightpanda-renderer/verify.py "$release/verify.py"
+  sudo install -o deploy -g deploy -m 0555 \
+    deploy/lightpanda-renderer/validate_pki.py "$release/validate_pki.py"
+  sudo install -m 0444 "$work/ca.pem" "$release/pki/ca.pem"
+  sudo install -m 0444 "$work/server.pem" "$release/pki/server.pem"
+  sudo install -o 10001 -g 10001 -m 0400 \
+    "$work/server-key.pem" "$release/pki/server-key.pem"
+  sudo install -o deploy -g deploy -m 0444 "$work/pins.env" "$release/pins.env"
+  {
+    printf 'RENDERER_IMAGE_REF=%s\n' "$IMAGE"
+    printf 'RENDERER_RELEASE_DIR=%s\n' "$release"
+    printf 'SOURCE_COMMIT=%s\n' "$SOURCE_COMMIT"
+    printf 'RELEASE_ID=%s\n' "$release_id"
+    cat "$work/pins.env"
+  } >"$work/release.env"
+  sudo install -o deploy -g deploy -m 0600 "$work/release.env" "$release/release.env"
+}
 
-# Render and verify the real Compose file with an immutable-shaped identity.
-python3 "$RELEASE/verify.py" compose "$RELEASE/compose.yml" "$RELEASE/release.env"
-# The local smoke image has no registry digest. Only this CI-only environment
-# substitution changes; all rendered containment and network fields stay exact.
-sed -i "s|^RENDERER_IMAGE_REF=.*|RENDERER_IMAGE_REF=$IMAGE|" "$RELEASE/release.env"
+install_release "$PREVIOUS_RELEASE" "$PREVIOUS_RELEASE_ID"
+python3 "$PREVIOUS_RELEASE/verify.py" compose \
+  "$PREVIOUS_RELEASE/compose.yml" "$PREVIOUS_RELEASE/release.env" \
+  "$PREVIOUS_RELEASE/inventory.json"
+
+for service in murmur cloudflared; do
+  name="deploy-${service}-1"
+  protected_id="$(docker run --detach \
+    --name "$name" \
+    --label com.docker.compose.project=deploy \
+    --label "com.docker.compose.service=$service" \
+    --restart unless-stopped \
+    --entrypoint /bin/sh "$IMAGE" -ceu 'while :; do sleep 60; done')"
+  [[ "$protected_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
+  protected_ids+=("$protected_id")
+  docker stop --time 2 "$protected_id" >/dev/null
+done
+python3 deploy/lightpanda-renderer/verify.py snapshot-protected "$work/protected-before.json"
+
 docker compose --project-name jobseek-lightpanda \
-  --env-file "$RELEASE/release.env" --file "$RELEASE/compose.yml" \
+  --env-file "$PREVIOUS_RELEASE/release.env" --file "$PREVIOUS_RELEASE/compose.yml" \
   up --detach --no-deps renderer
-container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
-image_id="$(docker image inspect --format '{{.Id}}' "$IMAGE")"
-[[ "$container_id" =~ ^[0-9a-f]{64}$ && "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 1
-python3 - "$RELEASE/verify.py" "$RELEASE/release.env" "$image_id" <<'PY'
-import importlib.util
-import sys
-from pathlib import Path
+previous_container_id="$(python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env")"
+previous_network_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
+[[ "$previous_container_id" =~ ^[0-9a-f]{64}$ && "$previous_network_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
+sudo -u deploy ln -s "$PREVIOUS_RELEASE" "$ROOT/active"
 
-spec = importlib.util.spec_from_file_location("renderer_verify", sys.argv[1])
-assert spec is not None and spec.loader is not None
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
-container_id = module.verify_running_with_image(
-    Path(sys.argv[2]), image_id=sys.argv[3], expected_id=None
+stage="$(sudo -u deploy mktemp -d '/tmp/jobseek-lightpanda-renderer.r999999a1.XXXXXX')"
+sudo -u deploy install -d -m 0700 "$stage/pki"
+for artifact in compose.yml inventory.json verify.py validate_pki.py install-host.sh; do
+  sudo -u deploy install -m 0600 "deploy/lightpanda-renderer/$artifact" "$stage/$artifact"
+done
+for file in ca.pem server.pem server-key.pem client.pem; do
+  sudo -u deploy install -m 0600 "$work/$file" "$stage/pki/$file"
+done
+sudo -u deploy install -m 0600 "$work/pins.env" "$stage/pins.env"
+{
+  printf 'RENDERER_IMAGE_REF=%s\n' "$IMAGE"
+  printf 'RENDERER_RELEASE_DIR=%s\n' "$CANDIDATE_RELEASE"
+  printf 'SOURCE_COMMIT=%s\n' "$SOURCE_COMMIT"
+  printf 'RELEASE_ID=%s\n' "$CANDIDATE_RELEASE_ID"
+  cat "$work/pins.env"
+} >"$work/candidate-release.env"
+sudo -u deploy install -m 0600 "$work/candidate-release.env" "$stage/release.env"
+
+set +e
+sudo -u deploy -g "$docker_group" env \
+  CI=true \
+  GITHUB_ACTIONS=true \
+  JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=after-active-switch \
+  bash "$stage/install-host.sh" \
+    "$stage" "$SOURCE_COMMIT" "$IMAGE" "$CANDIDATE_RELEASE_ID"
+install_status=$?
+set -e
+[[ "$install_status" -eq 97 ]] || {
+  echo "CI rollback smoke returned $install_status instead of 97" >&2
+  exit 1
+}
+
+[[ ! -e "$CANDIDATE_RELEASE" && ! -L "$CANDIDATE_RELEASE" ]] || exit 1
+[[ "$(readlink -f "$ROOT/active")" == "$PREVIOUS_RELEASE" ]] || exit 1
+restored_container_id="$(python3 "$PREVIOUS_RELEASE/verify.py" running "$PREVIOUS_RELEASE/release.env")"
+[[ "$restored_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
+[[ "$(docker network inspect --format '{{.Id}}' "$NETWORK")" == "$previous_network_id" ]] || exit 1
+mapfile -t leaked_candidates < <(
+  docker ps --all --quiet \
+    --filter label=com.docker.compose.project=jobseek-lightpanda \
+    --filter label=com.docker.compose.service=renderer \
+    --filter "label=org.jobseek.lightpanda.release=$CANDIDATE_RELEASE_ID"
 )
-assert len(container_id) == 64
-PY
+[[ "${#leaked_candidates[@]}" -eq 0 ]] || exit 1
+python3 deploy/lightpanda-renderer/verify.py assert-protected "$work/protected-before.json"
+
+# Exercise the first-install rollback too: no active pointer or pre-existing
+# network may survive after a candidate is created and deliberately rejected.
+docker rm --force "$restored_container_id" >/dev/null
+sudo -u deploy rm -- "$ROOT/active"
+python3 deploy/lightpanda-renderer/verify.py cleanup-network \
+  "$previous_network_id" deploy/lightpanda-renderer/inventory.json
+docker network rm "$previous_network_id" >/dev/null
+FIRST_INSTALL_RELEASE="$ROOT/releases/$FIRST_INSTALL_RELEASE_ID"
+{
+  printf 'RENDERER_IMAGE_REF=%s\n' "$IMAGE"
+  printf 'RENDERER_RELEASE_DIR=%s\n' "$FIRST_INSTALL_RELEASE"
+  printf 'SOURCE_COMMIT=%s\n' "$SOURCE_COMMIT"
+  printf 'RELEASE_ID=%s\n' "$FIRST_INSTALL_RELEASE_ID"
+  cat "$work/pins.env"
+} >"$work/first-install-release.env"
+sudo -u deploy install -m 0600 "$work/first-install-release.env" "$stage/release.env"
+set +e
+sudo -u deploy -g "$docker_group" env \
+  CI=true \
+  GITHUB_ACTIONS=true \
+  JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=after-candidate \
+  bash "$stage/install-host.sh" \
+    "$stage" "$SOURCE_COMMIT" "$IMAGE" "$FIRST_INSTALL_RELEASE_ID"
+first_install_status=$?
+set -e
+[[ "$first_install_status" -eq 96 ]] || exit 1
+[[ ! -e "$FIRST_INSTALL_RELEASE" && ! -L "$FIRST_INSTALL_RELEASE" ]] || exit 1
+[[ ! -e "$ROOT/active" && ! -L "$ROOT/active" ]] || exit 1
+if docker inspect "$CONTAINER" >/dev/null 2>&1; then
+  exit 1
+fi
+if docker network inspect "$NETWORK" >/dev/null 2>&1; then
+  exit 1
+fi
+python3 deploy/lightpanda-renderer/verify.py assert-protected "$work/protected-before.json"
 test "$(docker image inspect --format '{{.Architecture}}' "$IMAGE")" = arm64
 test "$(docker image inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.source-commit"}}' "$IMAGE")" = "$SOURCE_COMMIT"

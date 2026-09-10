@@ -4,6 +4,10 @@ set -euo pipefail
 set +x
 umask 077
 
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 : "${TARGET_HOST:?Murmur host is required}"
 : "${SSH_PRIVATE_KEY:?SSH private key is required}"
 : "${SSH_KNOWN_HOSTS:?pinned Murmur host keys are required}"
@@ -14,6 +18,7 @@ umask 077
 : "${LIGHTPANDA_B0_SERVER_KEY_PEM:?renderer server private key is required}"
 : "${LIGHTPANDA_B0_CLIENT_CERT_PEM:?renderer client certificate is required}"
 : "${RUNNER_TEMP:?runner temporary directory is required}"
+[[ "${JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE:-disabled}" == disabled ]] || exit 2
 
 SOURCE_COMMIT="${1:-}"
 IMAGE_REF="${2:-}"
@@ -38,13 +43,14 @@ cleanup() {
   status=$?
   trap - EXIT HUP INT TERM
   if [[ -n "$remote_stage" && "$remote_stage" =~ ^/tmp/jobseek-lightpanda-renderer\.${owner}\.[A-Za-z0-9]+$ ]]; then
+    # shellcheck disable=SC2029 # remote_stage is strictly validated above.
     ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" \
       "rm -rf -- '$remote_stage'" >/dev/null 2>&1 || :
   fi
   rm -rf -- "$work_root"
   exit "$status"
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
 
 install -d -m 0700 "$ssh_root" "$payload_root" "$payload_root/pki"
 printf '%s\n' "$SSH_PRIVATE_KEY" >"$ssh_root/id"
@@ -105,6 +111,7 @@ ssh_options=(
   -o LogLevel=ERROR
 )
 
+# shellcheck disable=SC2029 # owner is derived from digit-only run identifiers.
 remote_stage="$(ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" \
   "umask 077; mktemp -d '/tmp/jobseek-lightpanda-renderer.${owner}.XXXXXX'")"
 [[ "$remote_stage" =~ ^/tmp/jobseek-lightpanda-renderer\.${owner}\.[A-Za-z0-9]+$ ]] || exit 1
@@ -124,5 +131,5 @@ chmod 0600 "$auth_payload"
 
 timeout --foreground --signal=TERM --kill-after=30s 20m \
   ssh "${ssh_options[@]}" "deploy@$TARGET_HOST" \
-    "bash '$remote_stage/install-host.sh' '$remote_stage' '$SOURCE_COMMIT' '$IMAGE_REF' '$release_id'" \
+    "env -u JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE -u CI -u GITHUB_ACTIONS bash '$remote_stage/install-host.sh' '$remote_stage' '$SOURCE_COMMIT' '$IMAGE_REF' '$release_id'" \
     <"$auth_payload"

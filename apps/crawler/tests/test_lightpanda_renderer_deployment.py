@@ -45,92 +45,34 @@ def release_env() -> dict[str, str]:
     }
 
 
-def compose_model() -> dict[str, object]:
+@pytest.fixture
+def rendered_compose_model(tmp_path: Path) -> dict[str, object]:
+    if shutil.which("docker") is None:
+        pytest.skip("Docker Compose is unavailable")
     env = release_env()
-    release = env["RENDERER_RELEASE_DIR"]
-    deny = [
-        "178.105.51.62/32",
-        "2a01:4f8:1c18:d64c::/64",
-        "10.0.0.5/32",
-        "10.0.0.0/16",
-        "172.17.0.0/16",
-        "172.31.1.1/32",
-        "172.30.94.0/29",
-    ]
-    command = ["--listen", "0.0.0.0:9443", "--service-ip", "10.0.0.5"]
-    for prefix in deny:
-        command.extend(("--deployment-deny-cidr", prefix))
-    command.extend(
-        (
-            "--tls-cert",
-            "/run/credentials/server.pem",
-            "--tls-key",
-            "/run/credentials/server-key.pem",
-            "--tls-ca",
-            "/run/credentials/ca.pem",
-            "--tls-ca-sha256",
-            env["CA_DER_SHA256"],
-            "--client-leaf-sha256",
-            env["CLIENT_LEAF_SHA256"],
-            "--client-spki-sha256",
-            env["CLIENT_SPKI_SHA256"],
-        )
+    environment = tmp_path / "release.env"
+    environment.write_text(
+        "".join(f"{key}={value}\n" for key, value in env.items()), encoding="utf-8"
     )
-    volumes = []
-    for filename in ("ca.pem", "server.pem", "server-key.pem"):
-        volumes.append(
-            {
-                "type": "bind",
-                "source": f"{release}/pki/{filename}",
-                "target": f"/run/credentials/{filename}",
-                "read_only": True,
-                "bind": {},
-            }
-        )
-    return {
-        "name": "jobseek-lightpanda",
-        "services": {
-            "renderer": {
-                "image": env["RENDERER_IMAGE_REF"],
-                "platform": "linux/arm64",
-                "container_name": "jobseek-lightpanda-renderer",
-                "entrypoint": None,
-                "command": command,
-                "pull_policy": "never",
-                "labels": {
-                    "org.jobseek.lightpanda.source-commit": env["SOURCE_COMMIT"],
-                    "org.jobseek.lightpanda.image-ref": env["RENDERER_IMAGE_REF"],
-                    "org.jobseek.lightpanda.release": env["RELEASE_ID"],
-                    "org.jobseek.lightpanda.mode": "dormant-no-egress",
-                },
-                "user": "10001:10001",
-                "read_only": True,
-                "cap_drop": ["ALL"],
-                "security_opt": ["no-new-privileges:true"],
-                "init": True,
-                "cgroup": "private",
-                "mem_limit": "1073741824",
-                "memswap_limit": "1073741824",
-                "cpus": 1.0,
-                "pids_limit": 64,
-                "ulimits": {"nofile": {"soft": 256, "hard": 256}},
-                "tmpfs": ["/tmp:rw,noexec,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0700"],
-                "stop_grace_period": "30s",
-                "restart": "unless-stopped",
-                "volumes": volumes,
-                "networks": {"renderer": {"ipv4_address": "172.30.94.2"}},
-            }
-        },
-        "networks": {
-            "renderer": {
-                "name": "jobseek-lightpanda-renderer",
-                "driver": "bridge",
-                "internal": True,
-                "enable_ipv6": False,
-                "ipam": {"config": [{"subnet": "172.30.94.0/29"}]},
-            }
-        },
-    }
+    result = subprocess.run(
+        [
+            "docker",
+            "compose",
+            "--project-name",
+            "jobseek-lightpanda",
+            "--env-file",
+            str(environment),
+            "--file",
+            str(DEPLOY / "compose.yml"),
+            "config",
+            "--format",
+            "json",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(result.stdout)  # type: ignore[no-any-return]
 
 
 def protected_inspect(name: str, service: str) -> dict[str, object]:
@@ -168,59 +110,29 @@ def protected_inspect(name: str, service: str) -> dict[str, object]:
     }
 
 
-def test_inventory_is_exact_canonical_and_dormant() -> None:
+def test_inventory_is_exact_canonical_and_dormant(tmp_path: Path) -> None:
     inventory = verify.load_inventory(DEPLOY / "inventory.json")
-    assert inventory == verify.EXPECTED_INVENTORY
+    assert set(inventory) == verify.INVENTORY_KEYS
     assert inventory["renderer_network"] == "172.30.94.0/29"
     assert "published_port" not in inventory
 
     changed = copy.deepcopy(inventory)
     changed["renderer_network"] = "172.30.94.0/28"
-    path = DEPLOY / "inventory.json"
-    original = path.read_text(encoding="utf-8")
-    try:
-        path.write_text(json.dumps(changed), encoding="utf-8")
-        with pytest.raises(verify.VerificationError):
-            verify.load_inventory(path)
-    finally:
-        path.write_text(original, encoding="utf-8")
+    path = tmp_path / "inventory.json"
+    path.write_text(json.dumps(changed), encoding="utf-8")
+    with pytest.raises(verify.VerificationError):
+        verify.load_inventory(path)
 
 
-def test_compose_model_is_exactly_one_no_egress_renderer() -> None:
-    model = compose_model()
-    verify.validate_compose_model(model, release_env())
+def test_compose_model_is_exactly_one_no_egress_renderer(
+    rendered_compose_model: dict[str, object],
+) -> None:
+    model = rendered_compose_model
+    inventory = verify.load_inventory(DEPLOY / "inventory.json")
+    verify.validate_compose_model(model, release_env(), inventory)
     service = model["services"]["renderer"]  # type: ignore[index]
     assert "ports" not in service
     assert model["networks"]["renderer"]["internal"] is True  # type: ignore[index]
-
-
-def test_actual_compose_renders_to_verified_model(tmp_path: Path) -> None:
-    if shutil.which("docker") is None:
-        pytest.skip("Docker Compose is unavailable")
-    env = release_env()
-    environment = tmp_path / "release.env"
-    environment.write_text(
-        "".join(f"{key}={value}\n" for key, value in env.items()), encoding="utf-8"
-    )
-    result = subprocess.run(
-        [
-            "docker",
-            "compose",
-            "--project-name",
-            "jobseek-lightpanda",
-            "--env-file",
-            str(environment),
-            "--file",
-            str(DEPLOY / "compose.yml"),
-            "config",
-            "--format",
-            "json",
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    verify.validate_compose_model(json.loads(result.stdout), env)
 
 
 @pytest.mark.parametrize(
@@ -237,11 +149,28 @@ def test_actual_compose_renders_to_verified_model(tmp_path: Path) -> None:
         ("ports", [{"target": 9443, "published": "9443"}]),
     ],
 )
-def test_compose_verifier_rejects_extra_authority(key: str, value: object) -> None:
-    model = compose_model()
+def test_compose_verifier_rejects_extra_authority(
+    rendered_compose_model: dict[str, object], key: str, value: object
+) -> None:
+    model = copy.deepcopy(rendered_compose_model)
     model["services"]["renderer"][key] = value  # type: ignore[index]
     with pytest.raises(verify.VerificationError):
-        verify.validate_compose_model(model, release_env())
+        verify.validate_compose_model(
+            model, release_env(), verify.load_inventory(DEPLOY / "inventory.json")
+        )
+
+
+def test_compose_verifier_rejects_release_pin_drift(
+    rendered_compose_model: dict[str, object],
+) -> None:
+    model = copy.deepcopy(rendered_compose_model)
+    command = model["services"]["renderer"]["command"]  # type: ignore[index]
+    pin_index = command.index("--client-spki-sha256") + 1  # type: ignore[union-attr]
+    command[pin_index] = "9" * 64  # type: ignore[index]
+    with pytest.raises(verify.VerificationError, match="runtime command|startup command"):
+        verify.validate_compose_model(
+            model, release_env(), verify.load_inventory(DEPLOY / "inventory.json")
+        )
 
 
 def test_protected_snapshot_is_stopped_exact_and_secret_safe() -> None:
@@ -297,6 +226,14 @@ def test_transaction_is_renderer_scoped_and_contains_no_global_mutation() -> Non
     assert 'up --detach --no-deps "$SERVICE"' in scripts
     assert "assert-protected" in scripts
     assert "/home/deploy/.local/share/jobseek-lightpanda" in scripts
+    assert "JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=after-active-switch" not in (
+        DEPLOY / "deploy-remote.sh"
+    ).read_text(encoding="utf-8")
+    assert "env -u JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE -u CI -u GITHUB_ACTIONS" in scripts
+    assert "trap rollback EXIT\n" in scripts
+    assert "trap rollback EXIT HUP INT TERM" not in scripts
+    for signal, status in (("HUP", 129), ("INT", 130), ("TERM", 143)):
+        assert f"trap 'exit {status}' {signal}" in scripts
 
 
 def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
@@ -315,6 +252,9 @@ def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
     assert "LIGHTPANDA_B0_CLIENT_CERT_PEM" in workflow
     assert "no-egress" in workflow
     assert "crawler run-lightpanda" not in workflow
+    assert workflow.count("packages: write") == 1
+    assert "needs: publish" in workflow
+    assert "JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE: disabled" in workflow
 
 
 def test_compose_source_has_no_host_publication_or_external_authority() -> None:
@@ -332,8 +272,19 @@ def test_compose_source_has_no_host_publication_or_external_authority() -> None:
     ):
         assert token not in compose
     assert "internal: true" in compose
+    assert "gateway_mode_ipv4: isolated" in compose
     assert "cgroup: private" in compose
+    assert 'restart: "on-failure:3"' in compose
+    assert "max-size: 10m" in compose
     assert compose.count("create_host_path: false") == 3
+
+
+def test_service_builder_is_patch_and_digest_pinned() -> None:
+    dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text(encoding="utf-8")
+    assert (
+        "golang:1.24.7-alpine3.22@sha256:"
+        "fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5" in dockerfile
+    )
 
 
 def test_pki_validator_accepts_only_reviewed_profile(tmp_path: Path) -> None:

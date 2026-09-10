@@ -40,11 +40,12 @@ to publish the service publicly. The separate service IP must be a canonical
 literal private IPv4 address that is neither loopback nor unspecified. A later
 activation must publish port 9443 only on that private host IP and admit only
 the crawler's private source address. The dormant deployment has no host port;
-its host-local negative TLS probe reaches `172.30.94.2` while still verifying
-the server's `10.0.0.5` identity. TLS is exactly TLS 1.3, session tickets
-are disabled, and the only ALPN is `jobseek-lightpanda-b0/1`. Both peers load
-one dedicated CA certificate and verify its DER SHA-256 before opening a
-connection.
+its isolated bridge has no host gateway or host route. A one-shot probe runs
+inside the renderer network namespace and requires the exact TLS 1.3
+`certificate_required` rejection while still verifying the server's
+`10.0.0.5` identity. Session tickets are disabled, and the only ALPN is
+`jobseek-lightpanda-b0/1`. Both peers load one dedicated CA certificate and
+verify its DER SHA-256 before opening a connection.
 
 Each trusted deployment address or project prefix is supplied once with the
 repeatable `--deployment-deny-cidr` startup flag. The inventory is nonempty,
@@ -155,4 +156,6 @@ separate `jobseek-lightpanda` Compose project, one `renderer` service, and an
 internal `172.30.94.0/29` bridge. It retains only the CA, server certificate,
 server key, and public pins; no client private key reaches Murmur. The paused
 legacy Murmur containers remain stopped and byte-for-byte unchanged. Do not
-expose port 9443 or route a board based on this document alone.
+expose port 9443 or route a board based on this document alone. The dormant
+container uses bounded `on-failure:3` restart behavior and bounded local logs;
+neither a reboot loop nor unbounded log growth is accepted.

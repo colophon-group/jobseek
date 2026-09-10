@@ -221,10 +221,11 @@ flag (values shown are documentation placeholders, not a deployment inventory):
 ```
 
 The server identity remains the future caller-visible private IP `10.0.0.5`,
-not the internal bridge address. A host-local probe verifies TCP accept and
-the exact TLS 1.3 `certificate_required` rejection without copying the client
-private key to Murmur. Positive mTLS, origin egress, crawler routing, and a B0
-board canary remain separate activation work.
+not the internal bridge address. The bridge's isolated gateway mode removes
+host reachability and host routes. A one-shot probe inside the renderer's own
+network namespace verifies the exact TLS 1.3 `certificate_required` rejection
+without copying the client private key to Murmur. Positive mTLS, origin egress,
+crawler routing, and a B0 board canary remain separate activation work.
 
 The framed render-only handler uses stdin/stdout rather than target or
 expression arguments. This example is for an already isolated offline fixture

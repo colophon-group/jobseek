@@ -13,6 +13,12 @@ import (
 
 func main() {
 	args := os.Args[1:]
+	if len(args) > 0 && args[0] == runtimeV1ServiceProbeNoClient {
+		if len(args) != 4 || probeRuntimeV1ServiceWithoutClient(args[1], args[2], args[3]) != nil {
+			os.Exit(1)
+		}
+		return
+	}
 	if len(args) > 0 && args[0] == runtimeV1ServiceFlag {
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		config, err := runtimeV1ServiceConfigFromArgs(args[1:])
