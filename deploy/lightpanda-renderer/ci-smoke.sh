@@ -89,6 +89,10 @@ docker_group="$(stat -c '%G' /var/run/docker.sock)"
 [[ "$docker_group" != UNKNOWN ]] || exit 1
 sudo usermod --append --groups "$docker_group" deploy
 sudo -u deploy id -nG | tr ' ' '\n' | grep -Fx "$docker_group" >/dev/null
+deploy_primary_group="$(sudo -u deploy id -gn)"
+[[ "$deploy_primary_group" == deploy ]] || exit 1
+printf 'ci-smoke deploy identity: uid=%s primary-group=%s\n' \
+  "$(sudo -u deploy id -u)" "$deploy_primary_group"
 sudo install -d -o deploy -g deploy -m 0700 "$ROOT" "$ROOT/releases"
 sudo install -o deploy -g deploy -m 0500 \
   deploy/lightpanda-renderer/lock.sh "$ROOT/lock-race-helper.sh"
@@ -108,7 +112,23 @@ lock_race_worker() {
   local worker_label="$2"
   sudo -u deploy bash -c '
     set -euo pipefail
-    trap '\''worker_status=$?; printf "ci-smoke lock worker %s failed at line %s (status %s)\n" "$6" "$LINENO" "$worker_status" >&2 || :; exit "$worker_status"'\'' ERR
+    report_lock_worker_error() {
+      local worker_status="$1"
+      local lock_path="$2"
+      local worker_label="$3"
+      local failed_line="$4"
+      local lock_metadata fd_identity path_identity flock_available
+      lock_metadata="$(stat -Lc "%U:%G:%a:%F" "$lock_path" 2>/dev/null || printf missing)"
+      fd_identity="$(stat -Lc "%d:%i" "/proc/$$/fd/9" 2>/dev/null || printf closed)"
+      path_identity="$(stat -Lc "%d:%i" "$lock_path" 2>/dev/null || printf missing)"
+      flock_available=no
+      command -v flock >/dev/null 2>&1 && flock_available=yes
+      printf "ci-smoke lock worker %s failed at line %s: status=%s metadata=%s fd=%s path=%s flock=%s\n" \
+        "$worker_label" "$failed_line" "$worker_status" "$lock_metadata" \
+        "$fd_identity" "$path_identity" "$flock_available" >&2 || :
+      exit "$worker_status"
+    }
+    trap '\''report_lock_worker_error "$?" "$3" "$6" "$LINENO"'\'' ERR
     source "$1"
     touch "$5"
     while [[ ! -e "$2" ]]; do sleep 0.01; done
