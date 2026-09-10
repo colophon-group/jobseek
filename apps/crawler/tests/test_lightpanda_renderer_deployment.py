@@ -227,7 +227,9 @@ def test_transaction_is_renderer_scoped_and_contains_no_global_mutation() -> Non
     assert 'up --detach --no-deps "$SERVICE"' in scripts
     assert "assert-protected" in scripts
     assert "/home/deploy/.local/share/jobseek-lightpanda" in scripts
-    assert "set -o noclobber" in scripts
+    assert "os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW" in scripts
+    assert "os.fchmod(fd, 0o600)" in scripts
+    assert "except FileExistsError:" in scripts
     assert "/proc/$$/fd/9" in scripts
     assert "JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=after-active-switch" not in (
         DEPLOY / "deploy-remote.sh"
@@ -278,6 +280,11 @@ def test_ci_smoke_stages_lock_helper_for_deploy_user() -> None:
 
 def test_lock_helper_is_fail_closed_without_caller_errexit() -> None:
     lock = (DEPLOY / "lock.sh").read_text(encoding="utf-8")
+    smoke = (DEPLOY / "ci-smoke.sh").read_text(encoding="utf-8")
+    assert "setfacl --default --modify" in smoke
+    assert "deploy:deploy:664" in smoke
+    assert "deploy:deploy:600:1" in smoke
+    assert "python3 - \"$lock_path\" <<'PY' || return 1" in lock
     assert 'exec 9<>"$lock_path" || return 1' in lock
     assert 'fd_identity="$(stat -Lc' in lock
     assert 'path_identity="$(stat -Lc' in lock

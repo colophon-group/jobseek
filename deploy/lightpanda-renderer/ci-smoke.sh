@@ -97,6 +97,34 @@ sudo install -d -o deploy -g deploy -m 0700 "$ROOT" "$ROOT/releases"
 sudo install -o deploy -g deploy -m 0500 \
   deploy/lightpanda-renderer/lock.sh "$ROOT/lock-race-helper.sh"
 
+# Make the creation regression deterministic. With this parent default ACL,
+# ordinary Bash redirection requests 0666 and produces 0664 despite umask 077.
+# The production helper must still publish the lock atomically as exact 0600.
+command -v setfacl >/dev/null
+sudo setfacl --default --modify \
+  user::rwx,group::rw-,mask::rw-,other::r-- "$ROOT"
+acl_control="$ROOT/lock-race-acl-control"
+sudo -u deploy bash -c 'umask 077; : >"$1"' bash "$acl_control"
+[[ "$(stat -c '%U:%G:%a' "$acl_control")" == deploy:deploy:664 ]]
+bad_mode_status=0
+sudo -u deploy bash -c \
+  'source "$1"; acquire_renderer_lock "$2" 0' \
+  bash "$ROOT/lock-race-helper.sh" "$acl_control" || bad_mode_status=$?
+[[ "$bad_mode_status" -ne 0 ]]
+[[ "$(stat -c '%U:%G:%a' "$acl_control")" == deploy:deploy:664 ]]
+sudo -u deploy rm -- "$acl_control"
+acl_symlink_target="$ROOT/lock-race-symlink-target"
+acl_symlink="$ROOT/lock-race-symlink"
+sudo -u deploy touch "$acl_symlink_target"
+sudo -u deploy ln -s "$acl_symlink_target" "$acl_symlink"
+symlink_status=0
+sudo -u deploy bash -c \
+  'source "$1"; acquire_renderer_lock "$2" 0' \
+  bash "$ROOT/lock-race-helper.sh" "$acl_symlink" || symlink_status=$?
+[[ "$symlink_status" -ne 0 ]]
+[[ "$(readlink "$acl_symlink")" == "$acl_symlink_target" ]]
+sudo -u deploy rm -- "$acl_symlink" "$acl_symlink_target"
+
 # Race the exact production lock helper from an absent lock file. Both
 # processes must serialize through one inode and never overlap the critical
 # section.
@@ -174,6 +202,7 @@ if [[ "$first_lock_status" -ne 0 || "$second_lock_status" -ne 0 ]]; then
     "$first_lock_status" "$second_lock_status" >&2 || :
   exit 1
 fi
+[[ "$(stat -c '%U:%G:%a:%h' "$lock_race")" == deploy:deploy:600:1 ]]
 sudo -u deploy rm -- \
   "$lock_barrier" "$first_lock_ready" "$second_lock_ready" "$lock_race"
 
