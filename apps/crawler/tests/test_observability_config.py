@@ -430,7 +430,8 @@ def test_daily_error_review_records_status_across_the_systemd_lifecycle() -> Non
     assert (
         "ExecStopPost=+/usr/bin/python3 "
         "/srv/jobseek-codex/repo/scripts/codex-routine-status.py finish "
-        "--service-result ${SERVICE_RESULT}"
+        "--service-result ${SERVICE_RESULT} --exit-code ${EXIT_CODE} "
+        "--exit-status ${EXIT_STATUS}"
     ) in unit
     assert '"${REPO_DIR}/scripts/codex-routine-status.py"' in deploy
 

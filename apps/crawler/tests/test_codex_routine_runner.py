@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from src.workspace.codex_routine_runner import (
+    ALREADY_COMPLETED_ERROR,
     LABELLER_POSTGRES_ENV,
     DailyRoutineRunner,
     DailyRunResult,
@@ -15,6 +16,7 @@ from src.workspace.codex_routine_runner import (
     _compose_routine_error,
     _read_reported_routine_outcome,
     build_daily_prompt,
+    routine_exit_code,
 )
 from src.workspace.codex_runner import RunnerConfig, RunnerLedger, SchedulerDecision
 
@@ -77,6 +79,32 @@ def test_daily_runner_skips_date_after_completed_ledger_row(tmp_path: Path) -> N
 
     assert result.state == "skipped"
     assert result.error == "daily routine already completed for date"
+
+
+@pytest.mark.parametrize(
+    ("result", "expected"),
+    [
+        (DailyRunResult("run", "error-review", "2026-09-10", "completed"), 0),
+        (
+            DailyRunResult(
+                "", "error-review", "2026-09-10", "skipped", error=ALREADY_COMPLETED_ERROR
+            ),
+            1,
+        ),
+        (
+            DailyRunResult(
+                "", "error-review", "2026-09-10", "skipped", error="usage below threshold"
+            ),
+            1,
+        ),
+        (DailyRunResult("run", "error-review", "2026-09-10", "failed"), 1),
+        (DailyRunResult("run", "error-review", "2026-09-10", "timeout"), 1),
+    ],
+)
+def test_routine_exit_code_requires_durable_daily_completion(
+    result: DailyRunResult, expected: int
+) -> None:
+    assert routine_exit_code(result) == expected
 
 
 def test_daily_runner_retries_failed_exports_before_completed_date_skip(

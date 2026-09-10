@@ -26,6 +26,8 @@ VALID_RESULTS = frozenset(
         "oom-kill",
     }
 )
+SUCCESS_EXIT_CODE = "exited"
+SUCCESS_EXIT_STATUS = "0"
 
 
 class RoutineStatusError(RuntimeError):
@@ -82,10 +84,23 @@ def begin(path: Path, *, now: int | None = None) -> dict[str, Any]:
     return record
 
 
-def finish(path: Path, service_result: str, *, now: int | None = None) -> dict[str, Any]:
+def finish(
+    path: Path,
+    service_result: str,
+    exit_code: str,
+    exit_status: str,
+    *,
+    now: int | None = None,
+) -> dict[str, Any]:
     result = service_result.strip().lower()
     if result not in VALID_RESULTS:
         raise RoutineStatusError("unrecognized systemd service result")
+    main_exit_code = exit_code.strip().lower()
+    main_exit_status = exit_status.strip()
+    if result == "success" and (
+        main_exit_code != SUCCESS_EXIT_CODE or main_exit_status != SUCCESS_EXIT_STATUS
+    ):
+        result = "protocol"
     timestamp = int(time.time()) if now is None else now
     previous = _load(path)
     attempt = _timestamp(previous.get("last_attempt_unixtime")) or timestamp
@@ -110,6 +125,8 @@ def _parser() -> argparse.ArgumentParser:
     commands.add_parser("begin")
     finish_parser = commands.add_parser("finish")
     finish_parser.add_argument("--service-result", required=True)
+    finish_parser.add_argument("--exit-code", required=True)
+    finish_parser.add_argument("--exit-status", required=True)
     return parser
 
 
@@ -118,7 +135,7 @@ def main() -> int:
     if args.command == "begin":
         begin(args.status_file)
     else:
-        finish(args.status_file, args.service_result)
+        finish(args.status_file, args.service_result, args.exit_code, args.exit_status)
     print("recorded Codex routine status")
     return 0
 
