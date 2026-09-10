@@ -105,8 +105,10 @@ first_lock_ready="$ROOT/lock-race-ready-1"
 second_lock_ready="$ROOT/lock-race-ready-2"
 lock_race_worker() {
   local ready_path="$1"
+  local worker_label="$2"
   sudo -u deploy bash -c '
     set -euo pipefail
+    trap '\''worker_status=$?; printf "ci-smoke lock worker %s failed at line %s (status %s)\n" "$6" "$LINENO" "$worker_status" >&2 || :; exit "$worker_status"'\'' ERR
     source "$1"
     touch "$5"
     while [[ ! -e "$2" ]]; do sleep 0.01; done
@@ -114,11 +116,12 @@ lock_race_worker() {
     mkdir "$4"
     sleep 0.2
     rmdir "$4"
-  ' bash "$lock_source" "$lock_barrier" "$lock_race" "$lock_critical" "$ready_path"
+  ' bash "$lock_source" "$lock_barrier" "$lock_race" "$lock_critical" \
+    "$ready_path" "$worker_label"
 }
-lock_race_worker "$first_lock_ready" &
+lock_race_worker "$first_lock_ready" first &
 first_lock_pid=$!
-lock_race_worker "$second_lock_ready" &
+lock_race_worker "$second_lock_ready" second &
 second_lock_pid=$!
 for ((attempt = 0; attempt < 1000; attempt++)); do
   if sudo -u deploy test -e "$first_lock_ready" && \
@@ -131,14 +134,24 @@ done
 if ! sudo -u deploy test -e "$first_lock_ready" || \
   ! sudo -u deploy test -e "$second_lock_ready"; then
   kill "$first_lock_pid" "$second_lock_pid" 2>/dev/null || :
-  wait "$first_lock_pid" "$second_lock_pid" 2>/dev/null || :
+  first_lock_status=0
+  second_lock_status=0
+  wait "$first_lock_pid" 2>/dev/null || first_lock_status=$?
+  wait "$second_lock_pid" 2>/dev/null || second_lock_status=$?
+  printf 'ci-smoke lock readiness failed: first=%s second=%s\n' \
+    "$first_lock_status" "$second_lock_status" >&2 || :
   exit 1
 fi
 sudo -u deploy touch "$lock_barrier"
-lock_race_status=0
-wait "$first_lock_pid" || lock_race_status=1
-wait "$second_lock_pid" || lock_race_status=1
-[[ "$lock_race_status" -eq 0 ]]
+first_lock_status=0
+second_lock_status=0
+wait "$first_lock_pid" || first_lock_status=$?
+wait "$second_lock_pid" || second_lock_status=$?
+if [[ "$first_lock_status" -ne 0 || "$second_lock_status" -ne 0 ]]; then
+  printf 'ci-smoke lock race failed: first=%s second=%s\n' \
+    "$first_lock_status" "$second_lock_status" >&2 || :
+  exit 1
+fi
 sudo -u deploy rm -- \
   "$lock_barrier" "$first_lock_ready" "$second_lock_ready" "$lock_race"
 
