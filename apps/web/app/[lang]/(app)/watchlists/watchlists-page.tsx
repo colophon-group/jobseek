@@ -288,7 +288,7 @@ export function WatchlistsPage({
           </Button>
         </div>
       ) : (
-        <div className="max-w-3xl" aria-busy={activityPending}>
+        <div className="mx-auto w-full max-w-3xl" aria-busy={activityPending}>
           {initialWatchlists.length > 0 && !activityPending ? (
             <span className="sr-only" role="status" aria-live="polite">
               {t({
