@@ -212,6 +212,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "require_zero_proof",
             "section_end",
             "section_start",
+            "skip_ssl",
             "source_identity_attribute",
             "source_identity_regex",
             "source_identity_selector",
