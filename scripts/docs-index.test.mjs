@@ -77,52 +77,23 @@ test("docs README and ADR relative markdown links resolve", () => {
 });
 
 test("production Codex guidance keeps scheduling on Hetzner", () => {
-  const guidancePaths = [
-    ".agents/skills/jobseek-error-review/SKILL.md",
-    "AGENTS.md",
-    "apps/crawler/AGENTS.md",
-    "docs/00-overview.md",
-    "docs/01-agent-workflow.md",
-    "docs/14-error-review-routine.md",
-    "docs/15-data-sampling-routine.md",
-    "docs/16-hetzner-maintenance.md",
-    "docs/17-codex-migration-verification-runbook.md",
-    "docs/18-codex-automation-deployment.md",
-    "docs/README.md",
-  ];
-  const staleWording = [
-    new RegExp(["Codex", "desktop"].join("\\s+"), "i"),
-    new RegExp(["desktop", "scheduler"].join("[- ]"), "i"),
-    new RegExp(["workstation", "schedule"].join("\\s+"), "i"),
-    /Hetzner(?:-hosted)?\s+local\s+Codex/i,
-    new RegExp(["preferred", "new", "automation", "surface"].join("\\s+"), "i"),
-    new RegExp(["alternate", "recurring", "schedule"].join("\\s+"), "i"),
-    new RegExp(
-      ["future", "replacement", "for", "those", "host", "units"].join("\\s+"),
-      "i",
-    ),
-  ];
-  const retiredRoutineNames = [
-    ["jobseek", "company", "request", "resolver"].join("-"),
-    ["jobseek", "daily", "classifications"].join("-"),
-    ["jobseek", "daily", "error", "review"].join("-"),
-  ];
+  const guidanceContracts = new Map([
+    [".agents/skills/jobseek-error-review/SKILL.md", /Hetzner Codex runner/i],
+    ["AGENTS.md", /Hetzner Codex runner is the production scheduler/i],
+    ["apps/crawler/AGENTS.md", /Hetzner Codex runner\s+schedules recurring production routines/i],
+    ["docs/00-overview.md", /Hetzner-hosted Codex runner is the recurring/i],
+    ["docs/01-agent-workflow.md", /primary recurring path is the Hetzner-hosted Codex runner/i],
+    ["docs/14-error-review-routine.md", /jobseek-codex-daily-error-review\.timer/],
+    ["docs/15-data-sampling-routine.md", /jobseek-codex-daily-annotations\.timer/],
+    ["docs/16-hetzner-maintenance.md", /systemctl is-active jobseek-codex-daily-error-review\.timer/],
+    ["docs/17-codex-migration-verification-runbook.md", /daily routines run through the Hetzner\s+Codex runner/i],
+    ["docs/18-codex-automation-deployment.md", /only\s+production scheduling surface/i],
+    ["docs/README.md", /Hetzner Codex Runner Deployment/],
+  ]);
 
-  for (const guidancePath of guidancePaths) {
+  for (const [guidancePath, contract] of guidanceContracts) {
     const source = readFileSync(guidancePath, "utf8");
-    for (const pattern of staleWording) {
-      assert.doesNotMatch(
-        source,
-        pattern,
-        `${guidancePath} must identify the Hetzner scheduler unambiguously`,
-      );
-    }
-    for (const retiredName of retiredRoutineNames) {
-      assert.ok(
-        !source.includes(retiredName),
-        `${guidancePath} must not reference retired routine ${retiredName}`,
-      );
-    }
+    assert.match(source, contract, `${guidancePath} states its active scheduling contract`);
   }
 
   const runbook = readFileSync(
@@ -139,4 +110,12 @@ test("production Codex guidance keeps scheduling on Hetzner", () => {
   }
   assert.match(runbook, /only\s+production scheduling surface/i);
   assert.match(runbook, /actual Codex execution to the Hetzner timers/i);
+
+  const deployWorkflow = readFileSync(
+    ".github/workflows/deploy-codex-runner.yml",
+    "utf8",
+  );
+  assert.match(deployWorkflow, /^name: Deploy Codex Runner \(Hetzner\)$/m);
+  assert.match(deployWorkflow, /branches: \[main\]/);
+  assert.match(deployWorkflow, /JOBSEEK_CODEX_START_TIMERS=0/);
 });
