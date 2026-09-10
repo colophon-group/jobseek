@@ -28,7 +28,7 @@ ExecStartPre=+/usr/bin/install -d -m 0700 -o codex-runner -g codex-runner /srv/j
 ExecStartPre=+/usr/bin/install -d -m 0750 -o root -g codex-runner /srv/jobseek-codex/inputs /srv/jobseek-codex/inputs/error-review
 ExecStartPre=+/usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-routine-status.py begin
 ExecStartPre=+/usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-error-review-bundle.py --out-root /srv/jobseek-codex/inputs/error-review --group codex-runner
-ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine error-review
+ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine error-review
 ExecStopPost=+/usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-routine-status.py finish --service-result ${SERVICE_RESULT}
 
 TimeoutStartSec=8h
