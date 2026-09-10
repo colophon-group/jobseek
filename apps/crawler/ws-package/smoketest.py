@@ -62,6 +62,9 @@ SKIP_MODULES: frozenset[str] = frozenset(
         # src.processing.board imports src.redis_queue (server-side runtime
         # only — not used by `ws run scraper` or any agent flow).
         "src.processing.board",
+        # Full-crawler Lightpanda service runtime; imports the Redis queue,
+        # which is deliberately not shipped in the workspace-agent wheel.
+        "src.lightpanda.claimant",
         # enrich providers — optional LLM SDKs imported lazily inside funcs
         "src.core.enrich",
         "src.core.enrich.batch",

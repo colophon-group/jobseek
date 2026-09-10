@@ -1912,6 +1912,8 @@ deutsche-bank,deutsche-bank-main,https://db.wd3.myworkdayjobs.com/en-US/DBWebsit
 deutsches-feingoldhaus-gmbh,deutsches-feingoldhaus-gmbh-join,https://join.com/companies/deutsches-feingoldhausde,join,"{""slug"": ""deutsches-feingoldhausde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 dev-technology,dev-technology-greenhouse,https://job-boards.greenhouse.io/devtechnology,greenhouse,"{""token"": ""devtechnology""}",skip,
 development-partners-international,development-partners-international-join,https://join.com/companies/dpi-llpcom,join,"{""slug"": ""dpi-llpcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+devoteam,devoteam-careers,https://careers.smartrecruiters.com/devoteam,smartrecruiters,,smartrecruiters,
+devoteam,devoteam-careers-singularity,https://www.careers-page.com/singularity-digital-enterprise,manatal,"{""slug"": ""singularity-digital-enterprise""}",skip,
 devoted-health,devoted-health-careers,https://careers.smartrecruiters.com/DevotedHealth,smartrecruiters,"{""token"": ""DevotedHealth""}",smartrecruiters,
 devoted-health,devoted-health-workday,https://devoted.wd1.myworkdayjobs.com/Devoted,workday,"{""tenant"": ""devoted"", ""board"": ""Devoted""}",workday,
 devrev,devrev-greenhouse,https://job-boards.greenhouse.io/devrev,greenhouse,"{""token"": ""devrev""}",skip,
@@ -5830,6 +5832,7 @@ seyond,seyond-greenhouse,https://job-boards.greenhouse.io/seyond,greenhouse,"{""
 sezzle,sezzle-greenhouse,https://job-boards.greenhouse.io/sezzle,greenhouse,"{""token"": ""sezzle""}",skip,
 sfcompute,sfcompute-ashby,https://jobs.ashbyhq.com/sfcompute,ashby,"{""token"": ""sfcompute""}",skip,
 sfox,sfox-greenhouse,https://job-boards.greenhouse.io/sfox,greenhouse,"{""token"": ""sfox""}",skip,
+sfs-inc,sfs-inc-careers,https://careers-fdmfieldservices.icims.com/,icims,,json-ld,"{""ignore_date_posted"": true, ""ignore_valid_through"": true}"
 shakepay,shakepay-greenhouse,https://job-boards.greenhouse.io/shakepay,greenhouse,"{""token"": ""shakepay""}",skip,
 shardeum-foundation,shardeum-foundation-greenhouse,https://job-boards.greenhouse.io/shardeumfoundation,greenhouse,"{""token"": ""shardeumfoundation""}",skip,
 sharebite,sharebite-greenhouse,https://job-boards.greenhouse.io/sharebite,greenhouse,"{""token"": ""sharebite""}",skip,
