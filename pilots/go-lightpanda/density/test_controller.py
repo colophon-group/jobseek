@@ -273,6 +273,31 @@ class InspectTests(unittest.TestCase):
             state["State"].update(mutation)
             self.assertEqual(failure_id(lambda state=state: controller.inspect_exit(state)), "inspect")
 
+    def test_go_nonzero_maps_only_allowlisted_sanitized_runner_failures(self):
+        inspect = {"State": {"Status": "exited", "Running": False, "Restarting": False,
+                             "Dead": False, "Pid": 0, "OOMKilled": False, "ExitCode": 2}}
+        docker = mock.Mock()
+        docker.logs.return_value = b'{"failure_id":"invariant_failure"}\n'
+        self.assertEqual(
+            failure_id(lambda: controller.inspect_measured_exit(docker, "container", "go", inspect)),
+            "go_runner_invariant_failure",
+        )
+        for implementation, output in (
+            ("python", b'{"failure_id":"invariant_failure"}\n'),
+            ("go", b'{"failure_id":"https://secret.invalid"}\n'),
+            ("go", b'{"failure_id":[]}\n'),
+            ("go", b'{"failure_id":{}}\n'),
+            ("go", b'not-json'),
+        ):
+            docker.logs.return_value = output
+            with self.subTest(implementation=implementation, output=output):
+                self.assertEqual(
+                    failure_id(lambda implementation=implementation: controller.inspect_measured_exit(
+                        docker, "container", implementation, inspect,
+                    )),
+                    "nonzero",
+                )
+
     def test_network_labels_and_shape_are_fail_closed(self):
         valid = [{"Internal": True, "Labels": {
             controller.LABEL_RUN: "run", controller.LABEL_ROLE: "network",

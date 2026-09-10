@@ -42,11 +42,18 @@ CGROUP_FILES = (
 CGROUP_FILE_FAILURES = {
     name: "missing_cgroup_" + name.replace(".", "_") for name in CGROUP_FILES
 }
+GO_RUNNER_FAILURES = {
+    name: "go_runner_" + name for name in (
+        "arguments_invalid", "start_gate", "manifest_invalid", "adapter_initialization",
+        "configuration_invalid", "pool_initialization", "invariant_failure",
+    )
+}
 FAILURE_IDS = {
     "cleanup", "command", "concurrency", "conservation", "image", "inspect",
     "malformed_output", "missing_cgroup", "nonzero", "oom", "oracle",
     "missing_cgroup_membership", "missing_cgroup_path", "missing_cgroup_pid",
     "start_timeout", "timeout", "transcript", *CGROUP_FILE_FAILURES.values(),
+    *GO_RUNNER_FAILURES.values(),
 }
 
 COMMON_KEYS = {
@@ -500,6 +507,24 @@ def inspect_exit(inspect: dict[str, Any]) -> None:
         raise SmokeFailure("inspect") from None
 
 
+def inspect_measured_exit(docker: Docker, container: str, implementation: str,
+                          inspect: dict[str, Any]) -> None:
+    try:
+        inspect_exit(inspect)
+    except SmokeFailure as error:
+        if error.failure_id != "nonzero" or implementation != "go":
+            raise
+        try:
+            report = parse_json_object(docker.logs(container))
+        except SmokeFailure:
+            raise error from None
+        runner_failure = report.get("failure_id")
+        mapped = GO_RUNNER_FAILURES.get(runner_failure) if isinstance(runner_failure, str) else None
+        if mapped is None:
+            raise error
+        raise SmokeFailure(mapped) from None
+
+
 def attest_network(data: Any, run_id: str) -> None:
     try:
         if not isinstance(data, list) or len(data) != 1 or not isinstance(data[0], dict):
@@ -773,7 +798,8 @@ class SmokeController:
                 except SmokeFailure:
                     pass
                 raise
-            inspect_exit(self._inspect_one(measured_id))
+            inspect_measured_exit(self.docker, measured_id, implementation,
+                                  self._inspect_one(measured_id))
             self._wait(fixture_id, 20)
             inspect_exit(self._inspect_one(fixture_id))
             measured = validate_measured(parse_json_object(self.docker.logs(measured_id)), implementation, self.concurrency, self.source, identity, self.workload_sha, self.tasks)
