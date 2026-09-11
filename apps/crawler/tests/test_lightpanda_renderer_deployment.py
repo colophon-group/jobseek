@@ -198,6 +198,27 @@ def test_compose_verifier_rejects_extra_authority(
         )
 
 
+@pytest.mark.parametrize(
+    "capabilities",
+    (
+        [],
+        ["KILL", "SETGID"],
+        ["KILL", "SETGID", "SETUID", "NET_ADMIN"],
+        ["SETUID", "SETGID", "KILL"],
+        ["KILL", "SETGID", "SETUID", "SETUID"],
+    ),
+)
+def test_compose_verifier_rejects_capability_drift(
+    rendered_compose_model: dict[str, object], capabilities: list[str]
+) -> None:
+    model = copy.deepcopy(rendered_compose_model)
+    model["services"]["renderer"]["cap_add"] = capabilities  # type: ignore[index]
+    with pytest.raises(verify.VerificationError, match="added-capability"):
+        verify.validate_compose_model(
+            model, release_env(), verify.load_inventory(DEPLOY / "inventory.json")
+        )
+
+
 def test_compose_verifier_rejects_release_pin_drift(
     rendered_compose_model: dict[str, object],
 ) -> None:
@@ -235,6 +256,30 @@ def test_protected_snapshot_is_stopped_exact_and_secret_safe() -> None:
     running[0]["State"]["Status"] = "running"  # type: ignore[index]
     with pytest.raises(verify.VerificationError):
         verify.protected_snapshot_from_inspects(running)
+
+
+def test_idle_process_verifier_accepts_only_root_init_and_uid_10001_controller(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    command = verify.expected_service_command(
+        release_env(), verify.load_inventory(DEPLOY / "inventory.json")
+    )
+    output = "\n".join(
+        (
+            "PID UID GID COMMAND COMMAND",
+            "101 0 0 docker-init "
+            + " ".join(["/sbin/docker-init", "--", *verify.BOOTSTRAP_ENTRYPOINT, *command]),
+            "102 10001 10001 go-lightpanda " + " ".join(["/usr/local/bin/go-lightpanda", *command]),
+        )
+    )
+    monkeypatch.setattr(verify, "run_text", lambda _: output)
+    verify.verify_idle_process_boundary(command)
+
+    monkeypatch.setattr(
+        verify, "run_text", lambda _: output + "\n103 10002 10002 lightpanda lightpanda"
+    )
+    with pytest.raises(verify.VerificationError, match="process count"):
+        verify.verify_idle_process_boundary(command)
 
 
 def test_transaction_is_renderer_scoped_and_contains_no_global_mutation() -> None:
@@ -340,7 +385,6 @@ def test_compose_source_has_no_host_publication_or_external_authority() -> None:
         "environment:",
         "env_file:",
         "privileged:",
-        "cap_add:",
         "9222",
         "/var/run/docker.sock",
     ):
@@ -348,6 +392,9 @@ def test_compose_source_has_no_host_publication_or_external_authority() -> None:
     assert "internal: true" in compose
     assert "gateway_mode_ipv4: isolated" in compose
     assert "cgroup: private" in compose
+    assert "cap_drop:\n      - ALL" in compose
+    assert "cap_add:\n      - KILL\n      - SETGID\n      - SETUID" in compose
+    assert "uid=10002,gid=10002,mode=0700" in compose
     assert 'restart: "on-failure:3"' in compose
     assert "max-size: 10m" in compose
     assert compose.count("create_host_path: false") == 3
@@ -360,6 +407,28 @@ def test_service_builder_is_patch_and_digest_pinned() -> None:
         dockerfile,
         re.MULTILINE,
     )
+    assert 'USER 0:0\nENTRYPOINT ["/usr/bin/setpriv"' in dockerfile
+    assert '"--inh-caps=+kill,+setgid,+setuid"' in dockerfile
+    assert '"--ambient-caps=+kill,+setgid,+setuid"' in dockerfile
+    assert 'CMD ["--runtime-v1-service"]' in dockerfile
+
+
+def test_service_child_identity_boundary_is_fixed_and_fail_closed() -> None:
+    harness = (ROOT / "pilots/go-lightpanda/harness.go").read_text(encoding="utf-8")
+    attributes = (ROOT / "pilots/go-lightpanda/process_attributes_linux.go").read_text(
+        encoding="utf-8"
+    )
+    isolation = (ROOT / "pilots/go-lightpanda/child_isolation_linux.go").read_text(encoding="utf-8")
+    assert 'lightpandaPrivilegeTrampoline = "/usr/bin/setpriv"' in harness
+    assert '"--inh-caps=-all"' in harness
+    assert '"--ambient-caps=-all"' in harness
+    assert "lightpandaChildUID      = 10002" in attributes
+    assert "Groups: []uint32{lightpandaChildGID}" in attributes
+    assert 'controllerCapabilitiesHex        = "00000000000000e0"' in isolation
+    assert 'fmt.Sprintf("/proc/%d/mem", parentPID)' in isolation
+    assert 'fmt.Sprintf("/proc/%d/root%s", parentPID, args[0])' in isolation
+    assert "attestNoInheritedFileDescriptors()" in isolation
+    assert "flags&syscall.FD_CLOEXEC == 0" in isolation
 
 
 def test_pki_validator_accepts_only_reviewed_profile(tmp_path: Path) -> None:

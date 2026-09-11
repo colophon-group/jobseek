@@ -18,6 +18,20 @@ PROJECT = "jobseek-lightpanda"
 SERVICE = "renderer"
 CONTAINER = "jobseek-lightpanda-renderer"
 NETWORK = "jobseek-lightpanda-renderer"
+CONTROLLER_USER = "10001:10001"
+BOOTSTRAP_ENTRYPOINT = [
+    "/usr/bin/setpriv",
+    "--reuid=10001",
+    "--regid=10001",
+    "--clear-groups",
+    "--inh-caps=+kill,+setgid,+setuid",
+    "--ambient-caps=+kill,+setgid,+setuid",
+    "--nnp",
+    "--",
+    "/usr/local/bin/go-lightpanda",
+]
+COMPOSE_CAP_ADD = ["KILL", "SETGID", "SETUID"]
+INSPECT_CAP_ADD = ["CAP_KILL", "CAP_SETGID", "CAP_SETUID"]
 INVENTORY_KEYS = {
     "schema_version",
     "host_architecture",
@@ -384,6 +398,7 @@ def deployment_deny_cidrs(inventory: dict[str, object]) -> list[str]:
 def expected_service_command(env: dict[str, str], inventory: dict[str, object]) -> list[str]:
     deny_values = deployment_deny_cidrs(inventory)
     return [
+        "--runtime-v1-service",
         "--listen",
         "0.0.0.0:9443",
         "--service-ip",
@@ -413,6 +428,7 @@ def validate_compose_model(
         fail("Compose project contains anything except the renderer")
     service = model["services"][SERVICE]
     expected_service_keys = {
+        "cap_add",
         "cap_drop",
         "cgroup",
         "command",
@@ -449,7 +465,7 @@ def validate_compose_model(
         fail("Compose image is not the expected production digest or CI smoke image")
     exact = {
         "container_name": CONTAINER,
-        "user": "10001:10001",
+        "user": "0:0",
         "read_only": True,
         "init": True,
         "mem_limit": "1073741824",
@@ -479,6 +495,8 @@ def validate_compose_model(
         fail("Compose renderer labels drifted")
     if service.get("cap_drop") != ["ALL"]:
         fail("Compose capability contract drifted")
+    if service.get("cap_add") != COMPOSE_CAP_ADD:
+        fail("Compose added-capability contract drifted")
     if service.get("security_opt") != ["no-new-privileges:true"]:
         fail("Compose privilege contract drifted")
     if service.get("stop_grace_period") != "30s":
@@ -501,8 +519,8 @@ def validate_compose_model(
         "nosuid",
         "nodev",
         "size=16m",
-        "uid=10001",
-        "gid=10001",
+        "uid=10002",
+        "gid=10002",
         "mode=0700",
     }
     exact_tmpfs_bytes = (exact_tmpfs_options - {"size=16m"}) | {"size=16777216"}
@@ -658,6 +676,13 @@ def verify_image(
         fail("renderer image source label drifted")
     if image.get("Config", {}).get("ExposedPorts") not in (None, {}):
         fail("dormant renderer image exposes a port")
+    image_config = image.get("Config", {})
+    if (
+        image_config.get("User") != "0:0"
+        or image_config.get("Entrypoint") != BOOTSTRAP_ENTRYPOINT
+        or image_config.get("Cmd") != ["--runtime-v1-service"]
+    ):
+        fail("renderer image privilege bootstrap drifted")
     return image
 
 
@@ -719,12 +744,9 @@ def validate_running_inspect(
     }
     if any(labels.get(key) != value for key, value in expected_labels.items()):
         fail("renderer labels drifted")
-    if config.get("Image") != image_ref or config.get("User") != "10001:10001":
+    if config.get("Image") != image_ref or config.get("User") != "0:0":
         fail("renderer image or user drifted")
-    if config.get("Entrypoint") != [
-        "/usr/local/bin/go-lightpanda",
-        "--runtime-v1-service",
-    ]:
+    if config.get("Entrypoint") != BOOTSTRAP_ENTRYPOINT:
         fail("renderer entrypoint drifted")
     command = config.get("Cmd") or []
     if command != expected_service_command(environment, inventory):
@@ -735,6 +757,7 @@ def validate_running_inspect(
     if (
         host.get("ReadonlyRootfs") is not True
         or host.get("CapDrop") != ["ALL"]
+        or host.get("CapAdd") != INSPECT_CAP_ADD
         or host.get("SecurityOpt") != ["no-new-privileges:true"]
         or host.get("Memory") != 1073741824
         or host.get("MemorySwap") != 1073741824
@@ -766,8 +789,8 @@ def validate_running_inspect(
         "nosuid",
         "nodev",
         "size=16m",
-        "uid=10001",
-        "gid=10001",
+        "uid=10002",
+        "gid=10002",
         "mode=0700",
     }
     exact_tmpfs_bytes = (exact_tmpfs_options - {"size=16m"}) | {"size=16777216"}
@@ -803,6 +826,32 @@ def validate_running_inspect(
         or networks[NETWORK].get("IPAddress") != inventory["renderer_address"]
     ):
         fail("renderer network attachment drifted")
+
+
+def verify_idle_process_boundary(command: list[str]) -> None:
+    lines = run_text(["docker", "top", CONTAINER, "-eo", "pid,uid,gid,comm,args"]).splitlines()
+    if len(lines) != 3:
+        fail("renderer idle process count drifted")
+    rows = [line.split(None, 4) for line in lines[1:]]
+    if any(len(row) != 5 or not row[0].isdigit() for row in rows):
+        fail("renderer process inventory is invalid")
+    by_command = {row[3]: row for row in rows}
+    if set(by_command) != {"docker-init", "go-lightpanda"}:
+        fail("renderer has an unexpected idle process")
+    init = by_command["docker-init"]
+    controller = by_command["go-lightpanda"]
+    if init[1:3] != ["0", "0"] or init[4].split() != [
+        "/sbin/docker-init",
+        "--",
+        *BOOTSTRAP_ENTRYPOINT,
+        *command,
+    ]:
+        fail("renderer privilege bootstrap process drifted")
+    if controller[1:3] != ["10001", "10001"] or controller[4].split() != [
+        "/usr/local/bin/go-lightpanda",
+        *command,
+    ]:
+        fail("renderer controller process identity drifted")
 
 
 def verify_running_with_image(environment: Path, *, image_id: str, expected_id: str | None) -> str:
@@ -854,18 +903,16 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
         f"{inventory['renderer_address']}/{renderer_prefix}"
     ):
         fail("renderer network endpoint drifted")
-    memory_max = run_text(["docker", "exec", CONTAINER, "cat", "/sys/fs/cgroup/memory.max"]).strip()
-    memory_swap_max = run_text(
-        ["docker", "exec", CONTAINER, "cat", "/sys/fs/cgroup/memory.swap.max"]
-    ).strip()
+    verify_idle_process_boundary(expected_service_command(env, inventory))
+    docker_exec = ["docker", "exec", "--user", CONTROLLER_USER, CONTAINER]
+    memory_max = run_text([*docker_exec, "cat", "/sys/fs/cgroup/memory.max"]).strip()
+    memory_swap_max = run_text([*docker_exec, "cat", "/sys/fs/cgroup/memory.swap.max"]).strip()
     if memory_max != "1073741824" or memory_swap_max != "0":
         fail("renderer cgroup memory attestation drifted")
-    ipv4_routes = run_text(["docker", "exec", CONTAINER, "cat", "/proc/net/route"]).splitlines()[1:]
+    ipv4_routes = run_text([*docker_exec, "cat", "/proc/net/route"]).splitlines()[1:]
     if any(len(line.split()) >= 2 and line.split()[1] == "00000000" for line in ipv4_routes):
         fail("internal renderer network unexpectedly has an IPv4 default route")
-    ipv6_routes = run_text(
-        ["docker", "exec", CONTAINER, "cat", "/proc/net/ipv6_route"]
-    ).splitlines()
+    ipv6_routes = run_text([*docker_exec, "cat", "/proc/net/ipv6_route"]).splitlines()
     if any(
         len(line.split()) >= 10
         and line.split()[0] == "0" * 32
@@ -876,9 +923,7 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
         fail("internal renderer network unexpectedly has an IPv6 default route")
     run_text(
         [
-            "docker",
-            "exec",
-            CONTAINER,
+            *docker_exec,
             "/usr/local/bin/go-lightpanda",
             "--runtime-v1-service-probe-no-client",
             "127.0.0.1:9443",

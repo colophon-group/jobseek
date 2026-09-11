@@ -146,6 +146,10 @@ type runtimeV1ServiceExecution struct {
 }
 
 func newRuntimeV1ServiceExecution(config Config, run taskRunner) (*runtimeV1ServiceExecution, error) {
+	if config.Binary != lightpandaServiceBinary {
+		return nil, errors.New("runtime-v1 service requires the pinned lightpanda binary")
+	}
+	config.isolateChild = true
 	execution := &runtimeV1ServiceExecution{egressPolicy: config.EgressPolicy}
 	if run == nil {
 		run = runTask

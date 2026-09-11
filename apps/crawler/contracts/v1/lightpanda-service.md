@@ -136,9 +136,28 @@ stops atomically, all connections are cancelled and closed, and the service
 returns an error so its supervised container exits nonzero.
 
 The dedicated `service` Docker target packages this binary with its exact
-source-commit label. Its caller must enforce the 1 GiB/no-swap cgroup, PID limit,
-read-only filesystem, non-root identity, dropped capabilities, private network
-namespace, certificate mounts, and restart policy.
+source-commit label. Its fixed `setpriv` launcher starts with only `KILL`,
+`SETGID`, and `SETUID`, clears supplementary groups, changes to UID/GID 10001,
+places only those capabilities in the controller's inheritable and ambient
+sets, asserts `no_new_privs`, and execs Go. The launcher has no DAC capability
+and cannot read the UID-10001 mode-0400 server key before dropping identity.
+The Go controller attests its exact UID/GID and capability masks before loading
+TLS or listening.
+
+For every render, Go changes the child to UID/GID 10002 with only group 10002
+before a second fixed `setpriv` trampoline. That trampoline clears inheritable
+and ambient capabilities, asserts `no_new_privs`, and execs the pinned
+Lightpanda binary. Lightpanda consequently has zero permitted, effective,
+inheritable, and ambient capabilities. Its retained bounding mask cannot be
+regained under `no_new_privs`. Startup proves that this child cannot read the
+server key, controller environment, memory, or open key descriptor; cannot
+signal the controller; receives only the two fixed non-secret environment
+entries; and inherits no descriptor above standard I/O. The controller keeps
+`KILL` only for cleanup of the distinct-UID child process group.
+
+The caller must enforce the exact bootstrap, 1 GiB/no-swap cgroup, PID limit,
+read-only filesystem, exact three-capability allowlist, private network
+namespace, UID-10002 scratch mount, certificate mounts, and restart policy.
 
 ## Activation blockers
 

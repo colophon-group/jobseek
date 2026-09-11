@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +14,23 @@ import (
 
 func main() {
 	args := os.Args[1:]
+	if len(args) > 0 && args[0] == runtimeV1ChildIsolationCheckFlag {
+		if len(args) != 2 {
+			os.Exit(1)
+		}
+		if err := attestRuntimeV1ChildIsolation(args[1]); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if len(args) > 0 && args[0] == runtimeV1ChildIsolationProbeFlag {
+		if err := runRuntimeV1ChildIsolationProbe(args[1:]); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(args) > 0 && args[0] == runtimeV1ServiceProbeNoClient {
 		if len(args) != 4 || probeRuntimeV1ServiceWithoutClient(args[1], args[2], args[3]) != nil {
 			os.Exit(1)
@@ -22,6 +40,9 @@ func main() {
 	if len(args) > 0 && args[0] == runtimeV1ServiceFlag {
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		config, err := runtimeV1ServiceConfigFromArgs(args[1:])
+		if err == nil {
+			err = attestRuntimeV1ChildIsolation(config.PrivateKeyPath)
+		}
 		if err == nil {
 			execution, executionErr := newRuntimeV1ServiceExecution(Config{
 				Binary:       os.Getenv("LIGHTPANDA_BIN"),

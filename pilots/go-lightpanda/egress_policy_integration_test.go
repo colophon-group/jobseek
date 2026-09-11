@@ -36,7 +36,11 @@ func (starter testOnlyFixtureStarter) Start(port int) (managedProcess, error) {
 	blockCIDRs := baselineBlockedCIDRs + ",-" + starter.fixtureAddr.String() + "/32"
 	command := exec.Command(starter.binary, fixedLightpandaServeArgs(port, blockCIDRs)...)
 	command.Env = append([]string(nil), lightpandaChildEnvironment...)
-	command.SysProcAttr = lightpandaProcessAttributes()
+	attributes, err := lightpandaProcessAttributes(false)
+	if err != nil {
+		return nil, err
+	}
+	command.SysProcAttr = attributes
 	command.Stdout = logs
 	command.Stderr = logs
 	if err := command.Start(); err != nil {
