@@ -440,6 +440,9 @@ export async function readWatchlistCandidates(params: {
     });
     return { ...candidateSearchParams, offset, limit };
   };
+  const directSearchParams = params.limit === 0
+    ? searchParams
+    : buildWindowSearchParams(params.filters, params.offset, params.limit);
   const buildBatchSafetyParams = (filters: WatchlistCandidateFilters) =>
     buildWindowSearchParams(
       filters,
@@ -486,9 +489,10 @@ export async function readWatchlistCandidates(params: {
   if (!needsBatches) {
     const result = await withTypesenseRetry(
       () =>
-        client.collections("job_posting").documents().search(searchParams, {
-          abortSignal: params.abortSignal,
-        }),
+        client
+          .collections("job_posting")
+          .documents()
+          .search(directSearchParams, { abortSignal: params.abortSignal }),
       { label: "readWatchlistCandidates", abortSignal: params.abortSignal },
     );
     assertTypesenseSearchResult(result, { expectHits: params.limit !== 0 });
