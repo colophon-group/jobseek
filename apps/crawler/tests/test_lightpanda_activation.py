@@ -77,7 +77,9 @@ def _task(
     )
 
 
-async def _seed_legacy_ready(redis: Any, task: LightpandaB0Task) -> None:
+async def _seed_legacy_ready(
+    redis: Any, task: LightpandaB0Task, *, first_time: bool = False
+) -> None:
     score = task.initial_ready_at_ms / 1000
     await redis.hset(
         f"scrape:{task.task_id}",
@@ -89,8 +91,10 @@ async def _seed_legacy_ready(redis: Any, task: LightpandaB0Task) -> None:
             "description_r2_hash": "example",
         },
     )
-    await redis.zadd(f"ft_scrapes_browser:{task.domain}", {task.task_id: score})
-    await redis.zadd("ready:browser:0", {task.domain: score})
+    prefix = "ft_scrapes" if first_time else "scrapes"
+    tier = 0 if first_time else 2
+    await redis.zadd(f"{prefix}_browser:{task.domain}", {task.task_id: score})
+    await redis.zadd(f"ready:browser:{tier}", {task.domain: score})
 
 
 def _legacy_config(task: LightpandaB0Task) -> dict[str, str]:
@@ -232,6 +236,7 @@ async def _activate_legacy(
     legacy_config: dict[str, str],
     previous_payload_sha256: str = "",
     operator_transfer: bool = True,
+    first_time: bool = False,
 ) -> TransitionResult:
     raw = await queue._invoke(
         "activate_legacy",
@@ -240,6 +245,7 @@ async def _activate_legacy(
         previous_payload_sha256=previous_payload_sha256,
         legacy_config=queue_module._canonical_legacy_config(legacy_config, task),
         operator_transfer=operator_transfer,
+        first_time=first_time,
         producer_cohort="c1",
         producer_board_slugs=("browser-use-careers",),
     )
@@ -266,6 +272,21 @@ def _rollback_schedule(
     }
 
 
+async def _rollback_schedule_for_bound_guard(
+    redis: Any, task: LightpandaB0Task, *, description_hash: str = "0"
+) -> dict[str, object]:
+    raw = await redis.hget("lightpanda-b0:legacy-guard", task.task_id)
+    assert raw is not None
+    parts = activation._wire_text(raw).split("|")
+    assert len(parts) == 7
+    kind, score = parts[-2:]
+    assert kind in {"ft_browser", "recurring_browser"}
+    schedule = _rollback_schedule(task, description_hash=description_hash, score=score)
+    schedule["first_time"] = kind == "ft_browser"
+    schedule["score"] = score
+    return schedule
+
+
 async def test_activation_atomically_transfers_one_legacy_membership(redis: Any) -> None:
     task = _task()
     queue = LightpandaB0Queue(redis, namespace="production-b0")
@@ -276,13 +297,13 @@ async def test_activation_atomically_transfers_one_legacy_membership(redis: Any)
 
     assert activated.accepted and activated.reason == "activated"
     assert (activated.value, activated.secondary_value) == (123_000, 1)
-    assert await redis.zscore(f"ft_scrapes_browser:{task.domain}", task.task_id) is None
-    assert await redis.zscore("ready:browser:0", task.domain) is None
+    assert await redis.zscore(f"scrapes_browser:{task.domain}", task.task_id) is None
+    assert await redis.zscore("ready:browser:2", task.domain) is None
     assert await redis.zscore(queue._keys.ready, task.task_id) == 123_000
     guard = await redis.hget("lightpanda-b0:legacy-guard", task.task_id)
     assert guard == (
         "production-b0|lightpanda-b0|7|11111111-1111-4111-8111-111111111111|"
-        "jobs.example.com|ft_browser|123"
+        "jobs.example.com|recurring_browser|123"
     )
     assert (await queue.audit_conservation(task.route)).accepted
 
@@ -311,13 +332,13 @@ async def test_activation_refuses_duplicate_legacy_memberships(redis: Any) -> No
     queue = LightpandaB0Queue(redis, namespace="production-b0")
     await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
-    await redis.zadd(f"scrapes_browser:{task.domain}", {task.task_id: 321})
+    await redis.zadd(f"ft_scrapes_browser:{task.domain}", {task.task_id: 321})
 
     rejected = await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
 
     assert not rejected.accepted and rejected.reason == "legacy_membership_conflict"
-    assert await redis.zscore(f"ft_scrapes_browser:{task.domain}", task.task_id) is not None
     assert await redis.zscore(f"scrapes_browser:{task.domain}", task.task_id) is not None
+    assert await redis.zscore(f"ft_scrapes_browser:{task.domain}", task.task_id) is not None
     assert await redis.hget(queue._keys.records, task.task_id) is None
 
 
@@ -469,7 +490,7 @@ async def test_route_fence_precedes_legacy_cutover(redis: Any) -> None:
 
     assert not rejected.accepted and rejected.reason == "routing_epoch_mismatch"
     assert await redis.hget("lightpanda-b0:legacy-guard", task.task_id) is None
-    assert await redis.zscore(f"ft_scrapes_browser:{task.domain}", task.task_id) is not None
+    assert await redis.zscore(f"scrapes_browser:{task.domain}", task.task_id) is not None
 
 
 async def test_go_owner_cannot_bypass_exclusive_activation(redis: Any) -> None:
@@ -568,7 +589,10 @@ async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(redis:
         cohort="c1",
         rollback_plan_digest=ROLLBACK_DIGEST,
         source_receipt_sha256=SOURCE_RECEIPT_SHA256,
-        plan={ready.task_id: {"action": "drop"}, terminal.task_id: _rollback_schedule(terminal)},
+        plan={
+            ready.task_id: {"action": "drop"},
+            terminal.task_id: await _rollback_schedule_for_bound_guard(redis, terminal),
+        },
     )
 
     assert rolled_back.accepted and rolled_back.reason == "rolled_back"
@@ -586,9 +610,9 @@ async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(redis:
     }
     assert await redis.hget("lightpanda-b0:legacy-guard", ready.task_id) is None
     assert await redis.hget("lightpanda-b0:legacy-guard", terminal.task_id) is None
-    assert await redis.zscore(f"scrapes_browser:{ready.domain}", terminal.task_id) == 999
+    assert await redis.zscore(f"scrapes_browser:{ready.domain}", terminal.task_id) == 456
     assert await redis.zscore(f"ft_scrapes_browser:{ready.domain}", ready.task_id) is None
-    assert await redis.zscore("ready:browser:2", ready.domain) == 999
+    assert await redis.zscore("ready:browser:2", ready.domain) == 456
     assert await redis.hget(f"scrape:{terminal.task_id}", "description_r2_hash") == "0"
     assert not await redis.exists(f"scrape:{ready.task_id}")
 
@@ -608,7 +632,7 @@ async def test_cold_rollback_refuses_inflight_without_partial_mutation(redis: An
         cohort="c1",
         rollback_plan_digest=ROLLBACK_DIGEST,
         source_receipt_sha256=SOURCE_RECEIPT_SHA256,
-        plan={task.task_id: _rollback_schedule(task)},
+        plan={task.task_id: await _rollback_schedule_for_bound_guard(redis, task)},
     )
 
     assert not rejected.accepted and rejected.reason == "rollback_inflight"
@@ -650,7 +674,7 @@ async def test_cold_recovery_reaps_forced_kill_then_allows_atomic_rollback(
         cohort="c1",
         rollback_plan_digest=ROLLBACK_DIGEST,
         source_receipt_sha256=SOURCE_RECEIPT_SHA256,
-        plan={task.task_id: _rollback_schedule(task)},
+        plan={task.task_id: await _rollback_schedule_for_bound_guard(redis, task)},
     )
     assert rolled_back.accepted
     assert not await redis.exists(*queue._keys.ordered())
@@ -967,11 +991,13 @@ async def test_cold_rollback_refuses_orphan_global_guard_without_mutation(redis:
 
 
 async def test_rollback_rebuilds_first_time_ready_as_exclusive_tier_zero(redis: Any) -> None:
-    task = _task()
+    task = _task(ready_at_ms=0)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
     await _initialize_producer(queue, task.route)
-    await _seed_legacy_ready(redis, task)
-    assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
+    await _seed_legacy_ready(redis, task, first_time=True)
+    assert (
+        await _activate_legacy(queue, task, legacy_config=_legacy_config(task), first_time=True)
+    ).accepted
     await redis.zadd(f"monitors_browser:{task.domain}", {"other-board": 5})
     await redis.zadd(f"scrapes_browser:{task.domain}", {"other-posting": 6})
     await redis.zadd("ready:browser:1", {task.domain: 5})
@@ -994,7 +1020,7 @@ async def test_rollback_rebuilds_first_time_ready_as_exclusive_tier_zero(redis: 
 async def test_operator_feeder_activates_authoritative_existing_schedule(
     redis: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    task = _task()
+    task = _task(ready_at_ms=0)
     parser_config = {
         "browser_backend": "lightpanda",
         "render": True,
@@ -1014,7 +1040,7 @@ async def test_operator_feeder_activates_authoritative_existing_schedule(
             "metadata": json.dumps({"scraper_type": "json-ld", "scraper_config": parser_config}),
         },
     )
-    await _seed_legacy_ready(redis, task)
+    await _seed_legacy_ready(redis, task, first_time=True)
     await redis.hset(
         f"scrape:{task.task_id}",
         mapping={
@@ -1066,6 +1092,7 @@ async def test_operator_feeder_activates_authoritative_existing_schedule(
             task,
             legacy_config=request["config"],
             operator_transfer=True,
+            first_time=request["first_time"],
         )
         assert result.accepted
         return ProducerResult(

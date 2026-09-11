@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 from urllib.parse import urlsplit
 
 from redis.asyncio import Redis
@@ -442,25 +442,10 @@ async def _existing_records(
         if any(value != "none" for value in other_types):
             raise ActivationError("B0 namespace has state without a route fence")
         return {}
-    inspect_many = getattr(queue, "inspect_many", None)
-    if inspect_many is None:
-        # Compatibility for a mixed checkout while the paired queue protocol
-        # change lands. The deployed scheduler exposes the one-audit batch API.
-        audit = await queue.audit_conservation(route)
-        if not audit.accepted:
-            raise ActivationError(f"B0 audit failed: {audit.decision.value}/{audit.reason}")
-        result = {}
-        for raw_id in await redis.hkeys(queue._keys.records):
-            task_id = _wire_text(raw_id)
-            stored = await queue.inspect(task_id, route)
-            if stored is None:
-                raise ActivationError("B0 record disappeared during audited plan")
-            result[task_id] = stored
-    else:
-        try:
-            result = await inspect_many(route)
-        except RuntimeError as exc:
-            raise ActivationError("B0 batch record inspection failed closed") from exc
+    try:
+        result = await queue.inspect_many(route)
+    except RuntimeError as exc:
+        raise ActivationError("B0 batch record inspection failed closed") from exc
     if any(stored.state == "inflight" for stored in result.values()):
         raise ActivationError("B0 namespace has inflight authority")
     if not allow_dead and any(stored.state == "dead" for stored in result.values()):
@@ -692,7 +677,7 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
         first_time = first_time_by_id[posting_id]
         go_ready_at = _go_ready_at(item["next_scrape_at"], first_time=first_time)
         try:
-            prepared = await cast(Any, request_task)(
+            prepared = await request_task(
                 operation="prepare",
                 domain=item["domain"],
                 posting_id=posting_id,
@@ -757,7 +742,7 @@ async def apply_activation_plan(
     activated = 0
     for item in plan.tasks:
         try:
-            result = await cast(Any, request_task)(
+            result = await request_task(
                 operation="activate",
                 domain=item["domain"],
                 posting_id=item["posting_id"],
