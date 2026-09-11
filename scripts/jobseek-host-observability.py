@@ -851,6 +851,7 @@ WITH owned AS (
       WHEN 'jobseek:crawler:browser-1:local' THEN 'browser-1'
       WHEN 'jobseek:crawler:exporter:local' THEN 'exporter'
       WHEN 'jobseek:crawler:drain:local' THEN 'drain'
+      WHEN 'jobseek:crawler:lightpanda-b0-executor:local' THEN 'lightpanda-b0-executor'
       WHEN 'jobseek:crawler:reconciliation:local' THEN 'reconciliation'
       WHEN 'jobseek:crawler:deploy-sync:local' THEN 'deploy-sync'
       WHEN 'jobseek:crawler:deploy-migrate:local' THEN 'deploy-migrate'

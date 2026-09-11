@@ -330,7 +330,7 @@ def test_census_classifies_routing_literals_without_disclosing_parser_values(
     assert "must-not-appear" not in json.dumps(manifest)
 
 
-def test_committed_boards_have_no_render_assignments() -> None:
+def test_committed_boards_have_only_fixed_b0_render_assignments() -> None:
     with (get_data_dir() / "boards.csv").open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
 
@@ -343,4 +343,9 @@ def test_committed_boards_have_no_render_assignments() -> None:
             fallback = config.get("fallback")
             config = fallback.get("config") if isinstance(fallback, dict) else None
 
-    assert assigned == []
+    assert assigned == [
+        "browser-use-careers",
+        "eclypsium-careers",
+        "kandou-ai-careers",
+        "poke-and-wiggle-careers",
+    ]

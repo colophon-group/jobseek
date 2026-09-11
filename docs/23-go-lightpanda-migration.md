@@ -290,6 +290,101 @@ This deployment has zero task authority and zero network reachability. It does
 not activate a renderer route, queue feeder, or PostgreSQL fence; activation
 remains a separately reviewed migration step.
 
+### Fixed B0 cohort activation and cold reversal
+
+The ordinary deploy still loads only `docker-compose.yml`, so it remains dark.
+The file `apps/crawler/lightpanda-b0-enabled.override.yml` is an explicit
+operator overlay, not an automatic rollout. It admits only the fixed `c1`
+(`browser-use-careers`) or `c4` cohort (c1 plus `eclypsium-careers`,
+`kandou-ai-careers`, and `poke-and-wiggle-careers`). Each task freezes the
+posting/board IDs, URL, parser assignment, route epoch, and payload digests.
+The executor reads the mutable description hash and scrape interval from
+PostgreSQL again at every fenced attempt. The DB-only executor has no
+Redis, renderer, proxy, R2, or external HTTP credentials; its origin transport
+rejects every request, so processing can only consume the Go-supplied result.
+
+Activation is deliberately cold. First add `deployment-hold:crawler` to the
+tracking issue and confirm the renderer release and credential generation are
+healthy. Then the operator runs the single host wrapper; the wrapper holds
+`/run/lock/jobseek-crawler-mutation.lock` through stop, attestation, digest-
+gated transfer, restart, health checks, and durable receipt publication:
+
+The ordinary crawler deploy persists the reviewed non-secret identity tuple
+(`10.0.0.5`, `production-b0`, `lightpanda-b0`, routing epoch `1`) in the active
+environment, and the enabled Compose overlay pins the same literals. The
+wrapper rejects any disagreement before stopping a service.
+
+```bash
+sudo -u deploy /home/deploy/scripts/lightpanda-b0-cutover.sh activate c1
+```
+
+The wrapper also stops `drain`, rejects every existing Compose one-off, and
+proves the named services are stopped. The planner compares the exact active
+PostgreSQL c1/c4 board set and parser metadata with Redis, suffix-scans both
+legacy inflight/dead-letter sets, refuses active PostgreSQL leases, and emits a
+canonical plan digest before any ownership transfer. Each accepted record is
+transferred and guarded in one Lua turn. Start with `c1`; expansion is the same
+command with `c4` and idempotently retains c1.
+
+The pending receipt is written before the first transfer. Any later activation
+error triggers a host-level containment trap that stops the complete mutation
+set and leaves that receipt in place. PostgreSQL fence rejection is a typed
+authority-loss result that stops the Go supervisor rather than entering its
+ordinary retry loop.
+
+After enabled services pass health checks the wrapper atomically publishes
+`/home/deploy/.lightpanda-b0-active-v1` as a deploy-owned mode-0600 receipt.
+Publication fsyncs the complete temporary file before rename and the parent
+directory afterward. Rollback parses the exact unique-key receipt schema and
+attests its active state, cohort, route identity, Compose digest, immutable
+crawler image, and deploy revision against the current environment before it
+stops any service.
+The ordinary deploy fails closed while this receipt exists, preventing a base-
+Compose release from silently stopping the canary. Do not remove the receipt
+manually.
+
+Cold reversal uses current PostgreSQL state, not activation-time Redis state.
+SIGTERM makes each Go worker atomically reschedule its held task under the
+current unexpired lease fence before the supervisor exits. If a forced kill
+prevents that handoff, the cold wrapper waits at most 75 seconds for live
+leases and uses only the route-fenced Lua reaper, whose clock comes from Redis
+`TIME`, to return expired leases to ready or dead under the production
+three-failure policy. The rollback planner and apply still independently
+require zero inflight authority, and the atomic rollback Lua gate remains the
+final check. A live lease beyond the bound or a malformed fence fails closed
+with the receipt retained. Dead records have a deterministic policy: the
+planner uses current PostgreSQL truth and the final atomic Lua turn restores
+eligible dead tasks to the Python ready queues (or drops currently ineligible
+ones) together with ready and terminal records. It never silently deletes or
+reactivates dead work under Go ownership.
+It reconstructs exact current scrape hashes and queue classes (preserving a
+non-null hash of `0`), drops deleted/inactive/unscheduled tasks and tasks whose
+current board is disabled or non-active, and refuses inflight, corrupt, or
+fenced B0 authority rather than guessing. It then removes exact-cohort Go
+write-fence rows, attests none remain, starts the base Python services, and
+removes the receipt only after health succeeds:
+
+```bash
+sudo -u deploy /home/deploy/scripts/lightpanda-b0-cutover.sh rollback c1
+```
+
+If activation failed after publishing its pending receipt, run the same cold
+recovery under an explicit pending-state gate. This command refuses an active
+receipt, performs the bounded lease settling above, restores Python, and only
+then removes the receipt:
+
+```bash
+sudo -u deploy /home/deploy/scripts/lightpanda-b0-cutover.sh recover-pending c1
+```
+
+The enabled lane has an exact no-swap ceiling of 1.5 GiB: the renderer is 1
+GiB, the Go supervisor is 128 MiB, and the DB-only executor is 384 MiB. The
+supervisor exposes bounded c1/c4 queue transition/fence, ready/inflight/dead,
+reap, due-to-claim/complete, renderer wait, executor wait, and task outcome
+telemetry on `127.0.0.1:9101`. The crawler-host Alloy target forwards that
+endpoint with fixed B0/runtime labels; task logs contain IDs and bounded
+phase/outcome classes, never arbitrary URLs.
+
 ### Dormant renderer host boundary
 
 The dormant renderer uses a separate, one-time root maintenance bootstrap

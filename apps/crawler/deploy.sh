@@ -109,6 +109,11 @@ if [[ ${#missing[@]} -gt 0 ]]; then
 fi
 
 DEPLOY_DIR="/home/deploy"
+LIGHTPANDA_B0_ACTIVE_RECEIPT="$DEPLOY_DIR/.lightpanda-b0-active-v1"
+if [[ -e "$LIGHTPANDA_B0_ACTIVE_RECEIPT" || -L "$LIGHTPANDA_B0_ACTIVE_RECEIPT" ]]; then
+  echo "ERROR: Go Lightpanda B0 is active; ordinary crawler deploy is held until the explicit cold rollback removes ${LIGHTPANDA_B0_ACTIVE_RECEIPT}" >&2
+  exit 1
+fi
 STAGED_BRIDGE_VERIFIER="$INCOMING_DIR/scripts/verify-crawler-release-bridge.py"
 ACTIVE_BRIDGE_VERIFIER="$DEPLOY_DIR/scripts/verify-crawler-release-bridge.py"
 BRIDGE_VERIFIER="$STAGED_BRIDGE_VERIFIER"
@@ -151,9 +156,11 @@ DEPLOY_SPEC_FILES=(
   deploy.sh
   deploy_helpers.sh
   docker-compose.yml
+  lightpanda-b0-enabled.override.yml
   alloy.river
   scripts/postgresql-operational-preflight.py
   scripts/lightpanda-claimant-credentials.py
+  scripts/lightpanda-b0-cutover.sh
   scripts/verify-crawler-release-bridge.py
 )
 if [[ "$INCOMING_DIR" == "$DEPLOY_DIR" ]]; then
@@ -1296,7 +1303,7 @@ activate_staged_deploy_specs() {
 
   for spec in "${DEPLOY_SPEC_FILES[@]}"; do
     case "$spec" in
-      deploy.sh | deploy_helpers.sh | scripts/*.py) mode=0755 ;;
+      deploy.sh | deploy_helpers.sh | scripts/*.py | scripts/*.sh) mode=0755 ;;
       *) mode=0644 ;;
     esac
     install -d "$(dirname "$DEPLOY_DIR/$spec")"
@@ -2214,6 +2221,10 @@ CRAWLER_IMAGE_TAG=${IMAGE_TAG}
 CRAWLER_IMAGE_REF=${CRAWLER_IMAGE_REF}
 BROWSER_IMAGE_REF=${BROWSER_IMAGE_REF}
 LIGHTPANDA_B0_CREDENTIAL_DIR=${LIGHTPANDA_B0_CREDENTIAL_DIR}
+LIGHTPANDA_B0_SERVICE_HOST=10.0.0.5
+LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0
+LIGHTPANDA_B0_SHARD_ID=lightpanda-b0
+LIGHTPANDA_B0_ROUTING_EPOCH=1
 JOBSEEK_DEPLOY_REVISION=${JOBSEEK_DEPLOY_REVISION}
 JOBSEEK_RUNTIME_CONTRACT_SHA256=${JOBSEEK_RUNTIME_CONTRACT_SHA256}
 LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}

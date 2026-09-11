@@ -8,12 +8,18 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
 )
 
 const executorFrameLimit = uint64(3 * 1024 * 1024)
+
+var errExecutorAuthorityLost = errors.New("Python executor lost PostgreSQL write authority")
 
 type executorRequest struct {
 	Version       string `json:"version"`
@@ -40,12 +46,20 @@ func runPythonExecutor(ctx context.Context, c config, request executorRequest, a
 		request.ClaimToken == "" || request.LeaseUntilMS < 1 || len(request.BrowserResult) == 0 || len(request.BrowserResult) > 2*1024*1024 || authorize == nil {
 		return nil, errors.New("invalid Python executor invocation")
 	}
+	before, err := validateExecutorSocket(c.ExecutorSocket)
+	if err != nil {
+		return nil, fmt.Errorf("validate DB-only Python executor socket: %w", err)
+	}
 	dialer := net.Dialer{Timeout: 3 * time.Second}
 	connection, err := dialer.DialContext(ctx, "unix", c.ExecutorSocket)
 	if err != nil {
 		return nil, fmt.Errorf("connect DB-only Python executor: %w", err)
 	}
 	defer connection.Close()
+	after, err := validateExecutorSocket(c.ExecutorSocket)
+	if err != nil || before != after {
+		return nil, errors.New("DB-only Python executor socket identity changed during connect")
+	}
 	stopInterrupt := make(chan struct{})
 	go func() {
 		select {
@@ -64,6 +78,9 @@ func runPythonExecutor(ctx context.Context, c config, request executorRequest, a
 	first, err := readExecutorMessage(connection)
 	if err != nil {
 		return nil, err
+	}
+	if first.Type == "authority_lost" {
+		return nil, &authorityError{operation: "postgres-write-fence", err: errExecutorAuthorityLost}
 	}
 	if first.Type == "error" {
 		return nil, errors.New("Python executor rejected the rendered task")
@@ -92,6 +109,9 @@ func runPythonExecutor(ctx context.Context, c config, request executorRequest, a
 		if readErr != nil {
 			return nil, readErr
 		}
+		if committed.Type == "authority_lost" {
+			return nil, errExecutorAuthorityLost
+		}
 		if committed.Type != "committed" || committed.ClaimToken != request.ClaimToken || committed.LeaseUntilMS != authorizedLeaseUntil || committed.Error != "" {
 			return nil, errors.New("Python executor sent an invalid commit acknowledgement")
 		}
@@ -103,9 +123,40 @@ func runPythonExecutor(ctx context.Context, c config, request executorRequest, a
 		return committed.NextReadyAtMS, nil
 	})
 	if err != nil {
+		if errors.Is(err, errExecutorAuthorityLost) {
+			return nil, &authorityError{operation: "postgres-write-fence", err: err}
+		}
 		return nil, err
 	}
 	return nextReady, nil
+}
+
+type executorSocketIdentity struct {
+	device uint64
+	inode  uint64
+}
+
+func validateExecutorSocket(path string) (executorSocketIdentity, error) {
+	if path != "/run/jobseek-lightpanda-executor/executor.sock" && !strings.HasSuffix(path, "/executor.sock") {
+		return executorSocketIdentity{}, errors.New("unexpected executor socket basename")
+	}
+	parent, err := os.Lstat(filepath.Dir(path))
+	if err != nil || !parent.IsDir() || parent.Mode().Perm() != 0o700 {
+		return executorSocketIdentity{}, errors.New("executor socket directory is not private")
+	}
+	parentStat, ok := parent.Sys().(*syscall.Stat_t)
+	if !ok || parentStat.Uid != uint32(os.Geteuid()) {
+		return executorSocketIdentity{}, errors.New("executor socket directory owner is invalid")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSocket == 0 || info.Mode().Perm() != 0o600 {
+		return executorSocketIdentity{}, errors.New("executor socket metadata is invalid")
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || stat.Uid != uint32(os.Geteuid()) {
+		return executorSocketIdentity{}, errors.New("executor socket owner is invalid")
+	}
+	return executorSocketIdentity{device: uint64(stat.Dev), inode: uint64(stat.Ino)}, nil
 }
 
 func writeExecutorJSON(output io.Writer, value any) error {
@@ -161,6 +212,8 @@ func readExecutorMessage(input io.Reader) (executorMessage, error) {
 		}
 	case "error":
 		required["error"] = struct{}{}
+	case "authority_lost":
+		required["error"] = struct{}{}
 	default:
 		return executorMessage{}, errors.New("Python executor response has unknown type")
 	}
@@ -178,8 +231,12 @@ func readExecutorMessage(input io.Reader) (executorMessage, error) {
 	if err := decoder.Decode(&message); err != nil {
 		return executorMessage{}, errors.New("Python executor response is invalid JSON")
 	}
-	if message.Type == "error" {
-		if message.Error != "executor_failed" {
+	if message.Type == "error" || message.Type == "authority_lost" {
+		expected := "executor_failed"
+		if message.Type == "authority_lost" {
+			expected = "postgres_write_fence_rejected"
+		}
+		if message.Error != expected {
 			return executorMessage{}, errors.New("Python executor response has invalid error")
 		}
 		return message, nil

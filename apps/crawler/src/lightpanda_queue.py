@@ -1,4 +1,4 @@
-"""Redis lifecycle for the inactive Lightpanda B0 scrape lane.
+"""Redis lifecycle for the exclusive Lightpanda B0 scrape lane.
 
 This queue is deliberately separate from the current crawler queues.  Python
 remains the claimant and owns retries, parsing, and database writes; the Go
@@ -19,6 +19,7 @@ import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, cast
@@ -40,6 +41,7 @@ MAX_RECORDS = 512
 SCAN_LIMIT = 64
 MAX_LEASE_TTL_MS = 60 * 60 * 1000
 MAX_FAILURES = 100
+MAX_ROLLBACK_PLAN_BYTES = 2 * 1024 * 1024
 POLICY_KEY = "lightpanda-b0-v1"
 
 _SCRIPT = (Path(__file__).parent / "lua" / "lightpanda_b0_queue.lua").read_text(encoding="utf-8")
@@ -62,13 +64,16 @@ _OPERATIONS = frozenset(
     {
         "initialize",
         "register",
+        "activate_legacy",
         "claim_next",
         "heartbeat",
         "complete",
         "reschedule_at",
+        "fail_at",
         "reactivate",
         "reap_expired",
         "audit",
+        "rollback_legacy",
     }
 )
 _FENCE_REASONS = frozenset(
@@ -90,6 +95,7 @@ _RECORD_NOT_CURRENT = _COMMON_NOT_CURRENT | {
     "conservation_violation",
     "state_mismatch",
     "origin_holder_corrupt",
+    "guard_identity_mismatch",
 }
 _REASONS: dict[str, dict[Decision, frozenset[str]]] = {
     "initialize": {
@@ -111,6 +117,29 @@ _REASONS: dict[str, dict[Decision, frozenset[str]]] = {
             "task_already_exists",
             "record_corrupt",
             "conservation_violation",
+            "exclusive_activation_required",
+        },
+    },
+    "activate_legacy": {
+        Decision.ACCEPTED: frozenset({"activated", "already_activated", "reactivated"}),
+        Decision.FENCED: _FENCE_REASONS,
+        Decision.NOT_CURRENT: _COMMON_NOT_CURRENT
+        | {
+            "exclusive_go_owner_required",
+            "invalid_task_envelope",
+            "namespace_full",
+            "task_already_exists",
+            "record_corrupt",
+            "conservation_violation",
+            "state_mismatch",
+            "legacy_state_corrupt",
+            "legacy_config_mismatch",
+            "legacy_inflight",
+            "legacy_deadletter",
+            "legacy_membership_conflict",
+            "guard_identity_mismatch",
+            "invalid_legacy_config",
+            "legacy_membership_missing",
         },
     },
     "claim_next": {
@@ -128,6 +157,7 @@ _REASONS: dict[str, dict[Decision, frozenset[str]]] = {
             "numeric_overflow",
             "claim_sequence_exhausted",
             "no_work",
+            "guard_identity_mismatch",
         },
     },
     "heartbeat": {
@@ -160,6 +190,18 @@ _REASONS: dict[str, dict[Decision, frozenset[str]]] = {
             "lease_expired",
         },
     },
+    "fail_at": {
+        Decision.ACCEPTED: frozenset({"failed_rescheduled"}),
+        Decision.FENCED: _FENCE_REASONS,
+        Decision.NOT_CURRENT: _RECORD_NOT_CURRENT
+        | {
+            "invalid_task_identity",
+            "invalid_lease_fence",
+            "invalid_ready_at",
+            "lease_expired",
+            "failure_counter_exhausted",
+        },
+    },
     "reactivate": {
         Decision.ACCEPTED: frozenset({"reactivated"}),
         Decision.FENCED: _FENCE_REASONS,
@@ -169,19 +211,47 @@ _REASONS: dict[str, dict[Decision, frozenset[str]]] = {
             "record_corrupt",
             "conservation_violation",
             "state_mismatch",
+            "exclusive_activation_required",
         },
     },
     "reap_expired": {
         Decision.ACCEPTED: frozenset({"reaped"}),
         Decision.FENCED: _FENCE_REASONS,
         Decision.NOT_CURRENT: _COMMON_NOT_CURRENT
-        | {"invalid_reap_policy", "conservation_violation", "origin_holder_corrupt"},
+        | {
+            "invalid_reap_policy",
+            "conservation_violation",
+            "origin_holder_corrupt",
+            "guard_identity_mismatch",
+        },
     },
     "audit": {
         Decision.ACCEPTED: frozenset({"audit_ok"}),
         Decision.FENCED: _FENCE_REASONS,
         Decision.NOT_CURRENT: _COMMON_NOT_CURRENT
-        | {"audit_too_large", "conservation_violation", "origin_holder_corrupt"},
+        | {
+            "audit_too_large",
+            "conservation_violation",
+            "origin_holder_corrupt",
+            "guard_identity_mismatch",
+        },
+    },
+    "rollback_legacy": {
+        Decision.ACCEPTED: frozenset({"rolled_back"}),
+        Decision.FENCED: _FENCE_REASONS,
+        Decision.NOT_CURRENT: _COMMON_NOT_CURRENT
+        | {
+            "audit_too_large",
+            "conservation_violation",
+            "origin_holder_corrupt",
+            "rollback_inflight",
+            "rollback_dead",
+            "invalid_rollback_plan",
+            "legacy_state_corrupt",
+            "legacy_config_mismatch",
+            "legacy_membership_conflict",
+            "guard_identity_mismatch",
+        },
     },
 }
 
@@ -195,8 +265,8 @@ class RouteIdentity:
     def __post_init__(self) -> None:
         _safe_identifier(self.shard_id, "shard_id")
         _bounded_int(self.routing_epoch, "routing_epoch", minimum=1)
-        if self.engine_owner != "python":
-            raise ValueError("the Lightpanda B0 queue is owned by Python")
+        if self.engine_owner not in {"python", "go"}:
+            raise ValueError("the Lightpanda B0 queue owner must be 'python' or 'go'")
 
 
 @dataclass(frozen=True, slots=True)
@@ -361,6 +431,13 @@ class ClaimResult:
 
 
 @dataclass(frozen=True, slots=True)
+class StoredTask:
+    task: LightpandaB0Task
+    state: str
+    failures: int
+
+
+@dataclass(frozen=True, slots=True)
 class _Keys:
     route: str
     records: str
@@ -387,6 +464,7 @@ class LightpandaB0Queue:
 
     def __init__(self, redis: Redis, *, namespace: str) -> None:
         namespace = validate_lightpanda_b0_namespace(namespace)
+        self._namespace = namespace
         tag = f"lightpanda-b0:{{{namespace}}}"
         self._redis = redis
         self._keys = _Keys(
@@ -406,6 +484,109 @@ class LightpandaB0Queue:
     async def register(self, task: LightpandaB0Task) -> TransitionResult:
         _validate_task_identity(task)
         return await self._transition("register", route=task.route, task=task)
+
+    async def activate_legacy(
+        self,
+        task: LightpandaB0Task,
+        *,
+        legacy_config: Mapping[str, object],
+        previous_payload_sha256: str = "",
+        operator_transfer: bool = False,
+    ) -> TransitionResult:
+        """Atomically move one eligible legacy schedule under Go ownership.
+
+        The lifecycle script establishes the persistent legacy guard, removes
+        the sole legacy ready membership (if present), and creates or
+        reactivates the B0 record at one Redis serialization point.  It refuses
+        legacy in-flight/dead-letter state and ambiguous duplicate schedules.
+        """
+
+        _validate_task_identity(task)
+        if task.route.engine_owner != "go":
+            raise ValueError("legacy activation requires the Go B0 owner")
+        if previous_payload_sha256 and not _SHA256_RE.fullmatch(previous_payload_sha256):
+            raise ValueError("previous_payload_sha256 must be lowercase SHA-256")
+        canonical_legacy_config = _canonical_legacy_config(legacy_config, task)
+        raw = await self._invoke(
+            "activate_legacy",
+            route=task.route,
+            task=task,
+            previous_payload_sha256=previous_payload_sha256,
+            legacy_config=canonical_legacy_config,
+            operator_transfer=operator_transfer,
+        )
+        return self._decode_transition("activate_legacy", raw, task=task)
+
+    async def inspect(self, task_id: str, route: RouteIdentity) -> StoredTask | None:
+        """Read one audited record for the allowlisted producer retry seam."""
+
+        _safe_identifier(task_id, "task_id")
+        audit = await self.audit_conservation(route)
+        if not audit.accepted:
+            raise RuntimeError(
+                f"Lightpanda B0 inspect audit failed: {audit.decision.value}/{audit.reason}"
+            )
+        raw = await self._redis.hget(self._keys.records, task_id)
+        if raw is None:
+            return None
+        try:
+            record = json.loads(_wire_text(raw))
+            if not isinstance(record, dict) or set(record) != {
+                "task_id",
+                "task_kind",
+                "state",
+                "shard_id",
+                "routing_epoch",
+                "engine_owner",
+                "config_revision",
+                "policy_key",
+                "domain",
+                "payload",
+                "payload_sha256",
+                "payload_sha1",
+                "claim_token",
+                "claim_sequence",
+                "lease_until_ms",
+                "ready_at_ms",
+                "visible_at_ms",
+                "failures",
+            }:
+                raise ValueError("record shape")
+            if (
+                record["task_id"] != task_id
+                or record["shard_id"] != route.shard_id
+                or record["routing_epoch"] != route.routing_epoch
+                or record["engine_owner"] != route.engine_owner
+                or record["state"] not in {"ready", "inflight", "dead", "terminal"}
+                or isinstance(record["failures"], bool)
+                or not isinstance(record["failures"], int)
+                or not 0 <= record["failures"] <= MAX_FAILURES
+                or hashlib.sha1(
+                    record["payload"].encode("utf-8"), usedforsecurity=False
+                ).hexdigest()
+                != record["payload_sha1"]
+            ):
+                raise ValueError("record identity")
+            task = self._decode_claim_task(
+                route,
+                [
+                    "accepted",
+                    "claimed",
+                    "1",
+                    task_id,
+                    f"{route.routing_epoch}:1",
+                    "2",
+                    str(record["config_revision"]),
+                    record["payload_sha256"],
+                    record["payload"],
+                    record["policy_key"],
+                    "",
+                    "",
+                ],
+            )
+        except (KeyError, TypeError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+            raise RuntimeError("Lightpanda B0 stored task failed integrity validation") from exc
+        return StoredTask(task=task, state=record["state"], failures=record["failures"])
 
     async def claim_next(
         self,
@@ -469,6 +650,18 @@ class LightpandaB0Queue:
             ready_at_ms=ready_at_ms,
         )
 
+    async def fail_at(self, lease: Lease, *, ready_at_ms: int) -> TransitionResult:
+        """Release an operationally failed lease back to Go with bounded backoff."""
+
+        _bounded_int(ready_at_ms, "ready_at_ms", minimum=0)
+        return await self._transition(
+            "fail_at",
+            route=lease.task.route,
+            task=lease.task,
+            lease=lease,
+            ready_at_ms=ready_at_ms,
+        )
+
     async def reactivate(
         self, task: LightpandaB0Task, *, previous_payload_sha256: str
     ) -> TransitionResult:
@@ -489,6 +682,18 @@ class LightpandaB0Queue:
 
     async def audit_conservation(self, route: RouteIdentity) -> TransitionResult:
         return await self._transition("audit", route=route)
+
+    async def rollback_legacy(
+        self, route: RouteIdentity, *, plan: Mapping[str, Mapping[str, object]]
+    ) -> TransitionResult:
+        """Atomically return a cold, fully guarded namespace to legacy queues."""
+
+        raw = await self._invoke(
+            "rollback_legacy",
+            route=route,
+            legacy_config=_canonical_rollback_plan(plan),
+        )
+        return self._decode_transition("rollback_legacy", raw, route=route)
 
     async def _transition(
         self,
@@ -532,6 +737,8 @@ class LightpandaB0Queue:
         max_failures: int = 0,
         default_delay_seconds: float = 0.0,
         previous_payload_sha256: str = "",
+        legacy_config: str = "",
+        operator_transfer: bool = False,
     ) -> list[Any]:
         if operation not in _OPERATIONS:
             raise ValueError("unknown queue operation")
@@ -546,7 +753,7 @@ class LightpandaB0Queue:
             str(lease_ttl_ms),
             str(
                 ready_at_ms
-                if operation == "reschedule_at"
+                if operation in {"reschedule_at", "fail_at"}
                 else task.initial_ready_at_ms
                 if task
                 else 0
@@ -559,6 +766,9 @@ class LightpandaB0Queue:
             _decimal_wire(default_delay_seconds),
             previous_payload_sha256,
             str(lease.lease_until_ms if lease else 0),
+            self._namespace,
+            legacy_config,
+            "1" if operator_transfer else "0",
         ]
         try:
             if self._sha is None:
@@ -648,8 +858,12 @@ class LightpandaB0Queue:
             "heartbeat",
             "complete",
             "reschedule_at",
+            "fail_at",
         }
-        identity_record = decision is Decision.ACCEPTED and operation == "reactivate"
+        identity_record = decision is Decision.ACCEPTED and operation in {
+            "activate_legacy",
+            "reactivate",
+        }
         if decision is not Decision.ACCEPTED and any(fields[index] for index in range(3, 10)):
             return TransitionResult(Decision.TRANSPORT_ERROR, "invalid_reply")
         if full_record or fence_record:
@@ -686,7 +900,7 @@ class LightpandaB0Queue:
                     returned_lease_until <= lease.lease_until_ms  # type: ignore[union-attr]
                 ):
                     raise ValueError("lease was not extended")
-                if operation in {"complete", "reschedule_at"} and (
+                if operation in {"complete", "reschedule_at", "fail_at"} and (
                     returned_lease_until != lease.lease_until_ms  # type: ignore[union-attr]
                 ):
                     raise ValueError("transition fence mismatch")
@@ -715,10 +929,14 @@ class LightpandaB0Queue:
             return TransitionResult(Decision.TRANSPORT_ERROR, "invalid_reply")
         value_shape = {
             "register": (True, False),
+            "activate_legacy": (True, True),
+            "claim_next": (True, False),
             "reschedule_at": (True, False),
+            "fail_at": (True, False),
             "reactivate": (True, False),
             "reap_expired": (True, True),
             "audit": (True, True),
+            "rollback_legacy": (True, True),
         }.get(operation, (False, False))
         if decision is not Decision.ACCEPTED:
             value_shape = (False, False)
@@ -727,10 +945,14 @@ class LightpandaB0Queue:
         if decision is Decision.ACCEPTED:
             expected_ready_at = {
                 "register": task.initial_ready_at_ms if task else None,
+                "activate_legacy": task.initial_ready_at_ms if task else None,
                 "reschedule_at": ready_at_ms,
+                "fail_at": ready_at_ms,
                 "reactivate": task.initial_ready_at_ms if task else None,
             }.get(operation)
             if expected_ready_at is not None and value != expected_ready_at:
+                return TransitionResult(Decision.TRANSPORT_ERROR, "invalid_reply")
+            if operation == "claim_next" and cast(int, value) > server_time_ms:
                 return TransitionResult(Decision.TRANSPORT_ERROR, "invalid_reply")
             if (
                 operation == "reap_expired"
@@ -739,6 +961,10 @@ class LightpandaB0Queue:
                 return TransitionResult(Decision.TRANSPORT_ERROR, "invalid_reply")
             if operation == "audit" and (
                 cast(int, value) > MAX_RECORDS or cast(int, secondary_value) > cast(int, value)
+            ):
+                return TransitionResult(Decision.TRANSPORT_ERROR, "invalid_reply")
+            if operation == "rollback_legacy" and (
+                cast(int, value) + cast(int, secondary_value) > MAX_RECORDS
             ):
                 return TransitionResult(Decision.TRANSPORT_ERROR, "invalid_reply")
         return TransitionResult(decision, reason, server_time_ms, value, secondary_value)
@@ -783,6 +1009,120 @@ class LightpandaB0Queue:
 
 def _safe_identifier(value: object, name: str) -> str:
     return validate_lightpanda_b0_identifier(value, name)
+
+
+def _canonical_legacy_config(config: Mapping[str, object], task: LightpandaB0Task) -> str:
+    """Freeze the exact string-valued hash needed for a cold legacy rollback."""
+
+    if not isinstance(config, Mapping):
+        raise ValueError("legacy_config must be a mapping")
+    normalized: dict[str, str] = {}
+    for key, value in config.items():
+        _safe_identifier(key, "legacy config field")
+        normalized[key] = str(value)
+    supplied_domain = normalized.get("domain")
+    if supplied_domain is not None and supplied_domain != task.domain:
+        raise ValueError("legacy_config domain disagrees with the B0 task identity")
+    normalized["domain"] = task.domain
+    if (
+        normalized.get("board_id") != task.board_id
+        or normalized.get("source_url") != task.source_url
+        or normalized.get("scrape_step", "0") != "0"
+    ):
+        raise ValueError("legacy_config disagrees with the B0 task identity")
+    encoded = json.dumps(normalized, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+    if len(encoded.encode("utf-8")) > MAX_PAYLOAD_BYTES:
+        raise ValueError("legacy_config exceeds the 128 KiB limit")
+    return encoded
+
+
+def _canonical_rollback_plan(plan: Mapping[str, Mapping[str, object]]) -> str:
+    if not isinstance(plan, Mapping) or len(plan) > MAX_RECORDS:
+        raise ValueError("rollback plan must be a bounded mapping")
+    normalized: dict[str, dict[str, object]] = {}
+    schedule_fields = {
+        "action",
+        "domain",
+        "worker_type",
+        "first_time",
+        "score",
+        "config",
+    }
+    config_fields = {
+        "domain",
+        "board_id",
+        "source_url",
+        "description_r2_hash",
+        "scrape_step",
+        "scrape_interval_hours",
+    }
+    for task_id, raw in plan.items():
+        _safe_identifier(task_id, "rollback task id")
+        if not isinstance(raw, Mapping):
+            raise ValueError("rollback plan entry must be a mapping")
+        action = raw.get("action")
+        if action == "drop":
+            if set(raw) != {"action"}:
+                raise ValueError("drop rollback entry has extra fields")
+            normalized[task_id] = {"action": "drop"}
+            continue
+        if action != "schedule" or set(raw) != schedule_fields:
+            raise ValueError("schedule rollback entry fields are invalid")
+        domain = _validated_domain(raw["domain"])
+        worker_type = raw["worker_type"]
+        first_time = raw["first_time"]
+        score = raw["score"]
+        config = raw["config"]
+        if worker_type not in {"simple", "browser"} or not isinstance(first_time, bool):
+            raise ValueError("rollback schedule class is invalid")
+        if not isinstance(score, str) or not re.fullmatch(r"0|[1-9][0-9]*(?:\.[0-9]+)?", score):
+            raise ValueError("rollback score is not canonical seconds")
+        try:
+            parsed_score = Decimal(score)
+        except InvalidOperation as exc:
+            raise ValueError("rollback score is invalid") from exc
+        if not Decimal(0) <= parsed_score <= Decimal(MAX_INTEGER) / 1000:
+            raise ValueError("rollback score is outside the queue bound")
+        if not isinstance(config, Mapping) or set(config) != config_fields:
+            raise ValueError("rollback scrape config fields are invalid")
+        canonical_config = {key: str(value) for key, value in config.items()}
+        description_hash = canonical_config["description_r2_hash"]
+        if (
+            canonical_config["domain"] != domain
+            or canonical_config["scrape_step"] != "0"
+            or description_hash
+            and not re.fullmatch(r"-?(?:0|[1-9][0-9]*)", description_hash)
+        ):
+            raise ValueError("rollback scrape config identity is invalid")
+        _safe_identifier(canonical_config["board_id"], "rollback board id")
+        try:
+            interval = int(canonical_config["scrape_interval_hours"])
+        except ValueError as exc:
+            raise ValueError("rollback scrape interval is invalid") from exc
+        _bounded_int(interval, "scrape_interval_hours", minimum=1, maximum=8_760)
+        parsed_url = urlsplit(canonical_config["source_url"])
+        if (
+            parsed_url.scheme != "https"
+            or parsed_url.hostname is None
+            or parsed_url.username is not None
+            or parsed_url.password is not None
+            or parsed_url.fragment
+            or parsed_url.port not in {None, 443}
+            or parsed_url.hostname.encode("idna").decode("ascii").lower() != domain
+        ):
+            raise ValueError("rollback source URL disagrees with its domain")
+        normalized[task_id] = {
+            "action": "schedule",
+            "domain": domain,
+            "worker_type": worker_type,
+            "first_time": first_time,
+            "score": score,
+            "config": canonical_config,
+        }
+    encoded = json.dumps(normalized, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+    if len(encoded.encode("utf-8")) > MAX_ROLLBACK_PLAN_BYTES:
+        raise ValueError("rollback plan exceeds the 2 MiB limit")
+    return encoded
 
 
 def _wire_text(value: object) -> str:

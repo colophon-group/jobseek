@@ -33,6 +33,9 @@ func TestPythonExecutorHandshakeKeepsAuthorizationConversationBounded(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(socket, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() { _ = listener.Close() })
 	serverDone := make(chan error, 1)
 	go func() {
@@ -86,6 +89,9 @@ func TestPythonExecutorCancellationActivelyClosesSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(socket, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	accepted := make(chan net.Conn, 1)
 	go func() {
 		connection, acceptErr := listener.Accept()
@@ -122,6 +128,9 @@ func TestPythonExecutorCommitTimeoutInterruptsStalledPeer(t *testing.T) {
 	socket := shortSocketPath(t)
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(socket, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = listener.Close() })
@@ -172,12 +181,91 @@ func TestPythonExecutorCommitTimeoutInterruptsStalledPeer(t *testing.T) {
 	}
 }
 
+func TestPythonExecutorMapsPostgresFenceRejectionToAuthorityFailure(t *testing.T) {
+	current := validQueueTask(t)
+	lease := &lease{Task: current, ClaimToken: "7:14", LeaseUntilMS: 20_000}
+	socket := shortSocketPath(t)
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(socket, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	serverDone := make(chan error, 1)
+	go func() {
+		connection, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			serverDone <- acceptErr
+			return
+		}
+		defer connection.Close()
+		if _, readErr := readFramedJSON(connection); readErr != nil {
+			serverDone <- readErr
+			return
+		}
+		if writeErr := writeExecutorJSON(connection, executorMessage{Type: "authorize", ClaimToken: lease.ClaimToken, LeaseUntilMS: lease.LeaseUntilMS}); writeErr != nil {
+			serverDone <- writeErr
+			return
+		}
+		authorized, readErr := readExecutorMessageForTest(connection)
+		if readErr != nil || authorized.Type != "authorized" {
+			serverDone <- errors.New("supervisor authorization mismatch")
+			return
+		}
+		serverDone <- writeExecutorJSON(connection, executorMessage{Type: "authority_lost", Error: "postgres_write_fence_rejected"})
+	}()
+	request := (&leaseAuthority{lease: lease}).executorRequest([]byte{1})
+	_, err = runPythonExecutor(context.Background(), testExecutorConfig(socket), request, func(ctx context.Context, conversation commitConversation) (*int64, error) {
+		return conversation(ctx, 80_000)
+	})
+	var authorityFailure *authorityError
+	if !errors.As(err, &authorityFailure) || authorityFailure.operation != "postgres-write-fence" {
+		t.Fatalf("PostgreSQL fence rejection was not authority-fatal: %v", err)
+	}
+	if err := <-serverDone; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestExecutorSocketMustBePrivateOwnedSocket(t *testing.T) {
+	socket := shortSocketPath(t)
+	if err := os.WriteFile(socket, []byte("not a socket"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateExecutorSocket(socket); err == nil {
+		t.Fatal("regular file was accepted as the executor socket")
+	}
+	if err := os.Remove(socket); err != nil {
+		t.Fatal(err)
+	}
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	if err := os.Chmod(socket, 0o666); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateExecutorSocket(socket); err == nil {
+		t.Fatal("non-private executor socket was accepted")
+	}
+	if err := os.Chmod(socket, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateExecutorSocket(socket); err != nil {
+		t.Fatalf("private owned executor socket was rejected: %v", err)
+	}
+}
+
 func TestExecutorResponseRejectsUnknownMissingAndNullFields(t *testing.T) {
 	for _, payload := range []string{
 		`{"type":"authorize","claim_token":"7:1","lease_until_ms":2,"extra":1}`,
 		`{"type":"authorize","claim_token":"7:1"}`,
 		`{"type":"committed","claim_token":"7:1","lease_until_ms":2,"next_ready_at_ms":null}`,
 		`{"type":"error","error":"internal details"}`,
+		`{"type":"authority_lost","error":"executor_failed"}`,
 	} {
 		framed, err := frameJSONForTest([]byte(payload))
 		if err != nil {

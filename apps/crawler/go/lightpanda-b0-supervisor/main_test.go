@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,6 +15,30 @@ func TestDarkConfigReadsNoAuthorityConfiguration(t *testing.T) {
 	configured, err := configFromEnvironment()
 	if err != nil || configured.Mode != modeDark || configured.RedisOptions != nil {
 		t.Fatalf("dark configuration acquired authority: config=%+v err=%v", configured, err)
+	}
+}
+
+func TestEnabledHealthQueriesLiveReadiness(t *testing.T) {
+	ready := false
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/healthz" {
+			http.NotFound(response, request)
+			return
+		}
+		if !ready {
+			http.Error(response, "not ready", http.StatusServiceUnavailable)
+			return
+		}
+		response.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(server.Close)
+	address := server.Listener.Addr().String()
+	if err := checkEnabledReady(address); err == nil {
+		t.Fatal("unready enabled supervisor was healthy")
+	}
+	ready = true
+	if err := checkEnabledReady(address); err != nil {
+		t.Fatalf("ready enabled supervisor was unhealthy: %v", err)
 	}
 }
 

@@ -21,9 +21,19 @@ from cryptography.hazmat.primitives import serialization
 ROOT = Path(__file__).resolve().parents[3]
 CRAWLER = ROOT / "apps/crawler"
 COMPOSE = CRAWLER / "docker-compose.yml"
+ENABLED_OVERRIDE = CRAWLER / "lightpanda-b0-enabled.override.yml"
 DEPLOY = CRAWLER / "deploy.sh"
 WORKFLOW = ROOT / ".github/workflows/deploy-crawler-browser.yml"
 BUNDLE_SCRIPT = CRAWLER / "scripts/lightpanda-claimant-credentials.py"
+
+
+def _shell_function(source: str, name: str) -> str:
+    start = source.index(f"{name}() {{")
+    if name == "attest_receipt":
+        end = source.index('\n}\n\nif [[ "$OPERATION" == activate', start)
+    else:
+        end = source.index("\n}\n", start)
+    return source[start : end + 3]
 
 
 def _load_bundle_module() -> ModuleType:
@@ -71,6 +81,23 @@ def _invalidate_certificate_signature(payload: bytes) -> bytes:
     encoded[-1] ^= 1
     invalid = x509.load_der_x509_certificate(bytes(encoded))
     return invalid.public_bytes(serialization.Encoding.PEM)
+
+
+def _deploy_generated_b0_identity() -> dict[str, str]:
+    source = DEPLOY.read_text(encoding="utf-8")
+    start = source.index('cat > "$ENV_FILE" <<EOF')
+    block = source[start : source.index("\nEOF", start)]
+    keys = {
+        "LIGHTPANDA_B0_SERVICE_HOST",
+        "LIGHTPANDA_B0_QUEUE_NAMESPACE",
+        "LIGHTPANDA_B0_SHARD_ID",
+        "LIGHTPANDA_B0_ROUTING_EPOCH",
+    }
+    values = dict(
+        line.split("=", 1) for line in block.splitlines() if line.split("=", 1)[0] in keys
+    )
+    assert set(values) == keys
+    return values
 
 
 @pytest.fixture
@@ -608,7 +635,7 @@ def test_installer_rejects_missing_and_exposed_transport(
         )
 
 
-def _compose_model() -> dict[str, object]:
+def _compose_model(*, enabled: bool = False) -> dict[str, object]:
     docker = shutil.which("docker")
     if docker is None:
         pytest.skip("Docker Compose is unavailable")
@@ -618,6 +645,7 @@ def _compose_model() -> dict[str, object]:
         "CRAWLER_IMAGE_REF": f"ghcr.io/colophon-group/jobseek-crawler@sha256:{'a' * 64}",
         "BROWSER_IMAGE_REF": f"ghcr.io/colophon-group/jobseek-crawler-browser@sha256:{'b' * 64}",
         "LIGHTPANDA_B0_CREDENTIAL_DIR": "/credentials",
+        "LIGHTPANDA_B0_PRODUCER_COHORT": "c1",
         "LOCAL_DATABASE_URL": "postgresql://fixture.invalid/jobseek",
         "R2_ACCESS_KEY_ID": "fixture",
         "R2_SECRET_ACCESS_KEY": "fixture",
@@ -635,20 +663,28 @@ def _compose_model() -> dict[str, object]:
         "GRAFANA_LOKI_USERNAME": "fixture",
         "GRAFANA_LOKI_PASSWORD": "fixture",
     }
-    result = subprocess.run(
+    environment.update(_deploy_generated_b0_identity())
+    command = [
+        docker,
+        "compose",
+        "--env-file",
+        os.devnull,
+        "--project-directory",
+        str(CRAWLER),
+        "-f",
+        str(COMPOSE),
+    ]
+    if enabled:
+        command.extend(["-f", str(ENABLED_OVERRIDE)])
+    command.extend(
         [
-            docker,
-            "compose",
-            "--env-file",
-            os.devnull,
-            "--project-directory",
-            str(CRAWLER),
-            "-f",
-            str(COMPOSE),
             "config",
             "--format",
             "json",
-        ],
+        ]
+    )
+    result = subprocess.run(
+        command,
         check=False,
         capture_output=True,
         text=True,
@@ -656,6 +692,101 @@ def _compose_model() -> dict[str, object]:
     )
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout)
+
+
+def test_deploy_persists_and_overlay_pins_exact_b0_production_identity() -> None:
+    expected = {
+        "LIGHTPANDA_B0_SERVICE_HOST": "10.0.0.5",
+        "LIGHTPANDA_B0_QUEUE_NAMESPACE": "production-b0",
+        "LIGHTPANDA_B0_SHARD_ID": "lightpanda-b0",
+        "LIGHTPANDA_B0_ROUTING_EPOCH": "1",
+    }
+    assert _deploy_generated_b0_identity() == expected
+    overlay = yaml.safe_load(ENABLED_OVERRIDE.read_text(encoding="utf-8"))
+    services = overlay["services"]
+    for name in ("worker-1", "worker-2", "worker-3", "browser-1"):
+        environment = services[name]["environment"]
+        assert {
+            key: environment[key] for key in expected if key != "LIGHTPANDA_B0_SERVICE_HOST"
+        } == {key: value for key, value in expected.items() if key != "LIGHTPANDA_B0_SERVICE_HOST"}
+    claimant_environment = services["lightpanda-claimant"]["environment"]
+    assert {key: str(claimant_environment[key]) for key in expected} == expected
+    assert "${LIGHTPANDA_B0_SERVICE_HOST" not in ENABLED_OVERRIDE.read_text(encoding="utf-8")
+    assert "${LIGHTPANDA_B0_QUEUE_NAMESPACE" not in ENABLED_OVERRIDE.read_text(encoding="utf-8")
+    assert "${LIGHTPANDA_B0_SHARD_ID" not in ENABLED_OVERRIDE.read_text(encoding="utf-8")
+    assert "${LIGHTPANDA_B0_ROUTING_EPOCH" not in ENABLED_OVERRIDE.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "drifted_key",
+    [
+        "LIGHTPANDA_B0_SERVICE_HOST",
+        "LIGHTPANDA_B0_QUEUE_NAMESPACE",
+        "LIGHTPANDA_B0_SHARD_ID",
+        "LIGHTPANDA_B0_ROUTING_EPOCH",
+    ],
+)
+def test_cutover_rejects_drifted_fixed_identity_before_compose(
+    tmp_path: Path, drifted_key: str
+) -> None:
+    identity = _deploy_generated_b0_identity()
+    identity[drifted_key] = "drifted"
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    compose_log = tmp_path / "compose.log"
+    harness = "\n".join(
+        (
+            "set -eu",
+            *(f'{key}="{value}"' for key, value in identity.items()),
+            _shell_function(wrapper, "validate_fixed_b0_identity"),
+            "validate_fixed_b0_identity",
+            'printf "compose\\n" >"$COMPOSE_LOG"',
+        )
+    )
+
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        env={**os.environ, "COMPOSE_LOG": str(compose_log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert not compose_log.exists()
+
+
+def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
+    model = _compose_model(enabled=True)
+    services = model["services"]  # type: ignore[index]
+    supervisor = services["lightpanda-claimant"]  # type: ignore[index]
+    executor = services["lightpanda-executor"]  # type: ignore[index]
+
+    assert supervisor["network_mode"] == "host"  # type: ignore[index]
+    assert supervisor["environment"]["LIGHTPANDA_B0_SUPERVISOR_MODE"] == "enabled"  # type: ignore[index]
+    assert int(supervisor["mem_limit"]) == 128 * 1024 * 1024  # type: ignore[index]
+    assert int(supervisor["memswap_limit"]) == 128 * 1024 * 1024  # type: ignore[index]
+    assert int(executor["mem_limit"]) == 384 * 1024 * 1024  # type: ignore[index]
+    assert int(executor["memswap_limit"]) == 384 * 1024 * 1024  # type: ignore[index]
+    assert executor["environment"] == {  # type: ignore[index]
+        "CRAWLER_DB_POOL_MAX": "1",
+        "CRAWLER_DB_POOL_MIN": "1",
+        "CRAWLER_DB_ROLE": "lightpanda-b0-executor",
+        "LIGHTPANDA_B0_EXECUTOR_MODE": "enabled",
+        "LIGHTPANDA_B0_EXECUTOR_SOCKET": "/run/jobseek-lightpanda-executor/executor.sock",
+        "LOCAL_DATABASE_URL": "postgresql://fixture.invalid/jobseek",
+    }
+    supervisor_mounts = supervisor["volumes"]  # type: ignore[index]
+    socket_mount = next(
+        mount
+        for mount in supervisor_mounts
+        if mount["target"] == "/run/jobseek-lightpanda-executor"  # type: ignore[index]
+    )
+    assert socket_mount["read_only"] is True  # type: ignore[index]
+    assert sum(int(service["mem_limit"]) for service in (supervisor, executor)) == 512 * 1024 * 1024
+    for worker in ("worker-1", "worker-2", "worker-3", "browser-1"):
+        environment = services[worker]["environment"]  # type: ignore[index]
+        assert environment["LIGHTPANDA_B0_PRODUCER_MODE"] == "enabled"
+        assert environment["LIGHTPANDA_B0_PRODUCER_COHORT"] == "c1"
 
 
 def test_compose_claimant_is_go_dark_networkless_secretless_and_bounded() -> None:
@@ -708,6 +839,707 @@ def test_image_and_deploy_validate_the_exact_go_dark_executable() -> None:
     ) in dockerfile
     assert "/usr/local/bin/lightpanda-b0-supervisor --validate-dark" in deploy
     assert "/app/.venv/bin/lightpanda-claimant --validate-only" not in deploy
+
+
+def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None:
+    deploy = DEPLOY.read_text(encoding="utf-8")
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+
+    assert 'LIGHTPANDA_B0_ACTIVE_RECEIPT="$DEPLOY_DIR/.lightpanda-b0-active-v1"' in deploy
+    assert deploy.index("flock -w 7200 9") < deploy.index("LIGHTPANDA_B0_ACTIVE_RECEIPT")
+    assert "ordinary crawler deploy is held" in deploy
+    assert "scripts/lightpanda-b0-cutover.sh" in deploy
+    assert "apps/crawler/scripts/lightpanda-b0-cutover.sh" in workflow
+    assert "flock -n 9" in wrapper
+    assert "com.docker.compose.oneoff=True" in wrapper
+    assert "worker-1 worker-2 worker-3 browser-1 drain" in wrapper
+    assert 'fsync_path file "$temp"' in wrapper
+    assert wrapper.index('fsync_path file "$temp"') < wrapper.index('mv -f -- "$temp" "$RECEIPT"')
+    assert wrapper.index('mv -f -- "$temp" "$RECEIPT"') < wrapper.index(
+        'fsync_path directory "$DEPLOY_DIR"'
+    )
+    assert wrapper.index('write_receipt "$plan_digest" pending') < wrapper.index(
+        "lightpanda-b0-activation activate"
+    )
+    assert wrapper.index("activation_failure_containment_armed=1") < wrapper.index(
+        'write_receipt "$plan_digest" pending'
+    )
+    active_receipt = wrapper.index('write_receipt "$plan_digest" active')
+    assert wrapper.index("activation_failure_containment_armed=0", active_receipt) > active_receipt
+    assert "trap contain_activation_failure EXIT" in wrapper
+    rollback_attestation = wrapper.rindex('attest_receipt "$receipt_state"')
+    rollback_stop = wrapper.index('"${compose_enabled[@]}" stop --timeout 60', rollback_attestation)
+    assert rollback_attestation < rollback_stop
+    settle = wrapper.index("lightpanda-b0-activation settle-rollback", rollback_stop)
+    rollback_plan = wrapper.index("plan --operation rollback", settle)
+    assert rollback_stop < settle < rollback_plan
+    assert 'timeout --foreground --signal=TERM --kill-after=5s "$@"' in wrapper
+    assert wrapper.index("lightpanda-b0-activation rollback") < wrapper.index('rm -f -- "$RECEIPT"')
+    assert "--expect-digest" in wrapper
+    assert "write_fences_remaining" not in wrapper  # cleanup is enforced inside the CLI
+
+
+@pytest.mark.parametrize(("plan_timeout", "expected_status"), [(False, 41), (True, 124)])
+def test_deploy_generated_fresh_env_reaches_activation_plan(
+    tmp_path: Path, plan_timeout: bool, expected_status: int
+) -> None:
+    identity = _deploy_generated_b0_identity()
+    deploy_dir = tmp_path / "deploy"
+    deploy_dir.mkdir()
+    (deploy_dir / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (deploy_dir / "lightpanda-b0-enabled.override.yml").write_text(
+        "services: {}\n", encoding="utf-8"
+    )
+    image = f"ghcr.io/example/jobseek-crawler@sha256:{'b' * 64}"
+    revision = "c" * 40
+    (deploy_dir / ".env").write_text(
+        "\n".join(
+            (
+                *(f"{key}={value}" for key, value in identity.items()),
+                f"CRAWLER_IMAGE_REF={image}",
+                f"JOBSEEK_DEPLOY_REVISION={revision}",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    fake_commands = "\n".join(
+        (
+            "flock() { return 0; }",
+            "stat() { printf '600\\n'; }",
+            f"TEST_PLAN_DIGEST={'a' * 64}",
+            f"TEST_PLAN_TIMEOUT={int(plan_timeout)}",
+            f"sha256sum() {{ cat >/dev/null; printf '{'d' * 64}  -\\n'; }}",
+            "timeout() {",
+            '  original="$*"; shift 4',
+            '  if [[ "$TEST_PLAN_TIMEOUT" == 1 && "$original" == '
+            '*"plan --operation activate"* ]]; then',
+            '    printf \'timeout:%s\\n\' "$original" >>"$TEST_LOG"',
+            "    return 124",
+            "  fi",
+            '  "$@"',
+            "}",
+            "docker() {",
+            '  printf \'docker:%s\\n\' "$*" >>"$TEST_LOG"',
+            '  case "$*" in',
+            "    ps\\ --filter*) return 0 ;;",
+            "    *\\ config\\ -q) return 0 ;;",
+            "    *\\ config) printf 'rendered-compose\\n'; return 0 ;;",
+            "    *\\ ps\\ -aq\\ *) return 0 ;;",
+            '    *\\ plan\\ --operation\\ activate\\ *) printf \'{"digest": "%s"}\\n\' '
+            '"$TEST_PLAN_DIGEST"; return 0 ;;',
+            "    *\\ lightpanda-b0-activation\\ activate\\ *) return 41 ;;",
+            "    *) return 0 ;;",
+            "  esac",
+            "}",
+        )
+    )
+    wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
+    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{deploy_dir}"', 1)
+    wrapper = wrapper.replace(
+        "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
+    )
+    wrapper = wrapper.replace('[[ "$(id -un)" == deploy ]] || {', "true || {", 1)
+    staged_wrapper = tmp_path / "lightpanda-b0-cutover.sh"
+    staged_wrapper.write_text(wrapper, encoding="utf-8")
+    log = tmp_path / "commands.log"
+
+    result = subprocess.run(
+        ["bash", str(staged_wrapper), "activate", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == expected_status, result.stderr
+    events = log.read_text(encoding="utf-8").splitlines()
+    if plan_timeout:
+        assert any("timeout:" in event and "plan --operation activate" in event for event in events)
+        assert not any(" lightpanda-b0-activation activate " in event for event in events)
+        assert any(" kill worker-1 worker-2 worker-3" in event for event in events)
+        assert not (deploy_dir / ".lightpanda-b0-active-v1").exists()
+        return
+    plan = next(
+        index for index, event in enumerate(events) if " plan --operation activate " in event
+    )
+    apply = next(
+        index
+        for index, event in enumerate(events)
+        if " lightpanda-b0-activation activate " in event
+    )
+    assert plan < apply
+    receipt = deploy_dir / ".lightpanda-b0-active-v1"
+    assert receipt.is_file()
+    receipt_identity = {
+        "namespace": identity["LIGHTPANDA_B0_QUEUE_NAMESPACE"],
+        "shard_id": identity["LIGHTPANDA_B0_SHARD_ID"],
+        "routing_epoch": identity["LIGHTPANDA_B0_ROUTING_EPOCH"],
+    }
+    assert set(f"{key}={value}" for key, value in receipt_identity.items()).issubset(
+        set(receipt.read_text(encoding="utf-8").splitlines())
+    )
+    assert "state=pending" in receipt.read_text(encoding="utf-8").splitlines()
+
+
+def _run_pending_recovery_wrapper(
+    tmp_path: Path, *, settle_status: int
+) -> tuple[subprocess.CompletedProcess[str], list[str], Path]:
+    identity = _deploy_generated_b0_identity()
+    deploy_dir = tmp_path / "deploy"
+    deploy_dir.mkdir()
+    (deploy_dir / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (deploy_dir / "lightpanda-b0-enabled.override.yml").write_text(
+        "services: {}\n", encoding="utf-8"
+    )
+    image = f"ghcr.io/example/jobseek-crawler@sha256:{'b' * 64}"
+    revision = "c" * 40
+    compose_digest = "d" * 64
+    (deploy_dir / ".env").write_text(
+        "\n".join(
+            (
+                *(f"{key}={value}" for key, value in identity.items()),
+                f"CRAWLER_IMAGE_REF={image}",
+                f"JOBSEEK_DEPLOY_REVISION={revision}",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    receipt = deploy_dir / ".lightpanda-b0-active-v1"
+    receipt.write_text(
+        "\n".join(
+            (
+                "schema=jobseek.lightpanda-b0-active/v1",
+                "state=pending",
+                "cohort=c1",
+                "namespace=production-b0",
+                "shard_id=lightpanda-b0",
+                "routing_epoch=1",
+                f"plan_digest={'a' * 64}",
+                f"compose_digest={compose_digest}",
+                f"crawler_image_ref={image}",
+                f"deploy_revision={revision}",
+                "activated_at_epoch=1757590000",
+            )
+        )
+        + "\n",
+        encoding="ascii",
+    )
+    receipt.chmod(0o600)
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    fake_commands = "\n".join(
+        (
+            "flock() { return 0; }",
+            "stat() { printf '600\\n'; }",
+            f"TEST_PLAN_DIGEST={'a' * 64}",
+            f"TEST_COMPOSE_DIGEST={compose_digest}",
+            f"TEST_SETTLE_STATUS={settle_status}",
+            "sha256sum() { cat >/dev/null; printf '%s  -\\n' \"$TEST_COMPOSE_DIGEST\"; }",
+            "sleep() { :; }",
+            "timeout() {",
+            '  original="$*"; shift 4',
+            '  if [[ "$TEST_SETTLE_STATUS" != 0 && "$original" == *settle-rollback* ]]; then',
+            '    printf \'timeout:%s\\n\' "$original" >>"$TEST_LOG"',
+            '    return "$TEST_SETTLE_STATUS"',
+            "  fi",
+            '  "$@"',
+            "}",
+            "docker() {",
+            '  printf \'docker:%s\\n\' "$*" >>"$TEST_LOG"',
+            '  if [[ "$1" == inspect ]]; then',
+            "    if [[ \"$*\" == *State.Running* ]]; then printf 'false\\n';",
+            "    else printf 'running\\n'; fi",
+            "    return 0",
+            "  fi",
+            '  if [[ "$1" == ps ]]; then return 0; fi',
+            '  case "$*" in',
+            "    *\\ config\\ -q) return 0 ;;",
+            "    *\\ config) printf 'rendered-compose\\n'; return 0 ;;",
+            "    *\\ ps\\ -aq\\ *) printf 'stopped-container\\n'; return 0 ;;",
+            "    *\\ settle-rollback\\ *) return 0 ;;",
+            '    *\\ plan\\ --operation\\ rollback\\ *) printf \'{"digest": "%s"}\\n\' '
+            '"$TEST_PLAN_DIGEST"; return 0 ;;',
+            "    *\\ lightpanda-b0-activation\\ rollback\\ *) return 0 ;;",
+            "    *\\ ps\\ -q\\ *) printf 'running-container\\n'; return 0 ;;",
+            "    *) return 0 ;;",
+            "  esac",
+            "}",
+        )
+    )
+    wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
+    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{deploy_dir}"', 1)
+    wrapper = wrapper.replace(
+        "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
+    )
+    wrapper = wrapper.replace('[[ "$(id -un)" == deploy ]] || {', "true || {", 1)
+    staged_wrapper = tmp_path / "lightpanda-b0-cutover.sh"
+    staged_wrapper.write_text(wrapper, encoding="utf-8")
+    log = tmp_path / "commands.log"
+    result = subprocess.run(
+        ["bash", str(staged_wrapper), "recover-pending", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return result, log.read_text(encoding="utf-8").splitlines(), receipt
+
+
+def test_pending_receipt_recovery_settles_before_plan_and_restores_python(
+    tmp_path: Path,
+) -> None:
+    result, events, receipt = _run_pending_recovery_wrapper(tmp_path, settle_status=0)
+
+    assert result.returncode == 0, result.stderr
+    settle = next(index for index, event in enumerate(events) if " settle-rollback " in event)
+    plan = next(
+        index for index, event in enumerate(events) if " plan --operation rollback " in event
+    )
+    apply = next(
+        index
+        for index, event in enumerate(events)
+        if " lightpanda-b0-activation rollback " in event
+    )
+    base_start = next(
+        index
+        for index, event in enumerate(events)
+        if "-f docker-compose.yml up -d --force-recreate" in event
+    )
+    assert settle < plan < apply < base_start
+    assert not receipt.exists()
+
+
+def test_pending_receipt_recovery_timeout_stays_cold_and_retains_receipt(
+    tmp_path: Path,
+) -> None:
+    result, events, receipt = _run_pending_recovery_wrapper(tmp_path, settle_status=124)
+
+    assert result.returncode == 124
+    assert receipt.is_file()
+    assert any(" settle-rollback " in event for event in events)
+    assert not any(" plan --operation rollback " in event for event in events)
+    assert not any(" up -d --force-recreate " in event for event in events)
+
+
+def test_b0_failed_activation_executes_containment_trap(tmp_path: Path) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    start = wrapper.index("contain_activation_failure() {")
+    end = wrapper.index("\n}\n", start) + 3
+    function = wrapper[start:end]
+    log = tmp_path / "containment.log"
+    harness = "\n".join(
+        (
+            "set -u",
+            "compose_enabled=(fake_compose)",
+            "mutation_services=(worker-1 lightpanda-claimant lightpanda-executor)",
+            "activation_failure_containment_armed=1",
+            "recovery_failure_containment_armed=0",
+            'bounded() { shift; "$@"; }',
+            'fake_compose() { printf \'compose:%s\\n\' "$*" >>"$TEST_LOG"; }',
+            "terminate_running_oneoffs() { printf 'oneoffs\\n' >>\"$TEST_LOG\"; }",
+            "attest_cold_host() { printf 'attest\\n' >>\"$TEST_LOG\"; }",
+            function,
+            "trap contain_activation_failure EXIT",
+            "exit 17",
+        )
+    )
+
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        env={**os.environ, "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 17
+    assert log.read_text(encoding="utf-8").splitlines() == [
+        "compose:stop --timeout 60 worker-1 lightpanda-claimant lightpanda-executor",
+        "compose:kill worker-1 lightpanda-claimant lightpanda-executor",
+        "oneoffs",
+        "attest",
+    ]
+
+
+def test_b0_receipt_publication_fsyncs_file_then_rename_then_parent(tmp_path: Path) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    receipt = tmp_path / ".lightpanda-b0-active-v1"
+    log = tmp_path / "receipt.log"
+    harness = "\n".join(
+        (
+            "set -euo pipefail",
+            f'DEPLOY_DIR="{tmp_path}"',
+            f'RECEIPT="{receipt}"',
+            "COHORT=c1",
+            "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+            "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+            "LIGHTPANDA_B0_ROUTING_EPOCH=7",
+            f'CRAWLER_IMAGE_REF="ghcr.io/example/jobseek-crawler@sha256:{"b" * 64}"',
+            f'JOBSEEK_DEPLOY_REVISION="{"c" * 40}"',
+            "compose_enabled=(fake_compose)",
+            'bounded() { shift; "$@"; }',
+            "fake_compose() { printf 'rendered-compose\\n'; }",
+            f"sha256sum() {{ cat >/dev/null; printf '{'d' * 64}  -\\n'; }}",
+            'fsync_path() { printf \'fsync:%s:%s\\n\' "$1" "$2" >>"$TEST_LOG"; }',
+            'mv() { printf \'rename:%s\\n\' "$*" >>"$TEST_LOG"; command mv "$@"; }',
+            "stat() { printf '600\\n'; }",
+            _shell_function(wrapper, "write_receipt"),
+            f'write_receipt "{"a" * 64}" active',
+        )
+    )
+
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        env={**os.environ, "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    events = log.read_text(encoding="utf-8").splitlines()
+    assert events[0].startswith(f"fsync:file:{tmp_path}/.lightpanda-b0-active-v1.tmp.")
+    assert events[1].startswith("rename:-f -- ")
+    assert events[1].endswith(f" {receipt}")
+    assert events[2] == f"fsync:directory:{tmp_path}"
+    assert "state=active" in receipt.read_text(encoding="utf-8").splitlines()
+
+
+def test_b0_fsync_helper_flushes_regular_file_and_parent_directory(tmp_path: Path) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    receipt = tmp_path / "receipt"
+    receipt.write_text("complete\n", encoding="ascii")
+    harness = "\n".join(
+        (
+            "set -eu",
+            _shell_function(wrapper, "fsync_path"),
+            f'fsync_path file "{receipt}"',
+            f'fsync_path directory "{tmp_path}"',
+        )
+    )
+
+    result = subprocess.run(["bash", "-c", harness], check=False, capture_output=True, text=True)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_b0_parent_fsync_failure_keeps_receipt_and_executes_containment(tmp_path: Path) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    receipt = tmp_path / ".lightpanda-b0-active-v1"
+    log = tmp_path / "receipt-failure.log"
+    harness = "\n".join(
+        (
+            "set -euo pipefail",
+            f'DEPLOY_DIR="{tmp_path}"',
+            f'RECEIPT="{receipt}"',
+            "COHORT=c1",
+            "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+            "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+            "LIGHTPANDA_B0_ROUTING_EPOCH=7",
+            f'CRAWLER_IMAGE_REF="ghcr.io/example/jobseek-crawler@sha256:{"b" * 64}"',
+            f'JOBSEEK_DEPLOY_REVISION="{"c" * 40}"',
+            "compose_enabled=(fake_compose)",
+            "mutation_services=(worker-1 lightpanda-claimant lightpanda-executor)",
+            "activation_failure_containment_armed=1",
+            "recovery_failure_containment_armed=0",
+            'bounded() { shift; "$@"; }',
+            "fake_compose() {",
+            "  if [[ \"$1\" == config ]]; then printf 'rendered-compose\\n'; return; fi",
+            '  printf \'compose:%s\\n\' "$*" >>"$TEST_LOG"',
+            "}",
+            f"sha256sum() {{ cat >/dev/null; printf '{'d' * 64}  -\\n'; }}",
+            "fsync_path() {",
+            '  printf \'fsync:%s\\n\' "$1" >>"$TEST_LOG"',
+            '  [[ "$1" != directory ]]',
+            "}",
+            "attest_cold_host() { printf 'attest\\n' >>\"$TEST_LOG\"; }",
+            "terminate_running_oneoffs() { printf 'oneoffs\\n' >>\"$TEST_LOG\"; }",
+            "stat() { printf '600\\n'; }",
+            _shell_function(wrapper, "contain_activation_failure"),
+            _shell_function(wrapper, "write_receipt"),
+            "trap contain_activation_failure EXIT",
+            f'write_receipt "{"a" * 64}" pending',
+        )
+    )
+
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        env={**os.environ, "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert receipt.is_file()
+    assert "state=pending" in receipt.read_text(encoding="utf-8").splitlines()
+    assert log.read_text(encoding="utf-8").splitlines() == [
+        "fsync:file",
+        "fsync:directory",
+        "compose:stop --timeout 60 worker-1 lightpanda-claimant lightpanda-executor",
+        "compose:kill worker-1 lightpanda-claimant lightpanda-executor",
+        "oneoffs",
+        "attest",
+    ]
+
+
+@pytest.mark.parametrize(
+    "corruption",
+    [
+        "duplicate",
+        "unknown",
+        "missing",
+        "schema",
+        "pending",
+        "cohort",
+        "namespace",
+        "shard",
+        "epoch",
+        "plan_digest",
+        "compose_digest",
+        "image",
+        "mutable_image",
+        "revision",
+        "malformed_revision",
+        "activated_at",
+    ],
+)
+def test_b0_rollback_rejects_incomplete_or_drifted_receipt_before_mutation(
+    tmp_path: Path, corruption: str
+) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    compose_digest = hashlib.sha256(b"rendered-compose\n").hexdigest()
+    image = f"ghcr.io/example/jobseek-crawler@sha256:{'b' * 64}"
+    revision = "c" * 40
+    fields = [
+        "schema=jobseek.lightpanda-b0-active/v1",
+        "state=active",
+        "cohort=c1",
+        "namespace=production-b0",
+        "shard_id=lightpanda-b0",
+        "routing_epoch=7",
+        f"plan_digest={'a' * 64}",
+        f"compose_digest={compose_digest}",
+        f"crawler_image_ref={image}",
+        f"deploy_revision={revision}",
+        "activated_at_epoch=1757590000",
+    ]
+    replacements = {
+        "schema": ("schema=", "schema=jobseek.lightpanda-b0-active/v2"),
+        "pending": ("state=", "state=pending"),
+        "cohort": ("cohort=", "cohort=c4"),
+        "namespace": ("namespace=", "namespace=other"),
+        "shard": ("shard_id=", "shard_id=other"),
+        "epoch": ("routing_epoch=", "routing_epoch=8"),
+        "plan_digest": ("plan_digest=", "plan_digest=invalid"),
+        "compose_digest": ("compose_digest=", f"compose_digest={'d' * 64}"),
+        "image": (
+            "crawler_image_ref=",
+            f"crawler_image_ref=ghcr.io/example/jobseek-crawler@sha256:{'e' * 64}",
+        ),
+        "revision": ("deploy_revision=", f"deploy_revision={'d' * 40}"),
+        "activated_at": ("activated_at_epoch=", "activated_at_epoch=0"),
+    }
+    if corruption == "duplicate":
+        fields[-1] = "state=active"
+    elif corruption == "unknown":
+        fields[-1] = "unexpected=value"
+    elif corruption == "missing":
+        fields.pop()
+    elif corruption == "mutable_image":
+        image = "ghcr.io/example/jobseek-crawler:latest"
+        fields[8] = f"crawler_image_ref={image}"
+    elif corruption == "malformed_revision":
+        revision = "latest"
+        fields[9] = f"deploy_revision={revision}"
+    else:
+        prefix, replacement = replacements[corruption]
+        fields[next(index for index, field in enumerate(fields) if field.startswith(prefix))] = (
+            replacement
+        )
+    receipt = tmp_path / ".lightpanda-b0-active-v1"
+    receipt.write_text("\n".join(fields) + "\n", encoding="utf-8")
+    receipt.chmod(0o600)
+    mutation_log = tmp_path / "mutation.log"
+    harness = "\n".join(
+        (
+            "set -u",
+            f'RECEIPT="{receipt}"',
+            "COHORT=c1",
+            "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+            "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+            "LIGHTPANDA_B0_ROUTING_EPOCH=7",
+            f'CRAWLER_IMAGE_REF="{image}"',
+            f'JOBSEEK_DEPLOY_REVISION="{revision}"',
+            f'COMPOSE_DIGEST="{compose_digest}"',
+            "compose_enabled=(fake_compose)",
+            'bounded() { shift; "$@"; }',
+            "fake_compose() { printf 'rendered-compose\\n'; }",
+            "sha256sum() { cat >/dev/null; printf '%s  -\\n' \"$COMPOSE_DIGEST\"; }",
+            "stat() { printf '600\\n'; }",
+            _shell_function(wrapper, "attest_receipt"),
+            "if attest_receipt active; then",
+            "  printf 'mutation\\n' >\"$MUTATION_LOG\"",
+            "  exit 0",
+            "fi",
+            "exit 23",
+        )
+    )
+
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        env={**os.environ, "MUTATION_LOG": str(mutation_log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 23, result.stderr
+    assert not mutation_log.exists()
+
+
+def test_b0_rollback_accepts_only_complete_exact_active_receipt(tmp_path: Path) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    compose_digest = hashlib.sha256(b"rendered-compose\n").hexdigest()
+    receipt = tmp_path / ".lightpanda-b0-active-v1"
+    receipt.write_text(
+        "\n".join(
+            (
+                "schema=jobseek.lightpanda-b0-active/v1",
+                "state=active",
+                "cohort=c1",
+                "namespace=production-b0",
+                "shard_id=lightpanda-b0",
+                "routing_epoch=7",
+                f"plan_digest={'a' * 64}",
+                f"compose_digest={compose_digest}",
+                f"crawler_image_ref=ghcr.io/example/jobseek-crawler@sha256:{'b' * 64}",
+                f"deploy_revision={'c' * 40}",
+                "activated_at_epoch=1757590000",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    receipt.chmod(0o600)
+    harness = "\n".join(
+        (
+            "set -eu",
+            f'RECEIPT="{receipt}"',
+            "COHORT=c1",
+            "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+            "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+            "LIGHTPANDA_B0_ROUTING_EPOCH=7",
+            f'CRAWLER_IMAGE_REF="ghcr.io/example/jobseek-crawler@sha256:{"b" * 64}"',
+            f'JOBSEEK_DEPLOY_REVISION="{"c" * 40}"',
+            f'COMPOSE_DIGEST="{compose_digest}"',
+            "compose_enabled=(fake_compose)",
+            'bounded() { shift; "$@"; }',
+            "fake_compose() { printf 'rendered-compose\\n'; }",
+            "sha256sum() { cat >/dev/null; printf '%s  -\\n' \"$COMPOSE_DIGEST\"; }",
+            "stat() { printf '600\\n'; }",
+            _shell_function(wrapper, "attest_receipt"),
+            "attest_receipt active",
+        )
+    )
+
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("failure", ["running", "inspect_error"])
+def test_b0_cold_attestation_checks_every_replica_and_fails_closed(
+    tmp_path: Path, failure: str
+) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    log = tmp_path / "inspect.log"
+    harness = "\n".join(
+        (
+            "set -u",
+            "COMPOSE_PROJECT_NAME=deploy",
+            "compose_enabled=(fake_compose)",
+            "mutation_services=(worker-1)",
+            'bounded() { shift; "$@"; }',
+            f'TEST_FAILURE="{failure}"',
+            "fake_compose() { printf 'stopped-one\\nstopped-two\\n'; }",
+            "docker() {",
+            '  if [[ "$1" == ps ]]; then return 0; fi',
+            "  container_id=${!#}",
+            '  printf \'inspect:%s\\n\' "$container_id" >>"$TEST_LOG"',
+            '  if [[ "$container_id" == stopped-two && "$TEST_FAILURE" == inspect_error ]]; then',
+            "    return 1",
+            "  fi",
+            '  if [[ "$container_id" == stopped-two && "$TEST_FAILURE" == running ]]; then',
+            "    printf 'true\\n'",
+            "  else",
+            "    printf 'false\\n'",
+            "  fi",
+            "}",
+            _shell_function(wrapper, "running_oneoffs"),
+            _shell_function(wrapper, "attest_cold_host"),
+            "attest_cold_host",
+        )
+    )
+
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        env={**os.environ, "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert log.read_text(encoding="utf-8").splitlines() == [
+        "inspect:stopped-one",
+        "inspect:stopped-two",
+    ]
+
+
+def test_b0_cold_attestation_accepts_multiple_stopped_replicas(tmp_path: Path) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    log = tmp_path / "inspect.log"
+    harness = "\n".join(
+        (
+            "set -eu",
+            "COMPOSE_PROJECT_NAME=deploy",
+            "compose_enabled=(fake_compose)",
+            "mutation_services=(worker-1)",
+            'bounded() { shift; "$@"; }',
+            "fake_compose() { printf 'stopped-one\\nstopped-two\\n'; }",
+            "docker() {",
+            '  if [[ "$1" == ps ]]; then return 0; fi',
+            '  printf \'inspect:%s\\n\' "${!#}" >>"$TEST_LOG"',
+            "  printf 'false\\n'",
+            "}",
+            _shell_function(wrapper, "running_oneoffs"),
+            _shell_function(wrapper, "attest_cold_host"),
+            "attest_cold_host",
+        )
+    )
+
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        env={**os.environ, "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert log.read_text(encoding="utf-8").splitlines() == [
+        "inspect:stopped-one",
+        "inspect:stopped-two",
+    ]
 
 
 def test_ci_owns_the_production_go_supervisor_module() -> None:

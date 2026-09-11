@@ -1,0 +1,111 @@
+# Explicit production activation overlay for the fixed Go-owned B0 cohort.
+# The ordinary crawler deploy does not load this file and remains dark.
+
+services:
+  worker-1:
+    environment:
+      LIGHTPANDA_B0_PRODUCER_MODE: enabled
+      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c4}
+      LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
+      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
+      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+
+  worker-2:
+    environment:
+      LIGHTPANDA_B0_PRODUCER_MODE: enabled
+      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c4}
+      LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
+      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
+      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+
+  worker-3:
+    environment:
+      LIGHTPANDA_B0_PRODUCER_MODE: enabled
+      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c4}
+      LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
+      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
+      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+
+  browser-1:
+    environment:
+      LIGHTPANDA_B0_PRODUCER_MODE: enabled
+      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c4}
+      LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
+      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
+      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+
+  lightpanda-executor:
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s
+    command: ["uv", "run", "--no-sync", "python", "-m", "src.lightpanda.executor"]
+    user: "10001:10001"
+    read_only: true
+    cgroup: private
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL:?required}
+      CRAWLER_DB_ROLE: lightpanda-b0-executor
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "1"
+      LIGHTPANDA_B0_EXECUTOR_MODE: enabled
+      LIGHTPANDA_B0_EXECUTOR_SOCKET: /run/jobseek-lightpanda-executor/executor.sock
+    volumes:
+      - lightpanda-executor-socket:/run/jobseek-lightpanda-executor
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
+    healthcheck:
+      test: ["CMD", "uv", "run", "--no-sync", "python", "-m", "src.lightpanda.executor", "--healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 1.0
+    pids_limit: 128
+    ulimits:
+      nofile:
+        soft: 64
+        hard: 64
+
+  lightpanda-claimant:
+    network_mode: host
+    environment:
+      GOMEMLIMIT: 96MiB
+      LIGHTPANDA_B0_SUPERVISOR_MODE: enabled
+      REDIS_URL: redis://localhost:6379/0
+      LIGHTPANDA_B0_SERVICE_HOST: 10.0.0.5
+      LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
+      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
+      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      LIGHTPANDA_B0_CA_CERTIFICATE: /run/lightpanda/ca.pem
+      LIGHTPANDA_B0_CLIENT_CERTIFICATE: /run/lightpanda/client.pem
+      LIGHTPANDA_B0_CLIENT_PRIVATE_KEY: /run/lightpanda/client-key.pem
+      LIGHTPANDA_B0_CA_SHA256_FILE: /run/lightpanda/ca.sha256
+      LIGHTPANDA_B0_SERVER_LEAF_SHA256_FILE: /run/lightpanda/server-leaf.sha256
+      LIGHTPANDA_B0_SERVER_SPKI_SHA256_FILE: /run/lightpanda/server-spki.sha256
+      LIGHTPANDA_B0_EXECUTOR_SOCKET: /run/jobseek-lightpanda-executor/executor.sock
+      LIGHTPANDA_B0_METRICS_ADDRESS: 127.0.0.1:9101
+    volumes:
+      - ${LIGHTPANDA_B0_CREDENTIAL_DIR:?required}/ca.pem:/run/lightpanda/ca.pem:ro
+      - ${LIGHTPANDA_B0_CREDENTIAL_DIR:?required}/client.pem:/run/lightpanda/client.pem:ro
+      - ${LIGHTPANDA_B0_CREDENTIAL_DIR:?required}/client-key.pem:/run/lightpanda/client-key.pem:ro
+      - ${LIGHTPANDA_B0_CREDENTIAL_DIR:?required}/ca.sha256:/run/lightpanda/ca.sha256:ro
+      - ${LIGHTPANDA_B0_CREDENTIAL_DIR:?required}/server-leaf.sha256:/run/lightpanda/server-leaf.sha256:ro
+      - ${LIGHTPANDA_B0_CREDENTIAL_DIR:?required}/server-spki.sha256:/run/lightpanda/server-spki.sha256:ro
+      - lightpanda-executor-socket:/run/jobseek-lightpanda-executor:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      lightpanda-executor:
+        condition: service_healthy
+
+volumes:
+  lightpanda-executor-socket:
+    name: jobseek-lightpanda-b0-executor-socket

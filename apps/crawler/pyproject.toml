@@ -41,6 +41,7 @@ dependencies = [
 [project.scripts]
 crawler = "src.cli:main"
 lightpanda-claimant = "src.lightpanda.entrypoint:main"
+lightpanda-b0-activation = "src.lightpanda.activation:main"
 ws = "src.workspace.cli:main"
 labeller = "src.labeller.cli:main"
 

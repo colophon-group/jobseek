@@ -20,6 +20,12 @@ if redis.call("EXISTS", config_key) == 0 then
     return -1
 end
 
+-- The B0 guard is an ownership root independent of the legacy queue/domain
+-- representation. A guarded config is never an orphan.
+if redis.call("HEXISTS", "lightpanda-b0:legacy-guard", task_id) == 1 then
+    return 0
+end
+
 local domain = redis.call("HGET", config_key, "domain")
 if not domain or domain == "" then
     return -2
