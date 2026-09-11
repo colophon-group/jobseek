@@ -1,140 +1,59 @@
-import { mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { restoreTestEnv, setTestEnv, snapshotTestEnv } from "@/test-utils/env";
 import Ajv from "ajv";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT,
-  CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT,
   CLASSIFIER_INPUT_NORMALIZER_VERSION,
   CLASSIFIER_INPUT_SCHEMA_VERSION,
   normalizeClassifierInputV1,
 } from "../classifier-input";
+import { AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION } from "../contract";
 import {
-  AI_FILTER_QUERY_MAX_LENGTH,
-  AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-  normalizeAiFilterSoftQueryV1,
-  parseAiFilterCandidateId,
-} from "../contract";
-import {
-  STAGE_A_EXAMPLE_V1_SCHEMA,
-  STAGE_A_FREEZE_V1_SCHEMA,
-  STAGE_A_MANIFEST_V1_SCHEMA,
-  STAGE_A_READY_POLICY_V1_SCHEMA,
-  STAGE_A_WIP_V1_SCHEMA,
+  STAGE_A_BUNDLE_V2_SCHEMA,
+  STAGE_A_FILTER_V2_SCHEMA,
+  STAGE_A_GOLD_FREEZE_V2_SCHEMA,
+  STAGE_A_GOLD_MANIFEST_V2_SCHEMA,
+  STAGE_A_HUMAN_AUDIT_POLICY_V2_SCHEMA,
+  STAGE_A_HUMAN_FEEDBACK_V2_SCHEMA,
+  STAGE_A_PAIR_V2_SCHEMA,
+  STAGE_A_SILVER_FREEZE_V2_SCHEMA,
+  STAGE_A_SILVER_MANIFEST_V2_SCHEMA,
+  STAGE_A_WIP_V2_SCHEMA,
 } from "./schemas";
 import {
-  STAGE_A_EXAMPLE_SCHEMA_VERSION,
-  STAGE_A_READY_POLICY_SCHEMA_VERSION,
+  STAGE_A_BUNDLE_SCHEMA_VERSION,
+  STAGE_A_FILTER_SCHEMA_VERSION,
+  STAGE_A_GOLD_FREEZE_SCHEMA_VERSION,
+  STAGE_A_HUMAN_AUDIT_POLICY_SCHEMA_VERSION,
+  STAGE_A_HUMAN_FEEDBACK_SCHEMA_VERSION,
+  STAGE_A_PAIR_SCHEMA_VERSION,
   STAGE_A_WIP_SCHEMA_VERSION,
   StageAEvaluationError,
-  buildStageAReadyManifest,
   canonicalStageAJson,
-  digestStageAReadyPolicy,
-  freezeStageA,
-  loadStageABenchmark,
-  readStageAReadyPolicyFile,
-  reportStageAFreeze,
+  digestStageAHumanAuditPolicy,
+  freezeStageASilver,
+  loadStageAScoringLabels,
+  loadStageATargetInputs,
+  promoteStageAGold,
+  readStageAHumanAuditPolicyFile,
+  reportStageAGoldFreeze,
   validateStageAWip,
-  writeStageAFreezeFile,
-  type BinaryLabel,
-  type StageAExampleV1,
-  type StageAReadyPolicyV1,
-  type StageAWipV1,
+  writeStageASilverFreezeFile,
+  type StageAHumanAuditPolicyV2,
+  type StageAHumanFeedbackV2,
+  type StageAWipV2,
 } from "./stage-a";
 
 const temporaryRoots: string[] = [];
 const originalEnv = snapshotTestEnv(["AI_FILTER_EVAL_DATA_ROOT"]);
+const CALIBRATION_DIGEST = "c".repeat(64);
 
 afterEach(async () => {
   restoreTestEnv(originalEnv);
-  await Promise.all(
-    temporaryRoots.splice(0).map((temporaryRoot) =>
-      rm(temporaryRoot, { recursive: true, force: true }),
-    ),
-  );
+  await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
-
-const locales = ["de", "en", "fr", "it"] as const;
-const scenarios = [
-  "clear_match",
-  "clear_non_match",
-  "ambiguous",
-  "prompt_injection",
-] as const;
-
-function syntheticSource(index: number) {
-  return {
-    candidateId: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
-    title: `Synthetic role ${index}`,
-    companyName: "Synthetic Company",
-    descriptionHtml: `<p>Synthetic description ${index}</p>`,
-    selectedDescriptionLocale: locales[index % locales.length],
-  };
-}
-
-function syntheticExample(index: number): StageAExampleV1 {
-  const source = syntheticSource(index);
-  const annotations = [
-    {
-      annotationId: `eval-annotation-${String(index).padStart(3, "0")}-a`,
-      actorId: "eval-actor-a",
-      label: (index % 2) as BinaryLabel,
-    },
-  ];
-  if (index < 50) {
-    annotations.push({
-      annotationId: `eval-annotation-${String(index).padStart(3, "0")}-b`,
-      actorId: "eval-actor-b",
-      label: (index < 25 ? index % 2 : (index + 1) % 2) as BinaryLabel,
-    });
-  }
-  return {
-    schemaVersion: STAGE_A_EXAMPLE_SCHEMA_VERSION,
-    exampleId: `eval-example-${String(index).padStart(3, "0")}`,
-    softQuery: `synthetic query ${String(index).padStart(3, "0")}`,
-    queryOrigin: "eval_authored",
-    locale: locales[index % locales.length],
-    scenario: scenarios[index % scenarios.length],
-    classifierSource: source,
-    contentIdentity: normalizeClassifierInputV1(source).contentIdentity,
-    annotations,
-    adjudication:
-      index >= 25 && index < 50
-        ? {
-            adjudicationId: `eval-adjudication-${String(index).padStart(3, "0")}`,
-            actorId: "eval-actor-c",
-            label: (index % 2) as BinaryLabel,
-          }
-        : null,
-  };
-}
-
-function syntheticWip(): StageAWipV1 {
-  return {
-    schemaVersion: STAGE_A_WIP_SCHEMA_VERSION,
-    datasetId: "eval-synthetic-stage-a",
-    classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
-    classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
-    softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    examples: Array.from({ length: 200 }, (_, index) => syntheticExample(index)),
-  };
-}
-
-function syntheticPolicy(overrides: Partial<StageAReadyPolicyV1> = {}): StageAReadyPolicyV1 {
-  return {
-    schemaVersion: STAGE_A_READY_POLICY_SCHEMA_VERSION,
-    localeMinimums: { de: 40, en: 40, fr: 40, it: 40 },
-    scenarioMinimums: {
-      clear_match: 40,
-      clear_non_match: 40,
-      ambiguous: 40,
-      prompt_injection: 40,
-    },
-    ...overrides,
-  };
-}
 
 type Mutable<T> = T extends readonly (infer Item)[]
   ? Mutable<Item>[]
@@ -146,836 +65,351 @@ function clone<T>(input: T): Mutable<T> {
   return JSON.parse(JSON.stringify(input)) as Mutable<T>;
 }
 
-async function useTemporaryRoot(): Promise<string> {
-  const root = await mkdtemp(path.join(tmpdir(), "jobseek-stage-a-"));
+function source(index: number) {
+  return {
+    candidateId: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    title: `Synthetic role ${index}`,
+    companyName: `Synthetic Company ${index % 13}`,
+    descriptionHtml: `<p>Synthetic evidence ${index}</p>`,
+    selectedDescriptionLocale: ["de", "en", "fr", "it"][index % 4],
+  };
+}
+
+function syntheticWip(): StageAWipV2 {
+  const filters = Array.from({ length: 20 }, (_, index) => ({
+    schemaVersion: STAGE_A_FILTER_SCHEMA_VERSION,
+    filterId: `eval-filter-${String(index).padStart(2, "0")}`,
+    source: "production_deidentified" as const,
+    sourceFilterDigest: index.toString(16).padStart(64, "0"),
+    generalizedContext: {
+      companyScope: index % 2 === 0 ? "any" as const : "selected" as const,
+      locationScope: ["none", "single", "multiple", "global"] as const,
+      occupationScope: ["none", "single", "multiple"] as const,
+      keywordScope: ["none", "single", "multiple"] as const,
+      seniorityScope: ["none", "single", "multiple"] as const,
+      technologyScope: ["none", "single", "multiple"] as const,
+      workModeScope: ["none", "single", "multiple"] as const,
+      employmentTypeScope: ["none", "single", "multiple"] as const,
+      compensationScope: ["none", "minimum", "maximum", "range"] as const,
+      experienceScope: ["none", "minimum", "maximum", "range"] as const,
+      locale: ["de", "en", "fr", "it", "other"] as const,
+    },
+  })).map((filter, index) => ({
+    ...filter,
+    generalizedContext: {
+      companyScope: filter.generalizedContext.companyScope,
+      locationScope: filter.generalizedContext.locationScope[index % 4],
+      occupationScope: filter.generalizedContext.occupationScope[index % 3],
+      keywordScope: filter.generalizedContext.keywordScope[(index + 1) % 3],
+      seniorityScope: filter.generalizedContext.seniorityScope[(index + 2) % 3],
+      technologyScope: filter.generalizedContext.technologyScope[index % 3],
+      workModeScope: filter.generalizedContext.workModeScope[(index + 1) % 3],
+      employmentTypeScope: filter.generalizedContext.employmentTypeScope[(index + 2) % 3],
+      compensationScope: filter.generalizedContext.compensationScope[index % 4],
+      experienceScope: filter.generalizedContext.experienceScope[(index + 1) % 4],
+      locale: filter.generalizedContext.locale[index % 5],
+    },
+  }));
+  const bundles = Array.from({ length: 25 }, (_, index) => ({
+    schemaVersion: STAGE_A_BUNDLE_SCHEMA_VERSION,
+    bundleId: `eval-bundle-${String(index).padStart(2, "0")}`,
+    filterId: `eval-filter-${String(index < 20 ? index : index - 20).padStart(2, "0")}`,
+    cohort: index < 15 ? "production_shaped" as const : "challenge" as const,
+    persona: ["lazy", "verbose", "misunderstood_purpose", "precise", "vague", "contradictory", "multilingual"] as const,
+    softQuery: `synthetic prompt ${String(index).padStart(2, "0")}`,
+    promptProvenance: {
+      origin: "agent_synthetic" as const,
+      authorId: `eval-author-${String(index).padStart(2, "0")}`,
+      agentRole: "jobseek-prompt-author",
+      model: "gpt-5.6-terra",
+      modelVersion: "2026-09",
+      reasoningEffort: ["low", "medium", "high"] as const,
+      taskPromptDigest: (index + 100).toString(16).padStart(64, "0"),
+    },
+  })).map((bundle, index) => ({
+    ...bundle,
+    persona: bundle.persona[index % bundle.persona.length],
+    promptProvenance: {
+      ...bundle.promptProvenance,
+      reasoningEffort: bundle.promptProvenance.reasoningEffort[index % 3],
+    },
+  }));
+  const pairs = bundles.flatMap((bundle, bundleIndex) => Array.from({ length: 8 }, (_, localIndex) => {
+    const index = bundleIndex * 8 + localIndex;
+    const classifierSource = source(index);
+    const ambiguity = localIndex === 0 || localIndex === 1;
+    const evidenceCondition = localIndex === 0
+      ? "policy_boundary" as const
+      : localIndex === 1
+        ? "insufficient_evidence" as const
+        : localIndex === 2
+          ? "prompt_injection" as const
+          : localIndex % 2 === 0
+            ? "direct_support" as const
+            : "direct_conflict" as const;
+    const firstLabel = localIndex % 2 === 0 ? "accept" as const : "reject" as const;
+    const secondLabel = localIndex === 0 ? "reject" as const : firstLabel;
+    const adjudicationRequired = ambiguity || evidenceCondition === "policy_boundary" || firstLabel !== secondLabel;
+    return {
+      schemaVersion: STAGE_A_PAIR_SCHEMA_VERSION,
+      pairId: `eval-pair-${String(index).padStart(3, "0")}`,
+      bundleId: bundle.bundleId,
+      locale: ["de", "en", "fr", "it"][index % 4] as "de" | "en" | "fr" | "it",
+      evidenceCondition,
+      ambiguity,
+      classifierSource,
+      contentIdentity: normalizeClassifierInputV1(classifierSource).contentIdentity,
+      annotations: [
+        { annotationId: `eval-annotation-${String(index).padStart(3, "0")}-a`, actorId: "eval-annotator-a", label: firstLabel },
+        { annotationId: `eval-annotation-${String(index).padStart(3, "0")}-b`, actorId: "eval-annotator-b", label: secondLabel },
+      ] as const,
+      adjudication: adjudicationRequired
+        ? { adjudicationId: `eval-adjudication-${String(index).padStart(3, "0")}`, actorId: "eval-adjudicator", label: firstLabel }
+        : null,
+    };
+  }));
+  return {
+    schemaVersion: STAGE_A_WIP_SCHEMA_VERSION,
+    datasetId: "eval-stage-a-synthetic",
+    classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
+    classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
+    softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+    calibrationDigest: CALIBRATION_DIGEST,
+    filters,
+    bundles,
+    pairs,
+    finalCritic: { reviewId: "eval-final-review", actorId: "eval-final-critic", approved: true },
+  };
+}
+
+function auditPolicy(silverDigest: string, count = 24): StageAHumanAuditPolicyV2 {
+  return {
+    schemaVersion: STAGE_A_HUMAN_AUDIT_POLICY_SCHEMA_VERSION,
+    sourceSilverDigest: silverDigest,
+    auditPairIds: Array.from({ length: count }, (_, index) => `eval-pair-${String(index).padStart(3, "0")}`),
+  };
+}
+
+function feedback(policy: StageAHumanAuditPolicyV2, policyDigest: string): StageAHumanFeedbackV2 {
+  return {
+    schemaVersion: STAGE_A_HUMAN_FEEDBACK_SCHEMA_VERSION,
+    feedbackId: "eval-human-feedback",
+    reviewerId: "eval-human-reviewer",
+    sourceSilverDigest: policy.sourceSilverDigest,
+    auditPolicyDigest: policyDigest,
+    approved: true,
+    decisions: policy.auditPairIds.map((pairId, index) => ({
+      pairId,
+      judgment: index === 0 ? "reject" : index % 2 === 0 ? "accept" : "reject",
+    })),
+  };
+}
+
+async function useTemporaryRoot() {
+  const root = await mkdtemp(path.join(tmpdir(), "jobseek-stage-a-v2-"));
   temporaryRoots.push(root);
   setTestEnv({ AI_FILTER_EVAL_DATA_ROOT: root });
   return root;
 }
 
-async function writeReadyFixture(
-  wip: StageAWipV1 = syntheticWip(),
-  policy: StageAReadyPolicyV1 = syntheticPolicy(),
-) {
+async function writeGoldFixture() {
   const root = await useTemporaryRoot();
-  const policyDigest = digestStageAReadyPolicy(policy);
-  const result = await writeStageAFreezeFile("ready.json", wip, policy, policyDigest);
-  return { root, policyDigest, manifestDigest: result.manifestDigest };
+  const silver = freezeStageASilver(syntheticWip(), CALIBRATION_DIGEST);
+  const policy = auditPolicy(silver.silverDigest);
+  const policyDigest = digestStageAHumanAuditPolicy(policy);
+  const humanFeedback = feedback(policy, policyDigest);
+  const gold = promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, humanFeedback);
+  await writeFile(path.join(root, "gold.json"), canonicalStageAJson(gold), { mode: 0o600 });
+  return { root, silver, policy, policyDigest, humanFeedback, gold };
 }
 
-describe("strict Stage A contracts", () => {
-  it("publishes JSON schemas with closed object boundaries", () => {
-    expect(STAGE_A_EXAMPLE_V1_SCHEMA.additionalProperties).toBe(false);
-    expect(STAGE_A_EXAMPLE_V1_SCHEMA.properties.classifierSource.additionalProperties).toBe(
-      false,
-    );
-    expect(STAGE_A_WIP_V1_SCHEMA.additionalProperties).toBe(false);
-    expect(STAGE_A_READY_POLICY_V1_SCHEMA.additionalProperties).toBe(false);
-    expect(STAGE_A_FREEZE_V1_SCHEMA.additionalProperties).toBe(false);
-  });
-
-  it("compiles every public schema with authoritative pins and safe source supersets", () => {
+describe("Stage A v2 corpus contract", () => {
+  it("publishes strict v2-only schemas that compile", () => {
     const ajv = new Ajv({ allErrors: true, strict: true });
     for (const schema of [
-      STAGE_A_EXAMPLE_V1_SCHEMA,
-      STAGE_A_WIP_V1_SCHEMA,
-      STAGE_A_READY_POLICY_V1_SCHEMA,
-      STAGE_A_MANIFEST_V1_SCHEMA,
-      STAGE_A_FREEZE_V1_SCHEMA,
-    ]) {
-      ajv.addSchema(schema);
-    }
-    const validateExample = ajv.getSchema(STAGE_A_EXAMPLE_V1_SCHEMA.$id);
-    expect(validateExample).toBeTypeOf("function");
-    expect(validateExample!(syntheticExample(0))).toBe(true);
-
-    const invisible = clone(syntheticExample(0));
-    invisible.softQuery = "synthetic\u200bquery";
-    expect(validateExample!(invisible)).toBe(false);
-    invisible.softQuery = "synthetic\u00adquery";
-    expect(validateExample!(invisible)).toBe(false);
-    const invalidCandidate = clone(syntheticExample(0));
-    invalidCandidate.classifierSource.candidateId =
-      "00000000-0000-4000-8000-00000000000A";
-    expect(validateExample!(invalidCandidate)).toBe(false);
-
-    const collapsibleTitle = clone(syntheticExample(0));
-    collapsibleTitle.classifierSource.title = `${" ".repeat(1_100)}Synthetic role`;
-    expect(normalizeClassifierInputV1(collapsibleTitle.classifierSource).payload.title).toBe(
-      "Synthetic role",
-    );
-    expect(validateExample!(collapsibleTitle)).toBe(true);
-
-    expect(STAGE_A_EXAMPLE_V1_SCHEMA.properties.softQuery.maxLength).toBe(
-      AI_FILTER_QUERY_MAX_LENGTH,
-    );
-    expect(
-      STAGE_A_EXAMPLE_V1_SCHEMA.properties.classifierSource.properties.title.maxLength,
-    ).toBe(CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT);
-    expect(
-      STAGE_A_EXAMPLE_V1_SCHEMA.properties.classifierSource.properties.descriptionHtml
-        .maxLength,
-    ).toBe(CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT);
-    expect(STAGE_A_WIP_V1_SCHEMA.properties.softQueryNormalizerVersion.const).toBe(
-      AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    );
-    expect(STAGE_A_MANIFEST_V1_SCHEMA.properties.softQueryNormalizerVersion.const).toBe(
-      AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    );
+      STAGE_A_FILTER_V2_SCHEMA,
+      STAGE_A_BUNDLE_V2_SCHEMA,
+      STAGE_A_PAIR_V2_SCHEMA,
+      STAGE_A_WIP_V2_SCHEMA,
+      STAGE_A_SILVER_MANIFEST_V2_SCHEMA,
+      STAGE_A_SILVER_FREEZE_V2_SCHEMA,
+      STAGE_A_HUMAN_AUDIT_POLICY_V2_SCHEMA,
+      STAGE_A_HUMAN_FEEDBACK_V2_SCHEMA,
+      STAGE_A_GOLD_MANIFEST_V2_SCHEMA,
+      STAGE_A_GOLD_FREEZE_V2_SCHEMA,
+    ]) ajv.addSchema(schema);
+    expect(ajv.getSchema(STAGE_A_WIP_V2_SCHEMA.$id)?.(syntheticWip())).toBe(true);
+    expect(JSON.stringify(STAGE_A_WIP_V2_SCHEMA)).not.toContain("stage-a-wip-v1");
   });
 
-  it("accepts synthetic WIP and recomputes every parent content identity", () => {
+  it("enforces the exact 20 filters, 25 bundles, 120/80 pairs and five reuses", () => {
     const validated = validateStageAWip(syntheticWip());
-    expect(validated.examples).toHaveLength(200);
-    expect(validated.classifierInputNormalizerVersion).toBe("classifier-input-normalizer-v4");
-    expect(validated.softQueryNormalizerVersion).toBe(
-      AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    );
-    expect(Object.isFrozen(validated.examples)).toBe(true);
+    expect(validated.filters).toHaveLength(20);
+    expect(validated.bundles).toHaveLength(25);
+    expect(validated.pairs).toHaveLength(200);
+    const cohortByBundle = new Map(validated.bundles.map(({ bundleId, cohort }) => [bundleId, cohort]));
+    expect(validated.pairs.filter(({ bundleId }) => cohortByBundle.get(bundleId) === "production_shaped")).toHaveLength(120);
+    expect(validated.pairs.filter(({ bundleId }) => cohortByBundle.get(bundleId) === "challenge")).toHaveLength(80);
+    expect(validated.filters.filter(({ filterId }) => validated.bundles.filter((bundle) => bundle.filterId === filterId).length === 2)).toHaveLength(5);
   });
 
-  it("lets classifier v4 normalize accepted raw source forms", () => {
+  it("rejects under-labelled, unadjudicated and role-conflicted work", () => {
+    const oneLabel = clone(syntheticWip());
+    oneLabel.pairs[3].annotations.pop();
+    expect(() => validateStageAWip(oneLabel)).toThrow(/bounded_array_required/u);
+
+    const sameAnnotator = clone(syntheticWip());
+    sameAnnotator.pairs[3].annotations[1].actorId = sameAnnotator.pairs[3].annotations[0].actorId;
+    expect(() => validateStageAWip(sameAnnotator)).toThrow(/blind_distinct_annotators_required/u);
+
+    const missingAdjudication = clone(syntheticWip());
+    missingAdjudication.pairs[0].adjudication = null;
+    expect(() => validateStageAWip(missingAdjudication)).toThrow(/adjudication_required/u);
+
+    const authorAnnotates = clone(syntheticWip());
+    authorAnnotates.pairs[0].annotations[0].actorId = authorAnnotates.bundles[0].promptProvenance.authorId;
+    expect(() => validateStageAWip(authorAnnotates)).toThrow(/global_role_separation_required/u);
+
+    const criticParticipates = clone(syntheticWip());
+    criticParticipates.finalCritic.actorId = "eval-annotator-a";
+    expect(() => validateStageAWip(criticParticipates)).toThrow(/independent_final_critic_required/u);
+  });
+
+  it("rejects target predictions, blended fields, bad provenance and shape drift", () => {
+    const prediction = clone(syntheticWip()) as Mutable<StageAWipV2> & { pairs: Array<Record<string, unknown>> };
+    prediction.pairs[0].targetPrediction = "accept";
+    expect(() => validateStageAWip(prediction)).toThrow(/additional_properties/u);
+
+    const blended = clone(syntheticWip()) as Mutable<StageAWipV2> & { pairs: Array<Record<string, unknown>> };
+    blended.pairs[0].cohort = "challenge";
+    expect(() => validateStageAWip(blended)).toThrow(/additional_properties/u);
+
+    const noModel = clone(syntheticWip()) as Mutable<StageAWipV2>;
+    delete (noModel.bundles[0].promptProvenance as Partial<typeof noModel.bundles[0]["promptProvenance"]>).modelVersion;
+    expect(() => validateStageAWip(noModel)).toThrow(/required/u);
+
+    const wrongSplit = clone(syntheticWip());
+    wrongSplit.bundles[14].cohort = "challenge";
+    expect(() => validateStageAWip(wrongSplit)).toThrow(/exact_cohort_split_required/u);
+
+    const wrongReuse = clone(syntheticWip());
+    wrongReuse.bundles[24].filterId = wrongReuse.bundles[23].filterId;
+    expect(() => validateStageAWip(wrongReuse)).toThrow(/five_extra_filter_uses_required/u);
+  });
+
+  it("normalizes classifier inputs and requires the external calibration pin", () => {
     const input = clone(syntheticWip());
-    const source = input.examples[0].classifierSource;
-    source.title = `${" ".repeat(1_100)}Synthetic role`;
-    source.companyName = `Synthetic${" ".repeat(1_100)} Company`;
-    source.selectedDescriptionLocale = " en ";
-    input.examples[0].contentIdentity = normalizeClassifierInputV1(source).contentIdentity;
-
-    const validated = validateStageAWip(input);
-    expect(normalizeClassifierInputV1(validated.examples[0].classifierSource).payload).toMatchObject(
-      {
-        title: "Synthetic role",
-        companyName: "Synthetic Company",
-      },
-    );
+    input.pairs[0].classifierSource.title = "  Synthetic   role  ";
+    input.pairs[0].contentIdentity = normalizeClassifierInputV1(input.pairs[0].classifierSource).contentIdentity;
+    const frozen = freezeStageASilver(input, CALIBRATION_DIGEST);
+    expect(frozen.manifest.pairs[0].classifierInput.title).toBe("Synthetic role");
+    expect(() => freezeStageASilver(input, "0".repeat(64))).toThrow(/calibration_digest_mismatch/u);
   });
 
-  it("requires the exact AF-1 soft-query version pin", () => {
-    const input = clone(syntheticWip()) as Record<string, unknown>;
-    input.softQueryNormalizerVersion = AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION + 1;
-    expect(() => validateStageAWip(input)).toThrow(
-      new StageAEvaluationError("$.softQueryNormalizerVersion", "literal_required"),
-    );
+  it("freezes immutable silver with row provenance and no target predictions", () => {
+    const frozen = freezeStageASilver(syntheticWip(), CALIBRATION_DIGEST);
+    expect(frozen.manifest.status).toBe("agent_adjudicated_silver");
+    expect(frozen.manifest.pairs.every(({ annotations }) => annotations.length === 2)).toBe(true);
+    expect(frozen.manifest.pairs[0].silverProvenance.method).toBe("adjudication");
+    expect(frozen.manifest.pairs[3].silverProvenance.method).toBe("agreement");
+    expect(canonicalStageAJson(frozen)).not.toContain("targetPrediction");
+    expect(Object.isFrozen(frozen.manifest.pairs)).toBe(true);
   });
 
-  it("uses AF-1's canonical lowercase UUID boundary with a fixed Stage A error", () => {
-    for (const candidateId of [
-      "00000000-0000-4000-8000-00000000000A",
-      "candidate-0",
-      "00000000-0000-4000-8000-000000000001 ",
-    ]) {
-      const input = clone(syntheticWip());
-      input.examples[0].classifierSource.candidateId = candidateId;
-      expect(() => validateStageAWip(input)).toThrow(
-        new StageAEvaluationError(
-          "$.examples[0].classifierSource.candidateId",
-          "canonical_candidate_id_required",
-        ),
-      );
-    }
+  it("promotes only a digest-pinned, complete, explicitly approved audit", () => {
+    const silver = freezeStageASilver(syntheticWip(), CALIBRATION_DIGEST);
+    const policy = auditPolicy(silver.silverDigest, 32);
+    const policyDigest = digestStageAHumanAuditPolicy(policy);
+    const humanFeedback = feedback(policy, policyDigest);
+    const gold = promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, humanFeedback);
+    expect(gold.manifest.status).toBe("human_audited_gold");
+    expect(gold.manifest.pairs.filter(({ goldProvenance }) => goldProvenance.humanFeedbackId !== null)).toHaveLength(32);
+    expect(gold.manifest.pairs[0].goldProvenance.source).toBe("human_correction");
+
+    const incomplete = clone(humanFeedback);
+    incomplete.decisions.pop();
+    expect(() => promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, incomplete)).toThrow(/complete_precommitted_audit_required/u);
+    const unapproved = clone(humanFeedback) as Mutable<StageAHumanFeedbackV2>;
+    unapproved.approved = false;
+    expect(() => promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, unapproved)).toThrow(/explicit_human_approval_required/u);
+    const unclear = clone(humanFeedback);
+    unclear.decisions[0].judgment = "unclear";
+    expect(() => promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, unclear)).toThrow(/resolved_human_feedback_required/u);
+    const participant = clone(humanFeedback);
+    participant.reviewerId = "eval-adjudicator";
+    expect(() => promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, participant)).toThrow(/independent_human_reviewer_required/u);
   });
 
-  it("keeps the JSON schema and runtime ID boundary aligned at 68 characters", () => {
-    const accepted = `eval-${"a".repeat(63)}`;
-    const rejected = `eval-${"a".repeat(64)}`;
-    const schemaPattern = new RegExp(STAGE_A_EXAMPLE_V1_SCHEMA.properties.exampleId.pattern);
-    expect(schemaPattern.test(accepted)).toBe(true);
-    expect(schemaPattern.test(rejected)).toBe(false);
-
-    const input = clone(syntheticWip());
-    input.examples[0].exampleId = accepted;
-    expect(validateStageAWip(input).examples[0].exampleId).toBe(accepted);
-    input.examples[0].exampleId = rejected;
-    expect(() => validateStageAWip(input)).toThrow(/string_too_long/u);
-  });
-
-  it("rejects metadata canaries without exposing their key or value", () => {
-    const input = clone(syntheticWip()) as StageAWipV1 & Record<string, unknown>;
-    input["private-query-secret"] = "description-secret";
-    let caught: unknown;
-    try {
-      validateStageAWip(input);
-    } catch (error) {
-      caught = error;
-    }
-    expect(caught).toBeInstanceOf(StageAEvaluationError);
-    const serialized = `${String(caught)} ${JSON.stringify(caught)}`;
-    expect(serialized).not.toContain("private-query-secret");
-    expect(serialized).not.toContain("description-secret");
-    expect(caught).toEqual(new StageAEvaluationError("$", "additional_properties"));
-    expect((caught as Error).stack).not.toContain("/private/");
-
-    for (const field of ["notes", "filters", "provenance"]) {
-      const nested = clone(syntheticWip()) as {
-        examples: Array<Record<string, unknown>>;
-      };
-      nested.examples[0][field] = "never-map-this-private-value";
-      let nestedError: unknown;
-      try {
-        validateStageAWip(nested);
-      } catch (error) {
-        nestedError = error;
-      }
-      expect(nestedError).toBeInstanceOf(StageAEvaluationError);
-      expect(`${String(nestedError)} ${JSON.stringify(nestedError)}`).not.toContain(field);
-      expect(`${String(nestedError)} ${JSON.stringify(nestedError)}`).not.toContain(
-        "never-map-this-private-value",
-      );
-    }
-  });
-
-  it("fails closed on unreadable array wrappers without running values", () => {
-    const input = clone(syntheticWip()) as Record<string, unknown>;
-    const { proxy, revoke } = Proxy.revocable([], {});
-    revoke();
-    input.examples = proxy;
-    expect(() => validateStageAWip(input)).toThrow(
-      new StageAEvaluationError("$.examples", "array_unreadable"),
-    );
-  });
-
-  it("fails closed on revoked object wrappers at root and nested paths", () => {
-    const rootWrapper = Proxy.revocable({}, {});
-    rootWrapper.revoke();
-    expect(() => validateStageAWip(rootWrapper.proxy)).toThrow(
-      new StageAEvaluationError("$", "object_unreadable"),
-    );
-
-    const nested = clone(syntheticWip()) as Record<string, unknown>;
-    const exampleWrapper = Proxy.revocable({}, {});
-    exampleWrapper.revoke();
-    (nested.examples as unknown[])[0] = exampleWrapper.proxy;
-    expect(() => validateStageAWip(nested)).toThrow(
-      new StageAEvaluationError("$.examples[0]", "object_unreadable"),
-    );
-  });
-
-  it("rejects a stale content-identity pin with a fixed error", () => {
-    const input = clone(syntheticWip());
-    input.examples[0].classifierSource.title = "Changed synthetic role";
-    expect(() => validateStageAWip(input)).toThrow(
-      new StageAEvaluationError(
-        "$.examples[0].contentIdentity",
-        "content_identity_mismatch",
-      ),
-    );
-  });
-
-  it("rejects duplicate annotators and non-independent adjudicators", () => {
-    const duplicate = clone(syntheticWip());
-    duplicate.examples[0].annotations[1].actorId = duplicate.examples[0].annotations[0].actorId;
-    expect(() => validateStageAWip(duplicate)).toThrow(/independent_actors_required/u);
-
-    const adjudicator = clone(syntheticWip());
-    adjudicator.examples[25].adjudication!.actorId = "eval-actor-a";
-    expect(() => validateStageAWip(adjudicator)).toThrow(
-      /independent_adjudicator_required/u,
-    );
-  });
-
-  it("keeps unresolved disagreement valid as WIP but blocks ready", () => {
-    const input = clone(syntheticWip());
-    input.examples[25].adjudication = null;
-    expect(validateStageAWip(input).examples).toHaveLength(200);
-    const policy = syntheticPolicy();
-    expect(() =>
-      buildStageAReadyManifest(input, policy, digestStageAReadyPolicy(policy)),
-    ).toThrow(/unresolved_disagreement/u);
-  });
-
-  it("hard-codes the 200 and 50 readiness floors outside policy", () => {
-    const policy = syntheticPolicy({
-      localeMinimums: { de: 1, en: 1, fr: 1, it: 1 },
-      scenarioMinimums: {
-        clear_match: 1,
-        clear_non_match: 1,
-        ambiguous: 1,
-        prompt_injection: 1,
-      },
-    });
-    const policyDigest = digestStageAReadyPolicy(policy);
-    const short = clone(syntheticWip());
-    short.examples.pop();
-    expect(() => buildStageAReadyManifest(short, policy, policyDigest)).toThrow(
-      /exactly_200_examples_required/u,
-    );
-
-    const singleLabelled = clone(syntheticWip());
-    for (let index = 0; index < 151; index += 1) {
-      singleLabelled.examples[index].annotations.splice(1);
-      singleLabelled.examples[index].adjudication = null;
-    }
-    expect(() => buildStageAReadyManifest(singleLabelled, policy, policyDigest)).toThrow(
-      /at_least_50_double_labels_required/u,
-    );
-  });
-
-  it("rejects duplicate semantic pairs even when IDs differ", () => {
-    const input = clone(syntheticWip());
-    input.examples[1].softQuery = input.examples[0].softQuery;
-    input.examples[1].classifierSource = input.examples[0].classifierSource;
-    input.examples[1].contentIdentity = input.examples[0].contentIdentity;
-    const policy = syntheticPolicy();
-    expect(() =>
-      buildStageAReadyManifest(input, policy, digestStageAReadyPolicy(policy)),
-    ).toThrow(/unique_semantic_pairs_required/u);
-  });
-
-  it("rejects whitespace variants before semantic-pair uniqueness", () => {
-    for (const softQuery of [
-      " synthetic query",
-      "synthetic query ",
-      "synthetic  query",
-      "synthetic\u200bquery",
-      "synthetic\u00adquery",
-      "synthetic\u034fquery",
-      "synthetic\u0007query",
-    ]) {
-      const input = clone(syntheticWip());
-      input.examples[0].softQuery = softQuery;
-      expect(() => validateStageAWip(input)).toThrow(
-        new StageAEvaluationError(
-          "$.examples[0].softQuery",
-          "canonical_query_required",
-        ),
-      );
-    }
-  });
-
-  it("delegates soft-query validation and canonicalization to AF-1", () => {
-    const accepted = clone(syntheticWip());
-    accepted.examples[0].softQuery = "😀".repeat(AI_FILTER_QUERY_MAX_LENGTH);
-    const validated = validateStageAWip(accepted);
-    expect(validated.examples[0].softQuery).toBe(
-      normalizeAiFilterSoftQueryV1(accepted.examples[0].softQuery),
-    );
-
-    for (const softQuery of [
-      "😀".repeat(AI_FILTER_QUERY_MAX_LENGTH + 1),
-      "synthetic\u0007query",
-      42,
-    ]) {
-      const input = clone(syntheticWip()) as {
-        examples: Array<{ softQuery: unknown }>;
-      };
-      input.examples[0].softQuery = softQuery;
-      expect(() => validateStageAWip(input)).toThrow(
-        new StageAEvaluationError(
-          "$.examples[0].softQuery",
-          "canonical_query_required",
-        ),
-      );
-    }
-  });
-
-  it("requires an external policy digest and enforces its approved coverage", () => {
-    const policy = syntheticPolicy();
-    expect(() => buildStageAReadyManifest(syntheticWip(), policy, "0".repeat(64))).toThrow(
-      /policy_digest_mismatch/u,
-    );
-
-    const unmetCoveragePolicy = syntheticPolicy({
-      localeMinimums: { de: 51, en: 40, fr: 40, it: 40 },
-    });
-    expect(() =>
-      buildStageAReadyManifest(
-        syntheticWip(),
-        unmetCoveragePolicy,
-        digestStageAReadyPolicy(unmetCoveragePolicy),
-      ),
-    ).toThrow(/coverage_not_met/u);
-
-    const impossibleScenarioPolicy = syntheticPolicy({
-      scenarioMinimums: {
-        clear_match: 51,
-        clear_non_match: 51,
-        ambiguous: 51,
-        prompt_injection: 51,
-      },
-    });
-    expect(() => digestStageAReadyPolicy(impossibleScenarioPolicy)).toThrow(
-      /coverage_minimums_impossible/u,
-    );
-  });
-
-  it("derives gold rather than accepting a caller-provided field", () => {
-    const input = clone(syntheticWip()) as StageAWipV1 & {
-      examples: Array<StageAExampleV1 & Record<string, unknown>>;
-    };
-    input.examples[0].goldLabel = 1;
-    expect(() => validateStageAWip(input)).toThrow(/additional_properties/u);
-
-    const policy = syntheticPolicy();
-    const ready = buildStageAReadyManifest(
-      syntheticWip(),
-      policy,
-      digestStageAReadyPolicy(policy),
-    );
-    expect(ready.examples[0].goldLabel).toBe(0);
-    expect(ready.examples[25].goldLabel).toBe(1);
+  it("rejects audit policies above 32 and unknown precommitted pairs", () => {
+    const silver = freezeStageASilver(syntheticWip(), CALIBRATION_DIGEST);
+    const oversized = auditPolicy(silver.silverDigest, 32) as Mutable<StageAHumanAuditPolicyV2>;
+    oversized.auditPairIds.push("eval-pair-032");
+    expect(() => digestStageAHumanAuditPolicy(oversized)).toThrow(/bounded_array_required/u);
+    const unknown = auditPolicy(silver.silverDigest);
+    const mutable = clone(unknown);
+    mutable.auditPairIds[0] = "eval-pair-999";
+    const digest = digestStageAHumanAuditPolicy(mutable);
+    expect(() => promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, mutable, digest, feedback(mutable, digest))).toThrow(/known_pair_ids_required/u);
   });
 });
 
-describe("deterministic freeze", () => {
-  it("is invariant to set-like example and annotation order", () => {
-    const policy = syntheticPolicy();
-    const input = syntheticWip();
-    const reordered = clone(input);
-    reordered.examples.reverse();
-    for (const example of reordered.examples) example.annotations.reverse();
-    const expectedPolicyDigest = digestStageAReadyPolicy(policy);
-    expect(freezeStageA(reordered, policy, expectedPolicyDigest)).toEqual(
-      freezeStageA(input, policy, expectedPolicyDigest),
-    );
+describe("gold-only loading and private files", () => {
+  it("returns metadata-free target inputs and separate scoring labels only after gold", async () => {
+    const { gold, silver, policyDigest } = await writeGoldFixture();
+    const args = ["gold.json", gold.goldDigest, silver.silverDigest, policyDigest, CALIBRATION_DIGEST] as const;
+    const targets = await loadStageATargetInputs(...args);
+    const labels = await loadStageAScoringLabels(...args);
+    expect(targets).toHaveLength(200);
+    expect(Object.keys(targets[0])).toEqual(["pairId", "query", "classifierInput"]);
+    expect(canonicalStageAJson(targets)).not.toMatch(/goldLabel|silverLabel|persona|cohort|actorId|modelVersion/u);
+    expect(labels[0]).toEqual({ pairId: "eval-pair-000", label: "reject" });
+    await expect(loadStageATargetInputs("gold.json", "0".repeat(64), silver.silverDigest, policyDigest, CALIBRATION_DIGEST)).rejects.toThrow(/gold_digest_mismatch/u);
   });
 
-  it("uses raw code-unit key order rather than locale collation", () => {
-    expect(canonicalStageAJson({ ubung: 1, Übung: 2 })).toBe(
-      '{"ubung":1,"Übung":2}\n',
-    );
+  it("reports production-shaped and challenge cohorts separately", async () => {
+    const { gold, silver, policyDigest } = await writeGoldFixture();
+    const report = await reportStageAGoldFreeze("gold.json", gold.goldDigest, silver.silverDigest, policyDigest, CALIBRATION_DIGEST);
+    expect(report.cohorts.production_shaped.totalPairs).toBe(120);
+    expect(report.cohorts.challenge.totalPairs).toBe(80);
+    expect(report).not.toHaveProperty("totalPairs");
   });
 
-  it("isolates canonical bytes and manifest digests from inherited toJSON", () => {
-    const policy = syntheticPolicy();
-    const policyDigest = digestStageAReadyPolicy(policy);
-    const baseline = freezeStageA(syntheticWip(), policy, policyDigest);
-    const baselineBytes = canonicalStageAJson(baseline);
-    const originalToJson = Object.getOwnPropertyDescriptor(Object.prototype, "toJSON");
-
-    try {
-      Object.defineProperty(Object.prototype, "toJSON", {
-        configurable: true,
-        value: () => ({ POISONED: true }),
-      });
-      const underPoison = freezeStageA(syntheticWip(), policy, policyDigest);
-      expect(underPoison.manifestDigest).toBe(baseline.manifestDigest);
-      expect(canonicalStageAJson(underPoison)).toBe(baselineBytes);
-      expect(canonicalStageAJson({ examples: [{ value: 1 }], schemaVersion: "demo" })).toBe(
-        '{"examples":[{"value":1}],"schemaVersion":"demo"}\n',
-      );
-    } finally {
-      if (originalToJson) {
-        Object.defineProperty(Object.prototype, "toJSON", originalToJson);
-      } else {
-        delete (Object.prototype as { toJSON?: unknown }).toJSON;
-      }
-    }
-  });
-
-  it("changes the manifest digest when a scoring-relevant leaf changes", () => {
-    const policy = syntheticPolicy();
-    const expectedPolicyDigest = digestStageAReadyPolicy(policy);
-    const first = freezeStageA(syntheticWip(), policy, expectedPolicyDigest);
-    const changed = clone(syntheticWip());
-    changed.examples[100].annotations[0].actorId = "eval-actor-d";
-    const second = freezeStageA(changed, policy, expectedPolicyDigest);
-    expect(second.manifestDigest).not.toBe(first.manifestDigest);
-  });
-});
-
-describe("private filesystem and loader boundary", () => {
-  it("keeps validated, frozen, and loaded examples conformant with AF-1", async () => {
-    const input = syntheticWip();
-    const validated = validateStageAWip(input);
-    expect(validated.softQueryNormalizerVersion).toBe(
-      AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    );
-    for (const example of validated.examples) {
-      expect(normalizeAiFilterSoftQueryV1(example.softQuery)).toBe(example.softQuery);
-      expect(parseAiFilterCandidateId(example.classifierSource.candidateId)).toBe(
-        example.classifierSource.candidateId,
-      );
-    }
-
-    const policy = syntheticPolicy();
-    const policyDigest = digestStageAReadyPolicy(policy);
-    const frozen = freezeStageA(input, policy, policyDigest);
-    expect(frozen.manifest.classifierInputNormalizerVersion).toBe(
-      CLASSIFIER_INPUT_NORMALIZER_VERSION,
-    );
-    expect(frozen.manifest.softQueryNormalizerVersion).toBe(
-      AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    );
-    expect(canonicalStageAJson(frozen.manifest)).toContain(
-      `"softQueryNormalizerVersion":${AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION}`,
-    );
-    for (const example of frozen.manifest.examples) {
-      expect(normalizeAiFilterSoftQueryV1(example.softQuery)).toBe(example.softQuery);
-      expect(parseAiFilterCandidateId(example.classifierInput.candidateId)).toBe(
-        example.classifierInput.candidateId,
-      );
-    }
-
+  it("publishes silver once with private permissions and refuses overwrite", async () => {
     const root = await useTemporaryRoot();
-    await writeFile(path.join(root, "ready.json"), canonicalStageAJson(frozen), {
-      mode: 0o600,
-    });
-    const loaded = await loadStageABenchmark(
-      "ready.json",
-      frozen.manifestDigest,
-      policyDigest,
-    );
-    for (const example of loaded) {
-      expect(normalizeAiFilterSoftQueryV1(example.softQuery)).toBe(example.softQuery);
-      expect(parseAiFilterCandidateId(example.classifierInput.candidateId)).toBe(
-        example.classifierInput.candidateId,
-      );
-    }
+    const result = await writeStageASilverFreezeFile("silver.json", syntheticWip(), CALIBRATION_DIGEST);
+    expect(result.silverDigest).toMatch(/^[a-f0-9]{64}$/u);
+    expect((await stat(path.join(root, "silver.json"))).mode & 0o077).toBe(0);
+    await expect(writeStageASilverFreezeFile("silver.json", syntheticWip(), CALIBRATION_DIGEST)).rejects.toEqual(new StageAEvaluationError("$file", "exclusive_publish_failed"));
+    await expect(writeStageASilverFreezeFile("../escape.json", syntheticWip(), CALIBRATION_DIGEST)).rejects.toThrow(/safe_file_name_required/u);
   });
 
-  it("keeps loaded benchmark serialization isolated from inherited toJSON", async () => {
-    const { policyDigest, manifestDigest } = await writeReadyFixture();
-    const clean = await loadStageABenchmark(
-      "ready.json",
-      manifestDigest,
-      policyDigest,
-    );
-    const cleanBytes = JSON.stringify(clean);
-    const originalToJson = Object.getOwnPropertyDescriptor(Object.prototype, "toJSON");
-
-    try {
-      Object.defineProperty(Object.prototype, "toJSON", {
-        configurable: true,
-        value: () => ({ POISONED: true }),
-      });
-      expect(JSON.stringify(clean)).toBe(cleanBytes);
-      const loadedUnderPoison = await loadStageABenchmark(
-        "ready.json",
-        manifestDigest,
-        policyDigest,
-      );
-      expect(JSON.stringify(loadedUnderPoison)).toBe(cleanBytes);
-      expect(Object.getPrototypeOf(loadedUnderPoison[0])).toBeNull();
-      expect(Object.getPrototypeOf(loadedUnderPoison[0].classifierInput)).toBeNull();
-    } finally {
-      if (originalToJson) {
-        Object.defineProperty(Object.prototype, "toJSON", originalToJson);
-      } else {
-        delete (Object.prototype as { toJSON?: unknown }).toJSON;
-      }
-    }
-  });
-
-  it("publishes one complete 0600 file across concurrent no-replace freezes", async () => {
+  it("rejects duplicate JSON keys without leaking values or paths", async () => {
     const root = await useTemporaryRoot();
-    const input = syntheticWip();
-    const policy = syntheticPolicy();
-    const policyDigest = digestStageAReadyPolicy(policy);
-    const attempts = await Promise.allSettled(
-      Array.from({ length: 20 }, () =>
-        writeStageAFreezeFile("concurrent.json", input, policy, policyDigest),
-      ),
-    );
-    expect(attempts.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
-    const bytes = await readFile(path.join(root, "concurrent.json"), "utf8");
-    expect(bytes.endsWith("\n")).toBe(true);
-    expect(JSON.parse(bytes)).toHaveProperty("manifestDigest");
-    expect((await stat(path.join(root, "concurrent.json"))).mode & 0o777).toBe(0o600);
-  });
-
-  it("never overwrites an existing destination", async () => {
-    const root = await useTemporaryRoot();
-    const destination = path.join(root, "ready.json");
-    await writeFile(destination, "do-not-overwrite", { mode: 0o600 });
-    const before = await stat(destination);
-    const policy = syntheticPolicy();
-    await expect(
-      writeStageAFreezeFile(
-        "ready.json",
-        syntheticWip(),
-        policy,
-        digestStageAReadyPolicy(policy),
-      ),
-    ).rejects.toEqual(new StageAEvaluationError("$file", "exclusive_publish_failed"));
-    expect(await readFile(destination, "utf8")).toBe("do-not-overwrite");
-    expect((await stat(destination)).mtimeMs).toBe(before.mtimeMs);
-    expect((await readdir(root)).filter((entry) => entry.endsWith(".tmp"))).toEqual([]);
-
-    const outside = path.join(root, "outside.json");
-    await writeFile(outside, "outside-bytes", { mode: 0o600 });
-    await symlink(outside, path.join(root, "linked-ready.json"));
-    await expect(
-      writeStageAFreezeFile(
-        "linked-ready.json",
-        syntheticWip(),
-        policy,
-        digestStageAReadyPolicy(policy),
-      ),
-    ).rejects.toThrow(/exclusive_publish_failed/u);
-    expect(await readFile(outside, "utf8")).toBe("outside-bytes");
-  });
-
-  it("requires an absolute narrow root and never echoes a private filename", async () => {
-    const symbolicName = Symbol("private-filename-canary") as unknown as string;
-    let symbolicError: unknown;
-    try {
-      await readStageAReadyPolicyFile(symbolicName);
-    } catch (error) {
-      symbolicError = error;
-    }
-    expect(symbolicError).toEqual(
-      new StageAEvaluationError("$file", "safe_file_name_required"),
-    );
-    expect(String(symbolicError)).not.toContain("private-filename-canary");
-
-    setTestEnv({ AI_FILTER_EVAL_DATA_ROOT: undefined });
-    await expect(readStageAReadyPolicyFile("private-name.json")).rejects.toEqual(
-      new StageAEvaluationError("$root", "absolute_root_required"),
-    );
-    setTestEnv({ AI_FILTER_EVAL_DATA_ROOT: "relative-private-root" });
-    await expect(readStageAReadyPolicyFile("private-name.json")).rejects.toEqual(
-      new StageAEvaluationError("$root", "absolute_root_required"),
-    );
-    setTestEnv({ AI_FILTER_EVAL_DATA_ROOT: process.cwd() });
+    await writeFile(path.join(root, "policy.json"), '{"schemaVersion":"ai-filter-stage-a-human-audit-policy-v2","sourceSilverDigest":"secret","sourceSilverDigest":"other","auditPairIds":[]}', { mode: 0o600 });
     let caught: unknown;
     try {
-      await readStageAReadyPolicyFile("private-name.json");
-    } catch (error) {
-      caught = error;
-    }
-    expect(caught).toEqual(new StageAEvaluationError("$root", "private_root_required"));
-    expect(String(caught)).not.toContain("private-name.json");
-
-    const unsafeRepositoryRoot = await mkdtemp(path.join(process.cwd(), ".stage-a-unsafe-"));
-    temporaryRoots.push(unsafeRepositoryRoot);
-    setTestEnv({ AI_FILTER_EVAL_DATA_ROOT: unsafeRepositoryRoot });
-    await expect(readStageAReadyPolicyFile("private-name.json")).rejects.toEqual(
-      new StageAEvaluationError("$root", "repository_staging_path_required"),
-    );
-  });
-
-  it("rejects traversal, absolute or nested children, and a symlink root", async () => {
-    const root = await useTemporaryRoot();
-    const policy = syntheticPolicy();
-    const policyDigest = digestStageAReadyPolicy(policy);
-    await expect(
-      writeStageAFreezeFile("../escape.json", syntheticWip(), policy, policyDigest),
-    ).rejects.toThrow(/safe_file_name_required/u);
-    await expect(
-      writeStageAFreezeFile(path.join(root, "escape.json"), syntheticWip(), policy, policyDigest),
-    ).rejects.toThrow(/safe_file_name_required/u);
-
-    const outside = await mkdtemp(path.join(tmpdir(), "jobseek-stage-a-outside-"));
-    temporaryRoots.push(outside);
-    await symlink(outside, path.join(root, "linked"));
-    await expect(
-      writeStageAFreezeFile("linked/escape.json", syntheticWip(), policy, policyDigest),
-    ).rejects.toThrow(/safe_file_name_required/u);
-
-    const rootLink = `${root}-link`;
-    temporaryRoots.push(rootLink);
-    await symlink(root, rootLink);
-    setTestEnv({ AI_FILTER_EVAL_DATA_ROOT: rootLink });
-    await expect(readStageAReadyPolicyFile("policy.json")).rejects.toThrow(
-      /safe_directory_required/u,
-    );
-  });
-
-  it("rejects duplicate JSON keys without exposing file content", async () => {
-    const root = await useTemporaryRoot();
-    const secret = "private-secret-value";
-    await writeFile(
-      path.join(root, "policy.json"),
-      `{"schemaVersion":"${STAGE_A_READY_POLICY_SCHEMA_VERSION}","schemaVersion":"${secret}"}`,
-      { mode: 0o600 },
-    );
-    let caught: unknown;
-    try {
-      await readStageAReadyPolicyFile("policy.json");
+      await readStageAHumanAuditPolicyFile("policy.json");
     } catch (error) {
       caught = error;
     }
     expect(caught).toEqual(new StageAEvaluationError("$file", "duplicate_json_key"));
-    expect(`${String(caught)} ${JSON.stringify(caught)}`).not.toContain(secret);
+    expect(String(caught)).not.toContain("secret");
+    expect(String(caught)).not.toContain(root);
   });
 
-  it("rejects BOM and malformed UTF-8 input", async () => {
-    const root = await useTemporaryRoot();
-    await writeFile(path.join(root, "bom.json"), Buffer.from([0xef, 0xbb, 0xbf, 0x7b, 0x7d]));
-    await writeFile(path.join(root, "invalid.json"), Buffer.from([0xc3, 0x28]));
-    await expect(readStageAReadyPolicyFile("bom.json")).rejects.toThrow(
-      /canonical_utf8_required/u,
-    );
-    await expect(readStageAReadyPolicyFile("invalid.json")).rejects.toThrow(
-      /canonical_utf8_required/u,
-    );
+  it("rejects tampered gold despite a valid-looking envelope", async () => {
+    const { root, gold, silver, policyDigest } = await writeGoldFixture();
+    const tampered = clone(gold);
+    tampered.manifest.pairs[40].goldLabel = tampered.manifest.pairs[40].goldLabel === "accept" ? "reject" : "accept";
+    await writeFile(path.join(root, "tampered.json"), canonicalStageAJson(tampered), { mode: 0o600 });
+    await expect(loadStageATargetInputs("tampered.json", gold.goldDigest, silver.silverDigest, policyDigest, CALIBRATION_DIGEST)).rejects.toThrow(/gold_provenance_mismatch|gold_digest_mismatch/u);
   });
 
-  it("requires both external digests and returns an exact deeply frozen DTO", async () => {
-    const input = clone(syntheticWip());
-    input.examples[25].annotations[0].actorId = "eval-canary-actor-a";
-    input.examples[25].annotations[0].annotationId = "eval-canary-annotation-a";
-    input.examples[25].annotations[1].actorId = "eval-canary-actor-b";
-    input.examples[25].annotations[1].annotationId = "eval-canary-annotation-b";
-    input.examples[25].adjudication!.actorId = "eval-canary-adjudicator";
-    input.examples[25].adjudication!.adjudicationId = "eval-canary-adjudication";
-    input.examples[25].scenario = "prompt_injection";
-    const { policyDigest, manifestDigest } = await writeReadyFixture(input);
-    await expect(
-      loadStageABenchmark("ready.json", "0".repeat(64), policyDigest),
-    ).rejects.toThrow(/manifest_digest_mismatch/u);
-    await expect(
-      loadStageABenchmark("ready.json", manifestDigest, "0".repeat(64)),
-    ).rejects.toThrow(/policy_digest_mismatch/u);
-
-    const benchmark = await loadStageABenchmark(
-      "ready.json",
-      manifestDigest,
-      policyDigest,
-    );
-    expect(Object.keys(benchmark[0]).sort()).toEqual([
-      "classifierInput",
-      "goldLabel",
-      "softQuery",
-    ]);
-    expect(Object.keys(benchmark[0].classifierInput).sort()).toEqual([
-      "candidateId",
-      "companyName",
-      "descriptionText",
-      "schemaVersion",
-      "title",
-    ]);
-    const serialized = JSON.stringify(benchmark);
-    for (const forbidden of [
-      "queryOrigin",
-      "locale",
-      "scenario",
-      "actorId",
-      "adjudication",
-      "contentIdentity",
-      "selectedDescriptionLocale",
-      "descriptionHtml",
-      "truncated",
-      "eval-canary-actor-a",
-      "eval-canary-actor-b",
-      "eval-canary-adjudicator",
-      "eval-canary-annotation-a",
-      "eval-canary-annotation-b",
-      "eval-canary-adjudication",
-      "prompt_injection",
-    ]) {
-      expect(serialized).not.toContain(forbidden);
-    }
-    expect(Object.isFrozen(benchmark)).toBe(true);
-    expect(Object.isFrozen(benchmark[0])).toBe(true);
-    expect(Object.isFrozen(benchmark[0].classifierInput)).toBe(true);
-  });
-
-  it("never lets a WIP artifact reach the benchmark loader", async () => {
-    const root = await useTemporaryRoot();
-    await writeFile(path.join(root, "wip.json"), canonicalStageAJson(syntheticWip()), {
-      mode: 0o600,
-    });
-    await expect(
-      loadStageABenchmark("wip.json", "0".repeat(64), "0".repeat(64)),
-    ).rejects.toThrow(/additional_properties/u);
-  });
-
-  it("rejects prototype-named properties inside the frozen classifier payload", async () => {
-    const root = await useTemporaryRoot();
-    const policy = syntheticPolicy();
-    const policyDigest = digestStageAReadyPolicy(policy);
-    const frozen = clone(freezeStageA(syntheticWip(), policy, policyDigest));
-    Object.defineProperty(frozen.manifest.examples[0].classifierInput, "__proto__", {
-      value: { privateNotes: "must-not-leak" },
-      enumerable: true,
-      configurable: true,
-      writable: true,
-    });
-    await writeFile(path.join(root, "malformed.json"), canonicalStageAJson(frozen), {
-      mode: 0o600,
-    });
-    let caught: unknown;
-    try {
-      await loadStageABenchmark(
-        "malformed.json",
-        frozen.manifestDigest,
-        policyDigest,
-      );
-    } catch (error) {
-      caught = error;
-    }
-    expect(caught).toEqual(
-      new StageAEvaluationError(
-        "$.manifest.examples[0].classifierInput",
-        "additional_properties",
-      ),
-    );
-    expect(`${String(caught)} ${JSON.stringify(caught)}`).not.toContain("must-not-leak");
-  });
-
-  it("rejects a noncanonical frozen candidate ID with a fixed Stage A error", async () => {
-    const root = await useTemporaryRoot();
-    const policy = syntheticPolicy();
-    const policyDigest = digestStageAReadyPolicy(policy);
-    const frozen = clone(freezeStageA(syntheticWip(), policy, policyDigest));
-    frozen.manifest.examples[0].classifierInput.candidateId =
-      "00000000-0000-4000-8000-00000000000A";
-    await writeFile(path.join(root, "invalid-candidate.json"), canonicalStageAJson(frozen), {
-      mode: 0o600,
-    });
-
-    await expect(
-      loadStageABenchmark(
-        "invalid-candidate.json",
-        frozen.manifestDigest,
-        policyDigest,
-      ),
-    ).rejects.toEqual(
-      new StageAEvaluationError(
-        "$.manifest.examples[0].classifierInput.candidateId",
-        "canonical_candidate_id_required",
-      ),
-    );
-  });
-});
-
-describe("privacy-safe reports", () => {
-  it("reports only fixed, sufficiently large dimensions", async () => {
-    const { manifestDigest, policyDigest } = await writeReadyFixture();
-    const report = await reportStageAFreeze("ready.json", manifestDigest, policyDigest);
-    expect(report.dimensions.locale.suppressed).toBe(false);
-    expect(report.dimensions.scenario.suppressed).toBe(false);
-    expect(report.agreement).toEqual({
-      suppressed: false,
-      doubleLabelled: 50,
-      agreements: 25,
-      disagreements: 25,
-    });
-    expect(JSON.stringify(report)).not.toContain("eval-");
-  });
-
-  it("suppresses a whole dimension and agreement breakdown to prevent complements", async () => {
-    const input = clone(syntheticWip());
-    for (let index = 1; index < input.examples.length; index += 1) {
-      input.examples[index].locale = "de";
-    }
-    input.examples[1].locale = "en";
-    input.examples[2].locale = "fr";
-    input.examples[3].locale = "it";
-    for (let index = 25; index < 49; index += 1) {
-      input.examples[index].annotations[1].label = input.examples[index].annotations[0].label;
-      input.examples[index].adjudication = null;
-    }
-    const policy = syntheticPolicy({ localeMinimums: { de: 1, en: 1, fr: 1, it: 1 } });
-    const { manifestDigest, policyDigest } = await writeReadyFixture(input, policy);
-    const report = await reportStageAFreeze("ready.json", manifestDigest, policyDigest);
-    expect(report.dimensions.locale).toEqual({ suppressed: true });
-    expect(report.agreement).toEqual({ suppressed: true });
-    expect(JSON.stringify(report.agreement)).not.toContain("49");
-    expect(JSON.stringify(report.agreement)).not.toContain("1");
-  });
-
-  it("suppresses the full label breakdown when either label is sparse", async () => {
-    const input = clone(syntheticWip());
-    for (const example of input.examples) {
-      for (const annotation of example.annotations) annotation.label = 0;
-      example.adjudication = null;
-    }
-    input.examples[199].annotations[0].label = 1;
-    const { manifestDigest, policyDigest } = await writeReadyFixture(input);
-    const report = await reportStageAFreeze("ready.json", manifestDigest, policyDigest);
-    expect(report.labelCounts).toEqual({ suppressed: true });
+  it("stores calibration only as an external digest", async () => {
+    const { root, gold } = await writeGoldFixture();
+    const bytes = await readFile(path.join(root, "gold.json"), "utf8");
+    expect(bytes).toContain(`"calibrationDigest":"${CALIBRATION_DIGEST}"`);
+    expect(bytes).not.toContain("calibrationExampleId");
+    expect(gold.schemaVersion).toBe(STAGE_A_GOLD_FREEZE_SCHEMA_VERSION);
   });
 });
