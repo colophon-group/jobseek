@@ -7,8 +7,10 @@ import argparse
 import hashlib
 import ipaddress
 import json
+import os
 import platform
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +22,12 @@ CONTAINER = "jobseek-lightpanda-renderer"
 NETWORK = "jobseek-lightpanda-renderer"
 EGRESS_NETWORK = "jobseek-lightpanda-egress"
 CONTROLLER_USER = "10001:10001"
+SYSTEM_COMPOSE_PLUGIN_DIRECTORIES = (
+    Path("/usr/local/lib/docker/cli-plugins"),
+    Path("/usr/local/libexec/docker/cli-plugins"),
+    Path("/usr/lib/docker/cli-plugins"),
+    Path("/usr/libexec/docker/cli-plugins"),
+)
 BOOTSTRAP_ENTRYPOINT = [
     "/usr/bin/setpriv",
     "--reuid=10001",
@@ -126,6 +134,57 @@ def run_text(arguments: list[str]) -> str:
         timeout=30,
     )
     return result.stdout
+
+
+def compose_plugin_path(
+    search_directories: tuple[Path, ...] = SYSTEM_COMPOSE_PLUGIN_DIRECTORIES,
+    *,
+    trusted_uid: int = 0,
+    trusted_gid: int = 0,
+    trust_boundary: Path = Path("/"),
+) -> Path:
+    """Resolve one immutable system Compose authority without ambient CLI discovery."""
+    if not trust_boundary.is_absolute():
+        fail("Docker Compose trust boundary is not absolute")
+    for directory in search_directories:
+        candidate = directory / "docker-compose"
+        if not candidate.is_absolute() or not candidate.is_relative_to(trust_boundary):
+            fail("Docker Compose search directory escaped its trust boundary")
+        try:
+            candidate_metadata = os.lstat(candidate)
+        except FileNotFoundError:
+            continue
+        if (
+            not stat.S_ISREG(candidate_metadata.st_mode)
+            or candidate_metadata.st_uid != trusted_uid
+            or candidate_metadata.st_gid != trusted_gid
+            or candidate_metadata.st_mode & 0o022
+            or candidate_metadata.st_mode & 0o111 != 0o111
+        ):
+            fail(f"system Docker Compose plugin is not trusted: {candidate}")
+
+        parent = candidate.parent
+        while True:
+            metadata = os.lstat(parent)
+            if (
+                not stat.S_ISDIR(metadata.st_mode)
+                or metadata.st_uid != trusted_uid
+                or metadata.st_gid != trusted_gid
+                or metadata.st_mode & 0o022
+            ):
+                fail(f"system Docker Compose plugin parent is not trusted: {parent}")
+            if parent == trust_boundary:
+                break
+            next_parent = parent.parent
+            if next_parent == parent or not next_parent.is_relative_to(trust_boundary):
+                fail("Docker Compose plugin parent chain escaped its trust boundary")
+            parent = next_parent
+        return candidate
+    fail("trusted system Docker Compose plugin is absent")
+
+
+def compose_version() -> str:
+    return run_text([str(compose_plugin_path()), "version"]).strip()
 
 
 def load_inventory(path: Path) -> dict[str, object]:
@@ -905,11 +964,11 @@ def verify_compose(
 ) -> None:
     env = read_env(environment, allow_legacy=allow_legacy_env)
     inventory = load_inventory(inventory_path)
+    compose_plugin = compose_plugin_path()
     try:
         model = run_json(
             [
-                "docker",
-                "compose",
+                str(compose_plugin),
                 "--project-name",
                 PROJECT,
                 "--env-file",
@@ -927,7 +986,7 @@ def verify_compose(
         # identify a failed render without enabling shell tracing.
         detail = " ".join((error.stderr or "").split())[:1024]
         version = subprocess.run(
-            ["docker", "compose", "version"],
+            [str(compose_plugin), "version"],
             check=False,
             capture_output=True,
             text=True,
@@ -936,6 +995,7 @@ def verify_compose(
         version_detail = " ".join((version.stdout + version.stderr).split())[:256]
         fail(
             f"Docker Compose model render failed: {detail or 'no diagnostic'}; "
+            f"compose-path={compose_plugin}; "
             f"compose-version-status={version.returncode} "
             f"compose-version={version_detail or 'no diagnostic'}"
         )
@@ -1613,6 +1673,8 @@ def parser() -> argparse.ArgumentParser:
     snapshot.add_argument("output", type=Path)
     protected = sub.add_parser("assert-protected")
     protected.add_argument("expected", type=Path)
+    sub.add_parser("compose-path")
+    sub.add_parser("compose-version")
     compose = sub.add_parser("compose")
     compose.add_argument("compose", type=Path)
     compose.add_argument("environment", type=Path)
@@ -1657,6 +1719,10 @@ def main() -> int:
             )
         elif args.command == "assert-protected":
             assert_protected(args.expected)
+        elif args.command == "compose-path":
+            print(compose_plugin_path())
+        elif args.command == "compose-version":
+            print(compose_version())
         elif args.command == "compose":
             verify_compose(args.compose, args.environment, args.inventory)
         elif args.command == "image":

@@ -44,6 +44,7 @@ protected_ids=()
 topology_created=0
 host_bootstrapped=0
 last_phase=preflight
+COMPOSE_PLUGIN=""
 
 phase() {
   last_phase="$1"
@@ -129,6 +130,8 @@ for name in "$CONTAINER" "$NETWORK" "$EGRESS_NETWORK" "${PROTECTED[@]}"; do
     exit 1
   fi
 done
+COMPOSE_PLUGIN="$(python3 deploy/lightpanda-renderer/verify.py compose-path)"
+[[ "$COMPOSE_PLUGIN" =~ ^/usr/(local/)?lib(exec)?/docker/cli-plugins/docker-compose$ ]] || exit 1
 
 phase identity-and-topology
 if ! id -u deploy >/dev/null 2>&1; then
@@ -214,7 +217,7 @@ install_release "$LEGACY_RELEASE" "$LEGACY_ID" \
 sudo install -o deploy -g deploy -m 0644 \
   deploy/lightpanda-renderer/testdata/legacy-inventory.json \
   "$LEGACY_RELEASE/inventory.json"
-sudo -u deploy docker compose --project-name jobseek-lightpanda \
+sudo -u deploy "$COMPOSE_PLUGIN" --project-name jobseek-lightpanda \
   --env-file "$LEGACY_RELEASE/release.env" --file "$LEGACY_RELEASE/compose.yml" \
   up --detach --no-deps renderer
 legacy_container_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER")"
@@ -314,6 +317,11 @@ phase reboot-lock-recreation
 sudo rm -f -- /run/lock/jobseek-lightpanda-network.lock
 sudo systemd-tmpfiles --create /etc/tmpfiles.d/jobseek-lightpanda-network.conf
 [[ "$(sudo stat -c '%U:%G:%a:%h' /run/lock/jobseek-lightpanda-network.lock)" == root:deploy:640:1 ]]
+
+phase deterministic-compose-authority
+compose_shell_version="$("$COMPOSE_PLUGIN" version)"
+compose_python_version="$(python3 deploy/lightpanda-renderer/verify.py compose-version)"
+[[ -n "$compose_shell_version" && "$compose_shell_version" == "$compose_python_version" ]] || exit 1
 
 phase candidate-stage
 stage="$(sudo -u deploy mktemp -d '/tmp/jobseek-lightpanda-renderer.r999999a1.XXXXXX')"

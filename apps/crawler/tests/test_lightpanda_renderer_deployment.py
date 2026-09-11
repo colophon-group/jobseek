@@ -4,6 +4,7 @@ import argparse
 import copy
 import importlib.util
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -57,6 +58,10 @@ def release_env() -> dict[str, str]:
 def rendered_compose_model(tmp_path: Path) -> dict[str, object]:
     if shutil.which("docker") is None:
         pytest.skip("Docker Compose is unavailable")
+    try:
+        compose_plugin = verify.compose_plugin_path()
+    except verify.VerificationError:
+        pytest.skip("trusted system Docker Compose plugin is unavailable")
     env = release_env()
     environment = tmp_path / "release.env"
     environment.write_text(
@@ -64,8 +69,7 @@ def rendered_compose_model(tmp_path: Path) -> dict[str, object]:
     )
     result = subprocess.run(
         [
-            "docker",
-            "compose",
+            str(compose_plugin),
             "--project-name",
             "jobseek-lightpanda",
             "--env-file",
@@ -81,6 +85,87 @@ def rendered_compose_model(tmp_path: Path) -> dict[str, object]:
         text=True,
     )
     return json.loads(result.stdout)  # type: ignore[no-any-return]
+
+
+def install_test_compose_plugin(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    path.chmod(0o755)
+
+
+def test_compose_system_search_order_is_exact() -> None:
+    assert (
+        Path("/usr/local/lib/docker/cli-plugins"),
+        Path("/usr/local/libexec/docker/cli-plugins"),
+        Path("/usr/lib/docker/cli-plugins"),
+        Path("/usr/libexec/docker/cli-plugins"),
+    ) == verify.SYSTEM_COMPOSE_PLUGIN_DIRECTORIES
+
+
+def test_compose_resolver_uses_first_trusted_system_candidate(tmp_path: Path) -> None:
+    first = tmp_path / "first/cli-plugins/docker-compose"
+    second = tmp_path / "second/cli-plugins/docker-compose"
+    install_test_compose_plugin(first)
+    install_test_compose_plugin(second)
+
+    assert (
+        verify.compose_plugin_path(
+            (first.parent, second.parent),
+            trusted_uid=os.getuid(),
+            trusted_gid=os.getgid(),
+            trust_boundary=tmp_path,
+        )
+        == first
+    )
+
+
+def test_compose_resolver_rejects_absent_candidate(tmp_path: Path) -> None:
+    with pytest.raises(verify.VerificationError, match="plugin is absent"):
+        verify.compose_plugin_path(
+            (tmp_path / "missing",),
+            trusted_uid=os.getuid(),
+            trusted_gid=os.getgid(),
+            trust_boundary=tmp_path,
+        )
+
+
+@pytest.mark.parametrize("invalid_kind", ("symlink", "owner", "writable", "not-executable"))
+def test_compose_resolver_rejects_untrusted_candidate(tmp_path: Path, invalid_kind: str) -> None:
+    candidate = tmp_path / "system/cli-plugins/docker-compose"
+    if invalid_kind == "symlink":
+        target = tmp_path / "real-compose"
+        install_test_compose_plugin(target)
+        candidate.parent.mkdir(parents=True)
+        candidate.symlink_to(target)
+    else:
+        install_test_compose_plugin(candidate)
+        if invalid_kind == "writable":
+            candidate.chmod(0o775)
+        elif invalid_kind == "not-executable":
+            candidate.chmod(0o644)
+    trusted_uid = os.getuid() + 1 if invalid_kind == "owner" else os.getuid()
+
+    with pytest.raises(verify.VerificationError, match="plugin is not trusted"):
+        verify.compose_plugin_path(
+            (candidate.parent,),
+            trusted_uid=trusted_uid,
+            trusted_gid=os.getgid(),
+            trust_boundary=tmp_path,
+        )
+
+
+def test_compose_resolver_rejects_writable_parent(tmp_path: Path) -> None:
+    candidate = tmp_path / "system/cli-plugins/docker-compose"
+    install_test_compose_plugin(candidate)
+    candidate.parent.chmod(0o775)
+
+    with pytest.raises(verify.VerificationError, match="plugin parent is not trusted"):
+        verify.compose_plugin_path(
+            (candidate.parent,),
+            trusted_uid=os.getuid(),
+            trusted_gid=os.getgid(),
+            trust_boundary=tmp_path,
+        )
 
 
 def protected_inspect(name: str, service: str) -> dict[str, object]:
@@ -387,22 +472,31 @@ def test_compose_render_failure_retains_bounded_flat_diagnostic(
     def fail_render(_arguments: list[str]) -> object:
         raise subprocess.CalledProcessError(
             125,
-            ["docker", "compose"],
+            ["/usr/libexec/docker/cli-plugins/docker-compose"],
             stderr="first line\nsecond line " + "x" * 2048,
         )
 
+    monkeypatch.setattr(
+        verify,
+        "compose_plugin_path",
+        lambda: Path("/usr/libexec/docker/cli-plugins/docker-compose"),
+    )
     monkeypatch.setattr(verify, "run_json", fail_render)
     monkeypatch.setattr(
         verify.subprocess,
         "run",
         lambda *_args, **_kwargs: subprocess.CompletedProcess(
-            ["docker", "compose", "version"], 0, "Docker Compose version v2.39.4\n", ""
+            ["/usr/libexec/docker/cli-plugins/docker-compose", "version"],
+            0,
+            "Docker Compose version v2.39.4\n",
+            "",
         ),
     )
     with pytest.raises(
         verify.VerificationError,
         match=(
             r"^Docker Compose model render failed: first line second line x+; "
+            r"compose-path=/usr/libexec/docker/cli-plugins/docker-compose; "
             r"compose-version-status=0 compose-version=Docker Compose version v2\.39\.4\Z"
         ),
     ) as raised:
@@ -665,7 +759,7 @@ def test_deploy_cold_replacement_and_stale_candidate_recovery_are_exact() -> Non
     stop = deploy.index('docker stop --time 30 "$existing_id"', running_gate)
     remove = deploy.index('docker rm --force "$existing_id"', stop)
     empty_gate = deploy.index('sudo -n "$POLICY" verify-ready', remove)
-    compose = deploy.index('docker compose --project-name "$PROJECT"', empty_gate)
+    compose = deploy.index('"$COMPOSE_PLUGIN" --project-name "$PROJECT"', empty_gate)
     assert ownership < running_gate < stop < remove < empty_gate < compose
     static_inventory = deploy.index('inventory-file "$STAGE/inventory.json"')
     live_inventory = deploy.index('inventory "$STAGE/inventory.json"', remove)
@@ -763,6 +857,10 @@ def test_ci_smoke_exercises_legacy_bootstrap_and_cold_rollback() -> None:
     assert ".ci_test_only = true" in smoke
     assert 'legacy_bridge="br-${legacy_network_id:0:12}"' in smoke
     assert "reboot-lock-recreation" in smoke
+    assert "deterministic-compose-authority" in smoke
+    assert (
+        'compose_python_version="$(python3 deploy/lightpanda-renderer/verify.py compose-version)"'
+    ) in smoke
     assert "safe-lock-metadata-repair" in smoke
     assert "after-candidate-remove-ambiguous" in smoke
     assert "active-switch-cold-rollback" in smoke

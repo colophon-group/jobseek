@@ -72,6 +72,8 @@ read -r EXPECTED_POLICY_SHA256 EXPECTED_INVENTORY_SHA256 < <(
 )
 [[ "$EXPECTED_POLICY_SHA256" =~ ^[0-9a-f]{64}$ ]] || exit 2
 [[ "$EXPECTED_INVENTORY_SHA256" =~ ^[0-9a-f]{64}$ ]] || exit 2
+COMPOSE_PLUGIN="$(python3 "$STAGE/verify.py" compose-path)"
+[[ "$COMPOSE_PLUGIN" =~ ^/usr/(local/)?lib(exec)?/docker/cli-plugins/docker-compose$ ]] || exit 2
 
 # Recompute every public pin after transport. This also repeats the full
 # signature, profile, validity, SAN/EKU, key-format, and key-match checks.
@@ -523,7 +525,7 @@ if [[ "$CI_FAILURE_MODE" == before-compose ]]; then
   exit 94
 fi
 if [[ "$CI_FAILURE_MODE" == crash-after-compose-create ]]; then
-  docker compose --project-name "$PROJECT" \
+  "$COMPOSE_PLUGIN" --project-name "$PROJECT" \
     --env-file "$GENERATION/release.env" \
     --file "$GENERATION/compose.yml" \
     create --no-deps "$SERVICE"
@@ -534,7 +536,7 @@ if [[ "$CI_FAILURE_MODE" == crash-after-compose-create ]]; then
   echo "CI retry smoke: killing deploy after Compose create and before start" >&2
   kill -KILL "$$"
 fi
-docker compose --project-name "$PROJECT" \
+"$COMPOSE_PLUGIN" --project-name "$PROJECT" \
   --env-file "$GENERATION/release.env" \
   --file "$GENERATION/compose.yml" \
   up --detach --no-deps "$SERVICE"
