@@ -210,11 +210,11 @@ describe("parseAiFilterSegmentRequest", () => {
     ).toThrow(/out of range/);
   });
 
-  it("uses the canonical whole-second half-open 30-day reader window", () => {
-    const atWindowStart = {
+  it("composes strict retention with the whole-second half-open reader window", () => {
+    const effectiveWindowStart = {
       candidateId: CANDIDATE_ONE,
-      postingFirstSeenAt: "2026-08-02T12:00:00.000Z",
-      productExpiresAt: REQUESTED_AT,
+      postingFirstSeenAt: "2026-08-02T12:00:01.000Z",
+      productExpiresAt: "2026-09-01T12:00:01.000Z",
     };
     const justBeforeWindowEnd = {
       candidateId: CANDIDATE_TWO,
@@ -225,9 +225,9 @@ describe("parseAiFilterSegmentRequest", () => {
     expect(
       parseAiFilterSegmentRequest({
         ...baseRequest,
-        candidates: [justBeforeWindowEnd, atWindowStart],
+        candidates: [justBeforeWindowEnd, effectiveWindowStart],
       }).candidates,
-    ).toEqual([justBeforeWindowEnd, atWindowStart]);
+    ).toEqual([justBeforeWindowEnd, effectiveWindowStart]);
 
     expect(() =>
       parseAiFilterSegmentRequest({
@@ -248,12 +248,44 @@ describe("parseAiFilterSegmentRequest", () => {
         candidates: [
           {
             candidateId: CANDIDATE_ONE,
-            postingFirstSeenAt: "2026-08-02T11:59:59.000Z",
-            productExpiresAt: "2026-09-01T11:59:59.000Z",
+            postingFirstSeenAt: "2026-08-02T12:00:00.000Z",
+            productExpiresAt: REQUESTED_AT,
           },
         ],
       }),
     ).toThrow(/retention expired/);
+  });
+
+  it("parses and materializes the earliest retention-safe reader candidate", () => {
+    const candidate = {
+      candidateId: CANDIDATE_ONE,
+      postingFirstSeenAt: "2026-08-02T12:00:01.000Z",
+      productExpiresAt: "2026-09-01T12:00:01.000Z",
+    };
+    const request = parseAiFilterSegmentRequest({
+      ...baseRequest,
+      candidates: [candidate],
+    });
+    const decisions = materializeAiFilterProductDecisions(
+      request,
+      {
+        runId: RUN_ID,
+        status: "completed",
+        decisions: [{ candidateId: CANDIDATE_ONE, decision: "accepted" }],
+      },
+      REQUESTED_AT,
+    );
+
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0]).toMatchObject({
+      candidateId: CANDIDATE_ONE,
+      postingFirstSeenAt: candidate.postingFirstSeenAt,
+      decidedAt: REQUESTED_AT,
+      expiresAt: candidate.productExpiresAt,
+    });
+    expect(
+      isAiFilterProductDecisionExpired(decisions[0]!, REQUESTED_AT),
+    ).toBe(false);
   });
 
   it("rejects subsecond reader-window timestamps", () => {
