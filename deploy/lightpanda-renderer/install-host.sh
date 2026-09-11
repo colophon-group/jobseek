@@ -352,8 +352,8 @@ rm -f -- "$GENERATION/pins.revalidated.env"
 # Keep a verified descriptor open while deploy still owns the key so its final
 # contents and ownership metadata can be fsynced after the helper chowns it;
 # reopening the 0400 service-owned path as deploy would be impossible.
-exec 9<"$GENERATION/pki/server-key.pem"
-[[ "$(stat -Lc '%d:%i' /proc/$$/fd/9)" == \
+exec 10<"$GENERATION/pki/server-key.pem"
+[[ "$(stat -Lc '%d:%i' /proc/$$/fd/10)" == \
   "$(stat -Lc '%d:%i' "$GENERATION/pki/server-key.pem")" ]] || exit 1
 docker run --rm \
   --network none \
@@ -367,15 +367,15 @@ docker run --rm \
   "$IMAGE_REF" \
   -ceu 'chown 10001:10001 /server-key.pem'
 [[ "$(stat -c '%u:%g:%a' "$GENERATION/pki/server-key.pem")" == 10001:10001:400 ]] || exit 1
-[[ "$(stat -Lc '%d:%i' /proc/$$/fd/9)" == \
+[[ "$(stat -Lc '%d:%i' /proc/$$/fd/10)" == \
   "$(stat -Lc '%d:%i' "$GENERATION/pki/server-key.pem")" ]] || exit 1
-python3 - 9 <<'PY'
+python3 - 10 <<'PY'
 import os
 import sys
 
 os.fsync(int(sys.argv[1]))
 PY
-exec 9<&-
+exec 10<&-
 [[ "$(stat -c '%a' "$GENERATION/pki/ca.pem")" == 444 ]] || exit 1
 [[ "$(stat -c '%a' "$GENERATION/pki/server.pem")" == 444 ]] || exit 1
 rm -f -- "$GENERATION/pki/client.pem"

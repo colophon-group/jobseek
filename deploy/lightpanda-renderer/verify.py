@@ -926,7 +926,19 @@ def verify_compose(
         # credentials-free release environment. Bound and flatten it so CI can
         # identify a failed render without enabling shell tracing.
         detail = " ".join((error.stderr or "").split())[:1024]
-        fail(f"Docker Compose model render failed: {detail or 'no diagnostic'}")
+        version = subprocess.run(
+            ["docker", "compose", "version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        version_detail = " ".join((version.stdout + version.stderr).split())[:256]
+        fail(
+            f"Docker Compose model render failed: {detail or 'no diagnostic'}; "
+            f"compose-version-status={version.returncode} "
+            f"compose-version={version_detail or 'no diagnostic'}"
+        )
     validate_compose_model(model, env, inventory)
 
 

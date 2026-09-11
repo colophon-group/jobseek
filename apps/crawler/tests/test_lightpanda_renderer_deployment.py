@@ -392,13 +392,23 @@ def test_compose_render_failure_retains_bounded_flat_diagnostic(
         )
 
     monkeypatch.setattr(verify, "run_json", fail_render)
+    monkeypatch.setattr(
+        verify.subprocess,
+        "run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            ["docker", "compose", "version"], 0, "Docker Compose version v2.39.4\n", ""
+        ),
+    )
     with pytest.raises(
         verify.VerificationError,
-        match=r"^Docker Compose model render failed: first line second line x+\Z",
+        match=(
+            r"^Docker Compose model render failed: first line second line x+; "
+            r"compose-version-status=0 compose-version=Docker Compose version v2\.39\.4\Z"
+        ),
     ) as raised:
         verify.verify_compose(DEPLOY / "compose.yml", environment, DEPLOY / "inventory.json")
     assert "\n" not in str(raised.value)
-    assert len(str(raised.value)) < 1100
+    assert len(str(raised.value)) < 1200
 
 
 @pytest.mark.parametrize("accepted_bind", ({}, {"create_host_path": False}))
@@ -691,13 +701,13 @@ def test_installed_policy_and_release_artifacts_are_fsynced_before_commit() -> N
         assert token in bootstrap
     assert bootstrap.index("os.fsync(descriptor)") < bootstrap.index('"$POLICY" verify-ready')
     assert "fsync_files \\\n" in deploy
-    assert 'exec 9<"$GENERATION/pki/server-key.pem"' in deploy
-    assert deploy.count("stat -Lc '%d:%i' /proc/$$/fd/9") == 2
+    assert 'exec 10<"$GENERATION/pki/server-key.pem"' in deploy
+    assert deploy.count("stat -Lc '%d:%i' /proc/$$/fd/10") == 2
     assert (
-        deploy.index('exec 9<"$GENERATION/pki/server-key.pem"')
+        deploy.index('exec 10<"$GENERATION/pki/server-key.pem"')
         < deploy.index("-ceu 'chown 10001:10001 /server-key.pem'")
         < deploy.index("os.fsync(int(sys.argv[1]))")
-        < deploy.index("exec 9<&-")
+        < deploy.index("exec 10<&-")
     )
     fsync_block = deploy[deploy.index("fsync_files \\\n") : deploy.index("fsync_directories")]
     assert '"$GENERATION/pki/server-key.pem"' not in fsync_block
