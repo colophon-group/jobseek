@@ -2397,7 +2397,7 @@ test("company OG workflow is incremental, exact-revision, and write-budgeted", (
   );
   assert.match(
     deployCrawlerWorkflow,
-    /deploy:\n\s+needs: \[company-og, murmur, build\]/,
+    /deploy:\n\s+needs: \[company-og, build\]/,
   );
   assert.doesNotMatch(prewarmWorkflow, /--force|force=true|PREWARM_FORCE/);
 });

@@ -135,7 +135,7 @@ def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> Non
     assert deploy_step["env"]["GHCR_PULL_TOKEN"] == "${{ github.token }}"
     assert jobs["build"]["permissions"]["packages"] == "write"
     assert jobs["deploy"]["permissions"]["packages"] == "read"
-    assert jobs["deploy"]["permissions"]["actions"] == "read"
+    assert "actions" not in jobs["deploy"]["permissions"]
     assert jobs["promote"]["permissions"]["packages"] == "write"
     assert set(jobs["deploy"]["needs"]) == {"company-og", "build"}
     assert set(jobs["promote"]["needs"]) == {"build", "deploy"}
