@@ -23,6 +23,7 @@ const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
 const QUERY_CONTROL_PATTERN = /\p{Cc}/u;
 const QUERY_DEFAULT_IGNORABLE_PATTERN =
   /\p{Default_Ignorable_Code_Point}/u;
+const QUERY_LONE_SURROGATE_PATTERN = /[\uD800-\uDFFF]/u;
 const QUERY_WHITESPACE_PATTERN = /\p{White_Space}/u;
 const QUERY_WHITESPACE_RUN_PATTERN = /\p{White_Space}+/gu;
 
@@ -235,6 +236,7 @@ export function normalizeAiFilterSoftQueryV1(input: unknown): string {
 
   for (const codePoint of input) {
     if (
+      QUERY_LONE_SURROGATE_PATTERN.test(codePoint) ||
       QUERY_DEFAULT_IGNORABLE_PATTERN.test(codePoint) ||
       (QUERY_CONTROL_PATTERN.test(codePoint) &&
         !QUERY_WHITESPACE_PATTERN.test(codePoint))
@@ -619,7 +621,8 @@ export function materializeAiFilterProductDecisions(
   const request = parseAiFilterSegmentRequest(requestInput);
   const result = parseAiFilterTerminalResult(resultInput, request);
   const decidedAt = requireCanonicalInstant(decidedAtInput, "decidedAt");
-  if (new Date(decidedAt).getTime() < new Date(request.requestedAt).getTime()) {
+  const decidedAtMs = new Date(decidedAt).getTime();
+  if (decidedAtMs < new Date(request.requestedAt).getTime()) {
     fail("decidedAt cannot precede requestedAt");
   }
 
@@ -629,6 +632,9 @@ export function materializeAiFilterProductDecisions(
   return Object.freeze(result.decisions.map((decision) => {
     const candidate = candidates.get(decision.candidateId);
     if (!candidate) fail("decision candidate is missing from the snapshot");
+    if (decidedAtMs >= new Date(candidate.productExpiresAt).getTime()) {
+      fail("candidate retention expired before decision materialization");
+    }
     return Object.freeze({
       version: AI_FILTER_CONTRACT_VERSION,
       runId: request.runId,

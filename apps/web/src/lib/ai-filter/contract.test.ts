@@ -348,6 +348,23 @@ describe("authoritative AI-filter identifiers and query normalization", () => {
     ).toThrow(/1000 Unicode code points/);
   });
 
+  it("preserves a well-formed astral character", () => {
+    expect(normalizeAiFilterSoftQueryV1("  Platform 😀 roles  ")).toBe(
+      "Platform 😀 roles",
+    );
+  });
+
+  it.each(["private-high\uD800suffix", "private-low\uDC00suffix"])(
+    "rejects a lone UTF-16 surrogate without exposing the query: %j",
+    (queryText) => {
+      expect(() => normalizeAiFilterSoftQueryV1(queryText)).toThrowError(
+        new AiFilterContractError(
+          "AI filter soft query contains unsupported code points",
+        ),
+      );
+    },
+  );
+
   it("rejects oversized raw input before normalization work", () => {
     for (const queryText of [
       `${" ".repeat(AI_FILTER_QUERY_MAX_LENGTH * 4)}x`,
@@ -844,4 +861,43 @@ describe("product decision retention", () => {
       ),
     ).toThrow(/cannot precede/);
   });
+
+  it("materializes a decision immediately before candidate retention expires", () => {
+    const decidedAt = "2026-09-14T11:59:59.999Z";
+    const decisions = materializeAiFilterProductDecisions(
+      baseRequest,
+      {
+        runId: RUN_ID,
+        status: "stopped",
+        stopReason: "configuration_changed",
+        decisions: [completedResult.decisions[1]],
+      },
+      decidedAt,
+    );
+
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0]?.decidedAt).toBe(decidedAt);
+  });
+
+  it.each([EXPIRES_ONE, "2026-09-14T12:00:00.001Z"])(
+    "rejects a decision at or after candidate retention expiry: %s",
+    (decidedAt) => {
+      expect(() =>
+        materializeAiFilterProductDecisions(
+          baseRequest,
+          {
+            runId: RUN_ID,
+            status: "stopped",
+            stopReason: "configuration_changed",
+            decisions: [completedResult.decisions[1]],
+          },
+          decidedAt,
+        ),
+      ).toThrowError(
+        new AiFilterContractError(
+          "candidate retention expired before decision materialization",
+        ),
+      );
+    },
+  );
 });
