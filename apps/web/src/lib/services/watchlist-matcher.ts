@@ -457,7 +457,7 @@ export async function readWatchlistCandidates(params: {
         buildBatchSafetyParams(filters),
       )
     : [params.filters];
-  if (stableNewestReady) {
+  const guardStableCandidateOrder = async () => {
     const guards = await Promise.all(
       filterBatches.map((filters) =>
         withTypesenseRetry(
@@ -481,7 +481,8 @@ export async function readWatchlistCandidates(params: {
       ),
     );
     for (const result of guards) assertStableCandidateGuard(result);
-  }
+  };
+  if (stableNewestReady) await guardStableCandidateOrder();
   if (!needsBatches) {
     const result = await withTypesenseRetry(
       () =>
@@ -491,6 +492,7 @@ export async function readWatchlistCandidates(params: {
       { label: "readWatchlistCandidates", abortSignal: params.abortSignal },
     );
     assertTypesenseSearchResult(result, { expectHits: params.limit !== 0 });
+    if (stableNewestReady) await guardStableCandidateOrder();
     const total = result.found ?? 0;
     return {
       postings:
@@ -533,7 +535,10 @@ export async function readWatchlistCandidates(params: {
   );
   for (const result of countResults) assertTypesenseSearchResult(result);
   const total = countResults.reduce((sum, result) => sum + (result.found ?? 0), 0);
-  if (total === 0 || params.limit === 0) return { postings: [], total };
+  if (total === 0 || params.limit === 0) {
+    if (stableNewestReady) await guardStableCandidateOrder();
+    return { postings: [], total };
+  }
 
   const rowResultsByBatch = await Promise.all(
     filterBatches.map(async (filters) => {
@@ -566,6 +571,7 @@ export async function readWatchlistCandidates(params: {
       return pages;
     }),
   );
+  if (stableNewestReady) await guardStableCandidateOrder();
   const allHits = rowResultsByBatch.flatMap((pages, batchIndex) => {
     let hitRank = 0;
     return pages.flatMap((result) =>
@@ -693,16 +699,20 @@ export async function matchCompiledWatchlistsInWindow(params: {
   const results: TypesenseMultiSearchResult<object>[] = [];
   if (plan.length > 0) {
     const client = getSearchClient();
-    if (stableNewestReady) {
+    const guardStableCandidateOrder = async () => {
       for (let offset = 0; offset < plan.length; offset += MULTI_SEARCH_CHUNK_SIZE) {
         const chunk = plan.slice(offset, offset + MULTI_SEARCH_CHUNK_SIZE);
         const raw = await withTypesenseRetry(
           () =>
-            client.multiSearch.perform({
-              searches: chunk.map((entry) =>
-                stableCandidateGuardParams(entry.search)
-              ),
-            }),
+            client.multiSearch.perform(
+              {
+                searches: chunk.map((entry) =>
+                  stableCandidateGuardParams(entry.search)
+                ),
+              },
+              {},
+              { abortSignal: params.abortSignal },
+            ),
           {
             label: "matchCompiledWatchlistsInWindow.stable-order-guard",
             abortSignal: params.abortSignal,
@@ -714,14 +724,17 @@ export async function matchCompiledWatchlistsInWindow(params: {
         );
         for (const result of guardResults) assertStableCandidateGuard(result);
       }
-    }
+    };
+    if (stableNewestReady) await guardStableCandidateOrder();
     for (let offset = 0; offset < plan.length; offset += MULTI_SEARCH_CHUNK_SIZE) {
       const chunk = plan.slice(offset, offset + MULTI_SEARCH_CHUNK_SIZE);
       const raw = await withTypesenseRetry(
         () =>
-          client.multiSearch.perform({
-            searches: chunk.map((entry) => entry.search),
-          }),
+          client.multiSearch.perform(
+            { searches: chunk.map((entry) => entry.search) },
+            {},
+            { abortSignal: params.abortSignal },
+          ),
         {
           label: "matchCompiledWatchlistsInWindow",
           abortSignal: params.abortSignal,
@@ -733,6 +746,7 @@ export async function matchCompiledWatchlistsInWindow(params: {
         }),
       );
     }
+    if (stableNewestReady) await guardStableCandidateOrder();
   }
 
   const hitsByWatchlist = params.watchlists.map(

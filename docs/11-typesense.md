@@ -236,11 +236,13 @@ Activation is deliberately fail-closed. Keep
 Only callers that explicitly set `requireStableOrder: true` use the second sort
 key. This is the AF-2 extraction contract. Existing notifications and ordinary
 interactive watchlist reads remain on their legacy order even when a valid
-receipt exists, so producer rollout cannot change them. Before any required
-page is fetched, the reader runs the exact eligible filter/window with
-`candidate_order_key(missing_values: first):asc` and requests one hit. It fails
-if that hit lacks a valid paired key, including when the requested page has a
-deep offset. Required reads also reject a malformed, non-canonical, or
+receipt exists, so producer rollout cannot change them. Immediately before and
+after every required candidate read, the reader runs the exact eligible
+filter/window with `candidate_order_key(missing_values: first):asc` and requests
+one hit. It fails if that hit lacks a valid paired key, including when the
+requested page has a deep offset or a rollout race removes the key during the
+read. The candidate read itself also specifies `missing_values: first` on its
+stable secondary sort. Required reads reject a malformed, non-canonical, or
 mismatched key on every returned hit; the optional schema field therefore
 cannot silently corrupt a frozen prefix.
 If later reconciliation finds drift or memory headroom changes materially,
