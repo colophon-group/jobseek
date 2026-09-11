@@ -462,6 +462,16 @@ describe("Stage A v2 gates", () => {
     wrongSuite.trials[0].suiteKind = "seeded_defects";
     expect(() => digestStageACalibrationResult(wrongSuite, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/role_specific_calibration_suite_required/u);
 
+    for (const role of ["adjudicator", "final_critic"] as const) {
+      const undersizedSeededSuite = clone(data.calibrationResult);
+      for (const trial of undersizedSeededSuite.trials.filter((candidateTrial) => candidateTrial.role === role)) trial.sampleCount = 7;
+      expect(() => digestStageACalibrationResult(undersizedSeededSuite, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/seeded_suite_minimum_required/u);
+    }
+
+    const inconsistentSuiteCount = clone(data.calibrationResult);
+    inconsistentSuiteCount.trials.find(({ configId }) => configId === "eval-config-critic-b")!.sampleCount = 9;
+    expect(() => digestStageACalibrationResult(inconsistentSuiteCount, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/same_role_suite_sample_count_required/u);
+
     const unexercised = clone(data.calibrationResult);
     unexercised.trials[0].configId = "eval-config-not-a-candidate";
     expect(() => digestStageACalibrationResult(unexercised, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/every_candidate_config_must_be_exercised/u);

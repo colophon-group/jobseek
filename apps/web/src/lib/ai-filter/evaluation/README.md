@@ -85,7 +85,9 @@ version, reasoning effort, and task-prompt digest. Each candidate must have one
 aggregate trial with a role-specific suite, input/output digests, sample count,
 blinded numeric score, and spot-check disposition/failure codes. Prompt authors
 use the same eight disposable feeds; annotators use resolved human ground
-truth; adjudicators use seeded conflicts; critics use seeded defects.
+truth; adjudicators use seeded conflicts; critics use seeded defects. Each
+seeded suite contains at least eight examples, and every candidate for a role
+uses the same suite digest and sample count.
 
 Human calibration decisions may be accept, reject, or unclear. Unclear items
 remain recorded but are excluded from ground truth; at least 24 accept/reject

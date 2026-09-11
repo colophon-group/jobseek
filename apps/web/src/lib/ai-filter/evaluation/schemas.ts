@@ -223,8 +223,16 @@ export const STAGE_A_CALIBRATION_RESULT_V2_SCHEMA = {
     } } },
     trials: { type: "array", minItems: 8, maxItems: 16, items: { type: "object", additionalProperties: false, required: ["trialId", "configId", "role", "suiteKind", "suiteInputDigest", "outputDigest", "sampleCount", "blindedScore", "spotCheck"], properties: {
       trialId: evalId, configId: evalId, role: enumString(["prompt_author", "annotator", "adjudicator", "final_critic"]), suiteKind: enumString(["same_eight_disposable_feeds", "resolved_human_ground_truth", "seeded_conflicts", "seeded_defects"]), suiteInputDigest: digest, outputDigest: digest, sampleCount: { type: "integer", minimum: 1, maximum: 10_000 }, blindedScore: { type: "integer", minimum: 0, maximum: 10_000 },
-      spotCheck: { type: "object", additionalProperties: false, required: ["disposition", "failureCodes"], properties: { disposition: enumString(["pass", "fail"]), failureCodes: { type: "array", maxItems: 16, uniqueItems: true, items: { type: "string", pattern: tokenPattern } } } },
-    } } },
+      spotCheck: { type: "object", additionalProperties: false, required: ["disposition", "failureCodes"], properties: { disposition: enumString(["pass", "fail"]), failureCodes: { type: "array", maxItems: 16, uniqueItems: true, items: { type: "string", pattern: tokenPattern } } }, allOf: [
+        { if: { type: "object", required: ["disposition"], properties: { disposition: { const: "pass" } } }, then: { type: "object", properties: { failureCodes: { type: "array", maxItems: 0 } } } },
+        { if: { type: "object", required: ["disposition"], properties: { disposition: { const: "fail" } } }, then: { type: "object", properties: { failureCodes: { type: "array", minItems: 1 } } } },
+      ] },
+    }, allOf: [
+      { if: { type: "object", required: ["role"], properties: { role: { const: "prompt_author" } } }, then: { type: "object", properties: { suiteKind: { const: "same_eight_disposable_feeds" }, sampleCount: { const: 8 } } } },
+      { if: { type: "object", required: ["role"], properties: { role: { const: "annotator" } } }, then: { type: "object", properties: { suiteKind: { const: "resolved_human_ground_truth" } } } },
+      { if: { type: "object", required: ["role"], properties: { role: { const: "adjudicator" } } }, then: { type: "object", properties: { suiteKind: { const: "seeded_conflicts" }, sampleCount: { type: "integer", minimum: 8 } } } },
+      { if: { type: "object", required: ["role"], properties: { role: { const: "final_critic" } } }, then: { type: "object", properties: { suiteKind: { const: "seeded_defects" }, sampleCount: { type: "integer", minimum: 8 } } } },
+    ] } },
     selectedConfigs: { type: "array", minItems: 4, maxItems: 4, items: { type: "object", additionalProperties: false, required: ["role", "configId", "selectionDisposition"], properties: { role: enumString(["prompt_author", "annotator", "adjudicator", "final_critic"]), configId: evalId, selectionDisposition: { const: "approved" } } } },
   },
 } as const;

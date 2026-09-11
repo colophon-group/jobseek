@@ -1231,6 +1231,7 @@ function normalizeStageACalibrationResult(input: unknown): StageACalibrationResu
       const sampleCount = requiredInteger(trial, "sampleCount", `${pathValue}.sampleCount`, 1, 10_000);
       if (role === "prompt_author" && sampleCount !== 8) fail(`${pathValue}.sampleCount`, "same_eight_disposable_feeds_required");
       if (role === "annotator" && sampleCount !== resolvedDecisions.length) fail(`${pathValue}.sampleCount`, "resolved_ground_truth_sample_count_required");
+      if ((role === "adjudicator" || role === "final_critic") && sampleCount < 8) fail(`${pathValue}.sampleCount`, "seeded_suite_minimum_required");
       const suiteInputDigest = validateDigest(required(trial, "suiteInputDigest", `${pathValue}.suiteInputDigest`), `${pathValue}.suiteInputDigest`);
       if (role === "annotator" && suiteInputDigest !== resolvedGroundTruthDigest) fail(`${pathValue}.suiteInputDigest`, "resolved_ground_truth_digest_required");
       const spotCheckRecord = snapshotRecord(required(trial, "spotCheck", `${pathValue}.spotCheck`), `${pathValue}.spotCheck`, ["disposition", "failureCodes"]);
@@ -1268,8 +1269,10 @@ function normalizeStageACalibrationResult(input: unknown): StageACalibrationResu
     if (configById.get(trial.configId)?.role !== trial.role) fail("$calibrationResult.trials", "trial_config_role_mismatch");
   }
   for (const role of AGENT_ROLES) {
-    const suiteDigests = new Set(trials.filter((trial) => trial.role === role).map(({ suiteInputDigest }) => suiteInputDigest));
+    const roleTrials = trials.filter((trial) => trial.role === role);
+    const suiteDigests = new Set(roleTrials.map(({ suiteInputDigest }) => suiteInputDigest));
     if (suiteDigests.size !== 1) fail("$calibrationResult.trials", "same_role_suite_input_required");
+    if (new Set(roleTrials.map(({ sampleCount }) => sampleCount)).size !== 1) fail("$calibrationResult.trials", "same_role_suite_sample_count_required");
   }
   const selectedConfigs = snapshotArray(required(record, "selectedConfigs", "$calibrationResult.selectedConfigs"), "$calibrationResult.selectedConfigs", AGENT_ROLES.length, AGENT_ROLES.length)
     .map((selectionInput, index): StageASelectedConfigV2 => {
