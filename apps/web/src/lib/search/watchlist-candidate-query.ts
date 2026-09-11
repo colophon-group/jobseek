@@ -5,6 +5,9 @@ import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-f
 export const WATCHLIST_CANDIDATE_WINDOW_BOUNDARY =
   "[windowStart, windowEnd)" as const;
 
+/** Sortable producer field whose value is exactly the canonical posting ID. */
+export const WATCHLIST_CANDIDATE_ID_SORT_FIELD = "candidate_id_sort" as const;
+
 export type WatchlistCandidateWindow = {
   /** Inclusive UTC instant. Must align to the index's whole-second precision. */
   windowStart: Date;
@@ -84,6 +87,8 @@ export function buildWatchlistCandidateSearchParams(params: {
   limit: number;
   window?: WatchlistCandidateWindow;
   order?: WatchlistCandidateOrder;
+  /** True only after the sortable-ID backfill and reconciliation gate. */
+  stableNewestReady?: boolean;
 }): WatchlistCandidateSearchParams {
   if (!Number.isInteger(params.offset) || params.offset < 0) {
     throw new RangeError("offset must be a non-negative integer");
@@ -127,7 +132,9 @@ export function buildWatchlistCandidateSearchParams(params: {
     sort_by:
       order === "interactive" && hasKeywords
         ? "_text_match:desc,first_seen_at:desc"
-        : "first_seen_at:desc",
+        : order === "newest" && params.stableNewestReady === true
+          ? `first_seen_at:desc,${WATCHLIST_CANDIDATE_ID_SORT_FIELD}:asc`
+          : "first_seen_at:desc",
     per_page: params.limit,
     page:
       params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,

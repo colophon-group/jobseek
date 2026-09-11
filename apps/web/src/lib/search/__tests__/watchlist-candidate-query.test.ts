@@ -4,6 +4,7 @@ import type { WatchlistCandidateFilters } from "@/lib/watchlist-matcher-contract
 import {
   buildWatchlistCandidateSearchParams,
   buildWatchlistCandidateWindowFilter,
+  WATCHLIST_CANDIDATE_ID_SORT_FIELD,
   WATCHLIST_CANDIDATE_WINDOW_BOUNDARY,
 } from "../watchlist-candidate-query";
 
@@ -79,10 +80,22 @@ describe("canonical watchlist candidate query", () => {
       limit: 20,
       window: { windowStart, windowEnd },
       order: "newest",
+      stableNewestReady: true,
     });
     expect(search.filter_by).toContain("is_active:true");
     expect(search.filter_by).toContain(filter);
-    expect(search.sort_by).toBe("first_seen_at:desc");
+    expect(search.sort_by).toBe(
+      `first_seen_at:desc,${WATCHLIST_CANDIDATE_ID_SORT_FIELD}:asc`,
+    );
+
+    const preBackfillSearch = buildWatchlistCandidateSearchParams({
+      filters: { companyIds: [], anyCompany: true },
+      offset: 0,
+      limit: 20,
+      window: { windowStart, windowEnd },
+      order: "newest",
+    });
+    expect(preBackfillSearch.sort_by).toBe("first_seen_at:desc");
   });
 
   it("rejects overlapping/ambiguous window bounds", () => {

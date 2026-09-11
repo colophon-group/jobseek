@@ -2062,6 +2062,7 @@ class TestBuildTypesenseDocsAncestors:
         docs = _build_typesense_docs([row], maps)
         assert len(docs) == 1
         assert docs[0]["reconciliation_bucket"] == uuid.UUID(docs[0]["id"]).hex[:2]
+        assert docs[0]["candidate_id_sort"] == docs[0]["id"]
         loc_ids = set(docs[0]["location_ids"])
         assert docs[0]["location_direct_ids"] == [10]
         assert 10 in loc_ids  # leaf (city)

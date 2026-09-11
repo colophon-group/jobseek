@@ -141,6 +141,7 @@ TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
     "experience_max_years",
     "locales",
     "first_seen_at",
+    "candidate_id_sort",
     "source_url",
 )
 _ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS = frozenset(("locales", "occupation_ids"))

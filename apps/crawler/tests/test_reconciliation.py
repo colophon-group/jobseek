@@ -744,6 +744,22 @@ def test_snapshot_diff_detects_same_id_same_state_payload_drift_separately() -> 
     assert diff.actionable_ids("typesense") == {posting_id}
 
 
+def test_payload_comparison_treats_missing_candidate_sort_id_as_drift() -> None:
+    posting_id = _id(0xAA, 15)
+    local = _typesense_documents_snapshot(
+        [
+            {
+                "id": str(posting_id),
+                "is_active": True,
+                "candidate_id_sort": str(posting_id),
+            }
+        ]
+    )
+    remote = _typesense_documents_snapshot([{"id": str(posting_id), "is_active": True}])
+
+    assert compare_snapshots(local, remote).payload_mismatch == {posting_id}
+
+
 def test_payload_comparison_detects_mispaired_location_arrays() -> None:
     posting_id = _id(0xAA, 10)
     local = _typesense_documents_snapshot(
