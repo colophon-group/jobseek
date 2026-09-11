@@ -47,14 +47,6 @@ required_vars=(
   TYPESENSE_PORT
   TYPESENSE_PROTOCOL
   TYPESENSE_OPERATIONS_KEY
-  # Murmur shim secret. Without this, the shim's compose env
-  # substitution `${MURMUR_TOKEN}` resolves to empty on a full-stack
-  # redeploy and the shim accepts every request as anonymous. The
-  # H4 deploy workflow (deploy-murmur-shim.yml) persists this in its
-  # transactionally published environment and active release generation;
-  # the full-stack deploy must carry the same protected value forward.
-  # Required since H3 (#2775) added the murmur-shim service.
-  MURMUR_TOKEN
 )
 
 missing=()
@@ -138,11 +130,13 @@ done
 source "$INCOMING_DIR/deploy_helpers.sh"
 IMAGE_TAG="$CRAWLER_IMAGE_TAG"
 REDIS_IMAGE="redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241"
-SHIM_IMAGE_REF="${SHIM_IMAGE_REF:-}"
 DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
 DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$DEPLOY_DIR")}"
 export COMPOSE_PROJECT_NAME
+CRAWLER_STACK_SERVICES=(
+  redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy
+)
 MAINTENANCE_OPERATION=crawler-deploy
 MAINTENANCE_ISSUE=3409
 MAINTENANCE_BUDGET_SECONDS=1800
@@ -644,7 +638,7 @@ verify_active_deploy_snapshot() {
   then
     identity_keys=(
       CRAWLER_IMAGE_TAG CRAWLER_IMAGE_REF BROWSER_IMAGE_REF
-      SHIM_IMAGE_REF JOBSEEK_DEPLOY_REVISION
+      JOBSEEK_DEPLOY_REVISION
     )
   fi
   local key env_value success_value
@@ -873,9 +867,9 @@ snapshot_active_deploy_specs() {
     return 1
   }
 
-  # The independently scheduled shim rollout can already have replaced the
-  # live Compose file. Only the verified, crawler-confirmed snapshot is valid
-  # rollback evidence; the first rollout must pre-seed it explicitly.
+  # The mutable live Compose file can differ from the crawler-confirmed active
+  # release. Only the verified active snapshot is valid rollback evidence; the
+  # first rollout must pre-seed it explicitly.
   if ! install -m 0644 "$ACTIVE_COMPOSE_SNAPSHOT" "$snapshot_dir/docker-compose.yml"; then
     rm -rf "$snapshot_dir"
     return 1
@@ -1387,6 +1381,9 @@ rollback_deploy() {
   local bounded_contract_persisted=0
   local config_restore_complete=0
   local rollback_stack_started=0
+  local -a rollback_stack_services=(
+    redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy
+  )
 
   trap - ERR EXIT HUP INT TERM
   if declare -F cleanup_ghcr_docker_config_on_exit >/dev/null; then
@@ -1505,7 +1502,10 @@ rollback_deploy() {
     echo "ERROR: rollback config restore was incomplete; old stack restart skipped" >&2
   fi
   if ((quiesce_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted && config_restore_complete)); then
-    rollback_compose up -d --remove-orphans
+    # Start only the crawler-owned services. Historical Murmur containers are
+    # intentionally left stopped and untouched; --remove-orphans would delete
+    # them after the paused integration left this Compose project.
+    rollback_compose up -d "${rollback_stack_services[@]}"
     command_status=$?
     if ((command_status == 0)); then
       rollback_stack_started=1
@@ -1770,94 +1770,6 @@ ensure_deploy_disk_headroom() {
   echo "Deploy disk headroom OK: ${free_kb} KiB available" >&2
 }
 
-resolve_shim_image_ref() {
-  local candidate="$SHIM_IMAGE_REF"
-  local existing_container configured_ref persisted_ref
-  local -a persisted_refs=()
-
-  # A coupled Murmur/crawler rollout passes the attested same-revision digest
-  # explicitly. Never replace it with live state: a prior crawler attempt may
-  # have failed and rolled the host back to the previous shim release.
-  if [[ -n "$candidate" ]]; then
-    if [[ ! "$candidate" =~ ^ghcr\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]; then
-      echo "ERROR: SHIM_IMAGE_REF must be an immutable jobseek-murmur-shim digest" >&2
-      return 1
-    fi
-    export SHIM_IMAGE_REF
-    return 0
-  fi
-
-  # Crawler-only revisions do not build a same-head shim. Resolve their shim
-  # from the live environment only when the running container agrees exactly;
-  # accepting either source alone would allow drift to become the next release.
-  if [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]]; then
-    mapfile -t persisted_refs < <(sed -n 's/^SHIM_IMAGE_REF=//p' "$ENV_FILE")
-    if (( ${#persisted_refs[@]} != 1 )); then
-      echo "ERROR: active deploy environment must contain exactly one SHIM_IMAGE_REF value" >&2
-      return 1
-    fi
-    persisted_ref="${persisted_refs[0]}"
-  else
-    echo "ERROR: active deploy environment is unavailable for SHIM_IMAGE_REF resolution" >&2
-    return 1
-  fi
-
-  existing_container="${COMPOSE_PROJECT_NAME}-murmur-shim-1"
-  configured_ref="$(
-    docker inspect "$existing_container" --format '{{.Config.Image}}' 2>/dev/null || true
-  )"
-  if [[ ! "$persisted_ref" =~ ^ghcr\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]] ||
-    [[ "$configured_ref" != "$persisted_ref" ]]
-  then
-    echo "ERROR: live environment and Murmur container do not attest one immutable image" >&2
-    return 1
-  fi
-  SHIM_IMAGE_REF="$persisted_ref"
-  export SHIM_IMAGE_REF
-}
-
-read_exact_shim_ref() {
-  local file="$1"
-  local label="$2"
-  local -a refs=()
-
-  if [[ ! -f "$file" || -L "$file" ]]; then
-    echo "ERROR: ${label} is not a regular non-symlink file" >&2
-    return 1
-  fi
-  mapfile -t refs < <(sed -n 's/^SHIM_IMAGE_REF=//p' "$file")
-  if (( ${#refs[@]} != 1 )); then
-    echo "ERROR: ${label} must contain exactly one SHIM_IMAGE_REF value" >&2
-    return 1
-  fi
-  if [[ ! "${refs[0]}" =~ ^ghcr\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]; then
-    echo "ERROR: ${label} contains a malformed SHIM_IMAGE_REF value" >&2
-    return 1
-  fi
-  printf '%s\n' "${refs[0]}"
-}
-
-verify_shim_deploy_contract() {
-  local success_file="$1"
-  local live_ref success_ref container_id container_ref
-
-  live_ref="$(read_exact_shim_ref "$ENV_FILE" "active deploy environment")"
-  success_ref="$(read_exact_shim_ref "$success_file" "crawler success marker")"
-  container_id="$(docker compose ps -aq murmur-shim 2>/dev/null || true)"
-  if [[ -z "$container_id" ]]; then
-    echo "ERROR: Murmur deploy contract found no live container" >&2
-    return 1
-  fi
-  container_ref="$(docker inspect "$container_id" --format '{{.Config.Image}}')"
-  if [[ "$live_ref" != "$SHIM_IMAGE_REF" ||
-    "$container_ref" != "$SHIM_IMAGE_REF" ||
-    "$success_ref" != "$SHIM_IMAGE_REF" ]]
-  then
-    echo "ERROR: Murmur live environment, container, and success marker disagree" >&2
-    return 1
-  fi
-}
-
 verify_compose_service_image() {
   local service="$1"
   local expected_ref="$2"
@@ -1879,11 +1791,10 @@ verify_deployed_image_identity() {
   local service
 
   verify_compose_service_image redis "$REDIS_IMAGE"
-  for service in worker-1 worker-2 worker-3 exporter drain murmur-shim-runtime-init; do
+  for service in worker-1 worker-2 worker-3 exporter drain; do
     verify_compose_service_image "$service" "$CRAWLER_IMAGE_REF"
   done
   verify_compose_service_image browser-1 "$BROWSER_IMAGE_REF"
-  verify_compose_service_image murmur-shim "$SHIM_IMAGE_REF"
   verify_compose_service_image alloy "$ALLOY_IMAGE"
 }
 
@@ -1996,7 +1907,6 @@ bash "$INCOMING_DIR/scripts/crawler-csv-sync-host.sh" \
 verify_active_deploy_snapshot
 ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"
-resolve_shim_image_ref
 
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
@@ -2016,7 +1926,6 @@ OWNER=${OWNER}
 CRAWLER_IMAGE_TAG=${IMAGE_TAG}
 CRAWLER_IMAGE_REF=${CRAWLER_IMAGE_REF}
 BROWSER_IMAGE_REF=${BROWSER_IMAGE_REF}
-SHIM_IMAGE_REF=${SHIM_IMAGE_REF}
 JOBSEEK_DEPLOY_REVISION=${JOBSEEK_DEPLOY_REVISION}
 JOBSEEK_RUNTIME_CONTRACT_SHA256=${JOBSEEK_RUNTIME_CONTRACT_SHA256}
 LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}
@@ -2038,7 +1947,6 @@ TYPESENSE_OPERATIONS_KEY=${TYPESENSE_OPERATIONS_KEY}
 PROXY_PROVIDER=${PROXY_PROVIDER:-none}
 WEBSHARE_PROXY_URLS=${WEBSHARE_PROXY_URLS:-[]}
 WEBSHARE_PROXY_URL=${WEBSHARE_PROXY_URL:-}
-MURMUR_TOKEN=${MURMUR_TOKEN}
 EOF
 
 # Lock down the env file — it contains proxy + DB + R2 creds. Default
@@ -2147,11 +2055,10 @@ docker run --rm \
 # schedules before that runtime may restart.
 repair_umantis_identity_cutover deploy-umantis-identity-cutover
 
-# ── Start the full stack on the freshly seeded Redis state ───────────
-# Coupled rollout marker (2026-08-04): this comment-only deploy contract
-# change intentionally triggers the same-revision Murmur workflow and keeps
-# the crawler workflow behind its Murmur safety wait for this one rollout.
-docker compose up -d --remove-orphans
+# ── Start the crawler stack on the freshly seeded Redis state ────────
+# Explicit service targets preserve the stopped legacy Murmur containers for
+# audit/rollback. Never use --remove-orphans while those containers are parked.
+docker compose up -d "${CRAWLER_STACK_SERVICES[@]}"
 
 # Force-recreate alloy so it picks up any alloy.river bind-mount changes.
 # Compose's plain ``up -d`` does not recreate a service when only the
@@ -2162,9 +2069,7 @@ docker compose up -d --remove-orphans
 # per deploy is well worth not having silent observability drift.
 docker compose up -d --force-recreate alloy
 
-# Gate success on the core crawler services actually running. The
-# murmur shim is intentionally excluded while Murmur remains
-# backburnered; a shim issue should not fail the crawler deploy.
+# Gate success on the core crawler services actually running.
 wait_for_core_services
 reconciliation_wrapper_is_compatible
 verify_deployed_image_identity
@@ -2177,13 +2082,11 @@ printf '%s\n' \
   "CRAWLER_IMAGE_REF=$CRAWLER_IMAGE_REF" \
   "BROWSER_IMAGE_REF=$BROWSER_IMAGE_REF" \
   "REDIS_IMAGE_REF=$REDIS_IMAGE" \
-  "SHIM_IMAGE_REF=$SHIM_IMAGE_REF" \
   "ALLOY_IMAGE_REF=$ALLOY_IMAGE" \
   "JOBSEEK_DEPLOY_REVISION=$JOBSEEK_DEPLOY_REVISION" \
   "JOBSEEK_RUNTIME_CONTRACT_SHA256=$JOBSEEK_RUNTIME_CONTRACT_SHA256" \
   >"$deploy_success_temporary"
 chmod 0644 "$deploy_success_temporary"
-verify_shim_deploy_contract "$deploy_success_temporary"
 publish_active_deploy_release \
   "$deploy_success_temporary" \
   "$FORWARD_DATA_SNAPSHOT" \
@@ -2192,7 +2095,6 @@ publish_active_deploy_release \
 # success-marker state. Keep rollback armed through validation of that exact
 # generation; a process crash before the pointer swap leaves the prior release
 # selected, while a crash after it leaves the complete new release selected.
-verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"
 # Keep the active generation, the immediate rollback target, any durable
 # publication-journal references, and a bounded recent rollback window. This
 # runs while the global mutation lock is still held, so no candidate generation

@@ -1,15 +1,7 @@
 /**
- * `apps/crawler/deploy.sh` extension contract for H3.
+ * Fail-closed crawler deployment contract while Murmur is paused.
  *
- * The shim deploy itself runs via `.github/workflows/deploy-murmur-shim.yml`
- * (does NOT call deploy.sh), so deploy.sh's only role for the shim is to
- * keep the box's `.env` in sync on full-stack crawler redeploys. Without
- * this, a `deploy-crawler-browser.yml` run after a shim deploy would
- * rewrite `/home/deploy/.env` from scratch and drop MURMUR_TOKEN,
- * silently breaking the shim on the next `docker compose up
- * --remove-orphans` line.
- *
- * Source spec: colophon-group/jobseek#2775.
+ * Source spec: colophon-group/jobseek#8814.
  */
 
 import { readFileSync } from "node:fs";
@@ -26,36 +18,29 @@ function loadDeploySh(): string {
   return readFileSync(deployShPath, "utf8");
 }
 
-describe("crawler deploy.sh: murmur-shim integration", () => {
-  it("validates MURMUR_TOKEN as a required env var", () => {
+describe("crawler deploy.sh: paused Murmur integration", () => {
+  it("does not require or persist Murmur credentials and image identity", () => {
     const sh = loadDeploySh();
-    // Required vars are listed in a `required_vars=( ... )` array.
-    // Match conservatively: the line containing MURMUR_TOKEN must be
-    // inside that array (i.e., precede the closing paren of required_vars).
-    const start = sh.indexOf("required_vars=(");
-    expect(start).toBeGreaterThanOrEqual(0);
-    const end = sh.indexOf(")", start);
-    expect(end).toBeGreaterThan(start);
-    const block = sh.slice(start, end);
-    expect(block).toContain("MURMUR_TOKEN");
+
+    expect(sh).not.toContain("MURMUR_TOKEN");
+    expect(sh).not.toContain("SHIM_IMAGE_REF");
+    expect(sh).not.toContain("murmur-shim");
   });
 
-  it("writes MURMUR_TOKEN into the box's .env so compose substitution works on full-stack redeploys", () => {
+  it("starts an explicit crawler-only service allowlist without removing parked containers", () => {
     const sh = loadDeploySh();
-    // The .env file is generated via a heredoc. The shim's compose
-    // service references ${MURMUR_TOKEN} for env substitution; if that
-    // line is missing from the heredoc, full-stack redeploys (which
-    // overwrite .env wholesale) would empty MURMUR_TOKEN.
-    expect(sh).toMatch(/MURMUR_TOKEN=\$\{MURMUR_TOKEN\}/);
+
+    expect(sh).toContain("CRAWLER_STACK_SERVICES=(");
+    expect(sh).toContain(
+      'docker compose up -d "${CRAWLER_STACK_SERVICES[@]}"',
+    );
+    expect(sh).not.toMatch(/^[ \t]*docker compose .*--remove-orphans/m);
   });
 
-  it("remains idempotent: still uses set -euo pipefail and rewrites .env on each run", () => {
+  it("keeps the existing transactional environment rollback", () => {
     const sh = loadDeploySh();
+
     expect(sh).toContain("set -euo pipefail");
-    // The .env heredoc still overwrites the box env file on every run;
-    // the path now goes through ENV_FILE so deploy.sh can keep a
-    // verified crawler-confirmed snapshot and restore it if the new image
-    // fails to start.
     expect(sh).toContain('ENV_FILE="$DEPLOY_DIR/.env"');
     expect(sh).toContain('ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"');
     expect(sh).toContain(

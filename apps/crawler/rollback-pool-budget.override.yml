@@ -46,8 +46,3 @@ services:
       CRAWLER_DB_POOL_MIN: "1"
       CRAWLER_DB_POOL_MAX: "6"
       CRAWLER_DB_POOL_IDLE_SECONDS: "60"
-
-  murmur-shim:
-    environment:
-      MURMUR_DB_POOL_MAX: "2"
-      MURMUR_INVOKER_MAX_CONCURRENCY: "2"

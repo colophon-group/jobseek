@@ -54,8 +54,8 @@ jobs:
     # `Production/secrets`). Without this declaration `secrets.INDEXNOW_KEY`
     # resolves to empty, the script's `if (!INDEXNOW_KEY)` short-circuits,
     # and submissions silently no-op. Every other prod-secret consumer in
-    # this repo declares the same — see deploy-crawler-browser.yml,
-    # deploy-murmur-shim.yml, crawler-scheduled-maintenance.yml.
+    # this repo declares the same — see deploy-crawler-browser.yml and
+    # crawler-scheduled-maintenance.yml.
     environment: production
     # `deployments: read` lets the poll step query Vercel's prod
     # deployment status via the GitHub Deployments API. All other
@@ -89,7 +89,7 @@ jobs:
         # We filter the deployment list by `creator.login == "vercel[bot]"`
         # because multiple workflows in this repo (ci.yml's "Test Web ISR
         # (slow)", crawler-scheduled-maintenance.yml,
-        # deploy-crawler-browser.yml, sync-data.yml, deploy-murmur-shim.yml)
+        # deploy-crawler-browser.yml, and sync-data.yml)
         # also declare `environment: production` and therefore create their
         # own Production deployment records via the GitHub Actions runner.
         # Without the creator filter we could match a CI workflow's

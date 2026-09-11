@@ -50,102 +50,6 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: bash .github/scripts/ensure-company-og-prewarm.sh
 
-  murmur:
-    runs-on: ubuntu-latest
-    # GitHub permits at most 360 minutes for a hosted-runner job. This job is
-    # intentionally separate from image builds so its entire budget is
-    # available to cover one running concurrency predecessor plus this push's
-    # selected Murmur run.
-    timeout-minutes: 360
-    permissions:
-      actions: read
-      contents: read
-    outputs:
-      run_id: ${{ steps.wait.outputs.run_id }}
-      run_attempt: ${{ steps.wait.outputs.run_attempt }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      - name: Wait for same-revision murmur-shim deployment
-        id: wait
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          if git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- \
-            apps/crawler/deploy.sh \
-            apps/crawler/docker-compose.yml; then
-            echo "This revision does not trigger the murmur-shim host workflow" >&2
-            exit 0
-          fi
-          # A GitHub concurrency group has at most one running and one pending
-          # run. With cancel-in-progress:false, this push can therefore wait
-          # behind one predecessor. Each Murmur run has sequential 20-minute
-          # build, 135-minute deploy, and 10-minute promotion bounds. Two such
-          # runs consume at most 330 minutes; retain 20 minutes for checkout,
-          # run discovery, and scheduling skew inside this dedicated 360-minute
-          # job.
-          deadline=$((SECONDS + 21000))
-          murmur_ready=0
-          murmur_run_id=""
-          murmur_run_attempt=""
-          while (( SECONDS < deadline )); do
-            run="$({
-              gh api --method GET \
-                "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy-murmur-shim.yml/runs" \
-                -f head_sha="$GITHUB_SHA" \
-                -f event=push \
-                -f per_page=10
-            } | jq -c '.workflow_runs | sort_by(.created_at) | last // empty')"
-            if [[ -z "$run" ]]; then
-              echo "Waiting for the same-revision murmur-shim workflow to appear" >&2
-            elif [[ "$(jq -r '.status' <<<"$run")" == "completed" ]]; then
-              conclusion="$(jq -r '.conclusion' <<<"$run")"
-              [[ "$conclusion" == "success" ]] || {
-                echo "ERROR: same-revision murmur-shim workflow concluded ${conclusion}" >&2
-                exit 1
-              }
-              jq -e \
-                --arg sha "$GITHUB_SHA" \
-                --arg branch "$GITHUB_REF_NAME" \
-                '.head_sha == $sha and
-                 .head_branch == $branch and
-                 .event == "push" and
-                 .path == ".github/workflows/deploy-murmur-shim.yml" and
-                 .status == "completed" and
-                 .conclusion == "success"' \
-                <<<"$run" >/dev/null || {
-                  echo "ERROR: malformed or mismatched same-revision Murmur workflow attestation" >&2
-                  exit 1
-                }
-              echo "Same-revision murmur-shim deployment completed successfully" >&2
-              murmur_run_id="$(jq -r '.id' <<<"$run")"
-              murmur_run_attempt="$(jq -r '.run_attempt' <<<"$run")"
-              [[ "$murmur_run_id" =~ ^[1-9][0-9]*$ ]] || {
-                echo "ERROR: same-revision Murmur run has an invalid ID" >&2
-                exit 1
-              }
-              [[ "$murmur_run_attempt" =~ ^[1-9][0-9]*$ ]] || {
-                echo "ERROR: same-revision Murmur run has an invalid attempt" >&2
-                exit 1
-              }
-              murmur_ready=1
-              break
-            else
-              echo "Waiting for the same-revision murmur-shim deployment to complete" >&2
-            fi
-            sleep 15
-          done
-          (( murmur_ready )) || {
-            echo "ERROR: timed out waiting for same-revision murmur-shim deployment" >&2
-            exit 1
-          }
-          printf 'run_id=%s\n' "$murmur_run_id" >>"$GITHUB_OUTPUT"
-          printf 'run_attempt=%s\n' "$murmur_run_attempt" >>"$GITHUB_OUTPUT"
-
   build:
     runs-on: ubuntu-latest
     permissions:
@@ -295,11 +199,10 @@ jobs:
           done
 
   deploy:
-    needs: [company-og, murmur, build]
+    needs: [company-og, build]
     runs-on: ubuntu-latest
     environment: production
     permissions:
-      actions: read
       contents: read
       packages: read
 
@@ -317,153 +220,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Wait for same-revision murmur-shim deployment
-        id: murmur
-        env:
-          GH_TOKEN: ${{ github.token }}
-          MURMUR_RUN_ID: ${{ needs.murmur.outputs.run_id }}
-          MURMUR_RUN_ATTEMPT: ${{ needs.murmur.outputs.run_attempt }}
-        run: |
-          set -euo pipefail
-          murmur_run_id="$MURMUR_RUN_ID"
-          murmur_run_attempt="$MURMUR_RUN_ATTEMPT"
-          if [[ -z "$murmur_run_id" && -z "$murmur_run_attempt" ]]; then
-            echo "This revision has no coupled Murmur release to validate" >&2
-            exit 0
-          fi
-          [[ "$murmur_run_id" =~ ^[1-9][0-9]*$ ]] || {
-            echo "ERROR: selected same-revision Murmur run has an invalid ID" >&2
-            exit 1
-          }
-          [[ "$murmur_run_attempt" =~ ^[1-9][0-9]*$ ]] || {
-            echo "ERROR: selected same-revision Murmur run has an invalid attempt" >&2
-            exit 1
-          }
-
-          # Download the immutable release record from the exact successful
-          # push run selected above. Never resolve the mutable revision tag
-          # here: another workflow_dispatch run for the same Git SHA can replace
-          # that tag without being the push run whose host deploy we attested.
-          artifact_dir="$(mktemp -d)"
-          trap 'rm -rf "$artifact_dir"' EXIT
-          gh run download "$murmur_run_id" \
-            --repo "$GITHUB_REPOSITORY" \
-            --name "murmur-release-${murmur_run_id}-${murmur_run_attempt}" \
-            --dir "$artifact_dir"
-          release_record="$artifact_dir/murmur-release.json"
-          [[ -f "$release_record" && ! -L "$release_record" ]] || {
-            echo "ERROR: exact-run Murmur release record is unavailable or unsafe" >&2
-            exit 1
-          }
-          release_digest="$({
-            jq -er \
-              --argjson run_id "$murmur_run_id" \
-              --argjson run_attempt "$murmur_run_attempt" \
-              --arg head_sha "$GITHUB_SHA" '
-                select(
-                  type == "object" and
-                  keys == ["event", "head_sha", "image_digest", "run_attempt", "run_id"] and
-                  .run_id == $run_id and
-                  .run_attempt == $run_attempt and
-                  .head_sha == $head_sha and
-                  .event == "push" and
-                  (.image_digest | test("^sha256:[0-9a-f]{64}$"))
-                ) |
-                .image_digest
-              ' "$release_record"
-          })"
-          [[ "$release_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || {
-            echo "ERROR: exact-run Murmur release record is malformed or mismatched" >&2
-            exit 1
-          }
-
-          # Validate the exact recorded manifest, its OCI provenance, and the
-          # one runnable/one provenance-manifest shape before exporting it. A
-          # crawler retry downloads the same run-bound record even when host
-          # rollback has restored the previous shim release.
-          repository="ghcr.io/${GITHUB_REPOSITORY_OWNER}/jobseek-murmur-shim"
-          revision_ref="${repository}@${release_digest}"
-          manifest_json="$(
-            docker buildx imagetools inspect "$revision_ref" \
-              --format '{{json .Manifest}}'
-          )"
-          mapfile -t manifest_digests < <(
-            jq -er --arg digest "$release_digest" '
-              select(
-                .schemaVersion == 2 and
-                .mediaType == "application/vnd.oci.image.index.v1+json" and
-                .digest == $digest and
-                (.manifests | type == "array")
-              ) |
-              .digest
-            ' <<<"$manifest_json"
-          )
-          [[ "${#manifest_digests[@]}" -eq 1 ]] || {
-            echo "ERROR: recorded Murmur release resolved to zero or multiple manifest digests" >&2
-            exit 1
-          }
-          mapfile -t runnable_digests < <(
-            jq -er '
-              .manifests[] |
-              select(
-                .mediaType == "application/vnd.oci.image.manifest.v1+json" and
-                .platform.os == "linux" and
-                .platform.architecture == "amd64" and
-                ((.annotations["vnd.docker.reference.type"] // "") !=
-                  "attestation-manifest") and
-                (.digest | test("^sha256:[0-9a-f]{64}$"))
-              ) |
-              .digest
-            ' <<<"$manifest_json"
-          )
-          [[ "${#runnable_digests[@]}" -eq 1 ]] || {
-            echo "ERROR: recorded Murmur release contains zero or multiple linux/amd64 images" >&2
-            exit 1
-          }
-          mapfile -t provenance_digests < <(
-            jq -er --arg subject "${runnable_digests[0]}" '
-              .manifests[] |
-              select(
-                .mediaType == "application/vnd.oci.image.manifest.v1+json" and
-                .platform.os == "unknown" and
-                .platform.architecture == "unknown" and
-                .annotations["vnd.docker.reference.type"] ==
-                  "attestation-manifest" and
-                .annotations["vnd.docker.reference.digest"] == $subject and
-                (.digest | test("^sha256:[0-9a-f]{64}$"))
-              ) |
-              .digest
-            ' <<<"$manifest_json"
-          )
-          [[ "${#provenance_digests[@]}" -eq 1 ]] || {
-            echo "ERROR: recorded Murmur release contains zero or multiple SLSA provenance attestations" >&2
-            exit 1
-          }
-
-          provenance_json="$(
-            docker buildx imagetools inspect "$revision_ref" \
-              --format '{{json .Provenance}}'
-          )"
-          jq -e --arg revision "$GITHUB_SHA" '
-            type == "object" and
-            keys == ["SLSA"] and
-            (.SLSA | type == "object") and
-            any(
-              .SLSA | .. | strings;
-              test("(^|[^0-9a-f])" + $revision + "([^0-9a-f]|$)")
-            )
-          ' <<<"$provenance_json" >/dev/null || {
-            echo "ERROR: Murmur provenance does not attest the exact source revision" >&2
-            exit 1
-          }
-
-          shim_image_ref="${repository}@${release_digest}"
-          [[ "$shim_image_ref" =~ ^ghcr\.io/${GITHUB_REPOSITORY_OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]] || {
-            echo "ERROR: resolved Murmur image reference is malformed" >&2
-            exit 1
-          }
-          printf 'image_ref=%s\n' "$shim_image_ref" >>"$GITHUB_OUTPUT"
 
       - name: Build exact pre-deploy CSV rollback candidate
         id: previous-data
@@ -560,7 +316,7 @@ jobs:
           # 3.7M documents on the fixed 2-vCPU node. The action defaults to a
           # much shorter command timeout than the deploy job itself.
           command_timeout: 3h
-          envs: OWNER,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,SHIM_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_RUNTIME_CONTRACT_SHA256,JOBSEEK_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_REVISION,JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID,JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URLS,WEBSHARE_PROXY_URL,MURMUR_TOKEN
+          envs: OWNER,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_RUNTIME_CONTRACT_SHA256,JOBSEEK_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_REVISION,JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID,JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URLS,WEBSHARE_PROXY_URL
           script: bash /home/deploy/incoming/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
@@ -572,11 +328,6 @@ jobs:
           CRAWLER_IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
           CRAWLER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/jobseek-crawler@${{ needs.build.outputs.slim_digest }}
           BROWSER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser@${{ needs.build.outputs.browser_digest }}
-          # Empty for ordinary crawler-only revisions, in which case deploy.sh
-          # requires the live env/container pair to agree. Coupled Murmur
-          # revisions always carry the attested same-head digest explicitly,
-          # including on a crawler workflow retry after rollback.
-          SHIM_IMAGE_REF: ${{ steps.murmur.outputs.image_ref }}
           JOBSEEK_DEPLOY_REVISION: ${{ github.sha }}
           JOBSEEK_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.runtime_contract_sha256 }}
           JOBSEEK_DATA_CONTRACT_SHA256: ${{ needs.build.outputs.data_contract_sha256 }}
@@ -614,12 +365,6 @@ jobs:
           # INTERVAL are no longer forwarded; deleting them from the
           # secret store is a separate cleanup once the change is rolled
           # out and we're confident we won't revive the loop.
-          # Required since H3 (#2775) added the murmur-shim service to
-          # the crawler-box compose. deploy.sh validates this var; the
-          # shim's `${MURMUR_TOKEN}` env-substitution would otherwise
-          # resolve to empty on a full-stack redeploy and the shim
-          # would silently accept every request as anonymous.
-          MURMUR_TOKEN: ${{ secrets.MURMUR_TOKEN }}
 
   promote:
     needs: [build, deploy]
