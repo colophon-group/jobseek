@@ -322,7 +322,10 @@ def verify_egress_routes(
         )
     expected = expected_egress_route_identities(inventory) if network_exists else set()
     if len(observed) != len(expected) or set(observed) != expected:
-        fail("renderer egress host routes are not the exact kernel route set")
+        fail(
+            "renderer egress host routes are not the exact kernel route set: "
+            f"expected={sorted(expected)!r} observed={sorted(observed)!r}"
+        )
 
 
 def audit_candidate(inventory: Inventory) -> None:
