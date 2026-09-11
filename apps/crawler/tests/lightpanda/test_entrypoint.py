@@ -16,6 +16,7 @@ from src.lightpanda.entrypoint import (
     LightpandaEntrypointError,
     _await_startup_or_shutdown,
     _close_redis_bounded,
+    _run_dedicated,
     _run_until_shutdown,
     run_lightpanda_entrypoint,
 )
@@ -128,6 +129,45 @@ def test_disabled_dedicated_entrypoint_imports_no_runtime_or_browser_modules() -
     )
 
     assert result.returncode == 0, result.stderr
+
+
+async def test_enabled_dedicated_entrypoint_configures_logging_and_always_closes_pools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import src.config as config_module
+    import src.db as db
+    import src.lightpanda.entrypoint as entrypoint
+    import src.shared.logging as logging_module
+
+    events: list[str] = []
+    configured = Mock(log_level="INFO")
+
+    def settings_factory() -> Mock:
+        events.append("settings")
+        return configured
+
+    def setup_logging(level: str) -> None:
+        assert level == "INFO"
+        events.append("logging")
+
+    async def fail_claimant(settings: Mock, shutdown_event: asyncio.Event) -> None:
+        assert settings is configured
+        assert not shutdown_event.is_set()
+        events.append("claimant")
+        raise RuntimeError("claimant failed")
+
+    async def close_pools() -> None:
+        events.append("close-pools")
+
+    monkeypatch.setattr(config_module, "Settings", settings_factory)
+    monkeypatch.setattr(logging_module, "setup_logging", setup_logging)
+    monkeypatch.setattr(db, "close_all_pools", close_pools)
+    monkeypatch.setattr(entrypoint, "run_lightpanda_entrypoint", fail_claimant)
+
+    with pytest.raises(RuntimeError, match="claimant failed"):
+        await _run_dedicated("enabled", validate_only=False)
+
+    assert events == ["settings", "logging", "claimant", "close-pools"]
 
 
 async def test_invalid_certificates_fail_before_redis_postgres_or_metrics(

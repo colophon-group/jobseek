@@ -557,8 +557,15 @@ async def _run_dedicated(mode: str, *, validate_only: bool) -> None:
     if validate_only:
         raise LightpandaEntrypointError("validation-only is supported only in dark mode")
     from src.config import Settings
+    from src.db import close_all_pools
+    from src.shared.logging import setup_logging
 
-    await run_lightpanda_entrypoint(Settings(), shutdown_event)  # type: ignore[call-arg]
+    settings = Settings()  # type: ignore[call-arg]
+    setup_logging(settings.log_level)
+    try:
+        await run_lightpanda_entrypoint(settings, shutdown_event)
+    finally:
+        await close_all_pools()
 
 
 def main() -> int:

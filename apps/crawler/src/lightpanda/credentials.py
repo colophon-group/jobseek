@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Final
 
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, SignatureAlgorithmOID
@@ -232,7 +233,7 @@ def _validate_ca(certificate: x509.Certificate) -> None:
         raise ValueError("Lightpanda claimant CA must be self-issued")
     try:
         certificate.verify_directly_issued_by(certificate)
-    except ValueError as exc:
+    except (InvalidSignature, ValueError) as exc:
         raise ValueError("Lightpanda claimant CA self-signature is invalid") from exc
     constraints = _required_extension(certificate, x509.BasicConstraints, "CA constraints")
     if not constraints.critical or constraints.value != x509.BasicConstraints(True, 0):
@@ -273,7 +274,7 @@ def _validate_leaf(
         raise ValueError(f"{label} issuer is invalid")
     try:
         certificate.verify_directly_issued_by(ca)
-    except ValueError as exc:
+    except (InvalidSignature, ValueError) as exc:
         raise ValueError(f"{label} signature is invalid") from exc
     constraints = _required_extension(certificate, x509.BasicConstraints, "leaf constraints")
     if not constraints.critical or constraints.value != x509.BasicConstraints(False, None):

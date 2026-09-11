@@ -4,6 +4,51 @@
 # Called by CI with env vars set from GitHub secrets.
 set -euo pipefail
 
+# Arm private-key transport cleanup before locks, environment preflight, or
+# rollback setup. The workflow gives every attempt an exact remote identity so
+# concurrent or retried deploys never share a sensitive staging path.
+INCOMING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLAIMANT_CREDENTIAL_ARCHIVE=""
+if [[ "${JOBSEEK_DEPLOY_REVISION:-}" =~ ^[0-9a-f]{40}$ &&
+  "${JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID:-}" =~ ^[1-9][0-9]*-[1-9][0-9]*$
+]]; then
+  CLAIMANT_CREDENTIAL_ARCHIVE="${INCOMING_DIR}/lightpanda-claimant-credentials-${JOBSEEK_DEPLOY_REVISION}-${JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID}.tar"
+fi
+
+cleanup_claimant_credential_archive() {
+  local expected=""
+
+  if [[ -z "$CLAIMANT_CREDENTIAL_ARCHIVE" ]]; then
+    return 0
+  fi
+  expected="${INCOMING_DIR}/lightpanda-claimant-credentials-${JOBSEEK_DEPLOY_REVISION}-${JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID}.tar"
+  if [[ "$CLAIMANT_CREDENTIAL_ARCHIVE" != "$expected" ]]; then
+    echo "ERROR: refusing to remove an unsafe claimant credential archive path" >&2
+    return 1
+  fi
+  rm -f -- "$CLAIMANT_CREDENTIAL_ARCHIVE"
+  [[ ! -e "$CLAIMANT_CREDENTIAL_ARCHIVE" && ! -L "$CLAIMANT_CREDENTIAL_ARCHIVE" ]]
+}
+
+cleanup_claimant_credential_archive_on_exit() {
+  local exit_code="${1:-1}"
+  local cleanup_status=0
+
+  trap - ERR EXIT HUP INT TERM
+  if declare -F cleanup_claimant_credential_archive >/dev/null; then
+    cleanup_claimant_credential_archive || cleanup_status=$?
+  fi
+  if ((exit_code == 0 && cleanup_status != 0)); then
+    exit_code=$cleanup_status
+  fi
+  exit "$exit_code"
+}
+
+trap 'cleanup_claimant_credential_archive_on_exit $?' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 # Serialize deploys with host-scheduled data maintenance. The database-level
 # reconciler lock prevents duplicate jobs, while this host lock also closes
 # the race where a new timer starts after deploy preflight but before the old
@@ -23,6 +68,8 @@ required_vars=(
   CRAWLER_IMAGE_REF
   BROWSER_IMAGE_REF
   JOBSEEK_DEPLOY_REVISION
+  JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID
+  JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256
   JOBSEEK_RUNTIME_CONTRACT_SHA256
   JOBSEEK_DATA_CONTRACT_SHA256
   JOBSEEK_PREVIOUS_DATA_REVISION
@@ -62,7 +109,6 @@ if [[ ${#missing[@]} -gt 0 ]]; then
 fi
 
 DEPLOY_DIR="/home/deploy"
-INCOMING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAGED_BRIDGE_VERIFIER="$INCOMING_DIR/scripts/verify-crawler-release-bridge.py"
 ACTIVE_BRIDGE_VERIFIER="$DEPLOY_DIR/scripts/verify-crawler-release-bridge.py"
 BRIDGE_VERIFIER="$STAGED_BRIDGE_VERIFIER"
@@ -71,7 +117,6 @@ ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
 ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"
 ROLLBACK_POOL_OVERRIDE_SOURCE="$INCOMING_DIR/rollback-pool-budget.override.yml"
-CLAIMANT_CREDENTIAL_ARCHIVE="$INCOMING_DIR/lightpanda-claimant-credentials.tar"
 CLAIMANT_CREDENTIAL_INSTALLER="$INCOMING_DIR/scripts/lightpanda-claimant-credentials.py"
 CLAIMANT_CREDENTIAL_ROOT="$DEPLOY_DIR/.local/share/jobseek-lightpanda-claimant/credentials"
 ACTIVE_RELEASE_ROOT="$DEPLOY_DIR/.crawler-release-generations"
@@ -155,6 +200,14 @@ if [[ ! "$JOBSEEK_DEPLOY_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
   echo "ERROR: JOBSEEK_DEPLOY_REVISION must be a full lowercase Git commit SHA" >&2
   exit 1
 fi
+if [[ ! "$JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID" =~ ^[1-9][0-9]*-[1-9][0-9]*$ ]]; then
+  echo "ERROR: JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID must be a canonical run-attempt pair" >&2
+  exit 1
+fi
+if [[ ! "$JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "ERROR: JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256 must be a lowercase SHA-256" >&2
+  exit 1
+fi
 if [[ ! "$JOBSEEK_RUNTIME_CONTRACT_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
   echo "ERROR: JOBSEEK_RUNTIME_CONTRACT_SHA256 must be a lowercase SHA-256" >&2
   exit 1
@@ -224,6 +277,9 @@ cleanup_ghcr_docker_config_on_exit() {
   local cleanup_status=0
 
   trap - ERR EXIT HUP INT TERM
+  if declare -F cleanup_claimant_credential_archive >/dev/null; then
+    cleanup_claimant_credential_archive || cleanup_status=$?
+  fi
   cleanup_ghcr_docker_config || cleanup_status=$?
   if ((exit_code == 0 && cleanup_status != 0)); then
     exit_code=$cleanup_status
@@ -405,13 +461,38 @@ read_exact_release_value() {
 }
 
 prepare_claimant_credential_generation() {
-  local prepared="" status=0
+  local deploy_uid deploy_gid prepared="" prepared_name="" status=0
+
+  if [[ ! -e "$CLAIMANT_CREDENTIAL_ROOT" && ! -L "$CLAIMANT_CREDENTIAL_ROOT" ]]; then
+    install -d -m 0700 "$CLAIMANT_CREDENTIAL_ROOT"
+  fi
+  [[ -d "$CLAIMANT_CREDENTIAL_ROOT" && ! -L "$CLAIMANT_CREDENTIAL_ROOT" ]] || {
+    echo "ERROR: claimant credential root is unsafe" >&2
+    return 1
+  }
+  chmod 0700 "$CLAIMANT_CREDENTIAL_ROOT"
+  deploy_uid="$(id -u)"
+  deploy_gid="$(id -g)"
 
   if prepared="$(
-    python3 "$CLAIMANT_CREDENTIAL_INSTALLER" prepare \
-      --archive "$CLAIMANT_CREDENTIAL_ARCHIVE" \
+    docker run --rm \
+      --network none \
+      --read-only \
+      --cap-drop ALL \
+      --security-opt no-new-privileges:true \
+      --user "${deploy_uid}:${deploy_gid}" \
+      --tmpfs /tmp:rw,noexec,nosuid,nodev,size=1m,mode=1777 \
+      --entrypoint /app/.venv/bin/python \
+      --mount "type=bind,source=$CLAIMANT_CREDENTIAL_ARCHIVE,target=/transport/claimant-credentials.tar,readonly" \
+      --mount "type=bind,source=$CLAIMANT_CREDENTIAL_INSTALLER,target=/installer.py,readonly" \
+      --mount "type=bind,source=$CLAIMANT_CREDENTIAL_ROOT,target=/credentials" \
+      "$CRAWLER_IMAGE_REF" \
+      /installer.py prepare \
+      --archive /transport/claimant-credentials.tar \
+      --archive-sha256 "$JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256" \
       --revision "$JOBSEEK_DEPLOY_REVISION" \
-      --root "$CLAIMANT_CREDENTIAL_ROOT"
+      --root /credentials \
+      --service-host 10.0.0.5
   )"; then
     :
   else
@@ -422,16 +503,24 @@ prepare_claimant_credential_generation() {
   # are the only durable source.
   rm -f -- "$CLAIMANT_CREDENTIAL_ARCHIVE" || status=$?
   (( status == 0 )) || return "$status"
-  [[ "$prepared" =~ ^${CLAIMANT_CREDENTIAL_ROOT}/sha-${JOBSEEK_DEPLOY_REVISION}-[0-9a-f]{16}$ && \
-    -d "$prepared" && ! -L "$prepared" ]] || {
+  [[ "$prepared" =~ ^/credentials/sha-${JOBSEEK_DEPLOY_REVISION}-[0-9a-f]{64}$ ]] || {
     echo "ERROR: claimant credential installer returned an unsafe generation" >&2
     return 1
   }
-  LIGHTPANDA_B0_CREDENTIAL_DIR="$prepared"
+  prepared_name="${prepared#/credentials/}"
+  prepared="$CLAIMANT_CREDENTIAL_ROOT/$prepared_name"
+  [[ "$prepared" == "$LIGHTPANDA_B0_CREDENTIAL_DIR" && -d "$prepared" && ! -L "$prepared" ]] || {
+    echo "ERROR: claimant credential installer published an unexpected generation" >&2
+    return 1
+  }
+}
+
+select_claimant_credential_generation() {
+  LIGHTPANDA_B0_CREDENTIAL_DIR="${CLAIMANT_CREDENTIAL_ROOT}/sha-${JOBSEEK_DEPLOY_REVISION}-${JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256}"
 }
 
 finalize_claimant_credential_generation() {
-  [[ "$LIGHTPANDA_B0_CREDENTIAL_DIR" =~ ^${CLAIMANT_CREDENTIAL_ROOT}/sha-${JOBSEEK_DEPLOY_REVISION}-[0-9a-f]{16}$ && \
+  [[ "$LIGHTPANDA_B0_CREDENTIAL_DIR" =~ ^${CLAIMANT_CREDENTIAL_ROOT}/sha-${JOBSEEK_DEPLOY_REVISION}-[0-9a-f]{64}$ && \
     -d "$LIGHTPANDA_B0_CREDENTIAL_DIR" && ! -L "$LIGHTPANDA_B0_CREDENTIAL_DIR" ]] || {
     echo "ERROR: candidate claimant credential generation is unavailable" >&2
     return 1
@@ -1530,6 +1619,16 @@ rollback_deploy() {
   fi
   ROLLBACK_RUNNING=1
   set +e
+  # Rollback can run for minutes. Destroy the private-key transport before any
+  # recovery work instead of waiting for the rollback process to exit.
+  command_status=0
+  if [[ -n "${CLAIMANT_CREDENTIAL_ARCHIVE:-}" ]]; then
+    cleanup_claimant_credential_archive
+    command_status=$?
+  fi
+  if ((command_status != 0)); then
+    rollback_status=$command_status
+  fi
   echo "Deploy failed — restoring crawler containers on previous image" >&2
 
   cd "$DEPLOY_DIR"
@@ -1764,6 +1863,9 @@ arm_deploy_rollback() {
 
 disarm_deploy_rollback() {
   ROLLBACK_ARMED=0
+  if [[ -n "${CLAIMANT_CREDENTIAL_ARCHIVE:-}" ]]; then
+    cleanup_claimant_credential_archive
+  fi
   cleanup_ghcr_docker_config
   trap - ERR EXIT HUP INT TERM
 }
@@ -2088,10 +2190,10 @@ verify_active_deploy_snapshot
 ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"
 
-# Install the transported claimant identity into a new content-addressed
-# generation before exposing its path to Compose. No active or rollback
-# credential generation is modified or removed.
-prepare_claimant_credential_generation
+# Bind Compose to the only generation name the CI-authenticated transport can
+# publish. The directory is not created until the pinned image revalidates the
+# complete PKI below.
+select_claimant_credential_generation
 
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
@@ -2155,6 +2257,7 @@ fi
 ensure_deploy_disk_headroom
 
 pull_deploy_images
+prepare_claimant_credential_generation
 finalize_claimant_credential_generation
 prepare_forward_data_snapshot
 

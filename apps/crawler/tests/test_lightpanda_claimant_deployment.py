@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -14,6 +15,8 @@ from types import ModuleType
 
 import pytest
 import yaml
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 
 ROOT = Path(__file__).resolve().parents[3]
 CRAWLER = ROOT / "apps/crawler"
@@ -32,6 +35,42 @@ def _load_bundle_module() -> ModuleType:
 
 
 bundle = _load_bundle_module()
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _transport_payloads(path: Path) -> dict[str, bytes]:
+    with tarfile.open(path, "r:") as transport:
+        return {
+            member.name: transport.extractfile(member).read()  # type: ignore[union-attr]
+            for member in transport.getmembers()
+        }
+
+
+def _write_transport(path: Path, payloads: dict[str, bytes]) -> None:
+    import io
+
+    with tarfile.open(path, "w", format=tarfile.USTAR_FORMAT) as transport:
+        for name in sorted(bundle._TRANSPORT_FILES):
+            payload = payloads[name]
+            member = tarfile.TarInfo(name)
+            member.size = len(payload)
+            member.mode = bundle._TRANSPORT_FILES[name]
+            member.uid = 0
+            member.gid = 0
+            member.mtime = 0
+            transport.addfile(member, io.BytesIO(payload))
+    path.chmod(0o600)
+
+
+def _invalidate_certificate_signature(payload: bytes) -> bytes:
+    certificate = x509.load_pem_x509_certificate(payload)
+    encoded = bytearray(certificate.public_bytes(serialization.Encoding.DER))
+    encoded[-1] ^= 1
+    invalid = x509.load_der_x509_certificate(bytes(encoded))
+    return invalid.public_bytes(serialization.Encoding.PEM)
 
 
 @pytest.fixture
@@ -140,8 +179,10 @@ def installed_generation(tmp_path: Path, claimant_pki: dict[str, Path]) -> Path:
     )
     return bundle.prepare_generation(
         archive=archive,
+        expected_sha256=_sha256(archive),
         revision="a" * 40,
         root=tmp_path / "generations",
+        service_host="10.0.0.5",
     )
 
 
@@ -160,22 +201,187 @@ def test_bundle_is_exact_and_installs_one_immutable_generation(
     )
     with tarfile.open(archive, "r:") as transport:
         members = {member.name: member for member in transport.getmembers()}
-    assert set(members) == set(bundle._FILES)
-    assert {name: stat.S_IMODE(member.mode) for name, member in members.items()} == bundle._FILES
+    assert set(members) == set(bundle._TRANSPORT_FILES)
+    assert {
+        name: stat.S_IMODE(member.mode) for name, member in members.items()
+    } == bundle._TRANSPORT_FILES
 
     generation = bundle.prepare_generation(
         archive=archive,
+        expected_sha256=_sha256(archive),
         revision="b" * 40,
         root=tmp_path / "generations",
+        service_host="10.0.0.5",
     )
     assert generation == bundle.prepare_generation(
         archive=archive,
+        expected_sha256=_sha256(archive),
         revision="b" * 40,
         root=tmp_path / "generations",
+        service_host="10.0.0.5",
     )
-    assert generation.name.startswith(f"sha-{'b' * 40}-")
+    assert generation.name == f"sha-{'b' * 40}-{_sha256(archive)}"
     assert stat.S_IMODE(generation.stat().st_mode) == 0o711
     assert stat.S_IMODE((generation / "client-key.pem").stat().st_mode) == 0o400
+    assert {path.name for path in generation.iterdir()} == set(bundle._FILES)
+    assert not (generation / "server.pem").exists()
+
+
+def test_prepare_rejects_post_validation_archive_tampering_before_publication(
+    tmp_path: Path,
+    claimant_pki: dict[str, Path],
+) -> None:
+    archive = tmp_path / "claimant.tar"
+    root = tmp_path / "generations"
+    bundle.build_bundle(
+        ca_path=claimant_pki["ca"],
+        server_path=claimant_pki["server"],
+        client_path=claimant_pki["client"],
+        client_key_path=claimant_pki["client_key"],
+        service_host="10.0.0.5",
+        output=archive,
+    )
+    validated_sha256 = _sha256(archive)
+    archive.write_bytes(archive.read_bytes() + b"post-validation-tampering")
+
+    with pytest.raises(bundle.BundleError, match="does not match CI validation"):
+        bundle.prepare_generation(
+            archive=archive,
+            expected_sha256=validated_sha256,
+            revision="e" * 40,
+            root=root,
+            service_host="10.0.0.5",
+        )
+
+    assert not root.exists()
+
+
+def test_prepare_revalidates_full_pki_and_pins_before_publication(
+    tmp_path: Path,
+    claimant_pki: dict[str, Path],
+) -> None:
+    valid = tmp_path / "valid.tar"
+    bundle.build_bundle(
+        ca_path=claimant_pki["ca"],
+        server_path=claimant_pki["server"],
+        client_path=claimant_pki["client"],
+        client_key_path=claimant_pki["client_key"],
+        service_host="10.0.0.5",
+        output=valid,
+    )
+    original = _transport_payloads(valid)
+    invalid_payloads = {
+        "ca-profile": {**original, "ca.pem": original["client.pem"]},
+        "client-signature": {
+            **original,
+            "client.pem": _invalidate_certificate_signature(original["client.pem"]),
+        },
+        "client-key-match": {
+            **original,
+            "client-key.pem": claimant_pki["server_key"].read_bytes(),
+        },
+        "server-pin": {**original, "server-leaf.sha256": b"0" * 64 + b"\n"},
+    }
+
+    for case, payloads in invalid_payloads.items():
+        archive = tmp_path / f"{case}.tar"
+        root = tmp_path / f"{case}-generations"
+        _write_transport(archive, payloads)
+        with pytest.raises(bundle.BundleError, match="cryptographic validation"):
+            bundle.prepare_generation(
+                archive=archive,
+                expected_sha256=_sha256(archive),
+                revision="9" * 40,
+                root=root,
+                service_host="10.0.0.5",
+            )
+        assert not root.exists()
+
+
+def test_validator_root_resolution_supports_exact_container_installer_path(
+    tmp_path: Path,
+) -> None:
+    image_root = tmp_path / "app"
+    validator = image_root / "src/lightpanda/credentials.py"
+    validator.parent.mkdir(parents=True)
+    validator.write_text("# pinned image validator\n", encoding="utf-8")
+
+    assert (
+        bundle._resolve_validator_root(
+            Path("/installer.py"),
+            image_root=image_root,
+        )
+        == image_root
+    )
+
+
+def test_prepare_retry_accepts_only_sealed_claimant_key_ownership(
+    tmp_path: Path,
+    claimant_pki: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = tmp_path / "claimant.tar"
+    root = tmp_path / "generations"
+    bundle.build_bundle(
+        ca_path=claimant_pki["ca"],
+        server_path=claimant_pki["server"],
+        client_path=claimant_pki["client"],
+        client_key_path=claimant_pki["client_key"],
+        service_host="10.0.0.5",
+        output=archive,
+    )
+    archive_sha256 = _sha256(archive)
+    generation = bundle.prepare_generation(
+        archive=archive,
+        expected_sha256=archive_sha256,
+        revision="f" * 40,
+        root=root,
+        service_host="10.0.0.5",
+    )
+
+    # Model finalize's ownership transfer on platforms where an unprivileged
+    # test process cannot chown to UID 10001: the inode's real owner becomes
+    # the fixed claimant identity and the retry runs as a distinct deploy pair.
+    claimant_uid = (generation / "client-key.pem").stat().st_uid
+    claimant_gid = (generation / "client-key.pem").stat().st_gid
+    monkeypatch.setattr(bundle, "_CLAIMANT_UID", claimant_uid)
+    monkeypatch.setattr(bundle, "_CLAIMANT_GID", claimant_gid)
+    monkeypatch.setattr(bundle.os, "geteuid", lambda: claimant_uid + 1)
+    monkeypatch.setattr(bundle.os, "getegid", lambda: claimant_gid + 1)
+    original_read_bytes = Path.read_bytes
+
+    def read_bytes(path: Path) -> bytes:
+        if path == generation / "client-key.pem":
+            raise PermissionError("sealed claimant key")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+
+    assert generation == bundle.prepare_generation(
+        archive=archive,
+        expected_sha256=archive_sha256,
+        revision="f" * 40,
+        root=root,
+        service_host="10.0.0.5",
+    )
+
+
+def test_prepare_retry_rejects_an_unrecognized_private_key_owner(
+    installed_generation: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    key = installed_generation / "client-key.pem"
+    metadata = key.stat()
+    monkeypatch.setattr(bundle.os, "geteuid", lambda: metadata.st_uid + 1)
+    monkeypatch.setattr(bundle.os, "getegid", lambda: metadata.st_gid + 1)
+    monkeypatch.setattr(bundle, "_CLAIMANT_UID", metadata.st_uid + 2)
+    monkeypatch.setattr(bundle, "_CLAIMANT_GID", metadata.st_gid + 2)
+
+    with pytest.raises(bundle.BundleError, match="private-key ownership changed"):
+        bundle._verify_generation(
+            installed_generation,
+            {path.name: path.read_bytes() for path in installed_generation.iterdir()},
+        )
 
 
 @pytest.mark.parametrize(
@@ -194,7 +400,7 @@ def test_installer_rejects_unsafe_path_mode_and_symlink(
 ) -> None:
     archive = tmp_path / "unsafe.tar"
     with tarfile.open(archive, "w") as transport:
-        for name, mode in bundle._FILES.items():
+        for name, mode in bundle._TRANSPORT_FILES.items():
             payload = b"x" if name.endswith(".pem") else (b"a" * 64 + b"\n")
             member = tarfile.TarInfo(member_name if name == "client-key.pem" else name)
             member.mode = member_mode if name == "client-key.pem" else mode
@@ -212,8 +418,10 @@ def test_installer_rejects_unsafe_path_mode_and_symlink(
     with pytest.raises(bundle.BundleError):
         bundle.prepare_generation(
             archive=archive,
+            expected_sha256=_sha256(archive),
             revision="c" * 40,
             root=tmp_path / "generations",
+            service_host="10.0.0.5",
         )
 
 
@@ -240,8 +448,10 @@ def test_installer_rejects_missing_and_exposed_transport(
     with pytest.raises(bundle.BundleError, match="unavailable"):
         bundle.prepare_generation(
             archive=missing,
+            expected_sha256="a" * 64,
             revision="d" * 40,
             root=tmp_path / "generations",
+            service_host="10.0.0.5",
         )
 
     archive = tmp_path / "claimant.tar"
@@ -257,8 +467,10 @@ def test_installer_rejects_missing_and_exposed_transport(
     with pytest.raises(bundle.BundleError, match="mode is unsafe"):
         bundle.prepare_generation(
             archive=archive,
+            expected_sha256=_sha256(archive),
             revision="d" * 40,
             root=tmp_path / "generations",
+            service_host="10.0.0.5",
         )
 
 
@@ -436,6 +648,103 @@ def test_deploy_discovers_claimant_only_from_exact_rollback_compose() -> None:
     assert stop < restore < discover < start < wait < verify
     assert "rollback_stack_services+=(lightpanda-claimant)" in rollback
     assert "lightpanda-claimant" not in (CRAWLER / "rollback-pool-budget.override.yml").read_text()
+
+
+def test_remote_archive_cleanup_is_armed_for_preflight_signals_and_rollback(
+    tmp_path: Path,
+) -> None:
+    revision = "1" * 40
+    run_identity = "123-4"
+    archive_name = f"lightpanda-claimant-credentials-{revision}-{run_identity}.tar"
+    staged_script = tmp_path / "deploy.sh"
+    shutil.copy2(DEPLOY, staged_script)
+    archive = tmp_path / archive_name
+    archive.write_bytes(b"private-key-transport")
+    environment = {
+        "PATH": os.environ["PATH"],
+        "JOBSEEK_DEPLOY_REVISION": revision,
+        "JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID": run_identity,
+        "JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256": "a" * 64,
+    }
+
+    preflight = subprocess.run(
+        ["bash", str(staged_script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert preflight.returncode != 0
+    assert not archive.exists()
+
+    source = DEPLOY.read_text(encoding="utf-8")
+    prologue = source[
+        source.index("# Arm private-key transport cleanup") : source.index(
+            "# Serialize deploys with host-scheduled data maintenance"
+        )
+    ].replace(
+        'INCOMING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"',
+        'INCOMING_DIR="$TEST_INCOMING_DIR"',
+    )
+    archive.write_bytes(b"private-key-transport")
+    interrupted = subprocess.run(
+        ["bash", "-c", f"set -euo pipefail\n{prologue}\nkill -TERM $$"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={**environment, "TEST_INCOMING_DIR": str(tmp_path)},
+    )
+    assert interrupted.returncode == 143
+    assert not archive.exists()
+
+    rollback = source[source.index("rollback_deploy() {") : source.index("arm_deploy_rollback() {")]
+    assert rollback.index("cleanup_claimant_credential_archive") < rollback.index(
+        'echo "Deploy failed'
+    )
+
+
+def test_remote_prepare_uses_pinned_networkless_validator_before_publication() -> None:
+    source = DEPLOY.read_text(encoding="utf-8")
+    prepare = source[
+        source.index("prepare_claimant_credential_generation() {") : source.index(
+            "select_claimant_credential_generation() {"
+        )
+    ]
+    assert "--network none \\\n" in prepare
+    assert "--read-only \\\n" in prepare
+    assert "--cap-drop ALL \\\n" in prepare
+    assert "--security-opt no-new-privileges:true \\\n" in prepare
+    assert '--user "${deploy_uid}:${deploy_gid}" \\\n' in prepare
+    assert '"$CRAWLER_IMAGE_REF" \\\n' in prepare
+    assert '--mount "type=bind,source=$CLAIMANT_CREDENTIAL_ARCHIVE' in prepare
+    assert "target=/transport/claimant-credentials.tar,readonly" in prepare
+    assert "--service-host 10.0.0.5" in prepare
+
+    pull = source.index("\npull_deploy_images\n")
+    validate_and_publish = source.index("\nprepare_claimant_credential_generation\n", pull)
+    finalize = source.index("\nfinalize_claimant_credential_generation\n", validate_and_publish)
+    start = source.index('docker compose up -d "${CRAWLER_STACK_SERVICES[@]}"', finalize)
+    assert pull < validate_and_publish < finalize < start
+
+
+def test_workflow_always_removes_exact_run_scoped_remote_archive() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["deploy"]["steps"]
+    copy = next(step for step in steps if step.get("name") == "Copy claimant credential bundle")
+    cleanup = next(
+        step for step in steps if step.get("name") == "Remove remote claimant credential bundle"
+    )
+    deploy = next(step for step in steps if step.get("name") == "Deploy via SSH")
+
+    assert (
+        "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}" in copy["with"]["source"]
+    )
+    assert cleanup["if"] == "always()"
+    assert 'rm -f -- "$archive"' in cleanup["with"]["script"]
+    assert (
+        deploy["env"]["JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256"]
+        == "${{ steps.claimant-bundle.outputs.archive_sha256 }}"
+    )
 
 
 def test_later_rollout_rollback_restores_claimant_when_old_compose_defines_it(
