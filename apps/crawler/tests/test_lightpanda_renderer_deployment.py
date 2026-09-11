@@ -715,6 +715,46 @@ def test_policy_rules_have_exact_dns_https_denies_and_terminal_drops() -> None:
     assert rules["iptables"][network_policy.V4_INGRESS][-1] == ("-j", "DROP")
 
 
+def test_policy_rules_use_iptables_nft_canonical_selector_order() -> None:
+    inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
+    rules = network_policy.policy_rules(inventory, inventory.internal_bridge)["iptables"]
+
+    assert rules[network_policy.V4_INGRESS][1][:6] == (
+        "-s",
+        "10.0.0.4/32",
+        "-d",
+        "172.30.94.10/32",
+        "-i",
+        "enp7s0",
+    )
+    assert rules[network_policy.V4_FORWARD][0][:4] == (
+        "-s",
+        "172.30.94.10/32",
+        "-i",
+        "br-jlp-egress",
+    )
+    assert rules[network_policy.V4_FORWARD][2][:4] == (
+        "-d",
+        "172.30.94.10/32",
+        "-o",
+        "br-jlp-egress",
+    )
+    assert rules[network_policy.V4_HOST][2][:6] == (
+        "-s",
+        "10.0.0.4/32",
+        "-d",
+        "10.0.0.5/32",
+        "-i",
+        "enp7s0",
+    )
+    assert rules[network_policy.V4_OUTPUT][0][:4] == (
+        "-d",
+        "172.30.94.10/32",
+        "-o",
+        "br-jlp-egress",
+    )
+
+
 def test_verify_ready_requires_fixed_marker_and_both_networks_stably_empty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
