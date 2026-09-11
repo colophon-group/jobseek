@@ -23,6 +23,7 @@ const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
 const QUERY_CONTROL_PATTERN = /\p{Cc}/u;
 const QUERY_DEFAULT_IGNORABLE_PATTERN =
   /\p{Default_Ignorable_Code_Point}/u;
+const QUERY_LONE_SURROGATE_PATTERN = /[\uD800-\uDFFF]/u;
 const QUERY_WHITESPACE_PATTERN = /\p{White_Space}/u;
 const QUERY_WHITESPACE_RUN_PATTERN = /\p{White_Space}+/gu;
 
@@ -235,6 +236,7 @@ export function normalizeAiFilterSoftQueryV1(input: unknown): string {
 
   for (const codePoint of input) {
     if (
+      QUERY_LONE_SURROGATE_PATTERN.test(codePoint) ||
       QUERY_DEFAULT_IGNORABLE_PATTERN.test(codePoint) ||
       (QUERY_CONTROL_PATTERN.test(codePoint) &&
         !QUERY_WHITESPACE_PATTERN.test(codePoint))
@@ -270,6 +272,17 @@ function requireCanonicalInstant(value: unknown, field: string): string {
     fail(`${field} must be a canonical ISO instant`);
   }
   return value;
+}
+
+function requireCanonicalWholeSecondInstant(
+  value: unknown,
+  field: string,
+): string {
+  const instant = requireCanonicalInstant(value, field);
+  if (new Date(instant).getUTCMilliseconds() !== 0) {
+    fail(`${field} must align to whole-second precision`);
+  }
+  return instant;
 }
 
 function addRetention(firstSeenAt: string): string {
@@ -375,7 +388,7 @@ function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
     "candidate",
   );
 
-  const postingFirstSeenAt = requireCanonicalInstant(
+  const postingFirstSeenAt = requireCanonicalWholeSecondInstant(
     record.postingFirstSeenAt,
     "candidate.postingFirstSeenAt",
   );
@@ -398,7 +411,13 @@ function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
  * Parses an immutable candidate-selection snapshot. It intentionally does not
  * bind normalized posting content; AF-9/AF-10 must bind classifier input at
  * execution time. Successful parsing is not authorization or an execution
- * permit.
+ * permit. Strict retention makes the effective eligibility interval
+ * `(requestedAt - 30 days, requestedAt)`. Producers must compose that with the
+ * canonical reader's whole-second `[windowStart, windowEnd)` contract by using
+ * `windowStart = requestedAt - 30 days + 1 second` and
+ * `windowEnd = requestedAt`. Candidates must be ordered by
+ * `postingFirstSeenAt` descending, then `candidateId` ascending for equal
+ * timestamps.
  */
 export function parseAiFilterSegmentRequest(
   input: unknown,
@@ -410,7 +429,7 @@ export function parseAiFilterSegmentRequest(
     "segment request",
   );
 
-  const requestedAt = requireCanonicalInstant(
+  const requestedAt = requireCanonicalWholeSecondInstant(
     record.requestedAt,
     "segment request.requestedAt",
   );
@@ -428,6 +447,7 @@ export function parseAiFilterSegmentRequest(
 
   const seen = new Set<string>();
   let previousFirstSeenMs = Number.POSITIVE_INFINITY;
+  let previousCandidateId: string | undefined;
   const candidates = candidateInputs.map((candidateInput) => {
     const candidate = parseCandidate(candidateInput);
     if (seen.has(candidate.candidateId)) {
@@ -436,16 +456,24 @@ export function parseAiFilterSegmentRequest(
     seen.add(candidate.candidateId);
 
     const firstSeenMs = new Date(candidate.postingFirstSeenAt).getTime();
-    if (firstSeenMs > requestedAtMs) {
-      fail("candidate cannot be seen after the run was requested");
+    if (firstSeenMs >= requestedAtMs) {
+      fail("candidate.postingFirstSeenAt must precede segment request.requestedAt");
     }
-    if (firstSeenMs > previousFirstSeenMs) {
-      fail("segment request candidates must be newest-first");
+    if (
+      firstSeenMs > previousFirstSeenMs ||
+      (firstSeenMs === previousFirstSeenMs &&
+        previousCandidateId !== undefined &&
+        candidate.candidateId < previousCandidateId)
+    ) {
+      fail(
+        "segment request candidates must be newest-first with candidate IDs ascending for equal timestamps",
+      );
     }
     if (new Date(candidate.productExpiresAt).getTime() <= requestedAtMs) {
       fail("candidate retention expired before the run was requested");
     }
     previousFirstSeenMs = firstSeenMs;
+    previousCandidateId = candidate.candidateId;
     return candidate;
   });
 
@@ -619,7 +647,8 @@ export function materializeAiFilterProductDecisions(
   const request = parseAiFilterSegmentRequest(requestInput);
   const result = parseAiFilterTerminalResult(resultInput, request);
   const decidedAt = requireCanonicalInstant(decidedAtInput, "decidedAt");
-  if (new Date(decidedAt).getTime() < new Date(request.requestedAt).getTime()) {
+  const decidedAtMs = new Date(decidedAt).getTime();
+  if (decidedAtMs < new Date(request.requestedAt).getTime()) {
     fail("decidedAt cannot precede requestedAt");
   }
 
@@ -629,6 +658,9 @@ export function materializeAiFilterProductDecisions(
   return Object.freeze(result.decisions.map((decision) => {
     const candidate = candidates.get(decision.candidateId);
     if (!candidate) fail("decision candidate is missing from the snapshot");
+    if (decidedAtMs >= new Date(candidate.productExpiresAt).getTime()) {
+      fail("candidate retention expired before decision materialization");
+    }
     return Object.freeze({
       version: AI_FILTER_CONTRACT_VERSION,
       runId: request.runId,
@@ -647,9 +679,10 @@ export function materializeAiFilterProductDecisions(
 }
 
 export function isAiFilterProductDecisionExpired(
-  decision: Pick<AiFilterProductDecision, "expiresAt">,
+  decisionInput: Pick<AiFilterProductDecision, "expiresAt">,
   nowInput: unknown,
 ): boolean {
+  const decision = snapshotDataRecord(decisionInput, "product decision");
   const expiresAt = requireCanonicalInstant(decision.expiresAt, "expiresAt");
   const now = requireCanonicalInstant(nowInput, "now");
   return new Date(now).getTime() >= new Date(expiresAt).getTime();

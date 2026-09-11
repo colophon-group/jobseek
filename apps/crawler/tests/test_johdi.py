@@ -20,13 +20,18 @@ LIST_PATH = f"/api/company/{COMPANY_KEY}/publicationFlows/{FLOW}/offers/{LOCALE}
 DETAIL_PATH = f"/api/company/{COMPANY_KEY}/publicationFlows/{FLOW}/offer/4381/{LOCALE}"
 
 
-def _page(*, locale: str = LOCALE) -> str:
+def _page(
+    *,
+    company_key: str = COMPANY_KEY,
+    flow: str = FLOW,
+    locale: str = LOCALE,
+) -> str:
     return f"""
     <html><body>
       <div id="ats-offers"
            data-locale="{locale}"
-           data-company-hash-key="{COMPANY_KEY}"
-           data-flow="{FLOW}"></div>
+           data-company-hash-key="{company_key}"
+           data-flow="{flow}"></div>
     </body></html>
     """
 
@@ -76,6 +81,16 @@ def _transport(*, offers: list | None = None) -> httpx.MockTransport:
 
 def test_widget_config_requires_complete_safe_johdi_mount() -> None:
     assert _widget_config(_page()) == CONFIG
+    assert (
+        _widget_config(
+            _page(
+                company_key=f" \n{COMPANY_KEY}\n",
+                flow=f"\t{FLOW} ",
+                locale=f" {LOCALE}\n",
+            )
+        )
+        == CONFIG
+    )
     assert _widget_config('<div id="ats-offers" data-flow="web"></div>') is None
     assert _widget_config('<div id="something-else"></div>') is None
     assert _widget_config(_page() + _page()) is None

@@ -1,8 +1,12 @@
 # Murmur Codex MCP Transition
 
-This is a documentation-only transition plan. Murmur remains optional for the
-Jobseek migration pilots; company onboarding must keep working through `ws`
-without a Murmur dependency.
+> **Paused:** Murmur services and their deployment workflow are intentionally
+> disabled. The commands below are retained as a historical transition plan,
+> not an active operator runbook. Resuming Murmur requires a separately
+> reviewed code change that restores a deployment surface and credentials.
+
+Murmur remains optional for the Jobseek migration pilots; company onboarding
+must keep working through `ws` without a Murmur dependency.
 
 ## Goal
 

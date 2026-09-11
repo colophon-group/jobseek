@@ -1,0 +1,174 @@
+# Go HTTP + sitemap pilot
+
+This module began as the isolated Phase 0 vertical slice for issues #7949 and
+#7953. Issue #8641 adds a deliberately non-authoritative production shadow:
+one immutable, credential-free image runs a source-controlled two-board cohort
+on the allocated Murmur host and reports counts and canonical URL digests only.
+It has no Redis, Postgres, R2, Typesense, browser, or crawler-service access;
+Python remains the sole queue and persistence owner.
+
+The admitted cohort is intentionally small: an explicit configured sitemap
+URL, GET only, XML `urlset` or a one-level `sitemapindex`, namespace-neutral
+parsing, job-child preference, 404/410 child skipping, duplicate removal,
+`utm_*` removal, literal include/exclude filters, and literal prefix rewrite.
+UTM-removal parity is admitted only for query strings accepted by Go's strict
+query parser whose decoded keys and values are valid UTF-8. Unsupported syntax
+(including malformed percent escapes and raw semicolons) is preserved
+byte-for-byte. Percent-decoded invalid UTF-8 follows Go-specific encoding
+behavior. Both forms remain outside the parity cohort.
+The test corpus includes a frozen `abbvie-careers` repository configuration
+whose `/job/` Python regex is provably equivalent to literal containment for
+the fixture input; this is not general Python-regex compatibility.
+Redirects are rejected as status errors rather than followed.
+All results are held until the complete index succeeds, so a child error never
+publishes a partial URL set. HTTP reads have per-response decoded-byte,
+aggregate decoded-byte, and request-count limits; cancellation interrupts an
+in-progress read.
+
+Live shadow requests are HTTPS-only. The bounded client resolves and validates
+every DNS answer, rejects non-public or mixed answer sets, pins the accepted IP
+for the dial, ignores ambient proxy configuration, and confines every sitemap
+child to the root's exact origin. A `TDM-Reservation: 1` response header is a
+typed, non-retryable policy outcome checked before status or body processing;
+`0` permits processing and malformed values are treated as absent, matching the
+Python crawler. The shadow cohort fetches XML only, so the HTML-only
+`<meta name="tdm-reservation">` fallback is not applicable. The private-network
+and plain-HTTP escape hatches exist solely for hermetic Go tests, are excluded
+from JSON decoding, and must never be enabled by production code.
+
+The explicit root sitemap GET has a narrow retry policy for observed transient
+failures: empty 200 responses; status 202, 401, 403, 408, 425, 429, or any 5xx;
+and typed transport/timeouts. It makes three attempts total by default and at
+most, with context-aware deterministic waits of 500 ms and then 1 s. Children are
+single-attempt. Cancellation and config, body, aggregate, request-cap, 404/410,
+other 4xx, and nonempty malformed XML failures are never retried.
+
+By default, each sitemap invocation owns an HTTP/1 connection pool, so explicit
+root retries and child fetches can reuse a connection without leaking idle
+state to another invocation. The concurrent-worker pilot can opt into one
+explicitly bounded process-owned transport while retaining task-local sessions,
+budgets, and counters. Every admitted GET carries a zero-byte, non-replayable
+body. It is bodyless on the wire, but prevents Go's HTTP/1 transport from
+transparently replaying an idempotent GET on a stale pooled connection. The
+request cap therefore bounds explicit transport attempts; `WireAttempts`
+separately records `net/http`'s request-write hook and must never exceed the
+admitted `Requests`. A hermetic connection-aware fixture proves recovery when
+an origin returns 500 for the first request on a connection and 200 for the
+second. HTTP/2 remains excluded because it has a separate transparent retry
+path.
+
+The `worker` package adds a fixed-goroutine scheduler with
+bounded admission/results, origin-fair dispatch, task deadlines, panic
+containment, and bounded shutdown cancellation. Its fixed-resource comparison
+method is frozen in [WORKER-BENCHMARK.md](WORKER-BENCHMARK.md).
+
+The additive `admission` package is an inactive, dependency-injected
+claim-boundary proof with a hermetic real HTTP/sitemap composition test. Its
+private processor adapter enters the injected claim operation only
+after `worker.Pool` assigns both a worker and an origin slot; callers cannot
+bypass the pool through a public `Process` method. `Candidate` requires the
+exact `crawler.runtime/v1` discriminator and snapshots the complete normalized
+sitemap config plus the identity/revision/fingerprint subset of runtime-v1
+`BoardManifest`. `sitemap.NormalizeConfig` is the single pure validation and
+defaulting seam used by both admission and execution, so their attempted
+request count/backoff and every other config value cannot drift.
+
+The injected claim grant keeps its local candidate digest separate from the
+opaque 32-byte runtime-v1 fence digest. Its immutable `Fence` adds local task
+and board bindings to the seven losslessly mapped runtime-v1 `FencingContext`
+fields: shard, routing epoch, Go engine owner, config revision, claim token,
+lease ID, and fence digest. Server time, lease-until time, and the monotonic
+claim-request start stay outside fence identity so a future lease supervisor
+can derive a conservative deadline without comparing server and worker wall
+clocks. Supervisor handles, execution, and terminal publication must echo and
+exactly compare the fence. A future authoritative terminal adapter must compare
+that entire fence and the candidate's manifest revision/fingerprint in the
+same transaction as its mutation; an echo alone never authorizes a write.
+
+Admission and execution contexts remain separate. Cancellation, timeout,
+lease loss, invalid echoes, dependency panic, or supervisor cleanup failure
+suppress terminal mutation. A supervisor is stopped and deadline-joined before
+any terminal attempt. Closing starts the existing bounded worker drain,
+cancels and joins any claim already in progress, and prevents queued or later
+tasks from starting a claim. Duplicate and stale task rejection deliberately
+belongs to the injected atomic claim operation rather than a second in-memory
+scheduler. There is still no Redis/Lua client, Postgres mutation, retry loop,
+browser/Lightpanda adapter, global cross-process politeness, queue authority,
+workflow, image, or deployment path in this package.
+
+The RAM-density comparison against the production Python sitemap monitor is
+frozen separately in [FLEET-BENCHMARK.md](FLEET-BENCHMARK.md). It uses 32
+distinct production origins and paired `c2` through `c16` profiles without
+granting either candidate queue or persistence authority.
+
+The additive `resident` package and `cmd/residentshadow` exercise the same
+landed worker, sitemap runner, task-local sessions, and process-shared
+transport as one long-lived `c5` process. This is a retention/stability gate,
+not another fleet-parity benchmark. Its twelve canonical origins are
+in-process listeners bound to literal `127.0.0.1` addresses and dynamic ports;
+no origin, URL, manifest, proxy, credential, or crawler input is accepted. Any
+future admitted container must use `--network none`. A fresh fixed barrier in
+every wave proves five simultaneous requests; the transport permits five live requests to
+one host, so a queued duplicate of a deliberately slower origin makes the
+server-observed worker one-per-origin limit non-tautological. Worker admission
+and results remain bounded below each two-per-origin wave. A fresh barrier and
+connection delta make every warm-up and aging wave prove c5 overlap,
+one-per-origin service, and at least one reused connection; lifetime warm-up
+maxima alone cannot satisfy the final gate. The
+deterministic XML payload is created before the forced-GC warm baseline so its
+stable memory is included in both ends of the retention comparison.
+
+The resident command permits only 30, 120, or 240 minutes and is not an
+admission or throughput claim. It streams bounded JSONL snapshots with no URLs
+or raw errors and freezes its rejection policy before execution: exact
+request/result conservation, zero retries/panics/OOM events, `c5`/one-origin
+concurrency, drained connections, no FD/goroutine drift beyond four, and
+post-GC active heap/RSS/cgroup memory within the larger of 1.5x baseline or a
+fixed 16/16/32 MiB allowance. It also requires the observed cgroup
+`memory.max` to equal the declared 384 MiB limit and measures OOM events from
+before warm-up. Shutdown waits within a fixed bound for every accepted server
+connection to reach its closed callback before final evidence. The loopback fixture intentionally makes absolute RSS
+conservative; public DNS/TLS behavior, Python-versus-Go density, queue safety,
+and production throughput remain outside this evidence. A later manual Murmur
+workflow must remain absent until the frozen fleet gate authorizes the
+resident shadow.
+
+`cmd/shadowcanary`, `canary/production.json`, `Dockerfile.shadow`, and the
+manual `crawler-go-sitemap-shadow.yml` workflow remain the only single-shadow
+production wiring. The separate credential-free fleet benchmark described
+above is also allowed to use the allocated Murmur host, but has no crawler
+authority. Existing workflows run merged `main` only, pin images by digest,
+target `linux/arm64`, use read-only non-root containers with strict CPU,
+memory, PID, capability, and time limits, and remove the exact owned
+containers. They also prove the pre-existing Murmur and Cloudflare container
+identities, images, states, start times, and restart counts did not change. The
+resident image is build-tested but has no Murmur workflow or deployment path.
+This directory still does not import crawler contracts, Redis, Postgres,
+browser code, or publisher code.
+
+Run the candidate checks from this directory:
+
+```sh
+gofmt -w boundedhttp/*.go sitemap/*.go
+go test ./...
+go test -race ./...
+go vet ./...
+```
+
+Not implemented and therefore blocking authoritative ownership: full mixed-monitor Python fleet parity,
+child-request retries, auto-discovery/rediscovery,
+nested indexes/cycle handling, proxy and skip-TLS inputs,
+Python-regex-compatible filters/transforms, transcript capture, benchmark/CPU/
+RSS evidence for the full worker pipeline, and any queue or persistence ownership. Unknown root
+documents, nested indexes, and invalid configuration fail closed. Individual
+entries without a usable `loc` are ignored and can yield an empty success,
+matching the inherited Python extraction behavior. No migration ROI or
+authoritative-worker readiness conclusion can be drawn from one shadow run.
+The canary itself rejects an empty or truncated result as insufficient evidence.
+
+Sessions remain single-goroutine and are never shared between tasks; only the
+underlying transport may be shared. For parity with the Python monitor, the URL
+cap is applied before duplicate removal and configured filtering; that
+inherited ordering can omit otherwise qualifying URLs and must be revisited
+before production admission. Dedicated path-aware Linux CI is required for
+every change to this module; local checks alone cannot authorize merge.

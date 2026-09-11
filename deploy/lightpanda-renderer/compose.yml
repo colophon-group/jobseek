@@ -1,0 +1,134 @@
+name: jobseek-lightpanda
+
+services:
+  renderer:
+    image: "${RENDERER_IMAGE_REF:?immutable renderer image is required}"
+    platform: linux/arm64
+    pull_policy: never
+    container_name: jobseek-lightpanda-renderer
+    labels:
+      org.jobseek.lightpanda.source-commit: "${SOURCE_COMMIT:?source commit is required}"
+      org.jobseek.lightpanda.image-ref: "${RENDERER_IMAGE_REF:?immutable renderer image is required}"
+      org.jobseek.lightpanda.release: "${RELEASE_ID:?release id is required}"
+      org.jobseek.lightpanda.mode: dormant-controlled-egress
+    command:
+      - --runtime-v1-service
+      - --listen
+      - 0.0.0.0:9443
+      - --service-ip
+      - 10.0.0.5
+      - --deployment-deny-cidr
+      - 10.0.0.5/32
+      - --deployment-deny-cidr
+      - 10.0.0.4/32
+      - --deployment-deny-cidr
+      - 10.0.0.0/16
+      - --deployment-deny-cidr
+      - 172.17.0.0/16
+      - --deployment-deny-cidr
+      - 172.31.1.1/32
+      - --deployment-deny-cidr
+      - 172.30.94.0/29
+      - --deployment-deny-cidr
+      - 172.30.94.8/29
+      - --deployment-deny-cidr
+      - 116.203.192.19/32
+      - --deployment-deny-cidr
+      - 178.104.102.63/32
+      - --deployment-deny-cidr
+      - 178.104.132.47/32
+      - --deployment-deny-cidr
+      - 178.105.51.62/32
+      - --deployment-deny-cidr
+      - 2a01:4f8:1c18:adf3::/64
+      - --deployment-deny-cidr
+      - 2a01:4f8:1c18:5f98::/64
+      - --deployment-deny-cidr
+      - 2a01:4f8:1c18:d03c::/64
+      - --deployment-deny-cidr
+      - 2a01:4f8:1c18:d64c::/64
+      - --tls-cert
+      - /run/credentials/server.pem
+      - --tls-key
+      - /run/credentials/server-key.pem
+      - --tls-ca
+      - /run/credentials/ca.pem
+      - --tls-ca-sha256
+      - "${CA_DER_SHA256:?CA pin is required}"
+      - --client-leaf-sha256
+      - "${CLIENT_LEAF_SHA256:?client leaf pin is required}"
+      - --client-spki-sha256
+      - "${CLIENT_SPKI_SHA256:?client SPKI pin is required}"
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - KILL
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    cgroup: private
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: 1.0
+    pids_limit: 64
+    ulimits:
+      nofile:
+        soft: 256
+        hard: 256
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,uid=10002,gid=10002,mode=0700
+    stop_grace_period: 30s
+    restart: "on-failure:3"
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+    dns:
+      - 185.12.64.1
+      - 185.12.64.2
+    ports:
+      - name: private-mtls
+        target: 9443
+        published: "9443"
+        host_ip: 10.0.0.5
+        protocol: tcp
+        app_protocol: tls
+        mode: host
+    volumes:
+      - type: bind
+        source: "${RENDERER_RELEASE_DIR:?release directory is required}/pki/ca.pem"
+        target: /run/credentials/ca.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: "${RENDERER_RELEASE_DIR:?release directory is required}/pki/server.pem"
+        target: /run/credentials/server.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: "${RENDERER_RELEASE_DIR:?release directory is required}/pki/server-key.pem"
+        target: /run/credentials/server-key.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      renderer:
+        ipv4_address: 172.30.94.2
+      egress:
+        ipv4_address: 172.30.94.10
+        gw_priority: 1
+
+networks:
+  renderer:
+    name: jobseek-lightpanda-renderer
+    external: true
+  egress:
+    name: jobseek-lightpanda-egress
+    external: true

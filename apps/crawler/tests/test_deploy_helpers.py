@@ -57,7 +57,6 @@ def test_pull_deploy_images_serializes_unique_image_services(tmp_path: Path) -> 
         "compose pull browser-1",
         "compose pull redis",
         "compose pull alloy",
-        "compose pull murmur-shim",
     ]
 
 

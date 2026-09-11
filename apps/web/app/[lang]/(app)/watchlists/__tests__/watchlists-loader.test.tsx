@@ -5,41 +5,30 @@ import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
   load: vi.fn(),
-  popular: vi.fn(),
-  getSession: vi.fn(),
+  logExternalError: vi.fn(),
 }));
 
 vi.mock("@/lib/services/watchlists", () => ({
   getUserWatchlistsWithLimit: (...args: unknown[]) => mocks.load(...args),
-  getPopularWatchlists: (...args: unknown[]) => mocks.popular(...args),
 }));
 
-vi.mock("@/lib/sessionCache", () => ({
-  getSession: () => mocks.getSession(),
+vi.mock("@/lib/safe-external-error", () => ({
+  logExternalError: (...args: unknown[]) => mocks.logExternalError(...args),
 }));
 
 vi.mock("../watchlists-page", () => ({
   WatchlistsPage: ({
     initialWatchlists,
-    initialPopularWatchlists,
-    initialPopularTotal,
-    username,
     limitReached,
     locale,
   }: {
     initialWatchlists: unknown[];
-    initialPopularWatchlists: unknown[];
-    initialPopularTotal: number;
-    username: string | null;
     limitReached: boolean;
     locale: string;
   }) => (
     <div
       data-testid="watchlists-page"
       data-count={initialWatchlists.length}
-      data-popular-count={initialPopularWatchlists.length}
-      data-popular-total={String(initialPopularTotal)}
-      data-username={username ?? ""}
       data-limit-reached={String(limitReached)}
       data-locale={locale}
     />
@@ -48,120 +37,68 @@ vi.mock("../watchlists-page", () => ({
 
 import { WatchlistsLoader } from "../watchlists-loader";
 
-describe("WatchlistsLoader server read (#5896)", () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    mocks.load.mockReset();
-    mocks.popular.mockReset();
-    mocks.getSession.mockReset();
-    mocks.getSession.mockResolvedValue({ user: { username: "alice" } });
-    mocks.popular.mockResolvedValue({
-      watchlists: [{ id: "public-wl-1" }],
-      total: 12,
-    });
-  });
+describe("WatchlistsLoader private overview", () => {
+  beforeEach(() => vi.clearAllMocks());
 
-  it("passes the server-loaded overview to the interactive page", async () => {
+  it("loads only overview metadata and passes it to the list page", async () => {
     mocks.load.mockResolvedValue({
-      watchlists: [{ id: "wl-1" }],
-      limitReached: false,
+      watchlists: [{ id: "watchlist-1" }, { id: "watchlist-2" }],
+      limitReached: true,
     });
 
-    render(await WatchlistsLoader({ locale: "en" }));
+    render(await WatchlistsLoader({
+      locale: "de",
+      errorLabel: "We couldn't load your watchlists.",
+      retryLabel: "Try again",
+    }));
 
     const page = screen.getByTestId("watchlists-page");
-    expect(page.getAttribute("data-count")).toBe("1");
-    expect(page.getAttribute("data-popular-count")).toBe("1");
-    expect(page.getAttribute("data-popular-total")).toBe("12");
-    expect(page.getAttribute("data-username")).toBe("alice");
-    expect(page.getAttribute("data-limit-reached")).toBe("false");
-    expect(page.getAttribute("data-locale")).toBe("en");
-    expect(mocks.load).toHaveBeenCalledOnce();
-    expect(mocks.load).toHaveBeenCalledWith("en");
-    expect(mocks.popular).toHaveBeenCalledWith({
-      offset: 0,
-      limit: 10,
-      locale: "en",
-    });
-  });
-
-  it("renders the anonymous overview without a username", async () => {
-    mocks.getSession.mockResolvedValue(null);
-    mocks.load.mockResolvedValue({ watchlists: [], limitReached: true });
-
-    render(await WatchlistsLoader({ locale: "de" }));
-
-    const page = screen.getByTestId("watchlists-page");
-    expect(page.getAttribute("data-username")).toBe("");
+    expect(mocks.load).toHaveBeenCalledWith("de");
+    expect(page.getAttribute("data-count")).toBe("2");
     expect(page.getAttribute("data-limit-reached")).toBe("true");
+    expect(page.getAttribute("data-locale")).toBe("de");
   });
 
-  it("renders a localized hard-reload recovery link when the server read fails", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
+  it("does not read selection cookies, sessions, owner details, or detail page data", () => {
+    const source = readFileSync(
+      "app/[lang]/(app)/watchlists/watchlists-loader.tsx",
+      "utf8",
+    );
+
+    expect(source).not.toContain("next/headers");
+    expect(source).not.toContain("getSession");
+    expect(source).not.toContain("WATCHLIST_SELECTION_COOKIE");
+    expect(source).not.toContain("getOwnedWatchlistById");
+    expect(source).not.toContain("buildWatchlistPageData");
+  });
+
+  it("renders a private retry when the overview query fails", async () => {
     mocks.load.mockRejectedValue(new Error("database unavailable"));
 
-    render(await WatchlistsLoader({ locale: "fr" }));
+    render(await WatchlistsLoader({
+      locale: "it",
+      errorLabel: "We couldn't load your watchlists.",
+      retryLabel: "Try again",
+    }));
 
-    expect(screen.getByText(/couldn't load your watchlists/i)).toBeTruthy();
-    expect(screen.getByRole("link", { name: /try again/i }).getAttribute("href")).toBe(
-      "/fr/watchlists",
-    );
-    expect(mocks.load).toHaveBeenCalledOnce();
-  });
-
-  it("keeps the overview usable when popular-watchlist discovery is unavailable", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    mocks.load.mockResolvedValue({
-      watchlists: [{ id: "wl-1" }],
-      limitReached: false,
-    });
-    mocks.popular.mockRejectedValue(new Error("typesense unavailable"));
-
-    render(await WatchlistsLoader({ locale: "it" }));
-
-    const page = screen.getByTestId("watchlists-page");
-    expect(page.getAttribute("data-count")).toBe("1");
-    expect(page.getAttribute("data-popular-count")).toBe("0");
-    expect(page.getAttribute("data-popular-total")).toBe("0");
-  });
-
-  it("does not discard a cold popular-watchlist response after three seconds", async () => {
-    vi.useFakeTimers();
-    try {
-      mocks.load.mockResolvedValue({
-        watchlists: [{ id: "wl-1" }],
-        limitReached: false,
-      });
-      mocks.popular.mockImplementation(
-        () => new Promise((resolve) => {
-          setTimeout(() => resolve({
-            watchlists: [{ id: "public-wl-1" }],
-            total: 12,
-          }), 3_100);
-        }),
-      );
-
-      const loader = WatchlistsLoader({ locale: "en" });
-      await vi.advanceTimersByTimeAsync(3_100);
-      render(await loader);
-
-      const page = screen.getByTestId("watchlists-page");
-      expect(page.getAttribute("data-popular-count")).toBe("1");
-      expect(page.getAttribute("data-popular-total")).toBe("12");
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(screen.getByText("We couldn't load your watchlists.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Try again" }).getAttribute("href"))
+      .toBe("/it/watchlists");
+    expect(mocks.logExternalError).toHaveBeenCalledOnce();
   });
 });
 
 describe("Watchlists route partial prerendering", () => {
-  it("places the session-scoped server loader behind Suspense", () => {
-    const source = readFileSync(
-      "app/[lang]/(app)/watchlists/page.tsx",
-      "utf8",
+  it("keeps the overview read behind Suspense with reduced-motion loading", () => {
+    const source = readFileSync("app/[lang]/(app)/watchlists/page.tsx", "utf8");
+    expect(source).toContain(
+      "<Suspense fallback={<WatchlistsFallback label={loadingLabel} />}>",
     );
-
-    expect(source).toContain("<Suspense fallback={<WatchlistsFallback />}>");
-    expect(source).toContain("<WatchlistsLoader locale={locale} />");
+    expect(source).toContain("<WatchlistsLoader");
+    expect(source).toContain("locale={locale}");
+    expect(source).toContain("errorLabel={errorLabel}");
+    expect(source).toContain("retryLabel={retryLabel}");
+    expect(source).toContain('role="status"');
+    expect(source).toContain("motion-safe:animate-spin");
   });
 });

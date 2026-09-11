@@ -127,6 +127,41 @@ class TestFindSingleJob:
         assert result is not None
         assert result["title"] == "Developer"
 
+    def test_finds_salesforce_aura_return_value(self):
+        listing_rows = [
+            {"jobPosting": {"Id": f"a3l{i}", "Name": f"Listing {i}"}} for i in range(60)
+        ]
+        detail = {
+            "Id": "a3l-detail",
+            "Name": "Plastic Surgical Oncology APP",
+            "Job_Posting_Description__c": "<p>Provide multidisciplinary cancer care.</p>",
+            "Location__c": "Gilbert",
+            "State__c": "Arizona",
+        }
+        body = {
+            "actions": [
+                {"state": "SUCCESS", "returnValue": listing_rows},
+                {"state": "SUCCESS", "returnValue": detail},
+            ]
+        }
+
+        result = _find_single_job([_make_exchange(body=body)])
+
+        assert result == detail
+
+    def test_extracts_salesforce_aura_fields_heuristically(self):
+        content = _extract_heuristic(
+            {
+                "Name": "Plastic Surgical Oncology APP",
+                "Job_Posting_Description__c": "<p>Provide multidisciplinary cancer care.</p>",
+                "Location__c": "Gilbert",
+            }
+        )
+
+        assert content.title == "Plastic Surgical Oncology APP"
+        assert content.description == "<p>Provide multidisciplinary cancer care.</p>"
+        assert content.locations == ["Gilbert"]
+
 
 class TestExtractHeuristic:
     def test_all_fields(self):

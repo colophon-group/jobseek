@@ -747,6 +747,9 @@ export const watchlist = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     isPublic: boolean("is_public").default(false).notNull(),
+    // Explicit unlisted-link sharing. Kept separate from legacy `is_public`
+    // so grandfathered discoverable rows never become shared implicitly.
+    shareEnabled: boolean("share_enabled").default(false).notNull(),
     alertsEnabled: boolean("alerts_enabled").default(false).notNull(),
     alertsEnabledAt: timestamp("alerts_enabled_at", { withTimezone: true }),
     filters: jsonb("filters").default({}).notNull(),

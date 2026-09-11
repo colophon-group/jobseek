@@ -41,7 +41,7 @@ def _listing(
 
 def _card_listing(
     host: str,
-    *jobs: tuple[int, str, str, str],
+    *jobs: tuple[int, str, str, str | None],
     page: int = 1,
     total: int = 1,
 ) -> str:
@@ -51,8 +51,13 @@ def _card_listing(
             '<div class="col-xs-6 header left"><span class="sr-only">Region</span>'
             f'<span>{region}</span></div><div class="col-xs-12 title">'
             f'<a class="iCIMS_Anchor" href="https://{host}/jobs/{job_id}/role/job?in_iframe=1">'
-            f'<h3>{title}</h3></a></div><div class="iCIMS_JobHeaderTag">'
-            f"<dt>Job Type</dt><dd>{job_type}</dd></div></div></li>"
+            f"<h3>{title}</h3></a></div>"
+            + (
+                f'<div class="iCIMS_JobHeaderTag"><dt>Job Type</dt><dd>{job_type}</dd></div>'
+                if job_type is not None
+                else ""
+            )
+            + "</div></li>"
         )
         for job_id, title, region, job_type in jobs
     )
@@ -247,6 +252,32 @@ class TestMonitor:
             result = await discover({"board_url": BOARD_URL, "metadata": metadata}, client)
 
         assert result == {_job_url(100)}
+
+    async def test_cross_locale_dedupe_accepts_cards_without_job_type(self):
+        peer_host = "peer-acme.icims.com"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == HOST:
+                text = _card_listing(
+                    HOST,
+                    (100, "Same title", "CA-ON-Toronto", None),
+                    (101, "Unique title", "CA-ON-Toronto", None),
+                )
+            else:
+                text = _card_listing(
+                    peer_host,
+                    (200, "Same title", "CA-ON-Toronto", None),
+                )
+            return httpx.Response(200, text=text, request=request)
+
+        metadata = {
+            "host": HOST,
+            "cross_locale_dedupe": {"peer_host": peer_host, "title_aliases": {}},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": BOARD_URL, "metadata": metadata}, client)
+
+        assert result == {_job_url(101)}
 
     async def test_cross_locale_dedupe_fails_closed_when_peer_is_truncated(
         self, monkeypatch: pytest.MonkeyPatch

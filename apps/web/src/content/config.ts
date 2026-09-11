@@ -196,6 +196,7 @@ export const siteConfig = {
       "/api/admin/",
       "/api/stripe/",
       "/settings",
+      "/watchlists",
       "/my-jobs",
       "/progress",
       "/check-email",

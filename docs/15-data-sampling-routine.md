@@ -242,8 +242,6 @@ We store the description as it was publicly posted. No regex scrub. Takedown-on-
 - Manual Codex pilot: invoke the repo skill when present, or run
   `codex exec --json` with this runbook and the desired arguments
   (`--date 2026-04-25 --count 10`).
-- Manual Claude-compatible path: `/jobseek-label-daily`; pass an explicit
-  count when using it so it matches the Codex production target.
 - Scheduled Codex path: run the Hetzner Codex runner through
   `jobseek-codex-daily-annotations.timer`. It creates a fresh worktree,
   uses the runner user's existing Codex and HuggingFace login state, and loads
@@ -253,9 +251,6 @@ We store the description as it was publicly posted. No regex scrub. Takedown-on-
   Completed, failed, and timed-out root/subagent sessions use the same
   quality-gated export, remote checksum verification, local cleanup, and retry
   lifecycle as company resolver sessions.
-- Do not add a GitHub Actions or Claude-compatible schedule for this routine.
-  The scheduled production path is the Hetzner Codex runner; the slash command
-  remains a manual compatibility route only.
 - The orchestrator's final response ends with one
   `JOBSEEK_ROUTINE_RESULT=<json>` line. A failed result names the first failing
   phase and a concise redacted causal error. The runner records that cause

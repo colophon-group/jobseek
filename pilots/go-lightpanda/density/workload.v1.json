@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "origin_count": 8,
+  "waves": [
+    {
+      "id": "w0",
+      "tasks": [
+        {
+          "id": "w0-origin-0-b0",
+          "origin_id": "origin-0",
+          "mode": "b0",
+          "relative_path": "/density/w0/origin-0/b0",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w0-origin-0-b0</title></head><body><main id=\"fixture\">w0-origin-0-b0</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "3479e4675cdf249759ef2b497ea22113e92414cde32d41409525cc711b49cedf",
+          "expected_evaluation_json": null,
+          "expected_evaluation_sha256": null
+        },
+        {
+          "id": "w0-origin-1-b0",
+          "origin_id": "origin-1",
+          "mode": "b0",
+          "relative_path": "/density/w0/origin-1/b0",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w0-origin-1-b0</title></head><body><main id=\"fixture\">w0-origin-1-b0</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "77ed994768384d996a0a3e3e2a6eee6dcf7666d128a157b32ab4d229a2b20298",
+          "expected_evaluation_json": null,
+          "expected_evaluation_sha256": null
+        },
+        {
+          "id": "w0-origin-2-b0",
+          "origin_id": "origin-2",
+          "mode": "b0",
+          "relative_path": "/density/w0/origin-2/b0",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w0-origin-2-b0</title></head><body><main id=\"fixture\">w0-origin-2-b0</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "72200be2b8ff305c3f3162ac51184fc01174c67cdd71598c1cffa9204ffc81f1",
+          "expected_evaluation_json": null,
+          "expected_evaluation_sha256": null
+        },
+        {
+          "id": "w0-origin-3-b0",
+          "origin_id": "origin-3",
+          "mode": "b0",
+          "relative_path": "/density/w0/origin-3/b0",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w0-origin-3-b0</title></head><body><main id=\"fixture\">w0-origin-3-b0</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "7b863976ad72f4de5c8fe4bf6005a97444b4c065b80b753babed6e7caffff858",
+          "expected_evaluation_json": null,
+          "expected_evaluation_sha256": null
+        },
+        {
+          "id": "w0-origin-4-b1",
+          "origin_id": "origin-4",
+          "mode": "b1",
+          "relative_path": "/density/w0/origin-4/b1",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w0-origin-4-b1</title></head><body><main id=\"fixture\">w0-origin-4-b1</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "87ca219b95317c5f361e335e447be993bc39f87d9dd662ed9056dcb094193e57",
+          "expected_evaluation_json": "\"w0-origin-4-b1\"",
+          "expected_evaluation_sha256": "6fdc722b747aefc02145742cd6b6e9722d438aa5be48b705592aea4990192ad4"
+        },
+        {
+          "id": "w0-origin-5-b1",
+          "origin_id": "origin-5",
+          "mode": "b1",
+          "relative_path": "/density/w0/origin-5/b1",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w0-origin-5-b1</title></head><body><main id=\"fixture\">w0-origin-5-b1</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "fc319d1336cc996e0e0e51cb22e0a8ca92b76f1ff9aaec68b3b5d3ea4e3bcd8c",
+          "expected_evaluation_json": "\"w0-origin-5-b1\"",
+          "expected_evaluation_sha256": "0414fed0bfce3c41545b5ec95f9d3e2442ebaf52f0ef0ce0bd1e0bdf644b23c0"
+        },
+        {
+          "id": "w0-origin-6-b1",
+          "origin_id": "origin-6",
+          "mode": "b1",
+          "relative_path": "/density/w0/origin-6/b1",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w0-origin-6-b1</title></head><body><main id=\"fixture\">w0-origin-6-b1</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "f30001256dc9bb8d56669b901cc39f03c07b492c8eea6121a38656674557e956",
+          "expected_evaluation_json": "\"w0-origin-6-b1\"",
+          "expected_evaluation_sha256": "9d76717fc3968176c381faeb07a7099c84a016c25d41d34f407209fffbbf8c53"
+        },
+        {
+          "id": "w0-origin-7-b1",
+          "origin_id": "origin-7",
+          "mode": "b1",
+          "relative_path": "/density/w0/origin-7/b1",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w0-origin-7-b1</title></head><body><main id=\"fixture\">w0-origin-7-b1</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "fd845c464b4942f54b285fa5568713a3d1e062263b1b725cd26a4eeaf9d9f32d",
+          "expected_evaluation_json": "\"w0-origin-7-b1\"",
+          "expected_evaluation_sha256": "d154c7e5c55a60bc4f5eabe29af75a9c9b7ef43462ffa71f0f2afdf58afa950d"
+        }
+      ]
+    },
+    {
+      "id": "w1",
+      "tasks": [
+        {
+          "id": "w1-origin-0-b1",
+          "origin_id": "origin-0",
+          "mode": "b1",
+          "relative_path": "/density/w1/origin-0/b1",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w1-origin-0-b1</title></head><body><main id=\"fixture\">w1-origin-0-b1</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "fb0578578498f6d4484669ef200df732f90441c32e906263f96b2326072b59af",
+          "expected_evaluation_json": "\"w1-origin-0-b1\"",
+          "expected_evaluation_sha256": "2366160b20e0d2dc774a931b75d90aec3800619efeec9457a83c1994bd8c4042"
+        },
+        {
+          "id": "w1-origin-1-b1",
+          "origin_id": "origin-1",
+          "mode": "b1",
+          "relative_path": "/density/w1/origin-1/b1",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w1-origin-1-b1</title></head><body><main id=\"fixture\">w1-origin-1-b1</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "ad93fa6142a7dbca0a8766247ee6e79d38a07f729266872e443ec5a1d1939d95",
+          "expected_evaluation_json": "\"w1-origin-1-b1\"",
+          "expected_evaluation_sha256": "24e4954dd4e8eb436ee11652710f73375084090b00733c963fc5882c750dac12"
+        },
+        {
+          "id": "w1-origin-2-b1",
+          "origin_id": "origin-2",
+          "mode": "b1",
+          "relative_path": "/density/w1/origin-2/b1",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w1-origin-2-b1</title></head><body><main id=\"fixture\">w1-origin-2-b1</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "d0e5f6e3d07a1921e6844a200246599a2f02f97b7a7fd02b4c8054657c3e046f",
+          "expected_evaluation_json": "\"w1-origin-2-b1\"",
+          "expected_evaluation_sha256": "827145fc6dbf066da55b0661c30cca719bca6ce0a3854c47d4510049b4007150"
+        },
+        {
+          "id": "w1-origin-3-b1",
+          "origin_id": "origin-3",
+          "mode": "b1",
+          "relative_path": "/density/w1/origin-3/b1",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w1-origin-3-b1</title></head><body><main id=\"fixture\">w1-origin-3-b1</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "55547d73e2c99e99b383f1ea73d0d1894a3f2227b94bc4b442603d1aca69146f",
+          "expected_evaluation_json": "\"w1-origin-3-b1\"",
+          "expected_evaluation_sha256": "7ca205a4cf83c066c38810030ff59c53af36fbf1dd79578b29f3b3339123c3d6"
+        },
+        {
+          "id": "w1-origin-4-b0",
+          "origin_id": "origin-4",
+          "mode": "b0",
+          "relative_path": "/density/w1/origin-4/b0",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w1-origin-4-b0</title></head><body><main id=\"fixture\">w1-origin-4-b0</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "5547be9169f6ad4e2d66ce61f7a4911249fa1ff117aedae3194493aa173aa7fb",
+          "expected_evaluation_json": null,
+          "expected_evaluation_sha256": null
+        },
+        {
+          "id": "w1-origin-5-b0",
+          "origin_id": "origin-5",
+          "mode": "b0",
+          "relative_path": "/density/w1/origin-5/b0",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w1-origin-5-b0</title></head><body><main id=\"fixture\">w1-origin-5-b0</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "65174454504b44fad07799d158880ae994a5124888a8baa162d0eff9a16cc3e6",
+          "expected_evaluation_json": null,
+          "expected_evaluation_sha256": null
+        },
+        {
+          "id": "w1-origin-6-b0",
+          "origin_id": "origin-6",
+          "mode": "b0",
+          "relative_path": "/density/w1/origin-6/b0",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w1-origin-6-b0</title></head><body><main id=\"fixture\">w1-origin-6-b0</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "1b27b4f4ae1b7e9629f0af03e7e5b8dbe2a98284c94f8e3085609e032c1544a6",
+          "expected_evaluation_json": null,
+          "expected_evaluation_sha256": null
+        },
+        {
+          "id": "w1-origin-7-b0",
+          "origin_id": "origin-7",
+          "mode": "b0",
+          "relative_path": "/density/w1/origin-7/b0",
+          "status": 201,
+          "response_body": "<!doctype html><html><head><title>w1-origin-7-b0</title></head><body><main id=\"fixture\">w1-origin-7-b0</main></body></html>",
+          "expected_outer_html_size": 108,
+          "expected_outer_html_sha256": "961c331e65318066ad90ebde7f82750af0add882569ec3c25dd6139dcda8966a",
+          "expected_evaluation_json": null,
+          "expected_evaluation_sha256": null
+        }
+      ]
+    }
+  ]
+}

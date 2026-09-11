@@ -155,6 +155,29 @@ class Settings(BaseSettings):
     metrics_port: int = 9091
     r2_max_connections: int = 60  # controls R2 HTTP client pool size
 
+    # Lightpanda B0 claimant (inactive unless its dedicated command is invoked).
+    # Keep these values inert strings here: every crawler role constructs the
+    # global Settings object, while only the dedicated claimant may validate or
+    # consume its certificates and route identity.  Populated credentials never
+    # imply activation; the entry point requires the exact mode "enabled".
+    lightpanda_b0_claimant_mode: str = "off"
+    lightpanda_b0_service_host: str = ""
+    lightpanda_b0_ca_certificate: str = ""
+    lightpanda_b0_client_certificate: str = ""
+    lightpanda_b0_client_private_key: str = ""
+    lightpanda_b0_ca_sha256: str = ""
+    lightpanda_b0_server_leaf_sha256: str = ""
+    lightpanda_b0_server_spki_sha256: str = ""
+    # The dedicated dark executable reads immutable mounted pin files instead
+    # of accepting pin values or PEM objects in its environment. These remain
+    # inert for every shared crawler command.
+    lightpanda_b0_ca_sha256_file: str = ""
+    lightpanda_b0_server_leaf_sha256_file: str = ""
+    lightpanda_b0_server_spki_sha256_file: str = ""
+    lightpanda_b0_queue_namespace: str = ""
+    lightpanda_b0_shard_id: str = ""
+    lightpanda_b0_routing_epoch: str = ""
+
     # Pipeline concurrency (per-instance)
     discovery_concurrency: int = 20
     monitor_concurrency: int = 5  # max concurrent monitors

@@ -166,22 +166,14 @@ describe("parseAiFilterSegmentRequest", () => {
     }
   });
 
-  it("rejects expired, future, incorrect, non-canonical, and overflowing lifetimes", () => {
-    expect(() =>
-      parseAiFilterSegmentRequest({
-        ...baseRequest,
-        requestedAt: EXPIRES_ONE,
-        candidates: [baseRequest.candidates[1]],
-      }),
-    ).toThrow(/expired/);
-
+  it("rejects future, incorrect, non-canonical, and overflowing lifetimes", () => {
     expect(() =>
       parseAiFilterSegmentRequest({
         ...baseRequest,
         requestedAt: "2026-08-01T12:00:00.000Z",
         candidates: [baseRequest.candidates[1]],
       }),
-    ).toThrow(/seen after/);
+    ).toThrow(/must precede/);
 
     expect(() =>
       parseAiFilterSegmentRequest({
@@ -218,12 +210,136 @@ describe("parseAiFilterSegmentRequest", () => {
     ).toThrow(/out of range/);
   });
 
+  it("composes strict retention with the whole-second half-open reader window", () => {
+    const effectiveWindowStart = {
+      candidateId: CANDIDATE_ONE,
+      postingFirstSeenAt: "2026-08-02T12:00:01.000Z",
+      productExpiresAt: "2026-09-01T12:00:01.000Z",
+    };
+    const justBeforeWindowEnd = {
+      candidateId: CANDIDATE_TWO,
+      postingFirstSeenAt: "2026-09-01T11:59:59.000Z",
+      productExpiresAt: "2026-10-01T11:59:59.000Z",
+    };
+
+    expect(
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: [justBeforeWindowEnd, effectiveWindowStart],
+      }).candidates,
+    ).toEqual([justBeforeWindowEnd, effectiveWindowStart]);
+
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: [
+          {
+            candidateId: CANDIDATE_ONE,
+            postingFirstSeenAt: REQUESTED_AT,
+            productExpiresAt: "2026-10-01T12:00:00.000Z",
+          },
+        ],
+      }),
+    ).toThrow(/must precede/);
+
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: [
+          {
+            candidateId: CANDIDATE_ONE,
+            postingFirstSeenAt: "2026-08-02T12:00:00.000Z",
+            productExpiresAt: REQUESTED_AT,
+          },
+        ],
+      }),
+    ).toThrow(/retention expired/);
+  });
+
+  it("parses and materializes the earliest retention-safe reader candidate", () => {
+    const candidate = {
+      candidateId: CANDIDATE_ONE,
+      postingFirstSeenAt: "2026-08-02T12:00:01.000Z",
+      productExpiresAt: "2026-09-01T12:00:01.000Z",
+    };
+    const request = parseAiFilterSegmentRequest({
+      ...baseRequest,
+      candidates: [candidate],
+    });
+    const decisions = materializeAiFilterProductDecisions(
+      request,
+      {
+        runId: RUN_ID,
+        status: "completed",
+        decisions: [{ candidateId: CANDIDATE_ONE, decision: "accepted" }],
+      },
+      REQUESTED_AT,
+    );
+
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0]).toMatchObject({
+      candidateId: CANDIDATE_ONE,
+      postingFirstSeenAt: candidate.postingFirstSeenAt,
+      decidedAt: REQUESTED_AT,
+      expiresAt: candidate.productExpiresAt,
+    });
+    expect(
+      isAiFilterProductDecisionExpired(decisions[0]!, REQUESTED_AT),
+    ).toBe(false);
+  });
+
+  it("rejects subsecond reader-window timestamps", () => {
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        requestedAt: "2026-09-01T12:00:00.001Z",
+      }),
+    ).toThrow(/whole-second precision/);
+
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: [
+          {
+            candidateId: CANDIDATE_ONE,
+            postingFirstSeenAt: "2026-08-15T12:00:00.001Z",
+            productExpiresAt: "2026-09-14T12:00:00.001Z",
+          },
+        ],
+      }),
+    ).toThrow(/whole-second precision/);
+  });
+
   it("enforces newest-first source ordering", () => {
     const oldestFirst = structuredClone(baseRequest);
     oldestFirst.candidates.reverse();
     expect(() => parseAiFilterSegmentRequest(oldestFirst)).toThrow(
       /newest-first/,
     );
+  });
+
+  it("orders equal first-seen timestamps by candidate ID ascending", () => {
+    const tiedCandidates = [
+      {
+        candidateId: CANDIDATE_ONE,
+        postingFirstSeenAt: FIRST_SEEN_TWO,
+        productExpiresAt: EXPIRES_TWO,
+      },
+      baseRequest.candidates[0],
+    ];
+    expect(
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: tiedCandidates,
+      }).candidates,
+    ).toEqual(tiedCandidates);
+
+    expect(() =>
+      parseAiFilterSegmentRequest({
+        ...baseRequest,
+        candidates: [...tiedCandidates].reverse(),
+      }),
+    ).toThrow(/candidate IDs ascending/);
   });
 
   it("stores the authoritative canonical soft query", () => {
@@ -348,6 +464,23 @@ describe("authoritative AI-filter identifiers and query normalization", () => {
     ).toThrow(/1000 Unicode code points/);
   });
 
+  it("preserves a well-formed astral character", () => {
+    expect(normalizeAiFilterSoftQueryV1("  Platform 😀 roles  ")).toBe(
+      "Platform 😀 roles",
+    );
+  });
+
+  it.each(["private-high\uD800suffix", "private-low\uDC00suffix"])(
+    "rejects a lone UTF-16 surrogate without exposing the query: %j",
+    (queryText) => {
+      expect(() => normalizeAiFilterSoftQueryV1(queryText)).toThrowError(
+        new AiFilterContractError(
+          "AI filter soft query contains unsupported code points",
+        ),
+      );
+    },
+  );
+
   it("rejects oversized raw input before normalization work", () => {
     for (const queryText of [
       `${" ".repeat(AI_FILTER_QUERY_MAX_LENGTH * 4)}x`,
@@ -406,15 +539,16 @@ describe("assertSameAiFilterSelectionBinding", () => {
     ).toEqual(baseRequest);
   });
 
-  it("rejects reuse with reordered candidates or changed semantic data", () => {
+  it("rejects invalid candidate ordering or changed semantic data", () => {
     const sameTimestampRequest = structuredClone(baseRequest);
     sameTimestampRequest.candidates[1].postingFirstSeenAt = FIRST_SEEN_TWO;
     sameTimestampRequest.candidates[1].productExpiresAt = EXPIRES_TWO;
+    sameTimestampRequest.candidates.reverse();
     const reordered = structuredClone(sameTimestampRequest);
     reordered.candidates.reverse();
     expect(() =>
       assertSameAiFilterSelectionBinding(sameTimestampRequest, reordered),
-    ).toThrow(/different selection snapshot/);
+    ).toThrow(/candidate IDs ascending/);
 
     const changedQuery = structuredClone(baseRequest);
     changedQuery.configuration.queryText = "A different private query";
@@ -835,6 +969,47 @@ describe("product decision retention", () => {
     ).toThrow(/canonical ISO instant/);
   });
 
+  it("turns hostile expiry inspection into fixed contract errors", () => {
+    const attackerText = "private-expiry-getter";
+    let getterReads = 0;
+    const accessorDecision = {} as { expiresAt: string };
+    Object.defineProperty(accessorDecision, "expiresAt", {
+      enumerable: true,
+      get: () => {
+        getterReads += 1;
+        throw new Error(attackerText);
+      },
+    });
+    expect(() =>
+      isAiFilterProductDecisionExpired(accessorDecision, REQUESTED_AT),
+    ).toThrowError(
+      new AiFilterContractError(
+        "product decision must contain plain data fields",
+      ),
+    );
+    expect(getterReads).toBe(0);
+
+    const hostileDecision = new Proxy(
+      { expiresAt: EXPIRES_ONE },
+      {
+        ownKeys: () => {
+          throw new Error(attackerText);
+        },
+      },
+    );
+    let thrown: unknown;
+    try {
+      isAiFilterProductDecisionExpired(hostileDecision, REQUESTED_AT);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(AiFilterContractError);
+    expect((thrown as Error).message).toBe(
+      "product decision could not be inspected",
+    );
+    expect((thrown as Error).message).not.toContain(attackerText);
+  });
+
   it("rejects a decision timestamp before the frozen run", () => {
     expect(() =>
       materializeAiFilterProductDecisions(
@@ -844,4 +1019,43 @@ describe("product decision retention", () => {
       ),
     ).toThrow(/cannot precede/);
   });
+
+  it("materializes a decision immediately before candidate retention expires", () => {
+    const decidedAt = "2026-09-14T11:59:59.999Z";
+    const decisions = materializeAiFilterProductDecisions(
+      baseRequest,
+      {
+        runId: RUN_ID,
+        status: "stopped",
+        stopReason: "configuration_changed",
+        decisions: [completedResult.decisions[1]],
+      },
+      decidedAt,
+    );
+
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0]?.decidedAt).toBe(decidedAt);
+  });
+
+  it.each([EXPIRES_ONE, "2026-09-14T12:00:00.001Z"])(
+    "rejects a decision at or after candidate retention expiry: %s",
+    (decidedAt) => {
+      expect(() =>
+        materializeAiFilterProductDecisions(
+          baseRequest,
+          {
+            runId: RUN_ID,
+            status: "stopped",
+            stopReason: "configuration_changed",
+            decisions: [completedResult.decisions[1]],
+          },
+          decidedAt,
+        ),
+      ).toThrowError(
+        new AiFilterContractError(
+          "candidate retention expired before decision materialization",
+        ),
+      );
+    },
+  );
 });

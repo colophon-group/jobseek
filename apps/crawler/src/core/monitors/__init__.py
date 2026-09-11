@@ -250,7 +250,8 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     Statically-rich monitors (greenhouse, lever, etc.) always return True.
     api_sniffer/nextdata are rich when ``fields`` is present; SmartRecruiters
     is rich when exact ``jobId`` locale collapse is configured; dom is partial
-    rich when strict static ``rich_rows`` extraction is configured.
+    rich when strict ``rich_rows`` or rich ``script_json_links``
+    extraction is configured.
     """
     return (
         monitor_type in api_monitor_types()
@@ -263,7 +264,19 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
             monitor_type == "smartrecruiters"
             and (config or {}).get("canonical_identity") in {"job-v1", "job-location-v1"}
         )
-        or (monitor_type == "dom" and bool((config or {}).get("rich_rows")))
+        or (
+            monitor_type == "dom"
+            and (
+                bool((config or {}).get("rich_rows"))
+                or (
+                    isinstance((config or {}).get("script_json_links"), dict)
+                    and bool(
+                        (config or {})["script_json_links"].get("title_field")
+                        and (config or {})["script_json_links"].get("locations_field")
+                    )
+                )
+            )
+        )
     )
 
 
@@ -387,6 +400,7 @@ async def fetch_page_text(
     max_chars: int = 500_000,
     *,
     board_gone_statuses: frozenset[int] = frozenset(),
+    request_headers: dict[str, str] | None = None,
 ) -> str | None:
     """Fetch a page and return its text content (capped), or None on error.
 
@@ -403,8 +417,21 @@ async def fetch_page_text(
     from src.shared.tdm import TDMReservedError
     from src.shared.tdm import check_response as _tdm_check
 
+    public_headers: dict[str, str] = {}
+    if request_headers:
+        from src.shared.public_request_headers import validated_public_request_headers
+
+        public_headers = validated_public_request_headers(
+            request_headers, owner="monitor page fetch"
+        )
+
     try:
-        resp = await client.get(url, follow_redirects=True)
+        if public_headers:
+            from src.shared.public_request_headers import public_get
+
+            resp = await public_get(client, url, headers=public_headers)
+        else:
+            resp = await client.get(url, follow_redirects=True)
         if resp.status_code in board_gone_statuses:
             raise BoardGoneError(
                 f"Board page returned HTTP {resp.status_code}",
@@ -476,6 +503,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Paycom API \u2014 portal: {token}, {jobs} jobs"
         return f"Paycom API \u2014 portal: {token}"
+    if name == "paynet":
+        company_id = metadata.get("company_id", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Pay-Net API \u2014 company: {company_id}, {jobs} jobs"
+        return f"Pay-Net API \u2014 company: {company_id}"
     if name == "jazzhr":
         tenant = metadata.get("tenant", "?")
         jobs = metadata.get("jobs")
@@ -549,6 +582,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Gupy NextData listing \u2014 tenant: {tenant}, {jobs} jobs"
         return f"Gupy NextData listing \u2014 tenant: {tenant}"
+    if name == "universia":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Universia public API \u2014 board: {slug}, {jobs} jobs"
+        return f"Universia public API \u2014 board: {slug}"
     if name == "earcu":
         feed_url = metadata.get("feed_url", "?")
         jobs = metadata.get("jobs")
@@ -799,6 +838,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"HireHive API \u2014 slug: {slug}, {jobs} jobs"
         return f"HireHive API \u2014 slug: {slug}"
+    if name == "woowa":
+        variant = metadata.get("variant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Woowa careers API \u2014 {variant}, {jobs} jobs"
+        return f"Woowa careers API \u2014 {variant}"
     if name == "hireology":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -1038,11 +1083,13 @@ from src.core.monitors import (  # noqa: E402
     nextdata,  # noqa: F401
     njoyn,  # noqa: F401
     notion,  # noqa: F401
+    nowhiring,  # noqa: F401
     oracle_hcm,  # noqa: F401
     pageup,  # noqa: F401
     papa_johns,  # noqa: F401
     paycom,  # noqa: F401
     paylocity,  # noqa: F401
+    paynet,  # noqa: F401
     personio,  # noqa: F401
     phenom,  # noqa: F401
     pinpoint,  # noqa: F401
@@ -1060,6 +1107,7 @@ from src.core.monitors import (  # noqa: E402
     softgarden,  # noqa: F401
     talemetry,  # noqa: F401
     talentbrew,  # noqa: F401
+    talentreef,  # noqa: F401
     taleo,  # noqa: F401
     traffit,  # noqa: F401
     turbohire,  # noqa: F401
@@ -1068,7 +1116,9 @@ from src.core.monitors import (  # noqa: E402
     umantis,  # noqa: F401
     unifr,  # noqa: F401
     unisante,  # noqa: F401
+    universia,  # noqa: F401
     welcometothejungle,  # noqa: F401
+    woowa,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
     ycombinator,  # noqa: F401

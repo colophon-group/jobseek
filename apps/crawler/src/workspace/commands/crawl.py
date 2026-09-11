@@ -932,6 +932,9 @@ _MONITOR_CONFIG_HINTS = {
     "brassring": "Requires: partner_id and site_id (auto-filled from a TGnewUI URL)",
     "candidatus": "No config required; resolves WinDev listing postbacks in a browser",
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
+    "paynet": "No config required; uses the exact unfiltered Pay-Net board URL",
+    "talentreef": "Optional: alias and locale (auto-filled from a JobAppNetwork URL)",
+    "nowhiring": "Optional: slug (auto-filled from a NowHiring career-site URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
     "jobbank104": (
         "Requires: token (auto-filled from a www.104.com.tw/company URL); use proxy when challenged"
@@ -952,6 +955,10 @@ _MONITOR_CONFIG_HINTS = {
     "infoniqa": "Requires: employer_name (auto-filled from a live Infoniqa board probe)",
     "intervieweb": "No config required (POST endpoint and CSRF token are resolved per run)",
     "gupy": "Requires: tenant (auto-filled from a *.gupy.io URL)",
+    "universia": (
+        "Requires: slug from an exact jobboard.universia.net URL; "
+        "board_id and language are auto-resolved"
+    ),
     "cornerstone": (
         "Requires: tenant, site_id, corp; domain is optional for csodfed.com "
         "(auto-filled from a supported Cornerstone URL)"
@@ -993,6 +1000,7 @@ _MONITOR_CONFIG_HINTS = {
     "softgarden": "Requires: slug. Optional: job_url_pattern",
     "traffit": "Requires: slug (auto-filled from probe)",
     "workable": "Requires: token (auto-filled from probe)",
+    "woowa": "No config required; exact first-party host selects the API variant",
     "workday": "Requires: company, wd_instance, site (auto-filled from probe)",
     "personio": "Requires: slug. Optional: language, backfill_languages",
     "practicematch": "Optional: max_pages. Proxy-routed employer form pagination.",
@@ -1114,6 +1122,8 @@ def select_monitor(
                 "page_size",
                 "page_param",
                 "offset_param",
+                "start",
+                "url_template",
             }
         elif type_ == "dom":
             _VALID_PAG_KEYS = {

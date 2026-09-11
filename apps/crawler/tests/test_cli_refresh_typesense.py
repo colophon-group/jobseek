@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from argparse import Namespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -30,8 +31,51 @@ class _Pool:
         return _Acquire(self._connection)
 
 
+def test_retired_watchlist_purge_requires_explicit_confirmation(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["crawler", "purge-retired-watchlist-index"])
+    with pytest.raises(SystemExit):
+        cli.parse_args()
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["crawler", "purge-retired-watchlist-index", "--confirm"],
+    )
+    args = cli.parse_args()
+    assert args.command == "purge-retired-watchlist-index"
+    assert args.confirm is True
+
+
 @pytest.mark.asyncio
-async def test_rejected_count_import_records_failed_cron_and_skips_watchlist_stage(
+async def test_retired_watchlist_purge_uses_no_database_pool() -> None:
+    client = MagicMock()
+    loop = asyncio.get_running_loop()
+    with (
+        patch.object(loop, "add_signal_handler"),
+        patch(
+            "src.cli.parse_args",
+            return_value=Namespace(
+                command="purge-retired-watchlist-index",
+                confirm=True,
+            ),
+        ),
+        patch("src.cli.setup_logging"),
+        patch("src.cli.create_local_pool", new=AsyncMock()) as create_local_pool,
+        patch("src.cli.create_web_pool", new=AsyncMock()) as create_web_pool,
+        patch("src.cli.close_all_pools", new=AsyncMock()) as close_pools,
+        patch("src.typesense_client.get_typesense_client", return_value=client),
+        patch("src.sync.purge_retired_watchlist_index", return_value=3) as purge,
+    ):
+        await cli.run()
+
+    purge.assert_called_once_with(client)
+    create_local_pool.assert_not_awaited()
+    create_web_pool.assert_not_awaited()
+    close_pools.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_rejected_count_import_records_failed_cron_without_opening_web_database(
     monkeypatch,
 ) -> None:
     """One rejected document must make the scheduled command unsuccessful."""
@@ -44,7 +88,6 @@ async def test_rejected_count_import_records_failed_cron_and_skips_watchlist_sta
         {"collection": "technology", "document_id": "10", "facet_value": "10"},
         {"collection": "company", "document_id": "10", "facet_value": "10"},
     ]
-    web_conn = AsyncMock()
     client = MagicMock()
     collections = {
         name: MagicMock()
@@ -69,7 +112,7 @@ async def test_rejected_count_import_records_failed_cron_and_skips_watchlist_sta
         patch("src.cli.parse_args", return_value=Namespace(command="refresh-typesense")),
         patch("src.cli.setup_logging"),
         patch("src.cli.create_local_pool", new=AsyncMock(return_value=_Pool(local_conn))),
-        patch("src.cli.create_web_pool", new=AsyncMock(return_value=_Pool(web_conn))),
+        patch("src.cli.create_web_pool", new=AsyncMock()) as create_web_pool,
         patch("src.cli.close_all_pools", new=AsyncMock()) as close_pools,
         patch("src.typesense_client.get_typesense_client", return_value=client),
         patch("src.sync._fetch_facet_counts", side_effect=_facet_counts),
@@ -84,7 +127,7 @@ async def test_rejected_count_import_records_failed_cron_and_skips_watchlist_sta
     ):
         await cli.run()
 
-    web_conn.fetch.assert_not_awaited()
+    create_web_pool.assert_not_awaited()
     close_pools.assert_awaited_once()
     assert len(captured_registries) == 1
     status_samples = [

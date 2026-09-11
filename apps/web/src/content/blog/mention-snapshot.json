@@ -365,55 +365,5 @@
         "it": "Veeva Systems fornisce software cloud per l'industria globale delle scienze della vita, servendo oltre 1000 clienti farmaceutici e biotecnologici."
       }
     }
-  ],
-  "watchlists": [
-    {
-      "owner": "colophongroup",
-      "ownerLabel": "colophongroup",
-      "slug": "big-tech-jobs-in-germany",
-      "title": "Big Tech Jobs in Germany",
-      "description": "Discover open positions at the leading global tech companies hiring in Germany. This watchlist tracks Big Tech employers — Magnificent 7 (Google, Microsoft, Apple, Amazon, Meta, NVIDIA, Tesla) plus Adobe, Salesforce, Oracle, IBM, SAP, ServiceNow — alongside major regional tech firms with engineering hubs across Berlin, Munich, Hamburg, and Frankfurt. Filter results by occupation, seniority, and salary to find your next role at Germany's top tech employers. Updated daily as new positions are posted.",
-      "companyCount": null
-    },
-    {
-      "owner": "colophongroup",
-      "ownerLabel": "colophongroup",
-      "slug": "big-tech-jobs-in-spain",
-      "title": "Big Tech Jobs in Spain",
-      "description": "Discover open positions at the leading global tech companies hiring in Spain. This watchlist tracks Big Tech employers — Magnificent 7 (Google, Microsoft, Apple, Amazon, Meta, NVIDIA, Tesla) plus Adobe, Salesforce, Oracle, IBM, SAP, ServiceNow — alongside major regional tech firms with engineering hubs across Madrid, Barcelona, Málaga, and Valencia. Filter results by occupation, seniority, and salary to find your next role at Spain's top tech employers. Updated daily as new positions are posted.",
-      "companyCount": null
-    },
-    {
-      "owner": "colophongroup",
-      "ownerLabel": "colophongroup",
-      "slug": "big-tech-jobs-in-switzerland",
-      "title": "Big Tech Jobs in Switzerland",
-      "description": "Discover open positions at the leading global tech companies hiring in Switzerland. This watchlist tracks Big Tech employers — Magnificent 7 (Google, Microsoft, Apple, Amazon, Meta, NVIDIA, Tesla) plus Adobe, Salesforce, Oracle, IBM, SAP, ServiceNow — alongside major regional tech firms with engineering hubs across Zürich, Lausanne, Geneva, and Basel. Filter results by occupation, seniority, and salary to find your next role at Switzerland's top tech employers. Updated daily as new positions are posted.",
-      "companyCount": null
-    },
-    {
-      "owner": "colophongroup",
-      "ownerLabel": "colophongroup",
-      "slug": "big-tech-jobs-in-united-kingdom",
-      "title": "Big Tech Jobs in United Kingdom",
-      "description": "Discover open positions at the leading global tech companies hiring in United Kingdom. This watchlist tracks Big Tech employers — Magnificent 7 (Google, Microsoft, Apple, Amazon, Meta, NVIDIA, Tesla) plus Adobe, Salesforce, Oracle, IBM, SAP, ServiceNow — alongside major regional tech firms with engineering hubs across London, Cambridge, Manchester, and Edinburgh. Filter results by occupation, seniority, and salary to find your next role at United Kingdom's top tech employers. Updated daily as new positions are posted.",
-      "companyCount": null
-    },
-    {
-      "owner": "colophongroup",
-      "ownerLabel": "colophongroup",
-      "slug": "enterprise-sales-in-switzerland",
-      "title": "Enterprise Sales in Switzerland",
-      "description": "Enterprise Sales Roles throughout Switzerland",
-      "companyCount": null
-    },
-    {
-      "owner": "colophongroup",
-      "ownerLabel": "colophongroup",
-      "slug": "maang",
-      "title": "MAANG",
-      "description": "Meta, Amazon, Apple, Google, and Netflix — the classic five.",
-      "companyCount": 5
-    }
   ]
 }

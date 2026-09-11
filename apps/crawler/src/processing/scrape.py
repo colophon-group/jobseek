@@ -8,6 +8,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from time import monotonic
+from typing import Protocol, cast
 from urllib.parse import urlparse
 
 import asyncpg
@@ -17,11 +18,13 @@ from asyncpg.pool import PoolConnectionProxy
 
 import src.queries.lookups as _lookups_mod  # noqa: E402
 from src.core.enum_normalize import normalize_employment_type
+from src.core.job_content import JobContent
 from src.core.location_resolve import LocationResolver
-from src.core.scrapers import (
-    JobContent,
-    get_scraper,
-    scraper_needs_browser,
+from src.lightpanda.write_fence import (
+    LightpandaWriteFence,
+    WriteAuthorityGuard,
+    authoritative_write,
+    validate_write_fence_target,
 )
 from src.metrics import browser_target_closed_retries_total
 from src.processing.cpu import (
@@ -52,10 +55,10 @@ from src.queries.scrape import (
     _UPDATE_ENRICH_CONTENT,
 )
 from src.runtime.extraction import PythonScrapeRuntime, ScrapeRuntime
-from src.shared.browser import BrowserNavigationHTTPStatusError, is_target_closed_error
 from src.shared.html_normalize import normalize_description_html
 from src.shared.http import is_avature_job_detail_url
 from src.shared.langdetect import detect_all_languages, detect_language
+from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 
 log = structlog.get_logger()
 
@@ -157,6 +160,33 @@ class _BatchLookups:
 
 
 _batch = _BatchLookups()
+
+
+class _ScrapeLookupProvider(Protocol):
+    async def _get_location_resolver(self, pool: asyncpg.Pool) -> LocationResolver: ...
+
+    async def _get_technology_ids(self, pool: asyncpg.Pool) -> dict[str, int]: ...
+
+    async def _get_occupation_ids(self, pool: asyncpg.Pool) -> dict[str, int]: ...
+
+    async def _get_seniority_ids(self, pool: asyncpg.Pool) -> dict[str, int]: ...
+
+    async def _get_currency_rates(self, pool: asyncpg.Pool) -> dict[str, float]: ...
+
+    async def _resolve_locations(
+        self,
+        resolver: LocationResolver,
+        locations: list[str] | None,
+        job_location_type: str | None,
+        posting_language: str | None = None,
+    ) -> tuple[list[int] | None, list[str] | None]: ...
+
+    async def _flush_location_misses(
+        self,
+        resolver: LocationResolver,
+        pool: asyncpg.Pool,
+    ) -> None: ...
+
 
 _SLOW_SCRAPE_SECONDS = 15.0
 
@@ -473,6 +503,8 @@ async def _load_board_scrapers(
             scraper_config = auto_config
 
         try:
+            from src.core.scrapers import get_scraper
+
             get_scraper(scraper_type)
         except Exception:
             log.warning(
@@ -572,6 +604,7 @@ async def _scrape_with_browser_target_recovery(
     *,
     pw=None,
     scrape_runtime: ScrapeRuntime | None = None,
+    recover_browser_target: bool = True,
 ) -> JobContent:
     """Retry one lost Playwright target with a newly launched context.
 
@@ -586,6 +619,11 @@ async def _scrape_with_browser_target_recovery(
     try:
         return await runtime.scrape(url, scraper_type, scraper_config, http, pw=pw)
     except Exception as exc:
+        if not recover_browser_target:
+            raise
+        from src.core.scrapers import scraper_needs_browser
+        from src.shared.browser import is_target_closed_error
+
         if not scraper_needs_browser(scraper_type, scraper_config) or not is_target_closed_error(
             exc
         ):
@@ -628,6 +666,10 @@ async def _process_one_enrich_scrape(
     enrich_fields: list[str],
     pw=None,
     scrape_runtime: ScrapeRuntime | None = None,
+    write_fence: LightpandaWriteFence | None = None,
+    recover_browser_target: bool = True,
+    authority_guard: WriteAuthorityGuard | None = None,
+    lookup_provider: _ScrapeLookupProvider | None = None,
 ) -> tuple[bool, float]:
     """Run a scrape that only enriches specific fields. Returns (success, duration_s).
 
@@ -644,6 +686,8 @@ async def _process_one_enrich_scrape(
     obviously-broken page should not poison a still-empty row that PCSX
     might fill correctly later.
     """
+    validate_write_fence_target(write_fence, item.job_posting_id)
+    lookups = lookup_provider or cast(_ScrapeLookupProvider, _batch)
     t0 = monotonic()
     try:
         cfg = scraper_config or {}
@@ -654,6 +698,7 @@ async def _process_one_enrich_scrape(
             http,
             pw=pw,
             scrape_runtime=scrape_runtime,
+            recover_browser_target=recover_browser_target,
         )
         content = _apply_defaults(content, cfg)
 
@@ -670,7 +715,12 @@ async def _process_one_enrich_scrape(
             # posting because of a regex bug would be much worse than
             # leaving an archived posting visible until the monitor
             # delists it.
-            async with pool.acquire() as conn:
+            async with authoritative_write(
+                pool,
+                write_fence,
+                job_posting_id=item.job_posting_id,
+                authority_guard=authority_guard,
+            ) as conn:
                 await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
             return False, monotonic() - t0
 
@@ -711,11 +761,11 @@ async def _process_one_enrich_scrape(
             language = detect_language(content.description)
 
         # Compute derived columns only for enriched fields
-        loc_resolver = await _batch._get_location_resolver(pool)
-        tech_id_map = await _batch._get_technology_ids(pool)
-        occ_ids = await _batch._get_occupation_ids(pool)
-        sen_ids = await _batch._get_seniority_ids(pool)
-        rates = await _batch._get_currency_rates(pool)
+        loc_resolver = await lookups._get_location_resolver(pool)
+        tech_id_map = await lookups._get_technology_ids(pool)
+        occ_ids = await lookups._get_occupation_ids(pool)
+        sen_ids = await lookups._get_seniority_ids(pool)
+        rates = await lookups._get_currency_rates(pool)
 
         # Default all params to None (COALESCE preserves existing)
         norm_emp_type = None
@@ -751,7 +801,7 @@ async def _process_one_enrich_scrape(
 
         if "locations" in effective_fields:
             lang_text = _coerce_text(language)
-            loc_ids, loc_types = await _batch._resolve_locations(
+            loc_ids, loc_types = await lookups._resolve_locations(
                 loc_resolver,
                 _coerce_locations(content.locations),
                 _coerce_text(content.job_location_type),
@@ -790,7 +840,12 @@ async def _process_one_enrich_scrape(
                 tech_ids=tech_ids,
             )
 
-        async with pool.acquire() as conn:
+        async with authoritative_write(
+            pool,
+            write_fence,
+            job_posting_id=item.job_posting_id,
+            authority_guard=authority_guard,
+        ) as conn:
             await conn.execute(
                 _UPDATE_ENRICH_CONTENT,
                 item.job_posting_id,
@@ -820,7 +875,21 @@ async def _process_one_enrich_scrape(
                 )
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 
-        await _batch._flush_location_misses(loc_resolver, pool)
+        if authority_guard is not None:
+            # B0 does not emit auxiliary writes outside its one fenced
+            # posting transaction. Misses remain operator telemetry only.
+            loc_resolver.drain_location_misses()
+        elif write_fence is None:
+            await lookups._flush_location_misses(loc_resolver, pool)
+        else:
+            try:
+                await lookups._flush_location_misses(loc_resolver, pool)
+            except Exception as exc:
+                log.warning(
+                    "batch.enrich.location_miss_flush_failed",
+                    url=item.url,
+                    error=_error_message(exc),
+                )
         elapsed = monotonic() - t0
         log.debug(
             "batch.enrich.success",
@@ -853,8 +922,14 @@ async def _process_one_enrich_scrape(
             )
         if _lookups_mod._location_resolver is not None:
             _lookups_mod._location_resolver.drain_location_misses()
-        with contextlib.suppress(Exception):
-            async with pool.acquire() as conn:
+
+        async def persist_failure() -> None:
+            async with authoritative_write(
+                pool,
+                write_fence,
+                job_posting_id=item.job_posting_id,
+                authority_guard=authority_guard,
+            ) as conn:
                 if permanent_gone or budget_eligible:
                     await conn.execute(
                         _RECORD_SCRAPE_FAILURE,
@@ -867,6 +942,12 @@ async def _process_one_enrich_scrape(
                     # tombstone budget, so a brief upstream incident
                     # cannot mass-tombstone live postings.
                     await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
+
+        if write_fence is None:
+            with contextlib.suppress(Exception):
+                await persist_failure()
+        else:
+            await persist_failure()
         return False, elapsed
 
 
@@ -880,6 +961,10 @@ async def _process_one_scrape(
     scrape_step: int = 0,
     scrape_interval: int = 24,
     scrape_runtime: ScrapeRuntime | None = None,
+    write_fence: LightpandaWriteFence | None = None,
+    recover_browser_target: bool = True,
+    authority_guard: WriteAuthorityGuard | None = None,
+    lookup_provider: _ScrapeLookupProvider | None = None,
 ) -> tuple[bool, float]:
     """Run a single scrape step for a job posting. Returns (success, duration_s).
 
@@ -887,7 +972,8 @@ async def _process_one_scrape(
     fallback chain).  After saving with COALESCE (never erasing existing
     values), the next fallback step (if any) is enqueued as a separate job.
     """
-    from src.redis_queue import enqueue_scrape
+    validate_write_fence_target(write_fence, item.job_posting_id)
+    lookups = lookup_provider or cast(_ScrapeLookupProvider, _batch)
 
     t0 = monotonic()
     operation = "scrape_fetch"
@@ -907,6 +993,10 @@ async def _process_one_scrape(
                     enrich_fields,
                     pw=pw,
                     scrape_runtime=scrape_runtime,
+                    write_fence=write_fence,
+                    recover_browser_target=recover_browser_target,
+                    authority_guard=authority_guard,
+                    lookup_provider=lookups,
                 )
 
         # Resolve which scraper to run at this step
@@ -919,6 +1009,7 @@ async def _process_one_scrape(
             http,
             pw=pw,
             scrape_runtime=scrape_runtime,
+            recover_browser_target=recover_browser_target,
         )
         content = _apply_defaults(content, step_cfg)
 
@@ -930,6 +1021,9 @@ async def _process_one_scrape(
             next_fb = _get_next_fallback(scraper_type, scraper_config, scrape_step)
             if next_fb:
                 fb_type, fb_cfg, _fb_fields = next_fb
+                from src.core.scrapers import scraper_needs_browser
+                from src.redis_queue import enqueue_scrape
+
                 needs_browser = scraper_needs_browser(fb_type, fb_cfg)
                 domain = urlparse(item.url).hostname or ""
                 await enqueue_scrape(
@@ -962,7 +1056,12 @@ async def _process_one_scrape(
                 # — the monitor authority will delist real archives
                 # eventually.
                 operation = "record_empty_result"
-                async with pool.acquire() as conn:
+                async with authoritative_write(
+                    pool,
+                    write_fence,
+                    job_posting_id=item.job_posting_id,
+                    authority_guard=authority_guard,
+                ) as conn:
                     await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
             return False, monotonic() - t0
 
@@ -984,8 +1083,8 @@ async def _process_one_scrape(
 
         # Resolve locations
         operation = "location_lookup"
-        loc_resolver = await _batch._get_location_resolver(pool)
-        loc_ids, loc_types = await _batch._resolve_locations(
+        loc_resolver = await lookups._get_location_resolver(pool)
+        loc_ids, loc_types = await lookups._resolve_locations(
             loc_resolver,
             _coerce_locations(content.locations),
             _coerce_text(content.job_location_type),
@@ -994,16 +1093,16 @@ async def _process_one_scrape(
 
         # Resolve technologies from description
         operation = "taxonomy_lookup"
-        tech_id_map = await _batch._get_technology_ids(pool)
+        tech_id_map = await lookups._get_technology_ids(pool)
         tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
 
         # Resolve occupation + seniority from title
-        occ_ids = await _batch._get_occupation_ids(pool)
-        sen_ids = await _batch._get_seniority_ids(pool)
+        occ_ids = await lookups._get_occupation_ids(pool)
+        sen_ids = await lookups._get_seniority_ids(pool)
         occ_id, sen_id = _resolve_occupation_seniority(title_text, occ_ids, sen_ids)
 
         # Extract salary + experience from description
-        rates = await _batch._get_currency_rates(pool)
+        rates = await lookups._get_currency_rates(pool)
         s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
         exp_min, exp_max = _extract_experience_fields(desc_text)
 
@@ -1042,7 +1141,12 @@ async def _process_one_scrape(
             else None
         )
         operation = "database_save"
-        async with pool.acquire() as conn:
+        async with authoritative_write(
+            pool,
+            write_fence,
+            job_posting_id=item.job_posting_id,
+            authority_guard=authority_guard,
+        ) as conn:
             update_result = await conn.execute(
                 _UPDATE_ENRICH_CONTENT,
                 item.job_posting_id,
@@ -1075,13 +1179,30 @@ async def _process_one_scrape(
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 
         operation = "location_miss_flush"
-        await _batch._flush_location_misses(loc_resolver, pool)
+        if authority_guard is not None:
+            # B0 has no unfenced auxiliary write after its authoritative
+            # posting transaction; discard telemetry misses locally.
+            loc_resolver.drain_location_misses()
+        elif write_fence is None:
+            await lookups._flush_location_misses(loc_resolver, pool)
+        else:
+            try:
+                await lookups._flush_location_misses(loc_resolver, pool)
+            except Exception as exc:
+                log.warning(
+                    "batch.scrape.location_miss_flush_failed",
+                    url=item.url,
+                    error=_error_message(exc),
+                )
 
         # Enqueue next fallback step if one exists
         next_fb = _get_next_fallback(scraper_type, scraper_config, scrape_step)
         if next_fb:
             operation = "fallback_enqueue"
             fb_type, fb_cfg, _fb_fields = next_fb
+            from src.core.scrapers import scraper_needs_browser
+            from src.redis_queue import enqueue_scrape
+
             needs_browser = scraper_needs_browser(fb_type, fb_cfg)
             domain = urlparse(item.url).hostname or ""
             await enqueue_scrape(
@@ -1143,8 +1264,14 @@ async def _process_one_scrape(
             )
         if _lookups_mod._location_resolver is not None:
             _lookups_mod._location_resolver.drain_location_misses()
-        with contextlib.suppress(Exception):
-            async with pool.acquire() as conn:
+
+        async def persist_failure() -> None:
+            async with authoritative_write(
+                pool,
+                write_fence,
+                job_posting_id=item.job_posting_id,
+                authority_guard=authority_guard,
+            ) as conn:
                 if permanent_gone or budget_eligible:
                     await conn.execute(
                         _RECORD_SCRAPE_FAILURE,
@@ -1153,6 +1280,12 @@ async def _process_one_scrape(
                     )
                 else:
                     await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
+
+        if write_fence is None:
+            with contextlib.suppress(Exception):
+                await persist_failure()
+        else:
+            await persist_failure()
         return False, elapsed
 
 
@@ -1464,6 +1597,8 @@ async def _scrape_pipeline(
         if not board_scrapers or item.board_id not in board_scrapers:
             continue
         bsc = board_scrapers[item.board_id]
+        from src.core.scrapers import scraper_needs_browser
+
         if scraper_needs_browser(bsc.scraper_type, bsc.scraper_config):
             need_browser = True
         if not bsc.ssl_verify:

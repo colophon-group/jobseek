@@ -8,126 +8,16 @@ when the monitor returns URL-only results (sitemap, dom). API monitors
 from __future__ import annotations
 
 import asyncio
-import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 import httpx
 import structlog
 
+from src.core.job_content import JobContent as JobContent
+from src.core.job_content import enrich_description as enrich_description
+
 log = structlog.get_logger()
-
-
-@dataclass(slots=True)
-class JobContent:
-    """Structured job data extracted from a single page.
-
-    Text fields use **HTML** to preserve document structure (headings,
-    paragraphs, lists).  ``description`` is an HTML fragment — the same
-    format that API monitors (Greenhouse, Lever) already produce.
-    """
-
-    title: str | None = None
-    #: HTML fragment preserving the original page structure
-    #: (``<p>``, ``<ul><li>``, ``<h3>``, etc.).
-    description: str | None = None
-    locations: list[str] | None = None
-    employment_type: str | None = None
-    job_location_type: str | None = None
-    date_posted: str | None = None
-    base_salary: dict | None = None
-    #: ISO 639-1 language code (e.g. "en", "de"). Detected or scraper-provided.
-    language: str | None = None
-    #: Optional structured data (skills, responsibilities, qualifications,
-    #: validThrough, etc.)
-    extras: dict | None = None
-    metadata: dict | None = None
-
-    def __post_init__(self):
-        if isinstance(self.base_salary, str):
-            from src.core.salary_extract import parse_salary_text
-
-            self.base_salary = parse_salary_text(self.base_salary)
-
-
-_TAG_RE = re.compile(r"<[^>]+>")
-
-# ATS placeholder strings used when a field is empty — treat as "no content".
-# Publicis/SmashFly JSON-LD emits "UNAVAILABLE" for unset skills/qualifications.
-_SENTINEL_EMPTY = frozenset({"unavailable", "not available", "n/a", "none", "null", "-"})
-
-
-def _plain(html: str) -> str:
-    """Strip HTML tags and collapse whitespace."""
-    return _TAG_RE.sub(" ", html).strip()
-
-
-def _is_meaningful(item: object) -> bool:
-    """True if *item* has non-placeholder content once HTML is stripped."""
-    text = _plain(str(item)).strip()
-    if not text:
-        return False
-    return text.lower() not in _SENTINEL_EMPTY
-
-
-def enrich_description(obj: object) -> None:
-    """Append structured extras (responsibilities, qualifications, skills) to description.
-
-    When scrapers extract these as separate structured data, they should also
-    appear in the description HTML so it remains self-contained.  Skips any
-    section whose text content already appears in the existing description,
-    and skips sections whose items are empty/whitespace or ATS placeholders
-    like "UNAVAILABLE" / "N/A" (Publicis JSON-LD pattern).
-    Mutates *obj* in place.
-    """
-    if not obj.extras:
-        return
-
-    desc_plain = _plain(obj.description).lower() if obj.description else ""
-
-    sections: list[str] = []
-    for key, heading in [
-        ("responsibilities", "Responsibilities"),
-        ("qualifications", "Qualifications"),
-        ("skills", "Skills"),
-    ]:
-        items = obj.extras.get(key)
-        if not items:
-            continue
-
-        if isinstance(items, str):
-            if not _is_meaningful(items):
-                continue
-            snippet = _plain(items).lower()
-            if desc_plain and snippet[:80] in desc_plain:
-                continue
-            sections.append(f"<h3>{heading}</h3>\n{items}")
-        elif isinstance(items, list):
-            # Drop empty/whitespace/placeholder items.
-            non_empty = [it for it in items if _is_meaningful(it)]
-            if not non_empty:
-                continue
-            # Skip if the first non-trivial item already appears in the description.
-            already_present = False
-            for item in non_empty:
-                snippet = _plain(str(item)).lower()
-                if len(snippet) >= 10:
-                    if desc_plain and snippet[:80] in desc_plain:
-                        already_present = True
-                    break
-            if already_present:
-                continue
-            li = "".join(f"<li>{it}</li>" for it in non_empty)
-            sections.append(f"<h3>{heading}</h3>\n<ul>{li}</ul>")
-
-    if not sections:
-        return
-
-    extra_html = "\n".join(sections)
-    if obj.description:
-        obj.description = obj.description + "\n" + extra_html
-    else:
-        obj.description = extra_html
 
 
 ScrapeFunc = Callable[..., Awaitable[JobContent]]
@@ -155,6 +45,7 @@ _PROBE_ORDER = [
     "embedded",
     "phuketall",
     "veryeast",
+    "tupu360",
     "recruiterbox",
     "onlyfy",
     "paycor",
@@ -316,11 +207,13 @@ async def probe_scrapers(
                 continue
             try:
                 pw_timeout = max(timeout, 90.0)
-                metadata, comment = await asyncio.wait_for(
-                    scraper.probe_pw(urls, pw),
+                probe_pw = scraper.probe_pw
+                assert probe_pw is not None
+                probe_metadata, comment = await asyncio.wait_for(
+                    probe_pw(urls, pw),
                     timeout=pw_timeout,
                 )
-                results.append((name, metadata, comment))
+                results.append((name, probe_metadata, comment))
             except TimeoutError:
                 results.append((name, None, "Timeout"))
             except Exception as exc:
@@ -410,6 +303,7 @@ from src.core.scrapers import (  # noqa: E402
     skip,  # noqa: F401
     smartrecruiters,  # noqa: F401
     taleo,  # noqa: F401
+    tupu360,  # noqa: F401
     veryeast,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401

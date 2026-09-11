@@ -203,14 +203,16 @@ def test_all_crawler_mutation_entrypoints_share_the_host_lock() -> None:
     )
 
 
-def test_scheduled_oneoffs_filter_database_credentials_by_command() -> None:
+def test_scheduled_oneoffs_never_receive_web_database_credentials() -> None:
     maintenance = MAINTENANCE.read_text(encoding="utf-8")
     currency = REFRESH_CURRENCY.read_text(encoding="utf-8")
 
     assert "--env-file /home/deploy/.env" not in maintenance
     assert '--env-file "$RUNTIME_ENV"' in maintenance
-    assert 'if [[ "$TASK" == "refresh-typesense" ]]' in maintenance
-    assert "required_env+=(WEB_DATABASE_URL)" in maintenance
+    runtime_env = maintenance[
+        maintenance.index("required_env=(") : maintenance.index('for key in "${required_env[@]}"')
+    ]
+    assert "WEB_DATABASE_URL" not in runtime_env
     assert re.findall(r"\bDATABASE_URL\b", maintenance) == ["DATABASE_URL"]
     assert "grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED|WEB_DATABASE_URL)$'" in maintenance
 
