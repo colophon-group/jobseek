@@ -375,6 +375,32 @@ def test_compose_model_is_exactly_one_controlled_egress_renderer(
     assert service["networks"]["egress"]["interface_name"] == "eth0"  # type: ignore[index]
 
 
+def test_compose_render_failure_retains_bounded_flat_diagnostic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    environment = tmp_path / "release.env"
+    environment.write_text(
+        "".join(f"{key}={value}\n" for key, value in release_env().items()),
+        encoding="utf-8",
+    )
+
+    def fail_render(_arguments: list[str]) -> object:
+        raise subprocess.CalledProcessError(
+            125,
+            ["docker", "compose"],
+            stderr="first line\nsecond line " + "x" * 2048,
+        )
+
+    monkeypatch.setattr(verify, "run_json", fail_render)
+    with pytest.raises(
+        verify.VerificationError,
+        match=r"^Docker Compose model render failed: first line second line x+\Z",
+    ) as raised:
+        verify.verify_compose(DEPLOY / "compose.yml", environment, DEPLOY / "inventory.json")
+    assert "\n" not in str(raised.value)
+    assert len(str(raised.value)) < 1100
+
+
 @pytest.mark.parametrize("accepted_bind", ({}, {"create_host_path": False}))
 def test_compose_verifier_accepts_safe_bind_normalizations(
     rendered_compose_model: dict[str, object],

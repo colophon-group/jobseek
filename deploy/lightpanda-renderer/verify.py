@@ -905,21 +905,28 @@ def verify_compose(
 ) -> None:
     env = read_env(environment, allow_legacy=allow_legacy_env)
     inventory = load_inventory(inventory_path)
-    model = run_json(
-        [
-            "docker",
-            "compose",
-            "--project-name",
-            PROJECT,
-            "--env-file",
-            str(environment),
-            "--file",
-            str(compose),
-            "config",
-            "--format",
-            "json",
-        ]
-    )
+    try:
+        model = run_json(
+            [
+                "docker",
+                "compose",
+                "--project-name",
+                PROJECT,
+                "--env-file",
+                str(environment),
+                "--file",
+                str(compose),
+                "config",
+                "--format",
+                "json",
+            ]
+        )
+    except subprocess.CalledProcessError as error:
+        # Compose stderr contains only model/path diagnostics for this
+        # credentials-free release environment. Bound and flatten it so CI can
+        # identify a failed render without enabling shell tracing.
+        detail = " ".join((error.stderr or "").split())[:1024]
+        fail(f"Docker Compose model render failed: {detail or 'no diagnostic'}")
     validate_compose_model(model, env, inventory)
 
 
