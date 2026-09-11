@@ -67,6 +67,12 @@ for relative in compose.yml inventory.json verify.py validate_pki.py lock.sh pin
   [[ -f "$STAGE/$relative" && ! -L "$STAGE/$relative" ]] || exit 2
   [[ "$(stat -c '%s' "$STAGE/$relative")" -le 131072 ]] || exit 2
 done
+if (( ! ci_rollback_smoke )); then
+  [[ -f "$STAGE/jobseek-lightpanda-network.service" && \
+    ! -L "$STAGE/jobseek-lightpanda-network.service" ]] || exit 2
+  EXPECTED_UNIT_SHA256="$(sha256sum "$STAGE/jobseek-lightpanda-network.service" | awk '{print $1}')"
+  [[ "$EXPECTED_UNIT_SHA256" =~ ^[0-9a-f]{64}$ ]] || exit 2
+fi
 read -r EXPECTED_POLICY_SHA256 EXPECTED_INVENTORY_SHA256 < <(
   python3 "$STAGE/verify.py" policy-digests "$STAGE/release.env"
 )
@@ -111,6 +117,13 @@ acquire_renderer_lock "$ROOT/renderer.lock" 900 || {
   exit 1
 }
 python3 "$STAGE/verify.py" snapshot-protected "$protected_before"
+if (( ! ci_rollback_smoke )); then
+  # Gate activation on the accepted host components, not the monorepo SHA.
+  python3 "$STAGE/verify.py" phase-a-receipt \
+    /var/lib/jobseek-lightpanda-acceptance/phase-a.json \
+    "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" "$EXPECTED_UNIT_SHA256" \
+    >/dev/null
+fi
 stable_empty_egress() {
   local endpoint_count
   for _scan in 1 2; do
