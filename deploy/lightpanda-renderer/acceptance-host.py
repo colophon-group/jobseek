@@ -51,6 +51,30 @@ def digest(value: object) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def stable_host_config(value: dict[str, Any]) -> dict[str, Any]:
+    """Normalize Docker's restart-only representation changes, not policy values."""
+    result = dict(value)
+    for name in ("DnsOptions", "DnsSearch"):
+        if result.get(name) is None:
+            result[name] = []
+    mounts = result.get("Mounts")
+    if isinstance(mounts, list):
+        result["Mounts"] = sorted(
+            mounts,
+            key=lambda item: json.dumps(item, sort_keys=True, separators=(",", ":")),
+        )
+    return result
+
+
+def stable_mounts(value: object) -> object:
+    if not isinstance(value, list):
+        return value
+    return sorted(
+        value,
+        key=lambda item: json.dumps(item, sort_keys=True, separators=(",", ":")),
+    )
+
+
 def file_digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -166,8 +190,8 @@ def renderer_snapshot(verifier: Any, source: str, image: str, mode: str) -> dict
         "restart_count": item.get("RestartCount"),
         "restart_policy": host.get("RestartPolicy"),
         "config_sha256": digest(item.get("Config")),
-        "host_config_sha256": digest(host),
-        "mounts_sha256": digest(item.get("Mounts")),
+        "host_config_sha256": digest(stable_host_config(host)),
+        "mounts_sha256": digest(stable_mounts(item.get("Mounts"))),
     }
 
 
