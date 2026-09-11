@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 from pathlib import Path
 
@@ -264,6 +266,94 @@ def test_client_stage_is_readable_by_numeric_container_identity() -> None:
         assert completed.returncode == 0, completed.stderr
     finally:
         shutil.rmtree(directory)
+
+
+def test_host_stage_discards_archive_owner_and_normalizes_verifier_metadata(
+    tmp_path: Path,
+) -> None:
+    remote = REMOTE.read_text(encoding="utf-8")
+    extract = (
+        "tar --extract --gzip --file - --directory '$host_stage' "
+        "--no-same-owner --no-same-permissions"
+    )
+    assert extract in remote
+    assert ("chown root:root '$host_stage/acceptance-host.py' '$host_stage/verify.py'") in remote
+    assert "--no-same-permissions && chown root:root" in remote
+    assert "'$host_stage/verify.py' && chmod 0600" in remote
+
+    prefix = [] if os.geteuid() == 0 else ["sudo", "-n"]
+    if prefix and (
+        shutil.which("sudo") is None
+        or subprocess.run([*prefix, "true"], check=False, capture_output=True, text=True).returncode
+    ):
+        pytest.skip("root extraction is required to verify discarded archive ownership")
+
+    sources = []
+    for name in ("acceptance-host.py", "verify.py"):
+        source = tmp_path / name
+        source.write_text("VALUE = 1\n", encoding="utf-8")
+        sources.append(source)
+    archive = tmp_path / "host.tar.gz"
+    with tarfile.open(archive, "w:gz") as bundle:
+        for source in sources:
+            info = bundle.gettarinfo(source, arcname=source.name)
+            info.uid = 12345
+            info.gid = 12345
+            info.mode = 0o777
+            with source.open("rb") as content:
+                bundle.addfile(info, content)
+
+    stage = tmp_path / "stage"
+    stage.mkdir()
+    subprocess.run(
+        [
+            *prefix,
+            "tar",
+            "--extract",
+            "--gzip",
+            "--file",
+            str(archive),
+            "--directory",
+            str(stage),
+            "--no-same-owner",
+            "--no-same-permissions",
+        ],
+        check=True,
+    )
+    staged = stage / "verify.py"
+    subprocess.run([*prefix, "chown", "root:root", staged], check=True)
+    subprocess.run([*prefix, "chmod", "0600", staged], check=True)
+    metadata = staged.stat(follow_symlinks=False)
+    assert metadata.st_uid == 0
+    assert stat.S_IMODE(metadata.st_mode) == 0o600
+
+    damaged = tmp_path / "damaged.tar.gz"
+    damaged.write_bytes(archive.read_bytes()[:-8])
+    damaged_stage = tmp_path / "damaged-stage"
+    damaged_stage.mkdir()
+    damaged_result = subprocess.run(
+        [
+            *prefix,
+            "bash",
+            "-c",
+            'tar --extract --gzip --file "$1" --directory "$2" '
+            '--no-same-owner --no-same-permissions && chown root:root "$3" "$4" '
+            '&& chmod 0600 "$3" "$4"',
+            "acceptance-stage-test",
+            str(damaged),
+            str(damaged_stage),
+            str(damaged_stage / "acceptance-host.py"),
+            str(damaged_stage / "verify.py"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert damaged_result.returncode != 0
+    for name in ("acceptance-host.py", "verify.py"):
+        materialized = damaged_stage / name
+        assert materialized.is_file()
+        assert stat.S_IMODE(materialized.stat().st_mode) != 0o600
 
 
 def test_negative_and_mtls_probes_use_real_installed_components() -> None:
