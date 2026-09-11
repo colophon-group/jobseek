@@ -30,7 +30,7 @@ const (
 	producerOwnerKey         = "lightpanda-b0:producer-owner"
 	legacyGuardKey           = "lightpanda-b0:legacy-guard"
 	producerOwnerV1          = "jobseek.lightpanda.producer-owner/v1"
-	expectedLuaSHA256        = "d287fab9e7522c6e23806589b8943af700c2eb0f887212d3e8a1e6131cc71ae7"
+	expectedLuaSHA256        = "bebe23adc62528c31cd01fc910581b9d9dcd88f3fa4fb484d478e86825c13392"
 )
 
 var (
@@ -371,7 +371,7 @@ var allowedReasons = map[string]map[string]map[string]struct{}{
 	"activate_legacy": {
 		"accepted":    set("activated", "already_activated", "reactivated"),
 		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch", "config_revision_mismatch", "config_revision_not_advanced", "record_fence_mismatch", "claim_token_mismatch", "lease_deadline_mismatch", "payload_digest_mismatch"),
-		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "exclusive_go_owner_required", "invalid_task_envelope", "namespace_full", "pilot_occupancy_limit", "task_already_exists", "record_corrupt", "conservation_violation", "state_mismatch", "legacy_state_corrupt", "legacy_config_mismatch", "legacy_inflight", "legacy_deadletter", "legacy_membership_conflict", "guard_identity_mismatch", "invalid_legacy_config", "legacy_membership_missing"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "exclusive_go_owner_required", "invalid_task_envelope", "namespace_full", "pilot_occupancy_limit", "task_already_exists", "record_corrupt", "conservation_violation", "state_mismatch", "legacy_state_corrupt", "legacy_config_mismatch", "legacy_schedule_mismatch", "legacy_inflight", "legacy_deadletter", "legacy_membership_conflict", "guard_identity_mismatch", "invalid_legacy_config", "legacy_membership_missing"),
 	},
 	"claim_next": {
 		"accepted":    set("claimed"),

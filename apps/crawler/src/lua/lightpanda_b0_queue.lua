@@ -1065,6 +1065,10 @@ if operation == "activate_legacy" then
             return result("not_current", "legacy_membership_conflict")
         end
         if existing == nil then
+            local legacy_first_time = string.sub(legacy_schedule_kind, 1, 3) == "ft_"
+            if legacy_first_time ~= (first_time == "1") then
+                return result("not_current", "legacy_schedule_mismatch")
+            end
             local legacy_hash_count = redis.call("HLEN", legacy_config_key)
             if redis.call("TYPE", legacy_config_key)["ok"] ~= "hash"
                 or (legacy_hash_count ~= legacy_config_count
@@ -1707,8 +1711,8 @@ if operation == "rollback_legacy" then
             scheduled_count = scheduled_count + 1
         end
 
-        if record.state == "ready" then
-            if plan.action ~= "schedule" or record_guard == true then
+        if record.state == "ready" and plan.action == "schedule" then
+            if record_guard == true then
                 return result("not_current", "invalid_rollback_plan")
             end
             local guard_worker_type = string.sub(record_guard.kind, -7) == "browser"

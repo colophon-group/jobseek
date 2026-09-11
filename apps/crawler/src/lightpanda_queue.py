@@ -143,6 +143,7 @@ _REASONS: dict[str, dict[Decision, frozenset[str]]] = {
             "state_mismatch",
             "legacy_state_corrupt",
             "legacy_config_mismatch",
+            "legacy_schedule_mismatch",
             "legacy_inflight",
             "legacy_deadletter",
             "legacy_membership_conflict",

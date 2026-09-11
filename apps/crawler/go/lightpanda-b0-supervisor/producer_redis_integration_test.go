@@ -88,6 +88,33 @@ func integrationActivate(t *testing.T, queue *b0Queue, owner producerOwnerIdenti
 	return result
 }
 
+func integrationSeedLegacy(t *testing.T, client *redis.Client, task queueTask, firstTime bool, score float64) string {
+	t.Helper()
+	ctx := context.Background()
+	config := map[string]any{
+		"domain": task.Envelope.Domain, "board_id": task.Envelope.BoardID,
+		"source_url": task.Envelope.SourceURL, "description_r2_hash": "",
+		"scrape_step": "0", "scrape_interval_hours": "24",
+	}
+	if err := client.HSet(ctx, "scrape:"+task.Envelope.TaskID, config).Err(); err != nil {
+		t.Fatal(err)
+	}
+	prefix := "scrapes_browser:"
+	tier := 2
+	if firstTime {
+		prefix = "ft_scrapes_browser:"
+		tier = 0
+	}
+	membershipKey := prefix + task.Envelope.Domain
+	if err := client.ZAdd(ctx, membershipKey, redis.Z{Score: score, Member: task.Envelope.TaskID}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.ZAdd(ctx, fmt.Sprintf("ready:browser:%d", tier), redis.Z{Score: score, Member: task.Envelope.Domain}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	return membershipKey
+}
+
 func integrationRecord(t *testing.T, client *redis.Client, queue *b0Queue, taskID string) map[string]any {
 	t.Helper()
 	raw, err := client.HGet(context.Background(), queue.keys[1], taskID).Result()
@@ -170,6 +197,52 @@ func TestRealRedisLuaRejectsNonzeroExternalFirstTime(t *testing.T) {
 	}
 	if exists, err := client.HExists(context.Background(), queue.keys[1], task.Envelope.TaskID).Result(); err != nil || exists {
 		t.Fatalf("invalid first-time intent mutated queue: exists=%t err=%v", exists, err)
+	}
+}
+
+func TestRealRedisOperatorTransferRejectsLegacyScheduleKindMismatch(t *testing.T) {
+	for _, test := range []struct {
+		name, taskID       string
+		legacyFirstTime    bool
+		requestFirstTime   bool
+		legacyScore, dueMS int64
+	}{
+		{
+			name: "first-time-membership-as-recurring", taskID: "legacy-ft-as-recurring",
+			legacyFirstTime: true, requestFirstTime: false, legacyScore: 0, dueMS: 500,
+		},
+		{
+			name: "recurring-membership-as-first-time", taskID: "legacy-recurring-as-ft",
+			legacyFirstTime: false, requestFirstTime: true, legacyScore: 1, dueMS: 0,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			client, queue, owner := integrationRedisQueue(t)
+			task := integrationTask(t, test.taskID, 1, test.dueMS)
+			membershipKey := integrationSeedLegacy(
+				t, client, task, test.legacyFirstTime, float64(test.legacyScore),
+			)
+
+			result, err := queue.activateLegacy(
+				context.Background(), &task, test.dueMS, integrationLegacyConfig(task), "",
+				true, test.requestFirstTime, owner,
+			)
+			if err == nil || result.Decision != "not_current" || result.Reason != "legacy_schedule_mismatch" {
+				t.Fatalf("legacy schedule mismatch was not rejected: %#v %v", result, err)
+			}
+			if exists, err := client.HExists(context.Background(), queue.keys[1], task.Envelope.TaskID).Result(); err != nil || exists {
+				t.Fatalf("rejected transfer created a B0 record: exists=%v err=%v", exists, err)
+			}
+			if _, err := client.ZScore(context.Background(), membershipKey, task.Envelope.TaskID).Result(); err != nil {
+				t.Fatalf("rejected transfer removed legacy membership: %v", err)
+			}
+			if count, err := client.HLen(context.Background(), "scrape:"+task.Envelope.TaskID).Result(); err != nil || count != 6 {
+				t.Fatalf("rejected transfer changed legacy config: count=%d err=%v", count, err)
+			}
+			if exists, err := client.HExists(context.Background(), legacyGuardKey, task.Envelope.TaskID).Result(); err != nil || exists {
+				t.Fatalf("rejected transfer created a guard: exists=%v err=%v", exists, err)
+			}
+		})
 	}
 }
 
@@ -396,6 +469,28 @@ func integrationRollbackPlan(
 		t.Fatal(err)
 	}
 	return duration, scheduled, dropped
+}
+
+func TestRealRedisRollbackAllowsAuthoritativeReadyDrop(t *testing.T) {
+	client, queue, owner := integrationRedisQueue(t)
+	task := integrationTask(t, "ready-drop", 1, 0)
+	integrationActivate(t, queue, owner, task, 0, false)
+
+	plan := map[string]any{task.Envelope.TaskID: map[string]any{"action": "drop"}}
+	_, scheduled, dropped := integrationRollbackPlan(t, queue, owner, plan)
+	if scheduled != 0 || dropped != 1 {
+		t.Fatalf("unexpected rollback counts: scheduled=%d dropped=%d", scheduled, dropped)
+	}
+	ctx := context.Background()
+	if exists, err := client.HExists(ctx, queue.keys[1], task.Envelope.TaskID).Result(); err != nil || exists {
+		t.Fatalf("ready drop retained B0 record: exists=%v err=%v", exists, err)
+	}
+	if exists, err := client.HExists(ctx, legacyGuardKey, task.Envelope.TaskID).Result(); err != nil || exists {
+		t.Fatalf("ready drop retained legacy guard: exists=%v err=%v", exists, err)
+	}
+	if exists, err := client.Exists(ctx, "scrape:"+task.Envelope.TaskID).Result(); err != nil || exists != 0 {
+		t.Fatalf("ready drop recreated legacy config: exists=%d err=%v", exists, err)
+	}
 }
 
 func TestRealRedisTerminalAndDeadReactivationReplaceRollbackIntent(t *testing.T) {
