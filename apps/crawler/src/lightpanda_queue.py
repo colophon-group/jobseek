@@ -63,6 +63,7 @@ class Decision(StrEnum):
 _OPERATIONS = frozenset(
     {
         "initialize",
+        "initialize_producer",
         "register",
         "activate_legacy",
         "claim_next",
@@ -74,6 +75,7 @@ _OPERATIONS = frozenset(
         "reap_expired",
         "audit",
         "rollback_legacy",
+        "clear_rollback_tombstone",
     }
 )
 _FENCE_REASONS = frozenset(
@@ -99,6 +101,13 @@ _RECORD_NOT_CURRENT = _COMMON_NOT_CURRENT | {
 }
 _REASONS: dict[str, dict[Decision, frozenset[str]]] = {
     "initialize": {
+        Decision.ACCEPTED: frozenset({"initialized", "already_initialized"}),
+        Decision.FENCED: frozenset(
+            {"shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch"}
+        ),
+        Decision.NOT_CURRENT: _COMMON_NOT_CURRENT,
+    },
+    "initialize_producer": {
         Decision.ACCEPTED: frozenset({"initialized", "already_initialized"}),
         Decision.FENCED: frozenset(
             {"shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch"}
@@ -237,7 +246,7 @@ _REASONS: dict[str, dict[Decision, frozenset[str]]] = {
         },
     },
     "rollback_legacy": {
-        Decision.ACCEPTED: frozenset({"rolled_back"}),
+        Decision.ACCEPTED: frozenset({"rolled_back", "already_rolled_back"}),
         Decision.FENCED: _FENCE_REASONS,
         Decision.NOT_CURRENT: _COMMON_NOT_CURRENT
         | {
@@ -252,6 +261,13 @@ _REASONS: dict[str, dict[Decision, frozenset[str]]] = {
             "legacy_membership_conflict",
             "guard_identity_mismatch",
         },
+    },
+    "clear_rollback_tombstone": {
+        Decision.ACCEPTED: frozenset(
+            {"rollback_tombstone_cleared", "rollback_tombstone_already_cleared"}
+        ),
+        Decision.FENCED: frozenset(),
+        Decision.NOT_CURRENT: _COMMON_NOT_CURRENT,
     },
 }
 
@@ -684,16 +700,58 @@ class LightpandaB0Queue:
         return await self._transition("audit", route=route)
 
     async def rollback_legacy(
-        self, route: RouteIdentity, *, plan: Mapping[str, Mapping[str, object]]
+        self,
+        route: RouteIdentity,
+        *,
+        cohort: str,
+        rollback_plan_digest: str,
+        source_receipt_sha256: str,
+        plan: Mapping[str, Mapping[str, object]],
     ) -> TransitionResult:
         """Atomically return a cold, fully guarded namespace to legacy queues."""
 
+        if cohort not in {"c1", "c4"}:
+            raise ValueError("rollback cohort must be exactly c1 or c4")
+        if not _SHA256_RE.fullmatch(rollback_plan_digest):
+            raise ValueError("rollback_plan_digest must be lowercase SHA-256")
+        if not _SHA256_RE.fullmatch(source_receipt_sha256):
+            raise ValueError("source_receipt_sha256 must be lowercase SHA-256")
         raw = await self._invoke(
             "rollback_legacy",
             route=route,
             legacy_config=_canonical_rollback_plan(plan),
+            previous_payload_sha256=rollback_plan_digest,
+            producer_cohort=cohort,
+            rollback_source_receipt_sha256=source_receipt_sha256,
         )
         return self._decode_transition("rollback_legacy", raw, route=route)
+
+    async def clear_rollback_tombstone(
+        self,
+        route: RouteIdentity,
+        *,
+        cohort: str,
+        rollback_plan_digest: str,
+        source_receipt_sha256: str,
+        allow_absent: bool,
+    ) -> TransitionResult:
+        """Exact-compare and delete the durable Redis rollback commit proof."""
+
+        if cohort not in {"c1", "c4"}:
+            raise ValueError("rollback cohort must be exactly c1 or c4")
+        if not _SHA256_RE.fullmatch(rollback_plan_digest):
+            raise ValueError("rollback_plan_digest must be lowercase SHA-256")
+        if not _SHA256_RE.fullmatch(source_receipt_sha256):
+            raise ValueError("source_receipt_sha256 must be lowercase SHA-256")
+        raw = await self._invoke(
+            "clear_rollback_tombstone",
+            route=route,
+            operator_transfer=allow_absent,
+            previous_payload_sha256=rollback_plan_digest,
+            producer_cohort=cohort,
+            rollback_source_receipt_sha256=source_receipt_sha256,
+        )
+        return self._decode_transition("clear_rollback_tombstone", raw, route=route)
 
     async def _transition(
         self,
@@ -739,6 +797,9 @@ class LightpandaB0Queue:
         previous_payload_sha256: str = "",
         legacy_config: str = "",
         operator_transfer: bool = False,
+        producer_cohort: str = "",
+        rollback_source_receipt_sha256: str = "",
+        producer_board_slugs: tuple[str, ...] = (),
     ) -> list[Any]:
         if operation not in _OPERATIONS:
             raise ValueError("unknown queue operation")
@@ -769,6 +830,10 @@ class LightpandaB0Queue:
             self._namespace,
             legacy_config,
             "1" if operator_transfer else "0",
+            producer_cohort,
+            str(len(producer_board_slugs)),
+            rollback_source_receipt_sha256,
+            *producer_board_slugs,
         ]
         try:
             if self._sha is None:

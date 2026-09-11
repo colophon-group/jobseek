@@ -26,12 +26,16 @@
 --  13 payload_sha1
 --  14 scan_limit
 --  15 default_delay_seconds
---  16 previous_payload_sha256 (reactivate only)
+--  16 previous_payload_sha256 (reactivate) or rollback plan SHA-256
 --  17 expected_lease_until_ms (leased-task mutations only)
 --  18 queue namespace (activation/rollback only)
 --  19 canonical string-valued legacy scrape config JSON (activation) or
 --     canonical current-PostgreSQL rollback plan JSON (rollback)
 --  20 operator transfer mode: exact "1" or "0"
+--  21 producer cohort (producer activation and rollback operations)
+--  22 producer board-slug count
+--  23 source activation receipt SHA-256 (rollback operations only)
+--  24.. producer board slugs in sorted order
 
 local MAX_INTEGER = 9999999999999
 local MAX_PAYLOAD_BYTES = 131072
@@ -215,6 +219,115 @@ end
 local function namespace_valid()
     if not key_types_valid() then return nil end
     return load_route()
+end
+
+local PRODUCER_OWNER_KEY = "lightpanda-b0:producer-owner"
+local PRODUCER_OWNER_SCHEMA = "jobseek.lightpanda.producer-owner/v1"
+local ROLLBACK_TOMBSTONE_SCHEMA = "jobseek.lightpanda.producer-rollback/v1"
+
+local function producer_owner_valid(require_arguments)
+    if redis.call("TYPE", PRODUCER_OWNER_KEY)["ok"] ~= "hash" then return false end
+    local count = canonical_positive(redis.call("HGET", PRODUCER_OWNER_KEY, "board_count"))
+    if not count or count > 16 or redis.call("HLEN", PRODUCER_OWNER_KEY) ~= 7 + count then
+        return false
+    end
+    if redis.call("HGET", PRODUCER_OWNER_KEY, "schema") ~= PRODUCER_OWNER_SCHEMA
+        or redis.call("HGET", PRODUCER_OWNER_KEY, "namespace") ~= ARGV[18]
+        or redis.call("HGET", PRODUCER_OWNER_KEY, "shard_id") ~= shard_id
+        or redis.call("HGET", PRODUCER_OWNER_KEY, "routing_epoch") ~= routing_epoch
+        or redis.call("HGET", PRODUCER_OWNER_KEY, "engine_owner") ~= engine_owner then
+        return false
+    end
+    local cohort = redis.call("HGET", PRODUCER_OWNER_KEY, "cohort")
+    if cohort ~= "c1" and cohort ~= "c4" then return false end
+    local seen = {}
+    local slugs = {}
+    for _, field in ipairs(redis.call("HKEYS", PRODUCER_OWNER_KEY)) do
+        local slug = string.match(field, "^board_slug:(.+)$")
+        if slug then
+            if not safe_identifier(slug) or seen[slug]
+                or redis.call("HGET", PRODUCER_OWNER_KEY, field) ~= "1" then
+                return false
+            end
+            seen[slug] = true
+            slugs[#slugs + 1] = slug
+        elseif field ~= "schema" and field ~= "namespace" and field ~= "shard_id"
+            and field ~= "routing_epoch" and field ~= "engine_owner"
+            and field ~= "cohort" and field ~= "board_count" then
+            return false
+        end
+    end
+    if #slugs ~= count then return false end
+    table.sort(slugs)
+    if require_arguments then
+        if ARGV[21] ~= cohort or canonical_positive(ARGV[22]) ~= count then return false end
+        for index, slug in ipairs(slugs) do
+            if ARGV[23 + index] ~= slug then return false end
+        end
+    end
+    return true
+end
+
+local function create_producer_owner()
+    local count = canonical_positive(ARGV[22])
+    if (ARGV[21] ~= "c1" and ARGV[21] ~= "c4") or not count or count > 16 then
+        return false
+    end
+    local previous = nil
+    local fields = {
+        "schema", PRODUCER_OWNER_SCHEMA,
+        "namespace", ARGV[18],
+        "shard_id", shard_id,
+        "routing_epoch", routing_epoch,
+        "engine_owner", engine_owner,
+        "cohort", ARGV[21],
+        "board_count", tostring(count),
+    }
+    for index = 1, count do
+        local slug = ARGV[23 + index]
+        if not safe_identifier(slug) or (previous and slug <= previous) then return false end
+        fields[#fields + 1] = "board_slug:" .. slug
+        fields[#fields + 1] = "1"
+        previous = slug
+    end
+    redis.call("HSET", PRODUCER_OWNER_KEY, unpack(fields))
+    return true
+end
+
+local function rollback_tombstone_arguments_valid()
+    return engine_owner == "go" and safe_identifier(ARGV[18])
+        and (ARGV[21] == "c1" or ARGV[21] == "c4")
+        and valid_sha(ARGV[16], 64) and valid_sha(ARGV[23], 64)
+end
+
+local function rollback_tombstone_valid()
+    return redis.call("TYPE", PRODUCER_OWNER_KEY)["ok"] == "hash"
+        and redis.call("HLEN", PRODUCER_OWNER_KEY) == 8
+        and redis.call("HGET", PRODUCER_OWNER_KEY, "schema") == ROLLBACK_TOMBSTONE_SCHEMA
+        and redis.call("HGET", PRODUCER_OWNER_KEY, "namespace") == ARGV[18]
+        and redis.call("HGET", PRODUCER_OWNER_KEY, "shard_id") == shard_id
+        and redis.call("HGET", PRODUCER_OWNER_KEY, "routing_epoch") == routing_epoch
+        and redis.call("HGET", PRODUCER_OWNER_KEY, "engine_owner") == "go"
+        and redis.call("HGET", PRODUCER_OWNER_KEY, "cohort") == ARGV[21]
+        and redis.call("HGET", PRODUCER_OWNER_KEY, "rollback_plan_digest") == ARGV[16]
+        and redis.call("HGET", PRODUCER_OWNER_KEY, "source_receipt_sha256") == ARGV[23]
+end
+
+local function create_rollback_tombstone()
+    if not rollback_tombstone_arguments_valid() then return false end
+    redis.call("DEL", PRODUCER_OWNER_KEY)
+    redis.call(
+        "HSET", PRODUCER_OWNER_KEY,
+        "schema", ROLLBACK_TOMBSTONE_SCHEMA,
+        "namespace", ARGV[18],
+        "shard_id", shard_id,
+        "routing_epoch", routing_epoch,
+        "engine_owner", "go",
+        "cohort", ARGV[21],
+        "rollback_plan_digest", ARGV[16],
+        "source_receipt_sha256", ARGV[23]
+    )
+    return true
 end
 
 local function index_count(task)
@@ -548,6 +661,10 @@ end
 if operation == "initialize" then
     if not key_types_valid() then return result("not_current", "namespace_corrupt") end
     if redis.call("EXISTS", unpack(KEYS)) == 0 then
+        if redis.call("TYPE", PRODUCER_OWNER_KEY)["ok"] ~= "none"
+            or redis.call("TYPE", "lightpanda-b0:legacy-guard")["ok"] ~= "none" then
+            return result("not_current", "namespace_corrupt")
+        end
         redis.call(
             "HSET", KEYS[1],
             "shard_id", shard_id,
@@ -562,6 +679,74 @@ if operation == "initialize" then
     local matches, reason = route_matches(route)
     if not matches then return result("fenced", reason) end
     return result("accepted", "already_initialized")
+end
+
+if operation == "initialize_producer" then
+    if engine_owner ~= "go" or not safe_identifier(ARGV[18]) or not key_types_valid() then
+        return result("not_current", "namespace_corrupt")
+    end
+    if redis.call("EXISTS", unpack(KEYS)) == 0 then
+        if redis.call("TYPE", PRODUCER_OWNER_KEY)["ok"] ~= "none"
+            or redis.call("TYPE", "lightpanda-b0:legacy-guard")["ok"] ~= "none" then
+            return result("not_current", "namespace_corrupt")
+        end
+        if not create_producer_owner() then
+            return result("not_current", "namespace_corrupt")
+        end
+        redis.call(
+            "HSET", KEYS[1],
+            "shard_id", shard_id,
+            "routing_epoch", routing_epoch,
+            "engine_owner", engine_owner,
+            "claim_sequence", "0"
+        )
+        return result("accepted", "initialized")
+    end
+    local producer_route = namespace_valid()
+    if not producer_route then return result("not_current", "namespace_corrupt") end
+    local producer_matches, producer_reason = route_matches(producer_route)
+    if not producer_matches then return result("fenced", producer_reason) end
+    if not producer_owner_valid(true) then
+        return result("not_current", "namespace_corrupt")
+    end
+    return result("accepted", "already_initialized")
+end
+
+if operation == "clear_rollback_tombstone" then
+    if not rollback_tombstone_arguments_valid()
+        or (ARGV[20] ~= "0" and ARGV[20] ~= "1")
+        or redis.call("EXISTS", unpack(KEYS)) ~= 0
+        or redis.call("TYPE", "lightpanda-b0:legacy-guard")["ok"] ~= "none" then
+        return result("not_current", "namespace_corrupt")
+    end
+    local owner_type = redis.call("TYPE", PRODUCER_OWNER_KEY)["ok"]
+    if owner_type == "none" then
+        if ARGV[20] ~= "1" then return result("not_current", "namespace_corrupt") end
+        return result("accepted", "rollback_tombstone_already_cleared")
+    end
+    if not rollback_tombstone_valid() then
+        return result("not_current", "namespace_corrupt")
+    end
+    redis.call("DEL", PRODUCER_OWNER_KEY)
+    return result("accepted", "rollback_tombstone_cleared")
+end
+
+if operation == "rollback_legacy" and redis.call("EXISTS", unpack(KEYS)) == 0 then
+    if not rollback_tombstone_arguments_valid() or ARGV[19] ~= "{}"
+        or redis.call("TYPE", "lightpanda-b0:legacy-guard")["ok"] ~= "none" then
+        return result("not_current", "namespace_corrupt")
+    end
+    local owner_type = redis.call("TYPE", PRODUCER_OWNER_KEY)["ok"]
+    if owner_type == "none" then
+        if not create_rollback_tombstone() then
+            return result("not_current", "namespace_corrupt")
+        end
+        return result("accepted", "rolled_back", nil, 0, 0)
+    end
+    if rollback_tombstone_valid() then
+        return result("accepted", "already_rolled_back", nil, 0, 0)
+    end
+    return result("not_current", "namespace_corrupt")
 end
 
 local route = namespace_valid()
@@ -643,6 +828,9 @@ if operation == "activate_legacy" then
     local operator_transfer = ARGV[20]
     if engine_owner ~= "go" then
         return result("not_current", "exclusive_go_owner_required")
+    end
+    if not producer_owner_valid(true) then
+        return result("not_current", "namespace_corrupt")
     end
     if (operator_transfer ~= "0" and operator_transfer ~= "1")
         or not safe_identifier(namespace) or not safe_identifier(task_id)
@@ -1275,6 +1463,10 @@ end
 if operation == "rollback_legacy" then
     local namespace = ARGV[18]
     local rollback_plan_json = ARGV[19]
+    if not rollback_tombstone_arguments_valid() or not producer_owner_valid(false)
+        or redis.call("HGET", PRODUCER_OWNER_KEY, "cohort") ~= ARGV[21] then
+        return result("not_current", "namespace_corrupt")
+    end
     if engine_owner ~= "go" or not safe_identifier(namespace) then
         return result("not_current", "invalid_route")
     end
@@ -1478,6 +1670,7 @@ if operation == "rollback_legacy" then
         end
     end
     redis.call("DEL", unpack(KEYS))
+    create_rollback_tombstone()
     return result("accepted", "rolled_back", nil, scheduled_count, dropped_count)
 end
 
@@ -1544,6 +1737,9 @@ if operation == "audit" then
         return result("not_current", "conservation_violation")
     end
     if engine_owner == "go" then
+        if not producer_owner_valid(false) then
+            return result("not_current", "namespace_corrupt")
+        end
         local guard_type = redis.call("TYPE", "lightpanda-b0:legacy-guard")["ok"]
         if (guard_type ~= "hash" and not (guard_type == "none" and record_count == 0))
             or (guard_type == "hash"

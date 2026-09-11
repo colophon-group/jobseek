@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,12 +16,19 @@ import pytest
 from redis.exceptions import ResponseError
 
 import src.lightpanda.activation as activation
-import src.lightpanda.producer as producer
 import src.lightpanda_queue as queue_module
+from src.lightpanda.producer_client import ProducerResult
 from src.lightpanda.routing import resolve_render_assignment
-from src.lightpanda_queue import LightpandaB0Queue, LightpandaB0Task, RouteIdentity
+from src.lightpanda_queue import (
+    LightpandaB0Queue,
+    LightpandaB0Task,
+    RouteIdentity,
+    TransitionResult,
+)
 
 LUA = Path(queue_module.__file__).parent / "lua"
+ROLLBACK_DIGEST = "a" * 64
+SOURCE_RECEIPT_SHA256 = "b" * 64
 
 
 @pytest.fixture(autouse=True)
@@ -87,6 +95,38 @@ def _legacy_config(task: LightpandaB0Task) -> dict[str, str]:
     }
 
 
+async def _initialize_producer(queue: LightpandaB0Queue, route: RouteIdentity) -> None:
+    raw = await queue._invoke(
+        "initialize_producer",
+        route=route,
+        producer_cohort="c1",
+        producer_board_slugs=("browser-use-careers",),
+    )
+    initialized = queue._decode_transition("initialize_producer", raw, route=route)
+    assert initialized.accepted
+
+
+async def _activate_legacy(
+    queue: LightpandaB0Queue,
+    task: LightpandaB0Task,
+    *,
+    legacy_config: dict[str, str],
+    previous_payload_sha256: str = "",
+    operator_transfer: bool = False,
+) -> TransitionResult:
+    raw = await queue._invoke(
+        "activate_legacy",
+        route=task.route,
+        task=task,
+        previous_payload_sha256=previous_payload_sha256,
+        legacy_config=queue_module._canonical_legacy_config(legacy_config, task),
+        operator_transfer=operator_transfer,
+        producer_cohort="c1",
+        producer_board_slugs=("browser-use-careers",),
+    )
+    return queue._decode_transition("activate_legacy", raw, task=task)
+
+
 def _rollback_schedule(
     task: LightpandaB0Task, *, description_hash: str = "0", score: str = "999"
 ) -> dict[str, object]:
@@ -110,10 +150,10 @@ def _rollback_schedule(
 async def test_activation_atomically_transfers_one_legacy_membership(redis: Any) -> None:
     task = _task()
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    assert (await queue.initialize(task.route)).accepted
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
 
-    activated = await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    activated = await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
 
     assert activated.accepted and activated.reason == "activated"
     assert (activated.value, activated.secondary_value) == (123_000, 1)
@@ -134,11 +174,11 @@ async def test_activation_refuses_legacy_authority_without_partial_mutation(
 ) -> None:
     task = _task()
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     member = f"scrape|{task.domain}|{task.task_id}"
     await redis.zadd(legacy_key, {member: 999})
 
-    rejected = await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    rejected = await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
 
     expected = "legacy_inflight" if legacy_key.startswith("inflight") else "legacy_deadletter"
     assert not rejected.accepted and rejected.reason == expected
@@ -150,11 +190,11 @@ async def test_activation_refuses_legacy_authority_without_partial_mutation(
 async def test_activation_refuses_duplicate_legacy_memberships(redis: Any) -> None:
     task = _task()
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
     await redis.zadd(f"scrapes_browser:{task.domain}", {task.task_id: 321})
 
-    rejected = await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    rejected = await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
 
     assert not rejected.accepted and rejected.reason == "legacy_membership_conflict"
     assert await redis.zscore(f"ft_scrapes_browser:{task.domain}", task.task_id) is not None
@@ -167,9 +207,9 @@ async def test_guard_quarantines_residual_claim_and_future_legacy_schedules(
 ) -> None:
     task = _task(ready_at_ms=0)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
-    assert (await queue.activate_legacy(task, legacy_config=_legacy_config(task))).accepted
+    assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
 
     # Model an old producer racing after the activation script serialized.
     await redis.zadd(f"scrapes_browser:{task.domain}", {task.task_id: 0})
@@ -181,20 +221,21 @@ async def test_guard_quarantines_residual_claim_and_future_legacy_schedules(
     assert await redis.zscore("inflight:browser", f"scrape|{task.domain}|{task.task_id}") is None
 
     enqueue_script = (LUA / "enqueue_task.lua").read_text(encoding="utf-8")
-    added = await redis.eval(
-        enqueue_script,
-        0,
-        "browser",
-        task.domain,
-        task.task_id,
-        "1",
-        "scrape",
-        "0",
-        str(time.time()),
-        "board_id",
-        task.board_id,
-    )
-    assert added == 0
+    await redis.hset(f"board:{task.board_id}", "board_slug", "browser-use-careers")
+    with pytest.raises(ResponseError, match="Go owner covers board"):
+        await redis.eval(
+            enqueue_script,
+            0,
+            "browser",
+            task.domain,
+            task.task_id,
+            "1",
+            "scrape",
+            "0",
+            str(time.time()),
+            "board_id",
+            task.board_id,
+        )
     assert await redis.zscore(f"scrapes_browser:{task.domain}", task.task_id) is None
 
     reschedule_script = (LUA / "reschedule_task.lua").read_text(encoding="utf-8")
@@ -302,10 +343,10 @@ async def test_route_fence_precedes_legacy_cutover(redis: Any) -> None:
     task = _task()
     queue = LightpandaB0Queue(redis, namespace="production-b0")
     wrong = RouteIdentity(shard_id="lightpanda-b0", routing_epoch=8, engine_owner="go")
-    await queue.initialize(wrong)
+    await _initialize_producer(queue, wrong)
     await _seed_legacy_ready(redis, task)
 
-    rejected = await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    rejected = await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
 
     assert not rejected.accepted and rejected.reason == "routing_epoch_mismatch"
     assert await redis.hget("lightpanda-b0:legacy-guard", task.task_id) is None
@@ -315,7 +356,7 @@ async def test_route_fence_precedes_legacy_cutover(redis: Any) -> None:
 async def test_go_owner_cannot_bypass_exclusive_activation(redis: Any) -> None:
     task = _task()
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
 
     rejected = await queue.register(task)
 
@@ -326,10 +367,10 @@ async def test_go_owner_cannot_bypass_exclusive_activation(redis: Any) -> None:
 async def test_operational_failure_returns_lease_to_go_with_backoff(redis: Any) -> None:
     task = _task(ready_at_ms=0)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
     await redis.set(f"delay:{task.domain}", "0")
-    await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
     claimed = await queue.claim_next(task.route, lease_ttl_ms=30_000)
     assert claimed.lease is not None and claimed.transition.server_time_ms is not None
     ready_at = claimed.transition.server_time_ms + 60_000
@@ -348,10 +389,10 @@ async def test_operational_failure_returns_lease_to_go_with_backoff(redis: Any) 
 async def test_immediate_shutdown_reschedule_needs_no_advancing_heartbeat(redis: Any) -> None:
     task = _task(ready_at_ms=0)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
     await redis.set(f"delay:{task.domain}", "0")
-    await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
     claimed = await queue.claim_next(task.route, lease_ttl_ms=30_000)
     assert claimed.lease is not None
     ready_at = claimed.lease.lease_until_ms - 30_000
@@ -369,8 +410,8 @@ async def test_immediate_shutdown_reschedule_needs_no_advancing_heartbeat(redis:
 async def test_missing_legacy_guard_blocks_go_claim_without_mutation(redis: Any) -> None:
     task = _task(ready_at_ms=0)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
-    await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    await _initialize_producer(queue, task.route)
+    await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
     await redis.hdel("lightpanda-b0:legacy-guard", task.task_id)
 
     claimed = await queue.claim_next(task.route, lease_ttl_ms=30_000)
@@ -388,10 +429,10 @@ async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(redis:
         task_id="00000000-0000-4000-8000-000000000002",
     )
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(ready.route)
+    await _initialize_producer(queue, ready.route)
     for task in (ready, terminal):
         await _seed_legacy_ready(redis, task)
-        assert (await queue.activate_legacy(task, legacy_config=_legacy_config(task))).accepted
+        assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
     await redis.set(f"delay:{ready.domain}", "0")
     claimed = await queue.claim_next(ready.route, lease_ttl_ms=30_000)
     assert claimed.lease is not None and claimed.lease.task.task_id == ready.task_id
@@ -400,12 +441,25 @@ async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(redis:
 
     rolled_back = await queue.rollback_legacy(
         ready.route,
+        cohort="c1",
+        rollback_plan_digest=ROLLBACK_DIGEST,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
         plan={ready.task_id: {"action": "drop"}, terminal.task_id: _rollback_schedule(terminal)},
     )
 
     assert rolled_back.accepted and rolled_back.reason == "rolled_back"
     assert (rolled_back.value, rolled_back.secondary_value) == (1, 1)
     assert await redis.exists(*queue._keys.ordered()) == 0
+    assert await redis.hgetall("lightpanda-b0:producer-owner") == {
+        "schema": "jobseek.lightpanda.producer-rollback/v1",
+        "namespace": "production-b0",
+        "shard_id": "lightpanda-b0",
+        "routing_epoch": "7",
+        "engine_owner": "go",
+        "cohort": "c1",
+        "rollback_plan_digest": ROLLBACK_DIGEST,
+        "source_receipt_sha256": SOURCE_RECEIPT_SHA256,
+    }
     assert await redis.hget("lightpanda-b0:legacy-guard", ready.task_id) is None
     assert await redis.hget("lightpanda-b0:legacy-guard", terminal.task_id) is None
     assert await redis.zscore(f"scrapes_browser:{ready.domain}", terminal.task_id) == 999
@@ -418,15 +472,19 @@ async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(redis:
 async def test_cold_rollback_refuses_inflight_without_partial_mutation(redis: Any) -> None:
     task = _task(ready_at_ms=0)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
     await redis.set(f"delay:{task.domain}", "0")
-    await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
     claimed = await queue.claim_next(task.route, lease_ttl_ms=30_000)
     assert claimed.lease is not None
 
     rejected = await queue.rollback_legacy(
-        task.route, plan={task.task_id: _rollback_schedule(task)}
+        task.route,
+        cohort="c1",
+        rollback_plan_digest=ROLLBACK_DIGEST,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        plan={task.task_id: _rollback_schedule(task)},
     )
 
     assert not rejected.accepted and rejected.reason == "rollback_inflight"
@@ -440,10 +498,10 @@ async def test_cold_recovery_reaps_forced_kill_then_allows_atomic_rollback(
 ) -> None:
     task = _task(ready_at_ms=0)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
     await redis.set(f"delay:{task.domain}", "0")
-    await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
     claimed = await queue.claim_next(task.route, lease_ttl_ms=1)
     assert claimed.lease is not None
     monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "off")
@@ -452,13 +510,23 @@ async def test_cold_recovery_reaps_forced_kill_then_allows_atomic_rollback(
     monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
     await asyncio.sleep(0.01)
 
-    settled = await activation.settle_rollback_namespace(redis)
+    monkeypatch.setattr(activation, "_producer_marker_phase", lambda _cohort: "active")
+    settled = await activation.settle_rollback_namespace(
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
 
     assert settled == {"inflight_settled": 1, "expired_requeued": 1, "dead_preserved": 0}
     assert await redis.zcard(queue._keys.inflight) == 0
     assert await redis.zscore(queue._keys.ready, task.task_id) is not None
     rolled_back = await queue.rollback_legacy(
-        task.route, plan={task.task_id: _rollback_schedule(task)}
+        task.route,
+        cohort="c1",
+        rollback_plan_digest=ROLLBACK_DIGEST,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        plan={task.task_id: _rollback_schedule(task)},
     )
     assert rolled_back.accepted
     assert not await redis.exists(*queue._keys.ordered())
@@ -469,10 +537,10 @@ async def test_cold_recovery_never_reaps_a_live_lease(
 ) -> None:
     task = _task(ready_at_ms=0)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
     await redis.set(f"delay:{task.domain}", "0")
-    await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
     claimed = await queue.claim_next(task.route, lease_ttl_ms=30_000)
     assert claimed.lease is not None
     monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "off")
@@ -482,7 +550,13 @@ async def test_cold_recovery_never_reaps_a_live_lease(
     monkeypatch.setattr(activation, "_ROLLBACK_SETTLE_MAX_SECONDS", 0.01)
 
     with pytest.raises(activation.ActivationError, match="bounded cold rollback wait"):
-        await activation.settle_rollback_namespace(redis)
+        monkeypatch.setattr(activation, "_producer_marker_phase", lambda _cohort: "active")
+        await activation.settle_rollback_namespace(
+            redis,
+            cohort="c1",
+            receipt_state="active",
+            source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        )
 
     stored = await queue.inspect(task.task_id, task.route)
     assert stored is not None and stored.state == "inflight" and stored.failures == 0
@@ -494,10 +568,10 @@ async def test_cold_recovery_deterministically_rolls_back_a_dead_letter(
 ) -> None:
     task = _task(ready_at_ms=0)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
     await redis.set(f"delay:{task.domain}", "0")
-    await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+    await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
     claimed = await queue.claim_next(task.route, lease_ttl_ms=1)
     assert claimed.lease is not None
     record = json.loads(await redis.hget(queue._keys.records, task.task_id))
@@ -513,12 +587,22 @@ async def test_cold_recovery_deterministically_rolls_back_a_dead_letter(
     monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
     await asyncio.sleep(0.01)
 
-    settled = await activation.settle_rollback_namespace(redis)
+    monkeypatch.setattr(activation, "_producer_marker_phase", lambda _cohort: "active")
+    settled = await activation.settle_rollback_namespace(
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
 
     assert settled == {"inflight_settled": 1, "expired_requeued": 0, "dead_preserved": 1}
     assert await redis.sismember(queue._keys.dead, task.task_id)
     rolled_back = await queue.rollback_legacy(
-        task.route, plan={task.task_id: _rollback_schedule(task)}
+        task.route,
+        cohort="c1",
+        rollback_plan_digest=ROLLBACK_DIGEST,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        plan={task.task_id: _rollback_schedule(task)},
     )
     assert rolled_back.accepted
     assert not await redis.exists(*queue._keys.ordered())
@@ -529,7 +613,7 @@ async def test_cold_recovery_hard_bounds_a_hung_redis_audit(
 ) -> None:
     task = _task()
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "off")
     monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
     monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
@@ -542,7 +626,13 @@ async def test_cold_recovery_hard_bounds_a_hung_redis_audit(
     monkeypatch.setattr(LightpandaB0Queue, "audit_conservation", hung_audit)
 
     with pytest.raises(activation.ActivationError, match="hard timeout"):
-        await activation.settle_rollback_namespace(redis)
+        monkeypatch.setattr(activation, "_producer_marker_phase", lambda _cohort: "active")
+        await activation.settle_rollback_namespace(
+            redis,
+            cohort="c1",
+            receipt_state="active",
+            source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        )
 
 
 async def test_cold_recovery_cli_does_not_open_a_postgresql_pool(
@@ -563,7 +653,14 @@ async def test_cold_recovery_cli_does_not_open_a_postgresql_pool(
     monkeypatch.setattr(activation, "create_local_pool", forbidden_pool)
     monkeypatch.setattr(activation, "close_redis", closed)
 
-    result = await activation._run(argparse.Namespace(command="settle-rollback", cohort="c1"))
+    result = await activation._run(
+        argparse.Namespace(
+            command="settle-rollback",
+            cohort="c1",
+            receipt_state="pending",
+            source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        )
+    )
 
     assert result == {
         "operation": "settle-rollback",
@@ -574,16 +671,144 @@ async def test_cold_recovery_cli_does_not_open_a_postgresql_pool(
     }
 
 
+async def test_routing_epoch_reservations_are_db_only_and_monotonic(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Pool:
+        def __init__(self) -> None:
+            self.values = iter((2, 3))
+            self.queries: list[str] = []
+
+        async def fetchval(self, query: str) -> int:
+            self.queries.append(query)
+            return next(self.values)
+
+    pool = Pool()
+    closes = 0
+
+    async def create_pool() -> Pool:
+        return pool
+
+    async def close_pool() -> None:
+        nonlocal closes
+        closes += 1
+
+    def forbidden_redis() -> Any:
+        raise AssertionError("routing epoch allocation must not open Redis")
+
+    monkeypatch.setattr(activation, "create_local_pool", create_pool)
+    monkeypatch.setattr(activation, "close_local_pool", close_pool)
+    monkeypatch.setattr(activation, "get_redis", forbidden_redis)
+
+    first = await activation._run(argparse.Namespace(command="reserve-epoch"))
+    second = await activation._run(argparse.Namespace(command="reserve-epoch"))
+
+    assert first == {"routing_epoch": 2}
+    assert second == {"routing_epoch": 3}
+    assert pool.queries == [activation._RESERVE_ROUTING_EPOCH_SQL] * 2
+    assert closes == 2
+
+
+async def test_routing_epoch_attestation_requires_called_exact_postgres_high_water(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Pool:
+        async def fetchrow(self, query: str) -> dict[str, object]:
+            assert query == activation._CURRENT_ROUTING_EPOCH_SQL
+            return {"last_value": 7, "is_called": True}
+
+    async def create_pool() -> Pool:
+        return Pool()
+
+    async def closed() -> None:
+        return None
+
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
+    monkeypatch.setattr(activation, "create_local_pool", create_pool)
+    monkeypatch.setattr(activation, "close_local_pool", closed)
+    monkeypatch.setattr(
+        activation,
+        "get_redis",
+        lambda: (_ for _ in ()).throw(AssertionError("epoch attestation reached Redis")),
+    )
+
+    result = await activation._run(argparse.Namespace(command="attest-epoch"))
+
+    assert result == {"routing_epoch": 7, "current": True}
+
+
+@pytest.mark.parametrize(
+    ("last_value", "is_called"),
+    [(8, True), (7, False), (0, True), (10_000_000_000_000, True)],
+)
+async def test_routing_epoch_attestation_rejects_stale_or_invalid_high_water(
+    monkeypatch: pytest.MonkeyPatch, last_value: int, is_called: bool
+) -> None:
+    class Pool:
+        async def fetchrow(self, _query: str) -> dict[str, object]:
+            return {"last_value": last_value, "is_called": is_called}
+
+    async def create_pool() -> Pool:
+        return Pool()
+
+    async def closed() -> None:
+        return None
+
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
+    monkeypatch.setattr(activation, "create_local_pool", create_pool)
+    monkeypatch.setattr(activation, "close_local_pool", closed)
+
+    with pytest.raises(activation.ActivationError, match="not the current PostgreSQL high-water"):
+        await activation._run(argparse.Namespace(command="attest-epoch"))
+
+
+@pytest.mark.parametrize("failure", ["missing", "permission", "exhausted"])
+async def test_routing_epoch_allocator_failure_is_fail_closed_before_redis(
+    monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    closed = False
+
+    class Pool:
+        async def fetchval(self, query: str) -> int:
+            assert query == activation._RESERVE_ROUTING_EPOCH_SQL
+            raise RuntimeError(failure)
+
+    async def create_pool() -> Pool:
+        return Pool()
+
+    async def close_pool() -> None:
+        nonlocal closed
+        closed = True
+
+    monkeypatch.setattr(activation, "create_local_pool", create_pool)
+    monkeypatch.setattr(activation, "close_local_pool", close_pool)
+    monkeypatch.setattr(
+        activation,
+        "get_redis",
+        lambda: (_ for _ in ()).throw(AssertionError("allocator failure reached Redis")),
+    )
+
+    with pytest.raises(activation.ActivationError, match="routing epoch reservation failed"):
+        await activation._run(argparse.Namespace(command="reserve-epoch"))
+    assert closed
+
+
 async def test_cold_rollback_refuses_orphan_global_guard_without_mutation(redis: Any) -> None:
     task = _task()
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
-    assert (await queue.activate_legacy(task, legacy_config=_legacy_config(task))).accepted
+    assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
     await redis.hset("lightpanda-b0:legacy-guard", "orphan-posting", "foreign")
 
     rejected = await queue.rollback_legacy(
-        task.route, plan={task.task_id: _rollback_schedule(task)}
+        task.route,
+        cohort="c1",
+        rollback_plan_digest=ROLLBACK_DIGEST,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        plan={task.task_id: _rollback_schedule(task)},
     )
 
     assert not rejected.accepted and rejected.reason == "guard_identity_mismatch"
@@ -596,9 +821,9 @@ async def test_cold_rollback_refuses_orphan_global_guard_without_mutation(redis:
 async def test_rollback_rebuilds_first_time_ready_as_exclusive_tier_zero(redis: Any) -> None:
     task = _task()
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     await _seed_legacy_ready(redis, task)
-    assert (await queue.activate_legacy(task, legacy_config=_legacy_config(task))).accepted
+    assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
     await redis.zadd(f"monitors_browser:{task.domain}", {"other-board": 5})
     await redis.zadd(f"scrapes_browser:{task.domain}", {"other-posting": 6})
     await redis.zadd("ready:browser:1", {task.domain: 5})
@@ -606,6 +831,9 @@ async def test_rollback_rebuilds_first_time_ready_as_exclusive_tier_zero(redis: 
 
     rolled_back = await queue.rollback_legacy(
         task.route,
+        cohort="c1",
+        rollback_plan_digest=ROLLBACK_DIGEST,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
         plan={task.task_id: _rollback_schedule(task, description_hash="")},
     )
 
@@ -613,57 +841,6 @@ async def test_rollback_rebuilds_first_time_ready_as_exclusive_tier_zero(redis: 
     assert await redis.zscore("ready:browser:0", task.domain) == 0
     assert await redis.zscore("ready:browser:1", task.domain) is None
     assert await redis.zscore("ready:browser:2", task.domain) is None
-
-
-async def test_production_shaped_uuid_config_routes_by_authoritative_board_slug(
-    redis: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    task = _task()
-    parser_config = {
-        "browser_backend": "lightpanda",
-        "render": True,
-        "routing_revision": "go-b0-1",
-        "timeout": 5_000,
-        "wait": "load",
-        "wait_fallback": None,
-    }
-    await redis.hset(
-        f"board:{task.board_id}",
-        mapping={
-            "board_slug": "browser-use-careers",
-            "board_url": "https://www.ycombinator.com/companies/browser-use/jobs",
-            "crawler_type": "dom",
-            "metadata": json.dumps({"scraper_type": "json-ld", "scraper_config": parser_config}),
-        },
-    )
-    await _seed_legacy_ready(redis, task)
-    monkeypatch.setattr(producer.settings, "lightpanda_b0_producer_mode", "enabled")
-    monkeypatch.setattr(producer.settings, "lightpanda_b0_producer_cohort", "c1")
-    monkeypatch.setattr(producer.settings, "lightpanda_b0_queue_namespace", "production-b0")
-    monkeypatch.setattr(producer.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
-    monkeypatch.setattr(producer.settings, "lightpanda_b0_routing_epoch", "7")
-
-    added = await producer.enqueue_if_allowlisted(
-        redis,
-        domain=task.domain,
-        posting_id=task.task_id,
-        next_scrape_at=123,
-        config={
-            "board_id": task.board_id,
-            "source_url": task.source_url,
-            "scrape_step": "0",
-        },
-        browser=True,
-    )
-
-    assert added is True
-    queue = LightpandaB0Queue(redis, namespace="production-b0")
-    stored = await queue.inspect(task.task_id, task.route)
-    assert stored is not None
-    assert stored.task.board_id == task.board_id
-    assert stored.task.board_id != "browser-use-careers"
-    assert await redis.zscore(f"ft_scrapes_browser:{task.domain}", task.task_id) is None
-    assert await redis.zscore("ready:browser:0", task.domain) is None
 
 
 async def test_operator_feeder_activates_authoritative_existing_schedule(
@@ -697,13 +874,46 @@ async def test_operator_feeder_activates_authoritative_existing_schedule(
             "scrape_step": "0",
         },
     )
-    for target in (producer.settings, activation.settings):
-        monkeypatch.setattr(target, "lightpanda_b0_producer_mode", "enabled")
-        monkeypatch.setattr(target, "lightpanda_b0_producer_cohort", "c1")
-        monkeypatch.setattr(target, "lightpanda_b0_queue_namespace", "production-b0")
-        monkeypatch.setattr(target, "lightpanda_b0_shard_id", "lightpanda-b0")
-        monkeypatch.setattr(target, "lightpanda_b0_routing_epoch", "7")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "enabled")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
     monkeypatch.setenv("LIGHTPANDA_B0_SUPERVISOR_MODE", "dark")
+
+    async def request_manifest(cohort: str) -> ProducerResult:
+        assert cohort == "c1"
+        return ProducerResult("manifest", cohort="c1", board_slugs=("browser-use-careers",))
+
+    async def request_task(**request: Any) -> ProducerResult:
+        queue = LightpandaB0Queue(redis, namespace="production-b0")
+        stored = (
+            await queue.inspect(task.task_id, task.route)
+            if await redis.exists(queue._keys.route)
+            else None
+        )
+        if request["operation"] == "prepare":
+            return ProducerResult(
+                "prepared",
+                "a" * 64,
+                task.payload_sha256,
+                stored.state if stored else "",
+                stored.task.payload_sha256 if stored else "",
+            )
+        assert request["expected_digest"] == "a" * 64
+        await _initialize_producer(queue, task.route)
+        result = await _activate_legacy(
+            queue,
+            task,
+            legacy_config=request["config"],
+            operator_transfer=True,
+        )
+        assert result.accepted
+        return ProducerResult(
+            "activated", "a" * 64, task.payload_sha256, activated=result.reason == "activated"
+        )
+
+    monkeypatch.setattr(activation, "request_task", request_task)
+    monkeypatch.setattr(activation, "request_manifest", request_manifest)
 
     class Pool:
         async def fetch(self, query: str, cohort: list[str]) -> list[dict[str, Any]]:
@@ -761,13 +971,17 @@ async def test_operator_feeder_refuses_active_legacy_lease_before_mutation(
     redis: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     task = _task()
-    for target in (producer.settings, activation.settings):
-        monkeypatch.setattr(target, "lightpanda_b0_producer_mode", "enabled")
-        monkeypatch.setattr(target, "lightpanda_b0_producer_cohort", "c1")
-        monkeypatch.setattr(target, "lightpanda_b0_queue_namespace", "production-b0")
-        monkeypatch.setattr(target, "lightpanda_b0_shard_id", "lightpanda-b0")
-        monkeypatch.setattr(target, "lightpanda_b0_routing_epoch", "7")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "enabled")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
     monkeypatch.setenv("LIGHTPANDA_B0_SUPERVISOR_MODE", "dark")
+
+    async def request_manifest(cohort: str) -> ProducerResult:
+        assert cohort == "c1"
+        return ProducerResult("manifest", cohort="c1", board_slugs=("browser-use-careers",))
+
+    monkeypatch.setattr(activation, "request_manifest", request_manifest)
 
     parser_config = {
         "browser_backend": "lightpanda",
@@ -852,13 +1066,12 @@ async def test_operator_rollback_rebuilds_hash_zero_and_cleans_go_fence(
     )
     await _seed_legacy_ready(redis, task)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
-    assert (await queue.activate_legacy(task, legacy_config=_legacy_config(task))).accepted
-    for target in (producer.settings, activation.settings):
-        monkeypatch.setattr(target, "lightpanda_b0_producer_mode", "off")
-        monkeypatch.setattr(target, "lightpanda_b0_queue_namespace", "production-b0")
-        monkeypatch.setattr(target, "lightpanda_b0_shard_id", "lightpanda-b0")
-        monkeypatch.setattr(target, "lightpanda_b0_routing_epoch", "7")
+    await _initialize_producer(queue, task.route)
+    assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "off")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
 
     board_row = {
         "board_id": task.board_id,
@@ -900,26 +1113,36 @@ async def test_operator_rollback_rebuilds_hash_zero_and_cleans_go_fence(
 
         async def execute(self, query: str, *args: object) -> str:
             assert "DELETE FROM lightpanda_b0_write_fence" in query
-            assert isinstance(args[1], list)
-            assert task.task_id in args[1]
+            assert args == ("lightpanda-b0", 7)
             self.executed = True
             return "DELETE 1"
 
         async def fetchval(self, query: str, *args: object) -> int:
             assert "count(*)" in query
-            assert isinstance(args[1], list)
-            assert task.task_id in args[1]
+            assert args == ("lightpanda-b0", 7)
             return 0
 
     pool = Pool()
-    plan = await activation.build_rollback_plan(pool, redis, cohort="c1")
+    monkeypatch.setattr(activation, "_producer_marker_phase", lambda _cohort: "active")
+    plan = await activation.build_rollback_plan(
+        pool,
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
     entry = plan.document["redis_plan"][task.task_id]  # type: ignore[index]
     assert entry["first_time"] is False
     assert entry["score"] == "120"
     assert entry["config"]["description_r2_hash"] == "0"
 
     result = await activation.apply_rollback_plan(
-        pool, redis, cohort="c1", expect_digest=plan.digest
+        pool,
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        expect_digest=plan.digest,
     )
 
     assert result["write_fences_remaining"] == 0
@@ -941,8 +1164,8 @@ async def test_operator_rollback_drops_posting_when_current_board_is_inactive(
     task = _task()
     await _seed_legacy_ready(redis, task)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
-    assert (await queue.activate_legacy(task, legacy_config=_legacy_config(task))).accepted
+    await _initialize_producer(queue, task.route)
+    assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
     monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "off")
     monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
     monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
@@ -970,7 +1193,14 @@ async def test_operator_rollback_drops_posting_when_current_board_is_inactive(
                 return []
             return [row]
 
-    plan = await activation.build_rollback_plan(Pool(), redis, cohort="c1")
+    monkeypatch.setattr(activation, "_producer_marker_phase", lambda _cohort: "active")
+    plan = await activation.build_rollback_plan(
+        Pool(),
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
 
     assert plan.document["redis_plan"][task.task_id] == {"action": "drop"}  # type: ignore[index]
 
@@ -980,7 +1210,7 @@ async def test_operator_rollback_recovers_empty_initialized_namespace(
 ) -> None:
     task = _task()
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await queue.initialize(task.route)
+    await _initialize_producer(queue, task.route)
     monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "off")
     monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
     monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
@@ -999,9 +1229,409 @@ async def test_operator_rollback_recovers_empty_initialized_namespace(
             del args
             return 0
 
-    plan = await activation.build_rollback_plan(Pool(), redis, cohort="c1")
+    monkeypatch.setattr(activation, "_producer_marker_phase", lambda _cohort: "active")
+    plan = await activation.build_rollback_plan(
+        Pool(),
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
     assert plan.document["namespace_present"] is True
 
-    await activation.apply_rollback_plan(Pool(), redis, cohort="c1", expect_digest=plan.digest)
+    await activation.apply_rollback_plan(
+        Pool(),
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        expect_digest=plan.digest,
+    )
 
     assert not await redis.exists(*queue._keys.ordered())
+    assert (
+        await redis.hget("lightpanda-b0:producer-owner", "schema")
+        == "jobseek.lightpanda.producer-rollback/v1"
+    )
+
+
+async def test_operator_rollback_noops_when_sentinel_precedes_redis_initialization(
+    redis: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The host wrapper can complete recovery after the sentinel fsync crash window."""
+
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "off")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
+
+    class Pool:
+        executed = False
+
+        async def fetch(self, _query: str, *args: object) -> list[dict[str, Any]]:
+            del args
+            return []
+
+        async def execute(self, _query: str, *args: object) -> str:
+            assert args == ("lightpanda-b0", 7)
+            self.executed = True
+            return "DELETE 0"
+
+        async def fetchval(self, _query: str, *args: object) -> int:
+            assert args == ("lightpanda-b0", 7) and self.executed
+            return 0
+
+    pool = Pool()
+    plan = await activation.build_rollback_plan(
+        pool,
+        redis,
+        cohort="c1",
+        receipt_state="pending",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
+    assert plan.document["namespace_present"] is False
+    assert plan.document["redis_plan"] == {}
+
+    summary = await activation.apply_rollback_plan(
+        pool,
+        redis,
+        cohort="c1",
+        receipt_state="pending",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        expect_digest=plan.digest,
+    )
+
+    assert summary["ready_restored"] == 0
+    assert summary["terminal_dropped"] == 0
+    assert summary["write_fences_remaining"] == 0
+    assert (
+        await redis.hget("lightpanda-b0:producer-owner", "schema")
+        == "jobseek.lightpanda.producer-rollback/v1"
+    )
+
+
+@pytest.mark.parametrize("redis_present", [False, True], ids=("redis-absent", "redis-present"))
+@pytest.mark.parametrize("receipt_state", ["active", "pending"])
+@pytest.mark.parametrize("marker_phase", ["absent", "preparing", "partial", "active", "unsafe"])
+async def test_rollback_receipt_marker_redis_decision_matrix(
+    redis: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    redis_present: bool,
+    receipt_state: str,
+    marker_phase: str,
+) -> None:
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "off")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
+    authority = tmp_path / "producer-authority"
+    authority.mkdir(mode=0o700)
+    monkeypatch.setattr(activation, "_PRODUCER_AUTHORITY_DIRECTORY", authority)
+    monkeypatch.setattr(activation, "_PRODUCER_AUTHORITY_UID", os.geteuid())
+    marker = authority / activation._PRODUCER_ACTIVATION_MARKER
+    identity = {
+        "board_slugs": ["browser-use-careers"],
+        "cohort": "c1",
+        "engine_owner": "go",
+        "namespace": "production-b0",
+        "routing_epoch": 7,
+        "schema": activation._PRODUCER_SENTINEL_SCHEMA,
+        "shard_id": "lightpanda-b0",
+    }
+    encoded, _digest = activation._canonical(identity)
+    payloads = {
+        "preparing": b"P\n" + encoded.encode("ascii") + b"\n",
+        "partial": b'P\n{"board_slugs"',
+        "active": b"A\n" + encoded.encode("ascii") + b"\n",
+        "unsafe": b'A\n{"board_slugs"',
+    }
+    if marker_phase != "absent":
+        marker.write_bytes(payloads[marker_phase])
+        marker.chmod(0o600)
+
+    if redis_present:
+        task = _task()
+        queue = LightpandaB0Queue(redis, namespace="production-b0")
+        await _initialize_producer(queue, task.route)
+
+    class Pool:
+        async def fetch(self, _query: str, *args: object) -> list[dict[str, Any]]:
+            del args
+            return []
+
+    allowed = (
+        redis_present
+        and (
+            (receipt_state == "active" and marker_phase == "active")
+            or (receipt_state == "pending" and marker_phase in {"preparing", "active"})
+        )
+    ) or (
+        not redis_present
+        and receipt_state == "pending"
+        and marker_phase in {"absent", "preparing", "partial"}
+    )
+    if not allowed:
+        with pytest.raises(activation.ActivationError):
+            await activation.build_rollback_plan(
+                Pool(),
+                redis,
+                cohort="c1",
+                receipt_state=receipt_state,
+                source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+            )
+        return
+
+    plan = await activation.build_rollback_plan(
+        Pool(),
+        redis,
+        cohort="c1",
+        receipt_state=receipt_state,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
+    assert plan.document["receipt_state"] == receipt_state
+    assert plan.document["producer_marker_phase"] == marker_phase
+    assert plan.document["namespace_present"] is redis_present
+
+
+async def test_rollback_tombstone_recovers_postgres_failure_and_sentinel_clear_crash(
+    redis: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task = _task()
+    queue = LightpandaB0Queue(redis, namespace="production-b0")
+    await _initialize_producer(queue, task.route)
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "off")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
+    marker_phase = "active"
+    monkeypatch.setattr(activation, "_producer_marker_phase", lambda _cohort: marker_phase)
+
+    class Pool:
+        fail_delete = True
+
+        async def fetch(self, _query: str, *args: object) -> list[dict[str, Any]]:
+            del args
+            return []
+
+        async def execute(self, _query: str, *args: object) -> str:
+            assert args == ("lightpanda-b0", 7)
+            if self.fail_delete:
+                self.fail_delete = False
+                raise RuntimeError("injected PostgreSQL failure")
+            return "DELETE 0"
+
+        async def fetchval(self, _query: str, *args: object) -> int:
+            assert args == ("lightpanda-b0", 7)
+            return 0
+
+    pool = Pool()
+    plan = await activation.build_rollback_plan(
+        pool,
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
+    with pytest.raises(RuntimeError, match="injected PostgreSQL failure"):
+        await activation.apply_rollback_plan(
+            pool,
+            redis,
+            cohort="c1",
+            receipt_state="active",
+            source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+            expect_digest=plan.digest,
+        )
+
+    assert not await redis.exists(*queue._keys.ordered())
+    assert await redis.hget("lightpanda-b0:producer-owner", "rollback_plan_digest") == plan.digest
+
+    marker_phase = "absent"  # crash after the Go sentinel clear but before receipt publication
+    recovery = await activation.build_rollback_plan(
+        pool,
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
+    assert activation._canonical(recovery.document)[1] == recovery.digest
+    assert recovery.rollback_commit_digest == plan.digest
+    summary = await activation.apply_rollback_plan(
+        pool,
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        expect_digest=recovery.digest,
+    )
+    stale_clear = await queue.clear_rollback_tombstone(
+        task.route,
+        cohort="c1",
+        rollback_plan_digest="d" * 64,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        allow_absent=False,
+    )
+    assert not stale_clear.accepted and stale_clear.reason == "namespace_corrupt"
+    cleared = await queue.clear_rollback_tombstone(
+        task.route,
+        cohort="c1",
+        rollback_plan_digest=plan.digest,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        allow_absent=False,
+    )
+    assert cleared.accepted and cleared.reason == "rollback_tombstone_cleared"
+    assert summary["rollback_plan_digest"] == plan.digest
+
+
+async def test_rollback_tombstone_recovers_lost_redis_reply_and_rejects_stale_aba(
+    redis: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    task = _task()
+    queue = LightpandaB0Queue(redis, namespace="production-b0")
+    await _initialize_producer(queue, task.route)
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_producer_mode", "off")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_shard_id", "lightpanda-b0")
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
+    monkeypatch.setattr(activation, "_producer_marker_phase", lambda _cohort: "active")
+
+    class Pool:
+        async def fetch(self, _query: str, *args: object) -> list[dict[str, Any]]:
+            del args
+            return []
+
+        async def execute(self, _query: str, *args: object) -> str:
+            del args
+            return "DELETE 0"
+
+        async def fetchval(self, _query: str, *args: object) -> int:
+            del args
+            return 0
+
+    pool = Pool()
+    plan = await activation.build_rollback_plan(
+        pool,
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
+    original = LightpandaB0Queue.rollback_legacy
+
+    async def commit_then_lose_reply(self: LightpandaB0Queue, *args: Any, **kwargs: Any) -> Any:
+        await original(self, *args, **kwargs)
+        raise TimeoutError("injected lost Redis reply")
+
+    monkeypatch.setattr(LightpandaB0Queue, "rollback_legacy", commit_then_lose_reply)
+    with pytest.raises(TimeoutError, match="lost Redis reply"):
+        await activation.apply_rollback_plan(
+            pool,
+            redis,
+            cohort="c1",
+            receipt_state="active",
+            source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+            expect_digest=plan.digest,
+        )
+    monkeypatch.setattr(LightpandaB0Queue, "rollback_legacy", original)
+
+    with pytest.raises(activation.ActivationError, match="stale, or unbound"):
+        await activation.build_rollback_plan(
+            pool,
+            redis,
+            cohort="c1",
+            receipt_state="active",
+            source_receipt_sha256="c" * 64,
+        )
+    recovery = await activation.build_rollback_plan(
+        pool,
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+    )
+    await activation.apply_rollback_plan(
+        pool,
+        redis,
+        cohort="c1",
+        receipt_state="active",
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        expect_digest=recovery.digest,
+    )
+
+
+async def test_new_epoch_rejects_restored_old_rdb_and_stale_tombstone(redis: Any) -> None:
+    route_one = RouteIdentity(shard_id="lightpanda-b0", routing_epoch=7, engine_owner="go")
+    route_two = RouteIdentity(shard_id="lightpanda-b0", routing_epoch=8, engine_owner="go")
+    task = _task()
+    queue = LightpandaB0Queue(redis, namespace="production-b0")
+    await _initialize_producer(queue, route_one)
+    await _seed_legacy_ready(redis, task)
+    assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
+
+    old_rdb: dict[str, tuple[int, bytes]] = {}
+    for key in await redis.keys("*"):
+        payload = await redis.dump(key)
+        assert payload is not None
+        old_rdb[str(key)] = (await redis.pttl(key), payload)
+
+    rolled_back = await queue.rollback_legacy(
+        route_one,
+        cohort="c1",
+        rollback_plan_digest=ROLLBACK_DIGEST,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        plan={task.task_id: {"action": "drop"}},
+    )
+    assert rolled_back.accepted
+    tombstone = await redis.dump("lightpanda-b0:producer-owner")
+    assert tombstone is not None
+    cleared = await queue.clear_rollback_tombstone(
+        route_one,
+        cohort="c1",
+        rollback_plan_digest=ROLLBACK_DIGEST,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        allow_absent=False,
+    )
+    assert cleared.accepted
+
+    await _initialize_producer(queue, route_two)
+    current_owner = await redis.dump("lightpanda-b0:producer-owner")
+    assert current_owner is not None
+
+    # Receipt/route E2 cannot clear a replayed E1 rollback tombstone.
+    await redis.delete("lightpanda-b0:producer-owner")
+    await redis.restore("lightpanda-b0:producer-owner", 0, tombstone)
+    stale_tombstone = await queue.clear_rollback_tombstone(
+        route_two,
+        cohort="c1",
+        rollback_plan_digest=ROLLBACK_DIGEST,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        allow_absent=False,
+    )
+    assert not stale_tombstone.accepted
+    assert stale_tombstone.reason == "namespace_corrupt"
+    assert await redis.hget("lightpanda-b0:producer-owner", "routing_epoch") == "7"
+
+    # Model a full Redis/RDB restore after E2 became current. Both the route
+    # and the exact producer owner revert to E1, while the caller stays E2.
+    await redis.flushall()
+    for key, (ttl, payload) in old_rdb.items():
+        await redis.restore(key, max(ttl, 0), payload)
+    before = {
+        "route": await redis.hgetall(queue._keys.route),
+        "owner": await redis.hgetall("lightpanda-b0:producer-owner"),
+        "ready": await redis.zcard(queue._keys.ready),
+        "inflight": await redis.zcard(queue._keys.inflight),
+    }
+
+    claim = await queue.claim_next(route_two, lease_ttl_ms=30_000)
+    audit = await queue.audit_conservation(route_two)
+
+    assert claim.lease is None
+    assert claim.transition.reason == "routing_epoch_mismatch"
+    assert audit.reason == "routing_epoch_mismatch"
+    assert before == {
+        "route": await redis.hgetall(queue._keys.route),
+        "owner": await redis.hgetall("lightpanda-b0:producer-owner"),
+        "ready": await redis.zcard(queue._keys.ready),
+        "inflight": await redis.zcard(queue._keys.inflight),
+    }

@@ -20,10 +20,99 @@ local task_type = ARGV[5]
 local first_time = ARGV[6] == "1"
 local now = tonumber(ARGV[7])
 local b0_guard_key = "lightpanda-b0:legacy-guard"
+local b0_owner_key = "lightpanda-b0:producer-owner"
+
+local function b0_safe_identifier(value)
+    return type(value) == "string" and #value >= 1 and #value <= 128
+        and string.match(value, "^[A-Za-z0-9][A-Za-z0-9_.:-]*$") ~= nil
+end
+
+local function b0_canonical_uint(value)
+    if type(value) ~= "string" or (value ~= "0" and string.match(value, "^[1-9][0-9]*$") == nil) then
+        return nil
+    end
+    local parsed = tonumber(value)
+    if not parsed or parsed < 0 or parsed > 9999999999999 or parsed ~= math.floor(parsed)
+        or tostring(parsed) ~= value then
+        return nil
+    end
+    return parsed
+end
 
 local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
 if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
     return redis.error_reply("lightpanda B0 legacy guard is corrupt")
+end
+
+-- A producer owner is Redis-wide so manual/off-mode processes cannot bypass
+-- the Go cohort boundary merely because they lack the activation overlay.
+-- The Go producer writes this manifest atomically with its route before its
+-- first task mutation; rollback deletes it atomically with that route.
+local b0_owner_type = redis.call("TYPE", b0_owner_key)["ok"]
+if b0_owner_type ~= "none" and b0_owner_type ~= "hash" then
+    return redis.error_reply("lightpanda B0 producer owner is corrupt")
+end
+if task_type == "scrape" and b0_owner_type == "none"
+    and b0_guard_type == "hash" and redis.call("HLEN", b0_guard_key) > 0 then
+    return redis.error_reply("lightpanda B0 producer owner is missing")
+end
+if task_type == "scrape" and b0_owner_type == "hash" then
+    local owner_count = b0_canonical_uint(redis.call("HGET", b0_owner_key, "board_count"))
+    local owner_namespace = redis.call("HGET", b0_owner_key, "namespace")
+    local owner_shard = redis.call("HGET", b0_owner_key, "shard_id")
+    local owner_epoch = redis.call("HGET", b0_owner_key, "routing_epoch")
+    if redis.call("HGET", b0_owner_key, "schema")
+            ~= "jobseek.lightpanda.producer-owner/v1"
+        or redis.call("HGET", b0_owner_key, "engine_owner") ~= "go"
+        or (redis.call("HGET", b0_owner_key, "cohort") ~= "c1"
+            and redis.call("HGET", b0_owner_key, "cohort") ~= "c4")
+        or not owner_count or owner_count < 1 or owner_count > 16
+        or redis.call("HLEN", b0_owner_key) ~= 7 + owner_count
+        or not b0_safe_identifier(owner_namespace) or not b0_safe_identifier(owner_shard)
+        or not b0_canonical_uint(owner_epoch) or owner_epoch == "0" then
+        return redis.error_reply("lightpanda B0 producer owner is corrupt")
+    end
+    local owner_members = 0
+    for _, field in ipairs(redis.call("HKEYS", b0_owner_key)) do
+        local slug = string.match(field, "^board_slug:(.+)$")
+        if slug then
+            if not b0_safe_identifier(slug)
+                or redis.call("HGET", b0_owner_key, field) ~= "1" then
+                return redis.error_reply("lightpanda B0 producer owner is corrupt")
+            end
+            owner_members = owner_members + 1
+        elseif field ~= "schema" and field ~= "namespace" and field ~= "shard_id"
+            and field ~= "routing_epoch" and field ~= "engine_owner"
+            and field ~= "cohort" and field ~= "board_count" then
+            return redis.error_reply("lightpanda B0 producer owner is corrupt")
+        end
+    end
+    if owner_members ~= owner_count then
+        return redis.error_reply("lightpanda B0 producer owner is corrupt")
+    end
+    local route_key = "lightpanda-b0:{" .. owner_namespace .. "}:route"
+    if redis.call("TYPE", route_key)["ok"] ~= "hash"
+        or redis.call("HLEN", route_key) ~= 4
+        or redis.call("HGET", route_key, "shard_id") ~= owner_shard
+        or redis.call("HGET", route_key, "routing_epoch") ~= owner_epoch
+        or redis.call("HGET", route_key, "engine_owner") ~= "go"
+        or b0_canonical_uint(redis.call("HGET", route_key, "claim_sequence")) == nil then
+        return redis.error_reply("lightpanda B0 producer route is corrupt")
+    end
+    local board_id = nil
+    for index = 8, #ARGV, 2 do
+        if ARGV[index] == "board_id" then board_id = ARGV[index + 1] end
+    end
+    if not b0_safe_identifier(board_id) then
+        return redis.error_reply("lightpanda B0 scrape board identity is missing")
+    end
+    local board_slug = redis.call("HGET", "board:" .. board_id, "board_slug")
+    if not b0_safe_identifier(board_slug) then
+        return redis.error_reply("lightpanda B0 scrape board identity is unavailable")
+    end
+    if redis.call("HGET", b0_owner_key, "board_slug:" .. board_slug) == "1" then
+        return redis.error_reply("lightpanda B0 Go owner covers board")
+    end
 end
 if task_type == "scrape" and redis.call("HEXISTS", b0_guard_key, task_id) == 1 then
     return 0

@@ -66,6 +66,8 @@ services:
       CRAWLER_DB_ROLE: worker-1
       CRAWLER_DB_POOL_MIN: "1"
       CRAWLER_DB_POOL_MAX: "8"
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -93,6 +95,8 @@ services:
       CRAWLER_DB_ROLE: worker-2
       CRAWLER_DB_POOL_MIN: "1"
       CRAWLER_DB_POOL_MAX: "8"
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -120,6 +124,8 @@ services:
       CRAWLER_DB_ROLE: worker-3
       CRAWLER_DB_POOL_MIN: "1"
       CRAWLER_DB_POOL_MAX: "8"
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -196,6 +202,8 @@ services:
       # Bound the lifetime of each long-lived Playwright Node driver. Recycle
       # only between claims; in-flight browser tasks are never interrupted.
       BROWSER_PLAYWRIGHT_RECYCLE_SECONDS: "21600"
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -285,6 +293,8 @@ services:
 
 volumes:
   redis-data:
+  lightpanda-producer-socket:
+    name: jobseek-lightpanda-b0-producer-socket
   alloy-data:
     external: true
     name: "${COMPOSE_PROJECT_NAME}_alloy-data"

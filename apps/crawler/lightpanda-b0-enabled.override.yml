@@ -2,42 +2,135 @@
 # The ordinary crawler deploy does not load this file and remains dark.
 
 services:
+  # Docker creates a fresh named-volume root as root:root/0755. Normalize it
+  # in a bounded one-shot before the unprivileged producer is allowed to bind.
+  lightpanda-producer-socket-init:
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    restart: "no"
+    network_mode: none
+    user: "0:0"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    command:
+      - /bin/sh
+      - -eu
+      - -c
+      - >-
+        chown 0:0 /run/jobseek-lightpanda-producer &&
+        chmod 0700 /run/jobseek-lightpanda-producer &&
+        chown 10001:10001 /run/jobseek-lightpanda-producer &&
+        test "$$(stat -c '%u:%g:%a' /run/jobseek-lightpanda-producer)" = 10001:10001:700
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer
+    mem_limit: 16m
+    memswap_limit: 16m
+    cpus: 0.1
+    pids_limit: 8
+
   worker-1:
+    restart: "no"
     environment:
       LIGHTPANDA_B0_PRODUCER_MODE: enabled
-      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c4}
-      LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
-      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
-      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
+    depends_on:
+      lightpanda-producer:
+        condition: service_healthy
 
   worker-2:
+    restart: "no"
     environment:
       LIGHTPANDA_B0_PRODUCER_MODE: enabled
-      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c4}
-      LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
-      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
-      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
+    depends_on:
+      lightpanda-producer:
+        condition: service_healthy
 
   worker-3:
+    restart: "no"
     environment:
       LIGHTPANDA_B0_PRODUCER_MODE: enabled
-      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c4}
-      LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
-      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
-      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
+    depends_on:
+      lightpanda-producer:
+        condition: service_healthy
 
   browser-1:
+    restart: "no"
     environment:
       LIGHTPANDA_B0_PRODUCER_MODE: enabled
+      LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro
+    depends_on:
+      lightpanda-producer:
+        condition: service_healthy
+
+  drain:
+    restart: "no"
+
+  # Sole B0 classification/task-construction/producer authority. This process
+  # has Redis plus a private UDS only: no database, renderer, or claimant PKI.
+  lightpanda-producer:
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: "no"
+    network_mode: host
+    stop_grace_period: 15s
+    command: ["/usr/local/bin/lightpanda-b0-supervisor", "producer"]
+    user: "10001:10001"
+    read_only: true
+    cgroup: private
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      GOMEMLIMIT: 16MiB
+      LIGHTPANDA_B0_PRODUCER_MODE: enabled
       LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c4}
+      LIGHTPANDA_B0_PRODUCER_CLIENT_UID: "0"
+      LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
       LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
       LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
-      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      LIGHTPANDA_B0_ROUTING_EPOCH: ${LIGHTPANDA_B0_ROUTING_EPOCH:?routing epoch required}
+      REDIS_URL: redis://localhost:6379/0
+    volumes:
+      - lightpanda-producer-socket:/run/jobseek-lightpanda-producer
+    depends_on:
+      redis:
+        condition: service_healthy
+      lightpanda-producer-socket-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/lightpanda-b0-supervisor", "producer", "--healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    mem_limit: 32m
+    memswap_limit: 32m
+    cpus: 0.25
+    pids_limit: 32
+    ulimits:
+      nofile:
+        soft: 64
+        hard: 64
 
   lightpanda-executor:
     image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
-    restart: unless-stopped
+    restart: "no"
     network_mode: host
     stop_grace_period: 30s
     command: ["uv", "run", "--no-sync", "python", "-m", "src.lightpanda.executor"]
@@ -55,6 +148,8 @@ services:
       CRAWLER_DB_POOL_MAX: "1"
       LIGHTPANDA_B0_EXECUTOR_MODE: enabled
       LIGHTPANDA_B0_EXECUTOR_SOCKET: /run/jobseek-lightpanda-executor/executor.sock
+      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
+      LIGHTPANDA_B0_ROUTING_EPOCH: ${LIGHTPANDA_B0_ROUTING_EPOCH:?routing epoch required}
     volumes:
       - lightpanda-executor-socket:/run/jobseek-lightpanda-executor
     tmpfs:
@@ -75,15 +170,18 @@ services:
         hard: 64
 
   lightpanda-claimant:
+    restart: "no"
     network_mode: host
+    mem_limit: 96m
+    memswap_limit: 96m
     environment:
-      GOMEMLIMIT: 96MiB
+      GOMEMLIMIT: 64MiB
       LIGHTPANDA_B0_SUPERVISOR_MODE: enabled
       REDIS_URL: redis://localhost:6379/0
       LIGHTPANDA_B0_SERVICE_HOST: 10.0.0.5
       LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
       LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
-      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      LIGHTPANDA_B0_ROUTING_EPOCH: ${LIGHTPANDA_B0_ROUTING_EPOCH:?routing epoch required}
       LIGHTPANDA_B0_CA_CERTIFICATE: /run/lightpanda/ca.pem
       LIGHTPANDA_B0_CLIENT_CERTIFICATE: /run/lightpanda/client.pem
       LIGHTPANDA_B0_CLIENT_PRIVATE_KEY: /run/lightpanda/client-key.pem
@@ -109,3 +207,5 @@ services:
 volumes:
   lightpanda-executor-socket:
     name: jobseek-lightpanda-b0-executor-socket
+  lightpanda-producer-socket:
+    name: jobseek-lightpanda-b0-producer-socket

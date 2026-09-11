@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -35,6 +36,56 @@ type failingRendererSource struct {
 	mu           sync.Mutex
 	calls        int
 	reservations []*fakeHeldReservation
+}
+
+type recordingFailingRenderer struct {
+	attested *atomic.Bool
+	calls    atomic.Int32
+	tooEarly atomic.Bool
+}
+
+func (s *recordingFailingRenderer) reserve(context.Context) (heldReservation, error) {
+	s.calls.Add(1)
+	if !s.attested.Load() {
+		s.tooEarly.Store(true)
+	}
+	return nil, errors.New("stop after ordering proof")
+}
+
+func TestSupervisorAttestsExecutorRouteBeforeAnyRendererOrQueueWork(t *testing.T) {
+	attested := &atomic.Bool{}
+	renderer := &recordingFailingRenderer{attested: attested}
+	s := &supervisor{
+		renderer: renderer,
+		attestRoute: func(context.Context, config) error {
+			attested.Store(true)
+			return nil
+		},
+	}
+	if err := s.run(context.Background()); err == nil {
+		t.Fatal("renderer failure was accepted")
+	}
+	if renderer.calls.Load() != supervisorCapacity || renderer.tooEarly.Load() {
+		t.Fatalf("route attestation did not precede reservation fanout: calls=%d early=%t", renderer.calls.Load(), renderer.tooEarly.Load())
+	}
+
+	attested.Store(false)
+	renderer.calls.Store(0)
+	renderer.tooEarly.Store(false)
+	s.attestRoute = func(context.Context, config) error {
+		return errors.New("stale epoch")
+	}
+	if err := s.run(context.Background()); err == nil {
+		t.Fatal("failed route attestation was accepted")
+	}
+	if renderer.calls.Load() != 0 {
+		t.Fatalf("failed attestation reached renderer/queue work: calls=%d", renderer.calls.Load())
+	}
+
+	s.attestRoute = nil
+	if err := s.run(context.Background()); err == nil {
+		t.Fatal("missing route attestor was accepted")
+	}
 }
 
 func (s *failingRendererSource) reserve(context.Context) (heldReservation, error) {

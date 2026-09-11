@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha1" // Redis 8 exposes SHA-1 for script and record compatibility. //nolint:gosec
 	"crypto/sha256"
@@ -16,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -27,14 +25,19 @@ const (
 	maxLeaseTTL       = time.Hour
 	queueScanLimit    = 64
 	queuePolicyKey    = "lightpanda-b0-v1"
-	expectedLuaSHA256 = "4efe213380be6e7691e350f5a2f8bd3cfcdcba06dcd38c96d8a0227e210b8716"
+	producerOwnerKey  = "lightpanda-b0:producer-owner"
+	legacyGuardKey    = "lightpanda-b0:legacy-guard"
+	producerOwnerV1   = "jobseek.lightpanda.producer-owner/v1"
+	expectedLuaSHA256 = "a908bdd07f1b95744c0f68afc78837427cb9275802506ea8fc11c14a7f975753"
 )
 
 var (
 	safeID       = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$`)
 	safeDomain   = regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$`)
 	safeRevision = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+\-]{0,63}$`)
+	safeDecimal  = regexp.MustCompile(`^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$`)
 	hex256       = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	hex160       = regexp.MustCompile(`^[0-9a-f]{40}$`)
 )
 
 type routeIdentity struct {
@@ -130,42 +133,15 @@ func decodeQueueTask(payload, expectedDigest string, route routeIdentity) (queue
 }
 
 func canonicalAssignmentJSON(raw json.RawMessage) ([]byte, error) {
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
-	var value any
-	if err := decoder.Decode(&value); err != nil {
+	value, err := parseCanonicalValue(raw)
+	if err != nil {
 		return nil, errors.New("task parser config is invalid")
 	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return nil, errors.New("task parser config has trailing JSON")
-	}
-	var encoded bytes.Buffer
-	encoder := json.NewEncoder(&encoded)
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(value); err != nil {
+	encoded, err := canonicalJSON(value, true)
+	if err != nil {
 		return nil, errors.New("task parser config cannot be canonicalized")
 	}
-	plain := bytes.TrimSuffix(encoded.Bytes(), []byte{'\n'})
-	result := make([]byte, 0, len(plain))
-	for len(plain) != 0 {
-		if plain[0] < utf8.RuneSelf {
-			result = append(result, plain[0])
-			plain = plain[1:]
-			continue
-		}
-		runeValue, size := utf8.DecodeRune(plain)
-		if runeValue == utf8.RuneError && size == 1 {
-			return nil, errors.New("task parser config contains invalid UTF-8")
-		}
-		if runeValue <= 0xffff {
-			result = append(result, fmt.Sprintf(`\u%04x`, runeValue)...)
-		} else {
-			value := runeValue - 0x10000
-			result = append(result, fmt.Sprintf(`\u%04x\u%04x`, 0xd800+(value>>10), 0xdc00+(value&0x3ff))...)
-		}
-		plain = plain[size:]
-	}
-	return result, nil
+	return encoded, nil
 }
 
 func validateParserConfig(envelope taskEnvelope) error {
@@ -223,6 +199,32 @@ type lease struct {
 	DueAtMS      int64
 }
 
+type storedTask struct {
+	Task     queueTask
+	State    string
+	Failures int64
+}
+
+type queueAuthorityError struct {
+	class     string
+	operation string
+}
+
+func (failure queueAuthorityError) Error() string {
+	return "B0 queue authority lost: " + failure.class + "/" + failure.operation
+}
+
+func queueAuthority(class, operation string) error {
+	return queueAuthorityError{class: class, operation: operation}
+}
+
+func queueRedisFailure(err error, operation string) error {
+	if errors.Is(err, context.Canceled) {
+		return context.Canceled
+	}
+	return queueAuthority("redis", operation)
+}
+
 type b0Queue struct {
 	client       *redis.Client
 	script       *redis.Script
@@ -234,7 +236,7 @@ type b0Queue struct {
 }
 
 func newB0Queue(client *redis.Client, luaPath, namespace string, route routeIdentity, defaultDelay string, metrics *metrics) (*b0Queue, error) {
-	if client == nil || metrics == nil || !safeID.MatchString(namespace) {
+	if client == nil || metrics == nil || !safeID.MatchString(namespace) || !safeDecimal.MatchString(defaultDelay) {
 		return nil, errors.New("invalid B0 queue configuration")
 	}
 	if err := route.validate(); err != nil {
@@ -258,6 +260,10 @@ func newB0Queue(client *redis.Client, luaPath, namespace string, route routeIden
 }
 
 func (q *b0Queue) call(ctx context.Context, operation string, task *queueTask, claimToken string, leaseTTL time.Duration, readyAtMS int64, maxFailures int64, expectedLeaseUntilMS int64) (transition, error) {
+	return q.callWithProducer(ctx, operation, task, claimToken, leaseTTL, readyAtMS, maxFailures, expectedLeaseUntilMS, "", "", false, producerOwnerIdentity{})
+}
+
+func (q *b0Queue) callWithProducer(ctx context.Context, operation string, task *queueTask, claimToken string, leaseTTL time.Duration, readyAtMS int64, maxFailures int64, expectedLeaseUntilMS int64, previousPayloadSHA256, legacyConfig string, operatorTransfer bool, owner producerOwnerIdentity) (transition, error) {
 	if ctx == nil {
 		return transition{}, errors.New("queue context is required")
 	}
@@ -268,18 +274,30 @@ func (q *b0Queue) call(ctx context.Context, operation string, task *queueTask, c
 			readyAtMS = task.Envelope.InitialReadyAtMS
 		}
 	}
+	operator := "0"
+	if operatorTransfer {
+		operator = "1"
+	}
 	argv := []any{operation, q.route.ShardID, strconv.FormatInt(q.route.RoutingEpoch, 10), q.route.EngineOwner, taskID,
 		strconv.FormatInt(revision, 10), claimToken, strconv.FormatInt(leaseTTL.Milliseconds(), 10), strconv.FormatInt(readyAtMS, 10), strconv.FormatInt(maxFailures, 10),
-		payload, sha256Digest, sha1Digest, strconv.Itoa(queueScanLimit), q.defaultDelay, "", strconv.FormatInt(expectedLeaseUntilMS, 10), q.namespace, "", "0"}
+		payload, sha256Digest, sha1Digest, strconv.Itoa(queueScanLimit), q.defaultDelay, previousPayloadSHA256, strconv.FormatInt(expectedLeaseUntilMS, 10), q.namespace, legacyConfig, operator}
+	if owner.validate() == nil {
+		argv = append(argv, owner.Cohort, strconv.Itoa(len(owner.BoardSlugs)), "")
+		for _, slug := range owner.BoardSlugs {
+			argv = append(argv, slug)
+		}
+	} else {
+		argv = append(argv, "", "0", "")
+	}
 	result, err := q.script.Run(ctx, q.client, q.keys, argv...).Result()
 	if err != nil {
 		q.metrics.incQueue(operation, "transport_error")
-		return transition{}, fmt.Errorf("B0 queue %s: %w", operation, err)
+		return transition{}, queueRedisFailure(err, operation)
 	}
 	raw, ok := result.([]any)
 	if !ok || len(raw) != 12 {
 		q.metrics.incQueue(operation, "transport_error")
-		return transition{}, errors.New("B0 queue returned malformed transition")
+		return transition{}, queueAuthority("corruption", operation)
 	}
 	values := make([]string, 12)
 	for index, value := range raw {
@@ -290,7 +308,7 @@ func (q *b0Queue) call(ctx context.Context, operation string, task *queueTask, c
 			values[index] = string(typed)
 		default:
 			q.metrics.incQueue(operation, "transport_error")
-			return transition{}, errors.New("B0 queue returned non-text transition")
+			return transition{}, queueAuthority("corruption", operation)
 		}
 	}
 	parsed := transition{Decision: values[0], Reason: values[1], TaskID: values[3], ClaimToken: values[4], PayloadSHA256: values[7], Payload: values[8], PolicyKey: values[9]}
@@ -301,17 +319,17 @@ func (q *b0Queue) call(ctx context.Context, operation string, task *queueTask, c
 		value, parseErr := strconv.ParseInt(values[index], 10, 64)
 		if parseErr != nil || value < 0 || value > maxInteger || strconv.FormatInt(value, 10) != values[index] {
 			q.metrics.incQueue(operation, "transport_error")
-			return transition{}, errors.New("B0 queue returned invalid integer")
+			return transition{}, queueAuthority("corruption", operation)
 		}
 		*target = value
 	}
 	if parsed.Decision != "accepted" && parsed.Decision != "fenced" && parsed.Decision != "not_current" {
 		q.metrics.incQueue(operation, "transport_error")
-		return transition{}, errors.New("B0 queue returned invalid decision")
+		return transition{}, queueAuthority("corruption", operation)
 	}
 	if err := validateTransitionReply(operation, parsed, values, q.route, task, claimToken, leaseTTL, readyAtMS, expectedLeaseUntilMS); err != nil {
 		q.metrics.incQueue(operation, "transport_error")
-		return transition{}, fmt.Errorf("B0 queue returned invalid %s reply: %w", operation, err)
+		return transition{}, queueAuthority("corruption", operation)
 	}
 	q.metrics.incQueue(operation, parsed.Decision)
 	return parsed, nil
@@ -322,6 +340,16 @@ var allowedReasons = map[string]map[string]map[string]struct{}{
 		"accepted":    set("initialized", "already_initialized"),
 		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch"),
 		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt"),
+	},
+	"initialize_producer": {
+		"accepted":    set("initialized", "already_initialized"),
+		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt"),
+	},
+	"activate_legacy": {
+		"accepted":    set("activated", "already_activated", "reactivated"),
+		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch", "config_revision_mismatch", "config_revision_not_advanced", "record_fence_mismatch", "claim_token_mismatch", "lease_deadline_mismatch", "payload_digest_mismatch"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "exclusive_go_owner_required", "invalid_task_envelope", "namespace_full", "task_already_exists", "record_corrupt", "conservation_violation", "state_mismatch", "legacy_state_corrupt", "legacy_config_mismatch", "legacy_inflight", "legacy_deadletter", "legacy_membership_conflict", "guard_identity_mismatch", "invalid_legacy_config", "legacy_membership_missing"),
 	},
 	"claim_next": {
 		"accepted":    set("claimed"),
@@ -426,6 +454,11 @@ func validateTransitionReply(operation string, result transition, fields []strin
 		if (operation == "complete" || operation == "reschedule_at" || operation == "fail_at") && result.LeaseUntilMS != expectedLeaseUntilMS {
 			return errors.New("terminal lease echo mismatch")
 		}
+	} else if operation == "activate_legacy" {
+		if task == nil || result.TaskID != task.Envelope.TaskID || result.ConfigRevision != task.Envelope.ConfigRevision || result.PayloadSHA256 != task.PayloadSHA256 ||
+			fields[4] != "" || fields[5] != "" || fields[8] != "" || fields[9] != "" {
+			return errors.New("invalid producer activation echo")
+		}
 	} else {
 		for index := 3; index < 10; index++ {
 			if fields[index] != "" {
@@ -446,6 +479,10 @@ func validateTransitionReply(operation string, result transition, fields []strin
 		if fields[10] == "" || fields[11] == "" || result.Value > 512 || result.SecondaryValue > result.Value {
 			return errors.New("invalid audit counts")
 		}
+	case "activate_legacy":
+		if fields[10] == "" || fields[11] == "" || result.Value != readyAtMS || result.SecondaryValue > 1 {
+			return errors.New("invalid producer activation counts")
+		}
 	case "reschedule_at", "fail_at":
 		if fields[10] == "" || fields[11] != "" || result.Value != readyAtMS {
 			return errors.New("invalid ready-at echo")
@@ -464,6 +501,227 @@ func (q *b0Queue) initialize(ctx context.Context) error {
 		return transitionError("initialize", result, err)
 	}
 	return nil
+}
+
+func (q *b0Queue) initializeProducer(ctx context.Context, owner producerOwnerIdentity) error {
+	if owner.validate() != nil || owner.Namespace != q.namespace || owner.Route != q.route {
+		return queueAuthority("corruption", "initialize_producer")
+	}
+	result, err := q.callWithProducer(
+		ctx, "initialize_producer", nil, "", 0, 0, 0, 0, "", "", false, owner,
+	)
+	if err != nil || !result.accepted() {
+		return transitionError("initialize_producer", result, err)
+	}
+	return nil
+}
+
+func (q *b0Queue) activateLegacy(ctx context.Context, task *queueTask, legacyConfig, previousPayloadSHA256 string, operatorTransfer bool, owner producerOwnerIdentity) (transition, error) {
+	if task == nil || task.Envelope.EngineOwner != engineOwner || legacyConfig == "" ||
+		(previousPayloadSHA256 != "" && !hex256.MatchString(previousPayloadSHA256)) || owner.validate() != nil ||
+		owner.Namespace != q.namespace || owner.Route != q.route {
+		return transition{}, errors.New("invalid B0 legacy activation")
+	}
+	result, err := q.callWithProducer(ctx, "activate_legacy", task, "", 0, task.Envelope.InitialReadyAtMS, 0, 0, previousPayloadSHA256, legacyConfig, operatorTransfer, owner)
+	if err != nil || !result.accepted() {
+		return result, transitionError("activate_legacy", result, err)
+	}
+	return result, nil
+}
+
+func (q *b0Queue) preflight(ctx context.Context, full bool, owner producerOwnerIdentity) (bool, error) {
+	if ctx == nil || owner.validate() != nil || owner.Namespace != q.namespace || owner.Route != q.route {
+		return false, queueAuthority("corruption", "preflight")
+	}
+	pipeline := q.client.Pipeline()
+	types := make([]*redis.StatusCmd, 0, len(q.keys))
+	for _, key := range q.keys {
+		types = append(types, pipeline.Type(ctx, key))
+	}
+	if _, err := pipeline.Exec(ctx); err != nil {
+		return false, queueRedisFailure(err, "preflight")
+	}
+	if types[0].Val() == "none" {
+		for _, command := range types[1:] {
+			if command.Val() != "none" {
+				return false, queueAuthority("corruption", "preflight")
+			}
+		}
+		globalPipeline := q.client.Pipeline()
+		ownerType := globalPipeline.Type(ctx, producerOwnerKey)
+		guardType := globalPipeline.Type(ctx, legacyGuardKey)
+		if _, err := globalPipeline.Exec(ctx); err != nil {
+			return false, queueRedisFailure(err, "preflight")
+		}
+		if ownerType.Val() != "none" || guardType.Val() != "none" {
+			return false, queueAuthority("corruption", "preflight")
+		}
+		return true, nil
+	}
+	expectedTypes := []string{"hash", "hash", "zset", "zset", "set", "set", "hash"}
+	for index, command := range types {
+		if command.Val() != "none" && command.Val() != expectedTypes[index] {
+			return false, queueAuthority("corruption", "preflight")
+		}
+	}
+	routePipeline := q.client.Pipeline()
+	fieldCount := routePipeline.HLen(ctx, q.keys[0])
+	fieldValues := routePipeline.HMGet(ctx, q.keys[0], "shard_id", "engine_owner", "routing_epoch", "claim_sequence")
+	if _, err := routePipeline.Exec(ctx); err != nil {
+		return false, queueRedisFailure(err, "preflight")
+	}
+	values := fieldValues.Val()
+	if fieldCount.Val() != 4 || len(values) != 4 {
+		return false, queueAuthority("corruption", "preflight")
+	}
+	fields := make([]string, len(values))
+	for index, raw := range values {
+		value, ok := raw.(string)
+		if !ok {
+			return false, queueAuthority("corruption", "preflight")
+		}
+		fields[index] = value
+	}
+	if !safeID.MatchString(fields[0]) || !contains(set("python", "go"), fields[1]) {
+		return false, queueAuthority("corruption", "preflight")
+	}
+	epoch, epochErr := strconv.ParseInt(fields[2], 10, 64)
+	sequence, sequenceErr := strconv.ParseInt(fields[3], 10, 64)
+	if epochErr != nil || epoch < 1 || epoch > maxInteger || strconv.FormatInt(epoch, 10) != fields[2] ||
+		sequenceErr != nil || sequence < 0 || sequence > maxInteger || strconv.FormatInt(sequence, 10) != fields[3] {
+		return false, queueAuthority("corruption", "preflight")
+	}
+	if fields[0] != q.route.ShardID || epoch != q.route.RoutingEpoch || fields[1] != q.route.EngineOwner {
+		return false, queueAuthority("fenced", "preflight")
+	}
+	if err := q.validateProducerOwner(ctx, owner); err != nil {
+		return false, err
+	}
+	if full {
+		if err := q.audit(ctx); err != nil {
+			return false, err
+		}
+		if err := q.validateProducerOwner(ctx, owner); err != nil {
+			return false, err
+		}
+	}
+	return false, nil
+}
+
+func (q *b0Queue) validateProducerOwner(ctx context.Context, owner producerOwnerIdentity) error {
+	fields := []string{"schema", "namespace", "shard_id", "routing_epoch", "engine_owner", "cohort", "board_count"}
+	for _, slug := range owner.BoardSlugs {
+		fields = append(fields, "board_slug:"+slug)
+	}
+	pipeline := q.client.Pipeline()
+	keyType := pipeline.Type(ctx, producerOwnerKey)
+	fieldCount := pipeline.HLen(ctx, producerOwnerKey)
+	values := pipeline.HMGet(ctx, producerOwnerKey, fields...)
+	if _, err := pipeline.Exec(ctx); err != nil {
+		return queueRedisFailure(err, "preflight")
+	}
+	if keyType.Val() != "hash" || fieldCount.Val() != int64(len(fields)) || len(values.Val()) != len(fields) {
+		return queueAuthority("corruption", "preflight")
+	}
+	want := []string{
+		producerOwnerV1, owner.Namespace, owner.Route.ShardID,
+		strconv.FormatInt(owner.Route.RoutingEpoch, 10), owner.Route.EngineOwner,
+		owner.Cohort, strconv.Itoa(len(owner.BoardSlugs)),
+	}
+	for range owner.BoardSlugs {
+		want = append(want, "1")
+	}
+	for index, raw := range values.Val() {
+		value, ok := raw.(string)
+		if !ok || value != want[index] {
+			return queueAuthority("corruption", "preflight")
+		}
+	}
+	return nil
+}
+
+func (q *b0Queue) inspect(ctx context.Context, taskID string) (*storedTask, error) {
+	if ctx == nil || !safeID.MatchString(taskID) {
+		return nil, errors.New("invalid B0 inspect request")
+	}
+	routeType, err := q.client.Type(ctx, q.keys[0]).Result()
+	if err != nil {
+		return nil, queueRedisFailure(err, "inspect")
+	}
+	if routeType == "none" {
+		pipeline := q.client.Pipeline()
+		types := make([]*redis.StatusCmd, 0, len(q.keys)-1)
+		for _, key := range q.keys[1:] {
+			types = append(types, pipeline.Type(ctx, key))
+		}
+		if _, err := pipeline.Exec(ctx); err != nil {
+			return nil, queueRedisFailure(err, "inspect")
+		}
+		for _, command := range types {
+			if command.Val() != "none" {
+				return nil, queueAuthority("corruption", "inspect")
+			}
+		}
+		return nil, nil
+	}
+	if routeType != "hash" {
+		return nil, queueAuthority("corruption", "inspect")
+	}
+	if err := q.audit(ctx); err != nil {
+		return nil, err
+	}
+	encoded, err := q.client.HGet(ctx, q.keys[1], taskID).Result()
+	if errors.Is(err, redis.Nil) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, queueRedisFailure(err, "inspect")
+	}
+	var raw map[string]json.RawMessage
+	decoder := json.NewDecoder(strings.NewReader(encoded))
+	if decoder.Decode(&raw) != nil || len(raw) != 18 {
+		return nil, queueAuthority("corruption", "inspect")
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return nil, queueAuthority("corruption", "inspect")
+	}
+	for _, field := range []string{"task_id", "task_kind", "state", "shard_id", "routing_epoch", "engine_owner", "config_revision", "policy_key", "domain", "payload", "payload_sha256", "payload_sha1", "claim_token", "claim_sequence", "lease_until_ms", "ready_at_ms", "visible_at_ms", "failures"} {
+		if _, ok := raw[field]; !ok {
+			return nil, queueAuthority("corruption", "inspect")
+		}
+	}
+	var record struct {
+		TaskID, TaskKind, State, ShardID, EngineOwner, PolicyKey, Domain, Payload, PayloadSHA256, PayloadSHA1 string
+		RoutingEpoch, ConfigRevision, Failures                                                                int64
+	}
+	if json.Unmarshal(raw["task_id"], &record.TaskID) != nil || json.Unmarshal(raw["task_kind"], &record.TaskKind) != nil ||
+		json.Unmarshal(raw["state"], &record.State) != nil || json.Unmarshal(raw["shard_id"], &record.ShardID) != nil ||
+		json.Unmarshal(raw["routing_epoch"], &record.RoutingEpoch) != nil || json.Unmarshal(raw["engine_owner"], &record.EngineOwner) != nil ||
+		json.Unmarshal(raw["config_revision"], &record.ConfigRevision) != nil || json.Unmarshal(raw["policy_key"], &record.PolicyKey) != nil ||
+		json.Unmarshal(raw["domain"], &record.Domain) != nil || json.Unmarshal(raw["payload"], &record.Payload) != nil ||
+		json.Unmarshal(raw["payload_sha256"], &record.PayloadSHA256) != nil || json.Unmarshal(raw["payload_sha1"], &record.PayloadSHA1) != nil ||
+		json.Unmarshal(raw["failures"], &record.Failures) != nil {
+		return nil, queueAuthority("corruption", "inspect")
+	}
+	if record.TaskID != taskID || record.TaskKind != "scrape" || record.ShardID != q.route.ShardID || record.RoutingEpoch != q.route.RoutingEpoch ||
+		record.EngineOwner != q.route.EngineOwner || record.PolicyKey != queuePolicyKey || record.ConfigRevision < 1 || record.ConfigRevision > maxInteger ||
+		record.Failures < 0 || record.Failures > 100 || !contains(set("ready", "inflight", "dead", "terminal"), record.State) || !hex160.MatchString(record.PayloadSHA1) {
+		return nil, queueAuthority("corruption", "inspect")
+	}
+	legacyDigest := sha1.Sum([]byte(record.Payload)) //nolint:gosec
+	if hex.EncodeToString(legacyDigest[:]) != record.PayloadSHA1 {
+		return nil, queueAuthority("corruption", "inspect")
+	}
+	task, err := decodeQueueTask(record.Payload, record.PayloadSHA256, q.route)
+	if err != nil || task.Envelope.TaskID != taskID || task.Envelope.ConfigRevision != record.ConfigRevision || task.Envelope.PolicyKey != record.PolicyKey || task.Envelope.Domain != record.Domain {
+		return nil, queueAuthority("corruption", "inspect")
+	}
+	return &storedTask{Task: task, State: record.State, Failures: record.Failures}, nil
+}
+
+func contains(values map[string]struct{}, value string) bool {
+	_, ok := values[value]
+	return ok
 }
 
 func (q *b0Queue) claim(ctx context.Context, ttl time.Duration) (*lease, transition, error) {
@@ -532,7 +790,7 @@ func (q *b0Queue) audit(ctx context.Context) error {
 	inflight := pipeline.ZCard(ctx, q.keys[3])
 	dead := pipeline.SCard(ctx, q.keys[4])
 	if _, err := pipeline.Exec(ctx); err != nil {
-		return fmt.Errorf("observe audited B0 queue counts: %w", err)
+		return queueRedisFailure(err, "audit")
 	}
 	q.metrics.readyCount.Store(ready.Val())
 	q.metrics.redisInflight.Store(inflight.Val())
@@ -542,7 +800,17 @@ func (q *b0Queue) audit(ctx context.Context) error {
 
 func transitionError(operation string, result transition, err error) error {
 	if err != nil {
-		return err
+		if errors.Is(err, context.Canceled) {
+			return context.Canceled
+		}
+		var failure queueAuthorityError
+		if errors.As(err, &failure) {
+			return failure
+		}
+		return queueAuthority("corruption", operation)
 	}
-	return fmt.Errorf("B0 queue %s rejected: %s/%s", operation, result.Decision, result.Reason)
+	if result.Decision == "fenced" {
+		return queueAuthority("fenced", operation)
+	}
+	return queueAuthority("corruption", operation)
 }

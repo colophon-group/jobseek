@@ -647,3 +647,26 @@ def test_go_owner_migration_changes_constraint_and_all_fence_functions() -> None
         migration._GO_OWNER_FUNCTIONS  # noqa: SLF001
     )
     assert "Go rows exist" in migration._REFUSE_DOWNGRADE_WITH_GO_ROWS  # noqa: SLF001
+
+
+def test_routing_epoch_allocator_migration_is_monotonic_and_non_recreatable() -> None:
+    migration = importlib.import_module(
+        "src.migrations.versions.0027_add_lightpanda_b0_routing_epoch_sequence"
+    )
+
+    assert migration.revision == "0027"
+    assert migration.down_revision == "0026"
+    create = migration._CREATE_SEQUENCE  # noqa: SLF001
+    assert "START WITH 2" in create
+    assert "MAXVALUE 9999999999999" in create
+    assert "NO CYCLE" in create
+    assert "CACHE 1" in create
+    assert "REVOKE ALL ON SEQUENCE public.lightpanda_b0_routing_epoch_seq FROM PUBLIC" in create
+    refusal = migration._REFUSE_USED_SEQUENCE_DOWNGRADE  # noqa: SLF001
+    assert "SELECT is_called FROM public.lightpanda_b0_routing_epoch_seq" in refusal
+    assert "sequence has been used" in refusal
+    trigger = migration._INSTALL_GO_HIGH_WATER_TRIGGER  # noqa: SLF001
+    assert "BEFORE INSERT OR UPDATE ON public.lightpanda_b0_write_fence" in trigger
+    assert "NEW.engine_owner IS DISTINCT FROM 'go'" in trigger
+    assert "current_epoch IS DISTINCT FROM NEW.routing_epoch" in trigger
+    assert "DETAIL = 'routing_epoch_not_current'" in trigger

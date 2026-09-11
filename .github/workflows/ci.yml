@@ -336,6 +336,16 @@ jobs:
     defaults:
       run:
         working-directory: apps/crawler/go/lightpanda-b0-supervisor
+    services:
+      redis:
+        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -353,6 +363,23 @@ jobs:
           go vet ./...
           go mod tidy -diff
           test -z "$(gofmt -l .)"
+
+      - name: Test installed producer UDS against real Redis and Lua
+        run: |
+          set -euo pipefail
+          producer_binary="$RUNNER_TEMP/lightpanda-b0-supervisor"
+          integration_binary="$RUNNER_TEMP/lightpanda-b0-integration.test"
+          go build -o "$producer_binary" .
+          go test -c -tags=integration -o "$integration_binary" .
+          sudo install -d -m 0700 -o 10001 -g 10001 /run/jobseek-lightpanda-producer
+          trap 'sudo rmdir /run/jobseek-lightpanda-producer' EXIT
+          sudo env \
+            LIGHTPANDA_B0_INTEGRATION_BINARY="$producer_binary" \
+            LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://localhost:6379/15 \
+            LIGHTPANDA_B0_INTEGRATION_PRODUCER_UID=10001 \
+            "$integration_binary" \
+            -test.run '^TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence$' \
+            -test.count=1
 
   crawler-image:
     name: Build Crawler Browser Image
@@ -439,6 +466,57 @@ jobs:
           push: false
           cache-from: type=gha,scope=crawler-slim
           cache-to: type=gha,mode=max,scope=crawler-slim,ignore-error=true
+
+      - name: Prove fresh producer volume initialization and client connectivity
+        env:
+          COMPOSE_PROJECT_NAME: jobseek-b0-volume-ci
+          CRAWLER_IMAGE_REF: jobseek-crawler-slim-ci:pr
+          BROWSER_IMAGE_REF: jobseek-crawler-slim-ci:pr
+          LIGHTPANDA_B0_PRODUCER_COHORT: c1
+          LIGHTPANDA_B0_CREDENTIAL_DIR: /tmp/jobseek-unused-credentials
+          LOCAL_DATABASE_URL: postgresql://fixture.invalid/jobseek
+          R2_ACCESS_KEY_ID: fixture
+          R2_SECRET_ACCESS_KEY: fixture
+          R2_ENDPOINT_URL: https://fixture.invalid
+          R2_DOMAIN_URL: https://fixture.invalid
+          R2_BUCKET: fixture
+          TYPESENSE_HOST: fixture.invalid
+          TYPESENSE_PORT: "8108"
+          TYPESENSE_PROTOCOL: https
+          TYPESENSE_OPERATIONS_KEY: fixture
+          GRAFANA_PROM_URL: https://fixture.invalid
+          GRAFANA_PROM_USERNAME: fixture
+          GRAFANA_PROM_PASSWORD: fixture
+          GRAFANA_LOKI_URL: https://fixture.invalid
+          GRAFANA_LOKI_USERNAME: fixture
+          GRAFANA_LOKI_PASSWORD: fixture
+        run: |
+          set -euo pipefail
+          compose=(docker compose -f apps/crawler/docker-compose.yml -f apps/crawler/lightpanda-b0-enabled.override.yml)
+          cleanup() {
+            "${compose[@]}" down --remove-orphans --volumes >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          cleanup
+          test -z "$(docker volume ls -q --filter name='^jobseek-lightpanda-b0-producer-socket$')"
+          timeout --foreground --signal=TERM --kill-after=5s 30s \
+            "${compose[@]}" run --rm --no-deps lightpanda-producer-socket-init
+          timeout --foreground --signal=TERM --kill-after=5s 30s \
+            "${compose[@]}" up -d --no-deps --force-recreate lightpanda-producer
+          producer_id="$("${compose[@]}" ps -q lightpanda-producer)"
+          for attempt in $(seq 1 30); do
+            state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$producer_id")"
+            [[ "$state" == healthy ]] && break
+            if ((attempt == 30)); then
+              "${compose[@]}" logs lightpanda-producer
+              exit 1
+            fi
+            sleep 1
+          done
+          timeout --foreground --signal=TERM --kill-after=5s 30s \
+            "${compose[@]}" run --rm --no-deps \
+            --entrypoint /app/.venv/bin/python worker-1 -c \
+            'import asyncio; from src.lightpanda.producer_client import request_manifest; result = asyncio.run(request_manifest("c1")); assert result.board_slugs == ("browser-use-careers",)'
 
       - name: Guard exact full image build context
         env:
@@ -1125,6 +1203,7 @@ jobs:
           tests/e2e/test_location_taxonomy_repair.py
           tests/e2e/test_postgres_pool_session_guards.py
           tests/e2e/test_lightpanda_write_fence.py
+          tests/lightpanda/test_claimant_postgres_e2e.py
           tests/e2e/test_durable_source_identity.py
           tests/e2e/test_merck_identity_migration.py
           tests/e2e/test_nw_provider_migration.py

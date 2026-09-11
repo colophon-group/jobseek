@@ -27,6 +27,12 @@ from src.lightpanda.claimant import (
     read_authoritative_schedule,
 )
 from src.lightpanda.routing import resolve_render_assignment
+from src.lightpanda.write_fence import (
+    LightpandaWriteFence,
+    LightpandaWriteFenceRejected,
+    activate_write_fence,
+    authoritative_write,
+)
 from src.lightpanda_queue import LightpandaB0Queue, LightpandaB0Task, RouteIdentity
 
 REQUIRE_POSTGRES_E2E = os.getenv("REQUIRE_POSTGRES_E2E") == "true"
@@ -34,6 +40,115 @@ pytestmark = pytest.mark.skipif(
     not REQUIRE_POSTGRES_E2E,
     reason="set REQUIRE_POSTGRES_E2E=true against an isolated migrated PostgreSQL",
 )
+
+
+async def test_go_write_fence_is_bound_to_current_postgres_high_water() -> None:
+    dsn = os.environ["LOCAL_DATABASE_URL"]
+    pool = await asyncpg.create_pool(dsn, min_size=1, max_size=1)
+    company_id = uuid.uuid4()
+    board_id = uuid.uuid4()
+    posting_id = uuid.uuid4()
+    try:
+        await pool.execute(
+            "INSERT INTO company (id, name, slug) VALUES ($1, $2, $3)",
+            company_id,
+            "Lightpanda epoch fence E2E",
+            f"lightpanda-epoch-e2e-{company_id.hex}",
+        )
+        await pool.execute(
+            "INSERT INTO job_board (id, company_id, board_slug, board_url) VALUES ($1, $2, $3, $4)",
+            board_id,
+            company_id,
+            f"lightpanda-epoch-e2e-{board_id.hex}",
+            f"https://epoch-e2e.invalid/board/{board_id}",
+        )
+        await pool.execute(
+            "INSERT INTO job_posting (id, company_id, board_id, source_url) "
+            "VALUES ($1, $2, $3, $4)",
+            posting_id,
+            company_id,
+            board_id,
+            f"https://epoch-e2e.invalid/posting/{posting_id}",
+        )
+        current = await pool.fetchval("SELECT nextval('public.lightpanda_b0_routing_epoch_seq')")
+        assert isinstance(current, int) and current > 1
+
+        def fence(epoch: int, sequence: int) -> LightpandaWriteFence:
+            return LightpandaWriteFence(
+                job_posting_id=posting_id,
+                shard_id="lightpanda-b0",
+                routing_epoch=epoch,
+                engine_owner="go",
+                config_revision=1,
+                payload_sha256="a" * 64,
+                claim_token=f"{epoch}:{sequence}",
+            )
+
+        with pytest.raises(LightpandaWriteFenceRejected) as stale:
+            await activate_write_fence(pool, fence(current - 1, 1))
+        assert stale.value.reason == "routing_epoch_not_current"
+        assert (
+            await pool.fetchval(
+                "SELECT count(*) FROM public.lightpanda_b0_write_fence WHERE job_posting_id = $1",
+                posting_id,
+            )
+            == 0
+        )
+
+        await activate_write_fence(pool, fence(current, 1))
+        assert (
+            await pool.fetchval(
+                "SELECT routing_epoch FROM public.lightpanda_b0_write_fence "
+                "WHERE job_posting_id = $1",
+                posting_id,
+            )
+            == current
+        )
+        newer = await pool.fetchval("SELECT nextval('public.lightpanda_b0_routing_epoch_seq')")
+        assert newer == current + 1
+        titles_before = await pool.fetchval(
+            "SELECT titles FROM job_posting WHERE id = $1",
+            posting_id,
+        )
+        with pytest.raises(LightpandaWriteFenceRejected) as stale_transaction:
+            async with authoritative_write(
+                pool,
+                fence(current, 1),
+                job_posting_id=str(posting_id),
+            ) as connection:
+                await connection.execute(
+                    "UPDATE job_posting SET titles = ARRAY['must roll back'] WHERE id = $1",
+                    posting_id,
+                )
+        assert stale_transaction.value.reason == "routing_epoch_not_current"
+        assert (
+            await pool.fetchval(
+                "SELECT titles FROM job_posting WHERE id = $1",
+                posting_id,
+            )
+            == titles_before
+        )
+        with pytest.raises(asyncpg.RaiseError) as stale_update:
+            await pool.execute(
+                "UPDATE public.lightpanda_b0_write_fence "
+                "SET state = state WHERE job_posting_id = $1",
+                posting_id,
+            )
+        assert stale_update.value.sqlstate == "P0001"
+        assert stale_update.value.message == "lightpanda_b0_write_fence_rejected"
+        assert stale_update.value.detail == "routing_epoch_not_current"
+        assert (
+            await pool.fetchval(
+                "SELECT state FROM public.lightpanda_b0_write_fence WHERE job_posting_id = $1",
+                posting_id,
+            )
+            == "active"
+        )
+    finally:
+        await pool.execute("DELETE FROM job_posting WHERE id = $1", posting_id)
+        await pool.execute("DELETE FROM job_board WHERE id = $1", board_id)
+        await pool.execute("DELETE FROM company WHERE id = $1", company_id)
+        await pool.close()
 
 
 class _RenderedReservation:

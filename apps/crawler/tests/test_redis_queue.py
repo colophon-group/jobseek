@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import os
 import time
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import fakeredis.aioredis
 import pytest
+from redis.exceptions import ResponseError
 
 import src.redis_queue as rq
 from src.config import settings
+from src.lightpanda.producer_client import ProducerClientError, ProducerResult
 
 
 @pytest.fixture(autouse=True)
-def mock_redis(monkeypatch):
+def mock_redis(monkeypatch, tmp_path):
     """Replace get_redis with a fakeredis instance for all tests."""
     fake = fakeredis.aioredis.FakeRedis(
         decode_responses=True,
@@ -24,6 +28,10 @@ def mock_redis(monkeypatch):
     monkeypatch.setattr(rq, "_CLAIM_SHA", None)
     monkeypatch.setattr(rq, "_ENQUEUE_SHA", None)
     monkeypatch.setattr(rq, "_RESCHEDULE_SHA", None)
+    producer_authority = tmp_path / "producer-authority"
+    producer_authority.mkdir(mode=0o700)
+    monkeypatch.setattr(rq, "_PRODUCER_AUTHORITY_DIRECTORY", producer_authority)
+    monkeypatch.setattr(rq, "_PRODUCER_AUTHORITY_UID", os.geteuid())
     return fake
 
 
@@ -128,6 +136,145 @@ async def test_scrape_fallback_can_enqueue_while_previous_step_is_inflight():
         first_time=True,
     )
     assert await r.zcard(f"ft_scrapes_simple:{domain}") == 1
+
+
+async def test_off_mode_scrape_enqueue_obeys_redis_wide_go_cohort_owner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    r = rq.get_redis()
+    monkeypatch.setattr(settings, "lightpanda_b0_producer_mode", "off")
+    route = "lightpanda-b0:{production-b0}:route"
+    await r.hset(
+        route,
+        mapping={
+            "shard_id": "lightpanda-b0",
+            "routing_epoch": "1",
+            "engine_owner": "go",
+            "claim_sequence": "0",
+        },
+    )
+    await r.hset(
+        "lightpanda-b0:producer-owner",
+        mapping={
+            "schema": "jobseek.lightpanda.producer-owner/v1",
+            "namespace": "production-b0",
+            "shard_id": "lightpanda-b0",
+            "routing_epoch": "1",
+            "engine_owner": "go",
+            "cohort": "c1",
+            "board_count": "1",
+            "board_slug:browser-use-careers": "1",
+        },
+    )
+    await r.hset("board:cohort-board", mapping={"board_slug": "browser-use-careers"})
+    await r.hset("board:outside-board", mapping={"board_slug": "outside-careers"})
+    config = {
+        "board_id": "cohort-board",
+        "source_url": "https://jobs.example.com/cohort",
+        "scrape_step": "0",
+    }
+    with pytest.raises(ResponseError, match="Go owner covers board"):
+        await rq.enqueue_scrape(
+            "jobs.example.com", "new-cohort-posting", time.time(), config, browser=True
+        )
+    assert not await r.exists("scrape:new-cohort-posting")
+    assert await r.zcard("scrapes_browser:jobs.example.com") == 0
+
+    outside = dict(config, board_id="outside-board")
+    assert await rq.enqueue_scrape(
+        "jobs.example.com", "new-outside-posting", time.time(), outside, browser=True
+    )
+    assert await r.hget("scrape:new-outside-posting", "board_id") == "outside-board"
+    assert await r.zscore("scrapes_browser:jobs.example.com", "new-outside-posting") is not None
+
+
+@pytest.mark.parametrize("marker_kind", ["regular", "symlink", "directory"])
+async def test_off_mode_refuses_durable_go_marker_after_whole_redis_loss(
+    monkeypatch: pytest.MonkeyPatch, marker_kind: str
+) -> None:
+    r = rq.get_redis()
+    monkeypatch.setattr(settings, "lightpanda_b0_producer_mode", "off")
+    marker = rq._PRODUCER_AUTHORITY_DIRECTORY / rq._PRODUCER_ACTIVATION_MARKER
+    if marker_kind == "regular":
+        marker.write_bytes(b"unsafe-marker\n")
+        marker.chmod(0o644)
+    elif marker_kind == "symlink":
+        marker.symlink_to("missing-target")
+    else:
+        marker.mkdir()
+
+    with pytest.raises(RuntimeError, match="durable Go producer authority"):
+        await rq.enqueue_scrape(
+            "jobs.example.com",
+            "lost-redis-posting",
+            time.time(),
+            {
+                "board_id": "lost-board",
+                "source_url": "https://jobs.example.com/lost",
+                "scrape_step": "0",
+            },
+            browser=True,
+        )
+
+    assert not await r.exists("scrape:lost-redis-posting")
+    assert await r.zcard("scrapes_browser:jobs.example.com") == 0
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("board_count", "1.0"),
+        ("namespace", "n" * 129),
+        ("shard_id", "s" * 129),
+        ("routing_epoch", "01"),
+        ("member", "m" * 129),
+    ],
+)
+async def test_malformed_redis_wide_go_owner_fails_before_legacy_mutation(
+    monkeypatch: pytest.MonkeyPatch, field: str, value: str
+) -> None:
+    r = rq.get_redis()
+    monkeypatch.setattr(settings, "lightpanda_b0_producer_mode", "off")
+    owner = {
+        "schema": "jobseek.lightpanda.producer-owner/v1",
+        "namespace": "production-b0",
+        "shard_id": "lightpanda-b0",
+        "routing_epoch": "1",
+        "engine_owner": "go",
+        "cohort": "c1",
+        "board_count": "1",
+        "board_slug:browser-use-careers": "1",
+    }
+    if field == "member":
+        del owner["board_slug:browser-use-careers"]
+        owner[f"board_slug:{value}"] = "1"
+    else:
+        owner[field] = value
+    await r.hset("lightpanda-b0:producer-owner", mapping=cast(Any, owner))
+    await r.hset(
+        "lightpanda-b0:{production-b0}:route",
+        mapping={
+            "shard_id": owner["shard_id"],
+            "routing_epoch": owner["routing_epoch"],
+            "engine_owner": "go",
+            "claim_sequence": "0",
+        },
+    )
+    await r.hset("board:cohort-board", mapping={"board_slug": "browser-use-careers"})
+    with pytest.raises(ResponseError, match="producer owner is corrupt"):
+        await rq.enqueue_scrape(
+            "jobs.example.com",
+            "new-cohort-posting",
+            time.time(),
+            {
+                "board_id": "cohort-board",
+                "source_url": "https://jobs.example.com/cohort",
+                "scrape_step": "0",
+            },
+            browser=True,
+        )
+    assert not await r.exists("scrape:new-cohort-posting")
+    assert await r.zcard("scrapes_browser:jobs.example.com") == 0
 
 
 async def test_enqueue_monitor_first_time_flag():
@@ -1595,3 +1742,39 @@ async def test_get_deadletter_depth_metric_helper(mock_redis):
     assert await rq.get_deadletter_depth(browser=False) == 0
     await r.zadd("deadletter:simple", {"monitor|x|y": time.time()})
     assert await rq.get_deadletter_depth(browser=False) == 1
+
+
+async def test_enabled_scrape_enqueue_is_mutated_only_by_go(
+    mock_redis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+
+    async def request_task(**request: object) -> ProducerResult:
+        calls.append(str(request["operation"]))
+        return ProducerResult("activated", "a" * 64, "b" * 64, activated=True)
+
+    monkeypatch.setattr(settings, "lightpanda_b0_producer_mode", "enabled")
+    monkeypatch.setattr("src.lightpanda.producer_client.request_task", request_task)
+    added = await rq.enqueue_scrape(
+        "jobs.example.com",
+        "posting-go",
+        123,
+        {"board_id": "board-go", "source_url": "https://jobs.example.com/posting"},
+        browser=True,
+    )
+    assert added is True and calls == ["enqueue"]
+    assert not await mock_redis.exists("scrape:posting-go")
+    assert await mock_redis.zcard("scrapes_browser:jobs.example.com") == 0
+
+
+async def test_enabled_scrape_enqueue_fails_closed_without_go_authority(
+    mock_redis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def request_task(**_request: object) -> ProducerResult:
+        raise ProducerClientError("unavailable")
+
+    monkeypatch.setattr(settings, "lightpanda_b0_producer_mode", "enabled")
+    monkeypatch.setattr("src.lightpanda.producer_client.request_task", request_task)
+    with pytest.raises(ProducerClientError, match="unavailable"):
+        await rq.enqueue_scrape("jobs.example.com", "posting-go", 123, {}, browser=True)
+    assert not await mock_redis.exists("scrape:posting-go")

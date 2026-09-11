@@ -52,7 +52,9 @@ Provider-incident circuit breaker (shared across distinct tenant hosts):
 from __future__ import annotations
 
 import json
+import os
 import re
+import stat
 import time
 from collections.abc import Awaitable, Sequence
 from dataclasses import dataclass
@@ -71,6 +73,55 @@ log = structlog.get_logger()
 # ---------------------------------------------------------------------------
 
 _pool: aioredis.ConnectionPool | None = None
+
+_PRODUCER_AUTHORITY_DIRECTORY = Path("/run/jobseek-lightpanda-producer")
+_PRODUCER_ACTIVATION_MARKER = ".activation-v1"
+_PRODUCER_AUTHORITY_UID = 10001
+
+
+def _producer_activation_marker_present() -> bool:
+    """Attest marker absence through the exact mounted authority directory."""
+
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        directory_flags |= os.O_NOFOLLOW
+    try:
+        directory_fd = os.open(_PRODUCER_AUTHORITY_DIRECTORY, directory_flags)
+    except FileNotFoundError:
+        # Developer machines legitimately have no production authority volume.
+        return False
+    except OSError as exc:
+        raise RuntimeError("producer authority volume cannot be attested") from exc
+    try:
+        before = os.fstat(directory_fd)
+        if not stat.S_ISDIR(before.st_mode) or (
+            before.st_uid,
+            stat.S_IMODE(before.st_mode),
+        ) not in {(0, 0o755), (_PRODUCER_AUTHORITY_UID, 0o700)}:
+            raise RuntimeError("producer authority volume metadata is unsafe")
+        try:
+            os.stat(
+                _PRODUCER_ACTIVATION_MARKER,
+                dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            present = False
+        except OSError as exc:
+            raise RuntimeError("producer activation marker cannot be attested") from exc
+        else:
+            present = True
+        after = os.fstat(directory_fd)
+        if (after.st_dev, after.st_ino, after.st_uid, stat.S_IMODE(after.st_mode)) != (
+            before.st_dev,
+            before.st_ino,
+            before.st_uid,
+            stat.S_IMODE(before.st_mode),
+        ):
+            raise RuntimeError("producer authority volume changed during attestation")
+        return present
+    finally:
+        os.close(directory_fd)
 
 
 def get_pool() -> aioredis.ConnectionPool:
@@ -799,10 +850,8 @@ async def enqueue_scrape(
 ) -> bool:
     """Enqueue a scrape task. Returns True if newly added."""
     r = get_redis()
-    from src.lightpanda.producer import enqueue_if_allowlisted
 
-    b0_result = await enqueue_if_allowlisted(
-        r,
+    b0_result = await _enqueue_with_go_producer(
         domain=domain,
         posting_id=posting_id,
         next_scrape_at=next_scrape_at,
@@ -847,13 +896,11 @@ async def enqueue_scrapes(schedules: Sequence[ScrapeSchedule]) -> list[bool]:
         return []
 
     r = get_redis()
-    from src.lightpanda.producer import enqueue_if_allowlisted
 
     ordered: list[bool | None] = [None] * len(schedules)
     legacy: list[tuple[int, ScrapeSchedule]] = []
     for index, schedule in enumerate(schedules):
-        b0_result = await enqueue_if_allowlisted(
-            r,
+        b0_result = await _enqueue_with_go_producer(
             domain=schedule.domain,
             posting_id=schedule.posting_id,
             next_scrape_at=schedule.next_scrape_at,
@@ -913,6 +960,40 @@ async def enqueue_scrapes(schedules: Sequence[ScrapeSchedule]) -> list[bool]:
     if any(value is None for value in ordered):
         raise RuntimeError("scrape enqueue result conservation failure")
     return cast(list[bool], ordered)
+
+
+async def _enqueue_with_go_producer(
+    *,
+    domain: str,
+    posting_id: str,
+    next_scrape_at: float,
+    config: dict,
+    browser: bool,
+) -> bool | None:
+    """Return literal legacy only from off mode or an authenticated Go decision."""
+
+    mode = settings.lightpanda_b0_producer_mode
+    if mode == "off":
+        if _producer_activation_marker_present():
+            raise RuntimeError("durable Go producer authority blocks legacy enqueue")
+        return None
+    if mode != "enabled":
+        raise RuntimeError("LIGHTPANDA_B0_PRODUCER_MODE must be off or enabled")
+    from src.lightpanda.producer_client import ProducerClientError, request_task
+
+    result = await request_task(
+        operation="enqueue",
+        domain=domain,
+        posting_id=posting_id,
+        next_scrape_at=next_scrape_at,
+        config=config,
+        browser=browser,
+    )
+    if result.is_legacy:
+        return None
+    if result.outcome != "activated":
+        raise ProducerClientError("Go producer did not atomically activate work")
+    return result.activated
 
 
 # ---------------------------------------------------------------------------

@@ -344,6 +344,135 @@ async def test_executor_refuses_pool_above_one_before_database_start(
     create_pool.assert_not_awaited()
 
 
+async def test_stale_executor_epoch_fails_before_publishing_socket(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    del tmp_path
+    cleanup = tempfile.TemporaryDirectory(prefix="lp-exec-", dir="/tmp")
+    socket_path = executor.Path(cleanup.name) / "executor.sock"
+    monkeypatch.setattr(executor, "SOCKET_PATH", socket_path)
+    monkeypatch.setenv("LIGHTPANDA_B0_EXECUTOR_MODE", "enabled")
+    monkeypatch.setenv("CRAWLER_DB_POOL_MIN", "1")
+    monkeypatch.setenv("CRAWLER_DB_POOL_MAX", "1")
+    monkeypatch.setenv("LIGHTPANDA_B0_SHARD_ID", "lightpanda-b0")
+    monkeypatch.setenv("LIGHTPANDA_B0_ROUTING_EPOCH", "7")
+    monkeypatch.setattr(executor.socket, "SO_PEERCRED", 17, raising=False)
+
+    class Pool:
+        async def fetchrow(self, query: str) -> dict[str, object]:
+            assert query == executor._CURRENT_ROUTING_EPOCH_SQL
+            return {"last_value": 8, "is_called": True}
+
+    monkeypatch.setattr(executor, "create_local_pool", AsyncMock(return_value=Pool()))
+    closed = AsyncMock()
+    monkeypatch.setattr(executor, "close_local_pool", closed)
+
+    with pytest.raises(executor.ExecutorProtocolError, match="PostgreSQL high-water"):
+        await executor._serve()
+
+    assert not socket_path.exists()
+    closed.assert_awaited_once()
+    cleanup.cleanup()
+
+
+async def test_resident_health_route_attestation_rechecks_postgres_epoch(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    del tmp_path
+    cleanup = tempfile.TemporaryDirectory(prefix="lp-exec-", dir="/tmp")
+    socket_path = executor.Path(cleanup.name) / "executor.sock"
+    monkeypatch.setattr(executor, "SOCKET_PATH", socket_path)
+    monkeypatch.setenv("LIGHTPANDA_B0_SHARD_ID", "lightpanda-b0")
+    monkeypatch.setenv("LIGHTPANDA_B0_ROUTING_EPOCH", "7")
+
+    class Pool:
+        epoch = 7
+
+        async def fetchrow(self, query: str) -> dict[str, object]:
+            assert query == executor._CURRENT_ROUTING_EPOCH_SQL
+            return {"last_value": self.epoch, "is_called": True}
+
+    pool = Pool()
+
+    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            await executor._dispatch(
+                reader,
+                writer,
+                pool,
+                routing_epoch=7,
+                shard_id="lightpanda-b0",
+            )
+        except executor.ExecutorProtocolError:
+            await executor._write_message(writer, {"type": "error", "error": "executor_failed"})
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    server = await asyncio.start_unix_server(handle, path=socket_path)
+    socket_path.chmod(0o600)
+    try:
+        await executor._healthcheck()
+        pool.epoch = 8
+        with pytest.raises(executor.ExecutorProtocolError):
+            await executor._healthcheck()
+    finally:
+        server.close()
+        await server.wait_closed()
+        cleanup.cleanup()
+
+
+async def test_route_attestation_waits_for_the_single_connection_then_succeeds() -> None:
+    release = asyncio.Event()
+
+    class Pool:
+        async def fetchrow(self, query: str) -> dict[str, object]:
+            assert query == executor._CURRENT_ROUTING_EPOCH_SQL
+            await release.wait()
+            return {"last_value": 7, "is_called": True}
+
+    reader = asyncio.StreamReader()
+    reader.feed_data(
+        _frame(
+            {
+                "version": executor.PROTOCOL,
+                "type": "attest_route",
+                "shard_id": "lightpanda-b0",
+                "routing_epoch": 7,
+            }
+        )
+    )
+    reader.feed_eof()
+
+    class Writer:
+        payload = bytearray()
+
+        def write(self, data: bytes) -> None:
+            self.payload.extend(data)
+
+        async def drain(self) -> None:
+            return None
+
+    writer = Writer()
+    pending = asyncio.create_task(
+        executor._dispatch(
+            reader,
+            cast(Any, writer),
+            Pool(),
+            routing_epoch=7,
+            shard_id="lightpanda-b0",
+        )
+    )
+    await asyncio.sleep(0)
+    assert not pending.done()
+    release.set()
+    await pending
+    response = asyncio.StreamReader()
+    response.feed_data(writer.payload)
+    response.feed_eof()
+    assert json.loads(await executor._read_frame(response))["type"] == "route_attested"
+
+
 def test_executor_socket_directory_and_socket_must_be_private_owned(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:

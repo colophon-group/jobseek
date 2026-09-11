@@ -54,6 +54,10 @@ _REQUEST_FIELDS: Final = {
     "lease_until_ms",
     "browser_result",
 }
+_PREFLIGHT_FIELDS: Final = {"version", "type", "shard_id", "routing_epoch"}
+_CURRENT_ROUTING_EPOCH_SQL: Final = (
+    "SELECT last_value, is_called FROM public.lightpanda_b0_routing_epoch_seq"
+)
 _FORBIDDEN_ENV: Final = {
     "REDIS_URL",
     "LIGHTPANDA_B0_CA_CERTIFICATE",
@@ -337,8 +341,12 @@ async def _execute(
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
     pool: Any,
+    initial_payload: bytes | None = None,
 ) -> None:
-    request = _object(await _read_frame(reader), _REQUEST_FIELDS)
+    request = _object(
+        await _read_frame(reader) if initial_payload is None else initial_payload,
+        _REQUEST_FIELDS,
+    )
     task, lease, result_payload = _decode_task(request)
     result = _decode_result(result_payload)
     await _write_message(
@@ -414,6 +422,52 @@ async def _execute(
     await _write_message(writer, response)
 
 
+async def _attest_current_epoch(pool: Any, expected_epoch: int) -> None:
+    row = await pool.fetchrow(_CURRENT_ROUTING_EPOCH_SQL)
+    if (
+        row is None
+        or row.get("is_called") is not True
+        or isinstance(row.get("last_value"), bool)
+        or row.get("last_value") != expected_epoch
+    ):
+        raise ExecutorProtocolError("executor routing epoch is not the PostgreSQL high-water")
+
+
+async def _dispatch(
+    reader: asyncio.StreamReader,
+    writer: asyncio.StreamWriter,
+    pool: Any,
+    *,
+    routing_epoch: int,
+    shard_id: str,
+) -> None:
+    payload = await _read_frame(reader)
+    try:
+        candidate = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        candidate = None
+    if isinstance(candidate, dict) and candidate.get("type") == "attest_route":
+        request = _object(payload, _PREFLIGHT_FIELDS)
+        if (
+            request["version"] != PROTOCOL
+            or request["shard_id"] != shard_id
+            or isinstance(request["routing_epoch"], bool)
+            or request["routing_epoch"] != routing_epoch
+        ):
+            raise ExecutorProtocolError("executor preflight identity is invalid")
+        await _attest_current_epoch(pool, routing_epoch)
+        await _write_message(
+            writer,
+            {
+                "type": "route_attested",
+                "shard_id": shard_id,
+                "routing_epoch": routing_epoch,
+            },
+        )
+        return
+    await _execute(reader, writer, pool, initial_payload=payload)
+
+
 async def _serve() -> None:
     if os.environ.get("LIGHTPANDA_B0_EXECUTOR_MODE") != "enabled":
         raise ExecutorProtocolError("executor mode must be exactly enabled")
@@ -430,7 +484,21 @@ async def _serve() -> None:
         configured_socket.unlink()
     if getattr(socket, "SO_PEERCRED", None) is None:
         raise ExecutorProtocolError("SO_PEERCRED is required")
+    shard_id = os.environ.get("LIGHTPANDA_B0_SHARD_ID", "")
+    if shard_id != "lightpanda-b0":
+        raise ExecutorProtocolError("executor shard identity must be exact")
+    epoch_text = os.environ.get("LIGHTPANDA_B0_ROUTING_EPOCH", "")
+    if not epoch_text.isascii() or not epoch_text.isdecimal() or epoch_text.startswith("0"):
+        raise ExecutorProtocolError("executor routing epoch must be canonical")
+    routing_epoch = int(epoch_text)
+    if not 0 < routing_epoch <= 9_999_999_999_999:
+        raise ExecutorProtocolError("executor routing epoch is out of range")
     pool = await create_local_pool()
+    try:
+        await _attest_current_epoch(pool, routing_epoch)
+    except BaseException:
+        await close_local_pool()
+        raise
     active = 0
     handlers: set[asyncio.Task[None]] = set()
 
@@ -458,7 +526,13 @@ async def _serve() -> None:
             return
         active += 1
         try:
-            await _execute(reader, writer, pool)
+            await _dispatch(
+                reader,
+                writer,
+                pool,
+                routing_epoch=routing_epoch,
+                shard_id=shard_id,
+            )
         except (Exception, asyncio.CancelledError):
             with contextlib.suppress(Exception):
                 await _write_message(writer, {"type": "error", "error": "executor_failed"})
@@ -499,9 +573,42 @@ async def _serve() -> None:
             raise ExecutorProtocolError("executor handlers exceeded shutdown grace")
 
 
+async def _healthcheck() -> None:
+    _validate_socket(SOCKET_PATH)
+    shard_id = os.environ.get("LIGHTPANDA_B0_SHARD_ID", "")
+    epoch_text = os.environ.get("LIGHTPANDA_B0_ROUTING_EPOCH", "")
+    if shard_id != "lightpanda-b0" or not epoch_text.isascii() or not epoch_text.isdecimal():
+        raise ExecutorProtocolError("executor health route identity is invalid")
+    routing_epoch = int(epoch_text)
+    reader, writer = await asyncio.open_unix_connection(SOCKET_PATH, limit=FRAME_LIMIT + 1)
+    try:
+        await _write_message(
+            writer,
+            {
+                "version": PROTOCOL,
+                "type": "attest_route",
+                "shard_id": shard_id,
+                "routing_epoch": routing_epoch,
+            },
+        )
+        response = _object(
+            await _read_frame(reader),
+            {"type", "shard_id", "routing_epoch"},
+        )
+        if (
+            response["type"] != "route_attested"
+            or response["shard_id"] != shard_id
+            or response["routing_epoch"] != routing_epoch
+        ):
+            raise ExecutorProtocolError("executor health route attestation failed")
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
 def main() -> None:
     if sys.argv[1:] == ["--healthcheck"]:
-        _validate_socket(SOCKET_PATH)
+        asyncio.run(_healthcheck())
         return
     if sys.argv[1:]:
         raise SystemExit("usage: python -m src.lightpanda.executor [--healthcheck]")

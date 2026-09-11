@@ -303,28 +303,135 @@ PostgreSQL again at every fenced attempt. The DB-only executor has no
 Redis, renderer, proxy, R2, or external HTTP credentials; its origin transport
 rejects every request, so processing can only consume the Go-supplied result.
 
+The enabled overlay also starts a non-claiming `lightpanda-producer` Go
+sidecar. It is the sole owner of c1/c4 membership classification, parser-
+assignment validation, canonical task construction, revision selection, and
+the producer-side B0 Lua mutation. Python workers retain only a thin client:
+they send legacy enqueue inputs over
+`/run/jobseek-lightpanda-producer/control.sock`, accept `literal_legacy` only
+from the authenticated Go peer, and otherwise use one atomic classify-and-
+activate request. The two-phase preparation-digest/activation exchange is
+operator-only for cold cutover planning. The operator obtains the exact board
+manifest from the same Go authority before querying PostgreSQL; Python has no
+duplicate c1/c4 board manifest. Missing, slow, malformed, fenced, or corrupt
+authority fails closed; there is no per-task fallback or response cache.
+
+The UDS directory is owned by UID 10001 at mode 0700 and the socket at mode
+0600. Mutation clients run as root (UID 0); the producer rejects mutation from
+its own UID. The container healthcheck runs as producer UID 10001 and is
+limited to an exact framed, read-only authority probe that names the configured
+mutation UID. It verifies directory/socket ownership and mode, socket inode
+across connect, the server's Linux `SO_PEERCRED`, the canonical response, and
+connection close; the server applies the reciprocal peer check.
+Because Docker creates a fresh named-volume root with unsuitable ownership,
+the cutover first runs a bounded, networkless one-shot initializer with only
+`CAP_CHOWN`; it normalizes and attests the directory before the UID-10001
+producer can start. The producer itself never runs as root.
+Frames use canonical uvarint framing and strict canonical JSON, are capped at
+256 KiB, and have a three-second deadline. The server has a bounded backlog of
+72 (the documented 67-caller discovery burst plus healthcheck headroom) and at
+most eight handlers; admission backpressures before `accept`, so excess callers
+are queued instead of deliberately dropped. Any Redis failure, route fence, or
+queue corruption latches authority loss, removes readiness, cancels the
+server, and terminates it with a bounded typed log. Startup, every authenticated
+health request, and every two-second periodic probe run the same read-only full
+Lua conservation audit, bounded to the lane's maximum 512 records. Thus a
+missing record/index/holder membership is detected after readiness as well as
+at startup.
+
+Before its first Redis mutation, the producer creates and fsyncs an exact,
+UID-10001-owned mode-0600 `.activation-v1` sentinel on the named producer
+volume in `P` (preparing) phase. The sentinel and Redis initialization are
+serialized against every preflight. The initialization Lua turn atomically
+publishes the route together with a Redis-wide
+`lightpanda-b0:producer-owner` hash containing the exact namespace, route,
+cohort, and Go-supplied board manifest. The producer then changes only the
+marker's phase byte to `A` (active), fsyncs it, and requires the complete
+active-marker/Redis pair to pass a second full audit before activating any
+task. Startup accepts only absent marker plus
+wholly absent Redis, or exact active marker plus fully valid Redis; preparing,
+partial, or mismatched pairs are recovery-only and never become ready. An
+all-seven-key-empty namespace is bootstrap only in the first pair.
+Consequently, deleting the seven namespace keys or losing the whole Redis
+database after activation is corruption and cannot regain readiness on
+restart. The base Python workers also mount the named authority volume
+read-only, and off-mode enqueue requires the marker to be absent before it may
+use the legacy path. The global legacy enqueue Lua independently validates the
+exact canonical owner/route marker: cohort boards are rejected before any
+legacy config or queue mutation, while boards outside the manifest continue on
+the Python queues. Malformed owner state fails closed. A fixed set of 32
+context-aware task-ID stripes serializes each producer task through re-prepare
+and activation, preventing concurrent same-ID requests from turning an
+idempotent activation into process-fatal `task_already_exists`.
+
+The enabled overlay deliberately creates every mutation-capable service with
+restart disabled. Only after all health checks pass, every exact Compose
+container is re-inspected as `no:0`, and the active receipt is fsynced does the
+wrapper dynamically restore the base `unless-stopped` policies (with the
+producer capped at five failures), verifying the same container ID and exact
+policy and explicit running state after each update. The claimant is armed
+last. A pre-receipt reboot
+therefore restarts none of the partial lane; a failure during arming retains
+the active receipt and contains every service. The sidecar receives Redis,
+fixed route/cohort, and the producer named volume only: it has no PostgreSQL,
+renderer, mTLS, proxy, R2, or Typesense authority.
+
+`network_mode: host` remains functionally required in this slice because the
+production Redis authority is reached on host loopback. It therefore does not
+provide network-egress containment; the sidecar's isolation is defense in
+depth through its credential set and narrow protocol, not a network sandbox.
+The accepted debt is bounded by withholding every downstream credential
+(database, renderer, proxy, R2, Typesense, and claimant PKI). Moving Redis to a
+dedicated network namespace is follow-up infrastructure work, not part of this
+producer-authority cutover.
+
 Activation is deliberately cold. First add `deployment-hold:crawler` to the
 tracking issue and confirm the renderer release and credential generation are
 healthy. Then the operator runs the single host wrapper; the wrapper holds
 `/run/lock/jobseek-crawler-mutation.lock` through stop, attestation, digest-
 gated transfer, restart, health checks, and durable receipt publication:
 
-The ordinary crawler deploy persists the reviewed non-secret identity tuple
-(`10.0.0.5`, `production-b0`, `lightpanda-b0`, routing epoch `1`) in the active
-environment, and the enabled Compose overlay pins the same literals. The
-wrapper rejects any disagreement before stopping a service.
+The ordinary crawler deploy persists only the reviewed static non-secret
+identity (`10.0.0.5`, `production-b0`, `lightpanda-b0`); it deliberately does
+not publish a reusable routing epoch. Under the host mutation lock, every
+fresh activation reserves the next value from the dedicated PostgreSQL
+`lightpanda_b0_routing_epoch_seq` before enabled Compose may render or any
+producer, sentinel, or Redis mutation may begin. The sequence starts at `2`
+because epoch `1` is the retired pre-allocator incarnation, is bounded by the
+queue protocol maximum, never cycles, and burns values on failed attempts, so
+gaps are expected. The enabled overlay requires the exact exported epoch and
+passes it to the producer, claimant, and DB-only executor. Before any enabled
+Compose render, the wrapper requires the receipt/reserved epoch to equal the
+current PostgreSQL sequence high-water. The executor repeats that database
+attestation before publishing its socket. Its resident UDS `attest_route`
+challenge binds the live resident process to the exact shard and epoch and
+rechecks PostgreSQL; Docker health and the Go supervisor use that challenge.
+Go performs it before renderer reservations or Redis initialization and still
+receives no database credential. A PostgreSQL trigger independently rejects
+every Go fence insert or update whose epoch is no longer current, rolling back
+the surrounding application transaction; Python-owned fences bypass that
+check. The wrapper rejects a malformed or out-of-range value before stopping
+a service.
 
 ```bash
 sudo -u deploy /home/deploy/scripts/lightpanda-b0-cutover.sh activate c1
 ```
 
-The wrapper also stops `drain`, rejects every existing Compose one-off, and
-proves the named services are stopped. The planner compares the exact active
-PostgreSQL c1/c4 board set and parser metadata with Redis, suffix-scans both
+The wrapper also stops `drain` and the producer sidecar, rejects every existing
+Compose one-off, and proves the named services are stopped. It then starts
+only the non-claiming producer, waits for its authenticated UDS to become
+healthy, and runs the read-only plan before any queue mutation. The planner
+requests the exact cohort manifest from Go, compares that active PostgreSQL
+board set and parser metadata with Redis, suffix-scans both
 legacy inflight/dead-letter sets, refuses active PostgreSQL leases, and emits a
 canonical plan digest before any ownership transfer. Each accepted record is
-transferred and guarded in one Lua turn. Start with `c1`; expansion is the same
-command with `c4` and idempotently retains c1.
+transferred and guarded in one Lua turn. Start with `c1`. Direct `c1` to `c4`
+activation is deliberately unsupported: first cold-rollback `c1` to Python,
+then run a distinct cold `activate c4` transition. An existing active receipt
+is safely read first to recover its exact epoch, fully attested against the
+requested cohort and epoch, and then re-drives the producer/Redis health path;
+filesystem attestation alone never returns activation success. A pending
+receipt is recovery-only and an `activate` retry preserves it unchanged.
 
 The pending receipt is written before the first transfer. Any later activation
 error triggers a host-level containment trap that stops the complete mutation
@@ -332,6 +439,17 @@ set and leaves that receipt in place. PostgreSQL fence rejection is a typed
 authority-loss result that stops the Go supervisor rather than entering its
 ordinary retry loop.
 
+Rollback planning and apply bind the attested receipt state and detected local
+marker phase into their digest. An active receipt with an absent Redis
+namespace is always authority loss. Pending recovery may treat an absent
+namespace as a pre-commit no-op only when the marker is absent, exactly
+preparing, or a bounded private partial preparing write; an active or unsafe
+marker remains cold. When the namespace is present, the route-fenced Lua
+rollback remains authoritative. This distinguishes a crash before Redis
+initialization from loss after the active phase was durably committed without
+attempting to reconstruct the cohort from PostgreSQL.
+
+Pending, active, and rollback-cleared receipts retain the same reserved epoch.
 After enabled services pass health checks the wrapper atomically publishes
 `/home/deploy/.lightpanda-b0-active-v1` as a deploy-owned mode-0600 receipt.
 Publication fsyncs the complete temporary file before rename and the parent
@@ -360,9 +478,52 @@ reactivates dead work under Go ownership.
 It reconstructs exact current scrape hashes and queue classes (preserving a
 non-null hash of `0`), drops deleted/inactive/unscheduled tasks and tasks whose
 current board is disabled or non-active, and refuses inflight, corrupt, or
-fenced B0 authority rather than guessing. It then removes exact-cohort Go
-write-fence rows, attests none remain, starts the base Python services, and
-removes the receipt only after health succeeds:
+fenced B0 authority rather than guessing. Before committing, the UID-10001 Go
+binary read-only attests that the activation sentinel is exactly clearable.
+The final Lua turn restores legacy work, deletes the seven B0 keys and legacy
+guards, and replaces the exact Go owner hash with an HLEN-8 rollback tombstone.
+That tombstone binds the cohort, route, rollback plan digest, and SHA-256 of the
+still-present active or pending receipt. Under the tombstone the operator
+idempotently deletes and counts zero every exact Go write fence for the route.
+
+After the rollback Lua commit and PostgreSQL fence cleanup, the wrapper first
+requires a synchronous Redis `SAVE` while the exact tombstone, source receipt,
+and producer sentinel still exist. A failed or lost reply therefore retries
+the full idempotent rollback. The Go one-shot then verifies but does not delete
+the tombstone while it removes and fsyncs the activation sentinel. The wrapper
+then durably publishes the distinct
+`rollback-cleared` receipt, carrying the same source-receipt SHA and rollback
+plan digest. An exact Lua compare-delete removes the tombstone only after the
+sentinel is absent, Redis namespace and guard keys are absent, and PostgreSQL
+route fences are zero. A second synchronous `SAVE` must persist tombstone
+absence before Python starts; a failed or lost reply retains the
+`rollback-cleared` receipt and retries only the exact delete/persistence
+boundary. The receipt is removed only after Python health succeeds. A crash
+after Redis commit retries PostgreSQL
+cleanup under the bound tombstone; a crash after sentinel clear retries from
+the source receipt; and a crash after `rollback-cleared` publication retries
+only the exact tombstone delete and absence persistence. A missing or stale
+tombstone, a mismatched
+source receipt, or tombstone coexistence with namespace/guard state fails
+closed. After successful rollback removes the receipt, the next activation
+must reserve a strictly newer sequence value; neither Redis nor a recreated
+host file is an epoch source.
+
+A hard-killed producer may leave its control socket inode on the named volume.
+After the wrapper has attested the host cold, the reset one-shot accepts only
+an exact UID-10001, mode-0600 socket whose bounded connect returns
+`ECONNREFUSED`; it revalidates the inode, removes it, and fsyncs the directory.
+A live socket, unsafe path, changed inode, or ambiguous liveness result remains
+a fatal rollback error. Only after Redis absence is proven, rollback may also
+remove a zero-length or partial sentinel left by a crash during its initial
+write, but only when it is still a bounded, regular, single-link, UID-10001,
+mode-0600 file. Symlinks, wrong ownership/mode, hardlinks, and oversized files
+remain fatal.
+
+Producer startup applies the same bounded inode, UID, mode, and connect
+liveness proof before replacing an existing socket. It removes and fsyncs only
+an exact socket whose connect returns `ECONNREFUSED`; a second producer cannot
+unlink a live first producer's socket.
 
 ```bash
 sudo -u deploy /home/deploy/scripts/lightpanda-b0-cutover.sh rollback c1
@@ -378,7 +539,8 @@ sudo -u deploy /home/deploy/scripts/lightpanda-b0-cutover.sh recover-pending c1
 ```
 
 The enabled lane has an exact no-swap ceiling of 1.5 GiB: the renderer is 1
-GiB, the Go supervisor is 128 MiB, and the DB-only executor is 384 MiB. The
+GiB, the Go claimant supervisor is 96 MiB, the non-claiming producer is 32
+MiB, and the DB-only executor is 384 MiB. The
 supervisor exposes bounded c1/c4 queue transition/fence, ready/inflight/dead,
 reap, due-to-claim/complete, renderer wait, executor wait, and task outcome
 telemetry on `127.0.0.1:9101`. The crawler-host Alloy target forwards that
@@ -476,12 +638,14 @@ budget.
 
 Keep the previous Python/Chromium image digest and deployment manifest for a
 time-boxed rollback window. To reverse a cohort: freeze new claims, drain or
-expire leases, verify conservation, increment/revoke the routing epoch,
+expire leases, verify conservation, retire the receipt-bound routing epoch,
 restore the pinned image, reseed if required, and resume. Never let two owners
-claim the same epoch. Every Postgres, Redis, or catalog schema change inside
-the window must prove compatibility with that pinned artifact; otherwise pin
-a replacement artifact and repeat the drill. The final drill runs against the
-actual production schema and data shape immediately before retirement.
+claim the same epoch; a later activation obtains a new PostgreSQL sequence
+value rather than deriving one from Redis. Every Postgres, Redis, or catalog
+schema change inside the window must prove compatibility with that pinned
+artifact; otherwise pin a replacement artifact and repeat the drill. The final
+drill runs against the actual production schema and data shape immediately
+before retirement.
 
 ### Lightpanda compatibility is explicit
 

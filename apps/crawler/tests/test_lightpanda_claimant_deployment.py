@@ -30,7 +30,9 @@ BUNDLE_SCRIPT = CRAWLER / "scripts/lightpanda-claimant-credentials.py"
 def _shell_function(source: str, name: str) -> str:
     start = source.index(f"{name}() {{")
     if name == "attest_receipt":
-        end = source.index('\n}\n\nif [[ "$OPERATION" == activate', start)
+        end = source.index("\n}\n\nclear_producer_activation_sentinel", start)
+    elif name == "load_receipt_identity":
+        end = source.index("\n}\n\nreserve_routing_epoch", start)
     else:
         end = source.index("\n}\n", start)
     return source[start : end + 3]
@@ -91,7 +93,6 @@ def _deploy_generated_b0_identity() -> dict[str, str]:
         "LIGHTPANDA_B0_SERVICE_HOST",
         "LIGHTPANDA_B0_QUEUE_NAMESPACE",
         "LIGHTPANDA_B0_SHARD_ID",
-        "LIGHTPANDA_B0_ROUTING_EPOCH",
     }
     values = dict(
         line.split("=", 1) for line in block.splitlines() if line.split("=", 1)[0] in keys
@@ -635,7 +636,7 @@ def test_installer_rejects_missing_and_exposed_transport(
         )
 
 
-def _compose_model(*, enabled: bool = False) -> dict[str, object]:
+def _compose_model(*, enabled: bool = False, routing_epoch: str | None = "7") -> dict[str, object]:
     docker = shutil.which("docker")
     if docker is None:
         pytest.skip("Docker Compose is unavailable")
@@ -664,6 +665,8 @@ def _compose_model(*, enabled: bool = False) -> dict[str, object]:
         "GRAFANA_LOKI_PASSWORD": "fixture",
     }
     environment.update(_deploy_generated_b0_identity())
+    if enabled and routing_epoch is not None:
+        environment["LIGHTPANDA_B0_ROUTING_EPOCH"] = routing_epoch
     command = [
         docker,
         "compose",
@@ -699,22 +702,39 @@ def test_deploy_persists_and_overlay_pins_exact_b0_production_identity() -> None
         "LIGHTPANDA_B0_SERVICE_HOST": "10.0.0.5",
         "LIGHTPANDA_B0_QUEUE_NAMESPACE": "production-b0",
         "LIGHTPANDA_B0_SHARD_ID": "lightpanda-b0",
-        "LIGHTPANDA_B0_ROUTING_EPOCH": "1",
     }
     assert _deploy_generated_b0_identity() == expected
     overlay = yaml.safe_load(ENABLED_OVERRIDE.read_text(encoding="utf-8"))
     services = overlay["services"]
     for name in ("worker-1", "worker-2", "worker-3", "browser-1"):
         environment = services[name]["environment"]
-        assert {
-            key: environment[key] for key in expected if key != "LIGHTPANDA_B0_SERVICE_HOST"
-        } == {key: value for key, value in expected.items() if key != "LIGHTPANDA_B0_SERVICE_HOST"}
+        assert environment == {
+            "LIGHTPANDA_B0_PRODUCER_MODE": "enabled",
+            "LIGHTPANDA_B0_PRODUCER_SOCKET": ("/run/jobseek-lightpanda-producer/control.sock"),
+        }
+    producer_environment = services["lightpanda-producer"]["environment"]
+    static_route = {
+        key: str(producer_environment[key])
+        for key in ("LIGHTPANDA_B0_QUEUE_NAMESPACE", "LIGHTPANDA_B0_SHARD_ID")
+    }
+    assert static_route == {key: expected[key] for key in static_route}
+    epoch_interpolation = "${LIGHTPANDA_B0_ROUTING_EPOCH:?routing epoch required}"
+    assert producer_environment["LIGHTPANDA_B0_ROUTING_EPOCH"] == epoch_interpolation
     claimant_environment = services["lightpanda-claimant"]["environment"]
     assert {key: str(claimant_environment[key]) for key in expected} == expected
+    assert claimant_environment["LIGHTPANDA_B0_ROUTING_EPOCH"] == epoch_interpolation
+    executor_environment = services["lightpanda-executor"]["environment"]
+    assert executor_environment["LIGHTPANDA_B0_SHARD_ID"] == expected["LIGHTPANDA_B0_SHARD_ID"]
+    assert executor_environment["LIGHTPANDA_B0_ROUTING_EPOCH"] == epoch_interpolation
     assert "${LIGHTPANDA_B0_SERVICE_HOST" not in ENABLED_OVERRIDE.read_text(encoding="utf-8")
     assert "${LIGHTPANDA_B0_QUEUE_NAMESPACE" not in ENABLED_OVERRIDE.read_text(encoding="utf-8")
     assert "${LIGHTPANDA_B0_SHARD_ID" not in ENABLED_OVERRIDE.read_text(encoding="utf-8")
-    assert "${LIGHTPANDA_B0_ROUTING_EPOCH" not in ENABLED_OVERRIDE.read_text(encoding="utf-8")
+    assert ENABLED_OVERRIDE.read_text(encoding="utf-8").count("${LIGHTPANDA_B0_ROUTING_EPOCH") == 3
+
+
+def test_enabled_overlay_refuses_to_render_without_reserved_routing_epoch() -> None:
+    with pytest.raises(AssertionError, match="routing epoch required"):
+        _compose_model(enabled=True, routing_epoch=None)
 
 
 @pytest.mark.parametrize(
@@ -723,7 +743,6 @@ def test_deploy_persists_and_overlay_pins_exact_b0_production_identity() -> None
         "LIGHTPANDA_B0_SERVICE_HOST",
         "LIGHTPANDA_B0_QUEUE_NAMESPACE",
         "LIGHTPANDA_B0_SHARD_ID",
-        "LIGHTPANDA_B0_ROUTING_EPOCH",
     ],
 )
 def test_cutover_rejects_drifted_fixed_identity_before_compose(
@@ -737,6 +756,7 @@ def test_cutover_rejects_drifted_fixed_identity_before_compose(
         (
             "set -eu",
             *(f'{key}="{value}"' for key, value in identity.items()),
+            "LIGHTPANDA_B0_ROUTING_EPOCH=7",
             _shell_function(wrapper, "validate_fixed_b0_identity"),
             "validate_fixed_b0_identity",
             'printf "compose\\n" >"$COMPOSE_LOG"',
@@ -755,24 +775,60 @@ def test_cutover_rejects_drifted_fixed_identity_before_compose(
     assert not compose_log.exists()
 
 
+@pytest.mark.parametrize(
+    "routing_epoch",
+    ["", "0", "00", "01", "+1", "-1", "10000000000000", "9223372036854775808"],
+)
+def test_cutover_rejects_noncanonical_or_out_of_range_routing_epoch(
+    routing_epoch: str,
+) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    harness = "\n".join(
+        (
+            "set -u",
+            "LIGHTPANDA_B0_SERVICE_HOST=10.0.0.5",
+            "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+            "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+            f"LIGHTPANDA_B0_ROUTING_EPOCH={routing_epoch!r}",
+            _shell_function(wrapper, "validate_fixed_b0_identity"),
+            "validate_fixed_b0_identity",
+        )
+    )
+
+    result = subprocess.run(["bash", "-c", harness], check=False, capture_output=True, text=True)
+
+    assert result.returncode != 0
+
+
 def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
     model = _compose_model(enabled=True)
     services = model["services"]  # type: ignore[index]
     supervisor = services["lightpanda-claimant"]  # type: ignore[index]
     executor = services["lightpanda-executor"]  # type: ignore[index]
+    producer = services["lightpanda-producer"]  # type: ignore[index]
 
     assert supervisor["network_mode"] == "host"  # type: ignore[index]
     assert supervisor["environment"]["LIGHTPANDA_B0_SUPERVISOR_MODE"] == "enabled"  # type: ignore[index]
-    assert int(supervisor["mem_limit"]) == 128 * 1024 * 1024  # type: ignore[index]
-    assert int(supervisor["memswap_limit"]) == 128 * 1024 * 1024  # type: ignore[index]
+    assert int(supervisor["mem_limit"]) == 96 * 1024 * 1024  # type: ignore[index]
+    assert int(supervisor["memswap_limit"]) == 96 * 1024 * 1024  # type: ignore[index]
+    assert int(producer["mem_limit"]) == 32 * 1024 * 1024  # type: ignore[index]
+    assert int(producer["memswap_limit"]) == 32 * 1024 * 1024  # type: ignore[index]
     assert int(executor["mem_limit"]) == 384 * 1024 * 1024  # type: ignore[index]
     assert int(executor["memswap_limit"]) == 384 * 1024 * 1024  # type: ignore[index]
+    assert executor["healthcheck"]["timeout"] == "3s"  # type: ignore[index]
+    assert executor["healthcheck"]["interval"] == "5s"  # type: ignore[index]
+    assert executor["healthcheck"]["retries"] == 3  # type: ignore[index]
+    # Three attempts span 19 seconds from the first invocation, exceeding the
+    # executor's 15-second commit bound while keeping its DB pool at one.
+    assert 2 * 5 + 3 * 3 > 15
     assert executor["environment"] == {  # type: ignore[index]
         "CRAWLER_DB_POOL_MAX": "1",
         "CRAWLER_DB_POOL_MIN": "1",
         "CRAWLER_DB_ROLE": "lightpanda-b0-executor",
         "LIGHTPANDA_B0_EXECUTOR_MODE": "enabled",
         "LIGHTPANDA_B0_EXECUTOR_SOCKET": "/run/jobseek-lightpanda-executor/executor.sock",
+        "LIGHTPANDA_B0_ROUTING_EPOCH": "7",
+        "LIGHTPANDA_B0_SHARD_ID": "lightpanda-b0",
         "LOCAL_DATABASE_URL": "postgresql://fixture.invalid/jobseek",
     }
     supervisor_mounts = supervisor["volumes"]  # type: ignore[index]
@@ -782,11 +838,63 @@ def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
         if mount["target"] == "/run/jobseek-lightpanda-executor"  # type: ignore[index]
     )
     assert socket_mount["read_only"] is True  # type: ignore[index]
-    assert sum(int(service["mem_limit"]) for service in (supervisor, executor)) == 512 * 1024 * 1024
+    producer_environment = producer["environment"]  # type: ignore[index]
+    initializer = services["lightpanda-producer-socket-init"]  # type: ignore[index]
+    assert "LOCAL_DATABASE_URL" not in producer_environment
+    assert "LIGHTPANDA_B0_SERVICE_HOST" not in producer_environment
+    assert not any("CERTIFICATE" in key or "PRIVATE_KEY" in key for key in producer_environment)
+    assert producer["command"] == [  # type: ignore[index]
+        "/usr/local/bin/lightpanda-b0-supervisor",
+        "producer",
+    ]
+    assert producer_environment["LIGHTPANDA_B0_PRODUCER_CLIENT_UID"] == "0"
+    assert producer["user"] == "10001:10001"  # type: ignore[index]
+    for service in (
+        "worker-1",
+        "worker-2",
+        "worker-3",
+        "browser-1",
+        "drain",
+        "lightpanda-producer",
+        "lightpanda-executor",
+        "lightpanda-claimant",
+    ):
+        assert services[service]["restart"] == "no"  # type: ignore[index]
+    assert producer["depends_on"]["lightpanda-producer-socket-init"]["condition"] == (  # type: ignore[index]
+        "service_completed_successfully"
+    )
+    assert initializer["network_mode"] == "none"  # type: ignore[index]
+    assert initializer["user"] == "0:0"  # type: ignore[index]
+    assert initializer["read_only"] is True  # type: ignore[index]
+    assert initializer["cap_drop"] == ["ALL"]  # type: ignore[index]
+    assert initializer["cap_add"] == ["CHOWN"]  # type: ignore[index]
+    assert initializer["restart"] == "no"  # type: ignore[index]
+    assert int(initializer["mem_limit"]) == 16 * 1024 * 1024  # type: ignore[index]
+    assert (
+        sum(int(service["mem_limit"]) for service in (supervisor, producer, executor))
+        == 512 * 1024 * 1024
+    )
     for worker in ("worker-1", "worker-2", "worker-3", "browser-1"):
         environment = services[worker]["environment"]  # type: ignore[index]
         assert environment["LIGHTPANDA_B0_PRODUCER_MODE"] == "enabled"
-        assert environment["LIGHTPANDA_B0_PRODUCER_COHORT"] == "c1"
+        assert "LIGHTPANDA_B0_PRODUCER_COHORT" not in environment
+        assert "LIGHTPANDA_B0_QUEUE_NAMESPACE" not in environment
+        socket_mount = next(
+            mount
+            for mount in services[worker]["volumes"]  # type: ignore[index]
+            if mount["target"] == "/run/jobseek-lightpanda-producer"
+        )
+        assert socket_mount["read_only"] is True
+
+
+def test_base_workers_mount_durable_producer_authority_read_only() -> None:
+    source = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
+    expected = "lightpanda-producer-socket:/run/jobseek-lightpanda-producer:ro"
+    for worker in ("worker-1", "worker-2", "worker-3", "browser-1"):
+        assert source["services"][worker]["volumes"] == [expected]
+    assert source["volumes"]["lightpanda-producer-socket"] == {
+        "name": "jobseek-lightpanda-b0-producer-socket"
+    }
 
 
 def test_compose_claimant_is_go_dark_networkless_secretless_and_bounded() -> None:
@@ -854,6 +962,11 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
     assert "flock -n 9" in wrapper
     assert "com.docker.compose.oneoff=True" in wrapper
     assert "worker-1 worker-2 worker-3 browser-1 drain" in wrapper
+    assert "drain lightpanda-producer-socket-init lightpanda-producer" in wrapper
+    assert "run --rm --no-deps lightpanda-producer-socket-init" in wrapper
+    assert wrapper.index("lightpanda-producer-socket-init") < wrapper.index(
+        "up -d --no-deps --force-recreate lightpanda-producer"
+    )
     assert 'fsync_path file "$temp"' in wrapper
     assert wrapper.index('fsync_path file "$temp"') < wrapper.index('mv -f -- "$temp" "$RECEIPT"')
     assert wrapper.index('mv -f -- "$temp" "$RECEIPT"') < wrapper.index(
@@ -865,7 +978,18 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
     assert wrapper.index("activation_failure_containment_armed=1") < wrapper.index(
         'write_receipt "$plan_digest" pending'
     )
+    activate_branch = wrapper.index('if [[ "$OPERATION" == activate ]]')
+    activation_receipt_gate = wrapper.index("attest_receipt active", activate_branch)
+    activation_stop = wrapper.index('"${compose_enabled[@]}" stop --timeout 60', activate_branch)
+    assert activation_receipt_gate < activation_stop
+    producer_start = wrapper.index("--force-recreate lightpanda-producer")
+    producer_ready = wrapper.index("wait_healthy enabled lightpanda-producer")
+    activate_plan = wrapper.index("plan --operation activate")
+    assert producer_start < producer_ready < activate_plan
     active_receipt = wrapper.index('write_receipt "$plan_digest" active')
+    pending_restart_check = wrapper.index("verify_pending_restart_disabled", active_receipt - 200)
+    arm_restart = wrapper.index("arm_and_verify_active_restart_policies", active_receipt)
+    assert pending_restart_check < active_receipt < arm_restart
     assert wrapper.index("activation_failure_containment_armed=0", active_receipt) > active_receipt
     assert "trap contain_activation_failure EXIT" in wrapper
     rollback_attestation = wrapper.rindex('attest_receipt "$receipt_state"')
@@ -876,6 +1000,24 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
     assert rollback_stop < settle < rollback_plan
     assert 'timeout --foreground --signal=TERM --kill-after=5s "$@"' in wrapper
     assert wrapper.index("lightpanda-b0-activation rollback") < wrapper.index('rm -f -- "$RECEIPT"')
+    clearability = wrapper.index("check_producer_activation_sentinel_clearable", rollback_stop)
+    rollback_apply = wrapper.index("lightpanda-b0-activation rollback", rollback_plan)
+    first_rdb_save = wrapper.index("persist_redis_rdb", rollback_apply)
+    sentinel_clear = wrapper.index("clear_producer_activation_sentinel", first_rdb_save)
+    rollback_cleared = wrapper.index(
+        'write_receipt "$rollback_plan_digest" rollback-cleared', sentinel_clear
+    )
+    tombstone_clear = wrapper.index("clear-rollback-tombstone", rollback_cleared)
+    second_rdb_save = wrapper.index("persist_redis_rdb", tombstone_clear)
+    base_restart = wrapper.index('"${compose_base[@]}" up -d --force-recreate', tombstone_clear)
+    assert clearability < settle
+    assert rollback_apply < first_rdb_save < sentinel_clear
+    assert sentinel_clear < rollback_cleared < tombstone_clear < second_rdb_save < base_restart
+    assert base_restart < wrapper.index('rm -f -- "$RECEIPT"')
+    assert "producer --clear-activation-sentinel" in wrapper
+    assert "producer --check-activation-sentinel-clearable" in wrapper
+    assert "producer --check-activation-sentinel-absent" in wrapper
+    assert wrapper.count('--receipt-state "$receipt_state"') == 3
     assert "--expect-digest" in wrapper
     assert "write_fences_remaining" not in wrapper  # cleanup is enforced inside the CLI
 
@@ -928,6 +1070,11 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
             "    *\\ config\\ -q) return 0 ;;",
             "    *\\ config) printf 'rendered-compose\\n'; return 0 ;;",
             "    *\\ ps\\ -aq\\ *) return 0 ;;",
+            "    *\\ ps\\ -q\\ lightpanda-producer) printf 'producer-id\\n'; return 0 ;;",
+            "    inspect\\ -f*) printf 'healthy\\n'; return 0 ;;",
+            "    *\\ reserve-epoch) printf '{\"routing_epoch\": 7}\\n'; return 0 ;;",
+            "    *\\ attest-epoch) "
+            'printf \'{"current": true, "routing_epoch": 7}\\n\'; return 0 ;;',
             '    *\\ plan\\ --operation\\ activate\\ *) printf \'{"digest": "%s"}\\n\' '
             '"$TEST_PLAN_DIGEST"; return 0 ;;',
             "    *\\ lightpanda-b0-activation\\ activate\\ *) return 41 ;;",
@@ -956,6 +1103,15 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
 
     assert result.returncode == expected_status, result.stderr
     events = log.read_text(encoding="utf-8").splitlines()
+    assert not any(" --clear-activation-sentinel" in event for event in events)
+    reserve = next(index for index, event in enumerate(events) if " reserve-epoch" in event)
+    attest = next(index for index, event in enumerate(events) if " attest-epoch" in event)
+    enabled_config = next(
+        index
+        for index, event in enumerate(events)
+        if "lightpanda-b0-enabled.override.yml config -q" in event
+    )
+    assert reserve < attest < enabled_config
     if plan_timeout:
         assert any("timeout:" in event and "plan --operation activate" in event for event in events)
         assert not any(" lightpanda-b0-activation activate " in event for event in events)
@@ -976,7 +1132,7 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
     receipt_identity = {
         "namespace": identity["LIGHTPANDA_B0_QUEUE_NAMESPACE"],
         "shard_id": identity["LIGHTPANDA_B0_SHARD_ID"],
-        "routing_epoch": identity["LIGHTPANDA_B0_ROUTING_EPOCH"],
+        "routing_epoch": "7",
     }
     assert set(f"{key}={value}" for key, value in receipt_identity.items()).issubset(
         set(receipt.read_text(encoding="utf-8").splitlines())
@@ -984,8 +1140,407 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
     assert "state=pending" in receipt.read_text(encoding="utf-8").splitlines()
 
 
+def _write_activation_receipt(
+    path: Path,
+    *,
+    state: str,
+    routing_epoch: int,
+    compose_digest: str,
+    image: str,
+    revision: str,
+) -> None:
+    path.write_text(
+        "\n".join(
+            (
+                "schema=jobseek.lightpanda-b0-active/v1",
+                f"state={state}",
+                "cohort=c1",
+                "namespace=production-b0",
+                "shard_id=lightpanda-b0",
+                f"routing_epoch={routing_epoch}",
+                f"plan_digest={'a' * 64}",
+                f"compose_digest={compose_digest}",
+                f"crawler_image_ref={image}",
+                f"deploy_revision={revision}",
+                "activated_at_epoch=1757590000",
+            )
+        )
+        + "\n",
+        encoding="ascii",
+    )
+    path.chmod(0o600)
+
+
+def test_active_e2_replay_cannot_bless_unhealthy_restored_e1_authority(tmp_path: Path) -> None:
+    deploy_dir = tmp_path / "deploy"
+    deploy_dir.mkdir()
+    (deploy_dir / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (deploy_dir / "lightpanda-b0-enabled.override.yml").write_text(
+        "services: {}\n", encoding="utf-8"
+    )
+    image = f"ghcr.io/example/jobseek-crawler@sha256:{'b' * 64}"
+    revision = "c" * 40
+    (deploy_dir / ".env").write_text(
+        "\n".join(
+            (
+                "LIGHTPANDA_B0_SERVICE_HOST=10.0.0.5",
+                "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+                "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+                f"CRAWLER_IMAGE_REF={image}",
+                f"JOBSEEK_DEPLOY_REVISION={revision}",
+            )
+        )
+        + "\n",
+        encoding="ascii",
+    )
+    compose_digest = hashlib.sha256(b"rendered-compose\n").hexdigest()
+    receipt = deploy_dir / ".lightpanda-b0-active-v1"
+    _write_activation_receipt(
+        receipt,
+        state="active",
+        routing_epoch=8,
+        compose_digest=compose_digest,
+        image=image,
+        revision=revision,
+    )
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    fake_commands = "\n".join(
+        (
+            "flock() { return 0; }",
+            "sleep() { :; }",
+            'timeout() { shift 4; "$@"; }',
+            "docker() {",
+            '  printf \'docker:%s\\n\' "$*" >>"$TEST_LOG"',
+            '  case "$*" in',
+            "    ps\\ --filter*) return 0 ;;",
+            "    *\\ config\\ -q) return 0 ;;",
+            "    *\\ config) printf 'rendered-compose\\n'; return 0 ;;",
+            "    *\\ ps\\ -aq\\ *) return 0 ;;",
+            "    *\\ ps\\ -q\\ lightpanda-producer) printf 'producer-id\\n'; return 0 ;;",
+            "    inspect\\ -f*) printf 'unhealthy\\n'; return 0 ;;",
+            "    *\\ attest-epoch) "
+            'printf \'{"current": true, "routing_epoch": 8}\\n\'; return 0 ;;',
+            "    *) return 0 ;;",
+            "  esac",
+            "}",
+        )
+    )
+    wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
+    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{deploy_dir}"', 1)
+    wrapper = wrapper.replace(
+        "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
+    )
+    wrapper = wrapper.replace('[[ "$(id -un)" == deploy ]] || {', "true || {", 1)
+    staged = tmp_path / "lightpanda-b0-cutover.sh"
+    staged.write_text(wrapper, encoding="utf-8")
+    log = tmp_path / "commands.log"
+
+    result = subprocess.run(
+        ["bash", str(staged), "activate", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    events = log.read_text(encoding="utf-8").splitlines()
+    assert not any(" reserve-epoch" in event for event in events)
+    assert not any(" plan --operation activate" in event for event in events)
+    assert not any(" lightpanda-b0-activation activate" in event for event in events)
+    assert "state=active" in receipt.read_text(encoding="ascii").splitlines()
+
+
+@pytest.mark.parametrize("state", ["active", "pending"])
+def test_stale_receipt_epoch_exits_before_enabled_compose_or_service_mutation(
+    tmp_path: Path, state: str
+) -> None:
+    (tmp_path / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (tmp_path / "lightpanda-b0-enabled.override.yml").write_text("services: {}\n", encoding="utf-8")
+    image = f"ghcr.io/example/jobseek-crawler@sha256:{'b' * 64}"
+    revision = "c" * 40
+    (tmp_path / ".env").write_text(
+        "\n".join(
+            (
+                "LIGHTPANDA_B0_SERVICE_HOST=10.0.0.5",
+                "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+                "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+                f"CRAWLER_IMAGE_REF={image}",
+                f"JOBSEEK_DEPLOY_REVISION={revision}",
+            )
+        )
+        + "\n",
+        encoding="ascii",
+    )
+    receipt = tmp_path / ".lightpanda-b0-active-v1"
+    _write_activation_receipt(
+        receipt,
+        state=state,
+        routing_epoch=7,
+        compose_digest="d" * 64,
+        image=image,
+        revision=revision,
+    )
+    before = receipt.read_bytes()
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    fake_commands = "\n".join(
+        (
+            "flock() { return 0; }",
+            "stat() { printf '600\\n'; }",
+            'timeout() { shift 4; "$@"; }',
+            "docker() {",
+            '  printf \'%s\\n\' "$*" >>"$TEST_LOG"',
+            '  if [[ "$*" == *attest-epoch* ]]; then',
+            '    printf \'{"current": true, "routing_epoch": 8}\\n\'',
+            "  fi",
+            "}",
+        )
+    )
+    wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
+    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{tmp_path}"', 1)
+    wrapper = wrapper.replace(
+        "LOCK=/run/lock/jobseek-crawler-mutation.lock",
+        f'LOCK="{tmp_path / "mutation.lock"}"',
+        1,
+    )
+    wrapper = wrapper.replace('[[ "$(id -un)" == deploy ]] || {', "true || {", 1)
+    staged = tmp_path / "lightpanda-b0-cutover.sh"
+    staged.write_text(wrapper, encoding="utf-8")
+    log = tmp_path / "commands.log"
+
+    result = subprocess.run(
+        ["bash", str(staged), "activate", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    events = log.read_text(encoding="utf-8").splitlines()
+    assert len(events) == 1 and " attest-epoch" in events[0]
+    assert "lightpanda-b0-enabled.override.yml" not in events[0]
+    assert receipt.read_bytes() == before
+
+
+def test_pending_activation_retry_preserves_receipt_for_recovery(tmp_path: Path) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    (tmp_path / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (tmp_path / "lightpanda-b0-enabled.override.yml").write_text("services: {}\n", encoding="utf-8")
+    receipt = tmp_path / ".lightpanda-b0-active-v1"
+    image = f"ghcr.io/example/jobseek-crawler@sha256:{'b' * 64}"
+    revision = "c" * 40
+    (tmp_path / ".env").write_text(
+        "\n".join(
+            (
+                "LIGHTPANDA_B0_SERVICE_HOST=10.0.0.5",
+                "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+                "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+                f"CRAWLER_IMAGE_REF={image}",
+                f"JOBSEEK_DEPLOY_REVISION={revision}",
+            )
+        )
+        + "\n",
+        encoding="ascii",
+    )
+    _write_activation_receipt(
+        receipt,
+        state="pending",
+        routing_epoch=8,
+        compose_digest="d" * 64,
+        image=image,
+        revision=revision,
+    )
+    before = receipt.read_bytes()
+    fake_commands = "\n".join(
+        (
+            "flock() { return 0; }",
+            'timeout() { shift 4; "$@"; }',
+            "docker() {",
+            '  printf \'%s\\n\' "$*" >>"$TEST_LOG"',
+            '  if [[ "$*" == *attest-epoch* ]]; then',
+            '    printf \'{"current": true, "routing_epoch": 8}\\n\'',
+            "  fi",
+            "}",
+        )
+    )
+    wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
+    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{tmp_path}"', 1)
+    wrapper = wrapper.replace(
+        "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
+    )
+    wrapper = wrapper.replace('[[ "$(id -un)" == deploy ]] || {', "true || {", 1)
+    staged = tmp_path / "lightpanda-b0-cutover.sh"
+    staged.write_text(wrapper, encoding="utf-8")
+    log = tmp_path / "commands.log"
+
+    result = subprocess.run(
+        ["bash", str(staged), "activate", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "must use recover-pending" in result.stderr
+    assert receipt.read_bytes() == before
+    events = log.read_text(encoding="utf-8").splitlines()
+    assert sum(" attest-epoch" in event for event in events) == 1
+    assert not any("lightpanda-b0-enabled.override.yml" in event for event in events)
+
+
+@pytest.mark.parametrize("failure", ["missing", "permission", "exhausted"])
+def test_allocator_failure_cannot_reach_enabled_compose_or_service_mutation(
+    tmp_path: Path, failure: str
+) -> None:
+    (tmp_path / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (tmp_path / "lightpanda-b0-enabled.override.yml").write_text("services: {}\n", encoding="utf-8")
+    image = f"ghcr.io/example/jobseek-crawler@sha256:{'b' * 64}"
+    (tmp_path / ".env").write_text(
+        "\n".join(
+            (
+                "LIGHTPANDA_B0_SERVICE_HOST=10.0.0.5",
+                "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+                "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+                f"CRAWLER_IMAGE_REF={image}",
+                f"JOBSEEK_DEPLOY_REVISION={'c' * 40}",
+            )
+        )
+        + "\n",
+        encoding="ascii",
+    )
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    fake_commands = "\n".join(
+        (
+            "flock() { return 0; }",
+            'timeout() { shift 4; "$@"; }',
+            "docker() {",
+            '  printf \'%s\\n\' "$*" >>"$TEST_LOG"',
+            '  if [[ "$*" == *reserve-epoch* ]]; then',
+            f"    printf '{failure}\\n' >&2",
+            "    return 42",
+            "  fi",
+            "  return 99",
+            "}",
+        )
+    )
+    wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
+    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{tmp_path}"', 1)
+    wrapper = wrapper.replace(
+        "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
+    )
+    wrapper = wrapper.replace('[[ "$(id -un)" == deploy ]] || {', "true || {", 1)
+    staged = tmp_path / "lightpanda-b0-cutover.sh"
+    staged.write_text(wrapper, encoding="utf-8")
+    log = tmp_path / "commands.log"
+
+    result = subprocess.run(
+        ["bash", str(staged), "activate", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    events = log.read_text(encoding="utf-8").splitlines()
+    assert len(events) == 1 and " reserve-epoch" in events[0]
+    assert not (tmp_path / ".lightpanda-b0-active-v1").exists()
+
+
+def test_failure_after_reservation_burns_epoch_before_retry(tmp_path: Path) -> None:
+    (tmp_path / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (tmp_path / "lightpanda-b0-enabled.override.yml").write_text("services: {}\n", encoding="utf-8")
+    (tmp_path / ".env").write_text(
+        "\n".join(
+            (
+                "LIGHTPANDA_B0_SERVICE_HOST=10.0.0.5",
+                "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+                "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+                f"CRAWLER_IMAGE_REF=ghcr.io/example/jobseek-crawler@sha256:{'b' * 64}",
+                f"JOBSEEK_DEPLOY_REVISION={'c' * 40}",
+            )
+        )
+        + "\n",
+        encoding="ascii",
+    )
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    fake_commands = "\n".join(
+        (
+            "flock() { return 0; }",
+            'timeout() { shift 4; "$@"; }',
+            "docker() {",
+            '  if [[ "$*" == *reserve-epoch* ]]; then',
+            '    current=6; [[ ! -f "$EPOCH_COUNTER" ]] || current="$(<"$EPOCH_COUNTER")"',
+            "    next=$((current + 1))",
+            '    printf \'%s\\n\' "$next" >"$EPOCH_COUNTER"',
+            '    printf \'reserved:%s\\n\' "$next" >>"$TEST_LOG"',
+            '    printf \'{"routing_epoch": %s}\\n\' "$next"',
+            "    return 0",
+            "  fi",
+            '  if [[ "$*" == *attest-epoch* ]]; then',
+            '    current="$(<"$EPOCH_COUNTER")"',
+            '    printf \'{"current": true, "routing_epoch": %s}\\n\' "$current"',
+            "    return 0",
+            "  fi",
+            '  printf \'compose:%s\\n\' "$*" >>"$TEST_LOG"',
+            '  [[ "$*" != *" config -q" ]]',
+            "}",
+        )
+    )
+    wrapper = wrapper.replace("set -euo pipefail", f"set -euo pipefail\n{fake_commands}", 1)
+    wrapper = wrapper.replace("DEPLOY_DIR=/home/deploy", f'DEPLOY_DIR="{tmp_path}"', 1)
+    wrapper = wrapper.replace(
+        "LOCK=/run/lock/jobseek-crawler-mutation.lock", f'LOCK="{tmp_path / "mutation.lock"}"', 1
+    )
+    wrapper = wrapper.replace('[[ "$(id -un)" == deploy ]] || {', "true || {", 1)
+    staged = tmp_path / "lightpanda-b0-cutover.sh"
+    staged.write_text(wrapper, encoding="utf-8")
+    log = tmp_path / "commands.log"
+    environment = {
+        "PATH": os.environ["PATH"],
+        "TEST_LOG": str(log),
+        "EPOCH_COUNTER": str(tmp_path / "epoch-counter"),
+    }
+
+    first = subprocess.run(
+        ["bash", str(staged), "activate", "c1"],
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    second = subprocess.run(
+        ["bash", str(staged), "activate", "c1"],
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert first.returncode != 0 and second.returncode != 0
+    assert [
+        event
+        for event in log.read_text(encoding="utf-8").splitlines()
+        if event.startswith("reserved:")
+    ] == [
+        "reserved:7",
+        "reserved:8",
+    ]
+    assert not (tmp_path / ".lightpanda-b0-active-v1").exists()
+
+
 def _run_pending_recovery_wrapper(
-    tmp_path: Path, *, settle_status: int
+    tmp_path: Path,
+    *,
+    settle_status: int,
+    clear_status: int = 0,
+    tombstone_clear_status: int = 0,
+    first_save_status: int = 0,
+    second_save_status: int = 0,
+    first_save_reply: str = "OK",
+    second_save_reply: str = "OK",
 ) -> tuple[subprocess.CompletedProcess[str], list[str], Path]:
     identity = _deploy_generated_b0_identity()
     deploy_dir = tmp_path / "deploy"
@@ -1017,7 +1572,7 @@ def _run_pending_recovery_wrapper(
                 "cohort=c1",
                 "namespace=production-b0",
                 "shard_id=lightpanda-b0",
-                "routing_epoch=1",
+                "routing_epoch=7",
                 f"plan_digest={'a' * 64}",
                 f"compose_digest={compose_digest}",
                 f"crawler_image_ref={image}",
@@ -1037,6 +1592,13 @@ def _run_pending_recovery_wrapper(
             f"TEST_PLAN_DIGEST={'a' * 64}",
             f"TEST_COMPOSE_DIGEST={compose_digest}",
             f"TEST_SETTLE_STATUS={settle_status}",
+            f"TEST_CLEAR_STATUS={clear_status}",
+            f"TEST_TOMBSTONE_CLEAR_STATUS={tombstone_clear_status}",
+            f"TEST_FIRST_SAVE_STATUS={first_save_status}",
+            f"TEST_SECOND_SAVE_STATUS={second_save_status}",
+            f"TEST_FIRST_SAVE_REPLY={first_save_reply}",
+            f"TEST_SECOND_SAVE_REPLY={second_save_reply}",
+            f'TEST_SAVE_COUNTER="{tmp_path / "save-counter"}"',
             "sha256sum() { cat >/dev/null; printf '%s  -\\n' \"$TEST_COMPOSE_DIGEST\"; }",
             "sleep() { :; }",
             "timeout() {",
@@ -1056,13 +1618,28 @@ def _run_pending_recovery_wrapper(
             "  fi",
             '  if [[ "$1" == ps ]]; then return 0; fi',
             '  case "$*" in',
+            "    *\\ attest-epoch) "
+            'printf \'{"current": true, "routing_epoch": 7}\\n\'; return 0 ;;',
             "    *\\ config\\ -q) return 0 ;;",
             "    *\\ config) printf 'rendered-compose\\n'; return 0 ;;",
             "    *\\ ps\\ -aq\\ *) printf 'stopped-container\\n'; return 0 ;;",
             "    *\\ settle-rollback\\ *) return 0 ;;",
-            '    *\\ plan\\ --operation\\ rollback\\ *) printf \'{"digest": "%s"}\\n\' '
-            '"$TEST_PLAN_DIGEST"; return 0 ;;',
+            "    *\\ plan\\ --operation\\ rollback\\ *) "
+            'printf \'{"digest": "%s", "rollback_plan_digest": "%s"}\\n\' '
+            '"$TEST_PLAN_DIGEST" "$TEST_PLAN_DIGEST"; return 0 ;;',
             "    *\\ lightpanda-b0-activation\\ rollback\\ *) return 0 ;;",
+            '    *\\ clear-rollback-tombstone\\ *) return "$TEST_TOMBSTONE_CLEAR_STATUS" ;;',
+            "    *\\ exec\\ -T\\ redis\\ redis-cli\\ --raw\\ SAVE)",
+            '      count=0; [[ ! -f "$TEST_SAVE_COUNTER" ]] || count="$(<"$TEST_SAVE_COUNTER")"',
+            "      count=$((count + 1))",
+            '      printf \'%s\\n\' "$count" >"$TEST_SAVE_COUNTER"',
+            '      status="$TEST_FIRST_SAVE_STATUS"; reply="$TEST_FIRST_SAVE_REPLY"',
+            '      if [[ "$count" != 1 ]]; then',
+            '        status="$TEST_SECOND_SAVE_STATUS"; reply="$TEST_SECOND_SAVE_REPLY"',
+            "      fi",
+            '      [[ "$status" == 0 ]] || return "$status"',
+            "      printf '%s\\n' \"$reply\"; return 0 ;;",
+            '    *--clear-activation-sentinel*) return "$TEST_CLEAR_STATUS" ;;',
             "    *\\ ps\\ -q\\ *) printf 'running-container\\n'; return 0 ;;",
             "    *) return 0 ;;",
             "  esac",
@@ -1103,12 +1680,18 @@ def test_pending_receipt_recovery_settles_before_plan_and_restores_python(
         for index, event in enumerate(events)
         if " lightpanda-b0-activation rollback " in event
     )
+    sentinel_clear = next(
+        index for index, event in enumerate(events) if " --clear-activation-sentinel" in event
+    )
     base_start = next(
         index
         for index, event in enumerate(events)
         if "-f docker-compose.yml up -d --force-recreate" in event
     )
-    assert settle < plan < apply < base_start
+    tombstone_clear = next(
+        index for index, event in enumerate(events) if " clear-rollback-tombstone " in event
+    )
+    assert settle < plan < apply < sentinel_clear < tombstone_clear < base_start
     assert not receipt.exists()
 
 
@@ -1122,6 +1705,186 @@ def test_pending_receipt_recovery_timeout_stays_cold_and_retains_receipt(
     assert any(" settle-rollback " in event for event in events)
     assert not any(" plan --operation rollback " in event for event in events)
     assert not any(" up -d --force-recreate " in event for event in events)
+
+
+def test_source_receipt_retries_full_recovery_when_sentinel_clear_fails(
+    tmp_path: Path,
+) -> None:
+    first, first_events, receipt = _run_pending_recovery_wrapper(
+        tmp_path, settle_status=0, clear_status=42
+    )
+
+    assert first.returncode == 42
+    assert "state=pending" in receipt.read_text(encoding="ascii").splitlines()
+    assert any(" --clear-activation-sentinel" in event for event in first_events)
+    assert not any(" up -d --force-recreate " in event for event in first_events)
+
+    staged_wrapper = tmp_path / "lightpanda-b0-cutover.sh"
+    staged_wrapper.write_text(
+        staged_wrapper.read_text(encoding="utf-8").replace(
+            "TEST_CLEAR_STATUS=42", "TEST_CLEAR_STATUS=0", 1
+        ),
+        encoding="utf-8",
+    )
+    log = tmp_path / "commands.log"
+    before = len(log.read_text(encoding="utf-8").splitlines())
+    second = subprocess.run(
+        ["bash", str(staged_wrapper), "recover-pending", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    second_events = log.read_text(encoding="utf-8").splitlines()[before:]
+
+    assert second.returncode == 0, second.stderr
+    assert any(" settle-rollback " in event for event in second_events)
+    assert any(" plan --operation rollback " in event for event in second_events)
+    assert any(" lightpanda-b0-activation rollback " in event for event in second_events)
+    clear = next(
+        index
+        for index, event in enumerate(second_events)
+        if " --clear-activation-sentinel" in event
+    )
+    base_start = next(
+        index
+        for index, event in enumerate(second_events)
+        if "-f docker-compose.yml up -d --force-recreate" in event
+    )
+    assert clear < base_start
+    assert not receipt.exists()
+
+
+def test_rollback_cleared_receipt_retries_only_tombstone_delete_before_python(
+    tmp_path: Path,
+) -> None:
+    first, first_events, receipt = _run_pending_recovery_wrapper(
+        tmp_path, settle_status=0, tombstone_clear_status=43
+    )
+
+    assert first.returncode == 43
+    lines = receipt.read_text(encoding="ascii").splitlines()
+    assert "state=rollback-cleared" in lines
+    assert any(line.startswith("source_receipt_sha256=") for line in lines)
+    assert any(" clear-rollback-tombstone " in event for event in first_events)
+    assert not any(" up -d --force-recreate " in event for event in first_events)
+
+    staged_wrapper = tmp_path / "lightpanda-b0-cutover.sh"
+    staged_wrapper.write_text(
+        staged_wrapper.read_text(encoding="utf-8").replace(
+            "TEST_TOMBSTONE_CLEAR_STATUS=43", "TEST_TOMBSTONE_CLEAR_STATUS=0", 1
+        ),
+        encoding="utf-8",
+    )
+    log = tmp_path / "commands.log"
+    before = len(log.read_text(encoding="utf-8").splitlines())
+    second = subprocess.run(
+        ["bash", str(staged_wrapper), "recover-pending", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    second_events = log.read_text(encoding="utf-8").splitlines()[before:]
+
+    assert second.returncode == 0, second.stderr
+    assert not any(" settle-rollback " in event for event in second_events)
+    assert not any(" plan --operation rollback " in event for event in second_events)
+    assert not any(" lightpanda-b0-activation rollback " in event for event in second_events)
+    assert any(" --check-activation-sentinel-absent" in event for event in second_events)
+    tombstone_clear = next(
+        index for index, event in enumerate(second_events) if " clear-rollback-tombstone " in event
+    )
+    base_start = next(
+        index
+        for index, event in enumerate(second_events)
+        if "-f docker-compose.yml up -d --force-recreate" in event
+    )
+    assert tombstone_clear < base_start
+    assert not receipt.exists()
+
+
+@pytest.mark.parametrize("failure_status", [43, 124])
+def test_first_rdb_save_failure_retains_source_attestations_and_retries_full_rollback(
+    tmp_path: Path, failure_status: int
+) -> None:
+    first, events, receipt = _run_pending_recovery_wrapper(
+        tmp_path, settle_status=0, first_save_status=failure_status
+    )
+
+    assert first.returncode == 1
+    assert "state=pending" in receipt.read_text(encoding="ascii").splitlines()
+    assert sum(" redis-cli --raw SAVE" in event for event in events) == 1
+    assert not any("--clear-activation-sentinel" in event for event in events)
+    assert not any("clear-rollback-tombstone" in event for event in events)
+    assert not any(" up -d --force-recreate " in event for event in events)
+
+    staged = tmp_path / "lightpanda-b0-cutover.sh"
+    staged.write_text(
+        staged.read_text(encoding="utf-8").replace(
+            f"TEST_FIRST_SAVE_STATUS={failure_status}", "TEST_FIRST_SAVE_STATUS=0", 1
+        ),
+        encoding="utf-8",
+    )
+    log = tmp_path / "commands.log"
+    before = len(log.read_text(encoding="utf-8").splitlines())
+    retry = subprocess.run(
+        ["bash", str(staged), "recover-pending", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    retry_events = log.read_text(encoding="utf-8").splitlines()[before:]
+    assert retry.returncode == 0, retry.stderr
+    assert any(" lightpanda-b0-activation rollback " in event for event in retry_events)
+    assert sum(" redis-cli --raw SAVE" in event for event in retry_events) == 2
+    assert not receipt.exists()
+
+
+@pytest.mark.parametrize(
+    ("second_save_status", "second_save_reply", "expected_status"),
+    [(44, "OK", 1), (124, "OK", 1), (0, "NOT_OK", 1)],
+)
+def test_second_rdb_save_failure_retains_cleared_receipt_and_retry_skips_full_rollback(
+    tmp_path: Path,
+    second_save_status: int,
+    second_save_reply: str,
+    expected_status: int,
+) -> None:
+    first, events, receipt = _run_pending_recovery_wrapper(
+        tmp_path,
+        settle_status=0,
+        second_save_status=second_save_status,
+        second_save_reply=second_save_reply,
+    )
+
+    assert first.returncode == expected_status
+    assert "state=rollback-cleared" in receipt.read_text(encoding="ascii").splitlines()
+    assert sum(" redis-cli --raw SAVE" in event for event in events) == 2
+    assert any("clear-rollback-tombstone" in event for event in events)
+    assert not any(" up -d --force-recreate " in event for event in events)
+
+    staged = tmp_path / "lightpanda-b0-cutover.sh"
+    source = staged.read_text(encoding="utf-8")
+    source = source.replace(
+        f"TEST_SECOND_SAVE_STATUS={second_save_status}", "TEST_SECOND_SAVE_STATUS=0", 1
+    ).replace(f"TEST_SECOND_SAVE_REPLY={second_save_reply}", "TEST_SECOND_SAVE_REPLY=OK", 1)
+    staged.write_text(source, encoding="utf-8")
+    log = tmp_path / "commands.log"
+    before = len(log.read_text(encoding="utf-8").splitlines())
+    retry = subprocess.run(
+        ["bash", str(staged), "recover-pending", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    retry_events = log.read_text(encoding="utf-8").splitlines()[before:]
+    assert retry.returncode == 0, retry.stderr
+    assert not any(" lightpanda-b0-activation rollback " in event for event in retry_events)
+    assert sum(" redis-cli --raw SAVE" in event for event in retry_events) == 1
+    assert not receipt.exists()
 
 
 def test_b0_failed_activation_executes_containment_trap(tmp_path: Path) -> None:
@@ -1456,6 +2219,68 @@ def test_b0_rollback_accepts_only_complete_exact_active_receipt(tmp_path: Path) 
     assert result.returncode == 0, result.stderr
 
 
+def test_c1_receipt_refuses_c4_activation_before_service_mutation(tmp_path: Path) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    compose_digest = hashlib.sha256(b"rendered-compose\n").hexdigest()
+    receipt = tmp_path / ".lightpanda-b0-active-v1"
+    receipt.write_text(
+        "\n".join(
+            (
+                "schema=jobseek.lightpanda-b0-active/v1",
+                "state=active",
+                "cohort=c1",
+                "namespace=production-b0",
+                "shard_id=lightpanda-b0",
+                "routing_epoch=7",
+                f"plan_digest={'a' * 64}",
+                f"compose_digest={compose_digest}",
+                f"crawler_image_ref=ghcr.io/example/jobseek-crawler@sha256:{'b' * 64}",
+                f"deploy_revision={'c' * 40}",
+                "activated_at_epoch=1757590000",
+            )
+        )
+        + "\n",
+        encoding="ascii",
+    )
+    receipt.chmod(0o600)
+    mutation_log = tmp_path / "service-mutation.log"
+    harness = "\n".join(
+        (
+            "set -eu",
+            f'RECEIPT="{receipt}"',
+            "COHORT=c4",
+            "LIGHTPANDA_B0_QUEUE_NAMESPACE=production-b0",
+            "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0",
+            "LIGHTPANDA_B0_ROUTING_EPOCH=7",
+            f'CRAWLER_IMAGE_REF="ghcr.io/example/jobseek-crawler@sha256:{"b" * 64}"',
+            f'JOBSEEK_DEPLOY_REVISION="{"c" * 40}"',
+            f'COMPOSE_DIGEST="{compose_digest}"',
+            "compose_enabled=(fake_compose)",
+            'bounded() { shift; "$@"; }',
+            "fake_compose() { printf 'rendered-compose\\n'; }",
+            "sha256sum() { cat >/dev/null; printf '%s  -\\n' \"$COMPOSE_DIGEST\"; }",
+            "stat() { printf '600\\n'; }",
+            _shell_function(wrapper, "attest_receipt"),
+            "if attest_receipt active; then",
+            "  printf 'stop\\n' >\"$MUTATION_LOG\"",
+            "  exit 0",
+            "fi",
+            "exit 23",
+        )
+    )
+
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        env={**os.environ, "MUTATION_LOG": str(mutation_log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 23, result.stderr
+    assert not mutation_log.exists()
+
+
 @pytest.mark.parametrize("failure", ["running", "inspect_error"])
 def test_b0_cold_attestation_checks_every_replica_and_fails_closed(
     tmp_path: Path, failure: str
@@ -1553,6 +2378,14 @@ def test_ci_owns_the_production_go_supervisor_module() -> None:
     for gate in ("go test ./...", "go test -race ./...", "go vet ./...", "go mod tidy -diff"):
         assert gate in job
     assert 'test -z "$(gofmt -l .)"' in job
+    assert "redis:8-alpine@sha256:" in job
+    assert 'go build -o "$producer_binary" .' in job
+    assert "LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://localhost:6379/15" in job
+    assert "go test -c -tags=integration" in job
+    assert "LIGHTPANDA_B0_INTEGRATION_PRODUCER_UID=10001" in job
+    assert "Prove fresh producer volume initialization and client connectivity" in workflow
+    assert "lightpanda-producer-socket-init" in workflow
+    assert "request_manifest" in workflow
 
 
 def test_credentials_module_imports_without_optional_cryptography_runtime() -> None:
@@ -1853,6 +2686,122 @@ def test_later_rollout_rollback_restores_claimant_when_old_compose_defines_it(
         "claimant-ready",
         "claimant-image",
     ]
+
+
+@pytest.mark.parametrize(
+    ("failure_kind", "failure_service"),
+    [
+        ("update", "worker-3"),
+        ("policy", "lightpanda-claimant"),
+        ("running", "lightpanda-claimant"),
+    ],
+)
+def test_restart_arming_failure_contains_with_active_receipt(
+    tmp_path: Path, failure_kind: str, failure_service: str
+) -> None:
+    wrapper = (CRAWLER / "scripts/lightpanda-b0-cutover.sh").read_text(encoding="utf-8")
+    helpers = wrapper[
+        wrapper.index("resolved_candidate_container() {") : wrapper.index("extract_digest() {")
+    ]
+    containment = _shell_function(wrapper, "contain_activation_failure")
+    services = (
+        "worker-1",
+        "worker-2",
+        "worker-3",
+        "browser-1",
+        "drain",
+        "lightpanda-producer",
+        "lightpanda-executor",
+        "lightpanda-claimant",
+    )
+    ids = {service: f"{index:064x}" for index, service in enumerate(services, 1)}
+    id_cases = "\n".join(f'    {service}) echo "{ids[service]}" ;;' for service in services)
+    service_cases = "\n".join(
+        f'    {identifier}) echo "{service}" ;;' for service, identifier in ids.items()
+    )
+    receipt = tmp_path / "receipt"
+    receipt.write_text("state=active\n", encoding="ascii")
+    harness = "\n".join(
+        (
+            "set -u",
+            'COMPOSE_PROJECT_NAME="jobseek"',
+            f'TEST_STATE="{tmp_path / "policies"}"',
+            'mkdir -p "$TEST_STATE"',
+            f'TEST_FAILURE_KIND="{failure_kind}"',
+            f'TEST_FAILURE_SERVICE="{failure_service}"',
+            f'RECEIPT="{receipt}"',
+            f'TEST_LOG="{tmp_path / "restart.log"}"',
+            f"restart_candidate_services=({' '.join(services)})",
+            "mutation_services=(worker-1 worker-2 worker-3 browser-1 drain",
+            "  lightpanda-producer lightpanda-executor lightpanda-claimant)",
+            "compose_enabled=(fake_compose)",
+            "activation_failure_containment_armed=1",
+            "recovery_failure_containment_armed=0",
+            'bounded() { shift; "$@"; }',
+            'id_for() { case "$1" in',
+            id_cases,
+            "  esac; }",
+            'service_for() { case "$1" in',
+            service_cases,
+            "  esac; }",
+            "fake_compose() {",
+            '  printf \'compose:%s\\n\' "$*" >>"$TEST_LOG"',
+            '  if [[ "$1" == ps && "$2" == -q ]]; then id_for "$3"; fi',
+            "}",
+            "docker() {",
+            '  printf \'docker:%s\\n\' "$*" >>"$TEST_LOG"',
+            '  if [[ "$1" == update ]]; then',
+            '    service="$(service_for "$4")"',
+            '    [[ "$TEST_FAILURE_KIND" != update ||',
+            '      "$service" != "$TEST_FAILURE_SERVICE" ]] || return 41',
+            '    if [[ "$3" == "on-failure:5" ]]; then',
+            '      value="on-failure:5"',
+            '    else value="unless-stopped:0"; fi',
+            '    printf \'%s\\n\' "$value" >"$TEST_STATE/$service"',
+            "    return 0",
+            "  fi",
+            '  service="$(service_for "$4")"',
+            '  if [[ "$3" == *Config.Labels* ]]; then',
+            "    printf 'jobseek %s\\n' \"$service\"; return 0",
+            "  fi",
+            '  if [[ "$3" == *State.Running* ]]; then',
+            '    value="true"',
+            '    if [[ "$TEST_FAILURE_KIND" == running &&',
+            '      "$service" == "$TEST_FAILURE_SERVICE" ]]; then value="false"; fi',
+            "    printf '%s\\n' \"$value\"; return 0",
+            "  fi",
+            '  value="no:0"',
+            '  [[ ! -f "$TEST_STATE/$service" ]] || value="$(<"$TEST_STATE/$service")"',
+            '  if [[ "$TEST_FAILURE_KIND" == policy &&',
+            '    "$service" == "$TEST_FAILURE_SERVICE" && "$value" != no:0 ]]; then',
+            '    value="no:0"',
+            "  fi",
+            "  printf '%s\\n' \"$value\"",
+            "}",
+            "terminate_running_oneoffs() { printf 'oneoffs\\n' >>\"$TEST_LOG\"; }",
+            "attest_cold_host() { printf 'cold\\n' >>\"$TEST_LOG\"; }",
+            helpers,
+            containment,
+            "verify_pending_restart_disabled || exit 88",
+            "printf 'receipt:active\\n' >>\"$TEST_LOG\"",
+            "arm_and_verify_active_restart_policies",
+            "contain_activation_failure",
+        )
+    )
+    result = subprocess.run(["bash", "-c", harness], check=False, capture_output=True, text=True)
+    events = (tmp_path / "restart.log").read_text(encoding="utf-8").splitlines()
+    assert result.returncode != 0
+    assert receipt.is_file()
+    receipt_event = events.index("receipt:active")
+    assert sum(
+        "docker:inspect -f" in event and "RestartPolicy" in event
+        for event in events[:receipt_event]
+    ) == len(services)
+    assert any("compose:stop --timeout 60" in event for event in events)
+    assert any("compose:kill " in event for event in events)
+    if failure_kind in {"policy", "running"}:
+        updates = [event for event in events if event.startswith("docker:update --restart")]
+        assert updates[-1].endswith(ids["lightpanda-claimant"])
 
 
 def test_workflow_transports_bundle_not_claimant_credentials_to_ssh() -> None:
