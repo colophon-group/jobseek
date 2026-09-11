@@ -591,6 +591,7 @@ function snapshotRecord(
   allowedFields: readonly string[],
 ): Record<string, unknown> {
   try {
+    if (isProxy(input)) fail(pathValue, "proxy_forbidden");
     if (typeof input !== "object" || input === null || Array.isArray(input)) {
       fail(pathValue, "object_required");
     }
@@ -626,6 +627,7 @@ function snapshotArray(
   maximumLength: number,
 ): unknown[] {
   try {
+    if (isProxy(input)) fail(pathValue, "proxy_forbidden");
     if (!Array.isArray(input)) fail(pathValue, "array_required");
   } catch {
     fail(pathValue, "array_unreadable");
@@ -1169,9 +1171,17 @@ export function validateStageACalibrationArtifact(
 }
 
 export function digestStageACalibrationArtifact(input: unknown): string {
+  return digestValidatedStageACalibrationArtifact(
+    validateStageACalibrationArtifact(input),
+  );
+}
+
+function digestValidatedStageACalibrationArtifact(
+  input: StageAValidatedCalibrationArtifactV2,
+): string {
   return domainDigest(
     "ai-filter-stage-a-calibration-v2",
-    validateStageACalibrationArtifact(input),
+    input,
   );
 }
 
@@ -1344,14 +1354,13 @@ function normalizeStageACalibrationResult(
   });
 }
 
-export function validateStageACalibrationResult(
+function validateStageACalibrationResultForArtifact(
   input: unknown,
-  calibrationArtifactInput: unknown,
+  calibration: StageAValidatedCalibrationArtifactV2,
   expectedCalibrationInputDigest: string,
 ): StageACalibrationResultV2 {
   validateDigest(expectedCalibrationInputDigest, "$expectedCalibrationInputDigest");
-  const calibration = validateStageACalibrationArtifact(calibrationArtifactInput);
-  if (digestStageACalibrationArtifact(calibrationArtifactInput) !== expectedCalibrationInputDigest) {
+  if (digestValidatedStageACalibrationArtifact(calibration) !== expectedCalibrationInputDigest) {
     fail("$calibration", "calibration_input_pin_mismatch");
   }
   const result = normalizeStageACalibrationResult(input, expectedCalibrationInputDigest);
@@ -1369,13 +1378,30 @@ export function validateStageACalibrationResult(
   return result;
 }
 
+export function validateStageACalibrationResult(
+  input: unknown,
+  calibrationArtifactInput: unknown,
+  expectedCalibrationInputDigest: string,
+): StageACalibrationResultV2 {
+  return validateStageACalibrationResultForArtifact(
+    input,
+    validateStageACalibrationArtifact(calibrationArtifactInput),
+    expectedCalibrationInputDigest,
+  );
+}
+
+function digestValidatedStageACalibrationResult(
+  input: StageACalibrationResultV2,
+): string {
+  return domainDigest(STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION, input);
+}
+
 export function digestStageACalibrationResult(
   input: unknown,
   calibrationArtifactInput: unknown,
   expectedCalibrationInputDigest: string,
 ): string {
-  return domainDigest(
-    STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION,
+  return digestValidatedStageACalibrationResult(
     validateStageACalibrationResult(
       input,
       calibrationArtifactInput,
@@ -1986,17 +2012,13 @@ export function buildStageASilverManifest(
   validateDigest(expectedPreAnnotationDigest, "$expectedPreAnnotationDigest");
   validateDigest(expectedPromptFeedbackDigest, "$expectedPromptFeedbackDigest");
   const calibrationArtifact = validateStageACalibrationArtifact(calibrationArtifactInput);
-  const calibration = validateStageACalibrationResult(
+  const calibration = validateStageACalibrationResultForArtifact(
     calibrationResultInput,
-    calibrationArtifactInput,
+    calibrationArtifact,
     expectedCalibrationInputDigest,
   );
   if (
-    digestStageACalibrationResult(
-      calibration,
-      calibrationArtifactInput,
-      expectedCalibrationInputDigest,
-    ) !== expectedCalibrationResultDigest
+    digestValidatedStageACalibrationResult(calibration) !== expectedCalibrationResultDigest
   ) fail("$calibrationResult", "calibration_result_pin_mismatch");
   const pre = validateStageAPreAnnotation(preAnnotationInput);
   if (digestStageAPreAnnotation(pre) !== expectedPreAnnotationDigest) fail("$pre", "pre_annotation_pin_mismatch");

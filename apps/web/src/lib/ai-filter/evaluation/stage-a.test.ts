@@ -598,6 +598,36 @@ describe("Stage A v2 gates", () => {
     };
     reusedContent.examples[0].contentIdentity = normalizeClassifierInputV1(reusedContent.examples[0].classifierSource).contentIdentity;
     expect(freezeWithCalibrationArtifact(data, reusedContent)).toThrow(/calibration_final_content_disjointness_required/u);
+
+    const overlappingArtifact = clone(data.calibrationArtifact);
+    overlappingArtifact.examples[0].softQuery = data.preAnnotation.bundles[0].softQuery;
+    let trapCalls = 0;
+    let artifactRead = 0;
+    let visibleArtifact: object = data.calibrationArtifact;
+    const statefulArtifact = new Proxy(data.calibrationArtifact, {
+      ownKeys() {
+        trapCalls += 1;
+        artifactRead += 1;
+        visibleArtifact = artifactRead === 1 ? data.calibrationArtifact : overlappingArtifact;
+        return Reflect.ownKeys(visibleArtifact);
+      },
+      getOwnPropertyDescriptor(_target, property) {
+        trapCalls += 1;
+        return Reflect.getOwnPropertyDescriptor(visibleArtifact, property);
+      },
+    });
+    expect(() => freezeStageASilver(
+      data.wip,
+      statefulArtifact,
+      data.calibrationInputDigest,
+      data.calibrationResult,
+      data.calibrationResultDigest,
+      data.preAnnotation,
+      data.preAnnotationDigest,
+      data.promptFeedback,
+      data.promptReviewFeedbackDigest,
+    )).toThrow(/proxy_forbidden/u);
+    expect(trapCalls).toBe(0);
   });
 
   it("requires an approved exact 12-card pre-annotation prompt gate", () => {
