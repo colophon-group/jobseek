@@ -234,6 +234,19 @@ def test_phase_a_is_a_pre_start_component_gate() -> None:
     assert 'receipt.get("protected_containers") != snapshot_protected()' in verify
 
 
+def test_phase_a_retries_exact_identity_until_docker_metadata_settles() -> None:
+    remote = REMOTE.read_text(encoding="utf-8")
+    retry = remote[remote.index("install_phase_a_receipt() {") : remote.index("cleanup() {")]
+    assert 'snapshot empty "$after" || return 1' in retry
+    assert "install-receipt" in retry
+    assert '>>"$candidate"' not in retry
+    phase_a = remote[remote.index('if [[ "$PHASE" == host-policy-reboot ]]') :]
+    assert "phase_a_deadline=$((SECONDS + 120))" in phase_a
+    assert 'until install_phase_a_receipt "$before" "$after" "$receipt_candidate"' in phase_a
+    assert "(( SECONDS < phase_a_deadline ))" in phase_a
+    assert 'mv -- "$receipt_candidate" "$report"' in phase_a
+
+
 def test_client_stage_is_readable_by_numeric_container_identity() -> None:
     remote = REMOTE.read_text(encoding="utf-8")
     assert "chmod 0444 '$crawler_stage/acceptance-client.py'" in remote

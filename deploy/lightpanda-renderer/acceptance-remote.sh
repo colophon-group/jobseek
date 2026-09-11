@@ -103,6 +103,18 @@ reboot_host() {
   done
   return 1
 }
+install_phase_a_receipt() {
+  local before="$1" after="$2" candidate="$3"
+  snapshot empty "$after" || return 1
+  for name in before after; do
+    timeout --foreground --kill-after=15s 60s ssh "${ssh_common[@]}" "root@$TARGET_HOST" \
+      "install -o root -g root -m 0600 /dev/stdin '$host_stage/$name.json'" \
+      <"$root/$name.json" || return 1
+  done
+  timeout --foreground --kill-after=15s 60s ssh "${ssh_common[@]}" "root@$TARGET_HOST" \
+    "python3 '$host_stage/acceptance-host.py' install-receipt --before '$host_stage/before.json' --after '$host_stage/after.json' --acceptance-source-commit '$ACCEPTANCE_COMMIT'" \
+    >"$candidate" || return 1
+}
 cleanup() {
   status=$?
   trap - EXIT HUP INT TERM
@@ -136,15 +148,16 @@ if [[ "$PHASE" == host-policy-reboot ]]; then
   remove_host_stage
   reboot_host "$(boot_id "$before")"
   stage_host
-  snapshot empty "$after"
-  for name in before after; do
-    timeout --foreground --kill-after=15s 60s ssh "${ssh_common[@]}" "root@$TARGET_HOST" \
-      "install -o root -g root -m 0600 /dev/stdin '$host_stage/$name.json'" \
-      <"$root/$name.json"
+  receipt_candidate="$root/phase-a-receipt.json"
+  phase_a_deadline=$((SECONDS + 120))
+  until install_phase_a_receipt "$before" "$after" "$receipt_candidate"; do
+    (( SECONDS < phase_a_deadline )) || {
+      echo "Lightpanda Phase A host identity did not settle within its bound" >&2
+      exit 1
+    }
+    sleep 5
   done
-  ssh "${ssh_common[@]}" "root@$TARGET_HOST" \
-    "python3 '$host_stage/acceptance-host.py' install-receipt --before '$host_stage/before.json' --after '$host_stage/after.json' --acceptance-source-commit '$ACCEPTANCE_COMMIT'" \
-    >"$report"
+  mv -- "$receipt_candidate" "$report"
   exit 0
 fi
 : "${CRAWLER_HOST:?crawler host is required}"
