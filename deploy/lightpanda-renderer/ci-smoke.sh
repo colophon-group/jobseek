@@ -494,7 +494,7 @@ set -e
 [[ "$stale_status" -eq 137 ]]
 stale_container_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER")"
 [[ "$(docker container inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.release"}}' "$CONTAINER")" == "$STALE_ID" ]]
-[[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$SECOND_RELEASE" ]]
+[[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$CREATED_RECOVERY_RELEASE" ]]
 
 phase stale-candidate-recovery-success
 write_stage_release "$RECOVERY_ID" "$RECOVERY_RELEASE"

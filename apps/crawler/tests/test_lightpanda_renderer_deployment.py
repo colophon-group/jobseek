@@ -936,6 +936,10 @@ def test_ci_smoke_exercises_legacy_bootstrap_and_cold_rollback() -> None:
     assert "stopped-controlled-predecessor" in smoke
     assert "stopped-replay-to-compose-created-candidate" in smoke
     assert "compose-created-candidate-replay-success" in smoke
+    assert (
+        '[[ "$(sudo -u deploy readlink -f "$ROOT/active")" == '
+        '"$CREATED_RECOVERY_RELEASE" ]]' in smoke
+    )
     assert "stale-policy-digest-rejection" in smoke
     assert "stale-uncommitted-candidate" in smoke
     assert "stale-candidate-recovery-success" in smoke
