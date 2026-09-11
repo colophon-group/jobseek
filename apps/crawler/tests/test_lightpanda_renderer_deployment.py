@@ -768,6 +768,62 @@ def test_policy_container_lookups_cannot_resolve_the_same_named_network(
     ]
 
 
+@pytest.mark.parametrize(
+    ("backend", "server_version", "chain_status", "forward", "accepted"),
+    [
+        ({"Driver": "iptables"}, "29.0.1", 0, [("-j", "DOCKER-USER")], True),
+        (None, "28.5.1", 0, [("-j", "DOCKER-USER")], True),
+        ({"Driver": "nftables"}, "29.0.1", 0, [], False),
+        ({}, "29.0.1", 0, [], False),
+        ("iptables", "29.0.1", 0, [], False),
+        (None, "28.5.1", 1, [("-j", "DOCKER-USER")], False),
+        (None, "29.0.1", 0, [("-j", "DOCKER-USER")], False),
+        (None, "invalid", 0, [("-j", "DOCKER-USER")], False),
+        (None, "28.5.1", 0, [], False),
+        (None, "28.5.1", 0, [("-j", "OTHER"), ("-j", "DOCKER-USER")], False),
+        (
+            None,
+            "28.5.1",
+            0,
+            [("-j", "DOCKER-USER"), ("-j", "DOCKER-USER")],
+            False,
+        ),
+    ],
+)
+def test_backend_preflight_requires_explicit_or_observed_iptables_behavior(
+    monkeypatch: pytest.MonkeyPatch,
+    backend: object,
+    server_version: str,
+    chain_status: int,
+    forward: list[tuple[str, ...]],
+    accepted: bool,
+) -> None:
+    monkeypatch.setattr(network_policy.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(
+        network_policy,
+        "run_json",
+        lambda _: {
+            "LiveRestoreEnabled": False,
+            "FirewallBackend": backend,
+            "ServerVersion": server_version,
+        },
+    )
+
+    def observed(arguments: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
+        del check
+        status = chain_status if "-L" in arguments else 0
+        stdout = "iptables v1.8.11 (nf_tables)" if "--version" in arguments else ""
+        return subprocess.CompletedProcess(arguments, status, stdout, "")
+
+    monkeypatch.setattr(network_policy, "run", observed)
+    monkeypatch.setattr(network_policy, "observed_rules", lambda *_: forward)
+    if accepted:
+        network_policy.backend_preflight()
+    else:
+        with pytest.raises(network_policy.PolicyError):
+            network_policy.backend_preflight()
+
+
 def test_running_endpoint_attestation_rejects_extra_routed_identity() -> None:
     inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
     renderer_id = "a" * 64

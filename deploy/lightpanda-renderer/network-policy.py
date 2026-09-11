@@ -676,15 +676,44 @@ HOOKS = {
 def backend_preflight() -> None:
     if os.geteuid() != 0:
         fail("network policy requires root")
-    driver = run(["docker", "info", "--format", "{{.FirewallBackend.Driver}}"]).stdout.strip()
-    if driver != "iptables":
-        fail("Docker is not using the reviewed iptables firewall backend")
-    live_restore = run_json(["docker", "info", "--format", "{{json .LiveRestoreEnabled}}"])
-    if live_restore is not False:
+    info = run_json(["docker", "info", "--format", "{{json .}}"])
+    if not isinstance(info, dict) or info.get("LiveRestoreEnabled") is not False:
         fail("Docker live restore must be exactly disabled")
     for binary in ("iptables", "ip6tables"):
         if "nf_tables" not in run([binary, "--version"]).stdout:
             fail("host does not use the reviewed iptables-nft backend")
+    backend = info.get("FirewallBackend")
+    if backend is not None:
+        if not isinstance(backend, dict) or backend.get("Driver") != "iptables":
+            fail("Docker is not using the reviewed iptables firewall backend")
+    else:
+        # Native nftables support and the FirewallBackend info field arrived
+        # with Docker 29. An older daemon can use this behavioral fallback; a
+        # 29+ daemon without explicit backend identity is unverifiable.
+        version = str(info.get("ServerVersion", ""))
+        version_match = re.fullmatch(r"([0-9]+)\.([0-9]+)\.([0-9]+)(?:[-+].*)?", version)
+        if version_match is None or int(version_match.group(1)) >= 29:
+            fail("Docker firewall backend identity is unavailable")
+    # Docker can run with iptables management disabled, and persisted chains
+    # can be orphaned. Require both owned chains plus the unique first-position
+    # parent hook that makes DOCKER-USER part of the forwarded packet path.
+    required_chains = (
+        ("filter", "DOCKER-USER"),
+        ("nat", "DOCKER"),
+    )
+    for table, chain in required_chains:
+        if (
+            run(
+                ["iptables", "--wait", "30", "-t", table, "-n", "-L", chain],
+                check=False,
+            ).returncode
+            != 0
+        ):
+            fail("Docker legacy iptables firewall behavior is not present")
+    forward = observed_rules("iptables", "FORWARD")
+    docker_user_jump = ("-j", "DOCKER-USER")
+    if not forward or forward[0] != docker_user_jump or forward.count(docker_user_jump) != 1:
+        fail("Docker DOCKER-USER forwarding hook is absent or not first")
 
 
 def chain_exists(binary: str, chain: str) -> bool:
