@@ -1,0 +1,2 @@
+# Recreated before services on every boot; deploy may open but not replace it.
+f /run/lock/jobseek-lightpanda-network.lock 0640 root deploy -

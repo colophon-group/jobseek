@@ -47,7 +47,6 @@ describe("selectRelatedPosts", () => {
       author: "Author",
       tags: [],
       relatedCompanies: [],
-      relatedWatchlists: [],
       relatedPosts: [],
       ...overrides,
     };

@@ -41,6 +41,7 @@ vi.mock("@/lib/search/typesense-retry", async (importOriginal) => {
 import {
   compileWatchlistMatcherSources,
   matchCompiledWatchlistsInWindow,
+  readWatchlistCandidates,
 } from "../watchlist-matcher";
 
 function posting(id: string, firstSeenAt: number) {
@@ -57,6 +58,10 @@ function posting(id: string, firstSeenAt: number) {
       location_names: ["Zurich"],
     },
   };
+}
+
+function makeUuid(index: number): string {
+  return `00000000-0000-0000-0000-${String(index).padStart(12, "0")}`;
 }
 
 beforeEach(() => {
@@ -143,6 +148,128 @@ describe("compileWatchlistMatcherSources", () => {
       locationIds: [10],
       languages: [],
     });
+  });
+});
+
+describe("readWatchlistCandidates", () => {
+  it("keeps tied batched prefixes stable across page boundaries", async () => {
+    const companyIds = Array.from(
+      { length: 101 },
+      (_, index) => makeUuid(index + 1),
+    );
+    mocks.singleSearch.mockImplementation((search: {
+      filter_by?: string;
+      per_page?: number;
+      offset?: number;
+      limit?: number;
+    }) => {
+      if (search.per_page === 0) return { found: 40, hits: [] };
+      const filter = search.filter_by ?? "";
+      const isFirstBatch = filter.includes(makeUuid(1));
+      const offset = search.offset ?? 0;
+      const limit = search.limit ?? 0;
+      const hits = Array.from({ length: 40 }, (_, index) => ({
+        ...posting(
+          isFirstBatch
+            ? `posting-z-${String(index).padStart(2, "0")}`
+            : `${index < 20 ? "posting-m" : "posting-a"}-${String(index).padStart(2, "0")}`,
+          1_700_000_000,
+        ),
+        text_match: 100,
+      }));
+      return {
+        found: hits.length,
+        hits: hits.slice(offset, offset + limit),
+      };
+    });
+
+    const filters = {
+      companyIds,
+      keywords: ["engineer"],
+    };
+    const firstPage = await readWatchlistCandidates({
+      filters,
+      offset: 0,
+      limit: 20,
+    });
+    const secondPage = await readWatchlistCandidates({
+      filters,
+      offset: 20,
+      limit: 20,
+    });
+
+    expect(firstPage.postings.map((value) => value.id)).toEqual(
+      Array.from(
+        { length: 20 },
+        (_, index) => `posting-z-${String(index).padStart(2, "0")}`,
+      ),
+    );
+    expect(secondPage.postings.map((value) => value.id)).toEqual(
+      Array.from(
+        { length: 20 },
+        (_, index) => `posting-z-${String(index + 20).padStart(2, "0")}`,
+      ),
+    );
+    expect(new Set([
+      ...firstPage.postings.map((value) => value.id),
+      ...secondPage.postings.map((value) => value.id),
+    ])).toHaveLength(40);
+  });
+
+  it("keeps URL-safety company batches stable as the server prefix grows", async () => {
+    const companyIds = Array.from(
+      { length: 250 },
+      (_, index) => makeUuid(index + 1),
+    );
+    mocks.singleSearch.mockResolvedValue({ found: 0, hits: [] });
+    const filters = { companyIds, keywords: ["abcdefghijklmn"] };
+
+    await readWatchlistCandidates({
+      filters,
+      offset: 60,
+      limit: 20,
+    });
+    const firstPartitions = mocks.singleSearch.mock.calls.map(([search]) =>
+      (((search as { filter_by?: string }).filter_by ?? "").match(
+        /00000000-0000-0000-0000-\d{12}/g,
+      ) ?? []),
+    );
+
+    mocks.singleSearch.mockClear();
+    await readWatchlistCandidates({
+      filters,
+      offset: 80,
+      limit: 20,
+    });
+    const secondPartitions = mocks.singleSearch.mock.calls.map(([search]) =>
+      (((search as { filter_by?: string }).filter_by ?? "").match(
+        /00000000-0000-0000-0000-\d{12}/g,
+      ) ?? []),
+    );
+
+    expect(firstPartitions.length).toBeGreaterThan(1);
+    expect(secondPartitions).toEqual(firstPartitions);
+  });
+
+  it("does not switch server query mode on deeper pages", async () => {
+    const companyIds = Array.from(
+      { length: 83 },
+      (_, index) => makeUuid(index + 1),
+    );
+    mocks.singleSearch.mockResolvedValue({ found: 0, hits: [] });
+    const filters = { companyIds, keywords: ["x".repeat(93)] };
+
+    await readWatchlistCandidates({ filters, offset: 160, limit: 20 });
+    const shallowCallCount = mocks.singleSearch.mock.calls.length;
+    mocks.singleSearch.mockClear();
+    await readWatchlistCandidates({
+      filters,
+      offset: 180,
+      limit: 20,
+    });
+
+    expect(shallowCallCount).toBeGreaterThan(1);
+    expect(mocks.singleSearch.mock.calls).toHaveLength(shallowCallCount);
   });
 });
 

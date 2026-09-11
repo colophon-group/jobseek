@@ -110,18 +110,18 @@ snapshot is complete and the outbound posting FK still exists.
 
 ## Crawler runtime cutover (#6249)
 
-The crawler deployment boundary is staged without changing protected secret
-contracts. `.github/workflows/deploy-crawler-browser.yml` maps the existing
-provider-neutral `DATABASE_URL_UNPOOLED` secret into the remote process only as
-`WEB_DATABASE_URL`. `deploy.sh` writes that separately named value for explicit
-watchlist sync/count-refresh jobs and omits `DATABASE_URL` entirely.
-Deployment files arrive in `/home/deploy/incoming`; the active env and complete
-Compose deployment spec are snapshotted before activation. A failed rollout
-restores both before restarting the previous image, preserving the previous
-credential semantics rather than combining an old image with a new Compose
-allowlist. Rollback starts Compose with an empty process environment plus the
-restored env file, so the failed SSH process's `CRAWLER_IMAGE_TAG` and other
-inputs cannot override the old contract.
+The current crawler deployment boundary forwards and persists neither
+`DATABASE_URL` nor `WEB_DATABASE_URL`; normal deploy sync, CSV sync, and
+`refresh-typesense` use local Postgres plus Typesense only. Deployment files
+arrive in `/home/deploy/incoming`; the active env and complete Compose deployment
+spec are snapshotted before activation. A failed rollout restores both before
+restarting the previous image, preserving the previous credential semantics
+rather than combining an old image with a new Compose allowlist. Retained
+pre-retirement release generations may still contain exactly one non-empty
+`WEB_DATABASE_URL`; only their rollback/CSV recovery sync receives it. Rollback
+starts Compose with an empty process environment plus the restored env file, so
+the failed SSH process's `CRAWLER_IMAGE_TAG` and other inputs cannot override the
+old contract.
 
 The deploy does not infer first-rollout state from a Git revision: a skipped or
 failed prior deploy can leave the host behind Git. Missing or mismatched
@@ -153,9 +153,14 @@ Least privilege is enforced at each runtime surface:
   database variable;
 - Alembic receives only `LOCAL_DATABASE_URL`, and Typesense schema setup
   receives only its four Typesense settings;
-- deploy/CSV registry sync receives local Postgres, the separately named
-  web-owned watchlist credential, and Typesense settings; CSV sync builds a
-  mode-`0600` filtered env instead of passing the host file wholesale;
+- current deploy/CSV registry sync and scheduled count refresh receive local
+  Postgres plus Typesense settings, never a web-owned database credential; CSV
+  sync builds a mode-`0600` filtered env instead of passing the host file
+  wholesale, while a retained legacy release may recover its own separately
+  named credential for its old sync contract;
+- protected web-database backup and the reviewer-gated location-taxonomy repair
+  remain the only current operational workflows allowed to receive the
+  web-owned credential;
 - `crawler export` always passes no relational-mirror pool and advances only
   `typesense:job_posting`;
 - the production CLI exposes no legacy sync selector, no Supabase
@@ -163,13 +168,15 @@ Least privilege is enforced at each runtime surface:
 - the host reconciler always passes `--target typesense`, copies no web/mirror
   URL, and host metrics publish only the Typesense state row.
 
-After deploying this slice but before dropping `public.job_posting`, verify the
-new `/home/deploy/.env` has exactly one non-local database boundary named
-`WEB_DATABASE_URL`, no `DATABASE_URL` line, and that inspected long-running
-container environments contain neither. Do not print values while collecting
-evidence. Verify deploy and CSV logs show plain `crawler sync`, exporter logs
-show `exporter.typesense_enabled` plus `exporter.relational_mirror_disabled`,
-and reconciliation command/journal evidence contains `--target typesense`.
+After deploying this slice, verify the new `/home/deploy/.env` has neither
+`WEB_DATABASE_URL` nor `DATABASE_URL`, and that inspected long-running and
+normal deploy/sync/maintenance one-shot environments contain neither. Do not
+print values while collecting evidence. Verify deploy and CSV logs show plain
+`crawler sync`, exporter logs show `exporter.typesense_enabled` plus
+`exporter.relational_mirror_disabled`, and reconciliation command/journal
+evidence contains `--target typesense`. Separately verify that protected backup
+and location-taxonomy repair workflows still scope their required web credential
+without copying or printing it.
 
 ## Typesense retirement proof
 
@@ -293,11 +300,12 @@ downgrade issue:
    (exact collection counts plus 10 deterministic identity/slug/display/locale
    samples per taxonomy), frozen posting-floor coverage, plus saved-job
    coverage pass;
-4. the posting exporter no longer receives any web/mirror database credential,
-   its active revision and immutable image digest are recorded durably, and its
-   rollback path has been exercised. The deploy/sync one-shot may retain the
-   separately named `WEB_DATABASE_URL` for smaller retained web-owned or
-   taxonomy boundaries; it is not forwarded to the long-lived exporter;
+4. the posting exporter, current deploy/sync one-shots, CSV sync, and scheduled
+   refresh receive no web/mirror database credential; the active revision and
+   immutable image digest are recorded durably, and rollback has been exercised.
+   Only protected web backup, reviewer-gated location-taxonomy repair, or a
+   retained legacy release rollback may receive the separately named
+   `WEB_DATABASE_URL`;
 5. the web read-plane cutovers are deployed and the repository/runtime guards
    find no Supabase `job_posting` reader or writer;
 6. a fresh 0086 preflight reports zero external dependencies and a projected

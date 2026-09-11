@@ -146,9 +146,8 @@ host capacity, selects at most one open `company-request` issue per accepted
 run, claims it with the shared `ws` claim protocol, and runs
 `ws task --issue <N>` from `apps/crawler` in an isolated worktree.
 
-GitHub Actions and workstation schedules must not be introduced for this
-automation. Manual recovery invokes the same committed runner entry point once
-from a throwaway worktree, with the Hetzner ledger and `ws` claims checked first.
+Manual recovery invokes the same committed runner entry point once from a
+throwaway worktree, with the Hetzner ledger and `ws` claims checked first.
 Safety budget: max 5 issues per 5-hour rolling window in conservative mode
 unless the Hetzner deployment config deliberately raises it.
 
@@ -163,10 +162,9 @@ The recurring resolver:
    completion verifies the recorded PR head and marks it ready, allowing the
    image-upload and auto-merge workflows to proceed.
 
-The recurring resolver is not triggered by GitHub Actions or a workstation
-schedule. Use `codex exec --json` for traceable runs and keep manual recovery
-on the same committed runner path so billing, auth, trace capture, and the
-governor ledger remain consistent.
+Use `codex exec --json` for traceable runs and keep manual recovery on the same
+committed runner path so billing, auth, trace capture, and the governor ledger
+remain consistent.
 
 Resolver outcomes are explicit: `submitted`, `rejected`, `escalated`,
 `retryable`, or `interrupted`. A closed issue is not success evidence on its

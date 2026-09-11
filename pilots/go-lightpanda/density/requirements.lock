@@ -1,0 +1,10 @@
+greenlet==3.3.2 \
+    --hash=sha256:ab0c7e7901a00bc0a7284907273dc165b32e0d109a6713babd04471327ff7986 \
+    --hash=sha256:b6997d360a4e6a4e936c0f9625b1c20416b8a0ea18a8e19cabbefc712e7397ab
+playwright==1.62.0 \
+    --hash=sha256:ba33bae6a13b3d9d354c751cb618af357d20fe1d57767cbcce52079bbef17ad3 \
+    --hash=sha256:db2d76613a57ad844362ce42f7d0c2fa26b19a4f7a46d4f76b891c631e6e5aff
+pyee==13.0.1 \
+    --hash=sha256:af2f8fede4171ef667dfded53f96e2ed0d6e6bd7ee3bb46437f77e3b57689228
+typing_extensions==4.15.0 \
+    --hash=sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548

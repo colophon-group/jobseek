@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => {
     title: string;
     description: string | null;
     isPublic: boolean;
+    shareEnabled?: boolean;
     filters: Record<string, unknown>;
     sourceWatchlistId?: string | null;
   };
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => {
     title: { __column: "watchlist.title" },
     description: { __column: "watchlist.description" },
     isPublic: { __column: "watchlist.isPublic" },
+    shareEnabled: { __column: "watchlist.shareEnabled" },
     alertsEnabled: { __column: "watchlist.alertsEnabled" },
     filters: { __column: "watchlist.filters" },
   };
@@ -46,6 +48,7 @@ const mocks = vi.hoisted(() => {
   const afterFn = vi.fn();
   const getSessionUserId = vi.fn();
   const canCreateWatchlist = vi.fn();
+  const sharedCloneLimit = vi.fn();
 
   const cloneState = (state: State): State => ({
     watchlists: state.watchlists.map((row) => ({ ...row })),
@@ -69,6 +72,16 @@ const mocks = vi.hoisted(() => {
       if (useRootQueue) return rootSelectRows.shift() ?? [];
       if (table === watchlistCompany) {
         return state.companies.map(({ companyId }) => ({ companyId }));
+      }
+      if (table === watchlist && projection) {
+        return state.watchlists.map((row) => Object.fromEntries(
+          Object.keys(projection).map((key) => [
+            key,
+            key === "isShared"
+              ? Boolean(row.shareEnabled)
+              : row[key as keyof WatchlistRow],
+          ]),
+        ));
       }
       return state.watchlists;
     };
@@ -94,6 +107,7 @@ const mocks = vi.hoisted(() => {
       insertedValues = Array.isArray(values) ? values : [values];
       return chain;
     };
+    chain.onConflictDoNothing = () => chain;
 
     const apply = () => {
       if (table === watchlistCompany) {
@@ -117,6 +131,7 @@ const mocks = vi.hoisted(() => {
           title: String(value.title),
           description: (value.description as string | null) ?? null,
           isPublic: Boolean(value.isPublic),
+          shareEnabled: Boolean(value.shareEnabled),
           filters: (value.filters as Record<string, unknown>) ?? {},
           sourceWatchlistId: (value.sourceWatchlistId as string | null) ?? null,
         };
@@ -136,16 +151,34 @@ const mocks = vi.hoisted(() => {
 
   const makeUpdate = (state: State, table: unknown) => {
     let updates: Record<string, unknown> = {};
+    let applied = false;
+    let result: Array<{ id: string }> = [];
     const chain: Record<string, unknown> = {};
     chain.set = (values: Record<string, unknown>) => {
       updates = values;
       return chain;
     };
-    chain.where = () => {
+    const apply = () => {
+      if (applied) return result;
+      applied = true;
       if (table !== watchlist) throw new Error("unexpected update table");
-      Object.assign(state.watchlists[0], updates);
-      return Promise.resolve([]);
+      const row = state.watchlists[0];
+      const isShareTransition = updates.shareEnabled === true;
+      if (
+        row
+        && (!isShareTransition || (row.userId === "user-1" && !row.shareEnabled))
+      ) {
+        Object.assign(row, updates);
+        result = [{ id: row.id }];
+      }
+      return result;
     };
+    chain.where = () => chain;
+    chain.returning = async () => apply();
+    chain.then = (
+      resolve: (value: unknown) => unknown,
+      reject?: (reason: unknown) => unknown,
+    ) => Promise.resolve().then(apply).then(resolve, reject);
     return chain;
   };
 
@@ -172,9 +205,7 @@ const mocks = vi.hoisted(() => {
     insert: () => {
       throw new Error("mutation escaped transaction");
     },
-    update: () => {
-      throw new Error("mutation escaped transaction");
-    },
+    update: (table: unknown) => makeUpdate(committed, table),
     delete: () => {
       throw new Error("mutation escaped transaction");
     },
@@ -203,6 +234,7 @@ const mocks = vi.hoisted(() => {
     afterFn.mockReset();
     getSessionUserId.mockReset();
     canCreateWatchlist.mockReset();
+    sharedCloneLimit.mockReset();
   };
 
   return {
@@ -213,6 +245,7 @@ const mocks = vi.hoisted(() => {
     afterFn,
     getSessionUserId,
     canCreateWatchlist,
+    sharedCloneLimit,
     reset,
     snapshot: () => cloneState(committed),
     setState: (state: State) => {
@@ -234,7 +267,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("next/server", () => ({ after: mocks.afterFn }));
-vi.mock("next/cache", () => ({ updateTag: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), updateTag: vi.fn() }));
 vi.mock("@/lib/sessionCache", () => ({
   getSessionUserId: mocks.getSessionUserId,
 }));
@@ -242,6 +275,9 @@ vi.mock("@/lib/plans", () => ({
   canCreateWatchlist: mocks.canCreateWatchlist,
   getUserPlan: vi.fn(),
   PLAN_LIMITS: { free: {}, paid: {} },
+}));
+vi.mock("@/lib/rate-limit", () => ({
+  sharedWatchlistCloneLimiter: { limit: mocks.sharedCloneLimit },
 }));
 vi.mock("@/lib/watchlist-slug", async () =>
   vi.importActual<typeof import("@/lib/watchlist-slug")>("@/lib/watchlist-slug"),
@@ -264,27 +300,133 @@ vi.mock("drizzle-orm", () => {
 });
 
 import {
+  addCompanyToWatchlist,
   copyWatchlist,
+  copySharedWatchlist,
   createWatchlist,
+  shareWatchlist,
   updateWatchlist,
 } from "@/lib/services/watchlists";
 
 const USER_ID = "user-1";
-const WATCHLIST_ID = "wl-existing";
+const WATCHLIST_ID = "10000000-0000-4000-8000-000000000001";
+const COMPANY_ID = "20000000-0000-4000-8000-000000000001";
+const NEW_COMPANY_ID = "20000000-0000-4000-8000-000000000002";
 
 beforeEach(() => {
   mocks.reset();
   mocks.getSessionUserId.mockResolvedValue(USER_ID);
   mocks.canCreateWatchlist.mockResolvedValue({ allowed: true });
+  mocks.sharedCloneLimit.mockResolvedValue({ success: true });
 });
 
 describe("#3114 — watchlist multi-table writes are atomic", () => {
+  it("rejects malformed scalar UUIDs before opening a membership transaction", async () => {
+    await expect(addCompanyToWatchlist("not-a-uuid", COMPANY_ID)).resolves.toEqual({ ok: false });
+    await expect(addCompanyToWatchlist(WATCHLIST_ID, "not-a-uuid")).resolves.toEqual({ ok: false });
+    expect(mocks.calls.transactions).toBe(0);
+  });
+
+  it("enforces the 250-company membership ceiling under the parent-row transaction", async () => {
+    mocks.setState({
+      watchlists: [{
+        id: WATCHLIST_ID,
+        userId: USER_ID,
+        slug: "source",
+        title: "Source",
+        description: null,
+        isPublic: false,
+        filters: {},
+      }],
+      companies: Array.from({ length: 250 }, (_, index) => ({
+        watchlistId: WATCHLIST_ID,
+        companyId: `20000000-0000-4000-8001-${index.toString().padStart(12, "0")}`,
+      })),
+    });
+
+    await expect(addCompanyToWatchlist(WATCHLIST_ID, NEW_COMPANY_ID)).resolves.toEqual({ ok: false });
+    expect(mocks.snapshot().companies).toHaveLength(250);
+    expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 0 });
+  });
+
+  it("enables unlisted sharing only for the current owner and is idempotent", async () => {
+    const audit = vi.spyOn(console, "info").mockImplementation(() => {});
+    const source = {
+      id: WATCHLIST_ID,
+      userId: USER_ID,
+      slug: "source",
+      title: "Source",
+      description: null,
+      isPublic: true,
+      shareEnabled: false,
+      filters: {},
+    };
+    mocks.setState({ watchlists: [source], companies: [] });
+    mocks.queueRootSelect(
+      [{ id: WATCHLIST_ID, title: "Source", description: null, filters: {} }],
+      [{ id: WATCHLIST_ID, title: "Source", description: null, filters: {} }],
+    );
+
+    await expect(shareWatchlist(WATCHLIST_ID)).resolves.toEqual({
+      ok: true,
+      url: `https://jseek.co/watchlists/${WATCHLIST_ID}`,
+    });
+    await expect(shareWatchlist(WATCHLIST_ID)).resolves.toEqual({
+      ok: true,
+      url: `https://jseek.co/watchlists/${WATCHLIST_ID}`,
+    });
+
+    expect(mocks.snapshot().watchlists[0]?.shareEnabled).toBe(true);
+    expect(audit).toHaveBeenCalledTimes(1);
+    audit.mockRestore();
+  });
+
+  it("does not enable sharing when the owner predicate returns no row", async () => {
+    const source = {
+      id: WATCHLIST_ID,
+      userId: "different-owner",
+      slug: "source",
+      title: "Source",
+      description: null,
+      isPublic: true,
+      shareEnabled: false,
+      filters: {},
+    };
+    mocks.setState({ watchlists: [source], companies: [] });
+    mocks.queueRootSelect([]);
+
+    await expect(shareWatchlist(WATCHLIST_ID)).resolves.toEqual({ error: "not_found" });
+    expect(mocks.snapshot().watchlists[0]?.shareEnabled).toBe(false);
+  });
+
+  it.each([
+    { title: "Bad\u0000title", filters: {} },
+    { title: "Source", filters: { workMode: ["future-mode"] } },
+  ])("does not enable sharing for an in-size but invalid legacy source", async ({ title, filters }) => {
+    mocks.setState({
+      watchlists: [{
+        id: WATCHLIST_ID,
+        userId: USER_ID,
+        slug: "source",
+        title,
+        description: null,
+        isPublic: false,
+        shareEnabled: false,
+        filters,
+      }],
+      companies: [],
+    });
+
+    await expect(shareWatchlist(WATCHLIST_ID)).resolves.toEqual({ error: "invalid_source" });
+    expect(mocks.snapshot().watchlists[0]?.shareEnabled).toBe(false);
+  });
+
   it("commits a private parent and company rows atomically", async () => {
     const audit = vi.spyOn(console, "info").mockImplementation(() => {});
     try {
       await expect(createWatchlist({
         title: "New watchlist",
-        companyIds: ["company-1"],
+        companyIds: [COMPANY_ID],
       })).resolves.toEqual({ id: "wl-new", slug: "new-watchlist" });
 
       expect(mocks.snapshot()).toEqual({
@@ -293,7 +435,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
           title: "New watchlist",
           isPublic: false,
         })],
-        companies: [{ watchlistId: "wl-new", companyId: "company-1" }],
+        companies: [{ watchlistId: "wl-new", companyId: COMPANY_ID }],
       });
       expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 0 });
       expect(audit).toHaveBeenCalledTimes(1);
@@ -311,12 +453,12 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     try {
       await expect(createWatchlist({
         title: "New watchlist",
-        companyIds: ["company-1"],
+        companyIds: [COMPANY_ID],
       })).resolves.toEqual({ id: "wl-new", slug: "new-watchlist-2" });
 
       expect(mocks.snapshot()).toEqual({
         watchlists: [expect.objectContaining({ id: "wl-new", slug: "new-watchlist-2" })],
-        companies: [{ watchlistId: "wl-new", companyId: "company-1" }],
+        companies: [{ watchlistId: "wl-new", companyId: COMPANY_ID }],
       });
       expect(mocks.calls).toEqual({ transactions: 2, rollbacks: 1 });
       expect(audit).toHaveBeenCalledTimes(1);
@@ -331,7 +473,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     try {
       await expect(createWatchlist({
         title: "Must stay private",
-        companyIds: ["company-1"],
+        companyIds: [COMPANY_ID],
         isPublic: true,
       })).resolves.toEqual({ error: "visibility_locked" });
 
@@ -349,7 +491,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
 
     await expect(createWatchlist({
       title: "New watchlist",
-      companyIds: ["company-1"],
+      companyIds: [COMPANY_ID],
     })).rejects.toThrow("forced watchlist_company insert failure");
 
     expect(mocks.snapshot()).toEqual({ watchlists: [], companies: [] });
@@ -447,7 +589,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     await expect(updateWatchlist({
       watchlistId: WATCHLIST_ID,
       description: "Changed description",
-      companyIds: ["company-new"],
+      companyIds: [NEW_COMPANY_ID],
     })).rejects.toThrow("forced watchlist_company insert failure");
 
     expect(mocks.snapshot()).toEqual(originalState);
@@ -545,6 +687,92 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     expect(mocks.afterFn).not.toHaveBeenCalled();
   });
 
+  it("clones an explicitly shared cross-user source as a private watchlist", async () => {
+    const audit = vi.spyOn(console, "info").mockImplementation(() => {});
+    const source = {
+      id: WATCHLIST_ID,
+      userId: "source-owner",
+      slug: "source",
+      title: "Shared source",
+      description: "Useful filters",
+      isPublic: false,
+      shareEnabled: true,
+      filters: { keywords: ["platform"] },
+    };
+    mocks.setState({
+      watchlists: [source],
+      companies: [{ watchlistId: WATCHLIST_ID, companyId: "company-1" }],
+    });
+    mocks.queueRootSelect([{
+      title: source.title,
+      userId: source.userId,
+      isShared: true,
+    }]);
+    mocks.setNextWatchlistId("shared-copy");
+
+    try {
+      await expect(copySharedWatchlist(WATCHLIST_ID)).resolves.toEqual({
+        id: "shared-copy",
+        slug: "shared-source",
+      });
+      expect(mocks.snapshot().watchlists).toContainEqual(expect.objectContaining({
+        id: "shared-copy",
+        userId: USER_ID,
+        isPublic: false,
+        shareEnabled: false,
+        sourceWatchlistId: WATCHLIST_ID,
+      }));
+      const payload = JSON.parse(audit.mock.calls[0][0] as string) as Record<string, unknown>;
+      expect(payload.copy_source_kind).toBe("share");
+    } finally {
+      audit.mockRestore();
+    }
+  });
+
+  it("rejects a grandfathered public source that was never explicitly shared", async () => {
+    mocks.queueRootSelect([{
+      title: "Legacy public",
+      userId: "source-owner",
+      isShared: false,
+    }]);
+
+    await expect(copySharedWatchlist(WATCHLIST_ID)).resolves.toEqual({ error: "not_found" });
+    expect(mocks.calls).toEqual({ transactions: 0, rollbacks: 0 });
+  });
+
+  it("rate-limits shared clones inside the mutation boundary before reading the source", async () => {
+    mocks.sharedCloneLimit.mockResolvedValue({ success: false });
+
+    await expect(copySharedWatchlist(WATCHLIST_ID)).resolves.toEqual({
+      error: "rate_limited",
+    });
+    expect(mocks.sharedCloneLimit).toHaveBeenCalledWith(USER_ID);
+    expect(mocks.calls).toEqual({ transactions: 0, rollbacks: 0 });
+  });
+
+  it("rechecks share state under the source-row lock before cloning", async () => {
+    const source = {
+      id: WATCHLIST_ID,
+      userId: "source-owner",
+      slug: "source",
+      title: "Revoked source",
+      description: null,
+      isPublic: false,
+      shareEnabled: false,
+      filters: {},
+    };
+    mocks.setState({ watchlists: [source], companies: [] });
+    mocks.queueRootSelect([{
+      title: source.title,
+      userId: source.userId,
+      isShared: true,
+    }]);
+
+    await expect(copySharedWatchlist(WATCHLIST_ID)).resolves.toEqual({ error: "not_found" });
+    expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 1 });
+    expect(mocks.snapshot().watchlists).toEqual([source]);
+  });
+
   it("atomically duplicates an owned source with provenance and source-kind audit", async () => {
     const audit = vi.spyOn(console, "info").mockImplementation(() => {});
     const source = {
@@ -599,13 +827,14 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       const payload = JSON.parse(audit.mock.calls[0][0] as string) as Record<string, unknown>;
       expect(payload).toMatchObject({
         action: "watchlist.copy",
-        watchlist_id: "wl-copy",
         copy_source_kind: "owned",
         is_public_after: false,
       });
+      expect(payload.watchlist_ref).toMatch(/^[0-9a-f]{12}$/);
       expect(JSON.stringify(payload)).not.toContain(USER_ID);
       expect(JSON.stringify(payload)).not.toContain("engineer");
       expect(JSON.stringify(payload)).not.toContain(WATCHLIST_ID);
+      expect(JSON.stringify(payload)).not.toContain("wl-copy");
     } finally {
       audit.mockRestore();
     }

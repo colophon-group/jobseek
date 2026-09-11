@@ -1,0 +1,16 @@
+{
+  "board_slug": "abbvie-careers",
+  "source_path": "apps/crawler/data/boards.csv",
+  "source_commit": "eb4234c2bc3ede2ef04f4b5cd5ed65bf37fd3c89",
+  "python_filter_mode": "re.search",
+  "literal_subset_reason": "The configured /job/ pattern contains no regular-expression metacharacters, so Python re.search and literal containment are equivalent for this frozen input.",
+  "monitor_config": {
+    "url": "https://careers.abbvie.com/en/sitemap.xml",
+    "url_filter": "/job/"
+  },
+  "expected_urls": [
+    "https://careers.abbvie.com/en/job/1234/scientist?ref=source",
+    "https://careers.abbvie.com/en/job/5678/engineer"
+  ],
+  "expected_filtered_count": 2
+}

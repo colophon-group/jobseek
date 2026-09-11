@@ -71,7 +71,7 @@ export default async function FaqPage({ params }: Props) {
     },
     {
       q: i18n._({ id: "faq.q.whatIsWatchlist", comment: "FAQ question defining a watchlist.", message: "What is a watchlist?" }),
-      a: i18n._({ id: "faq.a.whatIsWatchlist", comment: "FAQ answer explaining saved-search watchlists and sharing options.", message: "A watchlist is a saved search with optional company filtering. Pick the companies you care about, set your filters (role, location, seniority, salary), and get a live feed of matching jobs. You can share watchlists publicly or keep them private." }),
+      a: i18n._({ id: "faq.a.whatIsWatchlist", comment: "FAQ answer explaining private-by-default saved-search watchlists and unlisted sharing.", message: "A watchlist is a saved search with optional company filtering. Pick the companies you care about, set your filters (role, location, seniority, salary), and get a live feed of matching jobs. Watchlists are private by default; when you choose to share an unlisted link, anyone with the link can view the results and clone the watchlist, while only you can manage the original." }),
     },
     {
       q: i18n._({ id: "faq.q.trackerLimit", comment: "FAQ question about application tracker limits.", message: "Is there a limit to how many jobs I can track?" }),

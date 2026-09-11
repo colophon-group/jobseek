@@ -99,6 +99,8 @@ describe("rate-limit configuration", () => {
       { prefix: "rl:api", tokens: 30, window: "60 s" },
       { prefix: "rl:public-read:minute:v1", tokens: 30, window: "60 s" },
       { prefix: "rl:public-read:hour:v1", tokens: 300, window: "3600 s" },
+      { prefix: "rl:shared-watchlist-clone:hour:v1", tokens: 30, window: "3600 s" },
+      { prefix: "rl:watchlist-activity:minute:v1", tokens: 12, window: "60 s" },
     ]);
   });
 });

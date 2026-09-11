@@ -37,13 +37,29 @@ def test_successful_finish_advances_last_success(tmp_path: Path) -> None:
     path = tmp_path / "status.json"
     status.begin(path, now=100)
 
-    record = status.finish(path, "success", now=120)
+    record = status.finish(path, "success", "exited", "0", now=120)
 
     assert record["last_attempt_unixtime"] == 100
     assert record["last_success_unixtime"] == 120
     assert record["last_attempt_success"] == 1
     assert record["run_in_progress"] == 0
     assert record["last_result"] == "success"
+
+
+def test_already_completed_finish_preserves_last_success(tmp_path: Path) -> None:
+    path = tmp_path / "status.json"
+    path.write_text(
+        json.dumps({"last_attempt_unixtime": 100, "last_success_unixtime": 80}),
+        encoding="utf-8",
+    )
+
+    record = status.finish(path, "success", "exited", "10", now=120)
+
+    assert record["last_attempt_unixtime"] == 100
+    assert record["last_success_unixtime"] == 80
+    assert record["last_attempt_success"] == 1
+    assert record["run_in_progress"] == 0
+    assert record["last_result"] == "already-completed"
 
 
 def test_failed_finish_preserves_last_success(tmp_path: Path) -> None:
@@ -59,7 +75,7 @@ def test_failed_finish_preserves_last_success(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    record = status.finish(path, "exit-code", now=120)
+    record = status.finish(path, "exit-code", "exited", "1", now=120)
 
     assert record["last_attempt_unixtime"] == 100
     assert record["last_success_unixtime"] == 80
@@ -74,7 +90,7 @@ def test_finish_rejects_unknown_result_without_mutating_file(tmp_path: Path) -> 
     before = path.read_bytes()
 
     with pytest.raises(status.RoutineStatusError, match="unrecognized"):
-        status.finish(path, "not-a-systemd-result", now=120)
+        status.finish(path, "not-a-systemd-result", "exited", "0", now=120)
 
     assert path.read_bytes() == before
 
@@ -85,3 +101,22 @@ def test_invalid_existing_status_fails_closed(tmp_path: Path) -> None:
 
     with pytest.raises(status.RoutineStatusError, match="cannot read valid"):
         status.begin(path, now=100)
+
+
+@pytest.mark.parametrize(
+    ("exit_code", "exit_status"),
+    [("exited", "1"), ("killed", "9"), ("", "")],
+)
+def test_nominal_success_with_inconsistent_exit_metadata_fails_closed(
+    tmp_path: Path, exit_code: str, exit_status: str
+) -> None:
+    path = tmp_path / "status.json"
+    path.write_text(json.dumps({"last_attempt_unixtime": 100, "last_success_unixtime": 80}))
+
+    record = status.finish(path, "success", exit_code, exit_status, now=120)
+
+    assert record["last_attempt_unixtime"] == 100
+    assert record["last_success_unixtime"] == 80
+    assert record["last_attempt_success"] == 0
+    assert record["run_in_progress"] == 0
+    assert record["last_result"] == "protocol"

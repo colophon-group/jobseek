@@ -3,10 +3,7 @@ import { readFileSync } from "node:fs";
 
 describe("responsive app chrome", () => {
   it("keeps informational banners in document flow on desktop", () => {
-    for (const path of [
-      "src/components/CookieBanner.tsx",
-      "src/components/watchlist/watchlist-tip-banner.tsx",
-    ]) {
+    for (const path of ["src/components/CookieBanner.tsx"]) {
       const source = readFileSync(path, "utf8");
       expect(source).toContain("bottom-14");
       expect(source).toContain("md:static");

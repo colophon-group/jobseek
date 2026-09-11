@@ -608,6 +608,21 @@ class TestAutoMapFields:
         assert mapping["description"] == "description"
         assert mapping.get("locations") == "location"
 
+    def test_salesforce_custom_job_fields(self):
+        mapping = auto_map_fields(
+            [
+                {
+                    "Name": "Plastic Surgical Oncology APP",
+                    "Job_Posting_Description__c": "<p>Provide cancer care.</p>",
+                    "Location__c": "Gilbert",
+                }
+            ]
+        )
+
+        assert mapping["title"] == "Name"
+        assert mapping["description"] == "Job_Posting_Description__c"
+        assert mapping["locations"] == "Location__c"
+
     def test_fountain_position_description(self):
         items = [
             {

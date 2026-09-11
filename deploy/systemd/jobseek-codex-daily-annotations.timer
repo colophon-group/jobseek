@@ -7,7 +7,7 @@ Documentation=file:///srv/jobseek-codex/repo/docs/18-codex-automation-deployment
 OnCalendar=*-*-* 08:00:00 UTC
 RandomizedDelaySec=10min
 AccuracySec=1min
-Persistent=false
+Persistent=true
 Unit=jobseek-codex-daily-annotations.service
 
 [Install]

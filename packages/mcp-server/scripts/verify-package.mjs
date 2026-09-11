@@ -1,6 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { handleMcpRequest } from "../dist/handler.js";
 import { createServer } from "../dist/server.js";
 import { JobseekClient } from "../dist/client.js";
 import {
@@ -72,6 +73,25 @@ assert(
 assert(
   packageJson.repository?.directory === "packages/mcp-server",
   "package.json repository.directory must identify this workspace package",
+);
+
+// A request-scoped, stateless transport cannot deliver server-initiated
+// messages on a standalone GET stream. Reject it instead of leaving a
+// serverless invocation open until the hosting platform kills it.
+const standaloneStreamResponse = await handleMcpRequest(
+  new Request("https://example.invalid/mcp", {
+    method: "GET",
+    headers: { Accept: "text/event-stream" },
+  }),
+  "https://example.invalid",
+);
+assert(
+  standaloneStreamResponse.status === 405,
+  "Stateless MCP handler must reject standalone GET streams with HTTP 405",
+);
+assert(
+  standaloneStreamResponse.headers.get("Allow") === "POST, DELETE",
+  "Stateless MCP GET rejection must advertise the supported methods",
 );
 
 // Exercise the published protocol boundary. This catches SDK/Zod integration

@@ -1,0 +1,16 @@
+**
+!pilots/
+!pilots/go-http-sitemap/
+!pilots/go-http-sitemap/go.mod
+!pilots/go-http-sitemap/boundedhttp/
+!pilots/go-http-sitemap/boundedhttp/*.go
+!pilots/go-http-sitemap/sitemap/
+!pilots/go-http-sitemap/sitemap/*.go
+!pilots/go-http-sitemap/worker/
+!pilots/go-http-sitemap/worker/*.go
+!pilots/go-http-sitemap/benchmark/
+!pilots/go-http-sitemap/benchmark/*.go
+!pilots/go-http-sitemap/benchmark/fleet.json
+!pilots/go-http-sitemap/cmd/
+!pilots/go-http-sitemap/cmd/fleetbench/
+!pilots/go-http-sitemap/cmd/fleetbench/*.go

@@ -115,12 +115,8 @@ def test_long_running_pool_budget_is_explicit_and_below_steady_target() -> None:
 
     assert minimum == 6
     assert maximum == 40
-
-    murmur = compose["services"]["murmur-shim"]["environment"]
-    assert int(murmur["MURMUR_DB_POOL_MAX"]) == 2
-    assert int(murmur["MURMUR_INVOKER_MAX_CONCURRENCY"]) == 2
-    assert maximum + 2 + 2 == 44
-    assert 44 < 70
+    assert "murmur-shim" not in compose["services"]
+    assert maximum < 70
 
 
 def test_murmur_enforces_both_connection_owners() -> None:
@@ -188,7 +184,7 @@ def test_oneoffs_and_readonly_routine_have_explicit_small_budgets() -> None:
     )
     runbook = RUNBOOK.read_text(encoding="utf-8")
     assert "aggregate maximum remains exactly 2" in runbook
-    assert "unchanged at 58 connections" in runbook
+    assert "54 connections" in runbook
 
 
 def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> None:
@@ -198,23 +194,21 @@ def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> No
     )
     migrate = deploy.index("CRAWLER_DB_ROLE=deploy-migrate", stop)
     sync = deploy.index("CRAWLER_DB_ROLE=deploy-sync", migrate)
-    start = deploy.index("docker compose up -d --remove-orphans", sync)
+    start = deploy.index('docker compose up -d "${CRAWLER_STACK_SERVICES[@]}"', sync)
     assert stop < migrate < sync < start
-
-    # Murmur (2 Node + 2 children) remains up. Migration uses one NullPool
-    # connection; sync uses a four-slot local pool. Those phases are serial.
-    assert 4 + 1 == 5
-    assert 4 + 4 == 8
 
     ingress = (ROOT / "deploy/networking/verify-private-paths.sh").read_text(encoding="utf-8")
     assert '"application_name": "jobseek:ingress:private-path-verifier"' in ingress
     # Independent deploy overlap: labeller 2 + backup 2 + sampler 1 + ingress 1.
     independent = 2 + 2 + 1 + 1
-    assert max(5 + independent, 8 + independent, 44 + independent) == 50
+    # Migration uses one NullPool connection; sync uses a four-slot local pool.
+    # Those phases are serial, and the paused Murmur integration owns no slots.
+    deploy_clients = (1, 4)
+    assert max(*(clients + independent for clients in deploy_clients), 40 + independent) == 46
 
     runbook = RUNBOOK.read_text(encoding="utf-8")
-    assert "absolute deployment maximum is therefore 50 connections" in runbook
-    assert "| new or rolled-back stack healthy | 40 | 0 | 4 | 6 | **50** |" in runbook
+    assert "absolute deployment maximum is therefore 46 connections" in runbook
+    assert "| new or rolled-back stack healthy | 40 | 0 | 6 | **46** |" in runbook
 
 
 def test_exact_pre_budget_base_archive_is_bounded_by_rollback_override() -> None:
@@ -263,12 +257,13 @@ def test_exact_pre_budget_base_archive_is_bounded_by_rollback_override() -> None
         "drain": 6,
     }
     assert sum(merged_maxima.values()) == 40
-    murmur = merged["services"]["murmur-shim"]["environment"]
-    assert murmur["MURMUR_DB_POOL_MAX"] == "2"
-    assert murmur["MURMUR_INVOKER_MAX_CONCURRENCY"] == "2"
-    # Same maximum as the forward stack: crawler 40 + Murmur 4 + the
-    # independently reserved labeller/backup/sampler/ingress clients 6.
-    assert sum(merged_maxima.values()) + 2 + 2 + 6 == 50
+    assert "murmur-shim" not in _compose()["services"]
+    assert "murmur-shim" not in yaml.safe_load(ROLLBACK_OVERRIDE.read_text())["services"]
+    # Rollback starts an explicit core-service allowlist, so the historical
+    # Murmur service in this legacy fixture remains stopped.
+    deploy = (CRAWLER / "deploy.sh").read_text(encoding="utf-8")
+    assert 'rollback_compose up -d "${rollback_stack_services[@]}"' in deploy
+    assert sum(merged_maxima.values()) + 6 == 46
 
 
 def test_host_capacity_keeps_server_and_operator_reserve_explicit() -> None:
@@ -283,10 +278,10 @@ def test_host_capacity_keeps_server_and_operator_reserve_explicit() -> None:
         assert "max_connections=101" not in source
 
     runbook = RUNBOOK.read_text(encoding="utf-8")
-    assert "**44**" in runbook
-    assert "58 connections" in runbook
-    assert "allocated ceiling is 68/100" in runbook
-    assert "leaving 32" in runbook
+    assert "**40**" in runbook
+    assert "54 connections" in runbook
+    assert "allocated ceiling is 64/100" in runbook
+    assert "leaving 36" in runbook
 
 
 def test_owner_metrics_are_bounded_and_seven_day_gate_is_documented() -> None:

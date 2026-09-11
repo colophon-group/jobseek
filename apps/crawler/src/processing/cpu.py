@@ -11,10 +11,10 @@ from email.utils import parsedate_to_datetime
 
 from src.core.enum_normalize import normalize_employment_type
 from src.core.experience_extract import extract_experience
+from src.core.job_content import enrich_description
 from src.core.location_resolve import LocationResolver
 from src.core.occupation_resolve import match_occupation
 from src.core.salary_extract import extract_salary_unified
-from src.core.scrapers import enrich_description
 from src.core.seniority_resolve import match_seniority
 from src.core.technology_resolve import match_technologies
 from src.shared.html_normalize import normalize_description_html

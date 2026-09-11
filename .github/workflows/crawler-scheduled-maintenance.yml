@@ -187,9 +187,6 @@ jobs:
               TYPESENSE_PROTOCOL
               TYPESENSE_OPERATIONS_KEY
             )
-            if [[ "$TASK" == "refresh-typesense" ]]; then
-              required_env+=(WEB_DATABASE_URL)
-            fi
             for key in "${required_env[@]}"; do
               mapfile -t matches < <(grep -E "^${key}=" /home/deploy/.env || true)
               if [[ ${#matches[@]} -ne 1 || -z "${matches[0]#*=}" ]]; then

@@ -1,0 +1,187 @@
+name: Go Lightpanda Pilot
+
+on:
+  pull_request:
+    paths:
+      - "pilots/go-lightpanda/**"
+      - "apps/crawler/contracts/go.mod"
+      - "apps/crawler/contracts/go.sum"
+      - "apps/crawler/contracts/v1/gen/go/**"
+      - "apps/crawler/contracts/v1/lightpandaadapter/**"
+      - "apps/crawler/contracts/v1/lightpanda-service.md"
+      - "apps/crawler/src/lightpanda/client.py"
+      - "apps/crawler/src/lightpanda/routing.py"
+      - "apps/crawler/src/lightpanda_queue.py"
+      - "apps/crawler/tests/lightpanda/test_client.py"
+      - "apps/crawler/tests/test_lightpanda_renderer_deployment.py"
+      - "deploy/lightpanda-renderer/**"
+      - ".github/workflows/deploy-lightpanda-renderer.yml"
+      - ".github/workflows/go-lightpanda-pilot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-lightpanda-pilot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test Go Lightpanda Pilot (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: pilots/go-lightpanda
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: pilots/go-lightpanda/go.mod
+          cache-dependency-path: pilots/go-lightpanda/go.sum
+
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+
+      - name: Test, race, vet, and formatting
+        run: |
+          go test ./...
+          go test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
+      - name: Test one-shot Python mTLS client contract
+        working-directory: apps/crawler
+        run: |
+          uv run --frozen pytest tests/lightpanda/test_client.py -q
+          uv run --frozen ruff check src/lightpanda/client.py tests/lightpanda/test_client.py
+          uv run --frozen ruff format --check src/lightpanda/client.py tests/lightpanda/test_client.py
+          uv run --frozen pyright src/lightpanda/client.py
+
+      - name: Test density controller and runners
+        timeout-minutes: 5
+        run: |
+          go test -v -timeout=60s -tags densitybench ./...
+          go test -v -timeout=90s -race -tags densitybench ./...
+          go vet -tags densitybench ./...
+          python3 -m unittest discover -s density -p 'test_*.py'
+
+      - name: Exercise checksum-pinned stable Lightpanda
+        run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target integration-test --tag jobseek-lightpanda-integration:${{ matrix.arch }}-${{ github.run_id }} .
+
+      - name: Build bounded runtime image
+        run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target runtime --tag jobseek-lightpanda-pilot:${{ matrix.arch }}-${{ github.run_id }} .
+
+      - name: Build inactive mTLS service image
+        run: docker build --build-context contracts=../../apps/crawler/contracts --build-arg SOURCE_COMMIT=${{ github.sha }} --platform ${{ matrix.platform }} --target service --tag jobseek-lightpanda-service:${{ matrix.arch }}-${{ github.run_id }} .
+
+      - name: Prove native service child identity boundary
+        env:
+          SERVICE_IMAGE: jobseek-lightpanda-service:${{ matrix.arch }}-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          isolation_root="$(mktemp -d)"
+          cleanup() {
+            sudo unlink -- "$isolation_root/server-key.pem" 2>/dev/null || true
+            rmdir -- "$isolation_root"
+          }
+          trap cleanup EXIT
+          printf 'identity-probe-only\n' >"$isolation_root/server-key.pem"
+          sudo chown 10001:10001 "$isolation_root/server-key.pem"
+          sudo chmod 0400 "$isolation_root/server-key.pem"
+          docker run --rm \
+            --init \
+            --network none \
+            --read-only \
+            --user 0:0 \
+            --cap-drop ALL \
+            --cap-add KILL \
+            --cap-add SETGID \
+            --cap-add SETUID \
+            --security-opt no-new-privileges:true \
+            --cpus 1 \
+            --memory 1g \
+            --memory-swap 1g \
+            --pids-limit 64 \
+            --ulimit nofile=256:256 \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m,uid=10002,gid=10002,mode=0700 \
+            --mount "type=bind,source=$isolation_root/server-key.pem,target=/run/credentials/server-key.pem,readonly" \
+            "$SERVICE_IMAGE" \
+            --runtime-v1-child-isolation-check /run/credentials/server-key.pem
+
+      - name: Build native density smoke images
+        env:
+          DENSITY_ARCH: ${{ matrix.arch }}
+          DENSITY_PLATFORM: ${{ matrix.platform }}
+          DENSITY_RUN_ID: ${{ github.run_id }}
+          DENSITY_SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          docker build \
+            --build-context contracts=../../apps/crawler/contracts \
+            --build-arg "SOURCE_COMMIT=${DENSITY_SOURCE_COMMIT}" \
+            --platform "${DENSITY_PLATFORM}" \
+            --target density \
+            --tag "jobseek-lightpanda-density:${DENSITY_ARCH}-${DENSITY_RUN_ID}" \
+            .
+          docker build \
+            --build-arg "SOURCE_COMMIT=${DENSITY_SOURCE_COMMIT}" \
+            --platform "${DENSITY_PLATFORM}" \
+            --file density/Dockerfile.python \
+            --tag "jobseek-python-chromium-density:${DENSITY_ARCH}-${DENSITY_RUN_ID}" \
+            density
+          docker build \
+            --build-arg "SOURCE_COMMIT=${DENSITY_SOURCE_COMMIT}" \
+            --platform "${DENSITY_PLATFORM}" \
+            --file density/Dockerfile.fixture \
+            --tag "jobseek-density-fixture:${DENSITY_ARCH}-${DENSITY_RUN_ID}" \
+            density
+
+      - name: Run one native c4 density smoke pair
+        env:
+          DENSITY_ARCH: ${{ matrix.arch }}
+          DENSITY_RUN_ID: ${{ github.run_id }}
+          DENSITY_SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          report_dir="${RUNNER_TEMP}/go-lightpanda-density"
+          report_path="${report_dir}/report-${DENSITY_ARCH}.json"
+          mkdir -p "${report_dir}"
+          set +e
+          sudo --non-interactive python3 density/controller.py \
+            --go-image "jobseek-lightpanda-density:${DENSITY_ARCH}-${DENSITY_RUN_ID}" \
+            --python-image "jobseek-python-chromium-density:${DENSITY_ARCH}-${DENSITY_RUN_ID}" \
+            --fixture-image "jobseek-density-fixture:${DENSITY_ARCH}-${DENSITY_RUN_ID}" \
+            --source-commit "${DENSITY_SOURCE_COMMIT}" \
+            --concurrency 4 \
+            --timeout-seconds 180 \
+            --output "${report_path}"
+          smoke_status=$?
+          if test -f "${report_path}"; then
+            sudo chown "$(id -u):$(id -g)" "${report_path}"
+          fi
+          exit "${smoke_status}"
+
+      - name: Retain sanitized density smoke report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: go-lightpanda-density-${{ matrix.arch }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/go-lightpanda-density/report-${{ matrix.arch }}.json
+          if-no-files-found: error
+          retention-days: 14

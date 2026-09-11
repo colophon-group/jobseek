@@ -203,7 +203,7 @@ import {
   getWatchlistPostingDisplayCounts,
   getWatchlistPostingYearCount,
   getWatchlistPostings,
-} from "../watchlists";
+} from "../../services/watchlists";
 import { typesenseQueryStringLength } from "@/lib/search/typesense-query-size";
 
 function makeUuid(index: number): string {
@@ -481,19 +481,94 @@ describe("watchlist posting read degradation (#6167)", () => {
       "newer-tie",
     ]);
     const rowQueries = mocks.tsSearch.mock.calls
-      .map(([params]) => params as { per_page?: number; page?: number; sort_by?: string })
+      .map(([params]) => params as {
+        per_page?: number;
+        page?: number;
+        offset?: number;
+        limit?: number;
+        sort_by?: string;
+      })
       .filter((params) => params.per_page !== 0);
     expect(rowQueries.length).toBeGreaterThan(1);
     expect(rowQueries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          per_page: 3,
-          page: 1,
+          offset: 0,
+          limit: 3,
           sort_by: "_text_match:desc,first_seen_at:desc",
         }),
       ]),
     );
+    expect(rowQueries.every((params) => (
+      params.per_page === undefined && params.page === undefined
+    ))).toBe(true);
     expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("walks exact bounded Typesense windows for a deep batched posting page", async () => {
+    const companyIds = Array.from({ length: 101 }, (_, i) => makeUuid(i + 1));
+    mocks.getSessionUserId.mockResolvedValueOnce("user-1");
+    mocks.tsSearch.mockImplementation((params: {
+      per_page?: number;
+      offset?: number;
+      limit?: number;
+    }) => {
+      if (params.per_page === 0) return { found: 260, hits: [] };
+      const offset = params.offset ?? 0;
+      const limit = params.limit ?? 0;
+      const hitCount = Math.min(limit, Math.max(0, 260 - offset));
+      return {
+        found: 260,
+        hits: Array.from({ length: hitCount }, (_, index) =>
+          postingHit(`window-${offset}-${index}`, 0, 10_000 - (offset + index)),
+        ),
+      };
+    });
+
+    const result = await getWatchlistPostings({
+      companyIds,
+      offset: 240,
+      limit: 20,
+    });
+
+    expect(result.postings).toHaveLength(20);
+    const rowQueries = mocks.tsSearch.mock.calls
+      .map(([params]) => params as {
+        per_page?: number;
+        page?: number;
+        offset?: number;
+        limit?: number;
+      })
+      .filter((params) => params.per_page !== 0);
+    expect(rowQueries.some((params) => (
+      params.offset === 250 && params.limit === 10
+    ))).toBe(true);
+    expect(rowQueries.every((params) => (
+      params.per_page === undefined
+      && params.page === undefined
+      && (params.limit ?? 0) <= 250
+    ))).toBe(true);
+  });
+
+  it("degrades an underfilled batched Typesense window", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const companyIds = Array.from({ length: 99 }, (_, i) => makeUuid(i + 1));
+    mocks.tsSearch.mockImplementation((params: { per_page?: number }) =>
+      params.per_page === 0
+        ? { found: 21, hits: [] }
+        : { found: 21, hits: [] },
+    );
+
+    await expect(
+      getPublicWatchlistPostings({
+        companyIds,
+        offset: 0,
+        limit: 20,
+      }),
+    ).resolves.toEqual({ postings: [], total: 0 });
+    expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(
+      expect.objectContaining({ typesenseUnavailable: true }),
+    );
   });
 
   it("degrades malformed posting fields in the batched path", async () => {

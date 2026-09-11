@@ -389,7 +389,7 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert 'network.sh" teardown' in installer
 
 
-def test_systemd_timer_is_daily_persistent_randomized_and_hardened() -> None:
+def test_systemd_timer_is_twice_daily_persistent_randomized_and_hardened() -> None:
     service = SERVICE.read_text(encoding="utf-8")
     timer = TIMER.read_text(encoding="utf-8")
     for credential in (
@@ -408,7 +408,9 @@ def test_systemd_timer_is_daily_persistent_randomized_and_hardened() -> None:
     assert "User=root" in network_service
     assert "ExecStart=/usr/local/sbin/jobseek-ats-inventory-network ensure" in network_service
     assert "ReadWritePaths=/run/lock" in network_service
+    assert timer.count("OnCalendar=") == 2
     assert "OnCalendar=*-*-* 03:00:00 UTC" in timer
+    assert "OnCalendar=*-*-* 15:00:00 UTC" in timer
     assert "Persistent=true" in timer
     assert "RandomizedDelaySec=45m" in timer
 
@@ -449,6 +451,8 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "'apps/crawler/pyproject.toml'" in workflow
     assert "'!apps/crawler/contracts/v1/**'" not in workflow
     assert "apps/crawler/contracts/v1/*) ;;" not in workflow
+    # Tests validate the host runner but are not copied into its runtime image.
+    assert "apps/crawler/tests/*) ;;" in workflow
     assert "inactive_v1_policy" not in workflow
     assert "#8046" not in workflow
     # VERSION, runtime v1, another contract version, and crawler source all

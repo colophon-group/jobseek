@@ -6,7 +6,7 @@ import { setTestEnv, withTestEnv } from "@/test-utils/env";
 /**
  * Issue #2930: extends `withDbRetry` (#2929 / #2918) to additional
  * build-critical and runtime-critical `db.execute` call sites across
- * `lib/actions/*` and `lib/sitemap.ts`.
+ * `lib/actions/*`.
  *
  * The retry helper itself has 18 dedicated unit tests in
  * `apps/web/src/lib/__tests__/db-retry.test.ts` covering retry
@@ -20,8 +20,6 @@ import { setTestEnv, withTestEnv } from "@/test-utils/env";
  * One spec per representative module:
  *   - `_fetchPublicWatchlistByUserAndSlug` — build-critical (blog
  *     mention prerender + watchlist OG + watchlist page metadata).
- *   - `fetchSitemapWatchlists` (via `cachedSitemapWatchlists`) —
- *     build-critical (the route handler runs at every sitemap fetch).
  *   - `getCurrencyRates` (via `_fetchCurrencyRates`) — runtime-hot;
  *     used by /explore, /company/<slug>, settings, and salary modal.
  *
@@ -181,7 +179,7 @@ describe("issue #2930 — withDbRetry covers additional call sites", () => {
     ]);
 
     const { getPublicWatchlistByUserAndSlug } = await import(
-      "@/lib/actions/watchlists"
+      "@/lib/services/watchlists"
     );
     const result = await getPublicWatchlistByUserAndSlug(
       "alice",
@@ -189,25 +187,6 @@ describe("issue #2930 — withDbRetry covers additional call sites", () => {
     );
 
     expect(result?.slug).toBe("remote-frontend");
-    expect(dbExecuteMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("retries cachedSitemapWatchlists after ECONNRESET", async () => {
-    dbExecuteMock
-      .mockRejectedValueOnce(econnreset())
-      .mockResolvedValueOnce([
-        {
-          user_slug: "alice",
-          watchlist_slug: "remote-frontend",
-          updated_at: new Date(),
-          is_curated: false,
-        },
-      ]);
-
-    const { cachedSitemapWatchlists } = await import("@/lib/sitemap");
-    const rows = await cachedSitemapWatchlists();
-
-    expect(rows.length).toBe(1);
     expect(dbExecuteMock).toHaveBeenCalledTimes(2);
   });
 

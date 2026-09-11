@@ -373,6 +373,43 @@ async def test_daily_cap_stops_later_refills(
 
 
 @pytest.mark.asyncio
+async def test_two_25_issue_refills_reach_the_50_issue_daily_cap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("src.ats_inventory.ledger.time.time", lambda: NOW.timestamp())
+    policy = QueuePolicy(per_tick_cap=25, daily_cap=50, rollout_cap=25)
+    companies = [_impact(number, 1_000 - number) for number in range(1, 61)]
+    refiller, ledger, client = await _refiller(tmp_path, policy=policy)
+
+    async def no_sleep(_: float) -> None:
+        return None
+
+    reports = []
+    for _ in range(3):
+        reports.append(await refiller.run(companies, mode="refill"))
+        coordinator = await CandidateIssueCoordinator.bootstrap(
+            client=client,
+            local=_local_registry(tmp_path),
+            ledger=ledger,
+            items=client.items,
+        )
+        refiller = QueueRefiller(
+            coordinator=coordinator,
+            ledger=ledger,
+            items=client.items,
+            claims=[],
+            policy=policy,
+            now=lambda: NOW,
+            sleep=no_sleep,
+            refresh_open_count=lambda: _open_count(client.items),
+        )
+
+    assert [report.created for report in reports] == [25, 25, 0]
+    assert reports[-1].status == "daily_cap"
+    assert len(client.created_labels) == 50
+
+
+@pytest.mark.asyncio
 async def test_refill_stops_cleanly_on_rate_limit(tmp_path: Path) -> None:
     class LimitedClient(_Client):
         async def create_candidate_issue(

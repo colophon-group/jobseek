@@ -19,4 +19,22 @@ describe("murmur-shim Dockerfile: patched dependency inputs", () => {
     expect(shimFilter).toBeGreaterThan(copyPatches);
     expect(frozenInstall).toBeGreaterThan(shimFilter);
   });
+
+  it("copies the web schema's local notification contract before building", () => {
+    const dockerfile = readFileSync(dockerfilePath, "utf8");
+    const copySchema = dockerfile.indexOf(
+      "COPY apps/web/src/db/schema.ts ./apps/web/src/db/schema.ts",
+    );
+    const copyNotificationContracts = dockerfile.indexOf(
+      "COPY apps/web/src/lib/notifications/contracts.ts ./apps/web/src/lib/notifications/contracts.ts",
+    );
+    const build = dockerfile.indexOf(
+      "RUN pnpm --filter @jobseek/murmur-shim build",
+      copyNotificationContracts,
+    );
+
+    expect(copySchema).toBeGreaterThanOrEqual(0);
+    expect(copyNotificationContracts).toBeGreaterThan(copySchema);
+    expect(build).toBeGreaterThan(copyNotificationContracts);
+  });
 });

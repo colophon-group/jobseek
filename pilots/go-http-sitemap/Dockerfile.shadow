@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1.7
+
+ARG GO_IMAGE=golang:1.24.7-alpine3.22@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+FROM --platform=$BUILDPLATFORM ${GO_IMAGE} AS build
+
+RUN apk add --no-cache ca-certificates
+WORKDIR /src/pilots/go-http-sitemap
+
+COPY pilots/go-http-sitemap/go.mod ./
+COPY pilots/go-http-sitemap/boundedhttp ./boundedhttp
+COPY pilots/go-http-sitemap/sitemap ./sitemap
+COPY pilots/go-http-sitemap/worker ./worker
+COPY pilots/go-http-sitemap/canary ./canary
+COPY pilots/go-http-sitemap/cmd/shadowcanary ./cmd/shadowcanary
+
+ARG SOURCE_COMMIT
+ARG IMAGE_IDENTITY
+ARG TARGETOS
+ARG TARGETARCH
+RUN case "$SOURCE_COMMIT" in (*[!0-9a-f]*|'') exit 1;; esac \
+ && [ "${#SOURCE_COMMIT}" -eq 40 ] \
+ && [ "$IMAGE_IDENTITY" = "ghcr.io/colophon-group/jobseek-go-sitemap-shadow:sha-$SOURCE_COMMIT" ] \
+ && [ "$TARGETOS" = linux ] \
+ && [ "$TARGETARCH" = arm64 ] \
+ && CGO_ENABLED=0 GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build \
+      -trimpath \
+      -ldflags "-s -w -X main.sourceCommit=$SOURCE_COMMIT -X main.imageIdentity=$IMAGE_IDENTITY" \
+      -o /out/shadowcanary \
+      ./cmd/shadowcanary
+
+FROM scratch
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build --chown=65532:65532 /out/shadowcanary /shadowcanary
+COPY --chown=65532:65532 pilots/go-http-sitemap/canary/production.json /canary/production.json
+
+USER 65532:65532
+ENTRYPOINT ["/shadowcanary"]

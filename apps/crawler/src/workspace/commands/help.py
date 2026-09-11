@@ -97,6 +97,7 @@ Monitor Types (cheapest first):
   gem               10      Full job data     No (skipped)
   greenhouse        10      Full job data     No (skipped)
   gupy              10      Job URLs          Auto-configured
+  universia         10      Full job data     No (skipped)
   headhunter        10      Full/partial      Auto-enriched
   beehire           10      Full job data     No (skipped)
   hibob             10      Full job data     No (skipped)
@@ -111,7 +112,7 @@ Monitor Types (cheapest first):
   jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
   job51             10      Full job data     No (skipped)
-  jobbank104        10      Job URLs          Auto-configured JSON-LD
+  jobbank104        10      Full job data     No (skipped)
   jobdiva           10      Job URLs          api_sniffer detail scraper
   jobstreet         10      Full/partial      Auto-enriched
   seek              10      Job URLs          Auto-configured
@@ -121,7 +122,9 @@ Monitor Types (cheapest first):
   lever             10      Full job data     No (skipped)
   linkedin          10      Full/partial      Auto-enriched
   manatal           10      Full job data     No (skipped)
+  nowhiring         10      Full job data     No (skipped)
   paycom            10      Full/partial      Auto-enriched
+  paynet            10      Full job data     No (skipped)
   paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
   recruitee         10      Full job data     No (skipped)
@@ -132,10 +135,12 @@ Monitor Types (cheapest first):
   smartrecruiters   10      Job URLs          Auto-configured
   softgarden        10      Job URLs          Auto-configured
   traffit           10      Full job data     No (skipped)
+  talentreef        10      Full job data     No (skipped)
   ukg               10      Full/partial      Auto-enriched
   unifr             10      Full or PDF URLs  skip/pdf (fixed source)
   workable          10      Job URLs          Auto-configured
   welcometothejungle 10      Full job data     No (skipped)
+  woowa             10      Full job data     No (skipped)
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
   practicematch     10      Job URLs          Auto-configured
@@ -202,6 +207,7 @@ Scraper Types:
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
   phuketall      Static      No               PhuketAll employer job pages
   veryeast       Static      No               VeryEast employer job pages
+  tupu360        Static      No               Tupu360 employer job pages
   onlyfy         Static      No               Onlyfy/Prescreen job pages
   paycor         Static      No               Paycor/Newton legacy job pages
   recruiterbox   Static      No               Recruiterbox/Trakstar Hire job pages
@@ -480,6 +486,32 @@ beehire — Beehire public career-page monitor
   Detection:  ws probe verifies the public campaigns payload and reports its
               current job count.
   Zero jobs?  A valid campaigns: [] payload is an active empty board."""
+
+MONITOR_TALENTREEF = """\
+talentreef — TalentReef / JobAppNetwork public career-page monitor
+
+  Sources:  Career-page alias API plus the brand-scoped public posting search
+  Returns:  Full job data (title, HTML description, address, employment type,
+            posting date, and provider-stable identity)
+  Scraper:  Not needed
+  Cap:      50,000 jobs
+
+  Config:   alias and locale are auto-filled from apply.jobappnetwork.com URLs.
+  Detection:  ws probe verifies the published alias, client/brand scope, and
+              current public posting count, including a verified zero."""
+
+MONITOR_NOWHIRING = """\
+nowhiring — NowHiring / Snagajob career-site monitor
+
+  Sources:  Public career-site config, scoped job search, and job detail APIs
+  Returns:  Full job data (title, HTML description, address, employment type,
+            posting date, application URL metadata, and stable identity)
+  Scraper:  Not needed
+  Cap:      50,000 jobs
+
+  Config:   slug is auto-filled from https://nowhiring.com/{slug}/.
+  Detection:  ws probe verifies the site's billing-account scope and current
+              public job count, including a verified zero."""
 
 MONITOR_JOHDI = """\
 johdi — Johdi Suite embedded careers monitor
@@ -1205,6 +1237,11 @@ nextdata — Next.js __NEXT_DATA__ Discovery
                    array wildcard (a[].b — extracts from all items)
     slug_fields    List of item fields to slugify + join for {slug} variable
     render         If true, use Playwright to render page (default: false)
+    request_headers
+                   Optional public static HTTP headers: Accept,
+                   Accept-Language, Cache-Control, Pragma, and User-Agent.
+                   Secret headers are rejected and redirects must remain
+                   same-origin. Requires render=false.
     actions        Browser action pipeline (auto-enables render)
     wait           Navigation wait strategy (Playwright only)
     wait_fallback  Fallback load state checked on the current document after
@@ -1230,9 +1267,10 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     pagination     Page metadata mapping. Example:
                    {"path":"jobsData.meta","page_count":"totalPages",
                     "page_param":"page"}
-                   For path-based pages, provide an absolute same-origin
-                   "url_template" containing {page}. Set "start" to the page
-                   value represented by the board URL (default 1), for example:
+                   Set "start" to the page value represented by the board URL
+                   (default 1); zero-based query pagination uses "start":0.
+                   For path-based pages, also provide an absolute same-origin
+                   "url_template" containing {page}, for example:
                    {"path":"pageData.pagination","total_records":"totalRows",
                     "page_size":6,"start":0,
                     "url_template":"https://example.com/jobs/p/{page}/index.aspx"}
@@ -1657,7 +1695,7 @@ kipt — NSC KIPT PDF vacancy bulletins (rich)
   Fields:      title, description, locations, date_posted, language, metadata."""
 
 MONITOR_DOM = """\
-dom — Link or Static Listing-Row Extraction (fallback)
+dom — Link or Listing-Row Extraction (fallback)
 
   Returns:  URL set, or partial rich rows when rich_rows is configured
   Cap:      50,000 URLs
@@ -1730,9 +1768,17 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    in client code:
                    {"variable": "jobAds", "url_field": "slug",
                     "url_template": "https://example.com/jobs/{value}/"}
+                   Arrays passed directly to a function are selected by a
+                   zero-based argument index. Setting title and location
+                   fields together makes the monitor return partial rich jobs:
+                   {"function": "loadGrid", "argument_index": 2,
+                    "url_field": "link", "url_template": "{value}",
+                    "title_field": "title", "locations_field": "locations"}
+                   Set "html_unescape": true when the function call is stored
+                   in an HTML attribute and its JSON quotes are entity-encoded.
                    The assignment and every item are validated fail-closed;
-                   generated URLs must be unique and same-origin. Static
-                   single-page discovery only.
+                   calls must be unique, and generated URLs must be unique and
+                   same-origin. Static single-page discovery only.
     oracle_adf_job_ids
                    Narrow preset for Oracle ADF recruitment lists whose rows
                    expose form/PPR View actions instead of hrefs. The rendered
@@ -1815,8 +1861,9 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    role is classified inactive, the monitor returns runtime-verified
                    empty evidence. Static, single-page link-selector discovery only;
                    1-4 states and at most 500 discovered URLs.
-    rich_rows      Optional static listing-row extraction. It supports the
-                   ordinary sequential pagination config shown above:
+    rich_rows      Optional strict listing-row extraction. It supports static
+                   pages and rendered pages, including ordinary sequential
+                   pagination:
                    {"row_selector": ".job", "link_selector": ".job-title a",
                     "location_selectors": [".job-location", ".job-country"],
                     "total_selector": ".jobs-total .total"}
@@ -1843,15 +1890,36 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    {"row_selector": "tr[data-href]", "link_attr": "data-href",
                     "title_selector": "td.title",
                     "location_selectors": ["td.city", "td.country"]}.
+                   Add description_selector when the listing row contains the
+                   complete job description. Its HTML is preserved and the
+                   monitor becomes fully rich, so scraper_type=skip is valid:
+                   {"description_selector": ".job-description"}.
+                   When each title/link row is immediately followed by a
+                   separate description element, use
+                   {"description_next_selector": "p.job-description"} instead.
+                   The adjacency is strict so intervening markup fails closed.
+                   default_locations supplies one or more verified full place
+                   names only when rows omit location data:
+                   {"default_locations": ["British Columbia, CA"]}.
+                   It is mutually exclusive with location_selectors and
+                   allow_missing_locations.
+                   title_regex may contain exactly one capture group to clean a
+                   stable decoration from the selected title text.
                    The selected link or title node text becomes the title;
-                   location components are joined in selector order. Every
-                   configured field is strict. Set
+                   location components are joined in selector order. Set
+                   location_selector_mode to "first" to use the first
+                   non-empty matching selector as a fallback chain. An
+                   optional location_value_patterns list (one regex or null
+                   per selector) rejects values that are not locations before
+                   that selection. Every configured field is strict. Set
                    "allow_missing_locations": true only when some listing
                    rows intentionally omit location and the detail scraper
                    enriches it; those rows return locations=null. Otherwise
                    markup drift fails the cycle instead of publishing a partial
-                   authoritative result. Incompatible with rendering,
-                   browser or partitioned pagination, and include_board_url.
+                   authoritative result. Rendered rich rows require
+                   pagination.browser=true when their tail also needs browser
+                   transport. Incompatible with partitioned pagination and
+                   include_board_url.
                    total_selector additionally requires an exact non-negative
                    count equal to the accepted unique rows and is limited to
                    single-page extraction.
@@ -2761,6 +2829,22 @@ paycom — Paycom public portal API
   Detection:  ws probe shows "Paycom API — portal: TOKEN, N jobs"
   Zero jobs?  Confirm the preview API reports count 0 after a valid bootstrap."""
 
+MONITOR_PAYNET = """\
+paynet — Pay-Net public applicant API
+
+  Listing:  GET https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=...
+  Returns:  Full job data from the public listing payload
+  Scraper:  Not needed (skipped)
+  Browser:  Not required
+  Config:   None. The company ID is validated from the exact unfiltered
+            https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?co=... URL.
+  Note:     Pay-Net returns successful listing payloads with HTTP 201. The
+            monitor explicitly accepts that provider behavior while retaining
+            bounded response-size, retry, response-shape, and identity checks.
+
+  Detection:  ws probe shows "Pay-Net API — company: ID, N jobs"
+  Zero jobs?  Confirm the public API returns an empty JSON array."""
+
 MONITOR_BAMBOOHR = """\
 bamboohr — BambooHR public careers API
 
@@ -2818,21 +2902,20 @@ jazzhr — JazzHR / ApplyToJob static listing
 MONITOR_JOBBANK104 = """\
 jobbank104 — 104 Job Bank company listing
 
-  Listing:  GET https://www.104.com.tw/company/{token}
-  Returns:  Canonical https://www.104.com.tw/job/{job_id} detail URLs
-  Scraper:  Auto-configured JSON-LD scraper
-  Note:     Uses the public server-rendered employer page instead of 104's
-            Cloudflare-guarded private JSON endpoints. Enable proxy for both
-            monitor and scraper when crawler egress receives a challenge.
-            Count drift produces a truncation-safe result, preventing false
-            delisting when a larger employer page is only partially rendered.
+  Listing:  GET https://www.104.com.tw/api/companies/{token}/jobs
+  Returns:  Full job data (title, description, location, canonical detail URL)
+  Scraper:  Skipped; the listing API includes the complete description
+  Note:     Uses the public API behind the employer page. This avoids 104's
+            Cloudflare-guarded detail pages while retaining canonical outbound
+            job URLs. Count drift produces a truncation-safe result, preventing
+            false delisting when a large inventory exceeds the safety cap.
 
   Config:
     {"token": "auzu36g", "proxy": true}
 
     token  Company identifier from /company/{token}. Auto-filled only from an
            exact unfiltered www.104.com.tw company URL.
-    proxy  Routes company and detail requests through the configured provider.
+    proxy  Routes company-listing API requests through the configured provider.
 
   Detection:  ws probe shows "104 Job Bank company listing — token: X, N jobs"
   Zero jobs?  A valid page explicitly advertises 工作機會(0)."""
@@ -2961,6 +3044,27 @@ gupy — Gupy NextData listing
   Detection:  ws probe shows "Gupy NextData listing — tenant: X, N jobs"
   Zero jobs?  A valid page still contains matching NextData career metadata
               and an empty jobs array."""
+
+MONITOR_UNIVERSIA = """\
+universia — Universia branded jobboard API
+
+  Listing:  GET api-manager.universia.net/orientacion-job-posting/v1/api/job-posting
+  Returns:  Full job data
+  Scraper:  None (skipped)
+  Cost:     10
+  Browser:  No
+
+  Board URLs use https://jobboard.universia.net/{slug}. The monitor resolves
+  the provider's full entity UUID from the public board configuration, drains
+  the UUID-scoped job inventory, and validates totals, pagination, job board
+  membership, and public URLs. An explicit total=0 response is authoritative.
+
+  Optional config:
+    {"board_id": "<uuid>", "language": "es"}
+
+  A configured board_id is checked against the live configuration every run;
+  it is never trusted as a replacement for provider identity validation.
+"""
 
 MONITOR_CORNERSTONE = """\
 cornerstone — Cornerstone public career-site API
@@ -3289,6 +3393,20 @@ welcometothejungle — Welcome to the Jungle public jobs APIs
   organization_slug  Internal WTTJ slug; may be a legacy company name and is
                      auto-resolved when omitted."""
 
+MONITOR_WOOWA = """\
+woowa — Woowa public careers API
+
+  Boards:   career.woowahan.com, career.woowayouths.com,
+            bmart-career.woowayouths.com
+  Returns:  Full job data (title, HTML description, location, employment type,
+            posting date, deadline and Korean language)
+  Scraper:  Not needed (skipped)
+  Cost:     10
+
+  The monitor recognizes the exact first-party hosts, drains the public /w1
+  listing API, validates its advertised total, and enriches every row from the
+  matching detail endpoint. No configuration is required."""
+
 SCRAPER_JSONLD = """\
 json-ld — Structured JobPosting Extractor
 
@@ -3515,11 +3633,12 @@ dom — Step-based Extraction Engine
                    With scope, prepend meta description text for extraction
     document_fallback
                    Static-only per-format configs for detail URLs that may
-                   download PDF or DOCX files instead of returning HTML:
-                   {"pdf": {...}, "docx": {...}}. PDF keys match
-                   `ws help scraper pdf`; DOCX supports title_source: "text",
-                   title_pattern, location_pattern, and defaults. HTML
-                   responses continue through the configured DOM steps.
+                   download legacy DOC, PDF, or DOCX files instead of returning
+                   HTML: {"doc": {...}, "pdf": {...}, "docx": {...}}. PDF
+                   keys match `ws help scraper pdf`; DOC/DOCX support
+                   title_source, title_pattern, location_pattern, and defaults.
+                   Legacy DOC extraction uses the bounded antiword runtime.
+                   HTML responses continue through the configured DOM steps.
 
   Target fields: title, description, locations, employment_type,
   job_location_type, date_posted, valid_through, qualifications,
@@ -3628,7 +3747,7 @@ Job Data Fields — types, formats, importance
     Important    job_location_type str       "remote", "hybrid", "onsite"
     Optional     employment_type   str       "full_time", "part_time", "contract", etc.
     Optional     date_posted       str       ISO 8601 date (YYYY-MM-DD)
-    Optional     valid_through     str       ISO 8601 date (scraper only, not in DiscoveredJob)
+    Optional     valid_through     str       ISO 8601 date (stored in DiscoveredJob extras)
     Optional     base_salary       dict      {currency, min, max, unit}
     Optional     skills            [str]     List of skill strings
     Optional     responsibilities  [str]     List of bullet-point strings
@@ -3667,6 +3786,9 @@ Job Data Fields — types, formats, importance
     Unmapped values produce null (not passthrough).
   Decode APIs that return HTML as entities before storing descriptions:
     "description": {"path": "body", "html_unescape": true}
+  Convert Unix timestamps to ISO-8601 UTC values:
+    "date_posted": {"path": "publishedAt", "timestamp_unit": "milliseconds"}
+    Supported timestamp units are "seconds" and "milliseconds".
   Use enrich to scrape only specific fields for rich monitors:
     "enrich": ["description"] — fetches only description from detail pages.
     Titles and descriptions must be N/N — 0/N on either = do not submit.
@@ -4218,6 +4340,7 @@ MONITOR_CARDS: dict[str, str] = {
     "typify": MONITOR_TYPIFY,
     "greenhouse": MONITOR_GREENHOUSE,
     "beehire": MONITOR_BEEHIRE,
+    "talentreef": MONITOR_TALENTREEF,
     "hibob": MONITOR_HIBOB,
     "hirehive": MONITOR_HIREHIVE,
     "hireology": MONITOR_HIREOLOGY,
@@ -4240,6 +4363,8 @@ MONITOR_CARDS: dict[str, str] = {
     "brassring": MONITOR_BRASSRING,
     "candidatus": MONITOR_CANDIDATUS,
     "paycom": MONITOR_PAYCOM,
+    "paynet": MONITOR_PAYNET,
+    "nowhiring": MONITOR_NOWHIRING,
     "jazzhr": MONITOR_JAZZHR,
     "jobbank104": MONITOR_JOBBANK104,
     "jobdiva": """\
@@ -4283,6 +4408,7 @@ infoniqa — Infoniqa jobexchange form-pagination monitor
 """,
     "intervieweb": MONITOR_INTERVIEWEB,
     "gupy": MONITOR_GUPY,
+    "universia": MONITOR_UNIVERSIA,
     "cornerstone": MONITOR_CORNERSTONE,
     "darwinbox": MONITOR_DARWINBOX,
     "dayforce": MONITOR_DAYFORCE,
@@ -4300,6 +4426,7 @@ infoniqa — Infoniqa jobexchange form-pagination monitor
     "umantis": MONITOR_UMANTIS,
     "workable": MONITOR_WORKABLE,
     "welcometothejungle": MONITOR_WELCOMETOTHEJUNGLE,
+    "woowa": MONITOR_WOOWA,
     "workday": MONITOR_WORKDAY,
     "paylocity": MONITOR_PAYLOCITY,
     "pinpoint": MONITOR_PINPOINT,
@@ -4489,6 +4616,19 @@ veryeast — VeryEast (最佳东方) employer-board detail scraper
             oversized pages fail instead of being silently truncated.
 """
 
+SCRAPER_TUPU360 = """\
+tupu360 — Tupu360 (图谱天下) employer-board detail scraper
+
+  Page:     GET https://careersite.tupu360.com/{tenant}/position/detail?positionId={id}
+  Returns:  title, complete HTML description, location, posting date and
+            provider identity metadata
+  Config:   None needed.
+  Note:     Pair with a DOM monitor for the employer listing page. The detail
+            page is server-rendered, so no browser is required. Requests are
+            restricted to exact HTTPS provider URLs and the returned posting
+            identity must match the URL.
+"""
+
 SCRAPER_LINKEDIN = """\
 linkedin — LinkedIn public guest-job detail scraper
 
@@ -4555,7 +4695,9 @@ paycom — Paycom public detail API scraper
   API:       GET the validated regional /api/ats/job-postings/{id} endpoint
   Returns:   title, HTML description and qualifications, locations,
              employment/workplace type, date, salary, and job metadata
-  Config:    None needed — portal token and job ID come from the canonical URL
+  Config:    Portal token and job ID come from the canonical URL. Optional
+             {"defaults": {"locations": ["City, ST"]}} fills only locations
+             omitted by the employer's detail records; extracted values win.
   Note:      Auto-configured with the paycom monitor. It reuses the monitor's
              bootstrap validation and shared HTTP retry path; no browser or
              upstream scraper dependency is required.
@@ -4728,6 +4870,7 @@ SCRAPER_CARDS: dict[str, str] = {
     "embedded": SCRAPER_EMBEDDED,
     "phuketall": SCRAPER_PHUKETALL,
     "veryeast": SCRAPER_VERYEAST,
+    "tupu360": SCRAPER_TUPU360,
     "onlyfy": SCRAPER_ONLYFY,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,

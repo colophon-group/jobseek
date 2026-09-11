@@ -30,6 +30,32 @@ function exportedAsyncFunctionNames(src: string): string[] {
     .sort();
 }
 
+const RETIRED_PUBLIC_SERVICE_READERS = [
+  "getWatchlistByUserAndSlug",
+  "getPublicWatchlistByUserAndSlug",
+  "searchPublicWatchlists",
+  "getPopularWatchlists",
+  "getPublicWatchlistPostings",
+] as const;
+
+const SERVER_INTERNAL_SERVICE_READERS = [
+  "getWatchlistMatchingCompanyCount",
+  "getWatchlistPostingDisplayCounts",
+  "getWatchlistPostingYearCount",
+  "getWatchlistPostings",
+  "getOwnedWatchlistById",
+  "getOwnedWatchlistByLegacyPath",
+  "getSharedWatchlistById",
+  "getUserWatchlistCountsForUser",
+  "getUserWatchlistActivityPreviewsForUser",
+  ...RETIRED_PUBLIC_SERVICE_READERS,
+] as const;
+
+const CLIENT_ACTION_PROMISE_SERVICES = [
+  "copyWatchlist",
+  "copySharedWatchlist",
+] as const;
+
 describe("watchlists service tier boundary (#3332)", () => {
   it("`@/lib/services/watchlists` is server-only, not a server-action module", () => {
     const src = readSource("src/lib/services/watchlists.ts");
@@ -40,7 +66,7 @@ describe("watchlists service tier boundary (#3332)", () => {
     expect(src).not.toContain('from "@/lib/actions/taxonomy"');
   });
 
-  it("`@/lib/actions/watchlists` remains a declared server-action wrapper", () => {
+  it("wraps the client-callable service surface as declared server actions", () => {
     const actionSrc = readSource("src/lib/actions/watchlists.ts");
     const serviceSrc = readSource("src/lib/services/watchlists.ts");
 
@@ -48,18 +74,104 @@ describe("watchlists service tier boundary (#3332)", () => {
 
     const serviceNames = exportedAsyncFunctionNames(serviceSrc);
     const actionNames = exportedAsyncFunctionNames(actionSrc);
+    const actionEligibleServiceNames = [
+      ...serviceNames.filter(
+        (name) =>
+          !SERVER_INTERNAL_SERVICE_READERS.includes(
+            name as (typeof SERVER_INTERNAL_SERVICE_READERS)[number],
+          ),
+      ),
+      ...CLIENT_ACTION_PROMISE_SERVICES,
+    ].sort();
     expect(serviceNames.length).toBeGreaterThan(10);
-    expect(actionNames).toEqual(serviceNames);
+    expect(actionNames).toEqual(actionEligibleServiceNames);
 
-    for (const name of serviceNames) {
+    for (const name of actionEligibleServiceNames) {
       expect(actionSrc).toMatch(
         new RegExp(String.raw`export\s+async\s+function\s+${name}\b`),
       );
       expect(actionSrc).toContain(`return service.${name}(...args);`);
     }
 
+    for (const name of SERVER_INTERNAL_SERVICE_READERS) {
+      expect(serviceNames).toContain(name);
+      expect(actionNames).not.toContain(name);
+      expect(actionSrc).not.toContain(`service.${name}`);
+    }
+
     const valueReExport = /^\s*export\s*\{[^}]+\}\s*from\s*["']@\/lib\/services\//m;
     expect(valueReExport.test(actionSrc)).toBe(false);
+  });
+
+  it("keeps user-id preview readers behind request-derived API authentication", () => {
+    const actionSrc = readSource("src/lib/actions/watchlists.ts");
+    const routeSrc = readSource("app/api/web/watchlists/counts/route.ts");
+
+    expect(actionSrc).not.toContain("getUserWatchlistCountsForUser");
+    expect(actionSrc).not.toContain("getUserWatchlistActivityPreviewsForUser");
+    expect(routeSrc).toContain(
+      "const userId = await getSessionUserIdFromHeaders(request.headers)",
+    );
+    expect(routeSrc).toContain(
+      "getUserWatchlistActivityPreviewsForUser(userId, locale)",
+    );
+  });
+
+  it("does not expose retired public discovery or slug readers as server actions", () => {
+    const actionSrc = readSource("src/lib/actions/watchlists.ts");
+    const serviceSrc = readSource("src/lib/services/watchlists.ts");
+
+    for (const name of RETIRED_PUBLIC_SERVICE_READERS) {
+      expect(serviceSrc).toMatch(
+        new RegExp(String.raw`export\s+async\s+function\s+${name}\b`),
+      );
+      expect(actionSrc).not.toMatch(
+        new RegExp(String.raw`export\s+async\s+function\s+${name}\b`),
+      );
+      expect(actionSrc).not.toContain(`service.${name}`);
+    }
+
+    expect(actionSrc).toContain("return service.shareWatchlist(...args);");
+    expect(actionSrc).toContain("return service.copySharedWatchlist(...args);");
+  });
+
+  it("keeps private-route readers owner-scoped, uncached, and server-internal", () => {
+    const actionSrc = readSource("src/lib/actions/watchlists.ts");
+    const serviceSrc = readSource("src/lib/services/watchlists.ts");
+    const routeSrc = readSource(
+      "app/[lang]/(app)/[userSlug]/[watchlistSlug]/route.ts",
+    );
+    const privateReaderStart = serviceSrc.indexOf(
+      "async function _getOwnedWatchlistDetail",
+    );
+    const privateReaderEnd = serviceSrc.indexOf(
+      "async function _resolveUserListingCounts",
+    );
+
+    expect(privateReaderStart).toBeGreaterThan(-1);
+    expect(privateReaderEnd).toBeGreaterThan(privateReaderStart);
+    const privateReaderSrc = serviceSrc.slice(
+      privateReaderStart,
+      privateReaderEnd,
+    );
+
+    expect(privateReaderSrc).toContain(
+      "sql`w.user_id = ${userId} AND ${predicate}`",
+    );
+    expect(privateReaderSrc).not.toContain('"use cache"');
+    expect(privateReaderSrc).not.toContain("'use cache'");
+    expect(privateReaderSrc).not.toContain("cached(");
+    expect(actionSrc).not.toContain("getOwnedWatchlistById");
+    expect(actionSrc).not.toContain("getOwnedWatchlistByLegacyPath");
+
+    expect(routeSrc).toContain(
+      "const userId = await getSessionUserIdFromHeaders(request.headers)",
+    );
+    expect(routeSrc).toContain("getOwnedWatchlistByLegacyPath(");
+    expect(routeSrc).toContain("userId,");
+    expect(routeSrc.match(/private, no-store/g)).toHaveLength(2);
+    expect(routeSrc).not.toContain('"use cache"');
+    expect(routeSrc).not.toContain("'use cache'");
   });
 
   it("retired REST discovery is isolated while owner-scoped domain seams remain", () => {
@@ -85,8 +197,9 @@ describe("watchlists service tier boundary (#3332)", () => {
     expect(actionSrc).toContain("return service.copyWatchlist(...args);");
 
     expect(serviceSrc).toContain(
-      'if (params.isPublic === true) return { error: "visibility_locked" };',
+      'params.isPublic === true',
     );
+    expect(serviceSrc).toContain('return { error: "visibility_locked" };');
     expect(serviceSrc).toContain(
       'if (params.isPublic !== undefined) return { error: "visibility_locked" };',
     );

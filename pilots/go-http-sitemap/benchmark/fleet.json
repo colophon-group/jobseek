@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "jobs": [
+    {
+      "id": "acosta-group-dee-set",
+      "board_url": "https://careers.deeset.co.uk/jobs/vacancy/find/results/",
+      "sitemap_url": "https://careers.deeset.co.uk/jobs/sitemap.xml",
+      "include_literal": "/jobs/vacancy/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "acosta-group-europe",
+      "board_url": "https://careers.acosta-europe.com/acosta/vacancy/find/results/",
+      "sitemap_url": "https://careers.acosta-europe.com/acosta/sitemap.xml",
+      "include_literal": "/acosta/vacancy/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "amgen-global",
+      "board_url": "https://careers.amgen.com/en/search-jobs/",
+      "sitemap_url": "https://careers.amgen.com/en/sitemap.xml",
+      "include_literal": "/en/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "avant-external-careers",
+      "board_url": "https://avant.wd503.myworkdayjobs.com/External_Careers",
+      "sitemap_url": "https://avant.wd503.myworkdayjobs.com/External_Careers/siteMap.xml",
+      "include_literal": "/External_Careers/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "bd-global",
+      "board_url": "https://jobs.bd.com/en/search-jobs",
+      "sitemap_url": "https://jobs.bd.com/en/sitemap.xml",
+      "include_literal": "/en/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "bloomberg-careers",
+      "board_url": "https://bloomberg.avature.net/careers/SearchJobs",
+      "sitemap_url": "https://bloomberg.avature.net/careers/sitemap.xml",
+      "include_literal": "/JobDetail/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "bridgestone-careers-speedy-fr",
+      "board_url": "https://recrutement.speedy.fr/fr/annonces",
+      "sitemap_url": "https://recrutement.speedy.fr/fr/sitemap.xml",
+      "include_literal": "/fr/annonce/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "circle-global",
+      "board_url": "https://careers.circle.com/us/en/search-results",
+      "sitemap_url": "https://careers.circle.com/us/en/search-results/sitemap.xml",
+      "include_literal": "/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "citadel-careers",
+      "board_url": "https://www.citadel.com/careers/open-opportunities/",
+      "sitemap_url": "https://www.citadel.com/career-sitemap.xml",
+      "include_literal": "/careers/details/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "d-orbit-main",
+      "board_url": "https://dorbit-space.factorial.it/",
+      "sitemap_url": "https://dorbit-space.factorial.it/sitemap.xml",
+      "include_literal": "/job_posting/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "deloitte-careers",
+      "board_url": "https://apply.deloitte.ch/CHCareers",
+      "sitemap_url": "https://apply.deloitte.ch/CHCareers/sitemap.xml",
+      "include_literal": "/CHCareers/JobDetail/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "deloitte-careers-uk",
+      "board_url": "https://apply.deloitte.co.uk/UKCareers",
+      "sitemap_url": "https://apply.deloitte.co.uk/UKCareers/sitemap.xml",
+      "include_literal": "/UKCareers/JobDetail/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "dsm-firmenich-careers-ats",
+      "board_url": "https://jobs.dsm-firmenich.com/careers",
+      "sitemap_url": "https://jobs.dsm-firmenich.com/careers/sitemap.xml",
+      "include_literal": "/careers/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "etoro-delta",
+      "board_url": "https://delta.app/jobs",
+      "sitemap_url": "https://delta.app/sitemap.xml",
+      "include_literal": "/jobs/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "general-dynamics-gdels",
+      "board_url": "https://careers.gdels.com/",
+      "sitemap_url": "https://careers.gdels.com/sitemap.xml",
+      "include_literal": "/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "general-motors-careers",
+      "board_url": "https://search-careers.gm.com/en/jobs/",
+      "sitemap_url": "https://search-careers.gm.com/sitemap.xml",
+      "include_literal": "/en/jobs/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "groupe-e-careers",
+      "board_url": "https://job.groupe-e.ch/go/Postes-vacants/9063455/",
+      "sitemap_url": "https://job.groupe-e.ch/sitemap.xml",
+      "include_literal": "/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "heidrick-struggles-careers",
+      "board_url": "https://heidrick.wd1.myworkdayjobs.com/heidrickandstruggles",
+      "sitemap_url": "https://heidrick.wd1.myworkdayjobs.com/heidrickandstruggles/siteMap.xml",
+      "include_literal": "/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "ing-global",
+      "board_url": "https://careers.ing.com/en/search-jobs",
+      "sitemap_url": "https://careers.ing.com/en/sitemap.xml",
+      "include_literal": "/en/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "invesco-global",
+      "board_url": "https://invesco.wd1.myworkdayjobs.com/IVZ",
+      "sitemap_url": "https://invesco.wd1.myworkdayjobs.com/IVZ/siteMap.xml",
+      "include_literal": "/IVZ/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "klearly-careers",
+      "board_url": "https://klearly.eu/jobs-sitemap.xml",
+      "sitemap_url": "https://klearly.eu/jobs-sitemap.xml",
+      "include_literal": "",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "metro-bank-avature",
+      "board_url": "https://metrobank.avature.net/amazingcareers/SearchJobs/",
+      "sitemap_url": "https://metrobank.avature.net/amazingcareers/sitemap.xml",
+      "include_literal": "/amazingcareers/JobDetail/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "neura-robotics-careers",
+      "board_url": "https://jobs.neura-robotics.com/",
+      "sitemap_url": "https://jobs.neura-robotics.com/sitemap.xml",
+      "include_literal": "/offer/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "orior-culinor",
+      "board_url": "https://culinor.careersite.be/nl/vacatures",
+      "sitemap_url": "https://culinor.careersite.be/sitemap.xml",
+      "include_literal": "/nl/vacature/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "spencer-stuart-global",
+      "board_url": "https://spencerstuart.wd5.myworkdayjobs.com/Spencer_Stuart_External_Careers",
+      "sitemap_url": "https://spencerstuart.wd5.myworkdayjobs.com/Spencer_Stuart_External_Careers/siteMap.xml",
+      "include_literal": "/Spencer_Stuart_External_Careers/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "ssm-health-oklahoma-spine",
+      "board_url": "https://oklahomaspine.com/careers/",
+      "sitemap_url": "https://oklahomaspine.com/sitemap.xml",
+      "include_literal": "/job-posting/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "sutter-health-clinicians",
+      "board_url": "https://cliniciancareers.sutterhealth.org/search-jobs",
+      "sitemap_url": "https://cliniciancareers.sutterhealth.org/sitemap.xml",
+      "include_literal": "/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "swarm-biotactics-careers",
+      "board_url": "https://www.swarm-biotactics.com/career-sitemap.xml",
+      "sitemap_url": "https://www.swarm-biotactics.com/career-sitemap.xml",
+      "include_literal": "",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "swatch-group-careers",
+      "board_url": "https://www.swatchgroup.com/en/job-finder",
+      "sitemap_url": "https://www.swatchgroup.com/en/sitemap.xml",
+      "include_literal": "/job/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "theker-factorial",
+      "board_url": "https://theker.factorialhr.com/",
+      "sitemap_url": "https://theker.factorialhr.com/sitemap.xml",
+      "include_literal": "/job_posting/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "community-health-systems-careers-physicians",
+      "board_url": "https://chsmedcareers.com/jobs",
+      "sitemap_url": "https://chsmedcareers.com/sitemap.xml",
+      "include_literal": "/jobs/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    },
+    {
+      "id": "verity-breezy",
+      "board_url": "https://verity-ag.breezy.hr/",
+      "sitemap_url": "https://verity-ag.breezy.hr/sitemap.xml",
+      "include_literal": "/p/",
+      "exclude_literal": "",
+      "max_urls": 50000,
+      "max_index_children": 1
+    }
+  ]
+}

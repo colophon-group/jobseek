@@ -1,0 +1,55 @@
+FROM python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f
+
+ARG SOURCE_COMMIT
+RUN test "${#SOURCE_COMMIT}" -eq 40 \
+    && case "${SOURCE_COMMIT}" in ''|*[!0-9a-f]*) exit 1 ;; esac
+LABEL org.jobseek.density.source-commit="${SOURCE_COMMIT}"
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+WORKDIR /density
+COPY requirements.lock /density/requirements.lock
+RUN python -m pip install --disable-pip-version-check --no-cache-dir \
+      --require-hashes --only-binary=:all: --requirement /density/requirements.lock
+RUN playwright install --with-deps chromium-headless-shell
+RUN python - <<'PY'
+import importlib.metadata
+import os
+import platform
+import subprocess
+import sys
+from pathlib import Path
+from playwright.sync_api import sync_playwright
+
+assert sys.version_info[:3] == (3, 13, 15)
+for package, expected in {
+    "greenlet": "3.3.2",
+    "playwright": "1.62.0",
+    "pyee": "13.0.1",
+    "typing_extensions": "4.15.0",
+}.items():
+    assert importlib.metadata.version(package) == expected
+revision = Path("/ms-playwright/chromium_headless_shell-1234")
+executable = {
+    "aarch64": revision / "chrome-linux" / "headless_shell",
+    "x86_64": revision / "chrome-headless-shell-linux64" / "chrome-headless-shell",
+}.get(platform.machine())
+assert executable is not None and executable.is_file()
+assert os.access(executable, os.X_OK)
+version = subprocess.run(
+    [str(executable), "--version"],
+    check=True,
+    capture_output=True,
+    text=True,
+).stdout.strip()
+assert "151.0.7922.34" in version
+with sync_playwright() as playwright:
+    browser = playwright.chromium.launch(headless=True)
+    browser.close()
+PY
+
+COPY --chmod=0444 python_runner.py workload.v1.json /density/
+
+ENTRYPOINT ["python3", "/density/python_runner.py"]

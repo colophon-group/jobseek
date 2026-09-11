@@ -26,15 +26,7 @@ environment typo cannot silently weaken the repository budget.
 | browser worker | 1 | 1 | 6 | 6 | `browser-1` |
 | Typesense exporter | 1 | 1 | 4 | 4 | `exporter` |
 | R2 drain | 1 | 1 | 6 | 6 | `drain` |
-| Murmur Node pool | 1 | 0 (lazy) | 2 | 2 | `murmur-node` |
-| Murmur Python children | at most 2 | 0 | 1 each | 2 | `murmur-python` |
-| **steady service total** |  | **6** |  | **44** |  |
-
-The Murmur child limit is an invocation semaphore, not an asyncpg pool. Each
-child opens at most one short-lived connection and closes it in `finally`, so
-the two-child limit makes its aggregate maximum exact. Time waiting for a
-child slot counts against the existing invocation wall-clock limit, preventing
-an overload from turning the bounded connection queue into unbounded requests.
+| **steady service total** |  | **6** |  | **40** |  |
 
 The daily Codex runner injects the exact labeller role/min/max/idle values and
 one host-shared database lock path into the annotation subprocess. Every
@@ -67,13 +59,13 @@ Repository operator scripts use either one direct connection or a four-slot
 pool, set a `jobseek:operator:*` application name, and fit inside the
 eight-slot worst-case Compose one-off row above.
 
-The worst managed non-deploy overlap is therefore unchanged at 58 connections:
-44 steady services + one 8-slot Compose operator one-off + one serialized
+The worst managed non-deploy overlap is 54 connections: 40 steady services +
+one 8-slot Compose operator one-off + one serialized
 two-slot labeller pool + two backup slots + one sampler slot + one ingress
 verifier. Ten further slots are
 reserved for operators (seven ordinary plus the three server-enforced
-superuser slots), leaving 32 ordinary shock/incident slots unallocated. The
-allocated ceiling is 68/100,
+superuser slots), leaving 36 ordinary shock/incident slots unallocated. The
+allocated ceiling is 64/100,
 below the 70% steady-state target even when every pool is full.
 
 Do not run an unlabelled direct client or a second maintenance one-off outside
@@ -86,20 +78,21 @@ given an application owner and explicit min/max, and included in
 Deploys do not use blue/green PostgreSQL pool overlap. `deploy.sh` refuses
 running Compose one-offs, takes the shared mutation lock, and stops all six
 crawler asyncpg services before migration or sync. The Murmur sidecar remains
-available.
+stopped and is outside the active crawler Compose specification; its legacy
+stopped containers remain parked in the existing project for audit/rollback.
 
 The labeller (2), pgBackRest (2), host sampler (1), and ingress verifier (1)
 are independent of the deploy mutation lock. The exact deploy budget therefore
 reserves all six connections in every phase, even when their normal cadence
 makes simultaneous use unlikely.
 
-| deploy phase | crawler services | deploy clients | Murmur | independent clients | local maximum |
-|---|---:|---:|---:|---:|---:|
-| quiesce | 0 | 0 | 4 | 6 | 10 |
-| Alembic migration (NullPool) | 0 | 1 | 4 | 6 | 11 |
-| Typesense schema patch | 0 | 0 | 4 | 6 | 10 |
-| CSV/database sync | 0 | 4 | 4 | 6 | 14 |
-| new or rolled-back stack healthy | 40 | 0 | 4 | 6 | **50** |
+| deploy phase | crawler services | deploy clients | independent clients | local maximum |
+|---|---:|---:|---:|---:|
+| quiesce | 0 | 0 | 6 | 6 |
+| Alembic migration (NullPool) | 0 | 1 | 6 | 7 |
+| Typesense schema patch | 0 | 0 | 6 | 6 |
+| CSV/database sync | 0 | 4 | 6 | 10 |
+| new or rolled-back stack healthy | 40 | 0 | 6 | **46** |
 
 Compose replaces containers with the same service names, so old and new pool
 generations do not coexist. Rollback explicitly quiesces all six crawler
@@ -118,7 +111,7 @@ stack is not started and the original stop failure is returned. Later operator
 recovery therefore cannot accidentally use the pre-budget 90-connection
 contract.
 
-The absolute deployment maximum is therefore 50 connections for both the new
+The absolute deployment maximum is therefore 46 connections for both the new
 and rolled-back stack. It includes the independent ingress connection and does
 not assume exclusion based on timer or backup cadence.
 

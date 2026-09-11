@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from src.core.monitors import DiscoveredJob, is_rich_monitor
 from src.core.monitors.dom import (
     BotChallengeError,
     _build_url_matcher,
@@ -25,6 +26,9 @@ from src.core.monitors.dom import (
     _filter_pdf_text_urls,
     _filter_unexpired_pdf_urls,
     _fingerprint_response_urls,
+    _hotelcareer_probe_config,
+    _jobtoolz_probe_config,
+    _lg_portal_probe_config,
     _lucca_probe_config,
     _nyc_council_jobs_probe_config,
     _oracle_adf_probe_config,
@@ -124,12 +128,160 @@ class TestScriptJsonLinks:
             "https://council.nyc.gov/jobs/data-analyst/",
         }
 
+    def test_extracts_rich_jobs_from_function_call_argument(self):
+        config = _validated_script_json_links(
+            {
+                "function": "setUpAgGrid",
+                "argument_index": 2,
+                "url_field": "link",
+                "url_template": "{value}",
+                "title_field": "title",
+                "locations_field": "locations",
+            }
+        )
+        assert config is not None
+        html = """
+            <script type="module">
+              setUpAgGrid(
+                [{column: 'title', data: [{"name": "ignored"}]}],
+                "#opportunities .grid",
+                [{"link":"https:\\/\\/example.com\\/jobs\\/one\\/",
+                  "title":"Physician &#8211; Oncology",
+                  "locations":["Knoxville", "Medical Center"]}],
+                [{field: "title", render: ({data}) => `<a>${data.title}</a>`}]
+              )
+            </script>
+        """
+
+        jobs = _extract_script_json_links(
+            html,
+            "https://example.com/opportunities/",
+            config,
+            re.compile(r"^https://example\.com/jobs/"),
+        )
+
+        assert jobs == [
+            DiscoveredJob(
+                url="https://example.com/jobs/one/",
+                title="Physician – Oncology",
+                locations=["Knoxville", "Medical Center"],
+            )
+        ]
+        assert is_rich_monitor("dom", {"script_json_links": config.__dict__}) is True
+
+    def test_extracts_json_from_first_function_argument(self):
+        config = _validated_script_json_links(
+            {
+                "function": "loadJobs",
+                "argument_index": 0,
+                "url_field": "slug",
+                "url_template": "https://example.com/jobs/{value}/",
+            }
+        )
+        assert config is not None
+
+        urls = _extract_script_json_links(
+            '<script>loadJobs( /* authoritative */ [{"slug":"one"}])</script>',
+            "https://example.com/jobs/",
+            config,
+            None,
+        )
+
+        assert urls == {"https://example.com/jobs/one/"}
+
+    def test_extracts_entity_encoded_function_argument(self):
+        config = _validated_script_json_links(
+            {
+                "function": "jobComponent",
+                "argument_index": 0,
+                "url_field": "url",
+                "url_template": "{value}",
+                "html_unescape": True,
+            }
+        )
+        assert config is not None
+        html = """
+            <div id="jobs" x-data="window.jobComponent(
+              [{&quot;url&quot;:&quot;https://acme.jobtoolz.com/en/backend-engineer&quot;}],
+              999
+            )"></div>
+        """
+
+        urls = _extract_script_json_links(
+            html,
+            "https://acme.jobtoolz.com/en",
+            config,
+            None,
+        )
+
+        assert urls == {"https://acme.jobtoolz.com/en/backend-engineer"}
+
+    async def test_dom_discover_returns_rich_function_argument_jobs(self):
+        config = {
+            "function": "setUpAgGrid",
+            "argument_index": 2,
+            "url_field": "link",
+            "url_template": "{value}",
+            "title_field": "title",
+            "locations_field": "locations",
+        }
+        html = """
+            <script>setUpAgGrid({}, '#grid', [
+              {"link":"https://example.com/jobs/one/","title":"One",
+               "locations":["Knoxville"]}
+            ])</script>
+        """
+        with patch(_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/opportunities/",
+                    "metadata": {
+                        "script_json_links": config,
+                        "url_filter": r"^https://example\.com/jobs/",
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == [
+            DiscoveredJob(
+                url="https://example.com/jobs/one/",
+                title="One",
+                locations=["Knoxville"],
+            )
+        ]
+
     @pytest.mark.parametrize(
         "config",
         [
             {"variable": "bad-name", "url_field": "slug", "url_template": "https://x/{value}"},
             {"variable": "jobs", "url_field": "slug", "url_template": "https://x/no-slot"},
             {"variable": "jobs", "url_field": "slug", "url_template": "/jobs/{value}"},
+            {
+                "variable": "jobs",
+                "function": "loadJobs",
+                "argument_index": 0,
+                "url_field": "slug",
+                "url_template": "https://x/{value}",
+            },
+            {
+                "function": "loadJobs",
+                "argument_index": True,
+                "url_field": "slug",
+                "url_template": "https://x/{value}",
+            },
+            {
+                "variable": "jobs",
+                "url_field": "url",
+                "url_template": "{value}",
+                "title_field": "title",
+            },
+            {
+                "variable": "jobs",
+                "url_field": "url",
+                "url_template": "{value}",
+                "html_unescape": "yes",
+            },
         ],
     )
     def test_rejects_unsafe_config(self, config):
@@ -192,6 +344,46 @@ class TestScriptJsonLinks:
     )
     def test_nyc_council_probe_rejects_noncanonical_board_urls(self, url):
         assert _nyc_council_jobs_probe_config(self._html("one"), url) is None
+
+    def test_jobtoolz_probe_returns_entity_encoded_listing_preset(self):
+        html = """
+            <div id="jobs" x-data="window.jobComponent(
+              [{&quot;url&quot;:&quot;https://acme.jobtoolz.com/en/backend-engineer&quot;}],
+              999
+            )"></div>
+        """
+
+        result = _jobtoolz_probe_config(html, "https://acme.jobtoolz.com/en")
+
+        assert result == {
+            "urls": 1,
+            "jobtoolz_tenant": "acme",
+            "script_json_links": {
+                "function": "jobComponent",
+                "argument_index": 0,
+                "url_field": "url",
+                "url_template": "{value}",
+                "html_unescape": True,
+            },
+            "require_jsonld_jobposting": True,
+        }
+        assert auto_scraper_type("dom", result) == ("json-ld", None)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://acme.jobtoolz.com/en",
+            "https://user@acme.jobtoolz.com/en",
+            "https://acme.jobtoolz.com:444/en",
+            "https://acme.jobtoolz.com:invalid/en",
+            "https://acme.jobtoolz.com:70000/en",
+            "https://jobtoolz.com/en",
+        ],
+    )
+    def test_jobtoolz_probe_rejects_untrusted_board_urls(self, url):
+        html = '<div id="jobs" x-data="window.jobComponent([], 999)"></div>'
+
+        assert _jobtoolz_probe_config(html, url) is None
 
     async def test_can_handle_retries_council_with_public_user_agent(self):
         html = self._html("one", "two")
@@ -1987,6 +2179,84 @@ class TestRichRowsStatic:
             ),
         ]
 
+    def test_extracts_complete_html_description_and_normalizes_title(self):
+        html = """
+        <div class="job">
+          <div class="job-title"><a href="jobs/physician---123"> * Physician </a></div>
+          <div class="job-location">Indianapolis</div>
+          <div class="job-country">United States</div>
+          <div class="description"><p>Provide patient care.</p><ul><li>MD or DO</li></ul></div>
+        </div>
+        """
+        config = _validated_rich_rows(
+            {
+                **self.CONFIG,
+                "title_regex": r"^\s*\*?\s*(.+?)\s*$",
+                "description_selector": ".description",
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers/", config, None)
+
+        assert len(jobs) == 1
+        assert jobs[0].title == "Physician"
+        assert jobs[0].description == (
+            '<div class="description"><p>Provide patient care.</p><ul><li>MD or DO</li></ul></div>'
+        )
+
+    def test_extracts_adjacent_descriptions_with_default_locations(self):
+        html = """
+        <section class="opportunities">
+          <p class="opportunity"><a href="https://ats.example/jobs/one">Role one</a></p>
+          <p class="summary">Lead the first research programme.</p>
+          <p class="opportunity"><a href="https://ats.example/jobs/two">Role two</a></p>
+          <p class="summary">Lead the second research programme.</p>
+        </section>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": ".opportunity",
+                "link_selector": "a[href]",
+                "description_next_selector": "p.summary",
+                "default_locations": ["British Columbia, CA"],
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
+        assert [(job.title, job.description, job.locations) for job in jobs] == [
+            (
+                "Role one",
+                '<p class="summary">Lead the first research programme.</p>',
+                ["British Columbia, CA"],
+            ),
+            (
+                "Role two",
+                '<p class="summary">Lead the second research programme.</p>',
+                ["British Columbia, CA"],
+            ),
+        ]
+
+    def test_adjacent_description_must_be_the_immediate_element_sibling(self):
+        html = """
+        <p class="opportunity"><a href="/jobs/one">Role one</a></p>
+        <aside>Unrelated content</aside>
+        <p class="summary">A displaced description must not be accepted.</p>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": ".opportunity",
+                "link_selector": "a[href]",
+                "description_next_selector": "p.summary",
+            }
+        )
+
+        assert config is not None
+        with pytest.raises(ValueError, match="omitted its configured adjacent description"):
+            _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
     def test_fails_closed_when_a_configured_location_is_missing(self):
         html = """
         <div class="job">
@@ -2021,6 +2291,44 @@ class TestRichRowsStatic:
         assert [(job.title, job.locations) for job in jobs] == [
             ("Engineer", ["Winterthur, Switzerland"]),
             ("Consultant", None),
+        ]
+
+    def test_location_selectors_can_form_a_filtered_fallback_chain(self):
+        html = """
+        <div class="job">
+          <a href="/jobs/engineer">Engineer</a>
+          <span class="structured-location"></span>
+          <p class="summary">Office - Zurich, CH</p>
+        </div>
+        <div class="job">
+          <a href="/jobs/consultant">Consultant</a>
+          <span class="structured-location">Berlin, DE</span>
+          <p class="summary">Join our consulting team.</p>
+        </div>
+        <div class="job">
+          <a href="/jobs/analyst">Analyst</a>
+          <span class="structured-location"></span>
+          <p class="summary">Join our analytics team.</p>
+        </div>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": ".job",
+                "link_selector": "a[href]",
+                "location_selectors": [".structured-location", ".summary"],
+                "location_selector_mode": "first",
+                "location_value_patterns": [None, r"(?:, (?:CH|DE)$|^Office -)"],
+                "allow_missing_locations": True,
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
+        assert [(job.title, job.locations) for job in jobs] == [
+            ("Engineer", ["Office - Zurich, CH"]),
+            ("Consultant", ["Berlin, DE"]),
+            ("Analyst", None),
         ]
 
     def test_extracts_synhelion_live_row_shape(self):
@@ -2376,6 +2684,35 @@ class TestRichRowsStatic:
             },
             {"row_selector": ".job", "link_selector": ".job a", "location_selectors": "p"},
             {"row_selector": ".job", "link_selector": ".job a", "total_selector": "a["},
+            {"row_selector": ".job", "description_selector": "a["},
+            {"row_selector": ".job", "description_next_selector": "a["},
+            {
+                "row_selector": ".job",
+                "description_selector": ".description",
+                "description_next_selector": ".summary",
+            },
+            {"row_selector": ".job", "default_locations": []},
+            {"row_selector": ".job", "default_locations": [""]},
+            {"row_selector": ".job", "default_locations": "British Columbia"},
+            {
+                "row_selector": ".job",
+                "location_selectors": [".location"],
+                "default_locations": ["British Columbia, CA"],
+            },
+            {
+                "row_selector": ".job",
+                "allow_missing_locations": True,
+                "default_locations": ["British Columbia, CA"],
+            },
+            {"row_selector": ".job", "title_regex": r"^no capture$"},
+            {"row_selector": ".job", "title_regex": r"(one)(two)"},
+            {"row_selector": ".job", "location_selector_mode": "fallback"},
+            {"row_selector": ".job", "location_value_patterns": ["office"]},
+            {
+                "row_selector": ".job",
+                "location_selectors": [".location"],
+                "location_value_patterns": ["("],
+            },
             {"row_selector": ".job", "location_selectors": False},
             {"row_selector": ".job", "location_selectors": 0},
             {"row_selector": ".job", "location_selectors": {}},
@@ -2525,19 +2862,76 @@ class TestRichRowsStatic:
         ]
 
     @pytest.mark.asyncio
-    async def test_rejects_rendered_rich_rows(self):
-        for incompatible in (
-            {"render": True},
-            {"require_jsonld_jobposting": True},
+    async def test_rendered_rich_rows_use_browser_pagination(self):
+        first = """
+        <div class="job">
+          <div class="job-title"><a href="/jobs/first">First</a></div>
+          <div class="job-location">Indianapolis</div>
+          <div class="job-country">United States</div>
+          <div class="description"><p>First description</p></div>
+        </div>
+        """
+        second = """
+        <div class="job">
+          <div class="job-title"><a href="/jobs/second">Second</a></div>
+          <div class="job-location">Muncie</div>
+          <div class="job-country">United States</div>
+          <div class="description"><p>Second description</p></div>
+        </div>
+        """
+        page = MagicMock()
+        page.url = "https://example.com/careers/"
+        context = MagicMock()
+        context.__aenter__ = AsyncMock(return_value=page)
+        context.__aexit__ = AsyncMock(return_value=None)
+
+        with (
+            patch("src.core.monitors.dom.open_page", return_value=context),
+            patch("src.core.monitors.dom.navigate", AsyncMock()),
+            patch("src.core.monitors.dom.run_actions", AsyncMock()),
+            patch("src.core.monitors.dom.safe_content", AsyncMock(return_value=first)),
+            patch(
+                "src.core.monitors.dom._fetch_via_page",
+                AsyncMock(side_effect=[second, None]),
+            ) as fetch,
         ):
-            with pytest.raises(ValueError, match="static listing"):
-                await dom_discover(
-                    {
-                        "board_url": "https://example.com/careers/",
-                        "metadata": {**incompatible, "rich_rows": self.CONFIG},
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers/",
+                    "metadata": {
+                        "render": True,
+                        "rich_rows": {**self.CONFIG, "description_selector": ".description"},
+                        "pagination": {
+                            "param_name": "page",
+                            "browser": True,
+                            "max_pages": 10,
+                        },
                     },
-                    AsyncMock(),
-                )
+                },
+                AsyncMock(),
+                pw=MagicMock(),
+            )
+
+        assert isinstance(result, list)
+        assert [(job.title, job.locations) for job in result] == [
+            ("First", ["Indianapolis, United States"]),
+            ("Second", ["Muncie, United States"]),
+        ]
+        assert all(job.description for job in result)
+        assert fetch.await_args_list[0].kwargs["max_chars"] is None
+
+    async def test_rejects_detail_verification_with_rich_rows(self):
+        with pytest.raises(ValueError, match="incompatible with detail verification"):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/careers/",
+                    "metadata": {
+                        "require_jsonld_jobposting": True,
+                        "rich_rows": self.CONFIG,
+                    },
+                },
+                AsyncMock(),
+            )
 
     @pytest.mark.asyncio
     async def test_rejects_browser_pagination_for_rich_rows(self):
@@ -2554,7 +2948,7 @@ class TestRichRowsStatic:
             """
                 ),
             ),
-            pytest.raises(ValueError, match="static sequential pages"),
+            pytest.raises(ValueError, match="browser pagination requires render=true"),
         ):
             await dom_discover(
                 {
@@ -2629,6 +3023,31 @@ class TestCanHandle:
       <p class="jobBoard-offers-empty">There are no job vacancies at the moment.</p>
     </div></body></html>
     """
+    LG_URL = (
+        "https://prd-pc1.lg.com.br/Vagas/c/"
+        "E9BF964D-4EB2-4FFC-A661-75571AB0F49B/p/grupoprofarma/pt-BR/Busca/Vagas"
+    )
+    LG_DETAIL_PREFIX = "/Vagas/c/E9BF964D-4EB2-4FFC-A661-75571AB0F49B/p/grupoprofarma/pt-BR"
+    LG_HTML = """
+    <html><head></head><body>
+      <div class="vaga"><div class="table-wrap-col">
+        <a href="DETAIL_PREFIX/Vaga/Divulgacao?codigo=abc%3d">
+          <h3 class="text-primary">Analyst</h3>
+        </a>
+        <p>Headquarters - Rio de Janeiro / RJ</p>
+        <p class="info text-muted"></p>
+      </div></div>
+      <div class="vaga"><div class="table-wrap-col">
+        <a href="DETAIL_PREFIX/Vaga/Divulgacao?codigo=def%3d">
+          <h3 class="text-primary">Pharmacist</h3>
+        </a>
+        <p>Generic introduction without a location.</p>
+        <p class="info text-muted"><span title="Localidade">NITERÓI</span></p>
+      </div></div>
+      <ul class="pagination"><li data-page="1"></li><li data-page="2"></li></ul>
+      <script>requirejs(["!domReady", "Busca/Index"], function () {});</script>
+    </body></html>
+    """.replace("DETAIL_PREFIX", LG_DETAIL_PREFIX)
     PROSPECTIVE_URL = "https://jobs.example.com/?lang=de"
     PROSPECTIVE_HTML = """
     <html lang="de"><head>
@@ -2697,6 +3116,57 @@ class TestCanHandle:
             result = await can_handle(self.LUCCA_URL, MagicMock())
 
         assert result == _lucca_probe_config(self.LUCCA_HTML, self.LUCCA_URL)
+
+    def test_lg_portal_uses_static_rich_rows_and_provider_pagination(self):
+        result = _lg_portal_probe_config(self.LG_HTML, self.LG_URL)
+
+        assert result is not None
+        assert result["lg_portal"] is True
+        assert result["urls"] == 2
+        assert result["pagination"] == {
+            "url_template": (
+                "https://prd-pc1.lg.com.br/Vagas/c/"
+                "E9BF964D-4EB2-4FFC-A661-75571AB0F49B/p/grupoprofarma/"
+                "pt-BR/Busca/Busca?pagina={page}"
+            ),
+            "start": 1,
+        }
+        config = _validated_rich_rows(result["rich_rows"])
+        assert config is not None
+        jobs = _extract_rich_rows_static(
+            self.LG_HTML,
+            self.LG_URL,
+            config,
+            re.compile(result["url_filter"]),
+        )
+        assert [(job.title, job.locations) for job in jobs] == [
+            ("Analyst", ["Headquarters - Rio de Janeiro / RJ"]),
+            ("Pharmacist", ["NITERÓI"]),
+        ]
+        scraper_type, scraper_config = auto_scraper_type("dom", result) or (None, None)
+        assert scraper_type == "dom"
+        assert scraper_config == {
+            "enrich": ["description"],
+            "scope": ".col-sm-9.col-print-9",
+            "steps": [
+                {"tag": "h2", "field": "title"},
+                {"tag": "h4", "text": "Descrição da vaga"},
+                {
+                    "field": "description",
+                    "html": True,
+                    "to_end": True,
+                },
+            ],
+        }
+
+    async def test_lg_portal_can_handle_returns_provider_preset(self):
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=self.LG_HTML),
+        ):
+            result = await can_handle(self.LG_URL, MagicMock())
+
+        assert result == _lg_portal_probe_config(self.LG_HTML, self.LG_URL)
 
     def test_prospective_board_uses_static_rich_row_preset(self):
         result = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
@@ -3217,6 +3687,64 @@ class TestCanHandle:
         )
         client.get.assert_not_called()
 
+    def test_hotelcareer_employer_board_uses_proxy_rendered_preset(self):
+        result = _hotelcareer_probe_config(
+            "https://www.hotelcareer.de/jobs/l%C3%B6wen-hotel-montafon-29838"
+        )
+        assert result == {
+            "hotelcareer_profile": "l%C3%B6wen-hotel-montafon-29838",
+            "render": True,
+            "proxy": True,
+            "resource_policy": "none",
+            "url_filter": (
+                r"(?i:^https://www\.hotelcareer\.de/jobs/"
+                r"l%C3%B6wen\-hotel\-montafon\-29838/"
+                r"[^/?#]+-[1-9]\d{0,15}/?(?:[?#].*)?$)"
+            ),
+        }
+        assert auto_scraper_type("dom", result) == (
+            "json-ld",
+            {"render": True, "proxy": True},
+        )
+
+        matcher = re.compile(result["url_filter"])
+        assert matcher.search(
+            "https://www.hotelcareer.de/jobs/l%C3%B6wen-hotel-montafon-29838/"
+            "chef-de-rang-m-w-d-3987654"
+        )
+        assert not matcher.search(
+            "https://www.hotelcareer.de/jobs/other-hotel-42/chef-de-rang-3987654"
+        )
+        assert not matcher.search(
+            "https://evil.example/jobs/l%C3%B6wen-hotel-montafon-29838/role-3987654"
+        )
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://www.hotelcareer.de/jobs/acme-hotel-123",
+            "https://hotelcareer.de/jobs/acme-hotel-123",
+            "https://www.hotelcareer.de:444/jobs/acme-hotel-123",
+            "https://user:secret@www.hotelcareer.de/jobs/acme-hotel-123",
+            "https://www.hotelcareer.de/jobs/acme-hotel-123?location=berlin",
+            "https://www.hotelcareer.de/jobs/acme-hotel-123#jobs",
+            "https://www.hotelcareer.de/jobs/acme-hotel",
+            "https://www.hotelcareer.de/jobs/acme-hotel-123/role-456",
+            "https://evil.example/jobs/acme-hotel-123",
+        ],
+    )
+    def test_hotelcareer_preset_rejects_non_profile_routes(self, url):
+        assert _hotelcareer_probe_config(url) is None
+
+    async def test_hotelcareer_probe_does_not_fetch_blocked_listing(self):
+        client = MagicMock()
+        url = "https://www.hotelcareer.de/jobs/acme-hotel-123"
+
+        result = await can_handle(url, client)
+
+        assert result == _hotelcareer_probe_config(url)
+        client.get.assert_not_called()
+
     async def test_talentsoft_without_safran_facets_keeps_ordinary_pagination(self):
         html = """
         <html><body>
@@ -3444,12 +3972,20 @@ class TestCanHandle:
         assert result is not None
         assert result["urls"] == 2
 
-    async def test_kontact_board_returns_complete_browser_pagination_config(self):
+    async def test_kontact_board_returns_complete_rich_row_pagination_config(self):
         html = """
         <html><head>
           <meta name="Author" content="KontactIntelligence.com">
         </head><body>
-          <a href="/Physician_Job/Details/Family-Medicine/123">View</a>
+          <div id="accordion">
+            <div class="panel panel-default">
+              <div class="panel-heading"><div class="col-md-8"> * Family Physician </div>
+                <div class="col-md-4">Indianapolis, IN</div></div>
+              <a title="View this opportunity"
+                 href="/Physician_Job/Details/Family-Medicine/123">View</a>
+              <div class="jobDropDownDesc"><p>Full role description.</p></div>
+            </div>
+          </div>
           <a href="?pg=2">2</a>
         </body></html>
         """
@@ -3462,6 +3998,16 @@ class TestCanHandle:
         assert result == {
             "urls": 1,
             "url_filter": r"/Physician_Job/Details/",
+            "rich_rows": {
+                "row_selector": "#accordion .panel.panel-default",
+                "link_selector": (
+                    "a[title='View this opportunity'][href*='/Physician_Job/Details/']"
+                ),
+                "title_selector": ".panel-heading .col-md-8",
+                "title_regex": r"^\s*\*?\s*(.+?)\s*$",
+                "location_selectors": [".panel-heading .col-md-4"],
+                "description_selector": ".jobDropDownDesc",
+            },
             "pagination": {
                 "param_name": "pg",
                 "max_pages": 1_000,

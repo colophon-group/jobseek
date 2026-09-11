@@ -28,6 +28,8 @@ def _job(job_id: str, *, url: str | None = None) -> dict:
         "jobNo": job_id,
         "jobUrl": url or f"https://www.104.com.tw/job/{job_id}",
         "jobName": f"Role {job_id}",
+        "jobAddrNoDesc": "Taipei City",
+        "jobDescription": "Build secure systems.\n\nWork with the platform team.",
     }
 
 
@@ -56,7 +58,7 @@ class TestIdentity:
     def test_provider_is_registered_with_workspace_defaults(self):
         assert "jobbank104" in all_monitor_types()
         assert detect_ats_from_url(BOARD_URL) == "jobbank104"
-        assert auto_scraper_type("jobbank104") == ("json-ld", None)
+        assert auto_scraper_type("jobbank104") == ("skip", None)
 
     @pytest.mark.parametrize(
         ("url", "expected"),
@@ -110,10 +112,37 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": BOARD_URL}, client)
 
-        assert result == {
+        assert [job.url for job in result] == [
             "https://www.104.com.tw/job/8jld1",
             "https://www.104.com.tw/job/92nxg",
-        }
+        ]
+        assert result[0].title == "Role 8jld1"
+        assert result[0].locations == ["Taipei City"]
+        assert result[0].description == (
+            "<p>Build secure systems.</p>\n<p>Work with the platform team.</p>"
+        )
+
+    async def test_escapes_plain_text_description_as_html(self):
+        raw = _job("8jld1")
+        raw["jobDescription"] = "<Responsibilities>\nUse C & Python"
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=_payload([raw]), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover({"board_url": BOARD_URL}, client)
+
+        assert result[0].description == "<p>&lt;Responsibilities&gt;<br>Use C &amp; Python</p>"
+
+    @pytest.mark.parametrize("field", ["jobName", "jobAddrNoDesc", "jobDescription"])
+    async def test_missing_required_rich_field_fails_closed(self, field: str):
+        raw = _job("8jld1")
+        raw[field] = " "
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=_payload([raw]), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match=field):
+                await discover({"board_url": BOARD_URL}, client)
 
     async def test_metadata_token_override(self):
         seen: list[str] = []
@@ -131,7 +160,7 @@ class TestMonitor:
                 client,
             )
 
-        assert result == set()
+        assert result == []
         assert seen == [API_URL]
 
     async def test_paginates_without_including_promoted_duplicates(
@@ -149,11 +178,11 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": BOARD_URL}, client)
 
-        assert result == {
+        assert [job.url for job in result] == [
             "https://www.104.com.tw/job/8jld1",
             "https://www.104.com.tw/job/92nxg",
             "https://www.104.com.tw/job/94xx9",
-        }
+        ]
 
     async def test_inventory_over_cap_is_safe_truncation(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(jobbank104, "PAGE_SIZE", 2)
@@ -170,6 +199,7 @@ class TestMonitor:
 
         assert isinstance(result, MonitorResult)
         assert len(result.urls) == 2
+        assert result.jobs_by_url is not None
         assert result.truncated is True
 
     async def test_incomplete_page_fails_closed(self):
@@ -258,7 +288,7 @@ class TestProbe:
         async def blocked(_token: str, _client: httpx.AsyncClient):
             raise PaginationFetchError("blocked", attempts=1, last_status=403)
 
-        monkeypatch.setattr(jobbank104, "_discover_urls", blocked)
+        monkeypatch.setattr(jobbank104, "_discover_jobs", blocked)
         async with httpx.AsyncClient() as client:
             assert await can_handle(BOARD_URL, client) == {"token": TOKEN}
 
