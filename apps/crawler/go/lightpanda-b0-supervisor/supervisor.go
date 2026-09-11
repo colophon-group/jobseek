@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 	"sync"
 	"time"
 
@@ -16,13 +18,19 @@ const (
 	queueTimeout       = 5 * time.Second
 	reaperInterval     = 30 * time.Second
 	shutdownTimeout    = 15 * time.Second
+	failureBackoff     = 60 * time.Second
 )
 
+type executorRunner func(context.Context, config, executorRequest, authorizeCommit) (*int64, error)
+
 type supervisor struct {
-	config   config
-	queue    *b0Queue
-	renderer rendererSource
-	metrics  *metrics
+	config         config
+	queue          *b0Queue
+	authorityQueue leaseQueue
+	renderer       rendererSource
+	metrics        *metrics
+	executor       executorRunner
+	logger         *slog.Logger
 }
 
 type rendererSource interface {
@@ -37,7 +45,16 @@ type heldReservation interface {
 type leaseQueue interface {
 	heartbeat(context.Context, *lease, time.Duration) error
 	terminal(context.Context, *lease, *int64) error
+	fail(context.Context, *lease, int64) error
 }
+
+type authorityError struct {
+	operation string
+	err       error
+}
+
+func (e *authorityError) Error() string { return "B0 " + e.operation + " authority: " + e.err.Error() }
+func (e *authorityError) Unwrap() error { return e.err }
 
 type leaseAuthority struct {
 	mu       sync.Mutex
@@ -63,7 +80,8 @@ func newSupervisor(c config) (*supervisor, *redis.Client, error) {
 		_ = client.Close()
 		return nil, nil, err
 	}
-	return &supervisor{config: c, queue: queue, renderer: renderer, metrics: m}, client, nil
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	return &supervisor{config: c, queue: queue, authorityQueue: queue, renderer: renderer, metrics: m, executor: runPythonExecutor, logger: logger}, client, nil
 }
 
 func (s *supervisor) run(ctx context.Context) error {
@@ -216,6 +234,7 @@ func (s *supervisor) worker(ctx context.Context, initial heldReservation) error 
 			held.close()
 			return errors.New("accepted B0 claim had no lease")
 		}
+		s.metrics.dueToClaim.observe(outcome.ServerTimeMS - current.DueAtMS)
 		s.metrics.inflight.Add(1)
 		processErr, fatal := s.processLease(ctx, held, current)
 		s.metrics.inflight.Add(-1)
@@ -224,34 +243,48 @@ func (s *supervisor) worker(ctx context.Context, initial heldReservation) error 
 		if fatal {
 			return processErr
 		}
+		if processErr != nil {
+			s.logTask("worker", "failed_rescheduled", current, processErr)
+		}
 	}
 }
 
 func (s *supervisor) processLease(parent context.Context, held heldReservation, current *lease) (error, bool) {
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
-	authority := &leaseAuthority{lease: current, queue: s.queue, config: s.config}
+	authorityQueue := s.authorityQueue
+	if authorityQueue == nil {
+		authorityQueue = s.queue
+	}
+	authority := &leaseAuthority{lease: current, queue: authorityQueue, config: s.config}
 	heartbeatErr := make(chan error, 1)
 	go func() { heartbeatErr <- authority.heartbeatLoop(ctx, cancel) }()
+	renderStarted := time.Now()
 	result, err := held.execute(ctx, current.Task)
+	s.metrics.renderWait.observe(time.Since(renderStarted).Milliseconds())
 	if err != nil {
 		s.metrics.render[1].Add(1)
-		cancel()
-		heartbeat := <-heartbeatErr
-		if heartbeat != nil && !errors.Is(heartbeat, context.Canceled) {
-			return heartbeat, true
-		}
-		return err, false
+		s.logTask("renderer", "failure", current, err)
+		return s.rescheduleOperationalFailure(parent, cancel, heartbeatErr, authority, current, "renderer", err)
 	}
 	s.metrics.render[0].Add(1)
+	s.logTask("renderer", "success", current, nil)
 	executorContext, executorCancel := context.WithTimeout(ctx, time.Duration(current.Task.Envelope.TimeoutMS)*time.Millisecond+s.config.ExecutorTimeout)
 	request := authority.executorRequest(result)
-	_, err = runPythonExecutor(executorContext, s.config, request, authority.authorizeAndFinish)
+	runner := s.executor
+	if runner == nil {
+		runner = runPythonExecutor
+	}
+	executorStarted := time.Now()
+	_, err = runner(executorContext, s.config, request, authority.authorizeAndFinish)
+	s.metrics.executorWait.observe(time.Since(executorStarted).Milliseconds())
 	executorCancel()
 	if err != nil {
 		s.metrics.exec[1].Add(1)
+		s.logTask("executor", "failure", current, err)
 	} else {
 		s.metrics.exec[0].Add(1)
+		s.logTask("executor", "committed", current, nil)
 	}
 	cancel()
 	heartbeat := <-heartbeatErr
@@ -259,9 +292,56 @@ func (s *supervisor) processLease(parent context.Context, held heldReservation, 
 		return heartbeat, true
 	}
 	if err != nil {
+		var authorityFailure *authorityError
+		if errors.As(err, &authorityFailure) {
+			return err, true
+		}
+		if parent.Err() != nil {
+			if releaseErr := authority.releaseForShutdown(); releaseErr != nil {
+				return releaseErr, true
+			}
+			return err, false
+		}
+		if failErr := authority.failAndFinish(parent, failureBackoff); failErr != nil {
+			return failErr, true
+		}
+		s.metrics.failedRescheduled.Add(1)
+		s.logTask("executor", "failed_rescheduled", current, err)
 		return err, false
 	}
+	s.metrics.dueToComplete.observe(time.Now().UnixMilli() - current.DueAtMS)
 	return nil, false
+}
+
+func (s *supervisor) rescheduleOperationalFailure(parent context.Context, cancel context.CancelFunc, heartbeatErr <-chan error, authority *leaseAuthority, current *lease, phase string, cause error) (error, bool) {
+	cancel()
+	heartbeat := <-heartbeatErr
+	if heartbeat != nil && !errors.Is(heartbeat, context.Canceled) {
+		return heartbeat, true
+	}
+	if parent.Err() != nil {
+		if releaseErr := authority.releaseForShutdown(); releaseErr != nil {
+			return releaseErr, true
+		}
+		return parent.Err(), false
+	}
+	if err := authority.failAndFinish(parent, failureBackoff); err != nil {
+		return err, true
+	}
+	s.metrics.failedRescheduled.Add(1)
+	s.logTask(phase, "failed_rescheduled", current, cause)
+	return cause, false
+}
+
+func (s *supervisor) logTask(phase, outcome string, current *lease, err error) {
+	if s.logger == nil || current == nil {
+		return
+	}
+	attributes := []any{"phase", phase, "outcome", outcome, "task_id", current.Task.Envelope.TaskID}
+	if err != nil {
+		attributes = append(attributes, "error_class", fmt.Sprintf("%T", err))
+	}
+	s.logger.Info("lightpanda_b0_task", attributes...)
 }
 
 func (a *leaseAuthority) executorRequest(browserResult []byte) executorRequest {
@@ -288,7 +368,7 @@ func (a *leaseAuthority) heartbeatLoop(ctx context.Context, cancel context.Cance
 			finished, err := a.heartbeatOnce(ctx)
 			if err != nil {
 				cancel()
-				return fmt.Errorf("B0 heartbeat lost authority: %w", err)
+				return &authorityError{operation: "heartbeat", err: err}
 			}
 			if finished {
 				return nil
@@ -311,7 +391,7 @@ func (a *leaseAuthority) authorizeAndFinish(ctx context.Context, conversation co
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if err := bounded(ctx, queueTimeout, func(call context.Context) error { return a.queue.heartbeat(call, a.lease, a.config.LeaseTTL) }); err != nil {
-		return nil, err
+		return nil, &authorityError{operation: "heartbeat", err: err}
 	}
 	commitContext, cancel := context.WithTimeout(ctx, a.config.ExecutorTimeout)
 	nextReady, err := conversation(commitContext, a.lease.LeaseUntilMS)
@@ -320,10 +400,53 @@ func (a *leaseAuthority) authorizeAndFinish(ctx context.Context, conversation co
 		return nil, err
 	}
 	if err := bounded(ctx, queueTimeout, func(call context.Context) error { return a.queue.terminal(call, a.lease, nextReady) }); err != nil {
-		return nil, err
+		return nil, &authorityError{operation: "terminal", err: err}
 	}
 	a.finished = true
 	return nextReady, nil
+}
+
+func (a *leaseAuthority) failAndFinish(ctx context.Context, backoff time.Duration) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.finished {
+		return &authorityError{operation: "fail_at", err: errors.New("lease already finished")}
+	}
+	if err := bounded(ctx, queueTimeout, func(call context.Context) error { return a.queue.heartbeat(call, a.lease, a.config.LeaseTTL) }); err != nil {
+		return &authorityError{operation: "heartbeat-before-fail", err: err}
+	}
+	readyAtMS := a.lease.LeaseUntilMS - a.config.LeaseTTL.Milliseconds() + backoff.Milliseconds()
+	if readyAtMS < 0 {
+		return &authorityError{operation: "fail_at", err: errors.New("failure backoff overflow")}
+	}
+	if err := bounded(ctx, queueTimeout, func(call context.Context) error { return a.queue.fail(call, a.lease, readyAtMS) }); err != nil {
+		return &authorityError{operation: "fail_at", err: err}
+	}
+	a.finished = true
+	return nil
+}
+
+func (a *leaseAuthority) releaseForShutdown() error {
+	ctx, cancel := context.WithTimeout(context.Background(), queueTimeout)
+	defer cancel()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.finished {
+		return nil
+	}
+	// Do not heartbeat here: Redis TIME is millisecond-granular, so shutdown
+	// can follow a claim/pulse in the same millisecond and a non-advancing
+	// heartbeat is correctly rejected. reschedule_at validates the current,
+	// unexpired lease fence itself.
+	readyAtMS := a.lease.LeaseUntilMS - a.config.LeaseTTL.Milliseconds()
+	if readyAtMS < 0 {
+		return &authorityError{operation: "shutdown-release", err: errors.New("shutdown ready time overflow")}
+	}
+	if err := bounded(ctx, queueTimeout, func(call context.Context) error { return a.queue.terminal(call, a.lease, &readyAtMS) }); err != nil {
+		return &authorityError{operation: "shutdown-release", err: err}
+	}
+	a.finished = true
+	return nil
 }
 
 func (s *supervisor) reaper(ctx context.Context) error {

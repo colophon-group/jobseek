@@ -47,6 +47,7 @@ class BoardRuntimeConfig:
 
     board_url: str
     crawler_type: str
+    board_slug: str = ""
     company_id: str = ""
     domain: str = ""
     throttle_key: str = ""
@@ -79,6 +80,7 @@ class BoardRuntimeConfig:
         return cls(
             board_url=str(raw.get("board_url") or ""),
             crawler_type=str(raw.get("crawler_type") or ""),
+            board_slug=str(raw.get("board_slug") or ""),
             company_id=str(raw.get("company_id") or ""),
             domain=str(raw.get("domain") or ""),
             throttle_key=str(raw.get("throttle_key") or ""),

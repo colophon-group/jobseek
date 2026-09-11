@@ -19,6 +19,15 @@ local score = tonumber(ARGV[4])
 local task_type = ARGV[5]
 local first_time = ARGV[6] == "1"
 local now = tonumber(ARGV[7])
+local b0_guard_key = "lightpanda-b0:legacy-guard"
+
+local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
+if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
+    return redis.error_reply("lightpanda B0 legacy guard is corrupt")
+end
+if task_type == "scrape" and redis.call("HEXISTS", b0_guard_key, task_id) == 1 then
+    return 0
+end
 
 -- Scrape queue membership and its config hash are one lifecycle record. Keep
 -- them in this script so an orphan-prune/completion script can never observe

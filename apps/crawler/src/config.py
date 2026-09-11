@@ -177,6 +177,10 @@ class Settings(BaseSettings):
     lightpanda_b0_queue_namespace: str = ""
     lightpanda_b0_shard_id: str = ""
     lightpanda_b0_routing_epoch: str = ""
+    # Enqueue diversion is a separate, explicit switch. A non-empty allowlist
+    # grants no authority while this remains ``off``.
+    lightpanda_b0_producer_mode: str = "off"
+    lightpanda_b0_producer_cohort: str = "off"
 
     # Pipeline concurrency (per-instance)
     discovery_concurrency: int = 20

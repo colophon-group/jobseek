@@ -25,6 +25,14 @@ local now = tonumber(ARGV[2])
 local default_delay = tonumber(ARGV[3])
 local max_check = tonumber(ARGV[4]) or 10
 local lease_ttl = tonumber(ARGV[5]) or 600
+local b0_guard_key = "lightpanda-b0:legacy-guard"
+
+-- Fail before popping any task if the persistent cutover guard is corrupt.
+-- Redis scripts do not roll back writes after a runtime WRONGTYPE error.
+local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
+if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
+    return redis.error_reply("lightpanda B0 legacy guard is corrupt")
+end
 
 -- Rebuild every ready representation for one domain from its authoritative
 -- per-domain queues. A recurring domain may need TWO entries: one carrying
@@ -123,6 +131,17 @@ for tier = 0, 2 do
                     task_id = items[1]
                     source_type = "scrape"
                 end
+            end
+
+            -- A persistent B0 cutover guard wins against stale/old producers.
+            -- Quarantine the popped legacy representation before acquiring a
+            -- Chromium lease; activation itself refuses when this script won
+            -- first and already wrote an in-flight member.
+            if task_id and source_type == "scrape" and
+                redis.call("HEXISTS", b0_guard_key, task_id) == 1
+            then
+                task_id = nil
+                refresh_ready(domain, 0)
             end
 
             if task_id then

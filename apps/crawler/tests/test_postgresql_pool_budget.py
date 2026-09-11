@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[3]
 CRAWLER = ROOT / "apps" / "crawler"
 COMPOSE = CRAWLER / "docker-compose.yml"
 ROLLBACK_OVERRIDE = CRAWLER / "rollback-pool-budget.override.yml"
+LIGHTPANDA_B0_ENABLED_OVERRIDE = CRAWLER / "lightpanda-b0-enabled.override.yml"
 BASE_REVISION = "51625c18e3d1d03cdf606b307001b96b6dc85868"
 BASE_COMPOSE_FIXTURE = CRAWLER / "tests" / "fixtures" / f"docker-compose.base-{BASE_REVISION}.yml"
 BASE_COMPOSE_SHA256 = "67f8209fe6316932d85ed3d32b5d1a5da2c1d242fffa7f5d55ad9b73f4b6a32e"
@@ -44,6 +45,8 @@ def _render_compose_config(*files: Path) -> dict:
         {
             "COMPOSE_PROJECT_NAME": "rollback-base-contract",
             "CRAWLER_IMAGE_TAG": "base-fixture",
+            "CRAWLER_IMAGE_REF": f"ghcr.io/fixture/jobseek-crawler@sha256:{'a' * 64}",
+            "BROWSER_IMAGE_REF": f"ghcr.io/fixture/jobseek-browser@sha256:{'b' * 64}",
             "GRAFANA_LOKI_PASSWORD": "fixture",
             "GRAFANA_LOKI_URL": "https://fixture.invalid/loki",
             "GRAFANA_LOKI_USERNAME": "fixture",
@@ -51,6 +54,8 @@ def _render_compose_config(*files: Path) -> dict:
             "GRAFANA_PROM_URL": "https://fixture.invalid/prom",
             "GRAFANA_PROM_USERNAME": "fixture",
             "LOCAL_DATABASE_URL": "postgresql://fixture.invalid/jobseek",
+            "LIGHTPANDA_B0_CREDENTIAL_DIR": "/fixture/credentials",
+            "LIGHTPANDA_B0_PRODUCER_COHORT": "c1",
             "MURMUR_TOKEN": "fixture",
             "OWNER": "fixture",
             "PROXY_PROVIDER": "none",
@@ -119,6 +124,30 @@ def test_long_running_pool_budget_is_explicit_and_below_steady_target() -> None:
     assert maximum < 70
 
 
+def test_enabled_lightpanda_overlay_adds_exactly_one_executor_connection() -> None:
+    compose = _render_compose_config(COMPOSE, LIGHTPANDA_B0_ENABLED_OVERRIDE)
+    executor = compose["services"]["lightpanda-executor"]
+
+    assert executor["environment"]["CRAWLER_DB_ROLE"] == "lightpanda-b0-executor"
+    assert int(executor["environment"]["CRAWLER_DB_POOL_MIN"]) == 1
+    assert int(executor["environment"]["CRAWLER_DB_POOL_MAX"]) == 1
+    assert (
+        sum(
+            int(compose["services"][service]["environment"]["CRAWLER_DB_POOL_MAX"])
+            for service in (
+                "worker-1",
+                "worker-2",
+                "worker-3",
+                "browser-1",
+                "exporter",
+                "drain",
+                "lightpanda-executor",
+            )
+        )
+        == 41
+    )
+
+
 def test_murmur_enforces_both_connection_owners() -> None:
     node_db = (ROOT / "apps/murmur-shim/src/db/index.ts").read_text(encoding="utf-8")
     invoker = (ROOT / "apps/murmur-shim/app/api/murmur/_lib/invoke-lib.ts").read_text(
@@ -184,7 +213,7 @@ def test_oneoffs_and_readonly_routine_have_explicit_small_budgets() -> None:
     )
     runbook = RUNBOOK.read_text(encoding="utf-8")
     assert "aggregate maximum remains exactly 2" in runbook
-    assert "54 connections" in runbook
+    assert "55 connections" in runbook
 
 
 def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> None:
@@ -204,11 +233,12 @@ def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> No
     # Migration uses one NullPool connection; sync uses a four-slot local pool.
     # Those phases are serial, and the paused Murmur integration owns no slots.
     deploy_clients = (1, 4)
-    assert max(*(clients + independent for clients in deploy_clients), 40 + independent) == 46
+    assert max(*(clients + independent for clients in deploy_clients), 41 + independent) == 47
 
     runbook = RUNBOOK.read_text(encoding="utf-8")
-    assert "absolute deployment maximum is therefore 46 connections" in runbook
-    assert "| new or rolled-back stack healthy | 40 | 0 | 6 | **46** |" in runbook
+    assert "absolute deployment maximum is therefore 47 connections" in runbook
+    assert "| enabled Go B0 stack healthy | 41 | 0 | 6 | **47** |" in runbook
+    assert "| base or rolled-back stack healthy | 40 | 0 | 6 | **46** |" in runbook
 
 
 def test_exact_pre_budget_base_archive_is_bounded_by_rollback_override() -> None:
@@ -279,9 +309,9 @@ def test_host_capacity_keeps_server_and_operator_reserve_explicit() -> None:
 
     runbook = RUNBOOK.read_text(encoding="utf-8")
     assert "**40**" in runbook
-    assert "54 connections" in runbook
-    assert "allocated ceiling is 64/100" in runbook
-    assert "leaving 36" in runbook
+    assert "55 connections" in runbook
+    assert "allocated ceiling is 65/100" in runbook
+    assert "leaving 35" in runbook
 
 
 def test_owner_metrics_are_bounded_and_seven_day_gate_is_documented() -> None:
@@ -295,6 +325,7 @@ def test_owner_metrics_are_bounded_and_seven_day_gate_is_documented() -> None:
         "browser-1",
         "exporter",
         "drain",
+        "lightpanda-b0-executor",
         "reconciliation",
         "murmur-node",
         "murmur-python",

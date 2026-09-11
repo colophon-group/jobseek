@@ -1,4 +1,4 @@
--- Inactive Lightpanda B0 queue lifecycle. Python is the sole queue owner.
+-- Exclusive Lightpanda B0 queue lifecycle. One exact engine owns a namespace.
 --
 -- KEYS (all seven share one hash tag):
 --   1 route hash        4 inflight zset
@@ -28,6 +28,10 @@
 --  15 default_delay_seconds
 --  16 previous_payload_sha256 (reactivate only)
 --  17 expected_lease_until_ms (leased-task mutations only)
+--  18 queue namespace (activation/rollback only)
+--  19 canonical string-valued legacy scrape config JSON (activation) or
+--     canonical current-PostgreSQL rollback plan JSON (rollback)
+--  20 operator transfer mode: exact "1" or "0"
 
 local MAX_INTEGER = 9999999999999
 local MAX_PAYLOAD_BYTES = 131072
@@ -63,6 +67,21 @@ local function canonical_positive(text)
     local value = canonical_uint(text)
     if not value or value < 1 then return nil end
     return value
+end
+
+local function signed_integer_string(text)
+    if type(text) ~= "string" or string.match(text, "^-?[0-9]+$") == nil
+        or text == "-0" or (string.sub(text, 1, 1) == "0" and #text > 1)
+        or (string.sub(text, 1, 2) == "-0" and #text > 2) then
+        return false
+    end
+    -- The value is an opaque PostgreSQL bigint identity. Its decimal form is
+    -- validated without converting through Lua's imprecise IEEE-754 number.
+    local digits = string.sub(text, 1, 1) == "-" and string.sub(text, 2) or text
+    if #digits < 19 then return true end
+    if #digits > 19 then return false end
+    local bound = string.sub(text, 1, 1) == "-" and "9223372036854775808" or "9223372036854775807"
+    return digits <= bound
 end
 
 local function bounded_number(value, minimum, maximum)
@@ -179,7 +198,7 @@ local function load_route()
     end
     if not safe_identifier(route.shard_id)
         or not canonical_positive(route.routing_epoch)
-        or route.engine_owner ~= "python"
+        or (route.engine_owner ~= "python" and route.engine_owner ~= "go")
         or canonical_uint(route.claim_sequence) == nil then
         return nil
     end
@@ -279,7 +298,7 @@ local function valid_record(record)
         or record.task_kind ~= "scrape"
         or not safe_identifier(record.shard_id)
         or not bounded_number(record.routing_epoch, 1, MAX_INTEGER)
-        or record.engine_owner ~= "python"
+        or (record.engine_owner ~= "python" and record.engine_owner ~= "go")
         or not bounded_number(record.config_revision, 1, MAX_INTEGER)
         or record.policy_key ~= "lightpanda-b0-v1"
         or not safe_domain(record.domain)
@@ -324,7 +343,6 @@ local function valid_record(record)
         or not valid_sha(envelope.assignment_digest_sha256, 64) then
         return false
     end
-
     if record.state == "ready" then
         return record.claim_token == cjson.null
             and record.claim_sequence == cjson.null
@@ -395,7 +413,7 @@ local function valid_holder_shape(holder, expected_domain)
         and holder.domain == expected_domain
         and safe_identifier(holder.shard_id)
         and bounded_number(holder.routing_epoch, 1, MAX_INTEGER) ~= nil
-        and holder.engine_owner == "python"
+        and (holder.engine_owner == "python" or holder.engine_owner == "go")
         and bounded_number(holder.config_revision, 1, MAX_INTEGER) ~= nil
         and type(holder.claim_token) == "string"
         and bounded_number(holder.lease_until_ms, 1, MAX_INTEGER) ~= nil
@@ -453,6 +471,31 @@ local function store_holder(record)
     }))
 end
 
+local function go_guard_for(record)
+    if record.engine_owner ~= "go" then return true end
+    local namespace = ARGV[18]
+    if not safe_identifier(namespace) then return nil end
+    local guard_key = "lightpanda-b0:legacy-guard"
+    if redis.call("TYPE", guard_key)["ok"] ~= "hash" then return nil end
+    local decoded_ok, envelope = pcall(cjson.decode, record.payload)
+    if not decoded_ok or type(envelope) ~= "table" then return nil end
+    local base = namespace .. "|" .. record.shard_id .. "|" .. tostring(record.routing_epoch)
+        .. "|" .. envelope.board_id .. "|" .. record.domain
+    local escaped_base = string.gsub(base, "([^%w])", "%%%1")
+    local value = redis.call("HGET", guard_key, record.task_id)
+    local kind = nil
+    local score = nil
+    if value then
+        kind, score = string.match(value, "^" .. escaped_base .. "|([^|]+)|([^|]+)$")
+    end
+    if (kind ~= "ft_simple" and kind ~= "ft_browser"
+            and kind ~= "recurring_simple" and kind ~= "recurring_browser")
+        or decimal_seconds(score, MAX_INTEGER / 1000) == nil then
+        return nil
+    end
+    return {key = guard_key, base = base, kind = kind, score = score}
+end
+
 local function load_current(expected_state, require_token)
     local route = namespace_valid()
     if not route then return nil, "not_current", "namespace_corrupt" end
@@ -477,6 +520,9 @@ local function load_current(expected_state, require_token)
     if payload_sha256 ~= record.payload_sha256 or payload_sha1 ~= record.payload_sha1 then
         return nil, "fenced", "payload_digest_mismatch"
     end
+    if not go_guard_for(record) then
+        return nil, "not_current", "guard_identity_mismatch"
+    end
     if require_token and claim_token ~= record.claim_token then
         return nil, "fenced", "claim_token_mismatch"
     end
@@ -495,7 +541,7 @@ local function load_current(expected_state, require_token)
 end
 
 if not safe_identifier(shard_id) or canonical_positive(routing_epoch) == nil
-    or engine_owner ~= "python" then
+    or (engine_owner ~= "python" and engine_owner ~= "go") then
     return result("not_current", "invalid_route")
 end
 
@@ -524,6 +570,9 @@ local matches, route_reason = route_matches(route)
 if not matches then return result("fenced", route_reason) end
 
 if operation == "register" then
+    if engine_owner == "go" then
+        return result("not_current", "exclusive_activation_required")
+    end
     local ready_at = canonical_uint(ARGV[9])
     if not safe_identifier(task_id) or canonical_positive(config_revision) == nil
         or ready_at == nil or type(payload) ~= "string" or #payload > MAX_PAYLOAD_BYTES
@@ -586,6 +635,309 @@ if operation == "register" then
     return result("accepted", "registered", nil, ready_at)
 end
 
+if operation == "activate_legacy" then
+    local ready_at = canonical_uint(ARGV[9])
+    local previous_payload_sha256 = ARGV[16]
+    local namespace = ARGV[18]
+    local legacy_config_json = ARGV[19]
+    local operator_transfer = ARGV[20]
+    if engine_owner ~= "go" then
+        return result("not_current", "exclusive_go_owner_required")
+    end
+    if (operator_transfer ~= "0" and operator_transfer ~= "1")
+        or not safe_identifier(namespace) or not safe_identifier(task_id)
+        or canonical_positive(config_revision) == nil or ready_at == nil
+        or type(payload) ~= "string" or #payload > MAX_PAYLOAD_BYTES
+        or not valid_sha(payload_sha256, 64) or not valid_sha(payload_sha1, 40)
+        or redis.sha1hex(payload) ~= payload_sha1 then
+        return result("not_current", "invalid_task_envelope")
+    end
+
+    local decode_ok, envelope = pcall(cjson.decode, payload)
+    if not decode_ok or type(envelope) ~= "table" then
+        return result("not_current", "invalid_task_envelope")
+    end
+    local candidate = {
+        task_id = task_id,
+        task_kind = "scrape",
+        state = "ready",
+        shard_id = shard_id,
+        routing_epoch = tonumber(routing_epoch),
+        engine_owner = engine_owner,
+        config_revision = tonumber(config_revision),
+        policy_key = envelope.policy_key,
+        domain = envelope.domain,
+        payload = payload,
+        payload_sha256 = payload_sha256,
+        payload_sha1 = payload_sha1,
+        claim_token = cjson.null,
+        claim_sequence = cjson.null,
+        lease_until_ms = cjson.null,
+        ready_at_ms = ready_at,
+        visible_at_ms = ready_at,
+        failures = 0,
+    }
+    if not valid_record(candidate) or envelope.board_id == nil then
+        return result("not_current", "invalid_task_envelope")
+    end
+    local config_ok, legacy_config = pcall(cjson.decode, legacy_config_json)
+    if not config_ok or type(legacy_config) ~= "table"
+        or legacy_config.board_id ~= envelope.board_id
+        or legacy_config.source_url ~= envelope.source_url
+        or legacy_config.domain ~= candidate.domain
+        or (legacy_config.scrape_step ~= nil and legacy_config.scrape_step ~= "0") then
+        return result("not_current", "invalid_legacy_config")
+    end
+    local legacy_config_count = 0
+    for field, value in pairs(legacy_config) do
+        if not safe_identifier(field) or type(value) ~= "string" then
+            return result("not_current", "invalid_legacy_config")
+        end
+        legacy_config_count = legacy_config_count + 1
+    end
+    if legacy_config_count < 2 then
+        return result("not_current", "invalid_legacy_config")
+    end
+
+    local guard_key = "lightpanda-b0:legacy-guard"
+    local legacy_config_key = "scrape:" .. task_id
+    local member = "scrape|" .. candidate.domain .. "|" .. task_id
+    local legacy_keys = {guard_key, legacy_config_key}
+    for _, wtype in ipairs({"simple", "browser"}) do
+        table.insert(legacy_keys, "inflight:" .. wtype)
+        table.insert(legacy_keys, "deadletter:" .. wtype)
+        table.insert(legacy_keys, "ft_monitors_" .. wtype .. ":" .. candidate.domain)
+        table.insert(legacy_keys, "ft_scrapes_" .. wtype .. ":" .. candidate.domain)
+        table.insert(legacy_keys, "monitors_" .. wtype .. ":" .. candidate.domain)
+        table.insert(legacy_keys, "scrapes_" .. wtype .. ":" .. candidate.domain)
+        table.insert(legacy_keys, "inflight_strikes:" .. wtype)
+        for tier = 0, 2 do
+            table.insert(legacy_keys, "ready:" .. wtype .. ":" .. tier)
+        end
+    end
+    table.insert(legacy_keys, "ratelimit:" .. candidate.domain)
+    for _, key in ipairs(legacy_keys) do
+        local actual = redis.call("TYPE", key)["ok"]
+        local expected = "zset"
+        if key == guard_key or key == legacy_config_key
+            or string.match(key, "^inflight_strikes:") then
+            expected = "hash"
+        elseif string.match(key, "^ratelimit:") then
+            expected = "string"
+        end
+        if actual ~= "none" and actual ~= expected then
+            return result("not_current", "legacy_state_corrupt")
+        end
+    end
+
+    local guard_base = namespace .. "|" .. shard_id .. "|" .. routing_epoch
+        .. "|" .. envelope.board_id .. "|" .. candidate.domain
+    local configured_board = redis.call("HGET", legacy_config_key, "board_id")
+    local configured_source = redis.call("HGET", legacy_config_key, "source_url")
+    if operator_transfer == "0" and (
+        (configured_board and configured_board ~= envelope.board_id)
+        or (configured_source and configured_source ~= envelope.source_url)
+    ) then
+        return result("not_current", "legacy_config_mismatch")
+    end
+
+    local legacy_memberships = 0
+    local legacy_schedule_kind = "recurring_browser"
+    local legacy_schedule_score = string.format("%.3f", ready_at / 1000)
+    for _, wtype in ipairs({"simple", "browser"}) do
+        if redis.call("ZSCORE", "inflight:" .. wtype, member) ~= false then
+            return result("not_current", "legacy_inflight")
+        end
+        if redis.call("ZSCORE", "deadletter:" .. wtype, member) ~= false then
+            return result("not_current", "legacy_deadletter")
+        end
+        local first_time_score = redis.call(
+            "ZSCORE", "ft_scrapes_" .. wtype .. ":" .. candidate.domain, task_id
+        )
+        if first_time_score then
+            legacy_memberships = legacy_memberships + 1
+            legacy_schedule_kind = "ft_" .. wtype
+            legacy_schedule_score = first_time_score
+        end
+        local recurring_score = redis.call(
+            "ZSCORE", "scrapes_" .. wtype .. ":" .. candidate.domain, task_id
+        )
+        if recurring_score then
+            legacy_memberships = legacy_memberships + 1
+            legacy_schedule_kind = "recurring_" .. wtype
+            legacy_schedule_score = recurring_score
+        end
+    end
+    if legacy_memberships > 1 then
+        return result("not_current", "legacy_membership_conflict")
+    end
+    local existing_guard = redis.call("HGET", guard_key, task_id)
+    if existing_guard then
+        local escaped_base = string.gsub(guard_base, "([^%w])", "%%%1")
+        local kind, score = string.match(
+            existing_guard, "^" .. escaped_base .. "|([^|]+)|([^|]+)$"
+        )
+        if (kind ~= "ft_simple" and kind ~= "ft_browser"
+                and kind ~= "recurring_simple" and kind ~= "recurring_browser")
+            or decimal_seconds(score, MAX_INTEGER / 1000) == nil then
+            return result("not_current", "guard_identity_mismatch")
+        end
+        legacy_schedule_kind = kind
+        legacy_schedule_score = score
+    elseif decimal_seconds(legacy_schedule_score, MAX_INTEGER / 1000) == nil then
+        return result("not_current", "legacy_state_corrupt")
+    end
+    local guard_value = guard_base .. "|" .. legacy_schedule_kind
+        .. "|" .. legacy_schedule_score
+
+    local existing = nil
+    local activation_reason = "activated"
+    if redis.call("HEXISTS", KEYS[2], task_id) == 1 then
+        existing = decode_record(task_id)
+        if not existing then return result("not_current", "record_corrupt") end
+        if not record_index_valid(existing) then
+            return result("not_current", "conservation_violation")
+        end
+        if existing.shard_id ~= shard_id
+            or tostring(existing.routing_epoch) ~= routing_epoch
+            or existing.engine_owner ~= engine_owner then
+            return result("fenced", "record_fence_mismatch")
+        end
+        if existing.payload == payload and existing.payload_sha256 == payload_sha256
+            and existing.payload_sha1 == payload_sha1
+            and tostring(existing.config_revision) == config_revision then
+            if existing.state ~= "ready" and existing.state ~= "inflight" then
+                return result("not_current", "state_mismatch")
+            end
+            activation_reason = "already_activated"
+            candidate = existing
+        else
+            if existing.state ~= "dead" and existing.state ~= "terminal" then
+                return result("not_current", "task_already_exists")
+            end
+            if not valid_sha(previous_payload_sha256, 64)
+                or existing.payload_sha256 ~= previous_payload_sha256 then
+                return result("fenced", "payload_digest_mismatch")
+            end
+            if tonumber(config_revision) <= existing.config_revision then
+                return result("fenced", "config_revision_not_advanced")
+            end
+            activation_reason = "reactivated"
+        end
+    else
+        if index_count(task_id) ~= 0 then
+            return result("not_current", "conservation_violation")
+        end
+        if redis.call("HLEN", KEYS[2]) >= MAX_RECORDS then
+            return result("not_current", "namespace_full")
+        end
+    end
+
+    if operator_transfer == "1" then
+        if existing == nil and legacy_memberships ~= 1 then
+            return result("not_current", "legacy_membership_missing")
+        end
+        if existing ~= nil and legacy_memberships ~= 0 then
+            return result("not_current", "legacy_membership_conflict")
+        end
+        if existing == nil then
+            local legacy_hash_count = redis.call("HLEN", legacy_config_key)
+            if redis.call("TYPE", legacy_config_key)["ok"] ~= "hash"
+                or (legacy_hash_count ~= legacy_config_count
+                    and legacy_hash_count ~= legacy_config_count - 1)
+                or (configured_board and configured_board ~= envelope.board_id)
+                or (configured_source and configured_source ~= envelope.source_url) then
+                return result("not_current", "legacy_config_mismatch")
+            end
+            for _, field in ipairs(redis.call("HKEYS", legacy_config_key)) do
+                if legacy_config[field] == nil then
+                    return result("not_current", "legacy_config_mismatch")
+                end
+            end
+            for field, value in pairs(legacy_config) do
+                local current = redis.call("HGET", legacy_config_key, field)
+                if not (field == "scrape_interval_hours" and not current)
+                    and current ~= value then
+                    return result("not_current", "legacy_config_mismatch")
+                end
+            end
+        end
+    end
+
+    -- All validation is complete. From here every mutated key has the type
+    -- checked above, so the transfer cannot fail halfway through.
+    if activation_reason == "reactivated" then
+        if existing.state == "dead" then
+            redis.call("SREM", KEYS[5], task_id)
+        else
+            redis.call("SREM", KEYS[6], task_id)
+        end
+        store(candidate)
+        redis.call("ZADD", KEYS[3], ready_at, task_id)
+    elseif activation_reason == "activated" then
+        store(candidate)
+        redis.call("ZADD", KEYS[3], ready_at, task_id)
+    end
+    redis.call("DEL", legacy_config_key)
+    for field, value in pairs(legacy_config) do
+        redis.call("HSET", legacy_config_key, field, value)
+    end
+    redis.call("HSET", guard_key, task_id, guard_value)
+
+    local removed = 0
+    for _, wtype in ipairs({"simple", "browser"}) do
+        removed = removed
+            + redis.call("ZREM", "ft_scrapes_" .. wtype .. ":" .. candidate.domain, task_id)
+            + redis.call("ZREM", "scrapes_" .. wtype .. ":" .. candidate.domain, task_id)
+        redis.call("HDEL", "inflight_strikes:" .. wtype, member)
+        for tier = 0, 2 do
+            redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, candidate.domain)
+        end
+        local floor = 0
+        local rate_limit = redis.call("GET", "ratelimit:" .. candidate.domain)
+        if rate_limit then floor = tonumber(rate_limit) or 0 end
+        local first_time_score = nil
+        for _, prefix in ipairs({"ft_monitors_", "ft_scrapes_"}) do
+            local head = redis.call("ZRANGE", prefix .. wtype .. ":" .. candidate.domain, 0, 0, "WITHSCORES")
+            if #head >= 2 then
+                local score = tonumber(head[2])
+                if first_time_score == nil or score < first_time_score then
+                    first_time_score = score
+                end
+            end
+        end
+        if first_time_score ~= nil then
+            redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(floor, first_time_score), candidate.domain)
+        else
+            local monitor = redis.call("ZRANGE", "monitors_" .. wtype .. ":" .. candidate.domain, 0, 0, "WITHSCORES")
+            if #monitor >= 2 then
+                redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(floor, tonumber(monitor[2])), candidate.domain)
+            end
+            local scrape = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. candidate.domain, 0, 0, "WITHSCORES")
+            if #scrape >= 2 then
+                redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(floor, tonumber(scrape[2])), candidate.domain)
+            end
+        end
+    end
+    if removed ~= legacy_memberships then
+        return result("not_current", "conservation_violation")
+    end
+    return {
+        "accepted",
+        activation_reason,
+        tostring(now_ms),
+        candidate.task_id,
+        "",
+        "",
+        tostring(candidate.config_revision),
+        candidate.payload_sha256,
+        "",
+        "",
+        tostring(ready_at),
+        tostring(removed),
+    }
+end
+
 if operation == "claim_next" then
     local lease_ttl = canonical_positive(ARGV[8])
     local scan_limit = canonical_positive(ARGV[14])
@@ -606,6 +958,9 @@ if operation == "claim_next" then
         if record.shard_id ~= shard_id or tostring(record.routing_epoch) ~= routing_epoch
             or record.engine_owner ~= engine_owner then
             return result("fenced", "record_fence_mismatch")
+        end
+        if not go_guard_for(record) then
+            return result("not_current", "guard_identity_mismatch")
         end
 
         local encoded_holder = redis.call("HGET", KEYS[7], record.domain)
@@ -662,6 +1017,7 @@ if operation == "claim_next" then
                 local lease_until = checked_add(now_ms, lease_ttl)
                 if not lease_until then return result("not_current", "numeric_overflow") end
                 sequence = sequence + 1
+                local claimed_ready_at = record.ready_at_ms
                 local next_allowed = now_seconds + delay
                 redis.call("SET", rate_key, tostring(next_allowed), "EX", math.ceil(delay) + 1)
                 redis.call("HSET", KEYS[1], "claim_sequence", tostring(sequence))
@@ -675,7 +1031,7 @@ if operation == "claim_next" then
                 redis.call("ZADD", KEYS[4], lease_until, candidate)
                 store(record)
                 store_holder(record)
-                return result("accepted", "claimed", record)
+                return result("accepted", "claimed", record, claimed_ready_at)
             end
         end
     end
@@ -755,6 +1111,7 @@ if operation == "reschedule_at" then
     if record.lease_until_ms <= now_ms then return result("not_current", "lease_expired") end
     local prior_token = record.claim_token
     local prior_lease_until = record.lease_until_ms
+    local guard = go_guard_for(record)
     redis.call("ZREM", KEYS[4], task_id)
     redis.call("HDEL", KEYS[7], record.domain)
     record.state = "ready"
@@ -766,6 +1123,13 @@ if operation == "reschedule_at" then
     record.failures = 0
     store(record)
     redis.call("ZADD", KEYS[3], ready_at, task_id)
+    if guard ~= true then
+        local wtype = string.sub(guard.kind, -7) == "browser" and "browser" or "simple"
+        redis.call(
+            "HSET", guard.key, task_id,
+            guard.base .. "|recurring_" .. wtype .. "|" .. string.format("%.3f", ready_at / 1000)
+        )
+    end
     return {
         "accepted",
         "rescheduled",
@@ -782,7 +1146,55 @@ if operation == "reschedule_at" then
     }
 end
 
+if operation == "fail_at" then
+    local ready_at = canonical_uint(ARGV[9])
+    if ready_at == nil then return result("not_current", "invalid_ready_at") end
+    local record, decision, reason = load_current("inflight", true)
+    if not record then return result(decision, reason) end
+    if record.lease_until_ms <= now_ms then return result("not_current", "lease_expired") end
+    if record.failures >= MAX_FAILURES then
+        return result("not_current", "failure_counter_exhausted")
+    end
+    local prior_token = record.claim_token
+    local prior_lease_until = record.lease_until_ms
+    local guard = go_guard_for(record)
+    redis.call("ZREM", KEYS[4], task_id)
+    redis.call("HDEL", KEYS[7], record.domain)
+    record.state = "ready"
+    record.claim_token = cjson.null
+    record.claim_sequence = cjson.null
+    record.lease_until_ms = cjson.null
+    record.ready_at_ms = ready_at
+    record.visible_at_ms = ready_at
+    record.failures = record.failures + 1
+    store(record)
+    redis.call("ZADD", KEYS[3], ready_at, task_id)
+    if guard ~= true then
+        redis.call(
+            "HSET", guard.key, task_id,
+            guard.base .. "|" .. guard.kind .. "|" .. string.format("%.3f", ready_at / 1000)
+        )
+    end
+    return {
+        "accepted",
+        "failed_rescheduled",
+        tostring(now_ms),
+        record.task_id,
+        prior_token,
+        tostring(prior_lease_until),
+        tostring(record.config_revision),
+        record.payload_sha256,
+        "",
+        "",
+        tostring(ready_at),
+        "",
+    }
+end
+
 if operation == "reactivate" then
+    if engine_owner == "go" then
+        return result("not_current", "exclusive_activation_required")
+    end
     local ready_at = canonical_uint(ARGV[9])
     local previous_payload_sha256 = ARGV[16]
     if not safe_identifier(task_id) or canonical_positive(config_revision) == nil
@@ -860,6 +1272,215 @@ if operation == "reactivate" then
     }
 end
 
+if operation == "rollback_legacy" then
+    local namespace = ARGV[18]
+    local rollback_plan_json = ARGV[19]
+    if engine_owner ~= "go" or not safe_identifier(namespace) then
+        return result("not_current", "invalid_route")
+    end
+    local record_count = redis.call("HLEN", KEYS[2])
+    if record_count > MAX_RECORDS then return result("not_current", "audit_too_large") end
+    local ready_count = redis.call("ZCARD", KEYS[3])
+    local inflight_count = redis.call("ZCARD", KEYS[4])
+    local dead_count = redis.call("SCARD", KEYS[5])
+    local terminal_count = redis.call("SCARD", KEYS[6])
+    if inflight_count ~= 0 then return result("not_current", "rollback_inflight") end
+    if redis.call("HLEN", KEYS[7]) ~= 0 then
+        return result("not_current", "origin_holder_corrupt")
+    end
+    if record_count ~= ready_count + dead_count + terminal_count then
+        return result("not_current", "conservation_violation")
+    end
+
+    local plan_ok, rollback_plan = pcall(cjson.decode, rollback_plan_json)
+    if not plan_ok or type(rollback_plan) ~= "table" then
+        return result("not_current", "invalid_rollback_plan")
+    end
+    local plan_count = 0
+    for candidate_id, _ in pairs(rollback_plan) do
+        if not safe_identifier(candidate_id) then
+            return result("not_current", "invalid_rollback_plan")
+        end
+        plan_count = plan_count + 1
+    end
+    if plan_count ~= record_count then
+        return result("not_current", "invalid_rollback_plan")
+    end
+
+    local guard_key = "lightpanda-b0:legacy-guard"
+    local guard_type = redis.call("TYPE", guard_key)["ok"]
+    if guard_type ~= "hash" and not (guard_type == "none" and record_count == 0) then
+        return result("not_current", "legacy_state_corrupt")
+    end
+    if guard_type == "hash" and redis.call("HLEN", guard_key) ~= record_count then
+        return result("not_current", "guard_identity_mismatch")
+    end
+    local rollback_entry_fields = {
+        action = true, domain = true, worker_type = true,
+        first_time = true, score = true, config = true,
+    }
+    local rollback_config_fields = {
+        domain = true, board_id = true, source_url = true,
+        description_r2_hash = true, scrape_step = true,
+        scrape_interval_hours = true,
+    }
+    local rollback_records = {}
+    local affected = {}
+    local scheduled_count = 0
+    local dropped_count = 0
+    local encoded_records = redis.call("HGETALL", KEYS[2])
+    for index = 1, #encoded_records, 2 do
+        local candidate_id = encoded_records[index]
+        local record = decode_record(candidate_id)
+        if not record or not record_index_valid(record) then
+            return result("not_current", "conservation_violation")
+        end
+        if record.shard_id ~= shard_id or tostring(record.routing_epoch) ~= routing_epoch
+            or record.engine_owner ~= engine_owner then
+            return result("fenced", "record_fence_mismatch")
+        end
+        if not go_guard_for(record) then
+            return result("not_current", "guard_identity_mismatch")
+        end
+        if record.state ~= "ready" and record.state ~= "dead"
+            and record.state ~= "terminal" then
+            return result("not_current", "conservation_violation")
+        end
+        local plan = rollback_plan[candidate_id]
+        if type(plan) ~= "table" or (plan.action ~= "drop" and plan.action ~= "schedule") then
+            return result("not_current", "invalid_rollback_plan")
+        end
+        local config_key = "scrape:" .. candidate_id
+        local config_type = redis.call("TYPE", config_key)["ok"]
+        if config_type ~= "none" and config_type ~= "hash" then
+            return result("not_current", "legacy_state_corrupt")
+        end
+
+        local domains = {record.domain}
+        if plan.action == "drop" then
+            if not exact_fields(plan, {action = true}, 1) then
+                return result("not_current", "invalid_rollback_plan")
+            end
+            dropped_count = dropped_count + 1
+        else
+            if not exact_fields(plan, rollback_entry_fields, 6)
+                or not safe_domain(plan.domain)
+                or (plan.worker_type ~= "simple" and plan.worker_type ~= "browser")
+                or type(plan.first_time) ~= "boolean"
+                or decimal_seconds(plan.score, MAX_INTEGER / 1000) == nil
+                or type(plan.config) ~= "table"
+                or not exact_fields(plan.config, rollback_config_fields, 6)
+                or plan.config.domain ~= plan.domain
+                or not safe_identifier(plan.config.board_id)
+                or type(plan.config.source_url) ~= "string"
+                or #plan.config.source_url == 0
+                or (plan.config.description_r2_hash ~= ""
+                    and not signed_integer_string(plan.config.description_r2_hash))
+                or plan.config.scrape_step ~= "0"
+                or not canonical_positive(plan.config.scrape_interval_hours)
+                or tonumber(plan.config.scrape_interval_hours) > 8760 then
+                return result("not_current", "invalid_rollback_plan")
+            end
+            domains[#domains + 1] = plan.domain
+            scheduled_count = scheduled_count + 1
+        end
+
+        for _, domain in ipairs(domains) do
+            local member = "scrape|" .. domain .. "|" .. candidate_id
+            for _, wtype in ipairs({"simple", "browser"}) do
+                local typed_keys = {
+                    {"inflight:" .. wtype, "zset"},
+                    {"deadletter:" .. wtype, "zset"},
+                    {"ft_monitors_" .. wtype .. ":" .. domain, "zset"},
+                    {"ft_scrapes_" .. wtype .. ":" .. domain, "zset"},
+                    {"monitors_" .. wtype .. ":" .. domain, "zset"},
+                    {"scrapes_" .. wtype .. ":" .. domain, "zset"},
+                    {"ready:" .. wtype .. ":0", "zset"},
+                    {"ready:" .. wtype .. ":1", "zset"},
+                    {"ready:" .. wtype .. ":2", "zset"},
+                }
+                for _, typed_key in ipairs(typed_keys) do
+                    local actual = redis.call("TYPE", typed_key[1])["ok"]
+                    if actual ~= "none" and actual ~= typed_key[2] then
+                        return result("not_current", "legacy_state_corrupt")
+                    end
+                end
+                if redis.call("ZSCORE", "inflight:" .. wtype, member)
+                    or redis.call("ZSCORE", "deadletter:" .. wtype, member)
+                    or redis.call("ZSCORE", "ft_scrapes_" .. wtype .. ":" .. domain, candidate_id)
+                    or redis.call("ZSCORE", "scrapes_" .. wtype .. ":" .. domain, candidate_id) then
+                    return result("not_current", "legacy_membership_conflict")
+                end
+            end
+            local rate_key = "ratelimit:" .. domain
+            local rate_type = redis.call("TYPE", rate_key)["ok"]
+            if rate_type ~= "none" and rate_type ~= "string" then
+                return result("not_current", "legacy_state_corrupt")
+            end
+            local rate_limit = redis.call("GET", rate_key)
+            if rate_limit and decimal_seconds(rate_limit, MAX_INTEGER / 1000) == nil then
+                return result("not_current", "legacy_state_corrupt")
+            end
+            affected["simple|" .. domain] = {wtype = "simple", domain = domain}
+            affected["browser|" .. domain] = {wtype = "browser", domain = domain}
+        end
+        rollback_records[#rollback_records + 1] = {record = record, plan = plan}
+    end
+
+    -- Validation is complete. Rebuild derived legacy state from the one
+    -- current-PostgreSQL plan and release ownership in the same Redis turn.
+    for _, item in ipairs(rollback_records) do
+        local record = item.record
+        local plan = item.plan
+        redis.call("DEL", "scrape:" .. record.task_id)
+        if plan.action == "schedule" then
+            redis.call("HSET", "scrape:" .. record.task_id,
+                "domain", plan.config.domain,
+                "board_id", plan.config.board_id,
+                "source_url", plan.config.source_url,
+                "description_r2_hash", plan.config.description_r2_hash,
+                "scrape_step", plan.config.scrape_step,
+                "scrape_interval_hours", plan.config.scrape_interval_hours)
+            local prefix = plan.first_time and "ft_scrapes_" or "scrapes_"
+            redis.call("ZADD", prefix .. plan.worker_type .. ":" .. plan.domain,
+                plan.score, record.task_id)
+        end
+        redis.call("HDEL", guard_key, record.task_id)
+    end
+    for _, target in pairs(affected) do
+        local wtype = target.wtype
+        local domain = target.domain
+        for tier = 0, 2 do
+            redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
+        end
+        local floor = tonumber(redis.call("GET", "ratelimit:" .. domain) or "0")
+        local first_time_score = nil
+        for _, prefix in ipairs({"ft_monitors_", "ft_scrapes_"}) do
+            local head = redis.call("ZRANGE", prefix .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
+            if #head >= 2 then
+                local score = tonumber(head[2])
+                if first_time_score == nil or score < first_time_score then
+                    first_time_score = score
+                end
+            end
+        end
+        if first_time_score ~= nil then
+            redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(floor, first_time_score), domain)
+        else
+            local monitor = redis.call("ZRANGE", "monitors_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
+            if #monitor >= 2 then
+                redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(floor, tonumber(monitor[2])), domain)
+            end
+            local scrape = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
+            if #scrape >= 2 then
+                redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(floor, tonumber(scrape[2])), domain)
+            end
+        end
+    end
+    redis.call("DEL", unpack(KEYS))
+    return result("accepted", "rolled_back", nil, scheduled_count, dropped_count)
+end
+
 if operation == "reap_expired" then
     local max_failures = canonical_positive(ARGV[10])
     local scan_limit = canonical_positive(ARGV[14])
@@ -877,6 +1498,9 @@ if operation == "reap_expired" then
         if record.shard_id ~= shard_id or tostring(record.routing_epoch) ~= routing_epoch
             or record.engine_owner ~= engine_owner then
             return result("fenced", "record_fence_mismatch")
+        end
+        if not go_guard_for(record) then
+            return result("not_current", "guard_identity_mismatch")
         end
         local holder = holder_for(record)
         if not holder then return result("not_current", "origin_holder_corrupt") end
@@ -919,6 +1543,14 @@ if operation == "audit" then
     if record_count ~= ready_count + inflight_count + dead_count + terminal_count then
         return result("not_current", "conservation_violation")
     end
+    if engine_owner == "go" then
+        local guard_type = redis.call("TYPE", "lightpanda-b0:legacy-guard")["ok"]
+        if (guard_type ~= "hash" and not (guard_type == "none" and record_count == 0))
+            or (guard_type == "hash"
+                and redis.call("HLEN", "lightpanda-b0:legacy-guard") ~= record_count) then
+            return result("not_current", "guard_identity_mismatch")
+        end
+    end
     local encoded_records = redis.call("HGETALL", KEYS[2])
     for index = 1, #encoded_records, 2 do
         local record = decode_record(encoded_records[index])
@@ -928,6 +1560,9 @@ if operation == "audit" then
         if record.shard_id ~= shard_id or tostring(record.routing_epoch) ~= routing_epoch
             or record.engine_owner ~= engine_owner then
             return result("fenced", "record_fence_mismatch")
+        end
+        if not go_guard_for(record) then
+            return result("not_current", "guard_identity_mismatch")
         end
         if record.state == "inflight" then
             local holder = holder_for(record)

@@ -70,6 +70,20 @@ def test_metrics_cardinality_and_remote_write_are_bounded():
         assert "retry_on_http_429    = true" in config
 
 
+def test_alloy_scrapes_go_b0_canary_metrics_with_only_bounded_identity_labels():
+    target = (
+        '{"__address__" = "127.0.0.1:9101", "instance" = "lightpanda-claimant", '
+        '"job" = "lightpanda-b0", "runtime" = "go", "cohort" = "b0"}'
+    )
+    crawler_scrape = CONFIG.split('prometheus.scrape "crawler" {', 1)[1].split("\n}", 1)[0]
+
+    assert crawler_scrape.count('"127.0.0.1:9101"') == 1
+    assert target in crawler_scrape
+    assert "domain" not in target
+    assert "board" not in target
+    assert "task" not in target
+
+
 def test_host_metrics_have_stable_roles_and_no_public_listener():
     assert 'replacement  = "integrations/unix"' in HOST_CONFIG
     assert 'replacement  = sys.env("JOBSEEK_HOST_INSTANCE")' in HOST_CONFIG

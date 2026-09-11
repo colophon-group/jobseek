@@ -1147,7 +1147,7 @@ brookdale-senior-living,brookdale-senior-living-careers,https://ibmwjb.fa.ocs.or
 brooklinen,brooklinen-greenhouse,https://job-boards.greenhouse.io/brooklinen,greenhouse,"{""token"": ""brooklinen""}",skip,
 brookshires,brookshires-careers,https://brookshires.wd108.myworkdayjobs.com/bgc,workday,,workday,
 brown-university-health,brown-university-health-careers,https://brownhealth.wd12.myworkdayjobs.com/External_Careers,workday,,json-ld,
-browser-use,browser-use-careers,https://www.ycombinator.com/companies/browser-use/jobs,dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 45000, ""url_filter"": ""/companies/browser-use/jobs/""}",json-ld,"{""render"": true, ""wait"": ""load"", ""timeout"": 45000}"
+browser-use,browser-use-careers,https://www.ycombinator.com/companies/browser-use/jobs,dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 45000, ""url_filter"": ""/companies/browser-use/jobs/""}",json-ld,"{""browser_backend"": ""lightpanda"", ""render"": true, ""routing_revision"": ""go-b0-1"", ""timeout"": 45000, ""wait"": ""load"", ""wait_fallback"": null}"
 browserbase,browserbase-ashby,https://jobs.ashbyhq.com/browserbase,ashby,"{""token"": ""browserbase""}",skip,
 brunswick-group,brunswick-group-greenhouse,https://job-boards.greenhouse.io/brunswickgroup,greenhouse,"{""token"": ""brunswickgroup""}",skip,
 bryter,bryter-teamtailor,https://bryter.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://bryter.teamtailor.com/jobs.rss""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title"", ""from"": 0}, {""text"": ""Remote \u2013 Germany"", ""field"": ""locations"", ""from"": 0, ""regex"": ""(Remote \u2013 Germany)""}, {""text"": ""As our"", ""field"": ""description"", ""from"": 0, ""stop"": ""ABOUT BRYTER"", ""html"": true}, {""text"": ""Remote status"", ""offset"": 1, ""field"": ""job_location_type"", ""from"": 0}, {""text"": ""Employment type"", ""offset"": 1, ""field"": ""employment_type"", ""from"": 0}]}"
@@ -2126,7 +2126,7 @@ echo,echo-ashby,https://jobs.ashbyhq.com/echo,ashby,"{""token"": ""echo""}",skip
 echodyne-corp,echodyne-corp-greenhouse,https://job-boards.greenhouse.io/echodynecorp,greenhouse,"{""token"": ""echodynecorp""}",skip,
 eclinical-solutions,eclinical-solutions-greenhouse,https://job-boards.greenhouse.io/eclinicalsolutions,greenhouse,"{""token"": ""eclinicalsolutions""}",skip,
 eclipse-trading,eclipse-trading-greenhouse,https://job-boards.greenhouse.io/eclipsetrading,greenhouse,"{""token"": ""eclipsetrading""}",skip,
-eclypsium,eclypsium-careers,https://eclypsium.hire.trakstar.com/,dom,"{""render"": true}",json-ld,"{""render"": true}"
+eclypsium,eclypsium-careers,https://eclypsium.hire.trakstar.com/,dom,"{""render"": true}",json-ld,"{""browser_backend"": ""lightpanda"", ""render"": true, ""routing_revision"": ""go-b0-1"", ""timeout"": 30000, ""wait"": ""load"", ""wait_fallback"": null}"
 ecoatm-gazelle,ecoatm-gazelle-greenhouse,https://job-boards.greenhouse.io/ecoatmgazelle,greenhouse,"{""token"": ""ecoatmgazelle""}",skip,
 ecodrop,ecodrop-join,https://join.com/companies/ecodropnet,join,"{""slug"": ""ecodropnet""}",json-ld,
 ecodrop,ecodrop-wttj,https://www.welcometothejungle.com/fr/companies/ecodrop/jobs,dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""actions"": [{""action"": ""dismiss_overlays""}, {""action"": ""wait"", ""ms"": 5000}, {""action"": ""evaluate"", ""script"": ""window.scrollTo(0, 99999)""}, {""action"": ""wait"", ""ms"": 2000}], ""url_filter"": ""/companies[^/]*/ecodrop/jobs/|/companies/ecodrop/jobs/""}",json-ld,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""actions"": [{""action"": ""wait"", ""ms"": 5000}]}"
@@ -3642,7 +3642,7 @@ kalepa,kalepa-greenhouse,https://job-boards.greenhouse.io/kalepa,greenhouse,"{""
 kalles-group,kalles-group-greenhouse,https://job-boards.greenhouse.io/kallesgroup,greenhouse,"{""token"": ""kallesgroup""}",skip,
 kalshi,kalshi-ashby,https://jobs.ashbyhq.com/kalshi,ashby,"{""token"": ""kalshi""}",skip,
 kalshi,kalshi-greenhouse,https://job-boards.greenhouse.io/kalshi,greenhouse,"{""token"": ""kalshi""}",skip,
-kandou-ai,kandou-ai-careers,https://kandou.bamboohr.com/careers,dom,"{""render"": true}",json-ld,"{""render"": true}"
+kandou-ai,kandou-ai-careers,https://kandou.bamboohr.com/careers,dom,"{""render"": true}",json-ld,"{""browser_backend"": ""lightpanda"", ""render"": true, ""routing_revision"": ""go-b0-1"", ""timeout"": 30000, ""wait"": ""load"", ""wait_fallback"": null}"
 kapa-ai,kapa-ai-careers,https://www.ycombinator.com/companies/kapa-ai/jobs/,ycombinator,"{""slug"": ""kapa-ai""}",json-ld,
 kapitus,kapitus-greenhouse,https://job-boards.greenhouse.io/kapitus,greenhouse,"{""token"": ""kapitus""}",skip,
 karat,karat-greenhouse,https://job-boards.greenhouse.io/karat,greenhouse,"{""token"": ""karat""}",skip,
@@ -5217,7 +5217,7 @@ point-c,point-c-greenhouse,https://job-boards.greenhouse.io/pointc,greenhouse,"{
 point-one-navigation,point-one-navigation-careers,https://jobs.ashbyhq.com/point-one-navigation,ashby,"{""token"": ""point-one-navigation""}",skip,
 point72,point72-greenhouse,https://job-boards.greenhouse.io/point72,greenhouse,"{""token"": ""point72""}",skip,
 poka-en,poka-en-greenhouse,https://job-boards.greenhouse.io/poka,greenhouse,"{""token"": ""poka""}",skip,
-poke-and-wiggle,poke-and-wiggle-careers,https://join.com/companies/pokeandwigglecom,join,"{""slug"": ""pokeandwigglecom""}",json-ld,"{""render"": true}"
+poke-and-wiggle,poke-and-wiggle-careers,https://join.com/companies/pokeandwigglecom,join,"{""slug"": ""pokeandwigglecom""}",json-ld,"{""browser_backend"": ""lightpanda"", ""render"": true, ""routing_revision"": ""go-b0-1"", ""timeout"": 30000, ""wait"": ""load"", ""wait_fallback"": null}"
 polar,polar-ashby,https://jobs.ashbyhq.com/polar,ashby,"{""token"": ""polar""}",skip,
 polestar,polestar-global,https://polestar.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://polestar.teamtailor.com/jobs.rss""}",skip,
 polyai,polyai-greenhouse,https://job-boards.greenhouse.io/polyai,greenhouse,"{""token"": ""polyai""}",skip,

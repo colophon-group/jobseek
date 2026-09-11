@@ -27,6 +27,8 @@ environment typo cannot silently weaken the repository budget.
 | Typesense exporter | 1 | 1 | 4 | 4 | `exporter` |
 | R2 drain | 1 | 1 | 6 | 6 | `drain` |
 | **steady service total** |  | **6** |  | **40** |  |
+| Go B0 executor (enabled overlay only) | 1 | 1 | 1 | 1 | `lightpanda-b0-executor` |
+| **enabled Go B0 steady total** |  | **7** |  | **41** |  |
 
 The daily Codex runner injects the exact labeller role/min/max/idle values and
 one host-shared database lock path into the annotation subprocess. Every
@@ -59,13 +61,13 @@ Repository operator scripts use either one direct connection or a four-slot
 pool, set a `jobseek:operator:*` application name, and fit inside the
 eight-slot worst-case Compose one-off row above.
 
-The worst managed non-deploy overlap is 54 connections: 40 steady services +
+The worst managed non-deploy overlap is 55 connections: 41 enabled services +
 one 8-slot Compose operator one-off + one serialized
 two-slot labeller pool + two backup slots + one sampler slot + one ingress
 verifier. Ten further slots are
 reserved for operators (seven ordinary plus the three server-enforced
-superuser slots), leaving 36 ordinary shock/incident slots unallocated. The
-allocated ceiling is 64/100,
+superuser slots), leaving 35 ordinary shock/incident slots unallocated. The
+allocated ceiling is 65/100,
 below the 70% steady-state target even when every pool is full.
 
 Do not run an unlabelled direct client or a second maintenance one-off outside
@@ -92,7 +94,8 @@ makes simultaneous use unlikely.
 | Alembic migration (NullPool) | 0 | 1 | 6 | 7 |
 | Typesense schema patch | 0 | 0 | 6 | 6 |
 | CSV/database sync | 0 | 4 | 6 | 10 |
-| new or rolled-back stack healthy | 40 | 0 | 6 | **46** |
+| base or rolled-back stack healthy | 40 | 0 | 6 | **46** |
+| enabled Go B0 stack healthy | 41 | 0 | 6 | **47** |
 
 Compose replaces containers with the same service names, so old and new pool
 generations do not coexist. Rollback explicitly quiesces all six crawler
@@ -111,9 +114,10 @@ stack is not started and the original stop failure is returned. Later operator
 recovery therefore cannot accidentally use the pre-budget 90-connection
 contract.
 
-The absolute deployment maximum is therefore 46 connections for both the new
-and rolled-back stack. It includes the independent ingress connection and does
-not assume exclusion based on timer or backup cadence.
+The absolute deployment maximum is therefore 47 connections for the enabled Go
+B0 stack and 46 for the base or rolled-back stack. It includes the independent
+ingress connection and does not assume exclusion based on timer or backup
+cadence.
 
 ## Ownership metrics
 

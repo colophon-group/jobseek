@@ -95,7 +95,7 @@ def test_fence_rejects_non_uuid_task_identity() -> None:
         ("routing_epoch", 0),
         ("shard_id", "unsafe shard"),
         ("shard_id", "a" * 129),
-        ("engine_owner", "go"),
+        ("engine_owner", "rust"),
         ("config_revision", 0),
         ("payload_sha256", "A" * 64),
         ("claim_token", "8:31"),
@@ -117,6 +117,24 @@ def test_fence_rejects_noncanonical_identity(field: str, value: object) -> None:
 
     with pytest.raises(ValueError, match="invalid Lightpanda B0 write fence"):
         LightpandaWriteFence(**values)  # type: ignore[arg-type]
+
+
+def test_fence_derives_exact_go_owner_from_go_lease() -> None:
+    lease = _lease()
+    go_task = replace(
+        lease.task,
+        route=RouteIdentity(
+            shard_id=lease.task.route.shard_id,
+            routing_epoch=lease.task.route.routing_epoch,
+            engine_owner="go",
+        ),
+    )
+
+    fence = LightpandaWriteFence.from_lease(
+        Lease(task=go_task, claim_token=lease.claim_token, lease_until_ms=lease.lease_until_ms)
+    )
+
+    assert fence.engine_owner == "go"
 
 
 def _pool_and_connection() -> tuple[MagicMock, AsyncMock]:
@@ -612,3 +630,20 @@ def test_migration_is_retained_public_uuid_fence_with_guarded_downgrade() -> Non
     assert "state IN ('active', 'revoked')" in install
     assert "retained rows exist" in remove
     assert remove.index("IF EXISTS") < remove.index("DROP TABLE")
+
+
+def test_go_owner_migration_changes_constraint_and_all_fence_functions() -> None:
+    migration = importlib.import_module("src.migrations.versions.0026_allow_go_lightpanda_b0_owner")
+
+    assert migration.revision == "0026"
+    assert migration.down_revision == "0025"
+    assert (
+        migration._GO_OWNER_FUNCTIONS.count(  # noqa: SLF001
+            "supplied_engine_owner NOT IN ('python', 'go')"
+        )
+        == 2
+    )
+    assert "supplied_engine_owner IS DISTINCT FROM current_fence.engine_owner" in (
+        migration._GO_OWNER_FUNCTIONS  # noqa: SLF001
+    )
+    assert "Go rows exist" in migration._REFUSE_DOWNGRADE_WITH_GO_ROWS  # noqa: SLF001

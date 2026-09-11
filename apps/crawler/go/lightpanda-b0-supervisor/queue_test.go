@@ -65,7 +65,7 @@ func (t queueTask) EnvelopeRoute() routeIdentity {
 
 func TestTransitionReplyRequiresExactFenceAndConservationShape(t *testing.T) {
 	task := validQueueTask(t)
-	fields := []string{"accepted", "claimed", "1000", task.Envelope.TaskID, "7:1", "61000", "3", task.PayloadSHA256, task.Payload, queuePolicyKey, "", ""}
+	fields := []string{"accepted", "claimed", "1000", task.Envelope.TaskID, "7:1", "61000", "3", task.PayloadSHA256, task.Payload, queuePolicyKey, "0", ""}
 	result := transition{Decision: "accepted", Reason: "claimed", ServerTimeMS: 1000, TaskID: fields[3], ClaimToken: "7:1", LeaseUntilMS: 61000, ConfigRevision: 3, PayloadSHA256: task.PayloadSHA256, Payload: task.Payload, PolicyKey: queuePolicyKey}
 	if err := validateTransitionReply("claim_next", result, fields, task.EnvelopeRoute(), nil, "", time.Minute, 0, 0); err != nil {
 		t.Fatalf("valid claim reply rejected: %v", err)

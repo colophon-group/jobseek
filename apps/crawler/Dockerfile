@@ -17,6 +17,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5f
 
 WORKDIR /app
 
+RUN install -d --owner=10001 --group=10001 --mode=0700 /run/jobseek-lightpanda-executor
+
 # Document extraction supports legacy Word postings and opt-in OCR for image-only PDFs.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

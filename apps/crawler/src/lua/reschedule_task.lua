@@ -21,6 +21,18 @@ local domain = ARGV[2]
 local task_id = ARGV[3]
 local task_type = ARGV[4]
 local next_due = tonumber(ARGV[5])
+local b0_guard_key = "lightpanda-b0:legacy-guard"
+
+local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
+if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
+    return redis.error_reply("lightpanda B0 legacy guard is corrupt")
+end
+if task_type == "scrape" and redis.call("HEXISTS", b0_guard_key, task_id) == 1 then
+    local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
+    redis.call("ZREM", "inflight:" .. wtype, inflight_member)
+    redis.call("HDEL", "inflight_strikes:" .. wtype, inflight_member)
+    return 0
+end
 
 -- Add to recurring queue (not first-time)
 local queue_key

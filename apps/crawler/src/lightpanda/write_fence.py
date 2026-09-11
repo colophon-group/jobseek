@@ -1,4 +1,4 @@
-"""PostgreSQL write fence for the Python-owned Lightpanda B0 lane."""
+"""PostgreSQL write fence for the exclusive Lightpanda B0 lane."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import uuid
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 import asyncpg
 from asyncpg.pool import PoolConnectionProxy
@@ -65,7 +65,7 @@ class LightpandaWriteFence:
     job_posting_id: uuid.UUID
     shard_id: str
     routing_epoch: int
-    engine_owner: Literal["python"]
+    engine_owner: Literal["python", "go"]
     config_revision: int
     payload_sha256: str
     claim_token: str
@@ -79,7 +79,7 @@ class LightpandaWriteFence:
             or _SAFE_ID_RE.fullmatch(self.shard_id) is None
             or type(self.routing_epoch) is not int
             or not 1 <= self.routing_epoch <= _MAX_INTEGER
-            or self.engine_owner != "python"
+            or self.engine_owner not in {"python", "go"}
             or type(self.config_revision) is not int
             or not 1 <= self.config_revision <= _MAX_INTEGER
             or not isinstance(self.payload_sha256, str)
@@ -104,13 +104,13 @@ class LightpandaWriteFence:
             raise ValueError("Lightpanda B0 task_id must be a job_posting UUID") from exc
         if str(posting_id) != lease.task.task_id:
             raise ValueError("Lightpanda B0 task_id must be a canonical job_posting UUID")
-        if lease.task.route.engine_owner != "python":
-            raise ValueError("Lightpanda B0 lease must be Python-owned")
+        if lease.task.route.engine_owner not in {"python", "go"}:
+            raise ValueError("Lightpanda B0 lease has an invalid engine owner")
         return cls(
             job_posting_id=posting_id,
             shard_id=lease.task.route.shard_id,
             routing_epoch=lease.task.route.routing_epoch,
-            engine_owner="python",
+            engine_owner=cast(Literal["python", "go"], lease.task.route.engine_owner),
             config_revision=lease.task.config_revision,
             payload_sha256=lease.task.payload_sha256,
             claim_token=lease.claim_token,

@@ -30,6 +30,14 @@ local now = tonumber(ARGV[2])
 local max_entries = tonumber(ARGV[3]) or 100
 local max_strikes = tonumber(ARGV[4]) or 3
 local retry_score = tonumber(ARGV[5]) or now
+local b0_guard_key = "lightpanda-b0:legacy-guard"
+
+-- Fail before touching any expired member. Redis does not roll back writes
+-- made earlier in a script when a later command raises WRONGTYPE.
+local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
+if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
+    return redis.error_reply("lightpanda B0 legacy guard is corrupt")
+end
 
 local inflight_key = "inflight:" .. wtype
 local strikes_key = "inflight_strikes:" .. wtype
@@ -59,35 +67,44 @@ for _, member in ipairs(expired) do
             local domain = string.sub(member, first_sep + 1, second_sep - 1)
             local task_id = string.sub(member, second_sep + 1)
 
-            -- Increment strike count atomically.
-            local strikes = redis.call("HINCRBY", strikes_key, member, 1)
-
-            if strikes >= max_strikes then
-                -- Move to dead-letter: score = now, member encodes
-                -- everything an operator needs to investigate.
-                redis.call("ZADD", deadletter_key, now, member)
+            -- A Go B0 ownership guard is authoritative by posting ID, even
+            -- when a crashed legacy claimant used a stale domain. Quarantine
+            -- that residual lease instead of reviving or dead-lettering it.
+            local guarded = task_type == "scrape"
+                and redis.call("HEXISTS", b0_guard_key, task_id) == 1
+            if guarded then
                 redis.call("ZREM", inflight_key, member)
                 redis.call("HDEL", strikes_key, member)
-                dead_lettered = dead_lettered + 1
             else
-                -- Verify the task's config hash still exists. If sync
-                -- removed it (e.g. board pulled from CSV while the
-                -- worker was crashed), re-enqueueing would just
-                -- recreate a phantom task we'd never be able to
-                -- claim — drop instead.
-                local config_key
-                if task_type == "monitor" then
-                    config_key = "board:" .. task_id
-                else
-                    config_key = "scrape:" .. task_id
-                end
-                local config_exists = redis.call("EXISTS", config_key)
+                -- Increment strike count atomically.
+                local strikes = redis.call("HINCRBY", strikes_key, member, 1)
 
-                if config_exists == 0 then
+                if strikes >= max_strikes then
+                    -- Move to dead-letter: score = now, member encodes
+                    -- everything an operator needs to investigate.
+                    redis.call("ZADD", deadletter_key, now, member)
                     redis.call("ZREM", inflight_key, member)
                     redis.call("HDEL", strikes_key, member)
-                    missing_config = missing_config + 1
+                    dead_lettered = dead_lettered + 1
                 else
+                    -- Verify the task's config hash still exists. If sync
+                    -- removed it (e.g. board pulled from CSV while the
+                    -- worker was crashed), re-enqueueing would just
+                    -- recreate a phantom task we'd never be able to
+                    -- claim — drop instead.
+                    local config_key
+                    if task_type == "monitor" then
+                        config_key = "board:" .. task_id
+                    else
+                        config_key = "scrape:" .. task_id
+                    end
+                    local config_exists = redis.call("EXISTS", config_key)
+
+                    if config_exists == 0 then
+                        redis.call("ZREM", inflight_key, member)
+                        redis.call("HDEL", strikes_key, member)
+                        missing_config = missing_config + 1
+                    else
                     -- Re-enqueue to the per-domain ZSET with ZADD NX
                     -- (don't overwrite a fresher score from a parallel
                     -- enqueue). Use the recurring queue, not first-time
@@ -153,8 +170,9 @@ for _, member in ipairs(expired) do
                     -- Remove the in-flight entry — the task is back
                     -- on the per-domain queue, available for any
                     -- worker to claim again.
-                    redis.call("ZREM", inflight_key, member)
-                    reenqueued = reenqueued + 1
+                        redis.call("ZREM", inflight_key, member)
+                        reenqueued = reenqueued + 1
+                    end
                 end
             end
         else

@@ -675,6 +675,7 @@ async def enqueue_monitor(
 ) -> bool:
     """Enqueue a board monitor task. Returns True if newly added."""
     await _load_scripts()
+    assert _ENQUEUE_SHA is not None
     r = get_redis()
     wtype = "browser" if browser else "simple"
 
@@ -797,8 +798,23 @@ async def enqueue_scrape(
     first_time: bool = False,
 ) -> bool:
     """Enqueue a scrape task. Returns True if newly added."""
-    await _load_scripts()
     r = get_redis()
+    from src.lightpanda.producer import enqueue_if_allowlisted
+
+    b0_result = await enqueue_if_allowlisted(
+        r,
+        domain=domain,
+        posting_id=posting_id,
+        next_scrape_at=next_scrape_at,
+        config=config,
+        browser=browser,
+    )
+    if b0_result is not None:
+        await r.set(f"delay:{domain}", str(delay_for_domain(domain)))
+        return b0_result
+
+    await _load_scripts()
+    assert _ENQUEUE_SHA is not None
     wtype = "browser" if browser else "simple"
 
     config_args: list[str] = []
@@ -830,27 +846,48 @@ async def enqueue_scrapes(schedules: Sequence[ScrapeSchedule]) -> list[bool]:
     if not schedules:
         return []
 
+    r = get_redis()
+    from src.lightpanda.producer import enqueue_if_allowlisted
+
+    ordered: list[bool | None] = [None] * len(schedules)
+    legacy: list[tuple[int, ScrapeSchedule]] = []
+    for index, schedule in enumerate(schedules):
+        b0_result = await enqueue_if_allowlisted(
+            r,
+            domain=schedule.domain,
+            posting_id=schedule.posting_id,
+            next_scrape_at=schedule.next_scrape_at,
+            config=schedule.config,
+            browser=schedule.browser,
+        )
+        if b0_result is None:
+            legacy.append((index, schedule))
+        else:
+            ordered[index] = b0_result
+            await r.set(f"delay:{schedule.domain}", str(delay_for_domain(schedule.domain)))
+
+    if not legacy:
+        return cast(list[bool], ordered)
+
     await _load_scripts()
     assert _ENQUEUE_SHA is not None
-    r = get_redis()
-    added: list[bool] = []
     batch_size = 1000
 
-    for start in range(0, len(schedules), batch_size):
-        batch = schedules[start : start + batch_size]
+    for start in range(0, len(legacy), batch_size):
+        batch = legacy[start : start + batch_size]
         pipe = r.pipeline(transaction=False)
-        result_indexes: list[int] = []
+        result_indexes: list[tuple[int, int]] = []
         command_count = 0
         now = str(time.time())
         domains: set[str] = set()
 
-        for schedule in batch:
+        for ordered_index, schedule in batch:
             config_args: list[str] = []
             for field, value in schedule.config.items():
                 if field == "domain":
                     continue
                 config_args.extend((str(field), str(value)))
-            result_indexes.append(command_count)
+            result_indexes.append((ordered_index, command_count))
             pipe.evalsha(
                 _ENQUEUE_SHA,
                 0,
@@ -870,9 +907,12 @@ async def enqueue_scrapes(schedules: Sequence[ScrapeSchedule]) -> list[bool]:
             pipe.set(f"delay:{domain}", str(delay_for_domain(domain)))
 
         results = await pipe.execute()
-        added.extend(bool(results[index]) for index in result_indexes)
+        for ordered_index, result_index in result_indexes:
+            ordered[ordered_index] = bool(results[result_index])
 
-    return added
+    if any(value is None for value in ordered):
+        raise RuntimeError("scrape enqueue result conservation failure")
+    return cast(list[bool], ordered)
 
 
 # ---------------------------------------------------------------------------
@@ -890,6 +930,7 @@ async def claim_work(*, browser: bool = False) -> WorkItem | None:
     the expired lease back onto the per-domain queue.
     """
     await _load_scripts()
+    assert _CLAIM_SHA is not None
     r = get_redis()
     wtype = "browser" if browser else "simple"
 
@@ -909,7 +950,7 @@ async def claim_work(*, browser: bool = False) -> WorkItem | None:
     task_id, source_type, domain = result[0], result[1], result[2]
 
     if source_type == "monitor":
-        config = await r.hgetall(f"board:{task_id}")
+        config = cast(dict[str, str], await r.hgetall(f"board:{task_id}"))
         if not config:
             log.warning("redis_queue.missing_board_config", board_id=task_id)
             return None
@@ -918,7 +959,7 @@ async def claim_work(*, browser: bool = False) -> WorkItem | None:
             board_work=BoardWork(board_id=task_id, config=config, domain=domain),
         )
     else:
-        config = await r.hgetall(f"scrape:{task_id}")
+        config = cast(dict[str, str], await r.hgetall(f"scrape:{task_id}"))
         if not config:
             log.warning("redis_queue.missing_scrape_config", posting_id=task_id)
             return None
@@ -958,6 +999,7 @@ async def reschedule_task(
     Also clears the inflight lease entry — see ``reschedule_task.lua``.
     """
     await _load_scripts()
+    assert _RESCHEDULE_SHA is not None
     r = get_redis()
     wtype = "browser" if browser else "simple"
     await r.evalsha(
@@ -992,6 +1034,7 @@ async def complete_task(
     it had already been swept.
     """
     await _load_scripts()
+    assert _COMPLETE_SHA is not None
     r = get_redis()
     wtype = "browser" if browser else "simple"
     result = await r.evalsha(
@@ -1022,6 +1065,7 @@ async def heartbeat_task(
     to avoid double-execution).
     """
     await _load_scripts()
+    assert _HEARTBEAT_SHA is not None
     r = get_redis()
     wtype = "browser" if browser else "simple"
     ttl = (
@@ -1050,6 +1094,7 @@ async def reap_expired(*, browser: bool = False) -> dict[str, int]:
     loop; ``max_entries`` caps work per call to bound Lua runtime.
     """
     await _load_scripts()
+    assert _REAP_SHA is not None
     r = get_redis()
     wtype = "browser" if browser else "simple"
     now = time.time()
@@ -1143,7 +1188,7 @@ async def prune_stale_scrape_queues(
     ):
         async for key in r.scan_iter(match=pattern, count=500):
             keys_scanned += 1
-            stale_ids = await r.zrangebyscore(key, "-inf", cutoff)
+            stale_ids = cast(list[str], await r.zrangebyscore(key, "-inf", cutoff))
             if not stale_ids:
                 continue
             if dry_run:

@@ -10,6 +10,7 @@ prometheus.scrape "crawler" {
     {"__address__" = "localhost:9098", "instance" = "browser-1", "job" = "crawler"},
     {"__address__" = "localhost:9093", "instance" = "exporter", "job" = "crawler"},
     {"__address__" = "localhost:9094", "instance" = "drain", "job" = "crawler"},
+    {"__address__" = "127.0.0.1:9101", "instance" = "lightpanda-claimant", "job" = "lightpanda-b0", "runtime" = "go", "cohort" = "b0"},
   ]
   forward_to     = [prometheus.relabel.crawler.receiver]
   scrape_interval = "15s"

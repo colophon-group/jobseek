@@ -22,6 +22,14 @@ local task_type = ARGV[2]
 local domain = ARGV[3]
 local task_id = ARGV[4]
 
+-- A completion from a claimant that lost ownership during the cold B0
+-- transfer is stale. Do not remove its legacy lease/config; the operator
+-- cutover and guarded reaper own that cleanup.
+if task_type == "scrape"
+    and redis.call("HEXISTS", "lightpanda-b0:legacy-guard", task_id) == 1 then
+    return 0
+end
+
 local member = task_type .. "|" .. domain .. "|" .. task_id
 local removed = redis.call("ZREM", "inflight:" .. wtype, member)
 

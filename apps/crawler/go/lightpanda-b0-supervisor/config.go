@@ -97,7 +97,8 @@ func configFromEnvironment() (config, error) {
 }
 
 func (c config) validate() error {
-	if c.Mode != modeEnabled || c.RedisOptions == nil || c.Namespace == "" || c.RendererAddress == "" || c.ExecutorSocket == "" || c.MetricsAddress == "" {
+	if c.Mode != modeEnabled || c.RedisOptions == nil || c.Namespace == "" || c.RendererAddress == "" ||
+		c.ExecutorSocket != "/run/jobseek-lightpanda-executor/executor.sock" || c.MetricsAddress != "127.0.0.1:9101" {
 		return errors.New("incomplete enabled B0 supervisor configuration")
 	}
 	if err := c.Route.validate(); err != nil {

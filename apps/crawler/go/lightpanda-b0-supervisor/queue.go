@@ -27,7 +27,7 @@ const (
 	maxLeaseTTL       = time.Hour
 	queueScanLimit    = 64
 	queuePolicyKey    = "lightpanda-b0-v1"
-	expectedLuaSHA256 = "1722a9a412113c154e75a9185e70636dbe322cdacff706c8d0b3f7ae58d59ee2"
+	expectedLuaSHA256 = "4efe213380be6e7691e350f5a2f8bd3cfcdcba06dcd38c96d8a0227e210b8716"
 )
 
 var (
@@ -220,6 +220,7 @@ type lease struct {
 	Task         queueTask
 	ClaimToken   string
 	LeaseUntilMS int64
+	DueAtMS      int64
 }
 
 type b0Queue struct {
@@ -227,6 +228,7 @@ type b0Queue struct {
 	script       *redis.Script
 	keys         []string
 	route        routeIdentity
+	namespace    string
 	defaultDelay string
 	metrics      *metrics
 }
@@ -250,7 +252,7 @@ func newB0Queue(client *redis.Client, luaPath, namespace string, route routeIden
 		return nil, errors.New("B0 lifecycle Lua digest does not match the reviewed Go protocol")
 	}
 	tag := "lightpanda-b0:{" + namespace + "}"
-	return &b0Queue{client: client, script: redis.NewScript(string(scriptBytes)), route: route, defaultDelay: defaultDelay, metrics: metrics, keys: []string{
+	return &b0Queue{client: client, script: redis.NewScript(string(scriptBytes)), route: route, namespace: namespace, defaultDelay: defaultDelay, metrics: metrics, keys: []string{
 		tag + ":route", tag + ":records", tag + ":ready", tag + ":inflight", tag + ":dead", tag + ":terminal", tag + ":origin-holders",
 	}}, nil
 }
@@ -268,7 +270,7 @@ func (q *b0Queue) call(ctx context.Context, operation string, task *queueTask, c
 	}
 	argv := []any{operation, q.route.ShardID, strconv.FormatInt(q.route.RoutingEpoch, 10), q.route.EngineOwner, taskID,
 		strconv.FormatInt(revision, 10), claimToken, strconv.FormatInt(leaseTTL.Milliseconds(), 10), strconv.FormatInt(readyAtMS, 10), strconv.FormatInt(maxFailures, 10),
-		payload, sha256Digest, sha1Digest, strconv.Itoa(queueScanLimit), q.defaultDelay, "", strconv.FormatInt(expectedLeaseUntilMS, 10)}
+		payload, sha256Digest, sha1Digest, strconv.Itoa(queueScanLimit), q.defaultDelay, "", strconv.FormatInt(expectedLeaseUntilMS, 10), q.namespace, "", "0"}
 	result, err := q.script.Run(ctx, q.client, q.keys, argv...).Result()
 	if err != nil {
 		q.metrics.incQueue(operation, "transport_error")
@@ -324,32 +326,37 @@ var allowedReasons = map[string]map[string]map[string]struct{}{
 	"claim_next": {
 		"accepted":    set("claimed"),
 		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch", "config_revision_mismatch", "record_fence_mismatch", "claim_token_mismatch", "lease_deadline_mismatch", "payload_digest_mismatch"),
-		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "invalid_lease_ttl", "invalid_claim_policy", "record_corrupt", "conservation_violation", "origin_holder_corrupt", "rate_limit_corrupt", "delay_corrupt", "numeric_overflow", "claim_sequence_exhausted", "no_work"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "invalid_lease_ttl", "invalid_claim_policy", "record_corrupt", "conservation_violation", "origin_holder_corrupt", "guard_identity_mismatch", "rate_limit_corrupt", "delay_corrupt", "numeric_overflow", "claim_sequence_exhausted", "no_work"),
 	},
 	"heartbeat": {
 		"accepted":    set("lease_extended"),
 		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch", "config_revision_mismatch", "record_fence_mismatch", "claim_token_mismatch", "lease_deadline_mismatch", "payload_digest_mismatch"),
-		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "record_corrupt", "conservation_violation", "state_mismatch", "origin_holder_corrupt", "invalid_task_identity", "invalid_lease_fence", "invalid_lease_ttl", "lease_expired", "numeric_overflow", "lease_not_extended"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "record_corrupt", "conservation_violation", "state_mismatch", "origin_holder_corrupt", "guard_identity_mismatch", "invalid_task_identity", "invalid_lease_fence", "invalid_lease_ttl", "lease_expired", "numeric_overflow", "lease_not_extended"),
 	},
 	"complete": {
 		"accepted":    set("completed"),
 		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch", "config_revision_mismatch", "record_fence_mismatch", "claim_token_mismatch", "lease_deadline_mismatch", "payload_digest_mismatch"),
-		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "record_corrupt", "conservation_violation", "state_mismatch", "origin_holder_corrupt", "invalid_task_identity", "invalid_lease_fence", "lease_expired"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "record_corrupt", "conservation_violation", "state_mismatch", "origin_holder_corrupt", "guard_identity_mismatch", "invalid_task_identity", "invalid_lease_fence", "lease_expired"),
 	},
 	"reschedule_at": {
 		"accepted":    set("rescheduled"),
 		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch", "config_revision_mismatch", "record_fence_mismatch", "claim_token_mismatch", "lease_deadline_mismatch", "payload_digest_mismatch"),
-		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "record_corrupt", "conservation_violation", "state_mismatch", "origin_holder_corrupt", "invalid_task_identity", "invalid_lease_fence", "invalid_ready_at", "lease_expired"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "record_corrupt", "conservation_violation", "state_mismatch", "origin_holder_corrupt", "guard_identity_mismatch", "invalid_task_identity", "invalid_lease_fence", "invalid_ready_at", "lease_expired"),
+	},
+	"fail_at": {
+		"accepted":    set("failed_rescheduled"),
+		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch", "config_revision_mismatch", "record_fence_mismatch", "claim_token_mismatch", "lease_deadline_mismatch", "payload_digest_mismatch"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "record_corrupt", "conservation_violation", "state_mismatch", "origin_holder_corrupt", "guard_identity_mismatch", "invalid_task_identity", "invalid_lease_fence", "invalid_ready_at", "lease_expired", "failure_counter_exhausted"),
 	},
 	"reap_expired": {
 		"accepted":    set("reaped"),
 		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch", "config_revision_mismatch", "record_fence_mismatch", "claim_token_mismatch", "lease_deadline_mismatch", "payload_digest_mismatch"),
-		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "invalid_reap_policy", "conservation_violation", "origin_holder_corrupt"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "invalid_reap_policy", "conservation_violation", "origin_holder_corrupt", "guard_identity_mismatch"),
 	},
 	"audit": {
 		"accepted":    set("audit_ok"),
 		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch", "config_revision_mismatch", "record_fence_mismatch", "claim_token_mismatch", "lease_deadline_mismatch", "payload_digest_mismatch"),
-		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "audit_too_large", "conservation_violation", "origin_holder_corrupt"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "audit_too_large", "conservation_violation", "origin_holder_corrupt", "guard_identity_mismatch"),
 	},
 }
 
@@ -385,7 +392,7 @@ func validateTransitionReply(operation string, result transition, fields []strin
 		return nil
 	}
 	full := operation == "claim_next"
-	fenced := operation == "heartbeat" || operation == "complete" || operation == "reschedule_at"
+	fenced := operation == "heartbeat" || operation == "complete" || operation == "reschedule_at" || operation == "fail_at"
 	if full || fenced {
 		if result.TaskID == "" || result.ClaimToken == "" || result.LeaseUntilMS < 1 || result.ConfigRevision < 1 || !hex256.MatchString(result.PayloadSHA256) {
 			return errors.New("missing fence echo")
@@ -416,7 +423,7 @@ func validateTransitionReply(operation string, result transition, fields []strin
 		if operation == "heartbeat" && result.LeaseUntilMS <= expectedLeaseUntilMS {
 			return errors.New("lease was not extended")
 		}
-		if (operation == "complete" || operation == "reschedule_at") && result.LeaseUntilMS != expectedLeaseUntilMS {
+		if (operation == "complete" || operation == "reschedule_at" || operation == "fail_at") && result.LeaseUntilMS != expectedLeaseUntilMS {
 			return errors.New("terminal lease echo mismatch")
 		}
 	} else {
@@ -427,6 +434,10 @@ func validateTransitionReply(operation string, result transition, fields []strin
 		}
 	}
 	switch operation {
+	case "claim_next":
+		if fields[10] == "" || fields[11] != "" || result.Value > result.ServerTimeMS {
+			return errors.New("invalid claim due-at echo")
+		}
 	case "reap_expired":
 		if fields[10] == "" || fields[11] == "" || result.Value+result.SecondaryValue > queueScanLimit {
 			return errors.New("invalid reap counts")
@@ -435,7 +446,7 @@ func validateTransitionReply(operation string, result transition, fields []strin
 		if fields[10] == "" || fields[11] == "" || result.Value > 512 || result.SecondaryValue > result.Value {
 			return errors.New("invalid audit counts")
 		}
-	case "reschedule_at":
+	case "reschedule_at", "fail_at":
 		if fields[10] == "" || fields[11] != "" || result.Value != readyAtMS {
 			return errors.New("invalid ready-at echo")
 		}
@@ -468,7 +479,7 @@ func (q *b0Queue) claim(ctx context.Context, ttl time.Duration) (*lease, transit
 	if !strings.HasPrefix(result.ClaimToken, expectedPrefix) || result.LeaseUntilMS <= result.ServerTimeMS {
 		return nil, result, errors.New("claimed B0 lease fence is invalid")
 	}
-	return &lease{Task: task, ClaimToken: result.ClaimToken, LeaseUntilMS: result.LeaseUntilMS}, result, nil
+	return &lease{Task: task, ClaimToken: result.ClaimToken, LeaseUntilMS: result.LeaseUntilMS, DueAtMS: result.Value}, result, nil
 }
 
 func (q *b0Queue) heartbeat(ctx context.Context, current *lease, ttl time.Duration) error {
@@ -493,11 +504,21 @@ func (q *b0Queue) terminal(ctx context.Context, current *lease, readyAtMS *int64
 	return nil
 }
 
+func (q *b0Queue) fail(ctx context.Context, current *lease, readyAtMS int64) error {
+	result, err := q.call(ctx, "fail_at", &current.Task, current.ClaimToken, 0, readyAtMS, 0, current.LeaseUntilMS)
+	if err != nil || !result.accepted() || result.ClaimToken != current.ClaimToken {
+		return transitionError("fail_at", result, err)
+	}
+	return nil
+}
+
 func (q *b0Queue) reap(ctx context.Context, maxFailures int64) error {
 	result, err := q.call(ctx, "reap_expired", nil, "", 0, 0, maxFailures, 0)
 	if err != nil || !result.accepted() {
 		return transitionError("reap_expired", result, err)
 	}
+	q.metrics.reaped[0].Add(uint64(result.Value))
+	q.metrics.reaped[1].Add(uint64(result.SecondaryValue))
 	return nil
 }
 
@@ -506,6 +527,16 @@ func (q *b0Queue) audit(ctx context.Context) error {
 	if err != nil || !result.accepted() {
 		return transitionError("audit", result, err)
 	}
+	pipeline := q.client.Pipeline()
+	ready := pipeline.ZCard(ctx, q.keys[2])
+	inflight := pipeline.ZCard(ctx, q.keys[3])
+	dead := pipeline.SCard(ctx, q.keys[4])
+	if _, err := pipeline.Exec(ctx); err != nil {
+		return fmt.Errorf("observe audited B0 queue counts: %w", err)
+	}
+	q.metrics.readyCount.Store(ready.Val())
+	q.metrics.redisInflight.Store(inflight.Val())
+	q.metrics.deadCount.Store(dead.Val())
 	return nil
 }
 

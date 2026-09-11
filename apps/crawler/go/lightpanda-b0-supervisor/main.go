@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 const (
@@ -17,7 +19,15 @@ const (
 
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--healthcheck" {
-		if err := checkDarkReady(darkReadyPath); err != nil {
+		configured, err := configFromEnvironment()
+		if err == nil {
+			if configured.Mode == modeDark {
+				err = checkDarkReady(darkReadyPath)
+			} else {
+				err = checkEnabledReady(configured.MetricsAddress)
+			}
+		}
+		if err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, "Lightpanda B0 supervisor is not ready:", err)
 			os.Exit(1)
 		}
@@ -39,6 +49,23 @@ func main() {
 		_, _ = fmt.Fprintln(os.Stderr, "Lightpanda B0 supervisor failed closed:", err)
 		os.Exit(1)
 	}
+}
+
+func checkEnabledReady(address string) error {
+	client := &http.Client{Timeout: 2 * time.Second}
+	response, err := client.Get("http://" + address + "/healthz") //nolint:noctx
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("enabled readiness returned HTTP %d", response.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(response.Body, 1))
+	if err != nil || len(body) != 0 {
+		return errors.New("enabled readiness returned a body")
+	}
+	return nil
 }
 
 func run() error {
