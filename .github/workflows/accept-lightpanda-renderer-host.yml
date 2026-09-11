@@ -1,0 +1,106 @@
+name: Accept Lightpanda renderer host
+on:
+  pull_request:
+    paths:
+      - "deploy/lightpanda-renderer/**"
+      - "apps/crawler/tests/test_lightpanda_host_acceptance.py"
+      - ".github/workflows/accept-lightpanda-renderer-host.yml"
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Acceptance phase to run after its preceding deployment step
+        required: true
+        type: choice
+        options:
+          - host-policy-reboot
+          - renderer-restarts
+      renderer_source_commit:
+        description: Exact commit used by the already-deployed renderer; empty for phase A
+        required: false
+        type: string
+      renderer_image_ref:
+        description: Immutable already-deployed renderer image ref; empty for phase A
+        required: false
+        type: string
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+      - name: Validate lean acceptance gate
+        run: |
+          set -euo pipefail
+          bash -n deploy/lightpanda-renderer/{acceptance-remote,acceptance-crawler,deploy-remote,install-host}.sh
+          shellcheck -x deploy/lightpanda-renderer/{acceptance-remote,acceptance-crawler,deploy-remote,install-host,lock}.sh
+          python3 -m py_compile deploy/lightpanda-renderer/{acceptance-host,acceptance-client,verify}.py
+          cd apps/crawler
+          uv run --frozen ruff check ../../deploy/lightpanda-renderer/{acceptance-host,acceptance-client,verify}.py tests/test_lightpanda_host_acceptance.py
+          uv run --frozen ruff format --check ../../deploy/lightpanda-renderer/{acceptance-host,acceptance-client,verify}.py tests/test_lightpanda_host_acceptance.py
+          uv run --frozen pyright ../../deploy/lightpanda-renderer/{acceptance-host,acceptance-client,verify}.py
+          uv run --frozen pytest tests/test_lightpanda_host_acceptance.py tests/test_lightpanda_renderer_deployment.py -q
+  accept:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: Production
+    concurrency:
+      group: deploy-murmur-shim
+      cancel-in-progress: false
+    steps:
+      - name: Refuse non-main production dispatch
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_REF" = refs/heads/main
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Reattest exact current main
+        env:
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
+          test "$(git ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')" = "$DISPATCH_SHA"
+      - name: Run acceptance phase
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_MURMUR_HOST }}
+          CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_MURMUR_KNOWN_HOSTS }}
+          CRAWLER_SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          RENDERER_SOURCE_COMMIT: ${{ inputs.renderer_source_commit }}
+          RENDERER_IMAGE_REF: ${{ inputs.renderer_image_ref }}
+          PHASE_INPUT: ${{ inputs.phase }}
+        run: |
+          set -euo pipefail
+          timeout --foreground --signal=TERM --kill-after=10m 35m \
+            bash deploy/lightpanda-renderer/acceptance-remote.sh \
+              "${{ github.sha }}" "$PHASE_INPUT" \
+              "$RENDERER_SOURCE_COMMIT" "$RENDERER_IMAGE_REF"
+      - name: Retain one sanitized acceptance report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lightpanda-host-acceptance-${{ inputs.phase }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/lightpanda-host-acceptance.json
+          if-no-files-found: error
+          retention-days: 30

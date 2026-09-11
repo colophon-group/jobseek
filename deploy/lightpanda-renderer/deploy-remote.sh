@@ -67,7 +67,7 @@ printf '%s' "$LIGHTPANDA_B0_CLIENT_CERT_PEM" >"$payload_root/pki/client.pem"
 chmod 0600 "$payload_root/pki"/*
 
 artifact_root=deploy/lightpanda-renderer
-for artifact in compose.yml inventory.json verify.py validate_pki.py lock.sh install-host.sh; do
+for artifact in compose.yml inventory.json verify.py validate_pki.py lock.sh install-host.sh jobseek-lightpanda-network.service; do
   install -m 0600 "$artifact_root/$artifact" "$payload_root/$artifact"
 done
 python3 "$payload_root/validate_pki.py" \

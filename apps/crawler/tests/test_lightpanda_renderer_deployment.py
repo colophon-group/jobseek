@@ -789,6 +789,7 @@ def test_bootstrap_is_monotonic_and_never_manages_protected_containers() -> None
     assert "/run/lock/jobseek-lightpanda-network.lock" not in unit
     assert " verify-ready" in sudoers
     assert " verify-running-ready" in sudoers
+    assert " verify-attested" in sudoers
     assert " quarantine" in sudoers
 
 
@@ -1081,6 +1082,30 @@ def test_verify_ready_requires_fixed_marker_and_both_networks_stably_empty(
         (network_policy.INVENTORY_PATH, "a" * 64, "b" * 64),
         (network_policy.INTERNAL_NETWORK, network_policy.EGRESS_NETWORK),
     ]
+
+
+def test_verify_attested_checks_current_policy_binding_without_readiness(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
+    calls: list[object] = []
+    monkeypatch.setattr(network_policy.Inventory, "load", lambda _: inventory)
+    monkeypatch.setattr(network_policy, "verify_policy", lambda _: {"schema_version": 1})
+    monkeypatch.setattr(
+        network_policy,
+        "verify_bootstrap_marker",
+        lambda path, policy, inventory_digest: calls.append((path, policy, inventory_digest)),
+    )
+    monkeypatch.setattr(network_policy, "require_networks_stably_empty", lambda *_: pytest.fail())
+    network_policy.execute_guarded_command(
+        argparse.Namespace(
+            inventory=network_policy.INVENTORY_PATH,
+            command="verify-attested",
+            expected_policy_sha256="a" * 64,
+            expected_inventory_sha256="b" * 64,
+        )
+    )
+    assert calls == [(network_policy.INVENTORY_PATH, "a" * 64, "b" * 64)]
 
 
 def test_policy_container_lookups_cannot_resolve_the_same_named_network(

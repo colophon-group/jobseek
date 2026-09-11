@@ -1319,6 +1319,7 @@ def parser() -> argparse.ArgumentParser:
             "bootstrap",
             "ensure",
             "verify",
+            "verify-attested",
             "verify-running",
             "verify-ready",
             "verify-running-ready",
@@ -1334,7 +1335,11 @@ def parser() -> argparse.ArgumentParser:
 def execute_guarded_command(args: argparse.Namespace) -> None:
     try:
         inventory = Inventory.load(args.inventory)
-        expects_release_binding = args.command in {"verify-ready", "verify-running-ready"}
+        expects_release_binding = args.command in {
+            "verify-attested",
+            "verify-ready",
+            "verify-running-ready",
+        }
         if expects_release_binding:
             if args.expected_policy_sha256 is None or args.expected_inventory_sha256 is None:
                 fail("deployment policy digests are required")
@@ -1346,7 +1351,7 @@ def execute_guarded_command(args: argparse.Namespace) -> None:
             payload = ensure_policy_unchecked(inventory)
         else:
             payload = verify_policy(inventory)
-            if args.command in {"verify-ready", "verify-running-ready"}:
+            if args.command in {"verify-attested", "verify-ready", "verify-running-ready"}:
                 verify_bootstrap_marker(
                     args.inventory,
                     cast(str, args.expected_policy_sha256),

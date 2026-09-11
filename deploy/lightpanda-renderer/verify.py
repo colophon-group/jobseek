@@ -9,6 +9,7 @@ import ipaddress
 import json
 import os
 import platform
+import pwd
 import re
 import stat
 import subprocess
@@ -461,6 +462,73 @@ def assert_protected(expected_path: Path) -> None:
     expected = json.loads(expected_path.read_text(encoding="utf-8"))
     if snapshot_protected() != expected:
         fail("protected Murmur containers changed during renderer maintenance")
+
+
+def verify_phase_a_receipt(
+    path: Path, policy_sha256: str, inventory_sha256: str, unit_sha256: str
+) -> dict[str, Any]:
+    expected_path = Path("/var/lib/jobseek-lightpanda-acceptance/phase-a.json")
+    deploy_gid = pwd.getpwnam("deploy").pw_gid
+    parent_metadata = path.parent.stat(follow_symlinks=False)
+    metadata = path.stat(follow_symlinks=False)
+    if (
+        path != expected_path
+        or path.parent.is_symlink()
+        or not stat.S_ISDIR(parent_metadata.st_mode)
+        or (parent_metadata.st_uid, parent_metadata.st_gid) != (0, deploy_gid)
+        or stat.S_IMODE(parent_metadata.st_mode) != 0o750
+        or path.is_symlink()
+        or not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_uid != 0
+        or metadata.st_gid != deploy_gid
+        or stat.S_IMODE(metadata.st_mode) != 0o640
+        or metadata.st_nlink != 1
+        or not 0 < metadata.st_size <= 512 * 1024
+    ):
+        fail("phase-A receipt metadata drifted")
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    expected_keys = {
+        "schema_version",
+        "status",
+        "acceptance_source_commit",
+        "host_components",
+        "before_boot_id",
+        "after_boot_id",
+        "protected_containers",
+    }
+    expected_components = {
+        "policy_sha256": policy_sha256,
+        "inventory_sha256": inventory_sha256,
+        "unit_sha256": unit_sha256,
+    }
+    policy = "/usr/local/libexec/jobseek-lightpanda-network-policy"
+    installed_unit_sha256 = hashlib.sha256(
+        Path("/etc/systemd/system/jobseek-lightpanda-network.service").read_bytes()
+    ).hexdigest()
+    unit = "jobseek-lightpanda-network.service"
+    boot_pattern = r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}"
+    if (
+        not isinstance(receipt, dict)
+        or set(receipt) != expected_keys
+        or receipt.get("schema_version") != 1
+        or receipt.get("status") != "accepted"
+        or re.fullmatch(r"[0-9a-f]{40}", str(receipt.get("acceptance_source_commit", ""))) is None
+        or receipt.get("host_components") != expected_components
+        or installed_unit_sha256 != unit_sha256
+        or not isinstance(
+            run_json(["sudo", "-n", policy, "verify-attested", policy_sha256, inventory_sha256]),
+            dict,
+        )
+        or run_text(["systemctl", "is-active", unit]).strip() != "active"
+        or run_text(["systemctl", "is-enabled", unit]).strip() != "enabled"
+        or run_text(["systemctl", "show", "-p", "Result", "--value", unit]).strip() != "success"
+        or re.fullmatch(boot_pattern, str(receipt.get("before_boot_id", ""))) is None
+        or re.fullmatch(boot_pattern, str(receipt.get("after_boot_id", ""))) is None
+        or receipt.get("before_boot_id") == receipt.get("after_boot_id")
+        or receipt.get("protected_containers") != snapshot_protected()
+    ):
+        fail("phase-A receipt is stale or invalid")
+    return receipt
 
 
 def all_networks() -> list[dict[str, Any]]:
@@ -1706,6 +1774,11 @@ def parser() -> argparse.ArgumentParser:
     snapshot.add_argument("output", type=Path)
     protected = sub.add_parser("assert-protected")
     protected.add_argument("expected", type=Path)
+    receipt = sub.add_parser("phase-a-receipt")
+    receipt.add_argument("path", type=Path)
+    receipt.add_argument("policy_sha256")
+    receipt.add_argument("inventory_sha256")
+    receipt.add_argument("unit_sha256")
     sub.add_parser("compose-path")
     sub.add_parser("compose-version")
     compose = sub.add_parser("compose")
@@ -1752,6 +1825,19 @@ def main() -> int:
             )
         elif args.command == "assert-protected":
             assert_protected(args.expected)
+        elif args.command == "phase-a-receipt":
+            print(
+                json.dumps(
+                    verify_phase_a_receipt(
+                        args.path,
+                        args.policy_sha256,
+                        args.inventory_sha256,
+                        args.unit_sha256,
+                    ),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+            )
         elif args.command == "compose-path":
             print(compose_plugin_path())
         elif args.command == "compose-version":
@@ -1780,6 +1866,7 @@ def main() -> int:
     except (
         VerificationError,
         KeyError,
+        OSError,
         ValueError,
         json.JSONDecodeError,
         subprocess.SubprocessError,
