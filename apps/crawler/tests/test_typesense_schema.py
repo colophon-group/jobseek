@@ -51,13 +51,14 @@ def test_job_posting_schema_keeps_unused_compatibility_fields_stored_only() -> N
         assert fields[name]["optional"] is True
 
 
-def test_job_posting_schema_has_rollout_safe_candidate_id_sort() -> None:
+def test_job_posting_schema_has_compact_candidate_order_key() -> None:
     job_posting = next(c for c in COLLECTIONS if c["name"] == "job_posting")
-    field = next(f for f in job_posting["fields"] if f["name"] == "candidate_id_sort")
+    field = next(f for f in job_posting["fields"] if f["name"] == "candidate_order_key")
 
     assert field == {
-        "name": "candidate_id_sort",
+        "name": "candidate_order_key",
         "type": "string",
+        "index": True,
         "sort": True,
         "optional": True,
     }
@@ -188,8 +189,9 @@ def test_patch_preserves_candidate_sort_field_rollout_shape() -> None:
         desired_fields=[
             {"name": "first_seen_at", "type": "int64"},
             {
-                "name": "candidate_id_sort",
+                "name": "candidate_order_key",
                 "type": "string",
+                "index": True,
                 "sort": True,
                 "optional": True,
             },
@@ -198,8 +200,9 @@ def test_patch_preserves_candidate_sort_field_rollout_shape() -> None:
 
     assert collection.update.call_args.args[0]["fields"] == [
         {
-            "name": "candidate_id_sort",
+            "name": "candidate_order_key",
             "type": "string",
+            "index": True,
             "sort": True,
             "optional": True,
         }

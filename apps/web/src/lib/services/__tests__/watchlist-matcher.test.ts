@@ -44,14 +44,30 @@ import {
   matchCompiledWatchlistsInWindow,
   readWatchlistCandidates,
 } from "../watchlist-matcher";
+import { candidateOrderKeyFromCanonicalId } from "@/lib/search/watchlist-candidate-query";
 
-withTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_READY: "1" });
+const READY_RECEIPT = Buffer.from(JSON.stringify({
+  authoritativeCount: 10_000,
+  benchmarkSha256: "a".repeat(64),
+  completedAt: "2026-09-11T10:00:00Z",
+  keyVersion: "uuid-b64lex-v1",
+  partitions: 256,
+  reconciliationRunId: "00000000-0000-0000-0000-000000000001",
+  schemaVersion: "typesense-stable-candidate-order-readiness-v1",
+  unresolved: 0,
+})).toString("base64url");
+
+withTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT: READY_RECEIPT });
 
 function posting(id: string, firstSeenAt: number) {
+  const isCanonicalUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
   return {
     document: {
       id,
-      candidate_id_sort: id,
+      candidate_order_key: isCanonicalUuid
+        ? candidateOrderKeyFromCanonicalId(id)
+        : undefined,
       title: `Role ${id}`,
       source_url: `https://example.test/${id}`,
       first_seen_at: firstSeenAt,
@@ -157,7 +173,7 @@ describe("compileWatchlistMatcherSources", () => {
 
 describe("readWatchlistCandidates", () => {
   it("fails closed before newest-first reads are marked backfill-ready", async () => {
-    setTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_READY: undefined });
+    setTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT: undefined });
 
     await expect(readWatchlistCandidates({
       filters: { companyIds: [makeUuid(1)] },
@@ -187,12 +203,16 @@ describe("readWatchlistCandidates", () => {
       per_page?: number;
       offset?: number;
       limit?: number;
+      sort_by?: string;
     }) => {
       if (search.per_page === 0) return { found: 40, hits: [] };
       const isFirstBatch = (search.filter_by ?? "").includes(makeUuid(1));
       const hits = (isFirstBatch ? highIds : lowIds).map((id) =>
         posting(id, 1_700_000_000),
       );
+      if ((search.sort_by ?? "").includes("missing_values")) {
+        return { found: hits.length, hits: hits.slice(0, 1) };
+      }
       const offset = search.offset ?? 0;
       const limit = search.limit ?? 0;
       return { found: hits.length, hits: hits.slice(offset, offset + limit) };
@@ -204,30 +224,64 @@ describe("readWatchlistCandidates", () => {
       offset: 0,
       limit: 20,
       order: "newest",
+      requireStableOrder: true,
     });
     const secondPage = await readWatchlistCandidates({
       filters,
       offset: 20,
       limit: 20,
       order: "newest",
+      requireStableOrder: true,
     });
 
     expect(firstPage.postings.map((value) => value.id)).toEqual(lowIds.slice(0, 20));
     expect(secondPage.postings.map((value) => value.id)).toEqual(lowIds.slice(20, 40));
   });
 
-  it("rejects a newest-first hit whose sort ID is absent or mismatched", async () => {
+  it("globally rejects a missing order key before a direct offset page", async () => {
     const hit = posting(makeUuid(1), 1_700_000_000);
-    delete (hit.document as { candidate_id_sort?: string }).candidate_id_sort;
+    delete (hit.document as { candidate_order_key?: string }).candidate_order_key;
     mocks.singleSearch.mockResolvedValue({ found: 1, hits: [hit] });
 
     await expect(readWatchlistCandidates({
       filters: { companyIds: [makeUuid(1)] },
-      offset: 0,
+      offset: 200,
       limit: 1,
       order: "newest",
+      requireStableOrder: true,
     })).rejects.toThrow("response was malformed");
+    expect(mocks.singleSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).toMatchObject({
+      page: 1,
+      per_page: 1,
+      sort_by: "candidate_order_key(missing_values: first):asc",
+    });
   });
+
+  it.each(["mismatched key", "non-canonical ID"])(
+    "rejects a newest-first hit with %s",
+    async (failure) => {
+      const hit = posting(makeUuid(1), 1_700_000_000);
+      const document = hit.document as {
+        id: string;
+        candidate_order_key: string;
+      };
+      if (failure === "mismatched key") {
+        document.candidate_order_key = candidateOrderKeyFromCanonicalId(makeUuid(2));
+      } else {
+        document.id = "A0000000-0000-0000-0000-000000000001";
+      }
+      mocks.singleSearch.mockResolvedValue({ found: 1, hits: [hit] });
+
+      await expect(readWatchlistCandidates({
+        filters: { companyIds: [makeUuid(1)] },
+        offset: 0,
+        limit: 1,
+        order: "newest",
+        requireStableOrder: true,
+      })).rejects.toThrow("response was malformed");
+    },
+  );
 
   it("keeps tied batched prefixes stable across page boundaries", async () => {
     const companyIds = Array.from(
@@ -351,8 +405,7 @@ describe("readWatchlistCandidates", () => {
 });
 
 describe("matchCompiledWatchlistsInWindow", () => {
-  it("keeps the existing notification query usable before activation", async () => {
-    setTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_READY: undefined });
+  it("keeps legacy notifications unchanged even when the receipt exists", async () => {
     mocks.multiSearch.mockResolvedValue({
       results: [{ found: 1, hits: [posting("legacy-hit", 1_700_000_000)] }],
     });
@@ -377,7 +430,7 @@ describe("matchCompiledWatchlistsInWindow", () => {
   });
 
   it("fails closed when AF-2 requires stable order before activation", async () => {
-    setTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_READY: undefined });
+    setTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT: undefined });
 
     await expect(matchCompiledWatchlistsInWindow({
       watchlists: [],
@@ -389,21 +442,37 @@ describe("matchCompiledWatchlistsInWindow", () => {
     expect(mocks.multiSearch).not.toHaveBeenCalled();
   });
 
-  it("uses one multi-search and deduplicates posting IDs with all labels", async () => {
+  it("guards once, then multi-searches and deduplicates with all labels", async () => {
     const start = new Date("2026-08-24T00:00:00.000Z");
     const end = new Date("2026-08-31T00:00:00.000Z");
-    const shared = posting("shared", end.getTime() / 1_000 - 20);
-    mocks.multiSearch.mockResolvedValue({
+    const newestId = makeUuid(501);
+    const sharedId = makeUuid(502);
+    const olderId = makeUuid(503);
+    const shared = posting(sharedId, end.getTime() / 1_000 - 20);
+    const searchResults = {
       results: [
         {
           found: 2,
-          hits: [posting("newest", end.getTime() / 1_000 - 10), shared],
+          hits: [posting(newestId, end.getTime() / 1_000 - 10), shared],
         },
         {
           found: 2,
-          hits: [shared, posting("older", start.getTime() / 1_000 + 10)],
+          hits: [shared, posting(olderId, start.getTime() / 1_000 + 10)],
         },
       ],
+    };
+    mocks.multiSearch.mockImplementation((request: {
+      searches: Array<{ sort_by: string }>;
+    }) => {
+      if (request.searches[0]?.sort_by.includes("missing_values")) {
+        return {
+          results: searchResults.results.map((result) => ({
+            ...result,
+            hits: result.hits.slice(0, 1),
+          })),
+        };
+      }
+      return searchResults;
     });
 
     const result = await matchCompiledWatchlistsInWindow({
@@ -431,10 +500,20 @@ describe("matchCompiledWatchlistsInWindow", () => {
       windowStart: start,
       windowEnd: end,
       limitPerWatchlist: 20,
+      requireStableOrder: true,
     });
 
-    expect(mocks.multiSearch).toHaveBeenCalledTimes(1);
-    const request = mocks.multiSearch.mock.calls[0]?.[0] as {
+    expect(mocks.multiSearch).toHaveBeenCalledTimes(2);
+    const guardRequest = mocks.multiSearch.mock.calls[0]?.[0] as {
+      searches: Array<{ sort_by: string; per_page: number; page: number }>;
+    };
+    expect(guardRequest.searches.every(
+      (search) =>
+        search.sort_by === "candidate_order_key(missing_values: first):asc" &&
+        search.per_page === 1 &&
+        search.page === 1,
+    )).toBe(true);
+    const request = mocks.multiSearch.mock.calls[1]?.[0] as {
       searches: Array<{ filter_by: string; sort_by: string }>;
     };
     expect(request.searches).toHaveLength(2);
@@ -447,7 +526,7 @@ describe("matchCompiledWatchlistsInWindow", () => {
         `first_seen_at:<${end.getTime() / 1_000}`,
       );
       expect(search.sort_by).toBe(
-        "first_seen_at:desc,candidate_id_sort:asc",
+        "first_seen_at:desc,candidate_order_key:asc",
       );
     }
     expect(request.searches[0]?.filter_by).toContain("location_ids:[10]");
@@ -460,12 +539,12 @@ describe("matchCompiledWatchlistsInWindow", () => {
       boundary: "[windowStart, windowEnd)",
     });
     expect(result.postings.map((value) => value.id)).toEqual([
-      "newest",
-      "shared",
-      "older",
+      newestId,
+      sharedId,
+      olderId,
     ]);
     expect(
-      result.postings.find((value) => value.id === "shared")?.matchedWatchlists,
+      result.postings.find((value) => value.id === sharedId)?.matchedWatchlists,
     ).toEqual([
       { id: "watchlist-1", label: "Backend" },
       { id: "watchlist-2", label: "Remote" },

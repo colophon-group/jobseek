@@ -14,12 +14,16 @@
  * @vitest-environment node
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { Client } from "typesense";
 import { withTestEnvForAll } from "@/test-utils/env";
 import type { CollectionCreateSchema } from "typesense/lib/Typesense/Collections";
 import { TypesenseSearchProvider } from "../typesense";
 import { generateScopedSearchKey } from "../scoped-key";
+import { candidateOrderKeyFromCanonicalId } from "../watchlist-candidate-query";
+import { readWatchlistCandidates } from "@/lib/services/watchlist-matcher";
+
+vi.mock("server-only", () => ({}));
 
 // ── Constants ───────────────────────────────────────────────────────
 
@@ -33,6 +37,16 @@ withTestEnvForAll({
   TYPESENSE_PORT: "8108",
   TYPESENSE_PROTOCOL: "http",
   TYPESENSE_SEARCH_KEY: API_KEY,
+  TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT: Buffer.from(JSON.stringify({
+    authoritativeCount: 1,
+    benchmarkSha256: "a".repeat(64),
+    completedAt: "2026-09-11T10:00:00Z",
+    keyVersion: "uuid-b64lex-v1",
+    partitions: 256,
+    reconciliationRunId: "00000000-0000-0000-0000-000000000001",
+    schemaVersion: "typesense-stable-candidate-order-readiness-v1",
+    unresolved: 0,
+  })).toString("base64url"),
 });
 
 // We use a direct admin client for seeding/cleanup. The provider uses the
@@ -277,7 +291,9 @@ const JOB_POSTINGS = RAW_JOB_POSTINGS.map((posting) => {
   const experienceMax = experienceMin === -1 ? -1 : 99;
   return {
     ...posting,
-    candidate_id_sort: posting.id,
+    candidate_order_key: posting.id.startsWith("jp")
+      ? undefined
+      : candidateOrderKeyFromCanonicalId(posting.id),
     experience_max: experienceMax,
     experience_min_years: experienceMin,
     experience_max_years: experienceMax,
@@ -330,7 +346,13 @@ const JOB_POSTING_SCHEMA: CollectionCreateSchema = {
     { name: "locales", type: "string[]", facet: true },
     { name: "source_url", type: "string", index: false, optional: true },
     { name: "first_seen_at", type: "int64" },
-    { name: "candidate_id_sort", type: "string", sort: true, optional: true },
+    {
+      name: "candidate_order_key",
+      type: "string",
+      index: true,
+      sort: true,
+      optional: true,
+    },
     { name: "last_seen_at", type: "int64", optional: true },
   ],
   default_sorting_field: "first_seen_at",
@@ -506,7 +528,7 @@ describe("stable candidate ordering", () => {
           .create({
             ...template,
             id,
-            candidate_id_sort: id,
+            candidate_order_key: candidateOrderKeyFromCanonicalId(id),
             title: "Stableboundaryfixture Engineer",
             first_seen_at: NOW_UNIX,
           });
@@ -519,7 +541,7 @@ describe("stable candidate ordering", () => {
           .search({
             q: "Stableboundaryfixture",
             query_by: "title",
-            sort_by: "first_seen_at:desc,candidate_id_sort:asc",
+            sort_by: "first_seen_at:desc,candidate_order_key:asc",
             per_page: 2,
             page: pageNumber,
           });
@@ -541,6 +563,45 @@ describe("stable candidate ordering", () => {
             .catch(() => undefined),
         ),
       );
+    }
+  });
+
+  it("fails a required offset read when any eligible document lacks the key", async () => {
+    if (skipIfUnavailable()) return;
+
+    const missingId = "10000000-0000-0000-0000-000000000005";
+    const template = JOB_POSTINGS[0];
+    if (!template) throw new Error("stable-order fixture template is missing");
+
+    try {
+      await adminClient
+        .collections(JOB_POSTING_COLLECTION)
+        .documents()
+        .create({
+          ...template,
+          id: missingId,
+          candidate_order_key: undefined,
+          title: "Stablemissingfixture Engineer",
+          first_seen_at: NOW_UNIX,
+        });
+
+      await expect(readWatchlistCandidates({
+        filters: {
+          companyIds: [],
+          anyCompany: true,
+          keywords: ["Stablemissingfixture"],
+        },
+        offset: 200,
+        limit: 20,
+        order: "newest",
+        requireStableOrder: true,
+      })).rejects.toThrow("Typesense response was malformed");
+    } finally {
+      await adminClient
+        .collections(JOB_POSTING_COLLECTION)
+        .documents(missingId)
+        .delete()
+        .catch(() => undefined);
     }
   });
 });
