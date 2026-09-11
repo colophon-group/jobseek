@@ -86,7 +86,7 @@ describe("canonical watchlist candidate query", () => {
     expect(search.filter_by).toContain("is_active:true");
     expect(search.filter_by).toContain(filter);
     expect(search.sort_by).toBe(
-      `first_seen_at:desc,${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}:asc`,
+      `first_seen_at:desc,${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}(missing_values: first):asc`,
     );
 
     const preBackfillSearch = buildWatchlistCandidateSearchParams({

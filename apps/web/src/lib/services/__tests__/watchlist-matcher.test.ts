@@ -210,7 +210,9 @@ describe("readWatchlistCandidates", () => {
       const hits = (isFirstBatch ? highIds : lowIds).map((id) =>
         posting(id, 1_700_000_000),
       );
-      if ((search.sort_by ?? "").includes("missing_values")) {
+      if (
+        search.sort_by === "candidate_order_key(missing_values: first):asc"
+      ) {
         return { found: hits.length, hits: hits.slice(0, 1) };
       }
       const offset = search.offset ?? 0;
@@ -256,6 +258,74 @@ describe("readWatchlistCandidates", () => {
       per_page: 1,
       sort_by: "candidate_order_key(missing_values: first):asc",
     });
+  });
+
+  it("fails a direct read when the key disappears after its preflight", async () => {
+    const valid = posting(makeUuid(1), 1_700_000_000);
+    const missing = posting(makeUuid(1), 1_700_000_000);
+    delete (missing.document as { candidate_order_key?: string }).candidate_order_key;
+    mocks.singleSearch
+      .mockResolvedValueOnce({ found: 1, hits: [valid] })
+      .mockResolvedValueOnce({ found: 1, hits: [valid] })
+      .mockResolvedValueOnce({ found: 1, hits: [missing] });
+
+    await expect(readWatchlistCandidates({
+      filters: { companyIds: [makeUuid(1)] },
+      offset: 0,
+      limit: 1,
+      order: "newest",
+      requireStableOrder: true,
+    })).rejects.toThrow("response was malformed");
+
+    expect(mocks.singleSearch).toHaveBeenCalledTimes(3);
+    expect(mocks.singleSearch.mock.calls[1]?.[0]).toMatchObject({
+      sort_by:
+        "first_seen_at:desc,candidate_order_key(missing_values: first):asc",
+    });
+  });
+
+  it("fails a batched read when the key disappears after row reads", async () => {
+    const companyIds = Array.from(
+      { length: 101 },
+      (_, index) => makeUuid(index + 1),
+    );
+    const valid = posting(makeUuid(501), 1_700_000_000);
+    const missing = posting(makeUuid(501), 1_700_000_000);
+    delete (missing.document as { candidate_order_key?: string }).candidate_order_key;
+    let rowsRead = false;
+    mocks.singleSearch.mockImplementation((search: {
+      per_page?: number;
+      limit?: number;
+      sort_by?: string;
+    }) => {
+      if (
+        search.sort_by === "candidate_order_key(missing_values: first):asc"
+      ) {
+        return { found: 1, hits: [rowsRead ? missing : valid] };
+      }
+      if (search.per_page === 0) return { found: 1, hits: [] };
+      if ((search.limit ?? 0) > 0) {
+        rowsRead = true;
+        return { found: 1, hits: [valid] };
+      }
+      throw new Error("unexpected candidate query");
+    });
+
+    await expect(readWatchlistCandidates({
+      filters: { companyIds },
+      offset: 0,
+      limit: 1,
+      order: "newest",
+      requireStableOrder: true,
+    })).rejects.toThrow("response was malformed");
+
+    expect(rowsRead).toBe(true);
+    const sorts = mocks.singleSearch.mock.calls.map(
+      ([search]) => (search as { sort_by?: string }).sort_by,
+    );
+    expect(sorts.at(-1)).toBe(
+      "candidate_order_key(missing_values: first):asc",
+    );
   });
 
   it.each(["mismatched key", "non-canonical ID"])(
@@ -426,6 +496,11 @@ describe("matchCompiledWatchlistsInWindow", () => {
     const request = mocks.multiSearch.mock.calls[0]?.[0] as {
       searches: Array<{ sort_by: string }>;
     };
+    expect(mocks.multiSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.multiSearch.mock.calls[0]?.[1]).toEqual({});
+    expect(mocks.multiSearch.mock.calls[0]?.[2]).toEqual({
+      abortSignal: undefined,
+    });
     expect(request.searches[0]?.sort_by).toBe("first_seen_at:desc");
   });
 
@@ -442,7 +517,86 @@ describe("matchCompiledWatchlistsInWindow", () => {
     expect(mocks.multiSearch).not.toHaveBeenCalled();
   });
 
-  it("guards once, then multi-searches and deduplicates with all labels", async () => {
+  it("fails multi-search when the key disappears after extraction", async () => {
+    const valid = posting(makeUuid(1), 1_700_000_000);
+    const missing = posting(makeUuid(1), 1_700_000_000);
+    delete (missing.document as { candidate_order_key?: string }).candidate_order_key;
+    mocks.multiSearch
+      .mockResolvedValueOnce({ results: [{ found: 1, hits: [valid] }] })
+      .mockResolvedValueOnce({ results: [{ found: 1, hits: [valid] }] })
+      .mockResolvedValueOnce({ results: [{ found: 1, hits: [missing] }] });
+
+    await expect(matchCompiledWatchlistsInWindow({
+      watchlists: [{
+        watchlistId: "watchlist-1",
+        watchlistLabel: "Backend",
+        candidateFilters: { companyIds: ["company-1"] },
+      }],
+      windowStart: new Date("2026-08-24T00:00:00.000Z"),
+      windowEnd: new Date("2026-08-31T00:00:00.000Z"),
+      limitPerWatchlist: 20,
+      requireStableOrder: true,
+    })).rejects.toThrow("response was malformed");
+
+    expect(mocks.multiSearch).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(["guard", "extraction"] as const)(
+    "propagates in-flight abort to the %s multi-search",
+    async (phase) => {
+      const controller = new AbortController();
+      const valid = {
+        results: [{
+          found: 1,
+          hits: [posting(makeUuid(1), 1_700_000_000)],
+        }],
+      };
+      let markStarted: (() => void) | undefined;
+      const started = new Promise<void>((resolve) => {
+        markStarted = resolve;
+      });
+      let callIndex = 0;
+      mocks.multiSearch.mockImplementation((
+        _request: unknown,
+        _common: unknown,
+        options: { abortSignal?: AbortSignal },
+      ) => {
+        const current = callIndex++;
+        const shouldBlock = phase === "guard" ? current === 0 : current === 1;
+        if (!shouldBlock) return Promise.resolve(valid);
+        return new Promise((_resolve, reject) => {
+          options.abortSignal?.addEventListener(
+            "abort",
+            () => reject(new Error("aborted in flight")),
+            { once: true },
+          );
+          markStarted?.();
+        });
+      });
+
+      const result = matchCompiledWatchlistsInWindow({
+        watchlists: [{
+          watchlistId: "watchlist-1",
+          watchlistLabel: "Backend",
+          candidateFilters: { companyIds: ["company-1"] },
+        }],
+        windowStart: new Date("2026-08-24T00:00:00.000Z"),
+        windowEnd: new Date("2026-08-31T00:00:00.000Z"),
+        limitPerWatchlist: 20,
+        requireStableOrder: true,
+        abortSignal: controller.signal,
+      });
+      await started;
+      const blockedCall = mocks.multiSearch.mock.calls[phase === "guard" ? 0 : 1];
+      expect(blockedCall?.[1]).toEqual({});
+      expect(blockedCall?.[2]).toEqual({ abortSignal: controller.signal });
+      controller.abort();
+
+      await expect(result).rejects.toThrow("aborted in flight");
+    },
+  );
+
+  it("guards before and after multi-search, then deduplicates with all labels", async () => {
     const start = new Date("2026-08-24T00:00:00.000Z");
     const end = new Date("2026-08-31T00:00:00.000Z");
     const newestId = makeUuid(501);
@@ -464,7 +618,10 @@ describe("matchCompiledWatchlistsInWindow", () => {
     mocks.multiSearch.mockImplementation((request: {
       searches: Array<{ sort_by: string }>;
     }) => {
-      if (request.searches[0]?.sort_by.includes("missing_values")) {
+      if (
+        request.searches[0]?.sort_by ===
+        "candidate_order_key(missing_values: first):asc"
+      ) {
         return {
           results: searchResults.results.map((result) => ({
             ...result,
@@ -503,7 +660,7 @@ describe("matchCompiledWatchlistsInWindow", () => {
       requireStableOrder: true,
     });
 
-    expect(mocks.multiSearch).toHaveBeenCalledTimes(2);
+    expect(mocks.multiSearch).toHaveBeenCalledTimes(3);
     const guardRequest = mocks.multiSearch.mock.calls[0]?.[0] as {
       searches: Array<{ sort_by: string; per_page: number; page: number }>;
     };
@@ -526,9 +683,12 @@ describe("matchCompiledWatchlistsInWindow", () => {
         `first_seen_at:<${end.getTime() / 1_000}`,
       );
       expect(search.sort_by).toBe(
-        "first_seen_at:desc,candidate_order_key:asc",
+        "first_seen_at:desc,candidate_order_key(missing_values: first):asc",
       );
     }
+    expect(mocks.multiSearch.mock.calls[2]?.[0]).toEqual(
+      mocks.multiSearch.mock.calls[0]?.[0],
+    );
     expect(request.searches[0]?.filter_by).toContain("location_ids:[10]");
     expect(request.searches[0]?.filter_by).toContain("locales:[de,_none]");
     expect(request.searches[1]?.filter_by).toContain("location_types:[remote]");

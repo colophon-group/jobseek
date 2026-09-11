@@ -157,7 +157,7 @@ export function buildWatchlistCandidateSearchParams(params: {
       order === "interactive" && hasKeywords
         ? "_text_match:desc,first_seen_at:desc"
         : order === "newest" && params.stableNewestReady === true
-          ? `first_seen_at:desc,${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}:asc`
+          ? `first_seen_at:desc,${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}(missing_values: first):asc`
           : "first_seen_at:desc",
     per_page: params.limit,
     page:

@@ -541,7 +541,8 @@ describe("stable candidate ordering", () => {
           .search({
             q: "Stableboundaryfixture",
             query_by: "title",
-            sort_by: "first_seen_at:desc,candidate_order_key:asc",
+            sort_by:
+              "first_seen_at:desc,candidate_order_key(missing_values: first):asc",
             per_page: 2,
             page: pageNumber,
           });
