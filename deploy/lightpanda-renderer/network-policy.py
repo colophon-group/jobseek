@@ -737,8 +737,16 @@ def replace_chain(binary: str, chain: str, rules: list[Rule]) -> None:
     run([binary, "--wait", "30", "-A", chain, *terminal])
     for rule in reversed(rules[:-1]):
         run([binary, "--wait", "30", "-I", chain, "1", *rule])
-    if observed_rules(binary, chain) != rules:
-        fail(f"owned firewall chain {chain} was not built exactly")
+    observed = observed_rules(binary, chain)
+    if observed != rules:
+        # Rules contain only the repository-owned fixed network inventory. Keep
+        # the normalized kernel view in the error so a failed host replay is
+        # diagnosable without weakening the exact comparison or rerunning with
+        # shell tracing (which could expose unrelated process state).
+        fail(
+            f"owned firewall chain {chain} was not built exactly: "
+            f"expected={rules!r} observed={observed!r}"
+        )
 
 
 def hook_rules(binary: str, parent: str, target: str) -> list[Rule]:
