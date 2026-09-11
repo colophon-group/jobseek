@@ -91,11 +91,13 @@ uses the same suite digest and sample count.
 
 Human calibration decisions may be accept, reject, or unclear. Unclear items
 remain recorded but are excluded from ground truth; at least 24 accept/reject
-decisions are required. Only a candidate with a passing spot check can be the
-single approved selection for its role. Trial detail and configuration metadata
-remain machine-only and never enter the human packet. If a trial is poor,
-discard the run, recalibrate, and create new digests. Do not patch labels by
-hand to make quotas pass.
+decisions are required. The annotator-suite digest binds both those resolved
+decisions and the complete validated calibration-artifact digest, so changing
+a prompt or posting invalidates the trial. Only a candidate with a passing spot
+check can be the single approved selection for its role. Trial detail and
+configuration metadata remain machine-only and never enter the human packet.
+If a trial is poor, discard the run, recalibrate, and create new digests. Do not
+patch labels by hand to make quotas pass.
 
 Prompt authors, annotators, adjudicators, and the final critic have globally
 separate actor sets. The two annotators are distinct on every pair. Human

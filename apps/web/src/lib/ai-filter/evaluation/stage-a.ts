@@ -1163,12 +1163,17 @@ export function digestStageACalibrationArtifact(input: unknown): string {
 
 export function digestStageAResolvedCalibrationGroundTruth(
   decisions: StageACalibrationResultV2["humanReview"]["decisions"],
+  calibrationArtifactDigest: string,
 ): string {
+  validateDigest(calibrationArtifactDigest, "$calibrationArtifactDigest");
   const resolved = decisions
     .filter(({ judgment }) => judgment !== "unclear")
     .map(({ calibrationExampleId, judgment }) => ({ calibrationExampleId, judgment }))
     .sort((left, right) => rawStringCompare(left.calibrationExampleId, right.calibrationExampleId));
-  return domainDigest("ai-filter-stage-a-resolved-ground-truth-v2", resolved);
+  return domainDigest("ai-filter-stage-a-resolved-ground-truth-v2", {
+    calibrationArtifactDigest,
+    resolvedDecisions: resolved,
+  });
 }
 
 function validateAgentConfig(input: unknown, pathValue: string): StageAAgentConfigV2 {
@@ -1185,7 +1190,10 @@ function validateAgentConfig(input: unknown, pathValue: string): StageAAgentConf
   });
 }
 
-function normalizeStageACalibrationResult(input: unknown): StageACalibrationResultV2 {
+function normalizeStageACalibrationResult(
+  input: unknown,
+  calibrationArtifactDigest: string,
+): StageACalibrationResultV2 {
   const record = snapshotRecord(input, "$calibrationResult", [
     "schemaVersion", "calibrationId", "calibrationInputDigest", "humanReview",
     "candidateConfigs", "trials", "selectedConfigs",
@@ -1208,7 +1216,10 @@ function normalizeStageACalibrationResult(input: unknown): StageACalibrationResu
   if (resolvedDecisions.length < STAGE_A_CALIBRATION_MIN_EXAMPLES) {
     fail("$calibrationResult.humanReview.decisions", "minimum_resolved_calibration_decisions_required");
   }
-  const resolvedGroundTruthDigest = digestStageAResolvedCalibrationGroundTruth(decisions);
+  const resolvedGroundTruthDigest = digestStageAResolvedCalibrationGroundTruth(
+    decisions,
+    calibrationArtifactDigest,
+  );
   const configs = snapshotArray(required(record, "candidateConfigs", "$calibrationResult.candidateConfigs"), "$calibrationResult.candidateConfigs", AGENT_ROLES.length * 2, AGENT_ROLES.length * 4)
     .map((config, index) => validateAgentConfig(config, `$calibrationResult.candidateConfigs[${index}]`))
     .sort((left, right) => rawStringCompare(left.configId, right.configId));
@@ -1321,7 +1332,7 @@ export function validateStageACalibrationResult(
   if (digestStageACalibrationArtifact(calibrationArtifactInput) !== expectedCalibrationInputDigest) {
     fail("$calibration", "calibration_input_pin_mismatch");
   }
-  const result = normalizeStageACalibrationResult(input);
+  const result = normalizeStageACalibrationResult(input, expectedCalibrationInputDigest);
   if (result.calibrationInputDigest !== expectedCalibrationInputDigest) {
     fail("$calibrationResult.calibrationInputDigest", "calibration_input_pin_mismatch");
   }
@@ -1494,6 +1505,7 @@ function assertCorpusShape(
     const feed = pairs.filter(({ bundleId }) => bundleId === bundle.bundleId).sort((left, right) => left.position - right.position);
     if (feed.length !== 8 || feed.some(({ position }, index) => position !== index)) fail(`${pathPrefix}.pairs`, "exact_feed_positions_required");
     assertUnique(feed.map(({ contentIdentity }) => contentIdentity), `${pathPrefix}.pairs`, "unique_candidates_per_bundle_required");
+    assertUnique(feed.map(({ classifierSource }) => classifierSource.candidateId), `${pathPrefix}.pairs`, "unique_candidate_ids_per_bundle_required");
     assertUnique(feed.map(({ sourceSnapshotIdentity }) => sourceSnapshotIdentity), `${pathPrefix}.pairs`, "unique_source_snapshots_per_bundle_required");
   }
   for (const cohort of COHORTS) {

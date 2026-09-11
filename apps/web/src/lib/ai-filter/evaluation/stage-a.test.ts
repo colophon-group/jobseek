@@ -120,7 +120,7 @@ function fixture() {
     { configId: "eval-config-critic-a", role: "final_critic", model: "gpt-5.6-sol", modelVersion: "2026-09", reasoningEffort: "xhigh", taskPromptDigest: D("7") },
     { configId: "eval-config-critic-b", role: "final_critic", model: "gpt-5.6-terra", modelVersion: "2026-09", reasoningEffort: "max", taskPromptDigest: D("8") },
   ];
-  const resolvedGroundTruthDigest = digestStageAResolvedCalibrationGroundTruth(calibrationDecisions);
+  const resolvedGroundTruthDigest = digestStageAResolvedCalibrationGroundTruth(calibrationDecisions, calibrationInputDigest);
   const suiteByRole = {
     prompt_author: { suiteKind: "same_eight_disposable_feeds" as const, suiteInputDigest: D("9"), sampleCount: 8 },
     annotator: { suiteKind: "resolved_human_ground_truth" as const, suiteInputDigest: resolvedGroundTruthDigest, sampleCount: 24 },
@@ -420,6 +420,24 @@ describe("Stage A v2 gates", () => {
     repinnedManifest.extractionManifest.compiler.sourceDigest = D("a");
     repinnedManifest.extractionManifestDigest = digestStageAExtractionManifest(repinnedManifest.extractionManifest);
     expect(() => digestStageAPreAnnotation(repinnedManifest)).toThrow(/source_snapshot_identity_mismatch/u);
+
+    const duplicateCandidateId = clone(data.preAnnotation);
+    const original = duplicateCandidateId.pairs[0];
+    const duplicate = duplicateCandidateId.pairs[1];
+    duplicate.classifierSource.candidateId = original.classifierSource.candidateId;
+    duplicate.classifierSource.title = "Different content for the duplicated UUID";
+    duplicate.postingFirstSeenAt = original.postingFirstSeenAt;
+    duplicate.contentIdentity = normalizeClassifierInputV1(duplicate.classifierSource).contentIdentity;
+    const bundle = duplicateCandidateId.bundles.find(({ bundleId }) => bundleId === duplicate.bundleId)!;
+    duplicate.sourceSnapshotIdentity = digestStageASourceSnapshotIdentity({
+      extractionManifestDigest: duplicateCandidateId.extractionManifestDigest,
+      compiledQueryFingerprint: duplicateCandidateId.extractionManifest.compiledQueries.find(({ filterId }) => filterId === bundle.filterId)!.fingerprint.value,
+      candidateId: duplicate.classifierSource.candidateId,
+      contentIdentity: duplicate.contentIdentity,
+      postingFirstSeenAt: duplicate.postingFirstSeenAt,
+      sourceRank: duplicate.sourceRank,
+    });
+    expect(() => digestStageAPreAnnotation(duplicateCandidateId)).toThrow(/unique_candidate_ids_per_bundle_required/u);
   });
 
   it("requires an approved exact 12-card pre-annotation prompt gate", () => {
@@ -440,7 +458,7 @@ describe("Stage A v2 gates", () => {
     expect(() => freezeStageASilver(data.wip, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, D("0"), data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest)).toThrow(/calibration_result_pin_mismatch/u);
     const unreviewedExample = clone(data.calibrationResult);
     unreviewedExample.humanReview.decisions[0].calibrationExampleId = "eval-calibration-example-missing";
-    const changedGroundTruthDigest = digestStageAResolvedCalibrationGroundTruth(unreviewedExample.humanReview.decisions);
+    const changedGroundTruthDigest = digestStageAResolvedCalibrationGroundTruth(unreviewedExample.humanReview.decisions, data.calibrationInputDigest);
     for (const trial of unreviewedExample.trials.filter(({ role }) => role === "annotator")) trial.suiteInputDigest = changedGroundTruthDigest;
     expect(() => digestStageACalibrationResult(unreviewedExample, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/complete_calibration_decisions_required/u);
   });
@@ -449,6 +467,16 @@ describe("Stage A v2 gates", () => {
     const data = fixture();
     expect(data.calibrationResult.humanReview.decisions.at(-1)?.judgment).toBe("unclear");
     expect(digestStageACalibrationResult(data.calibrationResult, data.calibrationArtifact, data.calibrationInputDigest)).toBe(data.calibrationResultDigest);
+
+    const changedCalibrationArtifact = clone(data.calibrationArtifact);
+    changedCalibrationArtifact.examples[0].softQuery = "changed calibration prompt";
+    changedCalibrationArtifact.examples[0].classifierSource.title = "Changed calibration posting";
+    changedCalibrationArtifact.examples[0].contentIdentity = normalizeClassifierInputV1(changedCalibrationArtifact.examples[0].classifierSource).contentIdentity;
+    const changedCalibrationInputDigest = digestStageACalibrationArtifact(changedCalibrationArtifact);
+    const staleAnnotatorSuite = clone(data.calibrationResult);
+    staleAnnotatorSuite.calibrationInputDigest = changedCalibrationInputDigest;
+    expect(digestStageAResolvedCalibrationGroundTruth(staleAnnotatorSuite.humanReview.decisions, changedCalibrationInputDigest)).not.toBe(staleAnnotatorSuite.trials.find(({ role }) => role === "annotator")!.suiteInputDigest);
+    expect(() => digestStageACalibrationResult(staleAnnotatorSuite, changedCalibrationArtifact, changedCalibrationInputDigest)).toThrow(/resolved_ground_truth_digest_required/u);
 
     const tooFewResolved = clone(data.calibrationResult);
     tooFewResolved.humanReview.decisions[0].judgment = "unclear";
