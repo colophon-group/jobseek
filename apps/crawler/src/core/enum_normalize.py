@@ -10,10 +10,14 @@ Canonical employment-type values (matches the web filter UI):
 - ``full_time``
 - ``part_time``
 - ``contract``
-- ``internship``
 - ``temporary``
 - ``volunteer``
 - ``full_or_part``
+
+Internship-like upstream values are level signals, not employment types.
+``employment_type_implies_intern_level`` recognizes them so the processing
+pipeline can assign the ``intern`` seniority while persisting a NULL
+employment type.
 
 Canonical job-location-type values: ``onsite`` / ``remote`` / ``hybrid``.
 
@@ -34,8 +38,62 @@ import structlog
 log = structlog.get_logger()
 
 # ── Employment Type ─────────────────────────────────────────────────
-# Canonical: full_time, part_time, contract, internship, temporary,
-#            volunteer, full_or_part.
+# Canonical: full_time, part_time, contract, temporary, volunteer,
+#            full_or_part.
+
+_INTERNSHIP_LEVEL_SIGNALS = frozenset(
+    {
+        "internship",
+        "intern",
+        "interns",
+        "trainee",
+        "traineeship",
+        "apprentice",
+        "apprenticeship",
+        "co-op",
+        "coop",
+        "working student",
+        "student intern",
+        # Beehire public campaign codes
+        "contracttype_internship",
+        "contracttype_apprenticeship",
+        "contracttype_student",
+        # German
+        "werkstudent",
+        "praktikum",
+        "praktikant",
+        "lernende",
+        "ausbildung",
+        "azubi",
+        "auszubildende",
+        # Dutch
+        "stagiair",
+        # French
+        "stage",
+        "alternance",
+        "apprentissage",
+        "stagiaire",
+        # Italian
+        "tirocinio",
+        "apprendistato",
+        # Spanish
+        "becario",
+        "prácticas",
+        "practicas",
+        "contrato de prácticas",
+        "aprendizaje",
+        # Czech / Slovak
+        "stáž",
+        "stáž/prax",
+        # Chinese
+        "实习",
+        "實習",
+        "實習生",
+        "实习生",
+        # Polish
+        "staż",
+    }
+)
 
 _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     # ── Canonical self-mappings (idempotency) ───────────────────────
@@ -94,26 +152,12 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "temporary employee": "temporary",  # onlyfy
     "temporary positions": "temporary",
     "temp": "temporary",
-    "internship": "internship",
-    "intern": "internship",
-    "interns": "internship",
-    "trainee": "internship",
-    "traineeship": "internship",
-    "apprentice": "internship",
-    "apprenticeship": "internship",
-    "co-op": "internship",
-    "coop": "internship",
-    "working student": "internship",
-    "student intern": "internship",  # onlyfy
     # Beehire public campaign codes
     "contracttype_permanent": "full_time",
     "contracttype_fixedterm": "contract",
     "contracttype_freelance": "contract",
     "contracttype_interim": "contract",
     "contracttype_replacement": "temporary",
-    "contracttype_internship": "internship",
-    "contracttype_apprenticeship": "internship",
-    "contracttype_student": "internship",
     "contractduration_fulltime": "full_time",
     "contractduration_parttime": "part_time",
     "contractduration_10h": "part_time",
@@ -137,13 +181,6 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "vollzeit": "full_time",
     "regulär": "full_time",
     "teilzeit": "part_time",
-    "werkstudent": "internship",
-    "praktikum": "internship",
-    "praktikant": "internship",
-    "lernende": "internship",
-    "ausbildung": "internship",
-    "azubi": "internship",
-    "auszubildende": "internship",
     "befristet": "contract",
     "zeitarbeit": "contract",
     "freiberuflich": "contract",
@@ -157,7 +194,6 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     # ── Dutch ───────────────────────────────────────────────────────
     "voltijds": "full_time",
     "deeltijds": "part_time",
-    "stagiair": "internship",
     # ── French ───────────────────────────────────────────────────────
     "cdi": "full_time",
     "emploi fixe": "full_time",
@@ -170,10 +206,6 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "intérim": "contract",
     "intérimaire": "contract",
     "indépendant": "contract",
-    "stage": "internship",
-    "alternance": "internship",
-    "apprentissage": "internship",
-    "stagiaire": "internship",
     "temps plein ou partiel": "full_or_part",
     "temps plein / temps partiel": "full_or_part",
     # ── Italian ──────────────────────────────────────────────────────
@@ -187,8 +219,6 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "contratto a termine": "contract",
     "lavoro interinale": "contract",
     "collaborazione": "contract",
-    "tirocinio": "internship",
-    "apprendistato": "internship",
     "tempo pieno o parziale": "full_or_part",
     # ── Spanish ──────────────────────────────────────────────────────
     "indefinido": "full_time",
@@ -201,11 +231,6 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "contrato temporal": "contract",
     "contrato por obra": "contract",
     "autónomo": "contract",
-    "becario": "internship",
-    "prácticas": "internship",
-    "practicas": "internship",
-    "contrato de prácticas": "internship",
-    "aprendizaje": "internship",
     # ── Czech / Slovak (almacareer ATS) ─────────────────────────────
     "práce na plný úvazek": "full_time",
     "práca na plný úväzok": "full_time",
@@ -219,17 +244,11 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "externí spolupráce": "contract",
     "živnosť": "contract",
     "dohoda": "contract",
-    "stáž": "internship",
-    "stáž/prax": "internship",
     # ── Chinese (Mokahr, 51job-style ATSes) ─────────────────────────
     "全职": "full_time",
     "全職": "full_time",
     "兼职": "part_time",
     "兼職": "part_time",
-    "实习": "internship",
-    "實習": "internship",
-    "實習生": "internship",
-    "实习生": "internship",
     "合同工": "contract",
     "合約": "contract",
     "派遣": "contract",
@@ -247,7 +266,6 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "czesc etatu": "part_time",
     "umowa zlecenie": "contract",
     "umowa o dzieło": "contract",
-    "staż": "internship",
 }
 
 
@@ -346,10 +364,19 @@ def normalize_employment_type(raw: str | None) -> str | None:
     key = raw.strip().lower()
     if not key:
         return None
+    if key in _INTERNSHIP_LEVEL_SIGNALS:
+        return None
     mapped = _EMPLOYMENT_TYPE_MAP.get(key)
     if mapped is None:
         log.warning("enum_normalize.employment_type.unknown", raw=raw)
     return mapped
+
+
+def employment_type_implies_intern_level(raw: str | None) -> bool:
+    """Return whether an upstream employment-type token means intern level."""
+    if raw is None:
+        return False
+    return raw.strip().lower() in _INTERNSHIP_LEVEL_SIGNALS
 
 
 def normalize_job_location_type(raw: str | None, default: str | None = None) -> str | None:

@@ -16,7 +16,11 @@ import {
   suggestTechnologies,
 } from "@/lib/services/taxonomy";
 import type { TaxonomySuggestion } from "@/lib/services/taxonomy";
-import { parseEmploymentTypeParam, parseWorkModeParam } from "@/lib/search/query-params";
+import {
+  migrateLegacyInternshipFilterParams,
+  parseEmploymentTypeParam,
+  parseWorkModeParam,
+} from "@/lib/search/query-params";
 import { tokenizeSemanticSearchQuery } from "@/lib/search/semantic-query";
 import type { EmploymentType, SelectedLocation, WorkMode } from "@/lib/search/types";
 
@@ -171,6 +175,10 @@ export async function parseSearchFilters(params: {
   userLat?: number;
   userLng?: number;
 }): Promise<ParsedSearchFilters> {
+  const migratedLegacyFilters = migrateLegacyInternshipFilterParams(
+    params.etype,
+    params.sen,
+  );
   const explicitLocSlugs = params.loc
     ? uniqCaseInsensitive(
         params.loc
@@ -189,9 +197,9 @@ export async function parseSearchFilters(params: {
       )
     : [];
 
-  const explicitSenSlugs = params.sen
+  const explicitSenSlugs = migratedLegacyFilters.seniority
     ? uniqCaseInsensitive(
-        params.sen
+        migratedLegacyFilters.seniority
           .split(",")
           .map((slug) => slug.trim())
           .filter(Boolean),
@@ -267,7 +275,9 @@ export async function parseSearchFilters(params: {
   // during tokenization extend this set without duplicates.
   const workMode: WorkMode[] = parseWorkModeParam(params.wm);
   const workModeSet = new Set<WorkMode>(workMode);
-  const employmentTypes: EmploymentType[] = parseEmploymentTypeParam(params.etype);
+  const employmentTypes: EmploymentType[] = parseEmploymentTypeParam(
+    migratedLegacyFilters.employmentType,
+  );
 
   const locationIds = new Set(locations.map((location) => location.id));
   const occupationIds = new Set(occupations.map((o) => o.id));

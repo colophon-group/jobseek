@@ -16,7 +16,11 @@ from urllib.parse import parse_qsl, urlparse
 import httpx
 import structlog
 
-from src.core.enum_normalize import normalize_employment_type, normalize_job_location_type
+from src.core.enum_normalize import (
+    employment_type_implies_intern_level,
+    normalize_employment_type,
+    normalize_job_location_type,
+)
 from src.core.monitors import BoardGoneError, DiscoveredJob, register
 from src.shared.http_retry import fetch_json_page_with_retry
 from src.shared.truncation import truncated_rich_result
@@ -298,12 +302,19 @@ def _parse_job(row: dict, *, board_id: str, language: str | None) -> DiscoveredJ
     if isinstance(contract, dict) and (contract_name := _clean_text(contract.get("name"))):
         metadata["contract_type"] = contract_name
 
+    raw_employment_type = _clean_text(row.get("employmentType"))
+    employment_type = (
+        raw_employment_type
+        if employment_type_implies_intern_level(raw_employment_type)
+        else normalize_employment_type(raw_employment_type)
+    )
+
     return DiscoveredJob(
         url=_job_url(row.get("url"), job_id=job_id, board_id=board_id),
         title=title,
         description=description,
         locations=_locations(row),
-        employment_type=normalize_employment_type(_clean_text(row.get("employmentType"))),
+        employment_type=employment_type,
         job_location_type=normalize_job_location_type(
             _clean_text(row.get("jobLocationType")), default=None
         ),

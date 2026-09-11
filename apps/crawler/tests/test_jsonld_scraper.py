@@ -724,14 +724,18 @@ class TestParsePosting:
         assert result.title == "Designer"
 
     def test_prefers_specific_employment_nature_from_schema_list(self):
-        from src.core.enum_normalize import normalize_employment_type
+        from src.core.enum_normalize import (
+            employment_type_implies_intern_level,
+            normalize_employment_type,
+        )
 
         result = _parse_posting(
             {"title": "Polymechanic apprentice", "employmentType": ["INTERN", "FULL_TIME"]}
         )
 
         assert result.employment_type == "INTERN"
-        assert normalize_employment_type(result.employment_type) == "internship"
+        assert normalize_employment_type(result.employment_type) is None
+        assert employment_type_implies_intern_level(result.employment_type)
 
     def test_preserves_full_or_part_schema_list(self):
         from src.core.enum_normalize import normalize_employment_type

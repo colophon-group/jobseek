@@ -9,7 +9,10 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time
 from email.utils import parsedate_to_datetime
 
-from src.core.enum_normalize import normalize_employment_type
+from src.core.enum_normalize import (
+    employment_type_implies_intern_level,
+    normalize_employment_type,
+)
 from src.core.experience_extract import extract_experience
 from src.core.job_content import enrich_description
 from src.core.location_resolve import LocationResolver
@@ -68,6 +71,8 @@ def _resolve_occupation_seniority(
     titles: list[str] | str | None,
     occ_ids: dict[str, int],
     sen_ids: dict[str, int],
+    *,
+    employment_type: str | None = None,
 ) -> tuple[int | None, int | None]:
     """Resolve occupation_id and seniority_id from job title(s).
 
@@ -75,10 +80,10 @@ def _resolve_occupation_seniority(
     This handles multilingual titles correctly (e.g. German title may
     match seniority while English title matches occupation).
     """
-    if not titles:
-        return None, None
     if isinstance(titles, str):
         titles = [titles]
+    elif not titles:
+        titles = []
 
     occ_id: int | None = None
     sen_id: int | None = None
@@ -98,6 +103,11 @@ def _resolve_occupation_seniority(
                 sen_id = sen_ids.get(slug)
         if occ_id is not None and sen_id is not None:
             break
+    # A structured internship signal is stronger than title-derived seniority.
+    # Keeping a title match such as "senior" here would discard the internship
+    # classification now that it no longer has an employment-type value.
+    if employment_type_implies_intern_level(employment_type):
+        sen_id = sen_ids.get("intern")
     return occ_id, sen_id
 
 
@@ -384,13 +394,19 @@ def _process_jobs_cpu(
         t_ids = _resolve_technology_ids(desc_text, tech_id_map)
         title_text = _coerce_text(j.title)
         all_titles = _build_titles(title_text, j.localizations)
-        occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
+        raw_emp_type = _coerce_text(j.employment_type)
+        occ_id, sen_id = _resolve_occupation_seniority(
+            all_titles,
+            occ_ids,
+            sen_ids,
+            employment_type=raw_emp_type,
+        )
         detected_langs = detect_all_languages(j.description) if j.description else []
 
         insert_record = (
             company_id,
             board_id,
-            normalize_employment_type(_coerce_text(j.employment_type)),
+            normalize_employment_type(raw_emp_type),
             j.url,
             all_titles,
             _build_locales(

@@ -94,7 +94,7 @@ describe("GET /api/v1/watchlist/create — filter params", () => {
 
     expect(res.status).toBe(400);
     expect(body.error).toBe(
-      "Invalid 'etype' value(s): unknown. Supported: full_time, part_time, contract, internship, temporary, volunteer",
+      "Invalid 'etype' value(s): unknown. Supported: full_time, part_time, contract, temporary, volunteer",
     );
     expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
   });
@@ -117,11 +117,11 @@ describe("GET /api/v1/watchlist/create — filter params", () => {
     expect(mocks.searchJobs).not.toHaveBeenCalled();
   });
 
-  it("forwards `etype=` to the parser, preview search, and create URL", async () => {
+  it("migrates legacy internship filters for the preview and create URL", async () => {
     mocks.parseSearchFilters.mockResolvedValue({
       ...emptyParsed,
       keywords: ["designer"],
-      employmentTypes: ["full_time", "internship"],
+      employmentTypes: ["full_time"],
     });
     mocks.searchJobs.mockResolvedValue({
       companies: [{ activeMatches: 7 }],
@@ -135,16 +135,18 @@ describe("GET /api/v1/watchlist/create — filter params", () => {
     expect(mocks.parseSearchFilters).toHaveBeenCalledWith(
       expect.objectContaining({
         q: "designer",
-        etype: "full_time,internship",
+        etype: "full_time",
       }),
     );
     expect(mocks.searchJobs).toHaveBeenCalledTimes(1);
     const call = mocks.searchJobs.mock.calls[0][0];
-    expect(call.employmentTypes).toEqual(["full_time", "internship"]);
+    expect(call.employmentTypes).toEqual(["full_time"]);
+    expect(call.seniorityIds).toBeUndefined();
 
     const url = new URL(body.url as string);
     expect(url.pathname).toBe("/en/watchlists");
-    expect(url.searchParams.get("etype")).toBe("full_time,internship");
+    expect(url.searchParams.get("etype")).toBe("full_time");
+    expect(url.searchParams.get("sen")).toBeNull();
     expect(url.searchParams.get("q")).toBe("designer");
     expect(body.preview).toMatchObject({
       matchingCompanies: 2,

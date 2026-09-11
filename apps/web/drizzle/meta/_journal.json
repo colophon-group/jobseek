@@ -547,6 +547,13 @@
       "when": 1789050000000,
       "tag": "0089_watchlist_unlisted_sharing",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1789127975000,
+      "tag": "0090_migrate_internship_watchlist_filters",
+      "breakpoints": true
     }
   ]
 }

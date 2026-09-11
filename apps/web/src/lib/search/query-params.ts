@@ -150,6 +150,53 @@ export function parseEmploymentTypeParam(
 }
 
 /**
+ * Translate the retired `etype=internship` filter into `sen=intern`.
+ *
+ * Existing URL seniority filters remain authoritative: when one is already
+ * present, the legacy employment-type token is simply removed. This avoids
+ * broadening an explicit saved query with cross-facet fallback behavior.
+ */
+export function migrateLegacyInternshipFilterParams(
+  employmentType: string | null | undefined,
+  seniority: string | null | undefined,
+): { employmentType: string | undefined; seniority: string | undefined } {
+  const employmentTypeTokens = (employmentType ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const hadInternship = employmentTypeTokens.some(
+    (value) => value.toLowerCase() === "internship",
+  );
+  const remainingEmploymentTypes = employmentTypeTokens.filter(
+    (value) => value.toLowerCase() !== "internship",
+  );
+  const seniorityTokens = (seniority ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  // A mixed legacy selection meant `(other employment type) OR internship`.
+  // The current facet model cannot express that union across two dimensions,
+  // so retain the still-valid employment types without turning them into a
+  // much narrower `(other type) AND Intern` query.
+  if (
+    hadInternship &&
+    remainingEmploymentTypes.length === 0 &&
+    seniorityTokens.length === 0
+  ) {
+    seniorityTokens.push("intern");
+  }
+
+  return {
+    employmentType:
+      remainingEmploymentTypes.length > 0
+        ? remainingEmploymentTypes.join(",")
+        : undefined,
+    seniority: seniorityTokens.length > 0 ? seniorityTokens.join(",") : undefined,
+  };
+}
+
+/**
  * Build a query string (without leading `?`) from keywords + locations + occupations + seniorities.
  * Returns an empty string when there are no filters.
  */

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  migrateLegacyInternshipFilterParams,
   parseEmploymentTypeParam,
   parseWorkModeParam,
   buildFilterQuery,
@@ -66,10 +67,14 @@ describe("parseEmploymentTypeParam", () => {
   });
 
   it("parses comma-separated values, preserving order", () => {
-    expect(parseEmploymentTypeParam("contract,internship")).toEqual([
+    expect(parseEmploymentTypeParam("contract,temporary")).toEqual([
       "contract",
-      "internship",
+      "temporary",
     ]);
+  });
+
+  it("does not expose internship as an employment type", () => {
+    expect(parseEmploymentTypeParam("internship")).toEqual([]);
   });
 
   it("lower-cases and trims input before validating", () => {
@@ -90,6 +95,27 @@ describe("parseEmploymentTypeParam", () => {
       "temporary",
       "contract",
     ]);
+  });
+});
+
+describe("migrateLegacyInternshipFilterParams", () => {
+  it("moves a legacy internship-only filter to Intern seniority", () => {
+    expect(migrateLegacyInternshipFilterParams("internship", undefined)).toEqual({
+      employmentType: undefined,
+      seniority: "intern",
+    });
+  });
+
+  it("preserves remaining employment types without introducing a cross-facet AND", () => {
+    expect(
+      migrateLegacyInternshipFilterParams("full_time,internship", undefined),
+    ).toEqual({ employmentType: "full_time", seniority: undefined });
+  });
+
+  it("keeps an explicit seniority authoritative", () => {
+    expect(
+      migrateLegacyInternshipFilterParams("internship", "senior"),
+    ).toEqual({ employmentType: undefined, seniority: "senior" });
   });
 });
 

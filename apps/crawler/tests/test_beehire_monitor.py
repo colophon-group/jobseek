@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from src.core.enum_normalize import (
+    employment_type_implies_intern_level,
     normalize_employment_type,
     normalize_job_location_type,
 )
@@ -138,7 +139,8 @@ async def test_discover_maps_public_campaigns():
 
     assert len(jobs) == 2
     assert jobs[1].locations == ["Geneva, Switzerland"]
-    assert normalize_employment_type(jobs[1].employment_type) == "internship"
+    assert normalize_employment_type(jobs[1].employment_type) is None
+    assert employment_type_implies_intern_level(jobs[1].employment_type)
 
 
 async def test_discover_rejects_invalid_payload():

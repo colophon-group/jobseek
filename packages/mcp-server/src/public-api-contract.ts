@@ -41,7 +41,6 @@ export const SEARCH_EMPLOYMENT_TYPE_VALUES = [
   "full_time",
   "part_time",
   "contract",
-  "internship",
   "temporary",
   "volunteer",
 ] as const;

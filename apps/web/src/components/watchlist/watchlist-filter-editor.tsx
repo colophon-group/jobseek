@@ -20,7 +20,6 @@ const EMPLOYMENT_TYPE_VALUES = [
   "full_time",
   "part_time",
   "contract",
-  "internship",
   "temporary",
   "volunteer",
 ] as const;
@@ -49,8 +48,6 @@ function employmentTypeLabel(t: TFn, value: string): string {
       return t({ id: "search.employmentType.partTime", comment: "Employment type label", message: "Part-time" });
     case "contract":
       return t({ id: "search.employmentType.contract", comment: "Employment type label", message: "Contract" });
-    case "internship":
-      return t({ id: "search.employmentType.internship", comment: "Employment type label", message: "Internship" });
     case "temporary":
       return t({ id: "search.employmentType.temporary", comment: "Employment type label", message: "Temporary" });
     case "volunteer":

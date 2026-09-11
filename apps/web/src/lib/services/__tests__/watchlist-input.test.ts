@@ -93,6 +93,7 @@ describe("watchlist server input normalization", () => {
     { title: "Valid", companyIds: [], filters: { locationSlugs: ["unsafe slug"] } },
     { title: "Valid", companyIds: [], filters: { workMode: ["sometimes"] } },
     { title: "Valid", companyIds: [], filters: { employmentType: ["gig"] } },
+    { title: "Valid", companyIds: [], filters: { employmentType: ["internship"] } },
     { title: "Valid", companyIds: [], filters: { salaryMin: Number.POSITIVE_INFINITY } },
     { title: "Valid", companyIds: [], filters: { salaryMin: 2, salaryMax: 1 } },
     { title: "Valid", companyIds: [], filters: { experienceMin: 16 } },
@@ -175,6 +176,21 @@ describe("watchlist defensive JSON reads", () => {
     expect(normalizeWatchlistFiltersForRead(["not", "an", "object"])).toEqual({});
     expect(normalizeWatchlistCompanyIdsForRead("not-an-array")).toEqual([]);
     expect(normalizeWatchlistCompaniesForRead({ id: "not-an-array" })).toEqual([]);
+  });
+
+  it("migrates an internship-only legacy filter to Intern seniority on read", () => {
+    expect(normalizeWatchlistFiltersForRead({
+      employmentType: ["internship"],
+    })).toEqual({ senioritySlugs: ["intern"] });
+    expect(normalizeWatchlistFiltersForRead({
+      employmentType: ["full_time", "internship"],
+    })).toEqual({
+      employmentType: ["full_time"],
+    });
+    expect(normalizeWatchlistFiltersForSharedRead({
+      employmentType: ["internship"],
+      senioritySlugs: ["senior"],
+    })).toEqual({ senioritySlugs: ["senior"] });
   });
 
   it("fails a shared read closed when persisted filters exceed the runtime contract", () => {

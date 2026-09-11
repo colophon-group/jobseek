@@ -14,7 +14,10 @@ import json
 import httpx
 import pytest
 
-from src.core.enum_normalize import normalize_employment_type
+from src.core.enum_normalize import (
+    employment_type_implies_intern_level,
+    normalize_employment_type,
+)
 from src.core.monitors.mokahr import (
     _SALARY_UNIT,
     _build_city_name_map,
@@ -55,14 +58,16 @@ class TestCommitmentNormalization:
         assert normalize_employment_type("兼职") == "part_time"
 
     def test_chinese_intern(self):
-        assert normalize_employment_type("实习") == "internship"
+        assert normalize_employment_type("实习") is None
+        assert employment_type_implies_intern_level("实习")
 
     def test_legacy_english_keys_preserved(self):
         # Forward-compat for camelCase API codes — ``_EMPLOYMENT_TYPE_MAP``
         # lookup is case-insensitive (``.strip().lower()``).
         assert normalize_employment_type("fullTime") == "full_time"
         assert normalize_employment_type("partTime") == "part_time"
-        assert normalize_employment_type("intern") == "internship"
+        assert normalize_employment_type("intern") is None
+        assert employment_type_implies_intern_level("intern")
         assert normalize_employment_type("contract") == "contract"
 
 
@@ -490,7 +495,8 @@ class TestParseDetail:
 
     def test_chinese_intern_commitment(self):
         c = _parse_detail(self._detail(commitment="实习"), self._city_map())
-        assert c.employment_type == "internship"
+        assert c.employment_type == "实习"
+        assert employment_type_implies_intern_level(c.employment_type)
 
     def test_chinese_part_time_commitment(self):
         c = _parse_detail(self._detail(commitment="兼职"), self._city_map())

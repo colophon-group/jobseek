@@ -229,6 +229,15 @@ describe("resolveCompanyFilterStateDirect", () => {
     expect(result.parsed.unresolvedExplicitSlugs).toEqual({ loc: ["zurich"] });
   });
 
+  it("maps a legacy internship URL to the Intern seniority dimension", () => {
+    const result = parseCompanyFilterStateOffline(
+      new URLSearchParams("etype=internship"),
+    );
+
+    expect(result.parsed.employmentTypes).toEqual([]);
+    expect(result.parsed.unresolvedExplicitSlugs).toEqual({ sen: ["intern"] });
+  });
+
   it("refuses to reinterpret semantic free text as title keywords", async () => {
     vi.stubGlobal("fetch", vi.fn());
 

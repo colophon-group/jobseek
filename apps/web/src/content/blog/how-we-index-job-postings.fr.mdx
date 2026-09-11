@@ -36,7 +36,7 @@ Voie rapide : la plupart des ATS modernes embarquent un `application/ld+json` de
 
 Quand les données structurées manquent ou sont fausses, on retombe sur l'extraction DOM par étapes — petites recettes par board qui disent « prends le titre via ce sélecteur, le lieu via celui-là, la description dans le corps de l'article ». Chacune a été écrite pour un board où tout le reste avait échoué d'abord.
 
-Le résultat est un enregistrement `JobContent` aux champs normalisés : un type d'emploi parmi cinq enums (`full_time`, `part_time`, `contract`, `internship`, `full_or_part`), un job-location-type parmi trois (`onsite`, `remote`, `hybrid`), des localisations résolues vers des IDs [GeoNames](https://www.geonames.org/), un salaire parsé en currency-min-max structuré avec fréquence. Ce qui arrive dans notre base est plus uniforme que la page carrière dont c'est issu. Sans cette uniformité, comparer des rôles entre entreprises est sans espoir.
+Le résultat est un enregistrement `JobContent` aux champs normalisés : un type d'emploi parmi six enums (`full_time`, `part_time`, `contract`, `temporary`, `volunteer`, `full_or_part`), un job-location-type parmi trois (`onsite`, `remote`, `hybrid`), des localisations résolues vers des IDs [GeoNames](https://www.geonames.org/) et un salaire parsé en currency-min-max structuré avec fréquence. Les stages sont représentés par le niveau Intern, et non par le type d'emploi. Ce qui arrive dans notre base est plus uniforme que la page carrière dont c'est issu. Sans cette uniformité, comparer des rôles entre entreprises est sans espoir.
 
 ## Étape 4 : quand les datacenters ne sont pas les bienvenus
 

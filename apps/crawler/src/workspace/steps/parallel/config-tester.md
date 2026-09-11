@@ -149,7 +149,7 @@ data. For structured sources (API, JSON-LD, embedded JSON), check every
 key in the response and map it to a job posting field if applicable.
 
 Fields to look for beyond title/location/description:
-- `employment_type` (full_time, part_time, contract, internship, temporary)
+- `employment_type` (full_time, part_time, contract, temporary, volunteer, full_or_part); internship-like source values must resolve to the Intern seniority instead
 - `job_location_type` (onsite, hybrid, remote)
 - `date_posted` (posting date)
 - `salary` (min, max, currency, period)

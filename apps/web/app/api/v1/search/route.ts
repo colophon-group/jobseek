@@ -20,6 +20,7 @@ import {
   parseApiLocale,
   siteUrl,
   exploreUrl,
+  migrateLegacyInternshipSearchParams,
   type RateLimitInfo,
   validatePublicEnumListParam,
   validateResolvedPublicFilters,
@@ -92,7 +93,7 @@ async function handleGet(request: NextRequest) {
   const rl = await checkRateLimit(request);
   if (rl instanceof NextResponse) return rl;
 
-  const sp = request.nextUrl.searchParams;
+  const sp = migrateLegacyInternshipSearchParams(request.nextUrl.searchParams);
   const rawParams = Object.fromEntries(
     PUBLIC_SEARCH_QUERY_PARAMETERS.map((name) => [
       name,

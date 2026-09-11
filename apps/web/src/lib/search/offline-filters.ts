@@ -1,5 +1,9 @@
 import type { ParsedSearchFilters } from "@/lib/services/search-input";
-import { parseEmploymentTypeParam, parseWorkModeParam } from "@/lib/search/query-params";
+import {
+  migrateLegacyInternshipFilterParams,
+  parseEmploymentTypeParam,
+  parseWorkModeParam,
+} from "@/lib/search/query-params";
 
 export const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
   keywords: [],
@@ -44,9 +48,22 @@ export function parseOfflineSearchFilters(params: {
   etype?: string;
 }): ParsedSearchFilters {
   const query = params.q?.trim();
+  const migratedLegacyFilters = migrateLegacyInternshipFilterParams(
+    params.etype,
+    params.sen,
+  );
+  const explicitTaxonomyParams = {
+    loc: params.loc,
+    occ: params.occ,
+    sen: migratedLegacyFilters.seniority,
+    tech: params.tech,
+  };
   const unresolvedExplicitSlugs = Object.fromEntries(
     (["loc", "occ", "sen", "tech"] as const)
-      .map((kind) => [kind, splitExplicitSlugs(params[kind])] as const)
+      .map(
+        (kind) =>
+          [kind, splitExplicitSlugs(explicitTaxonomyParams[kind])] as const,
+      )
       .filter(([, slugs]) => slugs.length > 0),
   ) as NonNullable<ParsedSearchFilters["unresolvedExplicitSlugs"]>;
 
@@ -54,7 +71,9 @@ export function parseOfflineSearchFilters(params: {
     ...EMPTY_PARSED_FILTERS,
     keywords: query ? [query] : [],
     workMode: parseWorkModeParam(params.wm),
-    employmentTypes: parseEmploymentTypeParam(params.etype),
+    employmentTypes: parseEmploymentTypeParam(
+      migratedLegacyFilters.employmentType,
+    ),
     ...(Object.keys(unresolvedExplicitSlugs).length > 0
       ? { unresolvedExplicitSlugs }
       : {}),

@@ -145,7 +145,7 @@ describe("GET /api/v1/search", () => {
       caseName: "unknown employment type",
       query: "?locale=en&etype=full_time,bogus",
       error:
-        "Invalid 'etype' value(s): bogus. Supported: full_time, part_time, contract, internship, temporary, volunteer",
+        "Invalid 'etype' value(s): bogus. Supported: full_time, part_time, contract, temporary, volunteer",
     },
     {
       caseName: "unknown document language",
@@ -348,11 +348,11 @@ describe("GET /api/v1/search", () => {
     expect(url.searchParams.get("wm")).toBe("remote");
   });
 
-  it("forwards `etype=` to the parser, search filters, and `moreAt`", async () => {
+  it("migrates legacy internship filters before parsing, searching, and linking", async () => {
     mocks.parseSearchFilters.mockResolvedValue({
       ...emptyParsed,
       keywords: ["designer"],
-      employmentTypes: ["full_time", "internship"],
+      employmentTypes: ["full_time"],
     });
 
     const { body } = await callRoute("?locale=en&q=designer&etype=full_time,internship");
@@ -360,15 +360,17 @@ describe("GET /api/v1/search", () => {
     expect(mocks.parseSearchFilters).toHaveBeenCalledWith(
       expect.objectContaining({
         q: "designer",
-        etype: "full_time,internship",
+        etype: "full_time",
       }),
     );
     expect(mocks.searchJobs).toHaveBeenCalledTimes(1);
     const call = mocks.searchJobs.mock.calls[0][0];
-    expect(call.employmentTypes).toEqual(["full_time", "internship"]);
+    expect(call.employmentTypes).toEqual(["full_time"]);
+    expect(call.seniorityIds).toBeUndefined();
 
     const url = new URL(body.moreAt as string);
-    expect(url.searchParams.get("etype")).toBe("full_time,internship");
+    expect(url.searchParams.get("etype")).toBe("full_time");
+    expect(url.searchParams.get("sen")).toBeNull();
     expect(url.searchParams.get("q")).toBe("designer");
   });
 

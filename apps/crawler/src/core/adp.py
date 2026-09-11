@@ -24,7 +24,10 @@ def normalize_adp_employment_type(raw: object) -> str | None:
     if "per diem" in label or "seasonal" in label:
         return normalize_employment_type("part_time")
     if "intern" in label or "apprentice" in label or "trainee" in label:
-        return normalize_employment_type("internship")
+        # Preserve this as an upstream signal until central processing can
+        # assign the Intern seniority. It is deliberately not persisted as an
+        # employment type.
+        return "internship"
     if "temporary" in label or label == "temp":
         return normalize_employment_type("temporary")
     if "contract" in label or "consultant" in label:

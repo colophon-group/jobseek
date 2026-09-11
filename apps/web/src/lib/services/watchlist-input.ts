@@ -80,6 +80,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function hasLegacyInternshipEmploymentType(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.some(
+      (item) =>
+        typeof item === "string" && item.trim().toLowerCase() === "internship",
+    )
+  );
+}
+
+function migrateLegacyInternshipFilters(value: unknown): unknown {
+  if (!isRecord(value) || !hasLegacyInternshipEmploymentType(value.employmentType)) {
+    return value;
+  }
+  const migrated: Record<string, unknown> = { ...value };
+  const employmentTypes = (value.employmentType as unknown[]).filter(
+    (item) =>
+      typeof item !== "string" || item.trim().toLowerCase() !== "internship",
+  );
+  if (employmentTypes.length > 0) migrated.employmentType = employmentTypes;
+  else delete migrated.employmentType;
+  if (
+    employmentTypes.length === 0 &&
+    (!Array.isArray(value.senioritySlugs) || value.senioritySlugs.length === 0)
+  ) {
+    migrated.senioritySlugs = ["intern"];
+  }
+  return migrated;
+}
+
 function boundedText(
   value: unknown,
   maxLength: number,
@@ -403,6 +433,9 @@ export function normalizeHandoffWatchlistInput(value: unknown): Normalized<Hando
 /** Sanitize legacy or malformed JSONB without letting it reach Typesense/UI. */
 export function normalizeWatchlistFiltersForRead(value: unknown): WatchlistFilters {
   if (!isRecord(value)) return {};
+  const hadLegacyInternship = hasLegacyInternshipEmploymentType(
+    value.employmentType,
+  );
   const filters: WatchlistFilters = {};
   const keywords = normalizeStringArrayForRead(value.keywords, {
     maxCount: WATCHLIST_KEYWORD_MAX_COUNT,
@@ -430,11 +463,18 @@ export function normalizeWatchlistFiltersForRead(value: unknown): WatchlistFilte
   });
   if (workMode) filters.workMode = workMode as WorkMode[];
   const employmentType = normalizeStringArrayForRead(value.employmentType, {
-    maxCount: EMPLOYMENT_TYPE_VALUES.length,
+    maxCount: EMPLOYMENT_TYPE_VALUES.length + 1,
     maxLength: 16,
     allowed: EMPLOYMENT_TYPE_SET,
   });
   if (employmentType) filters.employmentType = employmentType;
+  if (
+    hadLegacyInternship &&
+    !filters.employmentType &&
+    !filters.senioritySlugs
+  ) {
+    filters.senioritySlugs = ["intern"];
+  }
 
   if (typeof value.salaryCurrency === "string") {
     const currency = value.salaryCurrency.trim().toUpperCase();
@@ -468,7 +508,9 @@ export function normalizeWatchlistFiltersForRead(value: unknown): WatchlistFilte
 export function normalizeWatchlistFiltersForSharedRead(
   value: unknown,
 ): WatchlistFilters | null {
-  const normalized = normalizeFiltersForWrite(value);
+  const normalized = normalizeFiltersForWrite(
+    migrateLegacyInternshipFilters(value),
+  );
   return normalized.ok ? normalized.value : null;
 }
 

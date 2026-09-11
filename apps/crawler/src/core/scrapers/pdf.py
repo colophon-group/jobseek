@@ -79,7 +79,7 @@ _OCR_LANGUAGES_RE = re.compile(r"[A-Za-z0-9_+-]{1,64}")
 _DEFAULT_FIELDS = frozenset(JobContent.__slots__)
 _DEFAULT_STRING_FIELDS = frozenset({"title", "description", "date_posted", "language"})
 _EMPLOYMENT_TYPES = frozenset(
-    {"full_time", "part_time", "contract", "internship", "temporary", "volunteer", "full_or_part"}
+    {"full_time", "part_time", "contract", "temporary", "volunteer", "full_or_part"}
 )
 _JOB_LOCATION_TYPES = frozenset({"onsite", "remote", "hybrid"})
 _SALARY_UNITS = frozenset({"year", "month", "week", "day", "hour"})

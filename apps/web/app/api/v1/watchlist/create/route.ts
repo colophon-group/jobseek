@@ -10,6 +10,7 @@ import {
   sharedApiResponse,
   PUBLIC_EMPLOYMENT_TYPE_VALUES,
   PUBLIC_WORK_MODE_VALUES,
+  migrateLegacyInternshipSearchParams,
   parseApiLocale,
   siteUrl,
   validatePublicEnumListParam,
@@ -20,7 +21,7 @@ async function handleGet(request: NextRequest) {
   const rl = await checkRateLimit(request);
   if (rl instanceof NextResponse) return rl;
 
-  const sp = request.nextUrl.searchParams;
+  const sp = migrateLegacyInternshipSearchParams(request.nextUrl.searchParams);
   const locale = parseApiLocale(sp, rl);
   if (locale instanceof NextResponse) return locale;
 
