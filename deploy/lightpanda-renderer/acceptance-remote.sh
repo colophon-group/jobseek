@@ -54,7 +54,7 @@ stage_host() {
   [[ "$host_stage" =~ ^/tmp/jobseek-lightpanda-acceptance\.[A-Za-z0-9]+$ ]]
   tar -czf "$root/host.tar.gz" -C "$artifact_root" acceptance-host.py verify.py
   timeout --foreground --kill-after=15s 60s ssh "${ssh_common[@]}" "root@$TARGET_HOST" \
-    "tar -xzf - -C '$host_stage'; chmod 0600 '$host_stage/acceptance-host.py' '$host_stage/verify.py'" \
+    "tar --extract --gzip --file - --directory '$host_stage' --no-same-owner --no-same-permissions && chown root:root '$host_stage/acceptance-host.py' '$host_stage/verify.py' && chmod 0600 '$host_stage/acceptance-host.py' '$host_stage/verify.py'" \
     <"$root/host.tar.gz"
 }
 remove_host_stage() {
