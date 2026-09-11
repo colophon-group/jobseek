@@ -1349,6 +1349,8 @@ def validate_running_inspect(
         "/run/credentials/server.pem": "server.pem",
         "/run/credentials/server-key.pem": "server-key.pem",
     }
+    if {mount.get("Destination") for mount in mounts} != set(targets):
+        fail("renderer credential mount targets are not exact")
     for mount in mounts:
         destination = mount.get("Destination")
         if (

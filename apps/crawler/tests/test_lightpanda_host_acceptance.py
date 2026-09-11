@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import runpy
 import shutil
 import stat
 import subprocess
@@ -26,6 +27,54 @@ COMMIT = "a" * 40
 IMAGE = "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:" + "b" * 64
 BOOT = "11111111-1111-1111-1111-111111111111"
 REBOOT = "22222222-2222-2222-2222-222222222222"
+
+
+def test_restart_identity_normalizes_only_observed_docker_representation_drift() -> None:
+    namespace = runpy.run_path(str(HOST), run_name="acceptance_host_test")
+    stable_host_config = namespace["stable_host_config"]
+    stable_mounts = namespace["stable_mounts"]
+    digest = namespace["digest"]
+    mounts = [
+        {
+            "Type": "bind",
+            "Source": "/release/pki/ca.pem",
+            "Destination": "/run/credentials/ca.pem",
+            "RW": False,
+        },
+        {
+            "Type": "bind",
+            "Source": "/release/pki/server.pem",
+            "Destination": "/run/credentials/server.pem",
+            "RW": False,
+        },
+    ]
+    before = {
+        "Memory": 1_073_741_824,
+        "Dns": ["185.12.64.1", "185.12.64.2"],
+        "DnsOptions": None,
+        "DnsSearch": None,
+        "Mounts": mounts,
+    }
+    after = {
+        **before,
+        "DnsOptions": [],
+        "DnsSearch": [],
+        "Mounts": list(reversed(mounts)),
+    }
+    assert digest(stable_host_config(before)) == digest(stable_host_config(after))
+    assert digest(stable_mounts(mounts)) == digest(stable_mounts(list(reversed(mounts))))
+
+    for name, value in (
+        ("DnsOptions", ["rotate"]),
+        ("DnsSearch", ["example.invalid"]),
+    ):
+        changed = {**after, name: value}
+        assert digest(stable_host_config(before)) != digest(stable_host_config(changed))
+    after["Memory"] = 512 * 1024 * 1024
+    assert digest(stable_host_config(before)) != digest(stable_host_config(after))
+    changed_mounts = [*mounts]
+    changed_mounts[0] = {**changed_mounts[0], "RW": True}
+    assert digest(stable_mounts(mounts)) != digest(stable_mounts(changed_mounts))
 
 
 def protected() -> dict[str, object]:
