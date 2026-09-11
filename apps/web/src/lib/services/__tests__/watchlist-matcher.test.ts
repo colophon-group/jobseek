@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 vi.mock("server-only", () => ({}));
 
@@ -44,10 +45,13 @@ import {
   readWatchlistCandidates,
 } from "../watchlist-matcher";
 
+withTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_READY: "1" });
+
 function posting(id: string, firstSeenAt: number) {
   return {
     document: {
       id,
+      candidate_id_sort: id,
       title: `Role ${id}`,
       source_url: `https://example.test/${id}`,
       first_seen_at: firstSeenAt,
@@ -152,6 +156,79 @@ describe("compileWatchlistMatcherSources", () => {
 });
 
 describe("readWatchlistCandidates", () => {
+  it("fails closed before newest-first reads are marked backfill-ready", async () => {
+    setTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_READY: undefined });
+
+    await expect(readWatchlistCandidates({
+      filters: { companyIds: [makeUuid(1)] },
+      offset: 0,
+      limit: 20,
+      order: "newest",
+      requireStableOrder: true,
+    })).rejects.toThrow("has not passed backfill readiness");
+    expect(mocks.singleSearch).not.toHaveBeenCalled();
+  });
+
+  it("orders equal-time batches by candidate ID across page boundaries", async () => {
+    const companyIds = Array.from(
+      { length: 101 },
+      (_, index) => makeUuid(index + 1),
+    );
+    const lowIds = Array.from(
+      { length: 40 },
+      (_, index) => `10000000-0000-0000-0000-${String(index).padStart(12, "0")}`,
+    );
+    const highIds = Array.from(
+      { length: 40 },
+      (_, index) => `f0000000-0000-0000-0000-${String(index).padStart(12, "0")}`,
+    );
+    mocks.singleSearch.mockImplementation((search: {
+      filter_by?: string;
+      per_page?: number;
+      offset?: number;
+      limit?: number;
+    }) => {
+      if (search.per_page === 0) return { found: 40, hits: [] };
+      const isFirstBatch = (search.filter_by ?? "").includes(makeUuid(1));
+      const hits = (isFirstBatch ? highIds : lowIds).map((id) =>
+        posting(id, 1_700_000_000),
+      );
+      const offset = search.offset ?? 0;
+      const limit = search.limit ?? 0;
+      return { found: hits.length, hits: hits.slice(offset, offset + limit) };
+    });
+
+    const filters = { companyIds };
+    const firstPage = await readWatchlistCandidates({
+      filters,
+      offset: 0,
+      limit: 20,
+      order: "newest",
+    });
+    const secondPage = await readWatchlistCandidates({
+      filters,
+      offset: 20,
+      limit: 20,
+      order: "newest",
+    });
+
+    expect(firstPage.postings.map((value) => value.id)).toEqual(lowIds.slice(0, 20));
+    expect(secondPage.postings.map((value) => value.id)).toEqual(lowIds.slice(20, 40));
+  });
+
+  it("rejects a newest-first hit whose sort ID is absent or mismatched", async () => {
+    const hit = posting(makeUuid(1), 1_700_000_000);
+    delete (hit.document as { candidate_id_sort?: string }).candidate_id_sort;
+    mocks.singleSearch.mockResolvedValue({ found: 1, hits: [hit] });
+
+    await expect(readWatchlistCandidates({
+      filters: { companyIds: [makeUuid(1)] },
+      offset: 0,
+      limit: 1,
+      order: "newest",
+    })).rejects.toThrow("response was malformed");
+  });
+
   it("keeps tied batched prefixes stable across page boundaries", async () => {
     const companyIds = Array.from(
       { length: 101 },
@@ -274,6 +351,44 @@ describe("readWatchlistCandidates", () => {
 });
 
 describe("matchCompiledWatchlistsInWindow", () => {
+  it("keeps the existing notification query usable before activation", async () => {
+    setTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_READY: undefined });
+    mocks.multiSearch.mockResolvedValue({
+      results: [{ found: 1, hits: [posting("legacy-hit", 1_700_000_000)] }],
+    });
+
+    await expect(matchCompiledWatchlistsInWindow({
+      watchlists: [{
+        watchlistId: "watchlist-1",
+        watchlistLabel: "Existing notification",
+        candidateFilters: { companyIds: ["company-1"] },
+      }],
+      windowStart: new Date("2026-08-24T00:00:00.000Z"),
+      windowEnd: new Date("2026-08-31T00:00:00.000Z"),
+      limitPerWatchlist: 20,
+    })).resolves.toMatchObject({
+      postings: [{ id: "legacy-hit" }],
+    });
+
+    const request = mocks.multiSearch.mock.calls[0]?.[0] as {
+      searches: Array<{ sort_by: string }>;
+    };
+    expect(request.searches[0]?.sort_by).toBe("first_seen_at:desc");
+  });
+
+  it("fails closed when AF-2 requires stable order before activation", async () => {
+    setTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_READY: undefined });
+
+    await expect(matchCompiledWatchlistsInWindow({
+      watchlists: [],
+      windowStart: new Date("2026-08-24T00:00:00.000Z"),
+      windowEnd: new Date("2026-08-31T00:00:00.000Z"),
+      limitPerWatchlist: 20,
+      requireStableOrder: true,
+    })).rejects.toThrow("has not passed backfill readiness");
+    expect(mocks.multiSearch).not.toHaveBeenCalled();
+  });
+
   it("uses one multi-search and deduplicates posting IDs with all labels", async () => {
     const start = new Date("2026-08-24T00:00:00.000Z");
     const end = new Date("2026-08-31T00:00:00.000Z");
@@ -331,7 +446,9 @@ describe("matchCompiledWatchlistsInWindow", () => {
       expect(search.filter_by).toContain(
         `first_seen_at:<${end.getTime() / 1_000}`,
       );
-      expect(search.sort_by).toBe("first_seen_at:desc");
+      expect(search.sort_by).toBe(
+        "first_seen_at:desc,candidate_id_sort:asc",
+      );
     }
     expect(request.searches[0]?.filter_by).toContain("location_ids:[10]");
     expect(request.searches[0]?.filter_by).toContain("locales:[de,_none]");

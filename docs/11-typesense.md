@@ -179,6 +179,41 @@ Both are idempotent. On every run, the setup logic:
 3. Repairs `index` drift with Typesense's documented drop-and-re-add field pair. Stored values remain in documents. Existing fields are altered one per PATCH because the operation is synchronous, blocks writes, and may scan the full collection.
 4. Never removes stored fields or auto-repairs other field-shape drift.
 
+### Stable candidate-order rollout
+
+Frozen AI-filter feeds use a total newest-first order:
+`first_seen_at DESC, candidate ID ASC`. Typesense's implicit `id` cannot be
+configured for string sorting, so each `job_posting` document carries
+`candidate_id_sort`, an exact copy of its canonical posting UUID. The field is
+`sort: true` and is optional only for the in-place rollout; the steady exporter,
+the production full backfill, reconciliation repairs, and the local development
+backfill all emit it.
+
+Activation is deliberately fail-closed. Keep
+`TYPESENSE_STABLE_CANDIDATE_ORDER_READY` unset while rolling out the producer:
+
+1. Deploy the crawler schema/exporter change so `setup-typesense` patches the
+   optional sortable field before new document writes.
+2. Run `uv run --no-sync crawler backfill-typesense` to stamp the field onto
+   every authoritative posting.
+3. Run
+   `uv run --no-sync crawler reconcile --repair --full --fresh-cycle --target typesense`.
+   `candidate_id_sort` is part of the reconciliation payload fingerprint, so a
+   missing or mismatched value is payload drift and a successful fresh full
+   cycle proves coverage against authoritative Postgres.
+4. Only after both commands succeed, set the web deployment variable
+   `TYPESENSE_STABLE_CANDIDATE_ORDER_READY=1` and deploy the web reader.
+
+Before activation, the existing notification reader continues using its legacy
+`first_seen_at DESC` order so deploying the producer foundation cannot interrupt
+current notifications. AF-2 extraction must set `requireStableOrder: true`; the
+server then refuses the read unless the variable is exactly `1`. Once activated,
+newest-first reads use the stable second sort key and reject returned hits whose
+`candidate_id_sort` is missing or does not equal `id`. Ordinary interactive
+watchlist ordering is unchanged. If a later reconciliation finds drift, disable
+the variable before investigating; AF-2 extraction and any runtime consumer
+must not silently use legacy insertion order.
+
 ```bash
 cd apps/crawler && uv run python ../../scripts/typesense-setup.py         # Idempotent: create + patch
 cd apps/crawler && uv run python ../../scripts/typesense-setup.py --force  # Drop + recreate (data loss)
@@ -569,3 +604,4 @@ environment variables:
 | `TYPESENSE_SEARCH_KEY` | Search/read key for web server-side Typesense calls (via tunnel uses `https`) |
 | `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search`-only parent for scoped browser keys, limited to `job_posting`, `company`, `location`, `occupation`, `seniority`, and `technology` |
 | `TYPESENSE_WRITE_KEY` | Watchlist write key (web app) |
+| `TYPESENSE_STABLE_CANDIDATE_ORDER_READY` | Set to `1` only after the stable candidate-order full backfill and fresh full reconciliation succeed |

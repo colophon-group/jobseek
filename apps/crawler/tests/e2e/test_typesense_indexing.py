@@ -433,8 +433,10 @@ def _make_postings() -> list[dict]:
 
         experience_min = -1 if i % 3 == 0 else (i + 1)
         experience_max = -1 if experience_min == -1 else 99
+        posting_id = str(uuid.UUID(hex=f"{i % 2:02x}{i + 1:030x}"))
         posting: dict = {
-            "id": str(uuid.UUID(hex=f"{i % 2:02x}{i + 1:030x}")),
+            "id": posting_id,
+            "candidate_id_sort": posting_id,
             "reconciliation_bucket": f"{i % 2:02x}",
             "company_id": company["id"],
             "company_name": company["name"],
@@ -612,6 +614,9 @@ class TestSchemas:
         assert fields_by_name["salary_eur"]["type"] == "int32"
         assert fields_by_name["salary_eur"].get("optional") is True
         assert fields_by_name["first_seen_at"]["type"] == "int64"
+        assert fields_by_name["candidate_id_sort"]["type"] == "string"
+        assert fields_by_name["candidate_id_sort"].get("sort") is True
+        assert fields_by_name["candidate_id_sort"].get("optional") is True
         assert fields_by_name["company_id"]["type"] == "string"
         assert fields_by_name["company_name"]["type"] == "string"
         assert fields_by_name["experience_min_years"]["type"] == "float"

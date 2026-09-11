@@ -238,8 +238,10 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
     first_seen = row["first_seen_at"]
     last_seen = row["last_seen_at"]
 
+    posting_id = str(row["id"])
     doc = {
-        "id": str(row["id"]),
+        "id": posting_id,
+        "candidate_id_sort": posting_id,
         "company_id": company_id,
         "company_name": company_info["name"],
         "company_slug": company_slug,

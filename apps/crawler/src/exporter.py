@@ -559,8 +559,10 @@ def _build_typesense_docs(
         # reflects the latest title/description state on update.
         has_content = bool(title and title.strip()) and (row["description_r2_hash"] is not None)
 
+        posting_id = str(row["id"])
         doc: dict = {
-            "id": str(row["id"]),
+            "id": posting_id,
+            "candidate_id_sort": posting_id,
             # Stable UUID range bucket used by the deploy-independent
             # reconciler. Keeping it in the document avoids whole-index loads
             # and bounds normal scans to 1/256 of the collection.

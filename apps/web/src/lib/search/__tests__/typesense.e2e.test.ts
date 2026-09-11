@@ -277,6 +277,7 @@ const JOB_POSTINGS = RAW_JOB_POSTINGS.map((posting) => {
   const experienceMax = experienceMin === -1 ? -1 : 99;
   return {
     ...posting,
+    candidate_id_sort: posting.id,
     experience_max: experienceMax,
     experience_min_years: experienceMin,
     experience_max_years: experienceMax,
@@ -329,6 +330,7 @@ const JOB_POSTING_SCHEMA: CollectionCreateSchema = {
     { name: "locales", type: "string[]", facet: true },
     { name: "source_url", type: "string", index: false, optional: true },
     { name: "first_seen_at", type: "int64" },
+    { name: "candidate_id_sort", type: "string", sort: true, optional: true },
     { name: "last_seen_at", type: "int64", optional: true },
   ],
   default_sorting_field: "first_seen_at",
@@ -482,6 +484,66 @@ function skipIfUnavailable() {
   }
   return false;
 }
+
+describe("stable candidate ordering", () => {
+  it("keeps equal-time UUID order stable across page boundaries", async () => {
+    if (skipIfUnavailable()) return;
+
+    const ids = [
+      "10000000-0000-0000-0000-000000000001",
+      "10000000-0000-0000-0000-000000000002",
+      "10000000-0000-0000-0000-000000000003",
+      "10000000-0000-0000-0000-000000000004",
+    ];
+    const template = JOB_POSTINGS[0];
+    if (!template) throw new Error("stable-order fixture template is missing");
+
+    try {
+      for (const id of [...ids].reverse()) {
+        await adminClient
+          .collections(JOB_POSTING_COLLECTION)
+          .documents()
+          .create({
+            ...template,
+            id,
+            candidate_id_sort: id,
+            title: "Stableboundaryfixture Engineer",
+            first_seen_at: NOW_UNIX,
+          });
+      }
+
+      const page = async (pageNumber: number) => {
+        const result = await adminClient
+          .collections(JOB_POSTING_COLLECTION)
+          .documents()
+          .search({
+            q: "Stableboundaryfixture",
+            query_by: "title",
+            sort_by: "first_seen_at:desc,candidate_id_sort:asc",
+            per_page: 2,
+            page: pageNumber,
+          });
+        return (result.hits ?? []).map(
+          (hit) => (hit.document as { id: string }).id,
+        );
+      };
+
+      await expect(page(1)).resolves.toEqual(ids.slice(0, 2));
+      await expect(page(2)).resolves.toEqual(ids.slice(2, 4));
+      await expect(page(1)).resolves.toEqual(ids.slice(0, 2));
+    } finally {
+      await Promise.all(
+        ids.map((id) =>
+          adminClient
+            .collections(JOB_POSTING_COLLECTION)
+            .documents(id)
+            .delete()
+            .catch(() => undefined),
+        ),
+      );
+    }
+  });
+});
 
 describe("scoped search key expiry", () => {
   it("accepts a live key and rejects a past expires_at on Typesense 27.1", async () => {

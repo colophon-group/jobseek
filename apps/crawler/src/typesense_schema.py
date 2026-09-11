@@ -137,6 +137,17 @@ COLLECTIONS: list[dict] = [
             {"name": "locales", "type": "string[]", "facet": True},
             {"name": "source_url", "type": "string", "index": False, "optional": True},
             {"name": "first_seen_at", "type": "int64"},
+            # Total-order tie-break for frozen candidate feeds. The value is
+            # exactly the canonical posting UUID (the implicit ``id`` cannot
+            # be configured as a sortable string in Typesense 27.1). Optional
+            # only so the field can be patched onto the live collection before
+            # a mandatory full backfill; every exporter path emits it.
+            {
+                "name": "candidate_id_sort",
+                "type": "string",
+                "sort": True,
+                "optional": True,
+            },
             # Emitted for compatibility and diagnostics, but no search, filter,
             # facet, sort, web response, or reconciliation path consumes it.
             # The value remains stored on disk and returned on direct retrieval.
