@@ -32,7 +32,9 @@ account IDs or raw content. A posting may occur under more than one prompt, but
 each `(bundle ID, position)` is one distinct pair. Once annotation begins,
 replacement or reordering requires a new dataset version.
 
-Keep two cohorts separate in manifests, review packets, and reports:
+Keep two cohorts separate in manifests, prompt-sanity review context, and
+reports. The blind final label-audit packet intentionally hides cohort until
+the reviewer decision is locked:
 
 - **Production-shaped** bundles preserve a real structured-filter shape,
   observed candidate base rate, and the first eight eligible candidates in the
@@ -203,10 +205,12 @@ slot policy.
 
 ## Blind agent calibration
 
-Before v1 annotation, compare `gpt-5.6-sol` and `gpt-5.6-terra` across the
-predeclared reasoning-effort settings on the same disposable set of 24-32
-human-reviewed pairs. The set is disjoint from the 200-pair corpus and is not
-reused in model benchmarking.
+Before v1 annotation, compare at least two predeclared, semantically distinct
+model/reasoning configurations on the same disposable set of 24-32
+human-reviewed pairs. Start with `gpt-5.6-sol` and `gpt-5.6-terra` as candidate
+families when both are available, but keep the validator provider-neutral and
+make the locked calibration manifest the source of truth. The set is disjoint
+from the 200-pair corpus and is not reused in model benchmarking.
 
 Human labels and model/configuration identities remain hidden during each run.
 Freeze prompts and decoding/output rules first, randomize presentation order,
