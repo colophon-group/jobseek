@@ -105,7 +105,7 @@ jobs:
           trap cleanup EXIT
           printf 'identity-probe-only\n' >"$isolation_root/server-key.pem"
           sudo chown 10001:10001 "$isolation_root/server-key.pem"
-          chmod 0400 "$isolation_root/server-key.pem"
+          sudo chmod 0400 "$isolation_root/server-key.pem"
           docker run --rm \
             --init \
             --network none \
