@@ -528,7 +528,7 @@ if [[ "$CI_FAILURE_MODE" == crash-after-compose-create ]]; then
   "$COMPOSE_PLUGIN" --project-name "$PROJECT" \
     --env-file "$GENERATION/release.env" \
     --file "$GENERATION/compose.yml" \
-    create --no-deps "$SERVICE"
+    create "$SERVICE"
   candidate_container_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER")"
   [[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
   python3 "$GENERATION/verify.py" owned-created \
