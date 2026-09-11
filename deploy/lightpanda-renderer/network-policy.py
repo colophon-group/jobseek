@@ -278,10 +278,12 @@ def expected_network(
 def expected_egress_route_identities(inventory: Inventory) -> set[tuple[str, ...]]:
     network = ipaddress.ip_network(inventory.egress_network)
     common = (inventory.egress_bridge, "kernel", inventory.egress_gateway)
+    # Linux 5.14+ treats the lowest subnet address as unicast, not the
+    # historical/obsolete broadcast address. The target Docker/kernel path
+    # therefore owns only the highest-address local broadcast route.
     return {
         ("main", "unicast", str(network), "link", *common, ""),
         ("local", "local", inventory.egress_gateway, "host", *common, ""),
-        ("local", "broadcast", str(network.network_address), "link", *common, ""),
         ("local", "broadcast", str(network.broadcast_address), "link", *common, ""),
     }
 

@@ -164,21 +164,11 @@ def test_legacy_fixture_keeps_the_exact_pre_egress_inventory_schema() -> None:
     assert verify.load_legacy_inventory(DEPLOY / "testdata/legacy-inventory.json") == legacy
 
 
-def test_egress_kernel_routes_include_both_local_table_broadcasts() -> None:
+def test_egress_kernel_routes_use_the_modern_highest_address_broadcast() -> None:
     raw = verify.load_inventory(DEPLOY / "inventory.json")
     policy_inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
     expected = network_policy.expected_egress_route_identities(policy_inventory)
     assert expected == verify.expected_egress_route_identities(raw)
-    assert (
-        "local",
-        "broadcast",
-        "172.30.94.8",
-        "link",
-        "br-jlp-egress",
-        "kernel",
-        "172.30.94.9",
-        "",
-    ) in expected
     assert (
         "local",
         "broadcast",
@@ -189,6 +179,99 @@ def test_egress_kernel_routes_include_both_local_table_broadcasts() -> None:
         "172.30.94.9",
         "",
     ) in expected
+    assert all(route[2] != "172.30.94.8" for route in expected)
+
+
+def modern_egress_routes() -> list[dict[str, str]]:
+    return [
+        {
+            "dst": "172.30.94.8/29",
+            "dev": "br-jlp-egress",
+            "protocol": "kernel",
+            "scope": "link",
+            "prefsrc": "172.30.94.9",
+        },
+        {
+            "type": "local",
+            "dst": "172.30.94.9",
+            "dev": "br-jlp-egress",
+            "table": "local",
+            "protocol": "kernel",
+            "scope": "host",
+            "prefsrc": "172.30.94.9",
+        },
+        {
+            "type": "broadcast",
+            "dst": "172.30.94.15",
+            "dev": "br-jlp-egress",
+            "table": "local",
+            "protocol": "kernel",
+            "scope": "link",
+            "prefsrc": "172.30.94.9",
+        },
+    ]
+
+
+def assert_both_egress_route_verifiers_reject(routes: list[dict[str, str]]) -> None:
+    raw = verify.load_inventory(DEPLOY / "inventory.json")
+    policy_inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
+    with pytest.raises(network_policy.PolicyError):
+        network_policy.verify_egress_routes(routes, policy_inventory, network_exists=True)
+    with pytest.raises(verify.VerificationError):
+        verify.verify_egress_kernel_routes(routes, raw)
+
+
+def test_egress_kernel_routes_reject_obsolete_lowest_address_broadcast() -> None:
+    raw = verify.load_inventory(DEPLOY / "inventory.json")
+    policy_inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
+    routes = modern_egress_routes()
+
+    network_policy.verify_egress_routes(routes, policy_inventory, network_exists=True)
+    verify.verify_egress_kernel_routes(routes, raw)
+
+    routes.append(
+        {
+            "type": "broadcast",
+            "dst": "172.30.94.8",
+            "dev": "br-jlp-egress",
+            "table": "local",
+            "protocol": "kernel",
+            "scope": "link",
+            "prefsrc": "172.30.94.9",
+        }
+    )
+    assert_both_egress_route_verifiers_reject(routes)
+
+
+@pytest.mark.parametrize(
+    ("route_index", "field", "value"),
+    [
+        (0, "table", "100"),
+        (0, "type", "blackhole"),
+        (0, "dst", "172.30.94.10"),
+        (0, "scope", "host"),
+        (0, "dev", "br-wrong"),
+        (0, "protocol", "static"),
+        (0, "prefsrc", "172.30.94.10"),
+        (0, "gateway", "172.30.94.1"),
+    ],
+)
+def test_egress_kernel_routes_reject_identity_field_drift(
+    route_index: int, field: str, value: str
+) -> None:
+    routes = modern_egress_routes()
+    routes[route_index][field] = value
+    assert_both_egress_route_verifiers_reject(routes)
+
+
+def test_egress_kernel_routes_reject_missing_duplicate_or_absent_network_routes() -> None:
+    policy_inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
+    routes = modern_egress_routes()
+
+    assert_both_egress_route_verifiers_reject(routes[:-1])
+    assert_both_egress_route_verifiers_reject([*routes, dict(routes[-1])])
+    with pytest.raises(network_policy.PolicyError):
+        network_policy.verify_egress_routes(routes, policy_inventory, network_exists=False)
 
 
 def test_cold_candidate_auth_uses_static_ipam_without_live_endpoints() -> None:
