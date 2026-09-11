@@ -68,8 +68,9 @@ population without repeatedly exposing production rows:
 4. Materialize 15 distinct filters as 15 production-shaped bundles. Each keeps
    the first eight eligible candidates in the pinned total order.
 5. Materialize the other five distinct filters as two challenge bundles each,
-   yielding ten challenge bundles. The two prompts may differ, but their
-   candidate selection rules are predeclared and label-blind. Challenge
+   yielding ten challenge bundles. The two prompts differ, but both bundles
+   reuse the same ordered frozen eight-posting feed so the comparison changes
+   only the prompt/persona. Challenge
    heuristics may target missing evidence, close lexical matches, multilingual
    content, contradictions, and prompt-injection text; they may not inspect a
    fit label or target-model prediction.
@@ -83,22 +84,25 @@ than quietly substituting rows.
 Raw keyword text, when present, may be used only inside the approved boundary
 to reproduce the source candidate feed. Prompt authors receive the generalized
 filter shape and frozen feed, never that text. The private manifest records
-only keyword presence/count plus an approved non-reversible fingerprint if one
-is required for replay validation.
+only keyword presence/count plus per-run `hmac-sha256-v1` fingerprints of the
+canonical filter and exact compiled query. The HMAC key never enters the
+dataset or release manifest.
 
 ## Required fidelity pins
 
 The extraction manifest must make the sample replayable without silently
 following moving code or data:
 
-- repository commit OID, schema version, UTC extraction cutoff, inclusive and
-  exclusive window bounds, Typesense collection/alias target, and canonical
+- repository commit OID, schema version, UTC extraction cutoff, strict and
+  effective inclusive/exclusive window bounds, Typesense alias plus its
+  resolved versioned collection (or approved snapshot digest), and canonical
   fingerprints of all 20 de-identified filters;
 - exact normalizer file/function, source digest, dependency-lock digest,
   locale fallback order, included payload fields, Unicode/line-ending rules,
   HTML-to-text behavior, and 12,000-character text-boundary truncation rule;
-- exact candidate compiler/reader file and function, filter string, search
-  parameters, page size, and candidate-order policy; and
+- exact candidate compiler/reader file and exported function, source digest,
+  filter/query template, search parameters, page size, and candidate-order
+  policy; and
 - ordered posting IDs before and after any challenge selection, plus a digest
   of each final normalized classifier payload.
 
@@ -211,7 +215,12 @@ locked. Record pair agreement with the human, accept/reject errors, ambiguity,
 schema validity, run-to-run consistency, latency, and token use. The
 calibration manifest must enumerate the tested effort values—no model default
 may stand in for a pin—and record the selected labeller and adjudicator
-configurations before the 200 pairs are opened for annotation.
+configurations before the 200 pairs are opened for annotation. A role needs at
+least two semantically distinct candidates, identified by model, model version,
+reasoning effort, and task-prompt digest; renaming an otherwise identical setup
+does not count. Each aggregate trial records its calibration-suite digest,
+sample count, locked-output digest, blind score, spot-check notes, and observed
+failure modes.
 
 Calibration data is destroyed or quarantined as non-benchmark material after
 the selection record is complete. It must not inflate v1 quality results.
@@ -226,10 +235,11 @@ Tune each fleet role independently rather than choosing one global model:
   ambiguity agreement, repeat consistency, false-accept/false-reject balance,
   schema validity, latency, and token cost;
 - **adjudicator:** use prebuilt conflicting annotation records over the same
-  disposable pairs and score resolution against the locked human decision; and
+  disposable pairs, including at least eight seeded conflicts, and score
+  resolution against the locked human decision; and
 - **final critic:** use synthetic manifests with seeded provenance, leakage,
-  count, blindness, and cohort-reporting defects and measure defect recall plus
-  false alarms.
+  count, blindness, and cohort-reporting defects, including at least eight
+  seeded defects, and measure defect recall plus false alarms.
 
 For each role, the orchestrator spot-checks raw outputs before scores are
 unblinded, records observed failure modes, and may refine the task prompt only
@@ -286,19 +296,22 @@ annotation, while the final audit must stay blind until silver labels lock.
    separately approved calibration set. Each card contains a stable calibration
    ID, synthetic prompt, and normalized posting payload. The reviewer marks
    `accept`, `reject`, or `unclear`; model/configuration identities and outputs
-   remain hidden until all human labels lock. These examples and labels never
-   enter the final 200-pair corpus.
+   remain hidden until all human labels lock. `Unclear` is preserved but does
+   not become calibration ground truth; at least 24 cards must resolve to
+   `accept` or `reject`. These examples and labels never enter the final
+   200-pair corpus.
 2. **Prompt sanity packet:** before final labels exist, show 12 representative bundle
    cards spanning all locales and major persona classes. Each card contains its
    stable bundle ID, generalized hard-filter context, proposed prompt, and
    three posting titles. The reviewer marks `keep`, `revise`, or `reject`.
-3. **Label audit packet:** after agent adjudication, show at most 32 pair cards:
-   up to 16 stratified agreements, up to eight adjudicated disagreements, and
-   up to eight ambiguous or policy-boundary cases. Backfill unused slots with
-   stratified agreements. Each card contains its stable pair ID, cohort,
-   prompt, and normalized posting payload. The first pass remains blind to
-   agent labels and configuration identities; comparison is shown only after
-   the human decision is locked.
+3. **Label audit packet:** after agent adjudication, show 32 pair cards. Include
+   every ambiguous/policy-boundary case and every adjudicated disagreement, up
+   to eight of each; if either category exceeds eight, fail the fleet-quality
+   gate instead of hiding cases. Fill the remaining slots deterministically
+   with cohort-stratified agreements. Each card contains only its stable pair
+   ID, prompt, and normalized posting payload. The first pass hides cohort,
+   agent labels, ambiguity, adjudication, configuration, and provenance;
+   comparison is shown only after the human decision is locked.
 
 Each packet cover asks for only the decisions needed at that gate. Calibration
 and label-audit passes use `accept`, `reject`, or `unclear`; the prompt pass uses
@@ -363,7 +376,9 @@ The delivery fails closed unless all gates pass:
    secrets, raw private prompts, or unapproved fields; private artifacts never
    enter Git or the public dataset.
 5. **Calibration:** the blind 24-32-pair comparison is complete and selected
-   agent/configuration pins are frozen before corpus labelling.
+   agent/configuration pins are frozen before corpus labelling; each role was
+   compared across at least two semantically distinct configurations on one
+   locked suite, with at least 24 resolved human decisions.
 6. **Labelling:** exactly 400 independent primary labels exist; all
    disagreements are adjudicated with original labels retained.
 7. **Human audit:** the precommitted bounded packet is complete, feedback IDs
