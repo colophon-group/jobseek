@@ -93,7 +93,7 @@ def test_claimant_builds_exact_local_configuration() -> None:
     )
 
 
-def test_disabled_real_cli_imports_no_runtime_or_browser_modules() -> None:
+def test_disabled_dedicated_entrypoint_imports_no_runtime_or_browser_modules() -> None:
     result = subprocess.run(
         [
             sys.executable,
@@ -105,14 +105,9 @@ def test_disabled_real_cli_imports_no_runtime_or_browser_modules() -> None:
                     "    (_ for _ in ()).throw(RuntimeError('network I/O'))",
                     "    if event == 'socket.connect' else None",
                     "))",
-                    "import src.cli",
-                    "sys.argv = ['crawler', 'run-lightpanda-claimant']",
-                    "try:",
-                    "    src.cli.main()",
-                    "except RuntimeError as exc:",
-                    "    if 'claimant is disabled' not in str(exc):",
-                    "        raise",
-                    "else:",
+                    "import src.lightpanda.entrypoint as entrypoint",
+                    "sys.argv = ['lightpanda-claimant']",
+                    "if entrypoint.main() != 1:",
                     "    raise SystemExit('disabled configuration was accepted')",
                     "for name in ('src.lightpanda.claimant', 'src.lightpanda.client',",
                     "             'src.processing.cpu', 'src.core.occupation_resolve',",
@@ -573,8 +568,13 @@ async def test_second_cancellation_during_redis_cleanup_hard_stops(
     await asyncio.sleep(0)
 
 
-def test_cli_recognizes_lightpanda_claimant(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_claimant_is_installed_only_as_a_direct_executable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from src.cli import parse_args
 
     monkeypatch.setattr(sys, "argv", ["crawler", "run-lightpanda-claimant"])
-    assert parse_args().command == "run-lightpanda-claimant"
+    with pytest.raises(SystemExit):
+        parse_args()
+    pyproject = Path(__file__).parents[2] / "pyproject.toml"
+    assert 'lightpanda-claimant = "src.lightpanda.entrypoint:main"' in pyproject.read_text()

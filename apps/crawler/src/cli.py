@@ -99,10 +99,6 @@ def parse_args() -> argparse.Namespace:
     # Production subcommands
     sub.add_parser("run", help="Worker instance (all non-browser profiles)")
     sub.add_parser("run-browser", help="Browser instance (browser profiles only)")
-    sub.add_parser(
-        "run-lightpanda-claimant",
-        help="Dedicated Lightpanda B0 claimant (explicitly enabled configuration only)",
-    )
 
     export_p = sub.add_parser(
         "export",
@@ -766,11 +762,6 @@ async def run() -> None:
                 await run_pipeline(local_pool, http, shutdown_event, browser=True)
             finally:
                 await http.aclose()
-
-        elif args.command == "run-lightpanda-claimant":
-            from src.lightpanda.entrypoint import run_lightpanda_entrypoint
-
-            await run_lightpanda_entrypoint(settings, shutdown_event)
 
         elif args.command == "export":
             start_metrics_server(settings.metrics_port)

@@ -28,6 +28,10 @@ from redis.asyncio import Redis
 from redis.exceptions import NoScriptError, RedisError
 
 from src.config import settings
+from src.lightpanda.identity import (
+    validate_lightpanda_b0_identifier,
+    validate_lightpanda_b0_namespace,
+)
 from src.lightpanda.routing import RenderAssignment, resolve_render_assignment
 
 MAX_INTEGER = 9_999_999_999_999
@@ -39,8 +43,6 @@ MAX_FAILURES = 100
 POLICY_KEY = "lightpanda-b0-v1"
 
 _SCRIPT = (Path(__file__).parent / "lua" / "lightpanda_b0_queue.lua").read_text(encoding="utf-8")
-_SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
-_SAFE_NAMESPACE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 _SAFE_DOMAIN_RE = re.compile(
     r"^(?=.{1,253}\Z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\."
     r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
@@ -378,14 +380,6 @@ class _Keys:
             self.terminal,
             self.origin_holders,
         ]
-
-
-def validate_lightpanda_b0_namespace(namespace: object) -> str:
-    """Validate the Redis hash-tag namespace without creating a client."""
-
-    if not isinstance(namespace, str) or not _SAFE_NAMESPACE_RE.fullmatch(namespace):
-        raise ValueError("namespace must be 1-64 safe key characters")
-    return namespace
 
 
 class LightpandaB0Queue:
@@ -788,9 +782,7 @@ class LightpandaB0Queue:
 
 
 def _safe_identifier(value: object, name: str) -> str:
-    if not isinstance(value, str) or not _SAFE_ID_RE.fullmatch(value):
-        raise ValueError(f"{name} must be 1-128 safe characters")
-    return value
+    return validate_lightpanda_b0_identifier(value, name)
 
 
 def _wire_text(value: object) -> str:
