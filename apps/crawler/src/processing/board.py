@@ -1657,7 +1657,13 @@ def _build_rich_new_records(
         experience_min, experience_max = _extract_experience_fields(description)
         technology_ids = _resolve_technology_ids(description, tech_id_map)
         titles = _build_titles(_coerce_text(job.title), job.localizations)
-        occupation_id, seniority_id = _resolve_occupation_seniority(titles, occ_ids, sen_ids)
+        raw_employment_type = _coerce_text(job.employment_type)
+        occupation_id, seniority_id = _resolve_occupation_seniority(
+            titles,
+            occ_ids,
+            sen_ids,
+            employment_type=raw_employment_type,
+        )
         detected_languages = detect_all_languages(job.description) if job.description else []
         identity_and_url = (
             (identity_by_url[outbound_url], outbound_url) if uses_durable_lane else (outbound_url,)
@@ -1666,7 +1672,7 @@ def _build_rich_new_records(
             (
                 company_id,
                 board_id,
-                normalize_employment_type(_coerce_text(job.employment_type)),
+                normalize_employment_type(raw_employment_type),
             )
             + identity_and_url
             + (
@@ -2115,8 +2121,12 @@ async def _process_one_board_streaming(
                             t_ids = _resolve_technology_ids(desc_text, tech_id_map)
                             title_text = _coerce_text(j.title)
                             all_titles = _build_titles(title_text, j.localizations)
+                            raw_employment_type = _coerce_text(j.employment_type)
                             occ_id, sen_id = _resolve_occupation_seniority(
-                                all_titles, occ_ids, sen_ids
+                                all_titles,
+                                occ_ids,
+                                sen_ids,
+                                employment_type=raw_employment_type,
                             )
                             detected_langs = (
                                 detect_all_languages(j.description) if j.description else []
@@ -2124,7 +2134,7 @@ async def _process_one_board_streaming(
                             rich_update_records.append(
                                 (
                                     pid,
-                                    normalize_employment_type(_coerce_text(j.employment_type)),
+                                    normalize_employment_type(raw_employment_type),
                                     all_titles,
                                     _build_locales(
                                         _coerce_text(j.language),

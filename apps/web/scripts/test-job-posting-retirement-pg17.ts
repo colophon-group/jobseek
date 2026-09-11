@@ -106,7 +106,7 @@ async function loadLedgerFixture(): Promise<{
   const migrations = readMigrationFiles({ migrationsFolder: migrationFolder });
 
   invariant(journal.entries.length === migrations.length, "Journal and SQL migration counts differ");
-  invariant(migrations.length === 78, `Expected 78 real journal migrations, found ${migrations.length}`);
+  invariant(migrations.length === 79, `Expected 79 real journal migrations, found ${migrations.length}`);
 
   const retirementIndex = journal.entries.findIndex((entry) => entry.tag === retirementTag);
   invariant(retirementIndex !== -1, `Journal does not contain ${retirementTag}`);
@@ -115,7 +115,7 @@ async function loadLedgerFixture(): Promise<{
   const through0085 = migrations.slice(0, retirementIndex);
   const subsequent = migrations.slice(retirementIndex + 1);
   invariant(through0085.length === 74, "Expected 74 journal entries through 0085");
-  invariant(subsequent.length === 3, "Expected exactly three journal entries after 0086");
+  invariant(subsequent.length === 4, "Expected exactly four journal entries after 0086");
 
   // The production guard intentionally expects 75 ledger rows at the 0085
   // tip, one more than the current 74 journal entries through 0085. Model that

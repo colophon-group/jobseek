@@ -47,7 +47,10 @@ from urllib.parse import urlsplit
 import httpx
 import structlog
 
-from src.core.enum_normalize import normalize_employment_type
+from src.core.enum_normalize import (
+    employment_type_implies_intern_level,
+    normalize_employment_type,
+)
 from src.core.monitors.mokahr import (
     _build_city_name_map,
     _decrypt,
@@ -109,7 +112,12 @@ def _parse_detail(detail: dict, city_name_map: dict[int, str] | None = None) -> 
     description = detail.get("jobDescription") or None
     title = detail.get("title") or None
     locations = _parse_locs(detail, city_name_map)
-    employment_type = normalize_employment_type(detail.get("commitment") or None)
+    raw_employment_type = detail.get("commitment") or None
+    employment_type = (
+        raw_employment_type
+        if employment_type_implies_intern_level(raw_employment_type)
+        else normalize_employment_type(raw_employment_type)
+    )
     date_posted = detail.get("publishedAt") or detail.get("openedAt") or None
     if isinstance(date_posted, str) and "T" in date_posted:
         date_posted = date_posted.split("T", 1)[0]

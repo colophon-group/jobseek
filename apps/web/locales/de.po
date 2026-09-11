@@ -138,6 +138,12 @@ msgstr ""
 #~ msgid "upgrade.reason.saveSearch"
 #~ msgstr "Du hast dein Watchlist-Limit erreicht. Upgrade deinen Plan, um weitere Suchen als Watchlist zu speichern."
 
+#. Employment type: internship
+#. js-lingui-explicit-id
+#: src/components/search/employment-type-modal.tsx
+#~ msgid "search.employmentType.internship"
+#~ msgstr "Praktikum"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -2129,12 +2135,6 @@ msgstr "Eingabe ist zu kurz."
 #: app/[lang]/(public)/about/about-content.tsx
 msgid "about.p2"
 msgstr "Statt darauf zu warten, dass Unternehmen ihre Stellen auf Drittanbieter-Jobportalen veröffentlichen, gehen wir direkt zur Quelle. Unser Crawler überwacht tausende von Karriereseiten direkt und prüft sie häufig erneut, sodass neue Stellen hier innerhalb weniger Stunden nach Veröffentlichung auftauchen — typischerweise bevor sie die großen Aggregatoren erreichen. Erstelle eine Watchlist mit den Unternehmen, die dich interessieren, und werde benachrichtigt, sobald sie etwas posten."
-
-#. Employment type: internship
-#. js-lingui-explicit-id
-#: src/components/search/employment-type-modal.tsx
-msgid "search.employmentType.internship"
-msgstr "Praktikum"
 
 #. Interview type label: general interview
 #. js-lingui-explicit-id

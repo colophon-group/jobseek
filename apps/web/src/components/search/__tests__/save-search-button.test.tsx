@@ -107,7 +107,7 @@ describe("SaveSearchButton (issue #3036)", () => {
   });
 
   it("includes employment type filters when saving the search", async () => {
-    createWatchlistMock.mockResolvedValue({ id: "w1", slug: "internships" });
+    createWatchlistMock.mockResolvedValue({ id: "w1", slug: "contracts" });
 
     render(
       <SaveSearchButton
@@ -115,7 +115,7 @@ describe("SaveSearchButton (issue #3036)", () => {
         locations={[]}
         occupations={[]}
         seniorities={[]}
-        employmentTypes={["internship"]}
+        employmentTypes={["contract"]}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
@@ -124,7 +124,7 @@ describe("SaveSearchButton (issue #3036)", () => {
     expect(createWatchlistMock.mock.calls[0]?.[0]).toMatchObject({
       filters: {
         keywords: ["designer"],
-        employmentType: ["internship"],
+        employmentType: ["contract"],
       },
     });
   });

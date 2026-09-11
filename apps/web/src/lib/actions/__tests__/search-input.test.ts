@@ -173,11 +173,23 @@ describe("parseSearchFilters — employment type URL param (#3218)", () => {
 
   it("parses valid `etype` values without turning them into keywords", async () => {
     const r = await parseSearchFilters({
-      etype: "full_time,internship",
+      etype: "full_time,temporary",
       locale: "en",
     });
-    expect(r.employmentTypes).toEqual(["full_time", "internship"]);
+    expect(r.employmentTypes).toEqual(["full_time", "temporary"]);
     expect(r.keywords).toEqual([]);
+  });
+
+  it("migrates the retired internship type to Intern seniority", async () => {
+    mocks.resolveSenioritySlugs.mockResolvedValue(
+      new Map([["intern", { id: 7, slug: "intern", name: "Intern" }]]),
+    );
+
+    const r = await parseSearchFilters({ etype: "internship", locale: "en" });
+
+    expect(r.employmentTypes).toEqual([]);
+    expect(r.seniorities).toEqual([{ id: 7, slug: "intern", name: "Intern" }]);
+    expect(mocks.resolveSenioritySlugs).toHaveBeenCalledWith(["intern"], "en");
   });
 
   it("drops invalid `etype` tokens", async () => {

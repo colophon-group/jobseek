@@ -135,6 +135,32 @@ beforeEach(() => {
 });
 
 describe("getSimilarCompanies — salary EUR conversion (#3178)", () => {
+  it("uses migrated internship filters for the similar-companies query", async () => {
+    mocks.parseSearchFilters.mockResolvedValueOnce({
+      keywords: [],
+      locations: [],
+      occupations: [],
+      seniorities: [{ id: 7, slug: "intern", name: "Intern" }],
+      technologies: [],
+      workMode: [],
+      employmentTypes: [],
+    });
+
+    await getSimilarCompanies("co-source", 7, {
+      offset: 0,
+      limit: 10,
+      searchParams: { etype: "internship" },
+      locale: "en",
+    });
+
+    expect(mocks.parseSearchFilters).toHaveBeenCalledWith(
+      expect.objectContaining({ etype: "internship", locale: "en" }),
+    );
+    const filterArg = mocks.buildFilterString.mock.calls[0][0];
+    expect(filterArg.seniorityIds).toEqual([7]);
+    expect(filterArg.employmentTypes).toBeUndefined();
+  });
+
   it("converts USD 100K filter to ~92000 EUR before building the Typesense filter (was 100000 pre-fix)", async () => {
     // This is the headline #3178 scenario, third call site (the
     // similar-companies strip). Pre-fix, `salaryMinEur` was assigned

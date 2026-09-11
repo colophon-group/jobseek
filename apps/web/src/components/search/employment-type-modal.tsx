@@ -14,7 +14,6 @@ function useEmploymentTypes() {
     { value: "full_time", label: t({ id: "search.employmentType.fullTime", comment: "Employment type: full-time", message: "Full-time" }) },
     { value: "part_time", label: t({ id: "search.employmentType.partTime", comment: "Employment type: part-time", message: "Part-time" }) },
     { value: "contract", label: t({ id: "search.employmentType.contract", comment: "Employment type: contract", message: "Contract" }) },
-    { value: "internship", label: t({ id: "search.employmentType.internship", comment: "Employment type: internship", message: "Internship" }) },
     { value: "temporary", label: t({ id: "search.employmentType.temporary", comment: "Employment type: temporary", message: "Temporary" }) },
     { value: "volunteer", label: t({ id: "search.employmentType.volunteer", comment: "Employment type: volunteer", message: "Volunteer" }) },
   ] as const;

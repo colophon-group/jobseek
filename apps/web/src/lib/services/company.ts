@@ -654,7 +654,7 @@ async function _parseSimilarFilters(
   const exp = firstOf(searchParams.exp);
   const etype = firstOf(searchParams.etype);
 
-  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, locale });
+  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, etype, locale });
   const { min: salaryMinDisplay, max: salaryMaxDisplay } = parseRangeParam(sal);
   // Convert user-currency filter amount to EUR — the `salary_eur` field on
   // every job_posting Typesense document is in EUR (see
@@ -688,7 +688,7 @@ async function _parseSimilarFilters(
     occupationIds: idsOrUndefined(parsed.occupations) ?? [],
     seniorityIds: idsOrUndefined(parsed.seniorities) ?? [],
     technologyIds: idsOrUndefined(parsed.technologies) ?? [],
-    employmentTypes: etype ? etype.split(",").filter(Boolean) : [],
+    employmentTypes: parsed.employmentTypes,
     salaryMinEur,
     salaryMaxEur,
     experienceMin,

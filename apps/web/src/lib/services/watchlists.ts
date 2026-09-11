@@ -2158,13 +2158,26 @@ function buildIndexedWatchlistFiltersPayload(
   const occupationSlugs = stringList(f.occupationSlugs);
   if (occupationSlugs) payload.occupationSlugs = occupationSlugs;
   const senioritySlugs = stringList(f.senioritySlugs);
+  const rawEmploymentType = stringList(f.employmentType);
+  const employmentType = rawEmploymentType?.filter(
+    (value) => value.toLowerCase() !== "internship",
+  );
+  const hadLegacyInternship = Boolean(
+    rawEmploymentType?.some(
+      (value) => value.toLowerCase() === "internship",
+    ),
+  );
   if (senioritySlugs) payload.senioritySlugs = senioritySlugs;
+  else if (hadLegacyInternship && !employmentType?.length) {
+    payload.senioritySlugs = ["intern"];
+  }
   const technologySlugs = stringList(f.technologySlugs);
   if (technologySlugs) payload.technologySlugs = technologySlugs;
   const workMode = workModeList(f.workMode);
   if (workMode) payload.workMode = workMode;
-  const employmentType = stringList(f.employmentType);
-  if (employmentType) payload.employmentType = employmentType;
+  if (employmentType && employmentType.length > 0) {
+    payload.employmentType = employmentType;
+  }
   if (typeof f.salaryCurrency === "string" && f.salaryCurrency.length > 0) {
     payload.salaryCurrency = f.salaryCurrency;
   }

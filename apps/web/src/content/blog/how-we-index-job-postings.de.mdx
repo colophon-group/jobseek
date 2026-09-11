@@ -36,7 +36,7 @@ Der Fast Path: Die meisten modernen ATS-Systeme betten `application/ld+json` vom
 
 Wo strukturierte Daten fehlen oder falsch sind, fallen wir auf schrittweise DOM-Extraktion zurück — kleine Rezepte pro Board, die sagen: „Hol den Titel aus diesem Selektor, den Ort aus jenem, die Beschreibung aus dem Artikel-Body.“ Jedes wurde für ein Board geschrieben, bei dem zuvor alles andere gescheitert ist.
 
-Das Ergebnis ist ein `JobContent`-Datensatz mit normalisierten Feldern: ein Beschäftigungstyp aus fünf Enums (`full_time`, `part_time`, `contract`, `internship`, `full_or_part`), ein Job-Location-Type aus einer Dreiermenge (`onsite`, `remote`, `hybrid`), Orte aufgelöst zu [GeoNames](https://www.geonames.org/)-IDs, ein Gehalt geparst zu einem strukturierten Currency-Min-Max mit Frequenz. Was in unserer Datenbank ankommt, ist einheitlicher als die Karriereseite, von der es stammt. Ohne diese Einheitlichkeit ist der Vergleich von Rollen über Unternehmen hinweg aussichtslos.
+Das Ergebnis ist ein `JobContent`-Datensatz mit normalisierten Feldern: ein Beschäftigungstyp aus sechs Enums (`full_time`, `part_time`, `contract`, `temporary`, `volunteer`, `full_or_part`), ein Job-Location-Type aus einer Dreiermenge (`onsite`, `remote`, `hybrid`), Orte aufgelöst zu [GeoNames](https://www.geonames.org/)-IDs und ein Gehalt geparst zu einem strukturierten Currency-Min-Max mit Frequenz. Praktika werden über die Stufe Intern abgebildet, nicht über den Beschäftigungstyp. Was in unserer Datenbank ankommt, ist einheitlicher als die Karriereseite, von der es stammt. Ohne diese Einheitlichkeit ist der Vergleich von Rollen über Unternehmen hinweg aussichtslos.
 
 ## Schritt 4: wenn Rechenzentren nicht willkommen sind
 

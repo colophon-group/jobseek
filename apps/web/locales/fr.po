@@ -138,6 +138,12 @@ msgstr ""
 #~ msgid "upgrade.reason.saveSearch"
 #~ msgstr "Vous avez atteint la limite de vos listes de suivi. Passez à un plan supérieur pour enregistrer davantage de recherches."
 
+#. Employment type: internship
+#. js-lingui-explicit-id
+#: src/components/search/employment-type-modal.tsx
+#~ msgid "search.employmentType.internship"
+#~ msgstr "Stage"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -2129,12 +2135,6 @@ msgstr "L'entrée est trop courte."
 #: app/[lang]/(public)/about/about-content.tsx
 msgid "about.p2"
 msgstr "Au lieu d'attendre que les entreprises publient leurs postes sur des sites d'emploi tiers, nous allons directement à la source. Notre crawler surveille des milliers de pages carrières directement et les revérifie fréquemment, donc les postes apparaissent ici dans les heures qui suivent leur publication — généralement avant qu'ils n'atteignent les grands agrégateurs. Crée une watchlist des entreprises qui t'intéressent et reçois une notification dès qu'elles publient."
-
-#. Employment type: internship
-#. js-lingui-explicit-id
-#: src/components/search/employment-type-modal.tsx
-msgid "search.employmentType.internship"
-msgstr "Stage"
 
 #. Interview type label: general interview
 #. js-lingui-explicit-id

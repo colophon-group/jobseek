@@ -10,6 +10,7 @@ import {
   type Locale,
 } from "@/lib/i18n";
 import type { ParsedSearchFilters } from "@/lib/services/search-input";
+import { migrateLegacyInternshipFilterParams } from "@/lib/search/query-params";
 import {
   PUBLIC_SEARCH_QUERY_PARAMETERS,
   SEARCH_EMPLOYMENT_TYPE_VALUES,
@@ -181,6 +182,22 @@ export function validateResolvedPublicFilters(
   return null;
 }
 
+/** Canonicalize the retired internship employment filter at API/URL boundaries. */
+export function migrateLegacyInternshipSearchParams(
+  params: URLSearchParams,
+): URLSearchParams {
+  const migrated = new URLSearchParams(params);
+  const { employmentType, seniority } = migrateLegacyInternshipFilterParams(
+    migrated.get("etype"),
+    migrated.get("sen"),
+  );
+  if (employmentType) migrated.set("etype", employmentType);
+  else migrated.delete("etype");
+  if (seniority) migrated.set("sen", seniority);
+  else migrated.delete("sen");
+  return migrated;
+}
+
 /** Build the full URL to the site for a given path. */
 export function siteUrl(path: string): string {
   return `${siteConfig.url}${path}`;
@@ -191,10 +208,11 @@ export function exploreUrl(
   params: URLSearchParams,
   locale: string = "en",
 ): string {
+  const canonicalParams = migrateLegacyInternshipSearchParams(params);
   const kept = new URLSearchParams();
   for (const key of PUBLIC_SEARCH_QUERY_PARAMETERS) {
     if (key === "locale") continue;
-    const val = params.get(key);
+    const val = canonicalParams.get(key);
     if (val) kept.set(key, val);
   }
   // REST defaults to all document languages, whereas Explore normally uses

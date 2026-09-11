@@ -36,7 +36,7 @@ Percorso veloce: la maggior parte degli ATS moderni include `application/ld+json
 
 Dove i dati strutturati mancano o sono sbagliati, ripieghiamo sull'estrazione DOM a passaggi — piccole ricette per board che dicono «prendi il titolo da questo selettore, la sede da quello, la descrizione dal corpo dell'articolo». Ognuna è stata scritta per un board in cui tutto il resto aveva già fallito.
 
-L'output è un record `JobContent` con campi normalizzati: un tipo di impiego scelto tra cinque enum (`full_time`, `part_time`, `contract`, `internship`, `full_or_part`), un job-location-type da un set di tre (`onsite`, `remote`, `hybrid`), località risolte in ID [GeoNames](https://www.geonames.org/), una retribuzione parsata in currency-min-max strutturato con frequenza. Ciò che arriva nel nostro database è più uniforme della pagina carriere da cui proviene. Senza quell'uniformità, confrontare ruoli tra aziende è senza speranza.
+L'output è un record `JobContent` con campi normalizzati: un tipo di impiego scelto tra sei enum (`full_time`, `part_time`, `contract`, `temporary`, `volunteer`, `full_or_part`), un job-location-type da un set di tre (`onsite`, `remote`, `hybrid`), località risolte in ID [GeoNames](https://www.geonames.org/) e una retribuzione parsata in currency-min-max strutturato con frequenza. I tirocini sono rappresentati dal livello Intern, non dal tipo di impiego. Ciò che arriva nel nostro database è più uniforme della pagina carriere da cui proviene. Senza quell'uniformità, confrontare ruoli tra aziende è senza speranza.
 
 ## Passaggio 4: quando i datacenter non sono i benvenuti
 

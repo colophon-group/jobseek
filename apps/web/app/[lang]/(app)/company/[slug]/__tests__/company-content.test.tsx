@@ -168,7 +168,7 @@ describe("CompanyContent browser initialization", () => {
   });
 
   it("loads filter-bearing anonymous views through the browser path", async () => {
-    currentSearchParams = new URLSearchParams("q=python&etype=internship");
+    currentSearchParams = new URLSearchParams("q=python&etype=contract");
     const filtered = makeData({
       activeCount: 2,
       parsed: {
@@ -178,7 +178,7 @@ describe("CompanyContent browser initialization", () => {
         seniorities: [],
         technologies: [],
         workMode: [],
-        employmentTypes: ["internship"],
+        employmentTypes: ["contract"],
       },
     });
     mockLoadCompanyBrowserData.mockResolvedValue(successfulResult(filtered));
@@ -197,7 +197,7 @@ describe("CompanyContent browser initialization", () => {
       expect(getByTestId("company-page").getAttribute("data-active")).toBe("2"),
     );
     expect(getByTestId("company-page").getAttribute("data-etypes")).toBe(
-      "internship",
+      "contract",
     );
   });
 

@@ -87,7 +87,7 @@ How each source builds locations:
 Normalized values (applied by `enum_normalize.normalize_employment_type()`):
 
 ```
-full_time    part_time    contract    internship    full_or_part
+full_time    part_time    contract    temporary    volunteer    full_or_part
 ```
 
 Raw values from each ATS are mapped to these normalized forms. The original value is preserved in R2 extras as `raw_employment_type`.
@@ -490,7 +490,7 @@ These heuristics often need manual correction — a detected pattern with wrong 
 | `title` | `str` | Required | text | No | Plain text |
 | `description` | `str` | Required | text | **Yes** | Preserve structure; enriched with extras |
 | `locations` | `list[str]` | Important | text[] | No | One string per location |
-| `employment_type` | `str` | Important | text | No | Normalized: `full_time`, `part_time`, `contract`, `internship`, `full_or_part` |
+| `employment_type` | `str` | Important | text | No | Normalized: `full_time`, `part_time`, `contract`, `temporary`, `volunteer`, `full_or_part`; internship signals map to `seniority_id=intern` |
 | `job_location_type` | `str` | Important | text | No | `remote`/`hybrid`/`onsite` |
 | `date_posted` | `str` | Optional | timestamptz | No | ISO 8601 preferred |
 | `base_salary` | `dict` | Optional | jsonb | No | `{currency, min, max, unit}` |

@@ -8,7 +8,10 @@ from html import escape
 import httpx
 from selectolax.lexbor import LexborHTMLParser
 
-from src.core.enum_normalize import normalize_employment_type
+from src.core.enum_normalize import (
+    employment_type_implies_intern_level,
+    normalize_employment_type,
+)
 from src.core.scrapers import JobContent, register
 from src.shared.http_retry import fetch_text_page_with_retry
 
@@ -59,7 +62,12 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
 
     fields = _fields(tree)
     location = fields.get("工作地区")
-    employment_type = normalize_employment_type(fields.get("职位性质"))
+    raw_employment_type = fields.get("职位性质")
+    employment_type = (
+        raw_employment_type
+        if employment_type_implies_intern_level(raw_employment_type)
+        else normalize_employment_type(raw_employment_type)
+    )
 
     description_inner = _description_html(tree)
     fact_keys = ("职位性质", "工作地区", "招聘人数", "学历", "工作经验", "薪资待遇")

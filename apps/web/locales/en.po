@@ -138,6 +138,12 @@ msgstr ""
 #~ msgid "upgrade.reason.saveSearch"
 #~ msgstr "You've reached your watchlist limit. Upgrade your plan to save more searches as watchlists."
 
+#. Employment type: internship
+#. js-lingui-explicit-id
+#: src/components/search/employment-type-modal.tsx
+#~ msgid "search.employmentType.internship"
+#~ msgstr "Internship"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -2129,12 +2135,6 @@ msgstr "Input is too short."
 #: app/[lang]/(public)/about/about-content.tsx
 msgid "about.p2"
 msgstr "Instead of waiting for companies to push roles to third-party job boards, we go straight to the source. Our crawler monitors thousands of company career pages directly and re-checks them frequently, so roles show up here within hours of going live — typically before they reach the large aggregators. Build a watchlist of the companies you care about and get notified the moment they post."
-
-#. Employment type: internship
-#. js-lingui-explicit-id
-#: src/components/search/employment-type-modal.tsx
-msgid "search.employmentType.internship"
-msgstr "Internship"
 
 #. Interview type label: general interview
 #. js-lingui-explicit-id

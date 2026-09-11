@@ -12,7 +12,7 @@ describe("unlisted watchlist sharing contract", () => {
     expect(migration).toContain("ADD COLUMN share_enabled boolean DEFAULT false NOT NULL");
   });
 
-  it("appends the sharing migration as the latest monotonic journal entry", () => {
+  it("retains the sharing migration as a monotonic journal entry", () => {
     const journal = JSON.parse(read("drizzle/meta/_journal.json")) as {
       entries: Array<{
         idx: number;
@@ -23,15 +23,21 @@ describe("unlisted watchlist sharing contract", () => {
       }>;
     };
 
-    expect(journal.entries.at(-1)).toEqual({
+    const entryIndex = journal.entries.findIndex(
+      (entry) => entry.tag === "0089_watchlist_unlisted_sharing",
+    );
+    expect(journal.entries[entryIndex]).toEqual({
       idx: 77,
       version: "7",
       when: 1_789_050_000_000,
       tag: "0089_watchlist_unlisted_sharing",
       breakpoints: true,
     });
-    expect(journal.entries.at(-2)?.when).toBeLessThan(
-      journal.entries.at(-1)?.when ?? 0,
+    expect(journal.entries[entryIndex - 1]?.when).toBeLessThan(
+      journal.entries[entryIndex]?.when ?? 0,
+    );
+    expect(journal.entries[entryIndex]?.when).toBeLessThan(
+      journal.entries[entryIndex + 1]?.when ?? Number.POSITIVE_INFINITY,
     );
   });
 

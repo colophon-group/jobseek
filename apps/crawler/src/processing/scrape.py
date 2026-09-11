@@ -779,13 +779,21 @@ async def _process_one_enrich_scrape(
         occ_id = sen_id = None
         staged = None
 
+        raw_emp_type = (
+            _coerce_text(content.employment_type) if "employment_type" in effective_fields else None
+        )
         if "employment_type" in effective_fields:
-            norm_emp_type = normalize_employment_type(_coerce_text(content.employment_type))
+            norm_emp_type = normalize_employment_type(raw_emp_type)
 
         if "title" in effective_fields:
             title_text = _coerce_text(content.title)
             all_titles = _build_titles(title_text, None) or None
-            occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
+            occ_id, sen_id = _resolve_occupation_seniority(
+                all_titles,
+                occ_ids,
+                sen_ids,
+                employment_type=raw_emp_type,
+            )
             # Only overwrite locales if we have real language evidence --
             # _build_locales defaults to ["en"] which would overwrite
             # richer monitor-sourced locale data via COALESCE.
@@ -798,6 +806,14 @@ async def _process_one_enrich_scrape(
                 # Only set if we have data beyond the bare "en" default
                 if lang_text or detected_langs:
                     locales = built
+
+        elif "employment_type" in effective_fields:
+            _, sen_id = _resolve_occupation_seniority(
+                None,
+                occ_ids,
+                sen_ids,
+                employment_type=raw_emp_type,
+            )
 
         if "locations" in effective_fields:
             lang_text = _coerce_text(language)
@@ -1099,7 +1115,12 @@ async def _process_one_scrape(
         # Resolve occupation + seniority from title
         occ_ids = await lookups._get_occupation_ids(pool)
         sen_ids = await lookups._get_seniority_ids(pool)
-        occ_id, sen_id = _resolve_occupation_seniority(title_text, occ_ids, sen_ids)
+        occ_id, sen_id = _resolve_occupation_seniority(
+            title_text,
+            occ_ids,
+            sen_ids,
+            employment_type=raw_emp_type,
+        )
 
         # Extract salary + experience from description
         rates = await lookups._get_currency_rates(pool)
@@ -1368,13 +1389,21 @@ async def _do_one_enrich_scrape(
     occ_id = sen_id = None
     staged = None
 
+    raw_emp_type = (
+        _coerce_text(content.employment_type) if "employment_type" in effective_fields else None
+    )
     if "employment_type" in effective_fields:
-        norm_emp_type = normalize_employment_type(_coerce_text(content.employment_type))
+        norm_emp_type = normalize_employment_type(raw_emp_type)
 
     if "title" in effective_fields:
         title_text = _coerce_text(content.title)
         all_titles = _build_titles(title_text, None) or None
-        occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
+        occ_id, sen_id = _resolve_occupation_seniority(
+            all_titles,
+            occ_ids,
+            sen_ids,
+            employment_type=raw_emp_type,
+        )
         lang_text = _coerce_text(language)
         if lang_text or content.description:
             detected_langs = (
@@ -1383,6 +1412,14 @@ async def _do_one_enrich_scrape(
             built = _build_locales(lang_text, None, detected_languages=detected_langs)
             if lang_text or detected_langs:
                 locales = built
+
+    elif "employment_type" in effective_fields:
+        _, sen_id = _resolve_occupation_seniority(
+            None,
+            occ_ids,
+            sen_ids,
+            employment_type=raw_emp_type,
+        )
 
     if "locations" in effective_fields:
         lang_text = _coerce_text(language)
@@ -1517,7 +1554,12 @@ async def _do_one_scrape(
     tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
 
     # Resolve occupation + seniority from title
-    occ_id, sen_id = _resolve_occupation_seniority(title_text, occ_ids, sen_ids)
+    occ_id, sen_id = _resolve_occupation_seniority(
+        title_text,
+        occ_ids,
+        sen_ids,
+        employment_type=raw_emp_type,
+    )
 
     # Extract salary + experience from description
     s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)

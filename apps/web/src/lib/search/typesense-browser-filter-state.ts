@@ -1,6 +1,7 @@
 import type { ParsedSearchFilters } from "@/lib/services/search-input";
 import type { SelectedLocation } from "@/lib/search/types";
 import {
+  migrateLegacyInternshipFilterParams,
   parseEmploymentTypeParam,
   parseWorkModeParam,
 } from "@/lib/search/query-params";
@@ -233,11 +234,15 @@ function preferLocale(
 }
 
 function parseFilterInput(searchParams: URLSearchParams): ParsedFilterInput {
+  const migratedLegacyFilters = migrateLegacyInternshipFilterParams(
+    searchParams.get("etype"),
+    searchParams.get("sen"),
+  );
   const keywords = splitKeywords(searchParams.get("q"));
   const byDimension = {
     loc: splitSlugs(searchParams.get("loc")),
     occ: splitSlugs(searchParams.get("occ")),
-    sen: splitSlugs(searchParams.get("sen")),
+    sen: splitSlugs(migratedLegacyFilters.seniority ?? null),
     tech: splitSlugs(searchParams.get("tech")),
   } satisfies ParsedFilterInput["byDimension"];
 
@@ -255,7 +260,9 @@ function parseFilterInput(searchParams: URLSearchParams): ParsedFilterInput {
     seniorities: [],
     technologies: [],
     workMode: parseWorkModeParam(searchParams.get("wm")),
-    employmentTypes: parseEmploymentTypeParam(searchParams.get("etype")),
+    employmentTypes: parseEmploymentTypeParam(
+      migratedLegacyFilters.employmentType,
+    ),
     ...(Object.keys(unresolvedExplicitSlugs).length > 0
       ? { unresolvedExplicitSlugs }
       : {}),

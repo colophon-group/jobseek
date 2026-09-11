@@ -36,7 +36,7 @@ The fast path: most modern ATSes embed `application/ld+json` of type `JobPosting
 
 Where the structured data is missing or wrong, we fall back to step-based DOM extraction — small recipes per board that say "get the title from this selector, location from that one, description from the article body." Each was written for a board where everything else failed first.
 
-The output is a `JobContent` record with normalized fields: an employment type that's one of five enums (`full_time`, `part_time`, `contract`, `internship`, `full_or_part`), a job-location-type from a set of three (`onsite`, `remote`, `hybrid`), locations resolved to [GeoNames](https://www.geonames.org/) IDs, a salary parsed into a structured currency-min-max with frequency. The thing that arrives in our database is more uniform than the careers page it came from. Without that uniformity, comparing roles across companies is hopeless.
+The output is a `JobContent` record with normalized fields: an employment type that's one of six enums (`full_time`, `part_time`, `contract`, `temporary`, `volunteer`, `full_or_part`), a job-location-type from a set of three (`onsite`, `remote`, `hybrid`), locations resolved to [GeoNames](https://www.geonames.org/) IDs, and a salary parsed into a structured currency-min-max with frequency. Internships are represented by the Intern level, not by employment type. The thing that arrives in our database is more uniform than the careers page it came from. Without that uniformity, comparing roles across companies is hopeless.
 
 ## Step 4: when datacenters aren't welcome
 

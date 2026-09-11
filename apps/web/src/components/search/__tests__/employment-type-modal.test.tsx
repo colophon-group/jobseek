@@ -23,7 +23,6 @@ describe("EmploymentTypeModal — per-option counts (#3032)", () => {
       full_time: 1234,
       part_time: 56,
       contract: 78,
-      internship: 9,
       temporary: 2,
       // volunteer omitted -> renders (0)
     });
@@ -42,8 +41,8 @@ describe("EmploymentTypeModal — per-option counts (#3032)", () => {
     expect(screen.getByText("(1,234)")).toBeTruthy();
     expect(screen.getByText("(56)")).toBeTruthy();
     expect(screen.getByText("(78)")).toBeTruthy();
-    expect(screen.getByText("(9)")).toBeTruthy();
     expect(screen.getByText("(2)")).toBeTruthy();
+    expect(screen.queryByText("Internship")).toBeNull();
     // Missing key falls back to (0) for the static option.
     expect(screen.getByText("(0)")).toBeTruthy();
   });

@@ -12,6 +12,7 @@ import pytest
 import structlog
 
 from src.core.enum_normalize import (
+    employment_type_implies_intern_level,
     normalize_employment_type,
     normalize_job_location_type,
     normalize_salary_unit,
@@ -43,7 +44,6 @@ class TestNormalizeEmploymentTypeCanonicalSet:
         "full_time",
         "part_time",
         "contract",
-        "internship",
         "temporary",
         "volunteer",
         "full_or_part",
@@ -129,7 +129,8 @@ class TestNormalizeEmploymentTypeEnglish:
         ],
     )
     def test_internship(self, raw):
-        assert normalize_employment_type(raw) == "internship"
+        assert normalize_employment_type(raw) is None
+        assert employment_type_implies_intern_level(raw)
 
     @pytest.mark.parametrize("raw", ["Temporary", "TEMPORARY", "temp", "Temporary employee"])
     def test_temporary(self, raw):
@@ -165,7 +166,8 @@ class TestNormalizeEmploymentTypeChinese:
 
     @pytest.mark.parametrize("raw", ["实习", "實習", "实习生", "實習生"])
     def test_internship(self, raw):
-        assert normalize_employment_type(raw) == "internship"
+        assert normalize_employment_type(raw) is None
+        assert employment_type_implies_intern_level(raw)
 
     @pytest.mark.parametrize("raw", ["合同工", "合約", "派遣"])
     def test_contract(self, raw):
@@ -194,7 +196,8 @@ class TestNormalizeEmploymentTypeFrench:
 
     @pytest.mark.parametrize("raw", ["Stage", "Alternance", "Apprentissage", "Stagiaire"])
     def test_internship(self, raw):
-        assert normalize_employment_type(raw) == "internship"
+        assert normalize_employment_type(raw) is None
+        assert employment_type_implies_intern_level(raw)
 
 
 class TestNormalizeEmploymentTypeGerman:
@@ -219,7 +222,8 @@ class TestNormalizeEmploymentTypeGerman:
         ],
     )
     def test_internship(self, raw):
-        assert normalize_employment_type(raw) == "internship"
+        assert normalize_employment_type(raw) is None
+        assert employment_type_implies_intern_level(raw)
 
     @pytest.mark.parametrize("raw", ["Befristet", "Zeitarbeit", "freiberuflich", "Freelancer"])
     def test_contract(self, raw):
@@ -249,7 +253,8 @@ class TestNormalizeEmploymentTypeDutch:
 
     @pytest.mark.parametrize("raw", ["Stagiair"])
     def test_internship(self, raw):
-        assert normalize_employment_type(raw) == "internship"
+        assert normalize_employment_type(raw) is None
+        assert employment_type_implies_intern_level(raw)
 
 
 class TestNormalizeEmploymentTypeSpanish:
@@ -272,7 +277,8 @@ class TestNormalizeEmploymentTypeSpanish:
         "raw", ["Becario", "Prácticas", "Practicas", "Contrato de prácticas", "Aprendizaje"]
     )
     def test_internship(self, raw):
-        assert normalize_employment_type(raw) == "internship"
+        assert normalize_employment_type(raw) is None
+        assert employment_type_implies_intern_level(raw)
 
 
 class TestNormalizeEmploymentTypeItalian:
@@ -302,7 +308,8 @@ class TestNormalizeEmploymentTypeItalian:
 
     @pytest.mark.parametrize("raw", ["Tirocinio", "Apprendistato"])
     def test_internship(self, raw):
-        assert normalize_employment_type(raw) == "internship"
+        assert normalize_employment_type(raw) is None
+        assert employment_type_implies_intern_level(raw)
 
 
 class TestNormalizeEmploymentTypeJsonLd:
@@ -325,7 +332,12 @@ class TestNormalizeEmploymentTypeJsonLd:
         ],
     )
     def test_enum(self, raw, want):
-        assert normalize_employment_type(raw) == want
+        result = normalize_employment_type(raw)
+        if want == "internship":
+            assert result is None
+            assert employment_type_implies_intern_level(raw)
+        else:
+            assert result == want
 
 
 class TestNormalizeEmploymentTypeAtsCodes:
@@ -401,7 +413,12 @@ class TestNormalizeEmploymentTypeAtsCodes:
         ],
     )
     def test_ats_code(self, raw, want):
-        assert normalize_employment_type(raw) == want
+        result = normalize_employment_type(raw)
+        if want == "internship":
+            assert result is None
+            assert employment_type_implies_intern_level(raw)
+        else:
+            assert result == want
 
 
 class TestNormalizeEmploymentTypeWhitespaceCase:
@@ -437,7 +454,6 @@ class TestNormalizeEmploymentTypeIdempotency:
             "full_time",
             "part_time",
             "contract",
-            "internship",
             "temporary",
             "volunteer",
             "full_or_part",
@@ -462,7 +478,7 @@ class TestNormalizeEmploymentTypeUnknown:
         "raw",
         [
             "Mystery employment kind",
-            "Apprenticeship",  # NB: ``apprenticeship`` IS in the map
+            "Apprenticeship",  # recognised level signal, not employment type
             "weekend_contractor",
             "casual",
             "zero-hour",
@@ -471,13 +487,7 @@ class TestNormalizeEmploymentTypeUnknown:
         ],
     )
     def test_unknown_value_returns_none(self, raw):
-        # ``Apprenticeship`` is recognised (``apprenticeship`` is in the
-        # map) so it intentionally maps to ``internship`` — we only assert
-        # the unknown ones return ``None``.
-        if raw.strip().lower() == "apprenticeship":
-            assert normalize_employment_type(raw) == "internship"
-        else:
-            assert normalize_employment_type(raw) is None
+        assert normalize_employment_type(raw) is None
 
     def test_unknown_value_emits_warning_log(self):
         with structlog.testing.capture_logs() as logs:
@@ -494,6 +504,12 @@ class TestNormalizeEmploymentTypeUnknown:
         with structlog.testing.capture_logs() as logs:
             result = normalize_employment_type("Full-time")
         assert result == "full_time"
+        assert not any(e["event"] == "enum_normalize.employment_type.unknown" for e in logs)
+
+    def test_intern_level_signal_does_not_emit_warning_log(self):
+        with structlog.testing.capture_logs() as logs:
+            result = normalize_employment_type("Internship")
+        assert result is None
         assert not any(e["event"] == "enum_normalize.employment_type.unknown" for e in logs)
 
     def test_nullish_does_not_emit_warning_log(self):

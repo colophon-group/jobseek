@@ -130,7 +130,7 @@ const RAW_JOB_POSTINGS = [
     id: "jp8", company_id: "c1", company_name: "Acme Corp", company_slug: "acme-corp", company_icon: "acme.png",
     title: "Intern Software", is_active: false,
     location_ids: [LOC_BERLIN], location_names: ["Berlin"], location_types: ["onsite"], location_geo_types: ["city"],
-    occupation_id: 2, technology_ids: [], employment_type: "internship",
+    occupation_id: 2, seniority_id: 1, technology_ids: [],
     experience_min: 0, locales: ["de"],
     first_seen_at: TWO_YEARS_AGO,
   },
