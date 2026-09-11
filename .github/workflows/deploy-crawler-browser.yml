@@ -203,7 +203,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     permissions:
-      actions: read
       contents: read
       packages: read
 
