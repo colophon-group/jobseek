@@ -665,6 +665,16 @@ def test_installed_policy_and_release_artifacts_are_fsynced_before_commit() -> N
         assert token in bootstrap
     assert bootstrap.index("os.fsync(descriptor)") < bootstrap.index('"$POLICY" verify-ready')
     assert "fsync_files \\\n" in deploy
+    assert 'exec 9<"$GENERATION/pki/server-key.pem"' in deploy
+    assert deploy.count("stat -Lc '%d:%i' /proc/$$/fd/9") == 2
+    assert (
+        deploy.index('exec 9<"$GENERATION/pki/server-key.pem"')
+        < deploy.index("-ceu 'chown 10001:10001 /server-key.pem'")
+        < deploy.index("os.fsync(int(sys.argv[1]))")
+        < deploy.index("exec 9<&-")
+    )
+    fsync_block = deploy[deploy.index("fsync_files \\\n") : deploy.index("fsync_directories")]
+    assert '"$GENERATION/pki/server-key.pem"' not in fsync_block
     assert 'fsync_directories "$GENERATION/pki" "$GENERATION" "$RELEASE_ROOT"' in deploy
 
 

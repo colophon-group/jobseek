@@ -349,6 +349,12 @@ rm -f -- "$GENERATION/pins.revalidated.env"
 
 # The service runs as uid/gid 10001. Grant ownership of only its exact private
 # key with an immutable, already-pulled image and an isolated one-shot helper.
+# Keep a verified descriptor open while deploy still owns the key so its final
+# contents and ownership metadata can be fsynced after the helper chowns it;
+# reopening the 0400 service-owned path as deploy would be impossible.
+exec 9<"$GENERATION/pki/server-key.pem"
+[[ "$(stat -Lc '%d:%i' /proc/$$/fd/9)" == \
+  "$(stat -Lc '%d:%i' "$GENERATION/pki/server-key.pem")" ]] || exit 1
 docker run --rm \
   --network none \
   --read-only \
@@ -361,6 +367,15 @@ docker run --rm \
   "$IMAGE_REF" \
   -ceu 'chown 10001:10001 /server-key.pem'
 [[ "$(stat -c '%u:%g:%a' "$GENERATION/pki/server-key.pem")" == 10001:10001:400 ]] || exit 1
+[[ "$(stat -Lc '%d:%i' /proc/$$/fd/9)" == \
+  "$(stat -Lc '%d:%i' "$GENERATION/pki/server-key.pem")" ]] || exit 1
+python3 - 9 <<'PY'
+import os
+import sys
+
+os.fsync(int(sys.argv[1]))
+PY
+exec 9<&-
 [[ "$(stat -c '%a' "$GENERATION/pki/ca.pem")" == 444 ]] || exit 1
 [[ "$(stat -c '%a' "$GENERATION/pki/server.pem")" == 444 ]] || exit 1
 rm -f -- "$GENERATION/pki/client.pem"
@@ -372,7 +387,6 @@ fsync_files \
   "$GENERATION/validate_pki.py" \
   "$GENERATION/pki/ca.pem" \
   "$GENERATION/pki/server.pem" \
-  "$GENERATION/pki/server-key.pem" \
   "$GENERATION/release.env" \
   "$GENERATION/pins.env"
 fsync_directories "$GENERATION/pki" "$GENERATION" "$RELEASE_ROOT"
