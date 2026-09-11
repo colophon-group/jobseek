@@ -14,7 +14,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any, NoReturn, cast
 
 INVENTORY_PATH = Path("/etc/jobseek-lightpanda-network/inventory.json")
 BOOTSTRAP_MARKER = Path("/var/lib/jobseek-lightpanda-network/bootstrap-complete.json")
@@ -281,6 +281,7 @@ def expected_egress_route_identities(inventory: Inventory) -> set[tuple[str, ...
     return {
         ("main", "unicast", str(network), "link", *common, ""),
         ("local", "local", inventory.egress_gateway, "host", *common, ""),
+        ("local", "broadcast", str(network.network_address), "link", *common, ""),
         ("local", "broadcast", str(network.broadcast_address), "link", *common, ""),
     }
 
@@ -1148,9 +1149,33 @@ def verify_policy(inventory: Inventory) -> dict[str, object]:
     )
 
 
-def verify_bootstrap_marker(inventory_path: Path) -> None:
+def verify_release_binding(
+    marker: dict[str, object],
+    policy_digest: str,
+    inventory_digest: str,
+    expected_policy_sha256: str,
+    expected_inventory_sha256: str,
+) -> None:
+    if (
+        marker["policy_sha256"] != policy_digest
+        or marker["inventory_sha256"] != inventory_digest
+        or marker["policy_sha256"] != expected_policy_sha256
+        or marker["inventory_sha256"] != expected_inventory_sha256
+    ):
+        fail("bootstrap completion marker artifact digest drifted")
+
+
+def verify_bootstrap_marker(
+    inventory_path: Path,
+    expected_policy_sha256: str,
+    expected_inventory_sha256: str,
+) -> None:
     if inventory_path != INVENTORY_PATH:
         fail("bootstrap marker may attest only the fixed inventory path")
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_policy_sha256) or not re.fullmatch(
+        r"[0-9a-f]{64}", expected_inventory_sha256
+    ):
+        fail("deployment supplied an invalid policy digest")
     marker_stat = BOOTSTRAP_MARKER.stat(follow_symlinks=False)
     if (
         not BOOTSTRAP_MARKER.is_file()
@@ -1175,8 +1200,13 @@ def verify_bootstrap_marker(inventory_path: Path) -> None:
         fail("bootstrap completion marker identity drifted")
     policy_digest = hashlib.sha256(Path(__file__).resolve().read_bytes()).hexdigest()
     inventory_digest = hashlib.sha256(INVENTORY_PATH.resolve().read_bytes()).hexdigest()
-    if payload["policy_sha256"] != policy_digest or payload["inventory_sha256"] != inventory_digest:
-        fail("bootstrap completion marker artifact digest drifted")
+    verify_release_binding(
+        payload,
+        policy_digest,
+        inventory_digest,
+        expected_policy_sha256,
+        expected_inventory_sha256,
+    )
 
 
 def bootstrap_policy(inventory: Inventory) -> dict[str, object]:
@@ -1206,12 +1236,20 @@ def parser() -> argparse.ArgumentParser:
             "quarantine",
         ),
     )
+    result.add_argument("expected_policy_sha256", nargs="?")
+    result.add_argument("expected_inventory_sha256", nargs="?")
     return result
 
 
 def execute_guarded_command(args: argparse.Namespace) -> None:
     try:
         inventory = Inventory.load(args.inventory)
+        expects_release_binding = args.command in {"verify-ready", "verify-running-ready"}
+        if expects_release_binding:
+            if args.expected_policy_sha256 is None or args.expected_inventory_sha256 is None:
+                fail("deployment policy digests are required")
+        elif args.expected_policy_sha256 is not None or args.expected_inventory_sha256 is not None:
+            fail("policy digests are accepted only for deployment readiness")
         if args.command == "bootstrap":
             payload = bootstrap_policy(inventory)
         elif args.command == "ensure":
@@ -1219,7 +1257,11 @@ def execute_guarded_command(args: argparse.Namespace) -> None:
         else:
             payload = verify_policy(inventory)
             if args.command in {"verify-ready", "verify-running-ready"}:
-                verify_bootstrap_marker(args.inventory)
+                verify_bootstrap_marker(
+                    args.inventory,
+                    cast(str, args.expected_policy_sha256),
+                    cast(str, args.expected_inventory_sha256),
+                )
             if args.command in {"verify-running", "verify-running-ready"}:
                 verify_container(inventory, payload)
             elif args.command in {"verify-ready", "verify-empty"}:
@@ -1233,6 +1275,11 @@ def main() -> int:
     args = parser().parse_args()
     try:
         if args.command == "quarantine":
+            if (
+                args.expected_policy_sha256 is not None
+                or args.expected_inventory_sha256 is not None
+            ):
+                fail("quarantine accepts no policy digests")
             quarantine_running_renderer()
         else:
             execute_guarded_command(args)

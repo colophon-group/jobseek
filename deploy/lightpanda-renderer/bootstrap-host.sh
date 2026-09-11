@@ -19,11 +19,15 @@ INVENTORY=/etc/jobseek-lightpanda-network/inventory.json
 UNIT=/etc/systemd/system/jobseek-lightpanda-network.service
 SUDOERS=/etc/sudoers.d/jobseek-lightpanda-network
 TMPFILES=/etc/tmpfiles.d/jobseek-lightpanda-network.conf
+SYSTEMD_ROOT=/etc/systemd/system
+WANTS_DIR="$SYSTEMD_ROOT/multi-user.target.wants"
+ENABLEMENT="$WANTS_DIR/jobseek-lightpanda-network.service"
 HOST_LOCK=/run/lock/jobseek-lightpanda-network.lock
 RENDERER_ROOT=/home/deploy/.local/share/jobseek-lightpanda
 RENDERER_LOCK="$RENDERER_ROOT/renderer.lock"
 ACTIVE="$RENDERER_ROOT/active"
 CONTAINER=jobseek-lightpanda-renderer
+NETWORK=jobseek-lightpanda-renderer
 EGRESS_NETWORK=jobseek-lightpanda-egress
 CI_FAILURE_MODE="${JOBSEEK_LIGHTPANDA_BOOTSTRAP_CI_FAILURE_MODE:-}"
 
@@ -33,10 +37,11 @@ CI_FAILURE_MODE="${JOBSEEK_LIGHTPANDA_BOOTSTRAP_CI_FAILURE_MODE:-}"
 [[ "$GENERATION" == "$RELEASE_ROOT/sha-$SOURCE_COMMIT" ]] || exit 2
 if [[ -n "$CI_FAILURE_MODE" ]]; then
   [[ "$CI_FAILURE_MODE" == after-stop-before-remove || \
-    "$CI_FAILURE_MODE" == ambiguous-stop-status ]] || exit 2
+    "$CI_FAILURE_MODE" == ambiguous-stop-status || \
+    "$CI_FAILURE_MODE" == after-enable-before-marker ]] || exit 2
   [[ "${CI:-}" == true && "${GITHUB_ACTIONS:-}" == true ]] || exit 2
 fi
-for command in docker flock install python3 readlink runuser stat systemctl systemd-tmpfiles visudo; do
+for command in docker flock install python3 readlink runuser sha256sum stat systemctl systemd-tmpfiles visudo; do
   command -v "$command" >/dev/null || {
     echo "required host bootstrap command is absent: $command" >&2
     exit 1
@@ -107,6 +112,17 @@ stable_empty_egress() {
     fi
   done
 }
+stable_empty_renderer_networks() {
+  local endpoint_count network_name
+  for _scan in 1 2; do
+    for network_name in "$NETWORK" "$EGRESS_NETWORK"; do
+      if docker network inspect "$network_name" >/dev/null 2>&1; then
+        endpoint_count="$(docker network inspect --format '{{len .Containers}}' "$network_name")" || return 1
+        [[ "$endpoint_count" == 0 ]] || return 1
+      fi
+    done
+  done
+}
 
 failure_containment() {
   status=$?
@@ -167,6 +183,10 @@ if docker inspect "$CONTAINER" >/dev/null 2>&1; then
     echo "CI bootstrap smoke: interrupting after stop and before remove" >&2
     exit 98
   fi
+  for network_name in "$NETWORK" "$EGRESS_NETWORK"; do
+    docker network disconnect --force "$network_name" "$previous_id" >/dev/null 2>&1 || :
+  done
+  stable_empty_renderer_networks
   docker rm --force "$previous_id" >/dev/null 2>&1 || :
   if docker inspect "$previous_id" >/dev/null 2>&1; then
     docker rm --force "$previous_id" >/dev/null 2>&1 || :
@@ -177,7 +197,7 @@ fi
 
 # The active pointer and prior release deliberately remain as cold provenance.
 # Automatic deployment never restarts or restores that legacy process.
-stable_empty_egress
+stable_empty_renderer_networks
 python3 "$STAGE/verify.py" assert-protected "$protected_before"
 
 install -d -o root -g root -m 0755 "$GENERATION"
@@ -240,11 +260,65 @@ for path in sys.argv[separator + 1 :]:
     finally:
         os.close(descriptor)
 PY
+read -r BOOTSTRAP_POLICY_SHA256 _ < <(sha256sum "$GENERATION/network-policy.py")
+read -r BOOTSTRAP_INVENTORY_SHA256 _ < <(sha256sum "$GENERATION/inventory.json")
+[[ "$BOOTSTRAP_POLICY_SHA256" =~ ^[0-9a-f]{64}$ ]] || exit 1
+[[ "$BOOTSTRAP_INVENTORY_SHA256" =~ ^[0-9a-f]{64}$ ]] || exit 1
 
 "$POLICY" bootstrap >/dev/null
 "$POLICY" verify >/dev/null
 systemctl daemon-reload
 systemctl enable jobseek-lightpanda-network.service >/dev/null
+systemctl is-enabled --quiet jobseek-lightpanda-network.service
+# Linux cannot fsync a symlink inode directly. Attest the exact root-owned
+# enablement link, fsync its installed-unit referent, then fsync the wants
+# directory and its parent so the link dirent is durable before the marker.
+python3 - "$ENABLEMENT" "$UNIT" "$WANTS_DIR" "$SYSTEMD_ROOT" <<'PY'
+import os
+import stat
+import sys
+
+enablement, unit, wants_directory, systemd_root = sys.argv[1:]
+metadata = os.lstat(enablement)
+if (
+    not stat.S_ISLNK(metadata.st_mode)
+    or metadata.st_uid != 0
+    or metadata.st_gid != 0
+    or metadata.st_nlink != 1
+    or os.path.realpath(enablement) != unit
+):
+    raise RuntimeError("systemd enablement link is not exact")
+unit_metadata = os.stat(unit, follow_symlinks=False)
+enabled_metadata = os.stat(enablement, follow_symlinks=True)
+if (
+    not stat.S_ISREG(unit_metadata.st_mode)
+    or (unit_metadata.st_dev, unit_metadata.st_ino)
+    != (enabled_metadata.st_dev, enabled_metadata.st_ino)
+):
+    raise RuntimeError("systemd enablement target is not the installed unit")
+descriptor = os.open(unit, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+try:
+    os.fsync(descriptor)
+finally:
+    os.close(descriptor)
+for path in (wants_directory, systemd_root):
+    directory_metadata = os.stat(path, follow_symlinks=False)
+    if (
+        not stat.S_ISDIR(directory_metadata.st_mode)
+        or directory_metadata.st_uid != 0
+        or directory_metadata.st_gid != 0
+    ):
+        raise RuntimeError("systemd enablement directory is not exact")
+    descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+PY
+if [[ "$CI_FAILURE_MODE" == after-enable-before-marker ]]; then
+  echo "CI bootstrap smoke: interrupting after durable enablement and before marker" >&2
+  exit 99
+fi
 stable_empty_egress
 python3 "$STAGE/verify.py" assert-protected "$protected_before"
 
@@ -288,7 +362,8 @@ finally:
     os.close(directory)
 PY
 
-"$POLICY" verify-ready >/dev/null
+"$POLICY" verify-ready \
+  "$BOOTSTRAP_POLICY_SHA256" "$BOOTSTRAP_INVENTORY_SHA256" >/dev/null
 
 # The durable boundary and completion marker are now complete. Keep the host
 # policy lock across the systemd transition, but hand renderer exclusion to

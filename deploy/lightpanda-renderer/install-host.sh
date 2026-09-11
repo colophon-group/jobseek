@@ -15,6 +15,7 @@ ACTIVE="$ROOT/active"
 PROJECT=jobseek-lightpanda
 SERVICE=renderer
 CONTAINER=jobseek-lightpanda-renderer
+NETWORK=jobseek-lightpanda-renderer
 EGRESS_NETWORK=jobseek-lightpanda-egress
 POLICY=/usr/local/libexec/jobseek-lightpanda-network-policy
 HOST_LOCK=/run/lock/jobseek-lightpanda-network.lock
@@ -33,6 +34,8 @@ if [[ -n "$CI_FAILURE_MODE" ]]; then
     "$CI_FAILURE_MODE" == after-active-switch || \
     "$CI_FAILURE_MODE" == before-compose || \
     "$CI_FAILURE_MODE" == during-compose || \
+    "$CI_FAILURE_MODE" == crash-after-predecessor-stop || \
+    "$CI_FAILURE_MODE" == crash-after-compose-create || \
     "$CI_FAILURE_MODE" == crash-after-candidate ]] || exit 2
   [[ "${CI:-}" == true && "${GITHUB_ACTIONS:-}" == true ]] || exit 2
   [[ "$IMAGE_REF" == jobseek-lightpanda-renderer:pr ]] || exit 2
@@ -64,6 +67,11 @@ for relative in compose.yml inventory.json verify.py validate_pki.py lock.sh pin
   [[ -f "$STAGE/$relative" && ! -L "$STAGE/$relative" ]] || exit 2
   [[ "$(stat -c '%s' "$STAGE/$relative")" -le 131072 ]] || exit 2
 done
+read -r EXPECTED_POLICY_SHA256 EXPECTED_INVENTORY_SHA256 < <(
+  python3 "$STAGE/verify.py" policy-digests "$STAGE/release.env"
+)
+[[ "$EXPECTED_POLICY_SHA256" =~ ^[0-9a-f]{64}$ ]] || exit 2
+[[ "$EXPECTED_INVENTORY_SHA256" =~ ^[0-9a-f]{64}$ ]] || exit 2
 
 # Recompute every public pin after transport. This also repeats the full
 # signature, profile, validity, SAN/EKU, key-format, and key-match checks.
@@ -110,6 +118,17 @@ stable_empty_egress() {
     fi
   done
 }
+stable_empty_renderer_networks() {
+  local endpoint_count network_name
+  for _scan in 1 2; do
+    for network_name in "$NETWORK" "$EGRESS_NETWORK"; do
+      if docker network inspect "$network_name" >/dev/null 2>&1; then
+        endpoint_count="$(docker network inspect --format '{{len .Containers}}' "$network_name")" || return 1
+        [[ "$endpoint_count" == 0 ]] || return 1
+      fi
+    done
+  done
+}
 early_containment_armed=1
 early_containment() {
   status=$?
@@ -122,18 +141,14 @@ early_containment() {
   exit "$status"
 }
 trap early_containment EXIT
+# Static inventory validation is safe before retry ownership is known. The
+# live-host/network preflight runs only after an exact owned predecessor has
+# been quarantined and removed, so a Compose-created candidate with no live
+# endpoint can be recovered without weakening impostor handling.
+python3 "$STAGE/verify.py" inventory-file "$STAGE/inventory.json"
 renderer_exists=0
 if docker inspect "$CONTAINER" >/dev/null 2>&1; then
   renderer_exists=1
-fi
-inventory_args=(inventory "$STAGE/inventory.json")
-if (( renderer_exists )); then
-  inventory_args+=(--renderer-exists)
-fi
-if (( ci_rollback_smoke )); then
-  python3 "$STAGE/verify.py" inventory-file "$STAGE/inventory.json"
-else
-  python3 "$STAGE/verify.py" "${inventory_args[@]}"
 fi
 previous_generation=""
 previous_container_id=""
@@ -187,10 +202,15 @@ if (( renderer_exists )); then
     && "$(stat -c '%U:%G:%a:%h' "$existing_generation/pki/server.pem")" == deploy:deploy:444:1 \
     && "$(stat -c '%u:%g:%a:%h' "$existing_generation/pki/server-key.pem")" == 10001:10001:400:1 ]] || exit 1
   existing_running="$(docker inspect --format '{{json .State.Running}}' "$existing_id")"
+  existing_status="$(docker inspect --format '{{.State.Status}}' "$existing_id")"
   if [[ "$existing_running" == true ]]; then
     python3 "$existing_generation/verify.py" running \
       "$existing_generation/release.env" --expected-id "$existing_id" >/dev/null
-    sudo -n "$POLICY" verify-running-ready >/dev/null
+    sudo -n "$POLICY" verify-running-ready \
+      "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null
+  elif [[ "$existing_running" == false && "$existing_status" == created ]]; then
+    python3 "$existing_generation/verify.py" owned-created \
+      "$existing_generation/release.env" --expected-id "$existing_id" >/dev/null
   elif [[ "$existing_running" == false ]]; then
     python3 "$existing_generation/verify.py" owned \
       "$existing_generation/release.env" --expected-id "$existing_id" >/dev/null
@@ -199,16 +219,29 @@ if (( renderer_exists )); then
   fi
   docker stop --time 30 "$existing_id" >/dev/null 2>&1 || :
   [[ "$(docker inspect --format '{{json .State.Running}}' "$existing_id")" == false ]] || exit 1
+  if [[ "$CI_FAILURE_MODE" == crash-after-predecessor-stop ]]; then
+    echo "CI retry smoke: killing deploy after exact predecessor stop" >&2
+    kill -KILL "$$"
+  fi
+  sudo -n "$POLICY" quarantine >/dev/null
+  for network_name in "$NETWORK" "$EGRESS_NETWORK"; do
+    docker network disconnect --force "$network_name" "$existing_id" >/dev/null 2>&1 || :
+  done
+  stable_empty_renderer_networks
   docker rm --force "$existing_id" >/dev/null 2>&1 || :
   if docker inspect "$existing_id" >/dev/null 2>&1; then
     docker rm --force "$existing_id" >/dev/null 2>&1 || :
   fi
   ! docker inspect "$existing_id" >/dev/null 2>&1 || exit 1
   ! docker inspect "$CONTAINER" >/dev/null 2>&1 || exit 1
-  stable_empty_egress
-  sudo -n "$POLICY" verify-ready >/dev/null
+  stable_empty_renderer_networks
+  sudo -n "$POLICY" verify-ready \
+    "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null
 fi
 previous_container_id=""
+if (( ! ci_rollback_smoke )); then
+  python3 "$STAGE/verify.py" inventory "$STAGE/inventory.json"
+fi
 
 docker_config=""
 cleanup_auth() {
@@ -454,7 +487,8 @@ rollback() {
     fi
     fsync_directories "$ROOT" || rollback_status=1
     attest_routed_network_empty || rollback_status=1
-    sudo -n "$POLICY" verify-ready >/dev/null || rollback_status=1
+    sudo -n "$POLICY" verify-ready \
+      "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null || rollback_status=1
     python3 "$STAGE/verify.py" assert-protected "$protected_before" || rollback_status=1
     if [[ "$rollback_status" -eq 0 ]]; then
       rm -rf -- "$GENERATION" || rollback_status=1
@@ -468,10 +502,23 @@ rollback() {
 generation_cleanup_armed=0
 trap rollback EXIT
 
-sudo -n "$POLICY" verify-ready >/dev/null
+sudo -n "$POLICY" verify-ready \
+  "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null
 if [[ "$CI_FAILURE_MODE" == before-compose ]]; then
   echo "CI rollback smoke: forcing failure before Compose" >&2
   exit 94
+fi
+if [[ "$CI_FAILURE_MODE" == crash-after-compose-create ]]; then
+  docker compose --project-name "$PROJECT" \
+    --env-file "$GENERATION/release.env" \
+    --file "$GENERATION/compose.yml" \
+    create --no-deps "$SERVICE"
+  candidate_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
+  [[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
+  python3 "$GENERATION/verify.py" owned-created \
+    "$GENERATION/release.env" --expected-id "$candidate_container_id" >/dev/null
+  echo "CI retry smoke: killing deploy after Compose create and before start" >&2
+  kill -KILL "$$"
 fi
 docker compose --project-name "$PROJECT" \
   --env-file "$GENERATION/release.env" \
@@ -487,7 +534,8 @@ candidate_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
 
 first_verified_id="$(python3 "$GENERATION/verify.py" running "$GENERATION/release.env")"
 [[ "$first_verified_id" == "$candidate_container_id" ]] || exit 1
-sudo -n "$POLICY" verify-running-ready >/dev/null
+sudo -n "$POLICY" verify-running-ready \
+  "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null
 if [[ "$CI_FAILURE_MODE" == crash-after-candidate ]]; then
   echo "CI retry smoke: killing deploy after candidate start" >&2
   kill -KILL "$$"
@@ -505,7 +553,8 @@ started_after_restart="$(docker inspect --format '{{.State.StartedAt}}' "$candid
 sleep 20
 python3 "$GENERATION/verify.py" running "$GENERATION/release.env" \
   --expected-id "$candidate_container_id" >/dev/null
-sudo -n "$POLICY" verify-running-ready >/dev/null
+sudo -n "$POLICY" verify-running-ready \
+  "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null
 [[ "$(docker inspect --format '{{.RestartCount}}' "$candidate_container_id")" == 0 ]] || exit 1
 memory_current="$(docker exec "$candidate_container_id" cat /sys/fs/cgroup/memory.current)"
 [[ "$memory_current" =~ ^[0-9]+$ && "$memory_current" -le 134217728 ]] || {

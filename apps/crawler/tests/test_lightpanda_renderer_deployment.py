@@ -43,6 +43,8 @@ def release_env() -> dict[str, str]:
         + "-r1a1",
         "SOURCE_COMMIT": "b" * 40,
         "RELEASE_ID": "sha-" + "b" * 40 + "-r1a1",
+        "NETWORK_POLICY_SHA256": "2" * 64,
+        "NETWORK_INVENTORY_SHA256": "3" * 64,
         "CA_DER_SHA256": "c" * 64,
         "SERVER_LEAF_SHA256": "d" * 64,
         "SERVER_SPKI_SHA256": "e" * 64,
@@ -160,6 +162,110 @@ def test_legacy_fixture_keeps_the_exact_pre_egress_inventory_schema() -> None:
     assert "egress_network" not in legacy
     assert "renderer_bridge_name" not in legacy
     assert verify.load_legacy_inventory(DEPLOY / "testdata/legacy-inventory.json") == legacy
+
+
+def test_egress_kernel_routes_include_both_local_table_broadcasts() -> None:
+    raw = verify.load_inventory(DEPLOY / "inventory.json")
+    policy_inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
+    expected = network_policy.expected_egress_route_identities(policy_inventory)
+    assert expected == verify.expected_egress_route_identities(raw)
+    assert (
+        "local",
+        "broadcast",
+        "172.30.94.8",
+        "link",
+        "br-jlp-egress",
+        "kernel",
+        "172.30.94.9",
+        "",
+    ) in expected
+    assert (
+        "local",
+        "broadcast",
+        "172.30.94.15",
+        "link",
+        "br-jlp-egress",
+        "kernel",
+        "172.30.94.9",
+        "",
+    ) in expected
+
+
+def test_cold_candidate_auth_uses_static_ipam_without_live_endpoints() -> None:
+    inventory = verify.load_inventory(DEPLOY / "inventory.json")
+    bindings = {
+        "9443/tcp": [
+            {
+                "HostIp": inventory["published_address"],
+                "HostPort": str(inventory["published_port"]),
+            }
+        ]
+    }
+    settings = {
+        "Ports": {"9443/tcp": None},
+        "Networks": {
+            verify.NETWORK: {
+                "IPAMConfig": {"IPv4Address": inventory["renderer_address"]},
+                "NetworkID": "",
+                "EndpointID": "",
+                "IPAddress": "",
+            },
+            verify.EGRESS_NETWORK: {
+                "IPAMConfig": {"IPv4Address": inventory["egress_address"]},
+                "NetworkID": "",
+                "EndpointID": "",
+                "IPAddress": "",
+            },
+        },
+    }
+    verify.validate_cold_network_settings(
+        settings,
+        inventory,
+        bindings,
+        require_all_network_intents=True,
+    )
+    stopped_after_quarantine = copy.deepcopy(settings)
+    del stopped_after_quarantine["Networks"][verify.EGRESS_NETWORK]  # type: ignore[index]
+    verify.validate_cold_network_settings(
+        stopped_after_quarantine,
+        inventory,
+        bindings,
+        require_all_network_intents=False,
+    )
+    settings["Networks"][verify.EGRESS_NETWORK]["IPAMConfig"]["IPv4Address"] = (  # type: ignore[index]
+        "172.30.94.11"
+    )
+    with pytest.raises(verify.VerificationError, match="static network intent"):
+        verify.validate_cold_network_settings(
+            settings,
+            inventory,
+            bindings,
+            require_all_network_intents=True,
+        )
+
+
+def test_release_policy_binding_rejects_a_stale_expected_digest() -> None:
+    policy_digest = "a" * 64
+    inventory_digest = "b" * 64
+    marker = {
+        "policy_sha256": policy_digest,
+        "inventory_sha256": inventory_digest,
+    }
+    network_policy.verify_release_binding(
+        marker,
+        policy_digest,
+        inventory_digest,
+        policy_digest,
+        inventory_digest,
+    )
+    with pytest.raises(network_policy.PolicyError, match="artifact digest drifted"):
+        network_policy.verify_release_binding(
+            marker,
+            policy_digest,
+            inventory_digest,
+            "c" * 64,
+            inventory_digest,
+        )
 
 
 def test_compose_model_is_exactly_one_controlled_egress_renderer(
@@ -362,7 +468,10 @@ def test_deploy_is_renderer_scoped_and_host_policy_is_read_only() -> None:
     assert 'up --detach --no-deps "$SERVICE"' in scripts
     assert 'sudo -n "$POLICY" verify-ready' in scripts
     assert 'sudo -n "$POLICY" verify-running-ready' in scripts
-    assert "network-policy.py" not in (DEPLOY / "deploy-remote.sh").read_text(encoding="utf-8")
+    deploy_remote = (DEPLOY / "deploy-remote.sh").read_text(encoding="utf-8")
+    assert 'sha256sum "$artifact_root/network-policy.py"' in deploy_remote
+    assert "NETWORK_POLICY_SHA256=$network_policy_sha256" in deploy_remote
+    assert "NETWORK_INVENTORY_SHA256=$network_inventory_sha256" in deploy_remote
     assert "assert-protected" in scripts
     assert "/home/deploy/.local/share/jobseek-lightpanda" in scripts
     assert "os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW" in scripts
@@ -420,6 +529,12 @@ def test_boot_lock_is_recreated_exactly_and_bootstrap_handoff_has_no_self_deadlo
     assert renderer_unlock < restart < renderer_relock
     assert "flock -u 9" not in bootstrap
     assert "After=docker.service systemd-tmpfiles-setup.service" in unit
+    enable = bootstrap.index("systemctl enable jobseek-lightpanda-network.service")
+    enabled = bootstrap.index("systemctl is-enabled --quiet", enable)
+    marker = bootstrap.index('python3 - "$MARKER"', enabled)
+    assert enabled < bootstrap.index('python3 - "$ENABLEMENT"', enabled) < marker
+    assert "for path in (wants_directory, systemd_root):" in bootstrap
+    assert "after-enable-before-marker" in bootstrap
 
 
 def test_deploy_cold_replacement_and_stale_candidate_recovery_are_exact() -> None:
@@ -431,12 +546,22 @@ def test_deploy_cold_replacement_and_stale_candidate_recovery_are_exact() -> Non
     empty_gate = deploy.index('sudo -n "$POLICY" verify-ready', remove)
     compose = deploy.index('docker compose --project-name "$PROJECT"', empty_gate)
     assert ownership < running_gate < stop < remove < empty_gate < compose
+    static_inventory = deploy.index('inventory-file "$STAGE/inventory.json"')
+    live_inventory = deploy.index('inventory "$STAGE/inventory.json"', remove)
+    assert static_inventory < ownership < remove < live_inventory < compose
+    drain = deploy.index("stable_empty_renderer_networks", stop)
+    assert stop < drain < remove
     assert '"$(readlink -f "$existing_generation")" == "$existing_generation"' in deploy
     assert '"$(stat -c \'%U:%G:%a\' "$existing_generation")" == deploy:deploy:711' in deploy
     assert 'python3 "$existing_generation/verify.py" owned' in deploy
     assert 'sudo -n "$POLICY" quarantine' in deploy
     assert "before-compose" in deploy
     assert "during-compose" in deploy
+    assert "crash-after-predecessor-stop" in deploy
+    assert "crash-after-compose-create" in deploy
+    assert '"$existing_generation/verify.py" owned-created' in deploy
+    assert 'policy-digests "$STAGE/release.env"' in deploy
+    assert '"$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256"' in deploy
     assert "crash-after-candidate" in deploy
     assert "docker start" not in deploy
 
@@ -499,6 +624,8 @@ def test_ci_smoke_exercises_legacy_bootstrap_and_cold_rollback() -> None:
     assert 'bash "$root_stage/bootstrap-host.sh"' in smoke
     assert "after-stop-before-remove" in smoke
     assert "stopped-bootstrap-retry-with-ambiguous-status" in smoke
+    assert "durable-enablement-before-marker-fault" in smoke
+    assert "durable-enablement-replay-success" in smoke
     assert "empty-policy-replay" in smoke
     assert ".ci_test_only = true" in smoke
     assert 'legacy_bridge="br-${legacy_network_id:0:12}"' in smoke
@@ -509,12 +636,17 @@ def test_ci_smoke_exercises_legacy_bootstrap_and_cold_rollback() -> None:
     assert "prior-cold-removal-before-compose-failure" in smoke
     assert "candidate-cleanup-during-compose-failure" in smoke
     assert "second-controlled-release-success" in smoke
+    assert "stopped-controlled-predecessor" in smoke
+    assert "stopped-replay-to-compose-created-candidate" in smoke
+    assert "compose-created-candidate-replay-success" in smoke
+    assert "stale-policy-digest-rejection" in smoke
     assert "stale-uncommitted-candidate" in smoke
     assert "stale-candidate-recovery-success" in smoke
     assert "malformed-impostor-rejection" in smoke
     assert 'if docker inspect "$CONTAINER"' in smoke
     assert "verify-running-ready" in smoke
     assert "private-mtls-ingress" in smoke
+    assert "systemd-unit-restart-with-committed-renderer" in smoke
     assert "candidate_transaction_installer" not in smoke
 
 
@@ -583,17 +715,26 @@ def test_verify_ready_requires_fixed_marker_and_both_networks_stably_empty(
     calls: list[object] = []
     monkeypatch.setattr(network_policy.Inventory, "load", lambda _: inventory)
     monkeypatch.setattr(network_policy, "verify_policy", lambda _: {"schema_version": 1})
-    monkeypatch.setattr(network_policy, "verify_bootstrap_marker", lambda path: calls.append(path))
+    monkeypatch.setattr(
+        network_policy,
+        "verify_bootstrap_marker",
+        lambda path, policy, inventory_digest: calls.append((path, policy, inventory_digest)),
+    )
     monkeypatch.setattr(
         network_policy,
         "require_networks_stably_empty",
         lambda *names: calls.append(names),
     )
     network_policy.execute_guarded_command(
-        argparse.Namespace(inventory=network_policy.INVENTORY_PATH, command="verify-ready")
+        argparse.Namespace(
+            inventory=network_policy.INVENTORY_PATH,
+            command="verify-ready",
+            expected_policy_sha256="a" * 64,
+            expected_inventory_sha256="b" * 64,
+        )
     )
     assert calls == [
-        network_policy.INVENTORY_PATH,
+        (network_policy.INVENTORY_PATH, "a" * 64, "b" * 64),
         (network_policy.INTERNAL_NETWORK, network_policy.EGRESS_NETWORK),
     ]
 

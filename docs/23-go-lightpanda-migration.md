@@ -308,8 +308,10 @@ egress network and leaves the restrictive policy and persistent networks in
 place. Re-running bootstrap repairs only empty-network policy state; there is
 no decommission or cross-user transaction log in the deploy path. A root-owned
 tmpfiles declaration recreates the exact host lock before services on every
-boot. The systemd unit serializes on the renderer lifecycle lock and reattests
-or repairs that same empty-network state after Docker restarts.
+boot. Bootstrap attests and durably fsyncs the exact systemd enablement link
+and its directories before publishing its completion marker. The systemd unit
+serializes on the renderer lifecycle lock and reattests or repairs that same
+empty-network state after Docker restarts.
 
 Ordinary deploys take the host lock before the renderer lock. Their normal root
 capabilities are read-only policy attestation immediately before starting a
@@ -318,10 +320,16 @@ exact quarantine command is reserved for fail-closed handling of malformed
 named containers or routed endpoints. They never create, replace, or remove
 host policy. Before replacement they authenticate and cold-remove the exact
 owned container, including a stale uncommitted candidate whose release differs
-from the active pointer. Candidate failure stops, disconnects, and removes the
-exact candidate, restores the prior active pointer, proves the routed network
-stably empty, and leaves the renderer cold; restarting a prior generation
-requires a separately reviewed operator deploy.
+from the active pointer or an exact Compose-created candidate that has not
+started. Stopped ownership uses immutable generation, image, label, mount,
+HostConfig, and static IPAM evidence rather than live endpoint metadata; both
+renderer networks are drained before removal. Each release carries the exact
+policy and inventory digests accepted by the root readiness guard, so unrelated
+commits deploy without re-bootstrap while policy changes fail cold until the
+matching bootstrap completes. Candidate failure stops, disconnects, and
+removes the exact candidate, restores the prior active pointer, proves the
+routed network stably empty, and leaves the renderer cold; restarting a prior
+generation requires a separately reviewed operator deploy.
 
 ## Target architecture
 

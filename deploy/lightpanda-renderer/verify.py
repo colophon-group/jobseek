@@ -12,7 +12,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, NoReturn, cast
+from typing import Any, Literal, NoReturn, cast
 
 PROJECT = "jobseek-lightpanda"
 SERVICE = "renderer"
@@ -80,6 +80,21 @@ LEGACY_INVENTORY_KEYS = {
 PROTECTED = {
     "deploy-murmur-1": "murmur",
     "deploy-cloudflared-1": "cloudflared",
+}
+LEGACY_RELEASE_ENV_KEYS = {
+    "RENDERER_IMAGE_REF",
+    "RENDERER_RELEASE_DIR",
+    "SOURCE_COMMIT",
+    "RELEASE_ID",
+    "CA_DER_SHA256",
+    "SERVER_LEAF_SHA256",
+    "SERVER_SPKI_SHA256",
+    "CLIENT_LEAF_SHA256",
+    "CLIENT_SPKI_SHA256",
+}
+RELEASE_ENV_KEYS = LEGACY_RELEASE_ENV_KEYS | {
+    "NETWORK_POLICY_SHA256",
+    "NETWORK_INVENTORY_SHA256",
 }
 
 
@@ -372,6 +387,7 @@ def expected_egress_route_identities(
     return {
         ("main", "unicast", str(network), "link", *common, ""),
         ("local", "local", str(inventory["egress_gateway"]), "host", *common, ""),
+        ("local", "broadcast", str(network.network_address), "link", *common, ""),
         ("local", "broadcast", str(network.broadcast_address), "link", *common, ""),
     }
 
@@ -858,7 +874,7 @@ def validate_compose_model(
         fail("renderer startup command drifted")
 
 
-def read_env(path: Path) -> dict[str, str]:
+def read_env(path: Path, *, allow_legacy: bool = True) -> dict[str, str]:
     result: dict[str, str] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line or line.startswith("#") or "=" not in line:
@@ -867,24 +883,25 @@ def read_env(path: Path) -> dict[str, str]:
         if key in result or not key or not value:
             fail("release environment is duplicate or incomplete")
         result[key] = value
-    required = {
-        "RENDERER_IMAGE_REF",
-        "RENDERER_RELEASE_DIR",
-        "SOURCE_COMMIT",
-        "RELEASE_ID",
-        "CA_DER_SHA256",
-        "SERVER_LEAF_SHA256",
-        "SERVER_SPKI_SHA256",
-        "CLIENT_LEAF_SHA256",
-        "CLIENT_SPKI_SHA256",
-    }
-    if set(result) != required:
+    accepted = {frozenset(RELEASE_ENV_KEYS)}
+    if allow_legacy:
+        accepted.add(frozenset(LEGACY_RELEASE_ENV_KEYS))
+    if frozenset(result) not in accepted:
         fail("release environment keys are not exact")
+    for key in ("NETWORK_POLICY_SHA256", "NETWORK_INVENTORY_SHA256"):
+        if key in result and not re.fullmatch(r"[0-9a-f]{64}", result[key]):
+            fail("release policy digest is invalid")
     return result
 
 
-def verify_compose(compose: Path, environment: Path, inventory_path: Path) -> None:
-    env = read_env(environment)
+def verify_compose(
+    compose: Path,
+    environment: Path,
+    inventory_path: Path,
+    *,
+    allow_legacy_env: bool = False,
+) -> None:
+    env = read_env(environment, allow_legacy=allow_legacy_env)
     inventory = load_inventory(inventory_path)
     model = run_json(
         [
@@ -902,6 +919,11 @@ def verify_compose(compose: Path, environment: Path, inventory_path: Path) -> No
         ]
     )
     validate_compose_model(model, env, inventory)
+
+
+def release_policy_digests(environment: Path) -> tuple[str, str]:
+    env = read_env(environment, allow_legacy=False)
+    return env["NETWORK_POLICY_SHA256"], env["NETWORK_INVENTORY_SHA256"]
 
 
 def verify_image(
@@ -967,6 +989,55 @@ def verify_cleanup_network(network_id: str, inventory_path: Path) -> None:
         fail("candidate renderer network is unsafe to remove")
 
 
+def validate_cold_network_settings(
+    network_settings: dict[str, Any],
+    inventory: dict[str, object],
+    expected_bindings: dict[str, list[dict[str, object]]],
+    *,
+    require_all_network_intents: bool,
+) -> None:
+    if network_settings.get("Ports") not in ({}, {"9443/tcp": None}, expected_bindings):
+        fail("cold renderer runtime publication state drifted")
+    networks = network_settings.get("Networks") or {}
+    expected_addresses = {
+        NETWORK: inventory["renderer_address"],
+        EGRESS_NETWORK: inventory["egress_address"],
+    }
+    if not set(networks).issubset(expected_addresses) or (
+        require_all_network_intents and set(networks) != set(expected_addresses)
+    ):
+        fail("cold renderer network intents drifted")
+    for network_name, endpoint in networks.items():
+        expected_address = expected_addresses[network_name]
+        ipam = endpoint.get("IPAMConfig") or {}
+        if (
+            ipam.get("IPv4Address") != expected_address
+            or ipam.get("IPv6Address") not in (None, "")
+            or ipam.get("LinkLocalIPs") not in (None, [])
+            or endpoint.get("GlobalIPv6Address") not in (None, "")
+            or endpoint.get("GlobalIPv6PrefixLen") not in (None, 0)
+        ):
+            fail("cold renderer static network intent drifted")
+        network_id = endpoint.get("NetworkID")
+        endpoint_id = endpoint.get("EndpointID")
+        if network_id not in (None, "") and not re.fullmatch(r"[0-9a-f]{64}", str(network_id)):
+            fail("cold renderer network ID is invalid")
+        if endpoint_id not in (None, "") and not re.fullmatch(r"[0-9a-f]{64}", str(endpoint_id)):
+            fail("cold renderer endpoint ID is invalid")
+        expected_gateway = inventory["egress_gateway"] if network_name == EGRESS_NETWORK else ""
+        if (
+            endpoint.get("Gateway") not in (None, "", expected_gateway)
+            or endpoint.get("IPAddress") not in (None, "", expected_address)
+            or endpoint.get("IPPrefixLen") not in (None, 0, 29)
+        ):
+            fail("cold renderer retained an unexpected network allocation")
+        mac_address = endpoint.get("MacAddress")
+        if mac_address not in (None, "") and not re.fullmatch(
+            r"[0-9a-f]{2}(?::[0-9a-f]{2}){5}", str(mac_address)
+        ):
+            fail("cold renderer MAC address is invalid")
+
+
 def validate_running_inspect(
     inspect: dict[str, Any],
     *,
@@ -977,7 +1048,7 @@ def validate_running_inspect(
     release_id: str,
     environment: dict[str, str],
     inventory: dict[str, object],
-    require_running: bool = True,
+    expected_state: Literal["running", "stopped", "created"] = "running",
 ) -> None:
     name = str(inspect.get("Name", "")).removeprefix("/")
     if name != CONTAINER or inspect.get("Image") != image_id:
@@ -985,7 +1056,29 @@ def validate_running_inspect(
     state = inspect.get("State") or {}
     if state.get("OOMKilled") is not False or not isinstance(state.get("Running"), bool):
         fail("renderer state is not an owned stable state")
-    if require_running and (state.get("Running") is not True or state.get("ExitCode") != 0):
+    if expected_state == "created" and (
+        state.get("Status") != "created"
+        or state.get("Running") is not False
+        or state.get("Paused") is not False
+        or state.get("Restarting") is not False
+        or state.get("Dead") is not False
+        or state.get("ExitCode") != 0
+        or state.get("Error") not in (None, "")
+        or inspect.get("RestartCount") != 0
+    ):
+        fail("renderer is not an exact created candidate")
+    if expected_state == "stopped" and (
+        state.get("Status") != "exited"
+        or state.get("Running") is not False
+        or state.get("Paused") is not False
+        or state.get("Restarting") is not False
+        or state.get("Dead") is not False
+        or state.get("Error") not in (None, "")
+    ):
+        fail("renderer is not an exact stopped predecessor")
+    if expected_state == "running" and (
+        state.get("Running") is not True or state.get("ExitCode") != 0
+    ):
         fail("renderer is not stably running")
     config = inspect.get("Config") or {}
     labels = config.get("Labels") or {}
@@ -1083,8 +1176,17 @@ def validate_running_inspect(
         ):
             fail("renderer credential source escaped its release")
 
-    networks = inspect.get("NetworkSettings", {}).get("Networks") or {}
-    if inspect.get("NetworkSettings", {}).get("Ports") != expected_bindings:
+    network_settings = inspect.get("NetworkSettings") or {}
+    networks = network_settings.get("Networks") or {}
+    if expected_state in {"stopped", "created"}:
+        validate_cold_network_settings(
+            network_settings,
+            inventory,
+            expected_bindings,
+            require_all_network_intents=expected_state == "created",
+        )
+        return
+    if network_settings.get("Ports") != expected_bindings:
         fail("renderer runtime port publication state drifted")
     if (
         set(networks) != {NETWORK, EGRESS_NETWORK}
@@ -1275,6 +1377,12 @@ def verify_owned(environment: Path, *, expected_id: str) -> str:
         env["RENDERER_IMAGE_REF"], env["SOURCE_COMMIT"], ci_release_id=ci_release_id
     )
     inventory = load_inventory(environment.parent / "inventory.json")
+    verify_compose(
+        environment.parent / "compose.yml",
+        environment,
+        environment.parent / "inventory.json",
+        allow_legacy_env=True,
+    )
     inspects = run_json(["docker", "inspect", CONTAINER])
     if len(inspects) != 1 or inspects[0].get("Id") != expected_id:
         fail("owned renderer container identity is not exact")
@@ -1287,7 +1395,40 @@ def verify_owned(environment: Path, *, expected_id: str) -> str:
         release_id=env["RELEASE_ID"],
         environment=env,
         inventory=inventory,
-        require_running=False,
+        expected_state="stopped",
+    )
+    return expected_id
+
+
+def verify_owned_created(environment: Path, *, expected_id: str) -> str:
+    env = read_env(environment)
+    ci_release_id = (
+        env["RELEASE_ID"]
+        if re.fullmatch(r"sha-[0-9a-f]{40}-ci-r[0-9]+a[0-9]+", env["RELEASE_ID"])
+        else None
+    )
+    image = verify_image(
+        env["RENDERER_IMAGE_REF"], env["SOURCE_COMMIT"], ci_release_id=ci_release_id
+    )
+    inventory = load_inventory(environment.parent / "inventory.json")
+    verify_compose(
+        environment.parent / "compose.yml",
+        environment,
+        environment.parent / "inventory.json",
+    )
+    inspects = run_json(["docker", "inspect", CONTAINER])
+    if len(inspects) != 1 or inspects[0].get("Id") != expected_id:
+        fail("created renderer container identity is not exact")
+    validate_running_inspect(
+        inspects[0],
+        image_ref=env["RENDERER_IMAGE_REF"],
+        image_id=str(image["Id"]),
+        source_commit=env["SOURCE_COMMIT"],
+        release_dir=env["RENDERER_RELEASE_DIR"],
+        release_id=env["RELEASE_ID"],
+        environment=env,
+        inventory=inventory,
+        expected_state="created",
     )
     return expected_id
 
@@ -1358,7 +1499,11 @@ def verify_legacy_owned(environment: Path, *, expected_id: str) -> str:
         or str(inspect.get("Name", "")).removeprefix("/") != CONTAINER
         or inspect.get("Image") != image.get("Id")
         or state.get("OOMKilled") is not False
-        or not isinstance(state.get("Running"), bool)
+        or state.get("Running") is not False
+        or state.get("Status") != "exited"
+        or state.get("Paused") is not False
+        or state.get("Restarting") is not False
+        or state.get("Dead") is not False
         or labels.get("com.docker.compose.project") != PROJECT
         or labels.get("com.docker.compose.service") != SERVICE
         or labels.get("org.jobseek.lightpanda.source-commit") != env["SOURCE_COMMIT"]
@@ -1405,46 +1550,21 @@ def verify_legacy_owned(environment: Path, *, expected_id: str) -> str:
     ):
         fail("legacy renderer credential mounts drifted")
     networks = inspect.get("NetworkSettings", {}).get("Networks") or {}
+    endpoint = networks.get(NETWORK) or {}
+    ipam = endpoint.get("IPAMConfig") or {}
     if (
         set(networks) != {NETWORK}
-        or networks[NETWORK].get("IPAddress") != inventory["renderer_address"]
-        or networks[NETWORK].get("EndpointID") in (None, "")
+        or ipam.get("IPv4Address") != inventory["renderer_address"]
+        or ipam.get("IPv6Address") not in (None, "")
+        or endpoint.get("IPAddress") not in (None, "", inventory["renderer_address"])
     ):
-        fail("legacy renderer network attachment drifted")
-    network_inspects = run_json(["docker", "network", "inspect", NETWORK])
-    if len(network_inspects) != 1:
-        fail("legacy renderer network identity is not exact")
-    network = network_inspects[0]
-    endpoints = network.get("Containers") or {}
-    configs = network.get("IPAM", {}).get("Config") or []
-    options = network.get("Options") or {}
-    network_id = str(network.get("Id", ""))
-    bridge = options.get("com.docker.network.bridge.name") or f"br-{network_id[:12]}"
-    network_labels = network.get("Labels") or {}
-    renderer_prefix = ipaddress.ip_network(str(inventory["renderer_network"])).prefixlen
-    if (
-        not re.fullmatch(r"[0-9a-f]{64}", network_id)
-        or network.get("Internal") is not True
-        or network.get("EnableIPv6") is not False
-        or network.get("Attachable") is not False
-        or [config.get("Subnet") for config in configs] != [inventory["renderer_network"]]
-        or options
-        not in (
-            {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"},
-            {
-                "com.docker.network.bridge.gateway_mode_ipv4": "isolated",
-                "com.docker.network.bridge.name": boundary_inventory["renderer_bridge_name"],
-            },
-        )
-        or bridge != boundary_inventory["renderer_bridge_name"]
-        or network_labels.get("com.docker.compose.project") != PROJECT
-        or network_labels.get("com.docker.compose.network") != SERVICE
-        or set(endpoints) != {expected_id}
-        or endpoints[expected_id].get("Name") != CONTAINER
-        or endpoints[expected_id].get("IPv4Address")
-        != f"{inventory['renderer_address']}/{renderer_prefix}"
-    ):
-        fail("legacy renderer network ownership drifted")
+        fail("legacy stopped renderer static network intent drifted")
+    network_id = endpoint.get("NetworkID")
+    endpoint_id = endpoint.get("EndpointID")
+    if network_id not in (None, "") and not re.fullmatch(r"[0-9a-f]{64}", str(network_id)):
+        fail("legacy stopped renderer network ID is invalid")
+    if endpoint_id not in (None, "") and not re.fullmatch(r"[0-9a-f]{64}", str(endpoint_id)):
+        fail("legacy stopped renderer endpoint ID is invalid")
     return expected_id
 
 
@@ -1483,12 +1603,17 @@ def parser() -> argparse.ArgumentParser:
     cleanup_network = sub.add_parser("cleanup-network")
     cleanup_network.add_argument("network_id")
     cleanup_network.add_argument("inventory", type=Path)
+    policy_digests = sub.add_parser("policy-digests")
+    policy_digests.add_argument("environment", type=Path)
     running = sub.add_parser("running")
     running.add_argument("environment", type=Path)
     running.add_argument("--expected-id")
     owned = sub.add_parser("owned")
     owned.add_argument("environment", type=Path)
     owned.add_argument("--expected-id", required=True)
+    created = sub.add_parser("owned-created")
+    created.add_argument("environment", type=Path)
+    created.add_argument("--expected-id", required=True)
     predecessor = sub.add_parser("owned-predecessor")
     predecessor.add_argument("environment", type=Path)
     predecessor.add_argument("--expected-id", required=True)
@@ -1521,10 +1646,14 @@ def main() -> int:
             )
         elif args.command == "cleanup-network":
             verify_cleanup_network(args.network_id, args.inventory)
+        elif args.command == "policy-digests":
+            print(" ".join(release_policy_digests(args.environment)))
         elif args.command == "running":
             print(verify_running(args.environment, expected_id=args.expected_id))
         elif args.command == "owned":
             print(verify_owned(args.environment, expected_id=args.expected_id))
+        elif args.command == "owned-created":
+            print(verify_owned_created(args.environment, expected_id=args.expected_id))
         elif args.command == "owned-predecessor":
             print(verify_owned_predecessor(args.environment, expected_id=args.expected_id))
         return 0
