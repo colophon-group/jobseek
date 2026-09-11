@@ -216,6 +216,28 @@ configurations before the 200 pairs are opened for annotation.
 Calibration data is destroyed or quarantined as non-benchmark material after
 the selection record is complete. It must not inflate v1 quality results.
 
+Tune each fleet role independently rather than choosing one global model:
+
+- **prompt generator:** compare candidate model/effort settings on the same
+  eight disposable feeds. The orchestrator blind-scores constraint fidelity,
+  plausibility, persona distinctness, and policy compliance; the later
+  12-card human prompt-sanity pass remains the release check;
+- **primary labeller:** use the 24-32 locked human decisions for binary and
+  ambiguity agreement, repeat consistency, false-accept/false-reject balance,
+  schema validity, latency, and token cost;
+- **adjudicator:** use prebuilt conflicting annotation records over the same
+  disposable pairs and score resolution against the locked human decision; and
+- **final critic:** use synthetic manifests with seeded provenance, leakage,
+  count, blindness, and cohort-reporting defects and measure defect recall plus
+  false alarms.
+
+For each role, the orchestrator spot-checks raw outputs before scores are
+unblinded, records observed failure modes, and may refine the task prompt only
+on disposable examples. After any prompt change, rerun every compared
+configuration on the same clean calibration inputs. Freeze the selected model,
+version, reasoning effort, and task-prompt digest per role before final prompt
+generation or annotation begins.
+
 ## Annotation and adjudication
 
 All 200 pairs are independently labelled twice by agents. A label is binary
