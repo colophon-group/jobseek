@@ -301,6 +301,7 @@ phase safe-lock-metadata-repair
 sudo chown deploy:deploy /run/lock/jobseek-lightpanda-network.lock
 sudo chmod 0600 /run/lock/jobseek-lightpanda-network.lock
 sudo bash "$root_stage/bootstrap-host.sh" "$root_stage" "$SOURCE_COMMIT"
+[[ "$(sudo stat -c '%U:%G:%a' /usr/local/libexec)" == root:root:755 ]]
 [[ "$(sudo stat -c '%U:%G:%a:%h' /run/lock/jobseek-lightpanda-network.lock)" == root:deploy:640:1 ]]
 
 phase empty-policy-replay

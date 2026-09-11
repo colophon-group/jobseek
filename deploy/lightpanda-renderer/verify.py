@@ -154,6 +154,8 @@ def compose_plugin_path(
             candidate_metadata = os.lstat(candidate)
         except FileNotFoundError:
             continue
+        except OSError as error:
+            fail(f"system Docker Compose plugin cannot be inspected: {candidate}: {error}")
         if (
             not stat.S_ISREG(candidate_metadata.st_mode)
             or candidate_metadata.st_uid != trusted_uid
@@ -165,7 +167,10 @@ def compose_plugin_path(
 
         parent = candidate.parent
         while True:
-            metadata = os.lstat(parent)
+            try:
+                metadata = os.lstat(parent)
+            except OSError as error:
+                fail(f"system Docker Compose plugin parent cannot be inspected: {parent}: {error}")
             if (
                 not stat.S_ISDIR(metadata.st_mode)
                 or metadata.st_uid != trusted_uid

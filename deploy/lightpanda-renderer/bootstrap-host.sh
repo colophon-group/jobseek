@@ -23,6 +23,7 @@ SYSTEMD_ROOT=/etc/systemd/system
 WANTS_DIR="$SYSTEMD_ROOT/multi-user.target.wants"
 ENABLEMENT="$WANTS_DIR/jobseek-lightpanda-network.service"
 HOST_LOCK=/run/lock/jobseek-lightpanda-network.lock
+LOCAL_LIBEXEC=/usr/local/libexec
 RENDERER_ROOT=/home/deploy/.local/share/jobseek-lightpanda
 RENDERER_LOCK="$RENDERER_ROOT/renderer.lock"
 ACTIVE="$RENDERER_ROOT/active"
@@ -57,6 +58,16 @@ for artifact in \
   [[ -f "$STAGE/$artifact" && ! -L "$STAGE/$artifact" ]] || exit 2
   [[ "$(stat -c '%s' "$STAGE/$artifact")" -le 262144 ]] || exit 2
 done
+
+# The process umask is deliberately 077, so create this shared system search
+# directory explicitly rather than letting os.makedirs reduce 0755 to 0700.
+# Deploy must be able to traverse it when resolving the root-owned Compose
+# plugin and invoking the sudo-scoped policy entrypoint.
+if [[ -e "$LOCAL_LIBEXEC" || -L "$LOCAL_LIBEXEC" ]]; then
+  [[ -d "$LOCAL_LIBEXEC" && ! -L "$LOCAL_LIBEXEC" ]] || exit 1
+fi
+install -d -o root -g root -m 0755 "$LOCAL_LIBEXEC"
+[[ "$(stat -c '%U:%G:%a' "$LOCAL_LIBEXEC")" == root:root:755 ]] || exit 1
 
 install -d -o root -g root -m 0700 "$STATE_ROOT" "$RELEASE_ROOT"
 install -d -o deploy -g deploy -m 0700 "$RENDERER_ROOT"
@@ -238,7 +249,7 @@ python3 - \
   "$GENERATION" \
   "$RELEASE_ROOT" \
   "$STATE_ROOT" \
-  /usr/local/libexec \
+  "$LOCAL_LIBEXEC" \
   /etc/jobseek-lightpanda-network \
   /etc/systemd/system \
   /etc/sudoers.d \

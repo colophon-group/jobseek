@@ -708,6 +708,8 @@ def test_bootstrap_is_monotonic_and_never_manages_protected_containers() -> None
     sudoers = (DEPLOY / "jobseek-lightpanda-network.sudoers").read_text(encoding="utf-8")
     assert 'exec 9<"$HOST_LOCK"' in bootstrap
     assert 'exec 8<"$RENDERER_LOCK"' in bootstrap
+    assert 'install -d -o root -g root -m 0755 "$LOCAL_LIBEXEC"' in bootstrap
+    assert "root:root:755" in bootstrap
     assert bootstrap.index("flock -w 900 9") < bootstrap.index("flock -w 300 8")
     assert '"$previous_generation/verify.py" running' in bootstrap
     assert '"$STAGE/verify.py" owned-predecessor' in bootstrap
