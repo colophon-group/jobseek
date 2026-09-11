@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -266,6 +267,110 @@ def test_client_stage_is_readable_by_numeric_container_identity() -> None:
         assert completed.returncode == 0, completed.stderr
     finally:
         shutil.rmtree(directory)
+
+
+def test_credential_digest_uses_fixed_files_through_traversal_only_directory() -> None:
+    client = CLIENT.read_text(encoding="utf-8")
+    assert "for name in CREDENTIAL_FILES:" in client
+    assert "CREDS.iterdir()" not in client
+    if shutil.which("setpriv") is None or (os.geteuid() != 0 and shutil.which("sudo") is None):
+        pytest.skip("numeric-user permission execution requires setpriv privilege")
+    if os.geteuid() != 0 and subprocess.run(["sudo", "-n", "true"], check=False).returncode:
+        pytest.skip("passwordless privilege is unavailable")
+
+    directory = Path(tempfile.mkdtemp(prefix="jobseek-acceptance-credentials-", dir="/tmp"))
+    client_stage = Path(tempfile.mkdtemp(prefix="jobseek-acceptance-client-", dir="/tmp"))
+    try:
+        directory.chmod(0o711)
+        client_stage.chmod(0o755)
+        staged_client = client_stage / "acceptance-client.py"
+        shutil.copyfile(CLIENT, staged_client)
+        staged_client.chmod(0o444)
+        names = (
+            "ca.pem",
+            "ca.sha256",
+            "client-key.pem",
+            "client.pem",
+            "server-leaf.sha256",
+            "server-spki.sha256",
+        )
+        for name in names:
+            path = directory / name
+            path.write_bytes(name.encode())
+            path.chmod(0o444)
+        expected = hashlib.sha256()
+        for name in names:
+            expected.update(name.encode() + b"\0" + name.encode() + b"\0")
+        prefix = [] if os.geteuid() == 0 else ["sudo", "-n"]
+        key = directory / "client-key.pem"
+        subprocess.run([*prefix, "chown", "10001:10001", key], check=True)
+        subprocess.run([*prefix, "chmod", "0400", key], check=True)
+        system_python = Path("/usr/bin/python3")
+        if not system_python.is_file():
+            pytest.skip("system Python is required for numeric-user permission execution")
+        code = """
+import pathlib
+import runpy
+import sys
+import types
+
+root = pathlib.Path(sys.argv[1])
+try:
+    list(root.iterdir())
+except PermissionError:
+    pass
+else:
+    raise SystemExit("traversal-only directory was enumerable")
+
+src = types.ModuleType("src")
+src.__path__ = []
+lightpanda = types.ModuleType("src.lightpanda")
+lightpanda.__path__ = []
+client = types.ModuleType("src.lightpanda.client")
+client.LightpandaB0Client = object
+client.LightpandaServiceConfig = object
+routing = types.ModuleType("src.lightpanda.routing")
+routing.resolve_render_assignment = lambda *args, **kwargs: None
+queue = types.ModuleType("src.lightpanda_queue")
+queue.LightpandaB0Task = object
+queue.RouteIdentity = object
+src.lightpanda = lightpanda
+lightpanda.client = client
+lightpanda.routing = routing
+src.lightpanda_queue = queue
+sys.modules.update({
+    "src": src,
+    "src.lightpanda": lightpanda,
+    "src.lightpanda.client": client,
+    "src.lightpanda.routing": routing,
+    "src.lightpanda_queue": queue,
+})
+namespace = runpy.run_path(sys.argv[2], run_name="acceptance_client_test")
+print(namespace["credential_digest"](root))
+"""
+        completed = subprocess.run(
+            [
+                *prefix,
+                "setpriv",
+                "--reuid=10001",
+                "--regid=10001",
+                "--clear-groups",
+                system_python,
+                "-c",
+                code,
+                str(directory),
+                str(staged_client),
+            ],
+            cwd=ROOT / "apps" / "crawler",
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        assert completed.returncode == 0, completed.stderr
+        assert completed.stdout.strip() == expected.hexdigest()
+    finally:
+        shutil.rmtree(directory)
+        shutil.rmtree(client_stage)
 
 
 def test_host_stage_discards_archive_owner_and_normalizes_verifier_metadata(

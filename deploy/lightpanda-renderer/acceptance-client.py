@@ -14,6 +14,14 @@ from src.lightpanda_queue import LightpandaB0Task, RouteIdentity
 
 CREDS = Path("/run/credentials/lightpanda-b0")
 TARGET = "https://example.com/"
+CREDENTIAL_FILES = (
+    "ca.pem",
+    "ca.sha256",
+    "client-key.pem",
+    "client.pem",
+    "server-leaf.sha256",
+    "server-spki.sha256",
+)
 
 
 def pin(name: str) -> str:
@@ -23,9 +31,10 @@ def pin(name: str) -> str:
     return value
 
 
-def credential_digest() -> str:
+def credential_digest(root: Path = CREDS) -> str:
     result = hashlib.sha256()
-    for path in sorted(CREDS.iterdir()):
+    for name in CREDENTIAL_FILES:
+        path = root / name
         if not path.is_file() or path.is_symlink():
             raise RuntimeError("credential bundle is invalid")
         result.update(path.name.encode() + b"\0" + path.read_bytes() + b"\0")
