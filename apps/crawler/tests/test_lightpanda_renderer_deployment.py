@@ -837,6 +837,7 @@ def test_deploy_cold_replacement_and_stale_candidate_recovery_are_exact() -> Non
     assert "during-compose" in deploy
     assert "crash-after-predecessor-stop" in deploy
     assert "crash-after-compose-create" in deploy
+    assert "docker ps --all --no-trunc --quiet" in deploy
     assert '"$existing_generation/verify.py" owned-created' in deploy
     assert 'policy-digests "$STAGE/release.env"' in deploy
     assert '"$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256"' in deploy

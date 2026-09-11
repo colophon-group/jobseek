@@ -438,7 +438,7 @@ remove_candidate_and_attest_empty() {
   local discovered_id
   if [[ -z "$candidate_container_id" ]]; then
     mapfile -t discovered_candidates < <(
-      docker ps --all --quiet \
+      docker ps --all --no-trunc --quiet \
         --filter "label=com.docker.compose.project=$PROJECT" \
         --filter "label=com.docker.compose.service=$SERVICE" \
         --filter "label=org.jobseek.lightpanda.release=$RELEASE_ID" \
