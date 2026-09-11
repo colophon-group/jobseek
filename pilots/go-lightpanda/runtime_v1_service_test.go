@@ -836,6 +836,50 @@ func TestRuntimeV1ServiceRejectsWrongClientPinDuringHandshake(t *testing.T) {
 	_ = connection.Close()
 }
 
+func TestRuntimeV1ServiceAcceptsClientProvidedPinnedRoot(t *testing.T) {
+	fixture := newServiceTLSFixture(t)
+	caPEM, err := os.ReadFile(fixture.server.CAPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caBlock, rest := pem.Decode(caPEM)
+	if caBlock == nil || caBlock.Type != "CERTIFICATE" || len(rest) != 0 {
+		t.Fatal("invalid fixture CA")
+	}
+	client := fixture.client.Clone()
+	pair := client.Certificates[0]
+	pair.Certificate = append(append([][]byte(nil), pair.Certificate...), caBlock.Bytes)
+	client.Certificates = []tls.Certificate{pair}
+
+	_, address, stop := startRuntimeV1ServiceTest(t, fixture, runtimeV1ExecutorFunc(func(context.Context, *runtimev1.BrowserExecutionInput) *runtimev1.BrowserResult {
+		t.Fatal("client root-chain handshake reached executor")
+		return nil
+	}))
+	defer stop()
+	connection := dialRuntimeV1ServiceTest(t, address, client)
+	readRuntimeV1HelloTest(t, connection)
+	_ = connection.Close()
+
+	surplus := client.Clone()
+	surplusPair := surplus.Certificates[0]
+	surplusPair.Certificate = append(
+		append([][]byte(nil), surplusPair.Certificate...), caBlock.Bytes,
+	)
+	surplus.Certificates = []tls.Certificate{surplusPair}
+	raw, err := net.DialTimeout("tcp", address, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rejected := tls.Client(raw, surplus)
+	_ = rejected.SetDeadline(time.Now().Add(time.Second))
+	if err := rejected.Handshake(); err == nil {
+		if _, readErr := framing.ReadRecord(rejected, runtimeV1HelloFrameLimit); readErr == nil {
+			t.Fatal("surplus client chain received service hello")
+		}
+	}
+	_ = rejected.Close()
+}
+
 func startRuntimeV1ServiceTest(
 	t *testing.T,
 	fixture serviceTLSFixture,

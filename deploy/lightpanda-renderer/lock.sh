@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Atomically create and acquire the deploy-owned renderer transaction lock.
+# Atomically create and acquire the deploy-owned renderer lifecycle lock.
 
 acquire_renderer_lock() {
   local lock_path="${1:?lock path is required}"

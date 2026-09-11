@@ -607,19 +607,34 @@ func runtimeV1ServiceTLSConfig(config runtimeV1ServiceConfig) (*tls.Config, erro
 		NextProtos:             []string{runtimeV1ServiceALPN},
 		SessionTicketsDisabled: true,
 		VerifyConnection: func(state tls.ConnectionState) error {
-			if state.Version != tls.VersionTLS13 || state.NegotiatedProtocol != runtimeV1ServiceALPN ||
-				len(state.PeerCertificates) != 1 || len(state.VerifiedChains) != 1 {
-				return errors.New("runtime-v1 service client TLS identity is invalid")
-			}
-			client := state.PeerCertificates[0]
-			if !exactClientLeaf(client) ||
-				!bytes.Equal(clientLeafPin, digest(client.Raw)) ||
-				!bytes.Equal(clientSPKIPin, digest(client.RawSubjectPublicKeyInfo)) {
+			if !exactRuntimeV1ClientConnection(state, ca, clientLeafPin, clientSPKIPin) {
 				return errors.New("runtime-v1 service client TLS identity is invalid")
 			}
 			return nil
 		},
 	}, nil
+}
+
+func exactRuntimeV1ClientConnection(
+	state tls.ConnectionState,
+	ca *x509.Certificate,
+	clientLeafPin []byte,
+	clientSPKIPin []byte,
+) bool {
+	if ca == nil || state.Version != tls.VersionTLS13 ||
+		state.NegotiatedProtocol != runtimeV1ServiceALPN ||
+		(len(state.PeerCertificates) != 1 && len(state.PeerCertificates) != 2) ||
+		len(state.VerifiedChains) != 1 || len(state.VerifiedChains[0]) != 2 {
+		return false
+	}
+	client := state.PeerCertificates[0]
+	if len(state.PeerCertificates) == 2 && !bytes.Equal(state.PeerCertificates[1].Raw, ca.Raw) {
+		return false
+	}
+	chain := state.VerifiedChains[0]
+	return bytes.Equal(chain[0].Raw, client.Raw) && bytes.Equal(chain[1].Raw, ca.Raw) &&
+		exactClientLeaf(client) && bytes.Equal(clientLeafPin, digest(client.Raw)) &&
+		bytes.Equal(clientSPKIPin, digest(client.RawSubjectPublicKeyInfo))
 }
 
 func validateRuntimeV1ServiceBind(address string) error {

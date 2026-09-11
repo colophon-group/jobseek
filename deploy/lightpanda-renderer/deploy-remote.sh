@@ -76,12 +76,18 @@ python3 "$payload_root/validate_pki.py" \
   --server-key "$payload_root/pki/server-key.pem" \
   --client "$payload_root/pki/client.pem" \
   --output "$payload_root/pins.env"
+read -r network_policy_sha256 _ < <(sha256sum "$artifact_root/network-policy.py")
+read -r network_inventory_sha256 _ < <(sha256sum "$payload_root/inventory.json")
+[[ "$network_policy_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 1
+[[ "$network_inventory_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 1
 
 cat >"$payload_root/release.env" <<EOF
 RENDERER_IMAGE_REF=$IMAGE_REF
 RENDERER_RELEASE_DIR=$release_dir
 SOURCE_COMMIT=$SOURCE_COMMIT
 RELEASE_ID=$release_id
+NETWORK_POLICY_SHA256=$network_policy_sha256
+NETWORK_INVENTORY_SHA256=$network_inventory_sha256
 EOF
 cat "$payload_root/pins.env" >>"$payload_root/release.env"
 chmod 0600 "$payload_root/pins.env" "$payload_root/release.env"
