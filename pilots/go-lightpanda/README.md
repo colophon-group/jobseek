@@ -105,10 +105,17 @@ separate external default-deny boundary required for deployment.
 
 The child receives a fixed non-secret environment that disables Lightpanda
 telemetry and core dumps; it inherits no parent credentials, proxy variables,
-or configuration through environment variables. No proxy argument or CDP
-proxy override is exposed. Concurrent in-process runners retain each allocated
-port until that process has been cleaned up, preventing sibling tasks from
-selecting the same close-then-bind port:
+or configuration through environment variables. In service mode, a pinned
+`setpriv` bootstrap runs the Go controller as UID/GID 10001 with only
+`KILL`, `SETGID`, and `SETUID`; the controller starts each browser as UID/GID
+10002 through a second fixed trampoline that removes all inheritable and
+ambient capabilities before `exec`. The browser therefore has no permitted,
+effective, inheritable, or ambient capabilities and cannot read the
+controller-owned mode-0400 TLS key or controller process state. The controller
+keeps `KILL` only because cross-UID process-group cleanup requires it. No proxy
+argument or CDP proxy override is exposed. Concurrent in-process runners
+retain each allocated port until that process has been cleaned up, preventing
+sibling tasks from selecting the same close-then-bind port:
 
 ```text
 lightpanda serve --host 127.0.0.1 --port <port> --log-level error \

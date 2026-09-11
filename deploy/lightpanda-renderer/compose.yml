@@ -12,6 +12,7 @@ services:
       org.jobseek.lightpanda.release: "${RELEASE_ID:?release id is required}"
       org.jobseek.lightpanda.mode: dormant-no-egress
     command:
+      - --runtime-v1-service
       - --listen
       - 0.0.0.0:9443
       - --service-ip
@@ -42,10 +43,14 @@ services:
       - "${CLIENT_LEAF_SHA256:?client leaf pin is required}"
       - --client-spki-sha256
       - "${CLIENT_SPKI_SHA256:?client SPKI pin is required}"
-    user: "10001:10001"
+    user: "0:0"
     read_only: true
     cap_drop:
       - ALL
+    cap_add:
+      - KILL
+      - SETGID
+      - SETUID
     security_opt:
       - no-new-privileges:true
     init: true
@@ -59,7 +64,7 @@ services:
         soft: 256
         hard: 256
     tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0700
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,uid=10002,gid=10002,mode=0700
     stop_grace_period: 30s
     restart: "on-failure:3"
     logging:

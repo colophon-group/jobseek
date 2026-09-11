@@ -2,8 +2,14 @@
 
 package main
 
-import "syscall"
+import (
+	"errors"
+	"syscall"
+)
 
-func lightpandaProcessAttributes() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{Setpgid: true}
+func lightpandaProcessAttributes(isolateChild bool) (*syscall.SysProcAttr, error) {
+	if isolateChild {
+		return nil, errors.New("isolated service execution requires Linux")
+	}
+	return &syscall.SysProcAttr{Setpgid: true}, nil
 }

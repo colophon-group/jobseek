@@ -79,7 +79,9 @@ LABEL org.jobseek.lightpanda.source-commit="${SOURCE_COMMIT}"
 
 COPY --from=build /out/go-lightpanda /usr/local/bin/go-lightpanda
 
-ENTRYPOINT ["/usr/local/bin/go-lightpanda", "--runtime-v1-service"]
+USER 0:0
+ENTRYPOINT ["/usr/bin/setpriv", "--reuid=10001", "--regid=10001", "--clear-groups", "--inh-caps=+kill,+setgid,+setuid", "--ambient-caps=+kill,+setgid,+setuid", "--nnp", "--", "/usr/local/bin/go-lightpanda"]
+CMD ["--runtime-v1-service"]
 
 FROM pilot-base AS density
 

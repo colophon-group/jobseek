@@ -198,6 +198,17 @@ func TestCommandStarterBuildCommandDoesNotInheritEnvironment(t *testing.T) {
 	}
 }
 
+func TestIsolatedLightpandaCommandRejectsUnpinnedBinary(t *testing.T) {
+	_, err := (commandStarter{
+		binary:       "/tmp/lightpanda",
+		egressPolicy: defaultEgressPolicy(),
+		isolateChild: true,
+	}).buildCommand(9222, &boundedBuffer{limit: maxProcessLogBytes})
+	if err == nil || !strings.Contains(err.Error(), "pinned lightpanda binary") {
+		t.Fatalf("unpinned isolated command error = %v", err)
+	}
+}
+
 func TestCommandStarterArgumentsContainNoTaskMaterial(t *testing.T) {
 	const target = "https://secret.example/token"
 	const expression = "secretExpression()"

@@ -278,7 +278,7 @@ func TestRuntimeV1ServiceRejectsBaselineOnlyExecutionBeforeCgroupAndTLS(t *testi
 	config.MemoryMaxPath = filepath.Join(t.TempDir(), "missing-memory.max")
 	config.CertificatePath = filepath.Join(t.TempDir(), "missing-server.pem")
 	execution, err := newRuntimeV1ServiceExecution(
-		Config{EgressPolicy: defaultEgressPolicy()},
+		Config{Binary: lightpandaServiceBinary, EgressPolicy: defaultEgressPolicy()},
 		func(context.Context, Config, Task) (Result, error) {
 			t.Fatal("mismatched execution policy reached the runner")
 			return Result{}, nil
@@ -290,6 +290,16 @@ func TestRuntimeV1ServiceRejectsBaselineOnlyExecutionBeforeCgroupAndTLS(t *testi
 	_, err = newRuntimeV1Service(config, execution)
 	if err == nil || !strings.Contains(err.Error(), "does not match") {
 		t.Fatalf("construction error = %v, want execution policy mismatch", err)
+	}
+}
+
+func TestRuntimeV1ServiceExecutionRequiresPinnedLightpandaBinary(t *testing.T) {
+	_, err := newRuntimeV1ServiceExecution(
+		Config{Binary: "/tmp/lightpanda", EgressPolicy: defaultEgressPolicy()},
+		func(context.Context, Config, Task) (Result, error) { return Result{}, nil },
+	)
+	if err == nil || !strings.Contains(err.Error(), "pinned lightpanda binary") {
+		t.Fatalf("unpinned service execution error = %v", err)
 	}
 }
 
@@ -692,6 +702,7 @@ func TestRuntimeV1ServicePeerCloseCancelsExecutionAndServiceRemainsSound(t *test
 	var calls atomic.Int32
 	var cleanups atomic.Int32
 	execution, err := newRuntimeV1ServiceExecution(Config{
+		Binary:       lightpandaServiceBinary,
 		EgressPolicy: fixture.server.serviceEgressPolicy.egressPolicy,
 	}, func(
 		ctx context.Context,
@@ -746,6 +757,7 @@ func TestRuntimeV1ServicePeerCloseCancelsExecutionAndServiceRemainsSound(t *test
 func TestRuntimeV1ServiceCleanupUnprovedPoisonsResidentService(t *testing.T) {
 	fixture := newServiceTLSFixture(t)
 	execution, err := newRuntimeV1ServiceExecution(Config{
+		Binary:       lightpandaServiceBinary,
 		EgressPolicy: fixture.server.serviceEgressPolicy.egressPolicy,
 	}, func(
 		context.Context,

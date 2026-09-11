@@ -41,6 +41,23 @@ var lightpandaChildEnvironment = []string{
 	"LIGHTPANDA_DISABLE_TELEMETRY=true",
 }
 
+const (
+	lightpandaPrivilegeTrampoline = "/usr/bin/setpriv"
+	lightpandaServiceBinary       = "/usr/local/bin/lightpanda"
+)
+
+func isolatedChildCommand(binary string, args ...string) *exec.Cmd {
+	trampolineArgs := []string{
+		"--inh-caps=-all",
+		"--ambient-caps=-all",
+		"--nnp",
+		"--",
+		binary,
+	}
+	trampolineArgs = append(trampolineArgs, args...)
+	return exec.Command(lightpandaPrivilegeTrampoline, trampolineArgs...)
+}
+
 var (
 	errCleanupUnproved = errors.New("lightpanda cleanup could not be proved")
 	errResourceLimit   = errors.New("lightpanda result exceeded a resource limit")
@@ -107,6 +124,7 @@ type Config struct {
 	TaskTimeout    time.Duration
 	CleanupTimeout time.Duration
 	TerminateGrace time.Duration
+	isolateChild   bool
 }
 
 func normalizeConfig(config Config) (Config, error) {
@@ -135,7 +153,10 @@ func runTask(ctx context.Context, config Config, task Task) (Result, error) {
 		return Result{}, fmt.Errorf("configure lightpanda: %w", err)
 	}
 	return runTaskWithDependencies(ctx, config, dependencies{
-		process:      commandStarter{binary: config.Binary, egressPolicy: config.EgressPolicy},
+		process: commandStarter{
+			binary: config.Binary, egressPolicy: config.EgressPolicy,
+			isolateChild: config.isolateChild,
+		},
 		ready:        httpReadyWaiter{interval: defaultReadyInterval},
 		executor:     chromedpExecutor{},
 		allocatePort: allocateLoopbackPort,
@@ -476,6 +497,7 @@ func waitUntil(done <-chan struct{}, timeout time.Duration) bool {
 type commandStarter struct {
 	binary       string
 	egressPolicy EgressPolicy
+	isolateChild bool
 }
 
 func (s commandStarter) Start(port int) (managedProcess, error) {
@@ -494,9 +516,20 @@ func (s commandStarter) buildCommand(port int, logs io.Writer) (*exec.Cmd, error
 	if err := s.egressPolicy.validate(); err != nil {
 		return nil, err
 	}
-	command := exec.Command(s.binary, fixedLightpandaServeArgs(port, s.egressPolicy.blockCIDRs)...)
+	args := fixedLightpandaServeArgs(port, s.egressPolicy.blockCIDRs)
+	command := exec.Command(s.binary, args...)
+	if s.isolateChild {
+		if s.binary != lightpandaServiceBinary {
+			return nil, errors.New("isolated service requires the pinned lightpanda binary")
+		}
+		command = isolatedChildCommand(s.binary, args...)
+	}
 	command.Env = append([]string(nil), lightpandaChildEnvironment...)
-	command.SysProcAttr = lightpandaProcessAttributes()
+	attributes, err := lightpandaProcessAttributes(s.isolateChild)
+	if err != nil {
+		return nil, err
+	}
+	command.SysProcAttr = attributes
 	command.Stdout = logs
 	command.Stderr = logs
 	return command, nil

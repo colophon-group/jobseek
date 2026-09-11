@@ -30,7 +30,11 @@ func (starter densityFixtureStarter) Start(port int) (managedProcess, error) {
 	logs := &boundedBuffer{limit: maxProcessLogBytes}
 	command := exec.Command(starter.binary, args...)
 	command.Env = append([]string(nil), lightpandaChildEnvironment...)
-	command.SysProcAttr = lightpandaProcessAttributes()
+	attributes, err := lightpandaProcessAttributes(false)
+	if err != nil {
+		return nil, err
+	}
+	command.SysProcAttr = attributes
 	command.Stdout = logs
 	command.Stderr = logs
 	if err := command.Start(); err != nil {
