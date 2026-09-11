@@ -658,23 +658,22 @@ def _compose_model() -> dict[str, object]:
     return json.loads(result.stdout)
 
 
-def test_compose_claimant_is_networkless_secretless_and_bounded() -> None:
+def test_compose_claimant_is_go_dark_networkless_secretless_and_bounded() -> None:
     model = _compose_model()
     service = model["services"]["lightpanda-claimant"]  # type: ignore[index]
     assert service["network_mode"] == "none"  # type: ignore[index]
-    assert service["command"] == ["/app/.venv/bin/lightpanda-claimant"]  # type: ignore[index]
+    assert service["command"] == ["/usr/local/bin/lightpanda-b0-supervisor"]  # type: ignore[index]
     assert service["user"] == "10001:10001"  # type: ignore[index]
     assert service["read_only"] is True  # type: ignore[index]
     assert service["cap_drop"] == ["ALL"]  # type: ignore[index]
     assert service["security_opt"] == ["no-new-privileges:true"]  # type: ignore[index]
-    assert int(service["mem_limit"]) == 512 * 1024 * 1024  # type: ignore[index]
+    assert int(service["mem_limit"]) == 128 * 1024 * 1024  # type: ignore[index]
+    assert int(service["memswap_limit"]) == 128 * 1024 * 1024  # type: ignore[index]
     assert service["pids_limit"] == 32  # type: ignore[index]
     assert "ports" not in service  # type: ignore[operator]
     assert "depends_on" not in service  # type: ignore[operator]
     environment = service["environment"]  # type: ignore[index]
-    assert environment["LIGHTPANDA_B0_CLAIMANT_MODE"] == "dark"  # type: ignore[index]
-    assert environment["CRAWLER_DB_POOL_MIN"] == "0"  # type: ignore[index]
-    assert environment["CRAWLER_DB_POOL_MAX"] == "1"  # type: ignore[index]
+    assert environment == {"LIGHTPANDA_B0_SUPERVISOR_MODE": "dark"}
     forbidden = (
         "LOCAL_DATABASE_URL",
         "REDIS_URL",
@@ -687,15 +686,41 @@ def test_compose_claimant_is_networkless_secretless_and_bounded() -> None:
     assert not any(
         key == value or key.startswith(value) for key in environment for value in forbidden
     )  # type: ignore[union-attr]
-    volumes = service["volumes"]  # type: ignore[index]
-    assert len(volumes) == 6  # type: ignore[arg-type]
-    assert all(volume["read_only"] is True for volume in volumes)  # type: ignore[union-attr]
-    assert all(
-        volume.get("bind", {}).get("create_host_path") in (None, False) for volume in volumes
-    )  # type: ignore[union-attr]
+    assert "volumes" not in service
+    assert service["healthcheck"]["test"] == [  # type: ignore[index]
+        "CMD",
+        "/usr/local/bin/lightpanda-b0-supervisor",
+        "--healthcheck",
+    ]
     source = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
-    source_volumes = source["services"]["lightpanda-claimant"]["volumes"]
-    assert all(volume["bind"]["create_host_path"] is False for volume in source_volumes)
+    assert "volumes" not in source["services"]["lightpanda-claimant"]
+
+
+def test_image_and_deploy_validate_the_exact_go_dark_executable() -> None:
+    dockerfile = (CRAWLER / "Dockerfile").read_text(encoding="utf-8")
+    deploy = DEPLOY.read_text(encoding="utf-8")
+
+    assert "go/lightpanda-b0-supervisor/ go/lightpanda-b0-supervisor/" in dockerfile
+    assert "go test ./..." in dockerfile
+    assert (
+        "COPY --from=lightpanda-b0-build /out/lightpanda-b0-supervisor "
+        "/usr/local/bin/lightpanda-b0-supervisor"
+    ) in dockerfile
+    assert "/usr/local/bin/lightpanda-b0-supervisor --validate-dark" in deploy
+    assert "/app/.venv/bin/lightpanda-claimant --validate-only" not in deploy
+
+
+def test_ci_owns_the_production_go_supervisor_module() -> None:
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    job = workflow[
+        workflow.index("  test-go-b0-supervisor:") : workflow.index("\n  crawler-image:")
+    ]
+
+    assert "if: needs.changes.outputs.crawler_code == 'true'" in job
+    assert "apps/crawler/go/lightpanda-b0-supervisor/go.mod" in job
+    for gate in ("go test ./...", "go test -race ./...", "go vet ./...", "go mod tidy -diff"):
+        assert gate in job
+    assert 'test -z "$(gofmt -l .)"' in job
 
 
 def test_credentials_module_imports_without_optional_cryptography_runtime() -> None:

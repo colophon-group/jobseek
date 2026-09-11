@@ -554,7 +554,7 @@ finalize_claimant_credential_generation() {
   # Exercise the real installed executable, real mounts, numeric user, and
   # network-none service before the long-running process is allowed to start.
   docker compose run --rm --no-deps lightpanda-claimant \
-    /app/.venv/bin/lightpanda-claimant --validate-only
+    /usr/local/bin/lightpanda-b0-supervisor --validate-dark
 }
 
 verify_runtime_contract_pair() {

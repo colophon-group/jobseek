@@ -981,6 +981,21 @@ test("Go HTTP pilot CI is path-aware, builds ARM64, and is required when selecte
   );
 });
 
+test("Go Lightpanda B0 supervisor quality gate is protected", () => {
+  const goSupervisorJob = jobBlock("test-go-b0-supervisor");
+  const requiredCiJob = jobBlock("required-ci");
+
+  assert.match(
+    goSupervisorJob,
+    /go test \.\/\.\.\.[\s\S]*go test -race \.\/\.\.\.[\s\S]*go vet \.\/\.\.\.[\s\S]*go mod tidy -diff[\s\S]*gofmt -l/,
+  );
+  assert.match(requiredCiJob, /needs:[\s\S]*- test-go-b0-supervisor/);
+  assert.match(
+    requiredCiJob,
+    /requireSuccess\("test-go-b0-supervisor", crawlerCode\)/,
+  );
+});
+
 test("Python fleet comparator stays locked to its production authorities", () => {
   const crawlerBase = crawlerDockerfile.match(
     /^FROM (python:[^ ]+@sha256:[0-9a-f]{64}) AS base$/m,
