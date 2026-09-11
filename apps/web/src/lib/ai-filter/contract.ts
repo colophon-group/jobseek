@@ -274,6 +274,17 @@ function requireCanonicalInstant(value: unknown, field: string): string {
   return value;
 }
 
+function requireCanonicalWholeSecondInstant(
+  value: unknown,
+  field: string,
+): string {
+  const instant = requireCanonicalInstant(value, field);
+  if (new Date(instant).getUTCMilliseconds() !== 0) {
+    fail(`${field} must align to whole-second precision`);
+  }
+  return instant;
+}
+
 function addRetention(firstSeenAt: string): string {
   const expiresAt = new Date(firstSeenAt).getTime() + RETENTION_MS;
   if (!Number.isFinite(expiresAt)) fail("retention instant is out of range");
@@ -377,7 +388,7 @@ function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
     "candidate",
   );
 
-  const postingFirstSeenAt = requireCanonicalInstant(
+  const postingFirstSeenAt = requireCanonicalWholeSecondInstant(
     record.postingFirstSeenAt,
     "candidate.postingFirstSeenAt",
   );
@@ -400,7 +411,10 @@ function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
  * Parses an immutable candidate-selection snapshot. It intentionally does not
  * bind normalized posting content; AF-9/AF-10 must bind classifier input at
  * execution time. Successful parsing is not authorization or an execution
- * permit.
+ * permit. Producers must use the canonical reader's whole-second half-open
+ * interval `[requestedAt - 30 days, requestedAt)` and order candidates by
+ * `postingFirstSeenAt` descending, then `candidateId` ascending for equal
+ * timestamps.
  */
 export function parseAiFilterSegmentRequest(
   input: unknown,
@@ -412,11 +426,12 @@ export function parseAiFilterSegmentRequest(
     "segment request",
   );
 
-  const requestedAt = requireCanonicalInstant(
+  const requestedAt = requireCanonicalWholeSecondInstant(
     record.requestedAt,
     "segment request.requestedAt",
   );
   const requestedAtMs = new Date(requestedAt).getTime();
+  const windowStartMs = requestedAtMs - RETENTION_MS;
   const candidateInputs = requireDenseArray(
     record.candidates,
     "segment request.candidates",
@@ -430,6 +445,7 @@ export function parseAiFilterSegmentRequest(
 
   const seen = new Set<string>();
   let previousFirstSeenMs = Number.POSITIVE_INFINITY;
+  let previousCandidateId: string | undefined;
   const candidates = candidateInputs.map((candidateInput) => {
     const candidate = parseCandidate(candidateInput);
     if (seen.has(candidate.candidateId)) {
@@ -438,16 +454,24 @@ export function parseAiFilterSegmentRequest(
     seen.add(candidate.candidateId);
 
     const firstSeenMs = new Date(candidate.postingFirstSeenAt).getTime();
-    if (firstSeenMs > requestedAtMs) {
-      fail("candidate cannot be seen after the run was requested");
+    if (firstSeenMs >= requestedAtMs) {
+      fail("candidate.postingFirstSeenAt must precede segment request.requestedAt");
     }
-    if (firstSeenMs > previousFirstSeenMs) {
-      fail("segment request candidates must be newest-first");
+    if (
+      firstSeenMs > previousFirstSeenMs ||
+      (firstSeenMs === previousFirstSeenMs &&
+        previousCandidateId !== undefined &&
+        candidate.candidateId < previousCandidateId)
+    ) {
+      fail(
+        "segment request candidates must be newest-first with candidate IDs ascending for equal timestamps",
+      );
     }
-    if (new Date(candidate.productExpiresAt).getTime() <= requestedAtMs) {
+    if (firstSeenMs < windowStartMs) {
       fail("candidate retention expired before the run was requested");
     }
     previousFirstSeenMs = firstSeenMs;
+    previousCandidateId = candidate.candidateId;
     return candidate;
   });
 
@@ -653,9 +677,10 @@ export function materializeAiFilterProductDecisions(
 }
 
 export function isAiFilterProductDecisionExpired(
-  decision: Pick<AiFilterProductDecision, "expiresAt">,
+  decisionInput: Pick<AiFilterProductDecision, "expiresAt">,
   nowInput: unknown,
 ): boolean {
+  const decision = snapshotDataRecord(decisionInput, "product decision");
   const expiresAt = requireCanonicalInstant(decision.expiresAt, "expiresAt");
   const now = requireCanonicalInstant(nowInput, "now");
   return new Date(now).getTime() >= new Date(expiresAt).getTime();
