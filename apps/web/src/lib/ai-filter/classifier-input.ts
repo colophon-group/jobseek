@@ -1,0 +1,445 @@
+import { createHash } from "node:crypto";
+import { parse, parseFragment, type DefaultTreeAdapterTypes } from "parse5";
+
+import { parseAiFilterCandidateId } from "./contract";
+
+export const CLASSIFIER_INPUT_SCHEMA_VERSION = "classifier-input-v1" as const;
+export const CLASSIFIER_INPUT_NORMALIZER_VERSION =
+  "classifier-input-normalizer-v4" as const;
+export const CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT = 12_000;
+export const CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT = 250_000;
+export const CLASSIFIER_DESCRIPTION_MARKUP_TOKEN_LIMIT = 2_000;
+export const CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT = 1_000;
+export const CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT = 4_000;
+const CLASSIFIER_TRUNCATION_BOUNDARY_WINDOW = 1_000;
+const UNSUPPORTED_TEXT_CONTROL_PATTERN =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u;
+
+export type ClassifierInputSource = {
+  readonly candidateId: string;
+  readonly title: string;
+  readonly companyName: string;
+  readonly descriptionHtml: string;
+  readonly selectedDescriptionLocale: string;
+};
+
+/** The complete allowlist serialized for the model. */
+export type ClassifierInputV1 = {
+  readonly schemaVersion: typeof CLASSIFIER_INPUT_SCHEMA_VERSION;
+  readonly candidateId: string;
+  readonly title: string;
+  readonly companyName: string;
+  readonly descriptionText: string;
+};
+
+/** Evaluation/runtime metadata which must never be serialized into the model payload. */
+export type ClassifierInputSidecarV1 = {
+  readonly selectedDescriptionLocale: string;
+  readonly truncated: boolean;
+};
+
+export type NormalizedClassifierInputV1 = {
+  readonly payload: ClassifierInputV1;
+  readonly sidecar: ClassifierInputSidecarV1;
+  /** Fixture identity only. AF-10 binds this to policy before any cache use. */
+  readonly contentIdentity: string;
+};
+
+const SOURCE_FIELDS = [
+  "candidateId",
+  "title",
+  "companyName",
+  "descriptionHtml",
+  "selectedDescriptionLocale",
+] as const;
+const SOURCE_FIELD_SET = new Set<string>(SOURCE_FIELDS);
+
+const OMITTED_SUBTREES = new Set([
+  "base",
+  "canvas",
+  "embed",
+  "head",
+  "iframe",
+  "link",
+  "meta",
+  "noscript",
+  "object",
+  "script",
+  "style",
+  "svg",
+  "template",
+  "title",
+]);
+
+const BLOCK_ELEMENTS = new Set([
+  "address",
+  "article",
+  "aside",
+  "blockquote",
+  "dd",
+  "details",
+  "dialog",
+  "div",
+  "dl",
+  "dt",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "footer",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "header",
+  "li",
+  "main",
+  "nav",
+  "ol",
+  "p",
+  "pre",
+  "section",
+  "summary",
+  "table",
+  "tbody",
+  "td",
+  "tfoot",
+  "th",
+  "thead",
+  "tr",
+  "ul",
+]);
+
+export class ClassifierInputValidationError extends Error {
+  readonly path: string;
+  readonly rule: string;
+
+  constructor(path: string, rule: string) {
+    super(`${path}: ${rule}`);
+    this.name = "ClassifierInputValidationError";
+    this.path = path;
+    this.rule = rule;
+  }
+}
+
+function fail(path: string, rule: string): never {
+  throw new ClassifierInputValidationError(path, rule);
+}
+
+function frozenNullPrototypeRecord<T extends object>(values: T): T {
+  return Object.freeze(Object.assign(Object.create(null), values)) as T;
+}
+
+function assertWellFormedText(value: string, path: string): void {
+  for (let index = 0; index < value.length; index += 1) {
+    const codeUnit = value.charCodeAt(index);
+    if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+      const nextCodeUnit = value.charCodeAt(index + 1);
+      if (
+        index + 1 >= value.length ||
+        nextCodeUnit < 0xdc00 ||
+        nextCodeUnit > 0xdfff
+      ) {
+        fail(path, "contains ill-formed Unicode");
+      }
+      index += 1;
+    } else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
+      fail(path, "contains ill-formed Unicode");
+    }
+  }
+  if (UNSUPPORTED_TEXT_CONTROL_PATTERN.test(value)) {
+    fail(path, "contains unsupported control characters");
+  }
+}
+
+function readRequiredString(
+  source: Record<string, unknown>,
+  field: (typeof SOURCE_FIELDS)[number],
+): string {
+  const value = source[field];
+  if (typeof value !== "string") fail(`$.${field}`, "must be a string");
+  return value;
+}
+
+function normalizeInlineText(value: string): string {
+  return value
+    .replace(/\r\n?/gu, "\n")
+    .replace(/\u00a0/gu, " ")
+    .normalize("NFC")
+    .replace(/[^\S\n]+/gu, " ")
+    .replace(/ *\n+ */gu, " ")
+    .trim();
+}
+
+function normalizedRequiredText(value: string, path: string): string {
+  if (value.length > CLASSIFIER_INLINE_TEXT_RAW_CODE_UNIT_LIMIT) {
+    fail(path, "raw input is too large");
+  }
+  assertWellFormedText(value, path);
+  const normalized = normalizeInlineText(value);
+  if (normalized.length === 0) fail(path, "must contain text");
+  let codePointCount = 0;
+  for (const _codePoint of normalized) {
+    codePointCount += 1;
+    if (codePointCount > CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT) {
+      fail(
+        path,
+        `must not exceed ${CLASSIFIER_INLINE_TEXT_CODE_POINT_LIMIT} Unicode code points`,
+      );
+    }
+  }
+  return normalized;
+}
+
+function normalizedCandidateId(value: string): string {
+  try {
+    return parseAiFilterCandidateId(value);
+  } catch {
+    fail("$.candidateId", "must be a canonical lowercase UUID");
+  }
+}
+
+function isElement(node: DefaultTreeAdapterTypes.Node): node is DefaultTreeAdapterTypes.Element {
+  return "tagName" in node;
+}
+
+function hasHiddenSemantics(element: DefaultTreeAdapterTypes.Element): boolean {
+  return element.attrs.some(
+    (attribute) =>
+      attribute.name === "hidden" ||
+      (attribute.name === "aria-hidden" && attribute.value.trim().toLowerCase() === "true"),
+  );
+}
+
+function hasHiddenDocumentWrapper(descriptionHtml: string): boolean {
+  const document = parse(descriptionHtml);
+  const htmlElement = document.childNodes.find(
+    (node): node is DefaultTreeAdapterTypes.Element =>
+      isElement(node) && node.tagName.toLowerCase() === "html",
+  );
+  if (!htmlElement) return false;
+  if (hasHiddenSemantics(htmlElement)) return true;
+
+  const bodyElement = htmlElement.childNodes.find(
+    (node): node is DefaultTreeAdapterTypes.Element =>
+      isElement(node) && node.tagName.toLowerCase() === "body",
+  );
+  return bodyElement ? hasHiddenSemantics(bodyElement) : false;
+}
+
+function appendVisibleText(
+  node: DefaultTreeAdapterTypes.Node,
+  chunks: string[],
+): void {
+  const stack: Array<
+    | { readonly kind: "node"; readonly value: DefaultTreeAdapterTypes.Node }
+    | { readonly kind: "block-end" }
+  > = [{ kind: "node", value: node }];
+
+  while (stack.length > 0) {
+    const frame = stack.pop();
+    if (!frame) break;
+    if (frame.kind === "block-end") {
+      chunks.push("\n");
+      continue;
+    }
+
+    const current = frame.value;
+    if (current.nodeName === "#text") {
+      const textValue = (current as DefaultTreeAdapterTypes.TextNode).value;
+      assertWellFormedText(textValue, "$.descriptionHtml");
+      chunks.push(
+        textValue
+          .replace(/\r\n?/gu, "\n")
+          .replace(/\u00a0/gu, " ")
+          .replace(/\s+/gu, " "),
+      );
+      continue;
+    }
+
+    if (!isElement(current)) {
+      if ("childNodes" in current) {
+        for (let index = current.childNodes.length - 1; index >= 0; index -= 1) {
+          stack.push({ kind: "node", value: current.childNodes[index] });
+        }
+      }
+      continue;
+    }
+
+    const tagName = current.tagName.toLowerCase();
+    if (OMITTED_SUBTREES.has(tagName) || hasHiddenSemantics(current)) continue;
+    if (tagName === "br" || tagName === "hr") {
+      chunks.push("\n");
+      continue;
+    }
+
+    const isBlock = BLOCK_ELEMENTS.has(tagName);
+    if (isBlock) {
+      chunks.push("\n");
+      stack.push({ kind: "block-end" });
+    }
+    for (let index = current.childNodes.length - 1; index >= 0; index -= 1) {
+      stack.push({ kind: "node", value: current.childNodes[index] });
+    }
+  }
+}
+
+function normalizeDescriptionHtml(descriptionHtml: string): string {
+  if (descriptionHtml.length > CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT) {
+    fail("$.descriptionHtml", "exceeds the raw HTML size limit");
+  }
+  assertWellFormedText(descriptionHtml, "$.descriptionHtml");
+  let markupTokenCount = 0;
+  for (let index = 0; index < descriptionHtml.length; index += 1) {
+    if (descriptionHtml.charCodeAt(index) !== 60) continue;
+    markupTokenCount += 1;
+    if (markupTokenCount > CLASSIFIER_DESCRIPTION_MARKUP_TOKEN_LIMIT) {
+      fail("$.descriptionHtml", "exceeds the markup token limit");
+    }
+  }
+
+  // Fragment parsing intentionally removes html/body wrappers. Fail closed
+  // when full-document recovery applies hidden semantics to either effective
+  // root; preserving malformed late/nested wrappers is not worth leaking
+  // content that a full-document interpretation marks as hidden.
+  if (hasHiddenDocumentWrapper(descriptionHtml)) return "";
+
+  const document = parseFragment(descriptionHtml);
+  const chunks: string[] = [];
+  for (const child of document.childNodes) appendVisibleText(child, chunks);
+
+  return chunks
+    .join("")
+    .replace(/\r\n?/gu, "\n")
+    .replace(/\u00a0/gu, " ")
+    .normalize("NFC")
+    .replace(/[^\S\n]+/gu, " ")
+    .replace(/ *\n+ */gu, "\n")
+    .trim();
+}
+
+function truncateDescription(descriptionText: string): {
+  descriptionText: string;
+  truncated: boolean;
+} {
+  const codePoints = Array.from(descriptionText);
+  if (codePoints.length <= CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT) {
+    return { descriptionText, truncated: false };
+  }
+
+  const prefix = codePoints.slice(0, CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT);
+  // A semantic boundary is useful only when it is close to the hard cap. An
+  // early heading or space followed by one long block must not discard most
+  // of the model-visible description.
+  const earliestPreferredBoundary =
+    CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT - CLASSIFIER_TRUNCATION_BOUNDARY_WINDOW;
+  const lastBlockBoundary = prefix.lastIndexOf("\n");
+  if (lastBlockBoundary >= earliestPreferredBoundary) {
+    return {
+      descriptionText: prefix.slice(0, lastBlockBoundary).join("").trimEnd(),
+      truncated: true,
+    };
+  }
+
+  const lastWhitespace = prefix.lastIndexOf(" ");
+  if (lastWhitespace >= earliestPreferredBoundary) {
+    return {
+      descriptionText: prefix.slice(0, lastWhitespace).join("").trimEnd(),
+      truncated: true,
+    };
+  }
+
+  return { descriptionText: prefix.join(""), truncated: true };
+}
+
+function snapshotOwnDataProperties(input: unknown): Record<string, unknown> {
+  if (typeof input !== "object" || input === null) {
+    fail("$", "must be an object");
+  }
+
+  let descriptors: ReturnType<typeof Object.getOwnPropertyDescriptors>;
+  try {
+    descriptors = Object.getOwnPropertyDescriptors(input);
+  } catch {
+    fail("$", "own property descriptors could not be read");
+  }
+
+  const snapshot = Object.create(null) as Record<string, unknown>;
+  for (const key of Reflect.ownKeys(descriptors)) {
+    if (typeof key === "symbol") fail("$", "symbol fields are not allowed");
+
+    const descriptor = descriptors[key];
+    if (!("value" in descriptor)) fail("$", "accessor fields are not allowed");
+    if (!descriptor.enumerable) fail("$", "non-enumerable fields are not allowed");
+    snapshot[key] = descriptor.value;
+  }
+
+  return snapshot;
+}
+
+function assertStrictSource(input: unknown): ClassifierInputSource {
+  const snapshot = snapshotOwnDataProperties(input);
+
+  for (const key of Object.keys(snapshot)) {
+    if (!SOURCE_FIELD_SET.has(key)) fail("$", "contains a field that is not allowed");
+  }
+  for (const field of SOURCE_FIELDS) {
+    if (!Object.hasOwn(snapshot, field)) fail(`$.${field}`, "field is required");
+  }
+
+  return {
+    candidateId: readRequiredString(snapshot, "candidateId"),
+    title: readRequiredString(snapshot, "title"),
+    companyName: readRequiredString(snapshot, "companyName"),
+    descriptionHtml: readRequiredString(snapshot, "descriptionHtml"),
+    selectedDescriptionLocale: readRequiredString(snapshot, "selectedDescriptionLocale"),
+  };
+}
+
+function contentIdentityFor(payload: ClassifierInputV1): string {
+  const canonicalSemanticContent = JSON.stringify(
+    frozenNullPrototypeRecord({
+      normalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
+      title: payload.title,
+      companyName: payload.companyName,
+      descriptionText: payload.descriptionText,
+    }),
+  );
+  return createHash("sha256").update(canonicalSemanticContent, "utf8").digest("hex");
+}
+
+/**
+ * Purely validates and projects an already-loaded posting. It performs no
+ * loading, authorization, policy decision, provider call, or cache binding.
+ */
+export function normalizeClassifierInputV1(input: unknown): NormalizedClassifierInputV1 {
+  const source = assertStrictSource(input);
+  const normalizedDescription = normalizeDescriptionHtml(source.descriptionHtml);
+  if (normalizedDescription.length === 0) {
+    fail("$.descriptionHtml", "must contain visible text");
+  }
+  const { descriptionText, truncated } = truncateDescription(normalizedDescription);
+
+  const payload: ClassifierInputV1 = frozenNullPrototypeRecord({
+    schemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
+    candidateId: normalizedCandidateId(source.candidateId),
+    title: normalizedRequiredText(source.title, "$.title"),
+    companyName: normalizedRequiredText(source.companyName, "$.companyName"),
+    descriptionText,
+  });
+  const sidecar: ClassifierInputSidecarV1 = frozenNullPrototypeRecord({
+    selectedDescriptionLocale: normalizedRequiredText(
+      source.selectedDescriptionLocale,
+      "$.selectedDescriptionLocale",
+    ),
+    truncated,
+  });
+
+  return frozenNullPrototypeRecord({
+    payload,
+    sidecar,
+    contentIdentity: contentIdentityFor(payload),
+  });
+}
