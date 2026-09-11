@@ -121,10 +121,8 @@ services:
     networks:
       renderer:
         ipv4_address: 172.30.94.2
-        interface_name: eth1
       egress:
         ipv4_address: 172.30.94.10
-        interface_name: eth0
         gw_priority: 1
 
 networks:

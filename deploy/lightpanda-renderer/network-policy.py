@@ -12,6 +12,7 @@ import re
 import shlex
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NoReturn, cast
@@ -996,6 +997,34 @@ def require_networks_stably_empty(*names: str) -> None:
                 fail(f"Docker network {name} is not empty")
 
 
+def verify_egress_default_route(
+    route_lines: list[str],
+    expected_gateway: str,
+    expected_endpoint_mac: object,
+    read_interface_mac: Callable[[str], str],
+) -> None:
+    defaults = [
+        line.split()
+        for line in route_lines
+        if len(line.split()) >= 3 and line.split()[1] == "00000000"
+    ]
+    gateway_hex = "".join(reversed([f"{int(part):02X}" for part in expected_gateway.split(".")]))
+    if len(defaults) != 1 or defaults[0][2] != gateway_hex:
+        fail("renderer default route does not use the fixed egress endpoint")
+    interface = defaults[0][0]
+    if re.fullmatch(r"eth[0-9]+", interface) is None:
+        fail("renderer default route interface is invalid")
+    expected_mac = str(expected_endpoint_mac).lower()
+    observed_mac = read_interface_mac(interface).strip().lower()
+    mac_pattern = r"[0-9a-f]{2}(?::[0-9a-f]{2}){5}"
+    if (
+        re.fullmatch(mac_pattern, expected_mac) is None
+        or re.fullmatch(mac_pattern, observed_mac) is None
+        or observed_mac != expected_mac
+    ):
+        fail("renderer default route interface is not the fixed egress endpoint")
+
+
 def verify_exact_egress_endpoint(
     egress: dict[str, Any], renderer_id: str, inventory: Inventory
 ) -> None:
@@ -1141,19 +1170,28 @@ def verify_container(inventory: Inventory, attestation: dict[str, object]) -> No
         role="internal",
     )
     verify_exact_egress_endpoint(egress, renderer_id, inventory)
+    egress_endpoint_mac = networks[EGRESS_NETWORK].get("MacAddress")
     route_lines = run(
         ["docker", "exec", "--user", "10001:10001", CONTAINER, "cat", "/proc/net/route"]
     ).stdout.splitlines()[1:]
-    defaults = [
-        line.split()
-        for line in route_lines
-        if len(line.split()) >= 3 and line.split()[1] == "00000000"
-    ]
-    gateway_hex = "".join(
-        reversed([f"{int(part):02X}" for part in inventory.egress_gateway.split(".")])
+    verify_egress_default_route(
+        route_lines,
+        inventory.egress_gateway,
+        egress_endpoint_mac,
+        lambda interface: (
+            run(
+                [
+                    "docker",
+                    "exec",
+                    "--user",
+                    "10001:10001",
+                    CONTAINER,
+                    "cat",
+                    f"/sys/class/net/{interface}/address",
+                ]
+            ).stdout
+        ),
     )
-    if len(defaults) != 1 or defaults[0][0] != "eth0" or defaults[0][2] != gateway_hex:
-        fail("renderer default route does not use the fixed egress endpoint")
     ipv6_routes = run(
         ["docker", "exec", "--user", "10001:10001", CONTAINER, "cat", "/proc/net/ipv6_route"]
     ).stdout.splitlines()

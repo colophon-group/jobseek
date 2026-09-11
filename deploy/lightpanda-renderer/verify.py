@@ -13,6 +13,7 @@ import re
 import stat
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal, NoReturn, cast
 
@@ -190,6 +191,34 @@ def compose_plugin_path(
 
 def compose_version() -> str:
     return run_text([str(compose_plugin_path()), "version"]).strip()
+
+
+def verify_egress_default_route(
+    route_lines: list[str],
+    expected_gateway: str,
+    expected_endpoint_mac: object,
+    read_interface_mac: Callable[[str], str],
+) -> None:
+    defaults = [
+        line.split()
+        for line in route_lines
+        if len(line.split()) >= 3 and line.split()[1] == "00000000"
+    ]
+    gateway_hex = "".join(reversed([f"{int(part):02X}" for part in expected_gateway.split(".")]))
+    if len(defaults) != 1 or defaults[0][2] != gateway_hex:
+        fail("renderer default route does not use the fixed egress gateway")
+    interface = defaults[0][0]
+    if re.fullmatch(r"eth[0-9]+", interface) is None:
+        fail("renderer default route interface is invalid")
+    expected_mac = str(expected_endpoint_mac).lower()
+    observed_mac = read_interface_mac(interface).strip().lower()
+    mac_pattern = r"[0-9a-f]{2}(?::[0-9a-f]{2}){5}"
+    if (
+        re.fullmatch(mac_pattern, expected_mac) is None
+        or re.fullmatch(mac_pattern, observed_mac) is None
+        or observed_mac != expected_mac
+    ):
+        fail("renderer default route interface is not the fixed egress endpoint")
 
 
 def load_inventory(path: Path) -> dict[str, object]:
@@ -905,11 +934,9 @@ def validate_compose_model(
     if service.get("networks") != {
         SERVICE: {
             "ipv4_address": inventory["renderer_address"],
-            "interface_name": "eth1",
         },
         "egress": {
             "ipv4_address": inventory["egress_address"],
-            "interface_name": "eth0",
             "gw_priority": 1,
         },
     }:
@@ -1274,12 +1301,14 @@ def validate_running_inspect(
         return
     if network_settings.get("Ports") != expected_bindings:
         fail("renderer runtime port publication state drifted")
+    egress_endpoint_mac = (networks.get(EGRESS_NETWORK) or {}).get("MacAddress")
     if (
         set(networks) != {NETWORK, EGRESS_NETWORK}
         or networks[NETWORK].get("IPAddress") != inventory["renderer_address"]
         or networks[NETWORK].get("EndpointID") in (None, "")
         or networks[EGRESS_NETWORK].get("IPAddress") != inventory["egress_address"]
         or networks[EGRESS_NETWORK].get("EndpointID") in (None, "")
+        or re.fullmatch(r"[0-9a-f]{2}(?::[0-9a-f]{2}){5}", str(egress_endpoint_mac).lower()) is None
     ):
         fail("renderer network attachment drifted")
 
@@ -1398,6 +1427,9 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
         f"{inventory['egress_address']}/{egress_prefix}"
     ):
         fail("renderer egress endpoint drifted")
+    egress_endpoint_mac = (
+        inspect.get("NetworkSettings", {}).get("Networks", {}).get(EGRESS_NETWORK, {})
+    ).get("MacAddress")
     verify_idle_process_boundary(expected_service_command(env, inventory))
     docker_exec = ["docker", "exec", "--user", CONTROLLER_USER, CONTAINER]
     memory_max = run_text([*docker_exec, "cat", "/sys/fs/cgroup/memory.max"]).strip()
@@ -1405,16 +1437,12 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
     if memory_max != "1073741824" or memory_swap_max != "0":
         fail("renderer cgroup memory attestation drifted")
     ipv4_routes = run_text([*docker_exec, "cat", "/proc/net/route"]).splitlines()[1:]
-    defaults = [
-        line.split()
-        for line in ipv4_routes
-        if len(line.split()) >= 3 and line.split()[1] == "00000000"
-    ]
-    gateway_hex = "".join(
-        reversed([f"{int(part):02X}" for part in str(inventory["egress_gateway"]).split(".")])
+    verify_egress_default_route(
+        ipv4_routes,
+        str(inventory["egress_gateway"]),
+        egress_endpoint_mac,
+        lambda interface: run_text([*docker_exec, "cat", f"/sys/class/net/{interface}/address"]),
     )
-    if len(defaults) != 1 or defaults[0][0] != "eth0" or defaults[0][2] != gateway_hex:
-        fail("renderer default route does not use its fixed egress gateway")
     ipv6_routes = run_text([*docker_exec, "cat", "/proc/net/ipv6_route"]).splitlines()
     if any(
         len(line.split()) >= 10

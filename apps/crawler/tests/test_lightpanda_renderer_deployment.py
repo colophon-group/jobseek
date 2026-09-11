@@ -168,6 +168,63 @@ def test_compose_resolver_rejects_writable_parent(tmp_path: Path) -> None:
         )
 
 
+@pytest.mark.parametrize("module", (verify, network_policy))
+def test_default_route_is_bound_to_observed_egress_mac(module: ModuleType) -> None:
+    observed_interfaces: list[str] = []
+
+    def read_mac(interface: str) -> str:
+        observed_interfaces.append(interface)
+        return "02:42:ac:1e:5e:0a\n"
+
+    module.verify_egress_default_route(
+        ["eth7 00000000 095E1EAC 0003 0 0 0 00000000 0 0 0"],
+        "172.30.94.9",
+        "02:42:AC:1E:5E:0A",
+        read_mac,
+    )
+    assert observed_interfaces == ["eth7"]
+
+
+@pytest.mark.parametrize(
+    ("route_lines", "endpoint_mac", "observed_mac"),
+    (
+        ([], "02:42:ac:1e:5e:0a", "02:42:ac:1e:5e:0a"),
+        (
+            [
+                "eth0 00000000 095E1EAC 0003",
+                "eth1 00000000 095E1EAC 0003",
+            ],
+            "02:42:ac:1e:5e:0a",
+            "02:42:ac:1e:5e:0a",
+        ),
+        (["eth0 00000000 01020304 0003"], "02:42:ac:1e:5e:0a", "02:42:ac:1e:5e:0a"),
+        (["../bad 00000000 095E1EAC 0003"], "02:42:ac:1e:5e:0a", "02:42:ac:1e:5e:0a"),
+        (["eth0 00000000 095E1EAC 0003"], "02:42:ac:1e:5e:0a", "02:42:ac:1e:5e:0b"),
+    ),
+)
+@pytest.mark.parametrize(
+    ("module", "error_type"),
+    (
+        (verify, verify.VerificationError),
+        (network_policy, network_policy.PolicyError),
+    ),
+)
+def test_default_route_rejects_gateway_interface_or_mac_drift(
+    route_lines: list[str],
+    endpoint_mac: str,
+    observed_mac: str,
+    module: ModuleType,
+    error_type: type[Exception],
+) -> None:
+    with pytest.raises(error_type):
+        module.verify_egress_default_route(
+            route_lines,
+            "172.30.94.9",
+            endpoint_mac,
+            lambda _interface: observed_mac,
+        )
+
+
 def protected_inspect(name: str, service: str) -> dict[str, object]:
     config = {
         "Image": f"example/{service}@sha256:" + "a" * 64,
@@ -457,7 +514,11 @@ def test_compose_model_is_exactly_one_controlled_egress_renderer(
     assert set(model["networks"]) == {"renderer", "egress"}  # type: ignore[arg-type]
     assert model["networks"]["renderer"]["external"] is True  # type: ignore[index]
     assert model["networks"]["egress"]["external"] is True  # type: ignore[index]
-    assert service["networks"]["egress"]["interface_name"] == "eth0"  # type: ignore[index]
+    assert service["networks"]["egress"]["gw_priority"] == 1  # type: ignore[index]
+    assert all(  # type: ignore[union-attr]
+        "interface_name" not in network
+        for network in service["networks"].values()  # type: ignore[union-attr]
+    )
 
 
 def test_compose_render_failure_retains_bounded_flat_diagnostic(
