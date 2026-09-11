@@ -8,13 +8,11 @@ import ipaddress
 import stat
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from cryptography import x509
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509.oid import ExtendedKeyUsageOID, SignatureAlgorithmOID
+if TYPE_CHECKING:
+    from cryptography import x509
+    from cryptography.hazmat.primitives.asymmetric import ec
 
 CLAIMANT_UID: Final = 10001
 CLAIMANT_GID: Final = 10001
@@ -50,6 +48,8 @@ def validate_installed_claimant_credentials(
     paths: ClaimantCredentialPaths,
 ) -> ClaimantPins:
     """Validate exact mounted paths, ownership, modes, signatures, and pins."""
+
+    from cryptography.hazmat.primitives import serialization
 
     expected = ClaimantCredentialPaths(
         ca_certificate=CLAIMANT_CA_PATH,
@@ -103,6 +103,10 @@ def validate_claimant_credential_material(
 ) -> tuple[x509.Certificate, x509.Certificate, ec.EllipticCurvePrivateKey]:
     """Validate claimant PKI material without inspecting deployment metadata."""
 
+    from cryptography import x509
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.x509.oid import ExtendedKeyUsageOID
+
     ca = _load_single_certificate(ca_path, "Lightpanda claimant CA")
     client = _load_single_certificate(client_path, "Lightpanda claimant client certificate")
     private_key = _load_private_key(client_key_path)
@@ -134,6 +138,10 @@ def validate_server_certificate(
     service_host: str,
 ) -> tuple[str, str]:
     """Validate the fixed server leaf and return its DER and SPKI pins."""
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.x509.oid import ExtendedKeyUsageOID
 
     try:
         address = ipaddress.ip_address(service_host)
@@ -191,6 +199,9 @@ def _read_pin(path: Path, label: str) -> str:
 
 
 def _load_single_certificate(path: Path, label: str) -> x509.Certificate:
+    from cryptography import x509
+    from cryptography.hazmat.primitives import serialization
+
     try:
         payload = path.read_bytes()
         if not 0 < len(payload) <= _MAX_PEM_BYTES or b"\x00" in payload:
@@ -208,6 +219,9 @@ def _load_single_certificate(path: Path, label: str) -> x509.Certificate:
 
 
 def _load_private_key(path: Path) -> ec.EllipticCurvePrivateKey:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
     try:
         payload = path.read_bytes()
         if not 0 < len(payload) <= _MAX_PEM_BYTES or b"\x00" in payload:
@@ -228,6 +242,9 @@ def _load_private_key(path: Path) -> ec.EllipticCurvePrivateKey:
 
 
 def _validate_ca(certificate: x509.Certificate) -> None:
+    from cryptography import x509
+    from cryptography.exceptions import InvalidSignature
+
     _validate_signature_profile(certificate, "Lightpanda claimant CA")
     if certificate.subject != certificate.issuer:
         raise ValueError("Lightpanda claimant CA must be self-issued")
@@ -269,6 +286,9 @@ def _validate_leaf(
     expected_san: x509.GeneralName,
     label: str,
 ) -> None:
+    from cryptography import x509
+    from cryptography.exceptions import InvalidSignature
+
     _validate_signature_profile(certificate, label)
     if certificate.issuer != ca.subject:
         raise ValueError(f"{label} issuer is invalid")
@@ -303,6 +323,10 @@ def _validate_leaf(
 
 
 def _validate_signature_profile(certificate: x509.Certificate, label: str) -> None:
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import SignatureAlgorithmOID
+
     public_key = certificate.public_key()
     if (
         certificate.signature_algorithm_oid != SignatureAlgorithmOID.ECDSA_WITH_SHA256
@@ -321,6 +345,8 @@ def _required_extension[
     extension_type: type[ExtensionType],
     label: str,
 ) -> x509.Extension[ExtensionType]:
+    from cryptography import x509
+
     try:
         return certificate.extensions.get_extension_for_class(extension_type)
     except x509.ExtensionNotFound as exc:

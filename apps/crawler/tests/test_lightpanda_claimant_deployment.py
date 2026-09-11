@@ -698,6 +698,49 @@ def test_compose_claimant_is_networkless_secretless_and_bounded() -> None:
     assert all(volume["bind"]["create_host_path"] is False for volume in source_volumes)
 
 
+def test_credentials_module_imports_without_optional_cryptography_runtime() -> None:
+    child = "\n".join(
+        (
+            "import sys",
+            "from pathlib import Path",
+            "class BlockCryptography:",
+            "    def find_spec(self, fullname, path=None, target=None):",
+            "        if fullname == 'cryptography' or fullname.startswith('cryptography.'):",
+            "            raise ModuleNotFoundError(f'blocked optional dependency: {fullname}')",
+            "        return None",
+            "sys.meta_path.insert(0, BlockCryptography())",
+            "from src.lightpanda.credentials import (",
+            "    ClaimantCredentialPaths, validate_claimant_credential_material,",
+            ")",
+            "assert not any(name == 'cryptography' or name.startswith('cryptography.')",
+            "               for name in sys.modules)",
+            "paths = ClaimantCredentialPaths(*(Path(name) for name in (",
+            "    'ca.pem', 'client.pem', 'client-key.pem', 'ca.sha256',",
+            "    'server-leaf.sha256', 'server-spki.sha256',",
+            ")))",
+            "assert paths.ca_certificate == Path('ca.pem')",
+            "try:",
+            "    validate_claimant_credential_material(",
+            "        ca_path=Path('ca.pem'), client_path=Path('client.pem'),",
+            "        client_key_path=Path('client-key.pem'),",
+            "    )",
+            "except ModuleNotFoundError as exc:",
+            "    assert 'blocked optional dependency' in str(exc)",
+            "else:",
+            "    raise SystemExit('validation ran without cryptography')",
+        )
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", child],
+        cwd=CRAWLER,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_direct_executable_dark_mode_starts_without_socket_or_authority_imports(
     installed_generation: Path,
     tmp_path: Path,
