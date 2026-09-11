@@ -168,6 +168,12 @@ class Settings(BaseSettings):
     lightpanda_b0_ca_sha256: str = ""
     lightpanda_b0_server_leaf_sha256: str = ""
     lightpanda_b0_server_spki_sha256: str = ""
+    # The dedicated dark executable reads immutable mounted pin files instead
+    # of accepting pin values or PEM objects in its environment. These remain
+    # inert for every shared crawler command.
+    lightpanda_b0_ca_sha256_file: str = ""
+    lightpanda_b0_server_leaf_sha256_file: str = ""
+    lightpanda_b0_server_spki_sha256_file: str = ""
     lightpanda_b0_queue_namespace: str = ""
     lightpanda_b0_shard_id: str = ""
     lightpanda_b0_routing_epoch: str = ""

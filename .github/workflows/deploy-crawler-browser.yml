@@ -211,6 +211,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
@@ -286,13 +291,58 @@ jobs:
           target: /home/deploy/csv-candidates/${{ steps.previous-data.outputs.candidate_id }}/
           strip_components: 2
 
+      - name: Build validated claimant credential bundle
+        id: claimant-bundle
+        env:
+          CLAIMANT_CA_PEM: ${{ secrets.LIGHTPANDA_B0_CA_CERT_PEM }}
+          CLAIMANT_SERVER_PEM: ${{ secrets.LIGHTPANDA_B0_SERVER_CERT_PEM }}
+          CLAIMANT_CLIENT_PEM: ${{ secrets.LIGHTPANDA_B0_CLIENT_CERT_PEM }}
+          CLAIMANT_CLIENT_KEY_PEM: ${{ secrets.LIGHTPANDA_B0_CLIENT_KEY_PEM }}
+        run: |
+          set -euo pipefail
+          umask 077
+          credential_source="claimant-credential-bundle/source"
+          credential_archive="claimant-credential-bundle/lightpanda-claimant-credentials-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tar"
+          install -d -m 0700 "$credential_source"
+          printf '%s' "$CLAIMANT_CA_PEM" >"$credential_source/ca.pem"
+          printf '%s' "$CLAIMANT_SERVER_PEM" >"$credential_source/server.pem"
+          printf '%s' "$CLAIMANT_CLIENT_PEM" >"$credential_source/client.pem"
+          printf '%s' "$CLAIMANT_CLIENT_KEY_PEM" >"$credential_source/client-key.pem"
+          unset CLAIMANT_CA_PEM CLAIMANT_SERVER_PEM CLAIMANT_CLIENT_PEM CLAIMANT_CLIENT_KEY_PEM
+          uv run --project apps/crawler --frozen python \
+            apps/crawler/scripts/lightpanda-claimant-credentials.py build \
+            --ca "$credential_source/ca.pem" \
+            --server "$credential_source/server.pem" \
+            --client "$credential_source/client.pem" \
+            --client-key "$credential_source/client-key.pem" \
+            --service-host 10.0.0.5 \
+            --output "$credential_archive"
+          printf 'archive_sha256=%s\n' \
+            "$(sha256sum "$credential_archive" | awk '{print $1}')" \
+            >>"$GITHUB_OUTPUT"
+          rm -rf -- "$credential_source"
+
+      - name: Copy claimant credential bundle
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: claimant-credential-bundle/lightpanda-claimant-credentials-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}.tar
+          target: /home/deploy/incoming/
+          strip_components: 1
+
+      - name: Remove runner claimant credential bundle
+        if: always()
+        run: rm -rf -- claimant-credential-bundle
+
       - name: Copy deploy files
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: apps/crawler/deploy.sh,apps/crawler/deploy_helpers.sh,apps/crawler/docker-compose.yml,apps/crawler/rollback-pool-budget.override.yml,apps/crawler/alloy.river,apps/crawler/scripts/postgresql-operational-preflight.py
+          source: apps/crawler/deploy.sh,apps/crawler/deploy_helpers.sh,apps/crawler/docker-compose.yml,apps/crawler/rollback-pool-budget.override.yml,apps/crawler/alloy.river,apps/crawler/scripts/postgresql-operational-preflight.py,apps/crawler/scripts/lightpanda-claimant-credentials.py
           target: /home/deploy/incoming/
           strip_components: 2
 
@@ -316,7 +366,7 @@ jobs:
           # 3.7M documents on the fixed 2-vCPU node. The action defaults to a
           # much shorter command timeout than the deploy job itself.
           command_timeout: 3h
-          envs: OWNER,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_RUNTIME_CONTRACT_SHA256,JOBSEEK_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_REVISION,JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID,JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URLS,WEBSHARE_PROXY_URL
+          envs: OWNER,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID,JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256,JOBSEEK_RUNTIME_CONTRACT_SHA256,JOBSEEK_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_REVISION,JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID,JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URLS,WEBSHARE_PROXY_URL
           script: bash /home/deploy/incoming/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
@@ -329,6 +379,8 @@ jobs:
           CRAWLER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/jobseek-crawler@${{ needs.build.outputs.slim_digest }}
           BROWSER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser@${{ needs.build.outputs.browser_digest }}
           JOBSEEK_DEPLOY_REVISION: ${{ github.sha }}
+          JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256: ${{ steps.claimant-bundle.outputs.archive_sha256 }}
           JOBSEEK_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.runtime_contract_sha256 }}
           JOBSEEK_DATA_CONTRACT_SHA256: ${{ needs.build.outputs.data_contract_sha256 }}
           JOBSEEK_PREVIOUS_DATA_REVISION: ${{ github.event.before }}
@@ -365,6 +417,41 @@ jobs:
           # INTERVAL are no longer forwarded; deleting them from the
           # secret store is a separate cleanup once the change is rolled
           # out and we're confident we won't revive the loop.
+
+      - name: Remove remote claimant credential bundle
+        if: always()
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: JOBSEEK_DEPLOY_REVISION,JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID
+          script: |
+            set -eu
+            case "$JOBSEEK_DEPLOY_REVISION" in
+              ''|*[!0-9a-f]*) exit 1 ;;
+            esac
+            test "${#JOBSEEK_DEPLOY_REVISION}" -eq 40
+            run_id="${JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID%-*}"
+            run_attempt="${JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID#*-}"
+            test "$JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID" = "$run_id-$run_attempt"
+            case "$run_id" in
+              [1-9]*) ;;
+              *) exit 1 ;;
+            esac
+            case "$run_attempt" in
+              [1-9]*) ;;
+              *) exit 1 ;;
+            esac
+            case "$run_id$run_attempt" in
+              *[!0-9]*) exit 1 ;;
+            esac
+            archive="/home/deploy/incoming/lightpanda-claimant-credentials-${JOBSEEK_DEPLOY_REVISION}-${JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID}.tar"
+            rm -f -- "$archive"
+            test ! -e "$archive" && test ! -L "$archive"
+        env:
+          JOBSEEK_DEPLOY_REVISION: ${{ github.sha }}
+          JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
 
   promote:
     needs: [build, deploy]

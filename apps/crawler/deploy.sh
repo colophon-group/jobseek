@@ -4,6 +4,51 @@
 # Called by CI with env vars set from GitHub secrets.
 set -euo pipefail
 
+# Arm private-key transport cleanup before locks, environment preflight, or
+# rollback setup. The workflow gives every attempt an exact remote identity so
+# concurrent or retried deploys never share a sensitive staging path.
+INCOMING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLAIMANT_CREDENTIAL_ARCHIVE=""
+if [[ "${JOBSEEK_DEPLOY_REVISION:-}" =~ ^[0-9a-f]{40}$ &&
+  "${JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID:-}" =~ ^[1-9][0-9]*-[1-9][0-9]*$
+]]; then
+  CLAIMANT_CREDENTIAL_ARCHIVE="${INCOMING_DIR}/lightpanda-claimant-credentials-${JOBSEEK_DEPLOY_REVISION}-${JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID}.tar"
+fi
+
+cleanup_claimant_credential_archive() {
+  local expected=""
+
+  if [[ -z "$CLAIMANT_CREDENTIAL_ARCHIVE" ]]; then
+    return 0
+  fi
+  expected="${INCOMING_DIR}/lightpanda-claimant-credentials-${JOBSEEK_DEPLOY_REVISION}-${JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID}.tar"
+  if [[ "$CLAIMANT_CREDENTIAL_ARCHIVE" != "$expected" ]]; then
+    echo "ERROR: refusing to remove an unsafe claimant credential archive path" >&2
+    return 1
+  fi
+  rm -f -- "$CLAIMANT_CREDENTIAL_ARCHIVE"
+  [[ ! -e "$CLAIMANT_CREDENTIAL_ARCHIVE" && ! -L "$CLAIMANT_CREDENTIAL_ARCHIVE" ]]
+}
+
+cleanup_claimant_credential_archive_on_exit() {
+  local exit_code="${1:-1}"
+  local cleanup_status=0
+
+  trap - ERR EXIT HUP INT TERM
+  if declare -F cleanup_claimant_credential_archive >/dev/null; then
+    cleanup_claimant_credential_archive || cleanup_status=$?
+  fi
+  if ((exit_code == 0 && cleanup_status != 0)); then
+    exit_code=$cleanup_status
+  fi
+  exit "$exit_code"
+}
+
+trap 'cleanup_claimant_credential_archive_on_exit $?' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 # Serialize deploys with host-scheduled data maintenance. The database-level
 # reconciler lock prevents duplicate jobs, while this host lock also closes
 # the race where a new timer starts after deploy preflight but before the old
@@ -23,6 +68,8 @@ required_vars=(
   CRAWLER_IMAGE_REF
   BROWSER_IMAGE_REF
   JOBSEEK_DEPLOY_REVISION
+  JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID
+  JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256
   JOBSEEK_RUNTIME_CONTRACT_SHA256
   JOBSEEK_DATA_CONTRACT_SHA256
   JOBSEEK_PREVIOUS_DATA_REVISION
@@ -62,7 +109,6 @@ if [[ ${#missing[@]} -gt 0 ]]; then
 fi
 
 DEPLOY_DIR="/home/deploy"
-INCOMING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAGED_BRIDGE_VERIFIER="$INCOMING_DIR/scripts/verify-crawler-release-bridge.py"
 ACTIVE_BRIDGE_VERIFIER="$DEPLOY_DIR/scripts/verify-crawler-release-bridge.py"
 BRIDGE_VERIFIER="$STAGED_BRIDGE_VERIFIER"
@@ -71,6 +117,8 @@ ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
 ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"
 ROLLBACK_POOL_OVERRIDE_SOURCE="$INCOMING_DIR/rollback-pool-budget.override.yml"
+CLAIMANT_CREDENTIAL_INSTALLER="$INCOMING_DIR/scripts/lightpanda-claimant-credentials.py"
+CLAIMANT_CREDENTIAL_ROOT="$DEPLOY_DIR/.local/share/jobseek-lightpanda-claimant/credentials"
 ACTIVE_RELEASE_ROOT="$DEPLOY_DIR/.crawler-release-generations"
 ACTIVE_RELEASE_POINTER="$DEPLOY_DIR/.crawler-active-release"
 LEGACY_DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"
@@ -88,6 +136,7 @@ ACTIVE_DATA_FILES_MANIFEST=""
 ROLLBACK_ACTIVE_RELEASE_TARGET=""
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""
 ROLLBACK_SYNC_WEB_DATABASE_URL=""
+LIGHTPANDA_B0_CREDENTIAL_DIR=""
 MIGRATION_CUTOVER_REACHED=0
 FORWARD_SYNC_STARTED=0
 FORWARD_DATA_STAGING_ROOT=""
@@ -104,6 +153,7 @@ DEPLOY_SPEC_FILES=(
   docker-compose.yml
   alloy.river
   scripts/postgresql-operational-preflight.py
+  scripts/lightpanda-claimant-credentials.py
   scripts/verify-crawler-release-bridge.py
 )
 if [[ "$INCOMING_DIR" == "$DEPLOY_DIR" ]]; then
@@ -125,6 +175,11 @@ done
   echo "ERROR: staged rollback pool-budget override is unavailable or unsafe" >&2
   exit 1
 }
+[[ -f "$CLAIMANT_CREDENTIAL_ARCHIVE" && ! -L "$CLAIMANT_CREDENTIAL_ARCHIVE" && \
+  -f "$CLAIMANT_CREDENTIAL_INSTALLER" && ! -L "$CLAIMANT_CREDENTIAL_INSTALLER" ]] || {
+  echo "ERROR: staged Lightpanda claimant credential bundle is unavailable or unsafe" >&2
+  exit 1
+}
 # Staged path is intentionally dynamic; the workflow verifies and supplies it.
 # shellcheck disable=SC1091
 source "$INCOMING_DIR/deploy_helpers.sh"
@@ -135,7 +190,7 @@ DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$DEPLOY_DIR")}"
 export COMPOSE_PROJECT_NAME
 CRAWLER_STACK_SERVICES=(
-  redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy
+  redis worker-1 worker-2 worker-3 browser-1 exporter drain lightpanda-claimant alloy
 )
 MAINTENANCE_OPERATION=crawler-deploy
 MAINTENANCE_ISSUE=3409
@@ -143,6 +198,14 @@ MAINTENANCE_BUDGET_SECONDS=1800
 MAINTENANCE_MARKER_NAME=""
 if [[ ! "$JOBSEEK_DEPLOY_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
   echo "ERROR: JOBSEEK_DEPLOY_REVISION must be a full lowercase Git commit SHA" >&2
+  exit 1
+fi
+if [[ ! "$JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID" =~ ^[1-9][0-9]*-[1-9][0-9]*$ ]]; then
+  echo "ERROR: JOBSEEK_CLAIMANT_CREDENTIAL_RUN_ID must be a canonical run-attempt pair" >&2
+  exit 1
+fi
+if [[ ! "$JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "ERROR: JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256 must be a lowercase SHA-256" >&2
   exit 1
 fi
 if [[ ! "$JOBSEEK_RUNTIME_CONTRACT_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
@@ -214,6 +277,9 @@ cleanup_ghcr_docker_config_on_exit() {
   local cleanup_status=0
 
   trap - ERR EXIT HUP INT TERM
+  if declare -F cleanup_claimant_credential_archive >/dev/null; then
+    cleanup_claimant_credential_archive || cleanup_status=$?
+  fi
   cleanup_ghcr_docker_config || cleanup_status=$?
   if ((exit_code == 0 && cleanup_status != 0)); then
     exit_code=$cleanup_status
@@ -392,6 +458,103 @@ read_exact_release_value() {
   mapfile -t values < <(sed -n "s/^${key}=//p" "$file")
   (( ${#values[@]} == 1 )) || return 1
   printf '%s\n' "${values[0]}"
+}
+
+prepare_claimant_credential_generation() {
+  local deploy_uid deploy_gid prepared="" prepared_name="" status=0
+
+  if [[ ! -e "$CLAIMANT_CREDENTIAL_ROOT" && ! -L "$CLAIMANT_CREDENTIAL_ROOT" ]]; then
+    install -d -m 0700 "$CLAIMANT_CREDENTIAL_ROOT"
+  fi
+  [[ -d "$CLAIMANT_CREDENTIAL_ROOT" && ! -L "$CLAIMANT_CREDENTIAL_ROOT" ]] || {
+    echo "ERROR: claimant credential root is unsafe" >&2
+    return 1
+  }
+  chmod 0700 "$CLAIMANT_CREDENTIAL_ROOT"
+  deploy_uid="$(id -u)"
+  deploy_gid="$(id -g)"
+
+  if prepared="$(
+    docker run --rm \
+      --network none \
+      --read-only \
+      --cap-drop ALL \
+      --security-opt no-new-privileges:true \
+      --user "${deploy_uid}:${deploy_gid}" \
+      --tmpfs /tmp:rw,noexec,nosuid,nodev,size=1m,mode=1777 \
+      --entrypoint /app/.venv/bin/python \
+      --mount "type=bind,source=$CLAIMANT_CREDENTIAL_ARCHIVE,target=/transport/claimant-credentials.tar,readonly" \
+      --mount "type=bind,source=$CLAIMANT_CREDENTIAL_INSTALLER,target=/installer.py,readonly" \
+      --mount "type=bind,source=$CLAIMANT_CREDENTIAL_ROOT,target=/credentials" \
+      "$CRAWLER_IMAGE_REF" \
+      /installer.py prepare \
+      --archive /transport/claimant-credentials.tar \
+      --archive-sha256 "$JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256" \
+      --revision "$JOBSEEK_DEPLOY_REVISION" \
+      --root /credentials \
+      --service-host 10.0.0.5
+  )"; then
+    :
+  else
+    status=$?
+  fi
+  # The transport archive contains the claimant private key. Remove the exact
+  # staged file on both success and validation failure; installed generations
+  # are the only durable source.
+  rm -f -- "$CLAIMANT_CREDENTIAL_ARCHIVE" || status=$?
+  (( status == 0 )) || return "$status"
+  [[ "$prepared" =~ ^/credentials/sha-${JOBSEEK_DEPLOY_REVISION}-[0-9a-f]{64}$ ]] || {
+    echo "ERROR: claimant credential installer returned an unsafe generation" >&2
+    return 1
+  }
+  prepared_name="${prepared#/credentials/}"
+  prepared="$CLAIMANT_CREDENTIAL_ROOT/$prepared_name"
+  [[ "$prepared" == "$LIGHTPANDA_B0_CREDENTIAL_DIR" && -d "$prepared" && ! -L "$prepared" ]] || {
+    echo "ERROR: claimant credential installer published an unexpected generation" >&2
+    return 1
+  }
+}
+
+select_claimant_credential_generation() {
+  LIGHTPANDA_B0_CREDENTIAL_DIR="${CLAIMANT_CREDENTIAL_ROOT}/sha-${JOBSEEK_DEPLOY_REVISION}-${JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256}"
+}
+
+finalize_claimant_credential_generation() {
+  [[ "$LIGHTPANDA_B0_CREDENTIAL_DIR" =~ ^${CLAIMANT_CREDENTIAL_ROOT}/sha-${JOBSEEK_DEPLOY_REVISION}-[0-9a-f]{64}$ && \
+    -d "$LIGHTPANDA_B0_CREDENTIAL_DIR" && ! -L "$LIGHTPANDA_B0_CREDENTIAL_DIR" ]] || {
+    echo "ERROR: candidate claimant credential generation is unavailable" >&2
+    return 1
+  }
+
+  # The deploy user cannot assign the numeric claimant identity. Use the
+  # already-pulled, networkless slim image for this one exact inode only.
+  docker run --rm \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --cap-add CHOWN \
+    --security-opt no-new-privileges:true \
+    --user 0:0 \
+    --entrypoint /bin/sh \
+    --mount "type=bind,source=$LIGHTPANDA_B0_CREDENTIAL_DIR/client-key.pem,target=/client-key.pem" \
+    "$CRAWLER_IMAGE_REF" \
+    -ceu 'chown 10001:10001 /client-key.pem'
+  [[ "$(stat -c '%u:%g:%a' "$LIGHTPANDA_B0_CREDENTIAL_DIR/client-key.pem")" == \
+    10001:10001:400 ]] || {
+    echo "ERROR: claimant private-key ownership is unsafe" >&2
+    return 1
+  }
+  for public_file in ca.pem client.pem ca.sha256 server-leaf.sha256 server-spki.sha256; do
+    [[ "$(stat -c '%a' "$LIGHTPANDA_B0_CREDENTIAL_DIR/$public_file")" == 444 ]] || {
+      echo "ERROR: claimant public credential mode is unsafe" >&2
+      return 1
+    }
+  done
+
+  # Exercise the real installed executable, real mounts, numeric user, and
+  # network-none service before the long-running process is allowed to start.
+  docker compose run --rm --no-deps lightpanda-claimant \
+    /app/.venv/bin/lightpanda-claimant --validate-only
 }
 
 verify_runtime_contract_pair() {
@@ -1242,6 +1405,32 @@ rollback_compose() {
     "$@"
 }
 
+candidate_compose() {
+  # The first failure can occur before the candidate credential path reaches
+  # .env. A non-existent placeholder is sufficient for Compose service
+  # discovery and stop; it is never used to create or start a container.
+  LIGHTPANDA_B0_CREDENTIAL_DIR="${LIGHTPANDA_B0_CREDENTIAL_DIR:-/run/nonexistent-lightpanda-claimant}" \
+    docker compose --env-file "$ENV_FILE" -f "$DEPLOY_DIR/docker-compose.yml" "$@"
+}
+
+candidate_compose_defines_service() {
+  local expected="$1" service services
+  services="$(candidate_compose config --services 2>/dev/null)" || return 2
+  while IFS= read -r service; do
+    [[ "$service" == "$expected" ]] && return 0
+  done <<<"$services"
+  return 1
+}
+
+rollback_compose_defines_service() {
+  local expected="$1" service services
+  services="$(rollback_compose config --services 2>/dev/null)" || return 2
+  while IFS= read -r service; do
+    [[ "$service" == "$expected" ]] && return 0
+  done <<<"$services"
+  return 1
+}
+
 repair_umantis_identity_cutover() {
   local operation_label="$1"
   local park_monitors="${2:-0}"
@@ -1337,7 +1526,11 @@ rollback_compose_service_ready() {
   state="$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null)" || return 1
   [[ "$state" == "running" ]] || return 1
   health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" 2>/dev/null)" || return 1
-  [[ "$health" == "none" || "$health" == "healthy" ]] || return 1
+  if [[ "$service" == "lightpanda-claimant" ]]; then
+    [[ "$health" == "healthy" ]] || return 1
+  else
+    [[ "$health" == "none" || "$health" == "healthy" ]] || return 1
+  fi
   if [[ "$service" == "alloy" ]]; then
     curl --fail --silent --show-error --max-time 2 \
       http://127.0.0.1:12346/-/ready >/dev/null
@@ -1369,6 +1562,32 @@ wait_for_rollback_core_services() {
   return 1
 }
 
+wait_for_rollback_claimant() {
+  local deadline=$((SECONDS + ${ROLLBACK_HEALTH_TIMEOUT_SECONDS:-180}))
+
+  while ((SECONDS < deadline)); do
+    if rollback_compose_service_ready lightpanda-claimant; then
+      return 0
+    fi
+    echo "Waiting for rollback service to become ready: lightpanda-claimant" >&2
+    sleep 5
+  done
+  echo "ERROR: rollback claimant did not become ready" >&2
+  rollback_compose ps lightpanda-claimant >&2 || true
+  return 1
+}
+
+verify_rollback_claimant_image() {
+  local container_id expected_ref actual_ref
+
+  expected_ref="$(read_exact_release_value "$ENV_FILE" CRAWLER_IMAGE_REF)" || return 1
+  [[ "$expected_ref" =~ ^ghcr\.io/${OWNER}/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || return 1
+  container_id="$(rollback_compose ps -q lightpanda-claimant 2>/dev/null)" || return 1
+  [[ -n "$container_id" && "$(wc -w <<<"$container_id")" -eq 1 ]] || return 1
+  actual_ref="$(docker inspect --format '{{.Config.Image}}' "$container_id")" || return 1
+  [[ "$actual_ref" == "$expected_ref" ]]
+}
+
 rollback_deploy() {
   local exit_code="${1:-1}"
   local command_status=0
@@ -1381,6 +1600,9 @@ rollback_deploy() {
   local bounded_contract_persisted=0
   local config_restore_complete=0
   local rollback_stack_started=0
+  local candidate_claimant_quiesced=0
+  local rollback_claimant_defined=0
+  local service_discovery_status=0
   local -a rollback_stack_services=(
     redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy
   )
@@ -1397,6 +1619,16 @@ rollback_deploy() {
   fi
   ROLLBACK_RUNNING=1
   set +e
+  # Rollback can run for minutes. Destroy the private-key transport before any
+  # recovery work instead of waiting for the rollback process to exit.
+  command_status=0
+  if [[ -n "${CLAIMANT_CREDENTIAL_ARCHIVE:-}" ]]; then
+    cleanup_claimant_credential_archive
+    command_status=$?
+  fi
+  if ((command_status != 0)); then
+    rollback_status=$command_status
+  fi
   echo "Deploy failed — restoring crawler containers on previous image" >&2
 
   cd "$DEPLOY_DIR"
@@ -1404,15 +1636,31 @@ rollback_deploy() {
   if ((command_status != 0)); then
     rollback_status=$command_status
   else
+    candidate_compose_defines_service lightpanda-claimant
+    service_discovery_status=$?
+    if ((service_discovery_status == 0)); then
+      candidate_compose stop --timeout 30 lightpanda-claimant
+      command_status=$?
+      if ((command_status == 0)); then
+        candidate_claimant_quiesced=1
+      fi
+    elif ((service_discovery_status == 1)); then
+      candidate_claimant_quiesced=1
+      command_status=0
+    else
+      echo "ERROR: candidate claimant service discovery failed" >&2
+      command_status=$service_discovery_status
+    fi
+    if ((command_status != 0 && rollback_status == 0)); then
+      rollback_status=$command_status
+    fi
     # Stop every local-PostgreSQL crawler owner before restoring the archived
     # spec. Starting old and new generations together would violate the same
     # budget that this rollback is responsible for preserving.
-    docker compose \
-      --env-file "$ENV_FILE" \
-      -f "$DEPLOY_DIR/docker-compose.yml" \
+    candidate_compose \
       stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
     command_status=$?
-    if ((command_status == 0)); then
+    if ((command_status == 0 && candidate_claimant_quiesced)); then
       quiesce_complete=1
     fi
   fi
@@ -1502,15 +1750,28 @@ rollback_deploy() {
     echo "ERROR: rollback config restore was incomplete; old stack restart skipped" >&2
   fi
   if ((quiesce_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted && config_restore_complete)); then
+    rollback_compose_defines_service lightpanda-claimant
+    service_discovery_status=$?
+    if ((service_discovery_status == 0)); then
+      rollback_stack_services+=(lightpanda-claimant)
+      rollback_claimant_defined=1
+    elif ((service_discovery_status != 1)); then
+      echo "ERROR: rollback claimant service discovery failed" >&2
+      if ((rollback_status == 0)); then
+        rollback_status=$service_discovery_status
+      fi
+    fi
     # Start only the crawler-owned services. Historical Murmur containers are
     # intentionally left stopped and untouched; --remove-orphans would delete
     # them after the paused integration left this Compose project.
-    rollback_compose up -d "${rollback_stack_services[@]}"
-    command_status=$?
-    if ((command_status == 0)); then
-      rollback_stack_started=1
-    elif ((rollback_status == 0)); then
-      rollback_status=$command_status
+    if ((rollback_status == 0)); then
+      rollback_compose up -d "${rollback_stack_services[@]}"
+      command_status=$?
+      if ((command_status == 0)); then
+        rollback_stack_started=1
+      else
+        rollback_status=$command_status
+      fi
     fi
   fi
   if ((rollback_stack_started)); then
@@ -1518,6 +1779,20 @@ rollback_deploy() {
     command_status=$?
     if ((command_status != 0 && rollback_status == 0)); then
       rollback_status=$command_status
+    fi
+    if ((rollback_claimant_defined)); then
+      wait_for_rollback_claimant
+      command_status=$?
+      if ((command_status != 0 && rollback_status == 0)); then
+        rollback_status=$command_status
+      fi
+      if ((command_status == 0)); then
+        verify_rollback_claimant_image
+        command_status=$?
+        if ((command_status != 0 && rollback_status == 0)); then
+          rollback_status=$command_status
+        fi
+      fi
     fi
   fi
 
@@ -1588,6 +1863,9 @@ arm_deploy_rollback() {
 
 disarm_deploy_rollback() {
   ROLLBACK_ARMED=0
+  if [[ -n "${CLAIMANT_CREDENTIAL_ARCHIVE:-}" ]]; then
+    cleanup_claimant_credential_archive
+  fi
   cleanup_ghcr_docker_config
   trap - ERR EXIT HUP INT TERM
 }
@@ -1607,7 +1885,11 @@ compose_service_ready() {
   fi
 
   health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" 2>/dev/null || true)"
-  [[ "$health" == "none" || "$health" == "healthy" ]] || return 1
+  if [[ "$service" == "lightpanda-claimant" ]]; then
+    [[ "$health" == "healthy" ]] || return 1
+  else
+    [[ "$health" == "none" || "$health" == "healthy" ]] || return 1
+  fi
   if [[ "$service" == "alloy" ]]; then
     curl --fail --silent --show-error --max-time 2 \
       http://127.0.0.1:12346/-/ready >/dev/null
@@ -1615,7 +1897,7 @@ compose_service_ready() {
 }
 
 wait_for_core_services() {
-  local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)
+  local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain lightpanda-claimant alloy)
   local deadline=$((SECONDS + 180))
   local missing=()
 
@@ -1791,7 +2073,7 @@ verify_deployed_image_identity() {
   local service
 
   verify_compose_service_image redis "$REDIS_IMAGE"
-  for service in worker-1 worker-2 worker-3 exporter drain; do
+  for service in worker-1 worker-2 worker-3 exporter drain lightpanda-claimant; do
     verify_compose_service_image "$service" "$CRAWLER_IMAGE_REF"
   done
   verify_compose_service_image browser-1 "$BROWSER_IMAGE_REF"
@@ -1908,10 +2190,15 @@ verify_active_deploy_snapshot
 ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"
 
+# Bind Compose to the only generation name the CI-authenticated transport can
+# publish. The directory is not created until the pinned image revalidates the
+# complete PKI below.
+select_claimant_credential_generation
+
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
 # kept here to clean up boxes that still have a manually-started one.
-legacy_containers=(redis worker-1 worker-2 worker-3 browser-1 exporter drain indexnow alloy)
+legacy_containers=(redis worker-1 worker-2 worker-3 browser-1 exporter drain lightpanda-claimant indexnow alloy)
 docker stop --time=60 "${legacy_containers[@]}" 2>/dev/null || true
 docker rm "${legacy_containers[@]}" 2>/dev/null || true
 
@@ -1926,6 +2213,7 @@ OWNER=${OWNER}
 CRAWLER_IMAGE_TAG=${IMAGE_TAG}
 CRAWLER_IMAGE_REF=${CRAWLER_IMAGE_REF}
 BROWSER_IMAGE_REF=${BROWSER_IMAGE_REF}
+LIGHTPANDA_B0_CREDENTIAL_DIR=${LIGHTPANDA_B0_CREDENTIAL_DIR}
 JOBSEEK_DEPLOY_REVISION=${JOBSEEK_DEPLOY_REVISION}
 JOBSEEK_RUNTIME_CONTRACT_SHA256=${JOBSEEK_RUNTIME_CONTRACT_SHA256}
 LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}
@@ -1969,6 +2257,8 @@ fi
 ensure_deploy_disk_headroom
 
 pull_deploy_images
+prepare_claimant_credential_generation
+finalize_claimant_credential_generation
 prepare_forward_data_snapshot
 
 docker compose up -d redis
@@ -1980,6 +2270,7 @@ docker compose up -d redis
 # between the schema change and the new containers starting. `--timeout 60`
 # matches the app's 30s bounded drain with headroom before Docker sends
 # SIGKILL. Redis and Alloy remain available throughout.
+docker compose stop --timeout 30 lightpanda-claimant
 docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────

@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import os
 import re
+import signal
+import stat
 import sys
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
@@ -17,6 +20,9 @@ if TYPE_CHECKING:
     from src.config import Settings
 
 _ENABLED_MODE: Final = "enabled"
+_DARK_MODE: Final = "dark"
+_OFF_MODE: Final = "off"
+_READY_FILE: Final = Path("/run/jobseek/lightpanda-claimant.ready")
 _POSTGRES_STARTUP_TIMEOUT_SECONDS: Final = 15.0
 _STARTUP_CANCEL_TIMEOUT_SECONDS: Final = 5.0
 _CLAIMANT_SHUTDOWN_TIMEOUT_SECONDS: Final = 15.0
@@ -33,6 +39,18 @@ _REQUIRED_STRING_FIELDS: Final = (
     "lightpanda_b0_queue_namespace",
     "lightpanda_b0_shard_id",
 )
+_DARK_ENVIRONMENT_FIELDS: Final = {
+    "service_host": "LIGHTPANDA_B0_SERVICE_HOST",
+    "ca_certificate": "LIGHTPANDA_B0_CA_CERTIFICATE",
+    "client_certificate": "LIGHTPANDA_B0_CLIENT_CERTIFICATE",
+    "client_private_key": "LIGHTPANDA_B0_CLIENT_PRIVATE_KEY",
+    "ca_sha256": "LIGHTPANDA_B0_CA_SHA256_FILE",
+    "server_leaf_sha256": "LIGHTPANDA_B0_SERVER_LEAF_SHA256_FILE",
+    "server_spki_sha256": "LIGHTPANDA_B0_SERVER_SPKI_SHA256_FILE",
+    "queue_namespace": "LIGHTPANDA_B0_QUEUE_NAMESPACE",
+    "shard_id": "LIGHTPANDA_B0_SHARD_ID",
+    "routing_epoch": "LIGHTPANDA_B0_ROUTING_EPOCH",
+}
 
 
 class LightpandaEntrypointError(RuntimeError):
@@ -59,6 +77,70 @@ class LightpandaEntrypointConfig:
     queue_namespace: str
     shard_id: str
     routing_epoch: int
+
+    @classmethod
+    def from_dark_environment(cls) -> LightpandaEntrypointConfig:
+        """Validate the networkless service environment and immutable bundle."""
+
+        if os.environ.get("LIGHTPANDA_B0_CLAIMANT_MODE", _OFF_MODE) != _DARK_MODE:
+            raise LightpandaEntrypointError(
+                'Lightpanda B0 dark claimant mode must be exactly "dark"'
+            )
+        if os.environ.get("CRAWLER_DB_POOL_MIN") != "0":
+            raise LightpandaEntrypointError("CRAWLER_DB_POOL_MIN must be exactly 0")
+        if os.environ.get("CRAWLER_DB_POOL_MAX") != "1":
+            raise LightpandaEntrypointError("CRAWLER_DB_POOL_MAX must be exactly 1")
+
+        values = {
+            field: _canonical_environment_value(environment_name)
+            for field, environment_name in _DARK_ENVIRONMENT_FIELDS.items()
+        }
+        if values["service_host"] != "10.0.0.5":
+            raise LightpandaEntrypointError(
+                "LIGHTPANDA_B0_SERVICE_HOST must be the fixed renderer private IP"
+            )
+        if _CANONICAL_POSITIVE_INTEGER.fullmatch(values["routing_epoch"]) is None:
+            raise LightpandaEntrypointError(
+                "LIGHTPANDA_B0_ROUTING_EPOCH must be a canonical positive integer"
+            )
+
+        from src.lightpanda.credentials import (
+            ClaimantCredentialPaths,
+            validate_installed_claimant_credentials,
+        )
+        from src.lightpanda.identity import (
+            validate_lightpanda_b0_namespace,
+            validate_lightpanda_b0_shard_id,
+        )
+
+        try:
+            queue_namespace = validate_lightpanda_b0_namespace(values["queue_namespace"])
+            shard_id = validate_lightpanda_b0_shard_id(values["shard_id"])
+            pins = validate_installed_claimant_credentials(
+                ClaimantCredentialPaths(
+                    ca_certificate=Path(values["ca_certificate"]),
+                    client_certificate=Path(values["client_certificate"]),
+                    client_private_key=Path(values["client_private_key"]),
+                    ca_sha256=Path(values["ca_sha256"]),
+                    server_leaf_sha256=Path(values["server_leaf_sha256"]),
+                    server_spki_sha256=Path(values["server_spki_sha256"]),
+                )
+            )
+        except ValueError as exc:
+            raise LightpandaEntrypointError("Lightpanda B0 dark configuration is invalid") from exc
+
+        return cls(
+            service_host=values["service_host"],
+            ca_certificate=Path(values["ca_certificate"]),
+            client_certificate=Path(values["client_certificate"]),
+            client_private_key=Path(values["client_private_key"]),
+            ca_sha256=pins.ca_sha256,
+            server_leaf_sha256=pins.server_leaf_sha256,
+            server_spki_sha256=pins.server_spki_sha256,
+            queue_namespace=queue_namespace,
+            shard_id=shard_id,
+            routing_epoch=int(values["routing_epoch"]),
+        )
 
     @classmethod
     def from_settings(cls, settings: Settings) -> LightpandaEntrypointConfig:
@@ -104,6 +186,18 @@ class LightpandaEntrypointConfig:
             shard_id=values["lightpanda_b0_shard_id"],
             routing_epoch=int(raw_epoch),
         )
+
+
+def _canonical_environment_value(name: str) -> str:
+    value = os.environ.get(name)
+    if (
+        value is None
+        or not value
+        or value != value.strip()
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
+        raise LightpandaEntrypointError(f"{name} is required and must be canonical")
+    return value
 
 
 async def run_lightpanda_entrypoint(
@@ -392,8 +486,135 @@ async def _close_redis_bounded(
     return None
 
 
+def _write_ready_file() -> None:
+    """Publish local process readiness only after every dark check succeeds."""
+
+    try:
+        _READY_FILE.parent.mkdir(mode=0o700, parents=False, exist_ok=True)
+        descriptor = os.open(
+            _READY_FILE,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
+            0o400,
+        )
+        try:
+            _write_all(descriptor, b"lightpanda-b0-dark-ready\n")
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    except OSError as exc:
+        with suppress(OSError):
+            _READY_FILE.unlink()
+        raise LightpandaEntrypointError("could not publish dark claimant readiness") from exc
+
+
+def _write_all(descriptor: int, payload: bytes) -> None:
+    """Write the complete readiness payload or fail closed."""
+
+    remaining = memoryview(payload)
+    while remaining:
+        written = os.write(descriptor, remaining)
+        if written <= 0:
+            raise OSError(errno.EIO, "readiness marker write made no progress")
+        if written > len(remaining):
+            raise OSError(errno.EIO, "readiness marker write count is invalid")
+        remaining = remaining[written:]
+
+
+def _remove_ready_file() -> None:
+    with suppress(FileNotFoundError):
+        _READY_FILE.unlink()
+
+
+def _healthcheck() -> int:
+    """Check the Docker-local marker without importing runtime dependencies."""
+
+    try:
+        metadata = _READY_FILE.lstat()
+        payload = _READY_FILE.read_bytes()
+    except OSError:
+        return 1
+    return int(
+        not (
+            stat.S_ISREG(metadata.st_mode)
+            and not _READY_FILE.is_symlink()
+            and stat.S_IMODE(metadata.st_mode) == 0o400
+            and metadata.st_uid == os.getuid()
+            and metadata.st_gid == os.getgid()
+            and payload == b"lightpanda-b0-dark-ready\n"
+        )
+    )
+
+
+async def _run_dark_claimant(shutdown_event: asyncio.Event) -> None:
+    """Validate the future authority boundary, then wait without network I/O."""
+
+    LightpandaEntrypointConfig.from_dark_environment()
+    _remove_ready_file()
+    _write_ready_file()
+    try:
+        await shutdown_event.wait()
+    finally:
+        _remove_ready_file()
+
+
+async def _run_dedicated(mode: str, *, validate_only: bool) -> None:
+    shutdown_event = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for signum in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(signum, shutdown_event.set)
+
+    if mode == _DARK_MODE:
+        if validate_only:
+            LightpandaEntrypointConfig.from_dark_environment()
+            return
+        await _run_dark_claimant(shutdown_event)
+        return
+
+    if validate_only:
+        raise LightpandaEntrypointError("validation-only is supported only in dark mode")
+    from src.config import Settings
+    from src.db import close_all_pools
+    from src.shared.logging import setup_logging
+
+    settings = Settings()  # type: ignore[call-arg]
+    setup_logging(settings.log_level)
+    try:
+        await run_lightpanda_entrypoint(settings, shutdown_event)
+    finally:
+        await close_all_pools()
+
+
+def main() -> int:
+    """Dedicated console entry point; dark mode never routes through ``src.cli``."""
+
+    arguments = sys.argv[1:]
+    if arguments == ["--healthcheck"]:
+        return _healthcheck()
+    if arguments not in ([], ["--validate-only"]):
+        sys.stderr.write("Lightpanda B0 claimant failed closed: unsupported argument\n")
+        return 2
+
+    mode = os.environ.get("LIGHTPANDA_B0_CLAIMANT_MODE", _OFF_MODE)
+    if mode not in {_DARK_MODE, _ENABLED_MODE}:
+        sys.stderr.write(
+            'Lightpanda B0 claimant failed closed: mode must be exactly "dark" or "enabled"\n'
+        )
+        return 1
+    try:
+        asyncio.run(_run_dedicated(mode, validate_only=bool(arguments)))
+    except (LightpandaEntrypointError, ValueError) as exc:
+        sys.stderr.write(f"Lightpanda B0 claimant failed closed: {exc}\n")
+        return 1
+    return 0
+
+
 __all__ = [
     "LightpandaEntrypointConfig",
     "LightpandaEntrypointError",
+    "main",
     "run_lightpanda_entrypoint",
 ]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

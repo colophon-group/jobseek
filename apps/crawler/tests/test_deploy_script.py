@@ -1957,6 +1957,9 @@ def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
         "        if '=' in line: values.setdefault(*line.split('=', 1))\n"
         "    for key in ('CRAWLER_IMAGE_REF', 'BROWSER_IMAGE_REF', 'SHIM_IMAGE_REF'):\n"
         "        print(values[key])\n"
+        "elif args[:1] == ['compose'] and 'config' in args and '--services' in args:\n"
+        "    print('redis\\nworker-1\\nworker-2\\nworker-3\\n'"
+        " 'browser-1\\nexporter\\ndrain\\nalloy')\n"
         "elif args[:1] == ['run']:\n"
         "    volume = next(item for item in args if item.endswith(':/app/data:ro'))\n"
         "    log = os.environ.get('TEST_CSV_SYNC_LOG')\n"
@@ -2557,6 +2560,7 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             binary_dir / "docker",
             "#!/usr/bin/env bash\n"
             "set -euo pipefail\n"
+            'if [[ " $* " == *" config --services "* ]]; then exit 0; fi\n'
             'action=""\n'
             'for arg in "$@"; do\n'
             '  if [[ "$arg" == stop || "$arg" == up ]]; then action="$arg"; fi\n'
@@ -2656,6 +2660,9 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             "  printf 'legacy-publish\\n' >>\"$TEST_LOG\"",
             "}",
             configure,
+            "candidate_compose_defines_service() { return 1; }",
+            'candidate_compose() { docker "$@"; }',
+            "rollback_compose_defines_service() { return 1; }",
             "rollback_compose() {",
             "  printf 'compose-start\\n' >>\"$TEST_LOG\"",
             '  return "$START_STATUS"',
@@ -2794,6 +2801,9 @@ def test_setup_typesense_failure_repairs_migrated_identity_before_old_restart(
             "  printf 'legacy-publish\\n' >>\"$TEST_LOG\"",
             "}",
             configure,
+            "candidate_compose_defines_service() { return 1; }",
+            'candidate_compose() { docker "$@"; }',
+            "rollback_compose_defines_service() { return 1; }",
             "rollback_compose() {",
             "  printf 'compose-start\\n' >>\"$TEST_LOG\"",
             "}",
@@ -2994,6 +3004,9 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
         "if 'config' in args and '--images' in args:\n"
         "    with log.open('a') as output: output.write(f'verify:{marker}\\n')\n"
         "    print(crawler_ref)\n"
+        "elif 'config' in args and '--services' in args:\n"
+        "    print('redis\\nworker-1\\nworker-2\\nworker-3\\n'"
+        " 'browser-1\\nexporter\\ndrain\\nalloy')\n"
         "elif 'stop' in args:\n"
         "    with log.open('a') as output: output.write('stop\\n')\n"
         "elif 'run' in args:\n"
@@ -3184,6 +3197,10 @@ def test_rollback_starts_only_core_and_preserves_legacy_murmur_evidence(
         f"expected_images = {str(image_override)!r}\n"
         f"expected_pool = {str(pool_override)!r}\n"
         "args = sys.argv[1:]\n"
+        "if 'config' in args and '--services' in args:\n"
+        "    print('redis\\nworker-1\\nworker-2\\nworker-3\\n'"
+        " 'browser-1\\nexporter\\ndrain\\nalloy')\n"
+        "    raise SystemExit(0)\n"
         "if 'stop' in args:\n"
         "    raise SystemExit(0)\n"
         "assert 'up' in args and '--remove-orphans' not in args, args\n"

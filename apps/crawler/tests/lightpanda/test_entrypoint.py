@@ -16,6 +16,7 @@ from src.lightpanda.entrypoint import (
     LightpandaEntrypointError,
     _await_startup_or_shutdown,
     _close_redis_bounded,
+    _run_dedicated,
     _run_until_shutdown,
     run_lightpanda_entrypoint,
 )
@@ -93,7 +94,7 @@ def test_claimant_builds_exact_local_configuration() -> None:
     )
 
 
-def test_disabled_real_cli_imports_no_runtime_or_browser_modules() -> None:
+def test_disabled_dedicated_entrypoint_imports_no_runtime_or_browser_modules() -> None:
     result = subprocess.run(
         [
             sys.executable,
@@ -105,14 +106,9 @@ def test_disabled_real_cli_imports_no_runtime_or_browser_modules() -> None:
                     "    (_ for _ in ()).throw(RuntimeError('network I/O'))",
                     "    if event == 'socket.connect' else None",
                     "))",
-                    "import src.cli",
-                    "sys.argv = ['crawler', 'run-lightpanda-claimant']",
-                    "try:",
-                    "    src.cli.main()",
-                    "except RuntimeError as exc:",
-                    "    if 'claimant is disabled' not in str(exc):",
-                    "        raise",
-                    "else:",
+                    "import src.lightpanda.entrypoint as entrypoint",
+                    "sys.argv = ['lightpanda-claimant']",
+                    "if entrypoint.main() != 1:",
                     "    raise SystemExit('disabled configuration was accepted')",
                     "for name in ('src.lightpanda.claimant', 'src.lightpanda.client',",
                     "             'src.processing.cpu', 'src.core.occupation_resolve',",
@@ -133,6 +129,87 @@ def test_disabled_real_cli_imports_no_runtime_or_browser_modules() -> None:
     )
 
     assert result.returncode == 0, result.stderr
+
+
+async def test_enabled_dedicated_entrypoint_configures_logging_and_always_closes_pools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import src.config as config_module
+    import src.db as db
+    import src.lightpanda.entrypoint as entrypoint
+    import src.shared.logging as logging_module
+
+    events: list[str] = []
+    configured = Mock(log_level="INFO")
+
+    def settings_factory() -> Mock:
+        events.append("settings")
+        return configured
+
+    def setup_logging(level: str) -> None:
+        assert level == "INFO"
+        events.append("logging")
+
+    async def fail_claimant(settings: Mock, shutdown_event: asyncio.Event) -> None:
+        assert settings is configured
+        assert not shutdown_event.is_set()
+        events.append("claimant")
+        raise RuntimeError("claimant failed")
+
+    async def close_pools() -> None:
+        events.append("close-pools")
+
+    monkeypatch.setattr(config_module, "Settings", settings_factory)
+    monkeypatch.setattr(logging_module, "setup_logging", setup_logging)
+    monkeypatch.setattr(db, "close_all_pools", close_pools)
+    monkeypatch.setattr(entrypoint, "run_lightpanda_entrypoint", fail_claimant)
+
+    with pytest.raises(RuntimeError, match="claimant failed"):
+        await _run_dedicated("enabled", validate_only=False)
+
+    assert events == ["settings", "logging", "claimant", "close-pools"]
+
+
+def test_readiness_marker_completes_legal_short_writes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import src.lightpanda.entrypoint as entrypoint
+
+    ready = tmp_path / "ready"
+    original_write = os.write
+    write_calls = 0
+
+    def short_write(descriptor: int, payload: bytes | memoryview) -> int:
+        nonlocal write_calls
+        write_calls += 1
+        length = max(1, len(payload) // 2)
+        return original_write(descriptor, payload[:length])
+
+    monkeypatch.setattr(entrypoint, "_READY_FILE", ready)
+    monkeypatch.setattr(entrypoint.os, "write", short_write)
+    entrypoint._write_ready_file()
+
+    assert write_calls > 1
+    assert ready.read_bytes() == b"lightpanda-b0-dark-ready\n"
+
+
+def test_readiness_marker_zero_write_fails_cleanly_and_allows_retry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import src.lightpanda.entrypoint as entrypoint
+
+    ready = tmp_path / "ready"
+    monkeypatch.setattr(entrypoint, "_READY_FILE", ready)
+    with monkeypatch.context() as stalled:
+        stalled.setattr(entrypoint.os, "write", lambda _descriptor, _payload: 0)
+        with pytest.raises(LightpandaEntrypointError, match="could not publish"):
+            entrypoint._write_ready_file()
+
+    assert not ready.exists()
+    entrypoint._write_ready_file()
+    assert ready.read_bytes() == b"lightpanda-b0-dark-ready\n"
 
 
 async def test_invalid_certificates_fail_before_redis_postgres_or_metrics(
@@ -573,8 +650,13 @@ async def test_second_cancellation_during_redis_cleanup_hard_stops(
     await asyncio.sleep(0)
 
 
-def test_cli_recognizes_lightpanda_claimant(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_claimant_is_installed_only_as_a_direct_executable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from src.cli import parse_args
 
     monkeypatch.setattr(sys, "argv", ["crawler", "run-lightpanda-claimant"])
-    assert parse_args().command == "run-lightpanda-claimant"
+    with pytest.raises(SystemExit):
+        parse_args()
+    pyproject = Path(__file__).parents[2] / "pyproject.toml"
+    assert 'lightpanda-claimant = "src.lightpanda.entrypoint:main"' in pyproject.read_text()
