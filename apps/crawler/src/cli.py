@@ -13,6 +13,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import signal
 import sys
 import uuid
@@ -381,6 +382,15 @@ def parse_args() -> argparse.Namespace:
         default="typesense",
         help="Derived store to inspect (Typesense only)",
     )
+    recon_p.add_argument(
+        "--candidate-order-benchmark-sha256",
+        default=None,
+        help=(
+            "Emit a stable-order readiness receipt bound to this reviewed "
+            "production-shaped memory benchmark digest; requires "
+            "--repair --full --fresh-cycle --target typesense"
+        ),
+    )
 
     sub.add_parser("backfill-locations", help="Enqueue re-scrapes for jobs missing locations")
 
@@ -725,6 +735,21 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.command == "reconcile" and args.fresh_cycle and not (args.repair and args.full):
         parser.error("reconcile --fresh-cycle requires --repair --full")
+    if (
+        args.command == "reconcile"
+        and args.candidate_order_benchmark_sha256 is not None
+        and not (args.repair and args.full and args.fresh_cycle and args.target == "typesense")
+    ):
+        parser.error(
+            "--candidate-order-benchmark-sha256 requires "
+            "--repair --full --fresh-cycle --target typesense"
+        )
+    if (
+        args.command == "reconcile"
+        and args.candidate_order_benchmark_sha256 is not None
+        and re.fullmatch(r"[0-9a-f]{64}", args.candidate_order_benchmark_sha256) is None
+    ):
+        parser.error("--candidate-order-benchmark-sha256 must be a lowercase SHA-256 digest")
     return args
 
 
@@ -1321,9 +1346,12 @@ async def run() -> None:
 
         elif args.command == "reconcile":
             local_pool = await create_local_pool()
-            from src.reconciliation import run_reconciliation
+            from src.reconciliation import (
+                issue_candidate_order_readiness_receipt,
+                run_reconciliation,
+            )
 
-            await _await_task_or_shutdown(
+            summary = await _await_task_or_shutdown(
                 asyncio.create_task(
                     run_reconciliation(
                         local_pool,
@@ -1338,6 +1366,23 @@ async def run() -> None:
                 ),
                 shutdown_event,
             )
+            if summary is None:
+                raise SystemExit(130)
+            benchmark_sha256 = getattr(args, "candidate_order_benchmark_sha256", None)
+            if benchmark_sha256 is not None:
+                receipt = await issue_candidate_order_readiness_receipt(
+                    local_pool,
+                    summary,
+                    benchmark_sha256=benchmark_sha256,
+                )
+                sys.stdout.write(
+                    json.dumps(
+                        {"candidate_order_readiness_receipt": receipt},
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+                sys.stdout.flush()
 
         elif args.command == "board":
             local_pool = await create_local_pool()

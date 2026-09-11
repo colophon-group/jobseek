@@ -54,6 +54,7 @@ interface JobPostingDoc {
   experience_max?: number;
   locales: string[];
   first_seen_at: number;
+  candidate_order_key?: string;
   last_seen_at?: number;
 }
 

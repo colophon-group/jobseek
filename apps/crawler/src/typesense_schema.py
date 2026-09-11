@@ -21,6 +21,8 @@ import httpx
 import structlog
 from typesense.exceptions import ObjectAlreadyExists, ObjectNotFound, ObjectUnprocessable
 
+from src.typesense_candidate_order import CANDIDATE_ORDER_KEY_FIELD
+
 log = structlog.get_logger()
 
 _SETUP_CONNECTION_TIMEOUT_SECONDS = 3600
@@ -137,6 +139,18 @@ COLLECTIONS: list[dict] = [
             {"name": "locales", "type": "string[]", "facet": True},
             {"name": "source_url", "type": "string", "index": False, "optional": True},
             {"name": "first_seen_at", "type": "int64"},
+            # Compact total-order tie-break for frozen candidate feeds. The
+            # implicit ``id`` cannot be configured for string sorting in
+            # Typesense 27.1. Optional only for the in-place schema transition;
+            # activation still requires measured memory headroom and a complete
+            # verified backfill.
+            {
+                "name": CANDIDATE_ORDER_KEY_FIELD,
+                "type": "string",
+                "index": True,
+                "sort": True,
+                "optional": True,
+            },
             # Emitted for compatibility and diagnostics, but no search, filter,
             # facet, sort, web response, or reconciliation path consumes it.
             # The value remains stored on disk and returned on direct retrieval.
