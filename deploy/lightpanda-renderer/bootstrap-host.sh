@@ -163,7 +163,10 @@ if docker inspect "$CONTAINER" >/dev/null 2>&1; then
     runuser -u deploy -- python3 "$previous_generation/verify.py" running \
       "$previous_generation/release.env" --expected-id "$previous_id" >/dev/null
   elif [[ "$previous_running" == false ]]; then
-    runuser -u deploy -- python3 "$STAGE/verify.py" owned-predecessor \
+    # The trusted bootstrap stage is root-owned and intentionally not
+    # traversable by deploy. Execute the new verifier as root; unlike the
+    # predecessor verifier, its bytes did not come from deploy-owned state.
+    python3 "$STAGE/verify.py" owned-predecessor \
       "$previous_generation/release.env" --expected-id "$previous_id" >/dev/null
   else
     exit 1

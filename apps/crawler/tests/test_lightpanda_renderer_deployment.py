@@ -498,6 +498,8 @@ def test_bootstrap_is_monotonic_and_never_manages_protected_containers() -> None
     assert bootstrap.index("flock -w 900 9") < bootstrap.index("flock -w 300 8")
     assert '"$previous_generation/verify.py" running' in bootstrap
     assert '"$STAGE/verify.py" owned-predecessor' in bootstrap
+    assert 'runuser -u deploy -- python3 "$STAGE/verify.py" owned-predecessor' not in bootstrap
+    assert 'python3 "$STAGE/verify.py" owned-predecessor' in bootstrap
     assert 'docker stop --time 30 "$previous_id"' in bootstrap
     assert 'docker rm --force "$previous_id"' in bootstrap
     assert "docker start" not in bootstrap
