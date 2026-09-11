@@ -215,8 +215,12 @@ function fixture() {
   const reviewPlan = { promptReviewSeed: D("c"), auditSeed: D("d"), auditRule: "bounded-16-8-8-v2" as const, auditSize: 32 as const };
   const prePairs = bundles.flatMap((bundle, bundleIndex) => Array.from({ length: 8 }, (_, position) => {
     const index = bundleIndex * 8 + position;
+    const sourceBundleIndex = bundle.cohort === "challenge"
+      ? 15 + ((bundleIndex - 15) % 5)
+      : bundleIndex;
+    const sourceIndex = sourceBundleIndex * 8 + position;
     const cohortIndex = (bundleIndex < 15 ? bundleIndex : bundleIndex - 15) * 8 + position;
-    const classifierSource = source(index);
+    const classifierSource = source(sourceIndex);
     const contentIdentity = normalizeClassifierInputV1(classifierSource).contentIdentity;
     const postingFirstSeenAt = new Date(Date.UTC(2026, 7, 31, 23, 59, 59 - position)).toISOString();
     const sourceRank = bundle.cohort === "production_shaped" ? position : position * 2;
@@ -231,7 +235,7 @@ function fixture() {
       sourceRank,
       postingFirstSeenAt,
       sourceSnapshotIdentity: digestStageASourceSnapshotIdentity({ extractionManifestDigest, compiledQueryFingerprint: compiledQueryByFilterId.get(bundle.filterId)!, candidateId: classifierSource.candidateId, contentIdentity, postingFirstSeenAt, sourceRank }),
-      locale: locales[index % locales.length],
+      locale: locales[sourceIndex % locales.length],
       evidenceCondition,
       classifierSource,
       contentIdentity,
@@ -355,6 +359,21 @@ describe("Stage A v2 gates", () => {
     const duplicateFingerprint = clone(data.preAnnotation);
     duplicateFingerprint.extractionManifest.compiledQueries[1].fingerprint.value = duplicateFingerprint.extractionManifest.compiledQueries[0].fingerprint.value;
     expect(() => digestStageAPreAnnotation(duplicateFingerprint)).toThrow(/unique_compiled_query_fingerprints_required/u);
+
+    const mismatchedChallengeFeed = clone(data.preAnnotation);
+    const secondBundlePair = mismatchedChallengeFeed.pairs.find(({ bundleId, position }) => bundleId === "eval-bundle-20" && position === 0)!;
+    secondBundlePair.classifierSource.title = "Changed only in the second prompt feed";
+    secondBundlePair.contentIdentity = normalizeClassifierInputV1(secondBundlePair.classifierSource).contentIdentity;
+    const secondBundle = mismatchedChallengeFeed.bundles.find(({ bundleId }) => bundleId === secondBundlePair.bundleId)!;
+    secondBundlePair.sourceSnapshotIdentity = digestStageASourceSnapshotIdentity({
+      extractionManifestDigest: mismatchedChallengeFeed.extractionManifestDigest,
+      compiledQueryFingerprint: mismatchedChallengeFeed.extractionManifest.compiledQueries.find(({ filterId }) => filterId === secondBundle.filterId)!.fingerprint.value,
+      candidateId: secondBundlePair.classifierSource.candidateId,
+      contentIdentity: secondBundlePair.contentIdentity,
+      postingFirstSeenAt: secondBundlePair.postingFirstSeenAt,
+      sourceRank: secondBundlePair.sourceRank,
+    });
+    expect(() => digestStageAPreAnnotation(mismatchedChallengeFeed)).toThrow(/shared_challenge_filter_feed_required/u);
   });
 
   it("requires blind labels with ambiguity, evidence, linked adjudication, and role separation", () => {
@@ -485,6 +504,15 @@ describe("Stage A v2 gates", () => {
     const onePromptCandidate = clone(data.calibrationResult);
     onePromptCandidate.candidateConfigs[1].role = "annotator";
     expect(() => digestStageACalibrationResult(onePromptCandidate, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/two_candidate_configs_per_role_required/u);
+
+    const semanticAlias = clone(data.calibrationResult);
+    const promptA = semanticAlias.candidateConfigs.find(({ configId }) => configId === "eval-config-prompt-a")!;
+    const promptB = semanticAlias.candidateConfigs.find(({ configId }) => configId === "eval-config-prompt-b")!;
+    promptB.model = promptA.model;
+    promptB.modelVersion = promptA.modelVersion;
+    promptB.reasoningEffort = promptA.reasoningEffort;
+    promptB.taskPromptDigest = promptA.taskPromptDigest;
+    expect(() => digestStageACalibrationResult(semanticAlias, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/distinct_semantic_candidate_configs_per_role_required/u);
 
     const wrongSuite = clone(data.calibrationResult);
     wrongSuite.trials[0].suiteKind = "seeded_defects";

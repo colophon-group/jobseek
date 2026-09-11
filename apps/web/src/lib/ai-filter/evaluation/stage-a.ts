@@ -1225,9 +1225,17 @@ function normalizeStageACalibrationResult(
     .sort((left, right) => rawStringCompare(left.configId, right.configId));
   assertUnique(configs.map(({ configId }) => configId), "$calibrationResult.candidateConfigs", "unique_config_ids_required");
   for (const role of AGENT_ROLES) {
-    if (configs.filter((config) => config.role === role).length < 2) {
+    const roleConfigs = configs.filter((config) => config.role === role);
+    if (roleConfigs.length < 2) {
       fail("$calibrationResult.candidateConfigs", "two_candidate_configs_per_role_required");
     }
+    const semanticConfigKeys = roleConfigs.map(({ model, modelVersion, reasoningEffort, taskPromptDigest }) => canonicalStageAJson({
+      model,
+      modelVersion,
+      reasoningEffort,
+      taskPromptDigest,
+    }));
+    assertUnique(semanticConfigKeys, "$calibrationResult.candidateConfigs", "distinct_semantic_candidate_configs_per_role_required");
   }
   const trials = snapshotArray(required(record, "trials", "$calibrationResult.trials"), "$calibrationResult.trials", configs.length, configs.length)
     .map((trialInput, index): StageACalibrationTrialV2 => {
@@ -1507,6 +1515,26 @@ function assertCorpusShape(
     assertUnique(feed.map(({ contentIdentity }) => contentIdentity), `${pathPrefix}.pairs`, "unique_candidates_per_bundle_required");
     assertUnique(feed.map(({ classifierSource }) => classifierSource.candidateId), `${pathPrefix}.pairs`, "unique_candidate_ids_per_bundle_required");
     assertUnique(feed.map(({ sourceSnapshotIdentity }) => sourceSnapshotIdentity), `${pathPrefix}.pairs`, "unique_source_snapshots_per_bundle_required");
+  }
+  for (const filter of filters) {
+    const challengeBundles = bundles.filter(({ cohort, filterId }) => cohort === "challenge" && filterId === filter.filterId);
+    if (challengeBundles.length !== 2) continue;
+    const feedProjection = (bundleId: string) => pairs
+      .filter((pair) => pair.bundleId === bundleId)
+      .sort((left, right) => left.position - right.position)
+      .map((pair) => ({
+        position: pair.position,
+        sourceRank: pair.sourceRank,
+        postingFirstSeenAt: pair.postingFirstSeenAt,
+        candidateId: pair.classifierSource.candidateId,
+        classifierSource: pair.classifierSource,
+        contentIdentity: pair.contentIdentity,
+        sourceSnapshotIdentity: pair.sourceSnapshotIdentity,
+        locale: pair.locale,
+      }));
+    if (canonicalStageAJson(feedProjection(challengeBundles[0].bundleId)) !== canonicalStageAJson(feedProjection(challengeBundles[1].bundleId))) {
+      fail(`${pathPrefix}.pairs`, "shared_challenge_filter_feed_required");
+    }
   }
   for (const cohort of COHORTS) {
     const cohortBundles = bundles.filter((bundle) => bundle.cohort === cohort);

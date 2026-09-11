@@ -54,7 +54,9 @@ example IDs in the displayed, digest-pinned detached calibration artifact.
 - 20 distinct de-identified source filters and 25 prompt/feed bundles.
 - The 15 production-shaped bundles consume 15 distinct filters once. The ten
   challenge bundles consume the other five filters exactly twice. The cohort
-  filter sets are disjoint.
+  filter sets are disjoint. Both prompt variants for a challenge filter use the
+  same canonical ordered source feed; prompt, persona, provenance, and the
+  prompt-relative evidence condition may differ.
 - Every bundle freezes eight postings, for 200 pairs total. Positions remain
   `0..7`; production uses source ranks `0..7`; challenge ranks remain strictly
   increasing. Timestamps and candidate IDs must preserve the approved source
@@ -82,7 +84,10 @@ force the adjudicator to call the item ambiguous.
 Use a small detached 24–32 example calibration packet to spot-check at least
 two candidate configurations per role. A candidate pins its exact model,
 version, reasoning effort, and task-prompt digest. Each candidate must have one
-aggregate trial with a role-specific suite, input/output digests, sample count,
+semantically distinct `(model, modelVersion, reasoningEffort, taskPromptDigest)`
+tuple within its role; changing only `configId` does not create a candidate.
+Each candidate also has one aggregate trial with a role-specific suite,
+input/output digests, sample count,
 blinded numeric score, and spot-check disposition/failure codes. Prompt authors
 use the same eight disposable feeds; annotators use resolved human ground
 truth; adjudicators use seeded conflicts; critics use seeded defects. Each
