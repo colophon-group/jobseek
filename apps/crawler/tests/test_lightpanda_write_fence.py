@@ -670,3 +670,24 @@ def test_routing_epoch_allocator_migration_is_monotonic_and_non_recreatable() ->
     assert "NEW.engine_owner IS DISTINCT FROM 'go'" in trigger
     assert "current_epoch IS DISTINCT FROM NEW.routing_epoch" in trigger
     assert "DETAIL = 'routing_epoch_not_current'" in trigger
+
+
+def test_epoch_retirement_migration_upgrades_an_already_applied_allocator() -> None:
+    allocator = importlib.import_module(
+        "src.migrations.versions.0027_add_lightpanda_b0_routing_epoch_sequence"
+    )
+    ordering = importlib.import_module(
+        "src.migrations.versions.0028_serialize_lightpanda_b0_epoch_retirement"
+    )
+
+    assert ordering.revision == "0028"
+    assert ordering.down_revision == allocator.revision == "0027"
+    original = allocator._INSTALL_GO_HIGH_WATER_TRIGGER  # noqa: SLF001
+    serialized = ordering._INSTALL_SERIALIZED_GO_HIGH_WATER_TRIGGER  # noqa: SLF001
+    restored = ordering._RESTORE_UNSERIALIZED_GO_HIGH_WATER_TRIGGER  # noqa: SLF001
+    assert "pg_advisory_xact_lock" not in original
+    assert "CREATE OR REPLACE FUNCTION" in serialized
+    assert f"pg_advisory_xact_lock_shared({ordering.ROUTING_EPOCH_ADVISORY_LOCK_ID})" in serialized
+    assert "CREATE TRIGGER" not in serialized
+    assert "pg_advisory_xact_lock" not in restored
+    assert " ".join(restored.split()) in " ".join(original.split())

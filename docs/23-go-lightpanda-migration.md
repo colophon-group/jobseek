@@ -302,6 +302,9 @@ The executor reads the mutable description hash and scrape interval from
 PostgreSQL again at every fenced attempt. The DB-only executor has no
 Redis, renderer, proxy, R2, or external HTTP credentials; its origin transport
 rejects every request, so processing can only consume the Go-supplied result.
+Its UDS admission is split into four task conversations plus one independently
+reserved route-attestation conversation. Saturating all four task slots
+therefore rejects a fifth task without consuming the health path.
 
 The enabled overlay also starts a non-claiming `lightpanda-producer` Go
 sidecar. It is the sole owner of c1/c4 membership classification, parser-
@@ -323,10 +326,14 @@ limited to an exact framed, read-only authority probe that names the configured
 mutation UID. It verifies directory/socket ownership and mode, socket inode
 across connect, the server's Linux `SO_PEERCRED`, the canonical response, and
 connection close; the server applies the reciprocal peer check.
-Because Docker creates a fresh named-volume root with unsuitable ownership,
-the cutover first runs a bounded, networkless one-shot initializer with only
-`CAP_CHOWN`; it normalizes and attests the directory before the UID-10001
-producer can start. The producer itself never runs as root.
+Because Docker creates fresh producer and executor named-volume roots with
+unsuitable ownership, the cutover first runs bounded, networkless one-shot
+initializers with only `CAP_CHOWN`. An initializer may mutate only an empty,
+exact root-owned mode-0755 fresh volume or the empty root-owned mode-0700 state
+left if that initializer crashed between `chmod` and `chown`; an already exact
+UID/GID-10001 mode-0700 volume is an idempotent no-op. Every nonempty root-owned
+or otherwise ambiguous state is rejected. Both long-running services remain
+unprivileged and never normalize an ambiguous live volume.
 Frames use canonical uvarint framing and strict canonical JSON, are capped at
 256 KiB, and have a three-second deadline. The server has a bounded backlog of
 72 (the documented 67-caller discovery burst plus healthcheck headroom) and at
@@ -410,8 +417,14 @@ Go performs it before renderer reservations or Redis initialization and still
 receives no database credential. A PostgreSQL trigger independently rejects
 every Go fence insert or update whose epoch is no longer current, rolling back
 the surrounding application transaction; Python-owned fences bypass that
-check. The wrapper rejects a malformed or out-of-range value before stopping
-a service.
+check. Migration `0028`, applied after the deployed allocator migration, makes
+this a total transaction order: a Go fence trigger holds a shared transaction
+advisory lock across its write, while allocation holds the matching exclusive
+transaction lock across `nextval`. Allocation therefore happens wholly before
+the write (which rejects) or wholly after its commit. The invoker needs
+sequence `SELECT` for the trigger; only the allocator also needs sequence
+`USAGE`. `PUBLIC` has neither. The wrapper rejects a malformed or out-of-range
+value before stopping a service.
 
 ```bash
 sudo -u deploy /home/deploy/scripts/lightpanda-b0-cutover.sh activate c1
@@ -425,7 +438,12 @@ requests the exact cohort manifest from Go, compares that active PostgreSQL
 board set and parser metadata with Redis, suffix-scans both
 legacy inflight/dead-letter sets, refuses active PostgreSQL leases, and emits a
 canonical plan digest before any ownership transfer. Each accepted record is
-transferred and guarded in one Lua turn. Start with `c1`. Direct `c1` to `c4`
+transferred and guarded in one Lua turn. First-time intent comes from the exact
+legacy membership for a new transfer, from the bound legacy guard for an
+existing ready record, and from current PostgreSQL description state for a new
+terminal/dead incarnation. Every first-time Go schedule is due at epoch zero;
+rollback still restores an existing ready record with its exact guarded legacy
+kind and score. Start with `c1`. Direct `c1` to `c4`
 activation is deliberately unsupported: first cold-rollback `c1` to Python,
 then run a distinct cold `activate c4` transition. An existing active receipt
 is safely read first to recover its exact epoch, fully attested against the
@@ -433,11 +451,14 @@ requested cohort and epoch, and then re-drives the producer/Redis health path;
 filesystem attestation alone never returns activation success. A pending
 receipt is recovery-only and an `activate` retry preserves it unchanged.
 
-The pending receipt is written before the first transfer. Any later activation
-error triggers a host-level containment trap that stops the complete mutation
-set and leaves that receipt in place. PostgreSQL fence rejection is a typed
-authority-loss result that stops the Go supervisor rather than entering its
-ordinary retry loop.
+The pending receipt is written before the first transfer. After the final
+activation audit, the wrapper requires a synchronous Redis `SAVE` while the
+receipt is still pending and before any executor, claimant, or Python mutation
+service starts. A failed or lost reply triggers host-level containment, leaves
+the pending receipt in place, and requires the reviewed pending-recovery path;
+it can never publish an active receipt on uncertain disk durability.
+PostgreSQL fence rejection is a typed authority-loss result that stops the Go
+supervisor rather than entering its ordinary retry loop.
 
 Rollback planning and apply bind the attested receipt state and detected local
 marker phase into their digest. An active receipt with an absent Redis
@@ -449,7 +470,6 @@ rollback remains authoritative. This distinguishes a crash before Redis
 initialization from loss after the active phase was durably committed without
 attempting to reconstruct the cohort from PostgreSQL.
 
-Pending, active, and rollback-cleared receipts retain the same reserved epoch.
 After enabled services pass health checks the wrapper atomically publishes
 `/home/deploy/.lightpanda-b0-active-v1` as a deploy-owned mode-0600 receipt.
 Publication fsyncs the complete temporary file before rename and the parent
@@ -486,14 +506,24 @@ That tombstone binds the cohort, route, rollback plan digest, and SHA-256 of the
 still-present active or pending receipt. Under the tombstone the operator
 idempotently deletes and counts zero every exact Go write fence for the route.
 
+Before contacting the non-transactional allocator, rollback durably replaces
+the active or pending source receipt with `rollback-pending`, binding the
+source state and SHA-256 while recording the retirement epoch as `unreserved`.
+It then reserves `R > E` and durably rewrites that receipt to bind both source
+epoch `E` and retirement epoch `R`. A crash between `nextval` and the bound
+rewrite burns the ambiguous value; retry reserves a newer one. Recovery accepts
+only the exact source identity and exact current `R`; Redis rollback/tombstone
+and PostgreSQL fence cleanup remain bound to `E`.
+
 After the rollback Lua commit and PostgreSQL fence cleanup, the wrapper first
 requires a synchronous Redis `SAVE` while the exact tombstone, source receipt,
 and producer sentinel still exist. A failed or lost reply therefore retries
 the full idempotent rollback. The Go one-shot then verifies but does not delete
 the tombstone while it removes and fsyncs the activation sentinel. The wrapper
 then durably publishes the distinct
-`rollback-cleared` receipt, carrying the same source-receipt SHA and rollback
-plan digest. An exact Lua compare-delete removes the tombstone only after the
+`rollback-cleared` receipt, carrying the source state/SHA, rollback plan digest,
+source epoch `E`, and retirement epoch `R`. An exact Lua compare-delete removes
+the tombstone only after the
 sentinel is absent, Redis namespace and guard keys are absent, and PostgreSQL
 route fences are zero. A second synchronous `SAVE` must persist tombstone
 absence before Python starts; a failed or lost reply retains the
@@ -505,9 +535,10 @@ the source receipt; and a crash after `rollback-cleared` publication retries
 only the exact tombstone delete and absence persistence. A missing or stale
 tombstone, a mismatched
 source receipt, or tombstone coexistence with namespace/guard state fails
-closed. After successful rollback removes the receipt, the next activation
-must reserve a strictly newer sequence value; neither Redis nor a recreated
-host file is an epoch source.
+closed. Immediately before Python starts, the wrapper again requires `R` to be
+the exact PostgreSQL high-water. After successful rollback removes the receipt,
+the next activation must reserve a value strictly newer than `R`; neither Redis
+nor a recreated host file is an epoch source.
 
 A hard-killed producer may leave its control socket inode on the named volume.
 After the wrapper has attested the host cold, the reset one-shot accepts only
@@ -546,6 +577,19 @@ reap, due-to-claim/complete, renderer wait, executor wait, and task outcome
 telemetry on `127.0.0.1:9101`. The crawler-host Alloy target forwards that
 endpoint with fixed B0/runtime labels; task logs contain IDs and bounded
 phase/outcome classes, never arbitrary URLs.
+
+The lifetime task-ID namespace has a physical capacity of 2048 records. The B0
+pilot treats occupancy 1600 as a fail-closed rollback signal and refuses a new
+ID once occupancy is already at that boundary; an existing ID may still
+complete or be reactivated. The threshold is based on a baseline of 1270 live
+postings plus 200 retained terminal records (1470), leaving 130 records
+for watchdog reaction and 448 below physical exhaustion. The producer control
+manifest reports exact lifetime occupancy, capacity, and headroom for activation
+and watchdog decisions. Crossing the signal requires the external host
+watchdog/operator path to invoke this reviewed cold wrapper; the claimant never
+attempts unsafe in-process Python rollback. Real-Redis integration gates
+exercise a successful near-threshold enqueue, a full 2048-record conservation
+audit under two seconds, and the atomic 2048-record rollback under five seconds.
 
 ### Dormant renderer host boundary
 

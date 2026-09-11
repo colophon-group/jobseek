@@ -43,7 +43,12 @@ from src.runtime.config import BoardRuntimeConfig
 PROTOCOL: Final = "jobseek.lightpanda.executor/v1"
 SOCKET_PATH: Final = Path("/run/jobseek-lightpanda-executor/executor.sock")
 FRAME_LIMIT: Final = 3 * 1024 * 1024
-CAPACITY: Final = 4
+TASK_CAPACITY: Final = 4
+ATTESTATION_CAPACITY: Final = 1
+SOCKET_BACKLOG: Final = TASK_CAPACITY + ATTESTATION_CAPACITY
+# Backwards-compatible public name used by the frozen executor client contract.
+CAPACITY: Final = TASK_CAPACITY
+FIRST_FRAME_TIMEOUT: Final = 1.0
 AUTHORIZATION_TIMEOUT: Final = 5.0
 COMMIT_TIMEOUT: Final = 15.0
 _REQUEST_FIELDS: Final = {
@@ -440,8 +445,9 @@ async def _dispatch(
     *,
     routing_epoch: int,
     shard_id: str,
+    initial_payload: bytes | None = None,
 ) -> None:
-    payload = await _read_frame(reader)
+    payload = await _read_frame(reader) if initial_payload is None else initial_payload
     try:
         candidate = json.loads(payload)
     except (UnicodeDecodeError, json.JSONDecodeError):
@@ -466,6 +472,76 @@ async def _dispatch(
         )
         return
     await _execute(reader, writer, pool, initial_payload=payload)
+
+
+class _ExecutorConversationServer:
+    """Independent task/health admission for one private executor socket."""
+
+    def __init__(self, pool: Any, *, routing_epoch: int, shard_id: str) -> None:
+        self.pool = pool
+        self.routing_epoch = routing_epoch
+        self.shard_id = shard_id
+        self.active_tasks = 0
+        self.active_attestations = 0
+        self.handlers: set[asyncio.Task[None]] = set()
+
+    async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        handler = asyncio.current_task()
+        if handler is None:
+            writer.close()
+            return
+        self.handlers.add(handler)
+        raw_socket = writer.get_extra_info("socket")
+        try:
+            accepted_peer = raw_socket is not None and _peer_uid(raw_socket) == os.getuid()
+        except ExecutorProtocolError:
+            accepted_peer = False
+        if not accepted_peer:
+            self.handlers.discard(handler)
+            writer.close()
+            await writer.wait_closed()
+            return
+        conversation = ""
+        try:
+            # Classification cannot consume a task/attestation slot. Slow or
+            # partial clients are bounded, and the server keeps accepting so a
+            # fifth task cannot occupy the reserved health conversation.
+            async with asyncio.timeout(FIRST_FRAME_TIMEOUT):
+                payload = await _read_frame(reader)
+            try:
+                candidate = json.loads(payload)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                candidate = None
+            if isinstance(candidate, dict) and candidate.get("type") == "attest_route":
+                if self.active_attestations >= ATTESTATION_CAPACITY:
+                    return
+                self.active_attestations += 1
+                conversation = "attestation"
+            else:
+                if self.active_tasks >= TASK_CAPACITY:
+                    return
+                self.active_tasks += 1
+                conversation = "task"
+            await _dispatch(
+                reader,
+                writer,
+                self.pool,
+                routing_epoch=self.routing_epoch,
+                shard_id=self.shard_id,
+                initial_payload=payload,
+            )
+        except (Exception, asyncio.CancelledError):
+            with contextlib.suppress(Exception):
+                await _write_message(writer, {"type": "error", "error": "executor_failed"})
+        finally:
+            if conversation == "task":
+                self.active_tasks -= 1
+            elif conversation == "attestation":
+                self.active_attestations -= 1
+            self.handlers.discard(handler)
+            writer.close()
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
 
 
 async def _serve() -> None:
@@ -499,52 +575,14 @@ async def _serve() -> None:
     except BaseException:
         await close_local_pool()
         raise
-    active = 0
-    handlers: set[asyncio.Task[None]] = set()
-
-    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        nonlocal active
-        handler = asyncio.current_task()
-        if handler is None:
-            writer.close()
-            return
-        handlers.add(handler)
-        raw_socket = writer.get_extra_info("socket")
-        try:
-            accepted_peer = raw_socket is not None and _peer_uid(raw_socket) == os.getuid()
-        except ExecutorProtocolError:
-            accepted_peer = False
-        if not accepted_peer:
-            handlers.discard(handler)
-            writer.close()
-            await writer.wait_closed()
-            return
-        if active >= CAPACITY:
-            handlers.discard(handler)
-            writer.close()
-            await writer.wait_closed()
-            return
-        active += 1
-        try:
-            await _dispatch(
-                reader,
-                writer,
-                pool,
-                routing_epoch=routing_epoch,
-                shard_id=shard_id,
-            )
-        except (Exception, asyncio.CancelledError):
-            with contextlib.suppress(Exception):
-                await _write_message(writer, {"type": "error", "error": "executor_failed"})
-        finally:
-            active -= 1
-            handlers.discard(handler)
-            writer.close()
-            with contextlib.suppress(Exception):
-                await writer.wait_closed()
-
+    conversations = _ExecutorConversationServer(
+        pool, routing_epoch=routing_epoch, shard_id=shard_id
+    )
     server = await asyncio.start_unix_server(
-        handle, path=configured_socket, limit=FRAME_LIMIT + 1, backlog=CAPACITY
+        conversations.handle,
+        path=configured_socket,
+        limit=FRAME_LIMIT + 1,
+        backlog=SOCKET_BACKLOG,
     )
     os.chmod(configured_socket, 0o600)
     _validate_socket(configured_socket)
@@ -559,8 +597,8 @@ async def _serve() -> None:
         server.close()
         await server.wait_closed()
         shutdown_failed = False
-        if handlers:
-            done, pending = await asyncio.wait(handlers, timeout=COMMIT_TIMEOUT)
+        if conversations.handlers:
+            done, pending = await asyncio.wait(conversations.handlers, timeout=COMMIT_TIMEOUT)
             del done
             if pending:
                 shutdown_failed = True

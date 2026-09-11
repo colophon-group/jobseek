@@ -9,6 +9,7 @@ import os
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
@@ -17,6 +18,7 @@ import httpx
 import pytest
 from jobseek_runtime_v1 import runtime_pb2
 
+import src.lightpanda.activation as activation_module
 import src.lightpanda.claimant as claimant_module
 import src.lightpanda_queue as queue_module
 import src.processing.scrape as scrape_module
@@ -70,8 +72,8 @@ async def test_go_write_fence_is_bound_to_current_postgres_high_water() -> None:
             board_id,
             f"https://epoch-e2e.invalid/posting/{posting_id}",
         )
-        current = await pool.fetchval("SELECT nextval('public.lightpanda_b0_routing_epoch_seq')")
-        assert isinstance(current, int) and current > 1
+        current = await activation_module._reserve_routing_epoch(pool)
+        assert current > 1
 
         def fence(epoch: int, sequence: int) -> LightpandaWriteFence:
             return LightpandaWriteFence(
@@ -104,7 +106,7 @@ async def test_go_write_fence_is_bound_to_current_postgres_high_water() -> None:
             )
             == current
         )
-        newer = await pool.fetchval("SELECT nextval('public.lightpanda_b0_routing_epoch_seq')")
+        newer = await activation_module._reserve_routing_epoch(pool)
         assert newer == current + 1
         titles_before = await pool.fetchval(
             "SELECT titles FROM job_posting WHERE id = $1",
@@ -146,6 +148,208 @@ async def test_go_write_fence_is_bound_to_current_postgres_high_water() -> None:
         )
     finally:
         await pool.execute("DELETE FROM job_posting WHERE id = $1", posting_id)
+        await pool.execute("DELETE FROM job_board WHERE id = $1", board_id)
+        await pool.execute("DELETE FROM company WHERE id = $1", company_id)
+        await pool.close()
+
+
+async def test_epoch_allocator_and_go_fence_writes_have_total_transaction_order() -> None:
+    dsn = os.environ["LOCAL_DATABASE_URL"]
+    pool = await asyncpg.create_pool(dsn, min_size=1, max_size=4)
+    company_id = uuid.uuid4()
+    board_id = uuid.uuid4()
+    posting_ids = (uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+    role = f"lightpanda_epoch_e2e_{uuid.uuid4().hex}"
+    activate_sql = (
+        "SELECT public.jobseek_lightpanda_b0_activate_write_fence($1, $2, $3, $4, $5, $6, $7)"
+    )
+    role_created = False
+
+    def args(posting_id: uuid.UUID, epoch: int) -> tuple[object, ...]:
+        return (
+            posting_id,
+            "lightpanda-b0",
+            epoch,
+            "go",
+            1,
+            "a" * 64,
+            f"{epoch}:1",
+        )
+
+    async def reserve(connection: Any) -> int:
+        async with connection.transaction():
+            await connection.execute(
+                activation_module._LOCK_ROUTING_EPOCH_ALLOCATOR_SQL,
+                activation_module._ROUTING_EPOCH_ADVISORY_LOCK_ID,
+            )
+            value = await connection.fetchval(activation_module._RESERVE_ROUTING_EPOCH_SQL)
+            assert type(value) is int
+            return value
+
+    async def wait_for_advisory_wait(pid: int) -> None:
+        for _attempt in range(200):
+            if await pool.fetchval(
+                "SELECT wait_event_type = 'Lock' AND wait_event = 'advisory' "
+                "FROM pg_catalog.pg_stat_activity WHERE pid = $1",
+                pid,
+            ):
+                return
+            await asyncio.sleep(0.01)
+        raise AssertionError("transaction did not block on the routing-epoch advisory lock")
+
+    try:
+        await pool.execute(
+            "INSERT INTO company (id, name, slug) VALUES ($1, $2, $3)",
+            company_id,
+            "Lightpanda epoch ordering E2E",
+            f"lightpanda-epoch-order-{company_id.hex}",
+        )
+        await pool.execute(
+            "INSERT INTO job_board (id, company_id, board_slug, board_url) VALUES ($1, $2, $3, $4)",
+            board_id,
+            company_id,
+            f"lightpanda-epoch-order-{board_id.hex}",
+            f"https://epoch-order.invalid/board/{board_id}",
+        )
+        for posting_id in posting_ids:
+            await pool.execute(
+                "INSERT INTO job_posting (id, company_id, board_id, source_url) "
+                "VALUES ($1, $2, $3, $4)",
+                posting_id,
+                company_id,
+                board_id,
+                f"https://epoch-order.invalid/posting/{posting_id}",
+            )
+
+        async with pool.acquire() as bootstrap_connection:
+            epoch = await reserve(bootstrap_connection)
+
+        # Ordering 1: the E fence trigger has acquired its shared xact lock and
+        # returned. The exclusive allocator must wait for that write's commit.
+        writer = await pool.acquire()
+        allocator = await pool.acquire()
+        writer_tx = writer.transaction()
+        await writer_tx.start()
+        await writer.execute(activate_sql, *args(posting_ids[0], epoch))
+        allocator_pid = await allocator.fetchval("SELECT pg_backend_pid()")
+        assert type(allocator_pid) is int
+        allocation_started = asyncio.Event()
+
+        async def blocked_allocator() -> int:
+            allocation_started.set()
+            return await reserve(allocator)
+
+        allocation = asyncio.create_task(blocked_allocator())
+        await allocation_started.wait()
+        await wait_for_advisory_wait(allocator_pid)
+        assert not allocation.done()
+        await writer_tx.commit()
+        assert await asyncio.wait_for(allocation, timeout=2) == epoch + 1
+        await pool.release(writer)
+        await pool.release(allocator)
+        epoch += 1
+
+        # Ordering 2: allocation holds the exclusive lock after nextval. The
+        # E write waits, then observes R and rejects/rolls back after commit.
+        allocator = await pool.acquire()
+        writer = await pool.acquire()
+        allocator_tx = allocator.transaction()
+        await allocator_tx.start()
+        await allocator.execute(
+            activation_module._LOCK_ROUTING_EPOCH_ALLOCATOR_SQL,
+            activation_module._ROUTING_EPOCH_ADVISORY_LOCK_ID,
+        )
+        retirement = await allocator.fetchval(activation_module._RESERVE_ROUTING_EPOCH_SQL)
+        assert retirement == epoch + 1
+        writer_pid = await writer.fetchval("SELECT pg_backend_pid()")
+        assert type(writer_pid) is int
+
+        async def blocked_stale_write() -> None:
+            async with writer.transaction():
+                await writer.execute(activate_sql, *args(posting_ids[1], epoch))
+
+        stale_write = asyncio.create_task(blocked_stale_write())
+        await wait_for_advisory_wait(writer_pid)
+        assert not stale_write.done()
+        await allocator_tx.commit()
+        with pytest.raises(asyncpg.RaiseError) as rejected:
+            await asyncio.wait_for(stale_write, timeout=2)
+        assert getattr(rejected.value, "message", "") == "lightpanda_b0_write_fence_rejected"
+        assert getattr(rejected.value, "detail", "") == "routing_epoch_not_current"
+        assert (
+            await pool.fetchval(
+                "SELECT count(*) FROM lightpanda_b0_write_fence WHERE job_posting_id = $1",
+                posting_ids[1],
+            )
+            == 0
+        )
+        await pool.release(allocator)
+        await pool.release(writer)
+        epoch = retirement
+
+        # nextval remains burned even when the allocator transaction rolls
+        # back; the following reservation must be strictly greater.
+        allocator = await pool.acquire()
+        burned_tx = allocator.transaction()
+        await burned_tx.start()
+        await allocator.execute(
+            activation_module._LOCK_ROUTING_EPOCH_ALLOCATOR_SQL,
+            activation_module._ROUTING_EPOCH_ADVISORY_LOCK_ID,
+        )
+        burned = await allocator.fetchval(activation_module._RESERVE_ROUTING_EPOCH_SQL)
+        await burned_tx.rollback()
+        assert burned == epoch + 1
+        following = await reserve(allocator)
+        assert following == burned + 1
+        await pool.release(allocator)
+        epoch = following
+
+        # PUBLIC has no sequence access. A least-privilege executor needs
+        # SELECT for the invoker trigger and USAGE only for operator allocation.
+        await pool.execute(f'CREATE ROLE "{role}" NOLOGIN')
+        role_created = True
+        await pool.execute(f'GRANT USAGE ON SCHEMA public TO "{role}"')
+        await pool.execute(
+            f'GRANT SELECT, INSERT, UPDATE, DELETE ON public.lightpanda_b0_write_fence TO "{role}"'
+        )
+        await pool.execute(
+            "GRANT EXECUTE ON FUNCTION public.jobseek_lightpanda_b0_activate_write_fence"
+            f'(uuid,text,bigint,text,bigint,text,text) TO "{role}"'
+        )
+        privilege_connection = await pool.acquire()
+        try:
+            await privilege_connection.execute(f'SET ROLE "{role}"')
+            assert not await privilege_connection.fetchval(
+                "SELECT has_sequence_privilege(current_user, "
+                "'public.lightpanda_b0_routing_epoch_seq', 'SELECT')"
+            )
+            with pytest.raises(asyncpg.InsufficientPrivilegeError):
+                await privilege_connection.execute(activate_sql, *args(posting_ids[2], epoch))
+            await privilege_connection.execute("RESET ROLE")
+            await pool.execute(
+                f'GRANT SELECT ON SEQUENCE public.lightpanda_b0_routing_epoch_seq TO "{role}"'
+            )
+            await privilege_connection.execute(f'SET ROLE "{role}"')
+            await privilege_connection.execute(activate_sql, *args(posting_ids[2], epoch))
+            with pytest.raises(asyncpg.InsufficientPrivilegeError):
+                await privilege_connection.fetchval(activation_module._RESERVE_ROUTING_EPOCH_SQL)
+            await privilege_connection.execute("RESET ROLE")
+            await pool.execute(
+                f'GRANT USAGE ON SEQUENCE public.lightpanda_b0_routing_epoch_seq TO "{role}"'
+            )
+            await privilege_connection.execute(f'SET ROLE "{role}"')
+            assert await privilege_connection.fetchval(
+                "SELECT has_sequence_privilege(current_user, "
+                "'public.lightpanda_b0_routing_epoch_seq', 'SELECT,USAGE')"
+            )
+            await privilege_connection.execute("RESET ROLE")
+        finally:
+            await pool.release(privilege_connection)
+    finally:
+        if role_created:
+            await pool.execute(f'DROP OWNED BY "{role}"')
+            await pool.execute(f'DROP ROLE IF EXISTS "{role}"')
+        await pool.execute("DELETE FROM job_posting WHERE id = ANY($1::uuid[])", list(posting_ids))
         await pool.execute("DELETE FROM job_board WHERE id = $1", board_id)
         await pool.execute("DELETE FROM company WHERE id = $1", company_id)
         await pool.close()

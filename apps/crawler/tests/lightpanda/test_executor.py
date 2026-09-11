@@ -473,6 +473,97 @@ async def test_route_attestation_waits_for_the_single_connection_then_succeeds()
     assert json.loads(await executor._read_frame(response))["type"] == "route_attested"
 
 
+async def test_four_tasks_reject_a_fifth_while_reserved_attestation_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cleanup = tempfile.TemporaryDirectory(prefix="lp-exec-capacity-", dir="/tmp")
+    socket_path = executor.Path(cleanup.name) / "executor.sock"
+    release_tasks = asyncio.Event()
+    four_started = asyncio.Event()
+    started = 0
+
+    async def blocked_execute(
+        _reader: asyncio.StreamReader,
+        _writer: asyncio.StreamWriter,
+        _pool: Any,
+        initial_payload: bytes | None = None,
+    ) -> None:
+        nonlocal started
+        assert initial_payload is not None
+        started += 1
+        if started == executor.TASK_CAPACITY:
+            four_started.set()
+        await release_tasks.wait()
+
+    monkeypatch.setattr(executor, "_execute", blocked_execute)
+    monkeypatch.setattr(executor, "_peer_uid", lambda _raw: os.getuid())
+
+    class Pool:
+        async def fetchrow(self, query: str) -> dict[str, object]:
+            assert query == executor._CURRENT_ROUTING_EPOCH_SQL
+            return {"last_value": 7, "is_called": True}
+
+    conversations = executor._ExecutorConversationServer(
+        Pool(), routing_epoch=7, shard_id="lightpanda-b0"
+    )
+    server = await asyncio.start_unix_server(
+        conversations.handle,
+        path=socket_path,
+        limit=executor.FRAME_LIMIT + 1,
+        backlog=executor.SOCKET_BACKLOG,
+    )
+    task, _config = _task()
+    task_clients: list[tuple[asyncio.StreamReader, asyncio.StreamWriter]] = []
+    try:
+        for _index in range(executor.TASK_CAPACITY):
+            reader, writer = await asyncio.open_unix_connection(socket_path)
+            writer.write(_frame(_request(task)))
+            await writer.drain()
+            task_clients.append((reader, writer))
+        await asyncio.wait_for(four_started.wait(), timeout=1)
+        assert conversations.active_tasks == 4
+
+        fifth_reader, fifth_writer = await asyncio.open_unix_connection(socket_path)
+        fifth_writer.write(_frame(_request(task)))
+        await fifth_writer.drain()
+        with pytest.raises(asyncio.IncompleteReadError):
+            await asyncio.wait_for(executor._read_frame(fifth_reader), timeout=1)
+        fifth_writer.close()
+        await fifth_writer.wait_closed()
+        assert started == 4
+
+        health_reader, health_writer = await asyncio.open_unix_connection(socket_path)
+        await executor._write_message(
+            health_writer,
+            {
+                "version": executor.PROTOCOL,
+                "type": "attest_route",
+                "shard_id": "lightpanda-b0",
+                "routing_epoch": 7,
+            },
+        )
+        health = executor._object(
+            await asyncio.wait_for(executor._read_frame(health_reader), timeout=1),
+            {"type", "shard_id", "routing_epoch"},
+        )
+        assert health == {
+            "type": "route_attested",
+            "shard_id": "lightpanda-b0",
+            "routing_epoch": 7,
+        }
+        health_writer.close()
+        await health_writer.wait_closed()
+        assert conversations.active_tasks == 4
+    finally:
+        release_tasks.set()
+        for _reader, writer in task_clients:
+            writer.close()
+            await writer.wait_closed()
+        server.close()
+        await server.wait_closed()
+        cleanup.cleanup()
+
+
 def test_executor_socket_directory_and_socket_must_be_private_owned(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:

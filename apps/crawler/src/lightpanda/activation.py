@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlsplit
 
 from redis.asyncio import Redis
@@ -44,12 +44,16 @@ _ROLLBACK_TOMBSTONE_SCHEMA = "jobseek.lightpanda.producer-rollback/v1"
 _LEGACY_GUARD_KEY = "lightpanda-b0:legacy-guard"
 _SAFE_PRODUCER_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_DECIMAL_SECONDS = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$")
+_ROUTING_EPOCH_ADVISORY_LOCK_ID = 7_544_422_533_504_811_009
 
 _ROLLBACK_SETTLE_MAX_SECONDS = 75.0
 _ROLLBACK_SETTLE_HARD_TIMEOUT_SECONDS = 80.0
 _ROLLBACK_SETTLE_POLL_SECONDS = 1.0
 _ROLLBACK_SETTLE_MAX_ITERATIONS = 96
 _ROLLBACK_MAX_FAILURES = 3
+_PILOT_LIFETIME_CAPACITY = 2_048
+_PILOT_ROLLBACK_SIGNAL_THRESHOLD = 1_600
 
 _BOARDS_SQL = """
 SELECT id::text AS board_id,
@@ -129,6 +133,7 @@ ORDER BY job_posting_id
 """
 
 _RESERVE_ROUTING_EPOCH_SQL = "SELECT nextval('public.lightpanda_b0_routing_epoch_seq'::regclass)"
+_LOCK_ROUTING_EPOCH_ALLOCATOR_SQL = "SELECT pg_advisory_xact_lock($1)"
 _CURRENT_ROUTING_EPOCH_SQL = (
     "SELECT last_value, is_called FROM public.lightpanda_b0_routing_epoch_seq"
 )
@@ -179,6 +184,34 @@ def _wire_text(value: object) -> str:
     raise ActivationError("Redis returned a non-text authority value")
 
 
+async def _bound_legacy_guard(redis: Redis, task_id: str, stored: StoredTask) -> tuple[str, str]:
+    raw = await redis.hget(_LEGACY_GUARD_KEY, task_id)
+    if raw is None:
+        raise ActivationError("existing B0 record lost its legacy transfer guard")
+    parts = _wire_text(raw).split("|")
+    kinds = {"ft_browser", "ft_simple", "recurring_browser", "recurring_simple"}
+    if (
+        len(parts) != 7
+        or parts[0] != settings.lightpanda_b0_queue_namespace
+        or parts[1] != stored.task.route.shard_id
+        or parts[2] != str(stored.task.route.routing_epoch)
+        or parts[3] != stored.task.board_id
+        or parts[4] != stored.task.domain
+        or parts[5] not in kinds
+        or _DECIMAL_SECONDS.fullmatch(parts[6]) is None
+    ):
+        raise ActivationError("existing B0 record has an invalid legacy transfer guard")
+    try:
+        score = Decimal(parts[6])
+    except ArithmeticError as exc:
+        raise ActivationError("existing B0 record has an invalid legacy transfer guard") from exc
+    if not score.is_finite() or not Decimal(0) <= score <= (
+        Decimal(9_999_999_999_999) / Decimal(1_000)
+    ):
+        raise ActivationError("existing B0 record has an invalid legacy transfer guard")
+    return parts[5], parts[6]
+
+
 def _domain(source_url: str) -> str:
     try:
         parsed = urlsplit(source_url)
@@ -206,6 +239,11 @@ def _seconds(value: datetime) -> str:
     )
     text = format(seconds, "f")
     return text.rstrip("0").rstrip(".") if "." in text else text
+
+
+def _go_ready_at(value: datetime, *, first_time: bool) -> str:
+    scheduled = _seconds(value)
+    return "0" if first_time else scheduled
 
 
 def _canonical(document: Mapping[str, object]) -> tuple[str, str]:
@@ -404,20 +442,29 @@ async def _existing_records(
         if any(value != "none" for value in other_types):
             raise ActivationError("B0 namespace has state without a route fence")
         return {}
-    audit = await queue.audit_conservation(route)
-    if not audit.accepted:
-        raise ActivationError(f"B0 audit failed: {audit.decision.value}/{audit.reason}")
-    if audit.secondary_value:
+    inspect_many = getattr(queue, "inspect_many", None)
+    if inspect_many is None:
+        # Compatibility for a mixed checkout while the paired queue protocol
+        # change lands. The deployed scheduler exposes the one-audit batch API.
+        audit = await queue.audit_conservation(route)
+        if not audit.accepted:
+            raise ActivationError(f"B0 audit failed: {audit.decision.value}/{audit.reason}")
+        result = {}
+        for raw_id in await redis.hkeys(queue._keys.records):
+            task_id = _wire_text(raw_id)
+            stored = await queue.inspect(task_id, route)
+            if stored is None:
+                raise ActivationError("B0 record disappeared during audited plan")
+            result[task_id] = stored
+    else:
+        try:
+            result = await inspect_many(route)
+        except RuntimeError as exc:
+            raise ActivationError("B0 batch record inspection failed closed") from exc
+    if any(stored.state == "inflight" for stored in result.values()):
         raise ActivationError("B0 namespace has inflight authority")
-    if not allow_dead and await redis.scard(queue._keys.dead):
+    if not allow_dead and any(stored.state == "dead" for stored in result.values()):
         raise ActivationError("B0 namespace has dead-letter authority")
-    result: dict[str, StoredTask] = {}
-    for raw_id in await redis.hkeys(queue._keys.records):
-        task_id = _wire_text(raw_id)
-        stored = await queue.inspect(task_id, route)
-        if stored is None:
-            raise ActivationError("B0 record disappeared during audited plan")
-        result[task_id] = stored
     return result
 
 
@@ -498,8 +545,9 @@ async def _legacy_preflight(
     redis: Redis,
     tasks: Sequence[dict[str, Any]],
     existing: Mapping[str, StoredTask],
-) -> None:
+) -> dict[str, bool]:
     await _prove_no_suffix_authority(redis, {str(item["posting_id"]) for item in tasks})
+    first_time_by_id: dict[str, bool] = {}
     for item in tasks:
         task_id = str(item["posting_id"])
         domain = str(item["domain"])
@@ -515,14 +563,41 @@ async def _legacy_preflight(
                 if key in current_config
             ):
                 raise ActivationError("legacy scrape hash disagrees with authoritative PostgreSQL")
-        memberships = 0
+        membership_kinds: list[str] = []
         for worker_type in ("simple", "browser"):
             for prefix in ("ft_scrapes", "scrapes"):
                 if await redis.zscore(f"{prefix}_{worker_type}:{domain}", task_id) is not None:
-                    memberships += 1
+                    membership_kinds.append(prefix)
         expected = 0 if task_id in existing else 1
-        if memberships != expected:
+        if len(membership_kinds) != expected:
             raise ActivationError("legacy schedule membership is not exact for cold transfer")
+        if task_id in existing:
+            stored = existing[task_id]
+            guard_kind, _guard_score = await _bound_legacy_guard(redis, task_id, stored)
+            first_time_by_id[task_id] = (
+                config.get("description_r2_hash") == ""
+                if stored.state in {"terminal", "dead"}
+                else guard_kind.startswith("ft_")
+            )
+        else:
+            first_time_by_id[task_id] = membership_kinds == ["ft_scrapes"]
+    return first_time_by_id
+
+
+def _pilot_capacity(result: object) -> tuple[int, int, int]:
+    occupancy = getattr(result, "lifetime_occupancy", None)
+    capacity = getattr(result, "lifetime_capacity", None)
+    headroom = getattr(result, "lifetime_headroom", None)
+    if (
+        type(occupancy) is not int
+        or type(capacity) is not int
+        or type(headroom) is not int
+        or capacity != _PILOT_LIFETIME_CAPACITY
+        or not 0 <= occupancy <= capacity
+        or headroom != capacity - occupancy
+    ):
+        raise ActivationError("Go producer returned invalid lifetime capacity telemetry")
+    return occupancy, capacity, headroom
 
 
 async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> CutoverPlan:
@@ -534,6 +609,7 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
         raise ActivationError("Go producer cohort manifest failed closed") from exc
     if manifest.outcome != "manifest" or manifest.cohort != cohort:
         raise ActivationError("Go producer returned the wrong cohort manifest")
+    baseline_occupancy, lifetime_capacity, lifetime_headroom = _pilot_capacity(manifest)
     board_slugs = manifest.board_slugs
     boards, board_documents = await _validated_boards(pool, redis, board_slugs)
     rows = await pool.fetch(_POSTINGS_SQL, list(board_slugs))
@@ -551,7 +627,15 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
     queue = LightpandaB0Queue(redis, namespace=settings.lightpanda_b0_queue_namespace)
     route = _route()
     existing = await _existing_records(redis, queue, route)
+    if baseline_occupancy != len(existing):
+        raise ActivationError("producer lifetime occupancy disagrees with audited records")
     scheduled_ids = {_text(row, "posting_id") for row in schedulable}
+    new_record_count = len(scheduled_ids - set(existing))
+    projected_occupancy = baseline_occupancy + new_record_count
+    if new_record_count > lifetime_headroom:
+        raise ActivationError("fixed cohort exceeds the producer lifetime headroom")
+    if projected_occupancy > _PILOT_ROLLBACK_SIGNAL_THRESHOLD:
+        raise ActivationError("fixed cohort exceeds the fail-closed pilot occupancy limit")
     cohort_board_ids = set(boards)
     if any(
         stored.state != "terminal" or stored.task.board_id not in cohort_board_ids
@@ -560,7 +644,7 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
     ):
         raise ActivationError("live B0 authority is outside the requested current schedule set")
     await _prove_no_suffix_authority(redis, set(existing) | scheduled_ids)
-    tasks: list[dict[str, Any]] = []
+    preliminary_tasks: list[dict[str, Any]] = []
     for row in schedulable:
         board_id = _text(row, "board_id")
         if board_id not in boards:
@@ -591,15 +675,32 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
         }
         next_scrape_at = row["next_scrape_at"]
         posting_id = _text(row, "posting_id")
+        preliminary_tasks.append(
+            {
+                "posting_id": posting_id,
+                "board_id": board_id,
+                "source_url": source_url,
+                "domain": domain,
+                "next_scrape_at": next_scrape_at,
+                "legacy_config": config,
+            }
+        )
+    first_time_by_id = await _legacy_preflight(redis, preliminary_tasks, existing)
+    tasks: list[dict[str, Any]] = []
+    for item in preliminary_tasks:
+        posting_id = str(item["posting_id"])
+        first_time = first_time_by_id[posting_id]
+        go_ready_at = _go_ready_at(item["next_scrape_at"], first_time=first_time)
         try:
-            prepared = await request_task(
+            prepared = await cast(Any, request_task)(
                 operation="prepare",
-                domain=domain,
+                domain=item["domain"],
                 posting_id=posting_id,
-                next_scrape_at=next_scrape_at.timestamp(),
-                config=config,
+                next_scrape_at=float(go_ready_at),
+                config=item["legacy_config"],
                 browser=True,
                 operator_transfer=True,
+                first_time=first_time,
             )
         except ProducerClientError as exc:
             raise ActivationError("Go producer preparation failed closed") from exc
@@ -613,18 +714,18 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
         tasks.append(
             {
                 "posting_id": posting_id,
-                "board_id": board_id,
-                "source_url": source_url,
-                "domain": domain,
-                "next_scrape_at": _seconds(next_scrape_at),
+                "board_id": item["board_id"],
+                "source_url": item["source_url"],
+                "domain": item["domain"],
+                "next_scrape_at": go_ready_at,
+                "first_time": first_time,
                 "payload_sha256": prepared.payload_sha256,
                 "preparation_digest": prepared.preparation_digest,
                 "existing_state": stored.state if stored else None,
                 "existing_payload_sha256": stored.task.payload_sha256 if stored else None,
-                "legacy_config": config,
+                "legacy_config": item["legacy_config"],
             }
         )
-    await _legacy_preflight(redis, tasks, existing)
     document: dict[str, object] = {
         "schema": "jobseek.lightpanda-b0-cutover-plan/v1",
         "operation": "activate",
@@ -635,6 +736,12 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
         "boards": board_documents,
         "tasks": tasks,
         "retained_terminal_ids": sorted(set(existing) - scheduled_ids),
+        "lifetime_occupancy": baseline_occupancy,
+        "lifetime_capacity": lifetime_capacity,
+        "lifetime_headroom": lifetime_headroom,
+        "new_record_count": new_record_count,
+        "projected_lifetime_occupancy": projected_occupancy,
+        "pilot_rollback_signal_threshold": _PILOT_ROLLBACK_SIGNAL_THRESHOLD,
     }
     _encoded, digest = _canonical(document)
     return CutoverPlan("activate", cohort, digest, document, tuple(tasks))
@@ -650,7 +757,7 @@ async def apply_activation_plan(
     activated = 0
     for item in plan.tasks:
         try:
-            result = await request_task(
+            result = await cast(Any, request_task)(
                 operation="activate",
                 domain=item["domain"],
                 posting_id=item["posting_id"],
@@ -658,6 +765,7 @@ async def apply_activation_plan(
                 config=item["legacy_config"],
                 browser=True,
                 operator_transfer=True,
+                first_time=item["first_time"],
                 expected_digest=item["preparation_digest"],
             )
         except (ProducerClientError, TypeError, ValueError) as exc:
@@ -680,11 +788,27 @@ async def apply_activation_plan(
         redis,
         {str(item["posting_id"]) for item in plan.tasks} | {str(value) for value in retained},
     )
+    try:
+        post_manifest = await request_manifest(cohort)
+    except ProducerClientError as exc:
+        raise ActivationError("post-activation producer capacity attestation failed") from exc
+    occupancy, capacity, headroom = _pilot_capacity(post_manifest)
+    projected = plan.document["projected_lifetime_occupancy"]
+    if (
+        occupancy != projected
+        or occupancy > _PILOT_ROLLBACK_SIGNAL_THRESHOLD
+        or capacity != plan.document["lifetime_capacity"]
+        or headroom != capacity - occupancy
+    ):
+        raise ActivationError("post-activation producer capacity attestation changed")
     return {
         "selected": plan.count,
         "activated": activated,
         "already_activated": plan.count - activated,
         "digest": plan.digest,
+        "lifetime_occupancy": occupancy,
+        "lifetime_headroom": headroom,
+        "pilot_rollback_signal_threshold": _PILOT_ROLLBACK_SIGNAL_THRESHOLD,
     }
 
 
@@ -799,8 +923,14 @@ async def build_rollback_plan(
             or not 1 <= interval <= 8_760
         ):
             raise ActivationError("authoritative rollback interval is invalid")
-        first_time = raw_hash is None
-        score = "0" if first_time else _seconds(row["next_scrape_at"])
+        if stored.state == "ready":
+            guard_kind, score = await _bound_legacy_guard(redis, task_id, stored)
+            first_time = guard_kind.startswith("ft_")
+            worker_type = guard_kind.removeprefix("ft_").removeprefix("recurring_")
+        else:
+            first_time = raw_hash is None
+            score = "0" if first_time else _seconds(row["next_scrape_at"])
+            worker_type = "browser" if row.get("scraper_needs_browser") is True else "simple"
         config = {
             "domain": domain,
             "board_id": board_id,
@@ -812,7 +942,7 @@ async def build_rollback_plan(
         entry: dict[str, object] = {
             "action": "schedule",
             "domain": domain,
-            "worker_type": "browser" if row.get("scraper_needs_browser") is True else "simple",
+            "worker_type": worker_type,
             "first_time": first_time,
             "score": score,
             "config": config,
@@ -1061,22 +1191,31 @@ async def clear_rollback_tombstone(
     return {"write_fences_remaining": 0, "digest": rollback_plan_digest}
 
 
+async def _reserve_routing_epoch(pool: Any) -> int:
+    try:
+        async with pool.acquire() as connection, connection.transaction():
+            await connection.execute(
+                _LOCK_ROUTING_EPOCH_ALLOCATOR_SQL,
+                _ROUTING_EPOCH_ADVISORY_LOCK_ID,
+            )
+            routing_epoch = await connection.fetchval(_RESERVE_ROUTING_EPOCH_SQL)
+    except Exception as exc:
+        raise ActivationError("routing epoch reservation failed") from exc
+    if (
+        isinstance(routing_epoch, bool)
+        or not isinstance(routing_epoch, int)
+        or not 1 <= routing_epoch <= 9_999_999_999_999
+    ):
+        raise ActivationError("routing epoch allocator returned an invalid value")
+    return routing_epoch
+
+
 async def _run(args: argparse.Namespace) -> dict[str, object]:
     if args.command in {"reserve-epoch", "attest-epoch"}:
         pool = await create_local_pool()
         try:
             if args.command == "reserve-epoch":
-                try:
-                    routing_epoch = await pool.fetchval(_RESERVE_ROUTING_EPOCH_SQL)
-                except Exception as exc:
-                    raise ActivationError("routing epoch reservation failed") from exc
-                if (
-                    isinstance(routing_epoch, bool)
-                    or not isinstance(routing_epoch, int)
-                    or not 1 <= routing_epoch <= 9_999_999_999_999
-                ):
-                    raise ActivationError("routing epoch allocator returned an invalid value")
-                return {"routing_epoch": routing_epoch}
+                return {"routing_epoch": await _reserve_routing_epoch(pool)}
             try:
                 expected_epoch = _route().routing_epoch
                 current = await pool.fetchrow(_CURRENT_ROUTING_EPOCH_SQL)

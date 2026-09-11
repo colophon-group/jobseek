@@ -840,6 +840,7 @@ def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
     assert socket_mount["read_only"] is True  # type: ignore[index]
     producer_environment = producer["environment"]  # type: ignore[index]
     initializer = services["lightpanda-producer-socket-init"]  # type: ignore[index]
+    executor_initializer = services["lightpanda-executor-socket-init"]  # type: ignore[index]
     assert "LOCAL_DATABASE_URL" not in producer_environment
     assert "LIGHTPANDA_B0_SERVICE_HOST" not in producer_environment
     assert not any("CERTIFICATE" in key or "PRIVATE_KEY" in key for key in producer_environment)
@@ -863,13 +864,28 @@ def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
     assert producer["depends_on"]["lightpanda-producer-socket-init"]["condition"] == (  # type: ignore[index]
         "service_completed_successfully"
     )
-    assert initializer["network_mode"] == "none"  # type: ignore[index]
-    assert initializer["user"] == "0:0"  # type: ignore[index]
-    assert initializer["read_only"] is True  # type: ignore[index]
-    assert initializer["cap_drop"] == ["ALL"]  # type: ignore[index]
-    assert initializer["cap_add"] == ["CHOWN"]  # type: ignore[index]
-    assert initializer["restart"] == "no"  # type: ignore[index]
-    assert int(initializer["mem_limit"]) == 16 * 1024 * 1024  # type: ignore[index]
+    assert executor["depends_on"]["lightpanda-executor-socket-init"]["condition"] == (  # type: ignore[index]
+        "service_completed_successfully"
+    )
+    for socket_initializer, path in (
+        (initializer, "/run/jobseek-lightpanda-producer"),
+        (executor_initializer, "/run/jobseek-lightpanda-executor"),
+    ):
+        assert socket_initializer["network_mode"] == "none"  # type: ignore[index]
+        assert socket_initializer["user"] == "0:0"  # type: ignore[index]
+        assert socket_initializer["read_only"] is True  # type: ignore[index]
+        assert socket_initializer["cap_drop"] == ["ALL"]  # type: ignore[index]
+        assert socket_initializer["cap_add"] == ["CHOWN"]  # type: ignore[index]
+        assert socket_initializer["restart"] == "no"  # type: ignore[index]
+        assert int(socket_initializer["mem_limit"]) == 16 * 1024 * 1024  # type: ignore[index]
+        command = socket_initializer["command"][-1]  # type: ignore[index]
+        assert f"stat -c '%u:%g:%a' {path}" in command
+        assert f"chmod 0700 {path}" in command
+        assert f"chown 10001:10001 {path}" in command
+        assert command.count(f"find {path} -mindepth 1 -maxdepth 1 -print -quit") == 2
+        assert command.index("0:0:755") < command.index(f"chmod 0700 {path}")
+        assert command.index("0:0:700") > command.index(f"chmod 0700 {path}")
+        assert command.index("10001:10001:700") > command.index(f"chmod 0700 {path}")
     assert (
         sum(int(service["mem_limit"]) for service in (supervisor, producer, executor))
         == 512 * 1024 * 1024
@@ -962,9 +978,13 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
     assert "flock -n 9" in wrapper
     assert "com.docker.compose.oneoff=True" in wrapper
     assert "worker-1 worker-2 worker-3 browser-1 drain" in wrapper
-    assert "drain lightpanda-producer-socket-init lightpanda-producer" in wrapper
+    assert "drain lightpanda-producer-socket-init lightpanda-executor-socket-init" in wrapper
     assert "run --rm --no-deps lightpanda-producer-socket-init" in wrapper
+    assert "run --rm --no-deps lightpanda-executor-socket-init" in wrapper
     assert wrapper.index("lightpanda-producer-socket-init") < wrapper.index(
+        "up -d --no-deps --force-recreate lightpanda-producer"
+    )
+    assert wrapper.index("lightpanda-executor-socket-init") < wrapper.index(
         "up -d --no-deps --force-recreate lightpanda-producer"
     )
     assert 'fsync_path file "$temp"' in wrapper
@@ -991,10 +1011,17 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
     arm_restart = wrapper.index("arm_and_verify_active_restart_policies", active_receipt)
     assert pending_restart_check < active_receipt < arm_restart
     assert wrapper.index("activation_failure_containment_armed=0", active_receipt) > active_receipt
+    activation_save = wrapper.index("persist_redis_rdb", wrapper.index("--apply --expect-digest"))
+    enabled_start = wrapper.index('"${compose_enabled[@]}" up -d --force-recreate', activation_save)
+    assert (
+        wrapper.index("--apply --expect-digest") < activation_save < enabled_start < active_receipt
+    )
     assert "trap contain_activation_failure EXIT" in wrapper
-    rollback_attestation = wrapper.rindex('attest_receipt "$receipt_state"')
+    rollback_attestation = wrapper.index('attest_receipt "$RECEIPT_STATE"')
     rollback_stop = wrapper.index('"${compose_enabled[@]}" stop --timeout 60', rollback_attestation)
-    assert rollback_attestation < rollback_stop
+    rollback_pending = wrapper.index("rollback-pending", rollback_stop)
+    retirement_reserve = wrapper.index('retirement_routing_epoch="$(reserve_routing_epoch)"')
+    assert rollback_attestation < rollback_stop < rollback_pending < retirement_reserve
     settle = wrapper.index("lightpanda-b0-activation settle-rollback", rollback_stop)
     rollback_plan = wrapper.index("plan --operation rollback", settle)
     assert rollback_stop < settle < rollback_plan
@@ -1022,9 +1049,20 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
     assert "write_fences_remaining" not in wrapper  # cleanup is enforced inside the CLI
 
 
-@pytest.mark.parametrize(("plan_timeout", "expected_status"), [(False, 41), (True, 124)])
+@pytest.mark.parametrize(
+    ("plan_timeout", "apply_status", "save_reply", "expected_status"),
+    [
+        (False, 41, "OK", 41),
+        (True, 0, "OK", 124),
+        (False, 0, "LOST", 1),
+    ],
+)
 def test_deploy_generated_fresh_env_reaches_activation_plan(
-    tmp_path: Path, plan_timeout: bool, expected_status: int
+    tmp_path: Path,
+    plan_timeout: bool,
+    apply_status: int,
+    save_reply: str,
+    expected_status: int,
 ) -> None:
     identity = _deploy_generated_b0_identity()
     deploy_dir = tmp_path / "deploy"
@@ -1053,6 +1091,8 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
             "stat() { printf '600\\n'; }",
             f"TEST_PLAN_DIGEST={'a' * 64}",
             f"TEST_PLAN_TIMEOUT={int(plan_timeout)}",
+            f"TEST_APPLY_STATUS={apply_status}",
+            f"TEST_SAVE_REPLY={save_reply}",
             f"sha256sum() {{ cat >/dev/null; printf '{'d' * 64}  -\\n'; }}",
             "timeout() {",
             '  original="$*"; shift 4',
@@ -1077,7 +1117,9 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
             'printf \'{"current": true, "routing_epoch": 7}\\n\'; return 0 ;;',
             '    *\\ plan\\ --operation\\ activate\\ *) printf \'{"digest": "%s"}\\n\' '
             '"$TEST_PLAN_DIGEST"; return 0 ;;',
-            "    *\\ lightpanda-b0-activation\\ activate\\ *) return 41 ;;",
+            '    *\\ lightpanda-b0-activation\\ activate\\ *) return "$TEST_APPLY_STATUS" ;;',
+            "    *\\ exec\\ -T\\ redis\\ redis-cli\\ --raw\\ SAVE) "
+            "printf '%s\\n' \"$TEST_SAVE_REPLY\"; return 0 ;;",
             "    *) return 0 ;;",
             "  esac",
             "}",
@@ -1138,6 +1180,10 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
         set(receipt.read_text(encoding="utf-8").splitlines())
     )
     assert "state=pending" in receipt.read_text(encoding="utf-8").splitlines()
+    if apply_status == 0:
+        save = next(index for index, event in enumerate(events) if " redis-cli --raw SAVE" in event)
+        assert apply < save
+        assert not any(" up -d --force-recreate worker-1 worker-2" in event for event in events)
 
 
 def _write_activation_receipt(
@@ -1541,6 +1587,7 @@ def _run_pending_recovery_wrapper(
     second_save_status: int = 0,
     first_save_reply: str = "OK",
     second_save_reply: str = "OK",
+    bound_receipt_status: int = 0,
 ) -> tuple[subprocess.CompletedProcess[str], list[str], Path]:
     identity = _deploy_generated_b0_identity()
     deploy_dir = tmp_path / "deploy"
@@ -1598,8 +1645,21 @@ def _run_pending_recovery_wrapper(
             f"TEST_SECOND_SAVE_STATUS={second_save_status}",
             f"TEST_FIRST_SAVE_REPLY={first_save_reply}",
             f"TEST_SECOND_SAVE_REPLY={second_save_reply}",
+            f"TEST_BOUND_RECEIPT_STATUS={bound_receipt_status}",
             f'TEST_SAVE_COUNTER="{tmp_path / "save-counter"}"',
+            f'TEST_EPOCH_COUNTER="{tmp_path / "epoch-counter"}"',
+            f'TEST_RECEIPT_WRITE_COUNTER="{tmp_path / "receipt-write-counter"}"',
             "sha256sum() { cat >/dev/null; printf '%s  -\\n' \"$TEST_COMPOSE_DIGEST\"; }",
+            "mv() {",
+            '  count=0; [[ ! -f "$TEST_RECEIPT_WRITE_COUNTER" ]] || '
+            'count="$(<"$TEST_RECEIPT_WRITE_COUNTER")"',
+            "  count=$((count + 1))",
+            '  printf \'%s\\n\' "$count" >"$TEST_RECEIPT_WRITE_COUNTER"',
+            '  if [[ "$count" == 2 && "$TEST_BOUND_RECEIPT_STATUS" != 0 ]]; then',
+            '    return "$TEST_BOUND_RECEIPT_STATUS"',
+            "  fi",
+            '  command mv "$@"',
+            "}",
             "sleep() { :; }",
             "timeout() {",
             '  original="$*"; shift 4',
@@ -1618,8 +1678,14 @@ def _run_pending_recovery_wrapper(
             "  fi",
             '  if [[ "$1" == ps ]]; then return 0; fi',
             '  case "$*" in',
+            "    *\\ reserve-epoch)",
+            '      epoch=7; [[ ! -f "$TEST_EPOCH_COUNTER" ]] || epoch="$(<"$TEST_EPOCH_COUNTER")"',
+            "      epoch=$((epoch + 1))",
+            '      printf \'%s\\n\' "$epoch" >"$TEST_EPOCH_COUNTER"',
+            '      printf \'{"routing_epoch": %s}\\n\' "$epoch"; return 0 ;;',
             "    *\\ attest-epoch) "
-            'printf \'{"current": true, "routing_epoch": 7}\\n\'; return 0 ;;',
+            'printf \'{"current": true, "routing_epoch": %s}\\n\' '
+            '"$LIGHTPANDA_B0_ROUTING_EPOCH"; return 0 ;;',
             "    *\\ config\\ -q) return 0 ;;",
             "    *\\ config) printf 'rendered-compose\\n'; return 0 ;;",
             "    *\\ ps\\ -aq\\ *) printf 'stopped-container\\n'; return 0 ;;",
@@ -1707,6 +1773,60 @@ def test_pending_receipt_recovery_timeout_stays_cold_and_retains_receipt(
     assert not any(" up -d --force-recreate " in event for event in events)
 
 
+def test_crash_after_retirement_nextval_burns_and_rereserves_before_python(
+    tmp_path: Path,
+) -> None:
+    first, first_events, receipt = _run_pending_recovery_wrapper(
+        tmp_path,
+        settle_status=0,
+        bound_receipt_status=47,
+    )
+
+    assert first.returncode == 47
+    lines = receipt.read_text(encoding="ascii").splitlines()
+    assert "state=rollback-pending" in lines
+    assert "routing_epoch=7" in lines
+    assert "retirement_routing_epoch=unreserved" in lines
+    assert (tmp_path / "epoch-counter").read_text(encoding="ascii").strip() == "8"
+    assert not any(" settle-rollback " in event for event in first_events)
+    assert not any(" up -d --force-recreate " in event for event in first_events)
+
+    staged = tmp_path / "lightpanda-b0-cutover.sh"
+    staged.write_text(
+        staged.read_text(encoding="utf-8").replace(
+            "TEST_BOUND_RECEIPT_STATUS=47", "TEST_BOUND_RECEIPT_STATUS=0", 1
+        ),
+        encoding="utf-8",
+    )
+    log = tmp_path / "commands.log"
+    before = len(log.read_text(encoding="utf-8").splitlines())
+    retry = subprocess.run(
+        ["bash", str(staged), "recover-pending", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    retry_events = log.read_text(encoding="utf-8").splitlines()[before:]
+    assert retry.returncode == 0, retry.stderr
+    assert (tmp_path / "epoch-counter").read_text(encoding="ascii").strip() == "9"
+    assert any(" settle-rollback " in event for event in retry_events)
+    assert not receipt.exists()
+
+    # Once rollback has retired R=9 and removed its receipt, the next
+    # activation reserves a strictly newer incarnation even if planning later
+    # fails for an unrelated mocked reason.
+    activation = subprocess.run(
+        ["bash", str(staged), "activate", "c1"],
+        env={"PATH": os.environ["PATH"], "TEST_LOG": str(log)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert activation.returncode != 0
+    assert (tmp_path / "epoch-counter").read_text(encoding="ascii").strip() == "10"
+
+
 def test_source_receipt_retries_full_recovery_when_sentinel_clear_fails(
     tmp_path: Path,
 ) -> None:
@@ -1715,7 +1835,8 @@ def test_source_receipt_retries_full_recovery_when_sentinel_clear_fails(
     )
 
     assert first.returncode == 42
-    assert "state=pending" in receipt.read_text(encoding="ascii").splitlines()
+    assert "state=rollback-pending" in receipt.read_text(encoding="ascii").splitlines()
+    assert "retirement_routing_epoch=8" in receipt.read_text(encoding="ascii").splitlines()
     assert any(" --clear-activation-sentinel" in event for event in first_events)
     assert not any(" up -d --force-recreate " in event for event in first_events)
 
@@ -1813,7 +1934,8 @@ def test_first_rdb_save_failure_retains_source_attestations_and_retries_full_rol
     )
 
     assert first.returncode == 1
-    assert "state=pending" in receipt.read_text(encoding="ascii").splitlines()
+    assert "state=rollback-pending" in receipt.read_text(encoding="ascii").splitlines()
+    assert "retirement_routing_epoch=8" in receipt.read_text(encoding="ascii").splitlines()
     assert sum(" redis-cli --raw SAVE" in event for event in events) == 1
     assert not any("--clear-activation-sentinel" in event for event in events)
     assert not any("clear-rollback-tombstone" in event for event in events)
@@ -2383,6 +2505,12 @@ def test_ci_owns_the_production_go_supervisor_module() -> None:
     assert "LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://localhost:6379/15" in job
     assert "go test -c -tags=integration" in job
     assert "LIGHTPANDA_B0_INTEGRATION_PRODUCER_UID=10001" in job
+    assert "TestRealRedisFullAuditAndCapacityBounds" in job
+    assert "TestRealRedisPersistenceSeed" in job
+    assert "docker kill --signal KILL" in job
+    assert "TestRealRedisPersistenceVerify" in job
+    assert job.index("TestRealRedisPersistenceSeed") < job.index("docker kill --signal KILL")
+    assert job.index("docker kill --signal KILL") < job.index("TestRealRedisPersistenceVerify")
     assert "Prove fresh producer volume initialization and client connectivity" in workflow
     assert "lightpanda-producer-socket-init" in workflow
     assert "request_manifest" in workflow

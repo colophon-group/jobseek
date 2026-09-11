@@ -9,6 +9,7 @@ import os
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import fakeredis.aioredis
@@ -23,6 +24,7 @@ from src.lightpanda_queue import (
     LightpandaB0Queue,
     LightpandaB0Task,
     RouteIdentity,
+    StoredTask,
     TransitionResult,
 )
 
@@ -79,7 +81,13 @@ async def _seed_legacy_ready(redis: Any, task: LightpandaB0Task) -> None:
     score = task.initial_ready_at_ms / 1000
     await redis.hset(
         f"scrape:{task.task_id}",
-        mapping={"board_id": task.board_id, "source_url": task.source_url, "domain": task.domain},
+        mapping={
+            "board_id": task.board_id,
+            "source_url": task.source_url,
+            "domain": task.domain,
+            "scrape_step": "0",
+            "description_r2_hash": "example",
+        },
     )
     await redis.zadd(f"ft_scrapes_browser:{task.domain}", {task.task_id: score})
     await redis.zadd("ready:browser:0", {task.domain: score})
@@ -106,13 +114,124 @@ async def _initialize_producer(queue: LightpandaB0Queue, route: RouteIdentity) -
     assert initialized.accepted
 
 
+@pytest.mark.parametrize(
+    ("kind", "expected_first_time"),
+    [("ft_browser", True), ("recurring_browser", False)],
+)
+async def test_existing_ready_activation_preserves_bound_guard_schedule_kind(
+    redis: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    expected_first_time: bool,
+) -> None:
+    task = _task()
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    await redis.hset(
+        "lightpanda-b0:legacy-guard",
+        task.task_id,
+        f"production-b0|lightpanda-b0|7|{task.board_id}|{task.domain}|{kind}|42",
+    )
+    result = await activation._legacy_preflight(
+        redis,
+        [
+            {
+                "posting_id": task.task_id,
+                "domain": task.domain,
+                "legacy_config": {
+                    "domain": task.domain,
+                    "board_id": task.board_id,
+                    "source_url": task.source_url,
+                    "description_r2_hash": "",
+                    "scrape_step": "0",
+                    "scrape_interval_hours": "12",
+                },
+            }
+        ],
+        {task.task_id: StoredTask(task=task, state="ready", failures=0)},
+    )
+
+    assert result == {task.task_id: expected_first_time}
+
+
+async def test_existing_record_snapshot_uses_one_batch_inspection(
+    redis: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = _task()
+    queue = LightpandaB0Queue(redis, namespace="production-b0")
+    await _initialize_producer(queue, task.route)
+    await _seed_legacy_ready(redis, task)
+    assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
+    stored = await queue.inspect(task.task_id, task.route)
+    assert stored is not None
+    calls = 0
+
+    async def inspect_many(route: RouteIdentity) -> dict[str, StoredTask]:
+        nonlocal calls
+        assert route == task.route
+        calls += 1
+        return {task.task_id: stored}
+
+    async def inspect_one(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("activation performed per-record inspection")
+
+    monkeypatch.setattr(queue, "inspect_many", inspect_many, raising=False)
+    monkeypatch.setattr(queue, "inspect", inspect_one)
+
+    result = await activation._existing_records(redis, queue, task.route)
+
+    assert result == {task.task_id: stored}
+    assert calls == 1
+
+
+@pytest.mark.parametrize("stored_state", ["terminal", "dead"])
+@pytest.mark.parametrize(("description_hash", "expected"), [("", True), ("17", False)])
+async def test_terminal_and_dead_reactivation_use_current_postgres_first_time_intent(
+    redis: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    stored_state: str,
+    description_hash: str,
+    expected: bool,
+) -> None:
+    task = _task()
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    await redis.hset(
+        "lightpanda-b0:legacy-guard",
+        task.task_id,
+        f"production-b0|lightpanda-b0|7|{task.board_id}|{task.domain}|ft_browser|1",
+    )
+    result = await activation._legacy_preflight(
+        redis,
+        [
+            {
+                "posting_id": task.task_id,
+                "domain": task.domain,
+                "legacy_config": {
+                    "domain": task.domain,
+                    "board_id": task.board_id,
+                    "source_url": task.source_url,
+                    "description_r2_hash": description_hash,
+                    "scrape_step": "0",
+                    "scrape_interval_hours": "12",
+                },
+            }
+        ],
+        {task.task_id: StoredTask(task=task, state=stored_state, failures=0)},
+    )
+
+    assert result == {task.task_id: expected}
+    assert activation._go_ready_at(
+        datetime.fromtimestamp(123, UTC), first_time=result[task.task_id]
+    ) == ("0" if expected else "123")
+
+
 async def _activate_legacy(
     queue: LightpandaB0Queue,
     task: LightpandaB0Task,
     *,
     legacy_config: dict[str, str],
     previous_payload_sha256: str = "",
-    operator_transfer: bool = False,
+    operator_transfer: bool = True,
 ) -> TransitionResult:
     raw = await queue._invoke(
         "activate_legacy",
@@ -411,7 +530,12 @@ async def test_missing_legacy_guard_blocks_go_claim_without_mutation(redis: Any)
     task = _task(ready_at_ms=0)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
     await _initialize_producer(queue, task.route)
-    await _activate_legacy(queue, task, legacy_config=_legacy_config(task))
+    await _activate_legacy(
+        queue,
+        task,
+        legacy_config=_legacy_config(task),
+        operator_transfer=False,
+    )
     await redis.hdel("lightpanda-b0:legacy-guard", task.task_id)
 
     claimed = await queue.claim_next(task.route, lease_ttl_ms=30_000)
@@ -679,6 +803,21 @@ async def test_routing_epoch_reservations_are_db_only_and_monotonic(
             self.values = iter((2, 3))
             self.queries: list[str] = []
 
+        def acquire(self) -> Pool:
+            return self
+
+        async def __aenter__(self) -> Pool:
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+        def transaction(self) -> Pool:
+            return self
+
+        async def execute(self, query: str, *args: object) -> None:
+            self.queries.append(f"{query}:{args!r}")
+
         async def fetchval(self, query: str) -> int:
             self.queries.append(query)
             return next(self.values)
@@ -705,7 +844,16 @@ async def test_routing_epoch_reservations_are_db_only_and_monotonic(
 
     assert first == {"routing_epoch": 2}
     assert second == {"routing_epoch": 3}
-    assert pool.queries == [activation._RESERVE_ROUTING_EPOCH_SQL] * 2
+    lock_call = (
+        f"{activation._LOCK_ROUTING_EPOCH_ALLOCATOR_SQL}:"
+        f"{(activation._ROUTING_EPOCH_ADVISORY_LOCK_ID,)!r}"
+    )
+    assert pool.queries == [
+        lock_call,
+        activation._RESERVE_ROUTING_EPOCH_SQL,
+        lock_call,
+        activation._RESERVE_ROUTING_EPOCH_SQL,
+    ]
     assert closes == 2
 
 
@@ -880,11 +1028,23 @@ async def test_operator_feeder_activates_authoritative_existing_schedule(
     monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
     monkeypatch.setenv("LIGHTPANDA_B0_SUPERVISOR_MODE", "dark")
 
-    async def request_manifest(cohort: str) -> ProducerResult:
+    async def request_manifest(cohort: str) -> SimpleNamespace:
         assert cohort == "c1"
-        return ProducerResult("manifest", cohort="c1", board_slugs=("browser-use-careers",))
+        queue = LightpandaB0Queue(redis, namespace="production-b0")
+        occupancy = await redis.hlen(queue._keys.records)
+        return SimpleNamespace(
+            outcome="manifest",
+            cohort="c1",
+            board_slugs=("browser-use-careers",),
+            lifetime_occupancy=occupancy,
+            lifetime_capacity=2_048,
+            lifetime_headroom=2_048 - occupancy,
+        )
+
+    producer_requests: list[dict[str, Any]] = []
 
     async def request_task(**request: Any) -> ProducerResult:
+        producer_requests.append(request)
         queue = LightpandaB0Queue(redis, namespace="production-b0")
         stored = (
             await queue.inspect(task.task_id, task.route)
@@ -949,6 +1109,8 @@ async def test_operator_feeder_activates_authoritative_existing_schedule(
             ]
 
     plan = await activation.build_activation_plan(Pool(), redis, cohort="c1")
+    assert plan.tasks[0]["first_time"] is True
+    assert plan.tasks[0]["next_scrape_at"] == "0"
     summary = await activation.apply_activation_plan(
         Pool(), redis, cohort="c1", expect_digest=plan.digest
     )
@@ -958,6 +1120,8 @@ async def test_operator_feeder_activates_authoritative_existing_schedule(
         1,
         0,
     )
+    assert [request["next_scrape_at"] for request in producer_requests] == [0.0, 0.0, 0.0]
+    assert all(request["first_time"] is True for request in producer_requests)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
     stored = await queue.inspect(task.task_id, task.route)
     assert stored is not None
@@ -977,9 +1141,16 @@ async def test_operator_feeder_refuses_active_legacy_lease_before_mutation(
     monkeypatch.setattr(activation.settings, "lightpanda_b0_routing_epoch", "7")
     monkeypatch.setenv("LIGHTPANDA_B0_SUPERVISOR_MODE", "dark")
 
-    async def request_manifest(cohort: str) -> ProducerResult:
+    async def request_manifest(cohort: str) -> SimpleNamespace:
         assert cohort == "c1"
-        return ProducerResult("manifest", cohort="c1", board_slugs=("browser-use-careers",))
+        return SimpleNamespace(
+            outcome="manifest",
+            cohort="c1",
+            board_slugs=("browser-use-careers",),
+            lifetime_occupancy=0,
+            lifetime_capacity=2_048,
+            lifetime_headroom=2_048,
+        )
 
     monkeypatch.setattr(activation, "request_manifest", request_manifest)
 
@@ -1040,7 +1211,7 @@ async def test_operator_feeder_refuses_active_legacy_lease_before_mutation(
     assert not await redis.exists("lightpanda-b0:{production-b0}:route")
 
 
-async def test_operator_rollback_rebuilds_hash_zero_and_cleans_go_fence(
+async def test_operator_rollback_preserves_ready_guard_due_and_cleans_go_fence(
     redis: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     task = _task()
@@ -1065,6 +1236,10 @@ async def test_operator_rollback_rebuilds_hash_zero_and_cleans_go_fence(
         },
     )
     await _seed_legacy_ready(redis, task)
+    await redis.zrem(f"ft_scrapes_browser:{task.domain}", task.task_id)
+    await redis.zrem("ready:browser:0", task.domain)
+    await redis.zadd(f"scrapes_browser:{task.domain}", {task.task_id: 42})
+    await redis.zadd("ready:browser:2", {task.domain: 42})
     queue = LightpandaB0Queue(redis, namespace="production-b0")
     await _initialize_producer(queue, task.route)
     assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
@@ -1133,7 +1308,8 @@ async def test_operator_rollback_rebuilds_hash_zero_and_cleans_go_fence(
     )
     entry = plan.document["redis_plan"][task.task_id]  # type: ignore[index]
     assert entry["first_time"] is False
-    assert entry["score"] == "120"
+    assert entry["worker_type"] == "browser"
+    assert entry["score"] == "42"
     assert entry["config"]["description_r2_hash"] == "0"
 
     result = await activation.apply_rollback_plan(
@@ -1148,7 +1324,7 @@ async def test_operator_rollback_rebuilds_hash_zero_and_cleans_go_fence(
     assert result["write_fences_remaining"] == 0
     assert pool.executed
     assert await redis.hget(f"scrape:{task.task_id}", "description_r2_hash") == "0"
-    assert await redis.zscore(f"scrapes_browser:{task.domain}", task.task_id) == 120
+    assert await redis.zscore(f"scrapes_browser:{task.domain}", task.task_id) == 42
 
 
 @pytest.mark.parametrize(

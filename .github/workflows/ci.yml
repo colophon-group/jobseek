@@ -378,8 +378,49 @@ jobs:
             LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://localhost:6379/15 \
             LIGHTPANDA_B0_INTEGRATION_PRODUCER_UID=10001 \
             "$integration_binary" \
-            -test.run '^TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence$' \
+            -test.run '^(TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence|TestRealRedisFullAuditAndCapacityBounds)$' \
             -test.count=1
+
+      - name: Prove activated Redis authority survives a hard restart
+        run: |
+          set -euo pipefail
+          integration_binary="$RUNNER_TEMP/lightpanda-b0-integration.test"
+          redis_container=jobseek-b0-persistence-ci
+          redis_volume=jobseek-b0-persistence-ci
+          cleanup() {
+            docker rm --force "$redis_container" >/dev/null 2>&1 || true
+            docker volume rm "$redis_volume" >/dev/null 2>&1 || true
+          }
+          wait_for_redis() {
+            for attempt in $(seq 1 30); do
+              if docker exec "$redis_container" redis-cli ping | grep -qx PONG; then
+                return 0
+              fi
+              ((attempt < 30)) || return 1
+              sleep 1
+            done
+          }
+          trap cleanup EXIT
+          cleanup
+          docker volume create "$redis_volume" >/dev/null
+          docker run --detach --name "$redis_container" \
+            --publish 127.0.0.1:6380:6379 \
+            --mount "type=volume,source=$redis_volume,target=/data" \
+            redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
+            redis-server --save "" >/dev/null
+          wait_for_redis
+          LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://127.0.0.1:6380/15 \
+            "$integration_binary" -test.run '^TestRealRedisPersistenceSeed$' -test.count=1
+          docker kill --signal KILL "$redis_container" >/dev/null
+          docker rm "$redis_container" >/dev/null
+          docker run --detach --name "$redis_container" \
+            --publish 127.0.0.1:6380:6379 \
+            --mount "type=volume,source=$redis_volume,target=/data" \
+            redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
+            redis-server --save "" >/dev/null
+          wait_for_redis
+          LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://127.0.0.1:6380/15 \
+            "$integration_binary" -test.run '^TestRealRedisPersistenceVerify$' -test.count=1
 
   crawler-image:
     name: Build Crawler Browser Image
@@ -473,8 +514,9 @@ jobs:
           CRAWLER_IMAGE_REF: jobseek-crawler-slim-ci:pr
           BROWSER_IMAGE_REF: jobseek-crawler-slim-ci:pr
           LIGHTPANDA_B0_PRODUCER_COHORT: c1
+          LIGHTPANDA_B0_ROUTING_EPOCH: "2"
           LIGHTPANDA_B0_CREDENTIAL_DIR: /tmp/jobseek-unused-credentials
-          LOCAL_DATABASE_URL: postgresql://fixture.invalid/jobseek
+          LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/crawler
           R2_ACCESS_KEY_ID: fixture
           R2_SECRET_ACCESS_KEY: fixture
           R2_ENDPOINT_URL: https://fixture.invalid
@@ -498,20 +540,73 @@ jobs:
           }
           trap cleanup EXIT
           cleanup
+          docker run --rm --network host \
+            -e LOCAL_DATABASE_URL -e CRAWLER_DB_ROLE=lightpanda-b0-ci-migration \
+            jobseek-crawler-slim-ci:pr \
+            uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
+          epoch_json="$(docker run --rm --network host \
+            -e LOCAL_DATABASE_URL -e CRAWLER_DB_ROLE=lightpanda-b0-ci-allocator \
+            jobseek-crawler-slim-ci:pr \
+            uv run --no-sync lightpanda-b0-activation reserve-epoch)"
+          python3 -c \
+            'import json,sys; assert json.loads(sys.argv[1]) == {"routing_epoch": 2}' \
+            "$epoch_json"
+          "${compose[@]}" config -q
           test -z "$(docker volume ls -q --filter name='^jobseek-lightpanda-b0-producer-socket$')"
+          test -z "$(docker volume ls -q --filter name='^jobseek-lightpanda-b0-executor-socket$')"
           timeout --foreground --signal=TERM --kill-after=5s 30s \
             "${compose[@]}" run --rm --no-deps lightpanda-producer-socket-init
           timeout --foreground --signal=TERM --kill-after=5s 30s \
+            "${compose[@]}" run --rm --no-deps lightpanda-executor-socket-init
+          timeout --foreground --signal=TERM --kill-after=5s 30s \
+            "${compose[@]}" run --rm --no-deps lightpanda-executor-socket-init
+          docker run --rm --network none --read-only --cap-drop ALL --cap-add CHOWN \
+            --mount \
+              type=volume,source=jobseek-lightpanda-b0-executor-socket,target=/run/jobseek-lightpanda-executor \
+            --entrypoint /bin/sh jobseek-crawler-slim-ci:pr \
+            -eu -c 'chown 0:0 /run/jobseek-lightpanda-executor; test "$(stat -c "%u:%g:%a" /run/jobseek-lightpanda-executor)" = 0:0:700'
+          timeout --foreground --signal=TERM --kill-after=5s 30s \
+            "${compose[@]}" run --rm --no-deps lightpanda-executor-socket-init
+          docker run --rm --network none --read-only --cap-drop ALL --cap-add CHOWN \
+            --mount \
+              type=volume,source=jobseek-lightpanda-b0-executor-socket,target=/run/jobseek-lightpanda-executor \
+            --entrypoint /bin/sh jobseek-crawler-slim-ci:pr \
+            -eu -c 'chown 0:0 /run/jobseek-lightpanda-executor; touch /run/jobseek-lightpanda-executor/unsafe'
+          if timeout --foreground --signal=TERM --kill-after=5s 30s \
+            "${compose[@]}" run --rm --no-deps lightpanda-executor-socket-init; then
+            echo "nonempty root:root/0700 executor volume was accepted" >&2
+            exit 1
+          fi
+          docker run --rm --network none --read-only --cap-drop ALL --cap-add CHOWN \
+            --mount \
+              type=volume,source=jobseek-lightpanda-b0-executor-socket,target=/run/jobseek-lightpanda-executor \
+            --entrypoint /bin/sh jobseek-crawler-slim-ci:pr \
+            -eu -c 'chmod 0755 /run/jobseek-lightpanda-executor'
+          if timeout --foreground --signal=TERM --kill-after=5s 30s \
+            "${compose[@]}" run --rm --no-deps lightpanda-executor-socket-init; then
+            echo "nonempty root:root/0755 executor volume was accepted" >&2
+            exit 1
+          fi
+          docker run --rm --network none --read-only --cap-drop ALL --cap-add CHOWN \
+            --mount \
+              type=volume,source=jobseek-lightpanda-b0-executor-socket,target=/run/jobseek-lightpanda-executor \
+            --entrypoint /bin/sh jobseek-crawler-slim-ci:pr \
+            -eu -c 'rm /run/jobseek-lightpanda-executor/unsafe; chmod 0700 /run/jobseek-lightpanda-executor; chown 10001:10001 /run/jobseek-lightpanda-executor'
+          timeout --foreground --signal=TERM --kill-after=5s 30s \
             "${compose[@]}" up -d --no-deps --force-recreate lightpanda-producer
-          producer_id="$("${compose[@]}" ps -q lightpanda-producer)"
-          for attempt in $(seq 1 30); do
-            state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$producer_id")"
-            [[ "$state" == healthy ]] && break
-            if ((attempt == 30)); then
-              "${compose[@]}" logs lightpanda-producer
-              exit 1
-            fi
-            sleep 1
+          timeout --foreground --signal=TERM --kill-after=5s 30s \
+            "${compose[@]}" up -d --no-deps --force-recreate lightpanda-executor
+          for service in lightpanda-producer lightpanda-executor; do
+            container_id="$("${compose[@]}" ps -q "$service")"
+            for attempt in $(seq 1 30); do
+              state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id")"
+              [[ "$state" == healthy ]] && break
+              if ((attempt == 30)); then
+                "${compose[@]}" logs "$service"
+                exit 1
+              fi
+              sleep 1
+            done
           done
           timeout --foreground --signal=TERM --kill-after=5s 30s \
             "${compose[@]}" run --rm --no-deps \

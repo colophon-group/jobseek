@@ -76,7 +76,7 @@ export COMPOSE_PROJECT_NAME
 
 compose_enabled=(docker compose -f docker-compose.yml -f lightpanda-b0-enabled.override.yml)
 compose_base=(docker compose -f docker-compose.yml)
-mutation_services=(worker-1 worker-2 worker-3 browser-1 drain lightpanda-producer-socket-init lightpanda-producer lightpanda-claimant lightpanda-executor)
+mutation_services=(worker-1 worker-2 worker-3 browser-1 drain lightpanda-producer-socket-init lightpanda-executor-socket-init lightpanda-producer lightpanda-claimant lightpanda-executor)
 restart_candidate_services=(worker-1 worker-2 worker-3 browser-1 drain lightpanda-producer lightpanda-executor lightpanda-claimant)
 route_environment=(
   -e "LIGHTPANDA_B0_QUEUE_NAMESPACE=$LIGHTPANDA_B0_QUEUE_NAMESPACE"
@@ -357,14 +357,16 @@ expected_keys = {
     "plan_digest", "compose_digest", "crawler_image_ref", "deploy_revision",
     "activated_at_epoch",
 }
-if state == "rollback-cleared":
-    expected_keys.add("source_receipt_sha256")
+if state in {"rollback-pending", "rollback-cleared"}:
+    expected_keys.update({
+        "source_receipt_state", "source_receipt_sha256", "retirement_routing_epoch",
+    })
 if len(values) != len(pairs) or set(values) != expected_keys:
     reject()
 epoch_text = values["routing_epoch"]
 if (
     values["schema"] != "jobseek.lightpanda-b0-active/v1"
-    or state not in {"active", "pending", "rollback-cleared"}
+    or state not in {"active", "pending", "rollback-pending", "rollback-cleared"}
     or values["cohort"] != cohort
     or values["namespace"] != namespace
     or values["shard_id"] != shard_id
@@ -375,13 +377,25 @@ if (
     or re.fullmatch(r"[0-9a-f]{64}", values["plan_digest"]) is None
     or re.fullmatch(r"[0-9a-f]{64}", values["compose_digest"]) is None
     or re.fullmatch(r"[1-9][0-9]*", values["activated_at_epoch"]) is None
-    or (
-        state == "rollback-cleared"
-        and re.fullmatch(r"[0-9a-f]{64}", values["source_receipt_sha256"]) is None
-    )
 ):
     reject()
-print(state, epoch_text, sep="\t")
+retirement = values.get("retirement_routing_epoch", "-")
+source_state = values.get("source_receipt_state", "-")
+source_sha = values.get("source_receipt_sha256", "-")
+if state in {"rollback-pending", "rollback-cleared"}:
+    retirement_valid = retirement == "unreserved" or (
+        re.fullmatch(r"[1-9][0-9]{0,12}", retirement) is not None
+        and int(retirement) <= 9_999_999_999_999
+        and int(retirement) > int(epoch_text)
+    )
+    if (
+        source_state not in {"active", "pending"}
+        or re.fullmatch(r"[0-9a-f]{64}", source_sha) is None
+        or not retirement_valid
+        or (state == "rollback-cleared" and retirement == "unreserved")
+    ):
+        reject()
+print(state, epoch_text, retirement, source_state, source_sha, values["plan_digest"], sep="\t")
 PY
 }
 
@@ -434,18 +448,31 @@ PY
 }
 
 write_receipt() {
-  local digest=$1 state=$2 source_receipt_sha256=${3:-} temp compose_digest
-  [[ "$state" == active || "$state" == pending || "$state" == rollback-cleared ]] || {
+  local digest=$1 state=$2 source_receipt_sha256=${3:-} retirement_routing_epoch=${4:-} source_receipt_state=${5:-} temp compose_digest
+  [[ "$state" == active || "$state" == pending || "$state" == rollback-pending || "$state" == rollback-cleared ]] || {
     echo "ERROR: invalid B0 receipt state" >&2
     return 1
   }
-  if [[ "$state" == rollback-cleared ]]; then
-    [[ "$source_receipt_sha256" =~ ^[0-9a-f]{64}$ ]] || {
-      echo "ERROR: rollback-cleared receipt requires the source receipt SHA-256" >&2
+  if [[ "$state" == rollback-pending || "$state" == rollback-cleared ]]; then
+    [[ "$source_receipt_sha256" =~ ^[0-9a-f]{64}$ &&
+      ("$source_receipt_state" == active || "$source_receipt_state" == pending) ]] || {
+      echo "ERROR: rollback receipt requires the exact source receipt identity" >&2
       return 1
     }
-  elif [[ -n "$source_receipt_sha256" ]]; then
-    echo "ERROR: active and pending receipts cannot carry a source receipt SHA-256" >&2
+    if [[ "$retirement_routing_epoch" != unreserved ]]; then
+      if [[ ! "$retirement_routing_epoch" =~ ^[1-9][0-9]{0,12}$ ]] ||
+        ((retirement_routing_epoch > 9999999999999)) ||
+        ((retirement_routing_epoch <= LIGHTPANDA_B0_ROUTING_EPOCH)); then
+        echo "ERROR: rollback retirement epoch must be canonical and newer than its source" >&2
+        return 1
+      fi
+    fi
+    [[ "$state" != rollback-cleared || "$retirement_routing_epoch" != unreserved ]] || {
+      echo "ERROR: rollback-cleared receipt requires a reserved retirement epoch" >&2
+      return 1
+    }
+  elif [[ -n "$source_receipt_sha256" || -n "$retirement_routing_epoch" || -n "$source_receipt_state" ]]; then
+    echo "ERROR: active and pending receipts cannot carry rollback identity" >&2
     return 1
   fi
   compose_digest="$(bounded 30s "${compose_enabled[@]}" config | sha256sum | awk '{print $1}')"
@@ -465,8 +492,12 @@ write_receipt() {
     "deploy_revision=$JOBSEEK_DEPLOY_REVISION" \
     "activated_at_epoch=$(date +%s)"
   )
-  if [[ "$state" == rollback-cleared ]]; then
-    receipt_lines+=("source_receipt_sha256=$source_receipt_sha256")
+  if [[ "$state" == rollback-pending || "$state" == rollback-cleared ]]; then
+    receipt_lines+=(
+      "source_receipt_state=$source_receipt_state"
+      "source_receipt_sha256=$source_receipt_sha256"
+      "retirement_routing_epoch=$retirement_routing_epoch"
+    )
   fi
   printf '%s\n' "${receipt_lines[@]}" >"$temp"
   chmod 600 "$temp"
@@ -482,7 +513,7 @@ write_receipt() {
 
 attest_receipt() {
   local expected_state=$1 compose_digest attestation
-  [[ "$expected_state" == active || "$expected_state" == pending || "$expected_state" == rollback-cleared ]] || return 1
+  [[ "$expected_state" == active || "$expected_state" == pending || "$expected_state" == rollback-pending || "$expected_state" == rollback-cleared ]] || return 1
   if ! compose_digest="$(bounded 30s "${compose_enabled[@]}" config | sha256sum | awk '{print $1}')"; then
     echo "ERROR: current B0 Compose digest could not be computed" >&2
     return 1
@@ -514,8 +545,10 @@ expected_keys = {
     "deploy_revision",
     "activated_at_epoch",
 }
-if state == "rollback-cleared":
-    expected_keys.add("source_receipt_sha256")
+if state in {"rollback-pending", "rollback-cleared"}:
+    expected_keys.update({
+        "source_receipt_state", "source_receipt_sha256", "retirement_routing_epoch",
+    })
 
 def reject() -> None:
     print("ERROR: B0 activation receipt is incomplete, unsafe, or drifted", file=sys.stderr)
@@ -572,10 +605,6 @@ if (
     or re.fullmatch(r"[1-9][0-9]{0,12}", values["routing_epoch"]) is None
     or int(values["routing_epoch"]) > 9_999_999_999_999
     or re.fullmatch(r"[0-9a-f]{40}", values["deploy_revision"]) is None
-    or (
-        state == "rollback-cleared"
-        and re.fullmatch(r"[0-9a-f]{64}", values["source_receipt_sha256"]) is None
-    )
     or re.fullmatch(
         r"ghcr\.io/[^/]+/jobseek-crawler@sha256:[0-9a-f]{64}",
         values["crawler_image_ref"],
@@ -583,15 +612,33 @@ if (
     is None
 ):
     reject()
+retirement = values.get("retirement_routing_epoch", "-")
+source_state = values.get("source_receipt_state", "-")
+source_sha = values.get("source_receipt_sha256", "-")
+if state in {"rollback-pending", "rollback-cleared"}:
+    retirement_valid = retirement == "unreserved" or (
+        re.fullmatch(r"[1-9][0-9]{0,12}", retirement) is not None
+        and int(retirement) <= 9_999_999_999_999
+        and int(retirement) > int(values["routing_epoch"])
+    )
+    if (
+        source_state not in {"active", "pending"}
+        or re.fullmatch(r"[0-9a-f]{64}", source_sha) is None
+        or not retirement_valid
+        or (state == "rollback-cleared" and retirement == "unreserved")
+    ):
+        reject()
 print(
     hashlib.sha256(payload).hexdigest(),
     values["plan_digest"],
-    values.get("source_receipt_sha256", "-"),
+    source_sha,
+    retirement,
+    source_state,
     sep="\t",
 )
 PY
   )" || return 1
-  IFS=$'\t' read -r ATTESTED_RECEIPT_SHA256 ATTESTED_PLAN_DIGEST ATTESTED_SOURCE_RECEIPT_SHA256 <<<"$attestation"
+  IFS=$'\t' read -r ATTESTED_RECEIPT_SHA256 ATTESTED_PLAN_DIGEST ATTESTED_SOURCE_RECEIPT_SHA256 ATTESTED_RETIREMENT_ROUTING_EPOCH ATTESTED_SOURCE_RECEIPT_STATE <<<"$attestation"
   [[ "$ATTESTED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ &&
     "$ATTESTED_PLAN_DIGEST" =~ ^[0-9a-f]{64}$ ]] || return 1
 }
@@ -629,8 +676,14 @@ persist_redis_rdb() {
 }
 
 RECEIPT_STATE=""
+RECEIPT_RETIREMENT_ROUTING_EPOCH="-"
+RECEIPT_SOURCE_STATE="-"
+RECEIPT_SOURCE_SHA256="-"
+RECEIPT_PLAN_DIGEST="-"
 if [[ -e "$RECEIPT" || -L "$RECEIPT" ]]; then
   IFS=$'\t' read -r RECEIPT_STATE LIGHTPANDA_B0_ROUTING_EPOCH \
+    RECEIPT_RETIREMENT_ROUTING_EPOCH RECEIPT_SOURCE_STATE \
+    RECEIPT_SOURCE_SHA256 RECEIPT_PLAN_DIGEST \
     <<<"$(load_receipt_identity)"
 elif [[ "$OPERATION" == activate ]]; then
   # nextval is non-transactional: this incarnation is durably burned under
@@ -642,9 +695,9 @@ else
 fi
 export LIGHTPANDA_B0_ROUTING_EPOCH
 validate_fixed_b0_identity
-attest_routing_epoch
 
 if [[ "$OPERATION" == activate ]]; then
+  attest_routing_epoch
   if [[ -n "$RECEIPT_STATE" ]]; then
     [[ "$RECEIPT_STATE" == active ]] || {
       echo "ERROR: incomplete B0 activation must use recover-pending" >&2
@@ -659,6 +712,7 @@ if [[ "$OPERATION" == activate ]]; then
   # Start only the non-claiming authority. Its startup can read Redis but does
   # not initialize or mutate the B0 queue; prepare below is read-only too.
   bounded 30s "${compose_enabled[@]}" run --rm --no-deps lightpanda-producer-socket-init
+  bounded 30s "${compose_enabled[@]}" run --rm --no-deps lightpanda-executor-socket-init
   bounded 30s "${compose_enabled[@]}" up -d --no-deps --force-recreate lightpanda-producer
   wait_healthy enabled lightpanda-producer
   plan_output="$(bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
@@ -673,6 +727,11 @@ if [[ "$OPERATION" == activate ]]; then
     "${route_environment[@]}" worker-1 \
     uv run --no-sync lightpanda-b0-activation activate --cohort "$COHORT" \
     --apply --expect-digest "$plan_digest"
+  # The pending receipt remains the recovery authority until every transfer,
+  # audit, and owner/route mutation is synchronously present in Redis' RDB.
+  # A failed or lost SAVE reply therefore contains the lane and retries only
+  # through recover-pending; no mutation service is enabled on uncertainty.
+  persist_redis_rdb
   bounded 90s "${compose_enabled[@]}" up -d --force-recreate \
     worker-1 worker-2 worker-3 browser-1 drain lightpanda-executor lightpanda-claimant
   wait_healthy enabled worker-1 worker-2 worker-3 browser-1 drain lightpanda-producer lightpanda-executor lightpanda-claimant
@@ -684,26 +743,98 @@ if [[ "$OPERATION" == activate ]]; then
   exit 0
 fi
 
-receipt_state=active
-[[ "$OPERATION" == recover-pending ]] && receipt_state=pending
-rollback_cleared=0
-if attest_receipt rollback-cleared 2>/dev/null; then
-  rollback_cleared=1
-  plan_digest=$ATTESTED_PLAN_DIGEST
-  source_receipt_sha256=$ATTESTED_SOURCE_RECEIPT_SHA256
-else
-  attest_receipt "$receipt_state"
-  source_receipt_sha256=$ATTESTED_RECEIPT_SHA256
-fi
+requested_source_state=active
+[[ "$OPERATION" == recover-pending ]] && requested_source_state=pending
+case "$RECEIPT_STATE" in
+  active|pending)
+    [[ "$RECEIPT_STATE" == "$requested_source_state" ]] || {
+      echo "ERROR: rollback command does not match the source receipt state" >&2
+      exit 1
+    }
+    attest_receipt "$RECEIPT_STATE"
+    [[ "$ATTESTED_PLAN_DIGEST" == "$RECEIPT_PLAN_DIGEST" &&
+      "$ATTESTED_SOURCE_RECEIPT_STATE" == "$RECEIPT_SOURCE_STATE" &&
+      "$ATTESTED_SOURCE_RECEIPT_SHA256" == "$RECEIPT_SOURCE_SHA256" &&
+      "$ATTESTED_RETIREMENT_ROUTING_EPOCH" == "$RECEIPT_RETIREMENT_ROUTING_EPOCH" ]] || {
+      echo "ERROR: rollback receipt changed while it was being attested" >&2
+      exit 1
+    }
+    source_receipt_state=$RECEIPT_STATE
+    source_receipt_sha256=$ATTESTED_RECEIPT_SHA256
+    source_plan_digest=$ATTESTED_PLAN_DIGEST
+    retirement_routing_epoch=unreserved
+    ;;
+  rollback-pending|rollback-cleared)
+    [[ "$RECEIPT_SOURCE_STATE" == "$requested_source_state" ]] || {
+      echo "ERROR: rollback recovery command does not match the source receipt state" >&2
+      exit 1
+    }
+    attest_receipt "$RECEIPT_STATE"
+    [[ "$ATTESTED_PLAN_DIGEST" == "$RECEIPT_PLAN_DIGEST" &&
+      "$ATTESTED_SOURCE_RECEIPT_STATE" == "$RECEIPT_SOURCE_STATE" &&
+      "$ATTESTED_SOURCE_RECEIPT_SHA256" == "$RECEIPT_SOURCE_SHA256" &&
+      "$ATTESTED_RETIREMENT_ROUTING_EPOCH" == "$RECEIPT_RETIREMENT_ROUTING_EPOCH" ]] || {
+      echo "ERROR: rollback recovery receipt changed while it was being attested" >&2
+      exit 1
+    }
+    source_receipt_state=$ATTESTED_SOURCE_RECEIPT_STATE
+    source_receipt_sha256=$ATTESTED_SOURCE_RECEIPT_SHA256
+    source_plan_digest=$ATTESTED_PLAN_DIGEST
+    retirement_routing_epoch=$ATTESTED_RETIREMENT_ROUTING_EPOCH
+    ;;
+  *)
+    echo "ERROR: rollback requires an active, pending, or recovery receipt" >&2
+    exit 1
+    ;;
+esac
+[[ "$source_receipt_state" == active || "$source_receipt_state" == pending ]] || {
+  echo "ERROR: source receipt state is invalid" >&2
+  exit 1
+}
 [[ "$source_receipt_sha256" =~ ^[0-9a-f]{64}$ ]] || {
   echo "ERROR: source receipt SHA-256 is invalid" >&2
   exit 1
 }
+source_routing_epoch=$LIGHTPANDA_B0_ROUTING_EPOCH
 recovery_failure_containment_armed=1
 bounded 30s "${compose_enabled[@]}" config -q
 bounded 90s "${compose_enabled[@]}" stop --timeout 60 "${mutation_services[@]}"
 attest_cold_host
-if ((rollback_cleared == 0)); then
+
+if [[ "$RECEIPT_STATE" == active || "$RECEIPT_STATE" == pending ]]; then
+  # Persist recovery intent before touching the non-transactional allocator.
+  # A crash after nextval but before the following bound receipt deliberately
+  # burns that ambiguous value; retry reserves another strictly newer epoch.
+  write_receipt "$source_plan_digest" rollback-pending "$source_receipt_sha256" \
+    unreserved "$source_receipt_state"
+  RECEIPT_STATE=rollback-pending
+fi
+if [[ "$retirement_routing_epoch" == unreserved ]]; then
+  retirement_routing_epoch="$(reserve_routing_epoch)"
+  if [[ ! "$retirement_routing_epoch" =~ ^[1-9][0-9]{0,12}$ ]] ||
+    ((retirement_routing_epoch <= source_routing_epoch)); then
+    echo "ERROR: allocator did not retire the source routing epoch" >&2
+    exit 1
+  fi
+  write_receipt "$source_plan_digest" rollback-pending "$source_receipt_sha256" \
+    "$retirement_routing_epoch" "$source_receipt_state"
+fi
+
+# The bound recovery receipt may be reused only while R is still the exact
+# PostgreSQL high-water. Restore E immediately afterward for fence/Redis cleanup.
+LIGHTPANDA_B0_ROUTING_EPOCH=$retirement_routing_epoch
+export LIGHTPANDA_B0_ROUTING_EPOCH
+validate_fixed_b0_identity
+attest_routing_epoch
+LIGHTPANDA_B0_ROUTING_EPOCH=$source_routing_epoch
+export LIGHTPANDA_B0_ROUTING_EPOCH
+validate_fixed_b0_identity
+
+if [[ "$RECEIPT_STATE" == rollback-cleared ]]; then
+  rollback_plan_digest=$source_plan_digest
+  check_producer_activation_sentinel_absent
+else
+  receipt_state=$source_receipt_state
   # This uses the Go-owned exact marker bytes and metadata. It is read-only and
   # must pass before the first Redis G/empty -> T rollback commit.
   check_producer_activation_sentinel_clearable
@@ -723,16 +854,14 @@ if ((rollback_cleared == 0)); then
     --receipt-state "$receipt_state" --source-receipt-sha256 "$source_receipt_sha256" \
     --apply --expect-digest "$plan_digest"
   # Persist the exact rollback tombstone before changing either recovery
-  # attestation. A lost SAVE reply leaves the source receipt and producer
+  # attestation. A lost SAVE reply leaves rollback-pending and the producer
   # sentinel intact, so retry can safely re-drive the idempotent rollback.
   persist_redis_rdb
   clear_producer_activation_sentinel
   # Publish only after the sentinel removal is durable. T still exists, so a
   # crash on either side of this receipt write has one exact recovery path.
-  write_receipt "$rollback_plan_digest" rollback-cleared "$source_receipt_sha256"
-else
-  rollback_plan_digest=$plan_digest
-  check_producer_activation_sentinel_absent
+  write_receipt "$rollback_plan_digest" rollback-cleared "$source_receipt_sha256" \
+    "$retirement_routing_epoch" "$source_receipt_state"
 fi
 bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
   -e LIGHTPANDA_B0_PRODUCER_MODE=off "${route_environment[@]}" worker-1 \
@@ -740,6 +869,14 @@ bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
   --rollback-plan-digest "$rollback_plan_digest" \
   --source-receipt-sha256 "$source_receipt_sha256" --allow-absent
 persist_redis_rdb
+
+# Python may restart only after R (not the retired source E) is re-attested as
+# the exact database high-water. A stale Go transaction at E is ordered before
+# R or rejected by the migration trigger's shared advisory lock.
+LIGHTPANDA_B0_ROUTING_EPOCH=$retirement_routing_epoch
+export LIGHTPANDA_B0_ROUTING_EPOCH
+validate_fixed_b0_identity
+attest_routing_epoch
 bounded 90s "${compose_base[@]}" up -d --force-recreate \
   worker-1 worker-2 worker-3 browser-1 drain lightpanda-claimant
 wait_healthy base worker-1 worker-2 worker-3 browser-1 drain lightpanda-claimant
@@ -750,4 +887,4 @@ fsync_path directory "$DEPLOY_DIR"
   exit 1
 }
 recovery_failure_containment_armed=0
-echo "Go Lightpanda B0 ${COHORT} rolled back to Python"
+echo "Go Lightpanda B0 ${COHORT} rolled back to Python at retired epoch ${retirement_routing_epoch}"

@@ -2,8 +2,10 @@
 # The ordinary crawler deploy does not load this file and remains dark.
 
 services:
-  # Docker creates a fresh named-volume root as root:root/0755. Normalize it
-  # in a bounded one-shot before the unprivileged producer is allowed to bind.
+  # Normalize only an empty root:root/0755 fresh volume or the empty
+  # root:root/0700 crash-intermediate left between chmod and chown. An exact
+  # 10001:10001/0700 authority volume is a no-op; nonempty root-owned and every
+  # other state fail, so chmod can never touch a live volume.
   lightpanda-producer-socket-init:
     image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     restart: "no"
@@ -21,12 +23,56 @@ services:
       - -eu
       - -c
       - >-
-        chown 0:0 /run/jobseek-lightpanda-producer &&
-        chmod 0700 /run/jobseek-lightpanda-producer &&
-        chown 10001:10001 /run/jobseek-lightpanda-producer &&
+        current="$$(stat -c '%u:%g:%a' /run/jobseek-lightpanda-producer)" &&
+        if [ "$$current" = 0:0:755 ]; then
+          test -z "$$(find /run/jobseek-lightpanda-producer -mindepth 1 -maxdepth 1 -print -quit)" &&
+          chmod 0700 /run/jobseek-lightpanda-producer &&
+          chown 10001:10001 /run/jobseek-lightpanda-producer;
+        elif [ "$$current" = 0:0:700 ]; then
+          test -z "$$(find /run/jobseek-lightpanda-producer -mindepth 1 -maxdepth 1 -print -quit)" &&
+          chown 10001:10001 /run/jobseek-lightpanda-producer;
+        else
+          test "$$current" = 10001:10001:700;
+        fi &&
         test "$$(stat -c '%u:%g:%a' /run/jobseek-lightpanda-producer)" = 10001:10001:700
     volumes:
       - lightpanda-producer-socket:/run/jobseek-lightpanda-producer
+    mem_limit: 16m
+    memswap_limit: 16m
+    cpus: 0.1
+    pids_limit: 8
+
+  lightpanda-executor-socket-init:
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    restart: "no"
+    network_mode: none
+    user: "0:0"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    command:
+      - /bin/sh
+      - -eu
+      - -c
+      - >-
+        current="$$(stat -c '%u:%g:%a' /run/jobseek-lightpanda-executor)" &&
+        if [ "$$current" = 0:0:755 ]; then
+          test -z "$$(find /run/jobseek-lightpanda-executor -mindepth 1 -maxdepth 1 -print -quit)" &&
+          chmod 0700 /run/jobseek-lightpanda-executor &&
+          chown 10001:10001 /run/jobseek-lightpanda-executor;
+        elif [ "$$current" = 0:0:700 ]; then
+          test -z "$$(find /run/jobseek-lightpanda-executor -mindepth 1 -maxdepth 1 -print -quit)" &&
+          chown 10001:10001 /run/jobseek-lightpanda-executor;
+        else
+          test "$$current" = 10001:10001:700;
+        fi &&
+        test "$$(stat -c '%u:%g:%a' /run/jobseek-lightpanda-executor)" = 10001:10001:700
+    volumes:
+      - lightpanda-executor-socket:/run/jobseek-lightpanda-executor
     mem_limit: 16m
     memswap_limit: 16m
     cpus: 0.1
@@ -152,6 +198,9 @@ services:
       LIGHTPANDA_B0_ROUTING_EPOCH: ${LIGHTPANDA_B0_ROUTING_EPOCH:?routing epoch required}
     volumes:
       - lightpanda-executor-socket:/run/jobseek-lightpanda-executor
+    depends_on:
+      lightpanda-executor-socket-init:
+        condition: service_completed_successfully
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
     healthcheck:
