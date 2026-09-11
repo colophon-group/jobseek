@@ -154,11 +154,11 @@ if [[ -e "$ACTIVE" || -L "$ACTIVE" ]]; then
   done
 fi
 
-if docker inspect "$CONTAINER" >/dev/null 2>&1; then
+if docker container inspect "$CONTAINER" >/dev/null 2>&1; then
   [[ -n "$previous_generation" ]] || exit 1
-  previous_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
+  previous_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER")"
   [[ "$previous_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
-  previous_running="$(docker inspect --format '{{json .State.Running}}' "$previous_id")"
+  previous_running="$(docker container inspect --format '{{json .State.Running}}' "$previous_id")"
   if [[ "$previous_running" == true ]]; then
     runuser -u deploy -- python3 "$previous_generation/verify.py" running \
       "$previous_generation/release.env" --expected-id "$previous_id" >/dev/null
@@ -176,7 +176,7 @@ if docker inspect "$CONTAINER" >/dev/null 2>&1; then
   if [[ "$CI_FAILURE_MODE" == ambiguous-stop-status ]]; then
     stop_status=75
   fi
-  [[ "$(docker inspect --format '{{json .State.Running}}' "$previous_id")" == false ]] || exit 1
+  [[ "$(docker container inspect --format '{{json .State.Running}}' "$previous_id")" == false ]] || exit 1
   # Docker may report a transport failure after completing the stop. Final
   # inspected state is authoritative; a nonzero status alone is not.
   if [[ "$stop_status" -ne 0 ]]; then
@@ -191,11 +191,11 @@ if docker inspect "$CONTAINER" >/dev/null 2>&1; then
   done
   stable_empty_renderer_networks
   docker rm --force "$previous_id" >/dev/null 2>&1 || :
-  if docker inspect "$previous_id" >/dev/null 2>&1; then
+  if docker container inspect "$previous_id" >/dev/null 2>&1; then
     docker rm --force "$previous_id" >/dev/null 2>&1 || :
   fi
-  ! docker inspect "$previous_id" >/dev/null 2>&1 || exit 1
-  ! docker inspect "$CONTAINER" >/dev/null 2>&1 || exit 1
+  ! docker container inspect "$previous_id" >/dev/null 2>&1 || exit 1
+  ! docker container inspect "$CONTAINER" >/dev/null 2>&1 || exit 1
 fi
 
 # The active pointer and prior release deliberately remain as cold provenance.

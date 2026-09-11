@@ -147,7 +147,7 @@ trap early_containment EXIT
 # endpoint can be recovered without weakening impostor handling.
 python3 "$STAGE/verify.py" inventory-file "$STAGE/inventory.json"
 renderer_exists=0
-if docker inspect "$CONTAINER" >/dev/null 2>&1; then
+if docker container inspect "$CONTAINER" >/dev/null 2>&1; then
   renderer_exists=1
 fi
 previous_generation=""
@@ -165,14 +165,14 @@ if [[ -e "$ACTIVE" || -L "$ACTIVE" ]]; then
   [[ -d "$previous_generation" && -f "$previous_generation/compose.yml" && -f "$previous_generation/release.env" ]] || exit 1
 fi
 if (( renderer_exists )); then
-  existing_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
-  existing_name="$(docker inspect --format '{{.Name}}' "$existing_id")"
-  existing_project="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$existing_id")"
-  existing_service="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' "$existing_id")"
-  existing_mode="$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.mode"}}' "$existing_id")"
-  existing_release_id="$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.release"}}' "$existing_id")"
-  existing_image_ref="$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.image-ref"}}' "$existing_id")"
-  existing_source="$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.source-commit"}}' "$existing_id")"
+  existing_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER")"
+  existing_name="$(docker container inspect --format '{{.Name}}' "$existing_id")"
+  existing_project="$(docker container inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$existing_id")"
+  existing_service="$(docker container inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' "$existing_id")"
+  existing_mode="$(docker container inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.mode"}}' "$existing_id")"
+  existing_release_id="$(docker container inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.release"}}' "$existing_id")"
+  existing_image_ref="$(docker container inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.image-ref"}}' "$existing_id")"
+  existing_source="$(docker container inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.source-commit"}}' "$existing_id")"
   [[ "$existing_source" =~ ^[0-9a-f]{40}$ ]] || exit 1
   [[ "$existing_id" =~ ^[0-9a-f]{64}$ \
     && "$existing_name" == "/$CONTAINER" \
@@ -201,8 +201,8 @@ if (( renderer_exists )); then
     && "$(stat -c '%U:%G:%a:%h' "$existing_generation/pki/ca.pem")" == deploy:deploy:444:1 \
     && "$(stat -c '%U:%G:%a:%h' "$existing_generation/pki/server.pem")" == deploy:deploy:444:1 \
     && "$(stat -c '%u:%g:%a:%h' "$existing_generation/pki/server-key.pem")" == 10001:10001:400:1 ]] || exit 1
-  existing_running="$(docker inspect --format '{{json .State.Running}}' "$existing_id")"
-  existing_status="$(docker inspect --format '{{.State.Status}}' "$existing_id")"
+  existing_running="$(docker container inspect --format '{{json .State.Running}}' "$existing_id")"
+  existing_status="$(docker container inspect --format '{{.State.Status}}' "$existing_id")"
   if [[ "$existing_running" == true ]]; then
     python3 "$existing_generation/verify.py" running \
       "$existing_generation/release.env" --expected-id "$existing_id" >/dev/null
@@ -218,7 +218,7 @@ if (( renderer_exists )); then
     exit 1
   fi
   docker stop --time 30 "$existing_id" >/dev/null 2>&1 || :
-  [[ "$(docker inspect --format '{{json .State.Running}}' "$existing_id")" == false ]] || exit 1
+  [[ "$(docker container inspect --format '{{json .State.Running}}' "$existing_id")" == false ]] || exit 1
   if [[ "$CI_FAILURE_MODE" == crash-after-predecessor-stop ]]; then
     echo "CI retry smoke: killing deploy after exact predecessor stop" >&2
     kill -KILL "$$"
@@ -229,11 +229,11 @@ if (( renderer_exists )); then
   done
   stable_empty_renderer_networks
   docker rm --force "$existing_id" >/dev/null 2>&1 || :
-  if docker inspect "$existing_id" >/dev/null 2>&1; then
+  if docker container inspect "$existing_id" >/dev/null 2>&1; then
     docker rm --force "$existing_id" >/dev/null 2>&1 || :
   fi
-  ! docker inspect "$existing_id" >/dev/null 2>&1 || exit 1
-  ! docker inspect "$CONTAINER" >/dev/null 2>&1 || exit 1
+  ! docker container inspect "$existing_id" >/dev/null 2>&1 || exit 1
+  ! docker container inspect "$CONTAINER" >/dev/null 2>&1 || exit 1
   stable_empty_renderer_networks
   sudo -n "$POLICY" verify-ready \
     "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null
@@ -436,7 +436,7 @@ remove_candidate_and_attest_empty() {
   if [[ -n "$candidate_container_id" ]]; then
     [[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]] || return 1
     [[ -z "$previous_container_id" || "$candidate_container_id" != "$previous_container_id" ]] || return 1
-    [[ "$(docker inspect --format '{{.Config.Image}}' "$candidate_container_id" 2>/dev/null || :)" == "$IMAGE_REF" ]] || return 1
+    [[ "$(docker container inspect --format '{{.Config.Image}}' "$candidate_container_id" 2>/dev/null || :)" == "$IMAGE_REF" ]] || return 1
     docker stop --time 30 "$candidate_container_id" >/dev/null 2>&1 || :
   fi
   drain_routed_endpoints || return 1
@@ -450,10 +450,10 @@ remove_candidate_and_attest_empty() {
     else
       docker rm --force "$candidate_container_id" >/dev/null 2>&1 || :
     fi
-    ! docker inspect "$candidate_container_id" >/dev/null 2>&1 || return 1
+    ! docker container inspect "$candidate_container_id" >/dev/null 2>&1 || return 1
   fi
   drain_routed_endpoints || return 1
-  discovered_id="$(docker inspect --format '{{.Id}}' "$CONTAINER" 2>/dev/null || :)"
+  discovered_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER" 2>/dev/null || :)"
   [[ -z "$discovered_id" ]] || return 1
 }
 
@@ -513,7 +513,7 @@ if [[ "$CI_FAILURE_MODE" == crash-after-compose-create ]]; then
     --env-file "$GENERATION/release.env" \
     --file "$GENERATION/compose.yml" \
     create --no-deps "$SERVICE"
-  candidate_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
+  candidate_container_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER")"
   [[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
   python3 "$GENERATION/verify.py" owned-created \
     "$GENERATION/release.env" --expected-id "$candidate_container_id" >/dev/null
@@ -528,7 +528,7 @@ if [[ "$CI_FAILURE_MODE" == during-compose ]]; then
   echo "CI rollback smoke: forcing ambiguous failure after Compose start" >&2
   exit 95
 fi
-candidate_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
+candidate_container_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER")"
 [[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
 [[ -z "$previous_container_id" || "$candidate_container_id" != "$previous_container_id" ]] || exit 1
 
@@ -545,17 +545,17 @@ if [[ "$CI_FAILURE_MODE" == after-candidate || \
   echo "CI rollback smoke: forcing failure after candidate creation" >&2
   exit 96
 fi
-started_before_restart="$(docker inspect --format '{{.State.StartedAt}}' "$candidate_container_id")"
+started_before_restart="$(docker container inspect --format '{{.State.StartedAt}}' "$candidate_container_id")"
 docker restart --time 30 "$candidate_container_id" >/dev/null
-[[ "$(docker inspect --format '{{.Id}}' "$CONTAINER")" == "$candidate_container_id" ]] || exit 1
-started_after_restart="$(docker inspect --format '{{.State.StartedAt}}' "$candidate_container_id")"
+[[ "$(docker container inspect --format '{{.Id}}' "$CONTAINER")" == "$candidate_container_id" ]] || exit 1
+started_after_restart="$(docker container inspect --format '{{.State.StartedAt}}' "$candidate_container_id")"
 [[ "$started_after_restart" != "$started_before_restart" ]] || exit 1
 sleep 20
 python3 "$GENERATION/verify.py" running "$GENERATION/release.env" \
   --expected-id "$candidate_container_id" >/dev/null
 sudo -n "$POLICY" verify-running-ready \
   "$EXPECTED_POLICY_SHA256" "$EXPECTED_INVENTORY_SHA256" >/dev/null
-[[ "$(docker inspect --format '{{.RestartCount}}' "$candidate_container_id")" == 0 ]] || exit 1
+[[ "$(docker container inspect --format '{{.RestartCount}}' "$candidate_container_id")" == 0 ]] || exit 1
 memory_current="$(docker exec "$candidate_container_id" cat /sys/fs/cgroup/memory.current)"
 [[ "$memory_current" =~ ^[0-9]+$ && "$memory_current" -le 134217728 ]] || {
   echo "idle renderer exceeds the reviewed 128 MiB idle ceiling" >&2

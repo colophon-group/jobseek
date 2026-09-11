@@ -737,7 +737,7 @@ def remove_owned_hooks() -> None:
 
 
 def exact_running_renderer_id(inventory: Inventory) -> str | None:
-    inspected = run(["docker", "inspect", CONTAINER], check=False)
+    inspected = run(["docker", "container", "inspect", CONTAINER], check=False)
     if inspected.returncode != 0:
         return None
     payload = json.loads(inspected.stdout)
@@ -768,7 +768,10 @@ def exact_running_renderer_id(inventory: Inventory) -> str | None:
 
 
 def inspect_container(reference: str, *, expected_name: str | None = None) -> dict[str, Any] | None:
-    result = run(["docker", "inspect", reference], check=False)
+    # The renderer container and its internal network intentionally share a
+    # name. Constrain Docker's lookup so an absent container cannot resolve to
+    # the network during quarantine.
+    result = run(["docker", "container", "inspect", reference], check=False)
     if result.returncode != 0:
         return None
     payload = json.loads(result.stdout)
@@ -785,7 +788,14 @@ def inspect_container(reference: str, *, expected_name: str | None = None) -> di
 def stop_container_for_quarantine(identifier: str) -> bool:
     stopped = run(["docker", "stop", "--time", "30", identifier], check=False)
     state = run(
-        ["docker", "inspect", "--format", "{{json .State.Running}}", identifier],
+        [
+            "docker",
+            "container",
+            "inspect",
+            "--format",
+            "{{json .State.Running}}",
+            identifier,
+        ],
         check=False,
     )
     if state.returncode == 0:

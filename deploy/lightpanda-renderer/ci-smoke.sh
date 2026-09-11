@@ -95,7 +95,7 @@ cleanup() {
   for index in "${!protected_ids[@]}"; do
     protected_id="${protected_ids[$index]}"
     protected_name="${PROTECTED[$index]}"
-    [[ "$(docker inspect --format '{{.Id}}' "$protected_name" 2>/dev/null || :)" == "$protected_id" ]] || exit 1
+    [[ "$(docker container inspect --format '{{.Id}}' "$protected_name" 2>/dev/null || :)" == "$protected_id" ]] || exit 1
     docker rm --force "$protected_id" >/dev/null
   done
   sudo rm -rf -- "$ROOT" /var/lib/jobseek-lightpanda-network
@@ -217,7 +217,7 @@ sudo install -o deploy -g deploy -m 0644 \
 sudo -u deploy docker compose --project-name jobseek-lightpanda \
   --env-file "$LEGACY_RELEASE/release.env" --file "$LEGACY_RELEASE/compose.yml" \
   up --detach --no-deps renderer
-legacy_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
+legacy_container_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER")"
 sudo -u deploy python3 "$LEGACY_RELEASE/verify.py" running \
   "$LEGACY_RELEASE/release.env" --expected-id "$legacy_container_id" >/dev/null
 sudo -u deploy ln -s "$LEGACY_RELEASE" "$ROOT/active"
@@ -233,8 +233,8 @@ read -r NETWORK_POLICY_SHA256 _ < <(
 read -r NETWORK_INVENTORY_SHA256 _ < <(sha256sum "$work/ci-inventory.json")
 [[ "$NETWORK_POLICY_SHA256" =~ ^[0-9a-f]{64}$ ]]
 [[ "$NETWORK_INVENTORY_SHA256" =~ ^[0-9a-f]{64}$ ]]
-[[ "$(docker inspect --format '{{.HostConfig.RestartPolicy.Name}}' deploy-murmur-1)" == no ]]
-[[ "$(docker inspect --format '{{.HostConfig.RestartPolicy.Name}}' deploy-cloudflared-1)" == no ]]
+[[ "$(docker container inspect --format '{{.HostConfig.RestartPolicy.Name}}' deploy-murmur-1)" == no ]]
+[[ "$(docker container inspect --format '{{.HostConfig.RestartPolicy.Name}}' deploy-cloudflared-1)" == no ]]
 
 phase interrupted-host-bootstrap
 root_stage="$(sudo mktemp -d '/tmp/jobseek-lightpanda-bootstrap.r999999a1.XXXXXX')"
@@ -253,13 +253,13 @@ sudo env CI=true GITHUB_ACTIONS=true \
 bootstrap_interrupt_status=$?
 set -e
 [[ "$bootstrap_interrupt_status" -eq 98 ]]
-[[ "$(docker inspect --format '{{json .State.Running}}' "$CONTAINER")" == false ]]
+[[ "$(docker container inspect --format '{{json .State.Running}}' "$CONTAINER")" == false ]]
 
 phase stopped-bootstrap-retry-with-ambiguous-status
 sudo env CI=true GITHUB_ACTIONS=true \
   JOBSEEK_LIGHTPANDA_BOOTSTRAP_CI_FAILURE_MODE=ambiguous-stop-status \
   bash "$root_stage/bootstrap-host.sh" "$root_stage" "$SOURCE_COMMIT"
-if docker inspect "$CONTAINER" >/dev/null 2>&1; then
+if docker container inspect "$CONTAINER" >/dev/null 2>&1; then
   exit 1
 fi
 [[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$LEGACY_RELEASE" ]]
@@ -360,7 +360,7 @@ run_expected_failure() {
   }
   sudo -u deploy test ! -e "$release_path"
   [[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$active_path" ]]
-  if docker inspect "$CONTAINER" >/dev/null 2>&1; then
+  if docker container inspect "$CONTAINER" >/dev/null 2>&1; then
     exit 1
   fi
   [[ "$(docker network inspect --format '{{len .Containers}}' "$EGRESS_NETWORK")" == 0 ]]
@@ -382,7 +382,7 @@ set -e
 [[ "$stale_policy_status" -ne 0 ]]
 sudo -u deploy test -d "$POLICY_PROBE_RELEASE"
 [[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$LEGACY_RELEASE" ]]
-if docker inspect "$CONTAINER" >/dev/null 2>&1; then
+if docker container inspect "$CONTAINER" >/dev/null 2>&1; then
   exit 1
 fi
 sudo /usr/local/libexec/jobseek-lightpanda-network-policy verify-ready \
@@ -439,8 +439,8 @@ sudo -u deploy env CI=true GITHUB_ACTIONS=true \
 stopped_status=$?
 set -e
 [[ "$stopped_status" -eq 137 ]]
-[[ "$(docker inspect --format '{{.Id}}' "$CONTAINER")" == "$second_container_id" ]]
-[[ "$(docker inspect --format '{{.State.Status}}' "$second_container_id")" == exited ]]
+[[ "$(docker container inspect --format '{{.Id}}' "$CONTAINER")" == "$second_container_id" ]]
+[[ "$(docker container inspect --format '{{.State.Status}}' "$second_container_id")" == exited ]]
 [[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$SECOND_RELEASE" ]]
 
 phase stopped-replay-to-compose-created-candidate
@@ -453,9 +453,9 @@ sudo -u deploy env CI=true GITHUB_ACTIONS=true \
 created_status=$?
 set -e
 [[ "$created_status" -eq 137 ]]
-created_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
-[[ "$(docker inspect --format '{{.State.Status}}' "$created_container_id")" == created ]]
-[[ "$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.release"}}' "$created_container_id")" == "$CREATED_ID" ]]
+created_container_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER")"
+[[ "$(docker container inspect --format '{{.State.Status}}' "$created_container_id")" == created ]]
+[[ "$(docker container inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.release"}}' "$created_container_id")" == "$CREATED_ID" ]]
 [[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$SECOND_RELEASE" ]]
 
 phase compose-created-candidate-replay-success
@@ -464,7 +464,7 @@ sudo -u deploy env CI=true GITHUB_ACTIONS=true \
   JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=success \
   bash "$stage/install-host.sh" \
     "$stage" "$SOURCE_COMMIT" "$IMAGE" "$CREATED_RECOVERY_ID"
-if docker inspect "$created_container_id" >/dev/null 2>&1; then
+if docker container inspect "$created_container_id" >/dev/null 2>&1; then
   exit 1
 fi
 [[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$CREATED_RECOVERY_RELEASE" ]]
@@ -483,8 +483,8 @@ sudo -u deploy env CI=true GITHUB_ACTIONS=true \
 stale_status=$?
 set -e
 [[ "$stale_status" -eq 137 ]]
-stale_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
-[[ "$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.release"}}' "$CONTAINER")" == "$STALE_ID" ]]
+stale_container_id="$(docker container inspect --format '{{.Id}}' "$CONTAINER")"
+[[ "$(docker container inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.release"}}' "$CONTAINER")" == "$STALE_ID" ]]
 [[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$SECOND_RELEASE" ]]
 
 phase stale-candidate-recovery-success
@@ -493,7 +493,7 @@ sudo -u deploy env CI=true GITHUB_ACTIONS=true \
   JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=success \
   bash "$stage/install-host.sh" \
     "$stage" "$SOURCE_COMMIT" "$IMAGE" "$RECOVERY_ID"
-if docker inspect "$stale_container_id" >/dev/null 2>&1; then
+if docker container inspect "$stale_container_id" >/dev/null 2>&1; then
   exit 1
 fi
 [[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$RECOVERY_RELEASE" ]]
@@ -505,7 +505,7 @@ sudo /usr/local/libexec/jobseek-lightpanda-network-policy verify-running-ready \
 phase systemd-unit-restart-with-committed-renderer
 sudo systemctl restart jobseek-lightpanda-network.service
 sudo systemctl is-active --quiet jobseek-lightpanda-network.service
-[[ "$(docker inspect --format '{{.Id}}' "$CONTAINER")" == "$candidate_container_id" ]]
+[[ "$(docker container inspect --format '{{.Id}}' "$CONTAINER")" == "$candidate_container_id" ]]
 sudo -u deploy python3 "$RECOVERY_RELEASE/verify.py" running \
   "$RECOVERY_RELEASE/release.env" --expected-id "$candidate_container_id" >/dev/null
 sudo /usr/local/libexec/jobseek-lightpanda-network-policy verify-running-ready \
@@ -572,8 +572,8 @@ sudo -u deploy env CI=true GITHUB_ACTIONS=true \
 impostor_status=$?
 set -e
 [[ "$impostor_status" -ne 0 ]]
-[[ "$(docker inspect --format '{{.Id}}' "$CONTAINER")" == "$impostor_id" ]]
-[[ "$(docker inspect --format '{{json .State.Running}}' "$CONTAINER")" == false ]]
+[[ "$(docker container inspect --format '{{.Id}}' "$CONTAINER")" == "$impostor_id" ]]
+[[ "$(docker container inspect --format '{{json .State.Running}}' "$CONTAINER")" == false ]]
 [[ "$(docker network inspect --format '{{len .Containers}}' "$EGRESS_NETWORK")" == 0 ]]
 docker rm "$impostor_id" >/dev/null
 

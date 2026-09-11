@@ -541,7 +541,7 @@ def test_boot_lock_is_recreated_exactly_and_bootstrap_handoff_has_no_self_deadlo
 
 def test_deploy_cold_replacement_and_stale_candidate_recovery_are_exact() -> None:
     deploy = (DEPLOY / "install-host.sh").read_text(encoding="utf-8")
-    ownership = deploy.index('existing_release_id="$(docker inspect')
+    ownership = deploy.index('existing_release_id="$(docker container inspect')
     running_gate = deploy.index('sudo -n "$POLICY" verify-running-ready', ownership)
     stop = deploy.index('docker stop --time 30 "$existing_id"', running_gate)
     remove = deploy.index('docker rm --force "$existing_id"', stop)
@@ -621,6 +621,8 @@ def test_bootstrap_workflow_is_manual_exact_main_and_root_scoped() -> None:
 
 def test_ci_smoke_exercises_legacy_bootstrap_and_cold_rollback() -> None:
     smoke = (DEPLOY / "ci-smoke.sh").read_text(encoding="utf-8")
+    bootstrap = (DEPLOY / "bootstrap-host.sh").read_text(encoding="utf-8")
+    install = (DEPLOY / "install-host.sh").read_text(encoding="utf-8")
     assert "testdata/legacy-compose.yml" in smoke
     assert "testdata/legacy-verify.py" in smoke
     assert 'bash "$root_stage/bootstrap-host.sh"' in smoke
@@ -645,7 +647,10 @@ def test_ci_smoke_exercises_legacy_bootstrap_and_cold_rollback() -> None:
     assert "stale-uncommitted-candidate" in smoke
     assert "stale-candidate-recovery-success" in smoke
     assert "malformed-impostor-rejection" in smoke
-    assert 'if docker inspect "$CONTAINER"' in smoke
+    assert 'if docker container inspect "$CONTAINER"' in smoke
+    assert 'docker inspect "$CONTAINER"' not in smoke
+    assert 'docker inspect "$CONTAINER"' not in bootstrap
+    assert 'docker inspect "$CONTAINER"' not in install
     assert "verify-running-ready" in smoke
     assert "private-mtls-ingress" in smoke
     assert "systemd-unit-restart-with-committed-renderer" in smoke
@@ -738,6 +743,28 @@ def test_verify_ready_requires_fixed_marker_and_both_networks_stably_empty(
     assert calls == [
         (network_policy.INVENTORY_PATH, "a" * 64, "b" * 64),
         (network_policy.INTERNAL_NETWORK, network_policy.EGRESS_NETWORK),
+    ]
+
+
+def test_policy_container_lookups_cannot_resolve_the_same_named_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def absent_container(
+        arguments: list[str], *, check: bool = True
+    ) -> subprocess.CompletedProcess[str]:
+        del check
+        calls.append(arguments)
+        return subprocess.CompletedProcess(arguments, 1, "", "not found")
+
+    monkeypatch.setattr(network_policy, "run", absent_container)
+    assert network_policy.inspect_container(network_policy.CONTAINER) is None
+    inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
+    assert network_policy.exact_running_renderer_id(inventory) is None
+    assert calls == [
+        ["docker", "container", "inspect", network_policy.CONTAINER],
+        ["docker", "container", "inspect", network_policy.CONTAINER],
     ]
 
 
