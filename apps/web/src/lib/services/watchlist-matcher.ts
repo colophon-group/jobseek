@@ -30,13 +30,15 @@ import { normalizePostingTitle } from "@/lib/posting-title";
 import { canonicalStringCompare } from "@/lib/sort";
 import {
   buildWatchlistCandidateSearchParams,
+  candidateOrderKeyFromCanonicalId,
   hasWatchlistCandidateScope,
-  WATCHLIST_CANDIDATE_ID_SORT_FIELD,
+  WATCHLIST_CANDIDATE_ORDER_KEY_FIELD,
   WATCHLIST_CANDIDATE_WINDOW_BOUNDARY,
   type WatchlistCandidateOrder,
   type WatchlistCandidateSearchParams,
   type WatchlistCandidateWindow,
 } from "@/lib/search/watchlist-candidate-query";
+import { stableCandidateOrderReady } from "@/lib/search/stable-candidate-order-readiness";
 import type {
   CompiledWatchlistMatcher,
   MatchedWatchlistPosting,
@@ -51,8 +53,8 @@ const WORK_MODES = new Set<WorkMode>(["onsite", "hybrid", "remote"]);
 const MULTI_SEARCH_CHUNK_SIZE = 40;
 const TYPESENSE_MAX_PAGE_SIZE = 250;
 const TYPESENSE_BATCH_SAFETY_OFFSET = Number.MAX_SAFE_INTEGER;
-const STABLE_CANDIDATE_ORDER_READY_ENV =
-  "TYPESENSE_STABLE_CANDIDATE_ORDER_READY";
+const STABLE_CANDIDATE_MISSING_FIRST_SORT =
+  `${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}(missing_values: first):asc`;
 
 export type CompiledWatchlistFilter = CompiledWatchlistMatcher & {
   resolvedLocations: ResolvedLocation[];
@@ -235,10 +237,6 @@ type RankedCandidateHit = {
   hitRank: number;
 };
 
-function stableCandidateOrderReady(): boolean {
-  return process.env[STABLE_CANDIDATE_ORDER_READY_ENV] === "1";
-}
-
 function assertStableCandidateOrderReady(ready: boolean): void {
   if (!ready) {
     throw new Error(
@@ -250,11 +248,39 @@ function assertStableCandidateOrderReady(ready: boolean): void {
 function stableCandidateId(hit: CandidateHit): string {
   const doc = hit.document as Record<string, unknown>;
   const id = doc.id;
-  const sortId = doc[WATCHLIST_CANDIDATE_ID_SORT_FIELD];
-  if (typeof id !== "string" || typeof sortId !== "string" || sortId !== id) {
+  const sortKey = doc[WATCHLIST_CANDIDATE_ORDER_KEY_FIELD];
+  if (typeof id !== "string" || typeof sortKey !== "string") {
     throw malformedTypesenseResponseError();
   }
-  return sortId;
+  let expected: string;
+  try {
+    expected = candidateOrderKeyFromCanonicalId(id);
+  } catch {
+    throw malformedTypesenseResponseError();
+  }
+  if (expected !== sortKey) throw malformedTypesenseResponseError();
+  return id;
+}
+
+function stableCandidateGuardParams<T extends WatchlistCandidateSearchParams>(
+  params: T,
+): T {
+  return {
+    ...params,
+    sort_by: STABLE_CANDIDATE_MISSING_FIRST_SORT,
+    per_page: 1,
+    page: 1,
+  } as T;
+}
+
+function assertStableCandidateGuard(
+  result: TypesenseMultiSearchResult<object>,
+): void {
+  assertTypesenseSearchResult(result);
+  if (result.found === 0) return;
+  const hits = result.hits ?? [];
+  if (hits.length !== 1) throw malformedTypesenseResponseError();
+  stableCandidateId(hits[0]!);
 }
 
 function lexicalCompare(a: string, b: string): number {
@@ -373,7 +399,9 @@ export async function readWatchlistCandidates(params: {
 }): Promise<{ postings: WatchlistPostingEntry[]; total: number }> {
   const order = params.order ?? "interactive";
   const stableNewestReady =
-    order === "newest" && stableCandidateOrderReady();
+    order === "newest" &&
+    params.requireStableOrder === true &&
+    stableCandidateOrderReady();
   if (params.requireStableOrder === true) {
     if (order !== "newest") {
       throw new Error("Stable candidate ordering requires newest-first order");
@@ -424,6 +452,36 @@ export async function readWatchlistCandidates(params: {
     (params.filters.companyIds.length > COMPANY_BATCH_SIZE ||
       !isTypesenseQueryStringSafe(buildBatchSafetyParams(params.filters)));
   const client = getSearchClient();
+  const filterBatches = needsBatches
+    ? batchesForFilters(params.filters, (filters) =>
+        buildBatchSafetyParams(filters),
+      )
+    : [params.filters];
+  if (stableNewestReady) {
+    const guards = await Promise.all(
+      filterBatches.map((filters) =>
+        withTypesenseRetry(
+          () =>
+            client.collections("job_posting").documents().search(
+              stableCandidateGuardParams(buildWatchlistCandidateSearchParams({
+                filters,
+                offset: 0,
+                limit: 1,
+                window: params.window,
+                order,
+                stableNewestReady,
+              })),
+              { abortSignal: params.abortSignal },
+            ),
+          {
+            label: "readWatchlistCandidates.stable-order-guard",
+            abortSignal: params.abortSignal,
+          },
+        ),
+      ),
+    );
+    for (const result of guards) assertStableCandidateGuard(result);
+  }
   if (!needsBatches) {
     const result = await withTypesenseRetry(
       () =>
@@ -446,9 +504,6 @@ export async function readWatchlistCandidates(params: {
   }
 
   const needed = params.offset + params.limit;
-  const filterBatches = batchesForFilters(params.filters, (filters) =>
-    buildBatchSafetyParams(filters),
-  );
   if (filterBatches.some((filters) => !isTypesenseQueryStringSafe(
     buildBatchSafetyParams(filters),
   ))) {
@@ -575,7 +630,8 @@ export async function matchCompiledWatchlistsInWindow(params: {
   ) {
     throw new RangeError("limitPerWatchlist must be an integer between 1 and 250");
   }
-  const stableNewestReady = stableCandidateOrderReady();
+  const stableNewestReady =
+    params.requireStableOrder === true && stableCandidateOrderReady();
   if (params.requireStableOrder === true) {
     assertStableCandidateOrderReady(stableNewestReady);
   }
@@ -637,6 +693,28 @@ export async function matchCompiledWatchlistsInWindow(params: {
   const results: TypesenseMultiSearchResult<object>[] = [];
   if (plan.length > 0) {
     const client = getSearchClient();
+    if (stableNewestReady) {
+      for (let offset = 0; offset < plan.length; offset += MULTI_SEARCH_CHUNK_SIZE) {
+        const chunk = plan.slice(offset, offset + MULTI_SEARCH_CHUNK_SIZE);
+        const raw = await withTypesenseRetry(
+          () =>
+            client.multiSearch.perform({
+              searches: chunk.map((entry) =>
+                stableCandidateGuardParams(entry.search)
+              ),
+            }),
+          {
+            label: "matchCompiledWatchlistsInWindow.stable-order-guard",
+            abortSignal: params.abortSignal,
+          },
+        );
+        const guardResults = parseTypesenseMultiSearchResults<object>(
+          raw,
+          chunk.length,
+        );
+        for (const result of guardResults) assertStableCandidateGuard(result);
+      }
+    }
     for (let offset = 0; offset < plan.length; offset += MULTI_SEARCH_CHUNK_SIZE) {
       const chunk = plan.slice(offset, offset + MULTI_SEARCH_CHUNK_SIZE);
       const raw = await withTypesenseRetry(

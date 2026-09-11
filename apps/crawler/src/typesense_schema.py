@@ -21,6 +21,8 @@ import httpx
 import structlog
 from typesense.exceptions import ObjectAlreadyExists, ObjectNotFound, ObjectUnprocessable
 
+from src.typesense_candidate_order import CANDIDATE_ORDER_KEY_FIELD
+
 log = structlog.get_logger()
 
 _SETUP_CONNECTION_TIMEOUT_SECONDS = 3600
@@ -137,14 +139,15 @@ COLLECTIONS: list[dict] = [
             {"name": "locales", "type": "string[]", "facet": True},
             {"name": "source_url", "type": "string", "index": False, "optional": True},
             {"name": "first_seen_at", "type": "int64"},
-            # Total-order tie-break for frozen candidate feeds. The value is
-            # exactly the canonical posting UUID (the implicit ``id`` cannot
-            # be configured as a sortable string in Typesense 27.1). Optional
-            # only so the field can be patched onto the live collection before
-            # a mandatory full backfill; every exporter path emits it.
+            # Compact total-order tie-break for frozen candidate feeds. The
+            # implicit ``id`` cannot be configured for string sorting in
+            # Typesense 27.1. Optional only for the in-place schema transition;
+            # activation still requires measured memory headroom and a complete
+            # verified backfill.
             {
-                "name": "candidate_id_sort",
+                "name": CANDIDATE_ORDER_KEY_FIELD,
                 "type": "string",
+                "index": True,
                 "sort": True,
                 "optional": True,
             },

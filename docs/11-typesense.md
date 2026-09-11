@@ -184,35 +184,67 @@ Both are idempotent. On every run, the setup logic:
 Frozen AI-filter feeds use a total newest-first order:
 `first_seen_at DESC, candidate ID ASC`. Typesense's implicit `id` cannot be
 configured for string sorting, so each `job_posting` document carries
-`candidate_id_sort`, an exact copy of its canonical posting UUID. The field is
-`sort: true` and is optional only for the in-place rollout; the steady exporter,
-the production full backfill, reconciliation repairs, and the local development
-backfill all emit it.
+`candidate_order_key`: a 22-character, fixed-width, ASCII-lexicographic base-64
+encoding of the UUID's unsigned 128-bit value (`uuid-b64lex-v1`). It preserves
+canonical lowercase UUID order while being 39% shorter than a copied 36-byte
+UUID. The field is `index: true, sort: true` and optional only for the in-place
+transition. The steady exporter, full backfill, reconciliation repairs, and
+local development backfill all emit it.
+
+Do not infer memory safety from the compact representation. A sortable string
+still has an in-memory sort structure. Activation therefore has two independent
+prerequisites: a reviewed production-shaped memory/headroom benchmark and a
+durable complete reconciliation proof.
+
+For the benchmark, use Typesense 27.1 on the same instance class and memory
+limit as production, with the production document count and field cardinality.
+Record, at minimum, the Typesense version, instance memory limit, document
+count, baseline resident memory, resident and peak memory with
+`candidate_order_key`, remaining headroom, the headroom threshold chosen before
+the run, representative two-key sort p95 latency, measurement time, and key
+version. The human reviewer must approve the resulting headroom before rollout.
+Keep that small JSON artifact with the release evidence and compute its
+lowercase SHA-256; the reconciliation receipt binds this digest. A unit estimate
+or a smaller synthetic collection is not an activation benchmark.
 
 Activation is deliberately fail-closed. Keep
-`TYPESENSE_STABLE_CANDIDATE_ORDER_READY` unset while rolling out the producer:
+`TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT` unset while rolling out the producer:
 
 1. Deploy the crawler schema/exporter change so `setup-typesense` patches the
    optional sortable field before new document writes.
 2. Run `uv run --no-sync crawler backfill-typesense` to stamp the field onto
    every authoritative posting.
-3. Run
-   `uv run --no-sync crawler reconcile --repair --full --fresh-cycle --target typesense`.
-   `candidate_id_sort` is part of the reconciliation payload fingerprint, so a
-   missing or mismatched value is payload drift and a successful fresh full
-   cycle proves coverage against authoritative Postgres.
-4. Only after both commands succeed, set the web deployment variable
-   `TYPESENSE_STABLE_CANDIDATE_ORDER_READY=1` and deploy the web reader.
+3. After the benchmark is reviewed, run the proof and pass its artifact digest:
 
-Before activation, the existing notification reader continues using its legacy
-`first_seen_at DESC` order so deploying the producer foundation cannot interrupt
-current notifications. AF-2 extraction must set `requireStableOrder: true`; the
-server then refuses the read unless the variable is exactly `1`. Once activated,
-newest-first reads use the stable second sort key and reject returned hits whose
-`candidate_id_sort` is missing or does not equal `id`. Ordinary interactive
-watchlist ordering is unchanged. If a later reconciliation finds drift, disable
-the variable before investigating; AF-2 extraction and any runtime consumer
-must not silently use legacy insertion order.
+   ```bash
+   uv run --no-sync crawler reconcile \
+     --repair --full --fresh-cycle --target typesense \
+     --candidate-order-benchmark-sha256 <reviewed-artifact-sha256>
+   ```
+
+   `candidate_order_key` is part of the reconciliation payload fingerprint, so
+   a missing or mismatched value is payload drift. Only a successful, fresh,
+   full 256-partition repair with zero unresolved rows emits a receipt. The
+   receipt binds the key/schema versions, durable run UUID and completion time,
+   authoritative checked count, partition count, unresolved count, and reviewed
+   benchmark digest. SIGINT/SIGTERM exits this command with status 130 and emits
+   no receipt; a bare shell success without the receipt is not readiness proof.
+4. Set the emitted value as
+   `TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT` and deploy the web reader. A legacy
+   boolean such as `1`, a partial receipt, or a wrong key version is rejected.
+
+Only callers that explicitly set `requireStableOrder: true` use the second sort
+key. This is the AF-2 extraction contract. Existing notifications and ordinary
+interactive watchlist reads remain on their legacy order even when a valid
+receipt exists, so producer rollout cannot change them. Before any required
+page is fetched, the reader runs the exact eligible filter/window with
+`candidate_order_key(missing_values: first):asc` and requests one hit. It fails
+if that hit lacks a valid paired key, including when the requested page has a
+deep offset. Required reads also reject a malformed, non-canonical, or
+mismatched key on every returned hit; the optional schema field therefore
+cannot silently corrupt a frozen prefix.
+If later reconciliation finds drift or memory headroom changes materially,
+remove the receipt before investigating. Required callers then fail closed.
 
 ```bash
 cd apps/crawler && uv run python ../../scripts/typesense-setup.py         # Idempotent: create + patch
@@ -604,4 +636,4 @@ environment variables:
 | `TYPESENSE_SEARCH_KEY` | Search/read key for web server-side Typesense calls (via tunnel uses `https`) |
 | `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search`-only parent for scoped browser keys, limited to `job_posting`, `company`, `location`, `occupation`, `seniority`, and `technology` |
 | `TYPESENSE_WRITE_KEY` | Watchlist write key (web app) |
-| `TYPESENSE_STABLE_CANDIDATE_ORDER_READY` | Set to `1` only after the stable candidate-order full backfill and fresh full reconciliation succeed |
+| `TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT` | Base64url readiness receipt emitted only after reviewed memory evidence plus a successful fresh/full stable-order reconciliation; boolean flags are rejected |

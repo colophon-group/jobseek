@@ -43,6 +43,7 @@ from src.reconciliation import (
     reconciliation_bucket,
     run_reconciliation,
 )
+from src.typesense_candidate_order import candidate_order_key
 
 
 def _id(prefix: int, suffix: int) -> uuid.UUID:
@@ -238,6 +239,7 @@ def test_reconciliation_cli_defaults_to_bounded_read_only(monkeypatch) -> None:
     assert args.max_partitions == 16
     assert args.start_partition == 0
     assert args.target == "typesense"
+    assert args.candidate_order_benchmark_sha256 is None
 
 
 def test_full_reconciliation_still_requires_explicit_repair(monkeypatch) -> None:
@@ -294,6 +296,26 @@ def test_fresh_cycle_cli_is_explicit(monkeypatch) -> None:
     assert args.full is True
     assert args.fresh_cycle is True
     assert args.target == "typesense"
+
+
+def test_candidate_order_receipt_cli_requires_the_full_proof_shape(monkeypatch) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "crawler",
+            "reconcile",
+            "--repair",
+            "--full",
+            "--candidate-order-benchmark-sha256",
+            "a" * 64,
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args()
+
+    assert exc_info.value.code == 2
 
 
 async def test_fresh_cycle_replaces_midcycle_cursor_at_partition_zero() -> None:
@@ -744,14 +766,14 @@ def test_snapshot_diff_detects_same_id_same_state_payload_drift_separately() -> 
     assert diff.actionable_ids("typesense") == {posting_id}
 
 
-def test_payload_comparison_treats_missing_candidate_sort_id_as_drift() -> None:
+def test_payload_comparison_treats_missing_candidate_order_key_as_drift() -> None:
     posting_id = _id(0xAA, 15)
     local = _typesense_documents_snapshot(
         [
             {
                 "id": str(posting_id),
                 "is_active": True,
-                "candidate_id_sort": str(posting_id),
+                "candidate_order_key": candidate_order_key(posting_id),
             }
         ]
     )

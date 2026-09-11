@@ -25,6 +25,11 @@ import asyncpg
 import structlog
 import typesense
 
+from src.typesense_candidate_order import (
+    CANDIDATE_ORDER_KEY_FIELD,
+    candidate_order_key,
+)
+
 log = structlog.get_logger()
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "apps", "crawler", "data")
@@ -241,7 +246,7 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
     posting_id = str(row["id"])
     doc = {
         "id": posting_id,
-        "candidate_id_sort": posting_id,
+        CANDIDATE_ORDER_KEY_FIELD: candidate_order_key(row["id"]),
         "company_id": company_id,
         "company_name": company_info["name"],
         "company_slug": company_slug,

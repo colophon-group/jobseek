@@ -35,6 +35,10 @@ from src.exporter import (
     _upsert_to_supabase,
     _upsert_to_typesense,
 )
+from src.typesense_candidate_order import (
+    CANDIDATE_ORDER_KEY_FIELD,
+    build_candidate_order_readiness_receipt,
+)
 
 log = structlog.get_logger()
 
@@ -141,7 +145,7 @@ TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
     "experience_max_years",
     "locales",
     "first_seen_at",
-    "candidate_id_sort",
+    CANDIDATE_ORDER_KEY_FIELD,
     "source_url",
 )
 _ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS = frozenset(("locales", "occupation_ids"))
@@ -1062,6 +1066,50 @@ async def _finish_run(
         summary.run_id,
         status,
         error_class,
+    )
+
+
+async def issue_candidate_order_readiness_receipt(
+    local_pool: asyncpg.Pool,
+    summary: RunSummary,
+    *,
+    benchmark_sha256: str,
+) -> str:
+    """Issue activation evidence only from the just-completed durable proof."""
+
+    if (
+        summary.mode != "repair"
+        or summary.target_scope != "typesense"
+        or summary.partitions_completed != PARTITION_COUNT
+        or summary.unresolved != 0
+    ):
+        raise ReconciliationError(
+            "Candidate order readiness requires a fresh full Typesense repair proof"
+        )
+    row = await local_pool.fetchrow(
+        "SELECT completed_at, status, mode, target_scope, partitions_completed, "
+        "checked_local, unresolved FROM cross_store_reconciliation_run WHERE run_id = $1",
+        summary.run_id,
+    )
+    if row is None:
+        raise ReconciliationError("Candidate order reconciliation run is not durable")
+    if (
+        row["status"] != "success"
+        or row["mode"] != "repair"
+        or row["target_scope"] != "typesense"
+        or row["partitions_completed"] != PARTITION_COUNT
+        or row["checked_local"] != summary.checked_local
+        or row["unresolved"] != 0
+        or row["completed_at"] is None
+    ):
+        raise ReconciliationError("Candidate order reconciliation ledger does not prove readiness")
+    return build_candidate_order_readiness_receipt(
+        reconciliation_run_id=summary.run_id,
+        completed_at=row["completed_at"],
+        authoritative_count=row["checked_local"],
+        partitions=row["partitions_completed"],
+        unresolved=row["unresolved"],
+        benchmark_sha256=benchmark_sha256,
     )
 
 
