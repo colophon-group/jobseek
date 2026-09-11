@@ -1,89 +1,132 @@
 # Private Stage A evaluation harness
 
-This directory defines the offline Stage A v2 corpus contract for the AI
-filter. It does not read production, call a model, expose an API, render a UI,
-or claim that a dataset exists. Production collection remains blocked until
-the named privacy/licensing/access/retention owners and query-ordering policy
-are approved.
+This directory records the long-lived delivery plan and implements its offline
+artifact gates. It does not read production, call a model, expose an API, build
+an annotation UI, or claim that a dataset exists. Production extraction stays
+blocked until the privacy, access, licensing, retention, and feed-ordering
+owners approve it.
 
-There is intentionally no v1 migration path. No v1 corpus was put into use, so
-the unused schema is hard-cut to v2 instead of carrying compatibility code.
+There is intentionally no v1 migration path. The unused format is hard-cut to
+v2 rather than carried as compatibility code.
 
-## Fixed corpus shape
+## Delivery plan and prerequisites
 
-- 20 de-identified production filter snapshots. Only a digest of the source
-  filter and a generalized context are retained; user, account, watchlist,
-  source URL, free-text filter values, and raw production identifiers are not.
-- 25 prompt/feed bundles, eight frozen postings each: 200 prompt/posting pairs.
-- Exactly 15 `production_shaped` bundles (120 pairs) and 10 `challenge` bundles
-  (80 pairs). Every filter is used once and exactly five are used a second time.
-- Prompts are `agent_synthetic`. Every prompt records pseudonymous author,
-  agent role, model, model version, reasoning effort, and task-prompt digest.
-  Cohort and persona remain separate fields.
-- Every pair records evidence condition and ambiguity separately. All 200 pairs
-  receive exactly two blind annotations from distinct annotators.
-- Every label disagreement, ambiguous pair, and policy-boundary pair is
-  adjudicated. Prompt authors, annotators, adjudicators, the approving final
-  critic, and the human audit reviewer are globally separate roles.
-- Target-model predictions and outputs are forbidden from every input schema.
+Before collection, record the approved purpose and retention window, the
+operator allowed to run the one-off extraction, the production collection
+snapshot, the AF-1 compiler version, the exact 30-day `[windowStart,cutoff)`
+window, and the stable `first_seen_at DESC, candidate_id ASC` order. Extraction
+must produce only de-identified generalized context and a per-run
+`hmac-sha256-v1` source-filter fingerprint. The HMAC key is never retained.
 
-Posting content is normalized with production `classifier-input-v1` /
-`classifier-input-normalizer-v4`; soft queries use the AF-1 v1 normalizer.
-Content identities and manifests use deterministic domain-separated SHA-256
-digests. Validation errors expose only logical paths and fixed rule codes.
+The immutable artifact graph is:
 
-## Agent calibration and human feedback
+```text
+detached calibration input -> approved calibration result
+                            -> pre-annotation freeze
+                            -> 12-card prompt feedback
+                            -> annotation WIP + final critic
+                            -> silver freeze
+                            -> derived 32-pair audit
+                            -> human feedback
+                            -> gold freeze
+```
 
-The fleet is tuned on a disposable, detached calibration artifact before the
-200-pair corpus is labelled. The artifact contains 24–32 synthetic prompt and
-normalized-posting examples, never model IDs, settings, outputs, or target
-predictions. It stays outside the corpus; only its approved digest is pinned in
-WIP, silver, and gold files.
+Every arrow is a digest pin. The calibration-result digest binds the human
+decisions and the selected model, version, reasoning effort, and task-prompt
+digest for each of four roles: prompt author, annotator, adjudicator, and final
+critic. Every later agent output references the selected role-matching
+`configId`; drift is rejected. The result must cover exactly the example IDs in
+the displayed, digest-pinned detached calibration artifact.
 
-Human review uses three static Markdown packets, not an application:
+## Fixed corpus and feed provenance
 
-1. `renderStageACalibrationPacket`: 24–32 detached examples with
-   accept/reject/unclear checkboxes. Use this to spot-check candidate model and
-   reasoning-effort combinations before choosing the fleet configuration.
-2. `renderStageAPromptReviewPacket`: exactly 12 prompt cards containing the
-   generalized filter context, prompt, three feed titles, and
-   keep/revise/reject. It omits model/provenance data and private filter values.
-3. `renderStageALabelAuditPacket`: at most 32 digest-pinned silver pairs with
-   prompt and normalized posting plus accept/reject/unclear. Agent labels,
-   adjudications, and provenance are hidden so the audit remains blind.
+- 20 distinct de-identified source filters and 25 prompt/feed bundles.
+- The 15 production-shaped bundles consume 15 distinct filters once. The ten
+  challenge bundles consume the other five filters exactly twice. The cohort
+  filter sets are disjoint.
+- Every bundle freezes eight postings, for 200 pairs total. Positions remain
+  `0..7`; production uses source ranks `0..7`; challenge ranks remain strictly
+  increasing. Timestamps and candidate IDs must preserve the approved source
+  order. Content and source-snapshot identities detect later drift.
+- Both cohorts cover every prompt locale, at least five personas, and all
+  evidence conditions. Every persona appears at least twice overall.
+- Target-model predictions and outputs are forbidden from every artifact and
+  from the target-input loader.
 
-Untrusted prompt and posting text is placed in collision-safe Markdown fences;
-line endings are deterministic. Feedback is recorded by stable ID. If useful
-feedback cannot fit these bounded packets, the run fails and is recalibrated;
-we do not build an annotation UI, database, auth surface, or workflow engine.
+Prompt review happens before annotation. Its 12 cards are derived from the
+pre-annotation digest and must cover both cohorts, all four prompt locales, and
+all seven personas. Silver cannot be produced unless all 12 decisions are
+`keep` and the packet is explicitly approved. A revise or reject decision
+requires a new pre-annotation freeze and a new review digest.
 
-## Lifecycle
+Every pair receives two blind annotations. Each annotation records label,
+ambiguity, rationale code, and evidence references. Label disagreement,
+ambiguity disagreement, either annotator marking ambiguity, or a policy
+boundary requires a third-role adjudication linked to both annotation IDs.
+Evidence condition and ambiguity remain separate: a policy boundary does not
+force the adjudicator to call the item ambiguous.
 
-1. `validateStageAWip` enforces the complete shape, references, normalization,
-   provenance, coverage split, annotation/adjudication rules, and role
-   separation.
-2. `freezeStageASilver` derives an immutable `agent_adjudicated_silver`
-   manifest. Each row contains its derived silver label and annotation or
-   adjudication provenance. The calibration digest must match an external pin.
-3. A human precommits `ai-filter-stage-a-human-audit-policy-v2`, binding one to
-   32 pair IDs to the silver digest. The policy digest is stored separately.
-4. `promoteStageAGold` requires the exact silver, calibration, and policy pins;
-   complete feedback for every precommitted ID; explicit approval; and an
-   independent reviewer. Human corrections and confirmations are retained as
-   per-row provenance in immutable `human_audited_gold`.
-5. `loadStageATargetInputs` accepts gold only and returns exactly
-   `{ pairId, query, classifierInput }`. `loadStageAScoringLabels` loads labels
-   separately after gold exists. Reports keep production-shaped and challenge
-   cohorts separate.
+## Agent fleet tuning and quality gates
 
-## Private storage
+Use a small detached 24–32 example calibration packet to spot-check candidate
+model and reasoning-effort combinations. Select one locked configuration per
+role only after the human decisions are recorded. During delivery, sample each
+role's output for schema compliance and reasoning quality; if the sample is
+poor, discard the run, recalibrate, and create new digests. Do not patch labels
+by hand to make quotas pass.
 
-`AI_FILTER_EVAL_DATA_ROOT` must name an existing absolute, process-owned,
+Prompt authors, annotators, adjudicators, and the final critic have globally
+separate actor sets. The two annotators are distinct on every pair. Human
+reviewer IDs may not be agent actor IDs. The final critic must approve the full
+WIP before silver and its approval pins the complete reviewable WIP digest, so
+it cannot be replayed after labels or evidence change.
+
+The audit selection rule and seed are frozen before labels, but pair IDs are
+derived only after the silver digest exists. Classification precedence is:
+
+1. ambiguous or policy boundary;
+2. remaining adjudicated disagreement;
+3. clear agreement.
+
+The audit includes every item in the first two categories, up to eight in each.
+More than eight in either category fails the fleet-quality gate and triggers a
+rerun. It then takes up to 16 cohort-stratified agreements and deterministically
+backfills unused disagreement/ambiguity capacity with more agreements to reach
+32. No operator chooses convenient pairs. Complete, resolved, explicitly
+approved feedback for all 32 is required for gold.
+
+## Minimal human presentation
+
+Human feedback uses exactly three static Markdown packets:
+
+1. `renderStageACalibrationPacket` — 24–32 detached prompt/posting examples,
+   with accept/reject/unclear choices.
+2. `renderStageAPromptReviewPacket` — exactly 12 pre-annotation prompt cards,
+   each with generalized context, prompt, three feed titles, and
+   keep/revise/reject choices.
+3. `renderStageALabelAuditPacket` — exactly 32 digest-derived prompt/posting
+   pairs, with accept/reject/unclear choices. Agent labels, ambiguity,
+   adjudications, configurations, and provenance stay hidden.
+
+The packets are intentionally compact and reviewable in one sitting. If useful
+feedback cannot fit them, the run is rejected; the remedy is not a UI, database,
+auth surface, or workflow engine.
+
+## Private storage and use
+
+Posting content uses production `classifier-input-v1` /
+`classifier-input-normalizer-v4`; queries use the AF-1 v1 normalizer. Untrusted
+text is put in collision-safe Markdown fences. JSON is canonical and digests
+are domain-separated SHA-256.
+
+`AI_FILTER_EVAL_DATA_ROOT` must be an existing absolute, process-owned,
 non-symlink directory with no group/world permissions. Files are single-link,
-regular, bounded, canonical UTF-8 JSON and are published once without
-overwrite. Nested paths, traversal, symlinks, duplicate JSON keys, unsafe
-repository locations, and changing roots are rejected.
+regular, bounded canonical UTF-8 JSON and are published once without overwrite.
+Inside the repository, only `apps/web/.private/ai-filter-evaluation/` is
+allowed, and it is gitignored. Corpus data must never enter Git, CI artifacts,
+logs, screenshots, or public datasets.
 
-Inside this repository the only allowed root is
-`apps/web/.private/ai-filter-evaluation/`; it is gitignored. Real corpus data
-must never enter Git, CI artifacts, logs, screenshots, or public datasets.
+Only gold is loadable for evaluation. `loadStageATargetInputs` returns exactly
+`{ pairId, query, classifierInput }`; scoring labels load separately. Reports
+keep production-shaped and challenge cohorts separate and suppress small label
+cells.

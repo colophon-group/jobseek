@@ -10,6 +10,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isProxy } from "node:util/types";
 import {
   CLASSIFIER_DESCRIPTION_CODE_POINT_LIMIT,
   CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT,
@@ -30,6 +31,12 @@ import {
 export const STAGE_A_FILTER_SCHEMA_VERSION = "ai-filter-stage-a-filter-v2" as const;
 export const STAGE_A_BUNDLE_SCHEMA_VERSION = "ai-filter-stage-a-bundle-v2" as const;
 export const STAGE_A_PAIR_SCHEMA_VERSION = "ai-filter-stage-a-pair-v2" as const;
+export const STAGE_A_PRE_ANNOTATION_SCHEMA_VERSION =
+  "ai-filter-stage-a-pre-annotation-v2" as const;
+export const STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION =
+  "ai-filter-stage-a-calibration-result-v2" as const;
+export const STAGE_A_PROMPT_REVIEW_FEEDBACK_SCHEMA_VERSION =
+  "ai-filter-stage-a-prompt-review-feedback-v2" as const;
 export const STAGE_A_WIP_SCHEMA_VERSION = "ai-filter-stage-a-wip-v2" as const;
 export const STAGE_A_SILVER_MANIFEST_SCHEMA_VERSION =
   "ai-filter-stage-a-silver-manifest-v2" as const;
@@ -50,7 +57,10 @@ export const STAGE_A_REQUIRED_PAIRS_PER_BUNDLE = 8;
 export const STAGE_A_REQUIRED_PRODUCTION_SHAPED_BUNDLES = 15;
 export const STAGE_A_REQUIRED_CHALLENGE_BUNDLES = 10;
 export const STAGE_A_MAX_HUMAN_AUDIT_PAIRS = 32;
+export const STAGE_A_HUMAN_AUDIT_PAIRS = 32;
 export const STAGE_A_REPORT_MIN_CELL_SIZE = 10;
+export const STAGE_A_CALIBRATION_MIN_EXAMPLES = 24;
+export const STAGE_A_CALIBRATION_MAX_EXAMPLES = 32;
 export const STAGE_A_REPOSITORY_STAGING_PATH =
   "apps/web/.private/ai-filter-evaluation" as const;
 
@@ -79,6 +89,15 @@ const EVIDENCE_CONDITIONS = [
 ] as const;
 const LABELS = ["accept", "reject"] as const;
 const REASONING_EFFORTS = ["low", "medium", "high", "xhigh", "max", "ultra"] as const;
+const AGENT_ROLES = ["prompt_author", "annotator", "adjudicator", "final_critic"] as const;
+const RATIONALE_CODES = [
+  "direct_evidence",
+  "missing_evidence",
+  "contradiction",
+  "policy_interpretation",
+  "prompt_injection_ignored",
+] as const;
+const EVIDENCE_REFS = ["title", "company_name", "description_text", "absence_in_snapshot"] as const;
 const GENERALIZED_CONTEXT_FIELDS = [
   "companyScope",
   "locationScope",
@@ -98,6 +117,13 @@ export type StageACohort = (typeof COHORTS)[number];
 export type StageAPersona = (typeof PERSONAS)[number];
 export type StageAEvidenceCondition = (typeof EVIDENCE_CONDITIONS)[number];
 export type StageALabel = (typeof LABELS)[number];
+export type StageAAgentRole = (typeof AGENT_ROLES)[number];
+export type StageARationaleCode = (typeof RATIONALE_CODES)[number];
+export type StageAEvidenceRef = (typeof EVIDENCE_REFS)[number];
+export type StageAAuditStratum =
+  | "agreement_clear"
+  | "adjudicated_disagreement"
+  | "adjudicated_ambiguous_policy";
 
 export type StageAGeneralizedFilterContextV2 = {
   readonly companyScope: "any" | "selected";
@@ -117,18 +143,17 @@ export type StageAFilterV2 = {
   readonly schemaVersion: typeof STAGE_A_FILTER_SCHEMA_VERSION;
   readonly filterId: string;
   readonly source: "production_deidentified";
-  readonly sourceFilterDigest: string;
+  readonly sourceFilterFingerprint: Readonly<{
+    scheme: "hmac-sha256-v1";
+    value: string;
+  }>;
   readonly generalizedContext: StageAGeneralizedFilterContextV2;
 };
 
 export type StageAPromptProvenanceV2 = {
   readonly origin: "agent_synthetic";
   readonly authorId: string;
-  readonly agentRole: string;
-  readonly model: string;
-  readonly modelVersion: string;
-  readonly reasoningEffort: (typeof REASONING_EFFORTS)[number];
-  readonly taskPromptDigest: string;
+  readonly configId: string;
 };
 
 export type StageABundleV2 = {
@@ -137,6 +162,7 @@ export type StageABundleV2 = {
   readonly filterId: string;
   readonly cohort: StageACohort;
   readonly persona: StageAPersona;
+  readonly promptLocale: StageALocale;
   readonly softQuery: string;
   readonly promptProvenance: StageAPromptProvenanceV2;
 };
@@ -144,22 +170,33 @@ export type StageABundleV2 = {
 export type StageAAnnotationV2 = {
   readonly annotationId: string;
   readonly actorId: string;
+  readonly configId: string;
   readonly label: StageALabel;
+  readonly ambiguity: boolean;
+  readonly rationaleCode: StageARationaleCode;
+  readonly evidenceRefs: readonly StageAEvidenceRef[];
 };
 
 export type StageAAdjudicationV2 = {
   readonly adjudicationId: string;
   readonly actorId: string;
+  readonly configId: string;
+  readonly annotationIds: readonly [string, string];
   readonly label: StageALabel;
+  readonly ambiguity: boolean;
+  readonly rationaleCode: StageARationaleCode;
 };
 
 export type StageAPairV2 = {
   readonly schemaVersion: typeof STAGE_A_PAIR_SCHEMA_VERSION;
   readonly pairId: string;
   readonly bundleId: string;
+  readonly position: number;
+  readonly sourceRank: number;
+  readonly postingFirstSeenAt: string;
+  readonly sourceSnapshotIdentity: string;
   readonly locale: StageALocale;
   readonly evidenceCondition: StageAEvidenceCondition;
-  readonly ambiguity: boolean;
   readonly classifierSource: ClassifierInputSource;
   readonly contentIdentity: string;
   readonly annotations: readonly [StageAAnnotationV2, StageAAnnotationV2];
@@ -169,7 +206,103 @@ export type StageAPairV2 = {
 export type StageAFinalCriticV2 = {
   readonly reviewId: string;
   readonly actorId: string;
+  readonly configId: string;
+  readonly reviewedWipDigest: string;
   readonly approved: true;
+};
+
+export type StageAAgentConfigV2 = {
+  readonly configId: string;
+  readonly role: StageAAgentRole;
+  readonly model: string;
+  readonly modelVersion: string;
+  readonly reasoningEffort: (typeof REASONING_EFFORTS)[number];
+  readonly taskPromptDigest: string;
+};
+
+export type StageACalibrationArtifactV2 = Readonly<{
+  schemaVersion: "ai-filter-stage-a-calibration-v2";
+  calibrationId: string;
+  examples: readonly Readonly<{
+    calibrationExampleId: string;
+    softQuery: string;
+    classifierSource: ClassifierInputSource;
+    contentIdentity: string;
+  }>[];
+}>;
+
+export type StageAValidatedCalibrationArtifactV2 = Readonly<{
+  calibrationId: string;
+  examples: readonly Readonly<{
+    calibrationExampleId: string;
+    softQuery: string;
+    classifierInput: ClassifierInputV1;
+  }>[];
+}>;
+
+export type StageACalibrationResultV2 = {
+  readonly schemaVersion: typeof STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION;
+  readonly calibrationId: string;
+  readonly calibrationInputDigest: string;
+  readonly humanReview: Readonly<{
+    reviewId: string;
+    reviewerId: string;
+    approved: true;
+    decisions: readonly Readonly<{
+      calibrationExampleId: string;
+      judgment: StageALabel;
+    }>[];
+  }>;
+  readonly agentConfigs: readonly StageAAgentConfigV2[];
+};
+
+export type StageASelectionPolicyV2 = {
+  readonly schemaVersion: "ai-filter-stage-a-selection-policy-v2";
+  readonly af1ContractVersion: 1;
+  readonly compilerVersion: string;
+  readonly collectionSnapshotId: string;
+  readonly collectionSnapshotDigest: string;
+  readonly windowStart: string;
+  readonly cutoff: string;
+  readonly windowBoundary: "[windowStart,cutoff)";
+  readonly order: "first_seen_at_desc_candidate_id_asc";
+  readonly productionSelection: "first_eight";
+  readonly challengeSelection: "frozen_source_rank";
+};
+
+export type StageAReviewPlanV2 = {
+  readonly promptReviewSeed: string;
+  readonly auditSeed: string;
+  readonly auditRule: "bounded-16-8-8-v2";
+  readonly auditSize: typeof STAGE_A_HUMAN_AUDIT_PAIRS;
+};
+
+export type StageAPreAnnotationPairV2 = Omit<StageAPairV2, "annotations" | "adjudication">;
+
+export type StageAPreAnnotationV2 = {
+  readonly schemaVersion: typeof STAGE_A_PRE_ANNOTATION_SCHEMA_VERSION;
+  readonly datasetId: string;
+  readonly classifierInputSchemaVersion: typeof CLASSIFIER_INPUT_SCHEMA_VERSION;
+  readonly classifierInputNormalizerVersion: typeof CLASSIFIER_INPUT_NORMALIZER_VERSION;
+  readonly softQueryNormalizerVersion: typeof AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION;
+  readonly calibrationResultDigest: string;
+  readonly selectionPolicy: StageASelectionPolicyV2;
+  readonly reviewPlan: StageAReviewPlanV2;
+  readonly filters: readonly StageAFilterV2[];
+  readonly bundles: readonly StageABundleV2[];
+  readonly pairs: readonly StageAPreAnnotationPairV2[];
+};
+
+export type StageAPromptReviewFeedbackV2 = {
+  readonly schemaVersion: typeof STAGE_A_PROMPT_REVIEW_FEEDBACK_SCHEMA_VERSION;
+  readonly reviewId: string;
+  readonly reviewerId: string;
+  readonly preAnnotationDigest: string;
+  readonly approved: boolean;
+  readonly decisions: readonly Readonly<{
+    bundleId: string;
+    decision: "keep" | "revise" | "reject";
+  }>[];
 };
 
 export type StageAWipV2 = {
@@ -178,12 +311,16 @@ export type StageAWipV2 = {
   readonly classifierInputSchemaVersion: typeof CLASSIFIER_INPUT_SCHEMA_VERSION;
   readonly classifierInputNormalizerVersion: typeof CLASSIFIER_INPUT_NORMALIZER_VERSION;
   readonly softQueryNormalizerVersion: typeof AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION;
-  readonly calibrationDigest: string;
+  readonly calibrationResultDigest: string;
+  readonly preAnnotationDigest: string;
+  readonly promptReviewFeedbackDigest: string;
   readonly filters: readonly StageAFilterV2[];
   readonly bundles: readonly StageABundleV2[];
   readonly pairs: readonly StageAPairV2[];
   readonly finalCritic: StageAFinalCriticV2;
 };
+
+export type StageAWipReviewPayloadV2 = Omit<StageAWipV2, "finalCritic">;
 
 export type StageASilverProvenanceV2 = {
   readonly method: "agreement" | "adjudication";
@@ -194,6 +331,7 @@ export type StageASilverProvenanceV2 = {
 export type StageASilverPairV2 = StageAPairV2 & {
   readonly classifierInput: ClassifierInputV1;
   readonly silverLabel: StageALabel;
+  readonly finalAmbiguity: boolean;
   readonly silverProvenance: StageASilverProvenanceV2;
 };
 
@@ -204,8 +342,12 @@ export type StageASilverManifestV2 = {
   readonly classifierInputSchemaVersion: typeof CLASSIFIER_INPUT_SCHEMA_VERSION;
   readonly classifierInputNormalizerVersion: typeof CLASSIFIER_INPUT_NORMALIZER_VERSION;
   readonly softQueryNormalizerVersion: typeof AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION;
-  readonly calibrationDigest: string;
+  readonly calibrationResultDigest: string;
+  readonly preAnnotationDigest: string;
+  readonly promptReviewFeedbackDigest: string;
   readonly sourceWipDigest: string;
+  readonly selectionPolicy: StageASelectionPolicyV2;
+  readonly reviewPlan: StageAReviewPlanV2;
   readonly filters: readonly StageAFilterV2[];
   readonly bundles: readonly StageABundleV2[];
   readonly pairs: readonly StageASilverPairV2[];
@@ -221,6 +363,8 @@ export type StageASilverFreezeV2 = {
 export type StageAHumanAuditPolicyV2 = {
   readonly schemaVersion: typeof STAGE_A_HUMAN_AUDIT_POLICY_SCHEMA_VERSION;
   readonly sourceSilverDigest: string;
+  readonly rule: StageAReviewPlanV2["auditRule"];
+  readonly seed: string;
   readonly auditPairIds: readonly string[];
 };
 
@@ -240,9 +384,10 @@ export type StageAHumanFeedbackV2 = {
 };
 
 export type StageAGoldProvenanceV2 = {
-  readonly source: "silver" | "human_correction";
+  readonly source: "agent_agreed" | "agent_adjudicated" | "human_reviewed";
   readonly sourcePairId: string;
   readonly humanFeedbackId: string | null;
+  readonly corrected: boolean;
 };
 
 export type StageAGoldPairV2 = StageASilverPairV2 & {
@@ -261,7 +406,11 @@ export type StageAGoldManifestV2 = {
   readonly classifierInputSchemaVersion: typeof CLASSIFIER_INPUT_SCHEMA_VERSION;
   readonly classifierInputNormalizerVersion: typeof CLASSIFIER_INPUT_NORMALIZER_VERSION;
   readonly softQueryNormalizerVersion: typeof AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION;
-  readonly calibrationDigest: string;
+  readonly calibrationResultDigest: string;
+  readonly preAnnotationDigest: string;
+  readonly promptReviewFeedbackDigest: string;
+  readonly selectionPolicy: StageASelectionPolicyV2;
+  readonly reviewPlan: StageAReviewPlanV2;
   readonly filters: readonly StageAFilterV2[];
   readonly bundles: readonly StageABundleV2[];
   readonly pairs: readonly StageAGoldPairV2[];
@@ -515,33 +664,47 @@ function validateLabel(value: unknown, pathValue: string): StageALabel {
 }
 
 function validateAnnotation(input: unknown, pathValue: string): StageAAnnotationV2 {
-  const record = snapshotRecord(input, pathValue, ["annotationId", "actorId", "label"]);
+  const record = snapshotRecord(input, pathValue, [
+    "annotationId", "actorId", "configId", "label", "ambiguity", "rationaleCode", "evidenceRefs",
+  ]);
+  const evidenceRefs = snapshotArray(required(record, "evidenceRefs", `${pathValue}.evidenceRefs`), `${pathValue}.evidenceRefs`, 1, 4)
+    .map((value, index) => {
+      if (typeof value !== "string" || !EVIDENCE_REFS.includes(value as StageAEvidenceRef)) fail(`${pathValue}.evidenceRefs[${index}]`, "evidence_ref_required");
+      return value as StageAEvidenceRef;
+    })
+    .sort(rawStringCompare);
+  assertUnique(evidenceRefs, `${pathValue}.evidenceRefs`, "unique_evidence_refs_required");
   return Object.freeze({
-    annotationId: validateEvalId(
-      requiredString(record, "annotationId", `${pathValue}.annotationId`, 68),
-      `${pathValue}.annotationId`,
-    ),
-    actorId: validateEvalId(
-      requiredString(record, "actorId", `${pathValue}.actorId`, 68),
-      `${pathValue}.actorId`,
-    ),
+    annotationId: evalIdField(record, "annotationId", `${pathValue}.annotationId`),
+    actorId: evalIdField(record, "actorId", `${pathValue}.actorId`),
+    configId: evalIdField(record, "configId", `${pathValue}.configId`),
     label: validateLabel(required(record, "label", `${pathValue}.label`), `${pathValue}.label`),
+    ambiguity: requiredBoolean(record, "ambiguity", `${pathValue}.ambiguity`),
+    rationaleCode: requiredEnum(record, "rationaleCode", `${pathValue}.rationaleCode`, RATIONALE_CODES),
+    evidenceRefs: Object.freeze(evidenceRefs),
   });
 }
 
 function validateAdjudication(input: unknown, pathValue: string): StageAAdjudicationV2 | null {
   if (input === null) return null;
-  const record = snapshotRecord(input, pathValue, ["adjudicationId", "actorId", "label"]);
+  const record = snapshotRecord(input, pathValue, [
+    "adjudicationId", "actorId", "configId", "annotationIds", "label", "ambiguity", "rationaleCode",
+  ]);
+  const annotationIds = snapshotArray(required(record, "annotationIds", `${pathValue}.annotationIds`), `${pathValue}.annotationIds`, 2, 2)
+    .map((value, index) => {
+      if (typeof value !== "string") fail(`${pathValue}.annotationIds[${index}]`, "string_required");
+      return validateEvalId(value, `${pathValue}.annotationIds[${index}]`);
+    })
+    .sort(rawStringCompare) as [string, string];
+  assertUnique(annotationIds, `${pathValue}.annotationIds`, "unique_annotation_ids_required");
   return Object.freeze({
-    adjudicationId: validateEvalId(
-      requiredString(record, "adjudicationId", `${pathValue}.adjudicationId`, 68),
-      `${pathValue}.adjudicationId`,
-    ),
-    actorId: validateEvalId(
-      requiredString(record, "actorId", `${pathValue}.actorId`, 68),
-      `${pathValue}.actorId`,
-    ),
+    adjudicationId: evalIdField(record, "adjudicationId", `${pathValue}.adjudicationId`),
+    actorId: evalIdField(record, "actorId", `${pathValue}.actorId`),
+    configId: evalIdField(record, "configId", `${pathValue}.configId`),
+    annotationIds: Object.freeze(annotationIds),
     label: validateLabel(required(record, "label", `${pathValue}.label`), `${pathValue}.label`),
+    ambiguity: requiredBoolean(record, "ambiguity", `${pathValue}.ambiguity`),
+    rationaleCode: requiredEnum(record, "rationaleCode", `${pathValue}.rationaleCode`, RATIONALE_CODES),
   });
 }
 
@@ -685,15 +848,19 @@ function validateFilter(input: unknown, pathValue: string): StageAFilterV2 {
     "schemaVersion",
     "filterId",
     "source",
-    "sourceFilterDigest",
+    "sourceFilterFingerprint",
     "generalizedContext",
   ]);
+  const fingerprintRecord = snapshotRecord(required(record, "sourceFilterFingerprint", `${pathValue}.sourceFilterFingerprint`), `${pathValue}.sourceFilterFingerprint`, ["scheme", "value"]);
   requiredLiteral(record, "schemaVersion", `${pathValue}.schemaVersion`, STAGE_A_FILTER_SCHEMA_VERSION);
   return Object.freeze({
     schemaVersion: STAGE_A_FILTER_SCHEMA_VERSION,
     filterId: evalIdField(record, "filterId", `${pathValue}.filterId`),
     source: requiredLiteral(record, "source", `${pathValue}.source`, "production_deidentified"),
-    sourceFilterDigest: validateDigest(required(record, "sourceFilterDigest", `${pathValue}.sourceFilterDigest`), `${pathValue}.sourceFilterDigest`),
+    sourceFilterFingerprint: Object.freeze({
+      scheme: requiredLiteral(fingerprintRecord, "scheme", `${pathValue}.sourceFilterFingerprint.scheme`, "hmac-sha256-v1"),
+      value: validateDigest(required(fingerprintRecord, "value", `${pathValue}.sourceFilterFingerprint.value`), `${pathValue}.sourceFilterFingerprint.value`),
+    }),
     generalizedContext: validateGeneralizedContext(required(record, "generalizedContext", `${pathValue}.generalizedContext`), `${pathValue}.generalizedContext`),
   });
 }
@@ -705,20 +872,12 @@ function validatePromptProvenance(
   const record = snapshotRecord(input, pathValue, [
     "origin",
     "authorId",
-    "agentRole",
-    "model",
-    "modelVersion",
-    "reasoningEffort",
-    "taskPromptDigest",
+    "configId",
   ]);
   return Object.freeze({
     origin: requiredLiteral(record, "origin", `${pathValue}.origin`, "agent_synthetic"),
     authorId: evalIdField(record, "authorId", `${pathValue}.authorId`),
-    agentRole: provenanceTokenField(record, "agentRole", `${pathValue}.agentRole`),
-    model: provenanceTokenField(record, "model", `${pathValue}.model`),
-    modelVersion: provenanceTokenField(record, "modelVersion", `${pathValue}.modelVersion`),
-    reasoningEffort: requiredEnum(record, "reasoningEffort", `${pathValue}.reasoningEffort`, REASONING_EFFORTS),
-    taskPromptDigest: validateDigest(required(record, "taskPromptDigest", `${pathValue}.taskPromptDigest`), `${pathValue}.taskPromptDigest`),
+    configId: evalIdField(record, "configId", `${pathValue}.configId`),
   });
 }
 
@@ -729,6 +888,7 @@ function validateBundle(input: unknown, pathValue: string): StageABundleV2 {
     "filterId",
     "cohort",
     "persona",
+    "promptLocale",
     "softQuery",
     "promptProvenance",
   ]);
@@ -739,25 +899,71 @@ function validateBundle(input: unknown, pathValue: string): StageABundleV2 {
     filterId: evalIdField(record, "filterId", `${pathValue}.filterId`),
     cohort: requiredEnum(record, "cohort", `${pathValue}.cohort`, COHORTS),
     persona: requiredEnum(record, "persona", `${pathValue}.persona`, PERSONAS),
+    promptLocale: requiredEnum(record, "promptLocale", `${pathValue}.promptLocale`, LOCALES),
     softQuery: validateSoftQuery(required(record, "softQuery", `${pathValue}.softQuery`), `${pathValue}.softQuery`),
     promptProvenance: validatePromptProvenance(required(record, "promptProvenance", `${pathValue}.promptProvenance`), `${pathValue}.promptProvenance`),
   });
 }
 
-function validatePair(input: unknown, pathValue: string): StageAPairV2 {
-  const record = snapshotRecord(input, pathValue, [
+function requiredInteger(record: Record<string, unknown>, field: string, pathValue: string, minimum: number, maximum: number): number {
+  const value = required(record, field, pathValue);
+  if (!Number.isSafeInteger(value) || (value as number) < minimum || (value as number) > maximum) fail(pathValue, "bounded_integer_required");
+  return value as number;
+}
+
+function validateWholeSecondInstant(value: unknown, pathValue: string): string {
+  if (typeof value !== "string") fail(pathValue, "canonical_instant_required");
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value || parsed.getUTCMilliseconds() !== 0) fail(pathValue, "canonical_instant_required");
+  return value;
+}
+
+const PAIR_BASE_FIELDS = [
     "schemaVersion",
     "pairId",
     "bundleId",
+    "position",
+    "sourceRank",
+    "postingFirstSeenAt",
+    "sourceSnapshotIdentity",
     "locale",
     "evidenceCondition",
-    "ambiguity",
     "classifierSource",
     "contentIdentity",
+] as const;
+
+function validatePairBase(record: Record<string, unknown>, pathValue: string): StageAPreAnnotationPairV2 {
+  requiredLiteral(record, "schemaVersion", `${pathValue}.schemaVersion`, STAGE_A_PAIR_SCHEMA_VERSION);
+  const classifierSource = validateClassifierSource(required(record, "classifierSource", `${pathValue}.classifierSource`), `${pathValue}.classifierSource`);
+  const normalized = normalizeClassifierSource(classifierSource, `${pathValue}.classifierSource`);
+  const contentIdentity = validateDigest(required(record, "contentIdentity", `${pathValue}.contentIdentity`), `${pathValue}.contentIdentity`);
+  if (normalized.contentIdentity !== contentIdentity) fail(`${pathValue}.contentIdentity`, "content_identity_mismatch");
+  return Object.freeze({
+    schemaVersion: STAGE_A_PAIR_SCHEMA_VERSION,
+    pairId: evalIdField(record, "pairId", `${pathValue}.pairId`),
+    bundleId: evalIdField(record, "bundleId", `${pathValue}.bundleId`),
+    position: requiredInteger(record, "position", `${pathValue}.position`, 0, 7),
+    sourceRank: requiredInteger(record, "sourceRank", `${pathValue}.sourceRank`, 0, 1_000_000),
+    postingFirstSeenAt: validateWholeSecondInstant(required(record, "postingFirstSeenAt", `${pathValue}.postingFirstSeenAt`), `${pathValue}.postingFirstSeenAt`),
+    sourceSnapshotIdentity: validateDigest(required(record, "sourceSnapshotIdentity", `${pathValue}.sourceSnapshotIdentity`), `${pathValue}.sourceSnapshotIdentity`),
+    locale: requiredEnum(record, "locale", `${pathValue}.locale`, LOCALES),
+    evidenceCondition: requiredEnum(record, "evidenceCondition", `${pathValue}.evidenceCondition`, EVIDENCE_CONDITIONS),
+    classifierSource,
+    contentIdentity,
+  });
+}
+
+function validatePreAnnotationPair(input: unknown, pathValue: string): StageAPreAnnotationPairV2 {
+  return validatePairBase(snapshotRecord(input, pathValue, PAIR_BASE_FIELDS), pathValue);
+}
+
+function validatePair(input: unknown, pathValue: string): StageAPairV2 {
+  const record = snapshotRecord(input, pathValue, [
+    ...PAIR_BASE_FIELDS,
     "annotations",
     "adjudication",
   ]);
-  requiredLiteral(record, "schemaVersion", `${pathValue}.schemaVersion`, STAGE_A_PAIR_SCHEMA_VERSION);
+  const base = validatePairBase(record, pathValue);
   const annotations = snapshotArray(required(record, "annotations", `${pathValue}.annotations`), `${pathValue}.annotations`, 2, 2)
     .map((annotation, index) => validateAnnotation(annotation, `${pathValue}.annotations[${index}]`))
     .sort((left, right) => rawStringCompare(left.annotationId, right.annotationId)) as [StageAAnnotationV2, StageAAnnotationV2];
@@ -767,47 +973,415 @@ function validatePair(input: unknown, pathValue: string): StageAPairV2 {
   if (annotations[0].actorId === annotations[1].actorId) {
     fail(`${pathValue}.annotations`, "blind_distinct_annotators_required");
   }
-  const classifierSource = validateClassifierSource(required(record, "classifierSource", `${pathValue}.classifierSource`), `${pathValue}.classifierSource`);
-  const normalized = normalizeClassifierSource(classifierSource, `${pathValue}.classifierSource`);
-  const contentIdentity = validateDigest(required(record, "contentIdentity", `${pathValue}.contentIdentity`), `${pathValue}.contentIdentity`);
-  if (normalized.contentIdentity !== contentIdentity) {
-    fail(`${pathValue}.contentIdentity`, "content_identity_mismatch");
-  }
-  const evidenceCondition = requiredEnum(record, "evidenceCondition", `${pathValue}.evidenceCondition`, EVIDENCE_CONDITIONS);
-  const ambiguity = requiredBoolean(record, "ambiguity", `${pathValue}.ambiguity`);
   const adjudication = validateAdjudication(required(record, "adjudication", `${pathValue}.adjudication`), `${pathValue}.adjudication`);
-  const needsAdjudication = annotations[0].label !== annotations[1].label || ambiguity || evidenceCondition === "policy_boundary";
+  const annotationDisagreement = annotations[0].label !== annotations[1].label || annotations[0].ambiguity !== annotations[1].ambiguity;
+  const needsAdjudication = annotationDisagreement || annotations.some(({ ambiguity }) => ambiguity) || base.evidenceCondition === "policy_boundary";
   if (needsAdjudication !== Boolean(adjudication)) {
     fail(`${pathValue}.adjudication`, needsAdjudication ? "adjudication_required" : "unnecessary_adjudication_forbidden");
   }
   if (adjudication && annotations.some(({ actorId }) => actorId === adjudication.actorId)) {
     fail(`${pathValue}.adjudication`, "independent_adjudicator_required");
   }
+  if (adjudication && canonicalStageAJson(adjudication.annotationIds) !== canonicalStageAJson(annotations.map(({ annotationId }) => annotationId))) {
+    fail(`${pathValue}.adjudication.annotationIds`, "annotation_linkage_required");
+  }
   return Object.freeze({
-    schemaVersion: STAGE_A_PAIR_SCHEMA_VERSION,
-    pairId: evalIdField(record, "pairId", `${pathValue}.pairId`),
-    bundleId: evalIdField(record, "bundleId", `${pathValue}.bundleId`),
-    locale: requiredEnum(record, "locale", `${pathValue}.locale`, LOCALES),
-    evidenceCondition,
-    ambiguity,
-    classifierSource,
-    contentIdentity,
+    ...base,
     annotations: Object.freeze(annotations),
     adjudication,
   });
 }
 
 function validateFinalCritic(input: unknown, pathValue: string): StageAFinalCriticV2 {
-  const record = snapshotRecord(input, pathValue, ["reviewId", "actorId", "approved"]);
+  const record = snapshotRecord(input, pathValue, ["reviewId", "actorId", "configId", "reviewedWipDigest", "approved"]);
   return Object.freeze({
     reviewId: evalIdField(record, "reviewId", `${pathValue}.reviewId`),
     actorId: evalIdField(record, "actorId", `${pathValue}.actorId`),
+    configId: evalIdField(record, "configId", `${pathValue}.configId`),
+    reviewedWipDigest: validateDigest(required(record, "reviewedWipDigest", `${pathValue}.reviewedWipDigest`), `${pathValue}.reviewedWipDigest`),
     approved: requiredLiteral(record, "approved", `${pathValue}.approved`, true),
   });
 }
 
 function assertUnique(values: readonly string[], pathValue: string, rule: string): void {
   if (new Set(values).size !== values.length) fail(pathValue, rule);
+}
+
+export function validateStageACalibrationArtifact(
+  input: unknown,
+): StageAValidatedCalibrationArtifactV2 {
+  const record = snapshotRecord(input, "$calibration", [
+    "schemaVersion",
+    "calibrationId",
+    "examples",
+  ]);
+  requiredLiteral(
+    record,
+    "schemaVersion",
+    "$calibration.schemaVersion",
+    "ai-filter-stage-a-calibration-v2",
+  );
+  const examples = snapshotArray(
+    required(record, "examples", "$calibration.examples"),
+    "$calibration.examples",
+    STAGE_A_CALIBRATION_MIN_EXAMPLES,
+    STAGE_A_CALIBRATION_MAX_EXAMPLES,
+  ).map((inputExample, index) => {
+    const examplePath = `$calibration.examples[${index}]`;
+    const example = snapshotRecord(inputExample, examplePath, [
+      "calibrationExampleId",
+      "softQuery",
+      "classifierSource",
+      "contentIdentity",
+    ]);
+    const classifierSource = validateClassifierSource(
+      required(example, "classifierSource", `${examplePath}.classifierSource`),
+      `${examplePath}.classifierSource`,
+    );
+    const normalized = normalizeClassifierSource(
+      classifierSource,
+      `${examplePath}.classifierSource`,
+    );
+    const contentIdentity = validateDigest(
+      required(example, "contentIdentity", `${examplePath}.contentIdentity`),
+      `${examplePath}.contentIdentity`,
+    );
+    if (contentIdentity !== normalized.contentIdentity) {
+      fail(`${examplePath}.contentIdentity`, "content_identity_mismatch");
+    }
+    return Object.freeze({
+      calibrationExampleId: evalIdField(
+        example,
+        "calibrationExampleId",
+        `${examplePath}.calibrationExampleId`,
+      ),
+      softQuery: validateSoftQuery(
+        required(example, "softQuery", `${examplePath}.softQuery`),
+        `${examplePath}.softQuery`,
+      ),
+      classifierInput: normalized.payload,
+    });
+  }).sort((left, right) => rawStringCompare(left.calibrationExampleId, right.calibrationExampleId));
+  assertUnique(
+    examples.map(({ calibrationExampleId }) => calibrationExampleId),
+    "$calibration.examples",
+    "unique_calibration_example_ids_required",
+  );
+  return Object.freeze({
+    calibrationId: evalIdField(record, "calibrationId", "$calibration.calibrationId"),
+    examples: Object.freeze(examples),
+  });
+}
+
+export function digestStageACalibrationArtifact(input: unknown): string {
+  return domainDigest(
+    "ai-filter-stage-a-calibration-v2",
+    validateStageACalibrationArtifact(input),
+  );
+}
+
+function validateAgentConfig(input: unknown, pathValue: string): StageAAgentConfigV2 {
+  const record = snapshotRecord(input, pathValue, [
+    "configId", "role", "model", "modelVersion", "reasoningEffort", "taskPromptDigest",
+  ]);
+  return Object.freeze({
+    configId: evalIdField(record, "configId", `${pathValue}.configId`),
+    role: requiredEnum(record, "role", `${pathValue}.role`, AGENT_ROLES),
+    model: provenanceTokenField(record, "model", `${pathValue}.model`),
+    modelVersion: provenanceTokenField(record, "modelVersion", `${pathValue}.modelVersion`),
+    reasoningEffort: requiredEnum(record, "reasoningEffort", `${pathValue}.reasoningEffort`, REASONING_EFFORTS),
+    taskPromptDigest: validateDigest(required(record, "taskPromptDigest", `${pathValue}.taskPromptDigest`), `${pathValue}.taskPromptDigest`),
+  });
+}
+
+function normalizeStageACalibrationResult(input: unknown): StageACalibrationResultV2 {
+  const record = snapshotRecord(input, "$calibrationResult", [
+    "schemaVersion", "calibrationId", "calibrationInputDigest", "humanReview", "agentConfigs",
+  ]);
+  requiredLiteral(record, "schemaVersion", "$calibrationResult.schemaVersion", STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION);
+  const reviewRecord = snapshotRecord(required(record, "humanReview", "$calibrationResult.humanReview"), "$calibrationResult.humanReview", ["reviewId", "reviewerId", "approved", "decisions"]);
+  requiredLiteral(reviewRecord, "approved", "$calibrationResult.humanReview.approved", true);
+  const decisions = snapshotArray(required(reviewRecord, "decisions", "$calibrationResult.humanReview.decisions"), "$calibrationResult.humanReview.decisions", 24, 32)
+    .map((inputDecision, index) => {
+      const itemPath = `$calibrationResult.humanReview.decisions[${index}]`;
+      const decision = snapshotRecord(inputDecision, itemPath, ["calibrationExampleId", "judgment"]);
+      return Object.freeze({
+        calibrationExampleId: evalIdField(decision, "calibrationExampleId", `${itemPath}.calibrationExampleId`),
+        judgment: validateLabel(required(decision, "judgment", `${itemPath}.judgment`), `${itemPath}.judgment`),
+      });
+    })
+    .sort((left, right) => rawStringCompare(left.calibrationExampleId, right.calibrationExampleId));
+  assertUnique(decisions.map(({ calibrationExampleId }) => calibrationExampleId), "$calibrationResult.humanReview.decisions", "unique_calibration_decisions_required");
+  const configs = snapshotArray(required(record, "agentConfigs", "$calibrationResult.agentConfigs"), "$calibrationResult.agentConfigs", AGENT_ROLES.length, AGENT_ROLES.length)
+    .map((config, index) => validateAgentConfig(config, `$calibrationResult.agentConfigs[${index}]`))
+    .sort((left, right) => rawStringCompare(left.role, right.role));
+  assertUnique(configs.map(({ configId }) => configId), "$calibrationResult.agentConfigs", "unique_config_ids_required");
+  assertUnique(configs.map(({ role }) => role), "$calibrationResult.agentConfigs", "one_config_per_role_required");
+  if (configs.some(({ role }, index) => role !== [...AGENT_ROLES].sort(rawStringCompare)[index])) fail("$calibrationResult.agentConfigs", "complete_role_configs_required");
+  return Object.freeze({
+    schemaVersion: STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION,
+    calibrationId: evalIdField(record, "calibrationId", "$calibrationResult.calibrationId"),
+    calibrationInputDigest: validateDigest(required(record, "calibrationInputDigest", "$calibrationResult.calibrationInputDigest"), "$calibrationResult.calibrationInputDigest"),
+    humanReview: Object.freeze({
+      reviewId: evalIdField(reviewRecord, "reviewId", "$calibrationResult.humanReview.reviewId"),
+      reviewerId: evalIdField(reviewRecord, "reviewerId", "$calibrationResult.humanReview.reviewerId"),
+      approved: true,
+      decisions: Object.freeze(decisions),
+    }),
+    agentConfigs: Object.freeze(configs),
+  });
+}
+
+export function validateStageACalibrationResult(
+  input: unknown,
+  calibrationArtifactInput: unknown,
+  expectedCalibrationInputDigest: string,
+): StageACalibrationResultV2 {
+  validateDigest(expectedCalibrationInputDigest, "$expectedCalibrationInputDigest");
+  const calibration = validateStageACalibrationArtifact(calibrationArtifactInput);
+  if (digestStageACalibrationArtifact(calibrationArtifactInput) !== expectedCalibrationInputDigest) {
+    fail("$calibration", "calibration_input_pin_mismatch");
+  }
+  const result = normalizeStageACalibrationResult(input);
+  if (result.calibrationInputDigest !== expectedCalibrationInputDigest) {
+    fail("$calibrationResult.calibrationInputDigest", "calibration_input_pin_mismatch");
+  }
+  if (result.calibrationId !== calibration.calibrationId) {
+    fail("$calibrationResult.calibrationId", "calibration_id_mismatch");
+  }
+  const exampleIds = calibration.examples.map(({ calibrationExampleId }) => calibrationExampleId);
+  const decisionIds = result.humanReview.decisions.map(({ calibrationExampleId }) => calibrationExampleId);
+  if (canonicalStageAJson(exampleIds) !== canonicalStageAJson(decisionIds)) {
+    fail("$calibrationResult.humanReview.decisions", "complete_calibration_decisions_required");
+  }
+  return result;
+}
+
+export function digestStageACalibrationResult(
+  input: unknown,
+  calibrationArtifactInput: unknown,
+  expectedCalibrationInputDigest: string,
+): string {
+  return domainDigest(
+    STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION,
+    validateStageACalibrationResult(
+      input,
+      calibrationArtifactInput,
+      expectedCalibrationInputDigest,
+    ),
+  );
+}
+
+function validateSelectionPolicy(input: unknown, pathValue: string): StageASelectionPolicyV2 {
+  const record = snapshotRecord(input, pathValue, [
+    "schemaVersion", "af1ContractVersion", "compilerVersion", "collectionSnapshotId",
+    "collectionSnapshotDigest", "windowStart", "cutoff", "windowBoundary", "order",
+    "productionSelection", "challengeSelection",
+  ]);
+  const windowStart = validateWholeSecondInstant(required(record, "windowStart", `${pathValue}.windowStart`), `${pathValue}.windowStart`);
+  const cutoff = validateWholeSecondInstant(required(record, "cutoff", `${pathValue}.cutoff`), `${pathValue}.cutoff`);
+  if (new Date(cutoff).getTime() - new Date(windowStart).getTime() !== 30 * 24 * 60 * 60 * 1_000) fail(pathValue, "exact_30_day_window_required");
+  return Object.freeze({
+    schemaVersion: requiredLiteral(record, "schemaVersion", `${pathValue}.schemaVersion`, "ai-filter-stage-a-selection-policy-v2"),
+    af1ContractVersion: requiredLiteral(record, "af1ContractVersion", `${pathValue}.af1ContractVersion`, 1),
+    compilerVersion: provenanceTokenField(record, "compilerVersion", `${pathValue}.compilerVersion`),
+    collectionSnapshotId: evalIdField(record, "collectionSnapshotId", `${pathValue}.collectionSnapshotId`),
+    collectionSnapshotDigest: validateDigest(required(record, "collectionSnapshotDigest", `${pathValue}.collectionSnapshotDigest`), `${pathValue}.collectionSnapshotDigest`),
+    windowStart,
+    cutoff,
+    windowBoundary: requiredLiteral(record, "windowBoundary", `${pathValue}.windowBoundary`, "[windowStart,cutoff)"),
+    order: requiredLiteral(record, "order", `${pathValue}.order`, "first_seen_at_desc_candidate_id_asc"),
+    productionSelection: requiredLiteral(record, "productionSelection", `${pathValue}.productionSelection`, "first_eight"),
+    challengeSelection: requiredLiteral(record, "challengeSelection", `${pathValue}.challengeSelection`, "frozen_source_rank"),
+  });
+}
+
+function validateReviewPlan(input: unknown, pathValue: string): StageAReviewPlanV2 {
+  const record = snapshotRecord(input, pathValue, ["promptReviewSeed", "auditSeed", "auditRule", "auditSize"]);
+  return Object.freeze({
+    promptReviewSeed: validateDigest(required(record, "promptReviewSeed", `${pathValue}.promptReviewSeed`), `${pathValue}.promptReviewSeed`),
+    auditSeed: validateDigest(required(record, "auditSeed", `${pathValue}.auditSeed`), `${pathValue}.auditSeed`),
+    auditRule: requiredLiteral(record, "auditRule", `${pathValue}.auditRule`, "bounded-16-8-8-v2"),
+    auditSize: requiredLiteral(record, "auditSize", `${pathValue}.auditSize`, STAGE_A_HUMAN_AUDIT_PAIRS),
+  });
+}
+
+function assertCorpusShape(
+  filters: readonly StageAFilterV2[],
+  bundles: readonly StageABundleV2[],
+  pairs: readonly StageAPreAnnotationPairV2[],
+  pathPrefix: string,
+): void {
+  assertUnique(filters.map(({ filterId }) => filterId), `${pathPrefix}.filters`, "unique_filter_ids_required");
+  assertUnique(filters.map(({ sourceFilterFingerprint }) => sourceFilterFingerprint.value), `${pathPrefix}.filters`, "unique_source_filter_fingerprints_required");
+  assertUnique(bundles.map(({ bundleId }) => bundleId), `${pathPrefix}.bundles`, "unique_bundle_ids_required");
+  assertUnique(bundles.map(({ softQuery }) => softQuery), `${pathPrefix}.bundles`, "unique_queries_required");
+  assertUnique(pairs.map(({ pairId }) => pairId), `${pathPrefix}.pairs`, "unique_pair_ids_required");
+  const filterIds = new Set(filters.map(({ filterId }) => filterId));
+  if (bundles.some(({ filterId }) => !filterIds.has(filterId))) fail(`${pathPrefix}.bundles`, "known_filter_reference_required");
+  const productionBundles = bundles.filter(({ cohort }) => cohort === "production_shaped");
+  const challengeBundles = bundles.filter(({ cohort }) => cohort === "challenge");
+  if (productionBundles.length !== 15 || challengeBundles.length !== 10) fail(`${pathPrefix}.bundles`, "exact_cohort_split_required");
+  for (const filter of filters) {
+    const uses = bundles.filter(({ filterId }) => filterId === filter.filterId);
+    if (uses.length === 1 && uses[0].cohort === "production_shaped") continue;
+    if (uses.length === 2 && uses.every(({ cohort }) => cohort === "challenge")) continue;
+    fail(`${pathPrefix}.bundles`, "disjoint_15_plus_5_filter_mapping_required");
+  }
+  const bundleIds = new Set(bundles.map(({ bundleId }) => bundleId));
+  if (pairs.some(({ bundleId }) => !bundleIds.has(bundleId))) fail(`${pathPrefix}.pairs`, "known_bundle_reference_required");
+  for (const bundle of bundles) {
+    const feed = pairs.filter(({ bundleId }) => bundleId === bundle.bundleId).sort((left, right) => left.position - right.position);
+    if (feed.length !== 8 || feed.some(({ position }, index) => position !== index)) fail(`${pathPrefix}.pairs`, "exact_feed_positions_required");
+    assertUnique(feed.map(({ contentIdentity }) => contentIdentity), `${pathPrefix}.pairs`, "unique_candidates_per_bundle_required");
+    assertUnique(feed.map(({ sourceSnapshotIdentity }) => sourceSnapshotIdentity), `${pathPrefix}.pairs`, "unique_source_snapshots_per_bundle_required");
+  }
+  for (const cohort of COHORTS) {
+    const cohortBundles = bundles.filter((bundle) => bundle.cohort === cohort);
+    if (new Set(cohortBundles.map(({ promptLocale }) => promptLocale)).size !== LOCALES.length) fail(`${pathPrefix}.bundles`, "cohort_locale_diversity_required");
+    if (new Set(cohortBundles.map(({ persona }) => persona)).size < 5) fail(`${pathPrefix}.bundles`, "cohort_persona_diversity_required");
+    const cohortBundleIds = new Set(cohortBundles.map(({ bundleId }) => bundleId));
+    const cohortPairs = pairs.filter(({ bundleId }) => cohortBundleIds.has(bundleId));
+    for (const evidence of EVIDENCE_CONDITIONS) {
+      if (cohortPairs.filter(({ evidenceCondition }) => evidenceCondition === evidence).length < 4) fail(`${pathPrefix}.pairs`, "cohort_evidence_diversity_required");
+    }
+  }
+  for (const persona of PERSONAS) {
+    if (bundles.filter((bundle) => bundle.persona === persona).length < 2) fail(`${pathPrefix}.bundles`, "persona_minimum_required");
+  }
+}
+
+export function validateStageAPreAnnotation(input: unknown): StageAPreAnnotationV2 {
+  const record = snapshotRecord(input, "$pre", [
+    "schemaVersion", "datasetId", "classifierInputSchemaVersion", "classifierInputNormalizerVersion",
+    "softQueryNormalizerVersion", "calibrationResultDigest", "selectionPolicy", "reviewPlan",
+    "filters", "bundles", "pairs",
+  ]);
+  requiredLiteral(record, "schemaVersion", "$pre.schemaVersion", STAGE_A_PRE_ANNOTATION_SCHEMA_VERSION);
+  requiredLiteral(record, "classifierInputSchemaVersion", "$pre.classifierInputSchemaVersion", CLASSIFIER_INPUT_SCHEMA_VERSION);
+  requiredLiteral(record, "classifierInputNormalizerVersion", "$pre.classifierInputNormalizerVersion", CLASSIFIER_INPUT_NORMALIZER_VERSION);
+  requiredLiteral(record, "softQueryNormalizerVersion", "$pre.softQueryNormalizerVersion", AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION);
+  const selectionPolicy = validateSelectionPolicy(required(record, "selectionPolicy", "$pre.selectionPolicy"), "$pre.selectionPolicy");
+  const reviewPlan = validateReviewPlan(required(record, "reviewPlan", "$pre.reviewPlan"), "$pre.reviewPlan");
+  const filters = snapshotArray(required(record, "filters", "$pre.filters"), "$pre.filters", 20, 20).map((value, index) => validateFilter(value, `$pre.filters[${index}]`)).sort((left, right) => rawStringCompare(left.filterId, right.filterId));
+  const bundles = snapshotArray(required(record, "bundles", "$pre.bundles"), "$pre.bundles", 25, 25).map((value, index) => validateBundle(value, `$pre.bundles[${index}]`)).sort((left, right) => rawStringCompare(left.bundleId, right.bundleId));
+  const rawPairs = snapshotArray(required(record, "pairs", "$pre.pairs"), "$pre.pairs", 200, 200).map((value, index) => validatePreAnnotationPair(value, `$pre.pairs[${index}]`));
+  const pairs = bundles.flatMap(({ bundleId }) => rawPairs.filter((pair) => pair.bundleId === bundleId).sort((left, right) => left.position - right.position));
+  assertCorpusShape(filters, bundles, pairs, "$pre");
+  for (const bundle of bundles) {
+    const feed = pairs.filter(({ bundleId }) => bundleId === bundle.bundleId);
+    if (bundle.cohort === "production_shaped" && feed.some(({ position, sourceRank }) => position !== sourceRank)) fail("$pre.pairs", "production_must_use_first_eight_required");
+    if (bundle.cohort === "challenge" && feed.some(({ sourceRank }, index) => index > 0 && sourceRank <= feed[index - 1].sourceRank)) fail("$pre.pairs", "challenge_source_order_required");
+    for (let index = 1; index < feed.length; index += 1) {
+      const previous = feed[index - 1];
+      const current = feed[index];
+      if (previous.postingFirstSeenAt < current.postingFirstSeenAt || (previous.postingFirstSeenAt === current.postingFirstSeenAt && previous.classifierSource.candidateId > current.classifierSource.candidateId)) fail("$pre.pairs", "approved_candidate_order_required");
+    }
+    for (const pair of feed) {
+      if (pair.postingFirstSeenAt < selectionPolicy.windowStart || pair.postingFirstSeenAt >= selectionPolicy.cutoff) fail("$pre.pairs", "selection_window_required");
+      const expectedIdentity = digestStageASourceSnapshotIdentity({
+        candidateId: pair.classifierSource.candidateId,
+        contentIdentity: pair.contentIdentity,
+        postingFirstSeenAt: pair.postingFirstSeenAt,
+        sourceRank: pair.sourceRank,
+        collectionSnapshotDigest: selectionPolicy.collectionSnapshotDigest,
+      });
+      if (pair.sourceSnapshotIdentity !== expectedIdentity) fail("$pre.pairs", "source_snapshot_identity_mismatch");
+    }
+  }
+  return Object.freeze({
+    schemaVersion: STAGE_A_PRE_ANNOTATION_SCHEMA_VERSION,
+    datasetId: evalIdField(record, "datasetId", "$pre.datasetId"),
+    classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
+    classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
+    softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+    calibrationResultDigest: validateDigest(required(record, "calibrationResultDigest", "$pre.calibrationResultDigest"), "$pre.calibrationResultDigest"),
+    selectionPolicy,
+    reviewPlan,
+    filters: Object.freeze(filters),
+    bundles: Object.freeze(bundles),
+    pairs: Object.freeze(pairs),
+  });
+}
+
+export function digestStageAPreAnnotation(input: unknown): string {
+  return domainDigest(STAGE_A_PRE_ANNOTATION_SCHEMA_VERSION, validateStageAPreAnnotation(input));
+}
+
+export function digestStageASourceSnapshotIdentity(input: Readonly<{
+  candidateId: string;
+  contentIdentity: string;
+  postingFirstSeenAt: string;
+  sourceRank: number;
+  collectionSnapshotDigest: string;
+}>): string {
+  return domainDigest("ai-filter-stage-a-source-snapshot-v2", input);
+}
+
+function seededOrder(seed: string, id: string): string {
+  return createHash("sha256").update(`${seed}\n${id}`, "utf8").digest("hex");
+}
+
+export function deriveStageAPromptReviewBundleIds(preInput: unknown): readonly string[] {
+  const pre = validateStageAPreAnnotation(preInput);
+  const remaining = [...pre.bundles].sort((left, right) => rawStringCompare(seededOrder(pre.reviewPlan.promptReviewSeed, left.bundleId), seededOrder(pre.reviewPlan.promptReviewSeed, right.bundleId)));
+  const uncovered = new Set([
+    ...COHORTS.map((value) => `cohort:${value}`),
+    ...LOCALES.map((value) => `locale:${value}`),
+    ...PERSONAS.map((value) => `persona:${value}`),
+  ]);
+  const selected: StageABundleV2[] = [];
+  while (uncovered.size > 0 && selected.length < 12) {
+    let bestIndex = -1;
+    let bestScore = -1;
+    for (let index = 0; index < remaining.length; index += 1) {
+      const bundle = remaining[index];
+      const score = [`cohort:${bundle.cohort}`, `locale:${bundle.promptLocale}`, `persona:${bundle.persona}`].filter((key) => uncovered.has(key)).length;
+      if (score > bestScore) { bestIndex = index; bestScore = score; }
+    }
+    if (bestIndex < 0 || bestScore === 0) break;
+    const [picked] = remaining.splice(bestIndex, 1);
+    selected.push(picked);
+    uncovered.delete(`cohort:${picked.cohort}`);
+    uncovered.delete(`locale:${picked.promptLocale}`);
+    uncovered.delete(`persona:${picked.persona}`);
+  }
+  while (selected.length < 12 && remaining.length > 0) selected.push(remaining.shift()!);
+  if (selected.length !== 12 || uncovered.size > 0) fail("$pre.bundles", "prompt_review_coverage_unavailable");
+  return Object.freeze(selected.map(({ bundleId }) => bundleId).sort(rawStringCompare));
+}
+
+export function validateStageAPromptReviewFeedback(
+  input: unknown,
+  preInput: unknown,
+): StageAPromptReviewFeedbackV2 {
+  const pre = validateStageAPreAnnotation(preInput);
+  const record = snapshotRecord(input, "$promptFeedback", ["schemaVersion", "reviewId", "reviewerId", "preAnnotationDigest", "approved", "decisions"]);
+  requiredLiteral(record, "schemaVersion", "$promptFeedback.schemaVersion", STAGE_A_PROMPT_REVIEW_FEEDBACK_SCHEMA_VERSION);
+  const expectedIds = deriveStageAPromptReviewBundleIds(pre);
+  const decisions = snapshotArray(required(record, "decisions", "$promptFeedback.decisions"), "$promptFeedback.decisions", 12, 12).map((raw, index) => {
+    const itemPath = `$promptFeedback.decisions[${index}]`;
+    const decision = snapshotRecord(raw, itemPath, ["bundleId", "decision"]);
+    return Object.freeze({
+      bundleId: evalIdField(decision, "bundleId", `${itemPath}.bundleId`),
+      decision: requiredEnum(decision, "decision", `${itemPath}.decision`, ["keep", "revise", "reject"]),
+    });
+  }).sort((left, right) => rawStringCompare(left.bundleId, right.bundleId));
+  if (canonicalStageAJson(decisions.map(({ bundleId }) => bundleId)) !== canonicalStageAJson(expectedIds)) fail("$promptFeedback.decisions", "derived_prompt_review_set_required");
+  const preAnnotationDigest = validateDigest(required(record, "preAnnotationDigest", "$promptFeedback.preAnnotationDigest"), "$promptFeedback.preAnnotationDigest");
+  if (preAnnotationDigest !== digestStageAPreAnnotation(pre)) fail("$promptFeedback.preAnnotationDigest", "pre_annotation_digest_mismatch");
+  return Object.freeze({
+    schemaVersion: STAGE_A_PROMPT_REVIEW_FEEDBACK_SCHEMA_VERSION,
+    reviewId: evalIdField(record, "reviewId", "$promptFeedback.reviewId"),
+    reviewerId: evalIdField(record, "reviewerId", "$promptFeedback.reviewerId"),
+    preAnnotationDigest,
+    approved: requiredBoolean(record, "approved", "$promptFeedback.approved"),
+    decisions: Object.freeze(decisions),
+  });
+}
+
+export function digestStageAPromptReviewFeedback(input: unknown, preInput: unknown): string {
+  return domainDigest(STAGE_A_PROMPT_REVIEW_FEEDBACK_SCHEMA_VERSION, validateStageAPromptReviewFeedback(input, preInput));
 }
 
 export function validateStageAWip(input: unknown): StageAWipV2 {
@@ -817,7 +1391,9 @@ export function validateStageAWip(input: unknown): StageAWipV2 {
     "classifierInputSchemaVersion",
     "classifierInputNormalizerVersion",
     "softQueryNormalizerVersion",
-    "calibrationDigest",
+    "calibrationResultDigest",
+    "preAnnotationDigest",
+    "promptReviewFeedbackDigest",
     "filters",
     "bundles",
     "pairs",
@@ -833,34 +1409,17 @@ export function validateStageAWip(input: unknown): StageAWipV2 {
   const bundles = snapshotArray(required(record, "bundles", "$.bundles"), "$.bundles", STAGE_A_REQUIRED_BUNDLES, STAGE_A_REQUIRED_BUNDLES)
     .map((value, index) => validateBundle(value, `$.bundles[${index}]`))
     .sort((left, right) => rawStringCompare(left.bundleId, right.bundleId));
-  const pairs = snapshotArray(required(record, "pairs", "$.pairs"), "$.pairs", STAGE_A_REQUIRED_PAIRS, STAGE_A_REQUIRED_PAIRS)
-    .map((value, index) => validatePair(value, `$.pairs[${index}]`))
-    .sort((left, right) => rawStringCompare(left.pairId, right.pairId));
+  const rawPairs = snapshotArray(required(record, "pairs", "$.pairs"), "$.pairs", STAGE_A_REQUIRED_PAIRS, STAGE_A_REQUIRED_PAIRS)
+    .map((value, index) => validatePair(value, `$.pairs[${index}]`));
+  const pairs = bundles.flatMap(({ bundleId }) => rawPairs
+    .filter((pair) => pair.bundleId === bundleId)
+    .sort((left, right) => left.position - right.position));
   const finalCritic = validateFinalCritic(required(record, "finalCritic", "$.finalCritic"), "$.finalCritic");
 
-  assertUnique(filters.map(({ filterId }) => filterId), "$.filters", "unique_filter_ids_required");
-  assertUnique(filters.map(({ sourceFilterDigest }) => sourceFilterDigest), "$.filters", "unique_source_filter_digests_required");
-  assertUnique(bundles.map(({ bundleId }) => bundleId), "$.bundles", "unique_bundle_ids_required");
-  assertUnique(bundles.map(({ softQuery }) => softQuery), "$.bundles", "unique_queries_required");
-  assertUnique(pairs.map(({ pairId }) => pairId), "$.pairs", "unique_pair_ids_required");
+  assertCorpusShape(filters, bundles, pairs, "$");
   assertUnique(pairs.flatMap(({ annotations }) => annotations.map(({ annotationId }) => annotationId)), "$.pairs", "unique_annotation_ids_required");
   assertUnique(pairs.flatMap(({ adjudication }) => adjudication ? [adjudication.adjudicationId] : []), "$.pairs", "unique_adjudication_ids_required");
-  const filterIds = new Set(filters.map(({ filterId }) => filterId));
-  if (bundles.some(({ filterId }) => !filterIds.has(filterId))) fail("$.bundles", "known_filter_reference_required");
   const bundleById = new Map(bundles.map((bundle) => [bundle.bundleId, bundle]));
-  if (pairs.some(({ bundleId }) => !bundleById.has(bundleId))) fail("$.pairs", "known_bundle_reference_required");
-  const productionBundles = bundles.filter(({ cohort }) => cohort === "production_shaped");
-  if (productionBundles.length !== STAGE_A_REQUIRED_PRODUCTION_SHAPED_BUNDLES) fail("$.bundles", "exact_cohort_split_required");
-  if (bundles.length - productionBundles.length !== STAGE_A_REQUIRED_CHALLENGE_BUNDLES) fail("$.bundles", "exact_cohort_split_required");
-  for (const bundle of bundles) {
-    const bundlePairs = pairs.filter(({ bundleId }) => bundleId === bundle.bundleId);
-    if (bundlePairs.length !== STAGE_A_REQUIRED_PAIRS_PER_BUNDLE) fail("$.pairs", "eight_pairs_per_bundle_required");
-    assertUnique(bundlePairs.map(({ contentIdentity }) => contentIdentity), "$.pairs", "unique_candidates_per_bundle_required");
-  }
-  const filterUseCounts = filters.map(({ filterId }) => bundles.filter((bundle) => bundle.filterId === filterId).length);
-  if (filterUseCounts.some((count) => count < 1 || count > 2) || filterUseCounts.filter((count) => count === 2).length !== 5) {
-    fail("$.bundles", "five_extra_filter_uses_required");
-  }
   const promptAuthors = new Set(bundles.map(({ promptProvenance }) => promptProvenance.authorId));
   const annotators = new Set(pairs.flatMap(({ annotations }) => annotations.map(({ actorId }) => actorId)));
   const adjudicators = new Set(pairs.flatMap(({ adjudication }) => adjudication ? [adjudication.actorId] : []));
@@ -879,37 +1438,59 @@ export function validateStageAWip(input: unknown): StageAWipV2 {
   const contributors = new Set([...promptAuthors, ...annotators, ...adjudicators]);
   if (contributors.has(finalCritic.actorId)) fail("$.finalCritic.actorId", "independent_final_critic_required");
 
-  return Object.freeze({
+  const reviewPayload: StageAWipReviewPayloadV2 = Object.freeze({
     schemaVersion: STAGE_A_WIP_SCHEMA_VERSION,
     datasetId: evalIdField(record, "datasetId", "$.datasetId"),
     classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
     classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
     softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    calibrationDigest: validateDigest(required(record, "calibrationDigest", "$.calibrationDigest"), "$.calibrationDigest"),
+    calibrationResultDigest: validateDigest(required(record, "calibrationResultDigest", "$.calibrationResultDigest"), "$.calibrationResultDigest"),
+    preAnnotationDigest: validateDigest(required(record, "preAnnotationDigest", "$.preAnnotationDigest"), "$.preAnnotationDigest"),
+    promptReviewFeedbackDigest: validateDigest(required(record, "promptReviewFeedbackDigest", "$.promptReviewFeedbackDigest"), "$.promptReviewFeedbackDigest"),
     filters: Object.freeze(filters),
     bundles: Object.freeze(bundles),
     pairs: Object.freeze(pairs),
-    finalCritic,
   });
+  if (finalCritic.reviewedWipDigest !== digestStageAWipReviewPayload(reviewPayload)) {
+    fail("$.finalCritic.reviewedWipDigest", "final_critic_review_pin_mismatch");
+  }
+  return Object.freeze({ ...reviewPayload, finalCritic });
 }
 
-function canonicalValue(input: unknown): unknown {
-  if (input === null || typeof input === "string" || typeof input === "boolean") return input;
-  if (typeof input === "number") {
-    if (!Number.isSafeInteger(input)) fail("$", "canonical_integer_required");
-    return input;
-  }
-  if (Array.isArray(input)) return safeArray(input.map(canonicalValue));
-  if (typeof input === "object") {
+export function digestStageAWipReviewPayload(input: unknown): string {
+  return domainDigest("ai-filter-stage-a-wip-review-v2", input);
+}
+
+function canonicalValue(input: unknown, pathValue = "$"): unknown {
+  try {
+    if (input === null || typeof input === "string" || typeof input === "boolean") return input;
+    if (typeof input === "number") {
+      if (!Number.isSafeInteger(input)) fail(pathValue, "canonical_integer_required");
+      return input;
+    }
+    if (typeof input !== "object") fail(pathValue, "canonical_json_value_required");
+    if (isProxy(input)) fail(pathValue, "proxy_forbidden");
+    if (Array.isArray(input)) {
+      const values = snapshotArray(input, pathValue, 0, 100_000);
+      return safeArray(values.map((value, index) => canonicalValue(value, `${pathValue}[${index}]`)));
+    }
+    const prototype = Object.getPrototypeOf(input);
+    if (prototype !== Object.prototype && prototype !== null) fail(pathValue, "plain_object_required");
+    const descriptors = Object.getOwnPropertyDescriptors(input);
     const output = Object.create(null) as Record<string, unknown>;
-    for (const key of Object.keys(input).sort(rawStringCompare)) {
-      const value = (input as Record<string, unknown>)[key];
-      if (value === undefined) fail("$", "canonical_json_value_required");
-      output[key] = canonicalValue(value);
+    for (const key of Reflect.ownKeys(descriptors).sort((left, right) => rawStringCompare(String(left), String(right)))) {
+      if (typeof key !== "string") fail(pathValue, "canonical_json_value_required");
+      const descriptor = descriptors[key];
+      if (!("value" in descriptor) || !descriptor.enumerable || descriptor.value === undefined) {
+        fail(`${pathValue}.${key}`, "canonical_data_property_required");
+      }
+      output[key] = canonicalValue(descriptor.value, `${pathValue}.${key}`);
     }
     return output;
+  } catch (error) {
+    if (error instanceof StageAEvaluationError) throw error;
+    fail(pathValue, "canonical_value_unreadable");
   }
-  fail("$", "canonical_json_value_required");
 }
 
 export function canonicalStageAJson(input: unknown): string {
@@ -927,15 +1508,92 @@ function silverLabel(pair: StageAPairV2): StageALabel {
   return pair.adjudication?.label ?? pair.annotations[0].label;
 }
 
+function finalAmbiguity(pair: StageAPairV2): boolean {
+  return pair.adjudication?.ambiguity ?? pair.annotations[0].ambiguity;
+}
+
+function prePairProjection(pair: StageAPairV2 | StageAPreAnnotationPairV2): StageAPreAnnotationPairV2 {
+  return Object.freeze(Object.fromEntries(PAIR_BASE_FIELDS.map((field) => [field, pair[field]]))) as StageAPreAnnotationPairV2;
+}
+
+function resolveRoleConfigs(
+  calibration: StageACalibrationResultV2,
+): Readonly<Record<StageAAgentRole, StageAAgentConfigV2>> {
+  return Object.freeze(Object.fromEntries(calibration.agentConfigs.map((config) => [config.role, config]))) as Readonly<Record<StageAAgentRole, StageAAgentConfigV2>>;
+}
+
+function requireConfig(actual: string, expected: StageAAgentConfigV2, pathValue: string): void {
+  if (actual !== expected.configId) fail(pathValue, "selected_role_config_required");
+}
+
 export function buildStageASilverManifest(
   wipInput: unknown,
-  expectedCalibrationDigest: string,
+  calibrationArtifactInput: unknown,
+  expectedCalibrationInputDigest: string,
+  calibrationResultInput: unknown,
+  expectedCalibrationResultDigest: string,
+  preAnnotationInput: unknown,
+  expectedPreAnnotationDigest: string,
+  promptFeedbackInput: unknown,
+  expectedPromptFeedbackDigest: string,
 ): StageASilverManifestV2 {
-  validateDigest(expectedCalibrationDigest, "$expectedCalibrationDigest");
+  validateDigest(expectedCalibrationResultDigest, "$expectedCalibrationResultDigest");
+  validateDigest(expectedPreAnnotationDigest, "$expectedPreAnnotationDigest");
+  validateDigest(expectedPromptFeedbackDigest, "$expectedPromptFeedbackDigest");
+  const calibration = validateStageACalibrationResult(
+    calibrationResultInput,
+    calibrationArtifactInput,
+    expectedCalibrationInputDigest,
+  );
+  if (
+    digestStageACalibrationResult(
+      calibration,
+      calibrationArtifactInput,
+      expectedCalibrationInputDigest,
+    ) !== expectedCalibrationResultDigest
+  ) fail("$calibrationResult", "calibration_result_pin_mismatch");
+  const pre = validateStageAPreAnnotation(preAnnotationInput);
+  if (digestStageAPreAnnotation(pre) !== expectedPreAnnotationDigest) fail("$pre", "pre_annotation_pin_mismatch");
+  if (pre.calibrationResultDigest !== expectedCalibrationResultDigest) fail("$pre.calibrationResultDigest", "calibration_result_pin_mismatch");
+  const promptFeedback = validateStageAPromptReviewFeedback(promptFeedbackInput, pre);
+  if (digestStageAPromptReviewFeedback(promptFeedback, pre) !== expectedPromptFeedbackDigest) fail("$promptFeedback", "prompt_feedback_pin_mismatch");
+  if (!promptFeedback.approved || promptFeedback.decisions.some(({ decision }) => decision !== "keep")) fail("$promptFeedback", "prompt_review_approval_required");
   const wip = validateStageAWip(wipInput);
-  if (wip.calibrationDigest !== expectedCalibrationDigest) {
-    fail("$.calibrationDigest", "calibration_digest_mismatch");
+  if (wip.calibrationResultDigest !== expectedCalibrationResultDigest) fail("$.calibrationResultDigest", "calibration_result_pin_mismatch");
+  if (wip.preAnnotationDigest !== expectedPreAnnotationDigest) fail("$.preAnnotationDigest", "pre_annotation_pin_mismatch");
+  if (wip.promptReviewFeedbackDigest !== expectedPromptFeedbackDigest) fail("$.promptReviewFeedbackDigest", "prompt_feedback_pin_mismatch");
+  const wipProjection = {
+    datasetId: wip.datasetId,
+    classifierInputSchemaVersion: wip.classifierInputSchemaVersion,
+    classifierInputNormalizerVersion: wip.classifierInputNormalizerVersion,
+    softQueryNormalizerVersion: wip.softQueryNormalizerVersion,
+    filters: wip.filters,
+    bundles: wip.bundles,
+    pairs: wip.pairs.map(prePairProjection),
+  };
+  const preProjection = {
+    datasetId: pre.datasetId,
+    classifierInputSchemaVersion: pre.classifierInputSchemaVersion,
+    classifierInputNormalizerVersion: pre.classifierInputNormalizerVersion,
+    softQueryNormalizerVersion: pre.softQueryNormalizerVersion,
+    filters: pre.filters,
+    bundles: pre.bundles,
+    pairs: pre.pairs,
+  };
+  if (canonicalStageAJson(wipProjection) !== canonicalStageAJson(preProjection)) fail("$", "pre_annotation_projection_mismatch");
+  const configs = resolveRoleConfigs(calibration);
+  for (const bundle of wip.bundles) requireConfig(bundle.promptProvenance.configId, configs.prompt_author, "$.bundles.promptProvenance.configId");
+  for (const pair of wip.pairs) {
+    for (const annotation of pair.annotations) requireConfig(annotation.configId, configs.annotator, "$.pairs.annotations.configId");
+    if (pair.adjudication) requireConfig(pair.adjudication.configId, configs.adjudicator, "$.pairs.adjudication.configId");
   }
+  requireConfig(wip.finalCritic.configId, configs.final_critic, "$.finalCritic.configId");
+  const agentActors = new Set([
+    ...wip.bundles.map(({ promptProvenance }) => promptProvenance.authorId),
+    ...wip.pairs.flatMap(({ annotations, adjudication }) => [...annotations.map(({ actorId }) => actorId), ...(adjudication ? [adjudication.actorId] : [])]),
+    wip.finalCritic.actorId,
+  ]);
+  if (agentActors.has(calibration.humanReview.reviewerId) || agentActors.has(promptFeedback.reviewerId)) fail("$", "human_agent_role_separation_required");
   const sourceWipDigest = domainDigest(STAGE_A_WIP_SCHEMA_VERSION, wip);
   const pairs = wip.pairs.map((pair) => {
     const classifierInput = normalizeClassifierSource(pair.classifierSource, "$.pairs.classifierSource").payload;
@@ -944,6 +1602,7 @@ export function buildStageASilverManifest(
       ...pair,
       classifierInput,
       silverLabel: silverLabel(pair),
+      finalAmbiguity: finalAmbiguity(pair),
       silverProvenance: Object.freeze({
         method: adjudicated ? "adjudication" as const : "agreement" as const,
         annotationIds: Object.freeze(pair.annotations.map(({ annotationId }) => annotationId)) as readonly [string, string],
@@ -958,8 +1617,12 @@ export function buildStageASilverManifest(
     classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
     classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
     softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    calibrationDigest: wip.calibrationDigest,
+    calibrationResultDigest: wip.calibrationResultDigest,
+    preAnnotationDigest: wip.preAnnotationDigest,
+    promptReviewFeedbackDigest: wip.promptReviewFeedbackDigest,
     sourceWipDigest,
+    selectionPolicy: pre.selectionPolicy,
+    reviewPlan: pre.reviewPlan,
     filters: wip.filters,
     bundles: wip.bundles,
     pairs: Object.freeze(pairs),
@@ -969,9 +1632,26 @@ export function buildStageASilverManifest(
 
 export function freezeStageASilver(
   wipInput: unknown,
-  expectedCalibrationDigest: string,
+  calibrationArtifactInput: unknown,
+  expectedCalibrationInputDigest: string,
+  calibrationResultInput: unknown,
+  expectedCalibrationResultDigest: string,
+  preAnnotationInput: unknown,
+  expectedPreAnnotationDigest: string,
+  promptFeedbackInput: unknown,
+  expectedPromptFeedbackDigest: string,
 ): StageASilverFreezeV2 {
-  const manifest = buildStageASilverManifest(wipInput, expectedCalibrationDigest);
+  const manifest = buildStageASilverManifest(
+    wipInput,
+    calibrationArtifactInput,
+    expectedCalibrationInputDigest,
+    calibrationResultInput,
+    expectedCalibrationResultDigest,
+    preAnnotationInput,
+    expectedPreAnnotationDigest,
+    promptFeedbackInput,
+    expectedPromptFeedbackDigest,
+  );
   return Object.freeze({
     schemaVersion: STAGE_A_SILVER_FREEZE_SCHEMA_VERSION,
     manifest,
@@ -981,9 +1661,9 @@ export function freezeStageASilver(
 
 function basePairFromSilver(input: unknown, pathValue: string): unknown {
   const record = snapshotRecord(input, pathValue, [
-    "schemaVersion", "pairId", "bundleId", "locale", "evidenceCondition", "ambiguity",
+    ...PAIR_BASE_FIELDS,
     "classifierSource", "contentIdentity", "annotations", "adjudication", "classifierInput",
-    "silverLabel", "silverProvenance",
+    "silverLabel", "finalAmbiguity", "silverProvenance",
   ]);
   validateFrozenClassifierInput(required(record, "classifierInput", `${pathValue}.classifierInput`), `${pathValue}.classifierInput`);
   validateLabel(required(record, "silverLabel", `${pathValue}.silverLabel`), `${pathValue}.silverLabel`);
@@ -996,25 +1676,23 @@ function basePairFromSilver(input: unknown, pathValue: string): unknown {
     validateEvalId(adjudicationId, `${pathValue}.silverProvenance.adjudicationId`);
   }
   return Object.fromEntries([
-    "schemaVersion", "pairId", "bundleId", "locale", "evidenceCondition", "ambiguity",
-    "classifierSource", "contentIdentity", "annotations", "adjudication",
+    ...PAIR_BASE_FIELDS, "annotations", "adjudication",
   ].map((field) => [field, required(record, field, `${pathValue}.${field}`)]));
 }
 
 export function validateStageASilverFreeze(
   input: unknown,
   expectedSilverDigest: string,
-  expectedCalibrationDigest: string,
 ): StageASilverFreezeV2 {
   validateDigest(expectedSilverDigest, "$expectedSilverDigest");
-  validateDigest(expectedCalibrationDigest, "$expectedCalibrationDigest");
   const envelope = snapshotRecord(input, "$", ["schemaVersion", "manifest", "silverDigest"]);
   requiredLiteral(envelope, "schemaVersion", "$.schemaVersion", STAGE_A_SILVER_FREEZE_SCHEMA_VERSION);
   const manifestInput = required(envelope, "manifest", "$.manifest");
   const manifest = snapshotRecord(manifestInput, "$.manifest", [
     "schemaVersion", "status", "datasetId", "classifierInputSchemaVersion",
-    "classifierInputNormalizerVersion", "softQueryNormalizerVersion", "calibrationDigest",
-    "sourceWipDigest", "filters", "bundles", "pairs", "finalCritic",
+    "classifierInputNormalizerVersion", "softQueryNormalizerVersion", "calibrationResultDigest",
+    "preAnnotationDigest", "promptReviewFeedbackDigest", "sourceWipDigest", "selectionPolicy",
+    "reviewPlan", "filters", "bundles", "pairs", "finalCritic",
   ]);
   requiredLiteral(manifest, "schemaVersion", "$.manifest.schemaVersion", STAGE_A_SILVER_MANIFEST_SCHEMA_VERSION);
   requiredLiteral(manifest, "status", "$.manifest.status", "agent_adjudicated_silver");
@@ -1025,13 +1703,51 @@ export function validateStageASilverFreeze(
     classifierInputSchemaVersion: required(manifest, "classifierInputSchemaVersion", "$.manifest.classifierInputSchemaVersion"),
     classifierInputNormalizerVersion: required(manifest, "classifierInputNormalizerVersion", "$.manifest.classifierInputNormalizerVersion"),
     softQueryNormalizerVersion: required(manifest, "softQueryNormalizerVersion", "$.manifest.softQueryNormalizerVersion"),
-    calibrationDigest: required(manifest, "calibrationDigest", "$.manifest.calibrationDigest"),
+    calibrationResultDigest: required(manifest, "calibrationResultDigest", "$.manifest.calibrationResultDigest"),
+    preAnnotationDigest: required(manifest, "preAnnotationDigest", "$.manifest.preAnnotationDigest"),
+    promptReviewFeedbackDigest: required(manifest, "promptReviewFeedbackDigest", "$.manifest.promptReviewFeedbackDigest"),
     filters: required(manifest, "filters", "$.manifest.filters"),
     bundles: required(manifest, "bundles", "$.manifest.bundles"),
     pairs: pairInputs.map((pair, index) => basePairFromSilver(pair, `$.manifest.pairs[${index}]`)),
     finalCritic: required(manifest, "finalCritic", "$.manifest.finalCritic"),
   };
-  const rebuilt = buildStageASilverManifest(wip, expectedCalibrationDigest);
+  const normalizedWip = validateStageAWip(wip);
+  const normalizedPairs = pairInputs.map((rawPair, index) => {
+    const pairPath = `$.manifest.pairs[${index}]`;
+    const rawRecord = snapshotRecord(rawPair, pairPath, [
+      ...PAIR_BASE_FIELDS, "annotations", "adjudication", "classifierInput", "silverLabel", "finalAmbiguity", "silverProvenance",
+    ]);
+    const pair = normalizedWip.pairs[index];
+    const frozenInputValue = required(rawRecord, "classifierInput", `${pairPath}.classifierInput`);
+    validateFrozenClassifierInput(frozenInputValue, `${pairPath}.classifierInput`);
+    const normalizedInput = normalizeClassifierSource(pair.classifierSource, `${pairPath}.classifierSource`).payload;
+    if (canonicalStageAJson(frozenInputValue) !== canonicalStageAJson(normalizedInput)) fail(`${pairPath}.classifierInput`, "classifier_input_mismatch");
+    const embeddedLabel = validateLabel(required(rawRecord, "silverLabel", `${pairPath}.silverLabel`), `${pairPath}.silverLabel`);
+    if (embeddedLabel !== silverLabel(pair)) fail(`${pairPath}.silverLabel`, "silver_label_mismatch");
+    const embeddedAmbiguity = requiredBoolean(rawRecord, "finalAmbiguity", `${pairPath}.finalAmbiguity`);
+    if (embeddedAmbiguity !== finalAmbiguity(pair)) fail(`${pairPath}.finalAmbiguity`, "final_ambiguity_mismatch");
+    const silverProvenance = validateSilverProvenance(required(rawRecord, "silverProvenance", `${pairPath}.silverProvenance`), pair, `${pairPath}.silverProvenance`);
+    return Object.freeze({ ...pair, classifierInput: normalizedInput, silverLabel: embeddedLabel, finalAmbiguity: embeddedAmbiguity, silverProvenance });
+  });
+  const rebuilt: StageASilverManifestV2 = Object.freeze({
+    schemaVersion: STAGE_A_SILVER_MANIFEST_SCHEMA_VERSION,
+    status: "agent_adjudicated_silver",
+    datasetId: normalizedWip.datasetId,
+    classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
+    classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
+    softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+    calibrationResultDigest: normalizedWip.calibrationResultDigest,
+    preAnnotationDigest: normalizedWip.preAnnotationDigest,
+    promptReviewFeedbackDigest: normalizedWip.promptReviewFeedbackDigest,
+    sourceWipDigest: validateDigest(required(manifest, "sourceWipDigest", "$.manifest.sourceWipDigest"), "$.manifest.sourceWipDigest"),
+    selectionPolicy: validateSelectionPolicy(required(manifest, "selectionPolicy", "$.manifest.selectionPolicy"), "$.manifest.selectionPolicy"),
+    reviewPlan: validateReviewPlan(required(manifest, "reviewPlan", "$.manifest.reviewPlan"), "$.manifest.reviewPlan"),
+    filters: normalizedWip.filters,
+    bundles: normalizedWip.bundles,
+    pairs: Object.freeze(normalizedPairs),
+    finalCritic: normalizedWip.finalCritic,
+  });
+  if (rebuilt.sourceWipDigest !== domainDigest(STAGE_A_WIP_SCHEMA_VERSION, normalizedWip)) fail("$.manifest.sourceWipDigest", "source_wip_digest_mismatch");
   if (canonicalStageAJson(rebuilt) !== canonicalStageAJson(manifestInput)) fail("$.manifest", "derived_manifest_mismatch");
   const silverDigest = validateDigest(required(envelope, "silverDigest", "$.silverDigest"), "$.silverDigest");
   if (silverDigest !== expectedSilverDigest || silverDigest !== domainDigest(STAGE_A_SILVER_MANIFEST_SCHEMA_VERSION, rebuilt)) {
@@ -1040,25 +1756,100 @@ export function validateStageASilverFreeze(
   return Object.freeze({ schemaVersion: STAGE_A_SILVER_FREEZE_SCHEMA_VERSION, manifest: rebuilt, silverDigest });
 }
 
-export function validateStageAHumanAuditPolicy(input: unknown): StageAHumanAuditPolicyV2 {
-  const record = snapshotRecord(input, "$policy", ["schemaVersion", "sourceSilverDigest", "auditPairIds"]);
+function auditStratum(pair: StageASilverPairV2): StageAAuditStratum {
+  if (pair.evidenceCondition === "policy_boundary" || pair.annotations.some(({ ambiguity }) => ambiguity) || pair.finalAmbiguity) return "adjudicated_ambiguous_policy";
+  if (pair.annotations[0].label !== pair.annotations[1].label || pair.annotations[0].ambiguity !== pair.annotations[1].ambiguity) return "adjudicated_disagreement";
+  return "agreement_clear";
+}
+
+export function deriveStageAHumanAuditPolicy(silverInput: unknown, expectedSilverDigest: string): StageAHumanAuditPolicyV2 {
+  const silver = validateStageASilverFreeze(silverInput, expectedSilverDigest);
+  const bundleById = new Map(silver.manifest.bundles.map((bundle) => [bundle.bundleId, bundle]));
+  const stratified = (candidates: readonly StageASilverPairV2[], count: number, suffix: string): StageASilverPairV2[] => {
+    const queues = COHORTS.map((cohort) => candidates
+      .filter((pair) => bundleById.get(pair.bundleId)!.cohort === cohort)
+      .sort((left, right) => rawStringCompare(
+        seededOrder(`${silver.manifest.reviewPlan.auditSeed}:${silver.silverDigest}:${suffix}`, left.pairId),
+        seededOrder(`${silver.manifest.reviewPlan.auditSeed}:${silver.silverDigest}:${suffix}`, right.pairId),
+      )));
+    const output: StageASilverPairV2[] = [];
+    const covered = new Set<string>();
+    const keys = (pair: StageASilverPairV2): string[] => {
+      const bundle = bundleById.get(pair.bundleId)!;
+      return [
+        `cohort:${bundle.cohort}`,
+        `filter:${bundle.filterId}`,
+        `persona:${bundle.persona}`,
+        `prompt-locale:${bundle.promptLocale}`,
+        `pair-locale:${pair.locale}`,
+        `evidence:${pair.evidenceCondition}`,
+        `label:${pair.silverLabel}`,
+      ];
+    };
+    let turn = 0;
+    while (output.length < count && queues.some((queue) => queue.length > 0)) {
+      let queue = queues[turn % queues.length];
+      if (queue.length === 0) queue = queues[(turn + 1) % queues.length];
+      let bestIndex = 0;
+      let bestNovelty = -1;
+      for (let index = 0; index < queue.length; index += 1) {
+        const novelty = keys(queue[index]).filter((key) => !covered.has(key)).length;
+        if (novelty > bestNovelty) {
+          bestIndex = index;
+          bestNovelty = novelty;
+        }
+      }
+      const [picked] = queue.splice(bestIndex, 1);
+      output.push(picked);
+      for (const key of keys(picked)) covered.add(key);
+      turn += 1;
+    }
+    return output;
+  };
+  const ambiguousPolicy = silver.manifest.pairs.filter((pair) => auditStratum(pair) === "adjudicated_ambiguous_policy");
+  const disagreements = silver.manifest.pairs.filter((pair) => auditStratum(pair) === "adjudicated_disagreement");
+  const agreements = silver.manifest.pairs.filter((pair) => auditStratum(pair) === "agreement_clear");
+  if (ambiguousPolicy.length > 8 || disagreements.length > 8) fail("$silver.manifest.pairs", "fleet_quality_audit_quota_exceeded");
+  const requiredAgreementCount = STAGE_A_HUMAN_AUDIT_PAIRS - ambiguousPolicy.length - disagreements.length;
+  if (agreements.length < requiredAgreementCount) fail("$silver.manifest.pairs", "audit_population_insufficient");
+  const picked = [
+    ...stratified(ambiguousPolicy, ambiguousPolicy.length, "ambiguous-policy"),
+    ...stratified(disagreements, disagreements.length, "disagreement"),
+    ...stratified(agreements, requiredAgreementCount, "agreement"),
+  ];
+  return Object.freeze({
+    schemaVersion: STAGE_A_HUMAN_AUDIT_POLICY_SCHEMA_VERSION,
+    sourceSilverDigest: silver.silverDigest,
+    rule: silver.manifest.reviewPlan.auditRule,
+    seed: silver.manifest.reviewPlan.auditSeed,
+    auditPairIds: Object.freeze(picked.map(({ pairId }) => pairId).sort(rawStringCompare)),
+  });
+}
+
+export function validateStageAHumanAuditPolicy(input: unknown, silverInput: unknown, expectedSilverDigest: string): StageAHumanAuditPolicyV2 {
+  const record = snapshotRecord(input, "$policy", ["schemaVersion", "sourceSilverDigest", "rule", "seed", "auditPairIds"]);
   requiredLiteral(record, "schemaVersion", "$policy.schemaVersion", STAGE_A_HUMAN_AUDIT_POLICY_SCHEMA_VERSION);
-  const auditPairIds = snapshotArray(required(record, "auditPairIds", "$policy.auditPairIds"), "$policy.auditPairIds", 1, STAGE_A_MAX_HUMAN_AUDIT_PAIRS)
+  const auditPairIds = snapshotArray(required(record, "auditPairIds", "$policy.auditPairIds"), "$policy.auditPairIds", STAGE_A_HUMAN_AUDIT_PAIRS, STAGE_A_HUMAN_AUDIT_PAIRS)
     .map((value, index) => {
       if (typeof value !== "string") fail(`$policy.auditPairIds[${index}]`, "string_required");
       return validateEvalId(value, `$policy.auditPairIds[${index}]`);
     })
     .sort(rawStringCompare);
   assertUnique(auditPairIds, "$policy.auditPairIds", "unique_audit_pair_ids_required");
-  return Object.freeze({
+  const normalized = Object.freeze({
     schemaVersion: STAGE_A_HUMAN_AUDIT_POLICY_SCHEMA_VERSION,
     sourceSilverDigest: validateDigest(required(record, "sourceSilverDigest", "$policy.sourceSilverDigest"), "$policy.sourceSilverDigest"),
+    rule: requiredLiteral(record, "rule", "$policy.rule", "bounded-16-8-8-v2"),
+    seed: validateDigest(required(record, "seed", "$policy.seed"), "$policy.seed"),
     auditPairIds: Object.freeze(auditPairIds),
   });
+  const expected = deriveStageAHumanAuditPolicy(silverInput, expectedSilverDigest);
+  if (canonicalStageAJson(normalized) !== canonicalStageAJson(expected)) fail("$policy", "derived_audit_policy_required");
+  return normalized;
 }
 
-export function digestStageAHumanAuditPolicy(input: unknown): string {
-  return domainDigest(STAGE_A_HUMAN_AUDIT_POLICY_SCHEMA_VERSION, validateStageAHumanAuditPolicy(input));
+export function digestStageAHumanAuditPolicy(input: unknown, silverInput: unknown, expectedSilverDigest: string): string {
+  return domainDigest(STAGE_A_HUMAN_AUDIT_POLICY_SCHEMA_VERSION, validateStageAHumanAuditPolicy(input, silverInput, expectedSilverDigest));
 }
 
 function validateHumanFeedback(input: unknown): StageAHumanFeedbackV2 {
@@ -1067,7 +1858,7 @@ function validateHumanFeedback(input: unknown): StageAHumanFeedbackV2 {
     "auditPolicyDigest", "approved", "decisions",
   ]);
   requiredLiteral(record, "schemaVersion", "$feedback.schemaVersion", STAGE_A_HUMAN_FEEDBACK_SCHEMA_VERSION);
-  const decisions = snapshotArray(required(record, "decisions", "$feedback.decisions"), "$feedback.decisions", 1, STAGE_A_MAX_HUMAN_AUDIT_PAIRS)
+  const decisions = snapshotArray(required(record, "decisions", "$feedback.decisions"), "$feedback.decisions", STAGE_A_HUMAN_AUDIT_PAIRS, STAGE_A_HUMAN_AUDIT_PAIRS)
     .map((inputDecision, index) => {
       const decisionPath = `$feedback.decisions[${index}]`;
       const decision = snapshotRecord(inputDecision, decisionPath, ["pairId", "judgment"]);
@@ -1092,15 +1883,14 @@ function validateHumanFeedback(input: unknown): StageAHumanFeedbackV2 {
 export function promoteStageAGold(
   silverInput: unknown,
   expectedSilverDigest: string,
-  expectedCalibrationDigest: string,
   policyInput: unknown,
   expectedPolicyDigest: string,
   feedbackInput: unknown,
 ): StageAGoldFreezeV2 {
-  const silver = validateStageASilverFreeze(silverInput, expectedSilverDigest, expectedCalibrationDigest);
-  const policy = validateStageAHumanAuditPolicy(policyInput);
+  const silver = validateStageASilverFreeze(silverInput, expectedSilverDigest);
+  const policy = validateStageAHumanAuditPolicy(policyInput, silver, expectedSilverDigest);
   validateDigest(expectedPolicyDigest, "$expectedPolicyDigest");
-  if (policy.sourceSilverDigest !== silver.silverDigest || digestStageAHumanAuditPolicy(policy) !== expectedPolicyDigest) {
+  if (policy.sourceSilverDigest !== silver.silverDigest || digestStageAHumanAuditPolicy(policy, silver, expectedSilverDigest) !== expectedPolicyDigest) {
     fail("$policy", "audit_policy_pin_mismatch");
   }
   const pairIds = new Set(silver.manifest.pairs.map(({ pairId }) => pairId));
@@ -1133,9 +1923,14 @@ export function promoteStageAGold(
       ...pair,
       goldLabel: humanJudgment ?? pair.silverLabel,
       goldProvenance: Object.freeze({
-        source: corrected ? "human_correction" as const : "silver" as const,
+        source: humanJudgment !== undefined
+          ? "human_reviewed" as const
+          : pair.silverProvenance.method === "adjudication"
+            ? "agent_adjudicated" as const
+            : "agent_agreed" as const,
         sourcePairId: pair.pairId,
         humanFeedbackId: humanJudgment === undefined ? null : feedback.feedbackId,
+        corrected,
       }),
     });
   });
@@ -1150,7 +1945,11 @@ export function promoteStageAGold(
     classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
     classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
     softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    calibrationDigest: silver.manifest.calibrationDigest,
+    calibrationResultDigest: silver.manifest.calibrationResultDigest,
+    preAnnotationDigest: silver.manifest.preAnnotationDigest,
+    promptReviewFeedbackDigest: silver.manifest.promptReviewFeedbackDigest,
+    selectionPolicy: silver.manifest.selectionPolicy,
+    reviewPlan: silver.manifest.reviewPlan,
     filters: silver.manifest.filters,
     bundles: silver.manifest.bundles,
     pairs: Object.freeze(pairs),
@@ -1455,9 +2254,26 @@ export async function readStageAWipFile(relativePath: string): Promise<StageAWip
 export async function writeStageASilverFreezeFile(
   relativePath: string,
   wipInput: unknown,
-  expectedCalibrationDigest: string,
+  calibrationArtifactInput: unknown,
+  expectedCalibrationInputDigest: string,
+  calibrationResultInput: unknown,
+  expectedCalibrationResultDigest: string,
+  preAnnotationInput: unknown,
+  expectedPreAnnotationDigest: string,
+  promptFeedbackInput: unknown,
+  expectedPromptFeedbackDigest: string,
 ): Promise<Readonly<{ silverDigest: string }>> {
-  const frozen = freezeStageASilver(wipInput, expectedCalibrationDigest);
+  const frozen = freezeStageASilver(
+    wipInput,
+    calibrationArtifactInput,
+    expectedCalibrationInputDigest,
+    calibrationResultInput,
+    expectedCalibrationResultDigest,
+    preAnnotationInput,
+    expectedPreAnnotationDigest,
+    promptFeedbackInput,
+    expectedPromptFeedbackDigest,
+  );
   await publishPrivateFile(relativePath, canonicalStageAJson(frozen));
   return Object.freeze({ silverDigest: frozen.silverDigest });
 }
@@ -1466,7 +2282,6 @@ export async function writeStageAGoldFreezeFile(
   relativePath: string,
   silverInput: unknown,
   expectedSilverDigest: string,
-  expectedCalibrationDigest: string,
   policyInput: unknown,
   expectedPolicyDigest: string,
   feedbackInput: unknown,
@@ -1474,7 +2289,6 @@ export async function writeStageAGoldFreezeFile(
   const frozen = promoteStageAGold(
     silverInput,
     expectedSilverDigest,
-    expectedCalibrationDigest,
     policyInput,
     expectedPolicyDigest,
     feedbackInput,
@@ -1522,13 +2336,11 @@ function validateGoldPair(
   humanFeedbackId: string,
 ): StageAGoldPairV2 {
   const record = snapshotRecord(input, pathValue, [
-    "schemaVersion", "pairId", "bundleId", "locale", "evidenceCondition", "ambiguity",
-    "classifierSource", "contentIdentity", "annotations", "adjudication", "classifierInput",
-    "silverLabel", "silverProvenance", "goldLabel", "goldProvenance",
+    ...PAIR_BASE_FIELDS, "annotations", "adjudication", "classifierInput",
+    "silverLabel", "finalAmbiguity", "silverProvenance", "goldLabel", "goldProvenance",
   ]);
   const baseInput = Object.fromEntries([
-    "schemaVersion", "pairId", "bundleId", "locale", "evidenceCondition", "ambiguity",
-    "classifierSource", "contentIdentity", "annotations", "adjudication",
+    ...PAIR_BASE_FIELDS, "annotations", "adjudication",
   ].map((field) => [field, required(record, field, `${pathValue}.${field}`)]));
   const pair = validatePair(baseInput, pathValue);
   const frozenInputValue = required(record, "classifierInput", `${pathValue}.classifierInput`);
@@ -1541,10 +2353,12 @@ function validateGoldPair(
   const expectedSilverLabel = silverLabel(pair);
   const embeddedSilverLabel = validateLabel(required(record, "silverLabel", `${pathValue}.silverLabel`), `${pathValue}.silverLabel`);
   if (embeddedSilverLabel !== expectedSilverLabel) fail(`${pathValue}.silverLabel`, "silver_label_mismatch");
+  const embeddedFinalAmbiguity = requiredBoolean(record, "finalAmbiguity", `${pathValue}.finalAmbiguity`);
+  if (embeddedFinalAmbiguity !== finalAmbiguity(pair)) fail(`${pathValue}.finalAmbiguity`, "final_ambiguity_mismatch");
   const silverProvenance = validateSilverProvenance(required(record, "silverProvenance", `${pathValue}.silverProvenance`), pair, `${pathValue}.silverProvenance`);
   const goldLabel = validateLabel(required(record, "goldLabel", `${pathValue}.goldLabel`), `${pathValue}.goldLabel`);
-  const provenanceRecord = snapshotRecord(required(record, "goldProvenance", `${pathValue}.goldProvenance`), `${pathValue}.goldProvenance`, ["source", "sourcePairId", "humanFeedbackId"]);
-  const source = requiredEnum(provenanceRecord, "source", `${pathValue}.goldProvenance.source`, ["silver", "human_correction"]);
+  const provenanceRecord = snapshotRecord(required(record, "goldProvenance", `${pathValue}.goldProvenance`), `${pathValue}.goldProvenance`, ["source", "sourcePairId", "humanFeedbackId", "corrected"]);
+  const source = requiredEnum(provenanceRecord, "source", `${pathValue}.goldProvenance.source`, ["agent_agreed", "agent_adjudicated", "human_reviewed"]);
   const sourcePairId = evalIdField(provenanceRecord, "sourcePairId", `${pathValue}.goldProvenance.sourcePairId`);
   const rawFeedbackId = required(provenanceRecord, "humanFeedbackId", `${pathValue}.goldProvenance.humanFeedbackId`);
   const rowFeedbackId = rawFeedbackId === null
@@ -1555,17 +2369,24 @@ function validateGoldPair(
   if (sourcePairId !== pair.pairId || (rowFeedbackId !== null && rowFeedbackId !== humanFeedbackId)) {
     fail(`${pathValue}.goldProvenance`, "gold_provenance_mismatch");
   }
-  const corrected = goldLabel !== embeddedSilverLabel;
-  if ((source === "human_correction") !== corrected || (corrected && rowFeedbackId === null)) {
+  const corrected = requiredBoolean(provenanceRecord, "corrected", `${pathValue}.goldProvenance.corrected`);
+  const expectedCorrected = goldLabel !== embeddedSilverLabel;
+  const expectedSource = rowFeedbackId !== null
+    ? "human_reviewed"
+    : silverProvenance.method === "adjudication"
+      ? "agent_adjudicated"
+      : "agent_agreed";
+  if (corrected !== expectedCorrected || source !== expectedSource || (corrected && rowFeedbackId === null)) {
     fail(`${pathValue}.goldProvenance`, "gold_provenance_mismatch");
   }
   return Object.freeze({
     ...pair,
     classifierInput: frozenInput,
     silverLabel: embeddedSilverLabel,
+    finalAmbiguity: embeddedFinalAmbiguity,
     silverProvenance,
     goldLabel,
-    goldProvenance: Object.freeze({ source, sourcePairId, humanFeedbackId: rowFeedbackId }),
+    goldProvenance: Object.freeze({ source, sourcePairId, humanFeedbackId: rowFeedbackId, corrected }),
   });
 }
 
@@ -1574,19 +2395,20 @@ function validateGoldFreeze(
   expectedGoldDigest: string,
   expectedSilverDigest: string,
   expectedAuditPolicyDigest: string,
-  expectedCalibrationDigest: string,
+  expectedCalibrationResultDigest: string,
 ): StageAGoldFreezeV2 {
   validateDigest(expectedGoldDigest, "$expectedGoldDigest");
   validateDigest(expectedSilverDigest, "$expectedSilverDigest");
   validateDigest(expectedAuditPolicyDigest, "$expectedAuditPolicyDigest");
-  validateDigest(expectedCalibrationDigest, "$expectedCalibrationDigest");
+  validateDigest(expectedCalibrationResultDigest, "$expectedCalibrationResultDigest");
   const envelope = snapshotRecord(input, "$", ["schemaVersion", "manifest", "goldDigest"]);
   requiredLiteral(envelope, "schemaVersion", "$.schemaVersion", STAGE_A_GOLD_FREEZE_SCHEMA_VERSION);
   const manifestInput = required(envelope, "manifest", "$.manifest");
   const record = snapshotRecord(manifestInput, "$.manifest", [
     "schemaVersion", "status", "sourceSilverDigest", "auditPolicyDigest",
     "humanFeedbackDigest", "humanFeedbackId", "datasetId", "classifierInputSchemaVersion",
-    "classifierInputNormalizerVersion", "softQueryNormalizerVersion", "calibrationDigest",
+    "classifierInputNormalizerVersion", "softQueryNormalizerVersion", "calibrationResultDigest",
+    "preAnnotationDigest", "promptReviewFeedbackDigest", "selectionPolicy", "reviewPlan",
     "filters", "bundles", "pairs", "finalCritic",
   ]);
   requiredLiteral(record, "schemaVersion", "$.manifest.schemaVersion", STAGE_A_GOLD_MANIFEST_SCHEMA_VERSION);
@@ -1596,8 +2418,8 @@ function validateGoldFreeze(
   requiredLiteral(record, "softQueryNormalizerVersion", "$.manifest.softQueryNormalizerVersion", AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION);
   const sourceSilverDigest = validateDigest(required(record, "sourceSilverDigest", "$.manifest.sourceSilverDigest"), "$.manifest.sourceSilverDigest");
   const auditPolicyDigest = validateDigest(required(record, "auditPolicyDigest", "$.manifest.auditPolicyDigest"), "$.manifest.auditPolicyDigest");
-  const calibrationDigest = validateDigest(required(record, "calibrationDigest", "$.manifest.calibrationDigest"), "$.manifest.calibrationDigest");
-  if (sourceSilverDigest !== expectedSilverDigest || auditPolicyDigest !== expectedAuditPolicyDigest || calibrationDigest !== expectedCalibrationDigest) {
+  const calibrationResultDigest = validateDigest(required(record, "calibrationResultDigest", "$.manifest.calibrationResultDigest"), "$.manifest.calibrationResultDigest");
+  if (sourceSilverDigest !== expectedSilverDigest || auditPolicyDigest !== expectedAuditPolicyDigest || calibrationResultDigest !== expectedCalibrationResultDigest) {
     fail("$.manifest", "external_pin_mismatch");
   }
   const humanFeedbackId = evalIdField(record, "humanFeedbackId", "$.manifest.humanFeedbackId");
@@ -1611,14 +2433,16 @@ function validateGoldFreeze(
     classifierInputSchemaVersion: required(record, "classifierInputSchemaVersion", "$.manifest.classifierInputSchemaVersion"),
     classifierInputNormalizerVersion: required(record, "classifierInputNormalizerVersion", "$.manifest.classifierInputNormalizerVersion"),
     softQueryNormalizerVersion: required(record, "softQueryNormalizerVersion", "$.manifest.softQueryNormalizerVersion"),
-    calibrationDigest,
+    calibrationResultDigest,
+    preAnnotationDigest: required(record, "preAnnotationDigest", "$.manifest.preAnnotationDigest"),
+    promptReviewFeedbackDigest: required(record, "promptReviewFeedbackDigest", "$.manifest.promptReviewFeedbackDigest"),
     filters: filtersInput,
     bundles: bundlesInput,
-    pairs: pairs.map(({ classifierInput: _classifierInput, silverLabel: _silverLabel, silverProvenance: _silverProvenance, goldLabel: _goldLabel, goldProvenance: _goldProvenance, ...pair }) => pair),
+    pairs: pairs.map(({ classifierInput: _classifierInput, silverLabel: _silverLabel, finalAmbiguity: _finalAmbiguity, silverProvenance: _silverProvenance, goldLabel: _goldLabel, goldProvenance: _goldProvenance, ...pair }) => pair),
     finalCritic: required(record, "finalCritic", "$.manifest.finalCritic"),
   });
   const auditedCount = pairs.filter(({ goldProvenance }) => goldProvenance.humanFeedbackId !== null).length;
-  if (auditedCount < 1 || auditedCount > STAGE_A_MAX_HUMAN_AUDIT_PAIRS) fail("$.manifest.pairs", "bounded_human_audit_required");
+  if (auditedCount !== STAGE_A_HUMAN_AUDIT_PAIRS) fail("$.manifest.pairs", "complete_human_audit_required");
   const manifest: StageAGoldManifestV2 = Object.freeze({
     schemaVersion: STAGE_A_GOLD_MANIFEST_SCHEMA_VERSION,
     status: "human_audited_gold",
@@ -1630,10 +2454,14 @@ function validateGoldFreeze(
     classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
     classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
     softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    calibrationDigest,
+    calibrationResultDigest,
+    preAnnotationDigest: validateDigest(required(record, "preAnnotationDigest", "$.manifest.preAnnotationDigest"), "$.manifest.preAnnotationDigest"),
+    promptReviewFeedbackDigest: validateDigest(required(record, "promptReviewFeedbackDigest", "$.manifest.promptReviewFeedbackDigest"), "$.manifest.promptReviewFeedbackDigest"),
+    selectionPolicy: validateSelectionPolicy(required(record, "selectionPolicy", "$.manifest.selectionPolicy"), "$.manifest.selectionPolicy"),
+    reviewPlan: validateReviewPlan(required(record, "reviewPlan", "$.manifest.reviewPlan"), "$.manifest.reviewPlan"),
     filters: wip.filters,
     bundles: wip.bundles,
-    pairs: Object.freeze(pairs.sort((left, right) => rawStringCompare(left.pairId, right.pairId))),
+    pairs: Object.freeze(wip.pairs.map(({ pairId }) => pairs.find((pair) => pair.pairId === pairId)!)),
     finalCritic: wip.finalCritic,
   });
   if (canonicalStageAJson(manifest) !== canonicalStageAJson(manifestInput)) fail("$.manifest", "canonical_manifest_required");
@@ -1649,14 +2477,14 @@ async function readValidatedGoldFreeze(
   expectedGoldDigest: string,
   expectedSilverDigest: string,
   expectedAuditPolicyDigest: string,
-  expectedCalibrationDigest: string,
+  expectedCalibrationResultDigest: string,
 ): Promise<StageAGoldFreezeV2> {
   return validateGoldFreeze(
     await readPrivateJson(relativePath),
     expectedGoldDigest,
     expectedSilverDigest,
     expectedAuditPolicyDigest,
-    expectedCalibrationDigest,
+    expectedCalibrationResultDigest,
   );
 }
 
@@ -1665,9 +2493,9 @@ export async function loadStageATargetInputs(
   expectedGoldDigest: string,
   expectedSilverDigest: string,
   expectedAuditPolicyDigest: string,
-  expectedCalibrationDigest: string,
+  expectedCalibrationResultDigest: string,
 ): Promise<readonly StageATargetInputV2[]> {
-  const frozen = await readValidatedGoldFreeze(relativePath, expectedGoldDigest, expectedSilverDigest, expectedAuditPolicyDigest, expectedCalibrationDigest);
+  const frozen = await readValidatedGoldFreeze(relativePath, expectedGoldDigest, expectedSilverDigest, expectedAuditPolicyDigest, expectedCalibrationResultDigest);
   const queryByBundle = new Map(frozen.manifest.bundles.map(({ bundleId, softQuery }) => [bundleId, softQuery]));
   return deepFreeze({
     values: safeArray(frozen.manifest.pairs.map(({ pairId, bundleId, classifierInput }) => frozenNullPrototypeRecord({ pairId, query: queryByBundle.get(bundleId)!, classifierInput }))),
@@ -1679,9 +2507,9 @@ export async function loadStageAScoringLabels(
   expectedGoldDigest: string,
   expectedSilverDigest: string,
   expectedAuditPolicyDigest: string,
-  expectedCalibrationDigest: string,
+  expectedCalibrationResultDigest: string,
 ): Promise<readonly StageAScoringLabelV2[]> {
-  const frozen = await readValidatedGoldFreeze(relativePath, expectedGoldDigest, expectedSilverDigest, expectedAuditPolicyDigest, expectedCalibrationDigest);
+  const frozen = await readValidatedGoldFreeze(relativePath, expectedGoldDigest, expectedSilverDigest, expectedAuditPolicyDigest, expectedCalibrationResultDigest);
   return deepFreeze(safeArray(frozen.manifest.pairs.map(({ pairId, goldLabel }) => frozenNullPrototypeRecord({ pairId, label: goldLabel }))));
 }
 
@@ -1690,9 +2518,9 @@ export async function reportStageAGoldFreeze(
   expectedGoldDigest: string,
   expectedSilverDigest: string,
   expectedAuditPolicyDigest: string,
-  expectedCalibrationDigest: string,
+  expectedCalibrationResultDigest: string,
 ): Promise<StageAReportV2> {
-  const frozen = await readValidatedGoldFreeze(relativePath, expectedGoldDigest, expectedSilverDigest, expectedAuditPolicyDigest, expectedCalibrationDigest);
+  const frozen = await readValidatedGoldFreeze(relativePath, expectedGoldDigest, expectedSilverDigest, expectedAuditPolicyDigest, expectedCalibrationResultDigest);
   const cohortByBundle = new Map(frozen.manifest.bundles.map(({ bundleId, cohort }) => [bundleId, cohort]));
   const cohorts = Object.fromEntries(COHORTS.map((cohort) => {
     const pairs = frozen.manifest.pairs.filter(({ bundleId }) => cohortByBundle.get(bundleId) === cohort);
@@ -1708,6 +2536,8 @@ export async function reportStageAGoldFreeze(
 
 export async function readStageAHumanAuditPolicyFile(
   relativePath: string,
+  silverInput: unknown,
+  expectedSilverDigest: string,
 ): Promise<StageAHumanAuditPolicyV2> {
-  return validateStageAHumanAuditPolicy(await readPrivateJson(relativePath));
+  return validateStageAHumanAuditPolicy(await readPrivateJson(relativePath), silverInput, expectedSilverDigest);
 }

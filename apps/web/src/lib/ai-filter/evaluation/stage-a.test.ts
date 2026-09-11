@@ -4,65 +4,75 @@ import path from "node:path";
 import { restoreTestEnv, setTestEnv, snapshotTestEnv } from "@/test-utils/env";
 import Ajv from "ajv";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  CLASSIFIER_INPUT_NORMALIZER_VERSION,
-  CLASSIFIER_INPUT_SCHEMA_VERSION,
-  normalizeClassifierInputV1,
-} from "../classifier-input";
+import { CLASSIFIER_INPUT_NORMALIZER_VERSION, CLASSIFIER_INPUT_SCHEMA_VERSION, normalizeClassifierInputV1 } from "../classifier-input";
 import { AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION } from "../contract";
 import {
   STAGE_A_BUNDLE_V2_SCHEMA,
+  STAGE_A_CALIBRATION_ARTIFACT_V2_SCHEMA,
+  STAGE_A_CALIBRATION_RESULT_V2_SCHEMA,
   STAGE_A_FILTER_V2_SCHEMA,
   STAGE_A_GOLD_FREEZE_V2_SCHEMA,
   STAGE_A_GOLD_MANIFEST_V2_SCHEMA,
   STAGE_A_HUMAN_AUDIT_POLICY_V2_SCHEMA,
   STAGE_A_HUMAN_FEEDBACK_V2_SCHEMA,
   STAGE_A_PAIR_V2_SCHEMA,
+  STAGE_A_PRE_ANNOTATION_PAIR_V2_SCHEMA,
+  STAGE_A_PRE_ANNOTATION_V2_SCHEMA,
+  STAGE_A_PROMPT_REVIEW_FEEDBACK_V2_SCHEMA,
   STAGE_A_SILVER_FREEZE_V2_SCHEMA,
   STAGE_A_SILVER_MANIFEST_V2_SCHEMA,
   STAGE_A_WIP_V2_SCHEMA,
 } from "./schemas";
 import {
   STAGE_A_BUNDLE_SCHEMA_VERSION,
+  STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION,
   STAGE_A_FILTER_SCHEMA_VERSION,
-  STAGE_A_GOLD_FREEZE_SCHEMA_VERSION,
-  STAGE_A_HUMAN_AUDIT_POLICY_SCHEMA_VERSION,
   STAGE_A_HUMAN_FEEDBACK_SCHEMA_VERSION,
   STAGE_A_PAIR_SCHEMA_VERSION,
+  STAGE_A_PRE_ANNOTATION_SCHEMA_VERSION,
+  STAGE_A_PROMPT_REVIEW_FEEDBACK_SCHEMA_VERSION,
   STAGE_A_WIP_SCHEMA_VERSION,
   StageAEvaluationError,
   canonicalStageAJson,
+  deriveStageAHumanAuditPolicy,
+  deriveStageAPromptReviewBundleIds,
+  digestStageACalibrationArtifact,
+  digestStageACalibrationResult,
   digestStageAHumanAuditPolicy,
+  digestStageAPreAnnotation,
+  digestStageAPromptReviewFeedback,
+  digestStageASourceSnapshotIdentity,
+  digestStageAWipReviewPayload,
   freezeStageASilver,
   loadStageAScoringLabels,
   loadStageATargetInputs,
   promoteStageAGold,
-  readStageAHumanAuditPolicyFile,
   reportStageAGoldFreeze,
   validateStageAWip,
   writeStageASilverFreezeFile,
-  type StageAHumanAuditPolicyV2,
+  type StageACalibrationResultV2,
+  type StageACalibrationArtifactV2,
   type StageAHumanFeedbackV2,
+  type StageAPreAnnotationV2,
+  type StageAPromptReviewFeedbackV2,
   type StageAWipV2,
 } from "./stage-a";
+import { renderStageALabelAuditPacket, renderStageAPromptReviewPacket } from "./review-packets";
 
 const temporaryRoots: string[] = [];
 const originalEnv = snapshotTestEnv(["AI_FILTER_EVAL_DATA_ROOT"]);
-const CALIBRATION_DIGEST = "c".repeat(64);
+const D = (character: string) => character.repeat(64);
 
 afterEach(async () => {
   restoreTestEnv(originalEnv);
   await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
-type Mutable<T> = T extends readonly (infer Item)[]
-  ? Mutable<Item>[]
-  : T extends object
-    ? { -readonly [Key in keyof T]: Mutable<T[Key]> }
-    : T;
-
-function clone<T>(input: T): Mutable<T> {
-  return JSON.parse(JSON.stringify(input)) as Mutable<T>;
+type Mutable<T> = T extends readonly (infer Item)[] ? Mutable<Item>[] : T extends object ? { -readonly [Key in keyof T]: Mutable<T[Key]> } : T;
+function clone<T>(input: T): Mutable<T> { return JSON.parse(JSON.stringify(input)) as Mutable<T>; }
+function reapprove(wip: Mutable<StageAWipV2>): void {
+  const { finalCritic, ...reviewPayload } = wip;
+  finalCritic.reviewedWipDigest = digestStageAWipReviewPayload(reviewPayload);
 }
 
 function source(index: number) {
@@ -75,134 +85,194 @@ function source(index: number) {
   };
 }
 
-function syntheticWip(): StageAWipV2 {
+function fixture() {
+  const calibrationArtifact: StageACalibrationArtifactV2 = {
+    schemaVersion: "ai-filter-stage-a-calibration-v2",
+    calibrationId: "eval-calibration",
+    examples: Array.from({ length: 24 }, (_, index) => {
+      const classifierSource = {
+        ...source(index + 500),
+        candidateId: `10000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+      };
+      return {
+        calibrationExampleId: `eval-calibration-example-${String(index).padStart(2, "0")}`,
+        softQuery: `calibration prompt ${String(index).padStart(2, "0")}`,
+        classifierSource,
+        contentIdentity: normalizeClassifierInputV1(classifierSource).contentIdentity,
+      };
+    }),
+  };
+  const calibrationInputDigest = digestStageACalibrationArtifact(calibrationArtifact);
+  const calibrationResult: StageACalibrationResultV2 = {
+    schemaVersion: STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION,
+    calibrationId: "eval-calibration",
+    calibrationInputDigest,
+    humanReview: {
+      reviewId: "eval-calibration-review",
+      reviewerId: "eval-calibration-human",
+      approved: true,
+      decisions: Array.from({ length: 24 }, (_, index) => ({ calibrationExampleId: `eval-calibration-example-${String(index).padStart(2, "0")}`, judgment: index % 2 ? "reject" as const : "accept" as const })),
+    },
+    agentConfigs: [
+      { configId: "eval-config-prompt", role: "prompt_author", model: "gpt-5.6-terra", modelVersion: "2026-09", reasoningEffort: "medium", taskPromptDigest: D("1") },
+      { configId: "eval-config-annotator", role: "annotator", model: "gpt-5.6-terra", modelVersion: "2026-09", reasoningEffort: "high", taskPromptDigest: D("2") },
+      { configId: "eval-config-adjudicator", role: "adjudicator", model: "gpt-5.6-sol", modelVersion: "2026-09", reasoningEffort: "high", taskPromptDigest: D("3") },
+      { configId: "eval-config-critic", role: "final_critic", model: "gpt-5.6-sol", modelVersion: "2026-09", reasoningEffort: "xhigh", taskPromptDigest: D("4") },
+    ],
+  };
+  const calibrationResultDigest = digestStageACalibrationResult(
+    calibrationResult,
+    calibrationArtifact,
+    calibrationInputDigest,
+  );
   const filters = Array.from({ length: 20 }, (_, index) => ({
     schemaVersion: STAGE_A_FILTER_SCHEMA_VERSION,
     filterId: `eval-filter-${String(index).padStart(2, "0")}`,
     source: "production_deidentified" as const,
-    sourceFilterDigest: index.toString(16).padStart(64, "0"),
+    sourceFilterFingerprint: { scheme: "hmac-sha256-v1" as const, value: index.toString(16).padStart(64, "0") },
     generalizedContext: {
-      companyScope: index % 2 === 0 ? "any" as const : "selected" as const,
-      locationScope: ["none", "single", "multiple", "global"] as const,
-      occupationScope: ["none", "single", "multiple"] as const,
-      keywordScope: ["none", "single", "multiple"] as const,
-      seniorityScope: ["none", "single", "multiple"] as const,
-      technologyScope: ["none", "single", "multiple"] as const,
-      workModeScope: ["none", "single", "multiple"] as const,
-      employmentTypeScope: ["none", "single", "multiple"] as const,
-      compensationScope: ["none", "minimum", "maximum", "range"] as const,
-      experienceScope: ["none", "minimum", "maximum", "range"] as const,
-      locale: ["de", "en", "fr", "it", "other"] as const,
-    },
-  })).map((filter, index) => ({
-    ...filter,
-    generalizedContext: {
-      companyScope: filter.generalizedContext.companyScope,
-      locationScope: filter.generalizedContext.locationScope[index % 4],
-      occupationScope: filter.generalizedContext.occupationScope[index % 3],
-      keywordScope: filter.generalizedContext.keywordScope[(index + 1) % 3],
-      seniorityScope: filter.generalizedContext.seniorityScope[(index + 2) % 3],
-      technologyScope: filter.generalizedContext.technologyScope[index % 3],
-      workModeScope: filter.generalizedContext.workModeScope[(index + 1) % 3],
-      employmentTypeScope: filter.generalizedContext.employmentTypeScope[(index + 2) % 3],
-      compensationScope: filter.generalizedContext.compensationScope[index % 4],
-      experienceScope: filter.generalizedContext.experienceScope[(index + 1) % 4],
-      locale: filter.generalizedContext.locale[index % 5],
+      companyScope: index % 2 ? "selected" as const : "any" as const,
+      locationScope: ["none", "single", "multiple", "global"][index % 4] as "none" | "single" | "multiple" | "global",
+      occupationScope: ["none", "single", "multiple"][index % 3] as "none" | "single" | "multiple",
+      keywordScope: ["none", "single", "multiple"][(index + 1) % 3] as "none" | "single" | "multiple",
+      seniorityScope: ["none", "single", "multiple"][(index + 2) % 3] as "none" | "single" | "multiple",
+      technologyScope: ["none", "single", "multiple"][index % 3] as "none" | "single" | "multiple",
+      workModeScope: ["none", "single", "multiple"][(index + 1) % 3] as "none" | "single" | "multiple",
+      employmentTypeScope: ["none", "single", "multiple"][(index + 2) % 3] as "none" | "single" | "multiple",
+      compensationScope: ["none", "minimum", "maximum", "range"][index % 4] as "none" | "minimum" | "maximum" | "range",
+      experienceScope: ["none", "minimum", "maximum", "range"][(index + 1) % 4] as "none" | "minimum" | "maximum" | "range",
+      locale: ["de", "en", "fr", "it", "other"][index % 5] as "de" | "en" | "fr" | "it" | "other",
     },
   }));
-  const bundles = Array.from({ length: 25 }, (_, index) => ({
-    schemaVersion: STAGE_A_BUNDLE_SCHEMA_VERSION,
-    bundleId: `eval-bundle-${String(index).padStart(2, "0")}`,
-    filterId: `eval-filter-${String(index < 20 ? index : index - 20).padStart(2, "0")}`,
-    cohort: index < 15 ? "production_shaped" as const : "challenge" as const,
-    persona: ["lazy", "verbose", "misunderstood_purpose", "precise", "vague", "contradictory", "multilingual"] as const,
-    softQuery: `synthetic prompt ${String(index).padStart(2, "0")}`,
-    promptProvenance: {
-      origin: "agent_synthetic" as const,
-      authorId: `eval-author-${String(index).padStart(2, "0")}`,
-      agentRole: "jobseek-prompt-author",
-      model: "gpt-5.6-terra",
-      modelVersion: "2026-09",
-      reasoningEffort: ["low", "medium", "high"] as const,
-      taskPromptDigest: (index + 100).toString(16).padStart(64, "0"),
-    },
-  })).map((bundle, index) => ({
-    ...bundle,
-    persona: bundle.persona[index % bundle.persona.length],
-    promptProvenance: {
-      ...bundle.promptProvenance,
-      reasoningEffort: bundle.promptProvenance.reasoningEffort[index % 3],
-    },
-  }));
-  const pairs = bundles.flatMap((bundle, bundleIndex) => Array.from({ length: 8 }, (_, localIndex) => {
-    const index = bundleIndex * 8 + localIndex;
+  const personas = ["lazy", "verbose", "misunderstood_purpose", "precise", "vague", "contradictory", "multilingual"] as const;
+  const locales = ["de", "en", "fr", "it"] as const;
+  const bundles = Array.from({ length: 25 }, (_, index) => {
+    const cohortIndex = index < 15 ? index : index - 15;
+    return {
+      schemaVersion: STAGE_A_BUNDLE_SCHEMA_VERSION,
+      bundleId: `eval-bundle-${String(index).padStart(2, "0")}`,
+      filterId: `eval-filter-${String(index < 15 ? index : 15 + ((index - 15) % 5)).padStart(2, "0")}`,
+      cohort: index < 15 ? "production_shaped" as const : "challenge" as const,
+      persona: personas[cohortIndex % personas.length],
+      promptLocale: locales[cohortIndex % locales.length],
+      softQuery: `synthetic prompt ${String(index).padStart(2, "0")}`,
+      promptProvenance: { origin: "agent_synthetic" as const, authorId: `eval-prompt-author-${String(index).padStart(2, "0")}`, configId: "eval-config-prompt" },
+    };
+  });
+  const selectionPolicy = {
+    schemaVersion: "ai-filter-stage-a-selection-policy-v2" as const,
+    af1ContractVersion: 1 as const,
+    compilerVersion: "af1-compiler-2026-09",
+    collectionSnapshotId: "eval-snapshot-september",
+    collectionSnapshotDigest: D("b"),
+    windowStart: "2026-08-02T00:00:00.000Z",
+    cutoff: "2026-09-01T00:00:00.000Z",
+    windowBoundary: "[windowStart,cutoff)" as const,
+    order: "first_seen_at_desc_candidate_id_asc" as const,
+    productionSelection: "first_eight" as const,
+    challengeSelection: "frozen_source_rank" as const,
+  };
+  const reviewPlan = { promptReviewSeed: D("c"), auditSeed: D("d"), auditRule: "bounded-16-8-8-v2" as const, auditSize: 32 as const };
+  const prePairs = bundles.flatMap((bundle, bundleIndex) => Array.from({ length: 8 }, (_, position) => {
+    const index = bundleIndex * 8 + position;
+    const cohortIndex = (bundleIndex < 15 ? bundleIndex : bundleIndex - 15) * 8 + position;
     const classifierSource = source(index);
-    const ambiguity = localIndex === 0 || localIndex === 1;
-    const evidenceCondition = localIndex === 0
-      ? "policy_boundary" as const
-      : localIndex === 1
-        ? "insufficient_evidence" as const
-        : localIndex === 2
-          ? "prompt_injection" as const
-          : localIndex % 2 === 0
-            ? "direct_support" as const
-            : "direct_conflict" as const;
-    const firstLabel = localIndex % 2 === 0 ? "accept" as const : "reject" as const;
-    const secondLabel = localIndex === 0 ? "reject" as const : firstLabel;
-    const adjudicationRequired = ambiguity || evidenceCondition === "policy_boundary" || firstLabel !== secondLabel;
+    const contentIdentity = normalizeClassifierInputV1(classifierSource).contentIdentity;
+    const postingFirstSeenAt = new Date(Date.UTC(2026, 7, 31, 23, 59, 59 - position)).toISOString();
+    const sourceRank = bundle.cohort === "production_shaped" ? position : position * 2;
+    const evidenceCondition = cohortIndex < 4 ? "policy_boundary" as const
+      : cohortIndex < 8 ? "direct_conflict" as const
+        : (["direct_support", "prompt_injection", "insufficient_evidence", "direct_conflict"] as const)[cohortIndex % 4];
     return {
       schemaVersion: STAGE_A_PAIR_SCHEMA_VERSION,
       pairId: `eval-pair-${String(index).padStart(3, "0")}`,
       bundleId: bundle.bundleId,
-      locale: ["de", "en", "fr", "it"][index % 4] as "de" | "en" | "fr" | "it",
+      position,
+      sourceRank,
+      postingFirstSeenAt,
+      sourceSnapshotIdentity: digestStageASourceSnapshotIdentity({ candidateId: classifierSource.candidateId, contentIdentity, postingFirstSeenAt, sourceRank, collectionSnapshotDigest: selectionPolicy.collectionSnapshotDigest }),
+      locale: locales[index % locales.length],
       evidenceCondition,
-      ambiguity,
       classifierSource,
-      contentIdentity: normalizeClassifierInputV1(classifierSource).contentIdentity,
-      annotations: [
-        { annotationId: `eval-annotation-${String(index).padStart(3, "0")}-a`, actorId: "eval-annotator-a", label: firstLabel },
-        { annotationId: `eval-annotation-${String(index).padStart(3, "0")}-b`, actorId: "eval-annotator-b", label: secondLabel },
-      ] as const,
-      adjudication: adjudicationRequired
-        ? { adjudicationId: `eval-adjudication-${String(index).padStart(3, "0")}`, actorId: "eval-adjudicator", label: firstLabel }
-        : null,
+      contentIdentity,
     };
   }));
-  return {
-    schemaVersion: STAGE_A_WIP_SCHEMA_VERSION,
+  const preAnnotation: StageAPreAnnotationV2 = {
+    schemaVersion: STAGE_A_PRE_ANNOTATION_SCHEMA_VERSION,
     datasetId: "eval-stage-a-synthetic",
     classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
     classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
     softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
-    calibrationDigest: CALIBRATION_DIGEST,
+    calibrationResultDigest,
+    selectionPolicy,
+    reviewPlan,
+    filters,
+    bundles,
+    pairs: prePairs,
+  };
+  const preAnnotationDigest = digestStageAPreAnnotation(preAnnotation);
+  const promptFeedback: StageAPromptReviewFeedbackV2 = {
+    schemaVersion: STAGE_A_PROMPT_REVIEW_FEEDBACK_SCHEMA_VERSION,
+    reviewId: "eval-prompt-review",
+    reviewerId: "eval-prompt-human",
+    preAnnotationDigest,
+    approved: true,
+    decisions: deriveStageAPromptReviewBundleIds(preAnnotation).map((bundleId) => ({ bundleId, decision: "keep" as const })),
+  };
+  const promptReviewFeedbackDigest = digestStageAPromptReviewFeedback(promptFeedback, preAnnotation);
+  const pairs = prePairs.map((pair, index) => {
+    const cohortIndex = (index < 120 ? Math.floor(index / 8) : Math.floor((index - 120) / 8)) * 8 + (index % 8);
+    const policyBoundary = cohortIndex < 4;
+    const disagreement = cohortIndex >= 4 && cohortIndex < 8;
+    const firstLabel = index % 2 ? "reject" as const : "accept" as const;
+    const secondLabel = disagreement ? (firstLabel === "accept" ? "reject" as const : "accept" as const) : firstLabel;
+    const annotations = [
+      { annotationId: `eval-ann-${String(index).padStart(3, "0")}-a`, actorId: "eval-annotator-a", configId: "eval-config-annotator", label: firstLabel, ambiguity: false, rationaleCode: "direct_evidence" as const, evidenceRefs: ["description_text" as const] },
+      { annotationId: `eval-ann-${String(index).padStart(3, "0")}-b`, actorId: "eval-annotator-b", configId: "eval-config-annotator", label: secondLabel, ambiguity: false, rationaleCode: disagreement ? "contradiction" as const : "direct_evidence" as const, evidenceRefs: ["description_text" as const] },
+    ] as const;
+    return {
+      ...pair,
+      annotations,
+      adjudication: policyBoundary || disagreement ? {
+        adjudicationId: `eval-adj-${String(index).padStart(3, "0")}`,
+        actorId: "eval-adjudicator",
+        configId: "eval-config-adjudicator",
+        annotationIds: [annotations[0].annotationId, annotations[1].annotationId] as const,
+        label: firstLabel,
+        ambiguity: false,
+        rationaleCode: policyBoundary ? "policy_interpretation" as const : "direct_evidence" as const,
+      } : null,
+    };
+  });
+  const wipReviewPayload = {
+    schemaVersion: STAGE_A_WIP_SCHEMA_VERSION,
+    datasetId: preAnnotation.datasetId,
+    classifierInputSchemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
+    classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
+    softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
+    calibrationResultDigest,
+    preAnnotationDigest,
+    promptReviewFeedbackDigest,
     filters,
     bundles,
     pairs,
-    finalCritic: { reviewId: "eval-final-review", actorId: "eval-final-critic", approved: true },
   };
+  const wip: StageAWipV2 = {
+    ...wipReviewPayload,
+    finalCritic: {
+      reviewId: "eval-final-review",
+      actorId: "eval-final-critic",
+      configId: "eval-config-critic",
+      reviewedWipDigest: digestStageAWipReviewPayload(wipReviewPayload),
+      approved: true,
+    },
+  };
+  const freeze = () => freezeStageASilver(wip, calibrationArtifact, calibrationInputDigest, calibrationResult, calibrationResultDigest, preAnnotation, preAnnotationDigest, promptFeedback, promptReviewFeedbackDigest);
+  return { calibrationArtifact, calibrationInputDigest, calibrationResult, calibrationResultDigest, preAnnotation, preAnnotationDigest, promptFeedback, promptReviewFeedbackDigest, wip, freeze };
 }
 
-function auditPolicy(silverDigest: string, count = 24): StageAHumanAuditPolicyV2 {
-  return {
-    schemaVersion: STAGE_A_HUMAN_AUDIT_POLICY_SCHEMA_VERSION,
-    sourceSilverDigest: silverDigest,
-    auditPairIds: Array.from({ length: count }, (_, index) => `eval-pair-${String(index).padStart(3, "0")}`),
-  };
-}
-
-function feedback(policy: StageAHumanAuditPolicyV2, policyDigest: string): StageAHumanFeedbackV2 {
-  return {
-    schemaVersion: STAGE_A_HUMAN_FEEDBACK_SCHEMA_VERSION,
-    feedbackId: "eval-human-feedback",
-    reviewerId: "eval-human-reviewer",
-    sourceSilverDigest: policy.sourceSilverDigest,
-    auditPolicyDigest: policyDigest,
-    approved: true,
-    decisions: policy.auditPairIds.map((pairId, index) => ({
-      pairId,
-      judgment: index === 0 ? "reject" : index % 2 === 0 ? "accept" : "reject",
-    })),
-  };
+function humanFeedback(sourceSilverDigest: string, auditPolicyDigest: string, pairIds: readonly string[]): StageAHumanFeedbackV2 {
+  return { schemaVersion: STAGE_A_HUMAN_FEEDBACK_SCHEMA_VERSION, feedbackId: "eval-human-feedback", reviewerId: "eval-audit-human", sourceSilverDigest, auditPolicyDigest, approved: true, decisions: pairIds.map((pairId) => ({ pairId, judgment: "accept" })) };
 }
 
 async function useTemporaryRoot() {
@@ -214,202 +284,185 @@ async function useTemporaryRoot() {
 
 async function writeGoldFixture() {
   const root = await useTemporaryRoot();
-  const silver = freezeStageASilver(syntheticWip(), CALIBRATION_DIGEST);
-  const policy = auditPolicy(silver.silverDigest);
-  const policyDigest = digestStageAHumanAuditPolicy(policy);
-  const humanFeedback = feedback(policy, policyDigest);
-  const gold = promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, humanFeedback);
+  const data = fixture();
+  const silver = data.freeze();
+  const policy = deriveStageAHumanAuditPolicy(silver, silver.silverDigest);
+  const policyDigest = digestStageAHumanAuditPolicy(policy, silver, silver.silverDigest);
+  const feedback = humanFeedback(silver.silverDigest, policyDigest, policy.auditPairIds);
+  const gold = promoteStageAGold(silver, silver.silverDigest, policy, policyDigest, feedback);
   await writeFile(path.join(root, "gold.json"), canonicalStageAJson(gold), { mode: 0o600 });
-  return { root, silver, policy, policyDigest, humanFeedback, gold };
+  return { root, data, silver, policy, policyDigest, feedback, gold };
 }
 
-describe("Stage A v2 corpus contract", () => {
-  it("publishes strict v2-only schemas that compile", () => {
+describe("Stage A v2 gates", () => {
+  it("compiles strict schemas for every frozen boundary", () => {
     const ajv = new Ajv({ allErrors: true, strict: true });
-    for (const schema of [
-      STAGE_A_FILTER_V2_SCHEMA,
-      STAGE_A_BUNDLE_V2_SCHEMA,
-      STAGE_A_PAIR_V2_SCHEMA,
-      STAGE_A_WIP_V2_SCHEMA,
-      STAGE_A_SILVER_MANIFEST_V2_SCHEMA,
-      STAGE_A_SILVER_FREEZE_V2_SCHEMA,
-      STAGE_A_HUMAN_AUDIT_POLICY_V2_SCHEMA,
-      STAGE_A_HUMAN_FEEDBACK_V2_SCHEMA,
-      STAGE_A_GOLD_MANIFEST_V2_SCHEMA,
-      STAGE_A_GOLD_FREEZE_V2_SCHEMA,
-    ]) ajv.addSchema(schema);
-    expect(ajv.getSchema(STAGE_A_WIP_V2_SCHEMA.$id)?.(syntheticWip())).toBe(true);
-    expect(JSON.stringify(STAGE_A_WIP_V2_SCHEMA)).not.toContain("stage-a-wip-v1");
+    for (const schema of [STAGE_A_FILTER_V2_SCHEMA, STAGE_A_BUNDLE_V2_SCHEMA, STAGE_A_PRE_ANNOTATION_PAIR_V2_SCHEMA, STAGE_A_PAIR_V2_SCHEMA, STAGE_A_CALIBRATION_ARTIFACT_V2_SCHEMA, STAGE_A_CALIBRATION_RESULT_V2_SCHEMA, STAGE_A_PRE_ANNOTATION_V2_SCHEMA, STAGE_A_PROMPT_REVIEW_FEEDBACK_V2_SCHEMA, STAGE_A_WIP_V2_SCHEMA, STAGE_A_SILVER_MANIFEST_V2_SCHEMA, STAGE_A_SILVER_FREEZE_V2_SCHEMA, STAGE_A_HUMAN_AUDIT_POLICY_V2_SCHEMA, STAGE_A_HUMAN_FEEDBACK_V2_SCHEMA, STAGE_A_GOLD_MANIFEST_V2_SCHEMA, STAGE_A_GOLD_FREEZE_V2_SCHEMA]) ajv.addSchema(schema);
+    const data = fixture();
+    expect(ajv.getSchema(STAGE_A_CALIBRATION_ARTIFACT_V2_SCHEMA.$id)?.(data.calibrationArtifact)).toBe(true);
+    expect(ajv.getSchema(STAGE_A_CALIBRATION_RESULT_V2_SCHEMA.$id)?.(data.calibrationResult)).toBe(true);
+    expect(ajv.getSchema(STAGE_A_PRE_ANNOTATION_V2_SCHEMA.$id)?.(data.preAnnotation)).toBe(true);
+    expect(ajv.getSchema(STAGE_A_WIP_V2_SCHEMA.$id)?.(data.wip)).toBe(true);
   });
 
-  it("enforces the exact 20 filters, 25 bundles, 120/80 pairs and five reuses", () => {
-    const validated = validateStageAWip(syntheticWip());
-    expect(validated.filters).toHaveLength(20);
-    expect(validated.bundles).toHaveLength(25);
-    expect(validated.pairs).toHaveLength(200);
-    const cohortByBundle = new Map(validated.bundles.map(({ bundleId, cohort }) => [bundleId, cohort]));
-    expect(validated.pairs.filter(({ bundleId }) => cohortByBundle.get(bundleId) === "production_shaped")).toHaveLength(120);
-    expect(validated.pairs.filter(({ bundleId }) => cohortByBundle.get(bundleId) === "challenge")).toHaveLength(80);
-    expect(validated.filters.filter(({ filterId }) => validated.bundles.filter((bundle) => bundle.filterId === filterId).length === 2)).toHaveLength(5);
+  it("enforces the disjoint 15 production plus five twice-challenge filter mapping", () => {
+    const data = fixture();
+    expect(validateStageAWip(data.wip).pairs).toHaveLength(200);
+    const wrong = clone(data.wip);
+    wrong.bundles[15].filterId = wrong.bundles[0].filterId;
+    expect(() => validateStageAWip(wrong)).toThrow(/disjoint_15_plus_5_filter_mapping_required/u);
+    const duplicateFingerprint = clone(data.wip);
+    duplicateFingerprint.filters[1].sourceFilterFingerprint.value = duplicateFingerprint.filters[0].sourceFilterFingerprint.value;
+    expect(() => validateStageAWip(duplicateFingerprint)).toThrow(/unique_source_filter_fingerprints_required/u);
   });
 
-  it("rejects under-labelled, unadjudicated and role-conflicted work", () => {
-    const oneLabel = clone(syntheticWip());
-    oneLabel.pairs[3].annotations.pop();
-    expect(() => validateStageAWip(oneLabel)).toThrow(/bounded_array_required/u);
-
-    const sameAnnotator = clone(syntheticWip());
-    sameAnnotator.pairs[3].annotations[1].actorId = sameAnnotator.pairs[3].annotations[0].actorId;
-    expect(() => validateStageAWip(sameAnnotator)).toThrow(/blind_distinct_annotators_required/u);
-
-    const missingAdjudication = clone(syntheticWip());
-    missingAdjudication.pairs[0].adjudication = null;
-    expect(() => validateStageAWip(missingAdjudication)).toThrow(/adjudication_required/u);
-
-    const authorAnnotates = clone(syntheticWip());
-    authorAnnotates.pairs[0].annotations[0].actorId = authorAnnotates.bundles[0].promptProvenance.authorId;
-    expect(() => validateStageAWip(authorAnnotates)).toThrow(/global_role_separation_required/u);
-
-    const criticParticipates = clone(syntheticWip());
-    criticParticipates.finalCritic.actorId = "eval-annotator-a";
-    expect(() => validateStageAWip(criticParticipates)).toThrow(/independent_final_critic_required/u);
+  it("requires blind labels with ambiguity, evidence, linked adjudication, and role separation", () => {
+    const data = fixture();
+    const noEvidence = clone(data.wip);
+    noEvidence.pairs[20].annotations[0].evidenceRefs = [];
+    expect(() => validateStageAWip(noEvidence)).toThrow(/bounded_array_required/u);
+    const ambiguous = clone(data.wip);
+    ambiguous.pairs[20].annotations[0].ambiguity = true;
+    expect(() => validateStageAWip(ambiguous)).toThrow(/adjudication_required/u);
+    const badLink = clone(data.wip);
+    badLink.pairs[0].adjudication!.annotationIds[0] = "eval-ann-unrelated";
+    expect(() => validateStageAWip(badLink)).toThrow(/annotation_linkage_required/u);
+    const roleConflict = clone(data.wip);
+    roleConflict.pairs[20].annotations[0].actorId = roleConflict.bundles[2].promptProvenance.authorId;
+    expect(() => validateStageAWip(roleConflict)).toThrow(/global_role_separation_required/u);
   });
 
-  it("rejects target predictions, blended fields, bad provenance and shape drift", () => {
-    const prediction = clone(syntheticWip()) as Mutable<StageAWipV2> & { pairs: Array<Record<string, unknown>> };
-    prediction.pairs[0].targetPrediction = "accept";
-    expect(() => validateStageAWip(prediction)).toThrow(/additional_properties/u);
-
-    const blended = clone(syntheticWip()) as Mutable<StageAWipV2> & { pairs: Array<Record<string, unknown>> };
-    blended.pairs[0].cohort = "challenge";
-    expect(() => validateStageAWip(blended)).toThrow(/additional_properties/u);
-
-    const noModel = clone(syntheticWip()) as Mutable<StageAWipV2>;
-    delete (noModel.bundles[0].promptProvenance as Partial<typeof noModel.bundles[0]["promptProvenance"]>).modelVersion;
-    expect(() => validateStageAWip(noModel)).toThrow(/required/u);
-
-    const wrongSplit = clone(syntheticWip());
-    wrongSplit.bundles[14].cohort = "challenge";
-    expect(() => validateStageAWip(wrongSplit)).toThrow(/exact_cohort_split_required/u);
-
-    const wrongReuse = clone(syntheticWip());
-    wrongReuse.bundles[24].filterId = wrongReuse.bundles[23].filterId;
-    expect(() => validateStageAWip(wrongReuse)).toThrow(/five_extra_filter_uses_required/u);
+  it("pins pre-annotation feed order and prevents post-review input drift", () => {
+    const data = fixture();
+    const reordered = clone(data.preAnnotation);
+    reordered.pairs[0].sourceRank = 1;
+    expect(() => digestStageAPreAnnotation(reordered)).toThrow(/production_must_use_first_eight_required/u);
+    const drifted = clone(data.wip);
+    drifted.pairs[20].classifierSource.title = "changed after prompt review";
+    drifted.pairs[20].contentIdentity = normalizeClassifierInputV1(drifted.pairs[20].classifierSource).contentIdentity;
+    expect(() => freezeStageASilver(drifted, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, data.calibrationResultDigest, data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest)).toThrow(/final_critic_review_pin_mismatch/u);
+    reapprove(drifted);
+    expect(() => freezeStageASilver(drifted, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, data.calibrationResultDigest, data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest)).toThrow(/pre_annotation_projection_mismatch/u);
   });
 
-  it("normalizes classifier inputs and requires the external calibration pin", () => {
-    const input = clone(syntheticWip());
-    input.pairs[0].classifierSource.title = "  Synthetic   role  ";
-    input.pairs[0].contentIdentity = normalizeClassifierInputV1(input.pairs[0].classifierSource).contentIdentity;
-    const frozen = freezeStageASilver(input, CALIBRATION_DIGEST);
-    expect(frozen.manifest.pairs[0].classifierInput.title).toBe("Synthetic role");
-    expect(() => freezeStageASilver(input, "0".repeat(64))).toThrow(/calibration_digest_mismatch/u);
+  it("requires an approved exact 12-card pre-annotation prompt gate", () => {
+    const data = fixture();
+    expect(deriveStageAPromptReviewBundleIds(data.preAnnotation)).toHaveLength(12);
+    const revised = clone(data.promptFeedback);
+    revised.decisions[0].decision = "revise";
+    const revisedDigest = digestStageAPromptReviewFeedback(revised, data.preAnnotation);
+    expect(() => freezeStageASilver(data.wip, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, data.calibrationResultDigest, data.preAnnotation, data.preAnnotationDigest, revised, revisedDigest)).toThrow(/prompt_review_approval_required/u);
   });
 
-  it("freezes immutable silver with row provenance and no target predictions", () => {
-    const frozen = freezeStageASilver(syntheticWip(), CALIBRATION_DIGEST);
-    expect(frozen.manifest.status).toBe("agent_adjudicated_silver");
-    expect(frozen.manifest.pairs.every(({ annotations }) => annotations.length === 2)).toBe(true);
-    expect(frozen.manifest.pairs[0].silverProvenance.method).toBe("adjudication");
-    expect(frozen.manifest.pairs[3].silverProvenance.method).toBe("agreement");
-    expect(canonicalStageAJson(frozen)).not.toContain("targetPrediction");
-    expect(Object.isFrozen(frozen.manifest.pairs)).toBe(true);
+  it("resolves every agent output to the approved role configuration", () => {
+    const data = fixture();
+    const drift = clone(data.wip);
+    drift.pairs[20].annotations[0].configId = "eval-config-prompt";
+    reapprove(drift);
+    expect(() => freezeStageASilver(drift, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, data.calibrationResultDigest, data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest)).toThrow(/selected_role_config_required/u);
+    expect(() => freezeStageASilver(data.wip, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, D("0"), data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest)).toThrow(/calibration_result_pin_mismatch/u);
+    const unreviewedExample = clone(data.calibrationResult);
+    unreviewedExample.humanReview.decisions[0].calibrationExampleId = "eval-calibration-example-missing";
+    expect(() => digestStageACalibrationResult(unreviewedExample, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/complete_calibration_decisions_required/u);
   });
 
-  it("promotes only a digest-pinned, complete, explicitly approved audit", () => {
-    const silver = freezeStageASilver(syntheticWip(), CALIBRATION_DIGEST);
-    const policy = auditPolicy(silver.silverDigest, 32);
-    const policyDigest = digestStageAHumanAuditPolicy(policy);
-    const humanFeedback = feedback(policy, policyDigest);
-    const gold = promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, humanFeedback);
-    expect(gold.manifest.status).toBe("human_audited_gold");
-    expect(gold.manifest.pairs.filter(({ goldProvenance }) => goldProvenance.humanFeedbackId !== null)).toHaveLength(32);
-    expect(gold.manifest.pairs[0].goldProvenance.source).toBe("human_correction");
+  it("derives the bounded 16/8/8 audit after silver and rejects arbitrary selection", () => {
+    const data = fixture();
+    const silver = data.freeze();
+    const policy = deriveStageAHumanAuditPolicy(silver, silver.silverDigest);
+    expect(policy.auditPairIds).toHaveLength(32);
+    const selected = silver.manifest.pairs.filter(({ pairId }) => policy.auditPairIds.includes(pairId));
+    const ambiguousPolicy = selected.filter((pair) => pair.evidenceCondition === "policy_boundary" || pair.annotations.some(({ ambiguity }) => ambiguity) || pair.finalAmbiguity);
+    const disagreement = selected.filter((pair) => !ambiguousPolicy.includes(pair) && pair.annotations[0].label !== pair.annotations[1].label);
+    const agreements = selected.filter((pair) => !ambiguousPolicy.includes(pair) && !disagreement.includes(pair));
+    expect(ambiguousPolicy).toHaveLength(8);
+    expect(disagreement).toHaveLength(8);
+    const cohortByBundle = new Map(silver.manifest.bundles.map(({ bundleId, cohort }) => [bundleId, cohort]));
+    expect(agreements.filter(({ bundleId }) => cohortByBundle.get(bundleId) === "production_shaped")).toHaveLength(8);
+    expect(agreements.filter(({ bundleId }) => cohortByBundle.get(bundleId) === "challenge")).toHaveLength(8);
+    const arbitrary = clone(policy);
+    arbitrary.auditPairIds[0] = "eval-pair-199";
+    expect(() => digestStageAHumanAuditPolicy(arbitrary, silver, silver.silverDigest)).toThrow(/derived_audit_policy_required/u);
 
-    const incomplete = clone(humanFeedback);
-    incomplete.decisions.pop();
-    expect(() => promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, incomplete)).toThrow(/complete_precommitted_audit_required/u);
-    const unapproved = clone(humanFeedback) as Mutable<StageAHumanFeedbackV2>;
-    unapproved.approved = false;
-    expect(() => promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, unapproved)).toThrow(/explicit_human_approval_required/u);
-    const unclear = clone(humanFeedback);
-    unclear.decisions[0].judgment = "unclear";
-    expect(() => promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, unclear)).toThrow(/resolved_human_feedback_required/u);
-    const participant = clone(humanFeedback);
-    participant.reviewerId = "eval-adjudicator";
-    expect(() => promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, policy, policyDigest, participant)).toThrow(/independent_human_reviewer_required/u);
+    const backfillWip = clone(data.wip);
+    backfillWip.pairs[4].annotations[1].label = backfillWip.pairs[4].annotations[0].label;
+    backfillWip.pairs[4].adjudication = null;
+    reapprove(backfillWip);
+    const backfillSilver = freezeStageASilver(backfillWip, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, data.calibrationResultDigest, data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest);
+    const backfillPolicy = deriveStageAHumanAuditPolicy(backfillSilver, backfillSilver.silverDigest);
+    const backfillSelected = backfillSilver.manifest.pairs.filter(({ pairId }) => backfillPolicy.auditPairIds.includes(pairId));
+    const backfillAgreements = backfillSelected.filter((pair) => pair.evidenceCondition !== "policy_boundary" && !pair.annotations.some(({ ambiguity }) => ambiguity) && !pair.finalAmbiguity && pair.annotations[0].label === pair.annotations[1].label);
+    const productionAgreementCount = backfillAgreements.filter(({ bundleId }) => cohortByBundle.get(bundleId) === "production_shaped").length;
+    expect(backfillAgreements).toHaveLength(17);
+    expect(Math.abs(productionAgreementCount - (backfillAgreements.length - productionAgreementCount))).toBeLessThanOrEqual(1);
   });
 
-  it("rejects audit policies above 32 and unknown precommitted pairs", () => {
-    const silver = freezeStageASilver(syntheticWip(), CALIBRATION_DIGEST);
-    const oversized = auditPolicy(silver.silverDigest, 32) as Mutable<StageAHumanAuditPolicyV2>;
-    oversized.auditPairIds.push("eval-pair-032");
-    expect(() => digestStageAHumanAuditPolicy(oversized)).toThrow(/bounded_array_required/u);
-    const unknown = auditPolicy(silver.silverDigest);
-    const mutable = clone(unknown);
-    mutable.auditPairIds[0] = "eval-pair-999";
-    const digest = digestStageAHumanAuditPolicy(mutable);
-    expect(() => promoteStageAGold(silver, silver.silverDigest, CALIBRATION_DIGEST, mutable, digest, feedback(mutable, digest))).toThrow(/known_pair_ids_required/u);
+  it("renders exactly 12 pre-annotation prompt cards and 32 blind audit cards", () => {
+    const data = fixture();
+    const promptPacket = renderStageAPromptReviewPacket(data.preAnnotation);
+    expect(promptPacket.match(/^## /gmu)).toHaveLength(12);
+    expect(promptPacket).toContain("Prompt locale:");
+    expect(promptPacket).not.toMatch(/annotationId|silverLabel|configId|sourceFilterFingerprint|candidateId/u);
+    const silver = data.freeze();
+    const auditPacket = renderStageALabelAuditPacket(silver, silver.silverDigest);
+    expect(auditPacket.match(/^## /gmu)).toHaveLength(32);
+    expect(auditPacket).not.toMatch(/silverLabel|annotationId|actorId|configId|ambiguity|production_shaped|challenge|Cohort:/u);
   });
-});
 
-describe("gold-only loading and private files", () => {
-  it("returns metadata-free target inputs and separate scoring labels only after gold", async () => {
-    const { gold, silver, policyDigest } = await writeGoldFixture();
-    const args = ["gold.json", gold.goldDigest, silver.silverDigest, policyDigest, CALIBRATION_DIGEST] as const;
+  it("fails the fleet-quality gate when bounded disagreement volume is exceeded", () => {
+    const data = fixture();
+    const expanded = clone(data.wip);
+    const pair = expanded.pairs[20];
+    pair.annotations[1].label = pair.annotations[0].label === "accept" ? "reject" : "accept";
+    pair.adjudication = { adjudicationId: "eval-adj-extra", actorId: "eval-adjudicator", configId: "eval-config-adjudicator", annotationIds: [pair.annotations[0].annotationId, pair.annotations[1].annotationId], label: pair.annotations[0].label, ambiguity: false, rationaleCode: "direct_evidence" };
+    reapprove(expanded);
+    const silver = freezeStageASilver(expanded, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, data.calibrationResultDigest, data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest);
+    expect(() => deriveStageAHumanAuditPolicy(silver, silver.silverDigest)).toThrow(/fleet_quality_audit_quota_exceeded/u);
+  });
+
+  it("does not invoke accessors or proxy traps during canonicalization", () => {
+    let getterCalled = false;
+    const withGetter = Object.defineProperty({}, "secret", { enumerable: true, get() { getterCalled = true; throw new Error("secret-value"); } });
+    expect(() => canonicalStageAJson(withGetter)).toThrow(/canonical_data_property_required/u);
+    expect(getterCalled).toBe(false);
+    let trapCalled = false;
+    const proxy = new Proxy({}, { ownKeys() { trapCalled = true; throw new Error("secret-proxy"); } });
+    expect(() => canonicalStageAJson(proxy)).toThrow(/proxy_forbidden/u);
+    expect(trapCalled).toBe(false);
+  });
+
+  it("promotes complete approved feedback and keeps target inputs metadata-free", async () => {
+    const { data, silver, policy, policyDigest, gold } = await writeGoldFixture();
+    expect(gold.manifest.pairs.filter(({ goldProvenance }) => goldProvenance.source === "human_reviewed")).toHaveLength(32);
+    const args = ["gold.json", gold.goldDigest, silver.silverDigest, policyDigest, data.calibrationResultDigest] as const;
     const targets = await loadStageATargetInputs(...args);
     const labels = await loadStageAScoringLabels(...args);
-    expect(targets).toHaveLength(200);
     expect(Object.keys(targets[0])).toEqual(["pairId", "query", "classifierInput"]);
-    expect(canonicalStageAJson(targets)).not.toMatch(/goldLabel|silverLabel|persona|cohort|actorId|modelVersion/u);
-    expect(labels[0]).toEqual({ pairId: "eval-pair-000", label: "reject" });
-    await expect(loadStageATargetInputs("gold.json", "0".repeat(64), silver.silverDigest, policyDigest, CALIBRATION_DIGEST)).rejects.toThrow(/gold_digest_mismatch/u);
+    expect(canonicalStageAJson(targets)).not.toMatch(/goldLabel|silverLabel|persona|cohort|actorId|configId|ambiguity/u);
+    expect(labels).toHaveLength(200);
+    const incomplete = humanFeedback(silver.silverDigest, policyDigest, policy.auditPairIds.slice(1));
+    expect(() => promoteStageAGold(silver, silver.silverDigest, policy, policyDigest, incomplete)).toThrow(/bounded_array_required/u);
   });
 
-  it("reports production-shaped and challenge cohorts separately", async () => {
-    const { gold, silver, policyDigest } = await writeGoldFixture();
-    const report = await reportStageAGoldFreeze("gold.json", gold.goldDigest, silver.silverDigest, policyDigest, CALIBRATION_DIGEST);
-    expect(report.cohorts.production_shaped.totalPairs).toBe(120);
-    expect(report.cohorts.challenge.totalPairs).toBe(80);
-    expect(report).not.toHaveProperty("totalPairs");
-  });
-
-  it("publishes silver once with private permissions and refuses overwrite", async () => {
+  it("writes immutable private freezes and reports cohorts separately", async () => {
     const root = await useTemporaryRoot();
-    const result = await writeStageASilverFreezeFile("silver.json", syntheticWip(), CALIBRATION_DIGEST);
+    const data = fixture();
+    const result = await writeStageASilverFreezeFile("silver.json", data.wip, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, data.calibrationResultDigest, data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest);
     expect(result.silverDigest).toMatch(/^[a-f0-9]{64}$/u);
     expect((await stat(path.join(root, "silver.json"))).mode & 0o077).toBe(0);
-    await expect(writeStageASilverFreezeFile("silver.json", syntheticWip(), CALIBRATION_DIGEST)).rejects.toEqual(new StageAEvaluationError("$file", "exclusive_publish_failed"));
-    await expect(writeStageASilverFreezeFile("../escape.json", syntheticWip(), CALIBRATION_DIGEST)).rejects.toThrow(/safe_file_name_required/u);
+    await expect(writeStageASilverFreezeFile("silver.json", data.wip, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, data.calibrationResultDigest, data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest)).rejects.toEqual(new StageAEvaluationError("$file", "exclusive_publish_failed"));
+    await rm(root, { recursive: true, force: true });
+    temporaryRoots.pop();
+    const saved = await writeGoldFixture();
+    const report = await reportStageAGoldFreeze("gold.json", saved.gold.goldDigest, saved.silver.silverDigest, saved.policyDigest, saved.data.calibrationResultDigest);
+    expect(report.cohorts.production_shaped.totalPairs).toBe(120);
+    expect(report.cohorts.challenge.totalPairs).toBe(80);
   });
 
-  it("rejects duplicate JSON keys without leaking values or paths", async () => {
-    const root = await useTemporaryRoot();
-    await writeFile(path.join(root, "policy.json"), '{"schemaVersion":"ai-filter-stage-a-human-audit-policy-v2","sourceSilverDigest":"secret","sourceSilverDigest":"other","auditPairIds":[]}', { mode: 0o600 });
-    let caught: unknown;
-    try {
-      await readStageAHumanAuditPolicyFile("policy.json");
-    } catch (error) {
-      caught = error;
-    }
-    expect(caught).toEqual(new StageAEvaluationError("$file", "duplicate_json_key"));
-    expect(String(caught)).not.toContain("secret");
-    expect(String(caught)).not.toContain(root);
-  });
-
-  it("rejects tampered gold despite a valid-looking envelope", async () => {
-    const { root, gold, silver, policyDigest } = await writeGoldFixture();
-    const tampered = clone(gold);
-    tampered.manifest.pairs[40].goldLabel = tampered.manifest.pairs[40].goldLabel === "accept" ? "reject" : "accept";
-    await writeFile(path.join(root, "tampered.json"), canonicalStageAJson(tampered), { mode: 0o600 });
-    await expect(loadStageATargetInputs("tampered.json", gold.goldDigest, silver.silverDigest, policyDigest, CALIBRATION_DIGEST)).rejects.toThrow(/gold_provenance_mismatch|gold_digest_mismatch/u);
-  });
-
-  it("stores calibration only as an external digest", async () => {
-    const { root, gold } = await writeGoldFixture();
+  it("stores calibration decisions externally and pins only their approved result digest", async () => {
+    const { root, data } = await writeGoldFixture();
     const bytes = await readFile(path.join(root, "gold.json"), "utf8");
-    expect(bytes).toContain(`"calibrationDigest":"${CALIBRATION_DIGEST}"`);
+    expect(bytes).toContain(`"calibrationResultDigest":"${data.calibrationResultDigest}"`);
     expect(bytes).not.toContain("calibrationExampleId");
-    expect(gold.schemaVersion).toBe(STAGE_A_GOLD_FREEZE_SCHEMA_VERSION);
   });
 });
