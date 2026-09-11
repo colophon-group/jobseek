@@ -248,6 +248,48 @@ func TestProducerControlMapsLostRedisAuthorityToClosedFailure(t *testing.T) {
 	}
 }
 
+func TestProducerControlReturnsCapacityWithoutLatchingAuthority(t *testing.T) {
+	client, server := controlConnections(t)
+	queue := &fakeProducerQueue{
+		result: transition{Decision: "not_current", Reason: "pilot_occupancy_limit", Value: 1600, SecondaryValue: 2048},
+		activateErr: queueCapacityError{
+			Reason: "pilot_occupancy_limit", Occupancy: 1600, Capacity: 2048,
+		},
+	}
+	producer := validProducer(t, queue, "browser-use-careers")
+	latch := startControlHandler(t, server, producer, uint32(os.Geteuid()))
+	request := validProducerRequest()
+	request.Operation, request.OperatorTransfer = "enqueue", false
+	payload, err := canonicalJSON(request, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err := framing.EncodeRecord(payload, producerFrameLimit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = client.SetDeadline(time.Now().Add(2 * time.Second))
+	if _, err := client.Write(record); err != nil {
+		t.Fatal(err)
+	}
+	responsePayload, err := framing.ReadRecord(client, producerFrameLimit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var response producerResponse
+	if err := json.Unmarshal(responsePayload, &response); err != nil || response.Outcome != "capacity" ||
+		response.Reason != "pilot_occupancy_limit" || response.LifetimeOccupancy != 1600 ||
+		response.LifetimeCapacity != 2048 || response.LifetimeHeadroom != 448 {
+		t.Fatalf("capacity response was not exact: %#v %v", response, err)
+	}
+	if failure, ok := latch.failure(); ok {
+		t.Fatalf("capacity incorrectly latched producer authority: %#v", failure)
+	}
+	if _, lost := authorityErrorClass(queue.activateErr); lost {
+		t.Fatal("capacity was classified as lost authority")
+	}
+}
+
 func TestProducerServerBackpressuresFullDiscoveryBurstWithoutDropping(t *testing.T) {
 	directory := t.TempDir()
 	if err := os.Chmod(directory, 0o700); err != nil {

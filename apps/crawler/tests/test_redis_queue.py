@@ -11,7 +11,11 @@ from redis.exceptions import ResponseError
 
 import src.redis_queue as rq
 from src.config import settings
-from src.lightpanda.producer_client import ProducerClientError, ProducerResult
+from src.lightpanda.producer_client import (
+    ProducerCapacityError,
+    ProducerClientError,
+    ProducerResult,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -1747,10 +1751,10 @@ async def test_get_deadletter_depth_metric_helper(mock_redis):
 async def test_enabled_scrape_enqueue_is_mutated_only_by_go(
     mock_redis, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    calls: list[str] = []
+    calls: list[tuple[str, bool]] = []
 
     async def request_task(**request: object) -> ProducerResult:
-        calls.append(str(request["operation"]))
+        calls.append((str(request["operation"]), cast(bool, request["first_time"])))
         return ProducerResult("activated", "a" * 64, "b" * 64, activated=True)
 
     monkeypatch.setattr(settings, "lightpanda_b0_producer_mode", "enabled")
@@ -1758,13 +1762,47 @@ async def test_enabled_scrape_enqueue_is_mutated_only_by_go(
     added = await rq.enqueue_scrape(
         "jobs.example.com",
         "posting-go",
-        123,
+        0,
         {"board_id": "board-go", "source_url": "https://jobs.example.com/posting"},
         browser=True,
+        first_time=True,
     )
-    assert added is True and calls == ["enqueue"]
+    assert added is True and calls == [("enqueue", True)]
     assert not await mock_redis.exists("scrape:posting-go")
     assert await mock_redis.zcard("scrapes_browser:jobs.example.com") == 0
+
+
+async def test_enabled_bulk_scrape_enqueue_preserves_each_schedule_intent(
+    mock_redis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intents: list[bool] = []
+
+    async def request_task(**request: object) -> ProducerResult:
+        intents.append(cast(bool, request["first_time"]))
+        return ProducerResult("activated", "a" * 64, "b" * 64, activated=True)
+
+    monkeypatch.setattr(settings, "lightpanda_b0_producer_mode", "enabled")
+    monkeypatch.setattr("src.lightpanda.producer_client.request_task", request_task)
+    schedules = [
+        rq.ScrapeSchedule("jobs.example.com", "bulk-go-1", 123, {}, True, False),
+        rq.ScrapeSchedule("jobs.example.com", "bulk-go-2", 0, {}, True, True),
+    ]
+    assert await rq.enqueue_scrapes(schedules) == [True, True]
+    assert intents == [False, True]
+    assert not await mock_redis.exists("scrape:bulk-go-1", "scrape:bulk-go-2")
+
+
+async def test_enabled_scrape_capacity_never_falls_back_to_legacy(
+    mock_redis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def request_task(**_request: object) -> ProducerResult:
+        raise ProducerCapacityError("pilot_occupancy_limit", 1600, 2048)
+
+    monkeypatch.setattr(settings, "lightpanda_b0_producer_mode", "enabled")
+    monkeypatch.setattr("src.lightpanda.producer_client.request_task", request_task)
+    with pytest.raises(ProducerCapacityError, match="1600/2048"):
+        await rq.enqueue_scrape("jobs.example.com", "posting-full", 123, {}, browser=True)
+    assert not await mock_redis.exists("scrape:posting-full")
 
 
 async def test_enabled_scrape_enqueue_fails_closed_without_go_authority(

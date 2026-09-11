@@ -177,6 +177,7 @@ type bootstrapRaceQueue struct {
 	entered     chan struct{}
 	release     chan struct{}
 	initialized atomic.Bool
+	persisted   atomic.Int64
 }
 
 func (q *bootstrapRaceQueue) preflight(context.Context, bool, producerOwnerIdentity) (bool, error) {
@@ -194,11 +195,17 @@ func (q *bootstrapRaceQueue) initializeProducer(ctx context.Context, _ producerO
 	}
 }
 
+func (q *bootstrapRaceQueue) persistProducer(context.Context) error {
+	q.persisted.Add(1)
+	return nil
+}
+func (q *bootstrapRaceQueue) lifetimeOccupancy(context.Context) (int64, error) { return 0, nil }
+
 func (q *bootstrapRaceQueue) inspect(context.Context, string) (*storedTask, error) {
 	return nil, nil
 }
 
-func (q *bootstrapRaceQueue) activateLegacy(context.Context, *queueTask, string, string, bool, producerOwnerIdentity) (transition, error) {
+func (q *bootstrapRaceQueue) activateLegacy(context.Context, *queueTask, int64, string, string, bool, bool, producerOwnerIdentity) (transition, error) {
 	return transition{Decision: "accepted", Reason: "activated"}, nil
 }
 
@@ -248,7 +255,7 @@ func TestProducerPreflightCannotObserveSentinelBeforeRedisInitialization(t *test
 	}
 }
 
-func TestProducerSentinelWithoutRedisInitializationFailsClosed(t *testing.T) {
+func TestProducerPreparingSentinelWithoutRedisInitializationRetriesBootstrap(t *testing.T) {
 	producer := validProducer(t, &fakeProducerQueue{}, "browser-use-careers")
 	directory := t.TempDir()
 	if err := os.Chmod(directory, 0o700); err != nil {
@@ -264,15 +271,20 @@ func TestProducerSentinelWithoutRedisInitializationFailsClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	producer.sentinel = sentinel
-	producer.queue = &bootstrapRaceQueue{initialized: atomic.Bool{}}
-	err = producer.preflight(context.Background(), true)
-	var failure producerAuthorityError
-	if !errors.As(err, &failure) || failure.class != "corruption" {
-		t.Fatalf("durable sentinel without Redis init did not fail closed: %#v", err)
+	queue := &bootstrapRaceQueue{entered: make(chan struct{}), release: make(chan struct{})}
+	close(queue.release)
+	producer.queue = queue
+	release, err := producer.acquireMutationAuthority(context.Background())
+	if err != nil {
+		t.Fatalf("preparing bootstrap was not retryable: %v", err)
+	}
+	release()
+	if state, stateErr := sentinel.state(); stateErr != nil || state != producerSentinelActive || queue.persisted.Load() != 1 {
+		t.Fatalf("retry did not durably publish active: state=%v persisted=%d err=%v", state, queue.persisted.Load(), stateErr)
 	}
 }
 
-func TestProducerPreparingSentinelWithInitializedRedisIsRecoveryOnly(t *testing.T) {
+func TestProducerPreparingSentinelWithInitializedRedisResavesBeforeActive(t *testing.T) {
 	producer := validProducer(t, &fakeProducerQueue{}, "browser-use-careers")
 	directory := t.TempDir()
 	if err := os.Chmod(directory, 0o700); err != nil {
@@ -291,10 +303,13 @@ func TestProducerPreparingSentinelWithInitializedRedisIsRecoveryOnly(t *testing.
 	initialized := &bootstrapRaceQueue{}
 	initialized.initialized.Store(true)
 	producer.queue = initialized
-	err = producer.preflight(context.Background(), true)
-	var failure producerAuthorityError
-	if !errors.As(err, &failure) || failure.class != "corruption" {
-		t.Fatalf("preparing marker with initialized Redis was accepted: %#v", err)
+	release, err := producer.acquireMutationAuthority(context.Background())
+	if err != nil {
+		t.Fatalf("initialized preparing state was not recoverable: %v", err)
+	}
+	release()
+	if state, stateErr := sentinel.state(); stateErr != nil || state != producerSentinelActive || initialized.persisted.Load() != 1 {
+		t.Fatalf("recovery did not save before active: state=%v persisted=%d err=%v", state, initialized.persisted.Load(), stateErr)
 	}
 }
 

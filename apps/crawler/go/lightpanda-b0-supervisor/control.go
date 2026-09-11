@@ -356,6 +356,20 @@ func handleProducerConnection(
 			response = producerFailure("digest_mismatch")
 		}
 	}
+	var capacityFailure queueCapacityError
+	if errors.As(operationErr, &capacityFailure) {
+		response = responseForCapacity(capacityFailure)
+		operationErr = nil
+	} else if operationErr == nil {
+		occupancy, capacityErr := producer.queue.lifetimeOccupancy(requestContext)
+		if capacityErr != nil {
+			operationErr = producerQueueAuthority(capacityErr)
+		} else {
+			response.LifetimeOccupancy = occupancy
+			response.LifetimeCapacity = queueRecordLimit
+			response.LifetimeHeadroom = queueRecordLimit - occupancy
+		}
+	}
 	lostClass, lostAuthority := authorityErrorClass(operationErr)
 	if lostAuthority && authorityContext.Err() == nil {
 		response = producerFailure("authority_lost")
@@ -370,6 +384,18 @@ func decodeProducerRequest(payload []byte) (producerRequest, error) {
 	value, err := parseCanonicalValue(payload)
 	if err != nil {
 		return producerRequest{}, err
+	}
+	object, ok := value.(map[string]any)
+	if !ok || len(object) != 11 {
+		return producerRequest{}, errors.New("producer request fields are not exact")
+	}
+	for _, field := range []string{
+		"version", "operation", "cohort", "domain", "posting_id", "next_scrape_at_ms",
+		"config", "browser", "first_time", "operator_transfer", "expected_digest",
+	} {
+		if _, present := object[field]; !present {
+			return producerRequest{}, errors.New("producer request fields are not exact")
+		}
 	}
 	canonical, err := canonicalJSON(value, true)
 	if err != nil || !bytes.Equal(canonical, payload) {
@@ -429,6 +455,15 @@ func responseForHealth() producerResponse {
 func producerFailure(reason string) producerResponse {
 	return producerResponse{
 		Version: producerProtocol, Outcome: "error", Reason: reason, BoardSlugs: []string{},
+		LifetimeCapacity: queueRecordLimit, LifetimeHeadroom: queueRecordLimit,
+	}
+}
+
+func responseForCapacity(failure queueCapacityError) producerResponse {
+	return producerResponse{
+		Version: producerProtocol, Outcome: "capacity", Reason: failure.Reason, BoardSlugs: []string{},
+		LifetimeOccupancy: failure.Occupancy, LifetimeCapacity: failure.Capacity,
+		LifetimeHeadroom: failure.Capacity - failure.Occupancy,
 	}
 }
 
@@ -524,8 +559,23 @@ func checkProducerReady(path string, owner, acceptedUID uint32) error {
 	if err != nil {
 		return err
 	}
-	expected, err := canonicalJSON(responseForHealth(), true)
-	if err != nil || !bytes.Equal(response, expected) {
+	canonical, err := parseCanonicalValue(response)
+	if err != nil {
+		return errors.New("producer readiness protocol failed")
+	}
+	reencoded, err := canonicalJSON(canonical, true)
+	if err != nil || !bytes.Equal(response, reencoded) {
+		return errors.New("producer readiness protocol failed")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(response))
+	decoder.DisallowUnknownFields()
+	var health producerResponse
+	if decoder.Decode(&health) != nil || health.Version != producerProtocol || health.Outcome != "healthy" ||
+		health.Reason != "authority_current" || health.Activated || health.Cohort != "" || len(health.BoardSlugs) != 0 ||
+		health.PreparationDigest != "" || health.PayloadSHA256 != "" || health.ExistingState != "" ||
+		health.ExistingPayloadSHA256 != "" || health.LifetimeCapacity != queueRecordLimit ||
+		health.LifetimeOccupancy < 0 || health.LifetimeOccupancy > health.LifetimeCapacity ||
+		health.LifetimeHeadroom != health.LifetimeCapacity-health.LifetimeOccupancy {
 		return errors.New("producer readiness protocol failed")
 	}
 	trailing := make([]byte, 1)

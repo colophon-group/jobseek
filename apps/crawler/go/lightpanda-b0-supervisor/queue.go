@@ -20,15 +20,17 @@ import (
 )
 
 const (
-	maxInteger        = int64(9_999_999_999_999)
-	maxPayload        = 128 * 1024
-	maxLeaseTTL       = time.Hour
-	queueScanLimit    = 64
-	queuePolicyKey    = "lightpanda-b0-v1"
-	producerOwnerKey  = "lightpanda-b0:producer-owner"
-	legacyGuardKey    = "lightpanda-b0:legacy-guard"
-	producerOwnerV1   = "jobseek.lightpanda.producer-owner/v1"
-	expectedLuaSHA256 = "a908bdd07f1b95744c0f68afc78837427cb9275802506ea8fc11c14a7f975753"
+	maxInteger               = int64(9_999_999_999_999)
+	maxPayload               = 128 * 1024
+	maxLeaseTTL              = time.Hour
+	queueScanLimit           = 64
+	queueRecordLimit         = int64(2048)
+	queuePilotOccupancyLimit = int64(1600)
+	queuePolicyKey           = "lightpanda-b0-v1"
+	producerOwnerKey         = "lightpanda-b0:producer-owner"
+	legacyGuardKey           = "lightpanda-b0:legacy-guard"
+	producerOwnerV1          = "jobseek.lightpanda.producer-owner/v1"
+	expectedLuaSHA256        = "d287fab9e7522c6e23806589b8943af700c2eb0f887212d3e8a1e6131cc71ae7"
 )
 
 var (
@@ -200,9 +202,25 @@ type lease struct {
 }
 
 type storedTask struct {
-	Task     queueTask
-	State    string
-	Failures int64
+	Task             queueTask
+	State            string
+	Failures         int64
+	PendingReadyAtMS *int64
+	PendingFirstTime *bool
+}
+
+type queueCapacityError struct {
+	Reason    string
+	Occupancy int64
+	Capacity  int64
+}
+
+func (failure queueCapacityError) Error() string { return "B0 queue namespace is full" }
+
+type queueConflictError struct{ Reason string }
+
+func (failure queueConflictError) Error() string {
+	return "B0 queue producer conflict: " + failure.Reason
 }
 
 type queueAuthorityError struct {
@@ -260,17 +278,17 @@ func newB0Queue(client *redis.Client, luaPath, namespace string, route routeIden
 }
 
 func (q *b0Queue) call(ctx context.Context, operation string, task *queueTask, claimToken string, leaseTTL time.Duration, readyAtMS int64, maxFailures int64, expectedLeaseUntilMS int64) (transition, error) {
-	return q.callWithProducer(ctx, operation, task, claimToken, leaseTTL, readyAtMS, maxFailures, expectedLeaseUntilMS, "", "", false, producerOwnerIdentity{})
+	return q.callWithProducer(ctx, operation, task, claimToken, leaseTTL, readyAtMS, maxFailures, expectedLeaseUntilMS, "", "", false, false, producerOwnerIdentity{})
 }
 
-func (q *b0Queue) callWithProducer(ctx context.Context, operation string, task *queueTask, claimToken string, leaseTTL time.Duration, readyAtMS int64, maxFailures int64, expectedLeaseUntilMS int64, previousPayloadSHA256, legacyConfig string, operatorTransfer bool, owner producerOwnerIdentity) (transition, error) {
+func (q *b0Queue) callWithProducer(ctx context.Context, operation string, task *queueTask, claimToken string, leaseTTL time.Duration, readyAtMS int64, maxFailures int64, expectedLeaseUntilMS int64, previousPayloadSHA256, legacyConfig string, operatorTransfer, firstTime bool, owner producerOwnerIdentity) (transition, error) {
 	if ctx == nil {
 		return transition{}, errors.New("queue context is required")
 	}
 	taskID, revision, payload, sha256Digest, sha1Digest := "", int64(0), "", "", ""
 	if task != nil {
 		taskID, revision, payload, sha256Digest, sha1Digest = task.Envelope.TaskID, task.Envelope.ConfigRevision, task.Payload, task.PayloadSHA256, task.PayloadSHA1
-		if readyAtMS == 0 && operation != "reschedule_at" {
+		if readyAtMS == 0 && operation != "reschedule_at" && operation != "activate_legacy" {
 			readyAtMS = task.Envelope.InitialReadyAtMS
 		}
 	}
@@ -281,13 +299,17 @@ func (q *b0Queue) callWithProducer(ctx context.Context, operation string, task *
 	argv := []any{operation, q.route.ShardID, strconv.FormatInt(q.route.RoutingEpoch, 10), q.route.EngineOwner, taskID,
 		strconv.FormatInt(revision, 10), claimToken, strconv.FormatInt(leaseTTL.Milliseconds(), 10), strconv.FormatInt(readyAtMS, 10), strconv.FormatInt(maxFailures, 10),
 		payload, sha256Digest, sha1Digest, strconv.Itoa(queueScanLimit), q.defaultDelay, previousPayloadSHA256, strconv.FormatInt(expectedLeaseUntilMS, 10), q.namespace, legacyConfig, operator}
+	scheduleIntent := "0"
+	if firstTime {
+		scheduleIntent = "1"
+	}
 	if owner.validate() == nil {
-		argv = append(argv, owner.Cohort, strconv.Itoa(len(owner.BoardSlugs)), "")
+		argv = append(argv, owner.Cohort, strconv.Itoa(len(owner.BoardSlugs)), scheduleIntent)
 		for _, slug := range owner.BoardSlugs {
 			argv = append(argv, slug)
 		}
 	} else {
-		argv = append(argv, "", "0", "")
+		argv = append(argv, "", "0", scheduleIntent)
 	}
 	result, err := q.script.Run(ctx, q.client, q.keys, argv...).Result()
 	if err != nil {
@@ -349,7 +371,7 @@ var allowedReasons = map[string]map[string]map[string]struct{}{
 	"activate_legacy": {
 		"accepted":    set("activated", "already_activated", "reactivated"),
 		"fenced":      set("shard_id_mismatch", "routing_epoch_mismatch", "engine_owner_mismatch", "config_revision_mismatch", "config_revision_not_advanced", "record_fence_mismatch", "claim_token_mismatch", "lease_deadline_mismatch", "payload_digest_mismatch"),
-		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "exclusive_go_owner_required", "invalid_task_envelope", "namespace_full", "task_already_exists", "record_corrupt", "conservation_violation", "state_mismatch", "legacy_state_corrupt", "legacy_config_mismatch", "legacy_inflight", "legacy_deadletter", "legacy_membership_conflict", "guard_identity_mismatch", "invalid_legacy_config", "legacy_membership_missing"),
+		"not_current": set("redis_time_invalid", "invalid_route", "namespace_corrupt", "exclusive_go_owner_required", "invalid_task_envelope", "namespace_full", "pilot_occupancy_limit", "task_already_exists", "record_corrupt", "conservation_violation", "state_mismatch", "legacy_state_corrupt", "legacy_config_mismatch", "legacy_inflight", "legacy_deadletter", "legacy_membership_conflict", "guard_identity_mismatch", "invalid_legacy_config", "legacy_membership_missing"),
 	},
 	"claim_next": {
 		"accepted":    set("claimed"),
@@ -412,6 +434,17 @@ func validateTransitionReply(operation string, result transition, fields []strin
 		return errors.New("invalid server time")
 	}
 	if result.Decision != "accepted" {
+		if operation == "activate_legacy" && contains(set("namespace_full", "pilot_occupancy_limit"), result.Reason) &&
+			result.Value <= queueRecordLimit && result.SecondaryValue == queueRecordLimit &&
+			(result.Reason != "namespace_full" || result.Value == queueRecordLimit) &&
+			(result.Reason != "pilot_occupancy_limit" || result.Value >= queuePilotOccupancyLimit && result.Value < queueRecordLimit) {
+			for index := 3; index < 10; index++ {
+				if fields[index] != "" {
+					return errors.New("rejected capacity transition leaked identity fields")
+				}
+			}
+			return nil
+		}
 		for index := 3; index < 12; index++ {
 			if fields[index] != "" {
 				return errors.New("rejected transition leaked fields")
@@ -476,7 +509,7 @@ func validateTransitionReply(operation string, result transition, fields []strin
 			return errors.New("invalid reap counts")
 		}
 	case "audit":
-		if fields[10] == "" || fields[11] == "" || result.Value > 512 || result.SecondaryValue > result.Value {
+		if fields[10] == "" || fields[11] == "" || result.Value > queueRecordLimit || result.SecondaryValue > result.Value {
 			return errors.New("invalid audit counts")
 		}
 	case "activate_legacy":
@@ -484,7 +517,7 @@ func validateTransitionReply(operation string, result transition, fields []strin
 			return errors.New("invalid producer activation counts")
 		}
 	case "reschedule_at", "fail_at":
-		if fields[10] == "" || fields[11] != "" || result.Value != readyAtMS {
+		if fields[10] == "" || fields[11] != "" || result.Value > readyAtMS {
 			return errors.New("invalid ready-at echo")
 		}
 	default:
@@ -508,7 +541,7 @@ func (q *b0Queue) initializeProducer(ctx context.Context, owner producerOwnerIde
 		return queueAuthority("corruption", "initialize_producer")
 	}
 	result, err := q.callWithProducer(
-		ctx, "initialize_producer", nil, "", 0, 0, 0, 0, "", "", false, owner,
+		ctx, "initialize_producer", nil, "", 0, 0, 0, 0, "", "", false, false, owner,
 	)
 	if err != nil || !result.accepted() {
 		return transitionError("initialize_producer", result, err)
@@ -516,14 +549,35 @@ func (q *b0Queue) initializeProducer(ctx context.Context, owner producerOwnerIde
 	return nil
 }
 
-func (q *b0Queue) activateLegacy(ctx context.Context, task *queueTask, legacyConfig, previousPayloadSHA256 string, operatorTransfer bool, owner producerOwnerIdentity) (transition, error) {
+func (q *b0Queue) persistProducer(ctx context.Context) error {
+	if ctx == nil {
+		return queueAuthority("corruption", "persist_producer")
+	}
+	status, err := q.client.Save(ctx).Result()
+	if err != nil {
+		return queueRedisFailure(err, "persist_producer")
+	}
+	if status != "OK" {
+		return queueAuthority("corruption", "persist_producer")
+	}
+	return nil
+}
+
+func (q *b0Queue) activateLegacy(ctx context.Context, task *queueTask, readyAtMS int64, legacyConfig, previousPayloadSHA256 string, operatorTransfer, firstTime bool, owner producerOwnerIdentity) (transition, error) {
 	if task == nil || task.Envelope.EngineOwner != engineOwner || legacyConfig == "" ||
+		(firstTime && readyAtMS != 0) ||
 		(previousPayloadSHA256 != "" && !hex256.MatchString(previousPayloadSHA256)) || owner.validate() != nil ||
 		owner.Namespace != q.namespace || owner.Route != q.route {
 		return transition{}, errors.New("invalid B0 legacy activation")
 	}
-	result, err := q.callWithProducer(ctx, "activate_legacy", task, "", 0, task.Envelope.InitialReadyAtMS, 0, 0, previousPayloadSHA256, legacyConfig, operatorTransfer, owner)
+	result, err := q.callWithProducer(ctx, "activate_legacy", task, "", 0, readyAtMS, 0, 0, previousPayloadSHA256, legacyConfig, operatorTransfer, firstTime, owner)
 	if err != nil || !result.accepted() {
+		if err == nil && result.Decision == "not_current" && contains(set("namespace_full", "pilot_occupancy_limit"), result.Reason) {
+			return result, queueCapacityError{Reason: result.Reason, Occupancy: result.Value, Capacity: result.SecondaryValue}
+		}
+		if err == nil && result.Decision == "not_current" && contains(set("state_mismatch", "task_already_exists"), result.Reason) {
+			return result, queueConflictError{Reason: result.Reason}
+		}
 		return result, transitionError("activate_legacy", result, err)
 	}
 	return result, nil
@@ -667,9 +721,6 @@ func (q *b0Queue) inspect(ctx context.Context, taskID string) (*storedTask, erro
 	if routeType != "hash" {
 		return nil, queueAuthority("corruption", "inspect")
 	}
-	if err := q.audit(ctx); err != nil {
-		return nil, err
-	}
 	encoded, err := q.client.HGet(ctx, q.keys[1], taskID).Result()
 	if errors.Is(err, redis.Nil) {
 		return nil, nil
@@ -679,13 +730,13 @@ func (q *b0Queue) inspect(ctx context.Context, taskID string) (*storedTask, erro
 	}
 	var raw map[string]json.RawMessage
 	decoder := json.NewDecoder(strings.NewReader(encoded))
-	if decoder.Decode(&raw) != nil || len(raw) != 18 {
+	if decoder.Decode(&raw) != nil || len(raw) != 20 {
 		return nil, queueAuthority("corruption", "inspect")
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		return nil, queueAuthority("corruption", "inspect")
 	}
-	for _, field := range []string{"task_id", "task_kind", "state", "shard_id", "routing_epoch", "engine_owner", "config_revision", "policy_key", "domain", "payload", "payload_sha256", "payload_sha1", "claim_token", "claim_sequence", "lease_until_ms", "ready_at_ms", "visible_at_ms", "failures"} {
+	for _, field := range []string{"task_id", "task_kind", "state", "shard_id", "routing_epoch", "engine_owner", "config_revision", "policy_key", "domain", "payload", "payload_sha256", "payload_sha1", "claim_token", "claim_sequence", "lease_until_ms", "ready_at_ms", "visible_at_ms", "failures", "pending_ready_at_ms", "pending_first_time"} {
 		if _, ok := raw[field]; !ok {
 			return nil, queueAuthority("corruption", "inspect")
 		}
@@ -708,6 +759,25 @@ func (q *b0Queue) inspect(ctx context.Context, taskID string) (*storedTask, erro
 		record.Failures < 0 || record.Failures > 100 || !contains(set("ready", "inflight", "dead", "terminal"), record.State) || !hex160.MatchString(record.PayloadSHA1) {
 		return nil, queueAuthority("corruption", "inspect")
 	}
+	var pendingReadyAt *int64
+	var pendingFirstTime *bool
+	if string(raw["pending_ready_at_ms"]) != "null" {
+		var value int64
+		if json.Unmarshal(raw["pending_ready_at_ms"], &value) != nil || value < 0 || value > maxInteger {
+			return nil, queueAuthority("corruption", "inspect")
+		}
+		pendingReadyAt = &value
+	}
+	if string(raw["pending_first_time"]) != "null" {
+		var value bool
+		if json.Unmarshal(raw["pending_first_time"], &value) != nil {
+			return nil, queueAuthority("corruption", "inspect")
+		}
+		pendingFirstTime = &value
+	}
+	if (pendingReadyAt == nil) != (pendingFirstTime == nil) || (record.State != "inflight" && pendingReadyAt != nil) {
+		return nil, queueAuthority("corruption", "inspect")
+	}
 	legacyDigest := sha1.Sum([]byte(record.Payload)) //nolint:gosec
 	if hex.EncodeToString(legacyDigest[:]) != record.PayloadSHA1 {
 		return nil, queueAuthority("corruption", "inspect")
@@ -716,7 +786,7 @@ func (q *b0Queue) inspect(ctx context.Context, taskID string) (*storedTask, erro
 	if err != nil || task.Envelope.TaskID != taskID || task.Envelope.ConfigRevision != record.ConfigRevision || task.Envelope.PolicyKey != record.PolicyKey || task.Envelope.Domain != record.Domain {
 		return nil, queueAuthority("corruption", "inspect")
 	}
-	return &storedTask{Task: task, State: record.State, Failures: record.Failures}, nil
+	return &storedTask{Task: task, State: record.State, Failures: record.Failures, PendingReadyAtMS: pendingReadyAt, PendingFirstTime: pendingFirstTime}, nil
 }
 
 func contains(values map[string]struct{}, value string) bool {
@@ -762,6 +832,17 @@ func (q *b0Queue) terminal(ctx context.Context, current *lease, readyAtMS *int64
 	return nil
 }
 
+func (q *b0Queue) release(ctx context.Context, current *lease, readyAtMS int64) error {
+	result, err := q.callWithProducer(
+		ctx, "reschedule_at", &current.Task, current.ClaimToken, 0, readyAtMS, 0,
+		current.LeaseUntilMS, "", "", false, true, producerOwnerIdentity{},
+	)
+	if err != nil || !result.accepted() || result.ClaimToken != current.ClaimToken {
+		return transitionError("shutdown-release", result, err)
+	}
+	return nil
+}
+
 func (q *b0Queue) fail(ctx context.Context, current *lease, readyAtMS int64) error {
 	result, err := q.call(ctx, "fail_at", &current.Task, current.ClaimToken, 0, readyAtMS, 0, current.LeaseUntilMS)
 	if err != nil || !result.accepted() || result.ClaimToken != current.ClaimToken {
@@ -796,6 +877,20 @@ func (q *b0Queue) audit(ctx context.Context) error {
 	q.metrics.redisInflight.Store(inflight.Val())
 	q.metrics.deadCount.Store(dead.Val())
 	return nil
+}
+
+func (q *b0Queue) lifetimeOccupancy(ctx context.Context) (int64, error) {
+	if ctx == nil {
+		return 0, queueAuthority("corruption", "capacity")
+	}
+	count, err := q.client.HLen(ctx, q.keys[1]).Result()
+	if err != nil {
+		return 0, queueRedisFailure(err, "capacity")
+	}
+	if count < 0 || count > queueRecordLimit {
+		return 0, queueAuthority("corruption", "capacity")
+	}
+	return count, nil
 }
 
 func transitionError(operation string, result transition, err error) error {

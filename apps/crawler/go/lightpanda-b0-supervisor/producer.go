@@ -127,6 +127,7 @@ type producerRequest struct {
 	NextScrapeAtMS   int64             `json:"next_scrape_at_ms"`
 	Config           map[string]string `json:"config"`
 	Browser          bool              `json:"browser"`
+	FirstTime        bool              `json:"first_time"`
 	OperatorTransfer bool              `json:"operator_transfer"`
 	ExpectedDigest   string            `json:"expected_digest"`
 }
@@ -142,13 +143,18 @@ type producerResponse struct {
 	Activated             bool     `json:"activated"`
 	Cohort                string   `json:"cohort"`
 	BoardSlugs            []string `json:"board_slugs"`
+	LifetimeOccupancy     int64    `json:"lifetime_occupancy"`
+	LifetimeCapacity      int64    `json:"lifetime_capacity"`
+	LifetimeHeadroom      int64    `json:"lifetime_headroom"`
 }
 
 type producerQueue interface {
 	preflight(context.Context, bool, producerOwnerIdentity) (bool, error)
 	initializeProducer(context.Context, producerOwnerIdentity) error
+	persistProducer(context.Context) error
+	lifetimeOccupancy(context.Context) (int64, error)
 	inspect(context.Context, string) (*storedTask, error)
-	activateLegacy(context.Context, *queueTask, string, string, bool, producerOwnerIdentity) (transition, error)
+	activateLegacy(context.Context, *queueTask, int64, string, string, bool, bool, producerOwnerIdentity) (transition, error)
 }
 
 func (p *b0Producer) preflight(ctx context.Context, full bool) error {
@@ -171,8 +177,8 @@ func (p *b0Producer) preflightLocked(ctx context.Context, full bool) (bool, erro
 	}
 	if p.sentinel != nil {
 		state, sentinelErr := p.sentinel.state()
-		validPair := (bootstrap && state == producerSentinelAbsent) ||
-			(!bootstrap && state == producerSentinelActive)
+		validPair := (bootstrap && (state == producerSentinelAbsent || state == producerSentinelPreparing)) ||
+			(!bootstrap && (state == producerSentinelPreparing || state == producerSentinelActive))
 		if sentinelErr != nil || !validPair {
 			return false, authorityLost("corruption")
 		}
@@ -184,7 +190,7 @@ func (p *b0Producer) health(ctx context.Context, request producerRequest, accept
 	if request.Version != producerProtocol || request.Operation != "health" || request.Cohort != "" ||
 		request.Domain != "" || request.PostingID != "" || request.NextScrapeAtMS != 0 ||
 		len(request.Config) != 1 || request.Config["client_uid"] != strconv.FormatUint(uint64(acceptedUID), 10) ||
-		request.Browser || request.OperatorTransfer || request.ExpectedDigest != "" {
+		request.Browser || request.FirstTime || request.OperatorTransfer || request.ExpectedDigest != "" {
 		return errors.New("invalid producer health request")
 	}
 	return p.preflight(ctx, true)
@@ -282,6 +288,7 @@ type preparedTask struct {
 	previousPayloadSHA256 string
 	existingState         string
 	existingPayload       string
+	requestedReadyAtMS    int64
 }
 
 func newB0Producer(client *redis.Client, queue *b0Queue, cohort string, route routeIdentity) (*b0Producer, error) {
@@ -314,7 +321,7 @@ func (p *b0Producer) manifest(request producerRequest) ([]string, error) {
 	if p == nil || request.Version != producerProtocol || request.Operation != "manifest" ||
 		!request.OperatorTransfer || request.Cohort != p.cohortName || request.Domain != "" ||
 		request.PostingID != "" || request.NextScrapeAtMS != 0 || len(request.Config) != 0 ||
-		request.Browser || request.ExpectedDigest != "" {
+		request.Browser || request.FirstTime || request.ExpectedDigest != "" {
 		return nil, errors.New("invalid producer manifest request")
 	}
 	slugs := make([]string, 0, len(p.cohort))
@@ -359,6 +366,9 @@ func (p *b0Producer) prepareTask(ctx context.Context, request producerRequest) (
 	if _, ok := p.cohort[slug]; !ok {
 		return preparedTask{legacy: true}, nil
 	}
+	if request.FirstTime && request.NextScrapeAtMS != 0 {
+		return preparedTask{}, errors.New("B0 first-time work must be immediately ready")
+	}
 	if !request.Browser || request.Config["scrape_step"] != "0" {
 		return preparedTask{}, errors.New("allowlisted B0 work is not browser step zero")
 	}
@@ -369,6 +379,9 @@ func (p *b0Producer) prepareTask(ctx context.Context, request producerRequest) (
 	wanted, err := buildProducerTask(request, p.route, parserConfig, assignment, 1)
 	if err != nil {
 		return preparedTask{}, err
+	}
+	if _, err := p.queue.preflight(ctx, false, p.owner); err != nil {
+		return preparedTask{}, producerQueueAuthority(err)
 	}
 	existing, err := p.queue.inspect(ctx, request.PostingID)
 	if err != nil {
@@ -408,6 +421,7 @@ func (p *b0Producer) prepareTask(ctx context.Context, request producerRequest) (
 	}
 	digestDocument := map[string]any{
 		"browser": request.Browser, "config": request.Config, "domain": request.Domain,
+		"first_time":        request.FirstTime,
 		"next_scrape_at_ms": request.NextScrapeAtMS, "operator_transfer": request.OperatorTransfer,
 		"posting_id": request.PostingID, "task_payload_sha256": desired.PayloadSHA256,
 		"version": producerProtocol,
@@ -420,6 +434,7 @@ func (p *b0Producer) prepareTask(ctx context.Context, request producerRequest) (
 	return preparedTask{
 		task: desired, digest: hex.EncodeToString(digest[:]), legacyConfig: legacyConfig,
 		previousPayloadSHA256: previous, existingState: state, existingPayload: existingPayload,
+		requestedReadyAtMS: request.NextScrapeAtMS,
 	}, nil
 }
 
@@ -443,13 +458,7 @@ func (p *b0Producer) enqueue(ctx context.Context, request producerRequest) (prep
 		return preparedTask{}, transition{}, producerQueueAuthority(err)
 	}
 	defer releaseAuthority()
-	result, err := p.queue.activateLegacy(
-		ctx, &prepared.task, prepared.legacyConfig, prepared.previousPayloadSHA256, false, p.owner,
-	)
-	if err != nil {
-		return preparedTask{}, transition{}, producerQueueAuthority(err)
-	}
-	return prepared, result, nil
+	return p.activatePrepared(ctx, request, prepared, false)
 }
 
 func (p *b0Producer) activate(ctx context.Context, request producerRequest) (preparedTask, transition, error) {
@@ -475,13 +484,54 @@ func (p *b0Producer) activate(ctx context.Context, request producerRequest) (pre
 		return preparedTask{}, transition{}, producerQueueAuthority(err)
 	}
 	defer releaseAuthority()
+	return p.activatePrepared(ctx, request, prepared, true)
+}
+
+func (p *b0Producer) activatePrepared(ctx context.Context, request producerRequest, prepared preparedTask, operatorTransfer bool) (preparedTask, transition, error) {
 	result, err := p.queue.activateLegacy(
-		ctx, &prepared.task, prepared.legacyConfig, prepared.previousPayloadSHA256, request.OperatorTransfer, p.owner,
+		ctx, &prepared.task, prepared.requestedReadyAtMS, prepared.legacyConfig, prepared.previousPayloadSHA256,
+		operatorTransfer, request.FirstTime, p.owner,
 	)
-	if err != nil {
+	if err == nil {
+		return prepared, result, nil
+	}
+	var capacity queueCapacityError
+	if errors.As(err, &capacity) {
+		return prepared, result, capacity
+	}
+	var conflict queueConflictError
+	if !errors.As(err, &conflict) || prepared.existingState != "ready" && prepared.existingState != "inflight" {
 		return preparedTask{}, transition{}, producerQueueAuthority(err)
 	}
-	return prepared, result, nil
+	current, inspectErr := p.queue.inspect(ctx, request.PostingID)
+	if inspectErr != nil || current == nil || (current.State != "terminal" && current.State != "dead") ||
+		current.Task.PayloadSHA256 != prepared.task.PayloadSHA256 || !sameProducerIdentity(current.Task, prepared.task) {
+		if inspectErr != nil {
+			return preparedTask{}, transition{}, producerQueueAuthority(inspectErr)
+		}
+		return preparedTask{}, transition{}, producerQueueAuthority(err)
+	}
+	retryRequest := request
+	retryRequest.Operation, retryRequest.ExpectedDigest = "prepare", ""
+	retried, retryErr := p.prepareTask(ctx, retryRequest)
+	if retryErr != nil || retried.legacy || (operatorTransfer && retried.digest != request.ExpectedDigest) {
+		if retryErr != nil {
+			return preparedTask{}, transition{}, retryErr
+		}
+		return preparedTask{}, transition{}, errProducerDigestMismatch
+	}
+	result, retryErr = p.queue.activateLegacy(
+		ctx, &retried.task, retried.requestedReadyAtMS, retried.legacyConfig, retried.previousPayloadSHA256,
+		operatorTransfer, request.FirstTime, p.owner,
+	)
+	if retryErr != nil {
+		var retryCapacity queueCapacityError
+		if errors.As(retryErr, &retryCapacity) {
+			return retried, result, retryCapacity
+		}
+		return preparedTask{}, transition{}, producerQueueAuthority(retryErr)
+	}
+	return retried, result, nil
 }
 
 func (p *b0Producer) acquireMutationAuthority(ctx context.Context) (func(), error) {
@@ -495,11 +545,31 @@ func (p *b0Producer) acquireMutationAuthority(ctx context.Context) (func(), erro
 			release()
 		}
 	}()
-	bootstrap, err := p.preflightLocked(ctx, true)
+	// Startup and the two-second authority monitor perform full conservation
+	// audits. Per-mutation authority needs the exact O(1) route/owner proof;
+	// the Lua transition validates its target atomically.
+	bootstrap, err := p.preflightLocked(ctx, false)
 	if err != nil {
 		return nil, err
 	}
 	if !bootstrap {
+		if p.sentinel != nil {
+			state, stateErr := p.sentinel.state()
+			persist, stateErr := initializedSentinelNeedsPersistence(state, stateErr)
+			if stateErr != nil {
+				return nil, stateErr
+			}
+			if !persist {
+				succeeded = true
+				return release, nil
+			}
+			if err := p.queue.persistProducer(ctx); err != nil {
+				return nil, producerQueueAuthority(err)
+			}
+			if err := p.sentinel.publishActive(); err != nil {
+				return nil, authorityLost("corruption")
+			}
+		}
 		succeeded = true
 		return release, nil
 	}
@@ -509,6 +579,9 @@ func (p *b0Producer) acquireMutationAuthority(ctx context.Context) (func(), erro
 		}
 	}
 	if err := p.queue.initializeProducer(ctx, p.owner); err != nil {
+		return nil, producerQueueAuthority(err)
+	}
+	if err := p.queue.persistProducer(ctx); err != nil {
 		return nil, producerQueueAuthority(err)
 	}
 	if p.sentinel != nil {
@@ -525,6 +598,20 @@ func (p *b0Producer) acquireMutationAuthority(ctx context.Context) (func(), erro
 	}
 	succeeded = true
 	return release, nil
+}
+
+func initializedSentinelNeedsPersistence(state producerSentinelPhase, stateErr error) (bool, error) {
+	if stateErr != nil {
+		return false, authorityLost("corruption")
+	}
+	switch state {
+	case producerSentinelActive:
+		return false, nil
+	case producerSentinelPreparing:
+		return true, nil
+	default:
+		return false, authorityLost("corruption")
+	}
 }
 
 var errProducerDigestMismatch = errors.New("producer preparation digest changed")

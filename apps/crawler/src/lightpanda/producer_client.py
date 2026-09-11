@@ -31,12 +31,24 @@ _FIELDS = frozenset(
         "activated",
         "cohort",
         "board_slugs",
+        "lifetime_occupancy",
+        "lifetime_capacity",
+        "lifetime_headroom",
     }
 )
 
 
 class ProducerClientError(RuntimeError):
     pass
+
+
+class ProducerCapacityError(ProducerClientError):
+    def __init__(self, reason: str, occupancy: int, capacity: int) -> None:
+        self.reason = reason
+        self.occupancy = occupancy
+        self.capacity = capacity
+        self.headroom = capacity - occupancy
+        super().__init__(f"Go producer capacity refused {reason} ({occupancy}/{capacity})")
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +61,9 @@ class ProducerResult:
     activated: bool = False
     cohort: str = ""
     board_slugs: tuple[str, ...] = ()
+    lifetime_occupancy: int = 0
+    lifetime_capacity: int = 2048
+    lifetime_headroom: int = 2048
 
     @property
     def is_legacy(self) -> bool:
@@ -133,9 +148,27 @@ def _decode(payload: bytes) -> ProducerResult:
         or not isinstance(value["cohort"], str)
         or not isinstance(value["board_slugs"], list)
         or not all(isinstance(slug, str) and 0 < len(slug) <= 128 for slug in value["board_slugs"])
+        or any(
+            isinstance(value[field], bool) or not isinstance(value[field], int)
+            for field in ("lifetime_occupancy", "lifetime_capacity", "lifetime_headroom")
+        )
+        or value["lifetime_capacity"] != 2048
+        or not 0 <= value["lifetime_occupancy"] <= value["lifetime_capacity"]
+        or value["lifetime_headroom"] != value["lifetime_capacity"] - value["lifetime_occupancy"]
     ):
         raise ProducerClientError("Go producer response identity is invalid")
-    text = [value[key] for key in _FIELDS - {"version", "activated", "board_slugs"}]
+    text = [
+        value[key]
+        for key in _FIELDS
+        - {
+            "version",
+            "activated",
+            "board_slugs",
+            "lifetime_occupancy",
+            "lifetime_capacity",
+            "lifetime_headroom",
+        }
+    ]
     if not all(isinstance(item, str) for item in text):
         raise ProducerClientError("Go producer response fields are invalid")
     outcome, reason = value["outcome"], value["reason"]
@@ -145,6 +178,17 @@ def _decode(payload: bytes) -> ProducerResult:
         if reason not in {"request_invalid", "authority_lost", "digest_mismatch"}:
             raise ProducerClientError("Go producer returned an unknown failure")
         raise ProducerClientError(f"Go producer refused authority: {reason}")
+    if outcome == "capacity":
+        if (
+            reason not in {"namespace_full", "pilot_occupancy_limit"}
+            or (reason == "namespace_full" and value["lifetime_headroom"] != 0)
+            or (reason == "pilot_occupancy_limit" and not 0 < value["lifetime_headroom"] <= 448)
+            or value["activated"]
+            or any((prep, payload_digest, state, existing, value["cohort"]))
+            or value["board_slugs"]
+        ):
+            raise ProducerClientError("Go producer capacity decision is invalid")
+        raise ProducerCapacityError(reason, value["lifetime_occupancy"], value["lifetime_capacity"])
     if outcome == "legacy":
         valid = (
             reason == "literal_legacy"
@@ -194,6 +238,9 @@ def _decode(payload: bytes) -> ProducerResult:
         value["activated"],
         value["cohort"],
         tuple(value["board_slugs"]),
+        value["lifetime_occupancy"],
+        value["lifetime_capacity"],
+        value["lifetime_headroom"],
     )
 
 
@@ -241,6 +288,7 @@ async def request_manifest(cohort: str) -> ProducerResult:
             "config": {},
             "domain": "",
             "expected_digest": "",
+            "first_time": False,
             "next_scrape_at_ms": 0,
             "operation": "manifest",
             "operator_transfer": True,
@@ -258,11 +306,13 @@ async def request_task(
     next_scrape_at: float,
     config: Mapping[str, object],
     browser: bool,
+    first_time: bool = False,
     operator_transfer: bool = False,
     expected_digest: str = "",
 ) -> ProducerResult:
     if (
         not _enabled()
+        or not isinstance(first_time, bool)
         or not math.isfinite(next_scrape_at)
         or next_scrape_at < 0
         or next_scrape_at > 9_999_999_999.999
@@ -274,6 +324,7 @@ async def request_task(
         "config": {str(k): str(v) for k, v in config.items()},
         "domain": domain,
         "expected_digest": expected_digest,
+        "first_time": first_time,
         "next_scrape_at_ms": int(next_scrape_at * 1000),
         "operation": operation,
         "operator_transfer": operator_transfer,

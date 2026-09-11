@@ -37,7 +37,7 @@ from src.lightpanda.routing import RenderAssignment, resolve_render_assignment
 
 MAX_INTEGER = 9_999_999_999_999
 MAX_PAYLOAD_BYTES = 128 * 1024
-MAX_RECORDS = 512
+MAX_RECORDS = 2048
 SCAN_LIMIT = 64
 MAX_LEASE_TTL_MS = 60 * 60 * 1000
 MAX_FAILURES = 100
@@ -451,6 +451,8 @@ class StoredTask:
     task: LightpandaB0Task
     state: str
     failures: int
+    pending_ready_at_ms: int | None = None
+    pending_first_time: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -508,6 +510,7 @@ class LightpandaB0Queue:
         legacy_config: Mapping[str, object],
         previous_payload_sha256: str = "",
         operator_transfer: bool = False,
+        first_time: bool = False,
     ) -> TransitionResult:
         """Atomically move one eligible legacy schedule under Go ownership.
 
@@ -516,6 +519,9 @@ class LightpandaB0Queue:
         reactivates the B0 record at one Redis serialization point.  It refuses
         legacy in-flight/dead-letter state and ambiguous duplicate schedules.
         """
+
+        if first_time and task.initial_ready_at_ms != 0:
+            raise ValueError("first-time activation must be immediately ready")
 
         _validate_task_identity(task)
         if task.route.engine_owner != "go":
@@ -530,6 +536,7 @@ class LightpandaB0Queue:
             previous_payload_sha256=previous_payload_sha256,
             legacy_config=canonical_legacy_config,
             operator_transfer=operator_transfer,
+            first_time=first_time,
         )
         return self._decode_transition("activate_legacy", raw, task=task)
 
@@ -545,6 +552,29 @@ class LightpandaB0Queue:
         raw = await self._redis.hget(self._keys.records, task_id)
         if raw is None:
             return None
+        return self._decode_stored_task(task_id, raw, route)
+
+    async def inspect_many(self, route: RouteIdentity) -> dict[str, StoredTask]:
+        """Read the bounded record namespace after exactly one full audit."""
+
+        audit = await self.audit_conservation(route)
+        if not audit.accepted or audit.value is None:
+            raise RuntimeError(
+                f"Lightpanda B0 batch inspect audit failed: {audit.decision.value}/{audit.reason}"
+            )
+        raw_records = await self._redis.hgetall(self._keys.records)
+        if not isinstance(raw_records, dict) or len(raw_records) != audit.value:
+            raise RuntimeError("Lightpanda B0 batch inspect changed after audit")
+        records: dict[str, StoredTask] = {}
+        for raw_task_id, raw_record in raw_records.items():
+            task_id = _wire_text(raw_task_id)
+            _safe_identifier(task_id, "task_id")
+            if task_id in records:
+                raise RuntimeError("Lightpanda B0 batch inspect has duplicate IDs")
+            records[task_id] = self._decode_stored_task(task_id, raw_record, route)
+        return records
+
+    def _decode_stored_task(self, task_id: str, raw: object, route: RouteIdentity) -> StoredTask:
         try:
             record = json.loads(_wire_text(raw))
             if not isinstance(record, dict) or set(record) != {
@@ -566,6 +596,8 @@ class LightpandaB0Queue:
                 "ready_at_ms",
                 "visible_at_ms",
                 "failures",
+                "pending_ready_at_ms",
+                "pending_first_time",
             }:
                 raise ValueError("record shape")
             if (
@@ -577,6 +609,17 @@ class LightpandaB0Queue:
                 or isinstance(record["failures"], bool)
                 or not isinstance(record["failures"], int)
                 or not 0 <= record["failures"] <= MAX_FAILURES
+                or (record["pending_ready_at_ms"] is None) != (record["pending_first_time"] is None)
+                or (
+                    record["pending_ready_at_ms"] is not None
+                    and (
+                        record["state"] != "inflight"
+                        or isinstance(record["pending_ready_at_ms"], bool)
+                        or not isinstance(record["pending_ready_at_ms"], int)
+                        or not 0 <= record["pending_ready_at_ms"] <= MAX_INTEGER
+                        or not isinstance(record["pending_first_time"], bool)
+                    )
+                )
                 or hashlib.sha1(
                     record["payload"].encode("utf-8"), usedforsecurity=False
                 ).hexdigest()
@@ -602,7 +645,13 @@ class LightpandaB0Queue:
             )
         except (KeyError, TypeError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
             raise RuntimeError("Lightpanda B0 stored task failed integrity validation") from exc
-        return StoredTask(task=task, state=record["state"], failures=record["failures"])
+        return StoredTask(
+            task=task,
+            state=record["state"],
+            failures=record["failures"],
+            pending_ready_at_ms=record["pending_ready_at_ms"],
+            pending_first_time=record["pending_first_time"],
+        )
 
     async def claim_next(
         self,
@@ -656,7 +705,13 @@ class LightpandaB0Queue:
             "complete", route=lease.task.route, task=lease.task, lease=lease
         )
 
-    async def reschedule_at(self, lease: Lease, *, ready_at_ms: int) -> TransitionResult:
+    async def reschedule_at(
+        self,
+        lease: Lease,
+        *,
+        ready_at_ms: int,
+        preserve_schedule_intent: bool = False,
+    ) -> TransitionResult:
         _bounded_int(ready_at_ms, "ready_at_ms", minimum=0)
         return await self._transition(
             "reschedule_at",
@@ -664,6 +719,7 @@ class LightpandaB0Queue:
             task=lease.task,
             lease=lease,
             ready_at_ms=ready_at_ms,
+            first_time=preserve_schedule_intent,
         )
 
     async def fail_at(self, lease: Lease, *, ready_at_ms: int) -> TransitionResult:
@@ -763,6 +819,7 @@ class LightpandaB0Queue:
         lease_ttl_ms: int = 0,
         ready_at_ms: int = 0,
         max_failures: int = 0,
+        first_time: bool = False,
     ) -> TransitionResult:
         raw = await self._invoke(
             operation,
@@ -772,6 +829,7 @@ class LightpandaB0Queue:
             lease_ttl_ms=lease_ttl_ms,
             ready_at_ms=ready_at_ms,
             max_failures=max_failures,
+            first_time=first_time,
         )
         return self._decode_transition(
             operation,
@@ -797,6 +855,7 @@ class LightpandaB0Queue:
         previous_payload_sha256: str = "",
         legacy_config: str = "",
         operator_transfer: bool = False,
+        first_time: bool = False,
         producer_cohort: str = "",
         rollback_source_receipt_sha256: str = "",
         producer_board_slugs: tuple[str, ...] = (),
@@ -832,7 +891,11 @@ class LightpandaB0Queue:
             "1" if operator_transfer else "0",
             producer_cohort,
             str(len(producer_board_slugs)),
-            rollback_source_receipt_sha256,
+            rollback_source_receipt_sha256
+            if operation in {"rollback_legacy", "clear_rollback_tombstone"}
+            else "1"
+            if first_time
+            else "0",
             *producer_board_slugs,
         ]
         try:
@@ -1015,7 +1078,12 @@ class LightpandaB0Queue:
                 "fail_at": ready_at_ms,
                 "reactivate": task.initial_ready_at_ms if task else None,
             }.get(operation)
-            if expected_ready_at is not None and value != expected_ready_at:
+            if expected_ready_at is not None and (
+                value is None
+                or value > expected_ready_at
+                or operation not in {"reschedule_at", "fail_at"}
+                and value != expected_ready_at
+            ):
                 return TransitionResult(Decision.TRANSPORT_ERROR, "invalid_reply")
             if operation == "claim_next" and cast(int, value) > server_time_ms:
                 return TransitionResult(Decision.TRANSPORT_ERROR, "invalid_reply")

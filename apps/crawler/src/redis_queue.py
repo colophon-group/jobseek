@@ -857,6 +857,7 @@ async def enqueue_scrape(
         next_scrape_at=next_scrape_at,
         config=config,
         browser=browser,
+        first_time=first_time,
     )
     if b0_result is not None:
         await r.set(f"delay:{domain}", str(delay_for_domain(domain)))
@@ -906,6 +907,7 @@ async def enqueue_scrapes(schedules: Sequence[ScrapeSchedule]) -> list[bool]:
             next_scrape_at=schedule.next_scrape_at,
             config=schedule.config,
             browser=schedule.browser,
+            first_time=schedule.first_time,
         )
         if b0_result is None:
             legacy.append((index, schedule))
@@ -969,6 +971,7 @@ async def _enqueue_with_go_producer(
     next_scrape_at: float,
     config: dict,
     browser: bool,
+    first_time: bool,
 ) -> bool | None:
     """Return literal legacy only from off mode or an authenticated Go decision."""
 
@@ -988,6 +991,7 @@ async def _enqueue_with_go_producer(
         next_scrape_at=next_scrape_at,
         config=config,
         browser=browser,
+        first_time=first_time,
     )
     if result.is_legacy:
         return None

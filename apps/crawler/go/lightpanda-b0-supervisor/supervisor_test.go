@@ -150,11 +150,13 @@ type recordingLeaseQueue struct {
 	heartbeatCalls int
 	terminalCalls  int
 	failCalls      int
+	releaseCalls   int
 	heartbeatErr   error
 	terminalErr    error
 	failErr        error
 	failedReadyAt  int64
 	terminalReady  *int64
+	releaseReady   int64
 }
 
 func (q *recordingLeaseQueue) heartbeat(context.Context, *lease, time.Duration) error {
@@ -172,6 +174,14 @@ func (q *recordingLeaseQueue) terminal(_ context.Context, _ *lease, readyAt *int
 		copied := *readyAt
 		q.terminalReady = &copied
 	}
+	return q.terminalErr
+}
+
+func (q *recordingLeaseQueue) release(_ context.Context, _ *lease, readyAtMS int64) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.releaseCalls++
+	q.releaseReady = readyAtMS
 	return q.terminalErr
 }
 
@@ -288,10 +298,10 @@ func TestCancellationReleasesInflightLeaseBeforeWorkerExit(t *testing.T) {
 		t.Fatalf("cancelled lease did not exit after bounded release: err=%v fatal=%t", err, fatal)
 	}
 	queue.mu.Lock()
-	heartbeats, failures, terminals, readyAt := queue.heartbeatCalls, queue.failCalls, queue.terminalCalls, queue.terminalReady
+	heartbeats, failures, terminals, releases, readyAt := queue.heartbeatCalls, queue.failCalls, queue.terminalCalls, queue.releaseCalls, queue.releaseReady
 	queue.mu.Unlock()
-	if heartbeats != 0 || failures != 0 || terminals != 1 || readyAt == nil || *readyAt != 40_000 {
-		t.Fatalf("cancelled lease was not made immediately ready: heartbeats=%d failures=%d terminals=%d ready=%v", heartbeats, failures, terminals, readyAt)
+	if heartbeats != 0 || failures != 0 || terminals != 0 || releases != 1 || readyAt != 40_000 {
+		t.Fatalf("cancelled lease was not made immediately ready: heartbeats=%d failures=%d terminals=%d releases=%d ready=%d", heartbeats, failures, terminals, releases, readyAt)
 	}
 }
 

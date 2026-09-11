@@ -20,13 +20,17 @@ import (
 )
 
 type fakeProducerQueue struct {
-	stored        *storedTask
-	inspectErr    error
-	initialized   int
-	activated     int
-	activatedTask *queueTask
-	result        transition
-	preflightFn   func(context.Context, bool) error
+	stored             *storedTask
+	inspectErr         error
+	initialized        int
+	activated          int
+	activatedTask      *queueTask
+	activatedReadyAt   int64
+	activatedFirstTime bool
+	result             transition
+	activateErr        error
+	occupancy          int64
+	preflightFn        func(context.Context, bool) error
 }
 
 type serializedProducerQueue struct {
@@ -42,11 +46,14 @@ type mutationAuthorityQueue struct {
 	mu              sync.Mutex
 	bootstrap       bool
 	initializeCalls int
+	persistCalls    int
+	persistErr      error
 	activateCalls   int
 	fullPreflights  int
 	flushOnActivate bool
 	sentinel        *producerActivationSentinel
 	phaseAtActivate producerSentinelPhase
+	phaseAtPersist  producerSentinelPhase
 }
 
 func (q *mutationAuthorityQueue) preflight(_ context.Context, full bool, _ producerOwnerIdentity) (bool, error) {
@@ -66,11 +73,23 @@ func (q *mutationAuthorityQueue) initializeProducer(context.Context, producerOwn
 	return nil
 }
 
+func (q *mutationAuthorityQueue) persistProducer(context.Context) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.persistCalls++
+	if q.sentinel != nil {
+		q.phaseAtPersist, _ = q.sentinel.state()
+	}
+	return q.persistErr
+}
+
+func (q *mutationAuthorityQueue) lifetimeOccupancy(context.Context) (int64, error) { return 0, nil }
+
 func (q *mutationAuthorityQueue) inspect(context.Context, string) (*storedTask, error) {
 	return nil, nil
 }
 
-func (q *mutationAuthorityQueue) activateLegacy(context.Context, *queueTask, string, string, bool, producerOwnerIdentity) (transition, error) {
+func (q *mutationAuthorityQueue) activateLegacy(context.Context, *queueTask, int64, string, string, bool, bool, producerOwnerIdentity) (transition, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.activateCalls++
@@ -109,6 +128,9 @@ func (q *serializedProducerQueue) initializeProducer(context.Context, producerOw
 	return nil
 }
 
+func (q *serializedProducerQueue) persistProducer(context.Context) error            { return nil }
+func (q *serializedProducerQueue) lifetimeOccupancy(context.Context) (int64, error) { return 0, nil }
+
 func (q *serializedProducerQueue) inspect(_ context.Context, _ string) (*storedTask, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -119,7 +141,7 @@ func (q *serializedProducerQueue) inspect(_ context.Context, _ string) (*storedT
 	return &copy, nil
 }
 
-func (q *serializedProducerQueue) activateLegacy(_ context.Context, task *queueTask, _, _ string, _ bool, _ producerOwnerIdentity) (transition, error) {
+func (q *serializedProducerQueue) activateLegacy(_ context.Context, task *queueTask, _ int64, _, _ string, _, _ bool, _ producerOwnerIdentity) (transition, error) {
 	q.mu.Lock()
 	q.active++
 	if q.active > q.maximumActive {
@@ -156,17 +178,24 @@ func (q *fakeProducerQueue) initializeProducer(context.Context, producerOwnerIde
 	return nil
 }
 
+func (q *fakeProducerQueue) persistProducer(context.Context) error { return nil }
+func (q *fakeProducerQueue) lifetimeOccupancy(context.Context) (int64, error) {
+	return q.occupancy, nil
+}
+
 func (q *fakeProducerQueue) inspect(context.Context, string) (*storedTask, error) {
 	return q.stored, q.inspectErr
 }
 
-func (q *fakeProducerQueue) activateLegacy(_ context.Context, task *queueTask, _, _ string, _ bool, _ producerOwnerIdentity) (transition, error) {
+func (q *fakeProducerQueue) activateLegacy(_ context.Context, task *queueTask, readyAt int64, _, _ string, _ bool, firstTime bool, _ producerOwnerIdentity) (transition, error) {
 	q.activated++
 	q.activatedTask = task
+	q.activatedReadyAt = readyAt
+	q.activatedFirstTime = firstTime
 	if q.result.Decision == "" {
-		return transition{Decision: "accepted", Reason: "activated"}, nil
+		return transition{Decision: "accepted", Reason: "activated"}, q.activateErr
 	}
-	return q.result, nil
+	return q.result, q.activateErr
 }
 
 func validProducerRequest() producerRequest {
@@ -226,7 +255,9 @@ func TestProducerOwnsCanonicalTaskConstruction(t *testing.T) {
 
 func TestProducerReturnsOnlyLiteralLegacyForOutsideCohort(t *testing.T) {
 	queue := &fakeProducerQueue{inspectErr: errors.New("must not inspect")}
-	prepared, err := validProducer(t, queue, "other-careers").prepare(context.Background(), validProducerRequest())
+	request := validProducerRequest()
+	request.FirstTime = true
+	prepared, err := validProducer(t, queue, "other-careers").prepare(context.Background(), request)
 	if err != nil || !prepared.legacy || prepared.digest != "" {
 		t.Fatalf("outside cohort was not literal legacy: %#v, %v", prepared, err)
 	}
@@ -313,14 +344,57 @@ func TestProducerInitializesOnlyTheExactFreshAuthorityPair(t *testing.T) {
 		t.Fatalf("fresh producer pair did not activate: %#v %v", result, err)
 	}
 	initialized, activated, full, phase := queue.counts()
-	if initialized != 1 || activated != 1 || full != 2 {
-		t.Fatalf("fresh pair did not receive pre/post full audits: %d/%d/%d", initialized, activated, full)
+	if initialized != 1 || activated != 1 || full != 1 {
+		t.Fatalf("fresh pair did not receive its post-bootstrap full audit: %d/%d/%d", initialized, activated, full)
 	}
 	if phase != producerSentinelActive {
 		t.Fatalf("task activation preceded durable active phase: %s", phase)
 	}
+	if queue.persistCalls != 1 || queue.phaseAtPersist != producerSentinelPreparing {
+		t.Fatalf("Redis persistence did not occur between P and A: calls=%d phase=%s", queue.persistCalls, queue.phaseAtPersist)
+	}
 	if active, err := sentinel.isActive(); err != nil || !active {
 		t.Fatalf("fresh pair did not persist its marker: %v %v", active, err)
+	}
+}
+
+func TestProducerPersistenceFailureLeavesPreparingAndDoesNotMutateTask(t *testing.T) {
+	queue := &mutationAuthorityQueue{bootstrap: true, persistErr: queueAuthority("redis", "persist_producer")}
+	producer, sentinel := producerWithMutationAuthority(t, queue, false)
+	request := validProducerRequest()
+	request.Operation, request.OperatorTransfer = "enqueue", false
+	if _, _, err := producer.enqueue(context.Background(), request); err == nil {
+		t.Fatal("failed synchronous Redis SAVE was accepted")
+	}
+	state, err := sentinel.state()
+	if err != nil || state != producerSentinelPreparing {
+		t.Fatalf("failed Redis SAVE did not leave retryable P: state=%s err=%v", state, err)
+	}
+	if queue.initializeCalls != 1 || queue.persistCalls != 1 || queue.activateCalls != 0 || queue.phaseAtPersist != producerSentinelPreparing {
+		t.Fatalf("task mutation crossed failed SAVE: init=%d save=%d activate=%d phase=%s", queue.initializeCalls, queue.persistCalls, queue.activateCalls, queue.phaseAtPersist)
+	}
+}
+
+func TestInitializedProducerSecondSentinelReadFailsClosed(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		state producerSentinelPhase
+		err   error
+	}{
+		{name: "disappeared", state: producerSentinelAbsent},
+		{name: "read-error", state: producerSentinelActive, err: errors.New("read failed")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := initializedSentinelNeedsPersistence(test.state, test.err); err == nil {
+				t.Fatal("unsafe second sentinel observation was accepted")
+			}
+		})
+	}
+	if persist, err := initializedSentinelNeedsPersistence(producerSentinelPreparing, nil); err != nil || !persist {
+		t.Fatalf("preparing sentinel did not require persistence: persist=%t err=%v", persist, err)
+	}
+	if persist, err := initializedSentinelNeedsPersistence(producerSentinelActive, nil); err != nil || persist {
+		t.Fatalf("active sentinel was not accepted exactly: persist=%t err=%v", persist, err)
 	}
 }
 
@@ -337,7 +411,7 @@ func TestProducerDoesNotHealFlushBetweenPeriodicCheckAndEnqueue(t *testing.T) {
 		t.Fatal("enqueue recreated Redis after live authority loss")
 	}
 	initialized, activated, full, _ := queue.counts()
-	if initialized != 0 || activated != 0 || full != 2 {
+	if initialized != 0 || activated != 0 || full != 1 {
 		t.Fatalf("lost Redis authority reached initialization/activation: %d/%d/%d", initialized, activated, full)
 	}
 }
@@ -357,7 +431,7 @@ func TestProducerDoesNotHealDeletedSentinelWhileRedisIsActive(t *testing.T) {
 		t.Fatal("enqueue recreated a deleted active sentinel")
 	}
 	initialized, activated, full, _ := queue.counts()
-	if initialized != 0 || activated != 0 || full != 2 {
+	if initialized != 0 || activated != 0 || full != 1 {
 		t.Fatalf("missing active sentinel reached initialization/activation: %d/%d/%d", initialized, activated, full)
 	}
 }
@@ -375,7 +449,7 @@ func TestProducerDoesNotReinitializeAfterAuthorityLossInsideActivation(t *testin
 		t.Fatal("retry healed activation-time Redis loss")
 	}
 	initialized, activated, full, _ := queue.counts()
-	if initialized != 0 || activated != 1 || full != 2 {
+	if initialized != 0 || activated != 1 || full != 0 {
 		t.Fatalf("activation-time loss was reinitialized: %d/%d/%d", initialized, activated, full)
 	}
 }
@@ -493,6 +567,46 @@ func TestProducerAdvancesOnlyTerminalRevision(t *testing.T) {
 	}
 }
 
+func TestProducerCarriesEarlierAndFirstTimeDueIntentForExistingTask(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		state     string
+		firstTime bool
+		readyAt   int64
+	}{
+		{name: "ready-earlier", state: "ready", readyAt: 12_000},
+		{name: "inflight-first-time", state: "inflight", firstTime: true, readyAt: 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			queue := &fakeProducerQueue{}
+			producer := validProducer(t, queue, "browser-use-careers")
+			base, err := producer.prepare(context.Background(), validProducerRequest())
+			if err != nil {
+				t.Fatal(err)
+			}
+			queue.stored = &storedTask{Task: base.task, State: test.state}
+			request := validProducerRequest()
+			request.Operation, request.OperatorTransfer = "enqueue", false
+			request.NextScrapeAtMS, request.FirstTime = test.readyAt, test.firstTime
+			if _, _, err := producer.enqueue(context.Background(), request); err != nil {
+				t.Fatal(err)
+			}
+			if queue.activatedTask == nil || queue.activatedTask.Envelope.InitialReadyAtMS != 123_000 ||
+				queue.activatedReadyAt != test.readyAt || queue.activatedFirstTime != test.firstTime {
+				t.Fatalf("requested due intent was replaced by frozen envelope: %#v", queue)
+			}
+		})
+	}
+}
+
+func TestProducerRejectsNonzeroExternalFirstTimeSchedule(t *testing.T) {
+	request := validProducerRequest()
+	request.FirstTime = true
+	if _, err := validProducer(t, &fakeProducerQueue{}, "browser-use-careers").prepare(context.Background(), request); err == nil {
+		t.Fatal("nonzero external first-time schedule was silently rewritten or accepted")
+	}
+}
+
 func TestProducerSerializesConcurrentNewAndTerminalTaskMutation(t *testing.T) {
 	for _, terminal := range []bool{false, true} {
 		name := "new"
@@ -571,9 +685,21 @@ func TestProducerControlRequiresCanonicalStrictJSON(t *testing.T) {
 	if _, err := decodeProducerRequest(noncanonical); err == nil {
 		t.Fatal("noncanonical request accepted")
 	}
-	unknown := append(payload[:len(payload)-1], []byte(`,"unknown":true}`)...)
+	unknown := append(append([]byte{}, payload[:len(payload)-1]...), []byte(`,"unknown":true}`)...)
 	if _, err := decodeProducerRequest(unknown); err == nil {
 		t.Fatal("unknown producer field accepted")
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(payload, &fields); err != nil {
+		t.Fatal(err)
+	}
+	delete(fields, "first_time")
+	missing, err := canonicalJSON(fields, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeProducerRequest(missing); err == nil {
+		t.Fatal("producer request missing first_time was accepted")
 	}
 	var output bytes.Buffer
 	if err := writeProducerResponse(&output, producerFailure("authority_lost")); err != nil {

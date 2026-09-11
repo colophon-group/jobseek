@@ -47,6 +47,7 @@ type heldReservation interface {
 type leaseQueue interface {
 	heartbeat(context.Context, *lease, time.Duration) error
 	terminal(context.Context, *lease, *int64) error
+	release(context.Context, *lease, int64) error
 	fail(context.Context, *lease, int64) error
 }
 
@@ -450,7 +451,7 @@ func (a *leaseAuthority) releaseForShutdown() error {
 	if readyAtMS < 0 {
 		return &authorityError{operation: "shutdown-release", err: errors.New("shutdown ready time overflow")}
 	}
-	if err := bounded(ctx, queueTimeout, func(call context.Context) error { return a.queue.terminal(call, a.lease, &readyAtMS) }); err != nil {
+	if err := bounded(ctx, queueTimeout, func(call context.Context) error { return a.queue.release(call, a.lease, readyAtMS) }); err != nil {
 		return &authorityError{operation: "shutdown-release", err: err}
 	}
 	a.finished = true

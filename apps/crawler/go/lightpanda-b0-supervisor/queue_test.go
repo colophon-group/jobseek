@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -59,6 +60,18 @@ func TestDecodeQueueTaskValidatesPayloadAndAssignmentIdentity(t *testing.T) {
 	}
 }
 
+func TestQueueRejectsNonzeroExternalFirstTimeActivation(t *testing.T) {
+	task := validQueueTask(t)
+	owner := producerOwnerIdentity{
+		Namespace: "test-b0", Cohort: "c1", Route: task.EnvelopeRoute(),
+		BoardSlugs: []string{"browser-use-careers"},
+	}
+	queue := &b0Queue{namespace: owner.Namespace, route: owner.Route}
+	if _, err := queue.activateLegacy(context.Background(), &task, 500, `{}`, "", false, true, owner); err == nil {
+		t.Fatal("nonzero first-time activation reached Redis")
+	}
+}
+
 func (t queueTask) EnvelopeRoute() routeIdentity {
 	return routeIdentity{ShardID: t.Envelope.ShardID, RoutingEpoch: t.Envelope.RoutingEpoch, EngineOwner: t.Envelope.EngineOwner}
 }
@@ -79,8 +92,8 @@ func TestTransitionReplyRequiresExactFenceAndConservationShape(t *testing.T) {
 	if err := validateTransitionReply("claim_next", transition{Decision: "not_current", Reason: "no_work", ServerTimeMS: 1000}, rejected, task.EnvelopeRoute(), nil, "", time.Minute, 0, 0); err == nil {
 		t.Fatal("rejected transition field leak was accepted")
 	}
-	audit := []string{"accepted", "audit_ok", "1000", "", "", "", "", "", "", "", "513", "0"}
-	if err := validateTransitionReply("audit", transition{Decision: "accepted", Reason: "audit_ok", ServerTimeMS: 1000, Value: 513}, audit, task.EnvelopeRoute(), nil, "", 0, 0, 0); err == nil {
+	audit := []string{"accepted", "audit_ok", "1000", "", "", "", "", "", "", "", "2049", "0"}
+	if err := validateTransitionReply("audit", transition{Decision: "accepted", Reason: "audit_ok", ServerTimeMS: 1000, Value: 2049}, audit, task.EnvelopeRoute(), nil, "", 0, 0, 0); err == nil {
 		t.Fatal("unbounded audit reply was accepted")
 	}
 }

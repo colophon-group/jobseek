@@ -34,12 +34,15 @@
 --  20 operator transfer mode: exact "1" or "0"
 --  21 producer cohort (producer activation and rollback operations)
 --  22 producer board-slug count
---  23 source activation receipt SHA-256 (rollback operations only)
+--  23 first-time schedule intent (activation: exact "1" or "0"), preserve
+--     claimed schedule intent (reschedule: exact "1" or "0"), or source
+--     activation receipt SHA-256 (rollback operations)
 --  24.. producer board slugs in sorted order
 
 local MAX_INTEGER = 9999999999999
 local MAX_PAYLOAD_BYTES = 131072
-local MAX_RECORDS = 512
+local MAX_RECORDS = 2048
+local PILOT_OCCUPANCY_LIMIT = 1600
 local MAX_SCAN = 64
 local MAX_LEASE_TTL_MS = 3600000
 local MAX_FAILURES = 100
@@ -175,6 +178,14 @@ local function decimal_seconds(text, maximum)
     local value = tonumber(text)
     if not value or value ~= value or value < 0 or value > maximum then return nil end
     return value
+end
+
+local function earlier_schedule(current_at, current_first_time, requested_at, requested_first_time)
+    if requested_at < current_at
+        or (requested_at == current_at and requested_first_time and not current_first_time) then
+        return requested_at, requested_first_time
+    end
+    return current_at, current_first_time
 end
 
 local expected_types = {"hash", "hash", "zset", "zset", "set", "set", "hash"}
@@ -369,6 +380,8 @@ local record_fields = {
     ready_at_ms = true,
     visible_at_ms = true,
     failures = true,
+    pending_ready_at_ms = true,
+    pending_first_time = true,
 }
 
 local envelope_fields = {
@@ -406,7 +419,7 @@ local function exact_fields(value, allowed, expected)
 end
 
 local function valid_record(record)
-    if type(record) ~= "table" or not exact_fields(record, record_fields, 18)
+    if type(record) ~= "table" or not exact_fields(record, record_fields, 20)
         or not safe_identifier(record.task_id)
         or record.task_kind ~= "scrape"
         or not safe_identifier(record.shard_id)
@@ -462,6 +475,8 @@ local function valid_record(record)
             and record.lease_until_ms == cjson.null
             and bounded_number(record.ready_at_ms, 0, MAX_INTEGER) ~= nil
             and bounded_number(record.visible_at_ms, record.ready_at_ms, MAX_INTEGER) ~= nil
+            and record.pending_ready_at_ms == cjson.null
+            and record.pending_first_time == cjson.null
     end
     if record.state == "inflight" then
         if type(record.claim_token) ~= "string"
@@ -469,6 +484,12 @@ local function valid_record(record)
             or not bounded_number(record.lease_until_ms, 1, MAX_INTEGER)
             or record.ready_at_ms ~= cjson.null
             or record.visible_at_ms ~= cjson.null then
+            return false
+        end
+        if (record.pending_ready_at_ms == cjson.null) ~= (record.pending_first_time == cjson.null)
+            or (record.pending_ready_at_ms ~= cjson.null
+                and (bounded_number(record.pending_ready_at_ms, 0, MAX_INTEGER) == nil
+                    or type(record.pending_first_time) ~= "boolean")) then
             return false
         end
         return record.claim_token
@@ -480,6 +501,8 @@ local function valid_record(record)
             and record.lease_until_ms == cjson.null
             and record.ready_at_ms == cjson.null
             and record.visible_at_ms == cjson.null
+            and record.pending_ready_at_ms == cjson.null
+            and record.pending_first_time == cjson.null
     end
     return false
 end
@@ -807,6 +830,8 @@ if operation == "register" then
         ready_at_ms = ready_at,
         visible_at_ms = ready_at,
         failures = 0,
+        pending_ready_at_ms = cjson.null,
+        pending_first_time = cjson.null,
     }
     local decode_ok, envelope = pcall(cjson.decode, payload)
     if not decode_ok or type(envelope) ~= "table" then
@@ -826,6 +851,7 @@ if operation == "activate_legacy" then
     local namespace = ARGV[18]
     local legacy_config_json = ARGV[19]
     local operator_transfer = ARGV[20]
+    local first_time = ARGV[23]
     if engine_owner ~= "go" then
         return result("not_current", "exclusive_go_owner_required")
     end
@@ -833,6 +859,8 @@ if operation == "activate_legacy" then
         return result("not_current", "namespace_corrupt")
     end
     if (operator_transfer ~= "0" and operator_transfer ~= "1")
+        or (first_time ~= "0" and first_time ~= "1")
+        or (first_time == "1" and ready_at ~= 0)
         or not safe_identifier(namespace) or not safe_identifier(task_id)
         or canonical_positive(config_revision) == nil or ready_at == nil
         or type(payload) ~= "string" or #payload > MAX_PAYLOAD_BYTES
@@ -864,6 +892,8 @@ if operation == "activate_legacy" then
         ready_at_ms = ready_at,
         visible_at_ms = ready_at,
         failures = 0,
+        pending_ready_at_ms = cjson.null,
+        pending_first_time = cjson.null,
     }
     if not valid_record(candidate) or envelope.board_id == nil then
         return result("not_current", "invalid_task_envelope")
@@ -930,8 +960,10 @@ if operation == "activate_legacy" then
     end
 
     local legacy_memberships = 0
-    local legacy_schedule_kind = "recurring_browser"
-    local legacy_schedule_score = string.format("%.3f", ready_at / 1000)
+    local requested_schedule_kind = first_time == "1" and "ft_browser" or "recurring_browser"
+    local requested_schedule_score = string.format("%.3f", ready_at / 1000)
+    local legacy_schedule_kind = requested_schedule_kind
+    local legacy_schedule_score = requested_schedule_score
     for _, wtype in ipairs({"simple", "browser"}) do
         if redis.call("ZSCORE", "inflight:" .. wtype, member) ~= false then
             return result("not_current", "legacy_inflight")
@@ -1016,8 +1048,12 @@ if operation == "activate_legacy" then
         if index_count(task_id) ~= 0 then
             return result("not_current", "conservation_violation")
         end
-        if redis.call("HLEN", KEYS[2]) >= MAX_RECORDS then
-            return result("not_current", "namespace_full")
+        local lifetime_occupancy = redis.call("HLEN", KEYS[2])
+        if lifetime_occupancy >= MAX_RECORDS then
+            return result("not_current", "namespace_full", nil, lifetime_occupancy, MAX_RECORDS)
+        end
+        if lifetime_occupancy >= PILOT_OCCUPANCY_LIMIT then
+            return result("not_current", "pilot_occupancy_limit", nil, lifetime_occupancy, MAX_RECORDS)
         end
     end
 
@@ -1052,9 +1088,16 @@ if operation == "activate_legacy" then
         end
     end
 
+    if operator_transfer == "0" and legacy_memberships ~= 0 then
+        return result("not_current", "legacy_membership_conflict")
+    end
+
     -- All validation is complete. From here every mutated key has the type
     -- checked above, so the transfer cannot fail halfway through.
     if activation_reason == "reactivated" then
+        legacy_schedule_kind = requested_schedule_kind
+        legacy_schedule_score = requested_schedule_score
+        guard_value = guard_base .. "|" .. legacy_schedule_kind .. "|" .. legacy_schedule_score
         if existing.state == "dead" then
             redis.call("SREM", KEYS[5], task_id)
         else
@@ -1065,6 +1108,41 @@ if operation == "activate_legacy" then
     elseif activation_reason == "activated" then
         store(candidate)
         redis.call("ZADD", KEYS[3], ready_at, task_id)
+    elseif candidate.state == "ready" then
+        if ready_at < candidate.ready_at_ms then
+            candidate.ready_at_ms = ready_at
+            candidate.visible_at_ms = math.min(candidate.visible_at_ms, ready_at)
+            store(candidate)
+            redis.call("ZADD", KEYS[3], candidate.visible_at_ms, task_id)
+        end
+        local selected_at, selected_first_time = earlier_schedule(
+            tonumber(legacy_schedule_score) * 1000,
+            string.sub(legacy_schedule_kind, 1, 3) == "ft_",
+            ready_at,
+            first_time == "1"
+        )
+        legacy_schedule_score = string.format("%.3f", selected_at / 1000)
+        legacy_schedule_kind = selected_first_time and "ft_browser" or "recurring_browser"
+        guard_value = guard_base .. "|" .. legacy_schedule_kind .. "|" .. legacy_schedule_score
+    elseif candidate.state == "inflight" then
+        local selected_at = ready_at
+        local selected_first_time = first_time == "1"
+        if candidate.pending_ready_at_ms ~= cjson.null then
+            selected_at, selected_first_time = earlier_schedule(
+                candidate.pending_ready_at_ms, candidate.pending_first_time,
+                ready_at, first_time == "1"
+            )
+        end
+        if candidate.pending_ready_at_ms == cjson.null
+            or selected_at ~= candidate.pending_ready_at_ms
+            or selected_first_time ~= candidate.pending_first_time then
+            candidate.pending_ready_at_ms = selected_at
+            candidate.pending_first_time = selected_first_time
+            store(candidate)
+            legacy_schedule_kind = candidate.pending_first_time and "ft_browser" or "recurring_browser"
+            legacy_schedule_score = string.format("%.3f", candidate.pending_ready_at_ms / 1000)
+            guard_value = guard_base .. "|" .. legacy_schedule_kind .. "|" .. legacy_schedule_score
+        end
     end
     redis.call("DEL", legacy_config_key)
     for field, value in pairs(legacy_config) do
@@ -1263,18 +1341,38 @@ if operation == "complete" then
     local record, decision, reason = load_current("inflight", true)
     if not record then return result(decision, reason) end
     if record.lease_until_ms <= now_ms then return result("not_current", "lease_expired") end
+    local guard = go_guard_for(record)
     local completed_token = record.claim_token
     local completed_lease_until = record.lease_until_ms
     redis.call("ZREM", KEYS[4], task_id)
     redis.call("HDEL", KEYS[7], record.domain)
-    record.state = "terminal"
     record.claim_token = cjson.null
     record.claim_sequence = cjson.null
     record.lease_until_ms = cjson.null
-    record.ready_at_ms = cjson.null
-    record.visible_at_ms = cjson.null
-    store(record)
-    redis.call("SADD", KEYS[6], task_id)
+    if record.pending_ready_at_ms ~= cjson.null then
+        local pending_ready_at = record.pending_ready_at_ms
+        local pending_first_time = record.pending_first_time
+        record.state = "ready"
+        record.ready_at_ms = pending_ready_at
+        record.visible_at_ms = pending_ready_at
+        record.pending_ready_at_ms = cjson.null
+        record.pending_first_time = cjson.null
+        store(record)
+        redis.call("ZADD", KEYS[3], pending_ready_at, task_id)
+        if guard ~= true then
+            local kind = pending_first_time and "ft_browser" or "recurring_browser"
+            redis.call("HSET", guard.key, task_id,
+                guard.base .. "|" .. kind .. "|" .. string.format("%.3f", pending_ready_at / 1000))
+        end
+    else
+        record.state = "terminal"
+        record.ready_at_ms = cjson.null
+        record.visible_at_ms = cjson.null
+        record.pending_ready_at_ms = cjson.null
+        record.pending_first_time = cjson.null
+        store(record)
+        redis.call("SADD", KEYS[6], task_id)
+    end
     return {
         "accepted",
         "completed",
@@ -1294,12 +1392,26 @@ end
 if operation == "reschedule_at" then
     local ready_at = canonical_uint(ARGV[9])
     if ready_at == nil then return result("not_current", "invalid_ready_at") end
+    if ARGV[23] ~= "0" and ARGV[23] ~= "1" then
+        return result("not_current", "invalid_schedule_intent_mode")
+    end
     local record, decision, reason = load_current("inflight", true)
     if not record then return result(decision, reason) end
     if record.lease_until_ms <= now_ms then return result("not_current", "lease_expired") end
     local prior_token = record.claim_token
     local prior_lease_until = record.lease_until_ms
     local guard = go_guard_for(record)
+    -- A normal successful scrape always establishes the recurring schedule
+    -- passed by the authoritative store. Shutdown release is the one explicit
+    -- mode that preserves the claimed FT/recurring intent unchanged.
+    local selected_first_time = ARGV[23] == "1"
+        and guard ~= true and string.sub(guard.kind, 1, 3) == "ft_" or false
+    if record.pending_ready_at_ms ~= cjson.null then
+        ready_at, selected_first_time = earlier_schedule(
+            ready_at, selected_first_time,
+            record.pending_ready_at_ms, record.pending_first_time
+        )
+    end
     redis.call("ZREM", KEYS[4], task_id)
     redis.call("HDEL", KEYS[7], record.domain)
     record.state = "ready"
@@ -1309,13 +1421,16 @@ if operation == "reschedule_at" then
     record.ready_at_ms = ready_at
     record.visible_at_ms = ready_at
     record.failures = 0
+    record.pending_ready_at_ms = cjson.null
+    record.pending_first_time = cjson.null
     store(record)
     redis.call("ZADD", KEYS[3], ready_at, task_id)
     if guard ~= true then
         local wtype = string.sub(guard.kind, -7) == "browser" and "browser" or "simple"
+        local selected_kind = (selected_first_time and "ft_" or "recurring_") .. wtype
         redis.call(
             "HSET", guard.key, task_id,
-            guard.base .. "|recurring_" .. wtype .. "|" .. string.format("%.3f", ready_at / 1000)
+            guard.base .. "|" .. selected_kind .. "|" .. string.format("%.3f", ready_at / 1000)
         )
     end
     return {
@@ -1346,6 +1461,14 @@ if operation == "fail_at" then
     local prior_token = record.claim_token
     local prior_lease_until = record.lease_until_ms
     local guard = go_guard_for(record)
+    local selected_first_time = guard ~= true and string.sub(guard.kind, 1, 3) == "ft_"
+        or false
+    if record.pending_ready_at_ms ~= cjson.null then
+        ready_at, selected_first_time = earlier_schedule(
+            ready_at, selected_first_time,
+            record.pending_ready_at_ms, record.pending_first_time
+        )
+    end
     redis.call("ZREM", KEYS[4], task_id)
     redis.call("HDEL", KEYS[7], record.domain)
     record.state = "ready"
@@ -1355,12 +1478,16 @@ if operation == "fail_at" then
     record.ready_at_ms = ready_at
     record.visible_at_ms = ready_at
     record.failures = record.failures + 1
+    record.pending_ready_at_ms = cjson.null
+    record.pending_first_time = cjson.null
     store(record)
     redis.call("ZADD", KEYS[3], ready_at, task_id)
     if guard ~= true then
+        local wtype = string.sub(guard.kind, -7) == "browser" and "browser" or "simple"
+        local selected_kind = (selected_first_time and "ft_" or "recurring_") .. wtype
         redis.call(
             "HSET", guard.key, task_id,
-            guard.base .. "|" .. guard.kind .. "|" .. string.format("%.3f", ready_at / 1000)
+            guard.base .. "|" .. selected_kind .. "|" .. string.format("%.3f", ready_at / 1000)
         )
     end
     return {
@@ -1429,6 +1556,8 @@ if operation == "reactivate" then
         ready_at_ms = ready_at,
         visible_at_ms = ready_at,
         failures = 0,
+        pending_ready_at_ms = cjson.null,
+        pending_first_time = cjson.null,
     }
     local decode_ok, envelope = pcall(cjson.decode, payload)
     if not decode_ok or type(envelope) ~= "table" then
@@ -1531,7 +1660,8 @@ if operation == "rollback_legacy" then
             or record.engine_owner ~= engine_owner then
             return result("fenced", "record_fence_mismatch")
         end
-        if not go_guard_for(record) then
+        local record_guard = go_guard_for(record)
+        if not record_guard then
             return result("not_current", "guard_identity_mismatch")
         end
         if record.state ~= "ready" and record.state ~= "dead"
@@ -1577,6 +1707,20 @@ if operation == "rollback_legacy" then
             scheduled_count = scheduled_count + 1
         end
 
+        if record.state == "ready" then
+            if plan.action ~= "schedule" or record_guard == true then
+                return result("not_current", "invalid_rollback_plan")
+            end
+            local guard_worker_type = string.sub(record_guard.kind, -7) == "browser"
+                and "browser" or "simple"
+            local guard_first_time = string.sub(record_guard.kind, 1, 3) == "ft_"
+            if plan.worker_type ~= guard_worker_type
+                or plan.first_time ~= guard_first_time
+                or plan.score ~= record_guard.score then
+                return result("not_current", "invalid_rollback_plan")
+            end
+        end
+
         for _, domain in ipairs(domains) do
             local member = "scrape|" .. domain .. "|" .. candidate_id
             for _, wtype in ipairs({"simple", "browser"}) do
@@ -1599,7 +1743,9 @@ if operation == "rollback_legacy" then
                 end
                 if redis.call("ZSCORE", "inflight:" .. wtype, member)
                     or redis.call("ZSCORE", "deadletter:" .. wtype, member)
+                    or redis.call("ZSCORE", "ft_monitors_" .. wtype .. ":" .. domain, candidate_id)
                     or redis.call("ZSCORE", "ft_scrapes_" .. wtype .. ":" .. domain, candidate_id)
+                    or redis.call("ZSCORE", "monitors_" .. wtype .. ":" .. domain, candidate_id)
                     or redis.call("ZSCORE", "scrapes_" .. wtype .. ":" .. domain, candidate_id) then
                     return result("not_current", "legacy_membership_conflict")
                 end
@@ -1697,11 +1843,13 @@ if operation == "reap_expired" then
         end
         local holder = holder_for(record)
         if not holder then return result("not_current", "origin_holder_corrupt") end
-        records[index] = record
+        records[index] = {record = record, guard = go_guard_for(record)}
     end
     local requeued = 0
     local dead = 0
-    for _, record in ipairs(records) do
+    for _, item in ipairs(records) do
+        local record = item.record
+        local guard = item.guard
         redis.call("ZREM", KEYS[4], record.task_id)
         redis.call("HDEL", KEYS[7], record.domain)
         record.failures = record.failures + 1
@@ -1709,16 +1857,33 @@ if operation == "reap_expired" then
         record.claim_sequence = cjson.null
         record.lease_until_ms = cjson.null
         record.visible_at_ms = cjson.null
-        if record.failures >= max_failures then
+        local pending_ready_at = record.pending_ready_at_ms
+        local pending_first_time = record.pending_first_time
+        record.pending_ready_at_ms = cjson.null
+        record.pending_first_time = cjson.null
+        if record.failures >= max_failures and pending_ready_at == cjson.null then
             record.state = "dead"
             record.ready_at_ms = cjson.null
             redis.call("SADD", KEYS[5], record.task_id)
             dead = dead + 1
         else
             record.state = "ready"
+            local selected_first_time = guard ~= true
+                and string.sub(guard.kind, 1, 3) == "ft_" or false
             record.ready_at_ms = now_ms
-            record.visible_at_ms = now_ms
-            redis.call("ZADD", KEYS[3], now_ms, record.task_id)
+            if pending_ready_at ~= cjson.null then
+                record.ready_at_ms, selected_first_time = earlier_schedule(
+                    now_ms, selected_first_time, pending_ready_at, pending_first_time
+                )
+            end
+            record.visible_at_ms = record.ready_at_ms
+            redis.call("ZADD", KEYS[3], record.ready_at_ms, record.task_id)
+            if guard ~= true then
+                local wtype = string.sub(guard.kind, -7) == "browser" and "browser" or "simple"
+                local kind = (selected_first_time and "ft_" or "recurring_") .. wtype
+                redis.call("HSET", guard.key, record.task_id,
+                    guard.base .. "|" .. kind .. "|" .. string.format("%.3f", record.ready_at_ms / 1000))
+            end
             requeued = requeued + 1
         end
         store(record)
