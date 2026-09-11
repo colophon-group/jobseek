@@ -1,3 +1,15 @@
+# ── Stage 0: Go-owned Lightpanda B0 supervisor ──────────────────────
+FROM golang:1.24.7-alpine3.22@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5 AS lightpanda-b0-build
+
+WORKDIR /workspace/apps/crawler
+COPY contracts/ contracts/
+COPY src/lua/lightpanda_b0_queue.lua src/lua/lightpanda_b0_queue.lua
+COPY go/lightpanda-b0-supervisor/ go/lightpanda-b0-supervisor/
+WORKDIR /workspace/apps/crawler/go/lightpanda-b0-supervisor
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/lightpanda-b0-supervisor .
+
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
 FROM python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
 
@@ -29,6 +41,8 @@ COPY contracts/v1/privacy_registry.json contracts/v1/privacy_registry.json
 RUN uv build --wheel --out-dir /tmp/jobseek-wheel \
     && uv pip install --python .venv/bin/python --no-deps /tmp/jobseek-wheel/*.whl \
     && rm -rf /tmp/jobseek-wheel contracts
+
+COPY --from=lightpanda-b0-build /out/lightpanda-b0-supervisor /usr/local/bin/lightpanda-b0-supervisor
 
 # ── Target: slim (worker, exporter, drain — no Playwright) ───────────
 FROM base AS slim

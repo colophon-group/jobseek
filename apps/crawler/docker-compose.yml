@@ -209,17 +209,17 @@ services:
     pids_limit: 4096
     cpus: 3.0
 
-  # -- Networkless Lightpanda claimant configuration proof --------
-  # This process has no queue or database authority in dark mode. It validates
-  # the immutable client identity and future route, publishes a local marker,
-  # and waits for SIGTERM without importing the claimant or opening a socket.
+  # -- Networkless Go Lightpanda B0 supervisor --------------------
+  # This is the production process implementation, held in exact dark mode.
+  # Dark startup reads no authority configuration and opens no socket; the
+  # networkless container publishes only a local, exact Go readiness marker.
   lightpanda-claimant:
     image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
     network_mode: none
     stop_grace_period: 15s
-    command: ["/app/.venv/bin/lightpanda-claimant"]
+    command: ["/usr/local/bin/lightpanda-b0-supervisor"]
     user: "10001:10001"
     read_only: true
     cgroup: private
@@ -228,66 +228,17 @@ services:
     cap_drop:
       - ALL
     environment:
-      LIGHTPANDA_B0_CLAIMANT_MODE: dark
-      LIGHTPANDA_B0_SERVICE_HOST: 10.0.0.5
-      LIGHTPANDA_B0_CA_CERTIFICATE: /run/credentials/lightpanda-b0/ca.pem
-      LIGHTPANDA_B0_CLIENT_CERTIFICATE: /run/credentials/lightpanda-b0/client.pem
-      LIGHTPANDA_B0_CLIENT_PRIVATE_KEY: /run/credentials/lightpanda-b0/client-key.pem
-      LIGHTPANDA_B0_CA_SHA256_FILE: /run/credentials/lightpanda-b0/ca.sha256
-      LIGHTPANDA_B0_SERVER_LEAF_SHA256_FILE: /run/credentials/lightpanda-b0/server-leaf.sha256
-      LIGHTPANDA_B0_SERVER_SPKI_SHA256_FILE: /run/credentials/lightpanda-b0/server-spki.sha256
-      LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
-      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
-      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
-      CRAWLER_DB_POOL_MIN: "0"
-      CRAWLER_DB_POOL_MAX: "1"
-    volumes:
-      - type: bind
-        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:?claimant credential generation is required}/ca.pem
-        target: /run/credentials/lightpanda-b0/ca.pem
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:?claimant credential generation is required}/client.pem
-        target: /run/credentials/lightpanda-b0/client.pem
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:?claimant credential generation is required}/client-key.pem
-        target: /run/credentials/lightpanda-b0/client-key.pem
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:?claimant credential generation is required}/ca.sha256
-        target: /run/credentials/lightpanda-b0/ca.sha256
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:?claimant credential generation is required}/server-leaf.sha256
-        target: /run/credentials/lightpanda-b0/server-leaf.sha256
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ${LIGHTPANDA_B0_CREDENTIAL_DIR:?claimant credential generation is required}/server-spki.sha256
-        target: /run/credentials/lightpanda-b0/server-spki.sha256
-        read_only: true
-        bind:
-          create_host_path: false
+      LIGHTPANDA_B0_SUPERVISOR_MODE: dark
     tmpfs:
       - /run/jobseek:rw,noexec,nosuid,nodev,size=64k,uid=10001,gid=10001,mode=0700
     healthcheck:
-      test: ["CMD", "/app/.venv/bin/lightpanda-claimant", "--healthcheck"]
+      test: ["CMD", "/usr/local/bin/lightpanda-b0-supervisor", "--healthcheck"]
       interval: 10s
       timeout: 3s
       retries: 3
       start_period: 10s
-    mem_limit: 512m
-    memswap_limit: 512m
+    mem_limit: 128m
+    memswap_limit: 128m
     cpus: 0.25
     pids_limit: 32
     ulimits:

@@ -327,6 +327,33 @@ jobs:
           cache-from: type=gha,scope=sitemap-fleet-python
           cache-to: type=gha,mode=max,scope=sitemap-fleet-python,ignore-error=true
 
+  test-go-b0-supervisor:
+    name: Test Go Lightpanda B0 Supervisor
+    needs: changes
+    if: needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/crawler/go/lightpanda-b0-supervisor
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/lightpanda-b0-supervisor/go.mod
+          cache-dependency-path: apps/crawler/go/lightpanda-b0-supervisor/go.sum
+
+      - name: Test, race, vet, module metadata, and formatting
+        run: |
+          go test ./...
+          go test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
   crawler-image:
     name: Build Crawler Browser Image
     needs: changes
@@ -1381,6 +1408,7 @@ jobs:
       - workflow-security
       - changes
       - test-go-http-pilot
+      - test-go-b0-supervisor
       - crawler-image
       - lint-web
       - i18n-coverage
@@ -1441,6 +1469,7 @@ jobs:
           requireSuccess("changes");
           requireSuccess("data-validation");
           requireSuccess("test-go-http-pilot", goHttpPilot);
+          requireSuccess("test-go-b0-supervisor", crawlerCode);
           requireSuccess("dependency-review", eventName === "pull_request" && code);
           requireSuccess("crawler-image", eventName === "pull_request" && isPr && crawlerCode);
 
