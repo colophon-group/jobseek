@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import os
 import re
 import signal
@@ -496,12 +497,27 @@ def _write_ready_file() -> None:
             0o400,
         )
         try:
-            os.write(descriptor, b"lightpanda-b0-dark-ready\n")
+            _write_all(descriptor, b"lightpanda-b0-dark-ready\n")
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
     except OSError as exc:
+        with suppress(OSError):
+            _READY_FILE.unlink()
         raise LightpandaEntrypointError("could not publish dark claimant readiness") from exc
+
+
+def _write_all(descriptor: int, payload: bytes) -> None:
+    """Write the complete readiness payload or fail closed."""
+
+    remaining = memoryview(payload)
+    while remaining:
+        written = os.write(descriptor, remaining)
+        if written <= 0:
+            raise OSError(errno.EIO, "readiness marker write made no progress")
+        if written > len(remaining):
+            raise OSError(errno.EIO, "readiness marker write count is invalid")
+        remaining = remaining[written:]
 
 
 def _remove_ready_file() -> None:

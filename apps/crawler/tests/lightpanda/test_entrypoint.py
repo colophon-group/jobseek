@@ -170,6 +170,48 @@ async def test_enabled_dedicated_entrypoint_configures_logging_and_always_closes
     assert events == ["settings", "logging", "claimant", "close-pools"]
 
 
+def test_readiness_marker_completes_legal_short_writes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import src.lightpanda.entrypoint as entrypoint
+
+    ready = tmp_path / "ready"
+    original_write = os.write
+    write_calls = 0
+
+    def short_write(descriptor: int, payload: bytes | memoryview) -> int:
+        nonlocal write_calls
+        write_calls += 1
+        length = max(1, len(payload) // 2)
+        return original_write(descriptor, payload[:length])
+
+    monkeypatch.setattr(entrypoint, "_READY_FILE", ready)
+    monkeypatch.setattr(entrypoint.os, "write", short_write)
+    entrypoint._write_ready_file()
+
+    assert write_calls > 1
+    assert ready.read_bytes() == b"lightpanda-b0-dark-ready\n"
+
+
+def test_readiness_marker_zero_write_fails_cleanly_and_allows_retry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import src.lightpanda.entrypoint as entrypoint
+
+    ready = tmp_path / "ready"
+    monkeypatch.setattr(entrypoint, "_READY_FILE", ready)
+    with monkeypatch.context() as stalled:
+        stalled.setattr(entrypoint.os, "write", lambda _descriptor, _payload: 0)
+        with pytest.raises(LightpandaEntrypointError, match="could not publish"):
+            entrypoint._write_ready_file()
+
+    assert not ready.exists()
+    entrypoint._write_ready_file()
+    assert ready.read_bytes() == b"lightpanda-b0-dark-ready\n"
+
+
 async def test_invalid_certificates_fail_before_redis_postgres_or_metrics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -227,6 +227,140 @@ def test_bundle_is_exact_and_installs_one_immutable_generation(
     assert not (generation / "server.pem").exists()
 
 
+def test_prepare_completes_legal_short_writes(
+    tmp_path: Path,
+    claimant_pki: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = tmp_path / "claimant.tar"
+    root = tmp_path / "generations"
+    bundle.build_bundle(
+        ca_path=claimant_pki["ca"],
+        server_path=claimant_pki["server"],
+        client_path=claimant_pki["client"],
+        client_key_path=claimant_pki["client_key"],
+        service_host="10.0.0.5",
+        output=archive,
+    )
+    archive_sha256 = _sha256(archive)
+    original_write = os.write
+    write_calls = 0
+
+    def short_write(descriptor: int, payload: bytes | memoryview) -> int:
+        nonlocal write_calls
+        write_calls += 1
+        length = max(1, len(payload) // 2)
+        return original_write(descriptor, payload[:length])
+
+    monkeypatch.setattr(bundle.os, "write", short_write)
+    generation = bundle.prepare_generation(
+        archive=archive,
+        expected_sha256=archive_sha256,
+        revision="7" * 40,
+        root=root,
+        service_host="10.0.0.5",
+    )
+
+    assert write_calls > len(bundle._FILES)
+    bundle._verify_generation(generation, _transport_payloads(archive))
+
+
+def test_failed_short_write_publishes_nothing_and_allows_retry(
+    tmp_path: Path,
+    claimant_pki: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = tmp_path / "claimant.tar"
+    root = tmp_path / "generations"
+    revision = "8" * 40
+    bundle.build_bundle(
+        ca_path=claimant_pki["ca"],
+        server_path=claimant_pki["server"],
+        client_path=claimant_pki["client"],
+        client_key_path=claimant_pki["client_key"],
+        service_host="10.0.0.5",
+        output=archive,
+    )
+    archive_sha256 = _sha256(archive)
+    generation = root / f"sha-{revision}-{archive_sha256}"
+    original_write = os.write
+    write_calls = 0
+
+    def stalled_write(descriptor: int, payload: bytes | memoryview) -> int:
+        nonlocal write_calls
+        write_calls += 1
+        if write_calls == 1:
+            length = max(1, len(payload) // 2)
+            return original_write(descriptor, payload[:length])
+        return 0
+
+    with monkeypatch.context() as stalled:
+        stalled.setattr(bundle.os, "write", stalled_write)
+        with pytest.raises(bundle.BundleError, match="made no progress"):
+            bundle.prepare_generation(
+                archive=archive,
+                expected_sha256=archive_sha256,
+                revision=revision,
+                root=root,
+                service_host="10.0.0.5",
+            )
+
+    assert not generation.exists()
+    assert not any(root.glob(".candidate-*"))
+    assert generation == bundle.prepare_generation(
+        archive=archive,
+        expected_sha256=archive_sha256,
+        revision=revision,
+        root=root,
+        service_host="10.0.0.5",
+    )
+
+
+def test_candidate_verification_prevents_truncated_generation_publication(
+    tmp_path: Path,
+    claimant_pki: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = tmp_path / "claimant.tar"
+    root = tmp_path / "generations"
+    revision = "6" * 40
+    bundle.build_bundle(
+        ca_path=claimant_pki["ca"],
+        server_path=claimant_pki["server"],
+        client_path=claimant_pki["client"],
+        client_key_path=claimant_pki["client_key"],
+        service_host="10.0.0.5",
+        output=archive,
+    )
+    archive_sha256 = _sha256(archive)
+    generation = root / f"sha-{revision}-{archive_sha256}"
+    original_write_all = bundle._write_all
+
+    def truncated_write(descriptor: int, payload: bytes) -> None:
+        original_write_all(descriptor, payload[:-1])
+
+    with monkeypatch.context() as truncated:
+        truncated.setattr(bundle, "_write_all", truncated_write)
+        with pytest.raises(bundle.BundleError, match="generation changed"):
+            bundle.prepare_generation(
+                archive=archive,
+                expected_sha256=archive_sha256,
+                revision=revision,
+                root=root,
+                service_host="10.0.0.5",
+            )
+
+    assert not generation.exists()
+    assert not any(root.glob(".candidate-*"))
+    assert generation == bundle.prepare_generation(
+        archive=archive,
+        expected_sha256=archive_sha256,
+        revision=revision,
+        root=root,
+        service_host="10.0.0.5",
+    )
+
+
 def test_prepare_rejects_post_validation_archive_tampering_before_publication(
     tmp_path: Path,
     claimant_pki: dict[str, Path],

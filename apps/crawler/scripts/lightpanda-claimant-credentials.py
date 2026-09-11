@@ -162,11 +162,12 @@ def prepare_generation(
                 mode,
             )
             try:
-                os.write(descriptor, payloads[name])
+                _write_all(descriptor, payloads[name])
                 os.fsync(descriptor)
             finally:
                 os.close(descriptor)
             os.chmod(target, mode)
+        _verify_generation(candidate, payloads)
         _fsync_directory(candidate)
         os.replace(candidate, generation)
         _fsync_directory(root)
@@ -175,6 +176,22 @@ def prepare_generation(
             shutil.rmtree(candidate)
     _verify_generation(generation, payloads)
     return generation
+
+
+def _write_all(descriptor: int, payload: bytes) -> None:
+    """Write every byte or fail without allowing a candidate publication."""
+
+    remaining = memoryview(payload)
+    while remaining:
+        try:
+            written = os.write(descriptor, remaining)
+        except OSError as exc:
+            raise BundleError("claimant credential generation write failed") from exc
+        if written <= 0:
+            raise BundleError("claimant credential generation write made no progress")
+        if written > len(remaining):
+            raise BundleError("claimant credential generation write count is invalid")
+        remaining = remaining[written:]
 
 
 def _read_archive_bytes(path: Path, expected: os.stat_result) -> bytes:
