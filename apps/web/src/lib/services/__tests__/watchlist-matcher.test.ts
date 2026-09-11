@@ -185,6 +185,91 @@ describe("readWatchlistCandidates", () => {
     expect(mocks.singleSearch).not.toHaveBeenCalled();
   });
 
+  it("uses exact native offsets for a legacy direct read", async () => {
+    const ids = Array.from({ length: 5 }, (_, index) => makeUuid(index + 1));
+    const hits = ids.map((id) => posting(id, 1_700_000_000));
+    mocks.singleSearch.mockImplementation((search: {
+      offset?: number;
+      limit?: number;
+    }) => ({
+      found: hits.length,
+      hits: hits.slice(search.offset, (search.offset ?? 0) + (search.limit ?? 0)),
+    }));
+
+    const result = await readWatchlistCandidates({
+      filters: { companyIds: [makeUuid(100)] },
+      offset: 3,
+      limit: 2,
+      order: "newest",
+    });
+
+    expect(result.postings.map((posting) => posting.id)).toEqual(ids.slice(3, 5));
+    expect(mocks.singleSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).toMatchObject({
+      offset: 3,
+      limit: 2,
+    });
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).not.toHaveProperty("page");
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).not.toHaveProperty("per_page");
+  });
+
+  it("uses exact native offsets for a stable direct read", async () => {
+    const ids = Array.from({ length: 5 }, (_, index) => makeUuid(index + 1));
+    const hits = ids.map((id) => posting(id, 1_700_000_000));
+    mocks.singleSearch.mockImplementation((search: {
+      offset?: number;
+      limit?: number;
+      sort_by?: string;
+    }) => {
+      if (
+        search.sort_by === "candidate_order_key(missing_values: first):asc"
+      ) {
+        return { found: hits.length, hits: hits.slice(0, 1) };
+      }
+      return {
+        found: hits.length,
+        hits: hits.slice(search.offset, (search.offset ?? 0) + (search.limit ?? 0)),
+      };
+    });
+
+    const result = await readWatchlistCandidates({
+      filters: { companyIds: [makeUuid(100)] },
+      offset: 3,
+      limit: 2,
+      order: "newest",
+      requireStableOrder: true,
+    });
+
+    expect(result.postings.map((posting) => posting.id)).toEqual(ids.slice(3, 5));
+    expect(mocks.singleSearch).toHaveBeenCalledTimes(3);
+    expect(mocks.singleSearch.mock.calls[1]?.[0]).toMatchObject({
+      offset: 3,
+      limit: 2,
+      sort_by:
+        "first_seen_at:desc,candidate_order_key(missing_values: first):asc",
+    });
+    expect(mocks.singleSearch.mock.calls[1]?.[0]).not.toHaveProperty("page");
+    expect(mocks.singleSearch.mock.calls[1]?.[0]).not.toHaveProperty("per_page");
+  });
+
+  it("preserves per_page zero for a direct count-only read", async () => {
+    mocks.singleSearch.mockResolvedValue({ found: 5, hits: [] });
+
+    await expect(readWatchlistCandidates({
+      filters: { companyIds: [makeUuid(100)] },
+      offset: 3,
+      limit: 0,
+      order: "newest",
+    })).resolves.toEqual({ postings: [], total: 5 });
+
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).toMatchObject({
+      page: 1,
+      per_page: 0,
+    });
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).not.toHaveProperty("offset");
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).not.toHaveProperty("limit");
+  });
+
   it("orders equal-time batches by candidate ID across page boundaries", async () => {
     const companyIds = Array.from(
       { length: 101 },
