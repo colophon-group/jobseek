@@ -192,6 +192,26 @@ function fixture() {
       promptProvenance: { origin: "agent_synthetic" as const, authorId: `eval-prompt-author-${String(index).padStart(2, "0")}`, configId: "eval-config-prompt-a" },
     };
   });
+  const extractionRuns = filters.map((filter, filterIndex) => {
+    const challenge = filterIndex >= 15;
+    const candidatesBeforeSelection = Array.from({ length: challenge ? 15 : 8 }, (_, sourceRank) => ({
+      candidateId: challenge && sourceRank % 2 === 1
+        ? source(10_000 + filterIndex * 16 + sourceRank).candidateId
+        : source(filterIndex * 8 + (challenge ? sourceRank / 2 : sourceRank)).candidateId,
+      sourceRank,
+    }));
+    const candidatesAfterSelection = challenge
+      ? candidatesBeforeSelection.filter(({ sourceRank }) => sourceRank % 2 === 0)
+      : candidatesBeforeSelection;
+    return {
+      filterId: filter.filterId,
+      canonicalFilterFingerprint: { scheme: "hmac-sha256-v1" as const, value: (filterIndex + 100).toString(16).padStart(64, "0") },
+      compiledQueryFingerprint: { scheme: "hmac-sha256-v1" as const, value: filterIndex.toString(16).padStart(64, "0") },
+      selectionMode: challenge ? "frozen_source_rank" as const : "first_eight" as const,
+      candidatesBeforeSelection,
+      candidatesAfterSelection,
+    };
+  });
   const extractionManifest = {
     schemaVersion: STAGE_A_EXTRACTION_MANIFEST_SCHEMA_VERSION,
     repositoryCommit: "a".repeat(40),
@@ -200,7 +220,7 @@ function fixture() {
     compiler: { sourcePath: "apps/web/src/lib/search/watchlist-candidate-query.ts", exportName: "buildWatchlistCandidateSearchParams", sourceDigest: D("d") },
     reader: { sourcePath: "apps/web/src/lib/services/watchlist-matcher.ts", exportName: "readWatchlistCandidates", sourceDigest: D("e") },
     dependencyLockDigest: D("f"),
-    compiledQueries: filters.map((filter, index) => ({ filterId: filter.filterId, fingerprint: { scheme: "hmac-sha256-v1" as const, value: index.toString(16).padStart(64, "0") } })),
+    extractionRuns,
     query: {
       templateDigest: D("0"), order: "first_seen_at_desc_candidate_id_asc" as const, pageSize: 8 as const,
       requestedStrictLowerBound: "2026-08-02T00:00:00.000Z", effectiveWindowStart: "2026-08-02T00:00:01.000Z", cutoff: "2026-09-01T00:00:00.000Z",
@@ -211,7 +231,7 @@ function fixture() {
     softQueryNormalizer: { sourcePath: "apps/web/src/lib/ai-filter/contract.ts", exportName: "normalizeAiFilterSoftQueryV1", sourceDigest: D("4"), version: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION, fallbackPolicyDigest: D("5"), truncationPolicyDigest: D("6") },
   };
   const extractionManifestDigest = digestStageAExtractionManifest(extractionManifest);
-  const compiledQueryByFilterId = new Map(extractionManifest.compiledQueries.map(({ filterId, fingerprint }) => [filterId, fingerprint.value]));
+  const compiledQueryByFilterId = new Map(extractionManifest.extractionRuns.map(({ filterId, compiledQueryFingerprint }) => [filterId, compiledQueryFingerprint.value]));
   const reviewPlan = { promptReviewSeed: D("c"), auditSeed: D("d"), auditRule: "bounded-16-8-8-v2" as const, auditSize: 32 as const };
   const prePairs = bundles.flatMap((bundle, bundleIndex) => Array.from({ length: 8 }, (_, position) => {
     const index = bundleIndex * 8 + position;
@@ -316,6 +336,49 @@ function fixture() {
   return { calibrationArtifact, calibrationInputDigest, calibrationResult, calibrationResultDigest, preAnnotation, preAnnotationDigest, promptFeedback, promptReviewFeedbackDigest, wip, freeze };
 }
 
+function freezeWithCalibrationArtifact(
+  data: ReturnType<typeof fixture>,
+  calibrationArtifact: Mutable<StageACalibrationArtifactV2>,
+) {
+  const calibrationInputDigest = digestStageACalibrationArtifact(calibrationArtifact);
+  const calibrationResult = clone(data.calibrationResult);
+  calibrationResult.calibrationInputDigest = calibrationInputDigest;
+  const resolvedGroundTruthDigest = digestStageAResolvedCalibrationGroundTruth(
+    calibrationResult.humanReview.decisions,
+    calibrationInputDigest,
+  );
+  for (const trial of calibrationResult.trials) {
+    if (trial.role === "annotator") trial.suiteInputDigest = resolvedGroundTruthDigest;
+  }
+  const calibrationResultDigest = digestStageACalibrationResult(
+    calibrationResult,
+    calibrationArtifact,
+    calibrationInputDigest,
+  );
+  const preAnnotation = clone(data.preAnnotation);
+  preAnnotation.calibrationResultDigest = calibrationResultDigest;
+  const preAnnotationDigest = digestStageAPreAnnotation(preAnnotation);
+  const promptFeedback = clone(data.promptFeedback);
+  promptFeedback.preAnnotationDigest = preAnnotationDigest;
+  const promptReviewFeedbackDigest = digestStageAPromptReviewFeedback(promptFeedback, preAnnotation);
+  const wip = clone(data.wip);
+  wip.calibrationResultDigest = calibrationResultDigest;
+  wip.preAnnotationDigest = preAnnotationDigest;
+  wip.promptReviewFeedbackDigest = promptReviewFeedbackDigest;
+  reapprove(wip);
+  return () => freezeStageASilver(
+    wip,
+    calibrationArtifact,
+    calibrationInputDigest,
+    calibrationResult,
+    calibrationResultDigest,
+    preAnnotation,
+    preAnnotationDigest,
+    promptFeedback,
+    promptReviewFeedbackDigest,
+  );
+}
+
 function humanFeedback(sourceSilverDigest: string, auditPolicyDigest: string, pairIds: readonly string[]): StageAHumanFeedbackV2 {
   return { schemaVersion: STAGE_A_HUMAN_FEEDBACK_SCHEMA_VERSION, feedbackId: "eval-human-feedback", reviewerId: "eval-audit-human", sourceSilverDigest, auditPolicyDigest, approved: true, decisions: pairIds.map((pairId) => ({ pairId, judgment: "accept" })) };
 }
@@ -357,7 +420,7 @@ describe("Stage A v2 gates", () => {
     wrong.bundles[15].filterId = wrong.bundles[0].filterId;
     expect(() => validateStageAWip(wrong)).toThrow(/disjoint_15_plus_5_filter_mapping_required/u);
     const duplicateFingerprint = clone(data.preAnnotation);
-    duplicateFingerprint.extractionManifest.compiledQueries[1].fingerprint.value = duplicateFingerprint.extractionManifest.compiledQueries[0].fingerprint.value;
+    duplicateFingerprint.extractionManifest.extractionRuns[1].compiledQueryFingerprint.value = duplicateFingerprint.extractionManifest.extractionRuns[0].compiledQueryFingerprint.value;
     expect(() => digestStageAPreAnnotation(duplicateFingerprint)).toThrow(/unique_compiled_query_fingerprints_required/u);
 
     const mismatchedChallengeFeed = clone(data.preAnnotation);
@@ -367,7 +430,7 @@ describe("Stage A v2 gates", () => {
     const secondBundle = mismatchedChallengeFeed.bundles.find(({ bundleId }) => bundleId === secondBundlePair.bundleId)!;
     secondBundlePair.sourceSnapshotIdentity = digestStageASourceSnapshotIdentity({
       extractionManifestDigest: mismatchedChallengeFeed.extractionManifestDigest,
-      compiledQueryFingerprint: mismatchedChallengeFeed.extractionManifest.compiledQueries.find(({ filterId }) => filterId === secondBundle.filterId)!.fingerprint.value,
+      compiledQueryFingerprint: mismatchedChallengeFeed.extractionManifest.extractionRuns.find(({ filterId }) => filterId === secondBundle.filterId)!.compiledQueryFingerprint.value,
       candidateId: secondBundlePair.classifierSource.candidateId,
       contentIdentity: secondBundlePair.contentIdentity,
       postingFirstSeenAt: secondBundlePair.postingFirstSeenAt,
@@ -416,7 +479,7 @@ describe("Stage A v2 gates", () => {
     pair.postingFirstSeenAt = included.extractionManifest.query.effectiveWindowStart;
     pair.sourceSnapshotIdentity = digestStageASourceSnapshotIdentity({
       extractionManifestDigest: included.extractionManifestDigest,
-      compiledQueryFingerprint: included.extractionManifest.compiledQueries.find(({ filterId }) => filterId === included.bundles[0].filterId)!.fingerprint.value,
+      compiledQueryFingerprint: included.extractionManifest.extractionRuns.find(({ filterId }) => filterId === included.bundles[0].filterId)!.compiledQueryFingerprint.value,
       candidateId: pair.classifierSource.candidateId,
       contentIdentity: pair.contentIdentity,
       postingFirstSeenAt: pair.postingFirstSeenAt,
@@ -450,13 +513,91 @@ describe("Stage A v2 gates", () => {
     const bundle = duplicateCandidateId.bundles.find(({ bundleId }) => bundleId === duplicate.bundleId)!;
     duplicate.sourceSnapshotIdentity = digestStageASourceSnapshotIdentity({
       extractionManifestDigest: duplicateCandidateId.extractionManifestDigest,
-      compiledQueryFingerprint: duplicateCandidateId.extractionManifest.compiledQueries.find(({ filterId }) => filterId === bundle.filterId)!.fingerprint.value,
+      compiledQueryFingerprint: duplicateCandidateId.extractionManifest.extractionRuns.find(({ filterId }) => filterId === bundle.filterId)!.compiledQueryFingerprint.value,
       candidateId: duplicate.classifierSource.candidateId,
       contentIdentity: duplicate.contentIdentity,
       postingFirstSeenAt: duplicate.postingFirstSeenAt,
       sourceRank: duplicate.sourceRank,
     });
     expect(() => digestStageAPreAnnotation(duplicateCandidateId)).toThrow(/unique_candidate_ids_per_bundle_required/u);
+  });
+
+  it("binds distinct private filter/query HMACs and exact pre/post selection provenance", () => {
+    const data = fixture();
+    const aliasedHmac = clone(data.preAnnotation.extractionManifest);
+    aliasedHmac.extractionRuns[0].canonicalFilterFingerprint.value = aliasedHmac.extractionRuns[0].compiledQueryFingerprint.value;
+    expect(() => digestStageAExtractionManifest(aliasedHmac)).toThrow(/distinct_filter_and_query_fingerprints_required/u);
+
+    const duplicateCanonicalHmac = clone(data.preAnnotation.extractionManifest);
+    duplicateCanonicalHmac.extractionRuns[1].canonicalFilterFingerprint.value = duplicateCanonicalHmac.extractionRuns[0].canonicalFilterFingerprint.value;
+    expect(() => digestStageAExtractionManifest(duplicateCanonicalHmac)).toThrow(/unique_canonical_filter_fingerprints_required/u);
+
+    const reorderedSource = clone(data.preAnnotation.extractionManifest);
+    [reorderedSource.extractionRuns[15].candidatesBeforeSelection[0], reorderedSource.extractionRuns[15].candidatesBeforeSelection[1]] = [
+      reorderedSource.extractionRuns[15].candidatesBeforeSelection[1],
+      reorderedSource.extractionRuns[15].candidatesBeforeSelection[0],
+    ];
+    expect(() => digestStageAExtractionManifest(reorderedSource)).toThrow(/contiguous_returned_source_ranks_required/u);
+
+    const overcollectedProduction = clone(data.preAnnotation.extractionManifest);
+    overcollectedProduction.extractionRuns[0].candidatesBeforeSelection.push({
+      candidateId: source(40_000).candidateId,
+      sourceRank: 8,
+    });
+    expect(() => digestStageAExtractionManifest(overcollectedProduction)).toThrow(/exact_production_returned_candidates_required/u);
+
+    const foreignSelection = clone(data.preAnnotation.extractionManifest);
+    foreignSelection.extractionRuns[15].candidatesAfterSelection[7] = {
+      candidateId: source(50_000).candidateId,
+      sourceRank: 14,
+    };
+    expect(() => digestStageAExtractionManifest(foreignSelection)).toThrow(/selected_candidates_must_match_returned_provenance/u);
+
+    const changedChallengeSelection = clone(data.preAnnotation);
+    const challengeRun = changedChallengeSelection.extractionManifest.extractionRuns[15];
+    challengeRun.candidatesAfterSelection[7] = challengeRun.candidatesBeforeSelection[13];
+    changedChallengeSelection.extractionManifestDigest = digestStageAExtractionManifest(changedChallengeSelection.extractionManifest);
+    for (const pair of changedChallengeSelection.pairs) {
+      const bundle = changedChallengeSelection.bundles.find(({ bundleId }) => bundleId === pair.bundleId)!;
+      const run = changedChallengeSelection.extractionManifest.extractionRuns.find(({ filterId }) => filterId === bundle.filterId)!;
+      pair.sourceSnapshotIdentity = digestStageASourceSnapshotIdentity({
+        extractionManifestDigest: changedChallengeSelection.extractionManifestDigest,
+        compiledQueryFingerprint: run.compiledQueryFingerprint.value,
+        candidateId: pair.classifierSource.candidateId,
+        contentIdentity: pair.contentIdentity,
+        postingFirstSeenAt: pair.postingFirstSeenAt,
+        sourceRank: pair.sourceRank,
+      });
+    }
+    expect(() => digestStageAPreAnnotation(changedChallengeSelection)).toThrow(/selected_candidate_provenance_mismatch/u);
+
+    const rawPrivateValue = clone(data.preAnnotation.extractionManifest);
+    Object.assign(rawPrivateValue.extractionRuns[0], { canonicalFilter: { keywords: ["must-not-leak"] } });
+    expect(() => digestStageAExtractionManifest(rawPrivateValue)).toThrow(/additional_properties/u);
+
+    const rawCompiledQuery = clone(data.preAnnotation.extractionManifest);
+    Object.assign(rawCompiledQuery.extractionRuns[0], { compiledQuery: { filter_by: "must-not-leak" } });
+    expect(() => digestStageAExtractionManifest(rawCompiledQuery)).toThrow(/additional_properties/u);
+  });
+
+  it("keeps disposable calibration prompts and postings disjoint from the final corpus", () => {
+    const data = fixture();
+
+    const reusedPrompt = clone(data.calibrationArtifact);
+    reusedPrompt.examples[0].softQuery = data.preAnnotation.bundles[0].softQuery;
+    expect(freezeWithCalibrationArtifact(data, reusedPrompt)).toThrow(/calibration_final_prompt_disjointness_required/u);
+
+    const reusedCandidateId = clone(data.calibrationArtifact);
+    reusedCandidateId.examples[0].classifierSource.candidateId = data.preAnnotation.pairs[0].classifierSource.candidateId;
+    expect(freezeWithCalibrationArtifact(data, reusedCandidateId)).toThrow(/calibration_final_candidate_id_disjointness_required/u);
+
+    const reusedContent = clone(data.calibrationArtifact);
+    reusedContent.examples[0].classifierSource = {
+      ...data.preAnnotation.pairs[0].classifierSource,
+      candidateId: reusedContent.examples[0].classifierSource.candidateId,
+    };
+    reusedContent.examples[0].contentIdentity = normalizeClassifierInputV1(reusedContent.examples[0].classifierSource).contentIdentity;
+    expect(freezeWithCalibrationArtifact(data, reusedContent)).toThrow(/calibration_final_content_disjointness_required/u);
   });
 
   it("requires an approved exact 12-card pre-annotation prompt gate", () => {

@@ -18,9 +18,13 @@ Typesense alias, resolved versioned collection, and snapshot digest; exact
 compiler and reader source/export digests; dependency-lock digest; query
 template, page size, order, and time bounds; and the classifier/query
 normalizer source, export, version, fallback, and truncation-policy digests.
-It also contains one `hmac-sha256-v1` fingerprint of the exact compiled search
-parameters for each filter. The HMAC key and raw/private filter values are
-never retained.
+It also contains one private extraction-run record per filter: separate
+`hmac-sha256-v1` fingerprints of the canonical filter and exact compiled
+search parameters, plus the ordered candidate IDs/ranks returned before
+selection and retained after selection. Production selection must be the first
+eight returned candidates; challenge selection must be an ordered subsequence
+of the returned provenance. The HMAC key and raw/private filter/query values
+are never retained.
 
 AF-1 requests the strict whole-second interval `(cutoff-30d, cutoff)`. Because
 the indexed timestamps have whole-second precision, extraction encodes this as
@@ -103,6 +107,11 @@ check can be the single approved selection for its role. Trial detail and
 configuration metadata remain machine-only and never enter the human packet.
 If a trial is poor, discard the run, recalibrate, and create new digests. Do not
 patch labels by hand to make quotas pass.
+
+The detached calibration examples must also remain disjoint from the final
+corpus. Freezing silver rejects reuse of any normalized prompt, candidate UUID,
+or normalized posting-content identity, including reuse under a different
+example or pair ID.
 
 Prompt authors, annotators, adjudicators, and the final critic have globally
 separate actor sets. The two annotators are distinct on every pair. Human

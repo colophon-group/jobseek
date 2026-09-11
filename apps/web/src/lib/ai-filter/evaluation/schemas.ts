@@ -148,9 +148,22 @@ const normalizerPinSchema = (sourcePath: string, exportName: string, version: st
   },
 } as const);
 
+const hmacFingerprintSchema = {
+  type: "object", additionalProperties: false, required: ["scheme", "value"],
+  properties: { scheme: { const: "hmac-sha256-v1" }, value: digest },
+} as const;
+
+const candidateProvenanceSchema = {
+  type: "object", additionalProperties: false, required: ["candidateId", "sourceRank"],
+  properties: {
+    candidateId: { type: "string", pattern: candidateIdPattern },
+    sourceRank: { type: "integer", minimum: 0, maximum: 1_000_000 },
+  },
+} as const;
+
 const extractionManifestSchema = {
   type: "object", additionalProperties: false,
-  required: ["schemaVersion", "repositoryCommit", "af1ContractVersion", "typesense", "compiler", "reader", "dependencyLockDigest", "compiledQueries", "query", "classifierNormalizer", "softQueryNormalizer"],
+  required: ["schemaVersion", "repositoryCommit", "af1ContractVersion", "typesense", "compiler", "reader", "dependencyLockDigest", "extractionRuns", "query", "classifierNormalizer", "softQueryNormalizer"],
   properties: {
     schemaVersion: { const: "ai-filter-stage-a-extraction-manifest-v2" },
     repositoryCommit: { type: "string", pattern: "^[a-f0-9]{40}$" },
@@ -161,9 +174,18 @@ const extractionManifestSchema = {
     compiler: sourcePinSchema("apps/web/src/lib/search/watchlist-candidate-query.ts", "buildWatchlistCandidateSearchParams"),
     reader: sourcePinSchema("apps/web/src/lib/services/watchlist-matcher.ts", "readWatchlistCandidates"),
     dependencyLockDigest: digest,
-    compiledQueries: { type: "array", minItems: 20, maxItems: 20, items: { type: "object", additionalProperties: false, required: ["filterId", "fingerprint"], properties: {
-      filterId: evalId, fingerprint: { type: "object", additionalProperties: false, required: ["scheme", "value"], properties: { scheme: { const: "hmac-sha256-v1" }, value: digest } },
-    } } },
+    extractionRuns: { type: "array", minItems: 20, maxItems: 20, items: {
+      type: "object", additionalProperties: false,
+      required: ["filterId", "canonicalFilterFingerprint", "compiledQueryFingerprint", "selectionMode", "candidatesBeforeSelection", "candidatesAfterSelection"],
+      properties: {
+        filterId: evalId,
+        canonicalFilterFingerprint: hmacFingerprintSchema,
+        compiledQueryFingerprint: hmacFingerprintSchema,
+        selectionMode: enumString(["first_eight", "frozen_source_rank"]),
+        candidatesBeforeSelection: { type: "array", minItems: 8, maxItems: 1_000, items: candidateProvenanceSchema },
+        candidatesAfterSelection: { type: "array", minItems: 8, maxItems: 8, items: candidateProvenanceSchema },
+      },
+    } },
     query: { type: "object", additionalProperties: false, required: ["templateDigest", "order", "pageSize", "requestedStrictLowerBound", "effectiveWindowStart", "cutoff", "requestedBoundary", "effectiveBoundary", "productionSelection", "challengeSelection"], properties: {
       templateDigest: digest, order: { const: "first_seen_at_desc_candidate_id_asc" }, pageSize: { const: 8 },
       requestedStrictLowerBound: { type: "string", pattern: instantPattern }, effectiveWindowStart: { type: "string", pattern: instantPattern }, cutoff: { type: "string", pattern: instantPattern },
