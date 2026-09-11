@@ -253,16 +253,24 @@ classifier input; a separate scorer joins locked predictions to labels after
 the run. This prevents the target-model call path from receiving gold labels
 or annotation metadata.
 
-## Human review packet
+## Human review packets
 
-Use two small, static, private Markdown packets. Do not build a custom UI,
-database, authentication layer, or review service for this delivery.
+Use three small, static, private Markdown packets. Do not build a custom UI,
+database, authentication layer, or review service for this delivery. They are
+separate because calibration must finish before final prompt generation and
+annotation, while the final audit must stay blind until silver labels lock.
 
-1. **Prompt sanity packet:** before labels exist, show 12 representative bundle
+1. **Agent-calibration packet:** show 24-32 disposable pair cards drawn from the
+   separately approved calibration set. Each card contains a stable calibration
+   ID, synthetic prompt, and normalized posting payload. The reviewer marks
+   `accept`, `reject`, or `unclear`; model/configuration identities and outputs
+   remain hidden until all human labels lock. These examples and labels never
+   enter the final 200-pair corpus.
+2. **Prompt sanity packet:** before final labels exist, show 12 representative bundle
    cards spanning all locales and major persona classes. Each card contains its
    stable bundle ID, generalized hard-filter context, proposed prompt, and
    three posting titles. The reviewer marks `keep`, `revise`, or `reject`.
-2. **Label audit packet:** after agent adjudication, show at most 32 pair cards:
+3. **Label audit packet:** after agent adjudication, show at most 32 pair cards:
    up to 16 stratified agreements, up to eight adjudicated disagreements, and
    up to eight ambiguous or policy-boundary cases. Backfill unused slots with
    stratified agreements. Each card contains its stable pair ID, cohort,
@@ -270,11 +278,12 @@ database, authentication layer, or review service for this delivery.
    agent labels and configuration identities; comparison is shown only after
    the human decision is locked.
 
-The packet cover asks for only the decisions needed at that gate. The prompt
-pass is `keep`, `revise`, or `reject` plus an optional short note. The label
-pass is `accept`, `reject`, or `unclear` plus an optional short note. Twelve
-prompt cards and at most 32 label cards are the complete planned human review
-surface; no dashboard, queue, account, or workflow UI is part of v1.
+Each packet cover asks for only the decisions needed at that gate. Calibration
+and label-audit passes use `accept`, `reject`, or `unclear`; the prompt pass uses
+`keep`, `revise`, or `reject`; every card has only an optional short note. The
+maximum planned human surface is 32 calibration cards, 12 prompt cards, and 32
+final-audit cards: 76 bounded decisions across three checkpoints. No dashboard,
+queue, account, or workflow UI is part of v1.
 
 If the disagreement or policy-boundary volume cannot fit this bounded packet,
 do not turn the packet into a larger interface. Fail the fleet-quality gate,
