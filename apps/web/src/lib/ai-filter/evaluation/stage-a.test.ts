@@ -26,6 +26,7 @@ import {
 import {
   STAGE_A_BUNDLE_SCHEMA_VERSION,
   STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION,
+  STAGE_A_EXTRACTION_MANIFEST_SCHEMA_VERSION,
   STAGE_A_FILTER_SCHEMA_VERSION,
   STAGE_A_HUMAN_FEEDBACK_SCHEMA_VERSION,
   STAGE_A_PAIR_SCHEMA_VERSION,
@@ -38,9 +39,11 @@ import {
   deriveStageAPromptReviewBundleIds,
   digestStageACalibrationArtifact,
   digestStageACalibrationResult,
+  digestStageAExtractionManifest,
   digestStageAHumanAuditPolicy,
   digestStageAPreAnnotation,
   digestStageAPromptReviewFeedback,
+  digestStageAResolvedCalibrationGroundTruth,
   digestStageASourceSnapshotIdentity,
   digestStageAWipReviewPayload,
   freezeStageASilver,
@@ -89,7 +92,7 @@ function fixture() {
   const calibrationArtifact: StageACalibrationArtifactV2 = {
     schemaVersion: "ai-filter-stage-a-calibration-v2",
     calibrationId: "eval-calibration",
-    examples: Array.from({ length: 24 }, (_, index) => {
+    examples: Array.from({ length: 25 }, (_, index) => {
       const classifierSource = {
         ...source(index + 500),
         candidateId: `10000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
@@ -103,6 +106,27 @@ function fixture() {
     }),
   };
   const calibrationInputDigest = digestStageACalibrationArtifact(calibrationArtifact);
+  const calibrationDecisions: StageACalibrationResultV2["humanReview"]["decisions"] = Array.from({ length: 25 }, (_, index) => ({
+    calibrationExampleId: `eval-calibration-example-${String(index).padStart(2, "0")}`,
+    judgment: index === 24 ? "unclear" as const : index % 2 ? "reject" as const : "accept" as const,
+  }));
+  const candidateConfigs: StageACalibrationResultV2["candidateConfigs"] = [
+    { configId: "eval-config-prompt-a", role: "prompt_author", model: "gpt-5.6-terra", modelVersion: "2026-09", reasoningEffort: "medium", taskPromptDigest: D("1") },
+    { configId: "eval-config-prompt-b", role: "prompt_author", model: "gpt-5.6-sol", modelVersion: "2026-09", reasoningEffort: "high", taskPromptDigest: D("2") },
+    { configId: "eval-config-annotator-a", role: "annotator", model: "gpt-5.6-terra", modelVersion: "2026-09", reasoningEffort: "high", taskPromptDigest: D("3") },
+    { configId: "eval-config-annotator-b", role: "annotator", model: "gpt-5.6-sol", modelVersion: "2026-09", reasoningEffort: "high", taskPromptDigest: D("4") },
+    { configId: "eval-config-adjudicator-a", role: "adjudicator", model: "gpt-5.6-sol", modelVersion: "2026-09", reasoningEffort: "high", taskPromptDigest: D("5") },
+    { configId: "eval-config-adjudicator-b", role: "adjudicator", model: "gpt-5.6-terra", modelVersion: "2026-09", reasoningEffort: "xhigh", taskPromptDigest: D("6") },
+    { configId: "eval-config-critic-a", role: "final_critic", model: "gpt-5.6-sol", modelVersion: "2026-09", reasoningEffort: "xhigh", taskPromptDigest: D("7") },
+    { configId: "eval-config-critic-b", role: "final_critic", model: "gpt-5.6-terra", modelVersion: "2026-09", reasoningEffort: "max", taskPromptDigest: D("8") },
+  ];
+  const resolvedGroundTruthDigest = digestStageAResolvedCalibrationGroundTruth(calibrationDecisions);
+  const suiteByRole = {
+    prompt_author: { suiteKind: "same_eight_disposable_feeds" as const, suiteInputDigest: D("9"), sampleCount: 8 },
+    annotator: { suiteKind: "resolved_human_ground_truth" as const, suiteInputDigest: resolvedGroundTruthDigest, sampleCount: 24 },
+    adjudicator: { suiteKind: "seeded_conflicts" as const, suiteInputDigest: D("a"), sampleCount: 8 },
+    final_critic: { suiteKind: "seeded_defects" as const, suiteInputDigest: D("b"), sampleCount: 8 },
+  };
   const calibrationResult: StageACalibrationResultV2 = {
     schemaVersion: STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION,
     calibrationId: "eval-calibration",
@@ -111,13 +135,23 @@ function fixture() {
       reviewId: "eval-calibration-review",
       reviewerId: "eval-calibration-human",
       approved: true,
-      decisions: Array.from({ length: 24 }, (_, index) => ({ calibrationExampleId: `eval-calibration-example-${String(index).padStart(2, "0")}`, judgment: index % 2 ? "reject" as const : "accept" as const })),
+      decisions: calibrationDecisions,
     },
-    agentConfigs: [
-      { configId: "eval-config-prompt", role: "prompt_author", model: "gpt-5.6-terra", modelVersion: "2026-09", reasoningEffort: "medium", taskPromptDigest: D("1") },
-      { configId: "eval-config-annotator", role: "annotator", model: "gpt-5.6-terra", modelVersion: "2026-09", reasoningEffort: "high", taskPromptDigest: D("2") },
-      { configId: "eval-config-adjudicator", role: "adjudicator", model: "gpt-5.6-sol", modelVersion: "2026-09", reasoningEffort: "high", taskPromptDigest: D("3") },
-      { configId: "eval-config-critic", role: "final_critic", model: "gpt-5.6-sol", modelVersion: "2026-09", reasoningEffort: "xhigh", taskPromptDigest: D("4") },
+    candidateConfigs,
+    trials: candidateConfigs.map((config, index) => ({
+      trialId: `eval-calibration-trial-${String(index).padStart(2, "0")}`,
+      configId: config.configId,
+      role: config.role,
+      ...suiteByRole[config.role],
+      outputDigest: (index + 1).toString(16).repeat(64).slice(0, 64),
+      blindedScore: 9_000 - index,
+      spotCheck: { disposition: "pass" as const, failureCodes: [] },
+    })),
+    selectedConfigs: [
+      { role: "prompt_author", configId: "eval-config-prompt-a", selectionDisposition: "approved" },
+      { role: "annotator", configId: "eval-config-annotator-a", selectionDisposition: "approved" },
+      { role: "adjudicator", configId: "eval-config-adjudicator-a", selectionDisposition: "approved" },
+      { role: "final_critic", configId: "eval-config-critic-a", selectionDisposition: "approved" },
     ],
   };
   const calibrationResultDigest = digestStageACalibrationResult(
@@ -129,7 +163,6 @@ function fixture() {
     schemaVersion: STAGE_A_FILTER_SCHEMA_VERSION,
     filterId: `eval-filter-${String(index).padStart(2, "0")}`,
     source: "production_deidentified" as const,
-    sourceFilterFingerprint: { scheme: "hmac-sha256-v1" as const, value: index.toString(16).padStart(64, "0") },
     generalizedContext: {
       companyScope: index % 2 ? "selected" as const : "any" as const,
       locationScope: ["none", "single", "multiple", "global"][index % 4] as "none" | "single" | "multiple" | "global",
@@ -156,22 +189,29 @@ function fixture() {
       persona: personas[cohortIndex % personas.length],
       promptLocale: locales[cohortIndex % locales.length],
       softQuery: `synthetic prompt ${String(index).padStart(2, "0")}`,
-      promptProvenance: { origin: "agent_synthetic" as const, authorId: `eval-prompt-author-${String(index).padStart(2, "0")}`, configId: "eval-config-prompt" },
+      promptProvenance: { origin: "agent_synthetic" as const, authorId: `eval-prompt-author-${String(index).padStart(2, "0")}`, configId: "eval-config-prompt-a" },
     };
   });
-  const selectionPolicy = {
-    schemaVersion: "ai-filter-stage-a-selection-policy-v2" as const,
+  const extractionManifest = {
+    schemaVersion: STAGE_A_EXTRACTION_MANIFEST_SCHEMA_VERSION,
+    repositoryCommit: "a".repeat(40),
     af1ContractVersion: 1 as const,
-    compilerVersion: "af1-compiler-2026-09",
-    collectionSnapshotId: "eval-snapshot-september",
-    collectionSnapshotDigest: D("b"),
-    windowStart: "2026-08-02T00:00:00.000Z",
-    cutoff: "2026-09-01T00:00:00.000Z",
-    windowBoundary: "[windowStart,cutoff)" as const,
-    order: "first_seen_at_desc_candidate_id_asc" as const,
-    productionSelection: "first_eight" as const,
-    challengeSelection: "frozen_source_rank" as const,
+    typesense: { collectionAlias: "job_posting" as const, resolvedCollection: "job_posting_v42", snapshotDigest: D("c") },
+    compiler: { sourcePath: "apps/web/src/lib/search/watchlist-candidate-query.ts", exportName: "buildWatchlistCandidateSearchParams", sourceDigest: D("d") },
+    reader: { sourcePath: "apps/web/src/lib/services/watchlist-matcher.ts", exportName: "readWatchlistCandidates", sourceDigest: D("e") },
+    dependencyLockDigest: D("f"),
+    compiledQueries: filters.map((filter, index) => ({ filterId: filter.filterId, fingerprint: { scheme: "hmac-sha256-v1" as const, value: index.toString(16).padStart(64, "0") } })),
+    query: {
+      templateDigest: D("0"), order: "first_seen_at_desc_candidate_id_asc" as const, pageSize: 8 as const,
+      requestedStrictLowerBound: "2026-08-02T00:00:00.000Z", effectiveWindowStart: "2026-08-02T00:00:01.000Z", cutoff: "2026-09-01T00:00:00.000Z",
+      requestedBoundary: "(requestedStrictLowerBound,cutoff)" as const, effectiveBoundary: "[effectiveWindowStart,cutoff)" as const,
+      productionSelection: "first_eight" as const, challengeSelection: "frozen_source_rank" as const,
+    },
+    classifierNormalizer: { sourcePath: "apps/web/src/lib/ai-filter/classifier-input.ts", exportName: "normalizeClassifierInputV1", sourceDigest: D("1"), version: CLASSIFIER_INPUT_NORMALIZER_VERSION, fallbackPolicyDigest: D("2"), truncationPolicyDigest: D("3") },
+    softQueryNormalizer: { sourcePath: "apps/web/src/lib/ai-filter/contract.ts", exportName: "normalizeAiFilterSoftQueryV1", sourceDigest: D("4"), version: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION, fallbackPolicyDigest: D("5"), truncationPolicyDigest: D("6") },
   };
+  const extractionManifestDigest = digestStageAExtractionManifest(extractionManifest);
+  const compiledQueryByFilterId = new Map(extractionManifest.compiledQueries.map(({ filterId, fingerprint }) => [filterId, fingerprint.value]));
   const reviewPlan = { promptReviewSeed: D("c"), auditSeed: D("d"), auditRule: "bounded-16-8-8-v2" as const, auditSize: 32 as const };
   const prePairs = bundles.flatMap((bundle, bundleIndex) => Array.from({ length: 8 }, (_, position) => {
     const index = bundleIndex * 8 + position;
@@ -190,7 +230,7 @@ function fixture() {
       position,
       sourceRank,
       postingFirstSeenAt,
-      sourceSnapshotIdentity: digestStageASourceSnapshotIdentity({ candidateId: classifierSource.candidateId, contentIdentity, postingFirstSeenAt, sourceRank, collectionSnapshotDigest: selectionPolicy.collectionSnapshotDigest }),
+      sourceSnapshotIdentity: digestStageASourceSnapshotIdentity({ extractionManifestDigest, compiledQueryFingerprint: compiledQueryByFilterId.get(bundle.filterId)!, candidateId: classifierSource.candidateId, contentIdentity, postingFirstSeenAt, sourceRank }),
       locale: locales[index % locales.length],
       evidenceCondition,
       classifierSource,
@@ -204,7 +244,8 @@ function fixture() {
     classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
     softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
     calibrationResultDigest,
-    selectionPolicy,
+    extractionManifest,
+    extractionManifestDigest,
     reviewPlan,
     filters,
     bundles,
@@ -227,8 +268,8 @@ function fixture() {
     const firstLabel = index % 2 ? "reject" as const : "accept" as const;
     const secondLabel = disagreement ? (firstLabel === "accept" ? "reject" as const : "accept" as const) : firstLabel;
     const annotations = [
-      { annotationId: `eval-ann-${String(index).padStart(3, "0")}-a`, actorId: "eval-annotator-a", configId: "eval-config-annotator", label: firstLabel, ambiguity: false, rationaleCode: "direct_evidence" as const, evidenceRefs: ["description_text" as const] },
-      { annotationId: `eval-ann-${String(index).padStart(3, "0")}-b`, actorId: "eval-annotator-b", configId: "eval-config-annotator", label: secondLabel, ambiguity: false, rationaleCode: disagreement ? "contradiction" as const : "direct_evidence" as const, evidenceRefs: ["description_text" as const] },
+      { annotationId: `eval-ann-${String(index).padStart(3, "0")}-a`, actorId: "eval-annotator-a", configId: "eval-config-annotator-a", label: firstLabel, ambiguity: false, rationaleCode: "direct_evidence" as const, evidenceRefs: ["description_text" as const] },
+      { annotationId: `eval-ann-${String(index).padStart(3, "0")}-b`, actorId: "eval-annotator-b", configId: "eval-config-annotator-a", label: secondLabel, ambiguity: false, rationaleCode: disagreement ? "contradiction" as const : "direct_evidence" as const, evidenceRefs: ["description_text" as const] },
     ] as const;
     return {
       ...pair,
@@ -236,7 +277,7 @@ function fixture() {
       adjudication: policyBoundary || disagreement ? {
         adjudicationId: `eval-adj-${String(index).padStart(3, "0")}`,
         actorId: "eval-adjudicator",
-        configId: "eval-config-adjudicator",
+        configId: "eval-config-adjudicator-a",
         annotationIds: [annotations[0].annotationId, annotations[1].annotationId] as const,
         label: firstLabel,
         ambiguity: false,
@@ -262,7 +303,7 @@ function fixture() {
     finalCritic: {
       reviewId: "eval-final-review",
       actorId: "eval-final-critic",
-      configId: "eval-config-critic",
+      configId: "eval-config-critic-a",
       reviewedWipDigest: digestStageAWipReviewPayload(wipReviewPayload),
       approved: true,
     },
@@ -311,9 +352,9 @@ describe("Stage A v2 gates", () => {
     const wrong = clone(data.wip);
     wrong.bundles[15].filterId = wrong.bundles[0].filterId;
     expect(() => validateStageAWip(wrong)).toThrow(/disjoint_15_plus_5_filter_mapping_required/u);
-    const duplicateFingerprint = clone(data.wip);
-    duplicateFingerprint.filters[1].sourceFilterFingerprint.value = duplicateFingerprint.filters[0].sourceFilterFingerprint.value;
-    expect(() => validateStageAWip(duplicateFingerprint)).toThrow(/unique_source_filter_fingerprints_required/u);
+    const duplicateFingerprint = clone(data.preAnnotation);
+    duplicateFingerprint.extractionManifest.compiledQueries[1].fingerprint.value = duplicateFingerprint.extractionManifest.compiledQueries[0].fingerprint.value;
+    expect(() => digestStageAPreAnnotation(duplicateFingerprint)).toThrow(/unique_compiled_query_fingerprints_required/u);
   });
 
   it("requires blind labels with ambiguity, evidence, linked adjudication, and role separation", () => {
@@ -345,6 +386,42 @@ describe("Stage A v2 gates", () => {
     expect(() => freezeStageASilver(drifted, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, data.calibrationResultDigest, data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest)).toThrow(/pre_annotation_projection_mismatch/u);
   });
 
+  it("translates AF-1's strict lower bound to an exact whole-second effective window", () => {
+    const data = fixture();
+    const excluded = clone(data.preAnnotation);
+    excluded.pairs[7].postingFirstSeenAt = excluded.extractionManifest.query.requestedStrictLowerBound;
+    expect(() => digestStageAPreAnnotation(excluded)).toThrow(/selection_window_required/u);
+
+    const included = clone(data.preAnnotation);
+    const pair = included.pairs[7];
+    pair.postingFirstSeenAt = included.extractionManifest.query.effectiveWindowStart;
+    pair.sourceSnapshotIdentity = digestStageASourceSnapshotIdentity({
+      extractionManifestDigest: included.extractionManifestDigest,
+      compiledQueryFingerprint: included.extractionManifest.compiledQueries.find(({ filterId }) => filterId === included.bundles[0].filterId)!.fingerprint.value,
+      candidateId: pair.classifierSource.candidateId,
+      contentIdentity: pair.contentIdentity,
+      postingFirstSeenAt: pair.postingFirstSeenAt,
+      sourceRank: pair.sourceRank,
+    });
+    expect(digestStageAPreAnnotation(included)).toMatch(/^[a-f0-9]{64}$/u);
+
+    const translatedWrong = clone(data.preAnnotation);
+    translatedWrong.extractionManifest.query.effectiveWindowStart = "2026-08-02T00:00:02.000Z";
+    expect(() => digestStageAPreAnnotation(translatedWrong)).toThrow(/strict_lower_bound_translation_required/u);
+  });
+
+  it("pins the extraction manifest into every source snapshot identity", () => {
+    const data = fixture();
+    const unpinnedManifest = clone(data.preAnnotation);
+    unpinnedManifest.extractionManifest.compiler.sourceDigest = D("a");
+    expect(() => digestStageAPreAnnotation(unpinnedManifest)).toThrow(/extraction_manifest_digest_mismatch/u);
+
+    const repinnedManifest = clone(data.preAnnotation);
+    repinnedManifest.extractionManifest.compiler.sourceDigest = D("a");
+    repinnedManifest.extractionManifestDigest = digestStageAExtractionManifest(repinnedManifest.extractionManifest);
+    expect(() => digestStageAPreAnnotation(repinnedManifest)).toThrow(/source_snapshot_identity_mismatch/u);
+  });
+
   it("requires an approved exact 12-card pre-annotation prompt gate", () => {
     const data = fixture();
     expect(deriveStageAPromptReviewBundleIds(data.preAnnotation)).toHaveLength(12);
@@ -363,7 +440,38 @@ describe("Stage A v2 gates", () => {
     expect(() => freezeStageASilver(data.wip, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, D("0"), data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest)).toThrow(/calibration_result_pin_mismatch/u);
     const unreviewedExample = clone(data.calibrationResult);
     unreviewedExample.humanReview.decisions[0].calibrationExampleId = "eval-calibration-example-missing";
+    const changedGroundTruthDigest = digestStageAResolvedCalibrationGroundTruth(unreviewedExample.humanReview.decisions);
+    for (const trial of unreviewedExample.trials.filter(({ role }) => role === "annotator")) trial.suiteInputDigest = changedGroundTruthDigest;
     expect(() => digestStageACalibrationResult(unreviewedExample, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/complete_calibration_decisions_required/u);
+  });
+
+  it("requires exercised, role-specific passing calibration candidates before selection", () => {
+    const data = fixture();
+    expect(data.calibrationResult.humanReview.decisions.at(-1)?.judgment).toBe("unclear");
+    expect(digestStageACalibrationResult(data.calibrationResult, data.calibrationArtifact, data.calibrationInputDigest)).toBe(data.calibrationResultDigest);
+
+    const tooFewResolved = clone(data.calibrationResult);
+    tooFewResolved.humanReview.decisions[0].judgment = "unclear";
+    expect(() => digestStageACalibrationResult(tooFewResolved, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/minimum_resolved_calibration_decisions_required/u);
+
+    const onePromptCandidate = clone(data.calibrationResult);
+    onePromptCandidate.candidateConfigs[1].role = "annotator";
+    expect(() => digestStageACalibrationResult(onePromptCandidate, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/two_candidate_configs_per_role_required/u);
+
+    const wrongSuite = clone(data.calibrationResult);
+    wrongSuite.trials[0].suiteKind = "seeded_defects";
+    expect(() => digestStageACalibrationResult(wrongSuite, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/role_specific_calibration_suite_required/u);
+
+    const unexercised = clone(data.calibrationResult);
+    unexercised.trials[0].configId = "eval-config-not-a-candidate";
+    expect(() => digestStageACalibrationResult(unexercised, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/every_candidate_config_must_be_exercised/u);
+
+    const failedSelection = clone(data.calibrationResult);
+    const selectedId = failedSelection.selectedConfigs[0].configId;
+    const selectedTrial = failedSelection.trials.find(({ configId }) => configId === selectedId)!;
+    selectedTrial.spotCheck.disposition = "fail";
+    selectedTrial.spotCheck.failureCodes = ["seeded-defect-missed"];
+    expect(() => digestStageACalibrationResult(failedSelection, data.calibrationArtifact, data.calibrationInputDigest)).toThrow(/selected_candidate_passing_trial_required/u);
   });
 
   it("derives the bounded 16/8/8 audit after silver and rejects arbitrary selection", () => {
@@ -381,7 +489,7 @@ describe("Stage A v2 gates", () => {
     expect(agreements.filter(({ bundleId }) => cohortByBundle.get(bundleId) === "production_shaped")).toHaveLength(8);
     expect(agreements.filter(({ bundleId }) => cohortByBundle.get(bundleId) === "challenge")).toHaveLength(8);
     const arbitrary = clone(policy);
-    arbitrary.auditPairIds[0] = "eval-pair-199";
+    arbitrary.auditPairIds[0] = silver.manifest.pairs.find(({ pairId }) => !policy.auditPairIds.includes(pairId))!.pairId;
     expect(() => digestStageAHumanAuditPolicy(arbitrary, silver, silver.silverDigest)).toThrow(/derived_audit_policy_required/u);
 
     const backfillWip = clone(data.wip);
@@ -402,7 +510,7 @@ describe("Stage A v2 gates", () => {
     const promptPacket = renderStageAPromptReviewPacket(data.preAnnotation);
     expect(promptPacket.match(/^## /gmu)).toHaveLength(12);
     expect(promptPacket).toContain("Prompt locale:");
-    expect(promptPacket).not.toMatch(/annotationId|silverLabel|configId|sourceFilterFingerprint|candidateId/u);
+    expect(promptPacket).not.toMatch(/annotationId|silverLabel|configId|compiledQueryFingerprint|candidateId/u);
     const silver = data.freeze();
     const auditPacket = renderStageALabelAuditPacket(silver, silver.silverDigest);
     expect(auditPacket.match(/^## /gmu)).toHaveLength(32);
@@ -414,7 +522,7 @@ describe("Stage A v2 gates", () => {
     const expanded = clone(data.wip);
     const pair = expanded.pairs[20];
     pair.annotations[1].label = pair.annotations[0].label === "accept" ? "reject" : "accept";
-    pair.adjudication = { adjudicationId: "eval-adj-extra", actorId: "eval-adjudicator", configId: "eval-config-adjudicator", annotationIds: [pair.annotations[0].annotationId, pair.annotations[1].annotationId], label: pair.annotations[0].label, ambiguity: false, rationaleCode: "direct_evidence" };
+    pair.adjudication = { adjudicationId: "eval-adj-extra", actorId: "eval-adjudicator", configId: "eval-config-adjudicator-a", annotationIds: [pair.annotations[0].annotationId, pair.annotations[1].annotationId], label: pair.annotations[0].label, ambiguity: false, rationaleCode: "direct_evidence" };
     reapprove(expanded);
     const silver = freezeStageASilver(expanded, data.calibrationArtifact, data.calibrationInputDigest, data.calibrationResult, data.calibrationResultDigest, data.preAnnotation, data.preAnnotationDigest, data.promptFeedback, data.promptReviewFeedbackDigest);
     expect(() => deriveStageAHumanAuditPolicy(silver, silver.silverDigest)).toThrow(/fleet_quality_audit_quota_exceeded/u);

@@ -11,12 +11,24 @@ v2 rather than carried as compatibility code.
 
 ## Delivery plan and prerequisites
 
-Before collection, record the approved purpose and retention window, the
-operator allowed to run the one-off extraction, the production collection
-snapshot, the AF-1 compiler version, the exact 30-day `[windowStart,cutoff)`
-window, and the stable `first_seen_at DESC, candidate_id ASC` order. Extraction
-must produce only de-identified generalized context and a per-run
-`hmac-sha256-v1` source-filter fingerprint. The HMAC key is never retained.
+Before collection, record the approved purpose and retention window and the
+operator allowed to run the one-off extraction. The pre-annotation artifact
+contains one compact, digest-pinned extraction manifest: the repository OID;
+Typesense alias, resolved versioned collection, and snapshot digest; exact
+compiler and reader source/export digests; dependency-lock digest; query
+template, page size, order, and time bounds; and the classifier/query
+normalizer source, export, version, fallback, and truncation-policy digests.
+It also contains one `hmac-sha256-v1` fingerprint of the exact compiled search
+parameters for each filter. The HMAC key and raw/private filter values are
+never retained.
+
+AF-1 requests the strict whole-second interval `(cutoff-30d, cutoff)`. Because
+the indexed timestamps have whole-second precision, extraction encodes this as
+the equivalent effective interval `[cutoff-30d+1s, cutoff)`. Both requested
+and effective bounds are pinned; a posting exactly at `cutoff-30d` is rejected
+and one at `cutoff-30d+1s` is eligible. Source-snapshot identities bind the
+manifest digest, the relevant compiled-query fingerprint, candidate ID,
+content identity, first-seen timestamp, and source rank.
 
 The immutable artifact graph is:
 
@@ -31,12 +43,11 @@ detached calibration input -> approved calibration result
                             -> gold freeze
 ```
 
-Every arrow is a digest pin. The calibration-result digest binds the human
-decisions and the selected model, version, reasoning effort, and task-prompt
-digest for each of four roles: prompt author, annotator, adjudicator, and final
-critic. Every later agent output references the selected role-matching
-`configId`; drift is rejected. The result must cover exactly the example IDs in
-the displayed, digest-pinned detached calibration artifact.
+Every arrow is a digest pin. The calibration-result digest binds all candidate
+configurations, aggregate trial evidence, human decisions, and the selected
+configuration for each role. Every later agent output references the selected
+role-matching `configId`; drift is rejected. The result must cover exactly the
+example IDs in the displayed, digest-pinned detached calibration artifact.
 
 ## Fixed corpus and feed provenance
 
@@ -68,12 +79,21 @@ force the adjudicator to call the item ambiguous.
 
 ## Agent fleet tuning and quality gates
 
-Use a small detached 24–32 example calibration packet to spot-check candidate
-model and reasoning-effort combinations. Select one locked configuration per
-role only after the human decisions are recorded. During delivery, sample each
-role's output for schema compliance and reasoning quality; if the sample is
-poor, discard the run, recalibrate, and create new digests. Do not patch labels
-by hand to make quotas pass.
+Use a small detached 24–32 example calibration packet to spot-check at least
+two candidate configurations per role. A candidate pins its exact model,
+version, reasoning effort, and task-prompt digest. Each candidate must have one
+aggregate trial with a role-specific suite, input/output digests, sample count,
+blinded numeric score, and spot-check disposition/failure codes. Prompt authors
+use the same eight disposable feeds; annotators use resolved human ground
+truth; adjudicators use seeded conflicts; critics use seeded defects.
+
+Human calibration decisions may be accept, reject, or unclear. Unclear items
+remain recorded but are excluded from ground truth; at least 24 accept/reject
+decisions are required. Only a candidate with a passing spot check can be the
+single approved selection for its role. Trial detail and configuration metadata
+remain machine-only and never enter the human packet. If a trial is poor,
+discard the run, recalibrate, and create new digests. Do not patch labels by
+hand to make quotas pass.
 
 Prompt authors, annotators, adjudicators, and the final critic have globally
 separate actor sets. The two annotators are distinct on every pair. Human

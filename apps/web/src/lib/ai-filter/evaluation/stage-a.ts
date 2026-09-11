@@ -35,6 +35,8 @@ export const STAGE_A_PRE_ANNOTATION_SCHEMA_VERSION =
   "ai-filter-stage-a-pre-annotation-v2" as const;
 export const STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION =
   "ai-filter-stage-a-calibration-result-v2" as const;
+export const STAGE_A_EXTRACTION_MANIFEST_SCHEMA_VERSION =
+  "ai-filter-stage-a-extraction-manifest-v2" as const;
 export const STAGE_A_PROMPT_REVIEW_FEEDBACK_SCHEMA_VERSION =
   "ai-filter-stage-a-prompt-review-feedback-v2" as const;
 export const STAGE_A_WIP_SCHEMA_VERSION = "ai-filter-stage-a-wip-v2" as const;
@@ -90,6 +92,30 @@ const EVIDENCE_CONDITIONS = [
 const LABELS = ["accept", "reject"] as const;
 const REASONING_EFFORTS = ["low", "medium", "high", "xhigh", "max", "ultra"] as const;
 const AGENT_ROLES = ["prompt_author", "annotator", "adjudicator", "final_critic"] as const;
+const CALIBRATION_SUITE_KINDS = [
+  "same_eight_disposable_feeds",
+  "resolved_human_ground_truth",
+  "seeded_conflicts",
+  "seeded_defects",
+] as const;
+const CALIBRATION_SUITE_BY_ROLE: Readonly<Record<StageAAgentRole, StageACalibrationSuiteKind>> = Object.freeze({
+  prompt_author: "same_eight_disposable_feeds",
+  annotator: "resolved_human_ground_truth",
+  adjudicator: "seeded_conflicts",
+  final_critic: "seeded_defects",
+});
+const STAGE_A_COMPILER_SOURCE_PATH =
+  "apps/web/src/lib/search/watchlist-candidate-query.ts" as const;
+const STAGE_A_COMPILER_EXPORT = "buildWatchlistCandidateSearchParams" as const;
+const STAGE_A_READER_SOURCE_PATH =
+  "apps/web/src/lib/services/watchlist-matcher.ts" as const;
+const STAGE_A_READER_EXPORT = "readWatchlistCandidates" as const;
+const STAGE_A_CLASSIFIER_NORMALIZER_SOURCE_PATH =
+  "apps/web/src/lib/ai-filter/classifier-input.ts" as const;
+const STAGE_A_CLASSIFIER_NORMALIZER_EXPORT = "normalizeClassifierInputV1" as const;
+const STAGE_A_SOFT_QUERY_NORMALIZER_SOURCE_PATH =
+  "apps/web/src/lib/ai-filter/contract.ts" as const;
+const STAGE_A_SOFT_QUERY_NORMALIZER_EXPORT = "normalizeAiFilterSoftQueryV1" as const;
 const RATIONALE_CODES = [
   "direct_evidence",
   "missing_evidence",
@@ -143,10 +169,6 @@ export type StageAFilterV2 = {
   readonly schemaVersion: typeof STAGE_A_FILTER_SCHEMA_VERSION;
   readonly filterId: string;
   readonly source: "production_deidentified";
-  readonly sourceFilterFingerprint: Readonly<{
-    scheme: "hmac-sha256-v1";
-    value: string;
-  }>;
   readonly generalizedContext: StageAGeneralizedFilterContextV2;
 };
 
@@ -220,6 +242,33 @@ export type StageAAgentConfigV2 = {
   readonly taskPromptDigest: string;
 };
 
+export type StageACalibrationSuiteKind =
+  | "same_eight_disposable_feeds"
+  | "resolved_human_ground_truth"
+  | "seeded_conflicts"
+  | "seeded_defects";
+
+export type StageACalibrationTrialV2 = Readonly<{
+  trialId: string;
+  configId: string;
+  role: StageAAgentRole;
+  suiteKind: StageACalibrationSuiteKind;
+  suiteInputDigest: string;
+  outputDigest: string;
+  sampleCount: number;
+  blindedScore: number;
+  spotCheck: Readonly<{
+    disposition: "pass" | "fail";
+    failureCodes: readonly string[];
+  }>;
+}>;
+
+export type StageASelectedConfigV2 = Readonly<{
+  role: StageAAgentRole;
+  configId: string;
+  selectionDisposition: "approved";
+}>;
+
 export type StageACalibrationArtifactV2 = Readonly<{
   schemaVersion: "ai-filter-stage-a-calibration-v2";
   calibrationId: string;
@@ -250,24 +299,59 @@ export type StageACalibrationResultV2 = {
     approved: true;
     decisions: readonly Readonly<{
       calibrationExampleId: string;
-      judgment: StageALabel;
+      judgment: StageALabel | "unclear";
     }>[];
   }>;
-  readonly agentConfigs: readonly StageAAgentConfigV2[];
+  readonly candidateConfigs: readonly StageAAgentConfigV2[];
+  readonly trials: readonly StageACalibrationTrialV2[];
+  readonly selectedConfigs: readonly StageASelectedConfigV2[];
 };
 
-export type StageASelectionPolicyV2 = {
-  readonly schemaVersion: "ai-filter-stage-a-selection-policy-v2";
+type StageASourcePinV2 = Readonly<{
+  sourcePath: string;
+  exportName: string;
+  sourceDigest: string;
+}>;
+
+type StageANormalizerPinV2 = StageASourcePinV2 & Readonly<{
+  version: string | number;
+  fallbackPolicyDigest: string;
+  truncationPolicyDigest: string;
+}>;
+
+export type StageAExtractionManifestV2 = {
+  readonly schemaVersion: typeof STAGE_A_EXTRACTION_MANIFEST_SCHEMA_VERSION;
+  readonly repositoryCommit: string;
   readonly af1ContractVersion: 1;
-  readonly compilerVersion: string;
-  readonly collectionSnapshotId: string;
-  readonly collectionSnapshotDigest: string;
-  readonly windowStart: string;
-  readonly cutoff: string;
-  readonly windowBoundary: "[windowStart,cutoff)";
-  readonly order: "first_seen_at_desc_candidate_id_asc";
-  readonly productionSelection: "first_eight";
-  readonly challengeSelection: "frozen_source_rank";
+  readonly typesense: Readonly<{
+    collectionAlias: "job_posting";
+    resolvedCollection: string;
+    snapshotDigest: string;
+  }>;
+  readonly compiler: StageASourcePinV2;
+  readonly reader: StageASourcePinV2;
+  readonly dependencyLockDigest: string;
+  readonly compiledQueries: readonly Readonly<{
+    filterId: string;
+    fingerprint: Readonly<{
+      scheme: "hmac-sha256-v1";
+      value: string;
+    }>;
+  }>[];
+  readonly query: Readonly<{
+    templateDigest: string;
+    order: "first_seen_at_desc_candidate_id_asc";
+    pageSize: 8;
+    requestedStrictLowerBound: string;
+    effectiveWindowStart: string;
+    cutoff: string;
+    requestedBoundary: "(requestedStrictLowerBound,cutoff)";
+    effectiveBoundary: "[effectiveWindowStart,cutoff)";
+    productionSelection: "first_eight";
+    challengeSelection: "frozen_source_rank";
+  }>;
+  readonly classifierNormalizer: StageANormalizerPinV2;
+  readonly softQueryNormalizer: StageANormalizerPinV2;
 };
 
 export type StageAReviewPlanV2 = {
@@ -286,7 +370,8 @@ export type StageAPreAnnotationV2 = {
   readonly classifierInputNormalizerVersion: typeof CLASSIFIER_INPUT_NORMALIZER_VERSION;
   readonly softQueryNormalizerVersion: typeof AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION;
   readonly calibrationResultDigest: string;
-  readonly selectionPolicy: StageASelectionPolicyV2;
+  readonly extractionManifest: StageAExtractionManifestV2;
+  readonly extractionManifestDigest: string;
   readonly reviewPlan: StageAReviewPlanV2;
   readonly filters: readonly StageAFilterV2[];
   readonly bundles: readonly StageABundleV2[];
@@ -346,7 +431,8 @@ export type StageASilverManifestV2 = {
   readonly preAnnotationDigest: string;
   readonly promptReviewFeedbackDigest: string;
   readonly sourceWipDigest: string;
-  readonly selectionPolicy: StageASelectionPolicyV2;
+  readonly extractionManifest: StageAExtractionManifestV2;
+  readonly extractionManifestDigest: string;
   readonly reviewPlan: StageAReviewPlanV2;
   readonly filters: readonly StageAFilterV2[];
   readonly bundles: readonly StageABundleV2[];
@@ -409,7 +495,8 @@ export type StageAGoldManifestV2 = {
   readonly calibrationResultDigest: string;
   readonly preAnnotationDigest: string;
   readonly promptReviewFeedbackDigest: string;
-  readonly selectionPolicy: StageASelectionPolicyV2;
+  readonly extractionManifest: StageAExtractionManifestV2;
+  readonly extractionManifestDigest: string;
   readonly reviewPlan: StageAReviewPlanV2;
   readonly filters: readonly StageAFilterV2[];
   readonly bundles: readonly StageABundleV2[];
@@ -848,19 +935,13 @@ function validateFilter(input: unknown, pathValue: string): StageAFilterV2 {
     "schemaVersion",
     "filterId",
     "source",
-    "sourceFilterFingerprint",
     "generalizedContext",
   ]);
-  const fingerprintRecord = snapshotRecord(required(record, "sourceFilterFingerprint", `${pathValue}.sourceFilterFingerprint`), `${pathValue}.sourceFilterFingerprint`, ["scheme", "value"]);
   requiredLiteral(record, "schemaVersion", `${pathValue}.schemaVersion`, STAGE_A_FILTER_SCHEMA_VERSION);
   return Object.freeze({
     schemaVersion: STAGE_A_FILTER_SCHEMA_VERSION,
     filterId: evalIdField(record, "filterId", `${pathValue}.filterId`),
     source: requiredLiteral(record, "source", `${pathValue}.source`, "production_deidentified"),
-    sourceFilterFingerprint: Object.freeze({
-      scheme: requiredLiteral(fingerprintRecord, "scheme", `${pathValue}.sourceFilterFingerprint.scheme`, "hmac-sha256-v1"),
-      value: validateDigest(required(fingerprintRecord, "value", `${pathValue}.sourceFilterFingerprint.value`), `${pathValue}.sourceFilterFingerprint.value`),
-    }),
     generalizedContext: validateGeneralizedContext(required(record, "generalizedContext", `${pathValue}.generalizedContext`), `${pathValue}.generalizedContext`),
   });
 }
@@ -1080,6 +1161,16 @@ export function digestStageACalibrationArtifact(input: unknown): string {
   );
 }
 
+export function digestStageAResolvedCalibrationGroundTruth(
+  decisions: StageACalibrationResultV2["humanReview"]["decisions"],
+): string {
+  const resolved = decisions
+    .filter(({ judgment }) => judgment !== "unclear")
+    .map(({ calibrationExampleId, judgment }) => ({ calibrationExampleId, judgment }))
+    .sort((left, right) => rawStringCompare(left.calibrationExampleId, right.calibrationExampleId));
+  return domainDigest("ai-filter-stage-a-resolved-ground-truth-v2", resolved);
+}
+
 function validateAgentConfig(input: unknown, pathValue: string): StageAAgentConfigV2 {
   const record = snapshotRecord(input, pathValue, [
     "configId", "role", "model", "modelVersion", "reasoningEffort", "taskPromptDigest",
@@ -1096,7 +1187,8 @@ function validateAgentConfig(input: unknown, pathValue: string): StageAAgentConf
 
 function normalizeStageACalibrationResult(input: unknown): StageACalibrationResultV2 {
   const record = snapshotRecord(input, "$calibrationResult", [
-    "schemaVersion", "calibrationId", "calibrationInputDigest", "humanReview", "agentConfigs",
+    "schemaVersion", "calibrationId", "calibrationInputDigest", "humanReview",
+    "candidateConfigs", "trials", "selectedConfigs",
   ]);
   requiredLiteral(record, "schemaVersion", "$calibrationResult.schemaVersion", STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION);
   const reviewRecord = snapshotRecord(required(record, "humanReview", "$calibrationResult.humanReview"), "$calibrationResult.humanReview", ["reviewId", "reviewerId", "approved", "decisions"]);
@@ -1107,17 +1199,99 @@ function normalizeStageACalibrationResult(input: unknown): StageACalibrationResu
       const decision = snapshotRecord(inputDecision, itemPath, ["calibrationExampleId", "judgment"]);
       return Object.freeze({
         calibrationExampleId: evalIdField(decision, "calibrationExampleId", `${itemPath}.calibrationExampleId`),
-        judgment: validateLabel(required(decision, "judgment", `${itemPath}.judgment`), `${itemPath}.judgment`),
+        judgment: requiredEnum(decision, "judgment", `${itemPath}.judgment`, ["accept", "reject", "unclear"]),
       });
     })
     .sort((left, right) => rawStringCompare(left.calibrationExampleId, right.calibrationExampleId));
   assertUnique(decisions.map(({ calibrationExampleId }) => calibrationExampleId), "$calibrationResult.humanReview.decisions", "unique_calibration_decisions_required");
-  const configs = snapshotArray(required(record, "agentConfigs", "$calibrationResult.agentConfigs"), "$calibrationResult.agentConfigs", AGENT_ROLES.length, AGENT_ROLES.length)
-    .map((config, index) => validateAgentConfig(config, `$calibrationResult.agentConfigs[${index}]`))
+  const resolvedDecisions = decisions.filter(({ judgment }) => judgment !== "unclear");
+  if (resolvedDecisions.length < STAGE_A_CALIBRATION_MIN_EXAMPLES) {
+    fail("$calibrationResult.humanReview.decisions", "minimum_resolved_calibration_decisions_required");
+  }
+  const resolvedGroundTruthDigest = digestStageAResolvedCalibrationGroundTruth(decisions);
+  const configs = snapshotArray(required(record, "candidateConfigs", "$calibrationResult.candidateConfigs"), "$calibrationResult.candidateConfigs", AGENT_ROLES.length * 2, AGENT_ROLES.length * 4)
+    .map((config, index) => validateAgentConfig(config, `$calibrationResult.candidateConfigs[${index}]`))
+    .sort((left, right) => rawStringCompare(left.configId, right.configId));
+  assertUnique(configs.map(({ configId }) => configId), "$calibrationResult.candidateConfigs", "unique_config_ids_required");
+  for (const role of AGENT_ROLES) {
+    if (configs.filter((config) => config.role === role).length < 2) {
+      fail("$calibrationResult.candidateConfigs", "two_candidate_configs_per_role_required");
+    }
+  }
+  const trials = snapshotArray(required(record, "trials", "$calibrationResult.trials"), "$calibrationResult.trials", configs.length, configs.length)
+    .map((trialInput, index): StageACalibrationTrialV2 => {
+      const pathValue = `$calibrationResult.trials[${index}]`;
+      const trial = snapshotRecord(trialInput, pathValue, [
+        "trialId", "configId", "role", "suiteKind", "suiteInputDigest", "outputDigest",
+        "sampleCount", "blindedScore", "spotCheck",
+      ]);
+      const role = requiredEnum(trial, "role", `${pathValue}.role`, AGENT_ROLES);
+      const suiteKind = requiredEnum(trial, "suiteKind", `${pathValue}.suiteKind`, CALIBRATION_SUITE_KINDS);
+      if (suiteKind !== CALIBRATION_SUITE_BY_ROLE[role]) fail(`${pathValue}.suiteKind`, "role_specific_calibration_suite_required");
+      const sampleCount = requiredInteger(trial, "sampleCount", `${pathValue}.sampleCount`, 1, 10_000);
+      if (role === "prompt_author" && sampleCount !== 8) fail(`${pathValue}.sampleCount`, "same_eight_disposable_feeds_required");
+      if (role === "annotator" && sampleCount !== resolvedDecisions.length) fail(`${pathValue}.sampleCount`, "resolved_ground_truth_sample_count_required");
+      const suiteInputDigest = validateDigest(required(trial, "suiteInputDigest", `${pathValue}.suiteInputDigest`), `${pathValue}.suiteInputDigest`);
+      if (role === "annotator" && suiteInputDigest !== resolvedGroundTruthDigest) fail(`${pathValue}.suiteInputDigest`, "resolved_ground_truth_digest_required");
+      const spotCheckRecord = snapshotRecord(required(trial, "spotCheck", `${pathValue}.spotCheck`), `${pathValue}.spotCheck`, ["disposition", "failureCodes"]);
+      const disposition = requiredEnum(spotCheckRecord, "disposition", `${pathValue}.spotCheck.disposition`, ["pass", "fail"]);
+      const failureCodes = snapshotArray(required(spotCheckRecord, "failureCodes", `${pathValue}.spotCheck.failureCodes`), `${pathValue}.spotCheck.failureCodes`, disposition === "pass" ? 0 : 1, 16)
+        .map((failureCode, failureIndex) => {
+          const failurePath = `${pathValue}.spotCheck.failureCodes[${failureIndex}]`;
+          if (typeof failureCode !== "string" || !PROVENANCE_TOKEN_PATTERN.test(failureCode)) fail(failurePath, "provenance_token_required");
+          return failureCode;
+        })
+        .sort(rawStringCompare);
+      if (disposition === "pass" && failureCodes.length !== 0) fail(`${pathValue}.spotCheck.failureCodes`, "passing_spot_check_has_no_failures_required");
+      assertUnique(failureCodes, `${pathValue}.spotCheck.failureCodes`, "unique_failure_codes_required");
+      return Object.freeze({
+        trialId: evalIdField(trial, "trialId", `${pathValue}.trialId`),
+        configId: evalIdField(trial, "configId", `${pathValue}.configId`),
+        role,
+        suiteKind,
+        suiteInputDigest,
+        outputDigest: validateDigest(required(trial, "outputDigest", `${pathValue}.outputDigest`), `${pathValue}.outputDigest`),
+        sampleCount,
+        blindedScore: requiredInteger(trial, "blindedScore", `${pathValue}.blindedScore`, 0, 10_000),
+        spotCheck: Object.freeze({ disposition, failureCodes: Object.freeze(failureCodes) }),
+      });
+    })
+    .sort((left, right) => rawStringCompare(left.configId, right.configId));
+  assertUnique(trials.map(({ trialId }) => trialId), "$calibrationResult.trials", "unique_trial_ids_required");
+  assertUnique(trials.map(({ configId }) => configId), "$calibrationResult.trials", "one_trial_per_candidate_config_required");
+  assertUnique(trials.map(({ outputDigest }) => outputDigest), "$calibrationResult.trials", "unique_trial_output_digests_required");
+  if (canonicalStageAJson(trials.map(({ configId }) => configId)) !== canonicalStageAJson(configs.map(({ configId }) => configId))) {
+    fail("$calibrationResult.trials", "every_candidate_config_must_be_exercised");
+  }
+  const configById = new Map(configs.map((config) => [config.configId, config]));
+  for (const trial of trials) {
+    if (configById.get(trial.configId)?.role !== trial.role) fail("$calibrationResult.trials", "trial_config_role_mismatch");
+  }
+  for (const role of AGENT_ROLES) {
+    const suiteDigests = new Set(trials.filter((trial) => trial.role === role).map(({ suiteInputDigest }) => suiteInputDigest));
+    if (suiteDigests.size !== 1) fail("$calibrationResult.trials", "same_role_suite_input_required");
+  }
+  const selectedConfigs = snapshotArray(required(record, "selectedConfigs", "$calibrationResult.selectedConfigs"), "$calibrationResult.selectedConfigs", AGENT_ROLES.length, AGENT_ROLES.length)
+    .map((selectionInput, index): StageASelectedConfigV2 => {
+      const pathValue = `$calibrationResult.selectedConfigs[${index}]`;
+      const selection = snapshotRecord(selectionInput, pathValue, ["role", "configId", "selectionDisposition"]);
+      return Object.freeze({
+        role: requiredEnum(selection, "role", `${pathValue}.role`, AGENT_ROLES),
+        configId: evalIdField(selection, "configId", `${pathValue}.configId`),
+        selectionDisposition: requiredLiteral(selection, "selectionDisposition", `${pathValue}.selectionDisposition`, "approved"),
+      });
+    })
     .sort((left, right) => rawStringCompare(left.role, right.role));
-  assertUnique(configs.map(({ configId }) => configId), "$calibrationResult.agentConfigs", "unique_config_ids_required");
-  assertUnique(configs.map(({ role }) => role), "$calibrationResult.agentConfigs", "one_config_per_role_required");
-  if (configs.some(({ role }, index) => role !== [...AGENT_ROLES].sort(rawStringCompare)[index])) fail("$calibrationResult.agentConfigs", "complete_role_configs_required");
+  assertUnique(selectedConfigs.map(({ role }) => role), "$calibrationResult.selectedConfigs", "one_selected_config_per_role_required");
+  assertUnique(selectedConfigs.map(({ configId }) => configId), "$calibrationResult.selectedConfigs", "unique_selected_config_ids_required");
+  if (selectedConfigs.some(({ role }, index) => role !== [...AGENT_ROLES].sort(rawStringCompare)[index])) fail("$calibrationResult.selectedConfigs", "complete_role_configs_required");
+  const trialByConfigId = new Map(trials.map((trial) => [trial.configId, trial]));
+  for (const selection of selectedConfigs) {
+    const config = configById.get(selection.configId);
+    const trial = trialByConfigId.get(selection.configId);
+    if (config?.role !== selection.role) fail("$calibrationResult.selectedConfigs", "selected_candidate_role_mismatch");
+    if (!trial || trial.spotCheck.disposition !== "pass") fail("$calibrationResult.selectedConfigs", "selected_candidate_passing_trial_required");
+  }
   return Object.freeze({
     schemaVersion: STAGE_A_CALIBRATION_RESULT_SCHEMA_VERSION,
     calibrationId: evalIdField(record, "calibrationId", "$calibrationResult.calibrationId"),
@@ -1128,7 +1302,9 @@ function normalizeStageACalibrationResult(input: unknown): StageACalibrationResu
       approved: true,
       decisions: Object.freeze(decisions),
     }),
-    agentConfigs: Object.freeze(configs),
+    candidateConfigs: Object.freeze(configs),
+    trials: Object.freeze(trials),
+    selectedConfigs: Object.freeze(selectedConfigs),
   });
 }
 
@@ -1172,28 +1348,110 @@ export function digestStageACalibrationResult(
   );
 }
 
-function validateSelectionPolicy(input: unknown, pathValue: string): StageASelectionPolicyV2 {
-  const record = snapshotRecord(input, pathValue, [
-    "schemaVersion", "af1ContractVersion", "compilerVersion", "collectionSnapshotId",
-    "collectionSnapshotDigest", "windowStart", "cutoff", "windowBoundary", "order",
-    "productionSelection", "challengeSelection",
-  ]);
-  const windowStart = validateWholeSecondInstant(required(record, "windowStart", `${pathValue}.windowStart`), `${pathValue}.windowStart`);
-  const cutoff = validateWholeSecondInstant(required(record, "cutoff", `${pathValue}.cutoff`), `${pathValue}.cutoff`);
-  if (new Date(cutoff).getTime() - new Date(windowStart).getTime() !== 30 * 24 * 60 * 60 * 1_000) fail(pathValue, "exact_30_day_window_required");
+function validateSourcePin(
+  input: unknown,
+  pathValue: string,
+  expectedSourcePath: string,
+  expectedExportName: string,
+): StageASourcePinV2 {
+  const record = snapshotRecord(input, pathValue, ["sourcePath", "exportName", "sourceDigest"]);
   return Object.freeze({
-    schemaVersion: requiredLiteral(record, "schemaVersion", `${pathValue}.schemaVersion`, "ai-filter-stage-a-selection-policy-v2"),
-    af1ContractVersion: requiredLiteral(record, "af1ContractVersion", `${pathValue}.af1ContractVersion`, 1),
-    compilerVersion: provenanceTokenField(record, "compilerVersion", `${pathValue}.compilerVersion`),
-    collectionSnapshotId: evalIdField(record, "collectionSnapshotId", `${pathValue}.collectionSnapshotId`),
-    collectionSnapshotDigest: validateDigest(required(record, "collectionSnapshotDigest", `${pathValue}.collectionSnapshotDigest`), `${pathValue}.collectionSnapshotDigest`),
-    windowStart,
-    cutoff,
-    windowBoundary: requiredLiteral(record, "windowBoundary", `${pathValue}.windowBoundary`, "[windowStart,cutoff)"),
-    order: requiredLiteral(record, "order", `${pathValue}.order`, "first_seen_at_desc_candidate_id_asc"),
-    productionSelection: requiredLiteral(record, "productionSelection", `${pathValue}.productionSelection`, "first_eight"),
-    challengeSelection: requiredLiteral(record, "challengeSelection", `${pathValue}.challengeSelection`, "frozen_source_rank"),
+    sourcePath: requiredLiteral(record, "sourcePath", `${pathValue}.sourcePath`, expectedSourcePath),
+    exportName: requiredLiteral(record, "exportName", `${pathValue}.exportName`, expectedExportName),
+    sourceDigest: validateDigest(required(record, "sourceDigest", `${pathValue}.sourceDigest`), `${pathValue}.sourceDigest`),
   });
+}
+
+function validateNormalizerPin(
+  input: unknown,
+  pathValue: string,
+  expectedSourcePath: string,
+  expectedExportName: string,
+  expectedVersion: string | number,
+): StageANormalizerPinV2 {
+  const record = snapshotRecord(input, pathValue, [
+    "sourcePath", "exportName", "sourceDigest", "version", "fallbackPolicyDigest",
+    "truncationPolicyDigest",
+  ]);
+  return Object.freeze({
+    sourcePath: requiredLiteral(record, "sourcePath", `${pathValue}.sourcePath`, expectedSourcePath),
+    exportName: requiredLiteral(record, "exportName", `${pathValue}.exportName`, expectedExportName),
+    sourceDigest: validateDigest(required(record, "sourceDigest", `${pathValue}.sourceDigest`), `${pathValue}.sourceDigest`),
+    version: requiredLiteral(record, "version", `${pathValue}.version`, expectedVersion),
+    fallbackPolicyDigest: validateDigest(required(record, "fallbackPolicyDigest", `${pathValue}.fallbackPolicyDigest`), `${pathValue}.fallbackPolicyDigest`),
+    truncationPolicyDigest: validateDigest(required(record, "truncationPolicyDigest", `${pathValue}.truncationPolicyDigest`), `${pathValue}.truncationPolicyDigest`),
+  });
+}
+
+export function validateStageAExtractionManifest(input: unknown, pathValue = "$extractionManifest"): StageAExtractionManifestV2 {
+  const record = snapshotRecord(input, pathValue, [
+    "schemaVersion", "repositoryCommit", "af1ContractVersion", "typesense", "compiler",
+    "reader", "dependencyLockDigest", "compiledQueries", "query", "classifierNormalizer",
+    "softQueryNormalizer",
+  ]);
+  const repositoryCommit = requiredString(record, "repositoryCommit", `${pathValue}.repositoryCommit`, 40);
+  if (!/^[a-f0-9]{40}$/u.test(repositoryCommit)) fail(`${pathValue}.repositoryCommit`, "repository_oid_required");
+  const typesenseRecord = snapshotRecord(required(record, "typesense", `${pathValue}.typesense`), `${pathValue}.typesense`, ["collectionAlias", "resolvedCollection", "snapshotDigest"]);
+  const resolvedCollection = requiredString(typesenseRecord, "resolvedCollection", `${pathValue}.typesense.resolvedCollection`, 128);
+  if (!/^job_posting_v[1-9]\d*$/u.test(resolvedCollection)) fail(`${pathValue}.typesense.resolvedCollection`, "versioned_collection_required");
+  const queryRecord = snapshotRecord(required(record, "query", `${pathValue}.query`), `${pathValue}.query`, [
+    "templateDigest", "order", "pageSize", "requestedStrictLowerBound", "effectiveWindowStart",
+    "cutoff", "requestedBoundary", "effectiveBoundary", "productionSelection", "challengeSelection",
+  ]);
+  const requestedStrictLowerBound = validateWholeSecondInstant(required(queryRecord, "requestedStrictLowerBound", `${pathValue}.query.requestedStrictLowerBound`), `${pathValue}.query.requestedStrictLowerBound`);
+  const effectiveWindowStart = validateWholeSecondInstant(required(queryRecord, "effectiveWindowStart", `${pathValue}.query.effectiveWindowStart`), `${pathValue}.query.effectiveWindowStart`);
+  const cutoff = validateWholeSecondInstant(required(queryRecord, "cutoff", `${pathValue}.query.cutoff`), `${pathValue}.query.cutoff`);
+  const requestedTime = new Date(requestedStrictLowerBound).getTime();
+  if (new Date(cutoff).getTime() - requestedTime !== 30 * 24 * 60 * 60 * 1_000) fail(`${pathValue}.query`, "exact_30_day_requested_window_required");
+  if (new Date(effectiveWindowStart).getTime() !== requestedTime + 1_000) fail(`${pathValue}.query`, "strict_lower_bound_translation_required");
+  const compiledQueries = snapshotArray(required(record, "compiledQueries", `${pathValue}.compiledQueries`), `${pathValue}.compiledQueries`, STAGE_A_REQUIRED_FILTERS, STAGE_A_REQUIRED_FILTERS)
+    .map((compiledInput, index) => {
+      const compiledPath = `${pathValue}.compiledQueries[${index}]`;
+      const compiled = snapshotRecord(compiledInput, compiledPath, ["filterId", "fingerprint"]);
+      const fingerprint = snapshotRecord(required(compiled, "fingerprint", `${compiledPath}.fingerprint`), `${compiledPath}.fingerprint`, ["scheme", "value"]);
+      return Object.freeze({
+        filterId: evalIdField(compiled, "filterId", `${compiledPath}.filterId`),
+        fingerprint: Object.freeze({
+          scheme: requiredLiteral(fingerprint, "scheme", `${compiledPath}.fingerprint.scheme`, "hmac-sha256-v1"),
+          value: validateDigest(required(fingerprint, "value", `${compiledPath}.fingerprint.value`), `${compiledPath}.fingerprint.value`),
+        }),
+      });
+    })
+    .sort((left, right) => rawStringCompare(left.filterId, right.filterId));
+  assertUnique(compiledQueries.map(({ filterId }) => filterId), `${pathValue}.compiledQueries`, "unique_filter_ids_required");
+  assertUnique(compiledQueries.map(({ fingerprint }) => fingerprint.value), `${pathValue}.compiledQueries`, "unique_compiled_query_fingerprints_required");
+  return Object.freeze({
+    schemaVersion: requiredLiteral(record, "schemaVersion", `${pathValue}.schemaVersion`, STAGE_A_EXTRACTION_MANIFEST_SCHEMA_VERSION),
+    repositoryCommit,
+    af1ContractVersion: requiredLiteral(record, "af1ContractVersion", `${pathValue}.af1ContractVersion`, 1),
+    typesense: Object.freeze({
+      collectionAlias: requiredLiteral(typesenseRecord, "collectionAlias", `${pathValue}.typesense.collectionAlias`, "job_posting"),
+      resolvedCollection,
+      snapshotDigest: validateDigest(required(typesenseRecord, "snapshotDigest", `${pathValue}.typesense.snapshotDigest`), `${pathValue}.typesense.snapshotDigest`),
+    }),
+    compiler: validateSourcePin(required(record, "compiler", `${pathValue}.compiler`), `${pathValue}.compiler`, STAGE_A_COMPILER_SOURCE_PATH, STAGE_A_COMPILER_EXPORT),
+    reader: validateSourcePin(required(record, "reader", `${pathValue}.reader`), `${pathValue}.reader`, STAGE_A_READER_SOURCE_PATH, STAGE_A_READER_EXPORT),
+    dependencyLockDigest: validateDigest(required(record, "dependencyLockDigest", `${pathValue}.dependencyLockDigest`), `${pathValue}.dependencyLockDigest`),
+    compiledQueries: Object.freeze(compiledQueries),
+    query: Object.freeze({
+      templateDigest: validateDigest(required(queryRecord, "templateDigest", `${pathValue}.query.templateDigest`), `${pathValue}.query.templateDigest`),
+      order: requiredLiteral(queryRecord, "order", `${pathValue}.query.order`, "first_seen_at_desc_candidate_id_asc"),
+      pageSize: requiredLiteral(queryRecord, "pageSize", `${pathValue}.query.pageSize`, 8),
+      requestedStrictLowerBound,
+      effectiveWindowStart,
+      cutoff,
+      requestedBoundary: requiredLiteral(queryRecord, "requestedBoundary", `${pathValue}.query.requestedBoundary`, "(requestedStrictLowerBound,cutoff)"),
+      effectiveBoundary: requiredLiteral(queryRecord, "effectiveBoundary", `${pathValue}.query.effectiveBoundary`, "[effectiveWindowStart,cutoff)"),
+      productionSelection: requiredLiteral(queryRecord, "productionSelection", `${pathValue}.query.productionSelection`, "first_eight"),
+      challengeSelection: requiredLiteral(queryRecord, "challengeSelection", `${pathValue}.query.challengeSelection`, "frozen_source_rank"),
+    }),
+    classifierNormalizer: validateNormalizerPin(required(record, "classifierNormalizer", `${pathValue}.classifierNormalizer`), `${pathValue}.classifierNormalizer`, STAGE_A_CLASSIFIER_NORMALIZER_SOURCE_PATH, STAGE_A_CLASSIFIER_NORMALIZER_EXPORT, CLASSIFIER_INPUT_NORMALIZER_VERSION),
+    softQueryNormalizer: validateNormalizerPin(required(record, "softQueryNormalizer", `${pathValue}.softQueryNormalizer`), `${pathValue}.softQueryNormalizer`, STAGE_A_SOFT_QUERY_NORMALIZER_SOURCE_PATH, STAGE_A_SOFT_QUERY_NORMALIZER_EXPORT, AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION),
+  });
+}
+
+export function digestStageAExtractionManifest(input: unknown): string {
+  return domainDigest(STAGE_A_EXTRACTION_MANIFEST_SCHEMA_VERSION, validateStageAExtractionManifest(input));
 }
 
 function validateReviewPlan(input: unknown, pathValue: string): StageAReviewPlanV2 {
@@ -1213,7 +1471,6 @@ function assertCorpusShape(
   pathPrefix: string,
 ): void {
   assertUnique(filters.map(({ filterId }) => filterId), `${pathPrefix}.filters`, "unique_filter_ids_required");
-  assertUnique(filters.map(({ sourceFilterFingerprint }) => sourceFilterFingerprint.value), `${pathPrefix}.filters`, "unique_source_filter_fingerprints_required");
   assertUnique(bundles.map(({ bundleId }) => bundleId), `${pathPrefix}.bundles`, "unique_bundle_ids_required");
   assertUnique(bundles.map(({ softQuery }) => softQuery), `${pathPrefix}.bundles`, "unique_queries_required");
   assertUnique(pairs.map(({ pairId }) => pairId), `${pathPrefix}.pairs`, "unique_pair_ids_required");
@@ -1254,22 +1511,28 @@ function assertCorpusShape(
 export function validateStageAPreAnnotation(input: unknown): StageAPreAnnotationV2 {
   const record = snapshotRecord(input, "$pre", [
     "schemaVersion", "datasetId", "classifierInputSchemaVersion", "classifierInputNormalizerVersion",
-    "softQueryNormalizerVersion", "calibrationResultDigest", "selectionPolicy", "reviewPlan",
+    "softQueryNormalizerVersion", "calibrationResultDigest", "extractionManifest",
+    "extractionManifestDigest", "reviewPlan",
     "filters", "bundles", "pairs",
   ]);
   requiredLiteral(record, "schemaVersion", "$pre.schemaVersion", STAGE_A_PRE_ANNOTATION_SCHEMA_VERSION);
   requiredLiteral(record, "classifierInputSchemaVersion", "$pre.classifierInputSchemaVersion", CLASSIFIER_INPUT_SCHEMA_VERSION);
   requiredLiteral(record, "classifierInputNormalizerVersion", "$pre.classifierInputNormalizerVersion", CLASSIFIER_INPUT_NORMALIZER_VERSION);
   requiredLiteral(record, "softQueryNormalizerVersion", "$pre.softQueryNormalizerVersion", AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION);
-  const selectionPolicy = validateSelectionPolicy(required(record, "selectionPolicy", "$pre.selectionPolicy"), "$pre.selectionPolicy");
+  const extractionManifest = validateStageAExtractionManifest(required(record, "extractionManifest", "$pre.extractionManifest"), "$pre.extractionManifest");
+  const extractionManifestDigest = validateDigest(required(record, "extractionManifestDigest", "$pre.extractionManifestDigest"), "$pre.extractionManifestDigest");
+  if (extractionManifestDigest !== digestStageAExtractionManifest(extractionManifest)) fail("$pre.extractionManifestDigest", "extraction_manifest_digest_mismatch");
   const reviewPlan = validateReviewPlan(required(record, "reviewPlan", "$pre.reviewPlan"), "$pre.reviewPlan");
   const filters = snapshotArray(required(record, "filters", "$pre.filters"), "$pre.filters", 20, 20).map((value, index) => validateFilter(value, `$pre.filters[${index}]`)).sort((left, right) => rawStringCompare(left.filterId, right.filterId));
   const bundles = snapshotArray(required(record, "bundles", "$pre.bundles"), "$pre.bundles", 25, 25).map((value, index) => validateBundle(value, `$pre.bundles[${index}]`)).sort((left, right) => rawStringCompare(left.bundleId, right.bundleId));
   const rawPairs = snapshotArray(required(record, "pairs", "$pre.pairs"), "$pre.pairs", 200, 200).map((value, index) => validatePreAnnotationPair(value, `$pre.pairs[${index}]`));
   const pairs = bundles.flatMap(({ bundleId }) => rawPairs.filter((pair) => pair.bundleId === bundleId).sort((left, right) => left.position - right.position));
   assertCorpusShape(filters, bundles, pairs, "$pre");
+  const compiledQueryByFilterId = new Map(extractionManifest.compiledQueries.map(({ filterId, fingerprint }) => [filterId, fingerprint]));
+  if (canonicalStageAJson([...compiledQueryByFilterId.keys()].sort(rawStringCompare)) !== canonicalStageAJson(filters.map(({ filterId }) => filterId))) fail("$pre.extractionManifest.compiledQueries", "exact_filter_fingerprint_set_required");
   for (const bundle of bundles) {
     const feed = pairs.filter(({ bundleId }) => bundleId === bundle.bundleId);
+    const compiledQueryFingerprint = compiledQueryByFilterId.get(bundle.filterId)!;
     if (bundle.cohort === "production_shaped" && feed.some(({ position, sourceRank }) => position !== sourceRank)) fail("$pre.pairs", "production_must_use_first_eight_required");
     if (bundle.cohort === "challenge" && feed.some(({ sourceRank }, index) => index > 0 && sourceRank <= feed[index - 1].sourceRank)) fail("$pre.pairs", "challenge_source_order_required");
     for (let index = 1; index < feed.length; index += 1) {
@@ -1278,13 +1541,14 @@ export function validateStageAPreAnnotation(input: unknown): StageAPreAnnotation
       if (previous.postingFirstSeenAt < current.postingFirstSeenAt || (previous.postingFirstSeenAt === current.postingFirstSeenAt && previous.classifierSource.candidateId > current.classifierSource.candidateId)) fail("$pre.pairs", "approved_candidate_order_required");
     }
     for (const pair of feed) {
-      if (pair.postingFirstSeenAt < selectionPolicy.windowStart || pair.postingFirstSeenAt >= selectionPolicy.cutoff) fail("$pre.pairs", "selection_window_required");
+      if (pair.postingFirstSeenAt < extractionManifest.query.effectiveWindowStart || pair.postingFirstSeenAt >= extractionManifest.query.cutoff) fail("$pre.pairs", "selection_window_required");
       const expectedIdentity = digestStageASourceSnapshotIdentity({
+        extractionManifestDigest,
+        compiledQueryFingerprint: compiledQueryFingerprint.value,
         candidateId: pair.classifierSource.candidateId,
         contentIdentity: pair.contentIdentity,
         postingFirstSeenAt: pair.postingFirstSeenAt,
         sourceRank: pair.sourceRank,
-        collectionSnapshotDigest: selectionPolicy.collectionSnapshotDigest,
       });
       if (pair.sourceSnapshotIdentity !== expectedIdentity) fail("$pre.pairs", "source_snapshot_identity_mismatch");
     }
@@ -1296,7 +1560,8 @@ export function validateStageAPreAnnotation(input: unknown): StageAPreAnnotation
     classifierInputNormalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
     softQueryNormalizerVersion: AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION,
     calibrationResultDigest: validateDigest(required(record, "calibrationResultDigest", "$pre.calibrationResultDigest"), "$pre.calibrationResultDigest"),
-    selectionPolicy,
+    extractionManifest,
+    extractionManifestDigest,
     reviewPlan,
     filters: Object.freeze(filters),
     bundles: Object.freeze(bundles),
@@ -1309,11 +1574,12 @@ export function digestStageAPreAnnotation(input: unknown): string {
 }
 
 export function digestStageASourceSnapshotIdentity(input: Readonly<{
+  extractionManifestDigest: string;
+  compiledQueryFingerprint: string;
   candidateId: string;
   contentIdentity: string;
   postingFirstSeenAt: string;
   sourceRank: number;
-  collectionSnapshotDigest: string;
 }>): string {
   return domainDigest("ai-filter-stage-a-source-snapshot-v2", input);
 }
@@ -1519,7 +1785,11 @@ function prePairProjection(pair: StageAPairV2 | StageAPreAnnotationPairV2): Stag
 function resolveRoleConfigs(
   calibration: StageACalibrationResultV2,
 ): Readonly<Record<StageAAgentRole, StageAAgentConfigV2>> {
-  return Object.freeze(Object.fromEntries(calibration.agentConfigs.map((config) => [config.role, config]))) as Readonly<Record<StageAAgentRole, StageAAgentConfigV2>>;
+  const configById = new Map(calibration.candidateConfigs.map((config) => [config.configId, config]));
+  return Object.freeze(Object.fromEntries(calibration.selectedConfigs.map((selection) => [
+    selection.role,
+    configById.get(selection.configId)!,
+  ]))) as Readonly<Record<StageAAgentRole, StageAAgentConfigV2>>;
 }
 
 function requireConfig(actual: string, expected: StageAAgentConfigV2, pathValue: string): void {
@@ -1621,7 +1891,8 @@ export function buildStageASilverManifest(
     preAnnotationDigest: wip.preAnnotationDigest,
     promptReviewFeedbackDigest: wip.promptReviewFeedbackDigest,
     sourceWipDigest,
-    selectionPolicy: pre.selectionPolicy,
+    extractionManifest: pre.extractionManifest,
+    extractionManifestDigest: pre.extractionManifestDigest,
     reviewPlan: pre.reviewPlan,
     filters: wip.filters,
     bundles: wip.bundles,
@@ -1691,7 +1962,8 @@ export function validateStageASilverFreeze(
   const manifest = snapshotRecord(manifestInput, "$.manifest", [
     "schemaVersion", "status", "datasetId", "classifierInputSchemaVersion",
     "classifierInputNormalizerVersion", "softQueryNormalizerVersion", "calibrationResultDigest",
-    "preAnnotationDigest", "promptReviewFeedbackDigest", "sourceWipDigest", "selectionPolicy",
+    "preAnnotationDigest", "promptReviewFeedbackDigest", "sourceWipDigest", "extractionManifest",
+    "extractionManifestDigest",
     "reviewPlan", "filters", "bundles", "pairs", "finalCritic",
   ]);
   requiredLiteral(manifest, "schemaVersion", "$.manifest.schemaVersion", STAGE_A_SILVER_MANIFEST_SCHEMA_VERSION);
@@ -1740,13 +2012,15 @@ export function validateStageASilverFreeze(
     preAnnotationDigest: normalizedWip.preAnnotationDigest,
     promptReviewFeedbackDigest: normalizedWip.promptReviewFeedbackDigest,
     sourceWipDigest: validateDigest(required(manifest, "sourceWipDigest", "$.manifest.sourceWipDigest"), "$.manifest.sourceWipDigest"),
-    selectionPolicy: validateSelectionPolicy(required(manifest, "selectionPolicy", "$.manifest.selectionPolicy"), "$.manifest.selectionPolicy"),
+    extractionManifest: validateStageAExtractionManifest(required(manifest, "extractionManifest", "$.manifest.extractionManifest"), "$.manifest.extractionManifest"),
+    extractionManifestDigest: validateDigest(required(manifest, "extractionManifestDigest", "$.manifest.extractionManifestDigest"), "$.manifest.extractionManifestDigest"),
     reviewPlan: validateReviewPlan(required(manifest, "reviewPlan", "$.manifest.reviewPlan"), "$.manifest.reviewPlan"),
     filters: normalizedWip.filters,
     bundles: normalizedWip.bundles,
     pairs: Object.freeze(normalizedPairs),
     finalCritic: normalizedWip.finalCritic,
   });
+  if (rebuilt.extractionManifestDigest !== digestStageAExtractionManifest(rebuilt.extractionManifest)) fail("$.manifest.extractionManifestDigest", "extraction_manifest_digest_mismatch");
   if (rebuilt.sourceWipDigest !== domainDigest(STAGE_A_WIP_SCHEMA_VERSION, normalizedWip)) fail("$.manifest.sourceWipDigest", "source_wip_digest_mismatch");
   if (canonicalStageAJson(rebuilt) !== canonicalStageAJson(manifestInput)) fail("$.manifest", "derived_manifest_mismatch");
   const silverDigest = validateDigest(required(envelope, "silverDigest", "$.silverDigest"), "$.silverDigest");
@@ -1948,7 +2222,8 @@ export function promoteStageAGold(
     calibrationResultDigest: silver.manifest.calibrationResultDigest,
     preAnnotationDigest: silver.manifest.preAnnotationDigest,
     promptReviewFeedbackDigest: silver.manifest.promptReviewFeedbackDigest,
-    selectionPolicy: silver.manifest.selectionPolicy,
+    extractionManifest: silver.manifest.extractionManifest,
+    extractionManifestDigest: silver.manifest.extractionManifestDigest,
     reviewPlan: silver.manifest.reviewPlan,
     filters: silver.manifest.filters,
     bundles: silver.manifest.bundles,
@@ -2408,7 +2683,8 @@ function validateGoldFreeze(
     "schemaVersion", "status", "sourceSilverDigest", "auditPolicyDigest",
     "humanFeedbackDigest", "humanFeedbackId", "datasetId", "classifierInputSchemaVersion",
     "classifierInputNormalizerVersion", "softQueryNormalizerVersion", "calibrationResultDigest",
-    "preAnnotationDigest", "promptReviewFeedbackDigest", "selectionPolicy", "reviewPlan",
+    "preAnnotationDigest", "promptReviewFeedbackDigest", "extractionManifest",
+    "extractionManifestDigest", "reviewPlan",
     "filters", "bundles", "pairs", "finalCritic",
   ]);
   requiredLiteral(record, "schemaVersion", "$.manifest.schemaVersion", STAGE_A_GOLD_MANIFEST_SCHEMA_VERSION);
@@ -2457,13 +2733,15 @@ function validateGoldFreeze(
     calibrationResultDigest,
     preAnnotationDigest: validateDigest(required(record, "preAnnotationDigest", "$.manifest.preAnnotationDigest"), "$.manifest.preAnnotationDigest"),
     promptReviewFeedbackDigest: validateDigest(required(record, "promptReviewFeedbackDigest", "$.manifest.promptReviewFeedbackDigest"), "$.manifest.promptReviewFeedbackDigest"),
-    selectionPolicy: validateSelectionPolicy(required(record, "selectionPolicy", "$.manifest.selectionPolicy"), "$.manifest.selectionPolicy"),
+    extractionManifest: validateStageAExtractionManifest(required(record, "extractionManifest", "$.manifest.extractionManifest"), "$.manifest.extractionManifest"),
+    extractionManifestDigest: validateDigest(required(record, "extractionManifestDigest", "$.manifest.extractionManifestDigest"), "$.manifest.extractionManifestDigest"),
     reviewPlan: validateReviewPlan(required(record, "reviewPlan", "$.manifest.reviewPlan"), "$.manifest.reviewPlan"),
     filters: wip.filters,
     bundles: wip.bundles,
     pairs: Object.freeze(wip.pairs.map(({ pairId }) => pairs.find((pair) => pair.pairId === pairId)!)),
     finalCritic: wip.finalCritic,
   });
+  if (manifest.extractionManifestDigest !== digestStageAExtractionManifest(manifest.extractionManifest)) fail("$.manifest.extractionManifestDigest", "extraction_manifest_digest_mismatch");
   if (canonicalStageAJson(manifest) !== canonicalStageAJson(manifestInput)) fail("$.manifest", "canonical_manifest_required");
   const goldDigest = validateDigest(required(envelope, "goldDigest", "$.goldDigest"), "$.goldDigest");
   if (goldDigest !== expectedGoldDigest || goldDigest !== domainDigest(STAGE_A_GOLD_MANIFEST_SCHEMA_VERSION, manifest)) {

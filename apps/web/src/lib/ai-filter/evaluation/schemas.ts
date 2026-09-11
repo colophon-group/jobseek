@@ -101,8 +101,8 @@ const pairBaseRequired = ["schemaVersion", "pairId", "bundleId", "position", "so
 
 export const STAGE_A_FILTER_V2_SCHEMA = {
   $id: "ai-filter-stage-a-filter-v2", type: "object", additionalProperties: false,
-  required: ["schemaVersion", "filterId", "source", "sourceFilterFingerprint", "generalizedContext"],
-  properties: { schemaVersion: { const: "ai-filter-stage-a-filter-v2" }, filterId: evalId, source: { const: "production_deidentified" }, sourceFilterFingerprint: { type: "object", additionalProperties: false, required: ["scheme", "value"], properties: { scheme: { const: "hmac-sha256-v1" }, value: digest } }, generalizedContext: generalizedContextSchema },
+  required: ["schemaVersion", "filterId", "source", "generalizedContext"],
+  properties: { schemaVersion: { const: "ai-filter-stage-a-filter-v2" }, filterId: evalId, source: { const: "production_deidentified" }, generalizedContext: generalizedContextSchema },
 } as const;
 
 export const STAGE_A_BUNDLE_V2_SCHEMA = {
@@ -133,13 +133,44 @@ export const STAGE_A_PAIR_V2_SCHEMA = {
   },
 } as const;
 
-const selectionPolicySchema = {
+const sourcePinSchema = (sourcePath: string, exportName: string) => ({
   type: "object", additionalProperties: false,
-  required: ["schemaVersion", "af1ContractVersion", "compilerVersion", "collectionSnapshotId", "collectionSnapshotDigest", "windowStart", "cutoff", "windowBoundary", "order", "productionSelection", "challengeSelection"],
+  required: ["sourcePath", "exportName", "sourceDigest"],
+  properties: { sourcePath: { const: sourcePath }, exportName: { const: exportName }, sourceDigest: digest },
+} as const);
+
+const normalizerPinSchema = (sourcePath: string, exportName: string, version: string | number) => ({
+  type: "object", additionalProperties: false,
+  required: ["sourcePath", "exportName", "sourceDigest", "version", "fallbackPolicyDigest", "truncationPolicyDigest"],
   properties: {
-    schemaVersion: { const: "ai-filter-stage-a-selection-policy-v2" }, af1ContractVersion: { const: 1 }, compilerVersion: { type: "string", pattern: tokenPattern },
-    collectionSnapshotId: evalId, collectionSnapshotDigest: digest, windowStart: { type: "string", pattern: instantPattern }, cutoff: { type: "string", pattern: instantPattern },
-    windowBoundary: { const: "[windowStart,cutoff)" }, order: { const: "first_seen_at_desc_candidate_id_asc" }, productionSelection: { const: "first_eight" }, challengeSelection: { const: "frozen_source_rank" },
+    sourcePath: { const: sourcePath }, exportName: { const: exportName }, sourceDigest: digest,
+    version: { const: version }, fallbackPolicyDigest: digest, truncationPolicyDigest: digest,
+  },
+} as const);
+
+const extractionManifestSchema = {
+  type: "object", additionalProperties: false,
+  required: ["schemaVersion", "repositoryCommit", "af1ContractVersion", "typesense", "compiler", "reader", "dependencyLockDigest", "compiledQueries", "query", "classifierNormalizer", "softQueryNormalizer"],
+  properties: {
+    schemaVersion: { const: "ai-filter-stage-a-extraction-manifest-v2" },
+    repositoryCommit: { type: "string", pattern: "^[a-f0-9]{40}$" },
+    af1ContractVersion: { const: 1 },
+    typesense: { type: "object", additionalProperties: false, required: ["collectionAlias", "resolvedCollection", "snapshotDigest"], properties: {
+      collectionAlias: { const: "job_posting" }, resolvedCollection: { type: "string", pattern: "^job_posting_v[1-9]\\d*$" }, snapshotDigest: digest,
+    } },
+    compiler: sourcePinSchema("apps/web/src/lib/search/watchlist-candidate-query.ts", "buildWatchlistCandidateSearchParams"),
+    reader: sourcePinSchema("apps/web/src/lib/services/watchlist-matcher.ts", "readWatchlistCandidates"),
+    dependencyLockDigest: digest,
+    compiledQueries: { type: "array", minItems: 20, maxItems: 20, items: { type: "object", additionalProperties: false, required: ["filterId", "fingerprint"], properties: {
+      filterId: evalId, fingerprint: { type: "object", additionalProperties: false, required: ["scheme", "value"], properties: { scheme: { const: "hmac-sha256-v1" }, value: digest } },
+    } } },
+    query: { type: "object", additionalProperties: false, required: ["templateDigest", "order", "pageSize", "requestedStrictLowerBound", "effectiveWindowStart", "cutoff", "requestedBoundary", "effectiveBoundary", "productionSelection", "challengeSelection"], properties: {
+      templateDigest: digest, order: { const: "first_seen_at_desc_candidate_id_asc" }, pageSize: { const: 8 },
+      requestedStrictLowerBound: { type: "string", pattern: instantPattern }, effectiveWindowStart: { type: "string", pattern: instantPattern }, cutoff: { type: "string", pattern: instantPattern },
+      requestedBoundary: { const: "(requestedStrictLowerBound,cutoff)" }, effectiveBoundary: { const: "[effectiveWindowStart,cutoff)" }, productionSelection: { const: "first_eight" }, challengeSelection: { const: "frozen_source_rank" },
+    } },
+    classifierNormalizer: normalizerPinSchema("apps/web/src/lib/ai-filter/classifier-input.ts", "normalizeClassifierInputV1", CLASSIFIER_INPUT_NORMALIZER_VERSION),
+    softQueryNormalizer: normalizerPinSchema("apps/web/src/lib/ai-filter/contract.ts", "normalizeAiFilterSoftQueryV1", AI_FILTER_SOFT_QUERY_NORMALIZER_VERSION),
   },
 } as const;
 
@@ -181,22 +212,27 @@ export const STAGE_A_CALIBRATION_ARTIFACT_V2_SCHEMA = {
 
 export const STAGE_A_CALIBRATION_RESULT_V2_SCHEMA = {
   $id: "ai-filter-stage-a-calibration-result-v2", type: "object", additionalProperties: false,
-  required: ["schemaVersion", "calibrationId", "calibrationInputDigest", "humanReview", "agentConfigs"],
+  required: ["schemaVersion", "calibrationId", "calibrationInputDigest", "humanReview", "candidateConfigs", "trials", "selectedConfigs"],
   properties: {
     schemaVersion: { const: "ai-filter-stage-a-calibration-result-v2" }, calibrationId: evalId, calibrationInputDigest: digest,
     humanReview: { type: "object", additionalProperties: false, required: ["reviewId", "reviewerId", "approved", "decisions"], properties: {
-      reviewId: evalId, reviewerId: evalId, approved: { const: true }, decisions: { type: "array", minItems: 24, maxItems: 32, items: { type: "object", additionalProperties: false, required: ["calibrationExampleId", "judgment"], properties: { calibrationExampleId: evalId, judgment: enumString(["accept", "reject"]) } } },
+      reviewId: evalId, reviewerId: evalId, approved: { const: true }, decisions: { type: "array", minItems: 24, maxItems: 32, items: { type: "object", additionalProperties: false, required: ["calibrationExampleId", "judgment"], properties: { calibrationExampleId: evalId, judgment: enumString(["accept", "reject", "unclear"]) } } },
     } },
-    agentConfigs: { type: "array", minItems: 4, maxItems: 4, items: { type: "object", additionalProperties: false, required: ["configId", "role", "model", "modelVersion", "reasoningEffort", "taskPromptDigest"], properties: {
+    candidateConfigs: { type: "array", minItems: 8, maxItems: 16, items: { type: "object", additionalProperties: false, required: ["configId", "role", "model", "modelVersion", "reasoningEffort", "taskPromptDigest"], properties: {
       configId: evalId, role: enumString(["prompt_author", "annotator", "adjudicator", "final_critic"]), model: { type: "string", pattern: tokenPattern }, modelVersion: { type: "string", pattern: tokenPattern }, reasoningEffort: enumString(["low", "medium", "high", "xhigh", "max", "ultra"]), taskPromptDigest: digest,
     } } },
+    trials: { type: "array", minItems: 8, maxItems: 16, items: { type: "object", additionalProperties: false, required: ["trialId", "configId", "role", "suiteKind", "suiteInputDigest", "outputDigest", "sampleCount", "blindedScore", "spotCheck"], properties: {
+      trialId: evalId, configId: evalId, role: enumString(["prompt_author", "annotator", "adjudicator", "final_critic"]), suiteKind: enumString(["same_eight_disposable_feeds", "resolved_human_ground_truth", "seeded_conflicts", "seeded_defects"]), suiteInputDigest: digest, outputDigest: digest, sampleCount: { type: "integer", minimum: 1, maximum: 10_000 }, blindedScore: { type: "integer", minimum: 0, maximum: 10_000 },
+      spotCheck: { type: "object", additionalProperties: false, required: ["disposition", "failureCodes"], properties: { disposition: enumString(["pass", "fail"]), failureCodes: { type: "array", maxItems: 16, uniqueItems: true, items: { type: "string", pattern: tokenPattern } } } },
+    } } },
+    selectedConfigs: { type: "array", minItems: 4, maxItems: 4, items: { type: "object", additionalProperties: false, required: ["role", "configId", "selectionDisposition"], properties: { role: enumString(["prompt_author", "annotator", "adjudicator", "final_critic"]), configId: evalId, selectionDisposition: { const: "approved" } } } },
   },
 } as const;
 
 export const STAGE_A_PRE_ANNOTATION_V2_SCHEMA = {
   $id: "ai-filter-stage-a-pre-annotation-v2", type: "object", additionalProperties: false,
-  required: ["schemaVersion", ...coreRequired, "selectionPolicy", "reviewPlan", "pairs"],
-  properties: { schemaVersion: { const: "ai-filter-stage-a-pre-annotation-v2" }, ...coreArtifactProperties, selectionPolicy: selectionPolicySchema, reviewPlan: reviewPlanSchema, pairs: { type: "array", minItems: 200, maxItems: 200, items: { $ref: "ai-filter-stage-a-pre-annotation-pair-v2" } } },
+  required: ["schemaVersion", ...coreRequired, "extractionManifest", "extractionManifestDigest", "reviewPlan", "pairs"],
+  properties: { schemaVersion: { const: "ai-filter-stage-a-pre-annotation-v2" }, ...coreArtifactProperties, extractionManifest: extractionManifestSchema, extractionManifestDigest: digest, reviewPlan: reviewPlanSchema, pairs: { type: "array", minItems: 200, maxItems: 200, items: { $ref: "ai-filter-stage-a-pre-annotation-pair-v2" } } },
 } as const;
 
 export const STAGE_A_PROMPT_REVIEW_FEEDBACK_V2_SCHEMA = {
@@ -221,8 +257,8 @@ const silverPairSchema = { type: "object", additionalProperties: false, required
 
 export const STAGE_A_SILVER_MANIFEST_V2_SCHEMA = {
   $id: "ai-filter-stage-a-silver-manifest-v2", type: "object", additionalProperties: false,
-  required: ["schemaVersion", "status", ...coreRequired, "preAnnotationDigest", "promptReviewFeedbackDigest", "sourceWipDigest", "selectionPolicy", "reviewPlan", "pairs", "finalCritic"],
-  properties: { schemaVersion: { const: "ai-filter-stage-a-silver-manifest-v2" }, status: { const: "agent_adjudicated_silver" }, ...coreArtifactProperties, preAnnotationDigest: digest, promptReviewFeedbackDigest: digest, sourceWipDigest: digest, selectionPolicy: selectionPolicySchema, reviewPlan: reviewPlanSchema, pairs: { type: "array", minItems: 200, maxItems: 200, items: silverPairSchema }, finalCritic: finalCriticSchema },
+  required: ["schemaVersion", "status", ...coreRequired, "preAnnotationDigest", "promptReviewFeedbackDigest", "sourceWipDigest", "extractionManifest", "extractionManifestDigest", "reviewPlan", "pairs", "finalCritic"],
+  properties: { schemaVersion: { const: "ai-filter-stage-a-silver-manifest-v2" }, status: { const: "agent_adjudicated_silver" }, ...coreArtifactProperties, preAnnotationDigest: digest, promptReviewFeedbackDigest: digest, sourceWipDigest: digest, extractionManifest: extractionManifestSchema, extractionManifestDigest: digest, reviewPlan: reviewPlanSchema, pairs: { type: "array", minItems: 200, maxItems: 200, items: silverPairSchema }, finalCritic: finalCriticSchema },
 } as const;
 
 export const STAGE_A_SILVER_FREEZE_V2_SCHEMA = { $id: "ai-filter-stage-a-silver-freeze-v2", type: "object", additionalProperties: false, required: ["schemaVersion", "manifest", "silverDigest"], properties: { schemaVersion: { const: "ai-filter-stage-a-silver-freeze-v2" }, manifest: { $ref: "ai-filter-stage-a-silver-manifest-v2" }, silverDigest: digest } } as const;
@@ -236,8 +272,8 @@ const goldPairSchema = { type: "object", additionalProperties: false, required: 
 
 export const STAGE_A_GOLD_MANIFEST_V2_SCHEMA = {
   $id: "ai-filter-stage-a-gold-manifest-v2", type: "object", additionalProperties: false,
-  required: ["schemaVersion", "status", "sourceSilverDigest", "auditPolicyDigest", "humanFeedbackDigest", "humanFeedbackId", ...coreRequired, "preAnnotationDigest", "promptReviewFeedbackDigest", "selectionPolicy", "reviewPlan", "pairs", "finalCritic"],
-  properties: { schemaVersion: { const: "ai-filter-stage-a-gold-manifest-v2" }, status: { const: "human_audited_gold" }, sourceSilverDigest: digest, auditPolicyDigest: digest, humanFeedbackDigest: digest, humanFeedbackId: evalId, ...coreArtifactProperties, preAnnotationDigest: digest, promptReviewFeedbackDigest: digest, selectionPolicy: selectionPolicySchema, reviewPlan: reviewPlanSchema, pairs: { type: "array", minItems: 200, maxItems: 200, items: goldPairSchema }, finalCritic: finalCriticSchema },
+  required: ["schemaVersion", "status", "sourceSilverDigest", "auditPolicyDigest", "humanFeedbackDigest", "humanFeedbackId", ...coreRequired, "preAnnotationDigest", "promptReviewFeedbackDigest", "extractionManifest", "extractionManifestDigest", "reviewPlan", "pairs", "finalCritic"],
+  properties: { schemaVersion: { const: "ai-filter-stage-a-gold-manifest-v2" }, status: { const: "human_audited_gold" }, sourceSilverDigest: digest, auditPolicyDigest: digest, humanFeedbackDigest: digest, humanFeedbackId: evalId, ...coreArtifactProperties, preAnnotationDigest: digest, promptReviewFeedbackDigest: digest, extractionManifest: extractionManifestSchema, extractionManifestDigest: digest, reviewPlan: reviewPlanSchema, pairs: { type: "array", minItems: 200, maxItems: 200, items: goldPairSchema }, finalCritic: finalCriticSchema },
 } as const;
 
 export const STAGE_A_GOLD_FREEZE_V2_SCHEMA = { $id: "ai-filter-stage-a-gold-freeze-v2", type: "object", additionalProperties: false, required: ["schemaVersion", "manifest", "goldDigest"], properties: { schemaVersion: { const: "ai-filter-stage-a-gold-freeze-v2" }, manifest: { $ref: "ai-filter-stage-a-gold-manifest-v2" }, goldDigest: digest } } as const;
