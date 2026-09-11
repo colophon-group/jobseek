@@ -117,11 +117,11 @@ export function WatchlistContent({
     <WatchlistViewPage
       detail={data.detail}
       isOwner={data.isOwner}
-      isPaidPlan={data.isPaidPlan}
       limitReached={data.limitReached}
       initialPostings={data.postings}
       initialTotal={data.total}
       yearTotal={data.yearTotal}
+      initialSearchUnavailable={data.searchUnavailable}
       locale={lang}
       resolvedLocations={data.resolvedLocations}
       resolvedOccupations={data.resolvedOccupations}
@@ -129,6 +129,7 @@ export function WatchlistContent({
       resolvedTechnologies={data.resolvedTechnologies}
       jobLanguages={data.jobLanguages}
       languages={data.languages}
+      initialPostingFilters={data.browserPostingFilters ?? null}
     />
   );
 }

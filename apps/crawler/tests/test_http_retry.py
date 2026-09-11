@@ -534,6 +534,29 @@ class TestFetchWithRetry:
 
 
 class TestFetchJsonPageWithRetry:
+    async def test_accepts_explicit_provider_success_status(self):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_json_resp(201, [{"id": "p1"}]))
+
+        out = await fetch_json_page_with_retry(
+            client,
+            "https://api.example.com/jobs",
+            expect_shape=list,
+            success_statuses=(200, 201),
+        )
+
+        assert out == [{"id": "p1"}]
+
+    @pytest.mark.parametrize("statuses", [(), (199,), (300,), (200, 302)])
+    async def test_rejects_invalid_success_statuses(self, statuses: tuple[int, ...]):
+        with pytest.raises(ValueError, match="success_statuses"):
+            await fetch_json_page_with_retry(
+                AsyncMock(),
+                "https://api.example.com/jobs",
+                expect_shape=list,
+                success_statuses=statuses,
+            )
+
     async def test_streams_json_under_caller_byte_cap(self):
         seen: list[httpx.Request] = []
 

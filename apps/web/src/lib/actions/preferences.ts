@@ -2,8 +2,7 @@
 
 import { eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
-import { cacheLife, revalidatePath, updateTag } from "next/cache";
-import { after } from "next/server";
+import { cacheLife, revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { account, user, userPreferences } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -15,15 +14,8 @@ import {
 import { getLanguage } from "@/lib/job-languages";
 import { writeAnonJobLanguagesCookie, readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
 import { getSearchClient } from "@/lib/search/typesense-client";
-import { invalidate as invalidateRedis } from "@/lib/cache";
-import { watchlistCacheTag } from "@/lib/cache-tags";
-import { updateWatchlistField as tsUpdateWatchlistField } from "@/lib/search/typesense-watchlist";
 import { isReservedUsername } from "@/lib/username";
-import { isTrivialWatchlist } from "@/lib/watchlist-utils";
-import { notifyIndexNow } from "@/lib/indexnow";
 import { logExternalError } from "@/lib/safe-external-error";
-import { publicWatchlistRouteStatusCacheKey } from "@/lib/services/public-resource-status";
-import type { WatchlistFilters } from "@/lib/actions/watchlists";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
 
@@ -406,8 +398,7 @@ export async function setPassword(newPassword: string): Promise<{ error?: Prefer
 const USERNAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
 
 /**
- * Rename the current user's username and fan out every cache invalidation
- * the rename invalidates.
+ * Rename the current user's username and invalidate cached sessions.
  *
  * Wraps Better Auth's `/update-user` (which only rewrites the DB row +
  * re-signs the session cookie) with the application-level invalidations
@@ -417,24 +408,8 @@ const USERNAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
  *    value, which Better Auth does NOT rotate on rename) keeps the old
  *    `user.username` for up to 5 min — busted for every active session
  *    token so other devices see the new username promptly.
- *  - The watchlist detail `'use cache'` entries are tagged by
- *    `watchlistCacheTag(userSlug, watchlistSlug)`. Once the user-row
- *    flips both `username` and `display_username` to the new value
- *    (Better Auth's username plugin mirrors `body.username` →
- *    `body.displayUsername` in its before-hook for `/update-user`), the
- *    OLD slug no longer matches the DB and every visit under the old
- *    URL 404s. The cache tags + Redis `public-watchlist:` and proxy route-
- *    status entries keyed on the old slug are busted here so the 404
- *    surfaces immediately instead of being papered over by stale state.
- *    The new route-status key is also removed in case someone probed the
- *    destination username before the rename and cached a negative result.
- *  - Typesense `watchlist` docs carry a denormalised `owner_username`
- *    that's only rewritten when the watchlist itself is mutated. Each
- *    of the user's existing docs is patched here so public watchlist
- *    search reflects the new owner slug without waiting for the next
- *    per-watchlist mutation.
- *  - The sitemap Redis cache holds rendered watchlist URLs for 1h; the
- *    cache is dropped so the next crawl pulls the new slugs.
+ * Legacy username/slug watchlist discovery is retired, so renames must not
+ * publish replacement URLs or patch the old Typesense watchlist corpus.
  *
  * Returns `{ error }` with a human-readable message on validation or
  * uniqueness failures, `{}` on success. No-ops when the requested name
@@ -477,53 +452,6 @@ export async function renameUsername(
 
   if (oldUserRow.username === normalized) return {}; // no-op rename
 
-  // Snapshot every watchlist the user owns with the fields the fanout
-  // needs: `slug` (cache-tag bust + IndexNow URL), `isPublic` +
-  // `filters` + `company_count` (qualifying check for IndexNow — only
-  // public, non-trivial watchlists are indexed by sitemap.ts and
-  // therefore worth pinging on rename). Single SQL with a correlated
-  // subquery so we don't pay N+1 round-trips inside the rename critical
-  // path; the same idea as `_getOwnerInfo` in `watchlists.ts`.
-  const watchlistRows = await db.execute<{
-    [key: string]: unknown;
-    id: string;
-    slug: string;
-    is_public: boolean;
-    filters: WatchlistFilters | null;
-    company_count: number;
-  }>(sql`
-    SELECT
-      w.id, w.slug, w.is_public, w.filters,
-      COALESCE(
-        (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id),
-        0
-      ) AS company_count
-    FROM watchlist w
-    WHERE w.user_id = ${userId}
-  `);
-  type WatchlistSnapshot = {
-    id: string;
-    slug: string;
-    isPublic: boolean;
-    filters: WatchlistFilters;
-    companyCount: number;
-  };
-  const userWatchlists: WatchlistSnapshot[] = (
-    watchlistRows as unknown as Array<{
-      id: string;
-      slug: string;
-      is_public: boolean;
-      filters: WatchlistFilters | null;
-      company_count: number;
-    }>
-  ).map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    isPublic: r.is_public,
-    filters: (r.filters ?? {}) as WatchlistFilters,
-    companyCount: r.company_count,
-  }));
-
   // Delegate the actual DB write + cookie re-sign to Better Auth so the
   // username plugin's uniqueness check and the `usernameValidator`
   // configured in `auth.ts` run authoritatively.
@@ -536,77 +464,6 @@ export async function renameUsername(
     return { error: "username_update_failed" };
   }
 
-  // ── Fanout below this point — best-effort, never rollback the rename ──
-
-  const oldUserSlugs = new Set<string>();
-  if (oldUserRow.username) oldUserSlugs.add(oldUserRow.username);
-  if (oldUserRow.displayUsername) oldUserSlugs.add(oldUserRow.displayUsername);
-
-  // Watchlist detail caches are keyed by whichever userSlug variant the
-  // visitor hit (`username` or `display_username` — see the route
-  // resolver in `getWatchlistByUserAndSlug`). Bust both for every
-  // owned watchlist so the old `/{userSlug}/{watchlistSlug}` cached
-  // render is evicted and the next visit fetches the fresh DB row
-  // (which now 404s — engines should learn it).
-  for (const oldSlug of oldUserSlugs) {
-    for (const wl of userWatchlists) {
-      updateTag(watchlistCacheTag(oldSlug, wl.slug));
-      try {
-        await Promise.all([
-          invalidateRedis(`public-watchlist:${oldSlug}:${wl.slug}`),
-          invalidateRedis(
-            publicWatchlistRouteStatusCacheKey(oldSlug, wl.slug),
-          ),
-        ]);
-      } catch (err) {
-        logExternalError(
-          "error",
-          { service: "redis", operation: "rename_user_watchlist_invalidate" },
-          err,
-        );
-      }
-    }
-  }
-  for (const wl of userWatchlists) {
-    try {
-      await invalidateRedis(
-        publicWatchlistRouteStatusCacheKey(normalized, wl.slug),
-      );
-    } catch (err) {
-      logExternalError(
-        "error",
-        { service: "redis", operation: "rename_user_route_status_invalidate" },
-        err,
-      );
-    }
-  }
-
-  // Refresh Typesense `owner_username` for each existing watchlist doc
-  // so the public watchlist search shows the new `@username` without
-  // waiting for the next per-watchlist mutation. `is_featured` is also
-  // derived from `username.toLowerCase() === "colophongroup"` in the
-  // mutation hooks (`watchlists.ts:158,273,471`) — a rename TO or AWAY
-  // from that handle has to refresh the flag or it stays stale until
-  // the next mutation. Partial update is a no-op if the doc doesn't
-  // exist (private / trivial watchlists). `tsUpdateWatchlistField` is
-  // fire-and-forget; errors are caught + logged inside the helper.
-  const newIsFeatured = normalized === "colophongroup";
-  for (const wl of userWatchlists) {
-    tsUpdateWatchlistField(wl.id, {
-      owner_username: normalized,
-      is_featured: newIsFeatured,
-    });
-  }
-
-  // Sitemap entries embed `display_username ?? username` per row and
-  // are cached for `SITEMAP_TTL_SECONDS` (1h). Drop the cache so the
-  // next sitemap request reflects the new slugs.
-  try {
-    await invalidateRedis("sitemap:watchlists");
-  } catch (err) {
-    logExternalError("error", { service: "redis", operation: "rename_user_sitemap_invalidate" }, err);
-  }
-
   // Bust the Redis-cached `getSession()` blob for every device the user
   // is logged in on. The cookie Better Auth re-signs in
   // `setSessionCookie` keeps the same `session.token` and thus the same
@@ -616,32 +473,6 @@ export async function renameUsername(
   // without duplicating better-call's signing code or maintaining a
   // userId → token index.
   await invalidateAllUserSessionCacheEntries(userId);
-
-  // Ping IndexNow for every qualifying watchlist's NEW + OLD URLs so
-  // engines re-crawl the old slug (which now 404s) and discover the
-  // new slug. Mirrors the qualifying predicate used by other watchlist
-  // mutations (`watchlists.ts:154,291,457`) and the sitemap filter
-  // (`sitemap.ts` — only public, non-trivial watchlists are indexed).
-  // Runs in `after()` so the response returns before the outbound
-  // HTTP call to the IndexNow endpoint. Failures are logged, never
-  // surfaced — IndexNow is best-effort SEO hygiene.
-  after(async () => {
-    const urls: string[] = [];
-    for (const wl of userWatchlists) {
-      if (!wl.isPublic) continue;
-      if (isTrivialWatchlist(wl.filters, wl.companyCount)) continue;
-      urls.push(`/${normalized}/${wl.slug}`);
-      for (const oldSlug of oldUserSlugs) {
-        urls.push(`/${oldSlug}/${wl.slug}`);
-      }
-    }
-    if (urls.length === 0) return;
-    try {
-      await notifyIndexNow(urls);
-    } catch (err) {
-      logExternalError("error", { service: "indexnow", operation: "rename_user_urls" }, err);
-    }
-  });
 
   return {};
 }

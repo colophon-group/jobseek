@@ -20,6 +20,7 @@ from src.core.monitors.api_sniffer import (
     _apply_item_filter,
     _apply_pdf_document_gate,
     _build_item_projector,
+    _careersgovsg_probe_config,
     _configured_post_data,
     _detect_prospective_config,
     _discover_live_url,
@@ -989,6 +990,148 @@ class TestEuropeanAthleticsDirectusConfig:
                 "European Athletics vacancy at Avenue Louis-Ruchonnet 16.",
                 monkeypatch,
             )
+
+
+class TestCareersGovSgDetection:
+    @staticmethod
+    def _hrp_job(**overrides) -> dict:
+        job = {
+            "platform": "hrp",
+            "jobId": "17966644",
+            "postingNo": "005056a3-53e2-1fd1-a78e-660e293e3403",
+            "jobTitle": "Policy Analyst",
+            "jobDescription": "Shape public policy.",
+            "jobResponsibilities": "Research and advise.",
+            "jobRequirements": "Strong analytical skills.",
+            "workArrangement": "Full-time",
+            "employmentType": "Permanent",
+            "startDate": 1_787_184_000_000,
+            "closingDate": None,
+            "agency": "Public Service Division",
+            "agencyId": "0000001308",
+            "category": "Policy",
+            "field": "Policy and Governance",
+            "industry": "Government",
+            "experienceRequired": "03-09 year(s)",
+        }
+        job.update(overrides)
+        return job
+
+    @pytest.mark.asyncio
+    async def test_builds_partitioned_rich_config_without_loading_blocked_portal(self):
+        payload = [
+            self._hrp_job(),
+            {"platform": "greenhouse", "jobId": "4000982201"},
+        ]
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=payload),
+        ) as fetch:
+            config = await _careersgovsg_probe_config(
+                "https://jobs.careers.gov.sg/",
+                AsyncMock(),
+            )
+
+        assert config is not None
+        assert config["json_path"] == "@"
+        assert config["items"] == 1
+        assert config["item_filter"]["include"] == {"platform": ["hrp"]}
+        assert config["fields"]["locations"] == "=Singapore"
+        assert config["url_template"] == (
+            "https://jobs.careers.gov.sg/jobs/hrp/{jobId}/{postingNo}"
+        )
+        assert "raw.githubusercontent.com/opengovsg/careersgovsg-jobs-data" in (config["api_url"])
+        fetch.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_can_handle_uses_public_feed_without_playwright(self):
+        expected = {"api_url": "https://raw.example/jobs.json"}
+        with patch(
+            "src.core.monitors.api_sniffer._careersgovsg_probe_config",
+            AsyncMock(return_value=expected),
+        ):
+            config = await can_handle(
+                "https://jobs.careers.gov.sg/",
+                AsyncMock(),
+                pw=None,
+            )
+
+        assert config is expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://jobs.careers.gov.sg/",
+            "https://jobs.careers.gov.sg/jobs/hrp/1/2",
+            "https://jobs.careers.gov.sg.evil.test/",
+            "https://example.com/",
+        ],
+    )
+    async def test_rejects_non_board_urls_without_fetching(self, url):
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(),
+        ) as fetch:
+            assert await _careersgovsg_probe_config(url, AsyncMock()) is None
+        fetch.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_runtime_filters_other_platforms_and_extracts_hrp_fields(self):
+        payload = [
+            self._hrp_job(),
+            {"platform": "greenhouse", "jobId": "4000982201"},
+        ]
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=payload),
+        ):
+            config = await _careersgovsg_probe_config(
+                "https://jobs.careers.gov.sg/",
+                AsyncMock(),
+            )
+        assert config is not None
+
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://jobs.careers.gov.sg/",
+                    "metadata": config,
+                },
+                client,
+            )
+
+        assert isinstance(jobs, list)
+        assert len(jobs) == 1
+        job = jobs[0]
+        assert job.url == (
+            "https://jobs.careers.gov.sg/jobs/hrp/17966644/005056a3-53e2-1fd1-a78e-660e293e3403"
+        )
+        assert job.title == "Policy Analyst"
+        assert job.locations == ["Singapore"]
+        assert job.employment_type == "full_time"
+        assert job.date_posted == "2026-08-20T00:00:00+00:00"
+        assert "<h2>What you will be working on</h2>" in (job.description or "")
+        assert job.extras == {
+            "responsibilities": ["Research and advise."],
+            "qualifications": ["Strong analytical skills."],
+        }
+
+    @pytest.mark.asyncio
+    async def test_rejects_malformed_hrp_identity(self):
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=[self._hrp_job(postingNo="not-a-guid")]),
+        ):
+            config = await _careersgovsg_probe_config(
+                "https://jobs.careers.gov.sg/",
+                AsyncMock(),
+            )
+
+        assert config is None
 
 
 class TestProspectiveDetection:
@@ -3273,6 +3416,50 @@ class TestDiscoverReplay:
         result = await discover(board, http, pw=mock_pw)
         assert isinstance(result, set)
         assert len(result) == 3
+
+    @pytest.mark.asyncio
+    async def test_replay_uses_matching_navigation_response(self, monkeypatch):
+        """Dynamic RPC bodies can use the response already fetched by the page."""
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.shared.api_sniff import Exchange
+
+        listings = [{"jobPosting": {"Id": f"a3l{i}", "Name": f"Provider {i}"}} for i in range(3)]
+        captured = Exchange(
+            method="POST",
+            url="https://jobs.example.com/s/sfsites/aura?r=9",
+            request_headers={"x-current-context": "fresh"},
+            post_data="message=current",
+            status=200,
+            body={"actions": [{"state": "SUCCESS", "returnValue": listings}]},
+            content_type="application/json",
+            phase="load",
+        )
+        monkeypatch.setattr(
+            api_sniffer_module,
+            "capture_exchanges",
+            AsyncMock(return_value=[captured]),
+        )
+
+        config = {
+            "api_url": "https://jobs.example.com/s/sfsites/aura",
+            "method": "POST",
+            "json_path": "actions[0].returnValue",
+            "browser": True,
+            "url_template": "https://jobs.example.com/s/job-board?id={job_id}",
+            "url_template_fields": {"job_id": "jobPosting.Id"},
+        }
+        board = {"board_url": "https://jobs.example.com/s/job-board", "metadata": config}
+        mock_page = AsyncMock()
+        mock_pw = _make_mock_pw(mock_page)
+
+        result = await discover(board, AsyncMock(), pw=mock_pw)
+
+        assert result == {
+            "https://jobs.example.com/s/job-board?id=a3l0",
+            "https://jobs.example.com/s/job-board?id=a3l1",
+            "https://jobs.example.com/s/job-board?id=a3l2",
+        }
+        mock_page.evaluate.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_no_playwright_returns_empty(self):

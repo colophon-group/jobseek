@@ -1,0 +1,53 @@
+name: Bootstrap Lightpanda renderer host policy
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: Production
+    concurrency:
+      group: deploy-murmur-shim
+      cancel-in-progress: false
+    steps:
+      - name: Refuse non-main production dispatch
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_REF" = refs/heads/main
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Reattest exact main
+        env:
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          test "$remote_main" = "$DISPATCH_SHA"
+
+      - name: Bootstrap persistent host policy
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_MURMUR_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_MURMUR_KNOWN_HOSTS }}
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          bash deploy/lightpanda-renderer/bootstrap-remote.sh "${{ github.sha }}"

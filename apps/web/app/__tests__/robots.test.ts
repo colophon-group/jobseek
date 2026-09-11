@@ -42,6 +42,7 @@ describe("robots", () => {
       expect(disallow).toContain(`/${locale}/sign-in`);
       expect(disallow).toContain(`/${locale}/sign-up`);
       expect(disallow).toContain(`/${locale}/settings`);
+      expect(disallow).toContain(`/${locale}/watchlists`);
     }
   });
 

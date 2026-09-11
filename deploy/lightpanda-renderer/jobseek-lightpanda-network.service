@@ -1,0 +1,20 @@
+[Unit]
+Description=Jobseek Lightpanda renderer network boundary
+Documentation=https://github.com/colophon-group/jobseek/issues/8816
+Requires=docker.service
+After=docker.service systemd-tmpfiles-setup.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/flock --exclusive --wait 300 /home/deploy/.local/share/jobseek-lightpanda/renderer.lock /usr/local/libexec/jobseek-lightpanda-network-policy ensure
+ExecReload=/usr/bin/flock --exclusive --wait 300 /home/deploy/.local/share/jobseek-lightpanda/renderer.lock /usr/local/libexec/jobseek-lightpanda-network-policy ensure
+RemainAfterExit=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/run
+
+[Install]
+WantedBy=multi-user.target

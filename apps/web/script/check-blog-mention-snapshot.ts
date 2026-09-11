@@ -3,8 +3,6 @@
  *
  * Default mode is a CI/build gate. `--write` is the explicit author action
  * after adding a company mention or changing one of the approved CSV rows.
- * Watchlist metadata is editorial and is therefore preserved from the
- * reviewed snapshot; a newly mentioned watchlist must be added there first.
  */
 import { existsSync } from "node:fs";
 import { readFile, readdir, writeFile } from "node:fs/promises";
@@ -35,22 +33,12 @@ type CompanySnapshot = {
   foundedYear: number | null;
   descriptions: Record<(typeof LOCALES)[number], string | null>;
 };
-type WatchlistSnapshot = {
-  owner: string;
-  ownerLabel: string;
-  slug: string;
-  title: string;
-  description: string | null;
-  companyCount: number | null;
-};
 type MentionSnapshot = {
   schemaVersion: 1;
   companies: CompanySnapshot[];
-  watchlists: WatchlistSnapshot[];
 };
 type MentionRefs = {
   companies: Set<string>;
-  watchlists: Set<string>;
 };
 
 function csv(source: string, label: string): CsvRow[] {
@@ -99,8 +87,8 @@ function attributes(source: string): Map<string, string> {
 }
 
 export function collectMentionRefs(sources: readonly string[]): MentionRefs {
-  const refs: MentionRefs = { companies: new Set(), watchlists: new Set() };
-  const tag = /<(Company|CompanyCard|Watchlist|WatchlistCard)\b([^>]*)\/?\s*>/gu;
+  const refs: MentionRefs = { companies: new Set() };
+  const tag = /<(Company|CompanyCard)\b([^>]*)\/?\s*>/gu;
   for (const source of sources) {
     for (const match of source.matchAll(tag)) {
       const name = match[1];
@@ -109,15 +97,7 @@ export function collectMentionRefs(sources: readonly string[]): MentionRefs {
       if (!slug || !SLUG.test(slug)) {
         throw new Error(`<${name}> must have a canonical literal slug`);
       }
-      if (name === "Company" || name === "CompanyCard") {
-        refs.companies.add(slug);
-        continue;
-      }
-      const owner = attrs.get("owner");
-      if (!owner || !SLUG.test(owner)) {
-        throw new Error(`<${name}> must have a canonical literal owner`);
-      }
-      refs.watchlists.add(`${owner}/${slug}`);
+      refs.companies.add(slug);
     }
   }
   return refs;
@@ -143,7 +123,7 @@ export function buildExpectedSnapshot(
   companiesSource: string,
   descriptionsSource: string,
   industriesSource: string,
-  current: MentionSnapshot,
+  _current: MentionSnapshot,
 ): MentionSnapshot {
   const companies = uniqueRows(csv(companiesSource, "companies.csv"), "slug", "companies.csv");
   const descriptions = uniqueRows(
@@ -152,12 +132,6 @@ export function buildExpectedSnapshot(
     "company_descriptions.csv",
   );
   const industries = uniqueRows(csv(industriesSource, "industries.csv"), "id", "industries.csv");
-
-  compareKeys(
-    current.watchlists.map((watchlist) => `${watchlist.owner}/${watchlist.slug}`),
-    refs.watchlists,
-    "watchlist",
-  );
 
   const expectedCompanies = [...refs.companies].sort().map((slug): CompanySnapshot => {
     const row = companies.get(slug);
@@ -182,13 +156,9 @@ export function buildExpectedSnapshot(
     };
   });
 
-  const expectedWatchlists = [...current.watchlists]
-    .sort((a, b) => `${a.owner}/${a.slug}`.localeCompare(`${b.owner}/${b.slug}`));
-
   return {
     schemaVersion: 1,
     companies: expectedCompanies,
-    watchlists: expectedWatchlists,
   };
 }
 
@@ -312,7 +282,7 @@ async function main(): Promise<void> {
 
   await assertOfflineImportGraph(MENTION_COMPONENT_PATH);
   console.log(
-    `[blog-mentions] ${refs.companies.size + refs.watchlists.size} unique entities across ${LOCALES.length} locales; external-call budget=${EXTERNAL_CALL_BUDGET}`,
+    `[blog-mentions] ${refs.companies.size} unique entities across ${LOCALES.length} locales; external-call budget=${EXTERNAL_CALL_BUDGET}`,
   );
 }
 

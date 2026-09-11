@@ -674,15 +674,17 @@ natural-key upserts that preserve existing IDs. Redis scheduling and Typesense
 publication start only after that transaction commits. A local failure therefore
 cannot publish queue work or search documents for uncommitted registry state.
 
-The command never opens `DATABASE_URL`, and the production CLI no longer
-exposes the temporary legacy-mirror selector. It publishes Redis and Typesense
-only after the authoritative local transaction commits.
+The command never opens `DATABASE_URL` or `WEB_DATABASE_URL`, and the
+production CLI no longer exposes the temporary legacy-mirror selector. It
+publishes Redis and Typesense only after the authoritative local transaction
+commits.
 
 Crawler-owned Typesense taxonomy and company documents are read from local
-Postgres. Only watchlist reconciliation crosses the separate web-data boundary,
-using `WEB_DATABASE_URL`. Long-running worker, browser, exporter, and drain
-containers receive neither `WEB_DATABASE_URL` nor `DATABASE_URL`; only explicit
-sync/count-refresh jobs receive the web-owned credential.
+Postgres. Normal sync and count refresh do not cross the separate web-data
+boundary. Long-running worker, browser, exporter, drain, deploy-sync, CSV-sync,
+and scheduled Typesense maintenance receive neither `WEB_DATABASE_URL` nor
+`DATABASE_URL`. A rollback to a retained legacy release may temporarily reuse
+the web credential stored in that legacy release's protected environment.
 
 ### Deferred mirror-code cleanup
 

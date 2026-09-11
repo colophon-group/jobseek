@@ -3,12 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import snapshot from "@/content/blog/mention-snapshot.json";
 import {
   CompanyMention,
-  WatchlistCard,
 } from "@/components/blog/MdxMentions";
 import {
   BLOG_MENTION_EXTERNAL_CALL_BUDGET,
   resolveBlogCompanyMention,
-  resolveBlogWatchlistMention,
 } from "@/lib/blog-mention-snapshot";
 import { withTestEnv } from "@/test-utils/env";
 
@@ -49,25 +47,11 @@ describe("MDX mention snapshot", () => {
     render(CompanyMention({ slug: "not-in-the-approved-snapshot", locale: "en" }));
     expect(screen.getByText("{Company not-in-the-approved-snapshot}")).toBeTruthy();
 
-    const missingCard = await WatchlistCard({
-      owner: "colophongroup",
-      slug: "not-in-the-approved-snapshot",
-      locale: "en",
-    });
-    render(missingCard);
-    expect(
-      screen.getByText("{WatchlistCard colophongroup/not-in-the-approved-snapshot}"),
-    ).toBeTruthy();
   });
 
   it("uses one approved record per unique mention", () => {
     expect(new Set(snapshot.companies.map((company) => company.slug)).size)
       .toBe(snapshot.companies.length);
-    expect(
-      new Set(snapshot.watchlists.map((watchlist) => `${watchlist.owner}/${watchlist.slug}`)).size,
-    ).toBe(snapshot.watchlists.length);
-    expect(resolveBlogWatchlistMention("colophongroup", "maang"))
-      .toMatchObject({ title: "MAANG", companyCount: 5 });
   });
 
   it("makes zero search-plane calls across the full four-locale company set", () => {

@@ -33,6 +33,7 @@ import os
 import sys
 import time
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -44,8 +45,6 @@ HERE = Path(__file__).resolve().parent
 APP_DIR = HERE.parent
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
-
-from src.core.occupation_resolve import match_occupation  # noqa: E402
 
 FETCH_BATCH = 1000
 
@@ -213,8 +212,20 @@ async def _iter_candidate_rows(
             return
 
 
-def _diff_row(row: Any, slug_to_id: dict[str, int]) -> OccupationChange | None:
-    new_slug = match_occupation(row["title"])
+def _diff_row(
+    row: Any,
+    slug_to_id: dict[str, int],
+    *,
+    matcher: Callable[[str], str | None] | None = None,
+) -> OccupationChange | None:
+    if matcher is None:
+        # Direct helper callers still get the production matcher, while CLI
+        # argument registration remains free of its Polars dependency graph.
+        from src.core.occupation_resolve import match_occupation
+
+        matcher = match_occupation
+
+    new_slug = matcher(row["title"])
     new_id = slug_to_id.get(new_slug) if new_slug is not None else None
     old_id = row["old_id"]
     old_slug = row["old_slug"]
@@ -336,6 +347,8 @@ async def run_from_args(args: argparse.Namespace) -> int:
         if args.stats:
             return 0
 
+        from src.core.occupation_resolve import match_occupation
+
         seen = 0
         changed = 0
         written = 0
@@ -357,7 +370,7 @@ async def run_from_args(args: argparse.Namespace) -> int:
                 include_nulls=include_nulls,
             ):
                 seen += 1
-                diff = _diff_row(row, slug_to_id)
+                diff = _diff_row(row, slug_to_id, matcher=match_occupation)
                 if diff is None:
                     continue
                 changed += 1

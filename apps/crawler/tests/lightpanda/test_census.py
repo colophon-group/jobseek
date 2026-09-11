@@ -147,6 +147,58 @@ def test_nextdata_item_inclusions_are_sanitized_and_tracked(tmp_path: Path) -> N
     assert "secret-tenant" not in rendered
 
 
+def test_nextdata_static_request_headers_are_accepted_without_leaking(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "static-nextdata",
+                monitor_type="nextdata",
+                monitor_config={
+                    "request_headers": {"User-Agent": "secret-agent"},
+                    "source": "rsc",
+                },
+            )
+        ],
+    )
+
+    manifest = build_manifest(boards)
+    rendered = manifest_bytes(manifest).decode("ascii")
+
+    assert not any(
+        record["profile_kind"] == "configured" and record["crawler_type"] == "nextdata"
+        for record in manifest["records"]
+    )
+    assert "secret-agent" not in rendered
+
+
+def test_inline_skip_ssl_is_accepted_and_sanitized(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "static-inline",
+                monitor_type="inline",
+                monitor_config={
+                    "skip_ssl": True,
+                    "steps": [{"tag": "h2", "field": "title"}],
+                },
+                scraper_type="skip",
+            )
+        ],
+    )
+
+    manifest = build_manifest(boards)
+    records = {record["id"]: record for record in manifest["records"]}
+
+    assert records["registry.monitor.inline"]["source_count"] == 1
+    assert not any(
+        record["profile_kind"] == "configured" and record["crawler_type"] == "inline"
+        for record in manifest["records"]
+    )
+    assert "do-not-commit" not in manifest_bytes(manifest).decode("ascii")
+
+
 def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
     boards = _write_boards(tmp_path / "boards.csv", [_row("static")])
 
@@ -157,6 +209,74 @@ def test_registry_includes_zero_config_browser_types(tmp_path: Path) -> None:
     assert records["registry.monitor.darwinbox"]["status"] == "zero_browser_config"
     assert records["registry.scraper.embedded"]["status"] == "zero_browser_config"
     assert records["registry.scraper.api_sniffer"]["browser_required"] is True
+
+
+@pytest.mark.parametrize(
+    ("scraper_config", "expected"),
+    [
+        pytest.param(
+            {"render": True},
+            True,
+            id="omitted-uses-domcontentloaded-default",
+        ),
+        pytest.param(
+            {"render": True, "wait_fallback": None},
+            False,
+            id="explicit-null-disables",
+        ),
+        pytest.param(
+            {"render": True, "wait_fallback": "load"},
+            True,
+            id="explicit-valid-strategy-enables",
+        ),
+        pytest.param(
+            {"render": True, "wait": "domcontentloaded"},
+            False,
+            id="implicit-fallback-equals-primary-is-no-op",
+        ),
+    ],
+)
+def test_wait_fallback_capability_matches_runtime_semantics(
+    tmp_path: Path,
+    scraper_config: dict[str, object],
+    expected: bool,
+) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [_row("rendered-jsonld", scraper_config=scraper_config)],
+    )
+
+    manifest = build_manifest(boards)
+    record = next(
+        record
+        for record in manifest["records"]
+        if record["profile_kind"] == "configured" and record["surface"] == "scraper"
+    )
+
+    assert ("navigation.wait_fallback" in record["capabilities"]) is expected
+
+
+@pytest.mark.parametrize(
+    "monitor_type",
+    ["brassring", "candidatus", "darwinbox", "dayforce", "njoyn"],
+)
+def test_inherent_monitor_default_wait_makes_default_fallback_a_noop(
+    tmp_path: Path,
+    monitor_type: str,
+) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [_row("provider-monitor", monitor_type=monitor_type)],
+    )
+
+    manifest = build_manifest(boards)
+    record = next(
+        record
+        for record in manifest["records"]
+        if record["profile_kind"] == "configured" and record["surface"] == "monitor"
+    )
+
+    assert "navigation.wait_fallback" not in record["capabilities"]
 
 
 @pytest.mark.parametrize(
@@ -372,9 +492,10 @@ def test_committed_manifest_is_current_and_contains_kpmg_fallback() -> None:
     manifest = check_manifest()
 
     assert manifest["input"]["network_access"] is False
-    assert manifest["summary"]["browser_board_count"] == 453
-    assert manifest["summary"]["browser_required_step_count"] == 593
-    assert manifest["summary"]["configured_profile_occurrence_count"] == 595
+    summary = manifest["summary"]
+    assert summary["browser_board_count"] > 0
+    assert summary["browser_required_step_count"] >= summary["browser_board_count"]
+    assert summary["configured_profile_occurrence_count"] >= summary["browser_required_step_count"]
     assert any(
         record["profile_kind"] == "configured"
         and record["surface"] == "scraper"

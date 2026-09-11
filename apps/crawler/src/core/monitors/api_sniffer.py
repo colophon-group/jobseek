@@ -96,6 +96,15 @@ _MAX_REFRESH_PAGE_BYTES = 2_000_000
 _MAX_ITEM_FILTER_FIELDS = 16
 _MAX_ITEM_FILTER_VALUES = 100
 _MAX_REQUIRED_PDF_PATTERN_CHARS = 1_024
+_CAREERSGOVSG_BOARD_HOST = "jobs.careers.gov.sg"
+_CAREERSGOVSG_FEED_URL = (
+    "https://raw.githubusercontent.com/opengovsg/"
+    "careersgovsg-jobs-data/refs/heads/main/data/job-listings.json"
+)
+_CAREERSGOVSG_JOB_ID_RE = re.compile(r"^[0-9]+$")
+_CAREERSGOVSG_POSTING_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+)
 
 
 class _DedupePreference(NamedTuple):
@@ -907,6 +916,116 @@ def _configured_post_data(config: dict) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+async def _careersgovsg_probe_config(
+    url: str,
+    client: httpx.AsyncClient,
+) -> dict | None:
+    """Return the public OpenGovSG feed config for the blocked HRP portal."""
+    parsed = urlparse(url)
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.lower() != "https"
+        or parsed.hostname != _CAREERSGOVSG_BOARD_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+        or parsed.path not in ("", "/", "/allvacancies", "/allvacancies/")
+    ):
+        return None
+
+    try:
+        payload = await http_fetch_with_retry(client, "GET", _CAREERSGOVSG_FEED_URL)
+    except PaginationFetchError:
+        return None
+    if not isinstance(payload, list):
+        return None
+
+    hrp_jobs: list[dict] = []
+    for item in payload:
+        if not isinstance(item, dict) or item.get("platform") != "hrp":
+            continue
+        job_id = item.get("jobId")
+        posting_no = item.get("postingNo")
+        if (
+            not isinstance(job_id, str)
+            or _CAREERSGOVSG_JOB_ID_RE.fullmatch(job_id) is None
+            or not isinstance(posting_no, str)
+            or _CAREERSGOVSG_POSTING_RE.fullmatch(posting_no) is None
+            or not isinstance(item.get("jobTitle"), str)
+            or not item["jobTitle"].strip()
+        ):
+            return None
+        hrp_jobs.append(item)
+    if not hrp_jobs:
+        return None
+
+    return {
+        "api_url": _CAREERSGOVSG_FEED_URL,
+        "method": "GET",
+        "json_path": "@",
+        "url_template": ("https://jobs.careers.gov.sg/jobs/hrp/{jobId}/{postingNo}"),
+        "item_filter": {
+            "include": {"platform": ["hrp"]},
+            "require_regex": {
+                "jobId": _CAREERSGOVSG_JOB_ID_RE.pattern,
+                "postingNo": _CAREERSGOVSG_POSTING_RE.pattern,
+            },
+            "dedupe_by": ["platform", "jobId", "postingNo"],
+        },
+        "fields": {
+            "title": "jobTitle",
+            "description": {
+                "concat": [
+                    "=<h2>What the role is</h2>",
+                    "jobDescription",
+                    "=<h2>What you will be working on</h2>",
+                    "jobResponsibilities",
+                    "=<h2>What we are looking for</h2>",
+                    "jobRequirements",
+                ],
+                "separator": "\n\n",
+            },
+            "locations": "=Singapore",
+            "employment_type": {
+                "path": "workArrangement || employmentType",
+                "map": {
+                    "Full-time": "full_time",
+                    "Part-time": "part_time",
+                    "Permanent": "full_time",
+                    "Permanent/Contract": "full_time",
+                    "Fixed Terms": "contract",
+                    "Contract": "contract",
+                    "Internship": "internship",
+                    "Casual": "temporary",
+                    "Traineeship": "internship",
+                },
+            },
+            "date_posted": {
+                "path": "startDate",
+                "timestamp_unit": "milliseconds",
+            },
+            "responsibilities": "jobResponsibilities",
+            "qualifications": "jobRequirements",
+            "valid_through": {
+                "path": "closingDate",
+                "timestamp_unit": "milliseconds",
+            },
+            "metadata.agency": "agency",
+            "metadata.agency_id": "agencyId",
+            "metadata.category": "category",
+            "metadata.field": "field",
+            "metadata.industry": "industry",
+            "metadata.experience_required": "experienceRequired",
+            "metadata.work_arrangement": "workArrangement",
+        },
+        "items": len(hrp_jobs),
+        "score": 100,
+    }
+
+
 async def can_handle(
     url: str,
     client: httpx.AsyncClient,
@@ -923,6 +1042,10 @@ async def can_handle(
     script URL discoveries, and CMS detection results — even when detection
     fails.  This allows callers to show diagnostic output to the user.
     """
+    careersgovsg = await _careersgovsg_probe_config(url, client)
+    if careersgovsg is not None:
+        return careersgovsg
+
     prospective = await _prospective_probe_config(url, client)
     if prospective is not None:
         return prospective
@@ -3138,7 +3261,12 @@ async def _discover_replay(
         else:
             # Navigate to board_url to establish cookies/auth context.
             # Capture exchanges so we can refresh stale auth headers from
-            # the requests the page's own JS fires during load.
+            # the requests the page's own JS fires during load.  Prefer a
+            # matching captured response when its configured JSON path
+            # resolves to job data.  Some public APIs (notably Salesforce
+            # Aura) require a per-navigation request body, so replaying a
+            # stored body is neither reliable nor necessary when the page
+            # already fetched the authoritative listing response.
             api_parsed = urlparse(api_url)
             nav_exchanges = await capture_exchanges(page, api_parsed.netloc)
             try:
@@ -3149,14 +3277,39 @@ async def _discover_replay(
                 log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
             await asyncio.sleep(settle)
 
-            # If the page hit the same API endpoint, use its fresh headers
-            # (auth tokens / session headers refreshed by the page's JS).
+            # A shared endpoint may carry unrelated requests.  Rank matching
+            # exchanges by the number of objects at the configured path so a
+            # Salesforce Aura action envelope containing hundreds of jobs
+            # wins over navigation/filter actions sent to the same URL.
+            matching_exchanges: list[tuple[int, Exchange]] = []
             for ex in nav_exchanges:
                 ex_parsed = urlparse(ex.url)
-                if ex_parsed.netloc == api_parsed.netloc and ex_parsed.path == api_parsed.path:
-                    request_headers = ex.request_headers
-                    log.info("api_sniffer.headers_refreshed", url=ex.url[:80])
-                    break
+                if (
+                    ex.method.upper() != method.upper()
+                    or ex_parsed.netloc != api_parsed.netloc
+                    or ex_parsed.path != api_parsed.path
+                ):
+                    continue
+                resolved = ex.body if json_path == "$" else resolve_path(ex.body, json_path)
+                if isinstance(resolved, list):
+                    score = sum(isinstance(item, dict) for item in resolved)
+                elif isinstance(resolved, dict):
+                    score = 1
+                else:
+                    score = 0
+                matching_exchanges.append((score, ex))
+
+            if matching_exchanges:
+                _score, captured_exchange = max(matching_exchanges, key=lambda pair: pair[0])
+                request_headers = captured_exchange.request_headers
+                log.info("api_sniffer.headers_refreshed", url=captured_exchange.url[:80])
+                if _score > 0:
+                    captured_data = captured_exchange.body
+                    log.info(
+                        "api_sniffer.navigation_response_captured",
+                        url=captured_exchange.url[:80],
+                        items=_score,
+                    )
 
         # Replay the API call — try browser first, fall back to HTTP
         headers = clean_headers(request_headers)

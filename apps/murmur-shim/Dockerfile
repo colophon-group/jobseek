@@ -177,9 +177,10 @@ COPY apps/murmur-shim/ ./apps/murmur-shim/
 # `apps/web/src/db/schema.ts` is re-exported by the shim's
 # `src/db/schema.ts`; Next's standalone tracer follows the relative
 # path at build time and inlines the table definitions into a server
-# chunk. We only need that one file from web — copying it explicitly
-# avoids dragging the rest of the web app into the build context.
+# chunk. Copy the schema and its local notification-contract dependency
+# explicitly to avoid dragging the rest of the web app into the build.
 COPY apps/web/src/db/schema.ts ./apps/web/src/db/schema.ts
+COPY apps/web/src/lib/notifications/contracts.ts ./apps/web/src/lib/notifications/contracts.ts
 
 # Build the standalone Next.js bundle.
 RUN pnpm --filter @jobseek/murmur-shim build

@@ -4,7 +4,7 @@ import {
   getPublicWatchlistPostings,
   getWatchlistPostings,
   getWatchlistPostingYearCount,
-  type WatchlistDetail,
+  type WatchlistViewDetail,
   type WatchlistPostingEntry,
 } from "@/lib/services/watchlists";
 import { resolveJobLanguages } from "@/lib/job-languages";
@@ -21,14 +21,15 @@ import { compileWatchlistMatcherSources } from "@/lib/services/watchlist-matcher
 export const WATCHLIST_SEARCH_BUDGET_MS = 6_000;
 
 export interface WatchlistPageData {
-  detail: WatchlistDetail;
+  detail: WatchlistViewDetail;
   isOwner: boolean;
-  isPaidPlan: boolean;
   limitReached: boolean;
   postings: WatchlistPostingEntry[];
   total: number;
   /** Count of postings first seen in the last year matching the same filters. */
   yearTotal: number;
+  /** Search failed or timed out; zero counts in this payload are placeholders. */
+  searchUnavailable: boolean;
   resolvedLocations: {
     id: number;
     slug: string;
@@ -46,10 +47,9 @@ export interface WatchlistPageData {
 }
 
 export type BuildWatchlistPageDataParams = {
-  detail: WatchlistDetail;
+  detail: WatchlistViewDetail;
   locale: string;
   isOwner: boolean;
-  isPaidPlan: boolean;
   limitReached: boolean;
   jobLanguages: string[];
   publicSnapshot: boolean;
@@ -61,11 +61,11 @@ function degradedWatchlistPageData(
   return {
     detail: params.detail,
     isOwner: params.isOwner,
-    isPaidPlan: params.isPaidPlan,
     limitReached: params.limitReached,
     postings: [],
     total: 0,
     yearTotal: 0,
+    searchUnavailable: true,
     resolvedLocations: [],
     resolvedOccupations: [],
     resolvedSeniorities: [],
@@ -84,7 +84,6 @@ async function buildWatchlistPageDataUnbounded(
     detail,
     locale,
     isOwner,
-    isPaidPlan,
     limitReached,
     jobLanguages,
     publicSnapshot,
@@ -113,6 +112,7 @@ async function buildWatchlistPageDataUnbounded(
   const sharedCountsParams = {
     ...browserPostingFilters,
     abortSignal,
+    failOnUnavailable: true,
   };
   const [{ postings, total }, yearTotal] = await Promise.all([
     (publicSnapshot ? getPublicWatchlistPostings : getWatchlistPostings)({
@@ -126,11 +126,11 @@ async function buildWatchlistPageDataUnbounded(
   return {
     detail,
     isOwner,
-    isPaidPlan,
     limitReached,
     postings,
     total,
     yearTotal,
+    searchUnavailable: false,
     resolvedLocations,
     resolvedOccupations,
     resolvedSeniorities,
@@ -179,14 +179,13 @@ export async function buildWatchlistPageData(
 
 /** Anonymous, cache-safe initial data for an authoritative public row. */
 export function fetchPublicWatchlistPageData(params: {
-  detail: WatchlistDetail;
+  detail: WatchlistViewDetail;
   locale: string;
 }): Promise<WatchlistPageData> {
   return buildWatchlistPageData({
     detail: params.detail,
     locale: params.locale,
     isOwner: false,
-    isPaidPlan: false,
     limitReached: true,
     jobLanguages: [],
     publicSnapshot: true,

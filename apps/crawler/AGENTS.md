@@ -173,7 +173,8 @@ uv run crawler reconcile               # Read-only Typesense reconciliation slic
 uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs (host timer uses this)
 uv run crawler reconcile --repair --full --target typesense  # Operator full remaining target cycle
 uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense (manual; workflow_dispatch in .github/workflows/crawler-scheduled-maintenance.yml)
-uv run crawler refresh-typesense       # Refresh counts + reconcile WEB_DATABASE_URL watchlists (every 4h and after sync)
+uv run crawler refresh-typesense       # Refresh taxonomy/company counts (every 4h and after sync)
+uv run crawler purge-retired-watchlist-index --confirm  # One-time purge of legacy public-discovery docs
 uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (RETIRED in #2821 — kept for revival; no scheduler invokes it)
 uv run crawler retry-stalled-scrapes   # Reset next_scrape_at for transient-3-strike-stalled postings (#2738; see docs/03-crawler-architecture.md "Delisting model" section 5)
 uv run crawler retry-stalled-scrapes --dry-run  # Report the count without writing
@@ -469,13 +470,9 @@ For agents running the guided setup workflow (`ws task --issue ...`), behavior i
 
 To change crawler setup agent behavior, edit those files. AGENTS/docs updates alone do not affect the runtime instruction stream.
 
-Codex is the preferred new automation surface. Use repo skills from
-`.agents/skills` when present, the Hetzner Codex runner for recurring
-scheduled routines, and `codex exec --json` for traceable bounded recovery.
-Claude-compatible prompts may remain as alternate paths, but do not describe
-GitHub Actions automation execution as ChatGPT subscription billed and do not
-re-add GitHub Actions that run automations now owned by the Hetzner runner.
-GitHub Actions may still deploy the Hetzner runner host surface.
+Use repo skills from `.agents/skills` when present. The Hetzner Codex runner
+schedules recurring production routines, `codex exec --json` supports
+traceable bounded recovery, and GitHub Actions deploys the runner host surface.
 
 ## Decision Mindset
 
@@ -784,8 +781,11 @@ uv run python ../../scripts/typesense-setup.py [--force]
 # Full re-index
 uv run crawler backfill-typesense
 
-# Refresh counts + reconcile watchlists
+# Refresh taxonomy/company counts
 uv run crawler refresh-typesense
+
+# One-time cleanup after retiring public watchlist discovery
+uv run crawler purge-retired-watchlist-index --confirm
 ```
 
 **Grafana metrics**: `typesense_export_docs_total`, `typesense_export_lag`, `typesense_export_duration_seconds`, `typesense_healthy` (0/1), `typesense_memory_bytes`, and durable host metrics under `jobseek_cross_store_reconciliation_*`. Posting reconciliation runs from `jobseek-crawler-reconciliation.timer`, not from the exporter process or GitHub cron; see `docs/03-crawler-architecture.md#cross-store-reconciliation`.

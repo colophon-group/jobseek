@@ -25,10 +25,11 @@ declare module "vitest" {
  *      only falls back to stdout when artifacts are unavailable.
  *
  *   2. Classification drift (the load-bearing assertion). For each
- *      must-stay-cacheable route we encode the EXPECTED glyph — `◐`
- *      (Partial Prerender) or `○` (Static) — and assert the build
- *      classified it that way. The build already fails on `ƒ`; what
- *      it does not catch is e.g. an `◐` route accidentally collapsing
+ *      route whose rendering boundary is intentional we encode the EXPECTED
+ *      glyph — `ƒ` (Dynamic), `◐` (Partial Prerender), or `○` (Static) —
+ *      and assert the build classified it that way. Dynamic entries are
+ *      limited to deliberately request-bound private handlers. For cached
+ *      pages, the build does not catch e.g. an `◐` route accidentally collapsing
  *      to `○` (lost a `<Suspense>` boundary, lost a dynamic island —
  *      no longer streams personalised data) or vice-versa (`○` legal
  *      page accidentally pulled in a server-side fetch). Both shapes
@@ -49,7 +50,8 @@ declare module "vitest" {
 type Classification = "static" | "partial" | "dynamic";
 
 /**
- * Routes that must stay cacheable, plus the EXPECTED Next 16 glyph.
+ * Routes whose rendering boundary is intentional, plus the EXPECTED Next 16
+ * glyph.
  *
  * - `partial` (◐ Partial Prerender) is the right answer for pages that
  *   stream request-specific content or async subtrees inside a static shell
@@ -62,6 +64,9 @@ type Classification = "static" | "partial" | "dynamic";
  *   locale-parametrized and prerendered, but do not read request state at
  *   render time.
  *
+ * - `dynamic` (ƒ Dynamic) is reserved here for request-bound private routes
+ *   that read the authenticated session and must never produce a shared shell.
+ *
  * If a route is intentionally removed (e.g. a marketing page becomes
  * auth-gated), update this map AND link the justification in the PR —
  * silent drop is a CPU-cost regression, see #2243.
@@ -70,9 +75,12 @@ const EXPECTED_CLASSIFICATIONS: ReadonlyMap<string, Classification> = new Map([
   // Explore intentionally prerenders the anonymous/no-filter result into a
   // pure static shell; personalized/filter variants refetch client-side.
   ["/[lang]/explore", "static"],
-  // Detail pages stream request-specific or async subtrees inside a static shell.
+  // Public detail pages stream request-specific or async subtrees inside a
+  // static shell. The retired watchlist detail URL is now a bounded private
+  // compatibility Route Handler: it authenticates, performs an owner-only
+  // lookup, and returns only private/no-store responses, so it must be dynamic.
   ["/[lang]/company/[slug]", "partial"],
-  ["/[lang]/[userSlug]/[watchlistSlug]", "partial"],
+  ["/[lang]/[userSlug]/[watchlistSlug]", "dynamic"],
   ["/[lang]/blog/[slug]", "partial"],
   // Blog index and public marketing surfaces are pure prerendered content.
   ["/[lang]/blog", "static"],
@@ -258,6 +266,19 @@ function driftDiagnostic(route: string, expected: Classification, actual: Classi
       "must move into a `<Suspense>`-wrapped child or a server action fired",
       "from the client. See `apps/web/docs/cache-components.md` and #2243.",
     );
+  } else if (expected === "dynamic") {
+    lines.push(
+      "This compatibility route must stay request-bound: it reads the authenticated",
+      "session, performs an exact owner-only lookup, and returns private/no-store",
+      "responses. A prerendered or partially prerendered shell risks shared-cache",
+      "participation for a route whose existence and redirect are private.",
+      "",
+      "Canonical fix: keep runtime authentication and ownership validation on the",
+      "Route Handler path, do not add a `'use cache'` boundary, and retain",
+      "`Cache-Control: private, no-store` on both 404 and redirect responses.",
+      "If the private compatibility route is intentionally retired or redesigned,",
+      "update EXPECTED_CLASSIFICATIONS and link that privacy decision in the PR.",
+    );
   } else if (expected === "partial" && actual === "static") {
     lines.push(
       "A `◐ → ○` drift means the page lost a dynamic island — the build no",
@@ -299,7 +320,7 @@ function missingRouteDiagnostic(route: string, expected: Classification): string
     `but EXPECTED_CLASSIFICATIONS pins it to ${CLASSIFICATION_LABEL[expected]}.`,
     "",
     "Either the route was renamed/removed in the source tree (in which case",
-    "remove it from EXPECTED_CLASSIFICATIONS — the must-stay-cacheable list",
+    "remove it from EXPECTED_CLASSIFICATIONS — the intentional-boundary list",
     "rots silently if entries no longer match real routes), or the build",
     "never emitted usable route artifacts/summary (look for build failures earlier in the log).",
     "",

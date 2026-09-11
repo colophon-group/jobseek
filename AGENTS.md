@@ -66,12 +66,13 @@ uv run crawler run                # Run HTTP worker (claims from Redis simple qu
 uv run crawler run-browser        # Run browser worker (claims from Redis browser queues)
 uv run crawler export             # Run CDC exporter (local Postgres -> Typesense)
 uv run crawler drain              # Run R2 description uploader
-uv run crawler sync               # Sync CSVs to local/web Postgres + Redis + Typesense
+uv run crawler sync               # Sync CSVs to local Postgres + Redis + Typesense
 uv run crawler reconcile          # Read-only deterministic cross-store slice
 uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs
 uv run crawler board <slug>       # Process single board (debug)
 uv run crawler backfill-typesense # Full re-index of job_posting to Typesense
-uv run crawler refresh-typesense  # Refresh Typesense counts + reconcile watchlists
+uv run crawler refresh-typesense  # Refresh Typesense taxonomy/company counts
+uv run crawler purge-retired-watchlist-index --confirm  # One-time legacy discovery purge
 uv run crawler notify-indexnow    # Push changed company URLs to IndexNow (RETIRED in #2821 — companies left the index; module preserved, not scheduled)
 
 # Labeller subsystem (daily gold-dataset routine — spec in docs/15-data-sampling-routine.md)
@@ -86,9 +87,8 @@ uv run labeller upload --date <date>
 ## Ops routines (Codex-first, Claude-compatible)
 
 Scheduled ops routines are documented as repo runbooks and skills. The
-Hetzner Codex runner is the only production scheduler; do not add GitHub
-Actions or workstation schedules that execute these Hetzner-owned
-automations. CI/CD may still deploy the Hetzner runner host surface.
+Hetzner Codex runner is the production scheduler, and CI/CD deploys its host
+surface.
 `codex exec --json` is the traceable noninteractive surface for bounded
 manual recovery and agent trace collection. Legacy
 Claude Code slash commands remain compatibility fallbacks where present.
@@ -151,7 +151,7 @@ Developer guidance for agent reasoning style lives in [docs/agents.md](docs/agen
 
 ## Typesense (Search Engine)
 
-All search, typeahead, browse-all modals, watchlist search, and the **company detail page** are served by Typesense. Supabase Postgres still handles posting detail (full description blob), user/auth data, watchlist mutations, and acts as a graceful fallback when Typesense is unreachable.
+Job search, typeahead, browse-all modals, watchlist posting queries, and the **company detail page** are served by active Typesense collections. Shared-watchlist metadata is resolved exactly from the web database; the retired `watchlist` discovery collection is not read. Supabase Postgres still handles posting detail (full description blob), user/auth data, and watchlist mutations.
 
 See [docs/11-typesense.md](docs/11-typesense.md) for full deployment details, including the read-paths summary.
 
@@ -174,12 +174,12 @@ The bootstrap credential and five generated keys are separated by consumer
 | `TYPESENSE_OPERATIONS_KEY` | `collections:*`, `documents:*`, `aliases:*`, `metrics.json:list` | Exporter, sync, backfill, setup, reconciliation, health metrics |
 | `TYPESENSE_BACKUP_KEY` | Generated wildcard key (Typesense 27.1 snapshot limitation) | Root-owned backup service only |
 | `TYPESENSE_SEARCH_KEY` | `documents:search` + `documents:get` on all collections | Web app server-side search (via Cloudflare tunnel) |
-| `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` on all collections only | Web app `/api/typesense-key` route; mints scoped keys for direct browser -> Typesense calls |
-| `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` only | Web app watchlist mutations |
+| `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` on the six active collections only (never `watchlist`) | Web app `/api/typesense-key` route; mints scoped keys for direct browser -> Typesense calls |
+| `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` only | Transitional deletion of legacy watchlist documents |
 
 ### Collections
 
-7 collections, all with versioned names + aliases (e.g., `job_posting_v1` <- `job_posting` alias):
+Six active collections use versioned names + aliases (e.g., `job_posting_v1` <- `job_posting` alias). The retired `watchlist` compatibility shell remains empty:
 
 `job_posting`, `location`, `occupation`, `seniority`, `technology`, `company`, `watchlist`
 
@@ -211,11 +211,11 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 - **Exporter** (CDC): database-triggered shared writer markers + a non-blocking oldest-writer transaction floor prevent commit-order skips without starving under continuous writes; the Typesense cursor advances independently of the local writer floor, with concurrent document upserts
 - **Sync**: taxonomy collections (location, occupation, seniority, technology) and the `company` collection populated after CSV sync. Company docs include extended fields (logo, website, employee_count_range, founded_year) and per-locale variants (`description_{de,fr,it}`, `industry_name_{de,fr,it}`) for the company detail page reader. Handles taxonomy rename detection
 - **Reconciliation**: deploy-independent Hetzner systemd timer; durable 256-partition Typesense comparison and fail-closed verified repair from local truth
-- **refresh-typesense**: periodic count refresh for taxonomy/company collections + watchlist reconciliation. Runs inline at every deploy/CSV sync (via `crawler sync`) and every 4h via `.github/workflows/crawler-scheduled-maintenance.yml` out-of-band
+- **refresh-typesense**: periodic count refresh for taxonomy/company collections. Runs inline at every deploy/CSV sync (via `crawler sync`) and every 4h via `.github/workflows/crawler-scheduled-maintenance.yml` out-of-band. It never republishes the retired watchlist index; purge legacy documents once with `crawler purge-retired-watchlist-index --confirm` after the web writer retirement is deployed.
 
 ### Web App Integration
 
-`TypesenseSearchProvider` replaces `PostgresSearchProvider` (one-shot cutover). The company detail page (`getCompanyBySlug`) reads from the `company` collection, falling back to Supabase on Typesense error or 0 hits. Graceful degradation: all errors return empty results, Postgres fallback for watchlist write functions. No Redis cache on main search (Typesense is fast enough); cached for unfiltered homepage (60s), popular watchlists (120s), and company detail (`ttl: 600`, skip-null to avoid poisoning brand-new slugs).
+`TypesenseSearchProvider` replaces `PostgresSearchProvider` (one-shot cutover). The company detail page (`getCompanyBySlug`) reads from the `company` collection, falling back to Supabase on Typesense error or 0 hits. No Redis cache is used on main search; the unfiltered homepage is cached for 60s and company detail for 600s (skip-null to avoid poisoning brand-new slugs).
 
 ## SEO and IndexNow
 

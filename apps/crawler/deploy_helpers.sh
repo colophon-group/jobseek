@@ -39,7 +39,7 @@ pull_deploy_images() {
   # crawler images share layers; pulling the whole Compose project in parallel
   # can race inside containerd while both downloads commit the same blob.
   # The remaining services that use the slim image reuse worker-1's local tag.
-  local services=(worker-1 browser-1 redis alloy murmur-shim)
+  local services=(worker-1 browser-1 redis alloy)
   for service in "${services[@]}"; do
     pull_compose_service_with_retry "$service" || return $?
   done

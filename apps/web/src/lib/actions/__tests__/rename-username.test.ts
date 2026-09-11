@@ -216,26 +216,10 @@ describe("renameUsername", () => {
     expect(mocks.invalidateAllUserSessionCacheEntries).not.toHaveBeenCalled();
   });
 
-  it("fans out cache invalidations against the OLD slug for each watchlist", async () => {
+  it("does not republish retired watchlist discovery during a rename", async () => {
     mocks.getSession.mockResolvedValue({ user: { id: "user-1" } });
     mocks.selectQueue.push([
-      { username: "old", displayUsername: "old" }, // user row
-    ]);
-    mocks.executeQueue.push([
-      {
-        id: "wl-a",
-        slug: "alpha",
-        is_public: true,
-        filters: { keywords: ["k1", "k2"] },
-        company_count: 5,
-      },
-      {
-        id: "wl-b",
-        slug: "beta",
-        is_public: true,
-        filters: { keywords: ["k1", "k2"] },
-        company_count: 5,
-      },
+      { username: "old", displayUsername: "old" },
     ]);
     const { renameUsername } = await import("../preferences");
 
@@ -248,117 +232,13 @@ describe("renameUsername", () => {
       expect.objectContaining({ body: { username: "new" } }),
     );
 
-    // updateTag was called for the OLD user slug + each watchlist slug.
-    expect(mocks.updateTag).toHaveBeenCalledWith("watchlist:old:alpha");
-    expect(mocks.updateTag).toHaveBeenCalledWith("watchlist:old:beta");
-
-    // Redis public-watchlist:OLD:slug invalidations.
-    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
-      "public-watchlist:old:alpha",
-    );
-    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
-      "public-watchlist:old:beta",
-    );
-    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
-      "public-resource-status:watchlist:old:alpha",
-    );
-    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
-      "public-resource-status:watchlist:old:beta",
-    );
-    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
-      "public-resource-status:watchlist:new:alpha",
-    );
-    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
-      "public-resource-status:watchlist:new:beta",
-    );
-
-    // Sitemap Redis bust.
-    expect(mocks.invalidateRedis).toHaveBeenCalledWith("sitemap:watchlists");
-
-    // Typesense docs patched with NEW owner_username and is_featured
-    // (derived from `normalized === "colophongroup"`, false here).
-    expect(mocks.tsUpdateWatchlistField).toHaveBeenCalledWith("wl-a", {
-      owner_username: "new",
-      is_featured: false,
-    });
-    expect(mocks.tsUpdateWatchlistField).toHaveBeenCalledWith("wl-b", {
-      owner_username: "new",
-      is_featured: false,
-    });
-
-    // Multi-device session cache bust.
     expect(mocks.invalidateAllUserSessionCacheEntries).toHaveBeenCalledWith(
       "user-1",
     );
-
-    // IndexNow ping (after()): new + old URLs for both qualifying watchlists.
-    expect(mocks.notifyIndexNow).toHaveBeenCalledTimes(1);
-    const indexNowUrls = mocks.notifyIndexNow.mock.calls[0][0] as string[];
-    expect(indexNowUrls).toEqual(
-      expect.arrayContaining([
-        "/new/alpha",
-        "/old/alpha",
-        "/new/beta",
-        "/old/beta",
-      ]),
-    );
-  });
-
-  it("refreshes Typesense is_featured when renaming TO the featured handle", async () => {
-    mocks.getSession.mockResolvedValue({ user: { id: "u-feat" } });
-    mocks.selectQueue.push([
-      { username: "old", displayUsername: null },
-    ]);
-    mocks.executeQueue.push([
-      {
-        id: "wl-1",
-        slug: "s",
-        is_public: false,
-        filters: null,
-        company_count: 0,
-      },
-    ]);
-    const { renameUsername } = await import("../preferences");
-
-    await renameUsername("colophongroup");
-
-    expect(mocks.tsUpdateWatchlistField).toHaveBeenCalledWith("wl-1", {
-      owner_username: "colophongroup",
-      is_featured: true,
-    });
-  });
-
-  it("busts BOTH username and displayUsername variants when they differ", async () => {
-    mocks.getSession.mockResolvedValue({ user: { id: "user-2" } });
-    mocks.selectQueue.push([
-      { username: "old-canonical", displayUsername: "old-display" },
-    ]);
-    mocks.executeQueue.push([
-      {
-        id: "wl-x",
-        slug: "x",
-        is_public: false,
-        filters: null,
-        company_count: 0,
-      },
-    ]);
-    const { renameUsername } = await import("../preferences");
-
-    await renameUsername("new");
-
-    // Both old slug variants get their cache tag busted — the route
-    // resolver matches `u.username = X OR u.display_username = X`, so
-    // either form could be the live URL segment.
-    expect(mocks.updateTag).toHaveBeenCalledWith(
-      "watchlist:old-canonical:x",
-    );
-    expect(mocks.updateTag).toHaveBeenCalledWith("watchlist:old-display:x");
-    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
-      "public-watchlist:old-canonical:x",
-    );
-    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
-      "public-watchlist:old-display:x",
-    );
+    expect(mocks.updateTag).not.toHaveBeenCalled();
+    expect(mocks.invalidateRedis).not.toHaveBeenCalled();
+    expect(mocks.tsUpdateWatchlistField).not.toHaveBeenCalled();
+    expect(mocks.notifyIndexNow).not.toHaveBeenCalled();
   });
 
   it("normalizes input (lowercase + trim) before validation and rename", async () => {
@@ -398,7 +278,7 @@ describe("renameUsername", () => {
     expect(mocks.notifyIndexNow).not.toHaveBeenCalled();
   });
 
-  it("succeeds with no watchlists (still busts session + sitemap)", async () => {
+  it("succeeds with no watchlists and still busts the session cache", async () => {
     mocks.getSession.mockResolvedValue({ user: { id: "u5" } });
     mocks.selectQueue.push([{ username: "old", displayUsername: null }]);
     mocks.executeQueue.push([]); // no watchlists
@@ -408,135 +288,29 @@ describe("renameUsername", () => {
     expect(result).toEqual({});
     expect(mocks.updateUser).toHaveBeenCalled();
     expect(mocks.tsUpdateWatchlistField).not.toHaveBeenCalled();
-    // updateTag never called for per-watchlist tags, but sitemap and
-    // session cache busts still run.
+    // No per-watchlist cache tags exist, but the session cache bust still runs.
     expect(mocks.updateTag).not.toHaveBeenCalled();
-    expect(mocks.invalidateRedis).toHaveBeenCalledWith("sitemap:watchlists");
     expect(mocks.invalidateAllUserSessionCacheEntries).toHaveBeenCalledWith(
       "u5",
     );
   });
 
-  it("redis invalidate failure is logged but does not fail the rename", async () => {
-    mocks.getSession.mockResolvedValue({ user: { id: "u6" } });
-    mocks.selectQueue.push([{ username: "old", displayUsername: null }]);
-    mocks.executeQueue.push([
-      {
-        id: "wl-1",
-        slug: "s",
-        is_public: false,
-        filters: null,
-        company_count: 0,
-      },
-    ]);
-    mocks.invalidateRedis.mockRejectedValue(new Error("redis down"));
-    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { renameUsername } = await import("../preferences");
-
-    const result = await renameUsername("new");
-    expect(result).toEqual({});
-    expect(errSpy).toHaveBeenCalled();
-    errSpy.mockRestore();
-  });
-
-  it("skips IndexNow for private or trivial watchlists", async () => {
-    mocks.getSession.mockResolvedValue({ user: { id: "u-idx" } });
-    mocks.selectQueue.push([{ username: "old", displayUsername: null }]);
-    mocks.executeQueue.push([
-      // Private — skip.
-      {
-        id: "wl-private",
-        slug: "private",
-        is_public: false,
-        filters: { keywords: ["a", "b"] },
-        company_count: 5,
-      },
-      // Public but trivial (mocked predicate returns true for it) — skip.
-      {
-        id: "wl-trivial",
-        slug: "trivial",
-        is_public: true,
-        filters: {},
-        company_count: 0,
-      },
-      // Public + non-trivial — ping.
-      {
-        id: "wl-good",
-        slug: "good",
-        is_public: true,
-        filters: { keywords: ["a", "b"] },
-        company_count: 4,
-      },
-    ]);
-    // Mark only the "trivial" row as trivial.
-    mocks.isTrivialWatchlist.mockImplementation((_filters, companyCount) =>
-      companyCount === 0,
-    );
-    const { renameUsername } = await import("../preferences");
-
-    await renameUsername("new");
-
-    expect(mocks.notifyIndexNow).toHaveBeenCalledTimes(1);
-    const urls = mocks.notifyIndexNow.mock.calls[0][0] as string[];
-    expect(urls).toEqual(["/new/good", "/old/good"]);
-    expect(urls).not.toEqual(
-      expect.arrayContaining(["/new/private", "/new/trivial"]),
-    );
-  });
-
-  it("skips notifyIndexNow entirely when no qualifying watchlists exist", async () => {
-    mocks.getSession.mockResolvedValue({ user: { id: "u-empty" } });
-    mocks.selectQueue.push([{ username: "old", displayUsername: null }]);
-    mocks.executeQueue.push([
-      {
-        id: "wl-1",
-        slug: "s",
-        is_public: false,
-        filters: null,
-        company_count: 0,
-      },
-    ]);
-    const { renameUsername } = await import("../preferences");
-
-    await renameUsername("new");
-
-    expect(mocks.notifyIndexNow).not.toHaveBeenCalled();
-  });
-
-  it("calls auth.api.updateUser BEFORE any cache fanout (ordering)", async () => {
+  it("invalidates sessions only after Better Auth commits the rename", async () => {
     mocks.getSession.mockResolvedValue({ user: { id: "u-order" } });
     mocks.selectQueue.push([{ username: "old", displayUsername: null }]);
-    mocks.executeQueue.push([
-      {
-        id: "wl-1",
-        slug: "s",
-        is_public: true,
-        filters: { keywords: ["a", "b"] },
-        company_count: 3,
-      },
-    ]);
     const { renameUsername } = await import("../preferences");
 
     await renameUsername("new");
 
-    // `invocationCallOrder` is monotonically increasing across all
-    // mocks in the run — comparing them enforces the sequence:
-    // (1) Better Auth runs FIRST (so the DB row is flipped under the
-    // user's nose), then (2) the per-watchlist cache tags / Redis /
-    // Typesense / IndexNow run against the snapshotted OLD slug. A
-    // future refactor that reorders the fanout pre-rename would break
-    // the snapshot-of-OLD-row contract and this assertion would catch
-    // it.
     const updateUserOrder = mocks.updateUser.mock.invocationCallOrder[0];
-    const updateTagOrder = mocks.updateTag.mock.invocationCallOrder[0];
     const sessionBustOrder =
       mocks.invalidateAllUserSessionCacheEntries.mock.invocationCallOrder[0];
-    const tsUpsertOrder =
-      mocks.tsUpdateWatchlistField.mock.invocationCallOrder[0];
 
     expect(updateUserOrder).toBeDefined();
-    expect(updateTagOrder).toBeGreaterThan(updateUserOrder);
-    expect(tsUpsertOrder).toBeGreaterThan(updateUserOrder);
     expect(sessionBustOrder).toBeGreaterThan(updateUserOrder);
+    expect(mocks.updateTag).not.toHaveBeenCalled();
+    expect(mocks.invalidateRedis).not.toHaveBeenCalled();
+    expect(mocks.tsUpdateWatchlistField).not.toHaveBeenCalled();
+    expect(mocks.notifyIndexNow).not.toHaveBeenCalled();
   });
 });

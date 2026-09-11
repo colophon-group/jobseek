@@ -1,0 +1,55 @@
+{
+  "client_faults": [
+    {
+      "id": "transport_before_execution",
+      "lease_lost": true,
+      "server_mutated": false,
+      "transition": ["transport-error", "redis_error"]
+    },
+    {
+      "id": "invalid_success_reply",
+      "lease_lost": true,
+      "server_mutated": false,
+      "transition": ["transport-error", "invalid_redis_reply"]
+    },
+    {
+      "id": "ambiguous_transport_after_execution",
+      "lease_lost": true,
+      "server_mutated": true,
+      "transition": ["transport-error", "redis_error"]
+    }
+  ],
+  "format": "jobseek.queue.v2.redis-lifecycle/v1",
+  "numeric_max": 9999999999999,
+  "route": {
+    "engine_owner": "go",
+    "routing_epoch": 7000000000001,
+    "shard_id": "shared-shard"
+  },
+  "steps": [
+    {"action": "initialize", "expect": ["accepted", "initialized"], "id": "initialize"},
+    {"action": "register", "expect": ["accepted", "registered"], "id": "register-fence", "revision": 8000000000001, "task_id": "fence-task"},
+    {"action": "claim", "expect": ["accepted", "claimed"], "id": "claim-fence", "lease_ttl_ms": 500, "revision": 8000000000001, "save_token": "fence-claim", "task_id": "fence-task"},
+    {"action": "heartbeat", "expect": ["fenced", "shard_id_mismatch"], "id": "fence-shard", "lease_ttl_ms": 1000, "revision": 8000000000001, "route_override": {"shard_id": "wrong-shard"}, "task_id": "fence-task", "token": "$fence-claim"},
+    {"action": "heartbeat", "expect": ["fenced", "routing_epoch_mismatch"], "id": "fence-epoch", "lease_ttl_ms": 1000, "revision": 8000000000001, "route_override": {"routing_epoch": 7000000000000}, "task_id": "fence-task", "token": "7000000000000:1"},
+    {"action": "heartbeat", "expect": ["fenced", "engine_owner_mismatch"], "id": "fence-owner", "lease_ttl_ms": 1000, "revision": 8000000000001, "route_override": {"engine_owner": "python"}, "task_id": "fence-task", "token": "$fence-claim"},
+    {"action": "heartbeat", "expect": ["fenced", "config_revision_mismatch"], "id": "fence-revision", "lease_ttl_ms": 1000, "revision": 8000000000000, "task_id": "fence-task", "token": "$fence-claim"},
+    {"action": "heartbeat", "expect": ["fenced", "claim_token_mismatch"], "id": "fence-token", "lease_ttl_ms": 1000, "revision": 8000000000001, "task_id": "fence-task", "token": "7000000000001:999"},
+    {"action": "heartbeat", "expect": ["accepted", "lease_extended"], "id": "heartbeat-current", "lease_ttl_ms": 1000, "revision": 8000000000001, "task_id": "fence-task", "token": "$fence-claim"},
+    {"action": "reschedule", "delay_ms": 0, "expect": ["accepted", "rescheduled"], "id": "reschedule-current", "revision": 8000000000001, "task_id": "fence-task", "token": "$fence-claim"},
+    {"action": "restart_client", "id": "client-restart"},
+    {"action": "claim", "expect": ["accepted", "claimed"], "id": "claim-after-restart", "lease_ttl_ms": 500, "revision": 8000000000001, "save_token": "replacement", "task_id": "fence-task"},
+    {"action": "complete", "expect": ["fenced", "claim_token_mismatch"], "id": "old-token-fenced", "revision": 8000000000001, "task_id": "fence-task", "token": "$fence-claim"},
+    {"action": "complete", "expect": ["accepted", "completed"], "id": "complete-current", "revision": 8000000000001, "task_id": "fence-task", "token": "$replacement"},
+    {"action": "register", "expect": ["accepted", "registered"], "id": "register-expiry", "revision": 4, "task_id": "expiry-task"},
+    {"action": "claim", "expect": ["accepted", "claimed"], "id": "claim-expiry", "lease_ttl_ms": 100, "revision": 4, "save_token": "expired", "task_id": "expiry-task"},
+    {"action": "sleep", "duration_ms": 200, "id": "expire-first-lease"},
+    {"action": "reap", "expect": ["accepted", "requeued"], "id": "reap-requeue", "max_failures": 2, "revision": 4, "task_id": "expiry-task", "token": "$expired"},
+    {"action": "claim", "expect": ["accepted", "claimed"], "id": "reclaim-after-reap", "lease_ttl_ms": 100, "revision": 4, "save_token": "reclaimed", "task_id": "expiry-task"},
+    {"action": "complete", "expect": ["fenced", "claim_token_mismatch"], "id": "expired-token-fenced", "revision": 4, "task_id": "expiry-task", "token": "$expired"},
+    {"action": "sleep", "duration_ms": 200, "id": "expire-second-lease"},
+    {"action": "reap", "expect": ["accepted", "dead_lettered"], "id": "reap-dead-letter", "max_failures": 2, "revision": 4, "task_id": "expiry-task", "token": "$reclaimed"},
+    {"action": "register", "expect": ["accepted", "registered"], "id": "register-concurrent", "revision": 5, "task_id": "concurrent-task"},
+    {"action": "concurrent_claim", "expect_counts": {"accepted/claimed": 1, "not_current/state_mismatch": 1}, "id": "double-claim", "lease_ttl_ms": 500, "revision": 5, "task_id": "concurrent-task"}
+  ]
+}

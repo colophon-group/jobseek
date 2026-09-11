@@ -14,6 +14,7 @@ from __future__ import annotations
 import html
 import json
 import re
+from datetime import UTC, datetime
 
 import jmespath
 
@@ -74,13 +75,16 @@ def extract_field(
            "separator": ", "}
           → "Warsaw, Poland"
 
-    **Dict with "path" + optional "map" / "html_unescape"** — value
+    **Dict with "path" + optional "map" / "html_unescape" / "timestamp_unit"** — value
     mapping and post-processing. ``html_unescape`` decodes entity-escaped
     HTML returned by APIs before the value is stored::
 
           {"path": "description", "html_unescape": true}
 
       ``&lt;h2&gt;About&lt;/h2&gt;`` becomes ``<h2>About</h2>``.
+
+      ``timestamp_unit`` converts a numeric Unix timestamp to an ISO-8601 UTC
+      value. Supported units are ``"seconds"`` and ``"milliseconds"``.
 
       With ``map``, resolves the jmespath ``path``, stringifies the result,
       and looks it up in ``map``. Returns the mapped value or ``None``::
@@ -123,11 +127,16 @@ def extract_field(
             value = _extract_mapped(item, spec)
         else:
             value = extract_field(item, spec["path"], root=root)
+        if value is None:
+            return None
         if spec.get("html_unescape"):
             if isinstance(value, list):
                 return [html.unescape(part) for part in value]
             if isinstance(value, str):
                 return html.unescape(value)
+        timestamp_unit = spec.get("timestamp_unit")
+        if timestamp_unit is not None:
+            return _timestamp_to_iso(value, timestamp_unit)
         return value
 
     # Constant string (=prefix) — return literal value
@@ -144,6 +153,28 @@ def extract_field(
         values = [str(v) for v in result if v is not None]
         return values or None
     return str(result)
+
+
+def _timestamp_to_iso(
+    value: str | list[str],
+    unit: object,
+) -> str | list[str]:
+    """Convert numeric Unix timestamps to ISO-8601 UTC strings."""
+    if unit not in {"seconds", "milliseconds"}:
+        raise ValueError("timestamp_unit must be 'seconds' or 'milliseconds'")
+
+    def convert(part: str) -> str:
+        try:
+            timestamp = float(part)
+            if unit == "milliseconds":
+                timestamp /= 1000
+            return datetime.fromtimestamp(timestamp, tz=UTC).isoformat()
+        except (OverflowError, OSError, ValueError) as exc:
+            raise ValueError("timestamp field must be a numeric Unix timestamp") from exc
+
+    if isinstance(value, list):
+        return [convert(part) for part in value]
+    return convert(value)
 
 
 def _extract_object_values_by_key(item: dict, spec: dict) -> str | list[str] | None:
@@ -304,16 +335,21 @@ def _extract_concat(item: dict, specs: list, *, separator: str = "\n") -> str | 
         # Regular jmespath expression
         had_data_expr = True
         result = jmespath.search(s, item)
-        if result is None:
+        if result is None or (isinstance(result, str) and not result.strip()):
             pending_constants.clear()
             continue
 
-        parts.extend(pending_constants)
-        pending_constants.clear()
-
         if isinstance(result, list):
-            parts.extend(_plain_to_html(str(v)) for v in result if v is not None)
+            values = [str(value) for value in result if value is not None and str(value).strip()]
+            if not values:
+                pending_constants.clear()
+                continue
+            parts.extend(pending_constants)
+            pending_constants.clear()
+            parts.extend(_plain_to_html(value) for value in values)
         else:
+            parts.extend(pending_constants)
+            pending_constants.clear()
             parts.append(_plain_to_html(str(result)))
 
     # Trailing constants: include if we have data or if the spec is constants-only.

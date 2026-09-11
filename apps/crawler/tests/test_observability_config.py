@@ -420,8 +420,13 @@ def test_daily_error_review_records_status_across_the_systemd_lifecycle() -> Non
     unit = (ROOT / "deploy/systemd/jobseek-codex-daily-error-review.service").read_text(
         encoding="utf-8"
     )
+    annotations_unit = (ROOT / "deploy/systemd/jobseek-codex-daily-annotations.service").read_text(
+        encoding="utf-8"
+    )
     deploy = (ROOT / "scripts/deploy-codex-runner-host.sh").read_text(encoding="utf-8")
 
+    assert "SuccessExitStatus=10" in unit
+    assert "SuccessExitStatus=10" in annotations_unit
     assert "ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-routine-status.py" in unit
     assert (
         "ExecStartPre=+/usr/bin/python3 "
@@ -430,7 +435,8 @@ def test_daily_error_review_records_status_across_the_systemd_lifecycle() -> Non
     assert (
         "ExecStopPost=+/usr/bin/python3 "
         "/srv/jobseek-codex/repo/scripts/codex-routine-status.py finish "
-        "--service-result ${SERVICE_RESULT}"
+        "--service-result ${SERVICE_RESULT} --exit-code ${EXIT_CODE} "
+        "--exit-status ${EXIT_STATUS}"
     ) in unit
     assert '"${REPO_DIR}/scripts/codex-routine-status.py"' in deploy
 

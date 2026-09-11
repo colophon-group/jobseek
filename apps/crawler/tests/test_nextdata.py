@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from unittest.mock import AsyncMock, patch
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 import pytest
@@ -199,6 +200,11 @@ class TestExtractFieldShared:
         item = {}
         assert self._extract(item, ["=heading", "null_path"]) is None
 
+    @pytest.mark.parametrize("value", ["", "   ", []])
+    def test_list_spec_empty_value_drops_preceding_constant(self, value):
+        item = {"empty": value}
+        assert self._extract(item, ["=heading", "empty"]) is None
+
     def test_list_spec_null_drops_constant_keeps_rest(self):
         item = {"exists": "val"}
         result = self._extract(item, ["=<h3>X</h3>", "missing", "=<h3>Y</h3>", "exists"])
@@ -234,6 +240,46 @@ class TestExtractFieldShared:
     def test_path_spec_html_unescape_preserves_none(self):
         result = self._extract({}, {"path": "body", "html_unescape": True})
         assert result is None
+
+    @pytest.mark.parametrize(
+        ("value", "unit", "expected"),
+        [
+            (1_787_184_000, "seconds", "2026-08-20T00:00:00+00:00"),
+            (1_787_184_000_000, "milliseconds", "2026-08-20T00:00:00+00:00"),
+        ],
+    )
+    def test_path_spec_timestamp_unit(self, value, unit, expected):
+        assert (
+            self._extract(
+                {"published": value},
+                {"path": "published", "timestamp_unit": unit},
+            )
+            == expected
+        )
+
+    def test_path_spec_timestamp_unit_preserves_none(self):
+        assert (
+            self._extract(
+                {},
+                {"path": "published", "timestamp_unit": "milliseconds"},
+            )
+            is None
+        )
+
+    @pytest.mark.parametrize("value", ["not-a-timestamp", "1e9999"])
+    def test_path_spec_timestamp_unit_rejects_invalid_value(self, value):
+        with pytest.raises(ValueError, match="numeric Unix timestamp"):
+            self._extract(
+                {"published": value},
+                {"path": "published", "timestamp_unit": "milliseconds"},
+            )
+
+    def test_path_spec_timestamp_unit_rejects_unknown_unit(self):
+        with pytest.raises(ValueError, match="timestamp_unit"):
+            self._extract(
+                {"published": 1},
+                {"path": "published", "timestamp_unit": "days"},
+            )
 
 
 class TestExtractFieldLookupJoin:
@@ -1212,6 +1258,33 @@ class TestPagination:
         assert isinstance(result, set)
         assert len(result) == 6
 
+    async def test_multi_page_query_with_zero_based_source(self):
+        """Query pagination may number the board root as page zero."""
+        requested_pages: list[int] = []
+
+        def handler(request: httpx.Request):
+            parsed = urlparse(str(request.url))
+            page = int(parse_qs(parsed.query).get("page", ["0"])[0])
+            requested_pages.append(page)
+            data = _paginated_data(page + 1, page_count=3)
+            return httpx.Response(200, text=_html_with_next_data(data))
+
+        board = {
+            **BOARD_PAGINATED,
+            "metadata": {
+                **BOARD_PAGINATED["metadata"],
+                "pagination": {
+                    **BOARD_PAGINATED["metadata"]["pagination"],
+                    "start": 0,
+                },
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert len(result) == 6
+        assert requested_pages == [0, 1, 2]
+
     async def test_multi_page_path_template_with_zero_based_source(self):
         """Path pagination may number the board root as page zero."""
         requested_paths: list[str] = []
@@ -2026,6 +2099,117 @@ class TestRscDiscover:
         assert result[0].title == "Watchmaker"
         assert result[0].description == "Build watch movements 0"
 
+    async def test_static_request_headers_unlock_rsc_listing_and_stream(self):
+        seen_headers: list[httpx.Headers] = []
+        jobs = [
+            {
+                "id": str(i),
+                "title": f"Sky role {i}",
+                "location": "Unterfoehring near Munich",
+                "description": "Join the team.",
+                "tasks": "<ul><li>Build streaming products.</li></ul>",
+                "requirements": "<ul><li>Work collaboratively.</li></ul>",
+            }
+            for i in range(6)
+        ]
+        html = _html_with_rsc_data({"children": [{"vacancies": {"alt": jobs}}]})
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen_headers.append(request.headers)
+            if request.headers.get("user-agent") != "jobseek-crawler":
+                return httpx.Response(403, request=request)
+            return httpx.Response(200, text=html, request=request)
+
+        board = {
+            "board_url": "https://careers.example.com/jobs",
+            "metadata": {
+                "source": "rsc",
+                "path": "children[0].vacancies.alt",
+                "url_template": "https://careers.example.com/jobs/{id}",
+                "request_headers": {"User-Agent": "jobseek-crawler"},
+                "fields": {
+                    "title": "title",
+                    "locations": "location",
+                    "description": [
+                        "description",
+                        "=<h2>Tasks</h2>",
+                        "tasks",
+                        "=<h2>Requirements</h2>",
+                        "requirements",
+                    ],
+                },
+            },
+        }
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            batches = [
+                batch
+                async for batch in monitor_one_stream(
+                    board["board_url"], "nextdata", board["metadata"], client
+                )
+            ]
+
+        assert len(result) == 6
+        assert len(batches) == 1
+        assert batches[0].jobs_by_url is not None
+        assert len(batches[0].jobs_by_url) == 6
+        assert len(seen_headers) == 2
+        assert all(headers.get("user-agent") == "jobseek-crawler" for headers in seen_headers)
+        assert result[0].locations == ["Unterfoehring near Munich"]
+        assert result[0].description == (
+            "Join the team.\n<h2>Tasks</h2>\n"
+            "<ul><li>Build streaming products.</li></ul>\n"
+            "<h2>Requirements</h2>\n<ul><li>Work collaboratively.</li></ul>"
+        )
+
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            {"Cookie": "session=secret"},
+            {"Authorization": "Bearer secret"},
+        ],
+    )
+    async def test_static_request_headers_reject_secrets(self, headers):
+        board = {
+            **BOARD_RSC,
+            "metadata": {**BOARD_RSC["metadata"], "request_headers": headers},
+        }
+        async with httpx.AsyncClient(transport=_mock_transport(RSC_HTML)) as client:
+            with pytest.raises(ValueError, match="unsafe header"):
+                await discover(board, client)
+
+    async def test_static_request_headers_reject_render_mode(self):
+        board = {
+            **BOARD_RSC,
+            "metadata": {
+                **BOARD_RSC["metadata"],
+                "render": True,
+                "request_headers": {"User-Agent": "jobseek-crawler"},
+            },
+        }
+        async with httpx.AsyncClient(transport=_mock_transport(RSC_HTML)) as client:
+            with pytest.raises(ValueError, match="supported only when render=false"):
+                await discover(board, client)
+
+    async def test_static_request_headers_reject_actions_that_enable_render(self):
+        board = {
+            **BOARD_RSC,
+            "metadata": {
+                **BOARD_RSC["metadata"],
+                "actions": [{"type": "wait", "timeout": 1}],
+                "request_headers": {"User-Agent": "jobseek-crawler"},
+            },
+        }
+        async with httpx.AsyncClient(transport=_mock_transport(RSC_HTML)) as client:
+            with pytest.raises(ValueError, match="supported only when render=false"):
+                await discover(board, client)
+        async with httpx.AsyncClient(transport=_mock_transport(RSC_HTML)) as client:
+            stream = discover_stream(board, client)
+            with pytest.raises(ValueError, match="supported only when render=false"):
+                await anext(stream)
+
 
 def _onlyfy_rsc_data(page: int, *, page_count: int = 2, page_size: int = 5) -> dict:
     start = (page - 1) * page_size
@@ -2306,6 +2490,19 @@ class TestOffsetPaginationHelpers:
         assert urls == [
             "https://x.com/jobs?page=2",
             "https://x.com/jobs?page=3",
+        ]
+
+    def test_compute_page_urls_query_with_zero_based_source(self):
+        from src.core.monitors.nextdata import _compute_page_urls
+
+        urls = _compute_page_urls(
+            "https://x.com/jobs",
+            page_count=3,
+            cfg={"page_param": "page", "start": 0},
+        )
+        assert urls == [
+            "https://x.com/jobs?page=1",
+            "https://x.com/jobs?page=2",
         ]
 
     def test_compute_page_urls_path_template_with_zero_based_source(self):

@@ -1,0 +1,15 @@
+**
+!pilots/
+!pilots/go-http-sitemap/
+!pilots/go-http-sitemap/go.mod
+!pilots/go-http-sitemap/boundedhttp/
+!pilots/go-http-sitemap/boundedhttp/*.go
+!pilots/go-http-sitemap/sitemap/
+!pilots/go-http-sitemap/sitemap/*.go
+!pilots/go-http-sitemap/worker/
+!pilots/go-http-sitemap/worker/*.go
+!pilots/go-http-sitemap/resident/
+!pilots/go-http-sitemap/resident/*.go
+!pilots/go-http-sitemap/cmd/
+!pilots/go-http-sitemap/cmd/residentshadow/
+!pilots/go-http-sitemap/cmd/residentshadow/*.go

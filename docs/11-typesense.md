@@ -61,7 +61,7 @@ part of a Git branch.
 | `TYPESENSE_BACKUP_KEY` | Generated, revocable wildcard key | Root-owned Typesense Snapshot API backup service only | Loopback on Typesense host |
 | `TYPESENSE_SEARCH_KEY` | `documents:search` + `documents:get` on all collections | Web app server-side search (server actions) | Cloudflare tunnel |
 | `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` only on `job_posting`, `company`, `location`, `occupation`, `seniority`, and `technology` | Web app `/api/typesense-key` route handler -- mints scoped keys for direct browser->Typesense calls | Cloudflare tunnel (browser, scoped key) |
-| `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` collection only | Web app watchlist mutations | Cloudflare tunnel |
+| `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` collection only | Transitional deletion of legacy watchlist documents; retire after cleanup | Cloudflare tunnel |
 
 `TYPESENSE_BROWSER_PARENT_KEY` is a separate parent because Typesense rejects scoped keys derived from a parent that has any actions other than `documents:search` (the server returns `Forbidden - a valid x-typesense-api-key header must be sent.` when used with a multi-action parent).
 The six named collections are the complete direct-browser read set. In
@@ -121,7 +121,10 @@ for rotation and verification.
 
 ## Collections
 
-7 collections, all using versioned names with aliases for zero-downtime reindexing:
+Six active collections use versioned names with aliases for zero-downtime
+reindexing. The old `watchlist` schema remains temporarily for deployment
+compatibility, but its document set is deliberately empty and no normal sync
+or refresh command writes to it.
 
 | Collection | Alias Target | Doc Count (approx) | Purpose |
 |------------|-------------|-------------------|---------|
@@ -131,7 +134,7 @@ for rotation and verification.
 | `seniority` | `seniority_v1` | ~40 | Seniority typeahead (per-locale docs) |
 | `technology` | `technology_v1` | ~500 | Technology typeahead |
 | `company` | `company_v1` | ~1K | Company typeahead + browse |
-| `watchlist` | `watchlist_v1` | varies | Public watchlist search |
+| `watchlist` (retired) | `watchlist_v1` | 0 | Empty compatibility shell; public discovery was removed |
 
 ### Key Design Choices
 
@@ -288,11 +291,11 @@ these documents. Includes:
   hierarchy, and macro-region membership used by the web taxonomy provider
 - Taxonomy rename detection: if a name changes in CSV, affected job posting documents in Typesense are updated with the new denormalized name
 
-`crawler sync` does not open `DATABASE_URL`, and the production CLI no longer
-exposes a mirror selector. Watchlist reconciliation remains a separate
-web-owned read through `WEB_DATABASE_URL`.
+`crawler sync` does not open `DATABASE_URL` or `WEB_DATABASE_URL`, and the
+production CLI no longer exposes a mirror selector. User watchlists are
+web-owned and are not published into a crawler-maintained discovery index.
 
-### Count Refresh + Watchlist Reconciliation
+### Count Refresh
 
 ```bash
 uv run crawler refresh-typesense
@@ -303,23 +306,51 @@ uv run crawler refresh-typesense
   occupation/seniority variants come from the bounded local Postgres
   authorities; counts come from exhaustive Typesense facets. IDs absent from a
   valid facet are explicitly reset to zero/false.
-- Reconciles the `watchlist` collection against the web-owned database selected
-  by `WEB_DATABASE_URL` (upserts missing, deletes stale). Company membership
-  comes from `watchlist_company`; `active_job_count` comes from one exhaustive
-  `company_id` facet over the canonical web-visible posting filter
-  (`is_active:true && has_content:!=false`) and is summed per watchlist in
-  Python. A company absent from a valid facet contributes zero, while
-  `company_count` remains the number of membership rows. Only explicit
-  sync/count-refresh jobs receive the web credential; long-running crawler
-  services receive no web-owned database URL.
 - Validates exact per-document Typesense import acknowledgements before
   continuing. A rejected, malformed, or truncated acknowledgement aborts the
-  command, records a failed cron run, and blocks dependent watchlist pruning.
+  command and records a failed cron run.
 
 **When it runs in production** (two paths, both version-controlled):
 
 1. **Every deploy / CSV merge — inline.** `crawler sync` calls `refresh_typesense_counts()` as its last step (`apps/crawler/src/sync.py`), so every run of `.github/workflows/deploy-crawler-browser.yml` and `.github/workflows/sync-data.yml` does a refresh.
 2. **Every 4 hours — out-of-band.** `.github/workflows/crawler-scheduled-maintenance.yml` SSHes to the crawler host and runs `crawler refresh-typesense` as a `docker run --rm` one-shot. Keeps counts fresh between deploys.
+
+### Retired Watchlist Discovery Purge
+
+The safe deployment order is:
+
+1. Deploy the web retirement and confirm that writer-retired release is live so
+   no current mutation path can upsert `watchlist` documents.
+2. Only then merge this crawler retirement. A main push auto-deploys the
+   crawler; confirm that deployment succeeds so `crawler sync` and
+   `crawler refresh-typesense` cannot republish documents and no current release
+   receives `WEB_DATABASE_URL`.
+3. After both retired releases are confirmed live, run the explicit purge once
+   with the operations key configured:
+
+```bash
+uv run crawler purge-retired-watchlist-index --confirm
+```
+
+The command resolves both the `watchlist` alias and known `watchlist_v1`
+collection, pins each validated `watchlist_vN` concrete target before any
+destructive call, validates pagination before deleting, deduplicates names that
+resolve to the same target, and verifies convergence to zero. An alias that
+points outside the retired watchlist collection family fails before deletion;
+an absent or already-empty collection is a successful no-op. Ordinary sync,
+deployment, and scheduled maintenance never invoke this destructive path.
+
+Before purging, retain the normal Typesense snapshot and verify the browser
+parent key is still restricted to the six active collections listed above.
+Protected legacy crawler release snapshots keep their own `WEB_DATABASE_URL`
+solely so their rollback sync remains functional; current release snapshots
+omit it. A rollback to either a legacy web release or a legacy crawler release
+restores an old publisher and can repopulate watchlist documents. If either is
+used after a purge, treat discovery data as reintroduced: return both services
+to writer-retired releases and rerun the explicit purge. The crawler rollback
+uses the operations key; the legacy web rollback needs `TYPESENSE_WRITE_KEY`.
+Keep both legacy credentials available until their rollback windows close and
+revoke them only after rollback compatibility is no longer required.
 
 ### Full Re-index (Backfill)
 
@@ -403,10 +434,10 @@ design rationale and exact bounded contract are in
 ## Web App Integration
 
 - `TypesenseSearchProvider` implements the `SearchProvider` interface, replacing `PostgresSearchProvider` (one-shot cutover)
-- All search, typeahead, browse-all modals, and watchlist search go through Typesense
+- Job search, typeahead, browse-all modals, and watchlist posting queries go through active Typesense collections.
 - **Posting detail**: `getPostingDetail` retrieves the posting plus company/location/seniority documents from Typesense and builds the R2 description URL. Original salary amount, currency, and period are denormalized onto the posting document for this reader.
 - **Saved jobs**: `saved_job` owns an immutable posting/company snapshot. The snapshot is populated from Typesense for new saves and backfilled by migration for existing saves, so application history survives later removal of the Supabase `job_posting` mirror. List/detail readers refresh current `is_active` in one bounded Typesense query and retain the snapshot value for missing hits or outages.
-- **Company- and watchlist-facing reads**: company autocomplete, watchlist company search, public watchlist discovery, watchlist posting lists/counts, the progress-page company/posting counters, and `getCompanyBySlug` read Typesense. They do not fall back to the Supabase crawler mirror. Authenticated watchlist metadata, company membership, and mutations remain in the web database
+- **Company- and watchlist-facing reads**: company autocomplete, watchlist company search, watchlist posting lists/counts, the progress-page company/posting counters, and `getCompanyBySlug` read active Typesense collections. Shared-watchlist metadata is resolved by exact UUID from the web database; no Typesense discovery index is involved. These paths do not fall back to the Supabase crawler mirror. Authenticated watchlist metadata, company membership, and mutations remain in the web database.
 - **Location/taxonomy reads**: filter-chip slug resolution, descendant
   expansion, browse-all location/occupation/seniority/technology metadata,
   industry suggestions, and company location summaries read the taxonomy,
@@ -417,15 +448,15 @@ design rationale and exact bounded contract are in
   outside the cache boundary so an outage-shaped empty is not stored. Exact
   slug resolvers and unexpected errors (including rate limits and schema/query
   errors) propagate. Company detail degrades to not found and logs an actual
-  outage. Public watchlist discovery and posting lists return empty results and
-  posting counts return zero during a confirmed Typesense outage. No live
+  outage. Watchlist posting lists report the degraded state during a confirmed
+  Typesense outage. No live
   fallback returns crawler data from Supabase.
-- **Caching**: no Redis cache on main search (Typesense is fast enough). Cached for unfiltered homepage (60s) and popular watchlists (120s). `getCompanyBySlug` is wrapped with a Redis cache (`ttl: 600`, key `company-slug:{slug}:{locale}`) that skips storing nulls so brand-new slugs aren't poisoned
+- **Caching**: no Redis cache on main search (Typesense is fast enough). The unfiltered homepage is cached for 60s. `getCompanyBySlug` is wrapped with a Redis cache (`ttl: 600`, key `company-slug:{slug}:{locale}`) that skips storing nulls so brand-new slugs aren't poisoned.
 - **Server-side client**: `typesense-js` in the web app, connecting to `typesense.colophon-group.org` (Cloudflare tunnel) with the search/read key
 
 ### Direct browser → Typesense (feature-flagged)
 
-The web app can bypass the Vercel server-action proxy and call Typesense directly from the browser for read-heavy surfaces. Gated by `NEXT_PUBLIC_TYPESENSE_DIRECT=1`. Each surface has a server-action fallback for when the browser path errors.
+The web app can bypass the Vercel server-action proxy and call Typesense directly from the browser for read-heavy surfaces. Gated by `NEXT_PUBLIC_TYPESENSE_DIRECT=1`. Ordinary search surfaces retain server-action fallback; interactive watchlist pagination intentionally reports failure instead of exposing a replayable read Server Action.
 
 **Surfaces wired direct-browser:**
 
@@ -435,7 +466,7 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 | Shared header search-bar typeahead (per debounced query) | `runSearchBarTypeahead` | `suggestSearchBarTypeahead` (one action for company + four taxonomy caches) |
 | Location-only pill / modal typeahead | `runSuggestLocations` | `suggestLocations` |
 | Company detail postings list | `runGetCompanyPostings` | `getCompanyPostings` (calls `loadPostingsWithCounts`) |
-| Public watchlist postings (≤100 companies) | `runGetWatchlistPostings` | `getWatchlistPostings` (≤100 path; >100 falls back) |
+| Watchlist postings | `runGetWatchlistPostings` | Browser-direct, with URL-safe company batches and globally merged result pages |
 
 **Out of scope for direct path:**
 
@@ -446,7 +477,7 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 - `getSimilarCompanies` (filtered path requires Postgres slug→id resolution)
 - Browse-all modals (`getGlobalLocationsGrouped`, `getAllOccupationsGrouped`,
   etc. -- server-side Typesense taxonomy snapshots and facets)
-- Watchlist postings for >100 companies (uses batched-merge logic that's only worth maintaining server-side)
+- Server-rendered initial watchlist snapshots (interactive refresh and pagination are browser-direct)
 
 **Infrastructure:**
 
@@ -480,29 +511,24 @@ Three data tiers, three read paths:
 
 | Tier | Role | Reads |
 |------|------|-------|
-| Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` retained document IDs and watchlist taxonomy-ID resolution |
+| Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` retained document IDs and taxonomy counts |
 | Web-owned Postgres | **Only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, `saved_job`, ...) | Auth, watchlist mutations, saved-job snapshots, and watchlist company-pair lookups |
-| Typesense | In-memory search + denormalized read layer | Job search and posting detail, all typeaheads and taxonomy resolvers, browse-all modals, watchlist search/discovery/posting lists/counts, company autocomplete/detail/location/industry reads, public site stats, similar-company strip |
+| Typesense | In-memory search + denormalized read layer | Job search and posting detail, all typeaheads and taxonomy resolvers, browse-all modals, watchlist posting lists/counts over `job_posting`, company autocomplete/detail/location/industry reads, public site stats, similar-company strip |
 
 Posting-count aggregations are read from exhaustive Typesense facets so the
 published values match the indexed jobs users can actually see and scheduled
 maintenance does not rescan the multi-million-row local table. Notable paths:
 
-- **Watchlist active-posting counts** (`refresh-typesense`): pulls
-  `(watchlist_id, company_id)` pairs from the web-owned database configured by
-  `WEB_DATABASE_URL`, reads one exhaustive Typesense `company_id` facet with
-  `is_active:true && has_content:!=false`, and sums the UUID-string-keyed counts
-  per watchlist in Python. Shared companies contribute independently to each
-  watchlist; a company absent from the facet contributes zero. The membership
-  count is computed separately and is unaffected by posting visibility.
-- **Public Discover `anyCompany` counts**: the `watchlist` Typesense doc carries a sanitized `filters_json` payload with public filters plus resolved taxonomy IDs. Discover cards use that payload to run an exact live `job_posting` count for `anyCompany` watchlists without hydrating `watchlist.filters` from Postgres. Company-scoped public cards keep using the denormalized `active_job_count` field.
 - **Per-company taxonomy counts** (`refresh_typesense_counts`): reads exhaustive
   `job_posting` facets from Typesense so counts match web-visible filters, then
   updates every retained local Postgres taxonomy/company document. A retained
   ID missing from a valid facet receives an explicit zero; malformed or
   unavailable facet responses abort the refresh.
 
-Most web pages do not aggregate `job_posting` directly -- they read precomputed counts from the Typesense doc fields above. Public Discover is the exception for `anyCompany` watchlists: it computes a live, exact Typesense count from the indexed filter payload because the company join is intentionally empty.
+Most web pages do not aggregate `job_posting` directly -- they read precomputed
+counts from the Typesense document fields above. Watchlist overview previews
+batch exact posting queries against `job_posting`; they never read the retired
+`watchlist` collection.
 
 ## Monitoring (Grafana/Prometheus)
 

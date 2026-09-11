@@ -26,18 +26,11 @@ describe("Supabase location and taxonomy read cutover", () => {
     expect(provider).not.toContain('from "@/db"');
   });
 
-  it("limits sitemap SQL to durable web-owned watchlist tables", () => {
+  it("keeps sitemap generation independent of Supabase", () => {
     const source = read("src/lib/sitemap.ts");
-    const sqlBlocks = [...source.matchAll(/sql`([\s\S]*?)`/g)].map((match) => match[1]);
-    const tables = sqlBlocks.flatMap((block) =>
-      [...block.matchAll(/\b(?:FROM|JOIN)\s+("[^"]+"|[a-z_]+)/gi)].map(
-        (match) => match[1].replaceAll('"', ""),
-      ),
-    );
-
-    expect(new Set(tables)).toEqual(
-      new Set(["watchlist", "user", "watchlist_company"]),
-    );
-    expect(source).not.toMatch(/\b(?:FROM|JOIN)\s+(?:job_posting|location|occupation|seniority|technology|industry|company)\b/i);
+    expect(source).not.toContain('from "@/db"');
+    expect(source).not.toContain('from "drizzle-orm"');
+    expect(source).not.toMatch(/\bdb\.(execute|select)\b/);
+    expect(source).not.toMatch(/\bsql`/);
   });
 });

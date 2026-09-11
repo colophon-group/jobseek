@@ -29,7 +29,17 @@ from src.core.scrapers import (
     get_scraper_type,
     scraper_needs_browser,
 )
-from src.shared.browser import VALID_WAIT_STRATEGIES, _resolve_resource_blocking
+from src.lightpanda.routing import (
+    RenderAssignmentError,
+    has_render_assignment,
+    resolve_render_assignment,
+)
+from src.shared.browser import (
+    DEFAULT_WAIT,
+    DEFAULT_WAIT_FALLBACK,
+    VALID_WAIT_STRATEGIES,
+    _resolve_resource_blocking,
+)
 
 FORMAT = "jobseek.lightpanda.capability-census/v1"
 CRAWLER_ROOT = Path(__file__).resolve().parents[2]
@@ -133,11 +143,14 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "fetch_url_transform",
             "fingerprint_response",
             "headless",
+            "hotelcareer_profile",
             "include_board_url",
             "inactive_detail_states",
             "job_filter",
             "job_link_pattern",
+            "jobtoolz_tenant",
             "link_selector",
+            "lg_portal",
             "lucca_board",
             "oracle_adf_job_ids",
             "pagination",
@@ -200,6 +213,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "require_zero_proof",
             "section_end",
             "section_start",
+            "skip_ssl",
             "source_identity_attribute",
             "source_identity_regex",
             "source_identity_selector",
@@ -224,6 +238,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "pagination",
             "path",
             "render",
+            "request_headers",
             "require_item_values",
             "rescrape_policy",
             "slug_fields",
@@ -318,6 +333,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
     "json-ld": frozenset(
         {
             "actions",
+            "browser_backend",
             "channel",
             "defaults",
             "defaults_by_url",
@@ -332,6 +348,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "proxy",
             "render",
             "request_headers",
+            "routing_revision",
             "skip_ssl",
             "stealth",
             "timeout",
@@ -445,6 +462,9 @@ _FALLBACK_FIELDS = frozenset(
 )
 _INHERENT_BROWSER_MONITORS = frozenset(
     {"accenture", "brassring", "bytedance", "candidatus", "darwinbox", "dayforce", "njoyn"}
+)
+_DOMCONTENTLOADED_DEFAULT_MONITORS = frozenset(
+    {"brassring", "candidatus", "darwinbox", "dayforce", "njoyn"}
 )
 
 
@@ -607,7 +627,15 @@ def _abstract_value(key: str, value: object) -> object:
     if isinstance(value, bool) or value is None:
         return value
     if isinstance(value, str):
-        if key in {"channel", "resource_policy", "source", "wait", "wait_fallback"}:
+        if key in {
+            "browser_backend",
+            "channel",
+            "resource_policy",
+            "routing_revision",
+            "source",
+            "wait",
+            "wait_fallback",
+        }:
             return value
         return "string"
     if isinstance(value, int | float):
@@ -767,7 +795,16 @@ def _capabilities(
                 capabilities.add(capability)
         elif value:
             capabilities.add(capability)
-    if "wait_fallback" in config:
+    fallback_strategy = config.get("wait_fallback", DEFAULT_WAIT_FALLBACK)
+    wait_strategy = config.get(
+        "wait",
+        (
+            "domcontentloaded"
+            if surface == "monitor" and crawler_type in _DOMCONTENTLOADED_DEFAULT_MONITORS
+            else DEFAULT_WAIT
+        ),
+    )
+    if browser_required and fallback_strategy is not None and fallback_strategy != wait_strategy:
         capabilities.add("navigation.wait_fallback")
     if "wait" in config:
         capabilities.add(f"navigation.wait.{config['wait']}")
@@ -882,6 +919,13 @@ def build_manifest(boards_path: Path = DEFAULT_BOARDS_PATH) -> dict[str, Any]:
         chain = _parse_scraper_chain(scraper_type, scraper_config) if scraper_type else []
         validated_chain: dict[int, tuple[dict[str, Any], tuple[dict[str, Any], ...]]] = {}
         for name, config, depth in chain:
+            if has_render_assignment(config):
+                try:
+                    resolve_render_assignment(name, config, scraper_step=depth)
+                except RenderAssignmentError as exc:
+                    raise CensusError(
+                        f"scraper step {depth} Lightpanda render assignment is invalid: {exc}"
+                    ) from None
             if name in capable_scrapers:
                 validated_chain[depth] = _validate_and_abstract_config("scraper", name, config)
 

@@ -135,13 +135,15 @@ describe("hasPublicWatchlistRoute", () => {
 });
 
 describe("hasWatchlistRouteForViewer", () => {
-  it("returns the uncached owner-or-public authorization result", async () => {
+  it("returns the uncached owner-only authorization result", async () => {
     mocks.dbExecute.mockResolvedValue([{ route_exists: true }]);
 
     await expect(
       hasWatchlistRouteForViewer("alice", "private-list", "owner-1"),
     ).resolves.toBe(true);
     expect(mocks.cached).not.toHaveBeenCalled();
+    const query = mocks.dbExecute.mock.calls[0]?.[0];
+    expect(String(query)).not.toContain("is_public");
   });
 
   it("returns false when the verified viewer cannot access the route", async () => {

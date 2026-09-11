@@ -10,17 +10,18 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
+from html import escape
 from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
 import structlog
 
-from src.core.monitors import BoardGoneError, register
+from src.core.monitors import BoardGoneError, DiscoveredJob, register
 from src.core.monitors.raw import save_json_response
 from src.shared.http_retry import PaginationFetchError, fetch_json_page_with_retry
 from src.shared.tdm import TDMReservedError
-from src.shared.truncation import truncated_url_result
+from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
@@ -34,7 +35,7 @@ _GONE_STATUSES = frozenset({404, 410})
 
 @dataclass(frozen=True, slots=True)
 class _ApiPage:
-    urls: set[str]
+    jobs: list[DiscoveredJob]
     total_count: int
     total_pages: int
     page: int
@@ -119,6 +120,17 @@ def _required_nonnegative_int(value: object, field: str) -> int:
     return value
 
 
+def _required_text(value: object, field: str, *, page: int) -> str:
+    if not isinstance(value, str) or not (cleaned := value.strip()):
+        raise ValueError(f"104 Job Bank API page {page} returned an invalid {field}")
+    return cleaned
+
+
+def _plain_text_to_html(value: str) -> str:
+    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", value) if part.strip()]
+    return "\n".join(f"<p>{escape(part).replace(chr(10), '<br>')}</p>" for part in paragraphs)
+
+
 def _parse_api_page(payload: dict, *, requested_page: int) -> _ApiPage:
     data = payload.get("data")
     if not isinstance(data, dict):
@@ -148,6 +160,7 @@ def _parse_api_page(payload: dict, *, requested_page: int) -> _ApiPage:
             f"104 Job Bank API page {page} returned {len(rows)} rows, expected {expected_rows}"
         )
 
+    jobs: list[DiscoveredJob] = []
     urls: set[str] = set()
     for row in rows:
         if not isinstance(row, dict):
@@ -159,9 +172,20 @@ def _parse_api_page(payload: dict, *, requested_page: int) -> _ApiPage:
         if canonical in urls:
             raise ValueError(f"104 Job Bank API page {page} repeated job {job_id}")
         urls.add(canonical)
+        title = _required_text(row.get("jobName"), "jobName", page=page)
+        location = _required_text(row.get("jobAddrNoDesc"), "jobAddrNoDesc", page=page)
+        description = _required_text(row.get("jobDescription"), "jobDescription", page=page)
+        jobs.append(
+            DiscoveredJob(
+                url=canonical,
+                title=title,
+                description=_plain_text_to_html(description),
+                locations=[location],
+            )
+        )
 
     return _ApiPage(
-        urls=urls,
+        jobs=jobs,
         total_count=total_count,
         total_pages=total_pages,
         page=page,
@@ -196,11 +220,12 @@ async def _fetch_api_page(
     return _parse_api_page(payload, requested_page=page)
 
 
-async def _discover_urls(token: str, client: httpx.AsyncClient) -> tuple[set[str], bool]:
+async def _discover_jobs(token: str, client: httpx.AsyncClient) -> tuple[list[DiscoveredJob], bool]:
     first = await _fetch_api_page(token, 1, client)
     target = min(first.total_count, MAX_JOBS)
     pages = math.ceil(target / first.page_size) if target else 0
-    urls = set(first.urls)
+    jobs = list(first.jobs)
+    urls = {job.url for job in first.jobs}
     for page_number in range(2, pages + 1):
         page = await _fetch_api_page(token, page_number, client)
         if (
@@ -209,18 +234,20 @@ async def _discover_urls(token: str, client: httpx.AsyncClient) -> tuple[set[str
             or page.page_size != first.page_size
         ):
             raise ValueError("104 Job Bank inventory changed during pagination")
-        overlap = urls & page.urls
+        page_urls = {job.url for job in page.jobs}
+        overlap = urls & page_urls
         if overlap:
             raise ValueError(f"104 Job Bank API page {page_number} repeated {len(overlap)} jobs")
-        urls.update(page.urls)
+        jobs.extend(page.jobs)
+        urls.update(page_urls)
 
-    if len(urls) != target:
-        raise ValueError(f"104 Job Bank discovered {len(urls)} jobs, expected {target}")
-    return urls, first.total_count > MAX_JOBS
+    if len(jobs) != target:
+        raise ValueError(f"104 Job Bank discovered {len(jobs)} jobs, expected {target}")
+    return jobs, first.total_count > MAX_JOBS
 
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None):
-    """Discover canonical job URLs from the public company jobs API."""
+    """Discover rich jobs from the public company jobs API."""
     _ = pw
     metadata = board.get("metadata") or {}
     token = _resolve_token(board["board_url"], metadata)
@@ -230,9 +257,9 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             "and no valid token is present in metadata"
         )
 
-    urls, truncated = await _discover_urls(token, client)
-    log.info("jobbank104.discovered", token=token, jobs=len(urls), truncated=truncated)
-    return truncated_url_result(urls) if truncated else urls
+    jobs, truncated = await _discover_jobs(token, client)
+    log.info("jobbank104.discovered", token=token, jobs=len(jobs), truncated=truncated)
+    return truncated_rich_result(jobs) if truncated else jobs
 
 
 async def can_handle(
@@ -249,13 +276,13 @@ async def can_handle(
     if client is None:
         return result
     try:
-        urls, _truncated = await _discover_urls(token, client)
+        jobs, _truncated = await _discover_jobs(token, client)
     except TDMReservedError:
         raise
     except Exception:
         log.debug("jobbank104.probe_failed", token=token, exc_info=True)
         return result
-    result["jobs"] = len(urls)
+    result["jobs"] = len(jobs)
     return result
 
 
@@ -281,4 +308,4 @@ async def save_raw(
         )
 
 
-register("jobbank104", discover, cost=10, can_handle=can_handle, save_raw=save_raw)
+register("jobbank104", discover, cost=10, can_handle=can_handle, rich=True, save_raw=save_raw)

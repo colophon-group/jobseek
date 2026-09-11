@@ -554,6 +554,50 @@ class TestScraper:
         assert result.title is None
         assert result.description is None
 
+    async def test_uses_configured_location_default_only_when_source_omits_it(self):
+        detail = {
+            "jobPosting": {
+                "jobId": 466263,
+                "jobTitle": "Hospital Registered Nurse",
+                "location": "",
+                "secondaryLocations": [],
+                "description": "<p>Provide inpatient nursing care.</p>",
+            }
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if str(request.url) == PORTAL_URL:
+                return httpx.Response(200, text=_bootstrap_page(), request=request)
+            return httpx.Response(200, json=detail, request=request)
+
+        job_url = PORTAL_URL.replace("career-page", "jobs/466263")
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await paycom_scrape(
+                job_url,
+                {"defaults": {"locations": ["Hawarden, IA"]}},
+                client,
+            )
+
+        assert result.locations == ["Hawarden, IA"]
+
+    @pytest.mark.parametrize(
+        "defaults",
+        [
+            {},
+            {"locations": []},
+            {"locations": [""]},
+            {"locations": ["Hawarden, IA"], "title": "Fallback"},
+        ],
+    )
+    async def test_rejects_invalid_location_defaults(self, defaults: dict):
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="Paycom default"):
+                await paycom_scrape(
+                    PORTAL_URL.replace("career-page", "jobs/466263"),
+                    {"defaults": defaults},
+                    client,
+                )
+
     async def test_scraper_detection_requires_canonical_job_url(self):
         job_url = PORTAL_URL.replace("career-page", "jobs/466263")
         assert await scraper_can_handle(job_url) == {}

@@ -1,0 +1,16 @@
+FROM python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f
+
+ARG SOURCE_COMMIT
+RUN test "${#SOURCE_COMMIT}" -eq 40 \
+    && case "${SOURCE_COMMIT}" in ''|*[!0-9a-f]*) exit 1 ;; esac
+LABEL org.jobseek.density.source-commit="${SOURCE_COMMIT}"
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /density
+RUN python -c 'import sys; assert sys.version_info[:3] == (3, 13, 15)'
+COPY --chmod=0444 fixture_server.py python_runner.py workload.v1.json /density/
+
+USER 65532:65532
+ENTRYPOINT ["python3", "/density/fixture_server.py"]

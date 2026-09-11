@@ -1,0 +1,99 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "status": "success"
+      },
+      "id": "accept_render_only",
+      "mutation": "render_only"
+    },
+    {
+      "expected": {
+        "status": "success"
+      },
+      "id": "accept_render_evaluate",
+      "mutation": "none"
+    },
+    {
+      "expected": {
+        "code": "invalid_config",
+        "status": "error"
+      },
+      "id": "reject_assignment_before_unsupported",
+      "mutation": "wrong_backend_with_frames"
+    },
+    {
+      "expected": {
+        "code": "invalid_config",
+        "status": "error"
+      },
+      "id": "reject_duplicate_capability",
+      "mutation": "duplicate_render"
+    },
+    {
+      "expected": {
+        "code": "invalid_config",
+        "status": "error"
+      },
+      "id": "reject_missing_render",
+      "mutation": "evaluate_only"
+    },
+    {
+      "expected": {
+        "code": "invalid_config",
+        "status": "error"
+      },
+      "id": "reject_evaluate_without_plan",
+      "mutation": "remove_evaluation"
+    },
+    {
+      "expected": {
+        "code": "invalid_config",
+        "status": "error"
+      },
+      "id": "reject_plan_without_evaluate",
+      "mutation": "remove_evaluate_capability"
+    },
+    {
+      "expected": {
+        "code": "invalid_config",
+        "status": "error"
+      },
+      "id": "reject_non_load_wait",
+      "mutation": "dom_content_loaded"
+    },
+    {
+      "expected": {
+        "code": "invalid_config",
+        "status": "error"
+      },
+      "id": "reject_adjacent_action",
+      "mutation": "add_action"
+    },
+    {
+      "expected": {
+        "capabilities": [
+          "actions",
+          "frames",
+          "proxy"
+        ],
+        "status": "unsupported"
+      },
+      "id": "unsupported_features_are_sorted",
+      "mutation": "add_unsorted_unsupported"
+    }
+  ],
+  "format": "jobseek.lightpanda-adapter-b1/v1",
+  "required_case_ids": [
+    "accept_render_only",
+    "accept_render_evaluate",
+    "reject_assignment_before_unsupported",
+    "reject_duplicate_capability",
+    "reject_missing_render",
+    "reject_evaluate_without_plan",
+    "reject_plan_without_evaluate",
+    "reject_non_load_wait",
+    "reject_adjacent_action",
+    "unsupported_features_are_sorted"
+  ]
+}

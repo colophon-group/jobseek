@@ -4721,6 +4721,38 @@ class TestCostScoring:
         assert cfg["monitor_config"]["pagination"] == config["pagination"]
         assert cfg["cost"]["initial_load"] == 0.0
 
+    def test_select_rich_nextdata_accepts_zero_based_query_pagination(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        save_board("test", board)
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        config = {
+            "path": "props.pageProps.jobsData.rows",
+            "url_template": "https://test.com/jobs/{id}",
+            "fields": {"title": "title", "locations": "location"},
+            "pagination": {
+                "path": "props.pageProps.jobsData",
+                "total_records": "count",
+                "page_size": 10,
+                "page_param": "page",
+                "start": 0,
+            },
+        }
+        runner = CliRunner()
+        result = runner.invoke(
+            ws,
+            ["select", "monitor", "test", "nextdata", "--config", json.dumps(config)],
+        )
+
+        assert result.exit_code == 0, result.output
+        board = load_board("test", "careers")
+        cfg = board.configs[board.active_config]
+        assert cfg["monitor_config"]["pagination"] == config["pagination"]
+
     def test_select_dom_accepts_path_pagination_url_template(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="test"))

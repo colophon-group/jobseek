@@ -1253,7 +1253,7 @@ class TestDomScraper:
 
     @pytest.mark.parametrize(
         "document_fallback",
-        [True, {"zip": {}}, {"pdf": "not-an-object"}],
+        [True, {"zip": {}}, {"pdf": "not-an-object"}, {"doc": "not-an-object"}],
     )
     async def test_document_fallback_rejects_invalid_config(self, document_fallback):
         from src.core.scrapers.dom import scrape
