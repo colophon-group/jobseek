@@ -133,6 +133,35 @@ def test_inventory_is_exact_canonical_and_controlled(tmp_path: Path) -> None:
         verify.load_inventory(path)
 
 
+def test_nonproduction_inventory_allows_only_explicit_legacy_bridge_fixture(
+    tmp_path: Path,
+) -> None:
+    inventory = verify.load_inventory(DEPLOY / "inventory.json")
+    inventory["renderer_bridge_name"] = "br-0123456789ab"
+    path = tmp_path / "inventory.json"
+    path.write_text(json.dumps(inventory), encoding="utf-8")
+    with pytest.raises(verify.VerificationError):
+        verify.load_inventory(path)
+    inventory["ci_test_only"] = True
+    path.write_text(json.dumps(inventory), encoding="utf-8")
+    assert verify.load_inventory(path)["renderer_bridge_name"] == "br-0123456789ab"
+    assert network_policy.Inventory.load(path).internal_bridge == "br-0123456789ab"
+    inventory["ci_test_only"] = False
+    path.write_text(json.dumps(inventory), encoding="utf-8")
+    with pytest.raises(verify.VerificationError):
+        verify.load_inventory(path)
+    with pytest.raises(network_policy.PolicyError):
+        network_policy.Inventory.load(path)
+
+
+def test_legacy_fixture_keeps_the_exact_pre_egress_inventory_schema() -> None:
+    legacy = json.loads((DEPLOY / "testdata/legacy-inventory.json").read_text(encoding="utf-8"))
+    assert set(legacy) == verify.LEGACY_INVENTORY_KEYS
+    assert "egress_network" not in legacy
+    assert "renderer_bridge_name" not in legacy
+    assert verify.load_legacy_inventory(DEPLOY / "testdata/legacy-inventory.json") == legacy
+
+
 def test_compose_model_is_exactly_one_controlled_egress_renderer(
     rendered_compose_model: dict[str, object],
 ) -> None:
@@ -359,8 +388,9 @@ def test_bootstrap_is_monotonic_and_never_manages_protected_containers() -> None
     assert 'exec 8<"$RENDERER_LOCK"' in bootstrap
     assert bootstrap.index("flock -w 900 9") < bootstrap.index("flock -w 300 8")
     assert '"$previous_generation/verify.py" running' in bootstrap
+    assert '"$STAGE/verify.py" owned-predecessor' in bootstrap
     assert 'docker stop --time 30 "$previous_id"' in bootstrap
-    assert 'docker rm "$previous_id"' in bootstrap
+    assert 'docker rm --force "$previous_id"' in bootstrap
     assert "docker start" not in bootstrap
     assert "docker compose" not in bootstrap
     assert "transactions" not in bootstrap
@@ -368,8 +398,64 @@ def test_bootstrap_is_monotonic_and_never_manages_protected_containers() -> None
     assert "deploy-murmur-1" not in policy
     assert "deploy-cloudflared-1" not in policy
     assert "ExecStop=" not in unit
+    assert "/home/deploy/.local/share/jobseek-lightpanda/renderer.lock" in unit
+    assert "/run/lock/jobseek-lightpanda-network.lock" not in unit
     assert " verify-ready" in sudoers
     assert " verify-running-ready" in sudoers
+    assert " quarantine" in sudoers
+
+
+def test_boot_lock_is_recreated_exactly_and_bootstrap_handoff_has_no_self_deadlock() -> None:
+    bootstrap = (DEPLOY / "bootstrap-host.sh").read_text(encoding="utf-8")
+    tmpfiles = (DEPLOY / "jobseek-lightpanda-network.tmpfiles").read_text(encoding="utf-8")
+    unit = (DEPLOY / "jobseek-lightpanda-network.service").read_text(encoding="utf-8")
+    assert "f /run/lock/jobseek-lightpanda-network.lock 0640 root deploy -" in tmpfiles
+    assert 'systemd-tmpfiles --create "$TMPFILES"' in bootstrap
+    assert "os.O_NOFOLLOW" in bootstrap
+    assert "os.fchmod(descriptor, mode)" in bootstrap
+    assert "os.fchown(descriptor, uid, gid)" in bootstrap
+    restart = bootstrap.index("systemctl restart jobseek-lightpanda-network.service")
+    renderer_unlock = bootstrap.index("flock -u 8", restart - 600)
+    renderer_relock = bootstrap.index('exec 8<"$RENDERER_LOCK"', restart)
+    assert renderer_unlock < restart < renderer_relock
+    assert "flock -u 9" not in bootstrap
+    assert "After=docker.service systemd-tmpfiles-setup.service" in unit
+
+
+def test_deploy_cold_replacement_and_stale_candidate_recovery_are_exact() -> None:
+    deploy = (DEPLOY / "install-host.sh").read_text(encoding="utf-8")
+    ownership = deploy.index('existing_release_id="$(docker inspect')
+    running_gate = deploy.index('sudo -n "$POLICY" verify-running-ready', ownership)
+    stop = deploy.index('docker stop --time 30 "$existing_id"', running_gate)
+    remove = deploy.index('docker rm --force "$existing_id"', stop)
+    empty_gate = deploy.index('sudo -n "$POLICY" verify-ready', remove)
+    compose = deploy.index('docker compose --project-name "$PROJECT"', empty_gate)
+    assert ownership < running_gate < stop < remove < empty_gate < compose
+    assert '"$(readlink -f "$existing_generation")" == "$existing_generation"' in deploy
+    assert '"$(stat -c \'%U:%G:%a\' "$existing_generation")" == deploy:deploy:711' in deploy
+    assert 'python3 "$existing_generation/verify.py" owned' in deploy
+    assert 'sudo -n "$POLICY" quarantine' in deploy
+    assert "before-compose" in deploy
+    assert "during-compose" in deploy
+    assert "crash-after-candidate" in deploy
+    assert "docker start" not in deploy
+
+
+def test_installed_policy_and_release_artifacts_are_fsynced_before_commit() -> None:
+    bootstrap = (DEPLOY / "bootstrap-host.sh").read_text(encoding="utf-8")
+    deploy = (DEPLOY / "install-host.sh").read_text(encoding="utf-8")
+    for token in (
+        '"$GENERATION/network-policy.py"',
+        '"$GENERATION/inventory.json"',
+        '"$UNIT"',
+        '"$SUDOERS"',
+        '"$TMPFILES"',
+        '"$RELEASE_ROOT"',
+    ):
+        assert token in bootstrap
+    assert bootstrap.index("os.fsync(descriptor)") < bootstrap.index('"$POLICY" verify-ready')
+    assert "fsync_files \\\n" in deploy
+    assert 'fsync_directories "$GENERATION/pki" "$GENERATION" "$RELEASE_ROOT"' in deploy
 
 
 def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
@@ -411,9 +497,21 @@ def test_ci_smoke_exercises_legacy_bootstrap_and_cold_rollback() -> None:
     assert "testdata/legacy-compose.yml" in smoke
     assert "testdata/legacy-verify.py" in smoke
     assert 'bash "$root_stage/bootstrap-host.sh"' in smoke
-    assert "partial-bootstrap-replay" in smoke
+    assert "after-stop-before-remove" in smoke
+    assert "stopped-bootstrap-retry-with-ambiguous-status" in smoke
+    assert "empty-policy-replay" in smoke
+    assert ".ci_test_only = true" in smoke
+    assert 'legacy_bridge="br-${legacy_network_id:0:12}"' in smoke
+    assert "reboot-lock-recreation" in smoke
+    assert "safe-lock-metadata-repair" in smoke
     assert "after-candidate-remove-ambiguous" in smoke
     assert "active-switch-cold-rollback" in smoke
+    assert "prior-cold-removal-before-compose-failure" in smoke
+    assert "candidate-cleanup-during-compose-failure" in smoke
+    assert "second-controlled-release-success" in smoke
+    assert "stale-uncommitted-candidate" in smoke
+    assert "stale-candidate-recovery-success" in smoke
+    assert "malformed-impostor-rejection" in smoke
     assert 'if docker inspect "$CONTAINER"' in smoke
     assert "verify-running-ready" in smoke
     assert "private-mtls-ingress" in smoke

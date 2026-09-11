@@ -51,6 +51,7 @@ for artifact in \
   inventory.json \
   verify.py \
   jobseek-lightpanda-network.service \
+  jobseek-lightpanda-network.tmpfiles \
   jobseek-lightpanda-network.sudoers; do
   install -m 0600 "$artifact_root/$artifact" "$payload_root/$artifact"
 done

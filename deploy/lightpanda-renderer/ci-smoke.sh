@@ -17,8 +17,15 @@ SOURCE_COMMIT="${2:-}"
 ROOT=/home/deploy/.local/share/jobseek-lightpanda
 LEGACY_ID="sha-${SOURCE_COMMIT}-ci-r1a1"
 CANDIDATE_ID="sha-${SOURCE_COMMIT}-ci-r1a2"
+SECOND_ID="sha-${SOURCE_COMMIT}-ci-r1a3"
+STALE_ID="sha-${SOURCE_COMMIT}-ci-r1a4"
+RECOVERY_ID="sha-${SOURCE_COMMIT}-ci-r1a5"
+IMPOSTOR_PROBE_ID="sha-${SOURCE_COMMIT}-ci-r1a6"
 LEGACY_RELEASE="$ROOT/releases/$LEGACY_ID"
 CANDIDATE_RELEASE="$ROOT/releases/$CANDIDATE_ID"
+SECOND_RELEASE="$ROOT/releases/$SECOND_ID"
+STALE_RELEASE="$ROOT/releases/$STALE_ID"
+RECOVERY_RELEASE="$ROOT/releases/$RECOVERY_ID"
 NETWORK=jobseek-lightpanda-renderer
 EGRESS_NETWORK=jobseek-lightpanda-egress
 CONTAINER=jobseek-lightpanda-renderer
@@ -91,6 +98,7 @@ cleanup() {
     /etc/jobseek-lightpanda-network/inventory.json \
     /etc/systemd/system/jobseek-lightpanda-network.service \
     /etc/sudoers.d/jobseek-lightpanda-network \
+    /etc/tmpfiles.d/jobseek-lightpanda-network.conf \
     /run/lock/jobseek-lightpanda-network.lock
   sudo rmdir /etc/jobseek-lightpanda-network 2>/dev/null || :
   sudo systemctl daemon-reload >/dev/null 2>&1 || :
@@ -197,6 +205,9 @@ phase exact-legacy-start
 install_release "$LEGACY_RELEASE" "$LEGACY_ID" \
   deploy/lightpanda-renderer/testdata/legacy-compose.yml \
   deploy/lightpanda-renderer/testdata/legacy-verify.py
+sudo install -o deploy -g deploy -m 0644 \
+  deploy/lightpanda-renderer/testdata/legacy-inventory.json \
+  "$LEGACY_RELEASE/inventory.json"
 sudo -u deploy docker compose --project-name jobseek-lightpanda \
   --env-file "$LEGACY_RELEASE/release.env" --file "$LEGACY_RELEASE/compose.yml" \
   up --detach --no-deps renderer
@@ -206,18 +217,36 @@ sudo -u deploy python3 "$LEGACY_RELEASE/verify.py" running \
 sudo -u deploy ln -s "$LEGACY_RELEASE" "$ROOT/active"
 legacy_network_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
 legacy_network_options="$(docker network inspect --format '{{json .Options}}' "$NETWORK")"
+legacy_bridge="br-${legacy_network_id:0:12}"
+jq --arg bridge "$legacy_bridge" \
+  '.renderer_bridge_name = $bridge | .ci_test_only = true' \
+  deploy/lightpanda-renderer/inventory.json >"$work/ci-inventory.json"
 [[ "$(docker inspect --format '{{.HostConfig.RestartPolicy.Name}}' deploy-murmur-1)" == no ]]
 [[ "$(docker inspect --format '{{.HostConfig.RestartPolicy.Name}}' deploy-cloudflared-1)" == no ]]
 
-phase one-time-host-bootstrap
+phase interrupted-host-bootstrap
 root_stage="$(sudo mktemp -d '/tmp/jobseek-lightpanda-bootstrap.r999999a1.XXXXXX')"
 for artifact in bootstrap-host.sh network-policy.py inventory.json verify.py \
-  jobseek-lightpanda-network.service jobseek-lightpanda-network.sudoers; do
+  jobseek-lightpanda-network.service jobseek-lightpanda-network.tmpfiles \
+  jobseek-lightpanda-network.sudoers; do
   sudo install -o root -g root -m 0700 \
     "deploy/lightpanda-renderer/$artifact" "$root_stage/$artifact"
 done
-sudo bash "$root_stage/bootstrap-host.sh" "$root_stage" "$SOURCE_COMMIT"
+sudo install -o root -g root -m 0600 "$work/ci-inventory.json" "$root_stage/inventory.json"
 host_bootstrapped=1
+set +e
+sudo env CI=true GITHUB_ACTIONS=true \
+  JOBSEEK_LIGHTPANDA_BOOTSTRAP_CI_FAILURE_MODE=after-stop-before-remove \
+  bash "$root_stage/bootstrap-host.sh" "$root_stage" "$SOURCE_COMMIT"
+bootstrap_interrupt_status=$?
+set -e
+[[ "$bootstrap_interrupt_status" -eq 98 ]]
+[[ "$(docker inspect --format '{{json .State.Running}}' "$CONTAINER")" == false ]]
+
+phase stopped-bootstrap-retry-with-ambiguous-status
+sudo env CI=true GITHUB_ACTIONS=true \
+  JOBSEEK_LIGHTPANDA_BOOTSTRAP_CI_FAILURE_MODE=ambiguous-stop-status \
+  bash "$root_stage/bootstrap-host.sh" "$root_stage" "$SOURCE_COMMIT"
 if docker inspect "$CONTAINER" >/dev/null 2>&1; then
   exit 1
 fi
@@ -230,7 +259,13 @@ egress_network_id="$(docker network inspect --format '{{.Id}}' "$EGRESS_NETWORK"
 sudo /usr/local/libexec/jobseek-lightpanda-network-policy verify-ready >/dev/null
 python3 deploy/lightpanda-renderer/verify.py assert-protected "$work/protected-before.json"
 
-phase partial-bootstrap-replay
+phase safe-lock-metadata-repair
+sudo chown deploy:deploy /run/lock/jobseek-lightpanda-network.lock
+sudo chmod 0600 /run/lock/jobseek-lightpanda-network.lock
+sudo bash "$root_stage/bootstrap-host.sh" "$root_stage" "$SOURCE_COMMIT"
+[[ "$(sudo stat -c '%U:%G:%a:%h' /run/lock/jobseek-lightpanda-network.lock)" == root:deploy:640:1 ]]
+
+phase empty-policy-replay
 sudo iptables --wait 30 -D DOCKER-USER -j JSLP4-FWD
 sudo bash "$root_stage/bootstrap-host.sh" "$root_stage" "$SOURCE_COMMIT"
 [[ "$(docker network inspect --format '{{.Id}}' "$NETWORK")" == "$legacy_network_id" ]]
@@ -239,6 +274,11 @@ sudo bash "$root_stage/bootstrap-host.sh" "$root_stage" "$SOURCE_COMMIT"
 sudo /usr/local/libexec/jobseek-lightpanda-network-policy verify-ready >/dev/null
 python3 deploy/lightpanda-renderer/verify.py assert-protected "$work/protected-before.json"
 
+phase reboot-lock-recreation
+sudo rm -f -- /run/lock/jobseek-lightpanda-network.lock
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/jobseek-lightpanda-network.conf
+[[ "$(sudo stat -c '%U:%G:%a:%h' /run/lock/jobseek-lightpanda-network.lock)" == root:deploy:640:1 ]]
+
 phase candidate-stage
 stage="$(sudo -u deploy mktemp -d '/tmp/jobseek-lightpanda-renderer.r999999a1.XXXXXX')"
 sudo -u deploy install -d -m 0700 "$stage/pki"
@@ -246,35 +286,41 @@ for artifact in compose.yml inventory.json verify.py validate_pki.py lock.sh ins
   sudo install -o deploy -g deploy -m 0600 \
     "deploy/lightpanda-renderer/$artifact" "$stage/$artifact"
 done
+sudo install -o deploy -g deploy -m 0600 "$work/ci-inventory.json" "$stage/inventory.json"
 for file in ca.pem server.pem server-key.pem client.pem; do
   sudo install -o deploy -g deploy -m 0600 "$work/$file" "$stage/pki/$file"
 done
 sudo install -o deploy -g deploy -m 0600 "$work/pins.env" "$stage/pins.env"
-{
-  printf 'RENDERER_IMAGE_REF=%s\n' "$IMAGE"
-  printf 'RENDERER_RELEASE_DIR=%s\n' "$CANDIDATE_RELEASE"
-  printf 'SOURCE_COMMIT=%s\n' "$SOURCE_COMMIT"
-  printf 'RELEASE_ID=%s\n' "$CANDIDATE_ID"
-  cat "$work/pins.env"
-} >"$work/candidate-release.env"
-sudo install -o deploy -g deploy -m 0600 \
-  "$work/candidate-release.env" "$stage/release.env"
+write_stage_release() {
+  local release_id="$1" release_path="$2"
+  {
+    printf 'RENDERER_IMAGE_REF=%s\n' "$IMAGE"
+    printf 'RENDERER_RELEASE_DIR=%s\n' "$release_path"
+    printf 'SOURCE_COMMIT=%s\n' "$SOURCE_COMMIT"
+    printf 'RELEASE_ID=%s\n' "$release_id"
+    cat "$work/pins.env"
+  } >"$work/candidate-release.env"
+  sudo install -o deploy -g deploy -m 0600 \
+    "$work/candidate-release.env" "$stage/release.env"
+}
+write_stage_release "$CANDIDATE_ID" "$CANDIDATE_RELEASE"
 
 run_expected_failure() {
-  local mode="$1" expected="$2" status=0
+  local mode="$1" expected="$2" release_id="$3" release_path="$4" active_path="$5" status=0
+  write_stage_release "$release_id" "$release_path"
   set +e
   sudo -u deploy env CI=true GITHUB_ACTIONS=true \
     "JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=$mode" \
     bash "$stage/install-host.sh" \
-      "$stage" "$SOURCE_COMMIT" "$IMAGE" "$CANDIDATE_ID"
+      "$stage" "$SOURCE_COMMIT" "$IMAGE" "$release_id"
   status=$?
   set -e
   [[ "$status" -eq "$expected" ]] || {
     echo "CI rollback smoke returned $status instead of $expected" >&2
     exit 1
   }
-  sudo -u deploy test ! -e "$CANDIDATE_RELEASE"
-  [[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$LEGACY_RELEASE" ]]
+  sudo -u deploy test ! -e "$release_path"
+  [[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$active_path" ]]
   if docker inspect "$CONTAINER" >/dev/null 2>&1; then
     exit 1
   fi
@@ -284,10 +330,12 @@ run_expected_failure() {
 }
 
 phase ambiguous-remove-rollback
-run_expected_failure after-candidate-remove-ambiguous 96
+run_expected_failure after-candidate-remove-ambiguous 96 \
+  "$CANDIDATE_ID" "$CANDIDATE_RELEASE" "$LEGACY_RELEASE"
 
 phase active-switch-cold-rollback
-run_expected_failure after-active-switch 97
+run_expected_failure after-active-switch 97 \
+  "$CANDIDATE_ID" "$CANDIDATE_RELEASE" "$LEGACY_RELEASE"
 
 phase replacement-success
 sudo -u deploy env CI=true GITHUB_ACTIONS=true \
@@ -300,6 +348,53 @@ candidate_container_id="$(sudo -u deploy python3 "$CANDIDATE_RELEASE/verify.py" 
 [[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]]
 [[ "$(docker network inspect --format '{{.Id}}' "$NETWORK")" == "$legacy_network_id" ]]
 [[ "$(docker network inspect --format '{{.Id}}' "$EGRESS_NETWORK")" == "$egress_network_id" ]]
+sudo /usr/local/libexec/jobseek-lightpanda-network-policy verify-running-ready >/dev/null
+
+phase prior-cold-removal-before-compose-failure
+run_expected_failure before-compose 94 \
+  "$SECOND_ID" "$SECOND_RELEASE" "$CANDIDATE_RELEASE"
+
+phase candidate-cleanup-during-compose-failure
+run_expected_failure during-compose 95 \
+  "$SECOND_ID" "$SECOND_RELEASE" "$CANDIDATE_RELEASE"
+
+phase second-controlled-release-success
+write_stage_release "$SECOND_ID" "$SECOND_RELEASE"
+sudo -u deploy env CI=true GITHUB_ACTIONS=true \
+  JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=success \
+  bash "$stage/install-host.sh" \
+    "$stage" "$SOURCE_COMMIT" "$IMAGE" "$SECOND_ID"
+[[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$SECOND_RELEASE" ]]
+second_container_id="$(sudo -u deploy python3 "$SECOND_RELEASE/verify.py" running \
+  "$SECOND_RELEASE/release.env")"
+[[ "$second_container_id" =~ ^[0-9a-f]{64}$ && "$second_container_id" != "$candidate_container_id" ]]
+
+phase stale-uncommitted-candidate
+write_stage_release "$STALE_ID" "$STALE_RELEASE"
+set +e
+sudo -u deploy env CI=true GITHUB_ACTIONS=true \
+  JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=crash-after-candidate \
+  bash "$stage/install-host.sh" \
+    "$stage" "$SOURCE_COMMIT" "$IMAGE" "$STALE_ID"
+stale_status=$?
+set -e
+[[ "$stale_status" -eq 137 ]]
+stale_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
+[[ "$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.release"}}' "$CONTAINER")" == "$STALE_ID" ]]
+[[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$SECOND_RELEASE" ]]
+
+phase stale-candidate-recovery-success
+write_stage_release "$RECOVERY_ID" "$RECOVERY_RELEASE"
+sudo -u deploy env CI=true GITHUB_ACTIONS=true \
+  JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=success \
+  bash "$stage/install-host.sh" \
+    "$stage" "$SOURCE_COMMIT" "$IMAGE" "$RECOVERY_ID"
+if docker inspect "$stale_container_id" >/dev/null 2>&1; then
+  exit 1
+fi
+[[ "$(sudo -u deploy readlink -f "$ROOT/active")" == "$RECOVERY_RELEASE" ]]
+candidate_container_id="$(sudo -u deploy python3 "$RECOVERY_RELEASE/verify.py" running \
+  "$RECOVERY_RELEASE/release.env")"
 sudo /usr/local/libexec/jobseek-lightpanda-network-policy verify-running-ready >/dev/null
 
 phase firewall-paths
@@ -348,6 +443,25 @@ with context.wrap_socket(raw, server_hostname="10.0.0.5") as connection:
     if not first:
         raise SystemExit("renderer did not return its hello frame")
 PY
+
+phase malformed-impostor-rejection
+docker rm --force "$candidate_container_id" >/dev/null
+impostor_id="$(docker run --detach --name "$CONTAINER" \
+  --label com.docker.compose.project=not-jobseek \
+  --entrypoint /bin/sh "$IMAGE" -ceu 'while :; do sleep 60; done')"
+write_stage_release "$IMPOSTOR_PROBE_ID" "$ROOT/releases/$IMPOSTOR_PROBE_ID"
+set +e
+sudo -u deploy env CI=true GITHUB_ACTIONS=true \
+  JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE=success \
+  bash "$stage/install-host.sh" \
+    "$stage" "$SOURCE_COMMIT" "$IMAGE" "$IMPOSTOR_PROBE_ID"
+impostor_status=$?
+set -e
+[[ "$impostor_status" -ne 0 ]]
+[[ "$(docker inspect --format '{{.Id}}' "$CONTAINER")" == "$impostor_id" ]]
+[[ "$(docker inspect --format '{{json .State.Running}}' "$CONTAINER")" == false ]]
+[[ "$(docker network inspect --format '{{len .Containers}}' "$EGRESS_NETWORK")" == 0 ]]
+docker rm "$impostor_id" >/dev/null
 
 phase final-attestation
 python3 deploy/lightpanda-renderer/verify.py assert-protected "$work/protected-before.json"

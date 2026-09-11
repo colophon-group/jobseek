@@ -30,7 +30,10 @@ trap 'exit 143' TERM
 if [[ -n "$CI_FAILURE_MODE" ]]; then
   [[ "$CI_FAILURE_MODE" == success || "$CI_FAILURE_MODE" == after-candidate || \
     "$CI_FAILURE_MODE" == after-candidate-remove-ambiguous || \
-    "$CI_FAILURE_MODE" == after-active-switch ]] || exit 2
+    "$CI_FAILURE_MODE" == after-active-switch || \
+    "$CI_FAILURE_MODE" == before-compose || \
+    "$CI_FAILURE_MODE" == during-compose || \
+    "$CI_FAILURE_MODE" == crash-after-candidate ]] || exit 2
   [[ "${CI:-}" == true && "${GITHUB_ACTIONS:-}" == true ]] || exit 2
   [[ "$IMAGE_REF" == jobseek-lightpanda-renderer:pr ]] || exit 2
   [[ "$RELEASE_ID" =~ ^sha-${SOURCE_COMMIT}-ci-r[0-9]+a[0-9]+$ ]] || exit 2
@@ -98,6 +101,27 @@ acquire_renderer_lock "$ROOT/renderer.lock" 900 || {
   exit 1
 }
 python3 "$STAGE/verify.py" snapshot-protected "$protected_before"
+stable_empty_egress() {
+  local endpoint_count
+  for _scan in 1 2; do
+    if docker network inspect "$EGRESS_NETWORK" >/dev/null 2>&1; then
+      endpoint_count="$(docker network inspect --format '{{len .Containers}}' "$EGRESS_NETWORK")" || return 1
+      [[ "$endpoint_count" == 0 ]] || return 1
+    fi
+  done
+}
+early_containment_armed=1
+early_containment() {
+  status=$?
+  trap - EXIT HUP INT TERM
+  if (( early_containment_armed )) && [[ "$status" -ne 0 ]]; then
+    sudo -n "$POLICY" quarantine || status=1
+    stable_empty_egress || status=1
+    python3 "$STAGE/verify.py" assert-protected "$protected_before" || status=1
+  fi
+  exit "$status"
+}
+trap early_containment EXIT
 renderer_exists=0
 if docker inspect "$CONTAINER" >/dev/null 2>&1; then
   renderer_exists=1
@@ -126,12 +150,65 @@ if [[ -e "$ACTIVE" || -L "$ACTIVE" ]]; then
   [[ -d "$previous_generation" && -f "$previous_generation/compose.yml" && -f "$previous_generation/release.env" ]] || exit 1
 fi
 if (( renderer_exists )); then
-  [[ -n "$previous_generation" ]] || exit 1
-  previous_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
-  [[ "$previous_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
-  python3 "$previous_generation/verify.py" running \
-    "$previous_generation/release.env" --expected-id "$previous_container_id" >/dev/null
+  existing_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
+  existing_name="$(docker inspect --format '{{.Name}}' "$existing_id")"
+  existing_project="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$existing_id")"
+  existing_service="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' "$existing_id")"
+  existing_mode="$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.mode"}}' "$existing_id")"
+  existing_release_id="$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.release"}}' "$existing_id")"
+  existing_image_ref="$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.image-ref"}}' "$existing_id")"
+  existing_source="$(docker inspect --format '{{index .Config.Labels "org.jobseek.lightpanda.source-commit"}}' "$existing_id")"
+  [[ "$existing_source" =~ ^[0-9a-f]{40}$ ]] || exit 1
+  [[ "$existing_id" =~ ^[0-9a-f]{64}$ \
+    && "$existing_name" == "/$CONTAINER" \
+    && "$existing_project" == "$PROJECT" \
+    && "$existing_service" == "$SERVICE" \
+    && "$existing_mode" == dormant-controlled-egress \
+    && "$existing_release_id" =~ ^sha-${existing_source}-(ci-)?r[0-9]+a[0-9]+$ ]] || exit 1
+  if (( ci_rollback_smoke )); then
+    [[ "$existing_image_ref" == jobseek-lightpanda-renderer:pr \
+      && "$existing_release_id" =~ ^sha-${existing_source}-ci-r[0-9]+a[0-9]+$ ]] || exit 1
+  else
+    [[ "$existing_image_ref" =~ ^ghcr\.io/colophon-group/jobseek-lightpanda-renderer@sha256:[0-9a-f]{64}$ \
+      && "$existing_release_id" =~ ^sha-${existing_source}-r[0-9]+a[0-9]+$ ]] || exit 1
+  fi
+  existing_generation="$RELEASE_ROOT/$existing_release_id"
+  [[ -d "$existing_generation" && ! -L "$existing_generation" \
+    && "$(readlink -f "$existing_generation")" == "$existing_generation" \
+    && "$(stat -c '%U:%G:%a' "$existing_generation")" == deploy:deploy:711 ]] || exit 1
+  for artifact in verify.py release.env inventory.json compose.yml pki/ca.pem pki/server.pem pki/server-key.pem; do
+    [[ -f "$existing_generation/$artifact" && ! -L "$existing_generation/$artifact" ]] || exit 1
+  done
+  [[ "$(stat -c '%U:%G:%a:%h' "$existing_generation/verify.py")" == deploy:deploy:555:1 \
+    && "$(stat -c '%U:%G:%a:%h' "$existing_generation/release.env")" == deploy:deploy:600:1 \
+    && "$(stat -c '%U:%G:%a:%h' "$existing_generation/inventory.json")" == deploy:deploy:644:1 \
+    && "$(stat -c '%U:%G:%a:%h' "$existing_generation/compose.yml")" == deploy:deploy:644:1 \
+    && "$(stat -c '%U:%G:%a:%h' "$existing_generation/pki/ca.pem")" == deploy:deploy:444:1 \
+    && "$(stat -c '%U:%G:%a:%h' "$existing_generation/pki/server.pem")" == deploy:deploy:444:1 \
+    && "$(stat -c '%u:%g:%a:%h' "$existing_generation/pki/server-key.pem")" == 10001:10001:400:1 ]] || exit 1
+  existing_running="$(docker inspect --format '{{json .State.Running}}' "$existing_id")"
+  if [[ "$existing_running" == true ]]; then
+    python3 "$existing_generation/verify.py" running \
+      "$existing_generation/release.env" --expected-id "$existing_id" >/dev/null
+    sudo -n "$POLICY" verify-running-ready >/dev/null
+  elif [[ "$existing_running" == false ]]; then
+    python3 "$existing_generation/verify.py" owned \
+      "$existing_generation/release.env" --expected-id "$existing_id" >/dev/null
+  else
+    exit 1
+  fi
+  docker stop --time 30 "$existing_id" >/dev/null 2>&1 || :
+  [[ "$(docker inspect --format '{{json .State.Running}}' "$existing_id")" == false ]] || exit 1
+  docker rm --force "$existing_id" >/dev/null 2>&1 || :
+  if docker inspect "$existing_id" >/dev/null 2>&1; then
+    docker rm --force "$existing_id" >/dev/null 2>&1 || :
+  fi
+  ! docker inspect "$existing_id" >/dev/null 2>&1 || exit 1
+  ! docker inspect "$CONTAINER" >/dev/null 2>&1 || exit 1
+  stable_empty_egress
+  sudo -n "$POLICY" verify-ready >/dev/null
 fi
+previous_container_id=""
 
 docker_config=""
 cleanup_auth() {
@@ -152,7 +229,34 @@ for path in sys.argv[1:]:
         os.close(descriptor)
 PY
 }
-trap cleanup_auth EXIT
+fsync_files() {
+  python3 - "$@" <<'PY'
+import os
+import stat
+import sys
+
+for path in sys.argv[1:]:
+    descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise RuntimeError(f"generation artifact is not regular: {path}")
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+PY
+}
+pre_generation_failure() {
+  status=$?
+  trap - EXIT HUP INT TERM
+  cleanup_auth
+  if [[ "$status" -ne 0 ]]; then
+    sudo -n "$POLICY" quarantine || status=1
+    stable_empty_egress || status=1
+    python3 "$STAGE/verify.py" assert-protected "$protected_before" || status=1
+  fi
+  exit "$status"
+}
+trap pre_generation_failure EXIT
 if (( ci_rollback_smoke )); then
   python3 "$STAGE/verify.py" image "$IMAGE_REF" "$SOURCE_COMMIT" --ci-release-id "$RELEASE_ID"
 else
@@ -178,8 +282,14 @@ cleanup_generation_before_start() {
   trap - EXIT HUP INT TERM
   if (( generation_cleanup_armed )); then
     rm -rf -- "$GENERATION"
+    fsync_directories "$RELEASE_ROOT" || status=1
   fi
   cleanup_auth
+  if [[ "$status" -ne 0 ]]; then
+    sudo -n "$POLICY" quarantine || status=1
+    stable_empty_egress || status=1
+    python3 "$STAGE/verify.py" assert-protected "$protected_before" || status=1
+  fi
   exit "$status"
 }
 trap cleanup_generation_before_start EXIT
@@ -222,6 +332,17 @@ docker run --rm \
 [[ "$(stat -c '%a' "$GENERATION/pki/server.pem")" == 444 ]] || exit 1
 rm -f -- "$GENERATION/pki/client.pem"
 [[ ! -e "$GENERATION/pki/client.pem" ]] || exit 1
+fsync_files \
+  "$GENERATION/compose.yml" \
+  "$GENERATION/inventory.json" \
+  "$GENERATION/verify.py" \
+  "$GENERATION/validate_pki.py" \
+  "$GENERATION/pki/ca.pem" \
+  "$GENERATION/pki/server.pem" \
+  "$GENERATION/pki/server-key.pem" \
+  "$GENERATION/release.env" \
+  "$GENERATION/pins.env"
+fsync_directories "$GENERATION/pki" "$GENERATION" "$RELEASE_ROOT"
 
 python3 "$GENERATION/verify.py" compose \
   "$GENERATION/compose.yml" "$GENERATION/release.env" "$GENERATION/inventory.json"
@@ -348,10 +469,18 @@ generation_cleanup_armed=0
 trap rollback EXIT
 
 sudo -n "$POLICY" verify-ready >/dev/null
+if [[ "$CI_FAILURE_MODE" == before-compose ]]; then
+  echo "CI rollback smoke: forcing failure before Compose" >&2
+  exit 94
+fi
 docker compose --project-name "$PROJECT" \
   --env-file "$GENERATION/release.env" \
   --file "$GENERATION/compose.yml" \
   up --detach --no-deps "$SERVICE"
+if [[ "$CI_FAILURE_MODE" == during-compose ]]; then
+  echo "CI rollback smoke: forcing ambiguous failure after Compose start" >&2
+  exit 95
+fi
 candidate_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
 [[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
 [[ -z "$previous_container_id" || "$candidate_container_id" != "$previous_container_id" ]] || exit 1
@@ -359,6 +488,10 @@ candidate_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
 first_verified_id="$(python3 "$GENERATION/verify.py" running "$GENERATION/release.env")"
 [[ "$first_verified_id" == "$candidate_container_id" ]] || exit 1
 sudo -n "$POLICY" verify-running-ready >/dev/null
+if [[ "$CI_FAILURE_MODE" == crash-after-candidate ]]; then
+  echo "CI retry smoke: killing deploy after candidate start" >&2
+  kill -KILL "$$"
+fi
 if [[ "$CI_FAILURE_MODE" == after-candidate || \
   "$CI_FAILURE_MODE" == after-candidate-remove-ambiguous ]]; then
   echo "CI rollback smoke: forcing failure after candidate creation" >&2

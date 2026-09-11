@@ -12,7 +12,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, NoReturn, cast
 
 PROJECT = "jobseek-lightpanda"
 SERVICE = "renderer"
@@ -61,6 +61,22 @@ INVENTORY_KEYS = {
     "published_address",
     "published_port",
 }
+CI_INVENTORY_KEY = "ci_test_only"
+LEGACY_INVENTORY_KEYS = {
+    "schema_version",
+    "host_architecture",
+    "service_ip",
+    "public_ipv4",
+    "public_ipv6_prefix",
+    "public_ipv6_address",
+    "private_ipv4",
+    "project_network",
+    "default_docker_network",
+    "provider_gateway",
+    "renderer_network_name",
+    "renderer_network",
+    "renderer_address",
+}
 PROTECTED = {
     "deploy-murmur-1": "murmur",
     "deploy-cloudflared-1": "cloudflared",
@@ -71,7 +87,7 @@ class VerificationError(RuntimeError):
     pass
 
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     raise VerificationError(message)
 
 
@@ -99,7 +115,12 @@ def run_text(arguments: list[str]) -> str:
 
 def load_inventory(path: Path) -> dict[str, object]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict) or set(payload) != INVENTORY_KEYS:
+    ci_inventory = (
+        isinstance(payload, dict)
+        and set(payload) == INVENTORY_KEYS | {CI_INVENTORY_KEY}
+        and payload.get(CI_INVENTORY_KEY) is True
+    )
+    if not isinstance(payload, dict) or (set(payload) != INVENTORY_KEYS and not ci_inventory):
         fail("deployment inventory keys are not the reviewed exact schema")
     if (
         payload["schema_version"] != 1
@@ -186,7 +207,11 @@ def load_inventory(path: Path) -> dict[str, object]:
             "2a01:4f8:1c18:d64c::/64",
         ]
         or dns_resolvers != ["185.12.64.1", "185.12.64.2"]
-        or payload["renderer_bridge_name"] != "br-535f5f79245b"
+        or (
+            payload["renderer_bridge_name"] != "br-535f5f79245b"
+            if not ci_inventory
+            else re.fullmatch(r"br-[0-9a-f]{12}", str(payload["renderer_bridge_name"])) is None
+        )
     ):
         fail("deployment inventory address roles are invalid")
     if not isinstance(renderer_network, ipaddress.IPv4Network):
@@ -203,6 +228,32 @@ def load_inventory(path: Path) -> dict[str, object]:
         payload["published_port"], bool
     ):
         fail("renderer published port is not an integer")
+    return payload
+
+
+def load_legacy_inventory(path: Path) -> dict[str, object]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    expected: dict[str, object] = {
+        "schema_version": 1,
+        "host_architecture": "arm64",
+        "service_ip": "10.0.0.5",
+        "public_ipv4": "178.105.51.62/32",
+        "public_ipv6_prefix": "2a01:4f8:1c18:d64c::/64",
+        "public_ipv6_address": "2a01:4f8:1c18:d64c::1",
+        "private_ipv4": "10.0.0.5/32",
+        "project_network": "10.0.0.0/16",
+        "default_docker_network": "172.17.0.0/16",
+        "provider_gateway": "172.31.1.1/32",
+        "renderer_network_name": NETWORK,
+        "renderer_network": "172.30.94.0/29",
+        "renderer_address": "172.30.94.2",
+    }
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != LEGACY_INVENTORY_KEYS
+        or payload != expected
+    ):
+        fail("legacy deployment inventory drifted")
     return payload
 
 
@@ -301,7 +352,7 @@ def snapshot_protected() -> dict[str, Any]:
 def assert_protected(expected_path: Path) -> None:
     expected = json.loads(expected_path.read_text(encoding="utf-8"))
     if snapshot_protected() != expected:
-        fail("protected Murmur containers changed during renderer transaction")
+        fail("protected Murmur containers changed during renderer maintenance")
 
 
 def all_networks() -> list[dict[str, Any]]:
@@ -926,16 +977,15 @@ def validate_running_inspect(
     release_id: str,
     environment: dict[str, str],
     inventory: dict[str, object],
+    require_running: bool = True,
 ) -> None:
     name = str(inspect.get("Name", "")).removeprefix("/")
     if name != CONTAINER or inspect.get("Image") != image_id:
         fail("running renderer image/container identity drifted")
     state = inspect.get("State") or {}
-    if (
-        state.get("Running") is not True
-        or state.get("OOMKilled") is not False
-        or state.get("ExitCode") != 0
-    ):
+    if state.get("OOMKilled") is not False or not isinstance(state.get("Running"), bool):
+        fail("renderer state is not an owned stable state")
+    if require_running and (state.get("Running") is not True or state.get("ExitCode") != 0):
         fail("renderer is not stably running")
     config = inspect.get("Config") or {}
     labels = config.get("Labels") or {}
@@ -1214,6 +1264,202 @@ def verify_running(environment: Path, *, expected_id: str | None) -> str:
     )
 
 
+def verify_owned(environment: Path, *, expected_id: str) -> str:
+    env = read_env(environment)
+    ci_release_id = (
+        env["RELEASE_ID"]
+        if re.fullmatch(r"sha-[0-9a-f]{40}-ci-r[0-9]+a[0-9]+", env["RELEASE_ID"])
+        else None
+    )
+    image = verify_image(
+        env["RENDERER_IMAGE_REF"], env["SOURCE_COMMIT"], ci_release_id=ci_release_id
+    )
+    inventory = load_inventory(environment.parent / "inventory.json")
+    inspects = run_json(["docker", "inspect", CONTAINER])
+    if len(inspects) != 1 or inspects[0].get("Id") != expected_id:
+        fail("owned renderer container identity is not exact")
+    validate_running_inspect(
+        inspects[0],
+        image_ref=env["RENDERER_IMAGE_REF"],
+        image_id=str(image["Id"]),
+        source_commit=env["SOURCE_COMMIT"],
+        release_dir=env["RENDERER_RELEASE_DIR"],
+        release_id=env["RELEASE_ID"],
+        environment=env,
+        inventory=inventory,
+        require_running=False,
+    )
+    return expected_id
+
+
+def expected_legacy_command(environment: dict[str, str], inventory: dict[str, object]) -> list[str]:
+    denied = [
+        str(inventory["public_ipv4"]),
+        str(inventory["public_ipv6_prefix"]),
+        f"{inventory['service_ip']}/32",
+        str(inventory["project_network"]),
+        str(inventory["default_docker_network"]),
+        str(inventory["provider_gateway"]),
+        str(inventory["renderer_network"]),
+    ]
+    command = [
+        "--runtime-v1-service",
+        "--listen",
+        "0.0.0.0:9443",
+        "--service-ip",
+        str(inventory["service_ip"]),
+    ]
+    for prefix in denied:
+        command.extend(("--deployment-deny-cidr", prefix))
+    command.extend(
+        (
+            "--tls-cert",
+            "/run/credentials/server.pem",
+            "--tls-key",
+            "/run/credentials/server-key.pem",
+            "--tls-ca",
+            "/run/credentials/ca.pem",
+            "--tls-ca-sha256",
+            environment["CA_DER_SHA256"],
+            "--client-leaf-sha256",
+            environment["CLIENT_LEAF_SHA256"],
+            "--client-spki-sha256",
+            environment["CLIENT_SPKI_SHA256"],
+        )
+    )
+    return command
+
+
+def verify_legacy_owned(environment: Path, *, expected_id: str) -> str:
+    env = read_env(environment)
+    ci_release_id = (
+        env["RELEASE_ID"]
+        if re.fullmatch(r"sha-[0-9a-f]{40}-ci-r[0-9]+a[0-9]+", env["RELEASE_ID"])
+        else None
+    )
+    image = verify_image(
+        env["RENDERER_IMAGE_REF"], env["SOURCE_COMMIT"], ci_release_id=ci_release_id
+    )
+    inventory = load_legacy_inventory(environment.parent / "inventory.json")
+    boundary_inventory = load_inventory(Path(__file__).resolve().parent / "inventory.json")
+    for key in LEGACY_INVENTORY_KEYS:
+        if inventory[key] != boundary_inventory[key]:
+            fail("legacy and bootstrap inventory identities differ")
+    inspects = run_json(["docker", "inspect", CONTAINER])
+    if len(inspects) != 1:
+        fail("legacy renderer identity is not exact")
+    inspect = inspects[0]
+    state = inspect.get("State") or {}
+    config = inspect.get("Config") or {}
+    host = inspect.get("HostConfig") or {}
+    labels = config.get("Labels") or {}
+    if (
+        inspect.get("Id") != expected_id
+        or str(inspect.get("Name", "")).removeprefix("/") != CONTAINER
+        or inspect.get("Image") != image.get("Id")
+        or state.get("OOMKilled") is not False
+        or not isinstance(state.get("Running"), bool)
+        or labels.get("com.docker.compose.project") != PROJECT
+        or labels.get("com.docker.compose.service") != SERVICE
+        or labels.get("org.jobseek.lightpanda.source-commit") != env["SOURCE_COMMIT"]
+        or labels.get("org.jobseek.lightpanda.image-ref") != env["RENDERER_IMAGE_REF"]
+        or labels.get("org.jobseek.lightpanda.release") != env["RELEASE_ID"]
+        or labels.get("org.jobseek.lightpanda.mode") != "dormant-no-egress"
+        or config.get("Image") != env["RENDERER_IMAGE_REF"]
+        or config.get("User") != "0:0"
+        or config.get("Entrypoint") != BOOTSTRAP_ENTRYPOINT
+        or config.get("Cmd") != expected_legacy_command(env, inventory)
+        or config.get("ExposedPorts") not in (None, {})
+        or host.get("ReadonlyRootfs") is not True
+        or host.get("CapDrop") != ["ALL"]
+        or host.get("CapAdd") != INSPECT_CAP_ADD
+        or host.get("SecurityOpt") != ["no-new-privileges:true"]
+        or host.get("Memory") != 1073741824
+        or host.get("MemorySwap") != 1073741824
+        or host.get("NanoCpus") != 1_000_000_000
+        or host.get("PidsLimit") != 64
+        or host.get("Init") is not True
+        or host.get("NetworkMode") != NETWORK
+        or host.get("PortBindings") not in (None, {})
+        or host.get("PublishAllPorts") is not False
+        or host.get("RestartPolicy") != {"Name": "on-failure", "MaximumRetryCount": 3}
+        or host.get("LogConfig")
+        != {"Type": "local", "Config": {"max-file": "3", "max-size": "10m"}}
+        or host.get("CgroupnsMode") != "private"
+        or host.get("Ulimits") != [{"Name": "nofile", "Soft": 256, "Hard": 256}]
+    ):
+        fail("legacy renderer ownership metadata drifted")
+    mounts = inspect.get("Mounts") or []
+    targets = {
+        "/run/credentials/ca.pem": "ca.pem",
+        "/run/credentials/server.pem": "server.pem",
+        "/run/credentials/server-key.pem": "server-key.pem",
+    }
+    if len(mounts) != 3 or any(
+        mount.get("Type") != "bind"
+        or mount.get("RW") is not False
+        or mount.get("Destination") not in targets
+        or mount.get("Source")
+        != f"{env['RENDERER_RELEASE_DIR']}/pki/{targets.get(mount.get('Destination'), '')}"
+        for mount in mounts
+    ):
+        fail("legacy renderer credential mounts drifted")
+    networks = inspect.get("NetworkSettings", {}).get("Networks") or {}
+    if (
+        set(networks) != {NETWORK}
+        or networks[NETWORK].get("IPAddress") != inventory["renderer_address"]
+        or networks[NETWORK].get("EndpointID") in (None, "")
+    ):
+        fail("legacy renderer network attachment drifted")
+    network_inspects = run_json(["docker", "network", "inspect", NETWORK])
+    if len(network_inspects) != 1:
+        fail("legacy renderer network identity is not exact")
+    network = network_inspects[0]
+    endpoints = network.get("Containers") or {}
+    configs = network.get("IPAM", {}).get("Config") or []
+    options = network.get("Options") or {}
+    network_id = str(network.get("Id", ""))
+    bridge = options.get("com.docker.network.bridge.name") or f"br-{network_id[:12]}"
+    network_labels = network.get("Labels") or {}
+    renderer_prefix = ipaddress.ip_network(str(inventory["renderer_network"])).prefixlen
+    if (
+        not re.fullmatch(r"[0-9a-f]{64}", network_id)
+        or network.get("Internal") is not True
+        or network.get("EnableIPv6") is not False
+        or network.get("Attachable") is not False
+        or [config.get("Subnet") for config in configs] != [inventory["renderer_network"]]
+        or options
+        not in (
+            {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"},
+            {
+                "com.docker.network.bridge.gateway_mode_ipv4": "isolated",
+                "com.docker.network.bridge.name": boundary_inventory["renderer_bridge_name"],
+            },
+        )
+        or bridge != boundary_inventory["renderer_bridge_name"]
+        or network_labels.get("com.docker.compose.project") != PROJECT
+        or network_labels.get("com.docker.compose.network") != SERVICE
+        or set(endpoints) != {expected_id}
+        or endpoints[expected_id].get("Name") != CONTAINER
+        or endpoints[expected_id].get("IPv4Address")
+        != f"{inventory['renderer_address']}/{renderer_prefix}"
+    ):
+        fail("legacy renderer network ownership drifted")
+    return expected_id
+
+
+def verify_owned_predecessor(environment: Path, *, expected_id: str) -> str:
+    inspects = run_json(["docker", "inspect", CONTAINER])
+    if len(inspects) != 1 or inspects[0].get("Id") != expected_id:
+        fail("predecessor renderer identity is not exact")
+    mode = (inspects[0].get("Config", {}).get("Labels") or {}).get("org.jobseek.lightpanda.mode")
+    if mode == "dormant-controlled-egress":
+        return verify_owned(environment, expected_id=expected_id)
+    if mode == "dormant-no-egress":
+        return verify_legacy_owned(environment, expected_id=expected_id)
+    fail("predecessor renderer mode is not owned")
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser()
     sub = result.add_subparsers(dest="command", required=True)
@@ -1240,6 +1486,12 @@ def parser() -> argparse.ArgumentParser:
     running = sub.add_parser("running")
     running.add_argument("environment", type=Path)
     running.add_argument("--expected-id")
+    owned = sub.add_parser("owned")
+    owned.add_argument("environment", type=Path)
+    owned.add_argument("--expected-id", required=True)
+    predecessor = sub.add_parser("owned-predecessor")
+    predecessor.add_argument("environment", type=Path)
+    predecessor.add_argument("--expected-id", required=True)
     return result
 
 
@@ -1271,6 +1523,10 @@ def main() -> int:
             verify_cleanup_network(args.network_id, args.inventory)
         elif args.command == "running":
             print(verify_running(args.environment, expected_id=args.expected_id))
+        elif args.command == "owned":
+            print(verify_owned(args.environment, expected_id=args.expected_id))
+        elif args.command == "owned-predecessor":
+            print(verify_owned_predecessor(args.environment, expected_id=args.expected_id))
         return 0
     except (
         VerificationError,

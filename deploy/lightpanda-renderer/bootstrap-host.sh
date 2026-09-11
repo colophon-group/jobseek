@@ -18,18 +18,25 @@ POLICY=/usr/local/libexec/jobseek-lightpanda-network-policy
 INVENTORY=/etc/jobseek-lightpanda-network/inventory.json
 UNIT=/etc/systemd/system/jobseek-lightpanda-network.service
 SUDOERS=/etc/sudoers.d/jobseek-lightpanda-network
+TMPFILES=/etc/tmpfiles.d/jobseek-lightpanda-network.conf
 HOST_LOCK=/run/lock/jobseek-lightpanda-network.lock
 RENDERER_ROOT=/home/deploy/.local/share/jobseek-lightpanda
 RENDERER_LOCK="$RENDERER_ROOT/renderer.lock"
 ACTIVE="$RENDERER_ROOT/active"
 CONTAINER=jobseek-lightpanda-renderer
 EGRESS_NETWORK=jobseek-lightpanda-egress
+CI_FAILURE_MODE="${JOBSEEK_LIGHTPANDA_BOOTSTRAP_CI_FAILURE_MODE:-}"
 
 [[ "$(id -u)" -eq 0 ]] || { echo "host bootstrap requires root" >&2; exit 2; }
 [[ "$STAGE" =~ ^/tmp/jobseek-lightpanda-bootstrap\.r[0-9]+a[0-9]+\.[A-Za-z0-9]+$ ]] || exit 2
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || exit 2
 [[ "$GENERATION" == "$RELEASE_ROOT/sha-$SOURCE_COMMIT" ]] || exit 2
-for command in docker flock install python3 readlink runuser stat systemctl visudo; do
+if [[ -n "$CI_FAILURE_MODE" ]]; then
+  [[ "$CI_FAILURE_MODE" == after-stop-before-remove || \
+    "$CI_FAILURE_MODE" == ambiguous-stop-status ]] || exit 2
+  [[ "${CI:-}" == true && "${GITHUB_ACTIONS:-}" == true ]] || exit 2
+fi
+for command in docker flock install python3 readlink runuser stat systemctl systemd-tmpfiles visudo; do
   command -v "$command" >/dev/null || {
     echo "required host bootstrap command is absent: $command" >&2
     exit 1
@@ -40,6 +47,7 @@ for artifact in \
   inventory.json \
   verify.py \
   jobseek-lightpanda-network.service \
+  jobseek-lightpanda-network.tmpfiles \
   jobseek-lightpanda-network.sudoers; do
   [[ -f "$STAGE/$artifact" && ! -L "$STAGE/$artifact" ]] || exit 2
   [[ "$(stat -c '%s' "$STAGE/$artifact")" -le 262144 ]] || exit 2
@@ -47,9 +55,12 @@ done
 
 install -d -o root -g root -m 0700 "$STATE_ROOT" "$RELEASE_ROOT"
 install -d -o deploy -g deploy -m 0700 "$RENDERER_ROOT"
+install -D -o root -g root -m 0644 "$STAGE/jobseek-lightpanda-network.tmpfiles" "$TMPFILES"
+systemd-tmpfiles --create "$TMPFILES"
 python3 - "$HOST_LOCK" "$RENDERER_LOCK" <<'PY'
 import os
 import pwd
+import stat
 import sys
 
 deploy = pwd.getpwnam("deploy")
@@ -58,16 +69,20 @@ for path, mode, uid, gid in (
     (sys.argv[2], 0o600, deploy.pw_uid, deploy.pw_gid),
 ):
     try:
+        descriptor = os.open(path, os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW)
+    except FileNotFoundError:
         descriptor = os.open(
             path,
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
+            os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
             mode,
         )
-    except FileExistsError:
-        continue
     try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise RuntimeError("lock path is not a single-link regular file")
         os.fchmod(descriptor, mode)
         os.fchown(descriptor, uid, gid)
+        os.fsync(descriptor)
     finally:
         os.close(descriptor)
 PY
@@ -79,6 +94,7 @@ exec 9<"$HOST_LOCK"
 flock -w 900 9 || { echo "host policy lock is busy" >&2; exit 1; }
 exec 8<"$RENDERER_LOCK"
 flock -w 300 8 || { echo "renderer lock is busy" >&2; exit 1; }
+renderer_lock_held=1
 
 protected_before="$STAGE/protected-before.json"
 python3 "$STAGE/verify.py" snapshot-protected "$protected_before"
@@ -96,6 +112,11 @@ failure_containment() {
   status=$?
   trap - EXIT HUP INT TERM
   if [[ "$status" -ne 0 ]]; then
+    if (( ! renderer_lock_held )); then
+      exec 8<"$RENDERER_LOCK"
+      flock -w 300 8 || exit 1
+      renderer_lock_held=1
+    fi
     containment_policy="$STAGE/network-policy.py"
     [[ -x "$GENERATION/network-policy.py" ]] && containment_policy="$GENERATION/network-policy.py"
     python3 "$containment_policy" quarantine || status=1
@@ -121,17 +142,41 @@ if docker inspect "$CONTAINER" >/dev/null 2>&1; then
   [[ -n "$previous_generation" ]] || exit 1
   previous_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
   [[ "$previous_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
-  runuser -u deploy -- python3 "$previous_generation/verify.py" running \
-    "$previous_generation/release.env" --expected-id "$previous_id" >/dev/null
-  docker stop --time 30 "$previous_id" >/dev/null
+  previous_running="$(docker inspect --format '{{json .State.Running}}' "$previous_id")"
+  if [[ "$previous_running" == true ]]; then
+    runuser -u deploy -- python3 "$previous_generation/verify.py" running \
+      "$previous_generation/release.env" --expected-id "$previous_id" >/dev/null
+  elif [[ "$previous_running" == false ]]; then
+    runuser -u deploy -- python3 "$STAGE/verify.py" owned-predecessor \
+      "$previous_generation/release.env" --expected-id "$previous_id" >/dev/null
+  else
+    exit 1
+  fi
+  stop_status=0
+  docker stop --time 30 "$previous_id" >/dev/null 2>&1 || stop_status=$?
+  if [[ "$CI_FAILURE_MODE" == ambiguous-stop-status ]]; then
+    stop_status=75
+  fi
   [[ "$(docker inspect --format '{{json .State.Running}}' "$previous_id")" == false ]] || exit 1
-  docker rm "$previous_id" >/dev/null
+  # Docker may report a transport failure after completing the stop. Final
+  # inspected state is authoritative; a nonzero status alone is not.
+  if [[ "$stop_status" -ne 0 ]]; then
+    echo "renderer stop returned $stop_status; continuing from exact stopped state" >&2
+  fi
+  if [[ "$CI_FAILURE_MODE" == after-stop-before-remove ]]; then
+    echo "CI bootstrap smoke: interrupting after stop and before remove" >&2
+    exit 98
+  fi
+  docker rm --force "$previous_id" >/dev/null 2>&1 || :
+  if docker inspect "$previous_id" >/dev/null 2>&1; then
+    docker rm --force "$previous_id" >/dev/null 2>&1 || :
+  fi
+  ! docker inspect "$previous_id" >/dev/null 2>&1 || exit 1
   ! docker inspect "$CONTAINER" >/dev/null 2>&1 || exit 1
 fi
 
-# The active pointer and prior release deliberately remain in place. Bootstrap
-# only removes the verified process, so an ordinary renderer deploy can still
-# identify and restore the exact legacy generation if its candidate fails.
+# The active pointer and prior release deliberately remain as cold provenance.
+# Automatic deployment never restarts or restores that legacy process.
 stable_empty_egress
 python3 "$STAGE/verify.py" assert-protected "$protected_before"
 
@@ -160,11 +205,35 @@ for target, source in ((sys.argv[1], sys.argv[2]), (sys.argv[3], sys.argv[4])):
         os.close(descriptor)
 PY
 
-python3 - "$GENERATION" /usr/local/libexec /etc/jobseek-lightpanda-network /etc/systemd/system /etc/sudoers.d <<'PY'
+python3 - \
+  "$GENERATION/network-policy.py" \
+  "$GENERATION/inventory.json" \
+  "$UNIT" \
+  "$SUDOERS" \
+  "$TMPFILES" \
+  -- \
+  "$GENERATION" \
+  "$RELEASE_ROOT" \
+  "$STATE_ROOT" \
+  /usr/local/libexec \
+  /etc/jobseek-lightpanda-network \
+  /etc/systemd/system \
+  /etc/sudoers.d \
+  /etc/tmpfiles.d <<'PY'
 import os
+import stat
 import sys
 
-for path in sys.argv[1:]:
+separator = sys.argv.index("--")
+for path in sys.argv[1:separator]:
+    descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise RuntimeError(f"installed artifact is not regular: {path}")
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+for path in sys.argv[separator + 1 :]:
     descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
     try:
         os.fsync(descriptor)
@@ -176,11 +245,6 @@ PY
 "$POLICY" verify >/dev/null
 systemctl daemon-reload
 systemctl enable jobseek-lightpanda-network.service >/dev/null
-systemctl restart jobseek-lightpanda-network.service
-systemctl is-enabled --quiet jobseek-lightpanda-network.service
-systemctl is-active --quiet jobseek-lightpanda-network.service
-[[ "$(systemctl show --property=Result --value jobseek-lightpanda-network.service)" == success ]]
-"$POLICY" verify >/dev/null
 stable_empty_egress
 python3 "$STAGE/verify.py" assert-protected "$protected_before"
 
@@ -190,13 +254,14 @@ import json
 import os
 import secrets
 import sys
+from pathlib import Path
 
 path, source_commit, policy_path, inventory_path = sys.argv[1:]
 payload = {
     "schema_version": 1,
     "source_commit": source_commit,
-    "policy_sha256": hashlib.sha256(open(policy_path, "rb").read()).hexdigest(),
-    "inventory_sha256": hashlib.sha256(open(inventory_path, "rb").read()).hexdigest(),
+    "policy_sha256": hashlib.sha256(Path(policy_path).read_bytes()).hexdigest(),
+    "inventory_sha256": hashlib.sha256(Path(inventory_path).read_bytes()).hexdigest(),
 }
 parent = os.path.dirname(path)
 temporary = os.path.join(parent, f".bootstrap-complete.{secrets.token_hex(8)}")
@@ -224,6 +289,24 @@ finally:
 PY
 
 "$POLICY" verify-ready >/dev/null
+
+# The durable boundary and completion marker are now complete. Keep the host
+# policy lock across the systemd transition, but hand renderer exclusion to
+# the unit while it performs its own empty-network ensure. Ordinary deploys
+# take host then renderer, so they cannot enter this handoff and there is no
+# lock inversion or unprotected policy window.
+flock -u 8
+exec 8<&-
+renderer_lock_held=0
+systemctl restart jobseek-lightpanda-network.service
+exec 8<"$RENDERER_LOCK"
+flock -w 300 8 || exit 1
+renderer_lock_held=1
+systemctl is-enabled --quiet jobseek-lightpanda-network.service
+systemctl is-active --quiet jobseek-lightpanda-network.service
+[[ "$(systemctl show --property=Result --value jobseek-lightpanda-network.service)" == success ]]
+"$POLICY" verify >/dev/null
+python3 "$STAGE/verify.py" assert-protected "$protected_before"
 
 trap - EXIT
 echo "Lightpanda host network bootstrap complete for $SOURCE_COMMIT"

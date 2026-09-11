@@ -114,6 +114,9 @@ class Inventory:
     @classmethod
     def load(cls, path: Path) -> Inventory:
         payload = json.loads(path.read_text(encoding="utf-8"))
+        if "ci_test_only" in payload and payload["ci_test_only"] is not True:
+            fail("CI inventory marker is invalid")
+        ci_inventory = payload.get("ci_test_only") is True
         production = tuple(
             canonical_network(value, prefixlen=32) for value in payload["production_public_ipv4"]
         )
@@ -139,10 +142,15 @@ class Inventory:
         interface = str(payload["private_interface"])
         bridge = str(payload["egress_bridge_name"])
         internal_bridge = str(payload["renderer_bridge_name"])
+        expected_internal_bridge = (
+            re.fullmatch(r"br-[0-9a-f]{12}", internal_bridge) is not None
+            if ci_inventory
+            else internal_bridge == "br-535f5f79245b"
+        )
         if (
             interface != "enp7s0"
             or not re.fullmatch(r"[a-z0-9-]{1,15}", bridge)
-            or internal_bridge != "br-535f5f79245b"
+            or not expected_internal_bridge
         ):
             fail("host interface inventory drifted")
         internal_network = canonical_network(payload["renderer_network"])

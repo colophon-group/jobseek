@@ -306,16 +306,22 @@ is accepted only from the crawler address.
 Bootstrap is monotonic. A failure quarantines every endpoint on the dedicated
 egress network and leaves the restrictive policy and persistent networks in
 place. Re-running bootstrap repairs only empty-network policy state; there is
-no decommission or cross-user transaction log in the deploy path. The systemd
-unit reattests or repairs that same empty-network state after Docker restarts.
+no decommission or cross-user transaction log in the deploy path. A root-owned
+tmpfiles declaration recreates the exact host lock before services on every
+boot. The systemd unit serializes on the renderer lifecycle lock and reattests
+or repairs that same empty-network state after Docker restarts.
 
-Ordinary deploys take the host lock before the renderer lock and have only two
-root capabilities: read-only policy attestation immediately before starting a
-candidate and read-only policy-plus-runtime attestation immediately after.
-They never create, replace, or remove host policy. Candidate failure stops,
-disconnects, and removes the exact candidate, restores the prior active
-pointer, proves the routed network stably empty, and leaves the renderer cold;
-restarting a prior generation requires a separately reviewed operator deploy.
+Ordinary deploys take the host lock before the renderer lock. Their normal root
+capabilities are read-only policy attestation immediately before starting a
+candidate and read-only policy-plus-runtime attestation immediately after; an
+exact quarantine command is reserved for fail-closed handling of malformed
+named containers or routed endpoints. They never create, replace, or remove
+host policy. Before replacement they authenticate and cold-remove the exact
+owned container, including a stale uncommitted candidate whose release differs
+from the active pointer. Candidate failure stops, disconnects, and removes the
+exact candidate, restores the prior active pointer, proves the routed network
+stably empty, and leaves the renderer cold; restarting a prior generation
+requires a separately reviewed operator deploy.
 
 ## Target architecture
 
