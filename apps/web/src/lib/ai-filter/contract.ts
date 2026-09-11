@@ -411,8 +411,11 @@ function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
  * Parses an immutable candidate-selection snapshot. It intentionally does not
  * bind normalized posting content; AF-9/AF-10 must bind classifier input at
  * execution time. Successful parsing is not authorization or an execution
- * permit. Producers must use the canonical reader's whole-second half-open
- * interval `[requestedAt - 30 days, requestedAt)` and order candidates by
+ * permit. Strict retention makes the effective eligibility interval
+ * `(requestedAt - 30 days, requestedAt)`. Producers must compose that with the
+ * canonical reader's whole-second `[windowStart, windowEnd)` contract by using
+ * `windowStart = requestedAt - 30 days + 1 second` and
+ * `windowEnd = requestedAt`. Candidates must be ordered by
  * `postingFirstSeenAt` descending, then `candidateId` ascending for equal
  * timestamps.
  */
@@ -431,7 +434,6 @@ export function parseAiFilterSegmentRequest(
     "segment request.requestedAt",
   );
   const requestedAtMs = new Date(requestedAt).getTime();
-  const windowStartMs = requestedAtMs - RETENTION_MS;
   const candidateInputs = requireDenseArray(
     record.candidates,
     "segment request.candidates",
@@ -467,7 +469,7 @@ export function parseAiFilterSegmentRequest(
         "segment request candidates must be newest-first with candidate IDs ascending for equal timestamps",
       );
     }
-    if (firstSeenMs < windowStartMs) {
+    if (new Date(candidate.productExpiresAt).getTime() <= requestedAtMs) {
       fail("candidate retention expired before the run was requested");
     }
     previousFirstSeenMs = firstSeenMs;
