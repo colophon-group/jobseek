@@ -12,12 +12,13 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 PROJECT = "jobseek-lightpanda"
 SERVICE = "renderer"
 CONTAINER = "jobseek-lightpanda-renderer"
 NETWORK = "jobseek-lightpanda-renderer"
+EGRESS_NETWORK = "jobseek-lightpanda-egress"
 CONTROLLER_USER = "10001:10001"
 BOOTSTRAP_ENTRYPOINT = [
     "/usr/bin/setpriv",
@@ -40,12 +41,25 @@ INVENTORY_KEYS = {
     "public_ipv6_prefix",
     "public_ipv6_address",
     "private_ipv4",
+    "private_interface",
+    "crawler_private_ipv4",
+    "production_public_ipv4",
+    "production_public_ipv6",
+    "dns_resolvers",
     "project_network",
     "default_docker_network",
     "provider_gateway",
     "renderer_network_name",
+    "renderer_bridge_name",
     "renderer_network",
     "renderer_address",
+    "egress_network_name",
+    "egress_bridge_name",
+    "egress_network",
+    "egress_gateway",
+    "egress_address",
+    "published_address",
+    "published_port",
 }
 PROTECTED = {
     "deploy-murmur-1": "murmur",
@@ -93,7 +107,14 @@ def load_inventory(path: Path) -> dict[str, object]:
         or payload["renderer_network_name"] != NETWORK
         or any(
             not isinstance(payload[key], str) or not payload[key]
-            for key in INVENTORY_KEYS - {"schema_version"}
+            for key in INVENTORY_KEYS
+            - {
+                "schema_version",
+                "production_public_ipv4",
+                "production_public_ipv6",
+                "dns_resolvers",
+                "published_port",
+            }
         )
     ):
         fail("deployment inventory identity fields are invalid")
@@ -105,6 +126,8 @@ def load_inventory(path: Path) -> dict[str, object]:
         "default_docker_network",
         "provider_gateway",
         "renderer_network",
+        "crawler_private_ipv4",
+        "egress_network",
     ):
         value = str(payload[key])
         if str(ipaddress.ip_network(value, strict=True)) != value:
@@ -116,6 +139,13 @@ def load_inventory(path: Path) -> dict[str, object]:
     project_network = ipaddress.ip_network(str(payload["project_network"]))
     provider_gateway = ipaddress.ip_network(str(payload["provider_gateway"]))
     renderer_network = ipaddress.ip_network(str(payload["renderer_network"]))
+    crawler_private = ipaddress.ip_network(str(payload["crawler_private_ipv4"]))
+    egress_network = ipaddress.ip_network(str(payload["egress_network"]))
+    egress_gateway = ipaddress.ip_address(str(payload["egress_gateway"]))
+    egress_address = ipaddress.ip_address(str(payload["egress_address"]))
+    production_public = payload["production_public_ipv4"]
+    production_public_ipv6 = payload["production_public_ipv6"]
+    dns_resolvers = payload["dns_resolvers"]
     service_ip = ipaddress.ip_address(str(payload["service_ip"]))
     if (
         public_ipv4.version != 4
@@ -132,6 +162,31 @@ def load_inventory(path: Path) -> dict[str, object]:
         or renderer_network.version != 4
         or renderer_network.prefixlen != 29
         or not renderer_network.is_private
+        or crawler_private != ipaddress.ip_network("10.0.0.4/32")
+        or egress_network != ipaddress.ip_network("172.30.94.8/29")
+        or egress_gateway != ipaddress.ip_address("172.30.94.9")
+        or egress_address != ipaddress.ip_address("172.30.94.10")
+        or payload["egress_network_name"] != EGRESS_NETWORK
+        or payload["egress_bridge_name"] != "br-jlp-egress"
+        or payload["private_interface"] != "enp7s0"
+        or payload["published_address"] != "10.0.0.5"
+        or payload["published_port"] != 9443
+        or production_public
+        != [
+            "116.203.192.19/32",
+            "178.104.102.63/32",
+            "178.104.132.47/32",
+            "178.105.51.62/32",
+        ]
+        or production_public_ipv6
+        != [
+            "2a01:4f8:1c18:adf3::/64",
+            "2a01:4f8:1c18:5f98::/64",
+            "2a01:4f8:1c18:d03c::/64",
+            "2a01:4f8:1c18:d64c::/64",
+        ]
+        or dns_resolvers != ["185.12.64.1", "185.12.64.2"]
+        or payload["renderer_bridge_name"] != "br-535f5f79245b"
     ):
         fail("deployment inventory address roles are invalid")
     if not isinstance(renderer_network, ipaddress.IPv4Network):
@@ -142,6 +197,12 @@ def load_inventory(path: Path) -> dict[str, object]:
         renderer_network.broadcast_address,
     }:
         fail("renderer address is outside its dedicated network")
+    if egress_address not in egress_network or egress_gateway not in egress_network:
+        fail("renderer egress identities are outside their dedicated network")
+    if not isinstance(payload["published_port"], int) or isinstance(
+        payload["published_port"], bool
+    ):
+        fail("renderer published port is not an integer")
     return payload
 
 
@@ -228,10 +289,7 @@ def protected_snapshot_from_inspects(inspects: list[dict[str, Any]]) -> dict[str
     if set(snapshot["containers"]) != set(PROTECTED):
         fail("protected container inventory is not exact")
     for container in snapshot["containers"].values():
-        if container["restart_policy"] != {
-            "Name": "unless-stopped",
-            "MaximumRetryCount": 0,
-        }:
+        if container["restart_policy"] != {"Name": "no", "MaximumRetryCount": 0}:
             fail("paused protected container restart policy drifted")
     return snapshot
 
@@ -251,13 +309,63 @@ def all_networks() -> list[dict[str, Any]]:
     return [] if not ids else run_json(["docker", "network", "inspect", *ids])
 
 
-def reconcile_renderer_host_isolation(
-    inventory: dict[str, object], *, renderer_exists: bool
-) -> None:
+def expected_egress_route_identities(
+    inventory: dict[str, object],
+) -> set[tuple[str, ...]]:
+    network = ipaddress.ip_network(str(inventory["egress_network"]))
+    common = (
+        str(inventory["egress_bridge_name"]),
+        "kernel",
+        str(inventory["egress_gateway"]),
+    )
+    return {
+        ("main", "unicast", str(network), "link", *common, ""),
+        ("local", "local", str(inventory["egress_gateway"]), "host", *common, ""),
+        ("local", "broadcast", str(network.broadcast_address), "link", *common, ""),
+    }
+
+
+def verify_egress_kernel_routes(routes: list[dict[str, Any]], inventory: dict[str, object]) -> None:
+    candidate = ipaddress.ip_network(str(inventory["egress_network"]))
+    observed: list[tuple[str, ...]] = []
+    for route in routes:
+        destination = route.get("dst")
+        if not destination or destination == "default":
+            continue
+        try:
+            route_network = ipaddress.ip_network(str(destination), strict=False)
+        except ValueError:
+            fail("host route inventory contains a noncanonical prefix")
+        if route_network.version != 4 or not route_network.overlaps(candidate):
+            continue
+        canonical_destination = (
+            str(route_network.network_address)
+            if route_network.prefixlen == route_network.max_prefixlen
+            else str(route_network)
+        )
+        observed.append(
+            (
+                str(route.get("table", "main")),
+                str(route.get("type", "unicast")),
+                canonical_destination,
+                str(route.get("scope", "")),
+                str(route.get("dev", "")),
+                str(route.get("protocol", "")),
+                str(route.get("prefsrc", "")),
+                str(route.get("gateway", "")),
+            )
+        )
+    expected = expected_egress_route_identities(inventory)
+    if len(observed) != len(expected) or set(observed) != expected:
+        fail("renderer egress host routes are not the exact kernel route set")
+
+
+def reconcile_renderer_networks(inventory: dict[str, object], *, renderer_exists: bool) -> None:
     addresses = run_json(["ip", "-j", "address", "show"])
     routes = run_json(["ip", "-j", "route", "show", "table", "all"])
     networks = all_networks()
     candidate = ipaddress.ip_network(str(inventory["renderer_network"]))
+    egress_candidate = ipaddress.ip_network(str(inventory["egress_network"]))
     named_renderer = [network for network in networks if network.get("Name") == NETWORK]
     if renderer_exists and len(named_renderer) != 1:
         fail("renderer network is absent or duplicated")
@@ -268,7 +376,7 @@ def reconcile_renderer_host_isolation(
         network_id = str(renderer.get("Id", ""))
         if not re.fullmatch(r"[0-9a-f]{64}", network_id):
             fail("renderer network content ID drifted")
-        bridge_name = f"br-{network_id[:12]}"
+        bridge_name = str(inventory["renderer_bridge_name"])
         bridge_links = [link for link in addresses if link.get("ifname") == bridge_name]
         if len(bridge_links) != 1:
             fail("isolated renderer bridge device is not exact")
@@ -293,7 +401,13 @@ def reconcile_renderer_host_isolation(
             or labels.get("com.docker.compose.project") != PROJECT
             or labels.get("com.docker.compose.network") != SERVICE
             or renderer.get("Options")
-            != {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"}
+            not in (
+                {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"},
+                {
+                    "com.docker.network.bridge.gateway_mode_ipv4": "isolated",
+                    "com.docker.network.bridge.name": inventory["renderer_bridge_name"],
+                },
+            )
         ):
             fail("existing renderer network drifted from its no-egress contract")
         endpoints = renderer.get("Containers") or {}
@@ -308,13 +422,62 @@ def reconcile_renderer_host_isolation(
                 fail("renderer network endpoint identity drifted")
         elif endpoints:
             fail("unused renderer network retained an endpoint")
+    named_egress = [network for network in networks if network.get("Name") == EGRESS_NETWORK]
+    if len(named_egress) != 1:
+        fail("renderer egress network is absent or duplicated")
+    egress = named_egress[0]
+    egress_configs = egress.get("IPAM", {}).get("Config") or []
+    egress_labels = egress.get("Labels") or {}
+    if (
+        egress.get("Internal") is not False
+        or egress.get("EnableIPv6") is not False
+        or egress.get("Attachable") is not False
+        or [config.get("Subnet") for config in egress_configs] != [str(egress_candidate)]
+        or [config.get("Gateway") for config in egress_configs] != [inventory["egress_gateway"]]
+        or egress_labels.get("com.docker.compose.project") != PROJECT
+        or egress_labels.get("com.docker.compose.network") != "egress"
+        or egress.get("Options")
+        != {
+            "com.docker.network.bridge.enable_icc": "false",
+            "com.docker.network.bridge.name": inventory["egress_bridge_name"],
+        }
+    ):
+        fail("renderer egress network drifted")
+    egress_links = [
+        link for link in addresses if link.get("ifname") == inventory["egress_bridge_name"]
+    ]
+    if len(egress_links) != 1:
+        fail("renderer egress bridge device is not exact")
+    egress_addresses = egress_links[0].get("addr_info") or []
+    if not any(
+        info.get("family") == "inet"
+        and info.get("local") == inventory["egress_gateway"]
+        and info.get("prefixlen") == egress_candidate.prefixlen
+        for info in egress_addresses
+    ):
+        fail("renderer egress bridge gateway drifted")
+    egress_endpoints = egress.get("Containers") or {}
+    if renderer_exists and egress_endpoints:
+        if len(egress_endpoints) != 1:
+            fail("renderer egress endpoint inventory drifted")
+        endpoint = next(iter(egress_endpoints.values()))
+        if endpoint.get("Name") != CONTAINER or endpoint.get("IPv4Address") != (
+            f"{inventory['egress_address']}/{egress_candidate.prefixlen}"
+        ):
+            fail("renderer egress endpoint identity drifted")
+    elif not renderer_exists and egress_endpoints:
+        fail("unused renderer egress network retained an endpoint")
     for network in networks:
-        if network.get("Name") == NETWORK:
+        if network.get("Name") in {NETWORK, EGRESS_NETWORK}:
             continue
         for config in network.get("IPAM", {}).get("Config") or []:
             subnet = config.get("Subnet")
-            if subnet and ipaddress.ip_network(subnet).overlaps(candidate):
+            if subnet and any(
+                ipaddress.ip_network(subnet).overlaps(prefix)
+                for prefix in (candidate, egress_candidate)
+            ):
                 fail("renderer bridge overlaps an existing Docker network")
+    verify_egress_kernel_routes(routes, inventory)
     for route in routes:
         prefix = route.get("dst")
         if not prefix or prefix == "default":
@@ -323,14 +486,21 @@ def reconcile_renderer_host_isolation(
             route_network = ipaddress.ip_network(prefix)
         except ValueError:
             fail("host route inventory contains a noncanonical prefix")
-        if route_network.version != candidate.version or not route_network.overlaps(candidate):
-            continue
-        fail("renderer bridge overlaps an existing host route")
+        for prefix_network in (candidate, egress_candidate):
+            if route_network.version != prefix_network.version or not route_network.overlaps(
+                prefix_network
+            ):
+                continue
+            if prefix_network == egress_candidate:
+                continue
+            fail("renderer bridge overlaps an existing host route")
 
 
 def reconcile_host(inventory: dict[str, object], *, renderer_exists: bool) -> None:
     if platform.machine().lower() not in {"aarch64", "arm64"}:
         fail("Murmur host is not ARM64")
+    if run_json(["docker", "info", "--format", "{{json .LiveRestoreEnabled}}"]) is not False:
+        fail("Docker live restore must be exactly disabled")
 
     addresses = run_json(["ip", "-j", "address", "show"])
     address_info = [
@@ -368,7 +538,7 @@ def reconcile_host(inventory: dict[str, object], *, renderer_exists: bool) -> No
     if bridge_subnets != {inventory["default_docker_network"]}:
         fail("default Docker bridge prefix drifted")
 
-    reconcile_renderer_host_isolation(inventory, renderer_exists=renderer_exists)
+    reconcile_renderer_networks(inventory, renderer_exists=renderer_exists)
 
     if not renderer_exists:
         available_kib = None
@@ -381,17 +551,30 @@ def reconcile_host(inventory: dict[str, object], *, renderer_exists: bool) -> No
 
 
 def deployment_deny_cidrs(inventory: dict[str, object]) -> list[str]:
-    return [
+    fixed = [
         str(inventory[key])
         for key in (
-            "public_ipv4",
-            "public_ipv6_prefix",
             "private_ipv4",
+            "crawler_private_ipv4",
             "project_network",
             "default_docker_network",
             "provider_gateway",
             "renderer_network",
+            "egress_network",
         )
+    ]
+    production_value = inventory["production_public_ipv4"]
+    if not isinstance(production_value, list):
+        fail("production public inventory is not a list")
+    production = cast(list[object], production_value)
+    production_ipv6_value = inventory["production_public_ipv6"]
+    if not isinstance(production_ipv6_value, list):
+        fail("production public IPv6 inventory is not a list")
+    production_ipv6 = cast(list[object], production_ipv6_value)
+    return [
+        *fixed,
+        *(str(value) for value in production),
+        *(str(value) for value in production_ipv6),
     ]
 
 
@@ -434,6 +617,7 @@ def validate_compose_model(
         "command",
         "container_name",
         "cpus",
+        "dns",
         "entrypoint",
         "image",
         "init",
@@ -444,6 +628,7 @@ def validate_compose_model(
         "networks",
         "pids_limit",
         "platform",
+        "ports",
         "pull_policy",
         "read_only",
         "restart",
@@ -489,7 +674,7 @@ def validate_compose_model(
         "org.jobseek.lightpanda.source-commit": env["SOURCE_COMMIT"],
         "org.jobseek.lightpanda.image-ref": env["RENDERER_IMAGE_REF"],
         "org.jobseek.lightpanda.release": env["RELEASE_ID"],
-        "org.jobseek.lightpanda.mode": "dormant-no-egress",
+        "org.jobseek.lightpanda.mode": "dormant-controlled-egress",
     }
     if service.get("labels") != expected_labels:
         fail("Compose renderer labels drifted")
@@ -506,6 +691,20 @@ def validate_compose_model(
         "options": {"max-file": "3", "max-size": "10m"},
     }:
         fail("Compose logging bounds drifted")
+    if service.get("dns") != inventory["dns_resolvers"]:
+        fail("Compose resolver authority drifted")
+    if service.get("ports") != [
+        {
+            "name": "private-mtls",
+            "mode": "host",
+            "host_ip": inventory["published_address"],
+            "target": inventory["published_port"],
+            "published": str(inventory["published_port"]),
+            "protocol": "tcp",
+            "app_protocol": "tls",
+        }
+    ]:
+        fail("Compose private publication drifted")
     ulimit = (service.get("ulimits") or {}).get("nofile") or {}
     if ulimit != {"soft": 256, "hard": 256}:
         fail("Compose nofile contract drifted")
@@ -570,32 +769,31 @@ def validate_compose_model(
     ):
         fail("rendered Compose credential mount keys drifted")
 
-    if service.get("networks") != {SERVICE: {"ipv4_address": inventory["renderer_address"]}}:
+    if service.get("networks") != {
+        SERVICE: {
+            "ipv4_address": inventory["renderer_address"],
+            "interface_name": "eth1",
+        },
+        "egress": {
+            "ipv4_address": inventory["egress_address"],
+            "interface_name": "eth0",
+            "gw_priority": 1,
+        },
+    }:
         fail("renderer is attached to an unexpected network")
     networks = model.get("networks") or {}
-    if set(networks) != {SERVICE}:
+    if set(networks) != {SERVICE, "egress"}:
         fail("Compose declares an unexpected network")
     network = networks[SERVICE]
-    if set(network) != {
-        "name",
-        "driver",
-        "driver_opts",
-        "ipam",
-        "internal",
-        "enable_ipv6",
-    }:
+    if set(network) != {"name", "ipam", "external"} or network.get("ipam") != {}:
         fail("renderer bridge keys drifted")
-    if (
-        network.get("name") != NETWORK
-        or network.get("driver") != "bridge"
-        or network.get("internal") is not True
-        or network.get("enable_ipv6") is not False
-        or network.get("driver_opts") != {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"}
-    ):
-        fail("renderer bridge is not exact and internal")
-    ipam = network.get("ipam") or {}
-    if set(ipam) != {"config"} or ipam.get("config") != [{"subnet": inventory["renderer_network"]}]:
-        fail("renderer bridge prefix drifted")
+    if network.get("name") != NETWORK or network.get("external") is not True:
+        fail("renderer bridge is not an exact root-owned external network")
+    egress = networks["egress"]
+    if set(egress) != {"name", "ipam", "external"} or egress.get("ipam") != {}:
+        fail("renderer egress bridge keys drifted")
+    if egress.get("name") != EGRESS_NETWORK or egress.get("external") is not True:
+        fail("renderer egress bridge is not an exact root-owned external network")
 
     command = service.get("command") or []
     deny_values = [
@@ -703,7 +901,14 @@ def verify_cleanup_network(network_id: str, inventory_path: Path) -> None:
         or network.get("EnableIPv6") is not False
         or network.get("Attachable") is not False
         or network.get("Containers") not in (None, {})
-        or network.get("Options") != {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"}
+        or network.get("Options")
+        not in (
+            {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"},
+            {
+                "com.docker.network.bridge.gateway_mode_ipv4": "isolated",
+                "com.docker.network.bridge.name": inventory["renderer_bridge_name"],
+            },
+        )
         or labels.get("com.docker.compose.project") != PROJECT
         or labels.get("com.docker.compose.network") != SERVICE
         or [config.get("Subnet") for config in configs] != [inventory["renderer_network"]]
@@ -740,7 +945,7 @@ def validate_running_inspect(
         "org.jobseek.lightpanda.source-commit": source_commit,
         "org.jobseek.lightpanda.image-ref": image_ref,
         "org.jobseek.lightpanda.release": release_id,
-        "org.jobseek.lightpanda.mode": "dormant-no-egress",
+        "org.jobseek.lightpanda.mode": "dormant-controlled-egress",
     }
     if any(labels.get(key) != value for key, value in expected_labels.items()):
         fail("renderer labels drifted")
@@ -751,8 +956,8 @@ def validate_running_inspect(
     command = config.get("Cmd") or []
     if command != expected_service_command(environment, inventory):
         fail("renderer runtime command drifted")
-    if config.get("ExposedPorts") not in (None, {}):
-        fail("dormant renderer image/container exposes a port")
+    if config.get("ExposedPorts") != {"9443/tcp": {}}:
+        fail("renderer container exposure metadata drifted")
     host = inspect.get("HostConfig") or {}
     if (
         host.get("ReadonlyRootfs") is not True
@@ -764,7 +969,7 @@ def validate_running_inspect(
         or host.get("NanoCpus") != 1_000_000_000
         or host.get("PidsLimit") != 64
         or host.get("Init") is not True
-        or host.get("NetworkMode") != NETWORK
+        or host.get("NetworkMode") != EGRESS_NETWORK
         or host.get("PublishAllPorts") is not False
     ):
         fail("renderer containment drifted")
@@ -777,8 +982,18 @@ def validate_running_inspect(
         fail("renderer logging bounds drifted")
     if host.get("CgroupnsMode") != "private":
         fail("renderer cgroup namespace drifted")
-    if host.get("PortBindings") not in (None, {}):
-        fail("dormant renderer published a host port")
+    expected_bindings = {
+        "9443/tcp": [
+            {
+                "HostIp": inventory["published_address"],
+                "HostPort": str(inventory["published_port"]),
+            }
+        ]
+    }
+    if host.get("PortBindings") != expected_bindings:
+        fail("renderer private host publication drifted")
+    if host.get("Dns") != inventory["dns_resolvers"]:
+        fail("renderer DNS authority drifted")
     ulimits = host.get("Ulimits") or []
     if ulimits != [{"Name": "nofile", "Soft": 256, "Hard": 256}]:
         fail("renderer nofile ceiling drifted")
@@ -819,11 +1034,14 @@ def validate_running_inspect(
             fail("renderer credential source escaped its release")
 
     networks = inspect.get("NetworkSettings", {}).get("Networks") or {}
-    if inspect.get("NetworkSettings", {}).get("Ports") not in (None, {}):
-        fail("dormant renderer has runtime port publication state")
+    if inspect.get("NetworkSettings", {}).get("Ports") != expected_bindings:
+        fail("renderer runtime port publication state drifted")
     if (
-        set(networks) != {NETWORK}
+        set(networks) != {NETWORK, EGRESS_NETWORK}
         or networks[NETWORK].get("IPAddress") != inventory["renderer_address"]
+        or networks[NETWORK].get("EndpointID") in (None, "")
+        or networks[EGRESS_NETWORK].get("IPAddress") != inventory["egress_address"]
+        or networks[EGRESS_NETWORK].get("EndpointID") in (None, "")
     ):
         fail("renderer network attachment drifted")
 
@@ -857,7 +1075,7 @@ def verify_idle_process_boundary(command: list[str]) -> None:
 def verify_running_with_image(environment: Path, *, image_id: str, expected_id: str | None) -> str:
     env = read_env(environment)
     inventory = load_inventory(environment.parent / "inventory.json")
-    reconcile_renderer_host_isolation(inventory, renderer_exists=True)
+    reconcile_renderer_networks(inventory, renderer_exists=True)
     inspects = run_json(["docker", "inspect", CONTAINER])
     if len(inspects) != 1:
         fail("renderer container identity is not exact")
@@ -874,10 +1092,13 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
         environment=env,
         inventory=inventory,
     )
-    networks = run_json(["docker", "network", "inspect", NETWORK])
-    if len(networks) != 1:
-        fail("renderer network identity is not exact")
-    network = networks[0]
+    networks = run_json(["docker", "network", "inspect", NETWORK, EGRESS_NETWORK])
+    if len(networks) != 2:
+        fail("renderer network identities are not exact")
+    by_name = {network.get("Name"): network for network in networks}
+    if set(by_name) != {NETWORK, EGRESS_NETWORK}:
+        fail("renderer network identities drifted")
+    network = by_name[NETWORK]
     configs = network.get("IPAM", {}).get("Config") or []
     if (
         network.get("Internal") is not True
@@ -886,7 +1107,13 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
         or [config.get("Subnet") for config in configs] != [inventory["renderer_network"]]
     ):
         fail("renderer does not have authoritative no-origin-egress networking")
-    if network.get("Options") != {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"}:
+    if network.get("Options") not in (
+        {"com.docker.network.bridge.gateway_mode_ipv4": "isolated"},
+        {
+            "com.docker.network.bridge.gateway_mode_ipv4": "isolated",
+            "com.docker.network.bridge.name": inventory["renderer_bridge_name"],
+        },
+    ):
         fail("renderer network does not isolate the host gateway")
     network_labels = network.get("Labels") or {}
     if (
@@ -903,6 +1130,36 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
         f"{inventory['renderer_address']}/{renderer_prefix}"
     ):
         fail("renderer network endpoint drifted")
+    egress = by_name[EGRESS_NETWORK]
+    egress_configs = egress.get("IPAM", {}).get("Config") or []
+    if (
+        egress.get("Internal") is not False
+        or egress.get("EnableIPv6") is not False
+        or egress.get("Attachable") is not False
+        or [config.get("Subnet") for config in egress_configs] != [inventory["egress_network"]]
+        or [config.get("Gateway") for config in egress_configs] != [inventory["egress_gateway"]]
+        or egress.get("Options")
+        != {
+            "com.docker.network.bridge.enable_icc": "false",
+            "com.docker.network.bridge.name": inventory["egress_bridge_name"],
+        }
+    ):
+        fail("renderer egress network drifted")
+    egress_labels = egress.get("Labels") or {}
+    if (
+        egress_labels.get("com.docker.compose.project") != PROJECT
+        or egress_labels.get("com.docker.compose.network") != "egress"
+    ):
+        fail("renderer egress network labels drifted")
+    egress_endpoints = egress.get("Containers") or {}
+    if set(egress_endpoints) != {inspect["Id"]}:
+        fail("renderer egress network does not have its sole exact endpoint")
+    egress_endpoint = egress_endpoints[inspect["Id"]]
+    egress_prefix = ipaddress.ip_network(str(inventory["egress_network"])).prefixlen
+    if egress_endpoint.get("Name") != CONTAINER or egress_endpoint.get("IPv4Address") != (
+        f"{inventory['egress_address']}/{egress_prefix}"
+    ):
+        fail("renderer egress endpoint drifted")
     verify_idle_process_boundary(expected_service_command(env, inventory))
     docker_exec = ["docker", "exec", "--user", CONTROLLER_USER, CONTAINER]
     memory_max = run_text([*docker_exec, "cat", "/sys/fs/cgroup/memory.max"]).strip()
@@ -910,8 +1167,16 @@ def verify_running_with_image(environment: Path, *, image_id: str, expected_id: 
     if memory_max != "1073741824" or memory_swap_max != "0":
         fail("renderer cgroup memory attestation drifted")
     ipv4_routes = run_text([*docker_exec, "cat", "/proc/net/route"]).splitlines()[1:]
-    if any(len(line.split()) >= 2 and line.split()[1] == "00000000" for line in ipv4_routes):
-        fail("internal renderer network unexpectedly has an IPv4 default route")
+    defaults = [
+        line.split()
+        for line in ipv4_routes
+        if len(line.split()) >= 3 and line.split()[1] == "00000000"
+    ]
+    gateway_hex = "".join(
+        reversed([f"{int(part):02X}" for part in str(inventory["egress_gateway"]).split(".")])
+    )
+    if len(defaults) != 1 or defaults[0][0] != "eth0" or defaults[0][2] != gateway_hex:
+        fail("renderer default route does not use its fixed egress gateway")
     ipv6_routes = run_text([*docker_exec, "cat", "/proc/net/ipv6_route"]).splitlines()
     if any(
         len(line.split()) >= 10

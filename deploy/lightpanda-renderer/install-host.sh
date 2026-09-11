@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run a single-service, exact-ID rollback transaction as the Murmur deploy user.
+# Install one renderer generation as deploy; failures leave the renderer cold.
 set -euo pipefail
 set +x
 umask 077
@@ -15,7 +15,9 @@ ACTIVE="$ROOT/active"
 PROJECT=jobseek-lightpanda
 SERVICE=renderer
 CONTAINER=jobseek-lightpanda-renderer
-NETWORK=jobseek-lightpanda-renderer
+EGRESS_NETWORK=jobseek-lightpanda-egress
+POLICY=/usr/local/libexec/jobseek-lightpanda-network-policy
+HOST_LOCK=/run/lock/jobseek-lightpanda-network.lock
 CI_FAILURE_MODE="${JOBSEEK_LIGHTPANDA_CI_FAILURE_MODE:-}"
 ci_rollback_smoke=0
 
@@ -26,7 +28,9 @@ trap 'exit 143' TERM
 [[ "$STAGE" =~ ^/tmp/jobseek-lightpanda-renderer\.r[0-9]+a[0-9]+\.[A-Za-z0-9]+$ ]] || exit 2
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || exit 2
 if [[ -n "$CI_FAILURE_MODE" ]]; then
-  [[ "$CI_FAILURE_MODE" == after-candidate || "$CI_FAILURE_MODE" == after-active-switch ]] || exit 2
+  [[ "$CI_FAILURE_MODE" == success || "$CI_FAILURE_MODE" == after-candidate || \
+    "$CI_FAILURE_MODE" == after-candidate-remove-ambiguous || \
+    "$CI_FAILURE_MODE" == after-active-switch ]] || exit 2
   [[ "${CI:-}" == true && "${GITHUB_ACTIONS:-}" == true ]] || exit 2
   [[ "$IMAGE_REF" == jobseek-lightpanda-renderer:pr ]] || exit 2
   [[ "$RELEASE_ID" =~ ^sha-${SOURCE_COMMIT}-ci-r[0-9]+a[0-9]+$ ]] || exit 2
@@ -36,7 +40,7 @@ else
   [[ "$RELEASE_ID" =~ ^sha-${SOURCE_COMMIT}-r[0-9]+a[0-9]+$ ]] || exit 2
 fi
 [[ "$(id -u)" -ne 0 && "$(id -un)" == deploy ]] || exit 2
-for command in base64 docker flock ip openssl python3 readlink sha256sum ss; do
+for command in base64 docker flock ip openssl python3 readlink sha256sum sudo; do
   command -v "$command" >/dev/null || {
     echo "required renderer deployment command is absent" >&2
     exit 1
@@ -83,6 +87,12 @@ fi
 install -d -m 0700 "$RELEASE_ROOT"
 # shellcheck source=deploy/lightpanda-renderer/lock.sh
 source "$STAGE/lock.sh"
+[[ -f "$HOST_LOCK" && ! -L "$HOST_LOCK" ]] || exit 1
+[[ "$(stat -c '%U:%G:%a:%h' "$HOST_LOCK")" == root:deploy:640:1 ]] || exit 1
+exec 7<"$HOST_LOCK"
+[[ "$(stat -Lc '%d:%i' /proc/$$/fd/7)" == "$(stat -Lc '%d:%i' "$HOST_LOCK")" ]] || exit 1
+flock -w 900 7 || { echo "host policy lock is busy" >&2; exit 1; }
+[[ "$(stat -Lc '%d:%i' /proc/$$/fd/7)" == "$(stat -Lc '%d:%i' "$HOST_LOCK")" ]] || exit 1
 acquire_renderer_lock "$ROOT/renderer.lock" 900 || {
   echo "renderer deployment lock is busy" >&2
   exit 1
@@ -101,11 +111,6 @@ if (( ci_rollback_smoke )); then
 else
   python3 "$STAGE/verify.py" "${inventory_args[@]}"
 fi
-[[ -z "$(ss -H -ltn 'sport = :9443')" ]] || {
-  echo "host port 9443 is unexpectedly published" >&2
-  exit 1
-}
-
 previous_generation=""
 previous_container_id=""
 active_existed=0
@@ -126,8 +131,6 @@ if (( renderer_exists )); then
   [[ "$previous_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
   python3 "$previous_generation/verify.py" running \
     "$previous_generation/release.env" --expected-id "$previous_container_id" >/dev/null
-elif [[ -n "$previous_generation" ]]; then
-  exit 1
 fi
 
 docker_config=""
@@ -222,74 +225,121 @@ rm -f -- "$GENERATION/pki/client.pem"
 
 python3 "$GENERATION/verify.py" compose \
   "$GENERATION/compose.yml" "$GENERATION/release.env" "$GENERATION/inventory.json"
-network_before_id=""
-if docker network inspect "$NETWORK" >/dev/null 2>&1; then
-  network_before_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
-  [[ "$network_before_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
-fi
-
 candidate_container_id=""
-candidate_network_id=""
 rollback_armed=1
+
+attest_routed_network_empty() {
+  local endpoint_count
+  for _scan in 1 2; do
+    if docker network inspect "$EGRESS_NETWORK" >/dev/null 2>&1; then
+      endpoint_count="$(docker network inspect --format '{{len .Containers}}' "$EGRESS_NETWORK")" || return 1
+      [[ "$endpoint_count" == 0 ]] || return 1
+    fi
+  done
+}
+
+drain_routed_endpoints() {
+  local empty_scans=0 endpoint_id network_output
+  for _scan in 1 2 3 4 5; do
+    docker stop --time 30 "$CONTAINER" >/dev/null 2>&1 || :
+    if ! docker network inspect "$EGRESS_NETWORK" >/dev/null 2>&1; then
+      empty_scans=$((empty_scans + 1))
+      (( empty_scans >= 2 )) && return 0
+      continue
+    fi
+    network_output="$(docker network inspect --format '{{range $id, $_ := .Containers}}{{$id}}{{println}}{{end}}' "$EGRESS_NETWORK")" || return 1
+    mapfile -t routed_ids <<<"$network_output"
+    if [[ -z "$network_output" ]]; then
+      empty_scans=$((empty_scans + 1))
+      (( empty_scans >= 2 )) && return 0
+      continue
+    fi
+    empty_scans=0
+    for endpoint_id in "${routed_ids[@]}"; do
+      [[ "$endpoint_id" =~ ^[0-9a-f]{64}$ ]] || return 1
+      docker stop --time 30 "$endpoint_id" >/dev/null 2>&1 || :
+      docker network disconnect --force "$EGRESS_NETWORK" "$endpoint_id" >/dev/null 2>&1 || :
+    done
+  done
+  return 1
+}
+
+remove_candidate_and_attest_empty() {
+  local discovered_id
+  if [[ -z "$candidate_container_id" ]]; then
+    mapfile -t discovered_candidates < <(
+      docker ps --all --quiet \
+        --filter "label=com.docker.compose.project=$PROJECT" \
+        --filter "label=com.docker.compose.service=$SERVICE" \
+        --filter "label=org.jobseek.lightpanda.release=$RELEASE_ID" \
+        --filter "label=org.jobseek.lightpanda.image-ref=$IMAGE_REF"
+    )
+    [[ "${#discovered_candidates[@]}" -le 1 ]] || return 1
+    if [[ "${#discovered_candidates[@]}" -eq 1 ]]; then
+      candidate_container_id="${discovered_candidates[0]}"
+    fi
+  fi
+  if [[ -n "$candidate_container_id" ]]; then
+    [[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]] || return 1
+    [[ -z "$previous_container_id" || "$candidate_container_id" != "$previous_container_id" ]] || return 1
+    [[ "$(docker inspect --format '{{.Config.Image}}' "$candidate_container_id" 2>/dev/null || :)" == "$IMAGE_REF" ]] || return 1
+    docker stop --time 30 "$candidate_container_id" >/dev/null 2>&1 || :
+  fi
+  drain_routed_endpoints || return 1
+  if [[ -n "$candidate_container_id" ]]; then
+    if [[ "$CI_FAILURE_MODE" == after-candidate-remove-ambiguous ]]; then
+      # Model a transport error reported after Docker already performed the
+      # removal. Rollback decides from re-inspected final state, not status.
+      docker rm --force "$candidate_container_id" >/dev/null
+      ambiguous_remove_status=75
+      [[ "$ambiguous_remove_status" -ne 0 ]] || return 1
+    else
+      docker rm --force "$candidate_container_id" >/dev/null 2>&1 || :
+    fi
+    ! docker inspect "$candidate_container_id" >/dev/null 2>&1 || return 1
+  fi
+  drain_routed_endpoints || return 1
+  discovered_id="$(docker inspect --format '{{.Id}}' "$CONTAINER" 2>/dev/null || :)"
+  [[ -z "$discovered_id" ]] || return 1
+}
+
 rollback() {
   status=$?
   trap - EXIT HUP INT TERM
   if (( rollback_armed )); then
+    rollback_status=0
+    remove_candidate_and_attest_empty || rollback_status=1
     active_candidate="$ROOT/.active.$RELEASE_ID"
     if [[ -e "$active_candidate" || -L "$active_candidate" ]]; then
-      [[ -L "$active_candidate" && "$(readlink -f "$active_candidate")" == "$GENERATION" ]] || exit 1
-      rm -- "$active_candidate"
+      if [[ -L "$active_candidate" && "$(readlink -f "$active_candidate")" == "$GENERATION" ]]; then
+        rm -- "$active_candidate" || rollback_status=1
+      else
+        rollback_status=1
+      fi
     fi
     if (( active_existed )); then
       active_restore="$ROOT/.active.rollback.$RELEASE_ID"
-      ln -s "$previous_generation" "$active_restore"
-      mv -Tf "$active_restore" "$ACTIVE"
-      [[ "$(readlink -f "$ACTIVE")" == "$previous_generation" ]] || exit 1
+      if [[ -e "$active_restore" || -L "$active_restore" ]]; then
+        rollback_status=1
+      else
+        ln -s "$previous_generation" "$active_restore" || rollback_status=1
+        mv -Tf "$active_restore" "$ACTIVE" || rollback_status=1
+      fi
+      [[ -L "$ACTIVE" && "$(readlink -f "$ACTIVE")" == "$previous_generation" ]] || rollback_status=1
     elif [[ -L "$ACTIVE" && "$(readlink -f "$ACTIVE")" == "$GENERATION" ]]; then
-      rm -- "$ACTIVE"
+      rm -- "$ACTIVE" || rollback_status=1
     elif [[ -e "$ACTIVE" || -L "$ACTIVE" ]]; then
-      exit 1
+      rollback_status=1
     fi
-    fsync_directories "$ROOT"
-    if [[ -z "$candidate_container_id" ]]; then
-      mapfile -t discovered_candidates < <(
-        docker ps --all --quiet \
-          --filter "label=com.docker.compose.project=$PROJECT" \
-          --filter "label=com.docker.compose.service=$SERVICE" \
-          --filter "label=org.jobseek.lightpanda.release=$RELEASE_ID" \
-          --filter "label=org.jobseek.lightpanda.image-ref=$IMAGE_REF"
-      )
-      [[ "${#discovered_candidates[@]}" -le 1 ]] || exit 1
-      if [[ "${#discovered_candidates[@]}" -eq 1 ]]; then
-        candidate_container_id="${discovered_candidates[0]}"
-        [[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
-        [[ -z "$previous_container_id" || "$candidate_container_id" != "$previous_container_id" ]] || exit 1
-        [[ "$(docker inspect --format '{{.Config.Image}}' "$candidate_container_id")" == "$IMAGE_REF" ]] || exit 1
-      fi
+    fsync_directories "$ROOT" || rollback_status=1
+    attest_routed_network_empty || rollback_status=1
+    sudo -n "$POLICY" verify-ready >/dev/null || rollback_status=1
+    python3 "$STAGE/verify.py" assert-protected "$protected_before" || rollback_status=1
+    if [[ "$rollback_status" -eq 0 ]]; then
+      rm -rf -- "$GENERATION" || rollback_status=1
+      fsync_directories "$RELEASE_ROOT" || rollback_status=1
     fi
-    if [[ -n "$candidate_container_id" ]] && \
-       [[ "$(docker inspect --format '{{.Id}}' "$CONTAINER" 2>/dev/null || :)" == "$candidate_container_id" ]]; then
-      docker rm --force "$candidate_container_id" >/dev/null
-    fi
-    if [[ -n "$previous_generation" ]]; then
-      docker compose --project-name "$PROJECT" \
-        --env-file "$previous_generation/release.env" \
-        --file "$previous_generation/compose.yml" \
-        up --detach --no-deps "$SERVICE"
-      python3 "$previous_generation/verify.py" running "$previous_generation/release.env" >/dev/null
-    elif [[ -z "$network_before_id" ]]; then
-      if [[ -z "$candidate_network_id" ]] && docker network inspect "$NETWORK" >/dev/null 2>&1; then
-        candidate_network_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
-      fi
-      if [[ -n "$candidate_network_id" ]]; then
-        [[ "$candidate_network_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
-        python3 "$STAGE/verify.py" cleanup-network \
-          "$candidate_network_id" "$STAGE/inventory.json"
-        docker network rm "$candidate_network_id" >/dev/null
-      fi
-    fi
-    python3 "$STAGE/verify.py" assert-protected "$protected_before"
-    rm -rf -- "$GENERATION"
+    (( rollback_status == 0 )) || status=1
   fi
   cleanup_auth
   exit "$status"
@@ -297,18 +347,20 @@ rollback() {
 generation_cleanup_armed=0
 trap rollback EXIT
 
+sudo -n "$POLICY" verify-ready >/dev/null
 docker compose --project-name "$PROJECT" \
   --env-file "$GENERATION/release.env" \
   --file "$GENERATION/compose.yml" \
   up --detach --no-deps "$SERVICE"
 candidate_container_id="$(docker inspect --format '{{.Id}}' "$CONTAINER")"
-candidate_network_id="$(docker network inspect --format '{{.Id}}' "$NETWORK")"
-[[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ && "$candidate_network_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
+[[ "$candidate_container_id" =~ ^[0-9a-f]{64}$ ]] || exit 1
 [[ -z "$previous_container_id" || "$candidate_container_id" != "$previous_container_id" ]] || exit 1
 
 first_verified_id="$(python3 "$GENERATION/verify.py" running "$GENERATION/release.env")"
 [[ "$first_verified_id" == "$candidate_container_id" ]] || exit 1
-if [[ "$CI_FAILURE_MODE" == after-candidate ]]; then
+sudo -n "$POLICY" verify-running-ready >/dev/null
+if [[ "$CI_FAILURE_MODE" == after-candidate || \
+  "$CI_FAILURE_MODE" == after-candidate-remove-ambiguous ]]; then
   echo "CI rollback smoke: forcing failure after candidate creation" >&2
   exit 96
 fi
@@ -320,6 +372,7 @@ started_after_restart="$(docker inspect --format '{{.State.StartedAt}}' "$candid
 sleep 20
 python3 "$GENERATION/verify.py" running "$GENERATION/release.env" \
   --expected-id "$candidate_container_id" >/dev/null
+sudo -n "$POLICY" verify-running-ready >/dev/null
 [[ "$(docker inspect --format '{{.RestartCount}}' "$candidate_container_id")" == 0 ]] || exit 1
 memory_current="$(docker exec "$candidate_container_id" cat /sys/fs/cgroup/memory.current)"
 [[ "$memory_current" =~ ^[0-9]+$ && "$memory_current" -le 134217728 ]] || {
@@ -332,7 +385,6 @@ docker exec "$candidate_container_id" /bin/sh -ceu '
     [ "$process_name" != lightpanda ] || exit 1
   done
 '
-[[ -z "$(ss -H -ltn 'sport = :9443')" ]] || exit 1
 python3 "$STAGE/verify.py" assert-protected "$protected_before"
 
 active_candidate="$ROOT/.active.$RELEASE_ID"

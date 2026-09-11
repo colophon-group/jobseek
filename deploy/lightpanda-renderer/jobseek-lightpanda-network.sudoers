@@ -1,0 +1,3 @@
+# Renderer deploys may only attest the root-owned policy immediately around start.
+deploy ALL=(root) NOPASSWD: /usr/local/libexec/jobseek-lightpanda-network-policy verify-ready
+deploy ALL=(root) NOPASSWD: /usr/local/libexec/jobseek-lightpanda-network-policy verify-running-ready

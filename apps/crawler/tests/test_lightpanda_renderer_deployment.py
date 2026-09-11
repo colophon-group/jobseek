@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import argparse
 import copy
 import importlib.util
 import json
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -14,18 +16,21 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 DEPLOY = ROOT / "deploy/lightpanda-renderer"
 WORKFLOW = ROOT / ".github/workflows/deploy-lightpanda-renderer.yml"
+BOOTSTRAP_WORKFLOW = ROOT / ".github/workflows/bootstrap-lightpanda-renderer-host.yml"
 
 
 def load_module(name: str, path: Path) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
 
 
 verify = load_module("lightpanda_renderer_verify", DEPLOY / "verify.py")
 validate_pki = load_module("lightpanda_renderer_pki", DEPLOY / "validate_pki.py")
+network_policy = load_module("lightpanda_renderer_network_policy", DEPLOY / "network-policy.py")
 
 
 def release_env() -> dict[str, str]:
@@ -87,7 +92,7 @@ def protected_inspect(name: str, service: str) -> dict[str, object]:
     }
     host_config = {
         "NetworkMode": "deploy_default",
-        "RestartPolicy": {"Name": "unless-stopped", "MaximumRetryCount": 0},
+        "RestartPolicy": {"Name": "no", "MaximumRetryCount": 0},
         "Memory": 123,
     }
     return {
@@ -111,11 +116,14 @@ def protected_inspect(name: str, service: str) -> dict[str, object]:
     }
 
 
-def test_inventory_is_exact_canonical_and_dormant(tmp_path: Path) -> None:
+def test_inventory_is_exact_canonical_and_controlled(tmp_path: Path) -> None:
     inventory = verify.load_inventory(DEPLOY / "inventory.json")
     assert set(inventory) == verify.INVENTORY_KEYS
     assert inventory["renderer_network"] == "172.30.94.0/29"
-    assert "published_port" not in inventory
+    assert inventory["egress_network"] == "172.30.94.8/29"
+    assert inventory["egress_address"] == "172.30.94.10"
+    assert inventory["published_address"] == "10.0.0.5"
+    assert inventory["published_port"] == 9443
 
     changed = copy.deepcopy(inventory)
     changed["renderer_network"] = "172.30.94.0/28"
@@ -125,15 +133,28 @@ def test_inventory_is_exact_canonical_and_dormant(tmp_path: Path) -> None:
         verify.load_inventory(path)
 
 
-def test_compose_model_is_exactly_one_no_egress_renderer(
+def test_compose_model_is_exactly_one_controlled_egress_renderer(
     rendered_compose_model: dict[str, object],
 ) -> None:
     model = rendered_compose_model
     inventory = verify.load_inventory(DEPLOY / "inventory.json")
     verify.validate_compose_model(model, release_env(), inventory)
     service = model["services"]["renderer"]  # type: ignore[index]
-    assert "ports" not in service
-    assert model["networks"]["renderer"]["internal"] is True  # type: ignore[index]
+    assert service["ports"] == [  # type: ignore[index]
+        {
+            "name": "private-mtls",
+            "target": 9443,
+            "published": "9443",
+            "host_ip": "10.0.0.5",
+            "protocol": "tcp",
+            "app_protocol": "tls",
+            "mode": "host",
+        }
+    ]
+    assert set(model["networks"]) == {"renderer", "egress"}  # type: ignore[arg-type]
+    assert model["networks"]["renderer"]["external"] is True  # type: ignore[index]
+    assert model["networks"]["egress"]["external"] is True  # type: ignore[index]
+    assert service["networks"]["egress"]["interface_name"] == "eth0"  # type: ignore[index]
 
 
 @pytest.mark.parametrize("accepted_bind", ({}, {"create_host_path": False}))
@@ -242,7 +263,7 @@ def test_protected_snapshot_is_stopped_exact_and_secret_safe() -> None:
     assert "SECRET=not-snapshotted" not in encoded
     murmur = snapshot["containers"]["deploy-murmur-1"]
     assert murmur["restart_policy"] == {
-        "Name": "unless-stopped",
+        "Name": "no",
         "MaximumRetryCount": 0,
     }
     assert murmur["config_sha256"]
@@ -282,7 +303,7 @@ def test_idle_process_verifier_accepts_only_root_init_and_uid_10001_controller(
         verify.verify_idle_process_boundary(command)
 
 
-def test_transaction_is_renderer_scoped_and_contains_no_global_mutation() -> None:
+def test_deploy_is_renderer_scoped_and_host_policy_is_read_only() -> None:
     scripts = "\n".join(
         (DEPLOY / name).read_text(encoding="utf-8")
         for name in ("deploy-remote.sh", "install-host.sh", "lock.sh")
@@ -305,11 +326,14 @@ def test_transaction_is_renderer_scoped_and_contains_no_global_mutation() -> Non
         assert token not in scripts
     assert 'docker rm --force "$candidate_container_id"' in scripts
     assert 'docker restart --time 30 "$candidate_container_id"' in scripts
-    assert 'docker network rm "$candidate_network_id"' in scripts
+    assert "docker network rm" not in scripts
     assert 'install -m 0400 "$STAGE/pki/server-key.pem"' in scripts
     assert "-ceu 'chown 10001:10001 /server-key.pem'" in scripts
     assert "--cap-add FOWNER" not in scripts
     assert 'up --detach --no-deps "$SERVICE"' in scripts
+    assert 'sudo -n "$POLICY" verify-ready' in scripts
+    assert 'sudo -n "$POLICY" verify-running-ready' in scripts
+    assert "network-policy.py" not in (DEPLOY / "deploy-remote.sh").read_text(encoding="utf-8")
     assert "assert-protected" in scripts
     assert "/home/deploy/.local/share/jobseek-lightpanda" in scripts
     assert "os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW" in scripts
@@ -324,6 +348,28 @@ def test_transaction_is_renderer_scoped_and_contains_no_global_mutation() -> Non
     assert "trap rollback EXIT HUP INT TERM" not in scripts
     for signal, status in (("HUP", 129), ("INT", 130), ("TERM", 143)):
         assert f"trap 'exit {status}' {signal}" in scripts
+
+
+def test_bootstrap_is_monotonic_and_never_manages_protected_containers() -> None:
+    bootstrap = (DEPLOY / "bootstrap-host.sh").read_text(encoding="utf-8")
+    policy = (DEPLOY / "network-policy.py").read_text(encoding="utf-8")
+    unit = (DEPLOY / "jobseek-lightpanda-network.service").read_text(encoding="utf-8")
+    sudoers = (DEPLOY / "jobseek-lightpanda-network.sudoers").read_text(encoding="utf-8")
+    assert 'exec 9<"$HOST_LOCK"' in bootstrap
+    assert 'exec 8<"$RENDERER_LOCK"' in bootstrap
+    assert bootstrap.index("flock -w 900 9") < bootstrap.index("flock -w 300 8")
+    assert '"$previous_generation/verify.py" running' in bootstrap
+    assert 'docker stop --time 30 "$previous_id"' in bootstrap
+    assert 'docker rm "$previous_id"' in bootstrap
+    assert "docker start" not in bootstrap
+    assert "docker compose" not in bootstrap
+    assert "transactions" not in bootstrap
+    assert "docker network rm" not in policy
+    assert "deploy-murmur-1" not in policy
+    assert "deploy-cloudflared-1" not in policy
+    assert "ExecStop=" not in unit
+    assert " verify-ready" in sudoers
+    assert " verify-running-ready" in sudoers
 
 
 def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
@@ -341,7 +387,7 @@ def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
     assert "HETZNER_MURMUR_KNOWN_HOSTS" in workflow
     assert "LIGHTPANDA_B0_CLIENT_KEY_PEM" not in workflow
     assert "LIGHTPANDA_B0_CLIENT_CERT_PEM" in workflow
-    assert "no-egress" in workflow
+    assert "controlled-egress" in workflow
     assert "crawler run-lightpanda" not in workflow
     assert workflow.count("packages: write") == 1
     assert "needs: publish" in workflow
@@ -349,26 +395,33 @@ def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
     assert '{{index .Config.Labels \\"' not in workflow
 
 
-def test_ci_smoke_stages_lock_helper_for_deploy_user() -> None:
+def test_bootstrap_workflow_is_manual_exact_main_and_root_scoped() -> None:
+    workflow = BOOTSTRAP_WORKFLOW.read_text(encoding="utf-8")
+    assert "workflow_dispatch:" in workflow
+    assert "pull_request:" not in workflow
+    assert "\n  push:\n" not in workflow
+    assert 'test "$DISPATCH_REF" = refs/heads/main' in workflow
+    assert "bootstrap-remote.sh" in workflow
+    assert workflow.count("group: deploy-murmur-shim") == 1
+    assert "cancel-in-progress: false" in workflow
+
+
+def test_ci_smoke_exercises_legacy_bootstrap_and_cold_rollback() -> None:
     smoke = (DEPLOY / "ci-smoke.sh").read_text(encoding="utf-8")
-    assert 'lock_source="$(pwd)' not in smoke
-    assert 'lock_source="$ROOT/lock-race-helper.sh"' in smoke
-    assert 'deploy/lightpanda-renderer/lock.sh "$ROOT/lock-race-helper.sh"' in smoke
-    assert 'sudo -u deploy install -m 0600 "deploy/lightpanda-renderer/' not in smoke
-    assert '\npython3 "$PREVIOUS_RELEASE/verify.py"' not in smoke
-    assert "\ndocker compose --project-name jobseek-lightpanda" not in smoke
-    assert '$(readlink -f "$ROOT/active")' not in smoke
-    assert '[[ -e "$first_lock_ready"' not in smoke
-    assert '[[ ! -e "$first_lock_ready"' not in smoke
-    assert '[[ ! -e "$ROOT"' not in smoke
+    assert "testdata/legacy-compose.yml" in smoke
+    assert "testdata/legacy-verify.py" in smoke
+    assert 'bash "$root_stage/bootstrap-host.sh"' in smoke
+    assert "partial-bootstrap-replay" in smoke
+    assert "after-candidate-remove-ambiguous" in smoke
+    assert "active-switch-cold-rollback" in smoke
+    assert 'if docker inspect "$CONTAINER"' in smoke
+    assert "verify-running-ready" in smoke
+    assert "private-mtls-ingress" in smoke
+    assert "candidate_transaction_installer" not in smoke
 
 
 def test_lock_helper_is_fail_closed_without_caller_errexit() -> None:
     lock = (DEPLOY / "lock.sh").read_text(encoding="utf-8")
-    smoke = (DEPLOY / "ci-smoke.sh").read_text(encoding="utf-8")
-    assert "setfacl --default --modify" in smoke
-    assert "deploy:deploy:664" in smoke
-    assert "deploy:deploy:600:1" in smoke
     assert "python3 - \"$lock_path\" <<'PY' || return 1" in lock
     assert 'exec 9<>"$lock_path" || return 1' in lock
     assert 'fd_identity="$(stat -Lc' in lock
@@ -376,10 +429,9 @@ def test_lock_helper_is_fail_closed_without_caller_errexit() -> None:
     assert lock.count(')" || return 1') == 2
 
 
-def test_compose_source_has_no_host_publication_or_external_authority() -> None:
+def test_compose_source_has_exact_private_publication_and_external_networks() -> None:
     compose = (DEPLOY / "compose.yml").read_text(encoding="utf-8")
     for token in (
-        "ports:",
         "network_mode:",
         "extra_hosts:",
         "environment:",
@@ -389,8 +441,11 @@ def test_compose_source_has_no_host_publication_or_external_authority() -> None:
         "/var/run/docker.sock",
     ):
         assert token not in compose
-    assert "internal: true" in compose
-    assert "gateway_mode_ipv4: isolated" in compose
+    assert "host_ip: 10.0.0.5" in compose
+    assert 'published: "9443"' in compose
+    assert compose.count("external: true") == 2
+    assert "185.12.64.1" in compose and "185.12.64.2" in compose
+    assert "dormant-controlled-egress" in compose
     assert "cgroup: private" in compose
     assert "cap_drop:\n      - ALL" in compose
     assert "cap_add:\n      - KILL\n      - SETGID\n      - SETUID" in compose
@@ -398,6 +453,71 @@ def test_compose_source_has_no_host_publication_or_external_authority() -> None:
     assert 'restart: "on-failure:3"' in compose
     assert "max-size: 10m" in compose
     assert compose.count("create_host_path: false") == 3
+
+
+def test_policy_rules_have_exact_dns_https_denies_and_terminal_drops() -> None:
+    inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
+    rules = network_policy.policy_rules(inventory, inventory.internal_bridge)
+    egress = rules["iptables"][network_policy.V4_EGRESS]
+    assert (
+        "-d",
+        "185.12.64.1/32",
+        "-p",
+        "udp",
+        "-m",
+        "udp",
+        "--dport",
+        "53",
+        "-j",
+        "ACCEPT",
+    ) in egress
+    assert ("-p", "tcp", "-m", "tcp", "--dport", "443", "-j", "ACCEPT") in egress
+    assert ("-d", "10.0.0.0/8", "-j", "DROP") in egress
+    assert ("-d", "178.105.51.62/32", "-j", "DROP") in egress
+    assert rules["iptables"][network_policy.V4_EGRESS][-1] == ("-j", "DROP")
+    assert rules["iptables"][network_policy.V4_INGRESS][-1] == ("-j", "DROP")
+
+
+def test_verify_ready_requires_fixed_marker_and_both_networks_stably_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
+    calls: list[object] = []
+    monkeypatch.setattr(network_policy.Inventory, "load", lambda _: inventory)
+    monkeypatch.setattr(network_policy, "verify_policy", lambda _: {"schema_version": 1})
+    monkeypatch.setattr(network_policy, "verify_bootstrap_marker", lambda path: calls.append(path))
+    monkeypatch.setattr(
+        network_policy,
+        "require_networks_stably_empty",
+        lambda *names: calls.append(names),
+    )
+    network_policy.execute_guarded_command(
+        argparse.Namespace(inventory=network_policy.INVENTORY_PATH, command="verify-ready")
+    )
+    assert calls == [
+        network_policy.INVENTORY_PATH,
+        (network_policy.INTERNAL_NETWORK, network_policy.EGRESS_NETWORK),
+    ]
+
+
+def test_running_endpoint_attestation_rejects_extra_routed_identity() -> None:
+    inventory = network_policy.Inventory.load(DEPLOY / "inventory.json")
+    renderer_id = "a" * 64
+    exact = {
+        "Containers": {
+            renderer_id: {
+                "Name": network_policy.CONTAINER,
+                "IPv4Address": "172.30.94.10/29",
+            }
+        }
+    }
+    network_policy.verify_exact_egress_endpoint(exact, renderer_id, inventory)
+    exact["Containers"]["b" * 64] = {  # type: ignore[index]
+        "Name": "unexpected",
+        "IPv4Address": "172.30.94.11/29",
+    }
+    with pytest.raises(network_policy.PolicyError, match="not the exact renderer"):
+        network_policy.verify_exact_egress_endpoint(exact, renderer_id, inventory)
 
 
 def test_service_builder_is_patch_and_digest_pinned() -> None:

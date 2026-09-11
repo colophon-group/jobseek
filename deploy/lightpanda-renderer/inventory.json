@@ -6,10 +6,36 @@
   "public_ipv6_prefix": "2a01:4f8:1c18:d64c::/64",
   "public_ipv6_address": "2a01:4f8:1c18:d64c::1",
   "private_ipv4": "10.0.0.5/32",
+  "private_interface": "enp7s0",
+  "crawler_private_ipv4": "10.0.0.4/32",
+  "production_public_ipv4": [
+    "116.203.192.19/32",
+    "178.104.102.63/32",
+    "178.104.132.47/32",
+    "178.105.51.62/32"
+  ],
+  "production_public_ipv6": [
+    "2a01:4f8:1c18:adf3::/64",
+    "2a01:4f8:1c18:5f98::/64",
+    "2a01:4f8:1c18:d03c::/64",
+    "2a01:4f8:1c18:d64c::/64"
+  ],
+  "dns_resolvers": [
+    "185.12.64.1",
+    "185.12.64.2"
+  ],
   "project_network": "10.0.0.0/16",
   "default_docker_network": "172.17.0.0/16",
   "provider_gateway": "172.31.1.1/32",
   "renderer_network_name": "jobseek-lightpanda-renderer",
+  "renderer_bridge_name": "br-535f5f79245b",
   "renderer_network": "172.30.94.0/29",
-  "renderer_address": "172.30.94.2"
+  "renderer_address": "172.30.94.2",
+  "egress_network_name": "jobseek-lightpanda-egress",
+  "egress_bridge_name": "br-jlp-egress",
+  "egress_network": "172.30.94.8/29",
+  "egress_gateway": "172.30.94.9",
+  "egress_address": "172.30.94.10",
+  "published_address": "10.0.0.5",
+  "published_port": 9443
 }

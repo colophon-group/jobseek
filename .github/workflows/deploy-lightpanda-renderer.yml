@@ -8,6 +8,7 @@ on:
       - "apps/crawler/contracts/v1/**"
       - "apps/crawler/tests/test_lightpanda_renderer_deployment.py"
       - ".github/workflows/deploy-lightpanda-renderer.yml"
+      - ".github/workflows/bootstrap-lightpanda-renderer-host.yml"
       - ".github/workflows/go-lightpanda-pilot.yml"
   workflow_dispatch:
 
@@ -37,28 +38,40 @@ jobs:
           set -euo pipefail
           bash -n deploy/lightpanda-renderer/deploy-remote.sh
           bash -n deploy/lightpanda-renderer/install-host.sh
+          bash -n deploy/lightpanda-renderer/bootstrap-remote.sh
+          bash -n deploy/lightpanda-renderer/bootstrap-host.sh
           bash -n deploy/lightpanda-renderer/ci-smoke.sh
           bash -n deploy/lightpanda-renderer/lock.sh
           shellcheck \
             deploy/lightpanda-renderer/deploy-remote.sh \
             deploy/lightpanda-renderer/install-host.sh \
+            deploy/lightpanda-renderer/bootstrap-remote.sh \
+            deploy/lightpanda-renderer/bootstrap-host.sh \
             deploy/lightpanda-renderer/ci-smoke.sh \
             deploy/lightpanda-renderer/lock.sh
           python3 -m py_compile \
             deploy/lightpanda-renderer/verify.py \
-            deploy/lightpanda-renderer/validate_pki.py
+            deploy/lightpanda-renderer/validate_pki.py \
+            deploy/lightpanda-renderer/network-policy.py \
+            deploy/lightpanda-renderer/testdata/legacy-verify.py
           cd apps/crawler
           uv run --frozen ruff check \
             ../../deploy/lightpanda-renderer/verify.py \
             ../../deploy/lightpanda-renderer/validate_pki.py \
+            ../../deploy/lightpanda-renderer/network-policy.py \
+            ../../deploy/lightpanda-renderer/testdata/legacy-verify.py \
             tests/test_lightpanda_renderer_deployment.py
           uv run --frozen ruff format --check \
             ../../deploy/lightpanda-renderer/verify.py \
             ../../deploy/lightpanda-renderer/validate_pki.py \
+            ../../deploy/lightpanda-renderer/network-policy.py \
+            ../../deploy/lightpanda-renderer/testdata/legacy-verify.py \
             tests/test_lightpanda_renderer_deployment.py
           uv run --frozen pyright \
             ../../deploy/lightpanda-renderer/verify.py \
-            ../../deploy/lightpanda-renderer/validate_pki.py
+            ../../deploy/lightpanda-renderer/validate_pki.py \
+            ../../deploy/lightpanda-renderer/network-policy.py \
+            ../../deploy/lightpanda-renderer/testdata/legacy-verify.py
           uv run --frozen pytest tests/test_lightpanda_renderer_deployment.py -q
 
   build:
@@ -212,7 +225,7 @@ jobs:
           remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')"
           test "$remote_main" = "$EXPECTED_SOURCE_COMMIT"
 
-      - name: Deploy one dormant no-egress renderer
+      - name: Deploy one dormant controlled-egress renderer
         env:
           TARGET_HOST: ${{ secrets.HETZNER_MURMUR_HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
@@ -242,7 +255,7 @@ jobs:
             --arg image_digest "$IMAGE_DIGEST" \
             --argjson run_id "$GITHUB_RUN_ID" \
             --argjson run_attempt "$GITHUB_RUN_ATTEMPT" \
-            '{schema_version: 1, source_commit: $source_commit, image_digest: $image_digest, run_id: $run_id, run_attempt: $run_attempt, mode: "dormant-no-egress"}' \
+            '{schema_version: 1, source_commit: $source_commit, image_digest: $image_digest, run_id: $run_id, run_attempt: $run_attempt, mode: "dormant-controlled-egress"}' \
             >lightpanda-renderer-release.json
 
       - name: Retain sanitized release record

@@ -290,6 +290,33 @@ This deployment has zero task authority and zero network reachability. It does
 not activate a renderer route, queue feeder, or PostgreSQL fence; activation
 remains a separately reviewed migration step.
 
+### Dormant renderer host boundary
+
+The dormant renderer uses a separate, one-time root maintenance bootstrap
+before ordinary renderer deploys. Bootstrap locks both the root-owned host
+policy and deploy-owned renderer state, verifies the exact stopped Murmur and
+cloudflared identities, verifies then removes only the active internal-only
+legacy renderer, and preserves its release and active pointer. It creates two
+persistent external Docker networks and installs complete root-owned
+iptables-nft chains before publishing exact rule-zero hooks. DNS is limited to
+the two reviewed resolvers, web egress to TCP 443, production and private
+addresses are denied, IPv6 renderer paths are denied, and private mTLS ingress
+is accepted only from the crawler address.
+
+Bootstrap is monotonic. A failure quarantines every endpoint on the dedicated
+egress network and leaves the restrictive policy and persistent networks in
+place. Re-running bootstrap repairs only empty-network policy state; there is
+no decommission or cross-user transaction log in the deploy path. The systemd
+unit reattests or repairs that same empty-network state after Docker restarts.
+
+Ordinary deploys take the host lock before the renderer lock and have only two
+root capabilities: read-only policy attestation immediately before starting a
+candidate and read-only policy-plus-runtime attestation immediately after.
+They never create, replace, or remove host policy. Candidate failure stops,
+disconnects, and removes the exact candidate, restores the prior active
+pointer, proves the routed network stably empty, and leaves the renderer cold;
+restarting a prior generation requires a separately reviewed operator deploy.
+
 ## Target architecture
 
 ```mermaid
