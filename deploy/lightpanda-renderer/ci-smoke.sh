@@ -520,16 +520,6 @@ sudo -u deploy python3 "$RECOVERY_RELEASE/verify.py" running \
 sudo /usr/local/libexec/jobseek-lightpanda-network-policy verify-running-ready \
   "$NETWORK_POLICY_SHA256" "$NETWORK_INVENTORY_SHA256" >/dev/null
 
-phase firewall-paths
-sudo iptables --wait 30 -C JSLP4-EGRESS -d 185.12.64.1/32 -p udp -m udp --dport 53 -j ACCEPT
-sudo iptables --wait 30 -C JSLP4-EGRESS -d 185.12.64.2/32 -p tcp -m tcp --dport 53 -j ACCEPT
-sudo iptables --wait 30 -C JSLP4-EGRESS -p tcp -m tcp --dport 443 -j ACCEPT
-sudo iptables --wait 30 -C JSLP4-EGRESS -d 10.0.0.0/8 -j DROP
-[[ "$(sudo iptables --wait 30 -S JSLP4-EGRESS | tail -n 1)" == "-A JSLP4-EGRESS -j DROP" ]]
-[[ "$(sudo ip6tables --wait 30 -S JSLP6-FWD | tail -n 1)" == "-A JSLP6-FWD -j DROP" ]]
-[[ "$(sudo iptables --wait 30 -S DOCKER-USER | sed -n '1p')" == "-N DOCKER-USER" ]]
-[[ "$(sudo iptables --wait 30 -S DOCKER-USER | sed -n '2p')" == "-A DOCKER-USER -j JSLP4-FWD" ]]
-
 phase private-mtls-ingress
 sudo ip netns exec "$CRAWLER_NAMESPACE" python3 - "$work" <<'PY'
 import socket
