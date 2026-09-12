@@ -3,9 +3,9 @@
 BrassRing's ``TGnewUI`` boards bootstrap an Angular application with a small
 set of featured jobs.  Submitting the empty search loads the authoritative
 inventory from ``Search/Ajax/MatchedJobs`` and subsequent pages from
-``Search/Ajax/ProcessSortAndShowMoreJobs``.  Both responses contain complete
-job records, so this monitor captures those first-party JSON responses instead
-of scraping the transient result DOM.
+``Search/Ajax/ProcessSortAndShowMoreJobs``.  Most tenants expose complete job
+records there.  For tenants that omit listing locations, the monitor hydrates
+only those fields from the server-rendered detail-page preload payload.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 
 import structlog
+from selectolax.parser import HTMLParser
 
 from src.core.monitors import DiscoveredJob, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page
@@ -44,6 +45,8 @@ _SORT_MENU_SELECTOR = "#sortBy-menu li"
 _ALPHABETICAL_SORT_VALUE = "1"
 _SNAPSHOT_ATTEMPTS = 2
 _SNAPSHOT_RETRY_DELAY = 1.0
+_DETAIL_CONCURRENCY = 8
+_PRELOAD_SELECTOR = "#preLoadJSON"
 
 
 class _SnapshotChanged(ValueError):
@@ -112,7 +115,75 @@ def _location(questions: dict[str, object]) -> list[str] | None:
         if part and part.casefold() not in seen:
             seen.add(part.casefold())
             parts.append(part)
-    return [", ".join(parts)] if parts else None
+    if parts:
+        return [", ".join(parts)]
+
+    # Some tenants expose a provider-level location instead of assigning
+    # their city/region/country fields to the conventional formtext slots.
+    location = _clean_string(questions.get("location"))
+    return [location] if location else None
+
+
+def _detail_location(body: str, expected_job_id: str) -> list[str]:
+    """Extract and validate a location from a server-rendered detail page."""
+
+    preload = HTMLParser(body).css_first(_PRELOAD_SELECTOR)
+    raw_payload = preload.attributes.get("value") if preload is not None else None
+    if not isinstance(raw_payload, str) or not raw_payload:
+        raise ValueError(f"BrassRing detail {expected_job_id} omitted preLoadJSON")
+    try:
+        payload = json.loads(raw_payload)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"BrassRing detail {expected_job_id} returned invalid preLoadJSON"
+        ) from exc
+    if not isinstance(payload, dict) or str(payload.get("JobId")) != expected_job_id:
+        raise ValueError(f"BrassRing detail identity mismatch for {expected_job_id}")
+
+    details = payload.get("Jobdetails")
+    raw_questions = details.get("JobDetailQuestions") if isinstance(details, dict) else None
+    if not isinstance(raw_questions, list):
+        raise ValueError(f"BrassRing detail {expected_job_id} omitted its questions")
+
+    questions: dict[str, object] = {}
+    for question in raw_questions:
+        if not isinstance(question, dict):
+            continue
+        zone = question.get("VerityZone")
+        if isinstance(zone, str) and zone:
+            questions[zone.casefold()] = question.get("AnswerValue")
+    location = _location(questions)
+    if location is None:
+        raise ValueError(f"BrassRing detail {expected_job_id} omitted its location")
+    return location
+
+
+async def _hydrate_missing_locations(
+    jobs: list[DiscoveredJob],
+    client: httpx.AsyncClient,
+) -> None:
+    """Fetch detail pages only for tenants whose search rows omit locations."""
+
+    missing = [job for job in jobs if not job.locations]
+    if not missing:
+        return
+    semaphore = asyncio.Semaphore(_DETAIL_CONCURRENCY)
+
+    async def hydrate(job: DiscoveredJob) -> None:
+        job_id = job.metadata.get("requisition_id") if isinstance(job.metadata, dict) else None
+        if not isinstance(job_id, str):
+            raise ValueError("BrassRing job omitted its requisition identity")
+        async with semaphore:
+            response = await client.get(job.url, follow_redirects=True, timeout=60)
+        response.raise_for_status()
+        from src.shared.tdm import check_response
+
+        check_response(response, body_excerpt=response.text[:500_000])
+        job.locations = _detail_location(response.text, job_id)
+
+    # A missing or malformed detail page aborts the authoritative snapshot;
+    # partial enrichment must never become a successful delisting cycle.
+    await asyncio.gather(*(hydrate(job) for job in missing))
 
 
 def _parse_job(raw: object, partner_id: str, site_id: str) -> DiscoveredJob | None:
@@ -223,7 +294,14 @@ async def _sort_alphabetically(page) -> object:
     )
 
 
-async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_id: str, pw):
+async def _discover_page(
+    board_url: str,
+    metadata: dict,
+    partner_id: str,
+    site_id: str,
+    pw,
+    client: httpx.AsyncClient | None = None,
+):
     browser_config = {
         "wait": "domcontentloaded",
         "timeout": 60_000,
@@ -335,6 +413,10 @@ async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_i
             raise _SnapshotChanged(f"BrassRing repeated requisition {job_id}")
         seen.add(job_id)
         jobs.append(job)
+    if any(not job.locations for job in jobs):
+        if client is None:
+            raise ValueError("BrassRing location enrichment requires an HTTP client")
+        await _hydrate_missing_locations(jobs, client)
     if truncated:
         return truncated_rich_result(jobs)
     return jobs
@@ -351,7 +433,14 @@ async def discover(board: dict, client: httpx.AsyncClient = None, pw=None):
     async def collect(playwright):
         for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
             try:
-                return await _discover_page(board_url, metadata, partner_id, site_id, playwright)
+                return await _discover_page(
+                    board_url,
+                    metadata,
+                    partner_id,
+                    site_id,
+                    playwright,
+                    client,
+                )
             except _SnapshotChanged as exc:
                 if attempt == _SNAPSHOT_ATTEMPTS:
                     raise
