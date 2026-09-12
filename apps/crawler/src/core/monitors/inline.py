@@ -1,16 +1,17 @@
 """Inline single-page job extraction monitor.
 
-Extracts multiple jobs from a single career page where all postings are
-listed inline (no individual job URLs).  Uses step-based extraction
+Extracts multiple jobs from a single career page where postings are
+listed inline, optionally with one canonical detail URL per item. Uses step-based extraction
 (same as the DOM scraper) in a loop — the cursor advances through the
 page, extracting one job per iteration.
 
-Each job gets a synthetic URL with a ``_jid`` query parameter for
-pipeline compatibility::
+Without configured source URLs, each job gets a synthetic URL with a ``_jid``
+query parameter for pipeline compatibility::
 
     https://example.com/open-positions?_jid=senior-engineer-a1b2c3
 
-Registered as a **rich** monitor — the scraper step is skipped.
+Registered as a **rich** monitor. Boards that expose source URLs may configure
+field enrichment from those detail pages.
 
 Requires playwright when ``render`` is true:
 ``uv run playwright install chromium``
@@ -25,7 +26,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from html import unescape
 from typing import TYPE_CHECKING, cast
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, urldefrag, urlencode, urljoin, urlparse, urlunparse
 
 import structlog
 from selectolax.lexbor import LexborHTMLParser, SelectolaxError
@@ -60,6 +61,7 @@ _MAX_ITEM_BOUNDARY_TAG_LENGTH = 32
 _MAX_SECTION_REGEX_LENGTH = 2_048
 _MAX_POSITIONS_PER_LISTING = 20
 _MAX_SYNTHETIC_IDENTITY_FIELD_LENGTH = 128
+_MAX_SOURCE_URL_LENGTH = 4_096
 _DETAIL_BOUNDARY_TAG = "jobseek-inline-detail"
 _DETAIL_RESERVED_ATTRIBUTE_PREFIX = "data-inline-detail-"
 _HTML_TAG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
@@ -304,6 +306,81 @@ def _read_source_identities(
     if len({identity.stable for identity in identities}) != len(identities):
         raise ValueError("inline source identities must be unique")
     return tuple(identities)
+
+
+def _validated_source_url_config(
+    metadata: dict,
+    *,
+    uses_detail_expansion: bool,
+) -> tuple[str | None, str | None]:
+    """Validate canonical detail URLs read from an ordinary inline listing."""
+    selector_value = metadata.get("source_url_selector")
+    attribute_value = metadata.get("source_url_attribute")
+    configured = (selector_value is not None, attribute_value is not None)
+    if not any(configured):
+        return None, None
+    if uses_detail_expansion:
+        raise ValueError("inline source URL configuration cannot use detail-card expansion")
+    if not all(configured):
+        raise ValueError(
+            "inline source URL configuration requires source_url_selector and source_url_attribute"
+        )
+    selector = _validated_empty_selector(selector_value)
+    assert selector is not None
+    if (
+        not isinstance(attribute_value, str)
+        or not attribute_value
+        or len(attribute_value) > _MAX_DETAIL_IDENTITY_ATTRIBUTE_LENGTH
+        or re.fullmatch(r"[A-Za-z_:][A-Za-z0-9:._-]*", attribute_value) is None
+    ):
+        raise ValueError("inline source_url_attribute must be a valid bounded attribute name")
+    return selector, attribute_value
+
+
+def _read_source_urls(
+    html: str,
+    *,
+    selector: str,
+    attribute: str,
+    board_url: str,
+) -> tuple[str, ...]:
+    """Read ordered same-origin detail URLs from an ordinary inline listing."""
+    nodes = LexborHTMLParser(html).css(selector)
+    if not nodes:
+        raise ValueError("inline source URL selector did not match any elements")
+    if len(nodes) > _MAX_JOBS:
+        raise ValueError("inline source URL selector exceeded the job safety cap")
+
+    board = urlparse(board_url)
+    board_origin = (board.scheme.casefold(), (board.hostname or "").casefold(), board.port)
+    urls: list[str] = []
+    for index, node in enumerate(nodes):
+        raw_url = node.attributes.get(attribute)
+        if raw_url is None:
+            raise ValueError(f"inline source URL {index + 1} is missing attribute {attribute!r}")
+        raw_url = unescape(raw_url).strip()
+        if (
+            not raw_url
+            or len(raw_url) > _MAX_SOURCE_URL_LENGTH
+            or any(ord(character) < 0x20 for character in raw_url)
+        ):
+            raise ValueError(f"inline source URL {index + 1} is invalid")
+        absolute, _fragment = urldefrag(urljoin(board_url, raw_url))
+        parsed = urlparse(absolute)
+        origin = (parsed.scheme.casefold(), (parsed.hostname or "").casefold(), parsed.port)
+        if (
+            parsed.scheme.casefold() not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or origin != board_origin
+        ):
+            raise ValueError(f"inline source URL {index + 1} must remain on the board origin")
+        urls.append(absolute)
+
+    if len(set(urls)) != len(urls):
+        raise ValueError("inline source URLs must be unique")
+    return tuple(urls)
 
 
 async def _read_detail_identities(
@@ -938,6 +1015,8 @@ async def discover(
         source_identity_selector — CSS selector for stable identities on ordinary listings
         source_identity_attribute — attribute containing the raw ordinary-listing identity
         source_identity_regex — full-match regex capturing the stable ordinary-listing ID
+        source_url_selector — CSS selector for one same-origin detail URL per listing
+        source_url_attribute — attribute containing each detail URL (usually href)
         fetch_urls — ordered alternate read URLs; canonical URLs use board_url
         fetch_json_path — extract HTML from a static JSON response using JMESPath
         include_hidden — include HTML hidden by tab/accordion state (default: false)
@@ -1027,9 +1106,19 @@ async def discover(
             uses_detail_expansion=uses_detail_expansion,
         )
     )
+    source_url_selector, source_url_attribute = _validated_source_url_config(
+        metadata,
+        uses_detail_expansion=uses_detail_expansion,
+    )
     if synthetic_identity_field is not None and source_identity_selector is not None:
         raise ValueError(
             "inline synthetic_identity_field cannot be combined with source identity configuration"
+        )
+    if source_url_selector is not None and (
+        synthetic_identity_field is not None or source_identity_selector is not None
+    ):
+        raise ValueError(
+            "inline source URL configuration cannot be combined with synthetic or source identity"
         )
     section_start = _validated_section_boundary(metadata.get("section_start"), name="section_start")
     section_end = _validated_section_boundary(metadata.get("section_end"), name="section_end")
@@ -1053,6 +1142,8 @@ async def discover(
         raise ValueError(
             "inline synthetic_identity_field cannot be combined with positions_per_listing"
         )
+    if source_url_selector is not None and positions_per_listing != 1:
+        raise ValueError("inline source URL configuration cannot expand positions_per_listing")
     valid_through_patterns, valid_through_format, exclude_expired = _validated_valid_through_config(
         metadata
     )
@@ -1078,6 +1169,15 @@ async def discover(
             selector=source_identity_selector,
             attribute=source_identity_attribute,
             pattern=source_identity_pattern,
+        )
+    source_urls: tuple[str, ...] = ()
+    if source_url_selector is not None:
+        assert source_url_attribute is not None
+        source_urls = _read_source_urls(
+            html,
+            selector=source_url_selector,
+            attribute=source_url_attribute,
+            board_url=board_url,
         )
     include_hidden = bool(metadata.get("include_hidden"))
     elements = flatten(html, include_hidden=include_hidden)
@@ -1117,6 +1217,7 @@ async def discover(
     cursor = 0
     detail_item_index = 0
     source_identity_index = 0
+    source_url_index = 0
 
     while cursor < len(elements) and processed_count < _MAX_JOBS:
         if item_boundary is None:
@@ -1164,6 +1265,13 @@ async def discover(
             )
             source_identity_index += 1
 
+        source_url = None
+        if source_url_selector is not None:
+            if source_url_index >= len(source_urls):
+                raise ValueError("inline extracted more jobs than source URLs")
+            source_url = source_urls[source_url_index]
+            source_url_index += 1
+
         if title in exclude_titles or (
             exclude_title_regex is not None and exclude_title_regex.search(title)
         ):
@@ -1179,7 +1287,9 @@ async def discover(
         ):
             continue
 
-        if provider_identity is not None:
+        if source_url is not None:
+            url = source_url
+        elif provider_identity is not None:
             url = _generate_identity_url(board_url, provider_identity)
         else:
             stable_identity = None
@@ -1259,6 +1369,11 @@ async def discover(
         raise ValueError(
             "inline source identity/job count mismatch "
             f"({len(source_identities)} identities for {source_identity_index} jobs)"
+        )
+    if source_url_selector is not None and source_url_index != len(source_urls):
+        raise ValueError(
+            "inline source URL/job count mismatch "
+            f"({len(source_urls)} URLs for {source_url_index} jobs)"
         )
 
     if authoritative_empty and not jobs:

@@ -1437,19 +1437,20 @@ notion — Notion Site Job Pages
                employment_type from page blocks and collection properties)"""
 
 MONITOR_INLINE = """\
-inline — Single-Page Extraction (rich)
+inline — Single-Page Extraction (rich or enrichable)
 
   Returns:  Full job data (title, description, locations, etc.)
-  Scraper:  Not needed (skipped)
+  Scraper:  Usually skipped; source URLs may enrich missing fields
   Cost:     60
   Browser:  Only when render: true
 
-  For career pages that list all jobs inline on a single URL with no
-  individual job links (e.g., Squarespace, Webflow sites).  Extracts
+  For career pages that list all jobs inline on a single URL, with or without
+  individual detail links (e.g., Squarespace, Webflow sites). Extracts
   multiple jobs by running step-based extraction repeatedly — the cursor
   advances through the page, pulling one job per iteration.
 
-  Each job gets a synthetic URL: {board_url}?_jid={title-slug}-{hash}
+  Each job gets a synthetic URL unless source_url_selector is configured:
+  {board_url}?_jid={title-slug}-{hash}
 
   Config:
     {
@@ -1551,6 +1552,16 @@ inline — Single-Page Extraction (rich)
                  the stable ID. Missing, duplicate, non-matching, or count-
                  mismatched identities fail closed and replace title-derived
                  synthetic _jid values.
+    source_url_selector
+                 CSS selector for one canonical detail link per ordinary
+                 inline job, in extraction order. URLs must be unique and stay
+                 on the board origin. Missing or count-mismatched links fail
+                 the cycle closed. Configure a detail scraper with enrich when
+                 the inline page itself omits required fields.
+    source_url_attribute
+                 Attribute containing each detail URL, normally href. Requires
+                 source_url_selector and cannot be combined with synthetic or
+                 source identity, click-card expansion, or positions_per_listing.
     fetch_urls   Optional ordered URLs used only to read the page. Each entry is
                  a URL string or {"url": ..., "headers": {...}} object. Headers
                  are scoped to that exact candidate and are never forwarded to
