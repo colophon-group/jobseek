@@ -7076,6 +7076,7 @@ waltz-health,waltz-health-greenhouse,https://job-boards.greenhouse.io/waltzhealt
 wandelbots,wandelbots-personio,https://wandelbots.jobs.personio.de/,personio,"{""slug"": ""wandelbots"", ""language"": ""en""}",skip,
 wandercraft,wandercraft-careers,https://wandercraft.welcomekit.co/,dom,"{""url_filter"": ""^https?://wandercraft\\.welcomekit\\.co/jobs/(?!spontaneous-applications(?:[/?#]|$))[^/?#]+""}",json-ld,
 warburg-pincus-llc,warburg-pincus-llc-greenhouse,https://job-boards.greenhouse.io/warburgpincusllc,greenhouse,"{""token"": ""warburgpincusllc""}",skip,
+warby-parker,warby-parker-careers,https://fa-evdi-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/WarbyParkerCareers,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 wargaming,wargaming-greenhouse,https://job-boards.greenhouse.io/wargamingen,greenhouse,"{""token"": ""wargamingen""}",skip,
 warner-music,warner-music-careers,https://www.wmg.com/careers,lever,"{""token"": ""wmg""}",skip,
 warner-music,warner-music-careers-workday,https://wmg.wd1.myworkdayjobs.com/WMGGLOBAL,workday,,,
