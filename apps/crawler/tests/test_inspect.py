@@ -1900,9 +1900,7 @@ class TestCaterpillarCanonicalBoardConfig:
 
         row = by_slug.get("caterpillar-careers")
         assert row is not None, "caterpillar-careers row missing from boards.csv"
-        assert row.get("board_url") == (
-            "https://cat.wd5.myworkdayjobs.com/CaterpillarCareers"
-        )
+        assert row.get("board_url") == ("https://cat.wd5.myworkdayjobs.com/CaterpillarCareers")
         assert row.get("monitor_type") == "workday"
         assert row.get("scraper_type") == "workday"
 
