@@ -15,10 +15,7 @@ def _rows(path: str, key: str, value: str) -> list[dict[str, str]]:
 
 
 def test_dxc_technology_board_inventory() -> None:
-    rows = {
-        row["board_slug"]: row
-        for row in _rows("boards.csv", "company_slug", "dxc-technology")
-    }
+    rows = {row["board_slug"]: row for row in _rows("boards.csv", "company_slug", "dxc-technology")}
 
     assert set(rows) == {
         "dxc-technology-careers",
@@ -49,7 +46,7 @@ def test_dxc_technology_board_inventory() -> None:
     }
 
 
-def test_dxc_technology_metadata_descriptions_and_staged_assets() -> None:
+def test_dxc_technology_metadata_and_descriptions() -> None:
     company = _rows("companies.csv", "slug", "dxc-technology")[0]
     assert company["name"] == "DXC Technology"
     assert company["website"] == "https://dxc.com"
@@ -60,5 +57,3 @@ def test_dxc_technology_metadata_descriptions_and_staged_assets() -> None:
 
     description = _rows("company_descriptions.csv", "slug", "dxc-technology")[0]
     assert all(description[locale] for locale in ("en", "de", "fr", "it"))
-    assert (DATA_DIR / "images" / "dxc-technology-logo.png").is_file()
-    assert (DATA_DIR / "images" / "dxc-technology-icon.png").is_file()

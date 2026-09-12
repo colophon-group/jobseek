@@ -14,6 +14,7 @@ from src.core.monitors.linkedin import (
     _parse_listing_cards,
     can_handle,
     discover,
+    save_raw,
 )
 from src.core.scrapers.linkedin import _job_id_from_url, parse_html, scrape
 from src.workspace._compat import auto_scraper_type, detect_ats_from_url
@@ -246,6 +247,16 @@ class TestMonitor:
                         "board_url": "https://www.linkedin.com/jobs/fds-jobs-worldwide",
                         "metadata": {"company_ids": company_ids},
                     },
+                    client,
+                )
+
+    async def test_save_raw_rejects_conflicting_company_identity_fields(self, tmp_path):
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="not both"):
+                await save_raw(
+                    tmp_path,
+                    BOARD_URL,
+                    {"company_id": "18160437", "company_ids": ["20533386"]},
                     client,
                 )
 

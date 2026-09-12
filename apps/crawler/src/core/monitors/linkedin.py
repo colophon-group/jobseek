@@ -504,9 +504,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     # detection; the daily detail scraper remains authoritative for closure.
     partial = truncated or keywords is not None
     identity_log = (
-        {"company_id": company_ids[0]}
-        if len(company_ids) == 1
-        else {"company_ids": company_ids}
+        {"company_id": company_ids[0]} if len(company_ids) == 1 else {"company_ids": company_ids}
     )
     log.info(
         "linkedin.discovered",
@@ -569,6 +567,8 @@ async def save_raw(
     metadata: dict,
     client: httpx.AsyncClient,
 ) -> None:
+    if metadata.get("company_id") is not None and metadata.get("company_ids") is not None:
+        raise ValueError("LinkedIn monitor accepts company_id or company_ids, not both")
     configured_company_ids = (
         metadata.get("company_ids")
         if metadata.get("company_ids") is not None
