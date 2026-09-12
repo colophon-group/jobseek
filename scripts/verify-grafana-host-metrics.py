@@ -36,6 +36,10 @@ SERIES_BUDGETS = {
 QUERIES = {
     "fresh_sampler": "jobseek_host_observability_last_collect_unixtime",
     "crawler_up": 'up{job="crawler"}',
+    # Instant-vector results are stamped with query evaluation time. Ask for
+    # the underlying scrape timestamp explicitly so cached samples cannot
+    # approve a deployment.
+    "crawler_up_timestamp": 'timestamp(up{job="crawler"})',
     "probe_series": "count by (host_role) (jobseek_host_observability_probe_success)",
     "failed_probes": "jobseek_host_observability_probe_success == 0",
     "container_series": "count by (host_role) (jobseek_container_running)",
@@ -302,27 +306,40 @@ def validate_results(
                 )
             )
 
-    crawler_up: dict[str, Observation] = {}
-    for row in results["crawler_up"]:
-        try:
-            instance = row["metric"]["instance"]
-            if not isinstance(instance, str) or instance not in EXPECTED_CRAWLER_INSTANCES:
-                raise TypeError
-            if instance in crawler_up:
-                raise ValueError
-            crawler_up[instance] = _observation(row, "crawler_up")
-        except (KeyError, TypeError, ValueError) as exc:
-            raise _error("crawler_up", "crawler_up returned invalid target labels") from exc
-    for instance in sorted(EXPECTED_CRAWLER_INSTANCES - set(crawler_up)):
+    crawler_observations: dict[str, dict[str, Observation]] = {}
+    for name in ("crawler_up", "crawler_up_timestamp"):
+        values: dict[str, Observation] = {}
+        for row in results[name]:
+            try:
+                instance = row["metric"]["instance"]
+                if not isinstance(instance, str) or instance not in EXPECTED_CRAWLER_INSTANCES:
+                    raise TypeError
+                if instance in values:
+                    raise ValueError
+                values[instance] = _observation(row, name)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise _error(name, f"{name} returned invalid target labels") from exc
+        crawler_observations[name] = values
+    crawler_up = crawler_observations["crawler_up"]
+    crawler_up_timestamp = crawler_observations["crawler_up_timestamp"]
+    complete_instances = set(crawler_up) & set(crawler_up_timestamp)
+    for instance in sorted(EXPECTED_CRAWLER_INSTANCES - complete_instances):
         failures.append(
             _failure(
                 "crawler_up",
-                f"crawler scrape target is missing or unhealthy: {instance}",
+                f"crawler scrape target is missing, stale, or unhealthy: {instance}",
                 now=now,
                 host_role="crawler",
             )
         )
-    for instance, observation in sorted(crawler_up.items()):
+    for instance in sorted(complete_instances):
+        value_observation = crawler_up[instance]
+        timestamp_observation = crawler_up_timestamp[instance]
+        observation = Observation(
+            value=value_observation.value,
+            sample_timestamp=timestamp_observation.value,
+            labels=value_observation.labels,
+        )
         sample_timestamp = observation.sample_timestamp
         predates_deployment = (
             minimum_collected_at is not None and sample_timestamp < minimum_collected_at

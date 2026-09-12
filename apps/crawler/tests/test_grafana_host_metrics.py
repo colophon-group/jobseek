@@ -29,6 +29,9 @@ def _healthy_results(now: float) -> dict:
         "crawler_up": [
             _row(1, instance=instance) for instance in sorted(verify.EXPECTED_CRAWLER_INSTANCES)
         ],
+        "crawler_up_timestamp": [
+            _row(now, instance=instance) for instance in sorted(verify.EXPECTED_CRAWLER_INSTANCES)
+        ],
         "probe_series": [_row(4, host_role=role) for role in roles],
         "failed_probes": [],
         "container_series": [_row(1, host_role=role) for role in roles],
@@ -161,7 +164,9 @@ def test_validate_results_requires_fresh_post_deployment_crawler_targets() -> No
     cached = _healthy_results(now)
     for row in cached["fresh_sampler"]:
         row["value"][1] = str(now)
-    cached["crawler_up"][0]["value"][0] = now - 2
+    # Prometheus returns the explicit timestamp() result as the sample value;
+    # the ordinary instant-vector result timestamp itself is always query time.
+    cached["crawler_up_timestamp"][0]["value"][1] = str(now - 2)
 
     with pytest.raises(verify.VerificationError) as captured:
         verify.validate_results(
@@ -188,6 +193,16 @@ def test_validate_results_rejects_unexpected_or_duplicate_crawler_target() -> No
     duplicate["crawler_up"].append(_row(1, instance="worker-1"))
     with pytest.raises(verify.VerificationError, match="invalid target labels"):
         verify.validate_results(duplicate, now=now, max_age_seconds=300)
+
+    duplicate_timestamp = _healthy_results(now)
+    duplicate_timestamp["crawler_up_timestamp"].append(_row(now, instance="worker-1"))
+    with pytest.raises(verify.VerificationError, match="invalid target labels"):
+        verify.validate_results(duplicate_timestamp, now=now, max_age_seconds=300)
+
+    missing_timestamp = _healthy_results(now)
+    missing_timestamp["crawler_up_timestamp"].pop()
+    with pytest.raises(verify.VerificationError, match="crawler scrape target.*worker-3"):
+        verify.validate_results(missing_timestamp, now=now, max_age_seconds=300)
 
 
 def test_validate_results_accepts_optional_web_postgresql_backup() -> None:
