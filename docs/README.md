@@ -61,6 +61,9 @@ Status tags:
   lifecycle and breadth limits, owned-watchlist selection/public-discovery
   retirement, exact-decision caching, model-evaluation/spend gates, and the
   dynamic gated epic issue tree.
+- [19 - AI-filter Evaluation Data Delivery](19-ai-filter-evaluation-data.md)
+  `[proposal]` - approved bounded 200-pair sampling, agent labelling,
+  adjudication, private human audit, and production-access gates.
 
 ## Agent And Automation Workflows
 
