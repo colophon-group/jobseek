@@ -2601,6 +2601,8 @@ fortem-technologies,fortem-technologies-paylocity,https://recruiting.paylocity.c
 forter,forter-greenhouse,https://job-boards.greenhouse.io/forter,greenhouse,"{""token"": ""forter""}",skip,
 forterra,forterra-gotenna-rippling,https://ats.rippling.com/gotenna-inc/jobs,rippling,,rippling,
 forterra,forterra-rippling,https://ats.rippling.com/forterra/jobs,rippling,"{""slug"": ""forterra""}",rippling,
+fortinet,fortinet-careers,https://edel.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,"{""total_count_tolerance"": 1}",oracle_hcm,"{""enrich"": [""description""]}"
+fortinet,fortinet-federal,https://evpq.fa.us8.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 forto,forto-ashby,https://jobs.ashbyhq.com/forto,ashby,"{""token"": ""forto""}",skip,
 forum-ventures,forum-ventures-ashby,https://jobs.ashbyhq.com/forum-ventures,ashby,"{""token"": ""forum-ventures""}",skip,
 forward-networks,forward-networks-greenhouse,https://job-boards.greenhouse.io/forwardnetworks,greenhouse,"{""token"": ""forwardnetworks""}",skip,
