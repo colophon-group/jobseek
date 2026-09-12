@@ -8,7 +8,13 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors.headhunter import REQUEST_HEADERS, _parse_job, _site_host_from_url
+from src.core.jsonld import parse_html as parse_jsonld_html
+from src.core.monitors.headhunter import (
+    PUBLIC_REQUEST_HEADERS,
+    REQUEST_HEADERS,
+    _parse_job,
+    _site_host_from_url,
+)
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -62,6 +68,14 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     )
     if response.status_code == 404:
         return JobContent()
+    if response.status_code == 403:
+        page = await http.get(url, headers=PUBLIC_REQUEST_HEADERS)
+        page.raise_for_status()
+        content = parse_jsonld_html(page.text)
+        if not content.title or not content.description:
+            raise ValueError(f"HeadHunter vacancy {vacancy_id} has no usable JSON-LD fallback")
+        log.info("headhunter_scraper.public_page_fallback", vacancy_id=vacancy_id)
+        return content
     response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, dict):

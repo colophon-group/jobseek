@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 
@@ -14,6 +16,32 @@ from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 
 EMPLOYER_ID = "4556149"
 BOARD_URL = f"https://hh.ru/employer/{EMPLOYER_ID}"
+
+
+def _public_search_html(vacancies: list[dict], *, total: int | None = None) -> str:
+    state = {
+        "vacancySearchResult": {
+            "vacancies": vacancies,
+            "totalResults": len(vacancies) if total is None else total,
+        }
+    }
+    return (
+        '<html><template style="display:none" id="HH-Lux-InitialState">'
+        f"{json.dumps(state)}"
+        "</template></html>"
+    )
+
+
+def _public_vacancy(vacancy_id: str = "12345") -> dict:
+    return {
+        "vacancyId": int(vacancy_id),
+        "name": "Главный агроном",
+        "company": {"id": int(EMPLOYER_ID), "name": "Sucden"},
+        "area": {"id": 113, "name": "Россия"},
+        "address": {"displayName": "Пенза, Советская улица, 1"},
+        "publicationTime": {"$": "2026-08-14T09:00:00+03:00"},
+        "links": {"desktop": f"https://hh.ru/vacancy/{vacancy_id}"},
+    }
 
 
 def _detail(vacancy_id: str = "12345") -> dict:
@@ -178,6 +206,50 @@ async def test_discover_paginates_rich_summaries_without_detail_requests():
     assert all(job.title for job in result)
 
 
+async def test_discover_falls_back_to_exhaustive_public_search_state_on_api_captcha():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "api.hh.ru":
+            return httpx.Response(403, json={"errors": [{"type": "forbidden"}]}, request=request)
+        assert request.url == httpx.URL(f"https://hh.ru/search/vacancy?employer_id={EMPLOYER_ID}")
+        return httpx.Response(
+            200,
+            text=_public_search_html([_public_vacancy("12345"), _public_vacancy("67890")]),
+            request=request,
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(
+            {"board_url": BOARD_URL, "metadata": {"employer_id": EMPLOYER_ID}},
+            client,
+        )
+
+    assert [job.url for job in result] == [
+        "https://hh.ru/vacancy/12345",
+        "https://hh.ru/vacancy/67890",
+    ]
+    assert result[0].title == "Главный агроном"
+    assert result[0].locations == ["Пенза, Советская улица, 1"]
+    assert result[0].date_posted == "2026-08-14T09:00:00+03:00"
+
+
+async def test_discover_public_search_fallback_fails_closed_when_state_is_incomplete():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "api.hh.ru":
+            return httpx.Response(403, request=request)
+        return httpx.Response(
+            200,
+            text=_public_search_html([_public_vacancy()], total=2),
+            request=request,
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="embedded 1 of 2"):
+            await discover(
+                {"board_url": BOARD_URL, "metadata": {"employer_id": EMPLOYER_ID}},
+                client,
+            )
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [
@@ -321,6 +393,44 @@ async def test_scraper_fetches_detail_api():
     assert content.description
 
 
+async def test_scraper_falls_back_to_public_page_jsonld_on_api_captcha():
+    job_posting = {
+        "@context": "https://schema.org/",
+        "@type": "JobPosting",
+        "title": "Главный агроном",
+        "description": "<p>Руководство агрономической службой.</p>",
+        "datePosted": "2026-08-14",
+        "jobLocation": {
+            "@type": "Place",
+            "address": {
+                "@type": "PostalAddress",
+                "addressLocality": "Пенза",
+                "addressCountry": "RU",
+            },
+        },
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "api.hh.ru":
+            return httpx.Response(403, request=request)
+        return httpx.Response(
+            200,
+            text=(
+                '<html><script type="application/ld+json">'
+                f"{json.dumps(job_posting)}"
+                "</script></html>"
+            ),
+            request=request,
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        content = await scrape("https://hh.ru/vacancy/12345", {}, client)
+
+    assert content.title == "Главный агроном"
+    assert content.description == "<p>Руководство агрономической службой.</p>"
+    assert content.locations == ["Пенза, RU"]
+
+
 async def test_scraper_rejects_mismatched_detail_id():
     transport = httpx.MockTransport(
         lambda request: httpx.Response(200, json=_detail("99999"), request=request)
@@ -374,6 +484,22 @@ async def test_probe_reports_job_count_when_reachable():
         result = await can_handle(BOARD_URL, client)
 
     assert result == {"employer_id": EMPLOYER_ID, "proxy": True, "jobs": 4}
+
+
+async def test_probe_reports_job_count_from_public_fallback():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "api.hh.ru":
+            return httpx.Response(403, request=request)
+        return httpx.Response(
+            200,
+            text=_public_search_html([_public_vacancy("12345"), _public_vacancy("67890")]),
+            request=request,
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await can_handle(BOARD_URL, client)
+
+    assert result == {"employer_id": EMPLOYER_ID, "proxy": True, "jobs": 2}
 
 
 def test_workspace_detection_and_auto_scraper():
