@@ -9,6 +9,9 @@ x-common-env: &common-env
   REDIS_URL: redis://localhost:6379/0
   WORKER_ID_PREFIX: hetzner
   LOG_LEVEL: INFO
+  # Python Prometheus counters/histograms otherwise mirror every bounded
+  # family with an unused `_created` series, consuming ~2,463 tenant series.
+  PROMETHEUS_DISABLE_CREATED_SERIES: "true"
   CRAWLER_DB_POOL_IDLE_SECONDS: "60"
   R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
   R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}

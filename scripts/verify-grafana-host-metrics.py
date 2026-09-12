@@ -16,18 +16,23 @@ from typing import Any, NamedTuple
 import httpx
 
 EXPECTED_ROLES = frozenset({"crawler", "postgresql", "typesense"})
+EXPECTED_CRAWLER_INSTANCES = frozenset(
+    {"worker-1", "worker-2", "worker-3", "browser-1", "exporter", "drain"}
+)
 REQUIRED_BACKUPS = frozenset({("postgresql", "postgresql"), ("typesense", "typesense")})
 OPTIONAL_BACKUPS = frozenset({("typesense", "web-postgresql")})
 _SAFE_LABEL_VALUE = re.compile(r"[A-Za-z0-9_.:-]{1,80}")
 _EVIDENCE_LABEL_NAMES = frozenset({"host_role", "collector", "probe", "container", "service"})
 SERIES_BUDGETS = {
     "active_series": 12_000,
-    "crawler_series": 2_000,
+    "crawler_series": 5_000,
+    "crawler_capability_series": 2_000,
     "redis_series": 200,
     "unix_series": 2_000,
 }
 QUERIES = {
     "fresh_sampler": "jobseek_host_observability_last_collect_unixtime",
+    "crawler_up": 'up{job="crawler"}',
     "probe_series": "count by (host_role) (jobseek_host_observability_probe_success)",
     "failed_probes": "jobseek_host_observability_probe_success == 0",
     "container_series": "count by (host_role) (jobseek_container_running)",
@@ -54,6 +59,10 @@ QUERIES = {
     "alloy_backlog": "jobseek_alloy_remote_write_samples_pending > 3000",
     "active_series": 'count({job=~".+"})',
     "crawler_series": 'count({job="crawler"})',
+    "crawler_capability_series": (
+        'count({job="crawler",__name__="crawler_runtime_capability_executions_total"}) or vector(0)'
+    ),
+    "crawler_created_series": 'count({job="crawler",__name__=~".*_created"}) or vector(0)',
     "redis_series": 'count({job="integrations/redis"})',
     "unix_series": 'count({job="integrations/unix"})',
 }
@@ -290,6 +299,38 @@ def validate_results(
                 )
             )
 
+    crawler_up: dict[str, Observation] = {}
+    for row in results["crawler_up"]:
+        try:
+            instance = row["metric"]["instance"]
+            if not isinstance(instance, str) or instance not in EXPECTED_CRAWLER_INSTANCES:
+                raise TypeError
+            if instance in crawler_up:
+                raise ValueError
+            crawler_up[instance] = _observation(row, "crawler_up")
+        except (KeyError, TypeError, ValueError) as exc:
+            raise _error("crawler_up", "crawler_up returned invalid target labels") from exc
+    for instance in sorted(EXPECTED_CRAWLER_INSTANCES - set(crawler_up)):
+        failures.append(
+            _failure(
+                "crawler_up",
+                f"crawler scrape target is missing or unhealthy: {instance}",
+                now=now,
+                host_role="crawler",
+            )
+        )
+    for instance, observation in sorted(crawler_up.items()):
+        if observation.value != 1:
+            failures.append(
+                _failure(
+                    "crawler_up",
+                    f"crawler scrape target is missing or unhealthy: {instance}",
+                    now=now,
+                    observation=observation,
+                    host_role="crawler",
+                )
+            )
+
     for name in ("probe_series", "container_series"):
         values = _role_observations(results, name)
         for role in sorted(EXPECTED_ROLES - set(values)):
@@ -464,6 +505,17 @@ def validate_results(
                     observation=observation,
                 )
             )
+    created_series = _scalar_observation(results, "crawler_created_series")
+    if created_series is None or created_series.value != 0:
+        failures.append(
+            _failure(
+                "crawler_created_series",
+                "automatic crawler _created series are present",
+                now=now,
+                observation=created_series,
+                host_role="crawler",
+            )
+        )
     for name, budget in SERIES_BUDGETS.items():
         observation = _scalar_observation(results, name)
         if observation is None or observation.value <= 0 or observation.value > budget:
@@ -475,6 +527,7 @@ def validate_results(
                     observation=observation,
                     host_role={
                         "crawler_series": "crawler",
+                        "crawler_capability_series": "crawler",
                         "redis_series": "crawler",
                         "unix_series": "fleet",
                         "active_series": "tenant",

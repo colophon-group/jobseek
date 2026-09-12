@@ -862,7 +862,8 @@ Deployment is owned by
 [`deploy-hetzner-observability.yml`](../.github/workflows/deploy-hetzner-observability.yml).
 It validates the Python, shell, Alloy, alert, and systemd contracts; deploys
 the crawler, PostgreSQL, and Typesense hosts sequentially; then polls Grafana
-until fresh sampler, probe, container, backup, PostgreSQL-readiness,
+until fresh sampler, all six crawler application scrape targets, probe,
+container, backup, PostgreSQL-readiness,
 Typesense-readiness, and Codex daily-review status series are present and
 healthy for every expected role. Only after that ingestion gate passes does it
 remove the retired Jobseek notification routes, contact point, bridge,
@@ -1009,8 +1010,12 @@ successful status so its Mimir alert state resolves normally.
 
 Grafana Cloud enforces 15,000 active series and 1,500 ingested samples per
 second for this tenant. Deployment stops before rule sync unless the total is
-at most 12,000 series, crawler application metrics are at most 2,000, Redis is
-at most 200, and Unix/textfile host metrics are at most 2,000. The 20% tenant
+at most 12,000 series, crawler application metrics are at most 5,000, the
+registry-bounded runtime-capability family is at most 2,000, Redis is at most
+200, and Unix/textfile host metrics are at most 2,000. The crawler processes
+disable automatic Python `_created` series and Compose Alloy drops them as a
+defense in depth; creation timestamps are not consumed by any alert,
+dashboard, or runtime-cost capture. The 20% tenant
 headroom is an incident buffer, not capacity available to a new unbounded
 label. Before adding labels, query the proposed family by label count in
 Grafana and state its worst-case fleet cardinality in the change.

@@ -22,6 +22,9 @@ def _healthy_results(now: float) -> dict:
     roles = sorted(verify.EXPECTED_ROLES)
     return {
         "fresh_sampler": [_row(now - 30, host_role=role) for role in roles],
+        "crawler_up": [
+            _row(1, instance=instance) for instance in sorted(verify.EXPECTED_CRAWLER_INSTANCES)
+        ],
         "probe_series": [_row(4, host_role=role) for role in roles],
         "failed_probes": [],
         "container_series": [_row(1, host_role=role) for role in roles],
@@ -52,6 +55,8 @@ def _healthy_results(now: float) -> dict:
         "alloy_backlog": [],
         "active_series": [_row(6000)],
         "crawler_series": [_row(1000)],
+        "crawler_capability_series": [_row(500)],
+        "crawler_created_series": [_row(0)],
         "redis_series": [_row(100)],
         "unix_series": [_row(1200)],
     }
@@ -129,6 +134,37 @@ def test_validate_results_rejects_silent_probe_or_backup_failure() -> None:
         verify.validate_results(missing_codex_deadman, now=now, max_age_seconds=300)
 
 
+def test_validate_results_requires_all_crawler_scrape_targets_healthy() -> None:
+    now = 1_800_000_000.0
+    missing = _healthy_results(now)
+    missing["crawler_up"].pop()
+    with pytest.raises(verify.VerificationError, match="crawler scrape target.*worker-3"):
+        verify.validate_results(missing, now=now, max_age_seconds=300)
+
+    unhealthy = _healthy_results(now)
+    unhealthy["crawler_up"][0]["value"][1] = "0"
+    with pytest.raises(verify.VerificationError) as captured:
+        verify.validate_results(unhealthy, now=now, max_age_seconds=300)
+
+    failure = captured.value.failures[0]
+    assert failure.query_name == "crawler_up"
+    assert failure.host_role == "crawler"
+    assert failure.observed_value == 0
+
+
+def test_validate_results_rejects_unexpected_or_duplicate_crawler_target() -> None:
+    now = 1_800_000_000.0
+    unexpected = _healthy_results(now)
+    unexpected["crawler_up"].append(_row(1, instance="unexpected"))
+    with pytest.raises(verify.VerificationError, match="invalid target labels"):
+        verify.validate_results(unexpected, now=now, max_age_seconds=300)
+
+    duplicate = _healthy_results(now)
+    duplicate["crawler_up"].append(_row(1, instance="worker-1"))
+    with pytest.raises(verify.VerificationError, match="invalid target labels"):
+        verify.validate_results(duplicate, now=now, max_age_seconds=300)
+
+
 def test_validate_results_accepts_optional_web_postgresql_backup() -> None:
     now = 1_800_000_000.0
     results = _healthy_results(now)
@@ -195,13 +231,23 @@ def test_validate_results_rejects_alloy_delivery_failure_or_series_growth() -> N
     with pytest.raises(verify.VerificationError, match="12000-series budget"):
         verify.validate_results(excessive, now=now, max_age_seconds=300)
 
+    excessive_capability = _healthy_results(now)
+    excessive_capability["crawler_capability_series"] = [_row(2_001)]
+    with pytest.raises(verify.VerificationError, match="2000-series budget"):
+        verify.validate_results(excessive_capability, now=now, max_age_seconds=300)
+
+    created = _healthy_results(now)
+    created["crawler_created_series"] = [_row(1)]
+    with pytest.raises(verify.VerificationError, match="_created series are present"):
+        verify.validate_results(created, now=now, max_age_seconds=300)
+
 
 def test_failures_include_query_value_timestamp_age_and_role() -> None:
     now = 1_800_000_000.0
     results = _healthy_results(now)
     results["fresh_sampler"][0]["value"][1] = str(now - 301)
     results["alloy_stale"] = [_row(181, host_role="postgresql", collector="host")]
-    results["crawler_series"] = [_row(2_001)]
+    results["crawler_series"] = [_row(5_001)]
 
     with pytest.raises(verify.VerificationError) as captured:
         verify.validate_results(results, now=now, max_age_seconds=300)
@@ -217,7 +263,7 @@ def test_failures_include_query_value_timestamp_age_and_role() -> None:
     assert by_query["alloy_stale"].host_role == "postgresql"
     assert by_query["alloy_stale"].observed_value == 181
     assert by_query["crawler_series"].host_role == "crawler"
-    assert by_query["crawler_series"].observed_value == 2_001
+    assert by_query["crawler_series"].observed_value == 5_001
     assert by_query["crawler_series"].sample_timestamp == now
     assert by_query["crawler_series"].age_seconds == 0
 
@@ -329,7 +375,7 @@ def test_verify_preserves_health_evidence_across_terminal_transport_error() -> N
     stale = _healthy_results(now[0])
     for row in stale["fresh_sampler"]:
         row["value"][1] = str(now[0])
-    stale["crawler_series"] = [_row(2_001)]
+    stale["crawler_series"] = [_row(5_001)]
     attempts = [stale, verify.httpx.ConnectError("connection reset")]
 
     def query_all(*_args) -> dict:
@@ -355,7 +401,7 @@ def test_verify_preserves_health_evidence_across_terminal_transport_error() -> N
     evidence = captured.value.evidence
     assert evidence is not None
     assert evidence["failures"][0]["query_name"] == "crawler_series"
-    assert evidence["failures"][0]["observed_value"] == 2_001
+    assert evidence["failures"][0]["observed_value"] == 5_001
     assert evidence["latest_query_error"]["attempt"] == 2
     assert "ConnectError" in evidence["latest_query_error"]["failures"][0]["invariant"]
 
@@ -388,7 +434,7 @@ def test_verify_uses_transport_error_when_no_query_batch_completed() -> None:
 def test_verify_can_converge_after_health_and_transport_failures() -> None:
     now = [1_800_000_000.0]
     stale = _healthy_results(now[0])
-    stale["crawler_series"] = [_row(2_001)]
+    stale["crawler_series"] = [_row(5_001)]
     responses = [stale, verify.httpx.ConnectError("connection reset"), "healthy"]
 
     def query_all(*_args) -> dict:

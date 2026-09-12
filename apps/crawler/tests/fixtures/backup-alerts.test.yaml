@@ -4,6 +4,61 @@ rule_files:
 evaluation_interval: 1m
 
 tests:
+  - name: crawler scrape availability counts zero-valued targets
+    interval: 1m
+    input_series:
+      - series: 'up{job="crawler",instance="worker-1"}'
+        values: '1x5'
+      - series: 'up{job="crawler",instance="worker-2"}'
+        values: '1x5'
+      - series: 'up{job="crawler",instance="worker-3"}'
+        values: '1x5'
+      - series: 'up{job="crawler",instance="browser-1"}'
+        values: '0x5'
+      - series: 'up{job="crawler",instance="exporter"}'
+        values: '1x5'
+      - series: 'up{job="crawler",instance="drain"}'
+        values: '1x5'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: NoMetricsFromCrawler
+        exp_alerts:
+          - exp_labels:
+              owner: codex-error-review
+              page: production
+              route: codex-daily
+              service: crawler
+              severity: critical
+            exp_annotations:
+              summary: One or more crawler scrape targets are unavailable
+              description: |
+                Fewer than six expected `up{job="crawler"}` targets remained
+                healthy for three minutes. Either Alloy has stopped on the worker
+                box, one or more containers exited or stopped exposing metrics, or
+                remote_write to Grafana Cloud is failing. SSH to the box
+                and check `docker ps`.
+              runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
+
+  - name: crawler scrape availability stays quiet with all six targets healthy
+    interval: 1m
+    input_series:
+      - series: 'up{job="crawler",instance="worker-1"}'
+        values: '1x5'
+      - series: 'up{job="crawler",instance="worker-2"}'
+        values: '1x5'
+      - series: 'up{job="crawler",instance="worker-3"}'
+        values: '1x5'
+      - series: 'up{job="crawler",instance="browser-1"}'
+        values: '1x5'
+      - series: 'up{job="crawler",instance="exporter"}'
+        values: '1x5'
+      - series: 'up{job="crawler",instance="drain"}'
+        values: '1x5'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: NoMetricsFromCrawler
+        exp_alerts: []
+
   - name: two backup services on one host retain distinct alert identities
     interval: 1m
     input_series:
