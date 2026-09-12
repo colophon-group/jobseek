@@ -1,4 +1,4 @@
-"""Stable provider-identity contracts for Merck KGaA's locale boards."""
+"""Current Merck boards and legacy provider-identity helper contracts."""
 
 from __future__ import annotations
 
@@ -16,25 +16,12 @@ from src.core.monitor import (
     _apply_url_transform,
     monitor_one,
 )
-from src.processing.board import _MERCK_IDENTITY_MIGRATION_CONTRACTS
-from src.sync import _monitor_config_fingerprint
 
 _BOARDS_PATH = Path(__file__).parents[1] / "data" / "boards.csv"
 _EXPECTED_BOARD_SLUGS = {
-    "merck-br-pt",
-    "merck-cn-zh",
-    "merck-de-de",
-    "merck-es-es",
-    "merck-fr-fr",
-    "merck-global-en",
-    "merck-it-it",
-    "merck-jp-ja",
-    "merck-kr-ko",
-    "merck-tw-zh",
-    "merck-us-en",
+    "merck-careers",
+    "merck-springworks",
 }
-_MIGRATION_BOARD_SLUGS = _EXPECTED_BOARD_SLUGS - {"merck-us-en"}
-_IDENTITY_MIGRATION = "merck-phenom-stable-id-v1"
 _CANONICAL_ALLOWLIST = (
     r"(?i)^https://(?:careers\.merckgroup\.com/"
     r"(?:br/pt|cn/zh|de/de|es/es|fr/fr|global/en|it/it|jp/ja|kr/ko|tw/zh)/"
@@ -74,50 +61,26 @@ def _apply_identity_contract(source_urls: set[str]) -> MonitorResult:
     )
 
 
-def test_every_merck_provider_board_uses_fail_closed_stable_identity_contract():
+def test_current_merck_boards_replace_the_retired_locale_sources():
     rows = _board_rows()
 
     assert set(rows) == _EXPECTED_BOARD_SLUGS
+    careers = rows["merck-careers"]
+    assert (careers["monitor_type"], careers["scraper_type"]) == ("rss", "skip")
+    assert _monitor_config(careers) == {"preset": "successfactors"}
+
+    springworks = rows["merck-springworks"]
+    assert (springworks["monitor_type"], springworks["scraper_type"]) == (
+        "greenhouse",
+        "skip",
+    )
+    assert _monitor_config(springworks) == {"token": "springsworkstherapeutics"}
+
     for row in rows.values():
         config = _monitor_config(row)
-        assert config.get("url_allowlist") == _CANONICAL_ALLOWLIST
-        assert config.get("url_transform") == _CANONICAL_TRANSFORM
-        if row["board_slug"] == "merck-us-en":
-            assert "url_filter" not in config
-        else:
-            assert config.get("url_filter") == r"/job/\d+"
-
-
-def test_only_merck_locale_boards_enable_the_bounded_identity_migration():
-    rows = _board_rows()
-
-    assert {
-        slug
-        for slug, row in rows.items()
-        if _monitor_config(row).get("identity_migration") == _IDENTITY_MIGRATION
-    } == _MIGRATION_BOARD_SLUGS
-    assert "identity_migration" not in _monitor_config(rows["merck-us-en"])
-
-
-def test_migration_contract_fingerprints_match_final_csv_discovery_config():
-    rows = _board_rows()
-
-    assert set(_MERCK_IDENTITY_MIGRATION_CONTRACTS) == _MIGRATION_BOARD_SLUGS
-    for slug, (
-        expected_url,
-        expected_type,
-        expected_fingerprint,
-    ) in _MERCK_IDENTITY_MIGRATION_CONTRACTS.items():
-        row = rows[slug]
-        assert (row["board_url"], row["monitor_type"]) == (expected_url, expected_type)
-        assert (
-            _monitor_config_fingerprint(
-                row["board_url"],
-                row["monitor_type"],
-                _monitor_config(row),
-            )
-            == expected_fingerprint
-        )
+        assert "identity_migration" not in config
+        assert "url_allowlist" not in config
+        assert "url_transform" not in config
 
 
 @pytest.mark.parametrize(
@@ -190,8 +153,13 @@ def test_dispatcher_transform_deduplicates_locale_and_title_variants():
 
 @pytest.mark.asyncio
 async def test_merck_sitemap_runtime_collapses_duplicate_provider_identity():
-    row = _board_rows()["merck-de-de"]
-    config = _monitor_config(row)
+    board_url = "https://careers.merckgroup.com/de/de/search-results"
+    config = {
+        "url": f"{board_url}/sitemap.xml",
+        "url_filter": r"/job/\d+",
+        "url_allowlist": _CANONICAL_ALLOWLIST,
+        "url_transform": _CANONICAL_TRANSFORM,
+    }
     xml = """<?xml version="1.0" encoding="UTF-8"?>
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
       <url><loc>https://careers.merckgroup.com/de/de/job/300535/First-title</loc></url>
@@ -213,8 +181,8 @@ async def test_merck_sitemap_runtime_collapses_duplicate_provider_identity():
     )
     async with httpx.AsyncClient(transport=transport) as client:
         result = await monitor_one(
-            row["board_url"],
-            row["monitor_type"],
+            board_url,
+            "sitemap",
             config,
             client,
         )
