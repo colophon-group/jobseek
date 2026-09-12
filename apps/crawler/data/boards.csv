@@ -6048,6 +6048,8 @@ sonarsource,sonarsource-careers-lever,https://jobs.lever.co/sonarsource,lever,,s
 sonatus,sonatus-greenhouse,https://job-boards.greenhouse.io/sonatus,greenhouse,"{""token"": ""sonatus""}",skip,
 sonatype,sonatype-lever,https://jobs.lever.co/sonatype,lever,"{""token"": ""sonatype""}",skip,
 sonder,sonder-pinpoint,https://sonder.pinpointhq.com,pinpoint,"{""slug"": ""sonder""}",skip,
+sonepar,sonepar-careers,https://career.sonepar.com/,rss,"{""preset"": ""successfactors""}",skip,
+sonepar,sonepar-hungary,https://www.sonepar.hu/hu-hu/karrier,inline,"{""item_boundary"": {""tag"": ""h3"", ""match_regex"": ""\\|""}, ""require_zero_proof"": true, ""source_url_selector"": "".accentuated-range__card__link a[href$='.pdf']"", ""source_url_attribute"": ""href"", ""steps"": [{""tag"": ""h3"", ""match_regex"": ""\\|"", ""field"": ""title"", ""regex"": ""^(.*?)\\s*\\|""}], ""defaults"": {""locations"": [""Hungary""]}}",pdf,"{""enrich"": [""description""], ""title_source"": ""text"", ""defaults"": {""locations"": [""Hungary""]}}"
 sonicwall,sonicwall-greenhouse,https://job-boards.greenhouse.io/sonicwall,greenhouse,"{""token"": ""sonicwall""}",skip,
 sono-bello,sono-bello-greenhouse,https://job-boards.greenhouse.io/sonobello,greenhouse,"{""token"": ""sonobello""}",skip,
 sonova,sonova-careers,https://jobs.sonova.com/search,rss,"{""preset"": ""successfactors""}",skip,

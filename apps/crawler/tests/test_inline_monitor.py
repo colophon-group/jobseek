@@ -788,6 +788,83 @@ async def test_discover_static_identity_rejects_overlapping_identity_modes():
 
 
 @pytest.mark.asyncio
+async def test_discover_uses_ordered_same_origin_source_urls():
+    board = {
+        "board_url": "https://example.com/careers",
+        "metadata": {
+            "item_boundary_tag": "h3",
+            "source_url_selector": ".job a[href]",
+            "source_url_attribute": "href",
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {
+                    "tag": "h3",
+                    "field": "location",
+                    "regex": r"[|]\s*(.+)$",
+                    "from": 0,
+                },
+            ],
+        },
+    }
+    html = """
+    <article class="job">
+      <h3>Warehouse Manager | Budapest</h3>
+      <a href="/files/warehouse.pdf#page=1">Details</a>
+    </article>
+    <article class="job">
+      <h3>Sales Engineer | Debrecen</h3>
+      <a href="/files/sales.pdf">Details</a>
+    </article>
+    """
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.url for job in jobs] == [
+        "https://example.com/files/warehouse.pdf",
+        "https://example.com/files/sales.pdf",
+    ]
+    assert [job.locations for job in jobs] == [["Budapest"], ["Debrecen"]]
+
+
+@pytest.mark.asyncio
+async def test_discover_source_urls_fail_closed_on_count_mismatch():
+    board = {
+        "board_url": "https://example.com/careers",
+        "metadata": {
+            "item_boundary_tag": "h3",
+            "source_url_selector": ".job a[href]",
+            "source_url_attribute": "href",
+            "steps": [{"tag": "h3", "field": "title"}],
+        },
+    }
+    html = """
+    <article class="job"><h3>Engineer</h3><a href="/engineer.pdf">Details</a></article>
+    <h3>Unlinked role</h3>
+    """
+
+    with pytest.raises(ValueError, match="extracted more jobs than source URLs"):
+        await discover(board, _FakeClient(html))
+
+
+@pytest.mark.asyncio
+async def test_discover_source_urls_reject_cross_origin_targets():
+    board = {
+        "board_url": "https://example.com/careers",
+        "metadata": {
+            "source_url_selector": "a[href]",
+            "source_url_attribute": "href",
+            "steps": [{"tag": "h3", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="must remain on the board origin"):
+        await discover(
+            board,
+            _FakeClient('<h3>Engineer</h3><a href="https://other.example/job.pdf">Details</a>'),
+        )
+
+
+@pytest.mark.asyncio
 async def test_discover_scopes_jobs_between_authoritative_section_markers():
     html = """
     <button>Deadline, 30 April</button>

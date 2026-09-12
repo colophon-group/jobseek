@@ -217,6 +217,8 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "source_identity_attribute",
             "source_identity_regex",
             "source_identity_selector",
+            "source_url_attribute",
+            "source_url_selector",
             "stealth",
             "steps",
             "synthetic_identity_field",
@@ -380,6 +382,7 @@ _SELECTOR_KEYS = frozenset(
         "scope",
         "selector",
         "source_identity_selector",
+        "source_url_selector",
         "title_selector",
         "total_selector",
     }
