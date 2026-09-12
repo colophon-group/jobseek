@@ -28,6 +28,7 @@ from src.core.monitors.rss import (
     _parse_generic_item,
     _parse_governmentjobs_item,
     _parse_sf_item,
+    _parse_sf_legacy_xml_item,
     _parse_tt_item,
     _text,
     _tt,
@@ -177,6 +178,50 @@ class TestParseSfItem:
         item = ET.fromstring(xml)
         result = _parse_sf_item(item)
         assert result.title == "Manager"
+
+
+class TestParseSfLegacyXmlItem:
+    def test_full_description_export(self):
+        item = ET.fromstring(
+            """
+            <Job>
+              <JobTitle><![CDATA[Application Analyst]]></JobTitle>
+              <Job-Description><![CDATA[<p>Build secure applications.</p>]]></Job-Description>
+              <ReqId>5206</ReqId>
+              <filter1><label>Category</label><value>Information Technology</value></filter1>
+              <filter2><label>Travel Required</label><value>0-10%</value></filter2>
+              <filter3><label>Level of Experience</label><value>Experienced</value></filter3>
+              <filter4><label>Remote or Telecommuting</label><value>On-Site</value></filter4>
+              <filter6><label>Posting Location</label><value>KCNSC</value></filter6>
+              <filter7><label>Posting States</label><value>MO</value></filter7>
+              <filter8><label>Posting City</label><value>Kansas City</value></filter8>
+              <mfield2><label>Approved Work States</label><value>MO|KS</value></mfield2>
+            </Job>
+            """
+        )
+
+        result = _parse_sf_legacy_xml_item(
+            item,
+            origin="https://career.example.com",
+            company="ACME",
+        )
+
+        assert result is not None
+        assert result.url == (
+            "https://career.example.com/sfcareer/jobreqcareer?jobId=5206&company=ACME"
+        )
+        assert result.title == "Application Analyst"
+        assert result.description == "<p>Build secure applications.</p>"
+        assert result.locations == ["Kansas City, MO"]
+        assert result.job_location_type == "onsite"
+        assert result.metadata == {
+            "id": "5206",
+            "category": "Information Technology",
+            "travel_required": "0-10%",
+            "experience_level": "Experienced",
+            "site": "KCNSC",
+            "approved_work_states": "MO|KS",
+        }
 
     def test_location_falls_back_to_labelled_description(self):
         xml = """
@@ -828,9 +873,52 @@ class TestDiscover:
                 "metadata": {"preset": "successfactors"},
             }
             jobs = await discover(board, client)
-            assert len(jobs) == 1
-            assert isinstance(jobs[0], DiscoveredJob)
-            assert jobs[0].url == "https://example.com/job/1"
+
+        assert len(jobs) == 1
+        assert isinstance(jobs[0], DiscoveredJob)
+        assert jobs[0].url == "https://example.com/job/1"
+
+    async def test_successfactors_legacy_xml_variant(self):
+        feed_xml = """<?xml version="1.0"?>
+        <Job-Listing>
+          <Job>
+            <JobTitle>Buyer II</JobTitle>
+            <Job-Description><![CDATA[<p>Purchase critical materials.</p>]]></Job-Description>
+            <ReqId>4961</ReqId>
+            <filter4><label>Remote</label><value>Remote</value></filter4>
+            <filter7><label>State</label><value>MO</value></filter7>
+            <filter8><label>City</label><value>Kansas City</value></filter8>
+          </Job>
+        </Job-Listing>"""
+
+        def handler(request):
+            assert request.url.params["company"] == "KCPHCM03"
+            assert request.url.params["resultType"] == "XML"
+            return httpx.Response(200, text=feed_xml)
+
+        feed_url = (
+            "https://career.example.com/career?company=KCPHCM03&"
+            "career_ns=job_listing_summary&resultType=XML"
+        )
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": feed_url,
+                    "metadata": {
+                        "preset": "successfactors",
+                        "variant": "legacy_xml",
+                        "feed_url": feed_url,
+                        "company": "KCPHCM03",
+                    },
+                },
+                client,
+            )
+
+        assert len(jobs) == 1
+        assert jobs[0].title == "Buyer II"
+        assert jobs[0].description == "<p>Purchase critical materials.</p>"
+        assert jobs[0].locations == ["Kansas City, MO"]
+        assert jobs[0].job_location_type == "remote"
 
     async def test_successfactors_title_placeholder_is_not_a_description(self):
         feed_xml = _rss_xml(f"""
@@ -1743,6 +1831,29 @@ class TestCanHandle:
             "preset": "governmentjobs",
             "agency": "fleg",
             "feed_url": "https://www.governmentjobs.com/SearchEngine/JobsFeed?agency=fleg",
+            "jobs": 1,
+        }
+
+    async def test_detects_successfactors_legacy_xml_export(self):
+        feed_xml = """<?xml version="1.0"?>
+        <Job-Listing><Job><JobTitle>Buyer</JobTitle><ReqId>4961</ReqId></Job></Job-Listing>
+        """
+
+        def handler(request):
+            return httpx.Response(200, text=feed_xml)
+
+        feed_url = (
+            "https://career.example.com/career?company=KCPHCM03&"
+            "career_ns=job_listing_summary&resultType=XML"
+        )
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle(feed_url, client)
+
+        assert result == {
+            "preset": "successfactors",
+            "variant": "legacy_xml",
+            "feed_url": feed_url,
+            "company": "KCPHCM03",
             "jobs": 1,
         }
 

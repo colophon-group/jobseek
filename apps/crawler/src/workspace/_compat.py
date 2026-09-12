@@ -103,6 +103,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "paycom",
         "paynet",
         "paylocity",
+        "peoplesoft",
         "pinpoint",
         "prospective",
         "recruitee",
@@ -149,6 +150,7 @@ _AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
     "pageup",
     "paycom",
     "paylocity",
+    "peoplesoft",
     "rss",
     "typify",
     "ukg",
@@ -237,6 +239,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "paycor",
         "paycom",
         "paylocity",
+        "peoplesoft",
         "pdf",
         "phuketall",
         "recruiterbox",
@@ -852,6 +855,18 @@ def auto_scraper_type(
     # scraping entirely (is_rich_no_scrape = is_rich and not enrich_fields).
     if monitor_type == "oracle_hcm":
         return ("oracle_hcm", {"enrich": ["description"]})
+    if monitor_type == "peoplesoft":
+        return (
+            "peoplesoft",
+            {
+                "enrich": [
+                    "description",
+                    "employment_type",
+                    "job_location_type",
+                    "base_salary",
+                ]
+            },
+        )
     if monitor_type == "infor":
         return ("infor", {"enrich": ["description"]})
     if monitor_type == "mokahr":

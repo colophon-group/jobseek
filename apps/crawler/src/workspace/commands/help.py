@@ -2678,7 +2678,8 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
   Cap:      50,000 jobs
   Note:     One monitor type with multiple ATS presets:
             - successfactors: /googlefeed.xml (Google Base namespace)
-              or native static DWR pagination for /career?company=... boards
+              native static DWR pagination for /career?company=... boards,
+              or strict NetSuite-hosted <Job-Listing> XML
             - teamtailor: /jobs.rss (offset-paginated)
             - wp_job_manager: /?feed=job_feed (page-paginated)
             - governmentjobs: /SearchEngine/JobsFeed?agency=<tenant>
@@ -2691,6 +2692,9 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
      "job_filter": {"exclude": "(?i)subsidiary name"}}
     {"preset": "successfactors", "variant": "legacy",
      "host": "career5.successfactors.eu", "company": "1657261P"}
+    {"preset": "successfactors", "variant": "legacy_xml",
+     "feed_url": "https://career-hcm03.ns2cloud.com/career?company=TENANT&career_ns=job_listing_summary&resultType=XML",
+     "company": "TENANT"}
     {"preset": "teamtailor", "feed_url": "https://company.teamtailor.com/jobs.rss"}
     {"preset": "wp_job_manager",
      "feed_url": "https://example.com/?feed=job_feed"}
@@ -2702,8 +2706,8 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
                Defaults to "generic" when not set.
     feed_url   RSS URL. For known presets, ws probe can auto-fill this from
                the board URL; for generic feeds set it explicitly.
-    variant    SuccessFactors only: "feed" or "legacy". Legacy identity and
-               listing_url are auto-filled from strict SAP board URLs.
+    variant    SuccessFactors only: "feed", "legacy", or "legacy_xml".
+               Legacy identities are auto-filled from strict provider URLs.
     customer   HR Manager tenant alias. Auto-filled from a strict
                candidate.hr-manager.net vacancies URL.
     fetch_company  SuccessFactors feed only: fetch each public detail page and
@@ -2717,6 +2721,7 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
   Detection:  ws probe shows labels like:
               "SuccessFactors RSS — <feed_url>, N jobs"
               "SuccessFactors legacy DWR — company: X @ host, N jobs"
+              "SuccessFactors legacy XML — company: X, N jobs"
               "Teamtailor RSS — <feed_url>, N jobs"
               "Talent Recruiter / HR Manager RSS — <feed_url>, N jobs"
               "RSS (generic) — <feed_url>, N jobs"
@@ -4513,6 +4518,17 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
                      Use only for a verified tenant whose TotalJobsCount counts
                      repeated database rows. Cross-page duplicates remain
                      governed by offset_overlap.""",
+    "peoplesoft": """\
+peoplesoft — Oracle PeopleSoft Candidate Gateway monitor
+
+  Auto-detected for public HRS_CG_SEARCH_FL Candidate Gateway URLs.
+  Establishes the required anonymous session, validates the provider's
+  authoritative result count, and converts JavaScript row actions into stable
+  JobOpeningId detail URLs. No browser needed.
+
+  Rich summary fields: title, location, posting date, department, job family.
+  Pair with the auto-configured peoplesoft scraper for descriptions and detail
+  fields. No monitor config is required.""",
     "infor": """\
 infor — Infor Global HR / Lawson CandidateSelfService monitor
 
@@ -4959,6 +4975,13 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
 
   Best used with enrich: ["description"] — monitor provides title/location/date,
   scraper fills in description from the detail API.""",
+    "peoplesoft": """\
+peoplesoft — Oracle PeopleSoft Candidate Gateway detail scraper
+
+  Establishes the provider's required anonymous session and fetches the stable
+  JobOpeningId detail page. Extracts title, structured description sections,
+  location, employment type, workplace type, salary, qualifications, and
+  requisition metadata. No browser or manual config is required.""",
     "infor": """\
 infor — Infor Global HR / Lawson CandidateSelfService detail scraper
 

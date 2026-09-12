@@ -1095,6 +1095,7 @@ from src.core.monitors import (  # noqa: E402
     paycom,  # noqa: F401
     paylocity,  # noqa: F401
     paynet,  # noqa: F401
+    peoplesoft,  # noqa: F401
     personio,  # noqa: F401
     phenom,  # noqa: F401
     pinpoint,  # noqa: F401

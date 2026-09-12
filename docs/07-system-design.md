@@ -240,6 +240,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `manatal`         | Rich     | skip        | Manatal public Careers Page API         |
 | 10   | `mokahr`          | Rich     | skip        | Mokahr encrypted listing API            |
 | 10   | `paylocity`       | Rich     | paylocity   | Paylocity embedded summaries + detail enrich |
+| 10   | `peoplesoft`      | Rich     | peoplesoft  | PeopleSoft Candidate Gateway listings + detail enrich |
 | 10   | `personio`        | Conditional* | --     | Personio XML feed; HTML fallback needs scraper |
 | 10   | `pinpoint`        | Rich     | skip        | Pinpoint API                            |
 | 10   | `practicematch`   | URL-only | json-ld     | Proxy-routed employer form pagination  |
@@ -248,7 +249,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `recruiterbox`    | URL-only | json-ld     | Recruiterbox / Trakstar Hire static listings |
 | 10   | `taleo`           | URL-only | json-ld     | Taleo Business Edition total/cursor listings |
 | 10   | `rippling`        | URL-only | rippling    | Rippling ATS API                        |
-| 10   | `rss`             | Rich     | skip        | RSS 2.0 feed (SuccessFactors, Teamtailor, generic) |
+| 10   | `rss`             | Rich     | skip        | RSS/XML feeds (SuccessFactors, Teamtailor, generic) |
 | 10   | `seamlesshiring`  | Rich     | skip        | SeamlessHiring public candidate API     |
 | 10   | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters API                 |
 | 10   | `softgarden`      | URL-only | json-ld     | Softgarden ATS                          |
@@ -319,6 +320,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `paycor`       | Parse Paycor/Newton server-rendered detail fields   | None                   |
 | `jazzhr`       | Parse JSON-LD, then JazzHR DOM fallback in-memory    | None                   |
 | `paylocity`    | Parse Paylocity server-rendered detail pages       | None                   |
+| `peoplesoft`   | Fetch session-bound PeopleSoft Candidate Gateway detail pages | None          |
 | `linkedin`     | Fetch LinkedIn public guest-job detail fragments   | None                   |
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
 | `phuketall`    | Parse PhuketAll employer job pages                 | None                   |

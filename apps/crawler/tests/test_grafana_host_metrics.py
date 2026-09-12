@@ -288,7 +288,7 @@ def test_capability_budget_covers_registry_bounded_fleet_with_headroom() -> None
     ) * len(RUNTIME_OUTCOMES["scrape"])
     fleet_maximum = len(verify.CAPABILITY_PIPELINE_INSTANCES) * per_process
 
-    assert fleet_maximum == 2_056
+    assert fleet_maximum == 2_084
     assert fleet_maximum < verify.SERIES_BUDGETS["crawler_capability_series"]
     assert (
         verify.SERIES_BUDGETS["crawler_capability_series"] < verify.SERIES_BUDGETS["crawler_series"]

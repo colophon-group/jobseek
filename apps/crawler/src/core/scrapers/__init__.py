@@ -296,6 +296,7 @@ from src.core.scrapers import (  # noqa: E402
     paycor,  # noqa: F401
     paylocity,  # noqa: F401
     pdf,  # noqa: F401
+    peoplesoft,  # noqa: F401
     phuketall,  # noqa: F401
     recruiterbox,  # noqa: F401
     rippling,  # noqa: F401
