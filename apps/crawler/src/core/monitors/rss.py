@@ -423,9 +423,7 @@ def _parse_sf_legacy_xml_item(
         title=title,
         description=_text(item, "Job-Description"),
         locations=[location] if location else None,
-        job_location_type=normalize_job_location_type(
-            _sf_legacy_xml_value(item, "filter4")
-        ),
+        job_location_type=normalize_job_location_type(_sf_legacy_xml_value(item, "filter4")),
         metadata=metadata,
     )
 

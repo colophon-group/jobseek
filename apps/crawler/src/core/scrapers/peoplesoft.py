@@ -85,9 +85,7 @@ def parse_detail(page: str, *, expected_job_id: str | None = None) -> JobContent
         title=title,
         description="\n".join(sections),
         locations=(
-            [location]
-            if (location := _node_text(document, "#HRS_SCH_WRK_HRS_DESCRLONG"))
-            else None
+            [location] if (location := _node_text(document, "#HRS_SCH_WRK_HRS_DESCRLONG")) else None
         ),
         employment_type=normalize_employment_type(employment),
         job_location_type=normalize_job_location_type(raw_workplace),

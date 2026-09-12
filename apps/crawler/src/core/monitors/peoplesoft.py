@@ -46,10 +46,7 @@ class PeopleSoftBoard:
 
     @property
     def component_path(self) -> str:
-        return (
-            f"/psc/{self.site}/{self.portal}/HRMS/c/"
-            "HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL"
-        )
+        return f"/psc/{self.site}/{self.portal}/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL"
 
     @property
     def listing_url(self) -> str:
@@ -112,9 +109,10 @@ def peoplesoft_listing_from_url(url: str) -> PeopleSoftBoard | None:
         if folded in params or folded not in {"action", "page"}:
             return None
         params[folded] = value
-    if params.get("action", "U").casefold() != "u" or params.get(
-        "page", "HRS_APP_SCHJOB_FL"
-    ).casefold() != "hrs_app_schjob_fl":
+    if (
+        params.get("action", "U").casefold() != "u"
+        or params.get("page", "HRS_APP_SCHJOB_FL").casefold() != "hrs_app_schjob_fl"
+    ):
         return None
     return board
 
@@ -201,9 +199,7 @@ def _value(row: LexborNode, prefix: str) -> str | None:
     return value or None
 
 
-def _parse_listing_page(
-    page: str, board: PeopleSoftBoard
-) -> tuple[list[DiscoveredJob], int]:
+def _parse_listing_page(page: str, board: PeopleSoftBoard) -> tuple[list[DiscoveredJob], int]:
     if "HRS_AGNT_RSLT_I" not in page or "Search Results List" not in page:
         raise ValueError("PeopleSoft response omitted the public search-result grid")
     count_match = _COUNT_RE.search(page)
@@ -225,9 +221,7 @@ def _parse_listing_page(
         seen_ids.add(job_id)
         try:
             date_posted = (
-                datetime.strptime(posted, "%m/%d/%Y").date().isoformat()
-                if posted
-                else None
+                datetime.strptime(posted, "%m/%d/%Y").date().isoformat() if posted else None
             )
         except ValueError as exc:
             raise ValueError(f"PeopleSoft job {job_id} had an invalid posting date") from exc
@@ -307,19 +301,13 @@ async def fetch_all_listings(
     for request_number in range(_MAX_GRID_REQUESTS):
         jobs, expected = _parse_listing_page(page, board)
         if expected > MAX_JOBS:
-            raise ValueError(
-                f"PeopleSoft advertised {expected} jobs, exceeding cap {MAX_JOBS}"
-            )
+            raise ValueError(f"PeopleSoft advertised {expected} jobs, exceeding cap {MAX_JOBS}")
         if len(jobs) == expected:
             return jobs
         if len(jobs) <= previous_size:
-            raise ValueError(
-                "PeopleSoft continuation did not increase the result-grid size"
-            )
+            raise ValueError("PeopleSoft continuation did not increase the result-grid size")
         if len(jobs) > expected:
-            raise ValueError(
-                f"PeopleSoft parsed {len(jobs)} jobs but advertised only {expected}"
-            )
+            raise ValueError(f"PeopleSoft parsed {len(jobs)} jobs but advertised only {expected}")
         previous_size = len(jobs)
         fields = _continuation_form(page)
         if fields is None:

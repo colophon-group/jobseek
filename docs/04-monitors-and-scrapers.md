@@ -116,6 +116,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `manatal` | Rich | skip | Manatal public Careers Page API |
 | `mokahr` | Rich | skip | Mokahr ATS |
 | `paylocity` | Rich | paylocity | Paylocity embedded summaries plus detail enrichment |
+| `peoplesoft` | Rich | peoplesoft | PeopleSoft Candidate Gateway session-bound listings plus detail enrichment |
 | `personio` | Conditional* | — | Personio XML feed; HTML fallback needs scraper |
 | `pinpoint` | Rich | skip | Pinpoint ATS |
 | `practicematch` | URL-only | json-ld | Proxy-routed PracticeMatch employer listings and form pagination |
@@ -124,7 +125,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `recruiterbox` | URL-only | json-ld | Recruiterbox / Trakstar Hire server-rendered listings |
 | `taleo` | URL-only | json-ld | Taleo Business Edition total/cursor static listings |
 | `rippling` | URL-only | rippling | Rippling ATS |
-| `rss` | Rich/hybrid | skip or DOM enrichment | RSS feeds plus native legacy SuccessFactors DWR listings |
+| `rss` | Rich/hybrid | skip or DOM enrichment | RSS feeds plus native legacy SuccessFactors DWR and XML listings |
 | `seamlesshiring` | Rich | skip | SeamlessHiring public candidate API |
 | `smartrecruiters` | Conditional* | smartrecruiters/skip | URL-only by default; exact `jobId` locale collapse returns rich data when configured |
 | `softgarden` | URL-only | json-ld | Softgarden ATS |
@@ -376,6 +377,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `paycor` | Static | Parses Paycor/Newton server-rendered detail fields |
 | `jazzhr` | Static | Parses JobPosting JSON-LD with a DOM fallback for older JazzHR themes |
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
+| `peoplesoft` | Static | Fetches session-bound PeopleSoft Candidate Gateway detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |
 | `phuketall` | Static | Parses PhuketAll employer job pages from an exact HTTPS provider identity under a 2 MiB response cap, including canonical Thai field labels |
 | `tupu360` | Static | Parses server-rendered Tupu360 employer job pages and validates the returned posting identity against the exact HTTPS detail URL |
