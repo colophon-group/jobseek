@@ -6853,6 +6853,12 @@ upstream-security,upstream-security-careers,https://upstream.auto/careers/,dom,"
 upvest,upvest-careers,https://jobs.ashbyhq.com/upvest,ashby,,skip,
 upwork,upwork-greenhouse,https://job-boards.greenhouse.io/upwork,greenhouse,"{""token"": ""upwork""}",skip,
 ura,ura-greenhouse,https://job-boards.greenhouse.io/oura,greenhouse,"{""token"": ""oura""}",skip,
+urban-outfitters,urban-outfitters-careers,https://stores-na-urbn.icims.com/,icims,,json-ld,
+urban-outfitters,urban-outfitters-homeoffice-eu,https://homeoffice-eu-urbn.icims.com/,icims,,json-ld,
+urban-outfitters,urban-outfitters-homeoffice-na,https://homeoffice-na-urbn.icims.com/,icims,,json-ld,
+urban-outfitters,urban-outfitters-menusandvenues-na,https://menusandvenues-na-urbn.icims.com/,icims,,json-ld,
+urban-outfitters,urban-outfitters-stores-eu,https://stores-eu-urbn.icims.com/,icims,,dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply""}, {""text"": ""This position is located at"", ""match_regex"": ""(?i)^This position is located at"", ""field"": ""location"", ""regex"": ""(?i)^This position is located at\\s+(.+?)\\s*$"", ""optional"": true, ""from"": 0}]}"
+urban-outfitters,urban-outfitters-supplychain-na,https://supplychain-na-urbn.icims.com/,icims,,json-ld,
 urban-sports-club,urban-sports-club-greenhouse,https://job-boards.greenhouse.io/urbansportsclub,greenhouse,"{""token"": ""urbansportsclub""}",skip,
 ursa-major,ursa-major-greenhouse,https://job-boards.greenhouse.io/ursamajor,greenhouse,"{""token"": ""ursamajor""}",skip,
 urschel-laboratories-inc,urschel-laboratories-inc-greenhouse,https://job-boards.greenhouse.io/urschellaboratoriesinc,greenhouse,"{""token"": ""urschellaboratoriesinc""}",skip,
