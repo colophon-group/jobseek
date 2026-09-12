@@ -5933,7 +5933,11 @@ shark-robotics,shark-robotics-flatchr,https://careers.flatchr.io/fr/company/shar
 sharkninja,sharkninja-greenhouse,https://job-boards.greenhouse.io/sharkninjaoperatingllc,greenhouse,"{""token"": ""sharkninjaoperatingllc""}",skip,
 sharp-performance,sharp-performance-careers,https://ats.rippling.com/sharp-performance/jobs,rippling,"{""slug"": ""sharp-performance""}",rippling,
 shef,shef-careers,https://jobs.gem.com/shef-com,gem,"{""token"": ""shef-com""}",skip,
+shein,shein-avature,https://jobs.careers.shein.com/careersmarketplace/SearchJobs,sitemap,"{""sitemap_url"": ""https://jobs.careers.shein.com/careersmarketplace/sitemap.xml"", ""url_filter"": ""/JobDetail/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Back""}, {""text"": ""location"", ""match_regex"": ""(?i)^\\s*location\\s*(?:[:\uff1a]\\s*)?$"", ""offset"": 1, ""field"": ""location"", ""optional"": true, ""from"": 0}]}"
+shein,shein-campus,https://app.mokahr.com/campus-recruitment/shein/2932,mokahr,"{""org_id"": ""shein"", ""site_id"": 2932}",mokahr,"{""enrich"": [""description""]}"
+shein,shein-careers,https://app.mokahr.com/social-recruitment/shein/2933,mokahr,"{""org_id"": ""shein"", ""site_id"": 2933}",mokahr,"{""enrich"": [""description""]}"
 shein,shein-greenhouse,https://job-boards.greenhouse.io/shein,greenhouse,"{""token"": ""shein""}",skip,
+shein,shein-oracle,https://fa-exjq-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/SHEIN/jobs,oracle_hcm,"{""host"": ""fa-exjq-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""SHEIN""}",oracle_hcm,"{""enrich"": [""description""]}"
 shell,shell-careers,https://shell.wd3.myworkdayjobs.com/ShellCareers,workday,"{""company"": ""shell"", ""wd_instance"": ""wd3"", ""site"": ""ShellCareers""}",workday,
 sherwin-williams,sherwin-williams-careers,https://ejhp.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 shield-ai,shield-ai-lever,https://jobs.lever.co/shieldai,lever,"{""token"": ""shieldai""}",skip,
