@@ -876,7 +876,10 @@ batch must finish inside the same window; cached pre-deploy telemetry cannot
 approve the rollout. A final failure remains
 fail-closed and publishes a 14-day JSON evidence packet containing every
 failed query/invariant, its observed value, sample timestamp/age, and affected
-host role/labels. The workflow summary classifies host installation failure
+host role/labels. Evidence retains only the bounded operational labels
+`host_role`, `collector`, `probe`, `container`, and `service`; ordinary
+Prometheus metadata is neither serialized nor rejected. The workflow summary
+classifies host installation failure
 separately from post-deploy telemetry-health failure; it does not increase or
 suppress the series budgets. Environment-scoped host variables are
 resolved inside runtime steps after the protected `production` environment is

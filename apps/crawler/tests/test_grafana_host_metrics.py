@@ -234,6 +234,32 @@ def test_invalid_observation_is_attributed_and_not_written_to_evidence() -> None
     assert captured.value.failures[0].labels == {}
 
 
+def test_non_evidence_prometheus_metadata_is_ignored() -> None:
+    now = 1_800_000_000.0
+    results = _healthy_results(now)
+    for row in results["fresh_sampler"]:
+        row["metric"]["job"] = "integrations/unix"
+        row["metric"]["instance"] = "https://metrics.example.com/prometheus"
+
+    verify.validate_results(results, now=now, max_age_seconds=300)
+
+    results["alloy_stale"] = [
+        _row(
+            181,
+            host_role="postgresql",
+            collector="host",
+            job="integrations/unix",
+        )
+    ]
+    with pytest.raises(verify.VerificationError) as captured:
+        verify.validate_results(results, now=now, max_age_seconds=300)
+
+    assert captured.value.failures[0].labels == {
+        "host_role": "postgresql",
+        "collector": "host",
+    }
+
+
 def test_validate_results_rejects_duplicate_alloy_collector_series() -> None:
     now = 1_800_000_000.0
     results = _healthy_results(now)
