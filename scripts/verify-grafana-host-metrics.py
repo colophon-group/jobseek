@@ -19,8 +19,7 @@ EXPECTED_ROLES = frozenset({"crawler", "postgresql", "typesense"})
 REQUIRED_BACKUPS = frozenset({("postgresql", "postgresql"), ("typesense", "typesense")})
 OPTIONAL_BACKUPS = frozenset({("typesense", "web-postgresql")})
 _SAFE_LABEL_VALUE = re.compile(r"[A-Za-z0-9_.:-]{1,80}")
-_SAFE_LABEL_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
-_MAX_EVIDENCE_LABELS = 20
+_EVIDENCE_LABEL_NAMES = frozenset({"host_role", "collector", "probe", "container", "service"})
 SERIES_BUDGETS = {
     "active_series": 12_000,
     "crawler_series": 2_000,
@@ -128,14 +127,15 @@ def _format_failure(failure: FailedInvariant) -> str:
 def _observation(row: dict[str, Any], name: str) -> Observation:
     try:
         raw_labels = row["metric"]
-        labels = {str(key): str(value) for key, value in raw_labels.items()}
+        if not isinstance(raw_labels, dict):
+            raise TypeError
+        labels = {key: raw_labels[key] for key in _EVIDENCE_LABEL_NAMES if key in raw_labels}
         timestamp = float(row["value"][0])
         value = float(row["value"][1])
     except (AttributeError, KeyError, IndexError, TypeError, ValueError) as exc:
         raise _error(name, f"{name} returned an invalid observation") from exc
     if (
-        len(labels) > _MAX_EVIDENCE_LABELS
-        or any(_SAFE_LABEL_NAME.fullmatch(key) is None for key in labels)
+        any(not isinstance(label_value, str) for label_value in labels.values())
         or any(_SAFE_LABEL_VALUE.fullmatch(label_value) is None for label_value in labels.values())
         or not math.isfinite(timestamp)
         or not math.isfinite(value)
