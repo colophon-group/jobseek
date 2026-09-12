@@ -50,10 +50,14 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           GIT_REF: ${{ github.ref }}
           DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_ACTOR: ${{ github.actor }}
+          DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
         run: |
           set -euo pipefail
           test "$EVENT_NAME" = workflow_dispatch
           test "$GIT_REF" = refs/heads/main
+          test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
           [[ "$ROUTINE_MIGRATION_REVISION" =~ ^[0-9a-f]{40}$ ]]
           test "$DISPATCH_SHA" = "$ROUTINE_MIGRATION_REVISION"
 
@@ -92,9 +96,11 @@ jobs:
       - name: Record protected owner authorization
         env:
           AUTHORIZING_ACTOR: ${{ github.actor }}
+          AUTHORIZING_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
         run: |
           set -euo pipefail
           test "$AUTHORIZING_ACTOR" = viktor-shcherb
+          test "$AUTHORIZING_TRIGGERING_ACTOR" = viktor-shcherb
           echo "Protected approval recorded for $ROUTINE_MIGRATION_TAG at $ROUTINE_MIGRATION_REVISION." >> "$GITHUB_STEP_SUMMARY"
 
   apply:
@@ -114,17 +120,14 @@ jobs:
           ref: ${{ inputs.revision }}
           persist-credentials: false
 
-      - name: Refuse a stale or displaced main revision before DDL
+      - name: Validate the checked-out dispatch revision before setup
         env:
-          REPOSITORY: ${{ github.repository }}
           DISPATCH_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           test -n "$DATABASE_URL_UNPOOLED"
           test "$DISPATCH_SHA" = "$ROUTINE_MIGRATION_REVISION"
           test "$(git rev-parse HEAD)" = "$ROUTINE_MIGRATION_REVISION"
-          remote_main_sha="$(gh api "repos/$REPOSITORY/git/ref/heads/main" --jq .object.sha)"
-          test "$remote_main_sha" = "$ROUTINE_MIGRATION_REVISION"
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
@@ -139,6 +142,21 @@ jobs:
       - name: Revalidate the exact routine target
         working-directory: apps/web
         run: pnpm db:migrate:validate-routine
+
+      - name: Reauthorize and refuse stale main immediately before DDL
+        env:
+          REPOSITORY: ${{ github.repository }}
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_ACTOR: ${{ github.actor }}
+          DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_ACTOR" = viktor-shcherb
+          test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
+          test "$DISPATCH_SHA" = "$ROUTINE_MIGRATION_REVISION"
+          test "$(git rev-parse HEAD)" = "$ROUTINE_MIGRATION_REVISION"
+          remote_main_sha="$(gh api "repos/$REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+          test "$remote_main_sha" = "$ROUTINE_MIGRATION_REVISION"
 
       - name: Apply exactly one reviewed migration under the ledger lock
         working-directory: apps/web
