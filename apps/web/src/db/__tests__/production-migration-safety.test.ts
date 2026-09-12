@@ -155,4 +155,37 @@ describe("production migration safety", () => {
     expect(verifier).toContain('new URL(databaseUrl).port === "6543"');
     expect(verifier).toContain("assertMigrationHead(expected, observed)");
   });
+
+  it("applies routine migrations through a separately protected exact-target path", () => {
+    const workflow = readRepo(
+      ".github/workflows/apply-web-routine-migration.yml",
+    );
+    const runner = readWeb("src/db/migrate.ts");
+
+    expect(workflow).toContain("environment: production-migrations");
+    expect(workflow).toContain("environment: production");
+    expect(workflow).toContain("MIGRATION_REQUIRE_UNPOOLED: \"true\"");
+    expect(workflow).toContain("ROUTINE_MIGRATION_REVISION:");
+    expect(workflow).toContain("ROUTINE_MIGRATION_TAG:");
+    expect(workflow).toContain("ROUTINE_MIGRATION_CREATED_AT:");
+    expect(workflow).toContain("ROUTINE_MIGRATION_HASH:");
+    expect(workflow).toContain("ROUTINE_MIGRATION_CONFIRMATION:");
+    expect(workflow).toContain("git/ref/heads/main");
+    expect(workflow).toContain('test "$remote_main_sha" = "$ROUTINE_MIGRATION_REVISION"');
+    expect(workflow).toContain("pnpm db:migrate:validate-routine");
+    expect(workflow).toContain("12m pnpm db:migrate");
+    expect(workflow).toContain("pnpm db:migrate:verify-head");
+    expect(workflow).not.toContain("RETIREMENT_ATTESTATION_MODE");
+
+    const lock = runner.indexOf("pg_try_advisory_lock");
+    const preflight = runner.indexOf('"preflight"');
+    const migration = runner.indexOf("await migrate(db");
+    const postflight = runner.indexOf('"postflight"');
+    const unlock = runner.indexOf("pg_advisory_unlock");
+    expect(lock).toBeGreaterThan(-1);
+    expect(lock).toBeLessThan(preflight);
+    expect(preflight).toBeLessThan(migration);
+    expect(migration).toBeLessThan(postflight);
+    expect(postflight).toBeLessThan(unlock);
+  });
 });

@@ -1,10 +1,16 @@
 import { createHash } from "node:crypto";
+import { resolve } from "node:path";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local", quiet: true });
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { logExternalError } from "@/lib/safe-external-error";
+import {
+  assertRoutineMigrationLedger,
+  loadRoutineMigrationPlan,
+  type RoutineMigrationLedgerSnapshot,
+} from "@/db/routine-migration";
 
 const unpooledUrl = process.env.DATABASE_URL_UNPOOLED;
 const url = unpooledUrl ?? process.env.DATABASE_URL;
@@ -37,6 +43,9 @@ const migrationSql = postgres(url, {
   connect_timeout: 15,
   connection: { application_name: "jobseek-web-migrations" },
 });
+const routineMigrationPlan = loadRoutineMigrationPlan(
+  resolve(process.cwd(), "drizzle"),
+);
 
 type RetirementAttestationMode = "production-drop" | "restore-drill";
 
@@ -150,6 +159,52 @@ async function prepareRetirementAttestation(): Promise<void> {
   `;
 }
 
+async function readRoutineMigrationLedger(): Promise<RoutineMigrationLedgerSnapshot> {
+  if (!routineMigrationPlan) throw new Error("Routine migration plan is missing");
+  const { prerequisite, target } = routineMigrationPlan;
+  const [snapshot] = await migrationSql<RoutineMigrationLedgerSnapshot[]>`
+    SELECT
+      (
+        SELECT json_build_object(
+          'createdAt', created_at::text,
+          'hash', hash
+        )
+        FROM drizzle.__drizzle_migrations
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      ) AS latest,
+      count(*) FILTER (
+        WHERE created_at = ${prerequisite.createdAt}
+          AND hash = ${prerequisite.hash}
+      )::integer AS "prerequisiteExactRows",
+      count(*) FILTER (
+        WHERE created_at = ${prerequisite.createdAt}
+      )::integer AS "prerequisiteTimestampRows",
+      count(*) FILTER (
+        WHERE hash = ${prerequisite.hash}
+      )::integer AS "prerequisiteHashRows",
+      count(*) FILTER (
+        WHERE created_at = ${target.createdAt}
+          AND hash = ${target.hash}
+      )::integer AS "targetExactRows",
+      count(*) FILTER (
+        WHERE created_at = ${target.createdAt}
+      )::integer AS "targetTimestampRows",
+      count(*) FILTER (
+        WHERE hash = ${target.hash}
+      )::integer AS "targetHashRows",
+      count(*) FILTER (
+        WHERE created_at > ${prerequisite.createdAt}
+      )::integer AS "rowsAfterPrerequisite",
+      count(*) FILTER (
+        WHERE created_at > ${target.createdAt}
+      )::integer AS "rowsAfterTarget"
+    FROM drizzle.__drizzle_migrations
+  `;
+  if (!snapshot) throw new Error("Could not read the Drizzle migration ledger");
+  return snapshot;
+}
+
 async function main() {
   let lockConnection:
     | Awaited<ReturnType<typeof lockSql.reserve>>
@@ -178,10 +233,30 @@ async function main() {
     await migrationSql`SET statement_timeout = '10min'`;
     await migrationSql`SET idle_in_transaction_session_timeout = '2min'`;
     await prepareRetirementAttestation();
+    if (routineMigrationPlan) {
+      assertRoutineMigrationLedger(
+        routineMigrationPlan,
+        "preflight",
+        await readRoutineMigrationLedger(),
+      );
+      console.log(
+        `Routine migration preflight verified ${routineMigrationPlan.target.tag} at ${routineMigrationPlan.revision}.`,
+      );
+    }
 
     const db = drizzle(migrationSql);
     console.log("Running migrations with the web schema advisory lock...");
     await migrate(db, { migrationsFolder: "./drizzle" });
+    if (routineMigrationPlan) {
+      assertRoutineMigrationLedger(
+        routineMigrationPlan,
+        "postflight",
+        await readRoutineMigrationLedger(),
+      );
+      console.log(
+        `Routine migration postflight verified ${routineMigrationPlan.target.tag}.`,
+      );
+    }
     console.log("Migrations complete.");
   } finally {
     try {
