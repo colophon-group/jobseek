@@ -519,6 +519,33 @@ def _query_all(
     return results
 
 
+def _terminal_evidence(
+    *,
+    primary_error: VerificationError,
+    deployment_completed_at: float,
+    deadline_at: float,
+    checked_at: float,
+    attempts: int,
+    latest_query_error: tuple[int, float, VerificationError] | None,
+) -> dict[str, Any]:
+    evidence: dict[str, Any] = {
+        "status": "failed",
+        "deployment_completed_at": deployment_completed_at,
+        "convergence_deadline_at": deadline_at,
+        "checked_at": checked_at,
+        "attempts": attempts,
+        "failures": [failure._asdict() for failure in primary_error.failures],
+    }
+    if latest_query_error is not None:
+        attempt, query_checked_at, error = latest_query_error
+        evidence["latest_query_error"] = {
+            "attempt": attempt,
+            "checked_at": query_checked_at,
+            "failures": [failure._asdict() for failure in error.failures],
+        }
+    return evidence
+
+
 def verify(
     remote_write_url: str,
     username: str,
@@ -546,22 +573,28 @@ def verify(
         raise VerificationError("maximum sample age must be positive")
     deadline_at = deployment_completed_at + convergence_seconds
     deadline = monotonic() + max(0.0, deadline_at - started_at)
-    last_error: VerificationError | None = None
+    last_completed_batch_error: VerificationError | None = None
+    latest_query_error: tuple[int, float, VerificationError] | None = None
     attempts = 0
     while True:
         remaining = deadline - monotonic()
         if remaining <= 0:
-            terminal = last_error or _error(
-                "verifier", "convergence window elapsed before a complete Grafana query batch"
+            terminal = (
+                last_completed_batch_error
+                or (latest_query_error[2] if latest_query_error is not None else None)
+                or _error(
+                    "verifier",
+                    "convergence window elapsed before a complete Grafana query batch",
+                )
             )
-            terminal.evidence = {
-                "status": "failed",
-                "deployment_completed_at": deployment_completed_at,
-                "convergence_deadline_at": deadline_at,
-                "checked_at": wall_time(),
-                "attempts": attempts,
-                "failures": [failure._asdict() for failure in terminal.failures],
-            }
+            terminal.evidence = _terminal_evidence(
+                primary_error=terminal,
+                deployment_completed_at=deployment_completed_at,
+                deadline_at=deadline_at,
+                checked_at=wall_time(),
+                attempts=attempts,
+                latest_query_error=latest_query_error,
+            )
             raise terminal
         attempts += 1
         try:
@@ -570,38 +603,48 @@ def verify(
                 raise _error(
                     "verifier", "Grafana query batch completed after the convergence deadline"
                 )
-            checked_at = wall_time()
-            validate_results(
-                results,
-                now=checked_at,
-                max_age_seconds=max_age_seconds,
-                minimum_collected_at=deployment_completed_at,
-            )
-            return {
-                "status": "passed",
-                "deployment_completed_at": deployment_completed_at,
-                "convergence_deadline_at": deadline_at,
-                "checked_at": checked_at,
-                "attempts": attempts,
-                "failures": [],
-            }
         except (httpx.HTTPError, VerificationError) as exc:
-            last_error = (
+            query_error = (
                 exc
                 if isinstance(exc, VerificationError)
-                else VerificationError(f"Grafana query transport failed: {type(exc).__name__}")
+                else _error("verifier", f"Grafana query transport failed: {type(exc).__name__}")
             )
+            latest_query_error = (attempts, wall_time(), query_error)
+        else:
+            checked_at = wall_time()
+            try:
+                validate_results(
+                    results,
+                    now=checked_at,
+                    max_age_seconds=max_age_seconds,
+                    minimum_collected_at=deployment_completed_at,
+                )
+            except VerificationError as exc:
+                last_completed_batch_error = exc
+            else:
+                return {
+                    "status": "passed",
+                    "deployment_completed_at": deployment_completed_at,
+                    "convergence_deadline_at": deadline_at,
+                    "checked_at": checked_at,
+                    "attempts": attempts,
+                    "failures": [],
+                }
         remaining = deadline - monotonic()
         if remaining <= 0:
-            terminal = last_error or VerificationError("host metrics verification timed out")
-            terminal.evidence = {
-                "status": "failed",
-                "deployment_completed_at": deployment_completed_at,
-                "convergence_deadline_at": deadline_at,
-                "checked_at": wall_time(),
-                "attempts": attempts,
-                "failures": [failure._asdict() for failure in terminal.failures],
-            }
+            terminal = (
+                last_completed_batch_error
+                or (latest_query_error[2] if latest_query_error is not None else None)
+                or VerificationError("host metrics verification timed out")
+            )
+            terminal.evidence = _terminal_evidence(
+                primary_error=terminal,
+                deployment_completed_at=deployment_completed_at,
+                deadline_at=deadline_at,
+                checked_at=wall_time(),
+                attempts=attempts,
+                latest_query_error=latest_query_error,
+            )
             raise terminal
         sleep(min(10, remaining))
 
