@@ -3220,6 +3220,9 @@ honda,honda-malaysia,https://www.honda.com.my/career,dom,"{""render"": false}",d
 hone-health,hone-health-greenhouse,https://job-boards.greenhouse.io/honehealth,greenhouse,"{""token"": ""honehealth""}",skip,
 honeycomb-io,honeycomb-io-greenhouse,https://job-boards.greenhouse.io/honeycomb,greenhouse,"{""token"": ""honeycomb""}",skip,
 honeywell,honeywell-careers,https://ibqbjb.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/Honeywell/jobs,oracle_hcm,"{""host"": ""ibqbjb.fa.ocs.oraclecloud.com"", ""site"": ""CX_1""}",oracle_hcm,"{""enrich"": [""description""]}"
+honeywell-aerospace,honeywell-aerospace-global,https://icfcjb.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/Aerospace,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+honeywell-aerospace,honeywell-aerospace-kcnsc,https://career-hcm03.ns2cloud.com/career?company=KCPHCM03&career_ns=job_listing_summary&resultType=XML,rss,"{""preset"": ""successfactors"", ""variant"": ""legacy_xml"", ""feed_url"": ""https://career-hcm03.ns2cloud.com/career?company=KCPHCM03&career_ns=job_listing_summary&resultType=XML"", ""company"": ""KCPHCM03""}",skip,
+honeywell-aerospace,honeywell-aerospace-sandia,https://cg.sandia.gov/psc/applicant/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL,peoplesoft,,peoplesoft,"{""enrich"": [""description"", ""employment_type"", ""job_location_type"", ""base_salary""]}"
 honor,honor-greenhouse,https://job-boards.greenhouse.io/honor,greenhouse,"{""token"": ""honor""}",skip,
 hook,hook-ashby,https://jobs.ashbyhq.com/hook,ashby,"{""token"": ""hook""}",skip,
 hook,hook-greenhouse,https://job-boards.greenhouse.io/hook,greenhouse,"{""token"": ""hook""}",skip,

@@ -2,7 +2,8 @@
 
 Supports multiple ATS platforms that expose job listings via RSS/XML-style transports:
 - **successfactors**: SAP SuccessFactors CSB ``/googlefeed.xml`` (Google Base namespace)
-  plus native static DWR pagination for legacy ``/career?company=...`` tenants
+  plus native static DWR pagination and ``resultType=XML`` for legacy
+  ``/career?company=...`` tenants
 - **teamtailor**: Teamtailor ``/jobs.rss`` (offset-paginated, ``tt:`` namespace)
 - **wp_job_manager**: WordPress WP Job Manager ``?feed=job_feed`` (page-paginated)
 - **governmentjobs**: NEOGOV/GovernmentJobs ``/SearchEngine/JobsFeed?agency=...``
@@ -11,7 +12,8 @@ Supports multiple ATS platforms that expose job listings via RSS/XML-style trans
 
 Config: ``{"preset": "<name>", "feed_url": "..."}``. Legacy SuccessFactors
 uses ``{"preset": "successfactors", "variant": "legacy", "host": "...",
-"company": "..."}`` and still runs through this monitor type.
+"company": "..."}`` and still runs through this monitor type. Legacy XML uses
+``{"preset": "successfactors", "variant": "legacy_xml", "feed_url": "..."}``.
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ import httpx
 import structlog
 from selectolax.lexbor import LexborHTMLParser
 
+from src.core.enum_normalize import normalize_job_location_type
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.core.monitors.dom import BotChallengeError, _raise_if_bot_challenge
 from src.core.monitors.raw import save_text_response
@@ -84,6 +87,7 @@ _SF_WRAPPER_QUERY_KEYS = frozenset(
         "site",
     }
 )
+_SF_LEGACY_XML_QUERY_KEYS = frozenset({"career_ns", "company", "resultType"})
 _GOVERNMENTJOBS_HOSTS = frozenset({"governmentjobs.com", "www.governmentjobs.com"})
 _GOVERNMENTJOBS_BOARD_RE = re.compile(r"^/careers/(?P<agency>[a-z0-9][a-z0-9-]{0,63})/?$")
 _GOVERNMENTJOBS_NS = "http://www.neogov.com/namespaces/JobListing"
@@ -151,6 +155,7 @@ class _Preset:
     page_size: int = 100
     page_query_param: str | None = None
     retryable_statuses: frozenset[int] = frozenset()
+    item_tag: str = "item"
 
 
 _PRESETS: dict[str, _Preset] = {
@@ -334,6 +339,94 @@ def _parse_sf_item(item: ET.Element) -> DiscoveredJob | None:
         locations=locations,
         date_posted=date_posted,
         metadata=metadata or None,
+    )
+
+
+def _sf_legacy_xml_identity(feed_url: str) -> tuple[str, str] | None:
+    """Return the strict ``(origin, company)`` for a legacy XML export."""
+
+    try:
+        parsed = urlparse(feed_url)
+        port = parsed.port
+        pairs = parse_qsl(parsed.query, keep_blank_values=True, max_num_fields=6)
+    except (TypeError, ValueError):
+        return None
+    if (
+        parsed.scheme.casefold() != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.fragment
+        or parsed.path.rstrip("/").casefold() != "/career"
+        or not pairs
+        or any(key not in _SF_LEGACY_XML_QUERY_KEYS for key, _value in pairs)
+    ):
+        return None
+    params: dict[str, str] = {}
+    for key, value in pairs:
+        if key in params:
+            return None
+        params[key] = value
+    company = normalize_successfactors_company(params.get("company"))
+    if (
+        company is None
+        or params.get("career_ns") != "job_listing_summary"
+        or params.get("resultType") != "XML"
+    ):
+        return None
+    return f"https://{parsed.hostname.casefold()}", company
+
+
+def _sf_legacy_xml_value(item: ET.Element, tag: str) -> str | None:
+    container = item.find(tag)
+    if container is None:
+        return None
+    value = container.find("value")
+    if value is None or not value.text:
+        return None
+    return value.text.strip() or None
+
+
+def _parse_sf_legacy_xml_item(
+    item: ET.Element,
+    *,
+    origin: str,
+    company: str,
+) -> DiscoveredJob | None:
+    """Parse the full-description XML export used by older SF tenants."""
+
+    job_id = _text(item, "ReqId")
+    title = _text(item, "JobTitle")
+    if not job_id or not job_id.isdigit() or not title:
+        return None
+    city = _sf_legacy_xml_value(item, "filter8")
+    state = _sf_legacy_xml_value(item, "filter7")
+    location = ", ".join(value for value in (city, state) if value)
+    if not location:
+        location = _sf_legacy_xml_value(item, "filter6")
+    job_url = f"{origin}/sfcareer/jobreqcareer?{urlencode({'jobId': job_id, 'company': company})}"
+    metadata = {
+        key: value
+        for key, value in {
+            "id": job_id,
+            "category": _sf_legacy_xml_value(item, "filter1"),
+            "travel_required": _sf_legacy_xml_value(item, "filter2"),
+            "experience_level": _sf_legacy_xml_value(item, "filter3"),
+            "site": _sf_legacy_xml_value(item, "filter6"),
+            "approved_work_states": _sf_legacy_xml_value(item, "mfield2"),
+        }.items()
+        if value
+    }
+    return DiscoveredJob(
+        url=job_url,
+        title=title,
+        description=_text(item, "Job-Description"),
+        locations=[location] if location else None,
+        job_location_type=normalize_job_location_type(
+            _sf_legacy_xml_value(item, "filter4")
+        ),
+        metadata=metadata,
     )
 
 
@@ -1036,12 +1129,17 @@ def _feed_head_is_xml(head: bytes, encoding: str | None) -> bool:
     return text.startswith(("<?xml", "<rss", "<feed"))
 
 
-def _feed_parser_items(parser: ET.XMLPullParser, chunk: bytes) -> Iterator[ET.Element]:
+def _feed_parser_items(
+    parser: ET.XMLPullParser,
+    chunk: bytes,
+    *,
+    item_tag: str = "item",
+) -> Iterator[ET.Element]:
     """Feed one bounded byte chunk and yield completed RSS items."""
     parser.feed(chunk)
     events = cast(Iterator[tuple[str, ET.Element]], parser.read_events())
     for _event, element in events:
-        if element.tag == "item" or element.tag.endswith("}item"):
+        if element.tag == item_tag or element.tag.endswith(f"}}{item_tag}"):
             yield element
 
 
@@ -1112,7 +1210,11 @@ async def _stream_feed_items(
                             prefix.clear()
                             sniffed = True
 
-                        for item in _feed_parser_items(parser, chunk):
+                        for item in _feed_parser_items(
+                            parser,
+                            chunk,
+                            item_tag=preset.item_tag,
+                        ):
                             emitted += 1
                             yield item
                             # The pull parser's root retains the element shell;
@@ -1122,7 +1224,11 @@ async def _stream_feed_items(
                     if not sniffed:
                         if not _feed_head_is_xml(bytes(prefix), response.encoding):
                             raise RssFeedNotXml(f"feed returned non-XML content: {feed_url}")
-                        for item in _feed_parser_items(parser, bytes(prefix)):
+                        for item in _feed_parser_items(
+                            parser,
+                            bytes(prefix),
+                            item_tag=preset.item_tag,
+                        ):
                             emitted += 1
                             yield item
                             item.clear()
@@ -1178,6 +1284,24 @@ async def _probe_feed(
     """
     try:
         preset = _PRESETS.get(preset_name or "") or _Preset([], [], {})
+        count = 0
+        async for _item in _stream_feed_items(feed_url, preset, client):
+            count += 1
+        return True, count
+    except Exception as exc:
+        from src.shared.tdm import TDMReservedError
+
+        if isinstance(exc, TDMReservedError):
+            raise
+        return False, None
+
+
+async def _probe_sf_legacy_xml(
+    feed_url: str,
+    client: httpx.AsyncClient,
+) -> tuple[bool, int | None]:
+    preset = _Preset([], [], {}, item_tag="Job")
+    try:
         count = 0
         async for _item in _stream_feed_items(feed_url, preset, client):
             count += 1
@@ -1281,6 +1405,19 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
             page_patterns=[],
             feed_ns={},
         )
+    if preset_name == "successfactors" and metadata.get("variant") == "legacy_xml":
+        identity = _sf_legacy_xml_identity(feed_url)
+        configured_company = normalize_successfactors_company(metadata.get("company"))
+        if identity is None or (
+            configured_company is not None and configured_company != identity[1]
+        ):
+            raise ValueError("Invalid or inconsistent SuccessFactors legacy XML config")
+        preset = _Preset(
+            feed_paths=[],
+            page_patterns=[],
+            feed_ns={},
+            item_tag="Job",
+        )
     return preset_name, feed_url, preset
 
 
@@ -1313,7 +1450,18 @@ async def discover_stream(
     detail_fields, required_detail_fields = (
         _sf_detail_fields(metadata) if preset_name == "successfactors" else ({}, frozenset())
     )
-    parser = _PARSERS.get(preset_name, _parse_generic_item)
+    if preset_name == "successfactors" and metadata.get("variant") == "legacy_xml":
+        identity = _sf_legacy_xml_identity(feed_url)
+        if identity is None:  # Validated by _feed_config; retained for type narrowing.
+            raise ValueError("Invalid SuccessFactors legacy XML feed URL")
+        origin, company = identity
+        parser = lambda item: _parse_sf_legacy_xml_item(  # noqa: E731
+            item,
+            origin=origin,
+            company=company,
+        )
+    else:
+        parser = _PARSERS.get(preset_name, _parse_generic_item)
     resolve_job_invite_identity = metadata.get("resolve_job_invite_identity", False)
     if not isinstance(resolve_job_invite_identity, bool):
         raise ValueError("RSS resolve_job_invite_identity must be a boolean")
@@ -1589,6 +1737,20 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     """Detect RSS-based ATS: HTML scan for preset markers → feed probe."""
     if client is None:
         return None
+
+    legacy_xml_identity = _sf_legacy_xml_identity(url)
+    if legacy_xml_identity is not None:
+        found, count = await _probe_sf_legacy_xml(url, client)
+        if found:
+            result: dict = {
+                "preset": "successfactors",
+                "variant": "legacy_xml",
+                "feed_url": url,
+                "company": legacy_xml_identity[1],
+            }
+            if count is not None:
+                result["jobs"] = count
+            return result
 
     # Talent Recruiter / HR Manager boards expose the complete tenant job list
     # in one hidden JSON field and full descriptions in a provider-owned RSS
