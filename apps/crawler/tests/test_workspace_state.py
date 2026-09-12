@@ -408,6 +408,19 @@ class TestActiveWorkspace:
         assert not (tmp_path / "active").exists()
         assert get_active_slug() == "stripe"
 
+    def test_explicit_scope_takes_priority_over_tty(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setenv("WS_ACTIVE_SCOPE", "issue-101-1787997096-d0e1bd7d")
+        monkeypatch.setattr("os.ttyname", lambda _fd: "/dev/pts/0")
+        save_workspace(Workspace(slug="stripe"))
+
+        set_active_slug("stripe")
+
+        assert (tmp_path / "active.scope-issue-101-1787997096-d0e1bd7d").exists()
+        assert not (tmp_path / "active.0").exists()
+        assert get_active_slug() == "stripe"
+
     def test_non_tty_scope_reads_legacy_active_as_fallback(self, tmp_path, monkeypatch):
         monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
         monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)

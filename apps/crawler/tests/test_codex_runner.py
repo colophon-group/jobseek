@@ -1542,6 +1542,299 @@ def test_cleanup_marker_precedes_workspace_removal_and_is_retryable(
     assert not workspace.exists()
 
 
+def test_cleanup_discards_authenticated_isolated_workspace_residue(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    orphan = workspace_root / "metadata-less"
+    lifecycle = workspace_root / ".terminal-lifecycle"
+    orphan.mkdir(parents=True)
+    lifecycle.mkdir()
+    (orphan / "artifact.json").write_text('{"status":"complete"}\n')
+    pointer = json.dumps(
+        {"version": 1, "slug": "retired", "generation": "a" * 32},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    (workspace_root / "active.0").write_text(pointer)
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    governor._cleanup_ws_artifacts_for_issue(
+        101,
+        run_id="issue-101-1787997096-d0e1bd7d",
+        workspace_root=workspace_root,
+        workspace_container=repo,
+        discard_isolated_workspace_root=True,
+    )
+
+    assert workspace_root.is_dir()
+    assert list(workspace_root.iterdir()) == []
+
+
+def test_cleanup_recovers_interrupted_residue_claim_inside_workspace_root(
+    tmp_path: Path,
+) -> None:
+    from src.workspace import safe_cleanup
+
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    orphan = workspace_root / "metadata-less"
+    orphan.mkdir(parents=True)
+    (orphan / "artifact.json").write_text('{"status":"complete"}\n')
+    claimed_name = safe_cleanup._rmtree_claim_name(orphan.name, pid=99_999_999)
+    orphan.rename(workspace_root / claimed_name)
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    governor._cleanup_ws_artifacts_for_issue(
+        101,
+        run_id="issue-101-1787997096-d0e1bd7d",
+        workspace_root=workspace_root,
+        workspace_container=repo,
+        discard_isolated_workspace_root=True,
+    )
+
+    assert workspace_root.is_dir()
+    assert list(workspace_root.iterdir()) == []
+
+
+def test_cleanup_retains_isolated_workspace_residue_without_run_identity(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    workspace_root.mkdir(parents=True)
+    (workspace_root / "active.0").write_text("retired\n")
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    with pytest.raises(RuntimeError, match="requires a valid run identity"):
+        governor._cleanup_ws_artifacts_for_issue(
+            101,
+            workspace_root=workspace_root,
+            workspace_container=repo,
+            discard_isolated_workspace_root=True,
+        )
+
+    assert (workspace_root / "active.0").read_text() == "retired\n"
+
+
+def test_cleanup_rejects_unauthenticated_residue_before_mutation(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    workspace = workspace_root / "acme"
+    workspace.mkdir(parents=True)
+    metadata = workspace / "workspace.yaml"
+    metadata.write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    marker = workspace_root / "active.0"
+    marker.write_text("acme\n")
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    with pytest.raises(RuntimeError, match="marker is unauthenticated"):
+        governor._cleanup_ws_artifacts_for_issue(
+            101,
+            run_id="issue-101-1787997096-d0e1bd7d",
+            workspace_root=workspace_root,
+            workspace_container=repo,
+            discard_isolated_workspace_root=True,
+        )
+
+    assert marker.read_text() == "acme\n"
+    assert metadata.exists()
+
+
+def test_cleanup_rejects_active_marker_fifo_without_blocking(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    workspace = workspace_root / "acme"
+    workspace.mkdir(parents=True)
+    metadata = workspace / "workspace.yaml"
+    metadata.write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    marker = workspace_root / "active.0"
+    os.mkfifo(marker)
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    with pytest.raises(RuntimeError, match="marker is unsafe"):
+        governor._cleanup_ws_artifacts_for_issue(
+            101,
+            run_id="issue-101-1787997096-d0e1bd7d",
+            workspace_root=workspace_root,
+            workspace_container=repo,
+            discard_isolated_workspace_root=True,
+        )
+
+    assert marker.exists()
+    assert metadata.exists()
+
+
+def test_cleanup_rejects_foreign_workspace_before_mutation(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    workspace_root = repo / "apps" / "crawler" / ".workspace"
+    ours = workspace_root / "ours"
+    foreign = workspace_root / "foreign"
+    ours.mkdir(parents=True)
+    foreign.mkdir()
+    ours_metadata = ours / "workspace.yaml"
+    ours_metadata.write_text("slug: ours\ngit:\n  issue: 101\n  worktree: ''\n")
+    (foreign / "workspace.yaml").write_text("slug: foreign\ngit:\n  issue: 102\n  worktree: ''\n")
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        repo_dir=repo,
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    with pytest.raises(RuntimeError, match="not bound to issue 101"):
+        governor._cleanup_ws_artifacts_for_issue(
+            101,
+            run_id="issue-101-1787997096-d0e1bd7d",
+            workspace_root=workspace_root,
+            workspace_container=repo,
+            discard_isolated_workspace_root=True,
+        )
+
+    assert ours_metadata.exists()
+    assert (foreign / "workspace.yaml").exists()
+
+
+def test_reconcile_discards_verified_isolated_workspace_residue(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path, dry_run=True)
+    assert config.repo_dir is not None
+    assert config.worktrees_dir is not None
+    repo = config.repo_dir
+    repo.mkdir(parents=True)
+    subprocess.run(
+        ["git", "init", "-b", "main"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(["git", "config", "user.name", "Test Runner"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "runner@example.test"],
+        cwd=repo,
+        check=True,
+    )
+    (repo / "tracked.txt").write_text("base\n")
+    subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "update-ref", "refs/remotes/origin/main", "HEAD"],
+        cwd=repo,
+        check=True,
+    )
+    (repo / ".git" / "info" / "exclude").write_text("apps/crawler/.workspace/\n")
+    main_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    monkeypatch.setattr(
+        GitHubRemoteVerifier,
+        "verify_main",
+        lambda self: RemoteProof(
+            ok=True,
+            kind="authoritative_main",
+            detail={"headRefOid": main_oid},
+        ),
+    )
+    config.worktrees_dir.mkdir(parents=True)
+    worktree = config.worktrees_dir / "terminal-residue"
+    subprocess.run(
+        ["git", "worktree", "add", "--detach", str(worktree), "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    workspace_root = worktree / "apps" / "crawler" / ".workspace"
+    orphan = workspace_root / "metadata-less"
+    issues = workspace_root / ".terminal-lifecycle" / "issues"
+    orphan.mkdir(parents=True)
+    issues.mkdir(parents=True)
+    (orphan / "artifact.json").write_text('{"status":"complete"}\n')
+    (workspace_root / "active.0").write_text(
+        json.dumps(
+            {"version": 1, "slug": "retired", "generation": "a" * 32},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )
+    governor = CompanyResolverGovernor(
+        config,
+        github=FakeGitHub(issue=101, issue_closed=True, issue_outcome="rejected"),
+    )
+    run_id = "issue-101-1787997096-d0e1bd7d"
+    assert governor.ledger.acquire(
+        run_id=run_id,
+        issue=101,
+        active_slot=config.active_slot,
+    )
+    governor.ledger.update(run_id, worktree_path=str(worktree))
+    governor.ledger.finish(run_id, "rejected")
+    from src.workspace.trace_backfill import record_verified_export
+
+    record_verified_export(
+        ledger_path=governor.ledger.path,
+        run_id=run_id,
+        remote_dir=f"training-bundles/v2/gold/{run_id}",
+        manifest={
+            "schema_version": "jobseek-codex-training-bundle/v2",
+            "quality": {"tier": "gold"},
+            "bundle_content_sha256": f"verified-{run_id}",
+            "thread_count": 1,
+            "subagent_count": 0,
+            "files": [],
+        },
+        verified={},
+    )
+
+    report = governor.reconcile_worktrees(apply=True)
+    repeated = governor.reconcile_worktrees(apply=True)
+
+    assert report.removed == 1
+    assert report.archived == 0
+    assert report.removal_failures == 0
+    assert report.within_bounds
+    assert not worktree.exists()
+    assert repeated.directories == 0
+    assert repeated.removal_failures == 0
+
+
 def _write_terminal_lifecycle_receipts(
     workspace_root: Path,
     *,

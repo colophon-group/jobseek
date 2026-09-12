@@ -648,6 +648,9 @@ def _legacy_active_path() -> Path:
 
 
 def _active_path() -> Path:
+    explicit = _sanitize_suffix(os.environ.get("WS_ACTIVE_SCOPE", "").strip())
+    if explicit:
+        return get_workspace_dir() / f"active.scope-{explicit}"
     suffix = _tty_suffix()
     if suffix:
         return get_workspace_dir() / f"active.{suffix}"

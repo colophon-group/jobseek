@@ -960,28 +960,6 @@ def _guarded_retire_worktree(
         )
         _require_same_worktree_state(expected, current, stage="after it was archived")
 
-    if pre_remove is not None:
-        pre_remove(item)
-        current = _validated_worktree_snapshot(
-            repo_dir=repo_dir,
-            worktrees_dir=worktrees_dir,
-            path=path,
-            expected_resolved=expected_resolved,
-            expected_head=item.head_oid,
-            activity_checker=activity_checker,
-        )
-        if current != expected:
-            transition_is_safe = archived and _pre_remove_transition_is_safe(expected, current)
-            workspace_was_cleared = may_discard_workspace and _workspace_evidence_was_cleared(
-                expected,
-                current,
-            )
-            if not transition_is_safe and not workspace_was_cleared:
-                raise RuntimeError("worktree changed during pre-remove cleanup; retaining it")
-            expected = current
-        elif may_discard_workspace and expected.candidates:
-            raise RuntimeError("workspace evidence was not cleared before removal")
-
     def validate_original_before_claim() -> None:
         current = _validated_worktree_snapshot(
             repo_dir=repo_dir,
@@ -994,6 +972,30 @@ def _guarded_retire_worktree(
         _require_same_worktree_state(expected, current, stage="immediately before removal claim")
 
     with removal_lease():
+        if pre_remove is not None:
+            pre_remove(item)
+            current = _validated_worktree_snapshot(
+                repo_dir=repo_dir,
+                worktrees_dir=worktrees_dir,
+                path=path,
+                expected_resolved=expected_resolved,
+                expected_head=item.head_oid,
+                activity_checker=activity_checker,
+            )
+            if current != expected:
+                transition_is_safe = archived and _pre_remove_transition_is_safe(
+                    expected,
+                    current,
+                )
+                workspace_was_cleared = may_discard_workspace and _workspace_evidence_was_cleared(
+                    expected, current
+                )
+                if not transition_is_safe and not workspace_was_cleared:
+                    raise RuntimeError("worktree changed during pre-remove cleanup; retaining it")
+                expected = current
+            elif may_discard_workspace and expected.candidates:
+                raise RuntimeError("workspace evidence was not cleared before removal")
+
         validate_original_before_claim()
         claimed_path = _claim_registered_worktree(
             repo_dir=repo_dir,

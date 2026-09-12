@@ -1782,11 +1782,27 @@ def test_runner_execution_lease_blocks_cleanup_before_atomic_claim(tmp_path: Pat
     ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
     run_id = "issue-101-1-aaaaaaaa"
     _terminal_run(ledger, worktree, run_id=run_id)
+    evidence = worktree / "pre-remove-evidence.txt"
+    evidence.write_text("must remain\n")
+    pre_remove_called = False
+
+    def pre_remove(_item) -> None:
+        nonlocal pre_remove_called
+        pre_remove_called = True
+        evidence.unlink()
 
     with ledger.worktree_execution_lease(run_id):
-        report = _reconcile(tmp_path, repo, ledger, apply=True)
+        report = _reconcile(
+            tmp_path,
+            repo,
+            ledger,
+            apply=True,
+            pre_remove=pre_remove,
+        )
 
     assert worktree.exists()
+    assert evidence.read_text() == "must remain\n"
+    assert not pre_remove_called
     assert report.removed == 0
     assert report.removal_failures == 1
     assert "execution lease" in (report.items[0].error or "")
