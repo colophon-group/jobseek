@@ -3,28 +3,22 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import dotenv from "dotenv";
+import { readMigrationFiles } from "drizzle-orm/migrator";
 import postgres from "postgres";
 
+import {
+  isExactAccountIssuerPostLedger,
+  isExactAccountIssuerPreLedger,
+  type AccountIssuerLedgerEvidence as LedgerEvidence,
+  type AccountIssuerMigrationIdentity,
+  type AccountIssuerMigrationRowsEvidence as MigrationRowsEvidence,
+  type AccountIssuerPostTargetRow,
+} from "../src/db/better-auth-account-issuer-ledger";
 import { logExternalError } from "../src/lib/safe-external-error";
 
 dotenv.config({ path: ".env.local", quiet: true });
 
 type Mode = "preflight" | "postflight" | "drift";
-
-type LedgerEvidence = {
-  rowCount: number;
-  latestCreatedAt: string | null;
-  latestHash: string | null;
-};
-
-type MigrationRowsEvidence = {
-  prerequisiteExact: number;
-  prerequisiteTimestamp: number;
-  prerequisiteHash: number;
-  targetExact: number;
-  targetTimestamp: number;
-  targetHash: number;
-};
 
 type AccountEvidence = {
   total: number;
@@ -46,6 +40,8 @@ const outputPath = cliArgs[1];
 
 const prerequisiteCreatedAt = 1_785_760_800_000;
 const targetCreatedAt = 1_787_560_116_000;
+const prerequisiteTag = "0086_drop_supabase_job_posting";
+const targetTag = "0087_better_auth_account_issuer";
 const expectedFunctionSource = `
 DECLARE
   expected_issuer text;
@@ -83,6 +79,43 @@ function migrationHash(filename: string): string {
   return createHash("sha256")
     .update(readFileSync(resolve(process.cwd(), "drizzle", filename)))
     .digest("hex");
+}
+
+function loadLocalPostTargetMigrations(): AccountIssuerMigrationIdentity[] {
+  const migrationFolder = resolve(process.cwd(), "drizzle");
+  const journal = JSON.parse(
+    readFileSync(resolve(migrationFolder, "meta/_journal.json"), "utf8"),
+  ) as { entries: Array<{ idx: number; tag: string; when: number }> };
+  const migrations = readMigrationFiles({ migrationsFolder: migrationFolder });
+  invariant(
+    journal.entries.length === migrations.length,
+    "Drizzle journal and SQL migration counts differ",
+  );
+  const targetIndex = journal.entries.findIndex(
+    (entry) => entry.tag === targetTag,
+  );
+  invariant(targetIndex >= 0, `Drizzle journal does not contain ${targetTag}`);
+
+  return journal.entries.slice(targetIndex).map((entry, offset) => {
+    const index = targetIndex + offset;
+    const migration = migrations[index];
+    invariant(
+      entry.idx === index,
+      `Drizzle journal index is invalid for ${entry.tag}`,
+    );
+    invariant(migration, `SQL migration is missing for ${entry.tag}`);
+    invariant(
+      migration.folderMillis === entry.when,
+      `Migration timestamp differs for ${entry.tag}`,
+    );
+    if (offset > 0) {
+      invariant(
+        entry.when > journal.entries[index - 1]!.when,
+        `Post-0087 migration timestamps are not increasing at ${entry.tag}`,
+      );
+    }
+    return { tag: entry.tag, createdAt: entry.when, hash: migration.hash };
+  });
 }
 
 function normalizeFunctionSource(source: string): string {
@@ -128,6 +161,18 @@ async function main(): Promise<void> {
 
   const prerequisiteHash = migrationHash("0086_drop_supabase_job_posting.sql");
   const targetHash = migrationHash("0087_better_auth_account_issuer.sql");
+  const prerequisite = {
+    tag: prerequisiteTag,
+    createdAt: prerequisiteCreatedAt,
+    hash: prerequisiteHash,
+  };
+  const target = { tag: targetTag, createdAt: targetCreatedAt, hash: targetHash };
+  const ledgerTransition = {
+    prerequisite,
+    target,
+    expectedPreflightRowCount: 76,
+    localPostTargetMigrations: loadLocalPostTargetMigrations(),
+  };
   const sql = postgres(databaseUrl, {
     max: 1,
     prepare: false,
@@ -175,6 +220,12 @@ async function main(): Promise<void> {
             WHERE hash = ${targetHash}
           )::integer AS "targetHash"
         FROM drizzle.__drizzle_migrations
+      `;
+      const postTargetRows = await tx<AccountIssuerPostTargetRow[]>`
+        SELECT created_at::text AS "createdAt", hash
+        FROM drizzle.__drizzle_migrations
+        WHERE created_at >= ${targetCreatedAt}
+        ORDER BY created_at, id
       `;
       const [accountRelation] = await tx<{ present: boolean }[]>`
         SELECT (to_regclass('public.account') IS NOT NULL) AS present
@@ -436,27 +487,16 @@ async function main(): Promise<void> {
           accounts.providerIssuerMismatches === 0 &&
           accounts.duplicateIssuerAccountIdentities === 0,
       );
-      const exactPreLedger = Boolean(
-        ledger?.rowCount === 76 &&
-          Number(ledger.latestCreatedAt) === prerequisiteCreatedAt &&
-          ledger.latestHash === prerequisiteHash &&
-          migrationRows?.prerequisiteExact === 1 &&
-          migrationRows.prerequisiteTimestamp === 1 &&
-          migrationRows.prerequisiteHash === 1 &&
-          migrationRows.targetExact === 0 &&
-          migrationRows.targetTimestamp === 0 &&
-          migrationRows.targetHash === 0,
+      const exactPreLedger = isExactAccountIssuerPreLedger(
+        ledger,
+        migrationRows,
+        ledgerTransition,
       );
-      const exactPostLedger = Boolean(
-        ledger?.rowCount === 77 &&
-          Number(ledger.latestCreatedAt) === targetCreatedAt &&
-          ledger.latestHash === targetHash &&
-          migrationRows?.prerequisiteExact === 1 &&
-          migrationRows.prerequisiteTimestamp === 1 &&
-          migrationRows.prerequisiteHash === 1 &&
-          migrationRows.targetExact === 1 &&
-          migrationRows.targetTimestamp === 1 &&
-          migrationRows.targetHash === 1,
+      const exactPostLedger = isExactAccountIssuerPostLedger(
+        ledger,
+        migrationRows,
+        postTargetRows,
+        ledgerTransition,
       );
       const exactPreState = Boolean(
         accountRelation?.present &&
@@ -483,18 +523,19 @@ async function main(): Promise<void> {
         status: "checking",
         migrations: {
           prerequisite: {
-            tag: "0086_drop_supabase_job_posting",
+            tag: prerequisiteTag,
             createdAt: prerequisiteCreatedAt,
             hash: prerequisiteHash,
           },
           target: {
-            tag: "0087_better_auth_account_issuer",
+            tag: targetTag,
             createdAt: targetCreatedAt,
             hash: targetHash,
           },
         },
         ledger,
         migrationRows,
+        postTargetRows,
         accountRelation: { present: accountRelation?.present ?? false },
         issuerColumn: {
           present: issuerColumns.length === 1,

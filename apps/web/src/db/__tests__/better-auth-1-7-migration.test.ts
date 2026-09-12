@@ -99,6 +99,8 @@ describe("0087 Better Auth account issuer migration", () => {
     expect(verifier).toContain("jobseek_better_auth_account_issuer_compat");
     expect(verifier).toContain("prospective");
     expect(verifier).toContain("exactPreState || exactPostState");
+    expect(verifier).toContain("isExactAccountIssuerPostLedger");
+    expect(verifier).toContain("postTargetRows");
     expect(verifier).toContain('status: "failed"');
   });
 
