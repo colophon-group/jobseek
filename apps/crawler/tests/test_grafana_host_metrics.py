@@ -324,6 +324,100 @@ def test_verify_fails_closed_after_persistent_staleness() -> None:
     assert captured.value.evidence["failures"][0]["query_name"] == "fresh_sampler"
 
 
+def test_verify_preserves_health_evidence_across_terminal_transport_error() -> None:
+    now = [1_800_000_000.0]
+    stale = _healthy_results(now[0])
+    for row in stale["fresh_sampler"]:
+        row["value"][1] = str(now[0])
+    stale["crawler_series"] = [_row(2_001)]
+    attempts = [stale, verify.httpx.ConnectError("connection reset")]
+
+    def query_all(*_args) -> dict:
+        result = attempts.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    with pytest.raises(verify.VerificationError) as captured:
+        verify.verify(
+            "https://prom.example.com/api/prom/push",
+            "tenant",
+            "secret",
+            deployment_completed_at=now[0],
+            convergence_seconds=20,
+            max_age_seconds=300,
+            query_all=query_all,
+            wall_time=lambda: now[0],
+            monotonic=lambda: now[0],
+            sleep=lambda seconds: now.__setitem__(0, now[0] + seconds),
+        )
+
+    evidence = captured.value.evidence
+    assert evidence is not None
+    assert evidence["failures"][0]["query_name"] == "crawler_series"
+    assert evidence["failures"][0]["observed_value"] == 2_001
+    assert evidence["latest_query_error"]["attempt"] == 2
+    assert "ConnectError" in evidence["latest_query_error"]["failures"][0]["invariant"]
+
+
+def test_verify_uses_transport_error_when_no_query_batch_completed() -> None:
+    now = [1_800_000_000.0]
+
+    with pytest.raises(verify.VerificationError) as captured:
+        verify.verify(
+            "https://prom.example.com/api/prom/push",
+            "tenant",
+            "secret",
+            deployment_completed_at=now[0],
+            convergence_seconds=10,
+            max_age_seconds=300,
+            query_all=lambda *_args: (_ for _ in ()).throw(
+                verify.httpx.ConnectError("connection reset")
+            ),
+            wall_time=lambda: now[0],
+            monotonic=lambda: now[0],
+            sleep=lambda seconds: now.__setitem__(0, now[0] + seconds),
+        )
+
+    evidence = captured.value.evidence
+    assert evidence is not None
+    assert "ConnectError" in evidence["failures"][0]["invariant"]
+    assert evidence["latest_query_error"]["attempt"] == 1
+
+
+def test_verify_can_converge_after_health_and_transport_failures() -> None:
+    now = [1_800_000_000.0]
+    stale = _healthy_results(now[0])
+    stale["crawler_series"] = [_row(2_001)]
+    responses = [stale, verify.httpx.ConnectError("connection reset"), "healthy"]
+
+    def query_all(*_args) -> dict:
+        result = responses.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        healthy = _healthy_results(now[0]) if result == "healthy" else result
+        for row in healthy["fresh_sampler"]:
+            row["value"][1] = str(now[0])
+        return healthy
+
+    evidence = verify.verify(
+        "https://prom.example.com/api/prom/push",
+        "tenant",
+        "secret",
+        deployment_completed_at=now[0],
+        convergence_seconds=30,
+        max_age_seconds=300,
+        query_all=query_all,
+        wall_time=lambda: now[0],
+        monotonic=lambda: now[0],
+        sleep=lambda seconds: now.__setitem__(0, now[0] + seconds),
+    )
+
+    assert evidence["status"] == "passed"
+    assert evidence["attempts"] == 3
+    assert evidence["failures"] == []
+
+
 def test_verify_rejects_cached_pre_deployment_sampler() -> None:
     now = [1_800_000_000.0]
     cached = _healthy_results(now[0])
