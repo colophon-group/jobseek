@@ -1465,6 +1465,7 @@ inline — Single-Page Extraction (rich or enrichable)
       "fetch_contains": "Open positions",
       "empty_selector": ".empty-state:not(.hidden)",
       "empty_text": "No vacancies are currently available",
+      "include_hidden": true,
       "item_boundary_tag": "h3",
       "preserve_single_location": true,
       "render": true,
@@ -1570,6 +1571,11 @@ inline — Single-Page Extraction (rich or enrichable)
     fetch_contains
                  Required text that every accepted representation must contain.
                  A response without it falls through to the next fetch URL.
+    include_hidden
+                 true = include content hidden by tab or accordion state when
+                 all panels contain real postings (default: false). Pair this
+                 with bounded title/item matchers so hidden navigation or FAQ
+                 content cannot become jobs.
     empty_selector
                  Bounded CSS selector for the visibly active empty-state
                  element. Required with empty_text. The selector must exclude

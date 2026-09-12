@@ -226,9 +226,7 @@ async def test_merck_sitemap_runtime_collapses_duplicate_provider_identity():
 
 def test_unrelated_msd_board_is_not_given_merck_kgaa_canonicalization():
     with _BOARDS_PATH.open(newline="") as handle:
-        msd = next(
-            row for row in csv.DictReader(handle) if row["board_slug"] == "msd-north-america"
-        )
+        msd = next(row for row in csv.DictReader(handle) if row["board_slug"] == "msd-careers")
 
     config = _monitor_config(msd)
     assert "url_filter" not in config
