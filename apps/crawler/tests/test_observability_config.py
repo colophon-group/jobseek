@@ -47,6 +47,18 @@ def test_dashboard_surfaces_deadletter_depth() -> None:
     assert "crawler deadletters inspect" in panel["description"]
 
 
+def test_crawler_metrics_alert_counts_present_but_unhealthy_targets() -> None:
+    rule = _alert_rule("NoMetricsFromCrawler")
+
+    assert rule["expr"] == (
+        '(count(max_over_time(up{job="crawler",instance=~"worker-[123]|browser-1|exporter|drain"}'
+        "[2m]) == 1) or vector(0)) < 6"
+    )
+    assert rule["for"] == "1m"
+    assert rule["labels"]["severity"] == "critical"
+    assert rule["labels"]["page"] == "production"
+
+
 def test_alert_fires_when_deadletter_queue_stays_nonempty() -> None:
     rule = _alert_rule("DeadletterQueueNotEmpty")
 

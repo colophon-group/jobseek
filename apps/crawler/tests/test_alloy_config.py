@@ -58,6 +58,8 @@ def test_crawler_alloy_is_pinned_and_no_longer_privileged():
 
 
 def test_metrics_cardinality_and_remote_write_are_bounded():
+    assert 'PROMETHEUS_DISABLE_CREATED_SERIES: "true"' in COMPOSE
+    assert 'regex         = ".*_created"' in CONFIG
     assert 'regex         = "crawler_host_circuit_.*"' in CONFIG
     assert 'prometheus.relabel "redis"' in CONFIG
     assert 'action        = "keep"' in CONFIG

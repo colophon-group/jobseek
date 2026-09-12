@@ -33,10 +33,11 @@ groups:
       # Catches the failure mode that took the box dark for 15h on
       # 2026-04-25: Alloy itself stopped, so no metrics reached
       # Grafana Cloud at all. The `up{}` series is synthesized by the
-      # scraper, so its absence directly maps to "scrape pipeline
-      # broken" — which is exactly what we want to page on.
+      # scraper, but it remains present with value zero when a target is
+      # unreachable, so count only healthy samples and provide an explicit
+      # zero fallback when the complete scrape stream is absent.
       - alert: NoMetricsFromCrawler
-        expr: absent_over_time(up{job="crawler"}[2m])
+        expr: (count(max_over_time(up{job="crawler",instance=~"worker-[123]|browser-1|exporter|drain"}[2m]) == 1) or vector(0)) < 6
         for: 1m
         labels:
           severity: critical
@@ -45,10 +46,11 @@ groups:
           route: codex-daily
           page: production
         annotations:
-          summary: "No metrics from any crawler scrape target"
+          summary: "One or more crawler scrape targets are unavailable"
           description: |
-            No `up{job="crawler"}` samples for three minutes. Either Alloy has
-            stopped on the worker box, all containers exited, or
+            Fewer than six expected `up{job="crawler"}` targets remained
+            healthy for three minutes. Either Alloy has stopped on the worker
+            box, one or more containers exited or stopped exposing metrics, or
             remote_write to Grafana Cloud is failing. SSH to the box
             and check `docker ps`.
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability

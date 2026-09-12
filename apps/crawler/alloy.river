@@ -24,6 +24,14 @@ prometheus.scrape "crawler" {
 prometheus.relabel "crawler" {
   forward_to = [prometheus.remote_write.grafana_cloud.receiver]
 
+  // Defense in depth for images that do not honor the Python client setting.
+  // No alert, dashboard, or runtime-cost query consumes creation timestamps.
+  rule {
+    source_labels = ["__name__"]
+    regex         = ".*_created"
+    action        = "drop"
+  }
+
   rule {
     source_labels = ["__name__"]
     regex         = "crawler_host_circuit_.*"
