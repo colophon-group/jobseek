@@ -11,6 +11,7 @@ API:
 
 from __future__ import annotations
 
+import json
 import re
 from math import ceil
 from pathlib import Path
@@ -18,9 +19,10 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 import structlog
+from selectolax.lexbor import LexborHTMLParser
 
 from src.core.monitors import DiscoveredJob, register
-from src.core.monitors.raw import save_json_response
+from src.core.monitors.raw import save_json_response, save_text_response
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -31,6 +33,10 @@ MAX_JOBS = 2_000  # HeadHunter's public API caps deep pagination at 2,000.
 REQUEST_HEADERS = {
     "Accept": "application/json",
     "User-Agent": "Jobseek/1.0 (+https://jobseek.ch; contact@jobseek.ch)",
+}
+PUBLIC_REQUEST_HEADERS = {
+    "Accept": "text/html,application/xhtml+xml",
+    "User-Agent": REQUEST_HEADERS["User-Agent"],
 }
 
 _EMPLOYER_PATH_RE = re.compile(r"^/employer/(\d+)/?$", re.IGNORECASE)
@@ -81,6 +87,10 @@ def _employer_id_from_url(url: str) -> str | None:
 
 def _listing_url() -> str:
     return f"{API_BASE}/vacancies"
+
+
+def _public_search_url(site_host: str) -> str:
+    return f"https://{site_host}/search/vacancy"
 
 
 def _clean_text(value: object) -> str | None:
@@ -319,6 +329,93 @@ async def _fetch_summaries(
     return summaries, expected_found > MAX_JOBS
 
 
+def _parse_public_search(
+    html: str,
+    *,
+    employer_id: str,
+    site_host: str,
+) -> list[DiscoveredJob]:
+    """Parse the exhaustive vacancy state embedded in a public search page."""
+    template = LexborHTMLParser(html).css_first("#HH-Lux-InitialState")
+    if template is None:
+        raise ValueError("HeadHunter public search page has no initial state")
+    raw = template.html
+    start = raw.find(">")
+    end = raw.rfind("</template>")
+    if start < 0 or end <= start:
+        raise ValueError("HeadHunter public search initial state is malformed")
+    try:
+        state = json.loads(raw[start + 1 : end])
+    except json.JSONDecodeError as exc:
+        raise ValueError("HeadHunter public search initial state is invalid JSON") from exc
+
+    result = state.get("vacancySearchResult") if isinstance(state, dict) else None
+    vacancies = result.get("vacancies") if isinstance(result, dict) else None
+    total = result.get("totalResults") if isinstance(result, dict) else None
+    if (
+        not isinstance(vacancies, list)
+        or isinstance(total, bool)
+        or not isinstance(total, int)
+        or total < 0
+    ):
+        raise ValueError("HeadHunter public search state has invalid vacancy totals")
+    if len(vacancies) != total:
+        raise ValueError(f"HeadHunter public search embedded {len(vacancies)} of {total} vacancies")
+
+    jobs: list[DiscoveredJob] = []
+    seen_ids: set[str] = set()
+    for vacancy in vacancies:
+        if not isinstance(vacancy, dict):
+            raise ValueError("HeadHunter public search contains a non-object vacancy")
+        vacancy_id = str(vacancy.get("vacancyId") or "")
+        company = vacancy.get("company")
+        actual_employer_id = str(company.get("id") or "") if isinstance(company, dict) else ""
+        if not vacancy_id.isdigit() or actual_employer_id != employer_id:
+            raise ValueError("HeadHunter public search returned a vacancy outside the employer")
+        if vacancy_id in seen_ids:
+            raise ValueError(f"HeadHunter public search repeated vacancy {vacancy_id}")
+        seen_ids.add(vacancy_id)
+
+        address = vacancy.get("address")
+        location = _clean_text(address.get("displayName")) if isinstance(address, dict) else None
+        if not location:
+            location = _dict_name(vacancy.get("area"))
+        publication = vacancy.get("publicationTime")
+        date_posted = _clean_text(publication.get("$")) if isinstance(publication, dict) else None
+        jobs.append(
+            DiscoveredJob(
+                url=f"https://{site_host}/vacancy/{vacancy_id}",
+                title=_clean_text(vacancy.get("name")),
+                locations=[location] if location else None,
+                date_posted=date_posted,
+                metadata={
+                    "vacancy_id": vacancy_id,
+                    "headhunter_employer_id": employer_id,
+                },
+            )
+        )
+    return jobs
+
+
+async def _fetch_public_search(
+    client: httpx.AsyncClient,
+    employer_id: str,
+    *,
+    site_host: str,
+) -> list[DiscoveredJob]:
+    response = await client.get(
+        _public_search_url(site_host),
+        params={"employer_id": employer_id},
+        headers=PUBLIC_REQUEST_HEADERS,
+    )
+    response.raise_for_status()
+    return _parse_public_search(
+        response.text,
+        employer_id=employer_id,
+        site_host=site_host,
+    )
+
+
 async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     """Return rich vacancy summaries for one HeadHunter employer."""
     _ = pw
@@ -344,7 +441,22 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             f"HeadHunter monitor requires a supported HTTPS site host; got {site_host!r}"
         )
 
-    summaries, truncated = await _fetch_summaries(client, employer_id, site_host=site_host)
+    try:
+        summaries, truncated = await _fetch_summaries(
+            client,
+            employer_id,
+            site_host=site_host,
+        )
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code != 403:
+            raise
+        jobs = await _fetch_public_search(client, employer_id, site_host=site_host)
+        log.info(
+            "headhunter.public_search_fallback",
+            employer_id=employer_id,
+            jobs=len(jobs),
+        )
+        return jobs
     jobs: list[DiscoveredJob] = []
     seen: set[str] = set()
     for summary in summaries:
@@ -399,7 +511,13 @@ async def can_handle(
             payload = response.json()
             if isinstance(payload, dict):
                 result["jobs"] = int(payload.get("found") or 0)
-        elif response.status_code != 403:
+        elif response.status_code == 403:
+            try:
+                jobs = await _fetch_public_search(client, employer_id, site_host=site_host)
+                result["jobs"] = len(jobs)
+            except (httpx.HTTPError, ValueError):
+                log.debug("headhunter.public_probe_failed", url=url, exc_info=True)
+        else:
             return None
     except (httpx.HTTPError, ValueError, TypeError):
         log.debug("headhunter.probe_failed", url=url, exc_info=True)
@@ -428,6 +546,13 @@ async def save_raw(
         },
         headers=REQUEST_HEADERS,
         filename="headhunter-listing.json",
+    )
+    await save_text_response(
+        artifact_dir,
+        client,
+        f"{_public_search_url(site_host)}?employer_id={employer_id}",
+        headers=PUBLIC_REQUEST_HEADERS,
+        filename="headhunter-public-search.html",
     )
 
 

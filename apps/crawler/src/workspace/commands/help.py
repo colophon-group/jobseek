@@ -894,6 +894,7 @@ MONITOR_HEADHUNTER = """\
 headhunter — HeadHunter employer vacancies API
 
   Listing:  GET https://api.hh.ru/vacancies?employer_id={employer_id}&page=N
+  Fallback: Public employer-filtered search state when anonymous API access requires captcha
   Detail:   GET https://api.hh.ru/vacancies/{vacancy_id}
   Returns:  Rich summaries (URL, title, location, employment_type,
             job_location_type, date_posted, base_salary and metadata)
@@ -905,6 +906,8 @@ headhunter — HeadHunter employer vacancies API
             employer boards therefore set proxy=true automatically and use the
             crawler's configured Webshare pool. HTTP rotates between top-level
             requests while each browser launch keeps one affine exit.
+            API 403 captcha responses fall back to the exhaustive state embedded
+            in the public search page; detail scraping falls back to its JSON-LD.
 
   Config:
     {"employer_id": "4556149", "host": "hh.ru", "proxy": true}
