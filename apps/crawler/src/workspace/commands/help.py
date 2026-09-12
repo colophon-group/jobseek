@@ -2954,11 +2954,12 @@ MONITOR_COMPUTRABAJO = """\
 computrabajo — Computrabajo and PandaPe employer profiles
 
   Listing:  GET https://{country}.computrabajo.com/empresas/ofertas-de-trabajo-de-{slug}-{company_id}
-            GET https://{tenant}.pandape.{provider}/Vacancies
+            GET https://{tenant}.pandape.{provider}/[Vacancies]
   Returns:  Canonical job-detail URLs from every provider page
   Scraper:  Auto-configured JSON-LD scraper
-  Note:     Use the exact unfiltered employer or /Vacancies URL. Both listing
-            variants expose 20 jobs per page and an explicit authoritative total.
+  Note:     Use the exact unfiltered employer, PandaPe root, /Vacancies, or
+            /Vacancy/Vacancies URL. The listing variants expose 20 jobs per
+            page and an explicit authoritative total.
             *.pandape.computrabajo.com portals are proxy-routed automatically;
             *.pandape.infojobs.com.br portals use direct static HTTP.
 

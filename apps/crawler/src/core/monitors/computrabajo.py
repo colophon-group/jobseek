@@ -5,9 +5,11 @@ The listing carries an explicit total, 20 stable job links per page, and
 ``?p=N`` pagination. Detail pages publish complete JobPosting JSON-LD and are
 handled by the existing JSON-LD scraper.
 
-PandaPe is Computrabajo/InfoJobs' hosted employer-portal product. Its
-``/Vacancies`` route has the same useful contracts: an explicit localized
-total, 20 stable ``/Detail/{id}`` links per page, and a last-page marker.
+PandaPe is Computrabajo/InfoJobs' hosted employer-portal product. Its employer
+root and ``/Vacancies`` routes (including the legacy
+``/Vacancy/Vacancies`` spelling) have the same useful contracts: an explicit
+localized total, 20 stable ``/Detail/{id}`` links per page, and a last-page
+marker.
 
 The explicit total is important for empty employer profiles: a verified zero
 page is authoritative, while a generic DOM monitor would only observe an
@@ -49,7 +51,7 @@ _PANDAPE_HOST_RE = re.compile(
     r"(?:infojobs\.com\.br|computrabajo\.com)",
     re.IGNORECASE,
 )
-_PANDAPE_PATH_RE = re.compile(r"/vacancies/?", re.IGNORECASE)
+_PANDAPE_PATH_RE = re.compile(r"/(?:vacancy/)?vacancies/?|/", re.IGNORECASE)
 _PANDAPE_JOB_PATH_RE = re.compile(r"/detail/([1-9][0-9]{0,15})/?", re.IGNORECASE)
 _PANDAPE_COUNT_RE = re.compile(
     r"^\s*([0-9][0-9.,]*)\s+(?:vagas|ofertas)\s+de\s+(?:emprego|empleo)\s*$",
