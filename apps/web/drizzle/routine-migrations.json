@@ -1,0 +1,9 @@
+{
+  "migrations": [
+    {
+      "tag": "0090_migrate_internship_watchlist_filters",
+      "createdAt": 1789127975000,
+      "hash": "68ed375df80d833891dbfa233cd004e45a7a5afe88bb1d24943e70934ca63850"
+    }
+  ]
+}
