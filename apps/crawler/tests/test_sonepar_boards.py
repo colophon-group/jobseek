@@ -28,20 +28,16 @@ def test_sonepar_metadata_and_assets_are_complete() -> None:
     assert company["employee_count_range"] == "8"
     assert company["founded_year"] == "1969"
     assert all(description[locale] for locale in ("en", "de", "fr", "it"))
-    assert (DATA_DIR / "images" / "sonepar-logo.png").is_file()
-    assert (DATA_DIR / "images" / "sonepar-icon.png").is_file()
+    asset_root = "https://jobseek-assets.colophon-group.org/companies/sonepar/"
+    assert company["logo_url"].startswith(asset_root)
+    assert company["icon_url"].startswith(asset_root)
 
 
 def test_sonepar_boards_use_global_feed_and_pdf_enrichment() -> None:
-    boards = {
-        row["board_slug"]: row
-        for row in _rows("boards.csv", "company_slug", "sonepar")
-    }
+    boards = {row["board_slug"]: row for row in _rows("boards.csv", "company_slug", "sonepar")}
 
     assert set(boards) == {"sonepar-careers", "sonepar-hungary"}
-    assert json.loads(boards["sonepar-careers"]["monitor_config"]) == {
-        "preset": "successfactors"
-    }
+    assert json.loads(boards["sonepar-careers"]["monitor_config"]) == {"preset": "successfactors"}
     hungary = boards["sonepar-hungary"]
     assert hungary["monitor_type"] == "inline"
     assert hungary["scraper_type"] == "pdf"
@@ -69,9 +65,7 @@ async def test_hungary_config_preserves_pdf_detail_urls() -> None:
       </div>
     </div>
     """
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(200, text=html, request=request)
-    )
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, text=html, request=request))
 
     async with httpx.AsyncClient(transport=transport) as client:
         jobs = await discover(board, client)
