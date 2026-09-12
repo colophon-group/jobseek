@@ -72,6 +72,7 @@ FIVE_HOURS_S = 5 * 60 * 60
 ONE_WEEK_S = 7 * 24 * 60 * 60
 UNKNOWN_USAGE_RETRY_S = 30 * 60
 _TERMINAL_RECEIPT_MAX_BYTES = 64 * 1024
+_ACTIVE_MARKER_MAX_BYTES = 4 * 1024
 _TERMINAL_RECEIPT_CLAIM_PREFIX = ".jobseek-terminal-receipt-v1-"
 DEFAULT_CODEX_ARGS = (
     "codex",
@@ -2271,11 +2272,21 @@ class CompanyResolverGovernor:
                 return
             worktree = Path(item.path)
             workspace_root = worktree / "apps" / "crawler" / ".workspace"
+            discard_isolated_workspace_root = (
+                item.run_id is not None
+                and item.state in RESOLVED_OUTCOMES
+                and item.trace_verified
+                and item.dirty_entries == 0
+                and not item.unique_commits
+                and isinstance(item.remote_proof, dict)
+                and item.remote_proof.get("ok") is True
+            )
             self._cleanup_ws_artifacts_for_issue(
                 item.issue,
                 run_id=item.run_id,
                 workspace_root=workspace_root,
                 workspace_container=worktree,
+                discard_isolated_workspace_root=discard_isolated_workspace_root,
             )
 
         runner_report = reconcile_worktrees(
@@ -2598,10 +2609,13 @@ class CompanyResolverGovernor:
         run_id: str | None = None,
         workspace_root: Path | None = None,
         workspace_container: Path | None = None,
+        discard_isolated_workspace_root: bool = False,
     ) -> None:
         run_scope_marker = _run_scope_marker_name(issue=issue, run_id=run_id)
         if run_id is not None and run_scope_marker is None:
             raise RuntimeError("invalid run identity for scoped workspace cleanup")
+        if discard_isolated_workspace_root and run_scope_marker is None:
+            raise RuntimeError("isolated workspace retirement requires a valid run identity")
         roots: list[tuple[Path, Path, bool]] = []
         if workspace_root is not None:
             roots.append((workspace_root, workspace_container or workspace_root.parent, True))
@@ -2628,7 +2642,13 @@ class CompanyResolverGovernor:
             if safe_root is None or safe_root in seen:
                 continue
             seen.add(safe_root)
+            safe_root_stat = safe_root.lstat()
             recover_pending_rmtree_claims(safe_root)
+            if isolated_run_root and discard_isolated_workspace_root:
+                _validate_discardable_isolated_workspace_root(
+                    safe_root,
+                    issue=issue,
+                )
             for workspace_dir in _workspace_dirs_for_issue(safe_root, issue):
                 self._cleanup_workspace_dir(
                     workspace_dir,
@@ -2637,6 +2657,11 @@ class CompanyResolverGovernor:
                 )
             if isolated_run_root:
                 _cleanup_terminal_lifecycle_receipts(safe_root, issue=issue)
+                if discard_isolated_workspace_root:
+                    _clear_isolated_workspace_root(
+                        safe_root,
+                        expected=safe_root_stat,
+                    )
 
     def _cleanup_workspace_dir(
         self,
@@ -2790,6 +2815,172 @@ def _validated_workspace_child(path: Path, workspace_root: Path) -> Path | None:
     return resolved
 
 
+def _clear_isolated_workspace_root(
+    workspace_root: Path,
+    *,
+    expected: os.stat_result,
+) -> None:
+    """Clear residual evidence while keeping recovery claims inside the ignored root."""
+    workspace_root_fd = open_absolute_directory_no_follow(workspace_root)
+    try:
+        opened = os.fstat(workspace_root_fd)
+        if (opened.st_dev, opened.st_ino) != (expected.st_dev, expected.st_ino):
+            raise RuntimeError("isolated workspace root changed before retirement")
+        for name in sorted(os.listdir(workspace_root_fd)):
+            validate_child_name(name)
+            try:
+                entry = os.stat(name, dir_fd=workspace_root_fd, follow_symlinks=False)
+            except OSError as exc:
+                raise RuntimeError("isolated workspace residue changed before retirement") from exc
+            if stat.S_ISDIR(entry.st_mode):
+                if entry.st_uid != os.geteuid():
+                    raise RuntimeError(f"isolated workspace residue is unsafe: {name}")
+                child_fd: int | None = None
+                try:
+                    child_fd, child_opened = open_child_directory_no_follow(
+                        workspace_root_fd,
+                        name,
+                    )
+                    if child_opened.st_uid != os.geteuid():
+                        raise RuntimeError(f"isolated workspace residue is unsafe: {name}")
+                    rmtree_child_at(
+                        workspace_root_fd,
+                        name,
+                        child_fd=child_fd,
+                        expected=child_opened,
+                    )
+                finally:
+                    if child_fd is not None:
+                        os.close(child_fd)
+                continue
+            if (
+                not stat.S_ISREG(entry.st_mode)
+                or entry.st_uid != os.geteuid()
+                or entry.st_nlink != 1
+            ):
+                raise RuntimeError(f"isolated workspace residue is unsafe: {name}")
+            unlink_child_at(workspace_root_fd, name, expected=entry)
+    finally:
+        os.close(workspace_root_fd)
+
+
+def _validate_discardable_isolated_workspace_root(
+    workspace_root: Path,
+    *,
+    issue: int,
+) -> None:
+    """Fail closed before discarding residue from a proved terminal run."""
+    from src.shared.constants import SLUG_RE
+
+    _cleanup_terminal_lifecycle_receipts(workspace_root, issue=issue, apply=False)
+    workspace_root_fd = open_absolute_directory_no_follow(workspace_root)
+    try:
+        for name in sorted(os.listdir(workspace_root_fd)):
+            validate_child_name(name)
+            try:
+                entry = os.stat(name, dir_fd=workspace_root_fd, follow_symlinks=False)
+            except OSError as exc:
+                raise RuntimeError("isolated workspace residue changed during validation") from exc
+            if name.startswith("active"):
+                try:
+                    raw, opened = _read_text_at_no_follow(
+                        workspace_root_fd,
+                        name,
+                        max_bytes=_ACTIVE_MARKER_MAX_BYTES,
+                    )
+                except OSError as exc:
+                    raise RuntimeError(f"isolated workspace marker is unsafe: {name}") from exc
+                slug = _workspace_active_pointer_slug(raw, require_v1=True)
+                if (
+                    opened.st_uid != os.geteuid()
+                    or opened.st_nlink != 1
+                    or slug is None
+                    or SLUG_RE.fullmatch(slug) is None
+                ):
+                    raise RuntimeError(f"isolated workspace marker is unauthenticated: {name}")
+                continue
+            if name == ".terminal-lifecycle":
+                if not stat.S_ISDIR(entry.st_mode) or entry.st_uid != os.geteuid():
+                    raise RuntimeError("terminal lifecycle receipt root is unsafe")
+                continue
+            if not stat.S_ISDIR(entry.st_mode):
+                if (
+                    not stat.S_ISREG(entry.st_mode)
+                    or entry.st_uid != os.geteuid()
+                    or entry.st_nlink != 1
+                ):
+                    raise RuntimeError(f"isolated workspace residue is unsafe: {name}")
+                continue
+
+            child_fd: int | None = None
+            try:
+                child_fd, opened = open_child_directory_no_follow(workspace_root_fd, name)
+                if opened.st_uid != os.geteuid():
+                    raise RuntimeError(f"isolated workspace residue is unsafe: {name}")
+                try:
+                    metadata_stat = os.stat(
+                        "workspace.yaml",
+                        dir_fd=child_fd,
+                        follow_symlinks=False,
+                    )
+                except FileNotFoundError:
+                    metadata_stat = None
+                except OSError as exc:
+                    raise RuntimeError(f"isolated workspace metadata is unsafe: {name}") from exc
+                if metadata_stat is not None:
+                    if (
+                        not stat.S_ISREG(metadata_stat.st_mode)
+                        or metadata_stat.st_uid != os.geteuid()
+                        or metadata_stat.st_nlink != 1
+                    ):
+                        raise RuntimeError(f"isolated workspace metadata is unsafe: {name}")
+                    data = _read_yaml_mapping_at(child_fd, "workspace.yaml")
+                    if not data or data.get("slug") != name or _workspace_issue(data) != issue:
+                        raise RuntimeError(
+                            f"isolated workspace metadata is not bound to issue {issue}: {name}"
+                        )
+                    worktree = _workspace_worktree(data)
+                    if worktree and worktree.exists():
+                        raise RuntimeError(
+                            f"managed ws worktree {worktree} was retained; "
+                            "refusing workspace cleanup"
+                        )
+                _validate_owned_residue_tree_at(child_fd, relative=name)
+            finally:
+                if child_fd is not None:
+                    os.close(child_fd)
+    finally:
+        os.close(workspace_root_fd)
+
+
+def _validate_owned_residue_tree_at(directory_fd: int, *, relative: str) -> None:
+    """Reject links, special files, and foreign-owned entries before recursive cleanup."""
+    for name in sorted(os.listdir(directory_fd)):
+        validate_child_name(name)
+        entry_relative = f"{relative}/{name}"
+        try:
+            entry = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        except OSError as exc:
+            raise RuntimeError(
+                f"isolated workspace residue changed during validation: {entry_relative}"
+            ) from exc
+        if stat.S_ISREG(entry.st_mode):
+            if entry.st_uid != os.geteuid() or entry.st_nlink != 1:
+                raise RuntimeError(f"isolated workspace residue is unsafe: {entry_relative}")
+            continue
+        if not stat.S_ISDIR(entry.st_mode) or entry.st_uid != os.geteuid():
+            raise RuntimeError(f"isolated workspace residue is unsafe: {entry_relative}")
+        child_fd: int | None = None
+        try:
+            child_fd, opened = open_child_directory_no_follow(directory_fd, name)
+            if opened.st_uid != os.geteuid():
+                raise RuntimeError(f"isolated workspace residue is unsafe: {entry_relative}")
+            _validate_owned_residue_tree_at(child_fd, relative=entry_relative)
+        finally:
+            if child_fd is not None:
+                os.close(child_fd)
+
+
 def _safe_workspace_directories(workspace_root: Path) -> list[Path]:
     try:
         root_mode = workspace_root.lstat().st_mode
@@ -2823,15 +3014,22 @@ def _safe_workspace_directories(workspace_root: Path) -> list[Path]:
     return directories
 
 
-def _read_text_at_no_follow(parent_fd: int, name: str) -> tuple[str, os.stat_result]:
+def _read_text_at_no_follow(
+    parent_fd: int,
+    name: str,
+    *,
+    max_bytes: int | None = None,
+) -> tuple[str, os.stat_result]:
     if not name or name in {".", ".."} or "/" in name:
         raise OSError(f"invalid workspace metadata name: {name!r}")
-    flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
     descriptor = os.open(name, flags, dir_fd=parent_fd)
     with os.fdopen(descriptor, encoding="utf-8") as handle:
         opened = os.fstat(handle.fileno())
         if not stat.S_ISREG(opened.st_mode):
             raise OSError(f"not a regular workspace metadata file: {name}")
+        if max_bytes is not None and opened.st_size > max_bytes:
+            raise OSError(f"workspace metadata file is too large: {name}")
         return handle.read(), opened
 
 
@@ -2845,7 +3043,12 @@ def _read_yaml_mapping_at(parent_fd: int, name: str) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def _cleanup_terminal_lifecycle_receipts(workspace_root: Path, *, issue: int) -> None:
+def _cleanup_terminal_lifecycle_receipts(
+    workspace_root: Path,
+    *,
+    issue: int,
+    apply: bool = True,
+) -> None:
     """Remove completed terminal receipts from one ledger-bound run workspace."""
     from src.shared.constants import SLUG_RE
     from src.workspace.commands.lifecycle import (
@@ -2858,7 +3061,7 @@ def _cleanup_terminal_lifecycle_receipts(workspace_root: Path, *, issue: int) ->
     issues_fd: int | None = None
     try:
         try:
-            terminal_fd, _ = open_child_directory_no_follow(
+            terminal_fd, terminal_stat = open_child_directory_no_follow(
                 workspace_root_fd,
                 ".terminal-lifecycle",
             )
@@ -2866,12 +3069,16 @@ def _cleanup_terminal_lifecycle_receipts(workspace_root: Path, *, issue: int) ->
             if isinstance(exc.__cause__, FileNotFoundError):
                 return
             raise RuntimeError("terminal lifecycle receipt root is unsafe") from exc
+        if terminal_stat.st_uid != os.geteuid():
+            raise RuntimeError("terminal lifecycle receipt root is unsafe")
 
         completed: list[tuple[int, str, str, os.stat_result]] = []
         logical_names: set[tuple[int, str]] = set()
         for name in sorted(os.listdir(terminal_fd)):
             if name == "issues":
-                issues_fd, _ = open_child_directory_no_follow(terminal_fd, name)
+                issues_fd, issues_stat = open_child_directory_no_follow(terminal_fd, name)
+                if issues_stat.st_uid != os.geteuid():
+                    raise RuntimeError("terminal lifecycle issue receipt root is unsafe")
                 for issue_name in sorted(os.listdir(issues_fd)):
                     data, opened = _read_terminal_receipt_at(issues_fd, issue_name)
                     _validate_issue_terminal_journal(data, issue)
@@ -2919,13 +3126,14 @@ def _cleanup_terminal_lifecycle_receipts(workspace_root: Path, *, issue: int) ->
             logical_names.add(key)
             completed.append((terminal_fd, name, logical_name, opened))
 
-        for parent_fd, stored_name, logical_name, opened in completed:
-            _remove_terminal_receipt_at(
-                parent_fd,
-                stored_name=stored_name,
-                logical_name=logical_name,
-                expected=opened,
-            )
+        if apply:
+            for parent_fd, stored_name, logical_name, opened in completed:
+                _remove_terminal_receipt_at(
+                    parent_fd,
+                    stored_name=stored_name,
+                    logical_name=logical_name,
+                    expected=opened,
+                )
     finally:
         if issues_fd is not None:
             os.close(issues_fd)
