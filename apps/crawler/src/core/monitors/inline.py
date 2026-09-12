@@ -1179,7 +1179,9 @@ async def discover(
             attribute=source_url_attribute,
             board_url=board_url,
         )
-    include_hidden = bool(metadata.get("include_hidden"))
+    include_hidden = metadata.get("include_hidden", False)
+    if not isinstance(include_hidden, bool):
+        raise ValueError("inline include_hidden must be a boolean")
     elements = flatten(html, include_hidden=include_hidden)
 
     elements = _scope_to_section(elements, section_start, section_end)

@@ -321,6 +321,14 @@ class TestHelp:
         assert legacy_result.exit_code != 0
         assert "Unknown monitor type" in legacy_result.output
 
+    def test_inline_help_documents_hidden_tab_extraction(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        result = CliRunner().invoke(ws, ["help", "monitor", "inline"])
+
+        assert result.exit_code == 0
+        assert '"include_hidden": true' in result.output
+        assert "hidden by tab or accordion state" in result.output
+
     def test_dom_help_documents_antibot_browser_options(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         runner = CliRunner()

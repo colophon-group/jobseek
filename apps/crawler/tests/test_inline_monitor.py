@@ -1040,6 +1040,20 @@ async def test_discover_can_include_hidden_tab_panels_and_filter_titles():
 
 
 @pytest.mark.asyncio
+async def test_discover_rejects_non_boolean_include_hidden():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "include_hidden": "true",
+            "steps": [{"tag": "h3", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="include_hidden must be a boolean"):
+        await discover(board, _FakeClient("<h3>Engineer</h3>"))
+
+
+@pytest.mark.asyncio
 async def test_discover_with_defaults():
     html = """
     <html><body>
