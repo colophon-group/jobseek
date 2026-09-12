@@ -4465,6 +4465,7 @@ morgan-stanley,morgan-stanley-workday,https://ms.wd5.myworkdayjobs.com/External,
 morning-brew-inc,morning-brew-inc-lever,https://jobs.lever.co/morningbrew,lever,"{""token"": ""morningbrew""}",skip,
 morse-micro,morse-micro-ashby,https://jobs.ashbyhq.com/morse-micro,ashby,"{""token"": ""morse-micro""}",skip,
 morse-micro,morse-micro-greenhouse,https://job-boards.greenhouse.io/morsemicro,greenhouse,"{""token"": ""morsemicro""}",skip,
+mortenson,mortenson-careers,https://fa-esgu-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 mosaic,mosaic-ashby,https://jobs.ashbyhq.com/mosaic,ashby,"{""token"": ""mosaic""}",skip,
 moss-new-york-llc,moss-new-york-llc-greenhouse,https://job-boards.greenhouse.io/mossnewyorkllc,greenhouse,"{""token"": ""mossnewyorkllc""}",skip,
 motherduck,motherduck-ashby,https://jobs.ashbyhq.com/motherduck,ashby,"{""token"": ""motherduck""}",skip,
