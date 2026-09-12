@@ -299,17 +299,29 @@ def detect_ats_from_url(url: str) -> str | None:
         return "papa_johns"
     if (
         parsed.scheme == "https"
-        and re.fullmatch(r"[a-z]{2}\.computrabajo\.com", host)
+        and (
+            (
+                re.fullmatch(r"[a-z]{2}\.computrabajo\.com", host)
+                and re.fullmatch(
+                    r"/empresas/ofertas-de-trabajo-de-[a-z0-9][a-z0-9-]*-[0-9a-f]{16}/?",
+                    parsed.path,
+                    re.IGNORECASE,
+                )
+            )
+            or (
+                re.fullmatch(
+                    r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.pandape\."
+                    r"(?:infojobs\.com\.br|computrabajo\.com)",
+                    host,
+                )
+                and re.fullmatch(r"/vacancies/?", parsed.path, re.IGNORECASE)
+            )
+        )
         and parsed.username is None
         and parsed.password is None
         and port in (None, 443)
         and not parsed.query
         and not parsed.fragment
-        and re.fullmatch(
-            r"/empresas/ofertas-de-trabajo-de-[a-z0-9][a-z0-9-]*-[0-9a-f]{16}/?",
-            parsed.path,
-            re.IGNORECASE,
-        )
     ):
         return "computrabajo"
     if host == "jobs.gem.com":
@@ -1091,7 +1103,7 @@ def auto_scraper_type(
     if monitor_type == "jazzhr":
         return ("jazzhr", None)
     if monitor_type == "computrabajo":
-        return ("json-ld", None)
+        return ("json-ld", {"proxy": True} if (config or {}).get("proxy") else None)
     if monitor_type == "papa_johns":
         return ("json-ld", None)
     if monitor_type == "jobvite":

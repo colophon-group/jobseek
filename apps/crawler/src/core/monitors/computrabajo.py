@@ -1,13 +1,17 @@
-"""Computrabajo employer-profile monitor.
+"""Computrabajo and PandaPe employer-profile monitor.
 
 Computrabajo's country portals expose a server-rendered employer inventory.
 The listing carries an explicit total, 20 stable job links per page, and
 ``?p=N`` pagination. Detail pages publish complete JobPosting JSON-LD and are
 handled by the existing JSON-LD scraper.
 
-The explicit total is important for empty employer profiles: a verified
-``0 Ofertas de trabajo`` page is authoritative, while a generic DOM monitor
-would only observe an unexplained absence of links.
+PandaPe is Computrabajo/InfoJobs' hosted employer-portal product. Its
+``/Vacancies`` route has the same useful contracts: an explicit localized
+total, 20 stable ``/Detail/{id}`` links per page, and a last-page marker.
+
+The explicit total is important for empty employer profiles: a verified zero
+page is authoritative, while a generic DOM monitor would only observe an
+unexplained absence of links.
 """
 
 from __future__ import annotations
@@ -40,6 +44,17 @@ _JOB_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 _COUNT_RE = re.compile(r"^\s*([0-9][0-9.,]*)\s+ofertas?\s+de\s+trabajo\b", re.IGNORECASE)
+_PANDAPE_HOST_RE = re.compile(
+    r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.pandape\."
+    r"(?:infojobs\.com\.br|computrabajo\.com)",
+    re.IGNORECASE,
+)
+_PANDAPE_PATH_RE = re.compile(r"/vacancies/?", re.IGNORECASE)
+_PANDAPE_JOB_PATH_RE = re.compile(r"/detail/([1-9][0-9]{0,15})/?", re.IGNORECASE)
+_PANDAPE_COUNT_RE = re.compile(
+    r"^\s*([0-9][0-9.,]*)\s+(?:vagas|ofertas)\s+de\s+(?:emprego|empleo)\s*$",
+    re.IGNORECASE,
+)
 
 
 class _ListingParser(HTMLParser):
@@ -64,6 +79,51 @@ class _ListingParser(HTMLParser):
             self.job_hrefs.append(href)
 
 
+class _PandapeListingParser(HTMLParser):
+    """Read PandaPe's server-rendered inventory and pagination contract."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.has_vacancy_section = False
+        self.job_hrefs: list[str] = []
+        self.total_chunks: list[str] = []
+        self._total_depth = 0
+        self.is_last: str | None = None
+        self.page_number: str | None = None
+        self.page_size: str | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        classes = set((attributes.get("class") or "").split())
+        if tag == "section" and attributes.get("id") == "VacancySection":
+            self.has_vacancy_section = True
+        if self._total_depth:
+            self._total_depth += 1
+        elif tag == "div" and {"color-title", "font-3xl"} <= classes:
+            self._total_depth = 1
+        if tag == "a" and "card-vacancy" in classes:
+            href = attributes.get("href")
+            if href:
+                self.job_hrefs.append(href)
+        if tag == "input":
+            field = attributes.get("id")
+            if field == "hdn_isLast":
+                self.is_last = attributes.get("value")
+            elif field == "hdn_PageNumber":
+                self.page_number = attributes.get("value")
+            elif field == "hdn_PageSize":
+                self.page_size = attributes.get("value")
+
+    def handle_endtag(self, tag: str) -> None:
+        _ = tag
+        if self._total_depth:
+            self._total_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self._total_depth:
+            self.total_chunks.append(data)
+
+
 def _profile_from_url(url: str) -> tuple[str, str] | None:
     """Return ``(host, company_id)`` for an exact unfiltered employer URL."""
     try:
@@ -84,6 +144,28 @@ def _profile_from_url(url: str) -> tuple[str, str] | None:
         return None
     match = _COMPANY_PATH_RE.fullmatch(parsed.path)
     return (host, match.group(1).casefold()) if match else None
+
+
+def _pandape_from_url(url: str) -> tuple[str, bool] | None:
+    """Return ``(host, proxy_required)`` for an exact PandaPe listing URL."""
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    host = (parsed.hostname or "").casefold()
+    if (
+        parsed.scheme.casefold() != "https"
+        or _PANDAPE_HOST_RE.fullmatch(host) is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.query
+        or parsed.fragment
+        or _PANDAPE_PATH_RE.fullmatch(parsed.path) is None
+    ):
+        return None
+    return host, host.endswith(".pandape.computrabajo.com")
 
 
 def _canonical_job_url(board_url: str, href: str) -> str | None:
@@ -108,6 +190,33 @@ def _canonical_job_url(board_url: str, href: str) -> str | None:
     ):
         return None
     if _JOB_PATH_RE.fullmatch(parsed.path) is None:
+        return None
+    return f"https://{host}{parsed.path}"
+
+
+def _canonical_pandape_job_url(board_url: str, href: str) -> str | None:
+    identity = _pandape_from_url(board_url)
+    if identity is None:
+        return None
+    host, _proxy_required = identity
+    absolute, fragment = urldefrag(urljoin(board_url, href))
+    if fragment:
+        return None
+    encoded = str(httpx.URL(absolute))
+    try:
+        parsed = urlparse(encoded)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.casefold() != "https"
+        or (parsed.hostname or "").casefold() != host
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.query
+        or _PANDAPE_JOB_PATH_RE.fullmatch(parsed.path) is None
+    ):
         return None
     return f"https://{host}{parsed.path}"
 
@@ -155,8 +264,54 @@ def _parse_listing(
     return urls, total
 
 
+def _parse_pandape_listing(
+    html: str,
+    *,
+    board_url: str,
+    requested_page: int,
+) -> tuple[set[str], int]:
+    if _pandape_from_url(board_url) is None:
+        raise ValueError(f"Invalid PandaPe employer URL: {board_url!r}")
+
+    parser = _PandapeListingParser()
+    parser.feed(html)
+    count_text = " ".join(" ".join(parser.total_chunks).split())
+    count_match = _PANDAPE_COUNT_RE.fullmatch(count_text)
+    if not parser.has_vacancy_section or count_match is None:
+        raise ValueError("PandaPe listing omitted its provider identity or explicit job total")
+    raw_total = count_match.group(1)
+    digits = re.sub(r"[^0-9]", "", raw_total)
+    if not digits:
+        raise ValueError("PandaPe listing returned an invalid job total")
+    total = int(digits)
+    if parser.page_size != str(PAGE_SIZE) or parser.page_number != str(requested_page):
+        raise ValueError("PandaPe listing omitted or changed its pagination contract")
+    expected_last = requested_page * PAGE_SIZE >= total
+    if (parser.is_last or "").casefold() != str(expected_last).casefold():
+        raise ValueError("PandaPe listing returned an inconsistent last-page marker")
+
+    urls: set[str] = set()
+    for href in parser.job_hrefs:
+        canonical = _canonical_pandape_job_url(board_url, href)
+        if canonical is None:
+            raise ValueError("PandaPe listing returned an invalid job URL")
+        if canonical in urls:
+            raise ValueError("PandaPe listing repeated a job URL on one page")
+        urls.add(canonical)
+
+    expected = min(PAGE_SIZE, max(0, total - (requested_page - 1) * PAGE_SIZE))
+    if len(urls) != expected:
+        raise ValueError(
+            f"PandaPe page {requested_page} returned {len(urls)} jobs, expected {expected}"
+        )
+    return urls, total
+
+
 def _page_url(board_url: str, page: int) -> str:
-    return board_url if page == 1 else f"{board_url.rstrip('/')}?p={page}"
+    if page == 1:
+        return board_url
+    param = "pageNumber" if _pandape_from_url(board_url) is not None else "p"
+    return f"{board_url.rstrip('/')}?{param}={page}"
 
 
 async def _fetch_listing(
@@ -181,7 +336,8 @@ async def _fetch_listing(
     response.raise_for_status()
     html = response.text
     check_response(response, body_excerpt=html[:500_000])
-    return _parse_listing(html, board_url=board_url, requested_page=page)
+    parser = _parse_pandape_listing if _pandape_from_url(board_url) is not None else _parse_listing
+    return parser(html, board_url=board_url, requested_page=page)
 
 
 async def _discover_urls(board_url: str, client: httpx.AsyncClient) -> tuple[set[str], int]:
@@ -206,8 +362,8 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     """Discover every active URL from one Computrabajo employer profile."""
     _ = pw
     board_url = board["board_url"]
-    if _profile_from_url(board_url) is None:
-        raise ValueError(f"Invalid Computrabajo employer URL: {board_url!r}")
+    if _profile_from_url(board_url) is None and _pandape_from_url(board_url) is None:
+        raise ValueError(f"Invalid Computrabajo/PandaPe employer URL: {board_url!r}")
     urls, total = await _discover_urls(board_url, client)
     log.info("computrabajo.discovered", board_url=board_url, jobs=len(urls), total=total)
     return truncated_url_result(urls) if total > MAX_JOBS else urls
@@ -221,10 +377,18 @@ async def can_handle(
     """Recognize and, when possible, verify a Computrabajo employer profile."""
     _ = pw
     identity = _profile_from_url(url)
-    if identity is None:
+    pandape = _pandape_from_url(url)
+    if identity is None and pandape is None:
         return None
-    host, company_id = identity
-    result: dict = {"host": host, "company_id": company_id}
+    if pandape is not None:
+        host, proxy_required = pandape
+        result: dict = {"host": host, "variant": "pandape"}
+        if proxy_required:
+            result["proxy"] = True
+    else:
+        assert identity is not None
+        host, company_id = identity
+        result = {"host": host, "company_id": company_id}
     if client is None:
         return result
     try:

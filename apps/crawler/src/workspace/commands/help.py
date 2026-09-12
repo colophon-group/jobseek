@@ -2921,18 +2921,22 @@ jobbank104 — 104 Job Bank company listing
   Zero jobs?  A valid page explicitly advertises 工作機會(0)."""
 
 MONITOR_COMPUTRABAJO = """\
-computrabajo — Computrabajo employer profile
+computrabajo — Computrabajo and PandaPe employer profiles
 
   Listing:  GET https://{country}.computrabajo.com/empresas/ofertas-de-trabajo-de-{slug}-{company_id}
-  Returns:  Canonical Computrabajo job-detail URLs from all ?p=N pages
+            GET https://{tenant}.pandape.{provider}/Vacancies
+  Returns:  Canonical job-detail URLs from every provider page
   Scraper:  Auto-configured JSON-LD scraper
-  Note:     Use the exact unfiltered employer URL. The server-rendered listing
-            exposes 20 jobs per page and an explicit authoritative total.
+  Note:     Use the exact unfiltered employer or /Vacancies URL. Both listing
+            variants expose 20 jobs per page and an explicit authoritative total.
+            *.pandape.computrabajo.com portals are proxy-routed automatically;
+            *.pandape.infojobs.com.br portals use direct static HTTP.
 
   Config:   No monitor config required.
 
   Detection:  ws probe shows "Computrabajo employer profile — company: ID, N jobs"
-  Zero jobs?  A valid employer page must explicitly report 0 Ofertas de trabajo."""
+              or "PandaPe employer portal — host: HOST, N jobs"
+  Zero jobs?  A valid page must explicitly report zero jobs."""
 
 MONITOR_JOBSTREET = """\
 jobstreet — JobStreet employer profile
