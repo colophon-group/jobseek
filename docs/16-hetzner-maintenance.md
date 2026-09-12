@@ -868,7 +868,17 @@ healthy for every expected role. Only after that ingestion gate passes does it
 remove the retired Jobseek notification routes, contact point, bridge,
 deadman, and synthetic test rule, followed by the owned Mimir rule groups. This
 catches a healthy local sampler whose collector
-silently omits the textfile directory. Environment-scoped host variables are
+silently omits the textfile directory. The verification job records a
+post-deploy boundary before runner setup and gives newly restarted collectors
+five minutes from that boundary to converge. Every host's atomic sampler
+timestamp must be at or after that boundary, and the complete Grafana query
+batch must finish inside the same window; cached pre-deploy telemetry cannot
+approve the rollout. A final failure remains
+fail-closed and publishes a 14-day JSON evidence packet containing every
+failed query/invariant, its observed value, sample timestamp/age, and affected
+host role/labels. The workflow summary classifies host installation failure
+separately from post-deploy telemetry-health failure; it does not increase or
+suppress the series budgets. Environment-scoped host variables are
 resolved inside runtime steps after the protected `production` environment is
 attached. The installer snapshots the prior binary, configuration, secret env,
 and units under the root-only
