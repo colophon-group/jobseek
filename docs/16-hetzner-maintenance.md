@@ -1011,8 +1011,10 @@ successful status so its Mimir alert state resolves normally.
 Grafana Cloud enforces 15,000 active series and 1,500 ingested samples per
 second for this tenant. Deployment stops before rule sync unless the total is
 at most 12,000 series, crawler application metrics are at most 5,000, the
-registry-bounded runtime-capability family is at most 2,000, Redis is at most
-200, and Unix/textfile host metrics are at most 2,000. The crawler processes
+registry-bounded runtime-capability family is at most 2,200 (the four pipeline
+processes currently seed 2,056 from the monitor and scraper registries), Redis
+is at most 200, and Unix/textfile host metrics are at most 2,000. The crawler
+processes
 disable automatic Python `_created` series and Compose Alloy drops them as a
 defense in depth; creation timestamps are not consumed by any alert,
 dashboard, or runtime-cost capture. The 20% tenant

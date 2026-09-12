@@ -7,6 +7,10 @@ from pathlib import Path
 
 import pytest
 
+from src.core.monitors import all_monitor_types
+from src.core.scrapers import all_scraper_types
+from src.shared.egress import RUNTIME_OUTCOMES
+
 SCRIPT = Path(__file__).resolve().parents[3] / "scripts" / "verify-grafana-host-metrics.py"
 SPEC = importlib.util.spec_from_file_location("verify_grafana_host_metrics", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
@@ -152,6 +156,27 @@ def test_validate_results_requires_all_crawler_scrape_targets_healthy() -> None:
     assert failure.observed_value == 0
 
 
+def test_validate_results_requires_fresh_post_deployment_crawler_targets() -> None:
+    now = 1_800_000_000.0
+    cached = _healthy_results(now)
+    for row in cached["fresh_sampler"]:
+        row["value"][1] = str(now)
+    cached["crawler_up"][0]["value"][0] = now - 2
+
+    with pytest.raises(verify.VerificationError) as captured:
+        verify.validate_results(
+            cached,
+            now=now,
+            max_age_seconds=300,
+            minimum_collected_at=now - 1,
+        )
+
+    failure = captured.value.failures[0]
+    assert failure.query_name == "crawler_up"
+    assert failure.invariant.startswith("crawler scrape target is missing, stale, or unhealthy")
+    assert failure.sample_timestamp == now - 2
+
+
 def test_validate_results_rejects_unexpected_or_duplicate_crawler_target() -> None:
     now = 1_800_000_000.0
     unexpected = _healthy_results(now)
@@ -232,14 +257,27 @@ def test_validate_results_rejects_alloy_delivery_failure_or_series_growth() -> N
         verify.validate_results(excessive, now=now, max_age_seconds=300)
 
     excessive_capability = _healthy_results(now)
-    excessive_capability["crawler_capability_series"] = [_row(2_001)]
-    with pytest.raises(verify.VerificationError, match="2000-series budget"):
+    excessive_capability["crawler_capability_series"] = [_row(2_201)]
+    with pytest.raises(verify.VerificationError, match="2200-series budget"):
         verify.validate_results(excessive_capability, now=now, max_age_seconds=300)
 
     created = _healthy_results(now)
     created["crawler_created_series"] = [_row(1)]
     with pytest.raises(verify.VerificationError, match="_created series are present"):
         verify.validate_results(created, now=now, max_age_seconds=300)
+
+
+def test_capability_budget_covers_registry_bounded_fleet_with_headroom() -> None:
+    per_process = (len(all_monitor_types()) + 1) * len(RUNTIME_OUTCOMES["monitor"]) + (
+        len(all_scraper_types()) + 1
+    ) * len(RUNTIME_OUTCOMES["scrape"])
+    fleet_maximum = len(verify.CAPABILITY_PIPELINE_INSTANCES) * per_process
+
+    assert fleet_maximum == 2_056
+    assert fleet_maximum < verify.SERIES_BUDGETS["crawler_capability_series"]
+    assert (
+        verify.SERIES_BUDGETS["crawler_capability_series"] < verify.SERIES_BUDGETS["crawler_series"]
+    )
 
 
 def test_failures_include_query_value_timestamp_age_and_role() -> None:

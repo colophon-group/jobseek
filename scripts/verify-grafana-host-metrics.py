@@ -19,6 +19,7 @@ EXPECTED_ROLES = frozenset({"crawler", "postgresql", "typesense"})
 EXPECTED_CRAWLER_INSTANCES = frozenset(
     {"worker-1", "worker-2", "worker-3", "browser-1", "exporter", "drain"}
 )
+CAPABILITY_PIPELINE_INSTANCES = frozenset({"worker-1", "worker-2", "worker-3", "browser-1"})
 REQUIRED_BACKUPS = frozenset({("postgresql", "postgresql"), ("typesense", "typesense")})
 OPTIONAL_BACKUPS = frozenset({("typesense", "web-postgresql")})
 _SAFE_LABEL_VALUE = re.compile(r"[A-Za-z0-9_.:-]{1,80}")
@@ -26,7 +27,9 @@ _EVIDENCE_LABEL_NAMES = frozenset({"host_role", "collector", "probe", "container
 SERIES_BUDGETS = {
     "active_series": 12_000,
     "crawler_series": 5_000,
-    "crawler_capability_series": 2_000,
+    # The current registry deterministically seeds 2,056 fleet series. Keep
+    # bounded growth room without weakening the independent crawler-wide cap.
+    "crawler_capability_series": 2_200,
     "redis_series": 200,
     "unix_series": 2_000,
 }
@@ -320,11 +323,20 @@ def validate_results(
             )
         )
     for instance, observation in sorted(crawler_up.items()):
-        if observation.value != 1:
+        sample_timestamp = observation.sample_timestamp
+        predates_deployment = (
+            minimum_collected_at is not None and sample_timestamp < minimum_collected_at
+        )
+        stale_or_invalid = (
+            sample_timestamp <= 0
+            or now - sample_timestamp > max_age_seconds
+            or sample_timestamp > now + 60
+        )
+        if observation.value != 1 or predates_deployment or stale_or_invalid:
             failures.append(
                 _failure(
                     "crawler_up",
-                    f"crawler scrape target is missing or unhealthy: {instance}",
+                    f"crawler scrape target is missing, stale, or unhealthy: {instance}",
                     now=now,
                     observation=observation,
                     host_role="crawler",
