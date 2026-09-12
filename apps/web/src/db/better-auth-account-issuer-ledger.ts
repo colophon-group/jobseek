@@ -96,6 +96,8 @@ export function isExactAccountIssuerPostLedger(
 
   const expectedRows = localPostTargetMigrations.slice(0, latestIndex + 1);
   return (
+    ledger.rowCount ===
+      transition.expectedPreflightRowCount + expectedRows.length &&
     postTargetRows.length === expectedRows.length &&
     postTargetRows.every((row, index) =>
       identityMatches(row, expectedRows[index]!),

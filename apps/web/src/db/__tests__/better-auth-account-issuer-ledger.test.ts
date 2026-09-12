@@ -158,4 +158,19 @@ describe("Better Auth account issuer ledger state", () => {
       ),
     ).toBe(false);
   });
+
+  it.each([78, 80])("rejects a valid suffix with malformed row count %i", (rowCount) => {
+    expect(
+      isExactAccountIssuerPostLedger(
+        {
+          rowCount,
+          latestCreatedAt: String(later[1]!.createdAt),
+          latestHash: later[1]!.hash,
+        },
+        uniquePostRows,
+        observed,
+        transition,
+      ),
+    ).toBe(false);
+  });
 });
