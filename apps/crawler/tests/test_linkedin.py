@@ -9,10 +9,12 @@ from src.core.monitor import MonitorResult
 from src.core.monitors import slugs_from_url
 from src.core.monitors.linkedin import (
     _company_id_from_url,
+    _company_ids_from_url,
     _company_slug_from_url,
     _parse_listing_cards,
     can_handle,
     discover,
+    save_raw,
 )
 from src.core.scrapers.linkedin import _job_id_from_url, parse_html, scrape
 from src.workspace._compat import auto_scraper_type, detect_ats_from_url
@@ -158,6 +160,12 @@ class TestListingParser:
         )
         assert _company_slug_from_url("https://example.com/company/acme/jobs") is None
 
+    def test_multi_company_url_detection(self):
+        url = "https://www.linkedin.com/jobs/search/?f_C=18160437%2C20533386"
+
+        assert _company_ids_from_url(url) == ("18160437", "20533386")
+        assert _company_id_from_url(url) is None
+
     def test_linkedin_is_not_an_ats_slug_guess(self):
         assert slugs_from_url(BOARD_URL) == []
 
@@ -195,6 +203,62 @@ class TestMonitor:
             "linkedin_company_id": COMPANY_ID,
             "linkedin_company_slug": "damora-therapeutics",
         }
+
+    async def test_discovers_combined_affiliated_company_filter(self):
+        company_ids = ["18160437", "20533386"]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url.params.get("f_C") == ",".join(company_ids)
+            return httpx.Response(
+                200,
+                text=_listing_html(company_slug="fds-spain-a-dxc-technology-company"),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(
+                {
+                    "board_url": "https://www.linkedin.com/jobs/fds-jobs-worldwide",
+                    "metadata": {
+                        "company_ids": company_ids,
+                        "canonical_numeric_job_urls": True,
+                    },
+                },
+                client,
+            )
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].metadata == {
+            "job_id": "4442073767",
+            "linkedin_company_ids": company_ids,
+            "linkedin_company_slug": "fds-spain-a-dxc-technology-company",
+        }
+
+    @pytest.mark.parametrize(
+        "company_ids",
+        [[], ["18160437", "18160437"], ["18160437", 20533386], ["not-numeric"]],
+    )
+    async def test_rejects_invalid_combined_company_ids(self, company_ids: list[object]):
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request: None)) as client:
+            with pytest.raises(ValueError, match="company_ids"):
+                await discover(
+                    {
+                        "board_url": "https://www.linkedin.com/jobs/fds-jobs-worldwide",
+                        "metadata": {"company_ids": company_ids},
+                    },
+                    client,
+                )
+
+    async def test_save_raw_rejects_conflicting_company_identity_fields(self, tmp_path):
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="not both"):
+                await save_raw(
+                    tmp_path,
+                    BOARD_URL,
+                    {"company_id": "18160437", "company_ids": ["20533386"]},
+                    client,
+                )
 
     async def test_source_ownership_routes_exact_country_codes_without_title_matching(self):
         # Live overlap fixtures audited 2026-08-25:
@@ -484,6 +548,9 @@ class TestMonitor:
 
     async def test_direct_detection_without_client(self):
         assert await can_handle(BOARD_URL) == {"company_slug": "damora-therapeutics"}
+        assert await can_handle(
+            "https://www.linkedin.com/jobs/search/?f_C=18160437%2C20533386"
+        ) == {"company_ids": ["18160437", "20533386"]}
         assert await can_handle("https://example.com/jobs") is None
 
 

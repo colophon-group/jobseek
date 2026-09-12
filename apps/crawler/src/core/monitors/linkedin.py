@@ -37,6 +37,7 @@ log = structlog.get_logger()
 # stops on the first ten-card page and skips offsets 10-24.
 PAGE_SIZE = 10
 MAX_JOBS = 1_000
+MAX_COMPANY_IDS = 32
 _PAGE_DELAY_S = 1.0
 _RETRY_ATTEMPTS = 4
 _RETRY_BASE_DELAY_S = 1.5
@@ -58,11 +59,14 @@ class _ListingJob:
     company_slug: str | None
     location_country_code: str | None = None
 
-    def discovered(self, company_id: str) -> DiscoveredJob:
-        metadata: dict[str, str] = {
+    def discovered(self, company_ids: tuple[str, ...]) -> DiscoveredJob:
+        metadata: dict = {
             "job_id": self.job_id,
-            "linkedin_company_id": company_id,
         }
+        if len(company_ids) == 1:
+            metadata["linkedin_company_id"] = company_ids[0]
+        else:
+            metadata["linkedin_company_ids"] = list(company_ids)
         if self.company_slug:
             metadata["linkedin_company_slug"] = self.company_slug
         if self.location_country_code:
@@ -89,14 +93,48 @@ def _company_slug_from_url(url: str) -> str | None:
 
 
 def _company_id_from_url(url: str) -> str | None:
+    company_ids = _company_ids_from_url(url)
+    return company_ids[0] if len(company_ids) == 1 else None
+
+
+def _company_ids_from_url(url: str) -> tuple[str, ...]:
     parsed = urlparse(url)
     if not _is_linkedin_host((parsed.hostname or "").lower()):
-        return None
+        return ()
     values = parse_qs(parsed.query).get("f_C", [])
+    company_ids: list[str] = []
     for value in values:
-        if value.isdigit():
-            return value
-    return None
+        for company_id in value.split(","):
+            if not company_id.isdigit():
+                return ()
+            company_ids.append(company_id)
+    if not company_ids or len(company_ids) > MAX_COMPANY_IDS:
+        return ()
+    if len(set(company_ids)) != len(company_ids):
+        return ()
+    return tuple(company_ids)
+
+
+def _validated_company_ids(value: object) -> tuple[str, ...]:
+    if isinstance(value, str):
+        company_ids = (value,)
+    elif isinstance(value, list):
+        company_ids = tuple(value)
+    else:
+        raise ValueError("LinkedIn company_ids must be a company ID or a list of company IDs")
+
+    if not company_ids or len(company_ids) > MAX_COMPANY_IDS:
+        raise ValueError(f"LinkedIn company_ids must contain 1-{MAX_COMPANY_IDS} numeric IDs")
+    if any(
+        not isinstance(company_id, str)
+        or not company_id.isdigit()
+        or company_id != company_id.strip()
+        for company_id in company_ids
+    ):
+        raise ValueError("LinkedIn company_ids must contain only numeric string IDs")
+    if len(set(company_ids)) != len(company_ids):
+        raise ValueError("LinkedIn company_ids must not contain duplicates")
+    return company_ids
 
 
 def _company_slug_from_link(node: LexborNode | None) -> str | None:
@@ -412,19 +450,32 @@ async def _resolve_company_id(company_slug: str, client: httpx.AsyncClient) -> s
 
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None):
-    """Return LinkedIn job summaries for one numeric company ID."""
+    """Return LinkedIn job summaries for one or more numeric company IDs."""
     _ = pw
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
     company_slug = metadata.get("company_slug") or _company_slug_from_url(board_url)
-    company_id = metadata.get("company_id") or _company_id_from_url(board_url)
-    if not company_id and company_slug:
-        company_id = await _resolve_company_id(company_slug, client)
-    if not company_id or not str(company_id).isdigit():
+    if metadata.get("company_id") is not None and metadata.get("company_ids") is not None:
+        raise ValueError("LinkedIn monitor accepts company_id or company_ids, not both")
+
+    configured_company_ids = (
+        metadata.get("company_ids")
+        if metadata.get("company_ids") is not None
+        else metadata.get("company_id")
+    )
+    if configured_company_ids is not None:
+        company_ids = _validated_company_ids(configured_company_ids)
+    else:
+        company_ids = _company_ids_from_url(board_url)
+    if not company_ids and company_slug:
+        resolved_company_id = await _resolve_company_id(company_slug, client)
+        company_ids = (resolved_company_id,) if resolved_company_id else ()
+    if not company_ids:
         raise ValueError(
-            "LinkedIn monitor requires company_id (numeric f_C value) or a resolvable "
+            "LinkedIn monitor requires company_id/company_ids (numeric f_C values) or a resolvable "
             f"company jobs URL; got {board_url!r}"
         )
+    company_filter = ",".join(company_ids)
 
     keywords = metadata.get("keywords")
     if keywords is not None and (not isinstance(keywords, str) or not keywords.strip()):
@@ -440,21 +491,24 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
 
     jobs, truncated = await _fetch_listings(
         client,
-        str(company_id),
+        company_filter,
         company_slug=company_slug,
         keywords=keywords.strip() if isinstance(keywords, str) else None,
         canonical_numeric_job_urls=canonical_numeric_job_urls,
     )
     jobs = _apply_source_ownership(jobs, excluded_country_codes)
-    discovered = [job.discovered(str(company_id)) for job in jobs]
+    discovered = [job.discovered(company_ids) for job in jobs]
     # A configured keyword is an explicit recovery path for tenants where
     # LinkedIn serves non-authoritative, varying subsets for the same f_C
     # filter. Preserve every discovered URL, but suppress monitor-level gone
     # detection; the daily detail scraper remains authoritative for closure.
     partial = truncated or keywords is not None
+    identity_log = (
+        {"company_id": company_ids[0]} if len(company_ids) == 1 else {"company_ids": company_ids}
+    )
     log.info(
         "linkedin.discovered",
-        company_id=company_id,
+        **identity_log,
         company_slug=company_slug,
         jobs=len(discovered),
         truncated=partial,
@@ -472,27 +526,30 @@ async def can_handle(
     """Detect LinkedIn company jobs pages and company-filtered search URLs."""
     _ = pw
     company_slug = _company_slug_from_url(url)
-    company_id = _company_id_from_url(url)
-    if not company_slug and not company_id:
+    company_ids = _company_ids_from_url(url)
+    if not company_slug and not company_ids:
         return None
 
-    result: dict[str, str | int] = {}
+    result: dict[str, object] = {}
     if company_slug:
         result["company_slug"] = company_slug
-    if company_id:
-        result["company_id"] = company_id
+    if len(company_ids) == 1:
+        result["company_id"] = company_ids[0]
+    elif company_ids:
+        result["company_ids"] = list(company_ids)
     if client is None:
         return result
 
     try:
-        if not company_id and company_slug:
+        if not company_ids and company_slug:
             company_id = await _resolve_company_id(company_slug, client)
             if not company_id:
                 return None
+            company_ids = (company_id,)
             result["company_id"] = company_id
         jobs, _truncated = await _fetch_listings(
             client,
-            str(company_id),
+            ",".join(company_ids),
             company_slug=company_slug,
         )
         result["jobs"] = len(jobs)
@@ -510,14 +567,24 @@ async def save_raw(
     metadata: dict,
     client: httpx.AsyncClient,
 ) -> None:
-    company_id = metadata.get("company_id") or _company_id_from_url(board_url)
-    if not company_id:
+    if metadata.get("company_id") is not None and metadata.get("company_ids") is not None:
+        raise ValueError("LinkedIn monitor accepts company_id or company_ids, not both")
+    configured_company_ids = (
+        metadata.get("company_ids")
+        if metadata.get("company_ids") is not None
+        else metadata.get("company_id")
+    )
+    if configured_company_ids is not None:
+        company_ids = _validated_company_ids(configured_company_ids)
+    else:
+        company_ids = _company_ids_from_url(board_url)
+    if not company_ids:
         return
     await save_text_response(
         artifact_dir,
         client,
         _listing_url(
-            company_id=str(company_id),
+            company_id=",".join(company_ids),
             keywords=str(metadata["keywords"]).strip() if metadata.get("keywords") else None,
         ),
         filename="listing.html",

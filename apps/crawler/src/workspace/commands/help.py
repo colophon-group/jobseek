@@ -859,8 +859,15 @@ linkedin — LinkedIn public guest-jobs endpoints
      "canonical_numeric_job_urls": false,
      "source_ownership_excluded_country_codes": ["THA"]}
 
+    For one official LinkedIn jobs page that combines affiliated employers:
+    {"company_ids": ["18160437", "20533386"],
+     "canonical_numeric_job_urls": true}
+
     company_id    Numeric LinkedIn company ID (the f_C search-filter value).
                   Auto-resolved for active company jobs pages during probing.
+    company_ids   Optional list of 1-32 numeric LinkedIn company IDs. Use only
+                  when the official jobs CTA combines affiliated employers in
+                  one f_C filter. Mutually exclusive with company_id.
     company_slug  Optional exact company slug used to reject unrelated cards.
     keywords      Optional company-name search term for tenants where LinkedIn's
                   company filter returns only a ranked subset without it. The
