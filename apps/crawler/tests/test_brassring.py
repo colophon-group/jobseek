@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import html
+import json
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 
 from src.core.monitors import monitor_needs_browser
 from src.core.monitors.brassring import (
     _board_ids,
     _bounded_inventory_rows,
+    _detail_location,
     _discover_page,
+    _hydrate_missing_locations,
     _parse_job,
     _parse_page,
     _SnapshotChanged,
@@ -102,6 +107,52 @@ def test_parse_job_accepts_missing_optional_description():
 
     assert job is not None
     assert job.description is None
+
+
+def _detail_body(job_id: str = "3383626") -> str:
+    payload = {
+        "JobId": job_id,
+        "Jobdetails": {
+            "JobDetailQuestions": [
+                {
+                    "VerityZone": "location",
+                    "AnswerValue": "Evansville Plant - 100",
+                },
+                {"VerityZone": "formtext9", "AnswerValue": "Evansville, IN"},
+            ]
+        },
+    }
+    value = html.escape(json.dumps(payload), quote=True)
+    return f'<html><input id="preLoadJSON" value="{value}"></html>'
+
+
+def test_detail_location_prefers_conventional_location_fields():
+    assert _detail_location(_detail_body(), "3383626") == ["Evansville, IN"]
+
+
+def test_detail_location_rejects_cross_job_payload():
+    with pytest.raises(ValueError, match="identity mismatch"):
+        _detail_location(_detail_body("999"), "3383626")
+
+
+async def test_hydrate_missing_locations_fetches_only_incomplete_jobs():
+    missing = _parse_job(_row(formtext8="", formtext9=""), "25416", "5998")
+    complete = _parse_job(_row(reqid="3383627"), "25416", "5998")
+    assert missing is not None
+    assert complete is not None
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, text=_detail_body(), request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        await _hydrate_missing_locations([missing, complete], client)
+
+    assert len(requests) == 1
+    assert missing.locations == ["Evansville, IN"]
+    assert complete.locations == ["Evansville, IN - Indiana"]
 
 
 @pytest.mark.parametrize(
