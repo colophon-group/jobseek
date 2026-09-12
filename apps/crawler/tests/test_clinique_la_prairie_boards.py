@@ -97,7 +97,7 @@ def test_provider_ownership_preserves_fourteen_unique_live_vacancies() -> None:
     }
 
 
-def test_numeric_linkedin_identity_is_opted_in_only_for_the_new_board() -> None:
+def test_numeric_linkedin_identity_is_opted_in_only_for_new_boards() -> None:
     with (_CRAWLER / "data" / "boards.csv").open(newline="") as handle:
         linkedin_rows = [row for row in csv.DictReader(handle) if row["monitor_type"] == "linkedin"]
 
@@ -107,7 +107,12 @@ def test_numeric_linkedin_identity_is_opted_in_only_for_the_new_board() -> None:
         if json.loads(row["monitor_config"] or "{}").get("canonical_numeric_job_urls") is True
     }
 
-    assert enabled == {"clinique-la-prairie-global-linkedin"}
+    assert enabled == {
+        "clinique-la-prairie-global-linkedin",
+        "dxc-technology-careers-fds",
+        "dxc-technology-careers-ma-linkedin",
+        "dxc-technology-careers-vn-linkedin",
+    }
 
 
 def test_new_provider_scrapers_are_narrowly_trusted_by_label_workflow() -> None:
