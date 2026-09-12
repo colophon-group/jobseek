@@ -340,6 +340,28 @@ class TestHelp:
             assert "persistent_context" in result.output
             assert 'channel: "chrome"' in result.output
             assert "warmup_url" in result.output
+            assert "skip_ssl" in result.output
+
+    def test_task_troubleshoot_renders_numeric_yaml_tags(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            "src.workspace.commands.task.search_kb",
+            lambda query: [
+                {
+                    "path": "http-405.md",
+                    "type": "troubleshooting",
+                    "symptom": "API returns 405",
+                    "tags": ["api", 405],
+                    "step": "configure",
+                    "body": "Use the documented POST method.",
+                }
+            ],
+        )
+
+        result = CliRunner().invoke(ws, ["task", "troubleshoot", "zero jobs"])
+
+        assert result.exit_code == 0
+        assert "Tags: api, 405" in result.output
 
     def test_help_actions_documents_paginated_page_collection(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)

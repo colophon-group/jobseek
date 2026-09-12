@@ -936,11 +936,11 @@ def task_troubleshoot(query: str | None, view: str | None):
         if r["type"] == "case-study":
             summary = r.get("summary") or r["path"]
             print(f"  [case-study] {summary}")
-            print(f"  Tags: {', '.join(r['tags'])}")
+            print(f"  Tags: {', '.join(str(tag) for tag in r['tags'])}")
             print(f"  To view full study: ws task troubleshoot --view {r['path']}")
         else:
             print(f"  --- {r['symptom']} ---")
-            print(f"  Step: {r['step']}  Tags: {', '.join(r['tags'])}")
+            print(f"  Step: {r['step']}  Tags: {', '.join(str(tag) for tag in r['tags'])}")
             # Print first ~10 lines of body
             lines = r["body"].strip().split("\n")
             for line in lines[:12]:

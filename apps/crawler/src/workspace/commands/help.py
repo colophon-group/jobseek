@@ -1741,6 +1741,9 @@ dom — Link or Listing-Row Extraction (fallback)
     headless       Run headless (default: true)
     proxy          Route traffic through the configured proxy provider. Use for
                    origins that block the crawler's datacenter IP.
+    skip_ssl       Disable TLS certificate verification for a confirmed public
+                   board with a broken certificate chain. Applies to static HTTP
+                   and rendered browser requests; do not use for ordinary sites.
     encoding       Optional Python codec name for legacy static HTML whose
                    declared charset is unsupported or incorrect (for example,
                    "euc_jp"). Ignored when render=true.
@@ -3628,6 +3631,9 @@ dom — Step-based Extraction Engine
     headless       Run headless (default: true)
     proxy          Route traffic through the configured proxy provider. Use for
                    origins that block the crawler's datacenter IP.
+    skip_ssl       Disable TLS certificate verification for a confirmed public
+                   detail host with a broken certificate chain. Applies to static
+                   HTTP and rendered browser requests; do not use ordinarily.
     fetch_url_transform
                    Optional {find, replace} regex rewrite for the URL used to
                    read the detail page. The canonical posting URL remains
