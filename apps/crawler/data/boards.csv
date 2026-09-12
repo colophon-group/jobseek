@@ -630,6 +630,8 @@ athletics-business-operations,athletics-business-operations-greenhouse,https://j
 ati-physical-therapy,ati-physical-therapy-careers,https://careers-atipt.icims.com/,icims,,json-ld,
 atkinsrealis,atkinsrealis-careers,https://slihrms.wd3.myworkdayjobs.com/careers,workday,,workday,
 atlan,atlan-ashby,https://jobs.ashbyhq.com/atlan,ashby,"{""token"": ""atlan""}",skip,
+atlantic-health,atlantic-health-careers,https://erqh.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+atlantic-health,atlantic-health-centrastate,https://careers-centrastate.icims.com/jobs/search?ss=1,icims,"{""host"": ""careers-centrastate.icims.com""}",json-ld,
 atlas,atlas-ashby,https://jobs.ashbyhq.com/atlas,ashby,"{""token"": ""atlas""}",skip,
 atlas-agro,atlas-agro-careers,https://www.atlasagro.ag/career/,inline,"{""render"": false, ""steps"": [{""tag"": ""div"", ""attr"": ""class=nectar-list-item"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=nectar-list-item"", ""field"": ""location""}, {""tag"": ""div"", ""attr"": ""class=nectar-list-item"", ""field"": ""description"", ""html"": true}]}",skip,
 atlas-copco-group,atlas-copco-group-careers,https://career5.successfactors.eu/career?company=atlascopcoP,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://www.careers.homeofindustrialideas.com/googlefeed.xml""}",skip,
