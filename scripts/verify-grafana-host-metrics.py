@@ -4,19 +4,23 @@
 from __future__ import annotations
 
 import argparse
+import json
+import math
 import os
 import re
 import time
-from typing import Any
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, NamedTuple
 
 import httpx
 
 EXPECTED_ROLES = frozenset({"crawler", "postgresql", "typesense"})
-REQUIRED_BACKUPS = frozenset(
-    {("postgresql", "postgresql"), ("typesense", "typesense")}
-)
+REQUIRED_BACKUPS = frozenset({("postgresql", "postgresql"), ("typesense", "typesense")})
 OPTIONAL_BACKUPS = frozenset({("typesense", "web-postgresql")})
 _SAFE_LABEL_VALUE = re.compile(r"[A-Za-z0-9_.:-]{1,80}")
+_SAFE_LABEL_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
+_MAX_EVIDENCE_LABELS = 20
 SERIES_BUDGETS = {
     "active_series": 12_000,
     "crawler_series": 2_000,
@@ -44,13 +48,11 @@ QUERIES = {
     "postgresql_query_latency": ("count(jobseek_postgresql_stats_query_duration_seconds)"),
     "typesense_ready": "count(jobseek_typesense_healthy == 1)",
     "codex_review_series": ('count({__name__=~"jobseek_codex_daily_error_review_.*"})'),
-    "alloy_series": "count(jobseek_alloy_ready)",
-    "alloy_unready": "count(jobseek_alloy_ready == 0)",
-    "alloy_rejections": "sum(jobseek_alloy_remote_write_rejections_recent)",
-    "alloy_stale": (
-        "count(time() - jobseek_alloy_remote_write_highest_sent_timestamp_seconds > 180)"
-    ),
-    "alloy_backlog": "count(jobseek_alloy_remote_write_samples_pending > 3000)",
+    "alloy_series": "count by (host_role, collector) (jobseek_alloy_ready)",
+    "alloy_unready": "jobseek_alloy_ready == 0",
+    "alloy_rejections": "jobseek_alloy_remote_write_rejections_recent > 0",
+    "alloy_stale": ("time() - jobseek_alloy_remote_write_highest_sent_timestamp_seconds > 180"),
+    "alloy_backlog": "jobseek_alloy_remote_write_samples_pending > 3000",
     "active_series": 'count({job=~".+"})',
     "crawler_series": 'count({job="crawler"})',
     "redis_series": 'count({job="integrations/redis"})',
@@ -58,8 +60,121 @@ QUERIES = {
 }
 
 
+class FailedInvariant(NamedTuple):
+    """One redacted, attributable Grafana verification failure."""
+
+    query_name: str
+    invariant: str
+    observed_value: float | None
+    sample_timestamp: float | None
+    age_seconds: float | None
+    host_role: str
+    labels: dict[str, str]
+
+
 class VerificationError(RuntimeError):
     """Required host textfile metrics are missing, stale, or unhealthy."""
+
+    def __init__(self, failures: str | list[FailedInvariant]) -> None:
+        if isinstance(failures, str):
+            failures = [
+                FailedInvariant(
+                    query_name="verifier",
+                    invariant=failures,
+                    observed_value=None,
+                    sample_timestamp=None,
+                    age_seconds=None,
+                    host_role="unknown",
+                    labels={},
+                )
+            ]
+        self.failures = tuple(failures)
+        self.evidence: dict[str, Any] | None = None
+        super().__init__("; ".join(_format_failure(failure) for failure in failures))
+
+
+class Observation(NamedTuple):
+    value: float
+    sample_timestamp: float
+    labels: dict[str, str]
+
+
+def _error(name: str, invariant: str) -> VerificationError:
+    return VerificationError(
+        [
+            FailedInvariant(
+                query_name=name,
+                invariant=invariant,
+                observed_value=None,
+                sample_timestamp=None,
+                age_seconds=None,
+                host_role="unknown",
+                labels={},
+            )
+        ]
+    )
+
+
+def _format_failure(failure: FailedInvariant) -> str:
+    value = "missing" if failure.observed_value is None else f"{failure.observed_value:g}"
+    timestamp = "missing" if failure.sample_timestamp is None else f"{failure.sample_timestamp:.3f}"
+    age = "unknown" if failure.age_seconds is None else f"{failure.age_seconds:.1f}s"
+    return (
+        f"{failure.invariant} [query={failure.query_name} role={failure.host_role} "
+        f"observed={value} timestamp={timestamp} age={age}]"
+    )
+
+
+def _observation(row: dict[str, Any], name: str) -> Observation:
+    try:
+        raw_labels = row["metric"]
+        labels = {str(key): str(value) for key, value in raw_labels.items()}
+        timestamp = float(row["value"][0])
+        value = float(row["value"][1])
+    except (AttributeError, KeyError, IndexError, TypeError, ValueError) as exc:
+        raise _error(name, f"{name} returned an invalid observation") from exc
+    if (
+        len(labels) > _MAX_EVIDENCE_LABELS
+        or any(_SAFE_LABEL_NAME.fullmatch(key) is None for key in labels)
+        or any(_SAFE_LABEL_VALUE.fullmatch(label_value) is None for label_value in labels.values())
+        or not math.isfinite(timestamp)
+        or not math.isfinite(value)
+    ):
+        raise _error(name, f"{name} returned an invalid observation")
+    return Observation(value=value, sample_timestamp=timestamp, labels=labels)
+
+
+def _failure(
+    name: str,
+    invariant: str,
+    *,
+    now: float,
+    observation: Observation | None = None,
+    host_role: str | None = None,
+    labels: dict[str, str] | None = None,
+    observed_value: float | None = None,
+    observed_timestamp: float | None = None,
+) -> FailedInvariant:
+    timestamp = observation.sample_timestamp if observation is not None else None
+    value = observation.value if observation is not None else None
+    merged_labels = dict(labels or {})
+    if observation is not None:
+        merged_labels = observation.labels
+    if observed_timestamp is not None:
+        timestamp = observed_timestamp
+    if observed_value is not None:
+        value = observed_value
+    role = host_role or merged_labels.get("host_role") or "unknown"
+    age = None if timestamp is None else now - timestamp
+    return FailedInvariant(
+        query_name=name,
+        invariant=invariant,
+        observed_value=value,
+        sample_timestamp=timestamp,
+        age_seconds=age,
+        host_role=role,
+        labels=merged_labels,
+    )
 
 
 def _query_base(remote_write_url: str) -> str:
@@ -69,27 +184,28 @@ def _query_base(remote_write_url: str) -> str:
     return base[: -len("/push")]
 
 
-def _scalar(results: dict[str, list[dict[str, Any]]], name: str) -> float:
+def _scalar_observation(results: dict[str, list[dict[str, Any]]], name: str) -> Observation | None:
     rows = results[name]
     if not rows:
-        return 0.0
+        return None
     if len(rows) != 1:
-        raise VerificationError(f"{name} returned multiple scalar rows")
-    try:
-        return float(rows[0]["value"][1])
-    except (KeyError, IndexError, TypeError, ValueError) as exc:
-        raise VerificationError(f"{name} returned an invalid scalar") from exc
+        raise _error(name, f"{name} returned multiple scalar rows")
+    return _observation(rows[0], name)
 
 
-def _role_values(results: dict[str, list[dict[str, Any]]], name: str) -> dict[str, float]:
-    values: dict[str, float] = {}
+def _role_observations(
+    results: dict[str, list[dict[str, Any]]], name: str
+) -> dict[str, Observation]:
+    values: dict[str, Observation] = {}
     for row in results[name]:
+        observation = _observation(row, name)
         try:
-            role = str(row["metric"]["host_role"])
-            value = float(row["value"][1])
-        except (KeyError, IndexError, TypeError, ValueError) as exc:
-            raise VerificationError(f"{name} returned an invalid role row") from exc
-        values[role] = value
+            role = observation.labels["host_role"]
+        except KeyError as exc:
+            raise _error(name, f"{name} returned an invalid role row") from exc
+        if role in values:
+            raise _error(name, f"{name} returned duplicate role rows for {role}")
+        values[role] = observation
     return values
 
 
@@ -99,12 +215,12 @@ def _series_keys(
     keys: set[tuple[str, ...]] = set()
     for row in results[name]:
         try:
-            metric = row["metric"]
+            metric = _observation(row, name).labels
             key = tuple(str(metric[label]) for label in labels)
         except (KeyError, TypeError) as exc:
-            raise VerificationError(f"{name} returned invalid series labels") from exc
+            raise _error(name, f"{name} returned invalid series labels") from exc
         if any(_SAFE_LABEL_VALUE.fullmatch(value) is None for value in key):
-            raise VerificationError(f"{name} returned invalid series labels")
+            raise _error(name, f"{name} returned invalid series labels")
         keys.add(key)
     return keys
 
@@ -118,88 +234,287 @@ def _format_series(keys: set[tuple[str, ...]]) -> str:
 
 
 def validate_results(
-    results: dict[str, list[dict[str, Any]]], *, now: float, max_age_seconds: int
+    results: dict[str, list[dict[str, Any]]],
+    *,
+    now: float,
+    max_age_seconds: int,
+    minimum_collected_at: float | None = None,
 ) -> None:
-    fresh = _role_values(results, "fresh_sampler")
-    if set(fresh) != EXPECTED_ROLES:
-        raise VerificationError("sampler timestamp does not cover all expected host roles")
-    if any(
-        value <= 0 or now - value > max_age_seconds or value > now + 60 for value in fresh.values()
-    ):
-        raise VerificationError("sampler timestamp is stale or invalid")
+    missing_results = set(QUERIES) - set(results)
+    if missing_results:
+        name = sorted(missing_results)[0]
+        raise _error(name, f"{name} query result is missing")
+    failures: list[FailedInvariant] = []
+    fresh = _role_observations(results, "fresh_sampler")
+    for role in sorted(EXPECTED_ROLES - set(fresh)):
+        failures.append(
+            _failure(
+                "fresh_sampler",
+                "sampler timestamp does not cover all expected host roles",
+                now=now,
+                host_role=role,
+            )
+        )
+    for role in sorted(set(fresh) - EXPECTED_ROLES):
+        failures.append(
+            _failure(
+                "fresh_sampler",
+                "sampler timestamp contains an unexpected host role",
+                now=now,
+                observation=fresh[role],
+            )
+        )
+    for role in sorted(EXPECTED_ROLES & set(fresh)):
+        observation = fresh[role]
+        collected_at = observation.value
+        if minimum_collected_at is not None and collected_at < minimum_collected_at:
+            failures.append(
+                _failure(
+                    "fresh_sampler",
+                    "sampler timestamp predates the completed deployment",
+                    now=now,
+                    observation=observation,
+                    observed_value=collected_at,
+                    observed_timestamp=collected_at,
+                )
+            )
+        elif collected_at <= 0 or now - collected_at > max_age_seconds or collected_at > now + 60:
+            failures.append(
+                _failure(
+                    "fresh_sampler",
+                    "sampler timestamp is stale or invalid",
+                    now=now,
+                    observation=observation,
+                    observed_value=collected_at,
+                    observed_timestamp=collected_at,
+                )
+            )
 
     for name in ("probe_series", "container_series"):
-        values = _role_values(results, name)
-        if set(values) != EXPECTED_ROLES or any(value < 1 for value in values.values()):
-            raise VerificationError(f"{name} does not cover all expected host roles")
+        values = _role_observations(results, name)
+        for role in sorted(EXPECTED_ROLES - set(values)):
+            failures.append(
+                _failure(
+                    name,
+                    f"{name} does not cover all expected host roles",
+                    now=now,
+                    host_role=role,
+                )
+            )
+        for role, observation in sorted(values.items()):
+            if role not in EXPECTED_ROLES or observation.value < 1:
+                failures.append(
+                    _failure(
+                        name,
+                        f"{name} does not cover all expected host roles",
+                        now=now,
+                        observation=observation,
+                    )
+                )
     unhealthy_series = (
         ("failed_probes", ("host_role", "probe")),
         ("stopped_containers", ("host_role", "container")),
         ("failed_backups", ("host_role", "service")),
     )
     for name, labels in unhealthy_series:
-        keys = _series_keys(results, name, labels)
-        if keys:
-            raise VerificationError(f"{name} is nonzero: {_format_series(keys)}")
+        for row in results[name]:
+            observation = _observation(row, name)
+            try:
+                key = tuple(observation.labels[label] for label in labels)
+            except KeyError as exc:
+                raise _error(name, f"{name} returned invalid series labels") from exc
+            failures.append(
+                _failure(
+                    name,
+                    f"{name} is nonzero: {'/'.join(key)}",
+                    now=now,
+                    observation=observation,
+                )
+            )
 
     backups = _series_keys(results, "backup_series", ("host_role", "service"))
     missing_backups = REQUIRED_BACKUPS - backups
     unexpected_backups = backups - REQUIRED_BACKUPS - OPTIONAL_BACKUPS
     if missing_backups or unexpected_backups:
-        details: list[str] = []
-        if missing_backups:
-            details.append(f"missing={_format_series(missing_backups)}")
-        if unexpected_backups:
-            details.append(f"unexpected={_format_series(unexpected_backups)}")
-        raise VerificationError("application-data backup coverage invalid: " + "; ".join(details))
+        for role, service in sorted(missing_backups):
+            failures.append(
+                _failure(
+                    "backup_series",
+                    f"application-data backup coverage invalid: missing={role}/{service}",
+                    now=now,
+                    host_role=role,
+                    labels={"host_role": role, "service": service},
+                )
+            )
+        for role, service in sorted(unexpected_backups):
+            failures.append(
+                _failure(
+                    "backup_series",
+                    f"application-data backup coverage invalid: unexpected={role}/{service}",
+                    now=now,
+                    host_role=role,
+                    labels={"host_role": role, "service": service},
+                )
+            )
     expected_helper_series = (
         {("typesense", "web-postgresql")} if ("typesense", "web-postgresql") in backups else set()
     )
     for name in ("backup_helper_image_series", "backup_helper_image_gc_series"):
         helper_series = _series_keys(results, name, ("host_role", "service"))
         if helper_series != expected_helper_series:
-            raise VerificationError(f"{name} coverage does not match the activated web backup")
-    if _scalar(results, "postgresql_ready") != 1:
-        raise VerificationError("PostgreSQL readiness metric is missing or unhealthy")
-    if _scalar(results, "postgresql_shared_memory") != 1:
-        raise VerificationError("PostgreSQL shared-memory metric is missing")
-    if _scalar(results, "postgresql_emergency_reserve") != 1:
-        raise VerificationError("PostgreSQL emergency-reserve metric is missing")
-    if _scalar(results, "postgresql_checkpoint_metrics") != 1:
-        raise VerificationError("PostgreSQL checkpoint-duration metric is missing")
-    if _scalar(results, "postgresql_query_latency") != 1:
-        raise VerificationError("PostgreSQL statistics-query latency metric is missing")
-    if _scalar(results, "typesense_ready") != 1:
-        raise VerificationError("Typesense readiness metric is missing or unhealthy")
-    if _scalar(results, "codex_review_series") != 4:
-        raise VerificationError("Codex daily-review deadman metrics are incomplete")
-    if _scalar(results, "alloy_series") != 4:
-        raise VerificationError(
-            "Alloy self-monitoring does not cover three host and one compose collectors"
+            failures.append(
+                _failure(
+                    name,
+                    f"{name} coverage does not match the activated web backup",
+                    now=now,
+                    host_role="typesense",
+                )
+            )
+
+    scalar_invariants = (
+        (
+            "postgresql_ready",
+            1,
+            "PostgreSQL readiness metric is missing or unhealthy",
+            "postgresql",
+        ),
+        ("postgresql_shared_memory", 1, "PostgreSQL shared-memory metric is missing", "postgresql"),
+        (
+            "postgresql_emergency_reserve",
+            1,
+            "PostgreSQL emergency-reserve metric is missing",
+            "postgresql",
+        ),
+        (
+            "postgresql_checkpoint_metrics",
+            1,
+            "PostgreSQL checkpoint-duration metric is missing",
+            "postgresql",
+        ),
+        (
+            "postgresql_query_latency",
+            1,
+            "PostgreSQL statistics-query latency metric is missing",
+            "postgresql",
+        ),
+        ("typesense_ready", 1, "Typesense readiness metric is missing or unhealthy", "typesense"),
+        ("codex_review_series", 4, "Codex daily-review deadman metrics are incomplete", "crawler"),
+    )
+    for name, expected, invariant, role in scalar_invariants:
+        observation = _scalar_observation(results, name)
+        if observation is None or observation.value != expected:
+            failures.append(
+                _failure(
+                    name,
+                    invariant,
+                    now=now,
+                    observation=observation,
+                    host_role=role,
+                )
+            )
+
+    expected_alloy = {
+        ("crawler", "host"),
+        ("crawler", "compose"),
+        ("postgresql", "host"),
+        ("typesense", "host"),
+    }
+    observed_alloy: dict[tuple[str, str], Observation] = {}
+    for row in results["alloy_series"]:
+        observation = _observation(row, "alloy_series")
+        try:
+            key = (observation.labels["host_role"], observation.labels["collector"])
+        except KeyError as exc:
+            raise _error("alloy_series", "alloy_series returned invalid series labels") from exc
+        if key in observed_alloy:
+            raise _error(
+                "alloy_series",
+                f"alloy_series returned duplicate series labels for {'/'.join(key)}",
+            )
+        observed_alloy[key] = observation
+    for role, collector in sorted(expected_alloy - set(observed_alloy)):
+        failures.append(
+            _failure(
+                "alloy_series",
+                "Alloy self-monitoring does not cover three host and one compose collectors",
+                now=now,
+                host_role=role,
+                labels={"host_role": role, "collector": collector},
+            )
         )
+    for key, observation in sorted(observed_alloy.items()):
+        if key not in expected_alloy or observation.value != 1:
+            failures.append(
+                _failure(
+                    "alloy_series",
+                    "Alloy self-monitoring does not cover three host and one compose collectors",
+                    now=now,
+                    observation=observation,
+                )
+            )
+
     for name in ("alloy_unready", "alloy_rejections", "alloy_stale", "alloy_backlog"):
-        if _scalar(results, name) != 0:
-            raise VerificationError(f"{name} is nonzero")
+        for row in results[name]:
+            observation = _observation(row, name)
+            failures.append(
+                _failure(
+                    name,
+                    f"{name} is nonzero",
+                    now=now,
+                    observation=observation,
+                )
+            )
     for name, budget in SERIES_BUDGETS.items():
-        value = _scalar(results, name)
-        if value <= 0 or value > budget:
-            raise VerificationError(f"{name} exceeds its {budget}-series budget or is missing")
+        observation = _scalar_observation(results, name)
+        if observation is None or observation.value <= 0 or observation.value > budget:
+            failures.append(
+                _failure(
+                    name,
+                    f"{name} exceeds its {budget}-series budget or is missing",
+                    now=now,
+                    observation=observation,
+                    host_role={
+                        "crawler_series": "crawler",
+                        "redis_series": "crawler",
+                        "unix_series": "fleet",
+                        "active_series": "tenant",
+                    }[name],
+                )
+            )
+
+    if failures:
+        raise VerificationError(failures)
 
 
-def _query_all(base_url: str, username: str, password: str) -> dict[str, list[dict[str, Any]]]:
+def _query_all(
+    base_url: str, username: str, password: str, timeout_seconds: float
+) -> dict[str, list[dict[str, Any]]]:
     results: dict[str, list[dict[str, Any]]] = {}
+    deadline = time.monotonic() + timeout_seconds
     with httpx.Client(auth=(username, password), timeout=30, follow_redirects=False) as client:
         for name, query in QUERIES.items():
-            response = client.get(f"{base_url}/api/v1/query", params={"query": query})
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise _error(name, "Grafana query batch exceeded its convergence budget")
+            try:
+                response = client.get(
+                    f"{base_url}/api/v1/query",
+                    params={"query": query},
+                    timeout=max(0.001, min(30.0, remaining)),
+                )
+            except httpx.HTTPError as exc:
+                raise _error(
+                    name, f"{name} Grafana query transport failed: {type(exc).__name__}"
+                ) from exc
             if response.status_code != 200:
-                raise VerificationError(f"{name} returned HTTP {response.status_code}")
+                raise _error(name, f"{name} returned HTTP {response.status_code}")
             try:
                 payload = response.json()
                 rows = payload["data"]["result"]
             except (KeyError, TypeError, ValueError) as exc:
-                raise VerificationError(f"{name} returned an invalid response") from exc
+                raise _error(name, f"{name} returned an invalid response") from exc
             if payload.get("status") != "success" or not isinstance(rows, list):
-                raise VerificationError(f"{name} did not report success")
+                raise _error(name, f"{name} did not report success")
             results[name] = rows
     return results
 
@@ -209,27 +524,86 @@ def verify(
     username: str,
     password: str,
     *,
-    wait_seconds: int,
+    deployment_completed_at: float,
+    convergence_seconds: int,
     max_age_seconds: int,
-) -> None:
+    query_all: Callable[[str, str, str, float], dict[str, list[dict[str, Any]]]] = _query_all,
+    wall_time: Callable[[], float] = time.time,
+    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
     base_url = _query_base(remote_write_url)
-    deadline = time.monotonic() + wait_seconds
+    started_at = wall_time()
+    if (
+        not math.isfinite(deployment_completed_at)
+        or deployment_completed_at <= 0
+        or deployment_completed_at > started_at + 60
+    ):
+        raise VerificationError("deployment completion timestamp is invalid")
+    if convergence_seconds <= 0:
+        raise VerificationError("convergence window must be positive")
+    if max_age_seconds <= 0:
+        raise VerificationError("maximum sample age must be positive")
+    deadline_at = deployment_completed_at + convergence_seconds
+    deadline = monotonic() + max(0.0, deadline_at - started_at)
     last_error: VerificationError | None = None
+    attempts = 0
     while True:
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            terminal = last_error or _error(
+                "verifier", "convergence window elapsed before a complete Grafana query batch"
+            )
+            terminal.evidence = {
+                "status": "failed",
+                "deployment_completed_at": deployment_completed_at,
+                "convergence_deadline_at": deadline_at,
+                "checked_at": wall_time(),
+                "attempts": attempts,
+                "failures": [failure._asdict() for failure in terminal.failures],
+            }
+            raise terminal
+        attempts += 1
         try:
-            results = _query_all(base_url, username, password)
-            validate_results(results, now=time.time(), max_age_seconds=max_age_seconds)
-            return
+            results = query_all(base_url, username, password, remaining)
+            if monotonic() > deadline:
+                raise _error(
+                    "verifier", "Grafana query batch completed after the convergence deadline"
+                )
+            checked_at = wall_time()
+            validate_results(
+                results,
+                now=checked_at,
+                max_age_seconds=max_age_seconds,
+                minimum_collected_at=deployment_completed_at,
+            )
+            return {
+                "status": "passed",
+                "deployment_completed_at": deployment_completed_at,
+                "convergence_deadline_at": deadline_at,
+                "checked_at": checked_at,
+                "attempts": attempts,
+                "failures": [],
+            }
         except (httpx.HTTPError, VerificationError) as exc:
             last_error = (
                 exc
                 if isinstance(exc, VerificationError)
                 else VerificationError(f"Grafana query transport failed: {type(exc).__name__}")
             )
-        remaining = deadline - time.monotonic()
+        remaining = deadline - monotonic()
         if remaining <= 0:
-            raise last_error or VerificationError("host metrics verification timed out")
-        time.sleep(min(10, remaining))
+            terminal = last_error or VerificationError("host metrics verification timed out")
+            terminal.evidence = {
+                "status": "failed",
+                "deployment_completed_at": deployment_completed_at,
+                "convergence_deadline_at": deadline_at,
+                "checked_at": wall_time(),
+                "attempts": attempts,
+                "failures": [failure._asdict() for failure in terminal.failures],
+            }
+            raise terminal
+        sleep(min(10, remaining))
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -237,22 +611,46 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--url", default=os.environ.get("GRAFANA_PROM_URL"))
     parser.add_argument("--username", default=os.environ.get("GRAFANA_PROM_USERNAME"))
     parser.add_argument("--password", default=os.environ.get("GRAFANA_PROM_PASSWORD"))
-    parser.add_argument("--wait-seconds", type=int, default=240)
+    parser.add_argument("--deployment-completed-at", type=float)
+    parser.add_argument("--convergence-seconds", type=int, default=300)
     parser.add_argument("--max-age-seconds", type=int, default=300)
+    parser.add_argument("--evidence-file", type=Path)
     return parser
+
+
+def _write_evidence(path: Path | None, evidence: dict[str, Any]) -> None:
+    rendered = json.dumps(evidence, indent=2, sort_keys=True) + "\n"
+    if path is not None:
+        path.write_text(rendered, encoding="utf-8")
+        path.chmod(0o600)
+    print(rendered, end="")
 
 
 def main() -> int:
     args = _build_parser().parse_args()
     if not args.url or not args.username or not args.password:
         raise SystemExit("Grafana URL, username, and password are required")
-    verify(
-        args.url,
-        args.username,
-        args.password,
-        wait_seconds=args.wait_seconds,
-        max_age_seconds=args.max_age_seconds,
-    )
+    deployment_completed_at = args.deployment_completed_at or time.time()
+    try:
+        evidence = verify(
+            args.url,
+            args.username,
+            args.password,
+            deployment_completed_at=deployment_completed_at,
+            convergence_seconds=args.convergence_seconds,
+            max_age_seconds=args.max_age_seconds,
+        )
+    except VerificationError as exc:
+        evidence = exc.evidence or {
+            "status": "failed",
+            "deployment_completed_at": deployment_completed_at,
+            "checked_at": time.time(),
+            "attempts": 0,
+            "failures": [failure._asdict() for failure in exc.failures],
+        }
+        _write_evidence(args.evidence_file, evidence)
+        return 1
+    _write_evidence(args.evidence_file, evidence)
     print("verified host health, Alloy delivery, and bounded Grafana series budgets")
     return 0
 

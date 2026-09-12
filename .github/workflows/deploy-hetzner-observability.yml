@@ -145,10 +145,15 @@ jobs:
   verify-ingestion:
     needs: deploy-hosts
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment: production
     permissions:
       contents: read
     steps:
+      - name: Record the completed deployment boundary
+        id: deployment-boundary
+        run: echo "completed_at=$(date +%s)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -159,7 +164,34 @@ jobs:
           GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
           GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
           GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}
-        run: uv run --frozen python ../../scripts/verify-grafana-host-metrics.py
+        run: >-
+          uv run --frozen python ../../scripts/verify-grafana-host-metrics.py
+          --deployment-completed-at ${{ steps.deployment-boundary.outputs.completed_at }}
+          --convergence-seconds 300
+          --evidence-file "$RUNNER_TEMP/grafana-host-ingestion.json"
+
+      - name: Publish telemetry convergence evidence
+        if: always()
+        run: |
+          {
+            echo "### Post-deploy telemetry health"
+            if [[ -f "$RUNNER_TEMP/grafana-host-ingestion.json" ]]; then
+              echo '```json'
+              sed -n '1,320p' "$RUNNER_TEMP/grafana-host-ingestion.json"
+              echo '```'
+            else
+              echo "Verifier did not produce an evidence packet."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve telemetry convergence evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hetzner-observability-ingestion-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/grafana-host-ingestion.json
+          if-no-files-found: warn
+          retention-days: 14
 
   sync-rules:
     needs: [disable-paging, verify-ingestion]
@@ -179,3 +211,29 @@ jobs:
           GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
           GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}
         run: uv run --frozen python ../../scripts/sync-grafana-rules.py
+
+  report:
+    needs: [deploy-hosts, verify-ingestion]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Classify deployment and telemetry outcomes
+        env:
+          INSTALL_RESULT: ${{ needs.deploy-hosts.result }}
+          TELEMETRY_RESULT: ${{ needs.verify-ingestion.result }}
+        run: |
+          set -euo pipefail
+          if [[ "$INSTALL_RESULT" != success ]]; then
+            classification=deploy_install_failed
+          elif [[ "$TELEMETRY_RESULT" != success ]]; then
+            classification=post_deploy_telemetry_health_failed
+          else
+            classification=deployment_and_telemetry_healthy
+          fi
+          {
+            echo "### Hetzner observability rollout"
+            echo "- Classification: \`$classification\`"
+            echo "- Host deploy/install: \`$INSTALL_RESULT\`"
+            echo "- Post-deploy telemetry health: \`$TELEMETRY_RESULT\`"
+          } >> "$GITHUB_STEP_SUMMARY"
