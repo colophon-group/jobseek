@@ -1214,6 +1214,10 @@ bystronic,bystronic-global,https://www.bystronic.com/int/en/career/job-offers,do
 bytedance,bytedance-careers,https://joinbytedance.com/search,bytedance,{},skip,
 bytedance,bytedance-careers-cn,https://jobs.bytedance.com/experienced/position,bytedance,{},skip,
 bytedance,bytedance-careers-cn-campus,https://jobs.bytedance.com/campus/position,bytedance,{},skip,
+c-and-a,c-and-a-brazil-gupy,https://cea.gupy.io/,gupy,"{""tenant"": ""cea""}",nextdata,"{""path"": ""props.pageProps.job"", ""fields"": {""title"": ""name"", ""description"": ""description"", ""locations"": ""addressLine"", ""employment_type"": {""path"": ""jobType"", ""map"": {""vacancy_type_effective"": ""full_time"", ""vacancy_type_temporary"": ""temporary"", ""vacancy_type_outsource"": ""contract"", ""vacancy_legal_entity"": ""contract"", ""vacancy_type_freelancer"": ""contract"", ""vacancy_type_autonomous"": ""contract"", ""vacancy_type_volunteer"": ""volunteer""}}, ""job_location_type"": {""path"": ""workplaceType"", ""map"": {""on-site"": ""onsite"", ""hybrid"": ""hybrid"", ""remote"": ""remote""}}, ""date_posted"": ""publishedAt""}}"
+c-and-a,c-and-a-brazil-pandape,https://ceabrasil.pandape.infojobs.com.br/,computrabajo,,json-ld,
+c-and-a,c-and-a-careers,https://jobs.canda.com/,rss,"{""preset"": ""successfactors""}",skip,
+c-and-a,c-and-a-mexico-pandape,https://cyamoda.pandape.computrabajo.com/Vacancy/Vacancies,computrabajo,"{""proxy"": true}",json-ld,"{""proxy"": true}"
 c12,c12-careers,https://jobs.lever.co/c12qe,lever,"{""token"": ""c12qe""}",skip,
 c3-ai,c3-ai-greenhouse,https://job-boards.greenhouse.io/c3iot,greenhouse,"{""token"": ""c3iot""}",skip,
 c6-bank,c6-bank-greenhouse,https://job-boards.greenhouse.io/c6bank,greenhouse,"{""token"": ""c6bank""}",skip,

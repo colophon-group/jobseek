@@ -941,7 +941,7 @@ _MONITOR_CONFIG_HINTS = {
     ),
     "computrabajo": (
         "No config required; uses an exact unfiltered country employer-profile or PandaPe "
-        "/Vacancies URL"
+        "employer listing URL"
     ),
     "papa_johns": "Requires proxy: true; uses exact fail-closed page_jobs pagination.",
     "jobstreet": (

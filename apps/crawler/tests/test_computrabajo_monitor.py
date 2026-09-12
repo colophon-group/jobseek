@@ -20,7 +20,9 @@ BOARD_URL = (
     "https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-cintas-de-honduras-B44E90FE4D8AE312"
 )
 PANDAPE_URL = "https://acme.pandape.infojobs.com.br/Vacancies"
+PANDAPE_ROOT_URL = "https://acme.pandape.infojobs.com.br/"
 PANDAPE_PROXY_URL = "https://acme.pandape.computrabajo.com/Vacancies"
+PANDAPE_NESTED_URL = "https://acme.pandape.computrabajo.com/Vacancy/Vacancies"
 
 
 def _job_url(index: int) -> str:
@@ -81,7 +83,16 @@ class TestIdentity:
             {"proxy": True},
         )
 
-    @pytest.mark.parametrize("url", [PANDAPE_URL, PANDAPE_URL.lower(), PANDAPE_PROXY_URL])
+    @pytest.mark.parametrize(
+        "url",
+        [
+            PANDAPE_URL,
+            PANDAPE_URL.lower(),
+            PANDAPE_ROOT_URL,
+            PANDAPE_PROXY_URL,
+            PANDAPE_NESTED_URL,
+        ],
+    )
     def test_accepts_exact_pandape_listing_urls(self, url: str) -> None:
         assert _pandape_from_url(url) is not None
         assert detect_ats_from_url(url) == "computrabajo"
@@ -90,7 +101,6 @@ class TestIdentity:
         "url",
         [
             PANDAPE_URL.replace("https://", "http://"),
-            PANDAPE_URL.replace("/Vacancies", "/"),
             PANDAPE_URL + "?pageNumber=2",
             PANDAPE_URL + "#jobs",
             PANDAPE_URL.replace(".infojobs.com.br", ".infojobs.com.br.evil.test"),
@@ -245,6 +255,20 @@ class TestMonitor:
         assert result == {
             f"https://acme.pandape.infojobs.com.br/Detail/{index}" for index in range(1, 22)
         }
+
+    @pytest.mark.parametrize("board_url", [PANDAPE_ROOT_URL, PANDAPE_NESTED_URL])
+    async def test_paginates_pandape_route_variants(self, board_url: str) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            page = int(request.url.params.get("pageNumber", "1"))
+            indexes = range(1, 21) if page == 1 else [21]
+            body = _pandape_listing(21, indexes, page=page, board_url=board_url)
+            return httpx.Response(200, text=body, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": board_url}, client)
+
+        host = httpx.URL(board_url).host
+        assert result == {f"https://{host}/Detail/{index}" for index in range(1, 22)}
 
     async def test_pandape_probe_reports_jobs_and_proxy_requirement(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:

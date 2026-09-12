@@ -314,7 +314,11 @@ def detect_ats_from_url(url: str) -> str | None:
                     r"(?:infojobs\.com\.br|computrabajo\.com)",
                     host,
                 )
-                and re.fullmatch(r"/vacancies/?", parsed.path, re.IGNORECASE)
+                and re.fullmatch(
+                    r"/(?:vacancy/)?vacancies/?|/",
+                    parsed.path,
+                    re.IGNORECASE,
+                )
             )
         )
         and parsed.username is None
