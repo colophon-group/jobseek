@@ -939,7 +939,10 @@ _MONITOR_CONFIG_HINTS = {
     "jobbank104": (
         "Requires: token (auto-filled from a www.104.com.tw/company URL); use proxy when challenged"
     ),
-    "computrabajo": "No config required; uses an exact unfiltered country employer-profile URL",
+    "computrabajo": (
+        "No config required; uses an exact unfiltered country employer-profile or PandaPe "
+        "/Vacancies URL"
+    ),
     "papa_johns": "Requires proxy: true; uses exact fail-closed page_jobs pagination.",
     "jobstreet": (
         "Requires: company_id (auto-filled from a canonical my.jobstreet.com/companies URL); "

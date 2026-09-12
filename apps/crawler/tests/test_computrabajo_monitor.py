@@ -7,7 +7,9 @@ import pytest
 
 from src.core.monitors import all_monitor_types
 from src.core.monitors.computrabajo import (
+    _pandape_from_url,
     _parse_listing,
+    _parse_pandape_listing,
     _profile_from_url,
     can_handle,
     discover,
@@ -17,6 +19,8 @@ from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 BOARD_URL = (
     "https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-cintas-de-honduras-B44E90FE4D8AE312"
 )
+PANDAPE_URL = "https://acme.pandape.infojobs.com.br/Vacancies"
+PANDAPE_PROXY_URL = "https://acme.pandape.computrabajo.com/Vacancies"
 
 
 def _job_url(index: int) -> str:
@@ -41,11 +45,61 @@ def _listing(total: int, indexes: range | list[int], *, canonical: str = BOARD_U
     """
 
 
+def _pandape_listing(
+    total: int,
+    indexes: range | list[int],
+    *,
+    page: int = 1,
+    board_url: str = PANDAPE_URL,
+) -> str:
+    links = "".join(
+        f'<a class="card card-vacancy" href="/Detail/{index}">Role {index}</a>' for index in indexes
+    )
+    total_text = f"{total:,}".replace(",", ".")
+    is_last = str(page * 20 >= total)
+    return f"""
+        <html><body>
+          <section id="VacancySection">
+            <div class="color-title font-3xl"><span>{total_text}</span>
+              <span>Vagas de Emprego</span></div>
+            {links}
+          </section>
+          <input id="hdn_isLast" value="{is_last}" />
+          <input id="hdn_PageSize" value="20" />
+          <input id="hdn_PageNumber" value="{page}" />
+        </body></html>
+    """
+
+
 class TestIdentity:
     def test_registered_and_auto_configured(self) -> None:
         assert "computrabajo" in all_monitor_types()
         assert detect_ats_from_url(BOARD_URL) == "computrabajo"
         assert auto_scraper_type("computrabajo") == ("json-ld", None)
+        assert auto_scraper_type("computrabajo", {"proxy": True}) == (
+            "json-ld",
+            {"proxy": True},
+        )
+
+    @pytest.mark.parametrize("url", [PANDAPE_URL, PANDAPE_URL.lower(), PANDAPE_PROXY_URL])
+    def test_accepts_exact_pandape_listing_urls(self, url: str) -> None:
+        assert _pandape_from_url(url) is not None
+        assert detect_ats_from_url(url) == "computrabajo"
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            PANDAPE_URL.replace("https://", "http://"),
+            PANDAPE_URL.replace("/Vacancies", "/"),
+            PANDAPE_URL + "?pageNumber=2",
+            PANDAPE_URL + "#jobs",
+            PANDAPE_URL.replace(".infojobs.com.br", ".infojobs.com.br.evil.test"),
+            "https://pandape.infojobs.com.br/Vacancies",
+        ],
+    )
+    def test_rejects_untrusted_or_filtered_pandape_urls(self, url: str) -> None:
+        assert _pandape_from_url(url) is None
+        assert detect_ats_from_url(url) != "computrabajo"
 
     @pytest.mark.parametrize(
         "url",
@@ -118,6 +172,31 @@ class TestListingParser:
         with pytest.raises(ValueError):
             _parse_listing(body, board_url=BOARD_URL, requested_page=1)
 
+    def test_parses_pandape_localised_total_and_job_links(self) -> None:
+        urls, total = _parse_pandape_listing(
+            _pandape_listing(1_234, range(1, 21)),
+            board_url=PANDAPE_URL,
+            requested_page=1,
+        )
+
+        assert len(urls) == 20
+        assert "https://acme.pandape.infojobs.com.br/Detail/1" in urls
+        assert total == 1_234
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "<html><title>JavaScript is disabled</title></html>",
+            _pandape_listing(1, []),
+            _pandape_listing(0, [1]),
+            _pandape_listing(21, range(1, 21)).replace('value="1"', 'value="2"'),
+            _pandape_listing(21, range(1, 21)).replace('value="False"', 'value="True"'),
+        ],
+    )
+    def test_rejects_invalid_pandape_contracts(self, body: str) -> None:
+        with pytest.raises(ValueError):
+            _parse_pandape_listing(body, board_url=PANDAPE_URL, requested_page=1)
+
 
 class TestMonitor:
     async def test_paginates_complete_inventory(self) -> None:
@@ -147,4 +226,37 @@ class TestMonitor:
             "host": "hn.computrabajo.com",
             "company_id": "b44e90fe4d8ae312",
             "jobs": 0,
+        }
+
+    async def test_paginates_complete_pandape_inventory(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            page = int(request.url.params.get("pageNumber", "1"))
+            if page == 1:
+                body = _pandape_listing(21, range(1, 21), page=1)
+            elif page == 2:
+                body = _pandape_listing(21, [21], page=2)
+            else:  # pragma: no cover - proves the page bound
+                raise AssertionError(f"unexpected page {page}")
+            return httpx.Response(200, text=body, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": PANDAPE_URL}, client)
+
+        assert result == {
+            f"https://acme.pandape.infojobs.com.br/Detail/{index}" for index in range(1, 22)
+        }
+
+    async def test_pandape_probe_reports_jobs_and_proxy_requirement(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = _pandape_listing(1, [1], board_url=PANDAPE_PROXY_URL)
+            return httpx.Response(200, text=body, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle(PANDAPE_PROXY_URL, client)
+
+        assert result == {
+            "host": "acme.pandape.computrabajo.com",
+            "variant": "pandape",
+            "proxy": True,
+            "jobs": 1,
         }

@@ -522,6 +522,11 @@ def _build_comment(name: str, metadata: dict) -> str:
             return f"104 Job Bank company listing \u2014 token: {token}, {jobs} jobs"
         return f"104 Job Bank company listing \u2014 token: {token}"
     if name == "computrabajo":
+        if metadata.get("variant") == "pandape":
+            host = metadata.get("host", "?")
+            jobs = metadata.get("jobs")
+            label = f"PandaPe employer portal — host: {host}"
+            return f"{label}, {jobs} jobs" if jobs is not None else label
         company_id = metadata.get("company_id", "?")
         jobs = metadata.get("jobs")
         label = f"Computrabajo employer profile \u2014 company: {company_id}"
