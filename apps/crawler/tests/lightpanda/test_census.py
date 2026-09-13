@@ -468,6 +468,55 @@ def test_dom_rich_rows_accepts_authoritative_runtime_shapes(
     assert manifest["summary"]["browser_required_step_count"] == 1
 
 
+def test_dom_title_matched_url_scan_uses_runtime_validation(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "invalid-title-scan",
+                monitor_type="dom",
+                monitor_config={
+                    "title_matched_url_scan": {
+                        "listing_title_selector": ".job",
+                        "detail_title_selector": "h1",
+                        "url_template": "https://secret.example/jobs/no-placeholder",
+                    }
+                },
+            )
+        ],
+    )
+
+    with pytest.raises(CensusError) as exc_info:
+        build_manifest(boards)
+
+    assert str(exc_info.value) == "monitor.dom.title_matched_url_scan is invalid"
+
+
+def test_dom_title_matched_url_scan_is_accepted_and_sanitized(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "valid-title-scan",
+                monitor_type="dom",
+                monitor_config={
+                    "title_matched_url_scan": {
+                        "listing_title_selector": ".job",
+                        "detail_title_selector": "h1",
+                        "url_template": "https://secret.example/jobs/vacancy-{index}",
+                        "max_scan": 20,
+                    }
+                },
+            )
+        ],
+    )
+
+    manifest = build_manifest(boards)
+
+    assert manifest["summary"]["browser_board_count"] == 0
+    assert "secret.example" not in manifest_bytes(manifest).decode("ascii")
+
+
 @pytest.mark.parametrize(
     "fallback",
     [

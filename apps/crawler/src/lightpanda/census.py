@@ -22,6 +22,7 @@ from src.core.monitors import all_monitor_types, monitor_needs_browser
 from src.core.monitors.dom import (
     _validated_inactive_detail_states,
     _validated_rich_rows,
+    _validated_title_matched_url_scan,
 )
 from src.core.scrapers import (
     _RENDER_AWARE_SCRAPERS,
@@ -171,6 +172,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "skip_ssl",
             "stealth",
             "timeout",
+            "title_matched_url_scan",
             "url",
             "url_allowlist",
             "url_filter",
@@ -691,6 +693,14 @@ def _validate_and_abstract_config(
             _validated_inactive_detail_states(config["inactive_detail_states"])
         except ValueError:
             raise CensusError("monitor.dom.inactive_detail_states is invalid") from None
+    if surface == "monitor" and crawler_type == "dom" and "title_matched_url_scan" in config:
+        try:
+            _validated_title_matched_url_scan(config["title_matched_url_scan"])
+        except ValueError:
+            raise CensusError("monitor.dom.title_matched_url_scan is invalid") from None
+        selector_config = {
+            key: value for key, value in selector_config.items() if key != "title_matched_url_scan"
+        }
     _validate_selector_fields(selector_config)
     for key in _BOOL_BROWSER_KEYS & set(config):
         if not isinstance(config[key], bool):
