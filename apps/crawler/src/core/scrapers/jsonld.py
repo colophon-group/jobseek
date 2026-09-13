@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 import structlog
+from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 
 from src.core.job_content import JobContent
 from src.core.jsonld import _extract_locations as _extract_locations
@@ -24,6 +25,34 @@ from src.shared.http import is_avature_job_detail_url
 from src.shared.http_retry import fetch_response_with_status_retries
 
 log = structlog.get_logger()
+
+
+def _selected_description(html: str, selector: object) -> str:
+    """Return a required visible description selected from the job page.
+
+    Some providers publish a valid JobPosting object whose description is
+    only generic company boilerplate while the full role content is rendered
+    elsewhere in the same static document.  An explicit selector lets those
+    boards replace only that field while retaining the structured title,
+    dates, locations, and salary from JSON-LD.
+    """
+    if (
+        not isinstance(selector, str)
+        or not selector.strip()
+        or len(selector) > 256
+        or "\x00" in selector
+    ):
+        raise ValueError("JSON-LD description_selector must be a CSS selector up to 256 chars")
+    try:
+        node = LexborHTMLParser(html).css_first(selector)
+    except (SelectolaxError, TypeError, ValueError) as exc:
+        raise ValueError("JSON-LD description_selector is not a valid CSS selector") from exc
+    if node is None:
+        raise ValueError(f"JSON-LD description_selector did not match: {selector!r}")
+    selected = (node.inner_html or "").strip()
+    if not selected or not _strip_html(selected).strip():
+        raise ValueError(f"JSON-LD description_selector was empty: {selector!r}")
+    return selected
 
 
 async def _fetch_html(
@@ -63,6 +92,9 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
         html = await _fetch_html(url, http, headers=headers or None)
 
     content = parse_rendered_html(url, config, html)
+    description_selector = config.get("description_selector")
+    if description_selector is not None:
+        content.description = _selected_description(html, description_selector)
     if content.title:
         log.debug("jsonld.extracted", url=url, title=content.title)
     else:

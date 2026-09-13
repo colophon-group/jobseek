@@ -78,7 +78,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `jobvite` | URL-only | json-ld | Jobvite static listings, including branded career-site routes |
 | `pageup` | Rich + enrichment | dom | PageUp static listings with streamed total-checked pagination and DOM description enrichment |
 | `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
-| `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination |
+| `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination, exact aggregate verification, and fail-closed mirrored-ID deduplication |
 | `infoniqa` | URL-only | — | Infoniqa jobexchange CSRF/session POST pagination with employer and total validation |
 | `infor` | Rich + enrichment | infor | Infor CandidateSelfService session-bound Landmark listings and detail APIs |
 | `intervieweb` | URL-only | json-ld | Intervieweb/In-recruiting HTML plus CSRF-protected POST pagination |
@@ -134,6 +134,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `ukg` | Rich | embedded | UKG Pro public paginated search API plus embedded detail enrichment |
 | `unisante` | Rich | skip | Unisanté dual-alias official inventory with bounded visible-detail validation |
 | `universia` | Rich | skip | Universia branded job boards via the public board configuration and posting APIs |
+| `wecruit` | Rich | skip | Dayee/Hotjob Wecruit public list and detail APIs |
 | `welcometothejungle` | Rich | skip | Welcome to the Jungle public jobs APIs |
 | `woowa` | Rich | skip | Woowa Brothers and Woowa Youths public careers APIs |
 | `workable` | URL-only | workable | Workable ATS |
@@ -399,10 +400,10 @@ Parses [schema.org/JobPosting](https://schema.org/JobPosting) JSON-LD from the p
 
 **Config**:
 ```json
-{}
+{"description_selector": ".full-job-description"}
 ```
 
-No config needed — the extractor handles all standard [schema.org/JobPosting](https://schema.org/JobPosting) fields automatically. See [08 — Job Data Fields: Schema.org Mapping](./08-job-data-fields.md#schemaorg--json-ld-mapping) for the complete mapping table.
+No config is normally needed — the extractor handles all standard [schema.org/JobPosting](https://schema.org/JobPosting) fields automatically. When a provider puts only generic boilerplate in JSON-LD, optional `description_selector` replaces that field with the required visible HTML while retaining the remaining structured fields. See [08 — Job Data Fields: Schema.org Mapping](./08-job-data-fields.md#schemaorg--json-ld-mapping) for the complete mapping table.
 
 Key mappings: `title`/`name` → title, `description` → description (HTML), `jobLocation` → locations, `baseSalary` → `{currency, min, max, unit}` dict, `employmentType` → employment type, `jobLocationType` → remote/hybrid/onsite, `skills`/`responsibilities`/`qualifications` → lists, `datePosted`/`validThrough` → dates.
 

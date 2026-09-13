@@ -117,6 +117,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "universia",
         "unifr",
         "unisante",
+        "wecruit",
         "welcometothejungle",
         "woowa",
     }
@@ -619,6 +620,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "hireology"
     if host.endswith(".hirehive.com"):
         return "hirehive"
+    if re.fullmatch(r"/SU[0-9a-f]{24}/(?:pb|mc)(?:/.*)?", parsed.path, re.IGNORECASE):
+        return "wecruit"
     if host in {
         "career.woowahan.com",
         "career.woowayouths.com",

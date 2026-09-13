@@ -112,6 +112,7 @@ SKIP_PATTERNS: tuple[str, ...] = (
     "googlesyndication",
     "googletagmanager",
     "gtag",
+    "secureprivacy",
 )
 
 JOB_KEYWORDS = re.compile(
@@ -121,7 +122,7 @@ JOB_KEYWORDS = re.compile(
 
 TITLE_FIELDS = re.compile(
     r"^(title|name|job_?title|position_?title|label|heading|role|job_?name"
-    r"|job_?opening_?name)$",
+    r"|job_?opening_?name|Title__c)$",
     re.IGNORECASE,
 )
 
@@ -130,7 +131,7 @@ TITLE_FIELDS = re.compile(
 # Prefer arrays with an unambiguous job-title key when API captures otherwise
 # tie, as PeopleWeek's vacancy and vacancy-location endpoints do.
 EXPLICIT_TITLE_FIELDS = re.compile(
-    r"^(job_?title|position_?title|job_?name|job_?opening_?name)$",
+    r"^(job_?title|position_?title|job_?name|job_?opening_?name|Title__c)$",
     re.IGNORECASE,
 )
 
@@ -211,7 +212,7 @@ _SKIP_HEADERS = frozenset(
 FIELD_PATTERNS: dict[str, re.Pattern] = {
     "title": re.compile(
         r"^(title|name|job_?title|position_?title|label|heading|role|job_?name"
-        r"|job_?opening_?name)$",
+        r"|job_?opening_?name|Title__c)$",
         re.I,
     ),
     "description": re.compile(
@@ -227,12 +228,12 @@ FIELD_PATTERNS: dict[str, re.Pattern] = {
     ),
     "date_posted": re.compile(
         r"^(date_?posted|posted_?at|posted_?date|published_?at|created_?at"
-        r"|datePosted|publishedAt|createdAt|publish_?date)$",
+        r"|datePosted|publishedAt|createdAt|publish_?date|publication_date__c)$",
         re.I,
     ),
     "job_location_type": re.compile(
         r"^(job_?location_?type|workplace_?type|remote_?type|location_?type"
-        r"|workplaceType|locationType|isRemote|remote)$",
+        r"|workplaceType|locationType|isRemote|remote|Modality__c)$",
         re.I,
     ),
 }
@@ -323,12 +324,25 @@ def _quote_key(key: str) -> str:
 
 
 def find_arrays(obj: object, path: str = "") -> list[tuple[str, list[dict]]]:
-    """Recursively find arrays of 3+ dicts in any JSON structure."""
+    """Recursively find arrays of 3+ dicts in any JSON structure.
+
+    Small wrapper arrays are traversed as well as dictionaries.  RPC APIs
+    such as Salesforce Aura return an ``actions`` array whose entries wrap
+    the actual job arrays in ``returnValue``.  Large arrays are terminal once
+    recorded so normal job payloads do not trigger an expensive walk through
+    every posting and its nested fields.
+    """
     results: list[tuple[str, list[dict]]] = []
     if isinstance(obj, list):
         dicts = [x for x in obj if isinstance(x, dict)]
         if len(dicts) >= 3:
             results.append((path or "$", dicts))
+        if len(obj) <= 50:
+            for index, val in enumerate(obj):
+                if not isinstance(val, (dict, list)):
+                    continue
+                child_path = f"{path}[{index}]" if path else f"[{index}]"
+                results.extend(find_arrays(val, child_path))
     if isinstance(obj, dict):
         for key, val in obj.items():
             qkey = _quote_key(key)
@@ -492,6 +506,16 @@ def score_candidate(cand: ArrayCandidate, page_url: str) -> int:
     # Job keyword in API URL or JSON path
     if JOB_KEYWORDS.search(ex.url) or JOB_KEYWORDS.search(cand.json_path):
         score += 10
+
+    # Salesforce Experience Cloud batches unrelated RPC actions through one
+    # Aura endpoint. A nested returnValue array on a JobOffer request is more
+    # specific than generic reference/config arrays captured from the page.
+    if (
+        "/s/sfsites/aura" in ex.url
+        and "returnValue" in cand.json_path
+        and JOB_KEYWORDS.search(ex.url)
+    ):
+        score += 20
 
     # Total count sibling
     total = find_total_count(ex.body, cand.json_path)
@@ -674,6 +698,12 @@ def infer_pagination(
         for _, ex1, ex2 in pairs:
             query_diff = _diff_query_params(ex1.url, ex2.url)
             body_diff = _diff_json_bodies(ex1.post_data, ex2.post_data)
+
+            # Salesforce Aura's ``r`` parameter is a request/action sequence
+            # number shared by unrelated RPC calls, not a page cursor. The
+            # actual job response may already contain the full active list.
+            if query_diff and query_diff[0] == "r" and parsed.path.endswith("/s/sfsites/aura"):
+                query_diff = None
 
             # Some POST APIs (notably ByteDance) mirror the offset in both
             # the query string and JSON body, but only honor the body value
