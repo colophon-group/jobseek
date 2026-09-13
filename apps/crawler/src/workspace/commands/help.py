@@ -139,6 +139,7 @@ Monitor Types (cheapest first):
   ukg               10      Full/partial      Auto-enriched
   unifr             10      Full or PDF URLs  skip/pdf (fixed source)
   workable          10      Job URLs          Auto-configured
+  wecruit           10      Full job data     No (skipped)
   welcometothejungle 10      Full job data     No (skipped)
   woowa             10      Full job data     No (skipped)
   workday           10      Job URLs          Auto-configured
@@ -3462,6 +3463,27 @@ woowa — Woowa public careers API
   listing API, validates its advertised total, and enriches every row from the
   matching detail endpoint. No configuration is required."""
 
+MONITOR_WECRUIT = """\
+wecruit — Dayee/Hotjob Wecruit public recruiting API
+
+  Boards:   Branded iframe launchers or direct /SU<suite>/pb pages
+  Returns:  Full job data (title, HTML description, locations, posting date,
+            deadline, qualifications, responsibilities and provider metadata)
+  Scraper:  Not needed (skipped)
+  Cost:     10
+
+  The monitor resolves the branded launcher's SLD mapping, validates the
+  provider suite, drains campus, social, internship and store recruitment
+  lanes, and joins each listing with its public detail record.
+
+  Config (auto-detected):
+    {"api_origin": "https://jobs.example.com",
+     "suite_key": "670ca36b1c240e54e1ee0556",
+     "recruit_types": [1, 2, 12, 13]}
+
+  recruit_types may be narrowed to a unique subset of 1 (campus), 2 (social),
+  12 (internship), and 13 (store). Keep all four for an unfiltered board."""
+
 SCRAPER_JSONLD = """\
 json-ld — Structured JobPosting Extractor
 
@@ -4482,9 +4504,10 @@ infoniqa — Infoniqa jobexchange form-pagination monitor
     "traffit": MONITOR_TRAFFIT,
     "earcu": MONITOR_EARCU,
     "umantis": MONITOR_UMANTIS,
-    "workable": MONITOR_WORKABLE,
+    "wecruit": MONITOR_WECRUIT,
     "welcometothejungle": MONITOR_WELCOMETOTHEJUNGLE,
     "woowa": MONITOR_WOOWA,
+    "workable": MONITOR_WORKABLE,
     "workday": MONITOR_WORKDAY,
     "paylocity": MONITOR_PAYLOCITY,
     "pinpoint": MONITOR_PINPOINT,

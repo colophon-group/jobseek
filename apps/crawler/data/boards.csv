@@ -920,6 +920,8 @@ besi,besi-careers-at,https://besi.kandidatenportal.eu/Jobs,dom,"{""render"": tru
 besi,besi-main,https://www.besi.com/careers/jobs/,dom,"{""url_filter"": ""fileadmin/data/Jobs/.*\\.pdf""}",pdf,"{""title_source"": ""url""}"
 beside,beside-ashby,https://jobs.ashbyhq.com/beside,ashby,"{""token"": ""beside""}",skip,
 bestow,bestow-ashby,https://jobs.ashbyhq.com/bestow,ashby,"{""token"": ""bestow""}",skip,
+bestseller,bestseller-careers,https://opportunities.bestseller.com/,rss,"{""preset"": ""successfactors""}",skip,
+bestseller,bestseller-china,https://joinus.bestseller.com.cn/SU670ca36b1c240e54e1ee0556/pb/index.html#/,wecruit,"{""api_origin"": ""https://joinus.bestseller.com.cn"", ""suite_key"": ""670ca36b1c240e54e1ee0556"", ""recruit_types"": [1, 2, 12, 13]}",skip,
 beta-technologies,beta-technologies-lever,https://jobs.lever.co/beta,lever,"{""token"": ""beta""}",skip,
 beth-israel-lahey-health,beth-israel-lahey-health-careers,https://bilh.wd1.myworkdayjobs.com/External,workday,"{""company"": ""bilh"", ""wd_instance"": ""wd1"", ""site"": ""External""}",json-ld,
 beth-israel-lahey-health,beth-israel-lahey-health-exeter,https://exetercareers.com/open-positions/,rss,"{""preset"": ""wp_job_manager"", ""feed_url"": ""https://exetercareers.com/?feed=job_feed"", ""proxy"": true}",json-ld,"{""enrich"": [""description"", ""locations"", ""employment_type"", ""job_location_type""], ""proxy"": true}"

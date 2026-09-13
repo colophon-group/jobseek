@@ -139,6 +139,7 @@ For each new board:
    **known stable ATS** — greenhouse, ashby, comeet, lever, gem, inploi, manatal,
    seamlesshiring, recruitee, personio, prospective,
    welcometothejungle,
+   wecruit,
    workday, seek, adp, avature, bamboohr, beisen, brassring, paycom, talentreef, nowhiring, jazzhr, jobvite, pageup, icims, intervieweb, gupy, cornerstone, darwinbox, dayforce, herp, hrmos, recruiterbox, keka, taleo, typify, ukg, hirehive, hireology, turbohire, paylocity, pinpoint, dvinci, traffit, rss — AND it matched with
    high confidence (detected via `can_handle`), test it directly yourself.
    No need to spawn subagents for an obvious choice. For companies with
