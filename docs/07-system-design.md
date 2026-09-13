@@ -203,7 +203,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `jobdiva`         | URL-only | api_sniffer | JobDiva token bootstrap + native range pagination |
 | 10   | `jobstreet`       | Rich     | jobstreet   | JobStreet employer search summaries + GraphQL detail enrichment |
 | 10   | `seek`            | URL-only | seek        | SEEK AU/NZ advertiser search + GraphQL detail enrichment |
-| 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
+| 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination + verified aggregate portals |
 | 10   | `infoniqa`        | URL-only | --          | Infoniqa employer-bound session POST pagination |
 | 10   | `infor`           | Rich     | infor       | Infor CandidateSelfService Landmark APIs + detail enrichment |
 | 10   | `intervieweb`     | URL-only | json-ld     | Intervieweb HTML + CSRF-protected POST pagination |
