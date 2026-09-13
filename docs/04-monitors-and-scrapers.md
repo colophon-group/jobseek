@@ -400,10 +400,10 @@ Parses [schema.org/JobPosting](https://schema.org/JobPosting) JSON-LD from the p
 
 **Config**:
 ```json
-{}
+{"description_selector": ".full-job-description"}
 ```
 
-No config needed — the extractor handles all standard [schema.org/JobPosting](https://schema.org/JobPosting) fields automatically. See [08 — Job Data Fields: Schema.org Mapping](./08-job-data-fields.md#schemaorg--json-ld-mapping) for the complete mapping table.
+No config is normally needed — the extractor handles all standard [schema.org/JobPosting](https://schema.org/JobPosting) fields automatically. When a provider puts only generic boilerplate in JSON-LD, optional `description_selector` replaces that field with the required visible HTML while retaining the remaining structured fields. See [08 — Job Data Fields: Schema.org Mapping](./08-job-data-fields.md#schemaorg--json-ld-mapping) for the complete mapping table.
 
 Key mappings: `title`/`name` → title, `description` → description (HTML), `jobLocation` → locations, `baseSalary` → `{currency, min, max, unit}` dict, `employmentType` → employment type, `jobLocationType` → remote/hybrid/onsite, `skills`/`responsibilities`/`qualifications` → lists, `datePosted`/`validThrough` → dates.
 

@@ -276,6 +276,8 @@ _JOB_LOCATION_TYPE_MAP: dict[str, str] = {
     # English
     "onsite": "onsite",
     "on-site": "onsite",
+    "on-site working": "onsite",  # Workday
+    "onsite working": "onsite",  # Workday variant
     "on_site": "onsite",  # workable / gem snake_case
     "on site": "onsite",
     "office": "onsite",
@@ -287,6 +289,7 @@ _JOB_LOCATION_TYPE_MAP: dict[str, str] = {
     "in person": "onsite",
     "no": "onsite",  # Welcome to the Jungle remote policy
     "remote": "remote",
+    "remote working": "remote",  # Workday
     "telecommute": "remote",
     "work from home": "remote",
     "wfh": "remote",
@@ -294,6 +297,7 @@ _JOB_LOCATION_TYPE_MAP: dict[str, str] = {
     "100% remote": "remote",
     "fulltime": "remote",  # Welcome to the Jungle remote policy
     "hybrid": "hybrid",
+    "hybrid working": "hybrid",  # Workday
     "office, remote": "hybrid",
     "remote, office": "hybrid",
     "office/remote": "hybrid",
