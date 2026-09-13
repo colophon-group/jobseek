@@ -1785,6 +1785,28 @@ class TestDomScraper:
             with pytest.raises(BotChallengeError, match="proxy transport"):
                 await scrape("https://blocked.example/job/1", config, client)
 
+    async def test_static_bni_validation_challenge_raises(self):
+        """A Barracuda/BNI HTTP-200 CAPTCHA is a transient origin block."""
+        from src.core.monitors.dom import BotChallengeError
+        from src.core.scrapers.dom import scrape
+
+        challenge = (
+            '<html><body><title>Validation request</title>'
+            '<h3>User validation required to continue..</h3>'
+            '<form action="/captcha_resp" method="POST">'
+            '<input name="captcha_resp_txt"></form></body></html>'
+        )
+
+        def handler(request):
+            return httpx.Response(200, text=challenge, request=request)
+
+        config = {"steps": [{"tag": "h1", "field": "title"}]}
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(BotChallengeError, match="proxy transport") as exc_info:
+                await scrape("https://blocked.example/job/1", config, client)
+
+        assert exc_info.value.proxy_failure_reason == "origin_block"
+
     async def test_rendered_incapsula_interstitial_retries_once(self):
         """A transient full-page Incapsula iframe gets one fresh context."""
         from src.core.scrapers.dom import scrape

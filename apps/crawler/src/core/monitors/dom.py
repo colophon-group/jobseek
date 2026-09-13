@@ -1813,6 +1813,11 @@ _RADWARE_CHALLENGE_MARKERS = (
     "botmanager_support@radware.com",
     "captcha.perfdrive.com/captcha-public/",
 )
+_BNI_VALIDATION_MARKERS = (
+    "<title>validation request</title>",
+    "user validation required to continue",
+    'action="/captcha_resp"',
+)
 
 
 class BotChallengeError(RuntimeError):
@@ -1823,6 +1828,12 @@ class BotChallengeError(RuntimeError):
     cycle on the normal failure/retry path until the configured proxy or
     origin recovers.
     """
+
+    # ``shared.browser`` cannot import this module without creating a cycle.
+    # The attribute is a small exception protocol that lets proxy-backed
+    # browser sessions quarantine a slot when a target returns an HTTP-200
+    # challenge body instead of a 403/429 response.
+    proxy_failure_reason = "origin_block"
 
 
 def _raise_if_bot_challenge(url: str, html: str) -> None:
@@ -1841,12 +1852,17 @@ def _raise_if_bot_challenge(url: str, html: str) -> None:
         marker in haystack for marker in _INCAPSULA_INTERSTITIAL_MARKERS
     )
     is_radware = any(marker in haystack for marker in _RADWARE_CHALLENGE_MARKERS)
+    # Barracuda/BNI can serve a CAPTCHA form as HTTP 200. Require the complete
+    # form signature so an ordinary page mentioning validation or CAPTCHA does
+    # not become a false positive.
+    is_bni_validation = all(marker in haystack for marker in _BNI_VALIDATION_MARKERS)
     if (
         is_siteground
         or is_cloudflare
         or is_verification_interstitial
         or is_incapsula_interstitial
         or is_radware
+        or is_bni_validation
     ):
         raise BotChallengeError(
             f"bot challenge detected for {url}; configure or verify proxy transport"
