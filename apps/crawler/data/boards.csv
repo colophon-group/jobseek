@@ -3052,6 +3052,8 @@ gunvor,gunvor-ingolstadt-refinery,https://gunvor-raffinerie-ingolstadt.de/jobs-k
 gunvor,gunvor-rotterdam,https://gunvorenergyrotterdam.cvw.io/?lang=en-US,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000}",dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop_count"": 20}]}"
 gunvor,gunvor-workday,https://gunvor.wd3.myworkdayjobs.com/Gunvor_Careers,workday,"{""company"": ""gunvor"", ""wd_instance"": ""wd3"", ""site"": ""Gunvor_Careers""}",workday,
 gusto-inc,gusto-inc-greenhouse,https://job-boards.greenhouse.io/gusto,greenhouse,"{""token"": ""gusto""}",skip,
+guzman-y-gomez,guzman-y-gomez-careers,https://careers.smartrecruiters.com/guzmanygomez,smartrecruiters,,smartrecruiters,
+guzman-y-gomez,guzman-y-gomez-careers-sg,https://www.gyg.com.sg/join-us,inline,"{""render"": false, ""require_zero_proof"": true, ""item_boundary"": {""match_regex"": ""^(Restaurant Manager|Chef|Service Crew)$""}, ""source_url_selector"": ""a[href*='/jobs-available-positions/']"", ""source_url_attribute"": ""href"", ""steps"": [{""match_regex"": ""^(Restaurant Manager|Chef|Service Crew)$"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""stop"": ""Apply Now""}], ""defaults"": {""locations"": [""Singapore, SG""]}}",skip,
 gwi,gwi-greenhouse,https://job-boards.greenhouse.io/globalwebindex,greenhouse,"{""token"": ""globalwebindex""}",skip,
 gxo,gxo-careers,https://jobs.gxo.com/,rss,"{""preset"": ""successfactors""}",skip,
 gxo,gxo-latam,https://gxologisticsinc.teamtailor.com/,sitemap,"{""url_filter"": {""include"": ""^https://gxologisticsinc\\.teamtailor\\.com/jobs/[^/?#]+$""}}",json-ld,
