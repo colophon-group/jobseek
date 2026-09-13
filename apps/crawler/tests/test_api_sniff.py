@@ -126,6 +126,29 @@ class TestFindArrays:
         result = find_arrays(data)
         assert result[0][0] == "a.b.c"
 
+    def test_array_wrapped_nested_array(self):
+        import jmespath
+
+        data = {
+            "actions": [
+                {"state": "SUCCESS", "returnValue": {"filters": []}},
+                {
+                    "state": "SUCCESS",
+                    "returnValue": [
+                        {"Id": "a1", "Name": "Engineer"},
+                        {"Id": "a2", "Name": "Architect"},
+                        {"Id": "a3", "Name": "Consultant"},
+                    ],
+                },
+                {"state": "SUCCESS", "returnValue": {"countries": []}},
+            ]
+        }
+
+        result = find_arrays(data)
+
+        assert ("actions[1].returnValue", data["actions"][1]["returnValue"]) in result
+        assert jmespath.search("actions[1].returnValue", data) == data["actions"][1]["returnValue"]
+
     def test_keys_with_dashes_are_quoted(self):
         """UUID-style keys (e.g. Notion block IDs) must be quoted for jmespath."""
         data = {
@@ -351,6 +374,42 @@ class TestDetectJobList:
         assert result is not None
         assert result.url_field == "url"
         assert result.total_count == 100
+
+    def test_detects_salesforce_aura_nested_job_return_value(self):
+        jobs = [
+            {
+                "Id": f"a1J00000000000{i}",
+                "Title__c": f"Engineer {i}",
+                "Location__c": "Madrid",
+                "Modality__c": "Hybrid",
+                "publication_date__c": "2026-09-01",
+            }
+            for i in range(12)
+        ]
+        actions = [
+            {"id": "1", "state": "SUCCESS", "returnValue": {"countries": []}},
+            {"id": "2", "state": "SUCCESS", "returnValue": jobs},
+            {"id": "3", "state": "SUCCESS", "returnValue": {"filters": []}},
+        ]
+        exchange = _make_exchange(
+            url=(
+                "https://jobs.example.com/s/sfsites/aura?r=9&other.JobOffer.getOffersFilterMulti=1"
+            ),
+            method="POST",
+            body={"actions": actions},
+        )
+
+        result = detect_job_list([exchange], "https://jobs.example.com/s/jobs")
+
+        assert result is not None
+        assert result.candidate.json_path == "actions[1].returnValue"
+        assert result.candidate.items == jobs
+        assert auto_map_fields(jobs) == {
+            "title": "Title__c",
+            "job_location_type": "Modality__c",
+            "date_posted": "publication_date__c",
+            "locations": "Location__c",
+        }
 
     def test_prefers_bamboohr_jobs_over_currency_reference_data(self):
         currency_items = [
@@ -594,6 +653,23 @@ class TestInferPagination:
     def test_no_pagination(self):
         ex = _make_exchange(url="https://example.com/api/jobs")
         result = infer_pagination([ex], "https://example.com/api/jobs", 20)
+        assert result is None
+
+    def test_salesforce_aura_request_sequence_is_not_pagination(self):
+        base = "https://jobs.example.com/s/sfsites/aura"
+        ex1 = _make_exchange(
+            url=f"{base}?r=6&other.JobOffer.getCountryList=1",
+            method="POST",
+            post_data='{"message":"filters"}',
+        )
+        ex2 = _make_exchange(
+            url=f"{base}?r=9&other.JobOffer.getOffersFilterMulti=1",
+            method="POST",
+            post_data='{"message":"offers"}',
+        )
+
+        result = infer_pagination([ex1, ex2], ex2.url, 437)
+
         assert result is None
 
 

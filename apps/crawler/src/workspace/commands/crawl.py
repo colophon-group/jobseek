@@ -954,7 +954,10 @@ _MONITOR_CONFIG_HINTS = {
     "jobvite": "Requires: tenant + listing_url (auto-filled from a jobs.jobvite.com URL)",
     "johdi": "Requires: company_key, flow, locale (auto-filled from an embedded Johdi widget)",
     "pageup": "Requires: instance, source_pointer, locale (auto-filled from a PageUp URL)",
-    "icims": "Requires: host (auto-filled from an icims.com URL)",
+    "icims": (
+        "Requires: host (auto-filled from an icims.com URL); aggregate portals may "
+        "declare explicit job_hosts; mirrored portals may declare verified job-ID peers"
+    ),
     "infoniqa": "Requires: employer_name (auto-filled from a live Infoniqa board probe)",
     "intervieweb": "No config required (POST endpoint and CSRF token are resolved per run)",
     "gupy": "Requires: tenant (auto-filled from a *.gupy.io URL)",
@@ -1003,6 +1006,7 @@ _MONITOR_CONFIG_HINTS = {
     "softgarden": "Requires: slug. Optional: job_url_pattern",
     "traffit": "Requires: slug (auto-filled from probe)",
     "workable": "Requires: token (auto-filled from probe)",
+    "wecruit": "Requires: api_origin + suite_key (auto-filled from probe)",
     "woowa": "No config required; exact first-party host selects the API variant",
     "workday": "Requires: company, wd_instance, site (auto-filled from probe)",
     "personio": "Requires: slug. Optional: language, backfill_languages",
@@ -2479,6 +2483,17 @@ def run_quality_gates(
 
         if cfg.get("status") != "tested":
             blockers.append(f"Board {b.alias}: config not tested")
+
+        monitor_type = cfg.get("monitor_type")
+        if (
+            monitor_type
+            and not cfg.get("scraper_type")
+            and not auto_scraper_type(monitor_type, cfg.get("monitor_config") or {})
+        ):
+            blockers.append(
+                f"Board {b.alias}: {monitor_type} monitor requires a scraper; "
+                "select and test one before submitting"
+            )
         if cfg.get("run", {}).get("truncated"):
             blockers.append(
                 f"Board {b.alias}: monitor run is truncated/incomplete; "

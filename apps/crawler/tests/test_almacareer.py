@@ -12,6 +12,7 @@ from src.core.monitors import almacareer as almacareer_module
 from src.core.monitors.almacareer import (
     GRAPHQL_URL,
     _detail_url,
+    _extract_inline_widget_config,
     _extract_widget_config,
     _fetch_job_html,
     _fetch_widget_config,
@@ -148,6 +149,24 @@ class TestExtractWidgetConfig:
         assert cfg["detail_path"] == "detail-pozice"
 
 
+class TestExtractInlineWidgetConfig:
+    @pytest.mark.parametrize(
+        ("widget_id", "api_key"),
+        [
+            ("-" * 36, "a" * 64),
+            ("6868e1dc-2ea7-411e-a73c-da9c191d773f", "a" * 31),
+            ("6868e1dc-2ea7-411e-a73c-da9c191d773f", "a" * 257),
+            ("6868e1dc-2ea7-411e-a73c-da9c191d773f", "g" * 64),
+        ],
+    )
+    def test_rejects_invalid_identity_values(self, widget_id: str, api_key: str):
+        page = (
+            f'window.__LMC_CAREER_WIDGET__.push({{"apiKey":"{api_key}","widgetId":"{widget_id}"}});'
+        )
+
+        assert _extract_inline_widget_config(page) is None
+
+
 class TestFetchWidgetConfig:
     _VALID_SCRIPT = (
         '"widgets":{"main":{"id":"075c7246-bbd1-4670-a7b6-347e02e35dd2",'
@@ -175,9 +194,9 @@ class TestFetchWidgetConfig:
 
         assert config is not None
         assert config["id"] == "075c7246-bbd1-4670-a7b6-347e02e35dd2"
-        # The first legacy-bundle miss also checks the React loader before the
-        # second legacy-bundle fetch recovers.
-        assert attempts == 3
+        # The first legacy-bundle miss also checks the React loader and inline
+        # homepage bootstrap before the second legacy-bundle fetch recovers.
+        assert attempts == 4
         sleep.assert_awaited_once()
 
     async def test_finds_config_in_hashed_react_chunk(self):
@@ -209,6 +228,62 @@ class TestFetchWidgetConfig:
             "/assets/js/react.2222.react.min.js",
         ]
 
+    async def test_finds_config_in_inline_widget_bootstrap(self):
+        widget_id = "6868e1dc-2ea7-411e-a73c-da9c191d773f"
+        api_key = "a" * 64
+        page = f"""
+            <html data-host="acme.jobs.cz">
+            <script>
+            window.__LMC_CAREER_WIDGET__.push({{
+                "apiKey": "{api_key}",
+                "widgetId": "{widget_id}",
+                "themes": [{{"nested": true}}],
+                "detailPath": "detail-pozice"
+            }});
+            </script>
+            </html>
+        """
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/assets/js/script.min.js":
+                return httpx.Response(200, text="legacy bundle without config")
+            if request.url.path == "/assets/js/react.min.js":
+                return httpx.Response(404)
+            if request.url.path == "/":
+                return httpx.Response(200, text=page)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            config = await _fetch_widget_config("acme.jobs.cz", client)
+
+        assert config == {
+            "id": widget_id,
+            "apiKey": api_key,
+            "detail_path": "detail-pozice",
+        }
+
+    async def test_inline_bootstrap_is_used_when_legacy_bundle_is_gone(self):
+        widget_id = "6868e1dc-2ea7-411e-a73c-da9c191d773f"
+        api_key = "b" * 64
+        page = (
+            f'window.__LMC_CAREER_WIDGET__.push({{"apiKey":"{api_key}","widgetId":"{widget_id}"}});'
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/assets/js/script.min.js":
+                return httpx.Response(404)
+            if request.url.path == "/":
+                return httpx.Response(200, text=page)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            config = await _fetch_widget_config("acme.jobs.cz", client)
+
+        assert config is not None
+        assert config["id"] == widget_id
+        assert config["apiKey"] == api_key
+        assert config["detail_path"] == "detail-pozice"
+
     async def test_persistent_parse_miss_exhausts_bounded_attempts(self):
         attempts = 0
         sleep = AsyncMock()
@@ -228,9 +303,9 @@ class TestFetchWidgetConfig:
             )
 
         assert config is None
-        # Each bounded attempt checks the legacy bundle and then the React
-        # loader. The loader contains no chunk names in this fixture.
-        assert attempts == 6
+        # Each bounded attempt checks the legacy bundle, React loader, and
+        # inline homepage bootstrap. This fixture returns no config anywhere.
+        assert attempts == 9
         assert sleep.await_count == 2
 
     async def test_permanent_http_error_still_fails_fast(self):

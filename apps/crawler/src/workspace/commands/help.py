@@ -139,6 +139,7 @@ Monitor Types (cheapest first):
   ukg               10      Full/partial      Auto-enriched
   unifr             10      Full or PDF URLs  skip/pdf (fixed source)
   workable          10      Job URLs          Auto-configured
+  wecruit           10      Full job data     No (skipped)
   welcometothejungle 10      Full job data     No (skipped)
   woowa             10      Full job data     No (skipped)
   workday           10      Job URLs          Auto-configured
@@ -3023,7 +3024,7 @@ MONITOR_ICIMS = """\
 icims — iCIMS server-rendered listings
 
   Listing:  GET https://{host}/jobs/search?ss=1&in_iframe=1
-  Returns:  Stable https://{host}/jobs/{id}/job?in_iframe=1 detail URLs
+  Returns:  Stable https://{job_host}/jobs/{id}/job?in_iframe=1 detail URLs
   Scraper:  Auto-configured JSON-LD scraper
   Note:     Pagination is read from the listing and fetched sequentially
             because iCIMS page state is session-sensitive. Every advertised
@@ -3035,11 +3036,26 @@ icims — iCIMS server-rendered listings
   Config:
     {"host": "careers-acme.icims.com"}
 
+    Aggregate portal:
+    {"host": "allcareers-acme.icims.com",
+     "job_hosts": ["careers-acme.icims.com", "careers2-acme.icims.com"]}
+
     host    Exact single-label *.icims.com public portal host. Auto-filled from
             direct or explicitly linked iCIMS URLs; no blind host guessing.
             This is host-wide. Filtered regional listing URLs are rejected
             rather than silently widened; use a scoped generic DOM board when
             preserving listing filters is required.
+    job_hosts
+            Optional explicit list of public iCIMS detail hosts linked by a
+            verified aggregate portal. The monitor crawls those child tenants
+            and requires their combined job-ID set to exactly match the
+            aggregate before allowing tombstones. The listing host remains
+            allowed. Do not use this to combine unrelated tenants.
+    dedupe_job_ids_from_hosts
+            Optional explicit list of peer iCIMS hosts that mirror some of this
+            portal's requisition IDs. Each peer is crawled completely before
+            matching IDs are removed; truncated peers fail closed. Use only
+            when live overlap verification proves IDs are shared requisitions.
 
   Detection:  ws probe shows "iCIMS static listing — host: X, N jobs"
   Zero jobs?  A valid empty page still contains the iCIMS_ListingsPage marker."""
@@ -3447,6 +3463,27 @@ woowa — Woowa public careers API
   listing API, validates its advertised total, and enriches every row from the
   matching detail endpoint. No configuration is required."""
 
+MONITOR_WECRUIT = """\
+wecruit — Dayee/Hotjob Wecruit public recruiting API
+
+  Boards:   Branded iframe launchers or direct /SU<suite>/pb pages
+  Returns:  Full job data (title, HTML description, locations, posting date,
+            deadline, qualifications, responsibilities and provider metadata)
+  Scraper:  Not needed (skipped)
+  Cost:     10
+
+  The monitor resolves the branded launcher's SLD mapping, validates the
+  provider suite, drains campus, social, internship and store recruitment
+  lanes, and joins each listing with its public detail record.
+
+  Config (auto-detected):
+    {"api_origin": "https://jobs.example.com",
+     "suite_key": "670ca36b1c240e54e1ee0556",
+     "recruit_types": [1, 2, 12, 13]}
+
+  recruit_types may be narrowed to a unique subset of 1 (campus), 2 (social),
+  12 (internship), and 13 (store). Keep all four for an unfiltered board."""
+
 SCRAPER_JSONLD = """\
 json-ld — Structured JobPosting Extractor
 
@@ -3472,6 +3509,10 @@ json-ld — Structured JobPosting Extractor
                    Omit addressRegion while retaining addressLocality and
                    addressCountry. Use only when a provider demonstrably
                    publishes incorrect regions across otherwise valid jobs.
+    description_selector
+                   CSS selector for a required full role description in the
+                   same page. Replaces only JSON-LD's description when the
+                   provider publishes generic boilerplate there.
     defaults_by_url
                    Exact canonical posting URL -> missing-field defaults. Use
                    for a small number of stable upstream exceptions where an
@@ -4467,9 +4508,10 @@ infoniqa — Infoniqa jobexchange form-pagination monitor
     "traffit": MONITOR_TRAFFIT,
     "earcu": MONITOR_EARCU,
     "umantis": MONITOR_UMANTIS,
-    "workable": MONITOR_WORKABLE,
+    "wecruit": MONITOR_WECRUIT,
     "welcometothejungle": MONITOR_WELCOMETOTHEJUNGLE,
     "woowa": MONITOR_WOOWA,
+    "workable": MONITOR_WORKABLE,
     "workday": MONITOR_WORKDAY,
     "paylocity": MONITOR_PAYLOCITY,
     "pinpoint": MONITOR_PINPOINT,
