@@ -711,6 +711,24 @@ class TestDomScraper:
         assert result.description is not None
         assert "Do našeho týmu" in result.description
 
+    def test_probe_does_not_treat_prefixed_role_title_as_location(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Pracovní pozice obchodního zástupce | Acme</title></head><body>
+          <h1>Pracovní pozice obchodního zástupce</h1>
+          <p>Hledáme novou kolegyni nebo kolegu do obchodního týmu.</p>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert not any(step.get("field") == "location" for step in config["steps"])
+
+        result = parse_html(html, config)
+        assert result.title == "Pracovní pozice obchodního zástupce"
+        assert result.locations is None
+
     @pytest.mark.parametrize(
         "label",
         [

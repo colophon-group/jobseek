@@ -948,7 +948,12 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
         if not any(step.get("field") in {"location", "locations"} for step in steps):
             for prefix in _LOCATION_VALUE_PREFIXES:
                 pattern = rf"(?i)^\s*{re.escape(prefix)}\s+(\S.*?)\s*$"
-                if any(re.fullmatch(pattern, element["text"]) for element in elements):
+                if any(
+                    element["tag"] in {"a", "li"}
+                    and len(element["text"]) < 120
+                    and re.fullmatch(pattern, element["text"])
+                    for element in elements[:title_idx]
+                ):
                     steps.append(
                         {
                             "match_regex": pattern,
