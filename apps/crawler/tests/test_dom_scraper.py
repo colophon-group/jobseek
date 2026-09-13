@@ -691,6 +691,26 @@ class TestDomScraper:
         assert result.title == "Lieutenant de sécurité"
         assert result.locations is None
 
+    def test_probe_extracts_czech_prefixed_branch_location_before_title(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Recepční do dárcovského centra | Cara Plasma</title></head><body>
+          <ul><li><a href="/page/branch-job?branch=11">pracovní pozice Mladá Boleslav</a></li></ul>
+          <h1>Recepční do dárcovského centra</h1>
+          <p>Do našeho týmu hledáme novou kolegyni nebo kolegu.</p>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Recepční do dárcovského centra"
+        assert result.locations == ["Mladá Boleslav"]
+        assert result.description is not None
+        assert "Do našeho týmu" in result.description
+
     @pytest.mark.parametrize(
         "label",
         [
@@ -701,6 +721,7 @@ class TestDomScraper:
             "lieu",
             "arbeitsort",
             "arbeitsplatz",
+            "munkavégzés helye",
             "luogo di lavoro",
         ],
     )
@@ -737,6 +758,7 @@ class TestDomScraper:
             "lieu": "Lieutenant de sécurité",
             "arbeitsort": "Arbeitsordnung beachten",
             "arbeitsplatz": "Arbeitsplatzgestaltung",
+            "munkavégzés helye": "Munkavégzési feltételek",
             "luogo di lavoro": "Luogo di lavorazione",
         }[label]
         label_html = label_html_template.format(label=label)
