@@ -11,7 +11,10 @@ Detection pipeline
 2. Fetch ``https://{host}/assets/js/script.min.js`` — extracts widgetId + apiKey
    from the embedded ``widgets.main`` object.  Newer tenants split the React
    application into hashed chunks, so the ``react.min.js`` loader and its
-   same-origin chunks are checked when the legacy bundle has no config.
+   same-origin chunks are checked when the legacy bundle has no config. Some
+   current templates instead expose the config directly in the page's
+   ``window.__LMC_CAREER_WIDGET__.push(...)`` bootstrap call, which is used as
+   the final config fallback.
 3. Page-HTML scan for ``cdn.capybara.lmc.cz`` markers (fallback for
    custom-domain portals).
 
@@ -111,6 +114,20 @@ _WIDGET_WINDOW_BYTES = 65536
 _WIDGET_ID_RE = re.compile(r'"id"\s*:\s*"([0-9a-fA-F-]{36})"')
 _API_KEY_RE = re.compile(r'"apiKey"\s*:\s*"([a-fA-F0-9]{32,})"')
 _DETAIL_PATH_RE = re.compile(r'"detailPath"\s*:\s*"([^"]+)"')
+
+# Current Capybara templates can move the per-tenant config out of the legacy
+# JavaScript bundle and into an inline bootstrap call on the career page:
+#
+#   window.__LMC_CAREER_WIDGET__.push({"apiKey":"...","widgetId":"...",...});
+#
+# Use JSONDecoder.raw_decode after a narrow anchor instead of a greedy regular
+# expression so nested config objects remain safe to parse.
+_INLINE_WIDGET_PUSH_RE = re.compile(r"window\s*\.\s*__LMC_CAREER_WIDGET__\s*\.\s*push\s*\(\s*")
+_WIDGET_ID_VALUE_RE = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+_API_KEY_VALUE_RE = re.compile(r"[a-fA-F0-9]{32,256}")
 
 # Newer Career Pages builds keep the tenant config in one of the hashed React
 # chunks listed by ``/assets/js/react.min.js`` instead of ``script.min.js``.
@@ -326,6 +343,35 @@ def _extract_widget_config(script_text: str) -> dict | None:
     }
 
 
+def _extract_inline_widget_config(page_text: str) -> dict | None:
+    """Return widget config from an inline Capybara bootstrap call."""
+    decoder = json.JSONDecoder()
+    for anchor in _INLINE_WIDGET_PUSH_RE.finditer(page_text):
+        try:
+            raw, _ = decoder.raw_decode(page_text, anchor.end())
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(raw, dict):
+            continue
+
+        widget_id = raw.get("widgetId")
+        api_key = raw.get("apiKey")
+        if not isinstance(widget_id, str) or _WIDGET_ID_VALUE_RE.fullmatch(widget_id) is None:
+            continue
+        if not isinstance(api_key, str) or _API_KEY_VALUE_RE.fullmatch(api_key) is None:
+            continue
+
+        detail_path = raw.get("detailPath")
+        return {
+            "id": widget_id,
+            "apiKey": api_key,
+            "detail_path": (
+                detail_path if isinstance(detail_path, str) and detail_path else "detail-pozice"
+            ),
+        }
+    return None
+
+
 def _widget_config_fingerprint(script_text: str) -> dict[str, int | bool]:
     """Return a redacted parser-outcome fingerprint for operator logs."""
     anchor = _WIDGET_ANCHOR_RE.search(script_text)
@@ -389,6 +435,20 @@ async def _fetch_chunked_widget_config(
     return None
 
 
+async def _fetch_inline_widget_config(
+    host: str,
+    client: httpx.AsyncClient,
+) -> dict | None:
+    """Return config embedded in the tenant homepage, if present."""
+    page_text = await fetch_page_text(f"https://{host}/", client)
+    if page_text is None:
+        return None
+    config = _extract_inline_widget_config(page_text)
+    if config is not None:
+        log.info("almacareer.widget_config_inline_recovered", host=host)
+    return config
+
+
 async def _fetch_widget_config(
     host: str,
     client: httpx.AsyncClient,
@@ -423,11 +483,16 @@ async def _fetch_widget_config(
                 raise
         else:
             if resp.status_code == 404:
+                config = await _fetch_inline_widget_config(host, client)
+                if config is not None:
+                    return config
                 raise _WidgetConfigGone(host)
             if resp.status_code == 200:
                 config = _extract_widget_config(resp.text)
                 if config is None:
                     config = await _fetch_chunked_widget_config(host, client)
+                if config is None:
+                    config = await _fetch_inline_widget_config(host, client)
                 if config is not None:
                     if retried:
                         http_retry_attempts_total.labels(
