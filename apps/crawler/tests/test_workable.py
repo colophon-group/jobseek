@@ -251,7 +251,7 @@ class TestDiscover:
             "https://apply.workable.com/testco/j/SC2/",
         }
 
-    async def test_search_only_markdown_falls_back_to_verified_public_api(self, monkeypatch):
+    async def test_search_only_markdown_deduplicates_verified_public_api_rows(self, monkeypatch):
         monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
 
         def handler(request):
@@ -282,6 +282,7 @@ class TestDiscover:
                 json={
                     "name": "Testco",
                     "jobs": [
+                        {"shortcode": "SC1"},
                         {"shortcode": "SC1"},
                         {"shortcode": "SC2"},
                     ],
