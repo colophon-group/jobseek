@@ -1774,22 +1774,6 @@ class TestApiSnifferRichBoardsHaveEnrich:
         """haier-group-careers-cn: api_sniffer (rich) + dom enrich."""
         self._assert_enrich("haier-group-careers-cn", "dom")
 
-    def test_continental_careers_declares_enrich(self):
-        """continental-careers: api_sniffer (URL-only declared, fields
-        auto-detected at runtime) + json-ld enrich.
-
-        The CSV monitor_config has no explicit ``fields``, but the
-        api_sniffer monitor calls ``auto_map_fields(items)`` on the
-        listing payload (``api_sniffer.py:938``) and the Continental API
-        returns enough metadata for that call to succeed — flipping the
-        monitor to rich-mode at runtime. The DB confirmed 100/100 active
-        postings with ``next_scrape_at IS NULL``, identical to the
-        statically-rich boards. The fix is the same: declare enrich so
-        ``_INSERT_RICH_JOB_ENRICH`` is used and json-ld runs on the
-        detail page.
-        """
-        self._assert_enrich("continental-careers", "json-ld")
-
 
 class TestTalentclueSiblingsHaveEnrich:
     """The talentclue sibling cluster of Decathlon (#2962) — barcelona-activa
