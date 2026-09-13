@@ -3192,6 +3192,7 @@ async def _discover_replay(
     from src.shared.browser import (
         BROWSER_KEYS,
         BrowserNavigationHTTPStatusError,
+        dismiss_overlays,
         navigate,
         open_page,
     )
@@ -3276,6 +3277,33 @@ async def _discover_replay(
             except Exception:
                 log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
             await asyncio.sleep(settle)
+
+            # Salesforce Aura listing actions may not fire until the page's
+            # search/pagination controls are exercised. If navigation only
+            # captured unrelated Aura actions (language, user, filters), run
+            # the same bounded interaction pass used by auto-discovery so the
+            # configured nested job-list response can be captured with its
+            # per-navigation request context.
+            if api_parsed.path.endswith("/s/sfsites/aura"):
+                has_configured_items = False
+                for ex in nav_exchanges:
+                    ex_parsed = urlparse(ex.url)
+                    if (
+                        ex.method.upper() != method.upper()
+                        or ex_parsed.netloc != api_parsed.netloc
+                        or ex_parsed.path != api_parsed.path
+                    ):
+                        continue
+                    resolved = ex.body if json_path == "$" else resolve_path(ex.body, json_path)
+                    if isinstance(resolved, list) and any(
+                        isinstance(item, dict) for item in resolved
+                    ):
+                        has_configured_items = True
+                        break
+                if not has_configured_items:
+                    await dismiss_overlays(page)
+                    await trigger_interactions(page, nav_exchanges)
+                    await asyncio.sleep(settle)
 
             # A shared endpoint may carry unrelated requests.  Rank matching
             # exchanges by the number of objects at the configured path so a
