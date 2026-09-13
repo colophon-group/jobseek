@@ -1831,8 +1831,8 @@ class TestDomScraper:
         from src.core.scrapers.dom import scrape
 
         challenge = (
-            '<html><body><title>Validation request</title>'
-            '<h3>User validation required to continue..</h3>'
+            "<html><body><title>Validation request</title>"
+            "<h3>User validation required to continue..</h3>"
             '<form action="/captcha_resp" method="POST">'
             '<input name="captcha_resp_txt"></form></body></html>'
         )
