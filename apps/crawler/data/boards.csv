@@ -7316,6 +7316,8 @@ zayzoon,zayzoon-ashby,https://jobs.ashbyhq.com/zayzoon,ashby,"{""token"": ""zayz
 zebra,zebra-eightfold,https://zebra.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
 zed,zed-ashby,https://jobs.ashbyhq.com/zed,ashby,"{""token"": ""zed""}",skip,
 zeffy,zeffy-pinpoint,https://zeffy.pinpointhq.com,pinpoint,"{""slug"": ""zeffy""}",skip,
+zeiss-group,zeiss-group-careers,https://zeissgroup.wd3.myworkdayjobs.com/external,workday,"{""company"": ""zeissgroup"", ""wd_instance"": ""wd3"", ""site"": ""external""}",workday,
+zeiss-group,zeiss-group-dorc,https://www.workingatdorc.com/vacancies,dom,"{""url_filter"": ""(?i)^https://www\\.workingatdorc\\.com/vacancies/[^/?#]*\\d[^/?#]*/?(?:[?#].*)?$""}",json-ld,
 zello,zello-ashby,https://jobs.ashbyhq.com/zello,ashby,"{""token"": ""zello""}",skip,
 zenbusiness-inc,zenbusiness-inc-greenhouse,https://job-boards.greenhouse.io/zenbusiness,greenhouse,"{""token"": ""zenbusiness""}",skip,
 zendesk,zendesk-pinpoint,https://zendesk.pinpointhq.com,pinpoint,"{""slug"": ""zendesk""}",skip,
