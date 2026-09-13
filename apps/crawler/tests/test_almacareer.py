@@ -12,6 +12,7 @@ from src.core.monitors import almacareer as almacareer_module
 from src.core.monitors.almacareer import (
     GRAPHQL_URL,
     _detail_url,
+    _extract_inline_widget_config,
     _extract_widget_config,
     _fetch_job_html,
     _fetch_widget_config,
@@ -146,6 +147,24 @@ class TestExtractWidgetConfig:
         assert cfg["id"] == "dcc74a07-bcb5-444e-a185-2bf060a49aab"
         assert cfg["apiKey"].startswith("6b57c70d41a5")
         assert cfg["detail_path"] == "detail-pozice"
+
+
+class TestExtractInlineWidgetConfig:
+    @pytest.mark.parametrize(
+        ("widget_id", "api_key"),
+        [
+            ("-" * 36, "a" * 64),
+            ("6868e1dc-2ea7-411e-a73c-da9c191d773f", "a" * 31),
+            ("6868e1dc-2ea7-411e-a73c-da9c191d773f", "a" * 257),
+            ("6868e1dc-2ea7-411e-a73c-da9c191d773f", "g" * 64),
+        ],
+    )
+    def test_rejects_invalid_identity_values(self, widget_id: str, api_key: str):
+        page = (
+            f'window.__LMC_CAREER_WIDGET__.push({{"apiKey":"{api_key}","widgetId":"{widget_id}"}});'
+        )
+
+        assert _extract_inline_widget_config(page) is None
 
 
 class TestFetchWidgetConfig:

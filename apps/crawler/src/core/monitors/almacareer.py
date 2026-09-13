@@ -123,6 +123,11 @@ _DETAIL_PATH_RE = re.compile(r'"detailPath"\s*:\s*"([^"]+)"')
 # Use JSONDecoder.raw_decode after a narrow anchor instead of a greedy regular
 # expression so nested config objects remain safe to parse.
 _INLINE_WIDGET_PUSH_RE = re.compile(r"window\s*\.\s*__LMC_CAREER_WIDGET__\s*\.\s*push\s*\(\s*")
+_WIDGET_ID_VALUE_RE = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+_API_KEY_VALUE_RE = re.compile(r"[a-fA-F0-9]{32,256}")
 
 # Newer Career Pages builds keep the tenant config in one of the hashed React
 # chunks listed by ``/assets/js/react.min.js`` instead of ``script.min.js``.
@@ -351,9 +356,9 @@ def _extract_inline_widget_config(page_text: str) -> dict | None:
 
         widget_id = raw.get("widgetId")
         api_key = raw.get("apiKey")
-        if not isinstance(widget_id, str) or _WIDGET_ID_RE.fullmatch(f'"id":"{widget_id}"') is None:
+        if not isinstance(widget_id, str) or _WIDGET_ID_VALUE_RE.fullmatch(widget_id) is None:
             continue
-        if not isinstance(api_key, str) or _API_KEY_RE.fullmatch(f'"apiKey":"{api_key}"') is None:
+        if not isinstance(api_key, str) or _API_KEY_VALUE_RE.fullmatch(api_key) is None:
             continue
 
         detail_path = raw.get("detailPath")
@@ -435,13 +440,10 @@ async def _fetch_inline_widget_config(
     client: httpx.AsyncClient,
 ) -> dict | None:
     """Return config embedded in the tenant homepage, if present."""
-    try:
-        response = await client.get(f"https://{host}/", follow_redirects=True)
-    except httpx.HTTPError:
+    page_text = await fetch_page_text(f"https://{host}/", client)
+    if page_text is None:
         return None
-    if response.status_code != 200:
-        return None
-    config = _extract_inline_widget_config(response.text)
+    config = _extract_inline_widget_config(page_text)
     if config is not None:
         log.info("almacareer.widget_config_inline_recovered", host=host)
     return config
