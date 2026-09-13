@@ -581,6 +581,8 @@ aryzta,aryzta-japan,https://hrmos.co/pages/aryzta/jobs,hrmos,"{""tenant"":""aryz
 aryzta,aryzta-netherlands-prepain,https://werkenbij.prepain.com/,dom,"{""render"":false,""url_filter"":""job-page\\.com/pre-pain-""}",dom,"{""scope"":""main"",""defaults"":{""locations"":[""Oldenzaal, NL""]},""steps"":[{""tag"":""h1"",""field"":""title""},{""field"":""description"",""html"":true,""stop"":""Neem contact op""}]}"
 aryzta,aryzta-switzerland-hiestand,https://apply.refline.ch/940351/positions.html,dom,"{""render"":false,""url_filter"":""apply\\.refline\\.ch/940351/\\d+/pub/""}",json-ld,
 asana,asana-greenhouse,https://job-boards.greenhouse.io/asana,greenhouse,"{""token"": ""asana""}",skip,
+asbury-automotive-group,asbury-automotive-group-careers,https://jobs.dayforcehcm.com/asburyauto/ASBURYCAREERSITE,dayforce,,skip,
+asbury-automotive-group,asbury-automotive-group-total-care-auto,https://recruiting.ultipro.com/ASB1003ASBA/JobBoard/243e6fe4-4ed0-407b-aec4-96664da1b04d/,ukg,"{""host"": ""recruiting.ultipro.com"", ""tenant"": ""ASB1003ASBA"", ""board_id"": ""243e6fe4-4ed0-407b-aec4-96664da1b04d""}",embedded,"{""pattern"": ""new\\s+US\\.Opportunity\\.CandidateOpportunityDetail\\s*\\("", ""fields"": {""title"": ""Title"", ""description"": ""Description""}, ""enrich"": [""description""]}"
 ascend-analytics,ascend-analytics-greenhouse,https://job-boards.greenhouse.io/ascendanalytics,greenhouse,"{""token"": ""ascendanalytics""}",skip,
 ascension,ascension-careers,https://jobs.ascension.org/,phenom,,json-ld,
 ascent,ascent-careers,https://ascenthealthservices.career.softgarden.de/,softgarden,"{""slug"": ""ascenthealthservices""}",json-ld,
