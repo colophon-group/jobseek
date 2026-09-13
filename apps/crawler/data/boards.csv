@@ -5140,6 +5140,7 @@ phasecraft,phasecraft-workable,https://apply.workable.com/phasecraft-1/,workable
 phasev,phasev-greenhouse,https://job-boards.greenhouse.io/phasev,greenhouse,"{""token"": ""phasev""}",skip,
 philadelphia-phillies-baseball-operations,philadelphia-phillies-baseball-operations-greenhouse,https://job-boards.greenhouse.io/philliesbaseballoperations,greenhouse,"{""token"": ""philliesbaseballoperations""}",skip,
 philip-morris-international,philip-morris-international-careers,https://join.pmicareers.com/gb/en/search-results,sitemap,"{""sitemap_url"": ""https://join.pmicareers.com/gb/en/search-results/sitemap.xml""}",json-ld,
+philips,philips-careers,https://www.careers.philips.com/,phenom,,json-ld,
 philips,philips-careers-workday,https://philips.wd3.myworkdayjobs.com/jobs-and-careers,workday,"{""company"": ""philips"", ""wd_instance"": ""wd3"", ""site"": ""jobs-and-careers""}",workday,
 philo,philo-greenhouse,https://job-boards.greenhouse.io/philo,greenhouse,"{""token"": ""philo""}",skip,
 philz-coffee,philz-coffee-greenhouse,https://job-boards.greenhouse.io/philzcoffeecareers,greenhouse,"{""token"": ""philzcoffeecareers""}",skip,
