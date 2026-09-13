@@ -2,8 +2,8 @@
 
 Supports multiple ATS platforms that expose job listings via RSS/XML-style transports:
 - **successfactors**: SAP SuccessFactors CSB ``/googlefeed.xml`` (Google Base namespace)
-  plus native static DWR pagination and ``resultType=XML`` for legacy
-  ``/career?company=...`` tenants
+  plus the Recruiting Marketing search API, native static DWR pagination,
+  and ``resultType=XML`` for legacy ``/career?company=...`` tenants
 - **teamtailor**: Teamtailor ``/jobs.rss`` (offset-paginated, ``tt:`` namespace)
 - **wp_job_manager**: WordPress WP Job Manager ``?feed=job_feed`` (page-paginated)
 - **governmentjobs**: NEOGOV/GovernmentJobs ``/SearchEngine/JobsFeed?agency=...``
@@ -14,6 +14,8 @@ Config: ``{"preset": "<name>", "feed_url": "..."}``. Legacy SuccessFactors
 uses ``{"preset": "successfactors", "variant": "legacy", "host": "...",
 "company": "..."}`` and still runs through this monitor type. Legacy XML uses
 ``{"preset": "successfactors", "variant": "legacy_xml", "feed_url": "..."}``.
+Recruiting Marketing sites use ``{"preset": "successfactors", "variant":
+"rmk", "brand": "..."}``.
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ from collections.abc import AsyncIterator, Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
-from urllib.parse import parse_qs, parse_qsl, urlencode, urljoin, urlparse, urlunparse
+from urllib.parse import parse_qs, parse_qsl, quote, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
 import structlog
@@ -74,6 +76,13 @@ _SF_JOB_IDENTITY_RE = re.compile(
 _SF_JOB_SELECTOR = '[data-careersite-propertyid="title"]'
 _SF_DETAIL_FIELD_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 _SF_METADATA_KEY_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+_SF_RMK_BRAND_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+_SF_RMK_LOCALE_RE = re.compile(r"^[a-z]{2}_[A-Z]{2}$")
+_SF_RMK_CSRF_RE = re.compile(r'["\']X-CSRF-Token["\']\s*:\s*["\']([^"\']+)["\']')
+_SF_RMK_APP_BRAND_RE = re.compile(r"\bbrand\s*:\s*['\"]([^'\"]+)['\"]")
+_SF_RMK_APP_LOCALE_RE = re.compile(r"\blocale\s*:\s*['\"]([^'\"]+)['\"]")
+_SF_RMK_PAGE_SIZE = 10
+_SF_RMK_REQUEST_ATTEMPTS = 6
 _SF_WRAPPER_QUERY_KEYS = frozenset(
     {
         "_s.crb",
@@ -535,6 +544,204 @@ def _parse_generic_item(item: ET.Element) -> DiscoveredJob | None:
         date_posted=date_posted,
         metadata=metadata or None,
     )
+
+
+def _sf_rmk_list(value: object) -> list[str] | None:
+    """Return a bounded list of non-empty RMK response strings."""
+    if not isinstance(value, list) or len(value) > 100:
+        return None
+    result = [item.strip() for item in value if isinstance(item, str) and item.strip()]
+    return result or None
+
+
+def _sf_rmk_job(row: object, *, origin: str, brand: str, locale: str) -> DiscoveredJob:
+    """Convert one validated Recruiting Marketing search row."""
+    if not isinstance(row, dict) or not isinstance(row.get("response"), dict):
+        raise ValueError("SuccessFactors RMK returned an invalid job row")
+    data = row["response"]
+    row_brand = data.get("brandUrl")
+    job_id = data.get("id")
+    title = data.get("unifiedStandardTitle")
+    url_title = data.get("unifiedUrlTitle") or data.get("urlTitle")
+    if (
+        row_brand != brand
+        or not isinstance(job_id, str)
+        or not job_id.isdigit()
+        or not isinstance(title, str)
+        or not title.strip()
+        or not isinstance(url_title, str)
+        or not url_title.strip()
+    ):
+        raise ValueError("SuccessFactors RMK returned an inconsistent job identity")
+
+    encoded_title = quote(html.unescape(url_title.strip()), safe="%-._~")
+    locations = _sf_rmk_list(data.get("filter1"))
+    employment_types = _sf_rmk_list(data.get("filter4"))
+    metadata: dict[str, object] = {"id": job_id, "brand": brand}
+    optional_lists = {
+        "job_function": "filter2",
+        "business_unit": "businessUnit_obj",
+        "division": "division_obj",
+        "currency": "currency",
+    }
+    for key, source_key in optional_lists.items():
+        values = _sf_rmk_list(data.get(source_key))
+        if values:
+            metadata[key] = values
+
+    return DiscoveredJob(
+        url=f"{origin}/{brand}/job/{encoded_title}/{job_id}-{locale}/",
+        title=title.strip(),
+        locations=locations,
+        employment_type=employment_types[0] if employment_types else None,
+        date_posted=(
+            data["unifiedStandardStart"].strip()
+            if isinstance(data.get("unifiedStandardStart"), str)
+            and data["unifiedStandardStart"].strip()
+            else None
+        ),
+        metadata=metadata,
+    )
+
+
+async def _discover_sf_rmk(
+    board: dict,
+    client: httpx.AsyncClient,
+) -> list[DiscoveredJob]:
+    """Discover every job from a SuccessFactors Recruiting Marketing brand."""
+    board_url = board["board_url"]
+    metadata = board.get("metadata") or {}
+    brand = metadata.get("brand")
+    configured_locale = metadata.get("locale")
+    if not isinstance(brand, str) or _SF_RMK_BRAND_RE.fullmatch(brand) is None:
+        raise ValueError("SuccessFactors RMK brand must be a bounded tenant token")
+    if configured_locale is not None and (
+        not isinstance(configured_locale, str)
+        or _SF_RMK_LOCALE_RE.fullmatch(configured_locale) is None
+    ):
+        raise ValueError("SuccessFactors RMK locale must use ll_CC format")
+
+    try:
+        parsed = urlparse(board_url)
+        port = parsed.port or 443
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Invalid SuccessFactors RMK board URL") from exc
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or port != 443
+        or not parsed.path.startswith(f"/{brand}/")
+    ):
+        raise ValueError("SuccessFactors RMK board URL must match the configured brand")
+    origin = urlunparse(("https", parsed.netloc, "", "", "", "")).rstrip("/")
+
+    page = await fetch_text_page_with_retry(
+        client,
+        board_url,
+        retries=_SF_RMK_REQUEST_ATTEMPTS if metadata.get("proxy") else 3,
+        end_of_pagination_statuses=(),
+        require_nonempty=True,
+        max_chars=_DETECTION_MAX_CHARS,
+        sleep=_sleep,
+        log_event="rss.rmk_page_backoff",
+    )
+    if page is None:  # pragma: no cover - end statuses are disabled above
+        raise ValueError("SuccessFactors RMK board page is unavailable")
+    csrf_match = _SF_RMK_CSRF_RE.search(page)
+    page_brand_match = _SF_RMK_APP_BRAND_RE.search(page)
+    page_locale_match = _SF_RMK_APP_LOCALE_RE.search(page)
+    if (
+        csrf_match is None
+        or page_brand_match is None
+        or page_brand_match.group(1) != brand
+        or page_locale_match is None
+    ):
+        raise ValueError("SuccessFactors RMK bootstrap metadata is missing or inconsistent")
+    locale = configured_locale or page_locale_match.group(1)
+    if _SF_RMK_LOCALE_RE.fullmatch(locale) is None:
+        raise ValueError("SuccessFactors RMK page returned an invalid locale")
+
+    api_url = f"{origin}/services/recruiting/v1/jobs"
+    request_headers = {
+        "Content-Type": "application/json",
+        "Referer": board_url,
+        "X-CSRF-Token": csrf_match.group(1),
+    }
+    jobs_by_id: dict[str, DiscoveredJob] = {}
+    expected_total: int | None = None
+    processed_rows = 0
+    page_number = 0
+    while expected_total is None or processed_rows < expected_total:
+        request_body = json.dumps(
+            {
+                "keywords": "",
+                "locale": locale,
+                "location": "",
+                "pageNumber": page_number,
+                "sortBy": "recent",
+                "brand": brand,
+            },
+            separators=(",", ":"),
+        )
+        response_text = await fetch_text_page_with_retry(
+            client,
+            api_url,
+            method="POST",
+            content=request_body,
+            headers=request_headers,
+            retries=_SF_RMK_REQUEST_ATTEMPTS if metadata.get("proxy") else 3,
+            end_of_pagination_statuses=(),
+            require_nonempty=True,
+            max_chars=5_000_000,
+            sleep=_sleep,
+            log_event="rss.rmk_api_backoff",
+        )
+        if response_text is None:  # pragma: no cover - end statuses are disabled above
+            raise ValueError("SuccessFactors RMK search response is unavailable")
+        try:
+            payload = json.loads(response_text)
+        except json.JSONDecodeError as exc:
+            raise ValueError("SuccessFactors RMK search returned invalid JSON") from exc
+        if not isinstance(payload, dict):
+            raise ValueError("SuccessFactors RMK search returned an invalid payload")
+        total = payload.get("totalJobs")
+        rows = payload.get("jobSearchResult")
+        if (
+            not isinstance(total, int)
+            or isinstance(total, bool)
+            or not 0 <= total <= MAX_JOBS
+            or not isinstance(rows, list)
+            or len(rows) > _SF_RMK_PAGE_SIZE
+        ):
+            raise ValueError("SuccessFactors RMK search returned invalid pagination data")
+        if expected_total is None:
+            expected_total = total
+        elif total != expected_total:
+            raise ValueError("SuccessFactors RMK total changed during pagination")
+        if not rows:
+            if processed_rows != expected_total:
+                raise ValueError("SuccessFactors RMK pagination ended before the advertised total")
+            break
+
+        processed_rows += len(rows)
+        if expected_total is not None and processed_rows > expected_total:
+            raise ValueError("SuccessFactors RMK pagination exceeded the advertised total")
+        for row in rows:
+            job = _sf_rmk_job(row, origin=origin, brand=brand, locale=locale)
+            job_id = str(job.metadata["id"])
+            existing = jobs_by_id.get(job_id)
+            if existing is not None:
+                if existing != job:
+                    raise ValueError("SuccessFactors RMK repeated a conflicting job")
+                continue
+            jobs_by_id[job_id] = job
+        page_number += 1
+
+    if expected_total is None or processed_rows != expected_total:
+        raise ValueError("SuccessFactors RMK result count did not match the advertised total")
+    return list(jobs_by_id.values())
 
 
 def _hr_manager_customer_from_url(url: str) -> str | None:
@@ -1424,6 +1631,11 @@ async def discover_stream(
 ) -> AsyncIterator[list[DiscoveredJob] | MonitorResult]:
     """Yield bounded parsed-job batches across streamed RSS pages."""
     metadata = board.get("metadata") or {}
+    if metadata.get("preset") == "successfactors" and metadata.get("variant") == "rmk":
+        rmk_jobs = await _discover_sf_rmk(board, client)
+        for start in range(0, len(rmk_jobs), _STREAM_BATCH):
+            yield rmk_jobs[start : start + _STREAM_BATCH]
+        return
     if metadata.get("preset") == "successfactors" and metadata.get("variant") == "legacy":
         from src.core.monitors._successfactors_legacy import discover_legacy_stream
 
@@ -1926,6 +2138,8 @@ async def save_raw(
     metadata: dict,
     client: httpx.AsyncClient,
 ) -> None:
+    if metadata.get("preset") == "successfactors" and metadata.get("variant") == "rmk":
+        return
     if metadata.get("preset") == "successfactors" and metadata.get("variant") == "legacy":
         from src.shared.successfactors import successfactors_legacy_board_from_metadata
 
