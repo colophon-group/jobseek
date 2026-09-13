@@ -6354,6 +6354,7 @@ sulzer,sulzer-china-chemtech,https://www.sulzerct.com/%E5%8A%A0%E5%85%A5%E8%8B%8
 sulzer,sulzer-global,https://sulzer.wd502.myworkdayjobs.com/SulzerJobs,workday,"{""company"": ""sulzer"", ""wd_instance"": ""wd502"", ""site"": ""SulzerJobs""}",workday,
 sulzer-schmid,sulzer-schmid-careers,https://www.sulzerschmid.ch/about-sulzer-schmid/#4_jobs,dom,"{""render"": true, ""url_filter"": ""/jobs/""}",dom,"{""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.*?) - Sulzer""}, {""text"": ""Oetwil"", ""field"": ""locations"", ""regex"": ""in ([A-Za-z\\s]+am See)""}, {""tag"": ""h4"", ""text"": ""Overview"", ""field"": ""description"", ""stop"": ""How to apply"", ""html"": true, ""from"": 0}]}"
 summer,summer-greenhouse,https://job-boards.greenhouse.io/summer,greenhouse,"{""token"": ""summer""}",skip,
+summerwood,summerwood-careers,https://www.paycomonline.net/v4/ats/web.php/portal/431e50eab8218e67fc2327fa172aef31/career-page,paycom,,paycom,"{""enrich"": [""title"", ""description"", ""locations"", ""employment_type"", ""job_location_type"", ""date_posted"", ""base_salary""]}"
 summit-one-vanderbilt,summit-one-vanderbilt-greenhouse,https://job-boards.greenhouse.io/summitonevanderbilt,greenhouse,"{""token"": ""summitonevanderbilt""}",skip,
 sumo-logic,sumo-logic-greenhouse,https://job-boards.greenhouse.io/sumologic,greenhouse,"{""token"": ""sumologic""}",skip,
 sumup,sumup-greenhouse,https://boards.greenhouse.io/sumup,greenhouse,"{""token"": ""sumup""}",skip,
