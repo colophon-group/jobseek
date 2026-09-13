@@ -10,9 +10,7 @@ DATA_DIR = Path(__file__).parents[1] / "data"
 def _boards() -> dict[str, dict[str, str]]:
     with (DATA_DIR / "boards.csv").open(newline="") as file:
         return {
-            row["board_slug"]: row
-            for row in csv.DictReader(file)
-            if row["company_slug"] == "rsm"
+            row["board_slug"]: row for row in csv.DictReader(file) if row["company_slug"] == "rsm"
         }
 
 
