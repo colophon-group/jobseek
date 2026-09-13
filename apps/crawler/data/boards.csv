@@ -6471,6 +6471,7 @@ takealot-group,takealot-group-greenhouse,https://job-boards.greenhouse.io/takeal
 takeda,takeda-global,https://jobs.takeda.com/search-jobs,sitemap,"{""sitemap_url"": ""https://jobs.takeda.com/sitemap.xml"", ""url_filter"": ""^https://jobs\\.takeda\\.com/job/""}",json-ld,
 tako,tako-careers,https://jobs.ashbyhq.com/tako,ashby,"{""token"": ""tako""}",skip,
 taktile,taktile-careers,https://jobs.ashbyhq.com/taktile,ashby,"{""token"": ""taktile""}",skip,
+talent-trader-group,talent-trader-group-careers,https://apply.workable.com/talent-trader-group,workable,"{""token"": ""talent-trader-group""}",workable,
 talentful,talentful-ashby,https://jobs.ashbyhq.com/talentful,ashby,"{""token"": ""talentful""}",skip,
 talkdesk,talkdesk-greenhouse,https://job-boards.greenhouse.io/talkdesk2,greenhouse,"{""token"": ""talkdesk2""}",skip,
 talkiatry,talkiatry-ashby,https://jobs.ashbyhq.com/talkiatry,ashby,"{""token"": ""talkiatry""}",skip,
