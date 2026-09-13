@@ -4165,7 +4165,7 @@ macys,macys-bluemercury,https://ebwh.fa.us2.oraclecloud.com/hcmUI/CandidateExper
 macys,macys-careers,https://ebwh.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 madano,madano-greenhouse,https://job-boards.greenhouse.io/madano,greenhouse,"{""token"": ""madano""}",skip,
 madison-energy-infrastructure,madison-energy-infrastructure-greenhouse,https://job-boards.greenhouse.io/madisonenergyinfrastructure,greenhouse,"{""token"": ""madisonenergyinfrastructure""}",skip,
-maersk,maersk-careers,https://maersk.wd3.myworkdayjobs.com/Maersk_Careers,workday,"{""company"": ""maersk"", ""wd_instance"": ""wd3"", ""site"": ""Maersk_Careers"", ""all_sites"": false}",workday,
+maersk,maersk-careers,https://maersk.wd3.myworkdayjobs.com/Maersk_Careers,workday,"{""company"": ""maersk"", ""wd_instance"": ""wd3"", ""site"": ""Maersk_Careers""}",workday,
 magic,magic-pinpoint,https://magic.pinpointhq.com,pinpoint,"{""slug"": ""magic""}",skip,
 magic-leap,magic-leap-greenhouse,https://job-boards.greenhouse.io/magicleap,greenhouse,"{""token"": ""magicleap""}",skip,
 magiceden,magiceden-ashby,https://jobs.ashbyhq.com/magiceden,ashby,"{""token"": ""magiceden""}",skip,
