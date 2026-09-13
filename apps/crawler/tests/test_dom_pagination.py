@@ -4035,6 +4035,37 @@ class TestCanHandle:
             },
         }
 
+    async def test_numbered_vacancy_children_exclude_navigation_and_external_links(self):
+        html = """
+        <html><body>
+          <a href="/career">Career</a>
+          <a class="vacancy" href="/vacancies/manufacturing-engineer-372836">
+            Manufacturing Engineer
+          </a>
+          <a class="vacancy" href="/vacancies/assembler-387628/">Assembler</a>
+          <a class="vacancy" href="/vacancies/open-application">Open application</a>
+          <a class="vacancy" href="https://evil.example/vacancies/injected-999">
+            Injected
+          </a>
+        </body></html>
+        """
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=html),
+        ):
+            result = await can_handle(
+                "https://jobs.example.com/vacancies",
+                MagicMock(),
+            )
+
+        assert result == {
+            "urls": 2,
+            "url_filter": (
+                r"(?i)^https://jobs\.example\.com/vacancies/"
+                r"[^/?#]*\d[^/?#]*/?(?:[?#].*)?$"
+            ),
+        }
+
 
 class TestDomDiscoverInitialFetch:
     async def test_partitioned_pagination_unions_every_talentsoft_facet(self):
