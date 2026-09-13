@@ -23,7 +23,7 @@ def test_all_umantis_scrapers_follow_only_same_origin_locale_redirects() -> None
             if row["monitor_type"] == "umantis"
         ]
 
-    assert len(configs) == 8
+    assert len(configs) == 9
     assert all(config.get("same_origin_redirects") is True for config in configs)
 
 
@@ -36,7 +36,11 @@ def test_umantis_identity_migration_matches_the_exact_existing_registry() -> Non
             (row["board_slug"], row["company_slug"], row["board_url"])
             for row in csv.DictReader(handle)
             if row["monitor_type"] == "umantis"
-            and row["board_slug"] != "university-of-neuchatel-umantis"
+            and row["board_slug"]
+            not in {
+                "continental-careers-bestdrive-ch",
+                "university-of-neuchatel-umantis",
+            }
         }
     contracted = {
         (board_slug, company_slug, board_url)
