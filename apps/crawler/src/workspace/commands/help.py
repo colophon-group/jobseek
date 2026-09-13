@@ -3509,6 +3509,10 @@ json-ld — Structured JobPosting Extractor
                    Omit addressRegion while retaining addressLocality and
                    addressCountry. Use only when a provider demonstrably
                    publishes incorrect regions across otherwise valid jobs.
+    description_selector
+                   CSS selector for a required full role description in the
+                   same page. Replaces only JSON-LD's description when the
+                   provider publishes generic boilerplate there.
     defaults_by_url
                    Exact canonical posting URL -> missing-field defaults. Use
                    for a small number of stable upstream exceptions where an
