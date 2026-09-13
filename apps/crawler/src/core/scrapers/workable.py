@@ -2,6 +2,8 @@
 
 Fetches structured job data from the Workable detail endpoint:
   GET https://apply.workable.com/api/v2/accounts/{slug}/jobs/{shortcode}
+Falls back on rate limiting to Workable's public Markdown representation:
+  GET https://apply.workable.com/{slug}/jobs/view/{shortcode}.md
 
 The monitor (``src/core/monitors/workable``) discovers URLs; this scraper
 fetches details on the daily scrape schedule.
@@ -9,6 +11,7 @@ fetches details on the daily scrape schedule.
 
 from __future__ import annotations
 
+import html
 import re
 
 import httpx
@@ -46,6 +49,110 @@ def _parse_job_url(url: str) -> tuple[str, str] | None:
 def _detail_url(slug: str, shortcode: str) -> str:
     """Build the Workable detail API URL."""
     return f"https://apply.workable.com/api/v2/accounts/{slug}/jobs/{shortcode}"
+
+
+def _markdown_detail_url(slug: str, shortcode: str) -> str:
+    """Build the public Workable Markdown detail URL."""
+    return f"https://apply.workable.com/{slug}/jobs/view/{shortcode}.md"
+
+
+def _markdown_inline(text: str) -> str:
+    """Escape Markdown text and retain Workable's simple bold markup."""
+    escaped = html.escape(text.strip())
+    return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", escaped)
+
+
+def _markdown_fragment_to_html(markdown: str) -> str | None:
+    """Convert the small Markdown subset emitted by Workable to safe HTML."""
+    output: list[str] = []
+    in_list = False
+
+    def close_list() -> None:
+        nonlocal in_list
+        if in_list:
+            output.append("</ul>")
+            in_list = False
+
+    for raw_line in markdown.splitlines():
+        line = raw_line.strip()
+        if not line:
+            close_list()
+            continue
+
+        heading = re.match(r"^(#{2,6})\s+(.+)$", line)
+        if heading:
+            close_list()
+            level = len(heading.group(1))
+            output.append(f"<h{level}>{_markdown_inline(heading.group(2))}</h{level}>")
+            continue
+
+        bullet = re.match(r"^-\s+(.+)$", line)
+        if bullet:
+            if not in_list:
+                output.append("<ul>")
+                in_list = True
+            output.append(f"<li>{_markdown_inline(bullet.group(1))}</li>")
+            continue
+
+        close_list()
+        output.append(f"<p>{_markdown_inline(line)}</p>")
+
+    close_list()
+    return "\n".join(output) or None
+
+
+def _parse_markdown_detail(markdown: str) -> JobContent:
+    """Parse Workable's public Markdown representation of a job."""
+    title_match = re.search(r"^#\s+(.+?)\s*$", markdown, flags=re.MULTILINE)
+    title = title_match.group(1).strip() if title_match else None
+
+    locations: list[str] | None = None
+    employment_type: str | None = None
+    date_posted: str | None = None
+    summary_match = re.search(r"^>\s*(.+?)\s*$", markdown, flags=re.MULTILINE)
+    if summary_match:
+        parts = [part.strip() for part in summary_match.group(1).split(" · ")]
+        if len(parts) >= 4:
+            location = " · ".join(parts[1:-2]).strip()
+            location = re.sub(r"\s+\((?:remote|hybrid|on-?site)\)$", "", location, flags=re.I)
+            locations = [location] if location else None
+            employment_type = parts[-2] or None
+            posted_match = re.fullmatch(r"Posted\s+(\d{4}-\d{2}-\d{2})", parts[-1])
+            if posted_match:
+                date_posted = posted_match.group(1)
+
+    workplace_match = re.search(
+        r"^\*\*Workplace:\*\*\s*(.+?)\s*$", markdown, flags=re.MULTILINE | re.I
+    )
+    job_location_type = None
+    if workplace_match:
+        job_location_type = normalize_job_location_type(workplace_match.group(1), default=None)
+
+    department_match = re.search(
+        r"^\*\*Department:\*\*\s*(.+?)\s*$", markdown, flags=re.MULTILINE | re.I
+    )
+    metadata = None
+    if department_match:
+        metadata = {"department": department_match.group(1).strip()}
+
+    description_match = re.search(
+        r"^## Description\s*$\n(.*?)(?=^## Apply\s*$|\Z)",
+        markdown,
+        flags=re.MULTILINE | re.DOTALL | re.I,
+    )
+    description = (
+        _markdown_fragment_to_html(description_match.group(1)) if description_match else None
+    )
+
+    return JobContent(
+        title=title,
+        description=description,
+        locations=locations,
+        employment_type=employment_type,
+        job_location_type=job_location_type,
+        date_posted=date_posted,
+        metadata=metadata,
+    )
 
 
 def _build_description(detail: dict) -> str | None:
@@ -142,6 +249,21 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     api_url = _detail_url(slug, shortcode)
 
     resp = await http.get(api_url)
+    if resp.status_code == 429:
+        markdown_url = _markdown_detail_url(slug, shortcode)
+        markdown_resp = await http.get(markdown_url, follow_redirects=True)
+        if markdown_resp.status_code == 200:
+            log.warning(
+                "workable_scraper.rate_limited_markdown_fallback",
+                url=url,
+            )
+            return _parse_markdown_detail(markdown_resp.text)
+        log.warning(
+            "workable_scraper.markdown_detail_failed",
+            url=url,
+            status=markdown_resp.status_code,
+        )
+
     if resp.status_code != 200:
         log.warning(
             "workable_scraper.detail_failed",

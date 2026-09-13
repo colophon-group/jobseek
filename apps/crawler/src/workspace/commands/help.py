@@ -4654,6 +4654,8 @@ SCRAPER_WORKABLE = """\
 workable — Workable Detail API scraper
 
   API:      GET https://apply.workable.com/api/v2/accounts/{slug}/jobs/{shortcode}
+  Fallback: GET https://apply.workable.com/{slug}/jobs/view/{shortcode}.md
+            when the detail API returns HTTP 429
   Returns:  title, HTML description, locations, employment_type,
             job_location_type, date_posted, metadata (department)
   Config:   None needed — parses the job URL to derive API parameters
