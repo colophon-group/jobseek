@@ -1123,6 +1123,7 @@ from src.core.monitors import (  # noqa: E402
     unifr,  # noqa: F401
     unisante,  # noqa: F401
     universia,  # noqa: F401
+    wecruit,  # noqa: F401
     welcometothejungle,  # noqa: F401
     woowa,  # noqa: F401
     workable,  # noqa: F401

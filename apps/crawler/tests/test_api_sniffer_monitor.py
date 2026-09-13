@@ -3462,6 +3462,69 @@ class TestDiscoverReplay:
         mock_page.evaluate.assert_not_awaited()
 
     @pytest.mark.asyncio
+    async def test_replay_triggers_salesforce_aura_listing_interaction(self, monkeypatch):
+        """Aura replay exercises the page when load only captured setup actions."""
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.shared import browser as browser_module
+        from src.shared.api_sniff import Exchange
+
+        setup = Exchange(
+            method="POST",
+            url="https://jobs.example.com/s/sfsites/aura?r=1",
+            request_headers={"x-current-context": "fresh"},
+            post_data="message=setup",
+            status=200,
+            body={"actions": [{"state": "SUCCESS", "returnValue": {"languages": []}}]},
+            content_type="application/json",
+            phase="load",
+        )
+        listings = [{"Id": f"a1J{i}", "Title__c": f"Engineer {i}"} for i in range(3)]
+        jobs = Exchange(
+            method="POST",
+            url=(
+                "https://jobs.example.com/s/sfsites/aura?r=9&other.JobOffer.getOffersFilterMulti=1"
+            ),
+            request_headers={"x-current-context": "fresh"},
+            post_data="message=jobs",
+            status=200,
+            body={"actions": [{"state": "SUCCESS", "returnValue": listings}]},
+            content_type="application/json",
+            phase="interaction",
+        )
+        captured = [setup]
+        monkeypatch.setattr(
+            api_sniffer_module,
+            "capture_exchanges",
+            AsyncMock(return_value=captured),
+        )
+
+        async def add_jobs(_page, exchanges):
+            exchanges.append(jobs)
+
+        trigger = AsyncMock(side_effect=add_jobs)
+        monkeypatch.setattr(api_sniffer_module, "trigger_interactions", trigger)
+        monkeypatch.setattr(browser_module, "dismiss_overlays", AsyncMock())
+
+        config = {
+            "api_url": "https://jobs.example.com/s/sfsites/aura",
+            "method": "POST",
+            "json_path": "actions[0].returnValue",
+            "browser": True,
+            "url_template": "https://jobs.example.com/s/offer/{Id}",
+        }
+        board = {"board_url": "https://jobs.example.com/s/jobs", "metadata": config}
+        mock_pw = _make_mock_pw(AsyncMock())
+
+        result = await discover(board, AsyncMock(), pw=mock_pw)
+
+        assert result == {
+            "https://jobs.example.com/s/offer/a1J0",
+            "https://jobs.example.com/s/offer/a1J1",
+            "https://jobs.example.com/s/offer/a1J2",
+        }
+        trigger.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_no_playwright_returns_empty(self):
         """Without pw and no api_url, discover should return empty set."""
         board = {"board_url": "https://example.com/careers", "metadata": {}}

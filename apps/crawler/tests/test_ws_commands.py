@@ -4447,6 +4447,42 @@ class TestQualityGates:
         blockers, _ = run_quality_gates(ws_obj, [board])
         assert any("feedback" in b.lower() for b in blockers)
 
+    def test_monitor_without_required_scraper_blocks(self):
+        from src.workspace.commands.crawl import run_quality_gates
+
+        ws_obj = Workspace(slug="test", name="Test", website="https://test.com")
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        board.configs["dom"] = {
+            "monitor_type": "dom",
+            "monitor_config": {"url_filter": "/jobs/"},
+            "status": "tested",
+            "run": {"jobs": 10},
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "dom"
+
+        blockers, _ = run_quality_gates(ws_obj, [board])
+
+        assert any("dom monitor requires a scraper" in blocker for blocker in blockers)
+
+    def test_auto_scraper_monitor_does_not_require_explicit_selection(self):
+        from src.workspace.commands.crawl import run_quality_gates
+
+        ws_obj = Workspace(slug="test", name="Test", website="https://test.com")
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        board.configs["greenhouse"] = {
+            "monitor_type": "greenhouse",
+            "monitor_config": {"token": "test"},
+            "status": "tested",
+            "run": {"jobs": 10},
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "greenhouse"
+
+        blockers, _ = run_quality_gates(ws_obj, [board])
+
+        assert not any("requires a scraper" in blocker for blocker in blockers)
+
     def test_verified_empty_board_is_warning_not_blocker(self):
         from src.workspace.commands.crawl import run_quality_gates
 

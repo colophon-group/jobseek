@@ -214,7 +214,15 @@ _LOCATION_LABELS = (
     "lieu",
     "arbeitsort",
     "arbeitsplatz",
+    "munkavégzés helye",
     "luogo di lavoro",
+)
+_LOCATION_VALUE_PREFIXES = (
+    # Czech career pages commonly expose the current branch as a navigation
+    # item whose accessible text is "pracovní pozice <city>" ("job
+    # positions <city>").  The value precedes the role heading, so it cannot
+    # be captured by the normal post-title label/value heuristic.
+    "pracovní pozice",
 )
 
 
@@ -936,6 +944,26 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
                     }
                 )
             break
+
+        if not any(step.get("field") in {"location", "locations"} for step in steps):
+            for prefix in _LOCATION_VALUE_PREFIXES:
+                pattern = rf"(?i)^\s*{re.escape(prefix)}\s+(\S.*?)\s*$"
+                if any(
+                    element["tag"] in {"a", "li"}
+                    and len(element["text"]) < 120
+                    and re.fullmatch(pattern, element["text"])
+                    for element in elements[:title_idx]
+                ):
+                    steps.append(
+                        {
+                            "match_regex": pattern,
+                            "field": "location",
+                            "regex": pattern,
+                            "from": 0,
+                            "optional": True,
+                        }
+                    )
+                    break
 
     return steps
 
