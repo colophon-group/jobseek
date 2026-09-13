@@ -2479,6 +2479,17 @@ def run_quality_gates(
 
         if cfg.get("status") != "tested":
             blockers.append(f"Board {b.alias}: config not tested")
+
+        monitor_type = cfg.get("monitor_type")
+        if (
+            monitor_type
+            and not cfg.get("scraper_type")
+            and not auto_scraper_type(monitor_type, cfg.get("monitor_config") or {})
+        ):
+            blockers.append(
+                f"Board {b.alias}: {monitor_type} monitor requires a scraper; "
+                "select and test one before submitting"
+            )
         if cfg.get("run", {}).get("truncated"):
             blockers.append(
                 f"Board {b.alias}: monitor run is truncated/incomplete; "
