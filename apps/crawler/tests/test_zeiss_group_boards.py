@@ -46,10 +46,13 @@ def test_zeiss_group_metadata_descriptions_and_assets() -> None:
     assert company["employee_count_range"] == "8"
     assert company["founded_year"] == "1846"
     assert company["logo_type"] == "wordmark+icon"
+    assert json.loads(company["extras"])["legalName"] == "Carl Zeiss AG"
 
     descriptions = _rows("company_descriptions.csv", "slug", "zeiss-group")[0]
     assert all(descriptions[locale] for locale in ("en", "de", "fr", "it"))
 
-    for filename in ("logo.jpg", "icon.jpg"):
-        asset = DATA_DIR / "images" / "zeiss-group" / filename
-        assert asset.read_bytes().startswith(b"\xff\xd8\xff")
+    asset_root = "https://jobseek-assets.colophon-group.org/companies/zeiss-group/"
+    assert company["logo_url"].startswith(f"{asset_root}logo-")
+    assert company["logo_url"].endswith(".jpg")
+    assert company["icon_url"].startswith(f"{asset_root}icon-")
+    assert company["icon_url"].endswith(".webp")
