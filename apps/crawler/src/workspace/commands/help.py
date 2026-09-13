@@ -3050,6 +3050,11 @@ icims — iCIMS server-rendered listings
             and requires their combined job-ID set to exactly match the
             aggregate before allowing tombstones. The listing host remains
             allowed. Do not use this to combine unrelated tenants.
+    dedupe_job_ids_from_hosts
+            Optional explicit list of peer iCIMS hosts that mirror some of this
+            portal's requisition IDs. Each peer is crawled completely before
+            matching IDs are removed; truncated peers fail closed. Use only
+            when live overlap verification proves IDs are shared requisitions.
 
   Detection:  ws probe shows "iCIMS static listing — host: X, N jobs"
   Zero jobs?  A valid empty page still contains the iCIMS_ListingsPage marker."""

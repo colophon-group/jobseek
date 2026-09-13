@@ -271,6 +271,59 @@ class TestMonitor:
             with pytest.raises(ValueError, match="job_hosts"):
                 await discover(board, client)
 
+    async def test_dedupes_mirrored_requisition_ids_from_complete_peer(self):
+        peer_host = "mirror-acme.icims.com"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            jobs = (100, 102) if request.url.host == peer_host else (100, 101)
+            return httpx.Response(200, text=_listing(*jobs), request=request)
+
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"dedupe_job_ids_from_hosts": [peer_host]},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert result == {_job_url(101)}
+
+    async def test_job_id_dedupe_fails_closed_when_peer_is_truncated(self):
+        peer_host = "mirror-acme.icims.com"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host != peer_host:
+                return httpx.Response(200, text=_listing(100, 101), request=request)
+            page_index = int(request.url.params.get("pr", "0"))
+            return httpx.Response(
+                200,
+                text=_listing(100, page=page_index + 1, total=2),
+                request=request,
+            )
+
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"dedupe_job_ids_from_hosts": [peer_host]},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="job-ID dedupe peer.*truncated"):
+                await discover(board, client)
+
+    @pytest.mark.parametrize(
+        "peer_hosts",
+        [[], [HOST], ["www.icims.com"], ["mirror-acme.icims.com"] * 2, "mirror-acme.icims.com"],
+    )
+    async def test_rejects_invalid_job_id_dedupe_hosts(self, peer_hosts: object):
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"dedupe_job_ids_from_hosts": peer_hosts},
+        }
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=_listing(), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="dedupe_job_ids_from_hosts"):
+                await discover(board, client)
+
     async def test_cross_locale_dedupe_uses_stable_listing_identity_and_title_aliases(self):
         peer_host = "peer-acme.icims.com"
 

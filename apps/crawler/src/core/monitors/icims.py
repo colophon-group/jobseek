@@ -146,6 +146,32 @@ def _job_hosts_config(metadata: dict, listing_host: str) -> frozenset[str]:
     return frozenset({listing_host, *job_hosts})
 
 
+def _dedupe_job_ids_from_hosts_config(
+    metadata: dict,
+    listing_host: str,
+) -> frozenset[str]:
+    """Return trusted peer hosts whose mirrored requisition IDs are excluded."""
+    raw = metadata.get("dedupe_job_ids_from_hosts")
+    if raw is None:
+        return frozenset()
+    if not isinstance(raw, list) or not raw or len(raw) > MAX_JOB_HOSTS:
+        raise ValueError(
+            f"iCIMS dedupe_job_ids_from_hosts must be a list of 1-{MAX_JOB_HOSTS} valid hosts"
+        )
+
+    peer_hosts: list[str] = []
+    for value in raw:
+        host = _normalize_host(value)
+        if host is None or host == listing_host:
+            raise ValueError(
+                "iCIMS dedupe_job_ids_from_hosts entries must be different valid public iCIMS hosts"
+            )
+        peer_hosts.append(host)
+    if len(peer_hosts) != len(set(peer_hosts)):
+        raise ValueError("iCIMS dedupe_job_ids_from_hosts entries must be unique")
+    return frozenset(peer_hosts)
+
+
 def _host_from_url(url: str, *, validate_query: bool = True) -> str | None:
     try:
         parsed = urlparse(url)
@@ -392,6 +418,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         )
 
     job_hosts = _job_hosts_config(metadata, host)
+    id_dedupe_hosts = _dedupe_job_ids_from_hosts_config(metadata, host)
     dedupe = _cross_locale_dedupe_config(metadata, host)
     aggregate_mode = len(job_hosts) > 1
     urls, truncated, pages, identities = await _discover_pages(
@@ -428,6 +455,28 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             child_hosts=len(job_hosts) - 1,
             child_truncated=child_truncated,
             verified=aggregate_verified,
+        )
+    if id_dedupe_hosts:
+        peer_job_ids: set[str] = set()
+        for peer_host in sorted(id_dedupe_hosts):
+            peer_urls, peer_truncated, _peer_pages, _peer_identities = await _discover_pages(
+                peer_host,
+                client,
+            )
+            if peer_truncated:
+                raise ValueError(
+                    f"iCIMS job-ID dedupe peer {peer_host!r} was truncated; refusing partial dedupe"
+                )
+            peer_job_ids.update(urlparse(url).path.split("/")[2] for url in peer_urls)
+        duplicates = {url for url in urls if urlparse(url).path.split("/")[2] in peer_job_ids}
+        urls.difference_update(duplicates)
+        log.info(
+            "icims.job_ids_deduped",
+            host=host,
+            peer_hosts=len(id_dedupe_hosts),
+            peer_jobs=len(peer_job_ids),
+            removed=len(duplicates),
+            kept=len(urls),
         )
     if dedupe is not None:
         peer_host, aliases = dedupe

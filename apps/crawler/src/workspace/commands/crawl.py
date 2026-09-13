@@ -956,7 +956,7 @@ _MONITOR_CONFIG_HINTS = {
     "pageup": "Requires: instance, source_pointer, locale (auto-filled from a PageUp URL)",
     "icims": (
         "Requires: host (auto-filled from an icims.com URL); aggregate portals may "
-        "declare explicit job_hosts"
+        "declare explicit job_hosts; mirrored portals may declare verified job-ID peers"
     ),
     "infoniqa": "Requires: employer_name (auto-filled from a live Infoniqa board probe)",
     "intervieweb": "No config required (POST endpoint and CSRF token are resolved per run)",
