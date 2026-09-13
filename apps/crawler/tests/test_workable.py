@@ -251,6 +251,87 @@ class TestDiscover:
             "https://apply.workable.com/testco/j/SC2/",
         }
 
+    async def test_search_only_markdown_deduplicates_verified_public_api_rows(self, monkeypatch):
+        monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
+
+        def handler(request):
+            url = str(request.url)
+            if request.method == "POST":
+                return httpx.Response(429)
+            if url.endswith("/testco/llms.txt"):
+                return httpx.Response(
+                    200,
+                    text=(
+                        "- All open roles "
+                        "(GET `https://apply.workable.com/testco/jobs.md`): "
+                        "2 current openings\n"
+                    ),
+                )
+            if url.endswith("/testco/jobs.md"):
+                return httpx.Response(
+                    200,
+                    text=(
+                        "# Testco — Open Positions\n\n"
+                        "> This company has 2 open positions. "
+                        "Use the search endpoint to filter results.\n"
+                    ),
+                )
+            assert url == "https://www.workable.com/api/accounts/testco"
+            return httpx.Response(
+                200,
+                json={
+                    "name": "Testco",
+                    "jobs": [
+                        {"shortcode": "SC1"},
+                        {"shortcode": "SC1"},
+                        {"shortcode": "SC2"},
+                    ],
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://apply.workable.com/testco",
+                "metadata": {"token": "testco"},
+            }
+            urls = await discover(board, client)
+
+        assert urls == {
+            "https://apply.workable.com/testco/j/SC1/",
+            "https://apply.workable.com/testco/j/SC2/",
+        }
+
+    async def test_search_only_markdown_rejects_partial_public_api(self, monkeypatch):
+        monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
+
+        def handler(request):
+            url = str(request.url)
+            if request.method == "POST":
+                return httpx.Response(429)
+            if url.endswith("/testco/llms.txt"):
+                return httpx.Response(
+                    200,
+                    text=(
+                        "- All open roles "
+                        "(GET `https://apply.workable.com/testco/jobs.md`): "
+                        "2 current openings\n"
+                    ),
+                )
+            if url.endswith("/testco/jobs.md"):
+                return httpx.Response(
+                    200,
+                    text="Use the search endpoint to filter results.\n",
+                )
+            return httpx.Response(200, json={"jobs": [{"shortcode": "SC1"}]})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://apply.workable.com/testco",
+                "metadata": {"token": "testco"},
+            }
+            with pytest.raises(ValueError, match="public inventory count mismatch"):
+                await discover(board, client)
+
     async def test_rate_limit_rejects_partial_markdown_inventory(self, monkeypatch):
         monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
 

@@ -203,7 +203,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `jobdiva`         | URL-only | api_sniffer | JobDiva token bootstrap + native range pagination |
 | 10   | `jobstreet`       | Rich     | jobstreet   | JobStreet employer search summaries + GraphQL detail enrichment |
 | 10   | `seek`            | URL-only | seek        | SEEK AU/NZ advertiser search + GraphQL detail enrichment |
-| 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
+| 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination + verified aggregates/mirror dedupe |
 | 10   | `infoniqa`        | URL-only | --          | Infoniqa employer-bound session POST pagination |
 | 10   | `infor`           | Rich     | infor       | Infor CandidateSelfService Landmark APIs + detail enrichment |
 | 10   | `intervieweb`     | URL-only | json-ld     | Intervieweb HTML + CSRF-protected POST pagination |
@@ -259,6 +259,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `unifr`           | Rich/URL-only | skip/pdf | University of Fribourg FR/DE and faculty inventories |
 | 10   | `unisante`        | Rich     | skip        | Bounded Unisanté official listing/detail validation |
 | 10   | `universia`       | Rich     | skip        | Universia public board configuration and posting APIs |
+| 10   | `wecruit`         | Rich     | skip        | Dayee/Hotjob Wecruit public list and detail APIs |
 | 10   | `welcometothejungle` | Rich  | skip        | Welcome to the Jungle public jobs APIs  |
 | 10   | `woowa`           | Rich     | skip        | Woowa Brothers/Youths public careers APIs |
 | 10   | `workable`        | URL-only | workable    | Workable API                            |

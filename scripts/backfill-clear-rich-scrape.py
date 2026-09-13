@@ -83,6 +83,7 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "unifr",
     "unisante",
     "universia",
+    "wecruit",
     "welcometothejungle",
     "woowa",
 )

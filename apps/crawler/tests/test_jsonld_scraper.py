@@ -852,6 +852,44 @@ class TestScrape:
             assert result.title == "Engineer"
             assert result.description == "Build stuff"
 
+    async def test_description_selector_replaces_only_jsonld_boilerplate(self):
+        page_html = """<html><head>
+        <script type="application/ld+json">
+        {"@type":"JobPosting","title":"AI Architect",
+         "description":"<p>Generic company boilerplate.</p>",
+         "datePosted":"2026-09-12"}
+        </script></head><body>
+        <div class="vacancy-description"><h3>Role</h3><p>Design AI systems.</p></div>
+        </body></html>"""
+
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, text=page_html))
+        ) as client:
+            result = await scrape(
+                "https://example.com/job",
+                {"description_selector": ".vacancy-description"},
+                client,
+            )
+
+        assert result.title == "AI Architect"
+        assert result.date_posted == "2026-09-12"
+        assert result.description == "<h3>Role</h3><p>Design AI systems.</p>"
+
+    @pytest.mark.parametrize("selector", [42, "", "a[", "x" * 257])
+    async def test_description_selector_rejects_invalid_or_missing_content(self, selector):
+        page_html = """<script type="application/ld+json">
+        {"@type":"JobPosting","title":"Engineer","description":"Boilerplate"}
+        </script>"""
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, text=page_html))
+        ) as client:
+            with pytest.raises(ValueError, match="description_selector"):
+                await scrape(
+                    "https://example.com/job",
+                    {"description_selector": selector},
+                    client,
+                )
+
     async def test_defaults_by_url_fill_only_matching_missing_fields(self):
         canonical = "https://example.com/job/locationless"
         page_html = """<html><head>
