@@ -3023,7 +3023,7 @@ MONITOR_ICIMS = """\
 icims — iCIMS server-rendered listings
 
   Listing:  GET https://{host}/jobs/search?ss=1&in_iframe=1
-  Returns:  Stable https://{host}/jobs/{id}/job?in_iframe=1 detail URLs
+  Returns:  Stable https://{job_host}/jobs/{id}/job?in_iframe=1 detail URLs
   Scraper:  Auto-configured JSON-LD scraper
   Note:     Pagination is read from the listing and fetched sequentially
             because iCIMS page state is session-sensitive. Every advertised
@@ -3035,11 +3035,21 @@ icims — iCIMS server-rendered listings
   Config:
     {"host": "careers-acme.icims.com"}
 
+    Aggregate portal:
+    {"host": "allcareers-acme.icims.com",
+     "job_hosts": ["careers-acme.icims.com", "careers2-acme.icims.com"]}
+
     host    Exact single-label *.icims.com public portal host. Auto-filled from
             direct or explicitly linked iCIMS URLs; no blind host guessing.
             This is host-wide. Filtered regional listing URLs are rejected
             rather than silently widened; use a scoped generic DOM board when
             preserving listing filters is required.
+    job_hosts
+            Optional explicit list of public iCIMS detail hosts linked by a
+            verified aggregate portal. The monitor crawls those child tenants
+            and requires their combined job-ID set to exactly match the
+            aggregate before allowing tombstones. The listing host remains
+            allowed. Do not use this to combine unrelated tenants.
 
   Detection:  ws probe shows "iCIMS static listing — host: X, N jobs"
   Zero jobs?  A valid empty page still contains the iCIMS_ListingsPage marker."""

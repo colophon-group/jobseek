@@ -166,6 +166,111 @@ class TestMonitor:
         assert result == set()
         assert seen == [LISTING_URL]
 
+    async def test_aggregate_portal_accepts_only_explicit_job_hosts(self):
+        listing_host = "allcareers-acme.icims.com"
+        second_job_host = "careers2-acme.icims.com"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == HOST:
+                return httpx.Response(200, text=_listing(100), request=request)
+            if request.url.host == second_job_host:
+                return httpx.Response(200, text=_listing(101), request=request)
+            page_index = int(request.url.params.get("pr", "0"))
+            job_host = HOST if page_index == 0 else second_job_host
+            page = _listing(page=page_index + 1, total=2).replace(
+                "</body>",
+                (
+                    f'<a href="https://{job_host}/jobs/{100 + page_index}/role/job?hub=15">'
+                    "Role</a></body>"
+                ),
+            )
+            return httpx.Response(200, text=page, request=request)
+
+        board = {
+            "board_url": f"https://{listing_host}/",
+            "metadata": {
+                "host": listing_host,
+                "job_hosts": [HOST, second_job_host],
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert result == {
+            f"https://{HOST}/jobs/100/job?in_iframe=1",
+            f"https://{second_job_host}/jobs/101/job?in_iframe=1",
+        }
+
+    async def test_aggregate_portal_fails_closed_when_child_union_does_not_match(self):
+        listing_host = "allcareers-acme.icims.com"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            job_id = 100 if request.url.host == listing_host else 101
+            return httpx.Response(200, text=_listing(job_id), request=request)
+
+        board = {
+            "board_url": f"https://{listing_host}/",
+            "metadata": {"host": listing_host, "job_hosts": [HOST]},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == {f"https://{listing_host}/jobs/100/job?in_iframe=1"}
+
+    async def test_aggregate_portal_accepts_page_boundary_duplicates_after_union_check(self):
+        listing_host = "allcareers-acme.icims.com"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == HOST:
+                return httpx.Response(200, text=_listing(100), request=request)
+            page_index = int(request.url.params.get("pr", "0"))
+            return httpx.Response(
+                200,
+                text=_listing(100, page=page_index + 1, total=2),
+                request=request,
+            )
+
+        board = {
+            "board_url": f"https://{listing_host}/",
+            "metadata": {"host": listing_host, "job_hosts": [HOST]},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert result == {f"https://{listing_host}/jobs/100/job?in_iframe=1"}
+
+    async def test_aggregate_portal_rejects_unconfigured_foreign_job_hosts(self):
+        listing_host = "allcareers-acme.icims.com"
+        page = _listing().replace(
+            "</body>",
+            f'<a href="https://{HOST}/jobs/100/role/job">Role</a></body>',
+        )
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=page, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover({"board_url": f"https://{listing_host}/"}, client)
+
+        assert result == set()
+
+    @pytest.mark.parametrize(
+        "job_hosts",
+        [[], ["www.icims.com"], [HOST, HOST], "careers-acme.icims.com"],
+    )
+    async def test_rejects_invalid_aggregate_job_hosts(self, job_hosts: object):
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"host": HOST, "job_hosts": job_hosts},
+        }
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=_listing(), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="job_hosts"):
+                await discover(board, client)
+
     async def test_cross_locale_dedupe_uses_stable_listing_identity_and_title_aliases(self):
         peer_host = "peer-acme.icims.com"
 

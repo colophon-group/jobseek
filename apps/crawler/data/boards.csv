@@ -5416,6 +5416,7 @@ qualtrics,qualtrics-greenhouse,https://job-boards.greenhouse.io/qualtrics,greenh
 quanata,quanata-greenhouse,https://job-boards.greenhouse.io/quanata,greenhouse,"{""token"": ""quanata""}",skip,
 quandela,quandela-workable,https://apply.workable.com/quandela/,workable,"{""token"": ""quandela""}",workable,
 quanta-dialysis-technologies,quanta-dialysis-technologies-global,https://careers.quantadt.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.quantadt.com/jobs.rss""}",skip,
+quanta-services,quanta-services-all-careers,https://allcareers-quanta.icims.com/,icims,"{""host"": ""allcareers-quanta.icims.com"", ""job_hosts"": [""careers-quanta.icims.com"", ""careers2-quanta.icims.com""]}",json-ld,
 quantcast,quantcast-pinpoint,https://quantcast.pinpointhq.com,pinpoint,"{""slug"": ""quantcast""}",skip,
 quantexa,quantexa-careers,https://apply.workable.com/quantexa,workable,"{""token"": ""quantexa""}",workable,
 quanthealth,quanthealth-greenhouse,https://job-boards.greenhouse.io/quanthealth,greenhouse,"{""token"": ""quanthealth""}",skip,
