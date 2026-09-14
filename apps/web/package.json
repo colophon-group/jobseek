@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "traffic:analyze": "tsx script/analyze-vercel-logs.ts",
     "traffic:api": "tsx script/report-api-traffic.ts",
+    "ai-filter-eval:census": "tsx script/collect-ai-filter-eval-census.ts",
     "extract": "lingui extract",
     "compile": "lingui compile",
     "db:generate": "drizzle-kit generate",
