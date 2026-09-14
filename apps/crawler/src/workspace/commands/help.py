@@ -2682,18 +2682,19 @@ personio — Personio XML Feed + HTML Fallback
   Zero jobs?  Verify slug — try the listing page in a browser"""
 
 MONITOR_RSS = """\
-rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
+rss — RSS 2.0 Feed Monitor + SuccessFactors variants
       (presets: successfactors, teamtailor, wp_job_manager, governmentjobs, hr_manager, generic)
 
   Feed:     GET {feed_url}
-  Returns:  Feeds: full job data. Legacy SuccessFactors: title, location,
-            posting date, and stable URL; static DOM enriches description.
+  Returns:  Feeds: full job data. Legacy and RMK SuccessFactors: title,
+            location, posting date, and stable URL; DOM enriches description.
             metadata: id and preset-specific fields
   Scraper:  Feeds are skipped. Legacy SuccessFactors automatically uses the
             static DOM scraper scoped to .joqReqDescription.
   Cap:      50,000 jobs
   Note:     One monitor type with multiple ATS presets:
             - successfactors: /googlefeed.xml (Google Base namespace)
+              Recruiting Marketing /services/recruiting/v1/jobs pagination,
               native static DWR pagination for /career?company=... boards,
               or strict NetSuite-hosted <Job-Listing> XML
             - teamtailor: /jobs.rss (offset-paginated)
@@ -2706,6 +2707,8 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
     {"preset": "successfactors", "feed_url": "https://jobs.sap.com/googlefeed.xml"}
     {"preset": "successfactors", "fetch_company": true,
      "job_filter": {"exclude": "(?i)subsidiary name"}}
+    {"preset": "successfactors", "variant": "rmk", "brand": "CPF",
+     "locale": "en_GB", "proxy": true}
     {"preset": "successfactors", "variant": "legacy",
      "host": "career5.successfactors.eu", "company": "1657261P"}
     {"preset": "successfactors", "variant": "legacy_xml",
@@ -2722,8 +2725,10 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
                Defaults to "generic" when not set.
     feed_url   RSS URL. For known presets, ws probe can auto-fill this from
                the board URL; for generic feeds set it explicitly.
-    variant    SuccessFactors only: "feed", "legacy", or "legacy_xml".
+    variant    SuccessFactors only: "feed", "rmk", "legacy", or "legacy_xml".
                Legacy identities are auto-filled from strict provider URLs.
+    brand      RMK only: exact brandUrl tenant returned by the search API.
+    locale     RMK only: optional ll_CC locale; defaults to the board page.
     customer   HR Manager tenant alias. Auto-filled from a strict
                candidate.hr-manager.net vacancies URL.
     fetch_company  SuccessFactors feed only: fetch each public detail page and
@@ -4669,6 +4674,8 @@ SCRAPER_WORKABLE = """\
 workable — Workable Detail API scraper
 
   API:      GET https://apply.workable.com/api/v2/accounts/{slug}/jobs/{shortcode}
+  Fallback: GET https://apply.workable.com/{slug}/jobs/view/{shortcode}.md
+            when the detail API returns HTTP 429
   Returns:  title, HTML description, locations, employment_type,
             job_location_type, date_posted, metadata (department)
   Config:   None needed — parses the job URL to derive API parameters

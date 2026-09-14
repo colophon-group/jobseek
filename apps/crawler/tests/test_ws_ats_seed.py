@@ -89,6 +89,27 @@ def test_generic_family_uses_jobseek_owned_shared_monitor_preset() -> None:
     assert seed.monitor_config == {"preset": "teamtailor"}
 
 
+def test_mokahr_seed_derives_required_org_and_site_config() -> None:
+    candidate, body = _candidate_body(
+        family="moka",
+        url="https://app.mokahr.com/social-recruitment/xcmg/148090",
+    )
+
+    seed = parse_inventory_seed(body)
+
+    assert seed is not None
+    assert seed.tenant == "moka:social-recruitment:xcmg:148090"
+    assert seed.monitor_type == "mokahr"
+    assert seed.monitor_config == {"org_id": "xcmg", "site_id": 148090}
+
+    workspace = Workspace(slug="xcmg", issue=8855)
+    board = apply_inventory_seed(workspace, seed)
+    config = board.configs[INVENTORY_CONFIG_NAME]
+    assert config["monitor_config"] == {"org_id": "xcmg", "site_id": 148090}
+    assert config["scraper_type"] == "mokahr"
+    assert candidate.tenant == seed.tenant
+
+
 def test_stale_or_rewritten_board_url_rejects_fast_path() -> None:
     _, body = _candidate_body()
     tampered = body.replace(
