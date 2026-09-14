@@ -125,6 +125,21 @@ _JOB_KEYWORDS = frozenset(
     }
 )
 
+_NUMBERED_LISTING_PATHS = frozenset(
+    {
+        "career",
+        "careers",
+        "job",
+        "jobs",
+        "opening",
+        "openings",
+        "position",
+        "positions",
+        "vacancies",
+        "vacancy",
+    }
+)
+
 _LINKEDIN_JOB_FILTER = r"linkedin\.com/jobs/view/"
 _LINKEDIN_JOB_TRANSFORM = {
     "find": r".*(?:-|/)(\d+)(?:/?(?:\?.*)?)$",
@@ -1813,6 +1828,11 @@ _RADWARE_CHALLENGE_MARKERS = (
     "botmanager_support@radware.com",
     "captcha.perfdrive.com/captcha-public/",
 )
+_BNI_VALIDATION_MARKERS = (
+    "<title>validation request</title>",
+    "user validation required to continue",
+    'action="/captcha_resp"',
+)
 
 
 class BotChallengeError(RuntimeError):
@@ -1823,6 +1843,12 @@ class BotChallengeError(RuntimeError):
     cycle on the normal failure/retry path until the configured proxy or
     origin recovers.
     """
+
+    # ``shared.browser`` cannot import this module without creating a cycle.
+    # The attribute is a small exception protocol that lets proxy-backed
+    # browser sessions quarantine a slot when a target returns an HTTP-200
+    # challenge body instead of a 403/429 response.
+    proxy_failure_reason = "origin_block"
 
 
 def _raise_if_bot_challenge(url: str, html: str) -> None:
@@ -1841,12 +1867,17 @@ def _raise_if_bot_challenge(url: str, html: str) -> None:
         marker in haystack for marker in _INCAPSULA_INTERSTITIAL_MARKERS
     )
     is_radware = any(marker in haystack for marker in _RADWARE_CHALLENGE_MARKERS)
+    # Barracuda/BNI can serve a CAPTCHA form as HTTP 200. Require the complete
+    # form signature so an ordinary page mentioning validation or CAPTCHA does
+    # not become a false positive.
+    is_bni_validation = all(marker in haystack for marker in _BNI_VALIDATION_MARKERS)
     if (
         is_siteground
         or is_cloudflare
         or is_verification_interstitial
         or is_incapsula_interstitial
         or is_radware
+        or is_bni_validation
     ):
         raise BotChallengeError(
             f"bot challenge detected for {url}; configure or verify proxy transport"
@@ -4408,6 +4439,48 @@ def _oracle_adf_probe_config(html: str, url: str) -> dict | None:
     }
 
 
+def _numbered_listing_child_probe_config(html: str, url: str) -> dict | None:
+    """Recognize numbered detail links nested directly below a listing URL.
+
+    Some server-rendered career sites use plural listing paths such as
+    ``/vacancies`` while their detail URLs are direct children ending in a
+    stable numeric identifier.  The fallback keyword probe can miss those
+    children (``vacancies`` is not a substring of ``vacancy``) and instead
+    select an unrelated ``/career`` navigation link.  Restrict this preset to
+    same-origin, direct-child URLs with a numeric identity so ordinary careers
+    marketing pages are not treated as job inventories.
+    """
+
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.casefold() not in {"http", "https"}
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 80, 443}
+    ):
+        return None
+
+    board_path = parsed.path.rstrip("/")
+    if not board_path or board_path.rsplit("/", 1)[-1].casefold() not in _NUMBERED_LISTING_PATHS:
+        return None
+
+    origin = f"{parsed.scheme.casefold()}://{parsed.netloc.casefold()}"
+    detail_pattern = (
+        rf"(?i)^{re.escape(origin + board_path)}/"
+        r"[^/?#]*\d[^/?#]*/?(?:[?#].*)?$"
+    )
+    matcher = re.compile(detail_pattern)
+    urls = _extract_links_static(html, url, matcher)
+    if not urls:
+        return None
+    return {"urls": len(urls), "url_filter": detail_pattern}
+
+
 async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | None:
     """Probe whether *url* has discoverable job links via static fetch.
 
@@ -4490,6 +4563,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     talentlink = _talentlink_probe_config(html, url)
     if talentlink is not None:
         return talentlink
+
+    numbered_listing_child = _numbered_listing_child_probe_config(html, url)
+    if numbered_listing_child is not None:
+        return numbered_listing_child
 
     urls = _extract_links_static(html, url)
     linkedin_urls = {candidate for candidate in urls if _is_linkedin_job_url(candidate)}
