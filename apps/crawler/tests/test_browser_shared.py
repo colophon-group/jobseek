@@ -1093,6 +1093,46 @@ class TestOpenPage:
         assert blocked_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
         assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
 
+    async def test_browser_body_challenge_rotates_proxy_slot(self, monkeypatch):
+        """An HTTP-200 body challenge quarantines the selected origin slot."""
+        from src import config
+        from src.shared import proxy as proxy_module
+
+        class BodyChallengeError(RuntimeError):
+            proxy_failure_reason = "origin_block"
+
+        proxy_module._provider_for_values.cache_clear()
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings,
+            "webshare_proxy_urls",
+            [
+                "http://user:pass@p.webshare.io:10000",
+                "http://user:pass@p.webshare.io:10001",
+            ],
+        )
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+
+        blocked_pw = _make_pw()
+        with pytest.raises(BodyChallengeError):
+            async with open_page(
+                blocked_pw,
+                use_proxy=True,
+                target_url="https://blocked.example/jobs/1",
+            ):
+                raise BodyChallengeError("HTTP-200 CAPTCHA")
+
+        healthy_pw = _make_pw()
+        async with open_page(
+            healthy_pw,
+            use_proxy=True,
+            target_url="https://blocked.example/jobs/2",
+        ):
+            pass
+
+        assert blocked_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
+        assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
+
     async def test_tunnel_connection_failure_quarantines_browser_slot(self, monkeypatch):
         from src import config
         from src.shared import proxy as proxy_module
