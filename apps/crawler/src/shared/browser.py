@@ -670,7 +670,18 @@ async def _open_page_playwright(
             yield page
     except BaseException as exc:
         if selection is not None:
-            if isinstance(exc, BrowserNavigationHTTPStatusError):
+            proxy_failure_reason = getattr(exc, "proxy_failure_reason", None)
+            if proxy_failure_reason == "origin_block":
+                # Some bot managers return a challenge shell with HTTP 200,
+                # so status-based accounting cannot identify the blocked
+                # endpoint. Callers raise a typed challenge error carrying
+                # this protocol attribute after inspecting the response body.
+                report_proxy_failure(
+                    selection,
+                    origin=selection_origin,
+                    reason="origin_block",
+                )
+            elif isinstance(exc, BrowserNavigationHTTPStatusError):
                 failure_origin = selection_origin
                 with contextlib.suppress(ValueError):
                     failure_origin = (
