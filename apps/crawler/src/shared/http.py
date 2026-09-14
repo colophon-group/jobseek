@@ -101,8 +101,11 @@ _AVATURE_UNIQUE_DETAIL_PATH_RE = re.compile(
 # Stable incident identifier shared by Workday's list monitor and the worker
 # cohort circuit. Keep this provider/operation-specific and mark only the
 # explicitly approved exhausted transient statuses: ordinary Workday failures
-# must never be able to pause every tenant (#5715, #9180).
-WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT = "workday-list-transient-status"
+# must never be able to pause every tenant (#5715, #9180). The wire value is a
+# rolling-deploy compatibility key introduced for the original 303 incident;
+# do not rename it when adding another approved status or workers would split
+# their Redis quorum and circuit state across generations.
+WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT = "workday-list-303"
 
 
 def is_avature_job_detail_url(url: str) -> bool:

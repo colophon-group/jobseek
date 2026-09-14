@@ -188,6 +188,9 @@ class TestCreateHttpClient:
 
 
 class TestRequestHostTracking:
+    def test_workday_incident_keeps_rolling_deploy_wire_key(self):
+        assert WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT == "workday-list-303"
+
     async def test_transport_records_actual_redirect_hosts_without_network(self):
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.host == "8.8.8.8":

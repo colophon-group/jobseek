@@ -93,19 +93,23 @@ board can discover and scrape through different origins. The
 
 **Provider-incident circuit breaking** adds a narrower cross-origin gate for
 failures that a monitor can positively identify as one provider-wide event.
-Workday list pagination marks only an HTTP 303 that remains after all three
-POST retries. Redis counts affected tenant origins in
-`provider_fail_hosts:workday-list-303`; repeated failures from one tenant count
-once, while three distinct tenants inside ten minutes open the shared provider
-circuit for thirty minutes. Later Workday monitors are rescheduled before
-network I/O, but other crawler types continue normally and each tenant's host
-circuit remains active independently. Ordinary successes do not erase a
-partially accumulated cross-tenant quorum. After the open interval, one
+Workday list pagination marks only an HTTP 303 or 429 that remains after all
+three POST retries; a response that recovers inside that budget contributes no
+provider signal. Redis counts affected tenant origins in
+`provider_fail_hosts:workday-list-303`; the legacy status-specific suffix is a
+stable wire identifier retained so rolling worker generations share one quorum
+and open-circuit state. Repeated failures from one tenant count once, while
+three distinct tenants inside ten minutes open the shared provider circuit for
+thirty minutes. Later Workday monitors are rescheduled before network I/O, but
+other crawler types continue normally and each tenant's host circuit remains
+active independently. Ordinary successes do not erase a partially accumulated
+cross-tenant quorum. After the open interval, one
 `provider_probe:workday-list-303` lease admits a recovery monitor: a successful
-probe clears the circuit and evidence, another exhausted 303 reopens it, and an
-unrelated parser/configuration failure releases the probe without affecting
-the provider evidence. Provider state reuses the host-circuit metrics with the
-bounded label `provider:workday-list-303`.
+probe clears the circuit and evidence, another exhausted 303 or 429 reopens it,
+and an unrelated parser/configuration/transport/other-status failure releases
+the probe without affecting the provider evidence. Provider state reuses the
+host-circuit metrics with the bounded, backward-compatible label
+`provider:workday-list-303`.
 
 ### Inflight Leases And Dead-Letter Recovery
 
