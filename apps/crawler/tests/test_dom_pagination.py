@@ -596,6 +596,7 @@ class TestTitleMatchedUrlScan:
 
         async def fetch_detail(_client, url, **kwargs):
             assert kwargs["require_nonempty"] is True
+            assert kwargs["follow_redirects"] is False
             return details[int(url.rsplit("-", 1)[1])]
 
         config = _validated_title_matched_url_scan(self.CONFIG)

@@ -1,4 +1,4 @@
-"""Travel + Leisure Co. board, metadata, and staged-asset contracts."""
+"""Travel + Leisure Co. board and metadata contracts."""
 
 from __future__ import annotations
 
@@ -57,6 +57,8 @@ def test_travel_leisure_co_metadata_descriptions_and_assets() -> None:
     descriptions = _rows("company_descriptions.csv", "slug", "travel-leisure-co")[0]
     assert all(descriptions[locale] for locale in ("en", "de", "fr", "it"))
 
-    asset_root = DATA_DIR / "images" / "travel-leisure-co"
-    assert (asset_root / "logo.png").stat().st_size > 10_000
-    assert (asset_root / "icon.svg").stat().st_size > 10_000
+    asset_prefix = "https://jobseek-assets.colophon-group.org/companies/travel-leisure-co/"
+    assert company["logo_url"].startswith(f"{asset_prefix}logo-")
+    assert company["logo_url"].endswith(".png")
+    assert company["icon_url"].startswith(f"{asset_prefix}icon-")
+    assert company["icon_url"].endswith(".svg")

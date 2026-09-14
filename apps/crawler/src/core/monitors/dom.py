@@ -3412,6 +3412,7 @@ async def _extract_title_matched_url_scan(
             candidate_html = await fetch_text_page_with_retry(
                 client,
                 candidate_url,
+                follow_redirects=False,
                 retryable_statuses={202, 401, 403},
                 require_nonempty=True,
                 max_bytes=_BROWSER_FETCH_MAX_CHARS,
