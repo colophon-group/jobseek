@@ -6749,6 +6749,7 @@ think-academy-us,think-academy-us-greenhouse,https://job-boards.greenhouse.io/th
 think-cell,think-cell-greenhouse,https://job-boards.greenhouse.io/think-cell,greenhouse,"{""token"": ""think-cell""}",skip,
 thinkific,thinkific-ashby,https://jobs.ashbyhq.com/thinkific,ashby,"{""token"": ""thinkific""}",skip,
 thinking-machines-lab,thinking-machines-lab-greenhouse,https://job-boards.greenhouse.io/thinkingmachines,greenhouse,"{""token"": ""thinkingmachines""}",skip,
+thirdchannel,thirdchannel-careers,https://thirdchannel-inc.breezy.hr/,breezy,,json-ld,"{""fallback"": {""type"": ""dom"", ""config"": {""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""attr"": ""class=location"", ""field"": ""locations"", ""regex"": ""([A-Za-z .-]+,\\s*[A-Z]{2})""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""%BUTTON_APPLY_TO_POSITION%"", ""html"": true}]}}}"
 thndr,thndr-ashby,https://jobs.ashbyhq.com/thndr,ashby,"{""token"": ""thndr""}",skip,
 thomson-reuters,thomson-reuters-careers,https://thomsonreuters.wd5.myworkdayjobs.com/External_Career_Site,workday,"{""company"": ""thomsonreuters"", ""wd_instance"": ""wd5"", ""site"": ""External_Career_Site""}",workday,
 thorizon,thorizon-main,https://thorizon.jobs.personio.com,personio,"{""slug"": ""thorizon""}",skip,
