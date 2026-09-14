@@ -137,10 +137,10 @@
       "max_index_children": 1
     },
     {
-      "id": "general-motors-careers",
-      "board_url": "https://search-careers.gm.com/en/jobs/",
-      "sitemap_url": "https://search-careers.gm.com/sitemap.xml",
-      "include_literal": "/en/jobs/",
+      "id": "amd-careers",
+      "board_url": "https://careers.amd.com/careers-home/jobs",
+      "sitemap_url": "https://careers.amd.com/sitemap.xml",
+      "include_literal": "",
       "exclude_literal": "",
       "max_urls": 50000,
       "max_index_children": 1

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import json
+import math
 import os
 import re
 import shutil
@@ -44,6 +45,8 @@ LONG_RUNNING_CONTAINERS = (
 )
 
 MAX_FILE_BYTES = 25 * 1024 * 1024
+REDIS_CAPACITY_CACHE = Path("/var/lib/jobseek-observability/state/redis-capacity.prom")
+REDIS_CAPACITY_EVIDENCE_MAX_AGE_SECONDS = 8 * 60 * 60
 
 REDACTIONS: tuple[tuple[re.Pattern[str], str], ...] = (
     (
@@ -577,6 +580,83 @@ def _collect_reconciliation_journal(
     }
 
 
+def _collect_redis_capacity_evidence(
+    run_dir: Path,
+    manifest: dict[str, object],
+    *,
+    since: datetime,
+    until: datetime,
+    cache_path: Path = REDIS_CAPACITY_CACHE,
+) -> None:
+    """Retain the current Redis snapshot and exact-window observer failures."""
+    cache_available = False
+    cache_fresh = False
+    snapshot_unixtime: float | None = None
+    snapshot_age_seconds: float | None = None
+    try:
+        cache_output = cache_path.read_text(encoding="utf-8")
+        for line in cache_output.splitlines():
+            if not line.startswith("jobseek_redis_capacity_snapshot_unixtime "):
+                continue
+            try:
+                candidate = float(line.split(maxsplit=1)[1])
+            except (IndexError, ValueError):
+                break
+            if math.isfinite(candidate) and candidate >= 0:
+                snapshot_unixtime = candidate
+                cache_available = True
+            break
+        if snapshot_unixtime is not None:
+            snapshot_age_seconds = until.timestamp() - snapshot_unixtime
+            cache_fresh = -60 <= snapshot_age_seconds <= REDIS_CAPACITY_EVIDENCE_MAX_AGE_SECONDS
+    except OSError as exc:
+        cache_output = f"{type(exc).__name__}: Redis capacity cache unavailable\n"
+    cache_info = _write(run_dir / "host" / "redis-capacity.prom", cache_output)
+
+    unit = "jobseek-host-observability.service"
+    code, journal_output = _run(
+        [
+            "journalctl",
+            "--unit",
+            unit,
+            "--since",
+            f"@{since.timestamp():.0f}",
+            "--until",
+            f"@{until.timestamp():.0f}",
+            "--output=cat",
+            "--quiet",
+            "--no-pager",
+        ],
+        timeout=180,
+    )
+    capacity_journal = "\n".join(
+        line for line in journal_output.splitlines() if "jobseek_redis_capacity" in line
+    )
+    if capacity_journal:
+        capacity_journal += "\n"
+    journal_info = _write(
+        run_dir / "host" / "redis-capacity-observer.log",
+        capacity_journal,
+    )
+    manifest["redis_capacity"] = {
+        "complete": cache_fresh and code == 0,
+        "cache": {
+            "source": str(cache_path),
+            "available": cache_available,
+            "fresh": cache_fresh,
+            "snapshot_unixtime": snapshot_unixtime,
+            "age_seconds": snapshot_age_seconds,
+            **cache_info,
+        },
+        "observer_journal": {
+            "unit": unit,
+            "returncode": code,
+            "window_filtered": code == 0,
+            **journal_info,
+        },
+    }
+
+
 def _chgrp_readable(path: Path, *, group: str) -> None:
     import grp
 
@@ -649,6 +729,7 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
     _collect_container_cgroup_memory(run_dir, manifest)
     _collect_docker_lifecycle_journal(run_dir, manifest, since=since, until=until)
     _collect_reconciliation_journal(run_dir, manifest, since=since, until=until)
+    _collect_redis_capacity_evidence(run_dir, manifest, since=since, until=until)
     kernel_log_command = (
         f"journalctl -k --since '{since.isoformat()}' --until '{until.isoformat()}' "
         "--no-pager 2>/dev/null | tail -500"

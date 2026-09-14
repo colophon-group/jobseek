@@ -325,7 +325,7 @@ def test_redis_capacity_alerts_cover_attribution_growth_and_lead_time() -> None:
 
     assert "snapshot_available" in stale["expr"]
     assert "snapshot_unixtime" in stale["expr"]
-    assert 'state="orphan"' in orphan["expr"]
+    assert 'state="orphan_lower_bound"' in orphan["expr"]
     assert "estimated_bytes" in family["expr"]
     assert "budget_bytes" in family["expr"]
     assert "predict_linear" in forecast["expr"]
