@@ -114,8 +114,15 @@ Only these exact facts are hard skips:
 Names, slugs, shared homepage domains, parent/subsidiary/region relationships,
 and similar company-request or active-PR titles are always soft warnings. They
 are attached to the generated issue for the configuration agent and never
-discard a candidate. This deliberately preserves acquisitions, renamed
-companies, subsidiaries, regional portals, and valid second ATS/board setups.
+discard a candidate. At workspace creation, however, the same local company
+name, slug, and parent/region identity evidence is fail-closed: regional
+portals and operating divisions must be added through the existing company's
+reconfiguration path. Shared domains remain advisory because ATS hosting
+domains serve many unrelated employers. Creating a related second company
+requires the explicit `--separate-identity` acknowledgement after verification
+of an independent legal or employer identity. This preserves genuine
+subsidiaries and acquisitions without turning geographic recruiting sources
+into duplicate companies.
 
 Local companies and boards are loaded once from their CSV registries. GitHub
 company-request issues (open and closed) and active PRs are fetched in paginated
