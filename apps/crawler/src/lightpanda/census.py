@@ -272,6 +272,40 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "wait",
         }
     ),
+    "rss": frozenset(
+        {
+            "agency",
+            "brand",
+            "channel",
+            "company",
+            "customer",
+            "description_mode",
+            "detail_fields",
+            "feed_url",
+            "fetch_company",
+            "headless",
+            "host",
+            "identity_migration",
+            "job_filter",
+            "listing_url",
+            "locale",
+            "pagination",
+            "persistent_context",
+            "preset",
+            "proxy",
+            "render",
+            "rescrape_policy",
+            "resolve_job_invite_identity",
+            "tenant",
+            "timeout",
+            "url",
+            "url_allowlist",
+            "url_filter",
+            "url_transform",
+            "variant",
+            "wait",
+        }
+    ),
 }
 
 _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {

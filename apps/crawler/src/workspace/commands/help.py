@@ -2733,11 +2733,27 @@ rss — RSS 2.0 Feed Monitor + SuccessFactors variants
     {"preset": "governmentjobs", "agency": "clineville"}
     {"preset": "hr_manager", "customer": "securitas"}
     {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
+    {"preset": "generic", "feed_url": "https://example.com/jobs.rss",
+     "pagination": {"param_name": "page", "start": 1, "increment": 1,
+                    "page_size": 20, "max_pages": 1000},
+     "description_mode": "title_employment_location"}
 
     preset     Feed parser preset. Auto-detected when possible.
                Defaults to "generic" when not set.
     feed_url   RSS URL. For known presets, ws probe can auto-fill this from
                the board URL; for generic feeds set it explicitly.
+    pagination Generic only: bounded numbered-page traversal. param_name,
+               page_size, and max_pages are required; start and increment
+               default to 1. Required-page errors, repeated full pages, and a
+               full final configured page fail closed.
+    description_mode  Generic only: title_employment_location strictly parses
+               descriptions formatted as
+               "title | [employment type |] location" into structured fields.
+               Format drift fails closed instead of shifting data silently.
+    render     Generic only: fetch raw feed response bytes through the browser
+               lane. For WAF-gated feeds combine render=true, headless=false,
+               persistent_context=true, channel="chrome", and
+               wait="domcontentloaded". Pagination reuses one browser context.
     variant    SuccessFactors only: "feed", "rmk", "legacy", or "legacy_xml".
                Legacy identities are auto-filled from strict provider URLs.
     brand      RMK only: exact brandUrl tenant returned by the search API.
