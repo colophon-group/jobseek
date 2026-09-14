@@ -41,7 +41,7 @@ from src.core.scrapers.workday import (
     scrape,
 )
 from src.shared.http import (
-    WORKDAY_LIST_303_INCIDENT,
+    WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT,
     RequestHostTrackingTransport,
     track_request_hosts,
 )
@@ -2166,12 +2166,15 @@ class TestPostPageWithRetry:
             assert data["jobPostings"] == [{"externalPath": "/x"}]
             assert calls["n"] == 3
 
-    async def test_retries_transient_303_without_changing_post_to_get(self, monkeypatch):
-        """Reproduce #5715's Workday incident.
+    @pytest.mark.parametrize("status_code", [303, 429])
+    async def test_recovered_transient_status_does_not_mark_provider_incident(
+        self, monkeypatch, status_code
+    ):
+        """A transient response that recovers must not count toward the circuit.
 
-        The provider returned 303 without a usable canonical redirect across
-        many tenants. Following it would change this list API's POST into GET;
-        retry the original request after backoff instead.
+        The provider has returned both 303 and 429 across many tenants. Retry
+        the original POST after backoff; only an exhausted budget is cohort
+        evidence.
         """
         from src.core.monitors import workday as wd_module
 
@@ -2181,7 +2184,7 @@ class TestPostPageWithRetry:
         def handler(request):
             methods.append(request.method)
             if len(methods) == 1:
-                return httpx.Response(303, headers={"Location": ""})
+                return httpx.Response(status_code, headers={"Location": ""})
             return httpx.Response(200, json={"total": 0, "jobPostings": [], "facets": []})
 
         transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
@@ -2195,8 +2198,11 @@ class TestPostPageWithRetry:
         assert methods == ["POST", "POST"]
         assert tracker.last_provider_incident is None
 
-    async def test_marks_only_an_exhausted_303_provider_incident(self, monkeypatch):
-        """Three terminal POST 303s retain distinct-host circuit evidence."""
+    @pytest.mark.parametrize("status_code", [303, 429])
+    async def test_marks_only_an_exhausted_transient_status_provider_incident(
+        self, monkeypatch, status_code
+    ):
+        """Three terminal transient responses retain circuit evidence."""
         from src.core.monitors import workday as wd_module
 
         monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
@@ -2204,7 +2210,7 @@ class TestPostPageWithRetry:
 
         def handler(request):
             methods.append(request.method)
-            return httpx.Response(303, headers={"Location": ""})
+            return httpx.Response(status_code, headers={"Location": ""})
 
         transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
         async with httpx.AsyncClient(transport=transport) as client:
@@ -2217,9 +2223,9 @@ class TestPostPageWithRetry:
                         base_delay=0.001,
                     )
 
-        assert exc_info.value.last_status == 303
+        assert exc_info.value.last_status == status_code
         assert methods == ["POST", "POST", "POST"]
-        assert tracker.last_provider_incident == WORKDAY_LIST_303_INCIDENT
+        assert tracker.last_provider_incident == WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT
         assert tracker.last_provider_incident_host == "co.wd1.myworkdayjobs.com"
 
     async def test_retries_on_cloudflare_5xx(self, monkeypatch):
@@ -2259,15 +2265,17 @@ class TestPostPageWithRetry:
 
         transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
         async with httpx.AsyncClient(transport=transport) as client:
-            with track_request_hosts() as tracker:
-                with pytest.raises(PaginationFetchError) as exc_info:
-                    await _post_page_with_retry(
-                        client,
-                        _LIST_URL,
-                        {"limit": 20, "offset": 0},
-                        retries=3,
-                        base_delay=0.001,
-                    )
+            with (
+                track_request_hosts() as tracker,
+                pytest.raises(PaginationFetchError) as exc_info,
+            ):
+                await _post_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 20, "offset": 0},
+                    retries=3,
+                    base_delay=0.001,
+                )
         assert exc_info.value.last_status == 500
         assert exc_info.value.attempts == 3
         assert calls["n"] == 3
@@ -2285,8 +2293,12 @@ class TestPostPageWithRetry:
             calls["n"] += 1
             return httpx.Response(401, text="unauthorized")
 
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            with pytest.raises(PaginationFetchError) as exc_info:
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with (
+                track_request_hosts() as tracker,
+                pytest.raises(PaginationFetchError) as exc_info,
+            ):
                 await _post_page_with_retry(
                     client,
                     _LIST_URL,
@@ -2297,6 +2309,7 @@ class TestPostPageWithRetry:
             assert exc_info.value.last_status == 401
             # Exactly one attempt — no retry on non-retryable 4xx.
             assert calls["n"] == 1
+            assert tracker.last_provider_incident is None
 
     async def test_raises_after_persistent_network_error(self, monkeypatch):
         from src.core.monitors import workday as wd_module

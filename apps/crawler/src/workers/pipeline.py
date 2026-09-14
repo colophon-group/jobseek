@@ -74,7 +74,11 @@ from src.redis_queue import (
 from src.runtime.config import BoardRuntimeConfig
 from src.runtime.extraction import seed_registered_runtime_capabilities
 from src.shared.egress import bind_runtime_egress
-from src.shared.http import WORKDAY_LIST_303_INCIDENT, RequestHostTracker, track_request_hosts
+from src.shared.http import (
+    WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT,
+    RequestHostTracker,
+    track_request_hosts,
+)
 from src.workers.monitor_memory import (
     cgroup_memory_bytes,
     process_rss_bytes,
@@ -243,7 +247,7 @@ def _monitor_provider_incident(config: dict) -> str:
     """Return the only provider-wide incident this monitor may contribute to."""
 
     if config.get("crawler_type") == "workday":
-        return WORKDAY_LIST_303_INCIDENT
+        return WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT
     return ""
 
 
@@ -387,8 +391,9 @@ async def _record_monitor_provider_outcome(
 
         if probe_acquired:
             # An unrelated parser/configuration failure says nothing about the
-            # 303 incident. Release the lease without reopening or clearing
-            # the distinct-host evidence so another tenant can probe.
+            # Workday list-status incident. Release the lease without
+            # reopening or clearing the distinct-host evidence so another
+            # tenant can probe.
             await release_provider_circuit_probe(incident)
             host_circuit_state.labels(egress_host=metric_label).set(0.5)
         return None

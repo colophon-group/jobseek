@@ -99,9 +99,10 @@ _AVATURE_UNIQUE_DETAIL_PATH_RE = re.compile(
 )
 
 # Stable incident identifier shared by Workday's list monitor and the worker
-# cohort circuit. Keep this provider/status-specific: ordinary Workday
-# failures must never be able to pause every tenant (#5715).
-WORKDAY_LIST_303_INCIDENT = "workday-list-303"
+# cohort circuit. Keep this provider/operation-specific and mark only the
+# explicitly approved exhausted transient statuses: ordinary Workday failures
+# must never be able to pause every tenant (#5715, #9180).
+WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT = "workday-list-transient-status"
 
 
 def is_avature_job_detail_url(url: str) -> bool:
