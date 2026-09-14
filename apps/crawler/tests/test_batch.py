@@ -3405,6 +3405,42 @@ class TestProcessOneScrape:
         assert any(c.args[0] == _UPDATE_JOB_CONTENT for c in execute_calls)
         assert any(c.args[0] == _RECORD_SCRAPE_SUCCESS for c in execute_calls)
 
+    @patch("src.batch._flush_location_misses", new_callable=AsyncMock)
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_location_miss_flush_is_best_effort_after_success(
+        self,
+        mock_scrape,
+        mock_flush,
+        mock_pool,
+        mock_http,
+    ):
+        """Auxiliary miss telemetry cannot retry an already-committed scrape."""
+        import structlog
+
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content()
+        mock_flush.side_effect = asyncpg.QueryCanceledError(
+            "canceling statement due to statement timeout"
+        )
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+        )
+
+        with structlog.testing.capture_logs() as logs:
+            ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+
+        assert ok is True
+        warning = next(
+            entry for entry in logs if entry["event"] == "batch.scrape.location_miss_flush_failed"
+        )
+        assert warning["error"] == "canceling statement due to statement timeout"
+        assert warning["log_level"] == "warning"
+        assert not any(
+            call.args[0] in {_RECORD_SCRAPE_TRANSIENT} for call in conn.execute.await_args_list
+        )
+
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_missing_job_posting_id_records_failure(self, mock_scrape, mock_pool, mock_http):
         """UPDATE 0 must record scrape failure instead of silently dropping it."""
@@ -4190,6 +4226,53 @@ class TestBoardHasEnrich:
 
 
 class TestEnrichmentScrape:
+    @patch("src.batch._flush_location_misses", new_callable=AsyncMock)
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_location_miss_flush_is_best_effort_after_success(
+        self,
+        mock_scrape,
+        mock_flush,
+        mock_pool,
+        mock_http,
+    ):
+        """Auxiliary miss telemetry cannot retry committed enrichment."""
+        import structlog
+
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(description="<p>Fresh</p>")
+        mock_flush.side_effect = asyncpg.QueryCanceledError(
+            "canceling statement due to statement timeout"
+        )
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["Existing Title"],
+                "locales": ["en"],
+                "location_ids": None,
+                "location_types": None,
+                "employment_type": None,
+            }
+        )
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+        )
+
+        with structlog.testing.capture_logs() as logs:
+            ok, _duration = await _process_one_enrich_scrape(
+                item, pool, mock_http, "json-ld", None, ["description"]
+            )
+
+        assert ok is True
+        warning = next(
+            entry for entry in logs if entry["event"] == "batch.enrich.location_miss_flush_failed"
+        )
+        assert warning["error"] == "canceling statement due to statement timeout"
+        assert warning["log_level"] == "warning"
+        assert not any(
+            call.args[0] in {_RECORD_SCRAPE_TRANSIENT} for call in conn.execute.await_args_list
+        )
+
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_enrich_only_updates_enriched_fields(self, mock_scrape, mock_pool, mock_http):
         """Enrich scrape uses _UPDATE_ENRICH_CONTENT, not _UPDATE_JOB_CONTENT.

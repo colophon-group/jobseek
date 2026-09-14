@@ -13,6 +13,9 @@ from typesense.exceptions import ObjectNotFound
 from src.sync import (
     _DISABLE_REMOVED_BOARDS_LOCAL,
     _FETCH_BOARD_COMPANY_REHOMES_LOCAL,
+    _LOCATION_LOOKUP_INDEX_DDL,
+    _LOCATION_LOOKUP_INDEX_LOCK,
+    _LOCATION_LOOKUP_INDEX_NAME,
     _LOCATION_MACRO_ALIASES,
     _REALIGN_BOARD_POSTING_COMPANIES_LOCAL,
     _REALIGN_RENAMED_BOARD_URLS_LOCAL,
@@ -28,11 +31,13 @@ from src.sync import (
     _fetch_facet_counts,
     _load_boards,
     _load_companies,
+    _location_lookup_index_is_exact,
     _monitor_config_fingerprint,
     _one_year_ago_epoch,
     _require_installed_sync_data_mount,
     _ts_bulk_upsert,
     apply_board_redis_effects,
+    ensure_location_name_lookup_index,
     purge_retired_watchlist_index,
     refresh_typesense_counts,
     run_sync,
@@ -1089,6 +1094,106 @@ class TestSyncBoards:
 
 
 # ---------------------------------------------------------------------------
+# TestLocationLookupIndex
+# ---------------------------------------------------------------------------
+
+
+class TestLocationLookupIndex:
+    @staticmethod
+    def _exact_state() -> dict[str, object]:
+        return {
+            "indisvalid": True,
+            "indisready": True,
+            "unfiltered": True,
+            "non_unique": True,
+            "access_method": "btree",
+            "definition": (
+                f"CREATE INDEX {_LOCATION_LOOKUP_INDEX_NAME} "
+                "ON public.location_name USING btree (lower(name)) INCLUDE (location_id)"
+            ),
+        }
+
+    def test_index_shape_validation_rejects_wrong_covering_contract(self):
+        assert _location_lookup_index_is_exact(self._exact_state())
+        wrong = self._exact_state() | {
+            "definition": "CREATE INDEX wrong ON public.location_name USING btree (name)"
+        }
+        assert not _location_lookup_index_is_exact(wrong)
+
+    def test_index_shape_validation_rejects_partial_index(self):
+        partial = self._exact_state() | {
+            "unfiltered": False,
+            "definition": self._exact_state()["definition"] + " WHERE locale = 'en'::text",
+        }
+        assert not _location_lookup_index_is_exact(partial)
+
+    async def test_missing_taxonomy_table_is_a_safe_noop(self):
+        conn = AsyncMock()
+        conn.fetchval.return_value = False
+
+        changed = await ensure_location_name_lookup_index(conn)
+
+        assert changed is False
+        conn.fetchrow.assert_not_awaited()
+        conn.execute.assert_not_awaited()
+
+    async def test_exact_valid_index_is_retained(self):
+        conn = AsyncMock()
+        conn.fetchval.return_value = True
+        conn.fetchrow.return_value = self._exact_state()
+
+        changed = await ensure_location_name_lookup_index(conn)
+
+        assert changed is False
+        conn.execute.assert_has_awaits(
+            [
+                call(f"SELECT pg_advisory_lock(hashtext('{_LOCATION_LOOKUP_INDEX_LOCK}'))"),
+                call(f"SELECT pg_advisory_unlock(hashtext('{_LOCATION_LOOKUP_INDEX_LOCK}'))"),
+            ]
+        )
+
+    @pytest.mark.parametrize(
+        "initial_state, expected_middle",
+        [
+            (None, [_LOCATION_LOOKUP_INDEX_DDL]),
+            (
+                {
+                    "indisvalid": False,
+                    "indisready": True,
+                    "unfiltered": True,
+                    "non_unique": True,
+                    "access_method": "btree",
+                    "definition": "CREATE INDEX wrong_shape ON public.location_name (name)",
+                },
+                [
+                    f"DROP INDEX CONCURRENTLY IF EXISTS {_LOCATION_LOOKUP_INDEX_NAME}",
+                    _LOCATION_LOOKUP_INDEX_DDL,
+                ],
+            ),
+        ],
+        ids=("missing", "invalid"),
+    )
+    async def test_missing_or_invalid_index_is_installed_and_verified(
+        self,
+        initial_state,
+        expected_middle,
+    ):
+        conn = AsyncMock()
+        conn.fetchval.return_value = True
+        conn.fetchrow.side_effect = [initial_state, self._exact_state()]
+
+        changed = await ensure_location_name_lookup_index(conn)
+
+        assert changed is True
+        assert [item.args[0] for item in conn.execute.await_args_list] == [
+            f"SELECT pg_advisory_lock(hashtext('{_LOCATION_LOOKUP_INDEX_LOCK}'))",
+            *expected_middle,
+            f"SELECT pg_advisory_unlock(hashtext('{_LOCATION_LOOKUP_INDEX_LOCK}'))",
+        ]
+        assert conn.fetchrow.await_count == 2
+
+
+# ---------------------------------------------------------------------------
 # TestRunSync
 # ---------------------------------------------------------------------------
 
@@ -1144,6 +1249,7 @@ class TestRunSync:
 
         mock_create_pool.assert_not_called()
 
+    @patch("src.sync.ensure_location_name_lookup_index", new_callable=AsyncMock)
     @patch("src.deadletters.classify_deadletters", new_callable=AsyncMock)
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
@@ -1184,6 +1290,7 @@ class TestRunSync:
         mock_load_boards,
         mock_setup_logging,
         mock_classify_deadletters,
+        mock_ensure_location_index,
     ):
         """Calls all sync functions in order within a transaction."""
         occupation_domains_df = pl.DataFrame()
@@ -1252,6 +1359,7 @@ class TestRunSync:
 
         await run_sync(dry_run=False)
 
+        mock_ensure_location_index.assert_awaited_once_with(mock_local_conn)
         mock_sync_lookup_tables_local.assert_called_once_with(
             mock_local_conn,
             occupation_domains_df,
@@ -1271,6 +1379,7 @@ class TestRunSync:
         mock_close_all_pools.assert_called_once()
         mock_close_redis.assert_called_once()
 
+    @patch("src.sync.ensure_location_name_lookup_index", new_callable=AsyncMock)
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
     @patch("src.sync._load_company_descriptions")
@@ -1301,6 +1410,7 @@ class TestRunSync:
         mock_load_company_descriptions,
         mock_load_boards,
         mock_setup_logging,
+        mock_ensure_location_index,
     ):
         """sync_companies raises -> close_all_pools + close_redis still called."""
         mock_load_occupation_domains.return_value = pl.DataFrame()
@@ -1343,6 +1453,7 @@ class TestRunSync:
 
         mock_close_all_pools.assert_called_once()
         mock_close_redis.assert_called_once()
+        mock_ensure_location_index.assert_awaited_once()
 
     async def test_company_typesense_failure_aborts_run_sync(self):
         companies = pl.DataFrame(
@@ -1392,6 +1503,7 @@ class TestRunSync:
             "_load_boards": MagicMock(return_value=boards),
             "get_typesense_client": MagicMock(return_value=MagicMock()),
             "create_local_pool": AsyncMock(return_value=local_pool),
+            "ensure_location_name_lookup_index": AsyncMock(),
             "sync_lookup_tables_local": AsyncMock(),
             "sync_companies": AsyncMock(),
             "sync_company_descriptions": AsyncMock(),
