@@ -772,9 +772,7 @@ Build reliable systems.
 
         assert result.title == "Engineer"
         assert result.description == (
-            "<p>Build reliable systems.</p>\n"
-            "<h2>Requirements</h2>\n"
-            "<ul>\n<li>Python</li>\n</ul>"
+            "<p>Build reliable systems.</p>\n<h2>Requirements</h2>\n<ul>\n<li>Python</li>\n</ul>"
         )
         assert result.locations == ["Berlin, Germany"]
         assert result.job_location_type == "hybrid"

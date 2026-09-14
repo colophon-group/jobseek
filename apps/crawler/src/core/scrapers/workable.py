@@ -251,7 +251,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     resp = await http.get(api_url)
     if resp.status_code == 429:
         markdown_url = _markdown_detail_url(slug, shortcode)
-        markdown_resp = await http.get(markdown_url, follow_redirects=True)
+        markdown_resp = await http.get(markdown_url, follow_redirects=False)
         if markdown_resp.status_code == 200:
             log.warning(
                 "workable_scraper.rate_limited_markdown_fallback",
