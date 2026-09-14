@@ -1793,6 +1793,13 @@ dom — Link or Listing-Row Extraction (fallback)
                    Matching links are trusted as jobs, so this is useful when
                    stable job-card markup exists but URLs lack job keywords.
                    Example: "li.job-card a.details-link"
+    onclick_selector
+                   Optional CSS selector for static listing elements whose
+                   onclick attribute is a direct window.location assignment.
+                   Every selected action must produce a unique, same-origin
+                   URL and match url_filter when configured; any drift fails
+                   the cycle. Static single-page discovery only and mutually
+                   exclusive with link_selector. Example: "tr.item[onclick]"
     script_json_links
                    Extract detail URLs from one JSON array assigned to an
                    inline JavaScript variable when the page creates links only
@@ -1819,7 +1826,7 @@ dom — Link or Listing-Row Extraction (fallback)
                    {"max_items": 100, "max_scan": 1000}. Set the bounds to
                    cover expected inventory with ample headroom.
                    Requires render=true. Single-page only; incompatible with
-                   link_selector, rich_rows, empty-state configuration,
+                   link_selector, onclick_selector, rich_rows, empty-state configuration,
                    pagination, and include_board_url.
     title_matched_url_scan
                    For static first-party listings that publish authoritative
@@ -1839,7 +1846,8 @@ dom — Link or Listing-Row Extraction (fallback)
     empty_selector Optional CSS selector for a stable, explicit empty-state
                    element. When configured, a zero-link page succeeds only
                    if this selector matches; otherwise the cycle fails closed.
-                   Requires link_selector and single-page extraction.
+                   Requires link_selector, onclick_selector, or rich_rows and
+                   single-page extraction.
     empty_text     Optional case-insensitive text that must occur inside the
                    matched empty_selector. Use when the element exists for
                    both empty and non-empty counts (for example, "0 jobs").
@@ -2042,9 +2050,14 @@ dom — Link or Listing-Row Extraction (fallback)
     server-rendered cards, while the auto-configured DOM scraper enriches the
     complete description from stable detail-page test IDs.
 
-  Discovery:   Extracts links matching link_selector when configured. Otherwise
+  Discovery:   Extracts links matching link_selector when configured, or strict
+               window.location row actions matching onclick_selector. Otherwise
                extracts all <a href> links and filters for URLs containing
                job/career/position/posting/opening/role/vacancy keywords.
+
+  eRecruit:    Canonical https://*.erecruit.co/candidateapp/Jobs/Categories
+               listings are auto-configured for their static clickable rows.
+               Only same-origin /candidateapp/Jobs/View/<id> actions are accepted.
 
   VAGAS.com:   trabalheconosco.vagas.com.br/{tenant} is detected without a
                page fetch because the origin blocks datacenter egress. The

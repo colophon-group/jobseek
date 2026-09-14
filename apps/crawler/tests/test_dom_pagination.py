@@ -15,8 +15,10 @@ from src.core.monitors.dom import (
     BotChallengeError,
     _build_url_matcher,
     _dualoo_probe_config,
+    _erecruit_probe_config,
     _extract_links_rendered,
     _extract_links_static,
+    _extract_onclick_links_static,
     _extract_oracle_adf_job_ids,
     _extract_rich_rows_static,
     _extract_script_json_links,
@@ -549,6 +551,172 @@ class TestFetchUrlTransform:
         )
 
         assert urls == {"https://example.com/emploi/active/1"}
+
+
+class TestOnclickSelector:
+    BOARD_URL = "https://pwcza-graduate.erecruit.co/candidateapp/Jobs/Categories"
+    LISTING_HTML = """
+        <table>
+          <tr class="item"
+              onclick="javascript:window.location='/candidateapp/Jobs/View/PWC260902-2';">
+            <td>CA Training Contract</td>
+          </tr>
+          <tr class="item" onclick="window.location.href='/candidateapp/Jobs/View/PWC260414-2'">
+            <td>Vacation programme</td>
+          </tr>
+        </table>
+    """
+
+    def test_extracts_direct_same_origin_row_actions(self):
+        matcher = re.compile(
+            r"(?i)^https://pwcza-graduate\.erecruit\.co/"
+            r"candidateapp/jobs/view/[a-z0-9._-]+/?$"
+        )
+
+        urls = _extract_onclick_links_static(
+            self.LISTING_HTML,
+            self.BOARD_URL,
+            "tr.item[onclick]",
+            matcher,
+        )
+
+        assert urls == {
+            "https://pwcza-graduate.erecruit.co/candidateapp/Jobs/View/PWC260902-2",
+            "https://pwcza-graduate.erecruit.co/candidateapp/Jobs/View/PWC260414-2",
+        }
+
+    @pytest.mark.parametrize(
+        ("action", "message"),
+        [
+            ("open('/candidateapp/Jobs/View/1')", "unsupported action"),
+            ("window.location='https://attacker.example/job/1'", "cross-origin"),
+            ("window.location='/candidateapp/Jobs/Other/1'", "failed url_filter"),
+        ],
+    )
+    def test_fails_closed_on_untrusted_or_drifted_actions(self, action, message):
+        html = f'<table><tr class="item" onclick="{action}"><td>Role</td></tr></table>'
+        matcher = re.compile(r"/candidateapp/Jobs/View/")
+
+        with pytest.raises(ValueError, match=message):
+            _extract_onclick_links_static(
+                html,
+                self.BOARD_URL,
+                "tr.item[onclick]",
+                matcher,
+            )
+
+    def test_fails_closed_on_duplicate_actions(self):
+        row = (
+            '<tr class="item" '
+            "onclick=\"window.location='/candidateapp/Jobs/View/PWC260902-2'\">Role</tr>"
+        )
+
+        with pytest.raises(ValueError, match="duplicate URLs"):
+            _extract_onclick_links_static(
+                f"<table>{row}{row}</table>",
+                self.BOARD_URL,
+                "tr.item[onclick]",
+            )
+
+    def test_erecruit_probe_returns_bounded_provider_preset(self):
+        config = _erecruit_probe_config(self.LISTING_HTML, self.BOARD_URL)
+
+        assert config is not None
+        assert config["urls"] == 2
+        assert config["onclick_selector"] == "tr.item[onclick]"
+        matcher = re.compile(config["url_filter"])
+        assert matcher.fullmatch(
+            "https://pwcza-graduate.erecruit.co/candidateapp/Jobs/View/PWC260902-2"
+        )
+        assert not matcher.fullmatch("https://other.erecruit.co/candidateapp/Jobs/View/PWC260902-2")
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://pwcza-graduate.erecruit.co/candidateapp/Jobs/Categories",
+            "https://erecruit.co/candidateapp/Jobs/Categories",
+            "https://pwcza-graduate.erecruit.co/candidateapp/Jobs/View/1",
+            "https://pwcza-graduate.erecruit.co/candidateapp/Jobs/Categories?all=true",
+            "https://pwcza-graduate.erecruit.co.evil.example/candidateapp/Jobs/Categories",
+        ],
+    )
+    def test_erecruit_probe_rejects_noncanonical_listing_urls(self, url):
+        assert _erecruit_probe_config(self.LISTING_HTML, url) is None
+
+    async def test_can_handle_detects_erecruit_rows(self):
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=self.LISTING_HTML),
+        ):
+            result = await can_handle(self.BOARD_URL, MagicMock())
+
+        assert result == _erecruit_probe_config(self.LISTING_HTML, self.BOARD_URL)
+
+    async def test_dom_discover_uses_full_static_listing_body(self):
+        fetch = AsyncMock(return_value=self.LISTING_HTML)
+        config = _erecruit_probe_config(self.LISTING_HTML, self.BOARD_URL)
+        assert config is not None
+
+        with patch(_FETCH_PATCH, fetch):
+            result = await dom_discover(
+                {"board_url": self.BOARD_URL, "metadata": config},
+                MagicMock(),
+            )
+
+        assert len(result) == 2
+        assert fetch.await_args.kwargs["max_chars"] is None
+
+    async def test_onclick_selector_is_mutually_exclusive_with_anchor_selector(self):
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            await dom_discover(
+                {
+                    "board_url": self.BOARD_URL,
+                    "metadata": {
+                        "link_selector": "a.job",
+                        "onclick_selector": "tr.item[onclick]",
+                    },
+                },
+                MagicMock(),
+            )
+
+    async def test_onclick_selector_rejects_rendered_discovery(self):
+        with pytest.raises(ValueError, match="static single-page"):
+            await dom_discover(
+                {
+                    "board_url": self.BOARD_URL,
+                    "metadata": {
+                        "render": True,
+                        "onclick_selector": "tr.item[onclick]",
+                    },
+                },
+                MagicMock(),
+            )
+
+    async def test_onclick_selector_fails_closed_when_no_rows_match(self):
+        with (
+            patch(_FETCH_PATCH, AsyncMock(return_value="<table></table>")),
+            pytest.raises(ValueError, match="matched no rows"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": self.BOARD_URL,
+                    "metadata": {"onclick_selector": "tr.item[onclick]"},
+                },
+                MagicMock(),
+            )
+
+    async def test_onclick_selector_rejects_fetch_url_transform(self):
+        with pytest.raises(ValueError, match="static single-page"):
+            await dom_discover(
+                {
+                    "board_url": self.BOARD_URL,
+                    "metadata": {
+                        "onclick_selector": "tr.item[onclick]",
+                        "fetch_url_transform": {"find": "Categories", "replace": "Other"},
+                    },
+                },
+                MagicMock(),
+            )
 
 
 class TestTitleMatchedUrlScan:
