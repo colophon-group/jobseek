@@ -5159,6 +5159,7 @@ penumbrainc,penumbrainc-pinpoint,https://penumbrainc.pinpointhq.com,pinpoint,"{"
 people-ai,people-ai-careers,https://jobs.lever.co/people-ai,lever,,skip,
 people-can-fly,people-can-fly-careers,https://jobs.smartrecruiters.com/PeopleCanFly,smartrecruiters,"{""token"": ""PeopleCanFly""}",smartrecruiters,
 pep,pep-greenhouse,https://job-boards.greenhouse.io/pep,greenhouse,"{""token"": ""pep""}",skip,
+pepsico,pepsico-careers-main,https://www.pepsicojobs.com/main/jobs,sitemap,"{""sitemap_url"": ""https://www.pepsicojobs.com/sitemap.xml"", ""url_transform"": {""find"": ""\\?lang=.*$"", ""replace"": """"}}",json-ld,
 per-scholas,per-scholas-greenhouse,https://job-boards.greenhouse.io/perscholashires,greenhouse,"{""token"": ""perscholashires""}",skip,
 peraton,peraton-careers,https://careers-peraton.icims.com/,icims,,json-ld,
 percepta,percepta-ashby,https://jobs.ashbyhq.com/percepta,ashby,"{""token"": ""percepta""}",skip,
