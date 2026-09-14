@@ -1,5 +1,5 @@
 # ── Stage 0: Go-owned Lightpanda B0 supervisor ──────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS lightpanda-b0-build
+FROM golang:1.26.8-alpine3.23@sha256:33ce311e5eecedee48ec1b84419c1306e9fbd71009f0d5c3f2a6904b579c1ecc AS lightpanda-b0-build
 
 WORKDIR /workspace/apps/crawler
 COPY contracts/ contracts/
