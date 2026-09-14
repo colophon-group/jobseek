@@ -276,6 +276,10 @@ uv run crawler retry-stalled-scrapes --max-age-days 14
 
 # Dry run — report the count without writing
 uv run crawler retry-stalled-scrapes --dry-run
+
+# Scope an immediate recovery to reviewed boards (repeat the flag as needed)
+uv run crawler retry-stalled-scrapes --max-age-days 0 \
+  --board-slug board-one --board-slug board-two --dry-run
 ```
 
 The query targets `is_active = true AND next_scrape_at IS NULL AND scrape_failures >= 3 AND last_scraped_at < now() - <N>d` — transient-3-strike specifically. Postings on `rescrape_policy = "never"` boards (Starbucks, Uber, paid-proxy boards) also have `next_scrape_at IS NULL` after a successful scrape, but their `scrape_failures = 0`, so they're not affected.

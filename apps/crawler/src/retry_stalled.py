@@ -22,7 +22,7 @@ transactions (no long-held locks), idempotent across re-runs.
 
 Usage::
 
-    uv run crawler retry-stalled-scrapes [--max-age-days N] [--dry-run]
+    uv run crawler retry-stalled-scrapes [--max-age-days N] [--board-slug SLUG] [--dry-run]
 
 The default ``--max-age-days`` is 7.
 
@@ -36,6 +36,7 @@ their ``scrape_failures = 0``, so they're not affected.
 from __future__ import annotations
 
 import time
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import asyncpg
@@ -59,17 +60,12 @@ _DEFAULT_MAX_AGE_DAYS = 7
 # pairs with the WHERE shrinking each iteration (UPDATE flips
 # next_scrape_at to non-NULL).
 #
-# Termination invariant: the loop terminates because the age cutoff
-# (``last_scraped_at < now() - <N>d``) keeps a row out of the WHERE if
-# a worker re-scrapes it mid-loop and ``_RECORD_SCRAPE_TRANSIENT``
-# stamps ``last_scraped_at = now()``. With ``--max-age-days 0`` the
-# cutoff degenerates to ``last_scraped_at < now()``, which still
-# excludes a row whose ``last_scraped_at`` was just stamped by the
-# worker (microseconds before the next batch SELECT). So the loop is
-# safe even at ``--max-age-days 0`` — but operators using that value
-# should expect it to overlap with the worker pool's drain rate; run
-# during low-traffic windows or with ``--dry-run`` first to size the
-# job.
+# Termination invariant: one UTC cutoff is captured before the loop and
+# supplied to every statement. A worker that re-scrapes a promoted row stamps
+# ``last_scraped_at`` at or after that cutoff, so even if the row immediately
+# stalls again it cannot re-enter this invocation. This is essential for
+# ``--max-age-days 0``; using each statement's later ``now()`` would let a
+# fast failure satisfy ``last_scraped_at < now()`` again.
 #
 # ``scrape_failures >= 3`` distinguishes transient-3-strike stall from
 # a successful scrape on a ``rescrape_policy=never`` board (which also
@@ -77,14 +73,43 @@ _DEFAULT_MAX_AGE_DAYS = 7
 # because ``_RECORD_SCRAPE_SUCCESS`` resets the counter).
 _PROMOTE_STALLED_BATCH = """
 WITH targets AS (
-    SELECT id FROM job_posting
-    WHERE is_active = true
-      AND next_scrape_at IS NULL
-      AND scrape_failures >= 3
-      AND last_scraped_at IS NOT NULL
-      AND last_scraped_at < now() - ($1::int * interval '1 day')
-    ORDER BY id
-    LIMIT $2
+    SELECT jp.id FROM job_posting jp
+    WHERE jp.is_active = true
+      AND jp.next_scrape_at IS NULL
+      AND jp.scrape_failures >= 3
+      AND jp.last_scraped_at IS NOT NULL
+      AND jp.last_scraped_at < $2::timestamptz - ($1::int * interval '1 day')
+    ORDER BY jp.id
+    LIMIT $3
+)
+UPDATE job_posting jp
+SET next_scrape_at = now()
+FROM targets t
+WHERE jp.id = t.id
+RETURNING jp.id::text, jp.source_url, jp.board_id::text, jp.description_r2_hash
+"""
+
+# Board-scoped recovery must begin with the tiny exact-slug board set, then
+# reach postings through the existing board index. Keeping the scope behind an
+# OR parameter made PostgreSQL choose a parallel sequential scan of the full
+# posting table in production (#9167), taking 21s for the dry-run and timing
+# out the UPDATE at 30s. MATERIALIZED preserves this join order even when
+# production statistics underestimate the stalled rows for a board.
+_PROMOTE_STALLED_BY_BOARD_BATCH = """
+WITH scoped_boards AS MATERIALIZED (
+    SELECT id FROM job_board WHERE board_slug = ANY($2::text[])
+),
+targets AS (
+    SELECT jp.id
+    FROM scoped_boards sb
+    JOIN job_posting jp ON jp.board_id = sb.id
+    WHERE jp.is_active = true
+      AND jp.next_scrape_at IS NULL
+      AND jp.scrape_failures >= 3
+      AND jp.last_scraped_at IS NOT NULL
+      AND jp.last_scraped_at < $3::timestamptz - ($1::int * interval '1 day')
+    ORDER BY jp.id
+    LIMIT $4
 )
 UPDATE job_posting jp
 SET next_scrape_at = now()
@@ -97,27 +122,56 @@ RETURNING jp.id::text, jp.source_url, jp.board_id::text, jp.description_r2_hash
 # above — a dry-run reports exactly what the next non-dry-run would
 # touch (modulo concurrent writes between the two invocations).
 _COUNT_STALLED = """
-SELECT count(*) FROM job_posting
-WHERE is_active = true
-  AND next_scrape_at IS NULL
-  AND scrape_failures >= 3
-  AND last_scraped_at IS NOT NULL
-  AND last_scraped_at < now() - ($1::int * interval '1 day')
+SELECT count(*) FROM job_posting jp
+WHERE jp.is_active = true
+  AND jp.next_scrape_at IS NULL
+  AND jp.scrape_failures >= 3
+  AND jp.last_scraped_at IS NOT NULL
+  AND jp.last_scraped_at < $2::timestamptz - ($1::int * interval '1 day')
+"""
+
+_COUNT_STALLED_BY_BOARD = """
+WITH scoped_boards AS MATERIALIZED (
+    SELECT id FROM job_board WHERE board_slug = ANY($2::text[])
+)
+SELECT count(*)
+FROM scoped_boards sb
+JOIN job_posting jp ON jp.board_id = sb.id
+WHERE jp.is_active = true
+  AND jp.next_scrape_at IS NULL
+  AND jp.scrape_failures >= 3
+  AND jp.last_scraped_at IS NOT NULL
+  AND jp.last_scraped_at < $3::timestamptz - ($1::int * interval '1 day')
 """
 
 
-async def count_stalled_scrapes(pool: asyncpg.Pool, max_age_days: int) -> int:
+async def count_stalled_scrapes(
+    pool: asyncpg.Pool,
+    max_age_days: int,
+    *,
+    board_slugs: list[str] | None = None,
+) -> int:
     """Return the count of postings that match the stalled-scrape criteria.
 
     Used by ``--dry-run`` to report how many rows would be affected
     without making any writes.
     """
-    return await pool.fetchval(_COUNT_STALLED, max_age_days)
+    recovery_cutoff = datetime.now(UTC)
+    if board_slugs is None:
+        return await pool.fetchval(_COUNT_STALLED, max_age_days, recovery_cutoff)
+    return await pool.fetchval(
+        _COUNT_STALLED_BY_BOARD,
+        max_age_days,
+        board_slugs,
+        recovery_cutoff,
+    )
 
 
 async def retry_stalled_scrapes(
     pool: asyncpg.Pool,
     max_age_days: int = _DEFAULT_MAX_AGE_DAYS,
+    *,
+    board_slugs: list[str] | None = None,
 ) -> int:
     """Reset ``next_scrape_at`` and enqueue scrapes for stalled postings.
 
@@ -127,6 +181,7 @@ async def retry_stalled_scrapes(
     """
     r = get_redis()
     board_cache: dict[str, bool] = {}  # board_id -> needs_browser
+    recovery_cutoff = datetime.now(UTC)
 
     enqueued = 0
 
@@ -134,7 +189,21 @@ async def retry_stalled_scrapes(
     # flips ``next_scrape_at`` to non-NULL on the targets, dropping
     # them out of the WHERE for subsequent iterations.
     while True:
-        rows = await pool.fetch(_PROMOTE_STALLED_BATCH, max_age_days, _RETRY_BATCH_SIZE)
+        if board_slugs is None:
+            rows = await pool.fetch(
+                _PROMOTE_STALLED_BATCH,
+                max_age_days,
+                recovery_cutoff,
+                _RETRY_BATCH_SIZE,
+            )
+        else:
+            rows = await pool.fetch(
+                _PROMOTE_STALLED_BY_BOARD_BATCH,
+                max_age_days,
+                board_slugs,
+                recovery_cutoff,
+                _RETRY_BATCH_SIZE,
+            )
         if not rows:
             break
         log.info("retry_stalled.batch", count=len(rows))
@@ -171,7 +240,16 @@ async def retry_stalled_scrapes(
                 enqueued += 1
 
     if enqueued == 0:
-        log.info("retry_stalled.none_needed", max_age_days=max_age_days)
+        log.info(
+            "retry_stalled.none_needed",
+            max_age_days=max_age_days,
+            board_slugs=board_slugs,
+        )
     else:
-        log.info("retry_stalled.enqueued", enqueued=enqueued, max_age_days=max_age_days)
+        log.info(
+            "retry_stalled.enqueued",
+            enqueued=enqueued,
+            max_age_days=max_age_days,
+            board_slugs=board_slugs,
+        )
     return enqueued
