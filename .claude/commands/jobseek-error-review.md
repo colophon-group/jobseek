@@ -59,6 +59,10 @@ INPUTS
    create/start/restart/die/oom/kill/stop/destroy events, exit codes/signals,
    and pseudonymous container generations; the cgroup file contains
    generation-safe memory.events counters.
+   Always read host/redis-capacity.prom and
+   host/redis-capacity-observer.log. If manifest.json records
+   redis_capacity.complete=false, report the capacity evidence gap rather than
+   treating the Redis container's cgroup percentage as healthy capacity.
 2. Prior review reports: read every `.md` under
    ~/dev/claude/review-jobseek-errors/ before classifying. That directory
    is the agent's cross-run memory.
