@@ -3167,7 +3167,7 @@ test("pull_request_target image uploads disable the uv cache", () => {
 test("MCP publish workflow caches the pnpm store", () => {
   assert.match(
     publishMcpServerWorkflow,
-    /pnpm\/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6\.0\.10[\s\S]*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6/,
+    /pnpm\/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6\.1\.0[\s\S]*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6/,
   );
   assert.match(publishMcpServerWorkflow, /cache: pnpm/);
   assert.match(publishMcpServerWorkflow, /cache-dependency-path: pnpm-lock\.yaml/);
