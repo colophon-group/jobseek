@@ -1621,6 +1621,59 @@ def test_publication_retention_fails_closed_on_malformed_journal(tmp_path: Path)
     assert stale.exists()
 
 
+def test_publication_retention_preserves_three_distinct_runtime_image_pairs(
+    tmp_path: Path,
+) -> None:
+    release_root = tmp_path / "releases"
+    candidates = tmp_path / "candidates"
+    candidates.mkdir()
+    obsolete, _ = _create_full_deploy_v3_release(release_root, f"release-{'c' * 40}.obsolete", "c")
+    rollback_two, _ = _create_full_deploy_v3_release(
+        release_root, f"release-{'d' * 40}.rollback-two", "d"
+    )
+    rollback_one, _ = _create_full_deploy_v3_release(
+        release_root, f"release-{'e' * 40}.rollback-one", "e"
+    )
+    active_release, _ = _create_full_deploy_v3_release(
+        release_root, f"release-{'f' * 40}.active", "f"
+    )
+    generations = [obsolete, rollback_two, rollback_one, active_release]
+    for index in range(6):
+        duplicate = release_root / f"data-{'a' * 40}.active-copy-{index}"
+        shutil.copytree(active_release, duplicate)
+        generations.append(duplicate)
+    for index, generation in enumerate(generations, start=1):
+        os.utime(generation, (index, index))
+
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(active_release)
+    live_env = tmp_path / ".env"
+    shutil.copyfile(active_release / "environment.env", live_env)
+    live_env.chmod(0o600)
+    env = _csv_host_test_environment(tmp_path, release_root, active, live_env, candidates)
+    env.update(
+        {
+            "JOBSEEK_PUBLICATION_KEEP_GENERATIONS": "2",
+            "JOBSEEK_PUBLICATION_GRACE_SECONDS": "0",
+        }
+    )
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+
+    result = subprocess.run(
+        [bash, str(CSV_SYNC_HOST), "--prune-only"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert active_release.exists()
+    assert rollback_one.exists()
+    assert rollback_two.exists()
+    assert not obsolete.exists()
+
+
 def test_csv_snapshot_verifier_rejects_tamper_residue_and_deleted_files(
     tmp_path: Path,
 ) -> None:

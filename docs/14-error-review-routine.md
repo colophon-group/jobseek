@@ -97,6 +97,15 @@ the evidence incomplete when the capacity snapshot is unavailable, malformed,
 more than eight hours old, unexpectedly future-dated, or the journal query
 fails.
 
+Disk incidents carry attribution rather than only a filesystem percentage.
+The root collector records bounded `docker system df`, container writable-layer
+sizes, image age/size inventory, exact sizes for the known Docker/containerd,
+observability, Codex-runner, deploy, and log roots, and the exact-window
+`jobseek-docker-gc.service` journal. The `disk_capacity.complete` manifest flag
+fails closed if any command fails, times out, or reaches the bundle size cap.
+These artifacts are diagnostic only: the unprivileged review must not turn a
+large directory or image into removal authority.
+
 Reviews must correlate synchronized service pauses with that file before
 classifying instability:
 

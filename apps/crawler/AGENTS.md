@@ -635,9 +635,14 @@ ssh ... 'cd /home/deploy/crawler-src && docker build --target full -t crawler-fu
 ### Disk and Docker GC
 
 All Hetzner hosts should run the `jobseek-docker-gc.timer` systemd timer.
-It prunes stale Docker builder cache and unused images, and on the crawler
-host it keeps the active plus recent rollback crawler/browser release images
-while removing older unused version tags. Do not prune Docker volumes.
+Its repository source is `scripts/jobseek-docker-gc.py`. It prunes unused
+builder cache; image deletion is limited to crawler/browser generations on the
+crawler host. It keeps active container and published-release images plus two
+verified prior successful releases while removing failed candidates and older
+digest-only generations by immutable image ID. It shares the crawler mutation
+lock and defers during deployments. The crawler floor is 15 GiB; an unmet
+floor or failed prune must fail the service without widening deletion scope.
+Do not prune unrelated images, containers, or Docker volumes.
 
 ```bash
 systemctl is-active jobseek-docker-gc.timer

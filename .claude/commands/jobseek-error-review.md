@@ -63,6 +63,14 @@ INPUTS
    host/redis-capacity-observer.log. If manifest.json records
    redis_capacity.complete=false, report the capacity evidence gap rather than
    treating the Redis container's cgroup percentage as healthy capacity.
+   Always read the disk_capacity manifest entry and the five bounded files
+   host/docker-system-df.txt, host/docker-container-sizes.txt,
+   host/docker-images.txt, host/disk-attribution.txt, and host/docker-gc.log.
+   Treat disk_capacity.complete=false as an attribution gap. When `/` or
+   Docker is at least 85% full, identify the dominant allowlisted root/image
+   family and check the exact-window GC journal; never close or downgrade the
+   incident from the percentage alone. If evidence is incomplete, name the
+   exact missing artifact instead.
 2. Prior review reports: read every `.md` under
    ~/dev/claude/review-jobseek-errors/ before classifying. That directory
    is the agent's cross-run memory.

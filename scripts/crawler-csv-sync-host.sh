@@ -519,9 +519,62 @@ newest = {
         reverse=True,
     )[:keep]
 }
+crawler_ref_pattern = re.compile(
+    r"ghcr\.io/[A-Za-z0-9._-]+/jobseek-crawler@sha256:[0-9a-f]{64}"
+)
+browser_ref_pattern = re.compile(
+    r"ghcr\.io/[A-Za-z0-9._-]+/jobseek-crawler-browser@sha256:[0-9a-f]{64}"
+)
+
+
+def release_image_pair(path: pathlib.Path) -> tuple[str, str] | None:
+    evidence = path / "success.env"
+    try:
+        mode = evidence.lstat().st_mode
+    except FileNotFoundError as error:
+        raise SystemExit("verified release image evidence is unavailable") from error
+    if not stat.S_ISREG(mode) or stat.S_ISLNK(mode) or evidence.stat().st_size > 65536:
+        raise SystemExit("verified release image evidence is unsafe")
+    values: dict[str, list[str]] = {}
+    for line in evidence.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.partition("=")
+        if separator and key in {"CRAWLER_IMAGE_REF", "BROWSER_IMAGE_REF"}:
+            values.setdefault(key, []).append(value)
+    if not values:
+        # Compatibility with early verified v3 test/bootstrap generations that
+        # predate browser identity in the success marker.
+        return None
+    if set(values) != {"CRAWLER_IMAGE_REF", "BROWSER_IMAGE_REF"} or any(
+        len(items) != 1 for items in values.values()
+    ):
+        raise SystemExit("verified release image evidence is incomplete or duplicated")
+    pair = (values["CRAWLER_IMAGE_REF"][0], values["BROWSER_IMAGE_REF"][0])
+    if not crawler_ref_pattern.fullmatch(pair[0]) or not browser_ref_pattern.fullmatch(pair[1]):
+        raise SystemExit("verified release image evidence is malformed")
+    return pair
+
+
+# Generic publication churn can create many data-only generations that all
+# point at one runtime. Preserve the newest three distinct successful image
+# pairs independently of the ordinary five-generation data rollback window:
+# active plus two delayed runtime rollback releases for Docker GC.
+newest_image_releases: set[pathlib.Path] = set()
+seen_image_pairs: set[tuple[str, str]] = set()
+for _, path in sorted(
+    (item for item in generation_entries if item[1] in verified_releases),
+    key=lambda item: (item[0], item[1].name),
+    reverse=True,
+):
+    pair = release_image_pair(path)
+    if pair is None or pair in seen_image_pairs:
+        continue
+    seen_image_pairs.add(pair)
+    newest_image_releases.add(path)
+    if len(newest_image_releases) == 3:
+        break
 for mtime_ns, path in generation_entries:
     age = now - (mtime_ns / 1_000_000_000)
-    if path in protected_releases or path in newest or age < grace:
+    if path in protected_releases or path in newest or path in newest_image_releases or age < grace:
         continue
     shutil.rmtree(path)
     deleted_generation = True

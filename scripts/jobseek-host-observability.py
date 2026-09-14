@@ -91,6 +91,7 @@ ROLE_CONTAINERS = {
 ROLE_UNITS = {
     "crawler": (
         "docker.service",
+        "jobseek-docker-gc.timer",
         "jobseek-crawler-reconciliation.timer",
         "jobseek-ats-inventory.timer",
         "jobseek-codex-governor.timer",
@@ -99,12 +100,14 @@ ROLE_UNITS = {
     ),
     "postgresql": (
         "docker.service",
+        "jobseek-docker-gc.timer",
         "jobseek-postgresql-backup-repository.service",
         "jobseek-postgresql-backup.timer",
         "jobseek-postgresql-emergency-headroom.service",
     ),
     "typesense": (
         "docker.service",
+        "jobseek-docker-gc.timer",
         "cloudflared.service",
         "jobseek-typesense-backup.timer",
     ),
