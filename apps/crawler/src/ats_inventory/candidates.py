@@ -53,6 +53,41 @@ _COMMON_SECOND_LEVEL_SUFFIXES = {
     "com.sg",
     "org.uk",
 }
+_LEGAL_NAME_SUFFIXES = {
+    "ab",
+    "ag",
+    "bv",
+    "co",
+    "company",
+    "corp",
+    "corporation",
+    "gmbh",
+    "inc",
+    "incorporated",
+    "limited",
+    "llc",
+    "ltd",
+    "nv",
+    "oy",
+    "plc",
+    "sa",
+    "sas",
+    "sarl",
+    "spa",
+}
+_GENERIC_IDENTITY_WORDS = {
+    "bank",
+    "company",
+    "global",
+    "group",
+    "health",
+    "holding",
+    "holdings",
+    "international",
+    "technology",
+    "technologies",
+    "tech",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,7 +300,8 @@ class LocalRegistryIndex:
             result.append(
                 DedupEvidence(
                     "similar_company_identity",
-                    "A company name or slug matches; verify whether this is another valid board.",
+                    "A company name or slug matches; default to extending that company and "
+                    "create a separate identity only for a verified independent employer.",
                     _references((*exact_name, *exact_slug)),
                 )
             )
@@ -277,7 +313,8 @@ class LocalRegistryIndex:
             result.append(
                 DedupEvidence(
                     "possible_parent_or_region",
-                    "A related parent, subsidiary, or regional company name exists.",
+                    "A related parent, subsidiary, or regional company name exists; geography "
+                    "alone is an additional board, not a new company identity.",
                     _references(related),
                 )
             )
@@ -294,6 +331,35 @@ class LocalRegistryIndex:
             )
         return result
 
+    def related_company_identity_matches(self, candidate: Candidate) -> tuple[LocalCompany, ...]:
+        """Return high-confidence local name/slug identity matches.
+
+        The broader token/subset and domain heuristics remain advisory: legal
+        suffixes and hosted ATS domains create far too many false positives for
+        a lifecycle gate.  Here, only exact labels and a specific leading brand
+        phrase (for example ``IBM`` / ``IBM China``) count.
+        """
+
+        name = normalize_label(candidate.name)
+        slug = normalize_label(candidate.slug)
+        matches: dict[str, LocalCompany] = {}
+        for company in self.company_names.get(name, ()) if name else ():
+            matches[company.slug] = company
+        for company in self.company_slugs.get(slug, ()) if slug else ():
+            matches[company.slug] = company
+
+        candidate_brand = _without_legal_suffix(name)
+        companies = {
+            company.slug: company
+            for same_name in self.company_names.values()
+            for company in same_name
+        }
+        for company in companies.values():
+            company_brand = _without_legal_suffix(normalize_label(company.name))
+            if _specific_leading_identity(candidate_brand, company_brand):
+                matches[company.slug] = company
+        return tuple(sorted(matches.values(), key=lambda item: (item.name.casefold(), item.slug)))
+
     def _related_companies(self, candidate: Candidate) -> list[LocalCompany]:
         candidate_tokens = set(_label_tokens(candidate.name, candidate.slug))
         possible: dict[str, LocalCompany] = {}
@@ -307,7 +373,7 @@ class LocalRegistryIndex:
         candidate_name = normalize_label(candidate.name)
         for company in possible.values():
             company_name = normalize_label(company.name)
-            if min(len(candidate_name), len(company_name)) < 4:
+            if min(len(candidate_name), len(company_name)) < 3:
                 continue
             company_tokens = set(_label_tokens(company.name, company.slug))
             if (
@@ -660,8 +726,10 @@ def render_candidate_issue(plan: CandidatePlan, *, parent_issue: int = 6184) -> 
     lines.extend(
         [
             "",
-            "Soft matches are advisory. Preserve subsidiaries, regions, acquisitions, and",
-            "valid additional ATS/board configurations unless verification proves a duplicate.",
+            "Soft matches require an explicit identity decision. Regional portals and operating",
+            "divisions belong to the existing company by default. Preserve a separate company",
+            "only when verification establishes an independent legal or employer identity;",
+            "valid additional ATS sources should otherwise become boards on the existing company.",
             "",
             f"Parent: #{parent_issue}",
             "",
@@ -704,6 +772,23 @@ def normalize_label(value: str) -> str:
 
 def normalize_issue_title(value: str) -> str:
     return normalize_label(_ISSUE_PREFIX_RE.sub("", value.strip()))
+
+
+def _without_legal_suffix(value: str) -> str:
+    tokens = value.split()
+    while tokens and tokens[-1] in _LEGAL_NAME_SUFFIXES:
+        tokens.pop()
+    return " ".join(tokens)
+
+
+def _specific_leading_identity(left: str, right: str) -> bool:
+    if not left or not right or left == right:
+        return False
+    shorter, longer = sorted((left, right), key=len)
+    if not longer.startswith(f"{shorter} "):
+        return False
+    tokens = shorter.split()
+    return any(len(token) >= 3 and token not in _GENERIC_IDENTITY_WORDS for token in tokens)
 
 
 def website_domain(value: str) -> str | None:

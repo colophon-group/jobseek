@@ -376,6 +376,19 @@ def test_ambiguous_homepage_domain_is_advisory(tmp_path: Path) -> None:
     plan = _deduplicator(tmp_path, local).plan(candidate)
     assert plan.eligible
     assert {item.code for item in plan.soft_warnings} == {"shared_homepage_domain"}
+    assert local.related_company_identity_matches(candidate) == ()
+
+
+def test_generic_legal_suffix_token_is_not_a_hard_identity_match(tmp_path: Path) -> None:
+    local = _registries(
+        tmp_path,
+        companies=[{"slug": "hp", "name": "HP Inc.", "website": "https://www.hp.com"}],
+    )
+    candidate = Candidate.from_impact(
+        _impact(name="8Fleet Inc", slug="8fleet-inc", url="https://jobs.lever.co/8fleet")
+    )
+
+    assert local.related_company_identity_matches(candidate) == ()
 
 
 def test_similar_closed_issue_title_without_marker_is_only_a_warning(tmp_path: Path) -> None:
@@ -597,6 +610,30 @@ def test_rendered_issue_preserves_all_soft_evidence_for_ws(tmp_path: Path) -> No
     assert "similar_company_identity" in body
     assert "do not import, execute, or add a runtime dependency" in body
     assert "simplified `ws` path" in body
+    assert "Regional portals and operating" in body
+    assert "independent legal or employer identity" in body
+
+
+def test_regional_candidate_warns_that_geography_is_not_an_identity(tmp_path: Path) -> None:
+    candidate = Candidate.from_impact(_impact(name="Starbucks China", slug="starbucks-china"))
+    plan = _deduplicator(
+        tmp_path,
+        _registries(
+            tmp_path,
+            companies=[
+                {
+                    "slug": "starbucks",
+                    "name": "Starbucks",
+                    "website": "https://www.starbucks.com",
+                }
+            ],
+        ),
+    ).plan(candidate)
+
+    warning = next(item for item in plan.soft_warnings if item.code == "possible_parent_or_region")
+    assert "geography alone is an additional board" in warning.summary
+    _, body = render_candidate_issue(plan)
+    assert "valid additional ATS sources should otherwise become boards" in body
 
 
 def test_rendered_issue_sanitizes_and_bounds_untrusted_company_name(tmp_path: Path) -> None:

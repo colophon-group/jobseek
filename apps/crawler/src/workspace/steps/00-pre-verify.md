@@ -25,10 +25,12 @@ and `ws help` exclusively. All interaction with the system goes through `ws`.
 ws search "<company name>"
 ```
 
-An exact company-name match is a **configuration review**, not a reason to
-discard the request. Check that the current boards still work, ensure coverage
-is complete, and follow every concrete tip or board URL in the issue. Start a
-reconfiguration workspace for the existing slug:
+An exact or related company match is a **configuration review**, not a reason
+to discard the request. A geography suffix, local website, or regional ATS
+does not create a new company identity: attach that source as another board on
+the existing company. Check that the current boards still work, ensure coverage
+is complete, and follow every concrete tip or board URL in the issue.
+Start a reconfiguration workspace for the existing slug:
 
 ```bash
 ws new <existing-slug> --issue {issue} --reconfig
@@ -43,6 +45,15 @@ reconfiguration workspace for live verification and overlap comparison.
 If the company exists only in an open PR and is not on `main` yet, do not create
 a competing company PR. Leave this issue pending and retry it after that PR is
 resolved; it will then enter the reconfiguration path above.
+
+Only create a related second company when research establishes that it is an
+independent legal or employer identity rather than a region or operating
+division. In that case, record the evidence and explicitly acknowledge the
+decision:
+
+```bash
+ws new <new-related-slug> --issue {issue} --separate-identity
+```
 
 ## Step 2: Verify the company is real and has a careers page
 
