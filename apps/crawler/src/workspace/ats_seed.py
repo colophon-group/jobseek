@@ -15,7 +15,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from src.ats_inventory.candidates import (
     Candidate,
@@ -42,10 +42,45 @@ _FIELD_RE = re.compile(
     re.MULTILINE,
 )
 _ACTIVE_JOBS_RE = re.compile(r"^- Published active jobs: (?P<value>unknown|\d+)\s*$", re.MULTILINE)
+_MOKA_SEED_PATH_RE = re.compile(
+    r"^/(?:social|campus)-recruitment/"
+    r"(?P<org_id>[A-Za-z0-9_-]{1,128})/"
+    r"(?P<site_id>[1-9]\d{0,11})/?$",
+    re.IGNORECASE,
+)
 
 
 class InventorySeedInvalid(ValueError):
     """The issue claims an inventory seed, but its evidence is inconsistent."""
+
+
+def _seed_monitor_config(
+    family: str,
+    board_url: str,
+    compatibility_config: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Return a runnable native config derived from authenticated seed data.
+
+    Most native monitors can resolve their tenant from the board URL at run
+    time. Mokahr deliberately requires the organisation and numeric site ID in
+    config, so recover those values from the same canonical path already used
+    to authenticate the inventory tenant identity.
+    """
+
+    config = copy.deepcopy(compatibility_config or {})
+    if family != "moka":
+        return config
+
+    match = _MOKA_SEED_PATH_RE.fullmatch(urlsplit(board_url).path)
+    if match is None:
+        raise InventorySeedInvalid("the Mokahr board URL cannot produce a runnable config")
+    config.update(
+        {
+            "org_id": match.group("org_id"),
+            "site_id": int(match.group("site_id")),
+        }
+    )
+    return config
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,7 +186,11 @@ def parse_inventory_seed(body: str) -> AtsInventorySeed | None:
     if hash_text(board_url) != marker_board_hash:
         raise InventorySeedInvalid("the board URL does not match the marker hash")
 
-    monitor_config = compatibility.monitor_config or {}
+    monitor_config = _seed_monitor_config(
+        family,
+        board_url,
+        compatibility.monitor_config,
+    )
     expected_tenant = candidate_tenant_key(family, board_url, config=monitor_config)
     if expected_tenant is None or len(expected_tenant) > 240:
         expected_tenant = f"url-sha256:{hash_text(board_url)}"
