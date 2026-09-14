@@ -78,7 +78,10 @@ async def test_rss_probe_skips_browser_routed_feed_without_http_request():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("feed_url", [123, "file:///tmp/jobs.rss"])
+@pytest.mark.parametrize(
+    "feed_url",
+    [123, "file:///tmp/jobs.rss", "https://example.com/jobs\x00.rss"],
+)
 async def test_rss_probe_rejects_invalid_browser_feed_url(feed_url):
     def handler(_request: httpx.Request) -> httpx.Response:
         raise AssertionError("invalid browser feed URL must fail before network I/O")

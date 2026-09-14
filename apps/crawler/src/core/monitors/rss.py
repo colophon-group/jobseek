@@ -1537,7 +1537,7 @@ def _validated_feed_url(value: object) -> str:
         not isinstance(value, str)
         or not value
         or len(value) > _MAX_FEED_URL_CHARS
-        or any(character.isspace() or ord(character) == 0x7F for character in value)
+        or any(ord(character) < 0x21 or ord(character) == 0x7F for character in value)
     ):
         raise ValueError("RSS feed_url must be a bounded absolute HTTP(S) URL")
     try:

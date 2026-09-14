@@ -2184,6 +2184,7 @@ class TestDiscover:
             "file:///tmp/jobs.rss",
             "https://user:password@example.com/jobs.rss",
             "https://example.com/jobs.rss#fragment",
+            "https://example.com/jobs\x00.rss",
         ],
     )
     async def test_invalid_feed_url_rejected_before_fetch(self, feed_url):
