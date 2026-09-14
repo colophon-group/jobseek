@@ -4793,6 +4793,7 @@ async def dom_discover(
         or pagination
         or rich_rows is not None
         or metadata.get("include_board_url")
+        or metadata.get("fetch_url_transform")
     ):
         raise ValueError("DOM monitor onclick_selector supports static single-page discovery only")
     if advertised_ranges is not None and (
@@ -5124,6 +5125,8 @@ async def dom_discover(
                 onclick_selector,
                 url_matcher,
             )
+            if not urls and not configured_empty_states:
+                raise ValueError("DOM monitor onclick_selector matched no rows")
         else:
             urls = _extract_links_static(html, fetch_board_url, url_matcher, link_selector)
         if configured_empty_states:

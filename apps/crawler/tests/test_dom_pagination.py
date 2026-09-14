@@ -690,6 +690,32 @@ class TestOnclickSelector:
                 MagicMock(),
             )
 
+    async def test_onclick_selector_fails_closed_when_no_rows_match(self):
+        with (
+            patch(_FETCH_PATCH, AsyncMock(return_value="<table></table>")),
+            pytest.raises(ValueError, match="matched no rows"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": self.BOARD_URL,
+                    "metadata": {"onclick_selector": "tr.item[onclick]"},
+                },
+                MagicMock(),
+            )
+
+    async def test_onclick_selector_rejects_fetch_url_transform(self):
+        with pytest.raises(ValueError, match="static single-page"):
+            await dom_discover(
+                {
+                    "board_url": self.BOARD_URL,
+                    "metadata": {
+                        "onclick_selector": "tr.item[onclick]",
+                        "fetch_url_transform": {"find": "Categories", "replace": "Other"},
+                    },
+                },
+                MagicMock(),
+            )
+
 
 class TestOracleAdfJobIds:
     def test_oracle_adf_probe_builds_bounded_rendered_config(self):
