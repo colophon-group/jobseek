@@ -30,9 +30,11 @@ from src.core.monitors.rss import (
     _parse_sf_item,
     _parse_sf_legacy_xml_item,
     _parse_tt_item,
+    _parse_zoho_recruit_item,
     _text,
     _tt,
     _tt_location_string,
+    _zoho_recruit_feed_from_url,
     can_handle,
     discover,
     discover_stream,
@@ -97,6 +99,51 @@ class TestText:
     def test_whitespace_stripped(self):
         item = _make_item("<title>  Spaced  </title>")
         assert _text(item, "title") == "Spaced"
+
+
+class TestZohoRecruit:
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            (
+                "https://amcor.zohorecruit.ca/jobs/Careers",
+                ("amcor.ca", "https://amcor.zohorecruit.ca/jobs/Careers/rss"),
+            ),
+            (
+                "https://amcor.zohorecruit.ca/jobs/Careers/rss/",
+                ("amcor.ca", "https://amcor.zohorecruit.ca/jobs/Careers/rss"),
+            ),
+            ("http://amcor.zohorecruit.ca/jobs/Careers", None),
+            ("https://zohorecruit.ca/jobs/Careers", None),
+            ("https://amcor.zohorecruit.ca/jobs/Careers?source=other", None),
+            ("https://amcor.zohorecruit.ca/jobs/Careers/123/role", None),
+        ],
+    )
+    def test_feed_url_validation(self, url, expected):
+        assert _zoho_recruit_feed_from_url(url) == expected
+
+    def test_parse_item(self):
+        item = _make_item("""
+            <title><![CDATA[Planificateur·trice d&#39;entretien]]></title>
+            <link>https://amcor.zohorecruit.ca/jobs/Careers/5541000000737054/Planner?source=RSS</link>
+            <description><![CDATA[
+                Catégorie: Manufacturing <br><br>
+                Lieu: Granby Quebec Canada <br><br><br>
+                <span id="spandesc"><p>Planifier la maintenance.</p></span>
+            ]]></description>
+            <guid isPermaLink="false">5541000000737054</guid>
+            <pubDate>jeu., 27 août 2026 12:00:00 EDT</pubDate>
+        """)
+
+        job = _parse_zoho_recruit_item(item)
+
+        assert job is not None
+        assert job.title == "Planificateur·trice d'entretien"
+        assert job.locations == ["Granby Quebec Canada"]
+        assert "Planifier la maintenance" in (job.description or "")
+        assert job.date_posted == "jeu., 27 août 2026 12:00:00 EDT"
+        assert job.metadata == {"id": "5541000000737054"}
+        assert job.source_identity == "zoho_recruit:amcor.ca:5541000000737054"
 
 
 # ── _g (Google Base namespace) ───────────────────────────────────────────
@@ -2054,6 +2101,30 @@ class TestCanHandle:
     async def test_returns_none_without_client(self):
         result = await can_handle("https://example.com/careers")
         assert result is None
+
+    async def test_detects_zoho_recruit_feed_before_fetching_careers_page(self):
+        rss_xml = _rss_xml("""
+            <item>
+                <title>Production Operator</title>
+                <link>https://amcor.zohorecruit.ca/jobs/Careers/5541000000233161/Operator</link>
+                <description>&lt;p&gt;Location: Granby Canada&lt;/p&gt;</description>
+                <guid>5541000000233161</guid>
+            </item>
+        """)
+
+        def handler(request):
+            assert request.url.path == "/jobs/Careers/rss"
+            return httpx.Response(200, text=rss_xml)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://amcor.zohorecruit.ca/jobs/Careers", client)
+
+        assert result == {
+            "preset": "zoho_recruit",
+            "tenant": "amcor.ca",
+            "feed_url": "https://amcor.zohorecruit.ca/jobs/Careers/rss",
+            "jobs": 1,
+        }
 
     async def test_detects_governmentjobs_feed_before_fetching_careers_page(self):
         rss_xml = _rss_xml("""
