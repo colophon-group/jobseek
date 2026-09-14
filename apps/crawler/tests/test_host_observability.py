@@ -543,6 +543,7 @@ def test_redis_capacity_snapshot_is_cached_and_republished(tmp_path: Path, monke
     lines: list[str] = []
     host._collect_redis_capacity_metrics(lines, tmp_path, now=100)
     assert calls
+    assert calls[0][4:6] == ["redis-capacity", "summary"]
     assert "ignored log line" not in lines
     assert "jobseek_redis_capacity_snapshot_available 1" in lines
     assert 'jobseek_redis_key_family_keys{family="scrape_config"} 2' in lines
@@ -554,7 +555,12 @@ def test_redis_capacity_snapshot_is_cached_and_republished(tmp_path: Path, monke
 
 
 def test_redis_capacity_refresh_failure_is_rollout_safe(tmp_path: Path, monkeypatch) -> None:
+    calls = 0
+
     def fail(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        assert float((tmp_path / "redis-capacity.last-attempt").read_text()) >= 100
         raise host.ProbeError("crawler command unavailable")
 
     monkeypatch.setattr(host, "_run", fail)
@@ -562,6 +568,67 @@ def test_redis_capacity_refresh_failure_is_rollout_safe(tmp_path: Path, monkeypa
     host._collect_redis_capacity_metrics(lines, tmp_path, now=100)
 
     assert lines == ["jobseek_redis_capacity_snapshot_available 0"]
+    assert calls == 1
+    assert float((tmp_path / "redis-capacity.last-attempt").read_text()) == 100
+
+    # The one-minute host timer republishes the unavailable state without
+    # repeatedly launching the expensive worker-side scan.
+    lines = []
+    host._collect_redis_capacity_metrics(lines, tmp_path, now=101)
+    assert lines == ["jobseek_redis_capacity_snapshot_available 0"]
+    assert calls == 1
+
+    lines = []
+    host._collect_redis_capacity_metrics(
+        lines,
+        tmp_path,
+        now=100 + host.REDIS_CAPACITY_RETRY_SECONDS,
+    )
+    assert calls == 2
+
+
+def test_redis_capacity_failure_republishes_stale_cache(tmp_path: Path, monkeypatch) -> None:
+    cache = tmp_path / "redis-capacity.prom"
+    cache.write_text(
+        "jobseek_redis_capacity_snapshot_unixtime 1\n"
+        "jobseek_redis_capacity_used_memory_bytes 1024\n",
+        encoding="utf-8",
+    )
+    cache.touch()
+
+    def fail(*_args, **_kwargs):
+        raise host.ProbeError("scan failed")
+
+    monkeypatch.setattr(host, "_run", fail)
+    now = cache.stat().st_mtime + host.REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS + 1
+    lines: list[str] = []
+    host._collect_redis_capacity_metrics(lines, tmp_path, now=now)
+
+    assert "jobseek_redis_capacity_used_memory_bytes 1024" in lines
+    assert "jobseek_redis_capacity_snapshot_available 0" in lines
+
+
+def test_redis_capacity_invalid_or_future_attempt_marker_fails_open(
+    tmp_path: Path, monkeypatch
+) -> None:
+    output = "jobseek_redis_capacity_snapshot_unixtime 200\n"
+    calls = 0
+
+    def run(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        return SimpleNamespace(stdout=output)
+
+    monkeypatch.setattr(host, "_run", run)
+    marker = tmp_path / "redis-capacity.last-attempt"
+    for value in ("invalid\n", "10000\n"):
+        marker.write_text(value, encoding="utf-8")
+        (tmp_path / "redis-capacity.prom").unlink(missing_ok=True)
+        lines: list[str] = []
+        host._collect_redis_capacity_metrics(lines, tmp_path, now=200)
+        assert "jobseek_redis_capacity_snapshot_available 1" in lines
+
+    assert calls == 2
 
 
 def test_alloy_metric_parser_aggregates_only_fixed_families() -> None:

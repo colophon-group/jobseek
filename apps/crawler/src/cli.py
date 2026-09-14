@@ -678,9 +678,9 @@ def parse_args() -> argparse.Namespace:
 
     redis_capacity_p = sub.add_parser(
         "redis-capacity",
-        help="Inspect budgets, prune orphan scrape configs, or rebuild schedules",
+        help="Summarize/inspect budgets, prune orphan configs, or rebuild schedules",
     )
-    redis_capacity_p.add_argument("action", choices=("inspect", "prune", "rebuild"))
+    redis_capacity_p.add_argument("action", choices=("summary", "inspect", "prune", "rebuild"))
     redis_capacity_p.add_argument(
         "--format",
         choices=("json", "prometheus"),
@@ -1402,10 +1402,11 @@ async def run() -> None:
                 inventory,
                 prune_orphan_scrape_configs,
                 rebuild_scrape_schedules,
+                summary,
             )
 
-            if args.action == "inspect":
-                snapshot = await inventory()
+            if args.action in {"summary", "inspect"}:
+                snapshot = await (summary() if args.action == "summary" else inventory())
                 output = (
                     format_prometheus(snapshot)
                     if args.format == "prometheus"

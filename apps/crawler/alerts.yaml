@@ -1284,7 +1284,7 @@ groups:
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/20-redis-capacity.md#alerts-and-operator-response
 
       - alert: RedisOrphanScrapeConfigs
-        expr: jobseek_redis_scrape_config_state_keys{state="orphan"} > 10000
+        expr: jobseek_redis_scrape_config_state_keys{state="orphan_lower_bound"} > 10000
         for: 6h
         labels:
           severity: high
@@ -1292,8 +1292,8 @@ groups:
           owner: codex-error-review
           route: codex-daily
         annotations:
-          summary: "Redis orphan scrape configs exceed the steady-state budget"
-          description: "More than 10,000 scrape config hashes are absent from every queue, lease, and deadletter. Run the dry-run bounded orphan prune, investigate completion lifecycle regressions, then apply bounded batches."
+          summary: "Redis orphan scrape-config lower bound exceeds the steady-state budget"
+          description: "Even after conservatively treating every scrape queue, lease, and deadletter item as a distinct reachable config, more than 10,000 config hashes remain unaccounted for. Run the exact manual inventory and dry-run bounded orphan prune before applying bounded cleanup batches."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/20-redis-capacity.md#bounded-orphan-prune
 
       - alert: RedisKeyFamilyBudgetHigh
