@@ -108,8 +108,6 @@ def _parse_public_api_job_urls(slug: str, data: dict) -> set[str]:
             raise ValueError("Workable public jobs API returned a job without a shortcode")
         urls.add(_job_url(slug, shortcode))
 
-    if len(urls) != len(jobs):
-        raise ValueError("Workable public jobs API returned duplicate shortcodes")
     return urls
 
 
@@ -131,12 +129,19 @@ async def _public_api_inventory(
         sleep=asyncio.sleep,
     )
     urls = _parse_public_api_job_urls(slug, data)
+    rows = data["jobs"]
     if len(urls) != advertised:
         raise ValueError(
             "Workable public inventory count mismatch: "
             f"llms.txt advertises {advertised}, public API contains {len(urls)} unique jobs"
         )
-    log.info("workable.public_api_listed", slug=slug, postings=len(urls))
+    log.info(
+        "workable.public_api_listed",
+        slug=slug,
+        postings=len(urls),
+        rows=len(rows),
+        duplicate_rows=len(rows) - len(urls),
+    )
     return urls
 
 
