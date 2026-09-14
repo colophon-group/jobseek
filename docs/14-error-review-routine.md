@@ -88,6 +88,15 @@ target after the short-lived Compose container has been removed. The same
 size bound and final credential/address/resource-ID redaction apply before the
 unprivileged runner can read it.
 
+Redis capacity is collected at the same boundary. The bundle copies the
+current `redis-capacity.prom` snapshot and exports the exact review window of
+capacity-observer journal events as `host/redis-capacity-observer.log`.
+Reviews must use Redis's configured `maxmemory` denominator from that snapshot,
+not the larger container cgroup reported by `docker stats`. The manifest marks
+the evidence incomplete when the capacity snapshot is unavailable, malformed,
+more than eight hours old, unexpectedly future-dated, or the journal query
+fails.
+
 Reviews must correlate synchronized service pauses with that file before
 classifying instability:
 

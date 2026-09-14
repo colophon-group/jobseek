@@ -28,6 +28,7 @@ SCAN_COUNT = 2000
 MAX_PRUNE_SCAN = 250_000
 MAX_PRUNE_DELETE = 100_000
 MAX_REBUILD_ROWS = 50_000
+LEGACY_SCRAPE_GUARD_KEY = "lightpanda-b0:legacy-guard"
 _PRUNE_LUA = Path(__file__).with_name("lua").joinpath("prune_orphan_scrape.lua")
 
 
@@ -48,9 +49,9 @@ FAMILY_POLICIES = (
         "scrape scheduler",
         "created atomically on enqueue; removed when the final queue/lease/deadletter drains",
         "persistent while reachable",
-        600_000,
-        600_000,
-        384 * MIB,
+        3_000_000,
+        3_000_000,
+        1536 * MIB,
     ),
     FamilyPolicy(
         "board_config",
@@ -76,8 +77,8 @@ FAMILY_POLICIES = (
         "recurring scrape; claim moves the item to inflight",
         "persistent until claimed/rescheduled",
         5_000,
-        600_000,
-        96 * MIB,
+        3_000_000,
+        512 * MIB,
     ),
     FamilyPolicy(
         "monitor_queue_first",
@@ -233,38 +234,40 @@ async def _scan_keys(redis: aioredis.Redis):
             break
 
 
-async def _queue_keys_and_reachable(redis: aioredis.Redis) -> tuple[list[str], set[str]]:
-    queue_keys: list[str] = []
-    async for key in _scan_keys(redis):
-        if classify_key(key) in QUEUE_FAMILIES:
-            queue_keys.append(key)
+async def _exact_scrape_config_state(redis: aioredis.Redis) -> Counter[str]:
+    """Classify scrape configs exactly without retaining queue members in memory."""
+    sha = await redis.script_load(_PRUNE_LUA.read_text())
+    state: Counter[str] = Counter()
+    cursor = 0
+    while True:
+        cursor, keys = await redis.scan(cursor=cursor, match="scrape:*", count=SCAN_COUNT)
+        if keys:
+            pipe = redis.pipeline(transaction=False)
+            for key in keys:
+                pipe.evalsha(sha, 0, str(key)[7:], "0")
+            for value in await pipe.execute():
+                result = int(value)
+                if result == 0:
+                    state["reachable"] += 1
+                elif result in {1, -2}:
+                    # A malformed config is not reachable and must remain visible
+                    # to the operator even though the prune command leaves it alone.
+                    state["orphan"] += 1
+        if cursor == 0:
+            break
+    return state
 
-    reachable: set[str] = set()
-    for start in range(0, len(queue_keys), 500):
-        batch = queue_keys[start : start + 500]
-        pipe = redis.pipeline(transaction=False)
-        for key in batch:
-            pipe.zrange(key, 0, -1)
-        for key, members in zip(batch, await pipe.execute(), strict=True):
-            family = classify_key(key)
-            if family.startswith("scrape_queue"):
-                reachable.update(str(member) for member in members)
-            elif family in {"inflight", "deadletter"}:
-                for member in members:
-                    parts = str(member).split("|", 2)
-                    if len(parts) == 3 and parts[0] == "scrape":
-                        reachable.add(parts[2])
-    return queue_keys, reachable
 
-
-async def inventory(redis: aioredis.Redis | None = None) -> dict[str, Any]:
-    """Return a bounded-label, non-blocking key-family capacity snapshot."""
+async def _inventory(
+    redis: aioredis.Redis | None = None,
+    *,
+    exact_scrape_state: bool,
+) -> dict[str, Any]:
+    """Return a bounded-memory, non-blocking key-family capacity snapshot."""
     started = time.time()
     r = redis or get_redis()
-    queue_keys, reachable = await _queue_keys_and_reachable(r)
 
     key_counts: Counter[str] = Counter()
-    scrape_state: Counter[str] = Counter()
     samples: dict[str, list[str]] = defaultdict(list)
     queue_family_keys: dict[str, list[str]] = defaultdict(list)
     logical_length_keys: dict[str, list[str]] = defaultdict(list)
@@ -278,9 +281,6 @@ async def inventory(redis: aioredis.Redis | None = None) -> dict[str, Any]:
             queue_family_keys[family].append(key)
         elif family in {"inflight_strikes", "provider_circuit"}:
             logical_length_keys[family].append(key)
-        if family == "scrape_config":
-            scrape_state["reachable" if key[7:] in reachable else "orphan"] += 1
-
     item_counts: Counter[str] = Counter(key_counts)
     for family, keys in queue_family_keys.items():
         total = 0
@@ -337,6 +337,39 @@ async def inventory(redis: aioredis.Redis | None = None) -> dict[str, Any]:
             }
         )
 
+    guarded_scrape_configs = int(await r.hlen(LEGACY_SCRAPE_GUARD_KEY) or 0)
+    if exact_scrape_state:
+        exact_state = await _exact_scrape_config_state(r)
+        scrape_state = {
+            "reachable": exact_state["reachable"],
+            "orphan": exact_state["orphan"],
+        }
+        scrape_state_precision = "exact"
+    else:
+        # Every reachable scrape config occupies a scrape queue, inflight, or
+        # deadletter slot. Counting all lease/deadletter items (including
+        # monitor work and duplicates) deliberately overstates reachability,
+        # so the remaining orphan count is a safe lower bound.
+        reachable_slots = (
+            sum(
+                item_counts[family]
+                for family in (
+                    "scrape_queue_first",
+                    "scrape_queue_recurring",
+                    "inflight",
+                    "deadletter",
+                )
+            )
+            + guarded_scrape_configs
+        )
+        config_keys = key_counts["scrape_config"]
+        orphan_lower_bound = max(0, config_keys - reachable_slots)
+        scrape_state = {
+            "reachable_upper_bound": config_keys - orphan_lower_bound,
+            "orphan_lower_bound": orphan_lower_bound,
+        }
+        scrape_state_precision = "conservative"
+
     memory = await r.info("memory")
     persistence = await r.info("persistence")
     stats = await r.info("stats")
@@ -355,12 +388,23 @@ async def inventory(redis: aioredis.Redis | None = None) -> dict[str, Any]:
             "error_replies_total": int(stats.get("total_error_replies", 0)),
         },
         "scrape_config_state": {
-            "reachable": scrape_state["reachable"],
-            "orphan": scrape_state["orphan"],
+            **scrape_state,
         },
+        "scrape_config_state_precision": scrape_state_precision,
+        "guarded_scrape_configs": guarded_scrape_configs,
         "families": family_rows,
-        "queue_keys_scanned": len(queue_keys),
+        "queue_keys_scanned": sum(len(queue_family_keys[family]) for family in QUEUE_FAMILIES),
     }
+
+
+async def inventory(redis: aioredis.Redis | None = None) -> dict[str, Any]:
+    """Return exact family counts with bounded-memory scrape reachability."""
+    return await _inventory(redis, exact_scrape_state=True)
+
+
+async def summary(redis: aioredis.Redis | None = None) -> dict[str, Any]:
+    """Return the scheduled capacity snapshot without enumerating queue members."""
+    return await _inventory(redis, exact_scrape_state=False)
 
 
 def format_prometheus(snapshot: dict[str, Any]) -> str:
@@ -368,6 +412,7 @@ def format_prometheus(snapshot: dict[str, Any]) -> str:
         f"jobseek_redis_capacity_snapshot_unixtime {snapshot['snapshot_unixtime']}",
         f"jobseek_redis_capacity_scan_duration_seconds {snapshot['duration_seconds']}",
         f"jobseek_redis_capacity_db_keys {snapshot['db_keys']}",
+        f"jobseek_redis_scrape_config_guard_items {snapshot['guarded_scrape_configs']}",
     ]
     redis = snapshot["redis"]
     lines.extend(
@@ -376,11 +421,8 @@ def format_prometheus(snapshot: dict[str, Any]) -> str:
             f"jobseek_redis_capacity_maxmemory_bytes {redis['maxmemory_bytes']}",
         )
     )
-    for state in ("reachable", "orphan"):
-        lines.append(
-            "jobseek_redis_scrape_config_state_keys"
-            f'{{state="{state}"}} {snapshot["scrape_config_state"][state]}'
-        )
+    for state, value in snapshot["scrape_config_state"].items():
+        lines.append(f'jobseek_redis_scrape_config_state_keys{{state="{state}"}} {value}')
     for family in snapshot["families"]:
         label = f'family="{family["name"]}"'
         for metric, field in (

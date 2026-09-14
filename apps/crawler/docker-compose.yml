@@ -34,15 +34,14 @@ services:
     image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
     restart: unless-stopped
     network_mode: host
-    # Sized for the steady-state scrape backlog, not the initial reseed.
-    # ~550k keys at 2026-04-23 used ~373 MB (73% of the old 512 MB cap),
-    # nearly triggering noeviction-stalled writes. 1 GB gives headroom
-    # while the pipeline drains stale per-domain queues (#2526) and the
-    # SuccessFactors URL-canonicalization fix (#2524) cuts cardinality.
-    command: redis-server --maxmemory 1gb --maxmemory-policy noeviction --bind 127.0.0.1
+    # The Sep 2026 scheduler has ~1.76m reachable scrape configs and uses
+    # ~1.05 GB. The 3 GB data ceiling covers the reviewed 3m-schedule
+    # scenario; the cgroup reserves another 1 GB for Redis overhead/BGSAVE.
+    command: redis-server --maxmemory 3gb --maxmemory-policy noeviction --bind 127.0.0.1
     volumes:
       - redis-data:/data
-    mem_limit: 1536m
+    mem_limit: 4g
+    memswap_limit: 4g
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

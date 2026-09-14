@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import fakeredis.aioredis
 import pytest
+import yaml
 
 import src.redis_capacity as capacity
 import src.redis_queue as redis_queue
@@ -30,6 +32,19 @@ def test_key_families_are_bounded_and_material_names_are_classified() -> None:
     assert capacity.classify_key("provider_open:workday-303") == "provider_circuit"
     assert capacity.classify_key("new_namespace:value") == "other"
     assert len(capacity.POLICY_BY_NAME) == len(capacity.FAMILY_POLICIES)
+    assert capacity.POLICY_BY_NAME["scrape_config"].budget_items == 3_000_000
+    assert capacity.POLICY_BY_NAME["scrape_queue_recurring"].budget_items == 3_000_000
+    assert sum(policy.budget_bytes for policy in capacity.FAMILY_POLICIES) <= (3 * 1024**3 * 0.75)
+
+
+def test_production_redis_preserves_noeviction_with_cgroup_headroom() -> None:
+    compose_path = Path(__file__).resolve().parents[1] / "docker-compose.yml"
+    redis_service = yaml.safe_load(compose_path.read_text(encoding="utf-8"))["services"]["redis"]
+
+    assert "--maxmemory 3gb" in redis_service["command"]
+    assert "--maxmemory-policy noeviction" in redis_service["command"]
+    assert redis_service["mem_limit"] == "4g"
+    assert redis_service["memswap_limit"] == "4g"
 
 
 async def test_orphan_prune_is_dry_run_first_bounded_and_reachability_safe(fake_redis) -> None:
@@ -108,10 +123,75 @@ async def test_inventory_reports_reachable_and_orphan_scrape_configs(
         family for family in snapshot["families"] if family["name"] == "scrape_config"
     )
     assert scrape_family["keys"] == 2
-    assert scrape_family["budget_bytes"] == 384 * capacity.MIB
+    assert scrape_family["budget_bytes"] == 1536 * capacity.MIB
     rendered = capacity.format_prometheus(snapshot)
     assert 'jobseek_redis_scrape_config_state_keys{state="orphan"} 1' in rendered
     assert 'jobseek_redis_key_family_budget_bytes{family="scrape_config"}' in rendered
+
+
+async def test_summary_never_enumerates_queue_members_and_reports_safe_lower_bound(
+    fake_redis, monkeypatch
+) -> None:
+    monkeypatch.setattr(capacity, "SAMPLE_SIZE", 0)
+
+    async def info(section):
+        return {
+            "memory": {
+                "used_memory": 1024,
+                "used_memory_rss": 2048,
+                "maxmemory": 3 * 1024**3,
+                "maxmemory_policy": "noeviction",
+            },
+            "persistence": {"rdb_last_bgsave_status": "ok", "aof_enabled": 0},
+            "stats": {"evicted_keys": 0, "total_error_replies": 0},
+        }[section]
+
+    monkeypatch.setattr(fake_redis, "info", info)
+    original_pipeline = fake_redis.pipeline
+
+    class NoRangePipeline:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def __getattr__(self, name):
+            if name == "zrange":
+                raise AssertionError("scheduled summary must not enumerate ZSET members")
+            return getattr(self.inner, name)
+
+    monkeypatch.setattr(
+        fake_redis,
+        "pipeline",
+        lambda *args, **kwargs: NoRangePipeline(original_pipeline(*args, **kwargs)),
+    )
+    await fake_redis.hset("scrape:reachable", mapping={"domain": "jobs.example.com"})
+    await fake_redis.hset("scrape:orphan", mapping={"domain": "jobs.example.com"})
+    await fake_redis.zadd("scrapes_simple:jobs.example.com", {"reachable": 0})
+
+    snapshot = await capacity.summary(fake_redis)
+
+    assert snapshot["scrape_config_state_precision"] == "conservative"
+    assert snapshot["scrape_config_state"] == {
+        "reachable_upper_bound": 1,
+        "orphan_lower_bound": 1,
+    }
+    assert snapshot["queue_keys_scanned"] == 1
+    rendered = capacity.format_prometheus(snapshot)
+    assert 'jobseek_redis_scrape_config_state_keys{state="orphan_lower_bound"} 1' in rendered
+
+    await fake_redis.hset(capacity.LEGACY_SCRAPE_GUARD_KEY, "orphan", "owned-by-go")
+    guarded_snapshot = await capacity.summary(fake_redis)
+    assert guarded_snapshot["guarded_scrape_configs"] == 1
+    assert guarded_snapshot["scrape_config_state"]["orphan_lower_bound"] == 0
+    assert "jobseek_redis_scrape_config_guard_items 1" in capacity.format_prometheus(
+        guarded_snapshot
+    )
+
+    # Duplicate/redundant slots can only make the lower bound more
+    # conservative; they must never create a false-positive orphan count.
+    await fake_redis.hdel(capacity.LEGACY_SCRAPE_GUARD_KEY, "orphan")
+    await fake_redis.zadd("ft_scrapes_simple:jobs.example.com", {"reachable": 0})
+    duplicate_snapshot = await capacity.summary(fake_redis)
+    assert duplicate_snapshot["scrape_config_state"]["orphan_lower_bound"] == 0
 
 
 async def test_rebuild_is_resumable_dry_run_and_uses_durable_schedule(monkeypatch) -> None:

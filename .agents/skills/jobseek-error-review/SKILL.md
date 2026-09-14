@@ -86,6 +86,12 @@ such as `tesla-debug`, `stupefied_hofstadter`, and `goofy_haibt`.
    Read `host/cross-store-reconciliation.log` when a reconciliation one-shot
    exits nonzero; it retains the unit's bounded, redacted application journal
    after Compose removes the short-lived container.
+   Always read `host/redis-capacity.prom` and
+   `host/redis-capacity-observer.log`. The first distinguishes Redis
+   `maxmemory` pressure from its larger container cgroup; the second exposes
+   exact-window capacity scan failures and cooldown behavior. Treat
+   `manifest.json` `redis_capacity.complete=false` as an explicit evidence
+   gap, not as a healthy capacity signal.
 2. Read every `.md` report under
    `~/dev/claude/review-jobseek-errors/` before classifying. The directory
    name is legacy; keep using it for cross-run continuity unless a migration
