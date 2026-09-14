@@ -1480,7 +1480,8 @@ All Hetzner hosts should have this host-level timer installed:
 
 - Service: `jobseek-docker-gc.service`
 - Timer: `jobseek-docker-gc.timer`
-- Script: `/usr/local/sbin/jobseek-docker-gc`
+- Installed script: `/usr/local/sbin/jobseek-docker-gc`
+- Repository source: [`scripts/jobseek-docker-gc.py`](../scripts/jobseek-docker-gc.py)
 - Cadence: hourly, with a small randomized delay
 
 Check it:
@@ -1503,24 +1504,57 @@ docker system df
 
 Current policy:
 
-- prune Docker builder cache older than 24 hours
-- prune unused Docker images older than 72 hours
-- if root free space is below 5 GiB, prune all unused images
+- on the pull-only crawler host, prune all unused Docker builder cache; on the
+  other hosts, prune builder cache older than 24 hours
+- automated image deletion is limited to the recurring source proven on the
+  crawler host: old `jobseek-crawler` and `jobseek-crawler-browser` releases;
+  do not age-prune unrelated or data-host images because image creation time is
+  not local pull time and cannot safely exclude a concurrent pull/deploy window
+- if root free space remains below the role floor after policy-safe cleanup,
+  fail closed for operator escalation instead of widening deletion scope; the
+  crawler floor is 15 GiB and PostgreSQL/Typesense remain at 5 GiB
+- fail the service if Docker classification/pruning fails or the configured
+  free-space floor is still unmet, so the failed unit and its Loki journal are
+  incident evidence instead of a false success
 - never prune Docker volumes
 - retain the stopped `jobseek-web-postgresql-backup-image-lease` container on
-  the Typesense host; it references the exact digest-pinned PostgreSQL helper
-  image so both normal and emergency image pruning treat that backup dependency
-  as in use
-- on the crawler host, keep running images plus the two newest versioned
-  `jobseek-crawler` and `jobseek-crawler-browser` images, then remove older
-  unused version tags immediately
+  the Typesense host; it records the exact digest-pinned PostgreSQL helper image
+  required by manual capacity work
+- on the crawler host, share the deploy mutation lock, keep every image
+  referenced by any running or stopped container, and keep two distinct unused
+  `jobseek-crawler` and `jobseek-crawler-browser` images referenced by the
+  newest verified prior release generations; remove failed candidates and
+  older generations by immutable image ID
 
 The crawler-specific rule matters because repeated versioned deploys can
 consume tens of GiB before a normal age-based prune would trigger.
+Sorting by image creation time is not a release-safety signal: an image from a
+failed deploy can be newest. The collector therefore verifies the published
+release-generation success markers and never lets an uncommitted candidate
+consume a rollback slot. If the crawler deploy mutation lock is held, the
+hourly run defers without changing Docker state.
+Other image families remain diagnostic evidence. Do not reintroduce a generic
+`until=72h` rule: Docker exposes image build time rather than local pull time,
+so an old pinned image can become eligible in the interval between `docker
+pull` and container creation. A dominant unrelated family requires its own
+ownership/retention contract before automated deletion.
+Digest-pulled images commonly render as `repository:<none>` in `docker image
+ls`; that display value is not a removable reference. The collector therefore
+classifies the repository first and deletes only the resulting full image ID.
+Never restore the former best-effort `docker rmi repository:<none>` behavior:
+it suppressed every deletion failure and let the timer report success while
+reclaimable layers accumulated.
 Typesense snapshot staging is intentionally outside `/`; a backup must not be
 used to justify or trigger the below-5-GiB all-unused-image emergency path.
 
-Before emergency all-image pruning on the Typesense host, verify the web
+The daily error-review bundle includes `host/docker-system-df.txt`,
+`host/docker-container-sizes.txt`, `host/docker-images.txt`,
+`host/disk-attribution.txt`, and the exact-window `host/docker-gc.log`. Use all
+of them before attributing growth; a post-deploy filesystem drop alone does not
+prove whether an image, writable container layer, or another managed root was
+responsible.
+
+Before any manual all-image pruning on the Typesense host, verify the web
 PostgreSQL helper lease described in
 [`19-data-backup-recovery.md#web-postgresql-backup-operation`](19-data-backup-recovery.md#web-postgresql-backup-operation).
 Do not add `docker container prune` to this policy: stopped containers may own

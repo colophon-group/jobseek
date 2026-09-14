@@ -657,6 +657,91 @@ def _collect_redis_capacity_evidence(
     }
 
 
+def _collect_disk_capacity_evidence(
+    run_dir: Path,
+    manifest: dict[str, object],
+    *,
+    since: datetime,
+    until: datetime,
+) -> None:
+    """Collect bounded attribution for a near-full crawler root filesystem."""
+    commands: tuple[tuple[str, list[str], int], ...] = (
+        ("docker-system-df", ["docker", "system", "df"], 60),
+        (
+            "docker-container-sizes",
+            [
+                "docker",
+                "ps",
+                "--all",
+                "--size",
+                "--format",
+                "table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.Size}}",
+            ],
+            120,
+        ),
+        (
+            "docker-images",
+            [
+                "docker",
+                "image",
+                "ls",
+                "--format",
+                "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}",
+            ],
+            120,
+        ),
+        (
+            "disk-attribution",
+            [
+                "du",
+                "-x",
+                "-B1",
+                "-s",
+                "/var/lib/containerd",
+                "/var/lib/docker",
+                "/var/lib/jobseek-observability",
+                "/srv/jobseek-codex",
+                "/home/deploy",
+                "/home/codex-runner",
+                "/var/log",
+            ],
+            120,
+        ),
+    )
+    artifacts: dict[str, object] = {}
+    complete = True
+    for name, command, timeout in commands:
+        code, output = _run(command, timeout=timeout)
+        file_info = _write(run_dir / "host" / f"{name}.txt", output)
+        artifacts[name] = {"cmd": command, "returncode": code, **file_info}
+        complete = complete and code == 0 and not bool(file_info["truncated"])
+
+    unit = "jobseek-docker-gc.service"
+    journal_command = [
+        "journalctl",
+        "--unit",
+        unit,
+        "--since",
+        f"@{since.timestamp():.0f}",
+        "--until",
+        f"@{until.timestamp():.0f}",
+        "--output=cat",
+        "--quiet",
+        "--no-pager",
+    ]
+    code, output = _run(journal_command, timeout=180)
+    file_info = _write(run_dir / "host" / "docker-gc.log", output)
+    artifacts["docker-gc-journal"] = {
+        "cmd": journal_command,
+        "unit": unit,
+        "returncode": code,
+        "window_filtered": code == 0,
+        **file_info,
+    }
+    complete = complete and code == 0 and not bool(file_info["truncated"])
+    manifest["disk_capacity"] = {"complete": complete, "artifacts": artifacts}
+
+
 def _chgrp_readable(path: Path, *, group: str) -> None:
     import grp
 
@@ -689,6 +774,7 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
 
     _collect_command(run_dir, manifest, "df-root", ["df", "-h", "/"])
     _collect_command(run_dir, manifest, "df-docker", ["df", "-h", "/var/lib/docker"])
+    _collect_disk_capacity_evidence(run_dir, manifest, since=since, until=until)
     _collect_command(run_dir, manifest, "free", ["free", "-h"])
     _collect_command(run_dir, manifest, "uptime", ["uptime"])
     _collect_command(run_dir, manifest, "cpu-count", ["nproc"])

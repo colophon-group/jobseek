@@ -29,6 +29,7 @@ ALLOWED_FILES = frozenset(
     {
         "jobseek-alloy",
         "jobseek-host-observability",
+        "jobseek-docker-gc",
         "alloy-host.alloy",
         "alloy.env",
         "host.env",
@@ -36,6 +37,8 @@ ALLOWED_FILES = frozenset(
         "jobseek-alloy.service",
         "jobseek-host-observability.service",
         "jobseek-host-observability.timer",
+        "jobseek-docker-gc.service",
+        "jobseek-docker-gc.timer",
     }
 )
 

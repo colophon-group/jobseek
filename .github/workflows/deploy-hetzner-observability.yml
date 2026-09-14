@@ -8,7 +8,9 @@ on:
       - 'deploy/observability/**'
       - 'deploy/systemd/jobseek-alloy.service'
       - 'deploy/systemd/jobseek-host-observability.*'
+      - 'deploy/systemd/jobseek-docker-gc.*'
       - 'scripts/jobseek-host-observability.py'
+      - 'scripts/jobseek-docker-gc.py'
       - 'scripts/codex-routine-status.py'
       - 'scripts/sync-grafana-alertmanager.py'
       - 'scripts/sync-grafana-rules.py'
@@ -47,12 +49,13 @@ jobs:
           bash -n deploy/observability/install-host.sh
           python3 -m py_compile deploy/observability/prune_rollbacks.py
           python3 deploy/observability/test_prune_rollbacks.py
-          python3 -m py_compile scripts/codex-routine-status.py scripts/jobseek-host-observability.py scripts/sync-grafana-alertmanager.py scripts/sync-grafana-rules.py scripts/verify-grafana-host-metrics.py
+          python3 -m py_compile scripts/codex-routine-status.py scripts/jobseek-host-observability.py scripts/jobseek-docker-gc.py scripts/sync-grafana-alertmanager.py scripts/sync-grafana-rules.py scripts/verify-grafana-host-metrics.py
+          uv run --python 3.10 --no-project python -c "import runpy; runpy.run_path('scripts/jobseek-docker-gc.py', run_name='jobseek_docker_gc')"
           cd apps/crawler
           uv run --frozen python ../../scripts/sync-grafana-alertmanager.py \
             --dry-run --url https://grafana.example.com --api-key test-only
           uv run --frozen python ../../scripts/sync-grafana-rules.py --dry-run
-          uv run --frozen pytest tests/test_alertmanager_paging.py tests/test_codex_routine_status.py tests/test_host_observability.py tests/test_observability_config.py tests/test_alloy_config.py tests/test_grafana_host_metrics.py -q
+          uv run --frozen pytest tests/test_alertmanager_paging.py tests/test_codex_routine_status.py tests/test_docker_gc.py tests/test_host_observability.py tests/test_observability_config.py tests/test_alloy_config.py tests/test_grafana_host_metrics.py -q
       - name: Evaluate multi-service backup alert fixture
         run: |
           docker run --rm \
@@ -107,7 +110,7 @@ jobs:
           host: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: scripts/jobseek-host-observability.py,deploy/observability,deploy/systemd/jobseek-alloy.service,deploy/systemd/jobseek-host-observability.service,deploy/systemd/jobseek-host-observability.timer,docs/16-hetzner-maintenance.md,docs/19-data-backup-recovery.md
+          source: scripts/jobseek-host-observability.py,scripts/jobseek-docker-gc.py,deploy/observability,deploy/systemd/jobseek-alloy.service,deploy/systemd/jobseek-host-observability.service,deploy/systemd/jobseek-host-observability.timer,deploy/systemd/jobseek-docker-gc.service,deploy/systemd/jobseek-docker-gc.timer,docs/16-hetzner-maintenance.md,docs/19-data-backup-recovery.md
           target: /opt/jobseek-observability
           overwrite: true
 
@@ -135,6 +138,7 @@ jobs:
             test "$(cat /var/lib/jobseek-observability/deployed-sha)" = "$JOBSEEK_OBSERVABILITY_DEPLOY_SHA"
             systemctl is-active --quiet jobseek-alloy.service
             systemctl is-active --quiet jobseek-host-observability.timer
+            systemctl is-active --quiet jobseek-docker-gc.timer
             if [[ "$JOBSEEK_HOST_ROLE" == crawler ]]; then
               runuser -u deploy -- grep -Eq '^[0-9a-f]{40}$' \
                 /var/lib/jobseek-reconciliation/deployed-sha

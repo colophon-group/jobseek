@@ -11,6 +11,7 @@ SPEC = importlib.util.spec_from_file_location("codex_error_review_bundle", SCRIP
 assert SPEC is not None and SPEC.loader is not None
 bundle = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(bundle)
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_redact_removes_private_identifiers_and_quoted_credentials():
@@ -47,6 +48,26 @@ def test_redact_removes_private_identifiers_and_quoted_credentials():
         "api_key": "<redacted>",
         "Authorization": "Bearer <redacted>",
     }
+
+
+def test_daily_review_instruction_surfaces_require_disk_attribution_evidence():
+    surfaces = (
+        REPOSITORY_ROOT / ".agents/skills/jobseek-error-review/SKILL.md",
+        REPOSITORY_ROOT / ".claude/commands/jobseek-error-review.md",
+    )
+    required = (
+        "disk_capacity.complete=false",
+        "host/docker-system-df.txt",
+        "host/docker-container-sizes.txt",
+        "host/docker-images.txt",
+        "host/disk-attribution.txt",
+        "host/docker-gc.log",
+        "85%",
+    )
+    for surface in surfaces:
+        text = surface.read_text(encoding="utf-8")
+        for value in required:
+            assert value in text, f"{surface} is missing {value}"
 
 
 def test_parse_cgroup_key_values_ignores_malformed_rows():
@@ -391,6 +412,74 @@ def test_collect_redis_capacity_evidence_rejects_stale_malformed_and_future_cach
 
         assert manifest["redis_capacity"]["complete"] is False
         assert manifest["redis_capacity"]["cache"]["fresh"] is False
+
+
+def test_collect_disk_capacity_evidence_is_bounded_windowed_and_manifested(tmp_path, monkeypatch):
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs["timeout"]))
+        return 0, "bounded evidence\n"
+
+    monkeypatch.setattr(bundle, "_run", fake_run)
+    manifest = {}
+    since = bundle.datetime(2026, 9, 13, 9, 0, tzinfo=bundle.UTC)
+    until = bundle.datetime(2026, 9, 14, 9, 0, tzinfo=bundle.UTC)
+
+    bundle._collect_disk_capacity_evidence(
+        tmp_path,
+        manifest,
+        since=since,
+        until=until,
+    )
+
+    assert manifest["disk_capacity"]["complete"] is True
+    assert set(manifest["disk_capacity"]["artifacts"]) == {
+        "docker-system-df",
+        "docker-container-sizes",
+        "docker-images",
+        "disk-attribution",
+        "docker-gc-journal",
+    }
+    journal = calls[-1]
+    assert journal == (
+        [
+            "journalctl",
+            "--unit",
+            "jobseek-docker-gc.service",
+            "--since",
+            "@1789290000",
+            "--until",
+            "@1789376400",
+            "--output=cat",
+            "--quiet",
+            "--no-pager",
+        ],
+        180,
+    )
+    assert all(timeout <= 180 for _command, timeout in calls)
+    assert (tmp_path / "host" / "docker-container-sizes.txt").read_text() == ("bounded evidence\n")
+
+
+def test_collect_disk_capacity_evidence_fails_closed_on_command_error(tmp_path, monkeypatch):
+    def fake_run(command, **_kwargs):
+        if command[:3] == ["docker", "system", "df"]:
+            return 1, "daemon error\n"
+        return 0, "ok\n"
+
+    monkeypatch.setattr(bundle, "_run", fake_run)
+    manifest = {}
+    now = bundle.datetime(2026, 9, 14, 9, 0, tzinfo=bundle.UTC)
+
+    bundle._collect_disk_capacity_evidence(
+        tmp_path,
+        manifest,
+        since=now - bundle.timedelta(hours=24),
+        until=now,
+    )
+
+    assert manifest["disk_capacity"]["complete"] is False
+    assert manifest["disk_capacity"]["artifacts"]["docker-system-df"]["returncode"] == 1
 
 
 def test_collect_reconciliation_journal_marks_failed_collection_incomplete(tmp_path, monkeypatch):

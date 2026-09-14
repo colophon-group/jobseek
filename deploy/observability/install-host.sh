@@ -24,12 +24,15 @@ STATE_ROOT=/var/lib/jobseek-observability
 ROLLBACK_ROOT="${STATE_ROOT}/rollback"
 BINARY=/usr/local/bin/jobseek-alloy
 SAMPLER=/usr/local/sbin/jobseek-host-observability
+DOCKER_GC=/usr/local/sbin/jobseek-docker-gc
 ALLOY_LISTEN_ADDR=127.0.0.1:12347
 ALLOY_READY_URL="http://${ALLOY_LISTEN_ADDR}/-/ready"
 UNITS=(
   jobseek-alloy.service
   jobseek-host-observability.service
   jobseek-host-observability.timer
+  jobseek-docker-gc.service
+  jobseek-docker-gc.timer
 )
 REQUIRED_ENV=(
   GRAFANA_PROM_URL
@@ -143,6 +146,7 @@ snapshot_previous() {
   for source in \
     "$BINARY" \
     "$SAMPLER" \
+    "$DOCKER_GC" \
     "${CONFIG_ROOT}/alloy-host.alloy" \
     "${CONFIG_ROOT}/alloy.env" \
     "${CONFIG_ROOT}/host.env" \
@@ -182,8 +186,11 @@ restore_previous() {
   local rollback="$1" unit
   set +e
   log "deployment failed; restoring previous observability surface"
-  systemctl stop jobseek-alloy.service jobseek-host-observability.timer >/dev/null 2>&1
-  systemctl disable jobseek-alloy.service jobseek-host-observability.timer >/dev/null 2>&1
+  systemctl stop jobseek-alloy.service jobseek-host-observability.timer \
+    jobseek-docker-gc.timer jobseek-docker-gc.service \
+    >/dev/null 2>&1
+  systemctl disable jobseek-alloy.service jobseek-host-observability.timer jobseek-docker-gc.timer \
+    >/dev/null 2>&1
   if [[ -f "${rollback}/jobseek-alloy" ]]; then
     install -o root -g root -m 0755 "${rollback}/jobseek-alloy" "$BINARY"
   else
@@ -193,6 +200,11 @@ restore_previous() {
     install -o root -g root -m 0755 "${rollback}/jobseek-host-observability" "$SAMPLER"
   else
     rm -f "$SAMPLER"
+  fi
+  if [[ -f "${rollback}/jobseek-docker-gc" ]]; then
+    install -o root -g root -m 0755 "${rollback}/jobseek-docker-gc" "$DOCKER_GC"
+  else
+    rm -f "$DOCKER_GC"
   fi
   if [[ -f "${rollback}/alloy-host.alloy" ]]; then
     install -o root -g jobseek-alloy -m 0640 \
@@ -226,6 +238,9 @@ restore_previous() {
     systemctl enable --now jobseek-alloy.service
     systemctl enable --now jobseek-host-observability.timer
   fi
+  if [[ -f "${rollback}/jobseek-docker-gc.timer" ]]; then
+    systemctl enable --now jobseek-docker-gc.timer
+  fi
 }
 
 rollback_on_exit() {
@@ -247,11 +262,27 @@ alloy_service_pid_is_expected() {
 }
 
 install_surface() {
-  local unit
+  local service_load_state timer_load_state unit
 
+  # Quiesce the collector before replacing its executable or unit. The
+  # collector separately shares the crawler deploy mutation lock at runtime.
+  timer_load_state="$(
+    systemctl show --property=LoadState --value jobseek-docker-gc.timer
+  )" || fail "could not classify the existing Docker GC timer"
+  service_load_state="$(
+    systemctl show --property=LoadState --value jobseek-docker-gc.service
+  )" || fail "could not classify the existing Docker GC service"
+  if [[ "$timer_load_state" != not-found ]]; then
+    systemctl disable --now jobseek-docker-gc.timer
+  fi
+  if [[ "$service_load_state" != not-found ]]; then
+    systemctl stop jobseek-docker-gc.service
+  fi
   extract_pinned_alloy
   install -o root -g root -m 0755 \
     "${REPO_ROOT}/scripts/jobseek-host-observability.py" "$SAMPLER"
+  install -o root -g root -m 0755 \
+    "${REPO_ROOT}/scripts/jobseek-docker-gc.py" "$DOCKER_GC"
   install -o root -g jobseek-alloy -m 0640 \
     "${REPO_ROOT}/deploy/observability/alloy-host.alloy" \
     "${CONFIG_ROOT}/alloy-host.alloy"
@@ -270,11 +301,13 @@ install_surface() {
   systemctl daemon-reload
   systemd-analyze verify "${UNITS[@]/#//etc/systemd/system/}"
 
+  systemctl enable --now jobseek-docker-gc.timer
   systemctl start jobseek-host-observability.service
   systemctl enable --now jobseek-host-observability.timer
   systemctl enable jobseek-alloy.service
   systemctl restart jobseek-alloy.service
   systemctl is-active --quiet jobseek-host-observability.timer
+  systemctl is-active --quiet jobseek-docker-gc.timer
 
   local ready=0
   for _ in {1..20}; do
