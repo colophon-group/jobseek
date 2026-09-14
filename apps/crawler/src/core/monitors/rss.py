@@ -8,6 +8,7 @@ Supports multiple ATS platforms that expose job listings via RSS/XML-style trans
 - **wp_job_manager**: WordPress WP Job Manager ``?feed=job_feed`` (page-paginated)
 - **governmentjobs**: NEOGOV/GovernmentJobs ``/SearchEngine/JobsFeed?agency=...``
 - **hr_manager**: Talent Recruiter / HR Manager embedded positions + full-description RSS
+- **zoho_recruit**: Zoho Recruit career sites with first-party ``/jobs/<page>/rss`` feeds
 - **generic**: Standard RSS 2.0 (manual config, not auto-detected)
 
 Config: ``{"preset": "<name>", "feed_url": "..."}``. Legacy SuccessFactors
@@ -96,6 +97,17 @@ _HR_MANAGER_FEED_HOST = "api.hr-manager.net"
 _HR_MANAGER_BOARD_PATH = "/vacancies/list.aspx"
 _HR_MANAGER_CUSTOMER_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _HR_MANAGER_POSITION_LIST_ID_SUFFIX = "HiddenField_PositionList"
+_ZOHO_RECRUIT_HOST_RE = re.compile(
+    r"^(?P<tenant>[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\."
+    r"zohorecruit\.(?P<zone>com|ca|eu|in|com\.cn|com\.au|jp|uk|sa)$"
+)
+_ZOHO_RECRUIT_BOARD_PATH_RE = re.compile(
+    r"^/jobs/(?P<page>[A-Za-z0-9][A-Za-z0-9_-]{0,127})(?:/rss)?/?$"
+)
+_ZOHO_RECRUIT_LOCATION_RE = re.compile(
+    r"(?:Lieu|Location)\s*:\s*(?P<location>.*?)\s*<br\s*/?>",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 async def _sleep(delay: float) -> None:
@@ -200,6 +212,11 @@ _PRESETS: dict[str, _Preset] = {
         feed_ns={},
     ),
     "hr_manager": _Preset(
+        feed_paths=[],
+        page_patterns=[],
+        feed_ns={},
+    ),
+    "zoho_recruit": _Preset(
         feed_paths=[],
         page_patterns=[],
         feed_ns={},
@@ -537,6 +554,75 @@ def _parse_generic_item(item: ET.Element) -> DiscoveredJob | None:
     )
 
 
+def _zoho_recruit_feed_from_url(url: str) -> tuple[str, str] | None:
+    """Return ``(tenant_identity, feed_url)`` for one strict Zoho careers URL."""
+
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except (TypeError, ValueError):
+        return None
+    host = (parsed.hostname or "").casefold().rstrip(".")
+    host_match = _ZOHO_RECRUIT_HOST_RE.fullmatch(host)
+    path_match = _ZOHO_RECRUIT_BOARD_PATH_RE.fullmatch(parsed.path)
+    if (
+        parsed.scheme.casefold() != "https"
+        or host_match is None
+        or path_match is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+
+    tenant_identity = f"{host_match.group('tenant')}.{host_match.group('zone')}"
+    feed_path = f"/jobs/{path_match.group('page')}/rss"
+    return tenant_identity, urlunparse(("https", host, feed_path, "", "", ""))
+
+
+def _parse_zoho_recruit_item(item: ET.Element) -> DiscoveredJob | None:
+    """Parse a Zoho Recruit RSS item and recover its labelled location."""
+
+    link = _text(item, "link")
+    if not link:
+        return None
+
+    raw_desc = _text(item, "description")
+    description = html.unescape(raw_desc) if raw_desc else None
+    location = None
+    if description:
+        match = _ZOHO_RECRUIT_LOCATION_RE.search(description)
+        if match:
+            location = " ".join(
+                LexborHTMLParser(html.unescape(match.group("location"))).text().split()
+            )
+
+    guid = _text(item, "guid")
+    metadata = {"id": guid} if guid else None
+    source_identity = None
+    try:
+        host = (urlparse(link).hostname or "").casefold().rstrip(".")
+    except (TypeError, ValueError):
+        host = ""
+    host_match = _ZOHO_RECRUIT_HOST_RE.fullmatch(host)
+    if host_match is not None and guid and guid.isascii() and guid.isdigit():
+        tenant_identity = f"{host_match.group('tenant')}.{host_match.group('zone')}"
+        source_identity = f"zoho_recruit:{tenant_identity}:{guid}"
+
+    raw_title = _text(item, "title")
+    return DiscoveredJob(
+        url=link,
+        title=html.unescape(raw_title) if raw_title else None,
+        description=description,
+        locations=[location] if location else None,
+        date_posted=_text(item, "pubDate"),
+        metadata=metadata,
+        source_identity=source_identity,
+    )
+
+
 def _hr_manager_customer_from_url(url: str) -> str | None:
     """Return the tenant alias from one strict HR Manager board URL."""
 
@@ -737,6 +823,7 @@ _PARSERS: dict[str, Callable[[ET.Element], DiscoveredJob | None]] = {
     "successfactors": _parse_sf_item,
     "teamtailor": _parse_tt_item,
     "governmentjobs": _parse_governmentjobs_item,
+    "zoho_recruit": _parse_zoho_recruit_item,
     "generic": _parse_generic_item,
 }
 
@@ -1735,6 +1822,29 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     """Detect RSS-based ATS: HTML scan for preset markers → feed probe."""
     if client is None:
         return None
+
+    # Zoho Recruit career sites expose a same-tenant, full-description RSS
+    # endpoint. Probe it directly before downloading the multi-megabyte HTML
+    # application shell; a valid empty feed is authoritative board evidence.
+    zoho_recruit = _zoho_recruit_feed_from_url(url)
+    if zoho_recruit is not None:
+        tenant, feed = zoho_recruit
+        found, count = await _probe_feed(feed, client, "zoho_recruit")
+        if found:
+            result: dict = {
+                "preset": "zoho_recruit",
+                "tenant": tenant,
+                "feed_url": feed,
+            }
+            if count is not None:
+                result["jobs"] = count
+            log.info(
+                "rss.zoho_recruit_detected",
+                url=url,
+                tenant=tenant,
+                jobs=count,
+            )
+            return result
 
     legacy_xml_identity = _sf_legacy_xml_identity(url)
     if legacy_xml_identity is not None:
