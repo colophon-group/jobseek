@@ -7377,7 +7377,7 @@ xantium,xantium-greenhouse,https://job-boards.greenhouse.io/xantium,greenhouse,"
 xapo-bank,xapo-bank-greenhouse,https://job-boards.greenhouse.io/xapo61,greenhouse,"{""token"": ""xapo61""}",skip,
 xbowcareers,xbowcareers-ashby,https://jobs.ashbyhq.com/xbowcareers,ashby,"{""token"": ""xbowcareers""}",skip,
 xcmg,xcmg-campus,https://app.mokahr.com/campus-recruitment/xcmg/148091,mokahr,"{""org_id"": ""xcmg"", ""site_id"": 148091}",mokahr,"{""enrich"": [""description""]}"
-xcmg,xcmg-canada,https://xcmgca.com/careers/,dom,"{""url_filter"": ""linkedin\\.com/jobs/view/"", ""url_transform"": {""find"": "".*(?:-|/)(\\d+)(?:/?(?:\\?.*)?)$"", ""replace"": ""https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/\\1""}}",linkedin,
+xcmg,xcmg-canada,https://xcmgca.com/careers/,dom,"{""render"": true, ""url_filter"": ""linkedin\\.com/jobs/view/"", ""url_transform"": {""find"": "".*(?:-|/)(\\d+)(?:/?(?:\\?.*)?)$"", ""replace"": ""https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/\\1""}}",linkedin,
 xcmg,xcmg-careers,https://app.mokahr.com/social-recruitment/xcmg/148090,mokahr,"{""org_id"": ""xcmg"", ""site_id"": 148090}",mokahr,"{""enrich"": [""description""]}"
 xcmg,xcmg-europe,https://xcmg-europe-gmbh.jobs.personio.de/,personio,"{""slug"": ""xcmg-europe-gmbh""}",json-ld,
 xcmg,xcmg-linkedin-global,https://www.linkedin.com/company/2262388admin/jobs/,linkedin,"{""company_id"": ""2262388"", ""canonical_numeric_job_urls"": true}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
