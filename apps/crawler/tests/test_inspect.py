@@ -694,6 +694,21 @@ class TestValidateCsvs:
             for error in errors
         )
 
+    def test_non_http_rss_feed_url_is_rejected(self, tmp_path, monkeypatch):
+        cfg = '"{""preset"": ""generic"", ""feed_url"": ""file:///tmp/jobs.rss""}"'
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com/careers,rss,{cfg},skip,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert any("RSS feed_url must be an absolute HTTP(S) URL" in str(error) for error in errors)
+
     def test_invalid_scraper_config_json(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,

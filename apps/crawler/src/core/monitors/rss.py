@@ -125,6 +125,7 @@ _GENERIC_MAX_PAGE_SIZE = 1_000
 _GENERIC_MAX_PAGES = 10_000
 _GENERIC_MAX_PAGE_NUMBER = 10_000_000
 _BROWSER_FEED_MAX_BYTES = 2_000_000
+_MAX_FEED_URL_CHARS = 8_192
 
 
 async def _sleep(delay: float) -> None:
@@ -1530,8 +1531,38 @@ def _generic_paginated_preset(preset: _Preset, metadata: Mapping[str, object]) -
     )
 
 
+def _validated_feed_url(value: object) -> str:
+    """Return one bounded public HTTP(S) feed URL or fail closed."""
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > _MAX_FEED_URL_CHARS
+        or any(character.isspace() or ord(character) == 0x7F for character in value)
+    ):
+        raise ValueError("RSS feed_url must be a bounded absolute HTTP(S) URL")
+    try:
+        parsed = urlparse(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError("RSS feed_url must be a bounded absolute HTTP(S) URL") from exc
+    if (
+        parsed.scheme.casefold() not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or (port is not None and not 1 <= port <= 65_535)
+        or parsed.fragment
+    ):
+        raise ValueError(
+            "RSS feed_url must be an absolute HTTP(S) URL without credentials or a fragment"
+        )
+    return value
+
+
 def validate_generic_rss_config(metadata: Mapping[str, object]) -> None:
     """Validate generic RSS extensions shared by runtime and CSV inspection."""
+    if "feed_url" in metadata:
+        _validated_feed_url(metadata["feed_url"])
     render = metadata.get("render", False)
     if not isinstance(render, bool):
         raise ValueError("RSS render must be a boolean")
@@ -1871,6 +1902,7 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
     """Resolve a board into ``(preset_name, feed_url, preset)``."""
     board_url = board["board_url"]
     metadata = board.get("metadata") or {}
+    validate_generic_rss_config(metadata)
     preset_name = metadata.get("preset", "generic")
     preset = _PRESETS.get(preset_name)
 
@@ -1887,6 +1919,7 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
     if not feed_url:
         log.error("rss.no_feed_url", board_url=board_url, preset=preset_name)
         return None
+    feed_url = _validated_feed_url(feed_url)
 
     if preset is None:
         # Generic fallback — non-paginated, standard parser
@@ -1895,7 +1928,6 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
             page_patterns=[],
             feed_ns={},
         )
-    validate_generic_rss_config(metadata)
     if preset_name == "generic":
         preset = _generic_paginated_preset(preset, metadata)
     if preset_name == "successfactors" and metadata.get("variant") == "legacy_xml":

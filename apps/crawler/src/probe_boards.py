@@ -1375,7 +1375,16 @@ async def _probe_rss(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     # different fallback URL from the one workers will actually fetch.
     from src.core.monitors.rss import _feed_config, _probe_feed
 
-    feed_config = _feed_config({"board_url": row["board_url"], "metadata": cfg})
+    try:
+        feed_config = _feed_config({"board_url": row["board_url"], "metadata": cfg})
+    except ValueError as exc:
+        return ProbeResult(
+            row["board_slug"],
+            "rss",
+            row["board_url"],
+            "fail",
+            f"invalid RSS configuration: {exc}",
+        )
     if feed_config is None:
         return ProbeResult(
             row["board_slug"],

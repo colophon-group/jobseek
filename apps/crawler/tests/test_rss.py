@@ -2177,6 +2177,32 @@ class TestDiscover:
                     client,
                 )
 
+    @pytest.mark.parametrize(
+        "feed_url",
+        [
+            123,
+            "file:///tmp/jobs.rss",
+            "https://user:password@example.com/jobs.rss",
+            "https://example.com/jobs.rss#fragment",
+        ],
+    )
+    async def test_invalid_feed_url_rejected_before_fetch(self, feed_url):
+        def handler(_request):
+            raise AssertionError("invalid feed URL must fail before network I/O")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="RSS feed_url"):
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "generic",
+                            "feed_url": feed_url,
+                        },
+                    },
+                    client,
+                )
+
     async def test_teamtailor_transient_400_retries_same_page(self, monkeypatch):
         feed_xml = _rss_xml("""
             <item>
