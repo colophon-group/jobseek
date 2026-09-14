@@ -1385,6 +1385,20 @@ async def _probe_rss(row: dict, client: httpx.AsyncClient) -> ProbeResult:
             "invalid RSS board identity or no resolvable feed URL",
         )
     preset_name, feed_url, _preset = feed_config
+    # This CI probe intentionally uses a lightweight shared HTTP client and
+    # cannot reproduce browser identity, persistent profiles, or a headed X
+    # server. Treat a valid browser-routed feed as an explicit unsupported
+    # path rather than misclassifying a WAF challenge page as a dead RSS
+    # endpoint. The browser-capability census still runs in CI; production
+    # health is proven by the real browser worker lane.
+    if cfg.get("render") is True:
+        return ProbeResult(
+            row["board_slug"],
+            "rss",
+            feed_url,
+            "skipped",
+            "browser-rendered RSS requires the Chromium worker lane",
+        )
     # Reuse the runtime's streamed XML parser so a retired feed returning an
     # HTML landing page with HTTP 200 cannot be reported healthy here.
     valid, count = await _probe_feed(feed_url, client, preset_name)

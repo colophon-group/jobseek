@@ -671,6 +671,29 @@ class TestValidateCsvs:
 
         assert any("Invalid RSS monitor_config" in str(error) for error in errors)
 
+    def test_non_generic_rss_pagination_is_rejected(self, tmp_path, monkeypatch):
+        cfg = (
+            '"{""preset"": ""teamtailor"", ""feed_url"": '
+            '""https://example.com/jobs.rss"", ""pagination"": '
+            '{""param_name"": ""page"", ""page_size"": 20, ""max_pages"": 10}}"'
+        )
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com/careers,rss,{cfg},skip,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert any(
+            "RSS pagination, description_mode, and browser rendering are only supported"
+            in str(error)
+            for error in errors
+        )
+
     def test_invalid_scraper_config_json(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,

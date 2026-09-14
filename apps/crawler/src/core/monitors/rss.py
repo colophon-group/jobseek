@@ -1536,10 +1536,10 @@ def validate_generic_rss_config(metadata: Mapping[str, object]) -> None:
     if not isinstance(render, bool):
         raise ValueError("RSS render must be a boolean")
     if metadata.get("preset", "generic") != "generic":
-        if "description_mode" in metadata or render:
+        if "pagination" in metadata or "description_mode" in metadata or render:
             raise ValueError(
-                "RSS description_mode and browser rendering are only supported "
-                "by the generic preset"
+                "RSS pagination, description_mode, and browser rendering are only "
+                "supported by the generic preset"
             )
         return
     _generic_paginated_preset(

@@ -58,6 +58,26 @@ async def test_rss_probe_uses_runtime_governmentjobs_feed_resolution():
 
 
 @pytest.mark.asyncio
+async def test_rss_probe_skips_browser_routed_feed_without_http_request():
+    def handler(_request: httpx.Request) -> httpx.Response:
+        raise AssertionError("HTTP-only CI probe must not fetch a browser-routed RSS feed")
+
+    feed_url = "https://example.com/browser-only.rss"
+    row = _row(
+        board_slug="browser-rss",
+        board_url="https://example.com/careers",
+        monitor_type="rss",
+        monitor_config=json.dumps({"preset": "generic", "feed_url": feed_url, "render": True}),
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await probe_row(row, client)
+
+    assert result.status == "skipped"
+    assert result.probe_url == feed_url
+    assert result.message == "browser-rendered RSS requires the Chromium worker lane"
+
+
+@pytest.mark.asyncio
 async def test_probe_rows_uses_cookie_safe_shared_client(monkeypatch):
     """A malformed pagination cookie must not make CI disagree with runtime."""
     seen_cookie_headers: list[str] = []

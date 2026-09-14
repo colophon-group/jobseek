@@ -2152,6 +2152,31 @@ class TestDiscover:
                     client,
                 )
 
+    async def test_non_generic_preset_rejects_generic_pagination_before_fetch(self):
+        def handler(_request):
+            raise AssertionError("invalid config must fail before network I/O")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(
+                ValueError,
+                match="RSS pagination, description_mode, and browser rendering",
+            ):
+                await discover(
+                    {
+                        "board_url": "https://jobs.example.com/careers",
+                        "metadata": {
+                            "preset": "teamtailor",
+                            "feed_url": "https://jobs.example.com/jobs.rss",
+                            "pagination": {
+                                "param_name": "page",
+                                "page_size": 20,
+                                "max_pages": 10,
+                            },
+                        },
+                    },
+                    client,
+                )
+
     async def test_teamtailor_transient_400_retries_same_page(self, monkeypatch):
         feed_xml = _rss_xml("""
             <item>
