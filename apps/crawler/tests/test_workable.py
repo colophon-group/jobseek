@@ -17,6 +17,7 @@ from src.core.scrapers.workable import (
     _parse_detail,
     _parse_job_location_type,
     _parse_job_url,
+    _parse_markdown_detail,
     scrape,
 )
 from src.shared.http_retry import PaginationFetchError
@@ -630,6 +631,60 @@ class TestParseDetail:
         assert result.metadata is None
 
 
+class TestParseMarkdownDetail:
+    def test_full_detail(self):
+        markdown = """# Physical Therapist Assistant (PTA)
+
+> Gotham Enterprises Ltd · Hillsborough, United States (Remote) · Full-time · Posted 2026-08-14
+
+**Salary:** USD 70,000–80,000
+
+**Workplace:** remote
+
+**Department:** Givenchy Derecho
+
+## Description
+
+**Physical Therapist Assistant | Full-Time**
+
+Help patients improve their physical function.
+
+## Requirements
+
+-   Active New Jersey PTA license
+-   Strong time management skills
+
+## Benefits
+
+-   Health Insurance
+
+## Apply
+
+[Apply](https://apply.workable.com/acme/j/ABC123/apply)
+"""
+
+        result = _parse_markdown_detail(markdown)
+
+        assert result.title == "Physical Therapist Assistant (PTA)"
+        assert result.locations == ["Hillsborough, United States"]
+        assert result.employment_type == "Full-time"
+        assert result.job_location_type == "remote"
+        assert result.date_posted == "2026-08-14"
+        assert result.metadata == {"department": "Givenchy Derecho"}
+        assert result.description is not None
+        assert "<strong>Physical Therapist Assistant | Full-Time</strong>" in result.description
+        assert "<h2>Requirements</h2>" in result.description
+        assert "<li>Active New Jersey PTA license</li>" in result.description
+        assert "## Apply" not in result.description
+
+    def test_escapes_upstream_html(self):
+        result = _parse_markdown_detail(
+            "# Engineer\n\n## Description\n\n<script>alert('x')</script>\n"
+        )
+
+        assert result.description == "<p>&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt;</p>"
+
+
 class TestScrape:
     async def test_full_scrape(self):
         detail_json = {
@@ -682,6 +737,60 @@ class TestScrape:
             )
             assert isinstance(result, JobContent)
             assert result.title is None
+
+    async def test_rate_limit_falls_back_to_markdown_detail(self):
+        markdown = """# Engineer
+
+> Acme · Berlin, Germany · Full-time · Posted 2026-09-01
+
+**Workplace:** hybrid
+
+## Description
+
+Build reliable systems.
+
+## Requirements
+
+-   Python
+
+## Apply
+"""
+
+        def handler(request):
+            url = str(request.url)
+            if "/api/v2/accounts/acme/jobs/ABC123" in url:
+                return httpx.Response(429, json={"error": "rate_limit"})
+            assert url == "https://apply.workable.com/acme/jobs/view/ABC123.md"
+            return httpx.Response(200, text=markdown)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://apply.workable.com/acme/j/ABC123/",
+                {},
+                client,
+            )
+
+        assert result.title == "Engineer"
+        assert result.description == (
+            "<p>Build reliable systems.</p>\n<h2>Requirements</h2>\n<ul>\n<li>Python</li>\n</ul>"
+        )
+        assert result.locations == ["Berlin, Germany"]
+        assert result.job_location_type == "hybrid"
+
+    async def test_rate_limit_with_failed_markdown_returns_empty(self):
+        def handler(request):
+            if "/api/v2/" in str(request.url):
+                return httpx.Response(429)
+            return httpx.Response(503)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://apply.workable.com/acme/j/ABC123/",
+                {},
+                client,
+            )
+
+        assert result == JobContent()
 
     async def test_config_token_override(self):
         def handler(request):
