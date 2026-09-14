@@ -81,6 +81,7 @@ _SF_RMK_LOCALE_RE = re.compile(r"^[a-z]{2}_[A-Z]{2}$")
 _SF_RMK_CSRF_RE = re.compile(r'["\']X-CSRF-Token["\']\s*:\s*["\']([^"\']+)["\']')
 _SF_RMK_APP_BRAND_RE = re.compile(r"\bbrand\s*:\s*['\"]([^'\"]+)['\"]")
 _SF_RMK_APP_LOCALE_RE = re.compile(r"\blocale\s*:\s*['\"]([^'\"]+)['\"]")
+_SF_RMK_CSRF_VALUE_RE = re.compile(r"^[\x21-\x7e]{1,2048}$")
 _SF_RMK_PAGE_SIZE = 10
 _SF_RMK_REQUEST_ATTEMPTS = 6
 _SF_WRAPPER_QUERY_KEYS = frozenset(
@@ -607,7 +608,7 @@ def _sf_rmk_job(row: object, *, origin: str, brand: str, locale: str) -> Discove
 async def _discover_sf_rmk(
     board: dict,
     client: httpx.AsyncClient,
-) -> list[DiscoveredJob]:
+) -> tuple[list[DiscoveredJob], bool]:
     """Discover every job from a SuccessFactors Recruiting Marketing brand."""
     board_url = board["board_url"]
     metadata = board.get("metadata") or {}
@@ -659,6 +660,9 @@ async def _discover_sf_rmk(
         or page_locale_match is None
     ):
         raise ValueError("SuccessFactors RMK bootstrap metadata is missing or inconsistent")
+    csrf_token = csrf_match.group(1)
+    if _SF_RMK_CSRF_VALUE_RE.fullmatch(csrf_token) is None:
+        raise ValueError("SuccessFactors RMK returned an invalid CSRF token")
     locale = configured_locale or page_locale_match.group(1)
     if _SF_RMK_LOCALE_RE.fullmatch(locale) is None:
         raise ValueError("SuccessFactors RMK page returned an invalid locale")
@@ -667,12 +671,13 @@ async def _discover_sf_rmk(
     request_headers = {
         "Content-Type": "application/json",
         "Referer": board_url,
-        "X-CSRF-Token": csrf_match.group(1),
+        "X-CSRF-Token": csrf_token,
     }
     jobs_by_id: dict[str, DiscoveredJob] = {}
     expected_total: int | None = None
     processed_rows = 0
     page_number = 0
+    repeated_rows = False
     while expected_total is None or processed_rows < expected_total:
         request_body = json.dumps(
             {
@@ -720,6 +725,9 @@ async def _discover_sf_rmk(
             expected_total = total
         elif total != expected_total:
             raise ValueError("SuccessFactors RMK total changed during pagination")
+        expected_rows = min(_SF_RMK_PAGE_SIZE, expected_total - processed_rows)
+        if len(rows) != expected_rows:
+            raise ValueError("SuccessFactors RMK returned an inconsistent page size")
         if not rows:
             if processed_rows != expected_total:
                 raise ValueError("SuccessFactors RMK pagination ended before the advertised total")
@@ -735,13 +743,14 @@ async def _discover_sf_rmk(
             if existing is not None:
                 if existing != job:
                     raise ValueError("SuccessFactors RMK repeated a conflicting job")
+                repeated_rows = True
                 continue
             jobs_by_id[job_id] = job
         page_number += 1
 
     if expected_total is None or processed_rows != expected_total:
         raise ValueError("SuccessFactors RMK result count did not match the advertised total")
-    return list(jobs_by_id.values())
+    return list(jobs_by_id.values()), repeated_rows
 
 
 def _hr_manager_customer_from_url(url: str) -> str | None:
@@ -1632,9 +1641,13 @@ async def discover_stream(
     """Yield bounded parsed-job batches across streamed RSS pages."""
     metadata = board.get("metadata") or {}
     if metadata.get("preset") == "successfactors" and metadata.get("variant") == "rmk":
-        rmk_jobs = await _discover_sf_rmk(board, client)
+        rmk_jobs, repeated_rows = await _discover_sf_rmk(board, client)
         for start in range(0, len(rmk_jobs), _STREAM_BATCH):
             yield rmk_jobs[start : start + _STREAM_BATCH]
+        if repeated_rows:
+            from src.core.monitor import MonitorResult
+
+            yield MonitorResult(truncated=True)
         return
     if metadata.get("preset") == "successfactors" and metadata.get("variant") == "legacy":
         from src.core.monitors._successfactors_legacy import discover_legacy_stream

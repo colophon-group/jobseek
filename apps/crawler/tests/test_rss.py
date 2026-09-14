@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 import src.core.monitors.rss as rss_monitor
-from src.core.monitor import monitor_one
+from src.core.monitor import MonitorResult, monitor_one
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.rss import (
     RssFeedNotXml,
@@ -916,14 +916,18 @@ class TestDiscover:
                 [
                     row("101", "R&D Engineer", "R%26D-Engineer", "Thailand"),
                     row("102", "Farm Manager", "Farm-Manager", "Thailand"),
+                    *[
+                        row(str(job_id), f"Job {job_id}", f"Job-{job_id}", "Thailand")
+                        for job_id in range(103, 111)
+                    ],
                 ]
                 if payload["pageNumber"] == 0
                 else [
-                    row("102", "Farm Manager", "Farm-Manager", "Thailand"),
-                    row("103", "Data Analyst", "Data-Analyst", "Thailand"),
+                    row("111", "Data Analyst", "Data-Analyst", "Thailand"),
+                    row("112", "Sales Manager", "Sales-Manager", "Thailand"),
                 ]
             )
-            return httpx.Response(200, json={"jobSearchResult": rows, "totalJobs": 4})
+            return httpx.Response(200, json={"jobSearchResult": rows, "totalJobs": 12})
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             jobs = await discover(
@@ -939,7 +943,9 @@ class TestDiscover:
             )
 
         assert requested_pages == [0, 1]
-        assert [job.title for job in jobs] == ["R&D Engineer", "Farm Manager", "Data Analyst"]
+        assert len(jobs) == 12
+        assert [job.title for job in jobs[:2]] == ["R&D Engineer", "Farm Manager"]
+        assert [job.title for job in jobs[-2:]] == ["Data Analyst", "Sales Manager"]
         assert jobs[0].url == "https://careers.example.com/CPF/job/R%26D-Engineer/101-en_GB/"
         assert jobs[0].locations == ["Thailand"]
         assert jobs[0].employment_type == "Full Time"
@@ -952,6 +958,90 @@ class TestDiscover:
             "division": ["Automation"],
             "currency": ["THB"],
         }
+
+    async def test_successfactors_rmk_rejects_short_nonfinal_page(self):
+        page_html = """
+        <script>
+          var appParams = {locale: "en_GB", brand: "CPF"};
+          $.ajaxSetup({headers: {"X-CSRF-Token": "csrf-token"}});
+        </script>
+        """
+
+        def handler(request):
+            if request.method == "GET":
+                return httpx.Response(200, text=page_html)
+            return httpx.Response(
+                200,
+                json={
+                    "jobSearchResult": [
+                        {
+                            "response": {
+                                "id": "101",
+                                "brandUrl": "CPF",
+                                "unifiedStandardTitle": "Incomplete page",
+                                "unifiedUrlTitle": "Incomplete-page",
+                            }
+                        }
+                    ],
+                    "totalJobs": 11,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="inconsistent page size"):
+                await discover(
+                    {
+                        "board_url": "https://careers.example.com/CPF/go/View-All/123/",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "variant": "rmk",
+                            "brand": "CPF",
+                        },
+                    },
+                    client,
+                )
+
+    async def test_successfactors_rmk_marks_repeated_rows_truncated(self):
+        page_html = """
+        <script>
+          var appParams = {locale: "en_GB", brand: "CPF"};
+          $.ajaxSetup({headers: {"X-CSRF-Token": "csrf-token"}});
+        </script>
+        """
+
+        def row(job_id):
+            return {
+                "response": {
+                    "id": str(job_id),
+                    "brandUrl": "CPF",
+                    "unifiedStandardTitle": f"Job {job_id}",
+                    "unifiedUrlTitle": f"Job-{job_id}",
+                }
+            }
+
+        def handler(request):
+            if request.method == "GET":
+                return httpx.Response(200, text=page_html)
+            page_number = json.loads(request.content)["pageNumber"]
+            rows = [row(job_id) for job_id in range(101, 111)] if page_number == 0 else [row(110)]
+            return httpx.Response(200, json={"jobSearchResult": rows, "totalJobs": 11})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(
+                {
+                    "board_url": "https://careers.example.com/CPF/go/View-All/123/",
+                    "metadata": {
+                        "preset": "successfactors",
+                        "variant": "rmk",
+                        "brand": "CPF",
+                    },
+                },
+                client,
+            )
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert len(result.urls) == 10
 
     async def test_successfactors_rmk_proxy_rotates_past_three_429s(self, monkeypatch):
         page_html = """
