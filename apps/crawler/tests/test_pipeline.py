@@ -1396,12 +1396,12 @@ async def test_failed_sibling_boards_open_one_host_circuit_and_skip_fourth(mock_
 
 
 @pytest.mark.asyncio
-async def test_distinct_workday_303_hosts_open_provider_circuit_and_skip_next(
+async def test_distinct_workday_transient_status_hosts_open_provider_circuit_and_skip_next(
     mock_redis, monkeypatch
 ):
     """A cross-tenant Workday event pauses later tenants before network I/O."""
     from src.config import settings
-    from src.shared.http import WORKDAY_LIST_303_INCIDENT, mark_provider_incident
+    from src.shared.http import WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT, mark_provider_incident
 
     monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
     monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
@@ -1412,7 +1412,7 @@ async def test_distinct_workday_303_hosts_open_provider_circuit_and_skip_next(
             return True, 1.0
         mark_provider_incident(
             f"{board['board_url']}/wday/cxs/company/site/jobs",
-            incident=WORKDAY_LIST_303_INCIDENT,
+            incident=WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT,
         )
         return False, 30.0
 
@@ -1458,9 +1458,11 @@ async def test_distinct_workday_303_hosts_open_provider_circuit_and_skip_next(
             )
 
     assert monitor_mock.await_count == 4
-    open_until = await rq.get_provider_circuit_open_until(WORKDAY_LIST_303_INCIDENT)
+    open_until = await rq.get_provider_circuit_open_until(WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT)
     assert open_until is not None
-    assert await mock_redis.scard(f"provider_fail_hosts:{WORKDAY_LIST_303_INCIDENT}") == 3
+    assert (
+        await mock_redis.scard(f"provider_fail_hosts:{WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT}") == 3
+    )
     assert reschedule.await_args_list[-1].args[:3] == (
         "workday",
         "board-workday-4",
