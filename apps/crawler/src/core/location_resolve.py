@@ -24,6 +24,12 @@ from src.core.enum_normalize import _JOB_LOCATION_TYPE_MAP
 
 log = structlog.get_logger()
 
+_BACKFILL_LOOKUP_SQL = """\
+SELECT location_id, lower(name) AS name
+FROM location_name
+WHERE lower(name) = ANY($1::text[])\
+"""
+
 # Locales loaded eagerly into memory.  Non-core locale names are fetched
 # from the DB on demand and cached for the process lifetime.
 _CORE_LOCALES = ("en", "de", "fr", "it", "alt", "")
@@ -786,11 +792,7 @@ class LocationResolver:
         for i in range(0, len(missed), _CHUNK):
             chunk = missed[i : i + _CHUNK]
             async with self._pool.acquire() as conn:
-                rows = await conn.fetch(
-                    "SELECT location_id, lower(name) AS name "
-                    "FROM location_name WHERE lower(name) = ANY($1::text[])",
-                    chunk,
-                )
+                rows = await conn.fetch(_BACKFILL_LOOKUP_SQL, chunk)
             for row in rows:
                 matched_keys.add(row["name"])
                 for variant in self._name_variants(row["name"]):

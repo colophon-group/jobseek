@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
 
 from src.retry_stalled import (
     _COUNT_STALLED,
+    _COUNT_STALLED_BY_BOARD,
     _PROMOTE_STALLED_BATCH,
+    _PROMOTE_STALLED_BY_BOARD_BATCH,
     count_stalled_scrapes,
     retry_stalled_scrapes,
 )
@@ -46,7 +49,10 @@ class TestCountStalled:
         pool.fetchval = AsyncMock(return_value=42)
         out = await count_stalled_scrapes(pool, max_age_days=7)
         assert out == 42
-        pool.fetchval.assert_awaited_once_with(_COUNT_STALLED, 7)
+        args = pool.fetchval.await_args.args
+        assert args[:2] == (_COUNT_STALLED, 7)
+        assert isinstance(args[2], datetime)
+        assert args[2].tzinfo is UTC
 
     @pytest.mark.asyncio
     async def test_dry_run_zero(self):
@@ -54,6 +60,33 @@ class TestCountStalled:
         pool.fetchval = AsyncMock(return_value=0)
         out = await count_stalled_scrapes(pool, max_age_days=14)
         assert out == 0
+
+    @pytest.mark.asyncio
+    async def test_dry_run_scopes_exact_board_slugs(self):
+        pool = AsyncMock()
+        pool.fetchval = AsyncMock(return_value=3)
+        slugs = ["board-one", "board-two"]
+
+        out = await count_stalled_scrapes(pool, max_age_days=0, board_slugs=slugs)
+
+        assert out == 3
+        args = pool.fetchval.await_args.args
+        assert args[:3] == (_COUNT_STALLED_BY_BOARD, 0, slugs)
+        assert isinstance(args[3], datetime)
+        assert args[3].tzinfo is UTC
+        assert "job_board WHERE board_slug = ANY($2::text[])" in _COUNT_STALLED_BY_BOARD
+
+    @pytest.mark.asyncio
+    async def test_empty_board_scope_does_not_fall_back_to_all_boards(self):
+        pool = AsyncMock()
+        pool.fetchval = AsyncMock(return_value=0)
+
+        out = await count_stalled_scrapes(pool, max_age_days=0, board_slugs=[])
+
+        assert out == 0
+        args = pool.fetchval.await_args.args
+        assert args[:3] == (_COUNT_STALLED_BY_BOARD, 0, [])
+        assert isinstance(args[3], datetime)
 
 
 class TestRetryStalledScrapes:
@@ -199,8 +232,54 @@ class TestRetryStalledScrapes:
 
         await retry_stalled_scrapes(pool, max_age_days=30)
         first_call = pool.fetch.await_args_list[0]
-        # _PROMOTE_STALLED_BATCH is positional arg 0; max_age_days is 1.
-        assert first_call.args[1] == 30
+        assert first_call.args[:2] == (_PROMOTE_STALLED_BATCH, 30)
+        assert isinstance(first_call.args[2], datetime)
+        assert first_call.args[3] == 5000
+
+    @pytest.mark.asyncio
+    async def test_passes_board_scope_to_query(self, monkeypatch):
+        pool = _make_pool([])
+        mock_redis = AsyncMock()
+        monkeypatch.setattr("src.retry_stalled.get_redis", lambda: mock_redis)
+        monkeypatch.setattr("src.retry_stalled.enqueue_scrape", AsyncMock())
+        slugs = ["practice-one", "practice-two"]
+
+        await retry_stalled_scrapes(pool, max_age_days=0, board_slugs=slugs)
+
+        first_call = pool.fetch.await_args_list[0]
+        assert first_call.args[1:3] == (0, slugs)
+        assert isinstance(first_call.args[3], datetime)
+        assert first_call.args[4] == 5000
+        assert first_call.args[0] == _PROMOTE_STALLED_BY_BOARD_BATCH
+        assert "job_board WHERE board_slug = ANY($2::text[])" in first_call.args[0]
+
+    @pytest.mark.asyncio
+    async def test_one_cutoff_excludes_rows_that_restall_during_run(self, monkeypatch):
+        fixed_cutoff = datetime(2026, 9, 14, 18, 0, tzinfo=UTC)
+
+        class FixedClock:
+            calls = 0
+
+            @classmethod
+            def now(cls, tz):
+                assert tz is UTC
+                cls.calls += 1
+                return fixed_cutoff
+
+        row = _row("p1", "https://x/1")
+        pool = AsyncMock()
+        pool.fetch = AsyncMock(side_effect=[[row], []])
+        mock_redis = AsyncMock()
+        mock_redis.hgetall = AsyncMock(return_value={})
+        monkeypatch.setattr("src.retry_stalled.datetime", FixedClock)
+        monkeypatch.setattr("src.retry_stalled.get_redis", lambda: mock_redis)
+        monkeypatch.setattr("src.retry_stalled.enqueue_scrape", AsyncMock(return_value=True))
+
+        await retry_stalled_scrapes(pool, max_age_days=0)
+
+        assert FixedClock.calls == 1
+        assert pool.fetch.await_count == 2
+        assert {call.args[2] for call in pool.fetch.await_args_list} == {fixed_cutoff}
 
     @pytest.mark.asyncio
     async def test_null_r2_hash_passes_empty_string(self, monkeypatch):
@@ -237,7 +316,7 @@ class TestSqlContract:
         assert "last_scraped_at IS NOT NULL" in sql
         # Age cutoff is parameterised — paranoia against accidentally
         # hardcoding the 7-day default into the query.
-        assert "$1::int * interval '1 day'" in sql
+        assert "$2::timestamptz - ($1::int * interval '1 day')" in sql
         # UPDATE-RETURNING shape: emit the columns enqueue_scrape needs.
         assert "RETURNING" in sql
         assert "jp.id" in sql
@@ -254,7 +333,26 @@ class TestSqlContract:
             "next_scrape_at IS NULL",
             "scrape_failures >= 3",
             "last_scraped_at IS NOT NULL",
-            "$1::int * interval '1 day'",
+            "$2::timestamptz - ($1::int * interval '1 day')",
         ):
             assert predicate in promote, f"PROMOTE missing {predicate!r}"
             assert predicate in count, f"COUNT missing {predicate!r}"
+
+    def test_scoped_queries_materialize_exact_boards_before_postings(self):
+        for sql in (_PROMOTE_STALLED_BY_BOARD_BATCH, _COUNT_STALLED_BY_BOARD):
+            assert "scoped_boards AS MATERIALIZED" in sql
+            assert "board_slug = ANY($2::text[])" in sql
+            assert "JOIN job_posting jp ON jp.board_id = sb.id" in sql
+            assert "$2::text[] IS NULL" not in sql
+
+    def test_scoped_count_and_promote_use_same_predicates(self):
+        for predicate in (
+            "is_active = true",
+            "next_scrape_at IS NULL",
+            "scrape_failures >= 3",
+            "last_scraped_at IS NOT NULL",
+            "$3::timestamptz - ($1::int * interval '1 day')",
+            "board_slug = ANY($2::text[])",
+        ):
+            assert predicate in _PROMOTE_STALLED_BY_BOARD_BATCH
+            assert predicate in _COUNT_STALLED_BY_BOARD

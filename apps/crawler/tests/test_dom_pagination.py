@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from src.core.monitors import DiscoveredJob, is_rich_monitor
+from src.core.monitors import BoardGoneError, DiscoveredJob, is_rich_monitor
 from src.core.monitors.dom import (
     BotChallengeError,
     _build_url_matcher,
@@ -51,6 +51,7 @@ from src.core.monitors.dom import (
     dom_discover,
 )
 from src.shared.http_retry import PaginationFetchError
+from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 from src.shared.response_fingerprint import (
     MAX_RESPONSE_FINGERPRINT_BYTES,
     MAX_RESPONSE_FINGERPRINT_URL_CHARS,
@@ -4808,22 +4809,24 @@ class TestDomDiscoverInitialFetch:
 
         assert result == {board_url}
 
-    async def test_missing_direct_document_is_not_included(self):
+    async def test_missing_direct_document_enters_board_gone_flow(self):
         board_url = "https://example.com/jobs/removed-opening.pdf"
 
         def handler(request):
             return httpx.Response(404, text="Not found", request=request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await dom_discover(
-                {
-                    "board_url": board_url,
-                    "metadata": {"include_board_url": True},
-                },
-                client,
-            )
+            with pytest.raises(BoardGoneError) as exc_info:
+                await dom_discover(
+                    {
+                        "board_url": board_url,
+                        "metadata": {"include_board_url": True},
+                    },
+                    client,
+                )
 
-        assert result == set()
+        assert exc_info.value.status_code == 404
+        assert exc_info.value.url == board_url
 
     async def test_jsonld_verification_omits_stale_profile_links(self):
         board_url = "https://jobs.example.com/company"
@@ -5432,22 +5435,91 @@ class TestDomDiscoverInitialFetch:
         assert attempts == 3
         assert exc_info.value.last_status == 403
 
-    async def test_initial_404_remains_empty(self):
-        """A missing static page keeps the existing lenient empty-result path."""
+    @pytest.mark.parametrize("status_code", [404, 410])
+    async def test_initial_gone_status_enters_board_gone_flow(self, status_code):
+        """A missing root is retirement evidence, not a healthy empty board."""
+        attempts = 0
 
         def handler(request):
-            return httpx.Response(404, text="Not found")
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(status_code, text="Not found", request=request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await dom_discover(
-                {
-                    "board_url": "https://missing.example/careers",
-                    "metadata": {"url_filter": "/career/"},
-                },
-                client,
+            with pytest.raises(BoardGoneError) as exc_info:
+                await dom_discover(
+                    {
+                        "board_url": "https://missing.example/careers",
+                        "metadata": {"url_filter": "/career/"},
+                    },
+                    client,
+                )
+
+        assert attempts == 1
+        assert exc_info.value.status_code == status_code
+        assert exc_info.value.url == "https://missing.example/careers"
+
+    @pytest.mark.parametrize("status_code", [400, 422])
+    async def test_initial_other_terminal_4xx_fails_explicitly(self, status_code):
+        def handler(request):
+            return httpx.Response(status_code, text="Invalid request", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await dom_discover(
+                    {
+                        "board_url": "https://broken.example/careers",
+                        "metadata": {"url_filter": "/career/"},
+                    },
+                    client,
+                )
+
+        assert exc_info.value.attempts == 1
+        assert exc_info.value.last_status == status_code
+
+    @pytest.mark.parametrize("status_code", [404, 410])
+    async def test_rendered_root_gone_status_enters_board_gone_flow(self, monkeypatch, status_code):
+        page = MagicMock()
+        error = BrowserNavigationHTTPStatusError(
+            requested_url="https://missing.example/careers",
+            response_url="https://missing.example/gone",
+            status=status_code,
+            phase="primary",
+        )
+        monkeypatch.setattr(
+            "src.core.monitors.dom.navigate",
+            AsyncMock(side_effect=error),
+        )
+
+        with pytest.raises(BoardGoneError) as exc_info:
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://missing.example/careers"},
             )
 
-        assert result == set()
+        assert exc_info.value.status_code == status_code
+        assert exc_info.value.url == "https://missing.example/gone"
+
+    async def test_rendered_root_other_http_error_propagates(self, monkeypatch):
+        page = MagicMock()
+        error = BrowserNavigationHTTPStatusError(
+            requested_url="https://blocked.example/careers",
+            response_url="https://blocked.example/careers",
+            status=403,
+            phase="primary",
+        )
+        monkeypatch.setattr(
+            "src.core.monitors.dom.navigate",
+            AsyncMock(side_effect=error),
+        )
+
+        with pytest.raises(BrowserNavigationHTTPStatusError) as exc_info:
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
+        assert exc_info.value is error
 
 
 # ---------------------------------------------------------------------------

@@ -248,6 +248,23 @@ class TestFetchWithRetry:
         assert out is None
         assert client.get.await_count == 1
 
+    @pytest.mark.parametrize("status_code", [404, 410, 422])
+    async def test_strict_root_status_fails_fast(self, status_code):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(status_code, "error"))
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await fetch_with_retry(
+                client,
+                "https://example.com/careers",
+                end_of_pagination_statuses=(),
+                fail_on_nonretryable_status=True,
+            )
+
+        assert exc_info.value.attempts == 1
+        assert exc_info.value.last_status == status_code
+        assert client.get.await_count == 1
+
     async def test_custom_retryable_status_recovers(self):
         """Callers can opt a provider-specific status into bounded retries."""
         client = AsyncMock()

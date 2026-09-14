@@ -496,6 +496,15 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Report the count that would be affected; make no writes.",
     )
+    retry_p.add_argument(
+        "--board-slug",
+        action="append",
+        default=None,
+        help=(
+            "Limit recovery to this exact board slug. Repeat for multiple "
+            "boards; omitted means all boards."
+        ),
+    )
 
     sub.add_parser("backfill-typesense", help="Full re-index of job_posting to Typesense")
 
@@ -1181,14 +1190,23 @@ async def run() -> None:
             from src.retry_stalled import count_stalled_scrapes, retry_stalled_scrapes
 
             if args.dry_run:
-                count = await count_stalled_scrapes(local_pool, args.max_age_days)
+                count = await count_stalled_scrapes(
+                    local_pool,
+                    args.max_age_days,
+                    board_slugs=args.board_slug,
+                )
                 log.info(
                     "retry_stalled.dry_run",
                     candidates=count,
                     max_age_days=args.max_age_days,
+                    board_slugs=args.board_slug,
                 )
             else:
-                await retry_stalled_scrapes(local_pool, max_age_days=args.max_age_days)
+                await retry_stalled_scrapes(
+                    local_pool,
+                    max_age_days=args.max_age_days,
+                    board_slugs=args.board_slug,
+                )
 
         elif args.command == "backfill-typesense":
             from src.cron_metrics import cron_run
