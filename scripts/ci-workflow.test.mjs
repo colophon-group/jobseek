@@ -2710,6 +2710,20 @@ test("Dependabot updates and groups the pnpm workspace from its root", () => {
   assert.doesNotMatch(npmConfig, /group-by: "dependency-name"/);
 });
 
+test("Dependabot suppresses CairoSVG updates at both LGPL-gated lockfiles", () => {
+  for (const directory of ["/apps/crawler", "/apps/crawler/ws-package"]) {
+    const escapedDirectory = directory.replaceAll("/", "\\/");
+    const uvConfig = dependabotConfig.match(
+      new RegExp(
+        `  - package-ecosystem: "uv"\\n([\\s\\S]*?directory: "${escapedDirectory}"[\\s\\S]*?)(?=\\n  - package-ecosystem:)`,
+      ),
+    )?.[1];
+
+    assert.ok(uvConfig, `missing uv Dependabot configuration for ${directory}`);
+    assert.match(uvConfig, /ignore:\n[\s\S]*- dependency-name: "cairosvg"/);
+  }
+});
+
 test("the pnpm workspace has one JavaScript lockfile authority", () => {
   assert.equal(existsSync("pnpm-lock.yaml"), true);
   assert.equal(existsSync("apps/trace-viewer/package-lock.json"), false);
@@ -3167,7 +3181,7 @@ test("pull_request_target image uploads disable the uv cache", () => {
 test("MCP publish workflow caches the pnpm store", () => {
   assert.match(
     publishMcpServerWorkflow,
-    /pnpm\/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6\.0\.10[\s\S]*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6/,
+    /pnpm\/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6\.1\.0[\s\S]*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6/,
   );
   assert.match(publishMcpServerWorkflow, /cache: pnpm/);
   assert.match(publishMcpServerWorkflow, /cache-dependency-path: pnpm-lock\.yaml/);
