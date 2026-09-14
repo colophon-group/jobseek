@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 7545,
-    "boards_sha256": "3cb1d8c0fff7fccd8e6061aa98f72699289be90e91c735bd0fcd8dd6e09be9e5",
+    "boards_sha256": "5c5df87ed83868c02b60385075fea04c407c2414a2f10a36e44585accac44e7c",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "d55a5b43ba2aee845597f568ddf94b60398c80c498c7486840439aa7f8f68348",
+  "manifest_sha256": "fa76b46285747066e01cf868ea7416e6ddb73785cd2a0211b3ab06482e5f58cc",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -6862,12 +6862,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "76f6578053b67be7ee7cd41dee516f3bd30347f5622c81bd84292b4010de6831",
       "crawler_type": "dom",
-      "digest_sha256": "e07a7babe1b90a095d6dccd5b7e4721fc867541d38158d0d36c39378a1529789",
+      "digest_sha256": "ad988b598ce3af95589e1ed5e6d03d34be6ae0af04f7351ffcffbb503689b64b",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.monitor.dom",
       "profile_kind": "registry",
       "source_count": 777,
-      "source_refs_sha256": "abd9ca5be05ffdd0768f01917f28dbc595d3f89bc6f9339da6892a24b3f7dd6b",
+      "source_refs_sha256": "75cbcac26b9e5148a8686e77a1769a774a47d0ada5ff9c974bccde06febda3b5",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -6974,12 +6974,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "5a08da4785afa1c964a303d332bbded26bf22deb8d73751ad343279b74d02707",
       "crawler_type": "dom",
-      "digest_sha256": "ad72cc2ced36fe036c02924b0094d0920271e6791b14c84fec098b6991c5b586",
+      "digest_sha256": "2e200145d3a05af83690edfa59f534987513ba1a1ba777ea956f1a5b8deff9e6",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.scraper.dom",
       "profile_kind": "registry",
       "source_count": 699,
-      "source_refs_sha256": "f5b8fef4d11d9af802cd78ea1eca03e986a6d852a5922143f58ed850002150ba",
+      "source_refs_sha256": "a244c1277d12aeda4d19f2bf27545531beec52ea074c34ea7d58bd67b4f5989c",
       "status": "inventory",
       "surface": "scraper"
     },
