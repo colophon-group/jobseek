@@ -22,6 +22,7 @@ from src.core.monitors.dom import (
     _extract_oracle_adf_job_ids,
     _extract_rich_rows_static,
     _extract_script_json_links,
+    _extract_title_matched_url_scan,
     _fetch_via_page,
     _filter_inactive_detail_urls,
     _filter_jsonld_job_urls,
@@ -43,6 +44,7 @@ from src.core.monitors.dom import (
     _validated_response_fingerprint_config,
     _validated_rich_rows,
     _validated_script_json_links,
+    _validated_title_matched_url_scan,
     _validated_unexpired_pdf_config,
     _yousty_probe_config,
     can_handle,
@@ -715,6 +717,139 @@ class TestOnclickSelector:
                 },
                 MagicMock(),
             )
+
+
+class TestTitleMatchedUrlScan:
+    CONFIG = {
+        "listing_title_selector": "#jobs a[aria-label]",
+        "detail_title_selector": "main h1",
+        "url_template": "https://careers.example.com/jobs/vacancy-{index}",
+        "start": 1,
+        "max_scan": 4,
+    }
+
+    def test_validates_bounded_same_origin_template_shape(self):
+        config = _validated_title_matched_url_scan(self.CONFIG)
+
+        assert config is not None
+        assert config.start == 1
+        assert config.max_scan == 4
+
+    @pytest.mark.parametrize(
+        "value, message",
+        [
+            ({**CONFIG, "unknown": True}, "contain only"),
+            ({**CONFIG, "url_template": "https://example.com/jobs/1"}, "placeholder"),
+            ({**CONFIG, "listing_title_selector": "a["}, "listing_title_selector"),
+            ({**CONFIG, "max_scan": 501}, "max_scan"),
+        ],
+    )
+    def test_rejects_invalid_config(self, value, message):
+        with pytest.raises(ValueError, match=message):
+            _validated_title_matched_url_scan(value)
+
+    async def test_matches_all_current_titles_to_numbered_details(self):
+        listing = """
+        <section id="jobs">
+          <a aria-label="Bilingual agent" href="https://forms.example/apply">Bilingual agent</a>
+          <a aria-label="Trilingual agent" href="https://forms.example/apply">Trilingual agent</a>
+        </section>
+        """
+        details = {
+            1: "<main><h1>Trilingual agent</h1></main>",
+            2: "<main><h1>Bilingual agent</h1></main>",
+            3: None,
+            4: "<main><h1>Retired role</h1></main>",
+        }
+
+        async def fetch_detail(_client, url, **kwargs):
+            assert kwargs["require_nonempty"] is True
+            assert kwargs["follow_redirects"] is False
+            return details[int(url.rsplit("-", 1)[1])]
+
+        config = _validated_title_matched_url_scan(self.CONFIG)
+        assert config is not None
+        with patch(
+            "src.shared.http_retry.fetch_text_page_with_retry",
+            side_effect=fetch_detail,
+        ):
+            urls = await _extract_title_matched_url_scan(
+                listing,
+                "https://careers.example.com/jobs",
+                MagicMock(),
+                config,
+                re.compile(r"/jobs/vacancy-\d+$"),
+            )
+
+        assert urls == {
+            "https://careers.example.com/jobs/vacancy-1",
+            "https://careers.example.com/jobs/vacancy-2",
+        }
+
+    async def test_fails_closed_when_a_listing_title_has_no_detail_match(self):
+        listing = '<section id="jobs"><a aria-label="Current role">Current role</a></section>'
+
+        async def fetch_detail(_client, url, **kwargs):
+            return "<main><h1>Stale role</h1></main>"
+
+        config = _validated_title_matched_url_scan(self.CONFIG)
+        assert config is not None
+        with (
+            patch(
+                "src.shared.http_retry.fetch_text_page_with_retry",
+                side_effect=fetch_detail,
+            ),
+            pytest.raises(ValueError, match="first unmatched title: 'Current role'"),
+        ):
+            await _extract_title_matched_url_scan(
+                listing,
+                "https://careers.example.com/jobs",
+                MagicMock(),
+                config,
+                None,
+            )
+
+    async def test_dom_discover_preserves_title_matched_urls(self):
+        listing = """
+        <section id="jobs">
+          <a href="https://forms.example/apply">Bilingual agent</a>
+          <a href="https://forms.example/apply">Trilingual agent</a>
+        </section>
+        """
+        details = {
+            "/jobs/vacancy-1": "<main><h1>Trilingual agent</h1></main>",
+            "/jobs/vacancy-2": "<main><h1>Bilingual agent</h1></main>",
+        }
+
+        def respond(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/jobs":
+                return httpx.Response(200, text=listing)
+            if request.url.path in details:
+                return httpx.Response(200, text=details[request.url.path])
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(respond),
+            follow_redirects=True,
+        ) as client:
+            urls = await dom_discover(
+                {
+                    "board_url": "https://careers.example.com/jobs",
+                    "metadata": {
+                        "url_filter": r"/jobs/vacancy-\d+$",
+                        "title_matched_url_scan": {
+                            **self.CONFIG,
+                            "listing_title_selector": "#jobs a",
+                        },
+                    },
+                },
+                client,
+            )
+
+        assert urls == {
+            "https://careers.example.com/jobs/vacancy-1",
+            "https://careers.example.com/jobs/vacancy-2",
+        }
 
 
 class TestOracleAdfJobIds:
