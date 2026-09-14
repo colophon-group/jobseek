@@ -97,6 +97,9 @@ updates:
       # dependency_file_content_not_changed for this crawler entry before
       # invoking uv; sibling uv projects still receive Pillow updates.
       - dependency-name: "pillow"
+      # CairoSVG is LGPL-3.0-or-later. The repository's dependency-review
+      # policy intentionally denies LGPL outside the scoped Sharp binaries.
+      - dependency-name: "cairosvg"
 
   - package-ecosystem: "uv"
     directory: "/apps/crawler/ws-package"
@@ -105,6 +108,9 @@ updates:
       day: "monday"
       time: "05:15"
       timezone: "Etc/UTC"
+    ignore:
+      # Keep this lock aligned with the crawler license boundary above.
+      - dependency-name: "cairosvg"
 
   - package-ecosystem: "uv"
     directory: "/apps/web/script"

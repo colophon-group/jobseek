@@ -895,8 +895,6 @@ async def _process_one_enrich_scrape(
             # B0 does not emit auxiliary writes outside its one fenced
             # posting transaction. Misses remain operator telemetry only.
             loc_resolver.drain_location_misses()
-        elif write_fence is None:
-            await lookups._flush_location_misses(loc_resolver, pool)
         else:
             try:
                 await lookups._flush_location_misses(loc_resolver, pool)
@@ -1204,8 +1202,6 @@ async def _process_one_scrape(
             # B0 has no unfenced auxiliary write after its authoritative
             # posting transaction; discard telemetry misses locally.
             loc_resolver.drain_location_misses()
-        elif write_fence is None:
-            await lookups._flush_location_misses(loc_resolver, pool)
         else:
             try:
                 await lookups._flush_location_misses(loc_resolver, pool)

@@ -670,16 +670,17 @@ async def fetch_with_retry(
     encoding: str | None = None,
     transient_403: bool = False,
     retryable_statuses: Collection[int] = (),
+    end_of_pagination_statuses: Collection[int] = END_OF_PAGINATION_STATUSES,
+    fail_on_nonretryable_status: bool = False,
 ) -> str | None:
     """Fetch ``url`` and return its text body.
 
     Returns:
         - ``str`` (truncated to ``max_chars`` when the limit is not
           ``None``) on HTTP 200 with a **non-empty** body.
-        - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination), or
-          any other non-retryable 4xx (caller should treat as "no more
-          content here" — same semantic as the prior tolerant
-          ``fetch_page_text``).
+        - ``None`` on statuses in ``end_of_pagination_statuses`` (404/410
+          by default), or any other non-retryable 4xx unless
+          ``fail_on_nonretryable_status`` is enabled.
 
     Raises:
         :exc:`PaginationFetchError` when *retries* attempts have all
@@ -720,6 +721,10 @@ async def fetch_with_retry(
     into the same retry-and-fail contract.  SiteGround, for example, serves
     crawler-IP captcha shells as HTTP 202; a DOM monitor must not record that
     response as a healthy empty board.
+
+    Root-document callers can pass ``end_of_pagination_statuses=()`` and
+    ``fail_on_nonretryable_status=True``. This preserves the lenient child-
+    pagination default while making an explicit error document fail closed.
 
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` between
     retries — exponential with full jitter. Defaults to ~0.5–1s,
@@ -795,7 +800,7 @@ async def fetch_with_retry(
                     url=url,
                     attempt=attempt + 1,
                 )
-            elif resp.status_code in END_OF_PAGINATION_STATUSES:
+            elif resp.status_code in end_of_pagination_statuses:
                 return None
             elif is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
                 last_exc = None  # status-only, no exception
@@ -826,12 +831,21 @@ async def fetch_with_retry(
                 # ``fetch_page_text`` behaviour and return None so the
                 # caller stops paginating without flagging the run as a
                 # failure. Logged so anomalies are observable.
+                if fail_on_nonretryable_status:
+                    raise PaginationFetchError(
+                        url,
+                        attempts=attempt + 1,
+                        last_status=resp.status_code,
+                        last_location=resp.headers.get("location"),
+                    )
                 log.warning(
                     "http_retry.non_retryable_status",
                     url=url,
                     status=resp.status_code,
                 )
                 return None
+        except PaginationFetchError:
+            raise
         except Exception as exc:  # httpx.TimeoutException, NetworkError, etc.
             # TDM-Reservation (#2842) is a publisher policy decision, not
             # a transient failure — never retry, propagate to the monitor

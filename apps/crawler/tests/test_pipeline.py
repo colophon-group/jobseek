@@ -733,6 +733,161 @@ async def test_process_scrape_work_drops_when_post_scrape_schedule_is_null(mock_
     reschedule.assert_not_awaited()
 
 
+@pytest.mark.parametrize(
+    ("ssl_verify", "use_proxy", "skip_ssl", "expects_owned_client"),
+    [
+        (True, False, False, False),
+        (True, True, False, True),
+        (False, False, False, True),
+        (False, True, False, True),
+        (True, True, True, False),
+    ],
+)
+@pytest.mark.asyncio
+async def test_process_scrape_work_honors_http_transport_config(
+    mock_redis,
+    ssl_verify,
+    use_proxy,
+    skip_ssl,
+    expects_owned_client,
+):
+    """Redis workers must use the same configured transport as batch scraping."""
+    from datetime import UTC, datetime
+
+    from src.workers.pipeline import _process_scrape_work
+
+    posting_id = "12345678-abcd-4def-8123-1234567890ab"
+    domain = "proxy-required.example.com"
+    work = rq.ScrapeWork(
+        posting_id=posting_id,
+        source_url=f"https://{domain}/job/one",
+        board_id="board-transport",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        domain=domain,
+    )
+
+    local_pool = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow = AsyncMock(
+        side_effect=[
+            {"is_active": True, "next_scrape_at": datetime.now(UTC)},
+            {"is_active": True, "next_scrape_at": None},
+        ]
+    )
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+
+    scraper_config = {
+        key: True for key, enabled in (("proxy", use_proxy), ("skip_ssl", skip_ssl)) if enabled
+    }
+    await mock_redis.hset(
+        f"board:{work.board_id}",
+        mapping={
+            "crawler_type": "dom",
+            "metadata": json.dumps(
+                {
+                    "scraper_type": "dom",
+                    "scraper_config": scraper_config,
+                    "ssl_verify": ssl_verify,
+                }
+            ),
+        },
+    )
+
+    shared_http = AsyncMock(name="shared_http")
+    configured_http = AsyncMock(name="configured_http")
+    process_one = AsyncMock(return_value=(True, 0.5))
+    create_client = MagicMock(return_value=configured_http)
+
+    with (
+        patch("src.processing.scrape._process_one_scrape", new=process_one),
+        patch("src.shared.http.create_http_client", new=create_client),
+        patch(
+            "src.workers.pipeline._record_scrape_host_outcome",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        await _process_scrape_work(
+            structlog.get_logger().bind(worker_id=1),
+            work,
+            local_pool,
+            http=shared_http,
+            browser=False,
+        )
+
+    expected_http = configured_http if expects_owned_client else shared_http
+    assert process_one.await_args.args[2] is expected_http
+    if expects_owned_client:
+        create_client.assert_called_once_with(
+            verify=ssl_verify,
+            use_proxy=use_proxy,
+        )
+        configured_http.aclose.assert_awaited_once()
+    else:
+        create_client.assert_not_called()
+        shared_http.aclose.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_scrape_work_closes_owned_http_after_exception(mock_redis):
+    """A failed proxy scrape must not leak its per-task connection pool."""
+    from datetime import UTC, datetime
+
+    from src.workers.pipeline import _process_scrape_work
+
+    posting_id = "12345678-abcd-4def-8123-1234567890ac"
+    domain = "proxy-required.example.com"
+    work = rq.ScrapeWork(
+        posting_id=posting_id,
+        source_url=f"https://{domain}/job/two",
+        board_id="board-transport-error",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        domain=domain,
+    )
+    local_pool = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow = AsyncMock(return_value={"is_active": True, "next_scrape_at": datetime.now(UTC)})
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    local_pool.acquire = MagicMock(return_value=acq_ctx)
+    await mock_redis.hset(
+        f"board:{work.board_id}",
+        mapping={
+            "crawler_type": "dom",
+            "metadata": json.dumps({"scraper_type": "dom", "scraper_config": {"proxy": True}}),
+        },
+    )
+
+    configured_http = AsyncMock(name="configured_http")
+    with (
+        patch(
+            "src.processing.scrape._process_one_scrape",
+            new=AsyncMock(side_effect=RuntimeError("scrape failed")),
+        ),
+        patch(
+            "src.shared.http.create_http_client",
+            return_value=configured_http,
+        ),
+        patch("src.workers.pipeline.reschedule_task", new=AsyncMock()),
+    ):
+        await _process_scrape_work(
+            structlog.get_logger().bind(worker_id=1),
+            work,
+            local_pool,
+            http=AsyncMock(),
+            browser=False,
+        )
+
+    configured_http.aclose.assert_awaited_once()
+
+
 @pytest.mark.asyncio
 async def test_process_scrape_work_reroutes_render_aware_scraper_to_browser(mock_redis):
     """Slim workers must reroute ``render: true`` scrapers to browser workers.

@@ -1696,20 +1696,45 @@ async def _process_scrape_work(
             return
 
         execution_class = "browser" if browser else "http"
-        with (
-            bind_runtime_egress("detail", execution_class),
-            track_request_hosts() as host_tracker,
-        ):
-            success, duration = await _process_one_scrape(
-                item,
-                local_pool,
-                http,
-                scraper_type,
-                scraper_config,
-                pw=pw,
-                scrape_step=scrape_step,
-                scrape_interval=scrape_work.scrape_interval_hours,
+        scrape_ssl_verify = bool(metadata.get("ssl_verify", True))
+        scrape_options = scraper_config or {}
+        scrape_use_proxy = bool(scrape_options.get("proxy"))
+        scrape_skip_ssl = bool(scrape_options.get("skip_ssl"))
+        owned_http: httpx.AsyncClient | None = None
+        effective_http = http
+        # ``scrape_one.client_for`` already creates the single configured
+        # client when skip_ssl is set (including skip_ssl + proxy). Select an
+        # override here only for worker-level transport settings that inner
+        # dispatch cannot otherwise see. This keeps the already-correct batch
+        # path from growing nested clients while honoring proxy-only Redis
+        # work. See #9167.
+        if not scrape_skip_ssl and (not scrape_ssl_verify or scrape_use_proxy):
+            from src.shared.http import create_http_client
+
+            owned_http = create_http_client(
+                verify=scrape_ssl_verify,
+                use_proxy=scrape_use_proxy,
             )
+            effective_http = owned_http
+
+        try:
+            with (
+                bind_runtime_egress("detail", execution_class),
+                track_request_hosts() as host_tracker,
+            ):
+                success, duration = await _process_one_scrape(
+                    item,
+                    local_pool,
+                    effective_http,
+                    scraper_type,
+                    scraper_config,
+                    pw=pw,
+                    scrape_step=scrape_step,
+                    scrape_interval=scrape_work.scrape_interval_hours,
+                )
+        finally:
+            if owned_http is not None:
+                await owned_http.aclose()
 
         circuit_open_until = await _record_scrape_host_outcome(
             scrape_work.board_id,
