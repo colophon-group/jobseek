@@ -112,6 +112,7 @@ def test_numeric_linkedin_identity_is_opted_in_only_for_new_boards() -> None:
         "dxc-technology-careers-fds",
         "dxc-technology-careers-ma-linkedin",
         "dxc-technology-careers-vn-linkedin",
+        "xcmg-linkedin-global",
     }
 
 
