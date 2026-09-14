@@ -2710,6 +2710,20 @@ test("Dependabot updates and groups the pnpm workspace from its root", () => {
   assert.doesNotMatch(npmConfig, /group-by: "dependency-name"/);
 });
 
+test("Dependabot suppresses CairoSVG updates at both LGPL-gated lockfiles", () => {
+  for (const directory of ["/apps/crawler", "/apps/crawler/ws-package"]) {
+    const escapedDirectory = directory.replaceAll("/", "\\/");
+    const uvConfig = dependabotConfig.match(
+      new RegExp(
+        `  - package-ecosystem: "uv"\\n([\\s\\S]*?directory: "${escapedDirectory}"[\\s\\S]*?)(?=\\n  - package-ecosystem:)`,
+      ),
+    )?.[1];
+
+    assert.ok(uvConfig, `missing uv Dependabot configuration for ${directory}`);
+    assert.match(uvConfig, /ignore:\n[\s\S]*- dependency-name: "cairosvg"/);
+  }
+});
+
 test("the pnpm workspace has one JavaScript lockfile authority", () => {
   assert.equal(existsSync("pnpm-lock.yaml"), true);
   assert.equal(existsSync("apps/trace-viewer/package-lock.json"), false);
