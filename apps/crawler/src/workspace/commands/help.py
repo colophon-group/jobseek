@@ -1821,6 +1821,21 @@ dom — Link or Listing-Row Extraction (fallback)
                    Requires render=true. Single-page only; incompatible with
                    link_selector, rich_rows, empty-state configuration,
                    pagination, and include_board_url.
+    title_matched_url_scan
+                   For static first-party listings that publish authoritative
+                   role titles but send every role to one shared application
+                   form while stable numbered detail pages remain available.
+                   The monitor scans a bounded same-origin URL space and emits
+                   a detail URL only when its title matches exactly one current
+                   listing title. All current titles must match or the cycle
+                   fails closed. Config:
+                   {"listing_title_selector": "#jobs a[aria-label]",
+                    "detail_title_selector": "main h1",
+                    "url_template": "https://example.com/jobs/vacancy-{index}",
+                    "start": 1, "max_scan": 20}.
+                   Static single-page only; incompatible with actions,
+                   pagination, link_selector, rich_rows, script_json_links,
+                   empty-state configuration, and include_board_url.
     empty_selector Optional CSS selector for a stable, explicit empty-state
                    element. When configured, a zero-link page succeeds only
                    if this selector matches; otherwise the cycle fails closed.
