@@ -653,6 +653,24 @@ class TestValidateCsvs:
         errors = validate_csvs()
         assert any("Invalid monitor_config JSON" in str(e) for e in errors)
 
+    def test_invalid_generic_rss_pagination_is_rejected(self, tmp_path, monkeypatch):
+        cfg = (
+            '"{""preset"": ""generic"", ""feed_url"": ""https://example.com/jobs.rss"", '
+            '""pagination"": {""param_name"": ""page"", ""page_size"": 20}}"'
+        )
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com/careers,rss,{cfg},skip,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert any("Invalid RSS monitor_config" in str(error) for error in errors)
+
     def test_invalid_scraper_config_json(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
@@ -1129,12 +1147,11 @@ class TestSafranBoardConfig:
 
 
 class TestBnpParibasBoardConfig:
-    """BNP Paribas's global WordPress listing is WAF-gated on Hetzner."""
+    """BNP's WAF-blocked detail pages must not be reintroduced as required work."""
 
-    def test_global_board_uses_fail_closed_proxy_pagination_and_dom_details(self):
+    def test_global_board_uses_bounded_first_party_rss_without_detail_scraping(self):
         import json
 
-        from src.core.scrapers.dom import parse_html
         from src.shared.constants import get_data_dir
         from src.shared.csv_io import read_csv
 
@@ -1142,51 +1159,28 @@ class TestBnpParibasBoardConfig:
         row = next((r for r in rows if r["board_slug"] == "bnp-paribas-global"), None)
         assert row is not None, "bnp-paribas-global row missing from boards.csv"
         assert row["board_url"] == ("https://group.bnpparibas/en/careers/all-job-offers")
-        assert row["monitor_type"] == "dom"
-        assert row["scraper_type"] == "dom"
+        assert row["monitor_type"] == "rss"
+        assert row["scraper_type"] == "skip"
+        assert row["scraper_config"] == ""
 
         monitor_config = json.loads(row["monitor_config"])
-        scraper_config = json.loads(row["scraper_config"])
-        assert monitor_config["render"] is False
-        assert monitor_config["proxy"] is True
+        assert monitor_config["preset"] == "generic"
+        assert monitor_config["feed_url"] == ("https://group.bnpparibas/en/careers/rss/offers")
+        assert monitor_config["render"] is True
+        assert monitor_config["headless"] is False
+        assert monitor_config["persistent_context"] is True
+        assert monitor_config["channel"] == "chrome"
+        assert monitor_config["wait"] == "domcontentloaded"
+        assert "proxy" not in monitor_config
         assert monitor_config["rescrape_policy"] == "never"
+        assert monitor_config["description_mode"] == "title_employment_location"
         assert monitor_config["pagination"] == {
             "param_name": "page",
             "start": 1,
             "increment": 1,
+            "page_size": 20,
             "max_pages": 1000,
-            "transient_403": True,
         }
-        assert scraper_config["render"] is False
-        assert scraper_config["proxy"] is True
-
-        sample_html = """
-        <main>
-          <h1>London - Long Internship 2026 - ABS/CLO Trading</h1>
-          <dl>
-            <dt>Brand</dt><dd>BNP Paribas CIB</dd>
-            <dt>Schedule</dt><dd>Full-Time/Part-Time</dd>
-            <dt>Location</dt><dd>London, England, United Kingdom</dd>
-          </dl>
-          <p>Last update 13.08.2026</p>
-          <h2>Business Area</h2>
-          <p>BNP Paribas is a leading bank in Europe with an international reach.</p>
-          <h2>Job Purpose</h2>
-          <p>Support the ABS/CLO trading team and improve desk infrastructure.</p>
-          <h2>Requirements</h2>
-          <ul><li>Good understanding of financial markets.</li></ul>
-          <h2>Offers you may be interested in</h2>
-          <p>Another role</p>
-        </main>
-        """
-        content = parse_html(sample_html, scraper_config)
-        assert content.title == "London - Long Internship 2026 - ABS/CLO Trading"
-        assert content.employment_type is None
-        assert content.locations == ["London, England, United Kingdom"]
-        assert content.date_posted == "13.08.2026"
-        assert "Support the ABS/CLO trading team" in content.description
-        assert "Good understanding of financial markets" in content.description
-        assert "Another role" not in content.description
 
 
 class TestLgtGroupBoardConfig:

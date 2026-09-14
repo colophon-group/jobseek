@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import json
 import xml.etree.ElementTree as ET
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
 
 import httpx
@@ -10,7 +11,7 @@ import pytest
 
 import src.core.monitors.rss as rss_monitor
 from src.core.monitor import MonitorResult, monitor_one
-from src.core.monitors import DiscoveredJob
+from src.core.monitors import DiscoveredJob, monitor_needs_browser
 from src.core.monitors.rss import (
     RssFeedNotXml,
     _add_pagination,
@@ -26,6 +27,7 @@ from src.core.monitors.rss import (
     _hr_manager_position_data,
     _parse_feed,
     _parse_generic_item,
+    _parse_generic_title_employment_location_item,
     _parse_governmentjobs_item,
     _parse_sf_item,
     _parse_sf_legacy_xml_item,
@@ -538,6 +540,66 @@ class TestParseGenericItem:
         item = ET.fromstring(xml)
         result = _parse_generic_item(item)
         assert result.metadata is None
+
+    @pytest.mark.parametrize(
+        ("description", "employment_type", "location"),
+        [
+            (
+                "Senior Engineer | Permanent | Zurich, Zurich, Switzerland",
+                "Permanent",
+                "Zurich, Zurich, Switzerland",
+            ),
+            (
+                "Business Analyst | Brussels, Brussels, Belgium",
+                None,
+                "Brussels, Brussels, Belgium",
+            ),
+        ],
+    )
+    def test_strict_title_employment_location_summary(self, description, employment_type, location):
+        item = _make_item(
+            f"""
+            <title><![CDATA[Senior Engineer]]></title>
+            <link>https://example.com/jobs/3</link>
+            <description><![CDATA[{description}]]></description>
+            <pubDate>Mon, 14 Sep 2026 12:00:00 GMT</pubDate>
+            """
+            if description.startswith("Senior Engineer")
+            else f"""
+            <title><![CDATA[Business Analyst]]></title>
+            <link>https://example.com/jobs/3</link>
+            <description><![CDATA[{description}]]></description>
+            <pubDate>Mon, 14 Sep 2026 12:00:00 GMT</pubDate>
+            """
+        )
+
+        result = _parse_generic_title_employment_location_item(item)
+
+        assert result is not None
+        assert result.description is None
+        assert result.employment_type == employment_type
+        assert result.locations == [location]
+        assert result.date_posted == "Mon, 14 Sep 2026 12:00:00 GMT"
+
+    @pytest.mark.parametrize(
+        "description",
+        [
+            "Different title | Permanent | Zurich, Switzerland",
+            "Senior Engineer",
+            "Senior Engineer | Permanent | Zurich | Unexpected",
+        ],
+    )
+    def test_strict_summary_rejects_upstream_format_changes(self, description):
+        item = _make_item(
+            f"""
+            <title>Senior Engineer</title>
+            <link>https://example.com/jobs/3</link>
+            <description><![CDATA[{description}]]></description>
+            """
+        )
+
+        with pytest.raises(ValueError, match="RSS structured summary"):
+            _parse_generic_title_employment_location_item(item)
 
 
 class TestHrManagerPreset:
@@ -1772,6 +1834,320 @@ class TestDiscover:
                     {
                         "board_url": "https://example.com/open-positions/",
                         "metadata": {"preset": "wp_job_manager"},
+                    },
+                    client,
+                )
+
+    async def test_generic_numbered_pagination_starts_at_page_one_and_stops_on_short_page(self):
+        pages = {
+            "1": _rss_xml(
+                """
+                <item><title>Job 1</title><link>https://example.com/job/1</link></item>
+                <item><title>Job 2</title><link>https://example.com/job/2</link></item>
+                """
+            ),
+            "2": _rss_xml(
+                "<item><title>Job 3</title><link>https://example.com/job/3</link></item>"
+            ),
+        }
+        requested_pages: list[str] = []
+
+        def handler(request):
+            page = request.url.params["page"]
+            requested_pages.append(page)
+            return httpx.Response(200, text=pages[page])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "preset": "generic",
+                        "feed_url": "https://example.com/jobs.rss",
+                        "pagination": {
+                            "param_name": "page",
+                            "start": 1,
+                            "increment": 1,
+                            "page_size": 2,
+                            "max_pages": 3,
+                        },
+                    },
+                },
+                client,
+            )
+
+        assert [job.url for job in jobs] == [
+            "https://example.com/job/1",
+            "https://example.com/job/2",
+            "https://example.com/job/3",
+        ]
+        assert requested_pages == ["1", "2"]
+
+    async def test_generic_browser_pagination_parses_raw_cdata_in_one_context(self, monkeypatch):
+        pages = {
+            "1": _rss_xml(
+                """
+                <item>
+                  <title><![CDATA[Engineer 1]]></title>
+                  <link>https://example.com/job/1</link>
+                  <description><![CDATA[
+                    Engineer 1 | Permanent | Zurich, Switzerland
+                  ]]></description>
+                </item>
+                <item>
+                  <title><![CDATA[Engineer 2]]></title>
+                  <link>https://example.com/job/2</link>
+                  <description><![CDATA[Engineer 2 | Geneva, Switzerland]]></description>
+                </item>
+                """
+            ),
+            "2": _rss_xml(
+                """
+                <item>
+                  <title><![CDATA[Engineer 3]]></title>
+                  <link>https://example.com/job/3</link>
+                  <description><![CDATA[Engineer 3 | Contract | Basel, Switzerland]]></description>
+                </item>
+                """
+            ),
+        }
+        requested_pages: list[str] = []
+        opened_contexts = 0
+
+        class FakeRequest:
+            @staticmethod
+            def is_navigation_request():
+                return True
+
+        class FakeResponse:
+            def __init__(self, body: str, frame):
+                self._body = body.encode()
+                self.frame = frame
+                self.request = FakeRequest()
+
+            async def body(self):
+                return self._body
+
+            async def all_headers(self):
+                return {"content-type": "application/rss+xml"}
+
+        class FakePage:
+            def __init__(self):
+                self.main_frame = object()
+                self.listeners = []
+
+            def on(self, event, listener):
+                assert event == "response"
+                self.listeners.append(listener)
+
+            def remove_listener(self, event, listener):
+                assert event == "response"
+                self.listeners.remove(listener)
+
+        fake_page = FakePage()
+
+        @asynccontextmanager
+        async def fake_open_page(_pw, _config, *, use_proxy, target_url):
+            nonlocal opened_contexts
+            assert use_proxy is False
+            assert target_url == "https://example.com/jobs.rss"
+            opened_contexts += 1
+            yield fake_page
+
+        async def fake_navigate(page, url, _config):
+            page_number = url.rsplit("=", 1)[1]
+            requested_pages.append(page_number)
+            response = FakeResponse(pages[page_number], page.main_frame)
+            for listener in tuple(page.listeners):
+                listener(response)
+
+        monkeypatch.setattr("src.shared.browser.open_page", fake_open_page)
+        monkeypatch.setattr("src.shared.browser.navigate", fake_navigate)
+
+        jobs = await discover(
+            {
+                "board_url": "https://example.com/careers",
+                "metadata": {
+                    "preset": "generic",
+                    "feed_url": "https://example.com/jobs.rss",
+                    "render": True,
+                    "description_mode": "title_employment_location",
+                    "pagination": {
+                        "param_name": "page",
+                        "page_size": 2,
+                        "max_pages": 3,
+                    },
+                },
+            },
+            AsyncMock(),
+            pw=object(),
+        )
+
+        assert opened_contexts == 1
+        assert requested_pages == ["1", "2"]
+        assert [(job.title, job.employment_type, job.locations) for job in jobs] == [
+            ("Engineer 1", "Permanent", ["Zurich, Switzerland"]),
+            ("Engineer 2", None, ["Geneva, Switzerland"]),
+            ("Engineer 3", "Contract", ["Basel, Switzerland"]),
+        ]
+        assert monitor_needs_browser("rss", {"render": True}) is True
+
+    async def test_generic_numbered_pagination_accepts_empty_terminal_page(self):
+        full_page = _rss_xml(
+            """
+            <item><title>Job 1</title><link>https://example.com/job/1</link></item>
+            <item><title>Job 2</title><link>https://example.com/job/2</link></item>
+            """
+        )
+        requested_pages: list[str] = []
+
+        def handler(request):
+            page = request.url.params["page"]
+            requested_pages.append(page)
+            return httpx.Response(200, text=full_page if page == "1" else _rss_xml(""))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "preset": "generic",
+                        "feed_url": "https://example.com/jobs.rss",
+                        "pagination": {
+                            "param_name": "page",
+                            "page_size": 2,
+                            "max_pages": 2,
+                        },
+                    },
+                },
+                client,
+            )
+
+        assert len(jobs) == 2
+        assert requested_pages == ["1", "2"]
+
+    async def test_generic_numbered_pagination_rejects_full_configured_cap(self):
+        full_page = _rss_xml(
+            """
+            <item><title>Job 1</title><link>https://example.com/job/1</link></item>
+            <item><title>Job 2</title><link>https://example.com/job/2</link></item>
+            """
+        )
+
+        def handler(_request):
+            return httpx.Response(200, text=full_page)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError, match="PaginatedFeedPageLimitExceeded"):
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "generic",
+                            "feed_url": "https://example.com/jobs.rss",
+                            "pagination": {
+                                "param_name": "page",
+                                "page_size": 2,
+                                "max_pages": 1,
+                            },
+                        },
+                    },
+                    client,
+                )
+
+    async def test_generic_numbered_pagination_rejects_repeated_full_page(self):
+        full_page = _rss_xml(
+            """
+            <item><title>Job 1</title><link>https://example.com/job/1</link></item>
+            <item><title>Job 2</title><link>https://example.com/job/2</link></item>
+            """
+        )
+
+        def handler(_request):
+            return httpx.Response(200, text=full_page)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError, match="RepeatedPaginatedFeedPage"):
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "generic",
+                            "feed_url": "https://example.com/jobs.rss",
+                            "pagination": {
+                                "param_name": "page",
+                                "page_size": 2,
+                                "max_pages": 3,
+                            },
+                        },
+                    },
+                    client,
+                )
+
+    async def test_generic_numbered_pagination_rejects_failed_required_page(self, monkeypatch):
+        full_page = _rss_xml(
+            """
+            <item><title>Job 1</title><link>https://example.com/job/1</link></item>
+            <item><title>Job 2</title><link>https://example.com/job/2</link></item>
+            """
+        )
+
+        async def no_sleep(_delay):
+            return None
+
+        def handler(request):
+            if request.url.params["page"] == "1":
+                return httpx.Response(200, text=full_page)
+            return httpx.Response(503)
+
+        monkeypatch.setattr(rss_monitor, "_sleep", no_sleep)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "generic",
+                            "feed_url": "https://example.com/jobs.rss",
+                            "pagination": {
+                                "param_name": "page",
+                                "page_size": 2,
+                                "max_pages": 3,
+                            },
+                        },
+                    },
+                    client,
+                )
+
+        assert exc_info.value.last_status == 503
+        assert exc_info.value.url.endswith("page=2")
+
+    @pytest.mark.parametrize(
+        "pagination",
+        [
+            {"param_name": "page", "page_size": 20},
+            {"param_name": "bad param", "page_size": 20, "max_pages": 10},
+            {"param_name": "page", "page_size": True, "max_pages": 10},
+            {"param_name": "page", "page_size": 20, "max_pages": 0},
+            {
+                "param_name": "page",
+                "page_size": 20,
+                "max_pages": 10,
+                "unexpected": 1,
+            },
+        ],
+    )
+    async def test_generic_numbered_pagination_rejects_invalid_config(self, pagination):
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _r: None)) as client:
+            with pytest.raises(ValueError, match="RSS generic pagination"):
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "generic",
+                            "feed_url": "https://example.com/jobs.rss",
+                            "pagination": pagination,
+                        },
                     },
                     client,
                 )
