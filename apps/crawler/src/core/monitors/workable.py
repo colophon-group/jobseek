@@ -3,6 +3,7 @@
 Public APIs:
   List:      POST https://apply.workable.com/api/v3/accounts/{slug}/jobs
   Fallback:  GET  https://apply.workable.com/{slug}/{llms.txt,jobs.md}
+             GET  https://www.workable.com/api/accounts/{slug}
 
 The list endpoint returns metadata (title, location, department) but not the
 full job description.  The monitor discovers job URLs only; a dedicated
@@ -37,6 +38,7 @@ _RETRY_ATTEMPTS = 4
 _RETRY_BASE_DELAY = 5.0
 _MARKDOWN_RETRY_ATTEMPTS = 3
 _MARKDOWN_RETRY_BASE_DELAY = 0.5
+_PUBLIC_API_MAX_BYTES = 64 * 1024 * 1024
 
 _PAGE_PATTERNS = [
     re.compile(r"apply\.workable\.com/([\w-]+)"),
@@ -72,6 +74,10 @@ def _jobs_markdown_url(slug: str) -> str:
     return f"https://apply.workable.com/{slug}/jobs.md"
 
 
+def _public_api_url(slug: str) -> str:
+    return f"https://www.workable.com/api/accounts/{slug}"
+
+
 def _parse_markdown_count(markdown: str) -> int:
     match = re.search(r"All open roles .*?:\s*([\d,]+) current openings\b", markdown)
     if match is None:
@@ -85,6 +91,58 @@ def _parse_markdown_job_urls(slug: str, markdown: str) -> set[str]:
         rf"https://apply\.workable\.com/{re.escape(slug)}/jobs/view/([\w-]+)\.md\b"
     )
     return {_job_url(slug, match.group(1)) for match in pattern.finditer(markdown)}
+
+
+def _parse_public_api_job_urls(slug: str, data: dict) -> set[str]:
+    """Extract a complete canonical URL set from Workable's public JSON feed."""
+    jobs = data.get("jobs")
+    if not isinstance(jobs, list):
+        raise ValueError("Workable public jobs API did not return a jobs list")
+
+    urls: set[str] = set()
+    for item in jobs:
+        if not isinstance(item, dict):
+            raise ValueError("Workable public jobs API returned a non-object job")
+        shortcode = item.get("shortcode")
+        if not isinstance(shortcode, str) or not re.fullmatch(r"[\w-]+", shortcode):
+            raise ValueError("Workable public jobs API returned a job without a shortcode")
+        urls.add(_job_url(slug, shortcode))
+
+    return urls
+
+
+async def _public_api_inventory(
+    slug: str,
+    advertised: int,
+    client: httpx.AsyncClient,
+) -> set[str]:
+    """Fetch the legacy public JSON feed and verify it against ``llms.txt``."""
+    data = await fetch_json_page_with_retry(
+        client,
+        _public_api_url(slug),
+        expect_shape=dict,
+        retries=_MARKDOWN_RETRY_ATTEMPTS,
+        base_delay=_MARKDOWN_RETRY_BASE_DELAY,
+        follow_redirects=True,
+        max_bytes=_PUBLIC_API_MAX_BYTES,
+        log_event="workable.public_api_backoff",
+        sleep=asyncio.sleep,
+    )
+    urls = _parse_public_api_job_urls(slug, data)
+    rows = data["jobs"]
+    if len(urls) != advertised:
+        raise ValueError(
+            "Workable public inventory count mismatch: "
+            f"llms.txt advertises {advertised}, public API contains {len(urls)} unique jobs"
+        )
+    log.info(
+        "workable.public_api_listed",
+        slug=slug,
+        postings=len(urls),
+        rows=len(rows),
+        duplicate_rows=len(rows) - len(urls),
+    )
+    return urls
 
 
 async def _markdown_inventory(
@@ -125,6 +183,12 @@ async def _markdown_inventory(
     )
     assert jobs_markdown is not None
     urls = _parse_markdown_job_urls(slug, jobs_markdown)
+    if not urls and advertised > 0 and "Use the search endpoint to filter results" in jobs_markdown:
+        # Large Workable tenants now return search instructions instead of an
+        # unfiltered table from jobs.md. The documented public JSON endpoint
+        # still exposes the complete list; keep the llms.txt count as an
+        # independent completeness check before accepting it.
+        urls = await _public_api_inventory(slug, advertised, client)
     if len(urls) != advertised:
         raise ValueError(
             "Workable Markdown inventory count mismatch: "
