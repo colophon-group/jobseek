@@ -22,7 +22,7 @@ transactions (no long-held locks), idempotent across re-runs.
 
 Usage::
 
-    uv run crawler retry-stalled-scrapes [--max-age-days N] [--dry-run]
+    uv run crawler retry-stalled-scrapes [--max-age-days N] [--board-slug SLUG] [--dry-run]
 
 The default ``--max-age-days`` is 7.
 
@@ -77,14 +77,18 @@ _DEFAULT_MAX_AGE_DAYS = 7
 # because ``_RECORD_SCRAPE_SUCCESS`` resets the counter).
 _PROMOTE_STALLED_BATCH = """
 WITH targets AS (
-    SELECT id FROM job_posting
-    WHERE is_active = true
-      AND next_scrape_at IS NULL
-      AND scrape_failures >= 3
-      AND last_scraped_at IS NOT NULL
-      AND last_scraped_at < now() - ($1::int * interval '1 day')
-    ORDER BY id
-    LIMIT $2
+    SELECT jp.id FROM job_posting jp
+    WHERE jp.is_active = true
+      AND jp.next_scrape_at IS NULL
+      AND jp.scrape_failures >= 3
+      AND jp.last_scraped_at IS NOT NULL
+      AND jp.last_scraped_at < now() - ($1::int * interval '1 day')
+      AND (
+          $2::text[] IS NULL
+          OR jp.board_id IN (SELECT id FROM job_board WHERE board_slug = ANY($2::text[]))
+      )
+    ORDER BY jp.id
+    LIMIT $3
 )
 UPDATE job_posting jp
 SET next_scrape_at = now()
@@ -97,27 +101,38 @@ RETURNING jp.id::text, jp.source_url, jp.board_id::text, jp.description_r2_hash
 # above — a dry-run reports exactly what the next non-dry-run would
 # touch (modulo concurrent writes between the two invocations).
 _COUNT_STALLED = """
-SELECT count(*) FROM job_posting
-WHERE is_active = true
-  AND next_scrape_at IS NULL
-  AND scrape_failures >= 3
-  AND last_scraped_at IS NOT NULL
-  AND last_scraped_at < now() - ($1::int * interval '1 day')
+SELECT count(*) FROM job_posting jp
+WHERE jp.is_active = true
+  AND jp.next_scrape_at IS NULL
+  AND jp.scrape_failures >= 3
+  AND jp.last_scraped_at IS NOT NULL
+  AND jp.last_scraped_at < now() - ($1::int * interval '1 day')
+  AND (
+      $2::text[] IS NULL
+      OR jp.board_id IN (SELECT id FROM job_board WHERE board_slug = ANY($2::text[]))
+  )
 """
 
 
-async def count_stalled_scrapes(pool: asyncpg.Pool, max_age_days: int) -> int:
+async def count_stalled_scrapes(
+    pool: asyncpg.Pool,
+    max_age_days: int,
+    *,
+    board_slugs: list[str] | None = None,
+) -> int:
     """Return the count of postings that match the stalled-scrape criteria.
 
     Used by ``--dry-run`` to report how many rows would be affected
     without making any writes.
     """
-    return await pool.fetchval(_COUNT_STALLED, max_age_days)
+    return await pool.fetchval(_COUNT_STALLED, max_age_days, board_slugs)
 
 
 async def retry_stalled_scrapes(
     pool: asyncpg.Pool,
     max_age_days: int = _DEFAULT_MAX_AGE_DAYS,
+    *,
+    board_slugs: list[str] | None = None,
 ) -> int:
     """Reset ``next_scrape_at`` and enqueue scrapes for stalled postings.
 
@@ -134,7 +149,12 @@ async def retry_stalled_scrapes(
     # flips ``next_scrape_at`` to non-NULL on the targets, dropping
     # them out of the WHERE for subsequent iterations.
     while True:
-        rows = await pool.fetch(_PROMOTE_STALLED_BATCH, max_age_days, _RETRY_BATCH_SIZE)
+        rows = await pool.fetch(
+            _PROMOTE_STALLED_BATCH,
+            max_age_days,
+            board_slugs,
+            _RETRY_BATCH_SIZE,
+        )
         if not rows:
             break
         log.info("retry_stalled.batch", count=len(rows))
@@ -171,7 +191,16 @@ async def retry_stalled_scrapes(
                 enqueued += 1
 
     if enqueued == 0:
-        log.info("retry_stalled.none_needed", max_age_days=max_age_days)
+        log.info(
+            "retry_stalled.none_needed",
+            max_age_days=max_age_days,
+            board_slugs=board_slugs,
+        )
     else:
-        log.info("retry_stalled.enqueued", enqueued=enqueued, max_age_days=max_age_days)
+        log.info(
+            "retry_stalled.enqueued",
+            enqueued=enqueued,
+            max_age_days=max_age_days,
+            board_slugs=board_slugs,
+        )
     return enqueued

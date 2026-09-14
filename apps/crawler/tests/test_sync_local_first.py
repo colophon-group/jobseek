@@ -105,6 +105,12 @@ def _patch_local_writes(monkeypatch, events: list[str]) -> None:
 
     monkeypatch.setattr(
         sync,
+        "ensure_location_name_lookup_index",
+        lambda *args, **kwargs: record("local_index", *args, **kwargs),
+    )
+
+    monkeypatch.setattr(
+        sync,
         "sync_lookup_tables_local",
         lambda *args, **kwargs: record("local_lookups", *args, **kwargs),
     )
@@ -156,7 +162,7 @@ async def test_default_sync_never_opens_legacy_mirror_and_commits_before_redis(
     await sync.run_sync()
 
     assert events.index("local_commit") < events.index("redis")
-    assert events[:2] == ["local_tx_enter", "local_lookups"]
+    assert events[:3] == ["local_index", "local_tx_enter", "local_lookups"]
 
 
 async def test_explicit_legacy_mode_without_credential_fails_before_local_writes(

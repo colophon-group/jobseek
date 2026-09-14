@@ -60,6 +60,23 @@ _RECOVERY_SCHEDULE_STATUSES = frozenset({"quarantined", "gone_pending", "gone"})
 log = structlog.get_logger()
 _MOUNTINFO_PATH = Path("/proc/self/mountinfo")
 
+_LOCATION_LOOKUP_INDEX_NAME = "idx_location_name_lower_lookup"
+_LOCATION_LOOKUP_INDEX_DDL = (
+    "CREATE INDEX CONCURRENTLY "
+    f"{_LOCATION_LOOKUP_INDEX_NAME} "
+    "ON location_name (lower(name)) INCLUDE (location_id)"
+)
+_LOCATION_LOOKUP_INDEX_STATE_SQL = f"""
+SELECT i.indisvalid, i.indisready, i.indpred IS NULL AS unfiltered,
+       i.indisunique IS FALSE AS non_unique, am.amname AS access_method,
+       pg_get_indexdef(i.indexrelid) AS definition
+FROM pg_index i
+JOIN pg_class index_class ON index_class.oid = i.indexrelid
+JOIN pg_am am ON am.oid = index_class.relam
+WHERE i.indexrelid = to_regclass('public.{_LOCATION_LOOKUP_INDEX_NAME}')
+"""
+_LOCATION_LOOKUP_INDEX_LOCK = "jobseek:location-name-lower-lookup-index"
+
 # The web app filters every list/search/facet surface by
 # `is_active:true && has_content:!=false` (POSTING_BASE_FILTER, see
 # apps/web/src/lib/search/typesense-filters.ts). Precomputed taxonomy and
@@ -72,6 +89,57 @@ _POSTING_FLOW_FILTER = "has_content:!=false"
 
 class CompanyTypesenseSyncError(RuntimeError):
     """Fail-closed company index error that must abort crawler sync."""
+
+
+def _location_lookup_index_is_exact(
+    row: Mapping[str, object] | asyncpg.Record | None,
+) -> bool:
+    if (
+        row is None
+        or row["indisvalid"] is not True
+        or row["indisready"] is not True
+        or row["unfiltered"] is not True
+        or row["non_unique"] is not True
+        or row["access_method"] != "btree"
+    ):
+        return False
+    definition = " ".join(str(row["definition"]).lower().split())
+    return (
+        " on public.location_name " in definition
+        and "(lower(name)) include (location_id)" in definition
+    )
+
+
+async def ensure_location_name_lookup_index(conn: asyncpg.Connection) -> bool:
+    """Install the resolver's covering expression index when taxonomy exists.
+
+    Alembic intentionally skips this index on an empty crawler-only schema
+    because the location taxonomy is bootstrapped separately. Every installed
+    non-dry-run sync calls this outside its data transaction, guaranteeing
+    eventual installation and repair of canceled or wrong-shaped artifacts.
+    """
+    table_exists = await conn.fetchval("SELECT to_regclass('public.location_name') IS NOT NULL")
+    if table_exists is not True:
+        log.info("sync.location_lookup_index.skipped", reason="table_missing")
+        return False
+
+    await conn.execute(f"SELECT pg_advisory_lock(hashtext('{_LOCATION_LOOKUP_INDEX_LOCK}'))")
+    try:
+        state = await conn.fetchrow(_LOCATION_LOOKUP_INDEX_STATE_SQL)
+        if _location_lookup_index_is_exact(state):
+            return False
+
+        if state is not None:
+            await conn.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {_LOCATION_LOOKUP_INDEX_NAME}")
+        await conn.execute(_LOCATION_LOOKUP_INDEX_DDL)
+
+        installed = await conn.fetchrow(_LOCATION_LOOKUP_INDEX_STATE_SQL)
+        if not _location_lookup_index_is_exact(installed):
+            raise RuntimeError("location lookup index installation did not verify")
+        log.info("sync.location_lookup_index.installed")
+        return True
+    finally:
+        await conn.execute(f"SELECT pg_advisory_unlock(hashtext('{_LOCATION_LOOKUP_INDEX_LOCK}'))")
 
 
 def _decode_mountinfo_path(value: str) -> str:
@@ -3340,6 +3408,8 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
     try:
         async with local_pool.acquire() as local_conn:
             local_connection = cast("asyncpg.Connection", local_conn)
+            if not dry_run:
+                await ensure_location_name_lookup_index(local_connection)
             if ts_client and not dry_run:
                 name_maps_before = await _snapshot_name_maps(local_connection)
 

@@ -46,7 +46,7 @@ class TestCountStalled:
         pool.fetchval = AsyncMock(return_value=42)
         out = await count_stalled_scrapes(pool, max_age_days=7)
         assert out == 42
-        pool.fetchval.assert_awaited_once_with(_COUNT_STALLED, 7)
+        pool.fetchval.assert_awaited_once_with(_COUNT_STALLED, 7, None)
 
     @pytest.mark.asyncio
     async def test_dry_run_zero(self):
@@ -54,6 +54,18 @@ class TestCountStalled:
         pool.fetchval = AsyncMock(return_value=0)
         out = await count_stalled_scrapes(pool, max_age_days=14)
         assert out == 0
+
+    @pytest.mark.asyncio
+    async def test_dry_run_scopes_exact_board_slugs(self):
+        pool = AsyncMock()
+        pool.fetchval = AsyncMock(return_value=3)
+        slugs = ["board-one", "board-two"]
+
+        out = await count_stalled_scrapes(pool, max_age_days=0, board_slugs=slugs)
+
+        assert out == 3
+        pool.fetchval.assert_awaited_once_with(_COUNT_STALLED, 0, slugs)
+        assert "job_board WHERE board_slug = ANY($2::text[])" in _COUNT_STALLED
 
 
 class TestRetryStalledScrapes:
@@ -203,6 +215,20 @@ class TestRetryStalledScrapes:
         assert first_call.args[1] == 30
 
     @pytest.mark.asyncio
+    async def test_passes_board_scope_to_query(self, monkeypatch):
+        pool = _make_pool([])
+        mock_redis = AsyncMock()
+        monkeypatch.setattr("src.retry_stalled.get_redis", lambda: mock_redis)
+        monkeypatch.setattr("src.retry_stalled.enqueue_scrape", AsyncMock())
+        slugs = ["practice-one", "practice-two"]
+
+        await retry_stalled_scrapes(pool, max_age_days=0, board_slugs=slugs)
+
+        first_call = pool.fetch.await_args_list[0]
+        assert first_call.args[1:] == (0, slugs, 5000)
+        assert "job_board WHERE board_slug = ANY($2::text[])" in _PROMOTE_STALLED_BATCH
+
+    @pytest.mark.asyncio
     async def test_null_r2_hash_passes_empty_string(self, monkeypatch):
         """``description_r2_hash`` may be NULL (transient-3-strike where
         every scrape failed before the first successful R2 upload). The
@@ -238,6 +264,8 @@ class TestSqlContract:
         # Age cutoff is parameterised — paranoia against accidentally
         # hardcoding the 7-day default into the query.
         assert "$1::int * interval '1 day'" in sql
+        assert "$2::text[] IS NULL" in sql
+        assert "slug = ANY($2::text[])" in sql
         # UPDATE-RETURNING shape: emit the columns enqueue_scrape needs.
         assert "RETURNING" in sql
         assert "jp.id" in sql
@@ -255,6 +283,8 @@ class TestSqlContract:
             "scrape_failures >= 3",
             "last_scraped_at IS NOT NULL",
             "$1::int * interval '1 day'",
+            "$2::text[] IS NULL",
+            "slug = ANY($2::text[])",
         ):
             assert predicate in promote, f"PROMOTE missing {predicate!r}"
             assert predicate in count, f"COUNT missing {predicate!r}"
