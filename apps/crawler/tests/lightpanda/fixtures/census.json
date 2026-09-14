@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 7522,
-    "boards_sha256": "5d8cf852906f357783161999cc56c80ee500badb952150278a130a53669bd252",
+    "boards_row_count": 7529,
+    "boards_sha256": "c8d4ac836bb78b07f93e274fb2d85139087600aa3b10140011a146970e6888b6",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "07c8b9269b9f33ad55c2b6a33b07602922f17433b3c418e1275d31077a9a30bc",
+  "manifest_sha256": "f4ee775ad5e9775804e6e300c2695ef92897ef908f1bfb0459d0ab48761a88eb",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -1443,12 +1443,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
       "crawler_type": "dayforce",
-      "digest_sha256": "24da94fe10f98fe632fc1aff8b76bc4f45ed3bd86e8d4bd7b1e28d8db2ca5328",
+      "digest_sha256": "2a575cf53d16cfa080792fc8bc28eff93fdc4b8c0bb967a18d86e1cca4295059",
       "fixture": "synthetic.network_session.v1",
       "id": "profile.monitor.dayforce.67ea27130d4bd513",
       "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "3feff6f01ca445e4ca48d2f94dcdfc0b6d76692b0292caccdd676573d8d7c49b",
+      "source_count": 2,
+      "source_refs_sha256": "af9f8593fbc0743628d686f7eefdf0555e873157e4dc2113ebcfef6f99728301",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -6660,12 +6660,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "71af8679effa34adf4669829bff2a837eecd1ac6f02252dedf7c0ce91a3314de",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "3f6529bc1fac9904203d91897eff8d045fcabee2c1a1142593f1ace538402af2",
+      "digest_sha256": "dc61e158421e1031ada0cc49be39ef21b78016b3e4eb05a4c17be51a8f45b5a5",
       "fixture": "synthetic.network_session.v1",
       "id": "registry.monitor.api_sniffer",
       "profile_kind": "registry",
-      "source_count": 303,
-      "source_refs_sha256": "167e18aeb6a219321ec4173f6811fdc325038488dc06f9946096832e36037c75",
+      "source_count": 305,
+      "source_refs_sha256": "3c80849ad28979b9c57013830407bc0e24250f66f564a825521d043101290ec5",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -6771,12 +6771,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "cc05f900a54c05788ef4b400ea4d32359eceea3b8f330872ed80072a767f6b02",
       "crawler_type": "dayforce",
-      "digest_sha256": "3345979731beb10cef6fe423621da3128139cf11da558325ee609e21fdbeb9da",
+      "digest_sha256": "5607d34bad93cb7381a5e33ddc5f4c257292b06229a8227e9a9b61cddcb40b22",
       "fixture": "synthetic.network_session.v1",
       "id": "registry.monitor.dayforce",
       "profile_kind": "registry",
-      "source_count": 7,
-      "source_refs_sha256": "91503df0497abe36cf2e90ce2a9487a02fd4f163ef8ef74226ddf588f5221972",
+      "source_count": 8,
+      "source_refs_sha256": "d11d3e17a540318da96ed0eff0bf19bfb399742967abf7a18104c9fb83ab5f32",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -6982,9 +6982,9 @@
     }
   ],
   "summary": {
-    "browser_board_count": 491,
-    "browser_required_step_count": 647,
-    "configured_profile_occurrence_count": 649,
+    "browser_board_count": 492,
+    "browser_required_step_count": 648,
+    "configured_profile_occurrence_count": 650,
     "configured_record_count": 277,
     "registry_record_count": 16,
     "total_record_count": 293,
