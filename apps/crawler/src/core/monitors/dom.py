@@ -70,9 +70,19 @@ _MAX_SCRIPT_JSON_TEMPLATE_LENGTH = 2_048
 _MAX_SCRIPT_JSON_VALUE_LENGTH = 512
 _NYC_COUNCIL_JOBS_USER_AGENT = "jobseek-crawler (+https://jseek.co/)"
 
+_ONCLICK_LOCATION_RE = re.compile(
+    r"^\s*(?:javascript:\s*)?window\.location(?:\.href)?\s*=\s*"
+    r"(?P<quote>['\"])(?P<url>[^'\"]{1,2048})(?P=quote)\s*;?\s*$",
+    re.IGNORECASE,
+)
+_ERECRUIT_HOST_SUFFIX = ".erecruit.co"
+_ERECRUIT_CATEGORIES_PATH = "/candidateapp/jobs/categories"
+_ERECRUIT_ONCLICK_SELECTOR = "tr.item[onclick]"
+
 _SCRIPT_JSON_NAME_RE = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
 _MAX_ORACLE_ADF_JOB_IDS = 500
 _MAX_ORACLE_ADF_ID_SCAN = 5_000
+_MAX_TITLE_MATCHED_URL_SCAN = 500
 
 _DEADLINE_MONTH_ALIASES = {
     "januar": "January",
@@ -928,6 +938,47 @@ def _rexx_url_filter(url: str) -> str | None:
         return None
     origin = f"{parsed.scheme}://{parsed.netloc}"
     return rf"^{re.escape(origin)}{_REXX_JOB_PATH_FILTER}"
+
+
+def _erecruit_probe_config(html: str, url: str) -> dict | None:
+    """Return a strict row-action preset for eRecruit category listings."""
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    host = (parsed.hostname or "").casefold()
+    if (
+        parsed.scheme != "https"
+        or not host.endswith(_ERECRUIT_HOST_SUFFIX)
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.path.rstrip("/").casefold() != _ERECRUIT_CATEGORIES_PATH
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+
+    origin = f"https://{parsed.netloc}"
+    detail_pattern = (
+        rf"(?i)^{re.escape(origin)}/candidateapp/jobs/view/"
+        r"[a-z0-9][a-z0-9._-]{0,127}/?$"
+    )
+    matcher = re.compile(detail_pattern)
+    urls = _extract_onclick_links_static(
+        html,
+        url,
+        _ERECRUIT_ONCLICK_SELECTOR,
+        matcher,
+    )
+    if not urls:
+        return None
+    return {
+        "urls": len(urls),
+        "onclick_selector": _ERECRUIT_ONCLICK_SELECTOR,
+        "url_filter": detail_pattern,
+    }
 
 
 def _vagas_probe_config(url: str) -> dict | None:
@@ -1994,6 +2045,44 @@ def _extract_links_static(
     return urls
 
 
+def _extract_onclick_links_static(
+    html: str,
+    base_url: str,
+    selector: str,
+    url_matcher: re.Pattern | None = None,
+) -> set[str]:
+    """Extract fail-closed ``window.location`` URLs from selected elements.
+
+    Some server-rendered job tables make the entire row clickable without
+    emitting an anchor.  The selector is explicit and every matched row must
+    use the bounded assignment shape below; drift fails the cycle instead of
+    silently returning a partial inventory.  Inline targets are restricted to
+    the listing origin because they are executable page content, not ordinary
+    outbound links.
+    """
+    tree = LexborHTMLParser(html)
+    urls: set[str] = set()
+    for node in tree.css(selector):
+        raw = node.attributes.get("onclick")
+        if not raw:
+            raise ValueError("DOM monitor onclick_selector matched a row without onclick")
+        match = _ONCLICK_LOCATION_RE.fullmatch(html_unescape(raw))
+        if match is None:
+            raise ValueError("DOM monitor onclick_selector matched an unsupported action")
+        absolute = urljoin(base_url, html_unescape(match.group("url")))
+        parsed = urlsplit(absolute)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise ValueError("DOM monitor onclick_selector produced an invalid URL")
+        if not same_origin(absolute, base_url):
+            raise ValueError("DOM monitor onclick_selector produced a cross-origin URL")
+        if url_matcher is not None and url_matcher.search(absolute) is None:
+            raise ValueError("DOM monitor onclick_selector URL failed url_filter")
+        if absolute in urls:
+            raise ValueError("DOM monitor onclick_selector produced duplicate URLs")
+        urls.add(absolute)
+    return urls
+
+
 def _validated_script_json_links(value: object) -> _ScriptJsonLinksConfig | None:
     """Validate rich or URL-only discovery from one inline JSON array."""
     if value is None:
@@ -2639,6 +2728,15 @@ class _OracleAdfJobIdsConfig:
     max_scan: int
 
 
+@dataclass(frozen=True, slots=True)
+class _TitleMatchedUrlScanConfig:
+    listing_title_selector: str
+    detail_title_selector: str
+    url_template: str
+    start: int
+    max_scan: int
+
+
 def _validated_oracle_adf_job_ids(value: object) -> _OracleAdfJobIdsConfig | None:
     """Validate the narrow Oracle ADF list-to-detail identity bridge."""
     if value is None:
@@ -2667,6 +2765,73 @@ def _validated_oracle_adf_job_ids(value: object) -> _OracleAdfJobIdsConfig | Non
             f"max_items and {_MAX_ORACLE_ADF_ID_SCAN}"
         )
     return _OracleAdfJobIdsConfig(max_items=max_items, max_scan=max_scan)
+
+
+def _validated_title_matched_url_scan(value: object) -> _TitleMatchedUrlScanConfig | None:
+    """Validate a bounded list-title to numbered-detail scan."""
+    if value is None:
+        return None
+    allowed = {
+        "listing_title_selector",
+        "detail_title_selector",
+        "url_template",
+        "start",
+        "max_scan",
+    }
+    if not isinstance(value, dict) or set(value) - allowed:
+        raise ValueError(
+            "DOM monitor title_matched_url_scan must contain only listing_title_selector, "
+            "detail_title_selector, url_template, start, and max_scan"
+        )
+    listing_title_selector = _validate_css_selector(
+        value.get("listing_title_selector"),
+        name="title_matched_url_scan.listing_title_selector",
+    )
+    detail_title_selector = _validate_css_selector(
+        value.get("detail_title_selector"),
+        name="title_matched_url_scan.detail_title_selector",
+    )
+    if listing_title_selector is None or detail_title_selector is None:
+        raise ValueError(
+            "DOM monitor title_matched_url_scan requires listing_title_selector and "
+            "detail_title_selector"
+        )
+
+    url_template = value.get("url_template")
+    if (
+        not isinstance(url_template, str)
+        or len(url_template) > _MAX_SCRIPT_JSON_TEMPLATE_LENGTH
+        or url_template.count("{index}") != 1
+        or "\x00" in url_template
+    ):
+        raise ValueError(
+            "DOM monitor title_matched_url_scan.url_template must contain one {index} placeholder"
+        )
+    start = value.get("start", 1)
+    max_scan = value.get("max_scan", 20)
+    for name, number in (("start", start), ("max_scan", max_scan)):
+        if not isinstance(number, int) or isinstance(number, bool) or number < 1:
+            raise ValueError(
+                f"DOM monitor title_matched_url_scan.{name} must be a positive integer"
+            )
+    if max_scan > _MAX_TITLE_MATCHED_URL_SCAN:
+        raise ValueError(
+            "DOM monitor title_matched_url_scan.max_scan must be at most "
+            f"{_MAX_TITLE_MATCHED_URL_SCAN}"
+        )
+    sample_url = url_template.replace("{index}", str(start))
+    parsed = urlparse(sample_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(
+            "DOM monitor title_matched_url_scan.url_template must produce an absolute HTTP URL"
+        )
+    return _TitleMatchedUrlScanConfig(
+        listing_title_selector=listing_title_selector,
+        detail_title_selector=detail_title_selector,
+        url_template=url_template,
+        start=start,
+        max_scan=max_scan,
+    )
 
 
 _RichRowsConfig = tuple[
@@ -3301,6 +3466,98 @@ async def _paginate_rich_rows(
         value += increment
 
     return list(jobs_by_url.values())
+
+
+async def _extract_title_matched_url_scan(
+    html: str,
+    board_url: str,
+    client: httpx.AsyncClient,
+    config: _TitleMatchedUrlScanConfig,
+    url_matcher: re.Pattern | None,
+) -> set[str]:
+    """Match authoritative listing titles to a bounded numbered detail space."""
+
+    def normalize(value: str) -> str:
+        return " ".join(value.split())
+
+    tree = LexborHTMLParser(html)
+    expected_titles = [
+        normalize(node.text(separator=" ", strip=True))
+        for node in tree.css(config.listing_title_selector)
+    ]
+    if not expected_titles or any(not title for title in expected_titles):
+        raise ValueError("DOM monitor title_matched_url_scan matched no listing titles")
+    if len(expected_titles) > _MAX_TITLE_MATCHED_URL_SCAN:
+        raise ValueError("DOM monitor title_matched_url_scan listing exceeds its URL cap")
+    if len(expected_titles) != len(set(expected_titles)):
+        raise ValueError("DOM monitor title_matched_url_scan listing titles must be unique")
+    if len(expected_titles) > config.max_scan:
+        raise ValueError(
+            "DOM monitor title_matched_url_scan listing has more titles than max_scan "
+            f"({len(expected_titles)} > {config.max_scan})"
+        )
+
+    from src.shared.http_retry import fetch_text_page_with_retry
+
+    semaphore = asyncio.Semaphore(8)
+
+    async def fetch_candidate(index: int) -> tuple[str, str | None]:
+        candidate_url = config.url_template.replace("{index}", str(index))
+        if not same_origin(board_url, candidate_url):
+            raise ValueError(
+                "DOM monitor title_matched_url_scan generated a cross-origin detail URL"
+            )
+        if url_matcher is not None and url_matcher.search(candidate_url) is None:
+            raise ValueError(
+                "DOM monitor title_matched_url_scan generated a URL that failed url_filter: "
+                f"{candidate_url}"
+            )
+        async with semaphore:
+            candidate_html = await fetch_text_page_with_retry(
+                client,
+                candidate_url,
+                follow_redirects=False,
+                retryable_statuses={202, 401, 403},
+                require_nonempty=True,
+                max_bytes=_BROWSER_FETCH_MAX_CHARS,
+            )
+        return candidate_url, candidate_html
+
+    candidates = await asyncio.gather(
+        *(fetch_candidate(index) for index in range(config.start, config.start + config.max_scan))
+    )
+    expected = set(expected_titles)
+    matched: dict[str, str] = {}
+    for candidate_url, candidate_html in candidates:
+        if candidate_html is None:
+            continue
+        _raise_if_bot_challenge(candidate_url, candidate_html)
+        title_nodes = LexborHTMLParser(candidate_html).css(config.detail_title_selector)
+        if not title_nodes:
+            continue
+        if len(title_nodes) != 1:
+            raise ValueError(
+                "DOM monitor title_matched_url_scan detail title selector must match exactly once: "
+                f"{candidate_url}"
+            )
+        title = normalize(title_nodes[0].text(separator=" ", strip=True))
+        if title not in expected:
+            continue
+        previous_url = matched.get(title)
+        if previous_url is not None:
+            raise ValueError(
+                "DOM monitor title_matched_url_scan matched one listing title to multiple URLs: "
+                f"{title!r} ({previous_url}, {candidate_url})"
+            )
+        matched[title] = candidate_url
+
+    missing = [title for title in expected_titles if title not in matched]
+    if missing:
+        raise ValueError(
+            "DOM monitor title_matched_url_scan could not match the complete listing within "
+            f"max_scan={config.max_scan}; first unmatched title: {missing[0]!r}"
+        )
+    return set(matched.values())
 
 
 # ---------------------------------------------------------------------------
@@ -4560,6 +4817,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     if rexx is not None:
         return rexx
 
+    erecruit = _erecruit_probe_config(html, url)
+    if erecruit is not None:
+        return erecruit
+
     talentlink = _talentlink_probe_config(html, url)
     if talentlink is not None:
         return talentlink
@@ -4650,7 +4911,15 @@ async def dom_discover(
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
     url_transform = metadata.get("url_transform")
     link_selector = _validate_link_selector(metadata.get("link_selector"))
+    onclick_selector = _validate_css_selector(
+        metadata.get("onclick_selector"), name="onclick_selector"
+    )
+    if link_selector is not None and onclick_selector is not None:
+        raise ValueError("DOM monitor link_selector and onclick_selector are mutually exclusive")
     oracle_adf_job_ids = _validated_oracle_adf_job_ids(metadata.get("oracle_adf_job_ids"))
+    title_matched_url_scan = _validated_title_matched_url_scan(
+        metadata.get("title_matched_url_scan")
+    )
     empty_selector = _validate_css_selector(metadata.get("empty_selector"), name="empty_selector")
     empty_states = _validated_empty_state_list(metadata.get("empty_states"))
     empty_text = metadata.get("empty_text")
@@ -4681,6 +4950,7 @@ async def dom_discover(
         or pagination
         or rich_rows is not None
         or link_selector is not None
+        or onclick_selector is not None
         or configured_empty_states
         or advertised_total is not None
         or metadata.get("include_board_url")
@@ -4694,15 +4964,42 @@ async def dom_discover(
         if (
             pagination
             or link_selector is not None
+            or onclick_selector is not None
             or rich_rows is not None
             or configured_empty_states
             or metadata.get("include_board_url")
         ):
             raise ValueError(
                 "DOM monitor oracle_adf_job_ids supports rendered single-page "
-                "discovery only and cannot be combined with link_selector, rich_rows, "
+                "discovery only and cannot be combined with link_selector, "
+                "onclick_selector, rich_rows, "
                 "empty-state configuration, pagination, or include_board_url"
             )
+    if onclick_selector is not None and (
+        render
+        or actions
+        or pagination
+        or rich_rows is not None
+        or metadata.get("include_board_url")
+        or metadata.get("fetch_url_transform")
+    ):
+        raise ValueError("DOM monitor onclick_selector supports static single-page discovery only")
+    if title_matched_url_scan is not None and (
+        render
+        or actions
+        or pagination
+        or oracle_adf_job_ids is not None
+        or rich_rows is not None
+        or script_json_links is not None
+        or link_selector is not None
+        or configured_empty_states
+        or advertised_total is not None
+        or metadata.get("include_board_url")
+        or metadata.get("fetch_url_transform")
+    ):
+        raise ValueError(
+            "DOM monitor title_matched_url_scan supports static single-page discovery only"
+        )
     if advertised_ranges is not None and (
         render
         or rich_rows is not None
@@ -4759,6 +5056,7 @@ async def dom_discover(
         or rich_rows is not None
         or advertised_total is not None
         or prospective_board is not None
+        or title_matched_url_scan is not None
         or require_jsonld_jobposting
         or require_unexpired_pdf is not None
         or require_pdf_text is not None
@@ -4791,14 +5089,19 @@ async def dom_discover(
     ):
         raise ValueError("DOM monitor advertised_total requires static link-selector discovery")
 
-    if inactive_detail_states and (render or pagination or link_selector is None):
+    if inactive_detail_states and (
+        render or pagination or (link_selector is None and onclick_selector is None)
+    ):
         raise ValueError(
-            "DOM monitor inactive_detail_states requires static single-page link-selector discovery"
+            "DOM monitor inactive_detail_states requires static single-page selector discovery"
         )
 
     if configured_empty_states:
-        if link_selector is None and rich_rows is None:
-            raise ValueError(f"DOM monitor {empty_state_name} requires link_selector or rich_rows")
+        if link_selector is None and onclick_selector is None and rich_rows is None:
+            raise ValueError(
+                f"DOM monitor {empty_state_name} requires link_selector, "
+                "onclick_selector, or rich_rows"
+            )
         if (
             (pagination and advertised_ranges is None)
             or metadata.get("include_board_url")
@@ -4934,7 +5237,10 @@ async def dom_discover(
                 # 500k listing-preview limit can cut a complete trailing row
                 # and make a partial inventory look healthy.
                 max_chars=None
-                if rich_rows is not None or script_json_links is not None
+                if rich_rows is not None
+                or script_json_links is not None
+                or onclick_selector is not None
+                or title_matched_url_scan is not None
                 else 500_000,
             )
         if not html:
@@ -4967,7 +5273,15 @@ async def dom_discover(
                 raise ValueError(
                     "DOM monitor Prospective positive inventory requires prospective_canonical_path"
                 )
-        if rich_rows is not None:
+        if title_matched_url_scan is not None:
+            urls = await _extract_title_matched_url_scan(
+                html,
+                board_url,
+                client,
+                title_matched_url_scan,
+                url_matcher,
+            )
+        elif rich_rows is not None:
             jobs = _extract_rich_rows_static(
                 html,
                 board_url,
@@ -5018,7 +5332,16 @@ async def dom_discover(
                 urls = {job.url for job in script_json_jobs}
             else:
                 urls = script_json_result
-        else:
+        elif onclick_selector is not None:
+            urls = _extract_onclick_links_static(
+                html,
+                fetch_board_url,
+                onclick_selector,
+                url_matcher,
+            )
+            if not urls and not configured_empty_states:
+                raise ValueError("DOM monitor onclick_selector matched no rows")
+        elif title_matched_url_scan is None:
             urls = _extract_links_static(html, fetch_board_url, url_matcher, link_selector)
         if configured_empty_states:
             _validate_explicit_empty_states(html, configured_empty_states, urls, board_url)

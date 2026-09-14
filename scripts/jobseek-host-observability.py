@@ -31,6 +31,7 @@ DEFAULT_ATS_INVENTORY_STATUS = Path("/var/lib/jobseek-ats-inventory/status/curre
 DEFAULT_CODEX_ERROR_REVIEW_STATUS = Path("/srv/jobseek-codex/state/error-review-status.json")
 DEFAULT_TYPESENSE_SNAPSHOT_ROOT = Path("/mnt/jobseek-typesense-backup")
 REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS = 6 * 60 * 60
+REDIS_CAPACITY_RETRY_SECONDS = 6 * 60 * 60
 POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
 POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
 WEB_POSTGRES_HELPER_IMAGE = (
@@ -375,6 +376,7 @@ def _collect_redis_capacity_metrics(
     """
     current = time.time() if now is None else now
     cache = state_dir / "redis-capacity.prom"
+    attempt = state_dir / "redis-capacity.last-attempt"
     cached = ""
     cache_age = float("inf")
     try:
@@ -389,7 +391,28 @@ def _collect_redis_capacity_metrics(
     if cached and cache_age <= REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS:
         available = True
     else:
+        last_attempt: float | None = None
         try:
+            parsed_attempt = float(attempt.read_text(encoding="utf-8").strip())
+            if 0 <= parsed_attempt <= current + 60:
+                last_attempt = parsed_attempt
+        except (FileNotFoundError, OSError, ValueError):
+            pass
+
+        retry_due = last_attempt is None or current - last_attempt >= REDIS_CAPACITY_RETRY_SECONDS
+        if not retry_due:
+            if cached:
+                lines.extend(
+                    line for line in cached.splitlines() if line.startswith("jobseek_redis_")
+                )
+            lines.append(_metric("jobseek_redis_capacity_snapshot_available", 0))
+            return
+
+        try:
+            # Record the attempt before spawning the worker-side command. A
+            # timeout, SIGKILL, or host sampler restart must not create a
+            # one-minute retry/OOM loop.
+            _atomic_write(attempt, f"{current:.6f}\n")
             result = _run(
                 [
                     "docker",
@@ -397,7 +420,7 @@ def _collect_redis_capacity_metrics(
                     "deploy-worker-1-1",
                     "/app/.venv/bin/crawler",
                     "redis-capacity",
-                    "inspect",
+                    "summary",
                     "--format",
                     "prometheus",
                 ],

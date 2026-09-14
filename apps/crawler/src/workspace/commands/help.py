@@ -1793,6 +1793,13 @@ dom — Link or Listing-Row Extraction (fallback)
                    Matching links are trusted as jobs, so this is useful when
                    stable job-card markup exists but URLs lack job keywords.
                    Example: "li.job-card a.details-link"
+    onclick_selector
+                   Optional CSS selector for static listing elements whose
+                   onclick attribute is a direct window.location assignment.
+                   Every selected action must produce a unique, same-origin
+                   URL and match url_filter when configured; any drift fails
+                   the cycle. Static single-page discovery only and mutually
+                   exclusive with link_selector. Example: "tr.item[onclick]"
     script_json_links
                    Extract detail URLs from one JSON array assigned to an
                    inline JavaScript variable when the page creates links only
@@ -1819,12 +1826,28 @@ dom — Link or Listing-Row Extraction (fallback)
                    {"max_items": 100, "max_scan": 1000}. Set the bounds to
                    cover expected inventory with ample headroom.
                    Requires render=true. Single-page only; incompatible with
-                   link_selector, rich_rows, empty-state configuration,
+                   link_selector, onclick_selector, rich_rows, empty-state configuration,
                    pagination, and include_board_url.
+    title_matched_url_scan
+                   For static first-party listings that publish authoritative
+                   role titles but send every role to one shared application
+                   form while stable numbered detail pages remain available.
+                   The monitor scans a bounded same-origin URL space and emits
+                   a detail URL only when its title matches exactly one current
+                   listing title. All current titles must match or the cycle
+                   fails closed. Config:
+                   {"listing_title_selector": "#jobs a[aria-label]",
+                    "detail_title_selector": "main h1",
+                    "url_template": "https://example.com/jobs/vacancy-{index}",
+                    "start": 1, "max_scan": 20}.
+                   Static single-page only; incompatible with actions,
+                   pagination, link_selector, rich_rows, script_json_links,
+                   empty-state configuration, and include_board_url.
     empty_selector Optional CSS selector for a stable, explicit empty-state
                    element. When configured, a zero-link page succeeds only
                    if this selector matches; otherwise the cycle fails closed.
-                   Requires link_selector and single-page extraction.
+                   Requires link_selector, onclick_selector, or rich_rows and
+                   single-page extraction.
     empty_text     Optional case-insensitive text that must occur inside the
                    matched empty_selector. Use when the element exists for
                    both empty and non-empty counts (for example, "0 jobs").
@@ -2027,9 +2050,14 @@ dom — Link or Listing-Row Extraction (fallback)
     server-rendered cards, while the auto-configured DOM scraper enriches the
     complete description from stable detail-page test IDs.
 
-  Discovery:   Extracts links matching link_selector when configured. Otherwise
+  Discovery:   Extracts links matching link_selector when configured, or strict
+               window.location row actions matching onclick_selector. Otherwise
                extracts all <a href> links and filters for URLs containing
                job/career/position/posting/opening/role/vacancy keywords.
+
+  eRecruit:    Canonical https://*.erecruit.co/candidateapp/Jobs/Categories
+               listings are auto-configured for their static clickable rows.
+               Only same-origin /candidateapp/Jobs/View/<id> actions are accepted.
 
   VAGAS.com:   trabalheconosco.vagas.com.br/{tenant} is detected without a
                page fetch because the origin blocks datacenter egress. The
@@ -2667,18 +2695,19 @@ personio — Personio XML Feed + HTML Fallback
   Zero jobs?  Verify slug — try the listing page in a browser"""
 
 MONITOR_RSS = """\
-rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
+rss — RSS 2.0 Feed Monitor + SuccessFactors variants
       (presets: successfactors, teamtailor, wp_job_manager, governmentjobs, hr_manager, generic)
 
   Feed:     GET {feed_url}
-  Returns:  Feeds: full job data. Legacy SuccessFactors: title, location,
-            posting date, and stable URL; static DOM enriches description.
+  Returns:  Feeds: full job data. Legacy and RMK SuccessFactors: title,
+            location, posting date, and stable URL; DOM enriches description.
             metadata: id and preset-specific fields
   Scraper:  Feeds are skipped. Legacy SuccessFactors automatically uses the
             static DOM scraper scoped to .joqReqDescription.
   Cap:      50,000 jobs
   Note:     One monitor type with multiple ATS presets:
             - successfactors: /googlefeed.xml (Google Base namespace)
+              Recruiting Marketing /services/recruiting/v1/jobs pagination,
               native static DWR pagination for /career?company=... boards,
               or strict NetSuite-hosted <Job-Listing> XML
             - teamtailor: /jobs.rss (offset-paginated)
@@ -2691,6 +2720,8 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
     {"preset": "successfactors", "feed_url": "https://jobs.sap.com/googlefeed.xml"}
     {"preset": "successfactors", "fetch_company": true,
      "job_filter": {"exclude": "(?i)subsidiary name"}}
+    {"preset": "successfactors", "variant": "rmk", "brand": "CPF",
+     "locale": "en_GB", "proxy": true}
     {"preset": "successfactors", "variant": "legacy",
      "host": "career5.successfactors.eu", "company": "1657261P"}
     {"preset": "successfactors", "variant": "legacy_xml",
@@ -2707,8 +2738,10 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors
                Defaults to "generic" when not set.
     feed_url   RSS URL. For known presets, ws probe can auto-fill this from
                the board URL; for generic feeds set it explicitly.
-    variant    SuccessFactors only: "feed", "legacy", or "legacy_xml".
+    variant    SuccessFactors only: "feed", "rmk", "legacy", or "legacy_xml".
                Legacy identities are auto-filled from strict provider URLs.
+    brand      RMK only: exact brandUrl tenant returned by the search API.
+    locale     RMK only: optional ll_CC locale; defaults to the board page.
     customer   HR Manager tenant alias. Auto-filled from a strict
                candidate.hr-manager.net vacancies URL.
     fetch_company  SuccessFactors feed only: fetch each public detail page and
