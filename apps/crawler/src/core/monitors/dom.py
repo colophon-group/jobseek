@@ -30,10 +30,11 @@ import httpx
 import structlog
 from selectolax.lexbor import LexborHTMLParser, LexborNode, SelectolaxError
 
-from src.core.monitors import DiscoveredJob, register
+from src.core.monitors import BoardGoneError, DiscoveredJob, register
 from src.core.monitors.raw import save_text_response
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.fetch_url import transformed_fetch_url
+from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 from src.shared.public_request_headers import (
     same_origin,
     validated_public_request_headers,
@@ -69,6 +70,7 @@ _MAX_SCRIPT_JSON_FIELD_LENGTH = 128
 _MAX_SCRIPT_JSON_TEMPLATE_LENGTH = 2_048
 _MAX_SCRIPT_JSON_VALUE_LENGTH = 512
 _NYC_COUNCIL_JOBS_USER_AGENT = "jobseek-crawler (+https://jseek.co/)"
+_BOARD_GONE_STATUSES = frozenset({404, 410})
 
 _ONCLICK_LOCATION_RE = re.compile(
     r"^\s*(?:javascript:\s*)?window\.location(?:\.href)?\s*=\s*"
@@ -3735,7 +3737,7 @@ async def _extract_links_rendered(
     """Navigate, run actions, and extract job links from a Playwright page."""
     board_url = metadata["_board_url"]
     browser_config = {k: v for k, v in metadata.items() if k in BROWSER_KEYS}
-    await navigate(page, board_url, browser_config)
+    await _navigate_board_root(page, board_url, browser_config)
     await run_actions(page, browser_config.get("actions", []))
 
     # SiteGround returns HTTP 202 followed by a meta-refresh into
@@ -3781,6 +3783,20 @@ async def _extract_links_rendered(
     return urls
 
 
+async def _navigate_board_root(page, board_url: str, browser_config: dict) -> None:
+    """Navigate a rendered board root with explicit retirement semantics."""
+    try:
+        await navigate(page, board_url, browser_config)
+    except BrowserNavigationHTTPStatusError as exc:
+        if exc.status in _BOARD_GONE_STATUSES:
+            raise BoardGoneError(
+                f"DOM board root returned HTTP {exc.status}",
+                url=exc.response_url,
+                status_code=exc.status,
+            ) from exc
+        raise
+
+
 async def _extract_rich_rows_rendered(
     page,
     metadata: dict,
@@ -3792,7 +3808,7 @@ async def _extract_rich_rows_rendered(
     """Render and extract authoritative rows, including browser-fetched tails."""
     board_url = metadata["_board_url"]
     browser_config = {k: v for k, v in metadata.items() if k in BROWSER_KEYS}
-    await navigate(page, board_url, browser_config)
+    await _navigate_board_root(page, board_url, browser_config)
     await run_actions(page, browser_config.get("actions", []))
 
     html = await safe_content(page)
@@ -4860,8 +4876,8 @@ async def dom_discover(
 
     ``include_board_url`` is an explicit escape hatch for boards whose URL
     is itself a job-detail document (for example, a directly linked PDF).
-    The normal fetch still runs first, so a removed document produces an
-    empty result and follows the regular gone-detection path.
+    The normal fetch still runs first, so a removed document enters the
+    recoverable board-gone confirmation path.
 
     ``fetch_url_transform`` rewrites only the static single-page listing read
     URL. Extracted URLs retain their fetched representation until the normal
@@ -5207,42 +5223,57 @@ async def dom_discover(
                 return truncated_rich_result(jobs)
             return jobs
     else:
-        if configured_empty_states:
-            from src.shared.http_retry import fetch_text_page_with_retry
+        from src.shared.http_retry import (
+            PaginationFetchError,
+            fetch_text_page_with_retry,
+            fetch_with_retry,
+        )
 
-            # The empty marker is authoritative and may follow large inline
-            # assets, but the body still needs a finite streaming cap before
-            # it is handed to the HTML parser.
-            html = await fetch_text_page_with_retry(
-                client,
-                fetch_board_url,
-                headers=request_headers or None,
-                public_headers=bool(request_headers),
-                retryable_statuses={202, 401, 403},
-                require_nonempty=True,
-                max_bytes=_MAX_EXPLICIT_EMPTY_BODY_BYTES,
-            )
-        else:
-            from src.shared.http_retry import fetch_with_retry
+        try:
+            if configured_empty_states:
+                # The empty marker is authoritative and may follow large inline
+                # assets, but the body still needs a finite streaming cap before
+                # it is handed to the HTML parser.
+                html = await fetch_text_page_with_retry(
+                    client,
+                    fetch_board_url,
+                    headers=request_headers or None,
+                    public_headers=bool(request_headers),
+                    retryable_statuses={202, 401, 403},
+                    end_of_pagination_statuses=(),
+                    require_nonempty=True,
+                    max_bytes=_MAX_EXPLICIT_EMPTY_BODY_BYTES,
+                )
+            else:
+                html = await fetch_with_retry(
+                    client,
+                    fetch_board_url,
+                    headers=request_headers or None,
+                    public_headers=bool(request_headers),
+                    transient_403=True,
+                    retryable_statuses={202},
+                    end_of_pagination_statuses=(),
+                    fail_on_nonretryable_status=True,
+                    encoding=encoding,
+                    # Rich rows are authoritative structured input. The shared
+                    # 500k listing-preview limit can cut a complete trailing row
+                    # and make a partial inventory look healthy.
+                    max_chars=None
+                    if rich_rows is not None
+                    or script_json_links is not None
+                    or onclick_selector is not None
+                    or title_matched_url_scan is not None
+                    else 500_000,
+                )
+        except PaginationFetchError as exc:
+            if exc.last_status in _BOARD_GONE_STATUSES:
+                raise BoardGoneError(
+                    f"DOM board root returned HTTP {exc.last_status}",
+                    url=fetch_board_url,
+                    status_code=exc.last_status,
+                ) from exc
+            raise
 
-            html = await fetch_with_retry(
-                client,
-                fetch_board_url,
-                headers=request_headers or None,
-                public_headers=bool(request_headers),
-                transient_403=True,
-                retryable_statuses={202},
-                encoding=encoding,
-                # Rich rows are authoritative structured input. The shared
-                # 500k listing-preview limit can cut a complete trailing row
-                # and make a partial inventory look healthy.
-                max_chars=None
-                if rich_rows is not None
-                or script_json_links is not None
-                or onclick_selector is not None
-                or title_matched_url_scan is not None
-                else 500_000,
-            )
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)
             if configured_empty_states:
