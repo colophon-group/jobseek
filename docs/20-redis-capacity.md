@@ -1,10 +1,12 @@
 # Redis capacity, cleanup, and recovery
 
-The crawler Redis instance is a derived scheduler/cache layer with a 1 GiB
+The crawler Redis instance is a derived scheduler/cache layer with a 3 GiB
 `maxmemory` limit and `noeviction`. This is intentional: silently evicting a
 config hash can strand queued work. The corresponding operator contract is to
-keep normal and recovery scenarios below 640 MiB, intervene at 75%, and page at
-90% before Redis rejects queue/config writes.
+keep the sum of family byte ceilings below 75% of `maxmemory`, intervene at
+75%, and page at 90% before Redis rejects queue/config writes. The container
+has a 4 GiB no-swap cgroup, leaving 1 GiB above the Redis data ceiling for
+allocator overhead and RDB copy-on-write.
 
 ## Production baseline and family budgets
 
@@ -12,19 +14,30 @@ The 2026-08-04 pre-cleanup inventory found 1,579,711 keys and 815,407,768 bytes
 used. Of 1,571,408 `scrape:<posting_id>` hashes, only 62,074 were referenced by
 a scrape queue, lease, or deadletter. The other 1,509,334 (96.05%) were derived
 configs left behind after terminal work. Their sampled mean was 505 bytes and
-their estimated footprint was 793,517,802 bytes.
+their estimated footprint was 793,517,802 bytes. The bounded cleanup restored
+the reachability invariant.
+
+By 2026-09-12, legitimate scheduler growth had overtaken the old capacity
+model: Redis held 1,757,024 reachable scrape configs, one exact orphan, and
+1,758,036 recurring scrape items. It used 1,048,151,584 bytes (97.62% of the
+old 1 GiB limit). Config and recurring-queue estimates accounted for nearly
+all of it, so orphan pruning was not a remedy. Local Postgres held 2,123,969
+active postings, which is the current durable-population upper bound used for
+sizing.
 
 The table records the lifecycle owner and agreed hard family budget. The
-six-hour `crawler redis-capacity inspect` snapshot publishes exact key/logical
-item counts and sampled byte estimates for every row. A family alerts at 80%
-of its key, item, or byte budget.
+six-hour `crawler redis-capacity summary` snapshot publishes exact key/logical
+item counts and sampled byte estimates for every row without enumerating queue
+members. It also publishes a conservative orphan lower bound. A family alerts
+at 80% of its key, item, or byte budget. The manual `inspect` action performs
+exact reachability classification in bounded-memory batches.
 
 | Family | Owner | TTL/lifecycle rule | 2026-08-04 keys/items and byte estimate | Budget |
 |---|---|---|---:|---:|
-| `scrape_config` | scrape scheduler | Persistent only while the ID is in a scrape queue, lease, or deadletter; enqueue and terminal deletion are atomic | 1,571,408 / 1,571,408; 793.5 MB | 600k items; 384 MiB |
+| `scrape_config` | scrape scheduler | Persistent only while the ID is in a scrape queue, lease, or deadletter; enqueue and terminal deletion are atomic | 1,757,025 / 1,757,025; 830.7 MB | 3m items; 1536 MiB |
 | `board_config` | `crawler sync` | One persistent hash per configured board; sync deletes disabled/retired boards | 5,700 / 5,700; 6.2 MB | 10k; 16 MiB |
 | `scrape_queue_first` | scrape scheduler | Persistent until claim moves the item to a lease | 6 keys / 6,869 items; 0.7 MB | 200k items; 64 MiB |
-| `scrape_queue_recurring` | scrape scheduler | Persistent until claim; reschedule returns it to this family | 385 / 55,227; 8.5 MB | 600k items; 96 MiB |
+| `scrape_queue_recurring` | scrape scheduler | Persistent until claim; reschedule returns it to this family | 1,573 queue keys / 1,758,036 items across scrape queues; 217.0 MB | 3m items; 512 MiB |
 | `monitor_queue_first` | monitor scheduler | Persistent until claim | Included in 957 monitor queue keys; <0.2 MB combined | 10k items; 16 MiB |
 | `monitor_queue_recurring` | monitor scheduler | Persistent until claim/reschedule | Included in 957 monitor queue keys; <0.2 MB combined | 10k items; 16 MiB |
 | `ready_queue` | queue Lua | Six fixed tier indexes rebuilt by enqueue/reschedule/claim | 6 keys; 0.1 MB | 20k domains; 16 MiB |
@@ -41,32 +54,36 @@ Use the current snapshot instead of carrying the baseline forward:
 
 ```bash
 cd apps/crawler
-uv run crawler redis-capacity inspect --format json
+uv run crawler redis-capacity summary --format json
 ```
 
 `MEMORY USAGE` is sampled from at most 128 keys per family; counts and ZSET
 item cardinalities are exact at SCAN time. Redis `SCAN` is non-blocking and the
-inventory intentionally avoids `KEYS`.
+scheduled summary intentionally avoids `KEYS` and `ZRANGE`. Its orphan lower
+bound subtracts all scrape queue, inflight, and deadletter items from config
+keys, plus every entry in the Lightpanda B0 legacy-ownership guard. Because
+lease/deadletter/guard counts may include duplicates, the result can understate
+orphans but cannot overstate them.
 
 ## Scenario budget
 
-Local Postgres is the durable authority. On 2026-08-04 it held 403,964 active,
-non-null scrape schedules. The largest observed 24-hour discovery count was
-55,387 and the trailing seven-day total was 117,122.
+Local Postgres is the durable authority. The current model uses 596.55 bytes
+per scheduled scrape, measured from the 2026-09-12 config and queue families.
+Recalculate it when schedule representation or cardinality changes materially.
 
 | Scenario | Scrape configs/items | Estimated total Redis memory | Decision |
 |---|---:|---:|---|
-| Normal after orphan cleanup | about 62k | under 96 MiB | Healthy |
-| Full scheduler rebuild | about 404k | under 320 MiB | Healthy |
-| Full rebuild plus seven-day worker outage | about 521k | under 440 MiB | Below 640 MiB operating budget |
-| Family hard ceiling | 600k | under 640 MiB aggregate | Stop growth/repair before continuing |
-| Intervention threshold | n/a | 75% of 1 GiB (768 MiB) | High-severity forecast alert |
-| Write-rejection threshold | n/a | `maxmemory` (1 GiB) | Critical; `noeviction` rejects writes |
+| 2026-09-12 observed | 1.757m | 0.976 GiB | 32.5% after the 3 GiB resize |
+| Current active-posting upper bound | 2.124m | 1.180 GiB projected | 39.3% of `maxmemory` |
+| Reviewed family hard ceiling | 3m | 1.667 GiB projected | 55.6% of `maxmemory` |
+| Sum of all family byte ceilings | n/a | 2220 MiB | 72.3% of `maxmemory`; below intervention |
+| Intervention threshold | n/a | 2.25 GiB | High-severity current/forecast alert at 75% |
+| Critical pressure threshold | n/a | 2.7 GiB | Critical page at 90% |
+| Write-rejection threshold | n/a | `maxmemory` (3 GiB) | `noeviction` rejects writes |
 
-The estimates apply the observed 505-byte config mean plus queue/index and
-board-family budgets, not only payload bytes. Recalculate this table if
-`maxmemory`, the hash schema, scrape policy, or seven-day discovery maximum
-changes materially.
+The projections include config and queue representation, not only payload
+bytes. The 3m family ceiling leaves about 876,000 schedules above the current
+active-posting upper bound and remains below the aggregate operating budget.
 
 ## Bounded orphan prune
 
@@ -92,9 +109,9 @@ After cleanup:
 uv run crawler redis-capacity inspect --format json
 ```
 
-Expected: every retained scrape hash is `reachable`, the orphan count settles
-below 10,000, no deadletter/queue depth drops unexpectedly, and used memory is
-below the 640 MiB operating budget.
+Expected: every retained scrape hash is `reachable`, the exact orphan count
+settles below 10,000, no deadletter/queue depth drops unexpectedly, and used
+memory is below the 75% intervention threshold.
 
 ## RDB restore and scheduler rebuild
 
@@ -111,7 +128,7 @@ Recovery order:
    the failed volume before replacing anything.
 2. Restore a known-good `dump.rdb` into the Redis volume, start Redis, and wait
    for `redis_loading` to return zero and the last background save status to be
-   `ok`. If no RDB is usable, start an empty Redis with the same 1 GiB
+   `ok`. If no RDB is usable, start an empty Redis with the same 3 GiB
    `noeviction` configuration.
 3. Run `crawler sync` to recreate board hashes, monitor schedules, delays, and
    ready indexes.
@@ -128,7 +145,7 @@ Recovery order:
    Continue until `complete` is true. The enqueue Lua atomically writes each
    config and queue representation, and existing schedules are deduplicated.
 6. Run the capacity inventory. Require zero missing configs for reachable IDs,
-   aggregate memory below 640 MiB, and no family over budget. Start workers and
+   aggregate memory below 75% of `maxmemory`, and no family over budget. Start workers and
    watch ready/inflight/deadletter depth plus write errors.
 
 The rebuild path is covered by fakeredis integration tests and must also be
@@ -161,7 +178,8 @@ evictions, and accepted a new write immediately after cleanup.
   15 percentage points before the existing critical 90% alert.
 - `RedisKeyFamilyBudgetHigh` identifies the family exceeding 80% of its byte,
   key, or item budget.
-- `RedisOrphanScrapeConfigs` detects lifecycle regression above 10,000 orphans.
+- `RedisOrphanScrapeConfigs` detects a conservative lifecycle-regression lower
+  bound above 10,000; confirm with the exact manual inventory before cleanup.
 - `RedisCapacitySnapshotStale` detects an unavailable/stale family inventory.
 - `RedisMemoryPressure` remains the critical page at 90%.
 

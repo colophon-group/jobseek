@@ -288,6 +288,111 @@ def test_collect_reconciliation_journal_retains_redacted_exact_window(tmp_path, 
     }
 
 
+def test_collect_redis_capacity_evidence_is_windowed_and_manifested(tmp_path, monkeypatch):
+    calls = []
+    since = bundle.datetime(2026, 9, 13, 9, 0, tzinfo=bundle.UTC)
+    until = bundle.datetime(2026, 9, 14, 9, 0, tzinfo=bundle.UTC)
+    cache = tmp_path / "source-capacity.prom"
+    cache.write_text(
+        f"jobseek_redis_capacity_snapshot_unixtime {until.timestamp():.0f}\n"
+        "jobseek_redis_capacity_used_memory_bytes 1024\n",
+        encoding="utf-8",
+    )
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return (
+            0,
+            "unrelated host line\njobseek_redis_capacity_refresh_failed error=ProbeError\n",
+        )
+
+    monkeypatch.setattr(bundle, "_run", fake_run)
+    manifest = {}
+
+    bundle._collect_redis_capacity_evidence(
+        tmp_path,
+        manifest,
+        since=since,
+        until=until,
+        cache_path=cache,
+    )
+
+    assert calls == [
+        [
+            "journalctl",
+            "--unit",
+            "jobseek-host-observability.service",
+            "--since",
+            "@1789290000",
+            "--until",
+            "@1789376400",
+            "--output=cat",
+            "--quiet",
+            "--no-pager",
+        ]
+    ]
+    assert (tmp_path / "host" / "redis-capacity.prom").read_text() == (cache.read_text())
+    journal = (tmp_path / "host" / "redis-capacity-observer.log").read_text()
+    assert "refresh_failed" in journal
+    assert "unrelated host line" not in journal
+    assert manifest["redis_capacity"]["complete"] is True
+    assert manifest["redis_capacity"]["cache"]["fresh"] is True
+    assert manifest["redis_capacity"]["cache"]["age_seconds"] == 0
+    assert manifest["redis_capacity"]["observer_journal"]["window_filtered"] is True
+
+
+def test_collect_redis_capacity_evidence_marks_missing_source_incomplete(tmp_path, monkeypatch):
+    monkeypatch.setattr(bundle, "_run", lambda *_args, **_kwargs: (0, ""))
+    manifest = {}
+    now = bundle.datetime(2026, 9, 14, 9, 0, tzinfo=bundle.UTC)
+
+    bundle._collect_redis_capacity_evidence(
+        tmp_path,
+        manifest,
+        since=now - bundle.timedelta(hours=24),
+        until=now,
+        cache_path=tmp_path / "missing.prom",
+    )
+
+    assert manifest["redis_capacity"]["complete"] is False
+    assert manifest["redis_capacity"]["cache"]["available"] is False
+    assert manifest["redis_capacity"]["cache"]["fresh"] is False
+    assert manifest["redis_capacity"]["cache"]["age_seconds"] is None
+    assert "unavailable" in (tmp_path / "host" / "redis-capacity.prom").read_text()
+
+
+def test_collect_redis_capacity_evidence_rejects_stale_malformed_and_future_cache(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(bundle, "_run", lambda *_args, **_kwargs: (0, ""))
+    until = bundle.datetime(2026, 9, 14, 9, 0, tzinfo=bundle.UTC)
+    values = (
+        f"{until.timestamp() - bundle.REDIS_CAPACITY_EVIDENCE_MAX_AGE_SECONDS - 1:.0f}",
+        "not-a-number",
+        f"{until.timestamp() + 61:.0f}",
+    )
+
+    for index, value in enumerate(values):
+        case_dir = tmp_path / str(index)
+        cache = case_dir / "source.prom"
+        cache.parent.mkdir(parents=True)
+        cache.write_text(
+            f"jobseek_redis_capacity_snapshot_unixtime {value}\n",
+            encoding="utf-8",
+        )
+        manifest = {}
+        bundle._collect_redis_capacity_evidence(
+            case_dir,
+            manifest,
+            since=until - bundle.timedelta(hours=24),
+            until=until,
+            cache_path=cache,
+        )
+
+        assert manifest["redis_capacity"]["complete"] is False
+        assert manifest["redis_capacity"]["cache"]["fresh"] is False
+
+
 def test_collect_reconciliation_journal_marks_failed_collection_incomplete(tmp_path, monkeypatch):
     monkeypatch.setattr(
         bundle,
