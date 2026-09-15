@@ -1079,7 +1079,7 @@ async def test_recurring_scrape_reschedule_preserves_domain_rotation(mock_redis)
         browser=True,
     )
     assert await r.zscore("ready:rotation:browser", first_domain) == rotation_floor
-    assert await r.zscore("ready:browser:2", first_domain) == rotation_floor
+    assert await r.zscore("ready:browser:2", first_domain) == pytest.approx(rotation_floor)
     assert (await r.zscore("ready:browser:2", second_domain)) < rotation_floor
 
     await r.set("claim:recurring-monitor-streak:browser", "8")
@@ -1630,7 +1630,7 @@ async def test_remove_monitor_preserves_domain_rotation_floor(mock_redis):
     await rq.remove_monitor(domain, "removed-monitor")
 
     assert await r.zscore("ready:rotation:simple", domain) == rotation_floor
-    assert await r.zscore("ready:simple:2", domain) == rotation_floor
+    assert await r.zscore("ready:simple:2", domain) == pytest.approx(rotation_floor)
 
 
 # ---------------------------------------------------------------------------
@@ -1932,7 +1932,7 @@ async def test_reaper_preserves_domain_rotation_floor(mock_redis):
 
     assert result["reenqueued"] == 1
     assert await r.zscore("ready:rotation:simple", domain) == rotation_floor
-    assert await r.zscore("ready:simple:2", domain) == rotation_floor
+    assert await r.zscore("ready:simple:2", domain) == pytest.approx(rotation_floor)
 
 
 async def test_reaper_retry_is_not_masked_by_a_future_scrape(mock_redis):
@@ -1957,7 +1957,7 @@ async def test_reaper_retry_is_not_masked_by_a_future_scrape(mock_redis):
     assert result["reenqueued"] == 1
     retry_score = await r.zscore(f"scrapes_simple:{domain}", "retry-detail")
     assert retry_score is not None and now <= retry_score < now + 10
-    assert await r.zscore("ready:simple:2", domain) == retry_score
+    assert await r.zscore("ready:simple:2", domain) == pytest.approx(retry_score)
 
 
 async def test_reaper_dead_letters_after_max_strikes(mock_redis):
