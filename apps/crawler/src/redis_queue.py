@@ -8,7 +8,11 @@ Ready queues (6 global ZSETs, 3 tiers × 2 worker types):
 A recurring domain with both monitor and scrape work has independent entries
 in tiers 1 and 2. Their scores carry each task class's own next deadline, so a
 due monitor cannot remain hidden behind an older scrape backlog. First-time
-work is exclusive to tier 0 until it drains.
+work is exclusive to tier 0 until it drains. After tier 0 is empty, the atomic
+``claim:recurring-monitor-streak:{wtype}`` counter lets one due tier-2 scrape
+lead after at most eight consecutive tier-1 monitor claims. This preserves
+monitor priority without permitting a sustained monitor stream to starve
+recurring detail refreshes indefinitely (#7741).
 
 Per-domain task queues:
     ft_monitors_{wtype}:{domain}  — first-time monitors

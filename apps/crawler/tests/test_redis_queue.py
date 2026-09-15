@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import fakeredis.aioredis
 import pytest
+from redis.exceptions import ResponseError
 
 import src.redis_queue as rq
 from src.config import settings
@@ -982,6 +983,290 @@ async def test_due_monitor_is_not_hidden_by_older_scrape_backlog(mock_redis):
     assert work.board_work.board_id == "target-monitor"
     assert await r.zscore("ready:simple:1", domain) is None
     assert await r.zscore("ready:simple:2", domain) is not None
+
+
+async def test_recurring_monitor_priority_yields_after_bounded_claim_streak(mock_redis):
+    """Sustained tier-1 demand must not starve a due tier-2 detail forever."""
+    r = mock_redis
+    now = time.time()
+
+    for index in range(10):
+        domain = f"monitor-{index}.example.com"
+        await rq.enqueue_monitor(
+            domain,
+            f"monitor-{index}",
+            now - 100 - index,
+            {"monitor": "dom"},
+            browser=True,
+        )
+        await r.set(f"delay:{domain}", "0")
+
+    scrape_domain = "starved-details.example.com"
+    await rq.enqueue_scrape(
+        scrape_domain,
+        "due-detail",
+        now - 10_000,
+        {
+            "source_url": f"https://{scrape_domain}/jobs/1",
+            "board_id": "board-1",
+        },
+        browser=True,
+    )
+    await r.set(f"delay:{scrape_domain}", "0")
+
+    for _ in range(8):
+        work = await rq.claim_work(browser=True)
+        assert work is not None
+        assert work.kind == "monitor"
+
+    assert await r.get("claim:recurring-monitor-streak:browser") == "8"
+    fairness_claim = await rq.claim_work(browser=True)
+    assert fairness_claim is not None
+    assert fairness_claim.kind == "scrape"
+    assert fairness_claim.scrape_work is not None
+    assert fairness_claim.scrape_work.posting_id == "due-detail"
+    assert await r.get("claim:recurring-monitor-streak:browser") == "0"
+
+
+async def test_bounded_recurring_fairness_prefers_same_domain_scrape(mock_redis):
+    """An armed tier-2 pass cannot be displaced by its domain's due monitor."""
+    r = mock_redis
+    now = time.time()
+    domain = "mixed-recurring.example.com"
+    await r.set("claim:recurring-monitor-streak:browser", "8")
+    await r.set(f"delay:{domain}", "0")
+
+    await rq.enqueue_monitor(
+        domain,
+        "due-monitor",
+        now - 100,
+        {"monitor": "dom"},
+        browser=True,
+    )
+    await rq.enqueue_scrape(
+        domain,
+        "due-detail",
+        now - 1_000,
+        {
+            "source_url": f"https://{domain}/jobs/1",
+            "board_id": "board-1",
+        },
+        browser=True,
+    )
+
+    work = await rq.claim_work(browser=True)
+    assert work is not None
+    assert work.kind == "scrape"
+    assert work.scrape_work is not None
+    assert work.scrape_work.posting_id == "due-detail"
+    assert await r.zcard(f"monitors_browser:{domain}") == 1
+    assert await r.get("claim:recurring-monitor-streak:browser") == "0"
+
+
+async def test_bounded_recurring_fairness_cleans_stale_tier_two_before_monitor(
+    mock_redis,
+):
+    """Stale tier-2 markers cannot spend an armed turn on more monitors."""
+    r = mock_redis
+    now = time.time()
+    await r.set("claim:recurring-monitor-streak:browser", "8")
+
+    # More stale markers than one bounded scan can inspect. Each domain has a
+    # real due monitor but no scrape, so claiming from it would be a ninth
+    # consecutive monitor and violate the fairness bound.
+    for index in range(12):
+        domain = f"stale-tier-two-{index:02d}.example.com"
+        await r.zadd(f"monitors_browser:{domain}", {f"monitor-{index}": now - 100})
+        await r.hset(f"board:monitor-{index}", mapping={"monitor": "dom", "domain": domain})
+        await r.zadd("ready:browser:1", {domain: now - 100})
+        await r.zadd("ready:browser:2", {domain: now - 1_000 - index})
+
+    scrape_domain = "real-tier-two.example.com"
+    await rq.enqueue_scrape(
+        scrape_domain,
+        "real-detail",
+        now - 10,
+        {
+            "source_url": f"https://{scrape_domain}/jobs/1",
+            "board_id": "board-1",
+        },
+        browser=True,
+    )
+
+    # The first bounded scan cleans ten stale markers and yields. The next
+    # claim cleans the remaining two, reaches the real scrape, and resets the
+    # streak. No monitor is consumed along the way.
+    assert await rq.claim_work(browser=True) is None
+    work = await rq.claim_work(browser=True)
+    assert work is not None
+    assert work.kind == "scrape"
+    assert work.scrape_work is not None
+    assert work.scrape_work.posting_id == "real-detail"
+    assert await r.get("claim:recurring-monitor-streak:browser") == "0"
+    remaining_monitors = [
+        await r.zcard(f"monitors_browser:stale-tier-two-{index:02d}.example.com")
+        for index in range(12)
+    ]
+    assert sum(remaining_monitors) == 12
+
+
+async def test_strict_tier_zero_cleans_stale_markers_before_recurring_work(
+    mock_redis,
+):
+    """Stale tier-0 markers cannot fall through to any recurring task."""
+    r = mock_redis
+    now = time.time()
+    await r.set("claim:recurring-monitor-streak:browser", "8")
+
+    # Put more stale tier-0 markers ahead of genuine first-time work than one
+    # bounded scan can inspect. Their only authoritative work is recurring.
+    for index in range(12):
+        domain = f"stale-tier-zero-{index:02d}.example.com"
+        await r.zadd(f"monitors_browser:{domain}", {f"monitor-{index}": now - 100})
+        await r.hset(f"board:monitor-{index}", mapping={"monitor": "dom", "domain": domain})
+        await r.zadd("ready:browser:0", {domain: now - 1_000 - index})
+        await r.zadd("ready:browser:1", {domain: now - 100})
+
+    await rq.enqueue_monitor(
+        "real-first-time.example.com",
+        "real-first-time",
+        now - 10,
+        {"monitor": "dom"},
+        browser=True,
+        first_time=True,
+    )
+    await rq.enqueue_scrape(
+        "real-tier-two-after-ft.example.com",
+        "real-detail-after-ft",
+        now - 10,
+        {
+            "source_url": "https://real-tier-two-after-ft.example.com/jobs/1",
+            "board_id": "board-1",
+        },
+        browser=True,
+    )
+
+    assert await rq.claim_work(browser=True) is None
+
+    first_time = await rq.claim_work(browser=True)
+    assert first_time is not None
+    assert first_time.kind == "monitor"
+    assert first_time.board_work is not None
+    assert first_time.board_work.board_id == "real-first-time"
+    assert await r.get("claim:recurring-monitor-streak:browser") == "8"
+
+    detail = await rq.claim_work(browser=True)
+    assert detail is not None
+    assert detail.kind == "scrape"
+    assert detail.scrape_work is not None
+    assert detail.scrape_work.posting_id == "real-detail-after-ft"
+    assert await r.get("claim:recurring-monitor-streak:browser") == "0"
+
+    remaining_monitors = [
+        await r.zcard(f"monitors_browser:stale-tier-zero-{index:02d}.example.com")
+        for index in range(12)
+    ]
+    assert sum(remaining_monitors) == 12
+
+
+async def test_tier_one_cleans_stale_markers_before_recurring_scrapes(mock_redis):
+    """Stale tier-1 markers cannot claim details ahead of a real monitor."""
+    r = mock_redis
+    now = time.time()
+
+    # Put more stale tier-1 markers ahead of the genuine monitor than one
+    # bounded scan can inspect. Each stale domain owns only a due scrape.
+    for index in range(12):
+        domain = f"stale-tier-one-{index:02d}.example.com"
+        posting_id = f"detail-{index}"
+        await r.zadd(f"scrapes_simple:{domain}", {posting_id: now - 100})
+        await r.hset(
+            f"scrape:{posting_id}",
+            mapping={
+                "source_url": f"https://{domain}/jobs/1",
+                "board_id": "board-1",
+            },
+        )
+        await r.zadd("ready:simple:1", {domain: now - 1_000 - index})
+        await r.zadd("ready:simple:2", {domain: now - 100})
+
+    await rq.enqueue_monitor(
+        "real-tier-one.example.com",
+        "real-monitor",
+        now - 10,
+        {"monitor": "greenhouse"},
+    )
+
+    assert await rq.claim_work(browser=False) is None
+
+    work = await rq.claim_work(browser=False)
+    assert work is not None
+    assert work.kind == "monitor"
+    assert work.board_work is not None
+    assert work.board_work.board_id == "real-monitor"
+
+    remaining_scrapes = [
+        await r.zcard(f"scrapes_simple:stale-tier-one-{index:02d}.example.com")
+        for index in range(12)
+    ]
+    assert sum(remaining_scrapes) == 12
+
+
+@pytest.mark.parametrize("corrupt_value", ["nan", "inf", "-inf", "1.5", "-1"])
+async def test_recurring_monitor_streak_rejects_non_integer_before_claim(mock_redis, corrupt_value):
+    """A malformed persistent counter fails closed without mutating queues."""
+    r = mock_redis
+    now = time.time()
+    domain = "counter-guard.example.com"
+    await rq.enqueue_monitor(
+        domain,
+        "still-due",
+        now - 10,
+        {"monitor": "greenhouse"},
+    )
+    await r.set("claim:recurring-monitor-streak:simple", corrupt_value)
+
+    with pytest.raises(ResponseError, match="claim streak is corrupt"):
+        await rq.claim_work(browser=False)
+
+    assert await r.zscore(f"monitors_simple:{domain}", "still-due") is not None
+    assert await r.get("claim:recurring-monitor-streak:simple") == corrupt_value
+
+
+async def test_bounded_recurring_fairness_preserves_strict_first_time_priority(mock_redis):
+    """Tier 0 still wins even when the recurring-monitor budget is exhausted."""
+    r = mock_redis
+    now = time.time()
+    await r.set("claim:recurring-monitor-streak:simple", "8")
+
+    await rq.enqueue_monitor(
+        "first-time.example.com",
+        "first-time-monitor",
+        now,
+        {"monitor": "dom"},
+        first_time=True,
+    )
+    await rq.enqueue_scrape(
+        "recurring-detail.example.com",
+        "recurring-detail",
+        now - 1_000,
+        {
+            "source_url": "https://recurring-detail.example.com/jobs/1",
+            "board_id": "board-1",
+        },
+    )
+
+    first = await rq.claim_work(browser=False)
+    assert first is not None
+    assert first.kind == "monitor"
+    assert first.board_work is not None
+    assert first.board_work.board_id == "first-time-monitor"
+    assert await r.get("claim:recurring-monitor-streak:simple") == "8"
+
+    second = await rq.claim_work(browser=False)
+    assert second is not None
+    assert second.kind == "scrape"
+    assert await r.get("claim:recurring-monitor-streak:simple") == "0"
 
 
 async def test_enqueue_scrape_preserves_future_monitor_deadline(mock_redis):
