@@ -1027,7 +1027,11 @@ _MONITOR_CONFIG_HINTS = {
         "Uses fail-closed pagination."
     ),
     "talentbrew": "Optional: max_pages, page_size, proxy. Uses search-results pagination.",
-    "njoyn": "Optional: max_pages, page_wait_ms. Uses session-bound form pagination.",
+    "njoyn": (
+        "Optional: max_pages, page_wait_ms, snapshot_attempts, transport_attempts, "
+        "direct_fallback_on_origin_block. Uses exact indexed session-bound form "
+        "pagination with stable-snapshot verification."
+    ),
     "nextdata": (
         "Requires: path, url_template. Optional: fields, render, actions, source, "
         "browser_expression, url_filter"
@@ -1134,13 +1138,24 @@ def select_monitor(
             }
         elif type_ == "dom":
             _VALID_PAG_KEYS = {
-                "param_name",
-                "url_template",
-                "start",
-                "start_value",
+                "advertised_ranges",
+                "browser",
                 "increment",
                 "max_pages",
-                "browser",
+                "param_name",
+                "partition_count_regex",
+                "partition_cover_paths",
+                "partition_drop_params",
+                "partition_fallback_selector",
+                "partition_fallback_selectors",
+                "partition_result_limit",
+                "partition_selector",
+                "partition_stateless",
+                "partition_validate_total",
+                "start",
+                "start_value",
+                "transient_403",
+                "url_template",
             }
         else:
             _VALID_PAG_KEYS = {
