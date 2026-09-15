@@ -2487,7 +2487,7 @@ def _validate_advertised_total(
 
 
 def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...]:
-    """Validate selector-specific exact empty states."""
+    """Validate selector-specific explicit empty states."""
     if value is None:
         return ()
     if not isinstance(value, list) or not 1 <= len(value) <= 4:
@@ -2495,7 +2495,8 @@ def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...
 
     states: list[_ExplicitEmptyState] = []
     for item in value:
-        required_keys = {"selector", "exact_text"}
+        required_keys = {"selector"}
+        text_keys = {"exact_text", "contains_text"}
         optional_keys = {
             "required_link_selector",
             "required_link_url_pattern",
@@ -2504,24 +2505,27 @@ def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...
         if (
             not isinstance(item, dict)
             or not required_keys.issubset(item)
-            or not set(item).issubset(required_keys | optional_keys)
+            or len(text_keys & set(item)) != 1
+            or not set(item).issubset(required_keys | text_keys | optional_keys)
         ):
             raise ValueError(
-                "DOM monitor empty_states entries require selector and exact_text, with an "
+                "DOM monitor empty_states entries require selector and exactly one of "
+                "exact_text or contains_text, with an "
                 "optional required_link_selector and required_link_url_pattern pair, and an "
                 "optional forbidden_link_selector"
             )
         selector = _validate_css_selector(item.get("selector"), name="empty_states.selector")
-        exact_text = item.get("exact_text")
+        text_key = next(iter(text_keys & set(item)))
+        marker_text = item.get(text_key)
         if (
             selector is None
-            or not isinstance(exact_text, str)
-            or not exact_text.strip()
-            or len(exact_text) > 256
-            or "\x00" in exact_text
+            or not isinstance(marker_text, str)
+            or not marker_text.strip()
+            or len(marker_text) > 256
+            or "\x00" in marker_text
         ):
             raise ValueError(
-                "DOM monitor empty_states exact_text must be non-empty text up to 256 chars"
+                f"DOM monitor empty_states {text_key} must be non-empty text up to 256 chars"
             )
         required_link_selector_raw = item.get("required_link_selector")
         required_link_url_pattern_raw = item.get("required_link_url_pattern")
@@ -2560,8 +2564,8 @@ def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...
         states.append(
             (
                 selector,
-                exact_text.strip(),
-                True,
+                marker_text.strip(),
+                text_key == "exact_text",
                 required_link_selector,
                 required_link_url_pattern,
                 forbidden_link_selector,
@@ -2629,7 +2633,9 @@ def _validate_explicit_empty_states(
         ]
         if exact_text:
             return expected_text in marker_texts
-        # Preserve the legacy single-marker contract for substring matching.
+        # Keep substring proofs tied to the first selected element so a broad
+        # selector cannot succeed because a later, unrelated node contains the
+        # expected phrase. This also preserves the legacy single-marker contract.
         return expected_text.casefold() in marker_texts[0].casefold()
 
     # A selector-specific state may declare links that contradict the marker.

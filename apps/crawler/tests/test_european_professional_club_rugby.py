@@ -26,6 +26,13 @@ EMPTY_HTML = """
 </main>
 """
 
+HYDRATION_FALLBACK_HTML = """
+<main><h1>Careers</h1></main>
+<script id="__NUXT_DATA__" type="application/json">
+  ["page",{"content":"There are currently no vacancies available."}]
+</script>
+"""
+
 
 def _csv_row(filename: str, key: str, value: str) -> dict[str, str]:
     with (DATA_DIR / filename).open(newline="", encoding="utf-8") as handle:
@@ -96,12 +103,53 @@ async def test_rendered_board_accepts_authoritative_empty_paragraph() -> None:
     assert result == set()
 
 
+async def test_rendered_board_accepts_server_payload_when_hydration_is_blank() -> None:
+    page = MagicMock()
+    context = MagicMock()
+    context.__aenter__ = AsyncMock(return_value=page)
+    context.__aexit__ = AsyncMock(return_value=None)
+
+    with (
+        patch("src.core.monitors.dom.open_page", return_value=context),
+        patch("src.core.monitors.dom._extract_links_rendered", AsyncMock(return_value=set())),
+        patch(
+            "src.core.monitors.dom.safe_content",
+            AsyncMock(return_value=HYDRATION_FALLBACK_HTML),
+        ),
+    ):
+        result = await dom_discover(_board(), AsyncMock(), pw=MagicMock())
+
+    assert result == set()
+
+
 async def test_empty_marker_with_a_linked_vacancy_fails_closed() -> None:
     page = MagicMock()
     context = MagicMock()
     context.__aenter__ = AsyncMock(return_value=page)
     context.__aexit__ = AsyncMock(return_value=None)
     html = EMPTY_HTML.replace(
+        "</main>",
+        '<a href="https://media.example/epcr-role.pdf">Job description</a></main>',
+    )
+
+    with (
+        patch("src.core.monitors.dom.open_page", return_value=context),
+        patch(
+            "src.core.monitors.dom._extract_links_rendered",
+            AsyncMock(return_value={"https://media.example/epcr-role.pdf"}),
+        ),
+        patch("src.core.monitors.dom.safe_content", AsyncMock(return_value=html)),
+        pytest.raises(ValueError, match="forbidden links present"),
+    ):
+        await dom_discover(_board(), AsyncMock(), pw=MagicMock())
+
+
+async def test_payload_fallback_with_a_linked_vacancy_fails_closed() -> None:
+    page = MagicMock()
+    context = MagicMock()
+    context.__aenter__ = AsyncMock(return_value=page)
+    context.__aexit__ = AsyncMock(return_value=None)
+    html = HYDRATION_FALLBACK_HTML.replace(
         "</main>",
         '<a href="https://media.example/epcr-role.pdf">Job description</a></main>',
     )

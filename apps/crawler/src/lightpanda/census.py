@@ -20,6 +20,7 @@ from typing import Any
 
 from src.core.monitors import all_monitor_types, monitor_needs_browser
 from src.core.monitors.dom import (
+    _validated_empty_state_list,
     _validated_inactive_detail_states,
     _validated_rich_rows,
     _validated_title_matched_url_scan,
@@ -729,6 +730,11 @@ def _validate_and_abstract_config(
             _validated_inactive_detail_states(config["inactive_detail_states"])
         except ValueError:
             raise CensusError("monitor.dom.inactive_detail_states is invalid") from None
+    if surface == "monitor" and crawler_type == "dom" and "empty_states" in config:
+        try:
+            _validated_empty_state_list(config["empty_states"])
+        except ValueError:
+            raise CensusError("monitor.dom.empty_states is invalid") from None
     if surface == "monitor" and crawler_type == "dom" and "title_matched_url_scan" in config:
         try:
             _validated_title_matched_url_scan(config["title_matched_url_scan"])
