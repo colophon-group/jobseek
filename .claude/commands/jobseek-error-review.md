@@ -168,6 +168,23 @@ CLASSIFICATION
 Group errors by (service, exception class, stable message stem). For
 each distinct class:
 
+For an all-slot typed bot/origin block, stop repeated target probes and never
+solve or bypass a CAPTCHA. After one confirmation following the full origin
+cooldown, use the sanitized `proxy-audit` evidence and the guarded
+`proxy-replace-webshare-pool` dry-run/apply workflow from
+`apps/crawler/AGENTS.md`; replacement must fit included plan capacity and is
+never automatic.
+
+Classify Njoyn inventory reconciliation separately. A successful
+`njoyn.snapshot.reconciled` event is within the code-owned two-pass churn
+budget and is not an error. `first_page_state_changed`,
+`pagination_state_mismatch`, `empty_page_shape_mismatch`,
+`page_count_mismatch`, `page_row_count_mismatch`,
+`page_transition_did_not_converge`, `pass_*_exceeded`, and
+`reconciliation_*_exceeded` are fail-closed `inventory_unstable` failures; do
+not prescribe proxy replacement without separate typed all-slot origin-block
+evidence in the same window.
+
   KNOWN       In any prior daily report within 14 days. Count it, do
               not file.
   NOVEL       Absent from every prior report.

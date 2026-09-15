@@ -245,6 +245,16 @@ and the guarded `proxy-replace-webshare-pool` dry-run/apply workflow documented
 in `apps/crawler/AGENTS.md`. Replacement is an explicit operator mutation and
 must fit within included plan capacity; it is never automatic.
 
+Classify Njoyn inventory reconciliation independently from proxy transport.
+`njoyn.snapshot.reconciled` is a successful two-pass result inside the
+code-owned churn budget and is not an error class. `first_page_state_changed`,
+`pagination_state_mismatch`, `empty_page_shape_mismatch`,
+`page_count_mismatch`, `page_row_count_mismatch`,
+`page_transition_did_not_converge`, `pass_*_exceeded`, and
+`reconciliation_*_exceeded` are `inventory_unstable` failures and must stay
+fail-closed. Do not prescribe proxy replacement for those failures unless the
+same evidence window separately proves a typed all-slot origin block.
+
 - `known`: appears in any prior daily report within 14 days. Count it but do
   not file.
 - `novel`: absent from every prior report.

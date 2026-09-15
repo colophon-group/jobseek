@@ -60,6 +60,18 @@ dry-run/apply `crawler proxy-replace-webshare-pool` workflow documented in
 pool changed, included capacity is insufficient, or runtime backbone
 credentials do not match.
 
+Njoyn inventory drift is classified separately from transport failure. A
+successful `njoyn.snapshot.reconciled` event means both numbered passes were
+structurally complete and their difference stayed inside the code-owned churn
+budget; it is supporting evidence, not an error. `first_page_state_changed`,
+`pagination_state_mismatch`, `empty_page_shape_mismatch`,
+`page_count_mismatch`, `page_row_count_mismatch`,
+`page_transition_did_not_converge`, `pass_*_exceeded`, and
+`reconciliation_*_exceeded` are `inventory_unstable` failures and must remain
+fail-closed. Do not rotate proxies for an inventory-stability failure unless
+the same review window also proves a typed origin block on every configured
+slot.
+
 Host-memory classification is container-generation aware. The root collector
 writes `host/docker-cgroup-memory.json` with Docker identity/timestamps and
 cgroup-v2 memory counters. Reviews compare OOM and restart counters only for
