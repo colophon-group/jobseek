@@ -159,6 +159,68 @@ class TestFetchResponseWithStatusRetries:
                     same_origin_redirects=True,
                 )
 
+    async def test_allows_stateful_same_origin_rebound_after_cookie_progress(self):
+        stable_url = "https://jobs.example/Vacancies/42/Description"
+        requested: list[tuple[str, str]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append((str(request.url), request.headers.get("cookie", "")))
+            if len(requested) == 1:
+                return httpx.Response(
+                    302,
+                    headers={"location": "/sso", "set-cookie": "session=one; Path=/; Secure"},
+                )
+            if len(requested) == 2:
+                return httpx.Response(
+                    302,
+                    headers={"location": stable_url, "set-cookie": "csrf=two; Path=/; Secure"},
+                )
+            return httpx.Response(200, text="authenticated")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            response = await fetch_response_with_status_retries(
+                client,
+                stable_url,
+                retry_limits={},
+                same_origin_redirects=True,
+            )
+
+        assert response.text == "authenticated"
+        assert [url for url, _cookie in requested] == [
+            stable_url,
+            "https://jobs.example/sso",
+            stable_url,
+        ]
+        assert "session=one" in requested[1][1]
+        assert "session=one" in requested[2][1]
+        assert "csrf=two" in requested[2][1]
+
+    async def test_cookie_rotation_cannot_bypass_redirect_limit(self):
+        requests = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal requests
+            requests += 1
+            return httpx.Response(
+                302,
+                headers={
+                    "location": "/loop",
+                    "set-cookie": f"session=secret-{requests}; Path=/; Secure",
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(UnsafeRedirectError, match="redirect limit exceeded") as exc:
+                await fetch_response_with_status_retries(
+                    client,
+                    "https://jobs.example/loop",
+                    retry_limits={},
+                    same_origin_redirects=True,
+                )
+
+        assert requests == 21
+        assert "secret-" not in str(exc.value)
+
 
 def _samples_for(metric_name: str) -> list[dict[str, Any]]:
     """Return all current value samples for a Prometheus counter."""

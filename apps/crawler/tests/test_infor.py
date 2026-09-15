@@ -178,6 +178,40 @@ async def test_bootstrap_preserves_cookies_across_same_origin_redirects() -> Non
     assert headers["SSO.CSRF"] == "csrf-token"
 
 
+async def test_bootstrap_allows_cookie_progress_on_stateful_sso_rebound() -> None:
+    requested: list[tuple[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append((str(request.url), request.headers.get("cookie", "")))
+        if len(requested) == 1:
+            return httpx.Response(
+                302,
+                headers={
+                    "location": "/sso/SSOServlet?redirect=careers",
+                    "set-cookie": "JSESSIONID=session; Path=/; Secure",
+                },
+            )
+        if len(requested) == 2:
+            return httpx.Response(
+                302,
+                headers={
+                    "location": BOARD_URL,
+                    "set-cookie": "SSO.CSRF=csrf-token; Path=/; Secure",
+                },
+            )
+        assert requested[-1][0] == BOARD_URL
+        assert "JSESSIONID=session" in requested[-1][1]
+        assert "SSO.CSRF=csrf-token" in requested[-1][1]
+        return httpx.Response(200, text="<html><title>Careers</title></html>")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        headers = await bootstrap_session(BOARD_URL, client)
+
+    assert len(requested) == 3
+    assert headers["SSO.CSRF"] == "csrf-token"
+    assert "JSESSIONID=session" in headers["Cookie"]
+
+
 async def test_bootstrap_rejects_cross_origin_redirects() -> None:
     requested: list[str] = []
 
