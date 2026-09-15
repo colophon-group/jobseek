@@ -324,10 +324,10 @@ jobs:
           pnpm --filter @jobseek/web db:migrate:verify-retirement --
           drift "$RUNNER_TEMP/web-database-drift.json"
 
-      - name: Check Better Auth account issuer drift
+      - name: Check Better Auth account issuer relaxation drift
         run: >-
-          pnpm --filter @jobseek/web db:migrate:verify-account-issuer --
-          drift "$RUNNER_TEMP/better-auth-account-issuer-drift.json"
+          pnpm --filter @jobseek/web db:migrate:verify-account-issuer-relaxation --
+          drift "$RUNNER_TEMP/better-auth-account-issuer-relaxation-drift.json"
 
       - name: Publish non-sensitive evidence
         if: always()
@@ -337,7 +337,7 @@ jobs:
             echo "### Web database drift evidence"
             for evidence in \
               "$RUNNER_TEMP"/web-database-drift.json \
-              "$RUNNER_TEMP"/better-auth-account-issuer-drift.json; do
+              "$RUNNER_TEMP"/better-auth-account-issuer-relaxation-drift.json; do
               if [[ -f "$evidence" ]]; then
                 echo "#### $(basename "$evidence")"
                 echo '```json'

@@ -115,13 +115,15 @@ describe("0087 Better Auth account issuer migration", () => {
     expect(deployWorkflow).not.toMatch(/run: pnpm db:migrate\s*$/m);
   });
 
-  it("checks the applied issuer contract in scheduled drift verification", () => {
+  it("checks the relaxed issuer contract in scheduled drift verification", () => {
     expect(driftWorkflow).toContain(
-      "Check Better Auth account issuer drift",
+      "Check Better Auth account issuer relaxation drift",
     );
-    expect(driftWorkflow).toContain("db:migrate:verify-account-issuer --");
     expect(driftWorkflow).toContain(
-      'drift "$RUNNER_TEMP/better-auth-account-issuer-drift.json"',
+      "db:migrate:verify-account-issuer-relaxation --",
+    );
+    expect(driftWorkflow).toContain(
+      'drift "$RUNNER_TEMP/better-auth-account-issuer-relaxation-drift.json"',
     );
   });
 
@@ -137,7 +139,7 @@ describe("0087 Better Auth account issuer migration", () => {
       "server.version >= 170_000 && server.version < 180_000",
     );
     expect(pg17Harness).toContain("readMigrationFiles");
-    expect(pg17Harness).toContain("Expected 79 real journal migrations");
+    expect(pg17Harness).toContain("Expected 80 real journal migrations");
     expect(pg17Harness).toContain(
       'scripts/apply-better-auth-account-issuer.ts',
     );

@@ -67,6 +67,10 @@ ALLOY_METRICS = {
         "sum",
     ),
     "loki_write_dropped_entries_total": ("loki_dropped_entries_total", "sum"),
+    "loki_process_dropped_lines_total": (
+        "loki_process_dropped_entries_total",
+        "sum",
+    ),
 }
 _PROMETHEUS_SAMPLE_RE = re.compile(
     r"^(?P<name>[A-Za-z_:][A-Za-z0-9_:]*)(?:\{[^}]*\})?\s+(?P<value>\S+)"
