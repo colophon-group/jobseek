@@ -1099,17 +1099,19 @@ njoyn — Njoyn XWeb browser monitor
   Cost:     Browser pagination; one session per board cycle
 
   Njoyn listings paginate by submitting a session-bound form. The monitor
-  clicks the live NEXT control in one browser context, collects every page,
-  and verifies the URL count against the visible "Search Results (N)" total.
-  A repeated page, bot challenge, max-page cap, or count mismatch fails the
-  cycle rather than returning a partial URL set.
+  submits the exact hidden page index under a bound navigation expectation,
+  verifies the returned page state, and resets to page one before a bounded
+  retry. It also verifies the URL count against the visible "Search Results
+  (N)" total. A non-converging transition, changing total, bot challenge,
+  max-page cap, or count mismatch fails the cycle rather than returning a
+  partial URL set.
 
   Config:
     {"persistent_context": true, "headless": false, "stealth": true,
-     "proxy": true, "max_pages": 100, "page_wait_ms": 1000}
+     "proxy": true, "max_pages": 100, "page_wait_ms": 0}
 
     max_pages       Safety cap (default/system cap 200)
-    page_wait_ms    Delay after each form submission (default 1000)
+    page_wait_ms    Optional post-navigation settle delay (default 0)
     proxy           Route the browser through the configured proxy provider
 
   Detection:  *.njoyn.com/.../xweb/XWeb.asp listing URLs

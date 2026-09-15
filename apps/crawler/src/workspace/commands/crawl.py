@@ -1027,7 +1027,9 @@ _MONITOR_CONFIG_HINTS = {
         "Uses fail-closed pagination."
     ),
     "talentbrew": "Optional: max_pages, page_size, proxy. Uses search-results pagination.",
-    "njoyn": "Optional: max_pages, page_wait_ms. Uses session-bound form pagination.",
+    "njoyn": (
+        "Optional: max_pages, page_wait_ms. Uses exact indexed session-bound form pagination."
+    ),
     "nextdata": (
         "Requires: path, url_template. Optional: fields, render, actions, source, "
         "browser_expression, url_filter"
