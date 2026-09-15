@@ -20,6 +20,11 @@ def _board(slug: str) -> dict:
     }
 
 
+def _company_boards(company_slug: str) -> list[dict[str, str]]:
+    with (DATA_DIR / "boards.csv").open(newline="", encoding="utf-8") as handle:
+        return [row for row in csv.DictReader(handle) if row["company_slug"] == company_slug]
+
+
 async def _discover_dom_fixture(board: dict, html: str) -> set[str]:
     transport = httpx.MockTransport(lambda request: httpx.Response(200, text=html, request=request))
     async with httpx.AsyncClient(transport=transport) as client:
@@ -74,3 +79,14 @@ def test_armonea_serializes_large_nextdata_pages() -> None:
 
     assert board["board_url"] == "https://jobs.armonea.be/"
     assert board["metadata"]["pagination"]["concurrency"] == 1
+
+
+def test_pfizer_uses_only_the_official_workday_source() -> None:
+    boards = _company_boards("pfizer")
+
+    assert [board["board_slug"] for board in boards] == ["pfizer-workday-main"]
+    assert boards[0]["board_url"] == "https://pfizer.wd1.myworkdayjobs.com/PfizerCareers"
+    assert (boards[0]["monitor_type"], boards[0]["scraper_type"]) == (
+        "workday",
+        "workday",
+    )
