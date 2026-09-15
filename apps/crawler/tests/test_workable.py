@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from src.core.monitors.workable import (
+    _parse_markdown_count,
     _token_from_url,
     can_handle,
     discover,
@@ -39,6 +40,41 @@ class TestTokenFromUrl:
 
     def test_non_matching_url(self):
         assert _token_from_url("https://example.com/careers") is None
+
+
+class TestParseMarkdownCount:
+    @pytest.mark.parametrize(
+        ("advertised", "wording"),
+        [
+            (0, "0 current openings"),
+            (1, "1 current opening"),
+            (2, "2 current openings"),
+            (1_234, "1,234 current openings"),
+        ],
+    )
+    def test_accepts_official_singular_and_plural_forms(self, advertised, wording):
+        markdown = (
+            "## Open Positions\n"
+            "- All open roles "
+            "(GET `https://apply.workable.com/testco/jobs.md`): "
+            f"{wording}\n"
+        )
+
+        assert _parse_markdown_count(markdown) == advertised
+
+    @pytest.mark.parametrize(
+        "wording",
+        [
+            "1 opening",
+            "one current opening",
+            "1 current role",
+        ],
+    )
+    def test_rejects_unverified_inventory_wording(self, wording):
+        markdown = f"- All open roles: {wording}\n"
+
+        with pytest.raises(ValueError, match="did not advertise"):
+            _parse_markdown_count(markdown)
 
 
 class TestDiscover:
@@ -215,7 +251,7 @@ class TestDiscover:
             "Workable llms.txt advertises zero current openings"
         )
 
-    async def test_rate_limit_falls_back_to_verified_positive_markdown(self, monkeypatch):
+    async def test_rate_limit_falls_back_to_verified_singular_markdown(self, monkeypatch):
         monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
 
         def handler(request):
@@ -227,7 +263,7 @@ class TestDiscover:
                     text=(
                         "- All open roles "
                         "(GET `https://apply.workable.com/testco/jobs.md`): "
-                        "2 current openings\n"
+                        "1 current opening\n"
                     ),
                 )
             assert str(request.url).endswith("/testco/jobs.md")
@@ -236,7 +272,6 @@ class TestDiscover:
                 text=(
                     "| Title | Details |\n"
                     "| One | [View](https://apply.workable.com/testco/jobs/view/SC1.md) |\n"
-                    "| Two | [View](https://apply.workable.com/testco/jobs/view/SC2.md) |\n"
                 ),
             )
 
@@ -249,7 +284,6 @@ class TestDiscover:
 
         assert urls == {
             "https://apply.workable.com/testco/j/SC1/",
-            "https://apply.workable.com/testco/j/SC2/",
         }
 
     async def test_search_only_markdown_deduplicates_verified_public_api_rows(self, monkeypatch):

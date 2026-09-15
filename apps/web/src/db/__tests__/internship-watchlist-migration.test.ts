@@ -18,7 +18,7 @@ describe("0090 internship watchlist filter migration", () => {
     expect(migration).toContain("updated_at = now()");
   });
 
-  it("is the latest monotonic journal entry", () => {
+  it("retains its monotonic journal identity", () => {
     const journal = JSON.parse(
       readFileSync(resolve(webRoot, "drizzle/meta/_journal.json"), "utf8"),
     ) as {
@@ -30,15 +30,21 @@ describe("0090 internship watchlist filter migration", () => {
         breakpoints: boolean;
       }>;
     };
-    expect(journal.entries.at(-1)).toEqual({
+    const entryIndex = journal.entries.findIndex(
+      (entry) => entry.tag === "0090_migrate_internship_watchlist_filters",
+    );
+    expect(journal.entries[entryIndex]).toEqual({
       idx: 78,
       version: "7",
       when: 1_789_127_975_000,
       tag: "0090_migrate_internship_watchlist_filters",
       breakpoints: true,
     });
-    expect(journal.entries.at(-2)?.when).toBeLessThan(
-      journal.entries.at(-1)?.when ?? 0,
+    expect(journal.entries[entryIndex - 1]?.when).toBeLessThan(
+      journal.entries[entryIndex]?.when ?? 0,
+    );
+    expect(journal.entries[entryIndex + 1]?.when).toBeGreaterThan(
+      journal.entries[entryIndex]?.when ?? Number.POSITIVE_INFINITY,
     );
   });
 });

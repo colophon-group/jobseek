@@ -422,6 +422,20 @@ def validate_csvs() -> list[ValidationError]:
                         )
                     )
 
+                if monitor_type == "rss" and isinstance(mc_obj, dict):
+                    from src.core.monitors.rss import validate_generic_rss_config
+
+                    try:
+                        validate_generic_rss_config(mc_obj)
+                    except ValueError as exc:
+                        errors.append(
+                            ValidationError(
+                                "boards.csv",
+                                i,
+                                f"Invalid RSS monitor_config: {exc}",
+                            )
+                        )
+
                 # rescrape_policy controls whether workers re-scrape postings
                 # after a successful scrape (see _RECORD_SCRAPE_SUCCESS).
                 # Only "never" is supported today; absent means default cadence.

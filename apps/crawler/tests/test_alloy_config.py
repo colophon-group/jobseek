@@ -33,6 +33,17 @@ def test_docker_discovery_and_tailer_refresh_intervals_are_aligned():
     assert 'refresh_interval = "5s"' in _component_body("loki.source.docker")
 
 
+def test_stale_docker_replays_are_filtered_before_loki_batching():
+    """One poison cursor entry must not make Loki reject current log lines."""
+    process = CONFIG.split('loki.process "parse" {', 1)[1].split("\n}", 1)[0]
+    drop = process.index("stage.drop {")
+    parse = process.index("stage.json {")
+
+    assert drop < parse
+    assert 'older_than          = "167h"' in process
+    assert 'drop_counter_reason = "stale_docker_replay"' in process
+
+
 def test_alloy_uses_supported_environment_lookup():
     assert re.search(r"(?<!sys\.)\benv\(", CONFIG) is None
     assert CONFIG.count("sys.env(") == 6

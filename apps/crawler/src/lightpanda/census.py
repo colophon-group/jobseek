@@ -20,6 +20,7 @@ from typing import Any
 
 from src.core.monitors import all_monitor_types, monitor_needs_browser
 from src.core.monitors.dom import (
+    _validated_empty_state_list,
     _validated_inactive_detail_states,
     _validated_rich_rows,
     _validated_title_matched_url_scan,
@@ -262,13 +263,50 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
     "njoyn": frozenset(
         {
             "channel",
+            "direct_fallback_on_origin_block",
             "headless",
             "max_pages",
             "page_wait_ms",
             "persistent_context",
             "proxy",
+            "snapshot_attempts",
             "stealth",
             "timeout",
+            "transport_attempts",
+            "wait",
+        }
+    ),
+    "rss": frozenset(
+        {
+            "agency",
+            "brand",
+            "channel",
+            "company",
+            "customer",
+            "description_mode",
+            "detail_fields",
+            "feed_url",
+            "fetch_company",
+            "headless",
+            "host",
+            "identity_migration",
+            "job_filter",
+            "listing_url",
+            "locale",
+            "pagination",
+            "persistent_context",
+            "preset",
+            "proxy",
+            "render",
+            "rescrape_policy",
+            "resolve_job_invite_identity",
+            "tenant",
+            "timeout",
+            "url",
+            "url_allowlist",
+            "url_filter",
+            "url_transform",
+            "variant",
             "wait",
         }
     ),
@@ -393,6 +431,8 @@ _SELECTOR_KEYS = frozenset(
         "total_selector",
     }
 )
+_SELECTOR_LIST_KEYS = frozenset({"partition_fallback_selectors"})
+_SELECTOR_PATH_LIST_KEYS = frozenset({"partition_cover_paths"})
 _ACTION_KEYS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "click": (frozenset({"action", "selector"}), frozenset({"required", "timeout"})),
     "dismiss_overlays": (frozenset({"action"}), frozenset({"required", "timeout"})),
@@ -432,6 +472,7 @@ _BOOL_BROWSER_KEYS = frozenset(
     {
         "browser",
         "disable_http2",
+        "direct_fallback_on_origin_block",
         "headless",
         "persistent_context",
         "proxy",
@@ -440,7 +481,7 @@ _BOOL_BROWSER_KEYS = frozenset(
         "stealth",
     }
 )
-_NUMBER_BROWSER_KEYS = frozenset({"settle", "timeout"})
+_NUMBER_BROWSER_KEYS = frozenset({"settle", "timeout", "transport_attempts"})
 _STRING_BROWSER_KEYS = frozenset(
     {
         "browser_expression",
@@ -562,6 +603,24 @@ def _validate_selector_fields(value: object, *, path: str = "config") -> None:
             child_path = f"{path}.{key}"
             if key in _SELECTOR_KEYS:
                 _validate_selector(item, path=child_path)
+            elif key in _SELECTOR_LIST_KEYS:
+                if not isinstance(item, list) or not 1 <= len(item) <= 4:
+                    raise CensusError(f"{child_path} must contain one to four selectors")
+                for index, selector in enumerate(item):
+                    _validate_selector(selector, path=f"{child_path}[{index}]")
+            elif key in _SELECTOR_PATH_LIST_KEYS:
+                if not isinstance(item, list) or not 2 <= len(item) <= 4:
+                    raise CensusError(f"{child_path} must contain two to four selector paths")
+                for path_index, selector_path in enumerate(item):
+                    if not isinstance(selector_path, list) or not 1 <= len(selector_path) <= 4:
+                        raise CensusError(
+                            f"{child_path}[{path_index}] must contain one to four selectors"
+                        )
+                    for selector_index, selector in enumerate(selector_path):
+                        _validate_selector(
+                            selector,
+                            path=f"{child_path}[{path_index}][{selector_index}]",
+                        )
             elif "selector" in key or key in {"frame", "scope"}:
                 raise CensusError(f"unknown selector field {child_path}")
             _validate_selector_fields(item, path=child_path)
@@ -695,6 +754,11 @@ def _validate_and_abstract_config(
             _validated_inactive_detail_states(config["inactive_detail_states"])
         except ValueError:
             raise CensusError("monitor.dom.inactive_detail_states is invalid") from None
+    if surface == "monitor" and crawler_type == "dom" and "empty_states" in config:
+        try:
+            _validated_empty_state_list(config["empty_states"])
+        except ValueError:
+            raise CensusError("monitor.dom.empty_states is invalid") from None
     if surface == "monitor" and crawler_type == "dom" and "title_matched_url_scan" in config:
         try:
             _validated_title_matched_url_scan(config["title_matched_url_scan"])
