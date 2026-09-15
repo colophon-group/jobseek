@@ -1717,6 +1717,50 @@ async def test_workday_invalid_payload_failures_open_host_circuit(mock_redis, mo
 
 
 @pytest.mark.asyncio
+async def test_rendered_origin_blocks_open_host_circuit(mock_redis, monkeypatch):
+    """Three typed browser challenges defer the remaining posting cohort."""
+    from src.config import settings
+    from src.core.scrapers.jsonld import _guard_rendered_content
+    from src.shared.http import track_request_hosts
+    from src.workers.pipeline import _record_scrape_host_outcome
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    domain = "cgi.njoyn.com"
+    url = f"https://{domain}/corp/xweb/XWeb.asp?Page=JobDetails"
+    await mock_redis.hset(
+        "board:board-rendered-block",
+        mapping={"crawler_type": "njoyn"},
+    )
+    for attempt in range(3):
+        with (
+            track_request_hosts() as tracker,
+            pytest.raises(RuntimeError, match="origin rejected"),
+        ):
+            _guard_rendered_content(
+                url,
+                "https://challenge.example.test/?token=opaque",
+                "<html><title>Radware Captcha Page</title></html>",
+            )
+        open_until = await _record_scrape_host_outcome(
+            "board-rendered-block",
+            domain,
+            "",
+            tracker,
+            False,
+            structlog.get_logger(),
+        )
+        if attempt < 2:
+            assert open_until is None
+
+    assert open_until is not None
+    assert await rq.get_host_circuit_open_until(domain) == pytest.approx(open_until)
+    assert await mock_redis.hget("board:board-rendered-block", "scrape_egress_host") == domain
+
+
+@pytest.mark.asyncio
 async def test_half_open_circuit_defers_siblings_while_single_probe_is_leased(
     mock_redis, monkeypatch
 ):

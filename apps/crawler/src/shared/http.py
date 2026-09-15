@@ -296,6 +296,23 @@ def mark_transient_response_failure(url: str, *, reason: str) -> None:
         tracker.note_transient_response_failure(host, url, reason)
 
 
+def mark_reachable_response(url: str) -> None:
+    """Record a validated reachable response outside the tracked transport.
+
+    Browser navigation does not use :class:`RequestHostTrackingTransport`.
+    Browser adapters call this only after their provider-specific content
+    guard accepts the rendered document.  Starting a new outcome first makes
+    a later healthy retry supersede an earlier typed challenge from the same
+    task.
+    """
+
+    tracker = _request_host_tracker.get()
+    host = urlparse(url).hostname
+    if tracker is not None and host:
+        tracker.note_request(host, url)
+        tracker.note_response(host, 200)
+
+
 def mark_provider_incident(url: str, *, incident: str) -> None:
     """Attach a verified provider incident to the current task outcome."""
 
