@@ -45,7 +45,13 @@ local recurring_monitor_streak_raw = redis.call("GET", recurring_monitor_streak_
 local recurring_monitor_streak = 0
 if recurring_monitor_streak_raw then
     recurring_monitor_streak = tonumber(recurring_monitor_streak_raw)
-    if not recurring_monitor_streak or recurring_monitor_streak < 0 then
+    if not recurring_monitor_streak or
+        recurring_monitor_streak ~= recurring_monitor_streak or
+        recurring_monitor_streak == math.huge or
+        recurring_monitor_streak == -math.huge or
+        recurring_monitor_streak < 0 or
+        recurring_monitor_streak % 1 ~= 0
+    then
         return redis.error_reply("recurring monitor claim streak is corrupt")
     end
 end
@@ -120,6 +126,8 @@ for _, tier in ipairs(tier_order) do
             local task_id = nil
             local source_type = nil
             local claimed_priority = nil
+            local fairness_scrape_first =
+                tier == 2 and recurring_monitor_streak >= max_recurring_monitor_streak
 
             -- 1. First-time monitors (unconditional pop)
             local ft_mon = redis.call("ZPOPMIN", "ft_monitors_" .. wtype .. ":" .. domain, 1)
@@ -139,6 +147,20 @@ for _, tier in ipairs(tier_order) do
                 end
             end
 
+            -- Once the recurring-monitor budget is exhausted, a tier-2 pass
+            -- must prefer the due scrape represented by that marker. Otherwise
+            -- a due monitor on the same domain can keep winning inside this
+            -- loop and defeat the global eight-claim bound.
+            if not task_id and fairness_scrape_first then
+                local items = redis.call("ZRANGEBYSCORE", "scrapes_" .. wtype .. ":" .. domain, "-inf", tostring(now), "LIMIT", 0, 1)
+                if #items > 0 then
+                    redis.call("ZREM", "scrapes_" .. wtype .. ":" .. domain, items[1])
+                    task_id = items[1]
+                    source_type = "scrape"
+                    claimed_priority = 2
+                end
+            end
+
             -- 3. Recurring monitors (only if due)
             if not task_id then
                 local items = redis.call("ZRANGEBYSCORE", "monitors_" .. wtype .. ":" .. domain, "-inf", tostring(now), "LIMIT", 0, 1)
@@ -151,7 +173,7 @@ for _, tier in ipairs(tier_order) do
             end
 
             -- 4. Recurring scrapes (only if due)
-            if not task_id then
+            if not task_id and not fairness_scrape_first then
                 local items = redis.call("ZRANGEBYSCORE", "scrapes_" .. wtype .. ":" .. domain, "-inf", tostring(now), "LIMIT", 0, 1)
                 if #items > 0 then
                     redis.call("ZREM", "scrapes_" .. wtype .. ":" .. domain, items[1])

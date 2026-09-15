@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import fakeredis.aioredis
 import pytest
+from redis.exceptions import ResponseError
 
 import src.redis_queue as rq
 from src.config import settings
@@ -1025,6 +1026,62 @@ async def test_recurring_monitor_priority_yields_after_bounded_claim_streak(mock
     assert fairness_claim.scrape_work is not None
     assert fairness_claim.scrape_work.posting_id == "due-detail"
     assert await r.get("claim:recurring-monitor-streak:browser") == "0"
+
+
+async def test_bounded_recurring_fairness_prefers_same_domain_scrape(mock_redis):
+    """An armed tier-2 pass cannot be displaced by its domain's due monitor."""
+    r = mock_redis
+    now = time.time()
+    domain = "mixed-recurring.example.com"
+    await r.set("claim:recurring-monitor-streak:browser", "8")
+    await r.set(f"delay:{domain}", "0")
+
+    await rq.enqueue_monitor(
+        domain,
+        "due-monitor",
+        now - 100,
+        {"monitor": "dom"},
+        browser=True,
+    )
+    await rq.enqueue_scrape(
+        domain,
+        "due-detail",
+        now - 1_000,
+        {
+            "source_url": f"https://{domain}/jobs/1",
+            "board_id": "board-1",
+        },
+        browser=True,
+    )
+
+    work = await rq.claim_work(browser=True)
+    assert work is not None
+    assert work.kind == "scrape"
+    assert work.scrape_work is not None
+    assert work.scrape_work.posting_id == "due-detail"
+    assert await r.zcard(f"monitors_browser:{domain}") == 1
+    assert await r.get("claim:recurring-monitor-streak:browser") == "0"
+
+
+@pytest.mark.parametrize("corrupt_value", ["nan", "inf", "-inf", "1.5", "-1"])
+async def test_recurring_monitor_streak_rejects_non_integer_before_claim(mock_redis, corrupt_value):
+    """A malformed persistent counter fails closed without mutating queues."""
+    r = mock_redis
+    now = time.time()
+    domain = "counter-guard.example.com"
+    await rq.enqueue_monitor(
+        domain,
+        "still-due",
+        now - 10,
+        {"monitor": "greenhouse"},
+    )
+    await r.set("claim:recurring-monitor-streak:simple", corrupt_value)
+
+    with pytest.raises(ResponseError, match="claim streak is corrupt"):
+        await rq.claim_work(browser=False)
+
+    assert await r.zscore(f"monitors_simple:{domain}", "still-due") is not None
+    assert await r.get("claim:recurring-monitor-streak:simple") == corrupt_value
 
 
 async def test_bounded_recurring_fairness_preserves_strict_first_time_priority(mock_redis):
