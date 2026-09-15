@@ -16,16 +16,15 @@ which records the run as a failure rather than a partial success.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import random
 from collections.abc import Awaitable, Callable, Collection, Mapping
-from typing import TYPE_CHECKING, Any, Literal, overload
+from typing import Any, Literal, overload
 from urllib.parse import urljoin, urlparse, urlunparse
 
+import httpx
 import structlog
-
-if TYPE_CHECKING:
-    import httpx
 
 log = structlog.get_logger()
 
@@ -138,9 +137,26 @@ def _origin(url: str) -> tuple[str, str, int]:
     return parsed.scheme.casefold(), parsed.hostname.casefold(), port
 
 
-def _redirect_visit_key(url: str) -> str:
+def _redirect_visit_key(
+    client: httpx.AsyncClient,
+    url: str,
+    headers: dict[str, str] | None,
+) -> tuple[str, bytes]:
+    """Identify a redirect visit by URL and the cookie-bearing request state.
+
+    Some same-origin authentication handshakes intentionally return to the
+    original URL after setting session cookies.  URL-only loop detection
+    rejects that final, authenticated request before it is sent.  Building a
+    request lets httpx apply its cookie jar exactly as it will for ``get``;
+    hashing the resulting header keeps credentials out of errors and local
+    diagnostic state.
+    """
     parsed = urlparse(url)
-    return urlunparse(parsed._replace(fragment=""))
+    canonical_url = urlunparse(parsed._replace(fragment=""))
+    request = client.build_request("GET", canonical_url, headers=headers)
+    cookie_header = request.headers.get("cookie", "") if isinstance(request, httpx.Request) else ""
+    cookie_state = cookie_header.encode()
+    return canonical_url, hashlib.sha256(cookie_state).digest()
 
 
 async def _get_with_same_origin_redirects(
@@ -150,7 +166,8 @@ async def _get_with_same_origin_redirects(
 ) -> httpx.Response:
     expected_origin = _origin(url)
     current_url = url
-    visited = {_redirect_visit_key(url)}
+    headers = request_kwargs.get("headers")
+    visited = {_redirect_visit_key(client, url, headers)}
 
     for redirects_followed in range(_MAX_SAFE_REDIRECTS + 1):
         if _origin(current_url) != expected_origin:
@@ -175,7 +192,12 @@ async def _get_with_same_origin_redirects(
         await response.aclose()
         if _origin(next_url) != expected_origin:
             raise UnsafeRedirectError(f"redirect left original origin: {next_url}")
-        visit_key = _redirect_visit_key(next_url)
+        # httpx has already applied Set-Cookie headers to the client's jar.
+        # A URL may therefore be revisited only when the request state has
+        # progressed.  Unchanged-state loops still fail immediately, while a
+        # server that rotates cookies forever remains bounded by the hard
+        # redirect limit below.
+        visit_key = _redirect_visit_key(client, next_url, headers)
         if visit_key in visited:
             raise UnsafeRedirectError(f"redirect loop detected: {next_url}")
         if redirects_followed == _MAX_SAFE_REDIRECTS:
