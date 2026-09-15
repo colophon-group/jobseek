@@ -1129,7 +1129,10 @@ njoyn — Njoyn XWeb browser monitor
 
   Detection:  *.njoyn.com/.../xweb/XWeb.asp listing URLs
   Pair with:  json-ld rendered in a warmed Njoyn session; current CGI detail
-              pages expose the complete schema.org JobPosting contract"""
+              pages expose the complete schema.org JobPosting contract. The
+              detail guard classifies small XWP rejection shells in-context,
+              rotates bounded proxy contexts, and permits direct fallback
+              only after a typed block plus explicit board opt-in."""
 
 MONITOR_PROSPECTIVE = """\
 prospective — Prospective CareerCenter HTML form monitor

@@ -148,9 +148,9 @@ class TestConstants:
         assert DEFAULT_WAIT_FALLBACK in VALID_WAIT_STRATEGIES
 
     def test_browser_keys_exact_membership(self):
-        # BROWSER_KEYS is the single source of truth for which config keys
-        # reach open_page / navigate / run_actions. A missing entry silently
-        # drops the key at the monitor/scraper boundary — regression guard.
+        # BROWSER_KEYS is the single source of truth for which serialized
+        # config keys reach the browser layer. A missing entry silently drops
+        # the key at the monitor/scraper boundary — regression guard.
         expected = frozenset(
             {
                 "wait",
@@ -173,6 +173,8 @@ class TestConstants:
                 "block_resource_types",
                 "block_hosts",
                 "proxy",
+                "transport_attempts",
+                "direct_fallback_on_origin_block",
             }
         )
         assert expected == BROWSER_KEYS
@@ -1704,6 +1706,41 @@ class TestRender:
         with patch("playwright.async_api.async_playwright", return_value=mock_async_pw):
             html = await render("https://example.com")
         assert html == "<html><body>rendered</body></html>"
+
+    async def test_content_guard_runs_before_render_returns(self):
+        mock_page = _make_page()
+        mock_page.url = "https://example.com/final"
+        mock_page.content.return_value = "<html><body>checked</body></html>"
+        mock_pw = _make_pw(mock_page)
+        guard = MagicMock()
+
+        html = await render(
+            "https://example.com/start",
+            pw=mock_pw,
+            content_guard=guard,
+        )
+
+        assert html == "<html><body>checked</body></html>"
+        guard.assert_called_once_with(
+            "https://example.com/start",
+            "https://example.com/final",
+            "<html><body>checked</body></html>",
+        )
+
+    async def test_content_guard_failure_propagates_from_open_context(self):
+        class OriginBlock(RuntimeError):
+            proxy_failure_reason = "origin_block"
+
+        mock_page = _make_page()
+        mock_page.url = "https://example.com/challenge"
+        mock_pw = _make_pw(mock_page)
+
+        with pytest.raises(OriginBlock, match="blocked"):
+            await render(
+                "https://example.com/start",
+                pw=mock_pw,
+                content_guard=MagicMock(side_effect=OriginBlock("blocked")),
+            )
 
     async def test_passes_config(self):
         mock_page = _make_page()

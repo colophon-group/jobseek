@@ -192,6 +192,14 @@ classify the cluster as scraper/config drift and validate rendered JSON-LD.
 Never prescribe proxy replacement without separate typed all-slot
 origin-block evidence.
 
+`jsonld.render.origin_block_retry` is typed transport evidence from the
+in-context rendered-response guard; for Njoyn it includes the bounded
+HTTP-200 `Invalid request XWP...` shell. Treat
+`jsonld.render.direct_fallback` as successful recovery, not extraction drift.
+It is valid only with explicit board opt-in after a typed block; proxy pool
+unavailability alone must stay fail-closed. Group without response bodies or
+opaque challenge URLs.
+
   KNOWN       In any prior daily report within 14 days. Count it, do
               not file.
   NOVEL       Absent from every prior report.

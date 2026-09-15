@@ -211,6 +211,8 @@ def test_cgi_configs_use_rendered_jobposting_jsonld() -> None:
     assert monitor_config["delist_threshold"] == 4
     assert scraper_config["render"] is True
     assert scraper_config["proxy"] is True
+    assert scraper_config["transport_attempts"] == 5
+    assert scraper_config["direct_fallback_on_origin_block"] is True
     assert "steps" not in scraper_config
 
 

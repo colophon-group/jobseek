@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import tempfile
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 from urllib.parse import urlsplit
@@ -131,8 +131,10 @@ OVERLAY_SELECTORS = (
     '[role="dialog"][class*="consent"]',
 )
 
-# Browser config keys recognised by open_page / navigate / run_actions.
-# Used by scrapers and monitors to separate browser keys from other config.
+# Browser config keys retained when scrapers and monitors project serialized
+# board config into the browser layer.  Most are consumed by open_page /
+# navigate / run_actions; bounded recovery controls are consumed by the
+# render-aware adapter around those operations.
 BROWSER_KEYS = frozenset(
     {
         "wait",
@@ -158,6 +160,12 @@ BROWSER_KEYS = frozenset(
         # render(). Without this entry a board-level proxy opt-in is silently
         # discarded and the browser launches from direct egress.
         "proxy",
+        # Optional, bounded transport recovery controls consumed by rendered
+        # scrapers.  ``open_page`` ignores them, but retaining them here keeps
+        # scraper config projection from silently dropping the explicit
+        # recovery policy before ``render`` is called.
+        "transport_attempts",
+        "direct_fallback_on_origin_block",
     }
 )
 
@@ -1457,7 +1465,13 @@ async def safe_content(page) -> str:
     raise last_exc
 
 
-async def render(url: str, config: dict | None = None, pw=None) -> str:
+async def render(
+    url: str,
+    config: dict | None = None,
+    pw=None,
+    *,
+    content_guard: Callable[[str, str, str], None] | None = None,
+) -> str:
     """All-in-one: launch browser → navigate → run actions → return HTML.
 
     Convenience wrapper for consumers that just need rendered page content.
@@ -1467,28 +1481,24 @@ async def render(url: str, config: dict | None = None, pw=None) -> str:
     """
     config = config or {}
 
-    if pw is not None:
+    async def _render(playwright) -> str:
         async with open_page(
-            pw,
+            playwright,
             config,
             use_proxy=bool(config.get("proxy")),
             target_url=url,
         ) as page:
             await navigate(page, url, config)
             await run_actions(page, config.get("actions", []))
-            return await safe_content(page)
+            html = await safe_content(page)
+            if content_guard is not None:
+                content_guard(url, page.url or url, html)
+            return html
+
+    if pw is not None:
+        return await _render(pw)
 
     from playwright.async_api import async_playwright
 
-    async with (
-        async_playwright() as _pw,
-        open_page(
-            _pw,
-            config,
-            use_proxy=bool(config.get("proxy")),
-            target_url=url,
-        ) as page,
-    ):
-        await navigate(page, url, config)
-        await run_actions(page, config.get("actions", []))
-        return await safe_content(page)
+    async with async_playwright() as _pw:
+        return await _render(_pw)

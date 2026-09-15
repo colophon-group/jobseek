@@ -79,6 +79,14 @@ classify the cluster as scraper/config drift and validate the rendered
 JSON-LD path. Do not rotate proxies without separate typed origin-block
 evidence.
 
+`jsonld.render.origin_block_retry` is typed transport evidence emitted only
+after the rendered response guard rejects a proxy context. For Njoyn this
+includes its bounded HTTP-200 `Invalid request XWP...` shell.
+`jsonld.render.direct_fallback` is a recovery event, not an extraction error:
+it is permitted only by explicit board config after a typed block, and proxy
+pool exhaustion without a block must remain fail-closed. Group both events by
+board/origin without copying response bodies or opaque challenge URLs.
+
 Host-memory classification is container-generation aware. The root collector
 writes `host/docker-cgroup-memory.json` with Docker identity/timestamps and
 cgroup-v2 memory counters. Reviews compare OOM and restart counters only for
