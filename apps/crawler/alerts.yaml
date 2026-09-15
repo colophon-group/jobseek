@@ -724,6 +724,19 @@ groups:
           description: "The collector recorded dropped Loki entries during the last ten minutes."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
 
+      - alert: AlloyLokiStaleReplayFiltered
+        expr: increase(jobseek_alloy_loki_process_dropped_entries_total[10m]) > 0
+        for: 2m
+        labels:
+          severity: high
+          service: fleet-observability
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "{{ $labels.collector }} Alloy filtered stale replayed logs on {{ $labels.instance }}"
+          description: "The crawler collector prevented entries outside Loki's ingestion window from poisoning a batch; inspect Docker cursor continuity before the next recreation."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#telemetry-delivery-budgets
+
       - alert: AlloyMemoryPressure
         expr: jobseek_alloy_resident_memory_bytes > 471859200
         for: 5m
