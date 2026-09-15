@@ -245,12 +245,15 @@ and the guarded `proxy-replace-webshare-pool` dry-run/apply workflow documented
 in `apps/crawler/AGENTS.md`. Replacement is an explicit operator mutation and
 must fit within included plan capacity; it is never automatic.
 
-After updating the repository's runtime proxy secret, start a new manual
-`Deploy Crawler (Hetzner)` dispatch on `main`. Do not rerun an older workflow:
-reruns retain the original run's secret snapshot. The guarded manual path
-attests the current exact default-branch SHA and derives its rollback parent.
-Verify only the deployed pool cardinality before the bounded origin canary;
-never print the endpoints.
+Update only the `production` GitHub environment's runtime proxy secret; keep
+no repository-level shadow. Pipe the JSON into
+`gh secret set WEBSHARE_PROXY_URLS --env production` without `--body`
+(`--body -` stores a literal dash). Start a new manual `Deploy Crawler
+(Hetzner)` dispatch on `main`; reruns retain the original run's secret
+snapshot. The guarded path attests the current exact default-branch SHA,
+validates the settings inside the built image before SSH, and derives its
+rollback parent. Verify only the deployed pool cardinality before the bounded
+origin canary; never print the endpoints.
 
 Classify Njoyn inventory reconciliation independently from proxy transport.
 `njoyn.snapshot.reconciled` is a successful two-pass result inside the

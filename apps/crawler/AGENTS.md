@@ -249,6 +249,16 @@ never prints proxy credentials. The API key is deliberately absent from
 Compose and the deployment workflow. `DECODO_PROXY_URL` is retired and the
 configurator removes it from the target env file after the backup.
 
+The `production` GitHub environment secret is the only deployment authority
+for `WEBSHARE_PROXY_URLS`; do not keep a repository-level secret with the same
+name. Pipe the validated JSON into
+`gh secret set WEBSHARE_PROXY_URLS --env production` without `--body` because
+the argument `--body -` stores a literal dash rather than reading stdin. Start
+a new manual `Deploy Crawler (Hetzner)` run on `main` after the update; reruns
+retain the original run's secret snapshot. The workflow validates the secret
+inside the exact built image before SSH can mutate production and logs only
+the proxy mode and pool cardinality.
+
 If every pool slot receives a typed block from the same origin after a full
 quarantine cooldown, stop probing the target. Do not attempt to solve or
 bypass its CAPTCHA. First run `proxy-audit` and confirm that the configured

@@ -85,6 +85,43 @@ def test_deploy_transport_allows_full_collection_schema_alters() -> None:
     assert deploy_step["with"]["command_timeout"] == "3h"
 
 
+def test_deploy_validates_environment_proxy_secret_before_host_mutation() -> None:
+    workflow = yaml.safe_load(DEPLOY_WORKFLOW.read_text())
+    deploy_job = workflow["jobs"]["deploy"]
+    steps = deploy_job["steps"]
+    names = [step.get("name") for step in steps]
+    validation = next(
+        step
+        for step in steps
+        if step.get("name") == "Validate environment-scoped runtime proxy secret"
+    )
+
+    assert names.index("Log in to GHCR (read-only deploy token)") < names.index(
+        "Validate environment-scoped runtime proxy secret"
+    )
+    assert names.index("Validate environment-scoped runtime proxy secret") < names.index(
+        "Build exact pre-deploy CSV rollback candidate"
+    )
+    assert names.index("Validate environment-scoped runtime proxy secret") < names.index(
+        "Copy exact pre-deploy CSV rollback candidate"
+    )
+    assert names.index("Validate environment-scoped runtime proxy secret") < names.index(
+        "Deploy via SSH"
+    )
+    assert deploy_job["environment"] == "production"
+    assert validation["env"] == {
+        "IMAGE": (
+            "ghcr.io/${{ github.repository_owner }}/jobseek-crawler@"
+            "${{ needs.build.outputs.slim_digest }}"
+        ),
+        "PROXY_PROVIDER": "${{ secrets.PROXY_PROVIDER }}",
+        "WEBSHARE_PROXY_URLS": "${{ secrets.WEBSHARE_PROXY_URLS }}",
+        "WEBSHARE_PROXY_URL": "${{ secrets.WEBSHARE_PROXY_URL }}",
+    }
+    assert "-m src.runtime_proxy_preflight" in validation["run"]
+    assert "WEBSHARE_API_KEY" not in validation["run"]
+
+
 def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> None:
     script = DEPLOY_SH.read_text()
     workflow = yaml.safe_load(DEPLOY_WORKFLOW.read_text())
