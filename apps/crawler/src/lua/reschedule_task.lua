@@ -49,6 +49,13 @@ local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
 redis.call("ZREM", "inflight:" .. wtype, inflight_member)
 redis.call("HDEL", "inflight_strikes:" .. wtype, inflight_member)
 
+-- claim_work advances a recurring-scrape domain after each claim so other due
+-- domains receive a turn. Completion can happen after the short rate-limit
+-- key expires; retain the ready marker itself as the durable rotation floor.
+local scrape_ready_floor = tonumber(
+    redis.call("ZSCORE", "ready:" .. wtype .. ":2", domain) or "0"
+)
+
 -- Remove stale representations from all tiers before rebuilding them.
 for t = 0, 2 do
     redis.call("ZREM", "ready:" .. wtype .. ":" .. t, domain)
@@ -105,7 +112,12 @@ else
         redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(rl_at, mon_score), domain)
     end
     if scr_score ~= nil then
-        redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(rl_at, scr_score), domain)
+        redis.call(
+            "ZADD",
+            "ready:" .. wtype .. ":2",
+            math.max(rl_at, scrape_ready_floor, scr_score),
+            domain
+        )
     end
 end
 

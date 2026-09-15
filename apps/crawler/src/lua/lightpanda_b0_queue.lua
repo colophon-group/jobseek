@@ -886,6 +886,9 @@ if operation == "activate_legacy" then
 
     local removed = 0
     for _, wtype in ipairs({"simple", "browser"}) do
+        local scrape_ready_floor = tonumber(
+            redis.call("ZSCORE", "ready:" .. wtype .. ":2", candidate.domain) or "0"
+        )
         removed = removed
             + redis.call("ZREM", "ft_scrapes_" .. wtype .. ":" .. candidate.domain, task_id)
             + redis.call("ZREM", "scrapes_" .. wtype .. ":" .. candidate.domain, task_id)
@@ -915,7 +918,12 @@ if operation == "activate_legacy" then
             end
             local scrape = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. candidate.domain, 0, 0, "WITHSCORES")
             if #scrape >= 2 then
-                redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(floor, tonumber(scrape[2])), candidate.domain)
+                redis.call(
+                    "ZADD",
+                    "ready:" .. wtype .. ":2",
+                    math.max(floor, scrape_ready_floor, tonumber(scrape[2])),
+                    candidate.domain
+                )
             end
         end
     end
@@ -1450,6 +1458,9 @@ if operation == "rollback_legacy" then
     for _, target in pairs(affected) do
         local wtype = target.wtype
         local domain = target.domain
+        local scrape_ready_floor = tonumber(
+            redis.call("ZSCORE", "ready:" .. wtype .. ":2", domain) or "0"
+        )
         for tier = 0, 2 do
             redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
         end
@@ -1473,7 +1484,12 @@ if operation == "rollback_legacy" then
             end
             local scrape = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
             if #scrape >= 2 then
-                redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(floor, tonumber(scrape[2])), domain)
+                redis.call(
+                    "ZADD",
+                    "ready:" .. wtype .. ":2",
+                    math.max(floor, scrape_ready_floor, tonumber(scrape[2])),
+                    domain
+                )
             end
         end
     end

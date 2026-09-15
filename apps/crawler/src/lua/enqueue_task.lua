@@ -95,6 +95,9 @@ do
     if rl_val then
         rl_at = tonumber(rl_val)
     end
+    local scrape_ready_floor = tonumber(
+        redis.call("ZSCORE", "ready:" .. wtype .. ":2", domain) or "0"
+    )
 
     for tier = 0, 2 do
         redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
@@ -119,7 +122,12 @@ do
             redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(rl_at, mon_score), domain)
         end
         if scr_score ~= nil then
-            redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(rl_at, scr_score), domain)
+            redis.call(
+                "ZADD",
+                "ready:" .. wtype .. ":2",
+                math.max(rl_at, scrape_ready_floor, scr_score),
+                domain
+            )
         end
     end
 end

@@ -14,6 +14,9 @@ local domain = ARGV[1]
 local board_id = ARGV[2]
 
 local function refresh_ready(wtype)
+    local scrape_ready_floor = tonumber(
+        redis.call("ZSCORE", "ready:" .. wtype .. ":2", domain) or "0"
+    )
     for tier = 0, 2 do
         redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
     end
@@ -42,7 +45,12 @@ local function refresh_ready(wtype)
 
     local scrape_head = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
     if #scrape_head >= 2 then
-        redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(floor, tonumber(scrape_head[2])), domain)
+        redis.call(
+            "ZADD",
+            "ready:" .. wtype .. ":2",
+            math.max(floor, scrape_ready_floor, tonumber(scrape_head[2])),
+            domain
+        )
     end
 end
 

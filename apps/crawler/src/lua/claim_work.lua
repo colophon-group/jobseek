@@ -72,6 +72,12 @@ end
 -- First-time work remains strict tier 0. ``not_before`` applies the shared
 -- throttle after a claim without changing either underlying task deadline.
 local function refresh_ready(domain, not_before)
+    -- A successful recurring scrape claim moves this domain's tier-2 marker
+    -- forward. Preserve that rotation floor across later rebuilds so a large,
+    -- old backlog cannot jump straight back ahead of every other due domain.
+    local scrape_ready_floor = tonumber(
+        redis.call("ZSCORE", "ready:" .. wtype .. ":2", domain) or "0"
+    )
     for tier = 0, 2 do
         redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
     end
@@ -100,7 +106,12 @@ local function refresh_ready(domain, not_before)
 
     local scrape_head = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
     if #scrape_head >= 2 then
-        redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(floor, tonumber(scrape_head[2])), domain)
+        redis.call(
+            "ZADD",
+            "ready:" .. wtype .. ":2",
+            math.max(floor, scrape_ready_floor, tonumber(scrape_head[2])),
+            domain
+        )
     end
 end
 
