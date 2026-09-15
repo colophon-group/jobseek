@@ -475,13 +475,19 @@ Quick summary:
   is explicitly inconclusive when Webshare's six-day activity retention or a
   plan-upgrade boundary clips the requested window. The account API key is
   never forwarded to runtime containers.
-- After rotating `WEBSHARE_PROXY_URLS`, update the repository secret and start
-  a **new** `Deploy Crawler (Hetzner)` workflow dispatch on `main`. Do not
-  rerun an older deployment: GitHub reruns retain that run's original secret
-  snapshot. The manual path attests that its checkout is the current exact
-  default-branch SHA and uses its first parent for rollback/runtime comparison.
-  After promotion, verify the running containers report the expected sanitized
-  pool cardinality before probing an affected origin.
+- The `production` GitHub environment secret is the sole deployment authority
+  for `WEBSHARE_PROXY_URLS`; do not create a repository-level shadow. Pipe the
+  validated JSON to `gh secret set WEBSHARE_PROXY_URLS --env production`
+  without `--body` (the literal argument `--body -` stores a one-character
+  value; it does not select stdin mode). Then start a **new** `Deploy Crawler
+  (Hetzner)` workflow dispatch on `main`. Do not rerun an older deployment:
+  GitHub reruns retain that run's original secret snapshot.
+- Before SSH can mutate the host, the deploy job runs the built image against
+  the environment-scoped proxy settings and emits only mode and pool count.
+  The manual path also attests the current exact default-branch SHA and uses
+  its first parent for rollback/runtime comparison. After promotion, verify
+  the running containers report the expected sanitized pool cardinality
+  before probing an affected origin.
 
 ---
 

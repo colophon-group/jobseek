@@ -264,6 +264,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Validate environment-scoped runtime proxy secret
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/jobseek-crawler@${{ needs.build.outputs.slim_digest }}
+          PROXY_PROVIDER: ${{ secrets.PROXY_PROVIDER }}
+          WEBSHARE_PROXY_URLS: ${{ secrets.WEBSHARE_PROXY_URLS }}
+          WEBSHARE_PROXY_URL: ${{ secrets.WEBSHARE_PROXY_URL }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e PROXY_PROVIDER \
+            -e WEBSHARE_PROXY_URLS \
+            -e WEBSHARE_PROXY_URL \
+            "$IMAGE" \
+            /app/.venv/bin/python -m src.runtime_proxy_preflight
+
       - name: Build exact pre-deploy CSV rollback candidate
         id: previous-data
         env:
