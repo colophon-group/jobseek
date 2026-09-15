@@ -55,6 +55,7 @@ from src.typesense_client import get_typesense_client
 
 _API_MONITOR_TYPES = api_monitor_types()
 _MONITOR_CONFIG_FINGERPRINT = "_monitor_config_fingerprint"
+_CONFIGURATION_REMOVAL_RECEIPT = "_configuration_removal_receipt"
 _RECOVERY_SCHEDULE_STATUSES = frozenset({"quarantined", "gone_pending", "gone"})
 
 log = structlog.get_logger()
@@ -420,13 +421,15 @@ _REALIGN_RENAMED_BOARD_URLS_LOCAL = """
 UPDATE job_board jb
 SET board_url = b.board_url,
     company_id = c.id,
-    -- Identity-migration receipts are durable one-shot records, not source
-    -- runtime state. Preserve them even when slug-stable URL realignment
-    -- clears every other metadata key, so a renamed source cannot re-arm a
-    -- completed migration.
+    -- Receipts are durable one-shot records, not source runtime state.
+    -- Preserve them even when slug-stable URL realignment clears every other
+    -- metadata key, so a renamed source cannot re-arm a completed identity
+    -- migration or bypass configuration-reappearance quarantine.
     metadata = jsonb_strip_nulls(jsonb_build_object(
         '_identity_migration_receipt',
-        jb.metadata -> '_identity_migration_receipt'
+        jb.metadata -> '_identity_migration_receipt',
+        '_configuration_removal_receipt',
+        jb.metadata -> '_configuration_removal_receipt'
     )),
     is_enabled = true,
     board_status = 'active',
@@ -509,12 +512,14 @@ ON CONFLICT (board_url) DO UPDATE SET
     metadata = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
-        THEN COALESCE(EXCLUDED.metadata, '{}'::jsonb)
+        THEN (COALESCE(EXCLUDED.metadata, '{}'::jsonb)
+              - '_configuration_removal_receipt')
              || jsonb_strip_nulls(jsonb_build_object(
                  '_identity_migration_receipt',
                  job_board.metadata -> '_identity_migration_receipt'
              ))
-        ELSE EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
+        ELSE (EXCLUDED.metadata - '_configuration_removal_receipt')
+             || jsonb_strip_nulls(jsonb_build_object(
             'sitemap_url', job_board.metadata -> 'sitemap_url',
             'recent_discovered_counts', job_board.metadata -> 'recent_discovered_counts',
             'suspect_streak', job_board.metadata -> 'suspect_streak',
@@ -555,8 +560,11 @@ ON CONFLICT (board_url) DO UPDATE SET
     throttle_key = EXCLUDED.throttle_key,
     monitor_needs_browser = EXCLUDED.monitor_needs_browser,
     scraper_needs_browser = EXCLUDED.scraper_needs_browser,
-    -- A URL/type/config change is a repair candidate. Keep it schedulable but
-    -- quarantined until a real monitor run proves the repair (#5716/#6157).
+    -- A URL/type/config change, or a board returning after a CSV removal, is a
+    -- repair candidate. Keep it schedulable but quarantined until a real
+    -- monitor run proves the repair (#5716/#6157/#9281). The removal receipt
+    -- is deliberately absent from EXCLUDED metadata and is consumed by the
+    -- metadata assignment above, so this recovery transition happens once.
     -- The fingerprint is added without resetting legacy rows on its first
     -- sync; subsequent CSV-owned monitor changes become immediately eligible.
     is_enabled = CASE
@@ -566,6 +574,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN true
         WHEN job_board.board_status = 'disabled' THEN false
         ELSE EXCLUDED.is_enabled
@@ -577,6 +586,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN 'quarantined'
         ELSE job_board.board_status
     END,
@@ -587,6 +597,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN 0
         ELSE job_board.consecutive_failures
     END,
@@ -597,6 +608,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN NULL
         ELSE job_board.last_error
     END,
@@ -619,6 +631,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN now()
         ELSE job_board.next_check_at
     END,
@@ -629,6 +642,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN 0
         ELSE job_board.empty_check_count
     END,
@@ -645,6 +659,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN NULL
         ELSE job_board.gone_at
     END,
@@ -655,6 +670,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN 0
         ELSE job_board.gone_confirmation_count
     END,
@@ -665,6 +681,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN now()
         ELSE job_board.quarantined_at
     END,
@@ -675,6 +692,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN now()
         ELSE job_board.last_quarantined_at
     END,
@@ -685,6 +703,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN job_board.last_error
         ELSE job_board.last_quarantine_error
     END,
@@ -695,6 +714,7 @@ ON CONFLICT (board_url) DO UPDATE SET
               job_board.metadata ->> '_monitor_config_fingerprint'
               IS DISTINCT FROM
               EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+          OR job_board.metadata ? '_configuration_removal_receipt'
         THEN 0
         ELSE job_board.quarantine_probe_count
     END,
@@ -731,6 +751,17 @@ _DISABLE_REMOVED_BOARDS_LOCAL = """
 UPDATE job_board
 SET is_enabled = false,
     board_status = 'disabled',
+    -- Record why this otherwise-healthy row became terminal. A future sync
+    -- can now distinguish CSV reappearance from an intentional operator
+    -- disable and safely schedule one quarantined recovery probe (#9281).
+    metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+        '_configuration_removal_receipt',
+        jsonb_build_object(
+            'board_url', board_url,
+            'board_slug', board_slug,
+            'removed_at', to_jsonb(now())
+        )
+    ),
     quarantined_at = NULL,
     lease_owner = NULL,
     leased_until = NULL,

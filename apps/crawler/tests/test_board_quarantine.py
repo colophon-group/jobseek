@@ -14,6 +14,7 @@ from src.queries.monitor import (
     _RECORD_SUCCESS_NONEMPTY,
 )
 from src.sync import (
+    _CONFIGURATION_REMOVAL_RECEIPT,
     _DISABLE_REMOVED_BOARDS,
     _DISABLE_REMOVED_BOARDS_LOCAL,
     _FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP,
@@ -68,6 +69,7 @@ def test_legacy_disable_migration_prioritizes_ashby_and_splays_the_rest() -> Non
 
 def test_sync_detects_monitor_contract_repairs_without_retry_storms() -> None:
     assert _MONITOR_CONFIG_FINGERPRINT == "_monitor_config_fingerprint"
+    assert _CONFIGURATION_REMOVAL_RECEIPT == "_configuration_removal_receipt"
     assert "job_board.metadata ? '_monitor_config_fingerprint'" in _UPSERT_BOARD_LOCAL
     assert "THEN 'quarantined'" in _UPSERT_BOARD_LOCAL
     assert "metadata, next_check_at, board_status" in _UPSERT_BOARD_LOCAL
@@ -77,6 +79,8 @@ def test_sync_detects_monitor_contract_repairs_without_retry_storms() -> None:
     assert "quarantined_at = NULL" in _DISABLE_REMOVED_BOARDS_LOCAL
     assert "lease_owner = NULL" in _DISABLE_REMOVED_BOARDS_LOCAL
     assert "leased_until = NULL" in _DISABLE_REMOVED_BOARDS_LOCAL
+    assert _CONFIGURATION_REMOVAL_RECEIPT in _DISABLE_REMOVED_BOARDS_LOCAL
+    assert _CONFIGURATION_REMOVAL_RECEIPT in _UPSERT_BOARD_LOCAL
     assert "'quarantined'" not in _FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP
 
 

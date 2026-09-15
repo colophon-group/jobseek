@@ -11,6 +11,7 @@ import pytest
 from typesense.exceptions import ObjectNotFound
 
 from src.sync import (
+    _CONFIGURATION_REMOVAL_RECEIPT,
     _DISABLE_REMOVED_BOARDS_LOCAL,
     _FETCH_BOARD_COMPANY_REHOMES_LOCAL,
     _LOCATION_LOOKUP_INDEX_DDL,
@@ -116,6 +117,7 @@ class TestBoardSourceChangeReset:
         assert "SET board_url = b.board_url, company_id = c.id" in sql
         assert "metadata = jsonb_strip_nulls(jsonb_build_object(" in sql
         assert "jb.metadata -> '_identity_migration_receipt'" in sql
+        assert "jb.metadata -> '_configuration_removal_receipt'" in sql
         assert "board_status = 'active'" in sql
         assert "consecutive_failures = 0" in sql
         assert "next_check_at = now()" in sql
@@ -159,22 +161,53 @@ class TestBoardSourceChangeReset:
         assert "ELSE job_board.consecutive_failures" in sql
         assert "ELSE job_board.last_error" in sql
 
+    def test_configuration_removal_receipt_is_consumed_into_quarantined_recovery(self):
+        """CSV reappearance is recoverable, while an operator disable stays terminal."""
+        upsert_sql = " ".join(_UPSERT_BOARD_LOCAL.split())
+        disable_sql = " ".join(_DISABLE_REMOVED_BOARDS_LOCAL.split())
+        receipt_check = "job_board.metadata ? '_configuration_removal_receipt'"
+
+        assert _CONFIGURATION_REMOVAL_RECEIPT == "_configuration_removal_receipt"
+        assert "jsonb_build_object( '_configuration_removal_receipt'" in disable_sql
+        assert "'board_url', board_url" in disable_sql
+        assert "'board_slug', board_slug" in disable_sql
+        assert "'removed_at', to_jsonb(now())" in disable_sql
+        assert "AND is_enabled = true" in disable_sql
+
+        # Both metadata branches consume the one-shot receipt, and every
+        # repair-state field uses the receipt as a recovery trigger.
+        assert upsert_sql.count("- '_configuration_removal_receipt'") == 2
+        assert upsert_sql.count(receipt_check) == 12
+        assert upsert_sql.index(receipt_check) < upsert_sql.index(
+            "WHEN job_board.board_status = 'disabled' THEN false"
+        )
+        assert "THEN 'quarantined' ELSE job_board.board_status" in upsert_sql
+        assert "THEN now() ELSE job_board.next_check_at" in upsert_sql
+
+        # A manually disabled configured row has no receipt and therefore
+        # continues through the explicit fail-closed branch.
+        assert "WHEN job_board.board_status = 'disabled' THEN false" in upsert_sql
+
     def test_sync_preserves_runtime_identity_receipt_in_both_metadata_branches(self):
         sql = " ".join(_UPSERT_BOARD_LOCAL.split())
 
         source_changed = (
-            "THEN COALESCE(EXCLUDED.metadata, '{}'::jsonb) || "
+            "THEN (COALESCE(EXCLUDED.metadata, '{}'::jsonb) "
+            "- '_configuration_removal_receipt') || "
             "jsonb_strip_nulls(jsonb_build_object( "
             "'_identity_migration_receipt', "
             "job_board.metadata -> '_identity_migration_receipt' ))"
         )
-        unchanged = "ELSE EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object( 'sitemap_url'"
+        unchanged = (
+            "ELSE (EXCLUDED.metadata - '_configuration_removal_receipt') || "
+            "jsonb_strip_nulls(jsonb_build_object( 'sitemap_url'"
+        )
         assert source_changed in sql
         assert unchanged in sql
         assert sql.count("job_board.metadata -> '_identity_migration_receipt'") == 2
         # Existing runtime state is on the right-hand side of jsonb `||`, so
         # it wins over any stale receipt accidentally supplied by CSV input.
-        assert sql.index(source_changed) < sql.index("ELSE EXCLUDED.metadata ||")
+        assert sql.index(source_changed) < sql.index(unchanged)
 
 
 class TestInstalledSyncDataMount:
