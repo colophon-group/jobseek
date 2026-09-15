@@ -164,6 +164,7 @@ async def test_can_handle_returns_hardened_browser_defaults() -> None:
         "headless": False,
         "stealth": True,
         "proxy": True,
+        "page_wait_ms": 4_000,
         "transport_attempts": 5,
         "direct_fallback_on_origin_block": True,
     }
@@ -180,7 +181,7 @@ def test_cgi_configs_pin_installed_chrome_channel() -> None:
     assert scraper_config["persistent_context"] is True
     assert monitor_config["channel"] == "chrome"
     assert scraper_config["channel"] == "chrome"
-    assert monitor_config["page_wait_ms"] == 0
+    assert monitor_config["page_wait_ms"] == 4_000
     assert monitor_config["transport_attempts"] == 5
     assert monitor_config["direct_fallback_on_origin_block"] is True
 
@@ -261,7 +262,7 @@ async def test_accepts_verified_page_when_evaluate_is_interrupted_by_navigation(
             return_value="<html>jobs</html>",
         ),
     ):
-        urls = await _discover_page(page, page.url, {})
+        urls = await _discover_page(page, page.url, {"page_wait_ms": 0})
 
     assert urls == {_job("J1", 1), _job("J2", 2)}
     assert page.submissions == [2, 2]
@@ -484,7 +485,7 @@ async def test_restarts_snapshot_when_middle_page_changes_with_same_total() -> N
     assert _job("J-old-middle", 2) not in urls
 
 
-async def test_fails_closed_on_radware_challenge() -> None:
+async def test_fails_closed_on_radware_challenge_without_logging_its_url() -> None:
     page = _FakePage([[_job("J1", 1)]], expected=1)
     page.url = "https://validate.perfdrive.com/?ssk=botmanager_support@radware.com"
     with (
@@ -498,9 +499,69 @@ async def test_fails_closed_on_radware_challenge() -> None:
             new_callable=AsyncMock,
             return_value="<html><head><title>Radware Captcha Page</title></head></html>",
         ),
-        pytest.raises(BotChallengeError, match="proxy transport"),
+        pytest.raises(BotChallengeError, match="origin rejected") as raised,
     ):
         await _discover_page(page, page.url, {})
+
+    assert "perfdrive" not in str(raised.value).lower()
+    assert raised.value.__cause__ is None
+
+
+async def test_origin_block_diagnostic_identifies_pagination_progress() -> None:
+    page = _FakePage(
+        [[_job("J1", 1)], [_job("J2", 2)]],
+        expected=2,
+    )
+    with (
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            side_effect=[
+                "<html>jobs</html>",
+                "<html><head><title>Radware Captcha Page</title></head></html>",
+            ],
+        ),
+        patch("src.core.monitors.njoyn.log.warning") as warning,
+        pytest.raises(BotChallengeError, match="origin rejected"),
+    ):
+        await _discover_page(page, page.url, {"page_wait_ms": 0})
+
+    warning.assert_any_call(
+        "njoyn.transport.origin_block",
+        phase="pagination",
+        target_page=2,
+        collected=1,
+        expected=2,
+    )
+
+
+async def test_applies_safe_default_pacing_to_every_page_transition() -> None:
+    page = _FakePage(
+        [[_job("J1", 1)], [_job("J2", 2)]],
+        expected=2,
+    )
+    with (
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        urls = await _discover_page(page, page.url, {})
+
+    assert urls == {_job("J1", 1), _job("J2", 2)}
+    assert sleep.await_args_list == [call(4.0), call(4.0)]
 
 
 def test_classifies_tiny_njoyn_xwp_response_as_origin_block() -> None:
