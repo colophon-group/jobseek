@@ -82,6 +82,7 @@ jobs:
           scripts/dealroom-company-requests.test.mjs
           scripts/vercel-web-deploy-paths.test.mjs
           scripts/vercel-server-action-key.test.mjs
+          scripts/vercel-smoke-response.test.mjs
           scripts/vercel-production-sha.test.mjs
           scripts/vercel-promotion-identity.test.mjs
 
