@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -62,6 +64,8 @@ def _board(**metadata) -> dict:
         "currency": "USD",
         "salary_unit": "hour",
         "language": "en",
+        "snapshot_attempts": 3,
+        "semantic_zero_attempts": 3,
     }
     config.update(metadata)
     return {"board_url": BOARD_URL, "metadata": config}
@@ -91,6 +95,33 @@ class TestIdentity:
     def test_configured_short_name_must_match_url_tenant(self):
         with pytest.raises(ValueError, match="does not match"):
             _board_config(_board(short_name="other"))
+
+    @pytest.mark.parametrize(
+        ("key", "value"),
+        [
+            ("snapshot_attempts", True),
+            ("snapshot_attempts", 0),
+            ("snapshot_attempts", 6),
+            ("semantic_zero_attempts", "3"),
+            ("semantic_zero_attempts", 0),
+            ("semantic_zero_attempts", 6),
+        ],
+    )
+    def test_retry_attempts_are_bounded(self, key: str, value: object):
+        with pytest.raises(ValueError, match=key):
+            _board_config(_board(**{key: value}))
+
+    def test_production_board_enables_bounded_semantic_retries(self):
+        with Path("data/boards.csv").open(encoding="utf-8", newline="") as source:
+            row = next(
+                row
+                for row in csv.DictReader(source)
+                if row["board_slug"] == "bristol-myers-squibb-contractors"
+            )
+        metadata = json.loads(row["monitor_config"])
+
+        assert metadata["snapshot_attempts"] == 3
+        assert metadata["semantic_zero_attempts"] == 3
 
 
 class TestParseJob:
@@ -254,6 +285,56 @@ class TestDiscover:
         assert calls == 3
         assert [job.metadata["id"] for job in jobs] == [1, 2]
 
+    async def test_transient_zero_page_retries_same_offset(self, monkeypatch):
+        calls: list[int] = []
+        sleeps: list[float] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            offset = json.loads(request.content)["next"]
+            calls.append(offset)
+            responses = [
+                _page([_raw_job(1)], 2),
+                _page([], 0),
+                _page([_raw_job(2)], 2),
+            ]
+            return httpx.Response(200, json=responses[len(calls) - 1])
+
+        async def record_sleep(delay: float):
+            sleeps.append(delay)
+
+        monkeypatch.setattr("src.core.monitors.curately.asyncio.sleep", record_sleep)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(_board(), client)
+
+        assert calls == [0, 1, 1]
+        assert sleeps == [1.0]
+        assert [job.metadata["id"] for job in jobs] == [1, 2]
+
+    async def test_zero_after_nonzero_is_not_accepted_on_snapshot_restart(
+        self,
+        monkeypatch,
+    ):
+        calls = 0
+        sleeps: list[float] = []
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return httpx.Response(200, json=_page([_raw_job(1)], 2))
+            return httpx.Response(200, json=_page([], 0))
+
+        async def record_sleep(delay: float):
+            sleeps.append(delay)
+
+        monkeypatch.setattr("src.core.monitors.curately.asyncio.sleep", record_sleep)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="between snapshot attempts"):
+                await discover(_board(), client)
+
+        assert calls == 6
+        assert sleeps == [1.0, 2.0, 1.0, 2.0]
+
     async def test_duplicate_job_id_fails_closed(self):
         calls = 0
 
@@ -354,6 +435,8 @@ class TestCanHandle:
                 "short_name": "bms",
                 "client_id": 6,
                 "days_back": 180,
+                "snapshot_attempts": 3,
+                "semantic_zero_attempts": 3,
                 "jobs": 216,
             }
 

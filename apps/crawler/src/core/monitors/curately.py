@@ -30,8 +30,10 @@ API_BASE = "https://api.curately.ai/QADemoCurately"
 SEARCH_URL = f"{API_BASE}/sovrenjobsearch"
 MAX_JOBS = 50_000
 DEFAULT_DAYS_BACK = 180
-_SNAPSHOT_ATTEMPTS = 2
+_SNAPSHOT_ATTEMPTS = 3
 _SNAPSHOT_RETRY_DELAY = 1.0
+_SEMANTIC_ZERO_ATTEMPTS = 3
+_SEMANTIC_ZERO_RETRY_DELAY = 1.0
 
 _SHORT_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _BOARD_PATH_RE = re.compile(
@@ -53,6 +55,19 @@ _INACTIVE_STATUSES = {0, "0", 2, "2", 3, "3", 4, "4", 5, "5"}
 
 class _SnapshotChanged(ValueError):
     """The Curately inventory changed while its pages were being collected."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        expected_total: int | None = None,
+        observed_total: int | None = None,
+        offset: int | None = None,
+    ) -> None:
+        self.expected_total = expected_total
+        self.observed_total = observed_total
+        self.offset = offset
+        super().__init__(message)
 
 
 def _short_name_from_url(board_url: str) -> str | None:
@@ -270,7 +285,25 @@ async def _fetch_search_page(
     return data
 
 
-def _board_config(board: dict) -> tuple[str, int | None, int, str | None, str | None, str | None]:
+def _bounded_attempts(metadata: dict, key: str, default: int) -> int:
+    value = metadata.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 5:
+        raise ValueError(f"Curately {key} must be an integer from 1 to 5")
+    return value
+
+
+def _board_config(
+    board: dict,
+) -> tuple[
+    str,
+    int | None,
+    int,
+    str | None,
+    str | None,
+    str | None,
+    int,
+    int,
+]:
     metadata = board.get("metadata") or {}
     url_short_name = _short_name_from_url(board["board_url"])
     if url_short_name is None:
@@ -304,7 +337,72 @@ def _board_config(board: dict) -> tuple[str, int | None, int, str | None, str | 
     ):
         if value is not None and not isinstance(value, str):
             raise ValueError(f"Curately {name} must be a string")
-    return short_name, client_id, days_back, currency, salary_unit, language
+    snapshot_attempts = _bounded_attempts(
+        metadata,
+        "snapshot_attempts",
+        _SNAPSHOT_ATTEMPTS,
+    )
+    semantic_zero_attempts = _bounded_attempts(
+        metadata,
+        "semantic_zero_attempts",
+        _SEMANTIC_ZERO_ATTEMPTS,
+    )
+    return (
+        short_name,
+        client_id,
+        days_back,
+        currency,
+        salary_unit,
+        language,
+        snapshot_attempts,
+        semantic_zero_attempts,
+    )
+
+
+async def _fetch_snapshot_page(
+    client: httpx.AsyncClient,
+    *,
+    client_id: int,
+    offset: int,
+    days_back: int,
+    expected_total: int | None,
+    semantic_zero_attempts: int,
+) -> dict:
+    """Retry Curately's verified transient-zero envelope on later pages.
+
+    The API occasionally returns a successful response with ``List=[]`` and
+    ``TotalSize=0`` after a preceding page advertised a non-zero inventory.
+    HTTP retries cannot classify that valid JSON envelope. Retry only that
+    impossible within-snapshot transition, on the same offset, before the
+    outer whole-snapshot retry discards all accumulated jobs.
+    """
+    for attempt in range(1, semantic_zero_attempts + 1):
+        data = await _fetch_search_page(
+            client,
+            client_id=client_id,
+            offset=offset,
+            days_back=days_back,
+        )
+        observed_total = data["TotalSize"]
+        is_transient_zero = (
+            expected_total is not None and expected_total > 0 and observed_total == 0
+        )
+        if not is_transient_zero:
+            return data
+
+        retrying = attempt < semantic_zero_attempts
+        log.warning(
+            "curately.semantic_zero_retry",
+            attempt=attempt,
+            attempts=semantic_zero_attempts,
+            retrying=retrying,
+            offset=offset,
+            expected_total=expected_total,
+        )
+        if retrying:
+            await asyncio.sleep(_SEMANTIC_ZERO_RETRY_DELAY * attempt)
+
+    return data
 
 
 async def _discover_snapshot(
@@ -316,6 +414,8 @@ async def _discover_snapshot(
     currency: str | None,
     salary_unit: str | None,
     language: str | None,
+    semantic_zero_attempts: int,
+    prior_nonzero_total: int | None,
 ):
     jobs: list[DiscoveredJob] = []
     seen_ids: set[int] = set()
@@ -323,25 +423,41 @@ async def _discover_snapshot(
     expected_total: int | None = None
 
     while True:
-        data = await _fetch_search_page(
+        data = await _fetch_snapshot_page(
             client,
             client_id=client_id,
             offset=offset,
             days_back=days_back,
+            expected_total=expected_total,
+            semantic_zero_attempts=semantic_zero_attempts,
         )
         items = data["List"]
         total = data["TotalSize"]
         if expected_total is None:
+            if total == 0 and prior_nonzero_total is not None:
+                raise _SnapshotChanged(
+                    "Curately TotalSize changed between snapshot attempts: "
+                    f"{prior_nonzero_total} -> 0",
+                    expected_total=prior_nonzero_total,
+                    observed_total=0,
+                    offset=0,
+                )
             expected_total = total
         elif total != expected_total:
             raise _SnapshotChanged(
-                f"Curately TotalSize changed during pagination: {expected_total} -> {total}"
+                f"Curately TotalSize changed during pagination: {expected_total} -> {total}",
+                expected_total=expected_total,
+                observed_total=total,
+                offset=offset,
             )
 
         if not items:
             if offset < min(total, MAX_JOBS):
                 raise _SnapshotChanged(
-                    f"Curately pagination ended at offset {offset} before advertised total {total}"
+                    f"Curately pagination ended at offset {offset} before advertised total {total}",
+                    expected_total=total,
+                    observed_total=offset,
+                    offset=offset,
                 )
             break
 
@@ -356,7 +472,12 @@ async def _discover_snapshot(
                     f"Curately job {job_id} does not belong to configured client_id {client_id}"
                 )
             if job_id in seen_ids:
-                raise _SnapshotChanged(f"Curately pagination repeated jobId {job_id}")
+                raise _SnapshotChanged(
+                    f"Curately pagination repeated jobId {job_id}",
+                    expected_total=expected_total,
+                    observed_total=offset,
+                    offset=offset,
+                )
             seen_ids.add(job_id)
             job = _parse_job(
                 raw,
@@ -376,7 +497,10 @@ async def _discover_snapshot(
         raise ValueError("Curately search returned no pagination metadata")
     if expected_total <= MAX_JOBS and offset != expected_total:
         raise _SnapshotChanged(
-            f"Curately pagination returned {offset} rows for advertised total {expected_total}"
+            f"Curately pagination returned {offset} rows for advertised total {expected_total}",
+            expected_total=expected_total,
+            observed_total=offset,
+            offset=offset,
         )
     if expected_total > MAX_JOBS:
         log.warning(
@@ -391,13 +515,23 @@ async def _discover_snapshot(
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     _ = pw
-    short_name, client_id, days_back, currency, salary_unit, language = _board_config(board)
+    (
+        short_name,
+        client_id,
+        days_back,
+        currency,
+        salary_unit,
+        language,
+        snapshot_attempts,
+        semantic_zero_attempts,
+    ) = _board_config(board)
     if client_id is None:
         client_data = await _fetch_client(short_name, client)
         client_id = _positive_int(client_data.get("clientId"))
         assert client_id is not None
 
-    for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
+    prior_nonzero_total: int | None = None
+    for attempt in range(1, snapshot_attempts + 1):
         try:
             return await _discover_snapshot(
                 client,
@@ -407,17 +541,26 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
                 currency=currency,
                 salary_unit=salary_unit,
                 language=language,
+                semantic_zero_attempts=semantic_zero_attempts,
+                prior_nonzero_total=prior_nonzero_total,
             )
         except _SnapshotChanged as exc:
-            if attempt == _SNAPSHOT_ATTEMPTS:
-                raise
+            if exc.expected_total is not None and exc.expected_total > 0:
+                prior_nonzero_total = exc.expected_total
+            retrying = attempt < snapshot_attempts
             log.warning(
                 "curately.snapshot_changed",
                 short_name=short_name,
                 attempt=attempt,
-                error=str(exc),
+                attempts=snapshot_attempts,
+                retrying=retrying,
+                expected_total=exc.expected_total,
+                observed_total=exc.observed_total,
+                offset=exc.offset,
             )
-            await asyncio.sleep(_SNAPSHOT_RETRY_DELAY)
+            if not retrying:
+                raise
+            await asyncio.sleep(_SNAPSHOT_RETRY_DELAY * attempt)
     raise AssertionError("unreachable")
 
 
@@ -431,7 +574,12 @@ async def can_handle(
     if short_name is None:
         return None
     if client is None:
-        return {"short_name": short_name, "days_back": DEFAULT_DAYS_BACK}
+        return {
+            "short_name": short_name,
+            "days_back": DEFAULT_DAYS_BACK,
+            "snapshot_attempts": _SNAPSHOT_ATTEMPTS,
+            "semantic_zero_attempts": _SEMANTIC_ZERO_ATTEMPTS,
+        }
     try:
         client_data = await _fetch_client(short_name, client)
         client_id = _positive_int(client_data.get("clientId"))
@@ -449,6 +597,8 @@ async def can_handle(
         "short_name": short_name,
         "client_id": client_id,
         "days_back": DEFAULT_DAYS_BACK,
+        "snapshot_attempts": _SNAPSHOT_ATTEMPTS,
+        "semantic_zero_attempts": _SEMANTIC_ZERO_ATTEMPTS,
         "jobs": data["TotalSize"],
     }
 
@@ -460,7 +610,16 @@ async def save_raw(
     client: httpx.AsyncClient,
 ) -> None:
     board = {"board_url": board_url, "metadata": metadata}
-    short_name, client_id, days_back, _currency, _salary_unit, _language = _board_config(board)
+    (
+        short_name,
+        client_id,
+        days_back,
+        _currency,
+        _salary_unit,
+        _language,
+        _snapshot_attempts,
+        _semantic_zero_attempts,
+    ) = _board_config(board)
     if client_id is None:
         client_data = await _fetch_client(short_name, client)
         client_id = _positive_int(client_data.get("clientId"))
