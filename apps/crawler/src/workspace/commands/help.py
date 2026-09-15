@@ -1852,9 +1852,11 @@ dom — Link or Listing-Row Extraction (fallback)
                    matched empty_selector. Use when the element exists for
                    both empty and non-empty counts (for example, "0 jobs").
     empty_states   Optional list of 1-4 selector-specific empty states, each
-                   with selector and exact_text. A zero-link page succeeds
-                   only when one selector matches and its normalized text is
-                   exactly equal to exact_text. An entry may also pair
+                   with selector and exactly one of exact_text or
+                   contains_text. A zero-link page succeeds only when one
+                   selector matches and its normalized text is exactly equal
+                   to exact_text, or its first match contains contains_text
+                   case-insensitively. An entry may also pair
                    required_link_selector with required_link_url_pattern;
                    that state then requires at least one selected anchor and
                    every selected href must fully match the regex. Do not

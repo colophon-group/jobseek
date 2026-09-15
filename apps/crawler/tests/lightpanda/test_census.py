@@ -432,6 +432,42 @@ def test_dom_inactive_detail_states_use_runtime_validation(tmp_path: Path, state
 
 
 @pytest.mark.parametrize(
+    "states",
+    [
+        [],
+        [{"selector": ".status"}],
+        [{"selector": ".status", "contains_text": ""}],
+        [
+            {
+                "selector": ".status",
+                "exact_text": "Closed",
+                "contains_text": "Closed",
+            }
+        ],
+    ],
+)
+def test_dom_empty_states_use_runtime_validation(tmp_path: Path, states: object) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "invalid-empty-state",
+                monitor_type="dom",
+                monitor_config={
+                    "link_selector": "a.job",
+                    "empty_states": states,
+                },
+            )
+        ],
+    )
+
+    with pytest.raises(CensusError) as exc_info:
+        build_manifest(boards)
+
+    assert str(exc_info.value) == "monitor.dom.empty_states is invalid"
+
+
+@pytest.mark.parametrize(
     "rich_rows",
     [
         {"row_selector": ".job", "location_selectors": [], "metadata_selectors": {}},

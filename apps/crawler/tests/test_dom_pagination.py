@@ -1079,6 +1079,33 @@ class TestExplicitEmptyState:
 
         assert result == set()
 
+    async def test_contains_text_accepts_server_rendered_payload_marker(self):
+        html = """
+        <main><h1>Careers</h1></main>
+        <script id="__NUXT_DATA__" type="application/json">
+          ["page",{"content":"There are currently no vacancies available."}]
+        </script>
+        """
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "link_selector": "main a[href*='.pdf']",
+                        "empty_states": [
+                            {
+                                "selector": "script#__NUXT_DATA__",
+                                "contains_text": "CURRENTLY NO VACANCIES AVAILABLE",
+                                "forbidden_link_selector": "main a[href]",
+                            }
+                        ],
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == set()
+
     async def test_paginated_empty_contract_accepts_zero_without_fetching_a_tail(self):
         html = '<p class="error"><strong>No matching vacancies.</strong></p>'
         paginated_fetch = AsyncMock()
@@ -1605,6 +1632,14 @@ class TestExplicitEmptyState:
             [],
             [{"selector": ".empty"}],
             [{"selector": ".empty", "exact_text": ""}],
+            [{"selector": ".empty", "contains_text": ""}],
+            [
+                {
+                    "selector": ".empty",
+                    "exact_text": "none",
+                    "contains_text": "none",
+                }
+            ],
             [{"selector": ".empty", "exact_text": "none"}] * 5,
             [
                 {
