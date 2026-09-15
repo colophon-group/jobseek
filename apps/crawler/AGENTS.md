@@ -258,7 +258,8 @@ two-phase operator workflow:
 
 ```bash
 # Read-only provider validation. Save the numeric validation_id from its
-# sanitized JSON output; this does not change the proxy list.
+# sanitized JSON output; this does not change the proxy list. Apply it before
+# the reported 15-minute validation expiry.
 uv run crawler proxy-replace-webshare-pool --env-file .env.local
 
 # External mutation: applies only if that dry run still describes the exact
@@ -268,7 +269,9 @@ uv run crawler proxy-replace-webshare-pool --env-file .env.local \
 ```
 
 The apply command verifies that every direct exit changed, pool size stayed
-constant, and the deployed backbone credential signatures remained valid. A
+constant, and the deployed backbone credential signatures remained valid. It
+rejects missing, malformed, future, or more-than-15-minute-old dry-run
+completion timestamps, even when the pool is otherwise unchanged. A
 status of `attention` exits nonzero: refresh the operator env through
 `proxy-configure-webshare`, update the runtime secret through the approved
 deployment path, and do not resume target probes until credentials match.

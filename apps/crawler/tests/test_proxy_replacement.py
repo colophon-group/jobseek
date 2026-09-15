@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -14,6 +15,7 @@ POOL_URLS = (
 )
 OLD_ADDRESSES = ["192.0.2.10", "192.0.2.11"]
 NEW_ADDRESSES = ["198.51.100.20", "198.51.100.21"]
+NOW = datetime(2026, 9, 15, 12, tzinfo=UTC)
 
 
 def _proxy_list(addresses: list[str], *, backbone: bool = False) -> dict[str, object]:
@@ -37,6 +39,7 @@ def _replacement(
     dry_run: bool,
     state: str,
     addresses: list[str] | None = None,
+    dry_run_completed_at: str | None = None,
 ) -> dict[str, object]:
     selected = addresses or OLD_ADDRESSES
     terminal = state in {"validated", "completed"}
@@ -51,6 +54,13 @@ def _replacement(
         "reason": "",
         "error": None,
         "error_code": None,
+        "dry_run_completed_at": (
+            dry_run_completed_at
+            if dry_run_completed_at is not None
+            else NOW.isoformat()
+            if dry_run and state == "validated"
+            else None
+        ),
     }
 
 
@@ -115,12 +125,15 @@ async def test_dry_run_validates_exact_pool_and_never_emits_secrets_or_addresses
         configured_pool_urls=POOL_URLS,
         transport=httpx.MockTransport(handler),
         poll_interval=0,
+        now=NOW,
     )
 
     assert report == {
         "status": "validated",
         "mode": "dry-run",
         "validation_id": 501,
+        "validation_expires_at": "2026-09-15T12:15:00Z",
+        "validation_ttl_seconds": 900,
         "pool_size": 2,
         "replacements_available_before": 10,
         "proxies_to_remove": 2,
@@ -195,6 +208,7 @@ async def test_apply_requires_validation_then_proves_full_rotation_and_runtime_c
         apply_validation_id=501,
         transport=httpx.MockTransport(handler),
         poll_interval=0,
+        now=NOW,
     )
 
     assert report == {
@@ -250,6 +264,7 @@ async def test_apply_rejects_stale_validation_without_posting_mutation():
             apply_validation_id=501,
             transport=httpx.MockTransport(handler),
             poll_interval=0,
+            now=NOW,
         )
 
     assert post_count == 0
@@ -285,11 +300,61 @@ async def test_provider_failure_exposes_only_safe_error_code():
             configured_pool_urls=POOL_URLS,
             transport=httpx.MockTransport(handler),
             poll_interval=0,
+            now=NOW,
         )
 
     assert str(caught.value) == "Webshare replacement failed (no_proxies_to_be_replaced)"
     assert "192.0.2.10" not in str(caught.value)
     assert "pool-secret-a" not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    ("completed_at", "message"),
+    [
+        ((NOW - timedelta(minutes=16)).isoformat(), "has expired"),
+        ((NOW + timedelta(minutes=1)).isoformat(), "in the future"),
+        ("not-a-timestamp", "invalid completion time"),
+        ("", "omitted its completion time"),
+    ],
+)
+async def test_apply_rejects_unfresh_validation_without_posting_mutation(
+    completed_at: str, message: str
+):
+    post_count = 0
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal post_count
+        if response := _common_response(request):
+            return response
+        if request.url.path == "/api/v2/proxy/list/":
+            return httpx.Response(
+                200, json=_proxy_list(OLD_ADDRESSES, backbone=True), request=request
+            )
+        if request.method == "GET" and request.url.path == "/api/v3/proxy/replace/501/":
+            payload = _replacement(
+                501,
+                dry_run=True,
+                state="validated",
+                dry_run_completed_at=completed_at,
+            )
+            if completed_at == "":
+                payload["dry_run_completed_at"] = None
+            return httpx.Response(200, json=payload, request=request)
+        if request.method == "POST":
+            post_count += 1
+        return httpx.Response(404, request=request)
+
+    with pytest.raises(ProxyAuditError, match=message):
+        await replace_webshare_pool(
+            api_key="operator-api-secret",
+            configured_pool_urls=POOL_URLS,
+            apply_validation_id=501,
+            transport=httpx.MockTransport(handler),
+            poll_interval=0,
+            now=NOW,
+        )
+
+    assert post_count == 0
 
 
 def test_operator_inputs_are_loaded_without_mutating_environment(tmp_path, monkeypatch):
@@ -304,3 +369,12 @@ def test_operator_inputs_are_loaded_without_mutating_environment(tmp_path, monke
 
     assert api_key == "operator-api-secret"
     assert urls == POOL_URLS
+
+
+async def test_naive_test_clock_is_rejected_before_provider_requests():
+    with pytest.raises(ProxyAuditError, match="now must include a timezone"):
+        await replace_webshare_pool(
+            api_key="operator-api-secret",
+            configured_pool_urls=POOL_URLS,
+            now=datetime(2026, 9, 15, 12),
+        )

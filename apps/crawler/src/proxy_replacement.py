@@ -13,6 +13,7 @@ import asyncio
 import json
 import re
 from collections.abc import Iterable, Mapping
+from datetime import UTC, datetime, timedelta
 from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,8 @@ _REPLACEMENT_PATH = "/api/v3/proxy/replace/"
 _MAX_POOL_SIZE = 64
 _PENDING_STATES = frozenset({"validating", "processing"})
 _SAFE_ERROR_CODE = re.compile(r"^[a-z0-9_]{1,80}$")
+_VALIDATION_TTL = timedelta(minutes=15)
+_CLOCK_SKEW_TOLERANCE = timedelta(seconds=30)
 
 
 def _json_object(response: httpx.Response, operation: str) -> dict[str, Any]:
@@ -198,6 +201,25 @@ def _replacement_id(payload: Mapping[str, object]) -> int:
     return value
 
 
+def _validation_expiry(payload: Mapping[str, object], *, now: datetime) -> datetime:
+    raw_completed_at = payload.get("dry_run_completed_at")
+    if not isinstance(raw_completed_at, str) or not raw_completed_at:
+        raise ProxyAuditError("Webshare dry-run validation omitted its completion time")
+    try:
+        completed_at = datetime.fromisoformat(raw_completed_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ProxyAuditError("Webshare dry-run validation has an invalid completion time") from exc
+    if completed_at.tzinfo is None or completed_at.utcoffset() is None:
+        raise ProxyAuditError("Webshare dry-run validation has an invalid completion time")
+    completed_at = completed_at.astimezone(UTC)
+    if completed_at > now + _CLOCK_SKEW_TOLERANCE:
+        raise ProxyAuditError("Webshare dry-run validation completion time is in the future")
+    expires_at = completed_at + _VALIDATION_TTL
+    if now > expires_at:
+        raise ProxyAuditError("Webshare dry-run validation has expired")
+    return expires_at
+
+
 def _validate_replacement_shape(
     payload: Mapping[str, object],
     *,
@@ -265,6 +287,7 @@ async def replace_webshare_pool(
     transport: httpx.AsyncBaseTransport | None = None,
     poll_interval: float = 1.0,
     max_polls: int = 120,
+    now: datetime | None = None,
 ) -> dict[str, object]:
     """Validate or apply a whole-pool replacement and return sanitized facts."""
 
@@ -276,6 +299,11 @@ async def replace_webshare_pool(
         raise ProxyAuditError("poll_interval must be between 0 and 10 seconds")
     if max_polls < 1 or max_polls > 600:
         raise ProxyAuditError("max_polls must be between 1 and 600")
+    if now is not None and (now.tzinfo is None or now.utcoffset() is None):
+        raise ProxyAuditError("now must include a timezone")
+
+    def current_time() -> datetime:
+        return now.astimezone(UTC) if now is not None else datetime.now(UTC)
 
     configured_signatures = _configured_signatures(configured_pool_urls)
     headers = {
@@ -370,10 +398,13 @@ async def replace_webshare_pool(
             added = _nonnegative_int(validated, "proxies_added", "dry-run replacement")
             if removed != pool_size or added != pool_size:
                 raise ProxyAuditError("Webshare dry run did not validate a whole-pool replacement")
+            validation_expires_at = _validation_expiry(validated, now=current_time())
             return {
                 "status": "validated",
                 "mode": "dry-run",
                 "validation_id": replacement_id,
+                "validation_expires_at": validation_expires_at.isoformat().replace("+00:00", "Z"),
+                "validation_ttl_seconds": int(_VALIDATION_TTL.total_seconds()),
                 "pool_size": pool_size,
                 "replacements_available_before": available_before,
                 "proxies_to_remove": removed,
@@ -392,6 +423,9 @@ async def replace_webshare_pool(
             raise ProxyAuditError("Webshare dry-run validation returned a different identifier")
         if validation.get("state") != "validated":
             raise ProxyAuditError("Webshare dry-run validation is not complete")
+        # Check freshness immediately before the only mutating request. With a
+        # real clock this excludes time spent on all preceding preflight I/O.
+        _validation_expiry(validation, now=current_time())
         _validate_replacement_shape(validation, expected_addresses=addresses_before, dry_run=True)
         if (
             _nonnegative_int(validation, "proxies_removed", "dry-run validation") != pool_size
