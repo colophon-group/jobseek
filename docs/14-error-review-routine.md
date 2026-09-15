@@ -60,6 +60,13 @@ dry-run/apply `crawler proxy-replace-webshare-pool` workflow documented in
 pool changed, included capacity is insufficient, or runtime backbone
 credentials do not match.
 
+When the runtime pool secret changes, use a new manual `Deploy Crawler
+(Hetzner)` dispatch on `main`; never rerun an old deployment to roll out the
+new value because a rerun keeps the old run's secret snapshot. The deployment
+preflight rejects non-current or non-default-branch SHAs. Confirm the deployed
+pool cardinality (without endpoint values) before the bounded production
+canary.
+
 Njoyn inventory drift is classified separately from transport failure. A
 successful `njoyn.snapshot.reconciled` event means both numbered passes were
 structurally complete and their difference stayed inside the code-owned churn

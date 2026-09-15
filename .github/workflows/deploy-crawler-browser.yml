@@ -1,6 +1,10 @@
 name: Deploy Crawler (Hetzner)
 
 on:
+  # Operators use a fresh dispatch after rotating runtime-only secrets. A
+  # rerun preserves the original run's secret snapshot and cannot roll a new
+  # value into production.
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -19,6 +23,7 @@ on:
       # Keep the deploy workflow self-triggered so policy changes exercise the
       # immutable-version and production rollout path they control (#5873).
       - '.github/workflows/deploy-crawler-browser.yml'
+      - '.github/scripts/resolve-crawler-deploy-revisions.sh'
       - 'scripts/derive-crawler-runtime-contract.mjs'
       - 'scripts/verify-crawler-release-bridge.py'
 
@@ -30,7 +35,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      previous_revision: ${{ steps.revisions.outputs.previous_revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Attest deployment and rollback revisions
+        id: revisions
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: bash .github/scripts/resolve-crawler-deploy-revisions.sh
+
   company-og:
+    needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 360
     permissions:
@@ -51,6 +77,7 @@ jobs:
         run: bash .github/scripts/ensure-company-og-prewarm.sh
 
   build:
+    needs: preflight
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -73,7 +100,7 @@ jobs:
       - name: Derive immutable build version
         id: version
         env:
-          BASE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ needs.preflight.outputs.previous_revision }}
         run: >-
           node scripts/derive-crawler-build-version.mjs
           --base "$BASE_SHA"
@@ -91,7 +118,7 @@ jobs:
       - name: Derive crawler runtime contract
         id: runtime-contract
         env:
-          PREVIOUS_REVISION: ${{ github.event.before }}
+          PREVIOUS_REVISION: ${{ needs.preflight.outputs.previous_revision }}
         run: |
           set -euo pipefail
           node scripts/derive-crawler-runtime-contract.mjs \
@@ -199,7 +226,7 @@ jobs:
           done
 
   deploy:
-    needs: [company-og, build]
+    needs: [preflight, company-og, build]
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -229,7 +256,7 @@ jobs:
       - name: Build exact pre-deploy CSV rollback candidate
         id: previous-data
         env:
-          PREVIOUS_REVISION: ${{ github.event.before }}
+          PREVIOUS_REVISION: ${{ needs.preflight.outputs.previous_revision }}
           EXPECTED_PREVIOUS_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.previous_runtime_contract_sha256 }}
         run: |
           set -euo pipefail
@@ -383,7 +410,7 @@ jobs:
           JOBSEEK_CLAIMANT_CREDENTIAL_ARCHIVE_SHA256: ${{ steps.claimant-bundle.outputs.archive_sha256 }}
           JOBSEEK_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.runtime_contract_sha256 }}
           JOBSEEK_DATA_CONTRACT_SHA256: ${{ needs.build.outputs.data_contract_sha256 }}
-          JOBSEEK_PREVIOUS_DATA_REVISION: ${{ github.event.before }}
+          JOBSEEK_PREVIOUS_DATA_REVISION: ${{ needs.preflight.outputs.previous_revision }}
           JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.previous_runtime_contract_sha256 }}
           JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256: ${{ needs.build.outputs.previous_data_contract_sha256 }}
           JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID: ${{ steps.previous-data.outputs.candidate_id }}
