@@ -61,6 +61,18 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
                     "bot_protection": False,
                     "render": True,
                     "resource_policy": "auto",
+                    "pagination": {
+                        "partition_cover_paths": [
+                            [
+                                "a[href*='secret-contract']",
+                                "a[href*='secret-family']",
+                            ],
+                            [
+                                "a[href*='secret-contract']",
+                                "a[href*='secret-country']",
+                            ],
+                        ]
+                    },
                     "wait": "networkidle",
                 },
             ),
@@ -115,6 +127,9 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
         "secret.example",
         "do-not-commit",
         "#secret-selector",
+        "secret-contract",
+        "secret-family",
+        "secret-country",
         "window.__secret",
     ):
         assert secret not in rendered

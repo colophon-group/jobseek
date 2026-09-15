@@ -428,6 +428,8 @@ _SELECTOR_KEYS = frozenset(
         "total_selector",
     }
 )
+_SELECTOR_LIST_KEYS = frozenset({"partition_fallback_selectors"})
+_SELECTOR_PATH_LIST_KEYS = frozenset({"partition_cover_paths"})
 _ACTION_KEYS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "click": (frozenset({"action", "selector"}), frozenset({"required", "timeout"})),
     "dismiss_overlays": (frozenset({"action"}), frozenset({"required", "timeout"})),
@@ -597,6 +599,24 @@ def _validate_selector_fields(value: object, *, path: str = "config") -> None:
             child_path = f"{path}.{key}"
             if key in _SELECTOR_KEYS:
                 _validate_selector(item, path=child_path)
+            elif key in _SELECTOR_LIST_KEYS:
+                if not isinstance(item, list) or not 1 <= len(item) <= 4:
+                    raise CensusError(f"{child_path} must contain one to four selectors")
+                for index, selector in enumerate(item):
+                    _validate_selector(selector, path=f"{child_path}[{index}]")
+            elif key in _SELECTOR_PATH_LIST_KEYS:
+                if not isinstance(item, list) or not 2 <= len(item) <= 4:
+                    raise CensusError(f"{child_path} must contain two to four selector paths")
+                for path_index, selector_path in enumerate(item):
+                    if not isinstance(selector_path, list) or not 1 <= len(selector_path) <= 4:
+                        raise CensusError(
+                            f"{child_path}[{path_index}] must contain one to four selectors"
+                        )
+                    for selector_index, selector in enumerate(selector_path):
+                        _validate_selector(
+                            selector,
+                            path=f"{child_path}[{path_index}][{selector_index}]",
+                        )
             elif "selector" in key or key in {"frame", "scope"}:
                 raise CensusError(f"unknown selector field {child_path}")
             _validate_selector_fields(item, path=child_path)

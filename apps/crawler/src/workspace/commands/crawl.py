@@ -1134,13 +1134,24 @@ def select_monitor(
             }
         elif type_ == "dom":
             _VALID_PAG_KEYS = {
-                "param_name",
-                "url_template",
-                "start",
-                "start_value",
+                "advertised_ranges",
+                "browser",
                 "increment",
                 "max_pages",
-                "browser",
+                "param_name",
+                "partition_count_regex",
+                "partition_cover_paths",
+                "partition_drop_params",
+                "partition_fallback_selector",
+                "partition_fallback_selectors",
+                "partition_result_limit",
+                "partition_selector",
+                "partition_stateless",
+                "partition_validate_total",
+                "start",
+                "start_value",
+                "transient_403",
+                "url_template",
             }
         else:
             _VALID_PAG_KEYS = {
