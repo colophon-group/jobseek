@@ -1500,9 +1500,21 @@ Check it:
 ```bash
 systemctl is-enabled jobseek-docker-gc.timer
 systemctl is-active jobseek-docker-gc.timer
+systemctl show jobseek-docker-gc.timer \
+  -p ActiveState -p SubState -p LastTriggerUSec \
+  -p NextElapseUSecRealtime -p NextElapseUSecMonotonic
 systemctl list-timers --all jobseek-docker-gc.timer --no-pager
 journalctl -u jobseek-docker-gc.service -n 80 --no-pager
 ```
+
+`is-active` is not sufficient acceptance: systemd also reports an elapsed
+timer as active. A quiescent healthy timer has `ActiveState=active`,
+`SubState=waiting`, and a finite non-empty next trigger. `SubState=running` is
+healthy while the target service is in flight; inspect that service and require
+the timer to return to waiting with a finite trigger after completion. Any
+other active substate is unhealthy. The timer schedules its first run after
+activation and each later run from the prior service completion, so
+reinstalling the units cannot strand recurrence without an activation anchor.
 
 Run it manually:
 
@@ -1560,10 +1572,10 @@ used to justify or trigger the below-5-GiB all-unused-image emergency path.
 
 The daily error-review bundle includes `host/docker-system-df.txt`,
 `host/docker-container-sizes.txt`, `host/docker-images.txt`,
-`host/disk-attribution.txt`, and the exact-window `host/docker-gc.log`. Use all
-of them before attributing growth; a post-deploy filesystem drop alone does not
-prove whether an image, writable container layer, or another managed root was
-responsible.
+`host/disk-attribution.txt`, `host/docker-gc-timer.txt`, and the exact-window
+`host/docker-gc.log`. Use all of them before attributing growth; a post-deploy
+filesystem drop alone does not prove whether an image, writable container
+layer, or another managed root was responsible.
 
 Before any manual all-image pruning on the Typesense host, verify the web
 PostgreSQL helper lease described in

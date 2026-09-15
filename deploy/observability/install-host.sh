@@ -261,6 +261,21 @@ alloy_service_pid_is_expected() {
   [[ "$executable" == "$BINARY" ]]
 }
 
+docker_gc_timer_is_scheduled() {
+  local next_trigger substate
+  substate="$(
+    systemctl show --property=SubState --value jobseek-docker-gc.timer
+  )" || return 1
+  next_trigger="$(
+    systemctl show --property=NextElapseUSecMonotonic --value jobseek-docker-gc.timer
+  )" || return 1
+  [[ "$substate" == waiting ]] || return 1
+  case "$next_trigger" in
+    "" | infinity | n/a) return 1 ;;
+  esac
+  return 0
+}
+
 install_surface() {
   local service_load_state timer_load_state unit
 
@@ -308,6 +323,8 @@ install_surface() {
   systemctl restart jobseek-alloy.service
   systemctl is-active --quiet jobseek-host-observability.timer
   systemctl is-active --quiet jobseek-docker-gc.timer
+  docker_gc_timer_is_scheduled ||
+    fail "Docker GC timer is active without a finite next trigger"
 
   local ready=0
   for _ in {1..20}; do

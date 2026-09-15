@@ -4,6 +4,64 @@ rule_files:
 evaluation_interval: 1m
 
 tests:
+  - name: active running timer does not raise a unit alert
+    interval: 1m
+    input_series:
+      - series: 'jobseek_host_unit_active{instance="jobseek-crawler-browser",host_role="crawler",unit="jobseek-docker-gc.timer"}'
+        values: '1x7'
+      - series: 'jobseek_host_timer_scheduled{instance="jobseek-crawler-browser",host_role="crawler",unit="jobseek-docker-gc.timer"}'
+        values: '1x7'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: RequiredHostUnitInactive
+        exp_alerts: []
+
+  - name: inactive timer produces one deduplicated unit alert
+    interval: 1m
+    input_series:
+      - series: 'jobseek_host_unit_active{instance="jobseek-crawler-browser",host_role="crawler",unit="jobseek-docker-gc.timer"}'
+        values: '0x7'
+      - series: 'jobseek_host_timer_scheduled{instance="jobseek-crawler-browser",host_role="crawler",unit="jobseek-docker-gc.timer"}'
+        values: '0x7'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: RequiredHostUnitInactive
+        exp_alerts:
+          - exp_labels:
+              host_role: crawler
+              instance: jobseek-crawler-browser
+              owner: codex-error-review
+              route: codex-daily
+              service: fleet-runtime
+              severity: high
+              unit: jobseek-docker-gc.timer
+            exp_annotations:
+              summary: Required unit jobseek-docker-gc.timer is inactive or unscheduled on jobseek-crawler-browser
+              description: A required service has remained inactive, or a required timer has remained elapsed or otherwise unscheduled, for five minutes.
+              runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
+
+  - name: active but elapsed host timer is actionable
+    interval: 1m
+    input_series:
+      - series: 'jobseek_host_timer_scheduled{instance="jobseek-crawler-browser",host_role="crawler",unit="jobseek-docker-gc.timer"}'
+        values: '0x7'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: RequiredHostUnitInactive
+        exp_alerts:
+          - exp_labels:
+              host_role: crawler
+              instance: jobseek-crawler-browser
+              owner: codex-error-review
+              route: codex-daily
+              service: fleet-runtime
+              severity: high
+              unit: jobseek-docker-gc.timer
+            exp_annotations:
+              summary: Required unit jobseek-docker-gc.timer is inactive or unscheduled on jobseek-crawler-browser
+              description: A required service has remained inactive, or a required timer has remained elapsed or otherwise unscheduled, for five minutes.
+              runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
+
   - name: crawler scrape availability counts zero-valued targets
     interval: 1m
     input_series:

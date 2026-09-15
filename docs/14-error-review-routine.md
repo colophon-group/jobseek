@@ -100,7 +100,8 @@ fails.
 Disk incidents carry attribution rather than only a filesystem percentage.
 The root collector records bounded `docker system df`, container writable-layer
 sizes, image age/size inventory, exact sizes for the known Docker/containerd,
-observability, Codex-runner, deploy, and log roots, and the exact-window
+observability, Codex-runner, deploy, and log roots, the Docker GC timer's active,
+substate, last-trigger, and next-trigger fields, and the exact-window
 `jobseek-docker-gc.service` journal. The `disk_capacity.complete` manifest flag
 fails closed if any command fails, times out, or reaches the bundle size cap.
 These artifacts are diagnostic only: the unprivileged review must not turn a

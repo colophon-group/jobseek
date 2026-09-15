@@ -716,6 +716,25 @@ def _collect_disk_capacity_evidence(
         artifacts[name] = {"cmd": command, "returncode": code, **file_info}
         complete = complete and code == 0 and not bool(file_info["truncated"])
 
+    timer_command = [
+        "systemctl",
+        "show",
+        "jobseek-docker-gc.timer",
+        "--property=ActiveState",
+        "--property=SubState",
+        "--property=LastTriggerUSec",
+        "--property=NextElapseUSecRealtime",
+        "--property=NextElapseUSecMonotonic",
+    ]
+    code, output = _run(timer_command, timeout=30)
+    file_info = _write(run_dir / "host" / "docker-gc-timer.txt", output)
+    artifacts["docker-gc-timer"] = {
+        "cmd": timer_command,
+        "returncode": code,
+        **file_info,
+    }
+    complete = complete and code == 0 and not bool(file_info["truncated"])
+
     unit = "jobseek-docker-gc.service"
     journal_command = [
         "journalctl",

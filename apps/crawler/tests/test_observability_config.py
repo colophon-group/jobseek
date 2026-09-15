@@ -205,6 +205,18 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
     } <= names
 
 
+def test_required_unit_alert_catches_active_but_unscheduled_timers() -> None:
+    rule = _alert_rule("RequiredHostUnitInactive")
+
+    assert rule["expr"] == (
+        "(jobseek_host_unit_active == 0) or on(host_role, instance, unit) "
+        "(jobseek_host_timer_scheduled == 0)"
+    )
+    assert rule["for"] == "5m"
+    assert rule["labels"]["severity"] == "high"
+    assert "elapsed" in rule["annotations"]["description"]
+
+
 def test_web_backup_helper_image_alert_preserves_the_source_service_label() -> None:
     rule = _alert_rule("WebPostgreSQLBackupHelperImageUnprotected")
 

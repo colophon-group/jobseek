@@ -128,7 +128,7 @@ groups:
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
 
       - alert: RequiredHostUnitInactive
-        expr: jobseek_host_unit_active == 0
+        expr: (jobseek_host_unit_active == 0) or on(host_role, instance, unit) (jobseek_host_timer_scheduled == 0)
         for: 5m
         labels:
           severity: high
@@ -136,8 +136,8 @@ groups:
           owner: codex-error-review
           route: codex-daily
         annotations:
-          summary: "Required unit {{ $labels.unit }} is inactive on {{ $labels.instance }}"
-          description: "A required Docker, backup, tunnel, or Codex scheduling unit has remained inactive for five minutes."
+          summary: "Required unit {{ $labels.unit }} is inactive or unscheduled on {{ $labels.instance }}"
+          description: "A required service has remained inactive, or a required timer has remained elapsed or otherwise unscheduled, for five minutes."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
 
       - alert: RequiredContainerUnavailable

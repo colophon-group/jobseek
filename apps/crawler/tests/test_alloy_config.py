@@ -12,6 +12,12 @@ ROOT = Path(__file__).resolve().parents[3]
 HOST_CONFIG = (ROOT / "deploy" / "observability" / "alloy-host.alloy").read_text(encoding="utf-8")
 HOST_INSTALLER = (ROOT / "deploy" / "observability" / "install-host.sh").read_text(encoding="utf-8")
 HOST_SERVICE = (ROOT / "deploy" / "systemd" / "jobseek-alloy.service").read_text(encoding="utf-8")
+HOST_GC_TIMER = (ROOT / "deploy" / "systemd" / "jobseek-docker-gc.timer").read_text(
+    encoding="utf-8"
+)
+HOST_WORKFLOW = (ROOT / ".github" / "workflows" / "deploy-hetzner-observability.yml").read_text(
+    encoding="utf-8"
+)
 EXPECTED_ALLOY_IMAGE = (
     "grafana/alloy:v1.19.2@sha256:b8ec653c44235fbe910879145dac3597d66b0aaecf60bcbbe82580767771a839"
 )
@@ -126,3 +132,15 @@ def test_host_alloy_unprivileged_paths_and_readiness_are_enforced():
     assert 'rm -f "$BINARY"' in HOST_INSTALLER
     assert 'rm -f "$SAMPLER"' in HOST_INSTALLER
     assert '"${STATE_ROOT}/deployed-sha"' in HOST_INSTALLER
+
+
+def test_docker_gc_timer_has_a_reinstall_safe_schedule_and_acceptance_gate():
+    assert "OnActiveSec=15min" in HOST_GC_TIMER
+    assert "OnUnitInactiveSec=1h" in HOST_GC_TIMER
+    assert "OnUnitActiveSec" not in HOST_GC_TIMER
+    assert "Unit=jobseek-docker-gc.service" in HOST_GC_TIMER
+    assert "docker_gc_timer_is_scheduled" in HOST_INSTALLER
+    assert "NextElapseUSecMonotonic" in HOST_INSTALLER
+    assert "NextElapseUSecMonotonic" in HOST_WORKFLOW
+    assert 'test "$docker_gc_next" != infinity' in HOST_WORKFLOW
+    assert 'test "$docker_gc_next" != n/a' in HOST_WORKFLOW

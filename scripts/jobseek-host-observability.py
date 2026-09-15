@@ -463,19 +463,53 @@ def _collect_unit_metrics(role: str, lines: list[str]) -> None:
     units = (*ROLE_UNITS[role], *filter(_unit_enabled, OPTIONAL_ROLE_UNITS[role]))
     for unit in units:
         result = subprocess.run(
-            ["systemctl", "is-active", "--quiet", unit],
+            [
+                "systemctl",
+                "show",
+                "--property=ActiveState",
+                "--property=SubState",
+                "--property=NextElapseUSecRealtime",
+                "--property=NextElapseUSecMonotonic",
+                unit,
+            ],
             check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
+        state = dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
+        active = result.returncode == 0 and state.get("ActiveState") == "active"
         lines.append(
             _metric(
                 "jobseek_host_unit_active",
-                int(result.returncode == 0),
+                int(active),
                 host_role=role,
                 unit=unit,
             )
         )
+        if unit.endswith(".timer"):
+            next_triggers = (
+                state.get("NextElapseUSecRealtime", ""),
+                state.get("NextElapseUSecMonotonic", ""),
+            )
+            has_finite_next_trigger = any(
+                trigger not in {"", "infinity", "n/a"} for trigger in next_triggers
+            )
+            substate = state.get("SubState")
+            # OnUnitInactiveSec cannot expose its next trigger until the target
+            # service finishes, so active(running) is a healthy in-flight timer.
+            scheduled = active and (
+                substate == "running" or (substate == "waiting" and has_finite_next_trigger)
+            )
+            lines.append(
+                _metric(
+                    "jobseek_host_timer_scheduled",
+                    int(scheduled),
+                    host_role=role,
+                    unit=unit,
+                )
+            )
 
 
 def _collect_typesense_support_memory_metrics(lines: list[str]) -> None:
