@@ -38,6 +38,12 @@ def _transport(*, activity_rows: list[dict], activity_count: int | None = None):
                 "automatic_refresh_frequency": 2_592_000,
                 "automatic_refresh_last_at": "2026-08-01T00:00:00Z",
                 "automatic_refresh_next_at": "2026-09-29T00:00:00Z",
+                "proxy_replacements_total": 10,
+                "proxy_replacements_used": 2,
+                "proxy_replacements_available": 8,
+                "on_demand_refreshes_total": 0,
+                "on_demand_refreshes_used": 0,
+                "on_demand_refreshes_available": 0,
             }
         elif path == "/api/v2/proxy/list/" and query.get("mode") == ["direct"]:
             payload = {
@@ -107,6 +113,7 @@ async def test_audit_reports_matching_pool_without_emitting_sensitive_values():
         "legacy_direct_matches_current_list": True,
     }
     assert report["client_sources"]["assessment"] == "expected_only"
+    assert report["plan"]["proxy_replacements_available"] == 8
 
     encoded = json.dumps(report, sort_keys=True)
     for sensitive in (

@@ -170,6 +170,7 @@ uv run crawler drain                   # R2 description uploader
 uv run crawler sync                    # CSV -> local Postgres, then Redis + Typesense
 uv run crawler proxy-audit             # Sanitized operator-only Webshare usage/source audit
 uv run crawler proxy-configure-webshare --env-file .env.local  # Backup + refresh pool
+uv run crawler proxy-replace-webshare-pool --env-file .env.local  # Validate blocked-pool rotation
 uv run crawler reconcile               # Read-only Typesense reconciliation slice
 uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs (host timer uses this)
 uv run crawler reconcile --repair --full --target typesense  # Operator full remaining target cycle
@@ -247,6 +248,35 @@ timestamped mode-0600 backup before every mutation, writes atomically, and
 never prints proxy credentials. The API key is deliberately absent from
 Compose and the deployment workflow. `DECODO_PROXY_URL` is retired and the
 configurator removes it from the target env file after the backup.
+
+If every pool slot receives a typed block from the same origin after a full
+quarantine cooldown, stop probing the target. Do not attempt to solve or
+bypass its CAPTCHA. First run `proxy-audit` and confirm that the configured
+backbone pool still matches, the subscription is active, and a whole-pool
+replacement fits within `proxy_replacements_available`. Then use the guarded
+two-phase operator workflow:
+
+```bash
+# Read-only provider validation. Save the numeric validation_id from its
+# sanitized JSON output; this does not change the proxy list. Apply it before
+# the reported 15-minute validation expiry.
+uv run crawler proxy-replace-webshare-pool --env-file .env.local
+
+# External mutation: applies only if that dry run still describes the exact
+# current pool and the plan still has enough included replacement capacity.
+uv run crawler proxy-replace-webshare-pool --env-file .env.local \
+  --apply-validation-id <validation_id>
+```
+
+The apply command verifies that every direct exit changed, pool size stayed
+constant, and the deployed backbone credential signatures remained valid. It
+rejects missing, malformed, future, or more-than-15-minute-old dry-run
+completion timestamps, even when the pool is otherwise unchanged. A
+status of `attention` exits nonzero: refresh the operator env through
+`proxy-configure-webshare`, update the runtime secret through the approved
+deployment path, and do not resume target probes until credentials match.
+Rotations are a bounded incident-recovery action, never an automatic response
+to a single block and never a substitute for request pacing.
 
 For a same-egress diagnostic (especially the resource-policy anti-bot A/B), set
 `WEBSHARE_PROXY_CANARY_SLOT=0` in the command environment for both arms. This
