@@ -46,3 +46,13 @@ test("does not confuse ordinary React stream instructions with errors", () => {
     verifySmokeResponse("/en/explore?wm=remote&q=python", "200", '$RC("B:1")'),
   );
 });
+
+test("accepts Next.js client-rendering bailout instructions", () => {
+  assert.doesNotThrow(() =>
+    verifySmokeResponse(
+      "/en/explore?wm=remote&q=python",
+      "200",
+      '$RX("B:0","BAILOUT_TO_CLIENT_SIDE_RENDERING")',
+    ),
+  );
+});

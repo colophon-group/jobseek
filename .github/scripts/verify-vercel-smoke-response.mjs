@@ -5,7 +5,10 @@ import { pathToFileURL } from "node:url";
 
 const MAX_BODY_BYTES = 10_000_000;
 const SAFE_ROUTE_RE = /^\/[\x21-\x7e]*$/;
-const NEXT_STREAM_ERROR_RE = /\$RX\s*\(/;
+// Next.js also emits $RX instructions for expected client-rendering bailouts.
+// Reject only error digests; the bailout sentinel is a normal rendering path.
+const NEXT_STREAM_ERROR_RE =
+  /\$RX\s*\(\s*"B:[^"]*"\s*,\s*"(?!BAILOUT_TO_CLIENT_SIDE_RENDERING")[^"]+"/;
 const BETTER_AUTH_SCHEMA_ERROR_RE = /(?:SCHEMA_MISMATCH|Drizzle schema mismatch)/i;
 
 export class SmokeResponseError extends Error {
