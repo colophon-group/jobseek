@@ -104,6 +104,7 @@ def test_alloy_delivery_alerts_cover_rejection_loss_memory_and_restart() -> None
         "AlloyRemoteWriteBacklog",
         "AlloyRemoteWriteSamplesLost",
         "AlloyLokiEntriesDropped",
+        "AlloyLokiStaleReplayFiltered",
         "AlloyMemoryPressure",
         "ComposeAlloyRestartOrOOM",
         "TelemetrySeriesBudgetHigh",
@@ -113,9 +114,20 @@ def test_alloy_delivery_alerts_cover_rejection_loss_memory_and_restart() -> None
     assert set(rules) == expected
     assert "rejections_recent" in rules["AlloyRemoteWriteRejected"]["expr"]
     assert "samples_failed_total" in rules["AlloyRemoteWriteSamplesLost"]["expr"]
+    assert "loki_process_dropped_entries_total" in rules["AlloyLokiStaleReplayFiltered"]["expr"]
+    assert rules["AlloyLokiStaleReplayFiltered"]["labels"] == {
+        "severity": "high",
+        "service": "fleet-observability",
+        "owner": "codex-error-review",
+        "route": "codex-daily",
+    }
     assert "resident_memory_bytes" in rules["AlloyMemoryPressure"]["expr"]
     assert 'container="deploy-alloy-1"' in rules["ComposeAlloyRestartOrOOM"]["expr"]
-    for name in expected - {"AlloyMemoryPressure", "TelemetrySeriesBudgetHigh"}:
+    for name in expected - {
+        "AlloyLokiStaleReplayFiltered",
+        "AlloyMemoryPressure",
+        "TelemetrySeriesBudgetHigh",
+    }:
         assert rules[name]["labels"]["severity"] == "critical"
         assert rules[name]["labels"]["page"] == "production"
 
