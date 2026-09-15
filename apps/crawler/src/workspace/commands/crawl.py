@@ -1134,13 +1134,24 @@ def select_monitor(
             }
         elif type_ == "dom":
             _VALID_PAG_KEYS = {
-                "param_name",
-                "url_template",
-                "start",
-                "start_value",
+                "advertised_ranges",
+                "browser",
                 "increment",
                 "max_pages",
-                "browser",
+                "param_name",
+                "partition_count_regex",
+                "partition_cover_paths",
+                "partition_drop_params",
+                "partition_fallback_selector",
+                "partition_fallback_selectors",
+                "partition_result_limit",
+                "partition_selector",
+                "partition_stateless",
+                "partition_validate_total",
+                "start",
+                "start_value",
+                "transient_403",
+                "url_template",
             }
         else:
             _VALID_PAG_KEYS = {
@@ -1168,9 +1179,12 @@ def select_monitor(
                 if suggestions:
                     msg += f". Did you mean: {', '.join(suggestions)}?"
                 out.die(msg)
-            if type_ == "dom" and not ({"param_name", "url_template"} & pag_cfg.keys()):
+            if type_ == "dom" and not (
+                {"param_name", "url_template"} & pag_cfg.keys() or "partition_selector" in pag_cfg
+            ):
                 out.die(
-                    "DOM pagination config requires 'param_name' or 'url_template'. "
+                    "DOM pagination config requires 'param_name', 'url_template', or "
+                    "'partition_selector'. "
                     "See: ws help monitor dom"
                 )
             if type_ not in {"nextdata", "dom"} and "param_name" not in pag_cfg:

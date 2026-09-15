@@ -203,6 +203,7 @@ class _PartitionSnapshotChanged(ValueError):
         advertised: int,
         partition_url: str | None = None,
         pagination: _PaginationDiagnostics | None = None,
+        union: _PartitionUnionDiagnostics | None = None,
     ) -> None:
         partition_sha256 = _partition_sha256(partition_url) if partition_url is not None else None
         suffix = f"; partition_sha256={partition_sha256}" if partition_sha256 else ""
@@ -212,6 +213,7 @@ class _PartitionSnapshotChanged(ValueError):
         self.advertised = advertised
         self.partition_sha256 = partition_sha256
         self.pagination = pagination
+        self.union = union
 
     def log_fields(self) -> dict[str, int | str | None]:
         fields: dict[str, int | str | None] = {
@@ -230,6 +232,8 @@ class _PartitionSnapshotChanged(ValueError):
         }
         if self.pagination is not None:
             fields.update(self.pagination.log_fields())
+        if self.union is not None:
+            fields.update(self.union.log_fields())
         return fields
 
 
@@ -250,6 +254,23 @@ class _PaginationDiagnostics:
             "unique_identities": self.unique_identities,
             "repeated_raw_links": self.matching_links - self.unique_raw_urls,
             "identity_collisions": self.unique_raw_urls - self.unique_identities,
+        }
+
+
+@dataclass(frozen=True)
+class _PartitionUnionDiagnostics:
+    """Aggregate coverage evidence without retaining partition or job URLs."""
+
+    partitions: int
+    partition_memberships: int
+    unique_urls: int
+
+    def log_fields(self) -> dict[str, int]:
+        return {
+            "partitions": self.partitions,
+            "partition_memberships": self.partition_memberships,
+            "unique_urls": self.unique_urls,
+            "cross_partition_repetitions": self.partition_memberships - self.unique_urls,
         }
 
 
@@ -4353,8 +4374,11 @@ async def _paginate_partitioned_urls_once(
     can opt into this helper with
     ``pagination.partition_selector`` so gone detection receives the union of
     every partition instead of a silently truncated first 1,000 URLs.
-    Oversized primary facets can be split once more with
-    ``partition_fallback_selector`` and ``partition_result_limit``.
+    Oversized primary facets can be split with ``partition_fallback_selector``
+    or recursively with ``partition_fallback_selectors`` plus
+    ``partition_result_limit``. ``partition_cover_paths`` can instead traverse
+    redundant facet hierarchies whose individually incomplete URL sets must
+    form an exact union matching their oversized parent.
     ``partition_drop_params`` removes state-changing query flags before page
     numbers are appended, while ``partition_stateless`` suppresses cookies so
     concurrent ASP.NET facet requests do not serialize on one server session.
@@ -4429,11 +4453,56 @@ async def _paginate_partitioned_urls_once(
     if not isinstance(partition_stateless, bool):
         raise ValueError("DOM partition_stateless must be a boolean")
     fallback_selector_raw = pagination.get("partition_fallback_selector")
-    fallback_selector = (
-        _validate_link_selector(fallback_selector_raw)
-        if fallback_selector_raw is not None
-        else None
+    fallback_selectors_raw = pagination.get("partition_fallback_selectors")
+    cover_paths_raw = pagination.get("partition_cover_paths")
+    configured_fallback_modes = sum(
+        value is not None
+        for value in (fallback_selector_raw, fallback_selectors_raw, cover_paths_raw)
     )
+    if configured_fallback_modes > 1:
+        raise ValueError(
+            "DOM partition fallback requires at most one of partition_fallback_selector, "
+            "partition_fallback_selectors, or partition_cover_paths"
+        )
+    if fallback_selectors_raw is not None:
+        if (
+            not isinstance(fallback_selectors_raw, list)
+            or not 1 <= len(fallback_selectors_raw) <= 4
+        ):
+            raise ValueError("DOM partition_fallback_selectors requires one to four selectors")
+        validated_fallback_selectors = [
+            _validate_link_selector(value) for value in fallback_selectors_raw
+        ]
+        if any(value is None for value in validated_fallback_selectors):
+            raise ValueError("DOM partition_fallback_selectors cannot contain null selectors")
+        fallback_selectors = tuple(cast(str, value) for value in validated_fallback_selectors)
+        if len(set(fallback_selectors)) != len(fallback_selectors):
+            raise ValueError("DOM partition_fallback_selectors must be unique")
+    elif fallback_selector_raw is not None:
+        fallback_selector = _validate_link_selector(fallback_selector_raw)
+        assert fallback_selector is not None
+        fallback_selectors = (fallback_selector,)
+    else:
+        fallback_selectors = ()
+    if cover_paths_raw is not None:
+        if not isinstance(cover_paths_raw, list) or not 2 <= len(cover_paths_raw) <= 4:
+            raise ValueError("DOM partition_cover_paths requires two to four selector paths")
+        validated_cover_paths: list[tuple[str, ...]] = []
+        for path in cover_paths_raw:
+            if not isinstance(path, list) or not 1 <= len(path) <= 4:
+                raise ValueError("DOM partition_cover_paths entries require one to four selectors")
+            validated_path = [_validate_link_selector(value) for value in path]
+            if any(value is None for value in validated_path):
+                raise ValueError("DOM partition_cover_paths cannot contain null selectors")
+            selector_path = tuple(cast(str, value) for value in validated_path)
+            if len(set(selector_path)) != len(selector_path):
+                raise ValueError("DOM partition_cover_paths paths must contain unique selectors")
+            validated_cover_paths.append(selector_path)
+        cover_paths = tuple(validated_cover_paths)
+        if len(set(cover_paths)) != len(cover_paths):
+            raise ValueError("DOM partition_cover_paths must be unique")
+    else:
+        cover_paths = ()
     count_regex_raw = pagination.get("partition_count_regex")
     if count_regex_raw is not None and not isinstance(count_regex_raw, str):
         raise ValueError("DOM partition_count_regex must be a string")
@@ -4444,10 +4513,12 @@ async def _paginate_partitioned_urls_once(
     validate_total = pagination.get("partition_validate_total", False)
     if not isinstance(validate_total, bool):
         raise ValueError("DOM partition_validate_total must be a boolean")
-    if fallback_selector is not None and (count_regex is None or result_limit is None):
+    if (fallback_selectors or cover_paths) and (count_regex is None or result_limit is None):
         raise ValueError(
             "DOM partition fallback requires partition_count_regex and partition_result_limit"
         )
+    if cover_paths and not validate_total:
+        raise ValueError("DOM partition_cover_paths requires partition_validate_total=true")
     if validate_total and count_regex is None:
         raise ValueError("DOM partition_validate_total requires partition_count_regex")
 
@@ -4463,7 +4534,9 @@ async def _paginate_partitioned_urls_once(
         title = tree.css_first("title")
         match = count_regex.search(title.text(strip=True) if title is not None else "")
         if match is None:
-            raise ValueError(f"DOM partition count not found: {url}")
+            raise ValueError(
+                f"DOM partition count not found; partition_sha256={_partition_sha256(url)}"
+            )
         return int(match.group(1))
 
     async def fetch_partition(
@@ -4533,79 +4606,7 @@ async def _paginate_partitioned_urls_once(
     else:
         expected_total = None
 
-    expanded: list[tuple[str, str, set[str], int | None, int]] = []
-    for primary_index, (partition_url, (html, initial_urls, count, matching_links)) in enumerate(
-        zip(partition_urls, primary_results, strict=True)
-    ):
-        if result_limit is None or count is None or count <= result_limit:
-            expanded.append((partition_url, html, initial_urls, count, matching_links))
-            continue
-        if fallback_selector is None:
-            raise ValueError(
-                f"DOM partition exceeds result limit ({count} > {result_limit}): {partition_url}"
-            )
-
-        child_urls = sorted(
-            {
-                canonicalize_partition_url(url, partition_url)
-                for url in _extract_links_static(
-                    html,
-                    partition_url,
-                    link_selector=fallback_selector,
-                )
-            }
-        )
-        if not child_urls:
-            raise ValueError(f"DOM oversized partition has no fallback links: {partition_url}")
-        if len(child_urls) > _MAX_PAGINATION_PARTITIONS:
-            raise ValueError(
-                "DOM partition fallback found too many links "
-                f"({len(child_urls)} > {_MAX_PAGINATION_PARTITIONS})"
-            )
-        if any(urlsplit(url)[:2] != board_origin for url in child_urls):
-            raise ValueError("DOM partition fallback requires same-origin links")
-        remaining_primary = len(partition_urls) - primary_index - 1
-        minimum_expanded_total = len(expanded) + len(child_urls) + remaining_primary
-        if minimum_expanded_total > _MAX_PAGINATION_PARTITIONS:
-            raise ValueError(
-                "DOM partition fallback would exceed the global partition limit "
-                f"({minimum_expanded_total} > {_MAX_PAGINATION_PARTITIONS})"
-            )
-
-        child_tasks = [asyncio.create_task(fetch_partition(url)) for url in child_urls]
-        child_results = await gather_cancel_on_error(child_tasks)
-        child_total = sum(child_count or 0 for _, _, child_count, _ in child_results)
-        if child_total != count:
-            raise _PartitionSnapshotChanged(
-                "DOM fallback partition counts do not match parent total",
-                reason="fallback_partition_total",
-                observed=child_total,
-                advertised=count,
-                partition_url=partition_url,
-            )
-        for child_url, (child_html, child_initial_urls, child_count, child_matching_links) in zip(
-            child_urls, child_results, strict=True
-        ):
-            if child_count is not None and child_count > result_limit:
-                raise ValueError(
-                    "DOM fallback partition still exceeds result limit "
-                    f"({child_count} > {result_limit}): {child_url}"
-                )
-            expanded.append(
-                (
-                    child_url,
-                    child_html,
-                    child_initial_urls,
-                    child_count,
-                    child_matching_links,
-                )
-            )
-
-    if len(expanded) > _MAX_PAGINATION_PARTITIONS:
-        raise ValueError(
-            "DOM partition expansion found too many partitions "
-            f"({len(expanded)} > {_MAX_PAGINATION_PARTITIONS})"
-        )
+    partition_requests = len(partition_urls)
 
     async def paginate_partition(
         partition_url: str,
@@ -4630,6 +4631,168 @@ async def _paginate_partitioned_urls_once(
         )
         return urls, diagnostics
 
+    async def fetch_children(
+        partition_url: str,
+        html: str,
+        selector: str,
+    ) -> tuple[list[str], list[tuple[str, set[str], int | None, int]]]:
+        nonlocal partition_requests
+        child_urls = sorted(
+            {
+                canonicalize_partition_url(url, partition_url)
+                for url in _extract_links_static(
+                    html,
+                    partition_url,
+                    link_selector=selector,
+                )
+            }
+        )
+        if not child_urls:
+            raise ValueError(
+                "DOM oversized partition has no fallback links; "
+                f"partition_sha256={_partition_sha256(partition_url)}"
+            )
+        if any(urlsplit(url)[:2] != board_origin for url in child_urls):
+            raise ValueError("DOM partition fallback requires same-origin links")
+        partition_requests += len(child_urls)
+        if partition_requests > _MAX_PAGINATION_PARTITIONS:
+            raise ValueError(
+                "DOM partition fallback would exceed the global partition limit "
+                f"({partition_requests} > {_MAX_PAGINATION_PARTITIONS})"
+            )
+        child_tasks = [asyncio.create_task(fetch_partition(url)) for url in child_urls]
+        return child_urls, await gather_cancel_on_error(child_tasks)
+
+    expanded: list[tuple[str, str, set[str], int | None, int]] = []
+
+    async def expand_partition(
+        partition_url: str,
+        result: tuple[str, set[str], int | None, int],
+        fallback_index: int,
+    ) -> None:
+        nonlocal partition_requests
+        html, initial_urls, count, matching_links = result
+        if result_limit is None or count is None or count <= result_limit:
+            expanded.append((partition_url, html, initial_urls, count, matching_links))
+            return
+        if fallback_index >= len(fallback_selectors):
+            raise ValueError(
+                "DOM partition exceeds result limit without another fallback selector "
+                f"({count} > {result_limit}); "
+                f"partition_sha256={_partition_sha256(partition_url)}"
+            )
+
+        child_urls, child_results = await fetch_children(
+            partition_url,
+            html,
+            fallback_selectors[fallback_index],
+        )
+        child_total = sum(child_count or 0 for _, _, child_count, _ in child_results)
+        if child_total != count:
+            raise _PartitionSnapshotChanged(
+                "DOM fallback partition counts do not match parent total",
+                reason="fallback_partition_total",
+                observed=child_total,
+                advertised=count,
+                partition_url=partition_url,
+            )
+        for child_url, child_result in zip(child_urls, child_results, strict=True):
+            await expand_partition(child_url, child_result, fallback_index + 1)
+
+    async def collect_cover_path(
+        partition_url: str,
+        result: tuple[str, set[str], int | None, int],
+        selectors: tuple[str, ...],
+    ) -> tuple[set[str], int, int]:
+        """Collect one independently incomplete path through a facet hierarchy."""
+        html, initial_urls, count, matching_links = result
+        if result_limit is None or count is None or count <= result_limit:
+            urls, diagnostics = await paginate_partition(
+                partition_url,
+                initial_urls,
+                matching_links,
+            )
+            if count is not None and len(urls) != count:
+                raise _PartitionSnapshotChanged(
+                    "DOM partition URL count does not match advertised count",
+                    reason="partition_url_count",
+                    observed=len(urls),
+                    advertised=count,
+                    partition_url=partition_url,
+                    pagination=diagnostics,
+                )
+            return urls, len(urls), 1
+        if not selectors:
+            raise ValueError(
+                "DOM partition cover path ended before reaching bounded leaves "
+                f"({count} > {result_limit}); "
+                f"partition_sha256={_partition_sha256(partition_url)}"
+            )
+
+        child_urls, child_results = await fetch_children(partition_url, html, selectors[0])
+        child_tasks = [
+            asyncio.create_task(collect_cover_path(child_url, child_result, selectors[1:]))
+            for child_url, child_result in zip(child_urls, child_results, strict=True)
+        ]
+        collected = await gather_cancel_on_error(child_tasks)
+        path_urls: set[str] = set()
+        memberships = 0
+        leaves = 0
+        for urls, child_memberships, child_leaves in collected:
+            path_urls.update(urls)
+            memberships += child_memberships
+            leaves += child_leaves
+        return path_urls, memberships, leaves
+
+    async def collect_cover_partition(
+        partition_url: str,
+        result: tuple[str, set[str], int | None, int],
+    ) -> tuple[set[str], int, int]:
+        """Require redundant, independently incomplete facet paths to cover a parent."""
+        count = result[2]
+        assert count is not None
+        path_tasks = [
+            asyncio.create_task(collect_cover_path(partition_url, result, selectors))
+            for selectors in cover_paths
+        ]
+        collected = await gather_cancel_on_error(path_tasks)
+        covered_urls: set[str] = set()
+        memberships = 0
+        leaves = 0
+        for urls, path_memberships, path_leaves in collected:
+            covered_urls.update(urls)
+            memberships += path_memberships
+            leaves += path_leaves
+        if len(covered_urls) != count:
+            raise _PartitionSnapshotChanged(
+                "DOM redundant partition paths do not cover their parent total",
+                reason="partition_cover_total",
+                observed=len(covered_urls),
+                advertised=count,
+                partition_url=partition_url,
+                union=_PartitionUnionDiagnostics(
+                    partitions=leaves,
+                    partition_memberships=memberships,
+                    unique_urls=len(covered_urls),
+                ),
+            )
+        return covered_urls, memberships, leaves
+
+    covered_partitions: list[tuple[set[str], int, int]] = []
+    for partition_url, primary_result in zip(partition_urls, primary_results, strict=True):
+        count = primary_result[2]
+        if cover_paths and result_limit is not None and count is not None and count > result_limit:
+            covered_partitions.append(await collect_cover_partition(partition_url, primary_result))
+        else:
+            await expand_partition(partition_url, primary_result, 0)
+
+    covered_leaves = sum(leaves for _, _, leaves in covered_partitions)
+    if len(expanded) + covered_leaves > _MAX_PAGINATION_PARTITIONS:
+        raise ValueError(
+            "DOM partition expansion found too many partitions "
+            f"({len(expanded) + covered_leaves} > {_MAX_PAGINATION_PARTITIONS})"
+        )
+
     tasks = [
         asyncio.create_task(paginate_partition(url, initial_urls, initial_matching_links))
         for url, _, initial_urls, _, initial_matching_links in expanded
@@ -4637,6 +4800,12 @@ async def _paginate_partitioned_urls_once(
     partition_results = await gather_cancel_on_error(tasks)
 
     all_urls: set[str] = set()
+    partition_memberships = 0
+    partition_leaves = len(expanded)
+    for covered_urls, covered_memberships, covered_leaf_count in covered_partitions:
+        all_urls.update(covered_urls)
+        partition_memberships += covered_memberships
+        partition_leaves += covered_leaf_count
     for partition_num, (expanded_partition, partition_result) in enumerate(
         zip(expanded, partition_results, strict=True), start=1
     ):
@@ -4651,6 +4820,7 @@ async def _paginate_partitioned_urls_once(
                 partition_url=partition_url,
                 pagination=diagnostics,
             )
+        partition_memberships += len(partition_urls_found)
         all_urls.update(partition_urls_found)
         log.debug(
             "dom.pagination.partition",
@@ -4660,12 +4830,17 @@ async def _paginate_partitioned_urls_once(
             total=len(all_urls),
         )
 
-    if expected_total is not None and len(all_urls) < expected_total:
-        log.info(
-            "dom.pagination.partition_deduplicated",
+    if expected_total is not None and len(all_urls) != expected_total:
+        raise _PartitionSnapshotChanged(
+            "DOM partition union does not match listing total",
+            reason="partition_union_total",
+            observed=len(all_urls),
             advertised=expected_total,
-            unique_urls=len(all_urls),
-            duplicates=expected_total - len(all_urls),
+            union=_PartitionUnionDiagnostics(
+                partitions=partition_leaves,
+                partition_memberships=partition_memberships,
+                unique_urls=len(all_urls),
+            ),
         )
 
     return all_urls

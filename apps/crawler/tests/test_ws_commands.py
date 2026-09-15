@@ -4846,6 +4846,73 @@ class TestCostScoring:
         cfg = board.configs[board.active_config]
         assert cfg["monitor_config"]["pagination"] == config["pagination"]
 
+    def test_select_dom_accepts_recursive_partition_pagination(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        config = {
+            "url_filter": "/job/",
+            "pagination": {
+                "partition_selector": "a[href*='facet_Area=']",
+                "partition_fallback_selectors": [
+                    "a[href*='facet_Contract=']",
+                    "a[href*='facet_Family=']",
+                ],
+                "partition_count_regex": r"\((\d+) jobs",
+                "partition_result_limit": 1_000,
+                "partition_validate_total": True,
+                "partition_drop_params": ["changefacet"],
+                "partition_stateless": True,
+                "transient_403": True,
+                "max_pages": 1_000,
+            },
+        }
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "dom", "--config", json.dumps(config)],
+        )
+
+        assert result.exit_code == 0, result.output
+        board = load_board("test", "careers")
+        cfg = board.configs[board.active_config]
+        assert cfg["monitor_config"]["pagination"] == config["pagination"]
+
+    def test_select_dom_accepts_redundant_partition_cover_paths(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        config = {
+            "url_filter": "/job/",
+            "pagination": {
+                "partition_selector": "a[href*='facet_Area=']",
+                "partition_cover_paths": [
+                    ["a[href*='facet_Contract=']", "a[href*='facet_Family=']"],
+                    ["a[href*='facet_Contract=']", "a[href*='facet_Country=']"],
+                ],
+                "partition_count_regex": r"\((\d+) jobs",
+                "partition_result_limit": 1_000,
+                "partition_validate_total": True,
+                "max_pages": 1_000,
+            },
+        }
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "dom", "--config", json.dumps(config)],
+        )
+
+        assert result.exit_code == 0, result.output
+        board = load_board("test", "careers")
+        cfg = board.configs[board.active_config]
+        assert cfg["monitor_config"]["pagination"] == config["pagination"]
+
 
 # ── Phase 6: Submit robustness ──────────────────────────────────────────
 

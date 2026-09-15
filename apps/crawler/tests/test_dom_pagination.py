@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import re
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -4584,6 +4585,313 @@ class TestDomDiscoverInitialFetch:
             )
 
         assert result == set(jobs)
+
+    async def test_partitioned_pagination_recursively_splits_oversized_facets(self):
+        board_url = "https://jobs.example.com/job/list.aspx?LCID=2057"
+        base = board_url.split("?")[0]
+        geo = f"{base}?LCID=2057&facet_JobGeographicalArea=1"
+        large_contract = f"{geo}&facet_Contract=10"
+        small_contract = f"{geo}&facet_Contract=20"
+        family_one = f"{large_contract}&facet_JobFamily=100"
+        family_two = f"{large_contract}&facet_JobFamily=200"
+        jobs = [f"https://jobs.example.com/job/job-role_{number}.aspx" for number in range(4)]
+
+        def counted_page(count, *links, facets=""):
+            return (
+                f"<html><head><title>Search results({count} vacancies/1)</title></head>"
+                f"<body>{facets}"
+                + "".join(f"<a href='{url}'>job</a>" for url in links)
+                + "</body></html>"
+            )
+
+        primary_facets = (
+            "<ul class='facette-titre-niv1'>"
+            "<li><a href='?changefacet=1&facet_JobGeographicalArea=1'>Area (4)</a></li>"
+            "</ul>"
+        )
+        contract_facets = (
+            "<ul class='facette-titre-niv1'>"
+            "<li><a href='?changefacet=1&facet_Contract=10'>Permanent (3)</a></li>"
+            "<li><a href='?changefacet=1&facet_Contract=20'>Fixed (1)</a></li>"
+            "</ul>"
+        )
+        family_facets = (
+            "<ul class='facette-titre-niv1'>"
+            "<li><a href='?changefacet=1&facet_JobFamily=100'>Engineering (1)</a></li>"
+            "<li><a href='?changefacet=1&facet_JobFamily=200'>Operations (2)</a></li>"
+            "</ul>"
+        )
+        pages = {
+            board_url: counted_page(4, jobs[0], facets=primary_facets),
+            geo: counted_page(4, jobs[0], facets=contract_facets),
+            large_contract: counted_page(3, jobs[0], facets=family_facets),
+            small_contract: counted_page(1, jobs[3]),
+            family_one: counted_page(1, jobs[0]),
+            family_two: counted_page(2, jobs[1], jobs[2]),
+        }
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx$",
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 1,
+                "partition_selector": (
+                    "ul.facette-titre-niv1 a[href*='facet_JobGeographicalArea=']"
+                ),
+                "partition_fallback_selectors": [
+                    "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                    "ul.facette-titre-niv1 a[href*='facet_JobFamily=']",
+                ],
+                "partition_count_regex": r"\((\d+)\s+vacancies",
+                "partition_result_limit": 2,
+                "partition_validate_total": True,
+                "partition_drop_params": ["changefacet"],
+            },
+        }
+
+        seen: list[str] = []
+
+        async def fetch(_client, url, **_kwargs):
+            seen.append(url)
+            return pages.get(url)
+
+        with patch(_FETCH_PATCH, new=fetch):
+            result = await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert result == set(jobs)
+        assert set(pages) <= set(seen)
+
+    @pytest.mark.parametrize("country_recovers_last_job", [True, False])
+    async def test_partitioned_pagination_requires_exact_redundant_path_cover(
+        self,
+        country_recovers_last_job,
+    ):
+        board_url = "https://jobs.example.com/job/list.aspx?LCID=2057"
+        base = board_url.split("?")[0]
+        area = f"{base}?LCID=2057&facet_Area=1"
+        contract = f"{area}&facet_Contract=10"
+        families = [f"{contract}&facet_Family={value}" for value in (100, 200)]
+        countries = [f"{contract}&facet_Country={value}" for value in (300, 400)]
+        jobs = [f"https://jobs.example.com/job/job-role_{number}.aspx" for number in range(4)]
+
+        def counted_page(count, *links, facets=""):
+            return (
+                f"<html><head><title>Search results({count} vacancies/1)</title></head>"
+                f"<body>{facets}"
+                + "".join(f"<a href='{url}'>job</a>" for url in links)
+                + "</body></html>"
+            )
+
+        initial_facets = (
+            "<ul class='facette-titre-niv1'>"
+            "<li><a href='?changefacet=1&facet_Area=1'>Area (4)</a></li>"
+            "</ul>"
+        )
+        contract_facets = (
+            "<ul class='facette-titre-niv1'>"
+            "<li><a href='?changefacet=1&facet_Contract=10'>Permanent (4)</a></li>"
+            "</ul>"
+        )
+        redundant_facets = (
+            "<ul class='facette-titre-niv1'>"
+            "<li><a href='?changefacet=1&facet_Family=100'>Family A (2)</a></li>"
+            "<li><a href='?changefacet=1&facet_Family=200'>Family B (1)</a></li>"
+            "<li><a href='?changefacet=1&facet_Country=300'>Country A (2)</a></li>"
+            "<li><a href='?changefacet=1&facet_Country=400'>Country B (1)</a></li>"
+            "</ul>"
+        )
+        pages = {
+            board_url: counted_page(4, jobs[0], facets=initial_facets),
+            area: counted_page(4, jobs[0], facets=contract_facets),
+            contract: counted_page(4, jobs[0], facets=redundant_facets),
+            families[0]: counted_page(2, jobs[0], jobs[1]),
+            families[1]: counted_page(1, jobs[2]),
+            countries[0]: counted_page(2, jobs[0], jobs[1]),
+            countries[1]: counted_page(
+                1,
+                jobs[3] if country_recovers_last_job else jobs[0],
+            ),
+        }
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx$",
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 1,
+                "partition_selector": "a[href*='facet_Area=']",
+                "partition_cover_paths": [
+                    ["a[href*='facet_Contract=']", "a[href*='facet_Family=']"],
+                    ["a[href*='facet_Contract=']", "a[href*='facet_Country=']"],
+                ],
+                "partition_count_regex": r"\((\d+)\s+vacancies",
+                "partition_result_limit": 2,
+                "partition_validate_total": True,
+                "partition_drop_params": ["changefacet"],
+            },
+        }
+
+        warning = MagicMock()
+        sleep = AsyncMock()
+        context = (
+            nullcontext()
+            if country_recovers_last_job
+            else pytest.raises(ValueError, match="redundant partition paths")
+        )
+        with (
+            patch(_FETCH_PATCH, new=_make_fetch(pages)),
+            patch("src.core.monitors.dom.asyncio.sleep", new=sleep),
+            patch("src.core.monitors.dom.log.warning", new=warning),
+            context,
+        ):
+            result = await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        if country_recovers_last_job:
+            assert result == set(jobs)
+            warning.assert_not_called()
+            sleep.assert_not_awaited()
+        else:
+            assert warning.call_count == 4
+            assert warning.call_args.kwargs["reason"] == "partition_cover_total"
+            assert warning.call_args.kwargs["observed"] == 3
+            assert warning.call_args.kwargs["advertised"] == 4
+            assert [awaited.args[0] for awaited in sleep.await_args_list] == [1.0, 2.0, 4.0]
+
+    async def test_partitioned_pagination_retries_overlapping_partition_union(self):
+        board_url = "https://jobs.example.com/job/list.aspx"
+        partitions = [f"{board_url}?facet_Contract=secret-{number}" for number in (1, 2)]
+        jobs = [f"https://jobs.example.com/job/job-role_{number}.aspx" for number in (1, 2)]
+        facets = (
+            "<ul class='facette-titre-niv1'>"
+            + "".join(f"<li><a href='{url}'>Contract (1)</a></li>" for url in partitions)
+            + "</ul>"
+        )
+
+        def counted_page(count, *links, facets=""):
+            return (
+                f"<html><head><title>Search results({count} vacancies/1)</title></head>"
+                f"<body>{facets}"
+                + "".join(f"<a href='{url}'>job</a>" for url in links)
+                + "</body></html>"
+            )
+
+        board_calls = 0
+        second_partition_calls = 0
+
+        async def fetch(_client, url, **_kwargs):
+            nonlocal board_calls, second_partition_calls
+            if url == board_url:
+                board_calls += 1
+                return counted_page(2, jobs[0], facets=facets)
+            if url == partitions[0]:
+                return counted_page(1, jobs[0])
+            if url == partitions[1]:
+                second_partition_calls += 1
+                return counted_page(1, jobs[0] if second_partition_calls == 1 else jobs[1])
+            return None
+
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx$",
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 1,
+                "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                "partition_count_regex": r"\((\d+)\s+vacancies",
+                "partition_validate_total": True,
+            },
+        }
+        warning = MagicMock()
+        sleep = AsyncMock()
+
+        with (
+            patch(_FETCH_PATCH, new=fetch),
+            patch("src.core.monitors.dom.asyncio.sleep", new=sleep),
+            patch("src.core.monitors.dom.log.warning", new=warning),
+        ):
+            result = await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert result == set(jobs)
+        assert board_calls == 3
+        assert second_partition_calls == 2
+        sleep.assert_awaited_once_with(1.0)
+        fields = warning.call_args.kwargs
+        assert fields["reason"] == "partition_union_total"
+        assert fields["observed"] == fields["unique_urls"] == 1
+        assert fields["advertised"] == fields["partition_memberships"] == 2
+        assert fields["partitions"] == 2
+        assert fields["cross_partition_repetitions"] == 1
+        assert fields["retrying"] is True
+        assert all(partition not in fields["error"] for partition in partitions)
+
+    async def test_partitioned_pagination_fails_closed_on_persistent_partition_overlap(self):
+        board_url = "https://jobs.example.com/job/list.aspx"
+        partitions = [f"{board_url}?facet_Contract=secret-{number}" for number in (1, 2)]
+        job = "https://jobs.example.com/job/job-role_1.aspx"
+        facets = (
+            "<ul class='facette-titre-niv1'>"
+            + "".join(f"<li><a href='{url}'>Contract (1)</a></li>" for url in partitions)
+            + "</ul>"
+        )
+
+        def counted_page(count, *links, facets=""):
+            return (
+                f"<html><head><title>Search results({count} vacancies/1)</title></head>"
+                f"<body>{facets}"
+                + "".join(f"<a href='{url}'>job</a>" for url in links)
+                + "</body></html>"
+            )
+
+        board_calls = 0
+
+        async def fetch(_client, url, **_kwargs):
+            nonlocal board_calls
+            if url == board_url:
+                board_calls += 1
+                return counted_page(2, job, facets=facets)
+            if url in partitions:
+                return counted_page(1, job)
+            return None
+
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx$",
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 1,
+                "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                "partition_count_regex": r"\((\d+)\s+vacancies",
+                "partition_validate_total": True,
+            },
+        }
+        warning = MagicMock()
+        sleep = AsyncMock()
+
+        with (
+            patch(_FETCH_PATCH, new=fetch),
+            patch("src.core.monitors.dom.asyncio.sleep", new=sleep),
+            patch("src.core.monitors.dom.log.warning", new=warning),
+            pytest.raises(ValueError, match="partition union does not match") as raised,
+        ):
+            await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert board_calls == 5
+        assert warning.call_count == 4
+        assert [awaited.args[0] for awaited in sleep.await_args_list] == [1.0, 2.0, 4.0]
+        fields = warning.call_args.kwargs
+        assert fields["reason"] == "partition_union_total"
+        assert fields["unique_urls"] == 1
+        assert fields["partition_memberships"] == 2
+        assert fields["cross_partition_repetitions"] == 1
+        assert fields["retrying"] is False
+        assert all(partition not in str(raised.value) for partition in partitions)
 
     @pytest.mark.parametrize(
         ("listing_totals", "partition_totals", "expected_job_count", "expected_board_calls"),

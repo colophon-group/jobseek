@@ -2012,6 +2012,29 @@ dom — Link or Listing-Row Extraction (fallback)
                             When set, replaces param_name-based URL building.
                             Useful for sites that use path segments instead of
                             query parameters for pagination.
+    pagination.partition_selector
+                            CSS selector for counted, same-origin facet links
+                            used to split a capped listing into a complete union.
+                            Pair partition_count_regex and
+                            partition_validate_total=true to reconcile primary
+                            facet counts and the final unique URL count against
+                            the listing total. Oversized facets can be split
+                            recursively with partition_fallback_selectors (one
+                            to four CSS selectors in traversal order) and a
+                            positive partition_result_limit. Every parent/child
+                            count and leaf URL count must agree; drift retries
+                            the whole snapshot four times, then fails closed.
+                            When no single fallback taxonomy is complete, use
+                            partition_cover_paths with two to four independent
+                            selector paths. Each path reaches bounded, exactly
+                            counted leaves, and their unique union must equal
+                            the oversized parent. This tolerates a missing
+                            classification in one taxonomy without weakening
+                            the final listing-total reconciliation.
+                            partition_fallback_selector remains supported for
+                            one-level configurations. partition_drop_params can
+                            remove state-changing query flags, and
+                            partition_stateless=true suppresses request cookies.
 
     Fetching starts at start + increment (page 1 is the board URL itself).
     Stops when: no new links found, fetch fails, or max_pages reached.
