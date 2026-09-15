@@ -100,6 +100,7 @@ ready:simple:2     ZSET  score = next_check_at  (tier 2: scrapes)
 ready:browser:0    ZSET  score = next_check_at  (tier 0: first-time browser)
 ready:browser:1    ZSET  score = next_check_at  (tier 1: browser monitors)
 ready:browser:2    ZSET  score = next_check_at  (tier 2: browser scrapes)
+ready:rotation:*   ZSET  score = last recurring-scrape claim floor per domain
 ```
 
 A recurring mixed-work domain has one tier-1 score for its earliest monitor
@@ -122,6 +123,7 @@ Prevents concurrent requests to shared ATS APIs (e.g. all Greenhouse boards shar
 |------------------------|------------|----------------------------------|
 | `ready:simple:0/1/2`  | Sorted Set | HTTP worker ready queues        |
 | `ready:browser:0/1/2` | Sorted Set | Browser worker ready queues     |
+| `ready:rotation:*`    | Sorted Set | Per-worker recurring-scrape domain rotation floors |
 | `ratelimit:{domain}`  | String     | Per-domain request cooldown     |
 | `cache:platform-stats` | String    | Platform stats (6h TTL, invalidated by workers) |
 

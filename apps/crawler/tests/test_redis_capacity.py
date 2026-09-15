@@ -29,11 +29,13 @@ def test_key_families_are_bounded_and_material_names_are_classified() -> None:
     assert capacity.classify_key("scrape:posting") == "scrape_config"
     assert capacity.classify_key("ft_scrapes_browser:lever") == "scrape_queue_first"
     assert capacity.classify_key("scrapes_simple:jobs.example") == "scrape_queue_recurring"
+    assert capacity.classify_key("ready:rotation:browser") == "ready_queue"
     assert capacity.classify_key("provider_open:workday-303") == "provider_circuit"
     assert capacity.classify_key("new_namespace:value") == "other"
     assert len(capacity.POLICY_BY_NAME) == len(capacity.FAMILY_POLICIES)
     assert capacity.POLICY_BY_NAME["scrape_config"].budget_items == 3_000_000
     assert capacity.POLICY_BY_NAME["scrape_queue_recurring"].budget_items == 3_000_000
+    assert capacity.POLICY_BY_NAME["ready_queue"].budget_items == 40_000
     assert sum(policy.budget_bytes for policy in capacity.FAMILY_POLICIES) <= (3 * 1024**3 * 0.75)
 
 

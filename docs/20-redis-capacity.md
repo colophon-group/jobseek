@@ -40,7 +40,7 @@ exact reachability classification in bounded-memory batches.
 | `scrape_queue_recurring` | scrape scheduler | Persistent until claim; reschedule returns it to this family | 1,573 queue keys / 1,758,036 items across scrape queues; 217.0 MB | 3m items; 512 MiB |
 | `monitor_queue_first` | monitor scheduler | Persistent until claim | Included in 957 monitor queue keys; <0.2 MB combined | 10k items; 16 MiB |
 | `monitor_queue_recurring` | monitor scheduler | Persistent until claim/reschedule | Included in 957 monitor queue keys; <0.2 MB combined | 10k items; 16 MiB |
-| `ready_queue` | queue Lua | Six fixed tier indexes rebuilt by enqueue/reschedule/claim | 6 keys; 0.1 MB | 20k domains; 16 MiB |
+| `ready_queue` | queue Lua | Six fixed tier indexes plus two recurring-scrape rotation indexes, rebuilt and pruned with their domain queues | 6 baseline keys; at most 8 keys and 40k items | 40k items; 16 MiB |
 | `inflight` | lease reaper | Two fixed ZSETs; heartbeat extends scored lease, completion/reschedule/reaper removes it | 2 keys / 12 items; <0.01 MB | 5k items; 8 MiB |
 | `inflight_strikes` | lease reaper | Cleared by successful completion; poison work moves to deadletter | 1 key; <0.01 MB | 5k items; 4 MiB |
 | `deadletter` | operator recovery | Persistent until explicit `crawler deadletters retry/prune` | 0 material items | 1k items; 4 MiB |

@@ -128,6 +128,46 @@ async def test_activation_atomically_transfers_one_legacy_membership(redis: Any)
     assert (await queue.audit_conservation(task.route)).accepted
 
 
+async def test_activation_preserves_legacy_domain_rotation_floor(redis: Any) -> None:
+    """Cutover cannot move a remaining legacy detail backlog to the front."""
+    task = _task(ready_at_ms=100_000)
+    remaining_id = "00000000-0000-4000-8000-000000000099"
+    queue = LightpandaB0Queue(redis, namespace="production-b0")
+    assert (await queue.initialize(task.route)).accepted
+    await redis.hset(
+        f"scrape:{task.task_id}",
+        mapping={
+            "board_id": task.board_id,
+            "source_url": task.source_url,
+            "domain": task.domain,
+            "description_r2_hash": "example",
+            "scrape_step": "0",
+            "scrape_interval_hours": "24",
+        },
+    )
+    await redis.hset(
+        f"scrape:{remaining_id}",
+        mapping={
+            "board_id": task.board_id,
+            "source_url": f"{task.source_url}/remaining",
+            "domain": task.domain,
+        },
+    )
+    await redis.zadd(
+        f"scrapes_browser:{task.domain}",
+        {remaining_id: 50, task.task_id: 100},
+    )
+    await redis.zadd("ready:rotation:browser", {task.domain: 500})
+    await redis.zadd("ready:browser:2", {task.domain: 1_000})
+
+    activated = await queue.activate_legacy(task, legacy_config=_legacy_config(task))
+
+    assert activated.accepted and activated.reason == "activated"
+    assert await redis.zscore(f"scrapes_browser:{task.domain}", remaining_id) == 50
+    assert await redis.zscore("ready:rotation:browser", task.domain) == 500
+    assert await redis.zscore("ready:browser:2", task.domain) == 500
+
+
 @pytest.mark.parametrize("legacy_key", ["inflight:browser", "deadletter:browser"])
 async def test_activation_refuses_legacy_authority_without_partial_mutation(
     redis: Any, legacy_key: str
@@ -413,6 +453,27 @@ async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(redis:
     assert await redis.zscore("ready:browser:2", ready.domain) == 999
     assert await redis.hget(f"scrape:{terminal.task_id}", "description_r2_hash") == "0"
     assert not await redis.exists(f"scrape:{ready.task_id}")
+
+
+async def test_cold_rollback_preserves_legacy_domain_rotation_floor(redis: Any) -> None:
+    """Rollback scheduling cannot lower an existing tier-2 rotation marker."""
+    task = _task(ready_at_ms=123_000)
+    queue = LightpandaB0Queue(redis, namespace="production-b0")
+    await queue.initialize(task.route)
+    await _seed_legacy_ready(redis, task)
+    assert (await queue.activate_legacy(task, legacy_config=_legacy_config(task))).accepted
+    await redis.zadd("ready:rotation:browser", {task.domain: 5_000})
+    await redis.zadd("ready:browser:2", {task.domain: 6_000})
+
+    rolled_back = await queue.rollback_legacy(
+        task.route,
+        plan={task.task_id: _rollback_schedule(task, score="999")},
+    )
+
+    assert rolled_back.accepted and rolled_back.reason == "rolled_back"
+    assert await redis.zscore(f"scrapes_browser:{task.domain}", task.task_id) == 999
+    assert await redis.zscore("ready:rotation:browser", task.domain) == 5_000
+    assert await redis.zscore("ready:browser:2", task.domain) == 5_000
 
 
 async def test_cold_rollback_refuses_inflight_without_partial_mutation(redis: Any) -> None:

@@ -27,6 +27,7 @@ local max_check = tonumber(ARGV[4]) or 10
 local lease_ttl = tonumber(ARGV[5]) or 600
 local b0_guard_key = "lightpanda-b0:legacy-guard"
 local recurring_monitor_streak_key = "claim:recurring-monitor-streak:" .. wtype
+local scrape_rotation_key = "ready:rotation:" .. wtype
 local max_recurring_monitor_streak = 8
 
 -- Fail before popping any task if the persistent cutover guard is corrupt.
@@ -34,6 +35,10 @@ local max_recurring_monitor_streak = 8
 local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
 if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
     return redis.error_reply("lightpanda B0 legacy guard is corrupt")
+end
+local scrape_rotation_type = redis.call("TYPE", scrape_rotation_key)["ok"]
+if scrape_rotation_type ~= "none" and scrape_rotation_type ~= "zset" then
+    return redis.error_reply("scrape rotation index is corrupt")
 end
 
 -- Tier 0 remains strict for newly discovered work. Once it is empty, bound
@@ -71,7 +76,20 @@ end
 --
 -- First-time work remains strict tier 0. ``not_before`` applies the shared
 -- throttle after a claim without changing either underlying task deadline.
-local function refresh_ready(domain, not_before)
+local function refresh_ready(domain, not_before, rotate_scrapes)
+    -- Rotation is distinct from the tier-2 marker: that marker may instead be
+    -- an authoritative future task deadline. Only a successful recurring
+    -- scrape claim advances this dedicated per-domain floor.
+    local scrape_rotation_floor = tonumber(
+        redis.call("ZSCORE", scrape_rotation_key, domain) or "0"
+    )
+    if rotate_scrapes then
+        scrape_rotation_floor = math.max(
+            scrape_rotation_floor,
+            tonumber(not_before) or 0
+        )
+        redis.call("ZADD", scrape_rotation_key, scrape_rotation_floor, domain)
+    end
     for tier = 0, 2 do
         redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
     end
@@ -89,6 +107,9 @@ local function refresh_ready(domain, not_before)
         end
     end
     if ft_score ~= nil then
+        if redis.call("ZCARD", "scrapes_" .. wtype .. ":" .. domain) == 0 then
+            redis.call("ZREM", scrape_rotation_key, domain)
+        end
         redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(floor, ft_score), domain)
         return
     end
@@ -100,7 +121,14 @@ local function refresh_ready(domain, not_before)
 
     local scrape_head = redis.call("ZRANGE", "scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
     if #scrape_head >= 2 then
-        redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(floor, tonumber(scrape_head[2])), domain)
+        redis.call(
+            "ZADD",
+            "ready:" .. wtype .. ":2",
+            math.max(floor, scrape_rotation_floor, tonumber(scrape_head[2])),
+            domain
+        )
+    else
+        redis.call("ZREM", scrape_rotation_key, domain)
     end
 end
 
@@ -120,7 +148,7 @@ for _, tier in ipairs(tier_order) do
         if rl_val and tonumber(rl_val) > now then
             -- Rate-limited: move every representation to when the shared
             -- domain lease becomes available.
-            refresh_ready(domain, tonumber(rl_val))
+            refresh_ready(domain, tonumber(rl_val), false)
         else
             -- Domain is available — try to pop a task in priority order
             local task_id = nil
@@ -194,7 +222,7 @@ for _, tier in ipairs(tier_order) do
             then
                 task_id = nil
                 claimed_priority = nil
-                refresh_ready(domain, 0)
+                refresh_ready(domain, 0, false)
             end
 
             if task_id then
@@ -226,14 +254,14 @@ for _, tier in ipairs(tier_order) do
                     redis.call("SET", recurring_monitor_streak_key, "0")
                 end
 
-                refresh_ready(domain, now + rate_delay)
+                refresh_ready(domain, now + rate_delay, claimed_priority == 2)
 
                 return {task_id, source_type, domain}
             else
                 -- A stale marker must not erase a domain that still owns
                 -- future work (for example after removing its earliest
                 -- board). Rebuild from the authoritative queues instead.
-                refresh_ready(domain, 0)
+                refresh_ready(domain, 0, false)
             end
         end
     end

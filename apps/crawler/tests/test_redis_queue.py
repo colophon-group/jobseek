@@ -1028,6 +1028,149 @@ async def test_recurring_monitor_priority_yields_after_bounded_claim_streak(mock
     assert await r.get("claim:recurring-monitor-streak:browser") == "0"
 
 
+async def test_recurring_scrape_reschedule_preserves_domain_rotation(mock_redis):
+    """A large old backlog must yield its next fairness turn to another domain.
+
+    A scrape claim advances the first domain's tier-2 marker to the current
+    time. Rescheduling the claimed task must not rebuild that marker from the
+    next overdue task and move the same domain straight back to the front.
+    """
+    r = mock_redis
+    now = time.time()
+    first_domain = "large-backlog.example.com"
+    second_domain = "waiting-backlog.example.com"
+
+    for posting_id, score in (("first-1", now - 3_000), ("first-2", now - 2_000)):
+        await rq.enqueue_scrape(
+            first_domain,
+            posting_id,
+            score,
+            {
+                "source_url": f"https://{first_domain}/jobs/{posting_id}",
+                "board_id": "first-board",
+            },
+            browser=True,
+        )
+    await rq.enqueue_scrape(
+        second_domain,
+        "second-1",
+        now - 1_000,
+        {
+            "source_url": f"https://{second_domain}/jobs/second-1",
+            "board_id": "second-board",
+        },
+        browser=True,
+    )
+    for domain in (first_domain, second_domain):
+        await r.set(f"delay:{domain}", "0")
+
+    await r.set("claim:recurring-monitor-streak:browser", "8")
+    first = await rq.claim_work(browser=True)
+    assert first is not None and first.scrape_work is not None
+    assert first.scrape_work.posting_id == "first-1"
+    rotation_floor = await r.zscore("ready:rotation:browser", first_domain)
+    assert rotation_floor is not None and rotation_floor >= now
+
+    await rq.reschedule_task(
+        first_domain,
+        "first-1",
+        "scrape",
+        now + 3_600,
+        browser=True,
+    )
+    assert await r.zscore("ready:rotation:browser", first_domain) == rotation_floor
+    assert await r.zscore("ready:browser:2", first_domain) == pytest.approx(rotation_floor)
+    assert (await r.zscore("ready:browser:2", second_domain)) < rotation_floor
+
+    await r.set("claim:recurring-monitor-streak:browser", "8")
+    second = await rq.claim_work(browser=True)
+    assert second is not None and second.scrape_work is not None
+    assert second.scrape_work.posting_id == "second-1"
+
+
+async def test_rotation_does_not_mask_a_retry_before_a_future_scrape(mock_redis):
+    """A task deadline remains distinct from the domain's fairness floor."""
+    r = mock_redis
+    now = time.time()
+    domain = "mixed-deadline.example.com"
+    for posting_id, score in (("retry-me", now - 10), ("tomorrow", now + 86_400)):
+        await rq.enqueue_scrape(
+            domain,
+            posting_id,
+            score,
+            {
+                "source_url": f"https://{domain}/jobs/{posting_id}",
+                "board_id": "board-1",
+            },
+            browser=True,
+        )
+    await r.set(f"delay:{domain}", "0")
+    await r.set("claim:recurring-monitor-streak:browser", "8")
+
+    claimed = await rq.claim_work(browser=True)
+    assert claimed is not None and claimed.scrape_work is not None
+    assert claimed.scrape_work.posting_id == "retry-me"
+    rotation_floor = await r.zscore("ready:rotation:browser", domain)
+    assert rotation_floor is not None and rotation_floor >= now
+    assert await r.zscore("ready:browser:2", domain) == pytest.approx(now + 86_400)
+
+    retry_at = now + 60
+    await rq.reschedule_task(domain, "retry-me", "scrape", retry_at, browser=True)
+
+    assert await r.zscore("ready:rotation:browser", domain) == rotation_floor
+    assert await r.zscore("ready:browser:2", domain) == pytest.approx(retry_at)
+    await r.set("claim:recurring-monitor-streak:browser", "8")
+    retried = await r.eval(
+        (rq._LUA_DIR / "claim_work.lua").read_text(encoding="utf-8"),
+        0,
+        "browser",
+        str(retry_at + 1),
+        "0",
+        "10",
+        "60",
+    )
+    assert retried == ["retry-me", "scrape", domain]
+
+
+async def test_last_recurring_scrape_claim_clears_domain_rotation(mock_redis):
+    """Rotation state has the same bounded lifecycle as its domain backlog."""
+    r = mock_redis
+    domain = "rotation-cleanup.example.com"
+    now = time.time()
+    await rq.enqueue_scrape(
+        domain,
+        "only-detail",
+        now - 10,
+        {"source_url": f"https://{domain}/jobs/1", "board_id": "board-1"},
+    )
+    await r.zadd("ready:rotation:simple", {domain: now - 100})
+    await r.set("claim:recurring-monitor-streak:simple", "8")
+
+    claimed = await rq.claim_work(browser=False)
+
+    assert claimed is not None and claimed.scrape_work is not None
+    assert claimed.scrape_work.posting_id == "only-detail"
+    assert await r.zscore("ready:rotation:simple", domain) is None
+
+
+async def test_corrupt_rotation_index_fails_before_enqueue_mutation(mock_redis):
+    """A wrong-type fairness index cannot leave a half-enqueued scrape."""
+    r = mock_redis
+    domain = "corrupt-rotation.example.com"
+    await r.set("ready:rotation:simple", "wrong-type")
+
+    with pytest.raises(ResponseError, match="scrape rotation index is corrupt"):
+        await rq.enqueue_scrape(
+            domain,
+            "never-added",
+            time.time(),
+            {"source_url": f"https://{domain}/jobs/1", "board_id": "board-1"},
+        )
+
+    assert not await r.exists("scrape:never-added")
+    assert not await r.exists(f"scrapes_simple:{domain}")
+
+
 async def test_bounded_recurring_fairness_prefers_same_domain_scrape(mock_redis):
     """An armed tier-2 pass cannot be displaced by its domain's due monitor."""
     r = mock_redis
@@ -1300,6 +1443,34 @@ async def test_enqueue_scrape_preserves_future_monitor_deadline(mock_redis):
     assert work.kind == "scrape"
 
 
+async def test_enqueue_scrape_preserves_domain_rotation_floor(mock_redis):
+    """A new task uses its due time without discarding domain rotation."""
+    r = mock_redis
+    domain = "enqueue-rotation.example.com"
+    now = time.time()
+    rotation_floor = now
+    future_deadline = now + 86_400
+    new_deadline = now + 60
+
+    await r.zadd(f"scrapes_browser:{domain}", {"existing": future_deadline})
+    await r.hset(
+        "scrape:existing",
+        mapping={"source_url": f"https://{domain}/jobs/existing", "board_id": "board-1"},
+    )
+    await r.zadd("ready:rotation:browser", {domain: rotation_floor})
+    await r.zadd("ready:browser:2", {domain: future_deadline})
+
+    assert await rq.enqueue_scrape(
+        domain,
+        "new-detail",
+        new_deadline,
+        {"source_url": f"https://{domain}/jobs/new", "board_id": "board-1"},
+        browser=True,
+    )
+    assert await r.zscore("ready:rotation:browser", domain) == rotation_floor
+    assert await r.zscore("ready:browser:2", domain) == pytest.approx(new_deadline)
+
+
 async def test_no_claim_rebuilds_future_ready_deadline_after_earliest_removal(mock_redis):
     """A stale due marker must not erase later work after a board removal."""
     r = mock_redis
@@ -1437,6 +1608,29 @@ async def test_reschedule_advertises_monitor_and_scrape_deadlines(mock_redis):
 
     assert await r.zscore("ready:simple:1", domain) == pytest.approx(now - 100)
     assert await r.zscore("ready:simple:2", domain) == pytest.approx(now - 1000)
+
+
+async def test_remove_monitor_preserves_domain_rotation_floor(mock_redis):
+    """Removing a board cannot move its domain's recurring details forward."""
+    r = mock_redis
+    domain = "remove-rotation.example.com"
+    now = time.time()
+    rotation_floor = now + 500
+
+    await rq.enqueue_monitor(domain, "removed-monitor", now - 100, {"monitor": "dom"})
+    await rq.enqueue_scrape(
+        domain,
+        "remaining-detail",
+        now - 1_000,
+        {"source_url": f"https://{domain}/jobs/1", "board_id": "board-1"},
+    )
+    await r.zadd("ready:rotation:simple", {domain: rotation_floor})
+    await r.zadd("ready:simple:2", {domain: rotation_floor})
+
+    await rq.remove_monitor(domain, "removed-monitor")
+
+    assert await r.zscore("ready:rotation:simple", domain) == rotation_floor
+    assert await r.zscore("ready:simple:2", domain) == pytest.approx(rotation_floor)
 
 
 # ---------------------------------------------------------------------------
@@ -1714,6 +1908,56 @@ async def test_reaper_preserves_both_recurring_ready_deadlines(mock_redis):
     assert result["reenqueued"] == 1
     assert await r.zscore("ready:simple:1", domain) is not None
     assert await r.zscore("ready:simple:2", domain) == pytest.approx(now - 1000)
+
+
+async def test_reaper_preserves_domain_rotation_floor(mock_redis):
+    """Lease recovery cannot return a rotated domain to the queue front."""
+    r = mock_redis
+    domain = "reaper-rotation.example.com"
+    now = time.time()
+    rotation_floor = now + 500
+    member = f"monitor|{domain}|reaped-monitor"
+
+    await r.hset("board:reaped-monitor", mapping={"monitor": "greenhouse"})
+    await r.hset(
+        "scrape:remaining-detail",
+        mapping={"source_url": f"https://{domain}/jobs/1", "board_id": "board-1"},
+    )
+    await r.zadd(f"scrapes_simple:{domain}", {"remaining-detail": now - 1_000})
+    await r.zadd("ready:rotation:simple", {domain: rotation_floor})
+    await r.zadd("ready:simple:2", {domain: rotation_floor})
+    await r.zadd("inflight:simple", {member: now - 60})
+
+    result = await rq.reap_expired(browser=False)
+
+    assert result["reenqueued"] == 1
+    assert await r.zscore("ready:rotation:simple", domain) == rotation_floor
+    assert await r.zscore("ready:simple:2", domain) == pytest.approx(rotation_floor)
+
+
+async def test_reaper_retry_is_not_masked_by_a_future_scrape(mock_redis):
+    """A reaped due retry must sort before a later authoritative deadline."""
+    r = mock_redis
+    domain = "reaper-mixed-deadline.example.com"
+    now = time.time()
+    future_deadline = now + 86_400
+    retry_member = f"scrape|{domain}|retry-detail"
+
+    await r.hset(
+        "scrape:retry-detail",
+        mapping={"source_url": f"https://{domain}/jobs/retry", "board_id": "board-1"},
+    )
+    await r.zadd(f"scrapes_simple:{domain}", {"future-detail": future_deadline})
+    await r.zadd("ready:rotation:simple", {domain: now})
+    await r.zadd("ready:simple:2", {domain: future_deadline})
+    await r.zadd("inflight:simple", {retry_member: now - 60})
+
+    result = await rq.reap_expired(browser=False)
+
+    assert result["reenqueued"] == 1
+    retry_score = await r.zscore(f"scrapes_simple:{domain}", "retry-detail")
+    assert retry_score is not None and now <= retry_score < now + 10
+    assert await r.zscore("ready:simple:2", domain) == pytest.approx(retry_score)
 
 
 async def test_reaper_dead_letters_after_max_strikes(mock_redis):
