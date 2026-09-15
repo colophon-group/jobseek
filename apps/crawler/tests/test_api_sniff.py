@@ -321,6 +321,10 @@ class TestFindTotalCount:
         body = {"totalJob": 12441, "jobs": [{"id": 1}], "facets": []}
         assert find_total_count(body, "jobs") == 12441
 
+    def test_total_pages_is_not_an_item_count(self):
+        body = {"jobs": [{"id": 1}], "totalPages": 6}
+        assert find_total_count(body, "jobs") is None
+
 
 class TestScoreCandidate:
     def test_high_score_with_url_and_title(self):

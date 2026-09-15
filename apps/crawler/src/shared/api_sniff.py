@@ -145,7 +145,9 @@ COUNT_FIELDS = re.compile(
     # (job siblings to the array are always int-valued and evaluated in context,
     # so the broader match stays anchored to the array's parent object).
     r"^(total|count|total_?count|total_?results|total_?items|hits|num_?found|result_?count"
-    r"|size|total[A-Za-z]+|nbHits)$",
+    # A page count is not an item count. Treating ``totalPages`` as the
+    # advertised inventory size can make a 12-item first page look complete.
+    r"|size|total(?!_?pages?$)[A-Za-z]+|nbHits)$",
     re.IGNORECASE,
 )
 
