@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { auth } from "@/lib/auth";
+import { hasCookieNamed, LOGGED_IN_COOKIE } from "@/lib/client-cookies";
 import { AuthShell } from "@/components/AuthShell";
 
 type Props = {
@@ -26,10 +27,18 @@ export default function AuthLayout({ params, children }: Props) {
 }
 
 async function RedirectIfSignedIn({ params }: { params: Promise<{ lang: string }> }) {
+  const requestHeaders = await headers();
   const [{ lang }, session] = await Promise.all([
     params,
-    auth.api.getSession({ headers: await headers() }),
+    auth.api.getSession({ headers: requestHeaders }),
   ]);
-  if (session) redirect(`/${lang}/explore`);
+  // The client bootstrap intentionally treats an absent `logged_in` hint as
+  // anonymous. Do not redirect a real legacy session away from the repair
+  // surface unless that hint is present too; submitting the form recreates it.
+  const hasBootstrapHint = hasCookieNamed(
+    requestHeaders.get("cookie") ?? "",
+    LOGGED_IN_COOKIE,
+  );
+  if (session && hasBootstrapHint) redirect(`/${lang}/explore`);
   return null;
 }

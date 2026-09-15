@@ -554,6 +554,13 @@
       "when": 1789127975000,
       "tag": "0090_migrate_internship_watchlist_filters",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1789458801000,
+      "tag": "0091_relax_better_auth_account_issuer",
+      "breakpoints": true
     }
   ]
 }
