@@ -6,7 +6,7 @@ import csv
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -116,6 +116,29 @@ def _fake_reader(stream) -> SimpleNamespace:
     return SimpleNamespace(pages=[SimpleNamespace(extract_text=lambda: text)])
 
 
+async def _discover_rendered_careers(
+    html: str,
+    *,
+    links: set[str] | None = None,
+    client=None,
+):
+    board, _ = _board(CAREERS_BOARD_SLUG)
+    page = MagicMock()
+    context = MagicMock()
+    context.__aenter__ = AsyncMock(return_value=page)
+    context.__aexit__ = AsyncMock(return_value=None)
+
+    with (
+        patch("src.core.monitors.dom.open_page", return_value=context),
+        patch(
+            "src.core.monitors.dom._extract_links_rendered",
+            AsyncMock(return_value=set() if links is None else links),
+        ),
+        patch("src.core.monitors.dom.safe_content", AsyncMock(return_value=html)),
+    ):
+        return await dom_discover(board, client or AsyncMock(), pw=MagicMock())
+
+
 async def test_lucca_live_zero_layout_is_authoritative() -> None:
     board, _ = _board(LUCCA_BOARD_SLUG)
     # Live Lucca Switzerland zero-board layout observed 2026-08-24. ISU uses
@@ -132,23 +155,35 @@ async def test_lucca_live_zero_layout_is_authoritative() -> None:
     assert result == []
 
 
-async def test_current_migrated_careers_layout_is_an_explicit_pdf_zero() -> None:
-    board, _ = _board(CAREERS_BOARD_SLUG)
-    # Current first-party layout: the Job Vacancies block remains present but
-    # points only to Lucca. The separate Lucca board owns those identities.
-    html = f"""
-    <section class="jobfold"><div class="container"><div>
-      <div class="blockbox">
-        <h2 class="fluid-text-5xlmain">Job Vacancies</h2>
-        <div class="grid">
-          <a href="{LUCCA_JOB_URL}">Event Administration Manager</a>
+@pytest.mark.parametrize(
+    "html",
+    [
+        # Current client-rendered layout observed 2026-09-15.
+        f"""
+        <div class="title-pdf-home-section">
+          <h2 class="fluid-text-5xlmain">Job Vacancies</h2>
+          <div class="pdf-documents-box">
+            <a href="{LUCCA_JOB_URL}">Event Administration Manager</a>
+          </div>
         </div>
-      </div>
-    </div></div></section>
-    """
-
-    with patch(EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
-        result = await dom_discover(board, AsyncMock())
+        """,
+        # Retain the previously observed server-rendered layout during rollout.
+        f"""
+        <section class="jobfold"><div class="container"><div>
+          <div class="blockbox">
+            <h2 class="fluid-text-5xlmain">Job Vacancies</h2>
+            <div class="grid">
+              <a href="{LUCCA_JOB_URL}">Event Administration Manager</a>
+            </div>
+          </div>
+        </div></div></section>
+        """,
+    ],
+)
+async def test_lucca_only_careers_layout_is_an_explicit_pdf_zero(html: str) -> None:
+    # The separate Lucca board owns these job identities; this board continues
+    # to monitor only the first-party PDF vacancy surface.
+    result = await _discover_rendered_careers(html)
 
     assert result == set()
 
@@ -202,18 +237,52 @@ async def test_current_migrated_careers_layout_is_an_explicit_pdf_zero() -> None
     ],
 )
 async def test_partial_or_unknown_careers_layout_fails_closed(listing_html: str) -> None:
-    board, _ = _board(CAREERS_BOARD_SLUG)
     html = f'<section class="jobfold"><div class="container">{listing_html}</div></section>'
 
-    with (
-        patch(EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
-        pytest.raises(ValueError, match="configured explicit empty state|forbidden links present"),
+    with pytest.raises(
+        ValueError,
+        match="configured explicit empty state|forbidden links present",
     ):
-        await dom_discover(board, AsyncMock())
+        await _discover_rendered_careers(html)
+
+
+@pytest.mark.parametrize(
+    "listing_html",
+    [
+        '<div class="pdf-documents-box"></div>',
+        (
+            '<div class="pdf-documents-box">'
+            '<a href="https://careers.unknown-ats.example/isu/role-1">Role</a>'
+            "</div>"
+        ),
+        (
+            '<div class="pdf-documents-box">'
+            f'<a href="{LUCCA_JOB_URL}">Lucca role</a>'
+            '<a href="https://careers.unknown-ats.example/isu/role-1">Other role</a>'
+            "</div>"
+        ),
+        (
+            '<div class="pdf-documents-box">'
+            f'<a href="{LUCCA_JOB_URL}">Lucca role</a>'
+            "</div>"
+            '<a href="https://careers.unknown-ats.example/isu/role-1">Sibling role</a>'
+        ),
+    ],
+)
+async def test_current_partial_or_unknown_careers_layout_fails_closed(
+    listing_html: str,
+) -> None:
+    html = (
+        '<div class="title-pdf-home-section">'
+        '<h2 class="fluid-text-5xlmain">Job Vacancies</h2>'
+        f"{listing_html}</div>"
+    )
+
+    with pytest.raises(ValueError, match="configured explicit empty state"):
+        await _discover_rendered_careers(html)
 
 
 async def test_archived_no_positions_layout_is_authoritative() -> None:
-    board, _ = _board(CAREERS_BOARD_SLUG)
     # Exact empty heading structure from the 2026-01-01 and 2026-02-10
     # first-party snapshots.
     html = """
@@ -222,8 +291,7 @@ async def test_archived_no_positions_layout_is_authoritative() -> None:
     </div></div></section>
     """
 
-    with patch(EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
-        result = await dom_discover(board, AsyncMock())
+    result = await _discover_rendered_careers(html)
 
     assert result == set()
 
@@ -231,7 +299,6 @@ async def test_archived_no_positions_layout_is_authoritative() -> None:
 async def test_archived_pdf_only_layout_keeps_staff_and_excludes_committee(
     monkeypatch,
 ) -> None:
-    board, _ = _board(CAREERS_BOARD_SLUG)
     # The 2026-06-10 snapshot had four staff PDFs in the first block and a
     # Sports Medicine & Athlete Health Committee appointment in the second.
     # Committee membership is governance service, not employment, so this
@@ -269,9 +336,12 @@ async def test_archived_pdf_only_layout_keeps_staff_and_excludes_committee(
         text = text_by_url[str(request.url)]
         return httpx.Response(200, content=f"%PDF {text}".encode(), request=request)
 
-    with patch(EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await dom_discover(board, client)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await _discover_rendered_careers(
+            html,
+            links=set(text_by_url),
+            client=client,
+        )
 
     expected_staff_urls = {f"{PDF_ROOT}/{filename}" for filename in STAFF_DOCUMENTS}
     assert isinstance(result, set)
@@ -280,7 +350,6 @@ async def test_archived_pdf_only_layout_keeps_staff_and_excludes_committee(
 
 
 async def test_archived_2025_jobtenders_staff_layout_is_retained(monkeypatch) -> None:
-    board, _ = _board(CAREERS_BOARD_SLUG)
     # Exact card and document paths from the 2025-01-30 first-party snapshot.
     links = "".join(
         f'<a href="{LEGACY_PDF_ROOT}/{filename}">{title}</a>'
@@ -303,9 +372,12 @@ async def test_archived_2025_jobtenders_staff_layout_is_retained(monkeypatch) ->
         text = text_by_url[str(request.url)]
         return httpx.Response(200, content=f"%PDF {text}".encode(), request=request)
 
-    with patch(EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await dom_discover(board, client)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await _discover_rendered_careers(
+            html,
+            links=set(text_by_url),
+            client=client,
+        )
 
     assert result == {f"{LEGACY_PDF_ROOT}/{filename}" for filename in LEGACY_STAFF_DOCUMENTS}
 
@@ -359,3 +431,27 @@ def test_requested_isu_acronym_is_structured_metadata() -> None:
     extras = json.loads(row["extras"])
 
     assert extras["alternateName"] == "ISU"
+
+
+def test_careers_board_locks_rendering_and_both_known_layouts() -> None:
+    board, _ = _board(CAREERS_BOARD_SLUG)
+    metadata = board["metadata"]
+
+    assert metadata["render"] is True
+    assert metadata["wait"] == "networkidle"
+    assert metadata["timeout"] == 60_000
+    assert metadata["link_selector"] == (
+        ".title-pdf-home-section a[href*='.pdf'], section.jobfold a[href*='.pdf']"
+    )
+    selectors = {state["selector"] for state in metadata["empty_states"]}
+    assert selectors == {
+        ".title-pdf-home-section h2.fluid-text-5xlmain",
+        "section.jobfold h2.fluid-text-5xlmain",
+        "section.jobfold h2.fluid-text-lg3",
+    }
+    current_state = next(
+        state
+        for state in metadata["empty_states"]
+        if state["selector"] == ".title-pdf-home-section h2.fluid-text-5xlmain"
+    )
+    assert current_state["required_link_selector"] == ".title-pdf-home-section a[href]"

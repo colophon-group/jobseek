@@ -28,7 +28,7 @@ import random
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import AsyncIterator, Callable, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, parse_qsl, quote, urlencode, urljoin, urlparse, urlunparse
@@ -118,6 +118,14 @@ _ZOHO_RECRUIT_LOCATION_RE = re.compile(
     r"(?:Lieu|Location)\s*:\s*(?P<location>.*?)\s*<br\s*/?>",
     re.IGNORECASE | re.DOTALL,
 )
+_GENERIC_PAGE_QUERY_PARAM_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
+_GENERIC_PAGINATION_KEYS = frozenset({"param_name", "start", "increment", "page_size", "max_pages"})
+_GENERIC_DESCRIPTION_MODE = "title_employment_location"
+_GENERIC_MAX_PAGE_SIZE = 1_000
+_GENERIC_MAX_PAGES = 10_000
+_GENERIC_MAX_PAGE_NUMBER = 10_000_000
+_BROWSER_FEED_MAX_BYTES = 2_000_000
+_MAX_FEED_URL_CHARS = 8_192
 
 
 async def _sleep(delay: float) -> None:
@@ -176,6 +184,9 @@ class _Preset:
     paginated: bool = False
     page_size: int = 100
     page_query_param: str | None = None
+    page_start: int = 1
+    page_increment: int = 1
+    max_pages: int | None = None
     retryable_statuses: frozenset[int] = frozenset()
     item_tag: str = "item"
 
@@ -562,6 +573,48 @@ def _parse_generic_item(item: ET.Element) -> DiscoveredJob | None:
         date_posted=date_posted,
         metadata=metadata or None,
     )
+
+
+def _parse_generic_title_employment_location_item(
+    item: ET.Element,
+) -> DiscoveredJob | None:
+    """Parse a strict ``title | [employment type |] location`` summary.
+
+    Some first-party feeds use ``description`` as a compact set of listing
+    fields rather than as the job description.  Opt-in parsing prevents that
+    summary from being stored as low-quality description HTML while retaining
+    its useful location and optional employment type.  The title prefix and
+    non-empty location are required so a publisher format change fails the
+    whole monitor run instead of silently writing shifted fields.
+    """
+    job = _parse_generic_item(item)
+    if job is None:
+        return None
+
+    title = " ".join(html.unescape(job.title or "").split())
+    summary = " ".join(html.unescape(_text(item, "description") or "").split())
+    if not title:
+        raise ValueError("RSS structured summary item omitted its title")
+
+    prefix = f"{title} | "
+    if not summary.startswith(prefix):
+        raise ValueError("RSS structured summary did not start with the item title")
+    fields = [value.strip() for value in summary[len(prefix) :].split(" | ")]
+    if not fields or len(fields) > 2 or any(not value for value in fields):
+        raise ValueError(
+            "RSS structured summary must contain an optional employment type and a location"
+        )
+
+    if len(fields) == 2:
+        employment_type, location = fields
+    else:
+        employment_type, location = None, fields[0]
+
+    job.title = title
+    job.description = None
+    job.locations = [location]
+    job.employment_type = employment_type
+    return job
 
 
 def _sf_rmk_list(value: object) -> list[str] | None:
@@ -1421,6 +1474,114 @@ def _add_page_number(url: str, page: int, query_param: str) -> str:
     return urlunparse(parsed._replace(query=new_query))
 
 
+def _generic_paginated_preset(preset: _Preset, metadata: Mapping[str, object]) -> _Preset:
+    """Apply bounded opt-in page-number pagination to a generic RSS feed."""
+    raw_pagination = metadata.get("pagination")
+    if raw_pagination is None:
+        return preset
+    if not isinstance(raw_pagination, Mapping):
+        raise ValueError("RSS generic pagination must be an object")
+
+    unknown_keys = set(raw_pagination) - _GENERIC_PAGINATION_KEYS
+    if unknown_keys:
+        raise ValueError(
+            "RSS generic pagination has unsupported keys: "
+            + ", ".join(sorted(str(key) for key in unknown_keys))
+        )
+
+    required_keys = {"param_name", "page_size", "max_pages"}
+    missing_keys = required_keys - set(raw_pagination)
+    if missing_keys:
+        raise ValueError(
+            "RSS generic pagination is missing required keys: " + ", ".join(sorted(missing_keys))
+        )
+
+    query_param = raw_pagination.get("param_name")
+    if not isinstance(query_param, str) or not _GENERIC_PAGE_QUERY_PARAM_RE.fullmatch(query_param):
+        raise ValueError("RSS generic pagination param_name is invalid")
+
+    def bounded_int(name: str, *, default: int, minimum: int, maximum: int) -> int:
+        value = raw_pagination.get(name, default)
+        if type(value) is not int or not minimum <= value <= maximum:
+            raise ValueError(
+                f"RSS generic pagination {name} must be an integer from {minimum} through {maximum}"
+            )
+        return value
+
+    page_start = bounded_int("start", default=1, minimum=1, maximum=_GENERIC_MAX_PAGE_NUMBER)
+    page_increment = bounded_int(
+        "increment", default=1, minimum=1, maximum=_GENERIC_MAX_PAGE_NUMBER
+    )
+    page_size = bounded_int("page_size", default=100, minimum=1, maximum=_GENERIC_MAX_PAGE_SIZE)
+    max_pages = bounded_int("max_pages", default=1, minimum=1, maximum=_GENERIC_MAX_PAGES)
+    final_page = page_start + (max_pages - 1) * page_increment
+    if final_page > _GENERIC_MAX_PAGE_NUMBER:
+        raise ValueError(
+            "RSS generic pagination start/increment/max_pages exceed the page-number bound"
+        )
+
+    return replace(
+        preset,
+        paginated=True,
+        page_size=page_size,
+        page_query_param=query_param,
+        page_start=page_start,
+        page_increment=page_increment,
+        max_pages=max_pages,
+    )
+
+
+def _validated_feed_url(value: object) -> str:
+    """Return one bounded public HTTP(S) feed URL or fail closed."""
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > _MAX_FEED_URL_CHARS
+        or any(ord(character) < 0x21 or ord(character) == 0x7F for character in value)
+    ):
+        raise ValueError("RSS feed_url must be a bounded absolute HTTP(S) URL")
+    try:
+        parsed = urlparse(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError("RSS feed_url must be a bounded absolute HTTP(S) URL") from exc
+    if (
+        parsed.scheme.casefold() not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or (port is not None and not 1 <= port <= 65_535)
+        or parsed.fragment
+    ):
+        raise ValueError(
+            "RSS feed_url must be an absolute HTTP(S) URL without credentials or a fragment"
+        )
+    return value
+
+
+def validate_generic_rss_config(metadata: Mapping[str, object]) -> None:
+    """Validate generic RSS extensions shared by runtime and CSV inspection."""
+    if "feed_url" in metadata:
+        _validated_feed_url(metadata["feed_url"])
+    render = metadata.get("render", False)
+    if not isinstance(render, bool):
+        raise ValueError("RSS render must be a boolean")
+    if metadata.get("preset", "generic") != "generic":
+        if "pagination" in metadata or "description_mode" in metadata or render:
+            raise ValueError(
+                "RSS pagination, description_mode, and browser rendering are only "
+                "supported by the generic preset"
+            )
+        return
+    _generic_paginated_preset(
+        _Preset(feed_paths=[], page_patterns=[], feed_ns={}),
+        metadata,
+    )
+    description_mode = metadata.get("description_mode")
+    if description_mode not in {None, _GENERIC_DESCRIPTION_MODE}:
+        raise ValueError(f"RSS generic description_mode must be {_GENERIC_DESCRIPTION_MODE!r}")
+
+
 # ── Feed fetching ───────────────────────────────────────────────────────
 
 
@@ -1442,6 +1603,65 @@ def _feed_parser_items(
     for _event, element in events:
         if element.tag == item_tag or element.tag.endswith(f"}}{item_tag}"):
             yield element
+
+
+async def _stream_browser_feed_items(
+    feed_url: str,
+    preset: _Preset,
+    page,
+    metadata: Mapping[str, object],
+) -> AsyncIterator[ET.Element]:
+    """Fetch one raw XML response through a real browser navigation.
+
+    Chromium's XML viewer rewrites CDATA into escaped text and comment nodes,
+    so parsing ``page.content()`` would lose structured summaries.  Retain the
+    final main-document ``Response`` and parse its original response bytes.
+    """
+    from src.shared.browser import navigate
+    from src.shared.tdm import check_browser_response
+
+    main_response = None
+
+    def capture_main_response(response) -> None:
+        nonlocal main_response
+        try:
+            is_main_navigation = (
+                response.frame == page.main_frame and response.request.is_navigation_request()
+            )
+        except (AttributeError, TypeError):
+            return
+        if is_main_navigation:
+            main_response = response
+
+    page.on("response", capture_main_response)
+    try:
+        await navigate(page, feed_url, dict(metadata))
+    finally:
+        page.remove_listener("response", capture_main_response)
+
+    if main_response is None:
+        raise PaginationFetchError(
+            feed_url,
+            attempts=1,
+            last_error="BrowserNavigationResponseMissing",
+        )
+    body = await main_response.body()
+    if len(body) > _BROWSER_FEED_MAX_BYTES:
+        raise ValueError(f"RSS browser feed exceeded {_BROWSER_FEED_MAX_BYTES} bytes: {feed_url}")
+    if not _feed_head_is_xml(body[:_SNIFF_BYTES], None):
+        raise RssFeedNotXml(f"feed returned non-XML content: {feed_url}")
+
+    headers = await main_response.all_headers()
+    check_browser_response(
+        headers,
+        body[:_SNIFF_BYTES].decode("utf-8", errors="ignore"),
+        url=feed_url,
+    )
+    parser = ET.XMLPullParser(events=("end",))
+    for item in _feed_parser_items(parser, body, item_tag=preset.item_tag):
+        yield item
+        item.clear()
+    parser.close()
 
 
 async def _stream_feed_items(
@@ -1682,6 +1902,7 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
     """Resolve a board into ``(preset_name, feed_url, preset)``."""
     board_url = board["board_url"]
     metadata = board.get("metadata") or {}
+    validate_generic_rss_config(metadata)
     preset_name = metadata.get("preset", "generic")
     preset = _PRESETS.get(preset_name)
 
@@ -1698,6 +1919,7 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
     if not feed_url:
         log.error("rss.no_feed_url", board_url=board_url, preset=preset_name)
         return None
+    feed_url = _validated_feed_url(feed_url)
 
     if preset is None:
         # Generic fallback — non-paginated, standard parser
@@ -1706,6 +1928,8 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
             page_patterns=[],
             feed_ns={},
         )
+    if preset_name == "generic":
+        preset = _generic_paginated_preset(preset, metadata)
     if preset_name == "successfactors" and metadata.get("variant") == "legacy_xml":
         identity = _sf_legacy_xml_identity(feed_url)
         configured_company = normalize_successfactors_company(metadata.get("company"))
@@ -1720,6 +1944,93 @@ def _feed_config(board: dict) -> tuple[str, str, _Preset] | None:
             item_tag="Job",
         )
     return preset_name, feed_url, preset
+
+
+async def _discover_generic_browser_stream(
+    *,
+    feed_url: str,
+    preset: _Preset,
+    metadata: Mapping[str, object],
+    pw,
+) -> AsyncIterator[list[DiscoveredJob] | MonitorResult]:
+    """Traverse a generic feed in one affine real-browser context."""
+    from src.shared.browser import open_page
+
+    if pw is None:
+        raise RuntimeError("RSS browser rendering requires an available browser backend")
+    parser = (
+        _parse_generic_title_employment_location_item
+        if metadata.get("description_mode") == _GENERIC_DESCRIPTION_MODE
+        else _parse_generic_item
+    )
+    jobs: list[DiscoveredJob] = []
+    total_jobs = 0
+    page_number = preset.page_start
+    pages_fetched = 0
+    seen_page_urls: set[str] = set()
+
+    async with open_page(
+        pw,
+        dict(metadata),
+        use_proxy=bool(metadata.get("proxy")),
+        target_url=feed_url,
+    ) as page:
+        while True:
+            if preset.paginated and preset.page_query_param:
+                page_url = _add_page_number(feed_url, page_number, preset.page_query_param)
+            else:
+                page_url = feed_url
+            page_items = 0
+            page_urls: set[str] = set()
+            async for item in _stream_browser_feed_items(
+                page_url,
+                preset,
+                page,
+                metadata,
+            ):
+                page_items += 1
+                parsed = parser(item)
+                if parsed is None:
+                    continue
+                page_urls.add(parsed.url)
+                jobs.append(parsed)
+                total_jobs += 1
+
+                if total_jobs >= MAX_JOBS:
+                    log.warning(
+                        "rss.truncated",
+                        feed=feed_url,
+                        total=total_jobs,
+                        cap=MAX_JOBS,
+                    )
+                    yield truncated_rich_result(jobs)
+                    return
+                if len(jobs) >= _STREAM_BATCH:
+                    yield jobs
+                    jobs = []
+
+            pages_fetched += 1
+            if preset.paginated and preset.page_query_param:
+                if page_items >= preset.page_size and not (page_urls - seen_page_urls):
+                    raise PaginationFetchError(
+                        page_url,
+                        attempts=1,
+                        last_error="RepeatedPaginatedFeedPage",
+                    )
+                seen_page_urls.update(page_urls)
+
+            if not preset.paginated or page_items < preset.page_size:
+                break
+            if preset.max_pages is not None and pages_fetched >= preset.max_pages:
+                raise PaginationFetchError(
+                    page_url,
+                    attempts=1,
+                    last_error=f"PaginatedFeedPageLimitExceeded({preset.max_pages})",
+                )
+            page_number += preset.page_increment
+
+    if jobs:
+        yield jobs
 
 
 async def discover_stream(
@@ -1747,6 +2058,15 @@ async def discover_stream(
     if config is None:
         return
     preset_name, feed_url, preset = config
+    if metadata.get("render"):
+        async for batch in _discover_generic_browser_stream(
+            feed_url=feed_url,
+            preset=preset,
+            metadata=metadata,
+            pw=pw,
+        ):
+            yield batch
+        return
     if preset_name == "hr_manager":
         hr_manager_jobs = await _discover_hr_manager(
             board,
@@ -1771,7 +2091,10 @@ async def discover_stream(
             company=company,
         )
     else:
-        parser = _PARSERS.get(preset_name, _parse_generic_item)
+        if metadata.get("description_mode") == _GENERIC_DESCRIPTION_MODE:
+            parser = _parse_generic_title_employment_location_item
+        else:
+            parser = _PARSERS.get(preset_name, _parse_generic_item)
     resolve_job_invite_identity = metadata.get("resolve_job_invite_identity", False)
     if not isinstance(resolve_job_invite_identity, bool):
         raise ValueError("RSS resolve_job_invite_identity must be a boolean")
@@ -1780,7 +2103,8 @@ async def discover_stream(
     jobs: list[DiscoveredJob] = []
     total_jobs = 0
     offset = 0
-    page_number = 1
+    page_number = preset.page_start
+    pages_fetched = 0
     seen_page_urls: set[str] = set()
 
     while True:
@@ -1845,6 +2169,8 @@ async def discover_stream(
                 yield jobs
                 jobs = []
 
+        pages_fetched += 1
+
         if preset.paginated and preset.page_query_param:
             if page_items >= preset.page_size and not (page_urls - seen_page_urls):
                 raise PaginationFetchError(
@@ -1856,8 +2182,14 @@ async def discover_stream(
 
         if not preset.paginated or page_items < preset.page_size:
             break
+        if preset.max_pages is not None and pages_fetched >= preset.max_pages:
+            raise PaginationFetchError(
+                page_url,
+                attempts=1,
+                last_error=f"PaginatedFeedPageLimitExceeded({preset.max_pages})",
+            )
         offset += preset.page_size
-        page_number += 1
+        page_number += preset.page_increment
 
     if jobs:
         if detail_fields:

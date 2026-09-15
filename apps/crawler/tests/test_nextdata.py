@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from unittest.mock import AsyncMock, patch
@@ -19,6 +20,7 @@ from src.core.monitors.nextdata import (
     _find_jobs_path,
     _resolve_field,
     _validated_item_inclusions,
+    _validated_pagination_concurrency,
     can_handle,
     discover,
     discover_stream,
@@ -1208,6 +1210,106 @@ BOARD_PAGINATED_RICH = {
 
 
 class TestPagination:
+    def test_page_concurrency_defaults_to_existing_bound(self):
+        assert _validated_pagination_concurrency({}) == 5
+        assert [
+            _validated_pagination_concurrency({"concurrency": value}) for value in range(1, 6)
+        ] == [
+            1,
+            2,
+            3,
+            4,
+            5,
+        ]
+
+    @pytest.mark.parametrize("value", [True, False, None, 0, -1, 6, 1.5, "1"])
+    def test_page_concurrency_rejects_unsafe_values(self, value):
+        with pytest.raises(ValueError, match="pagination concurrency"):
+            _validated_pagination_concurrency({"concurrency": value})
+
+    @pytest.mark.parametrize("streaming", [False, True], ids=["discover", "discover_stream"])
+    async def test_invalid_page_concurrency_fails_before_network(self, streaming):
+        calls = 0
+
+        def handler(_request: httpx.Request):
+            nonlocal calls
+            calls += 1
+            return httpx.Response(200, text=_html_with_next_data(_paginated_data(1, 3)))
+
+        board = {
+            **BOARD_PAGINATED,
+            "metadata": {
+                **BOARD_PAGINATED["metadata"],
+                "pagination": {
+                    **BOARD_PAGINATED["metadata"]["pagination"],
+                    "concurrency": 0,
+                },
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="pagination concurrency"):
+                if streaming:
+                    _ = [batch async for batch in discover_stream(board, client)]
+                else:
+                    await discover(board, client)
+
+        assert calls == 0
+
+    @pytest.mark.parametrize("streaming", [False, True], ids=["discover", "discover_stream"])
+    async def test_configured_page_concurrency_serializes_fetches(self, streaming):
+        active = 0
+        peak = 0
+
+        async def handler(request: httpx.Request):
+            nonlocal active, peak
+            page = int(request.url.params.get("page", "1"))
+            if page > 1:
+                active += 1
+                peak = max(peak, active)
+                await asyncio.sleep(0.01)
+                active -= 1
+            return httpx.Response(200, text=_html_with_next_data(_paginated_data(page, 7)))
+
+        board = {
+            **BOARD_PAGINATED,
+            "metadata": {
+                **BOARD_PAGINATED["metadata"],
+                "pagination": {
+                    **BOARD_PAGINATED["metadata"]["pagination"],
+                    "concurrency": 1,
+                },
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            if streaming:
+                batches = [batch async for batch in discover_stream(board, client)]
+                result = set().union(*batches)
+            else:
+                result = await discover(board, client)
+
+        assert len(result) == 14
+        assert peak == 1
+
+    async def test_default_page_concurrency_remains_five(self):
+        active = 0
+        peak = 0
+
+        async def handler(request: httpx.Request):
+            nonlocal active, peak
+            page = int(request.url.params.get("page", "1"))
+            if page > 1:
+                active += 1
+                peak = max(peak, active)
+                await asyncio.sleep(0.01)
+                active -= 1
+            return httpx.Response(200, text=_html_with_next_data(_paginated_data(page, 7)))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(BOARD_PAGINATED, client)
+
+        assert len(result) == 14
+        assert peak == 5
+
     async def test_single_page_no_extra_fetches(self):
         """pageCount=1 returns first-page items without extra requests."""
         transport = _paginated_transport(page_count=1)

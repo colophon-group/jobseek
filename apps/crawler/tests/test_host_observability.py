@@ -639,6 +639,7 @@ prometheus_remote_storage_samples_pending{remote_name="b",url="redacted"} 3
 prometheus_remote_storage_queue_highest_sent_timestamp_seconds{remote_name="a"} 100
 prometheus_remote_storage_queue_highest_sent_timestamp_seconds{remote_name="b"} 105
 loki_write_dropped_entries_total{reason="ingester_error"} 7
+loki_process_dropped_lines_total{reason="stale_docker_replay"} 4
 unbounded_metric{origin="example.test"} 999
 """
 
@@ -651,6 +652,7 @@ unbounded_metric{origin="example.test"} 999
         "remote_write_samples_dropped_total": 0,
         "remote_write_enqueue_retries_total": 0,
         "loki_dropped_entries_total": 7.0,
+        "loki_process_dropped_entries_total": 4.0,
     }
 
 
@@ -964,7 +966,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_hetzner_fleet": 20,
         "jobseek_postgresql_capacity": 5,
         "jobseek_typesense_reliability": 7,
-        "jobseek_telemetry_delivery": 9,
+        "jobseek_telemetry_delivery": 10,
         "jobseek_crawler_reliability": 19,
         "jobseek_crawler_board_quarantine": 8,
         "jobseek_ats_inventory": 5,

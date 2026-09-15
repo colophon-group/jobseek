@@ -67,3 +67,10 @@ def test_qdrant_uses_verified_ashby_board() -> None:
         "board_url": "https://jobs.ashbyhq.com/qdrant.tech",
         "metadata": {"token": "qdrant.tech"},
     }
+
+
+def test_armonea_serializes_large_nextdata_pages() -> None:
+    board = _board("colisee-france-armonea-careers")
+
+    assert board["board_url"] == "https://jobs.armonea.be/"
+    assert board["metadata"]["pagination"]["concurrency"] == 1

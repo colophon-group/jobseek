@@ -156,6 +156,29 @@ describe("production migration safety", () => {
     expect(verifier).toContain("assertMigrationHead(expected, observed)");
   });
 
+  it("rejects application errors hidden behind successful staged responses", () => {
+    const deployWorkflow = readRepo(
+      ".github/workflows/deploy-web-production.yml",
+    );
+    const verifier = readRepo(
+      ".github/scripts/verify-vercel-smoke-response.mjs",
+    );
+
+    expect(deployWorkflow).toContain("verify-vercel-smoke-response.mjs");
+    expect(deployWorkflow).toContain('--output "$smoke_body"');
+    const applicationSmoke = deployWorkflow.slice(
+      deployWorkflow.indexOf('smoke_body="$(mktemp'),
+      deployWorkflow.indexOf('scanner_headers="$(mktemp'),
+    );
+    expect(applicationSmoke).not.toContain(
+      "--output /dev/null --write-out '%{http_code}'",
+    );
+    expect(verifier).toContain("SCHEMA_MISMATCH");
+    expect(verifier).toContain("Drizzle schema mismatch");
+    expect(verifier).toContain("NEXT_STREAM_ERROR_RE");
+    expect(verifier).toContain('route === "/en/sign-in"');
+  });
+
   it("applies routine migrations through a separately protected exact-target path", () => {
     const workflow = readRepo(
       ".github/workflows/apply-web-routine-migration.yml",

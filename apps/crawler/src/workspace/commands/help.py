@@ -1099,17 +1099,32 @@ njoyn — Njoyn XWeb browser monitor
   Cost:     Browser pagination; one session per board cycle
 
   Njoyn listings paginate by submitting a session-bound form. The monitor
-  clicks the live NEXT control in one browser context, collects every page,
-  and verifies the URL count against the visible "Search Results (N)" total.
-  A repeated page, bot challenge, max-page cap, or count mismatch fails the
-  cycle rather than returning a partial URL set.
+  submits the exact hidden page index under a bound navigation expectation,
+  verifies the returned page state, and checks the URL count against the
+  visible "Search Results (N)" total. It then replays every page and requires
+  exact per-page and whole-inventory equality. A changing total or fingerprint
+  discards every collected page and restarts from page one; bounded retries
+  never mix listing snapshots. Provider-specific XWP rejection bodies and
+  bot-manager pages quarantine the selected proxy context. The monitor can
+  rotate through bounded fresh contexts and, only with an explicit opt-in,
+  try one direct context when every proxy path is origin-blocked. A
+  non-converging transition, persistent churn, max-page cap, or count mismatch
+  fails the cycle rather than returning a partial URL set.
 
   Config:
     {"persistent_context": true, "headless": false, "stealth": true,
-     "proxy": true, "max_pages": 100, "page_wait_ms": 1000}
+     "proxy": true, "max_pages": 100, "page_wait_ms": 4000,
+     "snapshot_attempts": 2, "transport_attempts": 5,
+     "direct_fallback_on_origin_block": true}
 
     max_pages       Safety cap (default/system cap 200)
-    page_wait_ms    Delay after each form submission (default 1000)
+    page_wait_ms    Post-navigation settle/rate-limit delay (default 4000)
+    snapshot_attempts  Whole-listing attempts after churn (default 2, max 3)
+    transport_attempts Fresh proxy contexts after typed origin blocks
+                       (default/max 5)
+    direct_fallback_on_origin_block
+                       Permit one direct context only after a selected proxy
+                       returned a typed origin-block response (default false)
     proxy           Route the browser through the configured proxy provider
 
   Detection:  *.njoyn.com/.../xweb/XWeb.asp listing URLs
@@ -1852,9 +1867,11 @@ dom — Link or Listing-Row Extraction (fallback)
                    matched empty_selector. Use when the element exists for
                    both empty and non-empty counts (for example, "0 jobs").
     empty_states   Optional list of 1-4 selector-specific empty states, each
-                   with selector and exact_text. A zero-link page succeeds
-                   only when one selector matches and its normalized text is
-                   exactly equal to exact_text. An entry may also pair
+                   with selector and exactly one of exact_text or
+                   contains_text. A zero-link page succeeds only when one
+                   selector matches and its normalized text is exactly equal
+                   to exact_text, or its first match contains contains_text
+                   case-insensitively. An entry may also pair
                    required_link_selector with required_link_url_pattern;
                    that state then requires at least one selected anchor and
                    every selected href must fully match the regex. Do not
@@ -2010,6 +2027,29 @@ dom — Link or Listing-Row Extraction (fallback)
                             When set, replaces param_name-based URL building.
                             Useful for sites that use path segments instead of
                             query parameters for pagination.
+    pagination.partition_selector
+                            CSS selector for counted, same-origin facet links
+                            used to split a capped listing into a complete union.
+                            Pair partition_count_regex and
+                            partition_validate_total=true to reconcile primary
+                            facet counts and the final unique URL count against
+                            the listing total. Oversized facets can be split
+                            recursively with partition_fallback_selectors (one
+                            to four CSS selectors in traversal order) and a
+                            positive partition_result_limit. Every parent/child
+                            count and leaf URL count must agree; drift retries
+                            the whole snapshot four times, then fails closed.
+                            When no single fallback taxonomy is complete, use
+                            partition_cover_paths with two to four independent
+                            selector paths. Each path reaches bounded, exactly
+                            counted leaves, and their unique union must equal
+                            the oversized parent. This tolerates a missing
+                            classification in one taxonomy without weakening
+                            the final listing-total reconciliation.
+                            partition_fallback_selector remains supported for
+                            one-level configurations. partition_drop_params can
+                            remove state-changing query flags, and
+                            partition_stateless=true suppresses request cookies.
 
     Fetching starts at start + increment (page 1 is the board URL itself).
     Stops when: no new links found, fetch fails, or max_pages reached.
@@ -2733,11 +2773,27 @@ rss — RSS 2.0 Feed Monitor + SuccessFactors variants
     {"preset": "governmentjobs", "agency": "clineville"}
     {"preset": "hr_manager", "customer": "securitas"}
     {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
+    {"preset": "generic", "feed_url": "https://example.com/jobs.rss",
+     "pagination": {"param_name": "page", "start": 1, "increment": 1,
+                    "page_size": 20, "max_pages": 1000},
+     "description_mode": "title_employment_location"}
 
     preset     Feed parser preset. Auto-detected when possible.
                Defaults to "generic" when not set.
     feed_url   RSS URL. For known presets, ws probe can auto-fill this from
                the board URL; for generic feeds set it explicitly.
+    pagination Generic only: bounded numbered-page traversal. param_name,
+               page_size, and max_pages are required; start and increment
+               default to 1. Required-page errors, repeated full pages, and a
+               full final configured page fail closed.
+    description_mode  Generic only: title_employment_location strictly parses
+               descriptions formatted as
+               "title | [employment type |] location" into structured fields.
+               Format drift fails closed instead of shifting data silently.
+    render     Generic only: fetch raw feed response bytes through the browser
+               lane. For WAF-gated feeds combine render=true, headless=false,
+               persistent_context=true, channel="chrome", and
+               wait="domcontentloaded". Pagination reuses one browser context.
     variant    SuccessFactors only: "feed", "rmk", "legacy", or "legacy_xml".
                Legacy identities are auto-filled from strict provider URLs.
     brand      RMK only: exact brandUrl tenant returned by the search API.

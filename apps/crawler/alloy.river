@@ -127,6 +127,16 @@ loki.source.docker "containers" {
 }
 
 loki.process "parse" {
+  // Grafana Cloud rejects entries older than seven days with a non-retryable
+  // HTTP 400. Filter them individually with a one-hour delivery margin so a
+  // stale Docker cursor cannot poison a batch that also contains current
+  // incident evidence. The fixed reason is exported through Alloy's bounded
+  // process-drop counter and republished by the host sampler.
+  stage.drop {
+    older_than          = "167h"
+    drop_counter_reason = "stale_docker_replay"
+  }
+
   stage.json {
     expressions = {
       level = "level",
