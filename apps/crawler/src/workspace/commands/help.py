@@ -1104,18 +1104,27 @@ njoyn — Njoyn XWeb browser monitor
   visible "Search Results (N)" total. It then replays every page and requires
   exact per-page and whole-inventory equality. A changing total or fingerprint
   discards every collected page and restarts from page one; bounded retries
-  never mix listing snapshots. A non-converging transition, persistent churn,
-  bot challenge, max-page cap, or count mismatch fails the cycle rather than
-  returning a partial URL set.
+  never mix listing snapshots. Provider-specific XWP rejection bodies and
+  bot-manager pages quarantine the selected proxy context. The monitor can
+  rotate through bounded fresh contexts and, only with an explicit opt-in,
+  try one direct context when every proxy path is origin-blocked. A
+  non-converging transition, persistent churn, max-page cap, or count mismatch
+  fails the cycle rather than returning a partial URL set.
 
   Config:
     {"persistent_context": true, "headless": false, "stealth": true,
      "proxy": true, "max_pages": 100, "page_wait_ms": 0,
-     "snapshot_attempts": 2}
+     "snapshot_attempts": 2, "transport_attempts": 5,
+     "direct_fallback_on_origin_block": true}
 
     max_pages       Safety cap (default/system cap 200)
     page_wait_ms    Optional post-navigation settle delay (default 0)
     snapshot_attempts  Whole-listing attempts after churn (default 2, max 3)
+    transport_attempts Fresh proxy contexts after typed origin blocks
+                       (default/max 5)
+    direct_fallback_on_origin_block
+                       Permit one direct context only after a selected proxy
+                       returned a typed origin-block response (default false)
     proxy           Route the browser through the configured proxy provider
 
   Detection:  *.njoyn.com/.../xweb/XWeb.asp listing URLs

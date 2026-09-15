@@ -18,8 +18,9 @@ import httpx
 import structlog
 
 from src.core.monitors import register
-from src.core.monitors.dom import _raise_if_bot_challenge
+from src.core.monitors.dom import BotChallengeError, _raise_if_bot_challenge
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, safe_content
+from src.shared.proxy import ProxyPoolExhaustedError
 
 log = structlog.get_logger()
 
@@ -29,8 +30,12 @@ _PAGE_TRANSITION_ATTEMPTS = 3
 _PAGE_TRANSITION_RETRY_DELAY = 1.0
 _SNAPSHOT_ATTEMPTS = 2
 _SNAPSHOT_RETRY_DELAY = 2.0
+_TRANSPORT_ATTEMPTS = 5
+_TRANSPORT_RETRY_DELAY = 1.0
+_MAX_ORIGIN_BLOCK_RESPONSE_CHARS = 1_024
 
 _RESULT_COUNT_RE = re.compile(r"\bSearch\s+Results\s*\(([\d,\s]+)\)", re.IGNORECASE)
+_NJOYN_ORIGIN_BLOCK_RE = re.compile(r"\binvalid\s+request\s+xwp[1-9]\d*\b", re.IGNORECASE)
 _PAGE_SNAPSHOT_SCRIPT = """() => {
     const form = Array.from(document.forms).find(candidate => candidate.elements.namedItem('pn'));
     const pageInput = form ? form.elements.namedItem('pn') : null;
@@ -149,6 +154,23 @@ def _expected_count(text: str) -> int | None:
     return int(re.sub(r"\D", "", match.group(1)))
 
 
+def _raise_if_njoyn_challenge(url: str, html: str) -> None:
+    """Classify Njoyn's HTTP-200 origin rejection as a proxy failure.
+
+    Njoyn can return a tiny ``Invalid request XWP<code>`` document instead
+    of its listing form. The shared challenge detector cannot safely treat
+    that provider-specific text as universal, so keep the narrow response
+    shape here. Raising the typed error from inside ``open_page`` lets proxy
+    accounting quarantine that origin/slot pair before the next context.
+    """
+    if (
+        len(html) <= _MAX_ORIGIN_BLOCK_RESPONSE_CHARS
+        and _NJOYN_ORIGIN_BLOCK_RE.search(html) is not None
+    ):
+        raise BotChallengeError("Njoyn origin rejected the browser session")
+    _raise_if_bot_challenge(url, html)
+
+
 async def _page_snapshot(page, board_url: str) -> tuple[set[str], str, int]:
     snapshot = await page.evaluate(_PAGE_SNAPSHOT_SCRIPT)
     links = {url for url in snapshot["links"] if _is_job_detail_url(url, board_url=board_url)}
@@ -162,7 +184,7 @@ async def _load_first_page(page, board_url: str, config: dict) -> tuple[set[str]
     """Navigate to and validate a fresh first-page listing snapshot."""
     await navigate(page, board_url, config)
     html = await safe_content(page)
-    _raise_if_bot_challenge(page.url or board_url, html)
+    _raise_if_njoyn_challenge(page.url or board_url, html)
     urls, text, observed_page = await _page_snapshot(page, board_url)
     if observed_page != 1:
         raise _ListingSnapshotChanged("first_page_state_changed", page=observed_page)
@@ -216,7 +238,7 @@ async def _submit_exact_page(
             await asyncio.sleep(wait_ms / 1000)
 
         html = await safe_content(page)
-        _raise_if_bot_challenge(page.url or board_url, html)
+        _raise_if_njoyn_challenge(page.url or board_url, html)
         candidate_urls, text, observed_page = await _page_snapshot(page, board_url)
         observed_total = _expected_count(text)
         new_urls = candidate_urls - discovered_urls
@@ -419,14 +441,66 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     # Chrome channel even when an older board config omits it.
     browser_config.setdefault("channel", "chrome")
 
-    async def _run(playwright) -> set[str]:
+    async def _run_context(playwright, *, use_proxy: bool) -> set[str]:
         async with open_page(
             playwright,
             browser_config,
-            use_proxy=bool(metadata.get("proxy")),
+            use_proxy=use_proxy,
             target_url=board_url,
         ) as page:
             return await _discover_page(page, board_url, metadata | browser_config)
+
+    async def _run(playwright) -> set[str]:
+        use_proxy = bool(metadata.get("proxy"))
+        if not use_proxy:
+            return await _run_context(playwright, use_proxy=False)
+
+        transport_attempts = min(
+            5,
+            max(1, int(metadata.get("transport_attempts", _TRANSPORT_ATTEMPTS))),
+        )
+        last_error: BotChallengeError | ProxyPoolExhaustedError | None = None
+        for attempt in range(1, transport_attempts + 1):
+            try:
+                return await _run_context(playwright, use_proxy=True)
+            except BotChallengeError as exc:
+                last_error = exc
+                retrying = attempt < transport_attempts
+                log.warning(
+                    "njoyn.transport.proxy_retry",
+                    attempt=attempt,
+                    attempts=transport_attempts,
+                    retrying=retrying,
+                    reason="origin_block",
+                )
+                if retrying:
+                    await asyncio.sleep(_TRANSPORT_RETRY_DELAY * attempt)
+            except ProxyPoolExhaustedError as exc:
+                # Do not bypass a missing/misconfigured proxy. A direct retry
+                # is eligible only after this cycle observed a typed Njoyn or
+                # bot-manager rejection from a selected proxy context.
+                if last_error is None:
+                    raise
+                last_error = exc
+                log.warning(
+                    "njoyn.transport.proxy_retry",
+                    attempt=attempt,
+                    attempts=transport_attempts,
+                    retrying=False,
+                    reason="pool_exhausted_after_origin_block",
+                )
+                break
+
+        if metadata.get("direct_fallback_on_origin_block") is True:
+            log.warning(
+                "njoyn.transport.direct_fallback",
+                proxy_attempts=transport_attempts,
+                last_error_type=type(last_error).__name__,
+            )
+            return await _run_context(playwright, use_proxy=False)
+
+        assert last_error is not None
+        raise last_error
 
     if pw is not None:
         return await _run(pw)
@@ -453,6 +527,8 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
         "headless": False,
         "stealth": True,
         "proxy": True,
+        "transport_attempts": 5,
+        "direct_fallback_on_origin_block": True,
     }
 
 

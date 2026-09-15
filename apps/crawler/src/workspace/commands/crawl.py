@@ -1028,8 +1028,9 @@ _MONITOR_CONFIG_HINTS = {
     ),
     "talentbrew": "Optional: max_pages, page_size, proxy. Uses search-results pagination.",
     "njoyn": (
-        "Optional: max_pages, page_wait_ms, snapshot_attempts. Uses exact indexed "
-        "session-bound form pagination with stable-snapshot verification."
+        "Optional: max_pages, page_wait_ms, snapshot_attempts, transport_attempts, "
+        "direct_fallback_on_origin_block. Uses exact indexed session-bound form "
+        "pagination with stable-snapshot verification."
     ),
     "nextdata": (
         "Requires: path, url_template. Optional: fields, render, actions, source, "

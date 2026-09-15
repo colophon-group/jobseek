@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, call, patch
 
 import httpx
 import pytest
@@ -13,9 +13,12 @@ from src.core.monitors.njoyn import (
     _discover_page,
     _expected_count,
     _is_job_detail_url,
+    _raise_if_njoyn_challenge,
     can_handle,
+    discover,
 )
 from src.shared.constants import DATA_DIR
+from src.shared.proxy import ProxyPoolExhaustedError
 
 
 def _job(job_id: str, brid: int) -> str:
@@ -98,6 +101,19 @@ class _FakePage:
         }
 
 
+class _RecordingPageContext:
+    def __init__(self, page: object, exit_types: list[type[BaseException] | None]):
+        self.page = page
+        self.exit_types = exit_types
+
+    async def __aenter__(self):
+        return self.page
+
+    async def __aexit__(self, exc_type, *_args):
+        self.exit_types.append(exc_type)
+        return False
+
+
 def test_recognizes_njoyn_detail_urls_case_insensitively() -> None:
     assert _is_job_detail_url(_job("J0826-0527", 1324213))
     assert not _is_job_detail_url(
@@ -148,6 +164,8 @@ async def test_can_handle_returns_hardened_browser_defaults() -> None:
         "headless": False,
         "stealth": True,
         "proxy": True,
+        "transport_attempts": 5,
+        "direct_fallback_on_origin_block": True,
     }
     assert monitor_needs_browser("njoyn", config)
 
@@ -163,6 +181,8 @@ def test_cgi_configs_pin_installed_chrome_channel() -> None:
     assert monitor_config["channel"] == "chrome"
     assert scraper_config["channel"] == "chrome"
     assert monitor_config["page_wait_ms"] == 0
+    assert monitor_config["transport_attempts"] == 5
+    assert monitor_config["direct_fallback_on_origin_block"] is True
 
 
 async def test_can_handle_rejects_job_detail_url() -> None:
@@ -481,3 +501,154 @@ async def test_fails_closed_on_radware_challenge() -> None:
         pytest.raises(BotChallengeError, match="proxy transport"),
     ):
         await _discover_page(page, page.url, {})
+
+
+def test_classifies_tiny_njoyn_xwp_response_as_origin_block() -> None:
+    html = "<html><body>Invalid request XWP10022</body></html>"
+
+    with pytest.raises(BotChallengeError, match="origin rejected") as raised:
+        _raise_if_njoyn_challenge("https://cgi.njoyn.com/corp/xweb/XWeb.asp", html)
+
+    assert raised.value.proxy_failure_reason == "origin_block"
+
+
+def test_does_not_classify_xwp_text_inside_a_normal_sized_page() -> None:
+    html = "<html><body>Invalid request XWP10022" + (" job listing" * 100) + "</body></html>"
+
+    _raise_if_njoyn_challenge("https://cgi.njoyn.com/corp/xweb/XWeb.asp", html)
+
+
+async def test_rotates_blocked_proxy_contexts_then_uses_explicit_direct_fallback() -> None:
+    board_url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&page=joblisting"
+    board = {
+        "board_url": board_url,
+        "metadata": {
+            "proxy": True,
+            "transport_attempts": 2,
+            "direct_fallback_on_origin_block": True,
+        },
+    }
+    exit_types: list[type[BaseException] | None] = []
+    transports: list[bool] = []
+
+    def fake_open_page(_pw, _config, *, use_proxy: bool, target_url: str):
+        assert target_url == board_url
+        transports.append(use_proxy)
+        return _RecordingPageContext(object(), exit_types)
+
+    expected = {_job("J1", 1)}
+    with (
+        patch("src.core.monitors.njoyn.open_page", side_effect=fake_open_page),
+        patch(
+            "src.core.monitors.njoyn._discover_page",
+            new_callable=AsyncMock,
+            side_effect=[
+                BotChallengeError("blocked proxy one"),
+                BotChallengeError("blocked proxy two"),
+                expected,
+            ],
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        result = await discover(board, AsyncMock(), pw=object())
+
+    assert result == expected
+    assert transports == [True, True, False]
+    assert exit_types == [BotChallengeError, BotChallengeError, None]
+    assert sleep.await_args_list == [call(1.0)]
+
+
+async def test_does_not_use_direct_fallback_without_explicit_opt_in() -> None:
+    board_url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&page=joblisting"
+    board = {
+        "board_url": board_url,
+        "metadata": {"proxy": True, "transport_attempts": 2},
+    }
+    exit_types: list[type[BaseException] | None] = []
+    transports: list[bool] = []
+
+    def fake_open_page(_pw, _config, *, use_proxy: bool, target_url: str):
+        assert target_url == board_url
+        transports.append(use_proxy)
+        return _RecordingPageContext(object(), exit_types)
+
+    with (
+        patch("src.core.monitors.njoyn.open_page", side_effect=fake_open_page),
+        patch(
+            "src.core.monitors.njoyn._discover_page",
+            new_callable=AsyncMock,
+            side_effect=[
+                BotChallengeError("blocked proxy one"),
+                BotChallengeError("blocked proxy two"),
+            ],
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
+        pytest.raises(BotChallengeError, match="blocked proxy two"),
+    ):
+        await discover(board, AsyncMock(), pw=object())
+
+    assert transports == [True, True]
+    assert exit_types == [BotChallengeError, BotChallengeError]
+
+
+async def test_direct_fallback_survives_pool_exhaustion_after_observed_block() -> None:
+    board_url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&page=joblisting"
+    board = {
+        "board_url": board_url,
+        "metadata": {
+            "proxy": True,
+            "transport_attempts": 5,
+            "direct_fallback_on_origin_block": True,
+        },
+    }
+    exit_types: list[type[BaseException] | None] = []
+    transports: list[bool] = []
+
+    def fake_open_page(_pw, _config, *, use_proxy: bool, target_url: str):
+        assert target_url == board_url
+        transports.append(use_proxy)
+        if transports == [True, True]:
+            raise ProxyPoolExhaustedError("all origin slots cooling down")
+        return _RecordingPageContext(object(), exit_types)
+
+    expected = {_job("J1", 1)}
+    with (
+        patch("src.core.monitors.njoyn.open_page", side_effect=fake_open_page),
+        patch(
+            "src.core.monitors.njoyn._discover_page",
+            new_callable=AsyncMock,
+            side_effect=[BotChallengeError("blocked proxy"), expected],
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        result = await discover(board, AsyncMock(), pw=object())
+
+    assert result == expected
+    assert transports == [True, True, False]
+    assert exit_types == [BotChallengeError, None]
+    assert sleep.await_args_list == [call(1.0)]
+
+
+async def test_never_bypasses_an_unavailable_proxy_without_observed_origin_block() -> None:
+    board_url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&page=joblisting"
+    board = {
+        "board_url": board_url,
+        "metadata": {
+            "proxy": True,
+            "direct_fallback_on_origin_block": True,
+        },
+    }
+    transports: list[bool] = []
+
+    def fake_open_page(_pw, _config, *, use_proxy: bool, target_url: str):
+        assert target_url == board_url
+        transports.append(use_proxy)
+        raise ProxyPoolExhaustedError("proxy unavailable")
+
+    with (
+        patch("src.core.monitors.njoyn.open_page", side_effect=fake_open_page),
+        pytest.raises(ProxyPoolExhaustedError, match="proxy unavailable"),
+    ):
+        await discover(board, AsyncMock(), pw=object())
+
+    assert transports == [True]
