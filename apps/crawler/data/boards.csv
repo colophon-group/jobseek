@@ -3375,6 +3375,7 @@ hudson-river-trading,hudson-river-trading-greenhouse,https://job-boards.greenhou
 hug,hug-careers,https://careers.smartrecruiters.com/HUG,smartrecruiters,"{""token"": ""HUG""}",smartrecruiters,
 hugeinc,hugeinc-greenhouse,https://job-boards.greenhouse.io/hugeinc,greenhouse,"{""token"": ""hugeinc""}",skip,
 huggingface,huggingface-careers,https://apply.workable.com/huggingface,workable,,workable,
+hugo-boss,hugo-boss-careers,https://careers.hugoboss.com/,phenom,,embedded,"{""variable"": ""phApp.ddo"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""location"", ""date_posted"": ""postedDate""}, ""path"": ""jobDetail.data.job""}"
 humaans,humaans-ashby,https://jobs.ashbyhq.com/humaans,ashby,"{""token"": ""humaans""}",skip,
 human-agency,human-agency-greenhouse,https://job-boards.greenhouse.io/humanagency,greenhouse,"{""token"": ""humanagency""}",skip,
 human-elevation-gmbh,human-elevation-gmbh-join,https://join.com/companies/patrickreisercom,join,"{""slug"": ""patrickreisercom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
