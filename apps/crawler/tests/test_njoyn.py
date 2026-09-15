@@ -43,6 +43,8 @@ class _FakePage:
         raise_after_submit: bool = False,
         wrong_pages: dict[int, list[int]] | None = None,
         expected_by_page: dict[int, int] | None = None,
+        expected_sequences: dict[int, list[int]] | None = None,
+        link_sequences: dict[int, list[list[str]]] | None = None,
     ):
         self.pages = pages
         self.expected = expected
@@ -50,12 +52,22 @@ class _FakePage:
         self.raise_after_submit = raise_after_submit
         self.wrong_pages = {target: list(values) for target, values in (wrong_pages or {}).items()}
         self.expected_by_page = expected_by_page or {}
+        self.expected_sequences = {
+            page_number: list(values) for page_number, values in (expected_sequences or {}).items()
+        }
+        self.link_sequences = {
+            page_number: [list(urls) for urls in values]
+            for page_number, values in (link_sequences or {}).items()
+        }
         self.submissions: list[int] = []
         self.index = 0
         self.url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&page=joblisting"
 
     def expect_navigation(self, **_kwargs) -> _FakeNavigation:
         return _FakeNavigation()
+
+    async def navigate(self, *_args, **_kwargs) -> None:
+        self.index = 0
 
     async def evaluate(self, _script: str, target_page: int | None = None):
         if target_page is not None:
@@ -69,10 +81,18 @@ class _FakePage:
                 raise RuntimeError("execution context destroyed by navigation")
             return True
 
-        expected = self.expected_by_page.get(self.index + 1, self.expected)
+        page_number = self.index + 1
+        expected_sequence = self.expected_sequences.get(page_number)
+        expected = (
+            expected_sequence.pop(0)
+            if expected_sequence
+            else self.expected_by_page.get(page_number, self.expected)
+        )
+        link_sequence = self.link_sequences.get(page_number)
+        links = link_sequence.pop(0) if link_sequence else self.pages[self.index]
         result_text = "" if expected is None else f"Search Results ({expected})"
         return {
-            "links": self.pages[self.index],
+            "links": links,
             "text": f"Current opportunities\n{result_text}",
             "pageNumber": str(self.index + 1),
         }
@@ -156,7 +176,11 @@ async def test_collects_form_paginated_listing_and_checks_total() -> None:
         expected=3,
     )
     with (
-        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ) as navigate,
         patch(
             "src.core.monitors.njoyn.safe_content",
             new_callable=AsyncMock,
@@ -168,16 +192,22 @@ async def test_collects_form_paginated_listing_and_checks_total() -> None:
 
     assert urls == {_job("J1", 1), _job("J2", 2), _job("J3", 3)}
     assert page.index == 2
+    assert page.submissions == [2, 3, 2, 3]
+    assert navigate.await_count == 2
 
 
-async def test_retries_exact_page_from_reset_listing_after_wrong_page() -> None:
+async def test_retries_exact_page_without_mixing_partial_snapshots() -> None:
     page = _FakePage(
         [[_job("J1", 1)], [_job("J2", 2)]],
         expected=2,
         wrong_pages={2: [1, 2]},
     )
     with (
-        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock) as navigate,
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ) as navigate,
         patch(
             "src.core.monitors.njoyn.safe_content",
             new_callable=AsyncMock,
@@ -188,7 +218,7 @@ async def test_retries_exact_page_from_reset_listing_after_wrong_page() -> None:
         urls = await _discover_page(page, page.url, {"page_wait_ms": 1})
 
     assert urls == {_job("J1", 1), _job("J2", 2)}
-    assert page.submissions == [2, 2]
+    assert page.submissions == [2, 2, 2]
     assert navigate.await_count == 2
     sleep.assert_any_await(1.0)
 
@@ -200,7 +230,11 @@ async def test_accepts_verified_page_when_evaluate_is_interrupted_by_navigation(
         raise_after_submit=True,
     )
     with (
-        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
         patch(
             "src.core.monitors.njoyn.safe_content",
             new_callable=AsyncMock,
@@ -210,13 +244,17 @@ async def test_accepts_verified_page_when_evaluate_is_interrupted_by_navigation(
         urls = await _discover_page(page, page.url, {})
 
     assert urls == {_job("J1", 1), _job("J2", 2)}
-    assert page.submissions == [2]
+    assert page.submissions == [2, 2]
 
 
 async def test_fails_closed_when_max_pages_cannot_reach_total() -> None:
     page = _FakePage([[_job("J1", 1)]], expected=2)
     with (
-        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
         patch(
             "src.core.monitors.njoyn.safe_content",
             new_callable=AsyncMock,
@@ -230,7 +268,11 @@ async def test_fails_closed_when_max_pages_cannot_reach_total() -> None:
 async def test_fails_closed_without_advertised_total() -> None:
     page = _FakePage([[_job("J1", 1)]], expected=None)
     with (
-        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
         patch(
             "src.core.monitors.njoyn.safe_content",
             new_callable=AsyncMock,
@@ -244,14 +286,18 @@ async def test_fails_closed_without_advertised_total() -> None:
 async def test_fails_closed_when_next_repeats_same_page() -> None:
     page = _FakePage([[_job("J1", 1)]], expected=2, repeat=True)
     with (
-        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
         patch(
             "src.core.monitors.njoyn.safe_content",
             new_callable=AsyncMock,
             return_value="<html>jobs</html>",
         ),
         patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
-        pytest.raises(RuntimeError, match="exact page transition did not converge"),
+        pytest.raises(RuntimeError, match="did not stabilize after 2 complete attempts"),
     ):
         await _discover_page(
             page,
@@ -267,22 +313,166 @@ async def test_fails_closed_when_result_total_changes_between_pages() -> None:
         expected_by_page={2: 3},
     )
     with (
-        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
         patch(
             "src.core.monitors.njoyn.safe_content",
             new_callable=AsyncMock,
             return_value="<html>jobs</html>",
         ),
-        pytest.raises(RuntimeError, match="result total changed during pagination"),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
+        pytest.raises(RuntimeError, match="last_reason=result_total_changed"),
     ):
         await _discover_page(page, page.url, {})
+
+
+async def test_restarts_complete_snapshot_when_result_total_changes_once() -> None:
+    discarded = [_job("J-old", 1)]
+    stable_first = [_job("J1", 1)]
+    page = _FakePage(
+        [stable_first, [_job("J2", 2)]],
+        expected=2,
+        expected_sequences={2: [3]},
+        link_sequences={1: [discarded, stable_first, stable_first]},
+    )
+    with (
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ) as navigate,
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        urls = await _discover_page(page, page.url, {})
+
+    assert urls == {_job("J1", 1), _job("J2", 2)}
+    assert _job("J-old", 1) not in urls
+    assert navigate.await_count == 3
+    assert page.submissions == [2, 2, 2]
+    sleep.assert_any_await(2.0)
+
+
+async def test_restarts_snapshot_when_first_page_fingerprint_changes() -> None:
+    first = [_job("J1", 1)]
+    changed = [_job("J3", 3)]
+    page = _FakePage(
+        [first, [_job("J2", 2)]],
+        expected=2,
+        link_sequences={1: [first, changed]},
+    )
+    with (
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
+    ):
+        urls = await _discover_page(page, page.url, {})
+
+    assert urls == {_job("J1", 1), _job("J2", 2)}
+
+
+async def test_fails_closed_when_boundary_fingerprint_never_stabilizes() -> None:
+    first = [_job("J1", 1)]
+    changed = [_job("J3", 3)]
+    page = _FakePage(
+        [first, [_job("J2", 2)]],
+        expected=2,
+        link_sequences={1: [first, changed, first, changed]},
+    )
+    with (
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
+        pytest.raises(RuntimeError, match="last_reason=first_page_fingerprint_changed"),
+    ):
+        await _discover_page(page, page.url, {})
+
+
+async def test_restarts_snapshot_when_last_page_fingerprint_changes() -> None:
+    original_last = [_job("J2", 2)]
+    changed_last = [_job("J3", 3)]
+    page = _FakePage(
+        [[_job("J1", 1)], original_last],
+        expected=2,
+        link_sequences={2: [original_last, changed_last]},
+    )
+    with (
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
+    ):
+        urls = await _discover_page(page, page.url, {})
+
+    assert urls == {_job("J1", 1), _job("J2", 2)}
+
+
+async def test_restarts_snapshot_when_middle_page_changes_with_same_total() -> None:
+    old_middle = [_job("J-old-middle", 2)]
+    new_middle = [_job("J-new-middle", 2)]
+    page = _FakePage(
+        [[_job("J1", 1)], new_middle, [_job("J3", 3)]],
+        expected=3,
+        link_sequences={2: [old_middle, new_middle, new_middle, new_middle]},
+    )
+    with (
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
+    ):
+        urls = await _discover_page(page, page.url, {})
+
+    assert urls == {_job("J1", 1), _job("J-new-middle", 2), _job("J3", 3)}
+    assert _job("J-old-middle", 2) not in urls
 
 
 async def test_fails_closed_on_radware_challenge() -> None:
     page = _FakePage([[_job("J1", 1)]], expected=1)
     page.url = "https://validate.perfdrive.com/?ssk=botmanager_support@radware.com"
     with (
-        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
         patch(
             "src.core.monitors.njoyn.safe_content",
             new_callable=AsyncMock,

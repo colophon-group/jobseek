@@ -1100,18 +1100,22 @@ njoyn — Njoyn XWeb browser monitor
 
   Njoyn listings paginate by submitting a session-bound form. The monitor
   submits the exact hidden page index under a bound navigation expectation,
-  verifies the returned page state, and resets to page one before a bounded
-  retry. It also verifies the URL count against the visible "Search Results
-  (N)" total. A non-converging transition, changing total, bot challenge,
-  max-page cap, or count mismatch fails the cycle rather than returning a
-  partial URL set.
+  verifies the returned page state, and checks the URL count against the
+  visible "Search Results (N)" total. It then replays every page and requires
+  exact per-page and whole-inventory equality. A changing total or fingerprint
+  discards every collected page and restarts from page one; bounded retries
+  never mix listing snapshots. A non-converging transition, persistent churn,
+  bot challenge, max-page cap, or count mismatch fails the cycle rather than
+  returning a partial URL set.
 
   Config:
     {"persistent_context": true, "headless": false, "stealth": true,
-     "proxy": true, "max_pages": 100, "page_wait_ms": 0}
+     "proxy": true, "max_pages": 100, "page_wait_ms": 0,
+     "snapshot_attempts": 2}
 
     max_pages       Safety cap (default/system cap 200)
     page_wait_ms    Optional post-navigation settle delay (default 0)
+    snapshot_attempts  Whole-listing attempts after churn (default 2, max 3)
     proxy           Route the browser through the configured proxy provider
 
   Detection:  *.njoyn.com/.../xweb/XWeb.asp listing URLs

@@ -5,7 +5,7 @@ visible ``NEXT`` control submits the current form and keeps the page URL
 unchanged, so query-parameter pagination and browser-context ``fetch`` calls
 only ever return the first page. This monitor keeps one browser context,
 submits each exact hidden page index under a navigation expectation, and fails
-closed when the advertised result count is not fully collected.
+closed when a stable, complete listing snapshot is not fully collected.
 """
 
 from __future__ import annotations
@@ -27,6 +27,8 @@ MAX_JOBS = 50_000
 MAX_PAGES = 200
 _PAGE_TRANSITION_ATTEMPTS = 3
 _PAGE_TRANSITION_RETRY_DELAY = 1.0
+_SNAPSHOT_ATTEMPTS = 2
+_SNAPSHOT_RETRY_DELAY = 2.0
 
 _RESULT_COUNT_RE = re.compile(r"\bSearch\s+Results\s*\(([\d,\s]+)\)", re.IGNORECASE)
 _PAGE_SNAPSHOT_SCRIPT = """() => {
@@ -53,6 +55,26 @@ _SUBMIT_PAGE_SCRIPT = """targetPage => {
     form.submit();
     return true;
 }"""
+
+
+class _ListingSnapshotChanged(RuntimeError):
+    """Signal that a complete listing pass must restart from page one."""
+
+    def __init__(
+        self,
+        reason: str,
+        *,
+        page: int | None = None,
+        expected: int | None = None,
+        observed: int | None = None,
+        collected: int | None = None,
+    ) -> None:
+        self.reason = reason
+        self.page = page
+        self.expected = expected
+        self.observed = observed
+        self.collected = collected
+        super().__init__(reason)
 
 
 def _is_njoyn_board(url: str) -> bool:
@@ -136,24 +158,20 @@ async def _page_snapshot(page, board_url: str) -> tuple[set[str], str, int]:
     return links, snapshot["text"], int(raw_page_number)
 
 
-async def _reset_listing_page(
-    page,
-    board_url: str,
-    config: dict,
-    *,
-    expected: int,
-) -> None:
-    """Restore page one before retrying an exact page transition."""
+async def _load_first_page(page, board_url: str, config: dict) -> tuple[set[str], int]:
+    """Navigate to and validate a fresh first-page listing snapshot."""
     await navigate(page, board_url, config)
     html = await safe_content(page)
     _raise_if_bot_challenge(page.url or board_url, html)
-    _, text, observed_page = await _page_snapshot(page, board_url)
-    observed_total = _expected_count(text)
-    if observed_page != 1 or observed_total != expected:
-        raise RuntimeError(
-            "Njoyn listing snapshot changed while resetting pagination; "
-            f"page={observed_page}, total={observed_total}, expected={expected}"
-        )
+    urls, text, observed_page = await _page_snapshot(page, board_url)
+    if observed_page != 1:
+        raise _ListingSnapshotChanged("first_page_state_changed", page=observed_page)
+    expected = _expected_count(text)
+    if expected is None:
+        raise RuntimeError("Njoyn listing is missing its Search Results total")
+    if expected > MAX_JOBS:
+        raise RuntimeError(f"Njoyn result count {expected} exceeds cap {MAX_JOBS}")
+    return urls, expected
 
 
 async def _submit_exact_page(
@@ -168,22 +186,21 @@ async def _submit_exact_page(
     wait_ms: int,
     navigation_timeout_ms: int,
 ) -> set[str]:
-    """Submit and verify one indexed Njoyn page, resetting before retries.
+    """Submit and verify one indexed Njoyn page with bounded retries.
 
     The public ``NEXT`` anchor calls a JavaScript helper that mutates the
     hidden ``pn`` field. Clicking it and then separately waiting for load can
     race the form navigation, leaving the monitor to read an unrelated prior
     page. Submit the exact index under Playwright's navigation expectation,
-    then require the returned hidden page state and result total to match.
+    then require the returned hidden page state and result total to match. A
+    non-converging transition signals the caller to discard the entire pass;
+    page-level retries never mix results collected before and after a reset.
     """
     last_observed_page: int | None = None
     last_new_urls = 0
     last_navigation_error: str | None = None
 
     for attempt in range(1, _PAGE_TRANSITION_ATTEMPTS + 1):
-        if attempt > 1:
-            await _reset_listing_page(page, board_url, config, expected=expected)
-
         navigation_error: Exception | None = None
         submitted = False
         try:
@@ -208,9 +225,12 @@ async def _submit_exact_page(
         last_navigation_error = type(navigation_error).__name__ if navigation_error else None
 
         if observed_total != expected:
-            raise RuntimeError(
-                "Njoyn result total changed during pagination; "
-                f"page={observed_page}, total={observed_total}, expected={expected}"
+            raise _ListingSnapshotChanged(
+                "result_total_changed",
+                page=observed_page,
+                expected=expected,
+                observed=observed_total,
+                collected=len(discovered_urls),
             )
         if observed_page == target_page and candidate_urls != previous_page_urls and new_urls:
             return candidate_urls
@@ -231,28 +251,21 @@ async def _submit_exact_page(
         if attempt < _PAGE_TRANSITION_ATTEMPTS:
             await asyncio.sleep(_PAGE_TRANSITION_RETRY_DELAY * attempt)
 
-    raise RuntimeError(
-        "Njoyn exact page transition did not converge; "
-        f"target_page={target_page}, observed_page={last_observed_page}, "
-        f"new_urls={last_new_urls}, collected={len(discovered_urls)}, expected={expected}, "
-        f"navigation_error={last_navigation_error}"
+    raise _ListingSnapshotChanged(
+        "page_transition_did_not_converge",
+        page=last_observed_page or target_page,
+        expected=expected,
+        observed=last_new_urls,
+        collected=len(discovered_urls),
     )
 
 
-async def _discover_page(page, board_url: str, config: dict) -> set[str]:
-    await navigate(page, board_url, config)
-
-    html = await safe_content(page)
-    _raise_if_bot_challenge(page.url or board_url, html)
-    current_page_urls, text, current_page = await _page_snapshot(page, board_url)
-    if current_page != 1:
-        raise RuntimeError(f"Njoyn listing opened on unexpected page {current_page}")
+async def _collect_listing_snapshot(page, board_url: str, config: dict) -> set[str]:
+    """Collect and verify one internally consistent complete listing pass."""
+    current_page_urls, expected = await _load_first_page(page, board_url, config)
+    first_page_urls = set(current_page_urls)
+    page_urls_by_number = {1: first_page_urls}
     urls = set(current_page_urls)
-    expected = _expected_count(text)
-    if expected is None:
-        raise RuntimeError("Njoyn listing is missing its Search Results total")
-    if expected is not None and expected > MAX_JOBS:
-        raise RuntimeError(f"Njoyn result count {expected} exceeds cap {MAX_JOBS}")
 
     max_pages = min(int(config.get("max_pages", MAX_PAGES)), MAX_PAGES)
     if max_pages < 1:
@@ -262,6 +275,7 @@ async def _discover_page(page, board_url: str, config: dict) -> set[str]:
         60_000,
         max(1_000, int(config.get("page_change_timeout_ms", 15_000))),
     )
+    final_page = 1
 
     for page_number in range(2, max_pages + 1):
         if len(urls) >= expected:
@@ -279,15 +293,72 @@ async def _discover_page(page, board_url: str, config: dict) -> set[str]:
             navigation_timeout_ms=navigation_timeout_ms,
         )
         current_page_urls = page_urls
+        page_urls_by_number[page_number] = set(page_urls)
         urls.update(page_urls)
+        final_page = page_number
     else:
         if len(urls) < expected:
             raise RuntimeError(f"Njoyn pagination hit max_pages={max_pages}")
 
     if len(urls) != expected:
-        raise RuntimeError(f"Njoyn count mismatch: collected {len(urls)} of {expected} jobs")
+        raise _ListingSnapshotChanged(
+            "result_count_mismatch",
+            page=final_page,
+            expected=expected,
+            observed=len(urls),
+            collected=len(urls),
+        )
     if not urls and expected:
         raise RuntimeError("Njoyn listing returned no job-detail URLs")
+
+    # Replay every page after the complete pass. Live additions and removals
+    # can replace a middle-page URL while leaving both the visible total and
+    # boundary pages unchanged. Exact per-page equality makes success evidence
+    # of two matching complete inventories, not merely an exact count.
+    verified_first_urls, verified_total = await _load_first_page(page, board_url, config)
+    if verified_total != expected or verified_first_urls != first_page_urls:
+        raise _ListingSnapshotChanged(
+            "first_page_fingerprint_changed",
+            page=1,
+            expected=expected,
+            observed=verified_total,
+            collected=len(urls),
+        )
+
+    verified_urls = set(verified_first_urls)
+    previous_verified_urls = verified_first_urls
+    for page_number in range(2, final_page + 1):
+        verified_page_urls = await _submit_exact_page(
+            page,
+            board_url,
+            config,
+            target_page=page_number,
+            previous_page_urls=previous_verified_urls,
+            discovered_urls=verified_urls,
+            expected=expected,
+            wait_ms=wait_ms,
+            navigation_timeout_ms=navigation_timeout_ms,
+        )
+        expected_page_urls = page_urls_by_number[page_number]
+        if verified_page_urls != expected_page_urls:
+            raise _ListingSnapshotChanged(
+                "page_fingerprint_changed",
+                page=page_number,
+                expected=expected,
+                observed=len(verified_page_urls),
+                collected=len(urls),
+            )
+        verified_urls.update(verified_page_urls)
+        previous_verified_urls = verified_page_urls
+
+    if verified_urls != urls:
+        raise _ListingSnapshotChanged(
+            "inventory_fingerprint_changed",
+            page=final_page,
+            expected=expected,
+            observed=len(verified_urls),
+            collected=len(urls),
+        )
 
     log.info(
         "njoyn.complete",
@@ -296,6 +367,39 @@ async def _discover_page(page, board_url: str, config: dict) -> set[str]:
         expected=expected,
     )
     return urls
+
+
+async def _discover_page(page, board_url: str, config: dict) -> set[str]:
+    snapshot_attempts = min(3, max(1, int(config.get("snapshot_attempts", _SNAPSHOT_ATTEMPTS))))
+    last_change: _ListingSnapshotChanged | None = None
+
+    for attempt in range(1, snapshot_attempts + 1):
+        try:
+            return await _collect_listing_snapshot(page, board_url, config)
+        except _ListingSnapshotChanged as exc:
+            last_change = exc
+            retrying = attempt < snapshot_attempts
+            log.warning(
+                "njoyn.snapshot.changed",
+                attempt=attempt,
+                attempts=snapshot_attempts,
+                retrying=retrying,
+                reason=exc.reason,
+                page=exc.page,
+                expected=exc.expected,
+                observed=exc.observed,
+                collected=exc.collected,
+            )
+            if retrying:
+                await asyncio.sleep(_SNAPSHOT_RETRY_DELAY * attempt)
+
+    assert last_change is not None
+    raise RuntimeError(
+        "Njoyn listing did not stabilize after "
+        f"{snapshot_attempts} complete attempts; last_reason={last_change.reason}, "
+        f"page={last_change.page}, expected={last_change.expected}, "
+        f"observed={last_change.observed}, collected={last_change.collected}"
+    ) from last_change
 
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
