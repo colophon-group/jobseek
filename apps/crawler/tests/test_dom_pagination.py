@@ -4822,7 +4822,8 @@ class TestDomDiscoverInitialFetch:
         sleep.assert_awaited_once_with(1.0)
         fields = warning.call_args.kwargs
         assert fields["reason"] == "partition_union_total"
-        assert fields["observed"] == fields["unique_urls"] == 1
+        assert fields["observed"] == fields["unique_raw_urls"] == 1
+        assert fields["unique_identities"] == 1
         assert fields["advertised"] == fields["partition_memberships"] == 2
         assert fields["partitions"] == 2
         assert fields["cross_partition_repetitions"] == 1
@@ -4887,11 +4888,74 @@ class TestDomDiscoverInitialFetch:
         assert [awaited.args[0] for awaited in sleep.await_args_list] == [1.0, 2.0, 4.0]
         fields = warning.call_args.kwargs
         assert fields["reason"] == "partition_union_total"
-        assert fields["unique_urls"] == 1
+        assert fields["unique_raw_urls"] == 1
+        assert fields["unique_identities"] == 1
         assert fields["partition_memberships"] == 2
         assert fields["cross_partition_repetitions"] == 1
         assert fields["retrying"] is False
         assert all(partition not in str(raised.value) for partition in partitions)
+
+    async def test_partitioned_pagination_fails_closed_on_cross_partition_identity_aliases(self):
+        board_url = "https://jobs.example.com/job/list.aspx"
+        partitions = [f"{board_url}?facet_Contract=secret-{number}" for number in (1, 2)]
+        aliases = [
+            "https://jobs.example.com/job/job-role_1.aspx?source=one",
+            "https://jobs.example.com/job/job-role_1.aspx?source=two",
+        ]
+        facets = (
+            "<ul class='facette-titre-niv1'>"
+            + "".join(f"<li><a href='{url}'>Contract (1)</a></li>" for url in partitions)
+            + "</ul>"
+        )
+
+        def counted_page(count, *links, facets=""):
+            return (
+                f"<html><head><title>Search results({count} vacancies/1)</title></head>"
+                f"<body>{facets}"
+                + "".join(f"<a href='{url}'>job</a>" for url in links)
+                + "</body></html>"
+            )
+
+        async def fetch(_client, url, **_kwargs):
+            if url == board_url:
+                return counted_page(2, aliases[0], facets=facets)
+            if url == partitions[0]:
+                return counted_page(1, aliases[0])
+            if url == partitions[1]:
+                return counted_page(1, aliases[1])
+            return None
+
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx(?:\?.*)?$",
+            "url_transform": {"find": r"\?source=.*$", "replace": ""},
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 1,
+                "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                "partition_count_regex": r"\((\d+)\s+vacancies",
+                "partition_validate_total": True,
+            },
+        }
+        warning = MagicMock()
+
+        with (
+            patch(_FETCH_PATCH, new=fetch),
+            patch("src.core.monitors.dom.asyncio.sleep", new=AsyncMock()),
+            patch("src.core.monitors.dom.log.warning", new=warning),
+            pytest.raises(ValueError, match="partition union does not match"),
+        ):
+            await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert warning.call_count == 4
+        fields = warning.call_args.kwargs
+        assert fields["reason"] == "partition_union_total"
+        assert fields["observed"] == fields["unique_identities"] == 1
+        assert fields["unique_raw_urls"] == fields["partition_memberships"] == 2
+        assert fields["cross_partition_repetitions"] == fields["identity_collisions"] == 1
+        assert fields["retrying"] is False
 
     @pytest.mark.parametrize(
         ("listing_totals", "partition_totals", "expected_job_count", "expected_board_calls"),

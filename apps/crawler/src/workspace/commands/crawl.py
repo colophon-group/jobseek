@@ -1179,12 +1179,9 @@ def select_monitor(
                 if suggestions:
                     msg += f". Did you mean: {', '.join(suggestions)}?"
                 out.die(msg)
-            if type_ == "dom" and not (
-                {"param_name", "url_template"} & pag_cfg.keys() or "partition_selector" in pag_cfg
-            ):
+            if type_ == "dom" and not ({"param_name", "url_template"} & pag_cfg.keys()):
                 out.die(
-                    "DOM pagination config requires 'param_name', 'url_template', or "
-                    "'partition_selector'. "
+                    "DOM pagination config requires 'param_name' or 'url_template'. "
                     "See: ws help monitor dom"
                 )
             if type_ not in {"nextdata", "dom"} and "param_name" not in pag_cfg:

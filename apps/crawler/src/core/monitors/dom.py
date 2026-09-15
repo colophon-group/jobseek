@@ -263,14 +263,17 @@ class _PartitionUnionDiagnostics:
 
     partitions: int
     partition_memberships: int
-    unique_urls: int
+    unique_raw_urls: int
+    unique_identities: int
 
     def log_fields(self) -> dict[str, int]:
         return {
             "partitions": self.partitions,
             "partition_memberships": self.partition_memberships,
-            "unique_urls": self.unique_urls,
-            "cross_partition_repetitions": self.partition_memberships - self.unique_urls,
+            "unique_raw_urls": self.unique_raw_urls,
+            "unique_identities": self.unique_identities,
+            "cross_partition_repetitions": (self.partition_memberships - self.unique_identities),
+            "identity_collisions": self.unique_raw_urls - self.unique_identities,
         }
 
 
@@ -4527,6 +4530,7 @@ async def _paginate_partitioned_urls_once(
         request_headers["Cookie"] = ""
     request_headers = request_headers or None
     semaphore = asyncio.Semaphore(_PAGINATION_PARTITION_CONCURRENCY)
+    identity_transform = _build_url_identity_transform(url_transform)
 
     def extract_count(html: str, url: str) -> int:
         assert count_regex is not None
@@ -4735,13 +4739,14 @@ async def _paginate_partitioned_urls_once(
             for child_url, child_result in zip(child_urls, child_results, strict=True)
         ]
         collected = await gather_cancel_on_error(child_tasks)
-        path_urls: set[str] = set()
+        path_raw_urls: set[str] = set()
         memberships = 0
         leaves = 0
         for urls, child_memberships, child_leaves in collected:
-            path_urls.update(urls)
+            path_raw_urls.update(urls)
             memberships += child_memberships
             leaves += child_leaves
+        path_urls, _ = _dedupe_by_identity(path_raw_urls, identity_transform)
         return path_urls, memberships, leaves
 
     async def collect_cover_partition(
@@ -4756,24 +4761,29 @@ async def _paginate_partitioned_urls_once(
             for selectors in cover_paths
         ]
         collected = await gather_cancel_on_error(path_tasks)
-        covered_urls: set[str] = set()
+        covered_raw_urls: set[str] = set()
         memberships = 0
         leaves = 0
         for urls, path_memberships, path_leaves in collected:
-            covered_urls.update(urls)
+            covered_raw_urls.update(urls)
             memberships += path_memberships
             leaves += path_leaves
-        if len(covered_urls) != count:
+        covered_urls, covered_identities = _dedupe_by_identity(
+            covered_raw_urls,
+            identity_transform,
+        )
+        if len(covered_identities) != count:
             raise _PartitionSnapshotChanged(
                 "DOM redundant partition paths do not cover their parent total",
                 reason="partition_cover_total",
-                observed=len(covered_urls),
+                observed=len(covered_identities),
                 advertised=count,
                 partition_url=partition_url,
                 union=_PartitionUnionDiagnostics(
                     partitions=leaves,
                     partition_memberships=memberships,
-                    unique_urls=len(covered_urls),
+                    unique_raw_urls=len(covered_raw_urls),
+                    unique_identities=len(covered_identities),
                 ),
             )
         return covered_urls, memberships, leaves
@@ -4799,11 +4809,11 @@ async def _paginate_partitioned_urls_once(
     ]
     partition_results = await gather_cancel_on_error(tasks)
 
-    all_urls: set[str] = set()
+    all_raw_urls: set[str] = set()
     partition_memberships = 0
     partition_leaves = len(expanded)
     for covered_urls, covered_memberships, covered_leaf_count in covered_partitions:
-        all_urls.update(covered_urls)
+        all_raw_urls.update(covered_urls)
         partition_memberships += covered_memberships
         partition_leaves += covered_leaf_count
     for partition_num, (expanded_partition, partition_result) in enumerate(
@@ -4821,25 +4831,28 @@ async def _paginate_partitioned_urls_once(
                 pagination=diagnostics,
             )
         partition_memberships += len(partition_urls_found)
-        all_urls.update(partition_urls_found)
+        all_raw_urls.update(partition_urls_found)
+        _, current_identities = _dedupe_by_identity(all_raw_urls, identity_transform)
         log.debug(
             "dom.pagination.partition",
             partition=partition_num,
             partitions=len(expanded),
             partition_urls=len(partition_urls_found),
-            total=len(all_urls),
+            total=len(current_identities),
         )
 
-    if expected_total is not None and len(all_urls) != expected_total:
+    all_urls, all_identities = _dedupe_by_identity(all_raw_urls, identity_transform)
+    if expected_total is not None and len(all_identities) != expected_total:
         raise _PartitionSnapshotChanged(
             "DOM partition union does not match listing total",
             reason="partition_union_total",
-            observed=len(all_urls),
+            observed=len(all_identities),
             advertised=expected_total,
             union=_PartitionUnionDiagnostics(
                 partitions=partition_leaves,
                 partition_memberships=partition_memberships,
-                unique_urls=len(all_urls),
+                unique_raw_urls=len(all_raw_urls),
+                unique_identities=len(all_identities),
             ),
         )
 
