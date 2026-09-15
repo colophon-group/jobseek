@@ -166,8 +166,9 @@ Njoyn validates the hidden page index, visible `Page N of M` state, advertised
 total, and expected row count on every page in each of two complete passes.
 Because newest-first listings can change while a large inventory is being
 walked, the passes may differ by at most 0.5% (hard-capped at 25 jobs). The
-monitor returns their conservative union; larger count or fingerprint drift
-fails closed. Njoyn boards pin `delist_threshold: 4`, so a boundary row omitted
+monitor returns their conservative union without ever exceeding the global
+50,000-job safety cap; larger count or fingerprint drift fails closed. Njoyn
+boards pin `delist_threshold: 4`, so a boundary row omitted
 by live pagination must be absent from four independently reconciled cycles
 before it can be deactivated. The generic count-drop and blast-radius guards
 remain the final mass-delisting defenses.

@@ -591,6 +591,17 @@ def test_fails_closed_when_reconciled_total_drift_exceeds_bound() -> None:
         _reconcile_listing_passes(first, second)
 
 
+def test_fails_closed_when_reconciled_union_exceeds_global_job_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.core.monitors.njoyn.MAX_JOBS", 3)
+    first = _ListingPass(frozenset({_job("J1", 1), _job("J2", 2), _job("J3", 3)}), (3,), 1)
+    second = _ListingPass(frozenset({_job("J1", 1), _job("J2", 2), _job("J4", 4)}), (3,), 1)
+
+    with pytest.raises(RuntimeError, match="reconciliation_job_cap_exceeded"):
+        _reconcile_listing_passes(first, second)
+
+
 async def test_fails_closed_on_radware_challenge_without_logging_its_url() -> None:
     page = _FakePage([[_job("J1", 1)]], expected=1)
     page.url = "https://validate.perfdrive.com/?ssk=botmanager_support@radware.com"

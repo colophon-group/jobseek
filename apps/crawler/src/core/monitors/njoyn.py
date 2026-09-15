@@ -485,6 +485,13 @@ def _reconcile_listing_passes(first: _ListingPass, second: _ListingPass) -> set[
         )
 
     urls = set(first.urls | second.urls)
+    if len(urls) > MAX_JOBS:
+        raise _ListingSnapshotChanged(
+            "reconciliation_job_cap_exceeded",
+            expected=MAX_JOBS,
+            observed=len(urls),
+            collected=len(urls),
+        )
     if abs(len(urls) - max_total) > allowance:
         raise _ListingSnapshotChanged(
             "reconciliation_inventory_gap_exceeded",

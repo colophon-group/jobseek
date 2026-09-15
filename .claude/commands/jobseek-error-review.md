@@ -177,10 +177,13 @@ never automatic.
 
 Classify Njoyn inventory reconciliation separately. A successful
 `njoyn.snapshot.reconciled` event is within the code-owned two-pass churn
-budget and is not an error. `pass_*_exceeded` and
-`reconciliation_*_exceeded` are fail-closed `inventory_unstable` failures;
-do not prescribe proxy replacement without separate typed all-slot origin
-block evidence in the same window.
+budget and is not an error. `first_page_state_changed`,
+`pagination_state_mismatch`, `empty_page_shape_mismatch`,
+`page_count_mismatch`, `page_row_count_mismatch`,
+`page_transition_did_not_converge`, `pass_*_exceeded`, and
+`reconciliation_*_exceeded` are fail-closed `inventory_unstable` failures; do
+not prescribe proxy replacement without separate typed all-slot origin-block
+evidence in the same window.
 
   KNOWN       In any prior daily report within 14 days. Count it, do
               not file.
