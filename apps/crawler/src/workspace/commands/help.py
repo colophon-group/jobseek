@@ -1113,12 +1113,12 @@ njoyn — Njoyn XWeb browser monitor
 
   Config:
     {"persistent_context": true, "headless": false, "stealth": true,
-     "proxy": true, "max_pages": 100, "page_wait_ms": 0,
+     "proxy": true, "max_pages": 100, "page_wait_ms": 4000,
      "snapshot_attempts": 2, "transport_attempts": 5,
      "direct_fallback_on_origin_block": true}
 
     max_pages       Safety cap (default/system cap 200)
-    page_wait_ms    Optional post-navigation settle delay (default 0)
+    page_wait_ms    Post-navigation settle/rate-limit delay (default 4000)
     snapshot_attempts  Whole-listing attempts after churn (default 2, max 3)
     transport_attempts Fresh proxy contexts after typed origin blocks
                        (default/max 5)

@@ -32,6 +32,7 @@ _SNAPSHOT_ATTEMPTS = 2
 _SNAPSHOT_RETRY_DELAY = 2.0
 _TRANSPORT_ATTEMPTS = 5
 _TRANSPORT_RETRY_DELAY = 1.0
+_DEFAULT_PAGE_WAIT_MS = 4_000
 _MAX_ORIGIN_BLOCK_RESPONSE_CHARS = 1_024
 
 _RESULT_COUNT_RE = re.compile(r"\bSearch\s+Results\s*\(([\d,\s]+)\)", re.IGNORECASE)
@@ -168,7 +169,13 @@ def _raise_if_njoyn_challenge(url: str, html: str) -> None:
         and _NJOYN_ORIGIN_BLOCK_RE.search(html) is not None
     ):
         raise BotChallengeError("Njoyn origin rejected the browser session")
-    _raise_if_bot_challenge(url, html)
+    try:
+        _raise_if_bot_challenge(url, html)
+    except BotChallengeError:
+        # The shared detector includes the challenge URL in its operator
+        # message. Radware URLs carry opaque request/session material, so
+        # replace it at this provider boundary before worker traceback logs.
+        raise BotChallengeError("Njoyn origin rejected the browser session") from None
 
 
 async def _page_snapshot(page, board_url: str) -> tuple[set[str], str, int]:
@@ -184,7 +191,15 @@ async def _load_first_page(page, board_url: str, config: dict) -> tuple[set[str]
     """Navigate to and validate a fresh first-page listing snapshot."""
     await navigate(page, board_url, config)
     html = await safe_content(page)
-    _raise_if_njoyn_challenge(page.url or board_url, html)
+    try:
+        _raise_if_njoyn_challenge(page.url or board_url, html)
+    except BotChallengeError:
+        log.warning(
+            "njoyn.transport.origin_block",
+            phase="first_page",
+            target_page=1,
+        )
+        raise
     urls, text, observed_page = await _page_snapshot(page, board_url)
     if observed_page != 1:
         raise _ListingSnapshotChanged("first_page_state_changed", page=observed_page)
@@ -238,7 +253,17 @@ async def _submit_exact_page(
             await asyncio.sleep(wait_ms / 1000)
 
         html = await safe_content(page)
-        _raise_if_njoyn_challenge(page.url or board_url, html)
+        try:
+            _raise_if_njoyn_challenge(page.url or board_url, html)
+        except BotChallengeError:
+            log.warning(
+                "njoyn.transport.origin_block",
+                phase="pagination",
+                target_page=target_page,
+                collected=len(discovered_urls),
+                expected=expected,
+            )
+            raise
         candidate_urls, text, observed_page = await _page_snapshot(page, board_url)
         observed_total = _expected_count(text)
         new_urls = candidate_urls - discovered_urls
@@ -292,7 +317,10 @@ async def _collect_listing_snapshot(page, board_url: str, config: dict) -> set[s
     max_pages = min(int(config.get("max_pages", MAX_PAGES)), MAX_PAGES)
     if max_pages < 1:
         raise ValueError("Njoyn max_pages must be at least 1")
-    wait_ms = min(60_000, max(0, int(config.get("page_wait_ms", 0))))
+    wait_ms = min(
+        60_000,
+        max(0, int(config.get("page_wait_ms", _DEFAULT_PAGE_WAIT_MS))),
+    )
     navigation_timeout_ms = min(
         60_000,
         max(1_000, int(config.get("page_change_timeout_ms", 15_000))),
@@ -527,6 +555,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
         "headless": False,
         "stealth": True,
         "proxy": True,
+        "page_wait_ms": _DEFAULT_PAGE_WAIT_MS,
         "transport_attempts": 5,
         "direct_fallback_on_origin_block": True,
     }
