@@ -34,6 +34,69 @@ def test_metric_labels_are_stable_and_escaped() -> None:
     )
 
 
+def test_unit_metrics_distinguish_scheduled_and_unscheduled_timers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def run(argv, **_kwargs):
+        assert "--property=NextElapseUSecRealtime" in argv
+        assert "--property=NextElapseUSecMonotonic" in argv
+        unit = argv[-1]
+        if unit == "jobseek-docker-gc.timer":
+            substate = "elapsed"
+        elif unit == "jobseek-codex-daily-error-review.timer":
+            substate = "running"
+        else:
+            substate = "waiting"
+        realtime_trigger = (
+            "Tue 2026-09-15 12:00:00 UTC" if unit == "jobseek-ats-inventory.timer" else "infinity"
+        )
+        monotonic_trigger = (
+            "infinity"
+            if unit
+            in {
+                "jobseek-crawler-reconciliation.timer",
+                "jobseek-ats-inventory.timer",
+                "jobseek-codex-daily-error-review.timer",
+            }
+            else "45min"
+        )
+        if not unit.endswith(".timer"):
+            substate = "running"
+        return subprocess.CompletedProcess(
+            argv,
+            0,
+            stdout=(
+                f"ActiveState=active\nSubState={substate}\n"
+                f"NextElapseUSecRealtime={realtime_trigger}\n"
+                f"NextElapseUSecMonotonic={monotonic_trigger}\n"
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(host.subprocess, "run", run)
+    lines: list[str] = []
+
+    host._collect_unit_metrics("crawler", lines)
+
+    content = "\n".join(lines)
+    labels = 'host_role="crawler",unit="jobseek-docker-gc.timer"'
+    assert f"jobseek_host_unit_active{{{labels}}} 1" in content
+    assert f"jobseek_host_timer_scheduled{{{labels}}} 0" in content
+    assert 'jobseek_host_timer_scheduled{host_role="crawler",unit="docker.service"}' not in content
+    reconciliation_labels = 'host_role="crawler",unit="jobseek-crawler-reconciliation.timer"'
+    assert f"jobseek_host_timer_scheduled{{{reconciliation_labels}}} 0" in content
+    assert (
+        'jobseek_host_timer_scheduled{host_role="crawler",unit="jobseek-ats-inventory.timer"} 1'
+        in content
+    )
+    assert (
+        'jobseek_host_timer_scheduled{host_role="crawler",unit="jobseek-codex-governor.timer"} 1'
+        in content
+    )
+    running_labels = 'host_role="crawler",unit="jobseek-codex-daily-error-review.timer"'
+    assert f"jobseek_host_timer_scheduled{{{running_labels}}} 1" in content
+
+
 def test_redaction_removes_credentials_and_private_identifiers() -> None:
     redacted = host._redact(
         "token=secret https://example.test/path?q=secret "

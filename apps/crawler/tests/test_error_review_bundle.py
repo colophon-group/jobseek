@@ -439,8 +439,25 @@ def test_collect_disk_capacity_evidence_is_bounded_windowed_and_manifested(tmp_p
         "docker-container-sizes",
         "docker-images",
         "disk-attribution",
+        "docker-gc-timer",
         "docker-gc-journal",
     }
+    timer = next(
+        call for call in calls if call[0][:3] == ["systemctl", "show", "jobseek-docker-gc.timer"]
+    )
+    assert timer == (
+        [
+            "systemctl",
+            "show",
+            "jobseek-docker-gc.timer",
+            "--property=ActiveState",
+            "--property=SubState",
+            "--property=LastTriggerUSec",
+            "--property=NextElapseUSecRealtime",
+            "--property=NextElapseUSecMonotonic",
+        ],
+        30,
+    )
     journal = calls[-1]
     assert journal == (
         [

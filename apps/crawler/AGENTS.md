@@ -647,11 +647,19 @@ Do not prune unrelated images, containers, or Docker volumes.
 
 ```bash
 systemctl is-active jobseek-docker-gc.timer
+systemctl show jobseek-docker-gc.timer \
+  -p ActiveState -p SubState -p NextElapseUSecMonotonic
 systemctl list-timers --all jobseek-docker-gc.timer --no-pager
 journalctl -u jobseek-docker-gc.service -n 80 --no-pager
 df -h /
 docker system df
 ```
+
+Require `ActiveState=active`. A quiescent timer must have `SubState=waiting`
+and a finite non-empty next trigger. `SubState=running` is healthy while its
+target service is in flight; verify that service and require the timer to
+return to waiting afterward. `is-active` alone also accepts the broken
+`active (elapsed)` state.
 
 If Redis reports `MISCONF` after a disk-full event, free disk first, then
 verify Redis persistence and writes:

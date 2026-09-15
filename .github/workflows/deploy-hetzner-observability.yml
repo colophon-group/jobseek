@@ -139,6 +139,11 @@ jobs:
             systemctl is-active --quiet jobseek-alloy.service
             systemctl is-active --quiet jobseek-host-observability.timer
             systemctl is-active --quiet jobseek-docker-gc.timer
+            test "$(systemctl show --property=SubState --value jobseek-docker-gc.timer)" = waiting
+            docker_gc_next="$(systemctl show --property=NextElapseUSecMonotonic --value jobseek-docker-gc.timer)"
+            test -n "$docker_gc_next"
+            test "$docker_gc_next" != infinity
+            test "$docker_gc_next" != n/a
             if [[ "$JOBSEEK_HOST_ROLE" == crawler ]]; then
               runuser -u deploy -- grep -Eq '^[0-9a-f]{40}$' \
                 /var/lib/jobseek-reconciliation/deployed-sha

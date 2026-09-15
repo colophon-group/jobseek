@@ -92,14 +92,20 @@ such as `tesla-debug`, `stupefied_hofstadter`, and `goofy_haibt`.
    exact-window capacity scan failures and cooldown behavior. Treat
    `manifest.json` `redis_capacity.complete=false` as an explicit evidence
    gap, not as a healthy capacity signal.
-   Always read the `disk_capacity` manifest entry and all five bounded disk
+   Always read the `disk_capacity` manifest entry and all six bounded disk
    artifacts: `host/docker-system-df.txt`, `host/docker-container-sizes.txt`,
    `host/docker-images.txt`, `host/disk-attribution.txt`, and
-   `host/docker-gc.log`. Treat `disk_capacity.complete=false` as an explicit
+   `host/docker-gc-timer.txt` and `host/docker-gc.log`. Treat
+   `disk_capacity.complete=false` as an explicit
    attribution gap. When `/` or Docker is at least 85% full, do not close or
    downgrade the incident from a percentage alone: identify the dominant
    allowlisted root/image family and check the exact-window GC journal, or
    state precisely which incomplete artifact prevents attribution.
+   Treat `ActiveState=active` with `SubState=running` as a healthy in-flight
+   timer and inspect its target service separately. A quiescent timer must be
+   `active (waiting)` with a finite next trigger; treat any other state, or a
+   waiting timer with a missing/infinite next trigger, as a failed recurrence
+   guard even when disk usage is currently below the incident threshold.
 2. Read every `.md` report under
    `~/dev/claude/review-jobseek-errors/` before classifying. The directory
    name is legacy; keep using it for cross-run continuity unless a migration

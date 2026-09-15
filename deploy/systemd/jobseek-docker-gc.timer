@@ -2,10 +2,11 @@
 Description=Run bounded Jobseek Docker storage collection hourly
 
 [Timer]
-OnBootSec=15min
-OnUnitActiveSec=1h
+OnActiveSec=15min
+OnUnitInactiveSec=1h
 RandomizedDelaySec=15min
-Persistent=true
+AccuracySec=1min
+Unit=jobseek-docker-gc.service
 
 [Install]
 WantedBy=timers.target
