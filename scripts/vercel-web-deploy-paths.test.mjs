@@ -126,8 +126,12 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.equal(
     [...workflow.matchAll(/--output \/dev\/null --write-out '%\{http_code\}'/g)]
       .length,
-    2,
+    1,
   );
+  assert.match(workflow, /--output "\$smoke_body" --write-out '%\{http_code\}'/);
+  assert.match(workflow, /verify-vercel-smoke-response\.mjs/);
+  assert.match(workflow, /chmod 600 "\$smoke_body"/);
+  assert.match(workflow, /trap 'rm -f -- "\$smoke_body"' EXIT/);
   assert.doesNotMatch(workflow, /--(?:output|write-out)=/);
   assert.match(
     workflow,

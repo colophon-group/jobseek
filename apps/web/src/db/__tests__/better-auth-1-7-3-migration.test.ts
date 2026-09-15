@@ -16,6 +16,10 @@ const generatedSchema = readFileSync(
   resolve(webRoot, "drizzle/schema.ts"),
   "utf8",
 );
+const relaxationVerifier = readFileSync(
+  resolve(webRoot, "scripts/verify-better-auth-account-issuer-relaxation.ts"),
+  "utf8",
+);
 
 describe("0091 Better Auth account issuer relaxation", () => {
   it("removes the temporary 1.7.0-1.7.2 write constraints", () => {
@@ -44,5 +48,16 @@ describe("0091 Better Auth account issuer relaxation", () => {
   it("retains the historical issuer data for reversible cleanup", () => {
     expect(migration).not.toMatch(/\bUPDATE\s+public\.account\b/i);
     expect(migration).not.toMatch(/\bDELETE\s+FROM\s+public\.account\b/i);
+  });
+
+  it("audits the relaxed production contract without write access", () => {
+    expect(relaxationVerifier).toContain("SET TRANSACTION READ ONLY");
+    expect(relaxationVerifier).toContain('new URL(databaseUrl).port !== "6543"');
+    expect(relaxationVerifier).toContain("issuerColumn.notNull === false");
+    expect(relaxationVerifier).toContain("account_issuer_account_id_uidx");
+    expect(relaxationVerifier).toContain(
+      "jobseek_better_auth_account_issuer_compat()",
+    );
+    expect(relaxationVerifier).toContain("duplicateProviderAccounts");
   });
 });
