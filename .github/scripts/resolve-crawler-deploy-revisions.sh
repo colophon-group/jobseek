@@ -22,11 +22,13 @@ test "$(git rev-parse --verify "origin/${DEFAULT_BRANCH}^{commit}")" = "$GITHUB_
 case "$EVENT_NAME" in
   push)
     previous_revision="${EVENT_BEFORE:-}"
+    manual_redeploy=false
     ;;
   workflow_dispatch)
     # workflow_dispatch has no event.before. The exact main first parent is
     # the rollback/runtime comparison revision for a secret-only rollout.
     previous_revision="$(git rev-parse --verify "${GITHUB_SHA}^")"
+    manual_redeploy=true
     ;;
   *)
     echo "Unsupported deployment event: $EVENT_NAME" >&2
@@ -39,3 +41,4 @@ test "$previous_revision" != "0000000000000000000000000000000000000000"
 test "$(git rev-parse --verify "${previous_revision}^{commit}")" = "$previous_revision"
 git merge-base --is-ancestor "$previous_revision" "$GITHUB_SHA"
 printf 'previous_revision=%s\n' "$previous_revision" >>"$GITHUB_OUTPUT"
+printf 'manual_redeploy=%s\n' "$manual_redeploy" >>"$GITHUB_OUTPUT"

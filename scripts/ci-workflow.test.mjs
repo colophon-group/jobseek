@@ -1636,7 +1636,7 @@ test("crawler deploys derive immutable versions for unchanged releases", () => {
   assert.match(deployCrawlerWorkflow, /fetch-depth: 0/);
   assert.match(
     deployCrawlerWorkflow,
-    /BASE_SHA: \$\{\{ needs\.preflight\.outputs\.previous_revision \}\}[\s\S]*scripts\/derive-crawler-build-version\.mjs[\s\S]*--base "\$BASE_SHA"[\s\S]*--write-version apps\/crawler\/VERSION[\s\S]*--github-output "\$GITHUB_OUTPUT"/,
+    /BASE_SHA: \$\{\{ needs\.preflight\.outputs\.previous_revision \}\}[\s\S]*MANUAL_REDEPLOY: \$\{\{ needs\.preflight\.outputs\.manual_redeploy \}\}[\s\S]*case "\$MANUAL_REDEPLOY"[\s\S]*true\) redeploy_args\+=\(--manual-redeploy\)[\s\S]*scripts\/derive-crawler-build-version\.mjs[\s\S]*--base "\$BASE_SHA"[\s\S]*--write-version apps\/crawler\/VERSION[\s\S]*--github-output "\$GITHUB_OUTPUT"[\s\S]*"\$\{redeploy_args\[@\]\}"/,
   );
   assert.match(
     deployCrawlerWorkflow,
@@ -1726,11 +1726,17 @@ test("crawler manual deploys attest exact main and derive a rollback parent", ()
       sha: target,
     });
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(readFileSync(output, "utf8"), `previous_revision=${before}\n`);
+    assert.equal(
+      readFileSync(output, "utf8"),
+      `previous_revision=${before}\nmanual_redeploy=false\n`,
+    );
 
     result = resolve({ eventName: "workflow_dispatch", sha: target });
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(readFileSync(output, "utf8"), `previous_revision=${before}\n`);
+    assert.equal(
+      readFileSync(output, "utf8"),
+      `previous_revision=${before}\nmanual_redeploy=true\n`,
+    );
 
     result = resolve({
       eventName: "workflow_dispatch",

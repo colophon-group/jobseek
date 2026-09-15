@@ -24,6 +24,7 @@ on:
       # immutable-version and production rollout path they control (#5873).
       - '.github/workflows/deploy-crawler-browser.yml'
       - '.github/scripts/resolve-crawler-deploy-revisions.sh'
+      - 'scripts/derive-crawler-build-version.mjs'
       - 'scripts/derive-crawler-runtime-contract.mjs'
       - 'scripts/verify-crawler-release-bridge.py'
 
@@ -41,6 +42,7 @@ jobs:
       contents: read
     outputs:
       previous_revision: ${{ steps.revisions.outputs.previous_revision }}
+      manual_redeploy: ${{ steps.revisions.outputs.manual_redeploy }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -101,11 +103,20 @@ jobs:
         id: version
         env:
           BASE_SHA: ${{ needs.preflight.outputs.previous_revision }}
-        run: >-
-          node scripts/derive-crawler-build-version.mjs
-          --base "$BASE_SHA"
-          --write-version apps/crawler/VERSION
-          --github-output "$GITHUB_OUTPUT"
+          MANUAL_REDEPLOY: ${{ needs.preflight.outputs.manual_redeploy }}
+        run: |
+          set -euo pipefail
+          redeploy_args=()
+          case "$MANUAL_REDEPLOY" in
+            true) redeploy_args+=(--manual-redeploy) ;;
+            false) ;;
+            *) echo "Invalid manual redeploy attestation" >&2; exit 1 ;;
+          esac
+          node scripts/derive-crawler-build-version.mjs \
+            --base "$BASE_SHA" \
+            --write-version apps/crawler/VERSION \
+            --github-output "$GITHUB_OUTPUT" \
+            "${redeploy_args[@]}"
 
       - name: Derive reconciliation wrapper contract
         id: reconciliation
