@@ -78,7 +78,11 @@ failures after a reachable response cannot block a whole host. A provider
 scraper may explicitly promote an exhausted, provider-validated invalid
 success body to a transient outcome; Workday detail responses use this for the
 cross-tenant HTTP 200/HTML incident tracked in #5230. A response that recovers
-during provider-specific retries remains healthy. Three failed
+during provider-specific retries remains healthy. Typed bot challenges
+detected after a browser-rendered navigation are promoted the same way and
+attributed to the stable requested origin, rather than an opaque or rotating
+challenge redirect. A later guard-validated render supersedes an earlier
+challenge from the same run. Three failed
 runs inside ten minutes open `host_open:<egress_host>` for thirty minutes.
 Sibling boards and postings are rescheduled to the stored unblock timestamp
 before making a network or proxy request. When that time arrives,

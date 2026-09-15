@@ -22,6 +22,7 @@ from src.core.scrapers.jsonld import (
     probe,
     scrape,
 )
+from src.shared.http import track_request_hosts
 from src.shared.proxy import ProxyPoolExhaustedError
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -1046,31 +1047,69 @@ class TestScrape:
 
     def test_render_guard_classifies_tiny_njoyn_xwp_rejection(self):
         html = "<html><body>Invalid request XWP10022 192.0.2.1</body></html>"
+        requested_url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?Page=JobDetails"
 
-        with pytest.raises(RuntimeError, match="origin rejected") as raised:
-            _guard_rendered_content(
-                "https://cgi.njoyn.com/corp/xweb/XWeb.asp?Page=JobDetails",
-                "https://cgi.njoyn.com/corp/xweb/XWeb.asp?Page=JobDetails",
-                html,
-            )
+        with (
+            track_request_hosts() as tracker,
+            pytest.raises(RuntimeError, match="origin rejected") as raised,
+        ):
+            _guard_rendered_content(requested_url, requested_url, html)
 
         assert raised.value.proxy_failure_reason == "origin_block"
         assert "192.0.2.1" not in str(raised.value)
+        assert tracker.transient_failure_host == "cgi.njoyn.com"
+        assert tracker.last_application_error == "rendered_origin_block"
+        assert tracker.last_url == requested_url
 
     def test_render_guard_sanitizes_njoyn_challenge_redirect_url(self):
         opaque_redirect = "https://validate.example.test/?session=opaque-secret"
         html = "<html><title>Radware Captcha Page</title></html>"
+        requested_url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?Page=JobDetails"
 
-        with pytest.raises(RuntimeError, match="origin rejected") as raised:
-            _guard_rendered_content(
-                "https://cgi.njoyn.com/corp/xweb/XWeb.asp?Page=JobDetails",
-                opaque_redirect,
-                html,
-            )
+        with (
+            track_request_hosts() as tracker,
+            pytest.raises(RuntimeError, match="origin rejected") as raised,
+        ):
+            _guard_rendered_content(requested_url, opaque_redirect, html)
 
         assert raised.value.proxy_failure_reason == "origin_block"
         assert opaque_redirect not in str(raised.value)
         assert "opaque-secret" not in str(raised.value)
+        assert tracker.transient_failure_host == "cgi.njoyn.com"
+        assert tracker.last_url == requested_url
+
+    def test_render_guard_marks_a_healthy_response_as_reachable(self):
+        requested_url = "https://jobs.example.com/job/1"
+        with track_request_hosts() as tracker:
+            _guard_rendered_content(
+                requested_url,
+                requested_url,
+                "<html><body>Ordinary job content</body></html>",
+            )
+
+        assert tracker.transient_failure_host is None
+        assert tracker.last_host == "jobs.example.com"
+        assert tracker.last_url == requested_url
+        assert tracker.last_status_code == 200
+
+    def test_later_healthy_render_supersedes_an_earlier_typed_block(self):
+        requested_url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?Page=JobDetails"
+        with track_request_hosts() as tracker:
+            with pytest.raises(RuntimeError, match="origin rejected"):
+                _guard_rendered_content(
+                    requested_url,
+                    requested_url,
+                    "<html><body>Invalid request XWP10022</body></html>",
+                )
+            _guard_rendered_content(
+                requested_url,
+                requested_url,
+                "<html><body>Ordinary job content</body></html>",
+            )
+
+        assert tracker.transient_failure_host is None
+        assert tracker.last_host == "cgi.njoyn.com"
+        assert tracker.last_status_code == 200
 
     async def test_render_rotates_typed_blocks_then_uses_explicit_direct_fallback(self):
         page_html = """<script type="application/ld+json">

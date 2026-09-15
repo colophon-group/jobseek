@@ -24,7 +24,11 @@ from src.core.jsonld import parse_html as parse_html
 from src.core.jsonld import parse_rendered_html as parse_rendered_html
 from src.core.scrapers import register
 from src.shared.api_sniff import clean_headers
-from src.shared.http import is_avature_job_detail_url
+from src.shared.http import (
+    is_avature_job_detail_url,
+    mark_reachable_response,
+    mark_transient_response_failure,
+)
 from src.shared.http_retry import fetch_response_with_status_retries
 
 log = structlog.get_logger()
@@ -42,16 +46,29 @@ def _guard_rendered_content(requested_url: str, final_url: str, html: str) -> No
     guard inside ``browser.render`` is load-bearing because ``open_page`` can
     then quarantine the selected origin/slot pair before the context closes.
     """
-    hostname = (urlsplit(requested_url).hostname or "").lower()
-    if hostname == "njoyn.com" or hostname.endswith(".njoyn.com"):
-        from src.core.monitors.njoyn import _raise_if_njoyn_challenge
+    try:
+        hostname = (urlsplit(requested_url).hostname or "").lower()
+        if hostname == "njoyn.com" or hostname.endswith(".njoyn.com"):
+            from src.core.monitors.njoyn import _raise_if_njoyn_challenge
 
-        _raise_if_njoyn_challenge(final_url, html)
-        return
+            _raise_if_njoyn_challenge(final_url, html)
+        else:
+            from src.core.monitors.dom import _raise_if_bot_challenge
 
-    from src.core.monitors.dom import _raise_if_bot_challenge
-
-    _raise_if_bot_challenge(final_url, html)
+            _raise_if_bot_challenge(final_url, html)
+    except Exception as exc:
+        if getattr(exc, "proxy_failure_reason", None) == "origin_block":
+            # Browser navigation does not pass through the tracked httpx
+            # transport. Promote the typed rendered challenge explicitly so
+            # the worker's shared host circuit can defer sibling postings.
+            # Attribute redirects to the stable requested job origin: WAF
+            # challenge URLs can contain opaque or rotating hostnames.
+            mark_transient_response_failure(
+                requested_url,
+                reason="rendered_origin_block",
+            )
+        raise
+    mark_reachable_response(requested_url)
 
 
 async def _render_with_origin_block_recovery(url: str, config: dict, pw=None) -> str:
