@@ -314,6 +314,7 @@ async def test_provider_failure_exposes_only_safe_error_code():
         ((NOW - timedelta(minutes=16)).isoformat(), "has expired"),
         ((NOW + timedelta(minutes=1)).isoformat(), "in the future"),
         ("not-a-timestamp", "invalid completion time"),
+        (NOW.replace(tzinfo=None).isoformat(), "invalid completion time"),
         ("", "omitted its completion time"),
     ],
 )
