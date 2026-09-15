@@ -20,6 +20,7 @@ from src.core.monitors.njoyn import (
     can_handle,
     discover,
 )
+from src.core.scrapers.jsonld import parse_html as parse_jsonld_html
 from src.shared.constants import DATA_DIR
 from src.shared.proxy import ProxyPoolExhaustedError
 
@@ -193,12 +194,13 @@ async def test_can_handle_returns_hardened_browser_defaults() -> None:
     assert monitor_needs_browser("njoyn", config)
 
 
-def test_cgi_configs_pin_installed_chrome_channel() -> None:
+def test_cgi_configs_use_rendered_jobposting_jsonld() -> None:
     with (DATA_DIR / "boards.csv").open(newline="") as source:
         row = next(row for row in csv.DictReader(source) if row["board_slug"] == "cgi-global-njoyn")
 
     monitor_config = json.loads(row["monitor_config"])
     scraper_config = json.loads(row["scraper_config"])
+    assert row["scraper_type"] == "json-ld"
     assert monitor_config["persistent_context"] is True
     assert scraper_config["persistent_context"] is True
     assert monitor_config["channel"] == "chrome"
@@ -207,6 +209,47 @@ def test_cgi_configs_pin_installed_chrome_channel() -> None:
     assert monitor_config["transport_attempts"] == 5
     assert monitor_config["direct_fallback_on_origin_block"] is True
     assert monitor_config["delist_threshold"] == 4
+    assert scraper_config["render"] is True
+    assert scraper_config["proxy"] is True
+    assert "steps" not in scraper_config
+
+
+def test_cgi_current_detail_jobposting_contract_extracts_required_fields() -> None:
+    html = """
+    <html>
+      <head>
+        <title>Careers | CGI.com</title>
+        <script type="application/ld+json">
+          {
+            "@context": "https://schema.org",
+            "@type": "JobPosting",
+            "title": "Platform Engineer",
+            "description": "<p>Build durable systems.</p>",
+            "datePosted": "2026-09-15",
+            "employmentType": "FULL_TIME",
+            "hiringOrganization": {"@type": "Organization", "name": "CGI"},
+            "jobLocation": {
+              "@type": "Place",
+              "address": {
+                "@type": "PostalAddress",
+                "addressLocality": "Zurich",
+                "addressCountry": "Switzerland"
+              }
+            }
+          }
+        </script>
+      </head>
+      <body><h1>Careers</h1><section class="job-desc"><h1>Platform Engineer</h1></section></body>
+    </html>
+    """
+
+    content = parse_jsonld_html(html)
+
+    assert content.title == "Platform Engineer"
+    assert content.description == "<p>Build durable systems.</p>"
+    assert content.locations and "Zurich" in content.locations[0]
+    assert content.employment_type == "FULL_TIME"
+    assert content.date_posted == "2026-09-15"
 
 
 async def test_can_handle_rejects_job_detail_url() -> None:

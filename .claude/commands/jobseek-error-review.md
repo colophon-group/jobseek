@@ -185,6 +185,13 @@ budget and is not an error. `first_page_state_changed`,
 not prescribe proxy replacement without separate typed all-slot origin-block
 evidence in the same window.
 
+Treat `batch.scrape.required_field_missing` as extraction-contract evidence,
+not transport evidence. Group it by board and scraper. For Njoyn, inspect one
+bounded rendered sample for a valid schema.org `JobPosting`; when present,
+classify the cluster as scraper/config drift and validate rendered JSON-LD.
+Never prescribe proxy replacement without separate typed all-slot
+origin-block evidence.
+
   KNOWN       In any prior daily report within 14 days. Count it, do
               not file.
   NOVEL       Absent from every prior report.

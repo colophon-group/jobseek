@@ -1101,15 +1101,15 @@ njoyn — Njoyn XWeb browser monitor
   Njoyn listings paginate by submitting a session-bound form. The monitor
   submits the exact hidden page index under a bound navigation expectation,
   verifies the returned page state, and checks the URL count against the
-  visible "Search Results (N)" total. It then replays every page and requires
-  exact per-page and whole-inventory equality. A changing total or fingerprint
-  discards every collected page and restarts from page one; bounded retries
-  never mix listing snapshots. Provider-specific XWP rejection bodies and
-  bot-manager pages quarantine the selected proxy context. The monitor can
-  rotate through bounded fresh contexts and, only with an explicit opt-in,
-  try one direct context when every proxy path is origin-blocked. A
-  non-converging transition, persistent churn, max-page cap, or count mismatch
-  fails the cycle rather than returning a partial URL set.
+  visible "Search Results (N)" total. It walks two structurally complete
+  numbered passes and accepts only code-bounded live churn, returning their
+  conservative union without exceeding the global job cap. Larger count,
+  shape, or fingerprint drift discards every collected page and retries from
+  page one. Provider-specific XWP rejection bodies and bot-manager pages
+  quarantine the selected proxy context. The monitor can rotate through
+  bounded fresh contexts and, only with an explicit opt-in, try one direct
+  context when every proxy path is origin-blocked. Persistent churn,
+  non-converging transitions, or safety-cap violations fail closed.
 
   Config:
     {"persistent_context": true, "headless": false, "stealth": true,
@@ -1128,7 +1128,8 @@ njoyn — Njoyn XWeb browser monitor
     proxy           Route the browser through the configured proxy provider
 
   Detection:  *.njoyn.com/.../xweb/XWeb.asp listing URLs
-  Pair with:  dom scraper rendered in a warmed Njoyn session"""
+  Pair with:  json-ld rendered in a warmed Njoyn session; current CGI detail
+              pages expose the complete schema.org JobPosting contract"""
 
 MONITOR_PROSPECTIVE = """\
 prospective — Prospective CareerCenter HTML form monitor

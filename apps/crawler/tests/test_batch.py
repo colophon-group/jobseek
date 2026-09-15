@@ -3655,11 +3655,19 @@ class TestProcessOneScrape:
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
         config = {}  # no fallback
 
-        ok, _duration = await _process_one_scrape(
-            item, pool, mock_http, "json-ld", config, scrape_step=0
-        )
+        with patch("src.processing.scrape.log.warning") as warning:
+            ok, _duration = await _process_one_scrape(
+                item, pool, mock_http, "json-ld", config, scrape_step=0
+            )
 
         assert ok is False
+        warning.assert_any_call(
+            "batch.scrape.required_field_missing",
+            url="https://example.com/job/1",
+            scraper_type="json-ld",
+            required_field="title",
+            fallback_configured=False,
+        )
         execute_calls = conn.execute.await_args_list
         # Non-HTTP failure modes (generic exceptions, missing posting,
         # extraction-empty) take the TRANSIENT path — they don't count

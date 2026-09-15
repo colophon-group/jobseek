@@ -147,7 +147,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `nextdata` | Conditional* | skip/— | Embedded JSON / Next.js data; rich when `fields` is configured |
 | `talemetry` | URL-only | json-ld | Talemetry / Jobvite Career Sites with fail-closed result-range pagination |
 | `talentbrew` | URL-only | json-ld | TalentBrew / Radancy search pages |
-| `njoyn` | URL-only | — | Njoyn XWeb session-bound form pagination with bounded two-pass live-inventory reconciliation |
+| `njoyn` | URL-only | json-ld | Njoyn XWeb session-bound form pagination with bounded two-pass live-inventory reconciliation |
 | `sitemap` | URL-only | — | Site has an XML sitemap with job URLs |
 | `inline` | Rich | skip | Single-page inline job listings |
 | `kipt` | Rich | skip | NSC KIPT active PDF vacancy bulletins |
@@ -172,6 +172,12 @@ boards pin `delist_threshold: 4`, so a boundary row omitted
 by live pagination must be absent from four independently reconciled cycles
 before it can be deactivated. The generic count-drop and blast-radius guards
 remain the final mass-delisting defenses.
+
+CGI Njoyn detail pages are scraped from their rendered schema.org
+`JobPosting` JSON-LD. That provider-owned contract supplies title,
+description, location, employment type, dates, and identifier without relying
+on presentation labels such as `Category:` or `Main location:`. The same
+warmed, proxy-routed browser policy remains in force for the rendered page.
 
 `headhunter`, `jobstreet`, `linkedin`, and `paylocity` are partial-rich exceptions: their
 listing responses provide clean summary fields while their auto-configured
