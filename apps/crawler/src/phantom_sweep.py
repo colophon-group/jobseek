@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 
-from src.shared.constants import DATA_DIR
+from src.shared.constants import get_data_dir
 
 if TYPE_CHECKING:
     import asyncpg
@@ -131,7 +131,7 @@ class SweepSummary:
 def load_configured_board_urls(path: Path | None = None) -> frozenset[str]:
     """Return the exact board URLs owned by the deployed CSV contract."""
 
-    csv_path = path or DATA_DIR / "boards.csv"
+    csv_path = path or get_data_dir() / "boards.csv"
     with csv_path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         if not reader.fieldnames or "board_url" not in reader.fieldnames:

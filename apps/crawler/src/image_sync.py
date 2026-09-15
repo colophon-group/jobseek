@@ -27,9 +27,7 @@ from pathlib import Path
 import boto3
 from PIL import Image, UnidentifiedImageError
 
-from src.shared.constants import DATA_DIR, SLUG_RE
-
-IMAGES_DIR = DATA_DIR / "images"
+from src.shared.constants import SLUG_RE, get_data_dir
 
 # Cap icon dimensions at 128×128 (preserve aspect ratio). Web renders top out
 # at 36 CSS px (#2867); 128 covers retina 4× DPR with headroom and keeps the
@@ -98,13 +96,18 @@ def upload_icon(client, bucket: str, slug: str, img_file: Path) -> tuple[str, st
     return key, content_type
 
 
-def upload_images(slugs: Iterable[str] | None = None) -> dict[str, dict[str, str]]:
+def upload_images(
+    slugs: Iterable[str] | None = None,
+    *,
+    data_dir: Path | None = None,
+) -> dict[str, dict[str, str]]:
     """Upload images from data/images/<slug>/ to R2.
 
     Returns:
         Mapping of slug to {"logo_url": ..., "icon_url": ...} with R2 public URLs.
     """
-    if not IMAGES_DIR.exists():
+    images_dir = (data_dir or get_data_dir()) / "images"
+    if not images_dir.exists():
         return {}
 
     bucket = os.environ["R2_BUCKET"]
@@ -113,9 +116,9 @@ def upload_images(slugs: Iterable[str] | None = None) -> dict[str, dict[str, str
     results: dict[str, dict[str, str]] = {}
 
     slug_dirs = (
-        [IMAGES_DIR / slug for slug in dict.fromkeys(slugs)]
+        [images_dir / slug for slug in dict.fromkeys(slugs)]
         if slugs is not None
-        else sorted(IMAGES_DIR.iterdir())
+        else sorted(images_dir.iterdir())
     )
     for slug_dir in slug_dirs:
         if not slug_dir.is_dir():
@@ -151,9 +154,13 @@ def upload_images(slugs: Iterable[str] | None = None) -> dict[str, dict[str, str
     return results
 
 
-def update_csv(url_map: dict[str, dict[str, str]]) -> None:
+def update_csv(
+    url_map: dict[str, dict[str, str]],
+    *,
+    data_dir: Path | None = None,
+) -> None:
     """Update companies.csv with R2 URLs for uploaded images."""
-    csv_path = DATA_DIR / "companies.csv"
+    csv_path = (data_dir or get_data_dir()) / "companies.csv"
     rows: list[dict[str, str]] = []
 
     with open(csv_path, newline="") as f:
@@ -171,17 +178,19 @@ def update_csv(url_map: dict[str, dict[str, str]]) -> None:
         writer.writerows(rows)
 
 
-def cleanup(slugs: list[str]) -> None:
+def cleanup(slugs: list[str], *, data_dir: Path | None = None) -> None:
     """Remove processed image directories."""
+    root = data_dir or get_data_dir()
+    images_dir = root / "images"
     for slug in slugs:
-        slug_dir = IMAGES_DIR / slug
+        slug_dir = images_dir / slug
         if slug_dir.exists():
             shutil.rmtree(slug_dir)
-            print(f"  Cleaned up {slug_dir.relative_to(DATA_DIR)}")
+            print(f"  Cleaned up {slug_dir.relative_to(root)}")
 
     # Remove images dir if empty
-    if IMAGES_DIR.exists() and not any(IMAGES_DIR.iterdir()):
-        IMAGES_DIR.rmdir()
+    if images_dir.exists() and not any(images_dir.iterdir()):
+        images_dir.rmdir()
 
 
 def main() -> None:
@@ -199,22 +208,24 @@ def main() -> None:
     if invalid:
         parser.error(f"invalid company slug(s): {', '.join(invalid)}")
 
-    if not IMAGES_DIR.exists() or not any((IMAGES_DIR / slug).is_dir() for slug in slugs):
+    data_dir = get_data_dir()
+    images_dir = data_dir / "images"
+    if not images_dir.exists() or not any((images_dir / slug).is_dir() for slug in slugs):
         print("No images to upload.")
         return
 
     print("Uploading images to R2...")
-    url_map = upload_images(slugs)
+    url_map = upload_images(slugs, data_dir=data_dir)
 
     if not url_map:
         print("No images uploaded.")
         return
 
     print(f"\nUpdating companies.csv with {len(url_map)} URL(s)...")
-    update_csv(url_map)
+    update_csv(url_map, data_dir=data_dir)
 
     print("\nCleaning up image directories...")
-    cleanup(list(url_map.keys()))
+    cleanup(list(url_map.keys()), data_dir=data_dir)
 
     print("\nDone.")
     sys.exit(0)

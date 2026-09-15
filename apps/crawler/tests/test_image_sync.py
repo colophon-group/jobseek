@@ -53,9 +53,8 @@ class TestProcessIcon:
 
 
 class TestUploadImages:
-    def test_no_images_dir(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.image_sync.IMAGES_DIR", tmp_path / "nonexistent")
-        result = upload_images()
+    def test_no_images_dir(self, tmp_path):
+        result = upload_images(data_dir=tmp_path)
         assert result == {}
 
     def test_uploads_logo_and_icon(self, tmp_path, monkeypatch):
@@ -65,7 +64,6 @@ class TestUploadImages:
         (slug_dir / "logo.svg").write_text("<svg></svg>")
         (slug_dir / "icon.png").write_bytes(b"\x89PNG")
 
-        monkeypatch.setattr("src.image_sync.IMAGES_DIR", images_dir)
         monkeypatch.setenv("R2_ENDPOINT_URL", "https://r2.example.com")
         monkeypatch.setenv("R2_ACCESS_KEY_ID", "test-key")
         monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "test-secret")
@@ -75,7 +73,7 @@ class TestUploadImages:
         mock_client = MagicMock()
         with patch("src.image_sync.boto3") as mock_boto3:
             mock_boto3.client.return_value = mock_client
-            result = upload_images()
+            result = upload_images(data_dir=tmp_path)
 
         logo_hash = hashlib.sha256(b"<svg></svg>").hexdigest()
         icon_hash = hashlib.sha256(b"\x89PNG").hexdigest()
@@ -93,7 +91,6 @@ class TestUploadImages:
         slug_dir.mkdir(parents=True)
         (slug_dir / "logo.png").write_bytes(b"\x89PNG")
 
-        monkeypatch.setattr("src.image_sync.IMAGES_DIR", images_dir)
         monkeypatch.setenv("R2_ENDPOINT_URL", "https://r2.example.com")
         monkeypatch.setenv("R2_ACCESS_KEY_ID", "test-key")
         monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "test-secret")
@@ -103,7 +100,7 @@ class TestUploadImages:
         mock_client = MagicMock()
         with patch("src.image_sync.boto3") as mock_boto3:
             mock_boto3.client.return_value = mock_client
-            result = upload_images()
+            result = upload_images(data_dir=tmp_path)
 
         assert "acme" in result
         assert "logo_url" in result["acme"]
@@ -116,7 +113,6 @@ class TestUploadImages:
             slug_dir.mkdir(parents=True)
             (slug_dir / "logo.svg").write_text(f"<svg>{slug}</svg>")
 
-        monkeypatch.setattr("src.image_sync.IMAGES_DIR", images_dir)
         monkeypatch.setenv("R2_ENDPOINT_URL", "https://r2.example.com")
         monkeypatch.setenv("R2_ACCESS_KEY_ID", "test-key")
         monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "test-secret")
@@ -126,7 +122,7 @@ class TestUploadImages:
         mock_client = MagicMock()
         with patch("src.image_sync.boto3") as mock_boto3:
             mock_boto3.client.return_value = mock_client
-            result = upload_images(["acme"])
+            result = upload_images(["acme"], data_dir=tmp_path)
 
         assert set(result) == {"acme"}
         assert mock_client.put_object.call_count == 1
@@ -138,7 +134,6 @@ class TestUploadImages:
         images_dir.mkdir()
         (images_dir / "readme.txt").write_text("ignored")
 
-        monkeypatch.setattr("src.image_sync.IMAGES_DIR", images_dir)
         monkeypatch.setenv("R2_ENDPOINT_URL", "https://r2.example.com")
         monkeypatch.setenv("R2_ACCESS_KEY_ID", "test-key")
         monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "test-secret")
@@ -148,13 +143,13 @@ class TestUploadImages:
         mock_client = MagicMock()
         with patch("src.image_sync.boto3") as mock_boto3:
             mock_boto3.client.return_value = mock_client
-            result = upload_images()
+            result = upload_images(data_dir=tmp_path)
         assert result == {}
         mock_client.put_object.assert_not_called()
 
 
 class TestUpdateCsv:
-    def test_updates_matching_slugs(self, tmp_path, monkeypatch):
+    def test_updates_matching_slugs(self, tmp_path):
         csv_path = tmp_path / "companies.csv"
         with open(csv_path, "w", newline="") as f:
             w = csv.DictWriter(
@@ -183,15 +178,13 @@ class TestUpdateCsv:
                 }
             )
 
-        monkeypatch.setattr("src.image_sync.DATA_DIR", tmp_path)
-
         url_map = {
             "acme": {
                 "logo_url": "https://assets.example.com/companies/acme/logo.svg",
                 "icon_url": "https://assets.example.com/companies/acme/icon.png",
             }
         }
-        update_csv(url_map)
+        update_csv(url_map, data_dir=tmp_path)
 
         with open(csv_path, newline="") as f:
             rows = list(csv.DictReader(f))
@@ -204,29 +197,25 @@ class TestUpdateCsv:
 
 
 class TestCleanup:
-    def test_removes_slug_dirs(self, tmp_path, monkeypatch):
+    def test_removes_slug_dirs(self, tmp_path):
         images_dir = tmp_path / "images"
         slug_dir = images_dir / "acme"
         slug_dir.mkdir(parents=True)
         (slug_dir / "logo.png").write_bytes(b"\x89PNG")
 
-        monkeypatch.setattr("src.image_sync.IMAGES_DIR", images_dir)
-        monkeypatch.setattr("src.image_sync.DATA_DIR", tmp_path)
-        cleanup(["acme"])
+        cleanup(["acme"], data_dir=tmp_path)
 
         assert not slug_dir.exists()
         # images_dir itself removed because empty
         assert not images_dir.exists()
 
-    def test_keeps_images_dir_if_not_empty(self, tmp_path, monkeypatch):
+    def test_keeps_images_dir_if_not_empty(self, tmp_path):
         images_dir = tmp_path / "images"
         (images_dir / "acme").mkdir(parents=True)
         (images_dir / "other").mkdir(parents=True)
         (images_dir / "other" / "logo.png").write_bytes(b"\x89PNG")
 
-        monkeypatch.setattr("src.image_sync.IMAGES_DIR", images_dir)
-        monkeypatch.setattr("src.image_sync.DATA_DIR", tmp_path)
-        cleanup(["acme"])
+        cleanup(["acme"], data_dir=tmp_path)
 
         assert not (images_dir / "acme").exists()
         assert images_dir.exists()  # still has "other"
