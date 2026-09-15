@@ -1110,6 +1110,65 @@ async def test_bounded_recurring_fairness_cleans_stale_tier_two_before_monitor(
     assert sum(remaining_monitors) == 12
 
 
+async def test_strict_tier_zero_cleans_stale_markers_before_recurring_work(
+    mock_redis,
+):
+    """Stale tier-0 markers cannot fall through to any recurring task."""
+    r = mock_redis
+    now = time.time()
+    await r.set("claim:recurring-monitor-streak:browser", "8")
+
+    # Put more stale tier-0 markers ahead of genuine first-time work than one
+    # bounded scan can inspect. Their only authoritative work is recurring.
+    for index in range(12):
+        domain = f"stale-tier-zero-{index:02d}.example.com"
+        await r.zadd(f"monitors_browser:{domain}", {f"monitor-{index}": now - 100})
+        await r.hset(f"board:monitor-{index}", mapping={"monitor": "dom", "domain": domain})
+        await r.zadd("ready:browser:0", {domain: now - 1_000 - index})
+        await r.zadd("ready:browser:1", {domain: now - 100})
+
+    await rq.enqueue_monitor(
+        "real-first-time.example.com",
+        "real-first-time",
+        now - 10,
+        {"monitor": "dom"},
+        browser=True,
+        first_time=True,
+    )
+    await rq.enqueue_scrape(
+        "real-tier-two-after-ft.example.com",
+        "real-detail-after-ft",
+        now - 10,
+        {
+            "source_url": "https://real-tier-two-after-ft.example.com/jobs/1",
+            "board_id": "board-1",
+        },
+        browser=True,
+    )
+
+    assert await rq.claim_work(browser=True) is None
+
+    first_time = await rq.claim_work(browser=True)
+    assert first_time is not None
+    assert first_time.kind == "monitor"
+    assert first_time.board_work is not None
+    assert first_time.board_work.board_id == "real-first-time"
+    assert await r.get("claim:recurring-monitor-streak:browser") == "8"
+
+    detail = await rq.claim_work(browser=True)
+    assert detail is not None
+    assert detail.kind == "scrape"
+    assert detail.scrape_work is not None
+    assert detail.scrape_work.posting_id == "real-detail-after-ft"
+    assert await r.get("claim:recurring-monitor-streak:browser") == "0"
+
+    remaining_monitors = [
+        await r.zcard(f"monitors_browser:stale-tier-zero-{index:02d}.example.com")
+        for index in range(12)
+    ]
+    assert sum(remaining_monitors) == 12
+
+
 @pytest.mark.parametrize("corrupt_value", ["nan", "inf", "-inf", "1.5", "-1"])
 async def test_recurring_monitor_streak_rejects_non_integer_before_claim(mock_redis, corrupt_value):
     """A malformed persistent counter fails closed without mutating queues."""
