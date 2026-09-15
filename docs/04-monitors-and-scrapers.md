@@ -285,6 +285,12 @@ Extracts job listings from Next.js sites using `__NEXT_DATA__` props.
   "slug_fields": ["title"],
   "render": false,
   "actions": [],
+  "pagination": {
+    "path": "props.pageProps.pagination",
+    "page_count": "pageCount",
+    "page_param": "page",
+    "concurrency": 5
+  },
   "fields": {
     "title": "title",
     "locations": "offices[].name",
@@ -300,9 +306,15 @@ Extracts job listings from Next.js sites using `__NEXT_DATA__` props.
 | `slug_fields` | No | Fields to slugify and expose as `{slug}` in the template |
 | `render` | No | `false` (default) for static HTTP, `true` for Playwright |
 | `actions` | No | Browser action pipeline (see [Actions](#actions)); implies `render: true` |
+| `pagination` | No | Required-page pagination metadata. `concurrency` is an integer from 1 through 5 and defaults to 5; lower it for origins whose large pages or rate limits cannot safely sustain the default fan-out. Invalid values fail before network I/O. |
 | `fields` | No | Field mapping for rich mode (omit for URL-only) |
 
 **Returns**: URL set or full data depending on whether `fields` is configured. May need a scraper for full job details.
+
+Every advertised page remains required: the monitor retries a failed fetch or
+parse three times, then rejects the entire run instead of allowing partial gone
+detection. The configured concurrency applies to both regular and streaming
+pagination; it changes request pressure only, not completeness validation.
 
 **When to use**: When the career site is built with Next.js and embeds job data in `__NEXT_DATA__`.
 

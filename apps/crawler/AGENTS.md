@@ -120,6 +120,7 @@ alias ws='uv run ws'
 
 # Workspace lifecycle — ws new sets the active workspace; slug is omitted after that
 ws new <slug> --issue <N>              # Create local workspace + branch (sets active; no PR yet)
+ws new <slug> --issue <N> --separate-identity  # Verified distinct employer despite related slug
 ws use <slug>                          # Switch active workspace (multi-workspace only)
 ws set --name "..." --website "..."
 ws set --board <alias> --job-link-pattern "<regex>"  # Optional manual job-link filter

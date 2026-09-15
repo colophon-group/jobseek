@@ -61,6 +61,18 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
                     "bot_protection": False,
                     "render": True,
                     "resource_policy": "auto",
+                    "pagination": {
+                        "partition_cover_paths": [
+                            [
+                                "a[href*='secret-contract']",
+                                "a[href*='secret-family']",
+                            ],
+                            [
+                                "a[href*='secret-contract']",
+                                "a[href*='secret-country']",
+                            ],
+                        ]
+                    },
                     "wait": "networkidle",
                 },
             ),
@@ -115,6 +127,9 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
         "secret.example",
         "do-not-commit",
         "#secret-selector",
+        "secret-contract",
+        "secret-family",
+        "secret-country",
         "window.__secret",
     ):
         assert secret not in rendered
@@ -429,6 +444,42 @@ def test_dom_inactive_detail_states_use_runtime_validation(tmp_path: Path, state
         build_manifest(boards)
 
     assert str(exc_info.value) == "monitor.dom.inactive_detail_states is invalid"
+
+
+@pytest.mark.parametrize(
+    "states",
+    [
+        [],
+        [{"selector": ".status"}],
+        [{"selector": ".status", "contains_text": ""}],
+        [
+            {
+                "selector": ".status",
+                "exact_text": "Closed",
+                "contains_text": "Closed",
+            }
+        ],
+    ],
+)
+def test_dom_empty_states_use_runtime_validation(tmp_path: Path, states: object) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "invalid-empty-state",
+                monitor_type="dom",
+                monitor_config={
+                    "link_selector": "a.job",
+                    "empty_states": states,
+                },
+            )
+        ],
+    )
+
+    with pytest.raises(CensusError) as exc_info:
+        build_manifest(boards)
+
+    assert str(exc_info.value) == "monitor.dom.empty_states is invalid"
 
 
 @pytest.mark.parametrize(

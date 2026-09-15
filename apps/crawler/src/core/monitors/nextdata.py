@@ -18,7 +18,8 @@ pages and merges the results.  Config shape::
     "pagination": {
         "path": "props.pageProps.data.pagination",  # jmespath to pagination object
         "page_count": "pageCount",                  # field within that object
-        "page_param": "page"                        # query-string parameter (default "page")
+        "page_param": "page",                       # query-string parameter (default "page")
+        "concurrency": 5                             # concurrent required pages (1..5)
     }
 
 Alternative pagination using total_records + page_size (computes page_count)::
@@ -460,6 +461,20 @@ def _pagination_mode(cfg: dict) -> str:
     return cfg.get("mode", "page")
 
 
+def _validated_pagination_concurrency(cfg: dict) -> int:
+    """Return a bounded per-board required-page concurrency."""
+    value = cfg.get("concurrency", _MAX_CONCURRENT_PAGES)
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not 1 <= value <= _MAX_CONCURRENT_PAGES
+    ):
+        raise ValueError(
+            f"nextdata pagination concurrency must be an integer from 1 to {_MAX_CONCURRENT_PAGES}"
+        )
+    return value
+
+
 def _board_gone_statuses(metadata: dict) -> frozenset[int]:
     """Validate explicit first-page retirement statuses for provider wrappers."""
     raw = metadata.get("board_gone_statuses", [])
@@ -835,7 +850,15 @@ async def discover(
     item_inclusions = _validated_item_inclusions(metadata.get("include_item_values"))
     render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
-    pagination_cfg: dict | None = metadata.get("pagination")
+    pagination_value = metadata.get("pagination")
+    if pagination_value is not None and not isinstance(pagination_value, dict):
+        raise ValueError("nextdata pagination must be an object")
+    pagination_cfg: dict | None = pagination_value
+    pagination_concurrency = (
+        _validated_pagination_concurrency(pagination_cfg)
+        if pagination_cfg is not None
+        else _MAX_CONCURRENT_PAGES
+    )
     base_salary_cfg: dict | None = metadata.get("base_salary")
     board_gone_statuses = _board_gone_statuses(metadata)
     request_headers = validated_public_request_headers(
@@ -938,6 +961,7 @@ async def discover(
             client,
             path,
             pagination_cfg,
+            concurrency=pagination_concurrency,
             source=source,
             pw=pw,
             browser_config=browser_config,
@@ -1025,7 +1049,15 @@ async def discover_stream(
     item_inclusions = _validated_item_inclusions(metadata.get("include_item_values"))
     render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
-    pagination_cfg: dict | None = metadata.get("pagination")
+    pagination_value = metadata.get("pagination")
+    if pagination_value is not None and not isinstance(pagination_value, dict):
+        raise ValueError("nextdata pagination must be an object")
+    pagination_cfg: dict | None = pagination_value
+    pagination_concurrency = (
+        _validated_pagination_concurrency(pagination_cfg)
+        if pagination_cfg is not None
+        else _MAX_CONCURRENT_PAGES
+    )
     base_salary_cfg: dict | None = metadata.get("base_salary")
     board_gone_statuses = _board_gone_statuses(metadata)
     request_headers = validated_public_request_headers(
@@ -1156,7 +1188,15 @@ async def discover_stream(
         return
 
     page_urls = _compute_page_urls(board_url, page_count, pagination_cfg)
-    sem = asyncio.Semaphore(_MAX_CONCURRENT_PAGES)
+    log.info(
+        "nextdata.paginating",
+        board_url=board_url,
+        page_count=page_count,
+        first_page_items=len(items),
+        mode=_pagination_mode(pagination_cfg),
+        concurrency=pagination_concurrency,
+    )
+    sem = asyncio.Semaphore(pagination_concurrency)
 
     async def _fetch_page(page_url: str) -> list:
         async with sem:
@@ -1414,6 +1454,8 @@ async def _fetch_remaining_pages(
     client: httpx.AsyncClient,
     path: str,
     pagination_cfg: dict,
+    *,
+    concurrency: int,
     source: str = "nextdata",
     pw=None,
     browser_config: dict | None = None,
@@ -1436,9 +1478,10 @@ async def _fetch_remaining_pages(
         page_count=page_count,
         first_page_items=len(first_page_items),
         mode=_pagination_mode(pagination_cfg),
+        concurrency=concurrency,
     )
 
-    sem = asyncio.Semaphore(_MAX_CONCURRENT_PAGES)
+    sem = asyncio.Semaphore(concurrency)
 
     async def _fetch_page(page_url: str) -> list:
         async with sem:

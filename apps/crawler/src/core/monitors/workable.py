@@ -79,7 +79,10 @@ def _public_api_url(slug: str) -> str:
 
 
 def _parse_markdown_count(markdown: str) -> int:
-    match = re.search(r"All open roles .*?:\s*([\d,]+) current openings\b", markdown)
+    # Workable inflects the official inventory sentence: one ``opening``, but
+    # zero or multiple ``openings``. Keep the provider phrase and numeric
+    # cross-check strict while accepting both documented grammatical forms.
+    match = re.search(r"All open roles .*?:\s*([\d,]+) current openings?\b", markdown)
     if match is None:
         raise ValueError("Workable llms.txt did not advertise a current-opening count")
     return int(match.group(1).replace(",", ""))

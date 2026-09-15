@@ -834,6 +834,17 @@ host-PID mode, and no longer duplicates host metrics. Its read-only Docker
 socket remains a privileged trust boundary and is therefore unavailable to
 the host collector and to `codex-runner`.
 
+Before Loki batching, the Compose collector drops Docker entries older than
+167 hours. Grafana Cloud rejects entries at the seven-day boundary with a
+non-retryable HTTP 400; the one-hour margin prevents one stale cursor entry
+from causing current entries in the same batch to be discarded. This is a
+containment boundary, not silent recovery: Alloy increments its fixed
+`stale_docker_replay` process-drop counter, the host sampler republishes the
+bounded total as `jobseek_alloy_loki_process_dropped_entries_total`, and
+`AlloyLokiStaleReplayFiltered` routes any increase to the daily error review.
+Investigate persistent Docker cursor continuity before the next collector
+recreation whenever it fires.
+
 Compose Alloy runs as explicit UID/GID `0:0` with all Linux capabilities
 dropped, a read-only root filesystem, and `no-new-privileges`. The deploy
 normalizes its persistent WAL/cursor volume to root-owned mode `0700` using a

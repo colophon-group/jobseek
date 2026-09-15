@@ -8,7 +8,7 @@ import pytest
 from src.shared.http import (
     DEFAULT_ACCEPT,
     DEFAULT_USER_AGENT,
-    WORKDAY_LIST_303_INCIDENT,
+    WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT,
     ProxyAwareAsyncClient,
     RequestHostTrackingTransport,
     RotatingProxyTransport,
@@ -188,6 +188,9 @@ class TestCreateHttpClient:
 
 
 class TestRequestHostTracking:
+    def test_workday_incident_keeps_rolling_deploy_wire_key(self):
+        assert WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT == "workday-list-303"
+
     async def test_transport_records_actual_redirect_hosts_without_network(self):
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.host == "8.8.8.8":
@@ -308,11 +311,11 @@ class TestRequestHostTracking:
                 await client.get("https://failed.wd1.example/jobs")
                 mark_provider_incident(
                     "https://failed.wd1.example/jobs",
-                    incident=WORKDAY_LIST_303_INCIDENT,
+                    incident=WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT,
                 )
                 await client.get("https://later.wd2.example/jobs")
 
-        assert tracker.last_provider_incident == WORKDAY_LIST_303_INCIDENT
+        assert tracker.last_provider_incident == WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT
         assert tracker.last_provider_incident_host == "failed.wd1.example"
         assert tracker.last_host == "later.wd2.example"
 

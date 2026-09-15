@@ -856,8 +856,25 @@ class TestDomScraper:
         assert monitor_config["pagination"] == {
             "param_name": "page",
             "max_pages": 1_000,
-            "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
-            "partition_fallback_selector": ("ul.facette-titre-niv1 a[href*='facet_JobFamily=']"),
+            "partition_selector": ("ul.facette-titre-niv1 a[href*='facet_JobGeographicalArea=']"),
+            "partition_cover_paths": [
+                [
+                    "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                    "ul.facette-titre-niv1 a[href*='facet_JobFamily=']",
+                ],
+                [
+                    "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                    "ul.facette-titre-niv1 a[href*='facet_JobCountry=']",
+                    (
+                        "ul.facette-titre-niv1 a[href*='facet_JobRegion=']"
+                        ":not([href*='facet_JobRegion=-'])"
+                    ),
+                    (
+                        "ul.facette-titre-niv1 a[href*='facet_JobDepartment=']"
+                        ":not([href*='facet_JobDepartment=-'])"
+                    ),
+                ],
+            ],
             "partition_count_regex": r"\((\d+)\s+(?:vacancies|offres)",
             "partition_result_limit": 1_000,
             "partition_validate_total": True,

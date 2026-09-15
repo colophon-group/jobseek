@@ -149,20 +149,27 @@ jobs:
         run: |
           pnpm dlx vercel@59.3.0 inspect "$DEPLOYMENT_URL" \
             --wait --timeout=5m --token="$VERCEL_TOKEN"
+          umask 077
+          smoke_body="$(mktemp "$RUNNER_TEMP/vercel-smoke-body.XXXXXX")"
+          chmod 600 "$smoke_body"
+          trap 'rm -f -- "$smoke_body"' EXIT
           for path in \
             /en/explore?wm=remote\&q=python \
             /en/company/securitas-ag \
             /en/sign-in; do
+            : > "$smoke_body"
             status="$(pnpm dlx vercel@59.3.0 curl "$path" \
               --deployment="$DEPLOYMENT_URL" \
-              -- --silent --show-error --output /dev/null --write-out '%{http_code}')"
+              -- --silent --show-error --output "$smoke_body" --write-out '%{http_code}')"
             echo "Smoke $path -> HTTP $status"
-            if [[ "$status" != "200" ]]; then
-              echo "::error title=Staged smoke failed::$path returned HTTP $status"
+            if ! node .github/scripts/verify-vercel-smoke-response.mjs \
+              "$path" "$status" "$smoke_body"; then
+              echo "::error title=Staged smoke failed::Rejected $path response"
               exit 1
             fi
           done
-          umask 077
+          rm -f -- "$smoke_body"
+          trap - EXIT
           scanner_headers="$(mktemp "$RUNNER_TEMP/vercel-scanner-headers.XXXXXX")"
           chmod 600 "$scanner_headers"
           trap 'rm -f -- "$scanner_headers"' EXIT

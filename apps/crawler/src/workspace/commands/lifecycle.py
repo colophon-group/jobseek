@@ -89,6 +89,42 @@ def _load_existing_boards(slug: str) -> list[dict[str, str]]:
     return [r for r in rows if r.get("company_slug") == slug]
 
 
+def _related_company_slugs(slug: str, rows: list[dict[str, str]]) -> list[str]:
+    """Find an existing canonical slug extended by a proposed new slug.
+
+    Geography and division suffixes are a common way one company accidentally
+    becomes two registry identities (``starbucks`` / ``starbucks-china``).
+    Keep this deliberately exact: only a full hyphen-delimited slug prefix is
+    evidence, and the explicit ``--separate-identity`` acknowledgement handles
+    legitimate companies that happen to share one.
+    """
+
+    proposed = slug.casefold()
+    related: set[str] = set()
+    for row in rows:
+        existing = (row.get("slug") or "").strip().casefold()
+        if len(existing) < 4 or existing == proposed:
+            continue
+        if proposed.startswith(f"{existing}-") or existing.startswith(f"{proposed}-"):
+            related.add(existing)
+    return sorted(related)
+
+
+def _reject_related_company_identity(slug: str, related: list[str], issue: int | None) -> None:
+    """Fail closed with the canonical reconfiguration command."""
+
+    existing = ", ".join(related)
+    issue_arg = f" --issue {issue}" if issue is not None else ""
+    out.die(
+        f"Proposed slug {slug!r} matches an existing company identity: {existing}. "
+        "A regional portal or operating division belongs under the existing "
+        "company identity; start a reconfiguration with "
+        f"`ws new {related[0]}{issue_arg} --reconfig`. Only create a second "
+        "company after verifying an independent legal/employer identity, then "
+        "rerun this command with --separate-identity."
+    )
+
+
 @click.command()
 @click.argument("query")
 def search(query: str):
@@ -129,6 +165,11 @@ def search(query: str):
 @click.option("--issue", type=int, default=None, help="GitHub issue number")
 @click.option("--pr", "pr_opt", type=int, default=None, help="Attach to existing PR number")
 @click.option("--reconfig", is_flag=True, help="Reconfigure an existing company")
+@click.option(
+    "--separate-identity",
+    is_flag=True,
+    help="Acknowledge a distinct legal/employer identity despite a related existing slug",
+)
 @click.option("--reset", is_flag=True, help="Purge managed clone and re-clone from scratch")
 @click.option("--start-at", default=None, help="Start workflow at this step (reconfig only)")
 @_serialize_company_lifecycle
@@ -137,6 +178,7 @@ def new(
     issue: int | None,
     pr_opt: int | None,
     reconfig: bool,
+    separate_identity: bool,
     reset: bool,
     start_at: str | None,
 ):
@@ -157,6 +199,13 @@ def new(
     local = is_local_mode()
     inventory_seed = None
 
+    # Validate pure inputs before clone/auth/network setup. Besides failing
+    # faster, this keeps contradictory identity modes side-effect free.
+    if not SLUG_RE.match(slug):
+        out.die(f"Invalid slug format: {slug!r}")
+    if reconfig and separate_identity:
+        out.die("--reconfig and --separate-identity are mutually exclusive")
+
     # Ensure we have a repo clone with latest main when running in pip-installed mode
     if not local:
         from src.shared.constants import set_repo_root
@@ -164,10 +213,6 @@ def new(
 
         repo_root = ensure_clone(reset=reset)
         set_repo_root(repo_root)
-
-    # Validate slug format
-    if not SLUG_RE.match(slug):
-        out.die(f"Invalid slug format: {slug!r}")
 
     # A second same-slug process may have waited on the lifecycle lock while
     # the first process published this state.  Never interpret that valid
@@ -191,9 +236,10 @@ def new(
     # Check companies.csv
     companies_path = get_data_dir() / "companies.csv"
     slug_in_csv = False
+    company_rows: list[dict[str, str]] = []
     if companies_path.exists():
-        _, rows = read_csv(companies_path)
-        slug_in_csv = any(r["slug"] == slug for r in rows)
+        _, company_rows = read_csv(companies_path)
+        slug_in_csv = any(r["slug"] == slug for r in company_rows)
 
     if reconfig:
         if not slug_in_csv:
@@ -205,6 +251,8 @@ def new(
             f"Slug {slug!r} exists in CSV without authenticated workspace ownership; "
             "refusing bootstrap cleanup"
         )
+    elif (related := _related_company_slugs(slug, company_rows)) and not separate_identity:
+        _reject_related_company_identity(slug, related, issue)
 
     branch = f"fix-crawler/{slug}" if reconfig else f"add-company/{slug}"
     pr_number: int | None = None
@@ -225,15 +273,23 @@ def new(
         # evidence.  Parse it here (after auth, before state creation) so
         # normal human requests remain byte-for-byte on the established path.
         if issue:
+            from src.ats_inventory.candidates import (
+                Candidate,
+                LocalRegistryIndex,
+                normalize_issue_title,
+            )
             from src.workspace.ats_seed import (
                 InventorySeedInvalid,
                 issue_has_inventory_label,
                 parse_inventory_seed,
             )
 
+            inventory_issue = False
+            issue_data: dict = {}
             try:
                 issue_data = git.fetch_issue(issue)
                 if issue_has_inventory_label(issue_data):
+                    inventory_issue = True
                     inventory_seed = parse_inventory_seed(str(issue_data.get("body") or ""))
             except InventorySeedInvalid as exc:
                 out.warn(
@@ -241,10 +297,41 @@ def new(
                     f"Ignoring invalid ATS inventory seed ({exc}); using normal discovery",
                 )
             except Exception as exc:
+                if os.environ.get("JOBSEEK_CODEX_RUN_ID"):
+                    out.die(
+                        "Could not load issue identity evidence; refusing scheduled workspace "
+                        f"creation ({exc})"
+                    )
                 out.warn(
                     "inventory",
                     f"Could not load ATS inventory seed ({exc}); using normal discovery",
                 )
+
+            if inventory_issue and not reconfig and not separate_identity:
+                candidate = Candidate(
+                    family=inventory_seed.family if inventory_seed else "unknown",
+                    native_ats=inventory_seed.native_ats if inventory_seed else "unknown",
+                    tenant=inventory_seed.tenant if inventory_seed else "unknown",
+                    source_key=inventory_seed.source_key if inventory_seed else "unknown",
+                    name=normalize_issue_title(str(issue_data.get("title") or "")),
+                    slug=slug,
+                    board_url=inventory_seed.board_url if inventory_seed else "",
+                    impact_unknown=True,
+                    active_jobs=0,
+                    remote_jobs=0,
+                    location_count=0,
+                    country_codes=(),
+                    latest_posted_at=None,
+                )
+                index = LocalRegistryIndex.from_csv(
+                    companies_path,
+                    get_data_dir() / "boards.csv",
+                )
+                related = sorted(
+                    company.slug for company in index.related_company_identity_matches(candidate)
+                )
+                if related:
+                    _reject_related_company_identity(slug, related, issue)
 
         base_ref = git.get_main_branch()
 

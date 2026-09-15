@@ -41,7 +41,7 @@ import httpx
 import structlog
 
 from src.core.monitors import fetch_page_text, register
-from src.shared.http import WORKDAY_LIST_303_INCIDENT, mark_provider_incident
+from src.shared.http import WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT, mark_provider_incident
 from src.shared.http_retry import PaginationFetchError, fetch_json_page_with_retry
 from src.shared.truncation import truncated_url_result
 
@@ -68,6 +68,11 @@ _RETRY_BASE_DELAY = 1.0
 # list endpoint's POST into GET. Retry the original POST instead, then let the
 # board backoff/shared host and provider circuits handle a sustained incident.
 _TRANSIENT_REDIRECT_STATUSES = frozenset({303})
+# Exhausted responses in this allowlist are provider-wide incident evidence.
+# Keep it narrower than the shared retryable-status set: a generic 5xx or
+# transport failure may be tenant-local, while synchronized Workday list 303
+# and 429 responses have both produced cross-tenant bursts (#5715, #9180).
+_PROVIDER_INCIDENT_STATUSES = frozenset({303, 429})
 
 # In-stream sentinel used by ``_api_list_stream`` and ``_list_all_sites_stream``
 # to signal that the MAX_JOBS cap was hit (#3216). Distinct from any real
@@ -272,11 +277,14 @@ async def _post_page_with_retry(
             sleep=asyncio.sleep,
         )
     except PaginationFetchError as exc:
-        # Only an exhausted 303 retry budget is safe evidence of the
-        # provider-wide incident seen in #5715. A recovered 303, ordinary
-        # HTTP error, parser failure, or configuration failure cannot mark it.
-        if exc.last_status == 303:
-            mark_provider_incident(exc.url, incident=WORKDAY_LIST_303_INCIDENT)
+        # Only an exhausted allowlisted retry budget is safe evidence of a
+        # provider-wide incident. A recovered 303/429, ordinary HTTP error,
+        # parser failure, or configuration failure cannot mark it.
+        if exc.last_status in _PROVIDER_INCIDENT_STATUSES:
+            mark_provider_incident(
+                exc.url,
+                incident=WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT,
+            )
         raise
 
 

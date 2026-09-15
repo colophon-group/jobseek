@@ -4846,6 +4846,98 @@ class TestCostScoring:
         cfg = board.configs[board.active_config]
         assert cfg["monitor_config"]["pagination"] == config["pagination"]
 
+    def test_select_dom_rejects_partition_pagination_without_page_url(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        config = {
+            "url_filter": "/job/",
+            "pagination": {
+                "partition_selector": "a[href*='facet_Area=']",
+                "max_pages": 100,
+            },
+        }
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "dom", "--config", json.dumps(config)],
+        )
+
+        assert result.exit_code != 0
+        assert "requires 'param_name' or 'url_template'" in result.output
+
+    def test_select_dom_accepts_recursive_partition_pagination(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        config = {
+            "url_filter": "/job/",
+            "pagination": {
+                "param_name": "page",
+                "partition_selector": "a[href*='facet_Area=']",
+                "partition_fallback_selectors": [
+                    "a[href*='facet_Contract=']",
+                    "a[href*='facet_Family=']",
+                ],
+                "partition_count_regex": r"\((\d+) jobs",
+                "partition_result_limit": 1_000,
+                "partition_validate_total": True,
+                "partition_drop_params": ["changefacet"],
+                "partition_stateless": True,
+                "transient_403": True,
+                "max_pages": 1_000,
+            },
+        }
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "dom", "--config", json.dumps(config)],
+        )
+
+        assert result.exit_code == 0, result.output
+        board = load_board("test", "careers")
+        cfg = board.configs[board.active_config]
+        assert cfg["monitor_config"]["pagination"] == config["pagination"]
+
+    def test_select_dom_accepts_redundant_partition_cover_paths(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        config = {
+            "url_filter": "/job/",
+            "pagination": {
+                "param_name": "page",
+                "partition_selector": "a[href*='facet_Area=']",
+                "partition_cover_paths": [
+                    ["a[href*='facet_Contract=']", "a[href*='facet_Family=']"],
+                    ["a[href*='facet_Contract=']", "a[href*='facet_Country=']"],
+                ],
+                "partition_count_regex": r"\((\d+) jobs",
+                "partition_result_limit": 1_000,
+                "partition_validate_total": True,
+                "max_pages": 1_000,
+            },
+        }
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "dom", "--config", json.dumps(config)],
+        )
+
+        assert result.exit_code == 0, result.output
+        board = load_board("test", "careers")
+        cfg = board.configs[board.active_config]
+        assert cfg["monitor_config"]["pagination"] == config["pagination"]
+
 
 # ── Phase 6: Submit robustness ──────────────────────────────────────────
 
@@ -7268,6 +7360,97 @@ class TestProbeAllBoards:
 class TestNewIdempotent:
     """ws new should not fail when slug already exists in CSV from a prior attempt."""
 
+    def test_new_blocks_related_slug_until_identity_is_explicit(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        monkeypatch.setattr("src.workspace.commands.lifecycle.is_local_mode", lambda: True)
+        _setup_csvs(
+            tmp_path,
+            companies="starbucks,Starbucks,https://www.starbucks.com,,,\n",
+        )
+
+        result = CliRunner().invoke(ws, ["new", "starbucks-china", "--issue", "6298"])
+
+        assert result.exit_code != 0
+        assert "matches an existing company identity: starbucks" in result.output
+        assert "ws new starbucks --issue 6298 --reconfig" in result.output
+        assert "--separate-identity" in result.output
+        assert "starbucks-china" not in (tmp_path / "companies.csv").read_text()
+
+    def test_new_blocks_inventory_alias_related_by_company_name(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(
+            tmp_path,
+            companies=("international-business-machines,IBM,https://www.ibm.com,,,\n"),
+        )
+
+        with ExitStack() as stack:
+            self._git_mocks(
+                stack,
+                tmp_path,
+                issue_body=_inventory_issue_body(),
+                issue_labels=("source:ats-inventory",),
+                issue_title="Add company: IBM China",
+            )
+            result = CliRunner().invoke(ws, ["new", "ibm-china", "--issue", "1"])
+
+        assert result.exit_code != 0
+        assert "matches an existing company identity: international-business-machines" in (
+            result.output
+        )
+        assert "ws new international-business-machines --issue 1 --reconfig" in result.output
+        assert "ibm-china" not in (tmp_path / "companies.csv").read_text()
+
+    def test_scheduled_new_fails_closed_when_issue_identity_cannot_load(
+        self, tmp_path, monkeypatch
+    ):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+        monkeypatch.setenv("JOBSEEK_CODEX_RUN_ID", "run-1")
+
+        with ExitStack() as stack:
+            self._git_mocks(stack, tmp_path)
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.fetch_issue", side_effect=RuntimeError("GitHub unavailable")
+                )
+            )
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1"])
+
+        assert result.exit_code != 0
+        assert "refusing scheduled workspace creation" in result.output
+        assert "acme" not in (tmp_path / "companies.csv").read_text()
+
+    def test_new_allows_verified_related_company_with_acknowledgement(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        monkeypatch.setattr("src.workspace.commands.lifecycle.is_local_mode", lambda: True)
+        _setup_csvs(
+            tmp_path,
+            companies="acme,Acme,https://acme.example,,,\n",
+        )
+
+        result = CliRunner().invoke(
+            ws,
+            ["new", "acme-labs", "--issue", "1", "--separate-identity"],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "acme-labs" in (tmp_path / "companies.csv").read_text()
+
+    def test_new_rejects_conflicting_identity_modes(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(
+            tmp_path,
+            companies="acme,Acme,https://acme.example,,,\n",
+        )
+
+        result = CliRunner().invoke(
+            ws,
+            ["new", "acme", "--reconfig", "--separate-identity"],
+        )
+
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output
+
     def test_new_does_not_replace_same_slug_workspace_owned_by_another_issue(
         self, tmp_path, monkeypatch
     ):
@@ -7292,6 +7475,7 @@ class TestNewIdempotent:
         existing_prs=None,
         issue_body="",
         issue_labels=(),
+        issue_title="Add company: Acme",
     ):
         """Set up common git mocks for new() tests."""
         stack.enter_context(
@@ -7308,7 +7492,7 @@ class TestNewIdempotent:
             patch(
                 "src.workspace.git.fetch_issue",
                 return_value={
-                    "title": "Add company: Acme",
+                    "title": issue_title,
                     "body": issue_body,
                     "labels": [{"name": label} for label in issue_labels],
                 },
