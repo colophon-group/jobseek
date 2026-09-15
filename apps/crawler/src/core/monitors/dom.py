@@ -4663,12 +4663,13 @@ async def _paginate_partitioned_urls(
     link_selector: str | None,
     public_request_headers: dict[str, str] | None = None,
 ) -> set[str]:
-    """Collect a counted facet snapshot with one bounded convergence retry.
+    """Collect a counted facet snapshot with bounded convergence retries.
 
     The listing is part of the counted snapshot: it owns both the advertised
     total and the primary facet links. Refetch it on every attempt rather than
     comparing a fresh partition pass with the caller's earlier discovery
-    fetch. Repeated churn still fails closed.
+    fetch. At most four attempts use 1/2/4-second backoff between retries;
+    repeated churn still fails closed.
     """
     from src.shared.http_retry import PaginationFetchError, fetch_with_retry
 
