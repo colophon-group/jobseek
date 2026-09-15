@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+from urllib.parse import urlsplit
+
 import httpx
 import structlog
 from selectolax.lexbor import LexborHTMLParser, SelectolaxError
@@ -25,6 +28,97 @@ from src.shared.http import is_avature_job_detail_url
 from src.shared.http_retry import fetch_response_with_status_retries
 
 log = structlog.get_logger()
+
+_MAX_TRANSPORT_ATTEMPTS = 5
+_TRANSPORT_RETRY_DELAY = 1.0
+
+
+def _guard_rendered_content(requested_url: str, final_url: str, html: str) -> None:
+    """Raise a typed origin-block error while the proxy context is open.
+
+    The shared detector covers generic bot-manager interstitials.  Njoyn also
+    returns a tiny provider-specific ``Invalid request XWP...`` document with
+    HTTP 200; use its narrow detector only for that hostname.  Running the
+    guard inside ``browser.render`` is load-bearing because ``open_page`` can
+    then quarantine the selected origin/slot pair before the context closes.
+    """
+    hostname = (urlsplit(requested_url).hostname or "").lower()
+    if hostname == "njoyn.com" or hostname.endswith(".njoyn.com"):
+        from src.core.monitors.njoyn import _raise_if_njoyn_challenge
+
+        _raise_if_njoyn_challenge(final_url, html)
+        return
+
+    from src.core.monitors.dom import _raise_if_bot_challenge
+
+    _raise_if_bot_challenge(final_url, html)
+
+
+async def _render_with_origin_block_recovery(url: str, config: dict, pw=None) -> str:
+    """Render with bounded proxy rotation and guarded direct fallback.
+
+    Direct egress is allowed only when config opts in *and* this call first
+    observes a typed origin block from a selected proxy context.  An absent or
+    exhausted proxy pool by itself never authorizes a bypass.
+    """
+    from src.shared.browser import render as browser_render
+    from src.shared.proxy import ProxyPoolExhaustedError
+
+    async def _render(*, use_proxy: bool) -> str:
+        return await browser_render(
+            url,
+            config | {"proxy": use_proxy},
+            pw=pw,
+            content_guard=_guard_rendered_content,
+        )
+
+    if not config.get("proxy"):
+        return await _render(use_proxy=False)
+
+    attempts = min(
+        _MAX_TRANSPORT_ATTEMPTS,
+        max(1, int(config.get("transport_attempts", 1))),
+    )
+    last_origin_block: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return await _render(use_proxy=True)
+        except ProxyPoolExhaustedError:
+            if last_origin_block is None:
+                raise
+            log.warning(
+                "jsonld.render.origin_block_retry",
+                attempt=attempt,
+                attempts=attempts,
+                retrying=False,
+                reason="pool_exhausted_after_origin_block",
+            )
+            break
+        except Exception as exc:
+            if getattr(exc, "proxy_failure_reason", None) != "origin_block":
+                raise
+            last_origin_block = exc
+            retrying = attempt < attempts
+            log.warning(
+                "jsonld.render.origin_block_retry",
+                attempt=attempt,
+                attempts=attempts,
+                retrying=retrying,
+                reason="origin_block",
+            )
+            if retrying:
+                await asyncio.sleep(_TRANSPORT_RETRY_DELAY * attempt)
+
+    if config.get("direct_fallback_on_origin_block") is True:
+        log.warning(
+            "jsonld.render.direct_fallback",
+            proxy_attempts=attempts,
+            last_error_type=type(last_origin_block).__name__,
+        )
+        return await _render(use_proxy=False)
+
+    assert last_origin_block is not None
+    raise last_origin_block
 
 
 def _selected_description(html: str, selector: object) -> str:
@@ -82,10 +176,9 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
 
     if config.get("render"):
         from src.shared.browser import BROWSER_KEYS
-        from src.shared.browser import render as browser_render
 
         browser_config = {key: value for key, value in config.items() if key in BROWSER_KEYS}
-        html = await browser_render(url, browser_config, pw=pw)
+        html = await _render_with_origin_block_recovery(url, browser_config, pw=pw)
     else:
         request_headers = config.get("request_headers") or {}
         headers = clean_headers(request_headers)

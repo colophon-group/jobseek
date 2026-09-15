@@ -178,6 +178,12 @@ CGI Njoyn detail pages are scraped from their rendered schema.org
 description, location, employment type, dates, and identifier without relying
 on presentation labels such as `Category:` or `Main location:`. The same
 warmed, proxy-routed browser policy remains in force for the rendered page.
+Njoyn's small HTTP-200 `Invalid request XWP...` response is checked while the
+selected proxy context is still open, so the origin/slot pair is quarantined
+instead of being mistaken for an extraction-empty page. CGI explicitly permits
+at most five proxy-context attempts and one direct attempt only after a typed
+origin block was observed; pool unavailability alone never authorizes direct
+egress.
 
 `headhunter`, `jobstreet`, `linkedin`, and `paylocity` are partial-rich exceptions: their
 listing responses provide clean summary fields while their auto-configured

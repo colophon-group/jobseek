@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import ANY, AsyncMock, call, patch
 
 import httpx
 import pytest
@@ -10,6 +11,7 @@ from src.core.scrapers.jsonld import (
     _extract_locations,
     _extract_salary,
     _find_job_posting,
+    _guard_rendered_content,
     _JsonLdExtractor,
     _normalize_meta_locations,
     _parse_posting,
@@ -20,8 +22,13 @@ from src.core.scrapers.jsonld import (
     probe,
     scrape,
 )
+from src.shared.proxy import ProxyPoolExhaustedError
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+class _OriginBlock(RuntimeError):
+    proxy_failure_reason = "origin_block"
 
 
 class TestJsonLdExtractor:
@@ -989,8 +996,6 @@ class TestScrape:
 
     async def test_render_uses_playwright(self):
         """When render=true, scrape should use browser rendering instead of HTTP."""
-        from unittest.mock import AsyncMock, patch
-
         page_html = """<html><head>
         <script type="application/ld+json">
         {"@type": "JobPosting", "title": "Rendered"}
@@ -1008,12 +1013,15 @@ class TestScrape:
                     pw="fake_pw",
                 )
                 assert result.title == "Rendered"
-                mock_render.assert_called_once_with("https://example.com/job", {}, pw="fake_pw")
+                mock_render.assert_called_once_with(
+                    "https://example.com/job",
+                    {"proxy": False},
+                    pw="fake_pw",
+                    content_guard=ANY,
+                )
 
     async def test_render_forwards_proxy_to_browser(self):
         """A proxy-enabled browser scraper must not silently use direct egress."""
-        from unittest.mock import AsyncMock, patch
-
         page_html = """<script type="application/ld+json">
         {"@type": "JobPosting", "title": "Proxied"}
         </script>"""
@@ -1033,7 +1041,164 @@ class TestScrape:
             "https://example.com/job",
             {"proxy": True},
             pw="fake_pw",
+            content_guard=ANY,
         )
+
+    def test_render_guard_classifies_tiny_njoyn_xwp_rejection(self):
+        html = "<html><body>Invalid request XWP10022 192.0.2.1</body></html>"
+
+        with pytest.raises(RuntimeError, match="origin rejected") as raised:
+            _guard_rendered_content(
+                "https://cgi.njoyn.com/corp/xweb/XWeb.asp?Page=JobDetails",
+                "https://cgi.njoyn.com/corp/xweb/XWeb.asp?Page=JobDetails",
+                html,
+            )
+
+        assert raised.value.proxy_failure_reason == "origin_block"
+        assert "192.0.2.1" not in str(raised.value)
+
+    def test_render_guard_sanitizes_njoyn_challenge_redirect_url(self):
+        opaque_redirect = "https://validate.example.test/?session=opaque-secret"
+        html = "<html><title>Radware Captcha Page</title></html>"
+
+        with pytest.raises(RuntimeError, match="origin rejected") as raised:
+            _guard_rendered_content(
+                "https://cgi.njoyn.com/corp/xweb/XWeb.asp?Page=JobDetails",
+                opaque_redirect,
+                html,
+            )
+
+        assert raised.value.proxy_failure_reason == "origin_block"
+        assert opaque_redirect not in str(raised.value)
+        assert "opaque-secret" not in str(raised.value)
+
+    async def test_render_rotates_typed_blocks_then_uses_explicit_direct_fallback(self):
+        page_html = """<script type="application/ld+json">
+        {"@type": "JobPosting", "title": "Recovered"}
+        </script>"""
+
+        with (
+            patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render,
+            patch("src.core.scrapers.jsonld.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        ):
+            mock_render.side_effect = [
+                _OriginBlock("slot one"),
+                _OriginBlock("slot two"),
+                page_html,
+            ]
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(500))
+            ) as client:
+                result = await scrape(
+                    "https://cgi.njoyn.com/job/1",
+                    {
+                        "render": True,
+                        "proxy": True,
+                        "transport_attempts": 2,
+                        "direct_fallback_on_origin_block": True,
+                    },
+                    client,
+                    pw="fake_pw",
+                )
+
+        assert result.title == "Recovered"
+        assert [args.args[1]["proxy"] for args in mock_render.await_args_list] == [
+            True,
+            True,
+            False,
+        ]
+        assert all(
+            args.kwargs["content_guard"] is _guard_rendered_content
+            for args in mock_render.await_args_list
+        )
+        assert sleep.await_args_list == [call(1.0)]
+
+    async def test_render_never_bypasses_unavailable_proxy_without_typed_block(self):
+        with patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render:
+            mock_render.side_effect = ProxyPoolExhaustedError("pool unavailable")
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(500))
+            ) as client:
+                with pytest.raises(ProxyPoolExhaustedError, match="pool unavailable"):
+                    await scrape(
+                        "https://cgi.njoyn.com/job/1",
+                        {
+                            "render": True,
+                            "proxy": True,
+                            "transport_attempts": 5,
+                            "direct_fallback_on_origin_block": True,
+                        },
+                        client,
+                        pw="fake_pw",
+                    )
+
+        assert len(mock_render.await_args_list) == 1
+        assert mock_render.await_args.args[1]["proxy"] is True
+
+    async def test_render_does_not_use_direct_fallback_without_explicit_opt_in(self):
+        with (
+            patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render,
+            patch("src.core.scrapers.jsonld.asyncio.sleep", new_callable=AsyncMock),
+        ):
+            mock_render.side_effect = [
+                _OriginBlock("slot one"),
+                _OriginBlock("slot two"),
+            ]
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(500))
+            ) as client:
+                with pytest.raises(_OriginBlock, match="slot two"):
+                    await scrape(
+                        "https://cgi.njoyn.com/job/1",
+                        {
+                            "render": True,
+                            "proxy": True,
+                            "transport_attempts": 2,
+                        },
+                        client,
+                        pw="fake_pw",
+                    )
+
+        assert [args.args[1]["proxy"] for args in mock_render.await_args_list] == [
+            True,
+            True,
+        ]
+
+    async def test_render_direct_fallback_survives_pool_exhaustion_after_typed_block(self):
+        page_html = """<script type="application/ld+json">
+        {"@type": "JobPosting", "title": "Recovered"}
+        </script>"""
+
+        with (
+            patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render,
+            patch("src.core.scrapers.jsonld.asyncio.sleep", new_callable=AsyncMock),
+        ):
+            mock_render.side_effect = [
+                _OriginBlock("slot one"),
+                ProxyPoolExhaustedError("remaining slots cooling down"),
+                page_html,
+            ]
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(500))
+            ) as client:
+                result = await scrape(
+                    "https://cgi.njoyn.com/job/1",
+                    {
+                        "render": True,
+                        "proxy": True,
+                        "transport_attempts": 5,
+                        "direct_fallback_on_origin_block": True,
+                    },
+                    client,
+                    pw="fake_pw",
+                )
+
+        assert result.title == "Recovered"
+        assert [args.args[1]["proxy"] for args in mock_render.await_args_list] == [
+            True,
+            True,
+            False,
+        ]
 
     async def test_render_false_uses_http(self):
         """When render is false/absent, scrape should use static HTTP."""
