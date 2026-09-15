@@ -27,6 +27,7 @@ export function deriveCrawlerBuildVersion({
   commitCount,
   sha,
   files,
+  manualRedeploy = false,
 }) {
   const source = parseVersion(sourceVersion, "Source VERSION");
   const parent = parentVersion
@@ -49,10 +50,14 @@ export function deriveCrawlerBuildVersion({
     };
   }
 
-  if (!isCrawlerDerivedBuildEligible(files)) {
+  if (typeof manualRedeploy !== "boolean") {
+    throw new Error("manualRedeploy must be a boolean");
+  }
+
+  if (!manualRedeploy && !isCrawlerDerivedBuildEligible(files)) {
     throw new Error(
       "Unchanged crawler VERSION is only valid for a dependency-only or " +
-        "deploy-infrastructure main commit",
+        "deploy-infrastructure main commit, or an attested manual redeploy",
     );
   }
 
@@ -82,6 +87,10 @@ function optionalArgument(name) {
   return index === -1 ? null : process.argv[index + 1];
 }
 
+function hasArgument(name) {
+  return process.argv.includes(name);
+}
+
 function main() {
   const versionPath = optionalArgument("--write-version") ?? "apps/crawler/VERSION";
   const githubOutput = optionalArgument("--github-output");
@@ -106,6 +115,7 @@ function main() {
     files: git("diff", "--name-only", baseRevision, "HEAD")
       .split("\n")
       .filter(Boolean),
+    manualRedeploy: hasArgument("--manual-redeploy"),
   });
 
   writeFileSync(versionPath, `${result.packageVersion}\n`);

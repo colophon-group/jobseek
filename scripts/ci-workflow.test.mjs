@@ -79,6 +79,10 @@ const deployCrawlerWorkflow = readFileSync(
   ".github/workflows/deploy-crawler-browser.yml",
   "utf8",
 );
+const resolveCrawlerDeployRevisionsScript = readFileSync(
+  ".github/scripts/resolve-crawler-deploy-revisions.sh",
+  "utf8",
+);
 const crawlerRuntimeContractsWorkflow = readFileSync(
   ".github/workflows/crawler-runtime-contracts.yml",
   "utf8",
@@ -1620,14 +1624,19 @@ test("workflow-security runs repository script tests", () => {
 
 test("crawler deploys derive immutable versions for unchanged releases", () => {
   assert.match(deployCrawlerWorkflow, /'!apps\/crawler\/ws-package\/\*\*'/);
+  assert.match(deployCrawlerWorkflow, /^  workflow_dispatch:\s*$/m);
   assert.match(
     deployCrawlerWorkflow,
     /'\.github\/workflows\/deploy-crawler-browser\.yml'/,
   );
+  assert.match(
+    deployCrawlerWorkflow,
+    /'\.github\/scripts\/resolve-crawler-deploy-revisions\.sh'/,
+  );
   assert.match(deployCrawlerWorkflow, /fetch-depth: 0/);
   assert.match(
     deployCrawlerWorkflow,
-    /BASE_SHA: \$\{\{ github\.event\.before \}\}[\s\S]*scripts\/derive-crawler-build-version\.mjs[\s\S]*--base "\$BASE_SHA"[\s\S]*--write-version apps\/crawler\/VERSION[\s\S]*--github-output "\$GITHUB_OUTPUT"/,
+    /BASE_SHA: \$\{\{ needs\.preflight\.outputs\.previous_revision \}\}[\s\S]*MANUAL_REDEPLOY: \$\{\{ needs\.preflight\.outputs\.manual_redeploy \}\}[\s\S]*case "\$MANUAL_REDEPLOY"[\s\S]*true\) redeploy_args\+=\(--manual-redeploy\)[\s\S]*scripts\/derive-crawler-build-version\.mjs[\s\S]*--base "\$BASE_SHA"[\s\S]*--write-version apps\/crawler\/VERSION[\s\S]*--github-output "\$GITHUB_OUTPUT"[\s\S]*"\$\{redeploy_args\[@\]\}"/,
   );
   assert.match(
     deployCrawlerWorkflow,
@@ -1641,6 +1650,116 @@ test("crawler deploys derive immutable versions for unchanged releases", () => {
     deployCrawlerWorkflow,
     /steps\.version\.outputs\.version/,
   );
+});
+
+test("crawler manual deploys attest exact main and derive a rollback parent", () => {
+  assert.match(
+    deployCrawlerWorkflow,
+    /preflight:[\s\S]*persist-credentials: false[\s\S]*EVENT_BEFORE: \$\{\{ github\.event\.before \}\}[\s\S]*EVENT_NAME: \$\{\{ github\.event_name \}\}[\s\S]*resolve-crawler-deploy-revisions\.sh/,
+  );
+  assert.match(
+    resolveCrawlerDeployRevisionsScript,
+    /test "\$GITHUB_REF" = "refs\/heads\/\$DEFAULT_BRANCH"[\s\S]*git fetch --no-tags origin[\s\S]*test "\$\(git rev-parse --verify "origin\/\$\{DEFAULT_BRANCH\}\^\{commit\}"\)" = "\$GITHUB_SHA"/,
+  );
+  assert.match(
+    resolveCrawlerDeployRevisionsScript,
+    /workflow_dispatch\)[\s\S]*git rev-parse --verify "\$\{GITHUB_SHA\}\^"/,
+  );
+  assert.match(
+    resolveCrawlerDeployRevisionsScript,
+    /git merge-base --is-ancestor "\$previous_revision" "\$GITHUB_SHA"[\s\S]*previous_revision=%s/,
+  );
+
+  const dir = mkdtempSync(join(tmpdir(), "crawler-deploy-revisions-"));
+  const source = join(dir, "source");
+  const checkout = join(dir, "checkout");
+  const output = join(dir, "github-output");
+  const script = join(
+    process.cwd(),
+    ".github/scripts/resolve-crawler-deploy-revisions.sh",
+  );
+  const git = (cwd, args) => {
+    const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+    assert.equal(result.status, 0, `${args.join(" ")}\n${result.stderr}`);
+    return result.stdout.trim();
+  };
+  const resolve = ({
+    eventName,
+    eventBefore = "",
+    ref = "refs/heads/main",
+    sha,
+  }) => {
+    writeFileSync(output, "");
+    return spawnSync("bash", [script], {
+      cwd: checkout,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        DEFAULT_BRANCH: "main",
+        EVENT_BEFORE: eventBefore,
+        EVENT_NAME: eventName,
+        GITHUB_OUTPUT: output,
+        GITHUB_REF: ref,
+        GITHUB_SHA: sha,
+      },
+    });
+  };
+
+  try {
+    mkdirSync(source, { recursive: true });
+    git(source, ["init", "--initial-branch", "main"]);
+    git(source, ["config", "user.email", "ci@example.invalid"]);
+    git(source, ["config", "user.name", "CI Test"]);
+    writeFileSync(join(source, "release.txt"), "one\n");
+    git(source, ["add", "."]);
+    git(source, ["commit", "-m", "initial"]);
+    const before = git(source, ["rev-parse", "HEAD"]);
+    writeFileSync(join(source, "release.txt"), "two\n");
+    git(source, ["add", "."]);
+    git(source, ["commit", "-m", "release"]);
+    const target = git(source, ["rev-parse", "HEAD"]);
+    git(dir, ["clone", `file://${source}`, checkout]);
+
+    let result = resolve({
+      eventName: "push",
+      eventBefore: before,
+      sha: target,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      readFileSync(output, "utf8"),
+      `previous_revision=${before}\nmanual_redeploy=false\n`,
+    );
+
+    result = resolve({ eventName: "workflow_dispatch", sha: target });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      readFileSync(output, "utf8"),
+      `previous_revision=${before}\nmanual_redeploy=true\n`,
+    );
+
+    result = resolve({
+      eventName: "workflow_dispatch",
+      ref: "refs/heads/not-main",
+      sha: target,
+    });
+    assert.notEqual(result.status, 0);
+
+    result = resolve({
+      eventName: "push",
+      eventBefore: "0000000000000000000000000000000000000000",
+      sha: target,
+    });
+    assert.notEqual(result.status, 0);
+
+    writeFileSync(join(source, "release.txt"), "three\n");
+    git(source, ["add", "."]);
+    git(source, ["commit", "-m", "main advanced"]);
+    result = resolve({ eventName: "workflow_dispatch", sha: target });
+    assert.notEqual(result.status, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("crawler deployment includes active runtime v1", () => {
@@ -1849,8 +1968,12 @@ test("CSV sync history and main refresh survive a shallow push checkout", () => 
     /actions\/checkout@[0-9a-f]+[^\n]*\n\s+with:\n\s+fetch-depth: 0/,
   );
   assert.match(
+    resolveCrawlerDeployRevisionsScript,
+    /git rev-parse --verify "\$\{previous_revision\}\^\{commit\}"[\s\S]*git merge-base --is-ancestor "\$previous_revision" "\$GITHUB_SHA"/,
+  );
+  assert.match(
     deployJob,
-    /git rev-parse "\$\{PREVIOUS_REVISION\}\^\{commit\}"[\s\S]*git merge-base --is-ancestor "\$PREVIOUS_REVISION" "\$GITHUB_SHA"[\s\S]*git archive "\$PREVIOUS_REVISION"/,
+    /PREVIOUS_REVISION: \$\{\{ needs\.preflight\.outputs\.previous_revision \}\}[\s\S]*git archive "\$PREVIOUS_REVISION"/,
   );
   const dir = mkdtempSync(join(tmpdir(), "csv-sync-history-"));
   const source = join(dir, "source");
@@ -2412,7 +2535,7 @@ test("company OG workflow is incremental, exact-revision, and write-budgeted", (
   );
   assert.match(
     deployCrawlerWorkflow,
-    /deploy:\n\s+needs: \[company-og, build\]/,
+    /deploy:\n\s+needs: \[preflight, company-og, build\]/,
   );
   assert.doesNotMatch(prewarmWorkflow, /--force|force=true|PREWARM_FORCE/);
 });

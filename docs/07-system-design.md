@@ -475,6 +475,13 @@ Quick summary:
   is explicitly inconclusive when Webshare's six-day activity retention or a
   plan-upgrade boundary clips the requested window. The account API key is
   never forwarded to runtime containers.
+- After rotating `WEBSHARE_PROXY_URLS`, update the repository secret and start
+  a **new** `Deploy Crawler (Hetzner)` workflow dispatch on `main`. Do not
+  rerun an older deployment: GitHub reruns retain that run's original secret
+  snapshot. The manual path attests that its checkout is the current exact
+  default-branch SHA and uses its first parent for rollback/runtime comparison.
+  After promotion, verify the running containers report the expected sanitized
+  pool cardinality before probing an affected origin.
 
 ---
 

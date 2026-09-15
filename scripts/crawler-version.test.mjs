@@ -472,6 +472,30 @@ test("deployment does not derive versions for arbitrary unchanged code", () => {
   );
 });
 
+test("attested manual redeploys derive versions for unrelated main tips", () => {
+  const input = {
+    sourceVersion: "0.13.152",
+    parentVersion: "0.13.152",
+    commitCount: "6204",
+    sha: "456789abcdef1230",
+    files: ["apps/web/src/app/page.tsx"],
+  };
+
+  assert.throws(
+    () => deriveCrawlerBuildVersion(input),
+    /attested manual redeploy/,
+  );
+  assert.deepEqual(
+    deriveCrawlerBuildVersion({ ...input, manualRedeploy: true }),
+    {
+      sourceVersion: "0.13.152",
+      packageVersion: "0.13.152+build.6204.g456789abcdef",
+      imageTag: "v0.13.152-build.6204.g456789abcdef",
+      derived: true,
+    },
+  );
+});
+
 test("deployment refuses a source-version rollback", () => {
   assert.throws(
     () =>
@@ -481,6 +505,7 @@ test("deployment refuses a source-version rollback", () => {
         commitCount: "6201",
         sha: "abcdef1234567890",
         files: ["apps/crawler/uv.lock"],
+        manualRedeploy: true,
       }),
     /regressed/,
   );
