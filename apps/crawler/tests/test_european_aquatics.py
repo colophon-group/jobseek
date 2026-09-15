@@ -27,12 +27,58 @@ LIVE_ACTIVE_HTML = """
     </div>
   </div>
   <div class="elementor-element elementor-widget elementor-widget-heading">
-    <div class="elementor-widget-container"><h2>Sustainability Intern</h2></div>
+    <div class="elementor-widget-container">
+      <h2 class="elementor-heading-title elementor-size-default">
+        Sustainability Intern
+      </h2>
+    </div>
   </div>
   <div class="elementor-widget-text-editor">
     <p>European Aquatics is opening applications for an internship of 6 months.</p>
     <p><strong>Location:</strong> Remote or from the office in Nyon, Switzerland</p>
     <p>The intern will support European Aquatics sustainability initiatives.</p>
+  </div>
+</body></html>
+"""
+
+# Reduced from the live 2026-09-15 representation. Elementor emits the real
+# vacancy title through its heading widget, while semantic section headings
+# inside the vacancy body are plain h2 elements. A tag-only item boundary
+# would turn the five body sections into phantom jobs.
+LIVE_NESTED_HEADINGS_HTML = """
+<html><body>
+  <h1 class="elementor-heading-title elementor-size-default">JOB OFFERS</h1>
+  <div class="elementor-hidden-desktop elementor-hidden-tablet
+              elementor-hidden-mobile elementor-widget-heading">
+    <h5 class="elementor-heading-title elementor-size-default">
+      No vacancies are currently available, but we thank you for your interest.
+    </h5>
+  </div>
+  <div class="elementor-widget elementor-widget-heading">
+    <h2 class="elementor-heading-title elementor-size-default">
+      Sports Assistant / Coordinator for Aquatics
+    </h2>
+  </div>
+  <div class="elementor-widget elementor-widget-heading">
+    <h4 class="elementor-heading-title elementor-size-default">
+      REPORTS TO: Sports Director
+      WORK ARRANGEMENT: Based in Belgrade with working arrangements possible
+      WORKING HOURS: Full-Time, 40hrs / week
+      EMPLOYER: European Aquatics
+      APPLY BY: September 16
+    </h4>
+  </div>
+  <div class="elementor-widget elementor-widget-text-editor">
+    <h2>Job Purpose</h2>
+    <p>The role provides operational support for European Aquatics activities.</p>
+    <h2>Key Responsibilities</h2>
+    <p>Coordinate competitions, projects, and member-federation communications.</p>
+    <h2>Qualifications &amp; Experience</h2>
+    <p>Relevant sports administration or event-management experience.</p>
+    <h2>Additional</h2>
+    <p>Willingness to travel and work irregular hours when required.</p>
+    <h2>Salary &amp; Details</h2>
+    <p>Compensation is aligned with qualifications and experience.</p>
   </div>
 </body></html>
 """
@@ -66,18 +112,24 @@ ARCHIVED_EMPTY_HTML = """
 ARCHIVED_MIXED_LAYOUT_HTML = """
 <html><body>
   <h1>JOB OFFERS</h1>
-  <h2>Sport Assistant Water Polo</h2>
+  <h2 class="elementor-heading-title elementor-size-default">
+    Sport Assistant Water Polo
+  </h2>
   <h4>REPORTS TO: Sport Manager Water Polo</h4>
   <h4>WORK ARRANGEMENT: Office location Belgrade with occasional travel</h4>
   <h4>START DATE: As soon as possible</h4>
   <p>Career Opportunity:</p>
   <p>European Aquatics is looking for a Sport Assistant Water Polo.</p>
 
-  <h2>European Aquatics Service Team</h2>
+  <h2 class="elementor-heading-title elementor-size-default">
+    European Aquatics Service Team
+  </h2>
   <p>Career Opportunity:</p>
   <p>European Aquatics is establishing a new Service Team, based in Belgrade.</p>
 
-  <h2>European Aquatics Academy Project Manager</h2>
+  <h2 class="elementor-heading-title elementor-size-default">
+    European Aquatics Academy Project Manager
+  </h2>
   <h4>REPORTS TO: Executive Director</h4>
   <h4>
     LOCATION: Possibility for flexible working arrangements with need to travel on regular
@@ -145,6 +197,16 @@ async def test_live_hidden_marker_proves_empty_after_archived_roles_are_excluded
     assert jobs == []
 
 
+async def test_live_heading_widget_bounds_one_job_around_nested_sections() -> None:
+    jobs = await _discover_fixture(_board(), LIVE_NESTED_HEADINGS_HTML)
+
+    assert len(jobs) == 1
+    assert jobs[0].title == "Sports Assistant / Coordinator for Aquatics"
+    assert jobs[0].locations == ["Belgrade"]
+    assert "<h2>Job Purpose</h2>" in (jobs[0].description or "")
+    assert "<h2>Salary &amp; Details</h2>" in (jobs[0].description or "")
+
+
 async def test_archived_roles_are_bounded_before_optional_location_lookup() -> None:
     board = _board()
     board["metadata"] = deepcopy(board["metadata"])
@@ -157,7 +219,7 @@ async def test_archived_roles_are_bounded_before_optional_location_lookup() -> N
         "European Aquatics Service Team",
         "European Aquatics Academy Project Manager",
     ]
-    assert jobs[0].locations is None
+    assert jobs[0].locations == ["Belgrade"]
     assert "Sport Assistant Water Polo" in (jobs[0].description or "")
     assert "Academy" not in (jobs[0].description or "")
     assert jobs[1].locations is None
@@ -183,8 +245,22 @@ def test_board_uses_explicit_empty_and_item_boundary_contracts() -> None:
     assert metadata["empty_selector"] == ".elementor-widget-heading h5"
     assert metadata["empty_text"] == "No vacancies are currently available"
     assert metadata["empty_requires_no_jobs"] is True
-    assert metadata["item_boundary_tag"] == "h2"
+    assert metadata["item_boundary"] == {
+        "tag": "h2",
+        "attr": "class=elementor-heading-title",
+    }
+    assert "item_boundary_tag" not in metadata
     assert metadata["preserve_single_location"] is True
+    assert metadata["steps"][0] == {
+        "tag": "h2",
+        "attr": "class=elementor-heading-title",
+        "field": "title",
+    }
+    assert metadata["steps"][2] == {
+        "field": "description",
+        "html": True,
+        "to_end": True,
+    }
     assert "Aquatics Social Responsibility Project Manager" in metadata["exclude_titles"]
 
 
