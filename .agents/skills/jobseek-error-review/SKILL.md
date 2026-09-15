@@ -255,6 +255,13 @@ code-owned churn budget and is not an error class. `first_page_state_changed`,
 fail-closed. Do not prescribe proxy replacement for those failures unless the
 same evidence window separately proves a typed all-slot origin block.
 
+Treat `batch.scrape.required_field_missing` as extraction-contract evidence,
+not transport evidence. Group it by board and scraper. For Njoyn, inspect one
+bounded rendered sample for a valid schema.org `JobPosting`; when present,
+classify the cluster as scraper/config drift and validate rendered JSON-LD.
+Never prescribe proxy replacement without separate typed all-slot
+origin-block evidence.
+
 - `known`: appears in any prior daily report within 14 days. Count it but do
   not file.
 - `novel`: absent from every prior report.

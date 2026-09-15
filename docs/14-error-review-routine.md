@@ -72,6 +72,13 @@ fail-closed. Do not rotate proxies for an inventory-stability failure unless
 the same review window also proves a typed origin block on every configured
 slot.
 
+Treat `batch.scrape.required_field_missing` as an extraction-contract signal,
+not a transport failure. Group it by board and scraper. For Njoyn, inspect a
+bounded rendered sample for a valid schema.org `JobPosting`: if it is present,
+classify the cluster as scraper/config drift and validate the rendered
+JSON-LD path. Do not rotate proxies without separate typed origin-block
+evidence.
+
 Host-memory classification is container-generation aware. The root collector
 writes `host/docker-cgroup-memory.json` with Docker identity/timestamps and
 cgroup-v2 memory counters. Reviews compare OOM and restart counters only for

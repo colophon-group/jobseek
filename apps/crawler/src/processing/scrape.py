@@ -1033,6 +1033,14 @@ async def _process_one_scrape(
                 log.info("batch.scrape.garbage_title", url=item.url, title=content.title)
             # Still enqueue next fallback if available
             next_fb = _get_next_fallback(scraper_type, scraper_config, scrape_step)
+            if not content.title:
+                log.warning(
+                    "batch.scrape.required_field_missing",
+                    url=item.url,
+                    scraper_type=step_type,
+                    required_field="title",
+                    fallback_configured=next_fb is not None,
+                )
             if next_fb:
                 fb_type, fb_cfg, _fb_fields = next_fb
                 from src.core.scrapers import scraper_needs_browser

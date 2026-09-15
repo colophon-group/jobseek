@@ -399,6 +399,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "timeout",
             "wait",
             "wait_fallback",
+            "warmup_url",
         }
     ),
     "nextdata": frozenset({"defaults", "enrich", "fields", "path", "render", "source", "wait"}),
