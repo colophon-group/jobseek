@@ -20,10 +20,15 @@ local task_type = ARGV[5]
 local first_time = ARGV[6] == "1"
 local now = tonumber(ARGV[7])
 local b0_guard_key = "lightpanda-b0:legacy-guard"
+local scrape_rotation_key = "ready:rotation:" .. wtype
 
 local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
 if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
     return redis.error_reply("lightpanda B0 legacy guard is corrupt")
+end
+local scrape_rotation_type = redis.call("TYPE", scrape_rotation_key)["ok"]
+if scrape_rotation_type ~= "none" and scrape_rotation_type ~= "zset" then
+    return redis.error_reply("scrape rotation index is corrupt")
 end
 if task_type == "scrape" and redis.call("HEXISTS", b0_guard_key, task_id) == 1 then
     return 0
@@ -95,8 +100,8 @@ do
     if rl_val then
         rl_at = tonumber(rl_val)
     end
-    local scrape_ready_floor = tonumber(
-        redis.call("ZSCORE", "ready:" .. wtype .. ":2", domain) or "0"
+    local scrape_rotation_floor = tonumber(
+        redis.call("ZSCORE", scrape_rotation_key, domain) or "0"
     )
 
     for tier = 0, 2 do
@@ -104,6 +109,9 @@ do
     end
 
     if has_ft > 0 then
+        if redis.call("ZCARD", "scrapes_" .. wtype .. ":" .. domain) == 0 then
+            redis.call("ZREM", scrape_rotation_key, domain)
+        end
         redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(rl_at, now), domain)
     else
         local mon_score = nil
@@ -125,9 +133,11 @@ do
             redis.call(
                 "ZADD",
                 "ready:" .. wtype .. ":2",
-                math.max(rl_at, scrape_ready_floor, scr_score),
+                math.max(rl_at, scrape_rotation_floor, scr_score),
                 domain
             )
+        else
+            redis.call("ZREM", scrape_rotation_key, domain)
         end
     end
 end

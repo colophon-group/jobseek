@@ -54,6 +54,9 @@ ready:simple:2    -- Tier 2: scrapes (re-scrapes)
 ready:browser:0   -- Tier 0: first-time browser work
 ready:browser:1   -- Tier 1: browser monitors
 ready:browser:2   -- Tier 2: browser scrapes
+
+ready:rotation:simple   -- Last recurring-scrape claim floor per HTTP domain
+ready:rotation:browser  -- Last recurring-scrape claim floor per browser domain
 ```
 
 Recurring domains advertise monitor and scrape deadlines independently, so a

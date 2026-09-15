@@ -63,7 +63,18 @@ return changed
 """
 
 _PARK_MONITORS_LUA = """
+for _, wtype in ipairs({"simple", "browser"}) do
+    local rotation_type = redis.call("TYPE", "ready:rotation:" .. wtype)["ok"]
+    if rotation_type ~= "none" and rotation_type ~= "zset" then
+        return redis.error_reply("scrape rotation index is corrupt")
+    end
+end
+
 local function refresh_ready(wtype, domain)
+    local scrape_rotation_key = "ready:rotation:" .. wtype
+    local scrape_rotation_floor = tonumber(
+        redis.call("ZSCORE", scrape_rotation_key, domain) or "0"
+    )
     for tier = 0, 2 do
         redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
     end
@@ -80,6 +91,9 @@ local function refresh_ready(wtype, domain)
         end
     end
     if first_time_score ~= nil then
+        if redis.call("ZCARD", "scrapes_" .. wtype .. ":" .. domain) == 0 then
+            redis.call("ZREM", scrape_rotation_key, domain)
+        end
         redis.call(
             "ZADD", "ready:" .. wtype .. ":0",
             math.max(rate_limit, first_time_score), domain
@@ -87,16 +101,25 @@ local function refresh_ready(wtype, domain)
         return
     end
 
-    for _, queue in ipairs({{"monitors_", 1}, {"scrapes_", 2}}) do
-        local head = redis.call(
-            "ZRANGE", queue[1] .. wtype .. ":" .. domain, 0, 0, "WITHSCORES"
+    local monitor = redis.call(
+        "ZRANGE", "monitors_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES"
+    )
+    if #monitor >= 2 then
+        redis.call(
+            "ZADD", "ready:" .. wtype .. ":1",
+            math.max(rate_limit, tonumber(monitor[2])), domain
         )
-        if #head >= 2 then
-            redis.call(
-                "ZADD", "ready:" .. wtype .. ":" .. queue[2],
-                math.max(rate_limit, tonumber(head[2])), domain
-            )
-        end
+    end
+    local scrape = redis.call(
+        "ZRANGE", "scrapes_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES"
+    )
+    if #scrape >= 2 then
+        redis.call(
+            "ZADD", "ready:" .. wtype .. ":2",
+            math.max(rate_limit, scrape_rotation_floor, tonumber(scrape[2])), domain
+        )
+    else
+        redis.call("ZREM", scrape_rotation_key, domain)
     end
 end
 

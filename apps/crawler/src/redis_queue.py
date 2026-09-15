@@ -4,6 +4,7 @@ Ready queues (6 global ZSETs, 3 tiers × 2 worker types):
     ready:{wtype}:0  — domains with first-time work
     ready:{wtype}:1  — domains with due monitors
     ready:{wtype}:2  — domains with due scrapes
+    ready:rotation:{wtype} — recurring-scrape domain fairness floors
 
 A recurring domain with both monitor and scrape work has independent entries
 in tiers 1 and 2. Their scores carry each task class's own next deadline, so a

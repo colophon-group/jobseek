@@ -27,7 +27,7 @@ const (
 	maxLeaseTTL       = time.Hour
 	queueScanLimit    = 64
 	queuePolicyKey    = "lightpanda-b0-v1"
-	expectedLuaSHA256 = "1471c7c39b03747a187d2c19286302977c32f643cddb204339d2b841fb915044"
+	expectedLuaSHA256 = "9bf0b475b61f41afc61c643ebc357a3bf5e82b42a2621bfb018004354724065e"
 )
 
 var (

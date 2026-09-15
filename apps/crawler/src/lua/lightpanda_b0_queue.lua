@@ -711,6 +711,7 @@ if operation == "activate_legacy" then
         table.insert(legacy_keys, "monitors_" .. wtype .. ":" .. candidate.domain)
         table.insert(legacy_keys, "scrapes_" .. wtype .. ":" .. candidate.domain)
         table.insert(legacy_keys, "inflight_strikes:" .. wtype)
+        table.insert(legacy_keys, "ready:rotation:" .. wtype)
         for tier = 0, 2 do
             table.insert(legacy_keys, "ready:" .. wtype .. ":" .. tier)
         end
@@ -886,8 +887,9 @@ if operation == "activate_legacy" then
 
     local removed = 0
     for _, wtype in ipairs({"simple", "browser"}) do
-        local scrape_ready_floor = tonumber(
-            redis.call("ZSCORE", "ready:" .. wtype .. ":2", candidate.domain) or "0"
+        local scrape_rotation_key = "ready:rotation:" .. wtype
+        local scrape_rotation_floor = tonumber(
+            redis.call("ZSCORE", scrape_rotation_key, candidate.domain) or "0"
         )
         removed = removed
             + redis.call("ZREM", "ft_scrapes_" .. wtype .. ":" .. candidate.domain, task_id)
@@ -910,6 +912,9 @@ if operation == "activate_legacy" then
             end
         end
         if first_time_score ~= nil then
+            if redis.call("ZCARD", "scrapes_" .. wtype .. ":" .. candidate.domain) == 0 then
+                redis.call("ZREM", scrape_rotation_key, candidate.domain)
+            end
             redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(floor, first_time_score), candidate.domain)
         else
             local monitor = redis.call("ZRANGE", "monitors_" .. wtype .. ":" .. candidate.domain, 0, 0, "WITHSCORES")
@@ -921,9 +926,11 @@ if operation == "activate_legacy" then
                 redis.call(
                     "ZADD",
                     "ready:" .. wtype .. ":2",
-                    math.max(floor, scrape_ready_floor, tonumber(scrape[2])),
+                    math.max(floor, scrape_rotation_floor, tonumber(scrape[2])),
                     candidate.domain
                 )
+            else
+                redis.call("ZREM", scrape_rotation_key, candidate.domain)
             end
         end
     end
@@ -1406,6 +1413,7 @@ if operation == "rollback_legacy" then
                     {"ready:" .. wtype .. ":0", "zset"},
                     {"ready:" .. wtype .. ":1", "zset"},
                     {"ready:" .. wtype .. ":2", "zset"},
+                    {"ready:rotation:" .. wtype, "zset"},
                 }
                 for _, typed_key in ipairs(typed_keys) do
                     local actual = redis.call("TYPE", typed_key[1])["ok"]
@@ -1458,8 +1466,9 @@ if operation == "rollback_legacy" then
     for _, target in pairs(affected) do
         local wtype = target.wtype
         local domain = target.domain
-        local scrape_ready_floor = tonumber(
-            redis.call("ZSCORE", "ready:" .. wtype .. ":2", domain) or "0"
+        local scrape_rotation_key = "ready:rotation:" .. wtype
+        local scrape_rotation_floor = tonumber(
+            redis.call("ZSCORE", scrape_rotation_key, domain) or "0"
         )
         for tier = 0, 2 do
             redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
@@ -1476,6 +1485,9 @@ if operation == "rollback_legacy" then
             end
         end
         if first_time_score ~= nil then
+            if redis.call("ZCARD", "scrapes_" .. wtype .. ":" .. domain) == 0 then
+                redis.call("ZREM", scrape_rotation_key, domain)
+            end
             redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(floor, first_time_score), domain)
         else
             local monitor = redis.call("ZRANGE", "monitors_" .. wtype .. ":" .. domain, 0, 0, "WITHSCORES")
@@ -1487,9 +1499,11 @@ if operation == "rollback_legacy" then
                 redis.call(
                     "ZADD",
                     "ready:" .. wtype .. ":2",
-                    math.max(floor, scrape_ready_floor, tonumber(scrape[2])),
+                    math.max(floor, scrape_rotation_floor, tonumber(scrape[2])),
                     domain
                 )
+            else
+                redis.call("ZREM", scrape_rotation_key, domain)
             end
         end
     end

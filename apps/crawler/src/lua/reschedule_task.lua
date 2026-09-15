@@ -22,10 +22,15 @@ local task_id = ARGV[3]
 local task_type = ARGV[4]
 local next_due = tonumber(ARGV[5])
 local b0_guard_key = "lightpanda-b0:legacy-guard"
+local scrape_rotation_key = "ready:rotation:" .. wtype
 
 local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
 if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
     return redis.error_reply("lightpanda B0 legacy guard is corrupt")
+end
+local scrape_rotation_type = redis.call("TYPE", scrape_rotation_key)["ok"]
+if scrape_rotation_type ~= "none" and scrape_rotation_type ~= "zset" then
+    return redis.error_reply("scrape rotation index is corrupt")
 end
 if task_type == "scrape" and redis.call("HEXISTS", b0_guard_key, task_id) == 1 then
     local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
@@ -49,11 +54,10 @@ local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
 redis.call("ZREM", "inflight:" .. wtype, inflight_member)
 redis.call("HDEL", "inflight_strikes:" .. wtype, inflight_member)
 
--- claim_work advances a recurring-scrape domain after each claim so other due
--- domains receive a turn. Completion can happen after the short rate-limit
--- key expires; retain the ready marker itself as the durable rotation floor.
-local scrape_ready_floor = tonumber(
-    redis.call("ZSCORE", "ready:" .. wtype .. ":2", domain) or "0"
+-- claim_work records rotation separately from the ready marker, whose score
+-- may be an authoritative future task deadline rather than a fairness floor.
+local scrape_rotation_floor = tonumber(
+    redis.call("ZSCORE", scrape_rotation_key, domain) or "0"
 )
 
 -- Remove stale representations from all tiers before rebuilding them.
@@ -106,6 +110,9 @@ if has_scrapes > 0 then
 end
 
 if ft_score ~= nil then
+    if scr_score == nil then
+        redis.call("ZREM", scrape_rotation_key, domain)
+    end
     redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(rl_at, ft_score), domain)
 else
     if mon_score ~= nil then
@@ -115,9 +122,11 @@ else
         redis.call(
             "ZADD",
             "ready:" .. wtype .. ":2",
-            math.max(rl_at, scrape_ready_floor, scr_score),
+            math.max(rl_at, scrape_rotation_floor, scr_score),
             domain
         )
+    else
+        redis.call("ZREM", scrape_rotation_key, domain)
     end
 end
 

@@ -101,10 +101,10 @@ FAMILY_POLICIES = (
     FamilyPolicy(
         "ready_queue",
         "queue Lua",
-        "six fixed tier indexes rebuilt by enqueue/reschedule/claim",
+        "six fixed tier indexes plus two recurring-scrape rotation indexes",
         "persistent",
         12,
-        20_000,
+        40_000,
         16 * MIB,
     ),
     FamilyPolicy(

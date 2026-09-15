@@ -157,12 +157,14 @@ async def test_activation_preserves_legacy_domain_rotation_floor(redis: Any) -> 
         f"scrapes_browser:{task.domain}",
         {remaining_id: 50, task.task_id: 100},
     )
-    await redis.zadd("ready:browser:2", {task.domain: 500})
+    await redis.zadd("ready:rotation:browser", {task.domain: 500})
+    await redis.zadd("ready:browser:2", {task.domain: 1_000})
 
     activated = await queue.activate_legacy(task, legacy_config=_legacy_config(task))
 
     assert activated.accepted and activated.reason == "activated"
     assert await redis.zscore(f"scrapes_browser:{task.domain}", remaining_id) == 50
+    assert await redis.zscore("ready:rotation:browser", task.domain) == 500
     assert await redis.zscore("ready:browser:2", task.domain) == 500
 
 
@@ -460,7 +462,8 @@ async def test_cold_rollback_preserves_legacy_domain_rotation_floor(redis: Any) 
     await queue.initialize(task.route)
     await _seed_legacy_ready(redis, task)
     assert (await queue.activate_legacy(task, legacy_config=_legacy_config(task))).accepted
-    await redis.zadd("ready:browser:2", {task.domain: 5_000})
+    await redis.zadd("ready:rotation:browser", {task.domain: 5_000})
+    await redis.zadd("ready:browser:2", {task.domain: 6_000})
 
     rolled_back = await queue.rollback_legacy(
         task.route,
@@ -469,6 +472,7 @@ async def test_cold_rollback_preserves_legacy_domain_rotation_floor(redis: Any) 
 
     assert rolled_back.accepted and rolled_back.reason == "rolled_back"
     assert await redis.zscore(f"scrapes_browser:{task.domain}", task.task_id) == 999
+    assert await redis.zscore("ready:rotation:browser", task.domain) == 5_000
     assert await redis.zscore("ready:browser:2", task.domain) == 5_000
 
 

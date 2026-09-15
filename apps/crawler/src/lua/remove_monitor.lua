@@ -13,9 +13,17 @@
 local domain = ARGV[1]
 local board_id = ARGV[2]
 
+for _, wtype in ipairs({"simple", "browser"}) do
+    local rotation_type = redis.call("TYPE", "ready:rotation:" .. wtype)["ok"]
+    if rotation_type ~= "none" and rotation_type ~= "zset" then
+        return redis.error_reply("scrape rotation index is corrupt")
+    end
+end
+
 local function refresh_ready(wtype)
-    local scrape_ready_floor = tonumber(
-        redis.call("ZSCORE", "ready:" .. wtype .. ":2", domain) or "0"
+    local scrape_rotation_key = "ready:rotation:" .. wtype
+    local scrape_rotation_floor = tonumber(
+        redis.call("ZSCORE", scrape_rotation_key, domain) or "0"
     )
     for tier = 0, 2 do
         redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
@@ -34,6 +42,9 @@ local function refresh_ready(wtype)
         end
     end
     if ft_score ~= nil then
+        if redis.call("ZCARD", "scrapes_" .. wtype .. ":" .. domain) == 0 then
+            redis.call("ZREM", scrape_rotation_key, domain)
+        end
         redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(floor, ft_score), domain)
         return
     end
@@ -48,9 +59,11 @@ local function refresh_ready(wtype)
         redis.call(
             "ZADD",
             "ready:" .. wtype .. ":2",
-            math.max(floor, scrape_ready_floor, tonumber(scrape_head[2])),
+            math.max(floor, scrape_rotation_floor, tonumber(scrape_head[2])),
             domain
         )
+    else
+        redis.call("ZREM", scrape_rotation_key, domain)
     end
 end
 
