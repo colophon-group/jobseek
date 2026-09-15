@@ -1063,6 +1063,53 @@ async def test_bounded_recurring_fairness_prefers_same_domain_scrape(mock_redis)
     assert await r.get("claim:recurring-monitor-streak:browser") == "0"
 
 
+async def test_bounded_recurring_fairness_cleans_stale_tier_two_before_monitor(
+    mock_redis,
+):
+    """Stale tier-2 markers cannot spend an armed turn on more monitors."""
+    r = mock_redis
+    now = time.time()
+    await r.set("claim:recurring-monitor-streak:browser", "8")
+
+    # More stale markers than one bounded scan can inspect. Each domain has a
+    # real due monitor but no scrape, so claiming from it would be a ninth
+    # consecutive monitor and violate the fairness bound.
+    for index in range(12):
+        domain = f"stale-tier-two-{index:02d}.example.com"
+        await r.zadd(f"monitors_browser:{domain}", {f"monitor-{index}": now - 100})
+        await r.hset(f"board:monitor-{index}", mapping={"monitor": "dom", "domain": domain})
+        await r.zadd("ready:browser:1", {domain: now - 100})
+        await r.zadd("ready:browser:2", {domain: now - 1_000 - index})
+
+    scrape_domain = "real-tier-two.example.com"
+    await rq.enqueue_scrape(
+        scrape_domain,
+        "real-detail",
+        now - 10,
+        {
+            "source_url": f"https://{scrape_domain}/jobs/1",
+            "board_id": "board-1",
+        },
+        browser=True,
+    )
+
+    # The first bounded scan cleans ten stale markers and yields. The next
+    # claim cleans the remaining two, reaches the real scrape, and resets the
+    # streak. No monitor is consumed along the way.
+    assert await rq.claim_work(browser=True) is None
+    work = await rq.claim_work(browser=True)
+    assert work is not None
+    assert work.kind == "scrape"
+    assert work.scrape_work is not None
+    assert work.scrape_work.posting_id == "real-detail"
+    assert await r.get("claim:recurring-monitor-streak:browser") == "0"
+    remaining_monitors = [
+        await r.zcard(f"monitors_browser:stale-tier-two-{index:02d}.example.com")
+        for index in range(12)
+    ]
+    assert sum(remaining_monitors) == 12
+
+
 @pytest.mark.parametrize("corrupt_value", ["nan", "inf", "-inf", "1.5", "-1"])
 async def test_recurring_monitor_streak_rejects_non_integer_before_claim(mock_redis, corrupt_value):
     """A malformed persistent counter fails closed without mutating queues."""
