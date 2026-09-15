@@ -147,7 +147,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `nextdata` | Conditional* | skip/— | Embedded JSON / Next.js data; rich when `fields` is configured |
 | `talemetry` | URL-only | json-ld | Talemetry / Jobvite Career Sites with fail-closed result-range pagination |
 | `talentbrew` | URL-only | json-ld | TalentBrew / Radancy search pages |
-| `njoyn` | URL-only | — | Njoyn XWeb listings with session-bound form pagination |
+| `njoyn` | URL-only | — | Njoyn XWeb session-bound form pagination with bounded two-pass live-inventory reconciliation |
 | `sitemap` | URL-only | — | Site has an XML sitemap with job URLs |
 | `inline` | Rich | skip | Single-page inline job listings |
 | `kipt` | Rich | skip | NSC KIPT active PDF vacancy bulletins |
@@ -161,6 +161,16 @@ manual scraper selection; the scraper is configured automatically. Monitors
 marked "—" require manual scraper selection. Conditional monitors return rich
 data only under the condition named in the table; otherwise they need a scraper
 or runtime coverage check.
+
+Njoyn validates the hidden page index, visible `Page N of M` state, advertised
+total, and expected row count on every page in each of two complete passes.
+Because newest-first listings can change while a large inventory is being
+walked, the passes may differ by at most 0.5% (hard-capped at 25 jobs). The
+monitor returns their conservative union; larger count or fingerprint drift
+fails closed. Njoyn boards pin `delist_threshold: 4`, so a boundary row omitted
+by live pagination must be absent from four independently reconciled cycles
+before it can be deactivated. The generic count-drop and blast-radius guards
+remain the final mass-delisting defenses.
 
 `headhunter`, `jobstreet`, `linkedin`, and `paylocity` are partial-rich exceptions: their
 listing responses provide clean summary fields while their auto-configured

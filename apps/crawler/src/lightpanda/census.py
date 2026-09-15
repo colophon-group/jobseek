@@ -263,6 +263,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
     "njoyn": frozenset(
         {
             "channel",
+            "delist_threshold",
             "direct_fallback_on_origin_block",
             "headless",
             "max_pages",

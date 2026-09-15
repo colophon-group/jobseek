@@ -4,14 +4,18 @@ Njoyn's classic ``XWeb.asp`` listings are session-bound POST forms. The
 visible ``NEXT`` control submits the current form and keeps the page URL
 unchanged, so query-parameter pagination and browser-context ``fetch`` calls
 only ever return the first page. This monitor keeps one browser context,
-submits each exact hidden page index under a navigation expectation, and fails
-closed when a stable, complete listing snapshot is not fully collected.
+submits each exact hidden page index under a navigation expectation, and
+reconciles two structurally complete passes within a code-owned live-churn
+budget. Larger drift, missing pages, and inconsistent page metadata fail
+closed.
 """
 
 from __future__ import annotations
 
 import asyncio
 import re
+from dataclasses import dataclass
+from math import ceil
 from urllib.parse import parse_qs, urlsplit
 
 import httpx
@@ -34,8 +38,12 @@ _TRANSPORT_ATTEMPTS = 5
 _TRANSPORT_RETRY_DELAY = 1.0
 _DEFAULT_PAGE_WAIT_MS = 4_000
 _MAX_ORIGIN_BLOCK_RESPONSE_CHARS = 1_024
+_MAX_LIVE_CHURN_JOBS = 25
+_LIVE_CHURN_RATIO = 0.005
+_DEFAULT_DELIST_THRESHOLD = 4
 
 _RESULT_COUNT_RE = re.compile(r"\bSearch\s+Results\s*\(([\d,\s]+)\)", re.IGNORECASE)
+_PAGE_COUNT_RE = re.compile(r"\bPage\s+([\d,\s]+)\s+of\s+([\d,\s]+)\b", re.IGNORECASE)
 _NJOYN_ORIGIN_BLOCK_RE = re.compile(r"\binvalid\s+request\s+xwp[1-9]\d*\b", re.IGNORECASE)
 _PAGE_SNAPSHOT_SCRIPT = """() => {
     const form = Array.from(document.forms).find(candidate => candidate.elements.namedItem('pn'));
@@ -81,6 +89,21 @@ class _ListingSnapshotChanged(RuntimeError):
         self.observed = observed
         self.collected = collected
         super().__init__(reason)
+
+
+@dataclass(frozen=True, slots=True)
+class _PageSnapshot:
+    urls: frozenset[str]
+    result_total: int
+    page_number: int
+    page_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class _ListingPass:
+    urls: frozenset[str]
+    observed_totals: tuple[int, ...]
+    pages_visited: int
 
 
 def _is_njoyn_board(url: str) -> bool:
@@ -155,6 +178,19 @@ def _expected_count(text: str) -> int | None:
     return int(re.sub(r"\D", "", match.group(1)))
 
 
+def _pagination_state(text: str) -> tuple[int, int] | None:
+    match = _PAGE_COUNT_RE.search(text)
+    if not match:
+        return None
+    current, total = (int(re.sub(r"\D", "", value)) for value in match.groups())
+    return current, total
+
+
+def _live_churn_allowance(total: int) -> int:
+    """Bound reconciliation independently of operator-controlled config."""
+    return min(_MAX_LIVE_CHURN_JOBS, max(1, ceil(total * _LIVE_CHURN_RATIO)))
+
+
 def _raise_if_njoyn_challenge(url: str, html: str) -> None:
     """Classify Njoyn's HTTP-200 origin rejection as a proxy failure.
 
@@ -178,16 +214,39 @@ def _raise_if_njoyn_challenge(url: str, html: str) -> None:
         raise BotChallengeError("Njoyn origin rejected the browser session") from None
 
 
-async def _page_snapshot(page, board_url: str) -> tuple[set[str], str, int]:
+async def _page_snapshot(page, board_url: str) -> _PageSnapshot:
     snapshot = await page.evaluate(_PAGE_SNAPSHOT_SCRIPT)
-    links = {url for url in snapshot["links"] if _is_job_detail_url(url, board_url=board_url)}
+    links = frozenset(
+        url for url in snapshot["links"] if _is_job_detail_url(url, board_url=board_url)
+    )
+    text = snapshot.get("text")
+    if not isinstance(text, str):
+        raise RuntimeError("Njoyn listing is missing its text snapshot")
     raw_page_number = snapshot.get("pageNumber")
     if not isinstance(raw_page_number, str) or re.fullmatch(r"[1-9]\d*", raw_page_number) is None:
         raise RuntimeError("Njoyn listing is missing its numeric page state")
-    return links, snapshot["text"], int(raw_page_number)
+    hidden_page = int(raw_page_number)
+    result_total = _expected_count(text)
+    if result_total is None:
+        raise RuntimeError("Njoyn listing is missing its Search Results total")
+    if result_total > MAX_JOBS:
+        raise RuntimeError(f"Njoyn result count {result_total} exceeds cap {MAX_JOBS}")
+    pagination = _pagination_state(text)
+    if pagination is None:
+        raise RuntimeError("Njoyn listing is missing its Page N of M state")
+    text_page, page_count = pagination
+    if text_page != hidden_page or page_count < 1 or hidden_page > page_count:
+        raise _ListingSnapshotChanged(
+            "pagination_state_mismatch",
+            page=hidden_page,
+            expected=page_count,
+            observed=text_page,
+            collected=len(links),
+        )
+    return _PageSnapshot(links, result_total, hidden_page, page_count)
 
 
-async def _load_first_page(page, board_url: str, config: dict) -> tuple[set[str], int]:
+async def _load_first_page(page, board_url: str, config: dict) -> _PageSnapshot:
     """Navigate to and validate a fresh first-page listing snapshot."""
     await navigate(page, board_url, config)
     html = await safe_content(page)
@@ -200,15 +259,10 @@ async def _load_first_page(page, board_url: str, config: dict) -> tuple[set[str]
             target_page=1,
         )
         raise
-    urls, text, observed_page = await _page_snapshot(page, board_url)
-    if observed_page != 1:
-        raise _ListingSnapshotChanged("first_page_state_changed", page=observed_page)
-    expected = _expected_count(text)
-    if expected is None:
-        raise RuntimeError("Njoyn listing is missing its Search Results total")
-    if expected > MAX_JOBS:
-        raise RuntimeError(f"Njoyn result count {expected} exceeds cap {MAX_JOBS}")
-    return urls, expected
+    snapshot = await _page_snapshot(page, board_url)
+    if snapshot.page_number != 1:
+        raise _ListingSnapshotChanged("first_page_state_changed", page=snapshot.page_number)
+    return snapshot
 
 
 async def _submit_exact_page(
@@ -217,21 +271,22 @@ async def _submit_exact_page(
     config: dict,
     *,
     target_page: int,
-    previous_page_urls: set[str],
+    previous_page_urls: frozenset[str],
     discovered_urls: set[str],
-    expected: int,
+    expected_hint: int,
     wait_ms: int,
     navigation_timeout_ms: int,
-) -> set[str]:
+) -> _PageSnapshot:
     """Submit and verify one indexed Njoyn page with bounded retries.
 
     The public ``NEXT`` anchor calls a JavaScript helper that mutates the
     hidden ``pn`` field. Clicking it and then separately waiting for load can
     race the form navigation, leaving the monitor to read an unrelated prior
     page. Submit the exact index under Playwright's navigation expectation,
-    then require the returned hidden page state and result total to match. A
-    non-converging transition signals the caller to discard the entire pass;
-    page-level retries never mix results collected before and after a reset.
+    then require the returned hidden and visible page states to match. The
+    advertised result total may move within the separately bounded two-pass
+    reconciliation; page-level retries still never mix a repeated or
+    unrelated page into one pass.
     """
     last_observed_page: int | None = None
     last_new_urls = 0
@@ -261,37 +316,32 @@ async def _submit_exact_page(
                 phase="pagination",
                 target_page=target_page,
                 collected=len(discovered_urls),
-                expected=expected,
+                expected=expected_hint,
             )
             raise
-        candidate_urls, text, observed_page = await _page_snapshot(page, board_url)
-        observed_total = _expected_count(text)
-        new_urls = candidate_urls - discovered_urls
-        last_observed_page = observed_page
+        candidate = await _page_snapshot(page, board_url)
+        new_urls = candidate.urls - discovered_urls
+        last_observed_page = candidate.page_number
         last_new_urls = len(new_urls)
         last_navigation_error = type(navigation_error).__name__ if navigation_error else None
 
-        if observed_total != expected:
-            raise _ListingSnapshotChanged(
-                "result_total_changed",
-                page=observed_page,
-                expected=expected,
-                observed=observed_total,
-                collected=len(discovered_urls),
-            )
-        if observed_page == target_page and candidate_urls != previous_page_urls and new_urls:
-            return candidate_urls
+        if (
+            candidate.page_number == target_page
+            and candidate.urls != previous_page_urls
+            and new_urls
+        ):
+            return candidate
 
         log.warning(
             "njoyn.pagination.transition_retry",
             attempt=attempt,
             attempts=_PAGE_TRANSITION_ATTEMPTS,
             target_page=target_page,
-            observed_page=observed_page,
-            page_urls=len(candidate_urls),
+            observed_page=candidate.page_number,
+            page_urls=len(candidate.urls),
             new_urls=len(new_urls),
             collected=len(discovered_urls),
-            expected=expected,
+            expected=expected_hint,
             submitted=submitted,
             navigation_error=last_navigation_error,
         )
@@ -301,122 +351,177 @@ async def _submit_exact_page(
     raise _ListingSnapshotChanged(
         "page_transition_did_not_converge",
         page=last_observed_page or target_page,
-        expected=expected,
+        expected=expected_hint,
         observed=last_new_urls,
         collected=len(discovered_urls),
     )
 
 
-async def _collect_listing_snapshot(page, board_url: str, config: dict) -> set[str]:
-    """Collect and verify one internally consistent complete listing pass."""
-    current_page_urls, expected = await _load_first_page(page, board_url, config)
-    first_page_urls = set(current_page_urls)
-    page_urls_by_number = {1: first_page_urls}
-    urls = set(current_page_urls)
+def _validate_page_shape(
+    snapshot: _PageSnapshot,
+    *,
+    page_size: int,
+    max_pages: int,
+) -> None:
+    """Prove that the visible page metadata and row count agree."""
+    if snapshot.page_count > max_pages:
+        raise RuntimeError(f"Njoyn pagination hit max_pages={max_pages}")
+    if snapshot.result_total == 0:
+        if snapshot.page_count != 1 or snapshot.urls:
+            raise _ListingSnapshotChanged(
+                "empty_page_shape_mismatch",
+                page=snapshot.page_number,
+                expected=0,
+                observed=len(snapshot.urls),
+                collected=len(snapshot.urls),
+            )
+        return
+    if page_size < 1:
+        raise RuntimeError("Njoyn listing returned no job-detail URLs")
 
+    expected_page_count = ceil(snapshot.result_total / page_size)
+    if snapshot.page_count != expected_page_count:
+        raise _ListingSnapshotChanged(
+            "page_count_mismatch",
+            page=snapshot.page_number,
+            expected=expected_page_count,
+            observed=snapshot.page_count,
+            collected=len(snapshot.urls),
+        )
+    expected_rows = (
+        page_size
+        if snapshot.page_number < snapshot.page_count
+        else snapshot.result_total - page_size * (snapshot.page_count - 1)
+    )
+    if len(snapshot.urls) != expected_rows:
+        raise _ListingSnapshotChanged(
+            "page_row_count_mismatch",
+            page=snapshot.page_number,
+            expected=expected_rows,
+            observed=len(snapshot.urls),
+            collected=len(snapshot.urls),
+        )
+
+
+async def _collect_listing_pass(page, board_url: str, config: dict) -> _ListingPass:
+    """Visit every sequential page in one structurally complete pass."""
     max_pages = min(int(config.get("max_pages", MAX_PAGES)), MAX_PAGES)
     if max_pages < 1:
         raise ValueError("Njoyn max_pages must be at least 1")
-    wait_ms = min(
-        60_000,
-        max(0, int(config.get("page_wait_ms", _DEFAULT_PAGE_WAIT_MS))),
-    )
+    wait_ms = min(60_000, max(0, int(config.get("page_wait_ms", _DEFAULT_PAGE_WAIT_MS))))
     navigation_timeout_ms = min(
         60_000,
         max(1_000, int(config.get("page_change_timeout_ms", 15_000))),
     )
-    final_page = 1
 
-    for page_number in range(2, max_pages + 1):
-        if len(urls) >= expected:
-            break
+    first = await _load_first_page(page, board_url, config)
+    page_size = len(first.urls)
+    _validate_page_shape(first, page_size=page_size, max_pages=max_pages)
+    urls = set(first.urls)
+    totals = [first.result_total]
+    current = first
+    target_page = 2
 
-        page_urls = await _submit_exact_page(
+    while target_page <= current.page_count:
+        candidate = await _submit_exact_page(
             page,
             board_url,
             config,
-            target_page=page_number,
-            previous_page_urls=current_page_urls,
+            target_page=target_page,
+            previous_page_urls=current.urls,
             discovered_urls=urls,
-            expected=expected,
+            expected_hint=current.result_total,
             wait_ms=wait_ms,
             navigation_timeout_ms=navigation_timeout_ms,
         )
-        current_page_urls = page_urls
-        page_urls_by_number[page_number] = set(page_urls)
-        urls.update(page_urls)
-        final_page = page_number
-    else:
-        if len(urls) < expected:
-            raise RuntimeError(f"Njoyn pagination hit max_pages={max_pages}")
+        _validate_page_shape(candidate, page_size=page_size, max_pages=max_pages)
+        urls.update(candidate.urls)
+        totals.append(candidate.result_total)
+        current = candidate
+        target_page += 1
 
-    if len(urls) != expected:
+    max_total = max(totals)
+    allowance = _live_churn_allowance(max_total)
+    if max_total - min(totals) > allowance:
         raise _ListingSnapshotChanged(
-            "result_count_mismatch",
-            page=final_page,
-            expected=expected,
+            "pass_total_drift_exceeded",
+            page=current.page_number,
+            expected=max_total,
+            observed=min(totals),
+            collected=len(urls),
+        )
+    if abs(len(urls) - max_total) > allowance:
+        raise _ListingSnapshotChanged(
+            "pass_inventory_gap_exceeded",
+            page=current.page_number,
+            expected=max_total,
             observed=len(urls),
             collected=len(urls),
         )
-    if not urls and expected:
-        raise RuntimeError("Njoyn listing returned no job-detail URLs")
+    return _ListingPass(frozenset(urls), tuple(totals), current.page_number)
 
-    # Replay every page after the complete pass. Live additions and removals
-    # can replace a middle-page URL while leaving both the visible total and
-    # boundary pages unchanged. Exact per-page equality makes success evidence
-    # of two matching complete inventories, not merely an exact count.
-    verified_first_urls, verified_total = await _load_first_page(page, board_url, config)
-    if verified_total != expected or verified_first_urls != first_page_urls:
+
+def _reconcile_listing_passes(first: _ListingPass, second: _ListingPass) -> set[str]:
+    """Accept only a small bounded difference and retain the conservative union."""
+    totals = first.observed_totals + second.observed_totals
+    max_total = max(totals)
+    min_total = min(totals)
+    allowance = _live_churn_allowance(max_total)
+    if max_total - min_total > allowance:
         raise _ListingSnapshotChanged(
-            "first_page_fingerprint_changed",
-            page=1,
-            expected=expected,
-            observed=verified_total,
+            "reconciliation_total_drift_exceeded",
+            expected=max_total,
+            observed=min_total,
+            collected=len(first.urls | second.urls),
+        )
+
+    symmetric_difference = first.urls ^ second.urls
+    if len(symmetric_difference) > allowance * 2:
+        raise _ListingSnapshotChanged(
+            "reconciliation_fingerprint_drift_exceeded",
+            expected=allowance * 2,
+            observed=len(symmetric_difference),
+            collected=len(first.urls | second.urls),
+        )
+
+    urls = set(first.urls | second.urls)
+    if abs(len(urls) - max_total) > allowance:
+        raise _ListingSnapshotChanged(
+            "reconciliation_inventory_gap_exceeded",
+            expected=max_total,
+            observed=len(urls),
             collected=len(urls),
         )
 
-    verified_urls = set(verified_first_urls)
-    previous_verified_urls = verified_first_urls
-    for page_number in range(2, final_page + 1):
-        verified_page_urls = await _submit_exact_page(
-            page,
-            board_url,
-            config,
-            target_page=page_number,
-            previous_page_urls=previous_verified_urls,
-            discovered_urls=verified_urls,
-            expected=expected,
-            wait_ms=wait_ms,
-            navigation_timeout_ms=navigation_timeout_ms,
+    consistency = "exact"
+    if first.urls != second.urls or min_total != max_total:
+        consistency = "bounded_churn"
+        log.info(
+            "njoyn.snapshot.reconciled",
+            first_urls=len(first.urls),
+            second_urls=len(second.urls),
+            union_urls=len(urls),
+            overlap_urls=len(first.urls & second.urls),
+            total_min=min_total,
+            total_max=max_total,
+            allowance=allowance,
         )
-        expected_page_urls = page_urls_by_number[page_number]
-        if verified_page_urls != expected_page_urls:
-            raise _ListingSnapshotChanged(
-                "page_fingerprint_changed",
-                page=page_number,
-                expected=expected,
-                observed=len(verified_page_urls),
-                collected=len(urls),
-            )
-        verified_urls.update(verified_page_urls)
-        previous_verified_urls = verified_page_urls
-
-    if verified_urls != urls:
-        raise _ListingSnapshotChanged(
-            "inventory_fingerprint_changed",
-            page=final_page,
-            expected=expected,
-            observed=len(verified_urls),
-            collected=len(urls),
-        )
-
     log.info(
         "njoyn.complete",
-        board_url=board_url,
         urls_found=len(urls),
-        expected=expected,
+        expected=max_total,
+        consistency=consistency,
+        first_pages=first.pages_visited,
+        second_pages=second.pages_visited,
     )
     return urls
+
+
+async def _collect_listing_snapshot(page, board_url: str, config: dict) -> set[str]:
+    """Reconcile two complete passes without requiring a frozen live listing."""
+    first = await _collect_listing_pass(page, board_url, config)
+    second = await _collect_listing_pass(page, board_url, config)
+    return _reconcile_listing_passes(first, second)
 
 
 async def _discover_page(page, board_url: str, config: dict) -> set[str]:
@@ -558,6 +663,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
         "page_wait_ms": _DEFAULT_PAGE_WAIT_MS,
         "transport_attempts": 5,
         "direct_fallback_on_origin_block": True,
+        # Reconciled passes can conservatively miss a boundary row when jobs
+        # are inserted at the head of the newest-first listing. Require four
+        # independently reconciled absences before that row may be delisted.
+        "delist_threshold": _DEFAULT_DELIST_THRESHOLD,
     }
 
 

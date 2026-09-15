@@ -13,7 +13,10 @@ from src.core.monitors.njoyn import (
     _discover_page,
     _expected_count,
     _is_job_detail_url,
+    _ListingPass,
+    _pagination_state,
     _raise_if_njoyn_challenge,
+    _reconcile_listing_passes,
     can_handle,
     discover,
 )
@@ -47,6 +50,8 @@ class _FakePage:
         wrong_pages: dict[int, list[int]] | None = None,
         expected_by_page: dict[int, int] | None = None,
         expected_sequences: dict[int, list[int]] | None = None,
+        page_count_by_page: dict[int, int] | None = None,
+        page_count_sequences: dict[int, list[int]] | None = None,
         link_sequences: dict[int, list[list[str]]] | None = None,
     ):
         self.pages = pages
@@ -57,6 +62,11 @@ class _FakePage:
         self.expected_by_page = expected_by_page or {}
         self.expected_sequences = {
             page_number: list(values) for page_number, values in (expected_sequences or {}).items()
+        }
+        self.page_count_by_page = page_count_by_page or {}
+        self.page_count_sequences = {
+            page_number: list(values)
+            for page_number, values in (page_count_sequences or {}).items()
         }
         self.link_sequences = {
             page_number: [list(urls) for urls in values]
@@ -91,12 +101,18 @@ class _FakePage:
             if expected_sequence
             else self.expected_by_page.get(page_number, self.expected)
         )
+        page_count_sequence = self.page_count_sequences.get(page_number)
+        page_count = (
+            page_count_sequence.pop(0)
+            if page_count_sequence
+            else self.page_count_by_page.get(page_number, len(self.pages))
+        )
         link_sequence = self.link_sequences.get(page_number)
         links = link_sequence.pop(0) if link_sequence else self.pages[self.index]
         result_text = "" if expected is None else f"Search Results ({expected})"
         return {
             "links": links,
-            "text": f"Current opportunities\n{result_text}",
+            "text": (f"Current opportunities\n{result_text}\nPage {page_number} of {page_count}"),
             "pageNumber": str(self.index + 1),
         }
 
@@ -149,6 +165,11 @@ def test_parses_advertised_result_count() -> None:
     assert _expected_count("Current opportunities") is None
 
 
+def test_parses_visible_pagination_state() -> None:
+    assert _pagination_state("Page 1 of 62  NEXT") == (1, 62)
+    assert _pagination_state("Current opportunities") is None
+
+
 async def test_can_handle_returns_hardened_browser_defaults() -> None:
     async with httpx.AsyncClient() as client:
         config = await can_handle(
@@ -167,6 +188,7 @@ async def test_can_handle_returns_hardened_browser_defaults() -> None:
         "page_wait_ms": 4_000,
         "transport_attempts": 5,
         "direct_fallback_on_origin_block": True,
+        "delist_threshold": 4,
     }
     assert monitor_needs_browser("njoyn", config)
 
@@ -184,6 +206,7 @@ def test_cgi_configs_pin_installed_chrome_channel() -> None:
     assert monitor_config["page_wait_ms"] == 4_000
     assert monitor_config["transport_attempts"] == 5
     assert monitor_config["direct_fallback_on_origin_block"] is True
+    assert monitor_config["delist_threshold"] == 4
 
 
 async def test_can_handle_rejects_job_detail_url() -> None:
@@ -215,6 +238,60 @@ async def test_collects_form_paginated_listing_and_checks_total() -> None:
     assert page.index == 2
     assert page.submissions == [2, 3, 2, 3]
     assert navigate.await_count == 2
+
+
+async def test_validates_full_pages_and_partial_final_page() -> None:
+    expected = {_job(f"J{index}", index) for index in range(1, 6)}
+    page = _FakePage(
+        [
+            [_job("J1", 1), _job("J2", 2)],
+            [_job("J3", 3), _job("J4", 4)],
+            [_job("J5", 5)],
+        ],
+        expected=5,
+    )
+    with (
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
+    ):
+        urls = await _discover_page(page, page.url, {})
+
+    assert urls == expected
+
+
+async def test_fails_closed_when_final_page_row_count_disagrees_with_total() -> None:
+    page = _FakePage(
+        [
+            [_job("J1", 1), _job("J2", 2)],
+            [_job("J3", 3), _job("J4", 4)],
+            [_job("J5", 5), _job("J6", 6)],
+        ],
+        expected=5,
+    )
+    with (
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
+        pytest.raises(RuntimeError, match="last_reason=page_row_count_mismatch"),
+    ):
+        await _discover_page(page, page.url, {})
 
 
 async def test_retries_exact_page_without_mixing_partial_snapshots() -> None:
@@ -269,7 +346,11 @@ async def test_accepts_verified_page_when_evaluate_is_interrupted_by_navigation(
 
 
 async def test_fails_closed_when_max_pages_cannot_reach_total() -> None:
-    page = _FakePage([[_job("J1", 1)]], expected=2)
+    page = _FakePage(
+        [[_job("J1", 1)]],
+        expected=2,
+        page_count_by_page={1: 2},
+    )
     with (
         patch(
             "src.core.monitors.njoyn.navigate",
@@ -327,11 +408,12 @@ async def test_fails_closed_when_next_repeats_same_page() -> None:
         )
 
 
-async def test_fails_closed_when_result_total_changes_between_pages() -> None:
+async def test_reconciles_small_result_total_change_between_pages() -> None:
     page = _FakePage(
-        [[_job("J1", 1)], [_job("J2", 2)]],
-        expected=2,
-        expected_by_page={2: 3},
+        [[_job("J1", 1)], [_job("J2", 2)], [_job("J3", 3)]],
+        expected=3,
+        expected_sequences={1: [2]},
+        page_count_sequences={1: [2]},
     )
     with (
         patch(
@@ -345,12 +427,14 @@ async def test_fails_closed_when_result_total_changes_between_pages() -> None:
             return_value="<html>jobs</html>",
         ),
         patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
-        pytest.raises(RuntimeError, match="last_reason=result_total_changed"),
     ):
-        await _discover_page(page, page.url, {})
+        urls = await _discover_page(page, page.url, {})
+
+    assert urls == {_job("J1", 1), _job("J2", 2), _job("J3", 3)}
+    assert page.submissions == [2, 3, 2, 3]
 
 
-async def test_restarts_complete_snapshot_when_result_total_changes_once() -> None:
+async def test_retries_complete_pair_when_page_shape_changes_once() -> None:
     discarded = [_job("J-old", 1)]
     stable_first = [_job("J1", 1)]
     page = _FakePage(
@@ -381,7 +465,7 @@ async def test_restarts_complete_snapshot_when_result_total_changes_once() -> No
     sleep.assert_any_await(2.0)
 
 
-async def test_restarts_snapshot_when_first_page_fingerprint_changes() -> None:
+async def test_reconciles_first_page_change_with_conservative_union() -> None:
     first = [_job("J1", 1)]
     changed = [_job("J3", 3)]
     page = _FakePage(
@@ -404,16 +488,22 @@ async def test_restarts_snapshot_when_first_page_fingerprint_changes() -> None:
     ):
         urls = await _discover_page(page, page.url, {})
 
-    assert urls == {_job("J1", 1), _job("J2", 2)}
+    assert urls == {_job("J1", 1), _job("J2", 2), _job("J3", 3)}
 
 
-async def test_fails_closed_when_boundary_fingerprint_never_stabilizes() -> None:
-    first = [_job("J1", 1)]
-    changed = [_job("J3", 3)]
+async def test_fails_closed_when_inventory_fingerprint_drift_exceeds_bound() -> None:
+    first = [[_job(f"J-old-{page_number}", page_number)] for page_number in range(1, 6)]
+    changed = [[_job(f"J-new-{page_number}", page_number)] for page_number in range(1, 6)]
     page = _FakePage(
-        [first, [_job("J2", 2)]],
-        expected=2,
-        link_sequences={1: [first, changed, first, changed]},
+        first,
+        expected=5,
+        link_sequences={
+            page_number: [first_urls, changed_urls, first_urls, changed_urls]
+            for page_number, (first_urls, changed_urls) in enumerate(
+                zip(first, changed, strict=True),
+                start=1,
+            )
+        },
     )
     with (
         patch(
@@ -427,12 +517,15 @@ async def test_fails_closed_when_boundary_fingerprint_never_stabilizes() -> None
             return_value="<html>jobs</html>",
         ),
         patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
-        pytest.raises(RuntimeError, match="last_reason=first_page_fingerprint_changed"),
+        pytest.raises(
+            RuntimeError,
+            match="last_reason=reconciliation_fingerprint_drift_exceeded",
+        ),
     ):
         await _discover_page(page, page.url, {})
 
 
-async def test_restarts_snapshot_when_last_page_fingerprint_changes() -> None:
+async def test_reconciles_last_page_change_with_conservative_union() -> None:
     original_last = [_job("J2", 2)]
     changed_last = [_job("J3", 3)]
     page = _FakePage(
@@ -455,10 +548,10 @@ async def test_restarts_snapshot_when_last_page_fingerprint_changes() -> None:
     ):
         urls = await _discover_page(page, page.url, {})
 
-    assert urls == {_job("J1", 1), _job("J2", 2)}
+    assert urls == {_job("J1", 1), _job("J2", 2), _job("J3", 3)}
 
 
-async def test_restarts_snapshot_when_middle_page_changes_with_same_total() -> None:
+async def test_reconciles_middle_page_change_with_conservative_union() -> None:
     old_middle = [_job("J-old-middle", 2)]
     new_middle = [_job("J-new-middle", 2)]
     page = _FakePage(
@@ -481,8 +574,21 @@ async def test_restarts_snapshot_when_middle_page_changes_with_same_total() -> N
     ):
         urls = await _discover_page(page, page.url, {})
 
-    assert urls == {_job("J1", 1), _job("J-new-middle", 2), _job("J3", 3)}
-    assert _job("J-old-middle", 2) not in urls
+    assert urls == {
+        _job("J1", 1),
+        _job("J-old-middle", 2),
+        _job("J-new-middle", 2),
+        _job("J3", 3),
+    }
+
+
+def test_fails_closed_when_reconciled_total_drift_exceeds_bound() -> None:
+    urls = frozenset({_job(f"J{index}", index) for index in range(100)})
+    first = _ListingPass(urls, (100,), 2)
+    second = _ListingPass(urls, (103,), 3)
+
+    with pytest.raises(RuntimeError, match="reconciliation_total_drift_exceeded"):
+        _reconcile_listing_passes(first, second)
 
 
 async def test_fails_closed_on_radware_challenge_without_logging_its_url() -> None:
