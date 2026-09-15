@@ -25,18 +25,12 @@ def _job(job_id: str, brid: int) -> str:
     )
 
 
-class _FakeLocator:
-    def __init__(self, page, selector: str):
-        self.page = page
-        self.selector = selector
-        self.first = self
+class _FakeNavigation:
+    async def __aenter__(self):
+        return self
 
-    async def count(self) -> int:
-        is_njoyn_next = self.selector.startswith('input[type="submit"]')
-        return int(is_njoyn_next and self.page.has_next)
-
-    async def click(self) -> None:
-        self.page.click_next()
+    async def __aexit__(self, *_args):
+        return False
 
 
 class _FakePage:
@@ -46,46 +40,42 @@ class _FakePage:
         expected: int | None,
         *,
         repeat: bool = False,
-        change_after_polls: int = 0,
+        raise_after_submit: bool = False,
+        wrong_pages: dict[int, list[int]] | None = None,
+        expected_by_page: dict[int, int] | None = None,
     ):
         self.pages = pages
         self.expected = expected
         self.repeat = repeat
-        self.change_after_polls = change_after_polls
-        self.pending_polls: int | None = None
+        self.raise_after_submit = raise_after_submit
+        self.wrong_pages = {target: list(values) for target, values in (wrong_pages or {}).items()}
+        self.expected_by_page = expected_by_page or {}
+        self.submissions: list[int] = []
         self.index = 0
         self.url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&page=joblisting"
 
-    @property
-    def has_next(self) -> bool:
-        return self.repeat or self.index < len(self.pages) - 1
+    def expect_navigation(self, **_kwargs) -> _FakeNavigation:
+        return _FakeNavigation()
 
-    def locator(self, selector: str) -> _FakeLocator:
-        return _FakeLocator(self, selector)
+    async def evaluate(self, _script: str, target_page: int | None = None):
+        if target_page is not None:
+            self.submissions.append(target_page)
+            if self.repeat:
+                return True
+            alternatives = self.wrong_pages.get(target_page)
+            actual_page = alternatives.pop(0) if alternatives else target_page
+            self.index = actual_page - 1
+            if self.raise_after_submit:
+                raise RuntimeError("execution context destroyed by navigation")
+            return True
 
-    def click_next(self) -> None:
-        if self.repeat:
-            return
-        if self.change_after_polls:
-            self.pending_polls = self.change_after_polls
-        else:
-            self.index += 1
-
-    async def evaluate(self, _script: str):
-        if self.pending_polls is not None:
-            if self.pending_polls == 0:
-                self.index += 1
-                self.pending_polls = None
-            else:
-                self.pending_polls -= 1
-        result_text = "" if self.expected is None else f"Search Results ({self.expected})"
+        expected = self.expected_by_page.get(self.index + 1, self.expected)
+        result_text = "" if expected is None else f"Search Results ({expected})"
         return {
             "links": self.pages[self.index],
             "text": f"Current opportunities\n{result_text}",
+            "pageNumber": str(self.index + 1),
         }
-
-    async def wait_for_load_state(self, *_args, **_kwargs) -> None:
-        return None
 
 
 def test_recognizes_njoyn_detail_urls_case_insensitively() -> None:
@@ -152,6 +142,7 @@ def test_cgi_configs_pin_installed_chrome_channel() -> None:
     assert scraper_config["persistent_context"] is True
     assert monitor_config["channel"] == "chrome"
     assert scraper_config["channel"] == "chrome"
+    assert monitor_config["page_wait_ms"] == 0
 
 
 async def test_can_handle_rejects_job_detail_url() -> None:
@@ -179,14 +170,14 @@ async def test_collects_form_paginated_listing_and_checks_total() -> None:
     assert page.index == 2
 
 
-async def test_waits_for_slow_form_pagination_to_replace_results() -> None:
+async def test_retries_exact_page_from_reset_listing_after_wrong_page() -> None:
     page = _FakePage(
         [[_job("J1", 1)], [_job("J2", 2)]],
         expected=2,
-        change_after_polls=2,
+        wrong_pages={2: [1, 2]},
     )
     with (
-        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock) as navigate,
         patch(
             "src.core.monitors.njoyn.safe_content",
             new_callable=AsyncMock,
@@ -197,10 +188,32 @@ async def test_waits_for_slow_form_pagination_to_replace_results() -> None:
         urls = await _discover_page(page, page.url, {"page_wait_ms": 1})
 
     assert urls == {_job("J1", 1), _job("J2", 2)}
-    assert sleep.await_count >= 3
+    assert page.submissions == [2, 2]
+    assert navigate.await_count == 2
+    sleep.assert_any_await(1.0)
 
 
-async def test_fails_closed_when_next_control_disappears_before_total() -> None:
+async def test_accepts_verified_page_when_evaluate_is_interrupted_by_navigation() -> None:
+    page = _FakePage(
+        [[_job("J1", 1)], [_job("J2", 2)]],
+        expected=2,
+        raise_after_submit=True,
+    )
+    with (
+        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+    ):
+        urls = await _discover_page(page, page.url, {})
+
+    assert urls == {_job("J1", 1), _job("J2", 2)}
+    assert page.submissions == [2]
+
+
+async def test_fails_closed_when_max_pages_cannot_reach_total() -> None:
     page = _FakePage([[_job("J1", 1)]], expected=2)
     with (
         patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
@@ -209,9 +222,9 @@ async def test_fails_closed_when_next_control_disappears_before_total() -> None:
             new_callable=AsyncMock,
             return_value="<html>jobs</html>",
         ),
-        pytest.raises(RuntimeError, match="collected 1 of 2"),
+        pytest.raises(RuntimeError, match="hit max_pages=1"),
     ):
-        await _discover_page(page, page.url, {})
+        await _discover_page(page, page.url, {"max_pages": 1})
 
 
 async def test_fails_closed_without_advertised_total() -> None:
@@ -238,13 +251,31 @@ async def test_fails_closed_when_next_repeats_same_page() -> None:
             return_value="<html>jobs</html>",
         ),
         patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
-        pytest.raises(RuntimeError, match="repeated page"),
+        pytest.raises(RuntimeError, match="exact page transition did not converge"),
     ):
         await _discover_page(
             page,
             page.url,
             {"page_wait_ms": 1, "page_change_timeout_ms": 500},
         )
+
+
+async def test_fails_closed_when_result_total_changes_between_pages() -> None:
+    page = _FakePage(
+        [[_job("J1", 1)], [_job("J2", 2)]],
+        expected=2,
+        expected_by_page={2: 3},
+    )
+    with (
+        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        pytest.raises(RuntimeError, match="result total changed during pagination"),
+    ):
+        await _discover_page(page, page.url, {})
 
 
 async def test_fails_closed_on_radware_challenge() -> None:
