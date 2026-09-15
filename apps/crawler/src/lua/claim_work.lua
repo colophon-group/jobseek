@@ -175,7 +175,7 @@ for _, tier in ipairs(tier_order) do
             end
 
             -- 4. Recurring scrapes (only if due)
-            if not task_id and tier ~= 0 and not fairness_scrape_first then
+            if not task_id and tier == 2 and not fairness_scrape_first then
                 local items = redis.call("ZRANGEBYSCORE", "scrapes_" .. wtype .. ":" .. domain, "-inf", tostring(now), "LIMIT", 0, 1)
                 if #items > 0 then
                     redis.call("ZREM", "scrapes_" .. wtype .. ":" .. domain, items[1])
@@ -238,15 +238,11 @@ for _, tier in ipairs(tier_order) do
         end
     end
 
-    -- A strict tier-0 scan and an armed tier-2 scan are type-exclusive. If a
-    -- bounded candidate batch contained only stale/rate-limited markers,
-    -- rebuild them and yield instead of falling through to a lower priority
-    -- (or a ninth monitor). The next atomic claim continues cleanup. Once the
-    -- represented tier is genuinely empty, a subsequent claim may advance.
-    if #candidates > 0 and
-        (tier == 0 or
-            (tier == 2 and recurring_monitor_streak >= max_recurring_monitor_streak))
-    then
+    -- If a bounded candidate batch contained only stale/rate-limited markers,
+    -- rebuild them and yield rather than crossing the marker's priority. The
+    -- next atomic claim continues cleanup. Once this tier is genuinely empty,
+    -- a subsequent claim may advance.
+    if #candidates > 0 then
         return nil
     end
 end

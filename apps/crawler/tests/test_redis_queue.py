@@ -1169,6 +1169,49 @@ async def test_strict_tier_zero_cleans_stale_markers_before_recurring_work(
     assert sum(remaining_monitors) == 12
 
 
+async def test_tier_one_cleans_stale_markers_before_recurring_scrapes(mock_redis):
+    """Stale tier-1 markers cannot claim details ahead of a real monitor."""
+    r = mock_redis
+    now = time.time()
+
+    # Put more stale tier-1 markers ahead of the genuine monitor than one
+    # bounded scan can inspect. Each stale domain owns only a due scrape.
+    for index in range(12):
+        domain = f"stale-tier-one-{index:02d}.example.com"
+        posting_id = f"detail-{index}"
+        await r.zadd(f"scrapes_simple:{domain}", {posting_id: now - 100})
+        await r.hset(
+            f"scrape:{posting_id}",
+            mapping={
+                "source_url": f"https://{domain}/jobs/1",
+                "board_id": "board-1",
+            },
+        )
+        await r.zadd("ready:simple:1", {domain: now - 1_000 - index})
+        await r.zadd("ready:simple:2", {domain: now - 100})
+
+    await rq.enqueue_monitor(
+        "real-tier-one.example.com",
+        "real-monitor",
+        now - 10,
+        {"monitor": "greenhouse"},
+    )
+
+    assert await rq.claim_work(browser=False) is None
+
+    work = await rq.claim_work(browser=False)
+    assert work is not None
+    assert work.kind == "monitor"
+    assert work.board_work is not None
+    assert work.board_work.board_id == "real-monitor"
+
+    remaining_scrapes = [
+        await r.zcard(f"scrapes_simple:stale-tier-one-{index:02d}.example.com")
+        for index in range(12)
+    ]
+    assert sum(remaining_scrapes) == 12
+
+
 @pytest.mark.parametrize("corrupt_value", ["nan", "inf", "-inf", "1.5", "-1"])
 async def test_recurring_monitor_streak_rejects_non_integer_before_claim(mock_redis, corrupt_value):
     """A malformed persistent counter fails closed without mutating queues."""
