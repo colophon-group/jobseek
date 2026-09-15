@@ -187,6 +187,10 @@ _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
 
 
+def _partition_sha256(partition_url: str) -> str:
+    return hashlib.sha256(partition_url.encode("utf-8")).hexdigest()
+
+
 class _PartitionSnapshotChanged(ValueError):
     """A counted facet changed while its paginated URLs were collected."""
 
@@ -200,11 +204,7 @@ class _PartitionSnapshotChanged(ValueError):
         partition_url: str | None = None,
         pagination: _PaginationDiagnostics | None = None,
     ) -> None:
-        partition_sha256 = (
-            hashlib.sha256(partition_url.encode("utf-8")).hexdigest()
-            if partition_url is not None
-            else None
-        )
+        partition_sha256 = _partition_sha256(partition_url) if partition_url is not None else None
         suffix = f"; partition_sha256={partition_sha256}" if partition_sha256 else ""
         super().__init__(f"{message} ({observed} != {advertised}){suffix}")
         self.reason = reason
@@ -219,7 +219,13 @@ class _PartitionSnapshotChanged(ValueError):
             "observed": self.observed,
             "advertised": self.advertised,
             "gap": abs(self.observed - self.advertised),
-            "direction": "over" if self.observed > self.advertised else "under",
+            "direction": (
+                "over"
+                if self.observed > self.advertised
+                else "under"
+                if self.observed < self.advertised
+                else "equal"
+            ),
             "partition_sha256": self.partition_sha256,
         }
         if self.pagination is not None:
@@ -4485,9 +4491,21 @@ async def _paginate_partitioned_urls_once(
             url_matcher,
             link_selector,
         )
-        if not initial_urls:
-            raise ValueError(f"DOM partition contains no job links: {partition_url}")
         count = extract_count(html, partition_url) if count_regex is not None else None
+        if not initial_urls:
+            if count is not None:
+                raise _PartitionSnapshotChanged(
+                    "DOM counted partition contains no job links",
+                    reason="partition_empty",
+                    observed=0,
+                    advertised=count,
+                    partition_url=partition_url,
+                    pagination=_PaginationDiagnostics(pages=1, matching_links=matching_links),
+                )
+            raise ValueError(
+                "DOM partition contains no job links; "
+                f"partition_sha256={_partition_sha256(partition_url)}"
+            )
         return html, initial_urls, count, matching_links
 
     async def gather_cancel_on_error(tasks):

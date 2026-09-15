@@ -4706,6 +4706,122 @@ class TestDomDiscoverInitialFetch:
         assert board_calls == 5
         assert [awaited.args[0] for awaited in sleep.await_args_list] == [1.0, 2.0, 4.0]
 
+    async def test_partitioned_pagination_retries_a_counted_empty_facet(self):
+        board_url = "https://jobs.example.com/job/list.aspx"
+        partition = f"{board_url}?facet_Contract=secret-value"
+        job = "https://jobs.example.com/job/job-role_1.aspx"
+        facets = f"<ul class='facette-titre-niv1'><li><a href='{partition}'>Permanent</a></li></ul>"
+        board_calls = 0
+        partition_calls = 0
+
+        def counted_page(count, *links, facets=""):
+            return (
+                f"<html><head><title>Search results({count} vacancies/1)</title></head>"
+                f"<body>{facets}"
+                + "".join(f"<a href='{url}'>job</a>" for url in links)
+                + "</body></html>"
+            )
+
+        async def fetch(_client, url, **_kwargs):
+            nonlocal board_calls, partition_calls
+            if url == board_url:
+                board_calls += 1
+                return counted_page(1, job, facets=facets)
+            if url == partition:
+                partition_calls += 1
+                if partition_calls == 1:
+                    return counted_page(0)
+                return counted_page(1, job)
+            return None
+
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx$",
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 1,
+                "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                "partition_count_regex": r"\((\d+)\s+vacancies",
+                "partition_validate_total": True,
+            },
+        }
+        warning = MagicMock()
+        sleep = AsyncMock()
+
+        with (
+            patch(_FETCH_PATCH, new=fetch),
+            patch("src.core.monitors.dom.asyncio.sleep", new=sleep),
+            patch("src.core.monitors.dom.log.warning", new=warning),
+        ):
+            result = await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert result == {job}
+        assert board_calls == 3
+        assert partition_calls == 2
+        sleep.assert_awaited_once_with(1.0)
+        fields = warning.call_args.kwargs
+        assert fields["reason"] == "partition_empty"
+        assert fields["observed"] == fields["advertised"] == 0
+        assert fields["direction"] == "equal"
+        assert fields["retrying"] is True
+        assert partition not in fields["error"]
+        assert "secret-value" not in fields["error"]
+
+    async def test_partitioned_pagination_fails_closed_after_repeated_counted_empty_facet(self):
+        board_url = "https://jobs.example.com/job/list.aspx"
+        partition = f"{board_url}?facet_Contract=secret-value"
+        job = "https://jobs.example.com/job/job-role_1.aspx"
+        facets = f"<ul class='facette-titre-niv1'><li><a href='{partition}'>Permanent</a></li></ul>"
+        partition_calls = 0
+
+        def counted_page(count, *links, facets=""):
+            return (
+                f"<html><head><title>Search results({count} vacancies/1)</title></head>"
+                f"<body>{facets}"
+                + "".join(f"<a href='{url}'>job</a>" for url in links)
+                + "</body></html>"
+            )
+
+        async def fetch(_client, url, **_kwargs):
+            nonlocal partition_calls
+            if url == board_url:
+                return counted_page(1, job, facets=facets)
+            if url == partition:
+                partition_calls += 1
+                return counted_page(0)
+            return None
+
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx$",
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 1,
+                "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                "partition_count_regex": r"\((\d+)\s+vacancies",
+                "partition_validate_total": True,
+            },
+        }
+        warning = MagicMock()
+
+        with (
+            patch(_FETCH_PATCH, new=fetch),
+            patch("src.core.monitors.dom.asyncio.sleep", new=AsyncMock()),
+            patch("src.core.monitors.dom.log.warning", new=warning),
+            pytest.raises(ValueError, match="counted partition contains no job links") as raised,
+        ):
+            await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert partition_calls == 4
+        assert warning.call_count == 4
+        assert warning.call_args.kwargs["retrying"] is False
+        assert partition not in str(raised.value)
+        assert "secret-value" not in str(raised.value)
+
     @pytest.mark.parametrize(
         ("partition_links", "url_transform", "repeated_raw_links", "identity_collisions"),
         [
