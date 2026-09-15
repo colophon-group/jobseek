@@ -28,7 +28,7 @@ import httpx
 
 from src.probe_boards import PROBES, probe_row
 from src.processing.gone_policy import GONE_CONFIRMATION_SPACING
-from src.shared.constants import DATA_DIR
+from src.shared.constants import get_data_dir
 
 _QUERY = """
 WITH board_stats AS (
@@ -343,7 +343,7 @@ def load_registry(
 ) -> tuple[dict[str, dict[str, str]], list[ZeroBoardRegistryOrphan]]:
     """Load exact deployed probe rows and detect companies with zero boards."""
 
-    root = data_dir or DATA_DIR
+    root = data_dir or get_data_dir()
     boards = _read_csv(root / "boards.csv")
     companies = _read_csv(root / "companies.csv")
     board_fields = {"company_slug", "board_slug", "board_url", "monitor_type", "monitor_config"}
