@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import re
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -4585,18 +4586,20 @@ class TestDomDiscoverInitialFetch:
         assert result == set(jobs)
 
     @pytest.mark.parametrize(
-        ("listing_totals", "partition_totals", "expected_job_count"),
+        ("listing_totals", "partition_totals", "expected_job_count", "expected_board_calls"),
         [
-            ([2, 2, 1], [1, 1], 1),
-            ([1, 1, 2], [2, 2], 2),
+            ([2, 2, 1], [1, 1], 1, 3),
+            ([1, 1, 2], [2, 2], 2, 3),
+            ([2, 2, 2, 2, 1], [1, 1, 1, 1], 1, 5),
         ],
-        ids=["count-decreases", "count-increases"],
+        ids=["count-decreases", "count-increases", "fourth-attempt-converges"],
     )
     async def test_partitioned_pagination_refetches_whole_snapshot_until_converged(
         self,
         listing_totals,
         partition_totals,
         expected_job_count,
+        expected_board_calls,
     ):
         board_url = "https://jobs.example.com/job/list.aspx"
         partition = f"{board_url}?facet_Contract=10"
@@ -4652,8 +4655,8 @@ class TestDomDiscoverInitialFetch:
                 MagicMock(),
             )
 
-        assert board_calls == 3
-        assert partition_calls == 2
+        assert board_calls == expected_board_calls
+        assert partition_calls == expected_board_calls - 1
         assert result == set(jobs[:expected_job_count])
 
     async def test_partitioned_pagination_fails_closed_after_repeated_whole_snapshot_churn(self):
@@ -4689,9 +4692,10 @@ class TestDomDiscoverInitialFetch:
             },
         }
 
+        sleep = AsyncMock()
         with (
             patch(_FETCH_PATCH, new=fetch),
-            patch("src.core.monitors.dom.asyncio.sleep", new=AsyncMock()),
+            patch("src.core.monitors.dom.asyncio.sleep", new=sleep),
             pytest.raises(ValueError, match="primary partition counts do not match"),
         ):
             await dom_discover(
@@ -4699,7 +4703,105 @@ class TestDomDiscoverInitialFetch:
                 MagicMock(),
             )
 
-        assert board_calls == 3
+        assert board_calls == 5
+        assert [awaited.args[0] for awaited in sleep.await_args_list] == [1.0, 2.0, 4.0]
+
+    @pytest.mark.parametrize(
+        ("partition_links", "url_transform", "repeated_raw_links", "identity_collisions"),
+        [
+            (
+                [
+                    "https://jobs.example.com/job/job-role_1.aspx",
+                    "https://jobs.example.com/job/job-role_1.aspx",
+                ],
+                None,
+                1,
+                0,
+            ),
+            (
+                [
+                    "https://jobs.example.com/job/job-role_1.aspx?source=one",
+                    "https://jobs.example.com/job/job-role_1.aspx?source=two",
+                ],
+                {"find": r"\?source=.*$", "replace": ""},
+                0,
+                1,
+            ),
+        ],
+        ids=["repeated-link", "identity-transform-collision"],
+    )
+    async def test_partition_mismatch_logs_redacted_deduplication_diagnostics(
+        self,
+        partition_links,
+        url_transform,
+        repeated_raw_links,
+        identity_collisions,
+    ):
+        board_url = "https://jobs.example.com/job/list.aspx"
+        partition = f"{board_url}?facet_Contract=secret-value"
+        facets = f"<ul class='facette-titre-niv1'><li><a href='{partition}'>Permanent</a></li></ul>"
+
+        def counted_page(count, *links, facets=""):
+            return (
+                f"<html><head><title>Search results({count} vacancies/1)</title></head>"
+                f"<body>{facets}"
+                + "".join(f"<a href='{url}'>job</a>" for url in links)
+                + "</body></html>"
+            )
+
+        async def fetch(_client, url, **_kwargs):
+            if url == board_url:
+                return counted_page(2, partition_links[0], facets=facets)
+            if url == partition:
+                return counted_page(2, *partition_links)
+            return None
+
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx",
+            "url_transform": url_transform,
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 1,
+                "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                "partition_count_regex": r"\((\d+)\s+vacancies",
+                "partition_validate_total": True,
+            },
+        }
+        warning = MagicMock()
+
+        with (
+            patch(_FETCH_PATCH, new=fetch),
+            patch("src.core.monitors.dom.asyncio.sleep", new=AsyncMock()),
+            patch("src.core.monitors.dom.log.warning", new=warning),
+            pytest.raises(ValueError) as raised,
+        ):
+            await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert partition not in str(raised.value)
+        assert "secret-value" not in str(raised.value)
+        assert warning.call_count == 4
+        for attempt, logged in enumerate(warning.call_args_list, start=1):
+            fields = logged.kwargs
+            assert fields["reason"] == "partition_url_count"
+            assert fields["observed"] == 1
+            assert fields["advertised"] == 2
+            assert fields["gap"] == 1
+            assert fields["direction"] == "under"
+            assert fields["partition_sha256"] == hashlib.sha256(partition.encode()).hexdigest()
+            assert fields["pages"] == 1
+            assert fields["matching_links"] == 2
+            assert fields["unique_raw_urls"] == 2 - repeated_raw_links
+            assert fields["unique_identities"] == 1
+            assert fields["repeated_raw_links"] == repeated_raw_links
+            assert fields["identity_collisions"] == identity_collisions
+            assert fields["attempt"] == attempt
+            assert fields["max_attempts"] == 4
+            assert fields["retrying"] is (attempt < 4)
+            assert partition not in fields["error"]
+            assert "secret-value" not in fields["error"]
 
     async def test_partitioned_pagination_caps_fallbacks_across_all_parents(self):
         board_url = "https://jobs.example.com/job/list.aspx?LCID=2057"
