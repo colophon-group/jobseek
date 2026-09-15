@@ -50,6 +50,16 @@ avoid unsupported 24-hour claims, but it may still file or update a GitHub
 issue for a concrete, redacted, deduped error class visible in the observed
 window.
 
+An all-pool typed block from one origin has a bounded recovery path. Confirm it
+with the production worker's actual browser entrypoint, allow one full origin
+quarantine cooldown, and confirm it once more; then stop target probes. Never
+solve or bypass the origin CAPTCHA. The operator should inspect the sanitized
+replacement-capacity fields in `crawler proxy-audit` and use the explicit
+dry-run/apply `crawler proxy-replace-webshare-pool` workflow documented in
+`apps/crawler/AGENTS.md`. It fails closed if the dry run is stale, the current
+pool changed, included capacity is insufficient, or runtime backbone
+credentials do not match.
+
 Host-memory classification is container-generation aware. The root collector
 writes `host/docker-cgroup-memory.json` with Docker identity/timestamps and
 cgroup-v2 memory counters. Reviews compare OOM and restart counters only for

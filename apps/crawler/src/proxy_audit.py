@@ -40,6 +40,12 @@ def _parse_datetime(value: object) -> datetime | None:
         return None
 
 
+def _nonnegative_int_or_none(value: object) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    return None
+
+
 def _json_object(response: httpx.Response, operation: str) -> dict[str, Any]:
     if response.status_code >= 400:
         raise ProxyAuditError(f"Webshare {operation} returned HTTP {response.status_code}")
@@ -435,6 +441,24 @@ async def audit_webshare(
             "proxy_type": plan.get("proxy_type"),
             "proxy_subtype": plan.get("proxy_subtype"),
             "proxy_count": plan.get("proxy_count"),
+            "proxy_replacements_total": _nonnegative_int_or_none(
+                plan.get("proxy_replacements_total")
+            ),
+            "proxy_replacements_used": _nonnegative_int_or_none(
+                plan.get("proxy_replacements_used")
+            ),
+            "proxy_replacements_available": _nonnegative_int_or_none(
+                plan.get("proxy_replacements_available")
+            ),
+            "on_demand_refreshes_total": _nonnegative_int_or_none(
+                plan.get("on_demand_refreshes_total")
+            ),
+            "on_demand_refreshes_used": _nonnegative_int_or_none(
+                plan.get("on_demand_refreshes_used")
+            ),
+            "on_demand_refreshes_available": _nonnegative_int_or_none(
+                plan.get("on_demand_refreshes_available")
+            ),
             "bandwidth_limit_gb": bandwidth_limit_gb,
             "automatic_refresh_frequency_seconds": plan.get("automatic_refresh_frequency"),
             "automatic_refresh_last_at": plan.get("automatic_refresh_last_at"),

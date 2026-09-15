@@ -236,6 +236,15 @@ as `refresh-typesense` or `notify-indexnow`.
 
 Group errors by `(service, exception class, stable message stem)`.
 
+For a proxy-enabled board where one origin returns a typed bot/origin block on
+every configured slot, do not repeatedly probe the target and do not attempt
+to solve or bypass a CAPTCHA. Confirm the failure once with the production
+worker's real headful entrypoint, wait for the full origin quarantine cooldown,
+and confirm once more. Then use the sanitized `proxy-audit` capacity fields
+and the guarded `proxy-replace-webshare-pool` dry-run/apply workflow documented
+in `apps/crawler/AGENTS.md`. Replacement is an explicit operator mutation and
+must fit within included plan capacity; it is never automatic.
+
 - `known`: appears in any prior daily report within 14 days. Count it but do
   not file.
 - `novel`: absent from every prior report.

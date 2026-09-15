@@ -153,6 +153,23 @@ def parse_args() -> argparse.Namespace:
         help="Existing local operator env file (default: .env.local)",
     )
 
+    proxy_replace_p = sub.add_parser(
+        "proxy-replace-webshare-pool",
+        help="Validate or explicitly apply a guarded whole-pool Webshare replacement",
+    )
+    proxy_replace_p.add_argument(
+        "--env-file",
+        type=Path,
+        default=Path(".env.local"),
+        help="Existing local operator env file (default: .env.local)",
+    )
+    proxy_replace_p.add_argument(
+        "--apply-validation-id",
+        type=int,
+        default=None,
+        help="Apply only this completed dry-run validation (default: create dry run)",
+    )
+
     sub.add_parser(
         "repair-nw-provider-cutover",
         help="Reapply the bounded NW Teamtailor-to-WTTJ identity repair",
@@ -833,6 +850,28 @@ async def run() -> None:
                 sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
                 raise SystemExit(2) from exc
             sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
+
+        elif args.command == "proxy-replace-webshare-pool":
+            from src.proxy_audit import ProxyAuditError
+            from src.proxy_replacement import (
+                load_operator_proxy_inputs,
+                replace_webshare_pool,
+            )
+
+            try:
+                api_key, configured_pool_urls = load_operator_proxy_inputs(args.env_file)
+                report = await replace_webshare_pool(
+                    api_key=api_key,
+                    configured_pool_urls=configured_pool_urls,
+                    apply_validation_id=args.apply_validation_id,
+                )
+            except (OSError, ProxyAuditError) as exc:
+                report = {"status": "error", "error": str(exc)}
+                sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
+                raise SystemExit(2) from exc
+            sys.stdout.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
+            if report["status"] == "attention":
+                raise SystemExit(3)
 
         elif args.command == "repair-nw-provider-cutover":
             local_pool = await create_local_pool()
