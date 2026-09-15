@@ -263,13 +263,16 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
     "njoyn": frozenset(
         {
             "channel",
+            "direct_fallback_on_origin_block",
             "headless",
             "max_pages",
             "page_wait_ms",
             "persistent_context",
             "proxy",
+            "snapshot_attempts",
             "stealth",
             "timeout",
+            "transport_attempts",
             "wait",
         }
     ),
@@ -469,6 +472,7 @@ _BOOL_BROWSER_KEYS = frozenset(
     {
         "browser",
         "disable_http2",
+        "direct_fallback_on_origin_block",
         "headless",
         "persistent_context",
         "proxy",
@@ -477,7 +481,7 @@ _BOOL_BROWSER_KEYS = frozenset(
         "stealth",
     }
 )
-_NUMBER_BROWSER_KEYS = frozenset({"settle", "timeout"})
+_NUMBER_BROWSER_KEYS = frozenset({"settle", "timeout", "transport_attempts"})
 _STRING_BROWSER_KEYS = frozenset(
     {
         "browser_expression",
