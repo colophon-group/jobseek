@@ -984,6 +984,85 @@ async def test_due_monitor_is_not_hidden_by_older_scrape_backlog(mock_redis):
     assert await r.zscore("ready:simple:2", domain) is not None
 
 
+async def test_recurring_monitor_priority_yields_after_bounded_claim_streak(mock_redis):
+    """Sustained tier-1 demand must not starve a due tier-2 detail forever."""
+    r = mock_redis
+    now = time.time()
+
+    for index in range(10):
+        domain = f"monitor-{index}.example.com"
+        await rq.enqueue_monitor(
+            domain,
+            f"monitor-{index}",
+            now - 100 - index,
+            {"monitor": "dom"},
+            browser=True,
+        )
+        await r.set(f"delay:{domain}", "0")
+
+    scrape_domain = "starved-details.example.com"
+    await rq.enqueue_scrape(
+        scrape_domain,
+        "due-detail",
+        now - 10_000,
+        {
+            "source_url": f"https://{scrape_domain}/jobs/1",
+            "board_id": "board-1",
+        },
+        browser=True,
+    )
+    await r.set(f"delay:{scrape_domain}", "0")
+
+    for _ in range(8):
+        work = await rq.claim_work(browser=True)
+        assert work is not None
+        assert work.kind == "monitor"
+
+    assert await r.get("claim:recurring-monitor-streak:browser") == "8"
+    fairness_claim = await rq.claim_work(browser=True)
+    assert fairness_claim is not None
+    assert fairness_claim.kind == "scrape"
+    assert fairness_claim.scrape_work is not None
+    assert fairness_claim.scrape_work.posting_id == "due-detail"
+    assert await r.get("claim:recurring-monitor-streak:browser") == "0"
+
+
+async def test_bounded_recurring_fairness_preserves_strict_first_time_priority(mock_redis):
+    """Tier 0 still wins even when the recurring-monitor budget is exhausted."""
+    r = mock_redis
+    now = time.time()
+    await r.set("claim:recurring-monitor-streak:simple", "8")
+
+    await rq.enqueue_monitor(
+        "first-time.example.com",
+        "first-time-monitor",
+        now,
+        {"monitor": "dom"},
+        first_time=True,
+    )
+    await rq.enqueue_scrape(
+        "recurring-detail.example.com",
+        "recurring-detail",
+        now - 1_000,
+        {
+            "source_url": "https://recurring-detail.example.com/jobs/1",
+            "board_id": "board-1",
+        },
+    )
+
+    first = await rq.claim_work(browser=False)
+    assert first is not None
+    assert first.kind == "monitor"
+    assert first.board_work is not None
+    assert first.board_work.board_id == "first-time-monitor"
+    assert await r.get("claim:recurring-monitor-streak:simple") == "8"
+
+    second = await rq.claim_work(browser=False)
+    assert second is not None
+    assert second.kind == "scrape"
+    assert await r.get("claim:recurring-monitor-streak:simple") == "0"
+
+
 async def test_enqueue_scrape_preserves_future_monitor_deadline(mock_redis):
     """Enqueueing a due-now scrape on a domain with a far-future monitor
     advertises both deadlines so scrapes drain now and the monitor promotes
