@@ -105,8 +105,8 @@ function makeData(overrides: Partial<CompanyPageData> = {}): CompanyPageData {
       employmentTypes: [],
     },
     displayCurrency: "EUR",
-    jobLanguages: [],
-    languages: ["en"],
+    jobLanguages: ["*"],
+    languages: [],
     userLat: undefined,
     userLng: undefined,
     salaryCurrencyParam: "EUR",
@@ -150,6 +150,7 @@ describe("CompanyContent browser initialization", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(mockLoadCompanyBrowserData).not.toHaveBeenCalled();
     expect(getByTestId("company-page").getAttribute("data-active")).toBe("5");
+    expect(getByTestId("company-page").getAttribute("data-languages")).toBe("*");
   });
 
   it("ignores non-result params, including selected posting changes", async () => {

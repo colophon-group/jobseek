@@ -1,7 +1,7 @@
 import type { CompanyPageData } from "@/lib/actions/company-page-data";
 import { resolveCompanySemanticFilters } from "@/lib/actions/company-filter-state";
 import type { CurrencyRate } from "@/lib/actions/search";
-import { resolveJobLanguages } from "@/lib/job-languages";
+import { resolveCompanyPageJobLanguages } from "@/lib/company-job-languages";
 import { convertToEur } from "@/lib/salary";
 import { logExternalError } from "@/lib/safe-external-error";
 import { tryGetCompanyPostingsDirect } from "@/lib/search/search-runner";
@@ -107,7 +107,10 @@ export async function loadCompanyBrowserData(params: {
     validCurrency(params.searchParams.get("salcur")) ?? displayCurrency;
   const salary = parseRange(params.searchParams.get("sal"));
   const experience = parseRange(params.searchParams.get("exp"));
-  const languages = resolveJobLanguages(params.jobLanguages, params.locale);
+  const { jobLanguages, languages } = resolveCompanyPageJobLanguages(
+    params.jobLanguages,
+    params.locale,
+  );
   const offline = parseCompanyFilterStateOffline(params.searchParams);
   const unavailable = (
     parsed = offline.parsed,
@@ -117,7 +120,7 @@ export async function loadCompanyBrowserData(params: {
       initialData: params.initialData,
       parsed,
       displayCurrency,
-      jobLanguages: params.jobLanguages,
+      jobLanguages,
       languages,
       salaryCurrencyParam,
       salary,
@@ -200,7 +203,7 @@ export async function loadCompanyBrowserData(params: {
     ...params.initialData,
     parsed,
     displayCurrency,
-    jobLanguages: params.jobLanguages,
+    jobLanguages,
     languages,
     salaryCurrencyParam,
     salaryMinDisplay: salary.min,
