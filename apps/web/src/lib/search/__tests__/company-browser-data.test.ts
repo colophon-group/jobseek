@@ -53,8 +53,8 @@ function makeData(overrides: Partial<CompanyPageData> = {}): CompanyPageData {
     yearCount: 80,
     parsed: emptyParsed,
     displayCurrency: "EUR",
-    jobLanguages: [],
-    languages: ["en"],
+    jobLanguages: ["*"],
+    languages: [],
     userLat: undefined,
     userLng: undefined,
     salaryCurrencyParam: "EUR",
@@ -316,7 +316,11 @@ describe("loadCompanyBrowserData", () => {
     expect(result).toMatchObject({
       unavailable: false,
       directAttempted: false,
-      data: { postings: initialData.postings },
+      data: {
+        postings: initialData.postings,
+        jobLanguages: ["*"],
+        languages: [],
+      },
     });
   });
 

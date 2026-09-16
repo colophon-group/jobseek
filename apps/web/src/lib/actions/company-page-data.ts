@@ -13,7 +13,7 @@ import { parseSearchFilters, type ParsedSearchFilters } from "@/lib/actions/sear
 import { getPreferences } from "@/lib/actions/preferences";
 import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
 import { getSession } from "@/lib/sessionCache";
-import { resolveJobLanguages } from "@/lib/job-languages";
+import { resolveCompanyPageJobLanguages } from "@/lib/company-job-languages";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
 import { convertToEur } from "@/lib/salary";
 import type { SearchResultPosting } from "@/lib/search";
@@ -91,9 +91,12 @@ export async function fetchCompanyPageData(params: {
     session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
 
-  const jobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
+  const storedJobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
   const displayCurrency = prefs?.displayCurrency ?? "EUR";
-  const languages = resolveJobLanguages(jobLanguages, locale);
+  const { jobLanguages, languages } = resolveCompanyPageJobLanguages(
+    storedJobLanguages,
+    locale,
+  );
 
   const locationIds = idsOrUndefined(parsed.locations);
   const occupationIds = idsOrUndefined(parsed.occupations);
@@ -186,8 +189,7 @@ export async function fetchCompanyPageDefaults(params: {
   if (!company) return null;
 
   const displayCurrency = DEFAULT_DISPLAY_CURRENCY;
-  const jobLanguages: string[] = [];
-  const languages = resolveJobLanguages(jobLanguages, locale);
+  const { jobLanguages, languages } = resolveCompanyPageJobLanguages([], locale);
 
   // ``getCompanyPostingsAnonymous`` (not ``getCompanyPostings``) — the
   // latter calls ``getSessionUserId`` which awaits ``headers()`` and

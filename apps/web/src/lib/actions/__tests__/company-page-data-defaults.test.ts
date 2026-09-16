@@ -174,7 +174,7 @@ describe("fetchCompanyPageDefaults — ISR-safe prerender variant (#3203)", () =
     });
   });
 
-  it("returns anonymous defaults (EUR, no filters, locale-only language)", async () => {
+  it("returns anonymous defaults with all company languages", async () => {
     const result = await fetchCompanyPageDefaults({
       slug: "test-company",
       locale: "de",
@@ -183,9 +183,8 @@ describe("fetchCompanyPageDefaults — ISR-safe prerender variant (#3203)", () =
     expect(result).not.toBeNull();
     expect(result?.displayCurrency).toBe("EUR");
     expect(result?.salaryCurrencyParam).toBe("EUR");
-    expect(result?.jobLanguages).toEqual([]);
-    // resolveJobLanguages: [] + "de" -> ["de"]
-    expect(result?.languages).toEqual(["de"]);
+    expect(result?.jobLanguages).toEqual(["*"]);
+    expect(result?.languages).toEqual([]);
     expect(result?.userLat).toBeUndefined();
     expect(result?.userLng).toBeUndefined();
     expect(result?.parsed.keywords).toEqual([]);
@@ -199,6 +198,9 @@ describe("fetchCompanyPageDefaults — ISR-safe prerender variant (#3203)", () =
     expect(result?.experienceMin).toBeUndefined();
     expect(result?.experienceMax).toBeUndefined();
     expect(result?.showPostingId).toBeNull();
+    expect(mocks.getCompanyPostingsAnonymous).toHaveBeenCalledWith(
+      expect.objectContaining({ languages: [] }),
+    );
   });
 
   it("fetches the company exactly once (single Typesense round-trip on the cold path)", async () => {
