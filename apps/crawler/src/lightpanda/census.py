@@ -131,6 +131,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
         {
             "actions",
             "advertised_total",
+            "bigredsky_board",
             "block_hosts",
             "block_resource_types",
             "bot_protection",

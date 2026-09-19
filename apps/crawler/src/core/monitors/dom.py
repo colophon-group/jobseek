@@ -186,6 +186,13 @@ _PARTITION_SNAPSHOT_RETRY_DELAY = 1.0
 _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
 
+_BIGREDSKY_HOST_SUFFIX = ".bigredsky.com"
+_BIGREDSKY_RICH_ROWS = {
+    "row_selector": "#brs_report_table_16 tr.oddrow, #brs_report_table_16 tr.evenrow",
+    "link_selector": "a[href*='pageID=160'][href*='AdvertID=']",
+    "location_selectors": ["td:nth-of-type(5)"],
+}
+
 
 def _partition_sha256(partition_url: str) -> str:
     return hashlib.sha256(partition_url.encode("utf-8")).hexdigest()
@@ -5059,6 +5066,57 @@ def _jobtoolz_probe_config(html: str, url: str) -> dict | None:
     }
 
 
+def _bigredsky_probe_config(html: str, url: str) -> dict | None:
+    """Return a strict partial-rich preset for BigRedSky job boards.
+
+    BigRedSky's detail templates do not consistently repeat the authoritative
+    location shown in the server-rendered listing table.  Preserve that row
+    value here and let the DOM scraper enrich only the full description.
+    """
+
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").casefold()
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.casefold() != "https"
+        or not host.endswith(_BIGREDSKY_HOST_SUFFIX)
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.path.rstrip("/").casefold() != "/page.php"
+        or "brs_report_table_16" not in html
+        or "BigRedSky e-Recruitment" not in html
+    ):
+        return None
+
+    origin = f"https://{parsed.netloc}"
+    detail_pattern = (
+        rf"^{re.escape(origin)}/page\.php\?pageID=160&"
+        r"(?:windowUID=\d+&)?AdvertID=\d+$"
+    )
+    try:
+        rich_rows = dict(_BIGREDSKY_RICH_ROWS)
+        config = _validated_rich_rows(rich_rows)
+        assert config is not None
+        jobs = _extract_rich_rows_static(
+            html,
+            url,
+            config,
+            re.compile(detail_pattern),
+        )
+    except ValueError:
+        return None
+    return {
+        "urls": len(jobs),
+        "bigredsky_board": True,
+        "rich_rows": rich_rows,
+        "url_filter": detail_pattern,
+    }
+
+
 def _oracle_adf_probe_config(html: str, url: str) -> dict | None:
     """Recognize Oracle ADF job lists whose rows expose only PPR actions."""
     if "Created by Oracle ADF" not in html:
@@ -5179,6 +5237,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     jobtoolz = _jobtoolz_probe_config(html, url)
     if jobtoolz is not None:
         return jobtoolz
+
+    bigredsky = _bigredsky_probe_config(html, url)
+    if bigredsky is not None:
+        return bigredsky
 
     oracle_adf = _oracle_adf_probe_config(html, url)
     if oracle_adf is not None:

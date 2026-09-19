@@ -782,6 +782,26 @@ def auto_scraper_type(
         return ("json-ld", None)
     if monitor_type == "dom" and (config or {}).get("jobtoolz_tenant"):
         return ("json-ld", None)
+    if monitor_type == "dom" and (config or {}).get("bigredsky_board"):
+        return (
+            "dom",
+            {
+                "enrich": ["description"],
+                "scope": ".tempborder",
+                "steps": [
+                    {"tag": "h1", "field": "title"},
+                    {
+                        "tag": "div",
+                        "attr": "id=responsive-template-subheading2",
+                    },
+                    {
+                        "field": "description",
+                        "html": True,
+                        "to_end": True,
+                    },
+                ],
+            },
+        )
     if monitor_type == "dom" and (config or {}).get("yousty_organization"):
         return ("json-ld", None)
     if monitor_type == "dom" and (config or {}).get("lg_portal"):
