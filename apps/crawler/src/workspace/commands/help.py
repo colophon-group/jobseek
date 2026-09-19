@@ -94,6 +94,7 @@ Monitor Types (cheapest first):
   deel              10      Full job data     No (skipped)
   dvinci            10      Full job data     No (skipped)
   earcu             10      Full job data     No (skipped)
+  fenbi             10      Full job data     No (skipped)
   gem               10      Full job data     No (skipped)
   greenhouse        10      Full job data     No (skipped)
   gupy              10      Job URLs          Auto-configured
@@ -4686,6 +4687,21 @@ infor — Infor Global HR / Lawson CandidateSelfService monitor
     job_board        Infor external board identifier
     hr_organization  Infor HR organization identifier""",
     "dom": MONITOR_DOM,
+    "fenbi": """\
+fenbi — Fenbi first-party bundled careers inventory
+
+  Returns:  Complete full-time or part-time rich job data
+  Scraper:  skip
+  Cost:     10
+  Browser:  No
+
+  Config:   {"kind": "fulltime"} or {"kind": "parttime"}
+
+  Discovers the versioned Angular main bundle from www.fenbi.com on every
+  cycle, parses its bounded first-party careers inventory, and publishes the
+  canonical /page/joinusdetail/<kind>/<id> URLs. It fails closed if the bundle
+  origin, inventory marker, provider IDs, required fields, or dates drift.
+""",
     "inline": MONITOR_INLINE,
     "unifr": """\
 unifr — University of Fribourg authoritative source monitor
