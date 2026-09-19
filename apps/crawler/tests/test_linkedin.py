@@ -171,6 +171,31 @@ class TestListingParser:
 
 
 class TestMonitor:
+    async def test_retries_page_when_company_filter_temporarily_drifts(self):
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            slug = "wrong-company" if calls == 1 else "damora-therapeutics"
+            return httpx.Response(200, text=_listing_html(company_slug=slug), request=request)
+
+        with patch("src.core.monitors.linkedin.asyncio.sleep", new_callable=AsyncMock):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                result = await discover(
+                    {
+                        "board_url": BOARD_URL,
+                        "metadata": {
+                            "company_id": COMPANY_ID,
+                            "company_slug": "damora-therapeutics",
+                        },
+                    },
+                    client,
+                )
+
+        assert [job.metadata["job_id"] for job in result] == ["4442073767"]
+        assert calls == 2
+
     async def test_discovers_rich_summaries(self):
         def handler(request: httpx.Request) -> httpx.Response:
             assert request.url.params.get("f_C") == COMPANY_ID

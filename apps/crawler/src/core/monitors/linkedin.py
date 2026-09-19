@@ -41,6 +41,8 @@ MAX_COMPANY_IDS = 32
 _PAGE_DELAY_S = 1.0
 _RETRY_ATTEMPTS = 4
 _RETRY_BASE_DELAY_S = 1.5
+_IDENTITY_ATTEMPTS = 2
+_IDENTITY_RETRY_DELAY_S = 1.0
 _WORLDWIDE_LOCATION = "Worldwide"
 _REQUEST_HEADERS = {"Accept-Language": "en-US,en;q=0.9"}
 
@@ -346,32 +348,52 @@ async def _fetch_listing_query(
 
     while True:
         page_url = _listing_url(company_id=company_id, keywords=keywords, start=start)
-        html = await fetch_text_page_with_retry(
-            client,
-            page_url,
-            retries=_RETRY_ATTEMPTS,
-            base_delay=_RETRY_BASE_DELAY_S,
-            log_event="linkedin.list_backoff",
-            retryable_statuses={401, 403, 999},
-            headers=_REQUEST_HEADERS,
-        )
-        if html is None:
-            break
-        page = _parse_listing_cards(
-            html,
-            canonical_numeric_job_urls=canonical_numeric_job_urls,
-        )
+        for identity_attempt in range(1, _IDENTITY_ATTEMPTS + 1):
+            html = await fetch_text_page_with_retry(
+                client,
+                page_url,
+                retries=_RETRY_ATTEMPTS,
+                base_delay=_RETRY_BASE_DELAY_S,
+                log_event="linkedin.list_backoff",
+                retryable_statuses={401, 403, 999},
+                headers=_REQUEST_HEADERS,
+            )
+            if html is None:
+                page = []
+                break
+            page = _parse_listing_cards(
+                html,
+                canonical_numeric_job_urls=canonical_numeric_job_urls,
+            )
+            mismatched_job = next(
+                (job for job in page if company_slug and job.company_slug != company_slug),
+                None,
+            )
+            if mismatched_job is None:
+                break
+            mismatched_slug = mismatched_job.company_slug
+            if identity_attempt == _IDENTITY_ATTEMPTS:
+                raise ValueError(
+                    f"LinkedIn company filter returned {mismatched_slug!r}, "
+                    f"expected {company_slug!r}"
+                )
+            log.warning(
+                "linkedin.company_filter_mismatch",
+                company_id=company_id,
+                company_slug=company_slug,
+                returned_slug=mismatched_slug,
+                start=start,
+                attempt=identity_attempt,
+            )
+            await asyncio.sleep(_IDENTITY_RETRY_DELAY_S)
         if not page:
+            if html is None:
+                break
             if _is_empty_listing_fragment(html):
                 break
             raise ValueError("LinkedIn listing returned non-empty HTML without job cards")
 
         for job in page:
-            if company_slug and job.company_slug != company_slug:
-                raise ValueError(
-                    f"LinkedIn company filter returned {job.company_slug!r}, "
-                    f"expected {company_slug!r}"
-                )
             if job.job_id in seen:
                 raise ValueError(f"LinkedIn pagination repeated job {job.job_id}")
             seen.add(job.job_id)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urljoin, urlsplit
 
 import httpx
 import structlog
@@ -35,6 +35,8 @@ log = structlog.get_logger()
 
 _MAX_TRANSPORT_ATTEMPTS = 5
 _TRANSPORT_RETRY_DELAY = 1.0
+_CONTENT_ATTEMPTS = 2
+_CONTENT_RETRY_DELAY = 1.0
 
 
 def _guard_rendered_content(requested_url: str, final_url: str, html: str) -> None:
@@ -188,20 +190,75 @@ async def _fetch_html(
     return response.text
 
 
+def _icims_iframe_url(requested_url: str, html: str) -> str | None:
+    """Return one same-origin iCIMS detail iframe when the outer shell has no data."""
+    requested = urlsplit(requested_url)
+    if (
+        requested.scheme != "https"
+        or not (requested.hostname or "").lower().endswith(".icims.com")
+        or requested.username is not None
+        or requested.password is not None
+        or requested.port not in {None, 443}
+    ):
+        return None
+    tree = LexborHTMLParser(html)
+    candidates = {
+        urljoin(requested_url, node.attributes["src"])
+        for node in tree.css("iframe[src]")
+        if node.attributes.get("src")
+    }
+    trusted: list[str] = []
+    for candidate in candidates:
+        parsed = urlsplit(candidate)
+        if (
+            parsed.scheme == requested.scheme
+            and parsed.hostname == requested.hostname
+            and parsed.port == requested.port
+            and parsed.path == requested.path
+            and parse_qsl(parsed.query, keep_blank_values=True) == [("in_iframe", "1")]
+            and not parsed.fragment
+            and parsed.username is None
+            and parsed.password is None
+        ):
+            trusted.append(candidate)
+    if len(trusted) > 1:
+        raise ValueError("JSON-LD iCIMS shell exposed multiple trusted detail iframes")
+    return trusted[0] if trusted else None
+
+
 async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwargs) -> JobContent:
     """Extract job data from JSON-LD on a page."""
+    request_headers = config.get("request_headers") or {}
+    headers = clean_headers(request_headers)
 
-    if config.get("render"):
-        from src.shared.browser import BROWSER_KEYS
+    async def load_html() -> str:
+        if config.get("render"):
+            from src.shared.browser import BROWSER_KEYS
 
-        browser_config = {key: value for key, value in config.items() if key in BROWSER_KEYS}
-        html = await _render_with_origin_block_recovery(url, browser_config, pw=pw)
-    else:
-        request_headers = config.get("request_headers") or {}
-        headers = clean_headers(request_headers)
-        html = await _fetch_html(url, http, headers=headers or None)
+            browser_config = {key: value for key, value in config.items() if key in BROWSER_KEYS}
+            return await _render_with_origin_block_recovery(url, browser_config, pw=pw)
+        return await _fetch_html(url, http, headers=headers or None)
 
-    content = parse_rendered_html(url, config, html)
+    html = ""
+    content = JobContent()
+    for attempt in range(1, _CONTENT_ATTEMPTS + 1):
+        html = await load_html()
+        content = parse_rendered_html(url, config, html)
+        if content.title:
+            break
+        iframe_url = _icims_iframe_url(url, html)
+        if iframe_url is not None:
+            iframe_html = await _fetch_html(iframe_url, http, headers=headers or None)
+            iframe_content = parse_rendered_html(iframe_url, config, iframe_html)
+            if iframe_content.title:
+                html = iframe_html
+                content = iframe_content
+                log.info("jsonld.icims_iframe_fallback", url=url)
+                break
+        if attempt < _CONTENT_ATTEMPTS:
+            log.warning("jsonld.content_retry", url=url, attempt=attempt)
+            await asyncio.sleep(_CONTENT_RETRY_DELAY)
+
     description_selector = config.get("description_selector")
     if description_selector is not None:
         content.description = _selected_description(html, description_selector)

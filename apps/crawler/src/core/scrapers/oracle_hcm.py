@@ -44,7 +44,7 @@ _DEFAULT_FIELDS = {
     "employment_type": "JobSchedule",
 }
 
-_CONFIGURED_JOB_PATH_RE = re.compile(r"/(?:job|requisitions/preview)/([A-Za-z0-9._-]{1,128})/?$")
+_CONFIGURED_JOB_PATH_RE = re.compile(r"/(?:jobs?|requisitions/preview)/([A-Za-z0-9._-]{1,128})/?$")
 
 
 def _configured_job_id(url: str) -> str | None:
@@ -108,7 +108,7 @@ async def scrape(
     enriched_config = {
         **config,
         "api_url": _build_detail_url(host, site),
-        "url_pattern": r"/(?:job|requisitions/preview)/(?P<req_id>[^/?#]+)",
+        "url_pattern": r"/(?:jobs?|requisitions/preview)/(?P<req_id>[^/?#]+)",
         "json_path": "items[0]",
         "fields": config.get("fields") or _DEFAULT_FIELDS,
     }

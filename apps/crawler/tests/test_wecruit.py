@@ -5,7 +5,7 @@ from urllib.parse import parse_qs
 import httpx
 import pytest
 
-from src.core.monitors.wecruit import can_handle, discover
+from src.core.monitors.wecruit import _fetch_listings, _Tenant, can_handle, discover
 
 ORIGIN = "https://joinus.example.cn"
 SUITE = "670ca36b1c240e54e1ee0556"
@@ -189,6 +189,41 @@ async def test_discover_rejects_changed_listing_total():
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         with pytest.raises(ValueError, match="changed during pagination"):
             await discover(board, client)
+
+
+@pytest.mark.asyncio
+async def test_listing_snapshot_restarts_after_lane_drift(monkeypatch: pytest.MonkeyPatch):
+    async def no_sleep(_delay: float) -> None:
+        return None
+
+    monkeypatch.setattr("src.core.monitors.wecruit.asyncio.sleep", no_sleep)
+    post_ids = ["6aa3d91b5e0f494d82a9809c", "6aa3973bded00b8cb69c0f49"]
+    first_page_calls = 0
+    pages: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal first_page_calls
+        page = int(_form(request)["currentPage"])
+        pages.append(page)
+        if page == 1:
+            first_page_calls += 1
+        total = 3 if page == 2 and first_page_calls == 1 else 2
+        return httpx.Response(
+            200,
+            json=_list_payload(
+                [_row(post_ids[page - 1])],
+                total=total,
+                page=page,
+                page_size=1,
+            ),
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        rows, truncated = await _fetch_listings(_Tenant(ORIGIN, SUITE), (2,), client)
+
+    assert [row["postId"] for row in rows] == post_ids
+    assert truncated is False
+    assert pages == [1, 2, 1, 2]
 
 
 @pytest.mark.asyncio

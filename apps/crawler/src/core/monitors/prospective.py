@@ -27,6 +27,10 @@ if TYPE_CHECKING:
 _MEDIUM_RE = re.compile(r"/careercenter/(?P<medium_id>\d+)/assets/")
 _PAGINATION_RE = re.compile(r"\bsendPagination\((?P<offset>\d+)\)")
 _FILTER_NAME_RE = re.compile(r"filter_\d+")
+_JOB_ID_RE = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+    re.IGNORECASE,
+)
 _JOB_PATH_RE = re.compile(
     r"^/offene-stellen/[^/]+/(?P<job_id>[0-9a-f]{8}-[0-9a-f]{4}-"
     r"[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/?$",
@@ -37,6 +41,7 @@ _MAX_HTML_BYTES = 2 * 1024 * 1024
 _MAX_IDENTITY_REGEX_LENGTH = 4_096
 _MAX_APPLICATION_LINK_TEXTS = 8
 _MAX_LOCALE_PRIORITY = 8
+_MAX_SOURCE_URL_ALIASES = 128
 _MAX_APPLICATION_REDIRECTS = 5
 _APPLICATION_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 
@@ -50,6 +55,7 @@ class _ApplicationIdentityConfig:
     canonical_pattern: re.Pattern[str]
     locale_priority: tuple[str, ...]
     concurrency: int
+    source_url_aliases: dict[str, str]
 
 
 def _single_input_value(tree: LexborHTMLParser, name: str, default: str = "") -> str:
@@ -115,10 +121,11 @@ def _validated_application_identity(value: object) -> _ApplicationIdentityConfig
         "canonical_url_allowlist",
         "locale_priority",
         "concurrency",
+        "source_url_aliases",
     }:
         raise ValueError(
             "Prospective application_identity must contain only link texts, URL allowlists, "
-            "locale priority, and concurrency"
+            "locale priority, concurrency, and source URL aliases"
         )
 
     raw_link_texts = value.get("link_texts")
@@ -158,6 +165,34 @@ def _validated_application_identity(value: object) -> _ApplicationIdentityConfig
         or not 1 <= concurrency <= 16
     ):
         raise ValueError("Prospective application identity concurrency must be 1-16")
+    raw_source_url_aliases = value.get("source_url_aliases", {})
+    if (
+        not isinstance(raw_source_url_aliases, dict)
+        or len(raw_source_url_aliases) > _MAX_SOURCE_URL_ALIASES
+    ):
+        raise ValueError(
+            f"Prospective source_url_aliases must be a mapping with at most "
+            f"{_MAX_SOURCE_URL_ALIASES} entries"
+        )
+    source_url_aliases: dict[str, str] = {}
+    for raw_source_id, raw_canonical_id in raw_source_url_aliases.items():
+        if (
+            not isinstance(raw_source_id, str)
+            or _JOB_ID_RE.fullmatch(raw_source_id) is None
+            or not isinstance(raw_canonical_id, str)
+            or _JOB_ID_RE.fullmatch(raw_canonical_id) is None
+        ):
+            raise ValueError("Prospective source_url_aliases must map UUIDs to UUIDs")
+        source_id = raw_source_id.casefold()
+        canonical_id = raw_canonical_id.casefold()
+        if source_id in source_url_aliases:
+            raise ValueError("Prospective source_url_aliases keys must be unique")
+        source_url_aliases[source_id] = canonical_id
+    if any(
+        source_url_aliases.get(canonical_id) != canonical_id
+        for canonical_id in source_url_aliases.values()
+    ):
+        raise ValueError("Prospective source_url_aliases canonical UUIDs must have self mappings")
 
     return _ApplicationIdentityConfig(
         link_texts=link_texts,
@@ -169,6 +204,7 @@ def _validated_application_identity(value: object) -> _ApplicationIdentityConfig
         ),
         locale_priority=tuple(raw_locale_priority),
         concurrency=concurrency,
+        source_url_aliases=source_url_aliases,
     )
 
 
@@ -331,6 +367,9 @@ def _application_url(
     source_url: str,
     identity: _ApplicationIdentityConfig,
 ) -> str:
+    source_identity = _configured_source_identity(source_url, identity)
+    if source_identity is not None:
+        return source_identity
     candidates = {
         urljoin(source_url, node.attributes["href"])
         for node in tree.css("a[href]")
@@ -346,6 +385,26 @@ def _application_url(
     return candidate
 
 
+def _configured_source_identity(
+    source_url: str,
+    identity: _ApplicationIdentityConfig,
+) -> str | None:
+    """Canonicalize one explicitly reviewed Prospective source UUID alias."""
+    parsed = urlparse(source_url)
+    match = _JOB_PATH_RE.fullmatch(parsed.path)
+    if match is None:
+        return None
+    canonical_id = identity.source_url_aliases.get(match.group("job_id").casefold())
+    if canonical_id is None:
+        return None
+    return parsed._replace(
+        path=f"/offene-stellen/job/{canonical_id}",
+        params="",
+        query="",
+        fragment="",
+    ).geturl()
+
+
 def _trusted_application_url(
     url: str,
     identity: _ApplicationIdentityConfig,
@@ -358,10 +417,13 @@ def _trusted_application_url(
 
 async def _resolve_application_url(
     application_url: str,
+    source_url: str,
     client: httpx.AsyncClient,
     identity: _ApplicationIdentityConfig,
 ) -> str:
     """Resolve an application URL without contacting an unauthenticated redirect hop."""
+    if _configured_source_identity(source_url, identity) == application_url:
+        return application_url
     current_url = application_url
     visited: set[str] = set()
     for redirect_count in range(_MAX_APPLICATION_REDIRECTS + 1):
@@ -430,7 +492,12 @@ async def _fetch_rich_job(
         locale = _detail_locale(tree, identity)
         application_url = _application_url(tree, source_url, identity)
 
-        canonical_url = await _resolve_application_url(application_url, client, identity)
+        canonical_url = await _resolve_application_url(
+            application_url,
+            source_url,
+            client,
+            identity,
+        )
 
         from src.core.scrapers.jsonld import parse_html
 

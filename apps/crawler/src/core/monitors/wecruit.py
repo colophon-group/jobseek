@@ -33,6 +33,13 @@ PAGE_SIZE = 50
 MAX_JOBS = 50_000
 DETAIL_CONCURRENCY = 20
 RECRUIT_TYPES = (1, 2, 12, 13)
+_SNAPSHOT_ATTEMPTS = 2
+_SNAPSHOT_RETRY_DELAY = 1.0
+
+
+class _SnapshotChanged(ValueError):
+    """A recruitment lane changed while pagination was in progress."""
+
 
 _SUITE_RE = re.compile(r"^/SU(?P<suite>[0-9a-f]{24})/(?:pb|mc)(?:/|$)", re.IGNORECASE)
 _TOKEN_RE = re.compile(r"^[0-9a-f]{24}$", re.IGNORECASE)
@@ -241,7 +248,7 @@ async def _fetch_listing_page(
     return rows, total, total_pages, page_size
 
 
-async def _fetch_listings(
+async def _fetch_listings_once(
     tenant: _Tenant,
     recruit_types: tuple[int, ...],
     client: httpx.AsyncClient,
@@ -260,7 +267,7 @@ async def _fetch_listings(
                 tenant, recruit_type, page, client
             )
             if total != expected_total or pages != total_pages or runtime_page_size != page_size:
-                raise ValueError(f"Wecruit lane {recruit_type} changed during pagination")
+                raise _SnapshotChanged(f"Wecruit lane {recruit_type} changed during pagination")
             lane_rows.extend(rows)
 
         if len(lane_rows) != expected_total:
@@ -284,6 +291,28 @@ async def _fetch_listings(
             listings.append(row)
 
     return listings, truncated
+
+
+async def _fetch_listings(
+    tenant: _Tenant,
+    recruit_types: tuple[int, ...],
+    client: httpx.AsyncClient,
+) -> tuple[list[dict], bool]:
+    """Retry one inconsistent lane snapshot from the first configured lane."""
+    for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
+        try:
+            return await _fetch_listings_once(tenant, recruit_types, client)
+        except _SnapshotChanged as exc:
+            if attempt == _SNAPSHOT_ATTEMPTS:
+                raise
+            log.warning(
+                "wecruit.snapshot_changed",
+                origin=tenant.origin,
+                attempt=attempt,
+                error=str(exc),
+            )
+            await asyncio.sleep(_SNAPSHOT_RETRY_DELAY)
+    raise AssertionError("unreachable")
 
 
 async def _fetch_details(

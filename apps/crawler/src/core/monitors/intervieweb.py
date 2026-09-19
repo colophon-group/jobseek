@@ -12,6 +12,7 @@ content extraction.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from html.parser import HTMLParser
@@ -30,6 +31,13 @@ log = structlog.get_logger()
 MAX_JOBS = 50_000
 MAX_PAGES = 1_000
 MAX_HTML_BYTES = 5_000_000
+_SNAPSHOT_ATTEMPTS = 2
+_SNAPSHOT_RETRY_DELAY = 1.0
+
+
+class _SnapshotChanged(ValueError):
+    """The Intervieweb inventory changed while pagination was in progress."""
+
 
 _TRANSIENT_STATUSES = frozenset({202, 401, 403, 429})
 _PAGE_COUNT_RE = re.compile(r"\bPage\s+\d+\s+of\s+(\d+)\b", re.IGNORECASE)
@@ -229,14 +237,14 @@ async def _discover_url(
         page = await _fetch_page(ajax_url, board_url, section, page_number, client)
         advertised_pages = _page_count(page)
         if advertised_pages != pages:
-            raise ValueError(
+            raise _SnapshotChanged(
                 f"Intervieweb page count changed during pagination ({pages} -> {advertised_pages})"
             )
         page_urls = _parse_job_urls(page, board_url)
         if not page_urls:
             raise ValueError(f"Intervieweb advertised page {page_number} returned no jobs")
         if page_urls <= urls:
-            raise ValueError(f"Intervieweb pagination repeated page {page_number}")
+            raise _SnapshotChanged(f"Intervieweb pagination repeated page {page_number}")
         urls.update(page_urls)
         if len(urls) > MAX_JOBS:
             raise ValueError(f"Intervieweb listing exceeded the {MAX_JOBS:,}-job safety cap")
@@ -250,7 +258,22 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     board_url = board["board_url"]
     if not _is_intervieweb_url(board_url):
         raise ValueError(f"Unsupported Intervieweb board URL {board_url!r}")
-    urls, pages = await _discover_url(board_url, client)
+    for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
+        try:
+            urls, pages = await _discover_url(board_url, client)
+            break
+        except _SnapshotChanged as exc:
+            if attempt == _SNAPSHOT_ATTEMPTS:
+                raise
+            log.warning(
+                "intervieweb.snapshot_changed",
+                board_url=board_url,
+                attempt=attempt,
+                error=str(exc),
+            )
+            await asyncio.sleep(_SNAPSHOT_RETRY_DELAY)
+    else:  # pragma: no cover - the loop either breaks or raises
+        raise AssertionError("unreachable")
     log.info("intervieweb.discovered", board_url=board_url, jobs=len(urls), pages=pages)
     return urls
 

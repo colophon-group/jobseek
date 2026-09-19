@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 from src.core.monitors import all_monitor_types
-from src.core.monitors.prospective import can_handle, discover
+from src.core.monitors.prospective import _validated_application_identity, can_handle, discover
 from src.workspace._compat import auto_scraper_type
 from src.workspace.commands.help import MONITOR_CARDS
 
@@ -25,6 +25,18 @@ def test_registration_as_rich_monitor_without_scraper():
     assert "prospective" in all_monitor_types()
     assert auto_scraper_type("prospective") == ("skip", None)
     assert "prospective" in MONITOR_CARDS
+
+
+@pytest.mark.parametrize(
+    "aliases",
+    [
+        {"not-a-uuid": "11111111-1111-4111-8111-111111111111"},
+        {"11111111-1111-4111-8111-111111111111": ("22222222-2222-4222-8222-222222222222")},
+    ],
+)
+def test_source_url_aliases_require_uuid_self_mapped_canonical_ids(aliases: dict) -> None:
+    with pytest.raises(ValueError, match="source_url_aliases"):
+        _validated_application_identity({**IDENTITY_CONFIG, "source_url_aliases": aliases})
 
 
 def _board(*, filters: dict | None = None) -> dict:
@@ -294,6 +306,74 @@ async def test_discover_rejects_untrusted_application_identity() -> None:
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         with pytest.raises(ValueError, match="untrusted application URL"):
             await discover(_board(), client)
+
+
+@pytest.mark.asyncio
+async def test_discover_groups_reviewed_source_aliases_without_application_links() -> None:
+    first_id = "11111111-1111-4111-8111-111111111111"
+    second_id = "22222222-2222-4222-8222-222222222222"
+    board = _board()
+    board["metadata"]["application_identity"] = {
+        **IDENTITY_CONFIG,
+        "source_url_aliases": {first_id: first_id, second_id: first_id},
+    }
+    requested_paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested_paths.append(request.url.path)
+        if request.url.path.startswith("/offene-stellen/job/"):
+            job_id = request.url.path.rsplit("/", 1)[-1]
+            locale = "en" if job_id == first_id else "fr"
+            detail = _detail(job_id, locale=locale).replace(
+                f'<a href="https://apply.example.com/jobs/{job_id}">Apply</a>',
+                "",
+            )
+            return httpx.Response(200, text=detail, request=request)
+        return httpx.Response(200, text=_page(jobs=(first_id, second_id)), request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        jobs = await discover(board, client)
+
+    source_url = f"https://jobs.example.com/offene-stellen/job/{first_id}"
+    assert [job.url for job in jobs] == [source_url]
+    assert set(jobs[0].localizations or {}) == {"en", "fr"}
+    assert requested_paths.count(f"/offene-stellen/job/{first_id}") == 1
+    assert requested_paths.count(f"/offene-stellen/job/{second_id}") == 1
+
+
+@pytest.mark.asyncio
+async def test_reviewed_source_alias_identity_does_not_switch_when_apply_link_appears() -> None:
+    job_id = "11111111-1111-4111-8111-111111111111"
+    source_url = f"https://jobs.example.com/offene-stellen/job/{job_id}"
+    board = _board()
+    board["metadata"]["application_identity"] = {
+        **IDENTITY_CONFIG,
+        "source_url_aliases": {job_id: job_id},
+    }
+
+    async def run(*, include_application_link: bool):
+        detail = _detail(job_id)
+        if not include_application_link:
+            detail = detail.replace(
+                f'<a href="https://apply.example.com/jobs/{job_id}">Apply</a>',
+                "",
+            )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path.startswith("/offene-stellen/job/"):
+                return httpx.Response(200, text=detail, request=request)
+            if request.url.host == "apply.example.com":
+                raise AssertionError("reviewed source aliases must not switch to application URLs")
+            return httpx.Response(200, text=_page(jobs=(job_id,)), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await discover(board, client)
+
+    without_link = await run(include_application_link=False)
+    with_link = await run(include_application_link=True)
+
+    assert [job.url for job in without_link] == [source_url]
+    assert [job.url for job in with_link] == [source_url]
 
 
 @pytest.mark.asyncio

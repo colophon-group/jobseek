@@ -2369,14 +2369,16 @@ async def http_fetch_with_retry(
     retries: int = _API_SNIFFER_FETCH_RETRIES,
     base_delay: float = _API_SNIFFER_FETCH_BASE_DELAY,
     raise_non_retryable: bool = False,
+    retry_not_found: bool = False,
 ) -> dict | None:
     """Fetch JSON via httpx with bounded retries (#2733).
 
     Returns:
         - Parsed JSON dict on HTTP 200.
-        - ``None`` on 404 / 410 (legitimate end-of-pagination, or stale
-          rotating-token URL — the caller's ``api_url_match`` browser
-          fallback path interprets ``None`` as "go look up the live URL").
+        - ``None`` on 404 / 410 unless ``retry_not_found`` is true
+          (legitimate end-of-pagination, or stale rotating-token URL — the
+          caller's ``api_url_match`` browser fallback path interprets
+          ``None`` as "go look up the live URL").
         - ``None`` on other non-retryable 4xx (auth, forbidden, bad
           request) with a warning, mirroring the lenient stop semantic
           used by ``fetch_with_retry`` on the dom/sitemap path. Callers that
@@ -2386,8 +2388,9 @@ async def http_fetch_with_retry(
     Raises:
         :class:`PaginationFetchError` after exhausting *retries* on
         retryable HTTP statuses (5xx including Cloudflare 520-526/530,
-        plus 408/425/429) or arbitrary network exceptions (timeout,
-        connection reset, JSON parse error). The caller is expected to
+        plus 408/425/429, and 404/410 when ``retry_not_found`` is true) or
+        arbitrary network exceptions (timeout, connection reset, JSON parse
+        error). The caller is expected to
         propagate so ``_process_one_board_streaming`` records the run
         as a failure rather than a partial success — closing the same
         silent-truncation hole the dom/sitemap fix (#2722) and PCSX/
@@ -2432,9 +2435,9 @@ async def http_fetch_with_retry(
             status = exc.response.status_code
             last_status = status
             last_exc = exc
-            if status in (404, 410):
+            if status in (404, 410) and not retry_not_found:
                 return None
-            if not is_retryable_status(status):
+            if not is_retryable_status(status) and not (retry_not_found and status in (404, 410)):
                 # Other 4xx (auth, forbidden, bad-request) — not transient,
                 # not "end of pagination" canonically. Lenient stop with
                 # a warning so anomalies surface in logs.
@@ -2675,6 +2678,7 @@ async def _discover_http(
     request_headers = config.get("request_headers") or config.get("headers") or {}
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
+    empty_response = config.get("empty_response")
 
     post_data = await _refresh_post_data(
         client,
@@ -2691,7 +2695,14 @@ async def _discover_http(
     # reserved for 404/410 (URL stale → browser fallback below) and other
     # non-retryable 4xx (lenient stop).
     api_url_match = config.get("api_url_match")
-    data = await http_fetch_with_retry(client, method, api_url, headers, post_data)
+    data = await http_fetch_with_retry(
+        client,
+        method,
+        api_url,
+        headers,
+        post_data,
+        retry_not_found=empty_response is not None,
+    )
 
     if data is None and api_url_match and pw is not None:
         # Stored URL may be stale (rotating token).  Open browser to discover
@@ -2734,7 +2745,6 @@ async def _discover_http(
             api_url = fresh_url
             data = await http_fetch_with_retry(client, method, api_url, headers, post_data)
 
-    empty_response = config.get("empty_response")
     if data is None:
         if empty_response is not None:
             raise ValueError("API did not return the configured explicit empty response")

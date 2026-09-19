@@ -579,8 +579,8 @@ async def discover(
 ) -> list[DiscoveredJob] | set[str]:
     """Discover one fixed University of Fribourg source contract."""
     metadata = board.get("metadata") or {}
-    if set(metadata) != {"source"} or not isinstance(metadata.get("source"), str):
-        raise ValueError("unifr monitor requires exactly one named source")
+    if not isinstance(metadata, dict) or not isinstance(metadata.get("source"), str):
+        raise ValueError("unifr monitor requires one named source")
     source_name = metadata["source"]
     today = datetime.now(UTC).date()
     if source_name == "central":

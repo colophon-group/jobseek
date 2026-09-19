@@ -11,6 +11,7 @@ from src.core.monitors.unifr import (
     _central_jobs,
     _link_inventory,
     _LinkSource,
+    discover,
 )
 
 FR = "https://www.unifr.ch/sp/fr/postes-vacants.html"
@@ -112,6 +113,23 @@ async def test_central_unions_locales_by_provider_id_and_preserves_localizations
     assert shared.localizations is not None
     assert set(shared.localizations) == {"fr", "de"}
     assert shared.localizations["de"]["title"] == "Gemeinsamer deutscher Titel"
+
+
+@pytest.mark.asyncio
+async def test_discover_accepts_runtime_metadata_alongside_named_source():
+    transport = _central_transport([("1911", "Titre")], [("1911", "Titel")])
+    board = {
+        "board_url": FR,
+        "metadata": {
+            "source": "central",
+            "config_fingerprint": "runtime-value",
+            "scraper_type": "skip",
+        },
+    }
+    async with httpx.AsyncClient(transport=transport) as client:
+        jobs = await discover(board, client)
+
+    assert [job.url for job in jobs] == [f"{FR}?_jid=1911"]
 
 
 @pytest.mark.asyncio
