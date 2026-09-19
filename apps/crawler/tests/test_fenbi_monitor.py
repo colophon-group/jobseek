@@ -72,7 +72,7 @@ async def test_fenbi_monitor_parses_fulltime_bundle_inventory():
 
 
 @pytest.mark.asyncio
-async def test_fenbi_monitor_maps_network_office_to_remote_china():
+async def test_fenbi_monitor_maps_part_time_network_office_to_remote_china():
     async with httpx.AsyncClient(transport=_transport(_bundle())) as client:
         jobs = await discover(
             {
@@ -85,6 +85,35 @@ async def test_fenbi_monitor_maps_network_office_to_remote_china():
     assert jobs[0].locations == ["China"]
     assert jobs[0].employment_type == "part_time"
     assert jobs[0].job_location_type == "remote"
+
+
+@pytest.mark.asyncio
+async def test_fenbi_monitor_classifies_internship_from_parttime_inventory():
+    internship = _job(2002, "内容运营实习生", location="北京")
+    async with httpx.AsyncClient(transport=_transport(_bundle(parttime=internship))) as client:
+        jobs = await discover(
+            {
+                "board_url": "https://www.fenbi.com/page/joinus/parttime",
+                "metadata": {"kind": "parttime"},
+            },
+            client,
+        )
+
+    assert jobs[0].employment_type == "internship"
+
+
+@pytest.mark.asyncio
+async def test_fenbi_monitor_rejects_ambiguous_parttime_employment_type():
+    ambiguous = _job(2003, "内容运营", location="北京")
+    async with httpx.AsyncClient(transport=_transport(_bundle(parttime=ambiguous))) as client:
+        with pytest.raises(ValueError, match="does not identify"):
+            await discover(
+                {
+                    "board_url": "https://www.fenbi.com/page/joinus/parttime",
+                    "metadata": {"kind": "parttime"},
+                },
+                client,
+            )
 
 
 @pytest.mark.asyncio

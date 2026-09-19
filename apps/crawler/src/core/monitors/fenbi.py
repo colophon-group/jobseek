@@ -247,6 +247,18 @@ def _locations_and_type(value: str, *, job_id: int) -> tuple[list[str], str | No
     return locations, "hybrid" if has_home_option else None
 
 
+def _employment_type(kind: str, title: str, *, job_id: int) -> str:
+    if kind == "fulltime":
+        return "full_time"
+    if "实习" in title:
+        return "internship"
+    if "兼职" in title:
+        return "part_time"
+    raise ValueError(
+        f"Fenbi parttime job {job_id} title does not identify an internship or part-time role"
+    )
+
+
 def _parse_jobs(payload: dict, *, kind: str, board_url: str) -> list[DiscoveredJob]:
     rows = payload.get(kind)
     if not isinstance(rows, list) or not rows or len(rows) > _MAX_JOBS:
@@ -276,7 +288,7 @@ def _parse_jobs(payload: dict, *, kind: str, board_url: str) -> list[DiscoveredJ
                 title=title,
                 description=_description(responsibilities, qualifications),
                 locations=locations,
-                employment_type="full_time" if kind == "fulltime" else "part_time",
+                employment_type=_employment_type(kind, title, job_id=job_id),
                 job_location_type=job_location_type,
                 date_posted=_date_posted(raw.get("publicDateShow"), job_id=job_id),
                 extras={

@@ -4690,7 +4690,7 @@ infor — Infor Global HR / Lawson CandidateSelfService monitor
     "fenbi": """\
 fenbi — Fenbi first-party bundled careers inventory
 
-  Returns:  Complete full-time or part-time rich job data
+  Returns:  Complete full-time, internship, or part-time rich job data
   Scraper:  skip
   Cost:     10
   Browser:  No
