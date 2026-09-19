@@ -5946,6 +5946,7 @@ schonlau-werke-geseke,schonlau-werke-geseke-join,https://join.com/companies/scho
 schr-dinger,schr-dinger-greenhouse,https://job-boards.greenhouse.io/schrdinger,greenhouse,"{""token"": ""schrdinger""}",skip,
 schroders,schroders-careers-experienced,https://ekbq.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 schwarzman-animal-medical-center,schwarzman-animal-medical-center-greenhouse,https://job-boards.greenhouse.io/animalmedicalcenter,greenhouse,"{""token"": ""animalmedicalcenter""}",skip,
+schwertfels-consulting,schwertfels-consulting-careers,https://apply.workable.com/schwertfels,workable,,workable,
 sciforium,sciforium-ashby,https://jobs.ashbyhq.com/sciforium,ashby,"{""token"": ""sciforium""}",skip,
 scopely,scopely-greenhouse,https://job-boards.greenhouse.io/scopely,greenhouse,"{""token"": ""scopely""}",skip,
 scor,scor-global,https://fa-errt-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001/jobs?mode=location,oracle_hcm,"{""host"": ""fa-errt-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_2001"", ""total_count_tolerance"": 1, ""page_shortfall_tolerance"": 1}",oracle_hcm,"{""enrich"": [""description""]}"
