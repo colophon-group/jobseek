@@ -5,6 +5,9 @@ from __future__ import annotations
 import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
+
+from src.core.monitor import monitor_one
 from src.core.monitors.dom import (
     _bigredsky_probe_config,
     _extract_rich_rows_static,
@@ -68,12 +71,29 @@ def test_bigredsky_probe_preserves_authoritative_listing_locations():
 
     assert result is not None
     assert result["urls"] == 2
-    assert result["bigredsky_board"] is True
+    assert result["bunge_bigredsky_board"] is True
     assert result["rich_rows"] == {
         "row_selector": "#brs_report_table_16 tr.oddrow, #brs_report_table_16 tr.evenrow",
         "link_selector": "a[href*='pageID=160'][href*='AdvertID=']",
         "location_selectors": ["td:nth-of-type(5)"],
+        "location_separator": ";",
     }
+    assert result["pagination"] == {
+        "param_name": "reload_data[firstRow]",
+        "start": 0,
+        "increment": 20,
+        "max_pages": 50,
+        "transient_403": True,
+    }
+    assert result["empty_states"] == [
+        {
+            "selector": "#brs_jbcontent",
+            "contains_text": "There are no positions available currently.",
+            "forbidden_link_selector": (
+                "#brs_report_table_16 a[href*='pageID=160'][href*='AdvertID=']"
+            ),
+        }
+    ]
     config = _validated_rich_rows(result["rich_rows"])
     assert config is not None
     jobs = _extract_rich_rows_static(
@@ -84,7 +104,10 @@ def test_bigredsky_probe_preserves_authoritative_listing_locations():
     )
     assert [(job.title, job.locations) for job in jobs] == [
         ("Maintenance Officer - Electrical", ["Port Adelaide"]),
-        ("Harvest Employment - 2026/2027", ["Eyre Peninsula SA Eastern SA/Vic Central SA"]),
+        (
+            "Harvest Employment - 2026/2027",
+            ["Eyre Peninsula SA", "Eastern SA/Vic", "Central SA"],
+        ),
     ]
 
 
@@ -118,3 +141,29 @@ async def test_bigredsky_can_handle_returns_provider_preset():
 
 def test_bigredsky_probe_rejects_unrelated_hosts():
     assert _bigredsky_probe_config(LISTING_HTML, "https://example.com/page.php") is None
+    assert _bigredsky_probe_config(LISTING_HTML, "https://doh.bigredsky.com/page.php") is None
+
+
+async def test_bunge_bigredsky_explicit_empty_state_skips_pagination():
+    detected = _bigredsky_probe_config(LISTING_HTML, BOARD_URL)
+    assert detected is not None
+    config = {key: value for key, value in detected.items() if key != "urls"}
+    empty_html = """
+    <html><body>
+      <div id="brs_jbcontent">There are no positions available currently.</div>
+      <div id="brs-logo"><a href="https://www.bigredsky.com">
+        BigRedSky e-Recruitment
+      </a></div>
+    </body></html>
+    """
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, text=empty_html, request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await monitor_one(BOARD_URL, "dom", config, client)
+
+    assert result.jobs_by_url == {}
+    assert len(requests) == 1

@@ -782,7 +782,7 @@ def auto_scraper_type(
         return ("json-ld", None)
     if monitor_type == "dom" and (config or {}).get("jobtoolz_tenant"):
         return ("json-ld", None)
-    if monitor_type == "dom" and (config or {}).get("bigredsky_board"):
+    if monitor_type == "dom" and (config or {}).get("bunge_bigredsky_board"):
         return (
             "dom",
             {
