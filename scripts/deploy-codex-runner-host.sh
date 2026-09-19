@@ -170,6 +170,23 @@ ensure_layout() {
   chmod 0600 "${LOCK_FILE}"
 }
 
+ensure_document_extraction_runtime() {
+  if command -v tesseract >/dev/null 2>&1 &&
+    tesseract --list-langs 2>/dev/null | grep -qx eng; then
+    return
+  fi
+
+  log "installing Codex runner PDF OCR runtime"
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    tesseract-ocr tesseract-ocr-eng
+  rm -rf /var/lib/apt/lists/*
+
+  command -v tesseract >/dev/null 2>&1 || fail "tesseract executable is unavailable"
+  tesseract --list-langs 2>/dev/null | grep -qx eng ||
+    fail "Tesseract English language data is unavailable"
+}
+
 require_runtime_config() {
   [[ -r "${GOVERNOR_ENV_FILE}" ]] || fail "missing ${GOVERNOR_ENV_FILE}"
   [[ -r "${LABELLER_ENV_FILE}" ]] || fail "missing ${LABELLER_ENV_FILE}"
@@ -383,6 +400,7 @@ main() {
     fail "could not acquire ${LOCK_FILE} within ${LOCK_TIMEOUT_S}s"
   fi
 
+  ensure_document_extraction_runtime
   update_repo
   sync_crawler_runtime
   install_maintenance_contract
