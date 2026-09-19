@@ -186,6 +186,14 @@ _PARTITION_SNAPSHOT_RETRY_DELAY = 1.0
 _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
 
+_BUNGE_BIGREDSKY_HOST = "bunge.bigredsky.com"
+_BIGREDSKY_RICH_ROWS = {
+    "row_selector": "#brs_report_table_16 tr.oddrow, #brs_report_table_16 tr.evenrow",
+    "link_selector": "a[href*='pageID=160'][href*='AdvertID=']",
+    "location_selectors": ["td:nth-of-type(5)"],
+    "location_separator": ";",
+}
+
 
 def _partition_sha256(partition_url: str) -> str:
     return hashlib.sha256(partition_url.encode("utf-8")).hexdigest()
@@ -2951,6 +2959,7 @@ _RichRowsConfig = tuple[
     str | None,
     tuple[str, ...],
     str,
+    str,
     tuple[re.Pattern[str] | None, ...],
     tuple[tuple[str, str], ...],
     bool,
@@ -3032,6 +3041,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "total_selector",
         "location_selectors",
         "location_selector_mode",
+        "location_separator",
         "location_value_patterns",
         "metadata_selectors",
         "allow_missing_locations",
@@ -3086,6 +3096,9 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
     location_selector_mode = value.get("location_selector_mode", "all")
     if location_selector_mode not in {"all", "first"}:
         raise ValueError("DOM monitor rich_rows.location_selector_mode must be 'all' or 'first'")
+    location_separator = value.get("location_separator", " ")
+    if location_separator not in {" ", ";"}:
+        raise ValueError("DOM monitor rich_rows.location_separator must be a space or semicolon")
     location_value_patterns_raw = value.get("location_value_patterns")
     if location_value_patterns_raw is None:
         location_value_patterns = (None,) * len(location_selectors)
@@ -3287,6 +3300,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         total_selector,
         location_selectors,
         location_selector_mode,
+        location_separator,
         location_value_patterns,
         metadata_selectors,
         allow_missing_locations,
@@ -3368,6 +3382,7 @@ def _extract_rich_rows_static(
         total_selector,
         location_selectors,
         location_selector_mode,
+        location_separator,
         location_value_patterns,
         metadata_selectors,
         allow_missing_locations,
@@ -3449,21 +3464,29 @@ def _extract_rich_rows_static(
             location_selectors, location_value_patterns, strict=True
         ):
             node = row.css_first(selector)
-            value = node.text(separator=" ", strip=True).strip() if node is not None else ""
-            if (
-                value
-                and location_value_pattern is not None
-                and location_value_pattern.search(value) is None
-            ):
-                value = ""
-            if not value and location_selector_mode == "all" and not allow_missing_locations:
+            value = (
+                node.text(separator=location_separator, strip=True).strip()
+                if node is not None
+                else ""
+            )
+            values = (
+                [value]
+                if location_separator == " " and value
+                else [part.strip() for part in value.split(location_separator) if part.strip()]
+            )
+            if location_value_pattern is not None:
+                values = [
+                    part for part in values if location_value_pattern.search(part) is not None
+                ]
+            if not values and location_selector_mode == "all" and not allow_missing_locations:
                 raise ValueError(
                     f"DOM monitor rich_rows row {index} omitted configured location data"
                 )
-            if value and value not in location_parts:
-                location_parts.append(value)
-                if location_selector_mode == "first":
-                    break
+            for part in values:
+                if part not in location_parts:
+                    location_parts.append(part)
+            if values and location_selector_mode == "first":
+                break
         if location_selectors and not location_parts and not allow_missing_locations:
             raise ValueError(f"DOM monitor rich_rows row {index} omitted configured location data")
 
@@ -3511,7 +3534,9 @@ def _extract_rich_rows_static(
                 )
             description = description_html.strip()
         locations = (
-            [", ".join(location_parts)] if location_parts else list(default_locations) or None
+            (location_parts if location_separator != " " else [", ".join(location_parts)])
+            if location_parts
+            else list(default_locations) or None
         )
         job = DiscoveredJob(
             url=canonical_url,
@@ -3987,7 +4012,7 @@ async def _extract_rich_rows_rendered(
             board_url,
         )
     pagination = metadata.get("pagination")
-    if pagination:
+    if pagination and jobs:
         jobs = await _paginate_rich_rows(
             board_url,
             pagination,
@@ -5059,6 +5084,73 @@ def _jobtoolz_probe_config(html: str, url: str) -> dict | None:
     }
 
 
+def _bigredsky_probe_config(html: str, url: str) -> dict | None:
+    """Return the verified partial-rich preset for Bunge's BigRedSky board.
+
+    BigRedSky tenants vary in table columns and detail templates, so this
+    detector intentionally fails closed for every other tenant. Bunge's detail
+    pages do not consistently repeat the authoritative listing locations.
+    """
+
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").casefold()
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.casefold() != "https"
+        or host != _BUNGE_BIGREDSKY_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.path.rstrip("/").casefold() != "/page.php"
+        or "brs_report_table_16" not in html
+        or "BigRedSky e-Recruitment" not in html
+    ):
+        return None
+
+    origin = f"https://{parsed.netloc}"
+    detail_pattern = (
+        rf"^{re.escape(origin)}/page\.php\?pageID=160&"
+        r"(?:windowUID=\d+&)?AdvertID=\d+$"
+    )
+    try:
+        rich_rows = dict(_BIGREDSKY_RICH_ROWS)
+        config = _validated_rich_rows(rich_rows)
+        assert config is not None
+        jobs = _extract_rich_rows_static(
+            html,
+            url,
+            config,
+            re.compile(detail_pattern),
+        )
+    except ValueError:
+        return None
+    return {
+        "urls": len(jobs),
+        "bunge_bigredsky_board": True,
+        "rich_rows": rich_rows,
+        "url_filter": detail_pattern,
+        "pagination": {
+            "param_name": "reload_data[firstRow]",
+            "start": 0,
+            "increment": 20,
+            "max_pages": 50,
+            "transient_403": True,
+        },
+        "empty_states": [
+            {
+                "selector": "#brs_jbcontent",
+                "contains_text": "There are no positions available currently.",
+                "forbidden_link_selector": (
+                    "#brs_report_table_16 a[href*='pageID=160'][href*='AdvertID=']"
+                ),
+            }
+        ],
+    }
+
+
 def _oracle_adf_probe_config(html: str, url: str) -> dict | None:
     """Recognize Oracle ADF job lists whose rows expose only PPR actions."""
     if "Created by Oracle ADF" not in html:
@@ -5179,6 +5271,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     jobtoolz = _jobtoolz_probe_config(html, url)
     if jobtoolz is not None:
         return jobtoolz
+
+    bigredsky = _bigredsky_probe_config(html, url)
+    if bigredsky is not None:
+        return bigredsky
 
     oracle_adf = _oracle_adf_probe_config(html, url)
     if oracle_adf is not None:
@@ -5506,7 +5602,7 @@ async def dom_discover(
                 "onclick_selector, or rich_rows"
             )
         if (
-            (pagination and advertised_ranges is None)
+            (pagination and advertised_ranges is None and rich_rows is None)
             or metadata.get("include_board_url")
             or require_jsonld_jobposting
         ):
@@ -5723,7 +5819,7 @@ async def dom_discover(
                     {job.url for job in jobs},
                     board_url,
                 )
-            if pagination:
+            if pagination and jobs:
                 jobs = await _paginate_rich_rows(
                     board_url,
                     pagination,
