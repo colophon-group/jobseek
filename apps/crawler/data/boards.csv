@@ -3198,6 +3198,7 @@ hauskrankenpflege-stolley-gmbh,hauskrankenpflege-stolley-gmbh-join,https://join.
 havas,havas-careers-jobvite,https://jobs.jobvite.com/thehavasgroup/,dom,"{""render"": true}",json-ld,"{""render"": false}"
 havas,havas-careers-workday,https://wd3.myworkdaysite.com/recruiting/havas/GroupExternalCareerSite/,workday,"{""company"": ""havas"", ""wd_instance"": ""wd3"", ""site"": ""GroupExternalCareerSite""}",workday,
 havas,havas-careers-workday-health,https://wd3.myworkdaysite.com/recruiting/havas/HealthYouExternalCareerSite,workday,"{""company"": ""havas"", ""wd_instance"": ""wd3"", ""site"": ""HealthYouExternalCareerSite""}",workday,
+havells,havells-careers,https://iabgcp.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/cx_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 haven-interactive-studios,haven-interactive-studios-greenhouse,https://job-boards.greenhouse.io/haven,greenhouse,"{""token"": ""haven""}",skip,
 havenhub,havenhub-greenhouse,https://job-boards.greenhouse.io/havenhub,greenhouse,"{""token"": ""havenhub""}",skip,
 havocai,havocai-ashby,https://jobs.ashbyhq.com/havocai,ashby,"{""token"": ""havocai""}",skip,
