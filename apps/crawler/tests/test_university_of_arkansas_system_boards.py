@@ -69,6 +69,7 @@ def test_provider_configs_preserve_verified_runtime_contracts() -> None:
             ),
             "link_selector": 'a[href^="/plugins/show_image.php"]',
             "default_locations": ["Forrest City, Arkansas, United States"],
+            "title_text_joiner": "compact",
             "duplicate_url_policy": "prefer_longer_title",
         },
         "url_filter": r"^https://www\.uaeacc\.edu/plugins/show_image\.php\?id=\d+$",
@@ -140,6 +141,9 @@ async def test_uaeacc_monitor_deduplicates_shared_job_documents() -> None:
             Part-Time Clinical Instructor Registered Nursing
           </a></li>
           <li><a href="/plugins/show_image.php?id=5556">Workday Director</a></li>
+          <li><a
+            href="/plugins/show_image.php?id=5358"
+          >Student Accou<span>nts Coordinator</span></a></li>
           <li><a href="/documents/employment-application.pdf">Application</a></li>
         </ul>
       </div>
@@ -157,8 +161,11 @@ async def test_uaeacc_monitor_deduplicates_shared_job_documents() -> None:
 
     assert result.urls == {
         "https://www.uaeacc.edu/plugins/show_image.php?id=5312",
+        "https://www.uaeacc.edu/plugins/show_image.php?id=5358",
         "https://www.uaeacc.edu/plugins/show_image.php?id=5556",
     }
     duplicate = result.jobs_by_url["https://www.uaeacc.edu/plugins/show_image.php?id=5312"]
     assert duplicate.title == "Part-Time Clinical Instructor Registered Nursing"
     assert duplicate.locations == ["Forrest City, Arkansas, United States"]
+    split_title = result.jobs_by_url["https://www.uaeacc.edu/plugins/show_image.php?id=5358"]
+    assert split_title.title == "Student Accounts Coordinator"

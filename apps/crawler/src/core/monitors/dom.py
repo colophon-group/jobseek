@@ -2965,6 +2965,7 @@ _RichRowsConfig = tuple[
     str | None,
     tuple[str, ...],
     str,
+    str,
 ]
 
 
@@ -3044,6 +3045,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "description_next_selector",
         "default_locations",
         "title_regex",
+        "title_text_joiner",
         "duplicate_url_policy",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
@@ -3255,6 +3257,9 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         raise ValueError(
             "DOM monitor rich_rows.duplicate_url_policy must be 'error' or 'prefer_longer_title'"
         )
+    title_text_joiner = value.get("title_text_joiner", "space")
+    if title_text_joiner not in {"space", "compact"}:
+        raise ValueError("DOM monitor rich_rows.title_text_joiner must be 'space' or 'compact'")
     return (
         row_selector,
         link_selector,
@@ -3276,6 +3281,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         title_regex,
         description_next_selector,
         default_locations,
+        title_text_joiner,
         duplicate_url_policy,
     )
 
@@ -3356,6 +3362,7 @@ def _extract_rich_rows_static(
         title_regex,
         description_next_selector,
         default_locations,
+        title_text_joiner,
         duplicate_url_policy,
     ) = config
     tree = LexborHTMLParser(html)
@@ -3391,7 +3398,12 @@ def _extract_rich_rows_static(
         link = row.css_first(link_selector) if link_selector is not None else row
         href = link.attributes.get(link_attr) if link is not None else None
         title_node = row.css_first(title_selector) if title_selector is not None else link
-        title = title_node.text(separator=" ", strip=True).strip() if title_node is not None else ""
+        title_separator = " " if title_text_joiner == "space" else ""
+        title = (
+            title_node.text(separator=title_separator, strip=True).strip()
+            if title_node is not None
+            else ""
+        )
         if title and title_regex is not None:
             match = title_regex.search(title)
             title = match.group(1).strip() if match is not None else ""
