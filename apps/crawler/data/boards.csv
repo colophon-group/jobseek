@@ -6630,6 +6630,7 @@ te-connectivity,te-connectivity-careers,https://careers.te.com/,rss,"{""preset""
 teachable,teachable-greenhouse,https://job-boards.greenhouse.io/teachablecareers,greenhouse,"{""token"": ""teachablecareers""}",skip,
 teague,teague-greenhouse,https://job-boards.greenhouse.io/teague,greenhouse,"{""token"": ""teague""}",skip,
 tealium,tealium-pinpoint,https://tealium.pinpointhq.com,pinpoint,"{""slug"": ""tealium""}",skip,
+team-car-care,team-car-care-careers,https://teamcarcare.wd1.myworkdayjobs.com/external,workday,,workday,
 team-skalieren,team-skalieren-join,https://join.com/companies/team-skalierende,join,"{""slug"": ""team-skalierende""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 tebi,tebi-ashby,https://jobs.ashbyhq.com/tebi,ashby,"{""token"": ""tebi""}",skip,
 tebra,tebra-greenhouse,https://job-boards.greenhouse.io/tebra,greenhouse,"{""token"": ""tebra""}",skip,
