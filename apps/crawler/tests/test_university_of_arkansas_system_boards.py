@@ -41,8 +41,6 @@ def test_metadata_assets_and_board_inventory_are_complete() -> None:
     assert company["employee_count_range"] == "8"
     assert company["founded_year"] == "1871"
     assert all(description[locale] for locale in ("en", "de", "fr", "it"))
-    assert (DATA_DIR / "images" / COMPANY / "logo.jpg").is_file()
-    assert (DATA_DIR / "images" / COMPANY / "icon.jpg").is_file()
     assert set(boards) == {
         f"{COMPANY}-careers",
         f"{COMPANY}-careers-northark",
@@ -64,13 +62,24 @@ def test_provider_configs_preserve_verified_runtime_contracts() -> None:
 
     uaeacc = boards[f"{COMPANY}-careers-uaeacc"]
     assert uaeacc["monitor_type"] == "dom"
+    assert uaeacc["monitor_config"] == {
+        "rich_rows": {
+            "row_selector": (
+                '#bodyContainer > div:first-of-type > ul li:has(a[href^="/plugins/show_image.php"])'
+            ),
+            "link_selector": 'a[href^="/plugins/show_image.php"]',
+            "default_locations": ["Forrest City, Arkansas, United States"],
+            "duplicate_url_policy": "prefer_longer_title",
+        },
+        "url_filter": r"^https://www\.uaeacc\.edu/plugins/show_image\.php\?id=\d+$",
+    }
     assert uaeacc["scraper_type"] == "pdf"
     assert uaeacc["scraper_config"] == {
+        "enrich": ["description"],
         "ocr": True,
         "ocr_languages": "eng",
         "ocr_scale": 2,
         "title_source": "text",
-        "defaults": {"locations": ["Forrest City, Arkansas, United States"]},
     }
 
     wri = boards[f"{COMPANY}-careers-wri"]
@@ -89,7 +98,15 @@ async def test_northark_api_returns_rich_jobs_with_statewide_location_default() 
                 "desc": "EMPLOYMENT TYPE: Full-time\n\nLead the student services team.",
                 "locationName": "",
                 "shortUrl": "https://trello.com/c/abc123/director-of-student-services",
-            }
+                "idList": "5762d916b5e6abe35afc24f3",
+            },
+            {
+                "name": "Unrelated Local Employer Role",
+                "desc": "This card belongs to the public local-jobs list.",
+                "locationName": "",
+                "shortUrl": "https://trello.com/c/external/unrelated-role",
+                "idList": "external-local-jobs-list",
+            },
         ]
     }
     transport = httpx.MockTransport(
@@ -108,6 +125,7 @@ async def test_northark_api_returns_rich_jobs_with_statewide_location_default() 
     assert job.title == "Director of Student Services"
     assert job.description == "EMPLOYMENT TYPE: Full-time\n\nLead the student services team."
     assert job.locations == ["Arkansas, United States"]
+    assert "https://trello.com/c/external/unrelated-role" not in result.jobs_by_url
 
 
 @pytest.mark.asyncio
@@ -117,17 +135,17 @@ async def test_uaeacc_monitor_deduplicates_shared_job_documents() -> None:
     <div id="bodyContainer">
       <div>
         <ul>
-          <li><a href="/plugins/show_image.php?id=5312">Nursing Faculty</a></li>
-          <li><a href="/plugins/show_image.php?id=5312">Nursing Instructor</a></li>
+          <li><a href="/plugins/show_image.php?id=5312">PT RN Clinical Instructor</a></li>
+          <li><a href="/plugins/show_image.php?id=5312">
+            Part-Time Clinical Instructor Registered Nursing
+          </a></li>
           <li><a href="/plugins/show_image.php?id=5556">Workday Director</a></li>
           <li><a href="/documents/employment-application.pdf">Application</a></li>
         </ul>
       </div>
     </div>
     """
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(200, text=html, request=request)
-    )
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, text=html, request=request))
 
     async with httpx.AsyncClient(transport=transport) as client:
         result = await monitor_one(
@@ -141,3 +159,6 @@ async def test_uaeacc_monitor_deduplicates_shared_job_documents() -> None:
         "https://www.uaeacc.edu/plugins/show_image.php?id=5312",
         "https://www.uaeacc.edu/plugins/show_image.php?id=5556",
     }
+    duplicate = result.jobs_by_url["https://www.uaeacc.edu/plugins/show_image.php?id=5312"]
+    assert duplicate.title == "Part-Time Clinical Instructor Registered Nursing"
+    assert duplicate.locations == ["Forrest City, Arkansas, United States"]

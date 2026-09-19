@@ -2964,6 +2964,7 @@ _RichRowsConfig = tuple[
     re.Pattern[str] | None,
     str | None,
     tuple[str, ...],
+    str,
 ]
 
 
@@ -3043,6 +3044,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "description_next_selector",
         "default_locations",
         "title_regex",
+        "duplicate_url_policy",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
     row_selector = _validate_css_selector(value.get("row_selector"), name="rich_rows.row_selector")
@@ -3248,6 +3250,11 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         row_required_selector is not None or row_text_pattern is not None
     ):
         raise ValueError("DOM monitor rich_rows row filters cannot be combined with total_selector")
+    duplicate_url_policy = value.get("duplicate_url_policy", "error")
+    if duplicate_url_policy not in {"error", "prefer_longer_title"}:
+        raise ValueError(
+            "DOM monitor rich_rows.duplicate_url_policy must be 'error' or 'prefer_longer_title'"
+        )
     return (
         row_selector,
         link_selector,
@@ -3269,6 +3276,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         title_regex,
         description_next_selector,
         default_locations,
+        duplicate_url_policy,
     )
 
 
@@ -3348,6 +3356,7 @@ def _extract_rich_rows_static(
         title_regex,
         description_next_selector,
         default_locations,
+        duplicate_url_policy,
     ) = config
     tree = LexborHTMLParser(html)
     advertised_total: int | None = None
@@ -3485,10 +3494,14 @@ def _extract_rich_rows_static(
         )
         existing = jobs_by_url.get(canonical_url)
         if existing is not None and existing != job and url_canonicalizer is None:
-            raise ValueError(
-                "DOM monitor rich_rows produced conflicting rows for one canonical URL: "
-                f"{canonical_url}"
-            )
+            if duplicate_url_policy == "prefer_longer_title":
+                if len(job.title) <= len(existing.title):
+                    continue
+            else:
+                raise ValueError(
+                    "DOM monitor rich_rows produced conflicting rows for one canonical URL: "
+                    f"{canonical_url}"
+                )
         jobs_by_url[canonical_url] = job
 
     if advertised_total is not None and len(jobs_by_url) != advertised_total:
