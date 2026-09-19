@@ -698,7 +698,7 @@ async def _open_page_playwright(
                         or selection_origin
                     )
                 failure_origin = failure_origin.lower() if failure_origin else None
-                if exc.status in {403, 429}:
+                if exc.status in {401, 403, 429}:
                     report_proxy_failure(
                         selection,
                         origin=failure_origin,

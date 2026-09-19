@@ -521,10 +521,12 @@ class RotatingProxyTransport(httpx.AsyncBaseTransport):
             return
         request.extensions[self._OUTCOME_REPORTED_EXTENSION] = True
         origin = (request.url.host or "").lower() or None
-        if response.status_code in {403, 429}:
+        if response.status_code in {401, 403, 429}:
             # The proxy successfully reached this target, but this exit is
-            # currently blocked/rate-limited for the origin. Quarantine only
-            # the (slot, origin) pair; other origins may continue using it.
+            # currently denied, blocked, or rate-limited for the origin.
+            # Public boards sometimes use 401 (rather than 403) for an
+            # egress-IP denial. Quarantine only the (slot, origin) pair;
+            # other origins may continue using it.
             report_proxy_failure(selection, origin=origin, reason="origin_block")
         else:
             # Only the final response in a redirect chain recovers a probe.
