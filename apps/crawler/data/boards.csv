@@ -5935,6 +5935,9 @@ scaleops,scaleops-careers,https://scaleops.com/careers/,dom,"{""url_filter"": ""
 scandic-hotels,scandic-hotels-dk,https://cdn.jobylon.com/jobs/companies/1331/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""1331""}",json-ld,
 scandic-hotels,scandic-hotels-se,https://cdn.jobylon.com/jobs/companies/1334/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""1334""}",json-ld,
 scandit,scandit-careers,https://boards.greenhouse.io/scandit,greenhouse,"{""token"": ""scandit""}",skip,
+scania,scania-careers,https://jobs.scania.com/,rss,"{""preset"": ""successfactors""}",skip,
+scania,scania-latin-america,https://scania.gupy.io/,gupy,"{""tenant"": ""scania""}",json-ld,
+scania,scania-lots-group,https://lotsgroup.gupy.io/,gupy,"{""tenant"": ""lotsgroup""}",json-ld,
 scenic-biotech,scenic-biotech-careers,https://embed.homerun.co/bousgkbxmqwi4bpf5che/widget-en.html,dom,"{""render"": false, ""url_filter"": ""^https://scenic-biotech\\.homerun\\.co/[^/]+/en/?$""}",json-ld,
 scewo,scewo-careers,https://scewo-ag.jobs.personio.de/,personio,"{""slug"": ""scewo-ag""}",skip,
 schaffmann-consultants-executive-search,schaffmann-consultants-executive-search-join,https://join.com/companies/schaffmann-consultantsde,join,"{""slug"": ""schaffmann-consultantsde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
