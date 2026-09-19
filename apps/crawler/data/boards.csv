@@ -5821,6 +5821,7 @@ rune-technologies,rune-technologies-careers,https://jobs.ashbyhq.com/runetech,as
 runpod-inc,runpod-inc-greenhouse,https://job-boards.greenhouse.io/runpod,greenhouse,"{""token"": ""runpod""}",skip,
 runway,runway-ashby,https://jobs.ashbyhq.com/runway-ml,ashby,"{""token"": ""runway-ml""}",skip,
 runwise,runwise-greenhouse,https://job-boards.greenhouse.io/runwise,greenhouse,"{""token"": ""runwise""}",skip,
+rural-king,rural-king-careers,https://careers-ruralking.icims.com/,icims,,json-ld,
 rush-street-interactive,rush-street-interactive-greenhouse,https://job-boards.greenhouse.io/rushstreetinteractive,greenhouse,"{""token"": ""rushstreetinteractive""}",skip,
 russell-reynolds-associates,russell-reynolds-associates-careers-linkedin,https://www.linkedin.com/jobs/search/?f_C=5415,linkedin,"{""company_id"": ""5415""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 rv-tech-gmbh,rv-tech-gmbh-join,https://join.com/companies/rv-roboticscom,join,"{""slug"": ""rv-roboticscom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
