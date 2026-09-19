@@ -7377,6 +7377,9 @@ wells-fargo,wells-fargo-careers,https://wd1.myworkdaysite.com/recruiting/wf/Well
 wellspan-health,wellspan-health-careers,https://fa-evzu-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 weploy,weploy-greenhouse,https://job-boards.greenhouse.io/weploy,greenhouse,"{""token"": ""weploy""}",skip,
 weride,weride-careers,https://jobs.lever.co/weride,lever,"{""token"": ""weride""}",skip,
+wesco,wesco-accutech,https://eklm.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+wesco,wesco-careers,https://eklm.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+wesco,wesco-eecol,https://eklm.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 wesort-ai,wesort-ai-careers,https://www.wesort.ai/karriere,sitemap,"{""url_filter"": ""(stellenanzeige-|entwicklungsingenieur|initiativbewerbung)""}",dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 60000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Interesse geweckt"", ""html"": true}]}"
 westhafen-leipzig,westhafen-leipzig-join,https://join.com/companies/westhafen-leipzigde,join,"{""slug"": ""westhafen-leipzigde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 westinghouse-electric-company,westinghouse-electric-company-careers,https://careers.westinghousenuclear.com/,rss,"{""preset"": ""successfactors""}",skip,
