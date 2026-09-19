@@ -1022,7 +1022,10 @@ class TestOpenPage:
         assert failed_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
         assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
 
-    async def test_browser_target_block_rotates_same_warmup_origin(self, monkeypatch):
+    @pytest.mark.parametrize("blocked_status", [401, 403])
+    async def test_browser_target_block_rotates_same_warmup_origin(
+        self, monkeypatch, blocked_status
+    ):
         from src import config
         from src.shared import proxy as proxy_module
 
@@ -1045,7 +1048,7 @@ class TestOpenPage:
                 raise BrowserNavigationHTTPStatusError(
                     requested_url="https://blocked.example/jobs",
                     response_url="https://blocked.example/challenge",
-                    status=403,
+                    status=blocked_status,
                     phase="primary",
                 )
 
@@ -1055,7 +1058,8 @@ class TestOpenPage:
         assert blocked_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10000")
         assert healthy_pw.chromium.launch.await_args.kwargs["proxy"]["server"].endswith(":10001")
 
-    async def test_browser_target_block_rotates_without_warmup(self, monkeypatch):
+    @pytest.mark.parametrize("blocked_status", [401, 403])
+    async def test_browser_target_block_rotates_without_warmup(self, monkeypatch, blocked_status):
         from src import config
         from src.shared import proxy as proxy_module
 
@@ -1081,7 +1085,7 @@ class TestOpenPage:
                 raise BrowserNavigationHTTPStatusError(
                     requested_url="https://blocked.example/jobs",
                     response_url="https://blocked.example/challenge",
-                    status=403,
+                    status=blocked_status,
                     phase="primary",
                 )
 

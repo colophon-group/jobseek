@@ -438,7 +438,8 @@ class TestRotatingProxyTransport:
 
         assert slots == [0, 1, 0, 1]
 
-    async def test_target_block_quarantines_only_slot_origin_pair(self):
+    @pytest.mark.parametrize("blocked_status", [401, 403])
+    async def test_target_block_quarantines_only_slot_origin_pair(self, blocked_status):
         from src.shared.proxy import PoolProxyProvider
 
         provider = PoolProxyProvider("webshare", self.URLS)
@@ -447,7 +448,7 @@ class TestRotatingProxyTransport:
         def factory(selection):
             async def handler(request):
                 slots.append((selection.pool_slot, request.url.host))
-                status = 403 if len(slots) == 1 else 200
+                status = blocked_status if len(slots) == 1 else 200
                 return httpx.Response(status, request=request)
 
             return httpx.MockTransport(handler)
@@ -458,7 +459,7 @@ class TestRotatingProxyTransport:
             transport_factory=factory,
         )
         async with ProxyAwareAsyncClient(transport=transport) as client:
-            assert (await client.get("https://blocked.example/jobs")).status_code == 403
+            assert (await client.get("https://blocked.example/jobs")).status_code == blocked_status
             assert (await client.get("https://blocked.example/jobs")).status_code == 200
             assert (await client.get("https://blocked.example/jobs")).status_code == 200
             assert (await client.get("https://other.example/jobs")).status_code == 200
