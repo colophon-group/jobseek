@@ -99,6 +99,17 @@ def test_governor_lock_and_home_write_scope_cover_managed_worktree_reconciliatio
     assert '"${REPO_DIR}/scripts/codex-worktree-reconcile.py" --apply' in deploy
 
 
+def test_runner_deploy_provisions_pdf_ocr_runtime_before_crawler_sync() -> None:
+    deploy = DEPLOY.read_text()
+
+    assert "ensure_document_extraction_runtime()" in deploy
+    assert "tesseract-ocr tesseract-ocr-eng" in deploy
+    assert "tesseract --list-langs" in deploy
+    assert deploy.index("ensure_document_extraction_runtime\n") < deploy.index(
+        "sync_crawler_runtime\n"
+    )
+
+
 def test_daily_timers_catch_up_missed_calendar_activations_under_the_shared_lock() -> None:
     timers = {
         ANNOTATIONS_TIMER: "OnCalendar=*-*-* 08:00:00 UTC",

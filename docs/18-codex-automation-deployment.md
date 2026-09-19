@@ -206,7 +206,7 @@ exit
 Install rendering and browser support:
 
 ```bash
-apt-get install -y libcairo2 librsvg2-bin
+apt-get install -y libcairo2 librsvg2-bin tesseract-ocr tesseract-ocr-eng
 sudo -iu codex-runner
 cd /srv/jobseek-codex/repo/apps/crawler
 uv sync

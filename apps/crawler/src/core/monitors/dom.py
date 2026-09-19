@@ -2964,6 +2964,8 @@ _RichRowsConfig = tuple[
     re.Pattern[str] | None,
     str | None,
     tuple[str, ...],
+    tuple[tuple[str, str], ...],
+    str,
 ]
 
 
@@ -3043,6 +3045,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "description_next_selector",
         "default_locations",
         "title_regex",
+        "title_replacements",
+        "duplicate_url_policy",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
     row_selector = _validate_css_selector(value.get("row_selector"), name="rich_rows.row_selector")
@@ -3248,6 +3252,33 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         row_required_selector is not None or row_text_pattern is not None
     ):
         raise ValueError("DOM monitor rich_rows row filters cannot be combined with total_selector")
+    title_replacements_raw = value.get("title_replacements", {})
+    if (
+        not isinstance(title_replacements_raw, dict)
+        or len(title_replacements_raw) > 8
+        or any(
+            not isinstance(source, str)
+            or not source
+            or len(source) > 128
+            or "\x00" in source
+            or not isinstance(replacement, str)
+            or not replacement
+            or len(replacement) > 128
+            or "\x00" in replacement
+            or source == replacement
+            for source, replacement in title_replacements_raw.items()
+        )
+    ):
+        raise ValueError(
+            "DOM monitor rich_rows.title_replacements must be a bounded mapping of "
+            "distinct non-empty strings"
+        )
+    title_replacements = tuple(title_replacements_raw.items())
+    duplicate_url_policy = value.get("duplicate_url_policy", "error")
+    if duplicate_url_policy not in {"error", "prefer_longer_title"}:
+        raise ValueError(
+            "DOM monitor rich_rows.duplicate_url_policy must be 'error' or 'prefer_longer_title'"
+        )
     return (
         row_selector,
         link_selector,
@@ -3269,6 +3300,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         title_regex,
         description_next_selector,
         default_locations,
+        title_replacements,
+        duplicate_url_policy,
     )
 
 
@@ -3348,6 +3381,8 @@ def _extract_rich_rows_static(
         title_regex,
         description_next_selector,
         default_locations,
+        title_replacements,
+        duplicate_url_policy,
     ) = config
     tree = LexborHTMLParser(html)
     advertised_total: int | None = None
@@ -3383,6 +3418,8 @@ def _extract_rich_rows_static(
         href = link.attributes.get(link_attr) if link is not None else None
         title_node = row.css_first(title_selector) if title_selector is not None else link
         title = title_node.text(separator=" ", strip=True).strip() if title_node is not None else ""
+        for source, replacement in title_replacements:
+            title = title.replace(source, replacement)
         if title and title_regex is not None:
             match = title_regex.search(title)
             title = match.group(1).strip() if match is not None else ""
@@ -3485,10 +3522,14 @@ def _extract_rich_rows_static(
         )
         existing = jobs_by_url.get(canonical_url)
         if existing is not None and existing != job and url_canonicalizer is None:
-            raise ValueError(
-                "DOM monitor rich_rows produced conflicting rows for one canonical URL: "
-                f"{canonical_url}"
-            )
+            if duplicate_url_policy == "prefer_longer_title":
+                if len(job.title) <= len(existing.title):
+                    continue
+            else:
+                raise ValueError(
+                    "DOM monitor rich_rows produced conflicting rows for one canonical URL: "
+                    f"{canonical_url}"
+                )
         jobs_by_url[canonical_url] = job
 
     if advertised_total is not None and len(jobs_by_url) != advertised_total:
