@@ -76,6 +76,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "deel",
         "dvinci",
         "earcu",
+        "fenbi",
         "gem",
         "greenhouse",
         "headhunter",

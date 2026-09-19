@@ -27,7 +27,7 @@ _EVIDENCE_LABEL_NAMES = frozenset({"host_role", "collector", "probe", "container
 SERIES_BUDGETS = {
     "active_series": 12_000,
     "crawler_series": 5_000,
-    # The current registry deterministically seeds 2,056 fleet series. Keep
+    # The current registry deterministically seeds 2,116 fleet series. Keep
     # bounded growth room without weakening the independent crawler-wide cap.
     "crawler_capability_series": 2_200,
     "redis_series": 200,

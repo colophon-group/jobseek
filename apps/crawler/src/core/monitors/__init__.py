@@ -1022,7 +1022,7 @@ async def probe_all_monitors(
 
 
 # Company-specific monitors excluded from generic probing.
-_PROBE_SKIP: frozenset[str] = frozenset({"amazon", "accenture", "unifr", "unisante"})
+_PROBE_SKIP: frozenset[str] = frozenset({"amazon", "accenture", "fenbi", "unifr", "unisante"})
 
 
 # Import modules to trigger registration
@@ -1055,6 +1055,7 @@ from src.core.monitors import (  # noqa: E402
     dvinci,  # noqa: F401
     earcu,  # noqa: F401
     eightfold,  # noqa: F401
+    fenbi,  # noqa: F401
     gem,  # noqa: F401
     greenhouse,  # noqa: F401
     gupy,  # noqa: F401

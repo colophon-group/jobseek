@@ -56,6 +56,7 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "deel",
     "dvinci",
     "earcu",
+    "fenbi",
     "gem",
     "greenhouse",
     "hibob",
