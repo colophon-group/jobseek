@@ -6663,6 +6663,7 @@ taxbit,taxbit-greenhouse,https://job-boards.greenhouse.io/taxbit,greenhouse,"{""
 tbhc-delivers,tbhc-delivers-greenhouse,https://job-boards.greenhouse.io/tbhcdelivers,greenhouse,"{""token"": ""tbhcdelivers""}",skip,
 td,td-careers,https://td.wd3.myworkdayjobs.com/td_bank_careers,workday,,workday,
 td-international,td-international-greenhouse,https://job-boards.greenhouse.io/tdinternational,greenhouse,"{""token"": ""tdinternational""}",skip,
+td-synnex,td-synnex-careers,https://synnex.wd5.myworkdayjobs.com/tdsynnexcareers,workday,,workday,
 te-connectivity,te-connectivity-careers,https://careers.te.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.te.com/googlefeed.xml""}",skip,
 teachable,teachable-greenhouse,https://job-boards.greenhouse.io/teachablecareers,greenhouse,"{""token"": ""teachablecareers""}",skip,
 teague,teague-greenhouse,https://job-boards.greenhouse.io/teague,greenhouse,"{""token"": ""teague""}",skip,
