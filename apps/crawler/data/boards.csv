@@ -1774,6 +1774,8 @@ covenant-health,covenant-health-physician-opportunities,https://www.covenantheal
 covera-health,covera-health-greenhouse,https://job-boards.greenhouse.io/coverahealth,greenhouse,"{""token"": ""coverahealth""}",skip,
 coverdash,coverdash-ashby,https://jobs.ashbyhq.com/coverdash,ashby,"{""token"": ""coverdash""}",skip,
 covergenius,covergenius-pinpoint,https://covergenius.pinpointhq.com,pinpoint,"{""slug"": ""covergenius""}",skip,
+cr-fitness-holdings,cr-fitness-holdings-careerplug,https://cr-fitness-holdings.careerplug.com/jobs,dom,"{""url_filter"": ""/jobs/[0-9]+$""}",dom,"{""steps"": [{""match_regex"": ""(?i)^\\s*(?:full|part) time\\s*[\u2022]\\s*.+$"", ""field"": ""employment_type"", ""regex"": ""(?i)^\\s*((?:full|part) time)""}, {""match_regex"": ""(?i)^\\s*(?:full|part) time\\s*[\u2022]\\s*.+$"", ""field"": ""location"", ""regex"": ""(?i)[\u2022]\\s*(.+?)\\s*$"", ""from"": 0}, {""tag"": ""h1"", ""field"": ""title"", ""from"": 0}, {""field"": ""description"", ""html"": true, ""stop_tag"": ""h2"", ""stop_regex"": ""(?i)(?:resume on Indeed|curr[i\u00ed]culum (?:en|de) Indeed)\\)?\\s*$"", ""stop_count"": 200}]}"
+cr-fitness-holdings,cr-fitness-holdings-careers,https://crunchfitness.applytojob.com/,jazzhr,,jazzhr,
 cradle,cradle-careers,https://jobs.ashbyhq.com/cradlebio,ashby,"{""token"": ""cradlebio""}",skip,
 craftdocs,craftdocs-ashby,https://jobs.ashbyhq.com/craftdocs,ashby,"{""token"": ""craftdocs""}",skip,
 cranial-technologies,cranial-technologies-greenhouse,https://job-boards.greenhouse.io/cranialtechnologies,greenhouse,"{""token"": ""cranialtechnologies""}",skip,
