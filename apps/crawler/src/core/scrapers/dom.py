@@ -9,7 +9,9 @@ By default (``render: false``), fetches the page via static HTTP.  Set
 Config uses ``steps`` (same format as ``walk_steps``), an optional ``scope``
 CSS selector that limits extraction to one content container, and optional
 ``include_document_title`` / ``include_document_description`` flags when a
-scoped layout keeps useful metadata in ``<head>``.
+scoped layout keeps useful metadata in ``<head>``. ``include_header_content``
+supports job templates that misuse semantic ``<header>`` elements for the
+posting body; navigation and footer noise remain excluded.
 Static requests may set allowlisted public ``request_headers`` for origins
 that require explicit content negotiation or crawler identification.
 Browser lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``,
@@ -125,6 +127,18 @@ def _scope_html(html: str, config: dict) -> str:
     # accessible no-JavaScript fallback remain extractable.
     scoped_html = node.inner_html if node.tag == "noscript" else node.html
     return "".join(prefixes) + scoped_html
+
+
+def _flatten_html(html: str, config: dict) -> list[dict]:
+    """Flatten a detail document with explicitly enabled structural content."""
+
+    include_header_content = config.get("include_header_content", False)
+    if not isinstance(include_header_content, bool):
+        raise ValueError("DOM scraper include_header_content must be a boolean")
+    return flatten(
+        _scope_html(html, config),
+        include_header_content=include_header_content,
+    )
 
 
 def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -> None:
@@ -1158,7 +1172,7 @@ def parse_html(html: str, config: dict) -> JobContent:
     steps = config.get("steps")
     if not steps:
         return JobContent()
-    elements = flatten(_scope_html(html, config))
+    elements = _flatten_html(html, config)
     raw, _ = walk_steps(elements, steps)
     raw = _apply_defaults(raw, config)
     return _map_to_job_content(raw)
@@ -1441,7 +1455,10 @@ async def scrape(
         _raise_if_bot_challenge(str(resp.url), html)
 
     html = _scope_html(html, config)
-    elements = flatten(html)
+    include_header_content = config.get("include_header_content", False)
+    if not isinstance(include_header_content, bool):
+        raise ValueError("DOM scraper include_header_content must be a boolean")
+    elements = flatten(html, include_header_content=include_header_content)
 
     if artifact_dir is not None:
         with contextlib.suppress(Exception):

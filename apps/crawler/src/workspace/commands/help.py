@@ -3809,6 +3809,11 @@ dom — Step-based Extraction Engine
                    by none; incompatible with auto.
     actions        Browser action pipeline (see: ws help actions)
     scope          Optional CSS selector that limits extraction to the job body
+    include_header_content
+                   Include posting content placed inside semantic <header>
+                   elements. Navigation and footer content remain excluded.
+                   Use only for verified templates that misuse <header> for
+                   the detail body; false by default.
     include_document_title
                    With scope, prepend the document <title> for extraction
     include_document_description
