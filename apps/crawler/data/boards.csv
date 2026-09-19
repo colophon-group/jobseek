@@ -4149,6 +4149,9 @@ loblaw,loblaw-qhr,https://workforcenow.adp.com/mascsr/default/mdf/recruitment/re
 loblaw,loblaw-shoppers,https://careers.shoppersdrugmart.ca/jobs,sitemap,"{""url_filter"": ""/job/""}",json-ld,
 loblaw,loblaw-tnt-linkedin,https://www.linkedin.com/company/t-t-supermarket/jobs/,linkedin,"{""company_id"": ""714293"", ""company_slug"": ""t-t-supermarket""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 local-initiatives-support-corporation,local-initiatives-support-corporation-greenhouse,https://job-boards.greenhouse.io/lisc,greenhouse,"{""token"": ""lisc""}",skip,
+localiza,localiza-careers,https://localiza.gupy.io/,gupy,,json-ld,
+localiza,localiza-mexico,https://localiza-co.viterbit.site/,dom,"{""render"": false, ""link_selector"": ""a[href]"", ""url_filter"": ""^https://localiza-co\\.viterbit\\.site/[^/?#]+-[A-Za-z0-9_-]{12}/$""}",json-ld,
+localiza,localiza-pandape,https://localizarentacar.pandape.infojobs.com.br/,computrabajo,"{""host"": ""localizarentacar.pandape.infojobs.com.br"", ""variant"": ""pandape""}",json-ld,
 loccitane-group,loccitane-group-australia-new-zealand,https://employmenthero.com/jobs/organisations/loccitane-australia-pty-ltd/,api_sniffer,"{""api_url"": ""https://services.employmenthero.com/ats/api/v1/career_page/organisations/loccitane-australia-pty-ltd/jobs"", ""method"": ""GET"", ""json_path"": ""data.items"", ""url_template"": ""https://employmenthero.com/jobs/position/{friendly_id}/"", ""pagination"": {""param_name"": ""page_index"", ""style"": ""page"", ""start_value"": 1, ""increment"": 1, ""location"": ""query""}, ""params"": {""item_per_page"": ""10""}}",json-ld,
 loccitane-group,loccitane-group-brazil-corporate,https://sejaloccitane.gupy.io/,gupy,"{""tenant"": ""sejaloccitane""}",json-ld,
 loccitane-group,loccitane-group-brazil-retail,https://loccitanelojas.gupy.io/,gupy,"{""tenant"": ""loccitanelojas""}",json-ld,
