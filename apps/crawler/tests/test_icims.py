@@ -112,6 +112,173 @@ class TestHostAndUrls:
 
 
 class TestMonitor:
+    async def test_discovers_configured_jibe_redirect_and_filters_by_icims_host(self):
+        jibe_url = "https://careers.example.com/jobs"
+        peer = "careers-peer.icims.com"
+        requested_urls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested_urls.append(str(request.url))
+            if request.url.host == HOST:
+                return httpx.Response(
+                    200,
+                    text=(
+                        '<script type="text/javascript">'
+                        f'window.top.location.href = "{jibe_url}";'
+                        "</script>"
+                    ),
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                json={
+                    "totalCount": 3,
+                    "jobs": [
+                        {"data": {"slug": "101", "apply_url": f"https://{HOST}/jobs/101/login"}},
+                        {"data": {"slug": "102", "apply_url": f"https://{peer}/jobs/102/login"}},
+                        {"data": {"slug": "103", "apply_url": f"https://{HOST}/jobs/103/login"}},
+                    ],
+                },
+                request=request,
+            )
+
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"jibe_url": jibe_url, "jibe_job_hosts": [HOST, peer]},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert result == {_job_url(101), _job_url(103)}
+        assert any("/api/jobs?page=1&limit=100" in url for url in requested_urls)
+
+    async def test_configured_jibe_redirect_must_match_exactly(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                text=(
+                    '<script type="text/javascript">'
+                    'window.top.location.href = "https://other.example.com/jobs";'
+                    "</script>"
+                ),
+                request=request,
+            )
+        )
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {
+                "jibe_url": "https://careers.example.com/jobs",
+                "jibe_job_hosts": [HOST],
+            },
+        }
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="configured Jibe redirect"):
+                await discover(board, client)
+
+    @pytest.mark.parametrize(
+        ("pages", "message"),
+        [
+            (
+                [
+                    {
+                        "totalCount": 2,
+                        "jobs": [
+                            {
+                                "data": {
+                                    "slug": "101",
+                                    "apply_url": f"https://{HOST}/jobs/101/login",
+                                }
+                            }
+                        ],
+                    },
+                    {
+                        "totalCount": 3,
+                        "jobs": [
+                            {
+                                "data": {
+                                    "slug": "102",
+                                    "apply_url": f"https://{HOST}/jobs/102/login",
+                                }
+                            }
+                        ],
+                    },
+                ],
+                "total changed",
+            ),
+            (
+                [
+                    {
+                        "totalCount": 2,
+                        "jobs": [
+                            {
+                                "data": {
+                                    "slug": "101",
+                                    "apply_url": f"https://{HOST}/jobs/101/login",
+                                }
+                            }
+                        ],
+                    },
+                    {
+                        "totalCount": 2,
+                        "jobs": [
+                            {
+                                "data": {
+                                    "slug": "101",
+                                    "apply_url": f"https://{HOST}/jobs/101/login",
+                                }
+                            }
+                        ],
+                    },
+                ],
+                "repeated job",
+            ),
+            (
+                [
+                    {
+                        "totalCount": 1,
+                        "jobs": [
+                            {
+                                "data": {
+                                    "slug": "101",
+                                    "apply_url": "https://evil.example/jobs/101/login",
+                                }
+                            }
+                        ],
+                    }
+                ],
+                "untrusted application URL",
+            ),
+        ],
+    )
+    async def test_jibe_inventory_drift_and_untrusted_hosts_fail_closed(
+        self,
+        pages: list[dict],
+        message: str,
+    ):
+        jibe_url = "https://careers.example.com/jobs"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == HOST:
+                return httpx.Response(
+                    200,
+                    text=(
+                        '<script type="text/javascript">'
+                        f'window.top.location.href = "{jibe_url}";'
+                        "</script>"
+                    ),
+                    request=request,
+                )
+            page_number = int(request.url.params["page"])
+            return httpx.Response(200, json=pages[page_number - 1], request=request)
+
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"jibe_url": jibe_url, "jibe_job_hosts": [HOST]},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match=message):
+                await discover(board, client)
+
     async def test_discovers_all_pages_and_canonicalizes_urls(self):
         requests: list[str] = []
 

@@ -29,6 +29,13 @@ log = structlog.get_logger()
 
 MAX_JOBS = 50_000
 PAGE_SIZE = 100
+_SNAPSHOT_ATTEMPTS = 2
+_SNAPSHOT_RETRY_DELAY = 1.0
+
+
+class _SnapshotChanged(ValueError):
+    """The publication inventory changed while pagination was in progress."""
+
 
 # SmartRecruiters exposes a stable requisition ``jobId`` only on its detail
 # endpoint.  A single requisition can have multiple language publications,
@@ -360,7 +367,7 @@ def _validate_list_page(data: dict, expected_total: int | None) -> tuple[list[di
     if not isinstance(total_found, int) or isinstance(total_found, bool) or total_found < 0:
         raise ValueError("SmartRecruiters list response totalFound must be a non-negative integer")
     if expected_total is not None and total_found != expected_total:
-        raise ValueError(
+        raise _SnapshotChanged(
             "SmartRecruiters totalFound changed during pagination "
             f"({expected_total} -> {total_found})"
         )
@@ -369,7 +376,7 @@ def _validate_list_page(data: dict, expected_total: int | None) -> tuple[list[di
     return content, total_found
 
 
-async def _fetch_publications(
+async def _fetch_publications_once(
     token: str,
     client: httpx.AsyncClient,
 ) -> tuple[list[dict], bool, int]:
@@ -399,7 +406,7 @@ async def _fetch_publications(
             if not publication_id:
                 raise ValueError("SmartRecruiters publication has an empty id")
             if publication_id in publication_ids:
-                raise ValueError(
+                raise _SnapshotChanged(
                     f"SmartRecruiters repeated publication id {publication_id!r} across list pages"
                 )
             publication_ids.add(publication_id)
@@ -422,6 +429,27 @@ async def _fetch_publications(
                 f"({len(publications)} < {total_found})"
             )
         offset += PAGE_SIZE
+
+
+async def _fetch_publications(
+    token: str,
+    client: httpx.AsyncClient,
+) -> tuple[list[dict], bool, int]:
+    """Retry one internally inconsistent publication snapshot from page zero."""
+    for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
+        try:
+            return await _fetch_publications_once(token, client)
+        except _SnapshotChanged as exc:
+            if attempt == _SNAPSHOT_ATTEMPTS:
+                raise
+            log.warning(
+                "smartrecruiters.snapshot_changed",
+                company=token,
+                attempt=attempt,
+                error=str(exc),
+            )
+            await asyncio.sleep(_SNAPSHOT_RETRY_DELAY)
+    raise AssertionError("unreachable")
 
 
 def _canonical_template(metadata: dict) -> str | None:

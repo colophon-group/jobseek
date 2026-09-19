@@ -138,6 +138,39 @@ class TestMonitor:
             with pytest.raises(ValueError, match="advertised page 2 returned no jobs"):
                 await discover({"board_url": BOARD_URL}, client)
 
+    async def test_restarts_from_first_page_after_repeated_page(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        async def no_sleep(_delay: float) -> None:
+            return None
+
+        monkeypatch.setattr("src.core.monitors.intervieweb.asyncio.sleep", no_sleep)
+        first_page_calls = 0
+        methods: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal first_page_calls
+            methods.append(request.method)
+            if request.method == "GET":
+                first_page_calls += 1
+                return httpx.Response(
+                    200,
+                    text=_page("role-one-101", pages=2),
+                    request=request,
+                )
+            slug = "role-one-101" if first_page_calls == 1 else "role-two-102"
+            return httpx.Response(
+                200,
+                json={"success": True, "data": _page(slug, current=2, pages=2)},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": BOARD_URL}, client)
+
+        assert result == {_job_link("role-one-101"), _job_link("role-two-102")}
+        assert methods == ["GET", "POST", "GET", "POST"]
+
     async def test_pagination_failure_is_not_treated_as_empty(self):
         def handler(request: httpx.Request) -> httpx.Response:
             if request.method == "GET":

@@ -18,6 +18,7 @@ unexplained absence of links.
 
 from __future__ import annotations
 
+import asyncio
 import math
 import re
 from html.parser import HTMLParser
@@ -35,6 +36,13 @@ log = structlog.get_logger()
 
 PAGE_SIZE = 20
 MAX_JOBS = 10_000
+_SNAPSHOT_ATTEMPTS = 2
+_SNAPSHOT_RETRY_DELAY = 1.0
+
+
+class _SnapshotChanged(ValueError):
+    """The employer inventory changed while pagination was in progress."""
+
 
 _COMPANY_PATH_RE = re.compile(
     r"^/empresas/ofertas-de-trabajo-de-[a-z0-9][a-z0-9-]*-([0-9a-f]{16})/?$",
@@ -350,10 +358,10 @@ async def _discover_urls(board_url: str, client: httpx.AsyncClient) -> tuple[set
     for page in range(2, pages + 1):
         page_urls, page_total = await _fetch_listing(client, board_url, page)
         if page_total != total:
-            raise ValueError("Computrabajo inventory changed during pagination")
+            raise _SnapshotChanged("Computrabajo inventory changed during pagination")
         overlap = urls & page_urls
         if overlap:
-            raise ValueError(f"Computrabajo page {page} repeated {len(overlap)} jobs")
+            raise _SnapshotChanged(f"Computrabajo page {page} repeated {len(overlap)} jobs")
         urls.update(page_urls)
     if len(urls) != target:
         raise ValueError(f"Computrabajo discovered {len(urls)} jobs, expected {target}")
@@ -366,7 +374,22 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     board_url = board["board_url"]
     if _profile_from_url(board_url) is None and _pandape_from_url(board_url) is None:
         raise ValueError(f"Invalid Computrabajo/PandaPe employer URL: {board_url!r}")
-    urls, total = await _discover_urls(board_url, client)
+    for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
+        try:
+            urls, total = await _discover_urls(board_url, client)
+            break
+        except _SnapshotChanged as exc:
+            if attempt == _SNAPSHOT_ATTEMPTS:
+                raise
+            log.warning(
+                "computrabajo.snapshot_changed",
+                board_url=board_url,
+                attempt=attempt,
+                error=str(exc),
+            )
+            await asyncio.sleep(_SNAPSHOT_RETRY_DELAY)
+    else:  # pragma: no cover - the loop either breaks or raises
+        raise AssertionError("unreachable")
     log.info("computrabajo.discovered", board_url=board_url, jobs=len(urls), total=total)
     return truncated_url_result(urls) if total > MAX_JOBS else urls
 

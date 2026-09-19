@@ -42,6 +42,7 @@ from src.core.monitors.api_sniffer import (
     can_handle,
     discover,
 )
+from src.shared.http_retry import PaginationFetchError
 
 
 def _board_row(board_slug: str) -> dict[str, str]:
@@ -698,8 +699,29 @@ class TestHtmlExplicitEmptyResponse:
 
     @pytest.mark.asyncio
     async def test_http_404_fails_instead_of_becoming_empty(self):
-        with pytest.raises(ValueError, match="did not return the configured explicit empty"):
+        with (
+            patch("src.core.monitors.api_sniffer.asyncio.sleep", new_callable=AsyncMock),
+            pytest.raises(PaginationFetchError, match="status=404"),
+        ):
             await self._discover({}, status_code=404)
+
+    @pytest.mark.asyncio
+    async def test_explicit_empty_request_recovers_when_endpoint_appears(self):
+        responses = iter([503, 404, 200])
+        payload = [
+            {
+                "id": 44033,
+                "content": {"protected": False, "rendered": "<div>No links yet</div>"},
+            }
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            status = next(responses)
+            return httpx.Response(status, json=payload if status == 200 else {}, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with patch("src.core.monitors.api_sniffer.asyncio.sleep", new_callable=AsyncMock):
+                assert await discover(self._board(), client) == set()
 
     @pytest.mark.asyncio
     async def test_nonempty_links_do_not_require_empty_markers(self):

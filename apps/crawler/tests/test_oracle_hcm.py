@@ -1083,6 +1083,28 @@ class TestVanityDomainConfigPath:
         assert content.locations == ["United States"]
         assert content.description
 
+    async def test_next_jobs_plural_vanity_url_with_explicit_config(self):
+        api_calls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            api_calls.append(str(request.url))
+            return httpx.Response(
+                200,
+                json=_oracle_hcm_payload("77004", "Seasonal Brand Ambassador"),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            content = await scrape(
+                "https://careers.next.co.uk/en/jobs/77004",
+                {"host": "ekeq.fa.em2.oraclecloud.com", "site": "CX_3001"},
+                client,
+            )
+
+        assert len(api_calls) == 1
+        assert "ekeq.fa.em2.oraclecloud.com" in api_calls[0]
+        assert "%2277004%22" in api_calls[0] or '"77004"' in api_calls[0]
+        assert content.title == "Seasonal Brand Ambassador"
+
     async def test_falls_back_to_organization_description(self):
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(

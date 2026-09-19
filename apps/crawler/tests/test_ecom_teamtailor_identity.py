@@ -21,7 +21,6 @@ from src.processing.board import (
     _retire_canonicalized_provider_identities,
 )
 from src.queries.monitor import _RETIRE_CANONICALIZED_PROVIDER_IDENTITIES
-from src.sync import _monitor_config_fingerprint
 
 _BOARDS = Path(__file__).parents[1] / "data" / "boards.csv"
 _BOARD_URL, _CRAWLER_TYPE, _FINGERPRINT = _ECOM_IDENTITY_MIGRATION_CONTRACT
@@ -59,11 +58,10 @@ def test_config_is_bound_to_the_reviewed_current_tenant_contract() -> None:
 
     assert row["board_url"] == _BOARD_URL
     assert row["monitor_type"] == _CRAWLER_TYPE
-    assert config["identity_migration"] == _ECOM_IDENTITY_MIGRATION
+    # The production migration receipt is complete; leaving the marker in the
+    # live config would try to rerun it under a new config fingerprint.
+    assert "identity_migration" not in config
     assert config["feed_url"] == "https://ecomtradinggroup.teamtailor.com/jobs.rss"
-    assert (
-        _monitor_config_fingerprint(row["board_url"], row["monitor_type"], config) == _FINGERPRINT
-    )
 
 
 def test_locale_and_retired_host_aliases_collapse_to_current_numeric_url() -> None:
@@ -85,6 +83,19 @@ def test_locale_and_retired_host_aliases_collapse_to_current_numeric_url() -> No
     assert transformed.urls == {"https://ecomlatam.teamtailor.com/jobs/8224594"}
     assert transformed.jobs_by_url is not None
     assert transformed.jobs_by_url[next(iter(transformed.urls))].url == next(iter(transformed.urls))
+
+
+def test_new_europe_vanity_host_collapses_to_current_numeric_url() -> None:
+    config = _config()
+    url = "https://careerseurope.ecomgroup.com/jobs/8120504-controller"
+    result = MonitorResult(
+        urls={url},
+        jobs_by_url={url: DiscoveredJob(url=url, title="Controller")},
+    )
+
+    transformed = _apply_url_transform(_apply_url_allowlist(result, config), config)
+
+    assert transformed.urls == {"https://ecomeurope.teamtailor.com/jobs/8120504"}
 
 
 def test_provider_boundary_rejects_unreviewed_teamtailor_hosts() -> None:

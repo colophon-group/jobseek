@@ -442,6 +442,48 @@ class TestDiscover:
             with pytest.raises(ValueError, match=expected):
                 await discover(board, client)
 
+    async def test_restarts_from_first_page_after_repeated_provider_id(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(mokahr, "_PAGE_SIZE", 2)
+
+        async def no_sleep(_delay: float) -> None:
+            return None
+
+        monkeypatch.setattr(mokahr.asyncio, "sleep", no_sleep)
+        iv = "de7c21ed8d6f50fe"
+        key = "1234567890abcdef"
+        first_page_calls = 0
+        offsets: list[int] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal first_page_calls
+            if request.method == "GET":
+                return httpx.Response(200, text=_spa_html(iv), request=request)
+            body = json.loads(request.content)
+            offset = body["offset"]
+            offsets.append(offset)
+            if offset == 0:
+                first_page_calls += 1
+                rows = [_raw_job("one"), _raw_job("two")]
+            else:
+                rows = [_raw_job("two" if first_page_calls == 1 else "three")]
+            return httpx.Response(
+                200,
+                json=_encrypted_jobs(rows, key, iv, total=3),
+                request=request,
+            )
+
+        board = {
+            "board_url": "https://app.mokahr.com/social-recruitment/zte/47588",
+            "metadata": {"org_id": "zte", "site_id": 47588},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(board, client)
+
+        assert [job.metadata["provider_id"] for job in jobs] == ["one", "two", "three"]
+        assert offsets == [0, 2, 0, 2]
+
     async def test_returns_only_explicitly_open_jobs(self):
         iv = "de7c21ed8d6f50fe"
         key = "1234567890abcdef"

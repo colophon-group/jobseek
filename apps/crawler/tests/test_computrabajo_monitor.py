@@ -225,6 +225,33 @@ class TestMonitor:
 
         assert result == {_job_url(index) for index in range(1, 22)}
 
+    async def test_restarts_from_first_page_after_snapshot_drift(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        async def no_sleep(_delay: float) -> None:
+            return None
+
+        monkeypatch.setattr("src.core.monitors.computrabajo.asyncio.sleep", no_sleep)
+        first_page_calls = 0
+        requested_pages: list[int] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal first_page_calls
+            page = int(request.url.params.get("p", "1"))
+            requested_pages.append(page)
+            if page == 1:
+                first_page_calls += 1
+                body = _listing(21, range(1, 21))
+            else:
+                body = _listing(22, [21, 22]) if first_page_calls == 1 else _listing(21, [21])
+            return httpx.Response(200, text=body, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": BOARD_URL}, client)
+
+        assert result == {_job_url(index) for index in range(1, 22)}
+        assert requested_pages == [1, 2, 1, 2]
+
     async def test_probe_reports_authoritative_zero(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(200, text=_listing(0, []), request=request)

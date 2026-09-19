@@ -13,7 +13,7 @@ import html as html_module
 import re
 from collections import Counter
 from pathlib import Path
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import parse_qsl, urljoin, urlparse
 
 import httpx
 import structlog
@@ -23,7 +23,11 @@ from src.core.monitors import BoardGoneError, register
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.core.monitors.dom import _extract_links_static, _raise_if_bot_challenge
 from src.core.monitors.raw import save_text_response
-from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
+from src.shared.http_retry import (
+    PaginationFetchError,
+    fetch_json_page_with_retry,
+    fetch_text_page_with_retry,
+)
 from src.shared.tdm import TDMReservedError
 from src.shared.truncation import truncated_url_result
 
@@ -33,6 +37,13 @@ MAX_JOBS = 50_000
 MAX_PAGES = 1_000
 MAX_HTML_CHARS = 2_000_000
 MAX_JOB_HOSTS = 20
+_JIBE_PAGE_SIZE = 100
+_JIBE_REDIRECT_RE = re.compile(
+    r"\s*<script\s+type=[\"']text/javascript[\"']>\s*"
+    r"window[.]top[.]location[.]href\s*=\s*[\"'](?P<url>https:[^\"']+)[\"'];\s*"
+    r"</script>\s*",
+    re.IGNORECASE,
+)
 
 _HOST_RE = re.compile(
     r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.icims\.com$",
@@ -170,6 +181,39 @@ def _dedupe_job_ids_from_hosts_config(
     if len(peer_hosts) != len(set(peer_hosts)):
         raise ValueError("iCIMS dedupe_job_ids_from_hosts entries must be unique")
     return frozenset(peer_hosts)
+
+
+def _jibe_config(metadata: dict, listing_host: str) -> tuple[str, frozenset[str]] | None:
+    raw_url = metadata.get("jibe_url")
+    raw_hosts = metadata.get("jibe_job_hosts")
+    if raw_url is None and raw_hosts is None:
+        return None
+    if not isinstance(raw_url, str) or not isinstance(raw_hosts, list):
+        raise ValueError("iCIMS Jibe fallback requires jibe_url and jibe_job_hosts")
+    parsed = urlparse(raw_url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port not in {None, 443}
+        or parsed.path.rstrip("/") != "/jobs"
+        or parsed.params
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError("iCIMS jibe_url must be a canonical HTTPS /jobs URL")
+    hosts: list[str] = []
+    if not raw_hosts or len(raw_hosts) > MAX_JOB_HOSTS:
+        raise ValueError(f"iCIMS jibe_job_hosts must contain 1-{MAX_JOB_HOSTS} hosts")
+    for value in raw_hosts:
+        host = _normalize_host(value)
+        if host is None:
+            raise ValueError("iCIMS jibe_job_hosts entries must be valid iCIMS hosts")
+        hosts.append(host)
+    if len(hosts) != len(set(hosts)) or listing_host not in hosts:
+        raise ValueError("iCIMS jibe_job_hosts must be unique and include the listing host")
+    return raw_url.rstrip("/"), frozenset(hosts)
 
 
 def _host_from_url(url: str, *, validate_query: bool = True) -> str | None:
@@ -342,6 +386,95 @@ async def _fetch_listing(host: str, page_index: int, client: httpx.AsyncClient) 
     return page
 
 
+async def _discover_jibe_redirect(
+    host: str,
+    jibe_url: str,
+    job_hosts: frozenset[str],
+    client: httpx.AsyncClient,
+) -> set[str]:
+    """Follow a reviewed classic-iCIMS redirect through its aggregate Jibe API."""
+    listing_url = _listing_url(host)
+    page = await fetch_text_page_with_retry(
+        client,
+        listing_url,
+        max_chars=MAX_HTML_CHARS,
+        require_nonempty=True,
+        follow_redirects=False,
+        end_of_pagination_statuses=(),
+        retryable_statuses={202, 401, 403},
+        log_event="icims.list_backoff",
+    )
+    if page is None:  # strict status handling makes this unreachable
+        raise RuntimeError(f"iCIMS listing fetch returned no page for {host!r}")
+    redirect = _JIBE_REDIRECT_RE.fullmatch(page)
+    target = redirect.group("url").replace(r"\/", "/") if redirect else None
+    if target != jibe_url:
+        raise ValueError(f"iCIMS host {host!r} did not return its configured Jibe redirect")
+
+    api_url = urljoin(f"{jibe_url}/", "/api/jobs")
+    expected_total: int | None = None
+    seen_slugs: set[str] = set()
+    urls: set[str] = set()
+    page_number = 1
+    while expected_total is None or len(seen_slugs) < expected_total:
+        if page_number > MAX_PAGES:
+            raise ValueError("iCIMS Jibe pagination exceeded its page limit")
+        payload = await fetch_json_page_with_retry(
+            client,
+            api_url,
+            params={"page": page_number, "limit": _JIBE_PAGE_SIZE},
+            expect_shape=dict,
+            follow_redirects=True,
+            max_bytes=MAX_HTML_CHARS,
+            log_event="icims.jibe_backoff",
+        )
+        total = payload.get("totalCount")
+        raw_jobs = payload.get("jobs")
+        if (
+            isinstance(total, bool)
+            or not isinstance(total, int)
+            or total < 0
+            or total > MAX_JOBS
+            or not isinstance(raw_jobs, list)
+        ):
+            raise ValueError("iCIMS Jibe API returned an invalid inventory envelope")
+        if expected_total is None:
+            expected_total = total
+        elif total != expected_total:
+            raise ValueError("iCIMS Jibe total changed during pagination")
+        if not raw_jobs and len(seen_slugs) < expected_total:
+            raise ValueError("iCIMS Jibe pagination ended before its advertised total")
+        for raw_job in raw_jobs:
+            data = raw_job.get("data") if isinstance(raw_job, dict) else None
+            slug = data.get("slug") if isinstance(data, dict) else None
+            apply_url = data.get("apply_url") if isinstance(data, dict) else None
+            if not isinstance(slug, str) or not slug.isdigit() or not isinstance(apply_url, str):
+                raise ValueError("iCIMS Jibe API returned an invalid job identity")
+            parsed = urlparse(apply_url)
+            apply_host = _normalize_host(parsed.hostname)
+            if (
+                apply_host not in job_hosts
+                or parsed.scheme != "https"
+                or parsed.username is not None
+                or parsed.password is not None
+                or parsed.port not in {None, 443}
+                or parsed.path != f"/jobs/{slug}/login"
+                or parsed.params
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError("iCIMS Jibe API returned an untrusted application URL")
+            if slug in seen_slugs:
+                raise ValueError(f"iCIMS Jibe API repeated job {slug!r}")
+            seen_slugs.add(slug)
+            if apply_host == host:
+                urls.add(f"https://{host}/jobs/{slug}/job?in_iframe=1")
+        page_number += 1
+    if len(seen_slugs) != expected_total:
+        raise ValueError("iCIMS Jibe inventory did not match its advertised total")
+    return urls
+
+
 async def _discover_pages(
     host: str,
     client: httpx.AsyncClient,
@@ -416,6 +549,13 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             f"Cannot derive iCIMS host from board URL {board['board_url']!r} "
             "and no valid host is present in metadata"
         )
+
+    jibe = _jibe_config(metadata, host)
+    if jibe is not None:
+        jibe_url, jibe_job_hosts = jibe
+        urls = await _discover_jibe_redirect(host, jibe_url, jibe_job_hosts, client)
+        log.info("icims.jibe_discovered", host=host, jobs=len(urls))
+        return urls
 
     job_hosts = _job_hosts_config(metadata, host)
     id_dedupe_hosts = _dedupe_job_ids_from_hosts_config(metadata, host)

@@ -1254,6 +1254,52 @@ class TestScrape:
             result = await scrape("https://example.com/job", {"render": False}, client)
             assert result.title == "Static"
 
+    async def test_retries_successful_page_when_required_content_is_temporarily_missing(self):
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            html = (
+                "<html><body>Temporary shell</body></html>"
+                if calls == 1
+                else '<script type="application/ld+json">'
+                '{"@type":"JobPosting","title":"Recovered role"}</script>'
+            )
+            return httpx.Response(200, text=html, request=request)
+
+        with patch("src.core.scrapers.jsonld.asyncio.sleep", new_callable=AsyncMock):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                result = await scrape("https://example.com/job", {}, client)
+
+        assert result.title == "Recovered role"
+        assert calls == 2
+
+    async def test_follows_same_detail_icims_iframe_when_outer_shell_has_no_jsonld(self):
+        requested_urls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested_urls.append(str(request.url))
+            if request.url.params.get("in_iframe") == "1":
+                return httpx.Response(
+                    200,
+                    text='<script type="application/ld+json">'
+                    '{"@type":"JobPosting","title":"iCIMS role"}</script>',
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                text='<iframe src="?in_iframe=1"></iframe>',
+                request=request,
+            )
+
+        url = "https://careers-acme.icims.com/jobs/123/job"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(url, {}, client)
+
+        assert result.title == "iCIMS role"
+        assert requested_urls == [url, f"{url}?in_iframe=1"]
+
     async def test_pascalcase_csod_style(self):
         """CSOD-style PascalCase JSON-LD is extracted correctly."""
         page_html = """<html><head>

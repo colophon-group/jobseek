@@ -147,7 +147,8 @@ async def test_explicit_zero_partition_is_authoritative():
 def test_to_job_maps_required_and_optional_fields():
     job = _to_job(_item("123"), _EXPERIENCED)
     assert job.url == "https://jobs.bytedance.com/experienced/position/123/detail"
-    assert job.source_identity == "bytedance:jobs.bytedance.com:123"
+    # Preserve the legacy URL-derived identity used by existing registry rows.
+    assert job.source_identity is None
     assert job.title == "Engineer 123"
     assert "Responsibilities" in job.description
     assert "Requirements" in job.description

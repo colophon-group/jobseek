@@ -39,6 +39,14 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger()
 
+_SNAPSHOT_ATTEMPTS = 2
+_SNAPSHOT_RETRY_DELAY = 1.0
+
+
+class _SnapshotChanged(ValueError):
+    """A Mokahr site changed while its paginated snapshot was collected."""
+
+
 _DEFAULT_ORIGIN = "https://app.mokahr.com"
 _LIST_PATH = "/api/outer/ats-apply/website/jobs/v2"
 _PAGE_SIZE = 50
@@ -684,7 +692,7 @@ async def _discover_partition(
         if expected_total is None:
             expected_total = page_total
         elif page_total != expected_total:
-            raise ValueError(
+            raise _SnapshotChanged(
                 "Mokahr advertised total changed during pagination "
                 f"for site {source.site_id} ({expected_total} -> {page_total})"
             )
@@ -721,7 +729,9 @@ async def _discover_partition(
             if not isinstance(job_id, str) or _JOB_ID_RE.fullmatch(job_id) is None:
                 raise ValueError("Mokahr job row has an invalid provider ID")
             if job_id in seen_ids:
-                raise ValueError(f"Mokahr site {source.site_id} repeated provider ID {job_id!r}")
+                raise _SnapshotChanged(
+                    f"Mokahr site {source.site_id} repeated provider ID {job_id!r}"
+                )
             seen_ids.add(job_id)
 
             status = raw.get("status")
@@ -778,7 +788,7 @@ async def _discover_partition(
     )
 
 
-async def discover(
+async def _discover_once(
     board: dict, client: httpx.AsyncClient, pw=None
 ) -> list[DiscoveredJob] | MonitorResult:
     """Fetch a complete, active-only union from authenticated Mokahr sites."""
@@ -833,6 +843,26 @@ async def discover(
     if truncated:
         return truncated_rich_result(jobs)
     return jobs
+
+
+async def discover(
+    board: dict, client: httpx.AsyncClient, pw=None
+) -> list[DiscoveredJob] | MonitorResult:
+    """Retry one internally inconsistent multi-partition snapshot from page zero."""
+    for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
+        try:
+            return await _discover_once(board, client, pw=pw)
+        except _SnapshotChanged as exc:
+            if attempt == _SNAPSHOT_ATTEMPTS:
+                raise
+            log.warning(
+                "mokahr.snapshot_changed",
+                board_url=board.get("board_url"),
+                attempt=attempt,
+                error=str(exc),
+            )
+            await asyncio.sleep(_SNAPSHOT_RETRY_DELAY)
+    raise AssertionError("unreachable")
 
 
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:

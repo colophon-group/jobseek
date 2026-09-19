@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from src.core.monitors.smartrecruiters import (
+    _fetch_publications,
     _get_page_with_retry,
     _token_from_url,
     can_handle,
@@ -48,6 +49,39 @@ class TestTokenFromUrl:
 
 
 class TestDiscover:
+    async def test_restarts_publication_snapshot_after_total_drift(self, monkeypatch):
+        from src.core.monitors import smartrecruiters as sr_module
+
+        monkeypatch.setattr(sr_module, "PAGE_SIZE", 2)
+        monkeypatch.setattr(sr_module.asyncio, "sleep", AsyncMock())
+        first_page_calls = 0
+        requested_offsets: list[int] = []
+
+        def handler(request):
+            nonlocal first_page_calls
+            offset = int(request.url.params["offset"])
+            requested_offsets.append(offset)
+            if offset == 0:
+                first_page_calls += 1
+                return httpx.Response(
+                    200,
+                    json={"content": [{"id": "p1"}, {"id": "p2"}], "totalFound": 3},
+                )
+            return httpx.Response(
+                200,
+                json={
+                    "content": [{"id": "p3"}],
+                    "totalFound": 4 if first_page_calls == 1 else 3,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            publications, truncated, total = await _fetch_publications("acme", client)
+
+        assert [item["id"] for item in publications] == ["p1", "p2", "p3"]
+        assert (truncated, total) == (False, 3)
+        assert requested_offsets == [0, 2, 0, 2]
+
     async def test_returns_urls(self):
         def handler(request):
             return httpx.Response(

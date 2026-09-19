@@ -46,6 +46,8 @@ def test_main_board_uses_exact_required_scope_and_provider_identity() -> None:
     assert excluded.fullmatch("Unifr-7640 Département de Médecine")
     assert excluded.fullmatch("Réseau fribourgeois de santé mentale")
     assert excluded.fullmatch("Grangeneuve")
+    assert excluded.fullmatch("Haute école d'ingénierie et d'architecture Fribour")
+    assert excluded.fullmatch("Haute école d'ingénierie et d'architecture Fribourg")
     assert not included.search("Nouvelle institution autonome")
     assert not excluded.search("Nouvelle institution autonome")
 
