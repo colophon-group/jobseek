@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 7555,
-    "boards_sha256": "c965f77cbd92b10fdc85d75dafb1ff0f893bf394272f437e2386f6caf4723a5e",
+    "boards_row_count": 7559,
+    "boards_sha256": "ea579083e22360256cfeff01fb0a540be59fdd80ae4f41fab2e5f5886c4c8f17",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "ef9f46fe54be3bb215fef3c38aec12e153c37d0546db4d67255e1b7f4f125358",
+  "manifest_sha256": "add4285118898c9af7e48b77f06fcf082476330d1d4cf556eb1921c2fadf40ed",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -268,6 +268,30 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "b757617720c26993aa1c9b8fb2069e11901df6de40a0b92b08212e135aefa27c",
+      "status": "pending_replay",
+      "surface": "monitor"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait_fallback",
+        "network.request_observe",
+        "network.response_capture"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "network_session",
+      "config_shape_sha256": "e11bda948ea254abc3720b5e01c0e5298aca6afacf252ca13a3568d82e1dc3a5",
+      "crawler_type": "api_sniffer",
+      "digest_sha256": "16193c29c64ecc725cbc3b2a60883a42f484430179e99fcaf2c0f441d28785d9",
+      "fixture": "synthetic.network_session.v1",
+      "id": "profile.monitor.api_sniffer.29ae1c054f5f02ad",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "8be6de56a81d2cd4aef9ddaeccde7c5b1148e72ab4917facd9094c2cd7a0bd67",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -4735,6 +4759,31 @@
       "capabilities": [
         "cdp.navigation",
         "dom.snapshot",
+        "navigation.wait.networkidle",
+        "navigation.wait_fallback",
+        "network.request_observe",
+        "network.response_capture"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "network_session",
+      "config_shape_sha256": "b85e6292a763980c6ae9bdd0c6cbee9c03da3b488f9117da51d2d919ef093629",
+      "crawler_type": "api_sniffer",
+      "digest_sha256": "e4b0e674f58ddf4bba9ed49ede8f2025780ca1b69564f3d7db801f0d1f0ae27d",
+      "fixture": "synthetic.network_session.v1",
+      "id": "profile.scraper.api_sniffer.01028adc3f496bba",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "ea78d8f16f985f13621ba95d2f780fb4b948e7962c602bcbd3e6487a1e2e04e4",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
         "navigation.wait.domcontentloaded",
         "network.request_observe",
         "network.response_capture"
@@ -6732,12 +6781,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "71af8679effa34adf4669829bff2a837eecd1ac6f02252dedf7c0ce91a3314de",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "a38c24391e2251bd0110079766f5bf5bf73f573f1a9622b33d6858361f6870bc",
+      "digest_sha256": "93efe3b5630445c37459d374beab1360fc11690522bada20a0a219eab27a45d0",
       "fixture": "synthetic.network_session.v1",
       "id": "registry.monitor.api_sniffer",
       "profile_kind": "registry",
-      "source_count": 306,
-      "source_refs_sha256": "a482a5fc70441cd5eecc3df079158f16e6274a00a2692ffef3e7418dd50665ce",
+      "source_count": 307,
+      "source_refs_sha256": "6e471b589ac482035c0846f36323e9ee46f13c7103318567ea9240fef088c7d6",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -6977,12 +7026,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "b61980d4ade990d89845e0b22cf5f6bbb87454b9cd1e803e89d1fdf6c11795d4",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "4db8529081f991a649840206a1cead4b6dd9f4d9689b42dcbd2606579f240242",
+      "digest_sha256": "5421fe07e3f4f5200de51686b43025d1ea08f9fdad1f8ef51b8a002bf34206d6",
       "fixture": "synthetic.network_session.v1",
       "id": "registry.scraper.api_sniffer",
       "profile_kind": "registry",
-      "source_count": 57,
-      "source_refs_sha256": "0c99fc551bd4120694177a808c0d983c7a50e6c19689f413afc7bb3bffd21bf3",
+      "source_count": 58,
+      "source_refs_sha256": "4fd8c0e042bda9092d0fff73f917230921ae3fdd08326afee69746f80b126482",
       "status": "inventory",
       "surface": "scraper"
     },
@@ -7076,12 +7125,12 @@
     }
   ],
   "summary": {
-    "browser_board_count": 495,
-    "browser_required_step_count": 652,
-    "configured_profile_occurrence_count": 653,
-    "configured_record_count": 280,
+    "browser_board_count": 496,
+    "browser_required_step_count": 654,
+    "configured_profile_occurrence_count": 655,
+    "configured_record_count": 282,
     "registry_record_count": 17,
-    "total_record_count": 297,
+    "total_record_count": 299,
     "zero_browser_config_registry_count": 1
   }
 }
