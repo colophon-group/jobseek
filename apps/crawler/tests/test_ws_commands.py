@@ -3646,6 +3646,27 @@ class TestSelectMonitorNaming:
         assert board.configs["greenhouse"]["status"] == "untested"
         assert board.configs["greenhouse-2"]["status"] == "selected"
 
+    def test_workday_warns_when_probe_scope_differs_from_default_run(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch)
+        board = load_board("test", "careers")
+        board.url = "https://acme.wd5.myworkdayjobs.com/SubsidiaryCareers"
+        board.detections = {
+            "workday": {
+                "company": "acme",
+                "wd_instance": "wd5",
+                "site": "SubsidiaryCareers",
+                "jobs": 42,
+            }
+        }
+        save_board("test", board)
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["select", "monitor", "test", "workday"])
+
+        assert result.exit_code == 0
+        assert "probe counts cover only the configured site" in result.output
+        assert '"all_sites": false' in result.output
+
     def test_auto_scraper_config_is_persisted(self, tmp_path, monkeypatch):
         """Partial-rich monitors retain their required enrichment config."""
         self._setup(tmp_path, monkeypatch)
