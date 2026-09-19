@@ -151,8 +151,10 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     if actual_id != expected_id:
         raise ValueError("Tupu360 detail response identity does not match its URL")
     allow_listing_location = config.get("listing_enrichment") is True
-    if not content.title or not content.description or (
-        not content.locations and not allow_listing_location
+    if (
+        not content.title
+        or not content.description
+        or (not content.locations and not allow_listing_location)
     ):
         raise ValueError("Tupu360 detail omitted a required job field")
     return content

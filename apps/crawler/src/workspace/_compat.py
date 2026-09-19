@@ -804,11 +804,6 @@ def auto_scraper_type(
         )
     if monitor_type == "dom" and (config or {}).get("yousty_organization"):
         return ("json-ld", None)
-    if monitor_type == "dom" and (config or {}).get("tupu360_board"):
-        return (
-            "tupu360",
-            {"enrich": ["description"], "listing_enrichment": True},
-        )
     if monitor_type == "dom" and (config or {}).get("lg_portal"):
         return (
             "dom",

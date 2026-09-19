@@ -59,10 +59,6 @@ def test_is_rich_monitor_consistency():
         }
     }
     assert auto_scraper_type("dom", adjacent_dom_cfg) == ("skip", None)
-    assert auto_scraper_type("dom", {"tupu360_board": True}) == (
-        "tupu360",
-        {"enrich": ["description"], "listing_enrichment": True},
-    )
     dom_script_cfg = {
         "script_json_links": {
             "variable": "jobs",

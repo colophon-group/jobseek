@@ -3087,9 +3087,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
             )
         parsed_template = urlsplit(url_template.replace("{value}", "placeholder"))
         if parsed_template.scheme not in {"http", "https"} or not parsed_template.netloc:
-            raise ValueError(
-                "DOM monitor rich_rows.url_template must produce an absolute HTTP URL"
-            )
+            raise ValueError("DOM monitor rich_rows.url_template must produce an absolute HTTP URL")
     title_selector = _validate_css_selector(
         value.get("title_selector"), name="rich_rows.title_selector"
     )
