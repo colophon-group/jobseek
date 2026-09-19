@@ -944,6 +944,8 @@ bertschi,bertschi-singapore,https://www.bertschi-singapore.com/?page=careers,inl
 besi,besi-careers-at,https://besi.kandidatenportal.eu/Jobs,dom,"{""render"": true, ""url_filter"": ""/Job/\\d+""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Radfeld"", ""field"": ""locations""}, {""text"": ""time"", ""field"": ""employment_type"", ""optional"": true, ""from"": 0}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""APPLY"", ""html"": true}, {""attr"": ""class=salaryText"", ""field"": ""base_salary"", ""optional"": true}]}"
 besi,besi-main,https://www.besi.com/careers/jobs/,dom,"{""url_filter"": ""fileadmin/data/Jobs/.*\\.pdf""}",pdf,"{""title_source"": ""url""}"
 beside,beside-ashby,https://jobs.ashbyhq.com/beside,ashby,"{""token"": ""beside""}",skip,
+best-version-media,best-version-media-careers,https://job-boards.greenhouse.io/bestversionmedia,greenhouse,,skip,
+best-version-media,best-version-media-corporate,https://recruiting.paylocity.com/Recruiting/Jobs/All/a2688f1e-f6d5-47e8-9f6f-bff7477d865e,paylocity,"{""proxy"": true}",paylocity,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 bestow,bestow-ashby,https://jobs.ashbyhq.com/bestow,ashby,"{""token"": ""bestow""}",skip,
 bestseller,bestseller-careers,https://opportunities.bestseller.com/,rss,"{""preset"": ""successfactors""}",skip,
 bestseller,bestseller-china,https://joinus.bestseller.com.cn/SU670ca36b1c240e54e1ee0556/pb/index.html#/,wecruit,"{""api_origin"": ""https://joinus.bestseller.com.cn"", ""suite_key"": ""670ca36b1c240e54e1ee0556"", ""recruit_types"": [1, 2, 12, 13]}",skip,
