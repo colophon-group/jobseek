@@ -11,7 +11,7 @@ from selectolax.lexbor import LexborHTMLParser
 from src.core.scrapers import JobContent, register
 from src.shared.http_retry import fetch_text_page_with_retry
 
-_PROVIDER_HOST = "careersite.tupu360.com"
+_PROVIDER_HOST_SUFFIX = ".tupu360.com"
 _DETAIL_PATH_RE = re.compile(r"^/[a-z0-9_-]+/position/detail$", re.IGNORECASE)
 _POSITION_ID_RE = re.compile(r"^[a-f0-9]{24}$", re.IGNORECASE)
 _MAX_DETAIL_BYTES = 2 * 1024 * 1024
@@ -33,7 +33,7 @@ def _position_id(url: str) -> str | None:
         parsed = urlparse(url)
         trusted_origin = (
             parsed.scheme == "https"
-            and (parsed.hostname or "").lower() == _PROVIDER_HOST
+            and (parsed.hostname or "").lower().endswith(_PROVIDER_HOST_SUFFIX)
             and parsed.username is None
             and parsed.password is None
             and parsed.port is None
@@ -64,6 +64,9 @@ def _field(tree: LexborHTMLParser, label: str) -> str | None:
 def _document_position_id(tree: LexborHTMLParser) -> str | None:
     marker = tree.css_first("#positionInfoInp")
     value = marker.attributes.get("data-id") if marker is not None else None
+    if not value:
+        marker = tree.css_first("#positionId")
+        value = marker.attributes.get("value") if marker is not None else None
     if isinstance(value, str) and _POSITION_ID_RE.fullmatch(value):
         return value.lower()
     return None
@@ -147,7 +150,12 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     actual_id = (content.metadata or {}).get("position_id")
     if actual_id != expected_id:
         raise ValueError("Tupu360 detail response identity does not match its URL")
-    if not content.title or not content.description or not content.locations:
+    allow_listing_location = config.get("listing_enrichment") is True
+    if (
+        not content.title
+        or not content.description
+        or (not content.locations and not allow_listing_location)
+    ):
         raise ValueError("Tupu360 detail omitted a required job field")
     return content
 

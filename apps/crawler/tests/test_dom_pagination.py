@@ -2731,6 +2731,62 @@ class TestRichRowsStatic:
             ("https://example.com/jobs/engineer", "Engineer", ["Winterthur, Switzerland"])
         ]
 
+    def test_builds_same_origin_detail_url_from_row_identity(self):
+        html = """
+        <div class="position-item" pid="6aac9e447280da28da079e59">
+          <h4 class="title">Project Coordinator</h4>
+          <span class="location">Suzhou-Taicang</span>
+        </div>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": ".position-item[pid]",
+                "link_attr": "pid",
+                "url_template": (
+                    "https://schaeffler.tupu360.com/schaeffler/position/detail"
+                    "?positionId={value}&recruitmentType=SOCIALRECRUITMENT"
+                ),
+                "title_selector": ".title",
+                "location_selectors": [".location"],
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(
+            html,
+            "https://schaeffler.tupu360.com/schaeffler/position/index",
+            config,
+            None,
+        )
+
+        assert [(job.url, job.title, job.locations) for job in jobs] == [
+            (
+                "https://schaeffler.tupu360.com/schaeffler/position/detail"
+                "?positionId=6aac9e447280da28da079e59"
+                "&recruitmentType=SOCIALRECRUITMENT",
+                "Project Coordinator",
+                ["Suzhou-Taicang"],
+            )
+        ]
+
+    def test_rejects_cross_origin_rich_row_url_template(self):
+        config = _validated_rich_rows(
+            {
+                "row_selector": ".job[data-id]",
+                "link_attr": "data-id",
+                "url_template": "https://evil.example/detail?id={value}",
+            }
+        )
+
+        assert config is not None
+        with pytest.raises(ValueError, match="cross-origin URL"):
+            _extract_rich_rows_static(
+                '<div class="job" data-id="123">Engineer</div>',
+                "https://jobs.example.com/careers",
+                config,
+                None,
+            )
+
     def test_extracts_anchor_row_href(self):
         html = """
         <a class="job" href="/jobs/engineer">
@@ -3018,6 +3074,8 @@ class TestRichRowsStatic:
             {},
             {"row_selector": ".job", "link_selector": ".job a", "unexpected": True},
             {"row_selector": ".job", "link_attr": "not valid!"},
+            {"row_selector": ".job", "url_template": "https://example.com/no-slot"},
+            {"row_selector": ".job", "url_template": "/jobs/{value}"},
             {
                 "row_selector": ".job",
                 "link_selector": ".job a",

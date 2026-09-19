@@ -34,6 +34,22 @@ HTML = f"""
 </body></html>
 """
 
+CUSTOM_HOST_URL = (
+    "https://schaeffler.tupu360.com/schaeffler/position/detail"
+    f"?positionId={POSITION_ID}&recruitmentType=SOCIALRECRUITMENT"
+)
+CUSTOM_HOST_HTML = f"""
+<html><head>
+  <script src="//cdn.careersite.tupu360.com/csresources/site.js"></script>
+</head><body>
+  <input type="hidden" id="positionName" value="Project Coordinator">
+  <input type="hidden" id="sourcePid" value="1947435">
+  <input type="hidden" id="recruitmentType" value="SOCIALRECRUITMENT">
+  <input type="hidden" id="positionId" value="{POSITION_ID}">
+  <div class="position-description"><p>Coordinate international projects.</p></div>
+</body></html>
+"""
+
 
 def test_can_handle_and_parse_complete_detail():
     assert can_handle([HTML]) == {}
@@ -66,6 +82,36 @@ async def test_scrape_fetches_and_validates_detail_identity():
 
     assert content.title == "供应商质量工程师"
     assert content.locations == ["重庆-渝北区"]
+
+
+async def test_custom_provider_host_can_enrich_listing_location():
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, text=CUSTOM_HOST_HTML, request=request)
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        content = await scrape(
+            CUSTOM_HOST_URL,
+            {"listing_enrichment": True, "enrich": ["description"]},
+            client,
+        )
+
+    assert content.title == "Project Coordinator"
+    assert content.description == "<p>Coordinate international projects.</p>"
+    assert content.locations is None
+    assert content.metadata == {
+        "position_id": POSITION_ID,
+        "source_id": "1947435",
+        "recruitment_type": "SOCIALRECRUITMENT",
+    }
+
+
+async def test_custom_provider_host_remains_strict_without_listing_enrichment():
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, text=CUSTOM_HOST_HTML, request=request)
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(ValueError, match="omitted a required job field"):
+            await scrape(CUSTOM_HOST_URL, {}, client)
 
 
 @pytest.mark.parametrize(

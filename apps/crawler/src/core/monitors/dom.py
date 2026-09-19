@@ -2957,6 +2957,7 @@ _RichRowsConfig = tuple[
     str,
     str | None,
     str | None,
+    str | None,
     tuple[str, ...],
     str,
     str,
@@ -3037,6 +3038,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "row_selector",
         "link_selector",
         "link_attr",
+        "url_template",
         "title_selector",
         "total_selector",
         "location_selectors",
@@ -3072,6 +3074,20 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
     ):
         raise ValueError("DOM monitor rich_rows.link_attr must be a valid attribute name")
     link_attr = link_attr.strip()
+    url_template = value.get("url_template")
+    if url_template is not None:
+        if (
+            not isinstance(url_template, str)
+            or len(url_template) > _MAX_SCRIPT_JSON_TEMPLATE_LENGTH
+            or url_template.count("{value}") != 1
+            or "\x00" in url_template
+        ):
+            raise ValueError(
+                "DOM monitor rich_rows.url_template must contain one {value} placeholder"
+            )
+        parsed_template = urlsplit(url_template.replace("{value}", "placeholder"))
+        if parsed_template.scheme not in {"http", "https"} or not parsed_template.netloc:
+            raise ValueError("DOM monitor rich_rows.url_template must produce an absolute HTTP URL")
     title_selector = _validate_css_selector(
         value.get("title_selector"), name="rich_rows.title_selector"
     )
@@ -3296,6 +3312,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         row_selector,
         link_selector,
         link_attr,
+        url_template,
         title_selector,
         total_selector,
         location_selectors,
@@ -3378,6 +3395,7 @@ def _extract_rich_rows_static(
         row_selector,
         link_selector,
         link_attr,
+        url_template,
         title_selector,
         total_selector,
         location_selectors,
@@ -3440,9 +3458,15 @@ def _extract_rich_rows_static(
             title = match.group(1).strip() if match is not None else ""
         if not href or not title:
             raise ValueError(f"DOM monitor rich_rows row {index} omitted its link or title")
-        url = urljoin(base_url, href)
+        url = (
+            url_template.replace("{value}", href)
+            if url_template is not None
+            else urljoin(base_url, href)
+        )
         if not url.startswith("http"):
             raise ValueError(f"DOM monitor rich_rows row {index} produced an invalid URL")
+        if url_template is not None and not same_origin(url, base_url):
+            raise ValueError(f"DOM monitor rich_rows row {index} produced a cross-origin URL")
         if url_matcher is not None and not url_matcher.search(url):
             continue
         canonical_url = url_canonicalizer(url) if url_canonicalizer is not None else url
@@ -5505,14 +5529,14 @@ async def dom_discover(
         or (isinstance(pagination, dict) and pagination.get("partition_selector"))
     ):
         raise ValueError("DOM pagination advertised_ranges supports static URL pagination only")
-    if rich_rows is not None and rich_rows[4] is not None and pagination:
+    if rich_rows is not None and rich_rows[5] is not None and pagination:
         raise ValueError(
             "DOM monitor rich_rows total_selector supports single-page extraction only"
         )
     if prospective_board is not None and (
         render
         or rich_rows is None
-        or rich_rows[4] is None
+        or rich_rows[5] is None
         or not configured_empty_states
         or pagination
     ):

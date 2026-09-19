@@ -1965,6 +1965,10 @@ dom — Link or Listing-Row Extraction (fallback)
                    {"row_selector": "tr[data-href]", "link_attr": "data-href",
                     "title_selector": "td.title",
                     "location_selectors": ["td.city", "td.country"]}.
+                   When the row stores only a provider ID, url_template may
+                   turn that bounded attribute value into a same-origin detail
+                   URL: {"row_selector": ".job[data-id]", "link_attr": "data-id",
+                    "url_template": "https://jobs.example.com/detail?id={value}"}.
                    Add description_selector when the listing row contains the
                    complete job description. Its HTML is preserved and the
                    monitor becomes fully rich, so scraper_type=skip is valid:
@@ -4810,13 +4814,15 @@ veryeast — VeryEast (最佳东方) employer-board detail scraper
 SCRAPER_TUPU360 = """\
 tupu360 — Tupu360 (图谱天下) employer-board detail scraper
 
-  Page:     GET https://careersite.tupu360.com/{tenant}/position/detail?positionId={id}
+  Page:     GET https://{tenant}.tupu360.com/{site}/position/detail?positionId={id}
   Returns:  title, complete HTML description, location, posting date and
             provider identity metadata
-  Config:   None needed.
+  Config:   None needed for complete detail pages. DOM rich-row listings that
+            already supply location use:
+            {"enrich": ["description"], "listing_enrichment": true}
   Note:     Pair with a DOM monitor for the employer listing page. The detail
             page is server-rendered, so no browser is required. Requests are
-            restricted to exact HTTPS provider URLs and the returned posting
+            restricted to exact HTTPS tupu360.com provider URLs and the returned posting
             identity must match the URL.
 """
 
