@@ -1210,6 +1210,14 @@ def select_monitor(
     }
     clean_config = {k: v for k, v in config.items() if k not in _internal_keys}
 
+    if type_ == "workday" and not ({"all_sites", "sites"} & clean_config.keys()):
+        out.warn(
+            "monitor",
+            "Workday probe counts cover only the configured site, but the default run "
+            "aggregates every site in the tenant. For a distinct subsidiary or site "
+            'partition, reselect with --config including "all_sites": false.',
+        )
+
     # Generate or use provided config name
     name = config_name or _auto_config_name(board, type_)
 
