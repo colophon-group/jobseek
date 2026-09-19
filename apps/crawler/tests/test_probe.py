@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from src.core.monitors import (
@@ -759,6 +760,52 @@ class TestProbeScrapers:
         )
 
         assert spa_suspect is False
+
+    async def test_mixed_pdf_and_docx_downloads_detect_dom_document_fallback(self):
+        """Mixed static documents use the DOM scraper's bounded format dispatch."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path.endswith(".pdf"):
+                return httpx.Response(200, content=b"%PDF-1.7\nfixture", request=request)
+            return httpx.Response(200, content=b"PK\x03\x04docx-fixture", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            results, spa_suspect = await probe_scrapers(
+                [
+                    "https://example.com/jobs/research-assistant.pdf",
+                    "https://example.com/jobs/teaching-assistant.docx",
+                ],
+                http,
+            )
+
+        dom = next(result for result in results if result[0] == "dom")
+        assert dom[1] is not None
+        assert dom[1]["document_types"] == {"pdf": 1, "docx": 1}
+        assert dom[1]["config"] == {
+            "render": False,
+            "steps": [{"tag": "h1", "field": "title"}],
+            "document_fallback": {
+                "pdf": {"title_source": "text"},
+                "docx": {"title_source": "text"},
+            },
+        }
+        assert "run scraper to verify fields" in dom[2]
+        assert spa_suspect is False
+
+    async def test_zip_download_without_docx_extension_is_not_document_fallback(self):
+        """The DOCX probe must not route arbitrary ZIP archives into Word parsing."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=b"PK\x03\x04zip-fixture", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            results, _ = await probe_scrapers(
+                ["https://example.com/jobs/archive.zip"],
+                http,
+            )
+
+        dom = next(result for result in results if result[0] == "dom")
+        assert dom[1] is None
 
 
 class TestProbeScrapersPw:

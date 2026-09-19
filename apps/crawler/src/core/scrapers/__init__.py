@@ -10,6 +10,8 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from pathlib import PurePosixPath
+from urllib.parse import urlsplit
 
 import httpx
 import structlog
@@ -134,6 +136,50 @@ _QUALITY_FIELDS = [
     "base_salary",
 ]
 
+_LEGACY_WORD_MAGIC = bytes.fromhex("d0cf11e0a1b11ae1")
+
+
+def _static_document_type(url: str, content: bytes) -> str | None:
+    """Identify bounded document fallbacks without treating arbitrary ZIPs as DOCX."""
+    suffix = PurePosixPath(urlsplit(url).path).suffix.lower()
+    stripped = content.lstrip()
+    if stripped.startswith(b"%PDF-"):
+        return "pdf"
+    if suffix == ".docx" and content.startswith(b"PK\x03\x04"):
+        return "docx"
+    if suffix == ".doc" and content.startswith(_LEGACY_WORD_MAGIC):
+        return "doc"
+    return None
+
+
+def _document_fallback_probe_config(
+    pages: list[tuple[str, str, bytes]],
+) -> tuple[dict, dict[str, int]] | None:
+    """Build a DOM document-fallback config when every fetched sample is a document."""
+    if not pages:
+        return None
+    document_types = [_static_document_type(url, content) for url, _html, content in pages]
+    if any(document_type is None for document_type in document_types):
+        return None
+
+    counts = {
+        document_type: document_types.count(document_type)
+        for document_type in ("doc", "pdf", "docx")
+        if document_type in document_types
+    }
+    return (
+        {
+            "render": False,
+            # DOM requires at least one HTML step even though document responses
+            # return through document_fallback before HTML extraction.
+            "steps": [{"tag": "h1", "field": "title"}],
+            "document_fallback": {
+                document_type: {"title_source": "text"} for document_type in counts
+            },
+        },
+        counts,
+    )
+
 
 async def probe_scrapers(
     urls: list[str],
@@ -154,31 +200,40 @@ async def probe_scrapers(
     from src.shared.extract import flatten
 
     # 1. Fetch all URLs in parallel (static HTTP)
-    pages: list[tuple[str, str | None]] = []  # (url, html_or_none)
+    pages: list[tuple[str, str | None, bytes | None]] = []
 
-    async def _fetch(url: str) -> tuple[str, str | None]:
+    async def _fetch(url: str) -> tuple[str, str | None, bytes | None]:
         try:
             resp = await asyncio.wait_for(
                 http.get(url, follow_redirects=True),
                 timeout=timeout,
             )
             if resp.status_code == 200:
-                return url, resp.text
+                text = resp.text
+                content = getattr(resp, "content", None)
+                if not isinstance(content, bytes):
+                    content = text.encode("utf-8", errors="replace")
+                return url, text, content
             log.debug("probe_scrapers.fetch_non_200", url=url, status=resp.status_code)
-            return url, None
+            return url, None, None
         except Exception as exc:
             log.debug("probe_scrapers.fetch_error", url=url, error=str(exc))
-            return url, None
+            return url, None, None
 
     pages = await asyncio.gather(*[_fetch(u) for u in urls])
 
-    fetched = [(url, html) for url, html in pages if html is not None]
-    all_htmls = [html for _, html in fetched]
+    fetched = [
+        (url, html, content)
+        for url, html, content in pages
+        if html is not None and content is not None
+    ]
+    all_htmls = [html for _, html, _content in fetched]
     static_failed = len(fetched) == 0
+    document_probe = _document_fallback_probe_config(fetched)
 
     # Detect SPA: check if any page has very little text content
     spa_suspect = False
-    if not static_failed:
+    if not static_failed and document_probe is None:
         for html in all_htmls:
             elements = flatten(html)
             text_len = sum(len(el.get("text", "")) for el in elements)
@@ -193,6 +248,29 @@ async def probe_scrapers(
         if name not in _REGISTRY:
             continue
         scraper = _REGISTRY[name]
+
+        if name == "dom" and document_probe is not None:
+            config, document_counts = document_probe
+            count_text = ", ".join(
+                f"{count} {document_type.upper()}"
+                for document_type, count in document_counts.items()
+            )
+            results.append(
+                (
+                    name,
+                    {
+                        "config": config,
+                        "total": len(fetched),
+                        "titles": 0,
+                        "descriptions": 0,
+                        "locations": 0,
+                        "fields": {},
+                        "document_types": document_counts,
+                    },
+                    f"Detected static documents ({count_text}); run scraper to verify fields",
+                )
+            )
+            continue
 
         # Playwright-based probe path — needs more time (browser per URL).
         # Hybrid scrapers such as DOM use it only when static requests failed
@@ -239,7 +317,7 @@ async def probe_scrapers(
         # Run parse_html on all fetched pages
         total = len(fetched)
         field_counts: dict[str, int] = {f: 0 for f in _QUALITY_FIELDS}
-        for _url, html in fetched:
+        for _url, html, _content in fetched:
             try:
                 content = scraper.parse_html(html, config)
             except Exception:
