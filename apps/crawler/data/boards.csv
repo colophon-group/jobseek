@@ -7215,6 +7215,7 @@ vertiv,vertiv-data-racks-general,https://racks.vertiv.com/general-application/,d
 vertiv,vertiv-purgerite,https://recruiting.paylocity.com/recruiting/jobs/All/0d848fa7-a8d4-4fbb-b2fa-37e7bcc853a2/Purge-Rite-LLC,paylocity,"{""proxy"": true}",paylocity,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""], ""proxy"": true}"
 vertiv,vertiv-strategic-thermal,https://www.strategicthermal.com/careers/,inline,"{""item_boundary_tag"": ""h5"", ""steps"": [{""tag"": ""h5"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""to_end"": true}], ""exclude_description_regex"": ""^More details to come[.]"", ""defaults"": {""locations"": [""Georgetown, TX, United States""], ""employment_type"": ""full_time"", ""job_location_type"": ""onsite""}}",skip,
 very-good-security,very-good-security-careers,https://jobs.lever.co/verygoodsecurity,lever,"{""token"": ""verygoodsecurity""}",skip,
+vestas,vestas-careers,https://careers.vestas.com/,rss,"{""preset"": ""successfactors""}",skip,
 vestiaire-collective,vestiaire-collective-lever,https://jobs.lever.co/vestiairecollective,lever,"{""token"": ""vestiairecollective""}",skip,
 vestmark-inc,vestmark-inc-greenhouse,https://job-boards.greenhouse.io/vestmark,greenhouse,"{""token"": ""vestmark""}",skip,
 vestwell,vestwell-greenhouse,https://job-boards.greenhouse.io/vestwell,greenhouse,"{""token"": ""vestwell""}",skip,
