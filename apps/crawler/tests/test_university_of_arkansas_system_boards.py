@@ -132,6 +132,7 @@ async def test_northark_api_returns_rich_jobs_with_statewide_location_default() 
 @pytest.mark.asyncio
 async def test_uaeacc_monitor_deduplicates_shared_job_documents() -> None:
     board = _boards()[f"{COMPANY}-careers-uaeacc"]
+    # The live page uses spans both within a word and at legitimate word boundaries.
     html = """
     <div id="bodyContainer">
       <div>
