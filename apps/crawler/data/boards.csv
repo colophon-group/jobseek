@@ -5687,6 +5687,7 @@ quest-diagnostics,quest-diagnostics-careers-lifelabs,https://jobs.dayforcehcm.co
 quick,quick-join,https://join.com/companies/quickfr,join,"{""slug"": ""quickfr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 quick-green-rapid-health-gmbh,quick-green-rapid-health-gmbh-join,https://join.com/companies/quick-greencom,join,"{""slug"": ""quick-greencom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 quicknode,quicknode-ashby,https://jobs.ashbyhq.com/quicknode,ashby,"{""token"": ""quicknode""}",skip,
+quiktrip,quiktrip-careers,https://careers.quiktrip.com/,rss,"{""preset"": ""successfactors""}",skip,
 quillbot,quillbot-greenhouse,https://job-boards.greenhouse.io/quillbot,greenhouse,"{""token"": ""quillbot""}",skip,
 quin,quin-careers,https://www.quin.md/en/vacancies,dom,"{""render"": true, ""wait"": ""networkidle"", ""wait_fallback"": ""domcontentloaded"", ""timeout"": 30000, ""url_filter"": ""^https://quin\\.homerun\\.co/account-executive/en/?$""}",json-ld,
 quince,quince-greenhouse,https://job-boards.greenhouse.io/quince,greenhouse,"{""token"": ""quince""}",skip,
