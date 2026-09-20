@@ -41,7 +41,10 @@ def test_amplifon_inventory_keeps_global_and_distinct_regional_sources():
     }
     assert boards["amplifon-careers"]["monitor_type"] == "oracle_hcm"
     assert boards["amplifon-careers"]["scraper_config"] == {"enrich": ["description"]}
-    assert boards["amplifon-australia"]["metadata"]["fields"] == {
+    australia = boards["amplifon-australia"]["metadata"]
+    assert australia["params"]["in_maxrows"] == "100"
+    assert australia["total_path"] == "RASP.JOBS[0].total[0].count"
+    assert australia["fields"] == {
         "title": "positionTitle",
         "employment_type": "jobtype",
         "locations": "location",

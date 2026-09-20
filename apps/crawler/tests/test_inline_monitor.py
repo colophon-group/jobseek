@@ -318,6 +318,7 @@ async def test_static_inline_fetch_uses_retry_contract(monkeypatch):
         "url": board["board_url"],
         "kwargs": {
             "headers": None,
+            "timeout": 30.0,
             "end_of_pagination_statuses": (),
             "require_nonempty": True,
             "max_chars": None,

@@ -977,6 +977,7 @@ async def _fetch_html(
                     http,
                     fetch_url,
                     headers=fetch_headers,
+                    timeout=30.0,
                     end_of_pagination_statuses=(),
                     require_nonempty=True,
                     max_chars=None,
