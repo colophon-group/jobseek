@@ -5806,6 +5806,7 @@ renault-group,renault-group-careers-workday,https://alliancewd.wd3.myworkdayjobs
 render,render-ashby,https://jobs.ashbyhq.com/render,ashby,"{""token"": ""render""}",skip,
 renesas-electronics,renesas-electronics-careers,https://careers.smartrecruiters.com/renesaselectronics,smartrecruiters,,smartrecruiters,
 rent-the-runway,rent-the-runway-greenhouse,https://job-boards.greenhouse.io/renttherunway,greenhouse,"{""token"": ""renttherunway""}",skip,
+rentokil-initial,rentokil-initial-global,https://careers.rentokil-initial.com/jobs,sitemap,"{""sitemap_url"": ""https://careers.rentokil-initial.com/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 reorbit,reorbit-teamtailor,https://careers.reorbit.space/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.reorbit.space/jobs.rss""}",skip,
 replit,replit-ashby,https://jobs.ashbyhq.com/replit,ashby,"{""token"": ""replit""}",skip,
 replo,replo-ashby,https://jobs.ashbyhq.com/replo,ashby,"{""token"": ""replo""}",skip,
