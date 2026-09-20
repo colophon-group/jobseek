@@ -230,6 +230,8 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "steps",
             "synthetic_identity_field",
             "timeout",
+            "transient_403",
+            "transport_attempts",
             "valid_through_format",
             "valid_through_patterns",
             "valid_through_regex",

@@ -1,0 +1,90 @@
+from __future__ import annotations
+
+import csv
+import json
+from pathlib import Path
+
+import httpx
+import pytest
+
+from src.core.monitors.inline import discover as inline_discover
+
+DATA = Path(__file__).resolve().parents[1] / "data"
+
+
+def _boards() -> list[dict[str, str]]:
+    with (DATA / "boards.csv").open(newline="", encoding="utf-8") as source:
+        return list(csv.DictReader(source))
+
+
+def _board(slug: str) -> dict[str, str]:
+    return next(row for row in _boards() if row["board_slug"] == slug)
+
+
+def test_blocked_static_sources_use_bounded_proxy_recovery() -> None:
+    mcdonalds = json.loads(_board("mcdonalds-sg")["monitor_config"])
+    assert mcdonalds["proxy"] is True
+    assert mcdonalds["transient_403"] is True
+    assert mcdonalds["transport_attempts"] == 3
+
+    rtx = _board("rtx-careers")
+    rtx_monitor = json.loads(rtx["monitor_config"])
+    rtx_scraper = json.loads(rtx["scraper_config"])
+    assert rtx_monitor["proxy"] is True
+    assert rtx_scraper == {"proxy": True, "transport_attempts": 5}
+
+    walgreens = [row for row in _boards() if row["board_slug"].startswith("walgreens-careers-")]
+    assert len(walgreens) == 3
+    assert all(json.loads(row["monitor_config"])["proxy"] is True for row in walgreens)
+
+
+def test_retired_thailand_source_is_removed_after_moving_to_federal_portal() -> None:
+    assert not any(row["board_slug"] == "swiss-confederation-thailand" for row in _boards())
+
+
+@pytest.mark.asyncio
+async def test_iihf_live_layout_extracts_the_current_vacancy() -> None:
+    row = _board("international-ice-hockey-federation-jobs")
+    config = json.loads(row["monitor_config"])
+    assert config["fetch_urls"][0].startswith("https://canada-central.iihf.com/")
+    assert config["empty_requires_no_jobs"] is True
+
+    html = """
+    <section class="m-text is-full">
+      <div class="s-content">
+        <h3 class="s-sub-title">Receptionist / Corporate Services Assistant</h3>
+        The International Ice Hockey Federation is hiring for its Zurich office.
+        <strong>How to apply</strong>
+      </div>
+    </section>
+    """
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, text=html, request=request))
+    async with httpx.AsyncClient(transport=transport) as client:
+        jobs = await inline_discover(
+            {"board_url": row["board_url"], "metadata": config},
+            client,
+        )
+
+    assert len(jobs) == 1
+    assert jobs[0].title == "Receptionist / Corporate Services Assistant"
+    assert "Zurich office" in (jobs[0].description or "")
+    assert jobs[0].locations == ["Zurich, CH"]
+
+
+@pytest.mark.asyncio
+async def test_iihf_retains_authoritative_empty_state() -> None:
+    row = _board("international-ice-hockey-federation-jobs")
+    config = json.loads(row["monitor_config"])
+    html = """
+    <div class="s-content">
+      Details of all future job opportunities will be advertised here.
+    </div>
+    """
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, text=html, request=request))
+    async with httpx.AsyncClient(transport=transport) as client:
+        jobs = await inline_discover(
+            {"board_url": row["board_url"], "metadata": config},
+            client,
+        )
+
+    assert jobs == []

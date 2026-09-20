@@ -26,13 +26,12 @@ def _board(slug: str) -> dict[str, str]:
         return next(row for row in csv.DictReader(source) if row["board_slug"] == slug)
 
 
-def test_source_inventory_is_exactly_seven_bounded_first_party_sources():
+def test_source_inventory_is_exactly_six_bounded_first_party_sources():
     expected = {
         "swiss-confederation-australia",
         "swiss-confederation-federal",
         "swiss-confederation-swissnex",
         "swiss-confederation-taiwan",
-        "swiss-confederation-thailand",
         "swiss-confederation-united-kingdom",
         "swiss-confederation-united-states",
     }
@@ -192,19 +191,6 @@ async def test_taiwan_annual_cycle_is_not_kept_after_its_committed_deadline(monk
             </dl></li><h3>Boston and New York</h3>
             """,
             "76605000001244001",
-        ),
-        (
-            "swiss-confederation-thailand",
-            "Regional Programme Officer",
-            "Regional Climate Programme Officer",
-            """
-            <p id="doc-1k098ljce1"><strong>{title} (100%)</strong></p>
-            <p><strong>Duty station: Bangkok, Thailand</strong></p>
-            <p>The Regional Programme Officer will advance climate adaptation.</p>
-            <p><strong>Application deadline:</strong> Apply by 2 September 2026.</p>
-            <p>The Federal Department of Foreign Affairs (FDFA) regulary seeks employees.</p>
-            """,
-            "1k098ljce1",
         ),
     ],
 )
