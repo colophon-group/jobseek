@@ -992,6 +992,68 @@ async def test_discover_source_urls_reject_cross_origin_targets():
 
 
 @pytest.mark.asyncio
+async def test_discover_combines_inline_jobs_with_allowlisted_linked_jobs():
+    board = {
+        "board_url": "https://example.com/careers",
+        "metadata": {
+            "item_boundary_tag": "h3",
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"tag": "p", "field": "description"},
+            ],
+            "linked_jobs": {
+                "selector": ".external-job > a[href]",
+                "url_patterns": [r"https://jobs\.example\.org/postings/\d+"],
+                "title_regex": r"^\s*(.+?)\s*/",
+                "location_regex": r"^[^/]+/\s*([^/]+)",
+            },
+        },
+    }
+    html = """
+    <h3>Embedded Store Manager</h3>
+    <p>Lead the local store team.</p>
+    <li class="external-job">
+      <a href="https://jobs.example.org/postings/42#apply">
+        Sales Assistant JD Sports / Budapest / Arkad
+      </a>
+    </li>
+    """
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert len(jobs) == 2
+    assert jobs[0].title == "Embedded Store Manager"
+    assert jobs[0].description == "Lead the local store team."
+    assert jobs[1].url == "https://jobs.example.org/postings/42"
+    assert jobs[1].title == "Sales Assistant JD Sports"
+    assert jobs[1].locations == ["Budapest"]
+    assert jobs[1].description is None
+
+
+@pytest.mark.asyncio
+async def test_discover_linked_jobs_rejects_unallowlisted_provider():
+    board = {
+        "board_url": "https://example.com/careers",
+        "metadata": {
+            "steps": [{"tag": "h3", "field": "title"}],
+            "linked_jobs": {
+                "selector": ".external-job > a[href]",
+                "url_patterns": [r"https://jobs\.example\.org/postings/\d+"],
+            },
+        },
+    }
+    html = """
+    <h3>Embedded Store Manager</h3>
+    <li class="external-job">
+      <a href="https://attacker.example/postings/42">Forged role</a>
+    </li>
+    """
+
+    with pytest.raises(ValueError, match="did not match linked_jobs.url_patterns"):
+        await discover(board, _FakeClient(html))
+
+
+@pytest.mark.asyncio
 async def test_discover_scopes_jobs_between_authoritative_section_markers():
     html = """
     <button>Deadline, 30 April</button>

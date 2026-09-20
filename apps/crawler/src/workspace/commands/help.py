@@ -1548,6 +1548,18 @@ inline — Single-Page Extraction (rich or enrichable)
       "defaults": {"locations": ["Japan"]}
     }
 
+    Mixed pages may publish complete inline roles plus a smaller set of
+    cross-origin provider links. Keep those links fail-closed with an exact
+    selector and provider URL allowlist, then enrich their missing descriptions:
+    {
+      "linked_jobs": {
+        "selector": "li.external-job > a[href]",
+        "url_patterns": ["https://jobs\\.example\\.com/postings/\\d+"],
+        "title_regex": "^\\s*(.+?)\\s*/",
+        "location_regex": "^[^/]+/\\s*([^/]+)"
+      }
+    }
+
     render       true = Playwright, false = static HTTP (default: false)
     detail_click_selector
                  Playwright selector for click-only job-card controls. The
@@ -1594,6 +1606,15 @@ inline — Single-Page Extraction (rich or enrichable)
                  Attribute containing each detail URL, normally href. Requires
                  source_url_selector and cannot be combined with synthetic or
                  source identity, click-card expansion, or positions_per_listing.
+    linked_jobs  Optional mapping for cross-origin job links published beside
+                 complete inline roles. selector must match anchors with href;
+                 every URL must full-match one bounded url_patterns regex.
+                 Optional title_regex and location_regex each require exactly
+                 one capture group and parse the anchor text. Linked jobs keep
+                 description=null so a configured detail scraper with
+                 enrich:["description"] processes only that subset. Any new
+                 provider, malformed URL, missing title/location capture, or
+                 duplicate fails the whole cycle closed.
     fetch_urls   Optional ordered URLs used only to read the page. Each entry is
                  a URL string or {"url": ..., "headers": {...}} object. Headers
                  are scoped to that exact candidate and are never forwarded to

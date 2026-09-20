@@ -64,6 +64,8 @@ _MAX_POSITIONS_PER_LISTING = 20
 _MAX_SYNTHETIC_IDENTITY_FIELD_LENGTH = 128
 _MAX_SOURCE_URL_LENGTH = 4_096
 _MAX_TRANSPORT_ATTEMPTS = 5
+_MAX_LINKED_JOB_PATTERNS = 20
+_MAX_LINKED_JOB_REGEX_LENGTH = 2_048
 _DETAIL_BOUNDARY_TAG = "jobseek-inline-detail"
 _DETAIL_RESERVED_ATTRIBUTE_PREFIX = "data-inline-detail-"
 _HTML_TAG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
@@ -84,6 +86,153 @@ class _FetchedInlineHtml:
 
     html: str
     detail_identities: tuple[_DetailIdentity, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class _LinkedJobsConfig:
+    """Validated contract for URL-only jobs linked beside inline postings."""
+
+    selector: str
+    url_patterns: tuple[re.Pattern[str], ...]
+    title_regex: re.Pattern[str] | None
+    location_regex: re.Pattern[str] | None
+
+
+def _compile_single_capture_regex(value: object, *, name: str) -> re.Pattern[str] | None:
+    """Validate an optional bounded regex that extracts exactly one value."""
+    if value is None:
+        return None
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > _MAX_LINKED_JOB_REGEX_LENGTH
+        or "\x00" in value
+    ):
+        raise ValueError(f"inline linked_jobs.{name} must be a non-empty bounded regex")
+    try:
+        pattern = re.compile(value)
+    except re.error as exc:
+        raise ValueError(f"inline linked_jobs.{name} is invalid: {exc}") from exc
+    if pattern.groups != 1:
+        raise ValueError(f"inline linked_jobs.{name} must contain exactly one capture group")
+    return pattern
+
+
+def _validated_linked_jobs_config(value: object) -> _LinkedJobsConfig | None:
+    """Validate mixed inline/list-link extraction without trusting arbitrary redirects."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) - {
+        "selector",
+        "url_patterns",
+        "title_regex",
+        "location_regex",
+    }:
+        raise ValueError("inline linked_jobs must be a bounded mapping")
+
+    selector = _validated_empty_selector(value.get("selector"))
+    if selector is None:
+        raise ValueError("inline linked_jobs.selector is required")
+
+    raw_patterns = value.get("url_patterns")
+    if (
+        not isinstance(raw_patterns, list)
+        or not raw_patterns
+        or len(raw_patterns) > _MAX_LINKED_JOB_PATTERNS
+        or any(
+            not isinstance(item, str)
+            or not item
+            or len(item) > _MAX_LINKED_JOB_REGEX_LENGTH
+            or "\x00" in item
+            for item in raw_patterns
+        )
+    ):
+        raise ValueError("inline linked_jobs.url_patterns must be a non-empty bounded regex list")
+    try:
+        url_patterns = tuple(re.compile(item) for item in raw_patterns)
+    except re.error as exc:
+        raise ValueError(
+            f"inline linked_jobs.url_patterns contains an invalid regex: {exc}"
+        ) from exc
+
+    return _LinkedJobsConfig(
+        selector=selector,
+        url_patterns=url_patterns,
+        title_regex=_compile_single_capture_regex(value.get("title_regex"), name="title_regex"),
+        location_regex=_compile_single_capture_regex(
+            value.get("location_regex"), name="location_regex"
+        ),
+    )
+
+
+def _extract_linked_jobs(
+    html: str,
+    *,
+    board_url: str,
+    config: _LinkedJobsConfig,
+) -> list[DiscoveredJob]:
+    """Extract strictly allowlisted URL-only jobs published beside inline roles."""
+    nodes = LexborHTMLParser(html).css(config.selector)
+    if not nodes:
+        raise ValueError("inline linked_jobs.selector did not match any elements")
+    if len(nodes) > _MAX_JOBS:
+        raise ValueError("inline linked_jobs.selector exceeded the job safety cap")
+
+    jobs: list[DiscoveredJob] = []
+    seen_urls: set[str] = set()
+    for index, node in enumerate(nodes):
+        raw_url = node.attributes.get("href")
+        if raw_url is None:
+            raise ValueError(f"inline linked job {index + 1} omitted its href")
+        raw_url = unescape(raw_url).strip()
+        absolute, _fragment = urldefrag(urljoin(board_url, raw_url))
+        parsed = urlparse(absolute)
+        if (
+            not raw_url
+            or len(raw_url) > _MAX_SOURCE_URL_LENGTH
+            or any(ord(character) < 0x20 for character in raw_url)
+            or parsed.scheme.casefold() not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or not any(pattern.fullmatch(absolute) for pattern in config.url_patterns)
+        ):
+            raise ValueError(
+                f"inline linked job {index + 1} did not match linked_jobs.url_patterns"
+            )
+        if absolute in seen_urls:
+            raise ValueError("inline linked job URLs must be unique")
+        seen_urls.add(absolute)
+
+        source_title = " ".join(node.text(separator=" ", strip=True).split())
+        if not source_title:
+            raise ValueError(f"inline linked job {index + 1} omitted its title")
+        title = source_title
+        if config.title_regex is not None:
+            match = config.title_regex.search(source_title)
+            if match is None or not match.group(1).strip():
+                raise ValueError(
+                    f"inline linked job {index + 1} did not match linked_jobs.title_regex"
+                )
+            title = match.group(1).strip()
+
+        locations = None
+        if config.location_regex is not None:
+            match = config.location_regex.search(source_title)
+            if match is None or not match.group(1).strip():
+                raise ValueError(
+                    f"inline linked job {index + 1} did not match linked_jobs.location_regex"
+                )
+            locations = [match.group(1).strip()]
+
+        jobs.append(
+            DiscoveredJob(
+                url=absolute,
+                title=title,
+                locations=locations,
+            )
+        )
+    return jobs
 
 
 def _compile_exclude_title_regex(value: object) -> re.Pattern[str] | None:
@@ -1039,6 +1188,9 @@ async def discover(
         source_identity_regex — full-match regex capturing the stable ordinary-listing ID
         source_url_selector — CSS selector for one same-origin detail URL per listing
         source_url_attribute — attribute containing each detail URL (usually href)
+        linked_jobs — strictly allowlisted cross-origin job links published beside the
+                      inline roles; title/location may be parsed from anchor text and
+                      missing descriptions can be enriched by the configured scraper
         fetch_urls — ordered alternate read URLs; canonical URLs use board_url
         fetch_json_path — extract HTML from a static JSON response using JMESPath
         include_hidden — include HTML hidden by tab/accordion state (default: false)
@@ -1089,6 +1241,7 @@ async def discover(
     require_zero_proof = metadata.get("require_zero_proof", False)
     if not isinstance(require_zero_proof, bool):
         raise ValueError("inline require_zero_proof must be a boolean")
+    linked_jobs_config = _validated_linked_jobs_config(metadata.get("linked_jobs"))
 
     steps = metadata.get("steps")
     if not steps:
@@ -1203,6 +1356,11 @@ async def discover(
             attribute=source_url_attribute,
             board_url=board_url,
         )
+    linked_jobs = (
+        _extract_linked_jobs(html, board_url=board_url, config=linked_jobs_config)
+        if linked_jobs_config is not None
+        else []
+    )
     include_hidden = metadata.get("include_hidden", False)
     if not isinstance(include_hidden, bool):
         raise ValueError("inline include_hidden must be a boolean")
@@ -1217,10 +1375,10 @@ async def discover(
                 LexborHTMLParser(html).css_first(nonempty_selector)
             )
             authoritative_empty = not has_nonempty_items
-            if authoritative_empty and not empty_requires_no_jobs:
+            if authoritative_empty and not empty_requires_no_jobs and not linked_jobs:
                 log.info("inline.explicit_empty", url=board_url)
                 return []
-    if not elements:
+    if not elements and not linked_jobs:
         if empty_text is not None:
             raise ValueError(
                 "inline monitor found no accepted jobs and did not match the configured "
@@ -1402,6 +1560,14 @@ async def discover(
             f"({len(source_urls)} URLs for {source_url_index} jobs)"
         )
 
+    existing_urls = {job.url for job in jobs}
+    duplicate_linked_urls = existing_urls.intersection(job.url for job in linked_jobs)
+    if duplicate_linked_urls:
+        raise ValueError("inline linked job URLs overlap extracted inline jobs")
+    if len(jobs) + len(linked_jobs) > _MAX_JOBS:
+        raise ValueError("inline combined jobs exceeded the job safety cap")
+    jobs.extend(linked_jobs)
+
     if authoritative_empty and not jobs:
         log.info("inline.explicit_empty_after_filtering", url=board_url)
         return []
@@ -1416,7 +1582,13 @@ async def discover(
         )
 
     truncated = expansion_truncated or (processed_count >= _MAX_JOBS and cursor < len(elements))
-    log.info("inline.discovered", url=board_url, jobs=len(jobs), expired=expired_count)
+    log.info(
+        "inline.discovered",
+        url=board_url,
+        jobs=len(jobs),
+        linked_jobs=len(linked_jobs),
+        expired=expired_count,
+    )
     if truncated:
         log.warning("inline.truncated", url=board_url, total=len(jobs), cap=_MAX_JOBS)
         return truncated_rich_result(jobs)
