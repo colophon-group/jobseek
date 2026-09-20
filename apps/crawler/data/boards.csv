@@ -1810,6 +1810,7 @@ credit-karma,credit-karma-greenhouse,https://job-boards.greenhouse.io/creditkarm
 credit-union-of-colorado,credit-union-of-colorado-greenhouse,https://job-boards.greenhouse.io/creditunionofcolorado,greenhouse,"{""token"": ""creditunionofcolorado""}",skip,
 creditaccess-india,creditaccess-india-grameen,https://www.creditaccessgrameen.in/join-us/current-openings/,inline,"{""steps"": [{""text"": ""Job Title:"", ""field"": ""title"", ""regex"": ""Job Title:\\s*(.*?)(?:\\s+Location:|\\s+Reporting To:)""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Click here to Apply""}], ""defaults"": {""locations"": [""India""]}}",skip,
 creditgenie,creditgenie-ashby,https://jobs.ashbyhq.com/creditgenie,ashby,"{""token"": ""creditgenie""}",skip,
+crescent-hotels-resorts,crescent-hotels-resorts-careers,https://recruiting.ultipro.com/CRE1007CREHR/JobBoard/453ac982-2a83-4723-a69a-3dd3ff799d14,ukg,,embedded,"{""pattern"": ""new\\s+US\\.Opportunity\\.CandidateOpportunityDetail\\s*\\("", ""fields"": {""title"": ""Title"", ""description"": ""Description""}, ""enrich"": [""description""]}"
 cresco-labs,cresco-labs-greenhouse,https://job-boards.greenhouse.io/crescolabs,greenhouse,"{""token"": ""crescolabs""}",skip,
 cresta,cresta-greenhouse,https://job-boards.greenhouse.io/cresta,greenhouse,"{""token"": ""cresta""}",skip,
 crexi,crexi-greenhouse,https://job-boards.greenhouse.io/crexi,greenhouse,"{""token"": ""crexi""}",skip,
