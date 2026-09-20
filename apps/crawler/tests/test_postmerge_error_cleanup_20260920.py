@@ -77,6 +77,26 @@ def test_blocked_static_sources_use_bounded_proxy_recovery() -> None:
     assert all(config["transport_attempts"] == 5 for config in walgreens_configs)
 
 
+def test_postmerge_detail_sources_use_bounded_proxy_recovery() -> None:
+    exeter = json.loads(_board("beth-israel-lahey-health-exeter")["scraper_config"])
+    assert exeter["proxy"] is True
+    assert exeter["transport_attempts"] == 5
+
+    biorce = json.loads(_board("biorce-main")["scraper_config"])
+    assert biorce == {
+        "fields": {
+            "title": "title",
+            "description": "description",
+            "locations": "locations[].name",
+        },
+        "proxy": True,
+        "transport_attempts": 5,
+        "channel": "chrome",
+        "headless": False,
+        "stealth": True,
+    }
+
+
 @pytest.mark.asyncio
 async def test_walgreens_403_exhaustion_fails_closed(monkeypatch) -> None:
     monkeypatch.setattr("src.core.monitors.api_sniffer.asyncio.sleep", AsyncMock())

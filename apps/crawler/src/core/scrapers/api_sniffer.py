@@ -101,6 +101,7 @@ _WORKPLACE_TYPE_FIELDS = (
 _DEFAULT_WAIT = "load"
 _DEFAULT_TIMEOUT = 20_000
 _DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
+_MAX_TRANSPORT_ATTEMPTS = 5
 
 _SEEK_MARKETS = {
     "au.seek.com": ("en-AU", "anz-1"),
@@ -130,6 +131,24 @@ query JobDetails($id: ID!) {
   }
 }
 """
+
+
+def _configured_transport_attempts(config: dict) -> int | None:
+    """Return a validated proxy-origin retry count for capture mode."""
+
+    raw_attempts = config.get("transport_attempts")
+    if raw_attempts is None:
+        return None
+    if (
+        not isinstance(raw_attempts, int)
+        or isinstance(raw_attempts, bool)
+        or not 1 <= raw_attempts <= _MAX_TRANSPORT_ATTEMPTS
+    ):
+        raise ValueError(
+            "API-sniffer scraper transport_attempts must be an integer "
+            f"from 1 to {_MAX_TRANSPORT_ATTEMPTS}"
+        )
+    return raw_attempts
 
 
 def _seek_http_config(urls: list[str]) -> dict | None:
@@ -849,11 +868,15 @@ async def scrape(
         BROWSER_KEYS,
         NAVIGATE_KEYS,
         BrowserNavigationHTTPStatusError,
+        is_proxy_origin_block_error,
         navigate,
         open_page,
+        retry_proxy_origin_blocks,
     )
+    from src.shared.proxy import ProxyPoolExhaustedError
 
     use_proxy = bool(config.get("proxy"))
+    transport_attempts = _configured_transport_attempts(config)
 
     async def _do_scrape(p):
         settle = config.get("settle", _DEFAULT_SETTLE)
@@ -887,7 +910,7 @@ async def scrape(
 
             return _extract_from_object(job_obj, config)
 
-    try:
+    async def _scrape_attempt() -> JobContent:
         if pw is not None:
             return await _do_scrape(pw)
 
@@ -896,9 +919,23 @@ async def scrape(
         async with async_playwright() as p:
             return await _do_scrape(p)
 
+    retry_config = dict(config)
+    if transport_attempts is not None:
+        retry_config["transport_attempts"] = transport_attempts
+
+    try:
+        return await retry_proxy_origin_blocks(
+            _scrape_attempt,
+            retry_config,
+            event="api_sniffer_scraper.origin_block_retry",
+        )
     except BrowserNavigationHTTPStatusError:
         raise
-    except Exception:
+    except ProxyPoolExhaustedError:
+        raise
+    except Exception as exc:
+        if is_proxy_origin_block_error(exc):
+            raise
         log.error("api_sniffer_scraper.failed", url=url, exc_info=True)
         return JobContent()
 
