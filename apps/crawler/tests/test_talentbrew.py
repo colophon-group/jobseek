@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 
 from src.core.monitors.talentbrew import (
+    TalentBrewSnapshotIncompleteError,
     _page_url,
     _parse_page,
     can_handle,
@@ -241,6 +243,28 @@ class TestDiscover:
         assert len(urls) == 4
         assert seen_pages == ["1", "2"]
 
+    async def test_ajax_rejects_an_incomplete_advertised_snapshot(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/search-jobs/results":
+                return httpx.Response(
+                    200,
+                    json={"results": ('<a href="/job/city/role/4853/1" data-job-id="1">Role</a>')},
+                )
+            return httpx.Response(
+                200,
+                text=_html(
+                    total_jobs=2,
+                    total_pages=1,
+                    links=["/job/city/role/4853/1"],
+                    ajax_url="/search-jobs/results",
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {"board_url": "https://careers.example.com/search-jobs", "metadata": {}}
+            with pytest.raises(TalentBrewSnapshotIncompleteError, match="expected 2, discovered 1"):
+                await discover(board, client)
+
     async def test_paginates_search_results(self):
         seen: list[str] = []
 
@@ -283,7 +307,7 @@ class TestDiscover:
             "https://careers.example.com/search-jobs?p=2",
         ]
 
-    async def test_max_pages_caps_pagination(self):
+    async def test_configured_page_cap_fails_closed_on_incomplete_snapshot(self):
         def handler(request: httpx.Request) -> httpx.Response:
             page = int(request.url.params.get("p", "1"))
             return httpx.Response(
@@ -301,9 +325,8 @@ class TestDiscover:
                 "board_url": "https://careers.example.com/search-jobs",
                 "metadata": {"max_pages": 2},
             }
-            urls = await discover(board, client)
-
-        assert urls == {
-            "https://careers.example.com/job/city/role-1/4853/1",
-            "https://careers.example.com/job/city/role-2/4853/2",
-        }
+            with pytest.raises(
+                TalentBrewSnapshotIncompleteError,
+                match="expected 42, discovered 2",
+            ):
+                await discover(board, client)

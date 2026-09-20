@@ -33,6 +33,7 @@ import httpx
 import pytest
 
 from src.workers.r2_drain import (
+    _REAP_BATCH,
     _REAP_STALE_AFTER_SECONDS,
     _consumer,
     _failure_reason,
@@ -98,7 +99,10 @@ class TestReapOrphanedClaims:
         assert "r2_uploaded IS NULL" in sql_compact
         # No age filter
         assert "updated_at <" not in sql_compact
-        assert captured["args"] == ()
+        assert captured["args"] == (_REAP_BATCH,)
+        assert "ORDER BY updated_at, posting_id, locale" in sql_compact
+        assert "FOR UPDATE SKIP LOCKED" in sql_compact
+        assert "LIMIT $1" in sql_compact
 
     async def test_periodic_reap_uses_age_filter(self):
         """When given a stale-age, the reaper must include the
@@ -127,7 +131,7 @@ class TestReapOrphanedClaims:
         assert "r2_uploaded IS NULL" in sql_compact
         assert "updated_at <" in sql_compact
         assert "interval" in sql_compact
-        assert captured["args"] == (timedelta(seconds=600),)
+        assert captured["args"] == (_REAP_BATCH, timedelta(seconds=600))
 
     async def test_returns_reaped_count(self):
         pool, _ = _pool_with_conn(fetchval_return=42)
@@ -226,7 +230,7 @@ class TestReaperLoop:
 
         assert captured_args, "reaper loop never ran"
         for args in captured_args:
-            assert args == (timedelta(seconds=_REAP_STALE_AFTER_SECONDS),), (
+            assert args == (_REAP_BATCH, timedelta(seconds=_REAP_STALE_AFTER_SECONDS)), (
                 f"periodic sweep must use the stale-age filter; got args={args!r}"
             )
 

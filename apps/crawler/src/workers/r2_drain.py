@@ -51,6 +51,7 @@ from src.metrics import (
 log = structlog.get_logger()
 
 _FETCH_BATCH = 50
+_REAP_BATCH = 500
 _DEFAULT_REAPER_INTERVAL = 300  # 5 minutes
 # Rows stuck in r2_uploaded=NULL for longer than this are considered
 # orphaned. A healthy consumer claim-to-completion round-trip is well
@@ -123,18 +124,26 @@ async def _reap_orphaned_claims(
     Returns the number of rows reaped.
     """
     where_clause = "r2_uploaded IS NULL"
-    params: tuple = ()
+    params: tuple = (_REAP_BATCH,)
     if stale_after_seconds is not None:
-        where_clause += " AND updated_at < now() - $1::interval"
-        params = (timedelta(seconds=stale_after_seconds),)
+        where_clause += " AND updated_at < now() - $2::interval"
+        params = (_REAP_BATCH, timedelta(seconds=stale_after_seconds))
 
     try:
         async with local_pool.acquire() as conn:
             count = await conn.fetchval(
-                "WITH reaped AS ("
-                "  UPDATE descriptions SET r2_uploaded = false, updated_at = now() "
+                "WITH candidates AS MATERIALIZED ("
+                "  SELECT posting_id, locale FROM descriptions "
                 f"  WHERE {where_clause} "
-                "  RETURNING posting_id"
+                "  ORDER BY updated_at, posting_id, locale "
+                "  FOR UPDATE SKIP LOCKED "
+                "  LIMIT $1"
+                "), reaped AS ("
+                "  UPDATE descriptions AS d "
+                "  SET r2_uploaded = false, updated_at = now() "
+                "  FROM candidates AS c "
+                "  WHERE d.posting_id = c.posting_id AND d.locale = c.locale "
+                "  RETURNING d.posting_id"
                 ") SELECT count(*) FROM reaped",
                 *params,
             )
