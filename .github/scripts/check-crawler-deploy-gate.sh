@@ -37,12 +37,15 @@ while IFS= read -r path; do
       apps/crawler/data/seniority.csv | \
       apps/crawler/data/technologies.csv | \
       .github/workflows/deploy-crawler-browser.yml | \
+      .github/scripts/resolve-crawler-deploy-revisions.sh | \
+      scripts/derive-crawler-build-version.mjs | \
       scripts/derive-crawler-runtime-contract.mjs | \
       scripts/verify-crawler-release-bridge.py)
       runtime_paths+=("$path")
       ;;
     apps/crawler/data/* | \
       apps/crawler/traces/* | \
+      apps/crawler/tests/lightpanda/fixtures/census.json | \
       apps/crawler/ws-package/* | \
       apps/crawler/*.md)
       # These exclusions mirror Deploy Crawler (Hetzner). Keep both surfaces

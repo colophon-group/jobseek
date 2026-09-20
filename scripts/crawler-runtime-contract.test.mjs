@@ -47,6 +47,7 @@ test("runtime contract matches the crawler deploy boundary", () => {
   for (const path of [
     "apps/crawler/data/images/example/logo.png",
     "apps/crawler/traces/example.json",
+    "apps/crawler/tests/lightpanda/fixtures/census.json",
     "apps/crawler/ws-package/pyproject.toml",
     "apps/crawler/README.md",
     "apps/crawler/docs/operator.md",
@@ -101,6 +102,51 @@ test("data-only changes preserve the runtime contract", () => {
   ];
 
   assert.equal(
+    deriveCrawlerRuntimeContract(before),
+    deriveCrawlerRuntimeContract(after),
+  );
+});
+
+test("generated census changes preserve the runtime contract", () => {
+  const source = entry("apps/crawler/src/cli.py", "a".repeat(40));
+  const workflow = entry(
+    ".github/workflows/deploy-crawler-browser.yml",
+    "b".repeat(40),
+  );
+  const before = [
+    source,
+    workflow,
+    entry("apps/crawler/tests/lightpanda/fixtures/census.json", "c".repeat(40)),
+  ];
+  const after = [
+    source,
+    workflow,
+    entry("apps/crawler/tests/lightpanda/fixtures/census.json", "d".repeat(40)),
+  ];
+
+  assert.equal(
+    deriveCrawlerRuntimeContract(before),
+    deriveCrawlerRuntimeContract(after),
+  );
+});
+
+test("runtime changes still alter the contract when census changes too", () => {
+  const workflow = entry(
+    ".github/workflows/deploy-crawler-browser.yml",
+    "a".repeat(40),
+  );
+  const before = [
+    workflow,
+    entry("apps/crawler/src/cli.py", "b".repeat(40)),
+    entry("apps/crawler/tests/lightpanda/fixtures/census.json", "c".repeat(40)),
+  ];
+  const after = [
+    workflow,
+    entry("apps/crawler/src/cli.py", "d".repeat(40)),
+    entry("apps/crawler/tests/lightpanda/fixtures/census.json", "e".repeat(40)),
+  ];
+
+  assert.notEqual(
     deriveCrawlerRuntimeContract(before),
     deriveCrawlerRuntimeContract(after),
   );
