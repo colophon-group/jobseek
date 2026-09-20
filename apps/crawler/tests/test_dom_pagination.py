@@ -920,7 +920,10 @@ class TestOracleAdfJobIds:
         }
 
         async def fetch_detail(_client, url, **kwargs):
-            assert kwargs["headers"] == {"Cookie": ""}
+            assert kwargs["headers"] == {
+                "Cookie": "",
+                "User-Agent": "jobseek-crawler/1.0",
+            }
             return details[int(url.rsplit("=", 1)[1])]
 
         with patch(

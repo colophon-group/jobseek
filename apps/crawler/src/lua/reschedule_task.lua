@@ -23,6 +23,7 @@ local task_type = ARGV[4]
 local next_due = tonumber(ARGV[5])
 local b0_guard_key = "lightpanda-b0:legacy-guard"
 local scrape_rotation_key = "ready:rotation:" .. wtype
+local monitor_repair_key = "monitor_repair_due:" .. wtype
 
 local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
 if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
@@ -32,11 +33,27 @@ local scrape_rotation_type = redis.call("TYPE", scrape_rotation_key)["ok"]
 if scrape_rotation_type ~= "none" and scrape_rotation_type ~= "zset" then
     return redis.error_reply("scrape rotation index is corrupt")
 end
+local monitor_repair_type = redis.call("TYPE", monitor_repair_key)["ok"]
+if monitor_repair_type ~= "none" and monitor_repair_type ~= "hash" then
+    return redis.error_reply("monitor repair deadline index is corrupt")
+end
 if task_type == "scrape" and redis.call("HEXISTS", b0_guard_key, task_id) == 1 then
     local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
     redis.call("ZREM", "inflight:" .. wtype, inflight_member)
     redis.call("HDEL", "inflight_strikes:" .. wtype, inflight_member)
     return 0
+end
+
+local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
+
+-- A deploy-time repair can race a monitor already running with the previous
+-- config. Honor the earliest deferred repair deadline instead of letting the
+-- stale run overwrite it with its normal cadence or failure backoff.
+if task_type == "monitor" then
+    local repair_due = redis.call("HGET", monitor_repair_key, inflight_member)
+    if repair_due ~= false and tonumber(repair_due) < next_due then
+        next_due = tonumber(repair_due)
+    end
 end
 
 -- Add to recurring queue (not first-time)
@@ -48,9 +65,12 @@ else
 end
 redis.call("ZADD", queue_key, next_due, task_id)
 
+if task_type == "monitor" then
+    redis.call("HDEL", monitor_repair_key, inflight_member)
+end
+
 -- Clear inflight lease entry — the task is back on the per-domain
 -- queue, so the reaper must not double-enqueue it.
-local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
 redis.call("ZREM", "inflight:" .. wtype, inflight_member)
 redis.call("HDEL", "inflight_strikes:" .. wtype, inflight_member)
 

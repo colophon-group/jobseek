@@ -3875,7 +3875,10 @@ async def _extract_oracle_adf_job_ids(
                 # Oracle ADF binds the first ``jobId`` seen to its session.
                 # These canonical detail URLs must be fetched statelessly or
                 # later requests repeat the first job regardless of query.
-                headers={"Cookie": ""},
+                # Its loopback bootstrap also treats a browser User-Agent as
+                # JavaScript-capable and returns only a short redirect shell.
+                # Use an honest crawler UA to request the complete SSR detail.
+                headers={"Cookie": "", "User-Agent": "jobseek-crawler/1.0"},
                 retryable_statuses={401, 403},
                 require_nonempty=True,
                 max_bytes=_BROWSER_FETCH_MAX_CHARS,

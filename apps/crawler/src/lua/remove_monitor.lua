@@ -18,6 +18,10 @@ for _, wtype in ipairs({"simple", "browser"}) do
     if rotation_type ~= "none" and rotation_type ~= "zset" then
         return redis.error_reply("scrape rotation index is corrupt")
     end
+    local repair_type = redis.call("TYPE", "monitor_repair_due:" .. wtype)["ok"]
+    if repair_type ~= "none" and repair_type ~= "hash" then
+        return redis.error_reply("monitor repair deadline index is corrupt")
+    end
 end
 
 local function refresh_ready(wtype)
@@ -70,6 +74,11 @@ end
 for _, wtype in ipairs({"simple", "browser"}) do
     redis.call("ZREM", "ft_monitors_" .. wtype .. ":" .. domain, board_id)
     redis.call("ZREM", "monitors_" .. wtype .. ":" .. domain, board_id)
+    redis.call(
+        "HDEL",
+        "monitor_repair_due:" .. wtype,
+        "monitor|" .. domain .. "|" .. board_id
+    )
 end
 
 for _, wtype in ipairs({"simple", "browser"}) do

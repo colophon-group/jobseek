@@ -62,7 +62,7 @@ def test_reviewed_inventory_and_browser_bounds() -> None:
     assert any(
         "2026/09/PhD-position-on-Cavity-quantum" in url for url in epfl["rich_rows"]["active_urls"]
     )
-    assert _monitor("capgemini-sogeti-us")["oracle_adf_job_ids"]["max_scan"] == 5000
+    assert _monitor("capgemini-sogeti-us")["oracle_adf_job_ids"]["max_scan"] == 1000
     assert _monitor("mediamarktsaturn-dtb-headquarters")["actions"] == [
         {"action": "wait", "ms": 10000}
     ]

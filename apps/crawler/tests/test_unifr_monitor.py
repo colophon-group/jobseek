@@ -302,6 +302,43 @@ async def test_accordion_filters_expired_items_but_rejects_ambiguous_deadline():
 
 
 @pytest.mark.asyncio
+async def test_accordion_accepts_zero_when_all_items_are_expired_or_central_duplicates():
+    source = _AccordionSource(
+        url="https://www.unifr.ch/unit/en/jobs.html",
+        page_title_suffix="| Unit | University of Fribourg",
+        heading="Open Positions",
+        expected_ids=frozenset({"expired", "duplicate"}),
+        excluded_central_ids={"duplicate": "1911"},
+        deadline_required=frozenset({"expired"}),
+    )
+    source_html = _accordion_html(
+        title="Open Positions | Unit | University of Fribourg",
+        heading="Open Positions",
+        items=[
+            ("expired", "Expired role", "Applications close by July 15, 2026."),
+            ("duplicate", "Central role", "This role is also in the central feed."),
+        ],
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == source.url:
+            body = source_html
+        elif url == FR:
+            body = _central_html("fr", [("1911", "Poste central")])
+        elif url == DE:
+            body = _central_html("de", [("1911", "Zentrale Stelle")])
+        else:
+            raise AssertionError(f"unexpected URL: {url}")
+        return httpx.Response(200, text=body, headers={"content-type": "text/html"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        jobs = await _accordion_jobs(client, source, date(2026, 9, 20))
+
+    assert jobs == []
+
+
+@pytest.mark.asyncio
 async def test_link_inventory_uses_complete_first_party_urls_without_snapshot_filter():
     source = _LinkSource(
         url="https://www.unifr.ch/unit/de/jobs.html",

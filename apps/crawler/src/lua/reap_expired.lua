@@ -32,6 +32,7 @@ local max_strikes = tonumber(ARGV[4]) or 3
 local retry_score = tonumber(ARGV[5]) or now
 local b0_guard_key = "lightpanda-b0:legacy-guard"
 local scrape_rotation_key = "ready:rotation:" .. wtype
+local monitor_repair_key = "monitor_repair_due:" .. wtype
 
 -- Fail before touching any expired member. Redis does not roll back writes
 -- made earlier in a script when a later command raises WRONGTYPE.
@@ -42,6 +43,10 @@ end
 local scrape_rotation_type = redis.call("TYPE", scrape_rotation_key)["ok"]
 if scrape_rotation_type ~= "none" and scrape_rotation_type ~= "zset" then
     return redis.error_reply("scrape rotation index is corrupt")
+end
+local monitor_repair_type = redis.call("TYPE", monitor_repair_key)["ok"]
+if monitor_repair_type ~= "none" and monitor_repair_type ~= "hash" then
+    return redis.error_reply("monitor repair deadline index is corrupt")
 end
 
 local inflight_key = "inflight:" .. wtype
@@ -81,10 +86,24 @@ for _, member in ipairs(expired) do
                 redis.call("ZREM", inflight_key, member)
                 redis.call("HDEL", strikes_key, member)
             else
-                -- Increment strike count atomically.
-                local strikes = redis.call("HINCRBY", strikes_key, member, 1)
+                -- A config-repair sync may have arrived while the old run was
+                -- leased. That repair is a fresh attempt, so it supersedes
+                -- stale strikes/dead-lettering and carries its earlier due
+                -- time into the recurring queue.
+                local repair_due = false
+                if task_type == "monitor" then
+                    repair_due = redis.call("HGET", monitor_repair_key, member)
+                end
 
-                if strikes >= max_strikes then
+                local strikes = 0
+                if repair_due ~= false then
+                    redis.call("HDEL", strikes_key, member)
+                else
+                    -- Increment strike count atomically.
+                    strikes = redis.call("HINCRBY", strikes_key, member, 1)
+                end
+
+                if repair_due == false and strikes >= max_strikes then
                     -- Move to dead-letter: score = now, member encodes
                     -- everything an operator needs to investigate.
                     redis.call("ZADD", deadletter_key, now, member)
@@ -108,6 +127,7 @@ for _, member in ipairs(expired) do
                     if config_exists == 0 then
                         redis.call("ZREM", inflight_key, member)
                         redis.call("HDEL", strikes_key, member)
+                        redis.call("HDEL", monitor_repair_key, member)
                         missing_config = missing_config + 1
                     else
                     -- Re-enqueue to the per-domain ZSET with ZADD NX
@@ -120,7 +140,16 @@ for _, member in ipairs(expired) do
                     else
                         queue_key = "scrapes_" .. wtype .. ":" .. domain
                     end
-                    redis.call("ZADD", queue_key, "NX", retry_score, task_id)
+                    if repair_due ~= false then
+                        local due = math.min(retry_score, tonumber(repair_due))
+                        local queued_due = redis.call("ZSCORE", queue_key, task_id)
+                        if queued_due == false or due < tonumber(queued_due) then
+                            redis.call("ZADD", queue_key, due, task_id)
+                        end
+                        redis.call("HDEL", monitor_repair_key, member)
+                    else
+                        redis.call("ZADD", queue_key, "NX", retry_score, task_id)
+                    end
 
                     -- Re-park every ready representation for the domain. A
                     -- monitor and scrape deadline must coexist: otherwise an
@@ -198,10 +227,12 @@ for _, member in ipairs(expired) do
             -- defensively so a corrupt entry doesn't loop forever.
             redis.call("ZREM", inflight_key, member)
             redis.call("HDEL", strikes_key, member)
+            redis.call("HDEL", monitor_repair_key, member)
         end
     else
         redis.call("ZREM", inflight_key, member)
         redis.call("HDEL", strikes_key, member)
+        redis.call("HDEL", monitor_repair_key, member)
     end
 end
 

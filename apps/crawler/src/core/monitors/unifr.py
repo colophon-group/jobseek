@@ -114,10 +114,10 @@ _ACCORDION_SOURCES = {
         url="https://www.ami.swiss/en/about-us/join/open-positions.html",
         page_title_suffix="| Adolphe Merkle Institute | Université de Fribourg",
         heading="Open positions",
-        expected_ids=frozenset({"styleguide-3-1", "styleguide-3-2", "styleguide-3-3"}),
+        expected_ids=frozenset({"styleguide-2-1", "styleguide-2-2"}),
         excluded_central_ids={},
-        deadline_required=frozenset({"styleguide-3-2", "styleguide-3-3"}),
-        immediately_available=frozenset({"styleguide-3-1"}),
+        deadline_required=frozenset({"styleguide-2-2"}),
+        immediately_available=frozenset({"styleguide-2-1"}),
     ),
     "biology": _AccordionSource(
         url="https://www.unifr.ch/bio/en/department/jobs.html",
@@ -138,9 +138,9 @@ _ACCORDION_SOURCES = {
         url="https://www.unifr.ch/geo/en/department/jobs/",
         page_title_suffix="| Department of Geosciences | University of Fribourg",
         heading="Open Positions",
-        expected_ids=frozenset({"styleguide-2-1", "styleguide-2-2"}),
+        expected_ids=frozenset({"styleguide-3-1", "styleguide-3-2", "styleguide-3-3"}),
         excluded_central_ids={},
-        deadline_required=frozenset({"styleguide-2-1"}),
+        deadline_required=frozenset({"styleguide-3-1"}),
     ),
     "physics": _AccordionSource(
         url="https://www.unifr.ch/phys/de/department/jobs/",
@@ -156,8 +156,8 @@ _ACCORDION_SOURCES = {
             "| Faculty of Management, Economics and Social Sciences | University of Fribourg"
         ),
         heading="Open positions",
-        expected_ids=frozenset({"styleguide-2-1", "styleguide-2-2"}),
-        excluded_central_ids={"styleguide-2-2": "1898"},
+        expected_ids=frozenset({"styleguide-1-1"}),
+        excluded_central_ids={"styleguide-1-1": "1898"},
         list_selector="main ul.accordion.light",
     ),
 }
@@ -523,8 +523,10 @@ async def _accordion_jobs(
                 metadata={"unifr_source_id": identifier},
             )
         )
-    if not jobs:
-        raise ValueError("University of Fribourg source cannot prove a safe current zero")
+    # An exact, non-empty source inventory can legitimately reduce to zero when
+    # every item is either expired by a validated deadline or is independently
+    # confirmed in the central feed.  Missing/ambiguous inventories still fail
+    # above before this filtering step.
     return jobs
 
 

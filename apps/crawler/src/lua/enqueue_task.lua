@@ -21,6 +21,7 @@ local first_time = ARGV[6] == "1"
 local now = tonumber(ARGV[7])
 local b0_guard_key = "lightpanda-b0:legacy-guard"
 local scrape_rotation_key = "ready:rotation:" .. wtype
+local monitor_repair_key = "monitor_repair_due:" .. wtype
 
 local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
 if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
@@ -29,6 +30,10 @@ end
 local scrape_rotation_type = redis.call("TYPE", scrape_rotation_key)["ok"]
 if scrape_rotation_type ~= "none" and scrape_rotation_type ~= "zset" then
     return redis.error_reply("scrape rotation index is corrupt")
+end
+local monitor_repair_type = redis.call("TYPE", monitor_repair_key)["ok"]
+if monitor_repair_type ~= "none" and monitor_repair_type ~= "hash" then
+    return redis.error_reply("monitor repair deadline index is corrupt")
 end
 if task_type == "scrape" and redis.call("HEXISTS", b0_guard_key, task_id) == 1 then
     return 0
@@ -65,11 +70,15 @@ local queue_key = first_time and first_time_key or recurring_key
 local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
 
 local already_scheduled
+local recurring_monitor_score = false
+local monitor_inflight = false
 if task_type == "monitor" then
+    recurring_monitor_score = redis.call("ZSCORE", recurring_key, task_id)
+    monitor_inflight = redis.call("ZSCORE", "inflight:" .. wtype, inflight_member)
     already_scheduled = (
         redis.call("ZSCORE", first_time_key, task_id) ~= false or
-        redis.call("ZSCORE", recurring_key, task_id) ~= false or
-        redis.call("ZSCORE", "inflight:" .. wtype, inflight_member) ~= false
+        recurring_monitor_score ~= false or
+        monitor_inflight ~= false
     )
 else
     -- Scrape fallbacks intentionally enqueue the same posting while the
@@ -80,6 +89,29 @@ end
 local added = 0
 if not already_scheduled then
     added = redis.call("ZADD", queue_key, "NX", score, task_id)
+end
+
+-- Config-repair syncs keep a board in the recurring tier while resetting its
+-- durable next_check_at to now. If an older quarantine/backoff schedule is
+-- already in Redis, logical-task deduplication must not leave that stale later
+-- score in place. An inflight run cannot be queued concurrently, so preserve
+-- the earliest requested repair deadline for reschedule/reaper to consume.
+-- Active-board syncs request first-time priority and intentionally preserve
+-- their existing cadence.
+if task_type == "monitor" and not first_time then
+    if monitor_inflight ~= false then
+        local pending_repair = redis.call("HGET", monitor_repair_key, inflight_member)
+        if pending_repair == false or score < tonumber(pending_repair) then
+            redis.call("HSET", monitor_repair_key, inflight_member, score)
+        end
+    else
+        if recurring_monitor_score ~= false and score < tonumber(recurring_monitor_score) then
+            redis.call("ZADD", recurring_key, score, task_id)
+        end
+        -- Any marker without an inflight owner is stale. The recurring entry
+        -- above (new, existing, or promoted) is now the durable schedule.
+        redis.call("HDEL", monitor_repair_key, inflight_member)
+    end
 end
 
 -- Always recompute ready membership. Besides making a new schedule visible,

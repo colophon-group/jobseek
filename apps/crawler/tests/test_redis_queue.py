@@ -74,6 +74,112 @@ async def test_enqueue_monitor_nx_prevents_duplicate():
     # Second enqueue should return False (already exists)
     assert await rq.enqueue_monitor("lever", "board-dup", t - 100, config, browser=False) is False
 
+    # A recurring recovery sync may promote an existing backoff schedule, but
+    # it still owns only one logical queue entry.
+    r = rq.get_redis()
+    assert await r.zscore("monitors_simple:lever", "board-dup") == pytest.approx(t - 100)
+
+
+async def test_enqueue_monitor_recovery_sync_promotes_stale_backoff_deadline():
+    r = rq.get_redis()
+    domain = "repair.example.com"
+    board_id = "board-config-repair"
+    now = time.time()
+    old_backoff = now + 36_000
+
+    assert await rq.enqueue_monitor(
+        domain,
+        board_id,
+        old_backoff,
+        {"monitor": "dom", "revision": "old"},
+        first_time=False,
+    )
+    repair = rq.MonitorSchedule(
+        domain=domain,
+        board_id=board_id,
+        next_check_at=now,
+        config={"monitor": "dom", "revision": "fixed"},
+        first_time=False,
+    )
+    assert await rq.enqueue_monitors([repair]) == [False]
+
+    assert await r.zcard(f"monitors_simple:{domain}") == 1
+    assert await r.zscore(f"monitors_simple:{domain}", board_id) == pytest.approx(now)
+    assert await r.zscore("ready:simple:1", domain) == pytest.approx(now)
+    assert await r.hget(f"board:{board_id}", "revision") == "fixed"
+
+
+async def test_inflight_monitor_repair_deadline_survives_stale_reschedule():
+    r = rq.get_redis()
+    domain = "inflight-repair.example.com"
+    board_id = "board-inflight-repair"
+    now = time.time()
+    repair_due = now
+    stale_backoff = now + 36_000
+
+    assert await rq.enqueue_monitor(
+        domain,
+        board_id,
+        now - 10,
+        {"monitor": "dom", "revision": "old"},
+        first_time=True,
+    )
+    work = await rq.claim_work(browser=False)
+    assert work is not None and work.task_id == board_id
+
+    repair = rq.MonitorSchedule(
+        domain=domain,
+        board_id=board_id,
+        next_check_at=repair_due,
+        config={"monitor": "dom", "revision": "fixed"},
+        first_time=False,
+    )
+    assert await rq.enqueue_monitors([repair]) == [False]
+    member = f"monitor|{domain}|{board_id}"
+    pending_due = await r.hget("monitor_repair_due:simple", member)
+    assert pending_due is not None
+    assert float(pending_due) == pytest.approx(repair_due)
+    assert await r.zcard(f"monitors_simple:{domain}") == 0
+
+    await rq.reschedule_task(
+        domain,
+        board_id,
+        "monitor",
+        stale_backoff,
+        browser=False,
+    )
+
+    assert await r.zcard(f"monitors_simple:{domain}") == 1
+    assert await r.zscore(f"monitors_simple:{domain}", board_id) == pytest.approx(repair_due)
+    assert await r.zscore("ready:simple:1", domain) == pytest.approx(repair_due)
+    assert await r.zcard("inflight:simple") == 0
+    assert not await r.hexists("monitor_repair_due:simple", member)
+
+
+async def test_enqueue_monitor_active_resync_preserves_existing_recurring_deadline():
+    r = rq.get_redis()
+    domain = "active.example.com"
+    board_id = "board-active-resync"
+    future = time.time() + 3600
+
+    assert await rq.enqueue_monitor(
+        domain,
+        board_id,
+        future,
+        {"monitor": "dom"},
+        first_time=False,
+    )
+    assert not await rq.enqueue_monitor(
+        domain,
+        board_id,
+        time.time(),
+        {"monitor": "dom"},
+        first_time=True,
+    )
+
+    assert await r.zscore(f"monitors_simple:{domain}", board_id) == pytest.approx(future)
+    assert await r.zcard(f"ft_monitors_simple:{domain}") == 0
+
 
 async def test_enqueue_monitor_deduplicates_across_lifecycle_queues():
     """One task cannot exist in first-time, recurring, and inflight at once."""
@@ -1850,6 +1956,84 @@ async def test_reaper_reenqueues_expired_lease(mock_redis):
     # After a successful complete_task, the strike counter is cleared.
     await rq.complete_task("lever", "board-die", "monitor", browser=False)
     assert await r.hexists("inflight_strikes:simple", member) == 0
+
+
+async def test_reaper_consumes_inflight_monitor_repair_deadline(mock_redis):
+    r = mock_redis
+    domain = "reaper-repair.example.com"
+    board_id = "board-reaper-repair"
+    repair_due = time.time() - 1
+
+    assert await rq.enqueue_monitor(
+        domain,
+        board_id,
+        repair_due - 10,
+        {"monitor": "dom", "revision": "old"},
+        first_time=True,
+    )
+    assert await rq.claim_work(browser=False) is not None
+    member = f"monitor|{domain}|{board_id}"
+
+    repair = rq.MonitorSchedule(
+        domain=domain,
+        board_id=board_id,
+        next_check_at=repair_due,
+        config={"monitor": "dom", "revision": "fixed"},
+        first_time=False,
+    )
+    assert await rq.enqueue_monitors([repair]) == [False]
+
+    # The old run was already one timeout from dead-letter. A config repair is
+    # a fresh attempt and must take precedence over that stale strike history.
+    await r.hset("inflight_strikes:simple", member, str(settings.reaper_max_strikes - 1))
+    await r.zadd("inflight:simple", {member: time.time() - 60})
+
+    result = await rq.reap_expired(browser=False)
+
+    assert result == {"reenqueued": 1, "dead_lettered": 0, "missing_config": 0}
+    assert await r.zcard(f"monitors_simple:{domain}") == 1
+    assert await r.zscore(f"monitors_simple:{domain}", board_id) == pytest.approx(repair_due)
+    assert await r.zscore("ready:simple:1", domain) == pytest.approx(repair_due)
+    assert await r.zcard("inflight:simple") == 0
+    assert not await r.hexists("inflight_strikes:simple", member)
+    assert not await r.hexists("monitor_repair_due:simple", member)
+
+
+async def test_complete_defers_inflight_monitor_repair_to_reaper(mock_redis):
+    r = mock_redis
+    domain = "complete-repair.example.com"
+    board_id = "board-complete-repair"
+    repair_due = time.time() - 1
+
+    assert await rq.enqueue_monitor(
+        domain,
+        board_id,
+        repair_due - 10,
+        {"monitor": "dom", "revision": "old"},
+        first_time=True,
+    )
+    assert await rq.claim_work(browser=False) is not None
+    member = f"monitor|{domain}|{board_id}"
+    assert not await rq.enqueue_monitor(
+        domain,
+        board_id,
+        repair_due,
+        {"monitor": "dom", "revision": "fixed"},
+        first_time=False,
+    )
+
+    # Early-return monitor paths use complete_task rather than reschedule_task.
+    # The lease is made immediately reapable instead of dropping the repair.
+    assert await rq.complete_task(domain, board_id, "monitor", browser=False) == 0
+    assert await r.zscore("inflight:simple", member) == 0
+    pending_due = await r.hget("monitor_repair_due:simple", member)
+    assert pending_due is not None
+    assert float(pending_due) == pytest.approx(repair_due)
+
+    result = await rq.reap_expired(browser=False)
+    assert result["reenqueued"] == 1
+    assert await r.zscore(f"monitors_simple:{domain}", board_id) == pytest.approx(repair_due)
+    assert not await r.hexists("monitor_repair_due:simple", member)
 
 
 async def test_reaper_reenqueues_expired_scrape_lease(mock_redis):

@@ -21,6 +21,12 @@ local wtype = ARGV[1]
 local task_type = ARGV[2]
 local domain = ARGV[3]
 local task_id = ARGV[4]
+local monitor_repair_key = "monitor_repair_due:" .. wtype
+
+local monitor_repair_type = redis.call("TYPE", monitor_repair_key)["ok"]
+if monitor_repair_type ~= "none" and monitor_repair_type ~= "hash" then
+    return redis.error_reply("monitor repair deadline index is corrupt")
+end
 
 -- A completion from a claimant that lost ownership during the cold B0
 -- transfer is stale. Do not remove its legacy lease/config; the operator
@@ -31,6 +37,19 @@ if task_type == "scrape"
 end
 
 local member = task_type .. "|" .. domain .. "|" .. task_id
+
+-- Some monitor paths deliberately finish without rescheduling (disabled,
+-- rerouted, or defensive early returns). If a repair sync arrived during that
+-- run, retain ownership and expire the lease immediately so the reaper can
+-- consume the deferred repair deadline instead of dropping it here.
+if task_type == "monitor"
+    and redis.call("HEXISTS", monitor_repair_key, member) == 1
+    and redis.call("ZSCORE", "inflight:" .. wtype, member) ~= false then
+    redis.call("ZADD", "inflight:" .. wtype, 0, member)
+    redis.call("HDEL", "inflight_strikes:" .. wtype, member)
+    return 0
+end
+
 local removed = redis.call("ZREM", "inflight:" .. wtype, member)
 
 -- Always try to clear any leftover strike entry. Cheap (single HDEL)

@@ -55,14 +55,15 @@ def test_university_of_fribourg_removes_known_duplicate_and_unsafe_sources():
 
 def test_university_of_fribourg_contracts_match_captured_live_inventory():
     inventory = json.loads(
-        (FIXTURE_DIR / "live-inventory-2026-08-26.json").read_text(encoding="utf-8")
+        (FIXTURE_DIR / "live-inventory-2026-09-20.json").read_text(encoding="utf-8")
     )
+    assert inventory["observed_at"] == "2026-09-20"
     central = inventory["central"]
-    assert len(central["fr"]) == 12
-    assert len(central["de"]) == 13
+    assert len(central["fr"]) == 8
+    assert len(central["de"]) == 9
     assert set(central["union"]) == set(central["fr"]) | set(central["de"])
-    assert len(central["union"]) == 18
-    assert len(set(central["fr"]) & set(central["de"])) == 7
+    assert len(central["union"]) == 11
+    assert len(set(central["fr"]) & set(central["de"])) == 6
 
     for source_name, expected_ids in inventory["accordion"].items():
         assert _ACCORDION_SOURCES[source_name].expected_ids == frozenset(expected_ids)
@@ -70,10 +71,11 @@ def test_university_of_fribourg_contracts_match_captured_live_inventory():
         assert _ACCORDION_SOURCES[source_name].excluded_central_ids == duplicates
 
     assert inventory["expired"] == {
-        "ami": ["styleguide-3-2", "styleguide-3-3"],
-        "geosciences": ["styleguide-2-1"],
+        "ami": ["styleguide-2-2"],
+        "geosciences": ["styleguide-3-1"],
+        "physics": ["styleguide-2-1"],
     }
-    assert inventory["link_counts"] == {"law": 4, "regional-school-service": 2}
+    assert inventory["link_counts"] == {"law": 3, "regional-school-service": 3}
 
 
 def test_university_of_fribourg_images_are_complete_without_pending_assets():
