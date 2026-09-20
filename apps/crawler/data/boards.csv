@@ -963,6 +963,7 @@ bevi,bevi-greenhouse,https://job-boards.greenhouse.io/bevicareers,greenhouse,"{"
 beyond-finance,beyond-finance-greenhouse,https://job-boards.greenhouse.io/beyondfinance,greenhouse,"{""token"": ""beyondfinance""}",skip,
 beyondtrust,beyondtrust-greenhouse,https://job-boards.greenhouse.io/beyondtrust,greenhouse,"{""token"": ""beyondtrust""}",skip,
 bge-inc,bge-inc-greenhouse,https://job-boards.greenhouse.io/bgeinc,greenhouse,"{""token"": ""bgeinc""}",skip,
+bgis,bgis-careers,https://fa-evcg-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 bhhc,bhhc-pinpoint,https://bhhc.pinpointhq.com,pinpoint,"{""slug"": ""bhhc""}",skip,
 bhp,bhp-careers,https://careers.bhp.com/search/,rss,"{""preset"": ""successfactors"", ""url"": ""https://careers.bhp.com/googlefeed.xml""}",skip,
 bicycle-therapeutics,bicycle-therapeutics-smartrecruiters,https://careers.smartrecruiters.com/BicycleTherapeutics/careers-page,smartrecruiters,"{""token"": ""BicycleTherapeutics""}",smartrecruiters,
