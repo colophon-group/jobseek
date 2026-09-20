@@ -42,6 +42,7 @@ from src.core.monitors.rss import (
     discover_stream,
 )
 from src.shared.http_retry import PaginationFetchError
+from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 
 _G_NS = "http://base.google.com/ns/1.0"
 _TT_NS = "https://teamtailor.com/locations"
@@ -1816,6 +1817,102 @@ class TestDiscover:
         assert len(jobs) == 12
         assert requested_pages == ["1", "2"]
 
+    async def test_wp_job_manager_browser_paginates_in_one_proxied_context(self, monkeypatch):
+        pages = {
+            "1": _rss_xml(
+                "".join(
+                    f"<item><title>Job {job_id}</title>"
+                    f"<link>https://example.com/job/{job_id}</link></item>"
+                    for job_id in range(1, 11)
+                )
+            ),
+            "2": _rss_xml(
+                "<item><title>Job 11</title><link>https://example.com/job/11</link></item>"
+            ),
+        }
+        requested_pages: list[str] = []
+        opened_contexts = 0
+
+        class FakeRequest:
+            @staticmethod
+            def is_navigation_request():
+                return True
+
+        class FakeResponse:
+            def __init__(self, body: str, frame):
+                self._body = body.encode()
+                self.frame = frame
+                self.request = FakeRequest()
+
+            async def body(self):
+                return self._body
+
+            async def all_headers(self):
+                return {"content-type": "application/rss+xml"}
+
+        class FakePage:
+            def __init__(self):
+                self.main_frame = object()
+                self.listeners = []
+
+            def on(self, event, listener):
+                assert event == "response"
+                self.listeners.append(listener)
+
+            def remove_listener(self, event, listener):
+                assert event == "response"
+                self.listeners.remove(listener)
+
+        fake_page = FakePage()
+
+        @asynccontextmanager
+        async def fake_open_page(_pw, _config, *, use_proxy, target_url):
+            nonlocal opened_contexts
+            assert use_proxy is True
+            assert target_url == "https://example.com/?feed=job_feed"
+            opened_contexts += 1
+            yield fake_page
+
+        async def fake_navigate(page, url, _config):
+            page_number = url.rsplit("=", 1)[1]
+            requested_pages.append(page_number)
+            if opened_contexts == 1 and page_number == "2":
+                raise BrowserNavigationHTTPStatusError(
+                    requested_url=url,
+                    response_url=url,
+                    status=403,
+                    phase="primary",
+                )
+            response = FakeResponse(pages[page_number], page.main_frame)
+            for listener in tuple(page.listeners):
+                listener(response)
+
+        monkeypatch.setattr("src.shared.browser.open_page", fake_open_page)
+        monkeypatch.setattr("src.shared.browser.navigate", fake_navigate)
+        monkeypatch.setattr("src.shared.browser.PROXY_ORIGIN_BLOCK_RETRY_DELAY_SECONDS", 0)
+
+        jobs = await discover(
+            {
+                "board_url": "https://example.com/open-positions/",
+                "metadata": {
+                    "preset": "wp_job_manager",
+                    "feed_url": "https://example.com/?feed=job_feed",
+                    "render": True,
+                    "proxy": True,
+                    "transport_attempts": 2,
+                },
+            },
+            AsyncMock(),
+            pw=object(),
+        )
+
+        assert opened_contexts == 2
+        assert requested_pages == ["1", "2", "1", "2"]
+        assert [job.url for job in jobs] == [
+            *(f"https://example.com/job/{job_id}" for job_id in range(1, 11)),
+            "https://example.com/job/11",
+        ]
+
     async def test_wp_job_manager_repeated_full_page_fails_closed(self):
         full_page = _rss_xml(
             "".join(
@@ -2159,7 +2256,7 @@ class TestDiscover:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(
                 ValueError,
-                match="RSS pagination, description_mode, and browser rendering",
+                match="RSS pagination and description_mode are only supported",
             ):
                 await discover(
                     {
@@ -2172,6 +2269,27 @@ class TestDiscover:
                                 "page_size": 20,
                                 "max_pages": 10,
                             },
+                        },
+                    },
+                    client,
+                )
+
+    async def test_other_non_generic_preset_rejects_browser_rendering_before_fetch(self):
+        def handler(_request):
+            raise AssertionError("invalid config must fail before network I/O")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(
+                ValueError,
+                match="browser rendering is supported by generic and wp_job_manager",
+            ):
+                await discover(
+                    {
+                        "board_url": "https://jobs.example.com/careers",
+                        "metadata": {
+                            "preset": "teamtailor",
+                            "feed_url": "https://jobs.example.com/jobs.rss",
+                            "render": True,
                         },
                     },
                     client,
