@@ -433,6 +433,7 @@ american-college-of-obstetricians-and-gynecologists,american-college-of-obstetri
 american-express,american-express-eightfold,https://aexp.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
 american-housing,american-housing-ashby,https://jobs.ashbyhq.com/american-housing,ashby,"{""token"": ""american-housing""}",skip,
 american-institute,american-institute-greenhouse,https://job-boards.greenhouse.io/americaninstitute,greenhouse,"{""token"": ""americaninstitute""}",skip,
+american-residential-services,american-residential-services-careers,https://careers-ars.icims.com/,icims,,json-ld,
 ametek,ametek-careers,https://jobs.ametek.com/,rss,"{""preset"": ""successfactors""}",skip,
 amgen,amgen-careers,https://amgen.wd1.myworkdayjobs.com/careers,workday,,workday,
 amgen,amgen-global,https://careers.amgen.com/en/search-jobs/,sitemap,"{""sitemap_url"": ""https://careers.amgen.com/en/sitemap.xml"", ""url_filter"": ""/en/job/""}",json-ld,
