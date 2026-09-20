@@ -3710,6 +3710,7 @@ intradiem,intradiem-greenhouse,https://job-boards.greenhouse.io/intradiem,greenh
 intrinsic,intrinsic-careers,https://boards.greenhouse.io/intrinsicrobotics,greenhouse,"{""token"": ""intrinsicrobotics""}",skip,
 intro,intro-careers,https://jobs.ashbyhq.com/intro,ashby,"{""token"": ""intro""}",skip,
 intuit,intuit-jobs,https://jobs.intuit.com/search-jobs,talentbrew,,json-ld,
+intuitive,intuitive-careers,https://careers.smartrecruiters.com/intuitive,smartrecruiters,,smartrecruiters,
 intus,intus-ashby,https://jobs.ashbyhq.com/intus,ashby,"{""token"": ""intus""}",skip,
 inuru,inuru-join,https://join.com/companies/inuru,join,"{""slug"": ""inuru""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 inversion,inversion-greenhouse,https://job-boards.greenhouse.io/inversionspace,greenhouse,"{""token"": ""inversionspace""}",skip,
