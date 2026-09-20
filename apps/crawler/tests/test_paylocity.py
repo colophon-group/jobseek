@@ -62,6 +62,12 @@ class TestListingParser:
         assert _is_paylocity_url(BOARD_URL)
         assert _is_paylocity_url("https://2000recruiting.paylocity.com/Recruiting/Jobs/All/abc")
         assert not _is_paylocity_url("https://www.paylocity.com/company/careers")
+        assert not _is_paylocity_url(
+            "https://recruiting.paylocity.com.attacker.example/Recruiting/Jobs/All/abc"
+        )
+        assert not _is_paylocity_url(
+            "https://nested.2000recruiting.paylocity.com/Recruiting/Jobs/All/abc"
+        )
 
 
 class TestMonitor:
@@ -182,6 +188,16 @@ class TestScraper:
 
 def test_workspace_auto_configuration():
     assert detect_ats_from_url(BOARD_URL) == "paylocity"
+    assert (
+        detect_ats_from_url("https://2000recruiting.paylocity.com/Recruiting/Jobs/All/abc")
+        == "paylocity"
+    )
+    assert (
+        detect_ats_from_url(
+            "https://recruiting.paylocity.com.attacker.example/Recruiting/Jobs/All/abc"
+        )
+        is None
+    )
     assert auto_scraper_type("paylocity") == (
         "paylocity",
         {"enrich": ["description", "employment_type", "job_location_type"]},

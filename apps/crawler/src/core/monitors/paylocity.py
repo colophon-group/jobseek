@@ -23,6 +23,7 @@ import structlog
 from src.core.monitors import BoardGoneError, DiscoveredJob, register
 from src.core.monitors.raw import save_text_response
 from src.shared.http_retry import fetch_text_page_with_retry
+from src.shared.paylocity import is_paylocity_recruiting_host
 from src.shared.tdm import TDMReservedError
 
 log = structlog.get_logger()
@@ -32,9 +33,8 @@ _PAGE_DATA_RE = re.compile(r"\bwindow\.pageData\s*=\s*")
 
 def _is_paylocity_url(url: str) -> bool:
     parsed = urlparse(url)
-    host = (parsed.hostname or "").lower()
     path = parsed.path.lower()
-    return host.endswith("recruiting.paylocity.com") and "/recruiting/jobs/" in path
+    return is_paylocity_recruiting_host(parsed.hostname) and "/recruiting/jobs/" in path
 
 
 def _extract_page_data(html: str) -> dict | None:
