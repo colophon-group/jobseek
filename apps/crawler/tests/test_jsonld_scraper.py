@@ -1371,6 +1371,25 @@ class TestFetchRetry403:
             assert calls["n"] == 2
             assert result.title == "T"
 
+    async def test_proxy_transport_attempts_rotate_additional_403_responses(self):
+        page_html = """<html><head>
+        <script type="application/ld+json">{"@type": "JobPosting", "title": "T"}</script>
+        </head></html>"""
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] < 5:
+                return httpx.Response(403, text="blocked")
+            return httpx.Response(200, text=page_html)
+
+        config = {"proxy": True, "transport_attempts": 5}
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/job", config, client)
+
+        assert calls["n"] == 5
+        assert result.title == "T"
+
     async def test_configured_headers_are_cleaned_and_sent_on_every_attempt(self):
         page_html = """<html><head>
         <script type="application/ld+json">{"@type": "JobPosting", "title": "T"}</script>

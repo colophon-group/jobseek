@@ -52,6 +52,8 @@ async def fetch_response_with_status_retries(
     headers: dict[str, str] | None = None,
     follow_redirects: bool = True,
     same_origin_redirects: bool = False,
+    transport_retry_limit: int = 0,
+    retry_budget: int | None = None,
     log_event: str = "http_retry.response_status_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
 ) -> httpx.Response:
@@ -62,20 +64,25 @@ async def fetch_response_with_status_retries(
     response so scraper callers retain normal ``raise_for_status`` and final
     redirect handling. ``same_origin_redirects`` manually follows redirects
     and rejects malformed, looping, or cross-origin chains before requesting
-    the next hop. Transport errors and unlisted statuses still surface
-    immediately; the worker-level retry/circuit policy remains authoritative
-    for those classes.
+    the next hop. Transport errors surface immediately unless an explicit
+    ``transport_retry_limit`` is supplied. ``retry_budget`` can cap the total
+    retries across both configured statuses and transport errors.
     """
 
     from src.metrics import http_retry_attempts_total, http_retry_host
 
     if any(limit < 0 for limit in retry_limits.values()):
         raise ValueError("status retry limits must be non-negative")
+    if transport_retry_limit < 0:
+        raise ValueError("transport retry limit must be non-negative")
+    if retry_budget is not None and retry_budget < 0:
+        raise ValueError("retry budget must be non-negative")
     if same_origin_redirects and not follow_redirects:
         raise ValueError("same_origin_redirects requires follow_redirects=true")
 
     host = http_retry_host(url)
     used: dict[int, int] = {}
+    transport_retries = 0
     total_retries = 0
 
     while True:
@@ -84,15 +91,35 @@ async def fetch_response_with_status_retries(
             request_kwargs["timeout"] = timeout
         if headers is not None:
             request_kwargs["headers"] = headers
-        if same_origin_redirects:
-            request_kwargs["follow_redirects"] = False
-            response = await _get_with_same_origin_redirects(client, url, request_kwargs)
-        else:
-            response = await client.get(url, **request_kwargs)
+        try:
+            if same_origin_redirects:
+                request_kwargs["follow_redirects"] = False
+                response = await _get_with_same_origin_redirects(client, url, request_kwargs)
+            else:
+                response = await client.get(url, **request_kwargs)
+        except httpx.TransportError as exc:
+            budget_exhausted = retry_budget is not None and total_retries >= retry_budget
+            if transport_retries >= transport_retry_limit or budget_exhausted:
+                raise
+            transport_retries += 1
+            total_retries += 1
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            delay = base_delay * (2 ** (total_retries - 1)) * (0.5 + random.random())
+            log.info(
+                log_event,
+                url=url,
+                error=type(exc).__name__,
+                retry=transport_retries,
+                retry_limit=transport_retry_limit,
+                delay_s=round(delay, 2),
+            )
+            await sleep(delay)
+            continue
         status = response.status_code
         limit = retry_limits.get(status, 0)
         status_retries = used.get(status, 0)
-        if status_retries >= limit:
+        budget_exhausted = retry_budget is not None and total_retries >= retry_budget
+        if status_retries >= limit or budget_exhausted:
             if total_retries and 200 <= status < 400:
                 http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
             elif limit and status_retries:
