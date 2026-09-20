@@ -23,6 +23,7 @@ MAX_URLS = 50_000
 _MAX_SITEMAP_CHARS = 50 * 1024 * 1024
 _MAX_XML_ATTEMPTS = 5
 _XML_RETRY_DELAY = 0.25
+_CHILD_XML_ATTEMPTS = 3
 NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 # Some generators emit https:// instead of http:// in the namespace declaration.
 NS_HTTPS = "{https://www.sitemaps.org/schemas/sitemap/0.9}"
@@ -163,7 +164,12 @@ async def _try_fetch_xml(url: str, client: httpx.AsyncClient) -> ET.Element | No
         return None
 
 
-async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | None:
+async def _fetch_child_xml(
+    url: str,
+    client: httpx.AsyncClient,
+    *,
+    attempts: int = _CHILD_XML_ATTEMPTS,
+) -> ET.Element | None:
     """Strict XML fetch for child sitemaps inside a sitemap index.
 
     Returns the parsed root on 200 + parseable XML, or ``None`` on
@@ -205,6 +211,7 @@ async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | 
     text = await fetch_with_retry(
         client,
         url,
+        retries=attempts,
         headers=_SITEMAP_HEADERS,
         transient_403=True,
         retryable_statuses={202},
@@ -249,7 +256,11 @@ async def _fetch_configured_xml(
     client, each fresh request selects another pool exit.
     """
     for attempt in range(1, attempts + 1):
-        root = await _fetch_child_xml(url, client)
+        root = await _fetch_child_xml(
+            url,
+            client,
+            attempts=max(_CHILD_XML_ATTEMPTS, attempts),
+        )
         if root is not None:
             return root
         if attempt < attempts:
@@ -352,6 +363,7 @@ async def _resolve_sitemap_index(
     client: httpx.AsyncClient,
     *,
     seen: set[str] | None = None,
+    attempts: int = _CHILD_XML_ATTEMPTS,
 ) -> list[ET.Element]:
     """Fetch all child sitemaps from a sitemap index.
 
@@ -388,13 +400,18 @@ async def _resolve_sitemap_index(
         # rather than returning None. A silent skip on a 503 child
         # would drop that shard's URLs and trigger the 2026-04-26
         # NHS-style truncation tombstoning (#2722).
-        child_root = await _fetch_child_xml(target, client)
+        child_root = await _fetch_child_xml(target, client, attempts=attempts)
         if child_root is None:
             # 404 / non-XML body — genuinely missing shard, skip.
             missing_or_invalid += 1
             continue
         if _is_sitemap_index(child_root):
-            nested_results = await _resolve_sitemap_index(child_root, client, seen=seen)
+            nested_results = await _resolve_sitemap_index(
+                child_root,
+                client,
+                seen=seen,
+                attempts=attempts,
+            )
             if not nested_results:
                 nested_empty += 1
             results.extend(nested_results)
@@ -455,6 +472,7 @@ async def discover(
     metadata = board.get("metadata") or {}
     cached_sitemap = metadata.get("sitemap_url")
     new_sitemap_url: str | None = None
+    configured_xml_attempts = _configured_xml_attempts(metadata)
 
     if cached_sitemap:
         # A configured/cached sitemap is authoritative enough to use the
@@ -468,7 +486,7 @@ async def discover(
         root = await _fetch_configured_xml(
             cached_sitemap,
             client,
-            attempts=_configured_xml_attempts(metadata),
+            attempts=configured_xml_attempts,
         )
         if root is None:
             log.warning("sitemap.cache_miss", cached=cached_sitemap)
@@ -476,7 +494,11 @@ async def discover(
             new_sitemap_url = sitemap_url
         else:
             if _is_sitemap_index(root):
-                roots = await _resolve_sitemap_index(root, client)
+                roots = await _resolve_sitemap_index(
+                    root,
+                    client,
+                    attempts=max(_CHILD_XML_ATTEMPTS, configured_xml_attempts),
+                )
                 if not roots:
                     log.warning(
                         "sitemap.cache_index_unusable",
