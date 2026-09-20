@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 7772,
-    "boards_sha256": "736049602de7ee36087759d370067275d7d2e21033ed9dfbe0b3338b6ad1671b",
+    "boards_sha256": "89e565c1df4099b0626615c0e839e723390379a994e23da5bc90c95b1007c905",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "ecef5a05a84171d1d3629e8ea0f1759b3a8b584d76147499431a150ba0887a93",
+  "manifest_sha256": "35eb5108395ec51bea635029614366393ffaef519490fb1986723caeae1b5430",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -2320,6 +2320,28 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "2094f51c356731ea552c88c961fdb30a89e5bc470600b7ff39e87642c001c75e",
+      "status": "pending_replay",
+      "surface": "monitor"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait_fallback"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "navigation_dom",
+      "config_shape_sha256": "c073a0d4027171e27da53a671e3fd4b0c3ab6ecfc18f1a6cf76fa39c5de1be3a",
+      "crawler_type": "dom",
+      "digest_sha256": "ab5d05a242b0db98b6772dd4587bb1fe03eae047ef9307940bb45e938871c446",
+      "fixture": "synthetic.navigation_dom.v1",
+      "id": "profile.monitor.dom.346666cd3a914886",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "d9ff819f5a8fbe6b07629a93e3c9f7dead4f54d9ad7c1f4c90b99a02362a9b37",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -7488,12 +7510,12 @@
     }
   ],
   "summary": {
-    "browser_board_count": 510,
-    "browser_required_step_count": 669,
-    "configured_profile_occurrence_count": 670,
-    "configured_record_count": 297,
+    "browser_board_count": 511,
+    "browser_required_step_count": 670,
+    "configured_profile_occurrence_count": 671,
+    "configured_record_count": 298,
     "registry_record_count": 17,
-    "total_record_count": 314,
+    "total_record_count": 315,
     "zero_browser_config_registry_count": 1
   }
 }
