@@ -1566,11 +1566,16 @@ def validate_generic_rss_config(metadata: Mapping[str, object]) -> None:
     render = metadata.get("render", False)
     if not isinstance(render, bool):
         raise ValueError("RSS render must be a boolean")
-    if metadata.get("preset", "generic") != "generic":
-        if "pagination" in metadata or "description_mode" in metadata or render:
+    preset_name = metadata.get("preset", "generic")
+    if preset_name != "generic":
+        if (
+            "pagination" in metadata
+            or "description_mode" in metadata
+            or (render and preset_name != "wp_job_manager")
+        ):
             raise ValueError(
-                "RSS pagination, description_mode, and browser rendering are only "
-                "supported by the generic preset"
+                "RSS pagination and description_mode are only supported by the generic "
+                "preset; browser rendering is supported by generic and wp_job_manager"
             )
         return
     _generic_paginated_preset(
@@ -2059,12 +2064,28 @@ async def discover_stream(
         return
     preset_name, feed_url, preset = config
     if metadata.get("render"):
-        async for batch in _discover_generic_browser_stream(
-            feed_url=feed_url,
-            preset=preset,
-            metadata=metadata,
-            pw=pw,
-        ):
+        from src.shared.browser import retry_proxy_origin_blocks
+
+        async def collect_browser_batches() -> list[list[DiscoveredJob] | MonitorResult]:
+            # Keep each attempt atomic. A later paginated request can be the
+            # first one blocked by the origin; yielding an earlier page before
+            # retrying would replay that page into the caller.
+            return [
+                batch
+                async for batch in _discover_generic_browser_stream(
+                    feed_url=feed_url,
+                    preset=preset,
+                    metadata=metadata,
+                    pw=pw,
+                )
+            ]
+
+        batches = await retry_proxy_origin_blocks(
+            collect_browser_batches,
+            dict(metadata),
+            event="rss.browser_origin_block_retry",
+        )
+        for batch in batches:
             yield batch
         return
     if preset_name == "hr_manager":

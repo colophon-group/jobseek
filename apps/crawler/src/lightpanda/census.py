@@ -307,14 +307,17 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "render",
             "rescrape_policy",
             "resolve_job_invite_identity",
+            "stealth",
             "tenant",
             "timeout",
+            "transport_attempts",
             "url",
             "url_allowlist",
             "url_filter",
             "url_transform",
             "variant",
             "wait",
+            "warmup_url",
         }
     ),
 }

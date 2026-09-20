@@ -39,7 +39,14 @@ def test_bilh_uses_three_complementary_provider_boards() -> None:
     assert json.loads(exeter["monitor_config"]) == {
         "preset": "wp_job_manager",
         "feed_url": "https://exetercareers.com/?feed=job_feed",
+        "render": True,
         "proxy": True,
+        "transport_attempts": 5,
+        "warmup_url": "https://exetercareers.com/open-positions/",
+        "persistent_context": True,
+        "channel": "chrome",
+        "headless": False,
+        "stealth": True,
     }
     assert json.loads(exeter["scraper_config"])["proxy"] is True
 

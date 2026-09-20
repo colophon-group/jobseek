@@ -689,7 +689,7 @@ class TestValidateCsvs:
         errors = validate_csvs()
 
         assert any(
-            "RSS pagination, description_mode, and browser rendering are only supported"
+            "RSS pagination and description_mode are only supported by the generic preset"
             in str(error)
             for error in errors
         )
