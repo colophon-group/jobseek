@@ -624,7 +624,7 @@ class TestCanHandle:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle(f"https://{SUBDOMAIN}.notion.site/abc", client)
         assert result is None
-        assert calls == 3
+        assert calls == 6
 
 
 # ---------------------------------------------------------------------------
@@ -633,6 +633,44 @@ class TestCanHandle:
 
 
 class TestDiscover:
+    @pytest.mark.asyncio
+    async def test_root_resolution_falls_back_to_canonical_api_host(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(notion_monitor.asyncio, "sleep", AsyncMock())
+        chunk = _make_chunk_response(_HOME_PAGE_ID, JOB_PAGES)
+        hosts: list[str] = []
+
+        def handler(request):
+            hosts.append(request.url.host)
+            if "getPublicPageData" in str(request.url):
+                if request.url.host == f"{SUBDOMAIN}.notion.site":
+                    return httpx.Response(500)
+                assert request.url.host == "www.notion.so"
+                return httpx.Response(
+                    200,
+                    json=_make_public_page_data(public_home=_HOME_PAGE_ID),
+                )
+            if "loadPageChunk" in str(request.url):
+                return httpx.Response(200, json=chunk)
+            return httpx.Response(404)
+
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/",
+            "metadata": {},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(board, client)
+
+        assert len(urls) == 3
+        assert hosts == [
+            f"{SUBDOMAIN}.notion.site",
+            f"{SUBDOMAIN}.notion.site",
+            f"{SUBDOMAIN}.notion.site",
+            "www.notion.so",
+            f"{SUBDOMAIN}.notion.site",
+        ]
+
     @pytest.mark.asyncio
     async def test_retries_transient_api_status(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(notion_monitor.asyncio, "sleep", AsyncMock())

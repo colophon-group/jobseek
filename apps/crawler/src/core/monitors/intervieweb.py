@@ -46,6 +46,7 @@ _SECTION_RE = re.compile(
     re.IGNORECASE,
 )
 _PROVIDER_MARKERS = ("vacancyListCareer", "researchAnnounces")
+_PAGINATION_ORDERS = frozenset({"name", "location", "function", "date", "company", "project"})
 
 
 class _ListingParser(HTMLParser):
@@ -53,13 +54,19 @@ class _ListingParser(HTMLParser):
         super().__init__()
         self.ajax_url: str | None = None
         self.hrefs: list[str] = []
+        self.active_orders: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
         if tag == "input" and attributes.get("id") == "url-for-announces":
             self.ajax_url = attributes.get("value")
-        elif tag == "a" and attributes.get("href"):
-            self.hrefs.append(attributes["href"] or "")
+        elif tag == "a":
+            if attributes.get("href"):
+                self.hrefs.append(attributes["href"] or "")
+            order = attributes.get("data-order")
+            classes = (attributes.get("class") or "").split()
+            if order and "active" in classes:
+                self.active_orders.append(order)
 
 
 def _is_intervieweb_url(url: str) -> bool:
@@ -127,7 +134,7 @@ def _page_count(page: str) -> int:
     return count
 
 
-def _pagination_protocol(page: str, board_url: str) -> tuple[str, str]:
+def _pagination_protocol(page: str, board_url: str) -> tuple[str, str, str]:
     parser = _ListingParser()
     parser.feed(page)
     if not parser.ajax_url:
@@ -144,7 +151,13 @@ def _pagination_protocol(page: str, board_url: str) -> tuple[str, str]:
     section_match = _SECTION_RE.search(page)
     if section_match is None:
         raise ValueError("Intervieweb listing omitted its pagination section")
-    return ajax_url, section_match.group(1)
+    active_orders = set(parser.active_orders)
+    if len(active_orders) != 1:
+        raise ValueError("Intervieweb listing omitted its unique active pagination order")
+    order = active_orders.pop()
+    if order not in _PAGINATION_ORDERS:
+        raise ValueError("Intervieweb listing advertised an unsupported pagination order")
+    return ajax_url, section_match.group(1), order
 
 
 async def _fetch_first_page(board_url: str, client: httpx.AsyncClient) -> str:
@@ -170,6 +183,7 @@ async def _fetch_page(
     ajax_url: str,
     board_url: str,
     section: str,
+    order: str,
     page_number: int,
     client: httpx.AsyncClient,
 ) -> str:
@@ -177,7 +191,7 @@ async def _fetch_page(
         {
             "act1": "vacancyListCareer",
             "section": section,
-            "order": "name",
+            "order": order,
             "page": str(page_number),
             "country": "",
             "region": "",
@@ -232,9 +246,9 @@ async def _discover_url(
     if pages == 1:
         return urls, pages
 
-    ajax_url, section = _pagination_protocol(first_page, board_url)
+    ajax_url, section, order = _pagination_protocol(first_page, board_url)
     for page_number in range(2, pages + 1):
-        page = await _fetch_page(ajax_url, board_url, section, page_number, client)
+        page = await _fetch_page(ajax_url, board_url, section, order, page_number, client)
         advertised_pages = _page_count(page)
         if advertised_pages != pages:
             raise _SnapshotChanged(
