@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 7775,
-    "boards_sha256": "1f1b90af479d2f6ffd628bffb975f0bc911c3b93a91d83a3ee92ee9a3e687d28",
+    "boards_sha256": "627130af8d340d873230e6d13adbe06bf5494b5cd477d0d9f6feb0be218c512a",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "d50c2a6a88326e3a9d159455f923d4bcc2374ad0c2cd644e4bda0ea64fb5ae9b",
+  "manifest_sha256": "c0fbbadca933104e1ef9d17293664c6e33cafcdf519837780eb30ac11bcc81c3",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -5179,12 +5179,40 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "d7e2c6a03ddc5e04cd26210cb54261ed3d380aa21754a22d67db747650da3b05",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "8e489f53574fb67a314f8d63b90b9f3b9635bae9c3f4d2f0c5692ffc7619073d",
+      "digest_sha256": "a02e8e99a66f394be523c007486dc20af6559ab20b3aa2d3223139bb98755665",
       "fixture": "synthetic.network_session.v1",
       "id": "profile.scraper.api_sniffer.ab0928c2c0f039f7",
       "profile_kind": "configured",
-      "source_count": 9,
-      "source_refs_sha256": "75b33c8d5bdbffac32b2a0a7803a8be43b4c8a4619444772e5ce6035f6b720fa",
+      "source_count": 8,
+      "source_refs_sha256": "d1a8636ec12c448f7bd0b6f346412e047545628f4484041d09867aa5aa407628",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "browser.channel",
+        "browser.headful",
+        "browser.stealth",
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait_fallback",
+        "network.proxy",
+        "network.request_observe",
+        "network.response_capture"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "browser_identity",
+      "config_shape_sha256": "3283bb27393d071a51bc54af916635b6e90e3120ff09a12438850f980ad9cb02",
+      "crawler_type": "api_sniffer",
+      "digest_sha256": "95c9317a2f98459587173527b27aeeef0ddf66ebcec6c398e84061c4b1d952c4",
+      "fixture": "synthetic.browser_identity.v1",
+      "id": "profile.scraper.api_sniffer.c26e862ca62f2bd0",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "89279d693e8e77c099f4b9355a8edbcd1a05152c834d0628a6f4eb2eeacee4f8",
       "status": "pending_replay",
       "surface": "scraper"
     },
@@ -7563,9 +7591,9 @@
     "browser_board_count": 513,
     "browser_required_step_count": 672,
     "configured_profile_occurrence_count": 673,
-    "configured_record_count": 300,
+    "configured_record_count": 301,
     "registry_record_count": 17,
-    "total_record_count": 317,
+    "total_record_count": 318,
     "zero_browser_config_registry_count": 1
   }
 }

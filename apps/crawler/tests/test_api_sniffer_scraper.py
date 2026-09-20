@@ -19,6 +19,7 @@ from src.core.scrapers.api_sniffer import (
     _scrape_http,
     _seek_http_config,
     probe_pw,
+    scrape,
 )
 from src.shared.api_sniff import Exchange
 from src.shared.http_retry import PaginationFetchError
@@ -668,6 +669,107 @@ class TestProbePw:
             await probe_pw(["https://example.com/job/1"], MagicMock())
 
         assert exc_info.value is error
+
+
+class TestCaptureTransportRetries:
+    async def test_proxy_origin_block_rotates_and_recovers(self):
+        from src.shared.browser import BrowserNavigationHTTPStatusError
+
+        blocked = BrowserNavigationHTTPStatusError(
+            requested_url="https://example.com/job/1",
+            response_url="https://example.com/job/1",
+            status=403,
+            phase="primary",
+        )
+        exchange = _make_exchange(
+            body={
+                "title": "Recovered role",
+                "description": "Recovered description",
+                "locations": [{"name": "Zurich"}],
+            }
+        )
+        navigate_calls = 0
+
+        async def fake_navigate(page, url, opts):
+            nonlocal navigate_calls
+            navigate_calls += 1
+            if navigate_calls == 1:
+                raise blocked
+
+        mock_open_page = MagicMock()
+        mock_open_page.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
+        mock_open_page.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        async with httpx.AsyncClient() as http:
+            with (
+                patch("src.shared.browser.open_page", mock_open_page),
+                patch(
+                    "src.core.scrapers.api_sniffer.capture_exchanges",
+                    new=AsyncMock(return_value=[exchange]),
+                ),
+                patch("src.shared.browser.navigate", new=fake_navigate),
+                patch("asyncio.sleep", new_callable=AsyncMock),
+            ):
+                result = await scrape(
+                    "https://example.com/job/1",
+                    {
+                        "fields": {
+                            "title": "title",
+                            "description": "description",
+                            "locations": "locations[].name",
+                        },
+                        "proxy": True,
+                        "transport_attempts": 2,
+                    },
+                    http,
+                    pw=MagicMock(),
+                )
+
+        assert result.title == "Recovered role"
+        assert result.description == "Recovered description"
+        assert result.locations == ["Zurich"]
+        assert navigate_calls == 2
+        assert mock_open_page.call_count == 2
+
+    async def test_non_origin_failure_is_not_retried(self):
+        navigate = AsyncMock(side_effect=RuntimeError("broken capture"))
+        mock_open_page = MagicMock()
+        mock_open_page.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
+        mock_open_page.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        async with httpx.AsyncClient() as http:
+            with (
+                patch("src.shared.browser.open_page", mock_open_page),
+                patch(
+                    "src.core.scrapers.api_sniffer.capture_exchanges",
+                    new=AsyncMock(return_value=[]),
+                ),
+                patch("src.shared.browser.navigate", navigate),
+            ):
+                result = await scrape(
+                    "https://example.com/job/1",
+                    {"proxy": True, "transport_attempts": 5},
+                    http,
+                    pw=MagicMock(),
+                )
+
+        assert result.title is None
+        assert navigate.await_count == 1
+        assert mock_open_page.call_count == 1
+
+    @pytest.mark.parametrize("transport_attempts", [0, 6, True, "5"])
+    async def test_invalid_transport_attempts_are_rejected(self, transport_attempts):
+        async with httpx.AsyncClient() as http:
+            with pytest.raises(
+                ValueError,
+                match="API-sniffer scraper transport_attempts must be an integer from 1 to 5",
+            ):
+                await scrape(
+                    "https://example.com/job/1",
+                    {"transport_attempts": transport_attempts},
+                    http,
+                    pw=MagicMock(),
+                )
 
 
 class TestScrapeHttpEmptyItems:

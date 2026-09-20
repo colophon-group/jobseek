@@ -48,7 +48,11 @@ def test_bilh_uses_three_complementary_provider_boards() -> None:
         "headless": False,
         "stealth": True,
     }
-    assert json.loads(exeter["scraper_config"])["proxy"] is True
+    assert json.loads(exeter["scraper_config"]) == {
+        "enrich": ["description", "locations", "employment_type", "job_location_type"],
+        "proxy": True,
+        "transport_attempts": 5,
+    }
 
     assert joslin["monitor_type"] == "icims"
     assert joslin["scraper_type"] == "json-ld"
