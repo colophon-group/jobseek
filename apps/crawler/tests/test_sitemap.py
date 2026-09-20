@@ -552,6 +552,66 @@ class TestDiscover:
             assert "https://example.com/jobs/1" in urls
             assert new_sitemap is None  # cached, not new
 
+    async def test_configured_xml_attempts_recover_from_http_200_html(self, monkeypatch):
+        from unittest.mock import AsyncMock
+
+        sitemap_xml = """<?xml version="1.0"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://example.com/jobs/1</loc></url>
+        </urlset>"""
+        calls = 0
+
+        def handler(request):
+            nonlocal calls
+            calls += 1
+            if calls < 3:
+                return httpx.Response(
+                    200,
+                    text="<html><title>Wrong turn?</title></html>",
+                    headers={"content-type": "text/html"},
+                )
+            return httpx.Response(
+                200,
+                text=sitemap_xml,
+                headers={"content-type": "application/xml"},
+            )
+
+        sleep = AsyncMock()
+        monkeypatch.setattr(sitemap_module.asyncio, "sleep", sleep)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls, new_sitemap = await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "sitemap_url": "https://example.com/sitemap.xml",
+                        "xml_attempts": 3,
+                    },
+                },
+                client,
+            )
+
+        assert urls == {"https://example.com/jobs/1"}
+        assert new_sitemap is None
+        assert calls == 3
+        assert sleep.await_count == 2
+
+    async def test_configured_xml_attempts_are_bounded(self):
+        import pytest
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request: None)) as client:
+            for invalid in (True, 0, 6, "5"):
+                with pytest.raises(ValueError, match="xml_attempts"):
+                    await discover(
+                        {
+                            "board_url": "https://example.com/careers",
+                            "metadata": {
+                                "sitemap_url": "https://example.com/sitemap.xml",
+                                "xml_attempts": invalid,
+                            },
+                        },
+                        client,
+                    )
+
     async def test_discovers_new_sitemap(self):
         sitemap_xml = """<?xml version="1.0"?>
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

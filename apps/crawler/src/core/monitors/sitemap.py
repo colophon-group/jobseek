@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -20,6 +21,8 @@ MAX_URLS = 50_000
 # valid large child sitemaps before XML parsing (for example Foot Locker's
 # ~537k-character global jobs sitemap).
 _MAX_SITEMAP_CHARS = 50 * 1024 * 1024
+_MAX_XML_ATTEMPTS = 5
+_XML_RETRY_DELAY = 0.25
 NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 # Some generators emit https:// instead of http:// in the namespace declaration.
 NS_HTTPS = "{https://www.sitemaps.org/schemas/sitemap/0.9}"
@@ -232,6 +235,43 @@ async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | 
     return root
 
 
+async def _fetch_configured_xml(
+    url: str,
+    client: httpx.AsyncClient,
+    *,
+    attempts: int,
+) -> ET.Element | None:
+    """Retry an explicitly configured sitemap that returns invalid content.
+
+    Status and transport retries already happen inside ``_fetch_child_xml``.
+    This separate, opt-in budget covers provider/CDN responses that redirect
+    a sitemap request to an HTTP-200 HTML error page. With a proxy-backed
+    client, each fresh request selects another pool exit.
+    """
+    for attempt in range(1, attempts + 1):
+        root = await _fetch_child_xml(url, client)
+        if root is not None:
+            return root
+        if attempt < attempts:
+            log.warning(
+                "sitemap.configured_xml_retry",
+                url=url,
+                attempt=attempt,
+                attempts=attempts,
+            )
+            await asyncio.sleep(_XML_RETRY_DELAY * attempt)
+    return None
+
+
+def _configured_xml_attempts(metadata: dict) -> int:
+    attempts = metadata.get("xml_attempts", 1)
+    if isinstance(attempts, bool) or not isinstance(attempts, int):
+        raise ValueError("sitemap xml_attempts must be an integer")
+    if not 1 <= attempts <= _MAX_XML_ATTEMPTS:
+        raise ValueError(f"sitemap xml_attempts must be between 1 and {_MAX_XML_ATTEMPTS}")
+    return attempts
+
+
 def _walk_up_candidates(board_url: str) -> list[str]:
     parsed = urlparse(board_url)
     origin = f"{parsed.scheme}://{parsed.netloc}"
@@ -425,7 +465,11 @@ async def discover(
         # monitor.  Strict fetching retries transient responses and then
         # fails closed.  A genuine 404/410 still returns ``None`` and retains
         # the existing rediscovery behaviour.
-        root = await _fetch_child_xml(cached_sitemap, client)
+        root = await _fetch_configured_xml(
+            cached_sitemap,
+            client,
+            attempts=_configured_xml_attempts(metadata),
+        )
         if root is None:
             log.warning("sitemap.cache_miss", cached=cached_sitemap)
             sitemap_url, roots = await _discover_sitemap(board["board_url"], client)
