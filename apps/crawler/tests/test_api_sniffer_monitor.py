@@ -4935,6 +4935,92 @@ class TestHttpFetchWithRetry:
         assert client.request.await_count == 1
 
     @pytest.mark.asyncio
+    async def test_transient_403_opt_in_retries_then_raises(self, monkeypatch):
+        """Listing monitors can fail closed after rotating blocked proxy exits."""
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.core.monitors.api_sniffer import http_fetch_with_retry
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(api_sniffer_module.asyncio, "sleep", AsyncMock())
+        client = AsyncMock()
+        client.request = AsyncMock(return_value=_http_status_error_resp(403))
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await http_fetch_with_retry(
+                client,
+                "GET",
+                "https://x/api",
+                retries=5,
+                transient_403=True,
+            )
+
+        assert exc_info.value.attempts == 5
+        assert exc_info.value.last_status == 403
+        assert client.request.await_count == 5
+
+    @pytest.mark.asyncio
+    async def test_http_monitor_uses_configured_403_retry_budget(self, monkeypatch):
+        """A blocked first page must not become a successful empty inventory."""
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(api_sniffer_module.asyncio, "sleep", AsyncMock())
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(403, text="Access denied", request=request)
+
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "json_path": "results",
+                "transient_403": True,
+                "transport_attempts": 5,
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(board, client)
+
+        assert attempts == 5
+        assert exc_info.value.attempts == 5
+        assert exc_info.value.last_status == 403
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("transport_attempts", [0, 6, True, "5"])
+    async def test_http_monitor_rejects_invalid_transport_attempts(self, transport_attempts):
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "transient_403": True,
+                "transport_attempts": transport_attempts,
+            },
+        }
+
+        with pytest.raises(
+            ValueError,
+            match="api_sniffer transport_attempts must be an integer from 1 to 5",
+        ):
+            await discover(board, AsyncMock())
+
+    @pytest.mark.asyncio
+    async def test_http_monitor_rejects_non_boolean_transient_403(self):
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "transient_403": "true",
+            },
+        }
+
+        with pytest.raises(ValueError, match="api_sniffer transient_403 must be a boolean"):
+            await discover(board, AsyncMock())
+
+    @pytest.mark.asyncio
     async def test_retries_on_503_then_succeeds(self, monkeypatch):
         from src.core.monitors import api_sniffer as api_sniffer_module
         from src.core.monitors.api_sniffer import http_fetch_with_retry

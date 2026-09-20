@@ -3,11 +3,14 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 
+from src.core.monitors.api_sniffer import discover as api_sniffer_discover
 from src.core.monitors.inline import discover as inline_discover
+from src.shared.http_retry import PaginationFetchError
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 
@@ -51,7 +54,39 @@ def test_blocked_static_sources_use_bounded_proxy_recovery() -> None:
 
     walgreens = [row for row in _boards() if row["board_slug"].startswith("walgreens-careers-")]
     assert len(walgreens) == 3
-    assert all(json.loads(row["monitor_config"])["proxy"] is True for row in walgreens)
+    walgreens_configs = [json.loads(row["monitor_config"]) for row in walgreens]
+    assert all(config["proxy"] is True for config in walgreens_configs)
+    assert all(config["transient_403"] is True for config in walgreens_configs)
+    assert all(config["transport_attempts"] == 5 for config in walgreens_configs)
+
+
+@pytest.mark.asyncio
+async def test_walgreens_403_exhaustion_fails_closed(monkeypatch) -> None:
+    monkeypatch.setattr("src.core.monitors.api_sniffer.asyncio.sleep", AsyncMock())
+    walgreens = [row for row in _boards() if row["board_slug"].startswith("walgreens-careers-")]
+
+    for row in walgreens:
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(403, text="Access denied", request=request)
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await api_sniffer_discover(
+                    {
+                        "board_url": row["board_url"],
+                        "metadata": json.loads(row["monitor_config"]),
+                    },
+                    client,
+                )
+
+        assert attempts == 5
+        assert exc_info.value.attempts == 5
+        assert exc_info.value.last_status == 403
 
 
 def test_retired_thailand_source_is_removed_after_moving_to_federal_portal() -> None:

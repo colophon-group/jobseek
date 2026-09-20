@@ -2526,6 +2526,7 @@ def find_html_strings(obj: object, path: str = "") -> list[tuple[str, str]]:
 # with the accenture monitor (#2735) for cross-monitor consistency.
 _API_SNIFFER_FETCH_RETRIES = 3
 _API_SNIFFER_FETCH_BASE_DELAY = 1.0
+_MAX_TRANSPORT_ATTEMPTS = 5
 
 
 async def http_fetch_with_retry(
@@ -2539,6 +2540,7 @@ async def http_fetch_with_retry(
     base_delay: float = _API_SNIFFER_FETCH_BASE_DELAY,
     raise_non_retryable: bool = False,
     retry_not_found: bool = False,
+    transient_403: bool = False,
 ) -> dict | None:
     """Fetch JSON via httpx with bounded retries (#2733).
 
@@ -2553,6 +2555,8 @@ async def http_fetch_with_retry(
           used by ``fetch_with_retry`` on the dom/sitemap path. Callers that
           cannot safely accept partial data pass ``raise_non_retryable=True``
           to preserve the status in :class:`PaginationFetchError` instead.
+          Callers with ``transient_403=True`` retry HTTP 401/403 and raise on
+          exhaustion so a blocked proxy exit cannot become an empty success.
 
     Raises:
         :class:`PaginationFetchError` after exhausting *retries* on
@@ -2606,7 +2610,12 @@ async def http_fetch_with_retry(
             last_exc = exc
             if status in (404, 410) and not retry_not_found:
                 return None
-            if not is_retryable_status(status) and not (retry_not_found and status in (404, 410)):
+            retryable = (
+                is_retryable_status(status)
+                or (retry_not_found and status in (404, 410))
+                or (transient_403 and status in (401, 403))
+            )
+            if not retryable:
                 # Other 4xx (auth, forbidden, bad-request) — not transient,
                 # not "end of pagination" canonically. Lenient stop with
                 # a warning so anomalies surface in logs.
@@ -2815,6 +2824,23 @@ async def _discover_http(
     """
     board_url = board["board_url"]
     api_url = config["api_url"]
+    transient_403 = config.get("transient_403", False)
+    if not isinstance(transient_403, bool):
+        raise ValueError("api_sniffer transient_403 must be a boolean")
+    transport_attempts = config.get("transport_attempts")
+    if transport_attempts is not None and (
+        not isinstance(transport_attempts, int)
+        or isinstance(transport_attempts, bool)
+        or not 1 <= transport_attempts <= _MAX_TRANSPORT_ATTEMPTS
+    ):
+        raise ValueError(
+            f"api_sniffer transport_attempts must be an integer from 1 to {_MAX_TRANSPORT_ATTEMPTS}"
+        )
+    http_retries = (
+        transport_attempts
+        if transient_403 and transport_attempts is not None
+        else _API_SNIFFER_FETCH_RETRIES
+    )
     params = config.get("params")
     if params:
         api_url = _merge_params(api_url, params)
@@ -2871,6 +2897,8 @@ async def _discover_http(
         headers,
         post_data,
         retry_not_found=empty_response is not None,
+        retries=http_retries,
+        transient_403=transient_403,
     )
 
     if data is None and api_url_match and pw is not None:
@@ -2912,7 +2940,15 @@ async def _discover_http(
             # outage. End-of-pagination (404) still falls through.
             log.info("api_sniffer.http_retry_live_url", old=api_url[:80], new=fresh_url[:80])
             api_url = fresh_url
-            data = await http_fetch_with_retry(client, method, api_url, headers, post_data)
+            data = await http_fetch_with_retry(
+                client,
+                method,
+                api_url,
+                headers,
+                post_data,
+                retries=http_retries,
+                transient_403=transient_403,
+            )
 
     if data is None:
         if empty_response is not None:
@@ -3027,6 +3063,8 @@ async def _discover_http(
                     fetch_url,
                     headers,
                     fetch_body,
+                    retries=http_retries,
+                    transient_403=transient_403,
                 )
                 if page_data is None:
                     break

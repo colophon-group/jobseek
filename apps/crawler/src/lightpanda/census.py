@@ -110,6 +110,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "timeout",
             "total",
             "total_path",
+            "transient_403",
             "transport_attempts",
             "url_allowlist",
             "url_field",
