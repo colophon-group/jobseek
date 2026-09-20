@@ -5188,6 +5188,7 @@ ost,ost-careers,https://jobs-ost.ch/,api_sniffer,"{""api_url"": ""https://ohws.p
 otter,otter-greenhouse,https://job-boards.greenhouse.io/otter,greenhouse,"{""token"": ""otter""}",skip,
 otter-ai,otter-ai-greenhouse,https://job-boards.greenhouse.io/otterai,greenhouse,"{""token"": ""otterai""}",skip,
 otto-aerospace,otto-aerospace-greenhouse,https://job-boards.greenhouse.io/ottoaviation,greenhouse,"{""token"": ""ottoaviation""}",skip,
+ouihelp,ouihelp-careers,https://job-boards.greenhouse.io/ouihelp,greenhouse,,skip,
 our-group,our-group-greenhouse,https://job-boards.greenhouse.io/ourgroup,greenhouse,"{""token"": ""ourgroup""}",skip,
 outfit7,outfit7-greenhouse,https://job-boards.greenhouse.io/outfit7,greenhouse,"{""token"": ""outfit7""}",skip,
 output,output-ashby,https://jobs.ashbyhq.com/output,ashby,"{""token"": ""output""}",skip,
