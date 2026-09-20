@@ -396,6 +396,65 @@ class TestDomScraper:
         assert "Profile required" in result.description
         assert "On 7/22/2026" not in result.description
 
+    def test_afas_insite_preset_extracts_static_vacancy_content(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        def page(*, role: str, location_sentence: str, brand_heading: str) -> str:
+            return f"""
+            <html><head>
+              <title>Vacature {role} - {role}, UtrechtHC20250513 - Werken bij</title>
+            </head><body>
+              <p>{role}</p>
+              <h2>{brand_heading}</h2>
+              <p>{location_sentence}</p>
+              <p>Adviseer klanten en zorg dat de winkel er verzorgd uitziet.</p>
+              <h2>ONLY FOR YOU</h2>
+              <ul><li>Personeelskorting en doorgroeimogelijkheden.</li></ul>
+              <h2>WHO ARE YOU?</h2>
+              <p>Je bent enthousiast en klantgericht.</p>
+              <h2>Solliciteer nu voor deze vacature!</h2>
+              <p>Upload jouw cv.</p>
+              <script>
+                app.Run({{"ProfitVersion":"AFAS Profit 8",
+                  "WebFormLocationEventUrl":"/event/webform/url"}});
+              </script>
+            </body></html>
+            """
+
+        only_html = page(
+            role="Verkoopmedewerker Parttime",
+            location_sentence=(
+                "Voor onze ONLY Store in Utrecht Hoog Catharijne zijn we op zoek "
+                "naar een parttime verkoopmedewerker."
+            ),
+            brand_heading="ARE YOU THE ONE AND ONLY?",
+        )
+        only_sons_html = page(
+            role="Store Manager",
+            location_sentence=(
+                "Wij zijn op zoek naar een Store Manager voor onze ONLY &amp; SONS "
+                "store in Den Haag."
+            ),
+            brand_heading="JOIN THE RIDE CALLED ONLY &amp; SONS!",
+        )
+
+        config = can_handle([only_html, only_sons_html])
+        assert config is not None
+
+        only = parse_html(only_html, config)
+        assert only.title == "Verkoopmedewerker Parttime"
+        assert only.locations == ["Utrecht Hoog Catharijne"]
+        assert only.description is not None
+        assert "Adviseer klanten" in only.description
+        assert "Personeelskorting" in only.description
+        assert "Upload jouw cv" not in only.description
+
+        only_sons = parse_html(only_sons_html, config)
+        assert only_sons.title == "Store Manager"
+        assert only_sons.locations == ["Den Haag"]
+        assert only_sons.description is not None
+        assert "klantgericht" in only_sons.description
+
     def test_city_of_zurich_preset_defaults_city_and_preserves_regional_roles(self):
         from src.core.scrapers.dom import can_handle, parse_html
 

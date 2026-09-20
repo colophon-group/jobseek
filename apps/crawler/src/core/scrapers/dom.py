@@ -75,6 +75,15 @@ _LUCCA_SCRAPER_CONFIG = {
     ],
 }
 
+_AFAS_INSITE_MARKERS = ('"ProfitVersion":"AFAS Profit', "WebFormLocationEventUrl")
+_AFAS_INSITE_DESCRIPTION_START_RE = (
+    r"^(?:ARE YOU THE ONE AND ONLY\?|JOIN THE RIDE CALLED ONLY & SONS!)$"
+)
+_AFAS_INSITE_LOCATION_RE = (
+    r"(?i)\bstores?\s+in\s+(?:(?:de\s+)?regio\s+)?(.+?)"
+    r"(?=\s+zijn\b|,\s*zijn\b|[.!?]\s*$)"
+)
+
 
 def _scope_html(html: str, config: dict) -> str:
     """Limit extraction to one configured container before flattening.
@@ -1003,6 +1012,64 @@ def _lucca_config(htmls: list[str]) -> dict | None:
     }
 
 
+def _afas_insite_config(htmls: list[str]) -> dict | None:
+    """Return extraction steps for public AFAS InSite vacancy pages.
+
+    AFAS pages expose the vacancy content in static HTML but commonly omit a
+    semantic job-title heading. The role is authoritative in the document
+    title, while the branded body starts at a stable campaign heading and
+    states the store location in its opening paragraph.
+    """
+
+    matches = 0
+    for html in htmls:
+        if not all(marker in html for marker in _AFAS_INSITE_MARKERS):
+            continue
+        elements = flatten(html)
+        if (
+            any(
+                element["tag"] == "title"
+                and re.match(r"^Vacature\s+.+?\s+-", element["text"], re.IGNORECASE)
+                for element in elements
+            )
+            and any(
+                element["tag"] == "h2"
+                and re.fullmatch(_AFAS_INSITE_DESCRIPTION_START_RE, element["text"])
+                for element in elements
+            )
+            and any(re.search(_AFAS_INSITE_LOCATION_RE, element["text"]) for element in elements)
+        ):
+            matches += 1
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    return {
+        "steps": [
+            {
+                "tag": "title",
+                "field": "title",
+                "regex": r"^Vacature\s+(.+?)\s+-",
+            },
+            {
+                "tag": "p",
+                "match_regex": _AFAS_INSITE_LOCATION_RE,
+                "field": "locations",
+                "regex": _AFAS_INSITE_LOCATION_RE,
+                "from": 0,
+            },
+            {
+                "tag": "h2",
+                "match_regex": _AFAS_INSITE_DESCRIPTION_START_RE,
+                "offset": 1,
+                "field": "description",
+                "html": True,
+                "stop_regex": r"(?i)^Solliciteer\b",
+                "from": 0,
+            },
+        ]
+    }
+
+
 def can_handle(htmls: list[str]) -> dict | None:
     """Generate heuristic extraction steps from multiple page HTMLs.
 
@@ -1017,6 +1084,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     lucca = _lucca_config(htmls)
     if lucca is not None:
         return lucca
+
+    afas_insite = _afas_insite_config(htmls)
+    if afas_insite is not None:
+        return afas_insite
 
     stadt_zuerich = _stadt_zuerich_config(htmls)
     if stadt_zuerich is not None:
