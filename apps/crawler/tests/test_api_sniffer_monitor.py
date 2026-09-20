@@ -24,6 +24,7 @@ from src.core.monitors.api_sniffer import (
     _configured_post_data,
     _detect_prospective_config,
     _discover_live_url,
+    _discover_replay,
     _extract_rich,
     _extract_urls_from_template,
     _healthcaresource_probe_config,
@@ -44,12 +45,37 @@ from src.core.monitors.api_sniffer import (
     discover,
 )
 from src.shared.http_retry import PaginationFetchError
+from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 
 
 def _board_row(board_slug: str) -> dict[str, str]:
     boards_path = Path(__file__).resolve().parents[1] / "data" / "boards.csv"
     with boards_path.open(newline="", encoding="utf-8") as handle:
         return next(row for row in csv.DictReader(handle) if row["board_slug"] == board_slug)
+
+
+@pytest.mark.asyncio
+async def test_browser_replay_rotates_after_proxy_origin_block():
+    blocked = BrowserNavigationHTTPStatusError(
+        requested_url="https://blocked.example/careers",
+        response_url="https://blocked.example/careers",
+        status=403,
+        phase="primary",
+    )
+    replay_once = AsyncMock(side_effect=[blocked, {"https://blocked.example/job/1"}])
+
+    with (
+        patch("src.core.monitors.api_sniffer._discover_replay_once", replay_once),
+        patch("src.shared.browser.asyncio.sleep", new_callable=AsyncMock),
+    ):
+        result = await _discover_replay(
+            "https://blocked.example/careers",
+            {"proxy": True, "transport_attempts": 2},
+            pw=object(),
+        )
+
+    assert result == {"https://blocked.example/job/1"}
+    assert replay_once.await_count == 2
 
 
 async def _monitor_fenaco_payload(payload: object):

@@ -6207,6 +6207,34 @@ class TestDomDiscoverInitialFetch:
 
         assert exc_info.value is error
 
+    async def test_rendered_proxy_rotates_after_root_origin_block(self, monkeypatch):
+        error = BrowserNavigationHTTPStatusError(
+            requested_url="https://blocked.example/careers",
+            response_url="https://blocked.example/careers",
+            status=403,
+            phase="primary",
+        )
+        discover_once = AsyncMock(side_effect=[error, {"https://blocked.example/jobs/recovered"}])
+        monkeypatch.setattr("src.core.monitors.dom._dom_discover_once", discover_once)
+        monkeypatch.setattr("src.shared.browser.asyncio.sleep", AsyncMock())
+
+        async with httpx.AsyncClient() as client:
+            result = await dom_discover(
+                {
+                    "board_url": "https://blocked.example/careers",
+                    "metadata": {
+                        "render": True,
+                        "proxy": True,
+                        "transport_attempts": 2,
+                    },
+                },
+                client,
+                pw=object(),
+            )
+
+        assert result == {"https://blocked.example/jobs/recovered"}
+        assert discover_once.await_count == 2
+
 
 # ---------------------------------------------------------------------------
 # _paginate_urls

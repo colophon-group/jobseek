@@ -39,9 +39,11 @@ from src.shared.browser import (
     navigate,
     open_page,
     render,
+    retry_proxy_origin_blocks,
     run_actions,
     safe_content,
 )
+from src.shared.proxy import ProxyPoolExhaustedError
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -293,6 +295,74 @@ class TestConstants:
 
         assert {"auto", "none", "lean", "aggressive"} == VALID_RESOURCE_POLICIES
         assert "image" in VALID_BLOCK_RESOURCE_TYPES
+
+
+class TestProxyOriginBlockRetries:
+    async def test_rotates_after_navigation_origin_block(self):
+        blocked = BrowserNavigationHTTPStatusError(
+            requested_url="https://blocked.example/jobs",
+            response_url="https://blocked.example/jobs",
+            status=403,
+            phase="primary",
+        )
+        operation = AsyncMock(side_effect=[blocked, "recovered"])
+
+        with patch("src.shared.browser.asyncio.sleep", new_callable=AsyncMock) as sleep:
+            result = await retry_proxy_origin_blocks(
+                operation,
+                {"proxy": True, "transport_attempts": 3},
+                event="test.origin_block_retry",
+            )
+
+        assert result == "recovered"
+        assert operation.await_count == 2
+        sleep.assert_awaited_once_with(1.0)
+
+    async def test_rotates_after_typed_content_challenge(self):
+        blocked = RuntimeError("challenge")
+        blocked.proxy_failure_reason = "origin_block"  # type: ignore[attr-defined]
+        operation = AsyncMock(side_effect=[blocked, "recovered"])
+
+        assert (
+            await retry_proxy_origin_blocks(
+                operation,
+                {"proxy": True, "transport_attempts": 2},
+                event="test.origin_block_retry",
+            )
+            == "recovered"
+        )
+
+    async def test_non_origin_failure_is_not_retried(self):
+        operation = AsyncMock(side_effect=RuntimeError("broken parser"))
+
+        with pytest.raises(RuntimeError, match="broken parser"):
+            await retry_proxy_origin_blocks(
+                operation,
+                {"proxy": True, "transport_attempts": 3},
+                event="test.origin_block_retry",
+            )
+
+        assert operation.await_count == 1
+
+    async def test_pool_exhaustion_after_block_preserves_block_evidence(self):
+        blocked = BrowserNavigationHTTPStatusError(
+            requested_url="https://blocked.example/jobs",
+            response_url="https://blocked.example/jobs",
+            status=403,
+            phase="primary",
+        )
+        operation = AsyncMock(
+            side_effect=[blocked, ProxyPoolExhaustedError("all exits cooling down")]
+        )
+
+        with pytest.raises(BrowserNavigationHTTPStatusError) as exc_info:
+            await retry_proxy_origin_blocks(
+                operation,
+                {"proxy": True, "transport_attempts": 3},
+                event="test.origin_block_retry",
+            )
+
+        assert exc_info.value is blocked
 
 
 # ---------------------------------------------------------------------------

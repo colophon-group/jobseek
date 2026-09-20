@@ -3355,7 +3355,7 @@ async def _discover_live_url(
     return api_url, None
 
 
-async def _discover_replay(
+async def _discover_replay_once(
     board_url: str,
     config: dict,
     pw,
@@ -3823,6 +3823,26 @@ async def _discover_replay(
             cap=MAX_ITEMS,
         )
         return truncated_url_result(urls_set) if truncated else urls_set
+
+
+async def _discover_replay(
+    board_url: str,
+    config: dict,
+    pw,
+    client=None,
+) -> list[DiscoveredJob] | set[str] | MonitorResult:
+    """Replay browser API discovery with bounded proxy-exit rotation."""
+
+    if not config.get("proxy"):
+        return await _discover_replay_once(board_url, config, pw, client=client)
+
+    from src.shared.browser import retry_proxy_origin_blocks
+
+    return await retry_proxy_origin_blocks(
+        lambda: _discover_replay_once(board_url, config, pw, client=client),
+        config,
+        event="api_sniffer.replay.origin_block_retry",
+    )
 
 
 async def _discover_auto(
