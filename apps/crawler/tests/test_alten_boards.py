@@ -16,6 +16,7 @@ def test_alten_cloudflare_boards_use_stealth_and_proxy_for_monitor_and_scraper()
                 "alten-belgium",
                 "alten-finland",
                 "alten-italy",
+                "alten-netherlands",
                 "alten-portugal",
                 "alten-switzerland",
             }
@@ -25,6 +26,7 @@ def test_alten_cloudflare_boards_use_stealth_and_proxy_for_monitor_and_scraper()
         "alten-belgium",
         "alten-finland",
         "alten-italy",
+        "alten-netherlands",
         "alten-portugal",
         "alten-switzerland",
     }
