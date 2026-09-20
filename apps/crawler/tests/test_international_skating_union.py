@@ -108,7 +108,13 @@ Type: Full-time
 Job Overview:
 The International Skating Union (ISU) is seeking an experienced candidate.
 Key Responsibilities
-"""
+    """
+
+
+def test_careers_board_uses_canonical_localized_url() -> None:
+    board, _ = _board(CAREERS_BOARD_SLUG)
+
+    assert board["board_url"] == "https://www.isu.org/en/careers"
 
 
 def _fake_reader(stream) -> SimpleNamespace:

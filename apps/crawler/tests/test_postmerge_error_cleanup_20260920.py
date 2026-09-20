@@ -93,6 +93,21 @@ def test_retired_thailand_source_is_removed_after_moving_to_federal_portal() -> 
     assert not any(row["board_slug"] == "swiss-confederation-thailand" for row in _boards())
 
 
+def test_retired_disruptive_industries_teamtailor_source_is_removed() -> None:
+    assert not any(row["board_slug"] == "disruptive-industries-teamtailor" for row in _boards())
+
+
+def test_oac_starts_at_the_stable_search_results_url() -> None:
+    row = _board("bright-horizons-only-about-children-australia")
+    config = json.loads(row["monitor_config"])
+
+    assert row["board_url"] == (
+        "https://careers.oac.edu.au/jobtools/"
+        "jncustomsearch.searchResults?in_organid=20676&in_jobDate=All"
+    )
+    assert [action["action"] for action in config["actions"]] == ["wait_for"]
+
+
 @pytest.mark.asyncio
 async def test_iihf_live_layout_extracts_the_current_vacancy() -> None:
     row = _board("international-ice-hockey-federation-jobs")
