@@ -48,9 +48,11 @@ def test_blocked_static_sources_use_bounded_proxy_recovery() -> None:
 
     rtx = _board("rtx-careers")
     rtx_monitor = json.loads(rtx["monitor_config"])
-    rtx_scraper = json.loads(rtx["scraper_config"])
     assert rtx_monitor["proxy"] is True
-    assert rtx_scraper == {"proxy": True, "transport_attempts": 5}
+    # Listing discovery is one proxied sitemap request. Detail scraping is a
+    # high-concurrency workload and must use the JSON-LD scraper's direct,
+    # same-session soft-WAF retry instead of exhausting the ten-exit pool.
+    assert rtx["scraper_config"] == ""
 
     walgreens = [row for row in _boards() if row["board_slug"].startswith("walgreens-careers-")]
     assert len(walgreens) == 3
