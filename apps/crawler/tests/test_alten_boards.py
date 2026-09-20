@@ -5,17 +5,24 @@ import json
 from pathlib import Path
 
 
-def test_alten_cloudflare_boards_use_stealth_for_monitor_and_scraper() -> None:
+def test_alten_cloudflare_boards_use_stealth_and_proxy_for_monitor_and_scraper() -> None:
     boards_path = Path(__file__).parents[1] / "data" / "boards.csv"
     with boards_path.open(encoding="utf-8", newline="") as handle:
         rows = {
             row["board_slug"]: row
             for row in csv.DictReader(handle)
             if row["board_slug"]
-            in {"alten-finland", "alten-italy", "alten-portugal", "alten-switzerland"}
+            in {
+                "alten-belgium",
+                "alten-finland",
+                "alten-italy",
+                "alten-portugal",
+                "alten-switzerland",
+            }
         }
 
     assert set(rows) == {
+        "alten-belgium",
         "alten-finland",
         "alten-italy",
         "alten-portugal",
@@ -30,3 +37,16 @@ def test_alten_cloudflare_boards_use_stealth_for_monitor_and_scraper() -> None:
         assert scraper_config["render"] is True
         assert scraper_config["stealth"] is True
         assert scraper_config["proxy"] is True
+
+
+def test_sage_browser_replay_uses_stealth_and_proxy() -> None:
+    boards_path = Path(__file__).parents[1] / "data" / "boards.csv"
+    with boards_path.open(encoding="utf-8", newline="") as handle:
+        row = next(
+            row for row in csv.DictReader(handle) if row["board_slug"] == "sage-careers-search"
+        )
+
+    monitor_config = json.loads(row["monitor_config"])
+    assert monitor_config["browser"] is True
+    assert monitor_config["stealth"] is True
+    assert monitor_config["proxy"] is True
