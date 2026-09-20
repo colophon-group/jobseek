@@ -1620,7 +1620,14 @@ async def _scrape_once(
                 return html
 
         async def _render_with_challenge_retry(p):
-            challenge_retries = 0 if config.get("proxy") else _RENDER_CHALLENGE_RETRIES
+            # Preserve the legacy fresh-context retry for existing proxied
+            # scrapers.  Only configs which explicitly opt into the shared
+            # transport retry delegate challenge rotation to the outer loop.
+            challenge_retries = (
+                0
+                if config.get("proxy") and "transport_attempts" in config
+                else _RENDER_CHALLENGE_RETRIES
+            )
             for attempt in range(challenge_retries + 1):
                 try:
                     return await _render_page(p)
