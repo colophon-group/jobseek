@@ -3460,6 +3460,7 @@ huawei,huawei-careers-no,https://huaweinorway.teamtailor.com/jobs,rss,"{""preset
 huawei,huawei-careers-se,https://huawei.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://huawei.teamtailor.com/jobs.rss""}",skip,
 huawei,huawei-careers-se-rd,https://huaweisweden.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://huaweisweden.teamtailor.com/jobs.rss""}",skip,
 huawei,huawei-careers-uk,https://huaweiuk.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://huaweiuk.teamtailor.com/jobs.rss""}",skip,
+hubbell,hubbell-careers,https://careers.hubbell.com/,rss,"{""preset"": ""successfactors""}",skip,
 hubspot,hubspot-greenhouse,https://job-boards.greenhouse.io/hubspotjobs,greenhouse,"{""token"": ""hubspotjobs""}",skip,
 hubstaff,hubstaff-ashby,https://jobs.ashbyhq.com/hubstaff,ashby,"{""token"": ""hubstaff""}",skip,
 hudl,hudl-greenhouse,https://job-boards.greenhouse.io/hudl,greenhouse,"{""token"": ""hudl""}",skip,
