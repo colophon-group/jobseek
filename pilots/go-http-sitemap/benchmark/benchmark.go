@@ -507,7 +507,28 @@ func runRound(parent context.Context, pool *worker.Pool, manifest Manifest, roun
 	} else if report.ErrorKind == "" {
 		report.ErrorKind = "request_invariant"
 	}
-	return finishRound(report, started, beforeUsage, beforeStats, pool.Stats())
+	afterStats := waitForRoundStats(ctx, pool, beforeStats, len(report.Jobs))
+	return finishRound(report, started, beforeUsage, beforeStats, afterStats)
+}
+
+// Receiving a result only synchronizes with its channel publication. The
+// worker records Completed immediately afterwards, so wait for that terminal
+// accounting before evaluating the round delta or starting the next round.
+func waitForRoundStats(ctx context.Context, pool *worker.Pool, before worker.Stats, completed int) worker.Stats {
+	expectedAccepted := before.Accepted + uint64(completed)
+	expectedCompleted := before.Completed + uint64(completed)
+	for {
+		after := pool.Stats()
+		if after.Accepted >= expectedAccepted && after.Completed >= expectedCompleted {
+			return after
+		}
+		select {
+		case <-ctx.Done():
+			return after
+		default:
+			runtime.Gosched()
+		}
+	}
 }
 
 func (r Report) resourceMetricsValid() bool {
