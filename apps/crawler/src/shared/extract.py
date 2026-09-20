@@ -191,9 +191,7 @@ class FlattenParser(HTMLParser):
                 self._skip_depth += 1
             return
 
-        is_noise = tag in NOISE_TAGS and not (
-            tag == "header" and self._include_header_content
-        )
+        is_noise = tag in NOISE_TAGS and not (tag == "header" and self._include_header_content)
         if tag in SKIP_TAGS or is_noise:
             if tag not in VOID_TAGS:
                 self._stack.append((tag, attr_dict, True))
