@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from urllib.parse import parse_qsl, urljoin, urlsplit
 
 import httpx
@@ -37,6 +38,136 @@ _MAX_TRANSPORT_ATTEMPTS = 5
 _TRANSPORT_RETRY_DELAY = 1.0
 _CONTENT_ATTEMPTS = 2
 _CONTENT_RETRY_DELAY = 1.0
+_WORKDAY_TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
+_WORKDAY_SITE_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}")
+_WORKDAY_INSTANCE_RE = re.compile(r"wd[0-9]+")
+_PHENOM_JOB_ID_RE = re.compile(r"/job/([A-Za-z0-9._-]{1,128})(?:/|$)")
+
+
+def _configured_transport_attempts(config: dict) -> int | None:
+    raw_attempts = config.get("transport_attempts")
+    if raw_attempts is None:
+        return None
+    if (
+        not isinstance(raw_attempts, int)
+        or isinstance(raw_attempts, bool)
+        or not 1 <= raw_attempts <= _MAX_TRANSPORT_ATTEMPTS
+    ):
+        raise ValueError(
+            f"JSON-LD transport_attempts must be an integer from 1 to {_MAX_TRANSPORT_ATTEMPTS}"
+        )
+    return raw_attempts
+
+
+def _configured_workday_fallback(config: dict) -> dict | None:
+    raw_fallback = config.get("workday_fallback")
+    if raw_fallback is None:
+        return None
+    expected = {"company", "wd_instance", "site", "proxy"}
+    if not isinstance(raw_fallback, dict) or set(raw_fallback) != expected:
+        raise ValueError(
+            "JSON-LD workday_fallback must contain company, wd_instance, site, and proxy"
+        )
+    company = raw_fallback.get("company")
+    wd_instance = raw_fallback.get("wd_instance")
+    site = raw_fallback.get("site")
+    proxy = raw_fallback.get("proxy")
+    if not isinstance(company, str) or _WORKDAY_TOKEN_RE.fullmatch(company) is None:
+        raise ValueError("JSON-LD workday_fallback company is invalid")
+    if not isinstance(wd_instance, str) or _WORKDAY_INSTANCE_RE.fullmatch(wd_instance) is None:
+        raise ValueError("JSON-LD workday_fallback wd_instance is invalid")
+    if not isinstance(site, str) or _WORKDAY_SITE_RE.fullmatch(site) is None:
+        raise ValueError("JSON-LD workday_fallback site is invalid")
+    if not isinstance(proxy, bool):
+        raise ValueError("JSON-LD workday_fallback proxy must be boolean")
+    return raw_fallback
+
+
+async def _scrape_workday_fallback(
+    url: str,
+    fallback: dict,
+    http: httpx.AsyncClient,
+) -> JobContent | None:
+    """Resolve one Phenom job ID through a configured Workday tenant.
+
+    RTX publishes almost every Phenom posting through its Workday tenant as
+    well. The exact requisition search is a low-cardinality escape hatch when
+    the public Phenom detail edge exhausts its normal same-session 403 retry.
+    A missing or ambiguous match fails closed so this cannot attach the wrong
+    Workday description to a Phenom URL.
+    """
+    job_match = _PHENOM_JOB_ID_RE.search(urlsplit(url).path)
+    if job_match is None:
+        return None
+    job_id = job_match.group(1)
+
+    from src.core.monitors.workday import (
+        _api_list_url,
+        _cross_site_path_key,
+        _job_url,
+        _post_page_with_retry,
+    )
+    from src.core.scrapers.workday import scrape as scrape_workday
+
+    company = fallback["company"]
+    wd_instance = fallback["wd_instance"]
+    site = fallback["site"]
+    payload = {
+        "appliedFacets": {},
+        "limit": 20,
+        "offset": 0,
+        "searchText": job_id,
+    }
+    data = await _post_page_with_retry(
+        http,
+        _api_list_url(company, wd_instance, site),
+        payload,
+    )
+    rows = data.get("jobPostings")
+    if not isinstance(rows, list):
+        return None
+    identity = f"requisition:{job_id}"
+    matches = sorted(
+        {
+            external_path
+            for row in rows
+            if isinstance(row, dict)
+            and isinstance((external_path := row.get("externalPath")), str)
+            and external_path.startswith("/job/")
+            and _cross_site_path_key(external_path) == identity
+        }
+    )
+    if len(matches) != 1:
+        log.warning(
+            "jsonld.workday_fallback.unresolved",
+            url=url,
+            job_id=job_id,
+            matches=len(matches),
+        )
+        return None
+
+    workday_url = _job_url(company, wd_instance, site, matches[0])
+    content = await scrape_workday(workday_url, {}, http)
+    if not content.title:
+        log.warning(
+            "jsonld.workday_fallback.empty",
+            url=url,
+            job_id=job_id,
+        )
+        return None
+    log.info(
+        "jsonld.workday_fallback.recovered",
+        url=url,
+        job_id=job_id,
+    )
+    return content
+
+
+async def _recover_with_workday(url: str, fallback: dict) -> JobContent | None:
+    from src.shared.http import create_http_client
+
+    async with create_http_client(use_proxy=fallback["proxy"]) as fallback_http:
+        return await _scrape_workday_fallback(url, fallback, fallback_http)
 
 
 def _guard_rendered_content(requested_url: str, final_url: str, html: str) -> None:
@@ -94,10 +225,7 @@ async def _render_with_origin_block_recovery(url: str, config: dict, pw=None) ->
     if not config.get("proxy"):
         return await _render(use_proxy=False)
 
-    attempts = min(
-        _MAX_TRANSPORT_ATTEMPTS,
-        max(1, int(config.get("transport_attempts", 1))),
-    )
+    attempts = _configured_transport_attempts(config) or 1
     last_origin_block: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
@@ -235,16 +363,15 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
     """Extract job data from JSON-LD on a page."""
     request_headers = config.get("request_headers") or {}
     headers = clean_headers(request_headers)
+    workday_fallback = _configured_workday_fallback(config)
     retry_403_limit = 1
     transport_retry_limit = 0
     retry_budget: int | None = None
-    if config.get("proxy") and "transport_attempts" in config:
-        attempts = min(
-            _MAX_TRANSPORT_ATTEMPTS,
-            max(1, int(config["transport_attempts"])),
-        )
-        # Preserve the legacy single retry while allowing explicitly
-        # configured proxy pools to rotate through additional blocked exits.
+    configured_attempts = _configured_transport_attempts(config)
+    attempts = configured_attempts if config.get("proxy") else None
+    if attempts is not None:
+        # Preserve the legacy single retry while allowing an explicitly
+        # configured proxy pool to rotate through additional blocked exits.
         retry_403_limit = max(retry_403_limit, attempts - 1)
         transport_retry_limit = attempts - 1
         retry_budget = retry_403_limit
@@ -267,7 +394,15 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
     html = ""
     content = JobContent()
     for attempt in range(1, _CONTENT_ATTEMPTS + 1):
-        html = await load_html()
+        try:
+            html = await load_html()
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 403 or workday_fallback is None:
+                raise
+            recovered = await _recover_with_workday(url, workday_fallback)
+            if recovered is None:
+                raise
+            return recovered
         content = parse_rendered_html(url, config, html)
         if content.title:
             break

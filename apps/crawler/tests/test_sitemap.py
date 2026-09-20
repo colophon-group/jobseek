@@ -595,6 +595,90 @@ class TestDiscover:
         assert calls == 3
         assert sleep.await_count == 2
 
+    async def test_configured_xml_attempts_apply_to_retryable_root_statuses(self, monkeypatch):
+        from unittest.mock import AsyncMock
+
+        sitemap_xml = """<?xml version="1.0"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://example.com/jobs/1</loc></url>
+        </urlset>"""
+        calls = 0
+
+        def handler(request):
+            nonlocal calls
+            calls += 1
+            if calls < 5:
+                return httpx.Response(403, text="blocked")
+            return httpx.Response(
+                200,
+                text=sitemap_xml,
+                headers={"content-type": "application/xml"},
+            )
+
+        monkeypatch.setattr("asyncio.sleep", AsyncMock())
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls, new_sitemap = await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "sitemap_url": "https://example.com/sitemap.xml",
+                        "xml_attempts": 5,
+                    },
+                },
+                client,
+            )
+
+        assert urls == {"https://example.com/jobs/1"}
+        assert new_sitemap is None
+        assert calls == 5
+
+    async def test_configured_xml_attempts_apply_to_index_children(self, monkeypatch):
+        from unittest.mock import AsyncMock
+
+        index_xml = """<?xml version="1.0"?>
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <sitemap><loc>https://example.com/jobs-1.xml</loc></sitemap>
+        </sitemapindex>"""
+        child_xml = """<?xml version="1.0"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://example.com/jobs/1</loc></url>
+        </urlset>"""
+        child_calls = 0
+
+        def handler(request):
+            nonlocal child_calls
+            if request.url.path == "/sitemap.xml":
+                return httpx.Response(
+                    200,
+                    text=index_xml,
+                    headers={"content-type": "application/xml"},
+                )
+            child_calls += 1
+            if child_calls < 5:
+                return httpx.Response(403, text="blocked")
+            return httpx.Response(
+                200,
+                text=child_xml,
+                headers={"content-type": "application/xml"},
+            )
+
+        monkeypatch.setattr("asyncio.sleep", AsyncMock())
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls, new_sitemap = await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "sitemap_url": "https://example.com/sitemap.xml",
+                        "xml_attempts": 5,
+                    },
+                },
+                client,
+            )
+
+        assert urls == {"https://example.com/jobs/1"}
+        assert new_sitemap is None
+        assert child_calls == 5
+
     async def test_configured_xml_attempts_are_bounded(self):
         import pytest
 

@@ -15,6 +15,7 @@ from src.core.scrapers.jsonld import (
     _JsonLdExtractor,
     _normalize_meta_locations,
     _parse_posting,
+    _scrape_workday_fallback,
     _strip_html,
     _text_or_list,
     can_handle,
@@ -1389,6 +1390,143 @@ class TestFetchRetry403:
 
         assert calls["n"] == 5
         assert result.title == "T"
+
+    async def test_exhausted_403_uses_configured_workday_fallback(self, monkeypatch):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(403, text="blocked")
+
+        recovered = JobContent(title="Recovered from Workday")
+        fallback = AsyncMock(return_value=recovered)
+        monkeypatch.setattr("src.core.scrapers.jsonld._recover_with_workday", fallback)
+        config = {
+            "workday_fallback": {
+                "company": "globalhr",
+                "wd_instance": "wd5",
+                "site": "REC_RTX_Ext_Gateway",
+                "proxy": True,
+            }
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://careers.rtx.com/global/en/job/01874342/example",
+                config,
+                client,
+            )
+
+        assert calls["n"] == 2
+        assert result.title == "Recovered from Workday"
+        fallback.assert_awaited_once_with(
+            "https://careers.rtx.com/global/en/job/01874342/example",
+            config["workday_fallback"],
+        )
+
+    async def test_exhausted_403_surfaces_when_workday_fallback_is_unresolved(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.core.scrapers.jsonld._recover_with_workday",
+            AsyncMock(return_value=None),
+        )
+        config = {
+            "workday_fallback": {
+                "company": "globalhr",
+                "wd_instance": "wd5",
+                "site": "REC_RTX_Ext_Gateway",
+                "proxy": True,
+            }
+        }
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _: httpx.Response(403))
+        ) as client:
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                await scrape(
+                    "https://careers.rtx.com/global/en/job/01874342/example",
+                    config,
+                    client,
+                )
+
+        assert exc_info.value.response.status_code == 403
+
+    async def test_workday_fallback_requires_one_exact_requisition_match(self):
+        fallback = {
+            "company": "globalhr",
+            "wd_instance": "wd5",
+            "site": "REC_RTX_Ext_Gateway",
+            "proxy": True,
+        }
+        requests: list[httpx.Request] = []
+
+        def handler(request):
+            requests.append(request)
+            if request.method == "POST":
+                return httpx.Response(
+                    200,
+                    json={
+                        "total": 1,
+                        "jobPostings": [
+                            {"externalPath": ("/job/US-CT/Senior-Analyst-General-Finance_01874342")}
+                        ],
+                    },
+                )
+            return httpx.Response(
+                200,
+                json={
+                    "jobPostingInfo": {
+                        "title": "Senior Analyst",
+                        "jobDescription": "Own the forecast.",
+                    }
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await _scrape_workday_fallback(
+                "https://careers.rtx.com/global/en/job/01874342/example",
+                fallback,
+                client,
+            )
+
+        assert result is not None
+        assert result.title == "Senior Analyst"
+        assert [request.method for request in requests] == ["POST", "GET"]
+        assert requests[0].url.path.endswith("/REC_RTX_Ext_Gateway/jobs")
+        assert requests[1].url.path.endswith(
+            "/REC_RTX_Ext_Gateway/job/US-CT/Senior-Analyst-General-Finance_01874342"
+        )
+
+    @pytest.mark.parametrize(
+        "fallback",
+        [
+            {},
+            {
+                "company": "globalhr",
+                "wd_instance": "wd5",
+                "site": "REC_RTX_Ext_Gateway",
+                "proxy": "yes",
+            },
+        ],
+    )
+    async def test_rejects_invalid_workday_fallback(self, fallback):
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: None)) as client:
+            with pytest.raises(ValueError, match="workday_fallback"):
+                await scrape(
+                    "https://careers.rtx.com/global/en/job/01874342/example",
+                    {"workday_fallback": fallback},
+                    client,
+                )
+
+    @pytest.mark.parametrize("transport_attempts", [0, 6, True, "5"])
+    async def test_rejects_invalid_transport_attempts(self, transport_attempts):
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: None)) as client:
+            with pytest.raises(
+                ValueError,
+                match="JSON-LD transport_attempts must be an integer from 1 to 5",
+            ):
+                await scrape(
+                    "https://example.com/job",
+                    {"transport_attempts": transport_attempts},
+                    client,
+                )
 
     async def test_configured_headers_are_cleaned_and_sent_on_every_attempt(self):
         page_html = """<html><head>

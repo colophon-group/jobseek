@@ -53,10 +53,21 @@ def test_blocked_static_sources_use_bounded_proxy_recovery() -> None:
     rtx = _board("rtx-careers")
     rtx_monitor = json.loads(rtx["monitor_config"])
     assert rtx_monitor["proxy"] is True
-    # Listing discovery is one proxied sitemap request. Detail scraping is a
-    # high-concurrency workload and must use the JSON-LD scraper's direct,
-    # same-session soft-WAF retry instead of exhausting the ten-exit pool.
-    assert rtx["scraper_config"] == ""
+    assert rtx_monitor["sitemap_url"] == "https://careers.rtx.com/global/en/sitemap.xml"
+    assert "url" not in rtx_monitor
+    assert rtx_monitor["xml_attempts"] == 5
+    # Listing discovery rotates blocked proxy exits. Detail scraping remains
+    # direct and uses the existing same-session retry first; only an exhausted
+    # 403 performs an exact requisition lookup against RTX's proxied Workday
+    # tenant, avoiding a retry storm against the blocked Phenom edge.
+    assert json.loads(rtx["scraper_config"]) == {
+        "workday_fallback": {
+            "company": "globalhr",
+            "wd_instance": "wd5",
+            "site": "REC_RTX_Ext_Gateway",
+            "proxy": True,
+        }
+    }
 
     walgreens = [row for row in _boards() if row["board_slug"].startswith("walgreens-careers-")]
     assert len(walgreens) == 3
