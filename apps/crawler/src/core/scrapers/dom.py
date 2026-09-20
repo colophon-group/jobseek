@@ -6,8 +6,9 @@ structured fields from the HTML.
 By default (``render: false``), fetches the page via static HTTP.  Set
 ``render: true`` to render with Playwright for JS-heavy sites.
 
-Config uses ``steps`` (same format as ``walk_steps``), an optional ``scope``
-CSS selector that limits extraction to one content container, and optional
+Config normally uses ``steps`` (same format as ``walk_steps``); supported
+shared templates may instead use a runtime ``preset``. An optional ``scope``
+CSS selector limits extraction to one content container, and optional
 ``include_document_title`` / ``include_document_description`` flags when a
 scoped layout keeps useful metadata in ``<head>``. ``include_header_content``
 supports job templates that misuse semantic ``<header>`` elements for the
@@ -374,6 +375,9 @@ _CLINCH_CLASS_MARKERS = (
     "job-description",
     "job-component-location",
 )
+_CMSMASTERS_CAREERS_SCOPE = 'div[data-elementor-type="single-post"]'
+_ELEMENTOR_JOB_POST_SCOPE = 'div[data-elementor-type="wp-post"]'
+_ELEMENTOR_CAREERS_PRESET = "elementor-careers"
 _ADVORTO_SCOPE = ".vacancy-information-fields"
 _ADVORTO_LIST_SELECTOR = f"{_ADVORTO_SCOPE} dl.advorto-definition-list"
 _SOLIQUE_HOST_MARKER = "solique.ch/"
@@ -729,6 +733,153 @@ def _clinch_config(htmls: list[str]) -> dict | None:
             {"field": "description", "html": True, "stop_count": 200},
         ],
     }
+
+
+def _cmsmasters_careers_config(htmls: list[str]) -> dict | None:
+    """Build stable steps for CMSMasters/Elementor career-detail pages.
+
+    Several first-party WordPress career sites publish jobs through a cloned
+    CMSMasters single-post template.  The generic heuristic stops at the first
+    ``Requirements`` heading and treats ``Location: In-person`` as a geographic
+    location.  Scope extraction to the career post, retain the complete role
+    body through the application boundary, and classify the labeled modality
+    separately.  Boards whose posts omit a geographic place can supply a
+    verified regional ``defaults.locations`` value in their scraper config.
+    """
+
+    matches = 0
+    for html in htmls:
+        tree = LexborHTMLParser(html)
+        post = tree.css_first(_CMSMASTERS_CAREERS_SCOPE)
+        if post is None:
+            continue
+        classes = set(post.attributes.get("class", "").split())
+        if not (
+            "type-careers" in classes or "category-careers" in classes or "tag-careers" in classes
+        ):
+            continue
+        if (
+            post.css_first("h1.elementor-heading-title") is not None
+            and post.css_first(".elementor-widget-theme-post-content") is not None
+        ):
+            matches += 1
+
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    return {
+        "scope": _CMSMASTERS_CAREERS_SCOPE,
+        "steps": [
+            {
+                "tag": "h1",
+                "attr": "class=elementor-heading-title",
+                "field": "title",
+            },
+            {
+                "field": "description",
+                "html": True,
+                "stop_regex": r"(?i)^\s*Apply(?:\s+for(?:\s+this)?\s+Job|\s+Now)(?:\s*:.*)?\s*$",
+            },
+            {
+                "match_regex": (
+                    r"(?i)^\s*Location\s*:\s*"
+                    r"(?:In[- ]?person|On[- ]?site|Remote|Hybrid)\s*$"
+                ),
+                "field": "job_location_type",
+                "regex": r"(?i)^\s*Location\s*:\s*(In[- ]?person|On[- ]?site|Remote|Hybrid)\s*$",
+                "from": 0,
+                "optional": True,
+            },
+            {
+                "match_regex": r"^\s*.+?,\s*[A-Z]{2}\s*\(",
+                "field": "locations",
+                "regex": r"^\s*(?:.*\|\s*)?([^|]+?,\s*[A-Z]{2})\s*\(",
+                "from": 0,
+                "optional": True,
+            },
+        ],
+    }
+
+
+def _elementor_job_post_config(htmls: list[str]) -> dict | None:
+    """Build steps for standalone Elementor job posts with application forms."""
+
+    matches = 0
+    for html in htmls:
+        tree = LexborHTMLParser(html)
+        post = tree.css_first(_ELEMENTOR_JOB_POST_SCOPE)
+        title = tree.css_first("title")
+        if post is None or title is None or post.css_first(".elementor-widget-form") is None:
+            continue
+        text = post.text(separator=" ", strip=True).casefold()
+        if any(marker in text for marker in ("job title:", "currently hiring", "what you'll do")):
+            matches += 1
+
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    return {
+        "scope": _ELEMENTOR_JOB_POST_SCOPE,
+        "include_document_title": True,
+        "steps": [
+            {
+                "tag": "title",
+                "field": "title",
+                "regex": r"^(.*)\s+-\s+[^-]+$",
+            },
+            {
+                "field": "description",
+                "html": True,
+                "stop_regex": r"(?i)^\s*Apply\s*$",
+            },
+            {
+                "match_regex": r"(?i)^\s*Employment Type\s*:\s*\S",
+                "field": "employment_type",
+                "regex": r"(?i)^\s*Employment Type\s*:\s*(\S.*)\s*$",
+                "from": 0,
+                "optional": True,
+            },
+            {
+                "match_regex": (
+                    r"(?i)^\s*Location\s*:\s*"
+                    r"(?:In[- ]?person|On[- ]?site|Remote|Hybrid)\s*$"
+                ),
+                "field": "job_location_type",
+                "regex": r"(?i)^\s*Location\s*:\s*(In[- ]?person|On[- ]?site|Remote|Hybrid)\s*$",
+                "from": 0,
+                "optional": True,
+            },
+        ],
+    }
+
+
+def _elementor_careers_preset_config(htmls: list[str]) -> dict | None:
+    """Select a runtime preset when every sample uses a supported job template."""
+
+    if not htmls:
+        return None
+    for html in htmls:
+        if (
+            _cmsmasters_careers_config([html]) is None
+            and _elementor_job_post_config([html]) is None
+        ):
+            return None
+    return {"preset": _ELEMENTOR_CAREERS_PRESET}
+
+
+def _runtime_config(html: str, config: dict) -> dict:
+    """Resolve dynamic DOM presets against the fetched detail document."""
+
+    preset = config.get("preset")
+    if preset is None:
+        return config
+    if preset != _ELEMENTOR_CAREERS_PRESET:
+        raise ValueError(f"unknown DOM scraper preset: {preset!r}")
+
+    detected = _cmsmasters_careers_config([html]) or _elementor_job_post_config([html])
+    if detected is None:
+        raise ValueError("Elementor careers preset did not match the detail page")
+    return {**detected, **config}
 
 
 def _advorto_config(htmls: list[str]) -> dict | None:
@@ -1120,6 +1271,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     if clinch is not None:
         return clinch
 
+    elementor_careers = _elementor_careers_preset_config(htmls)
+    if elementor_careers is not None:
+        return elementor_careers
+
     tribepad = _tribepad_config(htmls)
     if tribepad is not None:
         return tribepad
@@ -1239,6 +1394,7 @@ async def probe_pw(urls: list[str], pw) -> tuple[dict | None, str]:
 
 def parse_html(html: str, config: dict) -> JobContent:
     """Extract job data from pre-fetched HTML using step-based extraction."""
+    config = _runtime_config(html, config)
     steps = config.get("steps")
     if not steps:
         return JobContent()
@@ -1397,8 +1553,10 @@ async def scrape(
     ``fetch_url_transform`` may rewrite only the URL used for that read; the
     caller's canonical posting URL remains the source identity.
     """
-    steps = config.get("steps")
-    if not steps:
+    preset = config.get("preset")
+    if preset is not None and preset != _ELEMENTOR_CAREERS_PRESET:
+        raise ValueError(f"unknown DOM scraper preset: {preset!r}")
+    if not config.get("steps") and preset is None:
         log.warning("dom.no_steps", url=url)
         return JobContent()
 
@@ -1524,6 +1682,8 @@ async def scrape(
         html = resp.text
         _raise_if_bot_challenge(str(resp.url), html)
 
+    config = _runtime_config(html, config)
+    steps = config["steps"]
     html = _scope_html(html, config)
     include_header_content = config.get("include_header_content", False)
     if not isinstance(include_header_content, bool):

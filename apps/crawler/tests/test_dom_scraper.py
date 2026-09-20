@@ -579,6 +579,114 @@ class TestDomScraper:
         assert "Strategy consulting experience" in result.description
         assert "Add to favorites" not in result.description
 
+    def test_cmsmasters_careers_probe_keeps_requirements_and_maps_modality(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><body>
+          <div data-elementor-type="single-post"
+               class="elementor elementor-location-single post type-careers careers">
+            <div class="elementor-widget-theme-post-title">
+              <h1 class="elementor-heading-title elementor-size-default">
+                Board Certified Behavior Analyst (BCBA)
+              </h1>
+            </div>
+            <div class="elementor-widget-theme-post-content">
+              <p>Lead clinical teams and support families.</p>
+              <h4>What You'll Do</h4>
+              <ul><li>Develop individualized treatment plans.</li></ul>
+              <h4>Requirements</h4>
+              <ul><li>Active BCBA certification.</li></ul>
+              <h4>Job Details</h4>
+              <ul><li><strong>Location: In-person</strong></li></ul>
+            </div>
+            <div id="apply-form"><a>Apply for Job</a></div>
+            <div><p>Unrelated footer-like template content.</p></div>
+          </div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert config == {"preset": "elementor-careers"}
+        config["defaults"] = {"locations": ["Utah, United States"]}
+
+        result = parse_html(html, config)
+        assert result.title == "Board Certified Behavior Analyst (BCBA)"
+        assert result.locations == ["Utah, United States"]
+        assert result.job_location_type == "In-person"
+        assert result.description is not None
+        assert "Lead clinical teams" in result.description
+        assert "Active BCBA certification" in result.description
+        assert "Apply for Job" not in result.description
+        assert "Unrelated footer-like template content" not in result.description
+
+    def test_cmsmasters_careers_probe_extracts_explicit_city(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><body>
+          <div data-elementor-type="single-post"
+               class="elementor elementor-location-single post category-careers tag-careers">
+            <div class="elementor-widget-theme-post-title">
+              <h1 class="elementor-heading-title">Care Manager</h1>
+            </div>
+            <div class="elementor-widget-theme-post-content">
+              <div>Brooklyn, NY (Full-time, in-office)</div>
+              <p>Coordinate high-quality services for children and families.</p>
+              <h3>Qualifications</h3>
+              <ul><li>Excellent organizational skills.</li></ul>
+            </div>
+            <div id="apply-form"><h1>Apply for Job: Care Manager</h1></div>
+          </div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        result = parse_html(html, config)
+
+        assert result.title == "Care Manager"
+        assert result.locations == ["Brooklyn, NY"]
+        assert result.description is not None
+        assert "Excellent organizational skills" in result.description
+        assert "Apply for Job" not in result.description
+
+    def test_elementor_job_post_probe_uses_document_title_and_full_body(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Full Time Care Giver - ABA Express</title></head><body>
+          <div data-elementor-type="wp-post" data-elementor-post-type="post">
+            <div class="elementor-widget-text-editor">
+              <p><strong>Job Title:</strong> ABA Caregiver</p>
+              <p><strong>Employment Type:</strong> Full-Time</p>
+              <p><strong>Job Summary:</strong> Support children receiving ABA therapy.</p>
+              <p><strong>Key Responsibilities:</strong></p>
+              <ul><li>Implement behavior intervention plans.</li></ul>
+              <p><strong>Qualifications:</strong></p>
+              <ul><li>Patient and compassionate.</li></ul>
+            </div>
+            <div class="elementor-widget-form"><button>Apply</button></div>
+            <p>Newsletter content after the application.</p>
+          </div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert config == {"preset": "elementor-careers"}
+        config["defaults"] = {"locations": ["Colorado, United States"]}
+
+        result = parse_html(html, config)
+        assert result.title == "Full Time Care Giver"
+        assert result.locations == ["Colorado, United States"]
+        assert result.employment_type == "Full-Time"
+        assert result.description is not None
+        assert "Implement behavior intervention plans" in result.description
+        assert "Patient and compassionate" in result.description
+        assert "Newsletter content" not in result.description
+
     def test_advorto_probe_uses_authoritative_labeled_vacancy_fields(self):
         from src.core.scrapers.dom import can_handle, parse_html
 
