@@ -105,6 +105,23 @@ _DEADLINE_MONTH_ALIASES = {
 _BROWSER_FETCH_RETRIES = 2
 _BROWSER_FETCH_BASE_DELAY = 0.5
 _BROWSER_FETCH_MAX_CHARS = 500_000
+_MAX_TRANSPORT_ATTEMPTS = 5
+
+
+def _validated_transport_attempts(value: object, *, owner: str) -> int | None:
+    """Validate an optional bounded HTTP/browser attempt budget."""
+    if value is None:
+        return None
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or not 1 <= value <= _MAX_TRANSPORT_ATTEMPTS
+    ):
+        raise ValueError(
+            f"{owner} transport_attempts must be an integer from 1 to {_MAX_TRANSPORT_ATTEMPTS}"
+        )
+    return value
+
 
 # JS executed inside the Playwright page. Returns ``{status, headers, text}``
 # so HTTP-level errors (which ``fetch`` doesn't reject on in JS) are
@@ -3615,6 +3632,9 @@ async def _paginate_rich_rows(
     transient_403 = pagination.get("transient_403", False)
     if not isinstance(transient_403, bool):
         raise ValueError("DOM pagination transient_403 must be a boolean")
+    transport_attempts = _validated_transport_attempts(
+        pagination.get("transport_attempts"), owner="DOM pagination"
+    )
     use_browser = pagination.get("browser", False)
     if not isinstance(use_browser, bool):
         raise ValueError("DOM pagination browser must be a boolean")
@@ -3641,6 +3661,7 @@ async def _paginate_rich_rows(
                 page_url,
                 transient_403=transient_403,
                 max_chars=None,
+                retries=transport_attempts or _BROWSER_FETCH_RETRIES,
             )
         else:
             html = await fetch_with_retry(
@@ -3649,6 +3670,7 @@ async def _paginate_rich_rows(
                 encoding=encoding,
                 transient_403=transient_403,
                 max_chars=None,
+                retries=transport_attempts or 3,
             )
         if not html:
             log.info("dom.pagination.end", page=page_num, url=page_url)
@@ -4337,6 +4359,9 @@ async def _paginate_urls(
     transient_403 = pagination.get("transient_403", False)
     if not isinstance(transient_403, bool):
         raise ValueError("DOM pagination transient_403 must be a boolean")
+    transport_attempts = _validated_transport_attempts(
+        pagination.get("transport_attempts"), owner="DOM pagination"
+    )
     if not url_template and not isinstance(param_name, str):
         raise ValueError("DOM pagination requires param_name or url_template")
 
@@ -4378,6 +4403,7 @@ async def _paginate_urls(
                 page,
                 page_url,
                 transient_403=transient_403,
+                retries=transport_attempts or _BROWSER_FETCH_RETRIES,
             )
         else:
             if request_semaphore is None:
@@ -4388,6 +4414,7 @@ async def _paginate_urls(
                     transient_403=transient_403,
                     headers=request_headers,
                     public_headers=public_headers,
+                    retries=transport_attempts or 3,
                 )
             else:
                 async with request_semaphore:
@@ -4398,6 +4425,7 @@ async def _paginate_urls(
                         transient_403=transient_403,
                         headers=request_headers,
                         public_headers=public_headers,
+                        retries=transport_attempts or 3,
                     )
 
         if not html:
@@ -4545,6 +4573,11 @@ async def _paginate_partitioned_urls_once(
         raise ValueError("DOM partitioned pagination requires same-origin partition links")
 
     transient_403 = pagination.get("transient_403", False)
+    if not isinstance(transient_403, bool):
+        raise ValueError("DOM pagination transient_403 must be a boolean")
+    transport_attempts = _validated_transport_attempts(
+        pagination.get("transport_attempts"), owner="DOM pagination"
+    )
     partition_stateless = pagination.get("partition_stateless", False)
     if not isinstance(partition_stateless, bool):
         raise ValueError("DOM partition_stateless must be a boolean")
@@ -4647,6 +4680,7 @@ async def _paginate_partitioned_urls_once(
                 transient_403=transient_403,
                 headers=request_headers,
                 public_headers=bool(public_request_headers),
+                retries=transport_attempts or 3,
             )
         if not html:
             raise PaginationFetchError(
@@ -5399,6 +5433,9 @@ async def _dom_discover_once(
         raise ValueError("DOM monitor requires an HTTP client")
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
+    transport_attempts = _validated_transport_attempts(
+        metadata.get("transport_attempts"), owner="DOM monitor"
+    )
     fetch_board_url = transformed_fetch_url(
         board_url,
         metadata.get("fetch_url_transform"),
@@ -5753,6 +5790,7 @@ async def _dom_discover_once(
                     end_of_pagination_statuses=(),
                     require_nonempty=True,
                     max_bytes=_MAX_EXPLICIT_EMPTY_BODY_BYTES,
+                    retries=transport_attempts or 3,
                 )
             else:
                 html = await fetch_with_retry(
@@ -5774,6 +5812,7 @@ async def _dom_discover_once(
                     or onclick_selector is not None
                     or title_matched_url_scan is not None
                     else 500_000,
+                    retries=transport_attempts or 3,
                 )
         except PaginationFetchError as exc:
             if exc.last_status in _BOARD_GONE_STATUSES:

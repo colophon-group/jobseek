@@ -22,6 +22,22 @@ def _board(slug: str) -> dict[str, str]:
 
 
 def test_blocked_static_sources_use_bounded_proxy_recovery() -> None:
+    bdo = _board("bdo-brazil")
+    bdo_monitor = json.loads(bdo["monitor_config"])
+    bdo_scraper = json.loads(bdo["scraper_config"])
+    assert bdo_monitor["transport_attempts"] == 5
+    assert bdo_monitor["pagination"]["transient_403"] is True
+    assert bdo_monitor["pagination"]["transport_attempts"] == 5
+    assert bdo_scraper == {"proxy": True, "transport_attempts": 5}
+
+    beiersdorf = _board("beiersdorf-brazil-vagas")
+    beiersdorf_monitor = json.loads(beiersdorf["monitor_config"])
+    beiersdorf_scraper = json.loads(beiersdorf["scraper_config"])
+    assert beiersdorf_monitor["transport_attempts"] == 5
+    assert beiersdorf_monitor["pagination"]["transient_403"] is True
+    assert beiersdorf_monitor["pagination"]["transport_attempts"] == 5
+    assert beiersdorf_scraper == {"proxy": True, "transport_attempts": 5}
+
     mcdonalds = json.loads(_board("mcdonalds-sg")["monitor_config"])
     assert mcdonalds["proxy"] is True
     assert mcdonalds["transient_403"] is True

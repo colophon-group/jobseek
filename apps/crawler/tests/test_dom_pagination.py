@@ -4470,6 +4470,40 @@ class TestCanHandle:
 
 
 class TestDomDiscoverInitialFetch:
+    async def test_static_root_forwards_bounded_transport_attempts(self):
+        board_url = "https://example.com/careers"
+        job_url = "https://example.com/job/1"
+        fetch = AsyncMock(return_value=_html_with_links(job_url))
+
+        with patch(_FETCH_PATCH, new=fetch):
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {
+                        "link_selector": "a[href]",
+                        "transport_attempts": 5,
+                    },
+                },
+                MagicMock(),
+            )
+
+        assert result == {job_url}
+        assert fetch.await_args.kwargs["retries"] == 5
+
+    @pytest.mark.parametrize("transport_attempts", [0, 6, True, "5"])
+    async def test_static_root_rejects_invalid_transport_attempts(self, transport_attempts):
+        with pytest.raises(
+            ValueError,
+            match="DOM monitor transport_attempts must be an integer from 1 to 5",
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {"transport_attempts": transport_attempts},
+                },
+                MagicMock(),
+            )
+
     async def test_partitioned_pagination_unions_every_talentsoft_facet(self):
         board_url = "https://jobs.example.com/job/list-of-all-jobs.aspx?LCID=2057"
         partition_one_link = (
@@ -6373,6 +6407,40 @@ class TestAdvertisedTotalContract:
 
 
 class TestPaginateUrls:
+    async def test_forwards_bounded_transport_attempts(self):
+        fetch = AsyncMock(return_value=None)
+
+        with patch(_FETCH_PATCH, new=fetch):
+            result = await _paginate_urls(
+                "https://example.com/careers",
+                {
+                    "param_name": "page",
+                    "max_pages": 2,
+                    "transport_attempts": 5,
+                },
+                {"https://example.com/job/1"},
+                MagicMock(),
+            )
+
+        assert result == {"https://example.com/job/1"}
+        assert fetch.await_args.kwargs["retries"] == 5
+
+    @pytest.mark.parametrize("transport_attempts", [0, 6, True, "5"])
+    async def test_rejects_invalid_transport_attempts(self, transport_attempts):
+        with pytest.raises(
+            ValueError,
+            match="DOM pagination transport_attempts must be an integer from 1 to 5",
+        ):
+            await _paginate_urls(
+                "https://example.com/careers",
+                {
+                    "param_name": "page",
+                    "transport_attempts": transport_attempts,
+                },
+                {"https://example.com/job/1"},
+                MagicMock(),
+            )
+
     async def test_explicit_one_based_start_fetches_page_two_first(self):
         """``start`` names the already-fetched listing page."""
         initial = {"https://example.com/jobs/1"}
