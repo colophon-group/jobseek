@@ -25,6 +25,10 @@ def _board(slug: str) -> dict[str, str]:
 
 
 def test_blocked_static_sources_use_bounded_proxy_recovery() -> None:
+    barclays = json.loads(_board("barclays-careers")["monitor_config"])
+    assert barclays["proxy"] is True
+    assert barclays["xml_attempts"] == 5
+
     bdo = _board("bdo-brazil")
     bdo_monitor = json.loads(bdo["monitor_config"])
     bdo_scraper = json.loads(bdo["scraper_config"])
