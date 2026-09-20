@@ -13,7 +13,7 @@ def _rows(filename: str, slug_field: str) -> list[dict[str, str]]:
         return [row for row in csv.DictReader(handle) if row[slug_field] == "inova"]
 
 
-def test_inova_metadata_and_staged_assets_are_complete() -> None:
+def test_inova_metadata_and_assets_are_complete() -> None:
     companies = _rows("companies.csv", "slug")
     descriptions = _rows("company_descriptions.csv", "slug")
 
@@ -27,8 +27,14 @@ def test_inova_metadata_and_staged_assets_are_complete() -> None:
     assert company["founded_year"] == "1956"
     assert len(descriptions) == 1
     assert all(descriptions[0][locale] for locale in ("en", "de", "fr", "it"))
-    assert (DATA_DIR / "images/inova/logo.png").is_file()
-    assert (DATA_DIR / "images/inova/icon.png").is_file()
+    staged = all(
+        (DATA_DIR / path).is_file() for path in ("images/inova/logo.png", "images/inova/icon.png")
+    )
+    uploaded = all(
+        company[field].startswith("https://jobseek-assets.colophon-group.org/companies/inova/")
+        for field in ("logo_url", "icon_url")
+    )
+    assert staged or uploaded
 
 
 def test_inova_keeps_both_verified_oracle_sites_proxy_routed() -> None:
