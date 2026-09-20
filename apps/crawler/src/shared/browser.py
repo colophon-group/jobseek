@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import tempfile
 import uuid
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 from urllib.parse import urlsplit
@@ -71,6 +71,8 @@ FALLBACK_WAIT_TIMEOUT = 5_000
 CONTEXT_TIMEOUT = 120_000  # hard cap: no single Playwright operation exceeds 2 minutes
 BROWSER_CLOSE_TIMEOUT_SECONDS = 15.0
 NAVIGATION_NETWORK_RETRY_DELAY_SECONDS = 0.5
+PROXY_ORIGIN_BLOCK_RETRY_DELAY_SECONDS = 1.0
+MAX_PROXY_ORIGIN_BLOCK_ATTEMPTS = 5
 VALID_WAIT_STRATEGIES = frozenset({"load", "domcontentloaded", "networkidle", "commit"})
 VALID_RESOURCE_POLICIES = frozenset({"auto", "none", "lean", "aggressive"})
 VALID_BLOCK_RESOURCE_TYPES = frozenset(
@@ -90,6 +92,77 @@ VALID_BLOCK_RESOURCE_TYPES = frozenset(
         "other",
     }
 )
+
+
+def is_proxy_origin_block_error(exc: BaseException) -> bool:
+    """Return whether an in-proxy browser failure proves an origin block."""
+
+    if getattr(exc, "proxy_failure_reason", None) == "origin_block":
+        return True
+    return isinstance(exc, BrowserNavigationHTTPStatusError) and exc.status in {
+        401,
+        403,
+        429,
+    }
+
+
+async def retry_proxy_origin_blocks[T](
+    operation: Callable[[], Awaitable[T]],
+    config: dict,
+    *,
+    event: str,
+) -> T:
+    """Retry a proxy-backed browser operation on a fresh healthy endpoint.
+
+    ``open_page`` records and quarantines the failed origin/slot pair before
+    the exception reaches this helper.  A retry therefore selects a different
+    usable endpoint.  Direct egress is never used, and missing/exhausted proxy
+    capacity still fails closed.
+    """
+
+    if not config.get("proxy"):
+        return await operation()
+
+    attempts = min(
+        MAX_PROXY_ORIGIN_BLOCK_ATTEMPTS,
+        max(1, int(config.get("transport_attempts", 1))),
+    )
+    last_origin_block: BaseException | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return await operation()
+        except Exception as exc:
+            from src.shared.proxy import ProxyPoolExhaustedError
+
+            if isinstance(exc, ProxyPoolExhaustedError):
+                if last_origin_block is None:
+                    raise
+                log.warning(
+                    event,
+                    attempt=attempt,
+                    attempts=attempts,
+                    retrying=False,
+                    reason="pool_exhausted_after_origin_block",
+                )
+                raise last_origin_block from exc
+            if not is_proxy_origin_block_error(exc):
+                raise
+            last_origin_block = exc
+            retrying = attempt < attempts
+            log.warning(
+                event,
+                attempt=attempt,
+                attempts=attempts,
+                retrying=retrying,
+                reason="origin_block",
+            )
+            if not retrying:
+                raise
+            await asyncio.sleep(PROXY_ORIGIN_BLOCK_RETRY_DELAY_SECONDS * attempt)
+
+    raise AssertionError("unreachable")
+
+
 # These resource classes consume bandwidth but are not needed for ordinary
 # DOM/job-data extraction. They are blocked only when board recon explicitly
 # opts in after a board-specific canary.

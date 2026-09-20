@@ -1539,7 +1539,7 @@ async def _parse_static_document(
     return None
 
 
-async def scrape(
+async def _scrape_once(
     url: str,
     config: dict,
     http: httpx.AsyncClient,
@@ -1620,11 +1620,12 @@ async def scrape(
                 return html
 
         async def _render_with_challenge_retry(p):
-            for attempt in range(_RENDER_CHALLENGE_RETRIES + 1):
+            challenge_retries = 0 if config.get("proxy") else _RENDER_CHALLENGE_RETRIES
+            for attempt in range(challenge_retries + 1):
                 try:
                     return await _render_page(p)
                 except BotChallengeError:
-                    if attempt == _RENDER_CHALLENGE_RETRIES:
+                    if attempt == challenge_retries:
                         raise
                     log.info(
                         "dom.render.retry_bot_challenge",
@@ -1703,6 +1704,28 @@ async def scrape(
 
     log.debug("dom.extracted", url=url, fields=[k for k, v in raw.items() if v is not None])
     return content
+
+
+async def scrape(
+    url: str,
+    config: dict,
+    http: httpx.AsyncClient,
+    pw=None,
+    artifact_dir: Path | None = None,
+) -> JobContent:
+    """Extract a job, rotating proxy exits after typed rendered blocks."""
+
+    rendered = bool(config.get("render") or config.get("actions"))
+    if not (rendered and config.get("proxy")):
+        return await _scrape_once(url, config, http, pw=pw, artifact_dir=artifact_dir)
+
+    from src.shared.browser import retry_proxy_origin_blocks
+
+    return await retry_proxy_origin_blocks(
+        lambda: _scrape_once(url, config, http, pw=pw, artifact_dir=artifact_dir),
+        config,
+        event="dom.scraper.origin_block_retry",
+    )
 
 
 register(

@@ -5377,7 +5377,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
 # ---------------------------------------------------------------------------
 
 
-async def dom_discover(
+async def _dom_discover_once(
     board: dict,
     client: httpx.AsyncClient | None = None,
     pw=None,
@@ -6017,6 +6017,26 @@ async def dom_discover(
     if script_json_jobs is not None:
         return [job for job in script_json_jobs if job.url in urls]
     return urls
+
+
+async def dom_discover(
+    board: dict,
+    client: httpx.AsyncClient | None = None,
+    pw=None,
+) -> set[str] | list[DiscoveredJob] | MonitorResult:
+    """Discover jobs, rotating proxy exits after typed rendered blocks."""
+
+    metadata = board.get("metadata") or {}
+    if not (metadata.get("render") and metadata.get("proxy")):
+        return await _dom_discover_once(board, client, pw=pw)
+
+    from src.shared.browser import retry_proxy_origin_blocks
+
+    return await retry_proxy_origin_blocks(
+        lambda: _dom_discover_once(board, client, pw=pw),
+        metadata,
+        event="dom.monitor.origin_block_retry",
+    )
 
 
 async def save_raw(

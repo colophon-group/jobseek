@@ -13,6 +13,7 @@ import httpx
 import pytest
 
 from src.core.scrapers import JobContent
+from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -2127,6 +2128,36 @@ class TestDomScraper:
 
         assert result.title == "Software Engineer"
         assert page.content.await_count == 2
+
+    async def test_rendered_proxy_rotates_after_navigation_origin_block(self):
+        from src.core.scrapers.dom import scrape
+
+        blocked = BrowserNavigationHTTPStatusError(
+            requested_url="https://blocked.example/job/1",
+            response_url="https://blocked.example/job/1",
+            status=403,
+            phase="primary",
+        )
+        scrape_once = AsyncMock(side_effect=[blocked, JobContent(title="Recovered")])
+
+        with (
+            patch("src.core.scrapers.dom._scrape_once", scrape_once),
+            patch("src.shared.browser.asyncio.sleep", new_callable=AsyncMock),
+        ):
+            async with httpx.AsyncClient() as client:
+                result = await scrape(
+                    "https://blocked.example/job/1",
+                    {
+                        "render": True,
+                        "proxy": True,
+                        "transport_attempts": 2,
+                        "steps": [{"tag": "h1", "field": "title"}],
+                    },
+                    client,
+                )
+
+        assert result.title == "Recovered"
+        assert scrape_once.await_count == 2
 
     async def test_playwright_import_error(self):
         """Raises RuntimeError when playwright is not installed."""
