@@ -11,6 +11,7 @@ on:
       - 'apps/crawler/**'
       - '!apps/crawler/data/**'
       - '!apps/crawler/traces/**'
+      - '!apps/crawler/tests/lightpanda/fixtures/census.json'
       - '!apps/crawler/ws-package/**'
       - '!apps/crawler/*.md'
       - '!apps/crawler/**/*.md'

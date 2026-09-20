@@ -1624,6 +1624,10 @@ test("workflow-security runs repository script tests", () => {
 
 test("crawler deploys derive immutable versions for unchanged releases", () => {
   assert.match(deployCrawlerWorkflow, /'!apps\/crawler\/ws-package\/\*\*'/);
+  assert.match(
+    deployCrawlerWorkflow,
+    /'!apps\/crawler\/tests\/lightpanda\/fixtures\/census\.json'/,
+  );
   assert.match(deployCrawlerWorkflow, /^  workflow_dispatch:\s*$/m);
   assert.match(
     deployCrawlerWorkflow,
@@ -2970,6 +2974,7 @@ test("crawler deploy gate mirrors runtime deploy path exclusions", () => {
       "apps/crawler/data/companies.csv",
       "apps/crawler/data/images/example/logo.png",
       "apps/crawler/traces/example.json",
+      "apps/crawler/tests/lightpanda/fixtures/census.json",
       "apps/crawler/ws-package/README.txt",
       "apps/crawler/docs/nested.md",
     ],
@@ -2984,6 +2989,23 @@ test("crawler deploy gate mirrors runtime deploy path exclusions", () => {
   assert.match(excluded.stdout, /does not trigger the crawler runtime deployment/);
   assert.doesNotMatch(excluded.calls, /issue list/);
   assert.equal(taxonomy.status, 1);
+});
+
+test("crawler deploy gate classifies every explicit deploy self-trigger as active", () => {
+  for (const file of [
+    ".github/scripts/resolve-crawler-deploy-revisions.sh",
+    "scripts/derive-crawler-build-version.mjs",
+  ]) {
+    const result = runCrawlerDeployGate({
+      files: [file],
+      holds: [
+        { number: 6632, title: "capacity", url: "https://example.test/6632" },
+      ],
+    });
+
+    assert.equal(result.status, 1, `${file}: ${result.stderr}`);
+    assert.match(result.calls, /issue list.*deployment-hold:crawler/);
+  }
 });
 
 test("crawler deploy gate classifies pure runtime-v1 diffs as active", () => {

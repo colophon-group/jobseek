@@ -16,11 +16,15 @@ const RUNTIME_DATA_PATHS = new Set([
   "apps/crawler/data/seniority.csv",
   "apps/crawler/data/technologies.csv",
 ]);
+const NON_RUNTIME_PATHS = new Set([
+  "apps/crawler/tests/lightpanda/fixtures/census.json",
+]);
 const MAX_CRAWLER_DATA_BLOB_BYTES = 64 * 1024 * 1024;
 
 export function isCrawlerRuntimePath(path) {
   if (EXTRA_RUNTIME_PATHS.has(path)) return true;
   if (RUNTIME_DATA_PATHS.has(path)) return true;
+  if (NON_RUNTIME_PATHS.has(path)) return false;
   if (!path.startsWith("apps/crawler/")) return false;
 
   const relative = path.slice("apps/crawler/".length);
