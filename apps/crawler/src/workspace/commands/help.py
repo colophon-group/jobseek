@@ -127,6 +127,7 @@ Monitor Types (cheapest first):
   paycom            10      Full/partial      Auto-enriched
   paynet            10      Full job data     No (skipped)
   paylocity         10      Full/partial      Auto-enriched
+  pcrecruiter       10      Job URLs          Auto-configured JSON-LD
   pinpoint          10      Full job data     No (skipped)
   recruitee         10      Full job data     No (skipped)
   recruiterbox      10      Job URLs          Auto-configured
@@ -3033,6 +3034,26 @@ jazzhr — JazzHR / ApplyToJob static listing
   Detection:  ws probe shows "JazzHR static listing — tenant: X, N jobs"
   Zero jobs?  A valid page still contains the job_listings_wrapper marker."""
 
+MONITOR_PCRECRUITER = """\
+pcrecruiter — PCRecruiter hosted job board
+
+  Listing:  GET https://host.pcrecruiter.net/pcrbin/jobboard.aspx?uid=...
+  Pages:    POST the provider-issued pagination form state
+  Returns:  Stable canonical detail URLs containing uid + numeric record ID
+  Scraper:  Auto-configured JSON-LD
+  Browser:  Not required
+  Note:     A GET page parameter is not valid PCRecruiter pagination. The
+            monitor validates every advertised range and unique URL count
+            against the board's result total before accepting a cycle.
+
+  Config:
+    {"uid": "Example.npsg"}
+
+    uid   Auto-filled from an exact, unfiltered PCRecruiter board URL.
+
+  Detection:  ws probe shows "PCRecruiter POST listing — uid: X, N jobs"
+  Zero jobs?  The board must expose an authoritative 0-0 of 0 result count."""
+
 MONITOR_JOBBANK104 = """\
 jobbank104 — 104 Job Bank company listing
 
@@ -4553,6 +4574,7 @@ MONITOR_CARDS: dict[str, str] = {
     "paynet": MONITOR_PAYNET,
     "nowhiring": MONITOR_NOWHIRING,
     "jazzhr": MONITOR_JAZZHR,
+    "pcrecruiter": MONITOR_PCRECRUITER,
     "jobbank104": MONITOR_JOBBANK104,
     "jobdiva": """\
 jobdiva — JobDiva candidate portal API monitor

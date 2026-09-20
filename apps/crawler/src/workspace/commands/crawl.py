@@ -936,6 +936,7 @@ _MONITOR_CONFIG_HINTS = {
     "talentreef": "Optional: alias and locale (auto-filled from a JobAppNetwork URL)",
     "nowhiring": "Optional: slug (auto-filled from a NowHiring career-site URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
+    "pcrecruiter": "Requires: uid (auto-filled from an exact host.pcrecruiter.net board URL)",
     "jobbank104": (
         "Requires: token (auto-filled from a www.104.com.tw/company URL); use proxy when challenged"
     ),

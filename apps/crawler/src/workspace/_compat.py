@@ -25,6 +25,7 @@ from src.shared.jobvite import jobvite_board_from_url
 from src.shared.keka import keka_board_from_url
 from src.shared.pageup import pageup_board_from_url
 from src.shared.paynet import paynet_company_from_url
+from src.shared.pcrecruiter import pcrecruiter_board_from_url
 from src.shared.recruiterbox import recruiterbox_board_from_url
 from src.shared.successfactors import (
     is_successfactors_host,
@@ -184,6 +185,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "jobs_ch",
     "join",
     "personio",
+    "pcrecruiter",
     "recruiterbox",
     "practicematch",
     "taleo",
@@ -415,6 +417,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "ukg"
     if jobvite_board_from_url(url) is not None:
         return "jobvite"
+    if pcrecruiter_board_from_url(url) is not None:
+        return "pcrecruiter"
     if pageup_board_from_url(url) is not None:
         return "pageup"
     if (
@@ -1150,6 +1154,8 @@ def auto_scraper_type(
     if monitor_type == "papa_johns":
         return ("json-ld", None)
     if monitor_type == "jobvite":
+        return ("json-ld", None)
+    if monitor_type == "pcrecruiter":
         return ("json-ld", None)
     if monitor_type == "icims":
         return ("json-ld", None)

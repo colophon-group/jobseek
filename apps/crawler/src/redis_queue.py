@@ -280,6 +280,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "dayforce",
         "paycom",
         "paynet",
+        "host.pcrecruiter.net",
         "jazzhr",
         "www.104.com.tw",
         "jobs.jobvite.com",

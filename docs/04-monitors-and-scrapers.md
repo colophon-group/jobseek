@@ -76,6 +76,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `jobstreet` | Rich + enrichment | jobstreet | JobStreet employer-scoped public search plus GraphQL detail enrichment |
 | `seek` | URL-only | seek | SEEK AU/NZ advertiser-scoped public search plus GraphQL detail enrichment |
 | `jobvite` | URL-only | json-ld | Jobvite static listings, including branded career-site routes |
+| `pcrecruiter` | URL-only | json-ld | PCRecruiter hosted boards with validated stateful POST pagination |
 | `pageup` | Rich + enrichment | dom | PageUp static listings with streamed total-checked pagination and DOM description enrichment |
 | `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
 | `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination, exact aggregate verification, and fail-closed mirrored-ID deduplication |

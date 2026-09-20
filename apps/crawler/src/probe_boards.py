@@ -60,6 +60,10 @@ from src.shared.keka import (
     keka_board_from_url,
 )
 from src.shared.pageup import pageup_board_from_metadata, pageup_board_from_url
+from src.shared.pcrecruiter import (
+    pcrecruiter_board_from_metadata,
+    pcrecruiter_board_from_url,
+)
 from src.shared.recruiterbox import (
     recruiterbox_board_from_metadata,
     recruiterbox_board_from_url,
@@ -392,6 +396,55 @@ async def _probe_jazzhr(row: dict, client: httpx.AsyncClient) -> ProbeResult:
                 "JazzHR listing marker missing",
             )
     return _classify(row, "jazzhr", url, resp)
+
+
+async def _probe_pcrecruiter(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    try:
+        decoded = json.loads(row["monitor_config"] or "{}")
+    except (json.JSONDecodeError, TypeError):
+        decoded = {}
+    configured = pcrecruiter_board_from_metadata(decoded)
+    direct = pcrecruiter_board_from_url(row["board_url"])
+    if configured is not None and direct is not None and configured.uid != direct.uid:
+        return ProbeResult(
+            row["board_slug"],
+            "pcrecruiter",
+            row["board_url"],
+            "fail",
+            "configured uid conflicts with board URL",
+        )
+    board = configured or direct
+    if board is None:
+        return ProbeResult(
+            row["board_slug"],
+            "pcrecruiter",
+            row["board_url"],
+            "warn",
+            "no valid uid in monitor_config or PCRecruiter URL",
+        )
+
+    resp = await _retry(lambda: _get(client, board.listing_url, follow_redirects=False))
+    if isinstance(resp, httpx.Response) and resp.status_code == 200:
+        from src.core.monitors.pcrecruiter import _parse_page
+
+        try:
+            page = _parse_page(resp.text, board)
+        except ValueError as exc:
+            return ProbeResult(
+                row["board_slug"],
+                "pcrecruiter",
+                board.listing_url,
+                "warn",
+                f"invalid listing contract: {exc}",
+            )
+        return ProbeResult(
+            row["board_slug"],
+            "pcrecruiter",
+            board.listing_url,
+            "ok",
+            f"200, {page.total} jobs",
+        )
+    return _classify(row, "pcrecruiter", board.listing_url, resp)
 
 
 async def _probe_icims(row: dict, client: httpx.AsyncClient) -> ProbeResult:
@@ -1722,6 +1775,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "beisen": _probe_beisen,
     "paycom": _probe_paycom,
     "jazzhr": _probe_jazzhr,
+    "pcrecruiter": _probe_pcrecruiter,
     "icims": _probe_icims,
     "gupy": _probe_gupy,
     "cornerstone": _probe_cornerstone,

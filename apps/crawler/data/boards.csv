@@ -4871,6 +4871,8 @@ north-america,north-america-greenhouse,https://job-boards.greenhouse.io/xebiausa
 northbeam,northbeam-greenhouse,https://job-boards.greenhouse.io/northbeam,greenhouse,"{""token"": ""northbeam""}",skip,
 northmarq,northmarq-greenhouse,https://job-boards.greenhouse.io/northmarq,greenhouse,"{""token"": ""northmarq""}",skip,
 northmill,northmill-careers,https://careers.northmill.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.northmill.com/jobs.rss""}",skip,
+northpoint-search-group,northpoint-search-group-careers,https://stafffinancialgroup.applytojob.com/,jazzhr,"{""tenant"": ""stafffinancialgroup""}",jazzhr,
+northpoint-search-group,northpoint-search-group-pcrecruiter,https://host.pcrecruiter.net/pcrbin/jobboard.aspx?uid=Staff%20Financial.npsg,pcrecruiter,"{""uid"": ""Staff Financial.npsg""}",json-ld,
 northrop-grumman,northrop-grumman-eightfold,https://jobs.northropgrumman.com/careers,eightfold,"{""proxy"": true, ""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 northside-hospital,northside-hospital-careers,https://careers-northside.icims.com/,icims,,json-ld,
 northwell-health,northwell-health-careers,https://eppr.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"

@@ -151,6 +151,8 @@ _ATS_URL_RE = re.compile(
     r"|nowhiring\.com/[a-z0-9][a-z0-9_-]{0,127}/?(?=[?#\"'<\s]|$)"
     r"|[a-z0-9][a-z0-9-]*\.applytojob\.com"
     r"(?:/apply(?:/jobs(?:/details/[A-Za-z0-9_-]+)?)?)?/?(?=[?#\"'<\s]|$)"
+    r"|host\.pcrecruiter\.net/pcrbin/jobboard\.aspx\?uid=[A-Za-z0-9%+._-]+"
+    r"(?=[&#\"'<\s]|$)"
     r"|jobs\.jobvite\.com/(?:careers/)?[a-z0-9][a-z0-9-]*"
     r"(?:/jobs(?:/positions)?|/job/[A-Za-z0-9_-]{6,64})?/?"
     r"(?:\?[^#\"'<\s]*)?(?=[#\"'<\s]|$)"
