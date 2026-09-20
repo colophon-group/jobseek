@@ -243,6 +243,8 @@ class _FakeResponse:
     def __init__(self, text: str, status_code: int = 200):
         self.text = text
         self.status_code = status_code
+        self.headers: dict[str, str] = {}
+        self.request = None
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -260,6 +262,74 @@ class _FakeClient:
         self.requested_urls.append(str(url))
         self.request_headers.append(kwargs.get("headers"))
         return self._responses.get(str(url), _FakeResponse(self._html))
+
+
+@pytest.mark.asyncio
+async def test_static_inline_fetch_uses_retry_contract(monkeypatch):
+    html = """
+    <html><body>
+      <h3>Sales &amp; Fitting Specialist ( Haram )</h3>
+      <p>Advise customers and fit hearing solutions.</p>
+    </body></html>
+    """
+    observed: dict[str, object] = {}
+
+    async def fake_fetch(client, url, **kwargs):
+        observed.update(url=url, kwargs=kwargs)
+        return html
+
+    monkeypatch.setattr(inline_monitor, "fetch_text_page_with_retry", fake_fetch)
+    board = {
+        "board_url": "https://www.amplifon.com.eg/Careers/available-vacancies/41",
+        "metadata": {
+            "require_zero_proof": True,
+            "item_boundary": {
+                "tag": "h3",
+                "match_regex": r"^Sales & Fitting Specialist\s*\(",
+            },
+            "synthetic_identity_field": "location",
+            "preserve_single_location": True,
+            "steps": [
+                {
+                    "tag": "h3",
+                    "field": "title",
+                    "regex": r"^(Sales & Fitting Specialist)",
+                },
+                {
+                    "tag": "h3",
+                    "field": "location",
+                    "regex": r"\(\s*([^\)]+?)\s*\)",
+                    "from": 0,
+                },
+                {
+                    "field": "description",
+                    "from": 0,
+                    "offset": 1,
+                    "to_end": True,
+                    "html": True,
+                },
+            ],
+        },
+    }
+
+    jobs = await discover(board, _FakeClient("unused"))
+
+    assert observed == {
+        "url": board["board_url"],
+        "kwargs": {
+            "headers": None,
+            "timeout": 30.0,
+            "end_of_pagination_statuses": (),
+            "require_nonempty": True,
+            "max_chars": None,
+            "log_event": "inline.fetch_backoff",
+        },
+    }
+    assert len(jobs) == 1
+    assert jobs[0].title == "Sales & Fitting Specialist"
+    assert jobs[0].locations == ["Haram"]
+    assert "Advise customers" in (jobs[0].description or "")
+    assert "_jid=haram-" in jobs[0].url
 
 
 @pytest.mark.asyncio
