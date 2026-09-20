@@ -2100,6 +2100,7 @@ diligent-corporation,diligent-corporation-greenhouse,https://job-boards.greenhou
 diligent-robotics,diligent-robotics-greenhouse,https://job-boards.greenhouse.io/diligentrobotics,greenhouse,"{""token"": ""diligentrobotics""}",skip,
 diligent-services,diligent-services-greenhouse,https://job-boards.greenhouse.io/diligent,greenhouse,"{""token"": ""diligent""}",skip,
 dine-brands,dine-brands-careers,https://dinebrands.wd503.myworkdayjobs.com/restaurantcareersite,workday,,workday,
+direct-demo,direct-demo-careers,https://drdemo.applytojob.com/,jazzhr,,jazzhr,
 disco,disco-greenhouse,https://job-boards.greenhouse.io/disco,greenhouse,"{""token"": ""disco""}",skip,
 discord,discord-greenhouse,https://job-boards.greenhouse.io/discord,greenhouse,"{""token"": ""discord""}",skip,
 disney,disney-careers,https://disney.wd5.myworkdayjobs.com/disneycareer,workday,"{""company"": ""disney"", ""wd_instance"": ""wd5"", ""site"": ""disneycareer""}",json-ld,
