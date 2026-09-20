@@ -63,6 +63,7 @@ _MAX_SECTION_REGEX_LENGTH = 2_048
 _MAX_POSITIONS_PER_LISTING = 20
 _MAX_SYNTHETIC_IDENTITY_FIELD_LENGTH = 128
 _MAX_SOURCE_URL_LENGTH = 4_096
+_MAX_TRANSPORT_ATTEMPTS = 5
 _DETAIL_BOUNDARY_TAG = "jobseek-inline-detail"
 _DETAIL_RESERVED_ATTRIBUTE_PREFIX = "data-inline-detail-"
 _HTML_TAG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
@@ -816,6 +817,19 @@ async def _fetch_html(
     blocked from the crawler network but is available through a read-only
     rendering gateway. Synthetic job URLs must continue to use ``board_url``.
     """
+    transient_403 = metadata.get("transient_403", False)
+    if not isinstance(transient_403, bool):
+        raise ValueError("inline transient_403 must be a boolean")
+    transport_attempts = metadata.get("transport_attempts")
+    if transport_attempts is not None and (
+        not isinstance(transport_attempts, int)
+        or isinstance(transport_attempts, bool)
+        or not 1 <= transport_attempts <= _MAX_TRANSPORT_ATTEMPTS
+    ):
+        raise ValueError(
+            f"inline transport_attempts must be an integer from 1 to {_MAX_TRANSPORT_ATTEMPTS}"
+        )
+
     configured_urls = metadata.get("fetch_urls")
     if configured_urls is None:
         fetch_url = metadata.get("fetch_url") or board_url
@@ -978,6 +992,8 @@ async def _fetch_html(
                     fetch_url,
                     headers=fetch_headers,
                     timeout=30.0,
+                    retries=transport_attempts or 3,
+                    retryable_statuses=(401, 403) if transient_403 else (),
                     end_of_pagination_statuses=(),
                     require_nonempty=True,
                     max_chars=None,
@@ -1030,6 +1046,8 @@ async def discover(
         empty_text — authoritative text required inside empty_selector
         nonempty_selector — optional selector whose presence overrides the empty marker
         empty_requires_no_jobs — accept the marker only after all extracted rows are filtered
+        transient_403 — retry HTTP 401/403 as transient origin blocks
+        transport_attempts — bounded static-fetch attempt count (1–5)
         require_zero_proof — fail when extraction returns no jobs without an explicit
                              empty_selector/empty_text match (default: false)
         item_boundary — optional tag/text/attribute/regex matcher that starts and bounds

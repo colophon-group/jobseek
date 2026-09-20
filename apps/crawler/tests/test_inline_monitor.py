@@ -319,6 +319,8 @@ async def test_static_inline_fetch_uses_retry_contract(monkeypatch):
         "kwargs": {
             "headers": None,
             "timeout": 30.0,
+            "retries": 3,
+            "retryable_statuses": (),
             "end_of_pagination_statuses": (),
             "require_nonempty": True,
             "max_chars": None,
@@ -330,6 +332,61 @@ async def test_static_inline_fetch_uses_retry_contract(monkeypatch):
     assert jobs[0].locations == ["Haram"]
     assert "Advise customers" in (jobs[0].description or "")
     assert "_jid=haram-" in jobs[0].url
+
+
+@pytest.mark.asyncio
+async def test_static_inline_fetch_opts_into_bounded_origin_block_retries(monkeypatch):
+    observed: dict[str, object] = {}
+
+    async def fake_fetch(client, url, **kwargs):
+        observed.update(kwargs)
+        return "<h2>Service Crew</h2>"
+
+    monkeypatch.setattr(inline_monitor, "fetch_text_page_with_retry", fake_fetch)
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "proxy": True,
+            "transient_403": True,
+            "transport_attempts": 3,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    jobs = await discover(board, _FakeClient("unused"))
+
+    assert [job.title for job in jobs] == ["Service Crew"]
+    assert observed["retries"] == 3
+    assert observed["retryable_statuses"] == (401, 403)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", [0, 6, True, 2.5, "3"])
+async def test_static_inline_fetch_rejects_invalid_transport_attempts(value):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "transport_attempts": value,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="transport_attempts"):
+        await discover(board, _FakeClient("<h2>Engineer</h2>"))
+
+
+@pytest.mark.asyncio
+async def test_static_inline_fetch_rejects_non_boolean_transient_403():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "transient_403": "yes",
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="transient_403"):
+        await discover(board, _FakeClient("<h2>Engineer</h2>"))
 
 
 @pytest.mark.asyncio

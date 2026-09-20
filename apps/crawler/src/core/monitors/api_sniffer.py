@@ -93,6 +93,12 @@ _MAX_REFRESH_FIELDS = 16
 _MAX_REFRESH_PATTERN_CHARS = 4_096
 _MAX_REFRESH_VALUE_CHARS = 16_384
 _MAX_REFRESH_PAGE_BYTES = 2_000_000
+# Retry budget for the api_sniffer monitor's first-page + HTML/list
+# pagination HTTP fetches. Matches the shared fetch defaults: 3 total
+# attempts with exponential backoff and full jitter starting at 1s.
+_API_SNIFFER_FETCH_RETRIES = 3
+_API_SNIFFER_FETCH_BASE_DELAY = 1.0
+_MAX_TRANSPORT_ATTEMPTS = 5
 _MAX_ITEM_FILTER_FIELDS = 16
 _MAX_ITEM_FILTER_VALUES = 100
 _MAX_REQUIRED_PDF_PATTERN_CHARS = 1_024
@@ -2125,6 +2131,8 @@ async def _paginate_until_converged(
     required_no_growth_passes: int,
     item_projector,
     item_validator: Callable[[dict], bool] | None = None,
+    fetch_retries: int = _API_SNIFFER_FETCH_RETRIES,
+    transient_403: bool = False,
 ) -> tuple[list[dict], bool]:
     """Union bounded full passes and prove convergence before allowing delists.
 
@@ -2264,6 +2272,8 @@ async def _paginate_until_converged(
             result,
             max_pages,
             item_projector=item_projector,
+            retries=fetch_retries,
+            transient_403=transient_403,
         )
         pass_identities, pass_projections, identities_valid = identity_map(rows)
         new_identities = set(pass_identities) - set(accumulated)
@@ -2319,6 +2329,8 @@ async def _paginate_until_converged(
             api_url,
             clean_headers(request_headers),
             post_data,
+            retries=fetch_retries,
+            transient_403=transient_403,
         )
         pass_items = extract_items(pass_data, json_path)
 
@@ -2520,14 +2532,6 @@ def find_html_strings(obj: object, path: str = "") -> list[tuple[str, str]]:
     return results
 
 
-# Retry budget for the api_sniffer monitor's first-page + HTML-pagination
-# httpx fetches. Matches ``fetch_with_retry`` defaults: 3 total attempts
-# with exponential backoff and full jitter starting at 1s — symmetric
-# with the accenture monitor (#2735) for cross-monitor consistency.
-_API_SNIFFER_FETCH_RETRIES = 3
-_API_SNIFFER_FETCH_BASE_DELAY = 1.0
-
-
 async def http_fetch_with_retry(
     client: httpx.AsyncClient,
     method: str,
@@ -2539,6 +2543,7 @@ async def http_fetch_with_retry(
     base_delay: float = _API_SNIFFER_FETCH_BASE_DELAY,
     raise_non_retryable: bool = False,
     retry_not_found: bool = False,
+    transient_403: bool = False,
 ) -> dict | None:
     """Fetch JSON via httpx with bounded retries (#2733).
 
@@ -2553,6 +2558,8 @@ async def http_fetch_with_retry(
           used by ``fetch_with_retry`` on the dom/sitemap path. Callers that
           cannot safely accept partial data pass ``raise_non_retryable=True``
           to preserve the status in :class:`PaginationFetchError` instead.
+          Callers with ``transient_403=True`` retry HTTP 401/403 and raise on
+          exhaustion so a blocked proxy exit cannot become an empty success.
 
     Raises:
         :class:`PaginationFetchError` after exhausting *retries* on
@@ -2606,7 +2613,12 @@ async def http_fetch_with_retry(
             last_exc = exc
             if status in (404, 410) and not retry_not_found:
                 return None
-            if not is_retryable_status(status) and not (retry_not_found and status in (404, 410)):
+            retryable = (
+                is_retryable_status(status)
+                or (retry_not_found and status in (404, 410))
+                or (transient_403 and status in (401, 403))
+            )
+            if not retryable:
                 # Other 4xx (auth, forbidden, bad-request) — not transient,
                 # not "end of pagination" canonically. Lenient stop with
                 # a warning so anomalies surface in logs.
@@ -2815,6 +2827,23 @@ async def _discover_http(
     """
     board_url = board["board_url"]
     api_url = config["api_url"]
+    transient_403 = config.get("transient_403", False)
+    if not isinstance(transient_403, bool):
+        raise ValueError("api_sniffer transient_403 must be a boolean")
+    transport_attempts = config.get("transport_attempts")
+    if transport_attempts is not None and (
+        not isinstance(transport_attempts, int)
+        or isinstance(transport_attempts, bool)
+        or not 1 <= transport_attempts <= _MAX_TRANSPORT_ATTEMPTS
+    ):
+        raise ValueError(
+            f"api_sniffer transport_attempts must be an integer from 1 to {_MAX_TRANSPORT_ATTEMPTS}"
+        )
+    http_retries = (
+        transport_attempts
+        if transient_403 and transport_attempts is not None
+        else _API_SNIFFER_FETCH_RETRIES
+    )
     params = config.get("params")
     if params:
         api_url = _merge_params(api_url, params)
@@ -2871,6 +2900,8 @@ async def _discover_http(
         headers,
         post_data,
         retry_not_found=empty_response is not None,
+        retries=http_retries,
+        transient_403=transient_403,
     )
 
     if data is None and api_url_match and pw is not None:
@@ -2912,7 +2943,15 @@ async def _discover_http(
             # outage. End-of-pagination (404) still falls through.
             log.info("api_sniffer.http_retry_live_url", old=api_url[:80], new=fresh_url[:80])
             api_url = fresh_url
-            data = await http_fetch_with_retry(client, method, api_url, headers, post_data)
+            data = await http_fetch_with_retry(
+                client,
+                method,
+                api_url,
+                headers,
+                post_data,
+                retries=http_retries,
+                transient_403=transient_403,
+            )
 
     if data is None:
         if empty_response is not None:
@@ -3027,6 +3066,8 @@ async def _discover_http(
                     fetch_url,
                     headers,
                     fetch_body,
+                    retries=http_retries,
+                    transient_403=transient_403,
                 )
                 if page_data is None:
                     break
@@ -3146,6 +3187,8 @@ async def _discover_http(
                         if url_field_match is not None
                         else None
                     ),
+                    fetch_retries=http_retries,
+                    transient_403=transient_403,
                 )
             else:
                 items = await paginate_all(
@@ -3154,6 +3197,8 @@ async def _discover_http(
                     page_cap,
                     item_projector=item_projector,
                     require_object_items=require_object_items,
+                    retries=http_retries,
+                    transient_403=transient_403,
                 )
                 total = job_result.total_count
         elif item_projector:

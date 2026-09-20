@@ -1563,3 +1563,56 @@ class TestPaginateAllWithFetchFn:
         assert exc_info.value.last_status == 401
         # Probe call (1) + page2 fetch (1) = 2 total — no retries on 401.
         assert call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_paginate_retries_403_when_opted_in(self, monkeypatch):
+        """Proxy-backed callers can rotate exits for a blocked list page."""
+        import httpx
+
+        from src.shared import api_sniff as api_sniff_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(api_sniff_module.asyncio, "sleep", AsyncMock())
+        page1_items = [{"title": f"Job {i}"} for i in range(10)]
+        call_count = 0
+
+        async def mock_fetch(method, url, headers, body):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return {"jobs": page1_items, "total": 50}
+            request = httpx.Request("GET", url)
+            response = httpx.Response(403, request=request)
+            raise httpx.HTTPStatusError("403 Forbidden", request=request, response=response)
+
+        ex = _make_exchange(
+            url="https://example.com/api/jobs?offset=0&limit=10",
+            body={"jobs": page1_items, "total": 50},
+        )
+        pag = PaginationInfo(
+            param_name="offset",
+            style="offset",
+            start_value=0,
+            increment=10,
+            location="query",
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items),
+            url_field=None,
+            total_count=50,
+            pagination=pag,
+        )
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await paginate_all(
+                mock_fetch,
+                result,
+                max_pages=5,
+                retries=5,
+                transient_403=True,
+            )
+
+        assert exc_info.value.attempts == 5
+        assert exc_info.value.last_status == 403
+        # One successful page-size probe plus five page-two attempts.
+        assert call_count == 6
