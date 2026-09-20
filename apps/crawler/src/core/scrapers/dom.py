@@ -1470,8 +1470,7 @@ def _apply_defaults(raw: dict, config: dict, *, url: str | None = None) -> dict:
 
     defaults_by_regex = config.get("defaults_by_regex")
     if defaults_by_regex is not None and (
-        not isinstance(defaults_by_regex, list)
-        or not 1 <= len(defaults_by_regex) <= 20
+        not isinstance(defaults_by_regex, list) or not 1 <= len(defaults_by_regex) <= 20
     ):
         raise ValueError("DOM scraper defaults_by_regex must contain 1-20 rules")
 
@@ -1486,12 +1485,7 @@ def _apply_defaults(raw: dict, config: dict, *, url: str | None = None) -> dict:
         rule_defaults = rule["defaults"]
         if not isinstance(field, str) or not field or len(field) > 128:
             raise ValueError("DOM scraper defaults_by_regex field must be a short string")
-        if (
-            not isinstance(pattern, str)
-            or not pattern
-            or len(pattern) > 512
-            or "\x00" in pattern
-        ):
+        if not isinstance(pattern, str) or not pattern or len(pattern) > 512 or "\x00" in pattern:
             raise ValueError("DOM scraper defaults_by_regex pattern must be 1-512 characters")
         if not isinstance(rule_defaults, dict) or not rule_defaults:
             raise ValueError("DOM scraper defaults_by_regex defaults must be a non-empty object")

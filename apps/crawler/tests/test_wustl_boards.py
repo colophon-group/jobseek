@@ -17,6 +17,12 @@ def _faculty_scraper_config() -> dict:
     return json.loads(row["scraper_config"])
 
 
+def _faculty_monitor_config() -> dict:
+    _, rows = read_csv(BOARDS_CSV)
+    row = next(item for item in rows if item["board_slug"] == "wustl-faculty")
+    return json.loads(row["monitor_config"])
+
+
 def _detail_html(title: str) -> str:
     return f"""
     <article>
@@ -86,6 +92,13 @@ def test_wustl_has_three_distinct_official_boards() -> None:
         "wustl-faculty",
         "wustl-interfolio",
     }
-    assert next(row for row in rows if row["board_slug"] == "wustl-interfolio")[
-        "scraper_type"
-    ] == "skip"
+    assert (
+        next(row for row in rows if row["board_slug"] == "wustl-interfolio")["scraper_type"]
+        == "skip"
+    )
+
+
+def test_wustl_faculty_excludes_evergreen_contact_only_record() -> None:
+    url_filter = _faculty_monitor_config()["url_filter"]
+
+    assert url_filter["exclude"] == "/Posting/Detail/1010162(?:[/?#]|$)"

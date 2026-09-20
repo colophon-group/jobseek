@@ -1275,9 +1275,7 @@ class TestDomScraper:
                 "allowed_host_suffixes": [".company.example"],
                 "min_chars": 50,
                 "scope": ".job-description",
-                "steps": [
-                    {"tag": "p", "field": "description", "html": True, "to_end": True}
-                ],
+                "steps": [{"tag": "p", "field": "description", "html": True, "to_end": True}],
             },
         }
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
