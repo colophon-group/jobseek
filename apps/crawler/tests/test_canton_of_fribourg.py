@@ -43,11 +43,46 @@ def test_main_board_uses_exact_required_scope_and_provider_identity() -> None:
     assert included.fullmatch("Kantonales Sozialamt")
     assert included.fullmatch("Justice de paix de l'arrondissement de la Glâne")
     assert included.fullmatch("Justice de paix de l'arrondissement de la Gruyère")
+    for service in (
+        "Tribunal cantonal",
+        "Service de la police du commerce",
+        "Amt für Gewerbepolizei",
+        "Jugendamt",
+        "Tribunal de l'arrondissement de la Sarine",
+        "Tribunal de l'arrondissement de la Glâne",
+        "Service de l'environnement",
+        "Amt für Umwelt",
+        "Secrétariat général de la Direction du développeme",
+        "Generalsekretariat der Direktion für Raumentwicklu",
+        "Service des subsides de formation",
+        "Grundbuchamt des Sensebezirks",
+        "Service de la mobilité",
+        "Amt für Mobilität",
+        "Service de l'enseignement secondaire du deuxième d",
+        "Amt für Unterricht der Sekundarstufe 2",
+        "Secrétariat général de la Direction des institutio",
+        "Generalsekretariat der Direktion der Institutionen",
+        "Service des forêts et de la nature",
+        "Amt für Wald und Natur",
+        "Service de l'informatique et des télécommunication",
+        "Service de la formation professionnelle",
+        "Amt für Berufsbildung",
+        "Musée d'art et d'histoire",
+        "Museum für Kunst und Geschichte",
+        "SENa - Service de l'état civil et des naturalisati",
+        "ZEiA - Amt für Zivilstand und Einbürgerung",
+        "Service des ponts et chaussées",
+        "Tiefbauamt",
+    ):
+        assert included.fullmatch(service)
     assert excluded.fullmatch("Unifr-7640 Département de Médecine")
     assert excluded.fullmatch("Réseau fribourgeois de santé mentale")
     assert excluded.fullmatch("Grangeneuve")
     assert excluded.fullmatch("Haute école d'ingénierie et d'architecture Fribour")
     assert excluded.fullmatch("Haute école d'ingénierie et d'architecture Fribourg")
+    assert excluded.fullmatch("Hochschule für Technik und Architektur Freiburg")
+    assert excluded.fullmatch("Haute école de santé Fribourg")
+    assert excluded.fullmatch("Hochschule für Gesundheit Freiburg")
     assert not included.search("Nouvelle institution autonome")
     assert not excluded.search("Nouvelle institution autonome")
 

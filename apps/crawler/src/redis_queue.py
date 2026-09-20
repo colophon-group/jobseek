@@ -34,6 +34,11 @@ Inflight (lease) tracking — see issues #3159 / #3173:
                                     is moved to ``deadletter:{wtype}`` for
                                     operator review instead of being
                                     re-enqueued.
+    monitor_repair_due:{wtype}    — HASH of inflight monitor member -> unix
+                                    timestamp. A config-repair sync records
+                                    its earliest requested deadline here so
+                                    the old run cannot restore a later
+                                    quarantine/backoff schedule.
     deadletter:{wtype}            — ZSET of poison-pill task descriptors
                                     (score = unix ts of last reap). Inspect
                                     with ``ZRANGE deadletter:simple 0 -1
