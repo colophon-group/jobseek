@@ -751,10 +751,8 @@ class TestRotatingProxyTransport:
 
 class TestClientFor:
     """``client_for(http, config)`` is a thin async-context-manager that
-    dedupes the skip_ssl branch across monitor_one / monitor_one_stream /
-    scrape_one (#2705). Two branches: skip_ssl truthy -> a fresh nossl
-    client (proxied when ``proxy`` is also truthy); falsy -> the outer
-    client passed in, unchanged."""
+    centralizes SSL and proxy routing across monitor_one /
+    monitor_one_stream / scrape_one (#2705)."""
 
     async def test_no_skip_ssl_yields_outer_client(self):
         outer = httpx.AsyncClient()
@@ -788,6 +786,39 @@ class TestClientFor:
             await outer.aclose()
 
         assert observed_use_proxy == [False]
+
+    async def test_proxy_yields_fresh_routed_client_for_direct_outer(self, monkeypatch):
+        routed = httpx.AsyncClient()
+        observed: list[tuple[bool, bool]] = []
+
+        def tracking_factory(*, verify: bool = True, use_proxy: bool = False):
+            observed.append((verify, use_proxy))
+            return routed
+
+        monkeypatch.setattr("src.shared.http.create_http_client", tracking_factory)
+
+        outer = httpx.AsyncClient()
+        try:
+            async with client_for(outer, {"proxy": True}) as client:
+                assert client is routed
+                assert client is not outer
+        finally:
+            await outer.aclose()
+
+        assert observed == [(True, True)]
+        assert routed.is_closed
+
+    async def test_proxy_reuses_an_already_routed_outer_client(self, monkeypatch):
+        def unexpected_factory(**kwargs):
+            raise AssertionError(f"unexpected replacement client: {kwargs}")
+
+        monkeypatch.setattr("src.shared.http.create_http_client", unexpected_factory)
+        routed = ProxyAwareAsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(200)))
+        try:
+            async with client_for(routed, {"proxy": True}) as client:
+                assert client is routed
+        finally:
+            await routed.aclose()
 
     async def test_skip_ssl_with_proxy_threads_use_proxy(self, monkeypatch):
         """Regression guard for #2659 (the bug PR #2682 fixed): when both

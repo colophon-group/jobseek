@@ -721,11 +721,11 @@ def create_nossl_http_client(*, use_proxy: bool = False) -> httpx.AsyncClient:
 async def client_for(http: httpx.AsyncClient, config: dict) -> AsyncIterator[httpx.AsyncClient]:
     """Yield the right httpx client for *config*.
 
-    If ``config["skip_ssl"]`` is truthy, build a fresh no-SSL-verify
-    client (routed through the active proxy when ``config["proxy"]``
-    is also truthy) and yield it inside an ``async with`` so it gets
-    aclosed on exit. Otherwise yield the outer ``http`` client
-    unchanged.
+    Build a fresh client when the config requests different transport
+    semantics from the outer client: disabled SSL verification, or proxy
+    routing when the caller supplied a direct client. Reuse an already-routed
+    :class:`ProxyAwareAsyncClient` so production and workspace callers that
+    construct per-board clients do not create a redundant proxy pool.
 
     Pure refactor of the duplicated branch at three call sites
     (monitor_one, monitor_one_stream, scrape_one). See #2705.
@@ -733,6 +733,9 @@ async def client_for(http: httpx.AsyncClient, config: dict) -> AsyncIterator[htt
     if config.get("skip_ssl"):
         async with create_nossl_http_client(use_proxy=bool(config.get("proxy"))) as nossl:
             yield nossl
+    elif config.get("proxy") and not isinstance(http, ProxyAwareAsyncClient):
+        async with create_http_client(use_proxy=True) as proxied:
+            yield proxied
     else:
         yield http
 
