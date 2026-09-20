@@ -1342,6 +1342,10 @@ class TestHealthcareSourceDetection:
         )
         assert config["json_path"] == "hits.hits"
         assert config["total_path"] == "hits.total.value"
+        assert config["post_data"] == {
+            "query": {"bool": {"must": {"match_all": {}}}},
+            "sort": ["_id"],
+        }
         assert config["pagination"] == {
             "param_name": "from",
             "style": "offset",
@@ -1354,6 +1358,18 @@ class TestHealthcareSourceDetection:
         assert config["url_template"] == (
             "https://pm.healthcaresource.com/CS/saratogacare/#/job/{job_id}"
         )
+        assert config["item_filter"] == {
+            "include": {
+                "_source.userArea.clientExternalIdentifier": ["saratogacare"],
+            },
+            "require_regex": {
+                "_source.userArea.jobPostingID": r"^[0-9]{1,32}$",
+            },
+            "dedupe_by": [
+                "_source.userArea.clientExternalIdentifier",
+                "_source.userArea.jobPostingID",
+            ],
+        }
         assert config["fields"]["description"] == "_source.userArea.jobSummary"
         assert config["items"] == 1
         assert config["total"] == 228
@@ -1487,6 +1503,46 @@ class TestHealthcareSourceDetection:
         assert all(job.description for job in jobs)
         assert all(job.locations == ["Saratoga Springs, NY"] for job in jobs)
         assert calls == 2
+
+    @pytest.mark.asyncio
+    async def test_runtime_filters_foreign_tenant_after_probe_sample(self):
+        payload = self._payload(total=6)
+        template = payload["hits"]["hits"][0]
+        hits = []
+        for index in range(6):
+            hit = json.loads(json.dumps(template))
+            hit["_id"] = f"1084_{18686 + index}"
+            hit["_source"]["title"] = f"Role {index}"
+            hit["_source"]["userArea"]["jobPostingID"] = 18686 + index
+            hits.append(hit)
+        hits[-1]["_source"]["userArea"]["clientExternalIdentifier"] = "foreigntenant"
+        hits[-1]["_source"]["userArea"]["jobPostingID"] = 99999
+        payload["hits"]["hits"] = hits
+
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=payload),
+        ):
+            config = await _healthcaresource_probe_config(
+                "https://pm.healthcaresource.com/CS/saratogacare",
+                AsyncMock(),
+            )
+        assert config is not None
+
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await monitor_one(
+                "https://pm.healthcaresource.com/CS/saratogacare",
+                "api_sniffer",
+                config,
+                client,
+            )
+
+        assert len(result.urls) == 5
+        assert all("/#/job/99999" not in url for url in result.urls)
+        assert result.security_filtered_count == 0
 
 
 class TestWpJobManagerDetection:
@@ -1825,6 +1881,35 @@ class TestItemFilter:
 
         assert scoped == [{"market": "global", "viewkey": "12ab34cd", "locale": "de"}]
         assert total == 1
+
+    def test_required_regex_and_dedupe_accept_integer_identity(self):
+        item_filter = _validated_item_filter(
+            {
+                "item_filter": {
+                    "require_regex": {"job_id": r"^[0-9]{1,32}$"},
+                    "dedupe_by": ["tenant", "job_id"],
+                }
+            }
+        )
+
+        scoped, total = _apply_item_filter(
+            [
+                {"tenant": "tenant", "job_id": 18686, "title": "first"},
+                {"tenant": "tenant", "job_id": 18686, "title": "duplicate"},
+            ],
+            item_filter,
+            advertised_total=2,
+        )
+
+        assert scoped == [{"tenant": "tenant", "job_id": 18686, "title": "first"}]
+        assert total == 1
+
+        with pytest.raises(ValueError, match="missing or invalid.*job_id"):
+            _apply_item_filter(
+                [{"tenant": "tenant", "job_id": True}],
+                item_filter,
+                advertised_total=1,
+            )
 
     @pytest.mark.parametrize("item", [{}, {"viewkey": ""}, {"viewkey": "invalid"}])
     def test_required_regex_rejects_missing_or_invalid_in_scope_identity(self, item):

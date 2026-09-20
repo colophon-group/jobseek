@@ -110,7 +110,7 @@ _HEALTHCARESOURCE_BOARD_PATH_RE = re.compile(
     r"^/CS/(?P<site>[A-Za-z0-9][A-Za-z0-9_-]{0,63})/?$",
     re.IGNORECASE,
 )
-_HEALTHCARESOURCE_JOB_ID_RE = re.compile(r"[0-9]{1,32}")
+_HEALTHCARESOURCE_JOB_ID_RE = re.compile(r"^[0-9]{1,32}$")
 _HEALTHCARESOURCE_PAGE_SIZE = 100
 _HEALTHCARESOURCE_MAX_PAGES = 500
 
@@ -739,7 +739,10 @@ async def _healthcaresource_probe_config(
         f"https://{_HEALTHCARESOURCE_HOST}/JobseekerSearchAPI/"
         f"{site}/api/Search?size={_HEALTHCARESOURCE_PAGE_SIZE}"
     )
-    post_data = {"query": {"bool": {"must": {"match_all": {}}}}}
+    post_data = {
+        "query": {"bool": {"must": {"match_all": {}}}},
+        "sort": ["_id"],
+    }
     request_headers = {
         "content-type": "application/json; charset=utf-8",
         "referer": canonical_board_url,
@@ -819,8 +822,20 @@ async def _healthcaresource_probe_config(
         "url_template_fields": {"job_id": "_source.userArea.jobPostingID"},
         "url_allowlist": (
             rf"^https://{re.escape(_HEALTHCARESOURCE_HOST)}/CS/"
-            rf"{re.escape(site)}/#/job/[0-9]+$"
+            rf"{re.escape(site)}/#/job/[0-9]{{1,32}}$"
         ),
+        "item_filter": {
+            "include": {
+                "_source.userArea.clientExternalIdentifier": [site],
+            },
+            "require_regex": {
+                "_source.userArea.jobPostingID": _HEALTHCARESOURCE_JOB_ID_RE.pattern,
+            },
+            "dedupe_by": [
+                "_source.userArea.clientExternalIdentifier",
+                "_source.userArea.jobPostingID",
+            ],
+        },
         "fields": {
             "title": "_source.title",
             "description": "_source.userArea.jobSummary",
@@ -2366,10 +2381,17 @@ def _apply_item_filter(
             else:
                 scoped.append(item)
 
+    def identity_text(value: object) -> str | None:
+        if isinstance(value, str) and value:
+            return value
+        if isinstance(value, int) and not isinstance(value, bool):
+            return str(value)
+        return None
+
     for item in scoped:
         for path, pattern in require_regex.items():
-            value = extract_field(item, path)
-            if not isinstance(value, str) or not value or pattern.fullmatch(value) is None:
+            value = identity_text(extract_field(item, path))
+            if value is None or pattern.fullmatch(value) is None:
                 raise ValueError(
                     "api_sniffer item_filter.require_regex rejected missing or invalid "
                     f"{path!r} identity"
@@ -2378,8 +2400,8 @@ def _apply_item_filter(
     if dedupe_by:
         grouped: dict[tuple[str, ...], list[dict]] = {}
         for item in scoped:
-            identity_parts = [extract_field(item, path) for path in dedupe_by]
-            if all(isinstance(part, str) and part for part in identity_parts):
+            identity_parts = [identity_text(extract_field(item, path)) for path in dedupe_by]
+            if all(part is not None for part in identity_parts):
                 identity = tuple(cast(str, part) for part in identity_parts)
                 grouped.setdefault(identity, []).append(item)
 
@@ -2413,8 +2435,8 @@ def _apply_item_filter(
 
         deduped: list[dict] = []
         for item in scoped:
-            identity_parts = [extract_field(item, path) for path in dedupe_by]
-            if not all(isinstance(part, str) and part for part in identity_parts):
+            identity_parts = [identity_text(extract_field(item, path)) for path in dedupe_by]
+            if not all(part is not None for part in identity_parts):
                 deduped.append(item)
                 continue
             identity = tuple(cast(str, part) for part in identity_parts)
