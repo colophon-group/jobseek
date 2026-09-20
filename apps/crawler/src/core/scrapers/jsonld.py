@@ -173,10 +173,13 @@ async def _fetch_html(
     http: httpx.AsyncClient,
     *,
     headers: dict[str, str] | None = None,
+    retry_403_limit: int = 1,
+    transport_retry_limit: int = 0,
+    retry_budget: int | None = None,
 ) -> str:
     """GET the page with bounded provider/status-aware retries."""
 
-    retry_limits = {403: 1}
+    retry_limits = {403: retry_403_limit}
     if is_avature_job_detail_url(url):
         retry_limits[406] = 2
     response = await fetch_response_with_status_retries(
@@ -184,6 +187,8 @@ async def _fetch_html(
         url,
         retry_limits=retry_limits,
         headers=headers,
+        transport_retry_limit=transport_retry_limit,
+        retry_budget=retry_budget,
         log_event="jsonld.fetch.retry_status",
     )
     response.raise_for_status()
@@ -230,6 +235,19 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
     """Extract job data from JSON-LD on a page."""
     request_headers = config.get("request_headers") or {}
     headers = clean_headers(request_headers)
+    retry_403_limit = 1
+    transport_retry_limit = 0
+    retry_budget: int | None = None
+    if config.get("proxy") and "transport_attempts" in config:
+        attempts = min(
+            _MAX_TRANSPORT_ATTEMPTS,
+            max(1, int(config["transport_attempts"])),
+        )
+        # Preserve the legacy single retry while allowing explicitly
+        # configured proxy pools to rotate through additional blocked exits.
+        retry_403_limit = max(retry_403_limit, attempts - 1)
+        transport_retry_limit = attempts - 1
+        retry_budget = retry_403_limit
 
     async def load_html() -> str:
         if config.get("render"):
@@ -237,7 +255,14 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
 
             browser_config = {key: value for key, value in config.items() if key in BROWSER_KEYS}
             return await _render_with_origin_block_recovery(url, browser_config, pw=pw)
-        return await _fetch_html(url, http, headers=headers or None)
+        return await _fetch_html(
+            url,
+            http,
+            headers=headers or None,
+            retry_403_limit=retry_403_limit,
+            transport_retry_limit=transport_retry_limit,
+            retry_budget=retry_budget,
+        )
 
     html = ""
     content = JobContent()
@@ -248,7 +273,14 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
             break
         iframe_url = _icims_iframe_url(url, html)
         if iframe_url is not None:
-            iframe_html = await _fetch_html(iframe_url, http, headers=headers or None)
+            iframe_html = await _fetch_html(
+                iframe_url,
+                http,
+                headers=headers or None,
+                retry_403_limit=retry_403_limit,
+                transport_retry_limit=transport_retry_limit,
+                retry_budget=retry_budget,
+            )
             iframe_content = parse_rendered_html(iframe_url, config, iframe_html)
             if iframe_content.title:
                 html = iframe_html

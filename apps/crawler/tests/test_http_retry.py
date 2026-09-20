@@ -72,6 +72,53 @@ class TestFetchResponseWithStatusRetries:
         assert response.status_code == 422
         assert client.get.await_count == 1
 
+    async def test_status_and_transport_retries_share_the_total_budget(self):
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[
+                _resp(403),
+                httpx.ReadTimeout("blocked exit timed out"),
+                httpx.ConnectError("blocked exit refused connection"),
+                _resp(403),
+                _resp(200),
+            ]
+        )
+        sleep = AsyncMock()
+
+        response = await fetch_response_with_status_retries(
+            client,
+            "https://example.com/job",
+            retry_limits={403: 4},
+            transport_retry_limit=4,
+            retry_budget=4,
+            base_delay=0.001,
+            sleep=sleep,
+        )
+
+        assert response.status_code == 200
+        assert client.get.await_count == 5
+        assert sleep.await_count == 4
+
+    async def test_transport_error_surfaces_when_shared_budget_is_exhausted(self):
+        client = AsyncMock()
+        terminal = httpx.ReadTimeout("terminal blocked exit")
+        client.get = AsyncMock(side_effect=[_resp(403), terminal])
+        sleep = AsyncMock()
+
+        with pytest.raises(httpx.ReadTimeout, match="terminal blocked exit"):
+            await fetch_response_with_status_retries(
+                client,
+                "https://example.com/job",
+                retry_limits={403: 4},
+                transport_retry_limit=4,
+                retry_budget=1,
+                base_delay=0.001,
+                sleep=sleep,
+            )
+
+        assert client.get.await_count == 2
+        assert sleep.await_count == 1
+
     async def test_follows_same_origin_locale_redirect_without_changing_identity(self):
         requested: list[str] = []
 
