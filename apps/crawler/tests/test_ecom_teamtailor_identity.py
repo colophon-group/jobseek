@@ -98,6 +98,19 @@ def test_new_europe_vanity_host_collapses_to_current_numeric_url() -> None:
     assert transformed.urls == {"https://ecomeurope.teamtailor.com/jobs/8120504"}
 
 
+def test_new_usa_vanity_host_collapses_to_current_numeric_url() -> None:
+    config = _config()
+    url = "https://careersusa.ecomtrading.com/jobs/8281827-coffee-trade-intern"
+    result = MonitorResult(
+        urls={url},
+        jobs_by_url={url: DiscoveredJob(url=url, title="Coffee Trade Intern")},
+    )
+
+    transformed = _apply_url_transform(_apply_url_allowlist(result, config), config)
+
+    assert transformed.urls == {"https://ecomus.teamtailor.com/jobs/8281827"}
+
+
 def test_provider_boundary_rejects_unreviewed_teamtailor_hosts() -> None:
     config = _config()
     url = "https://unrelated.teamtailor.com/jobs/8224594-field-technicians"

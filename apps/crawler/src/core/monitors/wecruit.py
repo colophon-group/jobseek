@@ -191,6 +191,8 @@ async def _fetch_listing_page(
     recruit_type: int,
     page: int,
     client: httpx.AsyncClient,
+    *,
+    page_size: int = PAGE_SIZE,
 ) -> tuple[list[dict], int, int, int]:
     url = f"{tenant.origin}/wecruit/positionInfo/listPosition/SU{tenant.suite_key}"
     payload = await _post_json(
@@ -199,7 +201,7 @@ async def _fetch_listing_page(
         {
             "isFrompb": "true",
             "recruitType": recruit_type,
-            "pageSize": PAGE_SIZE,
+            "pageSize": page_size,
             "currentPage": page,
         },
         event="wecruit.list_backoff",
@@ -264,7 +266,11 @@ async def _fetch_listings_once(
         lane_rows = first_rows
         for page in range(2, total_pages + 1):
             rows, total, pages, runtime_page_size = await _fetch_listing_page(
-                tenant, recruit_type, page, client
+                tenant,
+                recruit_type,
+                page,
+                client,
+                page_size=page_size,
             )
             if total != expected_total or pages != total_pages or runtime_page_size != page_size:
                 raise _SnapshotChanged(f"Wecruit lane {recruit_type} changed during pagination")

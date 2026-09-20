@@ -166,6 +166,33 @@ async def test_discover_paginates_and_joins_rich_details():
 
 
 @pytest.mark.asyncio
+async def test_listing_pagination_reuses_provider_page_size():
+    post_ids = ["6aa3d91b5e0f494d82a9809c", "6aa3973bded00b8cb69c0f49"]
+    requested_page_sizes: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        form = _form(request)
+        page = int(form["currentPage"])
+        requested_page_sizes.append(int(form["pageSize"]))
+        return httpx.Response(
+            200,
+            json=_list_payload(
+                [_row(post_ids[page - 1])],
+                total=2,
+                page=page,
+                page_size=1,
+            ),
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        rows, truncated = await _fetch_listings(_Tenant(ORIGIN, SUITE), (2,), client)
+
+    assert [row["postId"] for row in rows] == post_ids
+    assert truncated is False
+    assert requested_page_sizes == [50, 1]
+
+
+@pytest.mark.asyncio
 async def test_discover_rejects_changed_listing_total():
     post_ids = ["6aa3d91b5e0f494d82a9809c", "6aa3973bded00b8cb69c0f49"]
 
