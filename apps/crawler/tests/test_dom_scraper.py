@@ -1163,6 +1163,200 @@ class TestDomScraper:
                 },
             )
 
+    def test_parse_html_applies_first_matching_regex_defaults_before_board_defaults(self):
+        from src.core.scrapers.dom import parse_html
+
+        config = {
+            "steps": [
+                {"tag": "h1", "field": "title"},
+                {"tag": "p", "field": "description", "html": True},
+            ],
+            "defaults": {"locations": ["Missouri, United States"]},
+            "defaults_by_regex": [
+                {
+                    "field": "title",
+                    "pattern": r"(?i)\bremote\b",
+                    "defaults": {
+                        "locations": ["United States"],
+                        "job_location_type": "remote",
+                    },
+                },
+                {
+                    "field": "description",
+                    "pattern": "radiologist",
+                    "defaults": {"locations": ["Ignored later match"]},
+                },
+            ],
+        }
+
+        result = parse_html(
+            "<h1>Diagnostic Radiologist - Remote</h1><p>Join our radiologists.</p>",
+            config,
+        )
+
+        assert result.locations == ["United States"]
+        assert result.job_location_type == "remote"
+
+    def test_regex_defaults_never_replace_extracted_fields(self):
+        from src.core.scrapers.dom import parse_html
+
+        result = parse_html(
+            "<h1>Remote Engineer</h1><p>Toronto, Canada</p>",
+            {
+                "steps": [
+                    {"tag": "h1", "field": "title"},
+                    {"tag": "p", "field": "locations"},
+                ],
+                "defaults_by_regex": [
+                    {
+                        "field": "title",
+                        "pattern": "Remote",
+                        "defaults": {"locations": ["United States"]},
+                    }
+                ],
+            },
+        )
+
+        assert result.locations == ["Toronto, Canada"]
+
+    @pytest.mark.parametrize(
+        "rules",
+        [
+            {},
+            [],
+            ["remote"],
+            [{"field": "title", "pattern": "Remote"}],
+            [{"field": "", "pattern": "Remote", "defaults": {"locations": ["US"]}}],
+            [{"field": "title", "pattern": "(", "defaults": {"locations": ["US"]}}],
+            [{"field": "title", "pattern": "Remote", "defaults": {}}],
+        ],
+    )
+    def test_parse_html_rejects_invalid_regex_defaults(self, rules):
+        from src.core.scrapers.dom import parse_html
+
+        with pytest.raises(ValueError, match="defaults_by_regex"):
+            parse_html(
+                "<h1>Remote Engineer</h1>",
+                {
+                    "steps": [{"tag": "h1", "field": "title"}],
+                    "defaults_by_regex": rules,
+                },
+            )
+
+    async def test_linked_description_replaces_short_pointer_only_content(self):
+        from src.core.scrapers.dom import scrape
+
+        source_url = "https://jobs.company.example/positions/42"
+        linked_url = "https://department.company.example/jobs/full-role"
+        responses = {
+            source_url: """
+                <h1>Research Professor</h1>
+                <div class="summary"><a class="full-description"
+                  href="https://department.company.example/jobs/full-role">Learn more</a></div>
+            """,
+            linked_url: """
+                <main><div class="job-description">
+                  <p>Lead a multidisciplinary research program and mentor faculty trainees.</p>
+                  <p>Publish original scholarship and collaborate across departments.</p>
+                </div></main>
+            """,
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, text=responses[str(request.url)], request=request)
+
+        config = {
+            "steps": [
+                {"tag": "h1", "field": "title"},
+                {"tag": "div", "attr": "class=summary", "field": "description", "html": True},
+            ],
+            "linked_description": {
+                "selector": "a.full-description",
+                "allowed_host_suffixes": [".company.example"],
+                "min_chars": 50,
+                "scope": ".job-description",
+                "steps": [{"tag": "p", "field": "description", "html": True, "to_end": True}],
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(source_url, config, client)
+
+        assert result.title == "Research Professor"
+        assert result.description is not None
+        assert "multidisciplinary research program" in result.description
+        assert "collaborate across departments" in result.description
+        assert "Learn more" not in result.description
+
+    async def test_linked_description_rejects_link_outside_allowlist(self):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "steps": [
+                {"tag": "h1", "field": "title"},
+                {"tag": "p", "field": "description", "html": True},
+            ],
+            "linked_description": {
+                "selector": "a.full-description",
+                "allowed_host_suffixes": [".company.example"],
+                "min_chars": 50,
+                "steps": [{"tag": "p", "field": "description", "html": True}],
+            },
+        }
+        html = (
+            '<h1>Role</h1><p><a class="full-description" '
+            'href="https://untrusted.example/jobs/42">Learn more</a></p>'
+        )
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=html, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="outside allowed HTTPS hosts"):
+                await scrape("https://jobs.company.example/positions/42", config, client)
+
+    async def test_linked_description_rejects_redirect_before_unallowlisted_request(self):
+        from src.core.scrapers.dom import scrape
+
+        source_url = "https://jobs.company.example/positions/42"
+        linked_url = "https://department.company.example/jobs/full-role"
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            if str(request.url) == source_url:
+                return httpx.Response(
+                    200,
+                    text=(
+                        '<h1>Role</h1><p><a class="full-description" '
+                        f'href="{linked_url}">Learn more</a></p>'
+                    ),
+                    request=request,
+                )
+            if str(request.url) == linked_url:
+                return httpx.Response(
+                    302,
+                    headers={"Location": "https://untrusted.example/private"},
+                    request=request,
+                )
+            raise AssertionError("unallowlisted redirect target must not be requested")
+
+        config = {
+            "steps": [
+                {"tag": "h1", "field": "title"},
+                {"tag": "p", "field": "description", "html": True},
+            ],
+            "linked_description": {
+                "selector": "a.full-description",
+                "allowed_host_suffixes": [".company.example"],
+                "min_chars": 50,
+                "steps": [{"tag": "p", "field": "description", "html": True}],
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="redirect left allowed hosts"):
+                await scrape(source_url, config, client)
+
+        assert requested == [source_url, linked_url]
+
     def test_kontact_probe_builds_clean_extraction_config(self):
         from src.core.scrapers.dom import can_handle, parse_html
 

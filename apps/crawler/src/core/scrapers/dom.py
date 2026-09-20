@@ -38,7 +38,7 @@ import json
 import re
 from html import escape
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import structlog
@@ -56,6 +56,8 @@ from src.shared.public_request_headers import public_get, validated_public_reque
 log = structlog.get_logger()
 
 _RENDER_CHALLENGE_RETRIES = 1
+_LINKED_DESCRIPTION_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+_MAX_LINKED_DESCRIPTION_REDIRECTS = 10
 
 _LUCCA_SCRAPER_CONFIG = {
     "scope": ".jobOffer-article",
@@ -1455,10 +1457,45 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
 
 
 def _apply_defaults(raw: dict, config: dict, *, url: str | None = None) -> dict:
-    """Fill fields extraction missed from board- and posting-scoped defaults."""
+    """Fill fields extraction missed from conditional, board, and URL defaults.
+
+    ``defaults_by_regex`` is intentionally narrow: rules inspect one already
+    extracted string field and the first match supplies defaults.  This lets a
+    board distinguish explicit remote/hybrid roles from its ordinary location
+    without turning free-form prose into an inferred location.  Extracted
+    values always win, followed by URL-specific, conditional, and board-wide
+    defaults.
+    """
     defaults = config.get("defaults")
     if defaults is not None and not isinstance(defaults, dict):
         raise ValueError("DOM scraper defaults must be an object")
+
+    defaults_by_regex = config.get("defaults_by_regex")
+    if defaults_by_regex is not None and (
+        not isinstance(defaults_by_regex, list) or not 1 <= len(defaults_by_regex) <= 20
+    ):
+        raise ValueError("DOM scraper defaults_by_regex must contain 1-20 rules")
+
+    compiled_rules: list[tuple[str, re.Pattern[str], dict]] = []
+    for rule in defaults_by_regex or []:
+        if not isinstance(rule, dict) or set(rule) != {"field", "pattern", "defaults"}:
+            raise ValueError(
+                "DOM scraper defaults_by_regex rules require field, pattern, and defaults"
+            )
+        field = rule["field"]
+        pattern = rule["pattern"]
+        rule_defaults = rule["defaults"]
+        if not isinstance(field, str) or not field or len(field) > 128:
+            raise ValueError("DOM scraper defaults_by_regex field must be a short string")
+        if not isinstance(pattern, str) or not pattern or len(pattern) > 512 or "\x00" in pattern:
+            raise ValueError("DOM scraper defaults_by_regex pattern must be 1-512 characters")
+        if not isinstance(rule_defaults, dict) or not rule_defaults:
+            raise ValueError("DOM scraper defaults_by_regex defaults must be a non-empty object")
+        try:
+            compiled = re.compile(pattern)
+        except re.error as exc:
+            raise ValueError("DOM scraper defaults_by_regex pattern is invalid") from exc
+        compiled_rules.append((field, compiled, rule_defaults))
 
     defaults_by_url = config.get("defaults_by_url")
     if defaults_by_url is not None and not isinstance(defaults_by_url, dict):
@@ -1472,11 +1509,23 @@ def _apply_defaults(raw: dict, config: dict, *, url: str | None = None) -> dict:
         if url is not None:
             posting_defaults = defaults_by_url.get(url) or {}
 
-    if defaults is None and not posting_defaults:
+    conditional_defaults: dict = {}
+    for field, pattern, rule_defaults in compiled_rules:
+        value = raw.get(field)
+        if isinstance(value, str) and pattern.search(value):
+            conditional_defaults = rule_defaults
+            break
+
+    if defaults is None and not conditional_defaults and not posting_defaults:
         return raw
 
     merged = dict(raw)
-    for field, value in {**(defaults or {}), **posting_defaults}.items():
+    effective_defaults = {
+        **(defaults or {}),
+        **conditional_defaults,
+        **posting_defaults,
+    }
+    for field, value in effective_defaults.items():
         if merged.get(field) in (None, "", []):
             merged[field] = value
     return merged
@@ -1493,6 +1542,178 @@ def _document_fallback_config(config: dict) -> dict | None:
         if not isinstance(kind_config, dict):
             raise ValueError(f"DOM scraper document_fallback.{kind} must be an object")
     return value
+
+
+def _linked_description_config(config: dict) -> dict | None:
+    """Validate a bounded fallback to one explicitly linked description page."""
+
+    value = config.get("linked_description")
+    if value is None:
+        return None
+    allowed_keys = {
+        "selector",
+        "allowed_host_suffixes",
+        "min_chars",
+        "scope",
+        "steps",
+        "include_header_content",
+    }
+    if not isinstance(value, dict) or set(value) - allowed_keys:
+        raise ValueError("DOM scraper linked_description has unsupported keys")
+    selector = value.get("selector")
+    if not isinstance(selector, str) or not selector or len(selector) > 256:
+        raise ValueError("DOM scraper linked_description selector must be 1-256 characters")
+    suffixes = value.get("allowed_host_suffixes")
+    if (
+        not isinstance(suffixes, list)
+        or not 1 <= len(suffixes) <= 4
+        or any(
+            not isinstance(suffix, str)
+            or not suffix.startswith(".")
+            or len(suffix) > 253
+            or "/" in suffix
+            for suffix in suffixes
+        )
+    ):
+        raise ValueError(
+            "DOM scraper linked_description allowed_host_suffixes must contain "
+            "1-4 dotted DNS suffixes"
+        )
+    min_chars = value.get("min_chars", 200)
+    if not isinstance(min_chars, int) or isinstance(min_chars, bool) or not 50 <= min_chars <= 5000:
+        raise ValueError("DOM scraper linked_description min_chars must be 50-5000")
+    steps = value.get("steps")
+    if not isinstance(steps, list) or not steps:
+        raise ValueError("DOM scraper linked_description steps must be a non-empty list")
+    linked_config = {
+        key: item
+        for key, item in value.items()
+        if key in {"scope", "steps", "include_header_content"}
+    }
+    return {
+        "selector": selector,
+        "allowed_host_suffixes": [suffix.casefold() for suffix in suffixes],
+        "min_chars": min_chars,
+        "parse_config": linked_config,
+    }
+
+
+def _description_text_length(description: str | None) -> int:
+    if not description:
+        return 0
+    return len(LexborHTMLParser(description).text(separator=" ", strip=True))
+
+
+def _validated_linked_description_target(
+    url: str,
+    config: dict,
+    *,
+    redirect: bool,
+) -> str:
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").casefold()
+    if parsed.scheme.casefold() != "https" or not any(
+        host == suffix.removeprefix(".") or host.endswith(suffix)
+        for suffix in config["allowed_host_suffixes"]
+    ):
+        target = "redirect left allowed hosts" if redirect else "URL is outside allowed HTTPS hosts"
+        raise ValueError(f"DOM scraper linked_description {target}")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("DOM scraper linked_description URL must not contain credentials")
+    try:
+        _port = parsed.port
+    except ValueError as exc:
+        raise ValueError("DOM scraper linked_description URL has an invalid port") from exc
+    return url
+
+
+def _linked_description_url(html: str, source_url: str, config: dict) -> str:
+    try:
+        links = LexborHTMLParser(html).css(config["selector"])
+    except (TypeError, ValueError) as exc:
+        raise ValueError("DOM scraper linked_description selector is invalid") from exc
+    if len(links) != 1:
+        raise ValueError(
+            "DOM scraper linked_description selector must match exactly one link "
+            f"(matched {len(links)})"
+        )
+    href = links[0].attributes.get("href")
+    if not href:
+        raise ValueError("DOM scraper linked_description link has no href")
+    return _validated_linked_description_target(
+        urljoin(source_url, href),
+        config,
+        redirect=False,
+    )
+
+
+async def _fetch_linked_description(
+    http: httpx.AsyncClient,
+    url: str,
+    config: dict,
+) -> httpx.Response:
+    """Fetch an allowlisted page without issuing an unvalidated redirect hop."""
+
+    current_url = url
+    visited = {url}
+    for redirects_followed in range(_MAX_LINKED_DESCRIPTION_REDIRECTS + 1):
+        _validated_linked_description_target(current_url, config, redirect=True)
+        response = await fetch_response_with_status_retries(
+            http,
+            current_url,
+            retry_limits={429: 2, 500: 2, 502: 2, 503: 2, 504: 2},
+            follow_redirects=False,
+            log_event="dom.linked_description.retry_status",
+        )
+        status = response.status_code
+        if not 300 <= status < 400:
+            return response
+        if status not in _LINKED_DESCRIPTION_REDIRECT_STATUSES:
+            await response.aclose()
+            raise ValueError(
+                f"DOM scraper linked_description received unsupported redirect status {status}"
+            )
+        locations = response.headers.get_list("location")
+        if len(locations) != 1 or not locations[0].strip():
+            await response.aclose()
+            raise ValueError(
+                "DOM scraper linked_description redirect must have exactly one Location"
+            )
+        next_url = urljoin(str(response.url), locations[0].strip())
+        await response.aclose()
+        _validated_linked_description_target(next_url, config, redirect=True)
+        if next_url in visited:
+            raise ValueError("DOM scraper linked_description redirect loop detected")
+        if redirects_followed == _MAX_LINKED_DESCRIPTION_REDIRECTS:
+            raise ValueError("DOM scraper linked_description redirect limit exceeded")
+        visited.add(next_url)
+        current_url = next_url
+
+    raise AssertionError("unreachable")
+
+
+async def _fill_linked_description(
+    content: JobContent,
+    html: str,
+    source_url: str,
+    config: dict | None,
+    http: httpx.AsyncClient,
+) -> JobContent:
+    """Replace a short pointer-only description from one allowlisted linked page."""
+
+    if config is None or _description_text_length(content.description) >= config["min_chars"]:
+        return content
+    linked_url = _linked_description_url(html, source_url, config)
+    response = await _fetch_linked_description(http, linked_url, config)
+    response.raise_for_status()
+    from src.shared.tdm import check_response as check_tdm_response
+
+    check_tdm_response(response, body_excerpt=response.text[:64_000])
+    linked_content = parse_html(response.text, config["parse_config"])
+    if _description_text_length(linked_content.description) < config["min_chars"]:
+        raise ValueError("DOM scraper linked_description did not produce a complete description")
+    content.description = linked_content.description
+    return content
 
 
 async def _parse_static_document(
@@ -1573,6 +1794,7 @@ async def _scrape_once(
     if not isinstance(same_origin_redirects, bool):
         raise ValueError("DOM scraper same_origin_redirects must be a boolean")
     document_fallback = _document_fallback_config(config)
+    linked_description = _linked_description_config(config)
     request_headers = validated_public_request_headers(
         config.get("request_headers"), owner="DOM scraper"
     )
@@ -1690,6 +1912,7 @@ async def _scrape_once(
         html = resp.text
         _raise_if_bot_challenge(str(resp.url), html)
 
+    source_html = html
     config = _runtime_config(html, config)
     steps = config["steps"]
     html = _scope_html(html, config)
@@ -1708,6 +1931,13 @@ async def _scrape_once(
     raw, _ = walk_steps(elements, steps, start=start)
     raw = _apply_defaults(raw, config, url=url)
     content = _map_to_job_content(raw)
+    content = await _fill_linked_description(
+        content,
+        source_html,
+        url,
+        linked_description,
+        http,
+    )
 
     log.debug("dom.extracted", url=url, fields=[k for k, v in raw.items() if v is not None])
     return content

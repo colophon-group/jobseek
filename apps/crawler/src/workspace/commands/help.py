@@ -3753,6 +3753,25 @@ dom — Step-based Extraction Engine
           "locations": ["London, United Kingdom"]
         }
       },
+      "defaults_by_regex": [
+        {
+          "field": "title",
+          "pattern": "(?i)\\bremote\\b",
+          "defaults": {
+            "locations": ["United States"],
+            "job_location_type": "remote"
+          }
+        }
+      ],
+      "linked_description": {
+        "selector": "a.full-description",
+        "allowed_host_suffixes": [".company.example"],
+        "min_chars": 200,
+        "scope": "main .job-description",
+        "steps": [
+          {"tag": "p", "field": "description", "html": true, "to_end": true}
+        ]
+      },
       "wait": "networkidle"
     }
 
@@ -3763,6 +3782,19 @@ dom — Step-based Extraction Engine
                    Use for small stable boards whose detail pages expose a
                    generic heading or omit per-role locations. Extracted
                    values always win; unmatched URLs receive no URL defaults.
+    defaults_by_regex
+                   Ordered list of 1-20 conditional default rules. Each rule
+                   matches one already-extracted string field against a regex;
+                   the first match supplies missing fields only. Use for an
+                   explicit title marker such as "Remote" or "Hybrid", not to
+                   infer a location from ambiguous prose. URL-specific and
+                   extracted values take precedence.
+    linked_description
+                   Static fallback for a short pointer-only description. The
+                   selector must match exactly one HTTPS link on an allowlisted
+                   DNS suffix. The linked page is parsed with its own scope and
+                   steps, must meet min_chars, and replaces only the incomplete
+                   description. Redirects outside the suffix fail closed.
     request_headers
                    Static-only allowlisted public request headers (Accept,
                    Accept-Language, Cache-Control, Pragma, or User-Agent).
