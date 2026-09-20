@@ -1374,6 +1374,7 @@ cargomatic,cargomatic-greenhouse,https://job-boards.greenhouse.io/cargomatic,gre
 cargurus,cargurus-greenhouse,https://job-boards.greenhouse.io/cargurus,greenhouse,"{""token"": ""cargurus""}",skip,
 caribou,caribou-ashby,https://jobs.ashbyhq.com/caribou,ashby,"{""token"": ""caribou""}",skip,
 caribou-financial,caribou-financial-greenhouse,https://job-boards.greenhouse.io/caribou,greenhouse,"{""token"": ""caribou""}",skip,
+carilion-clinic,carilion-clinic-careers,https://carilionclinic.wd12.myworkdayjobs.com/external_careers,workday,,workday,
 carmasec-gmbh-co-kg,carmasec-gmbh-co-kg-join,https://join.com/companies/carmasec,join,"{""slug"": ""carmasec""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 carmax,carmax-careers,https://carmax.wd1.myworkdayjobs.com/external,workday,,workday,
 carmax,carmax-careers-edmunds,https://careers.jobscore.com/careers/edmunds,dom,"{""render"": false, ""link_selector"": ""a[href^=\""/careers/edmunds/jobs/\""]"", ""url_filter"": ""/careers/edmunds/jobs/""}",json-ld,
