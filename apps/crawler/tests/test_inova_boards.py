@@ -37,12 +37,13 @@ def test_inova_metadata_and_assets_are_complete() -> None:
     assert staged or uploaded
 
 
-def test_inova_keeps_both_verified_oracle_sites_proxy_routed() -> None:
+def test_inova_keeps_complete_oracle_inventory_proxy_routed() -> None:
     boards = {row["board_slug"]: row for row in _rows("boards.csv", "company_slug")}
 
-    assert set(boards) == {"inova-careers", "inova-heart-vascular"}
+    # CX_2001's inventory is a strict subset of CX_1. Keeping both sites would
+    # emit the same requisitions under different site-specific URLs.
+    assert set(boards) == {"inova-careers"}
     assert boards["inova-careers"]["board_url"].endswith("/sites/CX_1")
-    assert boards["inova-heart-vascular"]["board_url"].endswith("/sites/CX_2001")
 
     for board in boards.values():
         assert board["monitor_type"] == board["scraper_type"] == "oracle_hcm"
