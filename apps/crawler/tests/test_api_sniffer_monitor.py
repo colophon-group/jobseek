@@ -26,6 +26,7 @@ from src.core.monitors.api_sniffer import (
     _discover_live_url,
     _extract_rich,
     _extract_urls_from_template,
+    _healthcaresource_probe_config,
     _lumesse_config_overrides,
     _matches_explicit_empty_response,
     _matches_url_field_contract,
@@ -1295,6 +1296,255 @@ class TestProspectiveDetection:
                 )
 
 
+class TestHealthcareSourceDetection:
+    @staticmethod
+    def _payload(*, total: int = 1, site: str = "saratogacare") -> dict:
+        return {
+            "hits": {
+                "total": {"value": total, "relation": "eq"},
+                "hits": [
+                    {
+                        "_id": "1084_18686",
+                        "_source": {
+                            "datePosted": "2026-09-01T00:00:00Z",
+                            "employmentType": "Full-Time",
+                            "hiringOrganization": {"name": "Saratoga Hospital"},
+                            "jobLocation": {
+                                "address": {"addressLocalityRegion": "Saratoga Springs, NY"}
+                            },
+                            "title": "Registered Nurse",
+                            "userArea": {
+                                "clientExternalIdentifier": site,
+                                "jobPostingID": 18686,
+                                "requisitionNumber": "83902",
+                                "jobSummary": "Provide direct patient care.",
+                            },
+                        },
+                    }
+                ],
+            }
+        }
+
+    @pytest.mark.asyncio
+    async def test_builds_rich_tenant_scoped_config_without_playwright(self):
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=self._payload(total=228)),
+        ) as fetch:
+            config = await _healthcaresource_probe_config(
+                "https://pm.healthcaresource.com/CS/saratogacare",
+                AsyncMock(),
+            )
+
+        assert config is not None
+        assert config["api_url"] == (
+            "https://pm.healthcaresource.com/JobseekerSearchAPI/saratogacare/api/Search?size=100"
+        )
+        assert config["json_path"] == "hits.hits"
+        assert config["total_path"] == "hits.total.value"
+        assert config["post_data"] == {
+            "query": {"bool": {"must": {"match_all": {}}}},
+            "sort": ["_id"],
+        }
+        assert config["pagination"] == {
+            "param_name": "from",
+            "style": "offset",
+            "start_value": 0,
+            "increment": 100,
+            "location": "body",
+            "page_size": 100,
+            "max_pages": 500,
+        }
+        assert config["url_template"] == (
+            "https://pm.healthcaresource.com/CS/saratogacare/#/job/{job_id}"
+        )
+        assert config["item_filter"] == {
+            "include": {
+                "_source.userArea.clientExternalIdentifier": ["saratogacare"],
+            },
+            "require_regex": {
+                "_source.userArea.jobPostingID": r"^[0-9]{1,32}$",
+            },
+            "dedupe_by": [
+                "_source.userArea.clientExternalIdentifier",
+                "_source.userArea.jobPostingID",
+            ],
+        }
+        assert config["fields"]["description"] == "_source.userArea.jobSummary"
+        assert config["items"] == 1
+        assert config["total"] == 228
+        assert fetch.await_args.args[1:3] == (
+            "POST",
+            config["api_url"],
+        )
+
+    @pytest.mark.asyncio
+    async def test_can_handle_uses_direct_detection_without_playwright(self):
+        expected = {"api_url": "https://pm.healthcaresource.com/api"}
+        with patch(
+            "src.core.monitors.api_sniffer._healthcaresource_probe_config",
+            AsyncMock(return_value=expected),
+        ):
+            config = await can_handle(
+                "https://pm.healthcaresource.com/CS/saratogacare",
+                AsyncMock(),
+                pw=None,
+            )
+
+        assert config is expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://pm.healthcaresource.com/CS/saratogacare",
+            "https://pm.healthcaresource.com/CS/",
+            "https://pm.healthcaresource.com/other/saratogacare",
+            "https://pm.healthcaresource.com.evil.test/CS/saratogacare",
+            "https://example.com/CS/saratogacare",
+            "https://pm.healthcaresource.com/CS/saratogacare?tenant=other",
+            "https://pm.healthcaresource.com/CS/saratogacare#/job/18686",
+        ],
+    )
+    async def test_rejects_non_board_urls_without_fetching(self, url):
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(),
+        ) as fetch:
+            assert await _healthcaresource_probe_config(url, AsyncMock()) is None
+        fetch.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_rejects_empty_payload_without_tenant_identity(self):
+        payload = {"hits": {"total": {"value": 0, "relation": "eq"}, "hits": []}}
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=payload),
+        ):
+            assert (
+                await _healthcaresource_probe_config(
+                    "https://pm.healthcaresource.com/CS/missing",
+                    AsyncMock(),
+                )
+                is None
+            )
+
+    @pytest.mark.asyncio
+    async def test_rejects_payload_for_a_different_tenant(self):
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=self._payload(site="other")),
+        ):
+            assert (
+                await _healthcaresource_probe_config(
+                    "https://pm.healthcaresource.com/CS/saratogacare",
+                    AsyncMock(),
+                )
+                is None
+            )
+
+    @pytest.mark.asyncio
+    async def test_rejects_job_ids_that_cannot_satisfy_generated_allowlist(self):
+        payload = self._payload()
+        payload["hits"]["hits"][0]["_source"]["userArea"]["jobPostingID"] = "job-18686"
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=payload),
+        ):
+            assert (
+                await _healthcaresource_probe_config(
+                    "https://pm.healthcaresource.com/CS/saratogacare",
+                    AsyncMock(),
+                )
+                is None
+            )
+
+    @pytest.mark.asyncio
+    async def test_runtime_paginates_and_extracts_rich_jobs(self):
+        first = self._payload(total=2)
+        second = self._payload(total=2)
+        second["hits"]["hits"][0]["_source"]["userArea"]["jobPostingID"] = 18687
+        second["hits"]["hits"][0]["_source"]["title"] = "Medical Assistant"
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            body = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json=second if body.get("from") == 100 else first,
+                request=request,
+            )
+
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=first),
+        ):
+            config = await _healthcaresource_probe_config(
+                "https://pm.healthcaresource.com/CS/saratogacare",
+                AsyncMock(),
+            )
+        assert config is not None
+        config["pagination"]["page_size"] = 1
+        config["pagination"]["increment"] = 100
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://pm.healthcaresource.com/CS/saratogacare",
+                    "metadata": config,
+                },
+                client,
+            )
+
+        assert isinstance(jobs, list)
+        assert {job.title for job in jobs} == {"Registered Nurse", "Medical Assistant"}
+        assert all(job.description for job in jobs)
+        assert all(job.locations == ["Saratoga Springs, NY"] for job in jobs)
+        assert calls == 2
+
+    @pytest.mark.asyncio
+    async def test_runtime_filters_foreign_tenant_after_probe_sample(self):
+        payload = self._payload(total=6)
+        template = payload["hits"]["hits"][0]
+        hits = []
+        for index in range(6):
+            hit = json.loads(json.dumps(template))
+            hit["_id"] = f"1084_{18686 + index}"
+            hit["_source"]["title"] = f"Role {index}"
+            hit["_source"]["userArea"]["jobPostingID"] = 18686 + index
+            hits.append(hit)
+        hits[-1]["_source"]["userArea"]["clientExternalIdentifier"] = "foreigntenant"
+        hits[-1]["_source"]["userArea"]["jobPostingID"] = 99999
+        payload["hits"]["hits"] = hits
+
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=payload),
+        ):
+            config = await _healthcaresource_probe_config(
+                "https://pm.healthcaresource.com/CS/saratogacare",
+                AsyncMock(),
+            )
+        assert config is not None
+
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await monitor_one(
+                "https://pm.healthcaresource.com/CS/saratogacare",
+                "api_sniffer",
+                config,
+                client,
+            )
+
+        assert len(result.urls) == 5
+        assert all("/#/job/99999" not in url for url in result.urls)
+        assert result.security_filtered_count == 0
+
+
 class TestWpJobManagerDetection:
     @staticmethod
     def _payload(*urls: str, max_pages: int) -> dict:
@@ -1631,6 +1881,35 @@ class TestItemFilter:
 
         assert scoped == [{"market": "global", "viewkey": "12ab34cd", "locale": "de"}]
         assert total == 1
+
+    def test_required_regex_and_dedupe_accept_integer_identity(self):
+        item_filter = _validated_item_filter(
+            {
+                "item_filter": {
+                    "require_regex": {"job_id": r"^[0-9]{1,32}$"},
+                    "dedupe_by": ["tenant", "job_id"],
+                }
+            }
+        )
+
+        scoped, total = _apply_item_filter(
+            [
+                {"tenant": "tenant", "job_id": 18686, "title": "first"},
+                {"tenant": "tenant", "job_id": 18686, "title": "duplicate"},
+            ],
+            item_filter,
+            advertised_total=2,
+        )
+
+        assert scoped == [{"tenant": "tenant", "job_id": 18686, "title": "first"}]
+        assert total == 1
+
+        with pytest.raises(ValueError, match="missing or invalid.*job_id"):
+            _apply_item_filter(
+                [{"tenant": "tenant", "job_id": True}],
+                item_filter,
+                advertised_total=1,
+            )
 
     @pytest.mark.parametrize("item", [{}, {"viewkey": ""}, {"viewkey": "invalid"}])
     def test_required_regex_rejects_missing_or_invalid_in_scope_identity(self, item):
