@@ -2100,6 +2100,7 @@ diligent-corporation,diligent-corporation-greenhouse,https://job-boards.greenhou
 diligent-robotics,diligent-robotics-greenhouse,https://job-boards.greenhouse.io/diligentrobotics,greenhouse,"{""token"": ""diligentrobotics""}",skip,
 diligent-services,diligent-services-greenhouse,https://job-boards.greenhouse.io/diligent,greenhouse,"{""token"": ""diligent""}",skip,
 dine-brands,dine-brands-careers,https://dinebrands.wd503.myworkdayjobs.com/restaurantcareersite,workday,,workday,
+direct-demo,direct-demo-careers,https://drdemo.applytojob.com/,jazzhr,,jazzhr,
 disco,disco-greenhouse,https://job-boards.greenhouse.io/disco,greenhouse,"{""token"": ""disco""}",skip,
 discord,discord-greenhouse,https://job-boards.greenhouse.io/discord,greenhouse,"{""token"": ""discord""}",skip,
 disney,disney-careers,https://disney.wd5.myworkdayjobs.com/disneycareer,workday,"{""company"": ""disney"", ""wd_instance"": ""wd5"", ""site"": ""disneycareer""}",json-ld,
@@ -6286,6 +6287,7 @@ signoz,signoz-ashby,https://jobs.ashbyhq.com/signoz,ashby,"{""token"": ""signoz"
 sika,sika-careers,https://www.sika.com/en/career/jobs.html,sitemap,"{""sitemap_url"": ""https://www.sika.com/en.sitemap.xml"", ""url_filter"": ""/career/jobs/job-posting-page/""}",json-ld,
 sila-services,sila-services-lever,https://jobs.lever.co/sila,lever,"{""token"": ""sila""}",skip,
 silicon-ranch-corporation,silicon-ranch-corporation-greenhouse,https://job-boards.greenhouse.io/siliconranch,greenhouse,"{""token"": ""siliconranch""}",skip,
+siloam-hospitals-group,siloam-hospitals-group-careers,https://careers.smartrecruiters.com/siloamcareers,smartrecruiters,,smartrecruiters,
 silverado,silverado-greenhouse,https://job-boards.greenhouse.io/silverado,greenhouse,"{""token"": ""silverado""}",skip,
 silverflow,silverflow-personio,https://silverflow.jobs.personio.com/,personio,"{""slug"": ""silverflow"", ""language"": ""en""}",skip,
 silverfort,silverfort-global,https://www.comeet.com/jobs/silverfort/54.007,api_sniffer,"{""api_url"": ""https://www.comeet.co/careers-api/2.0/company/54.007/positions?token=45715B315B38AE22B8D051A0A457D051E61&details=true"", ""method"": ""GET"", ""json_path"": ""@"", ""url_field"": ""url_comeet_hosted_page"", ""fields"": {""title"": ""name"", ""description"": [""details[0].value"", ""details[1].value"", ""details[2].value"", ""details[3].value"", ""details[4].value"", ""details[5].value"", ""details[6].value"", ""details[7].value"", ""details[8].value"", ""details[9].value""], ""locations"": ""location.name"", ""employment_type"": ""employment_type"", ""job_location_type"": ""workplace_type"", ""metadata.team"": ""department"", ""metadata.experience_level"": ""experience_level"", ""metadata.uid"": ""uid""}}",skip,
@@ -6739,6 +6741,7 @@ synapse-medicine,synapse-medicine-careers,https://careers.synapse-medicine.com/j
 syncron,syncron-teamtailor,https://careers.syncron.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.syncron.com/jobs.rss""}",skip,
 syndica,syndica-ashby,https://jobs.ashbyhq.com/syndica,ashby,"{""token"": ""syndica""}",skip,
 syndigo,syndigo-greenhouse,https://job-boards.greenhouse.io/syndigo,greenhouse,"{""token"": ""syndigo""}",skip,
+syneos-health,syneos-health-all-careers,https://www.syneoshealth.com/careers/jobs/search/,dom,"{""render"": true, ""resource_policy"": ""lean"", ""timeout"": 60000, ""url_filter"": ""/careers/jobs/[0-9]"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 10000, ""browser"": true}}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location:"", ""match_regex"": ""Location:.*Job ID:"", ""field"": ""locations"", ""regex"": ""Location:\\s*(.*?)\\s+Job ID:""}, {""tag"": ""p"", ""text"": ""Description"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply""}]}"
 syner-g,syner-g-greenhouse,https://job-boards.greenhouse.io/synerg,greenhouse,"{""token"": ""synerg""}",skip,
 syngenta,syngenta-global,https://jobs.syngenta.com/,smartrecruiters,"{""token"": ""SyngentaGroup""}",smartrecruiters,
 synhelion,synhelion-careers,https://synhelion.com/about/careers,dom,"{""render"": false, ""rich_rows"": {""row_selector"": ""li:has(a[href*=\""/jobs/\""])"", ""link_selector"": ""a[href*=\""/jobs/\""]"", ""title_selector"": ""h2"", ""location_selectors"": ["".location""]}}",dom,"{""enrich"": [""description""], ""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply"", ""from"": 0}]}"
