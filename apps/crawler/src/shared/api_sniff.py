@@ -1379,6 +1379,7 @@ async def _fetch_page_with_retry(
     *,
     retries: int = _PAGINATE_FETCH_RETRIES,
     base_delay: float = _PAGINATE_FETCH_BASE_DELAY,
+    transient_403: bool = False,
 ) -> object:
     """Wrap a :data:`FetchJsonFn` with bounded retries (#2733).
 
@@ -1395,7 +1396,8 @@ async def _fetch_page_with_retry(
       plus 408/425/429), and on any other ``Exception`` (Playwright
       errors, network errors, JSON parse errors).
     - Raises :class:`PaginationFetchError` immediately on a
-      non-retryable 4xx (e.g. 401, 403, 400) — those won't recover.
+      non-retryable 4xx (e.g. 401, 403, 400) by default. Callers using a
+      rotating proxy may opt into retrying 401/403 with ``transient_403``.
     - Raises :class:`PaginationFetchError` after the retry budget is
       exhausted.
 
@@ -1434,7 +1436,7 @@ async def _fetch_page_with_retry(
             status = exc.response.status_code
             last_status = status
             last_exc = exc
-            if not is_retryable_status(status):
+            if not is_retryable_status(status) and not (transient_403 and status in (401, 403)):
                 # Non-transient — fail loudly so the run is recorded as
                 # a failure rather than truncating to whatever pages
                 # happened to succeed.
@@ -1479,6 +1481,8 @@ async def paginate_all(
     *,
     item_projector: ItemProjector | None = None,
     require_object_items: bool = False,
+    retries: int = _PAGINATE_FETCH_RETRIES,
+    transient_403: bool = False,
 ) -> list[dict]:
     """Fetch all pages of a paginated API using the given transport function.
 
@@ -1528,6 +1532,8 @@ async def paginate_all(
             fetch_url,
             headers,
             fetch_body,
+            retries=retries,
+            transient_403=transient_403,
         )
         items = extract_items(
             data,
@@ -1632,7 +1638,15 @@ async def paginate_all(
         # the run is recorded as a failure end-to-end. End-of-pagination
         # is still detected via the empty-page / partial-page branches
         # below.
-        data = await _fetch_page_with_retry(fetch_fn, ex.method, fetch_url, headers, fetch_body)
+        data = await _fetch_page_with_retry(
+            fetch_fn,
+            ex.method,
+            fetch_url,
+            headers,
+            fetch_body,
+            retries=retries,
+            transient_403=transient_403,
+        )
         items = extract_items(
             data,
             result.candidate.json_path,

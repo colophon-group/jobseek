@@ -93,6 +93,12 @@ _MAX_REFRESH_FIELDS = 16
 _MAX_REFRESH_PATTERN_CHARS = 4_096
 _MAX_REFRESH_VALUE_CHARS = 16_384
 _MAX_REFRESH_PAGE_BYTES = 2_000_000
+# Retry budget for the api_sniffer monitor's first-page + HTML/list
+# pagination HTTP fetches. Matches the shared fetch defaults: 3 total
+# attempts with exponential backoff and full jitter starting at 1s.
+_API_SNIFFER_FETCH_RETRIES = 3
+_API_SNIFFER_FETCH_BASE_DELAY = 1.0
+_MAX_TRANSPORT_ATTEMPTS = 5
 _MAX_ITEM_FILTER_FIELDS = 16
 _MAX_ITEM_FILTER_VALUES = 100
 _MAX_REQUIRED_PDF_PATTERN_CHARS = 1_024
@@ -2125,6 +2131,8 @@ async def _paginate_until_converged(
     required_no_growth_passes: int,
     item_projector,
     item_validator: Callable[[dict], bool] | None = None,
+    fetch_retries: int = _API_SNIFFER_FETCH_RETRIES,
+    transient_403: bool = False,
 ) -> tuple[list[dict], bool]:
     """Union bounded full passes and prove convergence before allowing delists.
 
@@ -2264,6 +2272,8 @@ async def _paginate_until_converged(
             result,
             max_pages,
             item_projector=item_projector,
+            retries=fetch_retries,
+            transient_403=transient_403,
         )
         pass_identities, pass_projections, identities_valid = identity_map(rows)
         new_identities = set(pass_identities) - set(accumulated)
@@ -2319,6 +2329,8 @@ async def _paginate_until_converged(
             api_url,
             clean_headers(request_headers),
             post_data,
+            retries=fetch_retries,
+            transient_403=transient_403,
         )
         pass_items = extract_items(pass_data, json_path)
 
@@ -2518,15 +2530,6 @@ def find_html_strings(obj: object, path: str = "") -> list[tuple[str, str]]:
             results.extend(find_html_strings(val, f"{path}[{i}]"))
     results.sort(key=lambda x: len(x[1]), reverse=True)
     return results
-
-
-# Retry budget for the api_sniffer monitor's first-page + HTML-pagination
-# httpx fetches. Matches ``fetch_with_retry`` defaults: 3 total attempts
-# with exponential backoff and full jitter starting at 1s — symmetric
-# with the accenture monitor (#2735) for cross-monitor consistency.
-_API_SNIFFER_FETCH_RETRIES = 3
-_API_SNIFFER_FETCH_BASE_DELAY = 1.0
-_MAX_TRANSPORT_ATTEMPTS = 5
 
 
 async def http_fetch_with_retry(
@@ -3184,6 +3187,8 @@ async def _discover_http(
                         if url_field_match is not None
                         else None
                     ),
+                    fetch_retries=http_retries,
+                    transient_403=transient_403,
                 )
             else:
                 items = await paginate_all(
@@ -3192,6 +3197,8 @@ async def _discover_http(
                     page_cap,
                     item_projector=item_projector,
                     require_object_items=require_object_items,
+                    retries=http_retries,
+                    transient_403=transient_403,
                 )
                 total = job_result.total_count
         elif item_projector:
