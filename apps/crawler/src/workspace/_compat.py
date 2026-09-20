@@ -267,6 +267,8 @@ def detect_ats_from_url(url: str) -> str | None:
     """Detect known ATS monitor type from a board URL, or None if unknown."""
     from urllib.parse import urlparse
 
+    from src.shared.paylocity import is_paylocity_recruiting_host
+
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
     try:
@@ -658,7 +660,7 @@ def detect_ats_from_url(url: str) -> str | None:
         return "softgarden"
     if host.endswith(".traffit.com"):
         return "traffit"
-    if host.endswith("recruiting.paylocity.com") and "/recruiting/jobs/" in parsed.path.lower():
+    if is_paylocity_recruiting_host(host) and "/recruiting/jobs/" in parsed.path.lower():
         return "paylocity"
 
     # AlmaCareer (Capybara) — *.jobs.cz (CZ) and *.topjobs.sk (SK)
