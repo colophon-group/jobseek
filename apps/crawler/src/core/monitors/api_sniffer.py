@@ -105,6 +105,13 @@ _CAREERSGOVSG_JOB_ID_RE = re.compile(r"^[0-9]+$")
 _CAREERSGOVSG_POSTING_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 )
+_HEALTHCARESOURCE_HOST = "pm.healthcaresource.com"
+_HEALTHCARESOURCE_BOARD_PATH_RE = re.compile(
+    r"^/CS/(?P<site>[A-Za-z0-9][A-Za-z0-9_-]{0,63})/?$",
+    re.IGNORECASE,
+)
+_HEALTHCARESOURCE_PAGE_SIZE = 100
+_HEALTHCARESOURCE_MAX_PAGES = 500
 
 
 class _DedupePreference(NamedTuple):
@@ -694,6 +701,142 @@ async def _detect_prospective_config(
     }
 
 
+async def _healthcaresource_probe_config(
+    url: str,
+    client: httpx.AsyncClient,
+) -> dict | None:
+    """Detect a HealthcareSource/symplr JobSeeker board over its public API.
+
+    These boards expose a complete Elasticsearch-shaped listing API, but the
+    application is a hash-routed SPA. Generic browser capture can therefore
+    miss the initial request or infer an unstable detail URL. Resolve the
+    strictly matched public board URL to the tenant-scoped search endpoint and
+    validate the first page before returning a rich ``api_sniffer`` config.
+    """
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return None
+
+    path_match = _HEALTHCARESOURCE_BOARD_PATH_RE.fullmatch(parsed.path)
+    if (
+        parsed.scheme.casefold() != "https"
+        or (parsed.hostname or "").casefold() != _HEALTHCARESOURCE_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+        or parsed.query
+        or parsed.fragment
+        or path_match is None
+    ):
+        return None
+
+    site = path_match.group("site")
+    canonical_board_url = f"https://{_HEALTHCARESOURCE_HOST}/CS/{site}"
+    api_url = (
+        f"https://{_HEALTHCARESOURCE_HOST}/JobseekerSearchAPI/"
+        f"{site}/api/Search?size={_HEALTHCARESOURCE_PAGE_SIZE}"
+    )
+    post_data = {"query": {"bool": {"must": {"match_all": {}}}}}
+    request_headers = {
+        "content-type": "application/json; charset=utf-8",
+        "referer": canonical_board_url,
+    }
+
+    try:
+        payload = await http_fetch_with_retry(
+            client,
+            "POST",
+            api_url,
+            request_headers,
+            _serialize_post_data(post_data),
+        )
+    except PaginationFetchError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    hits_container = payload.get("hits")
+    if not isinstance(hits_container, dict):
+        return None
+    total_container = hits_container.get("total")
+    hits = hits_container.get("hits")
+    if (
+        not isinstance(total_container, dict)
+        or isinstance(total_container.get("value"), bool)
+        or not isinstance(total_container.get("value"), int)
+        or total_container["value"] < 0
+        or not isinstance(hits, list)
+        or not hits
+        or len(hits) > _HEALTHCARESOURCE_PAGE_SIZE
+        or total_container["value"] < len(hits)
+    ):
+        return None
+
+    for hit in hits[:5]:
+        if not isinstance(hit, dict) or not isinstance(hit.get("_source"), dict):
+            return None
+        source = hit["_source"]
+        user_area = source.get("userArea")
+        job_location = source.get("jobLocation")
+        address = job_location.get("address") if isinstance(job_location, dict) else None
+        job_id = user_area.get("jobPostingID") if isinstance(user_area, dict) else None
+        if (
+            not isinstance(user_area, dict)
+            or str(user_area.get("clientExternalIdentifier", "")).casefold() != site.casefold()
+            or isinstance(job_id, bool)
+            or not isinstance(job_id, (int, str))
+            or not str(job_id).strip()
+            or not isinstance(source.get("title"), str)
+            or not source["title"].strip()
+            or not isinstance(user_area.get("jobSummary"), str)
+            or not user_area["jobSummary"].strip()
+            or not isinstance(address, dict)
+            or not isinstance(address.get("addressLocalityRegion"), str)
+            or not address["addressLocalityRegion"].strip()
+        ):
+            return None
+
+    total = total_container["value"]
+    return {
+        "api_url": api_url,
+        "method": "POST",
+        "json_path": "hits.hits",
+        "total_path": "hits.total.value",
+        "post_data": post_data,
+        "request_headers": request_headers,
+        "pagination": {
+            "param_name": "from",
+            "style": "offset",
+            "start_value": 0,
+            "increment": _HEALTHCARESOURCE_PAGE_SIZE,
+            "location": "body",
+            "page_size": _HEALTHCARESOURCE_PAGE_SIZE,
+            "max_pages": _HEALTHCARESOURCE_MAX_PAGES,
+        },
+        "url_template": f"{canonical_board_url}/#/job/{{job_id}}",
+        "url_template_fields": {"job_id": "_source.userArea.jobPostingID"},
+        "url_allowlist": (
+            rf"^https://{re.escape(_HEALTHCARESOURCE_HOST)}/CS/"
+            rf"{re.escape(site)}/#/job/[0-9]+$"
+        ),
+        "fields": {
+            "title": "_source.title",
+            "description": "_source.userArea.jobSummary",
+            "locations": "_source.jobLocation.address.addressLocalityRegion",
+            "employment_type": "_source.employmentType",
+            "date_posted": "_source.datePosted",
+            "metadata.ats_job_id": "_source.userArea.jobPostingID",
+            "metadata.requisition_id": "_source.userArea.requisitionNumber",
+            "metadata.organization": "_source.hiringOrganization.name",
+        },
+        "items": len(hits),
+        "total": total,
+        "score": 100,
+    }
+
+
 def _materially_below_advertised_total(discovered: int, total: int | None) -> bool:
     """Return whether a trustworthy API total proves discovery incomplete."""
     if not total or total <= 0 or discovered >= total:
@@ -1053,6 +1196,10 @@ async def can_handle(
     prospective_config = await _detect_prospective_config(url, client)
     if prospective_config is not None:
         return prospective_config
+
+    healthcaresource_config = await _healthcaresource_probe_config(url, client)
+    if healthcaresource_config is not None:
+        return healthcaresource_config
 
     wp_job_manager_config = await _wp_job_manager_probe_config(url, client)
     if wp_job_manager_config is not None:
