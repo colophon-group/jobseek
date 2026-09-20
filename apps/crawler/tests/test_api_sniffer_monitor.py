@@ -1428,6 +1428,22 @@ class TestHealthcareSourceDetection:
             )
 
     @pytest.mark.asyncio
+    async def test_rejects_job_ids_that_cannot_satisfy_generated_allowlist(self):
+        payload = self._payload()
+        payload["hits"]["hits"][0]["_source"]["userArea"]["jobPostingID"] = "job-18686"
+        with patch(
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
+            AsyncMock(return_value=payload),
+        ):
+            assert (
+                await _healthcaresource_probe_config(
+                    "https://pm.healthcaresource.com/CS/saratogacare",
+                    AsyncMock(),
+                )
+                is None
+            )
+
+    @pytest.mark.asyncio
     async def test_runtime_paginates_and_extracts_rich_jobs(self):
         first = self._payload(total=2)
         second = self._payload(total=2)

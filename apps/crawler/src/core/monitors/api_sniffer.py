@@ -110,6 +110,7 @@ _HEALTHCARESOURCE_BOARD_PATH_RE = re.compile(
     r"^/CS/(?P<site>[A-Za-z0-9][A-Za-z0-9_-]{0,63})/?$",
     re.IGNORECASE,
 )
+_HEALTHCARESOURCE_JOB_ID_RE = re.compile(r"[0-9]{1,32}")
 _HEALTHCARESOURCE_PAGE_SIZE = 100
 _HEALTHCARESOURCE_MAX_PAGES = 500
 
@@ -785,9 +786,8 @@ async def _healthcaresource_probe_config(
         if (
             not isinstance(user_area, dict)
             or str(user_area.get("clientExternalIdentifier", "")).casefold() != site.casefold()
-            or isinstance(job_id, bool)
             or not isinstance(job_id, (int, str))
-            or not str(job_id).strip()
+            or _HEALTHCARESOURCE_JOB_ID_RE.fullmatch(str(job_id).strip()) is None
             or not isinstance(source.get("title"), str)
             or not source["title"].strip()
             or not isinstance(user_area.get("jobSummary"), str)
