@@ -455,6 +455,33 @@ class TestDomScraper:
         assert only_sons.description is not None
         assert "klantgericht" in only_sons.description
 
+    def test_afas_insite_preset_parses_every_layout_accepted_by_detection(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head>
+          <title>vacature Store Manager - Store Manager, Arnhem - Werken bij</title>
+        </head><body>
+          <h2>ARE YOU THE ONE AND ONLY?</h2>
+          <div>Voor onze ONLY store in Arnhem zijn we op zoek naar een Store Manager.</div>
+          <p>Coach het team en zorg voor een sterke winkelervaring.</p>
+          <h2>Solliciteer nu voor deze vacature!</h2>
+          <script>
+            app.Run({"ProfitVersion":"AFAS Profit 8",
+              "WebFormLocationEventUrl":"/event/webform/url"});
+          </script>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Store Manager"
+        assert result.locations == ["Arnhem"]
+        assert result.description is not None
+        assert "Coach het team" in result.description
+
     def test_city_of_zurich_preset_defaults_city_and_preserves_regional_roles(self):
         from src.core.scrapers.dom import can_handle, parse_html
 

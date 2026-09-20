@@ -1048,10 +1048,9 @@ def _afas_insite_config(htmls: list[str]) -> dict | None:
             {
                 "tag": "title",
                 "field": "title",
-                "regex": r"^Vacature\s+(.+?)\s+-",
+                "regex": r"(?i)^Vacature\s+(.+?)\s+-",
             },
             {
-                "tag": "p",
                 "match_regex": _AFAS_INSITE_LOCATION_RE,
                 "field": "locations",
                 "regex": _AFAS_INSITE_LOCATION_RE,
