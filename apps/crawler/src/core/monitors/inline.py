@@ -34,6 +34,7 @@ from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 from src.core.monitors import DiscoveredJob, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.extract import flatten, walk_steps
+from src.shared.http_retry import fetch_text_page_with_retry
 from src.shared.nextdata import resolve_path
 from src.shared.slug import slugify
 from src.shared.truncation import truncated_rich_result
@@ -972,13 +973,17 @@ async def _fetch_html(
             raise ValueError("inline static fetch requires an HTTP client")
         for fetch_url, fetch_headers in fetch_candidates:
             try:
-                resp = await http.get(
+                html = await fetch_text_page_with_retry(
+                    http,
                     fetch_url,
-                    follow_redirects=True,
                     headers=fetch_headers,
+                    end_of_pagination_statuses=(),
+                    require_nonempty=True,
+                    max_chars=None,
+                    log_event="inline.fetch_backoff",
                 )
-                resp.raise_for_status()
-                html = resp.text
+                if html is None:  # Defensive: root documents never use pagination sentinels.
+                    raise ValueError(f"inline fetch from {fetch_url} returned no document")
                 if fetch_json_path is not None:
                     payload = json.loads(html)
                     resolved = resolve_path(payload, fetch_json_path)
