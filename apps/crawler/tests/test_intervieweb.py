@@ -28,7 +28,13 @@ def _job_link(slug: str, language: str = "en") -> str:
     return f"https://acme.intervieweb.it/jobs/{slug}/{language}/"
 
 
-def _page(*slugs: str, current: int = 1, pages: int = 1, ajax_url: str = AJAX_URL) -> str:
+def _page(
+    *slugs: str,
+    current: int = 1,
+    pages: int = 1,
+    ajax_url: str = AJAX_URL,
+    order: str | None = "date",
+) -> str:
     links = "".join(
         f'<a href="{_job_link(slug)}"><h3>{slug}</h3></a><a href="{_job_link(slug)}">Apply</a>'
         for slug in slugs
@@ -36,6 +42,7 @@ def _page(*slugs: str, current: int = 1, pages: int = 1, ajax_url: str = AJAX_UR
     return f"""
       <html><body>
         <input type="hidden" id="url-for-announces" value="{ajax_url.replace("&", "&amp;")}">
+        {f'<a class="active" data-order="{order}">Sort</a>' if order else ""}
         <div id="tab-annunci">{links}</div>
         <div>Page {current} of {pages}</div>
         <script>
@@ -92,6 +99,7 @@ class TestMonitor:
             form = parse_qs(request.content.decode())
             assert form["act1"] == ["vacancyListCareer"]
             assert form["section"] == [SECTION]
+            assert form["order"] == ["date"]
             assert form["page"] == ["2"]
             assert request.headers["x-requested-with"] == "XMLHttpRequest"
             return httpx.Response(
@@ -136,6 +144,30 @@ class TestMonitor:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(ValueError, match="advertised page 2 returned no jobs"):
+                await discover({"board_url": BOARD_URL}, client)
+
+    async def test_rejects_missing_active_pagination_order(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                text=_page("role-one-101", pages=2, order=None),
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="unique active pagination order"):
+                await discover({"board_url": BOARD_URL}, client)
+
+    async def test_rejects_unsupported_active_pagination_order(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                text=_page("role-one-101", pages=2, order="unknown"),
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="unsupported pagination order"):
                 await discover({"board_url": BOARD_URL}, client)
 
     async def test_restarts_from_first_page_after_repeated_page(

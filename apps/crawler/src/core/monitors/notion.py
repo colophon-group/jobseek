@@ -123,8 +123,11 @@ async def _api_post(
     subdomain: str,
     endpoint: str,
     payload: dict,
+    *,
+    api_host: str | None = None,
 ) -> dict:
-    url = f"https://{subdomain}.notion.site/api/v3/{endpoint}"
+    host = api_host or f"{subdomain}.notion.site"
+    url = f"https://{host}/api/v3/{endpoint}"
     return await fetch_json_page_with_retry(
         client,
         url,
@@ -156,7 +159,28 @@ async def _get_public_page_data(
     }
     if block_id:
         payload["blockId"] = block_id
-    return await _api_post(client, subdomain, "getPublicPageData", payload)
+    try:
+        return await _api_post(client, subdomain, "getPublicPageData", payload)
+    except PaginationFetchError as exc:
+        # Notion occasionally leaves a public workspace resolvable through its
+        # canonical API host while the equivalent custom-subdomain endpoint
+        # returns a persistent 500.  Limit the fallback to root/slug space
+        # resolution: explicit page IDs already carry their own identity, and
+        # every other status must retain the monitor's fail-closed behavior.
+        if block_id is not None or exc.last_status != 500:
+            raise
+        log.info(
+            "notion.public_page_host_fallback",
+            subdomain=subdomain,
+            status=exc.last_status,
+        )
+        return await _api_post(
+            client,
+            subdomain,
+            "getPublicPageData",
+            payload,
+            api_host="www.notion.so",
+        )
 
 
 async def _load_page_chunk(
