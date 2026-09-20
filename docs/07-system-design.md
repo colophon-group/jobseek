@@ -186,7 +186,6 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `ashby`           | Rich     | skip        | Ashby Job Board API                     |
 | 10   | `avature`         | URL-only | dom         | Avature static listings + map data      |
 | 10   | `jobvite`         | URL-only | json-ld     | Jobvite static career-site listings     |
-| 10   | `pcrecruiter`     | URL-only | json-ld     | PCRecruiter validated POST-form pagination |
 | 10   | `pageup`          | Rich     | dom         | PageUp static listings + description enrichment |
 | 45   | `papa_johns`      | URL-only | json-ld     | Papa Johns branded listings with count-checked pagination |
 | 10   | `bamboohr`        | Rich     | api_sniffer | BambooHR public careers API + detail enrichment |

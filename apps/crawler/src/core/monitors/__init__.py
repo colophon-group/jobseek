@@ -517,12 +517,6 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"JazzHR static listing \u2014 tenant: {tenant}, {jobs} jobs"
         return f"JazzHR static listing \u2014 tenant: {tenant}"
-    if name == "pcrecruiter":
-        uid = metadata.get("uid", "?")
-        jobs = metadata.get("jobs")
-        if jobs is not None:
-            return f"PCRecruiter POST listing \u2014 uid: {uid}, {jobs} jobs"
-        return f"PCRecruiter POST listing \u2014 uid: {uid}"
     if name == "jobbank104":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
@@ -1104,7 +1098,6 @@ from src.core.monitors import (  # noqa: E402
     paycom,  # noqa: F401
     paylocity,  # noqa: F401
     paynet,  # noqa: F401
-    pcrecruiter,  # noqa: F401
     peoplesoft,  # noqa: F401
     personio,  # noqa: F401
     phenom,  # noqa: F401
