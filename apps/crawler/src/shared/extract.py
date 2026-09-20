@@ -108,9 +108,15 @@ VOID_TAGS = frozenset(
 class FlattenParser(HTMLParser):
     """Parse HTML and emit flat contentful elements."""
 
-    def __init__(self, *, include_hidden: bool = False):
+    def __init__(
+        self,
+        *,
+        include_hidden: bool = False,
+        include_header_content: bool = False,
+    ):
         super().__init__()
         self._include_hidden = include_hidden
+        self._include_header_content = include_header_content
         self.elements: list[dict] = []
         # Stack of (tag, attrs_dict, is_skipped)
         self._stack: list[tuple[str, dict, bool]] = []
@@ -185,7 +191,8 @@ class FlattenParser(HTMLParser):
                 self._skip_depth += 1
             return
 
-        if tag in SKIP_TAGS or tag in NOISE_TAGS:
+        is_noise = tag in NOISE_TAGS and not (tag == "header" and self._include_header_content)
+        if tag in SKIP_TAGS or is_noise:
             if tag not in VOID_TAGS:
                 self._stack.append((tag, attr_dict, True))
                 self._skip_depth = 1
@@ -299,9 +306,17 @@ class FlattenParser(HTMLParser):
                 )
 
 
-def flatten(html: str, *, include_hidden: bool = False) -> list[dict]:
+def flatten(
+    html: str,
+    *,
+    include_hidden: bool = False,
+    include_header_content: bool = False,
+) -> list[dict]:
     """Return flat list of contentful elements from HTML."""
-    parser = FlattenParser(include_hidden=include_hidden)
+    parser = FlattenParser(
+        include_hidden=include_hidden,
+        include_header_content=include_header_content,
+    )
     parser.feed(html)
     parser.finish()
     return parser.elements

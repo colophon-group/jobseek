@@ -138,6 +138,57 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    def test_include_header_content_extracts_misused_detail_sections(self):
+        from src.core.scrapers.dom import parse_html
+
+        html = """
+        <html><body>
+          <nav><p>Global navigation</p></nav>
+          <header><h1>Product Manager</h1><div>Location:</div><div>Budapest</div></header>
+          <header>
+            <h2>The opportunity</h2>
+            <p>Own a cybersecurity product used by international clients.</p>
+            <a href="#apply">Apply now</a>
+          </header>
+          <footer><p>Global footer</p></footer>
+        </body></html>
+        """
+        config = {
+            "include_header_content": True,
+            "steps": [
+                {"tag": "h1", "field": "title"},
+                {"text": "Location:", "offset": 1, "field": "location"},
+                {
+                    "tag": "h2",
+                    "text": "The opportunity",
+                    "offset": 1,
+                    "field": "description",
+                    "html": True,
+                    "stop": "Apply now",
+                },
+            ],
+        }
+
+        result = parse_html(html, config)
+
+        assert result.title == "Product Manager"
+        assert result.locations == ["Budapest"]
+        assert result.description == (
+            "<p>Own a cybersecurity product used by international clients.</p>"
+        )
+
+    @pytest.mark.parametrize("value", [None, 1, "true", []])
+    def test_include_header_content_rejects_non_boolean(self, value):
+        from src.core.scrapers.dom import parse_html
+
+        config = {
+            "include_header_content": value,
+            "steps": [{"tag": "h1", "field": "title"}],
+        }
+
+        with pytest.raises(ValueError, match="include_header_content must be a boolean"):
+            parse_html("<h1>Role</h1>", config)
+
     async def test_defaults_by_url_fill_only_matching_posting_fields(self):
         from src.core.scrapers.dom import scrape
 

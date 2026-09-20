@@ -100,6 +100,20 @@ class TestFlatten:
         els = flatten(html)
         assert [(el["tag"], el["text"]) for el in els] == [("h1", "Job title")]
 
+    def test_header_content_can_be_included_without_navigation_or_footer(self):
+        html = (
+            "<nav>Global menu</nav>"
+            "<header><h1>Security Engineer</h1><p>Build secure products.</p></header>"
+            "<footer>Global footer</footer>"
+        )
+
+        els = flatten(html, include_header_content=True)
+
+        assert [(el["tag"], el["text"]) for el in els] == [
+            ("h1", "Security Engineer"),
+            ("p", "Build secure products."),
+        ]
+
     def test_malformed_list_in_header_does_not_hide_page_content(self):
         html = (
             "<header><ul><li>Jobs<li>Locations</ul></header>"
