@@ -56,6 +56,8 @@ from src.shared.public_request_headers import public_get, validated_public_reque
 log = structlog.get_logger()
 
 _RENDER_CHALLENGE_RETRIES = 1
+_LINKED_DESCRIPTION_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+_MAX_LINKED_DESCRIPTION_REDIRECTS = 10
 
 _LUCCA_SCRAPER_CONFIG = {
     "scope": ".jobOffer-article",
@@ -1602,6 +1604,29 @@ def _description_text_length(description: str | None) -> int:
     return len(LexborHTMLParser(description).text(separator=" ", strip=True))
 
 
+def _validated_linked_description_target(
+    url: str,
+    config: dict,
+    *,
+    redirect: bool,
+) -> str:
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").casefold()
+    if parsed.scheme.casefold() != "https" or not any(
+        host == suffix.removeprefix(".") or host.endswith(suffix)
+        for suffix in config["allowed_host_suffixes"]
+    ):
+        target = "redirect left allowed hosts" if redirect else "URL is outside allowed HTTPS hosts"
+        raise ValueError(f"DOM scraper linked_description {target}")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("DOM scraper linked_description URL must not contain credentials")
+    try:
+        _port = parsed.port
+    except ValueError as exc:
+        raise ValueError("DOM scraper linked_description URL has an invalid port") from exc
+    return url
+
+
 def _linked_description_url(html: str, source_url: str, config: dict) -> str:
     try:
         links = LexborHTMLParser(html).css(config["selector"])
@@ -1615,17 +1640,56 @@ def _linked_description_url(html: str, source_url: str, config: dict) -> str:
     href = links[0].attributes.get("href")
     if not href:
         raise ValueError("DOM scraper linked_description link has no href")
-    linked_url = urljoin(source_url, href)
-    parsed = urlparse(linked_url)
-    host = (parsed.hostname or "").casefold()
-    if parsed.scheme.casefold() != "https" or not any(
-        host == suffix.removeprefix(".") or host.endswith(suffix)
-        for suffix in config["allowed_host_suffixes"]
-    ):
-        raise ValueError("DOM scraper linked_description URL is outside allowed HTTPS hosts")
-    if parsed.username is not None or parsed.password is not None:
-        raise ValueError("DOM scraper linked_description URL must not contain credentials")
-    return linked_url
+    return _validated_linked_description_target(
+        urljoin(source_url, href),
+        config,
+        redirect=False,
+    )
+
+
+async def _fetch_linked_description(
+    http: httpx.AsyncClient,
+    url: str,
+    config: dict,
+) -> httpx.Response:
+    """Fetch an allowlisted page without issuing an unvalidated redirect hop."""
+
+    current_url = url
+    visited = {url}
+    for redirects_followed in range(_MAX_LINKED_DESCRIPTION_REDIRECTS + 1):
+        _validated_linked_description_target(current_url, config, redirect=True)
+        response = await fetch_response_with_status_retries(
+            http,
+            current_url,
+            retry_limits={429: 2, 500: 2, 502: 2, 503: 2, 504: 2},
+            follow_redirects=False,
+            log_event="dom.linked_description.retry_status",
+        )
+        status = response.status_code
+        if not 300 <= status < 400:
+            return response
+        if status not in _LINKED_DESCRIPTION_REDIRECT_STATUSES:
+            await response.aclose()
+            raise ValueError(
+                f"DOM scraper linked_description received unsupported redirect status {status}"
+            )
+        locations = response.headers.get_list("location")
+        if len(locations) != 1 or not locations[0].strip():
+            await response.aclose()
+            raise ValueError(
+                "DOM scraper linked_description redirect must have exactly one Location"
+            )
+        next_url = urljoin(str(response.url), locations[0].strip())
+        await response.aclose()
+        _validated_linked_description_target(next_url, config, redirect=True)
+        if next_url in visited:
+            raise ValueError("DOM scraper linked_description redirect loop detected")
+        if redirects_followed == _MAX_LINKED_DESCRIPTION_REDIRECTS:
+            raise ValueError("DOM scraper linked_description redirect limit exceeded")
+        visited.add(next_url)
+        current_url = next_url
+
+    raise AssertionError("unreachable")
 
 
 async def _fill_linked_description(
@@ -1640,21 +1704,8 @@ async def _fill_linked_description(
     if config is None or _description_text_length(content.description) >= config["min_chars"]:
         return content
     linked_url = _linked_description_url(html, source_url, config)
-    response = await fetch_response_with_status_retries(
-        http,
-        linked_url,
-        retry_limits={429: 2, 500: 2, 502: 2, 503: 2, 504: 2},
-        log_event="dom.linked_description.retry_status",
-    )
+    response = await _fetch_linked_description(http, linked_url, config)
     response.raise_for_status()
-    final_url = str(response.url)
-    final_parsed = urlparse(final_url)
-    final_host = (final_parsed.hostname or "").casefold()
-    if final_parsed.scheme.casefold() != "https" or not any(
-        final_host == suffix.removeprefix(".") or final_host.endswith(suffix)
-        for suffix in config["allowed_host_suffixes"]
-    ):
-        raise ValueError("DOM scraper linked_description redirect left allowed hosts")
     from src.shared.tdm import check_response as check_tdm_response
 
     check_tdm_response(response, body_excerpt=response.text[:64_000])

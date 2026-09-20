@@ -1313,6 +1313,50 @@ class TestDomScraper:
             with pytest.raises(ValueError, match="outside allowed HTTPS hosts"):
                 await scrape("https://jobs.company.example/positions/42", config, client)
 
+    async def test_linked_description_rejects_redirect_before_unallowlisted_request(self):
+        from src.core.scrapers.dom import scrape
+
+        source_url = "https://jobs.company.example/positions/42"
+        linked_url = "https://department.company.example/jobs/full-role"
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            if str(request.url) == source_url:
+                return httpx.Response(
+                    200,
+                    text=(
+                        '<h1>Role</h1><p><a class="full-description" '
+                        f'href="{linked_url}">Learn more</a></p>'
+                    ),
+                    request=request,
+                )
+            if str(request.url) == linked_url:
+                return httpx.Response(
+                    302,
+                    headers={"Location": "https://untrusted.example/private"},
+                    request=request,
+                )
+            raise AssertionError("unallowlisted redirect target must not be requested")
+
+        config = {
+            "steps": [
+                {"tag": "h1", "field": "title"},
+                {"tag": "p", "field": "description", "html": True},
+            ],
+            "linked_description": {
+                "selector": "a.full-description",
+                "allowed_host_suffixes": [".company.example"],
+                "min_chars": 50,
+                "steps": [{"tag": "p", "field": "description", "html": True}],
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="redirect left allowed hosts"):
+                await scrape(source_url, config, client)
+
+        assert requested == [source_url, linked_url]
+
     def test_kontact_probe_builds_clean_extraction_config(self):
         from src.core.scrapers.dom import can_handle, parse_html
 
