@@ -179,6 +179,7 @@ admatis,admatis-careers,https://admatis.com/career/,inline,"{""steps"": [{""tag"
 adnovum,adnovum-careers,https://careers.adnovum.com/go/All/504274/,dom,"{""render"": false, ""url_filter"": ""/job/.*/[0-9]+/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""location"", ""stop_tag"": ""h2"", ""html"": true, ""regex"": ""([^<>]+)</p>\\s*$""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply now""}]}"
 adnovum,adnovum-careers-de,https://careers.adnovum.com/go/Alle/504174/,dom,"{""render"": false, ""url_filter"": ""/job/.*/[0-9]+/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""location"", ""stop_tag"": ""h2"", ""html"": true, ""regex"": ""([^<>]+)</p>\\s*$""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Jetzt bewerben""}]}"
 adobe,adobe-careers,https://adobe.wd5.myworkdayjobs.com/external_experienced,workday,,workday,
+adobe,adobe-inventory-careers,https://careers.adobe.com/,phenom,,json-ld,
 adonis,adonis-ashby,https://jobs.ashbyhq.com/adonis,ashby,"{""token"": ""adonis""}",skip,
 adswerve-inc,adswerve-inc-greenhouse,https://job-boards.greenhouse.io/adswerveinc,greenhouse,"{""token"": ""adswerveinc""}",skip,
 adt,adt-careers,https://fa-erqb-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
