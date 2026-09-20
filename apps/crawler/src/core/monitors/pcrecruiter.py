@@ -67,8 +67,7 @@ def _board_identity(board: dict) -> PCRecruiterBoard:
     resolved = configured or direct
     if resolved is None:
         raise ValueError(
-            f"Cannot derive a PCRecruiter uid from {board['board_url']!r}; "
-            "configure metadata.uid"
+            f"Cannot derive a PCRecruiter uid from {board['board_url']!r}; configure metadata.uid"
         )
     return resolved
 

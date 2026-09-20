@@ -27,9 +27,7 @@ class PCRecruiterBoard:
     def job_url(self, record_id: str) -> str:
         if _RECORD_ID_RE.fullmatch(record_id) is None:
             raise ValueError("PCRecruiter record ID must contain only digits")
-        query = urlencode(
-            {"uid": self.uid, "action": "detail", "recordid": record_id}
-        )
+        query = urlencode({"uid": self.uid, "action": "detail", "recordid": record_id})
         return f"https://{_HOST}{_PATH}?{query}"
 
 
