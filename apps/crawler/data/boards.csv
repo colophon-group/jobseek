@@ -3222,6 +3222,7 @@ healthcare-services-group,healthcare-services-group-meriwether-godsey,https://wo
 healtheconnections,healtheconnections-careers,https://boards.greenhouse.io/healtheconnections,greenhouse,,skip,
 healthforce,healthforce-careers,https://healthforce.applytojob.com/,jazzhr,,jazzhr,
 healthpartners,healthpartners-careers,https://fa-etnv-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/healthpartners,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+healthpro-heritage,healthpro-heritage-careers,https://careers-healthpro-rehab.icims.com/,icims,,json-ld,
 healthverity,healthverity-greenhouse,https://job-boards.greenhouse.io/healthverity,greenhouse,"{""token"": ""healthverity""}",skip,
 healthy-io,healthy-io-careers,https://healthy.io/careers/,dom,"{""render"": false, ""url_filter"": ""/careers/.+/""}",nextdata,"{""fields"": {""title"": ""name"", ""description"": ""description"", ""locations"": {""path"": ""location.country"", ""map"": {""IL"": ""Tel Aviv-Yafo, IL"", ""N/A"": ""Tel Aviv-Yafo, IL""}}, ""employment_type"": {""path"": ""employment_type"", ""map"": {""Full-time"": ""full_time""}}}, ""path"": ""props.pageProps.position""}"
 hear-com-in,hear-com-in-greenhouse,https://job-boards.greenhouse.io/hearcomin,greenhouse,"{""token"": ""hearcomin""}",skip,
