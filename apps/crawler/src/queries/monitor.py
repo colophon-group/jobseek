@@ -1001,6 +1001,7 @@ touched AS (
           WHEN NOT $6::boolean
                AND job_posting.description_r2_hash IS NULL
                AND job_posting.next_scrape_at IS NULL
+               AND job_posting.scrape_failures < 3
           THEN now()
           ELSE job_posting.next_scrape_at
       END
@@ -1018,6 +1019,7 @@ touched AS (
               NOT $6::boolean
               AND job_posting.description_r2_hash IS NULL
               AND job_posting.next_scrape_at <= now()
+              AND job_posting.scrape_failures < 3
             ) AS needs_scrape_enqueue
 ),
 relisted AS (

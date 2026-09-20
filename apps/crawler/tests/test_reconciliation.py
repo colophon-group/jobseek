@@ -1124,7 +1124,7 @@ async def test_typesense_repair_verifies_frozen_candidates_without_open_transact
     local.connection.transaction.assert_not_called()  # type: ignore[attr-defined]
 
 
-async def test_typesense_candidate_change_during_write_fails_closed(monkeypatch) -> None:
+async def test_typesense_candidate_change_during_write_retries_latest_snapshot(monkeypatch) -> None:
     prefix = 0xBE
     posting_id = _id(prefix, 2)
     local = _MemoryPool({posting_id: True})
@@ -1140,11 +1140,15 @@ async def test_typesense_candidate_change_during_write_fails_closed(monkeypatch)
             for row in rows
         ]
 
+    attempts = 0
+
     async def upsert(
         docs: list[dict[str, object]],
         *,
         log_rejected_documents: bool = True,
     ) -> set[str]:
+        nonlocal attempts
+        attempts += 1
         assert log_rejected_documents is False
         for document in docs:
             remote.states[uuid.UUID(str(document["id"]))] = bool(document["is_active"])
@@ -1165,10 +1169,11 @@ async def test_typesense_candidate_change_during_write_fails_closed(monkeypatch)
         maps=TaxonomyMaps(),
     )
 
-    assert remote.states[posting_id] is True
+    assert remote.states[posting_id] is False
     assert local.states[posting_id] is False
-    assert result.repaired == 0
-    assert result.unresolved == 1
+    assert result.repaired == 1
+    assert result.unresolved == 0
+    assert attempts == 2
 
 
 async def test_typesense_candidate_snapshot_converges_across_repeated_source_races(
@@ -2471,7 +2476,7 @@ async def test_typesense_export_cancellation_closes_stream_without_retry() -> No
     assert client._client.is_closed
 
 
-async def test_repair_fails_closed_when_local_row_changes_during_network_write(
+async def test_repair_fails_closed_when_local_row_keeps_changing_during_network_write(
     monkeypatch,
 ) -> None:
     prefix = 0xCD
@@ -2489,16 +2494,20 @@ async def test_repair_fails_closed_when_local_row_changes_during_network_write(
             for row in rows
         ]
 
+    attempts = 0
+
     async def upsert(
         docs: list[dict],
         *,
         log_rejected_documents: bool = True,
     ) -> set[uuid.UUID]:
+        nonlocal attempts
+        attempts += 1
         assert log_rejected_documents is False
         for document in docs:
             remote.states[uuid.UUID(document["id"])] = document["is_active"]
-        # Model a worker commit while the downstream request is in flight.
-        local.states[posting_id] = False
+        # Model a worker commit during both bounded downstream writes.
+        local.states[posting_id] = not local.states[posting_id]
         return set()
 
     monkeypatch.setattr("src.reconciliation.export_cursor_fence", _noop_fence)
@@ -2518,6 +2527,9 @@ async def test_repair_fails_closed_when_local_row_changes_during_network_write(
     assert result.detected == 1
     assert result.repaired == 0
     assert result.unresolved == 1
+    assert attempts == 2
+    assert remote.states[posting_id] is False
+    assert local.states[posting_id] is True
     assert local.connection.transactions_started == 0
 
 

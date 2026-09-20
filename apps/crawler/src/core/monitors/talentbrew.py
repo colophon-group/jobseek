@@ -60,6 +60,32 @@ _PLATFORM_MARKER_RE = re.compile(
 _SEARCH_RESULTS_RE = re.compile(r'\bid=["\']search-results["\']', re.IGNORECASE)
 
 
+class TalentBrewSnapshotIncompleteError(RuntimeError):
+    """The provider advertised more jobs than the traversal discovered."""
+
+
+def _require_complete_snapshot(
+    *,
+    board_url: str,
+    expected: int | None,
+    urls: set[str],
+    pages: int,
+) -> None:
+    """Reject a partial inventory before monitor gone-detection can consume it."""
+    if expected is None or len(urls) >= expected:
+        return
+    log.warning(
+        "talentbrew.count_mismatch",
+        board_url=board_url,
+        expected=expected,
+        discovered=len(urls),
+        pages=pages,
+    )
+    raise TalentBrewSnapshotIncompleteError(
+        f"TalentBrew snapshot incomplete: expected {expected}, discovered {len(urls)}"
+    )
+
+
 @dataclass(slots=True)
 class _ParsedPage:
     urls: set[str] = field(default_factory=set)
@@ -383,14 +409,12 @@ async def discover(
     if ajax_urls is not None:
         urls = ajax_urls
         pages = math.ceil((parsed.total_jobs or len(urls)) / _ajax_page_size(metadata))
-        if parsed.total_jobs is not None and len(urls) < parsed.total_jobs:
-            log.warning(
-                "talentbrew.count_mismatch",
-                board_url=board_url,
-                expected=parsed.total_jobs,
-                discovered=len(urls),
-                pages=pages,
-            )
+        _require_complete_snapshot(
+            board_url=board_url,
+            expected=parsed.total_jobs,
+            urls=urls,
+            pages=pages,
+        )
         log.info(
             "talentbrew.complete",
             board_url=board_url,
@@ -436,14 +460,12 @@ async def discover(
             urls = set(sorted(urls)[:MAX_URLS])
             break
 
-    if parsed.total_jobs is not None and len(urls) < parsed.total_jobs:
-        log.warning(
-            "talentbrew.count_mismatch",
-            board_url=board_url,
-            expected=parsed.total_jobs,
-            discovered=len(urls),
-            pages=pages,
-        )
+    _require_complete_snapshot(
+        board_url=board_url,
+        expected=parsed.total_jobs,
+        urls=urls,
+        pages=pages,
+    )
 
     log.info(
         "talentbrew.complete",

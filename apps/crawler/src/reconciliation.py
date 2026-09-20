@@ -44,6 +44,7 @@ TargetScope = Literal["all", "supabase", "typesense"]
 PARTITION_COUNT = 256
 DEFAULT_MAX_PARTITIONS = 16
 REPAIR_BATCH_SIZE = 500
+_TYPESENSE_SOURCE_CHANGE_REPAIR_ATTEMPTS = 2
 TYPESENSE_EXPORT_BATCH_SIZE = 1_000
 TYPESENSE_DELETE_CONCURRENCY = 20
 RECONCILIATION_LOCK_ID = 0x5245434F4E434C  # positive bigint, ASCII-ish ``RECONCL``
@@ -781,58 +782,83 @@ async def _repair_typesense_partition(
 ) -> tuple[int, int]:
     if not candidate_ids:
         return 0, 0
-    ordered_ids = sorted(candidate_ids)
     # The exporter fence serializes this direct write with CDC cursor
     # advancement. Do not hold a PostgreSQL transaction across Typesense I/O:
     # freeze the current candidate rows, write that exact snapshot, then verify
     # only those candidates (including expected absences) and prove their local
-    # payload stayed stable before durable progress can advance. Unrelated
-    # source changes in the same partition cannot masquerade as a failed repair.
+    # payload stayed stable before durable progress can advance. A candidate
+    # that changes during the network write gets one bounded re-read/rewrite;
+    # repeated churn still fails closed. Unrelated source changes in the same
+    # partition cannot masquerade as a failed repair.
+    unresolved_ids: set[str] = set()
+    pending_ids = candidate_ids
     async with export_cursor_fence(local_pool):
-        rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
-        row_ids = {row["id"] for row in rows}
-        absent = set(ordered_ids) - row_ids
-        documents = _build_typesense_docs(list(rows), maps)
-        expected = _typesense_documents_snapshot(documents)
-        rejected_ids: set[str] = set()
-        for batch in _chunks(documents, REPAIR_BATCH_SIZE):
-            rejected_ids.update(
-                await _upsert_to_typesense(
-                    list(batch),
-                    log_rejected_documents=False,
+        for attempt in range(1, _TYPESENSE_SOURCE_CHANGE_REPAIR_ATTEMPTS + 1):
+            ordered_ids = sorted(pending_ids)
+            rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
+            row_ids = {row["id"] for row in rows}
+            absent = set(ordered_ids) - row_ids
+            documents = _build_typesense_docs(list(rows), maps)
+            expected = _typesense_documents_snapshot(documents)
+            rejected_ids: set[str] = set()
+            for batch in _chunks(documents, REPAIR_BATCH_SIZE):
+                rejected_ids.update(
+                    await _upsert_to_typesense(
+                        list(batch),
+                        log_rejected_documents=False,
+                    )
                 )
-            )
-        for batch in _chunks(sorted(absent), REPAIR_BATCH_SIZE):
-            await typesense.delete_ids([str(posting_id) for posting_id in batch])
+            for batch in _chunks(sorted(absent), REPAIR_BATCH_SIZE):
+                await typesense.delete_ids([str(posting_id) for posting_id in batch])
 
-        verified_partition = await typesense.partition_snapshot(partition)
-        verified = _snapshot_subset(verified_partition, candidate_ids)
-        verification_unresolved = compare_snapshots(expected, verified).actionable_ids("typesense")
-        current_rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
-        current = _typesense_documents_snapshot(_build_typesense_docs(current_rows, maps))
-        source_changed = compare_snapshots(expected, current).actionable_ids("typesense")
-        unresolved_ids = {str(posting_id) for posting_id in verification_unresolved}
-        unresolved_ids.update(str(posting_id) for posting_id in source_changed)
-        unresolved_ids.update(rejected_ids)
-        unresolved = len(unresolved_ids)
-        if rejected_ids:
-            log.error(
-                "reconciliation.typesense_candidates_rejected",
-                rejected=len(rejected_ids),
-                unresolved=unresolved,
+            verified_partition = await typesense.partition_snapshot(partition)
+            verified = _snapshot_subset(verified_partition, pending_ids)
+            verification_unresolved = compare_snapshots(expected, verified).actionable_ids(
+                "typesense"
             )
-        if source_changed:
-            log.error(
-                "reconciliation.typesense_candidates_changed_during_repair",
-                changed=len(source_changed),
-                unresolved=unresolved,
-            )
-        if verification_unresolved:
-            log.error(
-                "reconciliation.typesense_candidate_verification_failed",
-                verification_unresolved=len(verification_unresolved),
-                unresolved=unresolved,
-            )
+            current_rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
+            current = _typesense_documents_snapshot(_build_typesense_docs(current_rows, maps))
+            source_changed = compare_snapshots(expected, current).actionable_ids("typesense")
+            retrying = bool(source_changed) and (attempt < _TYPESENSE_SOURCE_CHANGE_REPAIR_ATTEMPTS)
+            source_changed_strings = {str(posting_id) for posting_id in source_changed}
+            attempt_unresolved = {str(posting_id) for posting_id in verification_unresolved}
+            attempt_unresolved.update(str(posting_id) for posting_id in rejected_ids)
+
+            if retrying:
+                unresolved_ids.update(attempt_unresolved - source_changed_strings)
+                log.info(
+                    "reconciliation.typesense_candidates_changed_retry",
+                    attempt=attempt,
+                    attempts=_TYPESENSE_SOURCE_CHANGE_REPAIR_ATTEMPTS,
+                    changed=len(source_changed),
+                )
+                pending_ids = frozenset(source_changed)
+                continue
+
+            attempt_unresolved.update(source_changed_strings)
+            unresolved_ids.update(attempt_unresolved)
+            unresolved = len(unresolved_ids)
+            if rejected_ids:
+                log.error(
+                    "reconciliation.typesense_candidates_rejected",
+                    rejected=len(rejected_ids),
+                    unresolved=unresolved,
+                )
+            if source_changed:
+                log.error(
+                    "reconciliation.typesense_candidates_changed_during_repair",
+                    changed=len(source_changed),
+                    unresolved=unresolved,
+                )
+            if verification_unresolved:
+                log.error(
+                    "reconciliation.typesense_candidate_verification_failed",
+                    verification_unresolved=len(verification_unresolved),
+                    unresolved=unresolved,
+                )
+            break
+
+    unresolved = len(unresolved_ids)
     return len(candidate_ids) - unresolved, unresolved
 
 

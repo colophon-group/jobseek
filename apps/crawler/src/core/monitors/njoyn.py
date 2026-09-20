@@ -224,7 +224,7 @@ async def _page_snapshot(page, board_url: str) -> _PageSnapshot:
         raise RuntimeError("Njoyn listing is missing its text snapshot")
     raw_page_number = snapshot.get("pageNumber")
     if not isinstance(raw_page_number, str) or re.fullmatch(r"[1-9]\d*", raw_page_number) is None:
-        raise RuntimeError("Njoyn listing is missing its numeric page state")
+        raise _ListingSnapshotChanged("missing_numeric_page_state")
     hidden_page = int(raw_page_number)
     result_total = _expected_count(text)
     if result_total is None:

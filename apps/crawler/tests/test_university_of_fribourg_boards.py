@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from pathlib import Path
 
 from src.core.monitors.unifr import _ACCORDION_SOURCES
@@ -86,3 +87,32 @@ def test_university_of_fribourg_images_are_complete_without_pending_assets():
     assert company["logo_url"] == "https://cdn.unifr.ch/uf/v2.4.5/gfx/logo.png"
     assert company["icon_url"] == "https://cdn.unifr.ch/sharedconfig/favicon/favicon.ico"
     assert not (DATA_DIR / "images/university-of-fribourg").exists()
+
+
+def test_university_of_fribourg_pdf_patterns_cover_current_vacancies():
+    configs = {
+        row["board_slug"]: json.loads(row["scraper_config"])
+        for row in _fribourg_rows()
+        if row["scraper_type"] == "pdf"
+    }
+    law_text = """
+    Professur für Rechtsinformatik/Informatique juridique
+    Professur für Rechtstatsachenforschung/Recherche juridique empirique
+    (beide zweisprachig d/f, je 40-50%, open rank)
+    """
+    regional_text = """
+    Schulpsychologin / Schulpsychologen
+    25 Präsenzstunden (ca. 72%) in Gurmels
+    """
+
+    assert re.search(configs["university-of-fribourg-law"]["title_pattern"], law_text).group(1) == (
+        "Professur für Rechtsinformatik/Informatique juridique\n"
+        "    Professur für Rechtstatsachenforschung/Recherche juridique empirique"
+    )
+    assert (
+        re.search(
+            configs["university-of-fribourg-regional-school-service"]["title_pattern"],
+            regional_text,
+        ).group(1)
+        == "Schulpsychologin / Schulpsychologen"
+    )

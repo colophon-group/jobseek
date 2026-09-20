@@ -24,6 +24,14 @@ def test_durable_sql_matches_identity_but_updates_outbound_url() -> None:
     assert "$4::uuid AS discovering_company_id" in compact
 
 
+def test_durable_touches_preserve_exhausted_transient_retry_tombstones() -> None:
+    compact = " ".join(_DIFF_BATCH_DURABLE.split())
+    touched = compact.split("touched AS (", 1)[1].split("), relisted AS (", 1)[0]
+    assert touched.count("job_posting.scrape_failures < 3") == 2
+    assert "job_posting.next_scrape_at IS NULL" in touched
+    assert "job_posting.next_scrape_at <= now()" in touched
+
+
 def test_collision_preflight_is_owner_and_alias_aware() -> None:
     compact = " ".join(_VALIDATE_DURABLE_DISCOVERIES.split())
     assert "cross_owner_identity" in compact

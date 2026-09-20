@@ -54,6 +54,7 @@ class _FakePage:
         page_count_by_page: dict[int, int] | None = None,
         page_count_sequences: dict[int, list[int]] | None = None,
         link_sequences: dict[int, list[list[str]]] | None = None,
+        page_number_sequences: dict[int, list[str | None]] | None = None,
     ):
         self.pages = pages
         self.expected = expected
@@ -72,6 +73,10 @@ class _FakePage:
         self.link_sequences = {
             page_number: [list(urls) for urls in values]
             for page_number, values in (link_sequences or {}).items()
+        }
+        self.page_number_sequences = {
+            page_number: list(values)
+            for page_number, values in (page_number_sequences or {}).items()
         }
         self.submissions: list[int] = []
         self.index = 0
@@ -110,11 +115,15 @@ class _FakePage:
         )
         link_sequence = self.link_sequences.get(page_number)
         links = link_sequence.pop(0) if link_sequence else self.pages[self.index]
+        page_number_sequence = self.page_number_sequences.get(page_number)
+        raw_page_number = (
+            page_number_sequence.pop(0) if page_number_sequence else str(self.index + 1)
+        )
         result_text = "" if expected is None else f"Search Results ({expected})"
         return {
             "links": links,
             "text": (f"Current opportunities\n{result_text}\nPage {page_number} of {page_count}"),
-            "pageNumber": str(self.index + 1),
+            "pageNumber": raw_page_number,
         }
 
 
@@ -508,6 +517,32 @@ async def test_retries_complete_pair_when_page_shape_changes_once() -> None:
     assert navigate.await_count == 3
     assert page.submissions == [2, 2, 2]
     sleep.assert_any_await(2.0)
+
+
+async def test_retries_complete_pair_when_numeric_page_state_is_temporarily_missing() -> None:
+    page = _FakePage(
+        [[_job("J1", 1)]],
+        expected=1,
+        page_number_sequences={1: [None]},
+    )
+    with (
+        patch(
+            "src.core.monitors.njoyn.navigate",
+            new_callable=AsyncMock,
+            side_effect=page.navigate,
+        ) as navigate,
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        urls = await _discover_page(page, page.url, {})
+
+    assert urls == {_job("J1", 1)}
+    assert navigate.await_count == 3
+    sleep.assert_awaited_once_with(2.0)
 
 
 async def test_reconciles_first_page_change_with_conservative_union() -> None:
