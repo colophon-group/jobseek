@@ -11,14 +11,22 @@ def test_alten_cloudflare_boards_use_stealth_for_monitor_and_scraper() -> None:
         rows = {
             row["board_slug"]: row
             for row in csv.DictReader(handle)
-            if row["board_slug"] in {"alten-italy", "alten-portugal"}
+            if row["board_slug"]
+            in {"alten-finland", "alten-italy", "alten-portugal", "alten-switzerland"}
         }
 
-    assert set(rows) == {"alten-italy", "alten-portugal"}
+    assert set(rows) == {
+        "alten-finland",
+        "alten-italy",
+        "alten-portugal",
+        "alten-switzerland",
+    }
     for row in rows.values():
         monitor_config = json.loads(row["monitor_config"])
         scraper_config = json.loads(row["scraper_config"])
         assert monitor_config["render"] is True
         assert monitor_config["stealth"] is True
+        assert monitor_config["proxy"] is True
         assert scraper_config["render"] is True
         assert scraper_config["stealth"] is True
+        assert scraper_config["proxy"] is True
