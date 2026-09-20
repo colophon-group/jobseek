@@ -35,7 +35,6 @@ from src.core.monitors.api_sniffer import (
     _paginate_until_converged,
     _refresh_post_data,
     _serialize_post_data,
-    _trip_com_global_config_overrides,
     _validated_item_filter,
     _validated_pagination_convergence,
     _validated_required_pdf_pattern,
@@ -470,118 +469,6 @@ def test_lumesse_config_overrides_rejects_mismatched_branded_apply_identity():
 def test_lumesse_config_overrides_rejects_noncanonical_endpoints(board_url, api_url):
     items = _lumesse_items()
     assert _lumesse_config_overrides(board_url, api_url, items, {"jobs": items}) is None
-
-
-def _trip_com_global_items():
-    return [
-        {
-            "fromId": "MJ003965",
-            "jobId": "78238174-6f56-4294-a93e-c31805007b7d",
-            "jobTitle": "Marketing Campaign Intern, TH (MJ003965)",
-            "requirements": "<p>Support global marketing campaigns.</p>",
-            "cityName": "Bangkok",
-            "kind": "Intern_Short_Term",
-            "publishDate": "2026-09-17",
-            "atsApiType": "Moka_Overseas",
-            "jobFamilyGroupName": "Marketing",
-            "buName": "International Business",
-        },
-        {
-            "fromId": "MJ003937",
-            "jobId": "d3dfbe91-f9cb-41fc-bb03-9e831c179a4c",
-            "jobTitle": "Office Administrator (MJ003937)",
-            "requirements": "<p>Manage the office and local vendors.</p>",
-            "cityName": "London",
-            "kind": "Regular",
-            "publishDate": "2026-09-18",
-            "atsApiType": "Moka_Overseas",
-            "jobFamilyGroupName": "Corporate",
-            "buName": "International Business",
-        },
-    ]
-
-
-def test_trip_com_global_config_overrides_uses_public_id_and_rich_list_fields():
-    items = _trip_com_global_items()
-    response = {"retValue": {"total": 208, "recruitJobAdList": items}}
-
-    config = _trip_com_global_config_overrides(
-        "https://careers.trip.com/#/jobList",
-        "https://careers.trip.com/api/oversea/getOverseaJobAd",
-        items,
-        response,
-    )
-
-    assert config is not None
-    assert config["total_path"] == "retValue.total"
-    assert config["total"] == 208
-    assert config["item_filter"] == {
-        "include": {"atsApiType": ["Moka_Overseas"]},
-        "require_regex": {"fromId": r"^MJ[0-9]{6,}$"},
-        "dedupe_by": ["fromId"],
-    }
-
-    jobs = _extract_rich(
-        items,
-        config["fields"],
-        None,
-        config["url_template"],
-        "https://careers.trip.com/#/jobList",
-    )
-    assert [job.url for job in jobs] == [
-        "https://careers.trip.com/#/job-detail?fromId=MJ003965&atsApiType=Moka_Overseas",
-        "https://careers.trip.com/#/job-detail?fromId=MJ003937&atsApiType=Moka_Overseas",
-    ]
-    assert jobs[0].description == "<p>Support global marketing campaigns.</p>"
-    assert jobs[0].locations == ["Bangkok"]
-    assert jobs[0].employment_type is None
-    assert jobs[1].employment_type == "full_time"
-    assert jobs[1].metadata == {
-        "ats_job_id": "d3dfbe91-f9cb-41fc-bb03-9e831c179a4c",
-        "public_job_id": "MJ003937",
-        "job_family": "Corporate",
-        "business_unit": "International Business",
-        "employment_kind": "Regular",
-    }
-
-
-@pytest.mark.parametrize(
-    ("board_url", "api_url", "mutate"),
-    [
-        (
-            "https://evil.example/#/jobList",
-            "https://careers.trip.com/api/oversea/getOverseaJobAd",
-            None,
-        ),
-        (
-            "https://careers.trip.com/#/jobList",
-            "https://evil.example/api/oversea/getOverseaJobAd",
-            None,
-        ),
-        (
-            "https://careers.trip.com/#/jobList",
-            "https://careers.trip.com/api/oversea/getOverseaJobAd",
-            ("atsApiType", "Another_ATS"),
-        ),
-        (
-            "https://careers.trip.com/#/jobList",
-            "https://careers.trip.com/api/oversea/getOverseaJobAd",
-            ("fromId", "78238174-6f56-4294-a93e-c31805007b7d"),
-        ),
-    ],
-)
-def test_trip_com_global_config_overrides_rejects_untrusted_shapes(
-    board_url,
-    api_url,
-    mutate,
-):
-    items = _trip_com_global_items()
-    if mutate is not None:
-        field, value = mutate
-        items[0][field] = value
-    response = {"retValue": {"total": 2, "recruitJobAdList": items}}
-
-    assert _trip_com_global_config_overrides(board_url, api_url, items, response) is None
 
 
 def test_serialize_post_data_accepts_json_values_and_existing_strings():

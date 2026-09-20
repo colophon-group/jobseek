@@ -119,9 +119,6 @@ _HEALTHCARESOURCE_BOARD_PATH_RE = re.compile(
 _HEALTHCARESOURCE_JOB_ID_RE = re.compile(r"^[0-9]{1,32}$")
 _HEALTHCARESOURCE_PAGE_SIZE = 100
 _HEALTHCARESOURCE_MAX_PAGES = 500
-_TRIP_CAREERS_HOST = "careers.trip.com"
-_TRIP_CAREERS_API_PATH = "/api/oversea/getOverseaJobAd"
-_TRIP_CAREERS_PUBLIC_ID_RE = re.compile(r"^MJ[0-9]{6,}$")
 
 
 class _DedupePreference(NamedTuple):
@@ -562,104 +559,6 @@ def _lumesse_config_overrides(
     if isinstance(total, (int, float)):
         overrides["total"] = int(total)
     return overrides
-
-
-def _trip_com_global_config_overrides(
-    board_url: str,
-    api_url: str,
-    items: list[dict],
-    response: object,
-) -> dict | None:
-    """Return a complete rich config for Trip.com Group's global board.
-
-    The listing API exposes the full description and a public ``MJ...`` ID,
-    but its generic ``jobId`` is an internal UUID.  Generic API discovery
-    therefore cannot cross-reference the hash-routed public detail URLs and
-    emits no jobs.  Keep this preset narrowly tied to Trip.com's canonical
-    host, endpoint, response envelope, and Moka Overseas identity.
-    """
-    if not items or not isinstance(response, dict):
-        return None
-
-    try:
-        parsed_board = urlparse(board_url)
-        parsed_api = urlparse(api_url)
-        board_port = parsed_board.port
-        api_port = parsed_api.port
-    except ValueError:
-        return None
-
-    if (
-        parsed_board.scheme.casefold() != "https"
-        or (parsed_board.hostname or "").casefold() != _TRIP_CAREERS_HOST
-        or parsed_board.path.rstrip("/")
-        or parsed_board.username is not None
-        or parsed_board.password is not None
-        or board_port not in (None, 443)
-        or parsed_api.scheme.casefold() != "https"
-        or (parsed_api.hostname or "").casefold() != _TRIP_CAREERS_HOST
-        or parsed_api.path.rstrip("/") != _TRIP_CAREERS_API_PATH
-        or parsed_api.username is not None
-        or parsed_api.password is not None
-        or api_port not in (None, 443)
-    ):
-        return None
-
-    ret_value = response.get("retValue")
-    if not isinstance(ret_value, dict):
-        return None
-    total = ret_value.get("total")
-    response_items = ret_value.get("recruitJobAdList")
-    if (
-        not isinstance(total, int)
-        or isinstance(total, bool)
-        or not isinstance(response_items, list)
-    ):
-        return None
-
-    for item in items[:5]:
-        if (
-            not isinstance(item.get("fromId"), str)
-            or _TRIP_CAREERS_PUBLIC_ID_RE.fullmatch(item["fromId"]) is None
-            or item.get("atsApiType") != "Moka_Overseas"
-            or not isinstance(item.get("jobTitle"), str)
-            or not item["jobTitle"].strip()
-            or not isinstance(item.get("requirements"), str)
-            or not item["requirements"].strip()
-        ):
-            return None
-
-    return {
-        "total_path": "retValue.total",
-        "total": total,
-        "url_template": (
-            "https://careers.trip.com/#/job-detail?fromId={fromId}&atsApiType=Moka_Overseas"
-        ),
-        "item_filter": {
-            "include": {"atsApiType": ["Moka_Overseas"]},
-            "require_regex": {"fromId": r"^MJ[0-9]{6,}$"},
-            "dedupe_by": ["fromId"],
-        },
-        "empty_response": {
-            "retValue.recruitJobAdList": [],
-            "retValue.total": 0,
-        },
-        "fields": {
-            "title": "jobTitle",
-            "description": "requirements",
-            "locations": "cityName",
-            "employment_type": {
-                "path": "kind",
-                "map": {"Regular": "full_time"},
-            },
-            "date_posted": "publishDate",
-            "metadata.ats_job_id": "jobId",
-            "metadata.public_job_id": "fromId",
-            "metadata.job_family": "jobFamilyGroupName",
-            "metadata.business_unit": "buName",
-            "metadata.employment_kind": "kind",
-        },
-    }
 
 
 async def _detect_prospective_config(
@@ -1492,18 +1391,6 @@ async def can_handle(
                 # application form URL for stable posting identity.
                 meta.pop("url_field", None)
                 meta.update(lumesse_overrides)
-
-            trip_com_overrides = _trip_com_global_config_overrides(
-                url,
-                ex.url,
-                result.candidate.items,
-                ex.body,
-            )
-            if trip_com_overrides is not None:
-                # ``jobId`` is an internal UUID. The public hash route uses
-                # the separate ``fromId`` value (for example ``MJ003965``).
-                meta.pop("url_field", None)
-                meta.update(trip_com_overrides)
 
             # Collect alternative high-scoring endpoints for user review
             from src.shared.api_sniff import ArrayCandidate as _AC
