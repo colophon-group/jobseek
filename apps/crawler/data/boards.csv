@@ -1954,6 +1954,7 @@ danaher,danaher-careers,https://jobs.danaher.com/global/en/search-results,nextda
 danaher,danaher-inventory-careers,https://danaher.wd1.myworkdayjobs.com/danaherjobs,workday,,workday,
 danaher,danaher-masimo,https://egcu.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/jobs,oracle_hcm,"{""host"": ""egcu.fa.us6.oraclecloud.com"", ""site"": ""CX"", ""jobs_count"": 104}",oracle_hcm,"{""enrich"": [""description""]}"
 dandelion,dandelion-ashby,https://jobs.ashbyhq.com/dandelion,ashby,"{""token"": ""dandelion""}",skip,
+danfoss,danfoss-careers,https://jobs.danfoss.com/,rss,"{""preset"": ""successfactors""}",skip,
 dares,dares-careers,https://dares.tech/work-with-us/,inline,"{""steps"": [{""text"": ""OPEN POSITIONS"", ""offset"": 4, ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Please, send your CV""}], ""defaults"": {""locations"": [""Castelldefels, Barcelona, Spain""], ""employment_type"": ""full_time"", ""job_location_type"": ""hybrid""}}",skip,
 dark-wolf-solutions,dark-wolf-solutions-greenhouse,https://job-boards.greenhouse.io/darkwolfsolutions,greenhouse,"{""token"": ""darkwolfsolutions""}",skip,
 darktrace,darktrace-careers,https://darktrace.wd3.myworkdayjobs.com/DarktaceExternal,workday,"{""company"": ""darktrace"", ""wd_instance"": ""wd3"", ""site"": ""DarktaceExternal""}",workday,
