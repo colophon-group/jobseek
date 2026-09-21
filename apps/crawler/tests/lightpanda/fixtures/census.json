@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 7775,
-    "boards_sha256": "3d6186813aa95c061a9b3c6246251c254274cbcad4c0f88486620de6b62cc9f4",
+    "boards_sha256": "62342680d7cba7bb0bde5e66b798e1d10fee17a81eb59ca1366529249273d25b",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "dc84f10e9c3f4b777fe0269edbae52dcb98ed9479b73ad27ff45a5fe86b7a975",
+  "manifest_sha256": "81ab4af3baee24c441fd00c8952d9de2f107ba3cb1ad045527428b56adbac26a",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -2107,33 +2107,6 @@
       "browser_capable": true,
       "browser_required": true,
       "capabilities": [
-        "action.dismiss_overlays",
-        "action.evaluate",
-        "action.wait",
-        "action.wait_for",
-        "cdp.navigation",
-        "dom.snapshot",
-        "javascript.evaluate",
-        "navigation.wait.domcontentloaded"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "javascript_execution",
-      "config_shape_sha256": "afb13a39178562a7897bdc8f5dbab29bff79b76ae2cf2b9fdd3a89578608979f",
-      "crawler_type": "dom",
-      "digest_sha256": "906910c249c67257905f7db6c9506d682742abd10fdaa0538de70fb6739f84a9",
-      "fixture": "synthetic.javascript_execution.v1",
-      "id": "profile.monitor.dom.25e5ceca392fa23f",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "6e11ecd5121c3c0ee596a65504e6ea9415bea3982b79f2fe5774dfcece1e8bf1",
-      "status": "pending_replay",
-      "surface": "monitor"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
         "cdp.navigation",
         "dom.snapshot",
         "navigation.wait.domcontentloaded"
@@ -3232,6 +3205,35 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "f4eafc476bf8dbdc7cd085b37aa0aa33dc6c71cbdf77b9b76e6563b6e30e3219",
+      "status": "pending_replay",
+      "surface": "monitor"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "action.dismiss_overlays",
+        "action.evaluate",
+        "action.wait",
+        "action.wait_for",
+        "browser.stealth",
+        "cdp.navigation",
+        "dom.snapshot",
+        "javascript.evaluate",
+        "navigation.wait.domcontentloaded",
+        "network.proxy"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "browser_identity",
+      "config_shape_sha256": "1352b89bfaac1b9c0c3bc5344dbc1f81380fca5e1afaa912ef8317bc083a66b4",
+      "crawler_type": "dom",
+      "digest_sha256": "093ba59221ff3c7ae6388ccc309688b3a05ada68a16a31532527b279285cb0d7",
+      "fixture": "synthetic.browser_identity.v1",
+      "id": "profile.monitor.dom.74698992bd783e92",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "6e11ecd5121c3c0ee596a65504e6ea9415bea3982b79f2fe5774dfcece1e8bf1",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -5697,31 +5699,6 @@
       "browser_capable": true,
       "browser_required": true,
       "capabilities": [
-        "action.evaluate",
-        "browser.stealth",
-        "cdp.navigation",
-        "dom.snapshot",
-        "javascript.evaluate",
-        "navigation.wait.domcontentloaded"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "browser_identity",
-      "config_shape_sha256": "9358cb87bb9c7292a744eda0dcfe8385f4cc8fdb64d4ac2bd50374c66997d706",
-      "crawler_type": "dom",
-      "digest_sha256": "80d50784db8688b6693d7300ce17900ed6b70b5b545bd222aaa682bf7a8752b5",
-      "fixture": "synthetic.browser_identity.v1",
-      "id": "profile.scraper.dom.2e2e9c66e8b4910e",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "5b1ce19b82d6360befc0973cb25163f73a0941242da500c02dee8aa15d78d07c",
-      "status": "pending_replay",
-      "surface": "scraper"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
         "action.wait",
         "cdp.navigation",
         "dom.snapshot",
@@ -5738,6 +5715,32 @@
       "profile_kind": "configured",
       "source_count": 2,
       "source_refs_sha256": "efb884ce6bb067906dcfa20507979dc8dc84460a310a5a99ff3ed3f584a99772",
+      "status": "pending_replay",
+      "surface": "scraper"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "action.evaluate",
+        "browser.stealth",
+        "cdp.navigation",
+        "dom.snapshot",
+        "javascript.evaluate",
+        "navigation.wait.domcontentloaded",
+        "network.proxy"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "browser_identity",
+      "config_shape_sha256": "d2c171e13984c9ccfba141116bb05a9a542c2be26df5f5dc6bbdc3e77714cb8e",
+      "crawler_type": "dom",
+      "digest_sha256": "0edae081113de763ebbac270c42bca344dc51fc8a6bdaa3d778b4fa0301a7877",
+      "fixture": "synthetic.browser_identity.v1",
+      "id": "profile.scraper.dom.33f4eaddc111d248",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "5b1ce19b82d6360befc0973cb25163f73a0941242da500c02dee8aa15d78d07c",
       "status": "pending_replay",
       "surface": "scraper"
     },
