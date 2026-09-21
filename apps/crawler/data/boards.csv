@@ -5613,6 +5613,7 @@ psi,psi-careers,https://www.psi.ch/en/hr/job-opportunities,dom,"{""render"": tru
 psibufet,psibufet-greenhouse,https://job-boards.greenhouse.io/psibufet,greenhouse,"{""token"": ""psibufet""}",skip,
 psiquantum,psiquantum-greenhouse,https://job-boards.greenhouse.io/psiquantum,greenhouse,"{""token"": ""psiquantum""}",skip,
 pst-professional-support-technologies-gmbh,pst-professional-support-technologies-gmbh-join,https://join.com/companies/ps-techde,join,"{""slug"": ""ps-techde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+pt-solutions,pt-solutions-careers,https://careers-ptsolutions.icims.com/,icims,,json-ld,
 ptc,ptc-eightfold,https://ptc.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
 public,public-greenhouse,https://job-boards.greenhouse.io/public,greenhouse,"{""token"": ""public""}",skip,
 public-library-of-science,public-library-of-science-greenhouse,https://job-boards.greenhouse.io/plos,greenhouse,"{""token"": ""plos""}",skip,
