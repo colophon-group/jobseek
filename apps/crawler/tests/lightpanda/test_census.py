@@ -318,6 +318,31 @@ def test_browser_monitor_config_fails_closed(
         build_manifest(boards)
 
 
+def test_api_sniffer_monitor_resource_policy_is_censused(tmp_path: Path) -> None:
+    boards = _write_boards(
+        tmp_path / "boards.csv",
+        [
+            _row(
+                "browser-api",
+                monitor_type="api_sniffer",
+                monitor_config={"browser": True, "resource_policy": "none"},
+            )
+        ],
+    )
+
+    manifest = build_manifest(boards)
+    configured = [
+        record for record in manifest["records"] if record["profile_kind"] == "configured"
+    ]
+
+    assert {
+        (record["surface"], record["crawler_type"], record["browser_required"])
+        for record in configured
+    } == {
+        ("monitor", "api_sniffer", True),
+    }
+
+
 @pytest.mark.parametrize(
     "row",
     [
