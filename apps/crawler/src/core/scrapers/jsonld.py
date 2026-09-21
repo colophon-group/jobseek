@@ -211,6 +211,7 @@ async def _render_with_origin_block_recovery(url: str, config: dict, pw=None) ->
     observes a typed origin block from a selected proxy context.  An absent or
     exhausted proxy pool by itself never authorizes a bypass.
     """
+    from src.shared.browser import is_proxy_origin_block_error
     from src.shared.browser import render as browser_render
     from src.shared.proxy import ProxyPoolExhaustedError
 
@@ -242,7 +243,7 @@ async def _render_with_origin_block_recovery(url: str, config: dict, pw=None) ->
             )
             break
         except Exception as exc:
-            if getattr(exc, "proxy_failure_reason", None) != "origin_block":
+            if not is_proxy_origin_block_error(exc):
                 raise
             last_origin_block = exc
             retrying = attempt < attempts
