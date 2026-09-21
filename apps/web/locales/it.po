@@ -168,6 +168,14 @@ msgstr "\"Viktor Shcherbakov, Collection of Job Postings\" con un link alla font
 msgid "common.a11y.opensInNewTab"
 msgstr "(apre in una nuova scheda)"
 
+#. Explains the maximum AI-filter candidate count; variables are current count and maximum
+#. js-lingui-explicit-id
+#. placeholder {0}: eligibility.candidateCount
+#. placeholder {1}: eligibility.maxCandidates
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.narrow.body"
+msgstr "Ci sono {0} offerte corrispondenti. Usa località, ruolo, livello o un altro filtro per arrivare a {1} offerte o meno."
+
 #. Button to show remaining collapsed locations
 #. js-lingui-explicit-id
 #. placeholder {0}: locations.length - LOCATIONS_COLLAPSED
@@ -182,16 +190,32 @@ msgid "myJobs.heatmap.tooltip"
 msgstr "{count, plural, =0 {Nessuna candidatura il {date}} one {# candidatura il {date}} other {# candidature il {date}}}"
 
 #. Locale-formatted active posting count
+#. Locale-formatted active posting count
 #. js-lingui-explicit-id
+#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/posting-count-labels.tsx
 msgid "common.stats.activeCount"
 msgstr "{count, plural, one {# offerta attiva} other {# offerte attive}}"
 
+#. Number of watchlist candidates evaluated against the saved request
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.evaluatedCount"
+msgstr "{count, plural, one {# valutata} other {# valutate}}"
+
+#. Locale-formatted postings seen in the last year count
 #. Locale-formatted postings seen in the last year count
 #. js-lingui-explicit-id
+#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/posting-count-labels.tsx
 msgid "common.stats.yearCountWithValue"
 msgstr "{count, plural, one {# nell'ultimo anno} other {# nell'ultimo anno}}"
+
+#. Number of matching jobs shown in a precisely narrowed watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.acceptedCount"
+msgstr "{count, plural, one {# corrispondenza} other {# corrispondenze}}"
 
 #. Active posting count on each similar-company card
 #. js-lingui-explicit-id
@@ -382,6 +406,12 @@ msgstr "aggiunta — apri"
 msgid "myJobs.detail.addingInterview"
 msgstr "Aggiunta…"
 
+#. Explains that normal filters need to find jobs before Jev can review them
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.empty.body"
+msgstr "Modifica i filtri attuali finché non corrisponde almeno un’offerta."
+
 #. Aria label for the region containing the agent prompt code block
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
@@ -568,6 +598,12 @@ msgstr "Applica"
 msgid "search.detail.apply"
 msgstr "Candidati"
 
+#. Pending label while the AI filter is being applied
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.applying"
+msgstr "Applicazione…"
+
 #. Step 3 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
@@ -746,7 +782,9 @@ msgid "myJobs.interview.deleteCancel"
 msgstr "Annulla"
 
 #. Link to change language settings
+#. Link to change language settings
 #. js-lingui-explicit-id
+#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/language-note.tsx
 msgid "search.languageNote.change"
 msgstr "modifica"
@@ -793,11 +831,24 @@ msgstr "Controlla la tua e-mail"
 msgid "auth.verify.checkEmail.title"
 msgstr "Controlla la tua email"
 
+#. Status while precise-matching account access is being checked
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.accessChecking"
+msgstr "Verifica dell’accesso…"
+
 #. Checking username availability
 #. js-lingui-explicit-id
 #: src/components/settings/account/UsernameSection.tsx
 msgid "settings.account.username.checking"
 msgstr "Verifica disponibilità..."
+
+#. Explains the normal-filter prerequisite for Jev
+#. js-lingui-explicit-id
+#. placeholder {0}: eligibility.maxCandidates
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.addFilters.body"
+msgstr "Scegli un ruolo, una località, un livello o un altro filtro. Questa opzione appare quando rimangono {0} offerte o meno."
 
 #. Theme settings description
 #. js-lingui-explicit-id
@@ -976,6 +1027,12 @@ msgstr "Chiudi i dettagli dell’offerta"
 #: src/components/MobileMenu.tsx
 msgid "common.mobileMenu.close"
 msgstr "Chiudi menu"
+
+#. Close button for the AI filter editor
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.close"
+msgstr "Chiudi la corrispondenza precisa"
 
 #. Label for inactive/closed job postings on company card
 #. js-lingui-explicit-id
@@ -1242,6 +1299,12 @@ msgstr "Impossibile clonare questa watchlist."
 msgid "watchlists.createFailed"
 msgstr "Impossibile creare questa watchlist."
 
+#. Error shown when a precisely matched watchlist cannot be created
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.createFailed"
+msgstr "Impossibile creare questa watchlist. Riprova."
+
 #. Error shown when deleting a watchlist fails
 #. Error shown when deleting a watchlist fails
 #. Error shown when deleting a watchlist from its overview card fails
@@ -1250,6 +1313,18 @@ msgstr "Impossibile creare questa watchlist."
 #: src/components/watchlist/watchlist-card.tsx
 msgid "watchlists.actions.deleteFailed"
 msgstr "Impossibile eliminare questa watchlist."
+
+#. Error shown when precise matching cannot be enabled on a watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.applyFailed"
+msgstr "Impossibile affinare questa watchlist. Riprova."
+
+#. Error shown when precise matching cannot be removed from a watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.removeFailed"
+msgstr "Impossibile rimuovere questi criteri di corrispondenza. Riprova."
 
 #. Error shown when an edit to an owned watchlist cannot be saved
 #. js-lingui-explicit-id
@@ -1337,11 +1412,23 @@ msgstr "Crea una watchlist dai tuoi filtri attuali"
 msgid "auth.signUp.title"
 msgstr "Crea un account"
 
+#. Button to create a watchlist with natural-language AI criteria
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.createWatchlist"
+msgstr "Crea watchlist"
+
 #. Sign-up button while loading
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx
 msgid "auth.signUp.button.loading"
 msgstr "Creazione account..."
+
+#. Pending label while an AI watchlist is being created
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.creatingWatchlist"
+msgstr "Creazione…"
 
 #. Feature section 3 heading
 #. js-lingui-explicit-id
@@ -1470,6 +1557,18 @@ msgstr "Eliminazione…"
 msgid "myJobs.interview.deleting"
 msgstr "Eliminazione…"
 
+#. Explains that entering AI criteria creates a watchlist from the focused search
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.descriptionCreatesWatchlist"
+msgstr "Descrivi esattamente cosa cerchi. Creeremo una watchlist da questa ricerca e valuteremo la tua richiesta rispetto a ogni offerta nel feed per restringere con precisione i risultati."
+
+#. Explains that AI is a second-stage filter over the existing watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.description"
+msgstr "Descrivi esattamente cosa cerchi. La tua richiesta verrà valutata rispetto a ogni offerta in questo feed per restringere con precisione i risultati."
+
 #. Placeholder for watchlist description textarea
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
@@ -1530,6 +1629,12 @@ msgstr "Non hai un account? <0>Registrati</0>"
 msgid "terms.short.r3"
 msgstr "Niente scraping, candidature automatizzate o abuso della piattaforma."
 
+#. Example natural-language criteria for Jev
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.query.placeholder"
+msgstr "es. Ruoli orientati al backend per strumenti di sviluppo. Escludi la gestione del personale."
+
 #. Placeholder for the company request input field
 #. Placeholder for the company request input field
 #. Placeholder for the company request input field
@@ -1547,6 +1652,12 @@ msgstr "es. Stripe, oppure https://boards.greenhouse.io/stripe"
 #: src/components/watchlist/watchlist-action-bar.tsx
 msgid "watchlists.actions.edit"
 msgstr "Modifica"
+
+#. Accessible label for editing an active AI search filter
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.edit"
+msgstr "Modifica i criteri"
 
 #. Email input label
 #. Email input label
@@ -1791,7 +1902,9 @@ msgid "watchlists.view.filters"
 msgstr "Filtri"
 
 #. Toggle button for advanced search filters panel
+#. Toggle button for advanced search filters panel
 #. js-lingui-explicit-id
+#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/advanced-search-panel.tsx
 msgid "search.advanced.toggle"
 msgstr "Filtri"
@@ -2496,11 +2609,9 @@ msgstr "Caricamento di altri risultati"
 msgid "common.a11y.loadingResults"
 msgstr "Caricamento dei risultati"
 
-#. Accessible loading status for a private watchlist detail route
 #. Accessible loading status for the private watchlists overview route
 #. Accessible loading status for the private watchlists overview route
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/[watchlistId]/page.tsx
 #: app/[lang]/(app)/watchlists/page.tsx
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx
 msgid "watchlists.load.loading"
@@ -2547,9 +2658,11 @@ msgstr "Sedi"
 #. Login button label
 #. Login button label
 #. Login button label
+#. Login button label
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx
 #: src/components/AppHeader.tsx
+#: src/components/search/ai-search-filter.tsx
 #: src/components/settings/account/LoginPrompt.tsx
 #: src/components/settings/BillingSettings.tsx
 msgid "common.auth.login"
@@ -2597,6 +2710,12 @@ msgstr "Segna come rifiutato"
 msgid "search.locationModal.searchHitsHeader"
 msgstr "Risultati"
 
+#. Status label above a watchlist narrowed by natural-language matching
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.preciseResults"
+msgstr "Risultati corrispondenti"
+
 #. Maximum salary label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/salary-override.tsx
@@ -2606,8 +2725,10 @@ msgstr "Max"
 #. Warning shown when cloning would exceed the account watchlist limit
 #. Warning tooltip when the account-wide watchlist limit is reached
 #. Warning tooltip when the account-wide watchlist limit is reached
+#. Warning when precise matching would exceed the account watchlist limit
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
+#: src/components/search/ai-search-filter.tsx
 #: src/components/search/save-search-button.tsx
 #: src/components/watchlist/watchlist-card.tsx
 msgid "watchlists.card.limitReached"
@@ -2710,7 +2831,11 @@ msgid "myJobs.stats.back"
 msgstr "I miei lavori"
 
 #. Default watchlist title when saving a search without descriptive filters
+#. Default watchlist title when saving a search without descriptive filters
+#. Default watchlist title when saving a search without descriptive filters
 #. js-lingui-explicit-id
+#: app/[lang]/(app)/company/[slug]/company-page.tsx
+#: app/[lang]/(app)/explore/search-page.tsx
 #: src/components/search/save-search-button.tsx
 msgid "watchlists.savedSearch.defaultTitle"
 msgstr "La mia ricerca"
@@ -2720,6 +2845,30 @@ msgstr "La mia ricerca"
 #: src/components/AuthForm.tsx
 msgid "auth.field.name"
 msgstr "Nome"
+
+#. Button to apply the natural-language AI filter
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.apply"
+msgstr "Restringi i risultati"
+
+#. Button that opens the natural-language AI filter on a job-results surface
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.toggle"
+msgstr "Restringi la ricerca"
+
+#. Title of the AI filter editor on a job-results surface
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.title"
+msgstr "Restringi questa ricerca"
+
+#. Heading shown when too many jobs match for AI filtering
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.narrow.title"
+msgstr "Restringi prima la ricerca"
 
 #. TOC: Need to reach us?
 #. js-lingui-explicit-id
@@ -2798,6 +2947,18 @@ msgstr "Nessun settore trovato."
 #: src/components/watchlist/watchlist-job-list.tsx
 msgid "watchlists.jobList.empty"
 msgstr "Nessuna offerta trovata."
+
+#. Empty state when no jobs satisfy a watchlist's natural-language matching request
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.noPreciseMatches"
+msgstr "Nessuna offerta corrisponde a questi criteri."
+
+#. Heading shown when no jobs are available to AI-filter
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.empty.title"
+msgstr "Nessuna offerta da esaminare"
 
 #. No languages match search in all-languages modal
 #. js-lingui-explicit-id
@@ -3325,6 +3486,18 @@ msgstr "Offerta non trovata."
 msgid "myJobs.detail.notFound"
 msgstr "Offerta non trovata."
 
+#. Heading explaining AI filter subscription requirement
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.subscription.title"
+msgstr "La corrispondenza precisa è inclusa in Pro"
+
+#. Heading shown when exact AI candidate eligibility cannot be established
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.unavailable.title"
+msgstr "La corrispondenza precisa è temporaneamente non disponibile"
+
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
@@ -3380,6 +3553,12 @@ msgstr "Pro"
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx
 msgid "settings.billing.plan.pro"
+msgstr "Pro"
+
+#. Short Pro subscription badge
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "common.plan.pro"
 msgstr "Pro"
 
 #. Fallback credit text for public domain artwork
@@ -3619,6 +3798,12 @@ msgstr "Rimuovi località {0}"
 msgid "search.filters.removeLocation"
 msgstr "Rimuovi località {name}"
 
+#. Accessible label for removing the active AI search filter
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.remove"
+msgstr "Rimuovi i criteri"
+
 #. Aria label for the X button that clears the salary-range watchlist filter
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx
@@ -3716,6 +3901,18 @@ msgstr "Reimpostazione…"
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.assurances.i1.title"
 msgstr "Ritmo rispettoso."
+
+#. Button that evaluates the next portion of a narrowed watchlist on demand
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.reviewMore"
+msgstr "Esamina altre offerte"
+
+#. Loading state while a saved matching request is evaluated against a watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+msgid "watchlists.jobList.evaluating"
+msgstr "Analisi di questo feed…"
 
 #. Assurance 2 title
 #. js-lingui-explicit-id
@@ -4096,7 +4293,9 @@ msgid "search.languageNote.withMore"
 msgstr "Offerte in {shownNames} e {remaining} altre"
 
 #. Note showing jobs in all languages
+#. Note showing jobs in all languages
 #. js-lingui-explicit-id
+#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/language-note.tsx
 msgid "search.languageNote.all"
 msgstr "Offerte in tutte le lingue"
@@ -4124,6 +4323,12 @@ msgstr "Accedi"
 #: src/components/company/similar-companies-strip.tsx
 msgid "company.similar.signIn.title"
 msgstr "Accedi per vederne altri"
+
+#. Heading asking the viewer to sign in before creating a precisely matched watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.login.title"
+msgstr "Accedi per continuare"
 
 #. Prompt for non-logged-in users to sign in to create watchlists
 #. js-lingui-explicit-id
@@ -4250,6 +4455,12 @@ msgstr "Nei preferiti"
 #: src/components/Pricing.tsx
 msgid "home.pricing.free.cta"
 msgstr "Inizia gratis"
+
+#. Heading prompting the user to use normal filters before AI
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.addFilters.title"
+msgstr "Inizia dai filtri delle offerte"
 
 #. Status section heading
 #. js-lingui-explicit-id
@@ -4684,6 +4895,12 @@ msgstr "Upgrade"
 msgid "upgrade.modal.title"
 msgstr "Upgrade necessario"
 
+#. Copy explaining the Pro-only AI search filter
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.subscription.body"
+msgstr "Passa a Pro per valutare un feed di offerte mirato in base ai criteri che contano per te."
+
 #. FAQ answer explaining how to request a missing company from the Explore page.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
@@ -4762,6 +4979,12 @@ msgstr "Videochiamata"
 msgid "search.detail.viewPosting"
 msgstr "Vedi offerta"
 
+#. Link to subscription settings from the AI filter
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.subscription.cta"
+msgstr "Scopri il piano Pro"
+
 #. Employment type: volunteer
 #. js-lingui-explicit-id
 #: src/components/search/employment-type-modal.tsx
@@ -4831,6 +5054,12 @@ msgstr "Crediamo che la ricerca di lavoro debba essere guidata dalla persona che
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.hero.description"
 msgstr "Raccogliamo solo il necessario, non vendiamo i tuoi dati e puoi cancellare tutto in qualsiasi momento."
+
+#. Explains fail-closed behavior when the exact candidate count is unavailable
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.unavailable.body"
+msgstr "Non è stato possibile verificare quante offerte contiene questa ricerca. Riprova tra poco."
 
 #. Error shown when the watchlists overview cannot load after a retry
 #. js-lingui-explicit-id
@@ -4951,6 +5180,12 @@ msgstr "Cos'è Job Seek?"
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.q.differentiation"
 msgstr "Cosa rende Job Seek diverso da LinkedIn o Indeed?"
+
+#. Accessible label for the AI filter natural-language criteria
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.query.label"
+msgstr "Cosa rende adatta un’offerta?"
 
 #. FAQ question comparing the Free and Pro plans.
 #. js-lingui-explicit-id
@@ -5121,6 +5356,12 @@ msgstr "Hai raggiunto il limite orario per le richieste di aziende. Riprova più
 #: src/components/Features.tsx
 msgid "home.features.s3.eyebrow"
 msgstr "Le tue aziende, le tue regole"
+
+#. Explains that the current search will be restored after sign-in
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.login.body"
+msgstr "La ricerca attuale verrà ripristinata al tuo ritorno."
 
 #. Description after successful email verification
 #. js-lingui-explicit-id

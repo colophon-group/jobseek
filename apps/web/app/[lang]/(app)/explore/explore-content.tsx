@@ -43,11 +43,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     data: ExploreData;
     unavailable: boolean;
     directAttempted: boolean;
-  } | null>({
-    data: initialData,
-    unavailable: false,
-    directAttempted: false,
-  });
+  } | null>(null);
 
   // Re-initialize only when the query-agnostic shell does not reflect the
   // browser URL or viewer preferences. Authenticated preferences come from
@@ -56,17 +52,6 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   // resolution stay browser-direct, with only semantic free text retaining a
   // narrow geo-aware parser action.
   useEffect(() => {
-    // Keep the cached server snapshot visible until this interactive island
-    // has hydrated successfully. At that point swap the two atomically: the
-    // static representation is hidden from layout and accessibility APIs,
-    // while SearchPage takes over filters, dialogs, pagination, and actions.
-    const interactive = rootRef.current?.closest<HTMLElement>("[data-explore-interactive]");
-    const staticSnapshot = interactive?.previousElementSibling;
-    if (staticSnapshot instanceof HTMLElement && staticSnapshot.hasAttribute("data-explore-static-results")) {
-      staticSnapshot.setAttribute("hidden", "");
-    }
-    interactive?.removeAttribute("hidden");
-
     const searchParams = new URLSearchParams(window.location.search);
     if (hasLoggedInHint() && isPending) {
       // Invalidate any prior viewer-state request while the hinted session is
@@ -166,7 +151,34 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     rates,
   ]);
 
-  if (!view) return <ExploreSkeleton />;
+  // Keep the cached server snapshot visible until the correct interactive
+  // view has committed. Filtered and preference-bearing URLs start with a
+  // query-agnostic shell, so revealing this subtree while `view` is null
+  // would briefly replace useful server results with a skeleton (or stale
+  // unfiltered controls). Waiting for `view` also preserves the secretless
+  // repository fallback when browser-side Typesense is unavailable.
+  useEffect(() => {
+    if (!view) return;
+    const interactive = rootRef.current?.closest<HTMLElement>(
+      "[data-explore-interactive]",
+    );
+    const staticSnapshot = interactive?.previousElementSibling;
+    if (
+      staticSnapshot instanceof HTMLElement &&
+      staticSnapshot.hasAttribute("data-explore-static-results")
+    ) {
+      staticSnapshot.setAttribute("hidden", "");
+    }
+    interactive?.removeAttribute("hidden");
+  }, [view]);
+
+  if (!view) {
+    return (
+      <div ref={rootRef} data-explore-content-root>
+        <ExploreSkeleton />
+      </div>
+    );
+  }
   const { data } = view;
 
   const {
@@ -191,6 +203,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
       <SearchPage
         initialCompanies={result.companies}
         initialTotalCompanies={result.totalCompanies}
+        initialTotalPostings={result.totalPostings}
         initialTruncated={result.truncated}
         initialDegraded={result.degraded}
         initialRepositoryFallbackCompanies={repositoryFallbackCompanies}

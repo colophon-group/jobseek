@@ -168,13 +168,13 @@ export function AdvancedSearchPanel({
     void prefetchLocationsFirstPage(locale, locationFilters, getGlobalLocationsPage);
   }, [locale, locationFilters]);
 
-  const btnClass = "flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-border-soft px-3 py-1.5 text-sm text-muted transition-colors hover:border-primary/30 hover:text-foreground";
+  const btnClass = "flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-md border border-dashed border-border-soft px-3 py-1.5 text-sm text-muted transition-colors hover:border-primary/30 hover:text-foreground";
 
   return (
-    <div>
+    <>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-muted transition-colors hover:text-foreground"
+        className="col-start-1 row-start-1 inline-flex cursor-pointer items-center gap-1.5 self-start justify-self-start text-xs text-muted transition-colors hover:text-foreground"
       >
         <SlidersHorizontal size={13} />
         {t({ id: "search.advanced.toggle", comment: "Toggle button for advanced search filters panel", message: "Filters" })}
@@ -182,7 +182,7 @@ export function AdvancedSearchPanel({
       </button>
 
       {expanded && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="col-span-full row-start-2 flex w-full flex-wrap items-center gap-2">
           <button
             onClick={() => setLocationModalOpen(true)}
             onMouseEnter={handleLocationHover}
@@ -345,6 +345,6 @@ export function AdvancedSearchPanel({
           } : undefined}
         />
       )}
-    </div>
+    </>
   );
 }

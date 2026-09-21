@@ -30,6 +30,7 @@ export interface SearchStateSnapshot {
   experienceMax: number | undefined;
   companies: SearchResultCompany[];
   totalCompanies: number;
+  totalPostings?: number;
   degraded?: boolean;
   showPostingId: string | null;
   scrollY: number;

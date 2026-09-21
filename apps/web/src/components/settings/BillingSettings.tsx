@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { Check, Crown } from "lucide-react";
@@ -11,13 +12,17 @@ import { translateActionError } from "@/lib/action-error-messages";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import type { PlanId } from "@/lib/plans";
+import {
+  normalizeAuthReturnPath,
+  withAuthReturnPath,
+} from "@/lib/auth-return";
 
 type PlanInfo = {
   plan: PlanId;
   canReceiveAlerts: boolean;
 };
 
-function LoginPrompt() {
+function LoginPrompt({ returnPath }: { returnPath: string | null }) {
   const { t } = useLingui();
   const lp = useLocalePath();
   return (
@@ -27,7 +32,11 @@ function LoginPrompt() {
           Please log in to manage your billing settings.
         </Trans>
       </p>
-      <Button href={lp("/sign-in")} variant="primary" size="md">
+      <Button
+        href={withAuthReturnPath(lp("/sign-in"), returnPath)}
+        variant="primary"
+        size="md"
+      >
         {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
       </Button>
     </div>
@@ -80,11 +89,20 @@ function PlanCard({
 
 export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
   const { t } = useLingui();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { isLoggedIn } = useSession();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState<"portal" | null>(null);
+  const returnPath = normalizeAuthReturnPath(searchParams.get("next"));
 
-  if (!isLoggedIn) return <LoginPrompt />;
+  useEffect(() => {
+    if (isLoggedIn && planInfo.plan === "unlimited" && returnPath) {
+      router.replace(returnPath);
+    }
+  }, [isLoggedIn, planInfo.plan, returnPath, router]);
+
+  if (!isLoggedIn) return <LoginPrompt returnPath={returnPath} />;
 
   const isFree = planInfo.plan === "free";
 

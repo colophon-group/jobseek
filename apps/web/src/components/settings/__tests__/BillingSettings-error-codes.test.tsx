@@ -8,6 +8,13 @@ import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
   createPortalSession: vi.fn(),
+  replace: vi.fn(),
+  searchParams: new URLSearchParams(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mocks.replace }),
+  useSearchParams: () => mocks.searchParams,
 }));
 
 vi.mock("@/components/providers/SessionProvider", () => ({
@@ -29,7 +36,26 @@ import { BillingSettings } from "../BillingSettings";
 describe("BillingSettings action errors", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams();
     mocks.createPortalSession.mockResolvedValue({ url: null });
+  });
+
+  it("returns a newly subscribed viewer to the preserved focused search", async () => {
+    mocks.searchParams = new URLSearchParams({
+      next: "/en/explore?q=engineer&loc=switzerland&narrow=1",
+    });
+
+    render(
+      <BillingSettings
+        planInfo={{ plan: "unlimited", canReceiveAlerts: true }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mocks.replace).toHaveBeenCalledWith(
+        "/en/explore?q=engineer&loc=switzerland&narrow=1",
+      );
+    });
   });
 
   it("offers no purchase action while Pro billing is unavailable", () => {

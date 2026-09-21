@@ -106,7 +106,7 @@ async function loadLedgerFixture(): Promise<{
   const migrations = readMigrationFiles({ migrationsFolder: migrationFolder });
 
   invariant(journal.entries.length === migrations.length, "Journal and SQL migration counts differ");
-  invariant(migrations.length === 79, `Expected 79 real journal migrations, found ${migrations.length}`);
+  invariant(migrations.length === 81, `Expected 81 real journal migrations, found ${migrations.length}`);
 
   const retirementIndex = journal.entries.findIndex((entry) => entry.tag === retirementTag);
   invariant(retirementIndex !== -1, `Journal does not contain ${retirementTag}`);
@@ -115,7 +115,7 @@ async function loadLedgerFixture(): Promise<{
   const through0085 = migrations.slice(0, retirementIndex);
   const subsequent = migrations.slice(retirementIndex + 1);
   invariant(through0085.length === 74, "Expected 74 journal entries through 0085");
-  invariant(subsequent.length === 4, "Expected exactly four journal entries after 0086");
+  invariant(subsequent.length === 6, "Expected exactly six journal entries after 0086");
 
   // The production guard intentionally expects 75 ledger rows at the 0085
   // tip, one more than the current 74 journal entries through 0085. Model that
@@ -628,6 +628,15 @@ async function runHarness(databaseUrl: string): Promise<void> {
       afterSuccess.publicTables,
       [
         ...beforeSuccess.publicTables.filter((table) => table !== "job_posting"),
+        "ai_filter_budget_account",
+        "ai_filter_configuration",
+        "ai_filter_decision",
+        "ai_filter_event",
+        "ai_filter_feedback",
+        "ai_filter_global_cache",
+        "ai_filter_query_version",
+        "ai_filter_segment",
+        "ai_filter_usage_ledger",
         "notification_delivery",
       ].sort(),
       "0086 plus subsequent additive migrations changed unexpected public tables",
@@ -723,7 +732,19 @@ async function runHarness(databaseUrl: string): Promise<void> {
     invariant(!restored.jobPostingPresent, "Restore convergence recreated job_posting");
     assertEqual(
       restored.publicTables,
-      [...restoreShape.publicTables, "notification_delivery"].sort(),
+      [
+        ...restoreShape.publicTables,
+        "ai_filter_budget_account",
+        "ai_filter_configuration",
+        "ai_filter_decision",
+        "ai_filter_event",
+        "ai_filter_feedback",
+        "ai_filter_global_cache",
+        "ai_filter_query_version",
+        "ai_filter_segment",
+        "ai_filter_usage_ledger",
+        "notification_delivery",
+      ].sort(),
       "Restore convergence changed unexpected public tables",
     );
     invariant(

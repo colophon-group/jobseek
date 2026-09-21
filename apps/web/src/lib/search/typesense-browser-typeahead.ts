@@ -78,6 +78,7 @@ async function searchOne<T>(
   cfg: TypesenseBrowserConfig,
   collection: string,
   params: Record<string, unknown>,
+  retryUnauthorized = true,
 ): Promise<RawSearchResponse<T>> {
   const url = `${cfg.protocol}://${cfg.host}:${cfg.port}/collections/${collection}/documents/search`;
   const qs = new URLSearchParams();
@@ -91,6 +92,14 @@ async function searchOne<T>(
   });
   if (!res.ok) {
     invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
+    if (retryUnauthorized && (res.status === 401 || res.status === 403)) {
+      return searchOne<T>(
+        await getTypesenseBrowserConfig(),
+        collection,
+        params,
+        false,
+      );
+    }
     throw new Error(`typesense ${collection} ${res.status}`);
   }
   return res.json();
@@ -99,6 +108,7 @@ async function searchOne<T>(
 async function searchMany(
   cfg: TypesenseBrowserConfig,
   searches: MultiSearchRequest[],
+  retryUnauthorized = true,
 ): Promise<RawSearchResponse<Record<string, unknown>>[]> {
   if (searches.length === 0) return [];
   const url = `${cfg.protocol}://${cfg.host}:${cfg.port}/multi_search`;
@@ -112,6 +122,13 @@ async function searchMany(
   });
   if (!res.ok) {
     invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
+    if (retryUnauthorized && (res.status === 401 || res.status === 403)) {
+      return searchMany(
+        await getTypesenseBrowserConfig(),
+        searches,
+        false,
+      );
+    }
     throw new Error(`typesense multi_search ${res.status}`);
   }
   const body = (await res.json()) as {

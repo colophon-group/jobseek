@@ -5,5 +5,11 @@
     "deploymentEnabled": {
       "main": false
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/internal/ai-filter-maintenance",
+      "schedule": "17 * * * *"
+    }
+  ]
 }

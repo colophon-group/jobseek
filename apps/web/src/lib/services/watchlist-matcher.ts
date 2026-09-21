@@ -30,12 +30,15 @@ import { normalizePostingTitle } from "@/lib/posting-title";
 import { canonicalStringCompare } from "@/lib/sort";
 import {
   buildWatchlistCandidateSearchParams,
+  candidateOrderKeyFromCanonicalId,
   hasWatchlistCandidateScope,
+  WATCHLIST_CANDIDATE_ORDER_KEY_FIELD,
   WATCHLIST_CANDIDATE_WINDOW_BOUNDARY,
   type WatchlistCandidateOrder,
   type WatchlistCandidateSearchParams,
   type WatchlistCandidateWindow,
 } from "@/lib/search/watchlist-candidate-query";
+import { stableCandidateOrderReady } from "@/lib/search/stable-candidate-order-readiness";
 import type {
   CompiledWatchlistMatcher,
   MatchedWatchlistPosting,
@@ -50,6 +53,8 @@ const WORK_MODES = new Set<WorkMode>(["onsite", "hybrid", "remote"]);
 const MULTI_SEARCH_CHUNK_SIZE = 40;
 const TYPESENSE_MAX_PAGE_SIZE = 250;
 const TYPESENSE_BATCH_SAFETY_OFFSET = Number.MAX_SAFE_INTEGER;
+const STABLE_CANDIDATE_MISSING_FIRST_SORT =
+  `${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}(missing_values: first):asc`;
 
 export type CompiledWatchlistFilter = CompiledWatchlistMatcher & {
   resolvedLocations: ResolvedLocation[];
@@ -232,7 +237,60 @@ type RankedCandidateHit = {
   hitRank: number;
 };
 
-function mapCandidateHit(hit: CandidateHit): WatchlistPostingEntry {
+function assertStableCandidateOrderReady(ready: boolean): void {
+  if (!ready) {
+    throw new Error(
+      "Stable Typesense candidate ordering has not passed backfill readiness",
+    );
+  }
+}
+
+function stableCandidateId(hit: CandidateHit): string {
+  const doc = hit.document as Record<string, unknown>;
+  const id = doc.id;
+  const sortKey = doc[WATCHLIST_CANDIDATE_ORDER_KEY_FIELD];
+  if (typeof id !== "string" || typeof sortKey !== "string") {
+    throw malformedTypesenseResponseError();
+  }
+  let expected: string;
+  try {
+    expected = candidateOrderKeyFromCanonicalId(id);
+  } catch {
+    throw malformedTypesenseResponseError();
+  }
+  if (expected !== sortKey) throw malformedTypesenseResponseError();
+  return id;
+}
+
+function stableCandidateGuardParams<T extends WatchlistCandidateSearchParams>(
+  params: T,
+): T {
+  return {
+    ...params,
+    sort_by: STABLE_CANDIDATE_MISSING_FIRST_SORT,
+    per_page: 1,
+    page: 1,
+  } as T;
+}
+
+function assertStableCandidateGuard(
+  result: TypesenseMultiSearchResult<object>,
+): void {
+  assertTypesenseSearchResult(result);
+  if (result.found === 0) return;
+  const hits = result.hits ?? [];
+  if (hits.length !== 1) throw malformedTypesenseResponseError();
+  stableCandidateId(hits[0]!);
+}
+
+function lexicalCompare(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function mapCandidateHit(
+  hit: CandidateHit,
+  stableNewestReady: boolean,
+): WatchlistPostingEntry {
   const doc = hit.document as Record<string, unknown>;
   const optionalString = (value: unknown) =>
     value == null || typeof value === "string";
@@ -250,6 +308,7 @@ function mapCandidateHit(hit: CandidateHit): WatchlistPostingEntry {
   ) {
     throw malformedTypesenseResponseError();
   }
+  if (stableNewestReady) stableCandidateId(hit);
 
   const firstSeenAt = new Date(doc.first_seen_at * 1_000);
   if (!Number.isFinite(firstSeenAt.getTime())) {
@@ -280,6 +339,7 @@ function compareRankedHits(
   a: RankedCandidateHit,
   b: RankedCandidateHit,
   order: WatchlistCandidateOrder,
+  stableNewestReady: boolean,
 ): number {
   if (order === "interactive") {
     const relevance = (b.hit.text_match ?? 0) - (a.hit.text_match ?? 0);
@@ -291,6 +351,9 @@ function compareRankedHits(
     ((bDoc.first_seen_at as number) ?? 0) -
     ((aDoc.first_seen_at as number) ?? 0);
   if (freshness !== 0) return freshness;
+  if (order === "newest" && stableNewestReady) {
+    return lexicalCompare(stableCandidateId(a.hit), stableCandidateId(b.hit));
+  }
   // Typesense uses insertion order after the explicit sort keys tie. Preserve
   // that per-batch rank and make batch order the deterministic cross-batch
   // tie-break so a larger requested prefix never reshuffles earlier pages.
@@ -330,12 +393,24 @@ export async function readWatchlistCandidates(params: {
   limit: number;
   window?: WatchlistCandidateWindow;
   order?: WatchlistCandidateOrder;
+  /** AF-2 callers set this so an unverified index cannot degrade silently. */
+  requireStableOrder?: boolean;
   abortSignal?: AbortSignal;
 }): Promise<{ postings: WatchlistPostingEntry[]; total: number }> {
+  const order = params.order ?? "interactive";
+  const stableNewestReady =
+    order === "newest" &&
+    params.requireStableOrder === true &&
+    stableCandidateOrderReady();
+  if (params.requireStableOrder === true) {
+    if (order !== "newest") {
+      throw new Error("Stable candidate ordering requires newest-first order");
+    }
+    assertStableCandidateOrderReady(stableNewestReady);
+  }
   if (!hasWatchlistCandidateScope(params.filters)) {
     return { postings: [], total: 0 };
   }
-  const order = params.order ?? "interactive";
   const buildParams = (filters: WatchlistCandidateFilters) =>
     buildWatchlistCandidateSearchParams({
       filters,
@@ -343,6 +418,7 @@ export async function readWatchlistCandidates(params: {
       limit: params.limit,
       window: params.window,
       order,
+      stableNewestReady,
     });
   const searchParams = buildParams(params.filters);
   const buildWindowSearchParams = (
@@ -360,9 +436,13 @@ export async function readWatchlistCandidates(params: {
       limit,
       window: params.window,
       order,
+      stableNewestReady,
     });
     return { ...candidateSearchParams, offset, limit };
   };
+  const directSearchParams = params.limit === 0
+    ? searchParams
+    : buildWindowSearchParams(params.filters, params.offset, params.limit);
   const buildBatchSafetyParams = (filters: WatchlistCandidateFilters) =>
     buildWindowSearchParams(
       filters,
@@ -375,29 +455,61 @@ export async function readWatchlistCandidates(params: {
     (params.filters.companyIds.length > COMPANY_BATCH_SIZE ||
       !isTypesenseQueryStringSafe(buildBatchSafetyParams(params.filters)));
   const client = getSearchClient();
+  const filterBatches = needsBatches
+    ? batchesForFilters(params.filters, (filters) =>
+        buildBatchSafetyParams(filters),
+      )
+    : [params.filters];
+  const guardStableCandidateOrder = async () => {
+    const guards = await Promise.all(
+      filterBatches.map((filters) =>
+        withTypesenseRetry(
+          () =>
+            client.collections("job_posting").documents().search(
+              stableCandidateGuardParams(buildWatchlistCandidateSearchParams({
+                filters,
+                offset: 0,
+                limit: 1,
+                window: params.window,
+                order,
+                stableNewestReady,
+              })),
+              { abortSignal: params.abortSignal },
+            ),
+          {
+            label: "readWatchlistCandidates.stable-order-guard",
+            abortSignal: params.abortSignal,
+          },
+        ),
+      ),
+    );
+    for (const result of guards) assertStableCandidateGuard(result);
+  };
+  if (stableNewestReady) await guardStableCandidateOrder();
   if (!needsBatches) {
     const result = await withTypesenseRetry(
       () =>
-        client.collections("job_posting").documents().search(searchParams, {
-          abortSignal: params.abortSignal,
-        }),
+        client
+          .collections("job_posting")
+          .documents()
+          .search(directSearchParams, { abortSignal: params.abortSignal }),
       { label: "readWatchlistCandidates", abortSignal: params.abortSignal },
     );
     assertTypesenseSearchResult(result, { expectHits: params.limit !== 0 });
+    if (stableNewestReady) await guardStableCandidateOrder();
     const total = result.found ?? 0;
     return {
       postings:
         total === 0 || params.limit === 0
           ? []
-          : (result.hits ?? []).map(mapCandidateHit),
+          : (result.hits ?? []).map((hit) =>
+              mapCandidateHit(hit, stableNewestReady)
+            ),
       total,
     };
   }
 
   const needed = params.offset + params.limit;
-  const filterBatches = batchesForFilters(params.filters, (filters) =>
-    buildBatchSafetyParams(filters),
-  );
   if (filterBatches.some((filters) => !isTypesenseQueryStringSafe(
     buildBatchSafetyParams(filters),
   ))) {
@@ -414,6 +526,7 @@ export async function readWatchlistCandidates(params: {
               limit: 0,
               window: params.window,
               order,
+              stableNewestReady,
             }),
             { abortSignal: params.abortSignal },
           ),
@@ -426,7 +539,10 @@ export async function readWatchlistCandidates(params: {
   );
   for (const result of countResults) assertTypesenseSearchResult(result);
   const total = countResults.reduce((sum, result) => sum + (result.found ?? 0), 0);
-  if (total === 0 || params.limit === 0) return { postings: [], total };
+  if (total === 0 || params.limit === 0) {
+    if (stableNewestReady) await guardStableCandidateOrder();
+    return { postings: [], total };
+  }
 
   const rowResultsByBatch = await Promise.all(
     filterBatches.map(async (filters) => {
@@ -459,6 +575,7 @@ export async function readWatchlistCandidates(params: {
       return pages;
     }),
   );
+  if (stableNewestReady) await guardStableCandidateOrder();
   const allHits = rowResultsByBatch.flatMap((pages, batchIndex) => {
     let hitRank = 0;
     return pages.flatMap((result) =>
@@ -469,11 +586,13 @@ export async function readWatchlistCandidates(params: {
       })),
     );
   });
-  allHits.sort((a, b) => compareRankedHits(a, b, order));
+  allHits.sort((a, b) =>
+    compareRankedHits(a, b, order, stableNewestReady)
+  );
   return {
     postings: allHits
       .slice(params.offset, params.offset + params.limit)
-      .map(({ hit }) => mapCandidateHit(hit)),
+      .map(({ hit }) => mapCandidateHit(hit, stableNewestReady)),
     total,
   };
 }
@@ -510,6 +629,8 @@ export async function matchCompiledWatchlistsInWindow(params: {
   windowStart: Date;
   windowEnd: Date;
   limitPerWatchlist: number;
+  /** AF-2 callers set this so an unverified index cannot degrade silently. */
+  requireStableOrder?: boolean;
   abortSignal?: AbortSignal;
 }): Promise<WatchlistWindowMatchResult> {
   if (
@@ -518,6 +639,11 @@ export async function matchCompiledWatchlistsInWindow(params: {
     params.limitPerWatchlist > 250
   ) {
     throw new RangeError("limitPerWatchlist must be an integer between 1 and 250");
+  }
+  const stableNewestReady =
+    params.requireStableOrder === true && stableCandidateOrderReady();
+  if (params.requireStableOrder === true) {
+    assertStableCandidateOrderReady(stableNewestReady);
   }
   const window = {
     windowStart: params.windowStart,
@@ -531,6 +657,7 @@ export async function matchCompiledWatchlistsInWindow(params: {
     limit: 0,
     window,
     order: "newest",
+    stableNewestReady,
   });
 
   const ids = new Set<string>();
@@ -551,6 +678,7 @@ export async function matchCompiledWatchlistsInWindow(params: {
         limit: params.limitPerWatchlist,
         window,
         order: "newest",
+        stableNewestReady,
       }),
     );
     batches.forEach((filters, batchIndex) => {
@@ -565,6 +693,7 @@ export async function matchCompiledWatchlistsInWindow(params: {
             limit: params.limitPerWatchlist,
             window,
             order: "newest",
+            stableNewestReady,
           }),
         },
       });
@@ -574,13 +703,42 @@ export async function matchCompiledWatchlistsInWindow(params: {
   const results: TypesenseMultiSearchResult<object>[] = [];
   if (plan.length > 0) {
     const client = getSearchClient();
+    const guardStableCandidateOrder = async () => {
+      for (let offset = 0; offset < plan.length; offset += MULTI_SEARCH_CHUNK_SIZE) {
+        const chunk = plan.slice(offset, offset + MULTI_SEARCH_CHUNK_SIZE);
+        const raw = await withTypesenseRetry(
+          () =>
+            client.multiSearch.perform(
+              {
+                searches: chunk.map((entry) =>
+                  stableCandidateGuardParams(entry.search)
+                ),
+              },
+              {},
+              { abortSignal: params.abortSignal },
+            ),
+          {
+            label: "matchCompiledWatchlistsInWindow.stable-order-guard",
+            abortSignal: params.abortSignal,
+          },
+        );
+        const guardResults = parseTypesenseMultiSearchResults<object>(
+          raw,
+          chunk.length,
+        );
+        for (const result of guardResults) assertStableCandidateGuard(result);
+      }
+    };
+    if (stableNewestReady) await guardStableCandidateOrder();
     for (let offset = 0; offset < plan.length; offset += MULTI_SEARCH_CHUNK_SIZE) {
       const chunk = plan.slice(offset, offset + MULTI_SEARCH_CHUNK_SIZE);
       const raw = await withTypesenseRetry(
         () =>
-          client.multiSearch.perform({
-            searches: chunk.map((entry) => entry.search),
-          }),
+          client.multiSearch.perform(
+            { searches: chunk.map((entry) => entry.search) },
+            {},
+            { abortSignal: params.abortSignal },
+          ),
         {
           label: "matchCompiledWatchlistsInWindow",
           abortSignal: params.abortSignal,
@@ -592,6 +750,7 @@ export async function matchCompiledWatchlistsInWindow(params: {
         }),
       );
     }
+    if (stableNewestReady) await guardStableCandidateOrder();
   }
 
   const hitsByWatchlist = params.watchlists.map(
@@ -619,10 +778,12 @@ export async function matchCompiledWatchlistsInWindow(params: {
       if (!uniqueHits.has(doc.id)) uniqueHits.set(doc.id, rankedHit);
     }
     const selected = [...uniqueHits.values()]
-      .sort((a, b) => compareRankedHits(a, b, "newest"))
+      .sort((a, b) =>
+        compareRankedHits(a, b, "newest", stableNewestReady)
+      )
       .slice(0, params.limitPerWatchlist);
     for (const { hit } of selected) {
-      const posting = mapCandidateHit(hit);
+      const posting = mapCandidateHit(hit, stableNewestReady);
       const label = {
         id: watchlist.watchlistId,
         label: watchlist.watchlistLabel,
@@ -661,6 +822,7 @@ export async function matchWatchlistsInWindow(params: {
   windowStart: Date;
   windowEnd: Date;
   limitPerWatchlist: number;
+  requireStableOrder?: boolean;
   abortSignal?: AbortSignal;
 }): Promise<WatchlistWindowMatchResult> {
   const compiled = await compileWatchlistMatcherSources(params.watchlists);
@@ -669,6 +831,7 @@ export async function matchWatchlistsInWindow(params: {
     windowStart: params.windowStart,
     windowEnd: params.windowEnd,
     limitPerWatchlist: params.limitPerWatchlist,
+    requireStableOrder: params.requireStableOrder,
     abortSignal: params.abortSignal,
   });
 }

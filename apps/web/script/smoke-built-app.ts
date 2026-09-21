@@ -24,6 +24,19 @@ const navigationActionRoutes = [
   ["/de/explore?q=python", 1],
   ["/en/progress", 0],
 ] as const;
+const exploreFilterParams = [
+  "q",
+  "loc",
+  "occ",
+  "sen",
+  "tech",
+  "wm",
+  "etype",
+  "sal",
+  "salcur",
+  "exp",
+  "lang",
+] as const;
 const discoveryNotFoundRoutes = [
   "/api",
   "/api-docs",
@@ -202,15 +215,22 @@ async function smokeNavigationServerActions(
           interactiveHidden: interactive?.hidden ?? true,
           interactiveCompanies:
             interactive?.querySelectorAll("[data-search-result-company]").length ?? 0,
+          searchUnavailable:
+            interactive?.querySelector("[data-search-unavailable]") !== null,
           unhiddenHeadings: Array.from(document.querySelectorAll("h1")).filter(
             (heading) => !heading.closest("[hidden]"),
           ).length,
         };
       });
+      const routeParams = new URL(route, baseUrl).searchParams;
+      const filteredServiceUnavailable =
+        !hasServerTypesenseConfiguration() &&
+        exploreFilterParams.some((param) => routeParams.has(param)) &&
+        exploreState.searchUnavailable;
       if (
         !exploreState.staticHidden ||
         exploreState.interactiveHidden ||
-        exploreState.interactiveCompanies === 0 ||
+        (exploreState.interactiveCompanies === 0 && !filteredServiceUnavailable) ||
         exploreState.unhiddenHeadings !== 1
       ) {
         console.error("smoke explore hydration state", exploreState);

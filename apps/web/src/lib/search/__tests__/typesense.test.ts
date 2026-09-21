@@ -645,6 +645,94 @@ describe("TypesenseBrowserProvider.listTopCompanies", () => {
   });
 });
 
+describe("exact posting counts for AI-filter eligibility", () => {
+  const searchParams = {
+    keywords: ["engineer"],
+    languages: ["en"],
+    locale: "en",
+    offset: 0,
+    limit: 10,
+  };
+
+  function keywordResult() {
+    return {
+      found: 1,
+      found_docs: 37,
+      grouped_hits: [
+        { group_key: ["fresh-co"], found: 37, hits: [freshPosting] },
+      ],
+      facet_counts: [
+        { field_name: "company_id", counts: [], stats: { total_values: 1 } },
+      ],
+    };
+  }
+
+  function yearFacetResult() {
+    return {
+      found: 37,
+      facet_counts: [
+        {
+          field_name: "company_id",
+          counts: [{ value: "fresh-co", count: 37 }],
+          stats: { total_values: 1 },
+        },
+      ],
+    };
+  }
+
+  it("uses pre-grouping found_docs for server keyword searches", async () => {
+    mocks.search.mockImplementation(
+      async (collection: string, params: Record<string, unknown>) => {
+        if (collection === "company") {
+          return { found: 1, hits: [companyHit("fresh-co", "Fresh Co", 37, 37)] };
+        }
+        if (params.group_by === "company_id") return keywordResult();
+        return yearFacetResult();
+      },
+    );
+
+    const result = await new TypesenseSearchProvider().search(searchParams);
+
+    expect(result.totalCompanies).toBe(1);
+    expect(result.totalPostings).toBe(37);
+  });
+
+  it("uses pre-grouping found_docs for browser keyword searches", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url === "/api/typesense-key") {
+          return Response.json({
+            apiKey: "browser-key",
+            host: "typesense.example",
+            port: 443,
+            protocol: "https",
+            expiresAt: Date.now() + 60_000,
+          });
+        }
+        const parsed = new URL(url);
+        const collection = parsed.pathname.match(/\/collections\/([^/]+)/)?.[1];
+        if (collection === "company") {
+          return Response.json({
+            found: 1,
+            hits: [companyHit("fresh-co", "Fresh Co", 37, 37)],
+          });
+        }
+        if (parsed.searchParams.get("group_by") === "company_id") {
+          return Response.json(keywordResult());
+        }
+        return Response.json(yearFacetResult());
+      }),
+    );
+
+    const result = await new TypesenseBrowserProvider().search(searchParams);
+
+    expect(result.totalCompanies).toBe(1);
+    expect(result.totalPostings).toBe(37);
+  });
+});
+
 describe("loadPostingsWithCounts multi_search batching", () => {
   const params = {
     languages: ["en"],

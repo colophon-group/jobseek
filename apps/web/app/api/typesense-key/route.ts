@@ -1,4 +1,3 @@
-import { connection } from "next/server";
 import { generateScopedSearchKey } from "@/lib/search/scoped-key";
 
 const KEY_TTL_SECONDS = 600;
@@ -10,10 +9,6 @@ const KEY_TTL_SECONDS = 600;
 const VERCEL_CDN_TTL_SECONDS = 510;
 
 export async function GET() {
-  // cacheComponents may otherwise evaluate Date.now() while prerendering.
-  // The response is generated at request time, then shared by Vercel's CDN.
-  await connection();
-
   // Typesense scoped keys must be derived from a parent whose actions list is
   // exactly ["documents:search"]. The regular TYPESENSE_SEARCH_KEY also carries
   // documents:get, so the server rejects scoped keys minted from it.

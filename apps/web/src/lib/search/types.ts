@@ -69,6 +69,8 @@ export interface SearchResultCompany {
 export interface SearchResponse {
   companies: SearchResultCompany[];
   totalCompanies: number;
+  /** Exact number of active postings matching the current search, when known. */
+  totalPostings?: number;
   truncated?: boolean;
   degraded?: boolean;
 }

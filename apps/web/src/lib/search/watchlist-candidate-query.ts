@@ -5,6 +5,33 @@ import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-f
 export const WATCHLIST_CANDIDATE_WINDOW_BOUNDARY =
   "[windowStart, windowEnd)" as const;
 
+/** Compact sortable producer field derived from the canonical posting UUID. */
+export const WATCHLIST_CANDIDATE_ORDER_KEY_FIELD =
+  "candidate_order_key" as const;
+export const WATCHLIST_CANDIDATE_ORDER_KEY_VERSION = "uuid-b64lex-v1" as const;
+
+const CANDIDATE_ORDER_ALPHABET =
+  "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";
+const CANONICAL_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+export function candidateOrderKeyFromCanonicalId(id: string): string {
+  if (!CANONICAL_UUID.test(id)) {
+    throw new TypeError("candidate ID must be a canonical lowercase UUID");
+  }
+  let value = BigInt(`0x${id.replaceAll("-", "")}`);
+  const radix = BigInt(64);
+  const digits = Array<string>(22).fill(CANDIDATE_ORDER_ALPHABET[0]!);
+  for (let index = digits.length - 1; index >= 0; index -= 1) {
+    digits[index] = CANDIDATE_ORDER_ALPHABET[Number(value % radix)]!;
+    value /= radix;
+  }
+  if (value !== BigInt(0)) {
+    throw new RangeError("candidate ID exceeds order key width");
+  }
+  return digits.join("");
+}
+
 export type WatchlistCandidateWindow = {
   /** Inclusive UTC instant. Must align to the index's whole-second precision. */
   windowStart: Date;
@@ -84,6 +111,8 @@ export function buildWatchlistCandidateSearchParams(params: {
   limit: number;
   window?: WatchlistCandidateWindow;
   order?: WatchlistCandidateOrder;
+  /** True only for an explicitly required read with a verified readiness receipt. */
+  stableNewestReady?: boolean;
 }): WatchlistCandidateSearchParams {
   if (!Number.isInteger(params.offset) || params.offset < 0) {
     throw new RangeError("offset must be a non-negative integer");
@@ -127,7 +156,9 @@ export function buildWatchlistCandidateSearchParams(params: {
     sort_by:
       order === "interactive" && hasKeywords
         ? "_text_match:desc,first_seen_at:desc"
-        : "first_seen_at:desc",
+        : order === "newest" && params.stableNewestReady === true
+          ? `first_seen_at:desc,${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}(missing_values: first):asc`
+          : "first_seen_at:desc",
     per_page: params.limit,
     page:
       params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,

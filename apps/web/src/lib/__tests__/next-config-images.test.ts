@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 import { describe, expect, it } from "vitest";
-import nextConfig from "../../../next.config";
+import { nextConfig } from "../../../next.config";
 
 describe("Next image cache configuration", () => {
   it("uses the supported image cache floor without overriding the generated route", async () => {

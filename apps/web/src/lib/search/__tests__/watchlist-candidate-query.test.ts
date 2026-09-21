@@ -4,6 +4,8 @@ import type { WatchlistCandidateFilters } from "@/lib/watchlist-matcher-contract
 import {
   buildWatchlistCandidateSearchParams,
   buildWatchlistCandidateWindowFilter,
+  candidateOrderKeyFromCanonicalId,
+  WATCHLIST_CANDIDATE_ORDER_KEY_FIELD,
   WATCHLIST_CANDIDATE_WINDOW_BOUNDARY,
 } from "../watchlist-candidate-query";
 
@@ -79,10 +81,45 @@ describe("canonical watchlist candidate query", () => {
       limit: 20,
       window: { windowStart, windowEnd },
       order: "newest",
+      stableNewestReady: true,
     });
     expect(search.filter_by).toContain("is_active:true");
     expect(search.filter_by).toContain(filter);
-    expect(search.sort_by).toBe("first_seen_at:desc");
+    expect(search.sort_by).toBe(
+      `first_seen_at:desc,${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}(missing_values: first):asc`,
+    );
+
+    const preBackfillSearch = buildWatchlistCandidateSearchParams({
+      filters: { companyIds: [], anyCompany: true },
+      offset: 0,
+      limit: 20,
+      window: { windowStart, windowEnd },
+      order: "newest",
+    });
+    expect(preBackfillSearch.sort_by).toBe("first_seen_at:desc");
+  });
+
+  it("encodes canonical UUID order into compact fixed-width keys", () => {
+    const ids = [
+      "00000000-0000-0000-0000-000000000000",
+      "00000000-0000-0000-0000-000000000001",
+      "7fffffff-ffff-ffff-ffff-ffffffffffff",
+      "80000000-0000-0000-0000-000000000000",
+      "ffffffff-ffff-ffff-ffff-ffffffffffff",
+    ];
+    const keys = ids.map(candidateOrderKeyFromCanonicalId);
+
+    expect(keys).toEqual([
+      "----------------------",
+      "---------------------0",
+      "0zzzzzzzzzzzzzzzzzzzzz",
+      "1---------------------",
+      "2zzzzzzzzzzzzzzzzzzzzz",
+    ]);
+    expect([...keys].sort()).toEqual(keys);
+    expect(() =>
+      candidateOrderKeyFromCanonicalId(ids[2]!.toUpperCase()),
+    ).toThrow("canonical lowercase UUID");
   });
 
   it("rejects overlapping/ambiguous window bounds", () => {

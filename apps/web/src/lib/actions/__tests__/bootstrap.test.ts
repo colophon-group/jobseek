@@ -39,6 +39,7 @@ describe("fetchAppBootstrap", () => {
 
     expect(result).toEqual({
       user: null,
+      plan: "free",
       prefs: null,
       savedStatuses: [],
       starredIds: [],
@@ -53,6 +54,7 @@ describe("fetchAppBootstrap", () => {
 
     mockExecute.mockResolvedValue([
       {
+        plan: "unlimited",
         prefs: {
           theme: "dark",
           themeUpdatedAt: "2026-04-25T10:00:00.000Z",
@@ -80,6 +82,7 @@ describe("fetchAppBootstrap", () => {
       name: "Alice",
       emailVerified: true,
     });
+    expect(result.plan).toBe("unlimited");
     expect(result.prefs?.theme).toBe("dark");
     expect(result.prefs?.locale).toBe("de");
     // Timestamps must come back as Date instances, not raw ISO strings.
@@ -99,12 +102,13 @@ describe("fetchAppBootstrap", () => {
     });
 
     mockExecute.mockResolvedValue([
-      { prefs: null, saved_statuses: [], starred_ids: [] },
+      { plan: null, prefs: null, saved_statuses: [], starred_ids: [] },
     ]);
 
     const result = await fetchAppBootstrap();
 
     expect(result.prefs).toBeNull();
+    expect(result.plan).toBe("free");
     expect(result.savedStatuses).toEqual([]);
     expect(result.starredIds).toEqual([]);
   });
@@ -120,6 +124,7 @@ describe("fetchAppBootstrap", () => {
     const result = await fetchAppBootstrap();
 
     expect(result.prefs).toBeNull();
+    expect(result.plan).toBe("free");
     expect(result.savedStatuses).toEqual([]);
     expect(result.starredIds).toEqual([]);
   });

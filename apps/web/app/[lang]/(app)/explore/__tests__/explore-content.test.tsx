@@ -134,6 +134,35 @@ afterEach(() => {
 });
 
 describe("ExploreContent browser initialization", () => {
+  it("keeps the static snapshot visible until filtered browser data commits", async () => {
+    setBrowserSearch("loc=zurich");
+    let resolve!: (value: unknown) => void;
+    mocks.loadBrowserData.mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const initialData = makeInitialData();
+    const view = render(
+      <>
+        <section data-explore-static-results data-testid="static-results" />
+        <div data-explore-interactive hidden data-testid="interactive-results">
+          <ExploreContent locale="en" initialData={initialData} />
+        </div>
+      </>,
+    );
+
+    await waitFor(() => expect(mocks.loadBrowserData).toHaveBeenCalledOnce());
+    expect(view.getByTestId("static-results").hasAttribute("hidden")).toBe(false);
+    expect(view.getByTestId("interactive-results").hasAttribute("hidden")).toBe(true);
+
+    resolve({ data: initialData, unavailable: false, directAttempted: true });
+    await waitFor(() =>
+      expect(view.getByTestId("static-results").hasAttribute("hidden")).toBe(true),
+    );
+    expect(view.getByTestId("interactive-results").hasAttribute("hidden")).toBe(false);
+  });
+
   it("uses the prerendered shell without a mount read for an anonymous default visit", async () => {
     const initialData = makeInitialData({
       result: { companies: [], totalCompanies: 3928, truncated: false },

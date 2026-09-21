@@ -11,6 +11,7 @@ import "@/test-utils/lingui-mock";
 
 const pushMock = vi.fn();
 const createWatchlistMock = vi.fn();
+const sessionMock = vi.hoisted(() => ({ isLoggedIn: true }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
@@ -27,7 +28,10 @@ vi.mock("@/lib/useLocalePath", () => ({
 }));
 
 vi.mock("@/components/providers/SessionProvider", () => ({
-  useSession: () => ({ user: { username: "alice" }, isLoggedIn: true }),
+  useSession: () => ({
+    user: sessionMock.isLoggedIn ? { username: "alice" } : null,
+    isLoggedIn: sessionMock.isLoggedIn,
+  }),
 }));
 
 vi.mock("@/lib/actions/watchlists", () => ({
@@ -40,6 +44,27 @@ describe("SaveSearchButton (issue #3036)", () => {
   beforeEach(() => {
     pushMock.mockReset();
     createWatchlistMock.mockReset();
+    sessionMock.isLoggedIn = true;
+    window.history.replaceState({}, "", "/en/explore?q=engineer&loc=switzerland");
+  });
+
+  it("returns to the exact filtered search after sign-in", async () => {
+    sessionMock.isLoggedIn = false;
+
+    render(
+      <SaveSearchButton
+        keywords={["engineer"]}
+        locations={[]}
+        occupations={[]}
+        seniorities={[]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/en/sign-in?next=%2Fen%2Fexplore%3Fq%3Dengineer%26loc%3Dswitzerland",
+    );
+    expect(createWatchlistMock).not.toHaveBeenCalled();
   });
 
   it("shows a non-purchase limit explanation when the server reports limit_reached", async () => {
@@ -126,6 +151,28 @@ describe("SaveSearchButton (issue #3036)", () => {
         keywords: ["designer"],
         employmentType: ["contract"],
       },
+    });
+  });
+
+  it("creates a one-company watchlist from a company search", async () => {
+    createWatchlistMock.mockResolvedValue({ id: "w1", slug: "acme" });
+
+    render(
+      <SaveSearchButton
+        keywords={[]}
+        locations={[]}
+        occupations={[]}
+        seniorities={[]}
+        companyScope={{ id: "company-1", name: "Acme" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
+
+    await waitFor(() => expect(createWatchlistMock).toHaveBeenCalledTimes(1));
+    expect(createWatchlistMock.mock.calls[0]?.[0]).toMatchObject({
+      title: "Acme",
+      companyIds: ["company-1"],
+      filters: { anyCompany: false },
     });
   });
 

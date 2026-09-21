@@ -54,12 +54,13 @@ const initialCurrencyRates = [
 ];
 
 function SessionProbe() {
-  const { user, preferences, isLoggedIn, isPending } = useSession();
+  const { user, plan, preferences, isLoggedIn, isPending } = useSession();
   return (
     <>
       <span data-testid="pending">{String(isPending)}</span>
       <span data-testid="logged-in">{String(isLoggedIn)}</span>
       <span data-testid="user-name">{user?.name ?? "none"}</span>
+      <span data-testid="plan">{plan}</span>
       <span data-testid="job-languages">
         {preferences?.jobLanguages?.join(",") ?? "none"}
       </span>
@@ -116,6 +117,7 @@ describe("AppBootstrapProvider", () => {
     expect(mockBootstrap).not.toHaveBeenCalled();
     expect(screen.getByTestId("logged-in").textContent).toBe("false");
     expect(screen.getByTestId("user-name").textContent).toBe("none");
+    expect(screen.getByTestId("plan").textContent).toBe("free");
     expect(screen.getByTestId("rates").textContent).toBe("EUR,CHF");
   });
 
@@ -128,6 +130,7 @@ describe("AppBootstrapProvider", () => {
         name: "Alice",
         emailVerified: true,
       },
+      plan: "unlimited",
       prefs: { jobLanguages: ["de", "en"] },
       savedStatuses: [],
       starredIds: [],
@@ -144,6 +147,7 @@ describe("AppBootstrapProvider", () => {
     });
     expect(mockBootstrap).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("user-name").textContent).toBe("Alice");
+    expect(screen.getByTestId("plan").textContent).toBe("unlimited");
     expect(screen.getByTestId("job-languages").textContent).toBe("de,en");
   });
 

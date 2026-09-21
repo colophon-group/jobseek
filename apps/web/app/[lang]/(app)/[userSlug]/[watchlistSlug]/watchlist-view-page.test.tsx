@@ -29,7 +29,11 @@ vi.mock("@/lib/useLocalePath", () => ({
 }));
 
 vi.mock("@/components/providers/SessionProvider", () => ({
-  useSession: () => ({ isLoggedIn: mocks.isLoggedIn, isPending: false }),
+  useSession: () => ({
+    isLoggedIn: mocks.isLoggedIn,
+    isPending: false,
+    plan: "unlimited",
+  }),
 }));
 
 vi.mock("@/lib/actions/watchlists", () => ({
@@ -38,6 +42,11 @@ vi.mock("@/lib/actions/watchlists", () => ({
   addCompanyToWatchlist: (...args: unknown[]) => mocks.addCompanyToWatchlist(...args),
   removeCompanyFromWatchlist: (...args: unknown[]) => mocks.removeCompanyFromWatchlist(...args),
   clearWatchlistCompanies: (...args: unknown[]) => mocks.clearWatchlistCompanies(...args),
+}));
+
+vi.mock("@/lib/actions/ai-filter", () => ({
+  configureAiFilter: vi.fn(),
+  createAiFilteredWatchlist: vi.fn(),
 }));
 
 vi.mock("@/lib/copy-text-to-clipboard", () => ({
@@ -149,6 +158,7 @@ function renderPage(
   isOwner = true,
   detailOverride: Partial<typeof detail> = {},
   limitReached = false,
+  initialTotal = 0,
 ) {
   return render(
     <WatchlistViewPage
@@ -156,7 +166,7 @@ function renderPage(
       isOwner={isOwner}
       limitReached={limitReached}
       initialPostings={[]}
-      initialTotal={0}
+      initialTotal={initialTotal}
       yearTotal={0}
       initialSearchUnavailable={false}
       locale="en"
@@ -189,6 +199,21 @@ describe("WatchlistViewPage private detail", () => {
     });
     mocks.copyTextToClipboard.mockResolvedValue(undefined);
     mocks.isLoggedIn = true;
+    vi.unstubAllEnvs();
+  });
+
+  it("uses the Explore filter grid for the accordion and narrowing control", () => {
+    vi.stubEnv("NEXT_PUBLIC_AI_FILTER_UI_ENABLED", "true");
+    renderPage(true, {}, false, 24);
+
+    const filterControl = screen.getByRole("button", { name: "Apply salary" });
+    const filterGrid = filterControl.parentElement;
+    expect(filterGrid?.className).toContain("grid-cols-[minmax(0,1fr)_auto]");
+
+    const narrowButton = screen.getByRole("button", { name: "Narrow down search" });
+    const actionCell = narrowButton.parentElement?.parentElement;
+    expect(actionCell?.className).toContain("col-start-2");
+    expect(actionCell?.className).toContain("row-start-1");
   });
 
   it("exposes populated title and description edits as keyboard-focusable buttons", () => {

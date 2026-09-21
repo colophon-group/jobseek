@@ -3,11 +3,12 @@ import { render, screen } from "@testing-library/react";
 import { SessionProvider, useSession } from "../providers/SessionProvider";
 
 function SessionDisplay() {
-  const { user, preferences, isLoggedIn } = useSession();
+  const { user, plan, preferences, isLoggedIn } = useSession();
   return (
     <div>
       <span data-testid="logged-in">{String(isLoggedIn)}</span>
       <span data-testid="user-name">{user?.name ?? "none"}</span>
+      <span data-testid="plan">{plan}</span>
       <span data-testid="display-currency">
         {preferences?.displayCurrency ?? "none"}
       </span>
@@ -24,6 +25,7 @@ describe("SessionProvider", () => {
     );
     expect(screen.getByTestId("logged-in").textContent).toBe("false");
     expect(screen.getByTestId("user-name").textContent).toBe("none");
+    expect(screen.getByTestId("plan").textContent).toBe("free");
   });
 
   it("provides user context when user is set", () => {
@@ -36,6 +38,7 @@ describe("SessionProvider", () => {
     render(
       <SessionProvider
         user={user}
+        plan="unlimited"
         preferences={{ displayCurrency: "CHF" }}
       >
         <SessionDisplay />
@@ -43,6 +46,7 @@ describe("SessionProvider", () => {
     );
     expect(screen.getByTestId("logged-in").textContent).toBe("true");
     expect(screen.getByTestId("user-name").textContent).toBe("Test User");
+    expect(screen.getByTestId("plan").textContent).toBe("unlimited");
     expect(screen.getByTestId("display-currency").textContent).toBe("CHF");
   });
 });
@@ -52,5 +56,6 @@ describe("useSession without provider", () => {
     render(<SessionDisplay />);
     expect(screen.getByTestId("logged-in").textContent).toBe("false");
     expect(screen.getByTestId("user-name").textContent).toBe("none");
+    expect(screen.getByTestId("plan").textContent).toBe("free");
   });
 });

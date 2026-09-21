@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSession } from "@/lib/sessionCache";
 import type { SavedJobStatus } from "@/lib/actions/saved-jobs";
+import type { PlanId } from "@/lib/plans";
 
 export type SessionUser = {
   id: string;
@@ -30,6 +31,7 @@ export type AppPreferences = {
 
 export type AppBootstrapData = {
   user: SessionUser | null;
+  plan: PlanId;
   prefs: AppPreferences | null;
   savedStatuses: SavedJobStatus[];
   starredIds: string[];
@@ -47,11 +49,13 @@ export type AppBootstrapData = {
  * an empty bookmark/starred set returns `[]` instead of `null`.
  */
 async function _fetchBootstrapForUser(userId: string): Promise<{
+  plan: PlanId;
   prefs: AppPreferences | null;
   savedStatuses: SavedJobStatus[];
   starredIds: string[];
 }> {
   type Row = {
+    plan: PlanId | null;
     prefs: AppPreferences | null;
     saved_statuses: SavedJobStatus[];
     starred_ids: { company_id: string }[];
@@ -61,6 +65,13 @@ async function _fetchBootstrapForUser(userId: string): Promise<{
     () =>
       db.execute<Row & Record<string, unknown>>(sql`
         SELECT
+          (SELECT s.plan
+            FROM subscription s
+            WHERE s.user_id = ${userId}
+              AND s.status = 'active'
+              AND (s.ends_at IS NULL OR s.ends_at > now())
+            LIMIT 1
+          ) AS plan,
           (SELECT row_to_json(p) FROM (
             SELECT
               theme,
@@ -92,7 +103,9 @@ async function _fetchBootstrapForUser(userId: string): Promise<{
   );
 
   const row = (rows as unknown as Row[])[0];
-  if (!row) return { prefs: null, savedStatuses: [], starredIds: [] };
+  if (!row) {
+    return { plan: "free", prefs: null, savedStatuses: [], starredIds: [] };
+  }
 
   const prefs = row.prefs
     ? {
@@ -111,6 +124,7 @@ async function _fetchBootstrapForUser(userId: string): Promise<{
     : null;
 
   return {
+    plan: row.plan === "unlimited" ? "unlimited" : "free",
     prefs,
     savedStatuses: row.saved_statuses ?? [],
     starredIds: (row.starred_ids ?? []).map((c) => c.company_id),
@@ -120,15 +134,22 @@ async function _fetchBootstrapForUser(userId: string): Promise<{
 export async function fetchAppBootstrap(): Promise<AppBootstrapData> {
   const session = await getSession();
   if (!session) {
-    return { user: null, prefs: null, savedStatuses: [], starredIds: [] };
+    return {
+      user: null,
+      plan: "free",
+      prefs: null,
+      savedStatuses: [],
+      starredIds: [],
+    };
   }
 
-  const { prefs, savedStatuses, starredIds } = await _fetchBootstrapForUser(
+  const { plan, prefs, savedStatuses, starredIds } = await _fetchBootstrapForUser(
     session.user.id,
   );
 
   return {
     user: session.user as SessionUser,
+    plan,
     prefs,
     savedStatuses,
     starredIds,

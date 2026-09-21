@@ -72,6 +72,10 @@ interface SearchToolbarProps {
    * company page to render active/year posting counts inline.
    */
   statsSlot?: ReactNode;
+  /** Search-level AI control rendered beside the existing filter control. */
+  aiFilterSlot?: ReactNode;
+  /** Optional implicit company constraint used when saving from a company page. */
+  companyScope?: { id: string; name: string };
 }
 
 export function SearchToolbar({
@@ -112,6 +116,8 @@ export function SearchToolbar({
   searchPlaceholder,
   searchAccessibleLabel,
   statsSlot,
+  aiFilterSlot,
+  companyScope,
 }: SearchToolbarProps) {
   const { t } = useLingui();
 
@@ -165,52 +171,56 @@ export function SearchToolbar({
           />
         </Suspense>
       </div>
-      <div className="flex items-start justify-between gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2">
         <AdvancedSearchPanel
-          locale={locale}
-          userLat={userLat}
-          userLng={userLng}
-          locations={locations}
-          occupations={occupations}
-          seniorities={seniorities}
-          technologies={technologies}
-          salaryCurrency={salaryCurrency ?? "EUR"}
-          salaryMin={salaryMin}
-          salaryMax={salaryMax}
-          experienceMin={experienceMin}
-          experienceMax={experienceMax}
-          onAddLocation={onAddLocation}
-          onRemoveLocation={onRemoveLocation}
-          onAddOccupation={onAddOccupation}
-          onRemoveOccupation={onRemoveOccupation}
-          onAddSeniority={onAddSeniority}
-          onRemoveSeniority={onRemoveSeniority}
-          onAddTechnology={onAddTechnology}
-          onRemoveTechnology={onRemoveTechnology}
-          employmentTypes={employmentTypes}
-          onToggleEmploymentType={onToggleEmploymentType}
-          workMode={workMode}
-          onToggleWorkMode={onToggleWorkMode}
-          onSalaryChange={onSalaryChange}
-          onExperienceChange={onExperienceChange}
-          histogramFilters={histogramFilters}
-        />
-        {hasFilters && !hasUnresolvedExplicitSlugs && (
-          <SaveSearchButton
-            keywords={keywords}
+            locale={locale}
+            userLat={userLat}
+            userLng={userLng}
             locations={locations}
             occupations={occupations}
             seniorities={seniorities}
             technologies={technologies}
-            employmentTypes={employmentTypes}
-            workMode={workMode}
+            salaryCurrency={salaryCurrency ?? "EUR"}
             salaryMin={salaryMin}
             salaryMax={salaryMax}
-            salaryCurrency={salaryCurrency}
             experienceMin={experienceMin}
             experienceMax={experienceMax}
-          />
-        )}
+            onAddLocation={onAddLocation}
+            onRemoveLocation={onRemoveLocation}
+            onAddOccupation={onAddOccupation}
+            onRemoveOccupation={onRemoveOccupation}
+            onAddSeniority={onAddSeniority}
+            onRemoveSeniority={onRemoveSeniority}
+            onAddTechnology={onAddTechnology}
+            onRemoveTechnology={onRemoveTechnology}
+            employmentTypes={employmentTypes}
+            onToggleEmploymentType={onToggleEmploymentType}
+            workMode={workMode}
+            onToggleWorkMode={onToggleWorkMode}
+            onSalaryChange={onSalaryChange}
+            onExperienceChange={onExperienceChange}
+            histogramFilters={histogramFilters}
+        />
+        <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end gap-2">
+          {(hasFilters || companyScope) && !hasUnresolvedExplicitSlugs && (
+            <SaveSearchButton
+              keywords={keywords}
+              locations={locations}
+              occupations={occupations}
+              seniorities={seniorities}
+              technologies={technologies}
+              employmentTypes={employmentTypes}
+              workMode={workMode}
+              salaryMin={salaryMin}
+              salaryMax={salaryMax}
+              salaryCurrency={salaryCurrency}
+              experienceMin={experienceMin}
+              experienceMax={experienceMax}
+              companyScope={companyScope}
+            />
+          )}
+          {aiFilterSlot}
+        </div>
       </div>
       {hasFilters && (
         <div className="flex flex-wrap items-center gap-2">

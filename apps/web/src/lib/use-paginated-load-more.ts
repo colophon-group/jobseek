@@ -63,6 +63,7 @@ export function usePaginatedLoadMore<T>({
     initialItems.length >= initialTotal,
   );
   const [truncated, setTruncated] = useState(false);
+  const [resultRevision, setResultRevision] = useState(0);
 
   // The fetcher closure can be redefined every render — keep a ref
   // so the stable `loadMore` returned below always calls the latest.
@@ -96,6 +97,7 @@ export function usePaginatedLoadMore<T>({
         setTotal(result.total);
         setExhausted(result.postings.length >= result.total);
         setTruncated(result.truncated ?? false);
+        setResultRevision((revision) => revision + 1);
       })
       .catch(() => {
         // Keep the previous page intact; the caller can retry by changing the reset key.
@@ -183,5 +185,6 @@ export function usePaginatedLoadMore<T>({
     setTotal,
     setExhausted,
     setTruncated,
+    resultRevision,
   };
 }

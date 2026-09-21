@@ -10,6 +10,10 @@ import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
 import {
+  AiSearchFilter,
+  parseAiSearchFilterDemoState,
+} from "@/components/search/ai-search-filter";
+import {
   runGetCompanyPostings,
   tryGetCompanyPostingsDirect,
 } from "@/lib/search/search-runner";
@@ -26,6 +30,7 @@ import type { SelectedLocation } from "@/lib/search/types";
 import { useSearchStateStore } from "@/components/providers/SearchStateProvider";
 import { ActivePostingCount, YearPostingCount } from "@/components/search/posting-count-labels";
 import { CompanyPostingRow } from "./company-posting-row";
+import { buildSearchWatchlistDraft } from "@/lib/search/watchlist-draft";
 
 const PAGE_SIZE = 20;
 
@@ -96,7 +101,7 @@ export function CompanyPage({
   const searchParams = useSearchParams();
   const uiLocale = (params.lang as string) ?? locale;
   const { setPageActions } = useSearchStateStore();
-  const { isLoggedIn } = useSession();
+  const { isLoggedIn, plan } = useSession();
   const isLoggedInRef = useLatest(isLoggedIn);
 
   const [keywords, setKeywords, keywordsRef] = useLatestState<string[]>(initialKeywords);
@@ -142,6 +147,48 @@ export function CompanyPage({
 
   const hasMore = !exhausted && !isTruncated && postings.length < yearCount;
   const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
+  const aiFilterDemoState = process.env.NODE_ENV === "development"
+    ? parseAiSearchFilterDemoState(searchParams.get("ai-demo"))
+    : undefined;
+  const aiFilterUiEnabled =
+    process.env.NEXT_PUBLIC_AI_FILTER_UI_ENABLED === "true" ||
+    aiFilterDemoState !== undefined;
+  const aiWatchlistDraft = useMemo(() => buildSearchWatchlistDraft({
+    fallbackTitle: t({
+      id: "watchlists.savedSearch.defaultTitle",
+      comment: "Default watchlist title when saving a search without descriptive filters",
+      message: "My search",
+    }),
+    keywords,
+    locations,
+    occupations,
+    seniorities,
+    technologies,
+    employmentTypes,
+    workMode,
+    salaryMin,
+    salaryMax,
+    salaryCurrency,
+    experienceMin,
+    experienceMax,
+    companyScope: { id: company.id, name: company.name },
+  }), [
+    company.id,
+    company.name,
+    employmentTypes,
+    experienceMax,
+    experienceMin,
+    keywords,
+    locations,
+    occupations,
+    salaryCurrency,
+    salaryMax,
+    salaryMin,
+    seniorities,
+    t,
+    technologies,
+    workMode,
+  ]);
   const postingListState = getCompanyPostingListState({
     isSearching,
     hasFilters,
@@ -691,6 +738,24 @@ export function CompanyPage({
         searchPlaceholder={searchPlaceholder}
         searchAccessibleLabel={searchAccessibleLabel}
         statsSlot={statsSlot}
+        companyScope={{ id: company.id, name: company.name }}
+        aiFilterSlot={aiFilterUiEnabled ? (
+          <AiSearchFilter
+            isSubscribed={plan === "unlimited"}
+            hasSearchFilters
+            candidateCount={activeCount}
+            isSearchPending={isSearching || searchUnavailable}
+            demoState={aiFilterDemoState}
+            createsWatchlist
+            watchlistDraft={aiWatchlistDraft}
+            align="right"
+            onApply={aiFilterDemoState === "eligible"
+              ? async () => {
+                  await new Promise((resolve) => setTimeout(resolve, 650));
+                }
+              : undefined}
+          />
+        ) : undefined}
       />
 
       {statsRowMobile}

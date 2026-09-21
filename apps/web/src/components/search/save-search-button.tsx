@@ -11,21 +11,14 @@ import {
 } from "@/components/ui/tooltip-styles";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
-import { createWatchlist, type WatchlistFilters } from "@/lib/actions/watchlists";
+import { createWatchlist } from "@/lib/actions/watchlists";
+import { Button } from "@/components/ui/Button";
 import type { SelectedLocation } from "@/lib/search/types";
 import type { WorkMode } from "@/lib/search/types";
+import { withAuthReturnPath } from "@/lib/auth-return";
+import { buildSearchWatchlistDraft } from "@/lib/search/watchlist-draft";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
-const GENERATED_TITLE_MAX_LENGTH = 100;
-
-function boundedGeneratedTitle(value: string): string {
-  let title = value.slice(0, GENERATED_TITLE_MAX_LENGTH).trimEnd();
-  const finalCodeUnit = title.charCodeAt(title.length - 1);
-  if (finalCodeUnit >= 0xd800 && finalCodeUnit <= 0xdbff) {
-    title = title.slice(0, -1).trimEnd();
-  }
-  return title;
-}
 
 interface SaveSearchButtonProps {
   keywords: string[];
@@ -40,6 +33,8 @@ interface SaveSearchButtonProps {
   salaryCurrency?: string;
   experienceMin?: number;
   experienceMax?: number;
+  /** Restrict the new watchlist to one company instead of all companies. */
+  companyScope?: { id: string; name: string };
 }
 
 export function SaveSearchButton({
@@ -55,6 +50,7 @@ export function SaveSearchButton({
   salaryCurrency,
   experienceMin,
   experienceMax,
+  companyScope,
 }: SaveSearchButtonProps) {
   const { t } = useLingui();
   const router = useRouter();
@@ -79,47 +75,34 @@ export function SaveSearchButton({
 
   async function handleSave() {
     if (!isLoggedIn) {
-      router.push(lp("/sign-in"));
+      const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      router.push(withAuthReturnPath(lp("/sign-in"), returnPath));
       return;
     }
 
     setSaving(true);
     try {
-      // Build a descriptive title from the active filters
-      const parts: string[] = [];
-      if (keywords.length > 0) parts.push(keywords.join(", "));
-      if (locations.length > 0) parts.push(locations.map((l) => l.name).join(", "));
-      if (occupations.length > 0) parts.push(occupations.map((o) => o.name).join(", "));
-      const title = boundedGeneratedTitle(
-        parts.length > 0
-          ? parts.join(" · ")
-          : t({
-            id: "watchlists.savedSearch.defaultTitle",
-            comment: "Default watchlist title when saving a search without descriptive filters",
-            message: "My search",
-          }),
-      );
-
-      const filters: WatchlistFilters = {};
-      if (keywords.length > 0) filters.keywords = keywords;
-      if (locations.length > 0) filters.locationSlugs = locations.map((l) => l.slug);
-      if (occupations.length > 0) filters.occupationSlugs = occupations.map((o) => o.slug);
-      if (seniorities.length > 0) filters.senioritySlugs = seniorities.map((s) => s.slug);
-      if (technologies && technologies.length > 0) filters.technologySlugs = technologies.map((t) => t.slug);
-      if (employmentTypes && employmentTypes.length > 0) filters.employmentType = employmentTypes;
-      if (workMode && workMode.length > 0) filters.workMode = workMode;
-      if (salaryMin != null) filters.salaryMin = salaryMin;
-      if (salaryMax != null) filters.salaryMax = salaryMax;
-      if (salaryCurrency) filters.salaryCurrency = salaryCurrency;
-      if (experienceMin != null) filters.experienceMin = experienceMin;
-      if (experienceMax != null) filters.experienceMax = experienceMax;
-
-      const result = await createWatchlist({
-        title,
-        companyIds: [],
-        filters,
-        isPublic: false,
+      const draft = buildSearchWatchlistDraft({
+        fallbackTitle: t({
+          id: "watchlists.savedSearch.defaultTitle",
+          comment: "Default watchlist title when saving a search without descriptive filters",
+          message: "My search",
+        }),
+        keywords,
+        locations,
+        occupations,
+        seniorities,
+        technologies,
+        employmentTypes,
+        workMode,
+        salaryMin,
+        salaryMax,
+        salaryCurrency,
+        experienceMin,
+        experienceMax,
+        companyScope,
       });
+      const result = await createWatchlist(draft);
 
       if ("error" in result) {
         if (result.error === "limit_reached") {
@@ -170,14 +153,21 @@ export function SaveSearchButton({
         }}
       >
         <Tooltip.Trigger asChild>
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
+            className="h-8 shrink-0 gap-1.5 px-3 text-xs text-foreground"
           >
-            {saving ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
+            {saving ? (
+              <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+            ) : (
+              <Eye size={14} aria-hidden="true" />
+            )}
             {label}
-          </button>
+          </Button>
         </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content

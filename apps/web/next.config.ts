@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
+import { withWorkflow } from "workflow/next";
 import path from "node:path";
 import { computeCompanyOgRendererVersion } from "./src/lib/og/company-og-renderer-version";
 import { computeCompanyOgSourceVersion } from "./src/lib/og/company-og-source-version";
@@ -46,7 +47,7 @@ function configuredR2PublicOrigin(): string | null {
  * Bootstrap or repair a namespace only through the prewarm workflow's
  * explicitly confirmed, write-budgeted manual full rebuild.
  */
-const nextConfig: NextConfig = {
+export const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
   experimental: {
@@ -232,4 +233,4 @@ const withAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
-export default withAnalyzer(nextConfig);
+export default withWorkflow(withAnalyzer(nextConfig));

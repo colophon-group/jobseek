@@ -139,7 +139,7 @@ describe("0087 Better Auth account issuer migration", () => {
       "server.version >= 170_000 && server.version < 180_000",
     );
     expect(pg17Harness).toContain("readMigrationFiles");
-    expect(pg17Harness).toContain("Expected 80 real journal migrations");
+    expect(pg17Harness).toContain("Expected 81 real journal migrations");
     expect(pg17Harness).toContain(
       'scripts/apply-better-auth-account-issuer.ts',
     );

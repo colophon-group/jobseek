@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { CompanyIcon } from "@/components/CompanyIcon";
 import { timeAgoShort } from "@/lib/time";
@@ -25,8 +25,218 @@ import { LanguageStatsRow } from "@/components/search/language-stats-row";
 import { SearchUnavailable } from "@/components/search/search-unavailable";
 import { formatDateDivider, getDateKey } from "@/components/watchlist/format-date-divider";
 import { logExternalError } from "@/lib/safe-external-error";
+import type {
+  AiFilterAcceptedPage,
+  AiFilterUiState,
+} from "@/lib/ai-filter/ui-contract";
+import { AI_FILTER_PREFETCH_CANDIDATES } from "@/lib/ai-filter/demand";
 
 const BATCH = 20;
+const AI_FILTER_POLL_MS = 750;
+const AI_FILTER_POLL_ATTEMPTS = 60;
+
+type AiDecisionPageResponse = {
+  decisions: Array<{ posting: WatchlistPostingEntry }>;
+  nextOffset: number;
+  hasMore: boolean;
+};
+
+function isAiFilterTerminal(state: AiFilterUiState): boolean {
+  return state.status === "caught_up" ||
+    state.status === "paused_entitlement" ||
+    state.status === "paused_budget" ||
+    state.status === "provider_unavailable" ||
+    state.status === "paused_kill" ||
+    state.status === "cancelled" ||
+    state.status === "failed" ||
+    state.status === "disabled";
+}
+
+async function readAiFilterState(watchlistId: string): Promise<AiFilterUiState> {
+  const response = await fetch(`/api/web/watchlists/${watchlistId}/ai-filter`, {
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error("matching_state_unavailable");
+  return response.json() as Promise<AiFilterUiState>;
+}
+
+async function readAcceptedPage(
+  watchlistId: string,
+  offset: number,
+  limit: number,
+): Promise<AiDecisionPageResponse> {
+  const params = new URLSearchParams({
+    bucket: "accepted",
+    offset: String(offset),
+    limit: String(limit),
+  });
+  const response = await fetch(
+    `/api/web/watchlists/${watchlistId}/ai-filter/decisions?${params}`,
+    { credentials: "same-origin", cache: "no-store" },
+  );
+  if (!response.ok) throw new Error("matching_results_unavailable");
+  return response.json() as Promise<AiDecisionPageResponse>;
+}
+
+async function requestAiFilterDemand(
+  watchlistId: string,
+  offset: number,
+): Promise<void> {
+  const response = await fetch(
+    `/api/web/watchlists/${watchlistId}/ai-filter/reconcile`,
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ offset }),
+    },
+  );
+  if (!response.ok) throw new Error("matching_reconcile_unavailable");
+}
+
+function waitForAiFilterPoll(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, AI_FILTER_POLL_MS));
+}
+
+function useAiFilteredResults(input: {
+  watchlistId: string;
+  state: AiFilterUiState | null;
+  initialPage: AiFilterAcceptedPage | null;
+  scopeKey: string;
+  scopeReady: boolean;
+  onStateChange?: (state: AiFilterUiState) => void;
+}) {
+  const [postings, setPostings] = useState<WatchlistPostingEntry[]>(
+    input.initialPage?.postings ?? [],
+  );
+  const [total, setTotal] = useState(input.state?.counts.accepted ?? 0);
+  const [evaluated, setEvaluated] = useState(input.state?.counts.total ?? 0);
+  const [hasMore, setHasMore] = useState(input.initialPage?.hasMore ?? false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  const cursorRef = useRef(input.initialPage?.nextOffset ?? 0);
+  const postingsRef = useRef(postings);
+  const stateRef = useRef(input.state);
+  const loadingRef = useRef(false);
+  const generationRef = useRef(0);
+  postingsRef.current = postings;
+  stateRef.current = input.state;
+
+  const loadMore = useCallback(async () => {
+    const current = stateRef.current;
+    if (!current?.enabled || !input.scopeReady || loadingRef.current) return;
+    const generation = generationRef.current;
+    const demandOffset = cursorRef.current;
+    const demandTarget = Math.min(
+      10_000,
+      demandOffset + AI_FILTER_PREFETCH_CANDIDATES,
+    );
+    loadingRef.current = true;
+    setIsLoading(true);
+    setUnavailable(false);
+    try {
+      await requestAiFilterDemand(input.watchlistId, demandOffset);
+      let collected = 0;
+      let nextHasMore = true;
+      for (let attempt = 0; attempt < AI_FILTER_POLL_ATTEMPTS; attempt += 1) {
+        if (generationRef.current !== generation) return;
+        const nextState = await readAiFilterState(input.watchlistId);
+        stateRef.current = nextState;
+        input.onStateChange?.(nextState);
+        setTotal(nextState.counts.accepted);
+        setEvaluated(nextState.counts.total);
+
+        const page = await readAcceptedPage(
+          input.watchlistId,
+          cursorRef.current,
+          Math.max(1, BATCH - collected),
+        );
+        if (generationRef.current !== generation) return;
+        cursorRef.current = page.nextOffset;
+        nextHasMore = page.hasMore;
+        if (page.decisions.length > 0) {
+          const seen = new Set(postingsRef.current.map((posting) => posting.id));
+          const fresh = page.decisions
+            .map((decision) => decision.posting)
+            .filter((posting) => !seen.has(posting.id));
+          if (fresh.length > 0) {
+            postingsRef.current = [...postingsRef.current, ...fresh];
+            setPostings(postingsRef.current);
+            collected += fresh.length;
+          }
+        }
+
+        const coveredOffset = nextState.progress.selectionOffset +
+          nextState.progress.scannedCount;
+        if (
+          collected >= BATCH ||
+          !nextHasMore ||
+          isAiFilterTerminal(nextState) ||
+          coveredOffset >= demandTarget
+        ) {
+          setHasMore(nextHasMore && !isAiFilterTerminal(nextState));
+          return;
+        }
+        await waitForAiFilterPoll();
+      }
+      setHasMore(nextHasMore);
+    } catch (error) {
+      setUnavailable(true);
+      logExternalError(
+        "warn",
+        { service: "external_http", operation: "watchlist_matching_results" },
+        error,
+      );
+    } finally {
+      if (generationRef.current === generation) {
+        loadingRef.current = false;
+        setIsLoading(false);
+      }
+    }
+  }, [input.onStateChange, input.scopeReady, input.watchlistId]);
+
+  const queryVersionId = input.state?.queryVersionId ?? null;
+  const enabled = input.state?.enabled === true;
+  useEffect(() => {
+    generationRef.current += 1;
+    const nextPostings = input.initialPage?.postings ?? [];
+    postingsRef.current = nextPostings;
+    cursorRef.current = input.initialPage?.nextOffset ?? 0;
+    stateRef.current = input.state;
+    loadingRef.current = false;
+    setPostings(nextPostings);
+    setTotal(input.state?.counts.accepted ?? nextPostings.length);
+    setEvaluated(input.state?.counts.total ?? 0);
+    setHasMore(input.initialPage?.hasMore ?? Boolean(input.state?.enabled));
+    setIsLoading(false);
+    setUnavailable(false);
+    if (enabled && input.scopeReady && nextPostings.length === 0) {
+      void loadMore();
+    }
+    // A hard-filter edit deliberately invalidates visible decisions before
+    // the debounced watchlist mutation reaches the server. Once `scopeReady`
+    // flips back to true, the same effect starts reconciliation against the
+    // persisted scope. The initial page only belongs to the original key.
+  }, [
+    enabled,
+    input.initialPage,
+    input.scopeKey,
+    input.scopeReady,
+    loadMore,
+    queryVersionId,
+  ]);
+
+  return {
+    postings,
+    total: Math.max(total, postings.length),
+    evaluated,
+    hasMore,
+    isLoading,
+    unavailable,
+    loadMore,
+  };
+}
 
 function formatLocationSummary(locationNames: string[] | undefined): string {
   const names = [...new Set((locationNames ?? []).filter(Boolean))];
@@ -61,6 +271,12 @@ export function WatchlistJobList({
   initialSearchUnavailable = false,
   jobLanguages,
   locale,
+  onResultStateChange,
+  aiFilterState = null,
+  initialAiAcceptedPage = null,
+  onAiFilterStateChange,
+  aiFilterScopeKey = "",
+  aiFilterScopeReady = true,
 }: {
   filters: WatchlistJobListFilters;
   initialPostings: WatchlistPostingEntry[];
@@ -69,8 +285,17 @@ export function WatchlistJobList({
   initialSearchUnavailable?: boolean;
   jobLanguages: string[];
   locale: string;
+  onResultStateChange?: (state: {
+    candidateCount: number | undefined;
+    unavailable: boolean;
+  }) => void;
+  aiFilterState?: AiFilterUiState | null;
+  initialAiAcceptedPage?: AiFilterAcceptedPage | null;
+  onAiFilterStateChange?: (state: AiFilterUiState) => void;
+  aiFilterScopeKey?: string;
+  aiFilterScopeReady?: boolean;
 }) {
-  const { t } = useLingui();
+  const { i18n, t } = useLingui();
   const { isLoggedIn } = useSession();
   const isLoggedInRef = useRef(isLoggedIn);
   isLoggedInRef.current = isLoggedIn;
@@ -88,13 +313,7 @@ export function WatchlistJobList({
 
   // Pagination state machine. `filtersKey` doubles as the reset key —
   // changing filters re-fetches page 1 and clears local state.
-  const {
-    items: postings,
-    total,
-    truncated: isTruncated,
-    hasMore,
-    loadMore,
-  } = usePaginatedLoadMore<WatchlistPostingEntry>({
+  const normalResults = usePaginatedLoadMore<WatchlistPostingEntry>({
     initialItems: initialPostings,
     initialTotal,
     batchSize: BATCH,
@@ -112,6 +331,17 @@ export function WatchlistJobList({
       }
     },
   });
+  const aiResults = useAiFilteredResults({
+    watchlistId: aiFilterState?.watchlistId ?? "",
+    state: aiFilterState,
+    initialPage: initialAiAcceptedPage,
+    scopeKey: aiFilterScopeKey,
+    scopeReady: aiFilterScopeReady,
+    onStateChange: onAiFilterStateChange,
+  });
+  const aiFilterActive = aiFilterState?.enabled === true;
+  const postings = aiFilterActive ? aiResults.postings : normalResults.items;
+  const total = aiFilterActive ? aiResults.total : normalResults.total;
 
   // Year-count refetch on filter change. The SSR-prerendered
   // `yearTotal` only reflects the watchlist's stored filters at page
@@ -143,10 +373,31 @@ export function WatchlistJobList({
     };
   }, [filtersKey]);
 
-  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: loadMore });
-  const showUnavailable = searchUnavailable || (
-    postings.length === 0 && !isLoading && total > 0
+  const { sentinelRef, isLoading: isNormalLoading } = useInfiniteScroll({
+    hasMore: normalResults.hasMore,
+    load: normalResults.loadMore,
+  });
+  const isLoading = aiFilterActive ? aiResults.isLoading : isNormalLoading;
+  const showUnavailable = aiFilterActive
+    ? aiResults.unavailable || aiFilterState.status === "provider_unavailable" ||
+      aiFilterState.status === "paused_kill" || aiFilterState.status === "failed" ||
+      aiFilterState.status === "paused_budget" ||
+      aiFilterState.status === "paused_entitlement"
+    : searchUnavailable || (
+      postings.length === 0 && !isLoading && total > 0
   );
+
+  useEffect(() => {
+    onResultStateChange?.({
+      candidateCount: searchUnavailable ? undefined : normalResults.total,
+      unavailable: searchUnavailable,
+    });
+  }, [
+    onResultStateChange,
+    normalResults.resultRevision,
+    normalResults.total,
+    searchUnavailable,
+  ]);
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
@@ -280,15 +531,42 @@ export function WatchlistJobList({
   // list (not spanning across both columns). `total` reflects the
   // live filter state, so the activeCount here updates if the user
   // edits the watchlist filters in-place.
+  const acceptedCountLabel = i18n._({
+    id: "watchlists.jobList.acceptedCount",
+    comment: "Number of matching jobs shown in a precisely narrowed watchlist",
+    message: "{count, plural, one {# match} other {# matches}}",
+    values: { count: total },
+  });
+  const evaluatedCountLabel = i18n._({
+    id: "watchlists.jobList.evaluatedCount",
+    comment: "Number of watchlist candidates evaluated against the saved request",
+    message: "{count, plural, one {# evaluated} other {# evaluated}}",
+    values: { count: aiResults.evaluated },
+  });
   const listColumn = (
     <div className="space-y-4">
-      {!searchUnavailable && (
+      {!searchUnavailable && !aiFilterActive && (
         <LanguageStatsRow
           jobLanguages={jobLanguages}
           locale={locale}
           activeCount={total}
           yearCount={yearTotal_}
         />
+      )}
+      {aiFilterActive && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+          <span>
+            <Trans
+              id="watchlists.jobList.preciseResults"
+              comment="Status label above a watchlist narrowed by natural-language matching"
+            >
+              Matching results
+            </Trans>
+          </span>
+          <span className="tabular-nums">
+            {acceptedCountLabel} · {evaluatedCountLabel}
+          </span>
+        </div>
       )}
       {/* `[overflow-anchor:none]` opts the whole postings list out of the
           browser's automatic scroll-anchor selection. Without it, when
@@ -304,16 +582,59 @@ export function WatchlistJobList({
 
         {showUnavailable ? (
           <SearchUnavailable />
+        ) : aiFilterActive && postings.length === 0 && isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted" role="status">
+            <Loader2 size={16} className="motion-safe:animate-spin" aria-hidden="true" />
+            <Trans
+              id="watchlists.jobList.evaluating"
+              comment="Loading state while a saved matching request is evaluated against a watchlist"
+            >
+              Reviewing this feed…
+            </Trans>
+          </div>
         ) : postings.length === 0 && !isLoading && (
           <div className="py-12 text-center text-sm text-muted">
-            <Trans id="watchlists.jobList.empty" comment="Empty state when no jobs match the time range">
-              No jobs found.
-            </Trans>
+            {aiFilterActive ? (
+              <Trans
+                id="watchlists.jobList.noPreciseMatches"
+                comment="Empty state when no jobs satisfy a watchlist's natural-language matching request"
+              >
+                No jobs match these criteria.
+              </Trans>
+            ) : (
+              <Trans id="watchlists.jobList.empty" comment="Empty state when no jobs match the time range">
+                No jobs found.
+              </Trans>
+            )}
           </div>
         )}
 
-        {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />}
-        {!hasMore && isTruncated && <TruncationPrompt type="postings" />}
+        {aiFilterActive && aiResults.hasMore && !showUnavailable ? (
+          <div className="flex justify-center py-5">
+            <button
+              type="button"
+              onClick={() => void aiResults.loadMore()}
+              disabled={aiResults.isLoading}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border-soft px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-primary/30 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+            >
+              {aiResults.isLoading ? (
+                <Loader2 size={14} className="motion-safe:animate-spin" aria-hidden="true" />
+              ) : null}
+              <Trans
+                id="watchlists.jobList.reviewMore"
+                comment="Button that evaluates the next portion of a narrowed watchlist on demand"
+              >
+                Review more jobs
+              </Trans>
+            </button>
+          </div>
+        ) : null}
+        {!aiFilterActive && normalResults.hasMore && (
+          <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />
+        )}
+        {!aiFilterActive && !normalResults.hasMore && normalResults.truncated && (
+          <TruncationPrompt type="postings" />
+        )}
       </div>
     </div>
   );

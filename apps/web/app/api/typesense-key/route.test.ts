@@ -3,14 +3,6 @@ import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 vi.mock("server-only", () => ({}));
 
-const mocks = vi.hoisted(() => ({
-  connection: vi.fn<() => Promise<void>>(),
-}));
-
-vi.mock("next/server", () => ({
-  connection: mocks.connection,
-}));
-
 import { GET } from "./route";
 
 const NOW_SECONDS = 2_000_000_000;
@@ -32,8 +24,6 @@ describe("GET /api/typesense-key", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW_SECONDS * 1000 + 789);
-    mocks.connection.mockReset();
-    mocks.connection.mockResolvedValue();
   });
 
   afterEach(() => {
@@ -50,7 +40,6 @@ describe("GET /api/typesense-key", () => {
       expires_at: NOW_SECONDS + 600,
     });
     expect(body.expiresAt).toBe((NOW_SECONDS + 600) * 1000);
-    expect(mocks.connection).toHaveBeenCalledOnce();
     expect(response.headers.get("cache-control")).toBe(
       "public, max-age=0, must-revalidate",
     );

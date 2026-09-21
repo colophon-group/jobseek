@@ -121,6 +121,7 @@ function splitKeywords(raw: string | null): { values: string[]; valid: boolean }
 async function searchMany(
   config: TypesenseBrowserConfig,
   searches: SearchRequest[],
+  retryUnauthorized = true,
 ): Promise<SearchResult<Record<string, unknown>>[]> {
   const url = `${config.protocol}://${config.host}:${config.port}/multi_search`;
   const response = await fetch(url, {
@@ -133,6 +134,16 @@ async function searchMany(
   });
   if (!response.ok) {
     invalidateTypesenseBrowserConfigIfUnauthorized(response.status);
+    if (
+      retryUnauthorized &&
+      (response.status === 401 || response.status === 403)
+    ) {
+      return searchMany(
+        await getTypesenseBrowserConfig(),
+        searches,
+        false,
+      );
+    }
     throw new Error(`typesense filter resolver ${response.status}`);
   }
   const body: unknown = await response.json();
