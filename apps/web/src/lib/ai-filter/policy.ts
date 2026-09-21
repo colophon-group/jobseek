@@ -16,7 +16,7 @@ export const JEV_OUTPUT_PRICE_NANODOLLARS_PER_TOKEN = 0;
 
 /**
  * Bounded reservation input. The live 5-job, 12k-character fixture used
- * 11,232 input tokens. The 80k ceiling also covers worst-case multilingual
+ * 8,234 input tokens on 2026-09-21. The 80k ceiling also covers worst-case multilingual
  * tokenization of five 12k-code-point descriptions while still leaving less
  * than one cent of possible monthly-budget headroom.
  */

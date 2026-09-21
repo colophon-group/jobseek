@@ -4,13 +4,22 @@ import { useMemo, useSyncExternalStore } from "react";
 
 const URL_CHANGE_EVENT = "jseek:urlchange";
 const HISTORY_PATCH_MARKER = Symbol.for("jseek.history-urlchange-patched");
+let urlChangeQueued = false;
 
 type PatchedWindow = Window & {
   [HISTORY_PATCH_MARKER]?: boolean;
 };
 
 function notifyUrlChange() {
-  window.dispatchEvent(new Event(URL_CHANGE_EVENT));
+  if (urlChangeQueued) return;
+  urlChangeQueued = true;
+  // Next updates history from an insertion effect. A microtask can still run
+  // before React leaves its commit window, so defer to the next task and
+  // coalesce multiple writes from the same navigation.
+  setTimeout(() => {
+    urlChangeQueued = false;
+    window.dispatchEvent(new Event(URL_CHANGE_EVENT));
+  }, 0);
 }
 
 /**

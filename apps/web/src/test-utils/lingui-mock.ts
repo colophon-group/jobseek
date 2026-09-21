@@ -32,7 +32,10 @@ vi.mock("@lingui/react", () => ({
 }));
 
 vi.mock("@lingui/react/macro", () => ({
-  useLingui: () => ({ t: fromMessage, i18n: { locale: "en" } }),
+  useLingui: () => ({
+    t: fromMessage,
+    i18n: { locale: "en", _: fromMessage },
+  }),
   Trans: ({ children }: { children: ReactNode }) => children,
   Plural: ({ value, one, other }: { value: number; one: string; other: string }) =>
     (value === 1 ? one : other).replace("#", String(value)),

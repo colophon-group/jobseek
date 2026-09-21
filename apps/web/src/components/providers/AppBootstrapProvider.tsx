@@ -13,6 +13,7 @@ import type { CurrencyRate } from "@/lib/actions/search";
 
 const ANON_BOOTSTRAP: AppBootstrapData = {
   user: null,
+  plan: "free",
   prefs: null,
   savedStatuses: [],
   starredIds: [],
@@ -62,6 +63,7 @@ export function AppBootstrapProvider({
   return (
     <SessionProvider
       user={user}
+      plan={data?.plan ?? "free"}
       preferences={prefs ?? null}
       isPending={isPending}
       refresh={refresh}

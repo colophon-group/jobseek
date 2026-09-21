@@ -88,7 +88,7 @@ describe("owner-only AI filter configuration route", () => {
     expect(mocks.startAiFilterCatchup).not.toHaveBeenCalled();
   });
 
-  it("enables one query and starts the durable catch-up workflow", async () => {
+  it("saves one query without evaluating historical jobs", async () => {
     const response = await PUT(
       new Request(`https://jseek.co/api/web/watchlists/${watchlistId}/ai-filter`, {
         method: "PUT",
@@ -97,16 +97,14 @@ describe("owner-only AI filter configuration route", () => {
       }),
       context,
     );
-    expect(response.status).toBe(202);
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ state, workflow: null });
     expect(mocks.putAiFilterConfiguration).toHaveBeenCalledWith({
       ownerId: "owner-1",
       watchlistId,
       query: "remote Rust",
     });
-    expect(mocks.startAiFilterCatchup).toHaveBeenCalledWith({
-      ownerId: "owner-1",
-      watchlistId,
-    });
+    expect(mocks.startAiFilterCatchup).not.toHaveBeenCalled();
   });
 
   it("does not start a workflow when owner authorization fails", async () => {

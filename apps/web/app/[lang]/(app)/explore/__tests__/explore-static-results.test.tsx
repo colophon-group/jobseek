@@ -5,6 +5,13 @@ import "@/test-utils/lingui-mock";
 import type { ExploreData } from "@/lib/actions/explore-page-data";
 import { ExploreStaticResults } from "../explore-static-results";
 
+const labels = {
+  filters: "Filters",
+  allLanguages: "Showing jobs in all languages",
+  change: "change",
+  companyStats: {},
+};
+
 function makeData(result: ExploreData["result"]): ExploreData {
   return {
     result,
@@ -37,6 +44,7 @@ describe("ExploreStaticResults", () => {
         locale="en"
         heading="Explore Jobs"
         data={makeData({ companies: [], totalCompanies: 0, degraded: true })}
+        labels={labels}
       />,
     );
 
@@ -51,6 +59,7 @@ describe("ExploreStaticResults", () => {
         locale="en"
         heading="Explore Jobs"
         data={makeData({ companies: [], totalCompanies: 0 })}
+        labels={labels}
       />,
     );
 

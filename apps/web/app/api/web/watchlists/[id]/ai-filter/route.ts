@@ -12,7 +12,6 @@ import {
   isUuid,
   readSmallJson,
 } from "@/lib/ai-filter/route-utils";
-import { startAiFilterCatchup } from "@/lib/ai-filter/workflow-trigger";
 import { getSessionUserIdFromHeaders } from "@/lib/sessionCache";
 
 type Context = { params: Promise<{ id: string }> };
@@ -45,10 +44,9 @@ export async function PUT(request: Request, context: Context) {
       throw new TypeError("AI filter configuration contains unsupported fields");
     }
     const state = await putAiFilterConfiguration({ ...owner, query: body.query });
-    const workflow = await startAiFilterCatchup(owner);
     return NextResponse.json(
-      { state, workflow },
-      { status: 202, headers: AI_FILTER_PRIVATE_HEADERS },
+      { state, workflow: null },
+      { headers: AI_FILTER_PRIVATE_HEADERS },
     );
   } catch (error) {
     return aiFilterErrorResponse(error);

@@ -4,6 +4,7 @@ export async function runCatchupStep(input: {
   ownerId: string;
   watchlistId: string;
   leaseOwner: string;
+  demandTargetOffset: number;
 }): Promise<AiFilterCatchupStepResult> {
   "use step";
 

@@ -8,6 +8,7 @@ import {
   aiFilterDecision,
   aiFilterFeedback,
   aiFilterQueryVersion,
+  aiFilterSegment,
   watchlist,
 } from "@/db/schema";
 import type { AiFilterDecisionValue } from "./contract";
@@ -99,11 +100,50 @@ export async function listAiFilterDecisions(input: {
     throw new TypeError("Invalid limit");
   }
   const now = input.now ?? new Date();
+  const [coverage] = await db
+    .select({
+      resourceCount: sql<number>`count(DISTINCT ${aiFilterConfiguration.id})::integer`,
+      coveredOffset: sql<number>`COALESCE(MAX(${aiFilterSegment.selectionOffset} + ${aiFilterSegment.scannedCount}), 0)::integer`,
+    })
+    .from(aiFilterConfiguration)
+    .innerJoin(
+      watchlist,
+      and(
+        eq(watchlist.id, aiFilterConfiguration.watchlistId),
+        eq(watchlist.userId, aiFilterConfiguration.ownerId),
+      ),
+    )
+    .innerJoin(
+      aiFilterQueryVersion,
+      and(
+        eq(aiFilterQueryVersion.configurationId, aiFilterConfiguration.id),
+        eq(aiFilterQueryVersion.revision, aiFilterConfiguration.currentRevision),
+      ),
+    )
+    .leftJoin(
+      aiFilterSegment,
+      and(
+        eq(aiFilterSegment.watchlistId, watchlist.id),
+        eq(aiFilterSegment.queryVersionId, aiFilterQueryVersion.id),
+      ),
+    )
+    .where(and(
+      eq(watchlist.id, input.watchlistId),
+      eq(watchlist.userId, input.ownerId),
+    ));
+  if (!coverage || coverage.resourceCount !== 1) throw new AiFilterNotFoundError();
+  const availableCandidates = coverage.coveredOffset - offset;
+  // Never move the product cursor beyond classified candidates. Advancing
+  // through an unevaluated range would permanently skip decisions that land
+  // there after the workflow catches up.
+  if (availableCandidates <= 0) {
+    return { decisions: [], nextOffset: offset, hasMore: true };
+  }
   const candidatePage = await loadAiFilterDecisionCandidates({
     ownerId: input.ownerId,
     watchlistId: input.watchlistId,
     offset,
-    limit: Math.min(100, limit * 4),
+    limit: Math.min(100, limit * 4, availableCandidates),
     now,
     signal: input.signal,
   });

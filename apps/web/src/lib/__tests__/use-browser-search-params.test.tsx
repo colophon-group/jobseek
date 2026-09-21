@@ -12,23 +12,26 @@ beforeEach(() => {
 });
 
 describe("useBrowserSearchParams", () => {
-  it("observes pushState, replaceState, and back/forward notifications", () => {
+  it("observes pushState, replaceState, and back/forward notifications", async () => {
     render(<Probe />);
     expect(screen.getByTestId("query").textContent).toBe("");
 
-    act(() => {
+    await act(async () => {
       window.history.pushState(null, "", "/en/explore?q=python");
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(screen.getByTestId("query").textContent).toBe("q=python");
 
-    act(() => {
+    await act(async () => {
       window.history.replaceState(null, "", "/en/explore?wm=remote");
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(screen.getByTestId("query").textContent).toBe("wm=remote");
 
-    act(() => {
+    await act(async () => {
       window.history.replaceState(null, "", "/en/explore?loc=zurich");
       window.dispatchEvent(new PopStateEvent("popstate"));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(screen.getByTestId("query").textContent).toBe("loc=zurich");
   });

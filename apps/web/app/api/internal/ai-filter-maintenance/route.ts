@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 
 import {
   cleanupAiFilterRetention,
-  sweepAiFilterCatchup,
 } from "@/lib/ai-filter/maintenance-service";
 
 function safeBearerEqual(presented: string | null, expected: string): boolean {
@@ -27,12 +26,9 @@ export async function GET(request: Request) {
       { status: 401, headers: { "Cache-Control": "private, no-store" } },
     );
   }
-  const [cleanup, sweep] = await Promise.all([
-    cleanupAiFilterRetention(),
-    sweepAiFilterCatchup(),
-  ]);
+  const cleanup = await cleanupAiFilterRetention();
   return NextResponse.json(
-    { ok: true, cleanup, sweep },
+    { ok: true, cleanup },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }

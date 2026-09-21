@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 import type { SelectedLocation } from "@/lib/search/types";
 import { SearchResults } from "@/components/search/search-results";
@@ -12,6 +12,11 @@ import { SkeletonCards } from "@/components/search/skeleton-card";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
+import {
+  AiSearchFilter,
+  parseAiSearchFilterDemoState,
+  type AiSearchFilterDemoState,
+} from "@/components/search/ai-search-filter";
 import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
 import {
   runSearchJobs,
@@ -34,6 +39,7 @@ import {
   buildCacheKey,
   shouldRestoreSnapshot,
 } from "@/components/providers/SearchStateProvider";
+import { buildSearchWatchlistDraft } from "@/lib/search/watchlist-draft";
 
 const PAGE_SIZE = 10;
 
@@ -84,6 +90,7 @@ export function resolveInitialRepositoryFallbackCompanies(params: {
 interface SearchPageProps {
   initialCompanies: SearchResultCompany[];
   initialTotalCompanies: number;
+  initialTotalPostings?: number;
   initialTruncated?: boolean;
   initialDegraded?: boolean;
   initialRepositoryFallbackCompanies?: ExploreRepositoryCompany[];
@@ -117,6 +124,7 @@ interface SearchPageProps {
 export function SearchPage({
   initialCompanies,
   initialTotalCompanies,
+  initialTotalPostings,
   initialTruncated,
   initialDegraded,
   initialRepositoryFallbackCompanies,
@@ -142,6 +150,7 @@ export function SearchPage({
   userLng,
   initialDirectRefreshAttempted = false,
 }: SearchPageProps) {
+  const { t } = useLingui();
   // The cached route is always `/<locale>/explore`; query state is observed
   // separately after hydration. Reading `usePathname()` here would suspend
   // the result-owning subtree during prerender and replace its company cards
@@ -149,7 +158,7 @@ export function SearchPage({
   // `useSearchParams()` in #2640.
   const pathname = `/${locale}/explore`;
   const searchParams = useBrowserSearchParams();
-  const { isLoggedIn } = useSession();
+  const { isLoggedIn, plan } = useSession();
   const isLoggedInRef = useLatest(isLoggedIn);
   const { get: getSearchState, set: setSearchState, setPageActions } = useSearchStateStore();
   const [languageOverride, setLanguageOverride, languageOverrideRef] =
@@ -249,6 +258,10 @@ export function SearchPage({
   const [totalCompanies, setTotalCompanies, totalCompaniesRef] = useLatestState(
     shouldRestore ? cached.totalCompanies : initialTotalCompanies,
   );
+  const [totalPostings, setTotalPostings, totalPostingsRef] =
+    useLatestState<number | undefined>(
+      shouldRestore ? cached.totalPostings : initialTotalPostings,
+    );
   const [isSearching, setIsSearching] = useState(false);
   const searchCounterRef = useRef(0);
   const externalNavigationCounterRef = useRef(0);
@@ -397,6 +410,7 @@ export function SearchPage({
           // clearly distinguishes upstream unavailability from zero matches.
           setCompanies([]);
           setTotalCompanies(0);
+          setTotalPostings(undefined);
           serverOffsetRef.current = 0;
           setIsTruncated(false);
           setIsDegraded(true);
@@ -422,6 +436,7 @@ export function SearchPage({
         setWorkMode(parsed.workMode);
         setCompanies([]);
         setTotalCompanies(0);
+        setTotalPostings(undefined);
         serverOffsetRef.current = 0;
         setIsTruncated(false);
         setIsDegraded(true);
@@ -469,6 +484,7 @@ export function SearchPage({
         experienceMax: experienceMaxRef.current,
         companies: companiesRef.current,
         totalCompanies: totalCompaniesRef.current,
+        totalPostings: totalPostingsRef.current,
         showPostingId: showPostingIdRef.current,
         degraded: isDegradedRef.current,
         scrollY: window.scrollY,
@@ -771,6 +787,7 @@ export function SearchPage({
       searchCounterRef.current += 1;
       setCompanies([]);
       setTotalCompanies(0);
+      setTotalPostings(undefined);
       setIsTruncated(false);
       setIsDegraded(true);
       setIsSearching(false);
@@ -836,6 +853,7 @@ export function SearchPage({
         setCompanies(result.companies);
         serverOffsetRef.current = result.companies.length;
         setTotalCompanies(result.totalCompanies);
+        setTotalPostings(result.totalPostings);
         setIsTruncated(result.truncated ?? false);
         setIsDegraded(result.degraded ?? false);
         if (!result.degraded) setRepositoryFallbackCompanies([]);
@@ -845,6 +863,7 @@ export function SearchPage({
         // broader result set under the new state when its search action fails.
         setCompanies([]);
         setTotalCompanies(0);
+        setTotalPostings(undefined);
         serverOffsetRef.current = 0;
         setIsTruncated(false);
         setIsDegraded(true);
@@ -897,6 +916,7 @@ export function SearchPage({
       setCompanies(result.companies);
       serverOffsetRef.current = result.companies.length;
       setTotalCompanies(result.totalCompanies);
+      setTotalPostings(result.totalPostings);
       setIsTruncated(result.truncated ?? false);
       setIsDegraded(false);
       setRepositoryFallbackCompanies([]);
@@ -1108,6 +1128,9 @@ export function SearchPage({
       return [...prev, ...result.companies.filter((c) => !seen.has(c.company.id))];
     });
     setTotalCompanies(result.totalCompanies);
+    if (result.totalPostings !== undefined) {
+      setTotalPostings(result.totalPostings);
+    }
   }
 
   // Stabilized for #3198 — `locationIds` is fed into `SearchResults` and
@@ -1132,6 +1155,52 @@ export function SearchPage({
     employmentTypes: employmentTypes.length > 0 ? employmentTypes : undefined,
     languages: languages.length > 0 ? languages : undefined,
   }), [keywords, locations, occupations, seniorities, technologies, workMode, employmentTypes, languages]);
+
+  const aiFilterDemoState = useMemo<AiSearchFilterDemoState | undefined>(() => {
+    if (process.env.NODE_ENV !== "development") return undefined;
+    return parseAiSearchFilterDemoState(searchParams.get("ai-demo"));
+  }, [searchParams]);
+  const aiFilterUiEnabled =
+    process.env.NEXT_PUBLIC_AI_FILTER_UI_ENABLED === "true" ||
+    aiFilterDemoState !== undefined;
+  const aiWatchlistDraft = useMemo(() => buildSearchWatchlistDraft({
+    fallbackTitle: t({
+      id: "watchlists.savedSearch.defaultTitle",
+      comment: "Default watchlist title when saving a search without descriptive filters",
+      message: "My search",
+    }),
+    keywords,
+    locations,
+    occupations,
+    seniorities,
+    technologies,
+    employmentTypes,
+    workMode,
+    salaryMin,
+    salaryMax,
+    salaryCurrency,
+    experienceMin,
+    experienceMax,
+    unresolvedLocationSlugs: unresolvedExplicitSlugs.loc,
+    unresolvedOccupationSlugs: unresolvedExplicitSlugs.occ,
+    unresolvedSenioritySlugs: unresolvedExplicitSlugs.sen,
+    unresolvedTechnologySlugs: unresolvedExplicitSlugs.tech,
+  }), [
+    employmentTypes,
+    experienceMax,
+    experienceMin,
+    keywords,
+    locations,
+    occupations,
+    salaryCurrency,
+    salaryMax,
+    salaryMin,
+    seniorities,
+    t,
+    technologies,
+    unresolvedExplicitSlugs,
+    workMode,
+  ]);
 
   const searchColumn = (
     <div className="space-y-6">
@@ -1201,6 +1270,23 @@ export function SearchPage({
         histogramFilters={histogramFilters}
         onClearAll={handleClearAll}
         onSubmitSearch={handleSubmitSearch}
+        aiFilterSlot={aiFilterUiEnabled ? (
+          <AiSearchFilter
+            isSubscribed={plan === "unlimited"}
+            hasSearchFilters={hasFilters}
+            candidateCount={totalPostings}
+            isSearchPending={isSearching || isDegraded}
+            demoState={aiFilterDemoState}
+            createsWatchlist
+            watchlistDraft={aiWatchlistDraft}
+            align="right"
+            onApply={aiFilterDemoState === "eligible"
+              ? async () => {
+                  await new Promise((resolve) => setTimeout(resolve, 650));
+                }
+              : undefined}
+          />
+        ) : undefined}
       />
 
       {companies.length === 0 && isSearching ? (

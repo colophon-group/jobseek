@@ -191,7 +191,10 @@ export async function putAiFilterConfiguration(input: {
         ))
         .limit(1);
       if (!currentQuery) throw new Error("AI filter current query version is missing");
-      if (currentQuery.normalizedQuery === normalizedQuery) {
+      if (
+        currentQuery.normalizedQuery === normalizedQuery &&
+        currentQuery.filterFingerprint === fingerprint
+      ) {
         await tx
           .update(aiFilterConfiguration)
           .set({ status: "enabled", disabledAt: null, updatedAt: now })
@@ -247,7 +250,12 @@ export async function putAiFilterConfiguration(input: {
         ownerId: input.ownerId,
         queryVersionId,
         type: "query_changed",
-        payload: { revision },
+        payload: {
+          revision,
+          reason: currentQuery.normalizedQuery === normalizedQuery
+            ? "search_scope_changed"
+            : "query_changed",
+        },
         idempotencyKey: `query:${queryVersionId}:created`,
         createdAt: now,
       });

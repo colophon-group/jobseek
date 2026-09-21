@@ -50,6 +50,7 @@ async function searchOne(
   cfg: TypesenseBrowserConfig,
   collection: string,
   params: Record<string, unknown>,
+  retryUnauthorized = true,
 ): Promise<unknown> {
   const url = `${cfg.protocol}://${cfg.host}:${cfg.port}/collections/${collection}/documents/search`;
   const qs = new URLSearchParams();
@@ -63,6 +64,14 @@ async function searchOne(
   });
   if (!res.ok) {
     invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
+    if (retryUnauthorized && (res.status === 401 || res.status === 403)) {
+      return searchOne(
+        await getTypesenseBrowserConfig(),
+        collection,
+        params,
+        false,
+      );
+    }
     throw new Error(`typesense ${collection} ${res.status}`);
   }
   return res.json();

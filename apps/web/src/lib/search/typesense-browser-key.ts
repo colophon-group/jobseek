@@ -103,5 +103,5 @@ export function clearTypesenseBrowserConfig(): void {
  * browser operation obtains the replacement instead of reusing it until TTL.
  */
 export function invalidateTypesenseBrowserConfigIfUnauthorized(status: number): void {
-  if (status === 401) clearTypesenseBrowserConfig();
+  if (status === 401 || status === 403) clearTypesenseBrowserConfig();
 }

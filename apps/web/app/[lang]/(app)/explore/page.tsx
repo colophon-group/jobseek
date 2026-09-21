@@ -82,10 +82,51 @@ async function renderExploreContent(
     comment: "Hidden page H1 for /explore — screen-reader landmark",
     message: "Explore Jobs",
   });
+  const staticLabels = {
+    filters: i18n._({
+      id: "search.advanced.toggle",
+      comment: "Toggle button for advanced search filters panel",
+      message: "Filters",
+    }),
+    allLanguages: i18n._({
+      id: "search.languageNote.all",
+      comment: "Note showing jobs in all languages",
+      message: "Showing jobs in all languages",
+    }),
+    change: i18n._({
+      id: "search.languageNote.change",
+      comment: "Link to change language settings",
+      message: "change",
+    }),
+    companyStats: Object.fromEntries(
+      initialData.result.companies.map(({ company, activeMatches, yearMatches }) => [
+        company.id,
+        {
+          active: i18n._({
+            id: "common.stats.activeCount",
+            comment: "Locale-formatted active posting count",
+            message: "{count, plural, one {# active job} other {# active jobs}}",
+            values: { count: activeMatches },
+          }),
+          year: i18n._({
+            id: "common.stats.yearCountWithValue",
+            comment: "Locale-formatted postings seen in the last year count",
+            message: "{count, plural, one {# in the last year} other {# in the last year}}",
+            values: { count: yearMatches },
+          }),
+        },
+      ]),
+    ),
+  };
 
   return (
     <>
-      <ExploreStaticResults locale={locale} heading={heading} data={initialData} />
+      <ExploreStaticResults
+        locale={locale}
+        heading={heading}
+        data={initialData}
+        labels={staticLabels}
+      />
       <div data-explore-interactive hidden>
         <Suspense fallback={null}>
           <ExploreContent locale={locale} initialData={initialData} />

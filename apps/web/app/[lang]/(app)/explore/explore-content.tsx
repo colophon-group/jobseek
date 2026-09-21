@@ -43,11 +43,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     data: ExploreData;
     unavailable: boolean;
     directAttempted: boolean;
-  } | null>({
-    data: initialData,
-    unavailable: false,
-    directAttempted: false,
-  });
+  } | null>(null);
 
   // Re-initialize only when the query-agnostic shell does not reflect the
   // browser URL or viewer preferences. Authenticated preferences come from
@@ -166,7 +162,13 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     rates,
   ]);
 
-  if (!view) return <ExploreSkeleton />;
+  if (!view) {
+    return (
+      <div ref={rootRef} data-explore-content-root>
+        <ExploreSkeleton />
+      </div>
+    );
+  }
   const { data } = view;
 
   const {
@@ -191,6 +193,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
       <SearchPage
         initialCompanies={result.companies}
         initialTotalCompanies={result.totalCompanies}
+        initialTotalPostings={result.totalPostings}
         initialTruncated={result.truncated}
         initialDegraded={result.degraded}
         initialRepositoryFallbackCompanies={repositoryFallbackCompanies}

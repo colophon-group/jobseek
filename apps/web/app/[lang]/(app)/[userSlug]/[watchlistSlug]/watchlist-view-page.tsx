@@ -23,6 +23,10 @@ import { WatchlistActionBar } from "@/components/watchlist/watchlist-action-bar"
 import { WatchlistJobList } from "@/components/watchlist/watchlist-job-list";
 import { FilterPillsReadOnly } from "@/components/search/filter-pills-readonly";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
+import {
+  AiSearchFilter,
+  parseAiSearchFilterDemoState,
+} from "@/components/search/ai-search-filter";
 import type { SelectedLocation } from "@/lib/search/types";
 import type { HistogramFilters, WorkMode } from "@/lib/search";
 import { mergeWatchlistTaxonomySlugs } from "@/lib/watchlist-utils";
@@ -35,6 +39,11 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { withAuthReturnPath } from "@/lib/auth-return";
 import { copyTextToClipboard } from "@/lib/copy-text-to-clipboard";
+import { useBrowserSearchParams } from "@/lib/use-browser-search-params";
+import type {
+  AiFilterAcceptedPage,
+  AiFilterUiState,
+} from "@/lib/ai-filter/ui-contract";
 
 // Sentinel set used to re-validate the JSONB-stored `workMode` strings
 // before they reach Typesense. The watchlist column accepts arbitrary
@@ -302,6 +311,8 @@ export function WatchlistViewPage({
   jobLanguages,
   languages,
   initialPostingFilters,
+  initialAiFilterState = null,
+  initialAiAcceptedPage = null,
 }: {
   detail: WatchlistViewDetail;
   isOwner: boolean;
@@ -318,9 +329,29 @@ export function WatchlistViewPage({
   jobLanguages: string[];
   languages: string[];
   initialPostingFilters: Omit<WatchlistPostingsParams, "offset" | "limit"> | null;
+  initialAiFilterState?: AiFilterUiState | null;
+  initialAiAcceptedPage?: AiFilterAcceptedPage | null;
 }) {
   const { t } = useLingui();
   const currencyRates = useSalaryRates();
+  const { plan } = useSession();
+  const browserSearchParams = useBrowserSearchParams();
+  const [aiCandidateCount, setAiCandidateCount] = useState<number | undefined>(
+    initialSearchUnavailable ? undefined : initialTotal,
+  );
+  const [aiFilterState, setAiFilterState] = useState<AiFilterUiState | null>(
+    initialAiFilterState,
+  );
+  const scopeRevisionRef = useRef(0);
+  const [scopeRevision, setScopeRevision] = useState(0);
+  const [persistedScopeRevision, setPersistedScopeRevision] = useState(0);
+
+  function beginScopeMutation(): number {
+    const revision = scopeRevisionRef.current + 1;
+    scopeRevisionRef.current = revision;
+    setScopeRevision(revision);
+    return revision;
+  }
 
   // ── Editable title ──
   const [title, setTitle] = useState(detail.title);
@@ -432,6 +463,7 @@ export function WatchlistViewPage({
     mutation: () => Promise<{ ok: boolean }>,
   ) {
     if (companyMutationInFlightRef.current) return;
+    const scopeRevision = beginScopeMutation();
     const previousCompanies = companies;
     companyMutationInFlightRef.current = true;
     setMutationError("");
@@ -443,6 +475,7 @@ export function WatchlistViewPage({
       setCompanies(previousCompanies);
       setMutationError(updateErrorMessage());
     } finally {
+      if (mountedRef.current) setPersistedScopeRevision(scopeRevision);
       companyMutationInFlightRef.current = false;
     }
   }
@@ -520,10 +553,17 @@ export function WatchlistViewPage({
 
   // Persist filters to DB (debounced, cleaned up on unmount)
   const saveFiltersTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const pendingFiltersRef = useRef<WatchlistFilters | null>(null);
+  const pendingFiltersRef = useRef<{
+    filters: WatchlistFilters;
+    scopeRevision: number;
+  } | null>(null);
   const filterSaveChainRef = useRef<Promise<void>>(Promise.resolve());
 
-  function enqueueFilterSave(updated: WatchlistFilters, reportError: boolean) {
+  function enqueueFilterSave(
+    updated: WatchlistFilters,
+    reportError: boolean,
+    scopeRevision: number,
+  ) {
     filterSaveChainRef.current = filterSaveChainRef.current.then(async () => {
       try {
         const result = await updateWatchlist({
@@ -531,6 +571,7 @@ export function WatchlistViewPage({
           filters: updated,
         });
         if ("error" in result) throw new Error(result.error);
+        if (mountedRef.current) setPersistedScopeRevision(scopeRevision);
       } catch {
         if (reportError && mountedRef.current) {
           setMutationError(updateErrorMessage());
@@ -545,16 +586,17 @@ export function WatchlistViewPage({
       const pending = pendingFiltersRef.current;
       pendingFiltersRef.current = null;
       if (pending) {
-        enqueueFilterSave(pending, false);
+        enqueueFilterSave(pending.filters, false, pending.scopeRevision);
       }
     };
   }, [detail.id]);
   function persistFilters(updated: WatchlistFilters) {
+    const scopeRevision = beginScopeMutation();
     clearTimeout(saveFiltersTimeout.current);
-    pendingFiltersRef.current = updated;
+    pendingFiltersRef.current = { filters: updated, scopeRevision };
     saveFiltersTimeout.current = setTimeout(() => {
       pendingFiltersRef.current = null;
-      enqueueFilterSave(updated, true);
+      enqueueFilterSave(updated, true, scopeRevision);
     }, 500);
   }
 
@@ -726,6 +768,60 @@ export function WatchlistViewPage({
   const salaryMaxEur = salaryFilterEdited || !initialPostingFilters
     ? convertToEur(salaryMax, salaryCurrency, currencyRates)
     : initialPostingFilters.salaryMax;
+  const aiScopeKey = JSON.stringify({
+    companyIds: anyCompany ? [] : companies.map((company) => company.id).sort(),
+    anyCompany,
+    keywords,
+    locationIds: locations.map((location) => location.id).sort((a, b) => a - b),
+    occupationIds: occupations.map((occupation) => occupation.id).sort((a, b) => a - b),
+    seniorityIds: seniorities.map((seniority) => seniority.id).sort((a, b) => a - b),
+    technologyIds: technologies.map((technology) => technology.id).sort((a, b) => a - b),
+    workMode,
+    employmentTypes,
+    salaryMinEur,
+    salaryMaxEur,
+    experienceMin,
+    experienceMax,
+    languages,
+  });
+  const previousAiScopeKeyRef = useRef(aiScopeKey);
+  useEffect(() => {
+    if (previousAiScopeKeyRef.current === aiScopeKey) return;
+    previousAiScopeKeyRef.current = aiScopeKey;
+    setAiCandidateCount(undefined);
+  }, [aiScopeKey]);
+  const aiFilterDemoState = process.env.NODE_ENV === "development"
+    ? parseAiSearchFilterDemoState(browserSearchParams.get("ai-demo"))
+    : undefined;
+  const aiFilterUiEnabled =
+    process.env.NEXT_PUBLIC_AI_FILTER_UI_ENABLED === "true" ||
+    aiFilterDemoState !== undefined;
+  const hasAiFilterScope = hasFilters || (!anyCompany && companies.length > 0);
+  const aiFilterControl = isOwner && aiFilterUiEnabled ? (
+    <AiSearchFilter
+      isSubscribed={plan === "unlimited"}
+      hasSearchFilters={hasAiFilterScope}
+      candidateCount={aiCandidateCount}
+      isSearchPending={aiCandidateCount === undefined}
+      demoState={aiFilterDemoState}
+      watchlistId={detail.id}
+      initialQuery={aiFilterState?.enabled ? aiFilterState.query : null}
+      onStateChange={setAiFilterState}
+      onApply={aiFilterDemoState === "eligible"
+        ? async () => {
+            await new Promise((resolve) => setTimeout(resolve, 650));
+          }
+        : undefined}
+    />
+  ) : undefined;
+  const handleAiResultStateChange = useCallback((state: {
+    candidateCount: number | undefined;
+    unavailable: boolean;
+  }) => {
+    setAiCandidateCount(
+      state.unavailable ? undefined : state.candidateCount,
+    );
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -916,33 +1012,38 @@ export function WatchlistViewPage({
         {/* Filters */}
         {isOwner ? (
           <div className="space-y-3">
-            <AdvancedSearchPanel
-              locale={locale}
-              locations={locations}
-              occupations={occupations}
-              seniorities={seniorities}
-              technologies={technologies}
-              salaryCurrency={salaryCurrency}
-              salaryMin={salaryMin}
-              salaryMax={salaryMax}
-              experienceMin={experienceMin}
-              experienceMax={experienceMax}
-              onAddLocation={onAddLocation}
-              onRemoveLocation={onRemoveLocation}
-              onAddOccupation={onAddOccupation}
-              onRemoveOccupation={onRemoveOccupation}
-              onAddSeniority={onAddSeniority}
-              onRemoveSeniority={onRemoveSeniority}
-              onAddTechnology={onAddTechnology}
-              onRemoveTechnology={onRemoveTechnology}
-              employmentTypes={employmentTypes}
-              onToggleEmploymentType={onToggleEmploymentType}
-              workMode={workMode}
-              onToggleWorkMode={onToggleWorkMode}
-              onSalaryChange={onSalaryChange}
-              onExperienceChange={onExperienceChange}
-              histogramFilters={histogramFilters}
-            />
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2">
+              <AdvancedSearchPanel
+                locale={locale}
+                locations={locations}
+                occupations={occupations}
+                seniorities={seniorities}
+                technologies={technologies}
+                salaryCurrency={salaryCurrency}
+                salaryMin={salaryMin}
+                salaryMax={salaryMax}
+                experienceMin={experienceMin}
+                experienceMax={experienceMax}
+                onAddLocation={onAddLocation}
+                onRemoveLocation={onRemoveLocation}
+                onAddOccupation={onAddOccupation}
+                onRemoveOccupation={onRemoveOccupation}
+                onAddSeniority={onAddSeniority}
+                onRemoveSeniority={onRemoveSeniority}
+                onAddTechnology={onAddTechnology}
+                onRemoveTechnology={onRemoveTechnology}
+                employmentTypes={employmentTypes}
+                onToggleEmploymentType={onToggleEmploymentType}
+                workMode={workMode}
+                onToggleWorkMode={onToggleWorkMode}
+                onSalaryChange={onSalaryChange}
+                onExperienceChange={onExperienceChange}
+                histogramFilters={histogramFilters}
+              />
+              <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end">
+                {aiFilterControl}
+              </div>
+            </div>
             <FilterPillsReadOnly
               filters={buildFilters()}
               locations={locations}
@@ -964,17 +1065,19 @@ export function WatchlistViewPage({
             />
           </div>
         ) : (
-          <FilterPillsReadOnly
-            filters={detail.filters}
-            locations={resolvedLocations}
-            occupations={resolvedOccupations}
-            seniorities={resolvedSeniorities}
-            technologies={resolvedTechnologies}
-            workMode={
-              (detail.filters.workMode ?? []).filter((m): m is WorkMode => WORK_MODE_VALUES.has(m as WorkMode))
-            }
-            employmentType={detail.filters.employmentType}
-          />
+          <div className="space-y-3">
+            <FilterPillsReadOnly
+              filters={detail.filters}
+              locations={resolvedLocations}
+              occupations={resolvedOccupations}
+              seniorities={resolvedSeniorities}
+              technologies={resolvedTechnologies}
+              workMode={
+                (detail.filters.workMode ?? []).filter((m): m is WorkMode => WORK_MODE_VALUES.has(m as WorkMode))
+              }
+              employmentType={detail.filters.employmentType}
+            />
+          </div>
         )}
       </div>
 
@@ -1006,6 +1109,17 @@ export function WatchlistViewPage({
         initialSearchUnavailable={initialSearchUnavailable}
         jobLanguages={jobLanguages}
         locale={locale}
+        onResultStateChange={handleAiResultStateChange}
+        aiFilterState={aiFilterState}
+        initialAiAcceptedPage={
+          scopeRevision === 0 &&
+          aiFilterState?.queryVersionId === initialAiFilterState?.queryVersionId
+            ? initialAiAcceptedPage
+            : null
+        }
+        onAiFilterStateChange={setAiFilterState}
+        aiFilterScopeKey={aiScopeKey}
+        aiFilterScopeReady={scopeRevision === persistedScopeRevision}
       />
     </div>
   );

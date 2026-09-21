@@ -26,6 +26,7 @@ const SEGMENT_LEASE_MS = 5 * 60 * 1_000;
 export type AiFilterCatchupStepResult = Readonly<{
   status:
     | "continue"
+    | "demand_satisfied"
     | "caught_up"
     | "busy"
     | "disabled"
@@ -102,6 +103,7 @@ async function claimSegment(input: {
   hasEntitlement: boolean;
   maxSegmentsPerUser: number;
   maxSegmentsPerProject: number;
+  demandTargetOffset: number;
   now: Date;
 }) {
   return db.transaction(async (tx) => {
@@ -154,6 +156,28 @@ async function claimSegment(input: {
       return { kind: "busy" as const, segment: active };
     }
 
+    const [previous] = active
+      ? [undefined]
+      : await tx
+          .select()
+          .from(aiFilterSegment)
+          .where(and(
+            eq(aiFilterSegment.watchlistId, input.watchlistId),
+            eq(aiFilterSegment.queryVersionId, current.queryVersionId),
+          ))
+          .orderBy(desc(aiFilterSegment.createdAt))
+          .limit(1);
+    if (!active && previous?.status === "caught_up") {
+      return { kind: "caught_up" as const, segment: previous };
+    }
+    if (
+      !active &&
+      previous?.status === "completed" &&
+      previous.selectionOffset + previous.scannedCount >= input.demandTargetOffset
+    ) {
+      return { kind: "demand_satisfied" as const, segment: previous };
+    }
+
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtextextended(${`ai-filter-user-capacity:${input.ownerId}`}, 619_907))`,
     );
@@ -186,15 +210,6 @@ async function claimSegment(input: {
 
     let segment = active;
     if (!segment) {
-      const [previous] = await tx
-        .select()
-        .from(aiFilterSegment)
-        .where(and(
-          eq(aiFilterSegment.watchlistId, input.watchlistId),
-          eq(aiFilterSegment.queryVersionId, current.queryVersionId),
-        ))
-        .orderBy(desc(aiFilterSegment.createdAt))
-        .limit(1);
       const continuePrevious =
         previous?.status === "completed" &&
         previous.scannedCount > 0;
@@ -303,9 +318,17 @@ export async function runAiFilterCatchupStep(input: {
   ownerId: string;
   watchlistId: string;
   leaseOwner: string;
+  demandTargetOffset: number;
   now?: Date;
   signal?: AbortSignal;
 }): Promise<AiFilterCatchupStepResult> {
+  if (
+    !Number.isSafeInteger(input.demandTargetOffset) ||
+    input.demandTargetOffset < 1 ||
+    input.demandTargetOffset > 10_000
+  ) {
+    throw new TypeError("AI filter demand target is invalid");
+  }
   const now = input.now ?? new Date();
   let policy: ReturnType<typeof readAiFilterRuntimePolicy>;
   let policyValid = true;
@@ -334,6 +357,12 @@ export async function runAiFilterCatchupStep(input: {
   });
   if (claim.kind === "disabled") return { status: "disabled", segmentId: null };
   if (claim.kind === "busy") return { status: "busy", segmentId: claim.segment?.id ?? null };
+  if (claim.kind === "caught_up") {
+    return { status: "caught_up", segmentId: claim.segment.id };
+  }
+  if (claim.kind === "demand_satisfied") {
+    return { status: "demand_satisfied", segmentId: claim.segment.id };
+  }
   if (claim.kind === "paused_entitlement") {
     return { status: "paused_entitlement", segmentId: claim.segment?.id ?? null };
   }
@@ -435,9 +464,13 @@ export async function runAiFilterCatchupStep(input: {
     return { status: outcome.status, segmentId: claim.segment.id };
   }
 
+  const coveredOffset = claim.segment.selectionOffset + page.scannedCount;
+  if (coveredOffset >= input.demandTargetOffset) {
+    return { status: "demand_satisfied", segmentId: claim.segment.id };
+  }
   if (
     page.scannedCount > 0 &&
-    claim.segment.selectionOffset + page.scannedCount < page.total
+    coveredOffset < page.total
   ) {
     return { status: "continue", segmentId: claim.segment.id };
   }

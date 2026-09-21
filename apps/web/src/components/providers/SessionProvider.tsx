@@ -2,6 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import type { AppPreferences } from "@/lib/actions/bootstrap";
+import type { PlanId } from "@/lib/plans";
 
 export type SessionUser = {
   id: string;
@@ -15,6 +16,7 @@ export type SessionUser = {
 
 type SessionContextValue = {
   user: SessionUser | null;
+  plan: PlanId;
   preferences: AppPreferences | null;
   isLoggedIn: boolean;
   isPending: boolean;
@@ -35,6 +37,7 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue>({
   user: null,
+  plan: "free",
   preferences: null,
   isLoggedIn: false,
   isPending: true,
@@ -43,12 +46,14 @@ const SessionContext = createContext<SessionContextValue>({
 
 export function SessionProvider({
   user,
+  plan = "free",
   preferences = null,
   isPending = false,
   refresh,
   children,
 }: {
   user: SessionUser | null;
+  plan?: PlanId;
   preferences?: AppPreferences | null;
   isPending?: boolean;
   refresh?: () => Promise<void>;
@@ -58,6 +63,7 @@ export function SessionProvider({
     <SessionContext.Provider
       value={{
         user,
+        plan,
         preferences,
         isLoggedIn: Boolean(user),
         isPending,

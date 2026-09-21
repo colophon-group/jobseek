@@ -8,6 +8,7 @@ import { aiFilterCatchupWorkflow } from "../../../workflows/ai-filter-catchup";
 export async function startAiFilterCatchup(input: {
   ownerId: string;
   watchlistId: string;
+  demandTargetOffset: number;
 }): Promise<{ runId: string }> {
   const run = await start(aiFilterCatchupWorkflow, [{
     ...input,

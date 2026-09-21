@@ -321,13 +321,18 @@ export class TypesenseSearchProvider implements SearchProvider {
         fetchCompaniesById(companyIds),
       ]);
 
-      return mapGroupedHits(
-        groupedHits,
-        totalCompanies,
-        yearCountMap,
-        companyMap,
-        locationIds,
-      );
+      return {
+        ...mapGroupedHits(
+          groupedHits,
+          totalCompanies,
+          yearCountMap,
+          companyMap,
+          locationIds,
+        ),
+        ...(Number.isSafeInteger(result.found_docs)
+          ? { totalPostings: result.found_docs }
+          : {}),
+      };
     } catch (err) {
       logExternalError("error", { service: "typesense", operation: "search_jobs" }, err);
       return emptyResponse();
@@ -392,7 +397,11 @@ export class TypesenseSearchProvider implements SearchProvider {
 
     const page = activeCounts.slice(offset, offset + limit);
     if (page.length === 0) {
-      return { companies: [], totalCompanies };
+      return {
+        companies: [],
+        totalCompanies,
+        totalPostings: activeResult.found,
+      };
     }
 
     const companyIds = page.map(
@@ -455,7 +464,11 @@ export class TypesenseSearchProvider implements SearchProvider {
       })
       .filter((c): c is SearchResultCompany => c !== null);
 
-    return { companies, totalCompanies };
+    return {
+      companies,
+      totalCompanies,
+      totalPostings: activeResult.found,
+    };
   }
 
   private async listTopCompaniesUnfiltered(

@@ -9,22 +9,22 @@ const input = {
   ownerId: "owner-1",
   watchlistId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   leaseOwner: "worker-1",
+  demandTargetOffset: 60,
 };
 
 describe("AI filter catch-up workflow", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("auto-chains completed pages until the service reports caught up", async () => {
+  it("prefetches ahead but never runs more than two bounded segments", async () => {
     runCatchupStep
       .mockResolvedValueOnce({ status: "continue", segmentId: "segment-1" })
-      .mockResolvedValueOnce({ status: "continue", segmentId: "segment-2" })
-      .mockResolvedValueOnce({ status: "caught_up", segmentId: "segment-3" });
+      .mockResolvedValueOnce({ status: "continue", segmentId: "segment-2" });
 
     await expect(aiFilterCatchupWorkflow(input)).resolves.toEqual({
-      status: "caught_up",
-      segmentId: "segment-3",
+      status: "continue",
+      segmentId: "segment-2",
     });
-    expect(runCatchupStep).toHaveBeenCalledTimes(3);
+    expect(runCatchupStep).toHaveBeenCalledTimes(2);
   });
 
   it("stops chaining on a typed budget pause", async () => {

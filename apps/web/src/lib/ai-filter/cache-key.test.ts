@@ -36,6 +36,21 @@ describe("AI filter global exact cache identity", () => {
     expect(left.cacheKey).not.toContain("remote");
   });
 
+  it("does not degrade when a hard-filter scope revision sees the same job", () => {
+    const beforeScopeEdit = buildAiFilterCacheIdentity({
+      queryText: "remote Rust",
+      classifierInput: job(),
+      hmacSecret: secret,
+    });
+    const afterScopeEdit = buildAiFilterCacheIdentity({
+      queryText: "remote Rust",
+      classifierInput: job(),
+      hmacSecret: secret,
+    });
+
+    expect(afterScopeEdit.cacheKey).toBe(beforeScopeEdit.cacheKey);
+  });
+
   it("misses when normalized content changes", () => {
     const left = buildAiFilterCacheIdentity({
       queryText: "remote Rust",

@@ -59,6 +59,8 @@ type FacetCount = {
 
 interface RawSearchResponse<T> {
   found: number;
+  /** Present for grouped searches: matching documents before grouping. */
+  found_docs?: number;
   hits?: SearchHit<T>[];
   grouped_hits?: GroupedHit<T>[];
   facet_counts?: FacetCount[];
@@ -107,6 +109,7 @@ async function searchOne<T>(
   cfg: TypesenseBrowserConfig,
   collection: string,
   params: Record<string, unknown>,
+  retryUnauthorized = true,
 ): Promise<RawSearchResponse<T>> {
   const url = `${cfg.protocol}://${cfg.host}:${cfg.port}/collections/${collection}/documents/search`;
   const qs = new URLSearchParams();
@@ -120,6 +123,14 @@ async function searchOne<T>(
   });
   if (!res.ok) {
     invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
+    if (retryUnauthorized && (res.status === 401 || res.status === 403)) {
+      return searchOne<T>(
+        await getTypesenseBrowserConfig(),
+        collection,
+        params,
+        false,
+      );
+    }
     throw new Error(`typesense ${collection} search ${res.status}`);
   }
   return res.json();
@@ -128,6 +139,7 @@ async function searchOne<T>(
 async function searchMany<T>(
   cfg: TypesenseBrowserConfig,
   searches: Array<Record<string, unknown>>,
+  retryUnauthorized = true,
 ): Promise<RawSearchResponse<T>[]> {
   const url = `${cfg.protocol}://${cfg.host}:${cfg.port}/multi_search`;
   const res = await fetch(url, {
@@ -140,6 +152,13 @@ async function searchMany<T>(
   });
   if (!res.ok) {
     invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
+    if (retryUnauthorized && (res.status === 401 || res.status === 403)) {
+      return searchMany<T>(
+        await getTypesenseBrowserConfig(),
+        searches,
+        false,
+      );
+    }
     throw new Error(`typesense multi_search ${res.status}`);
   }
   const body: unknown = await res.json();
@@ -308,7 +327,13 @@ export class TypesenseBrowserProvider implements SearchProvider {
         })
         .filter((company): company is SearchResultCompany => company !== null);
 
-      return { companies, totalCompanies };
+      return {
+        companies,
+        totalCompanies,
+        ...(Number.isSafeInteger(result.found_docs)
+          ? { totalPostings: result.found_docs }
+          : {}),
+      };
     } catch (err) {
       logExternalError("error", { service: "typesense", operation: "browser_search_jobs" }, err);
       return emptyResponse();
@@ -357,7 +382,13 @@ export class TypesenseBrowserProvider implements SearchProvider {
     const totalCompanies = facets?.stats?.total_values ?? 0;
     const all = facets?.counts ?? [];
     const page = all.slice(offset, offset + limit);
-    if (page.length === 0) return { companies: [], totalCompanies };
+    if (page.length === 0) {
+      return {
+        companies: [],
+        totalCompanies,
+        totalPostings: facetResult.found,
+      };
+    }
 
     const companyIds = page.map((c) => c.value);
     const activeMap = new Map(page.map((c) => [c.value, c.count] as [string, number]));
@@ -402,7 +433,11 @@ export class TypesenseBrowserProvider implements SearchProvider {
       })
       .filter((c): c is SearchResultCompany => c !== null);
 
-    return { companies, totalCompanies };
+    return {
+      companies,
+      totalCompanies,
+      totalPostings: facetResult.found,
+    };
   }
 
   private async unfiltered(

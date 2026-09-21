@@ -12,6 +12,16 @@ import { getViewerJobLanguages } from "@/lib/actions/preferences";
 import { canCreateWatchlist } from "@/lib/plans";
 import { isWatchlistId } from "@/lib/watchlist-id";
 import type { Locale } from "@/lib/i18n";
+import {
+  AiFilterNotFoundError,
+  getAiFilterOwnerState,
+} from "@/lib/ai-filter/configuration-service";
+import { listAiFilterDecisions } from "@/lib/ai-filter/decision-service";
+import { AiFilterCandidateLoadError } from "@/lib/ai-filter/candidate-loader";
+import type {
+  AiFilterAcceptedPage,
+  AiFilterUiState,
+} from "@/lib/ai-filter/ui-contract";
 import { WatchlistViewPage } from "../../[userSlug]/[watchlistSlug]/watchlist-view-page";
 
 function viewDetail(
@@ -26,6 +36,47 @@ function viewDetail(
     companies: detail.companies,
     ...(isOwner ? { alertsEnabled: detail.alertsEnabled === true } : {}),
   };
+}
+
+async function getOptionalAiFilterState(input: {
+  ownerId: string;
+  watchlistId: string;
+}): Promise<AiFilterUiState | null> {
+  try {
+    return await getAiFilterOwnerState(input);
+  } catch (error) {
+    if (error instanceof AiFilterNotFoundError) return null;
+    throw error;
+  }
+}
+
+async function getInitialAcceptedPage(input: {
+  ownerId: string;
+  watchlistId: string;
+  state: AiFilterUiState | null;
+}): Promise<AiFilterAcceptedPage | null> {
+  if (!input.state?.enabled) return null;
+  try {
+    const page = await listAiFilterDecisions({
+      ownerId: input.ownerId,
+      watchlistId: input.watchlistId,
+      bucket: "accepted",
+      offset: 0,
+      limit: 20,
+    });
+    return {
+      postings: page.decisions.map((decision) => decision.posting),
+      nextOffset: page.nextOffset,
+      hasMore: page.hasMore,
+    };
+  } catch (error) {
+    // The watchlist shell and persisted request remain useful while the
+    // ordered candidate reader is unavailable. The client result surface
+    // will make one demand attempt and render its unavailable state instead
+    // of turning a search dependency outage into a route-level crash.
+    if (error instanceof AiFilterCandidateLoadError) return null;
+    throw error;
+  }
 }
 
 export async function OwnedWatchlistLoader({
@@ -47,21 +98,36 @@ export async function OwnedWatchlistLoader({
   if (!detail) notFound();
   const isOwner = ownedDetail !== null;
 
-  const [jobLanguages, limit] = await Promise.all([
+  const [jobLanguages, limit, aiFilterState] = await Promise.all([
     getViewerJobLanguages(),
     session
       ? canCreateWatchlist(session.user.id)
       : Promise.resolve({ allowed: true }),
+    isOwner && session
+      ? getOptionalAiFilterState({
+          ownerId: session.user.id,
+          watchlistId,
+        })
+      : Promise.resolve(null),
   ]);
 
-  const data = await buildWatchlistPageData({
-    detail: viewDetail(detail, isOwner),
-    locale,
-    isOwner,
-    limitReached: !limit.allowed,
-    jobLanguages,
-    publicSnapshot: !isOwner,
-  });
+  const [data, initialAiAcceptedPage] = await Promise.all([
+    buildWatchlistPageData({
+      detail: viewDetail(detail, isOwner),
+      locale,
+      isOwner,
+      limitReached: !limit.allowed,
+      jobLanguages,
+      publicSnapshot: !isOwner,
+    }),
+    isOwner && session
+      ? getInitialAcceptedPage({
+          ownerId: session.user.id,
+          watchlistId,
+          state: aiFilterState,
+        })
+      : Promise.resolve(null),
+  ]);
 
   return (
     <div className="space-y-5">
@@ -89,6 +155,8 @@ export async function OwnedWatchlistLoader({
         jobLanguages={data.jobLanguages}
         languages={data.languages}
         initialPostingFilters={data.browserPostingFilters ?? null}
+        initialAiFilterState={aiFilterState}
+        initialAiAcceptedPage={initialAiAcceptedPage}
       />
     </div>
   );

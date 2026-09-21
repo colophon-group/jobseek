@@ -265,4 +265,40 @@ describe("resolveCompanyFilterStateDirect", () => {
     ).rejects.toThrow("401");
     expect(mocks.invalidate).toHaveBeenCalledWith(401);
   });
+
+  it("refreshes a forbidden scoped key and retries the filter resolution once", async () => {
+    const replacementConfig = { ...config, apiKey: "replacement-key" };
+    mocks.getConfig
+      .mockResolvedValueOnce(config)
+      .mockResolvedValueOnce(replacementConfig);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("forbidden", { status: 403 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        results: [{
+          hits: [{
+            document: {
+              technology_id: 40,
+              slug: "react",
+              name: "React",
+            },
+          }],
+        }],
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      resolveCompanyFilterStateDirect(
+        new URLSearchParams("tech=react"),
+        "en",
+      ),
+    ).resolves.toMatchObject({ complete: true });
+
+    expect(mocks.invalidate).toHaveBeenCalledWith(403);
+    expect(mocks.getConfig).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({
+      "x-typesense-api-key": "replacement-key",
+    });
+  });
 });
