@@ -27,6 +27,7 @@ overrides:
   minimatch: ">=10.2.3"
   path-to-regexp: ">=8.4.0"
   "nanoid@<3.3.17": 3.3.17
+  "nanoid@>=4.0.0 <5.1.16": 5.1.16
   postcss: 8.5.26
   qs: 6.16.0
   sharp: ">=0.35.4"
