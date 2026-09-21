@@ -7351,6 +7351,8 @@ vay,vay-greenhouse,https://job-boards.eu.greenhouse.io/vay,greenhouse,"{""token"
 vayyar,vayyar-onsite,https://vayyar.com/recruitment/,sitemap,"{""sitemap_url"": ""https://vayyar.com/sitemap.xml"", ""url_filter"": ""^https://vayyar\\.com/recruitment/?$""}",dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""actions"": [{""action"": ""evaluate"", ""script"": ""const m=document.querySelector(\""#modal-ae58399\"");if(m){document.body.innerHTML=m.innerHTML;const p=document.querySelector(\""pre\"");if(p){const h=document.createElement(\""h1\"");h.innerHTML=p.innerHTML;p.replaceWith(h);}}""}], ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h1"", ""from"": 0, ""field"": ""location"", ""regex"": ""- (US)$""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_count"": 30}]}"
 vayyar,vayyar-workable,https://apply.workable.com/vayyar/,workable,"{""token"": ""vayyar""}",workable,
 vcluster,vcluster-ashby,https://jobs.ashbyhq.com/vcluster,ashby,"{""token"": ""vcluster""}",skip,
+vdk-groep,vdk-groep-builtech,https://jobs.builtech.de/,sitemap,"{""sitemap_url"": ""https://jobs.builtech.de/sitemap.xml"", ""url_filter"": {""include"": ""^https://jobs\\.builtech\\.de/"", ""exclude"": ""^https://jobs\\.builtech\\.de/?$""}}",json-ld,
+vdk-groep,vdk-groep-careers,https://vdkgroep.recruitee.com/,recruitee,,skip,
 vectara,vectara-greenhouse,https://job-boards.greenhouse.io/vectara,greenhouse,"{""token"": ""vectara""}",skip,
 vector,vector-ashby,https://jobs.ashbyhq.com/vector,ashby,"{""token"": ""vector""}",skip,
 vectra,vectra-greenhouse,https://job-boards.greenhouse.io/vectranetworks,greenhouse,"{""token"": ""vectranetworks""}",skip,
