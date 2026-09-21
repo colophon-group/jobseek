@@ -1981,14 +1981,16 @@ class TestScrape:
         sleep = AsyncMock()
 
         async with httpx.AsyncClient(transport=transport) as client:
-            with track_request_hosts() as tracker:
-                with pytest.raises(WorkdayDetailPayloadError) as raised:
-                    await scrape(
-                        "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
-                        {},
-                        client,
-                        sleep=sleep,
-                    )
+            with (
+                track_request_hosts() as tracker,
+                pytest.raises(WorkdayDetailPayloadError) as raised,
+            ):
+                await scrape(
+                    "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
+                    {},
+                    client,
+                    sleep=sleep,
+                )
 
         error = raised.value
         assert error.attempts == 3
@@ -2214,14 +2216,13 @@ class TestPostPageWithRetry:
 
         transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
         async with httpx.AsyncClient(transport=transport) as client:
-            with track_request_hosts() as tracker:
-                with pytest.raises(PaginationFetchError) as exc_info:
-                    await _post_page_with_retry(
-                        client,
-                        _LIST_URL,
-                        {"limit": 20, "offset": 0},
-                        base_delay=0.001,
-                    )
+            with track_request_hosts() as tracker, pytest.raises(PaginationFetchError) as exc_info:
+                await _post_page_with_retry(
+                    client,
+                    _LIST_URL,
+                    {"limit": 20, "offset": 0},
+                    base_delay=0.001,
+                )
 
         assert exc_info.value.last_status == status_code
         assert methods == ["POST", "POST", "POST"]
