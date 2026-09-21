@@ -229,9 +229,8 @@ class TestRequestHostTracking:
 
         transport = RequestHostTrackingTransport(httpx.MockTransport(timeout))
         async with httpx.AsyncClient(transport=transport) as client:
-            with track_request_hosts() as tracker:
-                with pytest.raises(httpx.ConnectTimeout):
-                    await client.get("https://timeout.example/jobs")
+            with track_request_hosts() as tracker, pytest.raises(httpx.ConnectTimeout):
+                await client.get("https://timeout.example/jobs")
 
         assert tracker.transient_failure_host == "timeout.example"
         assert tracker.last_transport_error == "ConnectTimeout"
