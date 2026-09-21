@@ -162,9 +162,11 @@ Migration `0092` and the web/API surfaces are deployed independently of
 activation. Enabling precise matching still requires the separately held
 Typesense producer change, its reviewed production-shaped memory benchmark,
 the complete candidate-order backfill/readiness receipt, production
-secrets/budgets, and the operator canary/pilot gates. Hourly
-catch-up/budget-resume and bounded retention cleanup are already wired through
-the authenticated maintenance cron.
+secrets/budgets, and the operator canary/pilot gates. User access already
+triggers bounded catch-up. The authenticated maintenance endpoint supports a
+future external scheduler for background budget-resume and retention cleanup;
+it is not registered as a Vercel cron because the production Hobby plan only
+permits daily schedules.
 
 The repository's first notification release is currently providerless and is
 explicitly independent of AI results (#8317/#8366), so there is no live
